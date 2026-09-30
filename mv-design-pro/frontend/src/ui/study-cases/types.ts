@@ -237,7 +237,11 @@ export type ExecutionAnalysisType =
   | 'LOAD_FLOW'
   | 'PHASE_STATE_SN'
   | 'PF_UNBALANCED'
-  | 'DYNAMIKA_RMS';
+  | 'DYNAMIKA_RMS'
+  // Bieg oceny zabezpieczeń nadprądowych z modelu (`protection_sn`) — listing biegów przypadku
+  // (`GET /api/execution/study-cases/{id}/runs`) zwraca go jako `PROTECTION`; bieg tworzy ekran
+  // koordynacji (`POST /api/projects/{id}/protection-runs`), nie przycisk „Oblicz".
+  | 'PROTECTION';
 
 /**
  * Run lifecycle status.
@@ -303,6 +307,7 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   PHASE_STATE_SN: 'Stan fazowy SN',
   PF_UNBALANCED: 'Rozpływ niesymetryczny',
   DYNAMIKA_RMS: 'Dynamika czasowa RMS',
+  PROTECTION: 'Ocena zabezpieczeń nadprądowych',
 };
 
 /**

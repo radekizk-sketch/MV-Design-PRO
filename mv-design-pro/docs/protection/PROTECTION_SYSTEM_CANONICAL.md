@@ -432,100 +432,97 @@ wylacza je tylko ten wylacznik, ktory jest najblizej miejsca zwarcia.
 Zabezpieczenia kolejno wyzsze (blizsze zrodla) dzialaja z coraz wiekszym
 opoznieniem jako rezerwa.
 
-### 4.2 Minimalny margines czasowy
+### 4.2 Wymagany odstep czasowy (CTI)
 
-Parametr konfiguracyjny `delta_t_min_s` okreslsa minimalny wymagany margines
-czasowy miedzy kolejnymi stopniami zabezpieczen wzdluz trasy do zrodla.
+Wymagany odstep czasowy pary jest suma skladnikow kryteriow projektowych koordynacji
+(`application.analyses.protection.coordination.models.CoordinationConfig`, jawnych w wyniku
+w `summary.kryteria` i przy kazdej parze jako `required_margin_s`):
 
-**Wartosc domyslna:** `delta_t_min_s = 0.3` s (300 ms)
+$$
+\Delta t_{min} = t_{wyl} + t_{wybieg} + t_{zapas}
+$$
 
-**Konfiguracja:** Parametr jest konfigurowalny w Study Case (przypadek obliczeniowy).
-Typowe wartosci: 0.2 s -- 0.5 s, zaleznie od typu wylacznikow i aparatury.
+Wartosci domyslne: czas wlasny wylacznika 0,05 s, wybieg przekaznika 0,05 s, zapas 0,10 s
+(razem 0,20 s); projektant podaje wlasne w zadaniu koordynacji (`config`). Kryteria nie sa
+progami pasm werdyktu — koordynacja nie wydaje werdyktow (zakaz P-06).
 
-### 4.3 Algorytm walidacji selektywnosci
+### 4.3 Algorytm koordynacji E-28 (karta BIEG-ZABEZPIECZEN-Z-MODELU)
 
 ```
 WEJSCIE:
-  - siec: graf NetworkModel
-  - przekazniki: lista przekaznikow z nastawami
-  - punkt_zwarcia: bus_id lokalizacji zwarcia
-  - Ik: prad zwarciowy w punkcie zwarcia [A]
-  - delta_t_min_s: minimalny margines czasowy [s]
+  - model sieci (ENM) z urzadzeniami i nastawami (protection_assignments, D-21),
+  - bieg zwarciowy MAKSYMALNY i MINIMALNY policzone dla TEJ SAMEJ sieci
+    (siec_biegu_zgodna_z_modelem — odcisk sieci bez zabezpieczen),
+  - bieg rozplywu (opcjonalny — prady robocze wylacznikow),
+  - pary wskazane (opcjonalne) i kryteria (opcjonalne).
 
 ALGORYTM:
-  1. Wyznacz sciezke od punktu zwarcia do zrodla (source bus)
-     - Przejscie grafem NetworkModel wzdluz galezi (Branch)
-     - Sciezka obejmuje wszystkie szyny (Bus) i galezi na trasie
-
-  2. Zidentyfikuj przekazniki na sciezce
-     - Kazdy przekaznik jest powiazany z polem (field_binding)
-     - Uporzadkuj od najblizszego do zrodla (downstream -> upstream)
-
-  3. Dla kazdej pary sasiadujacych przekaznikow (upstream, downstream):
-     a. Oblicz czas zadzialanis upstream:
-        t_upstream = TCC(I_k, nastawy_upstream)
-     b. Oblicz czas zadzialanis downstream:
-        t_downstream = TCC(I_k, nastawy_downstream)
-     c. Oblicz margines:
-        delta_t = t_upstream - t_downstream
-     d. Sprawdz warunek selektywnosci:
-        delta_t >= delta_t_min_s
-
-  4. Wygeneruj wynik:
-     - Jesli wszystkie pary spelniaja warunek: PASS
-     - Jesli jakakolwiek para nie spelnia: WARNING
-       z kodem: protection.selectivity_failed
+  1. Jedna sciezka oceny (application.analyses.protection.ocena_nadpradowa) na obu biegach:
+     strefa kazdego urzadzenia z topologii modelu (skladowa za wylacznikiem od strony
+     zasilania), prad przekaznika = bilans pradow galezi na granicy klastra zacisku
+     (rozplyw pradu zwarciowego biegu), czas = najszybszy pobudzony stopien
+     (rdzen IEC 60255).
+  2. Pary (nadrzedne, podrzedne): z zawierania stref (strefa podrzednego jest wlasciwym
+     podzbiorem strefy nadrzednego; bezposrednie nadrzedne = najmniejsza obejmujaca strefa;
+     dwie rowne najmniejsze = odmowa pary z kandydatami) albo wskazane jawnie i sprawdzone
+     TYM SAMYM predykatem zawierania.
+  3. Dla kazdej pary i KAZDEGO punktu zwarcia w strefie podrzednego (bieg maksymalny):
+        t_pod = t(I_pod), t_nad = t(I_nad)   — kazde urzadzenie przy WLASNYM pradzie,
+        stan pary: ODSTEP / NADRZEDNE_NIE_POBUDZA / PODRZEDNE_NIE_ZADZIALA /
+                   ZADNE_NIE_ZADZIALA (fakt, kto zadziala),
+        Delta t = t_nad − t_pod (gdy oba zadzialaja).
+     Punkt pokazywany dla pary: NAJMNIEJSZY odstep (brak zadzialania podrzednego = −inf,
+     nadrzedne sie nie pobudza = +inf); punkty z danymi niewiarygodnymi (ALF przekladnika)
+     pominiete z przyczyna.
+  4. Czulosc (bieg minimalny) i przeciazalnosc (bieg rozplywu) — ilorazy obok wymaganych.
 
 WYJSCIE:
-  - Lista wynikow SelectivityCheck dla kazdej pary
-  - Ogolny werdykt (PASS / WARNING)
+  - SelectivityCheck dla kazdej pary: czasy, prady, odstep, wymagany odstep, stan pary,
+    zdanie z liczbami (notes_pl); SensitivityCheck i OverloadCheck z ilorazami,
+  - podsumowanie liczbami (najmniejszy odstep, najmniejsze ilorazy, liczba braków),
+  - BEZ werdyktu pary i BEZ werdyktu ogolnego (zakaz P-06).
 ```
 
-### 4.4 Formuła marginesu selektywnosci
+### 4.4 Formuła odstepu czasowego
 
-Dla pary przekaznikow (upstream U, downstream D) przy pradzie zwarciowym $I_k$:
-
-$$
-\Delta t = t_U(I_k) - t_D(I_k)
-$$
-
-**Warunek selektywnosci:**
+Dla pary (nadrzedne U, podrzedne D) przy zwarciu w punkcie strefy D:
 
 $$
-\Delta t \geq \Delta t_{min}
+\Delta t = t_U(I_U) - t_D(I_D)
 $$
 
-gdzie $\Delta t_{min}$ = `delta_t_min_s` (konfigurowalny w Study Case).
+gdzie $I_U$, $I_D$ — prady przekaznikow w tym samym punkcie zwarcia (moga sie roznic, gdy
+miedzy wylacznikami przylaczone sa zrodla). Wartosc wymagana $\Delta t_{min}$ wg §4.2 stoi
+obok liczby; ocene podejmuje projektant.
 
 ### 4.5 Konwencja znakow
 
-- **Dodatni margines** ($\Delta t > 0$): upstream jest wolniejszy od downstream -- oczekiwane, poprawne
-- **Ujemny margines** ($\Delta t < 0$): upstream jest szybszy od downstream -- blad selektywnosci
-- **Margines zero** ($\Delta t = 0$): przekazniki dzialaja jednoczesnie -- brak selektywnosci
+- **Dodatni odstep** ($\Delta t > 0$): nadrzedne dziala pozniej od podrzednego — kolejnosc zgodna z zasada §4.1
+- **Ujemny odstep** ($\Delta t < 0$): nadrzedne dziala wczesniej od podrzednego
+- **Odstep zero** ($\Delta t = 0$): przekazniki dzialaja jednoczesnie
 
-### 4.6 Wynik walidacji
-
-Readiness code wyniku: `protection.selectivity_failed`
-Poziom: `WARNING` (ostrzezenie, nie blokuje obliczeń)
+### 4.6 Wynik koordynacji
 
 **Implementacja referencyjna:**
-- `domain.protection_device.SelectivityCheck`
-- ~~`domain.protection_coordination_v1.compute_coordination_v1()`~~ — skasowana w W1 (2026-09-09): 0 konsumentów
-  produkcyjnych (jedyny czytelnik: test determinizmu); koordynacja par upstream/downstream w backendzie
-  bez implementacji do wycinka W4 mapy („zabezpieczenia jako część modelu”)
+- `application.analyses.protection.coordination.analyzer.OvercurrentCoordinationAnalyzer`,
+- `domain.protection_device.SelectivityCheck` / `SensitivityCheck` / `OverloadCheck` / `StanPary`,
+- trasa `POST /api/protection-coordination/projects/{project_id}/run` (ekran E-28, raport PDF/DOCX).
+
+Testy przypinajace brak werdyktu: `backend/tests/application/analyses/protection/coordination/
+test_overcurrent_coordination.py` (porownanie punktu, podsumowanie, punkt pary),
+`backend/tests/e2e/test_protection_exports_deterministic.py` (raport bez kolumny werdyktu).
 
 ### 4.7 Pary selektywnosci
 
-Pary upstream/downstream sa **jawne** (explicit) -- definiowane przez uzytkownika,
-NIE automatycznie wykrywane z topologii.
+Pary wynikaja jednoznacznie z topologii (zawieranie stref urzadzen) albo sa wskazane jawnie
+przez projektanta (P-05 w brzmieniu karty BIEG-ZABEZPIECZEN-Z-MODELU: „wskazuje projektant albo
+wynikaja jednoznacznie z przypisania"). Niejednoznacznosc daje nazwana odmowe z kandydatami
+(`para_niejednoznaczna`), para wskazana wbrew topologii — odmowe `para_sprzeczna_z_topologia`,
+para z urzadzeniem bez oceny — `para_bez_oceny`; nigdy domyslny wybor.
 
-**Niezmienniki:**
-- Para MUSI zawierac dwa rozne przekazniki (`upstream_relay_id != downstream_relay_id`)
-- Oba przekazniki MUSZA istniec w wynikach analizy ochrony
-- Identyfikatory par (`pair_id`) MUSZA byc unikalne
-
-**Implementacja referencyjna:** ~~`domain.protection_coordination_v1.ProtectionSelectivityPair`~~ — skasowana w W1 (2026-09-09)
-(0 konsumentów produkcyjnych); niezmienniki par pozostają wymaganiem kontraktu dla implementacji z W4.
+**Niezmienniki (przypiete testami `pary_z_topologii` / `pary_jawne`):**
+- Para zawiera dwa rozne urzadzenia; oba maja ocene jednej sciezki,
+- Pary z topologii i pary wskazane zgodne z topologia sa rowne (jeden predykat zawierania).
 
 ---
 
@@ -580,119 +577,71 @@ add_vt(
 
 **Efekt:** Tworzy nowa instancje VT i przypisuje ja do wskazanego pola stacji.
 
-### 5.3 add_relay -- Dodanie przekaznika do pola
+### 5.3 add_relay -- Dodanie przekaznika (pole albo wylacznik liniowy)
 
-**Sygnatura:**
+Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30, decyzja D-21): urzadzenia i nastawy zabezpieczen
+zyja w MODELU sieci (`ProtectionAssignment` z lista `settings`). Kontrakt payloadu i struktura
+nastaw: `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4.13.
 
-```
-add_relay(
-    field_id: str,
-    relay_type: RelayType,
-    ct_ratio: CTRatio,
-    settings: RelaySettings,
-    tcc_curve_ref: str,
-    manufacturer: str | None = None,
-    model: str | None = None
-) -> Relay
-```
+**Kotwica (dokladnie jedna):** pole rozdzielcze (`bay_ref`) albo wylacznik liniowy POZA polem
+(`breaker_ref`, wstawiony `insert_section_switch_sn` z `switch_type="WYLACZNIK"`; przynaleznosc
+aparatu do pola rozstrzyga jedna regula `enm/wylaczniki_liniowe.py::pole_aparatu`). Przekladnik
+(`add_ct`) przyjmuje te same kotwice.
 
-**Warunki wstepne:**
-- Pole `field_id` MUSI istniec w modelu sieci
-- CT MUSI byc wczesniej przypisany do pola (lub podany jawnie jako `ct_ratio`)
-- Nastawy MUSZA byc kompletne i poprawne (walidacja zakresow)
-- `tcc_curve_ref` MUSI wskazywac na istniejaca krzywa (IEC lub vendor)
+**Nastawy:** opcjonalne przy dodaniu — brak = przypisanie z nazwanym brakiem nastaw (ocena
+wstrzymuje wtedy WYLACZNIE to urzadzenie, z akcja naprawcza). Prog w jednostce strony
+przekladnika (`threshold_unit`: `A_WTORNY`/`A_PIERWOTNY`, PZ-09); zakresy katalogu z podstawa
+(krotnosc In albo A wtorne) sprawdza jedna funkcja `catalog/zakresy.py`.
 
-**Efekt:** Tworzy nowa instancje Relay i przypisuje ja do wskazanego pola.
+### 5.4 update_protection_settings -- Zapis nastaw zabezpieczenia w modelu
 
-### 5.4 update_relay_settings -- Aktualizacja nastaw przekaznika
+`update_protection_settings(protection_ref, settings)` — nastepca skasowanej zaslepki
+`update_relay_settings`. Nastawy sprzeczne (np. TMS przy `DT`, zwloka przy krzywej zaleznej,
+jednostka spoza slownika) sa odrzucane kodem `relay.settings_invalid`; niekompletne sa przyjmowane,
+a brak nazywa ocena. Zmiana nastaw zmienia odcisk modelu — wynik oceny zabezpieczen staje sie
+nieaktualny, ale bieg zwarciowy NIE (odcisk sieci bez zabezpieczen
+`enm/hash.py::hash_sieci_bez_zabezpieczen` jest jedynym kryterium ponownego uzycia biegu
+zwarciowego). Pisarz nastaw w sciezce projektanta: edytor `EdytorNastawZabezpieczenia`
+(ekran „Zabezpieczenia i automatyka" E-27 oraz karta elementu na schemacie).
 
-**Sygnatura:**
+### 5.5 Operacje skasowane
 
-```
-update_relay_settings(
-    relay_id: str,
-    new_settings: RelaySettings
-) -> Relay
-```
+`update_relay_settings`, `link_relay_to_field` (zaslepki z odmowa) i `validate_selectivity`
+(pary z kolejnosci listy, prad 10 × nastawa) skasowane w karcie BIEG-ZABEZPIECZEN-Z-MODELU;
+`calculate_tcc_curve` — w karcie W3-A. Bramka wskrzeszenia:
+`scripts/legacy_public_path_guard.py` (`FORBIDDEN_W3A_FUNCTION_NAMES`).
 
-**Warunki wstepne:**
-- Przekaznik `relay_id` MUSI istniec
-- Nowe nastawy MUSZA byc kompletne i poprawne
+### 5.6 Jedna sciezka oceny nadpradowej
 
-**Efekt:** Tworzy nowa instancje Relay z zaktualizowanymi nastawami
-(niezmiennosc -- frozen dataclass). Poprzednia instancja pozostaje nienaruszona.
+`application/analyses/protection/ocena_nadpradowa.py` — jedyne miejsce oceny zabezpieczen
+nadpradowych fazowych (bieg `protection_sn`, koordynacja E-28, czas wylaczenia pola i galezi,
+porownanie A/B, raport):
 
-**Uwaga:** Zmiana nastaw inwaliduje wszystkie obliczone wyniki ochrony
-(cache TCC, wyniki selektywnosci).
+1. nastawy z modelu rozwiazane na strone pierwotna przez przekladnie przekladnika
+   (`network_model/pochodne`),
+2. strefa urzadzenia z topologii modelu (strona bez zrodla zasilania); punkty zwarcia strefy
+   (`punkty_zwarcia_strefy`) = szyny strefy z wierszem biegu SC oraz ZACISK POLA za
+   wylacznikiem (szyna pomocnicza toru pola, karta POLA-W-TORZE), ktorego Ik'' i rozplyw sa
+   wierszem szyny pola po stronie zasilania (`enm.tor_pola.szyna_raportowa` — to samo zrodlo co
+   pakiet nastaw); zacisk pomocniczy raportowany pod szyna TEJ strefy nie jest drugim punktem;
+   znaczniki TCC koordynacji czytaja ten sam punkt wyniku,
+3. prad przekaznika = bilans pradow galezi klastra zacisku za wylacznikiem z rozplywu
+   zwarciowego biegu (zrodlo: wklady galeziowe rdzenia IEC 60909); prad nieliczbowy albo strona
+   dolna transformatora = nazwana odmowa,
+4. czas stopnia wylacznie z rdzenia `network_model/solvers/protection_iec60255.py` (B-01);
+   czas urzadzenia = najszybszy pobudzony stopien,
+5. wiarygodnosc wzgledem granicy dokladnosci przekladnika (ALF · I1n, IEC 61869-2) — wynik
+   niewiarygodny nie jest liczba zapasu,
+6. rekord werdyktu wyjasnialnego (`werdykt`) dla kazdej pary (urzadzenie, punkt strefy).
 
-### 5.5 link_relay_to_field -- Wiazanie przekaznika z polem i aparatem wykonawczym
+### 5.7 Koordynacja E-28
 
-**Sygnatura:**
-
-```
-link_relay_to_field(
-    relay_id: str,
-    field_id: str,
-    breaker_id: str
-) -> Relay
-```
-
-**Warunki wstepne:**
-- Przekaznik `relay_id` MUSI istniec
-- Pole `field_id` MUSI istniec w modelu sieci
-- Wylacznik `breaker_id` MUSI istniec w polu `field_id`
-
-**Efekt:** Ustanawia powiazanie przekaznika z polem (field_binding)
-i aparatem wykonawczym (breaker_binding).
-
-### 5.6 calculate_tcc_curve -- Wyliczenie krzywej TCC z nastaw
-
-**Sygnatura:**
-
-```
-calculate_tcc_curve(
-    relay_id: str,
-    current_range: tuple[float, float] | None = None,
-    num_points: int = 100
-) -> TCCCurveResult
-```
-
-**Warunki wstepne:**
-- Przekaznik `relay_id` MUSI istniec
-- Przekaznik MUSI miec kompletne nastawy (curve_type, TMS, I_pickup)
-
-**Algorytm:**
-1. Odczytaj nastawy przekaznika (curve_type, TMS, I_s)
-2. Wyznacz zakres pradow M (domyslnie: 1.01 -- 50.0)
-3. Dla kazdego punktu M oblicz czas:
-   $t = TMS \cdot K / (M^\alpha - 1)$
-4. Zwroc tablice punktow (M, t) jako TCCCurveResult
-
-**Wyjscie:** `TCCCurveResult` z tablica punktow i metadanymi (parametry krzywej, fingerprint).
-
-**Deterministycznosc:** Te same nastawy produkuja identyczna krzywa (BINDING).
-
-### 5.7 validate_selectivity -- Walidacja selektywnosci wzdluz trasy
-
-**Sygnatura:**
-
-```
-validate_selectivity(
-    pairs: tuple[ProtectionSelectivityPair, ...],
-    protection_result: ProtectionResultSetV1,
-    delta_t_min_s: float = 0.3
-) -> CoordinationResultV1
-```
-
-**Warunki wstepne:**
-- Pary selektywnosci MUSZA byc poprawne (rozne przekazniki, istniejace w wyniku)
-- Wynik ochrony MUSI byc w stanie FINISHED
-- `delta_t_min_s > 0`
-
-**Algorytm:** Zgodny z opisem w rozdziale 4.3.
-
-**Wyjscie:** `CoordinationResultV1` z marginesami dla kazdej pary
-i sygnatura deterministyczna (SHA-256).
+`POST /api/protection-coordination/projects/{project_id}/run` z identyfikatorami biegow
+(MAX, MIN, rozplyw). Pary stopniowania z zagniezdzenia stref (jawne pary sprawdzane tym samym
+predykatem; niejednoznacznosc = odmowa z kandydatami). Selektywnosc w kazdym punkcie strefy
+urzadzenia podrzednego (bieg MAX, prady przekaznikow z jednej sciezki), czulosc z najmniejszego
+pradu przekaznika w biegu MIN wobec najczulszego stopnia, przeciazalnosc z pradu roboczego
+wylacznika z biegu rozplywu. Krzywe TCC = czas urzadzenia z rdzenia w siatce pradow.
 
 ---
 
@@ -767,29 +716,28 @@ Kazdy wynik czasu zadzialanis MUSI zawierac:
 }
 ```
 
-### 6.4 Marginesy selektywnosci -- tabela White Box
+### 6.4 Odstepy czasowe par -- tabela White Box
 
-Tabela par upstream/downstream z obliczonymi marginesami:
+Tabela par (nadrzedne/podrzedne) z liczbami — bez kolumny werdyktu (zakaz P-06):
 
-| Para | Upstream | Downstream | $I_k$ [A] | $t_U$ [s] | $t_D$ [s] | $\Delta t$ [s] | $\Delta t_{min}$ [s] | Wynik |
-|------|----------|------------|-----------|-----------|-----------|----------------|---------------------|-------|
-| P1 | R-GPZ-01 | R-SN-01 | 5000 | 1.281 | 0.854 | 0.427 | 0.300 | PASS |
-| P2 | R-GPZ-01 | R-SN-02 | 3000 | 1.850 | 1.233 | 0.617 | 0.300 | PASS |
-| P3 | R-SN-01 | R-OZE-01 | 2000 | 0.854 | 0.712 | 0.142 | 0.300 | FAIL |
+| Para | Nadrzedne | Podrzedne | $I_D$ [A] | $t_U$ [s] | $t_D$ [s] | $\Delta t$ [s] | $\Delta t_{min}$ [s] | Kto zadziala |
+|------|-----------|-----------|-----------|-----------|-----------|----------------|----------------------|--------------|
+| P1 | R-GPZ-01 | R-SN-01 | 5000 | 1.281 | 0.854 | 0.427 | 0.200 | oba (odstep) |
+| P2 | R-GPZ-01 | R-SN-02 | 3000 | 1.850 | 1.233 | 0.617 | 0.200 | oba (odstep) |
+| P3 | R-SN-01 | R-OZE-01 | 2000 | 0.854 | 0.712 | 0.142 | 0.200 | oba (odstep) |
 
-**White Box trace dla marginesu:**
-
-$$
-\Delta t = t_{upstream}(I_k) - t_{downstream}(I_k)
-$$
+**White Box trace dla odstepu:**
 
 $$
-\Delta t = 1{,}281 - 0{,}854 = 0{,}427 \text{ s}
+\Delta t = t_{nad}(I_{nad}) - t_{pod}(I_{pod})
 $$
 
 $$
-0{,}427 \geq 0{,}300 \quad \Rightarrow \quad \text{PASS}
+\Delta t = 1{,}281 - 0{,}854 = 0{,}427 \text{ s} \qquad (\Delta t_{min} = 0{,}200 \text{ s})
 $$
+
+Slad (`trace_steps`, krok `selektywnosc`) niesie wszystkie punkty strefy podrzednego pary
+(`SelectivityCheck.to_dict()` kazdego punktu) i punkty pominiete z przyczyna.
 
 ### 6.5 Determinizm White Box
 
@@ -840,12 +788,16 @@ gdzie:
 - $\theta_i$ -- przekladnia CT
 - $I_{nastawa}$ -- nastawa rozruchowa (pickup) po stronie wtornej CT [A]
 
-**Werdykt:**
-- `PASS`: $k_c \geq 1{,}2$ (margines $\geq 20\%$)
-- `MARGINAL`: $1{,}1 \leq k_c < 1{,}2$ (margines 10--20%)
-- `FAIL`: $k_c < 1{,}1$ (margines $< 10\%$)
+**Bez werdyktu (zakaz P-06, karta BIEG-ZABEZPIECZEN-Z-MODELU):** koordynacja E-28 podaje
+iloraz $k_c$ liczony z NAJMNIEJSZEGO prądu przekaźnika w strefie urządzenia (bieg
+zwarciowy minimalny, prąd gałęzi przez przekładnik — nie $I_k''$ szyny) i progu PIERWOTNEGO
+najczulszego stopnia ($\theta_i \cdot I_{nastawa}$), obok wartości wymaganej z kryteriów
+projektowych (`CoordinationConfig.sensitivity_ratio_required`, domyślnie 1,5) i zdania
+z liczbami. Ocenę liczby zostawia projektantowi — pasma „PASS / MARGINAL / FAIL" skasowane.
 
-**Implementacja referencyjna:** `domain.protection_device.SensitivityCheck`
+**Implementacja referencyjna:** `application.analyses.protection.coordination.analyzer`
+(`_czulosc`) → `domain.protection_device.SensitivityCheck` (`ratio`, `required_ratio`,
+`notes_pl`).
 
 ### 7.4 Warunki selektywnosci I>> (funkcja 50)
 
@@ -861,7 +813,10 @@ gdzie:
 - $I_{k,max}(nastepne\_zabezpieczenie)$ -- maksymalny prad zwarciowy
   w punkcie instalacji nastepnego zabezpieczenia [A]
 
-**Implementacja referencyjna:** `domain.protection_device.InstantaneousSelectivityCheck`
+**Implementacja referencyjna:** kryterium DOBORU nastawy I>> metodą Hoppela
+(`application.protection_settings.engine.ProtectionSettingsEngine`, `InstantaneousSettings`,
+`k_b`) — nie sprawdzenie koordynacji E-28 (dawne klasy sprawdzeń I>> skasowane przy konwergencji
+metodyk nastaw, W3-C2).
 
 ### 7.5 Wytrzymalosc cieplna
 
@@ -875,7 +830,9 @@ gdzie:
 - $k_{bth}$ -- wspolczynnik wytrzymalosci cieplnej
 - $I_{th,dop}$ -- dopuszczalny prad cieplny przewodu [A]
 
-**Implementacja referencyjna:** `domain.protection_device.InstantaneousThermalCheck`
+**Implementacja referencyjna:** kryterium DOBORU nastawy I>> metodą Hoppela
+(`application.protection_settings.engine.ProtectionSettingsEngine`, `ThermalWithstandResult`,
+`k_bth`).
 
 ### 7.6 Raport wystarczalnosci nastaw
 
@@ -883,12 +840,15 @@ System generuje raport porownujacy nastawy z pradami zwarciowymi,
 odpowiadajac na pytanie: czy nastawy sa wystarczajace dla danych
 pradow zwarciowych?
 
-**Elementy raportu:**
-1. Tabela czulosci -- czy zabezpieczenie zadziala przy minimalnym zwarciu
-2. Tabela selektywnosci -- czy stopnie czasowe sa poprawnie skoordynowane
-3. Tabela wytrzymalosci cieplnej -- czy zabezpieczenie chroni przed przegrzaniem
-4. Ogolny werdykt: PASS / MARGINAL / FAIL
-5. Uwagi w jezyku polskim (`notes_pl`)
+**Elementy raportu koordynacji (PDF/DOCX, `network_model/reporting/protection_report_*`):**
+1. Podsumowanie liczbami -- najmniejszy odstep czasowy par i najmniejsze ilorazy czulosci
+   i przeciazalnosci obok wartosci wymaganych, liczba sprawdzen bez wyznaczonej wartosci
+2. Tabela czulosci -- iloraz $I_{min}/I_s$ i wymagany
+3. Tabela selektywnosci -- $t_{pod}$, $t_{nad}$, odstep i wymagany odstep (CTI)
+4. Tabela przeciazalnosci -- iloraz $I_s/I_{rob}$ i wymagany
+5. Zdania z liczbami w jezyku polskim (`notes_pl`) pod kazda tabela
+
+Raport NIE zawiera werdyktu ogolnego ani kolumny werdyktu (zakaz P-06).
 
 ---
 

@@ -192,6 +192,17 @@ describe('etykieta ostatniego przebiegu (R3)', () => {
     expect(etykietaPrzebiegu(wybrany)).toBe('Rozpływ mocy · 2026-07-30 12:30');
   });
 
+  it('bieg oceny zabezpieczeń (PROTECTION z listingu biegów przypadku) ma polską nazwę, nie „undefined"', () => {
+    // Karta BIEG-ZABEZPIECZEN-Z-MODELU: ekran koordynacji tworzy bieg `protection_sn`, który
+    // listing biegów przypadku zwraca jako `PROTECTION` — pasek stanu pokazywał „Przebieg:
+    // undefined · …" (zmierzone na żywym e2e).
+    const etykieta = etykietaPrzebiegu(
+      runFixture({ analysis_type: 'PROTECTION', finished_at: '2026-07-30T12:30:00Z' }),
+    );
+    expect(etykieta).toBe('Ocena zabezpieczeń nadprądowych · 2026-07-30 12:30');
+    expect(etykieta).not.toContain('undefined');
+  });
+
   it('remis znaczników rozstrzyga identyfikator (ta sama lista → ta sama etykieta)', () => {
     const lista = [
       runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z' }),

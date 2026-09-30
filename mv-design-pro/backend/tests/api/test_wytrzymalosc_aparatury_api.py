@@ -106,6 +106,7 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
                         {
                             "function_type": "overcurrent_51",
                             "threshold_a": 400.0,
+                            "threshold_unit": "A_PIERWOTNY",
                             "curve_type": "DT",
                             "time_delay_s": 0.3,
                         }

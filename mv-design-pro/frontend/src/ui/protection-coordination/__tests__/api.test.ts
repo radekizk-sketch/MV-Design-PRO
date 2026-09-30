@@ -15,13 +15,17 @@ import { getCoordinationResult, komunikatOdmowyAnalizy, runCoordinationAnalysis 
 const PELNY_WYNIK = {
   run_id: 'coord-1',
   project_id: 'proj-1',
+  devices: [],
+  odmowy_urzadzen: [],
+  pominiete: [],
+  pary: [],
+  odmowy_par: [],
   sensitivity_checks: [],
   selectivity_checks: [],
   overload_checks: [],
   tcc_curves: [],
   fault_markers: [],
   trace_steps: [],
-  overall_verdict: 'PASS',
   summary: {},
   created_at: '2026-07-28T08:00:00Z',
 };
@@ -52,7 +56,7 @@ describe('getCoordinationResult — niepełny kształt jest NAZWANY, nie przepus
       vi.fn(async () => odpowiedz({ run_id: 'coord-1', project_id: 'proj-1' })),
     );
     await expect(getCoordinationResult('coord-1')).rejects.toThrow(
-      /sensitivity_checks.*selectivity_checks.*overload_checks/,
+      /devices.*odmowy_urzadzen.*pominiete.*pary.*odmowy_par.*sensitivity_checks.*selectivity_checks.*overload_checks/,
     );
   });
 
@@ -72,9 +76,9 @@ describe('getCoordinationResult — niepełny kształt jest NAZWANY, nie przepus
 
 /**
  * Odmowa `POST …/run` niesie `detail` jako tekst (bramka 400) albo rekord (422 autorytetu
- * biegów / wejścia niemiarodajnego). Rekord podany wprost do `new Error` dawał
- * „[object Object]" — iloczyn cech: {tekst, komunikat + niezgodności, blokady, nieznany
- * kształt}.
+ * biegów, odmowy koordynacji, wejścia niemiarodajnego). Rekord podany wprost do
+ * `new Error` dawał „[object Object]" — iloczyn cech: {tekst, komunikat + niezgodności,
+ * odmowa koordynacji, blokady, nieznany kształt}.
  */
 describe('runCoordinationAnalysis — odmowa backendu czytelna dla inżyniera', () => {
   it.each([
@@ -89,6 +93,14 @@ describe('runCoordinationAnalysis — odmowa backendu czytelna dla inżyniera', 
       'Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w biegach. line_1 (szyna bus_1).ik_max_3f_a: podano 1.0 A, bieg maksymalny policzył 8400.0 A',
     ],
     [
+      'odmowa koordynacji (sieć zmieniona od biegu)',
+      {
+        powod: 'SIEC_ZMIENIONA_OD_BIEGU',
+        komunikat_pl: 'Bieg maksymalny policzono dla innej sieci niż bieżący model.',
+      },
+      'Bieg maksymalny policzono dla innej sieci niż bieżący model.',
+    ],
+    [
       'rekord blokad wejścia',
       { powod: 'WEJSCIE_NIEMIARODAJNE', blokady: [{ kod: 'SI-110', komunikat_pl: 'Wkład falownika z domyślki.' }] },
       'Wkład falownika z domyślki.',
@@ -96,6 +108,25 @@ describe('runCoordinationAnalysis — odmowa backendu czytelna dla inżyniera', 
     ['nieznany kształt', { cos: 1 }, 'Analiza koordynacji odrzucona (HTTP 422).'],
   ])('%s', (_opis, detail, oczekiwany) => {
     expect(komunikatOdmowyAnalizy(detail, 422)).toBe(oczekiwany);
+  });
+
+  it('żądanie niesie wyłącznie identyfikatory biegów (bez urządzeń i prądów)', async () => {
+    const wywolanie = vi.fn(async (_url: string, _init?: RequestInit) =>
+      odpowiedz({ run_id: 'coord-1' }),
+    );
+    vi.stubGlobal('fetch', wywolanie);
+    await runCoordinationAnalysis('proj-1', {
+      sc_run_id: 'bieg-max',
+      sc_run_id_min: 'bieg-min',
+      pf_run_id: 'bieg-pf',
+    });
+    const [url, init] = wywolanie.mock.calls[0];
+    expect(url).toBe('/api/protection-coordination/projects/proj-1/run');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      sc_run_id: 'bieg-max',
+      sc_run_id_min: 'bieg-min',
+      pf_run_id: 'bieg-pf',
+    });
   });
 
   it('błąd HTTP z rekordem → Error z komunikatem, nie „[object Object]"', async () => {
@@ -108,7 +139,7 @@ describe('runCoordinationAnalysis — odmowa backendu czytelna dla inżyniera', 
       }) as Response),
     );
     await expect(
-      runCoordinationAnalysis('proj-1', { devices: [], fault_currents: [], operating_currents: [] }),
+      runCoordinationAnalysis('proj-1', { sc_run_id: 'bieg-max', sc_run_id_min: 'bieg-min' }),
     ).rejects.toThrow('Brak biegu minimalnego.');
   });
 });

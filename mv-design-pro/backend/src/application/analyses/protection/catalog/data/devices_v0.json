@@ -11,20 +11,21 @@
       ],
       "curves_supported": [
         "IEC_NI",
-        "IEC_VI"
+        "IEC_VI",
+        "DT"
       ],
-      "i_pickup_51_a_min": 0.5,
-      "i_pickup_51_a_max": 1000.0,
+      "i_pickup_51_a_min": 0.05,
+      "i_pickup_51_a_max": 5.0,
       "tms_51_min": 0.05,
       "tms_51_max": 1.0,
-      "i_inst_50_a_min": 50.0,
-      "i_inst_50_a_max": 5000.0,
-      "i_pickup_51n_a_min": 0.2,
-      "i_pickup_51n_a_max": 400.0,
+      "i_inst_50_a_min": 0.1,
+      "i_inst_50_a_max": 40.0,
+      "i_pickup_51n_a_min": 0.01,
+      "i_pickup_51n_a_max": 5.0,
       "tms_51n_min": 0.05,
       "tms_51n_max": 1.0,
-      "i_inst_50n_a_min": 20.0,
-      "i_inst_50n_a_max": 2500.0,
+      "i_inst_50n_a_min": 0.1,
+      "i_inst_50n_a_max": 40.0,
       "meta": {
         "rated": 100,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
@@ -33,7 +34,11 @@
         "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
         "catalog_status": "REFERENCYJNY_V1",
         "contract_version": "2.0"
-      }
+      },
+      "t_51_s_min": 0.05,
+      "t_51_s_max": 100.0,
+      "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+      "podstawa_zakresow_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta."
     },
     {
       "device_id": "REF-OC-200",
@@ -45,20 +50,21 @@
       ],
       "curves_supported": [
         "IEC_NI",
-        "IEC_VI"
+        "IEC_VI",
+        "DT"
       ],
-      "i_pickup_51_a_min": 0.5,
-      "i_pickup_51_a_max": 1200.0,
+      "i_pickup_51_a_min": 0.05,
+      "i_pickup_51_a_max": 5.0,
       "tms_51_min": 0.05,
       "tms_51_max": 1.0,
-      "i_inst_50_a_min": 50.0,
-      "i_inst_50_a_max": 6000.0,
-      "i_pickup_51n_a_min": 0.2,
-      "i_pickup_51n_a_max": 500.0,
+      "i_inst_50_a_min": 0.1,
+      "i_inst_50_a_max": 40.0,
+      "i_pickup_51n_a_min": 0.01,
+      "i_pickup_51n_a_max": 5.0,
       "tms_51n_min": 0.05,
       "tms_51n_max": 1.0,
-      "i_inst_50n_a_min": 20.0,
-      "i_inst_50n_a_max": 3000.0,
+      "i_inst_50n_a_min": 0.1,
+      "i_inst_50n_a_max": 40.0,
       "meta": {
         "rated": 200,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
@@ -67,7 +73,11 @@
         "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
         "catalog_status": "REFERENCYJNY_V1",
         "contract_version": "2.0"
-      }
+      },
+      "t_51_s_min": 0.05,
+      "t_51_s_max": 100.0,
+      "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+      "podstawa_zakresow_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta."
     },
     {
       "device_id": "REF-OC-EF-300",
@@ -81,20 +91,21 @@
       ],
       "curves_supported": [
         "IEC_NI",
-        "IEC_VI"
+        "IEC_VI",
+        "DT"
       ],
-      "i_pickup_51_a_min": 0.5,
-      "i_pickup_51_a_max": 1500.0,
+      "i_pickup_51_a_min": 0.05,
+      "i_pickup_51_a_max": 5.0,
       "tms_51_min": 0.05,
       "tms_51_max": 1.1,
-      "i_inst_50_a_min": 50.0,
-      "i_inst_50_a_max": 7000.0,
-      "i_pickup_51n_a_min": 0.2,
-      "i_pickup_51n_a_max": 600.0,
+      "i_inst_50_a_min": 0.1,
+      "i_inst_50_a_max": 40.0,
+      "i_pickup_51n_a_min": 0.01,
+      "i_pickup_51n_a_max": 5.0,
       "tms_51n_min": 0.05,
       "tms_51n_max": 1.1,
-      "i_inst_50n_a_min": 20.0,
-      "i_inst_50n_a_max": 3500.0,
+      "i_inst_50n_a_min": 0.1,
+      "i_inst_50n_a_max": 40.0,
       "meta": {
         "rated": 300,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
@@ -103,7 +114,11 @@
         "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
         "catalog_status": "REFERENCYJNY_V1",
         "contract_version": "2.0"
-      }
+      },
+      "t_51_s_min": 0.05,
+      "t_51_s_max": 100.0,
+      "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+      "podstawa_zakresow_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta."
     },
     {
       "device_id": "REF-OC-EF-500",
@@ -116,20 +131,21 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_NI",
+        "DT"
       ],
-      "i_pickup_51_a_min": 0.5,
-      "i_pickup_51_a_max": 2000.0,
+      "i_pickup_51_a_min": 0.05,
+      "i_pickup_51_a_max": 5.0,
       "tms_51_min": 0.05,
       "tms_51_max": 1.2,
-      "i_inst_50_a_min": 50.0,
-      "i_inst_50_a_max": 10000.0,
-      "i_pickup_51n_a_min": 0.2,
-      "i_pickup_51n_a_max": 800.0,
+      "i_inst_50_a_min": 0.1,
+      "i_inst_50_a_max": 40.0,
+      "i_pickup_51n_a_min": 0.01,
+      "i_pickup_51n_a_max": 5.0,
       "tms_51n_min": 0.05,
       "tms_51n_max": 1.2,
-      "i_inst_50n_a_min": 20.0,
-      "i_inst_50n_a_max": 5000.0,
+      "i_inst_50n_a_min": 0.1,
+      "i_inst_50n_a_max": 40.0,
       "meta": {
         "rated": 500,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
@@ -138,7 +154,11 @@
         "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
         "catalog_status": "REFERENCYJNY_V1",
         "contract_version": "2.0"
-      }
+      },
+      "t_51_s_min": 0.05,
+      "t_51_s_max": 100.0,
+      "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+      "podstawa_zakresow_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta."
     },
     {
       "device_id": "REF-OC-EF-700",
@@ -152,20 +172,21 @@
       ],
       "curves_supported": [
         "IEC_NI",
-        "IEC_VI"
+        "IEC_VI",
+        "DT"
       ],
-      "i_pickup_51_a_min": 0.5,
-      "i_pickup_51_a_max": 2500.0,
+      "i_pickup_51_a_min": 0.05,
+      "i_pickup_51_a_max": 5.0,
       "tms_51_min": 0.05,
       "tms_51_max": 1.2,
-      "i_inst_50_a_min": 50.0,
-      "i_inst_50_a_max": 12000.0,
-      "i_pickup_51n_a_min": 0.2,
-      "i_pickup_51n_a_max": 1000.0,
+      "i_inst_50_a_min": 0.1,
+      "i_inst_50_a_max": 40.0,
+      "i_pickup_51n_a_min": 0.01,
+      "i_pickup_51n_a_max": 5.0,
       "tms_51n_min": 0.05,
       "tms_51n_max": 1.2,
-      "i_inst_50n_a_min": 20.0,
-      "i_inst_50n_a_max": 6000.0,
+      "i_inst_50n_a_min": 0.1,
+      "i_inst_50n_a_max": 40.0,
       "meta": {
         "rated": 700,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
@@ -174,7 +195,11 @@
         "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
         "catalog_status": "REFERENCYJNY_V1",
         "contract_version": "2.0"
-      }
+      },
+      "t_51_s_min": 0.05,
+      "t_51_s_max": 100.0,
+      "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+      "podstawa_zakresow_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta."
     },
     {
       "device_id": "EM_ETANGO_400_V0",

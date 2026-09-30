@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -171,7 +171,6 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.secondary_circuit_missing` | PROTECTION | 2 | WARNING | Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — uzupełnij, by policzyć zmianę napięcia obwodu | panel: `wizard`, tab: `pomiary`, focus: `vt_obwod_wtorny` |
 | `ct.required_alf_missing` | PROTECTION | 3 | WARNING | Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — bez niego kryterium nasycenia nie ma odniesienia | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.ct_required` | PROTECTION | 3 | BLOCKER | Przekaźnik wymaga przekładnika prądowego (CT) | panel: `inspector`, tab: `zabezpieczenia` |
-| `protection.device_breaker_not_in_series` | PROTECTION | 3 | BLOCKER | Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.fault_current_missing` | PROTECTION | 3 | WARNING | Brak prądu zwarciowego z biegu SC — uruchom analizę zwarciową, by wyznaczyć nastawy bezzwłoczne I>> (50/50N) i ziemnozwarciowe (51N) | panel: `analizy`, tab: `zwarciowa` |
 | `protection.nominal_current_missing` | PROTECTION | 3 | WARNING | Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę rozruchową I> (51) | panel: `inspector`, tab: `parametry`, focus: `in_a` |
 | `protection.relay_terminal_breaker_loop` | PROTECTION | 3 | BLOCKER | Wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z oboma zaciskami tej samej gałęzi (pętla) — popraw połączenia albo przypięcie zabezpieczenia w modelu | panel: `inspector`, tab: `zabezpieczenia` |
@@ -206,10 +205,10 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 93 |
+| BLOCKER | 92 |
 | WARNING | 51 |
 | INFO | 1 |
-| **Razem** | **145** |
+| **Razem** | **144** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -218,9 +217,9 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | CATALOGS | 48 |
 | STATIONS | 15 |
 | GENERATORS | 25 |
-| PROTECTION | 14 |
+| PROTECTION | 13 |
 | ANALYSIS | 21 |
-| **Razem** | **145** |
+| **Razem** | **144** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

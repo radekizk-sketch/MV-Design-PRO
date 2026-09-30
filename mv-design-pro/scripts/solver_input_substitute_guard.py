@@ -521,7 +521,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/protection_current_source.py",
     "domain/protection_device.py",
     "domain/protection_engine_v1.py",
-    "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",
@@ -692,22 +691,9 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     "api/power_flow_comparisons.py": {
         "F:dictget:summary.total_issues": 1,
     },
-    # Liczba URZADZEN i liczba SPRAWDZEN koordynacji zabezpieczen — bookkeeping
-    # raportu (ile pozycji zestawiono), nie nastawa/prad/czas zabezpieczenia
-    # (te zostaja fizyczne gdzie indziej). Ten sam wzorzec w API i w dwoch
-    # generatorach raportu DOCX/PDF.
-    "api/protection_coordination.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_docx.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_pdf.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
+    # Wpisy „liczba URZADZEN / SPRAWDZEN koordynacji" (API koordynacji i raporty DOCX/PDF)
+    # zdjete w karcie BIEG-ZABEZPIECZEN-Z-MODELU: podsumowanie koordynacji podaje najmniejsze
+    # wielkosci liczbowe (zakaz P-06), a API i raporty czytaja je bez wartosci zastepczych.
     "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
     # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
     # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
@@ -1316,21 +1302,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # sprawdz_moc_generatora`, a liczbe jednostek bierze z modelu
         # (`enm/models.liczba_jednostek_zrodla`, ta sama regula co solver), nie
         # z surowego payloadu z jedynka zastepcza. Dlug USUNIETY, nie zmalal cicho.
-        # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
-        # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
-        # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
-        # dolozeniu `domain/protection_engine_v1.py` do CONTRACT_SOURCES (pole
-        # `time_dial` nie bylo wczesniej zadeklarowanym polem zadnej klasy w
-        # zasiegu). DLUG NAZWANY, NIE falszywy alarm: nastawa TMS (Time
-        # Multiplier/Dial Setting) przekaznika wchodzi WPROST do
-        # `_compute_tcc_point(ik/ipickup, tms, curve)`, czyli do czasu
-        # zadzialania krzywej TCC wg IEC 60255 — brakujaca nastawa powinna
-        # przerywac walidacje selektywnosci kodem bledu, nie liczyc sie z
-        # domyslnym mnoznikiem 1,0.
-        "F:dictget:ds_settings.time_dial": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,
         "F:dictget:payload.active_power_kw": 1,
-        "F:dictget:us_settings.time_dial": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,
     },
     "api/power_flow_comparisons.py": {
@@ -1509,9 +1482,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,
         "F:dictget:payload.total_steps": 1,
-    },
-    "application/protection_read_model.py": {
-        "A:or:setting.threshold_a": 2,
     },
     "application/protection_settings/batch_run.py": {
         "F:dictget:kotwica.c_factor": 1,

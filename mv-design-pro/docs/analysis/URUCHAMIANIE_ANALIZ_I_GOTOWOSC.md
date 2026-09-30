@@ -209,7 +209,6 @@ Wszystkie wymagania SC_3F PLUS:
 | 27 | `protection.vt_missing`              | PROTECTION  | 3         | WARNING  | Pole nie ma przekladnika napieciowego (VT)                 | `fix_add_vt`          | panel: inspector, zakladka: ochrona, modal: dodaj_vt |
 | 28 | `protection.relay_missing`           | PROTECTION  | 2         | BLOCKER  | Pole nie ma przekaznika ochronnego                         | `fix_add_relay`       | panel: inspector, zakladka: ochrona, modal: dodaj_przekaznik |
 | 29 | `protection.relay_settings_missing`  | PROTECTION  | 3         | BLOCKER  | Przekaznik nie ma nastaw                                   | `fix_relay_settings`  | panel: inspector, zakladka: ochrona, modal: nastawy_przekaznika |
-| 30 | `protection.selectivity_failed`      | PROTECTION  | 4         | WARNING  | Selektywnosc ochrony nie jest zapewniona                   | `fix_selectivity`     | panel: ochrona, zakladka: selektywnosc              |
 
 ### 3.8 Analiza i przypadki obliczeniowe (ANALYSIS)
 
@@ -321,7 +320,6 @@ Klikniecie akcji naprawczej przez uzytkownika:
 | `fix_add_vt`                 | `protection.vt_missing`                           | Otwiera inspector pola, modal dodawania VT         |
 | `fix_add_relay`              | `protection.relay_missing`                        | Otwiera inspector pola, modal dodawania przekaznika |
 | `fix_relay_settings`         | `protection.relay_settings_missing`               | Otwiera inspector przekaznika, modal nastaw        |
-| `fix_selectivity`            | `protection.selectivity_failed`                   | Otwiera panel koordynacji zabezpieczen             |
 | `fix_readiness`              | `analysis.blocked_by_readiness`                   | Otwiera panel gotowosci z lista BLOCKER-ow         |
 | `fix_study_case`             | `study_case.invalid_state`                        | Otwiera panel przypadku obliczeniowego             |
 | `fix_study_case_profile`     | `study_case.profile_missing`                      | Otwiera panel przypadku, zakladka profilu          |

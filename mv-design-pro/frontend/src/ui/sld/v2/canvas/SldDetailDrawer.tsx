@@ -27,7 +27,12 @@ import type { CSSProperties, JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
-import { useProtectionAssignment, type ElementProtectionAssignment } from '../../../protection';
+import {
+  useProtectionAssignment,
+  useProtectionView,
+  type ElementProtectionAssignment,
+} from '../../../protection';
+import { EdytorNastawZabezpieczenia } from '../../../../ui2/kreatory/przekaznik';
 import { formatProtectionFunction } from '../../../inspector/formatProtection';
 import { fetchDerConverterTypes } from '../../../catalog/api';
 import type { ConverterType } from '../../../catalog/types';
@@ -1677,6 +1682,10 @@ function ProtectionAssignmentSettingsRow({
   readonly assignment: ElementProtectionAssignment;
 }): JSX.Element {
   const functions = assignment.settings_summary?.functions ?? [];
+  // Karta BIEG-ZABEZPIECZEN-Z-MODELU: pisarz nastaw w karcie elementu — ten sam edytor co
+  // ekran „Zabezpieczenia i automatyka" (jedno źródło, operacja `update_protection_settings`).
+  const [edycja, setEdycja] = useState(false);
+  const slownik = useProtectionView().data.slownik_nastaw;
   return (
     <li
       data-testid={`drawer-protection-device-${assignment.device_id}`}
@@ -1714,6 +1723,36 @@ function ProtectionAssignmentSettingsRow({
           );
         })
       )}
+      {assignment.nastawy ? (
+        <div style={{ marginTop: 6 }}>
+          <button
+            type="button"
+            onClick={() => setEdycja((e) => !e)}
+            data-testid={`drawer-protection-edit-${assignment.device_id}`}
+            style={{
+              fontSize: 10,
+              padding: '2px 8px',
+              border: '1px solid rgb(var(--scada-panel-raised))',
+              borderRadius: 3,
+              background: 'transparent',
+              color: 'rgb(var(--scada-text))',
+              cursor: 'pointer',
+            }}
+          >
+            {edycja ? 'Zwiń edytor nastaw' : 'Edytuj nastawy'}
+          </button>
+          {edycja ? (
+            <div style={{ marginTop: 6 }}>
+              <EdytorNastawZabezpieczenia
+                urzadzenieRef={assignment.device_id}
+                nastawy={assignment.nastawy}
+                slownik={slownik}
+                testid={`drawer-edytor-nastaw-${assignment.device_id}`}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }

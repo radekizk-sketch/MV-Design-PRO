@@ -16,7 +16,6 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
-import { nazwaElementuZBackendu } from './nazwyModelu';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -396,91 +395,75 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
 });
 
 /**
- * CV-3.3-B2 — nowy krok e2e: porównanie DWÓCH BIEGÓW ZABEZPIECZEŃ z realnym
- * backendem. Umieszczony w TYM pliku (rozszerzenie istniejącego specu porównań,
- * karta CV-3.3-B2 §0 „definicja ukończenia"), bo reużywa całą infrastrukturę
- * budowy sieci/przypadku/przebiegu SC z testu KD-3 powyżej — bez niej trzeba by
- * powielić `otworzAplikacje`/`zbudujSiec`/`uruchomBiegSc`/`executeDomainOp`.
+ * Karta BIEG-ZABEZPIECZEN-Z-MODELU — natywna ścieżka projektanta od aparatu w torze do porównania
+ * dwóch biegów oceny zabezpieczeń (zastępuje dawny krok CV-3.3-B2, który konfigurował
+ * zabezpieczenia SZABLONEM przypadku `PUT .../protection-config` — zabezpieczenie syntetyczne na
+ * każdej gałęzi, skasowane: urządzenia i nastawy żyją WYŁĄCZNIE w modelu, D-21).
  *
- * Bieg zabezpieczeń wymaga DWÓCH poprzedzających kroków, których PF/SC nie mają:
- * konfiguracji zabezpieczeń przypadku (`PUT .../protection-config`) i biegu
- * zwarciowego ŹRÓDŁOWEGO (`sc_run_id`) — stąd dwa biegi zabezpieczeń budowane są
- * na DWÓCH RÓŻNYCH biegach SC_3F (ta sama zmiana modelu — dłuższy odcinek — co
- * w KD-3), żeby prąd zwarciowy w ocenie zabezpieczeń różnił się między A i B
- * (inaczej delty byłyby zerowe i test nie odróżniłby pola backendu od ekranu).
+ * Droga (kliki NATYWNE na realnym backendzie; przez API tylko szkielet sieci, jak w KD-3 wyżej):
+ * odcinek w drzewie projektu → inspektor „Wstaw łącznik" → kreator łącznika (wyłącznik z katalogu)
+ * → „Zabezpieczenia i automatyka" (paleta poleceń) → „Dodaj przekładnik" (kreator pomiaru, katalog)
+ * → „Dodaj zabezpieczenie" (kreator przekaźnika, katalog) → edytor nastaw (I> 51, IEC SI, TMS)
+ * → „Oblicz" (bieg zwarciowy) → E-28 „Oceń zabezpieczenia" (bieg A) → zmiana TMS w edytorze →
+ * wynik A nieaktualny → ponowna ocena (bieg B) → „Porównanie A/B" w trybie zabezpieczeń.
+ *
+ * WYROCZNIA. Charakterystyka IEC 60255-151 normalnie odwrotna: t = TMS·0,14/(M^0,02 − 1). Między
+ * biegami zmienia się WYŁĄCZNIE TMS (0,1 → 0,3), sieć i bieg zwarciowy są te same, więc krotność M
+ * jest ta sama, a czas zadziałania MUSI wzrosnąć dokładnie trzykrotnie w każdym wierszu, w którym
+ * zabezpieczenie działa w obu biegach. Porównanie, które nie brałoby nastaw z modelu (szablon,
+ * wartość domyślna), dałoby iloraz 1 albo brak wiersza.
  */
 
-/** Konfiguruje zabezpieczenia przypadku szablonem referencyjnym (P15b). */
-async function skonfigurujZabezpieczenia(request: APIRequestContext, caseId: string): Promise<void> {
-  const odpowiedz = await request.put(
-    `${BACKEND_BASE}/api/study-cases/${caseId}/protection-config`,
-    { data: { template_ref: 'template_ref_oc_100' } },
+const KATALOG_WYLACZNIKA = 'sw-cb-abb-vd4-17kv-630a';
+const KATALOG_PRZEKLADNIKA = 'ct_600_5_5p20_15va_schneider';
+const KATALOG_PRZEKAZNIKA = 'REF-OC-200';
+const NAZWA_ZABEZPIECZENIA = 'Zabezpieczenie odcinka 1';
+
+/** Otwiera ekran „Zabezpieczenia i automatyka" paletą poleceń (Ctrl+K) — droga użytkownika. */
+async function otworzZabezpieczeniaIAutomatyke(page: Page): Promise<void> {
+  await page.keyboard.press('Control+k');
+  await expect(page.getByTestId('mvd-cmdk-dialog')).toBeVisible();
+  await page.getByTestId('mvd-cmdk-input').fill('Zabezpieczenia i automatyka');
+  await page.getByTestId('mvd-cmdk-opcja-ekran:E-27').click();
+  await expect(page.getByTestId('mvd-za-nastawy')).toBeVisible({ timeout: 20000 });
+}
+
+/** Realna droga do E-28: Wyniki → „Pozostałe analizy" → karta koordynacji → Otwórz. */
+async function otworzKoordynacje(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
+  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
+  // Ekran „Koordynacja zabezpieczeń" (zakładka `koordynacja` — ta sama droga co spek doboru
+  // nastaw metodą Hoppela); sekcja oceny zabezpieczeń z modelu stoi na jego górze.
+  await otworzZakladkeWynikow(page, 'koordynacja');
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen')).toBeVisible({ timeout: 20000 });
+}
+
+/** Klik „Oceń zabezpieczenia" — zwraca identyfikator biegu oceny z odpowiedzi backendu. */
+async function ocenZabezpieczenia(page: Page): Promise<string> {
+  const uruchom = page.getByTestId('mvd-ocena-zabezpieczen-uruchom');
+  await expect(uruchom).toBeEnabled({ timeout: 20000 });
+  const utworzenie = page.waitForResponse(
+    (r) => /\/api\/projects\/[^/]+\/protection-runs$/.test(r.url()) && r.request().method() === 'POST',
+    { timeout: 60000 },
   );
+  await uruchom.click();
+  const odpowiedz = await utworzenie;
   expect(odpowiedz.ok(), await odpowiedz.text()).toBeTruthy();
+  const { id } = (await odpowiedz.json()) as { id: string };
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen-wynik')).toBeVisible({ timeout: 60000 });
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen-blad')).toHaveCount(0);
+  return id;
 }
 
-/** Tworzy i wykonuje bieg zabezpieczeń (P15b) na wskazanym biegu zwarciowym źródłowym. */
-async function uruchomBiegZabezpieczen(
-  request: APIRequestContext,
-  projectId: string,
-  caseId: string,
-  scRunId: string,
-): Promise<string> {
-  const utworzenie = await request.post(
-    `${BACKEND_BASE}/api/projects/${projectId}/protection-runs`,
-    { data: { sc_run_id: scRunId, protection_case_id: caseId } },
-  );
-  expect(utworzenie.ok(), await utworzenie.text()).toBeTruthy();
-  const run = (await utworzenie.json()) as { id: string };
-
-  const wykonanie = await request.post(
-    `${BACKEND_BASE}/api/protection-runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(wykonanie.ok(), await wykonanie.text()).toBeTruthy();
-  const wynikWykonania = (await wykonanie.json()) as { status: string; error_message?: string | null };
-  expect(wynikWykonania.status, wynikWykonania.error_message ?? '').toBe('FINISHED');
-  return run.id;
-}
-
-test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = pole z końcówki backendu', async ({
-  page,
-  request,
-}) => {
-  test.setTimeout(300000);
-
-  const { projectId, caseId } = await otworzAplikacje(page, request);
-  const odcinek = await zbudujSiec(request, caseId);
-  await skonfigurujZabezpieczenia(request, caseId);
-
-  // Bieg A: zwarcie 3F na modelu wyjściowym -> ocena zabezpieczeń A.
-  const scA = await uruchomBiegSc(request, caseId);
-  const runA = await uruchomBiegZabezpieczen(request, projectId, caseId, scA);
-
-  // ZMIANA MODELU między biegami SC (jak w KD-3): dłuższy odcinek -> większa
-  // impedancja -> inny prąd zwarciowy -> inna ocena zabezpieczeń na biegu B.
-  await executeDomainOp(request, caseId, 'update_element_parameters', {
-    element_ref: odcinek,
-    parameters: { length_km: 1.5, parameter_source: 'CATALOG' },
-  });
-  const scB = await uruchomBiegSc(request, caseId);
-  expect(scA).not.toBe(scB);
-  const runB = await uruchomBiegZabezpieczen(request, projectId, caseId, scB);
-  expect(runA).not.toBe(runB);
-
-  // Ekran porównań: przestrzeń wyników → zakładka „Porównanie A/B” → tryb zabezpieczeń.
-  await page.reload({ waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+/** Porównanie A/B w trybie zabezpieczeń — zwraca surową odpowiedź końcówki. */
+async function porownajBiegi(page: Page, runA: string, runB: string) {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await otworzZakladkeWynikow(page, 'porownanie');
   await expect(page.getByTestId('mvd-por-host')).toBeVisible({ timeout: 20000 });
   await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
   await expect(page.getByTestId('mvd-porzab-ekran')).toBeVisible({ timeout: 20000 });
-
-  // Wybór pary A/B i JAWNE uruchomienie porównania (zero automatyzmu).
   await page.getByTestId('mvd-porzab-select-a').selectOption(runA);
   await page.getByTestId('mvd-porzab-select-b').selectOption(runB);
-
   const odpowiedzPorownania = page.waitForResponse(
     (response) =>
       response.url().includes('/api/protection-comparisons')
@@ -489,47 +472,173 @@ test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = po
   );
   await page.getByTestId('mvd-porzab-przycisk').click();
   const surowa = await odpowiedzPorownania;
-  expect(surowa.ok()).toBeTruthy();
-
-  const porownanie = (await surowa.json()) as {
-    comparison_id: string;
+  expect(surowa.ok(), await surowa.text()).toBeTruthy();
+  await expect(page.getByTestId('mvd-porzab-wynik')).toBeVisible({ timeout: 20000 });
+  return (await surowa.json()) as {
     rows: Array<{
-      protected_element_ref: string;
-      i_fault_a_a: number | null;
-      i_fault_a_b: number | null;
-      state_change: string;
+      device_id_a: string;
+      device_id_b: string;
+      fault_target_id: string;
+      t_trip_s_a: number | null;
+      t_trip_s_b: number | null;
+      nazwa_urzadzenia_pl: string;
+      wiarygodnosc_a: string;
+      wiarygodnosc_b: string;
     }>;
   };
-  expect(porownanie.rows.length, 'ocena zabezpieczeń — porównanie nie może być puste').toBeGreaterThan(0);
+}
 
-  await expect(page.getByTestId('mvd-porzab-wynik')).toBeVisible({ timeout: 20000 });
+test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przekaźnik → nastawy → ocena → porównanie', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(420000);
 
-  // DOWÓD, ŻE PRĄD ZWARCIOWY POCHODZI Z PRAWDZIWEGO WYNIKU SOLVERA: dłuższy
-  // odcinek (impedancja większa) MUSI dać MNIEJSZY prąd zwarciowy w ocenie
-  // zabezpieczeń (prawo Ohma), nie tylko zmienić liczbę o dowolny znak.
-  const wierszZmienny = porownanie.rows.find(
-    (r) => typeof r.i_fault_a_a === 'number' && typeof r.i_fault_a_b === 'number' && r.i_fault_a_a !== r.i_fault_a_b,
+  const { caseId } = await otworzAplikacje(page, request);
+  await zbudujSiec(request, caseId);
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+
+  // (1) Wyłącznik w torze odcinka — karta odcinka w inspektorze → „Wstaw łącznik sekcyjny" →
+  // kreator z katalogu.
+  const drzewo = page.getByTestId('project-tree');
+  await expect(drzewo).toBeVisible({ timeout: 20000 });
+  await page.getByTestId('project-tree-search-input').fill('Odcinek 1');
+  await drzewo.getByText('Odcinek 1', { exact: true }).first().click();
+  const inspektor = page.getByTestId('inspector-engineering');
+  await expect(inspektor).toContainText('Odcinek 1');
+  await inspektor.getByRole('button', { name: 'Wstaw łącznik sekcyjny' }).click();
+  await expect(page.getByTestId('mvd-kreator-lacznik')).toBeVisible();
+  await page.getByTestId('mvd-kreator-lacznik-katalog').selectOption(KATALOG_WYLACZNIKA);
+  await page.getByTestId('mvd-kreator-lacznik-rodzaj').selectOption('WYLACZNIK');
+  await page.getByTestId('mvd-kreator-lacznik-nazwa').fill('Wyłącznik odcinka 1');
+  await page.getByTestId('mvd-kreator-lacznik-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-lacznik')).toHaveCount(0, { timeout: 20000 });
+
+  // (2) Przekładnik i przekaźnik przy wyłączniku — ekran „Zabezpieczenia i automatyka".
+  // Wiersz TEGO wyłącznika (lista wyłączników liniowych SN — backend `wylaczniki_liniowe`;
+  // aparaty strony nN stacji do niej nie należą) — akcja wiersza zależy od stanu: brak
+  // przekładnika → „Dodaj przekładnik".
+  await otworzZabezpieczeniaIAutomatyke(page);
+  const wierszWylacznika = page
+    .locator('[data-testid^="mvd-za-wylacznik-"]')
+    .filter({ hasText: 'Wyłącznik odcinka 1' });
+  await expect(wierszWylacznika).toHaveCount(1, { timeout: 20000 });
+  const dodajCt = wierszWylacznika.locator('[data-testid^="mvd-za-dodaj-ct-"]');
+  await expect(dodajCt).toBeVisible();
+  await dodajCt.click();
+  await expect(page.getByTestId('mvd-kreator-pomiar')).toBeVisible();
+  await page.getByTestId('mvd-kreator-pomiar-katalog').selectOption(KATALOG_PRZEKLADNIKA);
+  await page.getByTestId('mvd-kreator-pomiar-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-pomiar')).toHaveCount(0, { timeout: 20000 });
+
+  await otworzZabezpieczeniaIAutomatyke(page);
+  const dodajZab = wierszWylacznika.locator('[data-testid^="mvd-za-dodaj-zabezpieczenie-"]');
+  await expect(dodajZab).toBeVisible({ timeout: 20000 });
+  await dodajZab.click();
+  await expect(page.getByTestId('mvd-kreator-przekaznik')).toBeVisible();
+  await page.getByTestId('mvd-kreator-przekaznik-katalog').selectOption(KATALOG_PRZEKAZNIKA);
+  await page.getByTestId('mvd-kreator-przekaznik-nazwa').fill(NAZWA_ZABEZPIECZENIA);
+  await page.getByTestId('mvd-kreator-przekaznik-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-przekaznik')).toHaveCount(0, { timeout: 20000 });
+
+  // (3) Nastawy w edytorze — przypisanie bez nastaw jest nazwanym brakiem, nie wartością domyślną.
+  await otworzZabezpieczeniaIAutomatyke(page);
+  // Korzeń edytora (`section`) — elementy potomne mają testid z tym samym przedrostkiem, a
+  // lista braków też nazywa zabezpieczenie.
+  const edytor = page
+    .locator('section[data-testid^="mvd-za-edytor-"]')
+    .filter({ hasText: NAZWA_ZABEZPIECZENIA });
+  await expect(edytor).toHaveCount(1, { timeout: 20000 });
+  const prefiks = (await edytor.getAttribute('data-testid'))!;
+  await expect(page.getByTestId(`${prefiks}-braki`)).toBeVisible();
+  await expect(page.getByTestId(`${prefiks}-przekladnia`)).toContainText('600/5 A');
+  // `add_relay` bez nastaw tworzy stopnie rodziny z pustymi polami (nazwany brak) — stopień
+  // I>> (50) wyłączony świadomie, I> (51) z nastawą. Pusty aktywny stopień byłby brakiem
+  // blokującym ocenę urządzenia (jedna ścieżka oceny nie zgaduje nastaw).
+  const aktywny50 = page.getByTestId(`${prefiks}-overcurrent_50-aktywny`);
+  if (await aktywny50.isChecked()) await aktywny50.click();
+  await expect(aktywny50).not.toBeChecked();
+  const aktywny51 = page.getByTestId(`${prefiks}-overcurrent_51-aktywny`);
+  if (!(await aktywny51.isChecked())) await aktywny51.click();
+  await page.getByTestId(`${prefiks}-overcurrent_51-prog`).fill('1.5');
+  await page.getByTestId(`${prefiks}-overcurrent_51-jednostka`).selectOption('A_WTORNY');
+  await page.getByTestId(`${prefiks}-overcurrent_51-krzywa`).selectOption('IEC_SI');
+  await page.getByTestId(`${prefiks}-overcurrent_51-tms`).fill('0.1');
+  await page.getByTestId(`${prefiks}-zapisz`).click();
+  await expect(page.getByTestId(`${prefiks}-gotowe`)).toBeVisible({ timeout: 20000 });
+  // Próg pierwotny z backendu (1,5 A wtórnie × 600/5 = 180 A) — front niczego nie przelicza.
+  await expect(page.getByTestId(`${prefiks}-overcurrent_51-pierwotny`)).toContainText('180');
+
+  // Nastawa żyje w MODELU: po pełnym przeładowaniu wraca z serwera.
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await otworzZabezpieczeniaIAutomatyke(page);
+  await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.1', { timeout: 20000 });
+
+  // (4) Bieg zwarciowy realnym klikiem „Oblicz".
+  await page.getByRole('button', { name: 'Oblicz', exact: true }).click();
+  await expect(
+    page.getByTestId('notification-toast').filter({ hasText: 'Obliczenie zakończone' }).first(),
+  ).toBeVisible({ timeout: 90000 });
+
+  // (5) Ocena zabezpieczeń na biegu zwarciowym (bieg A).
+  await otworzKoordynacje(page);
+  const runA = await ocenZabezpieczenia(page);
+  const wierszeA = page.locator('[data-testid^="mvd-ocena-zabezpieczen-wiersz-"]');
+  expect(await wierszeA.count()).toBeGreaterThan(0);
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen-wynik')).toContainText(NAZWA_ZABEZPIECZENIA);
+
+  // (6) Zmiana nastawy w modelu → wynik A nieaktualny → ocena ponownie (bieg B, ten sam bieg SC).
+  await otworzZabezpieczeniaIAutomatyke(page);
+  await page.getByTestId(`${prefiks}-overcurrent_51-tms`).fill('0.3');
+  await page.getByTestId(`${prefiks}-zapisz`).click();
+  await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.3');
+  await expect(page.getByTestId(`${prefiks}-blad`)).toHaveCount(0);
+  await otworzKoordynacje(page);
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen-nieaktualny')).toBeVisible({ timeout: 20000 });
+  const runB = await ocenZabezpieczenia(page);
+  expect(runB).not.toBe(runA);
+  await expect(page.getByTestId('mvd-ocena-zabezpieczen-nieaktualny')).toHaveCount(0);
+
+  // (7) Porównanie A/B — wiersze policzone z urządzenia modelu, czas ×3 (wyrocznia IEC 60255).
+  const porownanie = await porownajBiegi(page, runA, runB);
+  expect(porownanie.rows.length, 'porównanie ocen z urządzenia modelu nie może być puste').toBeGreaterThan(0);
+  const dzialajace = porownanie.rows.filter(
+    (r) => typeof r.t_trip_s_a === 'number' && typeof r.t_trip_s_b === 'number',
   );
-  expect(wierszZmienny, 'zmiana długości odcinka musi dać niezerową deltę prądu').toBeTruthy();
-  expect(wierszZmienny!.i_fault_a_b!).toBeLessThan(wierszZmienny!.i_fault_a_a!);
-
-  // TO, CO WIDAĆ, = TO, CO ZWRÓCIŁ BACKEND: element chroniony z pierwszego wiersza
-  // backendu jest widoczny w tabeli „Zmiany stanu” ekranu — pod NAZWĄ z modelu
-  // przypadku (karta #145: most nazw ekranu tłumaczy identyfikator grafu na nazwę
-  // z migawki), czytaną z tego samego `GET …/enm`, a surowy identyfikator na ekran
-  // nie wychodzi.
+  expect(dzialajace.length, 'zabezpieczenie musi zadziałać w co najmniej jednym punkcie').toBeGreaterThan(0);
+  for (const r of dzialajace) {
+    expect(r.nazwa_urzadzenia_pl).toBe(NAZWA_ZABEZPIECZENIA);
+    expect(r.device_id_a).toBe(r.device_id_b);
+    expect(r.t_trip_s_b! / r.t_trip_s_a!).toBeCloseTo(3, 6);
+    expect(r.wiarygodnosc_a).toBe('WIARYGODNY');
+  }
   const tabela = page.getByTestId('mvd-porzab-wynik');
-  const elementChroniony = porownanie.rows[0].protected_element_ref;
-  await expect(tabela).toContainText(
-    await nazwaElementuZBackendu(request, BACKEND_BASE, caseId, elementChroniony),
-  );
-  await expect(tabela).not.toContainText(elementChroniony);
+  await expect(tabela).toContainText(NAZWA_ZABEZPIECZENIA);
+  await expect(tabela).not.toContainText(dzialajace[0].device_id_a);
 
-  // ------------------------------------------- zrzuty do oceny (bramka 6)
+  // ------------------------------------------- kadry do oceny B-02 (oba motywy)
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUTPUT_DIR, 'cv33b2-porownanie-zabezpieczen-dark.png') });
+  const kadry: string[] = [];
+  const kadruj = async (motyw: 'dark' | 'light') => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `cv33b2-porownanie-zabezpieczen-${motyw}.png`) });
+    await otworzKoordynacje(page);
+    await expect(page.getByTestId('mvd-ocena-zabezpieczen-wynik')).toBeVisible({ timeout: 20000 });
+    await page.getByTestId('mvd-ocena-zabezpieczen').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `ocena-zabezpieczen-z-modelu-${motyw}.png`) });
+    await otworzZabezpieczeniaIAutomatyke(page);
+    await page.getByTestId(prefiks).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `edytor-nastaw-zabezpieczenia-${motyw}.png`) });
+    kadry.push(
+      `cv33b2-porownanie-zabezpieczen-${motyw}.png`,
+      `ocena-zabezpieczen-z-modelu-${motyw}.png`,
+      `edytor-nastaw-zabezpieczenia-${motyw}.png`,
+    );
+  };
+  await kadruj('dark');
 
   await page.evaluate(() => {
     localStorage.setItem(
@@ -539,17 +648,10 @@ test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = po
   });
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await otworzZakladkeWynikow(page, 'porownanie');
-  await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
-  await page.getByTestId('mvd-porzab-select-a').selectOption(runA);
-  await page.getByTestId('mvd-porzab-select-b').selectOption(runB);
-  await page.getByTestId('mvd-porzab-przycisk').click();
-  await expect(page.getByTestId('mvd-porzab-wynik')).toBeVisible({ timeout: 60000 });
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUTPUT_DIR, 'cv33b2-porownanie-zabezpieczen-light.png') });
+  await porownajBiegi(page, runA, runB);
+  await kadruj('light');
 
-  for (const plik of ['cv33b2-porownanie-zabezpieczen-dark.png', 'cv33b2-porownanie-zabezpieczen-light.png']) {
-    expect(fs.existsSync(path.join(OUTPUT_DIR, plik)), `zrzut ${plik}`).toBe(true);
+  for (const plik of kadry) {
+    expect(fs.existsSync(path.join(OUTPUT_DIR, plik)), `kadr ${plik}`).toBe(true);
   }
 });

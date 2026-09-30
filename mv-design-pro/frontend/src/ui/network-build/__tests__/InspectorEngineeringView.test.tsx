@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
@@ -261,6 +262,31 @@ describe('InspectorEngineeringView', () => {
         semantic_engineering_role: 'MV_OVERHEAD_SEGMENT',
         semantic_hash: 'semantic:v1',
       }),
+    );
+  });
+
+  it.each([
+    ['MV_OVERHEAD_SEGMENT'],
+    ['MV_CABLE_SEGMENT'],
+  ])('karta odcinka (%s) otwiera wstawienie łącznika sekcyjnego z kontekstem odcinka', async (rola) => {
+    // Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze odcinka jest kotwicą przekładnika i
+    // przekaźnika — karta techniczna (która zastępuje szybkie akcje) musi go udostępniać.
+    mockSelectedElements = [{
+      id: 'seg-1',
+      type: 'LineBranch',
+      name: 'Segment testowy',
+      semanticHash: 'semantic:v1',
+      semanticElementKind: rola,
+      semanticEngineeringRole: rola,
+    }];
+    mockReadinessIssues = [];
+
+    render(<InspectorEngineeringView />);
+    await userEvent.click(screen.getByRole('button', { name: 'Wstaw łącznik sekcyjny' }));
+
+    expect(openOperationForm).toHaveBeenCalledWith(
+      'insert_section_switch_sn',
+      expect.objectContaining({ segment_id: 'seg-1', segmentRef: 'seg-1' }),
     );
   });
 

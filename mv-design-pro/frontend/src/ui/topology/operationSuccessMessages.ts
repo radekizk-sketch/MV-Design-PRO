@@ -68,10 +68,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // Karta W3-B (mapa 4 #3): edycja obwodu wtórnego PO utworzeniu przekładnika.
   set_measurement_secondary_circuit: 'Zapisano obwód wtórny przekładnika',
   add_relay: 'Dodano przekaźnik zabezpieczeniowy',
-  update_relay_settings: 'Zaktualizowano nastawy przekaźnika',
-  link_relay_to_field: 'Powiązano przekaźnik z polem',
-  calculate_tcc_curve: 'Obliczono krzywą TCC',
-  validate_selectivity: 'Zwalidowano selektywność',
+  update_protection_settings: 'Zapisano nastawy zabezpieczenia',
   // Editing
   delete_element: 'Usunięto element',
   rename_element: 'Zmieniono nazwę elementu',

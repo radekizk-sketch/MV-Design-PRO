@@ -43,9 +43,18 @@ describe('lacznikModel — payload', () => {
       insert_at: { mode: 'RATIO', value: 0.5 },
       switch_type: 'WYLACZNIK',
       normal_state: 'open',
-      name: 'Ł1',
+      switch_name: 'Ł1',
       catalog_binding: expect.objectContaining({ catalog_namespace: 'APARAT_SN', catalog_item_id: 'app-1' }),
     });
+  });
+
+  it('nazwa idzie kluczem kontraktu backendu `switch_name`, pusta nazwa nie jest wysyłana', () => {
+    const zNazwa = zbudujPayload(dane({ nazwa: '  Wyłącznik odcinka 1 ' }), { segment_id: 'seg-1' });
+    expect(zNazwa.switch_name).toBe('Wyłącznik odcinka 1');
+    expect(zNazwa).not.toHaveProperty('name');
+    const bezNazwy = zbudujPayload(dane({ nazwa: '   ' }), { segment_id: 'seg-1' });
+    expect(bezNazwy).not.toHaveProperty('switch_name');
+    expect(bezNazwy).not.toHaveProperty('name');
   });
 
   it('normalizuje stan zamknięty', () => {

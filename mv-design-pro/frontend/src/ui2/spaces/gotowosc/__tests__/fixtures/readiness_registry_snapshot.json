@@ -382,10 +382,6 @@
     },
     {
       "area": "PROTECTION",
-      "code": "protection.device_breaker_not_in_series"
-    },
-    {
-      "area": "PROTECTION",
       "code": "protection.fault_current_missing"
     },
     {
@@ -459,6 +455,14 @@
     {
       "area": "SOURCES",
       "code": "source.voltage_invalid"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.element_bypasses_field"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.line_field_multiple_segments"
     },
     {
       "area": "STATIONS",
@@ -573,5 +577,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 144
 }

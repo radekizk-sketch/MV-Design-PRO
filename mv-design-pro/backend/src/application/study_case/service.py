@@ -26,44 +26,22 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 from domain.study_case import (
-    ProtectionConfig,
     StudyCase,
     StudyCaseComparison,
     StudyCaseConfig,
     compare_study_cases,
     new_study_case,
 )
-from network_model.odmowa_danych import OdmowaDanychError
 
 from .errors import (
     ActiveCaseRequiredError,
     CaseConfigurationError,
     StudyCaseNotFoundError,
 )
-
-
-def _migawka_modelu_przypadku(
-    case_id: str, uow_factory: Callable[[], Any]
-) -> dict[str, Any] | None:
-    """Migawka modelu projektu przypadku (magazyn Canonical Project Twin) albo `None`, gdy
-    przypadek nie należy do projektu albo projekt nie ma jeszcze modelu — walidacja
-    zacisku urządzeń sprawdza wtedy wyłącznie literał (nie ma czego być sprzecznym)."""
-    from application.twin_key import klucz_twin_dla_przypadku
-    from enm import store
-    from enm.klucz_twin import PrzypadekBezProjektuError
-
-    try:
-        klucz = klucz_twin_dla_przypadku(case_id, uow_factory)
-    except PrzypadekBezProjektuError:
-        return None
-    if not store.has_enm(klucz):
-        return None
-    return store.get_enm(klucz).model_dump(mode="json")
 
 
 @dataclass
@@ -434,87 +412,3 @@ class StudyCaseService:
             if repo is None:
                 raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
             return repo.count_study_cases(project_id)
-
-    # =========================================================================
-    # Protection Configuration (P14c)
-    # =========================================================================
-
-    def update_protection_config(
-        self,
-        case_id: UUID,
-        template_ref: str | None,
-        template_fingerprint: str | None,
-        library_manifest_ref: dict[str, Any] | None,
-        overrides: dict[str, Any],
-    ) -> StudyCase:
-        """
-        Update protection configuration for a study case (P14c).
-
-        Args:
-            case_id: Study case ID
-            template_ref: ID of ProtectionSettingTemplate (None to clear)
-            template_fingerprint: Fingerprint of template at bind time
-            library_manifest_ref: Reference to library manifest
-            overrides: Override values for setting fields
-
-        Returns:
-            Updated StudyCase
-
-        Raises:
-            StudyCaseNotFoundError: If case doesn't exist
-            ValueError: If template_ref doesn't exist in catalog, or a coordination
-                device carries an invalid terminal (`zacisk`) or one contradicting the model
-        """
-        # Decyzja O-51 (pkt 7): zacisk urządzenia koordynacji — walidacja ADDYTYWNA tym
-        # samym resolverem co pakiet nastaw (sprzeczność z modelem = odmowa nazwana).
-        # Model projektu czytany PRZED otwarciem jednostki pracy zapisu (tłumaczenie
-        # klucza otwiera własną jednostkę pracy).
-        from application.protection_settings.zacisk_zabezpieczenia import (
-            odmowy_zaciskow_urzadzen,
-        )
-
-        powody = odmowy_zaciskow_urzadzen(
-            _migawka_modelu_przypadku(str(case_id), self._uow_factory), overrides or {}
-        )
-        if powody:
-            raise OdmowaDanychError(" ".join(powody))
-
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-
-            # Get case
-            case = repo.get_study_case(case_id)
-            if case is None:
-                raise StudyCaseNotFoundError(str(case_id))
-
-            # Walidacja P14c: template_ref musi istnieć w katalogu zabezpieczeń,
-            # gdy podany — kontrakt trasy PUT .../protection-config to obiecuje
-            # (422 przy braku, patrz api/study_cases.py). Reużycie odczytu
-            # katalogu z biegu kanonicznego (CV-3.3-B), nie nowa ścieżka.
-            if template_ref is not None:
-                from application.protection_analysis.catalog_lookup import (
-                    get_protection_template,
-                )
-
-                if get_protection_template(uow, template_ref) is None:
-                    raise OdmowaDanychError(
-                        f"Szablon nastaw zabezpieczeń '{template_ref}' " "nie istnieje w katalogu"
-                    )
-
-            # Create new ProtectionConfig
-            now = datetime.now(UTC)
-            new_config = ProtectionConfig(
-                template_ref=template_ref,
-                template_fingerprint=template_fingerprint,
-                library_manifest_ref=library_manifest_ref,
-                overrides=overrides or {},
-                bound_at=now if template_ref else None,
-            )
-
-            # Update case
-            updated_case = case.with_protection_config(new_config)
-            repo.update_study_case(updated_case)
-
-            return updated_case

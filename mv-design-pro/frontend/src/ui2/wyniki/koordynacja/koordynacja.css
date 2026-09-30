@@ -230,3 +230,82 @@
   font-size: 11.5px;
   color: var(--mvd-muted);
 }
+
+/* --- Ocena zabezpieczeń na biegu zwarciowym -------------------------------- */
+
+.mvd-koordynacja-ocena {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.mvd-koordynacja-ocena h3,
+.mvd-koordynacja-ocena h4 {
+  margin: 0;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-ocena h3 {
+  font-size: 15px;
+}
+
+.mvd-koordynacja-ocena h4 {
+  font-size: 13px;
+}
+
+.mvd-koordynacja-ocena p,
+.mvd-koordynacja-ocena li {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-ocena-opis {
+  max-width: 82ch;
+  color: var(--mvd-muted);
+}
+
+.mvd-koordynacja-ocena-pasek {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.mvd-koordynacja-ocena-uwaga {
+  border-left: 3px solid var(--mvd-warn);
+  padding-left: 8px;
+}
+
+.mvd-koordynacja-ocena-blad {
+  border-left: 3px solid var(--mvd-err);
+  padding-left: 8px;
+}
+
+.mvd-koordynacja-ocena-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mvd-koordynacja-ocena-tabela th,
+.mvd-koordynacja-ocena-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mvd-koordynacja-ocena-zdanie {
+  color: var(--mvd-muted);
+}
+
+.mvd-koordynacja-ocena-tabela td.mvd-mono {
+  font-family: var(--mvd-font-mono);
+  text-align: right;
+}

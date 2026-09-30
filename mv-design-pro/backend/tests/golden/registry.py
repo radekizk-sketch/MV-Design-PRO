@@ -255,24 +255,51 @@ REJESTR: tuple[WpisRejestru, ...] = (
     WpisRejestru(
         id="G08",
         klasa_przypadku="koordynacja zabezpieczeń / TCC",
-        cel="selektywność nadprądowa, krzywe IEC 60255",
-        topologia="SN+nN z zabezpieczeniami (GN_05)",
-        poziomy_napiec="15/0,4 kV",
-        uziemienie="wg buildera",
-        scenariusz="SC max/min",
-        analizy=("PROTECTION", "TCC"),
-        inwarianty=("t(I) wg wzoru normy dla SI/VI/EI/LTI",),
+        cel=(
+            "ocena i selektywność zabezpieczeń nadprądowych na urządzeniach i nastawach Z MODELU "
+            "(D-21), krzywe IEC 60255"
+        ),
+        topologia=(
+            "magistrala SN GPZ → Q1 → Stacja S01 → Q2 → Stacja S02 (wyłączniki liniowe z "
+            "przekładnikami 600/5 A 5P20 i przekaźnikami REF-OC-200); GN_05 — SN+nN+OZE z "
+            "zabezpieczeniem magistrali"
+        ),
+        poziomy_napiec="110/15/0,4 kV",
+        uziemienie="TN-C-S po stronie nN (deklaracja jawna)",
+        scenariusz="SC 3F max/min, rozpływ; edycja nastaw po biegu zwarciowym; zmiana sieci",
+        analizy=("SC", "PROTECTION", "TCC", "LF"),
+        inwarianty=(
+            "czas każdej oceny = najszybszy pobudzony stopień wg wzoru IEC 60255-151",
+            "strefa urządzenia z topologii (Q2 nie ocenia punktu przed sobą)",
+            "zabezpieczenia w modelu nie zmieniają ani jednej liczby biegu zwarciowego",
+            "edycja nastaw nie wymaga ponownego zwarcia; zmiana sieci — wymaga",
+        ),
         wyrocznie=(
             Wyrocznia(
                 KlasaWyroczni.NORMATIVE,
-                "krzywe IEC 60255-151 — wzory zamknięte t(I)",
+                "krzywe IEC 60255-151 — wzory zamknięte t(I) przy prądzie przekaźnika z biegu "
+                "(test_bieg_zabezpieczen_siec_zlota.py)",
                 (RodzinaSolvera.PROTECTION,),
                 "IEC 60255-151",
             ),
         ),
-        budowniczowie=("tests.reference_networks.builders:build_gn05_sn_nn_oze_ochrona",),
-        konsumenci=("protection_iec60255",),
-        status=StatusSieci.PARTIAL,
+        budowniczowie=(
+            "tests.golden.enm_builders.zabezpieczenia_magistrali:build_zabezpieczenia_magistrali_enm",
+            "tests.reference_networks.builders:build_gn05_sn_nn_oze_ochrona",
+        ),
+        konsumenci=(
+            "protection_iec60255",
+            "bieg protection_sn",
+            "koordynacja E-28",
+            "scena harnessu koordynacja i porównanie zabezpieczeń",
+        ),
+        status=StatusSieci.SUPPORTED,
+        proweniencja=(
+            "karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): przypisania zabezpieczeń zapisane "
+            "operacjami domenowymi (insert_section_switch_sn, add_ct, add_relay z nastawami); "
+            "dawny GN_05 dokładał CT/VT/przekaźnik do nieistniejącego pola z cichym pominięciem "
+            "błędu — sieć „z ochroną” nie miała ani jednego przypisania (zmierzone)"
+        ),
     ),
     WpisRejestru(
         id="G09",

@@ -5,12 +5,19 @@ brał się WYŁĄCZNIE z liczby wpisanej ręcznie w konfiguracji stacji. Teraz j
 wyprowadzony z danych: człon nastawczy liczy solver IEC 60255 przy prądzie
 zwarciowym punktu, a czas własny aparatu pochodzi z pozycji katalogu APARAT_SN.
 Odpowiedź niesie OBA człony osobno (WHITE BOX) i nazywa każdy brak.
+
+Karta BIEG-ZABEZPIECZEN-Z-MODELU: nastawy pola rozwiązuje JEDNA ścieżka oceny
+(``ocena_nadpradowa.rozwiaz_nastawy``) — urządzenie ma przekładnik pola (przekładnia
+400/5 A), pozycję katalogu z zakresami (REF-OC-200, ×In) i próg ze ZADEKLAROWANĄ stroną
+przekładnika (5 A wtórne = 400 A pierwotne). Urządzenie bez któregokolwiek z tych danych
+nie ma czasu — przypięte osobnymi testami na dole pliku.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from application.analyses.protection.czas_wylaczenia_pola import (
     READINESS_BRAK_CZASU_WLASNEGO,
     READINESS_BRAK_NASTAW,
@@ -24,6 +31,7 @@ from enm.models import (
     EnergyNetworkModel,
     ENMDefaults,
     ENMHeader,
+    Measurement,
     ProtectionAssignment,
     ProtectionSetting,
     Substation,
@@ -33,6 +41,8 @@ from enm.models import (
 APARAT_KATALOG = "sw-cb-abb-vd4-12kv-630a"
 POLE = "pole/in"
 APARAT = "aparat/01"
+PRZEKLADNIK = "ct/01"
+PRZEKAZNIK_KATALOG = "REF-OC-200"
 
 
 def _enm(
@@ -40,6 +50,8 @@ def _enm(
     nastawy: list[ProtectionSetting] | None = None,
     is_enabled: bool = True,
     z_zabezpieczeniem: bool = True,
+    ct_ref: str | None = PRZEKLADNIK,
+    catalog_ref: str | None = PRZEKAZNIK_KATALOG,
 ) -> EnergyNetworkModel:
     przypisania = []
     if z_zabezpieczeniem:
@@ -48,6 +60,8 @@ def _enm(
                 ref_id="prot/01",
                 name="Zabezpieczenie pola IN",
                 breaker_ref=APARAT,
+                ct_ref=ct_ref,
+                catalog_ref=catalog_ref,
                 device_type="overcurrent",
                 is_enabled=is_enabled,
                 settings=(
@@ -56,7 +70,8 @@ def _enm(
                     else [
                         ProtectionSetting(
                             function_type="overcurrent_51",
-                            threshold_a=400.0,
+                            threshold_a=5.0,  # A wtórne · 400/5 = 400 A pierwotne (1 ×In)
+                            threshold_unit="A_WTORNY",
                             curve_type="DT",
                             time_delay_s=0.3,
                         )
@@ -80,6 +95,15 @@ def _enm(
             )
         ],
         protection_assignments=przypisania,
+        measurements=[
+            Measurement(
+                ref_id=PRZEKLADNIK,
+                name="Przekładnik pola IN",
+                measurement_type="CT",
+                bus_ref="sn",
+                rating={"ratio_primary": 400.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
+            )
+        ],
         substations=[
             Substation(
                 ref_id="stn",
@@ -124,6 +148,7 @@ def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale() -> Non
                 ProtectionSetting(
                     function_type="overcurrent_51",
                     threshold_a=400.0,
+                    threshold_unit="A_PIERWOTNY",
                     curve_type="IEC_SI",
                     time_multiplier=0.1,
                 )
@@ -181,7 +206,12 @@ def test_nastawa_bez_progu_rozruchowego_nie_daje_czasu() -> None:
     czas = _czas(
         enm=_enm(
             nastawy=[
-                ProtectionSetting(function_type="overcurrent_51", curve_type="DT", time_delay_s=0.3)
+                ProtectionSetting(
+                    function_type="overcurrent_51",
+                    threshold_unit="A_WTORNY",
+                    curve_type="DT",
+                    time_delay_s=0.3,
+                )
             ]
         )
     )
@@ -210,3 +240,36 @@ def test_wynik_jest_deterministyczny() -> None:
     assert czasy_wylaczenia_pol_stacji(
         enm=_enm(), station_ref="stn", ik_ka=8.0
     ) == czasy_wylaczenia_pol_stacji(enm=_enm(), station_ref="stn", ik_ka=8.0)
+
+
+@pytest.mark.parametrize(
+    ("model", "kod_braku"),
+    [
+        (lambda: _enm(ct_ref=None), "zabezpieczenia.brak_przekladnika"),
+        (lambda: _enm(catalog_ref=None), "zabezpieczenia.brak_pozycji_katalogu"),
+        (
+            lambda: _enm(
+                nastawy=[
+                    ProtectionSetting(
+                        function_type="overcurrent_51",
+                        threshold_a=5.0,
+                        curve_type="DT",
+                        time_delay_s=0.3,
+                    )
+                ]
+            ),
+            "zabezpieczenia.jednostka_progu_nieustalona",
+        ),
+    ],
+    ids=["bez_przekladnika", "bez_pozycji_katalogu", "prog_bez_strony_przekladnika"],
+)
+def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: str) -> None:
+    """Iloczyn braków urządzenia (przekładnik, katalog, strona progu) — każdy daje brak
+    nastaw pola z kodem jednej ścieżki oceny, nigdy czas z domyślnej przekładni albo
+    progu czytanego jako pierwotny. Czerwony na bazie: próg 400 „A" bez przekładnika
+    i bez strony był czytany jako prąd pierwotny i dawał czas 0,3 s."""
+    czas = _czas(enm=model())
+
+    assert czas["t_clearing_s"] is None
+    assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
+    assert kod_braku in {b["kod"] for b in czas["braki_nastaw"]}

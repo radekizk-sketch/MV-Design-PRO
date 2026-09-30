@@ -93,6 +93,22 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('wpisana nazwa trafia do operacji kluczem kontraktu `switch_name`', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorLacznikaSekcyjnego />);
+    await pick();
+    await userEvent.type(screen.getByTestId('mvd-kreator-lacznik-nazwa'), 'Wyłącznik odcinka 1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_section_switch_sn',
+        expect.objectContaining({ switch_name: 'Wyłącznik odcinka 1' }),
+      );
+    });
+    expect(executeDomainOperationMock.mock.calls[0][2]).not.toHaveProperty('name');
+  });
+
   it('ustawia stan otwarty (NOP) i wysyła go w payloadzie', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorLacznikaSekcyjnego />);

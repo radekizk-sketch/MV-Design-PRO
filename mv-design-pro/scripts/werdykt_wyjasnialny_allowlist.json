@@ -241,13 +241,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "api.protection_coordination:CoordinationSummaryResponse.overall_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "api.reference_patterns:FixtureMetadata.expected_verdict",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol.",
@@ -287,13 +280,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C27 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "C27"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "application.analyses.protection.coordination.models:CoordinationAnalysisResult.overall_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "1_backend",
@@ -455,27 +441,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Stan gotowości analizy (`EligibilityStatus` ELIGIBLE/INELIGIBLE z bramki gotowości, przyczyna w `blockers`) — inwentarz C54 (ENUM_WEWNETRZNY: enumy procesu i dowodu, `domain/eligibility_models.py:51`), plan AB §8 F15; nie ocena wobec kryterium inżynierskiego — słowo `eligible` należy do słownika karty A.1, stąd wpis.",
    "wiersz_inwentarza": "C54"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:OverloadCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:SelectivityCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:SensitivityCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
   },
   {
    "sprawdzenie": "1_backend",
@@ -787,62 +752,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/protection-coordination/TccInterpretationPanel.tsx:TccInterpretationPanel.statusStyles",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E10 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E10"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:COORDINATION_VERDICT_UI_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:COORDINATION_VERDICT_UI_DESCRIPTIONS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:COORDINATION_VERDICT_UI_LABELS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:VERDICT_UI_BADGE_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:VERDICT_UI_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:VERDICT_UI_DESCRIPTIONS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:VERDICT_UI_LABELS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/sld-overlay/RawToTypedOverlayAdapter.ts:VISUAL_STATE_TO_COLOR_TOKEN",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz E19: 19. `ui/sld-overlay/RawToTypedOverlayAdapter.ts:21-37` severity → visual_state; INFO → 'OK', unknown severity → 'OK' (fail-open); typed payload not drawn on v3 canvas (`SldCanvasV3.tsx:1135-1138`). **ENUM_WEWNETRZNY.**",
@@ -994,13 +903,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/protection-coordination/TccInterpretationPanel.tsx:TccInterpretationPanel.overallStatus",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E10 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E10"
   },
   {
    "sprawdzenie": "3b_frontend_prog",
@@ -1183,27 +1085,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C6 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "C6"
-  },
-  {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "network_model.reporting.protection_report_docx:VERDICT_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A3 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A3"
-  },
-  {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "network_model.reporting.protection_report_pdf:VERDICT_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A3 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A3"
-  },
-  {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "network_model.reporting.protection_report_pdf:VERDICT_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A3 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A3"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
@@ -1718,20 +1599,6 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "enm.domain_operations_v2:validate_selectivity.audit.action:NIESPELNIONA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`enm/domain_operations_v2.py`). Wpis audytu operacji „Selektywność: OK / NIESPEŁNIONA” — werdykt selektywności bez pary, marginesu i podstawy; fala WW-2 (zabezpieczenia i koordynacja), plan AB §8 F23.",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "enm.domain_operations_v2:validate_selectivity.audit.action:OK",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`enm/domain_operations_v2.py`). Wpis audytu operacji „Selektywność: OK / NIESPEŁNIONA” — werdykt selektywności bez pary, marginesu i podstawy; fala WW-2 (zabezpieczenia i koordynacja), plan AB §8 F23.",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "network_model.catalog.audit2_catalogs:ocen_wytrzymalosc_aparatu.message:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A37 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -1785,13 +1652,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "domain.protection_device:VERDICT_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C37"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
@@ -1855,34 +1715,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E41 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "E41"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/protection-coordination/TccChart.tsx:SelectivityAssessment.badgeStyle",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E9 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E9"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/protection-coordination/TccChart.tsx:getSelectivityAssessmentTexts",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E9 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E9"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:buildCoordinationVerdictMessage",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E1"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/shared/verdict-messages.ts:buildVerdictMessage",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E1 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E1"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

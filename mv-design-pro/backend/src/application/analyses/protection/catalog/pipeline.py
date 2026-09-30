@@ -34,7 +34,12 @@ from application.analyses.protection.catalog.vendors.generic_v1 import (
 )
 
 
-def dopasuj_do_aparatu(requirement: ProtectionRequirementV0, *, device_id: str) -> dict[str, Any]:
+def dopasuj_do_aparatu(
+    requirement: ProtectionRequirementV0,
+    *,
+    device_id: str,
+    przekladnia_a: tuple[float, float] | None,
+) -> dict[str, Any]:
     """Dobór aparatu dla WYMAGANIA już policzonego (karta W3-C1).
 
     Czysta funkcja: żadnego biegu, żadnej koperty, żadnego zapisu — trasa
@@ -44,6 +49,10 @@ def dopasuj_do_aparatu(requirement: ProtectionRequirementV0, *, device_id: str) 
     dostawcą wymagania był indeks biegu starej metodyki nastaw (ta sama kasacja
     V12K-189) — tor skasowany razem z resztą V12K-189 (zero konsumentów
     produkcyjnych).
+
+    ``przekladnia_a`` — (I1n, I2n) przekładnika zabezpieczenia przy zacisku linii (z modelu)
+    albo ``None``: zakres prądowy aparatu jest cechą strony wtórnej, więc bez przekładni jest
+    niesprawdzalny (naruszenie nazwane ``ZAKRES_PRADOWY_BEZ_PRZEKLADNI``).
     """
     capability = load_device_capability(device_id)
     if capability is None:
@@ -56,7 +65,9 @@ def dopasuj_do_aparatu(requirement: ProtectionRequirementV0, *, device_id: str) 
         vendor_mapping = _build_vendor_mapping(mapping_result=mapping_result, capability=None)
         status = "FAILED"
     else:
-        mapping_result = map_requirement_to_device(requirement, capability)
+        mapping_result = map_requirement_to_device(
+            requirement, capability, przekladnia_a=przekladnia_a
+        )
         vendor_mapping = _build_vendor_mapping(mapping_result=mapping_result, capability=capability)
         if mapping_result.compatible and vendor_mapping["vendor_violations"]:
             status = "DEGRADED"
@@ -73,6 +84,7 @@ def dopasuj_do_aparatu(requirement: ProtectionRequirementV0, *, device_id: str) 
         "wymaganie": requirement.to_dict(),
         "device_id": device_id,
         "capability": capability.to_dict() if capability is not None else None,
+        "przekladnia_a": list(przekladnia_a) if przekladnia_a is not None else None,
     }
 
 

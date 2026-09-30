@@ -15,8 +15,12 @@ Endpoints:
 - GET /protection-runs/{run_id} — Get run metadata
 - GET /protection-runs/{run_id}/results — Get ProtectionResult
 - GET /protection-runs/{run_id}/trace — Get ProtectionTrace
-- GET /projects/{project_id}/sld/{diagram_id}/protection-overlay — Nakladka SLD
-  wynikow zabezpieczen ze statusem swiezosci (NONE/FRESH/OUTDATED)
+
+Nakładka SLD (`/projects/{id}/sld/{diagram}/protection-overlay`) SKASOWANA (karta
+BIEG-ZABEZPIECZEN-Z-MODELU): nie miała konsumenta, a nakładała ocenę syntetycznego
+urządzenia na szynę. Status świeżości (NONE/FRESH/OUTDATED z porównania kopert biegu i
+biegu źródłowego) niesie odtąd `GET /protection-runs/{id}/results` — tę trasę czyta ekran
+wyniku oceny zabezpieczeń.
 """
 
 from __future__ import annotations
@@ -27,14 +31,22 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
-from application.result_freshness import StanBiezacyModelu, swiezosc_biegu_kanonicznego
+from application.result_freshness import (
+    FreshnessReason,
+    FreshnessVerdict,
+    ResultFreshness,
+    StanBiezacyModelu,
+    swiezosc_biegu_kanonicznego,
+)
 from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
+from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
+from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.odmowa_danych import OdmowaDanychError
@@ -100,26 +112,39 @@ class ProtectionRunListResponse(BaseModel):
 
 
 class ProtectionResultResponse(BaseModel):
-    """Response for protection result."""
+    """Wynik biegu oceny zabezpieczeń nadprądowych z modelu.
+
+    ``evaluations`` — oceny par (urządzenie modelu, punkt zwarcia w strefie) z rekordem
+    werdyktu wyjaśnialnego; ``odmowy`` — urządzenia wstrzymane nazwanymi brakami z akcjami
+    naprawczymi; ``pominiete`` — urządzenia, których ocena nadprądowa nie dotyczy (z
+    przyczyną); ``nastawy`` — rozwiązane nastawy urządzeń (jednostki, przekładnia, zakresy
+    katalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu.
+    """
 
     run_id: str
     sc_run_id: str
     protection_case_id: str
-    template_ref: str | None
-    template_fingerprint: str | None
     evaluations: list[dict[str, Any]]
+    odmowy: list[dict[str, Any]]
+    pominiete: list[dict[str, Any]]
+    nastawy: list[dict[str, Any]]
+    strefy: dict[str, dict[str, Any]]
     summary: dict[str, Any]
     created_at: str
+    result_status: str
+    result_status_reason: str
+    result_status_reason_pl: str
+    rewizja_biegu: int | None
+    rewizja_biezaca: int | None
+    zmiany_od_biegu: list[dict[str, Any]]
 
 
 class ProtectionTraceResponse(BaseModel):
-    """Response for protection trace."""
+    """Ślad White Box biegu oceny zabezpieczeń (nastawy, strefy, bilanse, czasy z rdzenia)."""
 
     run_id: str
     sc_run_id: str
     snapshot_id: str | None
-    template_ref: str | None
-    overrides: dict[str, Any]
     steps: list[dict[str, Any]]
     created_at: str
 
@@ -150,7 +175,8 @@ def _require_protection_run(run_id: UUID) -> CanonicalRun:
 
 
 def _sc_run_id(run: CanonicalRun) -> str:
-    return str(run.options.get("sc_run_id") or "")
+    """Bieg źródłowy biegu oceny — zapisany przy tworzeniu (``create_protection_run``)."""
+    return str(run.options["sc_run_id"])
 
 
 def _run_to_response(run: CanonicalRun) -> dict[str, Any]:
@@ -208,10 +234,13 @@ def list_protection_runs(
             "model_revision": (run.envelope or {}).get("model_revision"),
             "scenario_ref": (run.envelope or {}).get("scenario_ref"),
         }
-        for run in list_canonical_runs_for_project(str(project_id), analysis_type="protection_sn")
+        for run in sorted(
+            list_canonical_runs_for_project(str(project_id), analysis_type="protection_sn"),
+            key=lambda run: run.created_at,
+            reverse=True,
+        )
         if run_status is None or run.status == run_status
     ]
-    runs.sort(key=lambda run: run["created_at"], reverse=True)
     return {"runs": runs, "total": len(runs)}
 
 
@@ -229,8 +258,9 @@ def create_protection_run(
     Create a new protection analysis run.
 
     Requires:
-    - A finished short-circuit run (sc_run_id), tego samego projektu
-    - A study case with ProtectionConfig (protection_case_id)
+    - zakończony bieg zwarciowy 3F albo 2F (sc_run_id) tego samego projektu,
+    - przypadek (protection_case_id), którego model niesie urządzenia i nastawy
+      zabezpieczeń (D-21) — przypadek nie przechowuje nastaw.
 
     Returns:
     - Protection run metadata with status CREATED
@@ -277,12 +307,9 @@ def execute_protection_run(
     Returns:
     - Updated run metadata with status FINISHED or FAILED
 
-    `uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B):
-    wykonanie biegu zabezpieczeń czyta `StudyCase.protection_config` przez
-    `UnitOfWork` TEGO żądania (`app.state.uow_factory`), nie samodzielną
-    fabrykę zbudowaną z `DATABASE_URL` — inaczej przypadek istniejący naprawdę
-    zgłaszałby się jako nieznaleziony w każdym wdrożeniu, którego
-    `app.state.uow_factory` nie pochodzi z tego env var (każdy test).
+    `uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ
+    zwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji
+    przez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.
     """
     _require_protection_run(run_id)
     run = execute_canonical_run(run_id, uow_factory=uow_factory)
@@ -307,12 +334,17 @@ def get_protection_run(run_id: UUID) -> dict[str, Any]:
     "/protection-runs/{run_id}/results",
     response_model=ProtectionResultResponse,
 )
-def get_protection_run_results(run_id: UUID) -> dict[str, Any]:
-    """
-    Get protection analysis results.
+def get_protection_run_results(
+    run_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Wynik biegu oceny zabezpieczeń + świeżość względem bieżącego modelu.
 
-    Returns the full ProtectionResult including all evaluations and summary.
-    Only available for runs with status FINISHED.
+    Dostępny wyłącznie dla biegu FINISHED. STATUS ŚWIEŻOŚCI Z PORÓWNANIA KOPERT
+    (CV-2/CV-3.3-B): `swiezosc_biegu_kanonicznego` z DODATKOWYM sprawdzeniem biegu
+    źródłowego (zwarciowego) — ocena interpretuje JEGO prąd zwarciowy, więc własna koperta
+    biegu zabezpieczeń bywa aktualna, gdy koperta biegu źródłowego już nie jest. Zmiana
+    nastaw w modelu zmienia odcisk modelu, więc wynik oceny staje się nieaktualny.
     """
     run = _require_protection_run(run_id)
 
@@ -333,14 +365,50 @@ def get_protection_run_results(run_id: UUID) -> dict[str, Any]:
         "run_id": str(run.id),
         "sc_run_id": _sc_run_id(run),
         "protection_case_id": run.case_id,
-        "template_ref": result.get("template_ref"),
-        "template_fingerprint": result.get("template_fingerprint"),
-        "evaluations": result.get("evaluations", []),
-        "summary": result.get("summary", {}),
+        "evaluations": result["evaluations"],
+        "odmowy": result["odmowy"],
+        "pominiete": result["pominiete"],
+        "nastawy": result["nastawy"],
+        "strefy": result["strefy"],
+        "summary": result["summary"],
         "created_at": (
             run.finished_at.isoformat() if run.finished_at else run.created_at.isoformat()
         ),
+        **_swiezosc_wyniku(run, uow_factory),
     }
+
+
+def _swiezosc_wyniku(run: CanonicalRun, uow_factory: Callable[[], UnitOfWork]) -> dict[str, Any]:
+    """Pola świeżości wyniku oceny zabezpieczeń (ten sam kształt co w każdym odczycie z kopertą).
+
+    Dwie kotwice, każda z WŁASNYM predykatem:
+    - koperta TEGO biegu wobec bieżącego modelu (pełny odcisk — nastawy wchodzą do oceny, więc
+      zmiana nastaw unieważnia wynik),
+    - bieg źródłowy (zwarciowy) wobec bieżącej SIECI — ``siec_biegu_zgodna_z_modelem``, TEN SAM
+      predykat, którym tworzenie biegu sprawdza, czy ocena może czytać rozpływ biegu źródłowego
+      (``_validate_protection_sc_reference``).
+      Zmiana samych nastaw nie unieważnia biegu zwarciowego (sieć ta sama); zmiana sieci —
+      tak (``ZRODLO_NIEAKTUALNE``).
+    """
+    stan = StanBiezacyModelu.dla_przypadku(run.case_id, uow_factory)
+    werdykt = swiezosc_biegu_kanonicznego(run, stan)
+    if werdykt.status == ResultFreshness.FRESH:
+        sc_run = get_canonical_run(UUID(_sc_run_id(run)))
+        if (
+            sc_run is None
+            or stan.klucz is None
+            or not has_enm(stan.klucz)
+            or not siec_biegu_zgodna_z_modelem(
+                sc_run.snapshot, get_enm(stan.klucz).model_dump(mode="json")
+            )
+        ):
+            werdykt = FreshnessVerdict(
+                ResultFreshness.OUTDATED,
+                FreshnessReason.ZRODLO_NIEAKTUALNE,
+                rewizja_biegu=werdykt.rewizja_biegu,
+                rewizja_biezaca=werdykt.rewizja_biezaca,
+            )
+    return werdykt.to_overlay_fields()
 
 
 @router.get(
@@ -373,107 +441,8 @@ def get_protection_run_trace(run_id: UUID) -> dict[str, Any]:
         "run_id": str(run.id),
         "sc_run_id": _sc_run_id(run),
         "snapshot_id": trace.get("snapshot_id"),
-        "template_ref": trace.get("template_ref"),
-        "overrides": trace.get("overrides", {}),
-        "steps": trace.get("steps", []),
+        "steps": trace["steps"],
         "created_at": (
             run.finished_at.isoformat() if run.finished_at else run.created_at.isoformat()
         ),
-    }
-
-
-@router.get(
-    "/projects/{project_id}/sld/{diagram_id}/protection-overlay",
-)
-def get_protection_sld_overlay(
-    project_id: UUID,
-    diagram_id: UUID,
-    run_id: UUID = Query(..., description="Protection run ID for overlay"),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    P15c: Get SLD overlay for protection analysis results.
-
-    Maps protection evaluation states to SLD symbols for visualization.
-    This is READ-ONLY - does not mutate model or diagram.
-
-    Args:
-        project_id: Project UUID
-        diagram_id: SLD diagram UUID
-        run_id: Protection run UUID to get results from
-
-    Returns:
-        Protection overlay with element states mapped to SLD symbols.
-
-    Overlay contains:
-    - elements: List of protection elements with trip_state, t_trip_s, margin_percent
-    - result_status: FRESH/OUTDATED/NONE — swiezosc wyniku wzgledem modelu
-    - result_status_reason (+ _pl): PRZYCZYNA statusu, nigdy domysl
-
-    STATUS Z POROWNANIA KOPERT (CV-2/CV-3.3-B). Bieg zabezpieczen jest odtad
-    `CanonicalRun` z kopertą rewizji — swiezosc wyprowadza `swiezosc_biegu_
-    kanonicznego` (jak dla PF/SC), z DODATKOWYM sprawdzeniem: bieg zrodlowy
-    (zwarciowy, `options["sc_run_id"]`) musi RÓWNIEZ byc aktualny, bo ocena
-    interpretuje JEGO prad zwarciowy — wlasna koperta biegu zabezpieczen
-    potrafi byc aktualna, gdy koperta biegu zrodlowego juz nie jest.
-
-    BRAK WYNIKU TO NIE BLAD. Przebieg istniejacy, ale niezakonczony albo bez
-    zapisanego wyniku, oddaje `result_status = NONE` z pusta lista elementow —
-    dokladnie to, o co pyta warstwa rysujaca („czy jest co nalozyc"). Bledem
-    (404) pozostaje wylacznie przebieg NIEISTNIEJACY, a niezgodnosc projektu
-    dalej konczy sie 400.
-
-    PRZESTRZEN REFOW. `symbol_id` == `element_id` == `protected_element_ref`,
-    bo kanaly nakladek tego systemu adresuja symbole refami elementow modelu
-    (ENM `ref_id`) — patrz naglowek `ui/sld/v3/canvas/resultLabels.ts`.
-    """
-    run = _require_protection_run(run_id)
-
-    # Verify project ID matches
-    if str(run.project_id) != str(project_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Przebieg nie należy do tego projektu",
-        )
-
-    protection_result = (
-        (run.raw_result or {}).get("protection_result") if run.status == "FINISHED" else None
-    )
-
-    sc_run_id_raw = _sc_run_id(run)
-    biegi_zrodlowe: tuple[CanonicalRun, ...] = ()
-    if sc_run_id_raw:
-        try:
-            sc_run_id = UUID(sc_run_id_raw)
-        except ValueError:
-            sc_run = None
-        else:
-            sc_run = get_canonical_run(sc_run_id)
-        if sc_run is not None:
-            biegi_zrodlowe = (sc_run,)
-
-    stan = StanBiezacyModelu.dla_przypadku(run.case_id, uow_factory)
-    werdykt = swiezosc_biegu_kanonicznego(run, stan, biegi_zrodlowe=biegi_zrodlowe)
-
-    # Build overlay (maps evaluations to elements)
-    elements = []
-    for evaluation in (protection_result or {}).get("evaluations", []):
-        elements.append(
-            {
-                "symbol_id": evaluation.get("protected_element_ref"),
-                "element_id": evaluation.get("protected_element_ref"),
-                "trip_state": evaluation.get("trip_state"),
-                "t_trip_s": evaluation.get("t_trip_s"),
-                "margin_percent": evaluation.get("margin_percent"),
-            }
-        )
-
-    # Sort deterministically by element_id
-    elements.sort(key=lambda x: str(x["element_id"]))
-
-    return {
-        "diagram_id": str(diagram_id),
-        "run_id": str(run_id),
-        **werdykt.to_overlay_fields(),
-        "elements": elements,
     }

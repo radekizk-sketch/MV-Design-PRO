@@ -73,6 +73,17 @@ export function KreatorPomiaru() {
     [context, fieldReadModel.data.fields],
   );
 
+  // Karta BIEG-ZABEZPIECZEN-Z-MODELU: kotwica przekładnika przy wyłączniku LINIOWYM (bez pola
+  // rozdzielnicy) — kontekst `{kotwica: 'wylacznik', breaker_ref}` z ekranu „Zabezpieczenia
+  // i automatyka"; operacja `add_ct` przyjmuje wtedy `breaker_ref` zamiast `bay_ref`.
+  const wylacznikLiniowyRef =
+    readString(context?.kotwica) === 'wylacznik' ? readString(context?.breaker_ref) : '';
+  const wylacznikLiniowy = useMemo(
+    () => snapshot?.branches?.find((b) => b.ref_id === wylacznikLiniowyRef) ?? null,
+    [snapshot, wylacznikLiniowyRef],
+  );
+  const kotwicaWylacznik = Boolean(wylacznikLiniowyRef);
+
   const [bayRef, setBayRef] = useState(initialBayRef);
   const [catalogRef, setCatalogRef] = useState('');
   const [primary, setPrimary] = useState<number | null>(null);
@@ -145,16 +156,17 @@ export function KreatorPomiaru() {
     [bayOptions, bayRef],
   );
 
-  const brakPol = bayOptions.length === 0;
+  const brakPol = !kotwicaWylacznik && bayOptions.length === 0;
   const przekladniaOk = primary !== null && primary > 0 && secondary !== null && secondary > 0;
-  const kompletne = Boolean(bayRef && catalogRef.trim() && przekladniaOk);
+  const kotwicaOk = kotwicaWylacznik ? Boolean(wylacznikLiniowy) : Boolean(bayRef);
+  const kompletne = Boolean(kotwicaOk && catalogRef.trim() && przekladniaOk);
 
   const onZapisz = useCallback(async () => {
     if (!activeCaseId) {
       setBladGlobalny(T.brakZakresu);
       return;
     }
-    if (!bayRef) {
+    if (!kotwicaOk) {
       setBladGlobalny(T.brakPolaWalid);
       return;
     }
@@ -171,7 +183,7 @@ export function KreatorPomiaru() {
       return;
     }
     const payload: Record<string, unknown> = {
-      bay_ref: bayRef,
+      ...(kotwicaWylacznik ? { breaker_ref: wylacznikLiniowyRef } : { bay_ref: bayRef }),
       catalog_ref: catalogRef.trim(),
       catalog_binding: buildCatalogBinding(isCt ? 'CT' : 'VT', catalogRef.trim()),
       accuracy_class: klasa.trim() || undefined,
@@ -205,12 +217,14 @@ export function KreatorPomiaru() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, bayRef, burden, catalogRef, closeForm, executeDomainOperation, isCt, klasa, operation, primary, przekladniaOk, secondary, selekcjaPoOperacji, T]);
+  }, [activeCaseId, bayRef, burden, catalogRef, closeForm, executeDomainOperation, isCt, klasa, kotwicaOk, kotwicaWylacznik, operation, primary, przekladniaOk, secondary, selekcjaPoOperacji, T, wylacznikLiniowyRef]);
 
   const przekladniaTekst = przekladniaOk ? `${primary} / ${secondary} ${T.jednostka}` : '—';
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszPole, stan: bayRef ? 'kompletne' : 'brak', wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : 'Brak') },
+    kotwicaWylacznik
+      ? { etykieta: T.wierszWylacznik, stan: wylacznikLiniowy ? 'kompletne' : 'brak', wartosc: wylacznikLiniowy?.name || 'Brak' }
+      : { etykieta: T.wierszPole, stan: bayRef ? 'kompletne' : 'brak', wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : 'Brak') },
     { etykieta: T.wierszKatalog, stan: catalogRef ? 'kompletne' : 'brak', wartosc: catalogRef ? 'Kompletne' : 'Do wyboru' },
     { etykieta: T.wierszPrzekladnia, stan: przekladniaOk ? 'kompletne' : 'brak', wartosc: przekladniaTekst },
     { etykieta: T.wierszKlasa, stan: 'kompletne', wartosc: klasa || '—' },
@@ -258,15 +272,22 @@ export function KreatorPomiaru() {
 
       {krok === 'pole' ? (
         <KreatorSekcja tytul={T.poleTytul} testid="mvd-kreator-pomiar-pole">
-          <KreatorInfo>{T.polePomoc}</KreatorInfo>
-          <PoleWyboru
-            etykieta={T.poleSn}
-            wartosc={bayRef}
-            onZmiana={setBayRef}
-            opcje={[{ id: '', etykieta: T.poleSnPlaceholder }, ...opcjeBay]}
-            wymagane
-            testid="mvd-kreator-pomiar-bay"
-          />
+          <KreatorInfo>{kotwicaWylacznik ? T.wylacznikPomoc : T.polePomoc}</KreatorInfo>
+          {kotwicaWylacznik ? (
+            <RzadWartosci
+              etykieta={T.wierszWylacznik}
+              wartosc={wylacznikLiniowy?.name || T.wylacznikBrak}
+            />
+          ) : (
+            <PoleWyboru
+              etykieta={T.poleSn}
+              wartosc={bayRef}
+              onZmiana={setBayRef}
+              opcje={[{ id: '', etykieta: T.poleSnPlaceholder }, ...opcjeBay]}
+              wymagane
+              testid="mvd-kreator-pomiar-bay"
+            />
+          )}
           <PoleKatalogu
             etykieta={T.katalog}
             wartosc={catalogRef || null}
@@ -341,7 +362,11 @@ export function KreatorPomiaru() {
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-pomiar-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
-            <RzadWartosci etykieta={T.wierszPole} wartosc={selectedBayInfo?.name || '—'} />
+            {kotwicaWylacznik ? (
+              <RzadWartosci etykieta={T.wierszWylacznik} wartosc={wylacznikLiniowy?.name || '—'} />
+            ) : (
+              <RzadWartosci etykieta={T.wierszPole} wartosc={selectedBayInfo?.name || '—'} />
+            )}
             <RzadWartosci etykieta={T.wierszKatalog} wartosc={catalogRef || '—'} />
             <RzadWartosci etykieta={T.wierszPrzekladnia} wartosc={przekladniaTekst} />
             <RzadWartosci etykieta={T.wierszKlasa} wartosc={klasa || '—'} />

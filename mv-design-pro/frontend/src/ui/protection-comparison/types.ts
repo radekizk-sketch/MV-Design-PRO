@@ -52,7 +52,8 @@ export type IssueCode =
   | 'DELAY_DECREASED'
   | 'INVALID_STATE'
   | 'MARGIN_DECREASED'
-  | 'MARGIN_INCREASED';
+  | 'MARGIN_INCREASED'
+  | 'UNRELIABLE_RESULT';
 
 /**
  * Polish labels for issue codes. Reużyte w ekranie ui2 (ranking zabezpieczeń,
@@ -64,9 +65,10 @@ export const ISSUE_CODE_LABELS: Record<IssueCode, string> = {
   TRIP_GAINED: 'Pojawienie się zadziałania',
   DELAY_INCREASED: 'Wydłużenie czasu',
   DELAY_DECREASED: 'Skrócenie czasu',
-  INVALID_STATE: 'Nieprawidłowy stan',
-  MARGIN_DECREASED: 'Zmniejszenie marginesu',
-  MARGIN_INCREASED: 'Zwiększenie marginesu',
+  INVALID_STATE: 'Brak oceny w jednym z biegów',
+  MARGIN_DECREASED: 'Zmniejszenie zapasu czułości',
+  MARGIN_INCREASED: 'Zwiększenie zapasu czułości',
+  UNRELIABLE_RESULT: 'Wynik niewiarygodny (poza dokładnością przekładnika)',
 };
 
 /**
@@ -115,7 +117,31 @@ export interface ProtectionComparisonRow {
   margin_percent_a: number | null;
   margin_percent_b: number | null;
   state_change: ProtectionStateChange;
+  /** Nazwa urządzenia z modelu (karta #144 — nigdy identyfikator na pierwszym planie). */
+  nazwa_urzadzenia_pl: string;
+  /** Nazwa punktu zwarcia z modelu. */
+  nazwa_punktu_pl: string;
+  /** Krotność prądu przekaźnika względem progu stopnia decydującego (A / B). */
+  krotnosc_m_a: number | null;
+  krotnosc_m_b: number | null;
+  /**
+   * Wiarygodność wyniku każdego biegu: `WIARYGODNY` / `NIEWIARYGODNY` (prąd poza granicą
+   * dokładności przekładnika — ALF) / `NIEUSTALONA`; pusty napis = brak oceny w biegu.
+   */
+  wiarygodnosc_a: WiarygodnoscOceny;
+  wiarygodnosc_b: WiarygodnoscOceny;
 }
+
+/** Stan wiarygodności oceny urządzenia w punkcie (backend `ocena_nadpradowa`). */
+export type WiarygodnoscOceny = 'WIARYGODNY' | 'NIEWIARYGODNY' | 'NIEUSTALONA' | '';
+
+/** Etykiety PL stanu wiarygodności — pusty napis (brak oceny w biegu) to kreska. */
+export const WIARYGODNOSC_PL: Record<WiarygodnoscOceny, string> = {
+  WIARYGODNY: 'wiarygodny',
+  NIEWIARYGODNY: 'niewiarygodny (poza dokładnością przekładnika)',
+  NIEUSTALONA: 'nieustalona (przekładnik bez granicy dokładności)',
+  '': '—',
+};
 
 // =============================================================================
 // Ranking Issue
@@ -230,7 +256,7 @@ export type PoleSladuPorownaniaZabezpieczen =
   | 'no_trip_to_trip_count'
   | 'invalid_change_count'
   | 'delay_threshold_s'
-  | 'margin_threshold_percent'
+  | 'margin_threshold_relative'
   | 'total_issues'
   | 'critical_issues'
   | 'major_issues'
@@ -246,8 +272,6 @@ export interface ProtectionComparisonTrace {
   comparison_id: string;
   run_a_id: string;
   run_b_id: string;
-  library_fingerprint_a: string | null;
-  library_fingerprint_b: string | null;
   steps: ProtectionComparisonTraceStep[];
   created_at: string;
 }

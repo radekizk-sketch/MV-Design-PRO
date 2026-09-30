@@ -544,8 +544,8 @@ const FRT_PRZEBIEG = fixtura<{ id: string }>('frt_scena_przebieg_zwarciowy');
 const MACIERZ_MIGAWKA = fixtura<{ generators: { ref_id: string; gen_type: string }[] }>('macierz_scena_migawka');
 const WNIOSEK_ZADANIE = fixtura<{ bus_ref: string }>('wniosek_scena_magazyn_zadanie');
 const WNIOSEK_BRAKI_ZADANIE = fixtura<{ bus_ref: string }>('wniosek_scena_macierz_zadanie');
-const KOORDYNACJA_MIEJSCA = fixtura<{ urzadzenia_sceny: { lokalizacja: string; zacisk: 'od' | 'do' }[] }>(
-  'koordynacja_scena_miejsca',
+const KOORDYNACJA_OCENA = fixtura<{ evaluations: { device_id: string; fault_target_id: string }[] }>(
+  'koordynacja_scena_ocena',
 );
 const AKADEMICKIE_BIEGI = fixtura<{ biegi: Record<string, unknown> }>('akademickie_scena_biegi');
 const KATALOG_V126 = fixtura<{ items: { kod: string; prezentowany: boolean }[] }>('katalog_analiz_v126');
@@ -659,15 +659,20 @@ const SCENY: Record<string, Prowadzenie> = {
   'pulpit-oze': zwykla,
   koordynacja: async (page, pomiar) => {
     await expect(page.getByTestId('protection-coordination-page')).toBeVisible();
-    await zbierz(page, pomiar, 'przed konfiguracją');
-    for (const { lokalizacja, zacisk } of KOORDYNACJA_MIEJSCA.urzadzenia_sceny) {
-      await page.getByTitle('Zastosuj szablon').click();
-      await page.locator('div.fixed.inset-0').getByText('Przekaźnik 50/51 (typowy)').click();
-      await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
-      await page.getByTestId('device-location-select').selectOption(lokalizacja);
-      await page.getByTestId(`device-terminal-${zacisk}`).click();
-      await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
+    await zbierz(page, pomiar, 'przed oceną');
+    // Urządzenia i nastawy są w MODELU sceny (sieć złota z wyłącznikami liniowymi) — ekran
+    // niczego nie konfiguruje. Ocena zabezpieczeń na biegu zwarciowym, potem koordynacja.
+    const ocen = page.getByTestId('mvd-ocena-zabezpieczen-uruchom');
+    await expect(ocen).toBeEnabled({ timeout: 15000 });
+    await ocen.click();
+    await expect(page.getByTestId('mvd-ocena-zabezpieczen-wynik')).toBeVisible({ timeout: 15000 });
+    for (const o of KOORDYNACJA_OCENA.evaluations) {
+      await expect(
+        page.getByTestId(`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`),
+      ).toBeVisible();
     }
+    await zbierz(page, pomiar, 'ocena zabezpieczeń');
+    await expect(page.getByTestId('coordination-run-min')).toContainText('✓', { timeout: 15000 });
     await page.getByTestId('run-analysis-button').click();
     await page.getByTestId('tab-selectivity').click();
     await expect(page.getByTestId('selectivity-table')).toBeVisible({ timeout: 15000 });

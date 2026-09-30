@@ -24,11 +24,24 @@ vi.mock('../../../../ui/field/useFieldReadModel', async (importOriginal) => {
   return { ...actual, useFieldReadModel: vi.fn() };
 });
 
+// Read model zabezpieczeń: hook `useProtectionView` i selektor `urzadzeniaZNastawami` realne,
+// podmieniona wyłącznie granica HTTP (`fetchProtectionView`) — dane z generatora fikstur.
+vi.mock('../../../../ui/protection/protection-view', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../ui/protection/protection-view')>();
+  return { ...actual, fetchProtectionView: vi.fn() };
+});
+
 import {
   useFieldReadModel,
   type FieldReadModelItem,
   type FieldReadModelView,
 } from '../../../../ui/field/useFieldReadModel';
+import {
+  fetchProtectionView,
+  type ProtectionViewResponse,
+} from '../../../../ui/protection/protection-view';
+import widokSceny from '../../../../harness-fixtures/generated/koordynacja_scena_widok_zabezpieczen.json';
 import { EkranZabezpieczenAutomatyki } from '../EkranZabezpieczenAutomatyki';
 import {
   buildSterowniki,
@@ -276,5 +289,98 @@ describe('EkranZabezpieczenAutomatyki — następny krok', () => {
 
     await user.click(screen.getByTestId('mvd-za-nastepny'));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-28');
+  });
+});
+
+/**
+ * Sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU): wyłączniki w torze z akcją zależną od stanu
+ * i edytory nastaw urządzeń modelu. Wejście: PRAWDZIWY read model `protection-view` sieci złotej
+ * z zabezpieczeniami magistrali (generator fikstur). Iloczyn cech: {wyłącznik: bez przekładnika,
+ * z przekładnikiem bez zabezpieczenia, z przekładnikiem i zabezpieczeniem} × {urządzenia
+ * z nastawami: są, brak} × {odczyt: udany, błąd}.
+ */
+describe('EkranZabezpieczenAutomatyki — sekcja nastaw', () => {
+  const WIDOK = widokSceny as unknown as ProtectionViewResponse;
+  const mockWidok = vi.mocked(fetchProtectionView);
+  const otworzFormularz = vi.fn();
+  let licznikPrzypadkow = 0;
+
+  beforeEach(() => {
+    // Osobny przypadek na test — pamięć podręczna read modelu jest kluczowana przypadkiem.
+    licznikPrzypadkow += 1;
+    useAppStateStore.getState().setActiveProject('projekt-za', 'Projekt');
+    useAppStateStore.getState().setActiveCase(`case-za-${licznikPrzypadkow}`, 'Wariant bazowy');
+    useNetworkBuildStore.setState({ openOperationForm: otworzFormularz });
+  });
+
+  const [KOMPLETNY] = WIDOK.wylaczniki_liniowe!.filter((w) => w.zabezpieczenia.length > 0);
+  // Sieć złota ma przy obu wyłącznikach liniowych SN przekładnik i zabezpieczenie; stan „bez
+  // przekładnika" to zmiana JEDNEGO pola realnego wiersza (lista backendu nie zawiera aparatów
+  // strony nN — `enm.wylaczniki_liniowe.odmowa_kotwicy_wylacznika`).
+  const BEZ_CT = { ...KOMPLETNY, przekladniki: [], zabezpieczenia: [] };
+
+  it('wyłącznik bez przekładnika → „Dodaj przekładnik" z kotwicą wyłącznika', async () => {
+    mockWidok.mockResolvedValue({ ...WIDOK, wylaczniki_liniowe: [BEZ_CT] });
+    render(<EkranZabezpieczenAutomatyki />);
+    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${BEZ_CT.ref_id}`);
+    expect(within(wiersz).queryByTestId(`mvd-za-dodaj-zabezpieczenie-${BEZ_CT.ref_id}`)).toBeNull();
+    await userEvent.click(within(wiersz).getByTestId(`mvd-za-dodaj-ct-${BEZ_CT.ref_id}`));
+    expect(otworzFormularz).toHaveBeenCalledWith('add_ct', {
+      kotwica: 'wylacznik',
+      breaker_ref: BEZ_CT.ref_id,
+    });
+  });
+
+  it('wyłącznik z przekładnikiem bez zabezpieczenia → „Dodaj zabezpieczenie"', async () => {
+    const bezZabezpieczenia = { ...KOMPLETNY, zabezpieczenia: [] };
+    mockWidok.mockResolvedValue({
+      ...WIDOK,
+      wylaczniki_liniowe: [bezZabezpieczenia],
+    });
+    render(<EkranZabezpieczenAutomatyki />);
+    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`);
+    expect(within(wiersz).queryByTestId(`mvd-za-dodaj-ct-${KOMPLETNY.ref_id}`)).toBeNull();
+    await userEvent.click(within(wiersz).getByTestId(`mvd-za-dodaj-zabezpieczenie-${KOMPLETNY.ref_id}`));
+    expect(otworzFormularz).toHaveBeenCalledWith('add_relay', {
+      kotwica: 'wylacznik',
+      breaker_ref: KOMPLETNY.ref_id,
+    });
+  });
+
+  it('wyłącznik z przekładnikiem i zabezpieczeniem — bez akcji; edytor każdego urządzenia modelu', async () => {
+    mockWidok.mockResolvedValue(WIDOK);
+    render(<EkranZabezpieczenAutomatyki />);
+    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`);
+    expect(within(wiersz).queryByRole('button')).toBeNull();
+    for (const wpis of WIDOK.assignments) {
+      const edytor = await screen.findByTestId(`mvd-za-edytor-${wpis.device_id}`);
+      expect(edytor).toHaveTextContent(wpis.nastawy!.nazwa_pl);
+    }
+    expect(screen.queryByTestId('mvd-za-nastawy-brak')).toBeNull();
+  });
+
+  it('sieć bez pól rozdzielni — stan zerowy pól ORAZ sekcja nastaw wyłączników w torze', async () => {
+    ustawReadModel([]);
+    mockWidok.mockResolvedValue(WIDOK);
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(screen.getByTestId('mvd-za-brak-pol')).toBeInTheDocument();
+    expect(await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`)).toBeInTheDocument();
+    for (const wpis of WIDOK.assignments) {
+      expect(await screen.findByTestId(`mvd-za-edytor-${wpis.device_id}`)).toBeInTheDocument();
+    }
+  });
+
+  it('model bez zabezpieczeń nadprądowych — nazwany stan, nie pusta sekcja', async () => {
+    mockWidok.mockResolvedValue({ ...WIDOK, assignments: [], wylaczniki_liniowe: [] });
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(await screen.findByTestId('mvd-za-nastawy-brak')).toHaveTextContent(T.nastawyBrak);
+    expect(screen.queryByTestId('mvd-za-wylaczniki')).toBeNull();
+  });
+
+  it('błąd odczytu read modelu — komunikat z przyczyną, bez edytorów', async () => {
+    mockWidok.mockRejectedValue(new Error('HTTP 500'));
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(await screen.findByTestId('mvd-za-nastawy-blad')).toHaveTextContent('HTTP 500');
+    expect(screen.queryByTestId(/^mvd-za-edytor-/)).toBeNull();
   });
 });

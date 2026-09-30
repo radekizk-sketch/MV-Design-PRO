@@ -57,6 +57,7 @@ from enm.assembler import (
 )
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
+from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
@@ -866,8 +867,18 @@ def list_runs_for_project(
         return repository.list_by_project(project_id, analysis_type=analysis_type)
 
 
+#: Rodzaje zwarcia, których rozpływ (składowa zgodna, Z2 = Z1) jest prądem fazy przekaźnika
+#: nadprądowego fazowego — ocena ``protection_sn`` przyjmuje wyłącznie takie biegi źródłowe.
+RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ: frozenset[str] = frozenset(
+    {ShortCircuitType.THREE_PHASE.value, ShortCircuitType.TWO_PHASE.value}
+)
+
+
 def _validate_protection_sc_reference(
-    *, normalized_options: dict[str, Any], project_id_koperty: str | None
+    *,
+    normalized_options: dict[str, Any],
+    project_id_koperty: str | None,
+    snapshot: dict[str, Any],
 ) -> None:
     """Bieg zabezpieczen istnieje TYLKO wobec zakonczonego biegu zwarciowego z
     TEGO SAMEGO projektu — walidacja PRZED utworzeniem biegu (B2, karta
@@ -900,6 +911,14 @@ def _validate_protection_sc_reference(
         raise OdmowaDanychError(
             f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakończony (status: {sc_run.status})"
         )
+    rodzaj_zwarcia = (sc_run.raw_result or {}).get("short_circuit_type")
+    if rodzaj_zwarcia not in RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ:
+        raise OdmowaDanychError(
+            f"Bieg zwarciowy '{sc_run_id_raw}' liczy zwarcie {rodzaj_zwarcia} — ocena "
+            "zabezpieczeń nadprądowych fazowych wymaga zwarcia międzyfazowego (3F albo 2F): "
+            "rozpływ zwarcia doziemnego niesie rozkład składowej zgodnej, a nie prąd fazy "
+            "widziany przez przekaźnik"
+        )
     if (
         project_id_koperty is not None
         and sc_run.project_id is not None
@@ -908,6 +927,14 @@ def _validate_protection_sc_reference(
         raise OdmowaDanychError(
             f"Bieg zwarciowy '{sc_run_id_raw}' należy do innego projektu — analiza "
             "zabezpieczeń nie może interpretować wyniku spoza własnego projektu"
+        )
+    # D-21: nastawy z BIEŻĄCEGO modelu, topologia i rozpływ z biegu źródłowego — wolno je
+    # złożyć wyłącznie, gdy opisują tę samą sieć (edycja nastaw i przekładników jej nie zmienia).
+    if not siec_biegu_zgodna_z_modelem(sc_run.snapshot, snapshot):
+        raise OdmowaDanychError(
+            f"Bieg zwarciowy '{sc_run_id_raw}' policzono dla innej sieci niż bieżący model — "
+            "od tego biegu zmieniło się coś poza zabezpieczeniami (element, parametr albo stan "
+            "łącznika). Przelicz zwarcie na bieżącym modelu, a potem uruchom ocenę zabezpieczeń"
         )
 
 
@@ -1001,6 +1028,7 @@ def create_run(
         _validate_protection_sc_reference(
             normalized_options=normalized_options,
             project_id_koperty=project_id_koperty,
+            snapshot=snapshot,
         )
     input_hash = _compute_input_hash(
         case_id=case_id,
@@ -1065,7 +1093,8 @@ def _wykonaj_analize_biegu(
     dane biegu: dyspozytor podaje ja kazdemu wykonawcy, ktory siega po stan
     zapisany w bazie — rozplyw i zwarcie (konfiguracja audytu 2 stacji wskazana
     opcjami `audit2_project_id`/`audit2_station_id`, CV-4.2b) oraz
-    zabezpieczenia (`StudyCase.protection_config`, CV-3.3-B). Wykonawca bez
+    zabezpieczenia (rozpływ na żądanie biegu zwarciowego źródłowego z opcjami audytu 2 —
+    nastawy żyją w migawce modelu, karta BIEG-ZABEZPIECZEN-Z-MODELU). Wykonawca bez
     odczytu bazy (stan fazowy, stabilnosc, zgodnosc zrodla) jej nie potrzebuje
     i jej nie dostaje. ZADEN wykonawca nie buduje wlasnego silnika/sesji z
     `DATABASE_URL` (kasacja `_uow_factory_biezacy`): bieg, ktory potrzebuje bazy,
@@ -1836,40 +1865,63 @@ def _execute_v126(run: CanonicalRun) -> None:
     run.raw_result = run_record
 
 
-def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
-    """Bieg zabezpieczen (P15a/P15b) — INTERPRETACJA wylacznie, zero fizyki:
-    ocena zadzialania jednego urzadzenia wobec pradu zwarciowego biegu
-    zrodlowego (`options["sc_run_id"]`). Silnik oceny (`ProtectionEvaluationEngine`,
-    IEC 60255) jest nietkniety — przeniesiona zostala WYLACZNIE orkiestracja
-    (dawniej `application.protection_analysis.service.ProtectionAnalysisService`,
-    usunieta karta CV-3.3-B razem z zapisem do R3 `study_results`).
+def ocen_zabezpieczenia_biegu(
+    model: EnergyNetworkModel,
+    sc_run: CanonicalRun,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
+) -> Any:
+    """JEDNA ścieżka oceny zabezpieczeń nadprądowych na zapisanym biegu zwarciowym.
 
-    `create_run` juz zwalidowal istnienie/rodzaj/status/projekt biegu
-    zrodlowego (`_validate_protection_sc_reference`) — miedzy utworzeniem a
-    wykonaniem bieg zrodlowy nie moze zniknac (biegi R1 sa append-only), wiec
-    tu odczyt jest bezwarunkowy. Konfiguracja zabezpieczen zyje na
-    `StudyCase.protection_config` (SQL), nie w ENM — to JEDYNE miejsce w tym
-    module, gdzie analiza inna niz katalog/audit2 siega po `UnitOfWork`.
-
-    `uow_factory`: fabryka WOLAJACEGO (routera API) — patrz
-    `_wykonaj_analize_biegu` docstring. `None` = jawny `ValueError` (CV-4.2b):
-    dawny zapasowy `_uow_factory_biezacy()` budowal WLASNA fabryke z
-    `DATABASE_URL` — inny silnik/sesje niz reszta procesu, wiec przypadek
-    istniejacy naprawde potrafil wygladac jak nieistniejacy (bug znaleziony
-    przy CV-3.3-B: `test_bieg_zakonczony_model_zmieniony_daje_outdated` i
-    siostrzane w `tests/api/test_protection_overlay_swiezosc.py`); po CV-4.2b
-    kazdy wolajacy podaje fabryke swojego kontekstu, a zapas nie istnieje.
+    Urządzenia i nastawy z ``model`` (D-21), topologia strefy z grafu migawki biegu, prąd
+    przekaźnika z rozpływu prądu zwarciowego biegu (``pobierz_rozplyw_biegu``). Wołają ją bieg
+    ``protection_sn`` i koordynacja E-28 (bieg maksymalny i minimalny) — ten sam wynik dla
+    tego samego wejścia. Wołający sprawdził zgodność sieci modelu z siecią biegu
+    (``siec_biegu_zgodna_z_modelem``).
     """
-    from application.protection_analysis.catalog_lookup import (
-        get_protection_curve,
-        get_protection_device_type,
-        get_protection_template,
+    from application.analyses.protection.ocena_nadpradowa import ocen_zabezpieczenia
+    from enm.mapping import map_enm_to_network_graph
+
+    # Wołający przepuszcza wyłącznie ZAKOŃCZONY bieg zwarciowy: migawka, wynik i jego wiersze
+    # są częścią kontraktu biegu — brak którejkolwiek to błąd, nie „bieg bez punktów".
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(sc_run.snapshot))
+    sc_raw = sc_run.raw_result
+    if sc_raw is None:
+        raise ValueError(f"Bieg zwarciowy '{sc_run.id}' nie ma zapisanego wyniku")
+    return ocen_zabezpieczenia(
+        enm=model,
+        graph=graph,
+        wiersze_zwarcia=list(sc_raw["results"]),
+        rozplyw_punktu=lambda punkt: pobierz_rozplyw_biegu(sc_run, punkt, uow_factory=uow_factory),
+        nazwy_wezlow=nazwy_wezlow_grafu(sc_raw),
+        odniesienie_biegu=(
+            f"bieg zwarciowy {sc_raw['short_circuit_type']} "
+            f"(migawka {sc_run.snapshot_hash[:12]})"
+        ),
     )
-    from application.protection_analysis.engine import (
-        ProtectionEvaluationEngine,
-        ProtectionEvaluationInput,
-        build_device_from_template,
-        build_fault_from_sc_result,
+
+
+def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
+    """Bieg oceny zabezpieczeń nadprądowych — INTERPRETACJA, zero fizyki poza rdzeniami.
+
+    Urządzenia i nastawy pochodzą z MIGAWKI MODELU biegu (``protection_assignments``,
+    decyzja D-21) — przypadek nie przechowuje nastaw, a szablon przypadku przestał być
+    źródłem urządzeń (karta BIEG-ZABEZPIECZEN-Z-MODELU). Topologia strefy i prąd
+    przekaźnika pochodzą z biegu zwarciowego źródłowego (``options["sc_run_id"]``): graf jego
+    migawki i rozpływ prądu zwarciowego na gałęzie punktu (``pobierz_rozplyw_biegu``). JEDNA
+    ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``.
+
+    `create_run` zwalidował istnienie, rodzaj, status, rodzaj zwarcia i projekt biegu
+    źródłowego (`_validate_protection_sc_reference`). ``uow_factory`` wołającego trafia
+    wyłącznie do rozpływu na żądanie biegu z opcjami audytu 2 (jak przy samym biegu SC).
+    """
+    from domain.protection_analysis import (
+        ProtectionEvaluation,
+        ProtectionResult,
+        ProtectionTrace,
+        ProtectionTraceStep,
+        TripState,
+        compute_result_summary,
     )
 
     sc_run_id = UUID(str(run.options["sc_run_id"]))
@@ -1880,92 +1932,112 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             "przestał być zakończony"
         )
 
-    if uow_factory is None:
-        raise ValueError(
-            "Bieg zabezpieczeń czyta konfiguracje zabezpieczeń przypadku z bazy, a "
-            "wykonawca nie dostał fabryki UnitOfWork wołającego — bieg nie buduje "
-            "własnego połączenia z bazą (CV-4.2b)"
-        )
+    model = EnergyNetworkModel.model_validate(run.snapshot)
+    wynik = ocen_zabezpieczenia_biegu(model, sc_run, uow_factory=uow_factory)
+    pozycje_katalogu = {n.urzadzenie_ref: n.pozycja_katalogu for n in wynik.nastawy}
 
-    case_uuid = UUID(run.case_id)
-    with uow_factory() as uow:
-        case = uow.cases.get_study_case(case_uuid)
-        if case is None:
-            raise ValueError(f"Przypadek '{run.case_id}' nie istnieje")
-        protection_config = case.protection_config
-        if protection_config.template_ref is None:
-            raise ValueError("Konfiguracja zabezpieczeń przypadku nie ma template_ref")
-        template = get_protection_template(uow, protection_config.template_ref)
-        if template is None:
-            raise ValueError(
-                f"Szablon nastaw '{protection_config.template_ref}' nie istnieje w katalogu"
-            )
-        curve = get_protection_curve(uow, template.curve_ref) if template.curve_ref else None
-        device_type = (
-            get_protection_device_type(uow, template.device_type_ref)
-            if template.device_type_ref
-            else None
+    evaluations = tuple(
+        ProtectionEvaluation(
+            device_id=o.urzadzenie_ref,
+            nazwa_urzadzenia_pl=o.nazwa_urzadzenia_pl,
+            device_type_ref=pozycje_katalogu[o.urzadzenie_ref],
+            protected_element_ref=o.breaker_ref,
+            fault_target_id=o.punkt_ref,
+            nazwa_punktu_pl=o.nazwa_punktu_pl,
+            i_fault_a=o.prad_przekaznika_a,
+            i_pickup_a=o.prog_decydujacy_a,
+            t_trip_s=o.t_zadzialania_s,
+            trip_state=TripState.TRIPS if o.zadziala else TripState.NO_TRIP,
+            stopien_decydujacy=o.stopien_decydujacy,
+            curve_kind=o.krzywa_decydujaca,
+            krotnosc_m=o.krotnosc_m,
+            margin_percent=o.margines_procent,
+            wiarygodnosc=o.wiarygodnosc,
+            wiarygodnosc_powod_pl=o.wiarygodnosc_powod_pl,
+            notes_pl=o.ocena.wyjasnienie.zdanie_pl,
+            stopnie=o.stopnie,
+            bilans_pradu=o.bilans_pradu,
+            ocena=o.ocena.model_dump(mode="json"),
         )
-        # Tożsamość modelu, na którym powstał bieg — rewizja z koperty biegu (W1: przypadek
-        # nie niesie już migawki legacy).
-        snapshot_id = run.snapshot_hash
-        template_ref = protection_config.template_ref
-        template_fingerprint = protection_config.template_fingerprint
-        library_manifest_ref = protection_config.library_manifest_ref
-        overrides = protection_config.overrides
-
-    # Prad zwarciowy Ik'' interpretowany przez ocene: pierwszy (deterministycznie
-    # posortowany po fault_node_id) wpis biegu zrodlowego z policzonym Ik'' —
-    # ta sama regula wyboru co (usuniety) `ProtectionAnalysisService._get_sc_result`.
-    sc_results = list((sc_run.raw_result or {}).get("results") or [])
-    fault_row = next(
-        (
-            item
-            for item in sorted(sc_results, key=lambda row: str(row.get("fault_node_id") or ""))
-            if item.get("ikss_a") is not None
-        ),
-        None,
+        for o in wynik.oceny
     )
-    if fault_row is None:
-        raise ValueError(
-            f"Bieg zwarciowy '{sc_run_id}' nie ma żadnego wyniku z prądem zwarciowym "
-            "Ik'' — nie ma na czym oprzeć oceny zabezpieczenia"
-        )
-    fault_node_id = str(fault_row.get("fault_node_id"))
-    ikss_a = float(fault_row.get("ikss_a"))
-    short_circuit_type = str(
-        fault_row.get("short_circuit_type")
-        or (sc_run.raw_result or {}).get("short_circuit_type")
-        or "3F"
-    )
-
-    device = build_device_from_template(
-        device_id=f"device_{fault_node_id}",
-        protected_element_ref=fault_node_id,
-        template=template,
-        curve=curve,
-        device_type=device_type,
-        overrides=overrides,
-    )
-    fault = build_fault_from_sc_result(
-        fault_node_id=fault_node_id,
-        ikss_a=ikss_a,
-        short_circuit_type=short_circuit_type,
-    )
-    evaluation_input = ProtectionEvaluationInput(
+    result = ProtectionResult(
         run_id=str(run.id),
         sc_run_id=str(sc_run.id),
         protection_case_id=run.case_id,
-        template_ref=template_ref,
-        template_fingerprint=template_fingerprint,
-        library_manifest_ref=library_manifest_ref,
-        devices=(device,),
-        faults=(fault,),
-        snapshot_id=snapshot_id,
-        overrides=overrides,
-        nazwy_lokalizacji=nazwy_wezlow_grafu(sc_run.raw_result),
+        evaluations=evaluations,
+        odmowy=tuple(o.to_dict() for o in wynik.odmowy),
+        pominiete=tuple(p.to_dict() for p in wynik.pominiete),
+        nastawy=tuple(n.to_dict() for n in wynik.nastawy),
+        strefy=wynik.strefy,
+        summary=compute_result_summary(
+            evaluations,
+            refused_devices_count=len(wynik.odmowy),
+            skipped_devices_count=len(wynik.pominiete),
+        ),
+        created_at=run.created_at,
     )
-    result, trace = ProtectionEvaluationEngine().evaluate(evaluation_input)
+    kroki: list[ProtectionTraceStep] = []
+    for nastawy in wynik.nastawy:
+        kroki.append(
+            ProtectionTraceStep(
+                step="nastawy_urzadzenia",
+                description_pl=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} z modelu",
+                inputs={"urzadzenie_ref": nastawy.urzadzenie_ref},
+                outputs=nastawy.to_dict(),
+            )
+        )
+        if nastawy.urzadzenie_ref in wynik.strefy:
+            kroki.append(
+                ProtectionTraceStep(
+                    step="strefa_urzadzenia",
+                    description_pl=f"Strefa zabezpieczenia {nastawy.nazwa_pl} z topologii modelu",
+                    inputs={"breaker_ref": nastawy.breaker_ref},
+                    outputs=wynik.strefy[nastawy.urzadzenie_ref],
+                )
+            )
+    for ocena in wynik.oceny:
+        kroki.append(
+            ProtectionTraceStep(
+                step="ocena_punktu",
+                description_pl=(
+                    f"Zabezpieczenie {ocena.nazwa_urzadzenia_pl} — zwarcie w punkcie "
+                    f"{ocena.nazwa_punktu_pl}"
+                ),
+                inputs={
+                    "urzadzenie_ref": ocena.urzadzenie_ref,
+                    "punkt_ref": ocena.punkt_ref,
+                    "bilans_pradu": ocena.bilans_pradu,
+                },
+                outputs={
+                    "prad_przekaznika_a": ocena.prad_przekaznika_a,
+                    "stopnie": list(ocena.stopnie),
+                    "stopien_decydujacy": ocena.stopien_decydujacy,
+                    "t_zadzialania_s": ocena.t_zadzialania_s,
+                    "wiarygodnosc": ocena.wiarygodnosc,
+                    "wiarygodnosc_powod_pl": ocena.wiarygodnosc_powod_pl,
+                },
+            )
+        )
+    for odmowa in wynik.odmowy:
+        kroki.append(
+            ProtectionTraceStep(
+                step="odmowa_urzadzenia",
+                description_pl=f"Ocena zabezpieczenia {odmowa.nazwa_pl} wstrzymana",
+                inputs={"urzadzenie_ref": odmowa.urzadzenie_ref},
+                outputs={
+                    "braki": [b.to_dict() for b in odmowa.braki],
+                    "kandydaci_naprawy": list(odmowa.kandydaci_naprawy),
+                },
+            )
+        )
+    trace = ProtectionTrace(
+        run_id=str(run.id),
+        sc_run_id=str(sc_run.id),
+        snapshot_id=run.snapshot_hash,
+        steps=tuple(kroki),
+        created_at=run.created_at,
+    )
 
     run.raw_result = {
         "analysis_type": "protection",
@@ -4465,23 +4537,39 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         }
     elif run.analysis_type == "protection_sn":
         protection_raw = (run.raw_result or {}).get("protection_result") or {}
+        # Element wyniku = URZĄDZENIE MODELU (przypisanie zabezpieczenia), nie szyna zwarcia:
+        # jedna ocena na parę (urządzenie, punkt zwarcia w strefie). Urządzenie wstrzymane
+        # brakami danych jest osobnym elementem z rekordem odmowy — brak oceny ≠ spełnia.
         for evaluation in protection_raw.get("evaluations", []):
             element_results.append(
                 {
-                    "element_ref": evaluation.get("protected_element_ref"),
+                    "element_ref": evaluation.get("device_id"),
                     "element_type": "ProtectionDevice",
                     "solver_ref": evaluation.get("fault_target_id"),
                     "values": evaluation,
                 }
             )
-        element_results.sort(key=lambda row: str(row.get("element_ref") or ""))
+        for odmowa in protection_raw.get("odmowy", []):
+            element_results.append(
+                {
+                    "element_ref": odmowa.get("urzadzenie_ref"),
+                    "element_type": "ProtectionDeviceRefusal",
+                    "solver_ref": None,
+                    "values": odmowa,
+                }
+            )
+        element_results.sort(
+            key=lambda row: (
+                str(row.get("element_ref") or ""),
+                str(row.get("element_type") or ""),
+                str(row.get("solver_ref") or ""),
+            )
+        )
         summary = protection_raw.get("summary") or {}
         global_results = {
             "count": len(element_results),
             "analysis_type": "protection",
             "sc_run_id": (run.raw_result or {}).get("sc_run_id"),
-            "template_ref": protection_raw.get("template_ref"),
-            "template_fingerprint": protection_raw.get("template_fingerprint"),
             **summary,
         }
 

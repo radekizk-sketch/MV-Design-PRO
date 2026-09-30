@@ -177,6 +177,18 @@ class ComparisonService:
             if row.element_type == element_type
         }
 
+    @staticmethod
+    def _values_by_ref_i_punkt(
+        result_set: Any, element_type: str
+    ) -> dict[tuple[str, str], dict[str, Any]]:
+        """Indeks `(element_ref, punkt zwarcia) -> values` — urządzenie ocenione w wielu
+        punktach swojej strefy (punkt niesie `values["fault_target_id"]`)."""
+        return {
+            (str(row.element_ref), str(row.values.get("fault_target_id"))): row.values
+            for row in result_set.element_results
+            if row.element_type == element_type
+        }
+
     # =========================================================================
     # SHORT CIRCUIT
     # =========================================================================
@@ -318,32 +330,43 @@ class ComparisonService:
 
         INVARIANT: No normative interpretation, just arithmetic deltas.
         """
-        evals_a = self._values_by_ref(result_set_a, "ProtectionDevice")
-        evals_b = self._values_by_ref(result_set_b, "ProtectionDevice")
+        # Klucz = (urządzenie modelu, punkt zwarcia strefy): jedno urządzenie ma ocenę w
+        # każdym punkcie swojej strefy, więc sam `element_ref` nie jest kluczem.
+        evals_a = self._values_by_ref_i_punkt(result_set_a, "ProtectionDevice")
+        evals_b = self._values_by_ref_i_punkt(result_set_b, "ProtectionDevice")
 
         eval_comparisons = []
-        for element_id in dopasuj_klucze(evals_a.keys(), evals_b.keys()):
-            ev_a = evals_a.get(element_id, {})
-            ev_b = evals_b.get(element_id, {})
+        for klucz in sorted(set(evals_a) | set(evals_b)):
+            ev_a = evals_a.get(klucz, {})
+            ev_b = evals_b.get(klucz, {})
 
-            trip_state_a = str(ev_a.get("trip_state", "UNKNOWN"))
-            trip_state_b = str(ev_b.get("trip_state", "UNKNOWN"))
+            trip_state_a = str(ev_a.get("trip_state", "BRAK OCENY"))
+            trip_state_b = str(ev_b.get("trip_state", "BRAK OCENY"))
             state_change = (
                 "BRAK ZMIANY" if trip_state_a == trip_state_b else f"{trip_state_a}→{trip_state_b}"
+            )
+            # Wynik niewiarygodny (prąd poza granicą dokładności przekładnika) nie ma
+            # porównywalnego czasu ani marginesu — różnica byłaby liczbą bez podstawy.
+            wiarygodne = "NIEWIARYGODNY" not in (
+                ev_a.get("wiarygodnosc"),
+                ev_b.get("wiarygodnosc"),
             )
 
             # Trip time delta (only if both TRIPS AND obie strony mają t_trip_s
             # — FAB-E: TRIPS bez t_trip_s to uszkodzona ewaluacja, nie fikcyjny
             # czas zadzialania 0 s).
             t_trip_delta = None
-            if trip_state_a == "TRIPS" and trip_state_b == "TRIPS":
+            if trip_state_a == "TRIPS" and trip_state_b == "TRIPS" and wiarygodne:
                 t_trip_delta = numeric_delta_lub_none(ev_a, ev_b, "t_trip_s")
 
-            margin_delta = numeric_delta_lub_none(ev_a, ev_b, "margin_percent")
+            margin_delta = (
+                numeric_delta_lub_none(ev_a, ev_b, "margin_percent") if wiarygodne else None
+            )
 
             eval_comparisons.append(
                 ProtectionEvaluationComparison(
-                    element_id=element_id,
+                    element_id=klucz[0],
+                    fault_target_id=klucz[1],
                     trip_state_a=trip_state_a,
                     trip_state_b=trip_state_b,
                     state_change=state_change,
@@ -353,17 +376,17 @@ class ComparisonService:
             )
 
         # Summary counts: `ResultSetV1.global_results` biegu zabezpieczeń niesie
-        # `ProtectionResultSummary` (trips_count/no_trip_count/invalid_count) —
+        # `ProtectionResultSummary` (trips_count/no_trip_count/unreliable_count) —
         # brak którejś strony (starszy zapis) -> delta None, nigdy fabrykowane 0.
         summary_a = result_set_a.global_results
         summary_b = result_set_b.global_results
         trip_count_delta = numeric_delta_lub_none(summary_a, summary_b, "trips_count")
         no_trip_count_delta = numeric_delta_lub_none(summary_a, summary_b, "no_trip_count")
-        invalid_count_delta = numeric_delta_lub_none(summary_a, summary_b, "invalid_count")
+        unreliable_count_delta = numeric_delta_lub_none(summary_a, summary_b, "unreliable_count")
 
         return ProtectionComparison(
             evaluations=tuple(eval_comparisons),
             trip_count_delta=trip_count_delta,
             no_trip_count_delta=no_trip_count_delta,
-            invalid_count_delta=invalid_count_delta,
+            unreliable_count_delta=unreliable_count_delta,
         )
