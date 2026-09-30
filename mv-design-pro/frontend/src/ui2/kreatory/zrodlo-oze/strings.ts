@@ -499,6 +499,16 @@ export const PODSUMOWANIE_STRINGS = {
   bomKolParametry: 'Parametry',
   bomKolIlosc: 'Ilość',
   bomBrak: 'Lista materiałowa dotyczy toru DER przyłączonego po stronie SN.',
+  bomTypSpozaKatalogu: 'typ spoza katalogu',
+  bomKosztTytul: 'Koszt inwestycyjny (CAPEX)',
+  bomKosztCennik: (wersja: string, data: string) => `cennik ${wersja} z dnia ${data}`,
+  bomKosztStanZrodla: 'stan źródła cen',
+  bomKosztNieustalone: 'Ceny o nieustalonym źródle:',
+  bomKosztStan: {
+    ZWERYFIKOWANE: 'zweryfikowane',
+    WSKAZANE: 'wskazane w dokumencie, niezweryfikowane',
+    NIEUSTALONE: 'nieustalone',
+  },
 
   // Nawigacja
   otworzDokumentacje: 'Otwórz Dokumentację',

@@ -18,14 +18,37 @@ spoza rdzeni B-01 i warstwa aplikacji mogły go importować bez cyklu.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from types import MappingProxyType
 
-__all__ = ["OdmowaDanychError", "odmowa_rdzenia_b01"]
+__all__ = ["OdmowaDanychError", "OdmowaNazwana", "odmowa_rdzenia_b01"]
 
 
 class OdmowaDanychError(ValueError):
     """Dane projektanta nie pozwalają wykonać operacji — API odpowiada 422 z komunikatem PL."""
+
+
+class OdmowaNazwana(OdmowaDanychError):
+    """Odmowa z KODEM MASZYNOWYM w polu, nie w treści zdania (karty W10-2a i OD-17a).
+
+    Komunikat jest zdaniem dla projektanta (po polsku, z nazwami elementów z modelu, bez
+    identyfikatorów maszynowych); ``kod`` służy agregacji, filtrom i API; ``dane`` niosą
+    strukturę odmowy (np. listę ``type_id`` bez ceny). Handler 422 przenosi oba pola do ciała
+    odpowiedzi (``kod``, ``dane``) obok ``detail``. ``dane`` są niemutowalne i zawierają
+    wyłącznie wartości serializowalne do JSON (napis, liczba, krotka napisów).
+    """
+
+    def __init__(
+        self, komunikat: str, *, kod: str, dane: Mapping[str, object] | None = None
+    ) -> None:
+        if not kod.strip():
+            raise ValueError("OdmowaNazwana wymaga niepustego kodu maszynowego.")
+        if kod in komunikat:
+            raise ValueError(f"Kod maszynowy {kod!r} nie należy do treści zdania dla projektanta.")
+        super().__init__(komunikat)
+        self.kod = kod
+        self.dane: Mapping[str, object] = MappingProxyType(dict(dane or {}))
 
 
 @contextmanager

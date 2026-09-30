@@ -464,3 +464,72 @@ def test_zapis_warunkow_ulozenia_uszkodzony_to_d2_nieoceniona_nie_warunki_katalo
     nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
     assert len(nieocenione) == 1
     assert "Nieznany zestaw warunków ułożenia" in nieocenione[0]["message_pl"]
+
+
+# ---------------------------------------------------------------------------
+# Karta W10-2a (OD-16): sekcja `koszt` listy materiałowej z cennika wersjonowanego
+# ---------------------------------------------------------------------------
+
+
+def test_bom_koszt_z_szablonu_cennika_to_odmowa_z_lista_typow(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_case(app_client, case_id)
+    body = app_client.get(f"/api/der-sn/{case_id}/bom").json()
+    koszt = body["koszt"]
+    typy = sorted({p["catalog_ref"] for p in body["pozycje"] if p["catalog_ref"]})
+    assert koszt["status"] == "BRAK_CENNIKA"
+    assert koszt["kod"] == "BRAK_CENNIKA"
+    assert koszt["type_ids"] == typy
+    assert koszt["wersja_cennika"] == "2026-09"
+    assert koszt["pozycje_bez_typu"] == ["Szyna nN producenta"]
+    assert "BRAK_CENNIKA" not in koszt["komunikat_pl"]
+    assert not any(type_id in koszt["komunikat_pl"] for type_id in typy)
+    # Każdy parametr pozycji ma opis dla projektanta (etykieta + jednostka) — klucz maszynowy
+    # nie trafia do interfejsu; `typ_galezi` to ten sam fakt co `rodzaj_aparatu` (jeden opis).
+    for pozycja in body["pozycje"]:
+        opisane = len(pozycja["parametry_opis"])
+        assert opisane == len(set(pozycja["parametry"]) - {"typ_galezi"}), pozycja
+        for opis in pozycja["parametry_opis"]:
+            assert opis["etykieta"] and "_" not in opis["etykieta"], opis
+            assert "_" not in str(opis["wartosc"]), opis
+    # Pozycja z typem niesie nazwę typu dla projektanta; bez typu — brak nazwany (None).
+    for pozycja in body["pozycje"]:
+        assert bool(pozycja["typ_nazwa"]) == bool(pozycja["catalog_ref"]), pozycja
+        if pozycja["typ_nazwa"]:
+            assert pozycja["typ_nazwa"] != pozycja["catalog_ref"]
+
+
+def test_bom_koszt_z_cenami_typow_nazywa_pozycje_bez_typu(app_client, monkeypatch) -> None:
+    from api import der_sn_documents
+    from catalog.cenniki import cennik_z_danych
+
+    case_id = _nowy_przypadek(app_client)
+    _seed_case(app_client, case_id)
+    pozycje = app_client.get(f"/api/der-sn/{case_id}/bom").json()["pozycje"]
+    cennik = cennik_z_danych(
+        {
+            "wersja": "2026-09",
+            "waluta": "PLN",
+            "data_cen": "2026-09-15",
+            "energia_strat": {
+                "cena_pln_mwh": None,
+                "zrodlo": {"status": "NIEUSTALONE", "uwagi_pl": "brak"},
+            },
+            "pozycje": [
+                {
+                    "type_id": p["catalog_ref"],
+                    "jednostka": p["jednostka"],
+                    "capex_pln": 1000.0,
+                    "opex_pln_rok": None,
+                    "zrodlo": {"status": "WSKAZANE", "dokument": "oferta", "data": "2026-09-01"},
+                }
+                for p in pozycje
+                if p["catalog_ref"]
+            ],
+        }
+    )
+    monkeypatch.setattr(der_sn_documents, "aktualny_cennik", lambda: cennik)
+    koszt = app_client.get(f"/api/der-sn/{case_id}/bom").json()["koszt"]
+    assert koszt["status"] == "BRAK_CENNIKA"
+    assert koszt["type_ids"] == []
+    assert koszt["pozycje_bez_typu"] == ["Szyna nN producenta"]

@@ -26,6 +26,8 @@ from api.klucz_twin_dep import KluczTwin
 from application.analyses.der_sn_track import extract_der_sn_track, sum_apparent_power_mva
 from application.analyses.lista_materialowa import build_bom_view
 from application.analyses.raport_zgodnosci import build_compliance_report_from_track
+from application.koszty.lista_materialowa import koszt_listy_materialowej
+from catalog.cenniki import aktualny_cennik
 from domain.execution import RunStatus
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
@@ -287,6 +289,9 @@ def get_der_sn_bom(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Brak zmaterializowanego toru DER-SN w modelu przypadku.",
         )
+    # Karta W10-2a (OD-16): koszt z cennika wersjonowanego — wycena albo odmowa nazwana
+    # `BRAK_CENNIKA` z listą typów (nigdy zero); treść sekcji wchodzi też do magazynu dokumentu.
+    view["koszt"] = koszt_listy_materialowej(view["pozycje"], aktualny_cennik())
     if zapisz_do_magazynu:
         _store(
             project_id=project_id,

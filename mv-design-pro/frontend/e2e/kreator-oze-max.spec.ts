@@ -546,6 +546,17 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
     'Zabezpieczenia',
   );
 
+  // Karta W10-2a (OD-16): lista materiałowa toru z REALNEGO backendu — nazwy typów z
+  // katalogu zamiast identyfikatorów i koszt z cennika wersjonowanego. Szablon cennika w
+  // repozytorium nie ma cen, więc koszt to zdanie odmowy (nigdy „0,00 PLN").
+  await expect(page.getByTestId('mvd-kreator-oze-bom-tabela')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('mvd-kreator-oze-bom-tabela')).not.toContainText('tr-sn-nn-');
+  const kosztBom = page.getByTestId('mvd-kreator-oze-bom-koszt');
+  await expect(kosztBom).toHaveAttribute('data-status', 'BRAK_CENNIKA');
+  await expect(kosztBom).toContainText('Nie można wyznaczyć listy materiałowej (cennik 2026-09)');
+  await expect(kosztBom).not.toContainText('BRAK_CENNIKA');
+  await expect(kosztBom).not.toContainText('PLN');
+
   // ------------------------------------------------------------------
   // Asercja PRZEZ API: wytwórca w ENM MA wiązania aparaturowe, profile,
   // tryb pracy i limity mocy biernej (bramka 1 karty K9-A).

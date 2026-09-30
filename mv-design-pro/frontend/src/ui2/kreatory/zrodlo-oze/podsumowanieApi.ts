@@ -48,16 +48,58 @@ export interface RaportZgodnosci {
 // ---------------------------------------------------------------------------
 // Kontrakt listy materiałowej (1:1 z application/analyses/lista_materialowa.py).
 // ---------------------------------------------------------------------------
+export interface OpisParametru {
+  readonly etykieta: string;
+  readonly wartosc: string | number | null;
+  readonly jednostka: string | null;
+}
+
 export interface PozycjaBom {
   readonly lp: number;
   readonly kategoria: string;
   readonly element: string;
   readonly catalog_ref: string | null;
+  /** Nazwa typu katalogowego dla projektanta (`null` — pozycja bez typu albo typ spoza katalogu). */
+  readonly typ_nazwa: string | null;
   readonly ref_id: string | null;
   readonly parametry: Readonly<Record<string, unknown>>;
+  /** Parametry dla projektanta: etykieta, wartość, jednostka (bez kluczy maszynowych). */
+  readonly parametry_opis: readonly OpisParametru[];
   readonly ilosc: number | null;
   readonly jednostka: string;
 }
+
+/** Stan źródła ceny (lustro `werdykt.kontrakt.StanZrodla`). */
+export type StanZrodlaCeny = 'ZWERYFIKOWANE' | 'WSKAZANE' | 'NIEUSTALONE';
+
+/**
+ * Sekcja `koszt` listy materiałowej (1:1 z `application/koszty/lista_materialowa.py`,
+ * karta W10-2a): wycena z cennika wersjonowanego albo nazwany brak — nigdy zero.
+ */
+export type KosztListyMaterialowej =
+  | {
+      readonly status: 'WYCENIONE';
+      readonly suma_capex: number;
+      readonly waluta: string;
+      readonly wersja_cennika: string;
+      readonly data_cen: string;
+      readonly stan_zrodla: StanZrodlaCeny;
+      readonly pozycje_nieustalone: readonly string[];
+    }
+  | {
+      readonly status: 'BRAK_CENNIKA';
+      readonly kod: string;
+      readonly komunikat_pl: string;
+      readonly wersja_cennika: string | null;
+      readonly type_ids: readonly string[];
+      readonly pozycje_bez_typu: readonly string[];
+    }
+  | {
+      readonly status: 'BRAK_ILOSCI';
+      readonly kod: string;
+      readonly komunikat_pl: string;
+      readonly pozycje_bez_ilosci: readonly string[];
+    };
 
 export interface ListaMaterialowa {
   readonly wersja: string;
@@ -66,6 +108,7 @@ export interface ListaMaterialowa {
   readonly pozycje: readonly PozycjaBom[];
   readonly count: number;
   readonly braki_ogniw: readonly string[];
+  readonly koszt: KosztListyMaterialowej;
 }
 
 const DER_SN_BASE = '/api/der-sn';

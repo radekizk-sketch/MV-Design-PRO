@@ -19,6 +19,11 @@ from application.analyses.der_sn_track import (
     DerSnTrack,
     extract_der_sn_track,
 )
+from enm.katalog_projektu import katalog_dla_modelu
+from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
+from enm.slownik_komunikatow import NAZWY_RODZAJOW_GALEZI_PL, NAZWY_RODZAJOW_GENERATORA_PL
+from network_model.catalog.materialization import pozycja_w_katalogu
+from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 
 # Deterministyczna kolejność kategorii pozycji (tor od strony sieci do falownika).
 _CATEGORY_ORDER: dict[str, int] = {
@@ -28,6 +33,55 @@ _CATEGORY_ORDER: dict[str, int] = {
     "szyna_nn_producenta": 3,
     "falownik": 4,
 }
+
+
+#: Opis parametrów pozycji dla projektanta (karta W10-2a): klucz pola ``parametry`` →
+#: (etykieta, jednostka). Kolejność = kolejność wyświetlania. ``parametry`` zostaje kontraktem
+#: maszynowym; interfejs pokazuje wyłącznie ``parametry_opis`` (bez kluczy i kodów).
+_OPIS_PARAMETROW: tuple[tuple[str, str, str | None], ...] = (
+    ("typ", "Rodzaj źródła", None),
+    ("rodzaj_aparatu", "Rodzaj aparatu", None),
+    ("sn_mva", "Moc znamionowa", "MVA"),
+    ("pmax_mw", "Moc czynna maksymalna", "MW"),
+    ("uhv_kv", "Napięcie strony górnej", "kV"),
+    ("ulv_kv", "Napięcie strony dolnej", "kV"),
+    ("un_kv", "Napięcie znamionowe", "kV"),
+    ("napiecie_kv", "Napięcie", "kV"),
+    ("uk_percent", "Napięcie zwarcia", "%"),
+    ("grupa_polaczen", "Grupa połączeń", None),
+    ("przekroj_mm2", "Przekrój", "mm²"),
+    ("obciazalnosc_a", "Obciążalność", "A"),
+    ("dlugosc_km", "Długość", "km"),
+)
+#: Rodzaj aparatu pola (``meta.apparatus_kind``) → nazwa; ``typ_galezi`` opisuje ten sam fakt
+#: słownikiem gałęzi i nie jest pokazywany osobno.
+_NAZWY_RODZAJOW_APARATU_PL: dict[str, str] = {
+    "BREAKER": "wyłącznik",
+    "DISCONNECTOR": "odłącznik",
+    "LOAD_SWITCH": "rozłącznik",
+    "MEASUREMENT": "pole pomiarowe",
+}
+
+
+def _wartosc_opisu(klucz: str, parametry: dict[str, Any]) -> object | None:
+    wartosc = parametry.get(klucz)
+    if klucz == "typ":
+        return NAZWY_RODZAJOW_GENERATORA_PL.get(str(wartosc), "rodzaj nieokreślony")
+    if klucz == "rodzaj_aparatu":
+        nazwa = _NAZWY_RODZAJOW_APARATU_PL.get(str(wartosc or "").upper())
+        if nazwa is not None:
+            return nazwa
+        return NAZWY_RODZAJOW_GALEZI_PL.get(str(parametry.get("typ_galezi")), "rodzaj nieokreślony")
+    return wartosc
+
+
+def opis_parametrow(parametry: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parametry pozycji jako (etykieta, wartość, jednostka) — tylko obecne w ``parametry``."""
+    return [
+        {"etykieta": etykieta, "wartosc": _wartosc_opisu(klucz, parametry), "jednostka": jednostka}
+        for klucz, etykieta, jednostka in _OPIS_PARAMETROW
+        if klucz in parametry
+    ]
 
 
 def _as_float(value: Any) -> float | None:
@@ -159,8 +213,15 @@ def _inverter_position(track: DerSnTrack) -> dict[str, Any]:
     }
 
 
-def build_bom_from_track(track: DerSnTrack) -> dict[str, Any]:
-    """Zbuduj deterministyczną listę materiałową z gotowego widoku toru."""
+def build_bom_from_track(
+    track: DerSnTrack, katalog: CatalogRepository | None = None
+) -> dict[str, Any]:
+    """Zbuduj deterministyczną listę materiałową z gotowego widoku toru.
+
+    ``katalog`` — katalog modelu (statyczny + pozycje projektu), z którego pochodzi nazwa
+    typu każdej pozycji; ``None`` = katalog statyczny.
+    """
+    repo = katalog if katalog is not None else get_default_mv_catalog()
     # Kategoria ogniwa MUSI być znana zanim zapytamy budowniczego — brakujące ogniwo
     # zwraca ``None`` i wtedy nie ma z czego odczytać nazwy kategorii. Wcześniej
     # `braki_ogniw` liczono jako ``p["kategoria"] for p in raw if p is None``, co przy
@@ -184,6 +245,13 @@ def build_bom_from_track(track: DerSnTrack) -> dict[str, Any]:
     )
     for index, position in enumerate(positions, start=1):
         position["lp"] = index
+        # Karta W10-2a: nazwa typu katalogowego dla projektanta (UI nie pokazuje identyfikatora
+        # maszynowego); `None` — pozycja bez typu albo typ spoza katalogu (brak nazwany w UI).
+        position["parametry_opis"] = opis_parametrow(position["parametry"])
+        ref = position.get("catalog_ref")
+        position["typ_nazwa"] = (
+            nazwa_nadana_pozycji_katalogu(pozycja_w_katalogu(repo, None, str(ref))) if ref else None
+        )
 
     braki = [kategoria for kategoria, position in raw if position is None]
     return {
@@ -201,4 +269,4 @@ def build_bom_view(enm: dict[str, Any], generator_ref: str | None = None) -> dic
     track = extract_der_sn_track(enm, generator_ref)
     if track is None:
         return None
-    return build_bom_from_track(track)
+    return build_bom_from_track(track, katalog_dla_modelu(enm))

@@ -193,7 +193,8 @@ harmonicznej z modelu nasycenia (G4 — W6-8, po OD-15(d)); pętla zwarcia TT/IT
 fazowego (W5); zwarcie doziemne sieci kompensowanej end-to-end (Y0 z uziemienia z modelu, Ic/Petersen, U_dot/U_krok z
 geometrii — W8); selektywność SN↔nN (B5 — W4); straty roczne i bilans energii (QSTS — W6-6); impedancja harmoniczna
 i skan częstotliwościowy/rezonans (W6-7); VUF wg składowych (OD-15(c)); odtworzenie zasilania/NOP (W10); model
-kosztowy (OD-16).
+kosztowy (OD-16 — mechanizm wdrożony kartą W10-2a 2026-09-30: cennik wersjonowany po `type_id`
+`catalog/cenniki/`, odmowa `BRAK_CENNIKA`, algebra w `network_model/pochodne/koszty.py`; brak cen właściciela).
 
 ### 14. Jakich symulacji brakuje? (czas)
 

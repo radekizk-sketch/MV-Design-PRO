@@ -448,14 +448,28 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
           kategoria: 'transformator_blokowy',
           element: 'Transformator blokowy DER',
           catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
+          typ_nazwa: 'TR 15/0.4 kV 1000 kVA Dyn11',
           ref_id: 'tr-1',
           parametry: { sn_mva: 1.0, grupa_polaczen: 'Dyn11' },
+          parametry_opis: [
+            { etykieta: 'Moc znamionowa', wartosc: 1.0, jednostka: 'MVA' },
+            { etykieta: 'Grupa połączeń', wartosc: 'Dyn11', jednostka: null },
+          ],
           ilosc: 1,
           jednostka: 'szt.',
         },
       ],
       count: 1,
       braki_ogniw: [],
+      koszt: {
+        status: 'BRAK_CENNIKA',
+        kod: 'BRAK_CENNIKA',
+        komunikat_pl:
+          'Nie można wyznaczyć listy materiałowej (cennik 2026-09): brak ceny inwestycyjnej dla pozycji: Transformator blokowy DER (typ „TR 15/0.4 kV 1000 kVA Dyn11”).',
+        wersja_cennika: '2026-09',
+        type_ids: ['tr-sn-nn-15-04-1000kva-dyn11'],
+        pozycje_bez_typu: [],
+      },
     });
 
     render(<KreatorZrodlaOze />);
@@ -474,8 +488,15 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
       '✓ Strona SN TR blokowego zgodna z napięciem szyny SN.',
     );
     expect(screen.getByTestId('mvd-kreator-oze-status-tekst')).toHaveTextContent('ukończony');
-    // BOM z materializowanych elementów.
-    expect(screen.getByTestId('mvd-kreator-oze-bom-tabela')).toHaveTextContent('tr-sn-nn-15-04-1000kva-dyn11');
+    // BOM z materializowanych elementów — nazwa typu z katalogu, nie identyfikator maszynowy.
+    expect(screen.getByTestId('mvd-kreator-oze-bom-tabela')).toHaveTextContent('TR 15/0.4 kV 1000 kVA Dyn11');
+    expect(screen.getByTestId('mvd-kreator-oze-bom-tabela')).not.toHaveTextContent(
+      'tr-sn-nn-15-04-1000kva-dyn11',
+    );
+    // Koszt z cennika wersjonowanego: szablon bez cen → zdanie odmowy 1:1 z backendu.
+    expect(screen.getByTestId('mvd-kreator-oze-bom-koszt')).toHaveTextContent(
+      'Nie można wyznaczyć listy materiałowej',
+    );
   });
 
   it('auto-bieg wyłączony: dokumenty bez statusu biegu (opt-in)', async () => {
