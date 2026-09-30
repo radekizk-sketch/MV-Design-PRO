@@ -7,6 +7,9 @@ i został skasowany. Każda asercja zachowuje intencję i sprawdza ją na rozwi�
 solvera NR wprost — tym samym, z którego korzysta bieg kanoniczny.
 """
 
+import dataclasses
+
+import numpy as np
 import pytest
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
@@ -213,11 +216,38 @@ def test_power_flow_results_are_deterministic() -> None:
     assert result1.converged is True
     assert result1.iterations <= pf_input.options.max_iter
     _assert_basic_trace(result1)
-    # Determinizm: dwa rozwiązania tego samego wejścia identyczne co do bitu — napięcia,
-    # przepływy, ślad iteracji NR i ślad Y-bus (dawny `to_dict()` adaptera serializował
-    # właśnie te pola).
-    assert result1.node_voltage == result2.node_voltage
-    assert result1.branch_s_from_mva == result2.branch_s_from_mva
-    assert result1.branch_current_ka == result2.branch_current_ka
-    assert repr(result1.nr_trace) == repr(result2.nr_trace)
-    assert repr(result1.ybus_trace) == repr(result2.ybus_trace)
+    # Determinizm: dwa rozwiązania tego samego wejścia identyczne co do bitu we WSZYSTKICH
+    # polach `PowerFlowNewtonSolution` (iteracje, niedopasowanie, napięcia w pu/kV i kąty,
+    # prądy i przepływy gałęzi obu końców, straty, moc slack, przełączenia PV→PQ, cały ślad
+    # White Box: Y-bus, iteracje NR, stan początkowy, zaczepy, bocznik). Porównanie idzie
+    # po `dataclasses.fields`, więc nowe pole wyniku jest objęte bez edycji testu.
+    pola = [f.name for f in dataclasses.fields(PowerFlowNewtonSolution)]
+    assert {"iterations", "max_mismatch", "losses_total", "slack_power", "nr_trace"} <= set(pola)
+    for pole in pola:
+        assert _kanoniczna(getattr(result1, pole)) == _kanoniczna(getattr(result2, pole)), pole
+
+
+def _kanoniczna(wartosc: object) -> object:
+    """Postać porównywalna co do bitu: liczby jako `float.hex`, tablice numpy jako listy,
+    słowniki i dataclassy rekurencyjnie (bez polegania na `repr`, który skraca tablice)."""
+    if isinstance(wartosc, bool) or wartosc is None or isinstance(wartosc, str):
+        return wartosc
+    if isinstance(wartosc, int):
+        return wartosc
+    if isinstance(wartosc, float):
+        return float(wartosc).hex()
+    if isinstance(wartosc, complex):
+        return (wartosc.real.hex(), wartosc.imag.hex())
+    if isinstance(wartosc, np.generic):
+        return _kanoniczna(wartosc.item())
+    if isinstance(wartosc, np.ndarray):
+        return ("ndarray", wartosc.shape, _kanoniczna(wartosc.tolist()))
+    if isinstance(wartosc, dict):
+        return tuple((_kanoniczna(k), _kanoniczna(w)) for k, w in wartosc.items())
+    if isinstance(wartosc, list | tuple):
+        return tuple(_kanoniczna(w) for w in wartosc)
+    if dataclasses.is_dataclass(wartosc) and not isinstance(wartosc, type):
+        return tuple(
+            (f.name, _kanoniczna(getattr(wartosc, f.name))) for f in dataclasses.fields(wartosc)
+        )
+    raise TypeError(f"nieobsłużony typ w wyniku rozpływu: {type(wartosc)!r}")

@@ -283,9 +283,12 @@ _SOLVER_SC = (
 )
 _SOLVER_MASZYN = "def compute_machine_contributions(graph, fault_node_id):\n    return None\n"
 # Karta TORY-TYLKO-W-TESTACH (2026-09-30): pakiet `analysis.machine_short_circuit` (dawniej
-# drugi prefiks warstwy solvera bramki) skasowany — formy względne ćwiczone są na module
-# solvera maszyn w `network_model/solvers/`, z tym samym iloczynem {pozycyjnie, moduł
-# sprowadzony z pakietu}.
+# drugi prefiks warstwy solvera bramki) skasowany — formy względne ćwiczone są na realnych
+# modułach solverów w `network_model/solvers/`. Karta TORY-POPRAWKI (2026-09-30): dawne
+# scenariusze z pojedynczą kropką (`from .x import …`, `from . import x`) przepisano
+# wtedy na poziom 2 i iloczyn się zawęził. Przywrócony pełny iloczyn
+# {poziom 1 (plik `network_model/x.py`), poziom 2 (plik `network_model/core/x.py`)} ×
+# {nazwa pozycyjnie, moduł sprowadzony z pakietu} × {solver IEC 60909, solver maszyn}.
 _WARSTWA_SOLVERA = {
     "network_model/solvers/short_circuit_iec60909.py": _SOLVER_SC,
     "network_model/solvers/machine_sc_iec60909.py": _SOLVER_MASZYN,
@@ -344,6 +347,69 @@ SCENARIUSZE_ZWARCIE: list[Scenariusz] = [
             )
         },
         True,
+    ),
+    # Poziom 1 — plik bezpośrednio w pakiecie `network_model`.
+    (
+        "a-wzgledny-poziom1-pozycyjnie",
+        {
+            "network_model/x.py": (
+                "from .solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver\n"
+                "r = ShortCircuitIEC60909Solver.compute_3ph_short_circuit" + _WYWOLANIE_A
+            )
+        },
+        True,
+    ),
+    (
+        "a-wzgledny-poziom1-modul-z-pakietu",
+        {
+            "network_model/x.py": (
+                "from .solvers import short_circuit_iec60909\n"
+                "r = short_circuit_iec60909.ShortCircuitIEC60909Solver"
+                ".compute_3ph_short_circuit" + _WYWOLANIE_A
+            )
+        },
+        True,
+    ),
+    (
+        "a-wzgledny-poziom1-pakiet-bez-modulu",
+        {
+            "network_model/x.py": (
+                "from . import solvers\n"
+                "r = solvers.short_circuit_iec60909.ShortCircuitIEC60909Solver"
+                ".compute_3ph_short_circuit" + _WYWOLANIE_A
+            )
+        },
+        True,
+    ),
+    (
+        "c-wzgledny-poziom1-pozycyjnie",
+        {
+            "network_model/x.py": (
+                "from .solvers.machine_sc_iec60909 import compute_machine_contributions\n"
+                "r = compute_machine_contributions(g, n)\n"
+            )
+        },
+        True,
+    ),
+    (
+        "c-wzgledny-poziom1-modul-z-pakietu",
+        {
+            "network_model/x.py": (
+                "from .solvers import machine_sc_iec60909\n"
+                "r = machine_sc_iec60909.compute_machine_contributions(g, fault_node_id=n)\n"
+            )
+        },
+        True,
+    ),
+    (
+        "para-poziom1-typ-wyniku",
+        {
+            "network_model/x.py": (
+                "from .solvers.short_circuit_iec60909 import ShortCircuitResult\n"
+                "w = ShortCircuitResult(ikss=1.0)\n"
+            )
+        },
+        False,
     ),
     ("ponad-korzen", {"api/x.py": "from .. import solvers\n"}, True),
     (

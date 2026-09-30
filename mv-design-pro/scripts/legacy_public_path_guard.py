@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import api_lifecycle_guard  # noqa: E402
+import arch_guard  # noqa: E402
 import canonical_ops_guard  # noqa: E402
 from importy_ast import (  # noqa: E402
     ImportPonadKorzen,
@@ -158,7 +159,9 @@ FORBIDDEN_CV42_FILES = {
     ),
     BACKEND_SRC_DIR
     / "domain"
-    / "load_flow_input.py": ("domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"),
+    / "load_flow_input.py": (
+        "domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"
+    ),
     BACKEND_SRC_DIR
     / "domain"
     / "load_flow_validation.py": (
@@ -699,6 +702,24 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
+#: Drzewa skladni wspoldzielone przez bramki jednego biegu. Kazda z ~20 bramek
+#: przechodzila caly `backend/src` od nowa i parsowala te same ~750 plikow (pomiar
+#: 2026-09-30: 11 303 wywolan `ast.parse` na bieg, ~1/3 czasu). Klucz to sciezka
+#: i TRESC pliku, wiec zmiana pliku miedzy biegami (samotesty z iniekcja) nigdy nie
+#: zwraca starego drzewa. Bramki tylko czytaja drzewa (zadna ich nie modyfikuje).
+_DRZEWA_PY: dict[tuple[str, str], ast.Module] = {}
+
+
+def parsuj_py(path: Path) -> ast.Module:
+    tekst = read_text(path)
+    klucz = (str(path), tekst)
+    drzewo = _DRZEWA_PY.get(klucz)
+    if drzewo is None:
+        drzewo = ast.parse(tekst, filename=str(path))
+        _DRZEWA_PY[klucz] = drzewo
+    return drzewo
+
+
 def zrodlo_istnieje(path: Path, wzorce: tuple[str, ...] = ("*.py",)) -> bool:
     """Czy pod sciezka istnieje ZRODLO: plik albo katalog z choc jednym plikiem
     zrodlowym (`wzorce`, domyslnie `*.py`; dla frontendu `*.ts`/`*.tsx`) na
@@ -760,7 +781,9 @@ def importy_zakazanych_modulow(
             moduly = moduly_dotkniete(pakiet, node)
         except ImportPonadKorzen:
             assert isinstance(node, ast.ImportFrom)
-            trafienia.append((node.lineno, "." * node.level + (node.module or ""), True))
+            trafienia.append(
+                (node.lineno, "." * node.level + (node.module or ""), True)
+            )
             continue
         for modul in moduly:
             if pod_prefiksem(modul, prefiksy):
@@ -781,7 +804,7 @@ def _opis_importu(rel_path: str, lineno: int, modul: str, ponad_korzeniem: bool)
 def check_legacy_public_paths() -> list[str]:
     violations: list[str] = []
     for module_path in active_api_module_paths():
-        tree = ast.parse(read_text(module_path), filename=str(module_path))
+        tree = parsuj_py(module_path)
         rel_path = module_path.relative_to(ROOT).as_posix()
         for lineno, modul, ponad in importy_zakazanych_modulow(
             tree, module_path, FORBIDDEN_IMPORTS
@@ -789,9 +812,13 @@ def check_legacy_public_paths() -> list[str]:
             violations.append(_opis_importu(rel_path, lineno, modul, ponad))
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
-                violations.append(f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}")
+                violations.append(
+                    f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}"
+                )
             if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_NAMES:
-                violations.append(f"[legacy-public-attr] {rel_path}:{node.lineno}: {node.attr}")
+                violations.append(
+                    f"[legacy-public-attr] {rel_path}:{node.lineno}: {node.attr}"
+                )
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 if "operating_case_id" in node.value:
                     violations.append(
@@ -814,10 +841,13 @@ def check_study_case_engine_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_ENGINE_CLASS_NAMES:
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name in FORBIDDEN_ENGINE_CLASS_NAMES
+            ):
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                     "(C2, usunięty CV-3.2) nie może wrócić"
@@ -842,7 +872,9 @@ def check_domain_op_registry_resurrection() -> list[str]:
                 "CV-3.2) wrócił jako OperationSpec w CANONICAL_OPERATIONS"
             )
     if V2_HANDLERS_MODULE.exists():
-        handlers = canonical_ops_guard.extract_handler_keys(V2_HANDLERS_MODULE, {"ALL_V2_HANDLERS"})
+        handlers = canonical_ops_guard.extract_handler_keys(
+            V2_HANDLERS_MODULE, {"ALL_V2_HANDLERS"}
+        )
         rel_path = V2_HANDLERS_MODULE.relative_to(ROOT).as_posix()
         for name in sorted(FORBIDDEN_DOMAIN_OP_NAMES & handlers):
             violations.append(
@@ -880,7 +912,7 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_C4_CLASS_NAMES:
@@ -888,7 +920,10 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                     "(C4, usunięty CV-3.2) nie może wrócić"
                 )
-            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_C4_FUNCTION_NAMES:
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name in FORBIDDEN_C4_FUNCTION_NAMES
+            ):
                 violations.append(
                     f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
                     "(P24+, usunięty CV-3.2) nie może wrócić"
@@ -909,20 +944,29 @@ def check_cv42_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_CV42_CLASS_NAMES:
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name in FORBIDDEN_CV42_CLASS_NAMES
+            ):
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                     "(usunięty procedurą w CV-4.2) nie może wrócić"
                 )
-            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42_FUNCTION_NAMES:
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name in FORBIDDEN_CV42_FUNCTION_NAMES
+            ):
                 violations.append(
                     f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
                     "(usunięty procedurą w CV-4.2) nie może wrócić"
                 )
-            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42B_FUNCTION_NAMES:
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name in FORBIDDEN_CV42B_FUNCTION_NAMES
+            ):
                 violations.append(
                     f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
                     "(własny silnik/sesja z DATABASE_URL w torze biegów, usunięty w CV-4.2b) "
@@ -941,7 +985,7 @@ def check_cv43_a4_resurrection() -> list[str]:
     gwarantował. Guard pilnuje, żeby żaden z trzech bytów nie wrócił."""
     violations: list[str] = []
     if CV43_A4_ENM_MODULE.exists():
-        tree = ast.parse(read_text(CV43_A4_ENM_MODULE), filename=str(CV43_A4_ENM_MODULE))
+        tree = parsuj_py(CV43_A4_ENM_MODULE)
         rel_path = CV43_A4_ENM_MODULE.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if (
@@ -955,7 +999,7 @@ def check_cv43_a4_resurrection() -> list[str]:
                     "nie może wrócić"
                 )
     if CV43_A4_V126_MODULE.exists():
-        tree = ast.parse(read_text(CV43_A4_V126_MODULE), filename=str(CV43_A4_V126_MODULE))
+        tree = parsuj_py(CV43_A4_V126_MODULE)
         rel_path = CV43_A4_V126_MODULE.relative_to(ROOT).as_posix()
         # Przypisanie NAJWYŻSZEGO POZIOMU (`tree.body`, nie `ast.walk`) — zmienna
         # lokalna o tej samej nazwie wewnątrz funkcji pomocniczej nie jest tym
@@ -1008,14 +1052,18 @@ def check_w1_legacy_persistence_resurrection() -> list[str]:
     for rel, label in W1_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
-            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W1)")
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W1)"
+            )
     if not BACKEND_SRC_DIR.exists():
         return violations
     models_path = BACKEND_SRC_DIR / W1_MODELS_RELATIVE_PATH
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
         tablenames = 0
         for node in ast.walk(tree):
@@ -1131,17 +1179,24 @@ def check_k2_reference_networks_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for lineno, modul, ponad in importy_zakazanych_modulow(
                 tree, py_file, FORBIDDEN_K2_MODULE_PREFIXES
             ):
                 violations.append(
                     _opis_importu(rel_path, lineno, modul, ponad)
-                    + ("" if ponad else " (dawny dialekt benchmarków, usunięty kartą K2)")
+                    + (
+                        ""
+                        if ponad
+                        else " (dawny dialekt benchmarków, usunięty kartą K2)"
+                    )
                 )
             for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
+                if (
+                    isinstance(node, ast.ClassDef)
+                    and node.name in FORBIDDEN_K2_CLASS_NAMES
+                ):
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         "(dialekt benchmarków, usunięty kartą K2) nie może wrócić"
@@ -1180,9 +1235,11 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
@@ -1191,12 +1248,18 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
                         f"[resurrected-def] {rel_path}:{node.lineno}: {node.name} "
                         "(trzecia sciezka source_compliance, usunieta w W3-D) nie moze wrocic"
                     )
-            if isinstance(node, ast.ClassDef) and node.name == W3D_EXECUTION_TYPE_CLASS_NAME:
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name == W3D_EXECUTION_TYPE_CLASS_NAME
+            ):
                 for stmt in node.body:
                     if not isinstance(stmt, ast.Assign):
                         continue
                     for target in stmt.targets:
-                        if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3D_ENUM_MEMBERS:
+                        if (
+                            isinstance(target, ast.Name)
+                            and target.id in FORBIDDEN_W3D_ENUM_MEMBERS
+                        ):
                             violations.append(
                                 f"[resurrected-enum] {rel_path}:{stmt.lineno}: "
                                 f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
@@ -1219,16 +1282,23 @@ def check_w3a_second_engine_resurrection() -> list[str]:
     for rel, label in W3A_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
-            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-A)")
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-A)"
+            )
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3A_CLASS_NAMES:
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name in FORBIDDEN_W3A_CLASS_NAMES
+            ):
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                     "(drugi silnik IDMT, usuniety w W3-A) nie moze wrocic"
@@ -1255,13 +1325,17 @@ def check_w3c1_overcurrent_resurrection() -> list[str]:
     for rel, label in W3C1_OVERCURRENT_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
-            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usunięty w W3-C1)")
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} (usunięty w W3-C1)"
+            )
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
         for node in ast.walk(tree):
             nazwa: str | None = None
@@ -1271,7 +1345,10 @@ def check_w3c1_overcurrent_resurrection() -> list[str]:
                 rodzaj = "klasa/funkcja"
             elif isinstance(node, ast.Assign):
                 for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3C1_NAMES:
+                    if (
+                        isinstance(target, ast.Name)
+                        and target.id in FORBIDDEN_W3C1_NAMES
+                    ):
                         violations.append(
                             f"[resurrected-name] {rel_path}:{node.lineno}: "
                             f"{target.id} (V12K-189, usunięty w W3-C1) nie może wrócić"
@@ -1295,7 +1372,9 @@ def check_w3c2_line_overcurrent_setting_resurrection() -> list[str]:
     for rel, label in W3C2_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
-            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-C2)")
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-C2)"
+            )
     return violations
 
 
@@ -1416,10 +1495,13 @@ def check_trace_v2_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES:
+                if (
+                    isinstance(node, ast.ClassDef)
+                    and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES
+                ):
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
@@ -1429,7 +1511,11 @@ def check_trace_v2_resurrection() -> list[str]:
             ):
                 violations.append(
                     _opis_importu(rel_path, lineno, modul, ponad)
-                    + ("" if ponad else ' (klaster "slad v2", skasowany karta TRACE-V2)')
+                    + (
+                        ""
+                        if ponad
+                        else ' (klaster "slad v2", skasowany karta TRACE-V2)'
+                    )
                 )
     if FRONTEND_SRC_DIR.exists():
         for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
@@ -1521,13 +1607,18 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
     for rel, label in W3J_BACKEND_MODULE_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
-            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-J)")
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-J)"
+            )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3J_CLASS_NAMES:
+                if (
+                    isinstance(node, ast.ClassDef)
+                    and node.name in FORBIDDEN_W3J_CLASS_NAMES
+                ):
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         "(detektor naruszen napieciowych, usuniety w W3-J) nie moze wrocic"
@@ -1598,13 +1689,48 @@ TORY_TESTOWE_DEFINICJE = frozenset(
 #: Definicje zakazane PER PLIK (nazwy, ktore gdzie indziej sa legalne — np. metoda
 #: `_build_violations` adekwatnosci mocy biernej).
 TORY_TESTOWE_DEFINICJE_PLIKOWE: dict[str, frozenset[str]] = {
-    "analysis/power_flow/__init__.py": frozenset({"_build_violations", "_summarize_violations"}),
-    "analysis/power_flow/result.py": frozenset({"_build_violations", "_summarize_violations"}),
-    "analysis/power_flow/types.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "analysis/power_flow/__init__.py": frozenset(
+        {"_build_violations", "_summarize_violations"}
+    ),
+    "analysis/power_flow/result.py": frozenset(
+        {"_build_violations", "_summarize_violations"}
+    ),
+    "analysis/power_flow/types.py": frozenset(
+        {"_build_violations", "_summarize_violations"}
+    ),
     "application/solvers/short_circuit_binding.py": frozenset({"_resolve_c_factor"}),
 }
 #: Pakiet dowodowy stanu fazowego SN nie wola solvera (pakiet opisuje wynik).
 TORY_TESTOWE_PAKIET_FAZOWY = "application/proof_engine/packs/phase_state_sn.py"
+#: Karta TORY-POPRAWKI (2026-09-30): bramka pakietu fazowego pilnuje DOSTEPU, nie nazwy.
+#: Pierwsza wersja rozpoznawala tylko Name/Attribute/ImportFrom `PhaseStateSNSolver`, wiec
+#: `getattr(modul, "PhaseStateSNSolver")`, `vars(modul)[...]`, reeksport innym modulem
+#: i `.solve(...)` na obiekcie solvera przechodzily. Teraz ta sama regula co warstwa
+#: analizy w `arch_guard` (jedna implementacja: rozwiazywanie pochodzenia nazw, import
+#: dynamiczny i refleksja fail-closed) z polityka: modul solvera stanu fazowego chroniony,
+#: z niego wolno wylacznie typy danych wejscia/wyniku (lista zamknieta ponizej, pomiar
+#: 2026-09-30: pakiet sprowadza PHASE_ORDER, PhaseStateSNInput, PhaseStateSNResult).
+#: Do tego w pakiecie: kazde wywolanie atrybutu `.solve(...)` i napis `PhaseStateSNSolver`
+#: (pakiet opisuje GOTOWY wynik, niczego nie rozwiazuje).
+TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO = arch_guard.PolitykaDostepu(
+    chronione=("network_model.solvers.phase_state_sn",),
+    dozwolone={
+        "network_model.solvers.phase_state_sn": frozenset(
+            {
+                "PHASE_ORDER",
+                "OpenPhaseFlags",
+                "PhaseStateSNFlags",
+                "PhaseStateSNInput",
+                "PhaseStateSNResult",
+                "PhaseUnbalanceIndices",
+                "PhaseValues",
+            }
+        )
+    },
+    dowiedzione=(),
+    warstwa="pakiet dowodowy stanu fazowego SN",
+    nazwa_listy="TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO",
+)
 
 
 def check_tory_testowe_resurrection() -> list[str]:
@@ -1622,28 +1748,60 @@ def check_tory_testowe_resurrection() -> list[str]:
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
         rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         plikowe = TORY_TESTOWE_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
         for nazwa, lineno in _definicje_py(tree):
             if nazwa in TORY_TESTOWE_DEFINICJE or nazwa in plikowe:
-                violations.append(f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})")
+                violations.append(
+                    f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                )
         if rel_src == TORY_TESTOWE_PAKIET_FAZOWY:
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom):
-                    trafienie = any(alias.name == "PhaseStateSNSolver" for alias in node.names)
-                elif isinstance(node, ast.Name):
-                    trafienie = node.id == "PhaseStateSNSolver"
-                elif isinstance(node, ast.Attribute):
-                    trafienie = node.attr == "PhaseStateSNSolver"
-                else:
-                    trafienie = False
-                if trafienie:
-                    violations.append(
-                        f"[resurrected-name] {rel_path}:{node.lineno}: PhaseStateSNSolver — "
-                        f"pakiet dowodowy nie liczy solvera, wynik podaje wolajacy ({znak})"
-                    )
+            violations.extend(_solver_w_pakiecie_fazowym(tree, py_file, rel_path, znak))
+    return violations
+
+
+def _solver_w_pakiecie_fazowym(
+    tree: ast.Module, py_file: Path, rel_path: str, znak: str
+) -> list[str]:
+    """Dostep pakietu dowodowego stanu fazowego SN do solvera (patrz
+    `TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO`)."""
+    violations: list[str] = []
+    try:
+        dostep = arch_guard.naruszenie_dostepu(
+            tree, py_file, BACKEND_SRC_DIR, TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO
+        )
+    except ImportPonadKorzen as blad:
+        dostep = str(blad)
+    if dostep is not None:
+        violations.append(
+            f"[resurrected-name] {rel_path}: PhaseStateSNSolver w zasiegu pakietu — {dostep} "
+            f"({znak})"
+        )
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            trafienie = node.id == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Attribute):
+            trafienie = node.attr == "PhaseStateSNSolver"
+        elif isinstance(node, ast.alias):
+            trafienie = node.name == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Constant):
+            trafienie = node.value == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Call):
+            trafienie = (
+                isinstance(node.func, ast.Attribute) and node.func.attr == "solve"
+            )
+        else:
+            trafienie = False
+        if trafienie:
+            violations.append(
+                f"[resurrected-name] {rel_path}:{getattr(node, 'lineno', 0)}: "
+                "PhaseStateSNSolver / .solve(...) — pakiet dowodowy nie liczy solvera, wynik "
+                f"podaje wolajacy ({znak})"
+            )
     return violations
 
 
@@ -1663,10 +1821,13 @@ def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_S3_CLASS_NAMES:
+                if (
+                    isinstance(node, ast.ClassDef)
+                    and node.name in FORBIDDEN_S3_CLASS_NAMES
+                ):
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         "(drugi silnik zgodnosci NC RfG, usuniety w S-3) nie moze wrocic"
@@ -1674,7 +1835,9 @@ def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
     for rel, label in S3_FRONTEND_ISLAND_RELATIVE_PATHS.items():
         path = FRONTEND_SRC_DIR / rel
         if zrodlo_istnieje(path, ("*.ts", "*.tsx")):
-            violations.append(f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w S-3)")
+            violations.append(
+                f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w S-3)"
+            )
     if FRONTEND_SRC_DIR.exists():
         for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
             for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
@@ -1706,12 +1869,17 @@ def check_uniewazniacz_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
-            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+            py_file.relative_to(ROOT).as_posix()
+            if py_file.is_relative_to(ROOT)
+            else str(py_file)
         )
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES:
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name in FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES
+            ):
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                     "(uniewazniacz wynikow, usuniety w karcie KASACJA-UNIEWAZNIACZA) "
@@ -1812,7 +1980,8 @@ def _be_def(
     sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
 ) -> list[WpisPakietuL]:
     return [
-        WpisPakietuL("backend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+        WpisPakietuL("backend", "definicja", sciezka, s, zasieg, wiersz)
+        for s in symbole.split()
     ]
 
 
@@ -1824,12 +1993,17 @@ def _fe_def(
     sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
 ) -> list[WpisPakietuL]:
     return [
-        WpisPakietuL("frontend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+        WpisPakietuL("frontend", "definicja", sciezka, s, zasieg, wiersz)
+        for s in symbole.split()
     ]
 
 
-def _fe_wzorzec(sciezka: str, napisy: tuple[str, ...], wiersz: str) -> list[WpisPakietuL]:
-    return [WpisPakietuL("frontend", "wzorzec", sciezka, n, "plik", wiersz) for n in napisy]
+def _fe_wzorzec(
+    sciezka: str, napisy: tuple[str, ...], wiersz: str
+) -> list[WpisPakietuL]:
+    return [
+        WpisPakietuL("frontend", "wzorzec", sciezka, n, "plik", wiersz) for n in napisy
+    ]
 
 
 _PE = "application/proof_engine"
@@ -1877,7 +2051,11 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "POWER_FLOW_EQUATION_REGISTRY POWER_FLOW_PROOF_STEP_ORDER",
         "A35",
     ),
-    *_be_def("network_model/proof/power_flow_proof_export.py", "export_proof_to_pdf_simple", "A35"),
+    *_be_def(
+        "network_model/proof/power_flow_proof_export.py",
+        "export_proof_to_pdf_simple",
+        "A35",
+    ),
     _be_sciezka("network_model/catalog/drift_detection.py", "A39"),
     *_be_def(
         "network_model/catalog/drift_detection.py",
@@ -1886,13 +2064,25 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     # --- Obszar B: analysis / solver_input ---------------------------------
     _be_sciezka("analysis/protection_insight/builder.py", "B7"),
-    *_be_def("analysis/protection_insight/builder.py", "ProtectionInsightBuilder", "B7"),
+    *_be_def(
+        "analysis/protection_insight/builder.py", "ProtectionInsightBuilder", "B7"
+    ),
     _be_sciezka("analysis/protection_curves_it/builder.py", "B8"),
     _be_sciezka("analysis/protection_curves_it/renderer_svg.py", "B8"),
     _be_sciezka("analysis/protection_curves_it/renderer_pdf.py", "B8"),
-    *_be_def("analysis/protection_curves_it/builder.py", "ProtectionCurvesITBuilder", "B8"),
-    *_be_def("analysis/protection_curves_it/renderer_svg.py", "render_protection_curves_svg", "B8"),
-    *_be_def("analysis/protection_curves_it/renderer_pdf.py", "render_protection_curves_pdf", "B8"),
+    *_be_def(
+        "analysis/protection_curves_it/builder.py", "ProtectionCurvesITBuilder", "B8"
+    ),
+    *_be_def(
+        "analysis/protection_curves_it/renderer_svg.py",
+        "render_protection_curves_svg",
+        "B8",
+    ),
+    *_be_def(
+        "analysis/protection_curves_it/renderer_pdf.py",
+        "render_protection_curves_pdf",
+        "B8",
+    ),
     *_be_def(
         "analysis/protection_curves_it/models.py",
         "ProtectionCurvesITView.normative_status",
@@ -1900,7 +2090,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         zasieg="plik",
     ),
     *_be_def(
-        "analysis/arc_flash/models.py", "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE", "B14"
+        "analysis/arc_flash/models.py",
+        "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE",
+        "B14",
     ),
     *_be_def(
         "solver_input/provenance.py",
@@ -1939,7 +2131,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "C41",
         zasieg="plik",
     ),
-    *_be_def(f"{_PE}/types.py", "ProtectionProofInput ProtectionSelectivityInput", "C41"),
+    *_be_def(
+        f"{_PE}/types.py", "ProtectionProofInput ProtectionSelectivityInput", "C41"
+    ),
     *_be_def(f"{_PE}/proof_inspector/types.py", "ProtectionComparisonView", "C41"),
     *_be_def(
         f"{_PE}/proof_inspector/types.py",
@@ -1947,7 +2141,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "C41",
         zasieg="plik",
     ),
-    *_be_def(f"{_PE}/proof_inspector/inspector.py", "_build_protection_comparisons", "C41"),
+    *_be_def(
+        f"{_PE}/proof_inspector/inspector.py", "_build_protection_comparisons", "C41"
+    ),
     _be_sciezka(f"{_PE}/packs/qu_regulation.py", "C46"),
     *_be_def(
         f"{_PE}/packs/qu_regulation.py",
@@ -1963,11 +2159,17 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     _be_sciezka("domain/result_set.py", "C55"),
     *_be_def(
-        "domain/result_set.py", "OverlayElement OverlayLegendEntry build_overlay_payload", "C55"
+        "domain/result_set.py",
+        "OverlayElement OverlayLegendEntry build_overlay_payload",
+        "C55",
     ),
     # --- Obszar D: frontend/src/ui2 ----------------------------------------
     *_fe_wzorzec("ui2/wyniki/koordynacja/SekcjaNastaw.tsx", ("spelniony",), "D50"),
-    *_fe_def("ui2/wyniki/wrazliwosc/strings.ts", "istotnoscDecyzji IstotnoscWrazliwosci", "D58"),
+    *_fe_def(
+        "ui2/wyniki/wrazliwosc/strings.ts",
+        "istotnoscDecyzji IstotnoscWrazliwosci",
+        "D58",
+    ),
     # --- Obszar E: frontend/src/ui -----------------------------------------
     _fe_sciezka("ui/shared/normativeLabels.ts", "E2"),
     *_fe_def(
@@ -1983,7 +2185,10 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E14",
     ),
     *_fe_def(
-        "ui/power-flow-results/types.ts", "SEVERITY_LABELS SEVERITY_COLORS", "E14", zasieg="plik"
+        "ui/power-flow-results/types.ts",
+        "SEVERITY_LABELS SEVERITY_COLORS",
+        "E14",
+        zasieg="plik",
     ),
     *_fe_def(
         "ui/shared/analysisCaseContext.ts",
@@ -1991,7 +2196,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E14",
     ),
     _fe_sciezka("ui/power-flow-results/PowerFlowSldOverlay.tsx", "E15"),
-    *_fe_def("ui/power-flow-results/PowerFlowSldOverlay.tsx", "PowerFlowSldOverlay", "E15"),
+    *_fe_def(
+        "ui/power-flow-results/PowerFlowSldOverlay.tsx", "PowerFlowSldOverlay", "E15"
+    ),
     _fe_sciezka("ui/results-inspector/shortCircuitVerdict.ts", "E16"),
     *_fe_def(
         "ui/results-inspector/shortCircuitVerdict.ts",
@@ -2025,23 +2232,35 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E23",
     ),
     *_fe_def("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "buildLoadFlowOverlay", "E23"),
-    *_fe_def("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "adaptZeroSequenceToOverlay", "E23"),
-    *_fe_def("ui/sld-overlay/OltcOverlayAdapter.ts", "adaptOltcControlToOverlay", "E23"),
+    *_fe_def(
+        "ui/sld-overlay/ZeroSequenceOverlayAdapter.ts",
+        "adaptZeroSequenceToOverlay",
+        "E23",
+    ),
+    *_fe_def(
+        "ui/sld-overlay/OltcOverlayAdapter.ts", "adaptOltcControlToOverlay", "E23"
+    ),
     *_fe_def("ui/sld-overlay/useOverlayRuntime.ts", "useOverlayRuntime", "E23"),
     # E24: zaszyty napis zgodnosci usuniety, a nastepnie caly panel razem z
     # nieosiagalna przegladarka sladu (X1) — plik nie wraca w zadnej postaci.
     _fe_sciezka("ui/proof/TraceMetadataPanel.tsx", "E24"),
     *_fe_def(
-        "ui/proof/TraceMetadataPanel.tsx", "TraceMetadataPanel TraceMetadataPanelEmpty", "E24"
+        "ui/proof/TraceMetadataPanel.tsx",
+        "TraceMetadataPanel TraceMetadataPanelEmpty",
+        "E24",
     ),
     _fe_sciezka("ui/engineering-readiness/DataGapPanel.tsx", "E25"),
     _fe_sciezka("ui/engineering-readiness/EngineeringReadinessPanel.tsx", "E25"),
     _fe_sciezka("ui/engineering-readiness/ReadinessLivePanel.tsx", "E25"),
     *_fe_def(
-        "ui/engineering-readiness/DataGapPanel.tsx", "DataGapPanel classifyDataGapGroup", "E25"
+        "ui/engineering-readiness/DataGapPanel.tsx",
+        "DataGapPanel classifyDataGapGroup",
+        "E25",
     ),
     *_fe_def(
-        "ui/engineering-readiness/EngineeringReadinessPanel.tsx", "EngineeringReadinessPanel", "E25"
+        "ui/engineering-readiness/EngineeringReadinessPanel.tsx",
+        "EngineeringReadinessPanel",
+        "E25",
     ),
     *_fe_def(
         "ui/engineering-readiness/ReadinessLivePanel.tsx",
@@ -2050,7 +2269,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     _fe_sciezka("ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "E27"),
     *_fe_def(
-        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "AnalysisEligibilityPanel", "E27"
+        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx",
+        "AnalysisEligibilityPanel",
+        "E27",
     ),
     _fe_sciezka("ui/issue-panel", "E29"),
     *_fe_def("ui/issue-panel/IssuePanel.tsx", "IssuePanel", "E29"),
@@ -2058,10 +2279,14 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     _fe_sciezka("ui/schema-completeness/SchemaCompletenessPanel.tsx", "E30"),
     _fe_sciezka("ui/schema-completeness/index.ts", "E30"),
     *_fe_def(
-        "ui/schema-completeness/SchemaCompletenessPanel.tsx", "SchemaCompletenessPanel", "E30"
+        "ui/schema-completeness/SchemaCompletenessPanel.tsx",
+        "SchemaCompletenessPanel",
+        "E30",
     ),
     _fe_sciezka("ui/workspace/WorkspaceOperationalBar.tsx", "E40"),
-    *_fe_def("ui/workspace/WorkspaceOperationalBar.tsx", "WorkspaceOperationalBar", "E40"),
+    *_fe_def(
+        "ui/workspace/WorkspaceOperationalBar.tsx", "WorkspaceOperationalBar", "E40"
+    ),
     *_fe_wzorzec(
         "ui/network-build/station-configurator/cards/StationConfigProtectionCard.tsx",
         ("selectivityStatus", "SELECTIVITY_LABEL"),
@@ -2070,7 +2295,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     _fe_sciezka("ui/network-build/cards/BayCard.tsx", "E47"),
     *_fe_def("ui/network-build/cards/BayCard.tsx", "BayCard", "E47"),
     _fe_sciezka("ui/network-build/forms/voltageDropValidator.ts", "E52"),
-    *_fe_def("ui/network-build/forms/voltageDropValidator.ts", "calculateVoltageDrop", "E52"),
+    *_fe_def(
+        "ui/network-build/forms/voltageDropValidator.ts", "calculateVoltageDrop", "E52"
+    ),
     _fe_sciezka("ui/network-build/der-configurator-v2", "E53"),
     *_fe_def(
         "ui/network-build/der-configurator-v2/DerConfiguratorSidebar.tsx",
@@ -2083,7 +2310,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E53",
     ),
     *_fe_wzorzec(
-        "ui/network-build/build-sidebar/ReadinessSection.tsx", ("DEFAULT_READINESS_ITEMS",), "E53"
+        "ui/network-build/build-sidebar/ReadinessSection.tsx",
+        ("DEFAULT_READINESS_ITEMS",),
+        "E53",
     ),
     _fe_sciezka("ui/comparison/comparisonDeltaVisualization.ts", "E59"),
     *_fe_def(
@@ -2098,10 +2327,18 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_fe_def("ui/inspector/ReadOnlyPropertyGrid.tsx", "ReadOnlyPropertyGrid", "E64"),
     *_fe_def("ui/inspector/ValueProvenancePopover.tsx", "ValueProvenanceIcon", "E64"),
     _fe_sciezka("ui/reference-patterns", "E66"),
-    *_fe_def("ui/reference-patterns/ReferencePatternsPage.tsx", "ReferencePatternsPage", "E66"),
+    *_fe_def(
+        "ui/reference-patterns/ReferencePatternsPage.tsx",
+        "ReferencePatternsPage",
+        "E66",
+    ),
     *_fe_def("ui/reference-patterns/store.ts", "useReferencePatternsStore", "E66"),
     _fe_sciezka("ui/study-cases/ProtectionCaseConfigPanel.tsx", "E67"),
-    *_fe_def("ui/study-cases/ProtectionCaseConfigPanel.tsx", "ProtectionCaseConfigPanel", "E67"),
+    *_fe_def(
+        "ui/study-cases/ProtectionCaseConfigPanel.tsx",
+        "ProtectionCaseConfigPanel",
+        "E67",
+    ),
     *_fe_def("ui/protection-curves/types.ts", "COORDINATION_STATUS_COLORS", "E68"),
     *_fe_def(
         "ui/protection-curves/types.ts",
@@ -2110,11 +2347,18 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         zasieg="plik",
     ),
     *_fe_wzorzec(
-        "ui/protection-curves/types.ts", ("NOT_COORDINATED", "coordinationResults"), "E68"
+        "ui/protection-curves/types.ts",
+        ("NOT_COORDINATED", "coordinationResults"),
+        "E68",
     ),
     *_fe_wzorzec(
         "ui/sld/v2/canvas/SldDetailDrawer.tsx",
-        ("drawer-cable-spadek", "Klasa zgodności", "maxVoltageDropPct", "maxLoadingPct"),
+        (
+            "drawer-cable-spadek",
+            "Klasa zgodności",
+            "maxVoltageDropPct",
+            "maxLoadingPct",
+        ),
         "E70",
     ),
     *_fe_wzorzec(
@@ -2130,7 +2374,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     _fe_sciezka("ui/sld/v2/renderer/equipmentProofValidator.ts", "E73"),
     _fe_sciezka("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "E73"),
     *_fe_def("ui/sld/v2/proof/DerComplianceBadge.tsx", "DerComplianceBadge", "E73"),
-    *_fe_def("ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "ProofPackFreshnessBadge", "E73"),
+    *_fe_def(
+        "ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "ProofPackFreshnessBadge", "E73"
+    ),
     *_fe_def(
         "ui/sld/v2/renderer/EquipmentProofBadge.tsx",
         "EquipmentProofBadge computeEquipmentProofStatus",
@@ -2141,7 +2387,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "validateEquipmentProof describeProofVerdict",
         "E73",
     ),
-    *_fe_def("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "SldPowerBalancePanel", "E73"),
+    *_fe_def(
+        "ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "SldPowerBalancePanel", "E73"
+    ),
     *_fe_wzorzec(
         "ui/sld/v3/canvas/SldCanvasV3.tsx",
         ("swzByOwnerRef", "sld-v3-swz-badge", "computeSwzBadgePlacements"),
@@ -2150,7 +2398,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_fe_wzorzec("ui/sld/v3/canvas/overlay.ts", ("swzByOwnerRef",), "E78"),
     # Kaskada E78: jedyny produkcyjny wolajacy tonu SWZ byl skasowany glif kanwy
     # (zywa plakietka nN `LvDomainView.SwzBadge` klasyfikuje status sama).
-    *_fe_def("ui/sld/v3/canvas/overlay.ts", "swzPresentationTone SwzPresentationTone", "E78"),
+    *_fe_def(
+        "ui/sld/v3/canvas/overlay.ts", "swzPresentationTone SwzPresentationTone", "E78"
+    ),
     # --- Poza inwentarzem, wykryte przy kasacji ------------------------------
     _fe_sciezka("ui/proof/TraceViewer.tsx", "X1"),
     _fe_sciezka("ui/proof/TraceToc.tsx", "X1"),
@@ -2163,12 +2413,24 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_fe_def("ui/proof/TraceViewer.tsx", "TraceViewer TraceViewerContainer", "X1"),
     *_fe_def("ui/proof/TraceToc.tsx", "TraceToc", "X1"),
     *_fe_def("ui/proof/TraceStepView.tsx", "TraceStepView TraceStepViewEmpty", "X1"),
-    *_fe_def("ui/proof/traceUrlState.ts", "readTraceStateFromUrl generateTraceDeepLink", "X1"),
-    *_fe_def("ui/proof/compare/TraceCompareView.tsx", "TraceCompareView TraceComparePage", "X1"),
+    *_fe_def(
+        "ui/proof/traceUrlState.ts", "readTraceStateFromUrl generateTraceDeepLink", "X1"
+    ),
+    *_fe_def(
+        "ui/proof/compare/TraceCompareView.tsx",
+        "TraceCompareView TraceComparePage",
+        "X1",
+    ),
     *_fe_def("ui/proof/compare/TraceDiffList.tsx", "TraceDiffList", "X1"),
     *_fe_def("ui/proof/compare/diffTrace.ts", "diffTraces", "X1"),
-    *_fe_def("ui/proof/export/exportTracePdf.ts", "exportTracePdf generateTracePdfHtml", "X1"),
-    *_fe_def("ui/proof/export/exportTraceJsonl.ts", "generateTraceJsonl downloadTraceJsonl", "X1"),
+    *_fe_def(
+        "ui/proof/export/exportTracePdf.ts", "exportTracePdf generateTracePdfHtml", "X1"
+    ),
+    *_fe_def(
+        "ui/proof/export/exportTraceJsonl.ts",
+        "generateTraceJsonl downloadTraceJsonl",
+        "X1",
+    ),
     *_fe_def("ui/proof/search/TraceSearchBar.tsx", "TraceSearchBar", "X1"),
     *_be_def(
         "domain/protection_device.py",
@@ -2200,9 +2462,15 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     *_be_def("compliance/nc_rfg_modul.py", "modul_nc_rfg NcRfgModul", "BC"),
     *_be_def(
-        "application/ncrfg_compliance/model_bridge.py", "certificate_status_z_tabliczki", "BC"
+        "application/ncrfg_compliance/model_bridge.py",
+        "certificate_status_z_tabliczki",
+        "BC",
     ),
-    *_be_def("network_model/solvers/ncrfg_ptpiree/contracts.py", "PtpireeCertificateStatus", "BC"),
+    *_be_def(
+        "network_model/solvers/ncrfg_ptpiree/contracts.py",
+        "PtpireeCertificateStatus",
+        "BC",
+    ),
     *_be_def(
         "catalog/profiles/nc_rfg/loader.py",
         "NcRfgProfileLoader NcRfgComplianceTest SUPPORTED_OPERATORS",
@@ -2220,7 +2488,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "BC",
         zasieg="plik",
     ),
-    *_be_def("api/oze_analysis_runs.py", "WniosekOsdRequest.run_request", "BC", zasieg="plik"),
+    *_be_def(
+        "api/oze_analysis_runs.py", "WniosekOsdRequest.run_request", "BC", zasieg="plik"
+    ),
     *_be_def(
         "network_model/solvers/ncrfg_ptpiree/contracts.py",
         "NcRfgPtpireeModuleResult.overall_status NcRfgPtpireeModuleResult.pass_count "
@@ -2258,7 +2528,11 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "D2",
     ),
     *_fe_def("ui/workspace/surfaces/NcRfgTestsTab.tsx", "NcRfgTestsTab", "D2"),
-    *_fe_def("ui/network-build/station-der/certyfikatPtpiree.ts", "statusCertyfikatuPtpiree", "D2"),
+    *_fe_def(
+        "ui/network-build/station-der/certyfikatPtpiree.ts",
+        "statusCertyfikatuPtpiree",
+        "D2",
+    ),
     *_fe_def(
         "ui/network-build/station-der/derRemoteCatalogs.ts",
         "fetchNcRfgModuleClassification NcRfgModuleLetter",
@@ -2288,11 +2562,26 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "wierszeZgodnosciPrzekrojowej",
         "D2",
     ),
-    *_fe_def("ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts", "BrakiModulu", "D2", zasieg="plik"),
-    *_fe_def("ui2/oze/pulpit/strings.ts", "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU", "D2"),
-    *_fe_def("ui2/oze/pulpit/pulpitModel.ts", "StatusPulpitu zgodnoscModulu ZgodnoscModulu", "D2"),
     *_fe_def(
-        "ui2/oze/wniosek/strings.ts", "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL", "D2"
+        "ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts",
+        "BrakiModulu",
+        "D2",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/pulpit/strings.ts",
+        "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/pulpit/pulpitModel.ts",
+        "StatusPulpitu zgodnoscModulu ZgodnoscModulu",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/wniosek/strings.ts",
+        "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL",
+        "D2",
     ),
     *_fe_def("ui2/oze/krzywe/krzyweModel.ts", "istotnoscWerdyktuPQ", "D2"),
     *_fe_def("ui2/oze/studium/studiumModel.ts", "werdyktPokryciaPL", "D2"),
@@ -2501,7 +2790,9 @@ def check_pakiet_l_resurrection() -> list[str]:
                 "2026-09-23) — nie odtwarzaj"
             )
 
-    def_be = [w for w in PAKIET_L_WPISY if w.warstwa == "backend" and w.rodzaj == "definicja"]
+    def_be = [
+        w for w in PAKIET_L_WPISY if w.warstwa == "backend" and w.rodzaj == "definicja"
+    ]
     if BACKEND_SRC_DIR.exists():
         globalne = {w.symbol: w for w in def_be if w.zasieg == "globalnie"}
         plikowe: dict[str, dict[str | None, WpisPakietuL]] = {}
@@ -2515,7 +2806,7 @@ def check_pakiet_l_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             lokalne = plikowe.get(rel_src, {})
             for nazwa, lineno in _definicje_py(tree):
                 trafiony = globalne.get(nazwa) or lokalne.get(nazwa)
@@ -2527,12 +2818,16 @@ def check_pakiet_l_resurrection() -> list[str]:
                         "nie moze wrocic"
                     )
 
-    fe_wpisy = [w for w in PAKIET_L_WPISY if w.warstwa == "frontend" and w.rodzaj != "sciezka"]
+    fe_wpisy = [
+        w for w in PAKIET_L_WPISY if w.warstwa == "frontend" and w.rodzaj != "sciezka"
+    ]
     if FRONTEND_SRC_DIR.exists():
         globalne_fe = [
             (w, _ts_definicja(w.symbol))
             for w in fe_wpisy
-            if w.rodzaj == "definicja" and w.zasieg == "globalnie" and w.symbol is not None
+            if w.rodzaj == "definicja"
+            and w.zasieg == "globalnie"
+            and w.symbol is not None
         ]
         plikowe_fe: dict[str, list[WpisPakietuL]] = {}
         for w in fe_wpisy:
@@ -2657,7 +2952,9 @@ def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
     """Literaly napisowe modulu Pythona POZA dokstringami (modul, klasa, funkcja)."""
     dokstringi: set[int] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+        if isinstance(
+            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        ):
             if (
                 node.body
                 and isinstance(node.body[0], ast.Expr)
@@ -2687,7 +2984,9 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                 f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
             )
     for sciezka in ABP1_SCIEZKI_FRONTEND:
-        if zrodlo_istnieje(FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")):
+        if zrodlo_istnieje(
+            FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")
+        ):
             violations.append(
                 f"[resurrected-module] frontend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
             )
@@ -2700,7 +2999,7 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             plikowe = ABP1_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
             for nazwa, lineno in _definicje_py(tree):
                 if nazwa in ABP1_DEFINICJE_BACKEND or nazwa in plikowe:

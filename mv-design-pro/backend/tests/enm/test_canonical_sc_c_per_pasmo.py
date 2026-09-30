@@ -12,8 +12,9 @@ REUSE 1:1, zero duplikacji wzorów:
     - ``application.solvers.lv_temperature_correction.build_min_scenario_graph``
       (R_θ = R20·[1+0.004·(θk−20)] na KOPII grafu dla scenariusza MIN).
 
-Golden MV+LV (parametry identyczne z
-``tests/network_model/solvers/test_sc_lv_min_max.py`` dla porównywalności):
+Golden MV+LV (jedyne źródło parametrów: stałe modułu ``_SK_Q_MVA`` … ``_UN_LV_KV``
+poniżej; rachunek ręczny Ik''max na tych parametrach — sekcja 9 tego pliku; od karty
+TORY-TYLKO-W-TESTACH ``test_sc_lv_min_max.py`` nie zawiera już tej sieci):
 grid source Sk''=250 MVA 15 kV -> kabel SN 2 km -> TR 630 kVA 15/0,4 kV Dyn11
 uk=6% -> szyna nN -> kabel nN YAKY 4x120 60 m -> koniec obwodu nN.
 """
