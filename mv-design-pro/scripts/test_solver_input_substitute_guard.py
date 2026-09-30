@@ -1725,7 +1725,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta B01-RUNDA-3 (2026-09-30, O-59): 4116 -> 4118 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`git archive aa89f63a`), roznica zbiorow: +2 (`odwolania`,
+    # `tresc` — rekord odmowy wejscia rdzenia `RekordOdmowy` w `network_model/odmowa_danych.py`;
+    # `kod`, `rodzaj`, `ref` juz byly w zbiorze), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4118." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1906,7 +1910,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta B01-RUNDA-1 (2026-09-30, decyzja B-01 pozycja (i)): 561 -> 558 (-3 skasowany
         # solver `network_model/solvers/stability_rms/{__init__,contracts,engine}.py`).
         # POMIAR guardem na drzewie karty.
-        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta B01-RUNDA-3 (2026-09-30, O-59): 558 -> 559 (+1 `enm/zdania_odmow_rdzenia.py` —
+        # zdanie odmowy rdzenia z nazwami z modelu, zero wpisow). POMIAR guardem na drzewie karty.
+        "Przeskanowano 559 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2076,7 +2082,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
         # BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta B01-RUNDA-3 (2026-09-30): enm 58 -> 59 (+1 `enm/zdania_odmow_rdzenia.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=59, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
