@@ -49,7 +49,7 @@ import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
 import type { TransformerType } from '../../catalog/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
-import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
+import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import type {
   Bay,
   EnergyNetworkModel,

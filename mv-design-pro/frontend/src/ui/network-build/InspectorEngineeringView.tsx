@@ -89,6 +89,7 @@ import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
+import { selectStationDistributionTransformers, stationRefOfTransformer } from '../shared/transformatoryStacji';
 
 // =============================================================================
 // Types
@@ -1955,10 +1956,9 @@ function findParentStation(
   elementId: string,
   snapshot: EnergyNetworkModel,
 ): string | null {
-  // Check transformer_refs
-  const trStation = snapshot.substations?.find((s) =>
-    s.transformer_refs?.includes(elementId),
-  );
+  // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+  const trStationRef = stationRefOfTransformer(snapshot, elementId);
+  const trStation = trStationRef ? snapshot.substations?.find((s) => s.ref_id === trStationRef) : undefined;
   if (trStation) return trStation.name;
   // Check generator station_ref
   const gen = snapshot.generators?.find((g) => g.ref_id === elementId);
@@ -2332,9 +2332,8 @@ function buildSectionsForElement(
       : stationFieldItems.length > 0
         ? `${stationFieldItems.length} pól SN`
         : formatStationSwitchgearLayoutLabelPl(station.station_type);
-    const stationTransformers = (snapshot.transformers ?? []).filter((t) =>
-      station.transformer_refs.includes(t.ref_id),
-    );
+    // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
+    const stationTransformers = selectStationDistributionTransformers(snapshot, station);
     // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
     // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
     const stationBusRefs = szynyStacji(station, snapshot.branches ?? []);

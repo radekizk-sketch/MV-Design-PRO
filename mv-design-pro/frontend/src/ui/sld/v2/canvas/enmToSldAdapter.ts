@@ -44,7 +44,8 @@ import type {
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
-import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
+import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
+import { stacjaPola, stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -2376,20 +2377,22 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
   const buses = snapshot.buses ?? [];
   const bays = snapshot.bays ?? [];
   const branches = snapshot.branches ?? [];
-  const transformers = snapshot.transformers ?? [];
 
   const gpzStations = substations.filter((s) => s.station_type === 'gpz');
 
   return gpzStations.map((gpz, idx) => {
+    // SZYNY-STACJI-LUSTRO: transformatory GPZ z JEDNEJ reguły „transformatory stacji”
+    // (deklaracja `transformer_refs`, przy jej braku — koniec na szynie GPZ z lustra).
+    const transformers = transformatoryNalezaceDoStacji(snapshot, gpz);
     const lvBus = findFirstBusByRefs(buses, gpz.bus_refs);
     const lvVoltageKv = lvBus?.voltage_kv ?? 15;
     /* HV voltage z ENM (transformer.uhv_kv lub bus.voltage_kv).
      * INVARIANT 9: brak danych = `null` propagowane do renderera, NIE
      * fałszywy default 110. Renderer pokaże etykietę "?" zamiast zmyślonego
      * "110 kV" (audyt system §B). */
-    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses);
+    const hvVoltageKv = inferHvVoltageKv(transformers, buses);
     const hvVoltageKvKnown = hvVoltageKv !== null;
-    const transformerCount = Math.max(1, gpz.transformer_refs?.length ?? 0);
+    const transformerCount = Math.max(1, transformers.length);
 
     /* Buduj sections + couplers + bays z gpz_sections[] (LV side). */
     const { sections, couplers } = buildGpzSnSections({
@@ -2541,10 +2544,7 @@ function buildHvSectionsFromEnm(args: BuildHvFromEnmArgs): GpzSectionDescriptor[
 }
 
 function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
-  const { gpz, transformers, buses, sources, hvVoltageKv } = args;
-  const ownTransformers = transformers.filter((tr) =>
-    gpz.transformer_refs?.includes(tr.ref_id),
-  );
+  const { gpz, transformers: ownTransformers, buses, sources, hvVoltageKv } = args;
   if (ownTransformers.length === 0) return [];
 
   /* Wyznacz wspólny HV bus (zwykle jeden dla GPZ-1 / pierścieniowy poprawimy
@@ -3152,7 +3152,7 @@ function normalizeCableMultiplicationSigns(raw: string): string {
  * Wnioskuje napięcie strony HV GPZ z dostępnych danych ENM.
  *
  * Reguła deterministyczna (audyt MV §6 BLOCKER-29: zero heurystyk):
- *   1) Trafo skojarzony z GPZ przez `transformer_refs` ma `uhv_kv` → użyj.
+ *   1) Trafo GPZ (jedna reguła `transformatoryNalezaceDoStacji`) ma `uhv_kv` → użyj.
  *   2) Bus po stronie HV trafa (`tr.hv_bus_ref`) ma `voltage_kv` → użyj.
  *   3) Brak danych → `null` (Invariant 9: brak danych ≠ 110 kV default).
  *
@@ -3161,13 +3161,10 @@ function normalizeCableMultiplicationSigns(raw: string): string {
  * bez zmyślania wartości liczbowej.
  */
 function inferHvVoltageKv(
-  transformers: readonly Transformer[],
-  gpz: Substation,
+  ownTransformers: readonly Transformer[],
   buses: readonly Bus[],
 ): number | null {
-  const ownTransformers = transformers.filter((tr) =>
-    gpz.transformer_refs?.includes(tr.ref_id),
-  );
+  /* `ownTransformers` = transformatory TEGO GPZ (`transformatoryNalezaceDoStacji`). */
   /* (1) Wprost z trafo: uhv_kv. */
   for (const tr of ownTransformers) {
     if (tr.uhv_kv) return tr.uhv_kv;
@@ -3453,7 +3450,7 @@ function buildSldLineRunsForLayout(
       const originOwner = run.branch_origin_station_ref
         ? fieldStationByRef.has(run.branch_origin_station_ref)
           ? run.branch_origin_station_ref
-          : ownerStationRefFromFieldRef(run.branch_origin_station_ref)
+          : stacjaPola(snapshot, run.branch_origin_station_ref)
         : run.run_kind === 'branch'
           ? resolveFieldStationRefForBus(fieldStationByBus, firstBranch?.from_bus_ref)
           : null;
@@ -5079,12 +5076,11 @@ function resolveLineRunOriginPoint(
   const originStation = stationByRef.get(originRef);
   if (originStation) return { x: originStation.x, y: originStation.y };
 
-  // Origin może być refem POLA stacji (`stn/<id>/sn_field/NNN`), nie samej stacji.
-  // Wyprowadź ref stacji-właściciela z refu pola (`stn/<id>` → `stn/<id>/station`,
-  // `gpz/<id>` → `gpz/<id>/substation`) i spróbuj ponownie. Bez tego odgałęzienie tappujące
-  // z pola stacji nie znajdowało origin → spadało do slotowego Y (wisiało po
-  // przesunięciu stacji do drzewa).
-  const ownerStationRef = ownerStationRefFromFieldRef(originRef);
+  // Origin może być refem POLA stacji, nie samej stacji. Stacja pola z DANYCH (`stacjaPola`:
+  // rekord `bays` albo `field_specs`/`nn_field_specs` stacji — SZYNY-STACJI-LUSTRO), nie
+  // z wzorca nazwy refu. Bez tego odgałęzienie tappujące z pola stacji nie znajdowało
+  // origin → spadało do slotowego Y (wisiało po przesunięciu stacji do drzewa).
+  const ownerStationRef = stacjaPola(snapshot, originRef);
   if (ownerStationRef) {
     const ownerStation = stationByRef.get(ownerStationRef);
     if (ownerStation) return { x: ownerStation.x, y: ownerStation.y };
@@ -5094,23 +5090,6 @@ function resolveLineRunOriginPoint(
   if (!branchPoint) return null;
 
   return resolveBranchPointRouteAnchor(snapshot, branchPoint, builtRuns);
-}
-
-/**
- * Ref stacji-właściciela z refu POLA (`branch_origin_station_ref` ciągu bywa refem pola
- * stacji). Zwraca `null` gdy ref nie pasuje do wzorca. NIE odpowiada na pytanie o szynę —
- * przynależność szyny do stacji daje wyłącznie lustro `szynyStacji` (SZYNY-STACJI-LUSTRO).
- */
-function ownerStationRefFromFieldRef(ref: string): string | null {
-  if (ref.startsWith('stn/')) {
-    const id = ref.split('/')[1];
-    if (id) return `stn/${id}/station`;
-  }
-  if (ref.startsWith('gpz/')) {
-    const id = ref.split('/')[1];
-    if (id) return `gpz/${id}/substation`;
-  }
-  return null;
 }
 
 function findBranchPointByRefOrBus(

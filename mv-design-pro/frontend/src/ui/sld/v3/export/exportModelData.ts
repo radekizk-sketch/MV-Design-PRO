@@ -22,6 +22,7 @@
 import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { fieldRoleLabelPl } from '../../v2/station-rozdzielnia/contract';
 import { szynyStacji } from '../../../shared/szynyStacji';
+import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../../shared/transformatoryStacji';
 import type { Iec61850Bay, Iec61850Equipment, Iec61850ExportInput, Iec61850VoltageLevel } from '../../v2/export/exportIec61850';
 import type {
   CimAcLineSegment,
@@ -98,10 +99,11 @@ export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: str
           // Transformator pola TR jest aparatem stacji, nie gałęzią pola —
           // dokładamy go z listy transformatorów stacji, żeby pole
           // transformatorowe nie wyszło puste.
+          // SZYNY-STACJI-LUSTRO: transformatory ROZDZIELCZE stacji z jednej reguły (blokowy
+          // transformator źródła DER nie jest aparatem pola TR).
           if (bay.bay_role === 'TR') {
-            for (const ref of substation.transformer_refs) {
-              const transformer = snapshot.transformers.find((t) => t.ref_id === ref);
-              if (transformer) equipment.push({ name: transformer.ref_id, type: 'PTR', desc: transformer.name });
+            for (const transformer of selectStationDistributionTransformers(snapshot, substation)) {
+              equipment.push({ name: transformer.ref_id, type: 'PTR', desc: transformer.name });
             }
           }
           // Opis (`desc`) obiektu SCD/CIM = nazwa roli z kanonu słownictwa ról pól (karta #141).
@@ -174,14 +176,12 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
         : {}),
     }));
 
-  const substationOfTransformer = new Map<string, string>();
-  for (const substation of snapshot.substations) {
-    for (const ref of substation.transformer_refs) substationOfTransformer.set(ref, substation.ref_id);
-  }
+  // SZYNY-STACJI-LUSTRO: kontener transformatora = stacja z jednej reguły „transformatory
+  // stacji” (deklaracja, przy jej braku koniec na szynie stacji; blokowy DER też ma stację).
   const powerTransformers: CimPowerTransformer[] = snapshot.transformers.map((transformer) => ({
     mrid: transformer.ref_id,
     name: transformer.name || transformer.ref_id,
-    substation_mrid: substationOfTransformer.get(transformer.ref_id) ?? '',
+    substation_mrid: stationRefOfTransformer(snapshot, transformer.ref_id) ?? '',
     ratedS_mva: transformer.sn_mva,
     hv_kv: transformer.uhv_kv,
     lv_kv: transformer.ulv_kv,

@@ -26,6 +26,7 @@ import type { SceneV3 } from './buildScene';
 import type { Branch, Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
 import { wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 import { szynyStacji } from '../../../shared/szynyStacji';
+import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 
 /* =============================================================================
    gpzHvColumnGaps (D3-1, spec §21.1)
@@ -90,12 +91,13 @@ function gpzBlockCollapsed(scene: SceneV3, gpzRef?: string): boolean {
   );
 }
 
-/** TR WN/SN wg tej samej regułY co adapter (`enmToCanonicalGpzAdapter.ts`
- *  `deriveHvSystemSource`): `Substation.transformer_refs` → transformator z
+/** TR WN/SN wg tej samej reguły co adapter (`enmToCanonicalGpzAdapter.ts`
+ *  `deriveHvSystemSource`): transformatory GPZ z `ui/shared/transformatoryStacji` → transformator z
  *  stroną górną w paśmie WN (`wPasmieWn`) — WYODRĘBNIONE tu, bo wyrocznia NIE może importować adaptera
  *  (warstwa `v2/canvas` → `v3/scene` byłaby odwrotną zależnością architektury). */
-function hvTransformersOfGpz(gpz: Substation, transformers: readonly Transformer[]): readonly Transformer[] {
-  return transformers.filter((t) => gpz.transformer_refs?.includes(t.ref_id) && wPasmieWn(t.uhv_kv));
+function hvTransformersOfGpz(gpz: Substation, snapshot: GpzHvColumnSnapshot): readonly Transformer[] {
+  // SZYNY-STACJI-LUSTRO: transformatory GPZ z tej samej JEDNEJ reguły co adapter.
+  return transformatoryNalezaceDoStacji(snapshot, gpz).filter((t) => wPasmieWn(t.uhv_kv));
 }
 
 /**
@@ -124,7 +126,7 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
     // KD-7: blok zwinięty (KD-5) nie rysuje geometrii wewnętrznej Z ZAŁOŻENIA —
     // §21.1 opisuje kolumnę WN rysunku ROZWINIĘTEGO (patrz `gpzBlockCollapsed`).
     if (gpzBlockCollapsed(scene, gpz.ref_id)) continue;
-    const hvTransformers = hvTransformersOfGpz(gpz, snapshot.transformers ?? []);
+    const hvTransformers = hvTransformersOfGpz(gpz, snapshot);
     if (hvTransformers.length === 0) continue; // ENM nie niesie TR WN/SN dla tego GPZ — poza zakresem D3-1.
 
     const hvBusPresent = scene.segments.some((seg) => seg.meta?.testId === 'gpz-canonical-hv-bus');

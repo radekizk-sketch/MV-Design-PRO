@@ -1,115 +1,9 @@
-import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
+import type { EnergyNetworkModel, Substation } from '../../types/enm';
 import { extractTransformerDesignation } from '../sld/v2/canvas/enmToCanonicalGpzAdapter';
-import { szynyStacji } from '../shared/szynyStacji';
-
-const BLOCK_TRANSFORMER_TOKEN_RE = /(^|[\s_/.-])(block|blokowy|blok|dedicated|dedykowany)([\s_/.-]|$)/u;
+import { refyTransformatorowBlokowych, selectStationDistributionTransformers } from '../shared/transformatoryStacji';
 
 function nonEmptyRef(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
-}
-
-function transformerRefs(transformer: Transformer): string[] {
-  return [transformer.ref_id, transformer.id].filter(nonEmptyRef);
-}
-
-
-export function collectDerBlockTransformerRefs(
-  snapshot: EnergyNetworkModel | null | undefined,
-): Set<string> {
-  const refs = new Set<string>();
-  for (const generator of snapshot?.generators ?? []) {
-    const record = generator as typeof generator & {
-      readonly blocking_transformer_ref?: string | null;
-    };
-    if (nonEmptyRef(record.blocking_transformer_ref)) {
-      refs.add(record.blocking_transformer_ref);
-    }
-  }
-  return refs;
-}
-
-export function isStationDistributionTransformer(
-  transformer: Transformer,
-  blockTransformerRefs: ReadonlySet<string>,
-): boolean {
-  if (transformerRefs(transformer).some((ref) => blockTransformerRefs.has(ref))) {
-    return false;
-  }
-
-  const record = transformer as unknown as Record<string, unknown>;
-  const catalogBinding = record.catalog_binding as Record<string, unknown> | undefined;
-  const meta = record.meta as Record<string, unknown> | undefined;
-  const tokens = [
-    transformer.name,
-    record.role,
-    record.transformer_role,
-    record.connection_variant,
-    catalogBinding?.catalog_namespace,
-    catalogBinding?.catalog_item_id,
-    meta?.role,
-    meta?.transformer_role,
-    meta?.connection_variant,
-    meta?.solution_kind,
-  ]
-    .filter((value): value is string => typeof value === 'string')
-    .join(' ')
-    .toLowerCase();
-
-  return !BLOCK_TRANSFORMER_TOKEN_RE.test(tokens);
-}
-
-export function selectStationDistributionTransformers(
-  snapshot: EnergyNetworkModel | null | undefined,
-  station: Substation | null | undefined,
-): Transformer[] {
-  if (!snapshot || !station) return [];
-
-  const explicitRefs = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji` (strona górna
-  // transformatora leży na zacisku pola TR). `Bus` nie ma pola `substation_ref` (F10.3),
-  // więc dawna gałąź „szyna deklaruje stację" była martwa — usunięta.
-  const busRefs = szynyStacji(station, snapshot.branches ?? []);
-  const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
-
-  return (snapshot.transformers ?? []).filter((transformer) => {
-    // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA.
-    // Wskazanie `Generator.blocking_transformer_ref` wyklucza transformator ze
-    // zbioru transformatorów rozdzielczych stacji — TAKŻE wtedy, gdy stacja
-    // deklaruje go w `transformer_refs` (operacja DER dopisuje tam transformator
-    // blokowy toru źródłowego, `Etap3Configurators` mierzy to na stacji PV z
-    // DWOMA transformatorami: rozdzielczym 250 kVA i blokowym 1250 kVA).
-    //
-    // Pierwsza wersja tej karty odwracała tę kolejność, żeby uratować przypadek
-    // odwrotny (PV na szynie nN wskazuje JEDYNY transformator stacji przez
-    // auto-resolve V12K-022 — `domain_operations_v2.py`). Pomiar pokazał, że
-    // OBA kształty są w danych IDENTYCZNE: transformator, na którego szynie
-    // dolnej stoi generator deklarujący go jako blokowy. Danych nie da się więc
-    // rozstrzygnąć bez nowego pola w modelu — a zgadywanie po nazwie/liczbie
-    // transformatorów byłoby heurystyką, nie regułą.
-    //
-    // Dlatego OBIE strony parytetu (rysunek tutaj i bramka gotowości
-    // `enm/pole_transformatorowe.py`) stosują TĘ SAMĄ, węższą regułę: wskazanie
-    // po stronie źródła wyklucza. Skutek jest jawny i przypięty wierszem
-    // tablicy `pole_transformatorowe_parytet_v1.json` (`tr-stacji-z-der-na-nn`):
-    // stacja, której jedyny transformator jest zarazem transformatorem blokowym
-    // źródła, NIE dostaje ani markera, ani ostrzeżenia — brak pola TR pozostaje
-    // wtedy niewykryty. To jest ZNANA GRANICA, nie cichy wyjątek; jej zniesienie
-    // wymaga jawnej roli transformatora w modelu (osobna karta).
-    if (!isStationDistributionTransformer(transformer, blockTransformerRefs)) {
-      return false;
-    }
-
-    const refs = transformerRefs(transformer);
-    if (refs.some((ref) => explicitRefs.has(ref))) {
-      return true;
-    }
-
-    if (explicitRefs.size > 0) {
-      return false;
-    }
-
-    return busRefs.has(transformer.hv_bus_ref) || busRefs.has(transformer.lv_bus_ref);
-  });
 }
 
 /**
@@ -217,11 +111,12 @@ export function selectStationTransformerUnits(
 
   // Ścieżka awaryjna: stacja deklaruje `transformer_refs`, ale migawka nie
   // niesie odpowiadających rekordów `Transformer` — refy bez terminali.
-  const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
+  // Rekordu brak, więc roli katalogowej nie ma skąd przeczytać — wyklucza wyłącznie
+  // wskazanie źródła (ten sam filtr, pierwszy kanał).
+  const refyBlokowe = refyTransformatorowBlokowych(snapshot);
   return (station.transformer_refs ?? [])
     .filter(nonEmptyRef)
-    .filter((ref) => !blockTransformerRefs.has(ref))
-    .filter((ref) => !BLOCK_TRANSFORMER_TOKEN_RE.test(ref.toLowerCase()))
+    .filter((ref) => !refyBlokowe.has(ref))
     .sort()
     .map((ref) => ({
       ref,

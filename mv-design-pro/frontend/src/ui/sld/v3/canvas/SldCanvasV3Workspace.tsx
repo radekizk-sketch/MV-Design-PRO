@@ -123,7 +123,7 @@ import {
   KLASY_UCHWYTU,
   type CanvasMenuSubject,
 } from './canvasMenuSubject';
-import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
+import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
   buildDerDropDetailDrawerData,

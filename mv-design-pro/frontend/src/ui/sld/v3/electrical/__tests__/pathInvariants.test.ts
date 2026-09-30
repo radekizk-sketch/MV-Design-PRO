@@ -17,6 +17,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';
+import { wlasnyZaciskPola } from '../../../../shared/zaciskPola';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
 const enmBazowy = buildStacjaBFixture();
@@ -91,15 +92,33 @@ describe('P0.12(c) — inwarianty 1-9 ZIELONE na poprawnej fixturze Stacja B', (
 });
 
 describe('viewModel.ts — szkielet SLD VIEW MODEL buduje się na Stacji B (T1 skonsumuje później)', () => {
-  it('jedna sekcja na szynę, jedna granica transformatorowa T1, odpływy przypisane do sekcji zasilającej', () => {
-    const viewModel = buildSldViewModel(graphBazowy);
+  it('jedna sekcja na szynę GŁÓWNĄ, jedna granica transformatorowa T1, odpływy przypisane do sekcji zasilającej', () => {
+    const viewModel = buildSldViewModel(graphBazowy, enmBazowy);
     // Fixtura niesie DWA transformatory (GPZ 110/15 kV TR1 z bazowej
     // `openBranch.enm.json` + T1 15/0,4 kV Stacji B) — sekcje/granice liczone
     // dla CAŁEGO modelu, nie tylko Stacji B.
-    expect(viewModel.sections).toHaveLength(graphBazowy.nodes.size);
+    // SZYNY-STACJI-LUSTRO (kanon toru pola, `enm/tor_pola.py`): zacisk pola SN i szyna za
+    // aparatem pola nN NIE są osobnymi sekcjami — należą do sekcji szyny głównej swojego pola
+    // (`szynaGlownaStacji`). Intencja testu („sekcja = szyna rozdzielnicy”) zostaje; dawne
+    // „sekcja = każdy węzeł grafu” liczyło zaciski pól jako szyny.
+    const zaciskiPol = new Set(
+      (enmBazowy.substations ?? []).flatMap((s) =>
+        ((s.meta as { field_specs?: Record<string, unknown>[] } | undefined)?.field_specs ?? [])
+          .map((spec) => wlasnyZaciskPola(spec))
+          .filter((ref): ref is string => ref !== null),
+      ),
+    );
+    expect(zaciskiPol.size).toBeGreaterThan(0);
+    const sekcjeSzyn = new Set(viewModel.sections.map((sekcja) => sekcja.busRef));
+    for (const zacisk of zaciskiPol) expect(sekcjeSzyn.has(zacisk)).toBe(false);
+    expect(viewModel.sections.length).toBeLessThan(graphBazowy.nodes.size);
     expect(viewModel.transformerBoundaries).toHaveLength(graphBazowy.transformerEdges.length);
     const t1Boundary = viewModel.transformerBoundaries.find((b) => b.transformerRef === STACJA_B_REFS.transformerRef);
     expect(t1Boundary).toBeTruthy();
+    // Strona górna T1 leży na ZACISKU pola TR (zasada toru), a granica transformatorowa stoi na
+    // sekcji szyny głównej SN tego pola.
+    const t1 = enmBazowy.transformers.find((t) => t.ref_id === STACJA_B_REFS.transformerRef)!;
+    expect(zaciskiPol.has(t1.hv_bus_ref)).toBe(true);
     expect(t1Boundary?.hvSectionId).toBe(`${STACJA_B_REFS.snBusRef}#section`);
     expect(t1Boundary?.lvSectionId).toBe(`${STACJA_B_REFS.lvTerminalBusRef}#section`);
     const qf01Assignment = viewModel.feederAssignments.find((f) => f.branchRef === STACJA_B_REFS.qf01Ref);
