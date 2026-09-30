@@ -102,6 +102,24 @@ KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY = "SI-115"
 #: znaczników. FAIL-CLOSED: nierozpoznany znacznik nie może znaczyć „w porządku".
 KOD_BLOKADY_ZNACZNIK_NIEZNANY = "SI-116"
 
+#: JEDNO źródło prawdy zbioru kodów blokady autorytetu (decyzja OD-22, O-59,
+#: 2026-09-30). Test klasy konsumentów (`tests/network_model/core/
+#: test_konsumenci_autorytetu_od22.py`) iteruje PO TYM zbiorze, nie po liście w
+#: teście — nowy kod (np. z ADR-021 K2 czy OD-14) dopisany tutaj wchodzi do
+#: iloczynu „konsument × kod" sam, a jego brak tutaj przy nowej stałej
+#: ``KOD_BLOKADY_*`` czerwieni test zamknięcia.
+KODY_BLOKADY_AUTORYTETU: frozenset[str] = frozenset(
+    {
+        KOD_BLOKADY_K_SC_DOMYSLNY,
+        KOD_BLOKADY_K_SC_NIEPOPRAWNY,
+        KOD_BLOKADY_WYNIK_BEZ_SLADU,
+        KOD_BLOKADY_WYNIK_Z_PAYLOADU,
+        KOD_BLOKADY_K_SC_POZA_DZIEDZINA,
+        KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY,
+        KOD_BLOKADY_ZNACZNIK_NIEZNANY,
+    }
+)
+
 
 def zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc: ZdolnoscMiarodajna) -> bool:
     """Czy wkład zwarciowy falownika wchodzi do równań tej zdolności."""

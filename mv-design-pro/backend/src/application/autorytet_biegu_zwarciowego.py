@@ -35,11 +35,15 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
-from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    ProweniencjaWynikuZwarciowego,
+    wymagaj_autorytetu,
+)
 from network_model.core.wiazanie_wyniku_zwarciowego import (
     WiazanieWynikuZwarciowego,
     wielkosci_do_odcisku,
 )
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.pochodne.jednostki import a_na_ka, v_na_kv
 
 #: Rodzaje biegu kanonicznego, którego artefakt niesie wielkości zwarciowe.
@@ -191,7 +195,7 @@ def bieg_zwarciowy_miarodajny(run_id: str | None) -> Any:
     return bieg
 
 
-def _proweniencja_biegu(bieg: Any) -> ProweniencjaWynikuZwarciowego:
+def proweniencja_biegu(bieg: Any) -> ProweniencjaWynikuZwarciowego:
     """Proweniencja k_sc ZAPISANEGO biegu — ze znaczników, nie z modelu na nowo.
 
     Znaczniki (``raw_result["k_sc_znaczniki"]``) zostały policzone RAZ, z grafu,
@@ -202,6 +206,21 @@ def _proweniencja_biegu(bieg: Any) -> ProweniencjaWynikuZwarciowego:
     """
     znaczniki = (bieg.raw_result or {}).get("k_sc_znaczniki") or ()
     return ProweniencjaWynikuZwarciowego.ze_znacznikow(znaczniki)
+
+
+def wymagaj_autorytetu_biegu(bieg: Any, zdolnosci: Iterable[ZdolnoscMiarodajna]) -> None:
+    """Bramka autorytetu dla konsumenta, który czyta ZAPISANY bieg zwarciowy.
+
+    Decyzja OD-22 (O-59, 2026-09-30): ``k_sc`` falownika pozostaje
+    DEFAULT_FORBIDDEN — wynik z domyślką jest ROBOCZY, a KAŻDY konsument zdolności
+    zależnej od wkładu zwarciowego (nastawy, dobór, koordynacja, dowody) odmawia.
+    Jedna funkcja dla wszystkich konsumentów biegu: proweniencja zawsze ze
+    znaczników zapisanych przy biegu (`proweniencja_biegu`), nigdy z modelu
+    policzonego na nowo ani z żądania. Podnosi ``BrakAutorytetuWyniku`` z pełną
+    listą blokad (kod, zdolność, komunikat) — warstwa wołająca mapuje ją na
+    swoją odmowę z tym samym wyjaśnieniem.
+    """
+    wymagaj_autorytetu(zdolnosci, proweniencja_biegu(bieg))
 
 
 def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> WejscieZwarcioweZBiegu:
@@ -229,7 +248,7 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
         wynik=wiersz,
     )
     return WejscieZwarcioweZBiegu(
-        proweniencja=_proweniencja_biegu(bieg),
+        proweniencja=proweniencja_biegu(bieg),
         wiazanie=wiazanie,
         wielkosci=wielkosci_do_odcisku(wiersz),
     )
@@ -431,8 +450,8 @@ def wejscie_koordynacji_z_biegow(
     # zastrzeżeniem całej koordynacji. Znaczniki są SUMOWANE, nie wybierane:
     # nie ma podstawy, dla której wkład DER miałby być miarodajny w jednym
     # scenariuszu i nieistotny w drugim.
-    proweniencja_max = _proweniencja_biegu(bieg_max)
-    proweniencja_min = _proweniencja_biegu(bieg_min)
+    proweniencja_max = proweniencja_biegu(bieg_max)
+    proweniencja_min = proweniencja_biegu(bieg_min)
     proweniencja_obu = ProweniencjaWynikuZwarciowego.ze_znacznikow(
         tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc)
     )
