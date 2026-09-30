@@ -81,7 +81,7 @@ def test_pakowanie_i_rozpakowanie_stanow_jest_odwracalne() -> None:
 
 
 def test_rozpakowanie_niezgodnego_wektora_jest_bledem_programisty() -> None:
-    with pytest.raises(AssertionError, match="sumy wymiarow"):
+    with pytest.raises(AssertionError, match="sumy wymiarów"):
         rozpakuj_stany(np.zeros(5), (4, 2))
 
 

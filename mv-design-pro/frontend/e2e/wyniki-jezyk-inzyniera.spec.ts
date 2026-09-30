@@ -740,6 +740,8 @@ const SCENY: Record<string, Prowadzenie> = {
   // i wariant z odmową modelu przed biegiem (brak modelu dynamicznego źródła).
   'wyniki-dynamika': zwykla,
   'wyniki-dynamika-brak': zwykla,
+  // Karta modeli odbiorów: odbiór bez modelu dynamicznego — akcja naprawcza w sekcji modeli.
+  'wyniki-dynamika-odbior-brak': zwykla,
 };
 
 /**

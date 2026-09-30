@@ -87,7 +87,7 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py",
             "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
         ),
-        mutacje=("M16", "M17", "M69", "M71", "M73", "M74"),
+        mutacje=("M16", "M17", "M69", "M71", "M73", "M74", "M77", "M78"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "fazor skladowej zgodnej w stanie quasi-ustalonym RMS; przy |V| <= u_V "
@@ -95,7 +95,9 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18); estymata "
             "u_V = |J^-1 psi(r)| + |J^-1 rho| z czesci residuum pewnie obecnej ponad granica "
             "bledu zaokraglen psi(r) = sign(r) max(|r| - rho, 0) "
-            "(siec.granica_zaokraglen_residuum, siec.czesc_pewna_residuum) — ciagla na progu "
+            "(siec.granica_zaokraglen_residuum, siec.czesc_pewna_residuum; skladniki granicy i "
+            "residuum z jednego zrodla `siec.skladniki_wstrzykniec` — odbiory z obwodem przy "
+            "swoim stanie estymatora, urzadzenia pradowe) — ciagla na progu "
             "i nigdy ponizej propagacji granicy |J^-1 rho|, nie realizacja szumu |J^-1 r|; "
             "u_Vdot jako suma roznic skonczonych wzdluz obu skladnikow, kazda o kroku "
             "wzglednym co najmniej sqrt(u) (obserwable.skala_kroku_pochodnej)"
@@ -158,29 +160,33 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         zdolnosc="Fail-closed: brak rozwiazania konczy sie ODMOWA NAZWANA",
         rownanie=(
             "warunek istnienia: wyspa z odbiorem |S| > 0 musi zawierac urzadzenie o "
-            "niezerowym pradzie albo niezerowym dI/dV"
+            "niezerowym pradzie albo niezerowym dI/dV; w galezi charakterystyki odbioru "
+            "(|V| >= U_min) residuum wyspy bez zrodla wynosi |S|/|V|"
         ),
         wyrocznia=(
-            "analiza rownania: dla Ybus = 0 residuum wynosi |S|/|V|, wiec KAZDA tolerancja "
-            "jest osiagalna przez odjechanie napiecia — norma residuum nie jest swiadectwem"
+            "analiza rownania: dla Ybus = 0 residuum w galezi charakterystyki wynosi |S|/|V|, "
+            "wiec Newton startujacy z |V| >= U_min ucieka do |V| -> inf i KAZDA tolerancja jest "
+            "osiagalna przez odjechanie napiecia — norma residuum nie jest swiadectwem; siatka "
+            "algebry (`sprawdz_zasilanie_wysp`) jest potrzebna mimo przejscia odbioru w stala "
+            "impedancje, bo fizyczne rozwiazanie takiej wyspy (V = 0) rdzen daje WCZESNIEJ, "
+            "jako obszar beznapieciowy (D-16)"
         ),
         wzorzec="Ybus = 0 + odbior S = 1,0 + j0,2 pu przy dwoch zestawach nastaw",
         testy=(
             "tests/walidacja_fizyczna/test_bramki.py::test_g13_wyspa_bez_zrodla",
-            "tests/walidacja_fizyczna/test_bramki.py::test_g8_granica_odmowy",
             "tests/walidacja_fizyczna/test_odpornosc_numeryczna.py",
         ),
         mutacje=("M18", "M19"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
-            "odbior o stalej mocy BEZ zadeklarowanego napiecia przejscia U_min (granica G8 — "
-            "odbior z U_min przechodzi w stala impedancje i liczy sie przy kazdym zapadzie) "
-            "i wyspy bez zrodla NA POZIOMIE ALGEBRY (`rozwiaz_algebre` "
-            "bez wierszy ograniczenia); tam wyspa martwa BEZ odbioru i bez bocznika nadal "
-            "konczy sie osobliwym jakobianem i odmowa `dynamika.algebra_niezbiezna`. Na "
-            "poziomie BIEGU silnik odcina wyspe bez urzadzenia wnoszacego do algebry "
-            "(obszar beznapieciowy, V = 0 dokladnie) i nie podaje jej algebrze — wyspa "
-            "martwa, patrz D-16"
+            "wyspy bez zrodla NA POZIOMIE ALGEBRY (`rozwiaz_algebre` bez wierszy "
+            "ograniczenia); tam wyspa martwa BEZ odbioru i bez bocznika nadal konczy sie "
+            "osobliwym jakobianem i odmowa `dynamika.algebra_niezbiezna`. Na poziomie BIEGU "
+            "silnik odcina wyspe bez urzadzenia wnoszacego do algebry (obszar beznapieciowy, "
+            "V = 0 dokladnie) i nie podaje jej algebrze — wyspa martwa, patrz D-16. Zapad "
+            "dowolnej glebokosci w wezle odbioru zasilanego NIE jest granica odmowy: odbior "
+            "przechodzi w stala impedancje ponizej U_min (D-23; dawna bramka G8 skasowana "
+            "razem z odbiorem bez napiecia przejscia)"
         ),
         poziom="L5",
     ),
@@ -250,15 +256,18 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
             "::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas",
             "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
+            "tests/walidacja_fizyczna/test_chwila_zero_rodziny_urzadzen.py",
         ),
-        mutacje=("M67", "M69", "M70", "M71", "M72", "M73", "M74"),
+        mutacje=("M67", "M69", "M70", "M71", "M72", "M73", "M74", "M75", "M76"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "ta sama wersja numpy/scipy/OpenBLAS; liczba watkow BLAS i jadro OpenBLAS "
             "dowolne — wynik rowny w tolerancji komparatora fikstur harnessu (ostatnie cyfry "
             "wartosci zaleza od kolejnosci sumowania, wzorce None i kody jakosci nie); "
             "probka t = 0 na algebrze rdzenia (korekta punktu rozplywu ponad dnem zaokraglen) "
-            "i w rownowadze urzadzen punktu skorygowanego (reinicjalizacja z moca oddawana)"
+            "i w rownowadze urzadzen punktu skorygowanego (reinicjalizacja z moca oddawana) "
+            "oraz odbiorow ze stanem (algebra korekty na rozmaitosci rownowagi estymatora, "
+            "x := arg V0 — jeden predykat reinicjalizacji z urzadzeniami)"
         ),
         poziom="L4",
         uwagi=(
@@ -267,7 +276,9 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "(kat pradu), M69 (estymata niepewnosci czestotliwosci z residuum-szumu), M70 "
             "(probka t = 0 w punkcie rozplywu), M71 (roznica pochodnej w szumie), M72 (stan "
             "t = 0 bez reinicjalizacji urzadzen w punkcie skorygowanym), M73 i M74 (estymata "
-            "napiecia i pochodnej bez propagacji dna, gdy residuum ma czesc pewna)."
+            "napiecia i pochodnej bez propagacji dna, gdy residuum ma czesc pewna), M75 (stan "
+            "t = 0 odbioru czulego bez x := arg V0) i M76 (algebra korekty t = 0 przy "
+            "trzymanym stanie estymatora)."
         ),
     ),
 )
@@ -395,8 +406,10 @@ MANIFEST = MANIFEST + (
             "::test_szr_z_przerwa_beznapieciowa",
             "tests/network_model/dynamika/test_obszary_beznapieciowe.py"
             "::test_jakobian_sprzezony_wiersza_ograniczenia_zgodny_z_roznica_skonczona",
+            "tests/network_model/dynamika/test_malosygnalowa.py"
+            "::test_macierz_stanu_wobec_roznicy_skonczonej_ukladu_zredukowanego",
         ),
-        mutacje=("M35", "M36", "M37"),
+        mutacje=("M35", "M36", "M37", "M80"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "wyspa, w ktorej ZADNE urzadzenie nie wnosi pradu ani dI/dV (predykat "
@@ -406,7 +419,10 @@ MANIFEST = MANIFEST + (
             "jest dowodzony dla odbioru stalej mocy za impedancja od SEM stalej; blok -dE/dx "
             "wiersza ograniczenia dowodzony testem roznicowym na atrapie zrodla napieciowego i "
             "na zrodle testowym (jakobiany wobec roznicy skonczonej); przebieg zrodla "
-            "testowego idealnego wobec postaci zamknietej — D-14"
+            "testowego idealnego wobec postaci zamknietej — D-14; ten sam blok dg/dx "
+            "(`calkowanie.blok_algebry_po_stanie`) w macierzy stanu analizy malosygnalowej — "
+            "roznica skonczona ukladu zredukowanego z wierszem ograniczenia, urzadzeniem "
+            "napieciowym i odbiorem ze stanem"
         ),
         poziom="L5",
     ),
@@ -674,6 +690,203 @@ MANIFEST = MANIFEST + (
             "przeksztaltnika nie sa dzis przeliczane na baze ukladu (defekt nazwany w "
             "`zbuduj_rdzen_gfl`, poprawka fizyki w karcie AB-1b.2), wiec agregat ze statyzmem "
             "nie jest rownowazny swoim jednostkom; szyna sztywna i zrodlo testowe — odmowa"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-22",
+        zdolnosc=(
+            "Parytet rozplyw <-> dynamika w t = 0: odbiory ZIP x F(f) i podzial mocy wezla "
+            "na torze rozplyw -> adapter -> rdzen"
+        ),
+        rownanie=(
+            "S_odb^dyn(V_pf, f_n) = S_odb^PF(V_pf, f_studium); S_urz = S_net^PF + sum "
+            "S_odb^PF(V_pf); ||g(x0, y0)||_inf <= tol_PF / min|V_pf|"
+        ),
+        wyrocznia=(
+            "FROZEN rozplyw (Newton-Raphson, rozwiazanie punktu pracy) i jego WLASNA "
+            "implementacja wielomianu (`power_flow_zip.zip_factor` x `frequency_factor`) — inna "
+            "droga liczenia niz `odbiory.py`; przypadek niereprezentowalny — odmowa nazwana "
+            "rozplywu `load.zip_agregat_niereprezentowalny`"
+        ),
+        wzorzec=(
+            "bramki.g22_parytet_chwili_zerowej: siec G16 budowana W BRAMCE z odbiorami "
+            "zwiazanymi z profilem katalogu — rodzaj szyny {z wytworca, same odbiory, ze "
+            "zrodlem sieciowym} x ksztalt {stala moc, Z, I, mieszany} x czulosc {brak, k przy "
+            "f0 studium, k przy f0 = 49 Hz} x liczba odbiorow szyny {1, 2} x pole `model` "
+            "{pq, zip} (36 przypadkow) + dwa odbiory o roznych k przy f0 != f_studium"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_bramki.py::test_g22_parytet_chwili_zerowej",
+            "tests/enm/test_adapter_dynamiki.py::TestModelOdbioruZip"
+            "::test_parytet_chwili_zerowej_z_rozplywem",
+            "tests/enm/test_zip_reprezentowalnosc.py",
+        ),
+        mutacje=("M38", "M39", "M51"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "szyny o agregacie ZIP reprezentowalnym w rozplywie (rowne v0 i f0 na szynie; przy "
+            "f_studium != f0 — jednakowy czynnik czestotliwosciowy odbiorow szyny); punkt "
+            "pracy z |V_pf| >= U_min kazdego odbioru (ponizej — odmowa, D-25); dokladny "
+            "agregat wielu odbiorow ZIP w rozplywie (PQSpec per odbior) jest poza twierdzeniem "
+            "— pozycja rdzenia zamrozonego rozplywu"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-23",
+        zdolnosc=(
+            "Charakterystyka napieciowa odbioru z przejsciem PQ -> Z: ciaglosc w U_min, postac "
+            "zamknieta, V = 0 bez odmowy"
+        ),
+        rownanie=(
+            "|V| >= U_min: S = P0 F_P w_P(|V|) + j Q0 F_Q w_Q(|V|), w = a r^2 + b r + c, "
+            "F = 1 + k (f - f0)/f0; |V| < U_min: S = S(U_min, f) (|V|/U_min)^2, "
+            "I = -Y_eq V, Y_eq = conj(S(U_min, f))/U_min^2"
+        ),
+        wyrocznia=(
+            "wyrocznia_odbiorow.napiecie_dwuwezlowe — uklad dwuwezlowy w postaci zamknietej: "
+            "galaz impedancyjna liniowa V = y E/(y + Y_f + Y_eq), galaz charakterystyki z "
+            "rownania skalarnego |y E| m = |(y + Y_f) m^2 + conj S(m)| (gorny pierwiastek, "
+            "brentq), kat z postaci jawnej; Y_f* dajace |V| = U_min — "
+            "`skala_admitancji_granicznej` (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g23_przejscie_pq_z: szyna sztywna (Z_s = 0,01 + j0,10) — linia "
+            "(0,02 + j0,08) — odbior P0 = 0,3, Q0 = 0,1 pu, U_min = 0,7 pu; ksztalt {stala "
+            "moc, czysty I, mieszany ZIP, czysty Z, mieszany czuly f z f0 = 49 Hz} x zwarcie "
+            "{plytkie, dokladnie Y_f*, glebokie, metaliczne} usuniete samoczynnie"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_bramki.py::test_g23_przejscie_pq_z",
+            "tests/network_model/dynamika/test_odbiory_bieg.py"
+            "::test_zapad_w_wezle_odbioru_wobec_postaci_zamknietej",
+            "tests/network_model/dynamika/test_odbiory_bieg.py"
+            "::test_newton_zbiega_w_punkcie_dokladnie_u_min_z_obu_stron",
+            "tests/network_model/dynamika/test_odbiory.py::test_moc_i_prad_wobec_wyroczni",
+            "tests/network_model/dynamika/test_odbiory.py"
+            "::test_ciaglosc_mocy_i_pradu_w_napieciu_przejscia",
+            "tests/network_model/dynamika/test_odbiory.py"
+            "::test_galaz_impedancyjna_niesie_moc_bierna_i_czynnik_czestotliwosci",
+            "tests/network_model/dynamika/test_odbiory.py"
+            "::test_zero_napiecia_bez_odmowy_przy_skladowej_stalopradowej",
+            "tests/network_model/dynamika/test_odbiory.py"
+            "::test_jakobian_analityczny_wobec_roznicy_centralnej",
+        ),
+        mutacje=("M40", "M41", "M42", "M43", "M46"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "charakterystyka STATYCZNA odbioru (bez silnika — odbior zlozony z czescia "
+            "silnikowa to osobna rodzina); RMS skladowej zgodnej; pochodna dS/d|V| ma w U_min "
+            "zalamanie (cecha modelu, nazwana w zalozeniach wyniku), Newton zbiega z obu stron "
+            "bez wygladzania"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-24",
+        zdolnosc=(
+            "Odbior czuly czestotliwosciowo: estymator katowy = inercja 1. rzedu czestotliwosci "
+            "szyny; samoregulacja czestotliwosciowa (tlumienie) odbioru"
+        ),
+        rownanie=(
+            "x' = e/T_f, e = arg(V e^{-jx}), dw_hat = e/(w_n T_f); 2H dw' = P_m - P_L, "
+            "P_L = P0'(1 + k dw_hat), (T_f + a) dw_hat' = dw - dw_hat, "
+            "a = X P0' k/(w_n E'^2 cos 2psi), sin 2psi = 2 X P_L/E'^2; "
+            "dw_inf = (P_m/P0' - 1)/k"
+        ),
+        wyrocznia=(
+            "wyrocznia_odbiorow.WyspaSamoregulacji: stan ustalony i wartosci wlasne w postaci "
+            "zamknietej, skok w chwili zdarzenia z rownania skalarnego (brentq), trajektoria "
+            "z niezaleznego calkowania DOP853 ukladu zredukowanego (rtol 1e-12), f_hz@B wobec "
+            "f_n (1 + dw - psi'(e) e'/w_n) z tej samej postaci (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g24_samoregulacja_wyspy i g24_estymator_w_zdarzeniach: wyspa — maszyna "
+            "klasyczna (H = 3,5 s, X'd = 0,3) + linia (X = 0,3) + odbior P0 = 0,5 pu, "
+            "k_pf = 2, T_f = 0,1 s, U_min = 0,7 pu; skok +0,005 pu, horyzont 20 s (>= 4 "
+            "przejscia kata szyny przez +-pi); zwarcie w wezle odbioru z przejsciem przez "
+            "U_min przy dw_hat != 0; obszar beznapieciowy i ponowne zasilenie"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_bramki.py::test_g24_samoregulacja_wyspy",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g24_estymator_w_zdarzeniach",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_tozsamosci_estymatora_i_poboru_iloczyn_cech",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_estymator_jest_inercja_pierwszego_rzedu_czestotliwosci_szyny",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_wiele_obrotow_kata_szyny_bez_poslizgu_estymatora",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_jakobiany_modelu_odbioru_wobec_roznicy_centralnej",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_kanaly_odbioru_bez_estymaty_niepewnosci_ani_kodu_jakosci",
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
+            "::test_probka_zero_lezy_na_algebrze_rdzenia",
+        ),
+        mutacje=("M43", "M44", "M45", "M47", "M50", "M75", "M76"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "|theta - x| < pi miedzy zdarzeniami (poslizg estymatora — odmowa nazwana "
+            "`dynamika.zakres_waznosci_przekroczony` z adresem stanu); liniowy czynnik "
+            "czestotliwosciowy z F > 0 (F <= 0 — odmowa nazwana, D-25); postac zamknieta "
+            "samoregulacji dla odbioru stalej mocy czynnej za reaktancja od maszyny klasycznej "
+            "(D = 0); f0 = f_n; stan t = 0 to rownowaga estymatora x = arg V0 punktu PO spojnej "
+            "inicjalizacji algebry (O-58 pkt 1 rozszerzony na odbiory ze stanem); kanaly "
+            "f_odbioru_hz@ i kat_pomiaru_rad@ bez estymaty niepewnosci i kodu jakosci (W6-A, "
+            "korekta 2026-09-30 cz. 3)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-25",
+        zdolnosc=(
+            "Fail-closed modelu odbioru: brak/fantom parametru, P0 < 0, punkt pracy ponizej "
+            "U_min, F <= 0 -> odmowa nazwana, ta sama w gotowosci i biegu; stan estymatora "
+            "albo prad odbioru nieskonczony w chwili 0 (punkt rozplywu i punkt skorygowany) -> "
+            "odmowa `dynamika.wartosc_nieskonczona` z adresem stanu albo wezla"
+        ),
+        rownanie=(
+            "tablica uzycia pol z rownan D-23/D-24: U_min uzyte <=> skladowa b albo c != 0 "
+            "(P albo Q); T_f uzyte <=> k_pf != 0 albo k_qf != 0; pole uzyte <=> wymagane"
+        ),
+        wyrocznia=(
+            "analiza kontraktu (jak D-07/D-08): tablica uzycia pol spisana w bramce "
+            "NIEZALEZNIE od `wymagane_parametry_odbioru` i porownana z predykatem rdzenia oraz "
+            "z kopia materializacji katalogu; macierz gotowosc <-> bieg"
+        ),
+        wzorzec=(
+            "bramki.g25_odmowy_modelu_odbioru: siec G16 {wszystko zwiazane, bez wytworcow z "
+            "odbiorami, odbior bez bloku, U_min brak/zbedny, T_f brak/zbedny, P0 < 0} oraz "
+            "odmowy biegu: punkt pracy ponizej U_min (uklad dwuwezlowy, U_min = 0,99 pu) i "
+            "F <= 0 (k_pf = 40, T_f = 0,002 s, glebokie zwarcie)"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_bramki.py::test_g25_odmowy_modelu_odbioru",
+            "tests/network_model/dynamika/test_odbiory_bieg.py"
+            "::test_punkt_pracy_ponizej_napiecia_przejscia_jest_odmowa_przed_bramka_rownowagi",
+            "tests/network_model/dynamika/test_estymator_odbioru.py"
+            "::test_czynnik_czestotliwosci_niedodatni_jest_odmowa_nazwana",
+            "tests/enm/test_adapter_dynamiki.py::TestBrakiModelu"
+            "::test_odbior_bez_modelu_dynamicznego_jest_brakiem",
+            "tests/enm/test_adapter_dynamiki.py::TestBrakiModelu"
+            "::test_blok_niespojny_z_ksztaltem_charakterystyki",
+            "tests/application/calculation_readiness/test_pr12_readiness.py"
+            "::TestCalculationReadinessService"
+            "::test_dynamika_rms_n_a_tylko_bez_wytworcow_i_bez_odbiorow",
+            "tests/api/test_dynamika_api.py"
+            "::test_brak_modelu_odmowa_akcja_wiazanie_i_bieg_przechodzi",
+            "tests/network_model/dynamika/test_silnik.py"
+            "::test_nieskonczony_stan_odbioru_konczy_sie_odmowa_bramki_z_adresem_w_chwili_zero",
+            "tests/network_model/dynamika/test_silnik.py"
+            "::test_nieskonczony_prad_odbioru_konczy_sie_odmowa_bramki_z_adresem_wezla",
+        ),
+        mutacje=("M48", "M49", "M79"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "kontrakt danych ENM (`Load.dynamika` — kopia profilu katalogu) i rdzenia "
+            "(`CharakterystykaOdbioru`); odmowy zalezne od punktu pracy i przebiegu (U_min, "
+            "F <= 0) sa odmowami BIEGU — gotowosc ich nie zna, bo nie zna rozwiazania"
         ),
         poziom="L5",
     ),

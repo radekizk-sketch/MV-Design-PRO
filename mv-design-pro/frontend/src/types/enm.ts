@@ -453,6 +453,8 @@ export interface Load extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Model dynamiczny odbioru — kopia profilu katalogu `load_dynamic` (karta modeli odbiorów). */
+  dynamika?: ModelDynamicznyOdbioru | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,6 +636,18 @@ export interface TurbinaWiatrowa {
 }
 
 /** Unia dyskryminowana po `rodzina` — jeden blok parametrow dynamicznych zrodla. */
+/**
+ * Model dynamiczny ODBIORU (`Load.dynamika`, lustro `enm/dynamika_modele.py::
+ * ModelDynamicznyOdbioru`): napięcie przejścia do stałej impedancji (`null` wyłącznie dla
+ * odbioru czysto impedancyjnego) i stała pomiaru częstotliwości (`null` wyłącznie dla odbioru
+ * bez czułości częstotliwościowej). Kształt charakterystyki (ZIP, k) żyje w typie odbioru.
+ */
+export interface ModelDynamicznyOdbioru {
+  proweniencja: ProweniencjaParametrow;
+  u_min_pu: number | null;
+  t_pomiaru_czestotliwosci_s: number | null;
+}
+
 export type ParametryDynamiczne =
   | MaszynaSynchroniczna
   | PrzeksztaltnikGFL

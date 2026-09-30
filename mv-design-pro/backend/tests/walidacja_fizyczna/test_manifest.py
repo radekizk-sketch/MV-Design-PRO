@@ -98,6 +98,7 @@ WYROCZNIE_NIEZALEZNE = (
     "wyrocznia_zdarzen.py",
     "wyrocznia_pradow.py",
     "wyrocznia_fazorow.py",
+    "wyrocznia_odbiorow.py",
 )
 
 

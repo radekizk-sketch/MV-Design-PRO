@@ -30,7 +30,7 @@ def sprawdz_wektor(
     """
     if wartosci.shape[0] != len(adresy):
         raise AssertionError(
-            f"sprawdz_wektor: {wartosci.shape[0]} wartosci wobec {len(adresy)} adresow "
+            f"sprawdz_wektor: {wartosci.shape[0]} wartości wobec {len(adresy)} adresów "
             f"(kontekst={kontekst!r})"
         )
     skonczone = np.isfinite(wartosci)
@@ -43,7 +43,7 @@ def sprawdz_wektor(
     opis = ", ".join(f"{adres}[{indeks}]={wartosc}" for indeks, adres, wartosc in zle)
     raise OdmowaDynamiki(
         KOD_WARTOSC_NIESKONCZONA,
-        f"Wartosc nieskonczona w {kontekst} przy t={t_s} s: {opis}",
+        f"Wartość nieskończona w {kontekst} przy t={t_s} s: {opis}",
         kontekst=kontekst,
         t_s=t_s,
         adresy=tuple(adres for _, adres, _ in zle),
@@ -55,7 +55,7 @@ def sprawdz_napiecia(napiecia: np.ndarray, identy_wezlow: tuple[str, ...], t_s: 
     """Skonczonosc wektora napiec zespolonych — adresem jest ident wezla."""
     if napiecia.shape[0] != len(identy_wezlow):
         raise AssertionError(
-            f"sprawdz_napiecia: {napiecia.shape[0]} napiec wobec {len(identy_wezlow)} wezlow"
+            f"sprawdz_napiecia: {napiecia.shape[0]} napięć wobec {len(identy_wezlow)} węzłów"
         )
     skonczone = np.isfinite(napiecia.real) & np.isfinite(napiecia.imag)
     if bool(skonczone.all()):
@@ -67,7 +67,7 @@ def sprawdz_napiecia(napiecia: np.ndarray, identy_wezlow: tuple[str, ...], t_s: 
     opis = ", ".join(f"{ident}={wartosc}" for _, ident, wartosc in zle)
     raise OdmowaDynamiki(
         KOD_WARTOSC_NIESKONCZONA,
-        f"Napiecie nieskonczone przy t={t_s} s: {opis}",
+        f"Napięcie nieskończone przy t={t_s} s: {opis}",
         kontekst="napiecia_wezlow",
         t_s=t_s,
         adresy=tuple(ident for _, ident, _ in zle),

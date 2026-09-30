@@ -99,8 +99,8 @@ def _normalizuj(wartosc: Any) -> Any:
             },
         }
     raise TypeError(
-        f"Wartosc typu {type(wartosc).__name__!r} nie ma postaci kanonicznej odcisku — "
-        "dopisz ja jawnie zamiast haszowac reprezentacje tekstowa"
+        f"Wartość typu {type(wartosc).__name__!r} nie ma postaci kanonicznej odcisku — "
+        "dopisz ją jawnie zamiast haszować reprezentację tekstową"
     )
 
 

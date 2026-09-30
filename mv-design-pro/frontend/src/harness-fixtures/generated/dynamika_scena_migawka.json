@@ -901,7 +901,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
+    "hash_sha256": "410ce9786d43c0cb0c7a22df76fb0ecf2fbf04bdc10b6fb2184d3ba2cf4dfb57",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -936,8 +936,19 @@
       "bus_ref": "bus/fab0e40bf1455775b1286ab17b598f58/downstream",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": {
+        "proweniencja": {
+          "data": null,
+          "odniesienie": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego)",
+          "zrodlo": "profil_typowy_normy"
+        },
+        "t_pomiaru_czestotliwosci_s": null,
+        "u_min_pu": 0.7
+      },
       "id": "6a28385c-8574-5eb1-84e4-f77699c2cb32",
-      "materialized_params": null,
+      "materialized_params": {
+        "dynamic_model_ref": "load_dyn_zagregowany_sn"
+      },
       "meta": {
         "catalog_binding": null,
         "connection_type": "TROJFAZOWY",

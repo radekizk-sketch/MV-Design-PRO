@@ -145,5 +145,5 @@ def test_granica_nieskonczona_nie_wchodzi_do_marginesu() -> None:
 
 def test_niezgodnosc_dlugosci_adresow_jest_bledem_programisty() -> None:
     dolne, gorne = wektory((BEZ_ZAKRESU, BEZ_ZAKRESU))
-    with pytest.raises(AssertionError, match="adresow"):
+    with pytest.raises(AssertionError, match="adresów"):
         sprawdz_zakresy_waznosci(np.array([0.0, 1.0]), dolne, gorne, ("a_pu",), nastawy(), 0.0)

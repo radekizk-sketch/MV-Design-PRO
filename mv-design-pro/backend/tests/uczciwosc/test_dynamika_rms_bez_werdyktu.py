@@ -21,6 +21,7 @@ from tests.api.test_dynamika_api import (  # noqa: E402
     _bieg,
     _siec_bez_modelu_pv,
 )
+from tests.golden.enm_builders.dynamika_projektanta import PROFIL_ODBIORU  # noqa: E402
 from tests.test_dynamika_rms_run import (  # noqa: E402
     _nowy_przypadek,
     _reset_backend_state,
@@ -52,6 +53,21 @@ def test_bieg_niesie_oceny_niewykonane_z_powodem(client: TestClient) -> None:
         },
     )
     assert wiazanie.status_code == 200 and wiazanie.json().get("error") is None
+    # Karta modeli odbiorów: każdy odbiór biegu ma model dynamiczny z katalogu profili
+    # odbiorów — wiązany tą samą operacją, co akcja naprawcza ekranu dynamiki.
+    wiazanie_odbioru = client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "project_id": "",
+            "snapshot_base_hash": "",
+            "operation": {
+                "name": "set_load_dynamic_binding",
+                "idempotency_key": "uczciwosc-dynamika-odbior",
+                "payload": {"load_ref": REFY.odbior, "dynamic_model_ref": PROFIL_ODBIORU},
+            },
+        },
+    )
+    assert wiazanie_odbioru.status_code == 200 and wiazanie_odbioru.json().get("error") is None
     scenariusz = client.post(
         f"/api/dynamika/study-cases/{case_id}/scenariusze",
         json={"name": "Zwarcie w odcinku", "dynamika": SCENARIUSZ_IZOLACJI},
@@ -68,13 +84,18 @@ def test_bieg_niesie_oceny_niewykonane_z_powodem(client: TestClient) -> None:
     assert "NC RfG" in oceny[0]["podstawa"]["dokument"]
     assert "czasu krytycznego" in braki_tekstem(oceny[1])
     # Parametry dynamiczne z profilu TYPOWEGO katalogu to dane przyjęte bez walidacji —
-    # rekord mówi to wprost (stan danych i lista z nazwą źródła), nie „zwalidowane".
+    # rekord mówi to wprost (stan danych i lista z nazwą elementu), nie „zwalidowane".
+    # Karta modeli odbiorów: model dynamiczny ODBIORU z profilu typowego katalogu odbiorów
+    # jest daną przyjętą tak samo jak profil wytwórcy (KLASA: każdy blok z katalogu typowego).
     for ocena in oceny:
         status_danych = ocena["dowod"]["status_danych"]
         assert status_danych["stan"] == "UNVALIDATED_INPUT"
-        (dana,) = status_danych["dane_przyjete"]
-        assert dana["jakosc"] == "ESTIMATED"
-        assert "profilu katalogowego" in dana["powod_pl"]
+        zrodlo, odbior = status_danych["dane_przyjete"]
+        assert zrodlo["nazwa_pl"].startswith("Parametry dynamiczne źródła ")
+        assert odbior["nazwa_pl"].startswith("Parametry dynamiczne odbioru ")
+        for dana in (zrodlo, odbior):
+            assert dana["jakosc"] == "ESTIMATED"
+            assert "profilu katalogowego" in dana["powod_pl"]
     (stopien,) = wynik["stopien_dowodowy"]
     assert stopien["tier"] == "UNVALIDATED_MODEL"
     assert stopien["regulatory_evidence_eligible"] is False

@@ -1746,7 +1746,7 @@ def _scenariusz_sceny_dynamika() -> dict[str, Any]:
     przejścia 1 Ω) usunięte IZOLACJĄ i wyłączenie odcinka — koniec magistrali z odbiorem
     zostaje odcięty, PV zasilone od GPZ; detektor zapadu napięcia szyny PV zapisuje chwilę
     przekroczenia progu (`tests/golden/enm_builders/dynamika_projektanta.py`)."""
-    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False))
     return scenariusz_zwarcia_w_odcinku(refy.odcinek_zwarcia, szyna_detektora=refy.szyna_pv)
 
 
@@ -1777,13 +1777,16 @@ class _ZegarObliczenStaly:
         return 0.0
 
 
-def _enm_sceny_dynamika(*, z_modelem_pv: bool) -> EnergyNetworkModel:
+def _enm_sceny_dynamika(*, z_modelem_pv: bool, z_modelem_odbioru: bool) -> EnergyNetworkModel:
     """Sieć toku pracy dynamiki projektanta (`tests/golden/enm_builders/dynamika_projektanta.py`
     — to samo źródło co test HTTP toku): sieć z operacji domenowych i katalogu (GPZ, magistrala,
-    stacja SN/nN z PV, odbiór), bez modelu dynamicznego PV albo z kopią profilu (wiązanie operacją
-    `set_der_catalog_bindings`, materializacja `enm/dynamika_z_katalogu.py`)."""
+    stacja SN/nN z PV, odbiór), bez modeli dynamicznych albo z kopiami profili (wiązania
+    operacjami `set_der_catalog_bindings` i `set_load_dynamic_binding`, materializacja
+    `enm/dynamika_z_katalogu.py`)."""
     return EnergyNetworkModel.model_validate(
-        build_dynamika_projektanta_enm(z_modelem_pv=z_modelem_pv)
+        build_dynamika_projektanta_enm(
+            z_modelem_pv=z_modelem_pv, z_modelem_odbioru=z_modelem_odbioru
+        )
     )
 
 
@@ -1806,7 +1809,7 @@ def _bieg_sceny_dynamika() -> dict[str, Any]:
     reset_enm_store()
     usun_wszystkie_scenariusze()
     try:
-        enm = _enm_sceny_dynamika(z_modelem_pv=True)
+        enm = _enm_sceny_dynamika(z_modelem_pv=True, z_modelem_odbioru=True)
         set_enm(CASE_ID_HARNESSU, enm)
         with _zamrozona_tozsamosc_biegu(_UUID_SCENY_DYNAMIKA_PF):
             bieg_pf = execute_run(
@@ -1885,18 +1888,27 @@ def dynamika_scena_opis() -> dict[str, Any]:
 
 
 def dynamika_scena_migawka() -> dict[str, Any]:
-    """Migawka modelu sceny dynamiki PO wiązaniu modelu PV (`useSnapshotStore`) — edytor
-    scenariusza wybiera z niej elementy po nazwie, a przeglądarka zaznacza je na schemacie.
-    Model SERWOWANY przez magazyn (`_model_serwowany`) — ten, na którym liczy się bieg."""
+    """Migawka modelu sceny dynamiki PO wiązaniu modeli PV i odbioru (`useSnapshotStore`) —
+    edytor scenariusza wybiera z niej elementy po nazwie, a przeglądarka zaznacza je na
+    schemacie. Model SERWOWANY przez magazyn (`_model_serwowany`) — ten, na którym liczy się
+    bieg."""
     return canonicalize_json(
-        _model_serwowany(_enm_sceny_dynamika(z_modelem_pv=True)).model_dump(mode="json")
+        _model_serwowany(_enm_sceny_dynamika(z_modelem_pv=True, z_modelem_odbioru=True)).model_dump(
+            mode="json"
+        )
     )
 
 
 def dynamika_scena_gotowosc_brak() -> dict[str, Any]:
-    """Odpowiedź `GET …/gotowosc` dla sieci sceny PRZED wiązaniem modelu PV (bez rozpływu):
-    PV bez bloku dynamiki z akcją naprawczą `der.dynamika_missing`."""
-    return gotowosc_dynamiki(_enm_sceny_dynamika(z_modelem_pv=False), [])
+    """Odpowiedź `GET …/gotowosc` dla sieci sceny PRZED wiązaniami (bez rozpływu): PV bez
+    bloku dynamiki (akcja `der.dynamika_missing`) i odbiór bez modelu (`load.dynamika_missing`)."""
+    return gotowosc_dynamiki(_enm_sceny_dynamika(z_modelem_pv=False, z_modelem_odbioru=False), [])
+
+
+def dynamika_scena_gotowosc_odbior_brak() -> dict[str, Any]:
+    """Odpowiedź `GET …/gotowosc` po związaniu PV, a PRZED związaniem odbioru (bez rozpływu):
+    jedyny brak — model dynamiczny odbioru (akcja `load.dynamika_missing`)."""
+    return gotowosc_dynamiki(_enm_sceny_dynamika(z_modelem_pv=True, z_modelem_odbioru=False), [])
 
 
 def dynamika_scena_gotowosc() -> dict[str, Any]:
@@ -4955,6 +4967,7 @@ FIXTURY: dict[str, Any] = {
     "dynamika_scena_opis": dynamika_scena_opis,
     "dynamika_scena_migawka": dynamika_scena_migawka,
     "dynamika_scena_gotowosc_brak": dynamika_scena_gotowosc_brak,
+    "dynamika_scena_gotowosc_odbior_brak": dynamika_scena_gotowosc_odbior_brak,
     "dynamika_scena_gotowosc": dynamika_scena_gotowosc,
     "dynamika_scena_scenariusze": dynamika_scena_scenariusze,
     "dynamika_scena_wyniki": dynamika_scena_wyniki,

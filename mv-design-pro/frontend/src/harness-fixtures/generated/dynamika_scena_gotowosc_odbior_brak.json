@@ -1,0 +1,97 @@
+{
+  "gotowosc": {
+    "calculation_type": "dynamika_rms",
+    "label_pl": "Dynamika czasowa (DAE)",
+    "status": "blocked",
+    "missing_fields_pl": [
+      "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu: „Odbiór”. (kod 'dynamika.odbior_bez_bloku_dynamiki')",
+      "odbiór „Odbiór”: brak wiązania z katalogowym profilem modelu dynamicznego odbioru (kod 'load.dynamika_missing')"
+    ],
+    "blocking_object_refs": [
+      "load/d274343dd8d90e4fc15e2f65933f1325/sn"
+    ],
+    "recommended_action_pl": "Uzupełnij dane wejściowe biegu czasowego: model dynamiczny każdego wytwórcy (wiązanie z katalogowym profilem dynamicznym albo blok z karty producenta) i każdego odbioru (wiązanie z katalogowym profilem odbioru), rodzinę parametrów z modelem elektrycznym i osobną szynę dla źródła sieciowego."
+  },
+  "braki_modelu": [
+    {
+      "kod": "dynamika.odbior_bez_bloku_dynamiki",
+      "komunikat_pl": "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu: „Odbiór”.",
+      "elementy": [
+        {
+          "ref_id": "load/d274343dd8d90e4fc15e2f65933f1325/sn",
+          "nazwa": "Odbiór"
+        }
+      ]
+    }
+  ],
+  "kopie_nieaktualne": [],
+  "zrodla": [
+    {
+      "ref_id": "pv/521ff6586b0c5e49952a5a5e10edc605/converter",
+      "nazwa": "Blok PV",
+      "gen_type": "pv_inverter",
+      "wiazanie": "default_pv_gfl",
+      "stan": "z_katalogu",
+      "rodzina": "przeksztaltnikowa_gfl",
+      "zrodlo_proweniencji": "profil_typowy_normy",
+      "odniesienie_proweniencji": "IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21",
+      "odmowa_kod": null,
+      "odmowa_komunikat": null,
+      "profil_typu": null,
+      "profile_zgodne": [
+        {
+          "profile_id": "default_pv_gfl",
+          "nazwa": "Typowy PV grid-following (IEEE 1547 / NC RfG kat. B)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfl",
+          "model_w_rdzeniu": true
+        },
+        {
+          "profile_id": "default_pv_gfm",
+          "nazwa": "Typowy PV grid-forming (IEEE 1547, inercja wirtualna)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfm",
+          "model_w_rdzeniu": true
+        }
+      ],
+      "akcja_naprawcza": null
+    }
+  ],
+  "odbiory": [
+    {
+      "ref_id": "load/d274343dd8d90e4fc15e2f65933f1325/sn",
+      "nazwa": "Odbiór",
+      "wiazanie": null,
+      "stan": "brak",
+      "u_min_pu": null,
+      "t_pomiaru_czestotliwosci_s": null,
+      "czuly_czestotliwosciowo": false,
+      "zrodlo_proweniencji": null,
+      "odniesienie_proweniencji": null,
+      "odmowa_kod": null,
+      "odmowa_komunikat": null,
+      "akcja_naprawcza": {
+        "kod": "load.dynamika_missing",
+        "komunikat_pl": "Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; zwiąż odbiór z profilem z katalogu",
+        "nawigacja": {
+          "panel": "analizy",
+          "tab": "dynamika",
+          "focus": "dynamic_model_ref"
+        }
+      }
+    }
+  ],
+  "profile_odbiorow": [
+    {
+      "profile_id": "load_dyn_zagregowany_sn",
+      "nazwa": "Odbiór zagregowany sieci SN — profil typowy",
+      "opis_pl": "Odbiór zastępczy stacji albo ciągu odbiorów (mieszanka napędów, oświetlenia, odbiorników elektronicznych) — przejście do stałej impedancji przy głębokim zapadzie, pomiar częstotliwości z opóźnieniem kilku okresów sieci.",
+      "jakosc": "ESTIMATED",
+      "u_min_pu": 0.7,
+      "podstawa_u_min_pl": "Próg 0,7 pu przejścia odbioru stałej mocy i stałego prądu w stałą impedancję to wartość typowa programów symulacji RMS (PSS/E: próg charakterystyki stałej mocy PQBRAK, wartość domyślna 0,7 pu). Poniżej progu odbiorniki elektroniczne i napędy nie utrzymują mocy — przyjęcie stałej mocy dawałoby prąd rosnący bez granic.",
+      "t_pomiaru_czestotliwosci_s": 0.1,
+      "podstawa_t_pomiaru_pl": "Stała 0,1 s (pięć okresów sieci 50 Hz) — rząd stałych czasowych filtrów pomiaru częstotliwości szyny w modelach RMS obciążeń; odbiorniki reagują na częstotliwość przez prędkość napędów, nie natychmiast. Żadna norma nie podaje jednej wartości — dana szacowana, do zastąpienia pomiarem odbioru.",
+      "zrodlo_proweniencji": "profil_typowy_normy",
+      "odniesienie_proweniencji": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego)"
+    }
+  ],
+  "biegi_rozplywu": []
+}
