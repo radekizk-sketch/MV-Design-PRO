@@ -12,7 +12,10 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { useSelectionStore } from '../../selection';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
-import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+} from '../../shared/transformatoryStacji';
 
 // =============================================================================
 // Helpers
@@ -40,9 +43,11 @@ export function IncompleteStationsReview() {
 
   const rows = useMemo((): StationRow[] => {
     if (!snapshot) return [];
+    // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+    const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
     return (snapshot.substations ?? []).map((station) => {
       // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
-      const trCount = selectStationDistributionTransformers(snapshot, station).length;
+      const trCount = selectStationDistributionTransformers(snapshot, station, kontekstTransformatorow).length;
       const bayCount = (snapshot.bays ?? []).filter(
         (b) => b.substation_ref === station.id,
       ).length;

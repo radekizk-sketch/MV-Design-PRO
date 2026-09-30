@@ -53,7 +53,11 @@ import {
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../shared/szynyStacji';
-import { selectStationDistributionTransformers, stationRefOfTransformer } from '../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+} from '../shared/transformatoryStacji';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -997,6 +1001,8 @@ export function selectStationSummaries(
   blockerCountsByElement: Map<string, number> | null,
 ): StationSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.substations ?? [])
     .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
@@ -1005,7 +1011,7 @@ export function selectStationSummaries(
       const branchBays = stationBays.filter(
         (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER' || b.bay_role === 'OZE',
       );
-      const hasTransformer = selectStationDistributionTransformers(snapshot, s).length > 0;
+      const hasTransformer = selectStationDistributionTransformers(snapshot, s, kontekstTransformatorow).length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
         (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
@@ -1029,11 +1035,13 @@ export function selectTransformerSummaries(
   snapshot: EnergyNetworkModel | null,
 ): TransformerSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po transformatorach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.transformers ?? [])
     .map((t) => {
       // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
-      const stationRef = stationRefOfTransformer(snapshot, t.ref_id);
+      const stationRef = stationRefOfTransformer(snapshot, t.ref_id, kontekstTransformatorow);
       const station = (snapshot.substations ?? []).find((s) => s.ref_id === stationRef);
 
       return {
