@@ -41,7 +41,7 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
-from .nazwy_elementow import nazwa_pola_ze_specyfikacji
+from .nazwy_elementow import nazwa_nadana_elementu, nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .severity import (
     SEVERITY_BLOCKER,
@@ -96,8 +96,9 @@ def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str |
         meta = stacja.meta if isinstance(stacja.meta, dict) else {}
         for spec in meta.get("nn_field_specs") or []:
             if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                nazwa = spec.get("name")
-                return (str(nazwa) if nazwa else None), stacja.name
+                # Nazwa pola z jednej reguły nazwy (karta NAZWY-JEDNO-ZRODLO) — pusty napis,
+                # same spacje i kształt identyfikatora to brak nazwy, nie nazwa.
+                return nazwa_nadana_elementu(spec), stacja.name
     return None, None
 
 

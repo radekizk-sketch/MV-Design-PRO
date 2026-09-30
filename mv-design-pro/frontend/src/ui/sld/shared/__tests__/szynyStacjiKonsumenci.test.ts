@@ -210,10 +210,12 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
       readFileSync(resolve(here, '../../v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json'), 'utf8'),
     ) as { readonly enm: EnergyNetworkModel }
   ).enm;
-  const polaLiniowe = (model: EnergyNetworkModel) =>
-    buildSldDataFromSnapshot(model, model.logical_views ?? null, null)
-      .gpzs[0].sections.flatMap((s) => s.bays)
-      .filter((b) => b.fieldRole === 'LINE_OUT');
+  const polaLiniowe = (model: EnergyNetworkModel) => {
+    const gpz = buildSldDataFromSnapshot(model, model.logical_views ?? null, null).gpzs[0];
+    if (gpz === undefined) throw new Error('Sieć testowa bez GPZ — fikstura rozjechała się z testem');
+    // Brak sekcji = zero pól — asercje liczności niżej wykażą rozjazd fikstury.
+    return (gpz.sections ?? []).flatMap((s) => s.bays).filter((b) => b.fieldRole === 'LINE_OUT');
+  };
 
   it('dwa odcinki z tej samej szyny sekcji do DWÓCH stacji ⇒ żadne pole nie dostaje celu', () => {
     const pola = polaLiniowe(siec);
