@@ -14,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';

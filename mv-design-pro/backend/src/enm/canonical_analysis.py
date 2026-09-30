@@ -7,7 +7,7 @@ import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
 
 from analysis.obciazenie_galezi import (
@@ -152,6 +152,10 @@ from network_model.solvers.short_circuit_iec60909 import (
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.provenance import classify_dynamic_capability
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
+
+if TYPE_CHECKING:
+    # Import leniwy w ciele funkcji (warstwa aplikacji importuje ten moduł) — tu tylko typ.
+    from application.analyses.protection.ocena_nadpradowa import WynikOceny
 
 logger = logging.getLogger(__name__)
 
@@ -1895,7 +1899,7 @@ def ocen_zabezpieczenia_biegu(
     sc_run: CanonicalRun,
     *,
     uow_factory: Callable[[], Any] | None = None,
-) -> Any:
+) -> WynikOceny:
     """JEDNA ścieżka oceny zabezpieczeń nadprądowych na zapisanym biegu zwarciowym.
 
     Urządzenia i nastawy z ``model`` (D-21), topologia strefy z grafu migawki biegu, prąd

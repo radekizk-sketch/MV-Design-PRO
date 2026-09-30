@@ -403,7 +403,14 @@ POMIJANE_KATALOGI = {
 #: kompozycji `base_template`); dwa bledy dopisane przez karte w nowych testach (rola
 #: `POMIAROWE` spoza `SnFieldRole`, rodzaj aparatu `load_break_switch` spoza slownika)
 #: naprawione u zrodla przed commitem. Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 80
+#: Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (2026-09-30, pomiar pelnej listy `_BLEDY_POZA_BRAMKA`
+#: na drzewie karty i na worktree czubka partii 6 `615f3b24`, listy porownane linia po linii):
+#: baza partii 6 miala 81 przy budzecie 80 (czerwien zastana — integracja partii przywrocila
+#: jeden blad), drzewo karty 81, zbiory identyczne. 81 -> 69: zdjete 12 zastanych TS6133
+#: (nieuzywane importy w testach: `vi` x2, `renderHook`, `LayerId`, `ResultLabelEntry`,
+#: `buildSceneV3`, `fieldFunctionalDesignation`, `V3_STROKE_APPARATUS`, `act`, `beforeEach`,
+#: `afterEach`, `JAKOSC_STRINGS`); zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 69
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

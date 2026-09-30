@@ -9,8 +9,7 @@
  * - Store state management
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { act } from 'react';
+import { describe, it, expect } from 'vitest';
 import type {
   ExecutionRun,
   ExecutionResultSet,

@@ -1750,11 +1750,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # szablon przypadku `template_fingerprint`, `library_*`, `invalid_count(_delta)`, rejestr
     # krzywych producentow `vendor_curve_code`, `maps_to_iec`, `iec_variant`). PASS bez zmian.
     # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (przeniesienie powyzszej na czubek partii 6): 4116 + 1
-    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; POMIAR
-    # guardem na drzewie przeniesienia.
+    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; dalej +1
+    # `punkt_wyniku_ref` (`PunktZwarciaStrefy` w `ocena_nadpradowa.py` — punkt zwarcia na
+    # zacisku pola raportowany pod szyna pola) = 4118. POMIAR guardem na drzewie przeniesienia.
     # Partia integracji 7 (AB-1b.3b-NA-PARTII-6 + BIEG-ZABEZPIECZEN-NA-PARTII-6 na partii 6):
-    # 4124 (z AB-1b.3b) -> 4126 — POMIAR guardem na drzewie partii (zbiory zmian obu kart
-    # rozlaczne; `contract_fields()` liczy nazwy pol na drzewie scalonym).
+    # 4124 (z AB-1b.3b) + 2 = 4126 (pole `punkt_wyniku_ref` jest juz w `9d7e4968`, wiec
+    # `df8ac6dd` nie zmienia liczby) — POMIAR guardem na drzewie partii (zbiory zmian obu kart
+    # rozlaczne).
     assert "Pol kontraktow wejsciowych: 4126." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf

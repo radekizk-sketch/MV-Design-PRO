@@ -49,6 +49,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -191,15 +192,6 @@ class Wyjatek:
 
 #: Wyjątki z uzasadnieniem merytorycznym (lista tylko maleje — nieużyty wyjątek = błąd).
 WYJATKI: tuple[Wyjatek, ...] = (
-    Wyjatek(
-        plik="frontend/src/ui/protection-coordination/TccChart.tsx",
-        wzor=r"polu (zasilającym|odpływowym)",
-        uzasadnienie=(
-            "Terminologia selektywności zabezpieczeń (para zabezpieczeń: „w polu zasilającym” = "
-            "zabezpieczenie nadrzędne, „w polu odpływowym” = podrzędne) — położenie zabezpieczenia "
-            "w parze selektywności, nie rola pola rozdzielnicy SN z kanonu."
-        ),
-    ),
     Wyjatek(
         plik="backend/src/reference_engine/packs/elektrometal_e2alpha/pack.json",
         wzor=r"producent publikuje LISTĘ TYPÓW pól",
@@ -882,14 +874,22 @@ def test_skan_nie_czyta_testow_backendu() -> None:
     assert any(p.startswith("frontend/scripts/") and p.endswith(".mjs") for p in pliki)
 
 
-def test_wyjatek_dziala_tylko_w_swoim_pliku_i_dla_swojego_tekstu() -> None:
+def test_wyjatek_dziala_tylko_w_swoim_pliku_i_dla_swojego_tekstu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Mechanizm wyjątku na wpisie syntetycznym: dawny wpis wykresu TCC skasowano razem z
+    # plikiem (karta BIEG-ZABEZPIECZEN-Z-MODELU), a lista WYJATKI tylko maleje.
+    plik = "frontend/src/ui/x/wykres.tsx"
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "WYJATKI",
+        (Wyjatek(plik=plik, wzor=r"polu (zasilającym|odpływowym)", uzasadnienie="próba"),),
+    )
     tekst = "zabezpieczenie w polu odpływowym działa wcześniej niż w polu zasilającym."
     regula = _regula("„pole zasilające”")
-    w_pliku = Znalezisko("frontend/src/ui/protection-coordination/TccChart.tsx", 1, regula, tekst)
+    w_pliku = Znalezisko(plik, 1, regula, tekst)
     gdzie_indziej = Znalezisko("frontend/src/ui/x/a.ts", 1, regula, tekst)
-    inny_tekst = Znalezisko(
-        "frontend/src/ui/protection-coordination/TccChart.tsx", 1, regula, "Pole zasilające"
-    )
+    inny_tekst = Znalezisko(plik, 1, regula, "Pole zasilające")
     assert _wyjatek_dla(w_pliku) is not None
     assert _wyjatek_dla(gdzie_indziej) is None
     assert _wyjatek_dla(inny_tekst) is None

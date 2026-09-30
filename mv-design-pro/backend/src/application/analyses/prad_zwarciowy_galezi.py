@@ -41,9 +41,7 @@ def prad_netto_galezi_z_wkladow(wklady: Sequence[Mapping[str, Any]], branch_id: 
         if kierunek not in ("from_to", "to_from"):
             # Kierunek spoza słownika to naruszenie kontraktu wyniku rdzenia IEC 60909 (błąd
             # programu), nie odmowa danych projektanta.
-            raise AssertionError(
-                f"Kierunek wkładu gałęzi {branch_id} spoza słownika: {kierunek!r}"
-            )
+            raise AssertionError(f"Kierunek wkładu gałęzi {branch_id} spoza słownika: {kierunek!r}")
         netto += prad if kierunek == "from_to" else -prad
     return netto
 
