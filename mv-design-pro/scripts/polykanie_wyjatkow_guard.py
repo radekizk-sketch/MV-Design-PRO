@@ -35,6 +35,8 @@ handler w rdzeniu zamrożonym (lista właściciela `scripts/rdzenie_b01.py`), kt
 agent nie ma prawa edytować bez decyzji B-01. Wpis ma odesłanie do decyzji; samotest
 przypina, że każdy wpis wskazuje plik z listy B-01, i strażnik czerwienieje, gdy
 wpis przestaje być potrzebny (zapadka w dół — po decyzji właściciela wpis znika).
+Stan od 2026-09-30: lista pusta (decyzja B-01, pozycja (j) planu A/B §12.2 — próg χ²
+w WLS liczony wyłącznie `scipy.stats.chi2.ppf`).
 
 DRUGA POŁOWA — ODMOWA DANYCH (karta ODMOWA-DANYCH-422). Ta sama klasa „obcy wyjątek
 przebrany za błąd użytkownika" miała jeszcze jedno miejsce: globalny handler API zamieniał
@@ -93,15 +95,10 @@ def pakiety_wlasne(korzen: Path = BACKEND_SRC) -> frozenset[str]:
 
 #: Handler szeroki w rdzeniu B-01 czekający na decyzję właściciela:
 #: (ścieżka względem `backend/src`, funkcja) → liczba handlerów i odesłanie.
-WYJATKI_B01: dict[tuple[str, str], tuple[int, str]] = {
-    ("network_model/solvers/state_estimation_wls.py", "_chi_square_threshold"): (
-        1,
-        "Decyzja właściciela B-01 (karta #151): przy DOWOLNYM wyjątku z "
-        "`scipy.stats.chi2.ppf` solver po cichu przechodzi na aproksymację "
-        "Wilsona-Hilferty'ego. Propozycja: jawny import `chi2`, kasacja ścieżki "
-        "awaryjnej i `_normal_ppf`.",
-    ),
-}
+#: Pusty od decyzji B-01 z 2026-09-30 (pozycja (j) planu A/B §12.2): jedyny wpis —
+#: cicha aproksymacja progu χ² w `state_estimation_wls._chi_square_threshold` —
+#: zdjęty razem z handlerem (jawny import `chi2`, kasacja `_normal_ppf`).
+WYJATKI_B01: dict[tuple[str, str], tuple[int, str]] = {}
 
 
 def _jest_szeroki(typ: ast.expr | None) -> bool:
@@ -228,7 +225,11 @@ def zmierz(korzen: Path = BACKEND_SRC) -> list[tuple[str, int, str, str]]:
     """Wszystkie naruszenia pod `korzen`: (ścieżka względna, linia, funkcja, opis)."""
     wynik: list[tuple[str, int, str, str]] = []
     wlasne = pakiety_wlasne(korzen) if korzen.is_dir() else frozenset()
-    for plik in sorted(korzen.rglob("*.py")):
+    pliki = sorted(korzen.rglob("*.py"))
+    if not pliki:
+        # Skan pustego drzewa nie jest zielenią — to zła ścieżka korzenia.
+        return [("", 0, "<skan>", f"brak plików .py pod {korzen} — skan bez treści")]
+    for plik in pliki:
         wzgledna = plik.relative_to(korzen).as_posix()
         tresc = plik.read_text(encoding="utf-8")
         for linia, funkcja, opis in naruszenia_w_kodzie(tresc, wlasne):
@@ -236,19 +237,28 @@ def zmierz(korzen: Path = BACKEND_SRC) -> list[tuple[str, int, str, str]]:
     return wynik
 
 
-def ocen(naruszenia: list[tuple[str, int, str, str]]) -> list[str]:
-    """Komunikaty błędów strażnika (pusta lista = zielony)."""
+def ocen(
+    naruszenia: list[tuple[str, int, str, str]],
+    wyjatki: dict[tuple[str, str], tuple[int, str]] | None = None,
+) -> list[str]:
+    """Komunikaty błędów strażnika (pusta lista = zielony).
+
+    `wyjatki` domyślnie `WYJATKI_B01`; samotest podaje wpis syntetyczny, żeby
+    zapadka w obie strony była ćwiczona także przy pustej liście właściciela.
+    """
+    if wyjatki is None:
+        wyjatki = WYJATKI_B01
     bledy: list[str] = []
     licznik = Counter((sciezka, funkcja) for sciezka, _, funkcja, _ in naruszenia)
     for sciezka, linia, funkcja, opis in naruszenia:
-        if (sciezka, funkcja) in WYJATKI_B01:
+        if (sciezka, funkcja) in wyjatki:
             continue
         bledy.append(
             f"backend/src/{sciezka}:{linia} ({funkcja}): {opis} — handler połyka albo "
             "przebiera wyjątek. Złap nazwany typ, który ta ścieżka naprawdę rzuca, z "
             "nazwaną reakcją i testem, albo zakończ handler ponownym `raise`."
         )
-    for klucz, (oczekiwane, _) in sorted(WYJATKI_B01.items()):
+    for klucz, (oczekiwane, _) in sorted(wyjatki.items()):
         faktyczne = licznik.get(klucz, 0)
         if faktyczne > oczekiwane:
             bledy.append(
