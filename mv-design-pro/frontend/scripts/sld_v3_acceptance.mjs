@@ -181,9 +181,15 @@ import {
 } from '../src/ui/sld/v2/command/SldCommandService.ts';
 // Karta S95-START: punkt startu ciągu z TEGO SAMEGO rozstrzygnięcia co menu i kreator.
 import {
+  buildSldOperationContext,
   isTrunkContinuationAction,
-  resolveTrunkStartAvailability,
 } from '../src/ui/sld/shared/sldActionExecutor.ts';
+// Karta PARTIA-6-FRONT: wejścia budowy liczone TĄ SAMĄ funkcją co test
+// `canvas/__tests__/menuBudowyNaKanwie.test.tsx` (sekcje B i E).
+import {
+  stacjeWgRoli,
+  stacjeZWejsciemKontynuacji,
+} from '../src/ui/sld/v3/canvas/__tests__/pomiarWejscBudowy.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -2736,15 +2742,16 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       refySpozaModelu === 0 ? `tematów=${[...wgKlasy.values()].reduce((s, w) => s + w.tematow, 0)}` : `złych=${refySpozaModelu}, np. ${pierwszyZlyRef}`,
     );
 
-    // (c) Pokrycie łańcucha: stacje i odcinki z realnym wejściem budowy.
-    const stacjeZWejsciem = obszary.filter((a) => {
-      if (a.klasa !== 'stacja') return false;
-      const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
-      // S95-START: wejście jest REALNE tylko z punktem startu ciągu (predykaty parami).
-      return w.stan === 'temat'
-        && w.temat.menuKind === 'station'
-        && resolveTrunkStartAvailability(enm, widokiLogiczneEnm, 'station', w.temat.modelRef)?.['continue-trunk'] === true;
-    }).length;
+    // (c) Pokrycie łańcucha. Sieć referencyjna jest GOTOWA (karta PARTIA-6-FRONT): każde pole
+    //     liniowe stacji niesie kabel, więc stacja NIE jest tu wejściem kontynuacji ciągu —
+    //     uczciwa blokada z powodem (zdolność budowy 15 ogniw mierzy sonda sceny w budowie
+    //     niżej). Odcinki pozostają wejściem „zakończ odcinek stacją".
+    const stacjeZWejsciem = stacjeZWejsciemKontynuacji(
+      obszary.map((area) => ({ area, busRef: busRefy.get(area.testId) })),
+      enm,
+      widokiLogiczneEnm,
+      indexModelu,
+    ).length;
     const odcinkiZWejsciem = obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
@@ -2752,8 +2759,8 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     }).length;
     if (lod === 0) {
       check(
-        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z wejściem „kontynuuj ciąg / odgałęzienie" na rysunku`,
-        stacjeZWejsciem >= PROG_STACJI,
+        `menu_chain_probe (PARTIA-6-FRONT) LOD 0, sieć GOTOWA: 0 stacji z wejściem kontynuacji (wszystkie pola liniowe zajęte — uczciwa blokada)`,
+        stacjeZWejsciem === 0,
         `stacji=${stacjeZWejsciem}`,
       );
     }
@@ -2773,6 +2780,55 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
         })
         .join(' '),
     );
+  }
+
+  // (c2) KRYTERIUM ODBIORU S9-5 na scenie W BUDOWIE (karta PARTIA-6-FRONT): etapy ciągu
+  //      z generatora backendu (`tests/reference_networks/scena_ciagu_w_budowie.py`) — na
+  //      etapie k stacja startu (GPZ albo koniec ciągu) jest wejściem kontynuacji na kanwie
+  //      LOD 0, a operacja z menu niesie pole startu, z którego BACKEND zbudował etap k+1.
+  {
+    const ciag = JSON.parse(
+      readFileSync(resolve(here, '..', 'src', 'harness-fixtures', 'generated', 'ciag_w_budowie_etapy.json'), 'utf8'),
+    );
+    let ogniwZKanwy = 0;
+    let pierwszeZerwane = null;
+    for (const etap of ciag.etapy) {
+      if (etap.pole_startu === null) continue;
+      const scena = buildSceneV3(etap.snapshot, 0);
+      const planEtapu = planSceneLabels(scena.labels, sceneObstacleRects(scena), 1, sheetSizeFor(scena));
+      const busRefyEtapu = busRefSceny(scena);
+      const obszaryEtapu = buildCanvasHitAreas({
+        symbols: scena.symbols, segments: scena.segments, labels: planEtapu.drawn, resultMarkers: [], scale: 1,
+      });
+      const wejscia = stacjeZWejsciemKontynuacji(
+        obszaryEtapu.map((area) => ({ area, busRef: busRefyEtapu.get(area.testId) })),
+        etap.snapshot,
+        etap.logical_views,
+        buildCanvasModelIndex(etap.snapshot),
+      );
+      const operacja = buildSldOperationContext('continue-trunk', 'station', etap.stacja_startu, etap.snapshot, etap.logical_views);
+      if (wejscia.includes(etap.stacja_startu) && operacja?.context.field_ref === etap.pole_startu) {
+        ogniwZKanwy += 1;
+      } else {
+        pierwszeZerwane ??= `etap ${etap.liczba_stacji}: wejście=${wejscia.includes(etap.stacja_startu)} pole=${operacja?.context.field_ref ?? '—'} (backend ${etap.pole_startu})`;
+      }
+    }
+    check(
+      `menu_chain_probe (S9-5, kryterium odbioru) scena W BUDOWIE: ${PROG_STACJI} kolejnych ogniw ciągu z kanwy (pole startu menu = pole startu backendu)`,
+      ogniwZKanwy >= PROG_STACJI && pierwszeZerwane === null,
+      pierwszeZerwane ?? `ogniw=${ogniwZKanwy}`,
+    );
+    // Iloczyn ról na scenie gotowej: GPZ, stacja środkowa i końcowa ciągu — żadna nie jest
+    // wejściem kontynuacji (predykat tej samej funkcji; rola z topologii, nie z predykatu).
+    const role = stacjeWgRoli(enm, widokiLogiczneEnm);
+    for (const [rola, refy] of Object.entries(role)) {
+      const aktywne = refy.filter((ref) => buildSldOperationContext('continue-trunk', 'station', ref, enm, widokiLogiczneEnm) !== null);
+      check(
+        `menu_chain_probe (PARTIA-6-FRONT) sieć GOTOWA, stacje roli „${rola}": kontynuacja zablokowana (brak wolnego pola liniowego)`,
+        refy.length > 0 && aktywne.length === 0,
+        `stacji=${refy.length} aktywnych=${aktywne.length}`,
+      );
+    }
   }
 
   // (d) Rodzina gałęzi rozstrzyga kategorię — obie rodziny obecne i ROZŁĄCZNE.

@@ -4891,6 +4891,36 @@ def _scena_punktu_startu(rodzaj: str, stan: str) -> dict[str, Any]:
     )
 
 
+def ciag_w_budowie_etapy() -> dict[str, Any]:
+    """Karta PARTIA-6-FRONT: etapy CIĄGU W BUDOWIE (`tests/reference_networks/
+    scena_ciagu_w_budowie.py`) — GPZ i 0…15 stacji budowanych ogniwo po ogniwie operacjami,
+    które otwiera menu kanwy. Każdy etap jak odpowiedź operacji (migawka + widoki logiczne
+    z `line_fields`) oraz punkt startu NASTĘPNEGO ogniwa wybrany przez backend z jego
+    zajętości pól — front ma go rozstrzygnąć niezależnie (kryterium S9-5 na scenie w budowie,
+    nie na sieci gotowej)."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_ciagu_w_budowie import LICZBA_OGNIW, zbuduj_etapy
+
+    etapy = []
+    for etap in zbuduj_etapy():
+        model = EnergyNetworkModel.model_validate(etap.snapshot)
+        _fiksuj_niedeterminizm_sceny_zwarcia(model)
+        odpowiedz = execute_domain_operation(
+            enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+        )
+        etapy.append(
+            {
+                "liczba_stacji": etap.liczba_stacji,
+                "stacja_startu": etap.stacja_startu,
+                "pole_startu": etap.pole_startu,
+                "snapshot": odpowiedz["snapshot"],
+                "logical_views": odpowiedz["logical_views"],
+            }
+        )
+    return canonicalize_json({"liczba_ogniw": LICZBA_OGNIW, "etapy": etapy})
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -4906,6 +4936,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         for stan in ("wolne_kilka", "wolne_jedno", "zajete_wszystkie", "brak_pol")
     },
     **{nazwa: _fabryka_widokow_fikstury(nazwa) for nazwa in _FIKSTURY_ENM_FRONTU},
+    "ciag_w_budowie_etapy": ciag_w_budowie_etapy,
 }
 
 
