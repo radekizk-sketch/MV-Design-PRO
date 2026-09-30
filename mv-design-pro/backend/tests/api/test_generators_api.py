@@ -591,7 +591,22 @@ def _seed_station_z_szyna_110kv(case_id: str) -> None:
                     "meta": {},
                 },
             ],
-            "branches": [],
+            # Sekcja 2 rozdzielnicy nN jest zasilana przez sprzęgło z sekcji 1 — źródło na
+            # sekcji 2 ma transformator w ścieżce zasilania (jeden predykat na grafie
+            # galwanicznym, karta POLA-W-TORZE §0 pkt 4). Sekcja bez żadnego połączenia
+            # z transformatorem byłaby wyspą bez zasilania i brama słusznie by jej odmówiła.
+            "branches": [
+                {
+                    "ref_id": "station/1/nn_coupler",
+                    "name": "Sprzęgło nN",
+                    "type": "bus_coupler",
+                    "from_bus_ref": "station/1/nn_bus",
+                    "to_bus_ref": "station/1/nn_bus_2",
+                    "status": "closed",
+                    "tags": [],
+                    "meta": {},
+                }
+            ],
             "sources": [],
             "loads": [],
             "transformers": [

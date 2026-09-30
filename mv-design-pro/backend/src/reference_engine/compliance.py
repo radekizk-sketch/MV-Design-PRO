@@ -20,6 +20,7 @@ from enm.interlock_rules import (
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
 from enm.slownik_komunikatow import opis_obiektu
+from enm.tor_pola import szyny_stacji
 from network_model.catalog.switchgear import (
     SwitchgearFamily,
     czy_rodzina_obsluguje_napiecie,
@@ -493,7 +494,11 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
             "osd_enea.station.pole_station_cable_entry_forbidden" in implemented
             and construction == "slupowa"
         ):
-            cable_entry = any(bus_ref in cable_bus_refs for bus_ref in station.bus_refs)
+            # POLA-W-TORZE: kabel dochodzi do ZACISKU pola stacji, nie do szyny głównej —
+            # przynależność szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
+            cable_entry = any(
+                bus_ref in cable_bus_refs for bus_ref in szyny_stacji(station, enm.branches)
+            )
             add(
                 station.ref_id,
                 "osd_enea.station.pole_station_cable_entry_forbidden",

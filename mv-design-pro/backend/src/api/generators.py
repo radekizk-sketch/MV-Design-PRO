@@ -44,6 +44,7 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
+from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.nazwy import jest_nazwa, nazwa_nadana
@@ -275,7 +276,8 @@ def _find_station(enm: dict[str, Any], station_ref: str) -> dict[str, Any] | Non
 
 def _station_transformers(enm: dict[str, Any], station: dict[str, Any]) -> list[dict[str, Any]]:
     transformer_refs = {ref for ref in station.get("transformer_refs", []) if isinstance(ref, str)}
-    station_buses = {ref for ref in station.get("bus_refs", []) if isinstance(ref, str)}
+    # POLA-W-TORZE: szyny stacji z jednego źródła — transformator leży na zaciskach pól.
+    station_buses = set(szyny_stacji(station, enm.get("branches") or []))
     return [
         transformer
         for transformer in enm.get("transformers", [])
@@ -456,10 +458,14 @@ def _ensure_catalog_block_transformer(
 
 
 def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | None:
+    galezie = enm.get("branches") or []
     for transformer in _station_transformers(enm, station):
         lv_bus_ref = transformer.get("lv_bus_ref")
         if isinstance(lv_bus_ref, str) and lv_bus_ref.strip():
-            return lv_bus_ref.strip()
+            # POLA-W-TORZE: strona dolna transformatora leży na zacisku wyłącznika głównego nN,
+            # a źródło przyłącza się do SZYNY ROZDZIELNICY nN za tym wyłącznikiem — nie
+            # między transformator a wyłącznik główny.
+            return szyna_glowna_stacji(station, galezie, lv_bus_ref.strip()) or lv_bus_ref.strip()
 
     voltages = _bus_voltage_index(enm)
     for bus_ref in station.get("bus_refs", []):

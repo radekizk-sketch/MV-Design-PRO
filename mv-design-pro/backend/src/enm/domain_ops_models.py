@@ -969,6 +969,19 @@ class ConnectSecondaryRingSNPayload(_FrozenBase):
     """Opcjonalna nazwa pierścienia."""
 
 
+class PrzepnijElementNaPolePayload(_FrozenBase):
+    """Payload operacji: przepnij_element_na_pole (karta POLA-W-TORZE, akcja naprawcza W042).
+
+    Przepina element z szyny głównej stacji na zacisk pola, które mu służy.
+    """
+
+    element_ref: str
+    """Odcinek terenowy SN albo transformator leżący na szynie głównej stacji."""
+
+    field_ref: str | None = None
+    """Pole docelowe — bez niego pole wskazane przez walidator (wolne pole właściwej roli)."""
+
+
 class SetNormalOpenPointPayload(_FrozenBase):
     """Payload operacji: set_normal_open_point.
 

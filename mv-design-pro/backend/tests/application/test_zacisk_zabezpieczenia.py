@@ -589,8 +589,10 @@ def test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce() -> Non
     (żaden odcinek nie ma kompletu trzech szyn z prądem zwarciowym — szyny pomocnicze
     magistrali nie są punktami raportowalnymi), więc na nich test sprawdza równość odmów;
     trójki budowane pochodzą z sieci 110/15 kV (bez pola i z polem, w którym model
-    rozstrzyga zacisk). Reguła szeregowa rozstrzyga na tych sieciach trzy linie: GN_02
-    (odgałęzienie, `od`), GN_03 (odcinek SL, `do`) i k1 sieci z polem (`od`)."""
+    rozstrzyga zacisk). Reguła szeregowa rozstrzyga na tych sieciach sześć linii: GN_02
+    (odgałęzienie, `od`), GN_03 (odcinek SL, `do`), połówki od strony zasilania GN_01, GN_04
+    i GN_05 (`do` — zacisk pola wejściowego stacji, karta POLA-W-TORZE) i k1 sieci z polem
+    (`od`)."""
     from application.proof_engine.pakiet_nastaw import dostepnosc_pakietu_nastaw
 
     kotwice = _kotwice_rejestru() + [
@@ -646,9 +648,18 @@ def test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce() -> Non
         reklamowane,
         reklamowane_z_modelu,
     )
+    # Karta POLA-W-TORZE: połówka odcinka od strony zasilania kończy się na zacisku pola
+    # wejściowego stacji, więc wyłącznik tego pola (z przypiętym zabezpieczeniem) stoi W SZEREGU
+    # z zaciskiem `do` połówki (węzeł stopnia 2: kabel + aparat pola). Dawniej połówka wisiała
+    # na szynie głównej obok pola, a reguła szeregowa milczała — zabezpieczenie pola WE nie
+    # widziało prądu kabla, który fizycznie przez nie płynie. Stąd trzy nowe rozstrzygnięcia
+    # (GN_01, GN_04, GN_05 — sieci ze stacją wstawioną w odcinek i zabezpieczeniem pola WE).
     assert sorted((n, ref.rsplit("/", 1)[-1], z) for n, ref, z in rozstrzygniete_modelem) == [
+        ("build_gn01_sn_promieniowa", "segment_L", "do"),
         ("build_gn02_sn_odgalezienie", "branch_segment", "od"),
         ("build_gn03_sn_pierscien", "segment_SL", "do"),
+        ("build_gn04_sn_nn_oze", "segment_L", "do"),
+        ("build_gn05_sn_nn_oze_ochrona", "segment_L", "do"),
         ("syntetyczna_110_15_z_polem", "k1", "od"),
     ]
 

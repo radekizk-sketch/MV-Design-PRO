@@ -152,6 +152,7 @@ from .topology_ops import (
     delete_branch,
     delete_node,
 )
+from .tor_pola import szyny_stacji
 
 # ---------------------------------------------------------------------------
 # IEC 60255 — krzywe IDMT (TCC)
@@ -6193,7 +6194,10 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                     bus_ref=None,
                 )
                 if station_for_auto is not None:
-                    station_buses = set(station_for_auto.get("bus_refs") or [])
+                    # POLA-W-TORZE: transformator stacji leży na ZACISKACH pól (strona górna
+                    # na zacisku pola TR, dolna za wyłącznikiem głównym nN) — przynależność
+                    # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
+                    station_buses = set(szyny_stacji(station_for_auto, enm.get("branches") or []))
                     station_transformers = [
                         tr
                         for tr in enm.get("transformers", [])

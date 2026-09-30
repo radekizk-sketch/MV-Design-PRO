@@ -27,8 +27,15 @@ Reguła naruszenia (wyłącznie z JAWNYCH danych modelu, bez domysłu):
 Pole WOLNE = jego zacisk nie niesie żadnego elementu mocy (odcinka, transformatora, źródła,
 odbioru) — to ta sama zajętość fizyczna, którą liczy `enm.zajetosc_pol` dla pól liniowych.
 
-Moduł-liść: biblioteka standardowa + `enm.zajetosc_pol` (liść), operuje na słowniku ENM
-(postać operacji domenowych i migawki biegu).
+Obok reguły naruszenia moduł jest jedynym źródłem pytań konsumentów zasady toru:
+  * `pola_z_zaciskiem_szyny` / `wolne_pole_szyny` — punkt przyłączenia nowego elementu
+    wskazanego szyną główną stacji (operacje budowy: transformator, pierścień, ciąg);
+  * `szyny_stacji` / `szyna_glowna_stacji` — przynależność szyny do stacji (zaciski pól SN
+    i szyny za aparatami pól nN należą do stacji, choć nie są jej szynami głównymi).
+
+Moduł-liść: biblioteka standardowa + `enm.zajetosc_pol` (liść) + stała znacznika promocji pól
+nN; operuje na słowniku ENM (postać operacji domenowych i migawki biegu), a funkcje
+przynależności także na obiektach modelu.
 """
 
 from __future__ import annotations
@@ -37,6 +44,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO, zacisk_pola
 
 #: Rola pola (`Bay.bay_role`), na którego zacisku kończy się połówka odcinka od strony zasilania.
@@ -132,6 +140,13 @@ def _slownik(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _atrybut(obiekt: object, klucz: str) -> Any:
+    """Pole elementu modelu — słownik migawki albo obiekt `EnergyNetworkModel`."""
+    if isinstance(obiekt, Mapping):
+        return obiekt.get(klucz)
+    return getattr(obiekt, klucz, None)
+
+
 def _napis(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
@@ -178,15 +193,8 @@ def _wolne_pole(
     return None
 
 
-def _naruszenia_stacji(
-    stacja: Mapping[str, Any],
-    galezie: list[Mapping[str, Any]],
-    transformatory: list[Mapping[str, Any]],
-    elementy_na_szynach: Mapping[str, set[str]],
-) -> list[NaruszenieToru]:
-    station_ref = _napis(stacja.get("ref_id")) or ""
-    szyny_glowne = {s for s in (stacja.get("bus_refs") or []) if _napis(s)}
-    # Pola z WŁASNYM zaciskiem, pogrupowane po szynie pola.
+def _pola_z_zaciskiem_wg_szyny(stacja: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]]]:
+    """Pola stacji z WŁASNYM zaciskiem (różnym od szyny pola), pogrupowane po szynie pola."""
     pola_szyny: dict[str, list[Mapping[str, Any]]] = {}
     for spec in _slownik(stacja.get("meta")).get("field_specs") or []:
         if not isinstance(spec, Mapping):
@@ -195,6 +203,45 @@ def _naruszenia_stacji(
         zacisk = zacisk_pola(spec)
         if szyna_pola and zacisk and zacisk != szyna_pola and _napis(spec.get("field_ref")):
             pola_szyny.setdefault(szyna_pola, []).append(spec)
+    return pola_szyny
+
+
+def pola_z_zaciskiem_szyny(enm: Mapping[str, Any], szyna_ref: str) -> list[Mapping[str, Any]]:
+    """Pola z własnym zaciskiem stojące na SZYNIE GŁÓWNEJ stacji `szyna_ref` (kolejność danych).
+
+    Pusta lista = szyna nie jest szyną główną stacji z polami (szyna goła, sieć bez
+    rozdzielnicy z polami) — zasada toru nie ma tam pola, przez które element mógłby przejść.
+    """
+    for stacja in enm.get("substations") or []:
+        if not isinstance(stacja, Mapping):
+            continue
+        if szyna_ref not in (stacja.get("bus_refs") or []):
+            continue
+        pola = _pola_z_zaciskiem_wg_szyny(stacja).get(szyna_ref)
+        if pola:
+            return pola
+    return []
+
+
+def wolne_pole_szyny(
+    enm: Mapping[str, Any], szyna_ref: str, role: tuple[str, ...]
+) -> Mapping[str, Any] | None:
+    """Pierwsze WOLNE pole z `role` na szynie głównej `szyna_ref` (reguła jak w walidatorze:
+    zacisk pola nie niesie żadnego elementu mocy) — punkt przyłączenia nowego elementu."""
+    return _wolne_pole(
+        pola_z_zaciskiem_szyny(enm, szyna_ref), role, elementy_mocy_na_szynach(enm), set()
+    )
+
+
+def _naruszenia_stacji(
+    stacja: Mapping[str, Any],
+    galezie: list[Mapping[str, Any]],
+    transformatory: list[Mapping[str, Any]],
+    elementy_na_szynach: Mapping[str, set[str]],
+) -> list[NaruszenieToru]:
+    station_ref = _napis(stacja.get("ref_id")) or ""
+    szyny_glowne = {s for s in (stacja.get("bus_refs") or []) if _napis(s)}
+    pola_szyny = _pola_z_zaciskiem_wg_szyny(stacja)
     wynik: list[NaruszenieToru] = []
     if not pola_szyny:
         return wynik
@@ -277,3 +324,67 @@ def naruszenia_zasady_toru(enm: Mapping[str, Any]) -> list[NaruszenieToru]:
         wynik.extend(_naruszenia_stacji(stacja, galezie, transformatory, elementy_na_szynach))
     wynik.sort(key=lambda n: (n.station_ref, n.rodzaj_elementu, n.element_ref, n.szyna_ref))
     return wynik
+
+
+# ---------------------------------------------------------------------------
+# Przynależność szyn do stacji (konsumenci zasady toru)
+# ---------------------------------------------------------------------------
+
+
+def _aparaty_pol_nn_stacji(stacja: object, galezie: Sequence[object]) -> list[object]:
+    """Aparaty pól nN stacji utworzone promocją `nn_field_specs` (znacznik gałęzi)."""
+    meta = _slownik(_atrybut(stacja, "meta"))
+    pola_nn = {
+        str(spec.get("field_ref"))
+        for spec in meta.get("nn_field_specs") or []
+        if isinstance(spec, Mapping) and _napis(spec.get("field_ref"))
+    }
+    if not pola_nn:
+        return []
+    return [
+        galaz
+        for galaz in galezie
+        if _slownik(_atrybut(galaz, "meta")).get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) in pola_nn
+    ]
+
+
+def szyny_stacji(stacja: object, galezie: Sequence[object]) -> frozenset[str]:
+    """Szyny NALEŻĄCE do stacji — JEDNO źródło dla każdego pytania „do której stacji należy
+    ta szyna" (karta POLA-W-TORZE, inwentarz konsumentów).
+
+    Zasada toru przenosi elementy stacji z szyny głównej na zaciski pól, a zacisk pola nie
+    jest szyną główną (`Substation.bus_refs`). Szyny stacji to więc: szyny główne, WŁASNE
+    zaciski pól SN (`meta.field_specs`) i szyny za aparatami pól nN (promocja
+    `nn_field_specs` — zacisk wyłącznika głównego nN, szyny odpływów i pól źródeł).
+    `stacja` i `galezie` — słowniki migawki albo obiekty modelu.
+    """
+    wynik = {s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)}
+    for pola in _pola_z_zaciskiem_wg_szyny({"meta": _slownik(_atrybut(stacja, "meta"))}).values():
+        wynik.update(str(zacisk_pola(spec)) for spec in pola)
+    for aparat in _aparaty_pol_nn_stacji(stacja, galezie):
+        for koniec in ("from_bus_ref", "to_bus_ref"):
+            szyna = _napis(_atrybut(aparat, koniec))
+            if szyna:
+                wynik.add(szyna)
+    return frozenset(wynik)
+
+
+def szyna_glowna_stacji(stacja: object, galezie: Sequence[object], szyna_ref: str) -> str | None:
+    """Szyna GŁÓWNA stacji, na której stoi pole prowadzące do `szyna_ref`: sama `szyna_ref`,
+    gdy jest szyną główną; szyna pola, gdy `szyna_ref` jest własnym zaciskiem pola SN; szyna
+    aparatu pola nN, gdy `szyna_ref` leży za aparatem pola nN (np. strona dolna transformatora
+    na zacisku wyłącznika głównego nN — szyną rozdzielnicy nN jest szyna po drugiej stronie
+    wyłącznika). `None` — szyna nie należy do stacji."""
+    glowne = [s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)]
+    if szyna_ref in glowne:
+        return szyna_ref
+    for szyna_pola, pola in _pola_z_zaciskiem_wg_szyny(
+        {"meta": _slownik(_atrybut(stacja, "meta"))}
+    ).items():
+        if any(zacisk_pola(spec) == szyna_ref for spec in pola):
+            return szyna_pola
+    for aparat in _aparaty_pol_nn_stacji(stacja, galezie):
+        poczatek, koniec = _atrybut(aparat, "from_bus_ref"), _atrybut(aparat, "to_bus_ref")
+        if koniec == szyna_ref and poczatek in glowne:
+            return str(poczatek)
+    return None

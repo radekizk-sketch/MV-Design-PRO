@@ -15,6 +15,7 @@ from __future__ import annotations
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
 from .models import EnergyNetworkModel, Substation, Transformer
+from .tor_pola import szyny_stacji
 
 
 def transformator_nn(trafo: Transformer) -> bool:
@@ -32,7 +33,9 @@ def stacje_z_odbiorami_nn(enm: EnergyNetworkModel) -> list[Substation]:
 
     szyny_odbiorow = {ld.bus_ref for ld in enm.loads if _nn(ld.bus_ref)}
     szyny_odbiorow |= {g.bus_ref for g in enm.generators if _nn(g.bus_ref)}
-    return [sub for sub in enm.substations if szyny_odbiorow & set(sub.bus_refs)]
+    # POLA-W-TORZE: odbiór i źródło nN leżą za aparatem pola nN (szyna odpływu), nie na szynie
+    # rozdzielnicy — przynależność szyn do stacji z jednego źródła.
+    return [sub for sub in enm.substations if szyny_odbiorow & szyny_stacji(sub, enm.branches)]
 
 
 def uklad_nn_stacji(enm: EnergyNetworkModel, sub: Substation) -> str | None:

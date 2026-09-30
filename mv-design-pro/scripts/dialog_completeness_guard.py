@@ -23,6 +23,7 @@ MAPPING: operation -> expected modal
   insert_section_switch_sn -> NodeModal or SwitchModal
   connect_secondary_ring_sn -> RingCloseModal
   set_normal_open_point   -> (inline action, no modal needed)
+  przepnij_element_na_pole -> KreatorPrzepieciaNaPole (ui2, akcja naprawcza W042)
   add_transformer_sn_nn   -> TransformerStationModal (existing)
   assign_catalog_to_element -> CatalogPicker (existing)
   update_element_parameters -> PropertyGrid (existing)
@@ -115,6 +116,8 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_nn_distribution_board": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
     "add_nn_switch_device": ["KreatorAparatuNn", "AparatNn"],
     "add_nn_section_coupler": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
+    # POLA-W-TORZE: akcja naprawcza W042 — przepięcie elementu na zacisk pola.
+    "przepnij_element_na_pole": ["KreatorPrzepieciaNaPole", "PrzepiecieNaPole"],
 }
 
 # Operations that don't need a dedicated modal

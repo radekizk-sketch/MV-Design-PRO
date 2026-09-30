@@ -118,6 +118,8 @@ from .tor_pola import (
     indeks_pola_toru,
     naruszenia_zasady_toru,
     pola_do_domkniecia,
+    pola_z_zaciskiem_szyny,
+    wolne_pole_szyny,
 )
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .validator import ENMValidator
@@ -152,6 +154,8 @@ CANONICAL_OPS_V1 = frozenset(
         "start_branch_segment_sn",
         "insert_section_switch_sn",
         "connect_secondary_ring_sn",
+        # POLA-W-TORZE: akcja naprawcza W042 — element z szyny głównej stacji na zacisk pola.
+        "przepnij_element_na_pole",
         "set_normal_open_point",
         "add_transformer_sn_nn",
         "assign_catalog_to_element",
@@ -2823,6 +2827,12 @@ def _lookup_branch_from_ref_for_bus(
         if not isinstance(bay, dict) or bay.get("bus_ref") != from_bus_ref:
             continue
         bay_ref = bay.get("ref_id") or bay.get("id")
+        # Rekord pola opisujący pole ze specyfikacji stacji (stacja końca ciągu ma oba) nie jest
+        # DRUGIM kandydatem tego samego pola — o polu rozstrzyga pętla specyfikacji niżej (z jego
+        # zajętością). Dawniej jedno wolne pole dawało dwóch kandydatów i odmowę
+        # niejednoznaczności.
+        if _field_ref_for_bay(enm, bay) is not None:
+            continue
         if isinstance(bay_ref, str) and _is_branch_start_bay_role(bay.get("bay_role")):
             structured_candidates.append(f"{bay_ref}.BRANCH")
 
@@ -9452,6 +9462,25 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     )
     klasa_transformatora = f"transformatora {rodzaj}".rstrip()
 
+    # POLA-W-TORZE (zasada toru, §0 pkt 1): strona górna wskazana SZYNĄ GŁÓWNĄ stacji z polami
+    # przyłącza się do ZACISKU wolnego pola transformatorowego tej szyny — aparat pola TR jest
+    # w torze transformatora. Szyna główna niesie wyłącznie aparaty pól i sprzęgła, więc brak
+    # wolnego pola TR to nazwana odmowa z akcją naprawczą (ta sama, co akcja walidatora W042).
+    # Szyna bez pól z własnym zaciskiem (szyna goła, sieć bez rozdzielnicy) — jak dotąd.
+    # Identyfikatory liczone wyżej ze wskazanej szyny — przyłączenie przez pole ich nie zmienia.
+    pole_tr_ref: str | None = None
+    if hv_bus_ref and pola_z_zaciskiem_szyny(enm, str(hv_bus_ref)):
+        pole_tr = wolne_pole_szyny(enm, str(hv_bus_ref), (ROLA_POLA_TR,))
+        if pole_tr is None:
+            return _error_response(
+                f"{opis_elementu(enm, str(hv_bus_ref), 'Szyna stacji')} nie ma wolnego pola "
+                "transformatorowego — strona górna transformatora przyłącza się przez aparat "
+                "pola, nie wprost do szyny. Dodaj pole transformatorowe w konfiguratorze stacji.",
+                "tor.field_missing",
+            )
+        pole_tr_ref = str(pole_tr.get("field_ref"))
+        hv_bus_ref = zacisk_pola(pole_tr)
+
     new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
@@ -9604,6 +9633,13 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             "transformer.creation_failed",
         )
     new_enm = result.enm
+    if pole_tr_ref is not None:
+        # Transformator należy do pola, na którego zacisku leży (jak we wcięciu stacji).
+        for sub in new_enm.get("substations", []):
+            for spec in _field_specs_for_substation(sub):
+                if spec.get("field_ref") == pole_tr_ref:
+                    sprzet = [r for r in spec.get("equipment_refs", []) if r]
+                    spec["equipment_refs"] = [*sprzet, tr_ref]
     created.append(tr_ref)
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "TRANSFORMER_CREATED", "element_id": tr_ref})
