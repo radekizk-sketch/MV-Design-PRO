@@ -273,11 +273,15 @@ def _przypisz_wiazania(
             dane, {"element_ref": aparat_ref, "catalog_binding": wiazanie}
         )
         if wynik.get("error"):
+            # Kod odmowy NAZWANY przez operację: każda odmowa `assign_catalog_to_element`
+            # powstaje w `_error_response`, który zawsze niesie `error_code`. Odpowiedź
+            # odmowy bez kodu to błąd programu (KeyError), nie powód do wpisania kodu
+            # zastępczego spoza rejestru `READINESS_CODES` — dawny zapas
+            # `catalog.assign_failed` był takim kodem, nieosiągalnym i niezarejestrowanym.
+            kod_odmowy = str(wynik["error_code"])
             for galaz in dane["branches"]:
                 if galaz["ref_id"] == aparat_ref:
-                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(
-                        wynik.get("error_code") or "catalog.assign_failed"
-                    )
+                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = kod_odmowy
             continue
         dane = wynik["snapshot"]
     return EnergyNetworkModel.model_validate(dane)
