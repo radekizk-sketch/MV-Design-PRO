@@ -65,4 +65,7 @@ def test_pusty_skan_jest_bledem_a_nie_zieloną_bramka(monkeypatch, tmp_path: Pat
     pusty.mkdir()
     (pusty / "nic.yml").write_text("name: nic\njobs: {}\n", encoding="utf-8")
     monkeypatch.setattr(skrypt, "WORKFLOWS_DIR", pusty)
-    assert skrypt.main() == 1
+    # Jawne `argv=[]`: `main()` bez argumentu parsuje `sys.argv` BIEZACEGO procesu (od karty
+    # SZYBKIE-TESTY runner ma opcje), czyli tu — argumenty pytesta (`-q`, `-m ...`), na
+    # ktorych argparse konczy proces `SystemExit(2)` zamiast dojsc do sprawdzenia skanu.
+    assert skrypt.main([]) == 1

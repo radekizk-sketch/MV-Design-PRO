@@ -19,6 +19,7 @@ from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
 )
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
     pasmo_napieciowe,
@@ -96,8 +97,7 @@ def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str |
         meta = stacja.meta if isinstance(stacja.meta, dict) else {}
         for spec in meta.get("nn_field_specs") or []:
             if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                nazwa = spec.get("name")
-                return (str(nazwa) if nazwa else None), stacja.name
+                return nazwa_nadana(spec.get("name")), nazwa_nadana(stacja.name)
     return None, None
 
 

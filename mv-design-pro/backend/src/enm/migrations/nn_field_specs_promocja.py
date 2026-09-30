@@ -275,9 +275,9 @@ def _przypisz_wiazania(
         if wynik.get("error"):
             for galaz in dane["branches"]:
                 if galaz["ref_id"] == aparat_ref:
-                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(
-                        wynik.get("error_code") or "catalog.assign_failed"
-                    )
+                    # `error_code` jest polem KAZDEJ odpowiedzi bledu operacji
+                    # (`domain_operations._error_response`) — bez kodu zastepczego.
+                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(wynik["error_code"])
             continue
         dane = wynik["snapshot"]
     return EnergyNetworkModel.model_validate(dane)
