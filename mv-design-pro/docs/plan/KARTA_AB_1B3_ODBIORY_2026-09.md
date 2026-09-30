@@ -408,8 +408,8 @@ rodzin dzielą JEDEN protokół `ElementStanowy`.**
 - Docstring `aggregate_zip` przepisany do warunku reprezentowalności (deklaracja bez pokrycia, S2).
 - Poza tą kartą, z powodem: DOKŁADNA reprezentacja wielu odbiorów ZIP na szynie (PQSpec per odbiór) i
   przyjęcie agregatu o udziałach poza `[0, 1]` (S2 (3a)) zmieniają zachowanie FROZEN NR
-  (`power_flow_newton_internal.py:835-856` czyta jedną tablicę per indeks węzła) → pozycja B-01 (d) w §12.2
-  planu, zgłaszana właścicielowi razem z (a)–(c) (§7 pyt. 5). Do czasu decyzji: odmowa nazwana, nigdy cichy
+  (`power_flow_newton_internal.py:835-856` czyta jedną tablicę per indeks węzła) → pozycja B-01 (e) w §12.2
+  planu, zgłaszana właścicielowi razem z (a)–(d) (§7 pyt. 5). Do czasu decyzji: odmowa nazwana, nigdy cichy
   wynik.
 
 **11. Gotowość ↔ bieg: jeden predykat, także dla „braku wytwórców".**
@@ -449,7 +449,7 @@ swoje mutacje na M52+ (§5 S5).
 **14. Granica zakresu (świadomie poza kartą, każda pozycja przypisana):** silnik indukcyjny, utyk, ponowny
 rozruch, udział silnikowy — AB-3b (O-22); odbiór niesymetryczny w czasie — W6-K; przejście trybu przez
 zdarzenie zlokalizowane — tylko jeśli R2 wykaże potrzebę (decyzja architekta strategicznego z pomiarem); dokładny agregat ZIP w
-FROZEN NR — B-01 (d); redukcja Krona odbioru czysto impedancyjnego w wyroczni równych pól
+FROZEN NR — B-01 (e); redukcja Krona odbioru czysto impedancyjnego w wyroczni równych pól
 (`walidacja/rowne_pola.py:99-115` odmawia KAŻDEGO odbioru) — AB-5b (Φ/CCT, jedyny konsument); w tej karcie
 wyłącznie komunikat tej odmowy przepisany z „stałej mocy" na „charakterystyki innej niż stała impedancja".
 
@@ -575,7 +575,7 @@ SO-1A.
 **P5 — rozpływ: reprezentowalność agregatu ZIP i odniesienie f0 (równolegle od P0, rozłączne pliki).**
 `reprezentowalnosc_zip_szyny` (pkt 10) wołana w ścieżce rozpływu assemblera i w `_check_power_flow`;
 `f0` nieobecne = częstotliwość studium (`zip_coeffs_from_materialized_params(params, f_studium_hz)`, wszyscy
-wołający: `mapping.py:986`, adapter, `load_zip_model`); docstring `aggregate_zip`; zapis pozycji B-01 (d) w
+wołający: `mapping.py:986`, adapter, `load_zip_model`); docstring `aggregate_zip`; zapis pozycji B-01 (e) w
 §12.2 planu. Testy (~10): przypadki S2 (1)–(3b) → odmowa nazwana PL z szyną i rozbieżnością; przypadki
 reprezentowalne (równe `k`, `f = f0`, jeden odbiór) → wynik bitowo jak dziś; studium 60 Hz. Regresja ZIP
 rozpływu (69 testów §Stan wyjściowy) + parytet złotych hashy (`T/golden/parytet_assemblera`) — bez zmian (żadna
@@ -595,7 +595,7 @@ deterministyczny podział na dwa joby, nie podniesienie limitu bez pomiaru. Bram
 
 **P7 — dokumenty i potwierdzenia.**
 Plan: §3a #22 (stan po karcie), §5 wiersz AB-3b (tablica S1–S6 z §0 pkt 12), §7 rejestr, §12.1 (wiersz
-parametrów dynamicznych odbiorów), §12.2 (B-01 d); FREEZE C6/OD-37 (`:141`, `:201`, `:338` — „rozstrzygnięte
+parametrów dynamicznych odbiorów), §12.2 (B-01 (e)); FREEZE C6/OD-37 (`:141`, `:201`, `:338` — „rozstrzygnięte
 O-22: AB-1b.3 + AB-3b"), D7/D8 bez zmian treści; W6-A zał. Z3.1 (`:745-747` — poprawny kod i nieaktualna
 przesłanka R_f); macierz luk #22 (adnotacja „stan po AB-1b.3"); `INWENTARZ_FUNKCJI_2026-07.md:209` (liczba
 pisarzy i predykat); `CURRENT_DYNAMIC_CAPABILITY_MATRIX.md:164-165`; README walidacji; komentarz SO-1A
@@ -720,7 +720,7 @@ nie zrobiono i dlaczego.
 | S4 | Nazwa odmowy odbioru w węźle zwarcia metalicznego: AB-1b.1 `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu` (w kodzie w toku) ↔ AB-1b.2 `dynamika.odbior_w_wezle_zwarcia_metalicznego` (karta §0.5b, sonda 6) | obie karty | kod kasowany przez tę kartę; karta AB-1b.2 odwołuje się do „bieg bez odmowy" (O-48 pkt 4) |
 | S5 | Kolizja numeracji mutacji: AB-1b.1 M22–M37 ↔ AB-1b.2 M22–M36 | obie karty | ta karta M38–M51; AB-1b.2 → M52+ (zapis w O-48/§7 planu) |
 | S6 | „Złożony" w AB-1b.3 (plan :345) ↔ odbiór złożony = część statyczna + silnik (literatura, PowerFactory „complex load") ↔ silnik w AB-3b (O-22) | plan `:108`, `:345`, `:351` | §0 pkt 12: architektura + część statyczna teraz, DoD „złożony" z silnikiem w AB-3b (pyt. 1) |
-| S7 | `aggregate_zip` „this is exact" ↔ S2 (niedokładny: `f ≠ f0` × różne `k`; różne `v0`/`f0` — zależny od kolejności; `ΣQ0 = 0` cicho zero; poprawny model z Q różnego znaku odrzucany surowym angielskim błędem) | `power_flow_zip.py:334-337`, `:362-365`, `:149` | §0 pkt 10 (odmowa nazwana teraz, dokładność w FROZEN — B-01 d) |
+| S7 | `aggregate_zip` „this is exact" ↔ S2 (niedokładny: `f ≠ f0` × różne `k`; różne `v0`/`f0` — zależny od kolejności; `ΣQ0 = 0` cicho zero; poprawny model z Q różnego znaku odrzucany surowym angielskim błędem) | `power_flow_zip.py:334-337`, `:362-365`, `:149` | §0 pkt 10 (odmowa nazwana teraz, dokładność w FROZEN — B-01 (e)) |
 | S8 | Inwentarz: „JEDEN kontrakt ZIP wołany przez wszystkie TRZY drogi zapisu" ↔ cztery drogi zapisu + budowa domyślnego odbioru; `create_device` bierze `model` z payloadu niezależnie od ZIP i fabrykuje `p_mw = q_mvar = 0` | `INWENTARZ…:209`; `topology_ops.py:566-568`; `domain_operations_v2.py:2680, :6246` | §0 pkt 2 + P4 (pisarze), dokument w P7 |
 | S9 | Gotowość `dynamika_rms`: `n_a` bez wytwórców ↔ adapter wykonuje taki bieg (brak warunku); test przypina `n_a` przy obecnych odbiorach | `service.py:692-700`; `test_pr12_readiness.py:600-603` | §0 pkt 11 (pyt. 7) |
 | S10 | `obserwable.py:9-12` „Obserwabla NIGDY nie zostaje stanem" ↔ stan estymatora częstotliwości odbioru | §0 pkt 4f | brak sprzeczności merytorycznej (stan należy do MODELU odbioru, `f_hz@` zostaje obserwablą); docstring uzupełniony, żeby czytelnik jej nie widział |
@@ -789,7 +789,7 @@ gotowość, manifest). Każdy z pełną BW.
    nie wpływają na żaden wynik, bo nikt nie czyta pola.
 5. **Agregat ZIP w rozpływie** — teraz odmowa nazwana dla przypadków niereprezentowalnych; dokładna
    reprezentacja (PQSpec per odbiór) i przyjęcie agregatu o udziałach poza `[0, 1]` zmieniają zachowanie FROZEN NR.
-   *Rekomendacja:* obie rzeczy jako pozycja B-01 (d) w §12.2, zgłoszona właścicielowi razem z (a)–(c).
+   *Rekomendacja:* obie rzeczy jako pozycja B-01 (e) w §12.2, zgłoszona właścicielowi razem z (a)–(d).
 6. **`f0` nieobecne = częstotliwość studium** (zmienia wyniki rozpływu projektów ≠ 50 Hz z odbiorami `k ≠ 0`).
    *Rekomendacja:* TAK — odbiór deklaruje moc przy częstotliwości znamionowej swojej sieci; literał 50 Hz jest
    fabrykacją dla każdej innej.
