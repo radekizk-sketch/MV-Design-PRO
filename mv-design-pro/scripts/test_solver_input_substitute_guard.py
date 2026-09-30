@@ -1764,7 +1764,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dla walidatora W043/W044), -0. PASS niezmieniony (zero podstawien).
     # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 4126 + 6 = 4132 — POMIAR
     # guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4132." in wyjscie, wyjscie
+    # dla walidatora W043/W044), -7 (`bay_template_id`, `construction_type_default`,
+    # `feeders_count`, `lv_voltage_kv`, `nn_switchgears`, `nominal_power_kva`,
+    # `topological_type` — skasowany osierocony `network_model/catalog/station_templates.py`,
+    # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
+    # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1965,7 +1971,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # jedna regula rodzaju stacji z topologii). POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 563 + 1 (`enm/rodzaj_
         # stacji.py`) = 564. POMIAR guardem na drzewie partii.
-        "Przeskanowano 564 plikow w zakresie: network_model, solver_input, enm, "
+        # jedna regula rodzaju stacji z topologii), -1 (skasowany osierocony
+        # `network_model/catalog/station_templates.py`) = 561. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 564 - 1 = 563. POMIAR.
+        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2112,7 +2121,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): network_model 181 (B01-RUNDA-1
         # -3, AB-1b.3b +1), wykluczenia 1/2 (karta zabezpieczen). POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=181, dlug=11 plikow/suma 69, "
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ: network_model 183 -> 182 (-1 skasowany osierocony
+        # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
+        # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
+        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

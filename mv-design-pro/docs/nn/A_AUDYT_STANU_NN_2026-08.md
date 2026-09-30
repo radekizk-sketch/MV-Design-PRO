@@ -143,7 +143,7 @@ eksporcie/imporcie projektu**.
 | N-D7 | `c_factor_min` martwe dane | dead data | wpięcie scenariusza MIN (H §P0.6) |
 | N-D8 | Dryf rejestru operacji kanonicznych (41 vs 49) + miękki guard | CI-ślepota | rejestracja braków + guard dwukierunkowy (H §P0.1) |
 | N-D9 | `forbidden_ui_terms_guard` bez `ui2` | luka guardowa | `SCAN_DIRS += ui2` (H §P0.10) |
-| N-D10 | Osierocony `catalog/station_templates.py` (zdolność multi-voltage nN nieosiągalna) | duplikat | przenieść zdolność do żywego systemu albo usunąć (H §P1) |
+| N-D10 | Osierocony `catalog/station_templates.py` (zdolność multi-voltage nN nieosiągalna) | duplikat | przenieść zdolność do żywego systemu albo usunąć (H §P1). **Stan 2026-09-30 (karta ETYKIETA-STACJI-PRZELOTOWEJ):** plik skasowany — niósł drugą, niezależną deklarację rodzaju stacji (`topological_type`) bez konsumenta produkcyjnego; zdolność multi-voltage nN pozostaje pozycją planu H (żywy system `application/station_templates/`) |
 | N-D11 | `InverterType` duplikat (D-15, znany) | duplikat | dedykowana migracja (poza P0 nN, rejestr STAN_REPO) |
 | N-D12 | Stale wpisy CLAUDE.md (fault_scenario_executor, proof-inspector/, results-browser/…) | dok | korekta dokumentu przy commicie H |
 

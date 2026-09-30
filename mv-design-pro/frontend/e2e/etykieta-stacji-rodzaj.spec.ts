@@ -11,7 +11,7 @@
  *  2. drzewo panelu „Schemat": rodzaj każdej stacji z topologii (nie z deklaracji);
  *  3. rysunek: podpis rodzaju przy stacji z polem ODG to „stacja odgałęźna" (jedyny taki);
  *  4. lista gotowości: ostrzeżenie widać z nazwą stacji (nie identyfikatorem), „Napraw…" otwiera
- *     kreator edycji z deklaracją ustawioną na rodzaj z topologii, zapis zdejmuje ostrzeżenie,
+ *     kreator edycji (element podpisany nazwą) z deklaracją ustawioną na rodzaj z topologii, zapis zdejmuje ostrzeżenie,
  *     a drzewo nadal pokazuje ten sam rodzaj (zmienia się deklaracja, nie rysunek).
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
@@ -100,6 +100,9 @@ test('rodzaj stacji: walidator, drzewo, rysunek i naprawa deklaracji z jednej re
   await expect(wiersz).not.toContainText('stn/');
   await wiersz.getByRole('button', { name: /Napraw/ }).click();
   await expect(page.getByTestId('mvd-kreator-edycja')).toBeVisible({ timeout: 30000 });
+  // Kreator podpisuje element NAZWĄ stacji, nie identyfikatorem maszynowym.
+  await expect(page.getByTestId('mvd-kreator-edycja')).toContainText('Stacja Klonowa');
+  await expect(page.getByTestId('mvd-kreator-edycja')).not.toContainText('stn/');
   await expect(page.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('station_type');
   await expect(page.getByTestId('mvd-kreator-edycja-wartosc-0')).toHaveValue('branch');
   await page.getByTestId('mvd-kreator-edycja-zapisz').click();

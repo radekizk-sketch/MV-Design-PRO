@@ -94,8 +94,9 @@ test.describe('rodzaj stacji — zrzuty dowodowe', () => {
       await page.screenshot({ path: path.join(OUTPUT_DIR, `rodzaj_stacji_${ETAP}_stacja_${motyw}.png`) });
 
       if (ETAP === 'po') {
-        await page.getByTestId('left-panel-mode-readiness').click();
-        await expect(page.getByText(/zadeklarowana jako przelotowa/).first()).toBeVisible({ timeout: 30000 });
+        // Lista gotowości przestrzeni „Gotowość" — ta sama, na której działa „Napraw…".
+        await page.getByRole('button', { name: /Gotowość/ }).first().click();
+        await expect(page.locator('[data-testid^="mvd-problem-W043-"]').first()).toBeVisible({ timeout: 30000 });
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUTPUT_DIR, `rodzaj_stacji_${ETAP}_gotowosc_${motyw}.png`) });
       }

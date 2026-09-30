@@ -13,8 +13,9 @@ Pokrycie jako ILOCZYN CECH (reguła KLASA §2):
   * zmiana deklaracji operacją `update_element_parameters` (akcja naprawcza) — dozwolona
     w obrębie stacji SN/nN, odmowa dla GPZ i rozdzielnicy nN;
   * operacja katalogowa pola zapisuje rodzaj pola — pole potrzeb własnych nie zmienia rodzaju;
-  * szablony stacji: deklaracja ze składu pól tą samą regułą; katalog szablonów
-    `network_model/catalog/station_templates.py` spójny z regułą;
+  * szablony stacji: deklaracja ze składu pól tą samą regułą (osierocony drugi katalog
+    szablonów `network_model/catalog/station_templates.py` z własnym `topological_type`
+    skasowany — druga deklaracja rodzaju bez konsumenta produkcyjnego);
   * kwalifikacja pętli zwarcia nN i zgodność OSD rozpoznają stację SN/nN po każdej deklaracji
     stacji SN/nN, nie tylko `mv_lv`;
   * plik parytetu frontu bajtowo równy generatorowi.
@@ -41,13 +42,9 @@ from enm.rodzaj_stacji import (
     kategoria_pola,
     rodzaj_stacji,
     rodzaj_z_topologii,
-    rodzaj_ze_skladu_pol,
     rodzaje_stacji,
 )
 from enm.validator import ENMValidator
-from network_model.catalog.bay_templates import get_bay_template
-from network_model.catalog.station_templates import STATION_TEMPLATE_REGISTRY
-from network_model.catalog.switchgear.canonical_fallback import _CANONICAL_FALLBACK_MAPPING
 
 from tests.enm.test_append_station_on_endpoint import _build_gpz_with_endpoint, op
 from tests.reference_networks.rodzaj_stacji_parytet import (
@@ -326,6 +323,27 @@ def test_akcja_naprawcza_w043_zdejmuje_ostrzezenie() -> None:
     assert not [i for i in _problemy(po) if i.code == KOD_WALIDATORA_RODZAJ_NIEZGODNY]
 
 
+def test_akcja_naprawcza_w043_w_odpowiedzi_operacji_niesie_podpowiedz_ladunku() -> None:
+    """Gotowość z odpowiedzi operacji domenowej (lista „Gotowość" w UI) przenosi akcję
+    walidatora BEZ utraty pól: `modal_type` i `payload_hint`. Dawniej akcja była
+    przepisywana do samego `panel`, więc „Napraw…" otwierało pustą kartę edycji."""
+    snap, odcinek = _siec_z_odcinkiem()
+    wynik = _wstaw(
+        snap, odcinek, "inline", ["LINIA_IN", "LINIA_OUT", "LINIA_ODG", "TRANSFORMATOROWE"]
+    )
+    stacja = _stacja_pola(wynik["snapshot"])
+    (akcja,) = (a for a in wynik["fix_actions"] if a["code"] == KOD_WALIDATORA_RODZAJ_NIEZGODNY)
+    assert akcja["action_type"] == "OPEN_MODAL"
+    assert akcja["modal_type"] == "update_element_parameters"
+    assert akcja["payload_hint"] == {
+        "element_ref": stacja["ref_id"],
+        "field": "station_type",
+        "value": "branch",
+    }
+    for zakazany in ("stn/", "station_type", "inline", "branch"):
+        assert zakazany not in akcja["message_pl"]
+
+
 def test_zmiana_deklaracji_tylko_w_obrebie_stacji_sn_nn() -> None:
     snap, odcinek = _siec_z_odcinkiem()
     stan = _wstaw(snap, odcinek, "inline", ["LINIA_IN", "LINIA_OUT", "TRANSFORMATOROWE"])[
@@ -433,26 +451,6 @@ def test_pole_potrzeb_wlasnych_z_katalogu_nie_zmienia_rodzaju() -> None:
 )
 def test_deklaracja_szablonu_ze_skladu_pol(role: list[str], rodzaj: str) -> None:
     assert _resolve_station_type(role) == rodzaj
-
-
-def test_katalog_szablonow_stacji_spojny_z_regula() -> None:
-    """`topological_type` szablonów katalogu = reguła na ich składzie pól (pola rezerwowe
-    i potrzeb własnych rozpoznane po rodzaju pola z mapowania kanonicznego katalogu)."""
-    rodzaj_pola_szablonu = {
-        base.template_id: rodzaj for base, rodzaj, _ in _CANONICAL_FALLBACK_MAPPING
-    }
-    for szablon in STATION_TEMPLATE_REGISTRY.values():
-        sklad = [
-            (
-                rodzaj_pola_szablonu.get(pole.bay_template_id)
-                if rodzaj_pola_szablonu.get(pole.bay_template_id)
-                in {"potrzeb_wlasnych", "rezerwowe"}
-                else get_bay_template(pole.bay_template_id).bay_role
-            )
-            for pole in szablon.bays
-        ]
-        rodzaj = rodzaj_ze_skladu_pol(sklad, polaczone_wyprowadzenia=2)
-        assert NAZWA_PL[rodzaj] == szablon.topological_type, szablon.template_id
 
 
 # ---------------------------------------------------------------------------
