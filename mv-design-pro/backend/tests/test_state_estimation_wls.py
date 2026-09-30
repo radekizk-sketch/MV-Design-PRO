@@ -105,9 +105,8 @@ def test_chi_square_threshold_rowny_dokladnemu_kwantylowi_scipy(
     kwantyla scipy bit w bit (nie „w przybliżeniu"), bo tylko ta metoda jest opisana
     w śladzie obliczeń.
     """
-    from scipy.stats import chi2
-
     from network_model.solvers.state_estimation_wls import _chi_square_threshold
+    from scipy.stats import chi2
 
     wynik = _chi_square_threshold(dof, alpha)
     assert wynik == float(chi2.ppf(1.0 - alpha, dof))
