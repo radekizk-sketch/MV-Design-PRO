@@ -7,18 +7,26 @@ Cala logika (allowlista, rozstrzyganie importow wzglednych) zyje w
 wywolania, zeby ta sama regula obowiazywala tu i w `solver_boundary_guard.py`
 bez drugiej kopii listy.
 
-Self-test z czerwona iniekcja: `scripts/test_dynamika_granica_importow_guard.py`.
+Self-test z czerwona iniekcja: `scripts/test_dynamika_granica_importow_guard.py` (na KOPII
+pakietu w katalogu tymczasowym — katalog skanu jest pierwszym argumentem wywolania).
+
+EXIT CODES: 0 = granica nienaruszona; 1 = naruszenie albo pusty skan.
 """
 
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-from dynamika_granica_importow import raport
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from dynamika_granica_importow import KATALOG_PAKIETU, raport  # noqa: E402
 
 
-def main() -> int:
-    liczba_plikow, naruszenia = raport()
+def main(argv: list[str] | None = None) -> int:
+    argumenty = sys.argv[1:] if argv is None else argv
+    katalog = Path(argumenty[0]) if argumenty else KATALOG_PAKIETU
+    liczba_plikow, naruszenia = raport(katalog)
     if liczba_plikow == 0:
         print(
             "BLAD [DynamikaImportBoundaryGuard]: pakiet dynamiki nie ma ani jednego pliku — "

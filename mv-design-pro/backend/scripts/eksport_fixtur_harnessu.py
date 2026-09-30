@@ -4942,7 +4942,10 @@ def main(argv: list[str] | None = None) -> int:
     nieznane = sorted(set(args.tylko or ()) - set(FIXTURY))
     if nieznane:
         parser.error(f"nieznane fixtury: {', '.join(nieznane)}")
-    FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
+    if not args.sprawdz:
+        # Tryb `--sprawdz` tylko czyta: brak katalogu fikstur to rozjazd każdej fikstury,
+        # a nie powód, żeby porównanie cokolwiek tworzyło w drzewie repozytorium.
+        FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
     rozjazdy: list[str] = []
     for nazwa, funkcja in FIXTURY.items():
         if args.tylko and nazwa not in args.tylko:

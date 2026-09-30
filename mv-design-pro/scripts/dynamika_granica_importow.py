@@ -21,6 +21,14 @@ dopisania wiersza „bo akurat potrzebny". Dopisanie wymaga decyzji: czy rdzen
 naprawde ma zalezec od tej rzeczy. Zamkniecie listy jest PRZYPIETE testem
 (`scripts/test_dynamika_granica_importow_guard.py`), zeby deklaracja z tego
 docstringa miala pokrycie, a nie tylko brzmiala stanowczo.
+
+KATALOG SKANU JEST PARAMETREM (`pliki_pakietu`, `znajdz_naruszenia`, `raport`). Self-test
+skanuje KOPIE pakietu w katalogu tymczasowym. Wczesniej wstrzykiwal pliki `_iniekcja_*.py`
+do ZYWEGO pakietu i usuwal je w `finally`: w biegu testow rdzenia dynamiki rownoleglym do
+lancucha guardow test powtarzalnosci biegow zobaczyl dwa rozne odciski implementacji (hash
+wszystkich plikow pakietu liczony raz z obcym plikiem w srodku), a przerwany proces
+zostawilby taki plik na stale. Zapisy autotestow do drzewa repozytorium odrzuca hak audytu
+w `scripts/conftest.py`.
 """
 
 from __future__ import annotations
@@ -102,9 +110,9 @@ def _dozwolony_absolutny(modul: str) -> str | None:
     return "modul spoza ZAMKNIETEJ allowlisty rdzenia dynamiki"
 
 
-def _modul_wzgledny(plik: Path, poziom: int, modul: str | None) -> str:
+def _modul_wzgledny(katalog: Path, plik: Path, poziom: int, modul: str | None) -> str:
     """Rozwiaz import wzgledny do pelnej nazwy modulu."""
-    czesci = plik.relative_to(KATALOG_PAKIETU).with_suffix("").parts
+    czesci = plik.relative_to(katalog).with_suffix("").parts
     if czesci and czesci[-1] == "__init__":
         czesci = czesci[:-1]
     pakiet = [MODUL_PAKIETU, *czesci]
@@ -114,13 +122,19 @@ def _modul_wzgledny(plik: Path, poziom: int, modul: str | None) -> str:
     return ".".join([*baza, modul] if modul else baza)
 
 
-def znajdz_naruszenia() -> list[Naruszenie]:
+def pliki_pakietu(katalog: Path = KATALOG_PAKIETU) -> list[Path]:
+    """Pliki `.py` pakietu (posortowane, bez `__pycache__`)."""
+    return sorted(p for p in katalog.rglob("*.py") if "__pycache__" not in p.parts)
+
+
+def znajdz_naruszenia(katalog: Path = KATALOG_PAKIETU) -> list[Naruszenie]:
     """Naruszenia granicy importow w calym pakiecie (pusty wynik = zielono)."""
     naruszenia: list[Naruszenie] = []
-    for plik in sorted(KATALOG_PAKIETU.rglob("*.py")):
-        if "__pycache__" in plik.parts:
-            continue
-        wzgledna = plik.relative_to(KORZEN).as_posix()
+    for plik in pliki_pakietu(katalog):
+        try:
+            wzgledna = plik.relative_to(KORZEN).as_posix()
+        except ValueError:
+            wzgledna = plik.relative_to(katalog.parent).as_posix()
         drzewo = ast.parse(plik.read_text(encoding="utf-8"), filename=str(plik))
         for wezel in ast.walk(drzewo):
             if isinstance(wezel, ast.Import):
@@ -130,7 +144,7 @@ def znajdz_naruszenia() -> list[Naruszenie]:
                         naruszenia.append(Naruszenie(wzgledna, wezel.lineno, alias.name, powod))
             elif isinstance(wezel, ast.ImportFrom):
                 if wezel.level:
-                    modul = _modul_wzgledny(plik, wezel.level, wezel.module)
+                    modul = _modul_wzgledny(katalog, plik, wezel.level, wezel.module)
                     if not (modul == MODUL_PAKIETU or modul.startswith(f"{MODUL_PAKIETU}.")):
                         naruszenia.append(
                             Naruszenie(
@@ -160,10 +174,9 @@ def znajdz_naruszenia() -> list[Naruszenie]:
     return naruszenia
 
 
-def raport() -> tuple[int, list[Naruszenie]]:
+def raport(katalog: Path = KATALOG_PAKIETU) -> tuple[int, list[Naruszenie]]:
     """(liczba przeskanowanych plikow, naruszenia)."""
-    pliki = [plik for plik in KATALOG_PAKIETU.rglob("*.py") if "__pycache__" not in plik.parts]
-    return len(pliki), znajdz_naruszenia()
+    return len(pliki_pakietu(katalog)), znajdz_naruszenia(katalog)
 
 
 __all__ = [
@@ -173,6 +186,7 @@ __all__ = [
     "STDLIB_DOZWOLONE",
     "WLASNE_DOZWOLONE",
     "Naruszenie",
+    "pliki_pakietu",
     "raport",
     "znajdz_naruszenia",
 ]
