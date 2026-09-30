@@ -35,6 +35,8 @@ WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
     "backend/src/network_model/solvers/short_circuit_contributions.py",
     "backend/src/domain/protection_engine_v1.py",
+    # Rdzeń IEC 60255 (lista B-01, `rdzenie_b01.py`) — dopisany kartą PROT-LTI.
+    "backend/src/network_model/solvers/protection_iec60255.py",
 ]
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
@@ -93,6 +95,14 @@ SANCTIONED_CHANGES = {
         "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
         "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
         "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/protection_iec60255.py": (
+        "O-59 OD-15(e) (karta PROT-LTI, 2026-09-30): krzywa 120/(M-1) nazywala sie "
+        "w jadrze RI (myla sie z charakterystyka RI ASEA/ABB, inny wzor) - przemianowana "
+        "na LONG_TIME_INVERSE o wartosci LTI, etykieta Odwrotna dlugoczasowa (LTI, 120). "
+        "Zero zmian liczb: stale, wzor LaTeX i wszystkie wielkosci WHITE BOX bit w bit "
+        "(tests/network_model/solvers/test_protection_lti_tozsamosc.py na migawce z "
+        "f3c435b6). Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "

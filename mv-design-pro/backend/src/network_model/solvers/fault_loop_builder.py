@@ -1,29 +1,29 @@
 """
-FaultLoopInputBuilder — P0.5 step 3 scaffolding.
+Budowa wejścia pętli zwarcia nN (IEC 60364-4-41) i impedancje jej składników.
 
-Helper łączący NetworkGraph + manual overrides w FaultLoopInput gotowy do
-przekazania do compute_fault_loop().
+Moduł składa ``FaultLoopInput`` dla ``compute_fault_loop()`` z komponentów
+pętli oraz liczy impedancje składników: transformator sprowadzony do strony nN
+(``transformer_lv_impedance_ohm``), składowa zerowa transformatora, sumowanie
+odcinków trasy fazowej i powrotnej (``sum_phase_and_return_route``) i
+przeniesienie impedancji sieci zasilającej przez przekładnię
+(``refer_upstream_impedance_to_lv_ohm``). To jest fizyka impedancji, więc leży
+w warstwie solverów (PHYSICS HERE ONLY) — warstwa aplikacji dostarcza wyłącznie
+surowe dane odcinków odczytane z modelu.
 
-STATUS: SCAFFOLDING (MVP — caller dostarcza komponenty explicit;
-auto-extract z catalog deferred do P0.5b).
-
-Reference:
-- network_model/solvers/fault_loop_iec60364.py — solver
-- application/analysis_run/service.py:368-380 — stub do zastąpienia w P0.5b
-- Audyt specjalisty: step 3 z 5-step MVP plan
-
-DLACZEGO scaffolding, nie full auto-extract:
-- Pełna ekstrakcja R+X z NetworkGraph wymaga: catalog cable types lookup,
-  rozróżnienia TN-S vs TN-C-S (current data model ENM nie rozdziela jawnie),
-  oraz mapowania transformer.uk_percent → Z_TR_LV. To 4-5 OD pełnego rozwoju.
-- Ten module dostarcza minimalny scaffolding gotowy do podpięcia w
-  service.py kiedy ENM warstwa będzie ready.
+KONSUMENCI (stan zmierzony 2026-09-30; dawny nagłówek „STATUS: SCAFFOLDING
+(MVP)" i odesłanie do stubu ``analysis_run/service.py`` były nieaktualne —
+korekta OD-15(e), karta PROT-LTI):
+- ``api/fault_loop.py`` — końcówka ``/api/fault-loop/compute``,
+- ``application/analyses/fault_loop/service.py`` i ``route.py`` — pętla zwarcia
+  z realnej trasy grafu ENM,
+- ``application/analyses/nn_device_selection.py`` — dobór aparatu nN,
+- ``application/analyses/swz/service.py`` — samoczynne wyłączenie zasilania,
+- ``application/proof_engine/lv_circuit_verification_binding.py`` — dowód
+  weryfikacji obwodu nN.
 
 INVARIANTS:
-- Pure function: NetworkGraph + manual params → FaultLoopInput
-- NO physics calculations (tylko transformacje danych)
-- NO heuristics — caller dostarcza wszystkie wymagane komponenty
-- Determinizm
+- Funkcje czyste, deterministyczne (to samo wejście → ten sam wynik).
+- NO heuristics — caller dostarcza wszystkie wymagane komponenty.
 """
 
 from __future__ import annotations

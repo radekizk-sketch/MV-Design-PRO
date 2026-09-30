@@ -83,14 +83,14 @@ _FUNKCJE_ZWARCIOWE = ("overcurrent_50", "overcurrent_51")
 #   IEC_SI (standard inverse) -> NI = (0,14; 0,02)  — ta sama krzywa, inna nazwa
 #   IEC_VI                    -> VI = (13,5; 1)
 #   IEC_EI                    -> EI = (80; 2)
-#   IEC_LI (long-time inverse)-> RI = (120; 1)      — solver nazywa ja „RI", ale
-#                                stale sa dlugozwloczne; zgodnosc sprawdza test.
+#   IEC_LTI (long-time inverse)-> LONG_TIME_INVERSE = (120; 1) — ta sama nazwa
+#                                „LTI" w modelu, adapterze i solverze.
 _KRZYWE = {
     "DT": IEC60255CurveType.DT,
     "IEC_SI": IEC60255CurveType.NI,
     "IEC_VI": IEC60255CurveType.VI,
     "IEC_EI": IEC60255CurveType.EI,
-    "IEC_LI": IEC60255CurveType.RI,
+    "IEC_LTI": IEC60255CurveType.LONG_TIME_INVERSE,
 }
 
 

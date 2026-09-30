@@ -9,8 +9,8 @@ skonsolidowanych kartą W3-A:
   - `application.protection_analysis.engine.compute_iec_inverse_time`
     (tor kanoniczny `protection_sn` — jedyny realny tor biegu ochrony)
   - `enm.domain_operations_v2._compute_tcc_point`
-    (operacja domenowa `validate_selectivity`; alias lokalny "LTI" = "RI"
-    jądra — te same stałe K=120,0/alpha=1,0, inna nazwa historyczna)
+    (operacja domenowa `validate_selectivity`; krzywa długoczasowa "LTI" ma tę
+    samą nazwę co w jądrze — `IEC60255CurveType.LONG_TIME_INVERSE`, karta PROT-LTI)
 
 Trzy rzeczy razem, dla OBU adapterów:
 
@@ -19,7 +19,7 @@ Trzy rzeczy razem, dla OBU adapterów:
      nie porównanie dwóch implementacji ze sobą).
   2. Adaptery FAKTYCZNIE delegują do generycznego silnika (dowód przez
      monitorowanie wywołań, jak `test_protection_curves_nd4_merge.py`).
-  3. Iloczyn cech (KLASA NIE INSTANCJA, CLAUDE.md): krzywa (NI/VI/EI/RI) ×
+  3. Iloczyn cech (KLASA NIE INSTANCJA, CLAUDE.md): krzywa (NI/VI/EI/LTI) ×
      M <= 1 (brak wyzwolenia) × M -> 1+ (epsilon graniczny mianownika) × TMS
      skrajne (0,01 .. 10,0) — nie tylko przykład z karty.
 """
@@ -35,16 +35,16 @@ from application.protection_analysis.engine import compute_iec_inverse_time  # n
 from enm import domain_operations_v2  # noqa: E402
 from network_model.solvers import protection_iec60255 as core  # noqa: E402
 
-# (A, B) per IEC 60255-151:2009 Tabela 1 — NI/VI/EI, i RI (alias lokalny "LTI"
-# w domain_operations_v2.IEC_CURVES).
+# (A, B) per IEC 60255-151:2009 Tabela 1 — NI/VI/EI oraz krzywa długoczasowa LTI.
 NORM_CURVES = [
     ("NI", 0.14, 0.02),
     ("VI", 13.5, 1.0),
     ("EI", 80.0, 2.0),
-    ("RI", 120.0, 1.0),
+    ("LTI", 120.0, 1.0),
 ]
 # Klucze lokalne odpowiadające NORM_CURVES w enm.domain_operations_v2.IEC_CURVES
-# (alias "LTI" = "RI" jądra — udokumentowany w komentarzu przy IEC_CURVES).
+# ("SI" lokalnie = "NI" w jądrze — rozbieżność nazwana w meldunku karty PROT-LTI,
+# zmiana nazwy w jądrze wymaga osobnej zgody B-01; "LTI" jest wspólne).
 TCC_CURVE_KEYS = ["SI", "VI", "EI", "LTI"]
 
 TMS_VALUES = [0.01, 0.05, 0.3, 1.0, 1.5, 10.0]  # skrajne wlaczone (0.01, 10.0)
@@ -261,16 +261,27 @@ def test_compute_tcc_point_extreme_tms_matches_norm(tms_extreme: float) -> None:
 
 
 # =============================================================================
-# 4. ALIAS "LTI" (lokalny) = "RI" (jądro) — te same stałe, inna nazwa
+# 4. JEDNA NAZWA "LTI" (karta PROT-LTI) — lokalny słownik i jądro
 # =============================================================================
 
 
-def test_lti_alias_matches_ri_constants_in_canonical_table() -> None:
-    """`enm.domain_operations_v2.IEC_CURVES["LTI"]` (K=120,0, alpha=1,0) musi
-    zgadzać się LICZBOWO z `IEC60255_CURVE_PARAMS[RI]` w jądrze — to JEDNA
-    fizyka pod dwiema nazwami, nie dwie niezależne stałe, które „dziś się
-    zgadzają" (reguła KLASA NIE INSTANCJA, predykaty parami)."""
+def test_lti_ta_sama_nazwa_i_stale_co_w_jadrze() -> None:
+    """`enm.domain_operations_v2.IEC_CURVES["LTI"]` (K=120,0, alpha=1,0) i jądro
+    `IEC60255CurveType("LTI")` to JEDNA krzywa pod JEDNĄ nazwą: klucz lokalny
+    rozwiązuje się wprost na członka jądra (bez tablicy aliasów), a stałe
+    zgadzają się liczbowo (predykaty parami — jedno źródło nazwy)."""
     lti = domain_operations_v2.IEC_CURVES["LTI"]
-    ri_a, ri_b = core.IEC60255_CURVE_PARAMS[core.IEC60255CurveType.RI]
-    assert lti["K"] == ri_a
-    assert lti["alpha"] == ri_b
+    typ = core.IEC60255CurveType("LTI")
+    assert typ is core.IEC60255CurveType.LONG_TIME_INVERSE
+    a, b = core.IEC60255_CURVE_PARAMS[typ]
+    assert lti["K"] == a
+    assert lti["alpha"] == b
+
+
+def test_dawna_nazwa_ri_nie_istnieje_w_jadrze() -> None:
+    """Nazwa "RI" myliła krzywą 120/(M−1) z charakterystyką RI (ASEA/ABB, inny
+    wzór). Po karcie PROT-LTI jądro jej nie zna — ani jako członka, ani jako
+    wartości — więc nic nie może jej po cichu podać dalej."""
+    assert "RI" not in core.IEC60255CurveType.__members__
+    with pytest.raises(ValueError):
+        core.IEC60255CurveType("RI")

@@ -162,10 +162,9 @@ IEC_CURVES = {
     "SI": {"K": 0.14, "alpha": 0.02},  # Standard Inverse
     "VI": {"K": 13.5, "alpha": 1.0},  # Very Inverse
     "EI": {"K": 80.0, "alpha": 2.0},  # Extremely Inverse
-    # "LTI" (Long Time Inverse) tutaj = "RI" w jadrze kanonicznym
-    # (network_model.solvers.protection_iec60255.IEC60255CurveType.RI) — te
-    # same stale K=120,0/alpha=1,0 (IEC 60255-151:2009 Tab.1), inna nazwa
-    # historyczna tego samego wariantu krzywej (alias udokumentowany W3-A).
+    # "LTI" — ta sama nazwa co w jadrze kanonicznym
+    # (network_model.solvers.protection_iec60255.IEC60255CurveType.LONG_TIME_INVERSE)
+    # i w modelu ENM ("IEC_LTI"); stale K=120,0/alpha=1,0.
     "LTI": {"K": 120.0, "alpha": 1.0},  # Long Time Inverse
 }
 

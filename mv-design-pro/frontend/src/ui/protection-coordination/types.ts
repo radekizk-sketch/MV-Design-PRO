@@ -478,7 +478,7 @@ export const LABELS = {
     SI: 'Normalna odwrotna (SI)',
     VI: 'Bardzo odwrotna (VI)',
     EI: 'Ekstremalnie odwrotna (EI)',
-    LTI: 'Długoczasowa odwrotna (LTI)',
+    LTI: 'Odwrotna długoczasowa (LTI, 120)',
     DT: 'Czas niezależny (DT)',
     MI: 'Umiarkowanie odwrotna (MI)',
     STI: 'Krótkoczasowa odwrotna (STI)',

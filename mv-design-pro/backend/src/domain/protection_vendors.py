@@ -65,7 +65,7 @@ class IecVariant(StrEnum):
     SI = "SI"  # Standard Inverse (A=0.14, B=0.02)
     VI = "VI"  # Very Inverse (A=13.5, B=1.0)
     EI = "EI"  # Extremely Inverse (A=80.0, B=2.0)
-    LTI = "LTI"  # Long-Time Inverse (A=120, B=1.0) — per IEEE C37.112
+    LTI = "LTI"  # Long-Time Inverse (A=120, B=1.0) — praktyka BS 142 / IEC 255, nie IEEE C37.112
 
 
 class VerificationStatus(StrEnum):
@@ -158,7 +158,7 @@ IEC_CURVE_CONSTANTS: dict[IecVariant, dict[str, float]] = {
     IecVariant.SI: {"A": 0.14, "B": 0.02},
     IecVariant.VI: {"A": 13.5, "B": 1.0},
     IecVariant.EI: {"A": 80.0, "B": 2.0},
-    IecVariant.LTI: {"A": 120.0, "B": 1.0},  # IEEE C37.112
+    IecVariant.LTI: {"A": 120.0, "B": 1.0},  # ABB 1MRS756887 rev. Q, Tab. 1001 (14)
 }
 
 
@@ -263,9 +263,15 @@ _register_iec_derived_curve(
     manufacturer=Manufacturer.GENERIC,
     display_name="IEC Long-Time Inverse",
     iec_variant=IecVariant.LTI,
-    source_reference="IEEE C37.112-2018",
+    source_reference=(
+        "ABB 1MRS756887 rev. Q (615 series Technical Manual), Tab. 1001, poz. 14 "
+        "„IEC Long Time Inverse” (A=120, B=1)"
+    ),
     verification_status=VerificationStatus.VERIFIED,
-    notes="Long-Time Inverse per IEEE (A=120, B=1)",
+    notes=(
+        "Odwrotna długoczasowa (LTI, 120): postać wzoru IEC 60255-151, krzywa spoza "
+        "zbioru A–F normy (praktyka BS 142 / IEC 255); IEEE C37.112 jej nie definiuje"
+    ),
 )
 
 

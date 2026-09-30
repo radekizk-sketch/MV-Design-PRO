@@ -59,7 +59,7 @@ CURVE_TYPE_MAP = {
     "IEC_SI": "SI",
     "IEC_VI": "VI",
     "IEC_EI": "EI",
-    "IEC_LI": "LTI",
+    "IEC_LTI": "LTI",
 }
 
 # Próbkowanie krzywej I-t dla charakterystyki niezależnej (DT):

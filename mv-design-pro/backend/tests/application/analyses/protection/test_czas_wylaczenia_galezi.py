@@ -281,7 +281,7 @@ def test_odwzorowanie_krzywych_idzie_po_stalych_a_nie_po_nazwie() -> None:
         "IEC_SI": (0.14, 0.02),
         "IEC_VI": (13.5, 1.0),
         "IEC_EI": (80.0, 2.0),
-        "IEC_LI": (120.0, 1.0),
+        "IEC_LTI": (120.0, 1.0),
     }
     for nazwa_enm, stale in oczekiwane.items():
         typ = _KRZYWE[nazwa_enm]

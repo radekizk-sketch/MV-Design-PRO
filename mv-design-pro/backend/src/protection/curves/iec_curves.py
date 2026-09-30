@@ -55,7 +55,7 @@ class IECCurveType(StrEnum):
     STANDARD_INVERSE = "SI"  # Normalna odwrotna
     VERY_INVERSE = "VI"  # Bardzo odwrotna
     EXTREMELY_INVERSE = "EI"  # Ekstremalnie odwrotna
-    LONG_TIME_INVERSE = "LTI"  # Długoczasowa odwrotna
+    LONG_TIME_INVERSE = "LTI"  # Odwrotna długoczasowa (K = 120)
     DEFINITE_TIME = "DT"  # Czas niezależny
 
 
@@ -64,7 +64,7 @@ IEC_CURVE_LABELS_PL: dict[str, str] = {
     "SI": "Normalna odwrotna (SI)",
     "VI": "Bardzo odwrotna (VI)",
     "EI": "Ekstremalnie odwrotna (EI)",
-    "LTI": "Długoczasowa odwrotna (LTI)",
+    "LTI": "Odwrotna długoczasowa (LTI, 120)",
     "DT": "Czas niezależny (DT)",
 }
 

@@ -59,7 +59,7 @@ describe('Protection Coordination Types', () => {
       expect(LABELS.curveTypes.SI).toBe('Normalna odwrotna (SI)');
       expect(LABELS.curveTypes.VI).toBe('Bardzo odwrotna (VI)');
       expect(LABELS.curveTypes.EI).toBe('Ekstremalnie odwrotna (EI)');
-      expect(LABELS.curveTypes.LTI).toBe('Długoczasowa odwrotna (LTI)');
+      expect(LABELS.curveTypes.LTI).toBe('Odwrotna długoczasowa (LTI, 120)');
       expect(LABELS.curveTypes.DT).toBe('Czas niezależny (DT)');
       expect(LABELS.curveTypes.MI).toBe('Umiarkowanie odwrotna (MI)');
       expect(LABELS.curveTypes.STI).toBe('Krótkoczasowa odwrotna (STI)');

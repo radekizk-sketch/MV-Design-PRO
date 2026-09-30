@@ -122,7 +122,7 @@ class ProtectionSetting(BaseModel):
     ]
     threshold_a: float | None = None
     time_delay_s: float | None = None
-    curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI"] | None = None
+    curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI"] | None = None
     time_multiplier: float | None = None
     """Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255 (SI/VI/EI/LTI).
 
