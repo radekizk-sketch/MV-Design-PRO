@@ -644,6 +644,23 @@ def granica_zaokraglen_residuum(
     return granica
 
 
+def residuum_ponad_granica_zaokraglen(residuum: np.ndarray, granica: np.ndarray) -> bool:
+    """Czy residuum `[Re; Im]` niesie informacje o bledzie rozwiazania (JEDEN predykat).
+
+    Prawda, gdy CHOC JEDNA skladowa wychodzi poza granice bledu, z jakim residuum jest
+    obliczalne (`granica_zaokraglen_residuum`, ta sama granica dla czesci rzeczywistej
+    i urojonej wezla). Falsz znaczy: punkt lezy na dnie zaokraglen, a obliczone `r` jest
+    realizacja szumu formowania `Y V - I`.
+
+    Rozstrzyga DWIE rzeczy i dlatego zyje w jednym miejscu (regula predykatow parami):
+    droge estymaty bledu w `obserwable.pochodna_napiec_z_niepewnoscia` (`J^-1 r` albo
+    `J^-1 rho`) i korekte algebry punktu pracy w chwili 0
+    (`silnik.SilnikDynamiki._korekta_algebry_t0`) — punkt, ktory estymator uznalby za
+    niosacy informacje o bledzie, jest dokladnie tym, ktory inicjalizacja koryguje.
+    """
+    return bool(np.any(np.abs(residuum) > np.concatenate((granica, granica))))
+
+
 def jakobian_algebry(
     model: ModelSieci,
     odbiory: tuple[OdbiorDynamiki, ...],
@@ -1018,6 +1035,7 @@ __all__ = [
     "przezloz",
     "residuum_algebry",
     "residuum_kcl_niezalezne",
+    "residuum_ponad_granica_zaokraglen",
     "rozwiaz_algebre",
     "rzutuj_napiecia_zerowe",
     "stempel_czwornika_zwarcia",

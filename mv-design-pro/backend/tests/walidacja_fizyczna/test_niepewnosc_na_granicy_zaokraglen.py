@@ -17,8 +17,8 @@ bez zmian (przypina to `test_obserwable.py::test_a01_punkt_skorygowany_jest_krok
 rozwiazania`, a tu dodatkowo iloczyn z sieciami ponizej).
 
 ILOCZYN CECH: {residuum: szum na granicy zaokraglen, znaczace} x {siec: SMIB z odbiorem
-i zwarciem, siec z galezia slepa za przekladnia zespolona, scena harnessu} x {liczba watkow
-BLAS: 1, 2}. Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji
+i zwarciem, siec z galezia slepa za przekladnia zespolona, scena harnessu} x {jadro OpenBLAS:
+domyslne, Prescott na x86-64} x {liczba watkow BLAS: 1, 2}. Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji
 w czasie biegu), nie z recznie zlozonego punktu.
 """
 
@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -238,16 +239,35 @@ def test_estymata_przy_residuum_znaczacym_jest_krokiem_newtona(
 # Cala scena dynamiki harnessu przy 1 i 2 watkach BLAS
 # ---------------------------------------------------------------------------
 
+#: Eksporter fixtur ladowany z PLIKU (jak w `tests/ci/test_fixtury_harnessu.py`), a nie przez
+#: dopisanie katalogu `scripts` do sciezki importu — dopisek przeslanialby pakiety zrodlowe
+#: (`tests/ci/test_testy_nie_cieniuja_pakietow_zrodlowych.py`).
 _SKRYPT_SCENY = """
-import json, sys
-sys.path.insert(0, "scripts")
-import eksport_fixtur_harnessu as eksport
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location(
+    "eksport_fixtur_harnessu", "scripts/eksport_fixtur_harnessu.py"
+)
+eksport = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(eksport)
 json.dump(eksport.FIXTURY["dynamika_scena_przebiegi"](), sys.stdout, sort_keys=True)
 """
 
 
-def _scena(liczba_watkow: int) -> dict[str, Any]:
-    """Scena w OSOBNYM procesie z zadana liczba watkow BLAS (ustalana przy ladowaniu biblioteki).
+#: Jadra OpenBLAS, ktorymi test sceny przestawia kolejnosc sumowania (zmienna
+#: `OPENBLAS_CORETYPE`, czytana przy ladowaniu biblioteki). `None` — jadro wybrane przez
+#: biblioteke dla procesora maszyny; `Prescott` (SSE3) istnieje na KAZDYM procesorze x86-64,
+#: wiec wymuszenie go nie grozi nielegalna instrukcja. Na innej architekturze nazwy jader sa
+#: inne i os jadra sprowadza sie do jadra domyslnego (os liczby watkow zostaje).
+#: Pomiar 2026-09-30: przed poprawka PRZENOSNOSC-NIEPEWNOSCI para (domyslne SkylakeX,
+#: Prescott) dawala `u_f_est_hz` probki 0 rozne o 0,31 %, a (Haswell, 2 watki) — o 0,57 %.
+JADRA_OPENBLAS: tuple[str | None, ...] = (
+    (None, "Prescott") if platform.machine().lower() in {"x86_64", "amd64"} else (None,)
+)
+
+
+def _scena(liczba_watkow: int, jadro: str | None = None) -> dict[str, Any]:
+    """Scena w OSOBNYM procesie z zadana liczba watkow BLAS i jadrem OpenBLAS (oba ustalane
+    przy ladowaniu biblioteki).
 
     Sciezka importu dziedziczona z biezacego procesu — harness mutacji podstawia swoje lustro
     `src/` i ten test widzi zmutowany rdzen.
@@ -256,6 +276,9 @@ def _scena(liczba_watkow: int) -> dict[str, Any]:
     srodowisko["PYTHONPATH"] = os.pathsep.join(p for p in sys.path if p)
     for zmienna in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
         srodowisko[zmienna] = str(liczba_watkow)
+    srodowisko.pop("OPENBLAS_CORETYPE", None)
+    if jadro is not None:
+        srodowisko["OPENBLAS_CORETYPE"] = jadro
     proces = subprocess.run(
         [sys.executable, "-c", _SKRYPT_SCENY],
         cwd=KATALOG_BACKENDU,
@@ -269,14 +292,20 @@ def _scena(liczba_watkow: int) -> dict[str, Any]:
     return json.loads(proces.stdout)
 
 
-def test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas() -> None:
-    """Ta sama scena przy 1 i 2 watkach: komparator fikstur harnessu nie widzi ZADNEJ roznicy.
+def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
+    """Ta sama scena w iloczynie {jadro OpenBLAS} x {1, 2 watki}: komparator fikstur harnessu
+    nie widzi ZADNEJ roznicy miedzy zadna para wariantow.
 
     Obejmuje wszystkie kanaly naraz: katy pradow (rozdzielczosc rozwiazania), czestotliwosc,
-    jej estymate niepewnosci i kod jakosci (granica zaokraglen residuum), moduly i moce.
-    Przed poprawka ta para dawala rozne katy szumu i rozne kody jakosci czestotliwosci.
+    jej estymate niepewnosci i kod jakosci (granica zaokraglen residuum, spojna inicjalizacja
+    algebry w `t = 0`, krok roznicy pochodnej), moduly i moce. Przed karta
+    DETERMINIZM-KATA-FAZORA para liczb watkow dawala rozne katy szumu i kody jakosci; przed
+    karta PRZENOSNOSC-NIEPEWNOSCI inne jadro (runner CI) dawalo inna `u_f_est_hz` probki 0.
     """
-    jeden = _scena(1)
-    dwa = _scena(2)
-    roznice = roznice_z_tolerancja(jeden, dwa)
-    assert roznice == [], "\n".join(roznice[:20])
+    warianty = {
+        (jadro, watki): _scena(watki, jadro) for jadro in JADRA_OPENBLAS for watki in (1, 2)
+    }
+    (wzorzec_klucz, wzorzec), *reszta = warianty.items()
+    for klucz, wariant in reszta:
+        roznice = roznice_z_tolerancja(wzorzec, wariant)
+        assert roznice == [], f"{wzorzec_klucz} wobec {klucz}:\n" + "\n".join(roznice[:20])

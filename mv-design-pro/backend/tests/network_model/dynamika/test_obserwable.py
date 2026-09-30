@@ -1322,12 +1322,35 @@ def test_a01_znak_korekty_newtona_jest_przypiety_w_zrodle() -> None:
     assert len(przypisania) == 1, "punkt skorygowany powstaje w wiecej niz jednym miejscu"
     wyrazenie = przypisania[0].value
     assert isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Sub), (
-        "punkt skorygowany musi byc KROKIEM W STRONE rozwiazania (`y - J^-1 r`); "
+        "punkt skorygowany musi byc KROKIEM W STRONE rozwiazania (`y - s J^-1 r`); "
         "znak dodatni oddala od rozwiazania i czyni `napiecia_skorygowane` bezsensownym "
         "jako oszacowanie `y*`"
     )
     assert isinstance(wyrazenie.left, ast.Name) and wyrazenie.left.id == "napiecia"
-    assert isinstance(wyrazenie.right, ast.Name) and wyrazenie.right.id == "blad_napiecia"
+    # Korekta 2026-09-30 (karta PRZENOSNOSC-NIEPEWNOSCI): krok ma postac
+    # `napiecia - skala_kroku * blad_napiecia`. INTENCJA PINU BEZ ZMIAN — kierunek to
+    # estymata bledu, znak ujemny; mnoznik jest dodatni z konstrukcji (`s >= 1`, przypiete
+    # `test_skala_kroku_pochodnej_nigdy_nie_zmienia_kierunku_ani_nie_skraca_kroku`), wiec nie
+    # moze odwrocic kierunku.
+    prawa = wyrazenie.right
+    assert isinstance(prawa, ast.BinOp) and isinstance(
+        prawa.op, ast.Mult
+    ), "przesuniecie punktu skorygowanego to `skala_kroku * blad_napiecia`"
+    assert isinstance(prawa.left, ast.Name) and prawa.left.id == "skala_kroku"
+    assert isinstance(prawa.right, ast.Name) and prawa.right.id == "blad_napiecia"
+    zrodla_skali = [
+        wezel
+        for wezel in ast.walk(drzewo)
+        if isinstance(wezel, ast.Assign)
+        and any(isinstance(cel, ast.Name) and cel.id == "skala_kroku" for cel in wezel.targets)
+    ]
+    assert len(zrodla_skali) == 1, "mnoznik kroku powstaje w wiecej niz jednym miejscu"
+    wywolanie = zrodla_skali[0].value
+    assert (
+        isinstance(wywolanie, ast.Call)
+        and isinstance(wywolanie.func, ast.Name)
+        and wywolanie.func.id == "skala_kroku_pochodnej"
+    ), "mnoznik kroku ma jedno zrodlo: `skala_kroku_pochodnej`"
 
 
 def test_fazor_o_kwadracie_modulu_niereprezentowalnym_jest_niedostepny() -> None:

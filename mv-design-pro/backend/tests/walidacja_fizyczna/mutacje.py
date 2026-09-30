@@ -425,13 +425,65 @@ MUTACJE: tuple[Mutacja, ...] = (
         "wlasnego bledu zaokraglen `J^-1 r` zamiast `J^-1 rho` — estymata niepewnosci "
         "czestotliwosci i jej kod jakosci zaleza od kolejnosci sumowania (liczby watkow BLAS).",
         "network_model/solvers/dynamika/obserwable.py",
-        "        rozklad.solve(residuum if residuum_znaczace else granica_rzeczywista), liczba",
-        "        rozklad.solve(residuum), liczba",
+        "            residuum\n"
+        "            if residuum_ponad_granica_zaokraglen(residuum, granica)\n"
+        "            else np.concatenate((granica, granica))\n",
+        "            residuum\n",
         "test estymaty przy residuum na granicy zaokraglen (DETERMINIZM-KATA-FAZORA)",
         bramki=(),
         testy=(
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
             "::test_estymata_przy_residuum_szumu_jest_propagacja_granicy",
+        ),
+    ),
+    Mutacja(
+        "M70",
+        "Probka t = 0 w punkcie pracy rozplywu bez korekty algebry rdzenia: residuum ponad "
+        "tolerancja biegu, a estymata niepewnosci czestotliwosci mierzy szum zaokraglen "
+        "rozplywu (zalezny od jadra BLAS i historii procesu).",
+        "network_model/solvers/dynamika/silnik.py",
+        "        if not residuum_ponad_granica_zaokraglen(residuum, granica):\n"
+        "            ocena = self._bramka_rownowagi(",
+        "        if True:\n            ocena = self._bramka_rownowagi(",
+        "test probki zero na algebrze rdzenia (PRZENOSNOSC-NIEPEWNOSCI)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
+            "::test_probka_zero_lezy_na_algebrze_rdzenia",
+        ),
+    ),
+    Mutacja(
+        "M71",
+        "Roznica skonczona pochodnej napiec przy przesunieciu rzedu estymaty na dnie "
+        "zaokraglen (~1e-10 wzglednie) zamiast sqrt(u): `u_Vdot` staje sie szumem obliczenia "
+        "pochodnej, a estymata niepewnosci czestotliwosci — realizacja zaokraglen.",
+        "network_model/solvers/dynamika/obserwable.py",
+        "    if 0.0 < przesuniecie_wzgledne < KROK_WZGLEDNY_POCHODNEJ:\n"
+        "        return KROK_WZGLEDNY_POCHODNEJ / przesuniecie_wzgledne\n",
+        "",
+        "test odpornosci u_Vdot na jednostke zaokraglenia (PRZENOSNOSC-NIEPEWNOSCI)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
+            "::test_u_vdot_odporne_na_jednostke_zaokraglenia_w_obliczeniu_pochodnej",
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
+            "::test_krok_roznicy_pochodnej_nigdy_ponizej_pierwiastka_u",
+        ),
+    ),
+    Mutacja(
+        "M72",
+        "Stan t = 0 bez reinicjalizacji urzadzen w punkcie skorygowanym: stany rownowagi "
+        "punktu rozplywu przy napieciach skorygowanych — bieg startuje ze stanu, ktory bramka "
+        "rownowagi by odrzucila (scena harnessu: max |f| 2,9e-5 1/s przy eps_init 1e-6), a "
+        "probka t = 0 stanu ustalonego melduje ROZROZNIALNA odchylke czestotliwosci.",
+        "network_model/solvers/dynamika/silnik.py",
+        "            stany_po.append(urzadzenie.stan_poczatkowy(napiecie_po, moc_po))\n",
+        "            stany_po.append(stan)\n",
+        "test probki zero na algebrze rdzenia — rownowaga stanu t = 0 (PRZENOSNOSC-NIEPEWNOSCI)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
+            "::test_probka_zero_lezy_na_algebrze_rdzenia",
         ),
     ),
     Mutacja(

@@ -20,7 +20,7 @@ przypiete, bo to zdanie stoi w docstringu `_kat_deg`.
 ILOCZYN CECH: {kanal: i_od, i_do, i_zwarcia, kat napiecia} x {fazor: dokladnie zerowy, szum
 ponizej rozdzielczosci, rowny rozdzielczosci, tuz powyzej, pelny prad}. Os liczby watkow BLAS
 (cala scena dynamiki harnessu, wszystkie kanaly) pilnuje
-`test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas`.
+`test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas`.
 """
 
 from __future__ import annotations

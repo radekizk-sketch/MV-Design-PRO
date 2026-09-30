@@ -1356,7 +1356,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.631891812,
-      "residuum_kcl_max": 4.18460179e-12,
+      "residuum_kcl_max": 4.19013416e-12,
       "obszary_odciete": [],
       "odbiory_odciete": [],
       "obszary_zasilone_ponownie": [],
@@ -1375,7 +1375,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545429614,
-      "residuum_kcl_max": 6.00186164e-12,
+      "residuum_kcl_max": 3.15383675e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1402,7 +1402,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545429614,
-      "residuum_kcl_max": 6.00186164e-12,
+      "residuum_kcl_max": 3.15383675e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1438,8 +1438,8 @@
     "zbiegl": true,
     "kroki": 150,
     "kroki_odrzucone": 0,
-    "max_residuum_f": 4.6298864e-11,
-    "max_residuum_g": 1.73111725e-09,
+    "max_residuum_f": 4.63009058e-11,
+    "max_residuum_g": 1.73110284e-09,
     "czas_obliczen_s": 0.0,
     "integrator": "trapez_niejawny",
     "dt_s": 0.002,
@@ -1450,7 +1450,7 @@
     "odcisk_punktu_pracy": "cabd492042063c0fb8be14d5bcf92f004f0d8b3b8828e22b222bc7cbdf9f973d",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "1eb7359bdfb7ac2ef50fb87e096eda9601d09e5a830516efb013dcaa3ec57611",
+    "odcisk_implementacji": "d0dea14f3730c4a080363229599f821eeb374fc331e95998f9e0daae1e07f553",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -3993,7 +3993,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "781a724617539e4740363d16c797b202a7f0917e4a707aef3f923c8acad6175c",
-      "result_hash": "74881a08c0914c9921376c6657eea93bc6282b20d85c2de6888df6956d44b2d9",
+      "result_hash": "ce413cd8dca0cc0d14b741ac9d1e85d6fadb1b12b8bdbc34620dbb55037cf554",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

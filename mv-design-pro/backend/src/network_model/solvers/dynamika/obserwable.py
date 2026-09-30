@@ -124,6 +124,7 @@ from .kontrakty import (
     Urzadzenie,
 )
 from .siec import (
+    JEDNOSTKA_ZAOKRAGLENIA,
     ModelSieci,
     czwornik_galezi,
     granica_zaokraglen_residuum,
@@ -131,6 +132,7 @@ from .siec import (
     ograniczenia_napiecia,
     prad_wezla_ograniczonego,
     residuum_algebry,
+    residuum_ponad_granica_zaokraglen,
     zwarcia_galezi_modelu,
 )
 
@@ -291,6 +293,51 @@ def pochodna_napiec(
     return _zespolone(rozklad.solve(_prawa_strona_dae(model, urzadzenia, stany, napiecia)), liczba)
 
 
+#: Najmniejsze WZGLEDNE przesuniecie punktu, przy ktorym roznica skonczona pochodnej napiec
+#: niesie zmiane pochodnej, a nie szum jej obliczenia: `sqrt(u)`, `u` — jednostka zaokraglenia
+#: (krok optymalny roznicy w przod dla funkcji liczonej z dokladnoscia wzgledna `u`: blad
+#: obciecia ~ krok, blad zaokraglen ~ u / krok; Nocedal i Wright, Numerical Optimization,
+#: 2 wyd., par. 8.1, wzor (8.6); Gill, Murray i Wright, Practical Optimization, par. 8.6).
+#: To nie jest dobrana stala: wynika z tej samej arytmetyki, co `JEDNOSTKA_ZAOKRAGLENIA`.
+KROK_WZGLEDNY_POCHODNEJ = math.sqrt(JEDNOSTKA_ZAOKRAGLENIA)
+
+
+def skala_kroku_pochodnej(
+    napiecia: np.ndarray, niepewnosc_napiecia: np.ndarray, badane: np.ndarray
+) -> float:
+    """Mnoznik `s >= 1` kroku roznicy skonczonej `Vdot(y - s d) - Vdot(y)` (d — estymata bledu).
+
+    DEFEKT, KTORY TO USUWA (pomiar 2026-09-30, scena dynamiki harnessu, 12 wariantow jadra
+    OpenBLAS x liczba watkow). Na dnie zaokraglen estymata bledu `d = J^-1 rho` ma wzgledny
+    rozmiar rzedu 1e-10, a roznica `Vdot(y - d) - Vdot(y)` jest wtedy w czesci realizacja
+    szumu obliczenia OBU pochodnych — `u_Vdot` roznilo sie miedzy wariantami do 2,3e-5
+    wzglednie przy `u_V` zgodnym do 1e-11. Estymata niepewnosci nie moze zalezec od tego,
+    jak jadro BLAS zsumowalo iloczyny.
+
+    REGULA. Gdy najwieksze wzgledne przesuniecie wezla zywego `max |d_k| / |V_k|` jest
+    MNIEJSZE od `KROK_WZGLEDNY_POCHODNEJ`, krok wzdluz TEGO SAMEGO kierunku `-d` jest
+    powiekszony do `KROK_WZGLEDNY_POCHODNEJ` (w najbardziej przesunietym wezle), a roznica
+    przeskalowana z powrotem przez `s`. Na tej skali pochodna jest liniowa w przesunieciu
+    (czlon drugiego rzedu ~ `s |d|` wzglednie, czyli ~1e-8), wiec wynik jest ta sama
+    pierwszorzedowa zmiana pochodnej, tylko ponad szumem. Przesuniecie wieksze od
+    `KROK_WZGLEDNY_POCHODNEJ` NIE jest zmniejszane: tam roznica skonczona celowo niesie
+    nieliniowosc (blisko granicy obciazalnosci pochodna nie jest liniowa na skali
+    tolerancji Newtona) i idzie bitowo dawna droga (`s = 1`).
+
+    DOMENA. Kazdy wezel zywy przesuwa sie wzglednie o co najwyzej
+    `KROK_WZGLEDNY_POCHODNEJ`, wiec `|V_k - s d_k| >= |V_k| (1 - sqrt(u)) > 0` — punkt
+    przesuniety nie przekracza zera fazora. Estymata nieskonczona albo nieokreslona daje
+    `s = 1` (o niedostepnosci rozstrzyga wtedy kontrola domeny wolajacego).
+    """
+    zywe = badane & (np.abs(napiecia) > 0.0)
+    if not bool(np.any(zywe)):
+        return 1.0
+    przesuniecie_wzgledne = float(np.max(niepewnosc_napiecia[zywe] / np.abs(napiecia[zywe])))
+    if 0.0 < przesuniecie_wzgledne < KROK_WZGLEDNY_POCHODNEJ:
+        return KROK_WZGLEDNY_POCHODNEJ / przesuniecie_wzgledne
+    return 1.0
+
+
 def pochodna_napiec_z_niepewnoscia(
     model: ModelSieci,
     odbiory: tuple[OdbiorDynamiki, ...],
@@ -320,7 +367,10 @@ def pochodna_napiec_z_niepewnoscia(
     `y - J^-1 r` (krok Newtona) przy residuum znaczacym, `y - J^-1 rho` (przesuniecie o skale
     bledu zaokraglen) przy residuum na granicy zaokraglen. Druga faktoryzacja jest
     konieczna: pomiar obalil zalozenie, ze blad pochodnej jest proporcjonalny do bledu
-    napiecia.
+    napiecia. Przesuniecie wzglednie mniejsze od `KROK_WZGLEDNY_POCHODNEJ` (`sqrt(u)`) jest
+    wydluzane wzdluz tego samego kierunku, a roznica dzielona przez ten sam mnoznik
+    (`skala_kroku_pochodnej`, korekta 2026-09-30): inaczej `u_Vdot` na dnie zaokraglen bylo
+    w czesci realizacja szumu obliczenia pochodnej i zalezalo od jadra BLAS.
 
     KOLEJNOSC JEST CZESCIA KONTRAKTU (korekta par. 7 rundy kwalifikacyjnej). Punkt
     skorygowany liczymy DOPIERO po sprawdzeniu, czy w ogole wolno go dotknac. Gdy
@@ -345,16 +395,20 @@ def pochodna_napiec_z_niepewnoscia(
     )
     residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
     granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
-    granica_rzeczywista = np.concatenate((granica, granica))
-    residuum_znaczace = bool(np.any(np.abs(residuum) > granica_rzeczywista))
     blad_napiecia = _zespolone(
-        rozklad.solve(residuum if residuum_znaczace else granica_rzeczywista), liczba
+        rozklad.solve(
+            residuum
+            if residuum_ponad_granica_zaokraglen(residuum, granica)
+            else np.concatenate((granica, granica))
+        ),
+        liczba,
     )
     niepewnosc_napiecia = np.abs(blad_napiecia)
-    napiecia_skorygowane = napiecia - blad_napiecia
 
     badane = np.ones(liczba, dtype=bool)
     badane[list(model.pozycje_zerowe)] = False
+    skala_kroku = skala_kroku_pochodnej(napiecia, niepewnosc_napiecia, badane)
+    napiecia_skorygowane = napiecia - skala_kroku * blad_napiecia
     punkt_skorygowany_obliczalny = bool(
         np.all(np.abs(napiecia[badane]) > niepewnosc_napiecia[badane])
         and np.all(np.isfinite(niepewnosc_napiecia))
@@ -380,7 +434,7 @@ def pochodna_napiec_z_niepewnoscia(
             niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
         )
 
-    niepewnosc_pochodnej = np.abs(pochodna_skorygowana - pochodna)
+    niepewnosc_pochodnej = np.abs(pochodna_skorygowana - pochodna) / skala_kroku
     if not bool(np.all(np.isfinite(niepewnosc_pochodnej))):
         niepewnosc_pochodnej = np.full(liczba, np.inf, dtype=float)
     return PochodnaZNiepewnoscia(

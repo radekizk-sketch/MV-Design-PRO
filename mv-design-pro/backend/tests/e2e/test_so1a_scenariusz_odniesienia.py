@@ -37,6 +37,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+import numpy as np
 import pytest
 from enm.adapter_dynamiki import (
     PunktPracyRozplywu,
@@ -47,7 +48,7 @@ from enm.adapter_dynamiki import (
 from enm.assembler import czestotliwosc_studium_hz, zbuduj_graf
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.models import EnergyNetworkModel
-from network_model.solvers.dynamika import OdmowaDynamiki
+from network_model.solvers.dynamika import OdmowaDynamiki, WejscieDynamiki
 from network_model.solvers.dynamika.kontrakty import KOD_ZWARCIE_NIEODIZOLOWANE
 from network_model.solvers.dynamika.obserwable import (
     JAKOSC_BEZ_NAPIECIA,
@@ -57,6 +58,7 @@ from network_model.solvers.dynamika.obserwable import (
     JAKOSC_ROZROZNIALNA,
 )
 from network_model.solvers.dynamika.silnik import SilnikDynamiki
+from network_model.solvers.dynamika.tozsamosc import CYFRY_KWANTYZACJI
 from network_model.solvers.dynamika.wynik import WynikDynamiki
 
 from tests.golden.enm_builders.so1a_pv_magazyn import build_so1a_pv_magazyn_enm
@@ -173,10 +175,9 @@ def _bieg_rozplywu(snapshot: dict[str, Any]) -> CanonicalRun:
     return run
 
 
-def _wykonaj(snapshot: dict[str, Any], scenariusz: dict[str, Any] | None = None) -> WynikDynamiki:
-    """Kolejnosc DOKLADNIE ta, co `_execute_dynamika_rms` — nie skrot testowy."""
+def _punkt(snapshot: dict[str, Any]) -> PunktPracyRozplywu:
     rozplyw = _bieg_rozplywu(snapshot)
-    punkt = punkt_pracy_z_biegu_rozplywu(
+    return punkt_pracy_z_biegu_rozplywu(
         run_id=str(rozplyw.id),
         analysis_type=rozplyw.analysis_type,
         status=rozplyw.status,
@@ -185,8 +186,16 @@ def _wykonaj(snapshot: dict[str, Any], scenariusz: dict[str, Any] | None = None)
         snapshot=snapshot,
         oczekiwany_snapshot_hash=HASH_MIGAWKI,
     )
+
+
+def _wejscie(
+    snapshot: dict[str, Any],
+    punkt: PunktPracyRozplywu,
+    scenariusz: dict[str, Any] | None = None,
+) -> WejscieDynamiki:
+    """Kolejnosc DOKLADNIE ta, co `_execute_dynamika_rms` — nie skrot testowy."""
     odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
-    wejscie = zloz_wejscie_dynamiki(
+    return zloz_wejscie_dynamiki(
         snapshot,
         {
             "dynamika": copy.deepcopy(scenariusz or SCENARIUSZ_SO1A),
@@ -196,7 +205,11 @@ def _wykonaj(snapshot: dict[str, Any], scenariusz: dict[str, Any] | None = None)
         graph=zbuduj_graf(snapshot),
         f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
     )
-    return SilnikDynamiki(wejscie=wejscie).uruchom()
+
+
+def _wykonaj(snapshot: dict[str, Any], scenariusz: dict[str, Any] | None = None) -> WynikDynamiki:
+    """Rozplyw, punkt pracy, wejscie i bieg — kolejnosc `_execute_dynamika_rms`."""
+    return SilnikDynamiki(wejscie=_wejscie(snapshot, _punkt(snapshot), scenariusz)).uruchom()
 
 
 @pytest.fixture(scope="module")
@@ -206,21 +219,14 @@ def migawka_so1a() -> dict[str, Any]:
 
 @pytest.fixture(scope="module")
 def punkt_so1a(migawka_so1a: dict[str, Any]) -> PunktPracyRozplywu:
-    rozplyw = _bieg_rozplywu(migawka_so1a)
-    return punkt_pracy_z_biegu_rozplywu(
-        run_id=str(rozplyw.id),
-        analysis_type=rozplyw.analysis_type,
-        status=rozplyw.status,
-        snapshot_hash=rozplyw.snapshot_hash,
-        raw_result=rozplyw.raw_result,
-        snapshot=migawka_so1a,
-        oczekiwany_snapshot_hash=HASH_MIGAWKI,
-    )
+    return _punkt(migawka_so1a)
 
 
 @pytest.fixture(scope="module")
-def bieg_so1a(migawka_so1a: dict[str, Any]) -> WynikDynamiki:
-    return _wykonaj(migawka_so1a)
+def bieg_so1a(migawka_so1a: dict[str, Any], punkt_so1a: PunktPracyRozplywu) -> WynikDynamiki:
+    """Bieg z TEGO SAMEGO punktu pracy, ktory widza testy przez `punkt_so1a` — wejscie
+    i przebieg nie moga pochodzic z dwoch osobnych biegow rozplywu."""
+    return SilnikDynamiki(wejscie=_wejscie(migawka_so1a, punkt_so1a)).uruchom()
 
 
 def _indeks(bieg: WynikDynamiki, t_s: float, strona: str = "C") -> int:
@@ -305,18 +311,51 @@ def test_uklad_spelnia_zamrozony_opis_so1a(migawka_so1a: dict[str, Any]) -> None
 
 
 def test_punkt_pracy_dzieli_moc_wezla_miedzy_obie_instalacje(
-    migawka_so1a: dict[str, Any], bieg_so1a: WynikDynamiki
+    migawka_so1a: dict[str, Any], punkt_so1a: PunktPracyRozplywu, bieg_so1a: WynikDynamiki
 ) -> None:
     """Kazda instalacja startuje ze SWOJEJ mocy, nie z mocy wypadkowej szyny.
 
     To jest test FALSYFIKUJACY naprawe podzialu mocy wezla: gdyby adapter wrocil
     do dawania obu urzadzeniom wypadkowej szyny (3,25 MW), obie asercje padlyby
     rownoczesnie. Sam fakt, ze bieg sie wykonuje, tego nie wykrywa.
+
+    DWA POZIOMY (korekta 2026-09-30, karta PRZENOSNOSC-NIEPEWNOSCI). Podzial mocy robi
+    ADAPTER — moc przypisana instalacji w punkcie pracy jest porownywana DOKLADNIE.
+    Probka `t = 0` lezy na algebrze rdzenia: punkt rozplywu (tolerancja domyslna, residuum
+    ponad dnem zaokraglen) dostaje korekte Newtona rdzenia o przesuniecie zapisane w sladzie,
+    wiec moc instalacji w probce rozni sie od przypisanej o skutek tej korekty — i tylko o
+    niego. Granica jest PIERWSZEGO RZEDU z `S = V conj(I(x, V))`:
+    `|dS| <= d (|I| + (|V| + d) ||dI/dV||_2)` przy `|dV| <= d` i stanach z punktu pracy —
+    reinicjalizacja urzadzen w punkcie skorygowanym zachowuje ich prad, wiec moc probki jest
+    moca oddawana w punkcie skorygowanym przy tych stanach; `d` ze sladu jest skwantyzowane
+    do `CYFRY_KWANTYZACJI` cyfr — stad mnoznik zapasu.
     """
     baza_mva = 100.0
+    wejscie = _wejscie(migawka_so1a, punkt_so1a)
+    przypisane = wejscie.punkt_pracy.moce_zrodel_pu
+    assert przypisane["gen-pv"] == pytest.approx(complex(2.75 / baza_mva), rel=1e-9)
+    assert przypisane["gen-magazyn"] == pytest.approx(complex(0.50 / baza_mva), rel=1e-9)
+
+    korekta = bieg_so1a.slad_white_box["inicjalizacja"]["korekta_algebry"]
+    przesuniecie = korekta["max_przesuniecie_pu"] * (1.0 + 10.0 ** (1 - CYFRY_KWANTYZACJI))
     i0 = _indeks(bieg_so1a, 0.0)
-    assert bieg_so1a.probki["p_pu@gen-pv"][i0] == pytest.approx(2.75 / baza_mva, rel=1e-9)
-    assert bieg_so1a.probki["p_pu@gen-magazyn"][i0] == pytest.approx(0.50 / baza_mva, rel=1e-9)
+    for urzadzenie in wejscie.urzadzenia:
+        if urzadzenie.ident not in ("gen-pv", "gen-magazyn"):
+            continue
+        napiecie = complex(wejscie.punkt_pracy.napiecia_pu[urzadzenie.wezel])
+        moc = complex(przypisane[urzadzenie.ident])
+        stan = urzadzenie.stan_poczatkowy(napiecie, moc)
+        prad = abs(urzadzenie.prad_pu(stan, napiecie))
+        wzmocnienie = float(
+            np.linalg.norm(np.asarray(urzadzenie.jakobian_prad_napiecie(stan, napiecie)), 2)
+        )
+        granica = przesuniecie * (prad + (abs(napiecie) + przesuniecie) * wzmocnienie)
+        odchylka = abs(bieg_so1a.probki[f"p_pu@{urzadzenie.ident}"][i0] - moc.real)
+        assert odchylka <= granica + 4.0 * sys.float_info.epsilon * abs(moc), (
+            urzadzenie.ident,
+            odchylka,
+            granica,
+        )
 
 
 def test_wszystkie_zdarzenia_wykonane_w_zamrozonych_chwilach(bieg_so1a: WynikDynamiki) -> None:

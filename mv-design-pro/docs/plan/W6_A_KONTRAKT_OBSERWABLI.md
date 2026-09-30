@@ -23,6 +23,50 @@ u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
 > wyrazów nieujemnych). Residuum znaczące (choć jedna składowa ponad granicą) idzie drogą
 > `J⁻¹r` bez zmian. Test: `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py`
 > (w tym cała scena przy 1 i 2 wątkach BLAS), mutacja M69.
+>
+> **KOREKTA 2026-09-30 (karta PRZENOSNOSC-NIEPEWNOSCI).** Zdanie „wielkości deterministyczne"
+> było prawdziwe dla `u_V`, a FAŁSZYWE dla `u_V̇` i dla próbki `t = 0` — i test obu wątków
+> przechodził wyłącznie dlatego, że biegł na jednym jądrze OpenBLAS. Runner CI (inne jądro)
+> dał `u_f_est_hz` próbki 0 różne o 0,57 %, a ten sam plik fikstury rozjechał się nawet na
+> jednej maszynie w innym procesie. Pomiar na scenie harnessu w 12 wariantach {jądro OpenBLAS:
+> SkylakeX, Haswell, Sandybridge, Prescott, Zen, domyślne} × {1, 2 wątki} wskazał dwie
+> przyczyny tej samej klasy — estymata niosła realizację szumu zaokrągleń:
+>
+> 1. **Próbka `t = 0` leżała w punkcie pracy ROZPŁYWU**, który bramka równowagi przepuszcza przy
+>    $\|g\| \le \varepsilon_{init}$ — z residuum $2{,}2\cdot10^{-9}$ przy tolerancji biegu
+>    $10^{-10}$. Błąd takiego punktu wobec algebry rdzenia zawiera szum rozpływu (napięcia
+>    różne o $1{,}6\cdot10^{-12}$ pu między jądrami), a `J⁻¹r` wiernie go mierzy. Rdzeń robi
+>    teraz **spójną inicjalizację algebry**: gdy residuum punktu pracy wychodzi ponad dno
+>    zaokrągleń (ten sam predykat `siec.residuum_ponad_granica_zaokraglen`, którym estymator
+>    wybiera drogę `J⁻¹r`), jedna pełna korekta Newtona algebry rdzenia i Newton do tolerancji
+>    biegu; ślad `inicjalizacja.korekta_algebry`. Punkt na dnie zostaje bitowo bez zmian.
+>    Korekta przesuwa napięcia, więc urządzenia o sprzężeniu prądowym dostają **stan
+>    równowagi punktu skorygowanego** — `stan_poczatkowy(V₀, S′)` z mocą $S′ = V_0\,
+>    \overline{I(x, V_0)}$, którą w nim faktycznie oddają: prąd się nie zmienia, pochodne
+>    zerują się analitycznie. Bez tego stan `t = 0` sceny harnessu miał `max |f|`
+>    $2{,}9\cdot10^{-5}$ 1/s — 29 razy ponad `eps_init` sceny ($10^{-6}$), czyli bieg startował
+>    ze stanu, który bramka równowagi by odrzuciła — a 10 węzłów meldowało w stanie ustalonym
+>    ROZRÓŻNIALNĄ odchyłkę częstotliwości $1{,}2\cdot10^{-8}$ Hz; po reinicjalizacji
+>    `max |f|` = $2{,}6\cdot10^{-12}$, odchyłka 0 Hz, wszystkie węzły NIEROZRÓŻNIALNA (jak
+>    przed kartą). Różnica $S′ - S$ to błąd rozpływu w algebrze rdzenia ($1{,}4\cdot10^{-9}$ pu)
+>    i idzie do śladu (`max_zmiana_mocy_urzadzen_pu`, `residuum_f_po`).
+> 2. **`u_V̇` na dnie zaokrągleń było różnicą skończoną przy przesunięciu względnym
+>    $\sim10^{-10}$**, czyli w części szumem obliczenia pochodnej (rozrzut między jądrami do
+>    $4{,}4\cdot10^{-5}$; jedna jednostka zaokrąglenia szumu w obliczeniu pochodnej zmieniała
+>    `u_V̇` sieci SMIB o 93–100 %). Przesunięcie względnie mniejsze od $\sqrt u$ jest wydłużane
+>    wzdłuż tego samego kierunku do $\sqrt u$ w najbardziej przesuniętym węźle żywym, a różnica
+>    dzielona przez ten sam mnożnik $s \ge 1$:
+>    $u_{\dot V} = |\dot V(y - s\,d) - \dot V(y)|/s$ (`obserwable.skala_kroku_pochodnej`; krok
+>    różnicy w przód dla iloczynu jakobianu z wektorem — Knoll i Keyes 2004, Nocedal i Wright
+>    §8.1). Przesunięcie od $\sqrt u$ w górę idzie bitowo dawną drogą ($s = 1$).
+>
+> Po poprawce komparator fikstur nie widzi żadnej różnicy między 12 wariantami, a największy
+> względny rozrzut `u_f_est_hz` po wszystkich próbkach spadł z $5{,}7\cdot10^{-3}$ do
+> $7{,}2\cdot10^{-7}$. Testy: `tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py`
+> (próbka zero w iloczynie {sieć} × {punkt dokładny, zaburzony} × {próbka C, para L/P}; krok
+> różnicy na rzeczywistej ścieżce biegu; odporność `u_V̇` na jednostkę zaokrąglenia) oraz scena
+> w iloczynie {jądro domyślne, Prescott} × {1, 2 wątki}; mutacje M70 (próbka zero bez korekty),
+> M71 (różnica pochodnej bez wydłużenia kroku) i M72 (stan `t = 0` bez reinicjalizacji urządzeń).
 
 $$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
 \;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
@@ -335,7 +379,7 @@ właściciela — patrz §10.)
 > NAPIĘCIA — `None` wyłącznie dla zera dokładnego (węzeł z ograniczeniem V = 0). Testy
 > `tests/walidacja_fizyczna/test_kat_pradu_rozdzielczosc.py` (mutacje M67, M68); niezależność
 > całej sceny od liczby wątków BLAS —
-> `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas`.
+> `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas`.
 
 ### 7.2 Wzory — te same, którymi liczy rozpływ
 

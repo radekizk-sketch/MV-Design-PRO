@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+import numpy as np
 import pytest
 from enm.adapter_dynamiki import (
     KOD_ELEMENT_BEZ_SZYNY,
@@ -61,7 +62,14 @@ from network_model.solvers.dynamika import (
     ZmianaOdsprzegu,
     zloz_model_sieci,
 )
+from network_model.solvers.dynamika.siec import (
+    JEDNOSTKA_ZAOKRAGLENIA,
+    jakobian_algebry,
+    residuum_algebry,
+)
+from network_model.solvers.dynamika.tozsamosc import CYFRY_KWANTYZACJI
 from network_model.solvers.power_flow_newton_internal import build_slack_island, build_ybus_pu
+from scipy.sparse import linalg as sparse_linalg
 
 from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
 from tests.golden.enm_builders.so1a_pv_magazyn import MAGAZYN_GFM_1000_KW
@@ -134,7 +142,18 @@ def opcje(**nadpisania: Any) -> dict[str, Any]:
     return dane
 
 
-def _bieg_rozplywu(snapshot: dict[str, Any]) -> CanonicalRun:
+#: Tolerancja rozplywu, przy ktorej punkt pracy G16 lezy NA DNIE ZAOKRAGLEN algebry rdzenia
+#: dynamiki (karta PRZENOSNOSC-NIEPEWNOSCI, pomiar 2026-09-30: residuum punktu w algebrze
+#: rdzenia 6,1e-12 pu — ponizej granicy zaokraglen w kazdej skladowej, korekta algebry t = 0
+#: sie nie wykonuje; przy domyslnej 1e-8 residuum 9,2e-9 i korekta 3,8e-9 pu; przy 1e-13
+#: rozplyw juz nie zbiega). Testy PARYTETU chwili zerowej porownuja dwa tory TEJ SAMEJ algebry
+#: z tolerancja zaokraglen — ich przeslanka wymaga rozplywu zbieznego do dna i jest przypieta
+#: asercja w kazdym z nich. Sciezka produktowa (tolerancja domyslna) ma wlasny test korekty:
+#: `test_b8_punkt_rozplywu_ponad_dnem_korygowany_krokiem_newtona_rdzenia`.
+TOLERANCJA_ROZPLYWU_NA_DNIE = 1.0e-10
+
+
+def _bieg_rozplywu(snapshot: dict[str, Any], *, tolerancja: float | None = None) -> CanonicalRun:
     run = CanonicalRun(
         id=uuid4(),
         case_id="case-dynamika",
@@ -147,7 +166,7 @@ def _bieg_rozplywu(snapshot: dict[str, Any]) -> CanonicalRun:
         snapshot=snapshot,
         validation={},
         readiness={},
-        options={},
+        options={} if tolerancja is None else {"tolerance": tolerancja},
     )
     _execute_power_flow(run)
     run.status = "FINISHED"
@@ -199,6 +218,28 @@ def rozplyw_g16(snapshot_g16: dict[str, Any]) -> CanonicalRun:
 @pytest.fixture
 def punkt_g16(snapshot_g16: dict[str, Any], rozplyw_g16: CanonicalRun) -> PunktPracyRozplywu:
     return punkt_pracy(snapshot_g16, rozplyw_g16)
+
+
+@pytest.fixture(scope="module")
+def rozplyw_g16_na_dnie(snapshot_g16: dict[str, Any]) -> CanonicalRun:
+    return _bieg_rozplywu(snapshot_g16, tolerancja=TOLERANCJA_ROZPLYWU_NA_DNIE)
+
+
+@pytest.fixture
+def punkt_g16_na_dnie(
+    snapshot_g16: dict[str, Any], rozplyw_g16_na_dnie: CanonicalRun
+) -> PunktPracyRozplywu:
+    return punkt_pracy(snapshot_g16, rozplyw_g16_na_dnie)
+
+
+def _przeslanka_parytetu(wynik: Any) -> None:
+    """Przeslanka testow parytetu chwili zerowej: punkt rozplywu na dnie zaokraglen rdzenia —
+    korekta algebry `t = 0` sie NIE wykonala, wiec probka zero JEST punktem rozplywu bitowo."""
+    korekta = wynik.slad_white_box["inicjalizacja"]["korekta_algebry"]
+    assert korekta["wykonana"] is False, (
+        "punkt rozplywu nie lezy na dnie zaokraglen algebry rdzenia — porownanie z tolerancja "
+        f"zaokraglen nie ma przeslanki ({korekta})"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1795,8 +1836,8 @@ class TestBrakiModelu:
 
 def test_b8_parytet_chwili_zerowej_na_realnej_sciezce_produktu(
     snapshot_g16: dict[str, Any],
-    rozplyw_g16: CanonicalRun,
-    punkt_g16: PunktPracyRozplywu,
+    rozplyw_g16_na_dnie: CanonicalRun,
+    punkt_g16_na_dnie: PunktPracyRozplywu,
 ) -> None:
     """Chwila zerowa biegu czasowego MUSI opisywac ten sam punkt pracy, co rozplyw.
 
@@ -1818,14 +1859,22 @@ def test_b8_parytet_chwili_zerowej_na_realnej_sciezce_produktu(
     PRZESUNIECIEM FAZOWYM grupy `Dyn11`. Sprzeglo szyn (`spr-szyn`) nie ma wiersza w
     wyniku rozplywu, bo tor rozplywu zwija laczniki — i to jest jedyna galaz poza
     porownaniem, nazwana tu wprost, a nie przemilczana.
+
+    PRZESLANKA (karta PRZENOSNOSC-NIEPEWNOSCI, 2026-09-30): „ta sama algebra, roznica tylko
+    z zaokraglen" wymaga rozplywu zbieznego do dna zaokraglen algebry rdzenia — inaczej rdzen
+    koryguje punkt pracy krokiem Newtona swojej algebry (probka `t = 0` lezy na algebrze
+    rdzenia) i roznica jest bledem zbieznosci rozplywu, nie zaokragleniem. Dlatego rozplyw z
+    `TOLERANCJA_ROZPLYWU_NA_DNIE`, a przeslanka jest przypieta `_przeslanka_parytetu`.
+    Sciezka z tolerancja domyslna — `test_b8_punkt_rozplywu_ponad_dnem_korygowany_...`.
     """
     wejscie = zloz(
         snapshot_g16,
         opcje(dynamika={"horyzont_s": 0.02, "krok_wyjscia_s": 0.02, "zdarzenia": []}),
-        punkt_g16,
+        punkt_g16_na_dnie,
     )
     wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
-    rezultat = rozplyw_g16.raw_result["result_v1"]
+    _przeslanka_parytetu(wynik)
+    rezultat = rozplyw_g16_na_dnie.raw_result["result_v1"]
 
     wezly = {
         ref_to_graph_id(klucz[len("u_pu@") :]): klucz[len("u_pu@") :]
@@ -1884,8 +1933,8 @@ def test_b8_parytet_chwili_zerowej_na_realnej_sciezce_produktu(
 
 def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
     snapshot_g16: dict[str, Any],
-    rozplyw_g16: CanonicalRun,
-    punkt_g16: PunktPracyRozplywu,
+    rozplyw_g16_na_dnie: CanonicalRun,
+    punkt_g16_na_dnie: PunktPracyRozplywu,
 ) -> None:
     """F-14 w probce `L` zdarzenia w `t = 0` — z MODULEM I KATEM pradow obu zaciskow.
 
@@ -1894,6 +1943,9 @@ def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
     `I = conj(S / V)` (moc strony i napiecie wezla tej strony, FROZEN `PowerFlowResultV1`),
     porownany z modulem `i_*_pu@` i katem `i_*_kat_deg@` rdzenia — obie strony kazdej
     galezi, w tym transformator z przesunieciem fazowym grupy i kabel z susceptancja.
+
+    PRZESLANKA jak w B-8: rozplyw zbiezny do dna zaokraglen algebry rdzenia
+    (`TOLERANCJA_ROZPLYWU_NA_DNIE`), przypieta `_przeslanka_parytetu`.
     """
     scenariusz = {
         "horyzont_s": 0.02,
@@ -1911,12 +1963,13 @@ def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
             }
         ],
     }
-    wejscie = zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+    wejscie = zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16_na_dnie)
     wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    _przeslanka_parytetu(wynik)
     assert wynik.os_czasu_s[:2] == (0.0, 0.0)
     assert wynik.strona_probki[:2] == ("L", "P")
     lewa = 0
-    rezultat = rozplyw_g16.raw_result["result_v1"]
+    rezultat = rozplyw_g16_na_dnie.raw_result["result_v1"]
     wezly = {
         ref_to_graph_id(k[len("u_pu@") :]): k[len("u_pu@") :]
         for k in wynik.probki
@@ -1954,6 +2007,93 @@ def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
     # Trzy galezie wyniku rozplywu G16 (jak w B-8: sprzeglo szyn zwijane przez tor
     # rozplywu nie ma wiersza) x dwa zaciski.
     assert porownane == 6, f"porownano {porownane} fazorow zamiast 6 — zmienil sie zakres G16"
+
+
+def test_b8_punkt_rozplywu_ponad_dnem_korygowany_krokiem_newtona_rdzenia(
+    snapshot_g16: dict[str, Any],
+    punkt_g16: PunktPracyRozplywu,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sciezka PRODUKTOWA (tolerancja rozplywu domyslna): probka `t = 0` to punkt rozplywu
+    przesuniety DOKLADNIE o jedna korekte Newtona algebry rdzenia `-J^-1 r` — liczona tu
+    niezaleznie w punkcie rozplywu — i o nic wiecej (karta PRZENOSNOSC-NIEPEWNOSCI).
+
+    Punkt rozplywu z tolerancja domyslna ma w algebrze rdzenia residuum ponad dnem
+    zaokraglen (pomiar G16, 2026-09-30: 9,2e-9 pu przy tolerancji biegu 1e-10) — publikowany
+    wprost nie spelnialby tolerancji algebry biegu, a estymata niepewnosci czestotliwosci
+    mierzylaby szum zaokraglen rozplywu. Roznica probki zero od rozplywu jest wiec bledem
+    ZBIEZNOSCI rozplywu i ma byc rowna jego pierwszorzedowej estymacie w algebrze rdzenia.
+    Parytet z tolerancja zaokraglen (B-8, F-14, O-49) — przy rozplywie zbieznym do dna.
+    """
+    wejscie = zloz(
+        snapshot_g16,
+        opcje(dynamika={"horyzont_s": 0.02, "krok_wyjscia_s": 0.02, "zdarzenia": []}),
+        punkt_g16,
+    )
+    zapis: list[tuple[Any, ...]] = []
+    oryginal = SilnikDynamiki._probkuj
+
+    def podsluch(self, probkowanie, strona, t_s, model, odbiory, urzadzenia, stany, napiecia):  # type: ignore[no-untyped-def]
+        if not zapis:
+            zapis.append(
+                (
+                    model,
+                    odbiory,
+                    urzadzenia,
+                    tuple(np.array(stan, copy=True) for stan in stany),
+                    np.array(napiecia, copy=True),
+                )
+            )
+        return oryginal(self, probkowanie, strona, t_s, model, odbiory, urzadzenia, stany, napiecia)
+
+    monkeypatch.setattr(SilnikDynamiki, "_probkuj", podsluch)
+    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    korekta = wynik.slad_white_box["inicjalizacja"]["korekta_algebry"]
+    assert (
+        korekta["wykonana"] is True
+    ), "rozplyw z tolerancja domyslna trafil na dno zaokraglen rdzenia — test nic nie mierzy"
+    model, odbiory, urzadzenia, stany, probka_zero = zapis[0]
+    punkt = np.array(
+        [complex(wejscie.punkt_pracy.napiecia_pu[ident]) for ident in model.identy_wezlow],
+        dtype=complex,
+    )
+    # Korekte liczy sie przy stanach PUNKTU PRACY (ten sam konstruktor, co inicjalizacja
+    # silnika) — probka niesie juz stany po reinicjalizacji w punkcie skorygowanym.
+    stany_punktu = tuple(
+        urzadzenie.stan_poczatkowy(
+            wejscie.punkt_pracy.napiecia_pu[urzadzenie.wezel],
+            wejscie.punkt_pracy.moce_zrodel_pu[urzadzenie.ident],
+        )
+        for urzadzenie in urzadzenia
+    )
+    reszta = residuum_algebry(model, odbiory, urzadzenia, stany_punktu, punkt)
+    krok = sparse_linalg.splu(
+        jakobian_algebry(model, odbiory, urzadzenia, stany_punktu, punkt)
+    ).solve(reszta)
+    liczba = model.liczba_wezlow
+    estymata_bledu_rozplywu = krok[:liczba] + 1j * krok[liczba:]
+    # Dodanie korekty do punktu rozplywu zaokragla sie o co najwyzej ulp(|V|) na skladowa.
+    np.testing.assert_allclose(
+        probka_zero - punkt,
+        -estymata_bledu_rozplywu,
+        rtol=0.0,
+        atol=4.0 * JEDNOSTKA_ZAOKRAGLENIA * float(np.max(np.abs(punkt))),
+    )
+    # Po jednym kroku residuum lezy ponizej tolerancji biegu — Newton biegu juz nie iteruje.
+    assert korekta["iteracje_newtona"] == 1
+    assert (
+        float(np.linalg.norm(residuum_algebry(model, odbiory, urzadzenia, stany, probka_zero)))
+        <= wejscie.nastawy.tolerancja
+    )
+    assert korekta["max_przesuniecie_pu"] == pytest.approx(
+        float(np.max(np.abs(estymata_bledu_rozplywu))), rel=10.0 ** (1 - CYFRY_KWANTYZACJI)
+    )
+    # Stan t = 0 przechodzi bramke rownowagi tak jak punkt rozplywu: urzadzenia dostaly stan
+    # rownowagi punktu skorygowanego (moc, ktora w nim oddaja, rozni sie od mocy rozplywu).
+    bramka_f = wynik.slad_white_box["inicjalizacja"]["residuum_f"]
+    assert korekta["residuum_f_po"] <= 10.0 * max(bramka_f, JEDNOSTKA_ZAOKRAGLENIA)
+    assert korekta["residuum_g_po"] <= wejscie.nastawy.eps_init
+    assert korekta["max_zmiana_mocy_urzadzen_pu"] > 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -1997,7 +2137,10 @@ class TestModelOdbioruZip:
         wpis["model"] = model
         wpis["materialized_params"] = dict(ZIP_TESTOWY)
         assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
-        punkt = punkt_pracy(snapshot, _bieg_rozplywu(snapshot))
+        # Przeslanka parytetu (jak B-8): rozplyw zbiezny do dna zaokraglen algebry rdzenia.
+        punkt = punkt_pracy(
+            snapshot, _bieg_rozplywu(snapshot, tolerancja=TOLERANCJA_ROZPLYWU_NA_DNIE)
+        )
         wejscie = zloz(snapshot, opcje(), punkt)
         szyna = wpis["bus_ref"]
         modul = abs(punkt.napiecia_pu[szyna])
@@ -2023,6 +2166,7 @@ class TestModelOdbioruZip:
                 nastawy=dataclasses.replace(wejscie.nastawy, horyzont_s=0.1),
             )
         ).uruchom()
+        _przeslanka_parytetu(wynik)
         inicjalizacja = wynik.slad_white_box["inicjalizacja"]
         assert inicjalizacja["residuum_g"] < NASTAWY["eps_init"]
         (slad,) = (o for o in wynik.slad_white_box["odbiory"] if o["ident"] == odbior)

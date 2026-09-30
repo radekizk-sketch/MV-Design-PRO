@@ -117,8 +117,9 @@ CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.
 ### A. Stan Git
 
 **A.1 Repozytorium i gałęzie.** `radekizk-sketch/MV-Design-PRO`. `main` = `a45c88f9` (PR #476 scalony
-2026-09-24). Gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` — czubek zdalny: commit pakietu wznowienia, rodzic `9cc212b9` (partia
-integracji 5 z DETERMINIZM-KATA-FAZORA i WATKI-BLAS-E2E, na końcu ten pakiet); jedyna gałąź, na którą sesja wykonawcza pushuje
+2026-09-24). Gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` — czubek zdalny: commit karty PRZENOSNOSC-NIEPEWNOSCI
+(poprawka czerwonego CI #474), rodzic `9dd9e589` (pakiet wznowienia nad `9cc212b9` — partia integracji 5 z
+DETERMINIZM-KATA-FAZORA i WATKI-BLAS-E2E); jedyna gałąź, na którą sesja wykonawcza pushuje
 (`git push origin HEAD:claude/mv-design-pro-twin-audit-u4lhy0`, ponowienia 2/4/8/16 s).
 
 **A.2 Pull requesty.** #474 (ta gałąź → `main`) — otwarty, bez konfliktu z `main` (`mergeable_state` na
@@ -145,7 +146,8 @@ bazą; kontynuacja = `git fetch origin <gałąź>` + nowe drzewo robocze z tej g
 | `wip-dowod-cieplny`, `wip-e2e-nazwy` | migawki historyczne | — | zastąpione (`…-gotowy`, partia 5); do usunięcia po scaleniu partii 6 |
 
 **A.4 Drzewa robocze lokalne** (katalog `.claude/worktrees/` kontenera — giną z kontenerem; prawdą jest
-tabela A.3): `odbior-p5final` (`int/p5final` — czubek partii 5 z tym pakietem), `odbior-p5` (`int/p5`,
+tabela A.3): `odbior-p5final` (`int/p5final` — czubek partii 5 z tym pakietem i poprawką 1 karty
+PRZENOSNOSC-NIEPEWNOSCI), `odbior-psi` (`int/psi` — poprawka 2 tej karty, w toku), `odbior-p5` (`int/p5`,
 łańcuch p5b na `3840e239`), `odbior-determinizm` (`int/determinizm`, poprawka przed przeniesieniem), `odbior-p6`, `odbior-dowodcieplny`,
 `odbior-odmowa422`, `odbior-polawtorze`, `odbior-sldsubstrat`, `odbior-ab1b3b`, `odbior-nastawy`; pozostałe
 (`odbior-abp1*`, `odbior-proofpack`, `odbior-s95start`, `odbior-e2enazwy`, `odbior-ci`, `r10`, `fable-b02`,
@@ -156,10 +158,10 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 
 | Stan | Pozycje |
 |---|---|
-| **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E; partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
+| **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E, PRZENOSNOSC-NIEPEWNOSCI (poprawka 1); partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
 | **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6) — partia 6 |
-| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, AB-1b.3b, BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3) |
+| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, AB-1b.3b (commit lokalny `f0cabe57` na `int/ab1b3b`, bez nałożonej poprawki determinizmu — partia 7), BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3), PRZENOSNOSC-NIEPEWNOSCI poprawka 2 (drzewo `odbior-psi`) |
 | **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
@@ -182,6 +184,7 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | AB-H0b | P0 (N-1 V12.6 bez etykiety „szacunek bez rozpływu”, stałe V12.6 bez podstawy) | lista pozycji | — | karta do napisania z `KARTY_OTWARTE` |
 | AB-1b.3b | P1 (ścieżka krytyczna A/B) | w toku | AB-1b.3a | kolizja z determinizmem w `silnik.py`, mutacje M38–M51 |
 | AB-1b.2 + AB-1d_min | P1 (ścieżka krytyczna A/B) | nierozpoczęta | AB-1b.3b | mutacje M52–M66 |
+| PRZENOSNOSC-NIEPEWNOSCI poprawka 2 | P1 (estymata niepewności częstotliwości nieciągła na progu części pewnej residuum i tuż nad nim poniżej dna zaokrągleń — SO-1a próbka 372: 4,6e-15 Hz wobec 1,1e-10 Hz; strona progu zależna od jądra BLAS) | w toku (drzewo `odbior-psi`) | poprawka 1 | `u_V = \|J⁻¹ψ(r)\| + \|J⁻¹ρ\|`, `ψ(r) = sign(r)·max(\|r\| − ρ, 0)`, `u_V̇` — suma dwóch różnic skończonych; mutacje od M73 |
 | ODMOWA-DANYCH-422 | P1 (obcy `ValueError` jako błąd użytkownika) | domknięta przez wykonawcę (`1a235fa3`) | — | odbiór integratora w partii 6; do listy B-01: odmowy wejścia rdzeni jako typ odmowy danych (dziś tłumaczone na granicy warstwy aplikacji w 13 miejscach) |
 | SLD-SUBSTRAT faza 2 | P1 (fikstury SLD bez generatora; element modelu nierysowany) | w toku | — | reguła zapisu liczb w fiksturach (bajty niezależne od maszyny) |
 | O-53b | P1 (reguła mocy źródeł × transformator tylko dla jednego źródła) | nierozpoczęta | — | kasacja tras piszących model z pominięciem operacji |
@@ -249,7 +252,7 @@ Na 4 CPU: do czterech wykonawców naraz plus integrator, jeden ciężki bieg nar
 
 | Tor | Pliki wyłączne | Zakaz |
 |---|---|---|
-| R — rdzeń dynamiki (ścieżka krytyczna; jedna karta naraz) | `backend/src/network_model/solvers/dynamika/**`, `enm/adapter_dynamiki.py`, `enm/dynamika_modele.py`, `enm/dynamika_z_katalogu.py`, `enm/scenariusze.py`, `application/contracts/resultset_dynamic_v2.py`, `backend/tests/walidacja_fizyczna/**` (manifest, harness mutacji: M38–M51 AB-1b.3b, M52–M66 AB-1b.2, M67–M69 zajęte, kolejne od M70), `backend/tests/network_model/dynamika/**`, `frontend/src/ui2/wyniki/dynamika/**` | inne tory nie edytują; AB-H1 nie importuje z `dynamika/` |
+| R — rdzeń dynamiki (ścieżka krytyczna; jedna karta naraz) | `backend/src/network_model/solvers/dynamika/**`, `enm/adapter_dynamiki.py`, `enm/dynamika_modele.py`, `enm/dynamika_z_katalogu.py`, `enm/scenariusze.py`, `application/contracts/resultset_dynamic_v2.py`, `backend/tests/walidacja_fizyczna/**` (manifest, harness mutacji: M38–M51 AB-1b.3b, M52–M66 AB-1b.2, M67–M72 zajęte, kolejne od M73), `backend/tests/network_model/dynamika/**`, `frontend/src/ui2/wyniki/dynamika/**` | inne tory nie edytują; AB-H1 nie importuje z `dynamika/` |
 | H — dziedzina częstotliwości | nowe `network_model/solvers/harmoniczne/**`, `network_model/core/stemplowanie_galezi.py`; `dziedziny/**`, most `solver_input/v126_contracts.py`, `frontend/src/ui2/wyniki/akademickie/**` | `v126_academic.py` (B-01) nietknięty do decyzji §12.2 (b) |
 | M — model ENM | `enm/domain_operations.py`, `enm/domain_operations_v2.py`, `enm/migrations/**`, `enm/validator.py`, `application/field_read_model.py`, adaptery SLD wg listy plików karty | `enm/models.py` — wyłącznie pola addytywne uzgodnione z torem R (wspólne `Load`, `Generator`) |
 | Z — zabezpieczenia | `application/protection_analysis/**`, `application/analyses/protection/**`, `protection/**`, trasy `api/protection_*`, `frontend/src/ui/protection-coordination/**`, `frontend/src/ui2/kreatory/przekaznik/**` | `protection_iec60255.py` (B-01) |
@@ -314,6 +317,11 @@ przepisane do wierszy rejestru planu A/B §7):
 | DETERMINIZM-KATA-FAZORA — `guardy_z_ci.py` | j.w. | komplet zielony (105 strażników, black/ruff, `type-check`, `lint`, 2 920 samotestów) |
 | DETERMINIZM-KATA-FAZORA — e2e ekranów dynamiki | j.w. | 145 passed, zatwierdzone zrzuty bez zmian |
 | WATKI-BLAS-E2E — spec `industrial-template-mass-flow` ścieżką konfiguracji Playwrighta | `3840e239` + zmiana karty | 1 passed; `POST …/execute` 19 553,4 ms przy jednym wątku (środowisko procesu backendu odczytane z `/proc`: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`; w powłoce zmienne nieustawione), load average 9,0–12,2 (próbki co 30 s) |
+| CI GitHub (9 workflowów) | `9dd9e589` (pakiet wznowienia) | 8/9 zielonych; „Python tests” czerwony: job `pytest` w obu przebiegach — 3 z 26 634 (`u_f_est_hz` próbki 0 w trzech węzłach nN fikstury sceny dynamiki i testu sceny przy 1 i 2 wątkach BLAS różne o 0,38–0,57 % poza tolerancją komparatora; test zakazu `sys.path.insert(0, "scripts")` w testach backendu), job mutacji w przebiegu push (ten sam test sceny) — naprawa: karta PRZENOSNOSC-NIEPEWNOSCI |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — testy celowane (75 plików testowych backendu wołających rdzeń dynamiki, w tym walidacja fizyczna z manifestem, fikstury harnessu, API i adapter dynamiki, SO-1a) | `9dd9e589` + poprawka | 2 283 passed, 3 deselected, 1 failed — `test_biegi_sa_powtarzalne_dla_kazdej_rodziny`: dwa biegi przypadku `gfl` różniły się WYŁĄCZNIE `odcisk_implementacji`, a odcisk drugiego biegu (`6d60b262…`) jest bitowo odciskiem pakietu dynamiki z plikiem `_iniekcja_scipy.py`, który autotest `scripts/test_dynamika_granica_importow_guard.py` wstrzykiwał do prawdziwego pakietu — autotest biegł równolegle w łańcuchu guardów (wada autotestu, karta AUTOTESTY-W-DRZEWIE); ten test osobno 1 passed, cały plik 36 passed, 4 powtórzenia w jednym procesie zielone |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — harness mutacji | j.w. | M69, M70, M71, M72 — 4/4 zabite |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — `guardy_z_ci.py`, vitest, e2e | j.w. | guardy: komplet zielony (105 strażników, black/ruff, `type-check`, `lint`, 2 920 samotestów); vitest `ui2/wyniki/dynamika` 50 passed, `ui2/wyniki/wzorzec` + `ui2/spaces/wyniki` 355 passed; e2e ekranów dynamiki na realnym backendzie 145 passed, zatwierdzone zrzuty bez zmian |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — przenośność między jądrami OpenBLAS | j.w. | 12 wariantów {jądro: domyślne SkylakeX, Haswell, Sandybridge, Prescott, Zen} × {1, 2 wątki}: 0 różnic komparatora fikstur (RTOL 1e-4, pasmo zera 1e-8) przy 697–794 liściach różnych w ostatnich cyfrach, maksymalny względny rozrzut `u_f_est_hz` 9,6e-7 (zapas ×104 do RTOL), 0 różnic kodów jakości; fikstura w repo = wariant domyślny (0 różnic). Fikstury wobec `9dd9e589`: 5 różnic komparatora, wszystkie w próbce `t = 0` (`u_f_est_hz` trzech węzłów nN 6,48–6,50e-8 → 5,13–5,14e-9 Hz; `q_do_pu` transformatora stacji i `q_od_pu` odpływu nN −7,07e-8 / 7,25e-8 → −7,19442e-8 / 7,19442e-8 pu — oba końce tej samej gałęzi zgodne po korekcie algebry) oraz odcisk implementacji; 1 092 pozostałe liście — szum ostatnich cyfr w tolerancji |
 | CI GitHub (9 workflowów) | `82595588` (ostatni czubek wypchnięty przed tym pakietem) | 8/9 zielonych; pełny e2e — 9 czerwonych przypadków, naprawione w partii 5 (`7d3a0a41`, `3840e239`) |
 
 **H.2 Ograniczenia:**
@@ -338,7 +346,10 @@ przepisane do wierszy rejestru planu A/B §7):
    wtedy nie mierzono). Naprawa w backendzie e2e — `9cc212b9` (`playwright.config.ts`: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1` dla backendu e2e); biegi testów integratora i wykonawców —
    `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` (reguła biegów weryfikacyjnych, `KARTY_OTWARTE_2026-09.md`);
    polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE. Wyniki od liczby wątków
-   nie zależą (DETERMINIZM-KATA-FAZORA).
+   i od jądra OpenBLAS nie zależą W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA,
+   PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry wartości zależą od kolejności sumowania. Korekta 2026-09-30:
+   dawne zdanie „wyniki od liczby wątków nie zależą” było za mocne — test obu liczb wątków biegł na
+   jednym jądrze, a runner CI (inne jądro) dał `u_f_est_hz` próbki 0 różne o 0,38–0,57 %.
 6. **Migawki WIP** (A.3) pochodzą z ~01:10 UTC 2026-09-30; wykonawcy pracowali dalej — przy wznowieniu
    porównać z `git ls-remote` (krok E.1).
 
@@ -359,6 +370,7 @@ przepisane do wierszy rejestru planu A/B §7):
 | 11 | P1 (B-01) | WLS `state_estimation_wls.py:493` — przy wyjątku z `scipy.stats.chi2` cicha aproksymacja Wilsona–Hilferty’ego progu χ² | ślad obliczeń nie pokazuje przybliżenia (WHITE BOX) | decyzja właściciela, plan §12.2 (j) |
 | 12 | P1 (B-01) | `v126_academic.py:441-443, :482, :532` — kąt 0° fazora o module zero | faza nieokreślona publikowana jako liczba (widok audytowy E-40) | decyzja właściciela, plan §12.2 (h) |
 | 13 | P1 (CI) | Pełny e2e czerwony na `82595588` (generator pakietu dowodowego HTTP 500, 8 speków na surowych identyfikatorach) | — | naprawione w partii 5 (`d7fcc325`, `7d3a0a41`); potwierdzenie — CI na czubku (część H) |
+| 14 | P1 (CI) | `Python tests` czerwony na `9dd9e589` w obu przebiegach (3 z 26 634: fikstura sceny dynamiki i test scen przy 1 i 2 wątkach — `u_f_est_hz` próbki 0 z innego jądra OpenBLAS o 0,38–0,57 % poza tolerancją; ścieżka `scripts` dopisana do `sys.path` w teście); walidacja fizyczna — mutacje czerwona w przebiegu push (ten sam test scen). Przyczyny: próbka `t = 0` w punkcie pracy rozpływu z residuum 2,2e-9 przy tolerancji 1e-10, różnica skończona pochodnej w szumie; odsłonięta przy naprawie — stan `t = 0` po korekcie algebry poza równowagą urządzeń (`max \|f\|` 2,9e-5 1/s przy `eps_init` 1e-6) | liczby i kody jakości częstotliwości zależne od maszyny; w stanie ustalonym fałszywa ROZRÓŻNIALNA odchyłka częstotliwości | PRZENOSNOSC-NIEPEWNOSCI poprawka 1 (commit z tym wierszem; potwierdzenie — CI na czubku); poprawka 2 (estymata na progu części pewnej) — tabela C |
 
 ### J. Dane zewnętrzne i decyzje właściciela
 

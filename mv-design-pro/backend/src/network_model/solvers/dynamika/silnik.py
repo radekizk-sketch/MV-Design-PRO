@@ -15,6 +15,19 @@ PRZEBIEG BIEGU:
    rozruchu". Bramka NIE rozwiazuje algebry: punkt pracy pochodzi z rozpływu
    liczonego na TYM SAMYM widoku sieci, wiec jesli nie spelnia bilansu, to wejscia
    sa niespojne — a to jest informacja, nie usterka do naprawienia w tle.
+3a. **Spojna inicjalizacja algebry (korekta 2026-09-30).** Punkt, ktory przeszedl
+   bramke, a ktorego residuum wychodzi ponad granice zaokraglen, dostaje JEDNA pelna
+   korekte Newtona algebry rdzenia i Newtona do tolerancji biegu
+   (`SilnikDynamiki._korekta_algebry_t0`). Punkt rozplywu jest rozwiazaniem innego
+   ukladu, z jego tolerancja i jego szumem zaokraglen (zaleznym od jadra BLAS i od
+   historii procesu) — probka `t = 0` lezy wiec na algebrze rdzenia jak kazda inna.
+   Urzadzenia o sprzezeniu pradowym dostaja stan rownowagi PUNKTU SKORYGOWANEGO
+   (`stan_poczatkowy(V0, S')` z moca `S'`, ktora w nim faktycznie oddaja): ich prad sie nie
+   zmienia, a pochodne zeruja sie analitycznie — stan `t = 0` spelnia oba warunki bramki.
+   Stan `t = 0` przechodzi TE SAMA bramke rownowagi co punkt rozplywu. Slad
+   `inicjalizacja.korekta_algebry` niesie residuum przed i po, liczbe iteracji, najwieksze
+   przesuniecie napiecia, najwieksza zmiane mocy urzadzenia i obie normy bramki na stanie
+   `t = 0`.
 4. **Petla czasu z punktami obowiazkowymi.** Krok nigdy nie przeskakuje chwili
    zdarzenia ani chwili probkowania: silnik wyznacza najblizszy punkt obowiazkowy
    (zdarzenie / probka / horyzont) i skraca krok dokladnie do niego. Po dojsciu do
@@ -36,7 +49,8 @@ PRZEBIEG BIEGU:
 6. **Probki obustronne (karta AB-1b.1 par. 0 pkt 6).** W KAZDEJ chwili, w ktorej
    wykonuje sie choc jedno zdarzenie, wynik niesie DWIE probki o tej samej chwili:
    `L` — stan PRZED naniesieniem jakiegokolwiek zdarzenia tej chwili (model, odbiory
-   i urzadzenia z konca ostatniego kroku; w `t = 0` dokladnie punkt pracy z rozplywu),
+   i urzadzenia z konca ostatniego kroku; w `t = 0` punkt pracy z rozplywu po spojnej
+   inicjalizacji algebry z punktu 3a),
    i `P` — stan PO naniesieniu wszystkich zdarzen i jednej re-inicjalizacji. Zwykla
    probka siatki ma strone `C`. Zdarzenie na siatce daje pare `L, P` zamiast jednej
    probki; zdarzenie poza siatka daje nowa pare. Strona kazdej probki jest w
@@ -55,6 +69,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from scipy.sparse import linalg as sparse_linalg
 
 from .calkowanie import (
     INTEGRATORY,
@@ -68,6 +83,7 @@ from .calkowanie import (
 )
 from .dozory import AkcjaOczekujaca, Lokalizacja, NadzorDozorow, StanUkladu, StronaOceny
 from .kontrakty import (
+    KOD_ALGEBRA_NIEZBIEZNA,
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
     KOD_NASTAWY_SPRZECZNE,
@@ -106,10 +122,15 @@ from .reinicjalizacja import reinicjalizuj
 from .siec import (
     ModelSieci,
     galezie_laczace,
+    granica_zaokraglen_residuum,
+    jakobian_algebry,
     miejsca_zwarcia_galezi,
     ograniczenia_napiecia,
     prad_wezla_ograniczonego,
     residuum_algebry,
+    residuum_ponad_granica_zaokraglen,
+    rozwiaz_algebre,
+    rzutuj_napiecia_zerowe,
     zloz_model_sieci,
     zwarcia_galezi_modelu,
 )
@@ -184,6 +205,10 @@ class _Chwila:
     start_od_sasiada: bool
 
 
+#: Nazwa stanu `t = 0` po spojnej inicjalizacji w tresci odmowy bramki rownowagi.
+PRZEDMIOT_STANU_T0 = "Stan t = 0 po spojnej inicjalizacji"
+
+
 @dataclass(frozen=True)
 class SilnikDynamiki:
     """Rdzen biegu RMS — jeden obiekt na jeden bieg, bez stanu miedzy biegami."""
@@ -229,6 +254,9 @@ class SilnikDynamiki:
             sprawdz_punkt_pracy_odbioru(odbior, complex(napiecia[model.indeks_wezla[odbior.wezel]]))
         kontekst = KontekstKroku(model, odbiory, urzadzenia, nastawy)
         slad_inicjalizacji = self._bramka_rownowagi(kontekst, stany, napiecia)
+        napiecia, stany, slad_inicjalizacji["korekta_algebry"] = self._korekta_algebry_t0(
+            kontekst, stany, napiecia
+        )
         zasilane_t0 = {odbior.ident for odbior in odbiory}
         slad_odbiorow = [
             opis_odbioru_sladu(
@@ -753,8 +781,15 @@ class SilnikDynamiki:
         return start, od_sasiada, tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem))
 
     def _bramka_rownowagi(
-        self, kontekst: KontekstKroku, stany: tuple[np.ndarray, ...], napiecia: np.ndarray
+        self,
+        kontekst: KontekstKroku,
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+        przedmiot: str = "Punkt pracy",
     ) -> dict[str, Any]:
+        """Bramka rownowagi (punkt 3 naglowka) — JEDNO kryterium dla punktu pracy rozplywu
+        i dla stanu `t = 0` po spojnej inicjalizacji (`_korekta_algebry_t0`); `przedmiot`
+        nazywa oceniany stan w tresci odmowy."""
         nastawy = kontekst.nastawy
         pochodne = pochodne_ukladu(kontekst, stany, napiecia, 0.0)
         reszta_algebry = residuum_algebry(
@@ -818,7 +853,7 @@ class SilnikDynamiki:
         if norma_f > nastawy.eps_init or norma_g > nastawy.eps_init:
             raise OdmowaDynamiki(
                 KOD_INICJALIZACJA_NIEZBIEZNA,
-                "Punkt pracy nie jest rownowaga ukladu: "
+                f"{przedmiot} nie jest rownowaga ukladu: "
                 f"||f|| = {norma_f}, ||g|| = {norma_g}, eps_init = {nastawy.eps_init}",
                 residuum_f=norma_f,
                 residuum_g=norma_g,
@@ -841,6 +876,141 @@ class SilnikDynamiki:
             ],
             "wezly": [list(pozycja) for pozycja in residua_wezlow],
         }
+
+    def _korekta_algebry_t0(
+        self, kontekst: KontekstKroku, stany: tuple[np.ndarray, ...], napiecia: np.ndarray
+    ) -> tuple[np.ndarray, tuple[np.ndarray, ...], dict[str, Any]]:
+        """Spojna inicjalizacja zmiennych algebraicznych: probka `t = 0` lezy na ALGEBRZE RDZENIA.
+
+        DEFEKT (CI #474, 2026-09-30). Probka `t = 0` byla publikowana w punkcie pracy
+        rozplywu, ktory bramka rownowagi przepuszcza przy `||g|| <= eps_init` — w scenie
+        dynamiki harnessu z residuum 2,2e-9 przy tolerancji biegu 1e-10. Ten punkt jest
+        rozwiazaniem INNEGO ukladu (bilansu rozplywu, z jego tolerancja i jego szumem
+        zaokraglen): 12 wariantow jadra OpenBLAS x liczba watkow dalo napiecia `t = 0`
+        rozne o 1,6e-12 pu, a ten sam plik fikstury rozjechal sie nawet na jednej maszynie
+        w innym procesie. Estymata bledu `J^-1 r` w takim punkcie wiernie mierzy blad, ktory
+        sam zalezy od maszyny — `u_f_est_hz` probki 0 roznilo sie o 0,57 %.
+
+        REGULA. Gdy residuum punktu pracy wychodzi ponad granice zaokraglen
+        (`siec.residuum_ponad_granica_zaokraglen` — ten sam predykat, ktorym estymator
+        wybiera droge `J^-1 r`), rdzen wykonuje JEDNA pelna korekte Newtona SWOJEJ algebry
+        (`y - J^-1 r`, bez przeszukiwania liniowego: punkt przeszedl bramke, lezy w
+        `eps_init` od rownowagi, a korekta zbiega kwadratowo — przy residuum bliskim szumu
+        warunek Armijo na normie moglby odrzucic krok nie z powodu rozbieznosci, tylko
+        realizacji szumu), a potem Newton biegu (`siec.rozwiaz_algebre`) do tolerancji
+        biegu. Kazda probka biegu, takze `t = 0`, jest wtedy iteratem Newtona rdzenia
+        spelniajacym jego tolerancje. Punkt juz na dnie zaokraglen zostaje BITOWO bez zmian.
+
+        Bramka (punkt 3 naglowka) nadal ocenia PUNKT ROZPLYWU i nadal odmawia przy
+        niespojnosci ponad `eps_init` — korekta nie naprawia niespojnych wejsc, tylko domyka
+        algebre punktu, ktory bramka juz uznala za spojny.
+
+        REINICJALIZACJA URZADZEN W PUNKCIE SKORYGOWANYM (ta sama karta, pomiar 2026-09-30).
+        Stany urzadzen sa rownowaga PUNKTU ROZPLYWU, a punkt skorygowany lezy obok niego.
+        Scena dynamiki harnessu: korekta przesunela napiecia o 6,2e-10 pu, a `max |f|` stanow
+        rownowagi wzroslo z 8,7e-13 do 2,9e-5 1/s — 29 razy ponad `eps_init` sceny (1e-6).
+        Bieg startowal wiec ze stanu, ktory bramka rownowagi by odrzucila, a probka `t = 0`
+        stanu ustalonego meldowala odchylke czestotliwosci 1,2e-8 Hz jako ROZROZNIALNA
+        w 10 wezlach. Dlatego kazde urzadzenie o sprzezeniu PRADOWYM dostaje stan rownowagi
+        punktu skorygowanego `stan_poczatkowy(V0, S')`, gdzie `S' = V0 conj(I(x, V0))` to moc,
+        ktora w tym punkcie faktycznie oddaje: jego prad sie nie zmienia (residuum algebry
+        zostaje na tolerancji biegu), a pochodne zeruja sie analitycznie — tym samym
+        konstruktorem, ktorego rownowage bramka sprawdzila w punkcie rozplywu. Roznica
+        `S' - S` jest bledem rozplywu w algebrze rdzenia (scena harnessu: 1,4e-9 pu).
+        Stan zachowuje BITOWO urzadzenie, ktorego napiecia wezla korekta nie przesunela
+        (jego rownowaga sie nie zmienila — takze w obszarze beznapieciowym, `V = 0`), oraz
+        urzadzenie o sprzezeniu NAPIECIOWYM: jego prad nie jest funkcja `(x, V)`, wiec mocy
+        oddawanej nie da sie z niego wyznaczyc; jego wezel jest wierszem ograniczenia
+        `V = E(x)`, ktory w punkcie rozplywu spelnia konstrukcja `stan_poczatkowy`.
+
+        STAN `t = 0` PRZECHODZI TE SAMA BRAMKE RÓWNOWAGI co punkt rozplywu
+        (`_bramka_rownowagi`, `eps_init` na `max |f|` stanow rownowagi i `max |g|`), a jej
+        naruszenie konczy bieg ta sama odmowa `dynamika.inicjalizacja_niezbiezna` — bieg nie
+        startuje ze stanu, ktorego bramka nie ocenila. Slad niesie residuum algebry przed i po
+        (norma euklidesowa), liczbe iteracji, najwieksze przesuniecie napiecia, najwieksza
+        zmiane mocy urzadzenia oraz obie normy bramki na stanie `t = 0` (`residuum_f_po`,
+        `residuum_g_po`). Nic nie dzieje sie w tle.
+        """
+        model, odbiory, urzadzenia = kontekst.model, kontekst.odbiory, kontekst.urzadzenia
+        residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
+        norma_przed = float(np.linalg.norm(residuum))
+        granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
+        if not residuum_ponad_granica_zaokraglen(residuum, granica):
+            ocena = self._bramka_rownowagi(kontekst, stany, napiecia, PRZEDMIOT_STANU_T0)
+            return (
+                napiecia,
+                stany,
+                {
+                    "wykonana": False,
+                    "residuum_przed": kwantyzuj(norma_przed),
+                    "residuum_po": kwantyzuj(norma_przed),
+                    "iteracje_newtona": 0,
+                    "max_przesuniecie_pu": 0.0,
+                    "max_zmiana_mocy_urzadzen_pu": 0.0,
+                    "residuum_f_po": ocena["residuum_f"],
+                    "residuum_g_po": ocena["residuum_g"],
+                },
+            )
+        try:
+            rozklad = sparse_linalg.splu(
+                jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia)
+            )
+        except RuntimeError as blad:
+            raise OdmowaDynamiki(
+                KOD_ALGEBRA_NIEZBIEZNA,
+                "Jakobian czesci algebraicznej osobliwy w punkcie pracy (t=0 s) przy korekcie "
+                f"algebry (residuum {norma_przed}): {blad}",
+                t_s=0.0,
+                residuum=norma_przed,
+            ) from blad
+        kierunek = rozklad.solve(-residuum)
+        liczba = model.liczba_wezlow
+        po_korekcie = rzutuj_napiecia_zerowe(
+            model, napiecia + (kierunek[:liczba] + 1j * kierunek[liczba:])
+        )
+        nastawy = kontekst.nastawy
+        wynik = rozwiaz_algebre(
+            model,
+            odbiory,
+            urzadzenia,
+            stany,
+            po_korekcie,
+            tolerancja=nastawy.tolerancja,
+            max_iteracji=nastawy.max_iteracji_newtona,
+            max_nawrotow=nastawy.max_nawrotow,
+            t_s=0.0,
+        )
+        napiecia_po = wynik.napiecia
+        stany_po: list[np.ndarray] = []
+        zmiana_mocy = 0.0
+        for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+            pozycja = model.indeks_wezla[urzadzenie.wezel]
+            napiecie_przed = complex(napiecia[pozycja])
+            napiecie_po = complex(napiecia_po[pozycja])
+            if urzadzenie.sprzezenie == "napieciowe" or napiecie_po == napiecie_przed:
+                stany_po.append(stan)
+                continue
+            moc_przed = napiecie_przed * urzadzenie.prad_pu(stan, napiecie_przed).conjugate()
+            moc_po = napiecie_po * urzadzenie.prad_pu(stan, napiecie_po).conjugate()
+            stany_po.append(urzadzenie.stan_poczatkowy(napiecie_po, moc_po))
+            zmiana_mocy = max(zmiana_mocy, abs(moc_po - moc_przed))
+        stany_rownowagi = tuple(stany_po)
+        residuum_po = residuum_algebry(model, odbiory, urzadzenia, stany_rownowagi, napiecia_po)
+        ocena = self._bramka_rownowagi(kontekst, stany_rownowagi, napiecia_po, PRZEDMIOT_STANU_T0)
+        return (
+            napiecia_po,
+            stany_rownowagi,
+            {
+                "wykonana": True,
+                "residuum_przed": kwantyzuj(norma_przed),
+                "residuum_po": kwantyzuj(float(np.linalg.norm(residuum_po))),
+                "iteracje_newtona": 1 + wynik.iteracje,
+                "max_przesuniecie_pu": kwantyzuj(float(np.max(np.abs(napiecia_po - napiecia)))),
+                "max_zmiana_mocy_urzadzen_pu": kwantyzuj(zmiana_mocy),
+                "residuum_f_po": ocena["residuum_f"],
+                "residuum_g_po": ocena["residuum_g"],
+            },
+        )
 
     # -- zdarzenia --------------------------------------------------------
 
@@ -895,7 +1065,8 @@ class SilnikDynamiki:
         poprzedniej i z napiec z konca ostatniego kroku (te same obiekty, na ktorych stal
         krok calkowania). Dopiero potem zdarzenia sa nanoszone, a probka `P` bierze stan
         po jednej re-inicjalizacji. Jedna regula dla calej osi, takze dla `t = 0` (tam
-        `L` jest punktem pracy z rozplywu) i dla chwili horyzontu.
+        `L` jest punktem pracy z rozplywu po spojnej inicjalizacji algebry — punkt 3a
+        naglowka) i dla chwili horyzontu.
         """
         zdarzenia_chwili = bool(self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)) or bool(
             akcje

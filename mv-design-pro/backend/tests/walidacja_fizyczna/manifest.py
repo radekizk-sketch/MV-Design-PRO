@@ -85,15 +85,18 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "tests/walidacja_fizyczna/test_bramki.py::test_g7_czestotliwosc_wezlowa",
             "tests/walidacja_fizyczna/test_czestotliwosc_wezlowa.py",
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py",
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
         ),
-        mutacje=("M16", "M17", "M69"),
+        mutacje=("M16", "M17", "M69", "M71"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "fazor skladowej zgodnej w stanie quasi-ustalonym RMS; przy |V| <= u_V "
             "wielkosc jest NIEDOSTEPNA, a nie przyblizona; poza chwilami zdarzen — w probkach "
             "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18); estymata "
             "u_V przy residuum miesczacym sie w granicy bledu zaokraglen to |J^-1 rho| "
-            "(siec.granica_zaokraglen_residuum), nie realizacja szumu |J^-1 r|"
+            "(siec.granica_zaokraglen_residuum), nie realizacja szumu |J^-1 r|; u_Vdot z "
+            "roznicy skonczonej o kroku wzglednym co najmniej sqrt(u) "
+            "(obserwable.skala_kroku_pochodnej)"
         ),
         poziom="L5",
         uwagi="Zmierzony blad wobec pochodnej analitycznej: 7,105427357601002e-15 Hz = ulp(50 Hz).",
@@ -224,13 +227,16 @@ MANIFEST: tuple[Twierdzenie, ...] = (
     Twierdzenie(
         ident="D-10",
         zdolnosc=(
-            "Determinizm biegu miedzy procesami (PYTHONHASHSEED) i miedzy liczbami watkow "
-            "BLAS (katy pradow i kody jakosci czestotliwosci z kryteriow rozdzielczosci)"
+            "Determinizm biegu miedzy procesami (PYTHONHASHSEED), miedzy liczbami watkow "
+            "BLAS i miedzy jadrami OpenBLAS (katy pradow i kody jakosci czestotliwosci z "
+            "kryteriow rozdzielczosci; estymata niepewnosci czestotliwosci w punkcie algebry "
+            "rdzenia i z roznicy pochodnej ponad szumem)"
         ),
         rownanie="brak — wlasnosc implementacji, nie fizyki",
         wyrocznia=(
             "powtorzenie biegu w osobnym procesie przy zmienionym PYTHONHASHSEED; ta sama "
-            "scena harnessu w osobnych procesach przy 1 i 2 watkach OpenBLAS"
+            "scena harnessu w osobnych procesach w iloczynie {jadro OpenBLAS: domyslne, "
+            "Prescott na x86-64} x {1, 2 watki}"
         ),
         wzorzec=(
             "dwa zdarzenia w TEJ SAMEJ chwili na ukladzie dwutorowym; scena "
@@ -240,20 +246,25 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         testy=(
             "tests/walidacja_fizyczna/test_zdarzenia.py::test_wynik_nie_zalezy_od_pythonhashseed",
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
-            "::test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas",
+            "::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas",
+            "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
         ),
-        mutacje=("M67", "M69"),
+        mutacje=("M67", "M69", "M70", "M71", "M72"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
-            "ta sama platforma i ta sama wersja numpy/scipy/OpenBLAS; liczba watkow BLAS "
-            "dowolna — wynik rowny w tolerancji komparatora fikstur harnessu (ostatnie cyfry "
-            "wartosci zaleza od kolejnosci sumowania, wzorce None i kody jakosci nie)"
+            "ta sama wersja numpy/scipy/OpenBLAS; liczba watkow BLAS i jadro OpenBLAS "
+            "dowolne — wynik rowny w tolerancji komparatora fikstur harnessu (ostatnie cyfry "
+            "wartosci zaleza od kolejnosci sumowania, wzorce None i kody jakosci nie); "
+            "probka t = 0 na algebrze rdzenia (korekta punktu rozplywu ponad dnem zaokraglen) "
+            "i w rownowadze urzadzen punktu skorygowanego (reinicjalizacja z moca oddawana)"
         ),
         poziom="L4",
         uwagi=(
             "L4: os PYTHONHASHSEED nadal bez mutacji falsyfikujacej (iniekcja niedeterminizmu "
-            "wymagalaby zmiany typu kolekcji); os liczby watkow BLAS ma mutacje M67 (kat pradu) "
-            "i M69 (estymata niepewnosci czestotliwosci)."
+            "wymagalaby zmiany typu kolekcji); os liczby watkow i jadra BLAS ma mutacje M67 "
+            "(kat pradu), M69 (estymata niepewnosci czestotliwosci), M70 (probka t = 0 w punkcie "
+            "rozplywu), M71 (roznica pochodnej w szumie) i M72 (stan t = 0 bez reinicjalizacji "
+            "urzadzen w punkcie skorygowanym)."
         ),
     ),
 )
