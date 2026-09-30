@@ -52,6 +52,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # transformatorowego (KOMPLETNOSC-POLA-TR — ten sam warunek, jedno zrodlo
     # predykatu `enm/pole_transformatorowe.py`).
     "W041": "transformer.bay_missing",
+    # „Element przyłączony do szyny głównej stacji z pominięciem pola" == ten sam warunek
+    # (jedno źródło predykatu `enm/tor_pola.py::naruszenia_zasady_toru`, karta POLA-W-TORZE).
+    "W042": "station.element_bypasses_field",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia

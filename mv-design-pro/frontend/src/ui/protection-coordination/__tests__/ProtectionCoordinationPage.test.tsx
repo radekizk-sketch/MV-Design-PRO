@@ -157,6 +157,7 @@ function rozstrzygniecie(_caseId: string, lokalizacja: string, zacisk: 'od' | 'd
       zaciski: ZACISKI_LINII,
       galaz_ref: zacisk ? 'line_1' : null,
       zacisk,
+      szyna_zwarcia_ref: zacisk ? ZACISKI_LINII[zacisk].szyna_ref : null,
       zrodlo_zacisku: zacisk ? 'wskazanie' : null,
       wymaga_wskazania_zacisku: true,
       odmowa_zacisku: zacisk
@@ -170,6 +171,7 @@ function rozstrzygniecie(_caseId: string, lokalizacja: string, zacisk: 'od' | 'd
     zaciski: null,
     galaz_ref: null,
     zacisk: null,
+    szyna_zwarcia_ref: null,
     zrodlo_zacisku: null,
     wymaga_wskazania_zacisku: false,
     odmowa_zacisku: null,

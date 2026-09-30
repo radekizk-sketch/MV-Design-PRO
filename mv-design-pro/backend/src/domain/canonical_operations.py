@@ -127,6 +127,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("a_ref", "b_ref"),
         optional_fields=("nop_required",),
     ),
+    "przepnij_element_na_pole": OperationSpec(
+        canonical_name="przepnij_element_na_pole",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny "
+            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("element_ref",),
+        optional_fields=("field_ref",),
+        creates_elements=False,
+    ),
     "set_normal_open_point": OperationSpec(
         canonical_name="set_normal_open_point",
         category=OperationCategory.SN_NETWORK,
@@ -945,6 +957,19 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek",
         fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy —
+    # aparat pola martwy elektrycznie (`enm/tor_pola.py`, walidator W042).
+    "station.element_bypasses_field": ReadinessCodeSpec(
+        code="station.element_bypasses_field",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Element jest przyłączony do szyny głównej stacji z pominięciem pola "
+            "rozdzielnicy — aparat pola nie leży w jego torze prądowym"
+        ),
+        fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
     ),
     # Transformer
     "transformer.catalog_missing": ReadinessCodeSpec(

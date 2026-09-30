@@ -397,7 +397,13 @@ POMIJANE_KATALOGI = {
 #: i na `4199d528`, listy bledow porownane linia po linii): 83 -> 81. Zeszly 2 bledy TS2339
 #: (martwa galaz `debtCode` w `ui/canon/__tests__/coverage-matrix.test.ts` — typ
 #: `CoverageStatus` dopuszcza tylko pelne pokrycie; zastapiona asercja statusu); zero nowych.
-BUDZET_BLEDOW_POZA_BRAMKA = 81
+#: Karta POLA-W-TORZE (2026-09-30, pomiar `tsc` pelnego zbioru na drzewie karty, lista bledow
+#: porownana z pomiarem guarda przed poprawka): 81 -> 80. Zszedl zastany TS2322 w
+#: `ui2/kreatory/stacja/__tests__/stacjaModel.test.ts` (fikstura szablonu pola bez wymaganej
+#: kompozycji `base_template`); dwa bledy dopisane przez karte w nowych testach (rola
+#: `POMIAROWE` spoza `SnFieldRole`, rodzaj aparatu `load_break_switch` spoza slownika)
+#: naprawione u zrodla przed commitem. Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 80
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

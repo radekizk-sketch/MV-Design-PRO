@@ -38,8 +38,13 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
  */
 
 type Snapshot = {
-  substations?: Array<{ ref_id: string; station_type?: string | null }>;
-  branches?: Array<{ ref_id: string; type?: string }>;
+  substations?: Array<{
+    ref_id: string;
+    station_type?: string | null;
+    // Karta POLA-W-TORZE: zaciski pól stacji (`field_specs[].meta.terminal_bus_ref`).
+    meta?: { field_specs?: Array<{ meta?: { terminal_bus_ref?: string } }> };
+  }>;
+  branches?: Array<{ ref_id: string; type?: string; from_bus_ref?: string; to_bus_ref?: string }>;
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   // CV-4.3 K7 (karta K7-FE): źródła sieciowe niosą dane scenariusza MIN.
   // CV-4.3 K7c (karta K7c-FE): + napięcie zadane szyny bilansującej.
@@ -291,27 +296,65 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await wrocNaSchemat(page);
     await czekajNaWarstweTrafien(page);
 
-    // ---- Ogniwo 4: cykl domknięty — KOLEJNY odcinek ZE STACJI ---------------
-    // Uchwytem stacji na pełnym szczególe jest etykieta jej nazwy (lekcja
-    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (53 stacje / 115
-    // odcinków, próg 15) mierzy nadal sonda odbioru `menu_chain_probe` —
-    // tutaj domykamy PĘTLĘ: stacja zapisana ogniwem 3 jest źródłem ogniwa 4.
+    // ---- Ogniwo 4: cykl domknięty — ciąg dalej ZA stacją ----------------------
+    // KANON POLA-W-TORZE (przepisane z zachowaniem intencji „stacja zapisana ogniwem 3 jest
+    // punktem, od którego ciąg idzie dalej"): stacja wstawiona w odcinek przyłącza dalszą
+    // połówkę odcinka przez swoje pole wyjściowe — to pole jest ZAJĘTE od chwili powstania
+    // stacji. Drugi kabel z zajętego pola to dokładnie defekt, którego kanon zabrania, więc:
+    //  (4a) menu STACJI bez wolnego pola liniowego pokazuje „Kontynuuj ciąg główny" jako
+    //       wyłączone z NAZWANYM powodem i akcją naprawczą (dawniej: klikalne, a kabel
+    //       wychodził z szyny głównej obok martwego aparatu pola);
+    //  (4b) ciąg idzie dalej od KOŃCA dalszej połówki — tej, którą niesie pole wyjściowe
+    //       stacji — natywnym prawym klikiem w jej tor na rysunku.
+    // Uchwytem stacji na pełnym szczególe jest etykieta jej nazwy (lekcja pomiaru nr 2).
+    // Dostępność wejść budowy NA SKALĘ (53 stacje / 115 odcinków, próg 15) mierzy nadal sonda
+    // odbioru `menu_chain_probe`.
     const enmPoStacji = await pobierzEnm(request, caseId);
-    const stacjaRef = (enmPoStacji.substations ?? []).find(
+    const stacja = (enmPoStacji.substations ?? []).find(
       (s) => String(s.station_type ?? '').toLowerCase() !== 'gpz',
-    )?.ref_id;
-    expect(stacjaRef, 'model ma stację SN/nN po ogniwie 3').toBeTruthy();
-    const galezieprzedOgniwem4 = (enmPoStacji.branches ?? []).length;
+    );
+    expect(stacja?.ref_id, 'model ma stację SN/nN po ogniwie 3').toBeTruthy();
     const uchwytStacji = page.locator(
-      `[data-hit-role="obrys"][data-hit-owner-ref^="${stacjaRef}#name-row"]`,
+      `[data-hit-role="obrys"][data-hit-owner-ref^="${stacja!.ref_id}#name-row"]`,
     ).first();
     const menuStacji = await prawyKlikWUchwyt(page, uchwytStacji);
-    await expect(menuStacji.getByTestId('sld-menu-continue-trunk')).toBeEnabled();
-    await menuStacji.getByTestId('sld-menu-continue-trunk').click();
+    const kontynuujZeStacji = menuStacji.getByTestId('sld-menu-continue-trunk');
+    await expect(kontynuujZeStacji).toBeDisabled();
+    await expect(kontynuujZeStacji).toHaveAttribute('title', /wolnego pola liniowego/);
+    await page.keyboard.press('Escape');
+
+    // Dalsza połówka odcinka: wychodzi z ZACISKU pola wyjściowego stacji (aparat pola w torze).
+    const zaciskiStacji = new Set(
+      (stacja!.meta?.field_specs ?? [])
+        .map((spec) => spec.meta?.terminal_bus_ref)
+        .filter((ref): ref is string => typeof ref === 'string'),
+    );
+    const dalszaPolowka = (enmPoStacji.branches ?? []).find(
+      (b) => (b.type === 'cable' || b.type === 'line_overhead')
+        && zaciskiStacji.has(String(b.from_bus_ref)),
+    );
+    expect(dalszaPolowka, 'dalsza połówka wychodzi z zacisku pola stacji').toBeTruthy();
+    const galezieprzedOgniwem4 = (enmPoStacji.branches ?? []).length;
+    const uchwytPolowki = page.locator(
+      `[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${dalszaPolowka!.ref_id}"]`,
+    ).first();
+    const menuPolowki = await prawyKlikWUchwyt(page, uchwytPolowki);
+    // Menu odcinka: „Kontynuuj ciąg główny" od wolnego końca odcinka
+    // (`continue-trunk-from-endpoint`, ta sama operacja `continue_trunk_segment_sn`).
+    const kontynuujOdKonca = menuPolowki.getByTestId('sld-menu-continue-trunk-from-endpoint');
+    await expect(kontynuujOdKonca).toBeEnabled();
+    await kontynuujOdKonca.click();
     await zapiszMagistrale(page);
     await expect
       .poll(async () => (await pobierzEnm(request, caseId)).branches?.length ?? 0, { timeout: 60000 })
       .toBeGreaterThan(galezieprzedOgniwem4);
+    const enmPoOgniwie4 = await pobierzEnm(request, caseId);
+    const nowyOdcinek = (enmPoOgniwie4.branches ?? []).find(
+      (b) => (b.type === 'cable' || b.type === 'line_overhead')
+        && !(enmPoStacji.branches ?? []).some((stary) => stary.ref_id === b.ref_id),
+    );
+    // Ciąg dalej zaczyna się dokładnie tam, gdzie kończy się połówka niesiona przez pole WY.
+    expect(nowyOdcinek?.from_bus_ref).toBe(dalszaPolowka!.to_bus_ref);
     await wrocNaSchemat(page);
     await czekajNaWarstweTrafien(page);
 

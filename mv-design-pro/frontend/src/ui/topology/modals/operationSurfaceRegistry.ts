@@ -106,6 +106,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'domkniecie',
   ),
   entry(
+    'przepnij_element_na_pole',
+    'KreatorPrzepieciaNaPole',
+    'Przepnij element na pole stacji',
+    'E-13',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    'rozdzielnia-sn',
+  ),
+  entry(
     'set_normal_open_point',
     'KreatorPierscienia',
     'Ustaw punkt normalnie otwarty',

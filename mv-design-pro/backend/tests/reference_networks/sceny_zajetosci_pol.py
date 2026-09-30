@@ -9,6 +9,12 @@ sekcję): ten stan istnieje tylko jako model zastany i jest odtwarzany wprost.
 Iloczyn: rodzaj elementu {stacja SN/nN na odcinku, stacja końcowa, GPZ z zaciskami pól, GPZ
 bez zacisków pól, sekcja 2 GPZ} × stan pól {wolne kilka, wolne jedno, zajęte wszystkie,
 brak pól liniowych}.
+
+Karta POLA-W-TORZE: stacja wstawiona w odcinek przyłącza dalszą połówkę odcinka przez pole
+wyjściowe, więc to pole jest zajęte od chwili powstania stacji. Intencja stanów zostaje ta sama
+(ile pól liniowych jest WOLNYCH): „wolne kilka” = dwa pola odgałęźne obok zajętego pola
+wyjściowego, „brak pól” = wyłącznie pole niosące połówkę odcinka (żadnego wolnego pola
+liniowego — stacja wstawiona w odcinek z definicji ma pole wyjściowe).
 """
 
 from __future__ import annotations
@@ -83,12 +89,28 @@ def koniec_ciagu(enm: dict[str, Any]) -> str:
     return str(odcinki[-1]["to_bus_ref"])
 
 
+def drugi_koniec_pierscienia(enm: dict[str, Any]) -> str:
+    """Drugi koniec kabla zamykającego pierścień: wolny koniec ciągu, a gdy ciąg kończy się
+    w stacji (koniec ostatniego odcinka leży na ZACISKU pola — POLA-W-TORZE) — szyna GPZ,
+    z której pierścień wraca przez pole liniowe przydzielone kanonem pól GPZ."""
+    koniec = koniec_ciagu(enm)
+    if not any(
+        z.punkt_przylaczenia == koniec and z.wlasny_zacisk for z in zajetosc_pol(enm).values()
+    ):
+        return koniec
+    gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
+    return str(gpz["bus_refs"][0])
+
+
 @dataclass
 class Scena:
     enm: dict[str, Any]
     #: Pola liniowe rozpatrywanego elementu (kolejność modelu).
     pola: list[str]
     gpz: bool
+    #: Pola WOLNE przed zajmowaniem stanu (pole wyjściowe stacji wstawionej w odcinek jest
+    #: zajęte od chwili powstania stacji — POLA-W-TORZE).
+    wolne_na_starcie: list[str]
 
 
 def _zajmij(enm: dict[str, Any], field_ref: str, n: int) -> dict[str, Any]:
@@ -102,9 +124,12 @@ def _zajmij(enm: dict[str, Any], field_ref: str, n: int) -> dict[str, Any]:
 
 
 def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
-    pola_stacji = (
-        ["IN"] if stan == "brak_pol" else ["IN", "OUT", "FEEDER"]
-    )  # wolne kilka = OUT + FEEDER
+    if rodzaj == "stacja_na_odcinku":
+        # Pole wyjściowe niesie dalszą połówkę odcinka — wolne są wyłącznie pola odgałęźne.
+        pola_stacji = ["IN", "OUT"] if stan == "brak_pol" else ["IN", "OUT", "FEEDER", "FEEDER"]
+    else:
+        # Stacja końcowa: pole wejściowe niesie odcinek dojściowy — wolne kilka = OUT + FEEDER.
+        pola_stacji = ["IN"] if stan == "brak_pol" else ["IN", "OUT", "FEEDER"]
     if rodzaj in ("stacja_na_odcinku", "stacja_koncowa"):
         enm = _gpz(z_zaciskami=True, sekcje=1)
         gpz_pole = pola_liniowe(enm, "gpz/")[0]
@@ -166,10 +191,13 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
             ]
             pola = []
 
+    # Zajmowane są wyłącznie pola WOLNE (pole wyjściowe stacji wstawionej w odcinek jest zajęte
+    # od początku — drugi kabel z niego to dokładnie defekt, którego kanon zabrania).
+    wolne = [p for p in pola if not zajetosc_pol(enm)[p].zajete]
     if stan == "wolne_jedno":
-        for n, pole_ref in enumerate(pola[:-1]):
+        for n, pole_ref in enumerate(wolne[:-1]):
             enm = _zajmij(enm, pole_ref, n)
     elif stan == "zajete_wszystkie":
-        for n, pole_ref in enumerate(pola):
+        for n, pole_ref in enumerate(wolne):
             enm = _zajmij(enm, pole_ref, n)
-    return Scena(enm=enm, pola=pola, gpz=czy_gpz)
+    return Scena(enm=enm, pola=pola, gpz=czy_gpz, wolne_na_starcie=wolne)

@@ -38,6 +38,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'start_branch_segment_sn',
   'insert_section_switch_sn',
   'connect_secondary_ring_sn',
+  // POLA-W-TORZE: akcja naprawcza kontroli W042 — element z szyny głównej stacji na zacisk pola.
+  'przepnij_element_na_pole',
   'set_normal_open_point',
   'add_transformer_sn_nn',
   'assign_catalog_to_element',

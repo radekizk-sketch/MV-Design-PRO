@@ -343,12 +343,19 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
     const kilka = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sKilka.snapshot, sKilka.logical_views);
     const jedno = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sJedno.snapshot, sJedno.logical_views);
     // Wolne kilka: pierwsze wolne pole w porządku pól; wolne jedno: to jedno, które zostało.
-    expect(kilka?.context.field_ref).toBe(
-      [...sKilka.pola_liniowe_elementu].sort((a, b) => a.localeCompare(b))[0],
-    );
-    expect(jedno?.context.field_ref).toBe(
-      sJedno.pola_liniowe_elementu[sJedno.pola_liniowe_elementu.length - 1],
-    );
+    // Zajętość czytana z modelu odczytu backendu (`line_fields`), nie z listy pól: od karty
+    // POLA-W-TORZE pole wyjściowe stacji wstawionej w odcinek niesie dalszą połówkę odcinka
+    // (zajęte od chwili powstania stacji), więc „pierwsze pole" to nie „pierwsze wolne".
+    const wolne = (s: Scena): string[] =>
+      s.pola_liniowe_elementu
+        .filter(
+          (ref) => !(s.logical_views.line_fields ?? []).find((w) => w.field_ref === ref)?.occupied,
+        )
+        .sort((a, b) => a.localeCompare(b));
+    expect(wolne(sKilka).length).toBeGreaterThan(1);
+    expect(kilka?.context.field_ref).toBe(wolne(sKilka)[0]);
+    expect(wolne(sJedno)).toHaveLength(1);
+    expect(jedno?.context.field_ref).toBe(wolne(sJedno)[0]);
     // Drugi bieg na tym samym wejściu = ten sam kontekst (determinizm).
     expect(buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sKilka.snapshot, sKilka.logical_views))
       .toEqual(kilka);

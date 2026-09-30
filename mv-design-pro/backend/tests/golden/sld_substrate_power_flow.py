@@ -403,15 +403,17 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
       own buses, nothing else.
 
       (C, fallback) On this substrate NO station qualifies for (B) — every
-      station wires one closed BREAKER branch per SN bay in addition to its
-      two ring-neighbour cables (measured: lateral/type-B stations carry 5
-      incident branches, trunk/type-C 6; never 2 — the SN-field breakers are
-      dead-end bay stubs in this fixture, not ring topology, but they are
-      still real CLOSED branches the picker must count). Per §0.C: take the
-      SMALLEST-degree station (ref_id tie-break) and disable ALL its incident
-      branches. This CAN strand more than that one station when it sits
-      mid-lateral (documented, not hidden — the ``scenario`` field the
-      caller attaches to the companion, and this docstring, both say so).
+      station's SN bus carries one closed BREAKER branch per SN bay and
+      nothing else (card POLA-W-TORZE: the ring cables and the transformer sit
+      on the bay TERMINALS, so the bay breakers are in their current paths;
+      measured 2026-09-29: the smallest station carries 3 incident breakers —
+      IN, OUT and TR bay). Per §0.C: take the SMALLEST-degree station (ref_id
+      tie-break) and disable ALL its incident branches — i.e. open all its bay
+      breakers, which isolates exactly that station while the ring cables stay
+      energised from their feeding side. This CAN strand more than that one
+      station when it sits mid-lateral (documented, not hidden — the
+      ``scenario`` field the caller attaches to the companion, and this
+      docstring, both say so).
 
     KLASA NIE INSTANCJA: this walks the substrate's OWN graph structure (no
     hardcoded station/branch ref — a future rebuild of the fixture re-derives

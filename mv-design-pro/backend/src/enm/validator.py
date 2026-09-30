@@ -8,7 +8,7 @@ Komunikaty po polsku.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from network_model.catalog.governance import (
@@ -59,10 +59,16 @@ from .slownik_komunikatow import (
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
     nazwa_rodzaju_generatora,
     opis_elementu,
+    opis_nazwy,
     opis_obiektu,
     pole,
 )
 from .topology import derive
+from .tor_pola import (
+    KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
+    OPERACJA_PRZEPIECIA,
+    naruszenia_zasady_toru,
+)
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .zajetosc_pol import zajetosc_pol
@@ -137,6 +143,8 @@ class ENMValidator:
         self._check_line_field_single_segment(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
+        # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy
+        self._check_zasada_toru(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -1474,6 +1482,101 @@ class ENMValidator:
                 )
             )
 
+    def _check_zasada_toru(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W042: element przyłączony do szyny głównej stacji z pominięciem pola (POLA-W-TORZE).
+
+        Aparat pola jest w torze prądowym elementu, któremu pole służy; element leżący na szynie
+        głównej obok pola (połówka odcinka, strona górna transformatora) zostawia aparat pola
+        martwym elektrycznie — otwarcie pola nic nie odłącza, a prąd aparatu jest zerowy. Stan
+        zastany modeli zbudowanych przed kartą: modele NIE są migrowane (zasady inżynierskie
+        repo), walidator wskazuje element i pole, a akcja naprawcza przepina element operacją
+        `przepnij_element_na_pole`. Poziom IMPORTANT: wynik obliczeń sieci jest poprawny,
+        błędny jest tor aparatu pola (sprawdzenia aparatu, zabezpieczenia pola, łączenia).
+        Predykat: JEDNO źródło `enm.tor_pola.naruszenia_zasady_toru`.
+        """
+        widok = {
+            "substations": [
+                {"ref_id": s.ref_id, "name": s.name, "bus_refs": list(s.bus_refs), "meta": s.meta}
+                for s in enm.substations
+            ],
+            "branches": [
+                {
+                    "ref_id": b.ref_id,
+                    "name": b.name,
+                    "type": getattr(b, "type", None),
+                    "from_bus_ref": getattr(b, "from_bus_ref", None),
+                    "to_bus_ref": getattr(b, "to_bus_ref", None),
+                }
+                for b in enm.branches
+            ],
+            "transformers": [
+                {
+                    "ref_id": t.ref_id,
+                    "name": t.name,
+                    "hv_bus_ref": t.hv_bus_ref,
+                    "lv_bus_ref": t.lv_bus_ref,
+                }
+                for t in enm.transformers
+            ],
+            "sources": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.sources],
+            "loads": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.loads],
+            "generators": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.generators],
+        }
+        for naruszenie in naruszenia_zasady_toru(widok):
+            element = opis_nazwy(
+                naruszenie.element_name,
+                "Odcinek" if naruszenie.rodzaj_elementu == "odcinek" else "Transformator",
+            )
+            stacja = opis_nazwy(naruszenie.station_name, "stacji")
+            if naruszenie.field_ref is not None:
+                naprawa = (
+                    "Przepnij element na zacisk wolnego pola — aparat pola wejdzie w tor prądowy."
+                )
+                fix = FixAction(
+                    action_type="OPEN_MODAL",
+                    element_ref=naruszenie.element_ref,
+                    modal_type=OPERACJA_PRZEPIECIA,
+                    payload_hint={
+                        "element_ref": naruszenie.element_ref,
+                        "field_ref": naruszenie.field_ref,
+                        "station_ref": naruszenie.station_ref,
+                    },
+                )
+            else:
+                naprawa = (
+                    "Dodaj w konfiguratorze stacji pole, które posłuży temu elementowi, "
+                    "i przepnij element na jego zacisk."
+                )
+                fix = FixAction(
+                    action_type="OPEN_MODAL",
+                    element_ref=naruszenie.station_ref,
+                    modal_type="add_sn_bay",
+                    payload_hint={
+                        "bay_role": (
+                            "TR" if naruszenie.rodzaj_elementu == "transformator" else "OUT"
+                        )
+                    },
+                )
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{element} jest przyłączony do szyny {stacja} z pominięciem pola "
+                        "rozdzielnicy — aparat pola nie leży w jego torze prądowym (otwarcie "
+                        "pola go nie odłącza, a przez aparat nie płynie jego prąd)."
+                    ),
+                    element_refs=[
+                        naruszenie.element_ref,
+                        naruszenie.station_ref,
+                        *([naruszenie.field_ref] if naruszenie.field_ref else []),
+                    ],
+                    wizard_step_hint="K3",
+                    suggested_fix=naprawa,
+                    fix_action=fix,
+                )
+            )
+
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
     # ------------------------------------------------------------------
@@ -1834,7 +1937,14 @@ class ENMValidator:
                 )
                 continue
 
-            if len(mv_buses_used) > 1:
+            # POLA-W-TORZE: szyny SN stacji połączone aparatami rozdzielnicy (sekcje za
+            # sprzęgłem, część kliencka za polem układu pomiarowego energii) tworzą JEDNĄ
+            # magistralę SN stacji — ciągłość nie przechodzi przez nN ani transformator.
+            # Grupę wyznacza graf aparatów łączeniowych SN (bez impedancji), nie tożsamość szyny.
+            grupy_magistrali = {
+                self._grupa_magistrali_sn(enm, szyna, bus_by_ref) for szyna in mv_buses_used
+            }
+            if len(mv_buses_used) > 1 and len(grupy_magistrali) > 1:
                 issues.append(
                     ValidationIssue(
                         code="E021",
@@ -1859,6 +1969,32 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    @staticmethod
+    def _grupa_magistrali_sn(
+        enm: EnergyNetworkModel, szyna: str, bus_by_ref: Mapping[str, object]
+    ) -> frozenset[str]:
+        """Szyny SN osiągalne ze `szyna` przez aparaty łączeniowe (wyłącznik, rozłącznik,
+        odłącznik, sprzęgło, bezpiecznik) — jedna magistrala rozdzielnicy stacji. Stan
+        łącznika nie ma znaczenia (struktura rozdzielnicy, nie stan ruchowy)."""
+        rodzaje = {"breaker", "switch", "disconnector", "bus_coupler", "fuse"}
+        sasiedzi: dict[str, set[str]] = {}
+        for galaz in enm.branches:
+            if getattr(galaz, "type", None) not in rodzaje:
+                continue
+            a = getattr(galaz, "from_bus_ref", None)
+            b = getattr(galaz, "to_bus_ref", None)
+            if isinstance(a, str) and isinstance(b, str):
+                sasiedzi.setdefault(a, set()).add(b)
+                sasiedzi.setdefault(b, set()).add(a)
+        grupa = {szyna}
+        do_odwiedzenia = [szyna]
+        while do_odwiedzenia:
+            for nastepna in sasiedzi.get(do_odwiedzenia.pop(), ()):
+                if nastepna not in grupa and nastepna in bus_by_ref:
+                    grupa.add(nastepna)
+                    do_odwiedzenia.append(nastepna)
+        return frozenset(grupa)
 
     def _check_line_field_single_segment(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]

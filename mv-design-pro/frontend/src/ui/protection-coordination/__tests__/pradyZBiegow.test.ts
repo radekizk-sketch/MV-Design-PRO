@@ -72,12 +72,15 @@ const ZACISKI_LINII = {
 
 /** Rozstrzygnięcie backendu (`GET …/enm/zacisk-lokalizacji`) — kształt 1:1. */
 function miejsce(over: Partial<MiejsceUrzadzenia> = {}): MiejsceUrzadzenia {
+  const zacisk = 'zacisk' in over ? (over.zacisk ?? null) : 'od';
   return {
     lokalizacja_ref: 'line/sn/1',
     rodzaj_lokalizacji: 'galaz',
     zaciski: ZACISKI_LINII,
     galaz_ref: 'line/sn/1',
     zacisk: 'od',
+    // Backend (`szyna_zwarcia_miejsca`): szyna zacisku rozstrzygniętego — brak zacisku = brak.
+    szyna_zwarcia_ref: zacisk ? ZACISKI_LINII[zacisk].szyna_ref : null,
     zrodlo_zacisku: 'wskazanie',
     wymaga_wskazania_zacisku: true,
     odmowa_zacisku: null,
@@ -203,6 +206,21 @@ describe('prąd roboczy urządzenia — zacisk z rozstrzygnięcia backendu', () 
 });
 
 describe('zbudujPradyKoordynacji — zero fabrykacji', () => {
+  it('zacisk na zacisku pola stacji: prąd zwarciowy z szyny pola wskazanej przez backend', () => {
+    // Karta POLA-W-TORZE: odcinek kończy się na zacisku pola (szyna pomocnicza bez wiersza
+    // zwarciowego); backend wskazuje szynę pola za zamkniętym aparatem — ten sam węzeł.
+    const wynik = zbudujPradyKoordynacji({
+      urzadzenia: [urzadzenie()],
+      wierszeMax: [wierszSC({ element_id: 'bus/sn/stacja', ikss_ka: 7.2 })],
+      wierszeMin: [wierszSC({ element_id: 'bus/sn/stacja', ikss_ka: 2.5 })],
+      wierszeGalezi: [wierszGalezi()],
+      miejsca: miejscaUrzadzen(['dev-1', miejsce({ szyna_zwarcia_ref: 'bus/sn/stacja' })]),
+    });
+    expect(wynik.faultCurrents).toEqual([
+      { location_id: 'line/sn/1', ik_max_3f_a: 7200, ik_min_3f_a: 2500 },
+    ]);
+  });
+
   it('oba biegi zwarciowe + rozpływ dają kompletne prądy', () => {
     const wynik = zbudujPradyKoordynacji({
       urzadzenia: [urzadzenie()],

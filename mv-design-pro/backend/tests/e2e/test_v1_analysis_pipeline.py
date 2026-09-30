@@ -152,7 +152,9 @@ def _build_v1_network() -> dict:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-            "sn_fields": ["IN", "OUT"],
+            # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte), więc
+            # odgałęzienie z tej stacji wychodzi z WOLNEGO pola odgałęźnego.
+            "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
                 "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
