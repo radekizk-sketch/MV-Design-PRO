@@ -1,6 +1,7 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { szynyStacji } from '../../shared/szynyStacji';
+import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 type Context = Record<string, unknown> | undefined;
@@ -369,9 +370,8 @@ export function resolveStationRef(
       (transformer) => transformer.ref_id === elementRef || transformer.id === elementRef,
     )?.ref_id;
     if (transformerRef) {
-      return snapshot?.substations.find(
-        (station) => station.transformer_refs.includes(transformerRef),
-      )?.ref_id ?? null;
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      return stationRefOfTransformer(snapshot, transformerRef);
     }
 
     if (findBus(snapshot, elementRef)) {

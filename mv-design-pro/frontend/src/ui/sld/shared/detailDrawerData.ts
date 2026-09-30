@@ -76,9 +76,8 @@ import type {
 import type { SelectedElement } from '../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
-import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
+import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { stationSideBusRefs } from './stationBusResolution';
-import { stacjaSzyn } from '../../shared/szynyStacji';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
@@ -399,24 +398,11 @@ export function stationRefForTransformerSelection(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string,
 ): string | null {
-  const internalStationRef = stationRefFromInternalElement(transformerRef);
-  if (internalStationRef) return internalStationRef;
-  if (!snapshot) return null;
-  const transformer = (snapshot.transformers ?? []).find(
-    (item) => item.ref_id === transformerRef || item.id === transformerRef,
-  );
-  if (!transformer) return null;
-  const declared = (snapshot.substations ?? []).find((item) =>
-    item.transformer_refs?.includes(transformer.ref_id)
-    || item.transformer_refs?.includes(transformer.id),
-  );
-  if (declared) return declared.ref_id ?? declared.id ?? null;
-  // SZYNY-STACJI-LUSTRO: transformator na szynie stacji — przynależność szyny z jednego
-  // lustra (strona górna leży na zacisku pola TR, nie na szynie głównej). Deklaracja
-  // `transformer_refs` ma pierwszeństwo przed przynależnością końca; koniec górny przed
-  // dolnym.
-  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
-  return stacjaSzyny.get(transformer.hv_bus_ref) ?? stacjaSzyny.get(transformer.lv_bus_ref) ?? null;
+  // SZYNY-STACJI-LUSTRO (commit 2): stacja transformatora z JEDNEJ reguły „transformatory
+  // stacji” (`stationRefOfTransformer`, odwrotność `selectStationDistributionTransformers`).
+  // Dawny skrót „ref wewnętrznego widoku stacji” (`stationRefFromInternalElement`) dopasowywał
+  // także realne refy modelu — `gpz/<id>/transformer/001/wn_sn` dawał „stację” `gpz/<id>`.
+  return stationRefOfTransformer(snapshot, transformerRef);
 }
 
 export function describeStationInternalElement(

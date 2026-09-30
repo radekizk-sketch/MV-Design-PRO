@@ -64,7 +64,7 @@ import {
 import { SekcjaDanychModulu } from '../../../ui2/oze/ncrfg/SekcjaDanychModulu';
 import { getTooltip } from '../../shared/engineerTooltips';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
-import { szynyStacji } from '../../shared/szynyStacji';
+import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -309,17 +309,11 @@ function resolveStationNnBus(
     (candidate) => candidate.ref_id === stationId || candidate.id === stationId,
   );
   if (!station) return null;
-  // SZYNY-STACJI-LUSTRO: transformator stacji po szynie z jednego lustra `szynyStacji`
-  // (strona górna leży na zacisku pola TR, nie na szynie głównej).
-  const busRefs = szynyStacji(station, snapshot.branches ?? []);
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
 
-  const transformerRefs = new Set(station.transformer_refs ?? []);
-  for (const transformer of snapshot.transformers ?? []) {
-    const ref = transformer.ref_id;
-    if (!transformerRefs.has(ref) && !busRefs.has(transformer.hv_bus_ref) && !busRefs.has(transformer.lv_bus_ref)) {
-      continue;
-    }
+  // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły
+  // (`selectStationDistributionTransformers` — bez transformatora blokowego źródła DER).
+  for (const transformer of selectStationDistributionTransformers(snapshot, station)) {
     const lvBus = busByRef.get(transformer.lv_bus_ref);
     if (lvBus) {
       return { busRef: lvBus.ref_id, name: lvBus.name, voltageKv: lvBus.voltage_kv };
@@ -402,70 +396,16 @@ function selectSnConnectionPointCandidates(
 }
 
 
-function readRefList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : [];
-}
-
 function readStationTransformers(snapshot: unknown, stationId: string | null): StationTransformerInfo[] {
   if (!snapshot || typeof snapshot !== 'object' || !stationId) return [];
-  const model = snapshot as {
-    readonly substations?: readonly Record<string, unknown>[];
-    readonly transformers?: readonly Record<string, unknown>[];
-    readonly generators?: readonly Record<string, unknown>[];
-    readonly branches?: readonly Record<string, unknown>[];
-  };
-  const station = model.substations?.find((candidate) =>
+  const model = snapshot as EnergyNetworkModel;
+  const station = (model.substations ?? []).find((candidate) =>
     candidate.ref_id === stationId || candidate.id === stationId);
   if (!station) return [];
 
-  const transformerRefs = new Set(readRefList(station.transformer_refs));
-  // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`.
-  const busRefs = szynyStacji(station, model.branches ?? []);
-  const blockTransformerRefs = new Set(
-    (model.generators ?? [])
-      .map((generator) => generator.blocking_transformer_ref)
-      .filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0),
-  );
-
-  const isStationDistributionTransformer = (transformer: Record<string, unknown>): boolean => {
-    const ref = transformer.ref_id ?? transformer.id;
-    if (typeof ref === 'string' && blockTransformerRefs.has(ref)) return false;
-
-    const catalogBinding = transformer.catalog_binding as Record<string, unknown> | undefined;
-    const meta = transformer.meta as Record<string, unknown> | undefined;
-    const tokens = [
-      transformer.name,
-      transformer.role,
-      transformer.transformer_role,
-      transformer.connection_variant,
-      catalogBinding?.catalog_namespace,
-      catalogBinding?.catalog_item_id,
-      meta?.role,
-      meta?.transformer_role,
-      meta?.connection_variant,
-      meta?.solution_kind,
-    ]
-      .filter((value): value is string => typeof value === 'string')
-      .join(' ')
-      .toLowerCase();
-
-    return !/(^|[\s_-])(block|blokowy|blok|dedicated|dedykowany|der|pv|bess|fw)([\s_-]|$)/u.test(tokens);
-  };
-
-  const related = model.transformers?.filter((transformer) => {
-    const ref = transformer.ref_id ?? transformer.id;
-    if (!isStationDistributionTransformer(transformer)) return false;
-    if (typeof ref === 'string' && transformerRefs.has(ref)) return true;
-    if (transformerRefs.size > 0) return false;
-    return (
-      (typeof transformer.hv_bus_ref === 'string' && busRefs.has(transformer.hv_bus_ref))
-      || (typeof transformer.lv_bus_ref === 'string' && busRefs.has(transformer.lv_bus_ref))
-    );
-  }) ?? [];
-
-  return related.flatMap((transformer) => {
+  // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły i JEDNEGO filtra
+  // transformatora blokowego źródła DER (`selectStationDistributionTransformers`).
+  return selectStationDistributionTransformers(model, station).flatMap((transformer) => {
     const ref = transformer.ref_id ?? transformer.id;
     const snMva = transformer.sn_mva;
     if (typeof ref !== 'string' || typeof snMva !== 'number' || !Number.isFinite(snMva)) {

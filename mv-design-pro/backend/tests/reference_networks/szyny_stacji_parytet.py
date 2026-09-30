@@ -13,6 +13,13 @@ przypiętych. Model ENM w pliku = obiekt z listami ``substations`` i ``branches`
 głębokości: migawka opakowana ``{"enm": …}``, scena harnessu, projekcja nN); jego położenie
 zapisujemy wskaźnikiem JSON (RFC 6901), żeby test frontu czytał TEN SAM obiekt.
 
+Zakres (commit 2 karty — jedna klasa „stacja i jej szyny”), klucze na każdy model:
+``szyny`` (``szyny_stacji``), ``szyny_glowne`` (``szyna_glowna_stacji`` dla każdej szyny stacji;
+w modelu iloczynu także dla każdego końca gałęzi), ``transformatory`` (``enm.pole_transformatorowe.
+transformatory_stacji``), ``zaciski_pol`` (``enm.zajetosc_pol.zacisk_pola`` każdej specyfikacji
+pola) i ``punkty_przylaczenia_rekordow_pol`` (``application.field_read_model.
+punkt_przylaczenia_pola`` każdego rekordu ``bays``).
+
 Determinizm: sortowane pliki, klucze i szyny; żadnej liczby zmiennoprzecinkowej (wynik nie
 zależy od numeryki ani liczby wątków BLAS). Zapis przez ``tests/golden/zapis_fikstur``.
 
@@ -26,9 +33,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
-from enm.tor_pola import szyny_stacji
+from application.field_read_model import punkt_przylaczenia_pola
+from enm.pole_transformatorowe import transformatory_stacji
+from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
+from enm.zajetosc_pol import zacisk_pola
 
 from tests.golden.zapis_fikstur import json_fikstury
 
@@ -159,7 +170,12 @@ MODEL_ILOCZYNU: dict[str, Any] = {
             "bus_refs": ["B/board"],
             "meta": {"nn_field_specs": [{"field_ref": "B/odp"}]},
         },
-        {"ref_id": "C/stacja-bez-meta", "station_type": "mv_lv", "bus_refs": ["C/sn"]},
+        {
+            "ref_id": "C/stacja-bez-meta",
+            "station_type": "mv_lv",
+            "bus_refs": ["C/sn"],
+            "transformer_refs": ["T/deklarowany-w-C"],
+        },
         {
             "ref_id": "D/stacja-bez-aparatow",
             "station_type": "mv_lv",
@@ -178,7 +194,145 @@ MODEL_ILOCZYNU: dict[str, Any] = {
         _nn("B/odp", "B/board", "B/odp-bus", "B/aparat-odp"),
         {"ref_id": "kabel", "from_bus_ref": "A/zacisk-in", "to_bus_ref": "Z/wolna", "meta": {}},
     ],
+    # Transformatory: {na szynie głównej, na zacisku pola, blokowy przez wskazanie źródła,
+    # blokowy przez rolę katalogową, na szynie obcej} × {stacja bez deklaracji (A),
+    # stacja z deklaracją wskazującą transformator poza jej szynami (C)}.
+    "transformers": [
+        {"ref_id": "T/na-szynie-glownej", "hv_bus_ref": "A/sn", "lv_bus_ref": "A/nn", "meta": {}},
+        {
+            "ref_id": "T/na-zacisku",
+            "hv_bus_ref": "A/zacisk-tr",
+            "lv_bus_ref": "A/zacisk-wg-nn",
+            "meta": {},
+        },
+        {
+            "ref_id": "T/blokowy-wskazany",
+            "hv_bus_ref": "A/zacisk-oze",
+            "lv_bus_ref": "A/odp-1",
+            "meta": {},
+        },
+        {
+            "ref_id": "T/blokowy-rola",
+            "hv_bus_ref": "A/zacisk-oze",
+            "lv_bus_ref": "A/odp-3",
+            "meta": {"catalog_role": "TRANSFORMATOR_BLOKOWY_DER"},
+        },
+        {"ref_id": "T/obcy", "hv_bus_ref": "X/obca", "lv_bus_ref": "X/obca-nn", "meta": {}},
+        {
+            "ref_id": "T/deklarowany-w-C",
+            "hv_bus_ref": "Z/wolna",
+            "lv_bus_ref": "Z/wolna-nn",
+            "meta": {},
+        },
+    ],
+    "generators": [{"ref_id": "G/pv", "blocking_transformer_ref": "T/blokowy-wskazany"}],
+    # Rekordy pól (`bays`): {zacisk w meta rekordu / w szablonie / w obu, różne / brak}.
+    "bays": [
+        {
+            "ref_id": "B/pole-meta",
+            "substation_ref": "A/stacja",
+            "bus_ref": "A/sn",
+            "meta": {"field_terminal_bus_ref": "A/zacisk-z-meta"},
+        },
+        {
+            "ref_id": "B/pole-szablon",
+            "substation_ref": "A/stacja",
+            "bus_ref": "A/sn",
+            "meta": {"sn_field_template": {"meta": {"terminal_bus_ref": "A/zacisk-z-szablonu"}}},
+        },
+        {
+            "ref_id": "B/pole-szablon-gorny-klucz",
+            "substation_ref": "A/stacja",
+            "bus_ref": "A/sn",
+            "meta": {"sn_field_template": {"field_terminal_bus_ref": "A/zacisk-szablon-gorny"}},
+        },
+        {
+            "ref_id": "B/pole-oba",
+            "substation_ref": "A/stacja",
+            "bus_ref": "A/sn",
+            "meta": {
+                "terminal_bus_ref": "A/zacisk-meta-wygrywa",
+                "sn_field_template": {"meta": {"field_terminal_bus_ref": "A/zacisk-przegrywa"}},
+            },
+        },
+        {
+            "ref_id": "B/pole-bez-zacisku",
+            "substation_ref": "A/stacja",
+            "bus_ref": "A/sn",
+            "meta": {},
+        },
+    ],
 }
+
+
+def _punkt_przylaczenia_rekordu(bay: dict[str, Any]) -> str:
+    """Backend `application.field_read_model.punkt_przylaczenia_pola` na rekordzie `bays`."""
+    return str(
+        punkt_przylaczenia_pola(
+            SimpleNamespace(meta=bay.get("meta") or {}, bus_ref=bay.get("bus_ref"))  # type: ignore[arg-type]
+        )
+    )
+
+
+def _oczekiwane_modelu(model: dict[str, Any], *, szyny_obce: bool = False) -> dict[str, Any] | None:
+    """Wszystkie odpowiedzi backendu z klasy „stacja i jej szyny” dla jednego modelu ENM."""
+    galezie = model.get("branches") or []
+    stacje = [
+        s
+        for s in model.get("substations") or []
+        if isinstance(s, dict) and isinstance(s.get("ref_id"), str)
+    ]
+    if not stacje:
+        return None
+    konce = sorted(
+        {
+            str(g[k])
+            for g in galezie
+            if isinstance(g, dict)
+            for k in ("from_bus_ref", "to_bus_ref")
+            if isinstance(g.get(k), str)
+        }
+    )
+    szyny: dict[str, Any] = {}
+    glowne: dict[str, Any] = {}
+    transformatory: dict[str, Any] = {}
+    for stacja in stacje:
+        ref = str(stacja["ref_id"])
+        nalezace = szyny_stacji(stacja, galezie)
+        szyny[ref] = sorted(nalezace)
+        # Szyna główna: każda szyna stacji; w modelu iloczynu także każdy koniec gałęzi modelu
+        # (szyny obce — `null`). Na fiksturach szyny obce pomijamy (rozmiar pliku ×20, a cechę
+        # pokrywa model iloczynu).
+        pytane = nalezace | set(konce) if szyny_obce else nalezace
+        glowne[ref] = {
+            szyna: szyna_glowna_stacji(stacja, galezie, szyna) for szyna in sorted(pytane)
+        }
+        transformatory[ref] = sorted(
+            str(t.get("ref_id"))
+            for t in transformatory_stacji(
+                stacja, model.get("transformers") or [], galezie, model.get("generators") or []
+            )
+        )
+    zaciski_pol = {
+        str(spec["field_ref"]): zacisk_pola(spec)
+        for stacja in stacje
+        for spec in (stacja.get("meta") or {}).get("field_specs") or []
+        if isinstance(spec, dict)
+        and isinstance(spec.get("field_ref"), str)
+        and spec["field_ref"].strip()
+    }
+    rekordy_pol = {
+        str(bay["ref_id"]): _punkt_przylaczenia_rekordu(bay)
+        for bay in model.get("bays") or []
+        if isinstance(bay, dict) and isinstance(bay.get("ref_id"), str)
+    }
+    return {
+        "punkty_przylaczenia_rekordow_pol": rekordy_pol,
+        "szyny": szyny,
+        "szyny_glowne": glowne,
+        "transformatory": transformatory,
+        "zaciski_pol": zaciski_pol,
+    }
 
 
 def oczekiwane_szyny_stacji() -> dict[str, Any]:
@@ -189,21 +343,18 @@ def oczekiwane_szyny_stacji() -> dict[str, Any]:
         for plik in sorted((FRONTEND / katalog).glob("*.json")):
             modele: dict[str, Any] = {}
             for wskaznik, model in _modele(json.loads(plik.read_text(encoding="utf-8"))):
-                galezie = model["branches"]
-                stacje = {
-                    str(stacja["ref_id"]): sorted(szyny_stacji(stacja, galezie))
-                    for stacja in model["substations"]
-                    if isinstance(stacja, dict) and isinstance(stacja.get("ref_id"), str)
-                }
-                if stacje:
-                    modele[wskaznik] = stacje
+                oczekiwane = _oczekiwane_modelu(model)
+                if oczekiwane is not None:
+                    modele[wskaznik] = oczekiwane
             if modele:
                 pliki[str(plik.relative_to(FRONTEND))] = modele
-    iloczyn = {
-        str(stacja["ref_id"]): sorted(szyny_stacji(stacja, MODEL_ILOCZYNU["branches"]))
-        for stacja in MODEL_ILOCZYNU["substations"]
+    return {
+        "iloczyn": {
+            "model": MODEL_ILOCZYNU,
+            **(_oczekiwane_modelu(MODEL_ILOCZYNU, szyny_obce=True) or {}),
+        },
+        "pliki": pliki,
     }
-    return {"iloczyn": {"model": MODEL_ILOCZYNU, "stacje": iloczyn}, "pliki": pliki}
 
 
 def render_parytetu() -> str:
