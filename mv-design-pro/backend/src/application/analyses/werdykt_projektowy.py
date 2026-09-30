@@ -112,6 +112,7 @@ from enm.hash import compute_enm_hash
 from enm.nazwy_elementow import opis_bez_nazwy
 from enm.store import get_enm
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import format_liczba
 
 # --- Stany kryterium ---------------------------------------------------------
@@ -1571,16 +1572,17 @@ def _kryteria_zrodla(rodzaj: str) -> tuple[str, ...]:
 def _bezpiecznie(
     budowniczy: Callable[[CanonicalRun], dict[str, Any]], bieg: CanonicalRun
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """Zbuduj widok dostawcy, zamieniajac jego ``ValueError`` na powod braku oceny.
+    """Zbuduj widok dostawcy, zamieniajac jego odmowe danych na powod braku oceny.
 
     Awaria JEDNEGO dostawcy nie moze wywalic calego werdyktu — inaczej brak jednej
     danej ukrylby wszystkie pozostale kryteria, czyli agregat bylby krucha wyspa.
-    ``ValueError`` to kanoniczny sposob, w jaki widoki analiz zglaszaja brak
-    podstawy do oceny (zly rodzaj biegu, brak wiersza wyniku).
+    ``OdmowaDanychError`` to kanoniczny sposob, w jaki widoki analiz zglaszaja brak
+    podstawy do oceny (zly rodzaj biegu, brak wiersza wyniku). Zwykly ``ValueError``
+    to blad programu i nie staje sie powodem braku oceny (karta ODMOWA-DANYCH-422).
     """
     try:
         return budowniczy(bieg), None
-    except ValueError as blad:
+    except OdmowaDanychError as blad:
         return None, str(blad)
 
 

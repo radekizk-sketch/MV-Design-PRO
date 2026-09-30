@@ -36,6 +36,7 @@ from api.main import app
 from domain.execution import ExecutionAnalysisType
 from domain.run_batch import compute_batch_input_hash, new_run_batch
 from fastapi.testclient import TestClient
+from network_model.odmowa_danych import OdmowaDanychError
 
 from tests.catalog_test_helpers import gpz_source_record
 
@@ -1089,14 +1090,21 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
 
 @pytest.mark.parametrize(
     ("typ", "kod_http"),
-    [(ValueError, 409), (AttributeError, 500), (KeyError, 500), (TypeError, 500)],
+    [
+        (OdmowaDanychError, 409),
+        (ValueError, 500),
+        (AttributeError, 500),
+        (KeyError, 500),
+        (TypeError, 500),
+    ],
 )
 def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_globalny(
     monkeypatch, typ, kod_http
 ):
     """Karta #151: dawny `except Exception` → HTTPException 500 z treścią wyjątku chował
-    ślad (HTTPException nie trafia do dziennika). Teraz odmowa `ValueError` = 409, a błąd
-    programu idzie do globalnego handlera: 500 „Wewnętrzny błąd serwera" + ślad w logu."""
+    ślad (HTTPException nie trafia do dziennika). Karta ODMOWA-DANYCH-422: 409 daje wyłącznie
+    nazwana odmowa danych; obcy `ValueError` jest błędem programu i idzie, jak każdy inny,
+    do globalnego handlera: 500 „Wewnętrzny błąd serwera" + ślad w logu."""
     import enm.canonical_analysis as kanon
 
     def _zepsuty(**kwargs):

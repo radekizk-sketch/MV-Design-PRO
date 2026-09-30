@@ -51,6 +51,7 @@ from domain.run_batch import RunBatch, RunBatchStatus
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["batch-execution"])
@@ -242,7 +243,7 @@ def create_batch(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

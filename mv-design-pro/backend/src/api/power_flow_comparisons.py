@@ -598,7 +598,7 @@ def export_power_flow_comparison_docx(
                 # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Info" z
                 # domyslu — cichy default 1 udawalby najmniejsza istotnosc
                 # zamiast sygnalizowac niekompletne dane porownania.
-                raise ValueError(
+                raise AssertionError(
                     f"Wpis rankingu problemów bez pola 'severity' "
                     f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porównania."
                 )
@@ -719,7 +719,7 @@ def export_power_flow_comparison_pdf(
             # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Info" z
             # domyslu — cichy default 1 udawalby najmniejsza istotnosc zamiast
             # sygnalizowac niekompletne dane porownania.
-            raise ValueError(
+            raise AssertionError(
                 f"Wpis rankingu problemów bez pola 'severity' "
                 f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porównania."
             )

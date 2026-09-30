@@ -63,6 +63,7 @@ from fastapi.responses import Response
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import ValidationError
 
 router = APIRouter()
@@ -397,7 +398,7 @@ def export_analysis_run_report_docx(
                 profile, detail_level, scope, sections, focus_table
             ),
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
@@ -432,7 +433,7 @@ def export_analysis_run_report_pdf(
                 profile, detail_level, scope, sections, focus_table
             ),
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
@@ -502,7 +503,7 @@ def export_analysis_run_proof_pdf(
     run = _require_canonical_run(run_id)
     try:
         response = export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
@@ -795,7 +796,7 @@ def get_short_circuit_band(
     run = _require_canonical_run(run_id)
     try:
         return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 

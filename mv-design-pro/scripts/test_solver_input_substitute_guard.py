@@ -1900,7 +1900,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # stacji, przynaleznosc szyn do stacji, wezel elektryczny). POMIAR guardem na drzewie karty.
         # Karta DOWOD-CIEPLNY: +1 (`application/slad_kroku.py`, zero wpisow). Partia integracji 6
         # po POLE-ZAJETE i POLA-W-TORZE: 559 + 1 = 560. POMIAR guardem na drzewie partii.
-        "Przeskanowano 560 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
+        # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
+        # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
+        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2022,7 +2025,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 5: network_model pliki 181 + 1 (#151) = 182, dlug 11/69 (AB-P1).
         # POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
+        # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

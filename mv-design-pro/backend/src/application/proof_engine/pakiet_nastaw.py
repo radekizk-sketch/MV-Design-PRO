@@ -53,6 +53,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     zaciski_galezi,
 )
 from enm.canonical_analysis import CanonicalRun
+from network_model.odmowa_danych import OdmowaDanychError
 
 _POWOD_KOTWICA_NIEZAKONCZONA = (
     "Przebieg nie zakończył się wynikiem — pakiet nastaw powstaje wyłącznie z "
@@ -82,7 +83,7 @@ _POWOD_BRAK_PARY_Z_PRADEM = (
 )
 
 
-class PakietNastawError(ValueError):
+class PakietNastawError(OdmowaDanychError):
     """Pakietu nastaw nie da się zbudować dla tych parametrów (powód po polsku).
 
     `kod` — kod z kanonu kodów gotowości, gdy odmowa go niesie (zacisk zabezpieczenia).
@@ -306,7 +307,7 @@ def zbuduj_pakiet_nastaw(
     )
     try:
         zawartosc = ProtectionSettingsProofPack.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietNastawError(f"Nie udało się złożyć pakietu dowodowego nastaw: {exc}") from exc
     nazwa_pliku = f"pakiet_dowodowy_nastawy__{run.id}__{line_id}.zip"
     return nazwa_pliku, zawartosc

@@ -33,6 +33,7 @@ from __future__ import annotations
 from analysis.voltage_profile.models import VoltageProfileSegment, VoltageProfileSegmentPath
 from network_model.core.graph import NetworkGraph
 from network_model.core.topologia import przeglad_wszerz
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
@@ -49,7 +50,7 @@ from network_model.solvers.power_flow_result import PowerFlowResultV1
 _TELESCOPING_TOLERANCE_KV = 1e-4
 
 
-class VoltageProfileSegmentPathError(ValueError):
+class VoltageProfileSegmentPathError(OdmowaDanychError):
     """Węzeł źródłowy/docelowy nieznany w grafie albo nieosiągalny z niego."""
 
 

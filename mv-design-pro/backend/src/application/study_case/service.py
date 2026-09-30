@@ -38,6 +38,7 @@ from domain.study_case import (
     compare_study_cases,
     new_study_case,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 
 from .errors import (
     ActiveCaseRequiredError,
@@ -476,7 +477,7 @@ class StudyCaseService:
             _migawka_modelu_przypadku(str(case_id), self._uow_factory), overrides or {}
         )
         if powody:
-            raise ValueError(" ".join(powody))
+            raise OdmowaDanychError(" ".join(powody))
 
         with self._uow_factory() as uow:
             repo = uow.cases
@@ -498,7 +499,7 @@ class StudyCaseService:
                 )
 
                 if get_protection_template(uow, template_ref) is None:
-                    raise ValueError(
+                    raise OdmowaDanychError(
                         f"Szablon nastaw zabezpieczeń '{template_ref}' " "nie istnieje w katalogu"
                     )
 

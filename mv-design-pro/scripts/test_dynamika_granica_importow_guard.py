@@ -123,11 +123,40 @@ def test_dozwolone_importy_nie_czerwienia_bramki() -> None:
         "from scipy import sparse\n"
         "from scipy.sparse import linalg\n"
         "from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm\n"
+        "from network_model.odmowa_danych import OdmowaDanychError\n"
         "from .kontrakty import OdmowaDynamiki\n"
         "from .urzadzenia.bazowe import admitancja_wewnetrzna\n"
     )
     with _wstrzyknij("_iniekcja_dozwolona.py", dozwolone):
         assert znajdz_naruszenia() == []
+
+
+def test_wlasne_dozwolone_sa_liscmi_biblioteki_standardowej() -> None:
+    """Deklaracja z docstringu allowlisty przypieta pomiarem: kazdy dozwolony modul WLASNY
+    importuje (sam i w podmodulach) wylacznie biblioteke standardowa albo siebie."""
+    import ast
+
+    src = Path(__file__).resolve().parents[1] / "backend" / "src"
+    for modul in sorted(WLASNE_DOZWOLONE):
+        baza = src / modul.replace(".", "/")
+        pliki = sorted(baza.rglob("*.py")) if baza.is_dir() else [baza.with_suffix(".py")]
+        assert pliki, modul
+        for plik in pliki:
+            for wezel in ast.walk(ast.parse(plik.read_text(encoding="utf-8"))):
+                if isinstance(wezel, ast.ImportFrom):
+                    if wezel.level:
+                        continue
+                    nazwy = [wezel.module or ""]
+                elif isinstance(wezel, ast.Import):
+                    nazwy = [alias.name for alias in wezel.names]
+                else:
+                    continue
+                for nazwa in nazwy:
+                    korzen = nazwa.split(".")[0]
+                    assert nazwa.startswith(modul) or korzen in sys.stdlib_module_names, (
+                        plik,
+                        nazwa,
+                    )
 
 
 def test_allowlisty_sa_zamkniete_i_opisane() -> None:
@@ -146,4 +175,4 @@ def test_allowlisty_sa_zamkniete_i_opisane() -> None:
         }
     )
     assert OBCE_DOZWOLONE == frozenset({"numpy", "scipy.sparse", "scipy.sparse.linalg"})
-    assert WLASNE_DOZWOLONE == frozenset({"network_model.pochodne"})
+    assert WLASNE_DOZWOLONE == frozenset({"network_model.pochodne", "network_model.odmowa_danych"})

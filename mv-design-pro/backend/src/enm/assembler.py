@@ -65,6 +65,7 @@ from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
 from network_model.core.voltage_factor import Scenario
 from network_model.core.ybus import S_BASE_MVA
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_odniesiona_do_napiecia_ohm,
     impedancja_wlasna_ohm,
@@ -117,7 +118,7 @@ def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitTyp
     }
     if raw in mapping:
         return mapping[raw]
-    raise ValueError(f"Nieobsługiwany typ zwarcia: {raw}")
+    raise OdmowaDanychError(f"Nieobsługiwany typ zwarcia: {raw}")
 
 
 def _short_circuit_requires_z0(short_circuit_type: ShortCircuitType) -> bool:
@@ -223,7 +224,7 @@ def _normalize_power_flow_solver_method(raw_method: object) -> str:
         return "gauss-seidel"
     if normalized in {"FD", "FDLF", "FAST_DECOUPLED"}:
         return "fast-decoupled"
-    raise ValueError(f"Nieznany tryb rozpływu mocy: {raw_method}")
+    raise OdmowaDanychError(f"Nieznany tryb rozpływu mocy: {raw_method}")
 
 
 def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) -> list[ShuntSpec]:
@@ -255,18 +256,18 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
         ref_id = str(raw.get("ref_id") or "")
         bus_ref = str(raw.get("bus_ref") or "")
         if not bus_ref:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Bateria kondensatorów '{ref_id}' nie ma przypisanej szyny (bus_ref)."
             )
         rated_mvar = raw.get("rated_mvar")
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Bateria kondensatorów '{ref_id}' nie ma dodatniej mocy "
                 f"znamionowej (rated_mvar)."
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Bateria kondensatorów '{ref_id}' nie ma dodatniego napięcia "
                 f"znamionowego (rated_kv)."
             )
@@ -384,7 +385,7 @@ def _build_converter_control_by_node(
             continue
         node_id = _graph_id_from_ref(bus_ref.strip())
         if node_id in out:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Szyna {bus_ref.strip()} ma więcej niż jedno źródło z aktywną regulacją "
                 "falownika; kontrakt rozpływu dopuszcza jedną charakterystykę na węzeł"
             )
@@ -422,7 +423,7 @@ def _build_converter_control_by_node(
 KOD_WIELE_ZRODEL_W_WYSPIE = "source.multiple_grid_sources_in_island"
 
 
-class OdmowaWejsciaRozplywu(ValueError):
+class OdmowaWejsciaRozplywu(OdmowaDanychError):
     """Odmowa złożenia wejścia rozpływu z kodem gotowości kanonu (``READINESS_CODES``).
 
     ``kod`` = kod kanonu (ten sam, który emituje bramka gotowości
@@ -701,7 +702,7 @@ def zloz_wejscie_rozplywu(
     # (``OdmowaWejsciaRozplywu``, kod ``source.multiple_grid_sources_in_island``).
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
-        raise ValueError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
+        raise OdmowaDanychError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
     # O-49 pkt 5: szyna, której odbiorów ZIP rozpływ nie odwzorowuje dokładnie (jeden
     # wielomian na szynę), jest odmową NAZWANĄ — nigdy cichym złym wynikiem. Ten sam
     # predykat czyta bramka gotowości (`_check_power_flow`). Dokładne odwzorowanie wielu
@@ -750,7 +751,7 @@ def zloz_wejscie_rozplywu(
         qmin = _oze_opt_float(meta.get("q_min_mvar"))
         qmax = _oze_opt_float(meta.get("q_max_mvar"))
         if qmin is None or qmax is None or qmin >= qmax:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Generator '{gen.get('ref_id')}' w trybie regulacji napięcia nie ma "
                 "kompletnych/spójnych granic mocy biernej (q_min_mvar < q_max_mvar) — "
                 "walidator ENM powinien odrzucić ten stan kodem "
@@ -842,7 +843,7 @@ def zloz_wejscie_rozplywu(
     # kształtowania) są już policzone.
     for pv_spec in pv_specs:
         if pv_spec.node_id in converter_control_by_node:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Szyna węzła PV '{pv_spec.node_id}' ma dodatkowo generator z aktywną "
                 "regulacją falownika (cosφ/Q(U)/statyzm P(f)) — węzeł PV niesie "
                 "WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu nie ma miejsca "
@@ -973,7 +974,9 @@ def zloz_wejscie_zwarcia(
     # Zero duplikacji wzorów, solver FROZEN nietknięty.
     scenario_raw = str(options.get("scenario", "max")).strip().lower()
     if scenario_raw not in ("max", "min"):
-        raise ValueError(f"Nieznany scenariusz zwarcia: {scenario_raw!r} (oczekiwano 'max'/'min')")
+        raise OdmowaDanychError(
+            f"Nieznany scenariusz zwarcia: {scenario_raw!r} (oczekiwano 'max'/'min')"
+        )
     scenario_c: Scenario = "MAX" if scenario_raw == "max" else "MIN"
 
     # Jawny c_factor w options = OVERRIDE płaski dla wszystkich węzłów (zachowanie
@@ -999,7 +1002,7 @@ def zloz_wejscie_zwarcia(
     else:
         tryb_wkladow = str(tryb_wkladow_surowy).strip().lower()
     if tryb_wkladow not in ("on_demand", "in_run"):
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
             "(oczekiwano 'on_demand'/'in_run')"
         )
@@ -1067,33 +1070,33 @@ def zloz_wejscie_zwarcia(
     location_raw = options.get("location")
     if location_raw is not None:
         if not isinstance(location_raw, dict):
-            raise ValueError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
+            raise OdmowaDanychError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
         location_type = location_raw.get("location_type")
         element_ref = str(location_raw.get("element_ref") or "")
         if location_type in ("BUS", "NODE"):
             if not element_ref:
-                raise ValueError(
+                raise OdmowaDanychError(
                     "Lokalizacja zwarcia scenariusza nie wskazuje elementu (element_ref)"
                 )
             target_node_id = _graph_id_from_ref(element_ref)
             if target_node_id not in graph.nodes:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł zwarcia {element_ref!r} ze scenariusza nie istnieje w modelu sieci"
                 )
             if target_node_id not in reportable_fault_node_ids:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł zwarcia {element_ref!r} jest węzłem pomocniczym "
                     "(skip_short_circuit_target) — nie jest raportowalnym punktem zwarcia"
                 )
             reportable_fault_node_ids = [target_node_id]
         elif location_type in ("BRANCH", "BRANCH_POINT"):
             spec = READINESS_CODES["fault.location_on_branch_requires_assembler"]
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"{spec.message_pl} (element_ref={element_ref!r}, "
                 f"location_type={location_type!r})"
             )
         else:
-            raise ValueError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+            raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
     zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
     # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc pozostaje
     # DEFAULT_FORBIDDEN"): ślad WHITE BOX założeń k_sc (`graph.

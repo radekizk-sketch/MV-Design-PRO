@@ -52,6 +52,7 @@ from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from network_model.odmowa_danych import OdmowaDanychError
 
 from .audit import collect_validation_messages
 from .energization import upstream_source_refs_by_system
@@ -78,11 +79,11 @@ LV_DOMAIN_PROJECTION_CONTRACT = "LvDomainProjectionV1"
 LV_DOMAIN_PROJECTION_VERSION = "4.0.0"
 
 
-class LvDomainProjectionRunMismatch(ValueError):
+class LvDomainProjectionRunMismatch(OdmowaDanychError):
     """Przebieg jawnie wskazany do projekcji należy do innego przypadku."""
 
 
-class LvDomainProjectionRunUnavailable(ValueError):
+class LvDomainProjectionRunUnavailable(OdmowaDanychError):
     """Przebieg jawnie wskazany do projekcji nie ma gotowego wyniku."""
 
 

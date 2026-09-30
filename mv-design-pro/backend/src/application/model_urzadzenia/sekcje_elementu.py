@@ -50,6 +50,7 @@ from network_model.catalog.sekcje_modelu import (
     oceny_sekcji,
     typ_katalogowy,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mvar_na_kvar, mw_na_kw
 from werdykt.proweniencja import FieldQuality
 
@@ -95,7 +96,7 @@ _POLA_TYPOWANE: Mapping[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = Ma
 )
 
 
-class OdmowaSekcjiElementu(ValueError):
+class OdmowaSekcjiElementu(OdmowaDanychError):
     """Nazwana odmowa odczytu sekcji elementu (``kod`` = kod błędu dla konsumenta)."""
 
     def __init__(self, kod: str, komunikat: str) -> None:

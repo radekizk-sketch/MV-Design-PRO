@@ -71,6 +71,7 @@ from enm.canonical_analysis import get_run as get_canonical_run
 from enm.nazwy_elementow import nazwa_po_identyfikatorze
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -175,7 +176,7 @@ def get_sanity_bounds(run_id: UUID = Query(...)) -> dict[str, Any]:
         if run.analysis_type == "PF":
             return build_power_flow_sanity_bounds_view(run)
         return build_sanity_bounds_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -187,7 +188,7 @@ def get_energy_validation(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_energy_validation_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -216,7 +217,7 @@ def get_voltage_profile(
     run = _require_run(run_id)
     try:
         return build_voltage_profile_view(run, node_ref=node_ref, worst_nn=worst_nn)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -228,7 +229,7 @@ def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_migotanie_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -247,7 +248,7 @@ def get_conductor_thermal_withstand(request: Request, run_id: UUID = Query(...))
     uow_factory = getattr(request.app.state, "uow_factory", None)
     try:
         return build_wytrzymalosc_cieplna_view(run, uow_factory)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -271,7 +272,7 @@ def get_conductor_thermal_withstand_proof(
     try:
         # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu.
         return zbuduj_dowod_cieplny(run, branch_id, getattr(request.app.state, "uow_factory", None))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -290,7 +291,7 @@ def get_connection_conditions(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_warunki_przylaczenia_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -306,10 +307,12 @@ def post_as_built_compliance(zadanie: ZgodnoscZadanie) -> dict[str, Any]:
         elif zadanie.pomiary:
             pomiary = [pomiar.model_dump() for pomiar in zadanie.pomiary]
         else:
-            raise ValueError("Brak pomiarów: podaj listę 'pomiary' albo tekst 'csv' w żądaniu.")
+            raise OdmowaDanychError(
+                "Brak pomiarów: podaj listę 'pomiary' albo tekst 'csv' w żądaniu."
+            )
         tolerancje = zadanie.tolerancje.model_dump() if zadanie.tolerancje else {}
         return build_zgodnosc_powykonawcza_view(run, pomiary, tolerancje)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -326,7 +329,7 @@ def get_state_estimation_requirements(run_id: UUID = Query(...)) -> dict[str, An
     run = _require_run(run_id)
     try:
         return build_state_estimation_requirements(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -352,7 +355,7 @@ def post_state_estimation(zadanie: StanWLSZadanie) -> dict[str, Any]:
             lnr_threshold=zadanie.lnr_threshold,
             include_trace=zadanie.include_trace,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -371,7 +374,7 @@ def post_arc_flash(zadanie: ArcFlashZadanie) -> dict[str, Any]:
             electrode_config=zadanie.electrode_config,
             enclosure_type=zadanie.enclosure_type,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -442,7 +445,7 @@ def post_arc_flash_report(zadanie: ArcFlashReportZadanie) -> dict[str, Any]:
 
     try:
         ctx = _arc_flash_report_context(zadanie)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -464,7 +467,7 @@ def post_arc_flash_report_pdf(zadanie: ArcFlashReportZadanie) -> Response:
 
     try:
         ctx = _arc_flash_report_context(zadanie)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -482,7 +485,7 @@ def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
 
     try:
         ctx = _arc_flash_report_context(zadanie)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

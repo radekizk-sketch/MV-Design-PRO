@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import numpy as np
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_zip import ZipCoeffs, declares_zip_split
 
 _TOL = 1e-9
@@ -150,20 +151,20 @@ def _cosphi_p_ratio(c: InverterControl, p_frac: float) -> float:
 def validate_inverter_control(c: InverterControl) -> None:
     """Reject malformed control (no guessing — Rule: physics rejects bad input)."""
     if c.f0_hz <= 0.0:
-        raise ValueError(f"inverter f0_hz must be > 0, got {c.f0_hz}")
+        raise OdmowaDanychError(f"inverter f0_hz must be > 0, got {c.f0_hz}")
     if c.lfsm_droop_pct < 0.0:
-        raise ValueError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
+        raise OdmowaDanychError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
     if c.mode is InverterMode.Q_U:
         if c.qu_deadband_low_pu > c.qu_deadband_high_pu:
-            raise ValueError("Q(U) deadband_low must be <= deadband_high")
+            raise OdmowaDanychError("Q(U) deadband_low must be <= deadband_high")
         if c.qu_slope_pu_per_pu < 0.0:
-            raise ValueError("Q(U) slope must be >= 0 (sign is applied by the curve)")
+            raise OdmowaDanychError("Q(U) slope must be >= 0 (sign is applied by the curve)")
         if c.qu_q_min_pu > c.qu_q_max_pu:
-            raise ValueError("Q(U) q_min must be <= q_max")
+            raise OdmowaDanychError("Q(U) q_min must be <= q_max")
     if c.mode is InverterMode.COSPHI_P:
         xs = [x for x, _ in c.cosphi_p_points]
         if xs != sorted(xs):
-            raise ValueError("COSPHI_P points must be ascending in p_frac")
+            raise OdmowaDanychError("COSPHI_P points must be ascending in p_frac")
 
 
 @dataclass(frozen=True)

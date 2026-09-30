@@ -48,6 +48,7 @@ from enm.canonical_analysis import (
 )
 from enm.canonical_analysis import get_run as get_canonical_run
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 
 
@@ -300,12 +301,12 @@ def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
 
 def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
-        raise ValueError("Przebieg nie jest rozpływem mocy")
+        raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise ValueError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
     result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
-        raise ValueError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
+        raise OdmowaDanychError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
     # Karta W3-J: kryteria napięciowe ADDYTYWNE, budowane ŚWIEŻO z jednego źródła
     # prawdy (`analysis.normative.kryteria_napiecia`) — to konfiguracja, nie wynik
     # fizyczny biegu, więc nie jest przechowywana w `raw_result`. Kopia płytka
@@ -317,11 +318,11 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
 
 def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
-        raise ValueError("Przebieg nie jest rozpływem mocy")
+        raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise ValueError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
     if run.power_flow_trace is None:
-        raise ValueError(f"Ślad obliczeniowy nie jest dostępny dla przebiegu {run.id}")
+        raise OdmowaDanychError(f"Ślad obliczeniowy nie jest dostępny dla przebiegu {run.id}")
     trace = dict(run.power_flow_trace)
     extended_trace = build_extended_trace(run)
     trace.setdefault("catalog_context", extended_trace.get("catalog_context", []))
@@ -475,9 +476,10 @@ def _baza_mocy_punktu_pracy(pf_run_id: object) -> float | None:
     w której adapter przeliczył moce na jednostki względne (`enm.adapter_dynamiki.
     punkt_pracy_z_biegu_rozplywu`). `None`, gdy bieg rozpływu nie jest już dostępny."""
     try:
-        bieg = get_canonical_run(UUID(str(pf_run_id)))
+        identyfikator = UUID(str(pf_run_id))
     except ValueError:
         return None
+    bieg = get_canonical_run(identyfikator)
     wynik = ((bieg.raw_result or {}).get("result_v1") or {}) if bieg is not None else {}
     baza = wynik.get("base_mva")
     return float(baza) if isinstance(baza, int | float) else None

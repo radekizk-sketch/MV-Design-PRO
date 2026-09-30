@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -137,5 +138,5 @@ def compute_fault_loop_endpoint(
         return FaultLoopComputeResponse(**result.to_dict())
     except NotImplementedError as e:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e)) from e
-    except ValueError as e:
+    except OdmowaDanychError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e

@@ -28,9 +28,10 @@ from application.dokumentacja_wykonawcza import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import opis_bez_nazwy
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from fastapi.responses import Response
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
@@ -308,7 +309,7 @@ def build_analysis_run_report_payload(
 
 def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Eksport raportu z kanonicznego obliczenia jest obecnie dostępny tylko dla rozpływu mocy.",
         )
     return build_power_flow_export_bundle(run)
@@ -316,7 +317,7 @@ def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
 
 def _build_short_circuit_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError("Przebieg nie jest analizą zwarciową")
+        raise OdmowaDanychError("Przebieg nie jest analizą zwarciową")
     analysis_case_context = build_analysis_case_context(run)
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     return {
@@ -574,7 +575,7 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
 def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]:
     trace_payload: dict[str, Any] = canonicalize_json(build_extended_trace_response(run))
     if not trace_payload.get("white_box_trace"):
-        raise ValueError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
+        raise OdmowaDanychError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
     short_circuit_currents = _build_short_circuit_proof_currents(run)
     if short_circuit_currents:
         trace_payload["short_circuit_proof_currents"] = short_circuit_currents
@@ -588,9 +589,10 @@ def _amps_to_ka(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return a_na_ka(float(value))
+        amper = float(value)
     except (TypeError, ValueError):
         return None
+    return a_na_ka(amper)
 
 
 def _fmt_liczba(value: Any) -> str:
@@ -874,8 +876,9 @@ def export_run_docx_response(
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.shared import Pt
     except ImportError as exc:
-        raise ValueError(
-            "Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
         ) from exc
 
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -1001,8 +1004,9 @@ def export_run_pdf_response(
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
     except ImportError as exc:
-        raise ValueError(
-            "Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
         ) from exc
 
     bundle = _require_power_flow_bundle(run)
@@ -1153,8 +1157,9 @@ def export_run_report_docx_response(
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.shared import Pt
     except ImportError as exc:
-        raise ValueError(
-            "Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
         ) from exc
 
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -1347,8 +1352,9 @@ def export_run_report_pdf_response(
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
     except ImportError as exc:
-        raise ValueError(
-            "Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
         ) from exc
 
     payload = build_analysis_run_report_payload(run, report_options=report_options)
@@ -1520,8 +1526,9 @@ def export_run_trace_pdf_response(
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
     except ImportError as exc:
-        raise ValueError(
-            "Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
         ) from exc
 
     trace_payload = build_analysis_run_trace_export_payload(run)

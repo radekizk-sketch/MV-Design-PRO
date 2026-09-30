@@ -31,6 +31,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 # Źródła falownikowe (Inverter-Based Generation) — SCR dotyczy punktu przyłączenia
 # źródeł energoelektronicznych; zbiór = kanoniczny `GEN_TYPES_PRZEKSZTALTNIKOWE`
@@ -198,12 +199,12 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
             nie został zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Siła sieci (SCR/WSCR) wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )

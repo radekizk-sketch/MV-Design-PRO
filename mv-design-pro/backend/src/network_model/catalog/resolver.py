@@ -14,6 +14,7 @@ from enum import Enum
 
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CableType, LineType
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 class ParameterSource(Enum):
@@ -116,7 +117,7 @@ class ResolvedTransformerParams:
     source: ParameterSource
 
 
-class TypeNotFoundError(ValueError):
+class TypeNotFoundError(OdmowaDanychError):
     """Raised when type_ref points to non-existent catalog entry."""
 
     def __init__(self, type_ref: str, equipment_type: str):
