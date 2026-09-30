@@ -462,6 +462,22 @@
     },
     {
       "area": "STATIONS",
+      "code": "station.element_bypasses_field"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.field_role_unknown"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.kind_mismatch"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.line_field_multiple_segments"
+    },
+    {
+      "area": "STATIONS",
       "code": "station.nn_outgoing_min_1"
     },
     {
@@ -573,5 +589,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 147
 }

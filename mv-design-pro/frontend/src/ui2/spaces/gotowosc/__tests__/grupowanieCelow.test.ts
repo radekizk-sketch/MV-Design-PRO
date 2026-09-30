@@ -231,3 +231,27 @@ describe('naProblemGotowosci — priorytet kanoniczny przepisany BEZ ZMIAN', () 
     expect(b.priorytetKanoniczny).toBeNull();
   });
 });
+
+describe('naProblemGotowosci — cel po kodzie kanonicznym zgłoszenia walidatora', () => {
+  // Zgłoszenia walidatora ENM niosą surowy kod bez kropki (`W043`, `E009`) i — gdy most
+  // `readiness_bridge` zna ten sam warunek — kod kanoniczny. Cel idzie za kodem
+  // kanonicznym; kod surowy zostaje w `code`. Iloczyn: {kod kanoniczny obecny, brak} ×
+  // {kod surowy walidatora, kod już kanoniczny}.
+  it.each([
+    ['W043', 'station.kind_mismatch', 'stacje'],
+    ['W044', 'station.field_role_unknown', 'stacje'],
+    ['E009', 'catalog.binding_missing', 'wspolne'],
+  ])('kod %s z kodem kanonicznym %s → cel %s', (code, canonical, cel) => {
+    const problem = naProblemGotowosci(readinessIssue({ code, canonical_code: canonical }));
+    expect(problem.cel).toBe(cel);
+    expect(problem.code).toBe(code);
+  });
+
+  it('kod surowy bez kodu kanonicznego → „Pozostałe" (bez zgadywania)', () => {
+    expect(naProblemGotowosci(readinessIssue({ code: 'W043' })).cel).toBe('pozostale');
+  });
+
+  it('kod już kanoniczny bez pola canonical_code → cel z tego kodu', () => {
+    expect(naProblemGotowosci(readinessIssue({ code: 'station.kind_mismatch' })).cel).toBe('stacje');
+  });
+});
