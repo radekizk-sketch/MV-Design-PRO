@@ -799,43 +799,43 @@
     },
     "seg/0a7f7e1b5182d5c534abe999ddb4f031/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261278
+      "p_from_mw": 0.261316
     },
     "seg/0f0826bee0ffe942518a75bdbfb34900/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -4.130431
+      "p_from_mw": -4.122716
     },
     "seg/0f0826bee0ffe942518a75bdbfb34900/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -4.274641
+      "p_from_mw": -4.266989
     },
     "seg/0f0826bee0ffe942518a75bdbfb34900/segment_L_R_R": {
       "direction": "reverse",
-      "p_from_mw": -4.41725
+      "p_from_mw": -4.409661
     },
     "seg/0f0826bee0ffe942518a75bdbfb34900/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -6.135676
+      "p_from_mw": -6.128635
     },
     "seg/118f471e5305f1a4f5140365d1f916cb/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261318
+      "p_from_mw": 0.261356
     },
     "seg/18ff1bb30e7629a3fa68d58761d18b7a/segment": {
       "direction": "reverse",
-      "p_from_mw": -2.688814
+      "p_from_mw": -2.680611
     },
     "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.180263
+      "p_from_mw": 0.180275
     },
     "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120173
+      "p_from_mw": 0.120181
     },
     "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060086
+      "p_from_mw": 0.06009
     },
     "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_R_R_R": {
       "direction": "none",
@@ -843,15 +843,15 @@
     },
     "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.432443
+      "p_from_mw": 0.432522
     },
     "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120172
+      "p_from_mw": 0.12018
     },
     "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060086
+      "p_from_mw": 0.06009
     },
     "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_R_R_R": {
       "direction": "none",
@@ -859,43 +859,43 @@
     },
     "seg/31addaeaf64fc1546cc01691ef797528/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.655571
+      "p_from_mw": -5.651277
     },
     "seg/334757b723dbfd8783407030301fe895/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.300435
+      "p_from_mw": 0.300454
     },
     "seg/334757b723dbfd8783407030301fe895/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.240341
+      "p_from_mw": 0.240356
     },
     "seg/334757b723dbfd8783407030301fe895/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.180254
+      "p_from_mw": 0.180265
     },
     "seg/334757b723dbfd8783407030301fe895/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120169
+      "p_from_mw": 0.120177
     },
     "seg/334757b723dbfd8783407030301fe895/branch_segment_R_R_R_R": {
       "direction": "forward",
-      "p_from_mw": 0.060085
+      "p_from_mw": 0.060089
     },
     "seg/43249d8fb3c5c11e5e83a7a0150a4f78/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -4.930957
+      "p_from_mw": -4.926419
     },
     "seg/43249d8fb3c5c11e5e83a7a0150a4f78/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.643144
+      "p_from_mw": -5.638862
     },
     "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.120169
+      "p_from_mw": 0.120177
     },
     "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060084
+      "p_from_mw": 0.060088
     },
     "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_R_R_L_SL": {
       "direction": "none",
@@ -907,39 +907,39 @@
     },
     "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_R_R_R": {
       "direction": "reverse",
-      "p_from_mw": -0.060084
+      "p_from_mw": -0.060088
     },
     "seg/47093797adf000edb02569c114c3d225/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.601888
+      "p_from_mw": -5.595636
     },
     "seg/47093797adf000edb02569c114c3d225/segment_L_R": {
       "direction": "reverse",
-      "p_from_mw": -4.256795
+      "p_from_mw": -4.252027
     },
     "seg/47093797adf000edb02569c114c3d225/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.906011
+      "p_from_mw": -4.901495
     },
     "seg/4d129884adae1cca27fdd6b2f7467827/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.111078
+      "p_from_mw": -4.103361
     },
     "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.240346
+      "p_from_mw": 0.240362
     },
     "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.180255
+      "p_from_mw": 0.180267
     },
     "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120169
+      "p_from_mw": 0.120177
     },
     "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060084
+      "p_from_mw": 0.060088
     },
     "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -947,63 +947,63 @@
     },
     "seg/4f19727cc7a3c3d44aba62b7e9f41f12/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.909394
+      "p_from_mw": -4.904875
     },
     "seg/54ff839c43f474caacee190ccdd6f323/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.587791
+      "p_from_mw": -5.581552
     },
     "seg/61ca9ff900c88bf78731c8d8fefca519/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.143791
+      "p_from_mw": -6.136743
     },
     "seg/7694bca4766b60c440efa535df2d08db/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -6.1668
+      "p_from_mw": -6.159731
     },
     "seg/7694bca4766b60c440efa535df2d08db/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.574425
+      "p_from_mw": -5.568199
     },
     "seg/823095e864e9fac6a81af262aa542655/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.648465
+      "p_from_mw": -5.644177
     },
     "seg/8c4d5865dcd0fc703c4e31a4a4a7a314/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.580151
+      "p_from_mw": -5.57392
     },
     "seg/939e7735c9113186bcfd15b1808bcbe8/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.664178
+      "p_from_mw": -5.659875
     },
     "seg/939e7735c9113186bcfd15b1808bcbe8/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -5.867283
+      "p_from_mw": -5.863041
     },
     "seg/939e7735c9113186bcfd15b1808bcbe8/segment_L_R_R": {
       "direction": "reverse",
-      "p_from_mw": -0.650646
+      "p_from_mw": -0.649883
     },
     "seg/939e7735c9113186bcfd15b1808bcbe8/segment_R": {
       "direction": "forward",
-      "p_from_mw": 0.261371
+      "p_from_mw": 0.261409
     },
     "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.240344
+      "p_from_mw": 0.24036
     },
     "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.180254
+      "p_from_mw": 0.180265
     },
     "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120168
+      "p_from_mw": 0.120176
     },
     "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060084
+      "p_from_mw": 0.060088
     },
     "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -1011,15 +1011,15 @@
     },
     "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.93694
+      "p_from_mw": 0.937157
     },
     "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.624569
+      "p_from_mw": 0.624712
     },
     "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.312275
+      "p_from_mw": 0.312346
     },
     "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_R_R_R": {
       "direction": "none",
@@ -1027,23 +1027,23 @@
     },
     "seg/9db5ab51469071fc8ca666aab904e037/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -2.698225
+      "p_from_mw": -2.690032
     },
     "seg/9db5ab51469071fc8ca666aab904e037/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.106762
+      "p_from_mw": -4.099045
     },
     "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.18026
+      "p_from_mw": 0.180272
     },
     "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120171
+      "p_from_mw": 0.120179
     },
     "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060085
+      "p_from_mw": 0.060089
     },
     "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_R_R_R": {
       "direction": "none",
@@ -1051,7 +1051,7 @@
     },
     "seg/b3277fd1295971b5d2ce8aa262108146/segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.261247
+      "p_from_mw": 0.261285
     },
     "seg/b3277fd1295971b5d2ce8aa262108146/segment_R": {
       "direction": "none",
@@ -1059,19 +1059,19 @@
     },
     "seg/b863a867ba40434595813133bdb7d411/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.1226
+      "p_from_mw": -4.114885
     },
     "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.180263
+      "p_from_mw": 0.180275
     },
     "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120173
+      "p_from_mw": 0.120181
     },
     "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060086
+      "p_from_mw": 0.06009
     },
     "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_R_R_R": {
       "direction": "none",
@@ -1079,27 +1079,27 @@
     },
     "seg/c7fde61ec970c7bc9056610f50770a03/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.917396
+      "p_from_mw": -4.91287
     },
     "seg/d0b07fb46cbeb52cb9f602d3b2e095d8/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.923558
+      "p_from_mw": -4.919026
     },
     "seg/d489b4398062689c12ebff4028163116/branch_segment_L": {
       "direction": "reverse",
-      "p_from_mw": -3.689799
+      "p_from_mw": -3.68776
     },
     "seg/d489b4398062689c12ebff4028163116/branch_segment_R_L": {
       "direction": "reverse",
-      "p_from_mw": -2.768246
+      "p_from_mw": -2.766722
     },
     "seg/d489b4398062689c12ebff4028163116/branch_segment_R_R_L": {
       "direction": "reverse",
-      "p_from_mw": -1.84572
+      "p_from_mw": -1.844706
     },
     "seg/d489b4398062689c12ebff4028163116/branch_segment_R_R_R_L": {
       "direction": "reverse",
-      "p_from_mw": -0.922897
+      "p_from_mw": -0.922391
     },
     "seg/d489b4398062689c12ebff4028163116/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -1107,23 +1107,23 @@
     },
     "seg/e15b2fb677ece5bb6858efc0a947ff8d/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.156093
+      "p_from_mw": -6.149034
     },
     "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 1.249305
+      "p_from_mw": 1.249594
     },
     "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.936861
+      "p_from_mw": 0.937077
     },
     "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.624545
+      "p_from_mw": 0.624689
     },
     "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.312268
+      "p_from_mw": 0.312339
     },
     "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -1131,23 +1131,23 @@
     },
     "seg/eee13800ba63e4a8f9e9945765ea173a/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261356
+      "p_from_mw": 0.261393
     },
     "seg/f1301c98ab7632998c336fbf832b06cb/ring_closure": {
       "direction": "forward",
-      "p_from_mw": 0.060085
+      "p_from_mw": 0.060089
     },
     "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.18026
+      "p_from_mw": 0.180272
     },
     "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120171
+      "p_from_mw": 0.120179
     },
     "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060085
+      "p_from_mw": 0.060089
     },
     "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_R_R_R": {
       "direction": "none",
@@ -2453,7 +2453,7 @@
     "stn/fe71c27d0811237263ec4edd1a5d211a/sn_field_terminal/002",
     "stn/fe71c27d0811237263ec4edd1a5d211a/sn_field_terminal/003"
   ],
-  "enm_hash": "b3a17d2a1460a797a98251d08ddad5654f5d479486d2ca6dc30968c861568a07",
+  "enm_hash": "47960f3c533d6049c1a5a2974d91850c54801b150c673d1031ceba69fd9b7b6a",
   "iterations": 4,
   "open_point_branch_refs": [
     "sw/56359783a874901eb6c262b420ef184a/switch"

@@ -39,7 +39,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -113,7 +113,7 @@
       "status": "closed",
       "tags": [],
       "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-      "to_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
+      "to_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
@@ -201,7 +201,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -349,7 +349,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -357,7 +357,7 @@
       "cross_section_mm2": 120.0,
       "endpoint_a_port": null,
       "endpoint_b_port": null,
-      "from_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
+      "from_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001",
       "id": "b946f630-a232-5197-8086-2b909e16e353",
       "insulation": "XLPE",
       "ith_1s_a": null,
@@ -392,10 +392,7 @@
         "x_ohm_per_km": 0.1
       },
       "meta": {
-        "catalog_item_version": "2024.1",
-        "origin_apparatus_kind": "cable_head",
-        "origin_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-        "origin_port_role": "OUTGOING_HEAD"
+        "catalog_item_version": "2024.1"
       },
       "n_parallel": null,
       "name": "Odcinek 1 (2)",
@@ -904,7 +901,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
+    "hash_sha256": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1204,7 +1201,9 @@
             "bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus",
             "equipment_refs": [],
             "field_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_main_breaker",
-            "meta": {},
+            "meta": {
+              "transformer_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer"
+            },
             "name": "Wyłącznik główny nN",
             "protection_ref": null,
             "tags": [
@@ -1297,11 +1296,11 @@
     {
       "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-0p8-1mva-dyn11-inverter",
-      "hv_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
+      "hv_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003",
       "hv_neutral": null,
       "i0_percent": 1.2,
       "id": "51aa8227-1c64-5fa7-9706-d71d2da80e7f",
-      "lv_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus",
+      "lv_bus_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus",
       "lv_earthing_system": "TN-C",
       "lv_neutral": null,
       "materialized_params": {

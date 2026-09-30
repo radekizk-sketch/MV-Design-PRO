@@ -9,8 +9,8 @@
       "source_id": "THEVENIN_GRID",
       "from_node_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "from_node_name": "Szyna GPZ S1 15 kV",
-      "to_node_id": "stn/8dac76614b18fa3885ba3c3b51efa636/sn_bus",
-      "to_node_name": "Stacja S01 (typ B)",
+      "to_node_id": "stn/8dac76614b18fa3885ba3c3b51efa636/sn_field_terminal/000",
+      "to_node_name": "Zacisk techniczny pola SN 1",
       "i_ka": 9.12080958619,
       "direction": "from_to"
     },
@@ -20,8 +20,8 @@
       "source_id": "gen_pv_s02",
       "from_node_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "from_node_name": "Szyna GPZ S1 15 kV",
-      "to_node_id": "stn/07997c7ce0ead873cd92305f1c9b8302/sn_bus",
-      "to_node_name": "Stacja S02 (typ B)",
+      "to_node_id": "stn/07997c7ce0ead873cd92305f1c9b8302/sn_field_terminal/000",
+      "to_node_name": "Zacisk techniczny pola SN 1",
       "i_ka": 0.0160542281058,
       "direction": "to_from"
     }

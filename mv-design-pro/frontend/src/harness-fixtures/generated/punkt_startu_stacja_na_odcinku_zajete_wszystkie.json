@@ -170,7 +170,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -329,7 +329,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -445,7 +445,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -523,7 +523,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",

@@ -621,7 +621,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cee84244191f794010dae6127b3fe884c979d472473d3e9fe2314e56bd60b065",
+    "hash_sha256": "bc92a4abc80874d7423c5ce6e3163350bd311e63a3d5f0d796ca079c0e8ac523",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -658,7 +658,7 @@
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -675,7 +675,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -684,7 +684,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/adba9f4bf0ca9ef07987fad098c413cd/nn",
       "source_mode": "KATALOG",
@@ -1096,7 +1096,7 @@
       "hv_neutral": null,
       "i0_percent": 0.8,
       "id": "d670fdec-4794-5660-ac27-8e7219b5ba77",
-      "lv_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
+      "lv_bus_ref": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
       "materialized_params": {

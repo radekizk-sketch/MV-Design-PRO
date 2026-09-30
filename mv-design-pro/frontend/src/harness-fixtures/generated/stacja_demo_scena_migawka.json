@@ -515,7 +515,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "9826c94fdd5e06aff7bf90c324f9302dc60ed0062f9fae42e2b20dc84a534a1c",
+    "hash_sha256": "6bf85edb694f258a441685355e99d033d1ac7a6f8ad368576dd3083effb79834",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -552,7 +552,7 @@
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -569,7 +569,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -578,7 +578,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/5126419b3205e7da6e12351150af3b05/nn",
       "source_mode": "KATALOG",
@@ -901,7 +901,7 @@
       "hv_neutral": null,
       "i0_percent": 1.5,
       "id": "d1da8705-cc0e-5713-9bbb-161218d3f446",
-      "lv_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_bus",
+      "lv_bus_ref": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
       "materialized_params": {
