@@ -433,8 +433,9 @@ cd mv-design-pro/backend
 # Install dependencies
 poetry install --with dev
 
-# Run tests
-poetry run pytest -q
+# Run tests (full suite: 4 processes via pytest-xdist, as CI — `-n auto` there; a file
+# stays on one process, `--dist loadfile`). Single process: drop `-n`/`--dist`.
+poetry run pytest -q -n 4 --dist loadfile
 
 # Run specific test file
 poetry run pytest tests/test_short_circuit_iec60909.py -v
@@ -459,9 +460,9 @@ cd mv-design-pro/frontend
 npm ci            # preferred (deterministic)
 npm install       # alternative
 
-# Run tests (--no-file-parallelism is required)
+# Run tests (files in parallel in the `forks` pool — one file per process; vite.config.ts)
 npm test
-# Equivalent: vitest run --no-file-parallelism
+# Equivalent: vitest run
 
 # Run tests for CI
 npm run test:ci
@@ -474,6 +475,9 @@ npm run test:coverage
 
 # Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
 npm run test:e2e
+# One shard of the full suite (CI runs 4 in parallel; locally give each shard its own
+# PLAYWRIGHT_BACKEND_URL/PLAYWRIGHT_FRONTEND_URL ports — backend, database and stores are per run)
+npm run test:e2e -- --shard=1/2
 
 # Run e2e against real backend (critical path)
 npm run test:e2e:real
@@ -673,7 +677,11 @@ python scripts/smoke_local.sh                     # Local smoke test
 - Unit tests with Vitest in `src/**/__tests__/`
 - E2E tests with Playwright in `e2e/`
 - Component tests use @testing-library/react
-- Tests run with `--no-file-parallelism` (required for determinism)
+- Test files run in parallel in the `forks` pool, one file per process at a time (karta
+  SZYBKIE-TESTY 2026-09-30; it supersedes the archival INV-TST-06 of `--no-file-parallelism`).
+  CPU-time budget tests (`src/test/czasProcesora.ts`) measure the whole process, so they need
+  exactly that: the helper refuses to measure outside the process main thread and
+  `src/test/__tests__/pulaTestow.test.ts` pins the pool
 - Test environment: jsdom with globals enabled
 - Critical contract tests (run in SLD Determinism CI) — **spisane z
   `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:
@@ -1055,7 +1063,7 @@ bramki bezpieczeństwa) albo gdy hierarchia nie rozstrzyga — wtedy pytasz wła
 
 | Action | Command |
 |--------|---------|
-| Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q` |
+| Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q -n 4 --dist loadfile` |
 | Run frontend tests | `cd mv-design-pro/frontend && npm test` |
 | Run frontend tests (CI) | `cd mv-design-pro/frontend && npm run test:ci` |
 | Run e2e tests | `cd mv-design-pro/frontend && npm run test:e2e` |

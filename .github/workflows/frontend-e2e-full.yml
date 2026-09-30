@@ -23,6 +23,14 @@ on:
 jobs:
   full-real-backend-e2e:
     runs-on: ubuntu-latest
+    # Karta SZYBKIE-TESTY (2026-09-30): suita dzielona na 4 shardy (`--shard=k/4`), kazdy
+    # na wlasnym runnerze z wlasnym backendem i baza (izolacja biegu w playwright.config.ts).
+    # Pomiar przed zmiana (lokalnie, lancuch p5): 502 przypadki w jednym biegu — 41,7 min.
+    # `fail-fast: false` — czerwony shard nie ucina pozostalych, raport jest kompletny.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     steps:
       - name: Checkout
@@ -53,8 +61,8 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:setup:real
 
-      # Pełna suita — jedno wywołanie Playwrighta uruchamia backend + vite
-      # RAZ (webServer), niezależnie od liczby plików speców.
-      - name: Run full real-backend E2E suite
+      # Shard pełnej suity — jedno wywołanie Playwrighta uruchamia backend + vite
+      # RAZ (webServer) na shard, niezależnie od liczby plików speców.
+      - name: Run full real-backend E2E suite (shard ${{ matrix.shard }}/4)
         working-directory: mv-design-pro/frontend
-        run: npm run test:e2e
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4

@@ -30,13 +30,28 @@ czerwień.
 Kod wyjścia: 0 = komplet zielony, 1 = co najmniej jeden guard czerwony.
 PUSTY SKAN (zero znalezionych guardów) to BŁĄD, nie sukces — skrypt, który nic
 nie uruchomił, nie ma prawa meldować zieleni.
+
+RÓWNOLEGŁOŚĆ (karta SZYBKIE-TESTY, 2026-09-30). Guardy, lint i kroki npm są od siebie
+niezależne (czytają drzewo; zapisują wyłącznie z flagami `--init`/`--zapisz`, których CI
+nie podaje; żaden guard nie jest wołany dwa razy), więc biegną w puli
+`--rownoleglosc` procesów naraz (domyślnie liczba rdzeni), a własne testy guardów —
+w `pytest -n` (pytest-xdist). Meldunek jest drukowany PO zakończeniu puli, w stałej
+kolejności wywołań — ten sam stan drzewa daje ten sam meldunek niezależnie od tego,
+które zadanie skończyło się pierwsze. `--rownoleglosc 1` odtwarza bieg sekwencyjny.
+Pomiar przed zmianą (łańcuch p5, 2026-09-25): same samotesty 7 min 08 s; guardy, lint
+i npm sekwencyjnie drugie tyle i więcej przy obciążonej maszynie.
 """
 
 from __future__ import annotations
 
+import argparse
+import os
 import re
 import subprocess
 import sys
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -106,24 +121,61 @@ LINT_JAK_CI: tuple[tuple[str, list[str]], ...] = (
 )
 
 
-def _lint_jak_ci() -> list[str]:
-    """Uruchom lint dokladnie tak, jak CI; zwroc nazwy czerwonych wywolan."""
+@dataclass(frozen=True)
+class Zadanie:
+    """Jedno wywołanie kroku CI: etykieta meldunku, polecenie, katalog roboczy."""
+
+    etykieta: str
+    polecenie: tuple[str, ...]
+    katalog: Path
+
+
+def _uruchom(zadanie: Zadanie) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        list(zadanie.polecenie),
+        cwd=zadanie.katalog,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _wykonaj(
+    zadania: Sequence[Zadanie], rownoleglosc: int
+) -> list[subprocess.CompletedProcess[str]]:
+    """Wyniki zadań w KOLEJNOŚCI ZADAŃ; co najwyżej `rownoleglosc` procesów naraz."""
+    if rownoleglosc <= 1 or len(zadania) <= 1:
+        return [_uruchom(zadanie) for zadanie in zadania]
+    with ThreadPoolExecutor(max_workers=rownoleglosc) as pula:
+        return list(pula.map(_uruchom, zadania))
+
+
+def _zamelduj(
+    zadania: Sequence[Zadanie], wyniki: Sequence[subprocess.CompletedProcess[str]]
+) -> list[str]:
+    """Wydruk wyników w kolejności zadań; zwraca etykiety czerwonych wywołań."""
     czerwone: list[str] = []
-    for nazwa, polecenie in LINT_JAK_CI:
-        wynik = subprocess.run(
-            [sys.executable, "-m", *polecenie],
-            cwd=PROJECT_ROOT / "backend",
-            capture_output=True,
-            text=True,
-        )
+    for zadanie, wynik in zip(zadania, wyniki, strict=True):
         if wynik.returncode != 0:
-            czerwone.append(nazwa)
-            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            czerwone.append(zadanie.etykieta)
+            print(f"[CZERWONY] {zadanie.etykieta} RC={wynik.returncode}", file=sys.stderr)
             for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
                 print(f"    {linia}", file=sys.stderr)
         else:
-            print(f"[zielony ] {nazwa}")
+            print(f"[zielony ] {zadanie.etykieta}")
     return czerwone
+
+
+def _zadania_lintu() -> list[Zadanie]:
+    return [
+        Zadanie(nazwa, (sys.executable, "-m", *polecenie), PROJECT_ROOT / "backend")
+        for nazwa, polecenie in LINT_JAK_CI
+    ]
+
+
+def _lint_jak_ci(rownoleglosc: int = 1) -> list[str]:
+    """Uruchom lint dokladnie tak, jak CI; zwroc nazwy czerwonych wywolan."""
+    zadania = _zadania_lintu()
+    return _zamelduj(zadania, _wykonaj(zadania, rownoleglosc))
 
 
 #: Kroki `npm run <skrypt>` z `frontend-checks.yml`, ktore CI uruchamia w TYM
@@ -138,44 +190,87 @@ NPM_JAK_CI: tuple[str, ...] = ("type-check", "lint")
 WORKFLOW_FRONTEND = WORKFLOWS_DIR / "frontend-checks.yml"
 
 
-def _npm_jak_ci() -> list[str]:
-    """Uruchom kroki npm dokladnie tak, jak CI (`frontend-checks.yml`); zwroc
-    nazwy czerwonych wywolan. Brak `node_modules` jest czerwony, nie pominiety:
-    CI te kroki wykonuje zawsze, wiec bramka bez nich nie ma prawa meldowac
-    zieleni (`npm ci` albo dowiazanie katalogu z innego drzewa roboczego)."""
+def _zadania_npm() -> tuple[list[Zadanie], list[str]]:
+    """Zadania krokow npm z `frontend-checks.yml` i kroki czerwone bez uruchamiania.
+
+    Brak `node_modules` jest czerwony, nie pominiety: CI te kroki wykonuje zawsze,
+    wiec bramka bez nich nie ma prawa meldowac zieleni (`npm ci` albo dowiazanie
+    katalogu z innego drzewa roboczego). Krok, ktorego workflow nie wola, to blad."""
     frontend = PROJECT_ROOT / "frontend"
     tekst_workflowu = WORKFLOW_FRONTEND.read_text(encoding="utf-8")
-    czerwone: list[str] = []
     if not (frontend / "node_modules").is_dir():
         print(
             "[CZERWONY] frontend/node_modules nieobecne — kroki npm z frontend-checks.yml "
             "nie moga sie wykonac (npm ci albo dowiazanie katalogu).",
             file=sys.stderr,
         )
-        return [f"npm run {skrypt}" for skrypt in NPM_JAK_CI]
+        return [], [f"npm run {skrypt}" for skrypt in NPM_JAK_CI]
+    zadania: list[Zadanie] = []
+    czerwone: list[str] = []
     for skrypt in NPM_JAK_CI:
         nazwa = f"npm run {skrypt}"
         if nazwa not in tekst_workflowu:
             czerwone.append(nazwa)
             print(f"[CZERWONY] {nazwa}: frontend-checks.yml nie wola tego kroku", file=sys.stderr)
             continue
-        wynik = subprocess.run(
-            ["npm", "run", skrypt],
-            cwd=frontend,
-            capture_output=True,
-            text=True,
+        zadania.append(Zadanie(nazwa, ("npm", "run", skrypt), frontend))
+    return zadania, czerwone
+
+
+def _npm_jak_ci(rownoleglosc: int = 1) -> list[str]:
+    """Uruchom kroki npm dokladnie tak, jak CI (`frontend-checks.yml`); zwroc
+    nazwy czerwonych wywolan (w kolejnosci `NPM_JAK_CI`)."""
+    zadania, czerwone = _zadania_npm()
+    czerwone_biegu = set(_zamelduj(zadania, _wykonaj(zadania, rownoleglosc)))
+    return [
+        f"npm run {skrypt}"
+        for skrypt in NPM_JAK_CI
+        if f"npm run {skrypt}" in czerwone or f"npm run {skrypt}" in czerwone_biegu
+    ]
+
+
+def _zadania_guardow() -> tuple[list[Zadanie], list[str]]:
+    """Zadania wywolan guardow z workflowow i nazwy guardow nieobecnych w repo."""
+    zadania: list[Zadanie] = []
+    brakujace: list[str] = []
+    for nazwa, argumenty in wywolania_z_workflowow():
+        sciezka = SCRIPTS_DIR / f"{nazwa}.py"
+        if not sciezka.exists():
+            if nazwa not in brakujace:
+                brakujace.append(nazwa)
+            continue
+        zadania.append(
+            Zadanie(
+                " ".join((nazwa, *argumenty)),
+                (sys.executable, str(sciezka), *argumenty),
+                PROJECT_ROOT,
+            )
         )
-        if wynik.returncode != 0:
-            czerwone.append(nazwa)
-            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
-            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
-                print(f"    {linia}", file=sys.stderr)
-        else:
-            print(f"[zielony ] {nazwa}")
-    return czerwone
+    return zadania, brakujace
 
 
-def main() -> int:
+def _polecenie_samotestow(rownoleglosc: int) -> list[str]:
+    """`pytest ../scripts` jak w CI; przy rownoleglosci > 1 — rozdzielony przez xdist.
+
+    Brak pytest-xdist przy rownoleglosci > 1 to czerwien biegu (pytest odrzuci `-n`),
+    a nie cichy powrot do biegu sekwencyjnego: xdist jest zaleznoscia dev backendu."""
+    polecenie = [sys.executable, "-m", "pytest", "-q", str(SCRIPTS_DIR)]
+    if rownoleglosc > 1:
+        polecenie += ["-n", str(rownoleglosc)]
+    return polecenie
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--rownoleglosc",
+        type=int,
+        default=os.cpu_count() or 1,
+        help="ile procesow naraz (guardy, lint, npm; xdist dla samotestow); 1 = sekwencyjnie",
+    )
+    argumenty = parser.parse_args(argv)
+    rownoleglosc = max(1, argumenty.rownoleglosc)
+
     if not WORKFLOWS_DIR.is_dir():
         print(f"BLAD: brak katalogu workflowow: {WORKFLOWS_DIR}", file=sys.stderr)
         return 1
@@ -189,29 +284,17 @@ def main() -> int:
         )
         return 1
 
-    czerwone: list[tuple[str, int]] = []
-    brakujace: list[str] = []
+    zadania_guardow, brakujace = _zadania_guardow()
+    zadania_lintu = _zadania_lintu()
+    zadania_npm, npm_czerwone_bez_biegu = _zadania_npm()
 
-    for nazwa, argumenty in wywolania_z_workflowow():
-        sciezka = SCRIPTS_DIR / f"{nazwa}.py"
-        if not sciezka.exists():
-            if nazwa not in brakujace:
-                brakujace.append(nazwa)
-            continue
-        etykieta = " ".join((nazwa, *argumenty))
-        wynik = subprocess.run(
-            [sys.executable, str(sciezka), *argumenty],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-        )
-        if wynik.returncode != 0:
-            czerwone.append((etykieta, wynik.returncode))
-            print(f"[CZERWONY] {etykieta} RC={wynik.returncode}", file=sys.stderr)
-            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
-                print(f"    {linia}", file=sys.stderr)
-        else:
-            print(f"[zielony ] {etykieta}")
+    # Jedna pula dla trzech czesci kroku CI; najdluzsze zadania (tsc, eslint) na
+    # poczatku kolejki, zeby nie wydluzaly ogona biegu. Meldunek — w kolejnosci czesci.
+    kolejka = [*zadania_npm, *zadania_lintu, *zadania_guardow]
+    print(f"Uruchamiam {len(kolejka)} zadan, do {rownoleglosc} naraz.")
+    wyniki = dict(zip(kolejka, _wykonaj(kolejka, rownoleglosc), strict=True))
+
+    czerwone = _zamelduj(zadania_guardow, [wyniki[z] for z in zadania_guardow])
 
     if brakujace:
         print(
@@ -232,16 +315,16 @@ def main() -> int:
     # brakowalo w niej dwoch ostatnich wywolan, wiec lokalny lancuch byl slepy na
     # format `backend/scripts` (CI run 35309735634).
     print("\n--- lint jak CI (black/ruff: src tests, ../scripts, scripts) ---")
-    lint_czerwone = _lint_jak_ci()
+    lint_czerwone = _zamelduj(zadania_lintu, [wyniki[z] for z in zadania_lintu])
 
     # Czwarta czesc: kroki npm z `frontend-checks.yml` (type-check, eslint).
     print("\n--- kroki npm jak CI (frontend-checks.yml: type-check, lint) ---")
-    npm_czerwone = _npm_jak_ci()
+    npm_czerwone = npm_czerwone_bez_biegu + _zamelduj(zadania_npm, [wyniki[z] for z in zadania_npm])
 
     # Druga polowa kroku CI: wlasne testy guardow (poza `testpaths` backendu).
     print("\n--- testy wlasne guardow (`python -m pytest ../scripts`) ---")
     testy = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", str(SCRIPTS_DIR)],
+        _polecenie_samotestow(rownoleglosc),
         cwd=PROJECT_ROOT / "backend",
         capture_output=True,
         text=True,
@@ -259,7 +342,12 @@ def main() -> int:
     if czerwone or brakujace or testy.returncode != 0 or lint_czerwone or npm_czerwone:
         if czerwone:
             print(
-                "CZERWONE: " + ", ".join(f"{n} (RC={rc})" for n, rc in czerwone),
+                "CZERWONE: "
+                + ", ".join(
+                    f"{z.etykieta} (RC={wyniki[z].returncode})"
+                    for z in zadania_guardow
+                    if wyniki[z].returncode != 0
+                ),
                 file=sys.stderr,
             )
         if lint_czerwone:

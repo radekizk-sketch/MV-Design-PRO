@@ -1,3 +1,5 @@
+import { isMainThread } from 'node:worker_threads';
+
 /**
  * Czas procesora (użytkownik + system) wykonania funkcji, w milisekundach.
  *
@@ -9,11 +11,19 @@
  * do bazowej z zegara ściennego 0,28…5,03 (test liniowości z progiem 3 przewracał się
  * losowo), z czasu procesora 2,03…2,28.
  *
- * `process.cpuUsage()` liczy cały proces. Vitest uruchamiamy z `--no-file-parallelism`
- * (`package.json`, workflowy CI), więc w procesie wykonuje się naraz jeden plik testów;
- * wątki pomocnicze V8 (odśmiecanie) liczą się do pomiaru, bo to praca mierzonego kodu.
+ * `process.cpuUsage()` liczy cały proces. Vitest biegnie w puli PROCESÓW (`pool: 'forks'`
+ * w `vite.config.ts`, karta SZYBKIE-TESTY) — pliki równolegle, ale w procesie wykonuje się
+ * naraz jeden plik testów; wątki pomocnicze V8 (odśmiecanie) liczą się do pomiaru, bo to
+ * praca mierzonego kodu. W puli WĄTKÓW proces dzieliłoby kilka plików naraz, a pomiar
+ * doliczałby ich pracę — dlatego poza wątkiem głównym procesu pomiar jest odmawiany.
  */
 export function zmierzCzasProcesora<T>(fn: () => T): { wynik: T; ms: number } {
+  if (!isMainThread) {
+    throw new Error(
+      'Pomiar czasu procesora wymaga osobnego procesu na plik testów (vitest `pool: \'forks\'`): ' +
+        'w puli wątków process.cpuUsage() liczy także pliki wykonywane obok.',
+    );
+  }
   const start = process.cpuUsage();
   const wynik = fn();
   const roznica = process.cpuUsage(start);
