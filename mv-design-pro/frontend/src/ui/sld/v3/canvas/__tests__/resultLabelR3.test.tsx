@@ -25,7 +25,6 @@ import {
   resultLabelLineQuantity,
   resultLabelsHaveExceedances,
   orientedSegmentRefs,
-  type ResultLabelEntry,
   type ResultLabelFilter,
 } from '../resultLabels';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';

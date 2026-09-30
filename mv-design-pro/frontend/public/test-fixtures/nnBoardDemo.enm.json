@@ -1529,7 +1529,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "91177805bf08661fc490d8922e2a7dc4f2beee74350adb80a789f1f076d4d0a9",
+      "hash_sha256": "0149028af3bf11dc5f39d8e555aa8043eb0c1ca711e4aa81a1b8343b22557754",
       "name": "Stacja z rozdzielnicą nN",
       "revision": 41,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2148,9 +2148,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja B",
         "nn_sections": [],

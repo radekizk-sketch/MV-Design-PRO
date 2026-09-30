@@ -158,15 +158,18 @@ describe('converter source card entry points', () => {
     });
   });
 
-  it('StationCard pokazuje topologiczny typ stacji w nagłówku', () => {
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj stacji z TOPOLOGII (jedna reguła produktu), nie
+  // z deklaracji — stacja fikstury deklaruje „inline", ale nie ma ani jednego pola liniowego,
+  // więc jest końcowa (intencja testu bez zmian: karta pokazuje rodzaj stacji).
+  it('StationCard pokazuje rodzaj stacji z topologii w nagłówku', () => {
     render(<StationCard elementId="st-1" />);
 
     expect(lastProps).toMatchObject({
-      elementType: 'Stacja przelotowa',
+      elementType: 'Stacja końcowa',
     });
   });
 
-  it('NnSwitchgearCard pokazuje topologiczny typ stacji w sekcji identyfikacji', () => {
+  it('NnSwitchgearCard pokazuje rodzaj stacji z topologii w sekcji identyfikacji', () => {
     render(<NnSwitchgearCard elementId="st-1" />);
 
     const sections =
@@ -175,7 +178,7 @@ describe('converter source card entry points', () => {
     const identSection = sections.find((section) => section.id === 'ident');
     expect(identSection?.fields).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'type', value: 'Stacja przelotowa' }),
+        expect.objectContaining({ key: 'type', value: 'Stacja końcowa' }),
       ]),
     );
   });

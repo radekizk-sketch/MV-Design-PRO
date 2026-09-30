@@ -515,7 +515,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "6bf85edb694f258a441685355e99d033d1ac7a6f8ad368576dd3083effb79834",
+    "hash_sha256": "877b36a33a35964e4b429fbb461e750d91c46c7fdf0a48ede487194236522b83",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -826,9 +826,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Rozdzielnia GPZ-01",
       "nn_sections": [],

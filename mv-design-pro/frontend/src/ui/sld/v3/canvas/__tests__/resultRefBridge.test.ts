@@ -33,7 +33,7 @@ const enm = JSON.parse(
 // ziarna odcinków i stacji zmieniły się z CV-4.3 K1; szablon 1250 kVA ma pole TR na
 // pozycji 002, dawny zrzut 1000 kVA — na 003).
 type PoleSn = { readonly field_ref: string; readonly bay_role?: string; readonly bus_ref?: string };
-const stacjaInline = (enm.substations ?? []).find((s) => s.station_type === 'inline')!;
+const stacjaInline = (enm.substations ?? []).find((s) => s.station_type !== 'gpz')!;
 const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
 const polaStacji = (stacjaInline.meta as { field_specs: PoleSn[] }).field_specs;
 const STACJA = stacjaInline.ref_id;

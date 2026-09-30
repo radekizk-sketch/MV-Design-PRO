@@ -8,8 +8,8 @@
       "status": "FINISHED",
       "created_at": "2026-09-16T09:00:00+00:00",
       "finished_at": "2026-09-16T09:00:00+00:00",
-      "input_hash": "c82d7684cc89ca799c6727a77af0368f45fe8098fdb064925ae873686055941b",
-      "snapshot_hash": "f6957f2b0fc89feab052d5bb196f2fa55bf48a598df3e4238ec5abfa4e665401",
+      "input_hash": "0ec6c88cf6ab2e301913028bb087a2df9399d0c45e1b6300ca11a5b275281885",
+      "snapshot_hash": "724d1f0ef29a10feb080194b2046c5ef7be16d4bbc7fd2ddad1c50b6a22fa1a1",
       "model_revision": 2,
       "scenario_ref": null
     },
@@ -21,8 +21,8 @@
       "status": "FINISHED",
       "created_at": "2026-09-16T09:00:00+00:00",
       "finished_at": "2026-09-16T09:00:00+00:00",
-      "input_hash": "7787e4246c026c6235b590913160d1efd4d17484d1b0710dcdd240ce275dec93",
-      "snapshot_hash": "467274709c07c928f411dec4cb73076dc80a7c450e0a09649aa9c61712d5aa77",
+      "input_hash": "0489a5113b057564720972f8022e5d2640f88ab5c8f519dda193638bd2a031b3",
+      "snapshot_hash": "de7d6e4b31d4e47ec3768048a1dc381f47838f91bbc778654149bc64454c5f25",
       "model_revision": 2,
       "scenario_ref": null
     }

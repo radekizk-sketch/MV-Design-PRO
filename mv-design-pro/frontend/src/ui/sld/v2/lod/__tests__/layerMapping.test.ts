@@ -11,7 +11,7 @@
  * 7. spine: off domyślnie, włączany przez toggle
  */
 import { describe, expect, it } from 'vitest';
-import { LAYER_IDS, createInitialLayerState, setLayerVisibility, type LayerId } from '../layerToggle';
+import { LAYER_IDS, createInitialLayerState, setLayerVisibility } from '../layerToggle';
 import {
   LAYER_RENDER_MAPPING,
   USER_CONTROLLED_RENDER_LAYERS,

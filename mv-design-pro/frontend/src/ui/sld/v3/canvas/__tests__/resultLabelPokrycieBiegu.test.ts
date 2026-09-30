@@ -61,7 +61,7 @@ const nnBoard = resultPointsInStationNnBoard(enm);
 
 // Tożsamość elementów wyprowadzana z modelu po NAZWACH/strukturze, nie z ziaren
 // identyfikatorów (te zmieniają się z każdą zmianą ziarna operacji domenowej).
-const stacja = (enm.substations ?? []).find((s) => s.station_type === 'inline')!;
+const stacja = (enm.substations ?? []).find((s) => s.station_type !== 'gpz')!;
 const szynaStacji = (koncowka: string): string => stacja.bus_refs.find((ref) => ref.endsWith(koncowka))!;
 const refGalezi = (nazwa: string): string => (enm.branches ?? []).find((g) => g.name === nazwa)!.ref_id;
 const szynyOdplywowNn = Object.keys(rozplyw.elements).filter((ref) => nnBoard.has(ref));

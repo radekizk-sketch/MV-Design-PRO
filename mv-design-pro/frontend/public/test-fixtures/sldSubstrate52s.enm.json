@@ -1,7 +1,7 @@
 {
   "_meta": {
     "branch_count": 89,
-    "builder_snapshot_hash": "47960f3c533d6049c1a5a2974d91850c54801b150c673d1031ceba69fd9b7b6a",
+    "builder_snapshot_hash": "f4ae778c52b4ac24affd188d5ad3763a73fab2d405882cffb3e173f50e41ea4c",
     "der_count": 20,
     "der_types": [
       "bess",
@@ -27633,7 +27633,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "47960f3c533d6049c1a5a2974d91850c54801b150c673d1031ceba69fd9b7b6a",
+      "hash_sha256": "f4ae778c52b4ac24affd188d5ad3763a73fab2d405882cffb3e173f50e41ea4c",
       "name": "SLD Substrate 52 stacji",
       "revision": 0,
       "updated_at": "2026-05-29T00:00:00Z"
@@ -33206,9 +33206,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T1",
         "nn_sections": [],
@@ -33405,9 +33403,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T2",
         "nn_sections": [],
@@ -33604,9 +33600,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T3",
         "nn_sections": [],
@@ -33803,9 +33797,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T4",
         "nn_sections": [],
@@ -34002,9 +33994,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T5",
         "nn_sections": [],
@@ -34201,9 +34191,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T6",
         "nn_sections": [],
@@ -34400,9 +34388,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T7",
         "nn_sections": [],
@@ -34599,9 +34585,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T8",
         "nn_sections": [],
@@ -34798,9 +34782,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T9",
         "nn_sections": [],
@@ -34997,9 +34979,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T10",
         "nn_sections": [],
@@ -35196,9 +35176,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T11",
         "nn_sections": [],
@@ -35395,9 +35373,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja T12",
         "nn_sections": [],
@@ -35555,9 +35531,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L1-1",
         "nn_sections": [],
@@ -35715,9 +35689,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L1-2",
         "nn_sections": [],
@@ -35875,9 +35847,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L1-3",
         "nn_sections": [],
@@ -36035,9 +36005,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L2-1",
         "nn_sections": [],
@@ -36195,9 +36163,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L2-2",
         "nn_sections": [],
@@ -36355,9 +36321,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L2-3",
         "nn_sections": [],
@@ -36515,9 +36479,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L2-4",
         "nn_sections": [],
@@ -36675,9 +36637,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L3-1",
         "nn_sections": [],
@@ -36822,9 +36782,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L3-2",
         "nn_sections": [],
@@ -36969,9 +36927,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L3-3",
         "nn_sections": [],
@@ -37116,9 +37072,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L4-1",
         "nn_sections": [],
@@ -37263,9 +37217,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L4-2",
         "nn_sections": [],
@@ -37410,9 +37362,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L4-3",
         "nn_sections": [],
@@ -37557,9 +37507,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L5-1",
         "nn_sections": [],
@@ -37704,9 +37652,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L5-2",
         "nn_sections": [],
@@ -37851,9 +37797,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L5-3",
         "nn_sections": [],
@@ -37998,9 +37942,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L5-4",
         "nn_sections": [],
@@ -38145,9 +38087,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L6-1",
         "nn_sections": [],
@@ -38292,9 +38232,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L6-2",
         "nn_sections": [],
@@ -38439,9 +38377,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L6-3",
         "nn_sections": [],
@@ -38586,9 +38522,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L7-1",
         "nn_sections": [],
@@ -38733,9 +38667,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L7-2",
         "nn_sections": [],
@@ -38880,9 +38812,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L7-3",
         "nn_sections": [],
@@ -39027,9 +38957,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L7-4",
         "nn_sections": [],
@@ -39174,9 +39102,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L8-1",
         "nn_sections": [],
@@ -39321,9 +39247,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L8-2",
         "nn_sections": [],
@@ -39468,9 +39392,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L8-3",
         "nn_sections": [],
@@ -39615,9 +39537,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L9-1",
         "nn_sections": [],
@@ -39762,9 +39682,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L9-2",
         "nn_sections": [],
@@ -39909,9 +39827,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L9-3",
         "nn_sections": [],
@@ -40056,9 +39972,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L10-1",
         "nn_sections": [],
@@ -40203,9 +40117,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L10-2",
         "nn_sections": [],
@@ -40350,9 +40262,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L10-3",
         "nn_sections": [],
@@ -40497,9 +40407,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L10-4",
         "nn_sections": [],
@@ -40644,9 +40552,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L11-1",
         "nn_sections": [],
@@ -40791,9 +40697,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L11-2",
         "nn_sections": [],
@@ -40938,9 +40842,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L11-3",
         "nn_sections": [],
@@ -41113,9 +41015,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L12-1",
         "nn_sections": [],
@@ -41288,9 +41188,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L12-2",
         "nn_sections": [],
@@ -41463,9 +41361,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L12-3",
         "nn_sections": [],
@@ -41638,9 +41534,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja L12-4",
         "nn_sections": [],

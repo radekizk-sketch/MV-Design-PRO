@@ -862,7 +862,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "467274709c07c928f411dec4cb73076dc80a7c450e0a09649aa9c61712d5aa77",
+    "hash_sha256": "de7d6e4b31d4e47ec3768048a1dc381f47838f91bbc778654149bc64454c5f25",
     "name": "Magistrala SN — scena koordynacji",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1263,9 +1263,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S01",
       "nn_sections": [],
@@ -1398,9 +1396,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S02",
       "nn_sections": [],

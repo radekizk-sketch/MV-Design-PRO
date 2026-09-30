@@ -275,7 +275,8 @@ def test_minimal_station_creates_substation_and_bay_in() -> None:
     new_subs = [s for s in new_snap["substations"] if s["name"] == "Stacja Końcowa"]
     assert len(new_subs) == 1
     sub = new_subs[0]
-    assert sub["station_type"] == "mv_lv"
+    # Deklaracja „terminal" zapisana wprost (dawniej gubiona jako `mv_lv`).
+    assert sub["station_type"] == "terminal"
     assert endpoint in sub["bus_refs"]
     # Bay(IN) wskazujący na endpoint_bus
     bays_in = [

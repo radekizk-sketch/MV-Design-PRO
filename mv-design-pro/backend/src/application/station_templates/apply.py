@@ -19,7 +19,6 @@ from typing import Any
 
 from application.station_templates.schema import (
     StationTemplate,
-    TemplateCategory,
     _der_catalog_for_power,
     _moc_wymagana_jednostki_der_mva,
     _opcja_transformatora_dla_wymaganej_mocy,

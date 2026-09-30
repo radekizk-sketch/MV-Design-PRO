@@ -2061,7 +2061,8 @@ class TestStationTypeCBranch:
             sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
         assert inserted_station.get("station_type") == "branch"
-        assert inserted_station.get("meta", {}).get("station_type_sn") == "C"
+        # Deklaracja ma JEDNO miejsce (`station_type`) — cień `meta.station_type_sn` usunięty.
+        assert "station_type_sn" not in inserted_station.get("meta", {})
 
         field_roles = [
             spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])

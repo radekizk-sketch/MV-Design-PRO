@@ -518,7 +518,7 @@
       "frequency_hz": null,
       "id": "d0d1fa0f-5e03-5e93-9500-92ea1a9c6476",
       "meta": {},
-      "name": "Stacja S01 (typ B)",
+      "name": "Stacja S01",
       "nominal_limits": null,
       "phase_system": "3ph",
       "ref_id": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
@@ -901,7 +901,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
+    "hash_sha256": "f24e1fe50b2af26630b09156cb752d57f5b1bbffd25282ee57869bb300a46c1f",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1225,11 +1225,9 @@
             ]
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
-      "name": "Stacja S01 (typ B)",
+      "name": "Stacja S01",
       "nn_sections": [],
       "nn_voltage_levels": [],
       "ref_id": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",

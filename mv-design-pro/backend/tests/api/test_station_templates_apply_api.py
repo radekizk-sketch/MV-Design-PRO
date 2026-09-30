@@ -282,7 +282,9 @@ def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_cli
 
     snapshot = app_client.get(f"/api/cases/{case_id}/enm").json()
     stacja = next(s for s in snapshot["substations"] if s["ref_id"] == payload["station_ref"])
-    assert stacja["station_type"] == "mv_lv", "Stacja klienta musi być KOŃCOWA"
+    # Deklaracja zapisana wprost (dawniej „terminal" gubione jako `mv_lv`); zgodna z rodzajem
+    # z topologii (jedna reguła `enm/rodzaj_stacji.py`) — pole OUT bez dalszej stacji.
+    assert stacja["station_type"] == "terminal", "Stacja klienta musi być KOŃCOWA"
     role = [spec["bay_role"] for spec in stacja["meta"]["field_specs"]]
     assert role == ["IN", "MEASUREMENT", "TR", "OUT"], role
     assert len(snapshot["branch_points"]) == 1

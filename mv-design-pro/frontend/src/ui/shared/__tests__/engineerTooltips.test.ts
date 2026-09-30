@@ -18,7 +18,7 @@ describe('ENGINEER_TOOLTIPS', () => {
   });
 
   it('każdy tooltip ma text + norm reference', () => {
-    for (const [key, tooltip] of Object.entries(ENGINEER_TOOLTIPS)) {
+    for (const tooltip of Object.values(ENGINEER_TOOLTIPS)) {
       expect(tooltip.text).toBeTruthy();
       expect(tooltip.text.length).toBeGreaterThan(10);
       // Większość ma norm (sprawdzamy że klucz norm istnieje albo jest pusty)

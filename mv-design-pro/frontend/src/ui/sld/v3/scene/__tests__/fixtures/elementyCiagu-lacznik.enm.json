@@ -1678,7 +1678,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "c19756c174628aa3e7e8c8efeba9e06f285db1598ffccb7191b2668c0f5dc9f0",
+      "hash_sha256": "ee8e7a3a7501d0b20e960e220851f57cdf20ee7650354a1d88e3a037e74c1d1c",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2047,9 +2047,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -2182,9 +2180,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

@@ -1,18 +1,18 @@
 {
-  "analysis_id": "91e000f9107393b0c34b642d28a09bfffe16d586dc1a8835e62325b225cb4dab",
+  "analysis_id": "1e70b53149acc6a2a3983816054c30bca491bb29eb30e25a43e28badcbc3ca65",
   "context": {
     "project_name": "Scena analiz OZE",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "e778352b44573746709d4d247eb7c21092c3decfea788d3d621e25f5c6f45972",
+    "snapshot_hash": "3ad5ceef82e0114e4cd3ed9fc3accaf97bd9913a1b7331f30a9af2415cecdceb",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "weak_threshold": 3.0,
   "very_weak_threshold": 2.0,
   "entries": [
     {
-      "bus_ref": "nn/c4b0f7648d5d23031f9bac28ea7120a5/feeder_bus",
+      "bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
       "nominal_kv": 0.8,
       "s_sc_mva": 37.9713,
       "s_installed_mva": 0.215,
@@ -37,7 +37,7 @@
       ],
       "modules": [
         {
-          "ref": "pv/e301ee69be096048e5a61a4d6dba4c14/converter",
+          "ref": "pv/e59e90d4dcd7fcf42db8bba4cffa1783/converter",
           "name": "Farma PV",
           "sn_mva": 0.215
         }

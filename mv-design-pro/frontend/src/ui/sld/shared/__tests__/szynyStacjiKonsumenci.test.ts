@@ -222,7 +222,7 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
   });
 
   it('jeden odcinek do stacji (koniec na zacisku pola stacji) ⇒ cel = ta stacja i dane TEGO odcinka', () => {
-    const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02 (typ B)')!;
+    const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02')!;
     const szynyS02 = szynyStacji(s02, siec.branches ?? []);
     const bezS02 = {
       ...siec,
@@ -231,7 +231,7 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
     const pola = polaLiniowe(bezS02);
     expect(pola.length).toBeGreaterThan(0);
     for (const pole of pola) {
-      expect(pole.outgoingFeeder?.destination).toBe('→ Stacja S01 (typ B)');
+      expect(pole.outgoingFeeder?.destination).toBe('→ Stacja S01');
       expect(pole.outgoingFeeder?.segmentTypeLabel).toBe('Kabel SN');
     }
   });

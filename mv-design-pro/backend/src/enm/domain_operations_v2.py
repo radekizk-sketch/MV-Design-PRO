@@ -66,11 +66,11 @@ from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
+    POLE_RODZAJU_POLA,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
     _apply_screen_bonding,
-    POLE_RODZAJU_POLA,
     _build_field_spec,
     _compute_seed,
     _copy_split_segment_fields,
@@ -87,9 +87,9 @@ from .domain_operations import (
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     blad_pomiaru_w_torze_tranzytu,
+    metadane_pochodzenia_pola,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
-    metadane_pochodzenia_pola,
     wybor_bloku_fabrycznego,
 )
 from .dynamika_z_katalogu import (

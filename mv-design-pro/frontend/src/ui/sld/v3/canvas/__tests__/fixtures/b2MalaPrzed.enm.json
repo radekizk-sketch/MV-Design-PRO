@@ -965,7 +965,7 @@
         "frequency_hz": null,
         "id": "8973efa1-5f94-59c0-89ee-58642137cc0b",
         "meta": {},
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/aec3ad0c459f263e648cdcfc0793dae4/sn_bus",
@@ -1103,7 +1103,7 @@
         "frequency_hz": null,
         "id": "7369dc37-27be-5536-b229-9b18094f0ca0",
         "meta": {},
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/4bcfec21bf75e8853992f01c123bd50d/sn_bus",
@@ -1269,7 +1269,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "dd908f8dc4726323dbbc0d4a256c86e33f2e8ed4dcc9acdadfbd680896a0c4a3",
+      "hash_sha256": "78dab49c2e82e85e9c391cba28b6795a34233588e4ff8919ff80f45cb51ea89e",
       "name": "Sieć Mala — przed",
       "revision": 10,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1339,7 +1339,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S01 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S01",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1381,7 +1381,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S02 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S02",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1661,11 +1661,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/aec3ad0c459f263e648cdcfc0793dae4/station",
@@ -1823,11 +1821,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/4bcfec21bf75e8853992f01c123bd50d/station",

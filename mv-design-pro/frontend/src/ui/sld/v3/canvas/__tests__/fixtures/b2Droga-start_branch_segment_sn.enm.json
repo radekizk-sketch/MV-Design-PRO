@@ -683,7 +683,7 @@
         "frequency_hz": null,
         "id": "1cac454f-15c9-5ccd-b4e2-fda648f6efef",
         "meta": {},
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_bus",
@@ -878,7 +878,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "613845b5e6bba95090d977bf044fd56c298d68086e86763f23c48d13dba2bd04",
+      "hash_sha256": "a075501334c2ef22808d4d1908681567cc8501e12f555a4291c54082fceb272e",
       "name": "Drogi operacji budowy",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -961,7 +961,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S01 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S01",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1241,11 +1241,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/c566217cd62b515686c7a6a4ab6ec4a9/station",

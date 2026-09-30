@@ -412,7 +412,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // Nazwa urządzenia przychodzi asynchronicznie z `fetchDerConverterTypes`.
     expect((await screen.findAllByText(/Huawei SUN2000-185KTL/, {}, { timeout: 3000 })).length).toBeGreaterThan(0);
     expect(screen.queryByText('pv_inv_huawei_185')).not.toBeInTheDocument();
-    expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · stacja przelotowa');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: tożsamość stacji z jednego miejsca (`stationPublicIdentity`),
+    // rodzaj z topologii — stacja fikstury nie ma pól liniowych, więc jest końcowa (deklaracja
+    // „inline" rodzaju nie przesądza).
+    expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · Stacja końcowa');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('Stacja inline');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('70a99b32');
   });

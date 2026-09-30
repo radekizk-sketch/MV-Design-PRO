@@ -186,8 +186,11 @@ describe('buildTechCardSubject', () => {
 
     const subject = buildTechCardSubject(snapshot, selected(station.ref_id, 'Station'));
     expect(subject?.kind).toBe('station');
-    expect(subject?.typeLabelPl).toBe('Stacja SN/nN');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z topologii — pola WE i WY bez odcinków do
+    // innych stacji ⇒ końcowa (dawniej funkcja „Stacja SN/nN" z deklaracji `mv_lv`).
+    expect(subject?.typeLabelPl).toBe('Stacja końcowa');
     const fields = subject!.sections.flatMap((section) => section.fields);
+    expect(fields.find((field) => field.key === 'uklad')?.value).toBe('Układ końcowy SN');
     expect(fields.find((field) => field.key === 'pole_we')?.value).toBe(1);
     expect(fields.find((field) => field.key === 'pole_wy')?.value).toBe(1);
     expect(fields.find((field) => field.key === 'pole_tr')?.value).toBe(1);

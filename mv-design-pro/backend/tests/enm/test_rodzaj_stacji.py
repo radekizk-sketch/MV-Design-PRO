@@ -33,10 +33,10 @@ from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.rodzaj_stacji import (
-    KOD_KANONICZNY_ROLA_POLA_NIEROZPOZNANA,
     KOD_KANONICZNY_RODZAJ_NIEZGODNY,
-    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
+    KOD_KANONICZNY_ROLA_POLA_NIEROZPOZNANA,
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
     TYPY_STACJI_SN_NN,
     kategoria_pola,
     rodzaj_stacji,
@@ -259,7 +259,9 @@ def test_nazwa_domyslna_bez_kodu_rodzaju() -> None:
     stan = wynik["snapshot"]
     odcinek2 = stan["corridors"][0]["ordered_segment_refs"][0]
     wynik2 = _wstaw(stan, odcinek2, "branch", ["LINIA_IN", "LINIA_OUT", "LINIA_ODG"])
-    nazwy = sorted(s["name"] for s in wynik2["snapshot"]["substations"] if s["station_type"] != "gpz")
+    nazwy = sorted(
+        s["name"] for s in wynik2["snapshot"]["substations"] if s["station_type"] != "gpz"
+    )
     assert nazwy == ["Stacja Końcowa", "Stacja S01", "Stacja S02"]
 
 
@@ -313,7 +315,7 @@ def test_akcja_naprawcza_w043_zdejmuje_ostrzezenie() -> None:
     stan = _wstaw(
         snap, odcinek, "inline", ["LINIA_IN", "LINIA_OUT", "LINIA_ODG", "TRANSFORMATOROWE"]
     )["snapshot"]
-    (problem,) = [i for i in _problemy(stan) if i.code == KOD_WALIDATORA_RODZAJ_NIEZGODNY]
+    (problem,) = (i for i in _problemy(stan) if i.code == KOD_WALIDATORA_RODZAJ_NIEZGODNY)
     hint = problem.fix_action.payload_hint
     po = op(
         stan,

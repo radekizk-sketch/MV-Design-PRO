@@ -36,6 +36,7 @@ import { branchPointCoverageGaps, buildSceneV3, type SceneLod } from '../buildSc
 import { interiorCrossings } from '../crossings';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { rodzajStacji } from '../../../../shared/rodzajStacji';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const enm = (
@@ -44,13 +45,17 @@ const enm = (
   }
 ).enm;
 
-/** Stacje z ENM po roli topologicznej — bez zgadywania po nazwie. */
-const stacjeOsd = enm.substations
-  .filter((s) => s.station_type === 'inline')
-  .map((s) => s.ref_id);
-const stacjeKlientow = enm.substations
-  .filter((s) => s.station_type === 'mv_lv')
-  .map((s) => s.ref_id);
+/** Stacje z ENM po RODZAJU z topologii (jedna reguła `ui/shared/rodzajStacji.ts`) — bez
+ *  zgadywania po nazwie i bez czytania deklaracji `station_type` (karta
+ *  ETYKIETA-STACJI-PRZELOTOWEJ: stacja RMU 5-pól ma 4 pola liniowe ⇒ odgałęźna, choć dawniej
+ *  deklarowano ją jako przelotową). OSD = stacje ciągu (przelotowe i odgałęźne), klient =
+ *  stacja końcowa. */
+const stacjeWgRodzaju = (rodzaje: readonly string[]) =>
+  enm.substations
+    .filter((s) => rodzaje.includes(rodzajStacji(enm, s.ref_id)?.rodzaj ?? ''))
+    .map((s) => s.ref_id);
+const stacjeOsd = stacjeWgRodzaju(['inline', 'branch']);
+const stacjeKlientow = stacjeWgRodzaju(['terminal']);
 const punkty = enm.branch_points ?? [];
 const LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -211,9 +216,13 @@ describe('ODG-RYSUNEK — punkty odgałęźne i ciągi za nimi na rysunku', () =
     }
   });
 
-  it('stacja klienta jest prezentowana jako KOŃCOWA (terminalInRun)', () => {
+  it('stacja klienta jest prezentowana jako KOŃCOWA (podpis rodzaju z jednej reguły)', () => {
     const scene = buildSceneV3(enm, 2);
     for (const ref of stacjeKlientow) {
+      expect(
+        scene.labels.some((l) => l.ownerRef.startsWith(`${ref}#`) && l.text === 'stacja końcowa'),
+        `stacja ${ref} bez podpisu „stacja końcowa"`,
+      ).toBe(true);
       const nazwa = scene.labels.find(
         (l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith(ref),
       );

@@ -153,7 +153,9 @@ describe('selectionResolution', () => {
       id: 'stn/abc/station/pv/nn-breaker/Q2',
       type: 'Station',
     });
-    expect(resolved?.name).toContain('Stacja przelotowa');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z topologii (stacja fikstury nie ma dwóch
+    // połączonych pól liniowych ⇒ końcowa), deklaracja „inline" go nie przesądza.
+    expect(resolved?.name).toContain('Stacja końcowa');
     expect(resolved?.name).toContain('PV Q2');
     expect(resolved?.name).not.toContain('stn/');
   });

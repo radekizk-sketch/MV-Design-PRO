@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   DANE_DOMYSLNE,
   fmtPct01,
-  maOdcinek,
   opisWariantu,
   problemTorowosci,
   walidujFormularz,

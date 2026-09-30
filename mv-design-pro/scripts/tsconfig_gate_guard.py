@@ -403,7 +403,13 @@ POMIJANE_KATALOGI = {
 #: kompozycji `base_template`); dwa bledy dopisane przez karte w nowych testach (rola
 #: `POMIAROWE` spoza `SnFieldRole`, rodzaj aparatu `load_break_switch` spoza slownika)
 #: naprawione u zrodla przed commitem. Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 80
+#: Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30, pomiar `zmierz_dlug()` na drzewie karty i na
+#: drzewie startowym `615f3b24`): start 81 (guard czerwony juz na starcie — lista bledow
+#: identyczna na obu drzewach, karta nie dopisala zadnego) -> 64. Zeszlo 17 zastanych TS6133
+#: (nieuzywane importy i zmienne w 16 plikach testow; `hasDashed` w `earthingSwitchIec`
+#: dublowal asercje `allLineStrokes`, `DEKLARACJE_SPRAWDZANE` w `wlasnoscEtykiet` byla spisem
+#: bez konsumenta — reguly (a)–(d) sprawdzaja petle ponizej). Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 64
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

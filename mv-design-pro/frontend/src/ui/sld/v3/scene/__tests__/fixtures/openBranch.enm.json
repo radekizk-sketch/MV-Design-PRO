@@ -628,7 +628,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "44317827d335ada18810480ca70ee14f46030448a49cceb2771ac9481fb30b21",
+      "hash_sha256": "9deb309049bbce928544bcee54c00e112533aeb021562a12346e4e0118df8212",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -978,9 +978,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja B",
         "nn_sections": [],

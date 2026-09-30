@@ -1478,10 +1478,10 @@ def _refy_gpz_feeder() -> dict[str, str]:
         return next(r for r in stacje[stacja]["bus_refs"] if r.endswith(koncowka))
 
     return {
-        "stacja_s01": stacje["Stacja S01 (typ B)"]["ref_id"],
-        "szyna_sn_s01": szyna("Stacja S01 (typ B)", "/sn_bus"),
-        "stacja_s02": stacje["Stacja S02 (typ B)"]["ref_id"],
-        "szyna_nn_s02": szyna("Stacja S02 (typ B)", "/nn_bus"),
+        "stacja_s01": stacje["Stacja S01"]["ref_id"],
+        "szyna_sn_s01": szyna("Stacja S01", "/sn_bus"),
+        "stacja_s02": stacje["Stacja S02"]["ref_id"],
+        "szyna_nn_s02": szyna("Stacja S02", "/nn_bus"),
         "odcinek_s01": surowy["corridors"][0]["ordered_segment_refs"][0],
         "odcinek_s02": surowy["corridors"][1]["ordered_segment_refs"][0],
     }

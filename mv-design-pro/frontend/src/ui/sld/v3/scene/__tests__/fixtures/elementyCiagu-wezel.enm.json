@@ -1252,7 +1252,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "c94829cf1df8a774f5ba564db0f3c9aba5051b556a8b9df5a763614a69956231",
+      "hash_sha256": "ee49c6145085b37a7c3b9d7cbd7fafff75c18f089d5adea267776a9056230306",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1621,9 +1621,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -1756,9 +1754,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

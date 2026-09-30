@@ -85,6 +85,8 @@ describe('enmResolvers', () => {
     snapshot.substations[0].name = 'Stacja inline';
     snapshot.substations[0].station_type = 'inline';
 
-    expect(stationLabel(snapshot, 'station-id')).toBe('S01 · Stacja przelotowa');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z topologii, nie z deklaracji „inline" —
+    // stacja fikstury nie ma dwóch połączonych pól liniowych.
+    expect(stationLabel(snapshot, 'station-id')).toBe('S01 · Stacja końcowa');
   });
 });

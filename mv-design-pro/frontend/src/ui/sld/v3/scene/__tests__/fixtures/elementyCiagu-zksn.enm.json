@@ -3650,7 +3650,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "d97363c938fb22913a9ef2f2d057034814a945875ba3e6b2fe6ce56182617e50",
+      "hash_sha256": "cb123b39db37b3c48754ba2397dd953db4308d7ced80c735cb5c457644c82611",
       "name": "Elementy ciągu — zksn",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -4208,9 +4208,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za GPZ",
         "nn_sections": [],
@@ -4343,9 +4341,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta między stacjami",
         "nn_sections": [],
@@ -4478,9 +4474,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za ostatnią stacją",
         "nn_sections": [],
@@ -4613,9 +4607,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -4748,9 +4740,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

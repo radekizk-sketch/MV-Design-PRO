@@ -3077,7 +3077,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "47558fdc736a38aeede170b78d51bb390321391fac6a01fad80e979e01675ec0",
+      "hash_sha256": "7d61f775ffb7d66b1cb50707a40da150d5a14a5a3c63ce9a61b09c081fec68de",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -3635,9 +3635,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za GPZ",
         "nn_sections": [],
@@ -3770,9 +3768,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta między stacjami",
         "nn_sections": [],
@@ -3905,9 +3901,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za ostatnią stacją",
         "nn_sections": [],
@@ -4040,9 +4034,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -4175,9 +4167,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

@@ -108,9 +108,9 @@ def _open_trunk_chain(b: KlientBudowy) -> dict[str, Any]:
 def _gpz_feeder(b: KlientBudowy) -> dict[str, Any]:
     b.gpz()
     b.odcinek_magistrali(800, "F1")
-    b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja S01 (typ B)", nn_odplywy=1)
+    b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja S01", nn_odplywy=1)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 600)
-    b.stacja_b(segmenty_korytarza(b.migawka(), 1)[0], "Stacja S02 (typ B)", nn_odplywy=1)
+    b.stacja_b(segmenty_korytarza(b.migawka(), 1)[0], "Stacja S02", nn_odplywy=1)
     return b.migawka()
 
 
@@ -517,10 +517,10 @@ def _b2_para(
     b = KlientBudowy(klient, nazwa)
     ziarna = _b2_magistrala(b, odcinki)
     for numer, (odcinek, polowa) in enumerate(stacje, start=1):
-        _stacja_b2(b, f"seg/{ziarna[odcinek - 1]}/{polowa}", f"Stacja S{numer:02d} (typ B)")
+        _stacja_b2(b, f"seg/{ziarna[odcinek - 1]}/{polowa}", f"Stacja S{numer:02d}")
     przed = b.migawka()
     srodkowy = f"seg/{ziarna[operacja[0] - 1]}/{operacja[1]}"
-    wynik = _stacja_b2(b, srodkowy, f"Stacja S{len(stacje) + 1:02d} (typ B)")
+    wynik = _stacja_b2(b, srodkowy, f"Stacja S{len(stacje) + 1:02d}")
     odpowiedz = {**_odpowiedz_operacji(wynik), "segment_srodkowy": srodkowy}
     # Migawka „po" = model tuż po operacji (tak, jak dostaje go kanwa); aparaty nN nowej
     # stacji czekają jeszcze na akcję naprawczą projektanta — to stan realny, nie defekt.
@@ -549,7 +549,7 @@ def _b2_drogi(klient: TestClient) -> tuple[dict[str, dict[str, Any]], dict[str, 
     zapisz("continue_trunk_segment_sn", b.odcinek_magistrali(300))
     zapisz(
         "insert_station_on_segment_sn",
-        _stacja_b2(b, segmenty_korytarza(b.migawka())[1], "Stacja S01 (typ B)"),
+        _stacja_b2(b, segmenty_korytarza(b.migawka())[1], "Stacja S01"),
     )
     stacja = next(s for s in b.migawka()["substations"] if s.get("station_type") == "inline")
     pole_odg = next(

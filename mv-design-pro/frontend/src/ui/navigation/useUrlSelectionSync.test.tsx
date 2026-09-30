@@ -44,6 +44,8 @@ const snapshot = {
       name: 'Stacja inline',
       tags: [],
       meta: {},
+      // Deklaracja „przelotowa" przy stacji BEZ pól — podpis idzie za rodzajem z topologii
+      // (jedna reguła `ui/shared/rodzajStacji.ts`: 0 pól liniowych ⇒ końcowa), nie za deklaracją.
       station_type: 'inline',
       bus_refs: [],
       transformer_refs: [],
@@ -118,12 +120,12 @@ describe('useUrlSelectionSync', () => {
       expect(useSelectionStore.getState().selectedElement).toMatchObject({
         id: 'stn/abc/station',
         type: 'Station',
-        name: 'S01 · Stacja przelotowa',
+        name: 'S01 · Stacja końcowa',
       });
     });
 
     expect(new URLSearchParams(window.location.hash.split('?')[1]).get('name'))
-      .toBe('S01 · Stacja przelotowa');
+      .toBe('S01 · Stacja końcowa');
     expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
       screenCode: 'E-13',
       entityRef: 'stn/abc/station',
@@ -149,13 +151,13 @@ describe('useUrlSelectionSync', () => {
         id: 'stn/abc/station/pv/nn-breaker/Q2',
         type: 'Station',
       });
-      expect(useSelectionStore.getState().selectedElement?.name).toContain('Stacja przelotowa');
+      expect(useSelectionStore.getState().selectedElement?.name).toContain('Stacja końcowa');
       expect(useSelectionStore.getState().selectedElement?.name).toContain('PV Q2');
       expect(useSelectionStore.getState().selectedElement?.name).not.toContain('stn/');
     });
 
     const name = new URLSearchParams(window.location.hash.split('?')[1]).get('name');
-    expect(name).toContain('Stacja przelotowa');
+    expect(name).toContain('Stacja końcowa');
     expect(name).toContain('PV Q2');
     expect(name).not.toContain('stn/');
   });

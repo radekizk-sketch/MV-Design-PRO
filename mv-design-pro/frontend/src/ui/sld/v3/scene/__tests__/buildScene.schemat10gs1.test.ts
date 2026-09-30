@@ -124,7 +124,7 @@ describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
     // Uwaga właściciela 2026-07-23: „render zakłada, że większość stacji to
     // przelotowe, a w realnej sieci to końcowe z odgałęzień" — sylwetka L0
     // niesie ROLĘ stacji w ciągu TĄ SAMĄ regułą co etykieta typu L1/L2
-    // (presentedStationTopologicalType — jedno źródło, zero cienia).
+    // (jedna reguła `ui/shared/rodzajStacji.ts`, lustro `enm/rodzaj_stacji.py` — zero cienia).
     const s0 = buildSceneV3(bigEnm, 0);
     const stations = s0.symbols.filter((s) => s.symbolId === 'stationCollapsed');
     const topo = (s: (typeof stations)[number]) => s.meta?.stationGlyph?.lineTopology;
@@ -137,9 +137,15 @@ describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
     // (stacje źródłujące laterale) — 45% sieci NIE jest przelotowe, a przed
     // GS-5 sylwetka rysowała 53/53 dwustronnie. Liczby przybite na sztywno
     // jak golden (fixtura niezmienna; zmiana fixtury = świadoma zmiana liczb).
+    // KARTA ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 31/10/12. Jedna reguła R3
+    // („przelotowa ⇔ oba pola liniowe prowadzą do innych stacji") zastąpiła prezentację
+    // „ostatnia w wierszu/ciągu ⇒ końcowa". Ostatnie stacje lateralu L6 („Stacja L6-3") i L7
+    // („Stacja L7-4") mają oba pola liniowe prowadzące do innych stacji (pomiar lustrem:
+    // 2 połączone wyprowadzenia) ⇒ przelotowe; końcowe zostają wyłącznie stacje z drugim
+    // polem bez dalszej stacji (10 lateralów).
     const count = (t: string) => stations.filter((s) => topo(s) === t).length;
-    expect(count('przelotowa')).toBe(29);
-    expect(count('końcowa')).toBe(12);
+    expect(count('przelotowa')).toBe(31);
+    expect(count('końcowa')).toBe(10);
     expect(count('odgałęźna')).toBe(12);
     // Ostatnia stacja ciągu głównego ŹRÓDŁUJE lateral (3 pola liniowe) ⇒
     // uczciwie 'odgałęźna' (§19.3; prezentacja końcowa dotyczy WYŁĄCZNIE

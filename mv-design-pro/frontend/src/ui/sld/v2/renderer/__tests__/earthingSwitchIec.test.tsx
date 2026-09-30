@@ -36,7 +36,6 @@ describe('ApparatusEarthingSwitch — IEC 60617-7-13-05 compliance', () => {
     expect(circles?.length).toBeGreaterThanOrEqual(2);
     // BRAK strokeDasharray (zamiast dashed → angled solid)
     const lines = es?.querySelectorAll('line');
-    const hasDashed = Array.from(lines ?? []).some((l) => l.getAttribute('stroke-dasharray') !== null);
     // Główna linia kontaktu nie powinna być dashed (mogą być inne lines z dashed?)
     // Ale switch contact line nie ma strokeDasharray
     const allLineStrokes = Array.from(lines ?? []).map((l) => l.getAttribute('stroke-dasharray'));
