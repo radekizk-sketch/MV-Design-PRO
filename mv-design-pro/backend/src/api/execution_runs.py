@@ -131,8 +131,8 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
     if value == ExecutionAnalysisType.DYNAMIKA_RMS:
         return "dynamika_rms"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
-    # bo wymaga sc_run_id + protection_case_id). Realny silnik za
-    # POST /protection-runs to application.protection_analysis.engine (tor
+    # bo wymaga sc_run_id + protection_case_id). Realna ocena za
+    # POST /protection-runs to application.analyses.protection.ocena_nadpradowa (tor
     # "protection_sn") — `domain.protection_engine_v1` to drugi, MARTWY
     # silnik fizyki (0 konsumentow produkcyjnych, zweryfikowane karta W3-A,
     # 2026-09) chroniony jako WATCHED_PATHS w
@@ -144,8 +144,9 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
             detail=(
                 "Analiza PROTECTION wymaga osobnego endpoint-u "
                 "POST /api/projects/{project_id}/protection-runs "
-                "(wymaga sc_run_id z poprzedniej analizy SC + protection_case_id "
-                "z study_case.protection_config). Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
+                "(wymaga sc_run_id zakończonego biegu zwarciowego 3F albo 2F i "
+                "protection_case_id przypadku, którego model niesie nastawy zabezpieczeń). "
+                "Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
             ),
         )
     raise HTTPException(

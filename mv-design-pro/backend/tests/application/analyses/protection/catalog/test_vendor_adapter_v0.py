@@ -116,13 +116,19 @@ def test_wymaganie_z_nastaw_jest_definite_time_bez_ziemnozwarcia() -> None:
     assert wymaganie.i_inst_50n_a is None
 
 
-def test_vendor_mapping_for_real_abb_device_is_deterministic() -> None:
+def test_vendor_mapping_for_real_abb_device_is_deterministic(
+    jednostka_zakresu_testu: tuple[float, float]
+) -> None:
     """Zabezpieczenie realnego producenta (ABB Relion, DT-owa rodzina) mapuje się
     na jego konwencję nastaw — dobór jest funkcją CZYSTĄ (bez biegu/koperty)."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF615")
-    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF615")
+    wynik1 = dopasuj_do_aparatu(
+        wymaganie, device_id="ABB_REF615", przekladnia_a=jednostka_zakresu_testu
+    )
+    wynik2 = dopasuj_do_aparatu(
+        wymaganie, device_id="ABB_REF615", przekladnia_a=jednostka_zakresu_testu
+    )
 
     assert wynik1 == wynik2  # czysta funkcja: te same wejścia = ten sam wynik
 
@@ -146,17 +152,16 @@ def test_vendor_mapping_for_reference_profile_is_not_applicable() -> None:
     """Profil referencyjny bez marki (karta FAB-A/D-33) nie ma vendor-adaptera —
     brak producenta jest ZAMIERZONY, więc brak mapowania NIE jest naruszeniem.
 
-    ``REF-OC-100`` nie deklaruje krzywej DT (profil czysto odwrotnoczasowy) —
-    wymaganie Hoppela (DT) jest więc NIEZGODNE elektrycznie z tym konkretnym
-    profilem; brak marki i niekompatybilność krzywej to dwie NIEZALEŻNE osie
-    tego samego wyniku, więc test sprawdza obie osobno.
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: profile referencyjne deklarują DT i zakresy prądowe w
+    krotności In z podstawą (D-33) — przy przekładniku 600/5 A wymaganie Hoppela jest z nimi
+    zgodne elektrycznie; brak marki i zgodność elektryczna to dwie NIEZALEŻNE osie wyniku.
     """
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-100")
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-100", przekladnia_a=(600.0, 5.0))
 
-    assert wynik["compatible"] is False
-    assert "UNSUPPORTED_CURVE" in wynik["violations"]
+    assert wynik["compatible"] is True
+    assert wynik["violations"] == ()
     vendor_mapping = wynik["vendor_mapping"]
     assert vendor_mapping["vendor"] is None
     assert vendor_mapping["vendor_violations"] == []

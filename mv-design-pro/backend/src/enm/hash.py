@@ -400,6 +400,53 @@ def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
     return _canonical_sha256(data)
 
 
+#: Kolekcje opisujące WYŁĄCZNIE zabezpieczenia i ich przekładniki — nie wchodzą do żadnego
+#: obliczenia rozpływu ani zwarcia (solver nie czyta ani nastaw, ani przekładni).
+_KOLEKCJE_ZABEZPIECZEN = ("protection_assignments", "measurements")
+#: Pola nagłówka zmieniane przez KAŻDĄ edycję (rewizja) albo będące etykietą (nazwa, opis) —
+#: nie są treścią sieci liczonej przez solver.
+_POLA_NAGLOWKA_POZA_SIECIA = ("revision", "name", "description")
+
+
+def hash_sieci_bez_zabezpieczen(snapshot: dict[str, Any]) -> str:
+    """Odcisk SIECI liczonej przez solver — migawka bez zabezpieczeń i przekładników.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): nastawy żyją w modelu, więc ich edycja zmienia
+    migawkę i rewizję modelu, ale NIE zmienia sieci, którą policzył bieg zwarciowy. Ocena
+    zabezpieczeń czyta nastawy z BIEŻĄCEGO modelu, a topologię i rozpływ prądu zwarciowego z
+    biegu źródłowego — wolno jej to zrobić wyłącznie wtedy, gdy oba opisują TĘ SAMĄ sieć. Ten
+    odcisk jest jedynym kryterium tej równości (stany łączników WCHODZĄ do odcisku — zmieniają
+    rozpływ). Migawka wołającego nie jest modyfikowana.
+    """
+    data = _kopia_pod_hash(snapshot)
+    for klucz in _KOLEKCJE_ZABEZPIECZEN:
+        data.pop(klucz, None)
+    naglowek = data.get("header")
+    if isinstance(naglowek, dict):
+        data["header"] = {k: v for k, v in naglowek.items() if k not in _POLA_NAGLOWKA_POZA_SIECIA}
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
+def siec_biegu_zgodna_z_modelem(
+    snapshot_biegu: dict[str, Any] | None, snapshot_modelu: dict[str, Any]
+) -> bool:
+    """Czy bieg (migawka ``snapshot_biegu``) policzono dla TEJ SAMEJ sieci co model?
+
+    JEDYNY predykat zgodności sieci biegu zwarciowego z modelem dla oceny zabezpieczeń — wołają
+    go: tworzenie biegu ``protection_sn`` (``canonical_analysis._validate_protection_sc_reference``),
+    świeżość wyniku tego biegu (``api/protection_runs._swiezosc_wyniku``) i koordynacja E-28
+    (``coordination/z_biegow._sprawdz_siec``). Wejście i wyjście tej samej decyzji z jednego
+    źródła: wynik, który tworzenie przepuściło, nie może zostać uznany za nieaktualny innym
+    kryterium (i odwrotnie). Bieg bez migawki nie jest zgodny z żadną siecią.
+    """
+    if snapshot_biegu is None:
+        return False
+    return hash_sieci_bez_zabezpieczen(snapshot_biegu) == hash_sieci_bez_zabezpieczen(
+        snapshot_modelu
+    )
+
+
 def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Kopia migawki dokladnie tak gleboka, jak siegaja mutacje hashowania:
     naglowek bez pol zmiennych, elementy list skopiowane plytko (z nich znika

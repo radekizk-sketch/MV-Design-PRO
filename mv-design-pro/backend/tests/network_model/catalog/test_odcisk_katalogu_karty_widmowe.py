@@ -31,7 +31,14 @@ from tests.dziedziny import fabryki as f
 #: (source_reference 7533, verification_note 578, ptpiree_note 304, note 42, source_ref 42,
 #: name 36, data_source 22, name_pl 12, notes_pl 10) — żadna liczba ani identyfikator.
 #: Poprzednia wartość: 0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95.
-ODCISK_SPRZED_KARTY = "ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455"
+#: Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30, PZ-09): odcisk przeliczony po nadaniu zakresom
+#: prądowym szablonów nastaw nazwanego stanu jednostki. Dowód liść po liściu (zrzut kanoniczny
+#: baza `3840e239` vs drzewo karty): różnią się WYŁĄCZNIE liście
+#: `protection_setting_templates/<szablon>/setting_fields[i]` pól I>, I>>, I0>, I0>> — 13 razy
+#: `unit`: "A" → null i 13 nowych kluczy `jednostka_status`: "NIEUSTALONA" w 8 szablonach;
+#: żadna liczba ani identyfikator. Poprzednia wartość:
+#: ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455.
+ODCISK_SPRZED_KARTY = "a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 

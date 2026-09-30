@@ -8,7 +8,8 @@ export const PRZEKAZNIK_STRINGS = {
   cel:
     'Przypisz zabezpieczenie do pola SN — dobierasz rodzinę ochrony i typ katalogowy przekaźnika, '
     + 'a system wiąże go z wyłącznikiem wykonawczym oraz przekładnikami pomiarowymi pola. '
-    + 'Nastawy i charakterystykę czasowo-prądową liczy backend wg IEC 60255.',
+    + 'Nastawy (progi, charakterystyki, zwłoki) wpisujesz potem w edytorze nastaw — backend '
+    + 'przelicza je przez przekładnię i sprawdza z zakresami katalogu.',
   odznaka: 'Nowe zabezpieczenie',
 
   krokPole: 'Pole i aparat',
@@ -56,6 +57,12 @@ export const PRZEKAZNIK_STRINGS = {
   wierszRodzina: 'Rodzina ochrony',
   wierszKatalog: 'Typ katalogowy',
   wierszCt: 'Przekładnik CT',
+  // Karta BIEG-ZABEZPIECZEN-Z-MODELU: zabezpieczenie wyłącznika liniowego (bez pola).
+  wierszWylacznik: 'Wyłącznik liniowy',
+  wylacznikBrak: 'wyłącznik nie występuje w modelu',
+  wylacznikPomoc: 'Zabezpieczenie wyłącznika liniowego wstawionego w odcinek SN — po co: '
+    + 'wyłącza zwarcia za wyłącznikiem; z czego: prąd z przekładnika CT przy wyłączniku; co '
+    + 'daje: stopień selektywności magistrali.',
 
   // Ostrzeżenie o braku CT (dla nadprądowych)
   brakCt: 'Ta rodzina wymaga przekładnika prądowego CT w tym samym polu. Dodaj CT przed zapisem '
@@ -63,8 +70,9 @@ export const PRZEKAZNIK_STRINGS = {
 
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Zabezpieczenie wchodzi do analiz koordynacji (krzywe TCC) i doboru nastaw. Backend liczy '
-    + 'charakterystykę czasowo-prądową i sprawdza selektywność z zabezpieczeniami sąsiednich pól.',
+    'Zabezpieczenie powstaje bez nastaw — wpisz je w edytorze nastaw (ekran „Zabezpieczenia i '
+    + 'automatyka" albo karta elementu). Potem wchodzi do oceny zabezpieczeń, koordynacji (TCC) '
+    + 'i czasów wyłączenia; backend liczy czasy wg IEC 60255.',
 
   // Stany zerowe
   brakPolTytul: 'Brak pola SN',
@@ -97,11 +105,4 @@ export const PRZEKAZNIK_STRINGS = {
     + 'nadrzędnych i podrzędnych. Wynik (czasy, prądy) liczy backend — UI pokazuje kształt prawa.',
   teoriaPodstawa: 'Podstawa: PN-EN 60255-151 (przekaźniki nadprądowe), IRiESD (koordynacja zabezpieczeń SN).',
 
-  // Wykres IDMT
-  wykresAria: 'Poglądowe charakterystyki czasowo-prądowe IDMT: czas zadziałania vs krotność prądu',
-  wykresOsI: 'I / Is',
-  wykresOsT: 't',
-  wykresSi: 'SI',
-  wykresVi: 'VI',
-  wykresEi: 'EI',
 } as const;

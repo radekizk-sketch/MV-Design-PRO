@@ -3,9 +3,10 @@
  *
  * ZERO FABRYKACJI (karta W2 pkt 3, 2026-09-09): mapowanie `PROTECTION_DEVICE`
  * → `EditProtectionModal` wskazywał komponent, którego NIE MA w `frontend/src`
- * (`find frontend/src -iname "*EditProtectionModal*"` = 0), a operacja
- * `update_relay_settings` jest wyłączonym stubem backendu
- * (`enm/domain_operations_v2.py`, kod `relay.legacy_write_disabled`).
+ * (`find frontend/src -iname "*EditProtectionModal*"` = 0), a dawna operacja
+ * `update_relay_settings` (wyłączony stub) została skasowana — nastawy zapisuje
+ * `update_protection_settings` z edytora `ui2/kreatory/przekaznik/EdytorNastawZabezpieczenia`
+ * (karta BIEG-ZABEZPIECZEN-Z-MODELU).
  * Inwentarz klasy (ta sama kontrola dla WSZYSTKICH 13 wpisów mapy, nie tylko
  * nazwanego w audycie): `find frontend/src -iname "*<Nazwa>*"` = 0 dla
  * KAŻDEGO z `CdseModalId` — AddTrunkSegmentModal, InsertStationModal,

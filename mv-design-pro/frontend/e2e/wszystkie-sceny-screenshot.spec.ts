@@ -26,30 +26,24 @@ const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sceny');
 
 /**
- * HARNESS-RESZTA-2 (2026-09-17): asercje sceny koordynacji CYTUJĄ fixturę
- * REALNEGO biegu backendu (tę samą, którą serwuje harness) — zero refów sieci
- * wpisanych w specu. Odczyt przez `readFileSync`, nie `import … .json`: moduł
- * specu jest ESM Node'a, gdzie import JSON wymaga atrybutu `with { type: 'json' }`
- * (zmierzone: bez tego bieg kończy się `TypeError` przed zebraniem testów).
+ * Asercje sceny koordynacji CYTUJĄ fixtury REALNYCH biegów backendu (te same, które serwuje
+ * harness) — zero refów sieci wpisanych w specu. Odczyt przez `readFileSync`, nie
+ * `import … .json`: moduł specu jest ESM Node'a (import JSON wymaga atrybutu `with`).
  */
 const KOORDYNACJA_SCENA_WYNIK = JSON.parse(
   fs.readFileSync(
     path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_wynik.json'),
     'utf-8',
   ),
-) as { devices: { location_element_id: string; name: string }[] };
+) as { devices: { id: string; name: string }[] };
 
-/**
- * Decyzja O-51 pkt 7: zabezpieczenia sceny stoją na odcinkach magistrali przy WSKAZANYM
- * zacisku — lokalizacje i zaciski z fixtury rozstrzygnięć backendu (tej samej, którą
- * serwuje atrapa `GET …/enm/zacisk-lokalizacji`).
- */
-const KOORDYNACJA_SCENA_MIEJSCA = JSON.parse(
+/** Wynik oceny zabezpieczeń na biegu zwarciowym sceny (bieg `protection_sn` backendu). */
+const KOORDYNACJA_SCENA_OCENA = JSON.parse(
   fs.readFileSync(
-    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_miejsca.json'),
+    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_ocena.json'),
     'utf-8',
   ),
-) as { urzadzenia_sceny: { lokalizacja: string; zacisk: 'od' | 'do' }[] };
+) as { evaluations: { device_id: string; fault_target_id: string }[] };
 
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
 const JUZ_KADROWANE = new Set([
@@ -215,55 +209,35 @@ test.describe('koordynacja:screenshot', () => {
       // a nie zatrzymać się na uczciwym stanie zerowym.
       await expect(page.getByTestId('protection-coordination-page')).toBeVisible();
 
-      // Dwa zabezpieczenia z szablonu — realną drogą projektanta: szablon,
-      // WSKAZANIE ELEMENTU MODELU z listy (V12K-262: lokalizacji nie da się już
-      // dostać „za darmo", bo ekran jej nie wymyśla), zapis konfiguracji.
-      // HARNESS-RESZTA-2 (2026-09-17): refy CYTOWANE Z FIXTURY realnego biegu
-      // backendu (szyny SN obu stacji magistrali sceny) — wcześniej spec podawał
-      // refy sieci, która nie istnieje w żadnym modelu repozytorium.
-      const miejsca = KOORDYNACJA_SCENA_MIEJSCA.urzadzenia_sceny;
-      expect(miejsca.length, 'fixtura koordynacji musi opisywać dwa zabezpieczenia').toBe(2);
-      expect(miejsca.map((m) => m.lokalizacja).sort()).toEqual(
-        KOORDYNACJA_SCENA_WYNIK.devices.map((u) => u.location_element_id).sort(),
-      );
-      for (const { lokalizacja, zacisk } of miejsca) {
-        await page.getByTitle('Zastosuj szablon').click();
-        // Klik ZAWĘŻONY do okna szablonów: po dodaniu pierwszego zabezpieczenia ta sama
-        // nazwa jest też na liście urządzeń POD nakładką, a `.first()` trafiał w nią
-        // i modal przechwytywał zdarzenie.
-        // Nazwa szablonu z fixtury biegu (backend zasiewa ją 1:1 z `DEVICE_TEMPLATES`),
-        // nie literał przepisany ręcznie (karta PL-ZNAKI).
-        await page
-          .locator('div.fixed.inset-0')
-          .getByText(KOORDYNACJA_SCENA_WYNIK.devices[0].name)
-          .click();
-        await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
-        await page.getByTestId('device-location-select').selectOption(lokalizacja);
-        // Zacisk gałęzi — etykieta z nazwą szyny z backendu, brak zacisku domyślnego.
-        const zaciskUrzadzenia = page.getByTestId(`device-terminal-${zacisk}`);
-        await expect(zaciskUrzadzenia).not.toBeChecked();
-        await zaciskUrzadzenia.click();
-        await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
+      // Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenia i nastawy są w MODELU sceny (sieć
+      // złota G08 z wyłącznikami liniowymi Q1, Q2) — ekran niczego nie konfiguruje. Najpierw
+      // ocena zabezpieczeń na biegu zwarciowym (natywny klik), potem koordynacja.
+      const ocen = page.getByTestId('mvd-ocena-zabezpieczen-uruchom');
+      await expect(ocen).toBeEnabled({ timeout: 15000 });
+      await ocen.click();
+      const wynikOceny = page.getByTestId('mvd-ocena-zabezpieczen-wynik');
+      await expect(wynikOceny).toBeVisible({ timeout: 15000 });
+      for (const o of KOORDYNACJA_SCENA_OCENA.evaluations) {
+        await expect(
+          page.getByTestId(`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`),
+        ).toBeVisible();
       }
 
-      // Decyzja O-51 pkt 7: prąd ZWARCIOWY szyny zacisku (biegi c_max i c_min) i prąd
-      // ROBOCZY tego samego zacisku (bieg rozpływu) związały się z obydwoma
-      // zabezpieczeniami — panel braków nie ma czego meldować. Do tej karty
-      // zabezpieczenia stały na szynach, a prąd roboczy był nazwanym brakiem (relacji
-      // „zabezpieczenie → chroniona gałąź" wtedy nie było).
-      await expect(page.getByTestId('coordination-missing-currents')).toHaveCount(0);
       const uruchom = page.getByTestId('run-analysis-button');
+      await expect(page.getByTestId('coordination-run-min')).toContainText('✓', { timeout: 15000 });
       await expect(uruchom).toBeEnabled();
       await uruchom.click();
 
-      // Werdykt pary z NARUSZENIEM musi dojechać na ekran wraz z widoczną akcją
-      // naprawczą (V12K-261) — to jest dowód, że łańcuch domknął się do końca.
-      // Tożsamość zabezpieczenia nadrzędnego wymyśla EKRAN (`crypto.randomUUID()`
-      // przy zastosowaniu szablonu), więc spec nie może jej znać — czyta ją z
-      // wiersza selektywności, który ekran wyrenderował.
+      // Urządzenia wyniku = urządzenia modelu (nazwy z fixtury biegu), para stopniowania.
+      const urzadzenia = page.getByTestId('coordination-devices');
+      await expect(urzadzenia).toBeVisible({ timeout: 15000 });
+      for (const u of KOORDYNACJA_SCENA_WYNIK.devices) {
+        await expect(page.getByTestId(`coordination-device-${u.id}`)).toContainText(u.name);
+      }
+      await expect(page.getByTestId('coordination-pairs')).toBeVisible();
+
       await page.getByTestId('tab-selectivity').click();
       await expect(page.getByTestId('selectivity-table')).toBeVisible({ timeout: 15000 });
-      await expect(page.locator('[data-testid^="selectivity-fix-"]').first()).toBeVisible();
 
       // Krzywe czasowo-prądowe: sedno tego ekranu i jedyny wykres log-log w systemie.
       await page.getByTestId('tab-tcc').click();

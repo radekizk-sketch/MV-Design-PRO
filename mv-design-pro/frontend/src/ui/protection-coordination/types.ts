@@ -1,141 +1,132 @@
 /**
- * FIX-12 — Protection Coordination Types
+ * Koordynacja zabezpieczeń nadprądowych (E-28) — kontrakt wyniku backendu.
  *
- * TypeScript types for protection coordination analysis.
+ * Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): urządzenia i nastawy pochodzą z MODELU sieci, prądy
+ * z biegów (zwarciowy maksymalny i minimalny, rozpływ). Żądanie niesie wyłącznie
+ * identyfikatory biegów, opcjonalne pary stopniowania i kryteria — dawne urządzenia ekranu
+ * (szablony, nastawy w konfiguracji przypadku, prądy z żądania) skasowane. READ-ONLY.
  *
- * CANONICAL ALIGNMENT:
- * - Mirrors backend domain models
- * - 100% Polish UI labels
- * - READ-ONLY views of backend data
- *
- * UWAGA: Mapowanie werdyktów na komunikaty UI:
- * - PASS → "Zgodne"
- * - MARGINAL → "Na granicy dopuszczalności"
- * - FAIL → "Wymaga korekty"
- * - ERROR → "Wystąpił błąd"
+ * Zakaz P-06 (`docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md` §3): koordynacja NIE wydaje
+ * werdyktów — każde sprawdzenie niesie liczby (prądy, czasy, odstęp, iloraz) obok wartości
+ * wymaganej z kryteriów i zdanie backendu z tymi liczbami. Dawne statusy PASS/MARGINAL/FAIL/
+ * ERROR, werdykt ogólny i ich etykiety/kolory w interfejsie skasowane.
  */
 
-import {
-  COORDINATION_VERDICT_UI_LABELS,
-  COORDINATION_VERDICT_UI_DESCRIPTIONS,
-  COORDINATION_VERDICT_UI_COLORS,
-} from '../shared/verdict-messages';
+import type { BrakNastaw, NastawyUrzadzeniaWidok } from '../protection/nastawyModelu';
+
+/**
+ * Fakt pary w punkcie zwarcia — kto zadziała (backend `StanPary`), nie ocena. Opis po polsku
+ * przychodzi z backendu (`stan_pl`); interfejs nie ma własnej mapy stanów.
+ */
+export type StanPary =
+  | 'ODSTEP'
+  | 'NADRZEDNE_NIE_POBUDZA'
+  | 'PODRZEDNE_NIE_ZADZIALA'
+  | 'ZADNE_NIE_ZADZIALA'
+  | 'BEZ_PUNKTOW';
 
 // =============================================================================
-// Enums and Constants
+// Urządzenia wyniku (z modelu)
 // =============================================================================
 
-export type DeviceType = 'RELAY' | 'FUSE' | 'RECLOSER' | 'CIRCUIT_BREAKER';
-export type CurveStandard = 'IEC' | 'IEEE' | 'FUSE';
-export type CurveVariant = 'SI' | 'VI' | 'EI' | 'LTI' | 'DT' | 'MI' | 'STI';
-export type CoordinationVerdict = 'PASS' | 'MARGINAL' | 'FAIL' | 'ERROR';
-
-// =============================================================================
-// Settings Types
-// =============================================================================
-
-export interface CurveSettings {
-  standard: CurveStandard;
-  variant: CurveVariant;
-  pickup_current_a: number;
-  time_multiplier: number;
-  definite_time_s?: number;
+/** Strefa urządzenia z topologii modelu (backend `StrefaUrzadzenia.to_dict`). */
+export interface StrefaUrzadzenia {
+  wezly_strefy: string[];
+  wezly_strefy_nazwy_pl: string[];
+  klaster_zacisku: string[];
+  wezel_zacisku: string;
+  punkty_innego_poziomu_napiecia?: { punkt_ref: string; nazwa_pl: string; powod_pl: string }[];
 }
 
-export interface StageSettings {
-  enabled: boolean;
-  pickup_current_a: number;
-  time_s?: number;
-  curve_settings?: CurveSettings;
-  directional: boolean;
-}
-
-export interface OvercurrentSettings {
-  stage_51: StageSettings;
-  stage_50?: StageSettings;
-  stage_50_high?: StageSettings;
-  stage_51n?: StageSettings;
-  stage_50n?: StageSettings;
-}
-
-export interface ProtectionDevice {
+/** Urządzenie wyniku koordynacji — przekaźnik z modelu albo bezpiecznik modelu. */
+export interface CoordinationDevice {
   id: string;
   name: string;
-  device_type: DeviceType;
-  location_element_id: string;
-  /**
-   * Zacisk lokalizacji-GAŁĘZI, przy którym stoi urządzenie (decyzja O-51, pkt 7):
-   * `od` — zacisk początkowy, `do` — końcowy. Wskazywany klikiem, gdy model nie
-   * rozstrzyga (lokalizacja-łącznik rozstrzyga go sam — pole zbędne). Brak = prąd
-   * roboczy nieustalony (nazwany brak), nigdy prąd zacisku początkowego domyślnie.
-   */
-  zacisk?: 'od' | 'do';
-  settings: OvercurrentSettings;
-  manufacturer?: string;
-  model?: string;
-  location_description?: string;
-  ct_ratio?: string;
-  rated_current_a?: number;
+  device_type: 'RELAY' | 'FUSE';
+  breaker_ref?: string | null;
+  /** Nastawy rozwiązane jedną ścieżką oceny (przekaźnik) — `null` dla bezpiecznika. */
+  nastawy: NastawyUrzadzeniaWidok | null;
+  strefa: StrefaUrzadzenia | null;
+}
+
+/** Urządzenie, którego ocena jest wstrzymana (nazwane braki z akcją naprawczą). */
+export interface OdmowaUrzadzenia {
+  urzadzenie_ref: string;
+  nazwa_pl: string;
+  breaker_ref: string;
+  braki: BrakNastaw[];
+  kandydaci_naprawy: string[];
+}
+
+/** Urządzenie pominięte (ocena nadprądowa go nie dotyczy) z przyczyną. */
+export interface PominieteUrzadzenie {
+  urzadzenie_ref: string;
+  nazwa_pl: string;
+  kod: string;
+  powod_pl: string;
+}
+
+/** Para stopniowania (nadrzędne, podrzędne) — z topologii albo wskazana i sprawdzona. */
+export interface ParaSelektywnosci {
+  nadrzedne_ref: string;
+  podrzedne_ref: string;
+}
+
+/** Nazwana odmowa pary (niejednoznaczna, sprzeczna z topologią, bez oceny). */
+export interface OdmowaPary {
+  podrzedne_ref: string;
+  kandydaci_nadrzedne: string[];
+  kod: string;
+  powod_pl: string;
 }
 
 // =============================================================================
-// Currents Data
+// Sprawdzenia (liczby `null` = wartości nie wyznaczono — nigdy liczba zastępcza)
 // =============================================================================
 
-export interface FaultCurrentData {
-  location_id: string;
-  ik_max_3f_a: number;
-  ik_min_3f_a: number;
-  ik_max_2f_a?: number;
-  ik_min_1f_a?: number;
-}
-
-export interface OperatingCurrentData {
-  location_id: string;
-  i_operating_a: number;
-  i_max_operating_a?: number;
-  loading_percent?: number;
-}
-
-// =============================================================================
-// Check Results
-// =============================================================================
-
+/** Czułość: iloraz I_min/I_s (bieg minimalny) obok wymaganego z kryteriów. */
 export interface SensitivityCheck {
   device_id: string;
-  i_fault_min_a: number;
-  i_pickup_a: number;
-  margin_percent: number;
-  verdict: CoordinationVerdict;
-  verdict_pl: string;
+  i_fault_min_a: number | null;
+  i_pickup_a: number | null;
+  ratio: number | null;
+  margin_percent: number | null;
+  required_ratio: number;
   notes_pl: string;
+  punkt_ref?: string | null;
+  nazwa_punktu_pl?: string | null;
+  stopien?: string | null;
 }
 
 export interface SelectivityCheck {
   upstream_device_id: string;
   downstream_device_id: string;
-  analysis_current_a: number;
-  t_upstream_s: number;
-  t_downstream_s: number;
-  margin_s: number;
+  analysis_current_a: number | null;
+  i_upstream_a?: number | null;
+  t_upstream_s: number | null;
+  t_downstream_s: number | null;
+  margin_s: number | null;
   required_margin_s: number;
-  verdict: CoordinationVerdict;
-  verdict_pl: string;
+  stan: StanPary;
+  stan_pl: string;
   notes_pl: string;
+  punkt_ref?: string | null;
+  nazwa_punktu_pl?: string | null;
 }
 
+/** Przeciążalność: iloraz I_s/I_rob (bieg rozpływu) obok wymaganego z kryteriów. */
 export interface OverloadCheck {
   device_id: string;
-  i_operating_a: number;
-  i_pickup_a: number;
-  margin_percent: number;
-  verdict: CoordinationVerdict;
-  verdict_pl: string;
+  i_operating_a: number | null;
+  i_pickup_a: number | null;
+  ratio: number | null;
+  margin_percent: number | null;
+  required_ratio: number;
   notes_pl: string;
 }
 
 // =============================================================================
-// TCC Types
+// TCC
 // =============================================================================
 
 export interface TCCPoint {
@@ -145,36 +136,29 @@ export interface TCCPoint {
 }
 
 /**
- * Kod podstawy krzywej czasowo-prądowej (kontrakt backendu, karta N-D5-FUSE).
- *
- * `KRZYWA_PRZEKAZNIKOWA` — punkty policzone ze wzoru IDMT (IEC 60255 / IEEE C37.112).
- * Pozostałe kody znaczą BRAK podstawy: `points` jest puste i nie wolno niczego
- * narysować — bezpiecznik topikowy nie ma charakterystyki przekaźnikowej, tylko
- * pasmo topikowe wg IEC 60282-1 z karty katalogowej producenta.
+ * Kod podstawy krzywej: `KRZYWA_PRZEKAZNIKOWA` — czas najszybszego pobudzonego stopnia z
+ * rdzenia IEC 60255; `BRAK_PASMA_BEZPIECZNIKA` — bezpiecznik bez pasma topikowego w katalogu
+ * (`points` puste, próg i mnożnik `null`: bezpiecznik ich nie ma).
  */
-export type PodstawaKrzywej =
-  | 'KRZYWA_PRZEKAZNIKOWA'
-  | 'BRAK_PASMA_BEZPIECZNIKA'
-  | 'NIEZNANA_NORMA_KRZYWEJ'
-  | 'BRAK_NASTAW_KRZYWEJ';
+export type PodstawaKrzywej = 'KRZYWA_PRZEKAZNIKOWA' | 'BRAK_PASMA_BEZPIECZNIKA';
 
 export interface TCCCurve {
   device_id: string;
   device_name: string;
   curve_type: string;
-  pickup_current_a: number;
-  time_multiplier: number;
+  pickup_current_a: number | null;
+  time_multiplier: number | null;
   points: TCCPoint[];
   color: string;
-  /** Skąd pochodzi krzywa. Brak pola = starszy ładunek przekaźnikowy. */
-  podstawa_kod?: PodstawaKrzywej;
-  /** Uczciwe zdanie po polsku, gdy podstawy nie ma. */
+  podstawa_kod: PodstawaKrzywej;
   powod_pl?: string | null;
+  /** Stopnie urządzenia w zdaniu (próg pierwotny, charakterystyka, TMS albo zwłoka). */
+  opis_pl?: string | null;
 }
 
 /** Czy pozycja TCC niesie krzywą policzoną ze wzoru przekaźnikowego. */
 export function maPodstawePrzekaznikowa(curve: TCCCurve): boolean {
-  return (curve.podstawa_kod ?? 'KRZYWA_PRZEKAZNIKOWA') === 'KRZYWA_PRZEKAZNIKOWA';
+  return curve.podstawa_kod === 'KRZYWA_PRZEKAZNIKOWA';
 }
 
 export interface FaultMarker {
@@ -186,32 +170,51 @@ export interface FaultMarker {
 }
 
 // =============================================================================
-// Analysis Results
+// Wynik
 // =============================================================================
 
+export interface CoordinationConfig {
+  breaker_time_s: number;
+  relay_overtravel_s: number;
+  safety_factor_s: number;
+  sensitivity_ratio_required: number;
+  overload_ratio_required: number;
+}
+
+/** Liczby zbiorcze — najmniejsze wartości i liczba sprawdzeń bez wartości (bez werdyktu). */
 export interface CoordinationSummary {
   total_devices: number;
   total_checks: number;
-  sensitivity: { pass: number; marginal: number; fail: number; error: number };
-  selectivity: { pass: number; marginal: number; fail: number; error: number };
-  overload: { pass: number; marginal: number; fail: number; error: number };
-  overall_verdict: CoordinationVerdict;
-  overall_verdict_pl: string;
+  sensitivity: { sprawdzenia: number; najmniejszy_iloraz: number | null; bez_wartosci: number };
+  selectivity: {
+    sprawdzenia: number;
+    najmniejszy_odstep_s: number | null;
+    bez_odstepu: number;
+  };
+  overload: { sprawdzenia: number; najmniejszy_iloraz: number | null; bez_wartosci: number };
+  odmowy_par: number;
+  odmowy_urzadzen: number;
+  kryteria: CoordinationConfig & { minimum_grading_margin_s: number };
 }
 
 export interface CoordinationResult {
   run_id: string;
   project_id: string;
+  devices: CoordinationDevice[];
   sensitivity_checks: SensitivityCheck[];
   selectivity_checks: SelectivityCheck[];
   overload_checks: OverloadCheck[];
   tcc_curves: TCCCurve[];
   fault_markers: FaultMarker[];
-  overall_verdict: CoordinationVerdict;
   summary: CoordinationSummary;
   trace_steps: TraceStep[];
-  pf_run_id?: string;
-  sc_run_id?: string;
+  odmowy_urzadzen: OdmowaUrzadzenia[];
+  pominiete: PominieteUrzadzenie[];
+  pary: ParaSelektywnosci[];
+  odmowy_par: OdmowaPary[];
+  pf_run_id?: string | null;
+  sc_run_id?: string | null;
+  sc_run_id_min?: string | null;
   created_at: string;
 }
 
@@ -223,125 +226,68 @@ export interface TraceStep {
 }
 
 // =============================================================================
-// API Request/Response
+// Żądanie
 // =============================================================================
 
+/** Żądanie koordynacji — identyfikatory biegów, pary (opcjonalnie), kryteria (opcjonalnie). */
 export interface RunCoordinationRequest {
-  devices: ProtectionDevice[];
-  fault_currents: FaultCurrentData[];
-  operating_currents: OperatingCurrentData[];
-  config?: CoordinationConfig;
+  sc_run_id: string;
+  sc_run_id_min: string;
   pf_run_id?: string;
-  /** Bieg zwarciowy MAKSYMALNY, którym backend potwierdza `ik_max_3f_a` (karta S-2). */
-  sc_run_id?: string;
-  /** Bieg zwarciowy MINIMALNY, którym backend potwierdza `ik_min_3f_a` (karta S-2). */
-  sc_run_id_min?: string;
-}
-
-export interface CoordinationConfig {
-  breaker_time_s: number;
-  relay_overtravel_s: number;
-  safety_factor_s: number;
-  sensitivity_margin_pass: number;
-  sensitivity_margin_marginal: number;
-  overload_margin_pass: number;
-  overload_margin_marginal: number;
+  pary?: ParaSelektywnosci[];
+  config?: CoordinationConfig;
 }
 
 export interface CoordinationSummaryResponse {
   run_id: string;
   project_id: string;
-  overall_verdict: CoordinationVerdict;
-  overall_verdict_pl: string;
   total_devices: number;
   total_checks: number;
-  sensitivity_pass: number;
-  sensitivity_fail: number;
-  selectivity_pass: number;
-  selectivity_fail: number;
-  overload_pass: number;
-  overload_fail: number;
+  najmniejszy_odstep_s: number | null;
+  najmniejszy_iloraz_czulosci: number | null;
+  najmniejszy_iloraz_przeciazalnosci: number | null;
 }
-
-// =============================================================================
-// Analysis Status Type
-// =============================================================================
 
 export type AnalysisStatus = 'IDLE' | 'RUNNING' | 'SUCCESS' | 'ERROR';
 
 // =============================================================================
-// Context Types (StudyCase/Snapshot/Run integration)
-// =============================================================================
-
-export interface AnalysisContext {
-  projectId: string;
-  caseId?: string;
-  snapshotId?: string;
-  runId?: string;
-}
-
-// =============================================================================
-// Device Template Type
-// =============================================================================
-
-export interface DeviceTemplate {
-  id: string;
-  name: string;
-  description_pl: string;
-  device_type: DeviceType;
-  settings: OvercurrentSettings;
-}
-
-// =============================================================================
-// Polish Labels (100% PL, Canonical parity)
+// Polish Labels (100% PL)
 // =============================================================================
 
 export const LABELS = {
   title: 'Koordynacja zabezpieczeń nadprądowych',
-  subtitle: 'Analiza czułości, selektywności i przeciążalności',
+  subtitle: 'Czułość, selektywność i przeciążalność urządzeń z modelu sieci',
 
   devices: {
-    title: 'Urządzenia zabezpieczeniowe',
-    add: 'Dodaj urządzenie',
-    remove: 'Usuń',
-    clone: 'Klonuj',
-    applyTemplate: 'Zastosuj szablon',
-    name: 'Nazwa',
-    type: 'Typ',
-    location: 'Lokalizacja (element modelu)',
-    // V12K-262: wybór z modelu zamiast wpisywania identyfikatora z ręki.
-    locationPrompt: '— wskaż element modelu —',
-    locationNoModel:
-      'Model przypadku nie jest wczytany — nie ma z czego wskazać elementu. '
-      + 'Wybierz aktywny wariant pracy, a lista szyn i gałęzi pojawi się tutaj.',
-    // Decyzja O-51 (pkt 7): zacisk, przy którym stoi urządzenie — etykiety zacisków
-    // (nazwy szyn) i odmowy przychodzą z backendu.
-    terminal: 'Zacisk gałęzi (miejsce urządzenia)',
-    terminalFromModel: 'Z modelu (łącznik w szeregu z zaciskiem gałęzi)',
-    terminalLoading: 'Rozstrzyganie miejsca urządzenia…',
-    settings: 'Nastawy',
-    noDevices: 'Dodaj urządzenia zabezpieczeniowe',
-    selectToEdit: 'Wybierz urządzenie do edycji',
+    title: 'Urządzenia zabezpieczeniowe z modelu',
+    opis:
+      'Urządzenia i nastawy pochodzą z modelu sieci. Nastawy edytujesz na ekranie '
+      + '„Zabezpieczenia i automatyka" albo w karcie elementu.',
+    brak: 'Wynik koordynacji pojawi się po uruchomieniu analizy.',
+    odmowyTytul: 'Urządzenia bez oceny (nazwane braki)',
+    pominieteTytul: 'Urządzenia, których ocena nadprądowa nie dotyczy',
+    paryTytul: 'Pary stopniowania',
+    odmowyParTytul: 'Pary nierozstrzygnięte',
+    zmienNastawy: 'Zmień nastawy w modelu',
+    nadrzedne: 'nadrzędne',
+    podrzedne: 'podrzędne',
+    bezpiecznik: 'Bezpiecznik',
+    przekaznik: 'Przekaźnik nadprądowy',
+    /** Urządzenie wskazane w sprawdzeniu, którego nie ma na liście urządzeń wyniku. */
+    nieznaneUrzadzenie: 'Urządzenie spoza wyniku',
   },
 
-  settings: {
-    title: 'Nastawy zabezpieczenia',
-    stage51: 'Stopień I> (51)',
-    stage50: 'Stopień I>> (50)',
-    stage50high: 'Stopień I>>> (50 high-set)',
-    stage51n: 'Stopień I0> (51N)',
-    stage50n: 'Stopień I0>> (50N)',
-    pickup: 'Prąd rozruchowy [A]',
-    tms: 'Mnożnik czasowy TMS',
-    time: 'Czas [s]',
-    curve: 'Charakterystyka',
-    standard: 'Norma',
-    directional: 'Kierunkowy',
-    enabled: 'Aktywny',
-    manufacturer: 'Producent',
-    model: 'Model',
-    ctRatio: 'Przekładnik prądowy',
-    ratedCurrent: 'Prąd znamionowy [A]',
+  biegi: {
+    tytul: 'Biegi wejściowe',
+    max: 'Zwarcie — wariant maksymalny',
+    min: 'Zwarcie — wariant minimalny',
+    pf: 'Rozpływ mocy (prądy robocze)',
+    brak: 'brak',
+    brakMaxMin:
+      'Koordynacja wymaga zakończonego biegu zwarciowego w wariancie maksymalnym i minimalnym '
+      + '(ten sam model). Uruchom oba obliczenia zwarciowe.',
+    brakPf:
+      'Bez biegu rozpływu przeciążalność nie zostanie sprawdzona (nazwany brak w wyniku).',
   },
 
   context: {
@@ -349,7 +295,6 @@ export const LABELS = {
     project: 'Projekt',
     studyCase: 'Wariant pracy',
     snapshot: 'Stan modelu',
-    run: 'Przebieg analizy',
     noContext: 'Wybierz kontekst',
     selectCase: 'Wybierz wariant pracy',
     selectSnapshot: 'Wybierz stan modelu',
@@ -364,47 +309,55 @@ export const LABELS = {
   checks: {
     sensitivity: {
       title: 'Czułość',
-      subtitle: 'Sprawdzenie czy zabezpieczenie zadziała dla I_min (zgodnie z IEC 60909)',
+      subtitle:
+        'Czy najczulszy stopień pobudzi się przy najmniejszym prądzie przekaźnika w strefie '
+        + '(bieg zwarciowy minimalny, IEC 60909)',
       description: 'Weryfikacja działania zabezpieczenia przy minimalnym prądzie zwarciowym',
-      iFaultMin: 'I_min zwarcia [A]',
-      iPickup: 'I_pickup [A]',
-      margin: 'Margines [%]',
+      iFaultMin: 'Najmniejszy prąd przekaźnika [A]',
+      iPickup: 'Próg pierwotny [A]',
+      ratio: 'Iloraz czułości',
       device: 'Urządzenie',
       notes: 'Uwagi',
+      brak: 'Brak sprawdzeń czułości — żadne urządzenie nie zostało ocenione.',
     },
     selectivity: {
       title: 'Selektywność',
-      subtitle: 'Sprawdzenie stopniowania czasowego (zgodnie z IEC 60255)',
+      subtitle:
+        'Stopniowanie czasowe par w punktach strefy podrzędnej (bieg maksymalny, czasy z '
+        + 'charakterystyk IEC 60255)',
       description: 'Weryfikacja prawidłowego stopniowania czasowego pomiędzy zabezpieczeniami',
       downstream: 'Podrzędne',
       upstream: 'Nadrzędne',
       tDownstream: 't_pod [s]',
       tUpstream: 't_nad [s]',
-      deltaT: 'Δt [s]',
-      requiredMargin: 'Wymagany margines [s]',
-      analysisCurrent: 'Prąd analizy [A]',
+      deltaT: 'Odstęp czasowy [s]',
+      requiredMargin: 'Wymagany odstęp [s]',
+      stan: 'Kto zadziała',
+      analysisCurrent: 'Prąd przekaźnika podrzędnego [A]',
+      punkt: 'Punkt zwarcia (najmniejszy odstęp)',
       notes: 'Uwagi',
-      minDevicesRequired: 'Wymaga minimum 2 urządzeń do sprawdzenia selektywności',
-      // Kolumna DZIALANIA (V12K-261). Do tej pory naprawa byla dostepna wylacznie
-      // przez KLIK W WIERSZ — bez etykiety, bez przycisku, bez informacji, ze cokolwiek
-      // sie stanie. Werdykt bez widocznego nastepnego kroku jest slepym zaulkiem
-      // (FLOW §0.2), a niewidoczna akcja to martwy klik z perspektywy projektanta.
+      minDevicesRequired: 'Brak par stopniowania — strefy urządzeń nie są zagnieżdżone',
+      // Kolumna DZIALANIA (V12K-261): widoczny następny krok z każdego wiersza pary —
+      // edycja nastaw w modelu (bez niego wiersz byłby ślepym zaułkiem, FLOW §0.2).
       action: 'Działanie',
-      fixSettings: 'Popraw nastawy',
+      fixSettings: 'Zmień nastawy',
       fixSettingsTitle:
-        'Otwórz edytor nastaw zabezpieczenia NADRZĘDNEGO tej pary. Przy braku '
-        + 'selektywności koryguje się czas zabezpieczenia rezerwowego — podrzędne ma '
-        + 'zadziałać pierwsze (stopniowanie CTI).',
+        'Otwórz edytor nastaw zabezpieczeń modelu (ekran „Zabezpieczenia i automatyka"). '
+        + 'Odstęp czasowy pary zmienia się czasem zabezpieczenia nadrzędnego (rezerwowego) '
+        + 'albo podrzędnego — podrzędne ma zadziałać pierwsze (stopniowanie CTI).',
     },
     overload: {
       title: 'Przeciążalność',
-      subtitle: 'Sprawdzenie czy nie zadziała dla I_roboczego (zgodnie z IEC 60255)',
+      subtitle:
+        'Czy najczulszy stopień nie pobudzi się przy prądzie roboczym wyłącznika (bieg '
+        + 'rozpływu)',
       description: 'Weryfikacja braku zadziałania przy normalnym prądzie roboczym',
-      iOperating: 'I_robocze [A]',
-      iPickup: 'I_pickup [A]',
-      margin: 'Margines [%]',
+      iOperating: 'Prąd roboczy [A]',
+      iPickup: 'Próg pierwotny [A]',
+      ratio: 'Iloraz przeciążalności',
       device: 'Urządzenie',
       notes: 'Uwagi',
+      brak: 'Brak sprawdzeń przeciążalności — żadne urządzenie nie zostało ocenione.',
     },
   },
 
@@ -418,7 +371,7 @@ export const LABELS = {
     tripTime: 'Czas wyłączenia',
     faultCurrent: 'Prąd zwarciowy',
     operatingCurrent: 'Prąd roboczy',
-    selectivityMargin: 'Margines selektywności',
+    selectivityMargin: 'Odstęp selektywności',
     legend: 'Legenda',
     zoomIn: 'Przybliż',
     zoomOut: 'Oddal',
@@ -440,83 +393,34 @@ export const LABELS = {
     collapseAll: 'Zwiń wszystkie',
   },
 
-  /**
-   * Etykiety werdyktów UI — przyjazne dla użytkownika.
-   * Mapowanie: PASS → "Zgodne", MARGINAL → "Na granicy dopuszczalności",
-   * FAIL → "Wymaga korekty", ERROR → "Wystąpił błąd"
-   */
-  verdict: COORDINATION_VERDICT_UI_LABELS,
-
-  /**
-   * Opisy werdyktów UI — techniczne, bez wyrokowego charakteru.
-   */
-  verdictVerbose: COORDINATION_VERDICT_UI_DESCRIPTIONS,
-
-  deviceTypes: {
-    RELAY: 'Przekaźnik nadprądowy',
-    FUSE: 'Bezpiecznik',
-    RECLOSER: 'Wyłącznik samoczynny',
-    CIRCUIT_BREAKER: 'Wyłącznik z wyzwalaczem',
-  },
-
-  curveStandards: {
-    IEC: 'IEC 60255',
-    IEEE: 'IEEE C37.112',
-    FUSE: 'Bezpiecznik',
-  },
-
-  /**
-   * Etykieta pozycji TCC bez podstawy do narysowania krzywej (karta N-D5-FUSE).
-   * Bezpiecznik topikowy bez pasma z karty katalogowej trafia tu zamiast
-   * dostawać etykietę wariantu przekaźnikowego.
-   */
+  /** Etykieta pozycji TCC bez podstawy (bezpiecznik bez pasma topikowego). */
   brakCharakterystyki: 'brak charakterystyki',
   /** Kod charakterystyki spoza słownika `curveTypes` — nazwany jawnie, bez kodu (karta #145). */
   charakterystykaNierozpoznana: 'charakterystyka spoza słownika',
 
+  /** Słownik = `KrzywaNastawy` backendu (pełne kody nastaw modelu). */
   curveTypes: {
-    SI: 'Normalna odwrotna (SI)',
-    VI: 'Bardzo odwrotna (VI)',
-    EI: 'Ekstremalnie odwrotna (EI)',
-    LTI: 'Długoczasowa odwrotna (LTI)',
     DT: 'Czas niezależny (DT)',
-    MI: 'Umiarkowanie odwrotna (MI)',
-    STI: 'Krótkoczasowa odwrotna (STI)',
+    IEC_SI: 'Normalna odwrotna (SI), IEC',
+    IEC_VI: 'Bardzo odwrotna (VI), IEC',
+    IEC_EI: 'Ekstremalnie odwrotna (EI), IEC',
+    IEC_LI: 'Długoczasowa odwrotna (LTI), IEC',
+    IEEE_MI: 'Umiarkowanie odwrotna (MI), IEEE',
+    IEEE_VI: 'Bardzo odwrotna (VI), IEEE',
+    IEEE_EI: 'Ekstremalnie odwrotna (EI), IEEE',
   },
 
   actions: {
-    run: 'Wykonaj analizę',
     runAnalysis: 'Wykonaj analizę koordynacji',
-    export: 'Eksportuj',
     exportPdf: 'Eksportuj PDF',
     exportDocx: 'Eksportuj DOCX',
-    refresh: 'Odśwież',
-    save: 'Zapisz konfigurację',
-    cancel: 'Anuluj',
-    apply: 'Zastosuj',
-    reset: 'Resetuj',
-    close: 'Zamknij',
   },
 
   status: {
     idle: 'Gotowe do analizy',
-    loading: 'Ładowanie...',
     running: 'Trwa analiza...',
     success: 'Analiza zakończona',
     error: 'Błąd analizy',
-  },
-
-  // K5-B (H-2): nastawy urządzeń trwają w konfiguracji przypadku obliczeniowego
-  // (PUT /api/study-cases/{id}/protection-config), nie w pamięci ekranu.
-  persistence: {
-    zapisano: 'Nastawy zabezpieczeń zapisane w konfiguracji przypadku',
-    bladZapisu: 'Nie udało się zapisać nastaw w konfiguracji przypadku',
-    bladOdczytu: 'Nie udało się wczytać nastaw z konfiguracji przypadku',
-    brakPrzypadku:
-      'Brak aktywnego przypadku obliczeniowego — nastawy nie zostaną zapisane po wyjściu ze strony.',
-    wynikNieaktualny:
-      'Nastawy zmienione po ostatnim biegu — wynik koordynacji jest nieaktualny.',
-    przelicz: 'Przelicz koordynację',
   },
 
   tabs: {
@@ -529,243 +433,18 @@ export const LABELS = {
   },
 
   summary: {
-    title: 'Wynik analizy',
-    overallVerdict: 'Werdykt ogólny',
+    title: 'Wynik analizy — liczby zbiorcze',
+    opis:
+      'Koordynacja nie wydaje werdyktu: liczby obok wartości wymaganych z kryteriów projektowych '
+      + 'ocenia projektant.',
     totalDevices: 'Liczba urządzeń',
     totalChecks: 'Liczba sprawdzeń',
-    passCount: 'prawidłowych',
-    failCount: 'błędnych',
-    marginalCount: 'granicznych',
+    najmniejszyOdstep: 'Najmniejszy odstęp czasowy par [s]',
+    najmniejszyIlorazCzulosci: 'Najmniejszy iloraz czułości',
+    najmniejszyIlorazPrzeciazalnosci: 'Najmniejszy iloraz przeciążalności',
+    wymagany: 'wymagany',
+    bezWartosci: 'bez wyznaczonej wartości',
+    brak: '—',
   },
 
-  validation: {
-    pickupPositive: 'Prąd rozruchowy musi być dodatni',
-    tmsRange: 'TMS musi być w zakresie 0.05-10.0',
-    timePositive: 'Czas musi być dodatni',
-    minOneDevice: 'Dodaj przynajmniej jedno urządzenie',
-    invalidConfig: 'Nieprawidłowa konfiguracja',
-    // F-K4 faza 3b: prądy koordynacji pochodzą WYŁĄCZNIE z zakończonych biegów
-    // (wcześniej powstawały z Math.random() — patrz `pradyZBiegow.ts`).
-    brakPradowZwarciowych:
-      'Brak prądów zwarciowych z biegu obliczeniowego — koordynacja nie ma na czym oprzeć '
-      + 'marginesów. Uruchom analizę zwarciową dla przypadku maksymalnego (c = 1,10) '
-      + 'i minimalnego (c = 0,95).',
-    brakPraduMinimalnego:
-      'Brak biegu zwarciowego minimalnego (c = 0,95) — czułość zabezpieczeń jest '
-      + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
-    brakPraduRoboczego:
-      'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
-    brakPraduZaciskuWierszu:
-      'Wiersz gałęzi wyniku rozpływu nie niesie prądu wskazanego zacisku — kryterium '
-      + 'przeciążenia jest niesprawdzalne.',
-    // V12K-262: lokalizacja urządzenia to element modelu, nie tekst wpisany z ręki.
-    brakLokalizacji:
-      'Wskaż element modelu dla każdego zabezpieczenia — bez lokalizacji nie da się '
-      + 'przypisać prądów z biegu ani policzyć marginesów.',
-    brakModeluLokalizacji:
-      'Nie udało się pobrać modelu przypadku — lista elementów do wskazania jest pusta.',
-    lokalizacjaNieWskazana: 'lokalizacja niewskazana',
-  },
-
-  templates: {
-    title: 'Szablony urządzeń',
-    apply: 'Zastosuj szablon',
-    noTemplates: 'Brak dostępnych szablonów',
-    relay50_51: 'Przekaźnik 50/51 (typowy)',
-    relay50_51n: 'Przekaźnik 50/51N (z ziemnozwarciem)',
-    fuse: 'Bezpiecznik SN',
-    recloser: 'Wyłącznik samoczynny',
-  },
 } as const;
-
-// =============================================================================
-// Verdict Styling
-// =============================================================================
-
-/**
- * Kolory werdyktów UI — łagodniejsze tony dla "Wymaga korekty" (orange zamiast rose).
- */
-export const VERDICT_STYLES: Record<
-  CoordinationVerdict,
-  { bg: string; text: string; border: string }
-> = COORDINATION_VERDICT_UI_COLORS;
-
-// =============================================================================
-// Default Values
-// =============================================================================
-
-export const DEFAULT_CONFIG: CoordinationConfig = {
-  breaker_time_s: 0.05,
-  relay_overtravel_s: 0.05,
-  safety_factor_s: 0.1,
-  sensitivity_margin_pass: 1.5,
-  sensitivity_margin_marginal: 1.2,
-  overload_margin_pass: 1.2,
-  overload_margin_marginal: 1.1,
-};
-
-export const DEFAULT_CURVE_SETTINGS: CurveSettings = {
-  standard: 'IEC',
-  variant: 'SI',
-  pickup_current_a: 400,
-  time_multiplier: 0.3,
-};
-
-export const DEFAULT_STAGE_51: StageSettings = {
-  enabled: true,
-  pickup_current_a: 400,
-  curve_settings: DEFAULT_CURVE_SETTINGS,
-  directional: false,
-};
-
-export const DEFAULT_STAGE_50: StageSettings = {
-  enabled: true,
-  pickup_current_a: 2000,
-  time_s: 0.1,
-  directional: false,
-};
-
-// =============================================================================
-// Device Templates (Canonical-style presets)
-// =============================================================================
-
-export const DEVICE_TEMPLATES: DeviceTemplate[] = [
-  {
-    id: 'relay-50-51',
-    name: 'Przekaźnik 50/51 (typowy)',
-    description_pl: 'Standardowy przekaźnik nadprądowy z funkcją 50 i 51',
-    device_type: 'RELAY',
-    settings: {
-      stage_51: {
-        enabled: true,
-        pickup_current_a: 400,
-        curve_settings: {
-          standard: 'IEC',
-          variant: 'SI',
-          pickup_current_a: 400,
-          time_multiplier: 0.3,
-        },
-        directional: false,
-      },
-      stage_50: {
-        enabled: true,
-        pickup_current_a: 2000,
-        time_s: 0.1,
-        directional: false,
-      },
-    },
-  },
-  {
-    id: 'relay-50-51-51n',
-    name: 'Przekaźnik 50/51/51N',
-    description_pl: 'Przekaźnik z zabezpieczeniem ziemnozwarciowym',
-    device_type: 'RELAY',
-    settings: {
-      stage_51: {
-        enabled: true,
-        pickup_current_a: 400,
-        curve_settings: {
-          standard: 'IEC',
-          variant: 'SI',
-          pickup_current_a: 400,
-          time_multiplier: 0.3,
-        },
-        directional: false,
-      },
-      stage_50: {
-        enabled: true,
-        pickup_current_a: 2000,
-        time_s: 0.1,
-        directional: false,
-      },
-      stage_51n: {
-        enabled: true,
-        pickup_current_a: 100,
-        curve_settings: {
-          standard: 'IEC',
-          variant: 'SI',
-          pickup_current_a: 100,
-          time_multiplier: 0.2,
-        },
-        directional: false,
-      },
-    },
-  },
-  {
-    // Karta N-D5-FUSE: ten preset podawal wczesniej `standard: 'FUSE', variant:
-    // 'EI', time_multiplier: 1.0` — trzy nastawy PRZEKAZNIKA, ktorych bezpiecznik
-    // topikowy nie ma. Backend nie mial dla normy „FUSE" wzoru, wiec po cichu
-    // liczyl krzywa IDMT IEC 60255 i podpisywal ja `FUSE_EI`. Zmierzone: punkty
-    // byly identyczne co do ostatniej cyfry z przekaznikiem IEC.
-    // Bezpiecznik zglaszamy z pradem znamionowym wkladki i BEZ nastaw
-    // charakterystyki — jego pasmo topikowe (przedlukowe i wylaczania, IEC
-    // 60282-1) pochodzi wylacznie z karty katalogowej producenta, a nie ze wzoru.
-    id: 'fuse-mv',
-    name: 'Bezpiecznik SN',
-    description_pl: 'Bezpiecznik średniego napięcia (pasmo topikowe z karty katalogowej)',
-    device_type: 'FUSE',
-    settings: {
-      stage_51: {
-        enabled: true,
-        pickup_current_a: 100,
-        directional: false,
-      },
-    },
-  },
-  {
-    id: 'recloser',
-    name: 'Wyłącznik samoczynny',
-    description_pl: 'Reklozer z charakterystyką szybką i wolną',
-    device_type: 'RECLOSER',
-    settings: {
-      stage_51: {
-        enabled: true,
-        pickup_current_a: 300,
-        curve_settings: {
-          standard: 'IEC',
-          variant: 'VI',
-          pickup_current_a: 300,
-          time_multiplier: 0.2,
-        },
-        directional: false,
-      },
-      stage_50: {
-        enabled: true,
-        pickup_current_a: 1500,
-        time_s: 0.05,
-        directional: false,
-      },
-    },
-  },
-  {
-    id: 'circuit-breaker',
-    name: 'Wyłącznik z wyzwalaczem',
-    description_pl: 'Wyłącznik mocy z wyzwalaczem nadprądowym',
-    device_type: 'CIRCUIT_BREAKER',
-    settings: {
-      stage_51: {
-        enabled: true,
-        pickup_current_a: 500,
-        curve_settings: {
-          standard: 'IEC',
-          variant: 'SI',
-          pickup_current_a: 500,
-          time_multiplier: 0.4,
-        },
-        directional: false,
-      },
-      stage_50: {
-        enabled: true,
-        pickup_current_a: 3000,
-        time_s: 0.08,
-        directional: false,
-      },
-      stage_50_high: {
-        enabled: true,
-        pickup_current_a: 10000,
-        time_s: 0.02,
-        directional: false,
-      },
-    },
-  },
-];

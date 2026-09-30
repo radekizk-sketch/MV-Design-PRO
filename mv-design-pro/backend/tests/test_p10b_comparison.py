@@ -481,9 +481,9 @@ class TestProtectionComparisonMissingFields:
         # = `ProtectionEvaluation.to_dict()`, patrz
         # `enm/canonical_analysis.py::build_execution_result_set`, gałąź
         # `protection_sn`) i `global_results` = `ProtectionResultSummary`
-        # (te same klucze `trips_count`/`no_trip_count`/`invalid_count`), nie
+        # (te same klucze `trips_count`/`no_trip_count`/`unreliable_count`), nie
         # surowy payload `{"evaluations": [...], "summary": {...}}` R2/R3.
-        global_counts = {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0}
+        global_counts = {"trips_count": 1, "no_trip_count": 0, "unreliable_count": 0}
 
         comp = service._compare_protection(
             _result_set(
@@ -501,7 +501,7 @@ class TestProtectionComparisonMissingFields:
 
     def test_missing_summary_gives_none_counts_not_zero(self):
         service = self._service()
-        global_a = {"trips_count": 2, "no_trip_count": 3, "invalid_count": 0}
+        global_a = {"trips_count": 2, "no_trip_count": 3, "unreliable_count": 0}
         global_b: dict = {}  # brak "summary" w ogole -> global_results pusty
 
         comp = service._compare_protection(
@@ -510,7 +510,7 @@ class TestProtectionComparisonMissingFields:
         )
         assert comp.trip_count_delta is None
         assert comp.no_trip_count_delta is None
-        assert comp.invalid_count_delta is None
+        assert comp.unreliable_count_delta is None
 
 
 class TestPowerFlowComparison:
@@ -783,7 +783,7 @@ class TestComparisonApiResponseModelsAcceptMissingDeltas:
             evaluations=[],
             trip_count_delta=None,
             no_trip_count_delta=None,
-            invalid_count_delta=None,
+            unreliable_count_delta=None,
         )
         assert model.trip_count_delta is None
 

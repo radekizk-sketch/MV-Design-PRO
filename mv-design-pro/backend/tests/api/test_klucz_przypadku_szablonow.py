@@ -325,6 +325,14 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
     # projektem przez tłumacza, zero własnej konwersji klucza przypadku.
     "audit2_station_config.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU: świeżość wyniku biegu oceny zabezpieczeń porównuje
+    # sieć biegu źródłowego z BIEŻĄCYM modelem pod kluczem zapisanym na biegu (`klucz_twin`
+    # koperty, wyprowadzony przy tworzeniu jedynym tłumaczem `klucz_twin_z_uow`) — klucz
+    # z rekordu, bez konwersji identyfikatora z adresu.
+    "protection_runs.py": KLUCZ_Z_REKORDU,
+    # Koordynacja E-28 bierze urządzenia i nastawy z modelu PROJEKTU (trasa `project_id`)
+    # przez jedynego tłumacza `klucz_twin_dla_projektu` — klucza przypadku nie wyprowadza.
+    "protection_coordination.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
 }
 
 #: Dług ZGŁOSZONY, nie naprawiony (pliki poza torem karty U1). Zbiór jest zamknięty:

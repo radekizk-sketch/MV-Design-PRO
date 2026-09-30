@@ -261,7 +261,7 @@ def check_eligibility(
         #
         # Per-assignment validation (relay settings, CT/VT bindings, curve
         # parameters) is performed at run-time by
-        # application.protection_analysis.engine (tor "protection_sn"), not at
+        # application.analyses.protection.ocena_nadpradowa (tor "protection_sn"), not at
         # eligibility gating — because eligibility runs before catalog binding /
         # materialization for the protection device tree (ProtectionAssignment
         # lives in ENM, not in NetworkGraph). `domain.protection_engine_v1` is a

@@ -1308,7 +1308,7 @@ function buildSemanticSegmentSections(
   }
   actions.push({
     id: 'insert_section_switch_sn',
-    label: 'Wstaw lacznik',
+    label: 'Wstaw łącznik',
     op: 'insert_section_switch_sn',
     context: semanticActionContext(selectedElement, { segmentRef: segmentRef, segmentLabel: segmentName }),
   });

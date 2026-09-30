@@ -35,9 +35,12 @@ def wymaganie_z_nastaw(wynik: ProtectionSettingsResult) -> ProtectionRequirement
 
 
 def map_requirement_to_device(
-    req: ProtectionRequirementV0, cap: DeviceCapability
+    req: ProtectionRequirementV0,
+    cap: DeviceCapability,
+    *,
+    przekladnia_a: tuple[float, float] | None,
 ) -> DeviceMappingResult:
-    compatible, violations = validate_requirement(req, cap)
+    compatible, violations = validate_requirement(req, cap, przekladnia_a=przekladnia_a)
     if not compatible:
         return DeviceMappingResult(
             compatible=False,

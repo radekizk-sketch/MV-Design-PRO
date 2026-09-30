@@ -60,6 +60,11 @@ export interface ProtectionSettingTemplate {
   setting_fields?: Array<{
     name: string;
     unit?: string;
+    /**
+     * `NIEUSTALONA` — zakres bez podstawy jednostki (PZ-09): nie wiadomo, czy to ampery wtórne,
+     * krotność In wejścia przekaźnika, czy ampery pierwotne (brak karty producenta).
+     */
+    jednostka_status?: 'NIEUSTALONA';
     min?: number;
     max?: number;
   }>;

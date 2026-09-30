@@ -13,7 +13,35 @@ importow albo — gorzej — dwie kopie tej samej reguly znakowania kierunku.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+
+
+def prad_netto_galezi_z_wkladow(wklady: Sequence[Mapping[str, Any]], branch_id: str) -> float:
+    """Prąd netto gałęzi [A] w kierunku from→to z wkładów źródeł (wiersze rozpływu biegu).
+
+    JEDNA reguła znakowania kierunku (from_to dodatnio, to_from ujemnie) dla obu postaci
+    wkładów: obiektów ``ShortCircuitBranchContribution`` (``prad_zwarciowy_galezi``) i
+    wierszy słownikowych rozpływu zapisanego biegu (``pobierz_rozplyw_biegu`` — ocena
+    nadprądowa, ``protection/ocena_nadpradowa.py``). Znak zachowany: bilans klastra węzłów
+    potrzebuje kierunku, moduł bierze wołający.
+
+    Wkład bez prądu albo z kierunkiem spoza słownika solvera (``from_to``/``to_from``) nie
+    jest pomijany ani zastępowany zerem — to błąd kontraktu wyniku (``KeyError`` /
+    ``ValueError``), nie brak przepływu.
+    """
+    netto = 0.0
+    for wklad in wklady:
+        if str(wklad["branch_id"]) != branch_id:
+            continue
+        prad = float(wklad["i_contrib_a"])
+        kierunek = wklad["direction"]
+        if kierunek not in ("from_to", "to_from"):
+            raise ValueError(f"Kierunek wkładu gałęzi {branch_id} spoza słownika: {kierunek!r}")
+        netto += prad if kierunek == "from_to" else -prad
+    return netto
 
 
 def prad_zwarciowy_galezi(sc_result: ShortCircuitResult, branch_id: str) -> float | None:
@@ -30,12 +58,8 @@ def prad_zwarciowy_galezi(sc_result: ShortCircuitResult, branch_id: str) -> floa
     if sc_result.branch_contributions is None:
         return None
 
-    net_a = 0.0
-    for contrib in sc_result.branch_contributions:
-        if contrib.branch_id != branch_id:
-            continue
-        if contrib.direction == "from_to":
-            net_a += contrib.i_contrib_a
-        else:
-            net_a -= contrib.i_contrib_a
-    return abs(net_a)
+    return abs(
+        prad_netto_galezi_z_wkladow(
+            [c.to_dict() for c in sc_result.branch_contributions], branch_id
+        )
+    )

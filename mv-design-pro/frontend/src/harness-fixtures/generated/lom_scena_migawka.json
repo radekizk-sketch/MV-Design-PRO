@@ -624,7 +624,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cee84244191f794010dae6127b3fe884c979d472473d3e9fe2314e56bd60b065",
+    "hash_sha256": "43af263c0308c018549925b6162e639b4f632aeb754099d0a6175a1e3b63b296",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -731,12 +731,25 @@
       "settings": [
         {
           "curve_type": null,
+          "function_type": "overfrequency_81O",
+          "is_directional": false,
+          "threshold_a": null,
+          "threshold_deg": null,
+          "threshold_hz": 51.5,
+          "threshold_hz_s": null,
+          "threshold_unit": null,
+          "time_delay_s": 0.5,
+          "time_multiplier": null
+        },
+        {
+          "curve_type": null,
           "function_type": "rocof_81R",
           "is_directional": false,
           "threshold_a": null,
           "threshold_deg": null,
           "threshold_hz": null,
           "threshold_hz_s": 1.0,
+          "threshold_unit": null,
           "time_delay_s": 0.2,
           "time_multiplier": null
         },
@@ -748,17 +761,7 @@
           "threshold_deg": null,
           "threshold_hz": 47.5,
           "threshold_hz_s": null,
-          "time_delay_s": 0.5,
-          "time_multiplier": null
-        },
-        {
-          "curve_type": null,
-          "function_type": "overfrequency_81O",
-          "is_directional": false,
-          "threshold_a": null,
-          "threshold_deg": null,
-          "threshold_hz": 51.5,
-          "threshold_hz_s": null,
+          "threshold_unit": null,
           "time_delay_s": 0.5,
           "time_multiplier": null
         }

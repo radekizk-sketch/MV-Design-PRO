@@ -404,7 +404,24 @@ def check_api_lifecycle_matrix() -> list[str]:
     # NARUSZENIEM — nie cichym pominieciem (patrz `_main_router_imports`).
     violations: list[str] = unresolved_router_problems()
 
-    for route in discover_active_api_routes():
+    trasy = discover_active_api_routes()
+    # KIERUNEK ODWROTNY (karta BIEG-ZABEZPIECZEN-Z-MODELU, 2026-09-30): wiersz macierzy
+    # „aktywny"/„adapter"/„deprecated" bez trasy w aplikacji jest widmem — pomiar znalazl
+    # siedem takich wierszy (trasy skasowane w W1 i wczesniej), ktore dokumentowaly nieistniejace
+    # koncowki jako dzialajace. Kasacja trasy wymaga zmiany statusu wiersza na „usuniety".
+    klucze_tras = {route.key for route in trasy}
+    for endpoint, row in sorted(matrix_rows.items()):
+        if (
+            endpoint.split(" ", 1)[-1].startswith("/api")
+            and row.get("Status", "") in {"aktywny", "adapter", "deprecated"}
+            and endpoint not in klucze_tras
+        ):
+            violations.append(
+                f"[api-lifecycle-ghost-row] {endpoint} ma status {row['Status']!r}, "
+                "a trasy nie ma w aplikacji — ustaw status 'usuniety' z data i powodem"
+            )
+
+    for route in trasy:
         row = matrix_rows.get(route.key)
         if row is None:
             violations.append(f"[api-lifecycle-missing] {route.key} from {route.source}")

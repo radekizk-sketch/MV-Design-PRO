@@ -86,8 +86,23 @@ export interface ProtectionSetting {
     | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
     | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
+  /**
+   * Karta BIEG-ZABEZPIECZEN-Z-MODELU (PZ-09): strona przekładnika, po której podano próg —
+   * `A_WTORNY` (nastawa przekaźnika) albo `A_PIERWOTNY`. Próg bez jednostki jest odrzucany
+   * przy zapisie (`enm/nastawy_zabezpieczen.py::bledy_nastaw`).
+   */
+  threshold_unit?: 'A_WTORNY' | 'A_PIERWOTNY' | null;
   time_delay_s?: number | null;
-  curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
+  curve_type?:
+    | 'DT'
+    | 'IEC_SI'
+    | 'IEC_VI'
+    | 'IEC_EI'
+    | 'IEC_LI'
+    | 'IEEE_MI'
+    | 'IEEE_VI'
+    | 'IEEE_EI'
+    | null;
   /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
   time_multiplier?: number | null;
   is_directional?: boolean;

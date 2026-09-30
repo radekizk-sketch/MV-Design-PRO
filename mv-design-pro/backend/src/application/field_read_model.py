@@ -39,6 +39,10 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nastawy_zabezpieczen import (
+    ETYKIETY_JEDNOSTEK_PROGU_PL,
+    JEDNOSTKA_PROGU_NIEUSTALONA_PL,
+)
 from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from network_model.core.uziemienie import TypPunktuNeutralnego
@@ -875,7 +879,13 @@ def _setting_to_function_state(
             ProtectionSettingValue(
                 key="prog",
                 value=threshold_value,
-                unit="A",
+                # Strona przekładnika zadeklarowana w nastawie (PZ-09) — „A" bez strony byłoby
+                # dwuznaczne (1,5 A wtórne ≠ 1,5 A pierwotne).
+                unit=(
+                    ETYKIETY_JEDNOSTEK_PROGU_PL[setting.threshold_unit]
+                    if setting.threshold_unit is not None
+                    else JEDNOSTKA_PROGU_NIEUSTALONA_PL
+                ),
                 quality="reczne",
             )
         )

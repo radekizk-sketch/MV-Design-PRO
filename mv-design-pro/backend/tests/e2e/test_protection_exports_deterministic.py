@@ -21,13 +21,26 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+import copy
+import functools
 import hashlib
 import tempfile
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 import pytest
+from enm.canonical_analysis import reset_canonical_runs
+from enm.store import reset_enm_store
+
+from tests.application.analyses.protection.coordination.test_overcurrent_coordination import (
+    _biegi_modelu,
+    _koordynuj,
+)
+from tests.golden.enm_builders.zabezpieczenia_magistrali import (
+    NAZWA_ZABEZPIECZENIA_Q1,
+    NAZWA_ZABEZPIECZENIA_Q2,
+    build_zabezpieczenia_magistrali_enm,
+)
 
 # Check for optional dependencies
 try:
@@ -54,170 +67,29 @@ except ImportError:
 # =============================================================================
 
 
+@functools.cache
+def _wynik_sieci_zlotej() -> dict[str, Any]:
+    """PRAWDZIWY wynik koordynacji sieci złotej G08 (dwa zabezpieczenia modelu przy
+    wyłącznikach liniowych, biegi SC max/min i rozpływ) — nie ręcznie wpisany słownik.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: dawna fikstura niosła werdykty PASS i liczniki
+    „prawidłowe/nieprawidłowe", których koordynacja już nie wydaje (P-06); raport renderuje
+    to, co zwraca analizator — liczby z wartościami wymaganymi.
+    """
+    ids = _biegi_modelu(build_zabezpieczenia_magistrali_enm())
+    try:
+        return _koordynuj(ids)
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
 def _create_deterministic_protection_result() -> dict[str, Any]:
-    """
-    Tworzy deterministyczny wynik analizy koordynacji zabezpieczeń.
-
-    Wszystkie wartości są stałe, bez użycia datetime.now() ani random.
-    Sortowanie jest stabilne po device_id/name.
-    """
-    # Fixed timestamp for determinism
-    fixed_timestamp = "2024-01-01T00:00:00+00:00"
-
-    # Fixed device IDs (sorted alphabetically). Sprawdzenia wskazują urządzenia TYMI SAMYMI
-    # identyfikatorami co lista `devices` (kształt produkcyjny: `str(device.id)`), żeby
-    # tabele sprawdzeń raportu nazywały urządzenie nazwą z listy (karta #144).
-    device_a_id = str(UUID(int=1))
-    device_b_id = str(UUID(int=2))
-
-    return {
-        "run_id": "run_deterministic_e2e_test_001",
-        "project_id": "proj_deterministic_001",
-        "created_at": fixed_timestamp,
-        "overall_verdict": "PASS",
-        "devices": [
-            {
-                "id": device_a_id,
-                "name": "Przekaźnik A",
-                "device_type": "RELAY",
-                "manufacturer": "ABB",
-                "model": "REF615",
-                "location_element_id": "BUS-001",
-                "location_description": "Rozdzielnia główna",
-                "settings": {
-                    "stage_51": {
-                        "enabled": True,
-                        "pickup_current_a": 100.0,
-                        "time_s": None,
-                        "curve_settings": {
-                            "standard": "IEC",
-                            "variant": "SI",
-                            "pickup_current_a": 100.0,
-                            "time_multiplier": 0.3,
-                            "definite_time_s": None,
-                            "reset_time_s": 0.0,
-                        },
-                        "directional": False,
-                    },
-                    "stage_50": None,
-                    "stage_50_high": None,
-                    "stage_51n": None,
-                    "stage_50n": None,
-                },
-                "ct_ratio": "400/5",
-                "rated_current_a": 400.0,
-                "created_at": fixed_timestamp,
-            },
-            {
-                "id": device_b_id,
-                "name": "Przekaźnik B",
-                "device_type": "RELAY",
-                "manufacturer": "Siemens",
-                "model": "7SJ82",
-                "location_element_id": "BUS-002",
-                "location_description": "Rozdzielnia odbiorcza",
-                "settings": {
-                    "stage_51": {
-                        "enabled": True,
-                        "pickup_current_a": 80.0,
-                        "time_s": None,
-                        "curve_settings": {
-                            "standard": "IEC",
-                            "variant": "VI",
-                            "pickup_current_a": 80.0,
-                            "time_multiplier": 0.2,
-                            "definite_time_s": None,
-                            "reset_time_s": 0.0,
-                        },
-                        "directional": False,
-                    },
-                    "stage_50": None,
-                    "stage_50_high": None,
-                    "stage_51n": None,
-                    "stage_50n": None,
-                },
-                "ct_ratio": "200/5",
-                "rated_current_a": 200.0,
-                "created_at": fixed_timestamp,
-            },
-        ],
-        "sensitivity_checks": [
-            {
-                "device_id": device_a_id,
-                "i_fault_min_a": 500.0,
-                "i_pickup_a": 100.0,
-                "margin_percent": 400.0,
-                "verdict": "PASS",
-                "verdict_pl": "Prawidłowa",
-                "notes_pl": "Margines czułości wystarczający (400%)",
-            },
-            {
-                "device_id": device_b_id,
-                "i_fault_min_a": 300.0,
-                "i_pickup_a": 80.0,
-                "margin_percent": 275.0,
-                "verdict": "PASS",
-                "verdict_pl": "Prawidłowa",
-                "notes_pl": "Margines czułości wystarczający (275%)",
-            },
-        ],
-        "selectivity_checks": [
-            {
-                "upstream_device_id": device_a_id,
-                "downstream_device_id": device_b_id,
-                "analysis_current_a": 1000.0,
-                "t_upstream_s": 0.8,
-                "t_downstream_s": 0.3,
-                "margin_s": 0.5,
-                "required_margin_s": 0.3,
-                "verdict": "PASS",
-                "verdict_pl": "Prawidłowa",
-                "notes_pl": "Margines czasowy 500ms > wymagane 300ms",
-            },
-        ],
-        "overload_checks": [
-            {
-                "device_id": device_a_id,
-                "i_operating_a": 50.0,
-                "i_pickup_a": 100.0,
-                "margin_percent": 100.0,
-                "verdict": "PASS",
-                "verdict_pl": "Prawidłowa",
-                "notes_pl": "Prąd roboczy znacznie poniżej progu rozruchowego",
-            },
-            {
-                "device_id": device_b_id,
-                "i_operating_a": 40.0,
-                "i_pickup_a": 80.0,
-                "margin_percent": 100.0,
-                "verdict": "PASS",
-                "verdict_pl": "Prawidłowa",
-                "notes_pl": "Prąd roboczy znacznie poniżej progu rozruchowego",
-            },
-        ],
-        "tcc_curves": [
-            {
-                "device_name": "Przekaźnik A",
-                "curve_type": "SI",
-                "pickup_current_a": 100.0,
-                "time_multiplier": 0.3,
-            },
-            {
-                "device_name": "Przekaźnik B",
-                "curve_type": "VI",
-                "pickup_current_a": 80.0,
-                "time_multiplier": 0.2,
-            },
-        ],
-        "summary": {
-            "total_devices": 2,
-            "total_checks": 5,
-            "overall_verdict_pl": "Prawidłowa",
-            "sensitivity": {"pass": 2, "fail": 0, "marginal": 0},
-            "selectivity": {"pass": 1, "fail": 0, "marginal": 0},
-            "overload": {"pass": 2, "fail": 0, "marginal": 0},
-        },
-    }
+    """Wynik koordynacji ze stałym identyfikatorem i czasem (bez ``uuid4``/``datetime.now``)."""
+    wynik = copy.deepcopy(_wynik_sieci_zlotej())
+    wynik["run_id"] = "run_deterministic_e2e_test_001"
+    wynik["created_at"] = "2024-01-01T00:00:00+00:00"
+    return wynik
 
 
 def _compute_file_hash(file_path: Path) -> str:
@@ -425,14 +297,32 @@ class TestProtectionDOCXContentValidation:
             required_sections = [
                 "Podsumowanie",
                 "Tabela urządzeń i nastaw",
-                "Sprawdzenie czułości",
-                "Sprawdzenie selektywności",
-                "Sprawdzenie przeciążalności",
+                "Czułość — iloraz",
+                "Selektywność czasowa — odstęp",
+                "Przeciążalność — iloraz",
                 "Krzywe czasowo-prądowe",
             ]
 
             for section in required_sections:
                 assert section in full_text, f"Brak sekcji '{section}' w raporcie DOCX"
+
+    def test_raport_niesie_liczby_z_wartoscia_wymagana_bez_werdyktu(self) -> None:
+        """P-06: tabele sprawdzeń mają kolumnę wartości wymaganej i liczby, nie kolumnę
+        werdyktu; podsumowanie — najmniejszy odstęp i ilorazy, nie liczniki „prawidłowe"."""
+        from docx import Document as DocxDocument
+
+        result = _create_deterministic_protection_result()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "liczby.docx"
+            export_protection_coordination_to_docx(result, path, deterministic=True)
+            doc = DocxDocument(str(path))
+
+        naglowki = {k.text for tabela in doc.tables for k in tabela.rows[0].cells}
+        assert {"Wymagany", "Wymagany [s]", "Odstęp [s]", "Iloraz"} <= naglowki
+        assert not {"Werdykt", "Margines [%]"} & naglowki
+        komorki = {k.text for tabela in doc.tables for w in tabela.rows for k in w.cells}
+        assert "Najmniejszy odstęp czasowy par [s]" in komorki
+        assert not any("prawidłowe" in k or "Prawidłowa" in k for k in komorki)
 
     def test_tabele_sprawdzen_nazywaja_urzadzenia_nazwami_nie_identyfikatorami(self) -> None:
         """Karta #144: tabele czułości, selektywności i przeciążalności nazywają urządzenie
@@ -457,11 +347,12 @@ class TestProtectionDOCXContentValidation:
             for wiersz in tabela.rows[1:]
             for komorka in wiersz.cells
         ]
-        assert "Przekaźnik A" in komorki
-        assert "Przekaźnik B" in komorki
+        assert NAZWA_ZABEZPIECZENIA_Q1 in komorki
+        assert NAZWA_ZABEZPIECZENIA_Q2 in komorki
         assert "Urządzenie spoza wyniku" in komorki
+        identyfikatory = {d["id"] for d in result["devices"]}
         for komorka in komorki:
-            assert "00000000" not in komorka
+            assert not any(ident in komorka for ident in identyfikatory)
             assert "urzadzenie-usuniete" not in komorka
 
     def test_no_codenames_in_docx(self) -> None:

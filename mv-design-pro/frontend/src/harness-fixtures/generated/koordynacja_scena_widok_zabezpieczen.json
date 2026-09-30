@@ -1,0 +1,1190 @@
+{
+  "assignments": [
+    {
+      "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Zabezpieczenie odejścia S01",
+      "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+      "element_type": "Switch",
+      "nastawy": {
+        "alf": 20.0,
+        "braki": [],
+        "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+        "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
+        "funkcje_nieoceniane": [],
+        "gotowe": true,
+        "klasa_ct": "5P20",
+        "nazwa_pl": "Zabezpieczenie odejścia S01",
+        "pozycja_katalogu": "REF-OC-200",
+        "przekladnia_a": [
+          600.0,
+          5.0
+        ],
+        "stopnie": [
+          {
+            "etykieta_pl": "I> (51)",
+            "funkcja": "overcurrent_51",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "IEC_SI",
+            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "prog_pierwotny_a": 180.0,
+            "prog_wtorny_a": 1.5,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 180.0,
+              "prog_wtorny_a": 1.5,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 5.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.3,
+                  "wielkosc_pl": "próg I> (51) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "1",
+                  "maksimum": 1.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.1,
+                  "wielkosc_pl": "mnożnik czasowy I> (51)"
+                }
+              ],
+              "wartosc_w_modelu": 1.5,
+              "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            },
+            "tms": 0.1,
+            "wartosc_progu": 1.5,
+            "zwloka_s": null
+          },
+          {
+            "etykieta_pl": "I>> (50)",
+            "funkcja": "overcurrent_50",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "DT",
+            "krzywa_pl": "czas niezależny (DT)",
+            "prog_pierwotny_a": 1800.0,
+            "prog_wtorny_a": 15.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 1800.0,
+              "prog_wtorny_a": 15.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 40.0,
+                  "minimum": 0.1,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 3.0,
+                  "wielkosc_pl": "próg I>> (50) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "s",
+                  "maksimum": 100.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.1,
+                  "wielkosc_pl": "zwłoka I>> (50)"
+                }
+              ],
+              "wartosc_w_modelu": 15.0,
+              "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            },
+            "tms": null,
+            "wartosc_progu": 15.0,
+            "zwloka_s": 0.1
+          }
+        ],
+        "urzadzenie_ref": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+        "zakresy": {
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_NI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-200",
+          "overcurrent_50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "overcurrent_51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-200",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": "DT",
+        "functions": [
+          {
+            "ansi": [
+              "50"
+            ],
+            "code": "OVERCURRENT_INST",
+            "computed": {
+              "computed_from": "wartość bezwzględna",
+              "unit": "A",
+              "value": 1800.0
+            },
+            "curve_type": "DT",
+            "it_curve": {
+              "curve_code": "DT",
+              "curve_kind": "DEFINITE",
+              "curve_label_pl": "Czas niezależny (DT)",
+              "pickup_a": 1800.0,
+              "points": [
+                {
+                  "i_a": 1980.0000000000002,
+                  "t_s": 0.1
+                },
+                {
+                  "i_a": 36000.00000000001,
+                  "t_s": 0.1
+                }
+              ],
+              "standard": "IEC_60255",
+              "time_multiplier": null
+            },
+            "label_pl": "Nadprądowa bezzwłoczna (I>>)",
+            "notes_pl": null,
+            "setpoint": {
+              "abs_value": 1800.0,
+              "basis": "ABS",
+              "display_pl": "1800 A",
+              "multiplier": null,
+              "operator": "GT",
+              "unit": "A"
+            },
+            "time_delay_s": 0.1
+          },
+          {
+            "ansi": [
+              "51"
+            ],
+            "code": "OVERCURRENT_TIME",
+            "computed": {
+              "computed_from": "wartość bezwzględna",
+              "unit": "A",
+              "value": 180.0
+            },
+            "curve_type": "IEC_SI",
+            "it_curve": {
+              "curve_code": "SI",
+              "curve_kind": "INVERSE",
+              "curve_label_pl": "Normalna odwrotna (SI)",
+              "pickup_a": 180.0,
+              "points": [
+                {
+                  "i_a": 198.00000000000003,
+                  "t_s": 7.337443304983633
+                },
+                {
+                  "i_a": 207.32870416162294,
+                  "t_s": 4.945297643769871
+                },
+                {
+                  "i_a": 217.09692711786752,
+                  "t_s": 3.728587589305518
+                },
+                {
+                  "i_a": 227.32537665059485,
+                  "t_s": 2.9918206883517757
+                },
+                {
+                  "i_a": 238.03573618192266,
+                  "t_s": 2.497801740738737
+                },
+                {
+                  "i_a": 249.25071074119177,
+                  "t_s": 2.143529310531379
+                },
+                {
+                  "i_a": 260.9940750976505,
+                  "t_s": 1.8770545011892932
+                },
+                {
+                  "i_a": 273.2907241608949,
+                  "t_s": 1.669338042746163
+                },
+                {
+                  "i_a": 286.1667257559085,
+                  "t_s": 1.5028753648293622
+                },
+                {
+                  "i_a": 299.649375884581,
+                  "t_s": 1.3664868135682569
+                },
+                {
+                  "i_a": 313.76725659085474,
+                  "t_s": 1.252697603586626
+                },
+                {
+                  "i_a": 328.55029655216856,
+                  "t_s": 1.1563205252520088
+                },
+                {
+                  "i_a": 344.02983452564666,
+                  "t_s": 1.073643031270571
+                },
+                {
+                  "i_a": 360.2386857835349,
+                  "t_s": 1.0019379733109448
+                },
+                {
+                  "i_a": 377.21121167871894,
+                  "t_s": 0.9391570105765329
+                },
+                {
+                  "i_a": 394.9833924878002,
+                  "t_s": 0.8837317819255768
+                },
+                {
+                  "i_a": 413.5929036861482,
+                  "t_s": 0.8344410963689353
+                },
+                {
+                  "i_a": 433.0791958166264,
+                  "t_s": 0.790319908958342
+                },
+                {
+                  "i_a": 453.4835781213077,
+                  "t_s": 0.7505955083540361
+                },
+                {
+                  "i_a": 474.8493061134688,
+                  "t_s": 0.7146418757456358
+                },
+                {
+                  "i_a": 497.22167327551165,
+                  "t_s": 0.6819464517303955
+                },
+                {
+                  "i_a": 520.6481070772005,
+                  "t_s": 0.6520855463097756
+                },
+                {
+                  "i_a": 545.1782695177671,
+                  "t_s": 0.6247058784502592
+                },
+                {
+                  "i_a": 570.8641624050236,
+                  "t_s": 0.5995105337381683
+                },
+                {
+                  "i_a": 597.7602375946658,
+                  "t_s": 0.5762481538460892
+                },
+                {
+                  "i_a": 625.9235124234642,
+                  "t_s": 0.5547045221074982
+                },
+                {
+                  "i_a": 655.4136905810522,
+                  "t_s": 0.5346959476713075
+                },
+                {
+                  "i_a": 686.2932886765476,
+                  "t_s": 0.5160640151452075
+                },
+                {
+                  "i_a": 718.6277687683195,
+                  "t_s": 0.49867138185782367
+                },
+                {
+                  "i_a": 752.4856771378489,
+                  "t_s": 0.4823983867153473
+                },
+                {
+                  "i_a": 787.9387896018767,
+                  "t_s": 0.46714029350516956
+                },
+                {
+                  "i_a": 825.0622636708827,
+                  "t_s": 0.4528050343525662
+                },
+                {
+                  "i_a": 863.9347978764615,
+                  "t_s": 0.43931135057009185
+                },
+                {
+                  "i_a": 904.6387986053558,
+                  "t_s": 0.42658725158026445
+                },
+                {
+                  "i_a": 947.260554793817,
+                  "t_s": 0.4145687301843579
+                },
+                {
+                  "i_a": 991.8904208526372,
+                  "t_s": 0.40319868577132056
+                },
+                {
+                  "i_a": 1038.6230082106267,
+                  "t_s": 0.3924260172326664
+                },
+                {
+                  "i_a": 1087.5573858826053,
+                  "t_s": 0.3822048551780984
+                },
+                {
+                  "i_a": 1138.7972904870842,
+                  "t_s": 0.3724939091169141
+                },
+                {
+                  "i_a": 1192.4513461588613,
+                  "t_s": 0.36325591001048796
+                },
+                {
+                  "i_a": 1248.633294822725,
+                  "t_s": 0.35445713232717346
+                },
+                {
+                  "i_a": 1307.4622373164311,
+                  "t_s": 0.34606698267846947
+                },
+                {
+                  "i_a": 1369.0628858741009,
+                  "t_s": 0.338057644460863
+                },
+                {
+                  "i_a": 1433.5658285052994,
+                  "t_s": 0.33040376980493363
+                },
+                {
+                  "i_a": 1501.1078058302376,
+                  "t_s": 0.32308221164375195
+                },
+                {
+                  "i_a": 1571.8320009579813,
+                  "t_s": 0.3160717899342781
+                },
+                {
+                  "i_a": 1645.8883430221672,
+                  "t_s": 0.30935308705840064
+                },
+                {
+                  "i_a": 1723.433825017711,
+                  "t_s": 0.30290826824103867
+                },
+                {
+                  "i_a": 1804.6328366122793,
+                  "t_s": 0.29672092348786533
+                },
+                {
+                  "i_a": 1889.657512638069,
+                  "t_s": 0.2907759280929984
+                },
+                {
+                  "i_a": 1978.6880980026588,
+                  "t_s": 0.2850593192202644
+                },
+                {
+                  "i_a": 2071.913329792514,
+                  "t_s": 0.2795581864379035
+                },
+                {
+                  "i_a": 2169.5308373791677,
+                  "t_s": 0.27426057440027957
+                },
+                {
+                  "i_a": 2271.747561376281,
+                  "t_s": 0.2691553961325998
+                },
+                {
+                  "i_a": 2378.7801923357133,
+                  "t_s": 0.2642323555949188
+                },
+                {
+                  "i_a": 2490.8556301126255,
+                  "t_s": 0.25948187838726045
+                },
+                {
+                  "i_a": 2608.211464873401,
+                  "t_s": 0.2548950496145224
+                },
+                {
+                  "i_a": 2731.0964807661135,
+                  "t_s": 0.2504635580626741
+                },
+                {
+                  "i_a": 2859.771183321248,
+                  "t_s": 0.24617964595082
+                },
+                {
+                  "i_a": 2994.508351700736,
+                  "t_s": 0.24203606361999574
+                },
+                {
+                  "i_a": 3135.5936169660135,
+                  "t_s": 0.23802602860195465
+                },
+                {
+                  "i_a": 3283.326067591009,
+                  "t_s": 0.23414318858183056
+                },
+                {
+                  "i_a": 3438.0188835036415,
+                  "t_s": 0.2303815878292395
+                },
+                {
+                  "i_a": 3600.0000000000005,
+                  "t_s": 0.22673563672470648
+                }
+              ],
+              "standard": "IEC_60255",
+              "time_multiplier": 0.1
+            },
+            "label_pl": "Nadprądowa czasowa (I>)",
+            "notes_pl": null,
+            "setpoint": {
+              "abs_value": 180.0,
+              "basis": "ABS",
+              "display_pl": "180 A",
+              "multiplier": null,
+              "operator": "GT",
+              "unit": "A"
+            },
+            "time_delay_s": null
+          }
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Zabezpieczenie pola liniowego GPZ",
+      "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+      "element_type": "Switch",
+      "nastawy": {
+        "alf": 20.0,
+        "braki": [],
+        "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+        "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
+        "funkcje_nieoceniane": [],
+        "gotowe": true,
+        "klasa_ct": "5P20",
+        "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
+        "pozycja_katalogu": "REF-OC-200",
+        "przekladnia_a": [
+          600.0,
+          5.0
+        ],
+        "stopnie": [
+          {
+            "etykieta_pl": "I> (51)",
+            "funkcja": "overcurrent_51",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "IEC_SI",
+            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "prog_pierwotny_a": 240.0,
+            "prog_wtorny_a": 2.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 240.0,
+              "prog_wtorny_a": 2.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 5.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.4,
+                  "wielkosc_pl": "próg I> (51) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "1",
+                  "maksimum": 1.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.3,
+                  "wielkosc_pl": "mnożnik czasowy I> (51)"
+                }
+              ],
+              "wartosc_w_modelu": 2.0,
+              "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            },
+            "tms": 0.3,
+            "wartosc_progu": 2.0,
+            "zwloka_s": null
+          },
+          {
+            "etykieta_pl": "I>> (50)",
+            "funkcja": "overcurrent_50",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "DT",
+            "krzywa_pl": "czas niezależny (DT)",
+            "prog_pierwotny_a": 2400.0,
+            "prog_wtorny_a": 20.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 2400.0,
+              "prog_wtorny_a": 20.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 40.0,
+                  "minimum": 0.1,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 4.0,
+                  "wielkosc_pl": "próg I>> (50) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "s",
+                  "maksimum": 100.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.4,
+                  "wielkosc_pl": "zwłoka I>> (50)"
+                }
+              ],
+              "wartosc_w_modelu": 20.0,
+              "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            },
+            "tms": null,
+            "wartosc_progu": 20.0,
+            "zwloka_s": 0.4
+          }
+        ],
+        "urzadzenie_ref": "relay/169595e1280084f388a48e078e44527b/assignment",
+        "zakresy": {
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_NI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-200",
+          "overcurrent_50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "overcurrent_51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-200",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": "DT",
+        "functions": [
+          {
+            "ansi": [
+              "50"
+            ],
+            "code": "OVERCURRENT_INST",
+            "computed": {
+              "computed_from": "wartość bezwzględna",
+              "unit": "A",
+              "value": 2400.0
+            },
+            "curve_type": "DT",
+            "it_curve": {
+              "curve_code": "DT",
+              "curve_kind": "DEFINITE",
+              "curve_label_pl": "Czas niezależny (DT)",
+              "pickup_a": 2400.0,
+              "points": [
+                {
+                  "i_a": 2640.0,
+                  "t_s": 0.4
+                },
+                {
+                  "i_a": 48000.00000000001,
+                  "t_s": 0.4
+                }
+              ],
+              "standard": "IEC_60255",
+              "time_multiplier": null
+            },
+            "label_pl": "Nadprądowa bezzwłoczna (I>>)",
+            "notes_pl": null,
+            "setpoint": {
+              "abs_value": 2400.0,
+              "basis": "ABS",
+              "display_pl": "2400 A",
+              "multiplier": null,
+              "operator": "GT",
+              "unit": "A"
+            },
+            "time_delay_s": 0.4
+          },
+          {
+            "ansi": [
+              "51"
+            ],
+            "code": "OVERCURRENT_TIME",
+            "computed": {
+              "computed_from": "wartość bezwzględna",
+              "unit": "A",
+              "value": 240.0
+            },
+            "curve_type": "IEC_SI",
+            "it_curve": {
+              "curve_code": "SI",
+              "curve_kind": "INVERSE",
+              "curve_label_pl": "Normalna odwrotna (SI)",
+              "pickup_a": 240.0,
+              "points": [
+                {
+                  "i_a": 264.0,
+                  "t_s": 22.012329914950897
+                },
+                {
+                  "i_a": 276.43827221549725,
+                  "t_s": 14.835892931309612
+                },
+                {
+                  "i_a": 289.46256949049007,
+                  "t_s": 11.185762767916552
+                },
+                {
+                  "i_a": 303.10050220079313,
+                  "t_s": 8.975462065055327
+                },
+                {
+                  "i_a": 317.38098157589684,
+                  "t_s": 7.493405222216211
+                },
+                {
+                  "i_a": 332.3342809882557,
+                  "t_s": 6.430587931594137
+                },
+                {
+                  "i_a": 347.9921001302007,
+                  "t_s": 5.631163503567879
+                },
+                {
+                  "i_a": 364.38763221452655,
+                  "t_s": 5.0080141282384885
+                },
+                {
+                  "i_a": 381.5556343412113,
+                  "t_s": 4.508626094488086
+                },
+                {
+                  "i_a": 399.53250117944134,
+                  "t_s": 4.09946044070477
+                },
+                {
+                  "i_a": 418.3563421211397,
+                  "t_s": 3.7580928107598774
+                },
+                {
+                  "i_a": 438.06706206955806,
+                  "t_s": 3.4689615757560266
+                },
+                {
+                  "i_a": 458.70644603419555,
+                  "t_s": 3.2209290938117126
+                },
+                {
+                  "i_a": 480.31824771137985,
+                  "t_s": 3.005813919932834
+                },
+                {
+                  "i_a": 502.9482822382919,
+                  "t_s": 2.8174710317295983
+                },
+                {
+                  "i_a": 526.644523317067,
+                  "t_s": 2.6511953457767303
+                },
+                {
+                  "i_a": 551.4572049148642,
+                  "t_s": 2.5033232891068056
+                },
+                {
+                  "i_a": 577.4389277555018,
+                  "t_s": 2.370959726875026
+                },
+                {
+                  "i_a": 604.6447708284102,
+                  "t_s": 2.251786525062108
+                },
+                {
+                  "i_a": 633.1324081512917,
+                  "t_s": 2.143925627236907
+                },
+                {
+                  "i_a": 662.9622310340155,
+                  "t_s": 2.045839355191186
+                },
+                {
+                  "i_a": 694.1974761029339,
+                  "t_s": 1.9562566389293263
+                },
+                {
+                  "i_a": 726.9043593570228,
+                  "t_s": 1.8741176353507771
+                },
+                {
+                  "i_a": 761.1522165400315,
+                  "t_s": 1.798531601214505
+                },
+                {
+                  "i_a": 797.0136501262211,
+                  "t_s": 1.7287444615382672
+                },
+                {
+                  "i_a": 834.5646832312856,
+                  "t_s": 1.6641135663224946
+                },
+                {
+                  "i_a": 873.8849207747362,
+                  "t_s": 1.6040878430139223
+                },
+                {
+                  "i_a": 915.0577182353968,
+                  "t_s": 1.5481920454356224
+                },
+                {
+                  "i_a": 958.1703583577594,
+                  "t_s": 1.4960141455734708
+                },
+                {
+                  "i_a": 1003.3142361837986,
+                  "t_s": 1.4471951601460418
+                },
+                {
+                  "i_a": 1050.5850528025023,
+                  "t_s": 1.4014208805155086
+                },
+                {
+                  "i_a": 1100.0830182278435,
+                  "t_s": 1.3584151030576985
+                },
+                {
+                  "i_a": 1151.9130638352822,
+                  "t_s": 1.3179340517102753
+                },
+                {
+                  "i_a": 1206.185064807141,
+                  "t_s": 1.2797617547407931
+                },
+                {
+                  "i_a": 1263.0140730584228,
+                  "t_s": 1.2437061905530737
+                },
+                {
+                  "i_a": 1322.5205611368497,
+                  "t_s": 1.2095960573139615
+                },
+                {
+                  "i_a": 1384.830677614169,
+                  "t_s": 1.177278051697999
+                },
+                {
+                  "i_a": 1450.0765145101404,
+                  "t_s": 1.146614565534295
+                },
+                {
+                  "i_a": 1518.3963873161124,
+                  "t_s": 1.1174817273507422
+                },
+                {
+                  "i_a": 1589.935128211815,
+                  "t_s": 1.0897677300314639
+                },
+                {
+                  "i_a": 1664.8443930969668,
+                  "t_s": 1.0633713969815202
+                },
+                {
+                  "i_a": 1743.2829830885748,
+                  "t_s": 1.0382009480354084
+                },
+                {
+                  "i_a": 1825.4171811654678,
+                  "t_s": 1.0141729333825888
+                },
+                {
+                  "i_a": 1911.4211046737325,
+                  "t_s": 0.9912113094148008
+                },
+                {
+                  "i_a": 2001.4770744403168,
+                  "t_s": 0.9692466349312558
+                },
+                {
+                  "i_a": 2095.7760012773083,
+                  "t_s": 0.9482153698028342
+                },
+                {
+                  "i_a": 2194.517790696223,
+                  "t_s": 0.9280592611752018
+                },
+                {
+                  "i_a": 2297.911766690281,
+                  "t_s": 0.908724804723116
+                },
+                {
+                  "i_a": 2406.177115483039,
+                  "t_s": 0.890162770463596
+                },
+                {
+                  "i_a": 2519.5433501840917,
+                  "t_s": 0.8723277842789953
+                },
+                {
+                  "i_a": 2638.2507973368783,
+                  "t_s": 0.8551779576607932
+                },
+                {
+                  "i_a": 2762.551106390019,
+                  "t_s": 0.8386745593137103
+                },
+                {
+                  "i_a": 2892.7077831722236,
+                  "t_s": 0.8227817232008386
+                },
+                {
+                  "i_a": 3028.9967485017078,
+                  "t_s": 0.8074661883977993
+                },
+                {
+                  "i_a": 3171.7069231142846,
+                  "t_s": 0.7926970667847565
+                },
+                {
+                  "i_a": 3321.140840150167,
+                  "t_s": 0.7784456351617812
+                },
+                {
+                  "i_a": 3477.615286497868,
+                  "t_s": 0.7646851488435672
+                },
+                {
+                  "i_a": 3641.4619743548183,
+                  "t_s": 0.7513906741880222
+                },
+                {
+                  "i_a": 3813.0282444283307,
+                  "t_s": 0.7385389378524599
+                },
+                {
+                  "i_a": 3992.677802267648,
+                  "t_s": 0.7261081908599871
+                },
+                {
+                  "i_a": 4180.791489288018,
+                  "t_s": 0.714078085805864
+                },
+                {
+                  "i_a": 4377.768090121346,
+                  "t_s": 0.7024295657454916
+                },
+                {
+                  "i_a": 4584.025178004856,
+                  "t_s": 0.6911447634877185
+                },
+                {
+                  "i_a": 4800.000000000001,
+                  "t_s": 0.6802069101741194
+                }
+              ],
+              "standard": "IEC_60255",
+              "time_multiplier": 0.3
+            },
+            "label_pl": "Nadprądowa czasowa (I>)",
+            "notes_pl": null,
+            "setpoint": {
+              "abs_value": 240.0,
+              "basis": "ABS",
+              "display_pl": "240 A",
+              "multiplier": null,
+              "operator": "GT",
+              "unit": "A"
+            },
+            "time_delay_s": null
+          }
+        ]
+      },
+      "status": "ACTIVE"
+    }
+  ],
+  "case_id": "case-demo",
+  "diagnostics": [],
+  "enm_revision": 2,
+  "slownik_nastaw": {
+    "charakterystyki": [
+      {
+        "etykieta_pl": "czas niezależny (DT)",
+        "kod": "DT"
+      },
+      {
+        "etykieta_pl": "IEC normalnie odwrotna (NI)",
+        "kod": "IEC_SI"
+      },
+      {
+        "etykieta_pl": "IEC bardzo odwrotna (VI)",
+        "kod": "IEC_VI"
+      },
+      {
+        "etykieta_pl": "IEC skrajnie odwrotna (EI)",
+        "kod": "IEC_EI"
+      },
+      {
+        "etykieta_pl": "IEC długozwłoczna (LTI)",
+        "kod": "IEC_LI"
+      },
+      {
+        "etykieta_pl": "IEEE umiarkowanie odwrotna (MI)",
+        "kod": "IEEE_MI"
+      },
+      {
+        "etykieta_pl": "IEEE bardzo odwrotna (VI)",
+        "kod": "IEEE_VI"
+      },
+      {
+        "etykieta_pl": "IEEE skrajnie odwrotna (EI)",
+        "kod": "IEEE_EI"
+      }
+    ],
+    "funkcje": [
+      {
+        "etykieta_pl": "I> (51)",
+        "kod": "overcurrent_51"
+      },
+      {
+        "etykieta_pl": "I>> (50)",
+        "kod": "overcurrent_50"
+      }
+    ],
+    "jednostki_progu": [
+      {
+        "etykieta_pl": "A (strona wtórna przekładnika)",
+        "kod": "A_WTORNY"
+      },
+      {
+        "etykieta_pl": "A (strona pierwotna przekładnika)",
+        "kod": "A_PIERWOTNY"
+      }
+    ]
+  },
+  "summaries": [
+    {
+      "ct": {
+        "label": "600/5",
+        "primary_a": 600.0,
+        "secondary_a": 5.0
+      },
+      "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+      "element_name": "Wyłącznik odejścia S01",
+      "element_type": "Switch",
+      "has_complete_data": true,
+      "margin_pct": null,
+      "overcurrent": {
+        "instant_overcurrent": {
+          "characteristic": "DT",
+          "instantaneous": true,
+          "pickup_a": 1800.0,
+          "pickup_in_multiplier": false,
+          "tms": null,
+          "trip_time_s": 0.1
+        },
+        "time_overcurrent": {
+          "characteristic": "SI",
+          "instantaneous": false,
+          "pickup_a": 180.0,
+          "pickup_in_multiplier": false,
+          "tms": 0.1,
+          "trip_time_s": null
+        }
+      },
+      "verification_reason": "Brak wykrytych konfliktów w logice zabezpieczeń",
+      "verification_status": "SPELNIONE"
+    },
+    {
+      "ct": {
+        "label": "600/5",
+        "primary_a": 600.0,
+        "secondary_a": 5.0
+      },
+      "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+      "element_name": "Wyłącznik pola liniowego GPZ",
+      "element_type": "Switch",
+      "has_complete_data": true,
+      "margin_pct": null,
+      "overcurrent": {
+        "instant_overcurrent": {
+          "characteristic": "DT",
+          "instantaneous": true,
+          "pickup_a": 2400.0,
+          "pickup_in_multiplier": false,
+          "tms": null,
+          "trip_time_s": 0.4
+        },
+        "time_overcurrent": {
+          "characteristic": "SI",
+          "instantaneous": false,
+          "pickup_a": 240.0,
+          "pickup_in_multiplier": false,
+          "tms": 0.3,
+          "trip_time_s": null
+        }
+      },
+      "verification_reason": "Brak wykrytych konfliktów w logice zabezpieczeń",
+      "verification_status": "SPELNIONE"
+    }
+  ],
+  "summary": {
+    "active_assignments": 2,
+    "blocked_assignments": 0,
+    "complete_count": 2,
+    "error_count": 0,
+    "failed_count": 0,
+    "incomplete_count": 0,
+    "info_count": 0,
+    "no_data_count": 0,
+    "total_assignments": 2,
+    "total_elements": 2,
+    "verified_count": 2,
+    "warn_count": 0
+  },
+  "view_status": {
+    "data_source": "ENM_PROTECTION_READ_MODEL",
+    "has_protection_data": true,
+    "result_state": "FRESH"
+  },
+  "wylaczniki_liniowe": [
+    {
+      "nazwa": "Wyłącznik odejścia S01",
+      "przekladniki": [
+        "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement"
+      ],
+      "ref_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+      "zabezpieczenia": [
+        "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment"
+      ]
+    },
+    {
+      "nazwa": "Wyłącznik pola liniowego GPZ",
+      "przekladniki": [
+        "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement"
+      ],
+      "ref_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+      "zabezpieczenia": [
+        "relay/169595e1280084f388a48e078e44527b/assignment"
+      ]
+    }
+  ]
+}

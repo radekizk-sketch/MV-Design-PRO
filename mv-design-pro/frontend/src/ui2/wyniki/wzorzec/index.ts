@@ -40,7 +40,7 @@ export {
   useAkcjaOtworzDokumentacje,
   useAkcjaPorownajWarianty,
   useAkcjaPrzejdzDoPrzypadkow,
-  useAkcjaPrzejdzDoSchematu,
+  useAkcjaPrzejdzDoOcenyZabezpieczen,
   useAkcjaUruchomObliczenie,
 } from './akcjeStanuZerowego';
 export type { AkcjaStanuZerowego, NadpisanieAkcjiBiegu } from './akcjeStanuZerowego';

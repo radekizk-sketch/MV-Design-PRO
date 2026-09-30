@@ -25,8 +25,8 @@ export const ZABEZPIECZENIA_STRINGS = {
 
   // Sekcja ZABEZPIECZENIA.
   zabezpieczeniaTytul: 'Zabezpieczenia pól',
-  zabezpieczeniaOpis: 'Przypisania zabezpieczeń na polach modelu. Edycja nastaw odbywa się '
-    + 'w karcie pola.',
+  zabezpieczeniaOpis: 'Przypisania zabezpieczeń na polach modelu. Nastawy edytujesz w sekcji '
+    + '„Nastawy zabezpieczeń nadprądowych" poniżej albo w karcie pola.',
   kolPole: 'Pole',
   kolUrzadzenie: 'Urządzenie',
   kolSzablon: 'Szablon / rodzina',
@@ -35,6 +35,25 @@ export const ZABEZPIECZENIA_STRINGS = {
   szablonBrak: 'uniwersalne',
   otworzKartePola: 'Otwórz kartę pola',
   otworzKartePolaOpis: 'Otwórz kartę pola z nastawami zabezpieczeń (panel pola)',
+
+  // Sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21).
+  nastawyTytul: 'Nastawy zabezpieczeń nadprądowych',
+  nastawyOpis: 'Nastawy I> i I>> każdego zabezpieczenia nadprądowego modelu — w polach '
+    + 'rozdzielni i przy wyłącznikach liniowych. Zapis trafia do modelu sieci; ocena '
+    + 'zabezpieczeń i koordynacja czytają nastawy stąd. Przeliczenie progu przez przekładnię '
+    + 'i sprawdzenie z zakresami katalogu robi backend.',
+  nastawyBrak: 'Model nie ma jeszcze zabezpieczeń nadprądowych. Dodaj zabezpieczenie w polu '
+    + 'SN albo przy wyłączniku liniowym (menu elementu na schemacie).',
+  nastawyLadowanie: 'Wczytywanie nastaw z modelu…',
+  nastawyBlad: 'Nie udało się pobrać nastaw zabezpieczeń',
+  wylacznikiTytul: 'Wyłączniki liniowe',
+  wylacznikiOpis: 'Wyłączniki wstawione w odcinki SN (poza polami rozdzielni). Zabezpieczenie '
+    + 'wyłącznika liniowego wymaga przekładnika prądowego przy tym wyłączniku.',
+  wylacznikBezNazwy: 'Wyłącznik bez nazwy',
+  wylacznikStanCt: (n: number) => (n > 0 ? `przekładnik: ${n}` : 'bez przekładnika'),
+  wylacznikStanZab: (n: number) => (n > 0 ? `zabezpieczenie: ${n}` : 'bez zabezpieczenia'),
+  dodajPrzekladnik: 'Dodaj przekładnik prądowy',
+  dodajZabezpieczenie: 'Dodaj zabezpieczenie',
 
   // Sekcja AUTOMATYKA.
   automatykaTytul: 'Sterowniki polowe i automatyka',

@@ -382,10 +382,6 @@
     },
     {
       "area": "PROTECTION",
-      "code": "protection.device_breaker_not_in_series"
-    },
-    {
-      "area": "PROTECTION",
       "code": "protection.fault_current_missing"
     },
     {
@@ -573,5 +569,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 142
 }

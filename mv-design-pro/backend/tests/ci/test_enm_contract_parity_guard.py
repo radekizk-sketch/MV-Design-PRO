@@ -86,15 +86,21 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     slownik co metadane rekordu katalogu) i `catalog_status` (PRODUKCYJNY_V1 /
     REFERENCYJNY_V1 / ANALITYCZNY_V1 / TESTOWY / PROJEKTOWY_V1 — status rekordu, z
     `PROJEKTOWY_V1` dla karty katalogu projektu); `ModeleWidmoweElementu` pol Literal nie
-    ma — licznik 119 -> 121 (pomiar guardem na drzewie integracji AB-H0)."""
+    ma — licznik 119 -> 121 (pomiar guardem na drzewie integracji AB-H0).
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30) dodaje `ProtectionSetting.threshold_unit:
+    Literal["A_WTORNY", "A_PIERWOTNY"] | None` (strona przekładnika, po której podano próg
+    prądowy nastawy — PZ-09) z lustrem `'A_WTORNY' | 'A_PIERWOTNY' | null` w `types/enm.ts`;
+    rozszerzenie `curve_type` o IEEE MI/VI/EI to ten sam wpis (zbiór wartości w parytecie) —
+    licznik 121 -> 122."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 121, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 121 — "
+    assert int(dopasowanie.group(1)) == 122, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 122 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

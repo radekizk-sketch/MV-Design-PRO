@@ -2,191 +2,743 @@
   "created_at": "2026-09-17T08:00:00+00:00",
   "devices": [
     {
-      "created_at": "2026-09-17T08:00:00+00:00",
-      "ct_ratio": null,
+      "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "device_type": "RELAY",
-      "id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "location_description": null,
-      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
-      "manufacturer": null,
-      "model": null,
-      "name": "Przekaźnik 50/51 (typowy)",
-      "rated_current_a": null,
-      "settings": {
-        "stage_50": {
-          "curve_settings": null,
-          "directional": false,
-          "enabled": true,
-          "pickup_current_a": 2000.0,
-          "time_s": 0.1
-        },
-        "stage_50_high": null,
-        "stage_50n": null,
-        "stage_51": {
-          "curve_settings": {
-            "definite_time_s": null,
-            "pickup_current_a": 400.0,
-            "reset_time_s": 0.0,
-            "standard": "IEC",
-            "time_multiplier": 0.3,
-            "variant": "SI"
+      "id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "name": "Zabezpieczenie odejścia S01",
+      "nastawy": {
+        "alf": 20.0,
+        "braki": [],
+        "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+        "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
+        "funkcje_nieoceniane": [],
+        "gotowe": true,
+        "klasa_ct": "5P20",
+        "nazwa_pl": "Zabezpieczenie odejścia S01",
+        "pozycja_katalogu": "REF-OC-200",
+        "przekladnia_a": [
+          600.0,
+          5.0
+        ],
+        "stopnie": [
+          {
+            "etykieta_pl": "I> (51)",
+            "funkcja": "overcurrent_51",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "IEC_SI",
+            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "prog_pierwotny_a": 180.0,
+            "prog_wtorny_a": 1.5,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 180.0,
+              "prog_wtorny_a": 1.5,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 5.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.3,
+                  "wielkosc_pl": "próg I> (51) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "1",
+                  "maksimum": 1.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.1,
+                  "wielkosc_pl": "mnożnik czasowy I> (51)"
+                }
+              ],
+              "wartosc_w_modelu": 1.5,
+              "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            },
+            "tms": 0.1,
+            "wartosc_progu": 1.5,
+            "zwloka_s": null
           },
-          "directional": false,
-          "enabled": true,
-          "pickup_current_a": 400.0,
-          "time_s": null
-        },
-        "stage_51n": null
+          {
+            "etykieta_pl": "I>> (50)",
+            "funkcja": "overcurrent_50",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "DT",
+            "krzywa_pl": "czas niezależny (DT)",
+            "prog_pierwotny_a": 1800.0,
+            "prog_wtorny_a": 15.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 1800.0,
+              "prog_wtorny_a": 15.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 40.0,
+                  "minimum": 0.1,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 3.0,
+                  "wielkosc_pl": "próg I>> (50) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "s",
+                  "maksimum": 100.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.1,
+                  "wielkosc_pl": "zwłoka I>> (50)"
+                }
+              ],
+              "wartosc_w_modelu": 15.0,
+              "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            },
+            "tms": null,
+            "wartosc_progu": 15.0,
+            "zwloka_s": 0.1
+          }
+        ],
+        "urzadzenie_ref": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+        "zakresy": {
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_NI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-200",
+          "overcurrent_50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "overcurrent_51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-200",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "strefa": {
+        "klaster_zacisku": [
+          "e1d4911e-f81f-5363-8b52-900f2e123058"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "e1d4911e-f81f-5363-8b52-900f2e123058",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "d9c6be6f-be19-5898-849a-f6c4388f6cb2",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e1d4911e-f81f-5363-8b52-900f2e123058",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Stacja S03",
+          "Stacja S02",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Węzeł łącznika 2",
+          "Zacisk techniczny pola SN 1"
+        ]
       }
     },
     {
-      "created_at": "2026-09-17T08:00:00+00:00",
-      "ct_ratio": null,
+      "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "device_type": "RELAY",
-      "id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "location_description": null,
-      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
-      "manufacturer": null,
-      "model": null,
-      "name": "Przekaźnik 50/51 (typowy)",
-      "rated_current_a": null,
-      "settings": {
-        "stage_50": {
-          "curve_settings": null,
-          "directional": false,
-          "enabled": true,
-          "pickup_current_a": 2000.0,
-          "time_s": 0.1
-        },
-        "stage_50_high": null,
-        "stage_50n": null,
-        "stage_51": {
-          "curve_settings": {
-            "definite_time_s": null,
-            "pickup_current_a": 400.0,
-            "reset_time_s": 0.0,
-            "standard": "IEC",
-            "time_multiplier": 0.3,
-            "variant": "SI"
+      "id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "name": "Zabezpieczenie pola liniowego GPZ",
+      "nastawy": {
+        "alf": 20.0,
+        "braki": [],
+        "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+        "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
+        "funkcje_nieoceniane": [],
+        "gotowe": true,
+        "klasa_ct": "5P20",
+        "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
+        "pozycja_katalogu": "REF-OC-200",
+        "przekladnia_a": [
+          600.0,
+          5.0
+        ],
+        "stopnie": [
+          {
+            "etykieta_pl": "I> (51)",
+            "funkcja": "overcurrent_51",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "IEC_SI",
+            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "prog_pierwotny_a": 240.0,
+            "prog_wtorny_a": 2.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 240.0,
+              "prog_wtorny_a": 2.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 5.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.4,
+                  "wielkosc_pl": "próg I> (51) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "1",
+                  "maksimum": 1.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.3,
+                  "wielkosc_pl": "mnożnik czasowy I> (51)"
+                }
+              ],
+              "wartosc_w_modelu": 2.0,
+              "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            },
+            "tms": 0.3,
+            "wartosc_progu": 2.0,
+            "zwloka_s": null
           },
-          "directional": false,
-          "enabled": true,
-          "pickup_current_a": 400.0,
-          "time_s": null
-        },
-        "stage_51n": null
+          {
+            "etykieta_pl": "I>> (50)",
+            "funkcja": "overcurrent_50",
+            "jednostka_progu": "A_WTORNY",
+            "krzywa": "DT",
+            "krzywa_pl": "czas niezależny (DT)",
+            "prog_pierwotny_a": 2400.0,
+            "prog_wtorny_a": 20.0,
+            "slad": {
+              "jednostka_w_modelu": "A_WTORNY",
+              "prog_pierwotny_a": 2400.0,
+              "prog_wtorny_a": 20.0,
+              "przekladnia_a": [
+                600.0,
+                5.0
+              ],
+              "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
+              "sprawdzenia_zakresu": [
+                {
+                  "jednostka": "×In",
+                  "maksimum": 40.0,
+                  "minimum": 0.1,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 4.0,
+                  "wielkosc_pl": "próg I>> (50) po stronie wtórnej"
+                },
+                {
+                  "jednostka": "s",
+                  "maksimum": 100.0,
+                  "minimum": 0.05,
+                  "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+                  "w_zakresie": true,
+                  "wartosc": 0.4,
+                  "wielkosc_pl": "zwłoka I>> (50)"
+                }
+              ],
+              "wartosc_w_modelu": 20.0,
+              "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            },
+            "tms": null,
+            "wartosc_progu": 20.0,
+            "zwloka_s": 0.4
+          }
+        ],
+        "urzadzenie_ref": "relay/169595e1280084f388a48e078e44527b/assignment",
+        "zakresy": {
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_NI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-200",
+          "overcurrent_50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "overcurrent_51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-200",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "strefa": {
+        "klaster_zacisku": [
+          "631a32ef-a9ab-51e1-8a25-d77d8a712c57"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "6357b55f-ef8a-519a-b44c-1b158f867a2e"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "90e3195b-cc5e-56d3-8fc8-4256f397c138"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ced0a047-2b12-5ea2-a71c-98cf34a60a61"
+          }
+        ],
+        "wezel_zacisku": "631a32ef-a9ab-51e1-8a25-d77d8a712c57",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "631a32ef-a9ab-51e1-8a25-d77d8a712c57",
+          "6357b55f-ef8a-519a-b44c-1b158f867a2e",
+          "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "8c478f63-1a0a-53ef-9476-51c3399593b7",
+          "90e3195b-cc5e-56d3-8fc8-4256f397c138",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c6dedd1b-66ce-5dd5-a19f-d41780da08f1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "c89efd59-988c-5581-9a39-41caf153a24a",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "ced0a047-2b12-5ea2-a71c-98cf34a60a61",
+          "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7",
+          "d9c6be6f-be19-5898-849a-f6c4388f6cb2",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e1d4911e-f81f-5363-8b52-900f2e123058",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Stacja S03",
+          "Stacja S02",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Węzeł łącznika 2",
+          "Szyna nN stacji",
+          "Stacja S01",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 1",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Węzeł łącznika",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Wyłącznik główny nN",
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Węzeł łącznika 2",
+          "Zacisk techniczny pola SN 1"
+        ]
       }
     }
   ],
   "fault_markers": [
     {
-      "current_a": 9621.459235920445,
+      "current_a": 8622.329603986544,
       "fault_type": "3F",
-      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_max_3f",
-      "label_pl": "Ik\"max 3F (Magistrala GPZ (1))",
-      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
+      "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_max",
+      "label_pl": "Ik'' max 3F (Stacja S03)",
+      "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
     },
     {
-      "current_a": 8746.781124267436,
+      "current_a": 8767.005211347425,
       "fault_type": "3F",
-      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_min_3f",
-      "label_pl": "Ik\"min 3F (Magistrala GPZ (1))",
-      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
+      "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_max",
+      "label_pl": "Ik'' max 3F (Stacja S02)",
+      "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
     },
     {
-      "current_a": 9056.559147375221,
+      "current_a": 8550.20741463624,
       "fault_type": "3F",
-      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_max_3f",
-      "label_pl": "Ik\"max 3F (Magistrala GPZ (2) (1))",
-      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
+      "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_max",
+      "label_pl": "Ik'' max 3F (Stacja S04)",
+      "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
     },
     {
-      "current_a": 8034.309745271616,
+      "current_a": 9056.559107147315,
       "fault_type": "3F",
-      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_min_3f",
-      "label_pl": "Ik\"min 3F (Magistrala GPZ (2) (1))",
-      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
+      "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_max",
+      "label_pl": "Ik'' max 3F (Stacja S01)",
+      "location": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
+    },
+    {
+      "current_a": 7786.723056382802,
+      "fault_type": "3F",
+      "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_min",
+      "label_pl": "Ik'' min 3F (Stacja S03)",
+      "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
+    },
+    {
+      "current_a": 7970.004737615992,
+      "fault_type": "3F",
+      "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_min",
+      "label_pl": "Ik'' min 3F (Stacja S02)",
+      "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
+    },
+    {
+      "current_a": 7692.60533471215,
+      "fault_type": "3F",
+      "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_min",
+      "label_pl": "Ik'' min 3F (Stacja S04)",
+      "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
+    },
+    {
+      "current_a": 8233.235551974449,
+      "fault_type": "3F",
+      "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_min",
+      "label_pl": "Ik'' min 3F (Stacja S01)",
+      "location": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
     }
   ],
-  "overall_verdict": "FAIL",
+  "odmowy_par": [],
+  "odmowy_urzadzen": [],
   "overload_checks": [
     {
-      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "i_operating_a": 22.768781749828918,
-      "i_pickup_a": 400.0,
-      "margin_percent": 1656.7914014679577,
-      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 17.57 >= 1.2",
-      "verdict": "PASS",
-      "verdict_pl": "Prawidłowa"
+      "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "i_operating_a": 45.86306602711112,
+      "i_pickup_a": 240.0,
+      "margin_percent": 423.3,
+      "notes_pl": "Próg 240 A (I> (51)) wobec prądu roboczego wyłącznika 45,9 A — iloraz przeciążalności 5,23; wymagany co najmniej 1,2.",
+      "ratio": 5.232969,
+      "required_ratio": 1.2
     },
     {
-      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "i_operating_a": 11.384885698880636,
-      "i_pickup_a": 400.0,
-      "margin_percent": 3413.4300912597487,
-      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 35.13 >= 1.2",
-      "verdict": "PASS",
-      "verdict_pl": "Prawidłowa"
+      "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "i_operating_a": 34.47676162254786,
+      "i_pickup_a": 180.0,
+      "margin_percent": 422.09,
+      "notes_pl": "Próg 180 A (I> (51)) wobec prądu roboczego wyłącznika 34,5 A — iloraz przeciążalności 5,22; wymagany co najmniej 1,2.",
+      "ratio": 5.220908,
+      "required_ratio": 1.2
+    }
+  ],
+  "pary": [
+    {
+      "nadrzedne_ref": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "podrzedne_ref": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment"
     }
   ],
   "pf_run_id": "run-lf-scena-koordynacja",
+  "pominiete": [],
   "project_id": "projekt-scena-koordynacja",
   "run_id": "run-koordynacja-scena",
   "sc_run_id": "run-sc-scena-koordynacja-max",
+  "sc_run_id_min": "run-sc-scena-koordynacja-min",
   "selectivity_checks": [
     {
-      "analysis_current_a": 9621.459235920445,
-      "downstream_device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "margin_s": 0.0,
-      "notes_pl": "Brak selektywności! Zabezpieczenie nadrzędne zadziała przed podrzędnym (Δt = 0.000s)",
+      "analysis_current_a": 8622.70444094442,
+      "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "i_upstream_a": 8623.06935756779,
+      "margin_s": 0.3,
+      "nazwa_punktu_pl": "Stacja S03",
+      "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8622,7 A, nadrzędne 0,4 s przy 8623,1 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+      "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
       "required_margin_s": 0.2,
-      "t_downstream_s": 0.6395404367732404,
-      "t_upstream_s": 0.6395404367732404,
-      "upstream_device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "verdict": "FAIL",
-      "verdict_pl": "Nieskoordynowane"
+      "stan": "ODSTEP",
+      "stan_pl": "oba zabezpieczenia zadziałają — odstęp czasowy wyznaczony",
+      "t_downstream_s": 0.1,
+      "t_upstream_s": 0.4,
+      "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
     }
   ],
   "sensitivity_checks": [
     {
-      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "i_fault_min_a": 8746.781124267436,
-      "i_pickup_a": 400.0,
-      "margin_percent": 2086.695281066859,
-      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 21.87 >= 1.5",
-      "verdict": "PASS",
-      "verdict_pl": "Prawidłowa"
+      "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "i_fault_min_a": 7693.265769845156,
+      "i_pickup_a": 240.0,
+      "margin_percent": 3105.53,
+      "nazwa_punktu_pl": "Stacja S04",
+      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7693,3 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 240 A (I> (51)) — iloraz czułości 32,06; wymagany co najmniej 1,5.",
+      "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+      "ratio": 32.055274,
+      "required_ratio": 1.5,
+      "stopien": "overcurrent_51"
     },
     {
-      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "i_fault_min_a": 8034.309745271616,
-      "i_pickup_a": 400.0,
-      "margin_percent": 1908.5774363179037,
-      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 20.09 >= 1.5",
-      "verdict": "PASS",
-      "verdict_pl": "Prawidłowa"
+      "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "i_fault_min_a": 7692.940201250955,
+      "i_pickup_a": 180.0,
+      "margin_percent": 4173.86,
+      "nazwa_punktu_pl": "Stacja S04",
+      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7692,9 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 180 A (I> (51)) — iloraz czułości 42,74; wymagany co najmniej 1,5.",
+      "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+      "ratio": 42.738557,
+      "required_ratio": 1.5,
+      "stopien": "overcurrent_51"
     }
   ],
   "summary": {
-    "overall_verdict": "FAIL",
-    "overall_verdict_pl": "Nieskoordynowane",
+    "kryteria": {
+      "breaker_time_s": 0.05,
+      "minimum_grading_margin_s": 0.2,
+      "overload_ratio_required": 1.2,
+      "relay_overtravel_s": 0.05,
+      "safety_factor_s": 0.1,
+      "sensitivity_ratio_required": 1.5
+    },
+    "odmowy_par": 0,
+    "odmowy_urzadzen": 0,
     "overload": {
-      "error": 0,
-      "fail": 0,
-      "marginal": 0,
-      "pass": 2
+      "bez_wartosci": 0,
+      "najmniejszy_iloraz": 5.220908,
+      "sprawdzenia": 2
     },
     "selectivity": {
-      "error": 0,
-      "fail": 1,
-      "marginal": 0,
-      "pass": 0
+      "bez_odstepu": 0,
+      "najmniejszy_odstep_s": 0.3,
+      "sprawdzenia": 1
     },
     "sensitivity": {
-      "error": 0,
-      "fail": 0,
-      "marginal": 0,
-      "pass": 2
+      "bez_wartosci": 0,
+      "najmniejszy_iloraz": 32.055274,
+      "sprawdzenia": 2
     },
     "total_checks": 5,
     "total_devices": 2
@@ -195,1022 +747,624 @@
     {
       "color": "#2563eb",
       "curve_type": "IEC_SI",
-      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "device_name": "Przekaźnik 50/51 (typowy)",
-      "pickup_current_a": 400.0,
+      "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "device_name": "Zabezpieczenie odejścia S01",
+      "opis_pl": "I> (51): 180 A, IEC normalnie odwrotna (NI), TMS 0,1; I>> (50): 1800 A, czas niezależny (DT), zwłoka 0,1 s",
+      "pickup_current_a": 180.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
         {
-          "current_a": 440.00000000000006,
-          "current_multiple": 1.1,
-          "time_s": 22.012329914950897
+          "current_a": 189.0,
+          "current_multiple": 1.05,
+          "time_s": 14.340155
         },
         {
-          "current_a": 453.0814541381056,
-          "current_multiple": 1.132703635345264,
-          "time_s": 16.831944106629525
+          "current_a": 200.050028,
+          "current_multiple": 1.111389,
+          "time_s": 6.621123
         },
         {
-          "current_a": 466.55182746340967,
-          "current_multiple": 1.166379568658524,
-          "time_s": 13.623830163032316
+          "current_a": 211.746105,
+          "current_multiple": 1.176367,
+          "time_s": 4.302524
         },
         {
-          "current_a": 480.4226827679822,
-          "current_multiple": 1.2010567069199556,
-          "time_s": 11.441784897425231
+          "current_a": 224.126001,
+          "current_multiple": 1.245144,
+          "time_s": 3.185685
         },
         {
-          "current_a": 494.70592661237987,
-          "current_multiple": 1.2367648165309497,
-          "time_s": 9.861416587775897
+          "current_a": 237.229698,
+          "current_multiple": 1.317943,
+          "time_s": 2.528577
         },
         {
-          "current_a": 509.4138195460818,
-          "current_multiple": 1.2735345488652046,
-          "time_s": 8.664018944723853
+          "current_a": 251.099512,
+          "current_multiple": 1.394997,
+          "time_s": 2.095789
         },
         {
-          "current_a": 524.5589866317847,
-          "current_multiple": 1.3113974665794617,
-          "time_s": 7.72542847234366
+          "current_a": 265.780235,
+          "current_multiple": 1.476557,
+          "time_s": 1.789203
         },
         {
-          "current_a": 540.1544282825911,
-          "current_multiple": 1.3503860707064776,
-          "time_s": 6.969920510496526
+          "current_a": 281.319278,
+          "current_multiple": 1.562885,
+          "time_s": 1.560642
         },
         {
-          "current_a": 556.213531421394,
-          "current_multiple": 1.390533828553485,
-          "time_s": 6.348687021287919
+          "current_a": 297.766823,
+          "current_multiple": 1.65426,
+          "time_s": 1.383684
         },
         {
-          "current_a": 572.7500809720366,
-          "current_multiple": 1.4318752024300914,
-          "time_s": 5.828853098689909
+          "current_a": 315.175985,
+          "current_multiple": 1.750978,
+          "time_s": 1.242624
         },
         {
-          "current_a": 589.778271692109,
-          "current_multiple": 1.4744456792302725,
-          "time_s": 5.387465926220929
+          "current_a": 333.602988,
+          "current_multiple": 1.85335,
+          "time_s": 1.127546
         },
         {
-          "current_a": 607.3127203575442,
-          "current_multiple": 1.5182818008938606,
-          "time_s": 5.0080141282384885
+          "current_a": 353.10734,
+          "current_multiple": 1.961707,
+          "time_s": 1.031876
         },
         {
-          "current_a": 625.3684783094654,
-          "current_multiple": 1.5634211957736637,
-          "time_s": 4.678316267800688
+          "current_a": 373.752028,
+          "current_multiple": 2.0764,
+          "time_s": 0.951087
         },
         {
-          "current_a": 643.9610443740611,
-          "current_multiple": 1.6099026109351529,
-          "time_s": 4.389188821686599
+          "current_a": 395.603724,
+          "current_multiple": 2.197798,
+          "time_s": 0.881957
         },
         {
-          "current_a": 663.1063781665744,
-          "current_multiple": 1.657765945416436,
-          "time_s": 4.133577382014231
+          "current_a": 418.732995,
+          "current_multiple": 2.326294,
+          "time_s": 0.822132
         },
         {
-          "current_a": 682.8209137908274,
-          "current_multiple": 1.7070522844770684,
-          "time_s": 3.905973439834773
+          "current_a": 443.214537,
+          "current_multiple": 2.462303,
+          "time_s": 0.769852
         },
         {
-          "current_a": 703.121573946041,
-          "current_multiple": 1.7578039348651027,
-          "time_s": 3.7020129200715766
+          "current_a": 469.127411,
+          "current_multiple": 2.606263,
+          "time_s": 0.723774
         },
         {
-          "current_a": 724.0257844530586,
-          "current_multiple": 1.8100644611326464,
-          "time_s": 3.518193650165771
+          "current_a": 496.5553,
+          "current_multiple": 2.758641,
+          "time_s": 0.682857
         },
         {
-          "current_a": 745.5514892124417,
-          "current_multiple": 1.8638787230311042,
-          "time_s": 3.35167259019804
+          "current_a": 525.586782,
+          "current_multiple": 2.919927,
+          "time_s": 0.646279
         },
         {
-          "current_a": 767.71716560728,
-          "current_multiple": 1.9192929140182,
-          "time_s": 3.2001177346192553
+          "current_a": 556.315612,
+          "current_multiple": 3.090642,
+          "time_s": 0.613385
         },
         {
-          "current_a": 790.5418403639345,
-          "current_multiple": 1.9763546009098363,
-          "time_s": 3.061598227599056
+          "current_a": 588.841025,
+          "current_multiple": 3.271339,
+          "time_s": 0.583646
         },
         {
-          "current_a": 814.0451058843307,
-          "current_multiple": 2.035112764710827,
-          "time_s": 2.9345016627208627
+          "current_a": 623.268062,
+          "current_multiple": 3.4626,
+          "time_s": 0.556627
         },
         {
-          "current_a": 838.2471370638197,
-          "current_multiple": 2.095617842659549,
-          "time_s": 2.8174710317295983
+          "current_a": 659.707902,
+          "current_multiple": 3.665044,
+          "time_s": 0.531973
         },
         {
-          "current_a": 863.168708609044,
-          "current_multiple": 2.1579217715226098,
-          "time_s": 2.7093560832274957
+          "current_a": 698.278224,
+          "current_multiple": 3.879323,
+          "time_s": 0.509385
         },
         {
-          "current_a": 888.8312128706735,
-          "current_multiple": 2.2220780321766838,
-          "time_s": 2.6091753901166754
+          "current_a": 739.10359,
+          "current_multiple": 4.106131,
+          "time_s": 0.488615
         },
         {
-          "current_a": 915.25667820632,
-          "current_multiple": 2.2881416955158,
-          "time_s": 2.5160864725962915
+          "current_a": 782.315841,
+          "current_multiple": 4.346199,
+          "time_s": 0.469451
         },
         {
-          "current_a": 942.4677878893899,
-          "current_multiple": 2.3561694697234747,
-          "time_s": 2.4293620491013534
+          "current_a": 828.05453,
+          "current_multiple": 4.600303,
+          "time_s": 0.451714
         },
         {
-          "current_a": 970.4878995801099,
-          "current_multiple": 2.426219748950275,
-          "time_s": 2.3483709972979185
+          "current_a": 876.467365,
+          "current_multiple": 4.869263,
+          "time_s": 0.435251
         },
         {
-          "current_a": 999.3410653754362,
-          "current_multiple": 2.4983526634385904,
-          "time_s": 2.2725629701906276
+          "current_a": 927.710694,
+          "current_multiple": 5.153948,
+          "time_s": 0.419929
         },
         {
-          "current_a": 1029.0520524550595,
-          "current_multiple": 2.572630131137649,
-          "time_s": 2.201455874064361
+          "current_a": 981.950003,
+          "current_multiple": 5.455278,
+          "time_s": 0.405633
         },
         {
-          "current_a": 1059.6463643412283,
-          "current_multiple": 2.649115910853071,
-          "time_s": 2.1346256058264212
+          "current_a": 1039.360454,
+          "current_multiple": 5.774225,
+          "time_s": 0.392264
         },
         {
-          "current_a": 1091.1502627906375,
-          "current_multiple": 2.7278756569765936,
-          "time_s": 2.0716975880178237
+          "current_a": 1100.12745,
+          "current_multiple": 6.111819,
+          "time_s": 0.379735
         },
         {
-          "current_a": 1123.5907903371774,
-          "current_multiple": 2.8089769758429433,
-          "time_s": 2.012339744542205
+          "current_a": 1164.447235,
+          "current_multiple": 6.469151,
+          "time_s": 0.367968
         },
         {
-          "current_a": 1156.9957935048901,
-          "current_multiple": 2.8924894837622253,
-          "time_s": 1.9562566389293263
+          "current_a": 1232.527525,
+          "current_multiple": 6.847375,
+          "time_s": 0.356896
         },
         {
-          "current_a": 1191.3939467110608,
-          "current_multiple": 2.9784848667776522,
-          "time_s": 1.9031845566894414
+          "current_a": 1304.588181,
+          "current_multiple": 7.247712,
+          "time_s": 0.346459
         },
         {
-          "current_a": 1226.814776879964,
-          "current_multiple": 3.06703694219991,
-          "time_s": 1.8528873589980719
+          "current_a": 1380.861917,
+          "current_multiple": 7.671455,
+          "time_s": 0.336605
         },
         {
-          "current_a": 1263.2886887883853,
-          "current_multiple": 3.1582217219709636,
-          "time_s": 1.805152970160489
+          "current_a": 1461.595056,
+          "current_multiple": 8.119973,
+          "time_s": 0.327285
         },
         {
-          "current_a": 1300.846991164687,
-          "current_multiple": 3.252117477911718,
-          "time_s": 1.759790388642051
+          "current_a": 1547.048318,
+          "current_multiple": 8.594713,
+          "time_s": 0.318458
         },
         {
-          "current_a": 1339.5219235638083,
-          "current_multiple": 3.3488048089095206,
-          "time_s": 1.716627132823925
+          "current_a": 1637.497671,
+          "current_multiple": 9.097209,
+          "time_s": 0.310085
         },
         {
-          "current_a": 1379.3466840412784,
-          "current_multiple": 3.4483667101031963,
-          "time_s": 1.6755070494639492
+          "current_a": 1733.235213,
+          "current_multiple": 9.629085,
+          "time_s": 0.302133
         },
         {
-          "current_a": 1420.3554576499916,
-          "current_multiple": 3.550888644124979,
-          "time_s": 1.636288426163603
+          "current_a": 1834.570123,
+          "current_multiple": 10.192056,
+          "time_s": 0.1
         },
         {
-          "current_a": 1462.5834457842107,
-          "current_multiple": 3.6564586144605267,
-          "time_s": 1.5988423597528933
+          "current_a": 1941.829655,
+          "current_multiple": 10.787943,
+          "time_s": 0.1
         },
         {
-          "current_a": 1506.0668963959802,
-          "current_multiple": 3.76516724098995,
-          "time_s": 1.5630513410066698
+          "current_a": 2055.360198,
+          "current_multiple": 11.418668,
+          "time_s": 0.1
         },
         {
-          "current_a": 1550.843135109896,
-          "current_multiple": 3.87710783777474,
-          "time_s": 1.5288080229525538
+          "current_a": 2175.528389,
+          "current_multiple": 12.086269,
+          "time_s": 0.1
         },
         {
-          "current_a": 1596.9505972629318,
-          "current_multiple": 3.9923764931573293,
-          "time_s": 1.4960141455734708
+          "current_a": 2302.722305,
+          "current_multiple": 12.792902,
+          "time_s": 0.1
         },
         {
-          "current_a": 1644.4288608968307,
-          "current_multiple": 4.111072152242077,
-          "time_s": 1.4645795942171296
+          "current_a": 2437.352709,
+          "current_multiple": 13.540848,
+          "time_s": 0.1
         },
         {
-          "current_a": 1693.3186807313734,
-          "current_multiple": 4.233296701828434,
-          "time_s": 1.4344215727094345
+          "current_a": 2579.854383,
+          "current_multiple": 14.332524,
+          "time_s": 0.1
         },
         {
-          "current_a": 1743.662023147703,
-          "current_multiple": 4.359155057869257,
-          "time_s": 1.4054638751943607
+          "current_a": 2730.687524,
+          "current_multiple": 15.170486,
+          "time_s": 0.1
         },
         {
-          "current_a": 1795.5021022117098,
-          "current_multiple": 4.4887552555292745,
-          "time_s": 1.3776362432164833
+          "current_a": 2890.339239,
+          "current_multiple": 16.05744,
+          "time_s": 0.1
         },
         {
-          "current_a": 1848.8834167684245,
-          "current_multiple": 4.6222085419210615,
-          "time_s": 1.350873796626757
+          "current_a": 3059.325113,
+          "current_multiple": 16.996251,
+          "time_s": 0.1
         },
         {
-          "current_a": 1903.851788639243,
-          "current_multiple": 4.759629471598108,
-          "time_s": 1.3251165286077797
+          "current_a": 3238.190874,
+          "current_multiple": 17.989949,
+          "time_s": 0.1
         },
         {
-          "current_a": 1960.454401954776,
-          "current_multiple": 4.90113600488694,
-          "time_s": 1.3003088565454435
+          "current_a": 3427.514158,
+          "current_multiple": 19.041745,
+          "time_s": 0.1
         },
         {
-          "current_a": 2018.7398436570902,
-          "current_multiple": 5.0468496091427255,
-          "time_s": 1.2763992216718634
+          "current_a": 3627.90637,
+          "current_multiple": 20.155035,
+          "time_s": 0.1
         },
         {
-          "current_a": 2078.7581452061054,
-          "current_multiple": 5.196895363015264,
-          "time_s": 1.2533397314106287
+          "current_a": 3840.014665,
+          "current_multiple": 21.333415,
+          "time_s": 0.1
         },
         {
-          "current_a": 2140.560825525939,
-          "current_multiple": 5.351402063814848,
-          "time_s": 1.2310858392034034
+          "current_a": 4064.524033,
+          "current_multiple": 22.580689,
+          "time_s": 0.1
         },
         {
-          "current_a": 2204.200935228083,
-          "current_multiple": 5.510502338070207,
-          "time_s": 1.2095960573139615
+          "current_a": 4302.15951,
+          "current_multiple": 23.900886,
+          "time_s": 0.1
         },
         {
-          "current_a": 2269.7331021493446,
-          "current_multiple": 5.674332755373362,
-          "time_s": 1.1888316987137342
+          "current_a": 4553.688526,
+          "current_multiple": 25.29827,
+          "time_s": 0.1
         },
         {
-          "current_a": 2337.213578243678,
-          "current_multiple": 5.8430339456091955,
-          "time_s": 1.1687566446703868
+          "current_a": 4819.923376,
+          "current_multiple": 26.777352,
+          "time_s": 0.1
         },
         {
-          "current_a": 2406.7002878681146,
-          "current_multiple": 6.016750719670286,
-          "time_s": 1.149337135101966
+          "current_a": 5101.723849,
+          "current_multiple": 28.34291,
+          "time_s": 0.1
         },
         {
-          "current_a": 2478.2528775042792,
-          "current_multiple": 6.195632193760698,
-          "time_s": 1.1305415791368898
-        },
-        {
-          "current_a": 2551.932766958143,
-          "current_multiple": 6.379831917395357,
-          "time_s": 1.1123403836435952
-        },
-        {
-          "current_a": 2627.803202081988,
-          "current_multiple": 6.56950800520497,
-          "time_s": 1.0947057977721517
-        },
-        {
-          "current_a": 2705.929309063811,
-          "current_multiple": 6.764823272659528,
-          "time_s": 1.0776117717902547
-        },
-        {
-          "current_a": 2786.378150330798,
-          "current_multiple": 6.965945375826995,
-          "time_s": 1.0610338287031837
-        },
-        {
-          "current_a": 2869.2187821148236,
-          "current_multiple": 7.1730469552870595,
-          "time_s": 1.0449489473272882
-        },
-        {
-          "current_a": 2954.522313729429,
-          "current_multiple": 7.386305784323572,
-          "time_s": 1.0293354556421395
-        },
-        {
-          "current_a": 3042.361968609114,
-          "current_multiple": 7.605904921522784,
-          "time_s": 1.0141729333825888
-        },
-        {
-          "current_a": 3132.8131471633783,
-          "current_multiple": 7.832032867908445,
-          "time_s": 0.999442122949932
-        },
-        {
-          "current_a": 3225.9534914994497,
-          "current_multiple": 8.064883728748624,
-          "time_s": 0.9851248478249724
-        },
-        {
-          "current_a": 3321.862952069249,
-          "current_multiple": 8.304657380173122,
-          "time_s": 0.9712039377561476
-        },
-        {
-          "current_a": 3420.6238562978087,
-          "current_multiple": 8.551559640744522,
-          "time_s": 0.9576631600753658
-        },
-        {
-          "current_a": 3522.3209792520565,
-          "current_multiple": 8.805802448130141,
-          "time_s": 0.9444871565637877
-        },
-        {
-          "current_a": 3627.041616410631,
-          "current_multiple": 9.067604041026577,
-          "time_s": 0.9316613853513676
-        },
-        {
-          "current_a": 3734.8756585971664,
-          "current_multiple": 9.337189146492916,
-          "time_s": 0.9191720673880687
-        },
-        {
-          "current_a": 3845.9156691414073,
-          "current_multiple": 9.614789172853518,
-          "time_s": 0.9070061370724234
-        },
-        {
-          "current_a": 3960.256963334349,
-          "current_multiple": 9.900642408335873,
-          "time_s": 0.8951511966656724
-        },
-        {
-          "current_a": 4077.9976902456488,
-          "current_multiple": 10.194994225614122,
-          "time_s": 0.8835954741570158
-        },
-        {
-          "current_a": 4199.238916973486,
-          "current_multiple": 10.498097292433716,
-          "time_s": 0.8723277842789953
-        },
-        {
-          "current_a": 4324.084715399253,
-          "current_multiple": 10.810211788498131,
-          "time_s": 0.8613374924016689
-        },
-        {
-          "current_a": 4452.642251521475,
-          "current_multiple": 11.131605628803689,
-          "time_s": 0.8506144810604964
-        },
-        {
-          "current_a": 4585.021877445723,
-          "current_multiple": 11.462554693614306,
-          "time_s": 0.8401491188965605
-        },
-        {
-          "current_a": 4721.337226109399,
-          "current_multiple": 11.803343065273497,
-          "time_s": 0.8299322318086755
-        },
-        {
-          "current_a": 4861.705308822763,
-          "current_multiple": 12.154263272056907,
-          "time_s": 0.8199550761357618
-        },
-        {
-          "current_a": 5006.246615709922,
-          "current_multiple": 12.515616539274804,
-          "time_s": 0.8102093137047218
-        },
-        {
-          "current_a": 5155.085219135955,
-          "current_multiple": 12.887713047839888,
-          "time_s": 0.8006869885941652
-        },
-        {
-          "current_a": 5308.348880209031,
-          "current_multiple": 13.270872200522579,
-          "time_s": 0.7913805054778922
-        },
-        {
-          "current_a": 5466.169158448844,
-          "current_multiple": 13.665422896122111,
-          "time_s": 0.7822826094241886
-        },
-        {
-          "current_a": 5628.6815247156055,
-          "current_multiple": 14.071703811789014,
-          "time_s": 0.7733863670380933
-        },
-        {
-          "current_a": 5796.025477496444,
-          "current_multiple": 14.49006369374111,
-          "time_s": 0.7646851488435672
-        },
-        {
-          "current_a": 5968.344662649084,
-          "current_multiple": 14.92086165662271,
-          "time_s": 0.7561726128114875
-        },
-        {
-          "current_a": 6145.786996705566,
-          "current_multiple": 15.364467491763914,
-          "time_s": 0.7478426889474884
-        },
-        {
-          "current_a": 6328.5047938418575,
-          "current_multiple": 15.821261984604645,
-          "time_s": 0.7396895648608947
-        },
-        {
-          "current_a": 6516.6548966223645,
-          "current_multiple": 16.29163724155591,
-          "time_s": 0.7317076722426732
-        },
-        {
-          "current_a": 6710.398810631517,
-          "current_multiple": 16.775997026578793,
-          "time_s": 0.7238916741863003
-        },
-        {
-          "current_a": 6909.902843108047,
-          "current_multiple": 17.274757107770117,
-          "time_s": 0.716236453290844
-        },
-        {
-          "current_a": 7115.338245700963,
-          "current_multiple": 17.788345614252407,
-          "time_s": 0.7087371004905717
-        },
-        {
-          "current_a": 7326.881361469704,
-          "current_multiple": 18.31720340367426,
-          "time_s": 0.7013889045598066
-        },
-        {
-          "current_a": 7544.713776254717,
-          "current_multiple": 18.861784440636793,
-          "time_s": 0.6941873422459113
-        },
-        {
-          "current_a": 7769.022474548376,
-          "current_multiple": 19.42255618637094,
-          "time_s": 0.687128068986967
-        },
-        {
-          "current_a": 8000.000000000002,
-          "current_multiple": 20.000000000000004,
-          "time_s": 0.6802069101741194
+          "current_a": 5400.0,
+          "current_multiple": 30.0,
+          "time_s": 0.1
         }
       ],
       "powod_pl": null,
-      "time_multiplier": 0.3
+      "time_multiplier": 0.1
     },
     {
       "color": "#dc2626",
       "curve_type": "IEC_SI",
-      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "device_name": "Przekaźnik 50/51 (typowy)",
-      "pickup_current_a": 400.0,
+      "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "device_name": "Zabezpieczenie pola liniowego GPZ",
+      "opis_pl": "I> (51): 240 A, IEC normalnie odwrotna (NI), TMS 0,3; I>> (50): 2400 A, czas niezależny (DT), zwłoka 0,4 s",
+      "pickup_current_a": 240.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
         {
-          "current_a": 440.00000000000006,
-          "current_multiple": 1.1,
-          "time_s": 22.012329914950897
+          "current_a": 252.0,
+          "current_multiple": 1.05,
+          "time_s": 43.020465
         },
         {
-          "current_a": 453.0814541381056,
-          "current_multiple": 1.132703635345264,
-          "time_s": 16.831944106629525
+          "current_a": 266.733371,
+          "current_multiple": 1.111389,
+          "time_s": 19.86337
         },
         {
-          "current_a": 466.55182746340967,
-          "current_multiple": 1.166379568658524,
-          "time_s": 13.623830163032316
+          "current_a": 282.32814,
+          "current_multiple": 1.176367,
+          "time_s": 12.907571
         },
         {
-          "current_a": 480.4226827679822,
-          "current_multiple": 1.2010567069199556,
-          "time_s": 11.441784897425231
+          "current_a": 298.834668,
+          "current_multiple": 1.245144,
+          "time_s": 9.557055
         },
         {
-          "current_a": 494.70592661237987,
-          "current_multiple": 1.2367648165309497,
-          "time_s": 9.861416587775897
+          "current_a": 316.306264,
+          "current_multiple": 1.317943,
+          "time_s": 7.58573
         },
         {
-          "current_a": 509.4138195460818,
-          "current_multiple": 1.2735345488652046,
-          "time_s": 8.664018944723853
+          "current_a": 334.799349,
+          "current_multiple": 1.394997,
+          "time_s": 6.287367
         },
         {
-          "current_a": 524.5589866317847,
-          "current_multiple": 1.3113974665794617,
-          "time_s": 7.72542847234366
+          "current_a": 354.373647,
+          "current_multiple": 1.476557,
+          "time_s": 5.367609
         },
         {
-          "current_a": 540.1544282825911,
-          "current_multiple": 1.3503860707064776,
-          "time_s": 6.969920510496526
+          "current_a": 375.09237,
+          "current_multiple": 1.562885,
+          "time_s": 4.681927
         },
         {
-          "current_a": 556.213531421394,
-          "current_multiple": 1.390533828553485,
-          "time_s": 6.348687021287919
+          "current_a": 397.02243,
+          "current_multiple": 1.65426,
+          "time_s": 4.151051
         },
         {
-          "current_a": 572.7500809720366,
-          "current_multiple": 1.4318752024300914,
-          "time_s": 5.828853098689909
+          "current_a": 420.234647,
+          "current_multiple": 1.750978,
+          "time_s": 3.727872
         },
         {
-          "current_a": 589.778271692109,
-          "current_multiple": 1.4744456792302725,
-          "time_s": 5.387465926220929
+          "current_a": 444.803984,
+          "current_multiple": 1.85335,
+          "time_s": 3.382638
         },
         {
-          "current_a": 607.3127203575442,
-          "current_multiple": 1.5182818008938606,
-          "time_s": 5.0080141282384885
+          "current_a": 470.809786,
+          "current_multiple": 1.961707,
+          "time_s": 3.095629
         },
         {
-          "current_a": 625.3684783094654,
-          "current_multiple": 1.5634211957736637,
-          "time_s": 4.678316267800688
+          "current_a": 498.336037,
+          "current_multiple": 2.0764,
+          "time_s": 2.853261
         },
         {
-          "current_a": 643.9610443740611,
-          "current_multiple": 1.6099026109351529,
-          "time_s": 4.389188821686599
+          "current_a": 527.471631,
+          "current_multiple": 2.197798,
+          "time_s": 2.64587
         },
         {
-          "current_a": 663.1063781665744,
-          "current_multiple": 1.657765945416436,
-          "time_s": 4.133577382014231
+          "current_a": 558.31066,
+          "current_multiple": 2.326294,
+          "time_s": 2.466396
         },
         {
-          "current_a": 682.8209137908274,
-          "current_multiple": 1.7070522844770684,
-          "time_s": 3.905973439834773
+          "current_a": 590.952716,
+          "current_multiple": 2.462303,
+          "time_s": 2.309556
         },
         {
-          "current_a": 703.121573946041,
-          "current_multiple": 1.7578039348651027,
-          "time_s": 3.7020129200715766
+          "current_a": 625.503214,
+          "current_multiple": 2.606263,
+          "time_s": 2.171323
         },
         {
-          "current_a": 724.0257844530586,
-          "current_multiple": 1.8100644611326464,
-          "time_s": 3.518193650165771
+          "current_a": 662.073734,
+          "current_multiple": 2.758641,
+          "time_s": 2.048571
         },
         {
-          "current_a": 745.5514892124417,
-          "current_multiple": 1.8638787230311042,
-          "time_s": 3.35167259019804
+          "current_a": 700.782376,
+          "current_multiple": 2.919927,
+          "time_s": 1.938837
         },
         {
-          "current_a": 767.71716560728,
-          "current_multiple": 1.9192929140182,
-          "time_s": 3.2001177346192553
+          "current_a": 741.754149,
+          "current_multiple": 3.090642,
+          "time_s": 1.840156
         },
         {
-          "current_a": 790.5418403639345,
-          "current_multiple": 1.9763546009098363,
-          "time_s": 3.061598227599056
+          "current_a": 785.121367,
+          "current_multiple": 3.271339,
+          "time_s": 1.750937
         },
         {
-          "current_a": 814.0451058843307,
-          "current_multiple": 2.035112764710827,
-          "time_s": 2.9345016627208627
+          "current_a": 831.024083,
+          "current_multiple": 3.4626,
+          "time_s": 1.669881
         },
         {
-          "current_a": 838.2471370638197,
-          "current_multiple": 2.095617842659549,
-          "time_s": 2.8174710317295983
+          "current_a": 879.610536,
+          "current_multiple": 3.665044,
+          "time_s": 1.595918
         },
         {
-          "current_a": 863.168708609044,
-          "current_multiple": 2.1579217715226098,
-          "time_s": 2.7093560832274957
+          "current_a": 931.037632,
+          "current_multiple": 3.879323,
+          "time_s": 1.528155
         },
         {
-          "current_a": 888.8312128706735,
-          "current_multiple": 2.2220780321766838,
-          "time_s": 2.6091753901166754
+          "current_a": 985.471453,
+          "current_multiple": 4.106131,
+          "time_s": 1.465844
         },
         {
-          "current_a": 915.25667820632,
-          "current_multiple": 2.2881416955158,
-          "time_s": 2.5160864725962915
+          "current_a": 1043.087788,
+          "current_multiple": 4.346199,
+          "time_s": 1.408353
         },
         {
-          "current_a": 942.4677878893899,
-          "current_multiple": 2.3561694697234747,
-          "time_s": 2.4293620491013534
+          "current_a": 1104.072706,
+          "current_multiple": 4.600303,
+          "time_s": 1.355143
         },
         {
-          "current_a": 970.4878995801099,
-          "current_multiple": 2.426219748950275,
-          "time_s": 2.3483709972979185
+          "current_a": 1168.623154,
+          "current_multiple": 4.869263,
+          "time_s": 1.305754
         },
         {
-          "current_a": 999.3410653754362,
-          "current_multiple": 2.4983526634385904,
-          "time_s": 2.2725629701906276
+          "current_a": 1236.947592,
+          "current_multiple": 5.153948,
+          "time_s": 1.259788
         },
         {
-          "current_a": 1029.0520524550595,
-          "current_multiple": 2.572630131137649,
-          "time_s": 2.201455874064361
+          "current_a": 1309.26667,
+          "current_multiple": 5.455278,
+          "time_s": 1.2169
         },
         {
-          "current_a": 1059.6463643412283,
-          "current_multiple": 2.649115910853071,
-          "time_s": 2.1346256058264212
+          "current_a": 1385.813938,
+          "current_multiple": 5.774225,
+          "time_s": 1.176793
         },
         {
-          "current_a": 1091.1502627906375,
-          "current_multiple": 2.7278756569765936,
-          "time_s": 2.0716975880178237
+          "current_a": 1466.8366,
+          "current_multiple": 6.111819,
+          "time_s": 1.139204
         },
         {
-          "current_a": 1123.5907903371774,
-          "current_multiple": 2.8089769758429433,
-          "time_s": 2.012339744542205
+          "current_a": 1552.596313,
+          "current_multiple": 6.469151,
+          "time_s": 1.103903
         },
         {
-          "current_a": 1156.9957935048901,
-          "current_multiple": 2.8924894837622253,
-          "time_s": 1.9562566389293263
+          "current_a": 1643.370033,
+          "current_multiple": 6.847375,
+          "time_s": 1.070687
         },
         {
-          "current_a": 1191.3939467110608,
-          "current_multiple": 2.9784848667776522,
-          "time_s": 1.9031845566894414
+          "current_a": 1739.450908,
+          "current_multiple": 7.247712,
+          "time_s": 1.039377
         },
         {
-          "current_a": 1226.814776879964,
-          "current_multiple": 3.06703694219991,
-          "time_s": 1.8528873589980719
+          "current_a": 1841.149223,
+          "current_multiple": 7.671455,
+          "time_s": 1.009814
         },
         {
-          "current_a": 1263.2886887883853,
-          "current_multiple": 3.1582217219709636,
-          "time_s": 1.805152970160489
+          "current_a": 1948.793408,
+          "current_multiple": 8.119973,
+          "time_s": 0.981855
         },
         {
-          "current_a": 1300.846991164687,
-          "current_multiple": 3.252117477911718,
-          "time_s": 1.759790388642051
+          "current_a": 2062.731091,
+          "current_multiple": 8.594713,
+          "time_s": 0.955374
         },
         {
-          "current_a": 1339.5219235638083,
-          "current_multiple": 3.3488048089095206,
-          "time_s": 1.716627132823925
+          "current_a": 2183.330227,
+          "current_multiple": 9.097209,
+          "time_s": 0.930255
         },
         {
-          "current_a": 1379.3466840412784,
-          "current_multiple": 3.4483667101031963,
-          "time_s": 1.6755070494639492
+          "current_a": 2310.980284,
+          "current_multiple": 9.629085,
+          "time_s": 0.906398
         },
         {
-          "current_a": 1420.3554576499916,
-          "current_multiple": 3.550888644124979,
-          "time_s": 1.636288426163603
+          "current_a": 2446.093497,
+          "current_multiple": 10.192056,
+          "time_s": 0.4
         },
         {
-          "current_a": 1462.5834457842107,
-          "current_multiple": 3.6564586144605267,
-          "time_s": 1.5988423597528933
+          "current_a": 2589.106207,
+          "current_multiple": 10.787943,
+          "time_s": 0.4
         },
         {
-          "current_a": 1506.0668963959802,
-          "current_multiple": 3.76516724098995,
-          "time_s": 1.5630513410066698
+          "current_a": 2740.480264,
+          "current_multiple": 11.418668,
+          "time_s": 0.4
         },
         {
-          "current_a": 1550.843135109896,
-          "current_multiple": 3.87710783777474,
-          "time_s": 1.5288080229525538
+          "current_a": 2900.704519,
+          "current_multiple": 12.086269,
+          "time_s": 0.4
         },
         {
-          "current_a": 1596.9505972629318,
-          "current_multiple": 3.9923764931573293,
-          "time_s": 1.4960141455734708
+          "current_a": 3070.296407,
+          "current_multiple": 12.792902,
+          "time_s": 0.4
         },
         {
-          "current_a": 1644.4288608968307,
-          "current_multiple": 4.111072152242077,
-          "time_s": 1.4645795942171296
+          "current_a": 3249.803613,
+          "current_multiple": 13.540848,
+          "time_s": 0.4
         },
         {
-          "current_a": 1693.3186807313734,
-          "current_multiple": 4.233296701828434,
-          "time_s": 1.4344215727094345
+          "current_a": 3439.805843,
+          "current_multiple": 14.332524,
+          "time_s": 0.4
         },
         {
-          "current_a": 1743.662023147703,
-          "current_multiple": 4.359155057869257,
-          "time_s": 1.4054638751943607
+          "current_a": 3640.916699,
+          "current_multiple": 15.170486,
+          "time_s": 0.4
         },
         {
-          "current_a": 1795.5021022117098,
-          "current_multiple": 4.4887552555292745,
-          "time_s": 1.3776362432164833
+          "current_a": 3853.785653,
+          "current_multiple": 16.05744,
+          "time_s": 0.4
         },
         {
-          "current_a": 1848.8834167684245,
-          "current_multiple": 4.6222085419210615,
-          "time_s": 1.350873796626757
+          "current_a": 4079.100151,
+          "current_multiple": 16.996251,
+          "time_s": 0.4
         },
         {
-          "current_a": 1903.851788639243,
-          "current_multiple": 4.759629471598108,
-          "time_s": 1.3251165286077797
+          "current_a": 4317.587832,
+          "current_multiple": 17.989949,
+          "time_s": 0.4
         },
         {
-          "current_a": 1960.454401954776,
-          "current_multiple": 4.90113600488694,
-          "time_s": 1.3003088565454435
+          "current_a": 4570.018877,
+          "current_multiple": 19.041745,
+          "time_s": 0.4
         },
         {
-          "current_a": 2018.7398436570902,
-          "current_multiple": 5.0468496091427255,
-          "time_s": 1.2763992216718634
+          "current_a": 4837.208494,
+          "current_multiple": 20.155035,
+          "time_s": 0.4
         },
         {
-          "current_a": 2078.7581452061054,
-          "current_multiple": 5.196895363015264,
-          "time_s": 1.2533397314106287
+          "current_a": 5120.019554,
+          "current_multiple": 21.333415,
+          "time_s": 0.4
         },
         {
-          "current_a": 2140.560825525939,
-          "current_multiple": 5.351402063814848,
-          "time_s": 1.2310858392034034
+          "current_a": 5419.365377,
+          "current_multiple": 22.580689,
+          "time_s": 0.4
         },
         {
-          "current_a": 2204.200935228083,
-          "current_multiple": 5.510502338070207,
-          "time_s": 1.2095960573139615
+          "current_a": 5736.21268,
+          "current_multiple": 23.900886,
+          "time_s": 0.4
         },
         {
-          "current_a": 2269.7331021493446,
-          "current_multiple": 5.674332755373362,
-          "time_s": 1.1888316987137342
+          "current_a": 6071.584701,
+          "current_multiple": 25.29827,
+          "time_s": 0.4
         },
         {
-          "current_a": 2337.213578243678,
-          "current_multiple": 5.8430339456091955,
-          "time_s": 1.1687566446703868
+          "current_a": 6426.564502,
+          "current_multiple": 26.777352,
+          "time_s": 0.4
         },
         {
-          "current_a": 2406.7002878681146,
-          "current_multiple": 6.016750719670286,
-          "time_s": 1.149337135101966
+          "current_a": 6802.298466,
+          "current_multiple": 28.34291,
+          "time_s": 0.4
         },
         {
-          "current_a": 2478.2528775042792,
-          "current_multiple": 6.195632193760698,
-          "time_s": 1.1305415791368898
-        },
-        {
-          "current_a": 2551.932766958143,
-          "current_multiple": 6.379831917395357,
-          "time_s": 1.1123403836435952
-        },
-        {
-          "current_a": 2627.803202081988,
-          "current_multiple": 6.56950800520497,
-          "time_s": 1.0947057977721517
-        },
-        {
-          "current_a": 2705.929309063811,
-          "current_multiple": 6.764823272659528,
-          "time_s": 1.0776117717902547
-        },
-        {
-          "current_a": 2786.378150330798,
-          "current_multiple": 6.965945375826995,
-          "time_s": 1.0610338287031837
-        },
-        {
-          "current_a": 2869.2187821148236,
-          "current_multiple": 7.1730469552870595,
-          "time_s": 1.0449489473272882
-        },
-        {
-          "current_a": 2954.522313729429,
-          "current_multiple": 7.386305784323572,
-          "time_s": 1.0293354556421395
-        },
-        {
-          "current_a": 3042.361968609114,
-          "current_multiple": 7.605904921522784,
-          "time_s": 1.0141729333825888
-        },
-        {
-          "current_a": 3132.8131471633783,
-          "current_multiple": 7.832032867908445,
-          "time_s": 0.999442122949932
-        },
-        {
-          "current_a": 3225.9534914994497,
-          "current_multiple": 8.064883728748624,
-          "time_s": 0.9851248478249724
-        },
-        {
-          "current_a": 3321.862952069249,
-          "current_multiple": 8.304657380173122,
-          "time_s": 0.9712039377561476
-        },
-        {
-          "current_a": 3420.6238562978087,
-          "current_multiple": 8.551559640744522,
-          "time_s": 0.9576631600753658
-        },
-        {
-          "current_a": 3522.3209792520565,
-          "current_multiple": 8.805802448130141,
-          "time_s": 0.9444871565637877
-        },
-        {
-          "current_a": 3627.041616410631,
-          "current_multiple": 9.067604041026577,
-          "time_s": 0.9316613853513676
-        },
-        {
-          "current_a": 3734.8756585971664,
-          "current_multiple": 9.337189146492916,
-          "time_s": 0.9191720673880687
-        },
-        {
-          "current_a": 3845.9156691414073,
-          "current_multiple": 9.614789172853518,
-          "time_s": 0.9070061370724234
-        },
-        {
-          "current_a": 3960.256963334349,
-          "current_multiple": 9.900642408335873,
-          "time_s": 0.8951511966656724
-        },
-        {
-          "current_a": 4077.9976902456488,
-          "current_multiple": 10.194994225614122,
-          "time_s": 0.8835954741570158
-        },
-        {
-          "current_a": 4199.238916973486,
-          "current_multiple": 10.498097292433716,
-          "time_s": 0.8723277842789953
-        },
-        {
-          "current_a": 4324.084715399253,
-          "current_multiple": 10.810211788498131,
-          "time_s": 0.8613374924016689
-        },
-        {
-          "current_a": 4452.642251521475,
-          "current_multiple": 11.131605628803689,
-          "time_s": 0.8506144810604964
-        },
-        {
-          "current_a": 4585.021877445723,
-          "current_multiple": 11.462554693614306,
-          "time_s": 0.8401491188965605
-        },
-        {
-          "current_a": 4721.337226109399,
-          "current_multiple": 11.803343065273497,
-          "time_s": 0.8299322318086755
-        },
-        {
-          "current_a": 4861.705308822763,
-          "current_multiple": 12.154263272056907,
-          "time_s": 0.8199550761357618
-        },
-        {
-          "current_a": 5006.246615709922,
-          "current_multiple": 12.515616539274804,
-          "time_s": 0.8102093137047218
-        },
-        {
-          "current_a": 5155.085219135955,
-          "current_multiple": 12.887713047839888,
-          "time_s": 0.8006869885941652
-        },
-        {
-          "current_a": 5308.348880209031,
-          "current_multiple": 13.270872200522579,
-          "time_s": 0.7913805054778922
-        },
-        {
-          "current_a": 5466.169158448844,
-          "current_multiple": 13.665422896122111,
-          "time_s": 0.7822826094241886
-        },
-        {
-          "current_a": 5628.6815247156055,
-          "current_multiple": 14.071703811789014,
-          "time_s": 0.7733863670380933
-        },
-        {
-          "current_a": 5796.025477496444,
-          "current_multiple": 14.49006369374111,
-          "time_s": 0.7646851488435672
-        },
-        {
-          "current_a": 5968.344662649084,
-          "current_multiple": 14.92086165662271,
-          "time_s": 0.7561726128114875
-        },
-        {
-          "current_a": 6145.786996705566,
-          "current_multiple": 15.364467491763914,
-          "time_s": 0.7478426889474884
-        },
-        {
-          "current_a": 6328.5047938418575,
-          "current_multiple": 15.821261984604645,
-          "time_s": 0.7396895648608947
-        },
-        {
-          "current_a": 6516.6548966223645,
-          "current_multiple": 16.29163724155591,
-          "time_s": 0.7317076722426732
-        },
-        {
-          "current_a": 6710.398810631517,
-          "current_multiple": 16.775997026578793,
-          "time_s": 0.7238916741863003
-        },
-        {
-          "current_a": 6909.902843108047,
-          "current_multiple": 17.274757107770117,
-          "time_s": 0.716236453290844
-        },
-        {
-          "current_a": 7115.338245700963,
-          "current_multiple": 17.788345614252407,
-          "time_s": 0.7087371004905717
-        },
-        {
-          "current_a": 7326.881361469704,
-          "current_multiple": 18.31720340367426,
-          "time_s": 0.7013889045598066
-        },
-        {
-          "current_a": 7544.713776254717,
-          "current_multiple": 18.861784440636793,
-          "time_s": 0.6941873422459113
-        },
-        {
-          "current_a": 7769.022474548376,
-          "current_multiple": 19.42255618637094,
-          "time_s": 0.687128068986967
-        },
-        {
-          "current_a": 8000.000000000002,
-          "current_multiple": 20.000000000000004,
-          "time_s": 0.6802069101741194
+          "current_a": 7200.0,
+          "current_multiple": 30.0,
+          "time_s": 0.4
         }
       ],
       "powod_pl": null,
@@ -1219,128 +1373,173 @@
   ],
   "trace_steps": [
     {
-      "description_pl": "Indeksowanie prądów według lokalizacji",
+      "description_pl": "Urządzenia i nastawy z modelu (jedna ścieżka oceny)",
       "inputs": {
-        "fault_locations": 2,
-        "operating_locations": 2
-      },
-      "outputs": {},
-      "step": "index_currents"
-    },
-    {
-      "description_pl": "Rozpoczęcie sprawdzania czułości zabezpieczeń",
-      "inputs": {
-        "device_count": 2
-      },
-      "outputs": {},
-      "step": "check_sensitivity_start"
-    },
-    {
-      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
-      "inputs": {
-        "i_fault_min_a": 8746.781124267436,
-        "i_pickup_a": 400.0
+        "sc_run_id": "run-sc-scena-koordynacja-max",
+        "sc_run_id_min": "run-sc-scena-koordynacja-min"
       },
       "outputs": {
-        "margin_percent": 2086.695281066859,
-        "ratio": 21.86695281066859,
-        "verdict": "PASS"
+        "odmowy": [],
+        "pominiete": [],
+        "urzadzenia": [
+          "relay/169595e1280084f388a48e078e44527b/assignment",
+          "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment"
+        ]
       },
-      "step": "sensitivity_a135c343"
+      "step": "urzadzenia_z_modelu"
     },
     {
-      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
+      "description_pl": "Czułość zabezpieczenia Zabezpieczenie pola liniowego GPZ",
       "inputs": {
-        "i_fault_min_a": 8034.309745271616,
-        "i_pickup_a": 400.0
+        "prog_pierwotny_a": 240.0,
+        "punkty": [
+          {
+            "prad_przekaznika_a": 7787.391118990089,
+            "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
+          },
+          {
+            "prad_przekaznika_a": 7970.686670911366,
+            "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
+          },
+          {
+            "prad_przekaznika_a": 7693.265769845156,
+            "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
+          },
+          {
+            "prad_przekaznika_a": 8233.932347105914,
+            "punkt_ref": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
+          }
+        ],
+        "stopien": "overcurrent_51"
       },
       "outputs": {
-        "margin_percent": 1908.5774363179037,
-        "ratio": 20.085774363179038,
-        "verdict": "PASS"
+        "iloraz": 32.055274041021484,
+        "wymagany_iloraz": 1.5
       },
-      "step": "sensitivity_096dfd8c"
+      "step": "czulosc"
     },
     {
-      "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
+      "description_pl": "Czułość zabezpieczenia Zabezpieczenie odejścia S01",
       "inputs": {
-        "device_count": 2
-      },
-      "outputs": {},
-      "step": "check_overload_start"
-    },
-    {
-      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
-      "inputs": {
-        "i_operating_a": 22.768781749828918,
-        "i_pickup_a": 400.0
+        "prog_pierwotny_a": 180.0,
+        "punkty": [
+          {
+            "prad_przekaznika_a": 7787.061567138511,
+            "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
+          },
+          {
+            "prad_przekaznika_a": 7970.349362240145,
+            "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
+          },
+          {
+            "prad_przekaznika_a": 7692.940201250955,
+            "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
+          }
+        ],
+        "stopien": "overcurrent_51"
       },
       "outputs": {
-        "margin_percent": 1656.7914014679577,
-        "ratio": 17.567914014679577,
-        "verdict": "PASS"
+        "iloraz": 42.73855667361642,
+        "wymagany_iloraz": 1.5
       },
-      "step": "overload_a135c343"
+      "step": "czulosc"
     },
     {
-      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
+      "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie pola liniowego GPZ",
       "inputs": {
-        "i_operating_a": 11.384885698880636,
-        "i_pickup_a": 400.0
+        "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
+        "prad_roboczy_a": 45.86306602711112,
+        "prog_pierwotny_a": 240.0
       },
       "outputs": {
-        "margin_percent": 3413.4300912597487,
-        "ratio": 35.13430091259749,
-        "verdict": "PASS"
+        "iloraz": 5.232968939715639,
+        "wymagany_iloraz": 1.2
       },
-      "step": "overload_096dfd8c"
+      "step": "przeciazalnosc"
     },
     {
-      "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
+      "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie odejścia S01",
       "inputs": {
-        "device_count": 2
-      },
-      "outputs": {},
-      "step": "check_selectivity_start"
-    },
-    {
-      "description_pl": "Selektywność: Przekaźnik 50/51 (typowy) → Przekaźnik 50/51 (typowy)",
-      "inputs": {
-        "analysis_current_a": 9621.459235920445,
-        "min_cti_s": 0.2
+        "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
+        "prad_roboczy_a": 34.47676162254786,
+        "prog_pierwotny_a": 180.0
       },
       "outputs": {
-        "margin_s": 0.0,
-        "t_downstream_s": 0.6395404367732404,
-        "t_upstream_s": 0.6395404367732404,
-        "verdict": "FAIL"
+        "iloraz": 5.220907983488789,
+        "wymagany_iloraz": 1.2
       },
-      "step": "selectivity_a135c343_096dfd8c"
+      "step": "przeciazalnosc"
     },
     {
-      "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",
+      "description_pl": "Selektywność pary zabezpieczeń w punktach strefy podrzędnego",
       "inputs": {
-        "device_count": 2
+        "cti_s": 0.2,
+        "nadrzedne_ref": "relay/169595e1280084f388a48e078e44527b/assignment",
+        "podrzedne_ref": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment"
       },
-      "outputs": {},
-      "step": "generate_tcc_curves"
-    },
-    {
-      "description_pl": "Generowanie znaczników prądów zwarciowych",
-      "inputs": {
-        "location_count": 2
-      },
-      "outputs": {},
-      "step": "generate_fault_markers"
-    },
-    {
-      "description_pl": "Finalizacja wyników analizy",
-      "inputs": {},
       "outputs": {
-        "overall_verdict": "FAIL",
-        "total_checks": 5
+        "pominiete": [],
+        "punkty": [
+          {
+            "analysis_current_a": 8622.70444094442,
+            "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+            "i_upstream_a": 8623.06935756779,
+            "margin_s": 0.3,
+            "nazwa_punktu_pl": "Stacja S03",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8622,7 A, nadrzędne 0,4 s przy 8623,1 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+            "required_margin_s": 0.2,
+            "stan": "ODSTEP",
+            "stan_pl": "oba zabezpieczenia zadziałają — odstęp czasowy wyznaczony",
+            "t_downstream_s": 0.1,
+            "t_upstream_s": 0.4,
+            "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
+          },
+          {
+            "analysis_current_a": 8767.384298464282,
+            "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+            "i_upstream_a": 8767.755338002498,
+            "margin_s": 0.3,
+            "nazwa_punktu_pl": "Stacja S02",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S02: podrzędne 0,1 s przy 8767,4 A, nadrzędne 0,4 s przy 8767,8 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+            "required_margin_s": 0.2,
+            "stan": "ODSTEP",
+            "stan_pl": "oba zabezpieczenia zadziałają — odstęp czasowy wyznaczony",
+            "t_downstream_s": 0.1,
+            "t_upstream_s": 0.4,
+            "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
+          },
+          {
+            "analysis_current_a": 8550.579613456679,
+            "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+            "i_upstream_a": 8550.941477725808,
+            "margin_s": 0.3,
+            "nazwa_punktu_pl": "Stacja S04",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S04: podrzędne 0,1 s przy 8550,6 A, nadrzędne 0,4 s przy 8550,9 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+            "required_margin_s": 0.2,
+            "stan": "ODSTEP",
+            "stan_pl": "oba zabezpieczenia zadziałają — odstęp czasowy wyznaczony",
+            "t_downstream_s": 0.1,
+            "t_upstream_s": 0.4,
+            "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
+          }
+        ]
       },
-      "step": "finalize"
+      "step": "selektywnosc"
+    },
+    {
+      "description_pl": "Charakterystyki czasowo-prądowe urządzeń — czas najszybszego pobudzonego stopnia w siatce prądów (rdzeń IEC 60255)",
+      "inputs": {
+        "krotnosc_do": 30.0,
+        "krotnosc_od": 1.05,
+        "punkty": 60
+      },
+      "outputs": {
+        "krzywe": 2
+      },
+      "step": "krzywe_tcc"
     }
   ]
 }

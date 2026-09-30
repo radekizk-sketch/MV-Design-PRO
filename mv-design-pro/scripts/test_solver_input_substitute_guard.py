@@ -1713,7 +1713,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `tap_changer_specs`, `vt_grounding_specs` — usunieta koncowka surowych specyfikacji).
     # Partia integracji 5 (AB-P1 + PROOFPACK-KONTRAKT na jednym drzewie): 4108 - 11 + 7 = 4104 —
     # zbiory zmian obu kart rozlaczne; POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4104." in wyjscie, wyjscie
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 4104 -> 4105 — POMIAR guardem (roznica
+    # zbiorow `contract_fields()` baza `3840e239` vs drzewo karty): +63 (kontrakty jednej
+    # sciezki oceny `ocena_nadpradowa` — `stopnie`, `prog_pierwotny_a`, `prog_wtorny_a`,
+    # `przekladnia_a`, `jednostka_progu`, `threshold_unit`, `wiarygodnosc*`, `krotnosc_m*`,
+    # `bilans_pradu`, `klaster_zacisku`, `wezel_zacisku`, `strefy`, `oceny`; koordynacja z
+    # biegow — `ocena_max/min`, `pary`, `odmowy_par`, `prady_robocze`, `prady_punktow_max/min`,
+    # `bezpieczniki`, `required_ratio`, `ratio`, `najmniejszy_*`; porownanie —
+    # `unreliable_count(_delta)`, `nazwa_urzadzenia_pl`, `nazwa_punktu_pl`), -62 (skasowany
+    # model urzadzenia koordynacji `stage_50/51/50n/51n`, `curve_settings`, `fault_currents`,
+    # `operating_currents`, `location_*`, werdykty `overall_verdict*`, `*_pass/_fail/_margin_*`,
+    # szablon przypadku `template_fingerprint`, `library_*`, `invalid_count(_delta)`, rejestr
+    # krzywych producentow `vendor_curve_code`, `maps_to_iec`, `iec_variant`). PASS bez zmian.
+    assert "Pol kontraktow wejsciowych: 4105." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1880,7 +1892,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # odmowa „zasobu nie ma" dla 404, liść stdlib-only). POMIAR guardem.
         # Partia integracji 5 z karta #151: 556 + 1 (`network_model/brak_zasobu.py`) = 557.
         # POMIAR guardem na drzewie partii.
-        "Przeskanowano 557 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 557 -> 559 (+2 enm: `nastawy_zabezpieczen.py`,
+        # `wylaczniki_liniowe.py`; application +3/-3 — patrz pin per korzen). POMIAR guardem.
+        "Przeskanowano 559 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1937,8 +1951,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zwarciowego i czasu wylaczenia w dowodzie wytrzymalosci) zdjety razem z petla — pakiet
     # sklada `application/proof_engine/packs/audit2_skladanie.py` z typowanej konfiguracji.
     # Partia integracji 5: oba wpisy zdjete — 54/244 -> 52/240. POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 52 plikow, suma 240." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zapadka 52/240 -> 51/236 — wpis
+    # `application/protection_read_model.py` ("A:or:setting.threshold_a": 2, ciche 0 A progu
+    # krzywej I-t) zdjety razem z zerem; `enm/domain_operations_v2.py` -2
+    # (`ds_settings/us_settings.time_dial` — mnoznik 1,0 za brak nastawy) zdjety razem ze
+    # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
+    # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
+    # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 236." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
         # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
@@ -2002,8 +2023,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 5: network_model pliki 181 + 1 (#151) = 182, dlug 11/69 (AB-P1).
         # POMIAR guardem na drzewie partii.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wykluczenia 3/6 -> 1/2 (wpisy raportow DOCX/PDF
+        # koordynacji zdjete). POMIAR guardem.
         "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
-        "wykluczenia=3 plikow/suma 6",
+        "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
         # plik skasowany w karcie AB-1a Pakiet C — wpis nizej).
@@ -2040,7 +2063,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1b.3a (2026-09-25): enm dlug 7/71 -> 7/69 (`topology_ops.py`: `data.p_mw`
         # 2 -> 1, `data.q_mvar` zdjety). POMIAR guardem na drzewie partii.
         # Karta AB-P1 na partii 4: enm 55 -> 56 (+1 `enm/dynamika_z_katalogu.py`); zero wpisow.
-        "  enm: pliki_skanowane=56, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: enm 56 -> 58 (+2 `enm/nastawy_zabezpieczen.py` —
+        # jedna regula zapisu nastaw, `enm/wylaczniki_liniowe.py` — kotwica wylacznika
+        # liniowego); dlug 7/69 -> 7/67 (`time_dial` w skasowanej `validate_selectivity`).
+        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2097,9 +2123,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 3/6 -> 2/3 (wpis `api/audit2_station_config.py` zdjety). POMIAR guardem.
         # Partia integracji 5: application 242 + 1 (AB-P1) + 1 (PROOFPACK) = 244; api pliki 64
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=244, dlug=30 plikow/suma 91, "
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: application 244 bez zmiany liczby (+3
+        # `analyses/protection/ocena_nadpradowa.py`, `coordination/z_biegow.py`,
+        # `catalog/zakresy.py`; -3 skasowany `application/protection_analysis/**`); dlug
+        # 30/91 -> 29/89 (wpis `protection_read_model.py` zdjety). api wykluczenia 6/15 ->
+        # 5/13 (wpis `api/protection_coordination.py` zdjety). POMIAR guardem.
+        "  application: pliki_skanowane=244, dlug=29 plikow/suma 89, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

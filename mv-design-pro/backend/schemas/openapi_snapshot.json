@@ -2503,6 +2503,28 @@
       ],
       "title": "I Fault A B"
      },
+     "krotnosc_m_a": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Krotnosc M A"
+     },
+     "krotnosc_m_b": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Krotnosc M B"
+     },
      "margin_percent_a": {
       "anyOf": [
        {
@@ -2524,6 +2546,14 @@
        }
       ],
       "title": "Margin Percent B"
+     },
+     "nazwa_punktu_pl": {
+      "title": "Nazwa Punktu Pl",
+      "type": "string"
+     },
+     "nazwa_urzadzenia_pl": {
+      "title": "Nazwa Urzadzenia Pl",
+      "type": "string"
      },
      "protected_element_ref": {
       "title": "Protected Element Ref",
@@ -2562,6 +2592,14 @@
      "trip_state_b": {
       "title": "Trip State B",
       "type": "string"
+     },
+     "wiarygodnosc_a": {
+      "title": "Wiarygodnosc A",
+      "type": "string"
+     },
+     "wiarygodnosc_b": {
+      "title": "Wiarygodnosc B",
+      "type": "string"
      }
     },
     "required": [
@@ -2579,7 +2617,13 @@
      "delta_i_fault_a",
      "margin_percent_a",
      "margin_percent_b",
-     "state_change"
+     "state_change",
+     "nazwa_urzadzenia_pl",
+     "nazwa_punktu_pl",
+     "krotnosc_m_a",
+     "krotnosc_m_b",
+     "wiarygodnosc_a",
+     "wiarygodnosc_b"
     ],
     "title": "ComparisonRowResponse",
     "type": "object"
@@ -2728,55 +2772,42 @@
     "type": "object"
    },
    "CoordinationConfigRequest": {
-    "description": "Coordination analysis configuration.",
+    "additionalProperties": false,
+    "description": "Kryteria koordynacji (założenia projektowe, jawne w wyniku jako wartości wymagane).",
     "properties": {
      "breaker_time_s": {
       "default": 0.05,
-      "description": "Breaker time [s]",
+      "description": "Czas własny wyłącznika [s]",
       "minimum": 0.0,
       "title": "Breaker Time S",
       "type": "number"
      },
-     "overload_margin_marginal": {
-      "default": 1.1,
-      "description": "Overload MARGINAL threshold",
-      "minimum": 1.0,
-      "title": "Overload Margin Marginal",
-      "type": "number"
-     },
-     "overload_margin_pass": {
+     "overload_ratio_required": {
       "default": 1.2,
-      "description": "Overload PASS threshold",
+      "description": "Wymagany iloraz przeciążalności I_s/I_rob",
       "minimum": 1.0,
-      "title": "Overload Margin Pass",
+      "title": "Overload Ratio Required",
       "type": "number"
      },
      "relay_overtravel_s": {
       "default": 0.05,
-      "description": "Overtravel [s]",
+      "description": "Wybieg przekaźnika [s]",
       "minimum": 0.0,
       "title": "Relay Overtravel S",
       "type": "number"
      },
      "safety_factor_s": {
       "default": 0.1,
-      "description": "Safety factor [s]",
+      "description": "Zapas bezpieczeństwa [s]",
       "minimum": 0.0,
       "title": "Safety Factor S",
       "type": "number"
      },
-     "sensitivity_margin_marginal": {
-      "default": 1.2,
-      "description": "Sensitivity MARGINAL threshold",
-      "minimum": 1.0,
-      "title": "Sensitivity Margin Marginal",
-      "type": "number"
-     },
-     "sensitivity_margin_pass": {
+     "sensitivity_ratio_required": {
       "default": 1.5,
-      "description": "Sensitivity PASS threshold",
+      "description": "Wymagany iloraz czułości I_min/I_s",
       "minimum": 1.0,
-      "title": "Sensitivity Margin Pass",
+      "title": "Sensitivity Ratio Required",
       "type": "number"
      }
     },
@@ -2784,23 +2815,40 @@
     "type": "object"
    },
    "CoordinationSummaryResponse": {
-    "description": "Summary response for coordination analysis.",
+    "description": "Potwierdzenie wykonania — liczby zbiorcze bez werdyktu (P-06); pełny wynik: GET.",
     "properties": {
-     "overall_verdict": {
-      "title": "Overall Verdict",
-      "type": "string"
+     "najmniejszy_iloraz_czulosci": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Najmniejszy Iloraz Czulosci"
      },
-     "overall_verdict_pl": {
-      "title": "Overall Verdict Pl",
-      "type": "string"
+     "najmniejszy_iloraz_przeciazalnosci": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Najmniejszy Iloraz Przeciazalnosci"
      },
-     "overload_fail": {
-      "title": "Overload Fail",
-      "type": "integer"
-     },
-     "overload_pass": {
-      "title": "Overload Pass",
-      "type": "integer"
+     "najmniejszy_odstep_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Najmniejszy Odstep S"
      },
      "project_id": {
       "title": "Project Id",
@@ -2809,22 +2857,6 @@
      "run_id": {
       "title": "Run Id",
       "type": "string"
-     },
-     "selectivity_fail": {
-      "title": "Selectivity Fail",
-      "type": "integer"
-     },
-     "selectivity_pass": {
-      "title": "Selectivity Pass",
-      "type": "integer"
-     },
-     "sensitivity_fail": {
-      "title": "Sensitivity Fail",
-      "type": "integer"
-     },
-     "sensitivity_pass": {
-      "title": "Sensitivity Pass",
-      "type": "integer"
      },
      "total_checks": {
       "title": "Total Checks",
@@ -2838,16 +2870,11 @@
     "required": [
      "run_id",
      "project_id",
-     "overall_verdict",
-     "overall_verdict_pl",
      "total_devices",
      "total_checks",
-     "sensitivity_pass",
-     "sensitivity_fail",
-     "selectivity_pass",
-     "selectivity_fail",
-     "overload_pass",
-     "overload_fail"
+     "najmniejszy_odstep_s",
+     "najmniejszy_iloraz_czulosci",
+     "najmniejszy_iloraz_przeciazalnosci"
     ],
     "title": "CoordinationSummaryResponse",
     "type": "object"
@@ -3449,55 +3476,6 @@
      "pozycja_katalogowa"
     ],
     "title": "CtBurdenResponse",
-    "type": "object"
-   },
-   "CurveSettingsRequest": {
-    "description": "Curve settings for a protection stage.",
-    "properties": {
-     "definite_time_s": {
-      "anyOf": [
-       {
-        "minimum": 0.0,
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Definite time [s]",
-      "title": "Definite Time S"
-     },
-     "pickup_current_a": {
-      "description": "Pickup current [A]",
-      "exclusiveMinimum": 0.0,
-      "title": "Pickup Current A",
-      "type": "number"
-     },
-     "standard": {
-      "description": "Curve standard (IEC/IEEE)",
-      "title": "Standard",
-      "type": "string"
-     },
-     "time_multiplier": {
-      "description": "TMS/TD",
-      "maximum": 10.0,
-      "minimum": 0.05,
-      "title": "Time Multiplier",
-      "type": "number"
-     },
-     "variant": {
-      "description": "Curve variant (SI/VI/EI/LTI/DT)",
-      "title": "Variant",
-      "type": "string"
-     }
-    },
-    "required": [
-     "standard",
-     "variant",
-     "pickup_current_a",
-     "time_multiplier"
-    ],
-    "title": "CurveSettingsRequest",
     "type": "object"
    },
    "DanaPrzyjeta": {
@@ -4443,111 +4421,6 @@
     "title": "DeviceRatingPayload",
     "type": "object"
    },
-   "DeviceRequest": {
-    "description": "Protection device definition.",
-    "properties": {
-     "ct_ratio": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ct Ratio"
-     },
-     "device_type": {
-      "description": "RELAY/FUSE/RECLOSER/CIRCUIT_BREAKER",
-      "title": "Device Type",
-      "type": "string"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "location_description": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Location Description"
-     },
-     "location_element_id": {
-      "title": "Location Element Id",
-      "type": "string"
-     },
-     "manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Manufacturer"
-     },
-     "model": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Model"
-     },
-     "name": {
-      "title": "Name",
-      "type": "string"
-     },
-     "rated_current_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Rated Current A"
-     },
-     "settings": {
-      "$ref": "#/components/schemas/ProtectionSettingsRequest"
-     },
-     "zacisk": {
-      "anyOf": [
-       {
-        "enum": [
-         "od",
-         "do"
-        ],
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Zacisk gałęzi lokalizacji (decyzja O-51 pkt 7): wymagany dla lokalizacji-gałęzi, dla łącznika rozstrzyga model; prąd zwarciowy lokalizacji = prąd szyny zacisku",
-      "title": "Zacisk"
-     }
-    },
-    "required": [
-     "id",
-     "name",
-     "device_type",
-     "location_element_id",
-     "settings"
-    ],
-    "title": "DeviceRequest",
-    "type": "object"
-   },
    "DeviceWithstandValidationRequest": {
     "properties": {
      "device_id": {
@@ -5157,60 +5030,6 @@
     "title": "EvidenceTier",
     "type": "string"
    },
-   "FaultCurrentRequest": {
-    "description": "Fault current data for a location.",
-    "properties": {
-     "ik_max_2f_a": {
-      "anyOf": [
-       {
-        "exclusiveMinimum": 0.0,
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Max 2-phase fault [A]",
-      "title": "Ik Max 2F A"
-     },
-     "ik_max_3f_a": {
-      "description": "Max 3-phase fault [A]",
-      "exclusiveMinimum": 0.0,
-      "title": "Ik Max 3F A",
-      "type": "number"
-     },
-     "ik_min_1f_a": {
-      "anyOf": [
-       {
-        "exclusiveMinimum": 0.0,
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Min 1-phase fault [A]",
-      "title": "Ik Min 1F A"
-     },
-     "ik_min_3f_a": {
-      "description": "Min 3-phase fault [A]",
-      "exclusiveMinimum": 0.0,
-      "title": "Ik Min 3F A",
-      "type": "number"
-     },
-     "location_id": {
-      "title": "Location Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "location_id",
-     "ik_max_3f_a",
-     "ik_min_3f_a"
-    ],
-    "title": "FaultCurrentRequest",
-    "type": "object"
-   },
    "FaultImpedanceRequest": {
     "description": "Fault impedance Zf — explicit R + X in Ohms (v2, PR-25).",
     "properties": {
@@ -5413,40 +5232,6 @@
      "white_box_trace"
     ],
     "title": "FaultLoopComputeResponse",
-    "type": "object"
-   },
-   "FaultMarkerResponse": {
-    "description": "Fault marker for TCC chart.",
-    "properties": {
-     "current_a": {
-      "title": "Current A",
-      "type": "number"
-     },
-     "fault_type": {
-      "title": "Fault Type",
-      "type": "string"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "label_pl": {
-      "title": "Label Pl",
-      "type": "string"
-     },
-     "location": {
-      "title": "Location",
-      "type": "string"
-     }
-    },
-    "required": [
-     "id",
-     "label_pl",
-     "current_a",
-     "fault_type",
-     "location"
-    ],
-    "title": "FaultMarkerResponse",
     "type": "object"
    },
    "FaultScenarioListResponse": {
@@ -9448,51 +9233,6 @@
     "title": "OknoPomiaru",
     "type": "object"
    },
-   "OperatingCurrentRequest": {
-    "description": "Operating current data for a location.",
-    "properties": {
-     "i_max_operating_a": {
-      "anyOf": [
-       {
-        "exclusiveMinimum": 0.0,
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Max operating [A]",
-      "title": "I Max Operating A"
-     },
-     "i_operating_a": {
-      "description": "Operating current [A]",
-      "exclusiveMinimum": 0.0,
-      "title": "I Operating A",
-      "type": "number"
-     },
-     "loading_percent": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Loading Percent"
-     },
-     "location_id": {
-      "title": "Location Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "location_id",
-     "i_operating_a"
-    ],
-    "title": "OperatingCurrentRequest",
-    "type": "object"
-   },
    "OverlayBadgeV1": {
     "description": "Badge for overlay element (e.g. readiness issues, validation errors).\n\nLabels MUST be in Polish, no project codenames.",
     "properties": {
@@ -9792,6 +9532,25 @@
      "overrides_hash"
     ],
     "title": "OverridesResponse",
+    "type": "object"
+   },
+   "ParaRequest": {
+    "description": "Para stopniowania wskazana przez projektanta — sprawdzana wobec topologii modelu.",
+    "properties": {
+     "nadrzedne_ref": {
+      "title": "Nadrzedne Ref",
+      "type": "string"
+     },
+     "podrzedne_ref": {
+      "title": "Podrzedne Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "nadrzedne_ref",
+     "podrzedne_ref"
+    ],
+    "title": "ParaRequest",
     "type": "object"
    },
    "ParametrModelu": {
@@ -11164,16 +10923,6 @@
       "title": "Evaluations",
       "type": "array"
      },
-     "invalid_count_delta": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/NumericDeltaResponse"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
      "no_trip_count_delta": {
       "anyOf": [
        {
@@ -11185,6 +10934,16 @@
       ]
      },
      "trip_count_delta": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "unreliable_count_delta": {
       "anyOf": [
        {
         "$ref": "#/components/schemas/NumericDeltaResponse"
@@ -11279,28 +11038,6 @@
       "title": "Created At",
       "type": "string"
      },
-     "library_fingerprint_a": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Library Fingerprint A"
-     },
-     "library_fingerprint_b": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Library Fingerprint B"
-     },
      "run_a_id": {
       "title": "Run A Id",
       "type": "string"
@@ -11321,126 +11058,10 @@
      "comparison_id",
      "run_a_id",
      "run_b_id",
-     "library_fingerprint_a",
-     "library_fingerprint_b",
      "steps",
      "created_at"
     ],
     "title": "ProtectionComparisonTraceResponse",
-    "type": "object"
-   },
-   "ProtectionConfigRequest": {
-    "description": "Request to update protection configuration (P14c).",
-    "properties": {
-     "library_manifest_ref": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Referencja do manifestu biblioteki",
-      "title": "Library Manifest Ref"
-     },
-     "overrides": {
-      "additionalProperties": true,
-      "description": "Nadpisane wartości nastaw",
-      "title": "Overrides",
-      "type": "object"
-     },
-     "template_fingerprint": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Fingerprint szablonu (dla audytu)",
-      "title": "Template Fingerprint"
-     },
-     "template_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "ID szablonu nastaw zabezpieczeń",
-      "title": "Template Ref"
-     }
-    },
-    "title": "ProtectionConfigRequest",
-    "type": "object"
-   },
-   "ProtectionConfigResponse": {
-    "description": "Protection configuration response (P14c).",
-    "properties": {
-     "bound_at": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Bound At"
-     },
-     "library_manifest_ref": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Library Manifest Ref"
-     },
-     "overrides": {
-      "additionalProperties": true,
-      "title": "Overrides",
-      "type": "object"
-     },
-     "template_fingerprint": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Template Fingerprint"
-     },
-     "template_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Template Ref"
-     }
-    },
-    "required": [
-     "template_ref",
-     "template_fingerprint",
-     "library_manifest_ref",
-     "overrides",
-     "bound_at"
-    ],
-    "title": "ProtectionConfigResponse",
     "type": "object"
    },
    "ProtectionEvaluationComparisonResponse": {
@@ -11448,6 +11069,10 @@
     "properties": {
      "element_id": {
       "title": "Element Id",
+      "type": "string"
+     },
+     "fault_target_id": {
+      "title": "Fault Target Id",
       "type": "string"
      },
      "margin_delta": {
@@ -11485,6 +11110,7 @@
     },
     "required": [
      "element_id",
+     "fault_target_id",
      "trip_state_a",
      "trip_state_b",
      "state_change"
@@ -11493,7 +11119,7 @@
     "type": "object"
    },
    "ProtectionResultResponse": {
-    "description": "Response for protection result.",
+    "description": "Wynik biegu oceny zabezpieczeń nadprądowych z modelu.\n\n``evaluations`` — oceny par (urządzenie modelu, punkt zwarcia w strefie) z rekordem\nwerdyktu wyjaśnialnego; ``odmowy`` — urządzenia wstrzymane nazwanymi brakami z akcjami\nnaprawczymi; ``pominiete`` — urządzenia, których ocena nadprądowa nie dotyczy (z\nprzyczyną); ``nastawy`` — rozwiązane nastawy urządzeń (jednostki, przekładnia, zakresy\nkatalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu.",
     "properties": {
      "created_at": {
       "title": "Created At",
@@ -11507,9 +11133,67 @@
       "title": "Evaluations",
       "type": "array"
      },
+     "nastawy": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Nastawy",
+      "type": "array"
+     },
+     "odmowy": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Odmowy",
+      "type": "array"
+     },
+     "pominiete": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Pominiete",
+      "type": "array"
+     },
      "protection_case_id": {
       "title": "Protection Case Id",
       "type": "string"
+     },
+     "result_status": {
+      "title": "Result Status",
+      "type": "string"
+     },
+     "result_status_reason": {
+      "title": "Result Status Reason",
+      "type": "string"
+     },
+     "result_status_reason_pl": {
+      "title": "Result Status Reason Pl",
+      "type": "string"
+     },
+     "rewizja_biegu": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biegu"
+     },
+     "rewizja_biezaca": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biezaca"
      },
      "run_id": {
       "title": "Run Id",
@@ -11519,43 +11203,45 @@
       "title": "Sc Run Id",
       "type": "string"
      },
+     "strefy": {
+      "additionalProperties": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Strefy",
+      "type": "object"
+     },
      "summary": {
       "additionalProperties": true,
       "title": "Summary",
       "type": "object"
      },
-     "template_fingerprint": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Template Fingerprint"
-     },
-     "template_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Template Ref"
+     "zmiany_od_biegu": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Zmiany Od Biegu",
+      "type": "array"
      }
     },
     "required": [
      "run_id",
      "sc_run_id",
      "protection_case_id",
-     "template_ref",
-     "template_fingerprint",
      "evaluations",
+     "odmowy",
+     "pominiete",
+     "nastawy",
+     "strefy",
      "summary",
-     "created_at"
+     "created_at",
+     "result_status",
+     "result_status_reason",
+     "result_status_reason_pl",
+     "rewizja_biegu",
+     "rewizja_biezaca",
+     "zmiany_od_biegu"
     ],
     "title": "ProtectionResultResponse",
     "type": "object"
@@ -11773,70 +11459,12 @@
     "title": "ProtectionRunResponse",
     "type": "object"
    },
-   "ProtectionSettingsRequest": {
-    "description": "Complete overcurrent protection settings.",
-    "properties": {
-     "stage_50": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/StageSettingsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "stage_50_high": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/StageSettingsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "stage_50n": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/StageSettingsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "stage_51": {
-      "$ref": "#/components/schemas/StageSettingsRequest"
-     },
-     "stage_51n": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/StageSettingsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     }
-    },
-    "required": [
-     "stage_51"
-    ],
-    "title": "ProtectionSettingsRequest",
-    "type": "object"
-   },
    "ProtectionTraceResponse": {
-    "description": "Response for protection trace.",
+    "description": "Ślad White Box biegu oceny zabezpieczeń (nastawy, strefy, bilanse, czasy z rdzenia).",
     "properties": {
      "created_at": {
       "title": "Created At",
       "type": "string"
-     },
-     "overrides": {
-      "additionalProperties": true,
-      "title": "Overrides",
-      "type": "object"
      },
      "run_id": {
       "title": "Run Id",
@@ -11864,25 +11492,12 @@
       },
       "title": "Steps",
       "type": "array"
-     },
-     "template_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Template Ref"
      }
     },
     "required": [
      "run_id",
      "sc_run_id",
      "snapshot_id",
-     "template_ref",
-     "overrides",
      "steps",
      "created_at"
     ],
@@ -13003,7 +12618,8 @@
     "type": "object"
    },
    "RunCoordinationRequest": {
-    "description": "Request to run coordination analysis.\n\nKarta S-2 AUTORYTET: ``sc_run_id`` (bieg MAX) i ``sc_run_id_min`` (bieg MIN)\nsą WYMAGANE przy egzekucji (`_check_run_eligibility` + `wejscie_koordynacji_\nz_biegow`) — pola pozostają ``str | None`` na poziomie pydantic (nie\n``Field(...)``), żeby brak dał komunikat PL jednego mostu autorytetu zamiast\ngenerycznego błędu walidacji pydantic. ``fault_currents`` staje się ECHEM:\nliczby idą do decyzji WYŁĄCZNIE z obu biegów, rozbieżność z żądaniem = 422.",
+    "additionalProperties": false,
+    "description": "Żądanie koordynacji — identyfikatory biegów, pary (opcjonalnie) i kryteria.\n\n``sc_run_id`` (bieg MAX) i ``sc_run_id_min`` (bieg MIN) są wymagane przy wykonaniu; pola\n``str | None`` na poziomie pydantic, żeby brak dał komunikat mostu autorytetu po polsku.\n``pary`` puste = pary z topologii (zawieranie stref urządzeń).",
     "properties": {
      "config": {
       "anyOf": [
@@ -13015,26 +12631,19 @@
        }
       ]
      },
-     "devices": {
-      "items": {
-       "$ref": "#/components/schemas/DeviceRequest"
-      },
-      "title": "Devices",
-      "type": "array"
-     },
-     "fault_currents": {
-      "items": {
-       "$ref": "#/components/schemas/FaultCurrentRequest"
-      },
-      "title": "Fault Currents",
-      "type": "array"
-     },
-     "operating_currents": {
-      "items": {
-       "$ref": "#/components/schemas/OperatingCurrentRequest"
-      },
-      "title": "Operating Currents",
-      "type": "array"
+     "pary": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ParaRequest"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pary"
      },
      "pf_run_id": {
       "anyOf": [
@@ -13070,11 +12679,6 @@
       "title": "Sc Run Id Min"
      }
     },
-    "required": [
-     "devices",
-     "fault_currents",
-     "operating_currents"
-    ],
     "title": "RunCoordinationRequest",
     "type": "object"
    },
@@ -14244,55 +13848,6 @@
     "title": "SpadekOdcinkaMagistraliResponse",
     "type": "object"
    },
-   "StageSettingsRequest": {
-    "description": "Settings for an overcurrent stage.",
-    "properties": {
-     "curve_settings": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/CurveSettingsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "directional": {
-      "default": false,
-      "title": "Directional",
-      "type": "boolean"
-     },
-     "enabled": {
-      "default": true,
-      "title": "Enabled",
-      "type": "boolean"
-     },
-     "pickup_current_a": {
-      "description": "Pickup current [A]",
-      "exclusiveMinimum": 0.0,
-      "title": "Pickup Current A",
-      "type": "number"
-     },
-     "time_s": {
-      "anyOf": [
-       {
-        "minimum": 0.0,
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Fixed time [s]",
-      "title": "Time S"
-     }
-    },
-    "required": [
-     "pickup_current_a"
-    ],
-    "title": "StageSettingsRequest",
-    "type": "object"
-   },
    "StanWLSZadanie": {
     "description": "Żądanie estymacji stanu WLS dla gotowego przebiegu rozpływu (PF).",
     "properties": {
@@ -14852,97 +14407,6 @@
      "updated_at"
     ],
     "title": "StudyCaseResponse",
-    "type": "object"
-   },
-   "TCCCurveResponse": {
-    "description": "TCC curve data for a device.",
-    "properties": {
-     "color": {
-      "title": "Color",
-      "type": "string"
-     },
-     "curve_type": {
-      "title": "Curve Type",
-      "type": "string"
-     },
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "device_name": {
-      "title": "Device Name",
-      "type": "string"
-     },
-     "pickup_current_a": {
-      "title": "Pickup Current A",
-      "type": "number"
-     },
-     "podstawa_kod": {
-      "default": "KRZYWA_PRZEKAZNIKOWA",
-      "title": "Podstawa Kod",
-      "type": "string"
-     },
-     "points": {
-      "items": {
-       "additionalProperties": {
-        "type": "number"
-       },
-       "type": "object"
-      },
-      "title": "Points",
-      "type": "array"
-     },
-     "powod_pl": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Powod Pl"
-     },
-     "time_multiplier": {
-      "title": "Time Multiplier",
-      "type": "number"
-     }
-    },
-    "required": [
-     "device_id",
-     "device_name",
-     "curve_type",
-     "pickup_current_a",
-     "time_multiplier",
-     "points",
-     "color"
-    ],
-    "title": "TCCCurveResponse",
-    "type": "object"
-   },
-   "TCCResponse": {
-    "description": "TCC data response for visualization.",
-    "properties": {
-     "curves": {
-      "items": {
-       "$ref": "#/components/schemas/TCCCurveResponse"
-      },
-      "title": "Curves",
-      "type": "array"
-     },
-     "fault_markers": {
-      "items": {
-       "$ref": "#/components/schemas/FaultMarkerResponse"
-      },
-      "title": "Fault Markers",
-      "type": "array"
-     }
-    },
-    "required": [
-     "curves",
-     "fault_markers"
-    ],
-    "title": "TCCResponse",
     "type": "object"
    },
    "TolerancjeWejscie": {
@@ -20799,80 +20263,6 @@
      }
     },
     "summary": "Post Wytrzymalosc Aparatury",
-    "tags": [
-     "enm"
-    ]
-   }
-  },
-  "/api/cases/{case_id}/enm/zacisk-lokalizacji": {
-   "get": {
-    "description": "Miejsce prądu urządzenia koordynacji wskazanego w przypadku (decyzja O-51, pkt 7).\n\nTen sam resolver co pakiet nastaw (`zacisk_zabezpieczenia.miejsce_urzadzenia`):\nłącznik jako lokalizacja — gałąź i zacisk z łańcucha szeregowego modelu; gałąź —\nwymagane wskazanie `zacisk`; szyna — brak zacisków. Odpowiedź niesie etykiety\nzacisków z nazwami szyn i odmowę nazwaną z kodem kanonu. Read-only.",
-    "operationId": "get_zacisk_lokalizacji_api_cases__case_id__enm_zacisk_lokalizacji_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "lokalizacja",
-      "required": true,
-      "schema": {
-       "title": "Lokalizacja",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "zacisk",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "enum": [
-          "od",
-          "do"
-         ],
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Zacisk"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Zacisk Lokalizacji Api Cases  Case Id  Enm Zacisk Lokalizacji Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Zacisk Lokalizacji",
     "tags": [
      "enm"
     ]
@@ -28363,7 +27753,7 @@
     ]
    },
    "post": {
-    "description": "Create a new protection analysis run.\n\nRequires:\n- A finished short-circuit run (sc_run_id), tego samego projektu\n- A study case with ProtectionConfig (protection_case_id)\n\nReturns:\n- Protection run metadata with status CREATED",
+    "description": "Create a new protection analysis run.\n\nRequires:\n- zakończony bieg zwarciowy 3F albo 2F (sc_run_id) tego samego projektu,\n- przypadek (protection_case_id), którego model niesie urządzenia i nastawy\n  zabezpieczeń (D-21) — przypadek nie przechowuje nastaw.\n\nReturns:\n- Protection run metadata with status CREATED",
     "operationId": "create_protection_run_api_projects__project_id__protection_runs_post",
     "parameters": [
      {
@@ -28410,74 +27800,6 @@
      }
     },
     "summary": "Create Protection Run",
-    "tags": [
-     "protection-analysis"
-    ]
-   }
-  },
-  "/api/projects/{project_id}/sld/{diagram_id}/protection-overlay": {
-   "get": {
-    "description": "P15c: Get SLD overlay for protection analysis results.\n\nMaps protection evaluation states to SLD symbols for visualization.\nThis is READ-ONLY - does not mutate model or diagram.\n\nArgs:\n    project_id: Project UUID\n    diagram_id: SLD diagram UUID\n    run_id: Protection run UUID to get results from\n\nReturns:\n    Protection overlay with element states mapped to SLD symbols.\n\nOverlay contains:\n- elements: List of protection elements with trip_state, t_trip_s, margin_percent\n- result_status: FRESH/OUTDATED/NONE — swiezosc wyniku wzgledem modelu\n- result_status_reason (+ _pl): PRZYCZYNA statusu, nigdy domysl\n\nSTATUS Z POROWNANIA KOPERT (CV-2/CV-3.3-B). Bieg zabezpieczen jest odtad\n`CanonicalRun` z kopertą rewizji — swiezosc wyprowadza `swiezosc_biegu_\nkanonicznego` (jak dla PF/SC), z DODATKOWYM sprawdzeniem: bieg zrodlowy\n(zwarciowy, `options[\"sc_run_id\"]`) musi RÓWNIEZ byc aktualny, bo ocena\ninterpretuje JEGO prad zwarciowy — wlasna koperta biegu zabezpieczen\npotrafi byc aktualna, gdy koperta biegu zrodlowego juz nie jest.\n\nBRAK WYNIKU TO NIE BLAD. Przebieg istniejacy, ale niezakonczony albo bez\nzapisanego wyniku, oddaje `result_status = NONE` z pusta lista elementow —\ndokladnie to, o co pyta warstwa rysujaca („czy jest co nalozyc\"). Bledem\n(404) pozostaje wylacznie przebieg NIEISTNIEJACY, a niezgodnosc projektu\ndalej konczy sie 400.\n\nPRZESTRZEN REFOW. `symbol_id` == `element_id` == `protected_element_ref`,\nbo kanaly nakladek tego systemu adresuja symbole refami elementow modelu\n(ENM `ref_id`) — patrz naglowek `ui/sld/v3/canvas/resultLabels.ts`.",
-    "operationId": "get_protection_sld_overlay_api_projects__project_id__sld__diagram_id__protection_overlay_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "diagram_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Diagram Id",
-       "type": "string"
-      }
-     },
-     {
-      "description": "Protection run ID for overlay",
-      "in": "query",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "description": "Protection run ID for overlay",
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Protection Sld Overlay Api Projects  Project Id  Sld  Diagram Id  Protection Overlay Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Protection Sld Overlay",
     "tags": [
      "protection-analysis"
     ]
@@ -28840,7 +28162,7 @@
   },
   "/api/protection-coordination/projects/{project_id}/run": {
    "post": {
-    "description": "Run protection coordination analysis.\n\nEligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego\nurzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji\npradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie\nfabrykowany PASS).\n\nGRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.\nBramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w\nżądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby\ndostać werdykt selektywności/czułości na dowolnie wymyślonych danych.\nBramka druga: proweniencja wkładu falownikowego biegów, z których te\nliczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza\nbez drugiej przepuszczałaby liczby z powietrza policzone na dobrym\nmodelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.\n\nMIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja urządzenia to szyna,\ngałąź ze wskazanym zaciskiem (`DeviceRequest.zacisk`) albo łącznik (zacisk\nz modelu — łańcuch szeregowy, `zacisk_zabezpieczenia.miejsce_urzadzenia`).\nPrąd zwarciowy lokalizacji-gałęzi/łącznika to prąd SZYNY zacisku i tak\njest potwierdzany wobec biegów (`szyny_zwarcia_lokalizacji`); prąd roboczy\nto prąd TEGO zacisku z biegu rozpływu (ekran czyta go z wiersza gałęzi:\n`i_a` dla `od`, `i_do_a` dla `do`).\n\nPRĄDY ROBOCZE NIE SĄ POTWIERDZANE WOBEC BIEGU ROZPŁYWU — NAZWANY BRAK.\n`pf_run_id` jest opcjonalny i nie wchodzi do bramki autorytetu; liczba prądu\nroboczego przechodzi jako echo ekranu (patrz rejestr planu AB, wpis O-51).\n\nAnalyzes:\n- Sensitivity (will devices trip for minimum fault?)\n- Selectivity (proper time grading between devices?)\n- Overload protection (won't trip on normal current?)\n\nReturns summary with overall PASS/MARGINAL/FAIL verdict.",
+    "description": "Koordynacja urządzeń zabezpieczeniowych BIEŻĄCEGO modelu projektu na zapisanych biegach.\n\nOdmowy (422, ``{\"powod\", \"komunikat_pl\", ...}``): bieg niemiarodajny (most autorytetu),\nwejście DER niemiarodajne, sieć zmieniona od biegu (poza zabezpieczeniami), rodzaj zwarcia\ninny niż 3F/2F, bieg rozpływu niewłaściwy, model bez zabezpieczeń nadprądowych.",
     "operationId": "run_coordination_analysis_api_protection_coordination_projects__project_id__run_post",
     "parameters": [
      {
@@ -28894,7 +28216,7 @@
   },
   "/api/protection-coordination/{run_id}": {
    "get": {
-    "description": "Get full coordination analysis result.\n\nReturns all checks (sensitivity, selectivity, overload) with verdicts.",
+    "description": "Pełny wynik koordynacji: sprawdzenia czułości, selektywności i przeciążalności (liczby\nz wartościami wymaganymi i zdaniem, bez werdyktu — P-06), charakterystyki TCC, znaczniki,\nurządzenia modelu z nastawami, pary, odmowy i ślad White Box.",
     "operationId": "get_coordination_result_api_protection_coordination__run_id__get",
     "parameters": [
      {
@@ -28932,150 +28254,6 @@
      }
     },
     "summary": "Get Coordination Result",
-    "tags": [
-     "protection-coordination"
-    ]
-   }
-  },
-  "/api/protection-coordination/{run_id}/checks/overload": {
-   "get": {
-    "description": "Get overload check results.\n\nVerifies that protection won't trip on normal operating current.",
-    "operationId": "get_overload_checks_api_protection_coordination__run_id__checks_overload_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response Get Overload Checks Api Protection Coordination  Run Id  Checks Overload Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Overload Checks",
-    "tags": [
-     "protection-coordination"
-    ]
-   }
-  },
-  "/api/protection-coordination/{run_id}/checks/selectivity": {
-   "get": {
-    "description": "Get selectivity check results.\n\nVerifies time grading between upstream and downstream devices.",
-    "operationId": "get_selectivity_checks_api_protection_coordination__run_id__checks_selectivity_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response Get Selectivity Checks Api Protection Coordination  Run Id  Checks Selectivity Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Selectivity Checks",
-    "tags": [
-     "protection-coordination"
-    ]
-   }
-  },
-  "/api/protection-coordination/{run_id}/checks/sensitivity": {
-   "get": {
-    "description": "Get sensitivity check results.\n\nVerifies that protection will trip for minimum fault current.",
-    "operationId": "get_sensitivity_checks_api_protection_coordination__run_id__checks_sensitivity_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response Get Sensitivity Checks Api Protection Coordination  Run Id  Checks Sensitivity Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Sensitivity Checks",
     "tags": [
      "protection-coordination"
     ]
@@ -29163,94 +28341,6 @@
     ]
    }
   },
-  "/api/protection-coordination/{run_id}/tcc": {
-   "get": {
-    "description": "Get TCC (Time-Current Characteristic) data for visualization.\n\nReturns curves and fault markers for chart rendering.",
-    "operationId": "get_tcc_data_api_protection_coordination__run_id__tcc_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/TCCResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Tcc Data",
-    "tags": [
-     "protection-coordination"
-    ]
-   }
-  },
-  "/api/protection-coordination/{run_id}/trace": {
-   "get": {
-    "description": "Get WHITE BOX trace for coordination analysis.\n\nReturns all calculation steps for audit purposes.",
-    "operationId": "get_coordination_trace_api_protection_coordination__run_id__trace_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Coordination Trace Api Protection Coordination  Run Id  Trace Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Coordination Trace",
-    "tags": [
-     "protection-coordination"
-    ]
-   }
-  },
   "/api/protection-runs/{run_id}": {
    "get": {
     "description": "Get protection run metadata.\n\nReturns the run status, input hash, timestamps, and error message (if failed).",
@@ -29297,7 +28387,7 @@
   },
   "/api/protection-runs/{run_id}/execute": {
    "post": {
-    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. This endpoint:\n1. Runs the protection evaluation engine (interpretation, zero physics)\n2. Stores the result on the CanonicalRun (R1)\n\nReturns:\n- Updated run metadata with status FINISHED or FAILED\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B):\nwykonanie biegu zabezpieczeń czyta `StudyCase.protection_config` przez\n`UnitOfWork` TEGO żądania (`app.state.uow_factory`), nie samodzielną\nfabrykę zbudowaną z `DATABASE_URL` — inaczej przypadek istniejący naprawdę\nzgłaszałby się jako nieznaleziony w każdym wdrożeniu, którego\n`app.state.uow_factory` nie pochodzi z tego env var (każdy test).",
+    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. This endpoint:\n1. Runs the protection evaluation engine (interpretation, zero physics)\n2. Stores the result on the CanonicalRun (R1)\n\nReturns:\n- Updated run metadata with status FINISHED or FAILED\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ\nzwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji\nprzez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.",
     "operationId": "execute_protection_run_api_protection_runs__run_id__execute_post",
     "parameters": [
      {
@@ -29341,7 +28431,7 @@
   },
   "/api/protection-runs/{run_id}/results": {
    "get": {
-    "description": "Get protection analysis results.\n\nReturns the full ProtectionResult including all evaluations and summary.\nOnly available for runs with status FINISHED.",
+    "description": "Wynik biegu oceny zabezpieczeń + świeżość względem bieżącego modelu.\n\nDostępny wyłącznie dla biegu FINISHED. STATUS ŚWIEŻOŚCI Z PORÓWNANIA KOPERT\n(CV-2/CV-3.3-B): `swiezosc_biegu_kanonicznego` z DODATKOWYM sprawdzeniem biegu\nźródłowego (zwarciowego) — ocena interpretuje JEGO prąd zwarciowy, więc własna koperta\nbiegu zabezpieczeń bywa aktualna, gdy koperta biegu źródłowego już nie jest. Zmiana\nnastaw w modelu zmienia odcisk modelu, więc wynik oceny staje się nieaktualny.",
     "operationId": "get_protection_run_results_api_protection_runs__run_id__results_get",
     "parameters": [
      {
@@ -32036,100 +31126,6 @@
      }
     },
     "summary": "Clone Study Case",
-    "tags": [
-     "study-cases"
-    ]
-   }
-  },
-  "/api/study-cases/{case_id}/protection-config": {
-   "get": {
-    "description": "Pobierz konfigurację zabezpieczeń dla przypadku (P14c).\n\nGET /api/study-cases/{case_id}/protection-config",
-    "operationId": "get_protection_config_api_study_cases__case_id__protection_config_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ProtectionConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Protection Config",
-    "tags": [
-     "study-cases"
-    ]
-   },
-   "put": {
-    "description": "Aktualizuj konfigurację zabezpieczeń dla przypadku (P14c).\n\nWalidacje:\n- template_ref musi istnieć w katalogu (jeśli podane)\n- template_fingerprint powinien być zgodny z aktualnym eksportem (ostrzeżenie, nie błąd)\n\nPUT /api/study-cases/{case_id}/protection-config",
-    "operationId": "update_protection_config_api_study_cases__case_id__protection_config_put",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ProtectionConfigRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ProtectionConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Update Protection Config",
     "tags": [
      "study-cases"
     ]

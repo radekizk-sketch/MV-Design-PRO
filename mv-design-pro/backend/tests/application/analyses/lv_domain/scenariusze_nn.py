@@ -420,7 +420,14 @@ class BudowniczyStacji:
                 ct_ref=ct_ref,
                 device_type="overcurrent",
                 settings=[
-                    ProtectionSetting(function_type=f, threshold_a=400.0, time_delay_s=0.2)  # type: ignore[arg-type]
+                    # Próg 400 A przy przekładniku 1000/5 A to prąd PIERWOTNY — strona
+                    # przekładnika zadeklarowana w nastawie (PZ-09), nie domyślna.
+                    ProtectionSetting(
+                        function_type=f,  # type: ignore[arg-type]
+                        threshold_a=400.0,
+                        threshold_unit="A_PIERWOTNY",
+                        time_delay_s=0.2,
+                    )
                     for f in funkcje
                 ],
                 catalog_ref="przekaznik-nn-50-51",

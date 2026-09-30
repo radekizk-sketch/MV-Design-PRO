@@ -13,6 +13,9 @@
  *    (`networkBuildStore.openInspectorPanel`),
  *  - sekcja AUTOMATYKA: tabela sterowników polowych (`BayProtectionControlUnit`) —
  *    chipy funkcji z `automation_features` i stan SPZ; braki jako „nie skonfigurowano",
+ *  - sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21): edytor nastaw I>/I>> każdego
+ *    zabezpieczenia nadprądowego modelu (pola i wyłączniki liniowe) — operacja
+ *    `update_protection_settings`, dane rozwiązane z read modelu `protection-view`,
  *  - następny krok: koordynacja zabezpieczeń (E-28, `openRouteSurface('E-28')`).
  *
  * ZERO fizyki, ZERO mutacji modelu, ZERO fabrykacji — dane wyłącznie z
@@ -26,6 +29,9 @@ import './zabezpieczenia-automatyka.css';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useFieldReadModel } from '../../../ui/field/useFieldReadModel';
+import { useProtectionView } from '../../../ui/protection';
+import { urzadzeniaZNastawami } from '../../../ui/protection/protection-view';
+import { EdytorNastawZabezpieczenia } from '../../kreatory/przekaznik';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useShellStore } from '../../shell/useShellStore';
 import {
@@ -61,6 +67,92 @@ function StanZerowy({
         {akcja}
       </button>
     </div>
+  );
+}
+
+/** Sekcja edytorów nastaw — wszystkie zabezpieczenia nadprądowe modelu (read model). */
+function SekcjaNastaw() {
+  const widok = useProtectionView();
+  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const urzadzenia = urzadzeniaZNastawami(widok.data);
+  const wylaczniki = widok.data.wylaczniki_liniowe ?? [];
+  return (
+    <section className="mvd-za-sekcja" data-testid="mvd-za-nastawy">
+      <h4>{T.nastawyTytul}</h4>
+      <p className="mvd-za-sekcja-opis">{T.nastawyOpis}</p>
+      {wylaczniki.length > 0 ? (
+        <div className="mvd-za-tabela-scroll" data-testid="mvd-za-wylaczniki">
+          <h5>{T.wylacznikiTytul}</h5>
+          <p className="mvd-za-sekcja-opis">{T.wylacznikiOpis}</p>
+          <table className="mvd-za-tabela">
+            <tbody>
+              {wylaczniki.map((w) => (
+                <tr key={w.ref_id} data-testid={`mvd-za-wylacznik-${w.ref_id}`}>
+                  <td>{w.nazwa ?? T.wylacznikBezNazwy}</td>
+                  <td>{T.wylacznikStanCt(w.przekladniki.length)}</td>
+                  <td>{T.wylacznikStanZab(w.zabezpieczenia.length)}</td>
+                  <td>
+                    {w.przekladniki.length === 0 ? (
+                      <button
+                        type="button"
+                        className="mvd-za-wiersz-akcja"
+                        data-testid={`mvd-za-dodaj-ct-${w.ref_id}`}
+                        onClick={() =>
+                          openOperationForm('add_ct', { kotwica: 'wylacznik', breaker_ref: w.ref_id })
+                        }
+                      >
+                        {T.dodajPrzekladnik}
+                      </button>
+                    ) : w.zabezpieczenia.length === 0 ? (
+                      <button
+                        type="button"
+                        className="mvd-za-wiersz-akcja"
+                        data-testid={`mvd-za-dodaj-zabezpieczenie-${w.ref_id}`}
+                        onClick={() =>
+                          openOperationForm('add_relay', {
+                            kotwica: 'wylacznik',
+                            breaker_ref: w.ref_id,
+                          })
+                        }
+                      >
+                        {T.dodajZabezpieczenie}
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {widok.error ? (
+        <p className="mvd-za-pusto" role="alert" data-testid="mvd-za-nastawy-blad">
+          {T.nastawyBlad}: {widok.error}
+        </p>
+      ) : widok.isLoading && urzadzenia.length === 0 ? (
+        <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-ladowanie">
+          {T.nastawyLadowanie}
+        </p>
+      ) : urzadzenia.length === 0 ? (
+        <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-brak">
+          {T.nastawyBrak}
+        </p>
+      ) : (
+        <div className="mvd-za-sterowniki">
+          {urzadzenia.map((wpis) =>
+            wpis.nastawy ? (
+              <EdytorNastawZabezpieczenia
+                key={wpis.device_id}
+                urzadzenieRef={wpis.device_id}
+                nastawy={wpis.nastawy}
+                slownik={widok.data.slownik_nastaw}
+                testid={`mvd-za-edytor-${wpis.device_id}`}
+              />
+            ) : null,
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -154,13 +246,17 @@ export function EkranZabezpieczenAutomatyki() {
           testid="mvd-za-brak-projektu"
         />
       ) : wiersze.length === 0 ? (
-        <StanZerowy
-          tytul={T.brakPolTytul}
-          opis={T.brakPolOpis}
-          akcja={T.brakPolAkcja}
-          onAkcja={() => setActiveSpace('model')}
-          testid="mvd-za-brak-pol"
-        />
+        <>
+          <StanZerowy
+            tytul={T.brakPolTytul}
+            opis={T.brakPolOpis}
+            akcja={T.brakPolAkcja}
+            onAkcja={() => setActiveSpace('model')}
+            testid="mvd-za-brak-pol"
+          />
+          {/* Zabezpieczenia przy wyłącznikach liniowych istnieją także bez pól rozdzielni. */}
+          <SekcjaNastaw />
+        </>
       ) : (
         <>
           <section className="mvd-za-sekcja" data-testid="mvd-za-zabezpieczenia">
@@ -219,6 +315,8 @@ export function EkranZabezpieczenAutomatyki() {
               </table>
             </div>
           </section>
+
+          <SekcjaNastaw />
 
           <section className="mvd-za-sekcja" data-testid="mvd-za-automatyka">
             <h4>{T.automatykaTytul}</h4>

@@ -457,6 +457,12 @@ FORBIDDEN_W3A_CLASS_NAMES = {
 FORBIDDEN_W3A_FUNCTION_NAMES = {
     # enm/domain_operations_v2.py — zaslepka bez fizyki (tcc.legacy_write_disabled)
     "calculate_tcc_curve",
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zaslepki z odmowa i selektywnosc z
+    # kolejnosci listy (prad 10 x nastawa) — nastawy pisze `update_protection_settings`,
+    # selektywnosc liczy koordynacja E-28 na jednej sciezce oceny.
+    "update_relay_settings",
+    "link_relay_to_field",
+    "validate_selectivity",
 }
 
 # Karta W3-C1 (2026-09-09) — bramka wskrzeszenia KASACJI V12K-189. Metodyka nastaw

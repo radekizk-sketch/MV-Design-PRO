@@ -33,8 +33,8 @@ MAPPING: operation -> expected modal
   add_ups_nn              -> KreatorZrodloDyspozycyjne (ui2)
   add_ct                  -> MeasurementModal (existing)
   add_vt                  -> MeasurementModal (existing)
-  add_relay               -> ProtectionModal (existing)
-  update_relay_settings   -> ProtectionModal (existing)
+  add_relay               -> KreatorPrzekaznika (ui2)
+  update_protection_settings -> EdytorNastawZabezpieczenia (ui2, karta pola i ekran E-27)
 
 EXIT CODES:
   0 = clean (all operations covered)
@@ -109,7 +109,8 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_ct": ["Measurement", "CTModal"],
     "add_vt": ["Measurement", "VTModal"],
     "add_relay": ["Protection", "RelayModal"],
-    "update_relay_settings": ["Protection", "RelaySettings"],
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
+    "update_protection_settings": ["EdytorNastawZabezpieczenia"],
     # P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN.
     "add_nn_cable_segment": ["KreatorOdcinkaNn", "OdcinekNn"],
     "add_nn_distribution_board": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
@@ -125,9 +126,6 @@ NO_MODAL_NEEDED = {
     "set_label",  # inline edit
     "set_source_operating_mode",  # inline edit
     "set_dynamic_profile",  # inline edit
-    "link_relay_to_field",  # drag-drop or inline
-    "calculate_tcc_curve",  # automatic action
-    "validate_selectivity",  # automatic action
     # P0.9 (nN STUDIO): edycja warunków ułożenia odcinka nN jest edycją INLINE
     # w tabeli ODCINKI, tak jak `update_element_parameters` powyżej — bez
     # osobnego formularza modalnego.
