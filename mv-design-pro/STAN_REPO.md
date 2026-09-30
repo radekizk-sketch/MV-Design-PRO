@@ -150,7 +150,7 @@ bazą; kontynuacja = `git fetch origin <gałąź>` + nowe drzewo robocze z tej g
 tabela A.3): `odbior-p5final` (`int/p5final` — czubek partii 5 z tym pakietem i poprawką 1 karty
 PRZENOSNOSC-NIEPEWNOSCI), `odbior-p5` (`int/p5`,
 łańcuch p5b na `3840e239`), `odbior-determinizm` (`int/determinizm`, poprawka przed przeniesieniem), `odbior-p6`, `odbior-dowodcieplny`,
-`odbior-odmowa422`, `odbior-polawtorze`, `odbior-sldsubstrat`, `odbior-ab1b3b`, `odbior-nastawy`; pozostałe
+`odbior-odmowa422`, `odbior-polawtorze`, `odbior-sldsubstrat`, `odbior-ab1b3b`, `odbior-ab1b3b-r` (`int/ab1b3b-r` — AB-1b.3b na `0f38d197`), `odbior-nastawy`; pozostałe
 (`odbior-abp1*`, `odbior-proofpack`, `odbior-s95start`, `odbior-e2enazwy`, `odbior-ci`, `r10`, `fable-b02`,
 `agent-*`) — historyczne, bez treści niezintegrowanej. Główny checkout `/home/user/MV-Design-PRO` ma stary
 indeks z plikami FROZEN — **nie commitować z niego**.
@@ -161,8 +161,8 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 |---|---|
 | **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E, PRZENOSNOSC-NIEPEWNOSCI (poprawka 1); partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
-| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6) — partia 6 |
-| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, AB-1b.3b (commit lokalny `f0cabe57` na `int/ab1b3b`, bez nałożonej poprawki determinizmu — partia 7), BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3) |
+| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6) — partia 6; AB-1b.3b przeniesiona na czubek `0f38d197` kartą AB-1b.3b-NA-CZUBKU (commit lokalny na `int/ab1b3b-r`, drzewo `odbior-ab1b3b-r`; niezmienniki chwili zero O-58 i SKONCZONOSC rozszerzone na odbiory stanowe; weryfikacja wykonawcy — część H) |
+| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3) |
 | **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
@@ -183,7 +183,7 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | SIEC-ZLOTA-KATALOG | P0 (sieć złota deklaruje katalog, 7 odwołań nie istnieje) | nierozpoczęta | — | zasila sceny harnessu i zrzuty B-02 |
 | GOTOWOSC-DER-BACKEND | P0 (próg 87T z `?? 0` daje „niewymagane” przy braku mocy) | nierozpoczęta | — | nowy kod słownika gotowości |
 | AB-H0b | P0 (N-1 V12.6 bez etykiety „szacunek bez rozpływu”, stałe V12.6 bez podstawy) | lista pozycji | — | karta do napisania z `KARTY_OTWARTE` |
-| AB-1b.3b | P1 (ścieżka krytyczna A/B) | w toku | AB-1b.3a | kolizja z determinizmem w `silnik.py`, mutacje M38–M51 |
+| AB-1b.3b | P1 (ścieżka krytyczna A/B) | przeniesiona na czubek `0f38d197` i zweryfikowana przez wykonawcę (karta AB-1b.3b-NA-CZUBKU, commit lokalny na `int/ab1b3b-r`) | AB-1b.3a | odbiór integratora w partii 7; mutacje M38–M51 i M75–M80 |
 | AB-1b.2 + AB-1d_min | P1 (ścieżka krytyczna A/B) | nierozpoczęta | AB-1b.3b | mutacje M52–M66 |
 | ODMOWA-DANYCH-422 | P1 (obcy `ValueError` jako błąd użytkownika) | domknięta przez wykonawcę (`1a235fa3`) | — | odbiór integratora w partii 6; do listy B-01: odmowy wejścia rdzeni jako typ odmowy danych (dziś tłumaczone na granicy warstwy aplikacji w 13 miejscach) |
 | SLD-SUBSTRAT faza 2 | P1 (fikstury SLD bez generatora; element modelu nierysowany) | w toku | — | reguła zapisu liczb w fiksturach (bajty niezależne od maszyny) |
@@ -325,6 +325,9 @@ przepisane do wierszy rejestru planu A/B §7):
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — testy celowane (estymator, próg części pewnej, przenośność, obserwable, kąt prądu, manifest i testy harnessu mutacji) | `2be588ea` + poprawka 2 | 247 passed; pełny zestaw testów rdzenia dynamiki — na drzewie z commitem SKONCZONOSC-CHWILI-ZERO (wiersz niżej) |
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — harness mutacji | j.w. | M69, M70, M71, M72, M73, M74 — 6/6 zabite; M21 (kontrolna) — nieważna |
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — przenośność | j.w. | scena harnessu, 12 wariantów {jądro} × {1, 2 wątki}: 0 różnic komparatora, rozrzut `u_f_est_hz` 9,6e-7 bez zmiany wobec poprawki 1 (scena leży na dnie zaokrągleń), 0 różnic kodów; fikstury sceny wobec `2be588ea` — wyłącznie skróty tożsamości (`odcisk_implementacji`, `result_hash`). SO-1a w czterech jądrach (domyślne, Haswell, Prescott, Zen): na `2be588ea` rozrzut `u_f` ×113 (747 z 7 323 wartości ponad 1e-4 względnie; próbka 54 węzła 110 kV 250× pod propagacją granicy), po poprawce ≤ 27,6 % (312 z 7 323, wyłącznie próbki przy dnie; żadna estymata pod dnem); kody jakości identyczne w obu drzewach; czas CPU biegu SO-1a 41,5–44,9 s → 45,2–46,4 s |
+| AB-1b.3b-NA-CZUBKU — testy backendu wołające rdzeń dynamiki (76 plików) | `0f38d197` + cherry-pick `f0cabe57` + rozszerzenie (drzewo `odbior-ab1b3b-r`) | 3 060 passed, 2 failed (odcisk fikstury po refaktorze, wzorzec M37) → naprawione, ponowny bieg 443 + 222 passed; rodziny urządzeń × odbiór czuły 48 passed |
+| AB-1b.3b-NA-CZUBKU — harness mutacji, `guardy_z_ci.py`, vitest, e2e | j.w. | 55/55 mutacji ważnych zabitych (M10–M51, M67–M80), M21 nieważna, 1 342 s CPU; guardy komplet zielony (105, 2 940 samotestów); vitest 55 + 652 passed; e2e ekranów dynamiki 150 passed, zrzuty bez zmiany |
+| AB-1b.3b-NA-CZUBKU — przenośność | j.w. | scena harnessu i SMIB z odbiorem czułym w 8 wariantach {jądro: domyślne, Haswell, Prescott, Zen} × {1, 2 wątki}: 0 różnic komparatora, rozrzut `u_f_est_hz` 6,9e-8, kanały odbioru bitowo identyczne |
 | CI GitHub (9 workflowów) | `82595588` (ostatni czubek wypchnięty przed tym pakietem) | 8/9 zielonych; pełny e2e — 9 czerwonych przypadków, naprawione w partii 5 (`7d3a0a41`, `3840e239`) |
 
 **H.2 Ograniczenia:**

@@ -458,11 +458,46 @@ RODZINY_PARAMETROW_DYNAMICZNYCH: tuple[str, ...] = (
     "wiatr_typ_4",
 )
 
+# ---------------------------------------------------------------------------
+# Odbior — model dynamiczny (karta modeli odbiorow, O-49 pkt 2, O-56)
+# ---------------------------------------------------------------------------
+
+
+class ModelDynamicznyOdbioru(BaseModel):
+    """Parametry modelu dynamicznego ODBIORU (`Load.dynamika`) — kopia profilu katalogu.
+
+    Ksztalt charakterystyki (wspolczynniki ZIP i czulosci czestotliwosciowe k) NIE jest tu:
+    zyje w typie katalogowym odbioru i w `materialized_params` (jedno zrodlo prawdy, ktore
+    czyta tez rozplyw — `power_flow_zip.zip_coeffs_from_materialized_params`). Blok niesie
+    WYLACZNIE parametry, ktorych rozplyw nie zna, a model czasowy potrzebuje:
+
+    * `u_min_pu` — napiecie przejscia skladowych pradowej i mocowej w stala impedancje;
+      `None` WYLACZNIE dla odbioru czysto impedancyjnego (przejscie nie ma tam tresci);
+    * `t_pomiaru_czestotliwosci_s` — stala czasowa estymatora czestotliwosci widzianej
+      przez odbior; `None` WYLACZNIE dla odbioru bez czulosci czestotliwosciowej.
+
+    Zgodnosc bloku z ksztaltem charakterystyki (pole podane <=> uzyte w rownaniach) sprawdza
+    JEDNA funkcja rdzenia `kontrakty.wymagane_parametry_odbioru` — wolana przez materializacje
+    kopii (`enm.dynamika_z_katalogu`) i przez bramke danych biegu
+    (`enm.adapter_dynamiki.braki_modelu_dynamiki`); pydantic nie widzi wspolczynnikow ZIP.
+    Zero domyslek liczbowych (straz `dynamika_zero_default_guard`).
+    """
+
+    proweniencja: ProweniencjaParametrow
+    u_min_pu: float | None = Field(gt=0.0, lt=1.0, description="Napięcie przejścia PQ→Z (pu).")
+    t_pomiaru_czestotliwosci_s: float | None = Field(
+        gt=0.0, description="Stała czasowa pomiaru częstotliwości przez odbiór (s)."
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 __all__ = [
     "RODZINY_PARAMETROW_DYNAMICZNYCH",
     "Crowbar",
     "Magazyn",
     "MaszynaSynchroniczna",
+    "ModelDynamicznyOdbioru",
     "ParametryDynamiczne",
     "PriorytetOgranicznika",
     "PrzeksztaltnikGFL",

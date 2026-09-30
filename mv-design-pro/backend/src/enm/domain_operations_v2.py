@@ -94,6 +94,8 @@ from .domain_operations import (
 from .dynamika_z_katalogu import (
     BladMaterializacjiDynamiki,
     materializuj_dynamike,
+    materializuj_dynamike_odbioru,
+    sprawdz_profil_odbioru,
     sprawdz_zgodnosc,
     wiazanie_dynamiki,
 )
@@ -7550,6 +7552,84 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
 
 
+def set_load_dynamic_binding(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Związanie odbioru z profilem modelu dynamicznego z katalogu (karta modeli odbiorów, O-56).
+
+    Payload: ``{"load_ref": ..., "dynamic_model_ref": <profil> | null}``. Profil trafia do
+    ``materialized_params.dynamic_model_ref`` odbioru, a kopię ``Load.dynamika`` buduje JEDNA
+    funkcja materializacji (``enm.dynamika_z_katalogu.materializuj_dynamike_odbioru``) z
+    profilu i KSZTAŁTU charakterystyki odbioru. ``null`` odwiązuje: klucz wiązania i kopia
+    znikają razem (odbiór nie ma bloku własnego — edytora pól ręcznych nie ma). To jest
+    akcja naprawcza kodu gotowości ``load.dynamika_missing`` (ekran dynamiki, sekcja modeli).
+
+    Odmowy nazwane (model bez zmian): brak odbioru w payloadzie albo w modelu, brak klucza
+    wiązania, profil spoza katalogu, współczynniki charakterystyki odbioru odrzucone przez
+    rozpływ (kopii nie da się zbudować — wiązanie bez kopii byłoby obietnicą bez treści).
+    """
+    load_ref = payload.get("load_ref")
+    if not load_ref:
+        return _error_response(
+            "Nie wskazano odbioru, którego model dynamiczny ma zostać związany z katalogiem.",
+            "load_bindings.load_missing",
+        )
+    if "dynamic_model_ref" not in payload:
+        return _error_response(
+            "Nie podano profilu modelu dynamicznego odbioru (albo jawnego odwiązania).",
+            "load_bindings.payload_empty",
+        )
+    profil = payload.get("dynamic_model_ref")
+    new_enm = kopia_graniczna_enm(enm)
+    odbior = next(
+        (
+            o
+            for o in new_enm.get("loads", [])
+            if o.get("ref_id") == load_ref or o.get("id") == load_ref
+        ),
+        None,
+    )
+    if odbior is None:
+        return _error_response(
+            "Wskazany odbiór nie istnieje w modelu sieci.", "load_bindings.load_not_found"
+        )
+    tabliczka = odbior.get("materialized_params")
+    if tabliczka is None:
+        tabliczka = {}
+        odbior["materialized_params"] = tabliczka
+    if not isinstance(tabliczka, dict):  # pragma: no cover - obrona kontraktu
+        return _error_response(
+            "Parametry zmaterializowane odbioru mają nieoczekiwaną postać.",
+            "load_bindings.materialized_params_invalid",
+        )
+    if profil is None:
+        tabliczka.pop("dynamic_model_ref", None)
+        if not tabliczka:
+            odbior["materialized_params"] = None
+        odbior.pop("dynamika", None)
+    else:
+        try:
+            sprawdz_profil_odbioru(str(profil), nazwa_elementu(odbior, "loads"))
+            kopia = materializuj_dynamike_odbioru(
+                str(profil), odbior, czestotliwosc_studium_hz(new_enm)
+            )
+        except BladMaterializacjiDynamiki as blad:
+            return _error_response(blad.komunikat, blad.kod)
+        tabliczka["dynamic_model_ref"] = str(profil)
+        odbior["dynamika"] = kopia
+    return _response(
+        new_enm,
+        updated=[str(load_ref)],
+        selection_id=str(load_ref),
+        selection_type="load",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "PARAMETERS_UPDATED",
+                "element_id": str(load_ref),
+            }
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # 24-25. UNIWERSALNE
 # ---------------------------------------------------------------------------
@@ -7911,6 +7991,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_source_operating_mode",
         "set_dynamic_profile",
         "set_der_catalog_bindings",
+        "set_load_dynamic_binding",
         "dodaj_karte_widmowa_projektu",
         # P0.1 nN — topologia obwodow nN
         "add_nn_cable_segment",
@@ -7951,6 +8032,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "set_der_catalog_bindings": set_der_catalog_bindings,
+    "set_load_dynamic_binding": set_load_dynamic_binding,
     "dodaj_karte_widmowa_projektu": dodaj_karte_widmowa_projektu,
     "add_nn_cable_segment": add_nn_cable_segment,
     "add_nn_distribution_board": add_nn_distribution_board,

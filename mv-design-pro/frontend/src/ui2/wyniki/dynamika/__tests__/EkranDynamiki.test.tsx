@@ -19,6 +19,7 @@ import opis from '../../../../harness-fixtures/generated/dynamika_scena_opis.jso
 import migawka from '../../../../harness-fixtures/generated/dynamika_scena_migawka.json';
 import gotowoscPo from '../../../../harness-fixtures/generated/dynamika_scena_gotowosc.json';
 import gotowoscPrzed from '../../../../harness-fixtures/generated/dynamika_scena_gotowosc_brak.json';
+import gotowoscOdbiorBrak from '../../../../harness-fixtures/generated/dynamika_scena_gotowosc_odbior_brak.json';
 import scenariusze from '../../../../harness-fixtures/generated/dynamika_scena_scenariusze.json';
 import wynik from '../../../../harness-fixtures/generated/dynamika_scena_wyniki.json';
 import przebiegi from '../../../../harness-fixtures/generated/dynamika_scena_przebiegi.json';
@@ -42,6 +43,11 @@ const PF = (wynik as { pf_run_id: string }).pf_run_id;
 const RUN = (wynik as { run_id: string }).run_id;
 /** Wytwórca PV i odcinek zwarcia sieci sceny — identyfikatory z fixtur, asercje po nazwach. */
 const PV = (gotowoscPrzed as { zrodla: { ref_id: string }[] }).zrodla[0].ref_id;
+/** Odbiór sieci sceny (model dynamiczny odbioru — karta modeli odbiorów). */
+const ODBIOR = (gotowoscPrzed as { odbiory: { ref_id: string }[] }).odbiory[0].ref_id;
+const NAZWA_ODBIORU = 'Odbiór';
+const PROFIL_ODBIORU = (gotowoscPrzed as { profile_odbiorow: { profile_id: string }[] })
+  .profile_odbiorow[0].profile_id;
 const ODCINEK = (wynik as { zdarzenia_wykonane: { ref: string }[] }).zdarzenia_wykonane[0].ref;
 const NAZWA_PV = 'Blok PV';
 const NAZWA_ODCINKA = 'Odcinek 2';
@@ -54,6 +60,9 @@ const NAZWA_SZYNY_PV = (
 
 interface StanAtrapy {
   gotowosc: unknown;
+  /** Gotowość po wiązaniu PV (domyślnie komplet; w teście odbioru — brak modelu odbioru). */
+  gotowoscPoPv: unknown;
+  odmowaWiazaniaOdbioru: string | null;
   scenariusze: unknown;
   biegi: unknown[];
   stanyBiegu: string[];
@@ -85,8 +94,32 @@ function ustawFetch(): void {
             422,
           );
         }
-        atrapa.gotowosc = gotowoscPo;
+        atrapa.gotowosc = atrapa.gotowoscPoPv;
         return odpowiedz({ snapshot: migawka, error: null, readiness: null, fix_actions: [] });
+      }
+      if (adres.endsWith(`/api/cases/${CASE}/enm/domain-ops`)) {
+        // Kanoniczny kanał operacji domenowych (magazyn migawki) — wiązanie odbioru.
+        if (atrapa.odmowaWiazaniaOdbioru) {
+          return odpowiedz({
+            snapshot: migawka,
+            error: atrapa.odmowaWiazaniaOdbioru,
+            error_code: 'load_bindings.catalog_ref_unknown',
+          });
+        }
+        atrapa.gotowosc = gotowoscPo;
+        return odpowiedz({
+          snapshot: migawka,
+          logical_views: {},
+          readiness: null,
+          fix_actions: [],
+          changes: { created_element_ids: [], updated_element_ids: [ODBIOR], deleted_element_ids: [] },
+          selection_hint: null,
+          audit_trail: [],
+          domain_events: [],
+          materialized_params: {},
+          layout: {},
+          error: null,
+        });
       }
       if (adres.endsWith('/api/dynamika/opis-scenariusza')) return odpowiedz(opis);
       if (adres.endsWith(`/api/dynamika/study-cases/${CASE}/gotowosc`)) return odpowiedz(atrapa.gotowosc);
@@ -167,6 +200,8 @@ const biegDynamiki = {
 beforeEach(() => {
   atrapa = {
     gotowosc: gotowoscPo,
+    gotowoscPoPv: gotowoscPo,
+    odmowaWiazaniaOdbioru: null,
     scenariusze,
     biegi: [],
     stanyBiegu: [],
@@ -247,6 +282,90 @@ describe('EkranDynamiki — brak modelu → wiązanie z katalogiem', () => {
     atrapa.gotowosc = gotowoscPrzed;
     render(<EkranDynamiki wskazanyElement={PV} />);
     expect(await screen.findByTestId(`mvd-dynamika-zrodlo-${PV}`)).toHaveAttribute('data-wskazany', 'tak');
+  });
+});
+
+describe('EkranDynamiki — model dynamiczny odbioru (karta modeli odbiorów)', () => {
+  it('PV związane, odbiór bez modelu: odmowa z NAZWĄ odbioru, wiązanie operacją domenową', async () => {
+    atrapa.gotowosc = gotowoscOdbiorBrak;
+    render(<EkranDynamiki />);
+
+    const braki = await screen.findByTestId('mvd-dynamika-braki');
+    expect(braki).toHaveTextContent(`„${NAZWA_ODBIORU}”`);
+    expect(braki).not.toHaveTextContent(ODBIOR);
+    const wiersz = screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`);
+    expect(wiersz).toHaveAttribute('data-stan', 'brak');
+    // Akcja naprawcza kanonu `load.dynamika_missing` — komunikat z rejestru backendu.
+    expect(within(wiersz).getByText(/Brak modelu dynamicznego odbioru/)).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-dynamika-uruchom')).toBeDisabled();
+    // Bez jawnego wyboru profilu nie ma wiązania ani podstawy wartości.
+    const powiaz = screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-powiaz`);
+    expect(powiaz).toBeDisabled();
+    expect(screen.queryByTestId(`mvd-dynamika-odbior-${ODBIOR}-podstawa`)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-profil`), {
+      target: { value: PROFIL_ODBIORU },
+    });
+    // Podstawa wartości profilu (z backendu, jakość szacowana) widoczna przed zapisem.
+    const podstawa = screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-podstawa`);
+    expect(podstawa).toHaveTextContent('0,7 pu');
+    expect(podstawa).toHaveTextContent('szacowane');
+    fireEvent.click(powiaz);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-stan', 'z_katalogu'),
+    );
+    const operacja = atrapa.zadania.find((z) => z.url.endsWith(`/api/cases/${CASE}/enm/domain-ops`));
+    expect((operacja?.cialo as { operation: { name: string; payload: unknown } }).operation).toMatchObject({
+      name: 'set_load_dynamic_binding',
+      payload: { load_ref: ODBIOR, dynamic_model_ref: PROFIL_ODBIORU },
+    });
+    // Parametry kopii pokazane z odpowiedzi gotowości (interfejs nic nie liczy).
+    expect(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveTextContent(
+      'napięcie przejścia do stałej impedancji: 0,7 pu',
+    );
+    expect(screen.queryByTestId('mvd-dynamika-braki')).not.toBeInTheDocument();
+  });
+
+  it('pełna ścieżka: PV, potem odbiór — każdy kod braku ma swoją akcję i znika po niej', async () => {
+    atrapa.gotowosc = gotowoscPrzed;
+    atrapa.gotowoscPoPv = gotowoscOdbiorBrak;
+    render(<EkranDynamiki />);
+    expect(await screen.findByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-stan', 'brak');
+    fireEvent.change(screen.getByTestId(`mvd-dynamika-zrodlo-${PV}-profil`), {
+      target: { value: 'default_pv_gfl' },
+    });
+    fireEvent.click(screen.getByTestId(`mvd-dynamika-zrodlo-${PV}-powiaz`));
+    await waitFor(() =>
+      expect(screen.getByTestId(`mvd-dynamika-zrodlo-${PV}`)).toHaveAttribute('data-stan', 'z_katalogu'),
+    );
+    // Po wiązaniu PV bieg dalej odmawia — brakiem modelu odbioru.
+    expect(screen.getByTestId('mvd-dynamika-braki')).toHaveTextContent(`„${NAZWA_ODBIORU}”`);
+    fireEvent.change(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-profil`), {
+      target: { value: PROFIL_ODBIORU },
+    });
+    fireEvent.click(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-powiaz`));
+    await waitFor(() => expect(screen.queryByTestId('mvd-dynamika-braki')).not.toBeInTheDocument());
+    expect(screen.getByTestId('mvd-dynamika-warunki')).not.toHaveTextContent('Usuń braki modelu');
+  });
+
+  it('odmowa operacji wiązania odbioru pokazana wprost, stan bez zmian', async () => {
+    atrapa.gotowosc = gotowoscOdbiorBrak;
+    atrapa.odmowaWiazaniaOdbioru = 'Wskazany profil modelu dynamicznego odbioru nie istnieje.';
+    render(<EkranDynamiki />);
+    fireEvent.change(await screen.findByTestId(`mvd-dynamika-odbior-${ODBIOR}-profil`), {
+      target: { value: PROFIL_ODBIORU },
+    });
+    fireEvent.click(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}-powiaz`));
+    expect(await screen.findByTestId('mvd-dynamika-wiazanie-blad')).toHaveTextContent(
+      'Wskazany profil modelu dynamicznego odbioru nie istnieje.',
+    );
+    expect(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-stan', 'brak');
+  });
+
+  it('wskazany deep-linkiem odbiór jest wyróżniony (fokus akcji naprawczej odbioru)', async () => {
+    atrapa.gotowosc = gotowoscOdbiorBrak;
+    render(<EkranDynamiki wskazanyElement={ODBIOR} />);
+    expect(await screen.findByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-wskazany', 'tak');
   });
 });
 
@@ -407,6 +526,20 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
   beforeEach(() => {
     atrapa.biegi = [biegDynamiki];
     useExecutionRunsStore.setState({ runs: [biegDynamiki] } as never);
+  });
+
+  it('założenia: jedna lista zdań z nazwami (bez zapisu technicznego rdzenia i identyfikatorów)', async () => {
+    render(<EkranDynamiki trybZaawansowania="expert" />);
+    const sekcja = await screen.findByTestId('mvd-dynamika-zalozenia');
+    const zdania = (wynik as { opis_wyniku: { zalozenia_modelu: string[] } }).opis_wyniku.zalozenia_modelu;
+    expect(zdania.length).toBeGreaterThan(5);
+    expect(within(sekcja).getAllByRole('listitem').map((li) => li.textContent)).toEqual(zdania);
+    expect(screen.queryByTestId('mvd-dynamika-zalozenia-rdzenia')).not.toBeInTheDocument();
+    const refy = Object.keys((wynik as { opis_wyniku: { elementy: Record<string, unknown> } }).opis_wyniku.elementy);
+    for (const ref of refy) expect(sekcja.textContent).not.toContain(ref);
+    // Zdanie o modelu odbiorów i proweniencji modelu dynamicznego odbioru z nazwą odbioru.
+    expect(sekcja).toHaveTextContent('Odbiory: charakterystyka statyczna');
+    expect(sekcja).toHaveTextContent(`Model dynamiczny odbioru „${NAZWA_ODBIORU}”`);
   });
 
   it('oceny „nie oceniono" z backendu, poziom dowodowy nazwany, zero werdyktu', async () => {

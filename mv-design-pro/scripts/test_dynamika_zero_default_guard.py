@@ -155,3 +155,16 @@ if __name__ == "__main__":
     test_kazdy_modul_dziedziny_jest_skanowany()
     test_kazdy_modul_rdzenia_dynamiki_jest_skanowany()
     print("test_dynamika_zero_default_guard: OK")
+
+
+def test_katalog_profili_odbiorow_jest_skanowany() -> None:
+    """Karta modeli odbiorów: profil `load_dynamic` (dane bloku `Load.dynamika`) podlega temu
+    samemu zakazowi domyślek co profile `der_dynamic` — każdy moduł pakietu w skanie."""
+    moduly = {
+        str(sciezka.relative_to(ROOT))
+        for sciezka in (
+            ROOT / "backend" / "src" / "network_model" / "catalog" / "load_dynamic"
+        ).rglob("*.py")
+    }
+    assert moduly, "skan katalogu profili odbiorów stracił kotwicę"
+    assert moduly <= set(SCAN_FILES), sorted(moduly - set(SCAN_FILES))

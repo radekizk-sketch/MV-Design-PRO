@@ -1117,7 +1117,7 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
     assert wynik["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
     assert wynik["pf_run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA_PF
     _run_idy_nie_sa_uuid(wynik)
-    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False))
     odcinek = refy.odcinek_zwarcia
     assert [(z["rodzaj"], z["ref"]) for z in wynik["zdarzenia_wykonane"]] == [
         ("zwarcie_galezi", odcinek),
@@ -1146,7 +1146,9 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
 
 def test_dynamika_scena_gotowosc_przed_i_po_wiazaniu_katalogowym() -> None:
     przed = eksport.dynamika_scena_gotowosc_brak()
-    pv_ref = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False)).pv
+    pv_ref = refy_sieci(
+        build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False)
+    ).pv
     pv_przed = next(z for z in przed["zrodla"] if z["ref_id"] == pv_ref)
     assert pv_przed["stan"] == "brak"
     assert pv_przed["akcja_naprawcza"]["kod"] == "der.dynamika_missing"

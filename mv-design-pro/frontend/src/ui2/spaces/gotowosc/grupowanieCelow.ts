@@ -276,6 +276,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
   // blokuje wyłącznie rozpływ mocy (i wszystko, co z niego startuje).
   'load.zip_agregat_niereprezentowalny': 'rozplyw',
+  // Karta modeli odbiorów: odbiór bez modelu dynamicznego (bloker biegu czasowego; akcja —
+  // wiązanie z profilem katalogowym na ekranie dynamiki, jak `der.dynamika_missing`).
+  'load.dynamika_missing': 'rozplyw',
   'nn.cable_catalog_missing': 'wspolne',
   // STATIONS (:564-599, :610-618, :620-637, :822-847)
   'station.type_invalid': 'stacje',

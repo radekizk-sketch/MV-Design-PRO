@@ -40,6 +40,19 @@ opisuje przekształtnik (PCS), a kontrakt `Magazyn` wymaga dodatkowo sprawności
 i rozładowania oraz granic i stanu początkowego SOC — tych danych nie ma ani profil, ani
 tabliczka katalogowa wytwórcy, więc materializacja BESS odmawia `KOD_MAGAZYN_DANE` z listą
 brakujących pól, zamiast zbudować przekształtnik bez zasobnika (inna rodzina urządzenia).
+
+ODBIORY (karta modeli odbiorów, decyzja O-56). Ten sam wzorzec dla `Load.dynamika`: profil
+katalogu `network_model.catalog.load_dynamic` wskazany wiązaniem `dynamic_model_ref`
+w `materialized_params` odbioru, kopia budowana WYŁĄCZNIE przez
+`materializuj_dynamike_odbioru` (operacja `set_load_dynamic_binding` i synchronizacja KAŻDEJ
+odpowiedzi operacji). Kopia jest funkcją profilu i KSZTAŁTU charakterystyki odbioru
+(współczynniki ZIP z `materialized_params`, czytane tą samą funkcją co rozpływ): pole
+profilu trafia do kopii wtedy i tylko wtedy, gdy równania odbioru je czytają
+(`kontrakty.wymagane_parametry_odbioru`). Odbiór NIE ma „bloku własnego" — edytora pól
+ręcznych nie ma (reguła 10 katalogu), więc blok bez wiązania nie pochodzi z żadnej
+operacji i jest kopią nieaktualną (blokuje gotowość i bieg tym samym predykatem, co
+kopia różna od materializacji). Zmiana współczynników ZIP odbioru (typ katalogowy,
+parametry) przelicza kopię w odpowiedzi tej samej operacji.
 """
 
 from __future__ import annotations
@@ -47,7 +60,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.der_dynamic import (
     DerDynamicProfile,
@@ -56,12 +69,20 @@ from network_model.catalog.der_dynamic import (
     get_profile,
     list_all_profile_ids,
 )
+from network_model.catalog.load_dynamic import (
+    LoadDynamicProfile,
+    get_load_profile,
+    list_load_profile_ids,
+)
 from pydantic import TypeAdapter, ValidationError
 
-from .dynamika_modele import ParametryDynamiczne
+from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .models import liczba_jednostek_zrodla
 from .nazwy_elementow import nazwa_elementu
 from .slownik_komunikatow import lista_pl, nazwa_pola, nazwa_rodzaju_generatora
+
+if TYPE_CHECKING:
+    from network_model.solvers.dynamika.kontrakty import WymaganiaOdbioru
 
 #: Klucz wiązania profilu dynamicznego w `materialized_params` wytwórcy.
 KLUCZ_WIAZANIA_DYNAMIKI = "dynamic_model_ref"
@@ -76,8 +97,13 @@ KOD_TABLICZKA_BRAK = "der_bindings.dynamic_nameplate_missing"
 KOD_MAGAZYN_DANE = "der_bindings.dynamic_storage_data_missing"
 #: Profil wskazany wiązaniem nie istnieje w katalogu.
 KOD_PROFIL_NIEZNANY = "der_bindings.catalog_ref_unknown"
-#: Kopia `Generator.dynamika` w migawce różna od materializacji jej wiązania.
+#: Kopia `Generator.dynamika` albo `Load.dynamika` w migawce różna od materializacji wiązania.
 KOD_KOPIA_NIEAKTUALNA = "dynamika.kopia_katalogowa_nieaktualna"
+#: Profil modelu dynamicznego odbioru wskazany wiązaniem nie istnieje w katalogu.
+KOD_PROFIL_ODBIORU_NIEZNANY = "load_bindings.catalog_ref_unknown"
+#: Współczynniki charakterystyki odbioru odrzucone przez regułę rozpływu — kształtu
+#: charakterystyki (a więc pól kopii) nie da się wyznaczyć.
+KOD_WSPOLCZYNNIKI_ODBIORU = "load_bindings.zip_coefficients_invalid"
 
 #: Rodzaj wytwórcy -> predykat profilu, który go opisuje. Klucze = `Generator.gen_type`.
 #: `fw_scig` to maszyna klatkowa (IEC 61400-27 typ 1), `fw_dfig` — dwustronnie zasilana
@@ -269,12 +295,17 @@ def wiazanie_dynamiki(generator: Mapping[str, Any]) -> str | None:
 
 
 def synchronizuj_dynamike_z_wiazan(enm: dict[str, Any]) -> dict[str, Any]:
-    """Kopie `Generator.dynamika` = materializacja wiązania — dla KAŻDEGO wytwórcy z wiązaniem.
+    """Kopie `Generator.dynamika` i `Load.dynamika` = materializacja wiązania — dla KAŻDEGO
+    wytwórcy i odbioru z wiązaniem.
 
     Zwraca ten sam słownik, gdy nic się nie zmienia (determinizm migawek bez wiązań i z
-    kopiami aktualnymi); inaczej płytką kopię modelu z nową listą wytwórców. Wiązania,
-    którego nie da się zmaterializować, nie zostawia z kopią — pole `dynamika` znika.
+    kopiami aktualnymi); inaczej płytką kopię modelu z nowymi listami. Wiązania, którego nie
+    da się zmaterializować, nie zostawia z kopią — pole `dynamika` znika.
     """
+    return _synchronizuj_odbiory(_synchronizuj_generatory(enm))
+
+
+def _synchronizuj_generatory(enm: dict[str, Any]) -> dict[str, Any]:
     generatory = enm.get("generators")
     if not isinstance(generatory, list):
         return enm
@@ -412,24 +443,34 @@ def _profil_typu(generator: Mapping[str, Any], gen_type: str | None) -> str | No
 
 
 def braki_kopii_dynamiki(enm: Mapping[str, Any]) -> tuple[str, ...]:
-    """`ref_id` wytwórców, których kopia z katalogu w migawce jest NIEAKTUALNA (posortowane).
+    """`ref_id` wytwórców, a po nich odbiorów, których kopia modelu dynamicznego w migawce jest
+    NIEAKTUALNA (w każdej grupie posortowane).
 
     JEDEN predykat dla bramki gotowości `dynamika_rms` i dla wykonawcy biegu. Wytwórca z
     wiązaniem, którego nie da się zmaterializować i który NIE ma bloku, nie jest tu liczony
     — to brak bloku, który odmawia adapter biegu (`dynamika.zrodlo_bez_bloku_dynamiki`),
-    a powód podaje `stan_dynamiki_generatorow`.
+    a powód podaje `stan_dynamiki_generatorow`. Odbiory: `stan_dynamiki_odbiorow` —
+    kopia różna od materializacji wiązania albo blok bez wiązania.
     """
-    return tuple(
+    wytworcy = tuple(
         stan.ref_id
         for stan in stan_dynamiki_generatorow(enm)
-        if stan.stan == "nieaktualna" or (stan.stan == "odmowa" and _ma_blok(enm, stan.ref_id))
+        if stan.stan == "nieaktualna"
+        or (stan.stan == "odmowa" and _ma_blok(enm, stan.ref_id, "generators"))
     )
+    odbiory = tuple(
+        stan.ref_id
+        for stan in stan_dynamiki_odbiorow(enm)
+        if stan.stan == "nieaktualna"
+        or (stan.stan == "odmowa" and _ma_blok(enm, stan.ref_id, "loads"))
+    )
+    return wytworcy + odbiory
 
 
-def _ma_blok(enm: Mapping[str, Any], ref_id: str) -> bool:
-    for generator in enm.get("generators") or []:
-        if isinstance(generator, Mapping) and generator.get("ref_id") == ref_id:
-            return generator.get("dynamika") is not None
+def _ma_blok(enm: Mapping[str, Any], ref_id: str, kolekcja: str) -> bool:
+    for element in enm.get(kolekcja) or []:
+        if isinstance(element, Mapping) and element.get("ref_id") == ref_id:
+            return element.get("dynamika") is not None
     return False
 
 
@@ -437,19 +478,304 @@ def odmow_gdy_kopia_nieaktualna(enm: Mapping[str, Any]) -> None:
     """Odmowa biegu, gdy migawka niesie kopię z katalogu inną niż materializacja wiązania."""
     nieaktualne = braki_kopii_dynamiki(enm)
     if nieaktualne:
-        nazwy = {stan.ref_id: stan.nazwa for stan in stan_dynamiki_generatorow(enm)}
+        nazwy = {
+            **{stan.ref_id: stan.nazwa for stan in stan_dynamiki_generatorow(enm)},
+            **{stan.ref_id: stan.nazwa for stan in stan_dynamiki_odbiorow(enm)},
+        }
         raise OdmowaKopiiDynamiki(
-            "Blok parametrów dynamicznych wytwórcy nie odpowiada jego wiązaniu z katalogiem "
-            "(zmieniła się tabliczka albo profil po zapisaniu kopii) — bieg liczyłby model "
-            "inny niż wskazany. Odśwież wiązanie modelu dynamicznego: "
+            "Blok parametrów dynamicznych nie odpowiada wiązaniu elementu z katalogiem "
+            "(zmieniła się tabliczka, charakterystyka odbioru albo profil po zapisaniu kopii, "
+            "albo blok nie pochodzi z wiązania) — bieg liczyłby model inny niż wskazany. "
+            "Odśwież wiązanie modelu dynamicznego: "
             f"{lista_pl((f'„{nazwy[ref]}”' for ref in nieaktualne), 'i')}.",
             elementy=nieaktualne,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Odbiory — profil `load_dynamic` -> kopia `Load.dynamika`
+# ---------------------------------------------------------------------------
+
+
+def _nazwa_profilu_odbioru(profile_id: str) -> str:
+    return f"„{get_load_profile(profile_id).profile_name_pl}”"
+
+
+def _czestotliwosc_studium_hz(enm: Mapping[str, Any]) -> float:
+    """Częstotliwość studium modelu — JEDNO miejsce odczytu (`enm.assembler`); import w chwili
+    wywołania, bo assembler ciągnie warstwę rozpływu, a ten moduł czyta każda odpowiedź
+    operacji domenowej. Kształt charakterystyki (a więc pola kopii) od niej nie zależy —
+    potrzebna wyłącznie dlatego, że współczynniki czyta jedna funkcja rozpływu, która jej
+    wymaga jako odniesienia `f0`."""
+    from .assembler import czestotliwosc_studium_hz
+
+    return czestotliwosc_studium_hz(dict(enm))
+
+
+def wymagania_odbioru(load: Mapping[str, Any], f_studium_hz: float) -> WymaganiaOdbioru:
+    """Które parametry modelu dynamicznego czytają równania TEGO odbioru.
+
+    Współczynniki z `materialized_params` czyta ta sama funkcja, co rozpływ
+    (`power_flow_zip.zip_coeffs_from_materialized_params`); reguły „pole użyte <=> wymagane"
+    — jedna funkcja rdzenia (`kontrakty.wymagane_parametry_odbioru`). Współczynniki
+    odrzucone przez rozpływ -> `BladMaterializacjiDynamiki` (`KOD_WSPOLCZYNNIKI_ODBIORU`).
+    """
+    from network_model.solvers.dynamika.kontrakty import wymagane_parametry_odbioru
+    from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
+
+    tabliczka = load.get("materialized_params")
+    try:
+        wspolczynniki = zip_coeffs_from_materialized_params(
+            dict(tabliczka) if isinstance(tabliczka, Mapping) else None, f_studium_hz
+        )
+    except (TypeError, ValueError) as blad:
+        # Polskie brzmienie odrzucenia z warstwy ENM (ta sama reguła `validate_zip_coeffs`,
+        # zmierzone udziały i sumy) — nigdy angielski tekst solvera w zdaniu projektanta.
+        from enm.load_zip_model import zip_odbioru_z_parametrow_materializacji
+
+        opis = (
+            zip_odbioru_z_parametrow_materializacji(
+                dict(tabliczka) if isinstance(tabliczka, Mapping) else None
+            )
+            or "Współczynniki modelu obciążenia (ZIP) nie dają się odczytać jako liczby."
+        )
+        raise BladMaterializacjiDynamiki(
+            KOD_WSPOLCZYNNIKI_ODBIORU,
+            f"Charakterystyka odbioru „{nazwa_elementu(load, 'loads')}” ma współczynniki "
+            f"odrzucone przez rozpływ — kształtu modelu dynamicznego nie da się wyznaczyć. "
+            f"{opis} Popraw typ albo parametry odbioru.",
+        ) from blad
+    if wspolczynniki is None:
+        # Odbiór stałej mocy bez czułości częstotliwościowej (ta sama reguła co rozpływ).
+        return wymagane_parametry_odbioru(
+            a_p=0.0, b_p=0.0, c_p=1.0, a_q=0.0, b_q=0.0, c_q=1.0, k_pf=0.0, k_qf=0.0
+        )
+    return wymagane_parametry_odbioru(
+        a_p=wspolczynniki.a_p,
+        b_p=wspolczynniki.b_p,
+        c_p=wspolczynniki.c_p,
+        a_q=wspolczynniki.a_q,
+        b_q=wspolczynniki.b_q,
+        c_q=wspolczynniki.c_q,
+        k_pf=wspolczynniki.k_pf,
+        k_qf=wspolczynniki.k_qf,
+    )
+
+
+def materializuj_dynamike_odbioru(
+    profile_id: str, load: Mapping[str, Any], f_studium_hz: float
+) -> dict[str, Any]:
+    """Kopia `Load.dynamika` (JSON) z profilu `profile_id` i kształtu charakterystyki odbioru.
+
+    Odmowy (`BladMaterializacjiDynamiki`): profil nieznany, współczynniki odbioru odrzucone
+    przez rozpływ. Wynik deterministyczny — ta sama para (profil, współczynniki) daje ten sam
+    słownik.
+    """
+    if profile_id not in list_load_profile_ids():
+        raise BladMaterializacjiDynamiki(
+            KOD_PROFIL_ODBIORU_NIEZNANY,
+            f"Wskazany profil modelu dynamicznego odbioru „{nazwa_elementu(load, 'loads')}” nie "
+            "istnieje w katalogu profili odbiorów — wybierz profil z listy katalogu.",
+        )
+    wymagania = wymagania_odbioru(load, f_studium_hz)
+    kopia = get_load_profile(profile_id).to_model_dynamiczny(
+        u_min_uzyte=wymagania.u_min_pu, t_pomiaru_uzyte=wymagania.t_pomiaru_czestotliwosci_s
+    )
+    return kopia.model_dump(mode="json")
+
+
+_ADAPTER_MODELU_ODBIORU: TypeAdapter[ModelDynamicznyOdbioru] = TypeAdapter(ModelDynamicznyOdbioru)
+
+
+def _postac_kanoniczna_odbioru(blok: object) -> dict[str, Any] | None:
+    """Blok `Load.dynamika` w postaci kanonicznej; blok niepoprawny -> `None`."""
+    if not isinstance(blok, Mapping):
+        return None
+    try:
+        return _ADAPTER_MODELU_ODBIORU.validate_python(dict(blok)).model_dump(mode="json")
+    except ValidationError:
+        return None
+
+
+def _synchronizuj_odbiory(enm: dict[str, Any]) -> dict[str, Any]:
+    odbiory = enm.get("loads")
+    if not isinstance(odbiory, list):
+        return enm
+    nowe: list[Any] = []
+    zmiana = False
+    f_studium: float | None = None
+    for load in odbiory:
+        if not isinstance(load, dict):
+            nowe.append(load)
+            continue
+        profil = wiazanie_dynamiki(load)
+        if profil is None:
+            nowe.append(load)
+            continue
+        try:
+            if f_studium is None:
+                f_studium = _czestotliwosc_studium_hz(enm)
+            kopia: dict[str, Any] | None = materializuj_dynamike_odbioru(profil, load, f_studium)
+        except BladMaterializacjiDynamiki:
+            kopia = None
+        obecna = load.get("dynamika")
+        if (kopia is None and obecna is None) or (
+            kopia is not None and _postac_kanoniczna_odbioru(obecna) == kopia
+        ):
+            nowe.append(load)
+            continue
+        zmiana = True
+        zaktualizowany = dict(load)
+        if kopia is None:
+            zaktualizowany.pop("dynamika", None)
+        else:
+            zaktualizowany["dynamika"] = copy.deepcopy(kopia)
+        nowe.append(zaktualizowany)
+    if not zmiana:
+        return enm
+    return {**enm, "loads": nowe}
+
+
+@dataclass(frozen=True)
+class StanDynamikiOdbioru:
+    """Stan modelu dynamicznego jednego odbioru (odczyt dla interfejsu i gotowości)."""
+
+    ref_id: str
+    nazwa: str
+    wiazanie: str | None
+    #: `z_katalogu` — kopia zgodna z wiązaniem; `brak` — ani bloku, ani wiązania; `odmowa` —
+    #: wiązanie, którego nie da się zmaterializować (blok usunięty); `nieaktualna` — kopia
+    #: różna od materializacji wiązania albo blok bez wiązania (nie pochodzi z operacji).
+    stan: str
+    u_min_pu: float | None
+    t_pomiaru_czestotliwosci_s: float | None
+    #: Czy równania odbioru czytają `T_f` (odbiór czuły częstotliwościowo); `None` — kształtu
+    #: charakterystyki nie da się wyznaczyć (współczynniki odrzucone przez rozpływ).
+    czuly_czestotliwosciowo: bool | None
+    zrodlo_proweniencji: str | None
+    odniesienie_proweniencji: str | None
+    odmowa_kod: str | None
+    odmowa_komunikat: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ref_id": self.ref_id,
+            "nazwa": self.nazwa,
+            "wiazanie": self.wiazanie,
+            "stan": self.stan,
+            "u_min_pu": self.u_min_pu,
+            "t_pomiaru_czestotliwosci_s": self.t_pomiaru_czestotliwosci_s,
+            "czuly_czestotliwosciowo": self.czuly_czestotliwosciowo,
+            "zrodlo_proweniencji": self.zrodlo_proweniencji,
+            "odniesienie_proweniencji": self.odniesienie_proweniencji,
+            "odmowa_kod": self.odmowa_kod,
+            "odmowa_komunikat": self.odmowa_komunikat,
+        }
+
+
+def profile_odbiorow() -> list[dict[str, Any]]:
+    """Lista wyboru profili odbiorów dla interfejsu (kolejność katalogu) — z podstawą wartości."""
+    return [_opis_profilu_odbioru(get_load_profile(pid)) for pid in list_load_profile_ids()]
+
+
+def _opis_profilu_odbioru(profil: LoadDynamicProfile) -> dict[str, Any]:
+    return {
+        "profile_id": profil.profile_id,
+        "nazwa": profil.profile_name_pl,
+        "opis_pl": profil.opis_pl,
+        "jakosc": profil.jakosc,
+        "u_min_pu": profil.u_min_pu,
+        "podstawa_u_min_pl": profil.podstawa_u_min_pl,
+        "t_pomiaru_czestotliwosci_s": profil.t_pomiaru_czestotliwosci_s,
+        "podstawa_t_pomiaru_pl": profil.podstawa_t_pomiaru_pl,
+        "zrodlo_proweniencji": profil.proweniencja.zrodlo,
+        "odniesienie_proweniencji": profil.proweniencja.odniesienie,
+    }
+
+
+def stan_dynamiki_odbiorow(enm: Mapping[str, Any]) -> tuple[StanDynamikiOdbioru, ...]:
+    """Stan każdego odbioru modelu (kolejność: `ref_id`) — z powodem, gdy kopii brak."""
+    wynik: list[StanDynamikiOdbioru] = []
+    odbiory = [o for o in enm.get("loads") or [] if isinstance(o, Mapping)]
+    f_studium: float | None = None
+    for load in sorted(odbiory, key=lambda o: str(o.get("ref_id") or "")):
+        ref = str(load.get("ref_id") or load.get("id") or "?")
+        profil = wiazanie_dynamiki(load)
+        surowy = load.get("dynamika")
+        blok = surowy if isinstance(surowy, Mapping) else None
+        odmowa: BladMaterializacjiDynamiki | None = None
+        czuly: bool | None = None
+        try:
+            if f_studium is None:
+                f_studium = _czestotliwosc_studium_hz(enm)
+            czuly = wymagania_odbioru(load, f_studium).t_pomiaru_czestotliwosci_s
+        except BladMaterializacjiDynamiki as blad:
+            odmowa = blad
+        if profil is None:
+            stan = "nieaktualna" if blok is not None else "brak"
+        elif odmowa is not None:
+            stan = "odmowa"
+        else:
+            assert f_studium is not None
+            try:
+                kopia = materializuj_dynamike_odbioru(profil, load, f_studium)
+            except BladMaterializacjiDynamiki as blad:
+                odmowa = blad
+                stan = "odmowa"
+            else:
+                stan = "z_katalogu" if _postac_kanoniczna_odbioru(blok) == kopia else "nieaktualna"
+        proweniencja = blok.get("proweniencja") if blok is not None else None
+        proweniencja = proweniencja if isinstance(proweniencja, Mapping) else {}
+        wynik.append(
+            StanDynamikiOdbioru(
+                ref_id=ref,
+                nazwa=nazwa_elementu(load, "loads"),
+                wiazanie=profil,
+                stan=stan,
+                u_min_pu=_liczba_bloku(blok, "u_min_pu"),
+                t_pomiaru_czestotliwosci_s=_liczba_bloku(blok, "t_pomiaru_czestotliwosci_s"),
+                czuly_czestotliwosciowo=czuly,
+                zrodlo_proweniencji=(
+                    str(proweniencja["zrodlo"]) if "zrodlo" in proweniencja else None
+                ),
+                odniesienie_proweniencji=(
+                    str(proweniencja["odniesienie"]) if "odniesienie" in proweniencja else None
+                ),
+                odmowa_kod=odmowa.kod if odmowa is not None else None,
+                odmowa_komunikat=odmowa.komunikat if odmowa is not None else None,
+            )
+        )
+    return tuple(wynik)
+
+
+def _liczba_bloku(blok: Mapping[str, Any] | None, pole: str) -> float | None:
+    wartosc = blok.get(pole) if blok is not None else None
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    return float(wartosc)
+
+
+def sprawdz_profil_odbioru(profile_id: str, nazwa_odbioru: str) -> None:
+    """Odmowa nazwana, gdy profil odbioru nie istnieje w katalogu (walidacja operacji)."""
+    if profile_id not in list_load_profile_ids():
+        raise BladMaterializacjiDynamiki(
+            KOD_PROFIL_ODBIORU_NIEZNANY,
+            f"Wskazany profil modelu dynamicznego odbioru „{nazwa_odbioru}” nie istnieje "
+            "w katalogu profili odbiorów — wybierz profil z listy katalogu.",
         )
 
 
 __all__ = [
     "KLUCZ_WIAZANIA_DYNAMIKI",
     "KOD_KOPIA_NIEAKTUALNA",
+    "KOD_PROFIL_ODBIORU_NIEZNANY",
+    "KOD_WSPOLCZYNNIKI_ODBIORU",
+    "StanDynamikiOdbioru",
+    "materializuj_dynamike_odbioru",
+    "profile_odbiorow",
+    "sprawdz_profil_odbioru",
+    "stan_dynamiki_odbiorow",
+    "wymagania_odbioru",
     "KOD_MAGAZYN_DANE",
     "KOD_PROFIL_NIEZGODNY",
     "KOD_PROFIL_NIEZNANY",

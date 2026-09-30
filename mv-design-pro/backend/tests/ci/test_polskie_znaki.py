@@ -62,17 +62,20 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: `machine_sc_iec60909.py` (7 -> 0) i `power_flow_oltc_studies.py` (27 -> 0) — pliki
 #: spoza listy B-01 (`scripts/rdzenie_b01.py`), teksty trafiające na ekrany wyników
 #: naprawione u źródła (pomiar skanem tego testu po zmianie).
+#: Karta modeli odbiorów (2026-09-25): zdjęte `dynamika/silnik.py` (36 -> 0),
+#: `dynamika/kontrakty.py` (8 -> 0), `dynamika/siec.py` (12 -> 0), `dynamika/calkowanie.py`
+#: (4 -> 0), `dynamika/obserwable.py` (4 -> 0) i `dynamika/wyspy.py` (3 -> 0) — rdzeń
+#: dynamiki nie jest na liście B-01; założenia rdzenia są rekordami, a zdania dla
+#: projektanta składa warstwa aplikacji (pomiar skanem tego testu po zmianie). Ta sama
+#: karta (reguła KLASA — komunikaty odmów rdzenia docierają do projektanta przez
+#: `application/dynamika/odmowy.py`) zdjęła `dynamika/konwencje.py` (5 -> 0),
+#: `dynamika/skonczonosc.py` (4 -> 0), `dynamika/tozsamosc.py` (1 -> 0),
+#: `dynamika/walidacja/malosygnalowa.py` (1 -> 0), `dynamika/waznosc.py` (2 -> 0) i
+#: `dynamika/zdarzenia.py` (5 -> 0); `dynamika/urzadzenia/**` i `walidacja/rowne_pola.py`
+#: zostają (pliki kart równoległych — patrz meldunek karty modeli odbiorów).
 ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/cable_voltage_drop.py": 15,
     "network_model/solvers/der_selection_preview.py": 2,
-    "network_model/solvers/dynamika/calkowanie.py": 4,
-    "network_model/solvers/dynamika/kontrakty.py": 8,
-    "network_model/solvers/dynamika/konwencje.py": 5,
-    "network_model/solvers/dynamika/obserwable.py": 4,
-    "network_model/solvers/dynamika/siec.py": 12,
-    "network_model/solvers/dynamika/silnik.py": 36,
-    "network_model/solvers/dynamika/skonczonosc.py": 4,
-    "network_model/solvers/dynamika/tozsamosc.py": 1,
     "network_model/solvers/dynamika/urzadzenia/bazowe.py": 2,
     "network_model/solvers/dynamika/urzadzenia/fabryka.py": 10,
     "network_model/solvers/dynamika/urzadzenia/magazyn.py": 2,
@@ -84,11 +87,7 @@ ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/dynamika/urzadzenia/regulatory.py": 3,
     "network_model/solvers/dynamika/urzadzenia/turbina_wiatrowa.py": 6,
     "network_model/solvers/dynamika/urzadzenia/uklad_stanow.py": 7,
-    "network_model/solvers/dynamika/walidacja/malosygnalowa.py": 1,
     "network_model/solvers/dynamika/walidacja/rowne_pola.py": 6,
-    "network_model/solvers/dynamika/waznosc.py": 2,
-    "network_model/solvers/dynamika/wyspy.py": 3,
-    "network_model/solvers/dynamika/zdarzenia.py": 5,
     "network_model/solvers/equipment_checks/cable_thermal_aging.py": 4,
     "network_model/solvers/equipment_checks/ct_burden_saturation.py": 6,
     "network_model/solvers/equipment_checks/transformer_losses.py": 3,

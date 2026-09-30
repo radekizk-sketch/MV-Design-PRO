@@ -41,7 +41,8 @@
             "urzadzenie",
             "regulator",
             "magazyn",
-            "obserwabla"
+            "obserwabla",
+            "odbior"
           ],
           "title": "Przestrzen",
           "type": "string"
@@ -327,6 +328,33 @@
       "title": "TozsamoscBieguDynamicznegoV2",
       "type": "object"
     },
+    "WielkoscZalozeniaV2": {
+      "additionalProperties": false,
+      "description": "Wielkość liczbowa założenia rdzenia z jednostką (np. chwila usunięcia zwarcia).",
+      "properties": {
+        "jednostka": {
+          "minLength": 1,
+          "title": "Jednostka",
+          "type": "string"
+        },
+        "nazwa": {
+          "minLength": 1,
+          "title": "Nazwa",
+          "type": "string"
+        },
+        "wartosc": {
+          "title": "Wartosc",
+          "type": "number"
+        }
+      },
+      "required": [
+        "nazwa",
+        "wartosc",
+        "jednostka"
+      ],
+      "title": "WielkoscZalozeniaV2",
+      "type": "object"
+    },
     "WlasnosciBieguV2": {
       "additionalProperties": false,
       "description": "Wlasnosci numeryczne biegu (zbieznosc, kroki, residua, integrator).",
@@ -390,6 +418,46 @@
         "tolerancja"
       ],
       "title": "WlasnosciBieguV2",
+      "type": "object"
+    },
+    "ZalozenieRdzeniaV2": {
+      "additionalProperties": false,
+      "description": "Założenie modelu rdzenia jako REKORD: kod, odwołania do elementów, wielkości, pozycje.\n\nRdzeń nie zna nazw elementów modelu sieci, więc nie pisze zdań. Zdanie po polsku z\nnazwami z modelu składa warstwa aplikacji (`application.dynamika.zalozenia`) i wkłada\nje do pola `zalozenia` wyniku; rekord zostaje obok jako dana maszynowa.",
+      "properties": {
+        "elementy": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Elementy",
+          "type": "array"
+        },
+        "kod": {
+          "minLength": 1,
+          "title": "Kod",
+          "type": "string"
+        },
+        "pozycje": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pozycje",
+          "type": "array"
+        },
+        "wielkosci": {
+          "items": {
+            "$ref": "#/$defs/WielkoscZalozeniaV2"
+          },
+          "title": "Wielkosci",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kod",
+        "elementy",
+        "wielkosci",
+        "pozycje"
+      ],
+      "title": "ZalozenieRdzeniaV2",
       "type": "object"
     },
     "ZdarzenieWykonaneV2": {
@@ -681,10 +749,19 @@
     },
     "zalozenia": {
       "default": [],
+      "description": "Założenia modelu po polsku, z nazwami elementów z modelu sieci — złożone przez warstwę aplikacji z rekordów `zalozenia_rdzenia` oraz z założeń wejścia.",
       "items": {
         "type": "string"
       },
       "title": "Zalozenia",
+      "type": "array"
+    },
+    "zalozenia_rdzenia": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ZalozenieRdzeniaV2"
+      },
+      "title": "Zalozenia Rdzenia",
       "type": "array"
     },
     "zdarzenia_wykonane": {

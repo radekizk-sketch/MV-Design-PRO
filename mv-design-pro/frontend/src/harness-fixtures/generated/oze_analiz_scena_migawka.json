@@ -712,6 +712,7 @@
       "bus_ref": "nn/fe3b35f51d29e0d058bdd497ccfe08c0/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "ae3fb3f9-7ce4-5c6f-b14f-91f951f1f885",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",

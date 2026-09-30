@@ -1,11 +1,11 @@
 export function formatGeneratorTypeLabelPl(genType: string | null | undefined): string {
   switch (genType) {
     case 'pv_inverter':
-      return 'Zrodlo przeksztaltnikowe PV';
+      return 'Źródło przekształtnikowe PV';
     case 'bess':
-      return 'Zrodlo przeksztaltnikowe BESS';
+      return 'Źródło przekształtnikowe BESS';
     case 'wind_inverter':
-      return 'Zrodlo przeksztaltnikowe FW';
+      return 'Źródło przekształtnikowe FW';
     case 'fw_pmsg':
       return 'Farma wiatrowa PMSG';
     case 'fw_dfig':

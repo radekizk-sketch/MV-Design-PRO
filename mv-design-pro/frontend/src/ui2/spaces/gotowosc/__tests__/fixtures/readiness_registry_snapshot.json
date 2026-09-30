@@ -253,6 +253,10 @@
       "code": "load.catalog_missing"
     },
     {
+      "area": "ANALYSIS",
+      "code": "load.dynamika_missing"
+    },
+    {
       "area": "CATALOGS",
       "code": "load.power_zero"
     },
@@ -573,5 +577,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 144
 }
