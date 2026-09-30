@@ -52,6 +52,7 @@ import {
   validateSurfaceStack,
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
+import { stacjaSzyn } from '../shared/szynyStacji';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -1052,11 +1053,15 @@ export function selectLoadSummaries(
 ): LoadSummary[] {
   if (!snapshot) return [];
 
+  // SZYNY-STACJI-LUSTRO: stacja odbioru = stacja jego szyny z jednego lustra `szynyStacji`
+  // (odbiór stoi zwykle na szynie odpływu nN za aparatem pola, spoza `bus_refs`).
+  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
   return (snapshot.loads ?? [])
     .map((load) => {
-      const station = (snapshot.substations ?? []).find((candidate) =>
-        candidate.bus_refs.includes(load.bus_ref),
-      );
+      const stationRef = stacjaSzyny.get(load.bus_ref);
+      const station = stationRef
+        ? (snapshot.substations ?? []).find((candidate) => candidate.ref_id === stationRef)
+        : undefined;
 
       return {
         id: load.ref_id,

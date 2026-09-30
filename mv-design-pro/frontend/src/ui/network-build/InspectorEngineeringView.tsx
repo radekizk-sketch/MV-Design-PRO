@@ -88,6 +88,7 @@ import {
 import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
+import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
 
 // =============================================================================
 // Types
@@ -1965,21 +1966,18 @@ function findParentStation(
     const station = snapshot.substations?.find((s) => s.id === gen.station_ref);
     return station?.name ?? null;
   }
-  // Check by bus_ref for loads/generators
+  // SZYNY-STACJI-LUSTRO: odbiór/generator/gałąź → stacja szyny z jednego lustra
+  // `szynyStacji` (szyny główne, zaciski pól SN, końce aparatów pól nN).
+  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  const nazwaStacji = (busRef: string | null | undefined): string | null => {
+    const ref = busRef ? stacjaSzyny.get(busRef) : undefined;
+    return ref ? snapshot.substations?.find((s) => s.ref_id === ref)?.name ?? null : null;
+  };
   const load = snapshot.loads?.find((l) => l.ref_id === elementId);
   const busRef = load?.bus_ref ?? gen?.bus_ref;
-  if (busRef) {
-    const station = snapshot.substations?.find((s) => s.bus_refs?.includes(busRef));
-    return station?.name ?? null;
-  }
-  // Check branches by bus refs
+  if (busRef) return nazwaStacji(busRef);
   const branch = snapshot.branches?.find((b) => b.ref_id === elementId || b.id === elementId);
-  if (branch) {
-    const fromStation = snapshot.substations?.find((s) =>
-      s.bus_refs?.includes(branch.from_bus_ref),
-    );
-    if (fromStation) return fromStation.name;
-  }
+  if (branch) return nazwaStacji(branch.from_bus_ref);
   return null;
 }
 
@@ -2337,7 +2335,9 @@ function buildSectionsForElement(
     const stationTransformers = (snapshot.transformers ?? []).filter((t) =>
       station.transformer_refs.includes(t.ref_id),
     );
-    const stationBusRefs = new Set(station.bus_refs ?? []);
+    // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
+    // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
+    const stationBusRefs = szynyStacji(station, snapshot.branches ?? []);
     const stationLoads = (snapshot.loads ?? []).filter((load) => stationBusRefs.has(load.bus_ref));
     const stationGenerators = (snapshot.generators ?? []).filter((generator) => {
       const generatorStation = generatorStationRef(generator);
@@ -3058,7 +3058,10 @@ function buildCalculationProofCandidateRefs(
 
   const station = snapshot.substations?.find((item) => elementMatchesSelection(item, elementId));
   pushElementRefs(refs, station, ['id', 'ref_id', 'name']);
-  for (const busRef of station?.bus_refs ?? []) pushUniqueRef(refs, busRef);
+  // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
+  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+    pushUniqueRef(refs, busRef);
+  }
   for (const transformerRef of station?.transformer_refs ?? []) pushUniqueRef(refs, transformerRef);
 
   if (bus) {

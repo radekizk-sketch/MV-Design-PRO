@@ -142,6 +142,7 @@ import { MiniSldCard, SurfaceHeader } from './routerSurfaceHeader';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
+import { szynyStacji } from '../shared/szynyStacji';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -504,7 +505,10 @@ function buildWorkspaceProofCandidateRefs(
 
   const station = snapshot.substations?.find((item) => proofElementMatches(item, elementId));
   appendObjectProofRefs(refs, station, ['id', 'ref_id', 'name']);
-  for (const busRef of station?.bus_refs ?? []) appendUniqueProofRef(refs, busRef);
+  // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
+  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+    appendUniqueProofRef(refs, busRef);
+  }
   for (const transformerRef of station?.transformer_refs ?? []) appendUniqueProofRef(refs, transformerRef);
 
   const generator = snapshot.generators?.find((item) => proofElementMatches(item, elementId));

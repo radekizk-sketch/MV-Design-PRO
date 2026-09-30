@@ -17,6 +17,7 @@
  */
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
+import { szynyStacji } from '../../../shared/szynyStacji';
 
 // =============================================================================
 // Result shape
@@ -149,10 +150,12 @@ export function buildSupplyPathHighlight(
     }
   }
 
-  // Stacje pod napięciem: substation z przynajmniej jedną szyną w energized set.
+  // Stacje pod napięciem: substation z przynajmniej jedną szyną w energized set —
+  // szyny stacji z jednego lustra `szynyStacji` (SZYNY-STACJI-LUSTRO): zacisk pola pod
+  // napięciem to część stacji pod napięciem, także przy otwartym aparacie pola.
   const energizedSubstations = new Set<string>();
   for (const sub of enm.substations ?? []) {
-    for (const busRef of sub.bus_refs ?? []) {
+    for (const busRef of szynyStacji(sub, enm.branches ?? [])) {
       if (energizedBuses.has(busRef)) {
         energizedSubstations.add(sub.ref_id);
         break;

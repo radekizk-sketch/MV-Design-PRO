@@ -45,6 +45,7 @@ import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canva
 import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuitFlowOverlayAdapter';
 import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
+import { szynyStacji } from './ui/shared/szynyStacji';
 
 const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
   trunks: [],
@@ -190,7 +191,8 @@ function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkM
   const energizedBuses = new Set(companion.energized_bus_refs);
   const deEnergizedBuses = new Set(companion.de_energized_bus_refs);
   for (const station of enm.substations ?? []) {
-    const busRefs = station.bus_refs ?? [];
+    // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji`.
+    const busRefs = [...szynyStacji(station, enm.branches ?? [])];
     if (busRefs.length === 0) continue;
     if (busRefs.every((ref) => deEnergizedBuses.has(ref))) {
       energizedByOwnerRef[station.ref_id] = false;

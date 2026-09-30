@@ -352,18 +352,31 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
 });
 
 describe('model ogniwa — czyste selektory', () => {
-  it('znajduje stację punktu po szynach stacji oraz po polach rozdzielczych', () => {
+  // SZYNY-STACJI-LUSTRO: przynależność punktu do stacji z JEDNEJ reguły backendu
+  // (`enm.tor_pola.szyny_stacji`) — szyna główna i własny zacisk pola SN należą do stacji;
+  // samo pole rozdzielcze stojące na szynie spoza tej reguły już NIE (dawna druga droga).
+  it('znajduje stację punktu po szynach stacji z lustra (szyna główna, zacisk pola SN)', () => {
     const snap = snapshotZeStacja('EL-GPZ');
     expect(stacjeDlaPunktu(snap, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);
     expect(stacjeDlaPunktu(snap, { target_id: 'X', element_id: 'Y' })).toEqual([]);
     expect(stacjeDlaPunktu(null, { target_id: 'BUS-GPZ' })).toEqual([]);
 
-    const zPolem = {
+    const zZaciskiem = {
+      ...snap,
+      substations: [{
+        ...snap.substations[0],
+        bus_refs: ['SZYNA-GLOWNA'],
+        meta: { field_specs: [{ field_ref: 'pole-1', bus_ref: 'SZYNA-GLOWNA', meta: { terminal_bus_ref: 'EL-GPZ' } }] },
+      }],
+    } as unknown as EnergyNetworkModel;
+    expect(stacjeDlaPunktu(zZaciskiem, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);
+
+    const tylkoPole = {
       ...snap,
       substations: [{ ...snap.substations[0], bus_refs: [] }],
       bays: [{ id: 'b', ref_id: 'b', name: 'Pole odplywowe', tags: [], meta: {}, bus_ref: 'EL-GPZ', substation_ref: STACJA }],
     } as unknown as EnergyNetworkModel;
-    expect(stacjeDlaPunktu(zPolem, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);
+    expect(stacjeDlaPunktu(tylkoPole, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([]);
   });
 
   it('stacja przedstawia się NAZWĄ; brak nazwy w modelu → uczciwie ref', () => {

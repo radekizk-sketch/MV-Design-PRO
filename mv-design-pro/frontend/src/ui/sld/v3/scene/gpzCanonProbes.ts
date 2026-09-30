@@ -23,8 +23,9 @@
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
-import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
+import type { Branch, Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
 import { wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
+import { szynyStacji } from '../../../shared/szynyStacji';
 
 /* =============================================================================
    gpzHvColumnGaps (D3-1, spec §21.1)
@@ -41,16 +42,22 @@ type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformer
   // `Source.bus_ref` — wyrocznia potrzebuje `sources`/`buses`, żeby odróżnić
   // przyłącze systemowe WN od EKWIWALENTU na szynach SN. Pola opcjonalne
   // (Partial) — starzy wołający bez tych rekordów dostają regułę WN 1:1.
-  Partial<Pick<EnergyNetworkModel, 'sources' | 'buses'>>;
+  Partial<Pick<EnergyNetworkModel, 'sources' | 'buses' | 'branches'>>;
 
 /** Lustro reguły adaptera (`enmToCanonicalGpzAdapter.ts` `deriveHvSystemSource`):
  *  źródło GPZ = pierwszy `Source` z `bus_ref` na którejś szynie GPZ; strona =
  *  napięcie TEJ szyny (pasmo WN, `wPasmieWn`). `null` gdy snapshot nie niesie
  *  `sources`/`buses` albo źródła nie da się dopasować (wyrocznia wraca wtedy
  *  do reguły WN — zachowanie sprzed recenzji NO-GO 2026-07-17). */
-function gpzSourceOnHvBus(gpz: Substation, sources: readonly Source[] | undefined, buses: readonly Bus[] | undefined): boolean | null {
+function gpzSourceOnHvBus(
+  gpz: Substation,
+  sources: readonly Source[] | undefined,
+  buses: readonly Bus[] | undefined,
+  branches: readonly Branch[] | undefined,
+): boolean | null {
   if (!sources || !buses) return null;
-  const gpzBusRefs = new Set(gpz.bus_refs ?? []);
+  // SZYNY-STACJI-LUSTRO: ten sam zbiór szyn GPZ co adapter (`szynyStacji`).
+  const gpzBusRefs = szynyStacji(gpz, branches ?? []);
   const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
   if (!source) return null;
   const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
@@ -156,7 +163,7 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
     // dotychczas.
     const gridSourcePresent = scene.symbols.some((s) => s.symbolId === 'gridSource');
     if (gridSourcePresent) {
-      const onHvBus = gpzSourceOnHvBus(gpz, snapshot.sources, snapshot.buses);
+      const onHvBus = gpzSourceOnHvBus(gpz, snapshot.sources, snapshot.buses, snapshot.branches);
       const expectedExtensionRef = onHvBus === false
         ? `${gpz.ref_id}#source-bus-extension`
         : `${gpz.ref_id}#hv-bus-source-extension`;

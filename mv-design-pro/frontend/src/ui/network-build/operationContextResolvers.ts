@@ -2,6 +2,7 @@ import type { ElementType } from '../types';
 import type { BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } from '../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { poleLinioweWolne } from './zajetoscPol';
+import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
 
 export interface BranchSourceDisplayContext {
   fromRef: string;
@@ -267,9 +268,20 @@ function findStationRefByBus(snapshot: EnergyNetworkModel | null, busRef: string
     return null;
   }
 
-  return snapshot.substations.find((station) => (
-    Array.isArray(station.bus_refs) && station.bus_refs.includes(busRef)
-  ))?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO: szyna (także zacisk pola, szyna za aparatem pola nN) → stacja
+  // z jednego lustra `szynyStacji`.
+  return stacjaSzyn(snapshot.substations, snapshot.branches).get(busRef) ?? null;
+}
+
+/** Szyny strony SN stacji z jednego lustra przynależności (`szynyStacji`): szyny główne SN
+ *  i zaciski pól SN — odcinek przyłączony zasadą toru kończy się na zacisku pola. */
+function findStationSnBusRefs(
+  snapshot: EnergyNetworkModel,
+  station: EnergyNetworkModel['substations'][number],
+): string[] {
+  return [...szynyStacji(station, snapshot.branches)]
+    .sort()
+    .filter((ref) => isSnBusVoltage(findBus(snapshot, ref)?.voltage_kv));
 }
 
 function findStationRefByTransformer(snapshot: EnergyNetworkModel | null, transformerRef: string | null): string | null {
@@ -977,10 +989,7 @@ function findTrunkTerminalForStation(
     return null;
   }
 
-  const stationSnBusRefs = findBusRefsForStation(station)
-    .map((ref) => findBus(snapshot, ref))
-    .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-    .map((bus) => bus.ref_id);
+  const stationSnBusRefs = findStationSnBusRefs(snapshot, station);
 
   if (stationSnBusRefs.length === 0) {
     return null;
@@ -1021,12 +1030,7 @@ function findCorridorEndpointForStation(
     return null;
   }
 
-  const stationSnBusRefs = new Set(
-    findBusRefsForStation(station)
-      .map((ref) => findBus(snapshot, ref))
-      .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
+  const stationSnBusRefs = new Set(findStationSnBusRefs(snapshot, station));
   if (stationSnBusRefs.size === 0) {
     return null;
   }
@@ -1072,12 +1076,7 @@ function findCorridorRefForStation(
 ): string {
   if (!snapshot) return '';
 
-  const stationSnBusRefs = new Set(
-    findBusRefsForStation(station)
-      .map((ref) => findBus(snapshot, ref))
-      .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
+  const stationSnBusRefs = new Set(findStationSnBusRefs(snapshot, station));
 
   for (const corridor of snapshot.corridors ?? []) {
     const hasStationSegment = corridor.ordered_segment_refs

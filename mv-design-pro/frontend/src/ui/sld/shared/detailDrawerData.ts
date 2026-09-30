@@ -77,7 +77,8 @@ import type { SelectedElement } from '../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
-import { stationLoadBusRefs } from './stationBusResolution';
+import { stationSideBusRefs } from './stationBusResolution';
+import { stacjaSzyn } from '../../shared/szynyStacji';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
@@ -256,12 +257,20 @@ export function buildStationDetailDrawerData(
   const lvBus = lvBusRef && snapshot
     ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
     : null;
-  // SLD-SUBSTRAT: odbiory szyny nN stacji ORAZ odbiory na szynach jej odpływów nN
-  // promowanych do modelu (`stationLoadBusRefs` — ten sam predykat co agregat odbioru
-  // na rysunku; bez niego szuflada modelu z API pokazywała zero odbiorów).
-  const szynyOdbiorowNn = lvBusRef && snapshot
-    ? stationLoadBusRefs({ bus_refs: [lvBusRef], meta: substation?.meta }, snapshot.branches ?? [])
-    : new Set<string>();
+  // SZYNY-STACJI-LUSTRO: odbiory na szynach strony nN stacji — lustro backendu
+  // `szynyStacji` złożone ze stroną stacji (`stationSideBusRefs`), ta sama złożona reguła
+  // co agregat odbioru na rysunku (tabliczka „Odbiór ΣP"); obejmuje szyny odpływów nN
+  // promowanych do modelu (bez nich szuflada modelu z API pokazywała zero odbiorów).
+  const szynyOdbiorowNn = new Set<string>(
+    lvBusRef && snapshot && substation
+      ? stationSideBusRefs(
+          substation,
+          snapshot.branches ?? [],
+          new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus])),
+          'nn',
+        )
+      : [],
+  );
   const loadsOnLv = lvBusRef && snapshot
     ? (snapshot.loads ?? []).filter((l) => szynyOdbiorowNn.has(l.bus_ref))
     : [];
@@ -397,13 +406,17 @@ export function stationRefForTransformerSelection(
     (item) => item.ref_id === transformerRef || item.id === transformerRef,
   );
   if (!transformer) return null;
-  const transformerBusRefs = new Set([transformer.hv_bus_ref, transformer.lv_bus_ref].filter(Boolean));
-  const station = (snapshot.substations ?? []).find((item) =>
+  const declared = (snapshot.substations ?? []).find((item) =>
     item.transformer_refs?.includes(transformer.ref_id)
-    || item.transformer_refs?.includes(transformer.id)
-    || item.bus_refs?.some((busRef) => transformerBusRefs.has(busRef)),
+    || item.transformer_refs?.includes(transformer.id),
   );
-  return station?.ref_id ?? station?.id ?? null;
+  if (declared) return declared.ref_id ?? declared.id ?? null;
+  // SZYNY-STACJI-LUSTRO: transformator na szynie stacji — przynależność szyny z jednego
+  // lustra (strona górna leży na zacisku pola TR, nie na szynie głównej). Deklaracja
+  // `transformer_refs` ma pierwszeństwo przed przynależnością końca; koniec górny przed
+  // dolnym.
+  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  return stacjaSzyny.get(transformer.hv_bus_ref) ?? stacjaSzyny.get(transformer.lv_bus_ref) ?? null;
 }
 
 export function describeStationInternalElement(

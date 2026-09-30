@@ -18,6 +18,7 @@
  */
 import type { Bus, Substation } from '../../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { szynyStacji, type GalazDlaSzyn, type StacjaDlaSzyn } from '../../shared/szynyStacji';
 
 /* Granica stron stacji — jedno lustro granic pasm (`ui2/model/pasmaNapieciowe`).
  * Do karty PASMO-1KV strony dzieliła tu własna liczba 0,5 kV (od K30-37: „0.4 kV
@@ -83,50 +84,24 @@ export function pickStationBus(
   return { ref: tie ? null : bestRef, voltageKv: bestVoltage, ambiguous: tie };
 }
 
-/** Klucz meta gałęzi aparatu pola nN promowanego do modelu przez automigrację backendu
- *  (`enm/migrations/nn_field_specs_promocja.py`, `META_KLUCZ_GALAZ_ZRODLO_FIELD_REF`):
- *  `field_ref` wpisu `Substation.meta.nn_field_specs`, z którego gałąź powstała. */
-const META_POLE_NN_ZRODLOWE = 'nn_field_migrowany_z';
-
-type BranchForStationBuses = {
-  readonly from_bus_ref?: string | null;
-  readonly to_bus_ref?: string | null;
-  readonly meta?: Readonly<Record<string, unknown>> | null;
-};
-
 /**
- * Szyny, na których wiszą odbiory STACJI: `Substation.bus_refs` ORAZ szyny odpływów nN
- * utworzone przez promocję pól nN tej stacji do modelu (karta SLD-SUBSTRAT).
- *
- * DLACZEGO. Od automigracji promocji pól nN (P0.1, 2026-08-13) każdy odpływ nN stacji
- * zbudowanej operacjami domenowymi jest REALNYM aparatem (gałąź) między szyną nN stacji
- * a NOWĄ szyną odpływu, a odbiór dostaje `bus_ref` tej szyny odpływu — szyna odpływu nie
- * trafia do `Substation.bus_refs`. Agregat odbioru nN stacji (tabliczka „Odbiór ΣP",
- * strzałka odbioru), moc odbioru stacji i lista odbiorów szuflady szczegółów czytały
- * WYŁĄCZNIE `bus_refs`, więc na KAŻDEJ stacji z modelu produktu (API) odbiór znikał
- * z rysunku — ujawnione regeneracją fikstur z realnego API (`gpzFeeder`: „Odbiór ΣP"
- * 2 → 0). Przynależność szyny odpływu do stacji jest DEKLARACJĄ modelu (meta gałęzi
- * wskazuje pole z `nn_field_specs` tej stacji, a gałąź wychodzi z szyny tej stacji) —
- * nie wędrówką po grafie i nie zgadywaniem. Szyny podrozdzielnic (osobne
- * `Substation` typu `rozdzielnica_nn`) należą do nich samych, nie do stacji.
+ * Szyny stacji danej strony (SZYNY-STACJI-LUSTRO): złożenie DWÓCH jedynych reguł —
+ * przynależności szyny do stacji (lustro backendu `szynyStacji`: szyny główne, zaciski pól
+ * SN, oba końce aparatów pól nN) i strony stacji (`belongsToSide`, pasma z
+ * `ui2/model/pasmaNapieciowe`). Nie jest trzecią regułą: nie dodaje ani nie odejmuje szyny
+ * spoza iloczynu tych dwóch. Szyna bez rekordu `Bus` albo bez `voltage_kv` nie należy do
+ * żadnej strony (brak danej ≠ strona nN). Kolejność wyniku = posortowane refy.
  */
-export function stationLoadBusRefs(
-  substation: Pick<Substation, 'bus_refs'> & { readonly meta?: unknown },
-  branches: readonly BranchForStationBuses[],
-): Set<string> {
-  const szyny = new Set<string>(substation.bus_refs ?? []);
-  const meta = (substation.meta ?? {}) as { nn_field_specs?: ReadonlyArray<{ field_ref?: unknown }> };
-  const polaNn = new Set(
-    (meta.nn_field_specs ?? [])
-      .map((pole) => pole?.field_ref)
-      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
-  );
-  if (polaNn.size === 0) return szyny;
-  for (const galaz of branches) {
-    const pole = galaz.meta?.[META_POLE_NN_ZRODLOWE];
-    if (typeof pole !== 'string' || !polaNn.has(pole)) continue;
-    if (!galaz.from_bus_ref || !szyny.has(galaz.from_bus_ref) || !galaz.to_bus_ref) continue;
-    szyny.add(galaz.to_bus_ref);
-  }
-  return szyny;
+export function stationSideBusRefs(
+  substation: StacjaDlaSzyn,
+  branches: readonly GalazDlaSzyn[],
+  busByRef: ReadonlyMap<string, Pick<Bus, 'voltage_kv'>>,
+  side: StationBusSide,
+): readonly string[] {
+  return [...szynyStacji(substation, branches)]
+    .filter((busRef) => {
+      const v = busByRef.get(busRef)?.voltage_kv;
+      return typeof v === 'number' && Number.isFinite(v) && belongsToSide(v, side);
+    })
+    .sort();
 }

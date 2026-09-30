@@ -54,6 +54,7 @@ import {
   resolveBayVtMountings,
 } from './enmToSldAdapter';
 import { buildOltcAnnotation } from './oltcGlyph';
+import { szynyStacji } from '../../../shared/szynyStacji';
 
 /* =============================================================================
    Public API
@@ -168,7 +169,7 @@ export function buildCanonicalGpzProps(
     // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? [], enm.sources ?? []),
+    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? [], enm.branches ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -176,7 +177,7 @@ export function buildCanonicalGpzProps(
     // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
     hvSystemSource:
       (substation.gpz_hv_sections ?? []).length === 0
-        ? deriveHvSystemSource(substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
+        ? deriveHvSystemSource(substation, enm.buses ?? [], enm.branches ?? [], allTransformers, enm.sources ?? [])
         : null,
     // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ — patrz `gpzHvBusResultRef`
     // (odmowa przy niejednoznaczności, karta WN-WYNIK).
@@ -235,13 +236,14 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
  *      110 kV) jest tu jednoznaczne; szyny o RÓŻNYCH poziomach ⇒ `null` (karta
  *      WN-WYNIK: rysunek ma jedną szynę WN, a „110 kV" i „220 kV" nie są tym
  *      samym zdaniem — uczciwy brak zamiast pierwszej z brzegu).
- *   3. źródło systemowe = `snapshot.sources` z `bus_ref` ∈ `Substation.bus_refs`
- *      (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
+ *   3. źródło systemowe = `snapshot.sources` z `bus_ref` na szynie GPZ z lustra
+ *      `szynyStacji` (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
  *      `Source.name`).
  */
 function deriveHvSystemSource(
   gpz: Substation,
   buses: readonly Bus[],
+  branches: readonly Branch[],
   gpzTransformers: readonly Transformer[],
   sources: readonly Source[],
 ): CanonicalGpzHvSystemSource | null {
@@ -253,7 +255,9 @@ function deriveHvSystemSource(
   if (!hvBus) return null;
   if (hvBuses.some((b) => b.voltage_kv !== hvBus.voltage_kv)) return null;
 
-  const gpzBusRefs = new Set(gpz.bus_refs ?? []);
+  // SZYNY-STACJI-LUSTRO: źródło należy do GPZ, gdy stoi na szynie GPZ z jednego lustra
+  // `szynyStacji` (szyny główne, zaciski pól, końce aparatów pól nN).
+  const gpzBusRefs = szynyStacji(gpz, branches);
   const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
   if (!source) return null;
 
@@ -833,9 +837,11 @@ function extractInManipulation(
 function deriveSnNeutralEarthing(
   substation: Substation,
   buses: readonly Bus[],
+  branches: readonly Branch[],
   sources: readonly Source[],
 ): GpzCanonicalRendererProps['snNeutralEarthing'] {
-  const stationBusRefs = new Set(substation.bus_refs ?? []);
+  // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
+  const stationBusRefs = szynyStacji(substation, branches);
   const source = sources.find(
     (s) =>
       Boolean(s.neutral_grounding)

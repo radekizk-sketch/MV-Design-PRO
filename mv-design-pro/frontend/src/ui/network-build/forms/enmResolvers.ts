@@ -1,5 +1,6 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
+import { szynyStacji } from '../../shared/szynyStacji';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 type Context = Record<string, unknown> | undefined;
@@ -126,8 +127,10 @@ function findStationRefByBus(
     acceptableRefs.add(bus.id);
   }
 
+  // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`
+  // (szyny główne, zaciski pól SN, końce aparatów pól nN); pierwsza stacja modelu wygrywa.
   return snapshot.substations.find((station) =>
-    station.bus_refs.some((stationBusRef) => acceptableRefs.has(stationBusRef)),
+    [...acceptableRefs].some((ref) => szynyStacji(station, snapshot.branches).has(ref)),
   )?.ref_id ?? null;
 }
 
