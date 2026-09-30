@@ -136,8 +136,9 @@ def test_guard_rejects_public_router_importing_orphaned_result_mapping_cluster(
     `protection_to_overlay_v1.py` i `domain/analysis_kind.py` skasowane —
     jedyny wolajacy w `src/` byl E3/E2-widmo, oba skasowane karta CV-3.3-A.
     `sc_binding_meta.py` i `short_circuit_to_resultset_v1.py`/
-    `protection_to_resultset_v1.py` NIE sa w tej liscie — zostaja, zamrozone
-    przez `resultset_v1_schema_guard.py` (decyzja wlasciciela, B-01)."""
+    `protection_to_resultset_v1.py` NIE sa w tej liscie — skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59), bramka ich
+    wskrzeszenia w `resultset_v1_schema_guard.py`."""
     module_path = write_module(
         tmp_path,
         "resurrected_result_mapping_router.py",
@@ -1140,8 +1141,9 @@ def test_guard_rejects_resurrected_w3a_second_engine_module(tmp_path, monkeypatc
     faktycznie skasowane — `domain/protection_engine_v1.py` (WATCHED_PATHS
     `solver_boundary_guard.py`) i `application/result_mapping/
     protection_to_resultset_v1.py` (PROTECTED_FILES `resultset_v1_schema_
-    guard.py`) ZOSTALY PRZYWROCONE i NIE sa juz w `W3A_LEGACY_RELATIVE_PATHS`
-    (patrz test ponizej, ktory to jawnie pinuje)."""
+    guard.py`) ZOSTALY PRZYWROCONE i NIE sa w `W3A_LEGACY_RELATIVE_PATHS`;
+    skasowane pozniej w karcie RESULTSET-MARTWE-MAPPERY, bramka wskrzeszenia w
+    `resultset_v1_schema_guard.py` (patrz test ponizej)."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir()
     (src / "domain" / "protection_current_source.py").write_text("x = 1\n", encoding="utf-8")
@@ -1205,9 +1207,9 @@ def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypa
 def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monkeypatch) -> None:
     """Zaślepka bez fizyki skasowana z `domain_operations_v2.py`
     (`calculate_tcc_curve`, `tcc.legacy_write_disabled`) — jedyna pozostała
-    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` po B-01 STOP (funkcje
-    `protection_engine_v1.py`/`protection_to_resultset_v1.py` ZOSTAJĄ, patrz
-    test poniżej)."""
+    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` (funkcje skasowanych
+    `protection_engine_v1.py`/`protection_to_resultset_v1.py` pilnuje
+    `resultset_v1_schema_guard.py`, patrz test poniżej)."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "enm").mkdir()
     (src / "enm" / "cokolwiek.py").write_text(
@@ -1221,13 +1223,14 @@ def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monke
 
 
 def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> None:
-    """B-01 STOP jest CELOWY, nie przeoczeniem: `domain/protection_engine_v1.py`
-    i `application/result_mapping/protection_to_resultset_v1.py` istnieją
-    LEGALNIE (chronione, nie skasowane) — ich klasy/funkcje NIE mogą być na
-    listach zakazanych, inaczej ten guard fałszywie zapaliłby się na plikach,
-    które mają prawo istnieć. Deklaracja bez testu = fałszywa pewność
-    (CLAUDE.md, reguła KLASA NIE INSTANCJA pkt 4) — ten test PRZYPINA tę
-    obietnicę z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
+    """Jedna bramka na klasę: `domain/protection_engine_v1.py` i
+    `application/result_mapping/protection_to_resultset_v1.py` (skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY, 2026-09-30) pilnuje WYŁĄCZNIE
+    `resultset_v1_schema_guard.py::check_resultset_dead_mappers_resurrection`
+    (samotest `test_resultset_v1_schema_guard.py`). Bramka W3-A ich nie dubluje —
+    dwa predykaty tej samej klasy w dwóch guardach to dryf oczekujący na dane
+    brzegowe (CLAUDE.md, KLASA NIE INSTANCJA pkt 3). Ten test PRZYPINA brak
+    dublowania z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir()
     (src / "domain" / "protection_engine_v1.py").write_text(
@@ -1258,9 +1261,9 @@ def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(tmp_path, monke
 def test_guard_does_not_fire_on_w3a_shared_private_helper_names(tmp_path, monkeypatch) -> None:
     """`_build_element_results`/`_build_global_results` (prywatne funkcje
     skasowanego `protection_to_resultset_v1.py`) NIE są na liście zakazanych
-    nazw — te same nazwy żyją w `short_circuit_to_resultset_v1.py` (żywy
-    mapper SC, poza zakresem W3-A); zakaz nazwy złapałby fałsz-pozytyw na
-    module z tej samej rodziny plików, ale INNEGO silnika fizyki."""
+    nazw — to ogólne nazwy prywatnych pomocników (nosił je też skasowany
+    `short_circuit_to_resultset_v1.py`); zakaz nazwy złapałby fałsz-pozytyw na
+    każdym przyszłym module z pomocnikiem o tej nazwie."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "application").mkdir()
     (src / "application" / "short_circuit_to_resultset_v1.py").write_text(

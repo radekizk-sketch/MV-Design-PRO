@@ -264,11 +264,10 @@ def check_eligibility(
         # application.protection_analysis.engine (tor "protection_sn"), not at
         # eligibility gating — because eligibility runs before catalog binding /
         # materialization for the protection device tree (ProtectionAssignment
-        # lives in ENM, not in NetworkGraph). `domain.protection_engine_v1` is a
-        # second, DEAD engine (0 production consumers, verified card W3-A,
-        # 2026-09) protected as WATCHED_PATHS in
-        # scripts/solver_boundary_guard.py — deletion needs an explicit owner
-        # sanction (SANCTIONED_CHANGES), NOT done in this card (B-01 STOP).
+        # lives in ENM, not in NetworkGraph). The second, dead engine
+        # `domain.protection_engine_v1` (0 production consumers) was deleted in
+        # card RESULTSET-MARTWE-MAPPERY (2026-09-30, B-01 consent O-59); its
+        # resurrection gate lives in scripts/resultset_v1_schema_guard.py.
         protectable_apparatus = [
             switch
             for switch in graph.switches.values()

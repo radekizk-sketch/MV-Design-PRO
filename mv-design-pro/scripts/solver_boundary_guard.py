@@ -34,7 +34,9 @@ WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_core.py",
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
     "backend/src/network_model/solvers/short_circuit_contributions.py",
-    "backend/src/domain/protection_engine_v1.py",
+    # `backend/src/domain/protection_engine_v1.py` zdjęty: plik skasowany w karcie
+    # RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59) — drugi silnik
+    # zabezpieczeń bez konsumenta; bramka wskrzeszenia w `resultset_v1_schema_guard.py`.
 ]
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
@@ -92,14 +94,6 @@ SANCTIONED_CHANGES = {
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
         "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
         "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
-        "usuniecia po scaleniu do main."
-    ),
-    "backend/src/domain/protection_engine_v1.py": (
-        "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "
-        "f-string w trace notes_pl) - zero zmian semantycznych, zero zmian "
-        "AST poza stylem; pre-existing konflikt bramki black --check z "
-        "ochrona pliku. Dowod: pelny pytest 6609 passed + "
-        "trace_determinism_guard 0 na drzewie z ta zmiana. Wpis do "
         "usuniecia po scaleniu do main."
     ),
 }

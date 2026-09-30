@@ -446,7 +446,8 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # strength/models.py` — SCR/WSCR sieci, wskazniki mocy zwarciowej), `f50`/`f51`
     # (`domain/protection_engine_v1.py` — obiekty ustawien funkcji zabezpieczeniowej
     # ANSI 50/51, NIE liczby — galaz zapasowa liczbowa nie moze sie z nimi
-    # skladniowo polaczyc). Decyzja "do mapy" dla wszystkich 53: kazdy jest
+    # skladniowo polaczyc; plik skasowany w karcie RESULTSET-MARTWE-MAPPERY
+    # 2026-09-30 i zdjety z listy ponizej). Decyzja "do mapy" dla wszystkich 53: kazdy jest
     # WYNIKIEM/KONTRAKTEM analizy albo domeny czytanym PRZEZ warstwe objeta
     # skanem (nie kolekcja atrybutow wbudowanego typu jak `complex.real/imag`),
     # wiec zaden nie kwalifikuje sie do wykluczenia wg precedensu jedynego
@@ -518,9 +519,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/project_archive.py",
     "domain/protection_analysis.py",
     "domain/protection_comparison.py",
-    "domain/protection_current_source.py",
     "domain/protection_device.py",
-    "domain/protection_engine_v1.py",
     "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
@@ -2650,8 +2649,15 @@ def main() -> int:
     # rejestr moze tylko malec, wiec nieaktualny wpis jest bledem, nie ozdoba.
     martwe_dlug = [rel for rel in ZASTANE_ZASTEPNIKI if not (BACKEND_SRC / rel).is_file()]
     martwe_wykl = [rel for rel in WYKLUCZENIA_SKANERA if not (BACKEND_SRC / rel).is_file()]
-    if martwe_dlug or martwe_wykl:
-        print("FAIL: zapadka/wykluczenia wskazuja pliki, ktorych nie ma:")
+    # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): zrodlo kontraktu wskazujace plik,
+    # ktorego nie ma, bylo po cichu pomijane (`collect_input_fields` bierze tylko
+    # istniejace) — dwa wpisy-widma przezyly kasacje swoich plikow
+    # (`domain/protection_current_source.py` od W3-A, `domain/protection_engine_v1.py`).
+    martwe_zrodla = [rel for rel in CONTRACT_SOURCES if not (BACKEND_SRC / rel).exists()]
+    if martwe_dlug or martwe_wykl or martwe_zrodla:
+        print("FAIL: zapadka/wykluczenia/zrodla kontraktu wskazuja pliki, ktorych nie ma:")
+        for rel in sorted(martwe_zrodla):
+            print(f"  {rel} — zdejmij wpis z CONTRACT_SOURCES.")
         for rel in sorted(martwe_dlug):
             print(f"  {rel} — zdejmij wpis z ZASTANE_ZASTEPNIKI.")
         for rel in sorted(martwe_wykl):

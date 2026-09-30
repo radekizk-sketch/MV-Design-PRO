@@ -975,8 +975,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # {load_flow_to_resultset_v1,protection_to_overlay_v1}.py` (-2 pliki,
     # -6 pol: `LoadFlowResultSetV1`/`LoadFlowNodeResult`/`LoadFlowBranchResult`/
     # `LoadFlowTotals`) i `domain/analysis_kind.py` (poza zakresem skanu);
-    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTAJA
-    # (zamrozone przez `resultset_v1_schema_guard.PROTECTED_FILES`, B-01);
+    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTALY wtedy
+    # (skasowane pozniej w karcie RESULTSET-MARTWE-MAPPERY, 2026-09-30);
     # dlug/wykluczenia bez zmian.
     # 3599 pol / 576 plikow / application 320 / dlug 63 plikow suma 312 /
     # wykluczenia 17 plikow suma 49 (CV-3.3-B, 2026-09-05): porownania A/B

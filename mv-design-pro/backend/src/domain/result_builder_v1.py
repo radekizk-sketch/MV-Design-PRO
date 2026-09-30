@@ -374,6 +374,10 @@ def build_resultset_v1(
                     element_ref=er["element_ref"],
                     element_type=er.get("element_type", "unknown"),
                     values=er.get("values", {}),
+                    # V12S-011: stabilny ref_id ENM — wypełnia go mapper (jedyny producent
+                    # `application/result_mapping/canonical_run_to_resultset_v1.py`); brak
+                    # klucza = None, jak w kontrakcie.
+                    element_ref_id=er.get("element_ref_id"),
                 )
             )
     # Sort for determinism

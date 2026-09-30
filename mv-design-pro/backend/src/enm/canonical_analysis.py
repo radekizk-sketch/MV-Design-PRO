@@ -2324,9 +2324,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
         **({"non_reportable_fault_node_ids": wiersze_niefizyczne} if wiersze_niefizyczne else {}),
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
-        # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne,
-        # ten sam kształt co `global_results` wzbogacony przez
-        # application/result_mapping/sc_binding_meta.py dla ścieżki execution engine).
+        # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne).
+        # Jedyne źródło tych kluczy w wyniku — dawne wzbogacenie martwego mappera
+        # (`sc_binding_meta.py`) skasowane w karcie RESULTSET-MARTWE-MAPPERY.
         "scenario": scenario_c,
         "c_factor_override": c_factor_override,
         **(

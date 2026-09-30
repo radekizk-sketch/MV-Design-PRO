@@ -113,9 +113,11 @@ ALLOWLIST: dict[str, str] = {}
 #: `overcurrent/calculator.py` (jedyny wpis rodziny E), W3-C2 skasowala oba pliki
 #: `line_overcurrent_setting/` (wpisy J) — pomiar `--pomiar` na drzewie scalonym:
 #: 1 plik / 2 wzorce, wylacznie trwaly wyjatek ResultSet v1 ponizej.
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/result_mapping/short_circuit_to_resultset_v1.py": {"J_skalowanie_jednostek": 2},
-}
+#: Karta RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59): „trwały wyjątek"
+#: okazał się martwym mapperem (0 importerów w `src`) — plik skasowany razem z
+#: siostrzanym `protection_to_resultset_v1.py`; `resultset_v1_schema_guard.py` chroni
+#: odtąd realny kontrakt. Zapadka PUSTA: nowy wpis = nowa fizyka poza pochodne/.
+ZASTANE: dict[str, dict[str, int]] = {}
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)
 
@@ -369,7 +371,8 @@ def _is_idmt_denominator_shape(
     potęgi (`expr.left`) bywa sama nazwą zmiennej przypisaną w OSOBNYM
     wyrażeniu (`m_power_b = math.pow(M, B)`, POTEM `denominator = m_power_b
     - 1.0`) — dokładnie kształt znaleziony w `domain/protection_engine_v1.py::
-    iec_curve_time_seconds` (drugi silnik IDMT, B-01 STOP, patrz ZASTANE).
+    iec_curve_time_seconds` (drugi silnik IDMT, skasowany w karcie
+    RESULTSET-MARTWE-MAPPERY 2026-09-30 — kształt zostaje wzorcem wykrycia).
     Bez tego poziomu rozwiązania to konkretne miejsce byłoby niewidzialne dla
     guarda mimo identycznej fizyki co reszta rodziny E."""
     if not (isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Sub)):

@@ -1,395 +1,198 @@
-"""Tests for V12S-011: element_ref_id in ResultSet element results.
+"""V12S-011 — ``element_ref_id`` w ``ResultSetV1`` na ŻYWYM producencie kontraktu.
 
-V12S-011: Solver results carry element_ref_id (additive, Optional[str], default None).
-The result_mapping layer populates it from an UUID→ref_id map when provided.
-FE can then resolve results by ref_id without a reverse UUID lookup.
+Karta RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w decyzji O-59): jedynym
+producentem ``ResultSetV1`` jest ``application/result_mapping/canonical_run_to_resultset_v1.py``.
+Dawny wypełniacz pola (martwy ``short_circuit_to_resultset_v1.py``, 0 importerów w
+``src``) skasowany; ten plik przypina inwariant tam, gdzie wynik naprawdę powstaje.
 
-Invariants tested:
-  1. ElementResult.element_ref_id defaults to None (backward compat).
-  2. to_dict() omits element_ref_id when None; includes it when set.
-  3. from_dict() round-trips both None and string values.
-  4. SC mapper propagates element_ref_id from enm_ref_id_map.
-  5. SC mapper works without enm_ref_id_map (backward compat, all None).
-  6. Determinism: same enm_ref_id_map → same element_ref_id values.
-  7. Partial map: only matched UUIDs get ref_id, others remain None.
-  8. ResultSet to_dict / from_dict round-trips element_ref_id.
+Inwariant (jedno źródło prawdy dla wejścia i wyjścia — migawka ENM biegu):
+``element_ref_id == element_ref`` ⇔ migawka zna element o tym ``ref_id``; w przeciwnym
+razie ``None`` (nigdy zgadywany identyfikator).
+
+Iloczyn cech: {zwarcia, rozpływ, zabezpieczenia} × {ref_id obecny w modelu, brak}.
+Zwarcia i rozpływ liczone realnym biegiem kanonicznym; bieg zabezpieczeń dostaje
+wynik w kształcie ``protection_result`` (gałąź ``protection_sn`` projekcji czyta go
+wprost), bo inwariant dotyczy mappera, nie silnika zabezpieczeń.
+
+Intencje skasowanych testów martwego mappera zachowane tutaj: determinizm podpisu
+(ten sam bieg → ta sama sygnatura), sortowanie wyników po ``element_ref``, pole
+opcjonalne z domyślnym ``None`` i jego przejście przez serializację kontraktu.
 """
 
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+import dataclasses
+from typing import Any
 
-from application.result_mapping.short_circuit_to_resultset_v1 import (
-    map_short_circuit_to_resultset_v1,
+import pytest
+from application.result_mapping.canonical_run_to_resultset_v1 import (
+    build_resultset_v1_from_canonical_run,
+    ref_id_modelu,
 )
-from application.solvers.short_circuit_binding import ShortCircuitBindingResult
-from domain.execution import ElementResult, ResultSet
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
-from network_model.core.graph import NetworkGraph
-from network_model.core.inverter import InverterSource
-from network_model.core.node import Node, NodeType
+from domain.result_contract_v1 import ElementResultV1, ResultSetV1
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _execute_power_flow,
+    _execute_short_circuit,
+)
 
-from tests.utils.wynik_wiazania_zwarcia import wynik_wiazania_zwarcia_3f
+from tests.application.analyses.lv_domain.scenariusze_nn import SCENARIUSZE
+from tests.golden.parytet_assemblera.harness import _bieg
 
-# ---------------------------------------------------------------------------
-# Minimal network fixture
-# ---------------------------------------------------------------------------
+_SC_3F = {"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0}
+_REF_SPOZA_MODELU = "element-spoza-modelu"
 
 
-def _build_graph() -> NetworkGraph:
-    graph = NetworkGraph()
-    graph.add_node(
-        Node(
-            id="SLACK",
-            name="Stacja WN",
-            node_type=NodeType.PQ,
-            voltage_level=110.0,
-            active_power=0.0,
-            reactive_power=0.0,
+def _snapshot() -> dict[str, Any]:
+    return SCENARIUSZE[0].budowniczy().model_dump(mode="json")
+
+
+def _bieg_zwarc() -> CanonicalRun:
+    enm = SCENARIUSZE[0].budowniczy()
+    run = _bieg(enm, klucz="ref-id-sc", analysis_type="short_circuit_sn", options=_SC_3F)
+    _execute_short_circuit(run)
+    return run
+
+
+def _bieg_rozplywu() -> CanonicalRun:
+    enm = SCENARIUSZE[0].budowniczy()
+    run = _bieg(enm, klucz="ref-id-pf", analysis_type="PF", options={})
+    _execute_power_flow(run)
+    return run
+
+
+def _bieg_zabezpieczen() -> CanonicalRun:
+    """Bieg ``protection_sn``: ocena na gałęzi modelu i na elemencie spoza modelu."""
+    enm = SCENARIUSZE[0].budowniczy()
+    run = _bieg(enm, klucz="ref-id-prot", analysis_type="protection_sn", options={})
+    galaz = str(_snapshot()["branches"][0]["ref_id"])
+    run.raw_result = {
+        "sc_run_id": "bieg-zwarc",
+        "protection_result": {
+            "evaluations": [
+                {
+                    "protected_element_ref": galaz,
+                    "fault_target_id": "wezel-solvera-1",
+                    "trip_state": "TRIPS",
+                    "t_trip_s": 0.5,
+                },
+                {
+                    "protected_element_ref": _REF_SPOZA_MODELU,
+                    "fault_target_id": "wezel-solvera-2",
+                    "trip_state": "NO_TRIP",
+                    "t_trip_s": None,
+                },
+            ],
+            "summary": {"trips_count": 1, "no_trip_count": 1, "invalid_count": 0},
+        },
+    }
+    return run
+
+
+_BIEGI = {
+    "zwarcia": _bieg_zwarc,
+    "rozplyw": _bieg_rozplywu,
+    "zabezpieczenia": _bieg_zabezpieczen,
+}
+
+
+@pytest.fixture(scope="module", params=sorted(_BIEGI))
+def bieg(request: pytest.FixtureRequest) -> tuple[str, CanonicalRun]:
+    return request.param, _BIEGI[request.param]()
+
+
+def _bez_elementu(run: CanonicalRun, ref_id: str) -> CanonicalRun:
+    """Ten sam wynik na migawce, która NIE zna elementu ``ref_id`` (cecha „brak")."""
+    snapshot = {
+        klucz: (
+            [e for e in wartosc if not (isinstance(e, dict) and e.get("ref_id") == ref_id)]
+            if isinstance(wartosc, list)
+            else wartosc
         )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_SN",
-            name="Szyna SN",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=5.0,
-            reactive_power=2.0,
+        for klucz, wartosc in run.snapshot.items()
+    }
+    return dataclasses.replace(run, snapshot=snapshot)
+
+
+def _predykat_parami(run: CanonicalRun, rs: ResultSetV1) -> None:
+    znane = ref_id_modelu(run.snapshot)
+    for er in rs.element_results:
+        if er.element_ref in znane:
+            assert er.element_ref_id == er.element_ref, er
+        else:
+            assert er.element_ref_id is None, er
+
+
+class TestRefIdObecny:
+    def test_element_z_modelu_niesie_ref_id(self, bieg: tuple[str, CanonicalRun]) -> None:
+        rodzaj, run = bieg
+        rs = build_resultset_v1_from_canonical_run(run)
+        assert rs.element_results, rodzaj
+        obecne = [er for er in rs.element_results if er.element_ref_id is not None]
+        assert obecne, f"{rodzaj}: żaden wynik nie niesie ref_id modelu"
+        _predykat_parami(run, rs)
+
+
+class TestRefIdBrak:
+    def test_element_spoza_modelu_ma_none(self, bieg: tuple[str, CanonicalRun]) -> None:
+        rodzaj, run = bieg
+        pierwszy = build_resultset_v1_from_canonical_run(run).element_results[0]
+        assert pierwszy.element_ref_id == pierwszy.element_ref
+        okrojony = _bez_elementu(run, pierwszy.element_ref)
+        rs = build_resultset_v1_from_canonical_run(okrojony)
+        wiersz = next(er for er in rs.element_results if er.element_ref == pierwszy.element_ref)
+        assert wiersz.element_ref_id is None, rodzaj
+        _predykat_parami(okrojony, rs)
+
+    def test_zabezpieczenia_ref_spoza_modelu_bez_okrajania(self) -> None:
+        run = _bieg_zabezpieczen()
+        rs = build_resultset_v1_from_canonical_run(run)
+        po_ref = {er.element_ref: er.element_ref_id for er in rs.element_results}
+        assert po_ref[_REF_SPOZA_MODELU] is None
+        assert sum(v is not None for v in po_ref.values()) == 1
+
+
+class TestDeterminizmISortowanie:
+    def test_ten_sam_bieg_ta_sama_sygnatura(self, bieg: tuple[str, CanonicalRun]) -> None:
+        _, run = bieg
+        pierwszy = build_resultset_v1_from_canonical_run(run)
+        drugi = build_resultset_v1_from_canonical_run(run)
+        assert pierwszy.deterministic_signature == drugi.deterministic_signature
+        # `created_at` to znacznik chwili budowy — poza podpisem z definicji kontraktu.
+        bez_czasu = {"created_at"}
+        assert pierwszy.model_dump(mode="json", exclude=bez_czasu) == drugi.model_dump(
+            mode="json", exclude=bez_czasu
         )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_LOAD",
-            name="Szyna odbiorcza",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=10.0,
-            reactive_power=3.0,
+
+    def test_ref_id_wchodzi_do_sygnatury(self, bieg: tuple[str, CanonicalRun]) -> None:
+        _, run = bieg
+        pelny = build_resultset_v1_from_canonical_run(run)
+        okrojony = build_resultset_v1_from_canonical_run(
+            _bez_elementu(run, pelny.element_results[0].element_ref)
         )
-    )
-    graph.add_node(
-        Node(
-            id="GND",
-            name="Uziemienie",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        )
-    )
-    graph.add_branch(
-        TransformerBranch(
-            id="T1",
-            name="Transformator T1",
-            branch_type=BranchType.TRANSFORMER,
-            from_node_id="SLACK",
-            to_node_id="BUS_SN",
-            in_service=True,
-            rated_power_mva=16.0,
-            voltage_hv_kv=110.0,
-            voltage_lv_kv=20.0,
-            uk_percent=10.0,
-            pk_kw=100.0,
-            i0_percent=0.5,
-            p0_kw=20.0,
-            vector_group="Dyn11",
-            tap_position=0,
-            tap_step_percent=2.5,
-            type_ref="TRAFO_110_20_16MVA",
-        )
-    )
-    graph.add_branch(
-        LineBranch(
-            id="CAB1",
-            name="Kabel CAB1",
-            branch_type=BranchType.CABLE,
-            from_node_id="BUS_SN",
-            to_node_id="BUS_LOAD",
-            in_service=True,
-            r_ohm_per_km=0.125,
-            x_ohm_per_km=0.08,
-            b_us_per_km=260.0,
-            length_km=2.0,
-            rated_current_a=300.0,
-            type_ref="YAKY_3x240",
-        )
-    )
-    graph.add_branch(
-        LineBranch(
-            id="REF",
-            name="Ref GND",
-            branch_type=BranchType.LINE,
-            from_node_id="BUS_LOAD",
-            to_node_id="GND",
-            in_service=True,
-            r_ohm_per_km=1e9,
-            x_ohm_per_km=0.0,
-            b_us_per_km=0.0,
-            length_km=1.0,
-            rated_current_a=1.0,
-        )
-    )
-    graph.add_inverter_source(
-        InverterSource(
-            id="INV1",
-            name="Falownik PV 1",
-            node_id="BUS_LOAD",
-            in_rated_a=80.0,
-            k_sc=1.1,
-            contributes_negative_sequence=False,
-            contributes_zero_sequence=False,
-            in_service=True,
-        )
-    )
-    return graph
+        assert pelny.deterministic_signature != okrojony.deterministic_signature
+
+    def test_wyniki_posortowane_po_element_ref(self, bieg: tuple[str, CanonicalRun]) -> None:
+        _, run = bieg
+        refy = [er.element_ref for er in build_resultset_v1_from_canonical_run(run).element_results]
+        assert refy == sorted(refy)
 
 
-def _binding_result() -> ShortCircuitBindingResult:
-    # Karta TORY-TYLKO-W-TESTACH (2026-09-30): wejście zamrożonego mappera składane z
-    # ogniw biegu kanonicznego (dawny `execute_short_circuit` skasowany — bez konsumenta).
-    return wynik_wiazania_zwarcia_3f(_build_graph(), "BUS_LOAD")
-
-
-def _run_id() -> UUID:
-    return uuid4()
-
-
-# ---------------------------------------------------------------------------
-# Unit tests: ElementResult
-# ---------------------------------------------------------------------------
-
-
-class TestElementResultDefault:
-    def test_element_ref_id_defaults_to_none(self) -> None:
-        er = ElementResult(element_ref="uuid-abc", element_type="bus")
+class TestKontraktPola:
+    def test_domyslnie_none(self) -> None:
+        er = ElementResultV1(element_ref="B1", element_type="Bus")
         assert er.element_ref_id is None
 
-    def test_to_dict_omits_element_ref_id_when_none(self) -> None:
-        er = ElementResult(element_ref="uuid-abc", element_type="bus")
-        d = er.to_dict()
-        assert "element_ref_id" not in d
-
-    def test_to_dict_includes_element_ref_id_when_set(self) -> None:
-        er = ElementResult(
-            element_ref="uuid-abc",
-            element_type="bus",
-            element_ref_id="bus_sn_01",
-        )
-        d = er.to_dict()
-        assert d["element_ref_id"] == "bus_sn_01"
-
-    def test_to_dict_preserves_existing_fields(self) -> None:
-        er = ElementResult(
-            element_ref="uuid-abc",
-            element_type="bus",
-            values={"ikss_a": 1234.5},
-            element_ref_id="bus_sn_01",
-        )
-        d = er.to_dict()
-        assert d["element_ref"] == "uuid-abc"
-        assert d["element_type"] == "bus"
-        assert d["values"]["ikss_a"] == 1234.5
-        assert d["element_ref_id"] == "bus_sn_01"
-
-
-class TestElementResultRoundTrip:
-    def test_from_dict_without_element_ref_id(self) -> None:
-        d = {"element_ref": "uuid-abc", "element_type": "bus", "values": {}}
-        er = ElementResult.from_dict(d)
-        assert er.element_ref_id is None
-
-    def test_from_dict_with_element_ref_id(self) -> None:
-        d = {
-            "element_ref": "uuid-abc",
-            "element_type": "bus",
-            "values": {},
-            "element_ref_id": "bus_ref_01",
-        }
-        er = ElementResult.from_dict(d)
-        assert er.element_ref_id == "bus_ref_01"
-
-    def test_round_trip_with_ref_id(self) -> None:
-        er = ElementResult(
-            element_ref="uuid-xyz",
-            element_type="source_contribution",
-            values={"i_contrib_a": 500.0},
-            element_ref_id="src_gpz_01",
-        )
-        er2 = ElementResult.from_dict(er.to_dict())
-        assert er2 == er
-
-    def test_round_trip_without_ref_id(self) -> None:
-        er = ElementResult(
-            element_ref="uuid-xyz",
-            element_type="bus",
-            values={"ikss_a": 2000.0},
-        )
-        er2 = ElementResult.from_dict(er.to_dict())
-        assert er2 == er
-
-
-# ---------------------------------------------------------------------------
-# SC mapper: enm_ref_id_map propagation
-# ---------------------------------------------------------------------------
-
-
-class TestSCMapperRefIdPropagation:
-    def test_mapper_without_map_all_ref_ids_none(self) -> None:
-        br = _binding_result()
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-        )
-        for er in rs.element_results:
-            assert er.element_ref_id is None
-
-    def test_mapper_with_empty_map_all_ref_ids_none(self) -> None:
-        br = _binding_result()
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map={},
-        )
-        for er in rs.element_results:
-            assert er.element_ref_id is None
-
-    def test_mapper_with_full_map_populates_ref_ids(self) -> None:
-        br = _binding_result()
-        enm_map = {
-            "BUS_LOAD": "bus_load_ref",
-            "INV1": "src_inv1_ref",
-        }
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        bus_results = [er for er in rs.element_results if er.element_type == "bus"]
-        assert len(bus_results) == 1
-        assert bus_results[0].element_ref_id == "bus_load_ref"
-
-    def test_mapper_partial_map_only_matched_get_ref_id(self) -> None:
-        br = _binding_result()
-        enm_map = {"BUS_LOAD": "bus_load_ref"}
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        bus_results = [er for er in rs.element_results if er.element_type == "bus"]
-        contrib_results = [
-            er for er in rs.element_results if er.element_type == "source_contribution"
-        ]
-        assert bus_results[0].element_ref_id == "bus_load_ref"
-        for cr in contrib_results:
-            assert cr.element_ref_id is None
-
-    def test_mapper_deterministic_with_same_map(self) -> None:
-        br = _binding_result()
-        enm_map = {"BUS_LOAD": "bus_load_ref", "INV1": "inv1_ref"}
-        run_id = uuid4()
-        rs1 = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=run_id,
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        rs2 = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=run_id,
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        assert [er.element_ref_id for er in rs1.element_results] == [
-            er.element_ref_id for er in rs2.element_results
-        ]
-
-    def test_mapper_backward_compat_signature_unchanged(self) -> None:
-        """Omitting enm_ref_id_map should not affect deterministic_signature value."""
-        br = _binding_result()
-        run_id = uuid4()
-        rs_no_map = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=run_id,
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-        )
-        rs_empty_map = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=run_id,
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map={},
-        )
-        assert rs_no_map.deterministic_signature == rs_empty_map.deterministic_signature
-
-
-# ---------------------------------------------------------------------------
-# ResultSet serialization with element_ref_id
-# ---------------------------------------------------------------------------
-
-
-class TestResultSetSerializationWithRefId:
-    def test_resultset_to_dict_includes_element_ref_id(self) -> None:
-        br = _binding_result()
-        enm_map = {"BUS_LOAD": "bus_load_ref"}
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        d = rs.to_dict()
-        bus_rows = [er for er in d["element_results"] if er["element_type"] == "bus"]
-        assert len(bus_rows) == 1
-        assert bus_rows[0]["element_ref_id"] == "bus_load_ref"
-
-    def test_resultset_to_dict_omits_element_ref_id_when_none(self) -> None:
-        br = _binding_result()
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-        )
-        d = rs.to_dict()
-        for er in d["element_results"]:
-            assert "element_ref_id" not in er
-
-    def test_resultset_from_dict_round_trip_with_ref_id(self) -> None:
-        br = _binding_result()
-        enm_map = {"BUS_LOAD": "bus_load_ref", "INV1": "inv1_ref"}
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=br,
-            run_id=_run_id(),
-            graph=_build_graph(),
-            validation_snapshot={},
-            readiness_snapshot={},
-            enm_ref_id_map=enm_map,
-        )
-        d = rs.to_dict()
-        rs2 = ResultSet.from_dict(d)
-        for er, er2 in zip(rs.element_results, rs2.element_results, strict=True):
-            assert er.element_ref_id == er2.element_ref_id
+    @pytest.mark.parametrize("ref_id", [None, "B1"])
+    def test_przejscie_przez_serializacje(self, ref_id: str | None) -> None:
+        run = _bieg_rozplywu()
+        rs = build_resultset_v1_from_canonical_run(run)
+        if ref_id is None:
+            rs = build_resultset_v1_from_canonical_run(
+                _bez_elementu(run, rs.element_results[0].element_ref)
+            )
+        dane = rs.model_dump(mode="json")
+        odtworzony = ResultSetV1.model_validate(dane)
+        assert odtworzony == rs
+        assert "element_ref_id" in dane["element_results"][0]
+        assert (dane["element_results"][0]["element_ref_id"] is None) == (ref_id is None)

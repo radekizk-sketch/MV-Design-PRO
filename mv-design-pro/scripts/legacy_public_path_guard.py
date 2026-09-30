@@ -48,8 +48,8 @@ FORBIDDEN_IMPORTS = {
     # Karta CV-3.3-A2 (2026-09-05): klaster osierocony kasacja E3/E2-widmo
     # (jedyny wolajacy w src/) domkniety osobno. sc_binding_meta.py i
     # short_circuit_to_resultset_v1.py / protection_to_resultset_v1.py
-    # ZOSTAJA — zamrozone przez resultset_v1_schema_guard.py, decyzja
-    # wlasciciela (B-01), NIE kasowane.
+    # skasowane pozniej, w karcie RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda
+    # B-01 w O-59) — ich bramka wskrzeszenia jest w resultset_v1_schema_guard.py.
     "application.result_mapping.load_flow_to_resultset_v1",
     "application.result_mapping.protection_to_overlay_v1",
     "domain.analysis_kind",
@@ -426,7 +426,12 @@ FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
 # przywroconego `protection_engine_v1.py`, wiec nie dalo sie ich przywrocic
 # bez zerwania importu do skasowanej reszty). `api/execution_runs.py:119` i
 # `solver_input/eligibility.py:263` mialy TYLKO komentarz o `protection_
-# engine_v1` — poprawiony na fakt (silnik ZOSTAJE, B-01, nie skasowany).
+# engine_v1` — poprawiony na fakt. AKTUALIZACJA 2026-09-30 (karta
+# RESULTSET-MARTWE-MAPPERY, zgoda B-01 w O-59): oba przywrocone pliki
+# (`domain/protection_engine_v1.py`, `application/result_mapping/
+# protection_to_resultset_v1.py`) SKASOWANE razem z `test_protection_engine_v1.py`;
+# bramka ich wskrzeszenia (pliki + nazwy definicji) zyje w JEDNYM miejscu —
+# `scripts/resultset_v1_schema_guard.py::check_resultset_dead_mappers_resurrection`.
 # Rownolegle skasowana martwa `_compute_tcc_curve` (0 wywolan) i zaslepka
 # `calculate_tcc_curve` (`tcc.legacy_write_disabled`, operacja domenowa BEZ
 # fizyki, NIE czesc drugiego silnika) razem z rejestracja w
@@ -437,10 +442,11 @@ FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
 # `FORBIDDEN_W3A_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
 # gdziekolwiek w `backend/src`, (3) zadna nazwa z `FORBIDDEN_W3A_FUNCTION_NAMES`
 # nie wraca jako DEFINICJA (ast.FunctionDef/AsyncFunctionDef) gdziekolwiek w
-# `backend/src`. Klasy/funkcje `domain/protection_engine_v1.py` i
-# `application/result_mapping/protection_to_resultset_v1.py` (PRZYWROCONE,
-# istnieja legalnie) CELOWO NIE sa na tych listach — zakazanie ich nazw
-# zlapaloby falsz-pozytyw na plikach, ktore prawnie istnieja.
+# `backend/src`. Klasy/funkcje skasowanych w RESULTSET-MARTWE-MAPPERY
+# `domain/protection_engine_v1.py` i `application/result_mapping/
+# protection_to_resultset_v1.py` CELOWO NIE sa na tych listach — pilnuje ich
+# jedna bramka w `resultset_v1_schema_guard.py` (dwa predykaty tej samej klasy
+# w dwoch guardach = dryf).
 W3A_LEGACY_RELATIVE_PATHS: dict[str, str] = {
     "application/protection_current_resolver.py": "resolver prądu SC->Protection Engine v1 (bridge PR-27)",
     "domain/protection_current_source.py": "typy domenowe bridge'a SC<->Protection Engine v1 (PR-27)",
@@ -1211,10 +1217,9 @@ def check_w3a_second_engine_resurrection() -> list[str]:
     `network_model/solvers/protection_iec60255.py` (`compute_idmt_generic`),
     jedyny zywy tor `protection_sn` jest w `application/protection_analysis/
     engine.py` (adapter na jadro). `domain/protection_engine_v1.py` i
-    `application/result_mapping/protection_to_resultset_v1.py` ZOSTAJA (B-01
-    STOP — chronione przez `solver_boundary_guard.py`/
-    `resultset_v1_schema_guard.py`, patrz komentarz przy
-    `W3A_LEGACY_RELATIVE_PATHS`) — celowo POZA zakresem tego sprawdzenia."""
+    `application/result_mapping/protection_to_resultset_v1.py` (skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY) pilnuje `resultset_v1_schema_guard.py` — celowo POZA
+    zakresem tego sprawdzenia (jedna bramka na klase)."""
     violations: list[str] = []
     for rel, label in W3A_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
