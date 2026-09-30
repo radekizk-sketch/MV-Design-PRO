@@ -360,6 +360,66 @@ def impedancja_odniesiona_do_napiecia_ohm(
     return impedancja_ohm * (napiecie_odniesienia_kv / napiecie_wlasne_kv) ** 2
 
 
+def reaktancja_z_jednostek_wzglednych_ohm(
+    reaktancja_pu: float, napiecie_kv: float, moc_mva: float
+) -> float:
+    """Reaktancja w omach z wartości względnej: X[Ω] = x[pu]·U²/S (U[kV], S[MVA]).
+
+    Karta C4: kopia wyrażenia `network_model/core/machine.py::
+    SynchronousMachineSource.x_subtransient_ohm` (X″d = x″d·U²rG/S_rG, IEC 60909-0
+    §6.3) w TEJ SAMEJ kolejności działań — `(x·U²)/S`. Siostra zespolonej
+    ``impedancja_z_jednostek_wzglednych_ohm`` (tam `z·(U²/S)`, inna łączność — do 1 ULP
+    różnicy), dlatego osobna funkcja: przeniesienie bez zmiany ostatniego bitu.
+    """
+    return reaktancja_pu * (napiecie_kv**2) / moc_mva
+
+
+def skladowa_spadku_napiecia_procent(
+    impedancja_ohm: float, moc: float, napiecie_kv: float
+) -> float:
+    """Składowa spadku napięcia odcinka [%]: ΔU = Z·S/U²·100 (Z[Ω], S[MW|Mvar], U[kV]).
+
+    Karta C4: kopia wyrażeń pakietu dowodowego VDROP
+    (`application/proof_engine/proof_generator.py`): ΔU_R = R·P/U²·100 i
+    ΔU_X = X·Q/U²·100 — ta sama kolejność działań `(Z·S)/U²·100`. Para (R, P) albo
+    (X, Q) — jedna formuła, dwie fizyczne etykiety.
+    """
+    return (impedancja_ohm * moc) / (napiecie_kv**2) * 100
+
+
+def spadek_procentowy_przy_innym_napieciu(
+    spadek_procent: float, napiecie_kv: float, napiecie_nowe_kv: float
+) -> float:
+    """Spadek napięcia [%] przeliczony na inne napięcie znamionowe: ΔU' = ΔU·(U/U')².
+
+    Ta sama moc i impedancja, inne napięcie: ΔU% ∝ 1/U² (składowe `Z·S/U²` wyżej).
+    Karta C4: kopia `analysis/lf_sensitivity/builder.py::_drivers_for_u_nom` w tej samej
+    kolejności działań `ΔU·U²/U'²`.
+    """
+    return spadek_procent * (napiecie_kv**2) / (napiecie_nowe_kv**2)
+
+
+def susceptancja_z_mocy_biernej_s(moc_bierna_mvar: float, napiecie_kv: float) -> float:
+    """Susceptancja baterii kondensatorów: B = Q/U² [S] (Q[Mvar], U[kV]; Mvar/kV² = S).
+
+    Karta C4: eksport CGMES baterii (`infrastructure/cgmes/cgmes_exporter._emit_shunt`,
+    ``LinearShuntCompensator.bPerSection``). Postać `Q/U²` (dwa zaokrąglenia) jest
+    dokładniejsza niż `1/(U²/Q)` (trzy) — pomiar karty: na siatce 11 × 9 (Q × U)
+    niepoprawnie zaokrąglonych 13 wobec 28, identycznych na 10 cyfrach eksportu.
+    Odwrotność: ``moc_bierna_z_susceptancji_mvar``.
+    """
+    return moc_bierna_mvar / (napiecie_kv**2)
+
+
+def moc_bierna_z_susceptancji_mvar(susceptancja_s: float, napiecie_kv: float) -> float:
+    """Moc bierna baterii z susceptancji: Q = B·U² [Mvar] (B[S], U[kV]).
+
+    Para ``susceptancja_z_mocy_biernej_s`` — import CGMES baterii
+    (`infrastructure/cgmes/cgmes_importer._importuj_kondensatory`).
+    """
+    return susceptancja_s * (napiecie_kv**2)
+
+
 # =============================================================================
 # Rodzina H — susceptancja z pojemności, B = 2πf·C (karta W3-F §0.6)
 # =============================================================================

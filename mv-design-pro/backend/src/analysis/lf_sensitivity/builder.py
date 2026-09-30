@@ -15,6 +15,7 @@ from analysis.lf_sensitivity.models import (
 from analysis.normative.models import NormativeReport
 from analysis.voltage_profile.models import VoltageProfileView
 from application.proof_engine.types import ProofDocument, ProofType
+from network_model.pochodne import spadek_procentowy_przy_innym_napieciu
 
 DEFAULT_DELTA_PCT = 5.0
 DEFAULT_TOP_N = 5
@@ -341,7 +342,7 @@ def _drivers_for_u_nom(
         u_nom_new = u_nom_kv * (1.0 + sign * delta_pct / 100.0)
         if u_nom_new == 0:
             continue
-        delta_pct_new = base_delta_model * (u_nom_kv**2) / (u_nom_new**2)
+        delta_pct_new = spadek_procentowy_przy_innym_napieciu(base_delta_model, u_nom_kv, u_nom_new)
         delta_delta_pct = delta_pct_new - base_delta_model
         perturbation = _format_perturbation(delta_pct * sign)
         delta_margin, margin_ref = _delta_margin_delta(

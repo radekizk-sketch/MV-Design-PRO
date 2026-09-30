@@ -113,18 +113,14 @@ ALLOWLIST: dict[str, str] = {}
 #: `overcurrent/calculator.py` (jedyny wpis rodziny E), W3-C2 skasowala oba pliki
 #: `line_overcurrent_setting/` (wpisy J) — pomiar `--pomiar` na drzewie scalonym:
 #: 1 plik / 2 wzorce, wylacznie trwaly wyjatek ResultSet v1 ponizej.
-#: Karta C3 (2026-09-30): rodzina G poszerzona o kwadrat NAPIĘCIA jako czynnik iloczynu
+#: Karty C3/C4 (2026-09-30): rodzina G poszerzona o kwadrat NAPIĘCIA jako czynnik iloczynu
 #: w liczniku albo mianowniku (luka, przez którą przeszły `Z = uk·U²/S` i `B = Q/U²`
-#: eksportera CGMES — naprawione w tej karcie przez `pochodne`). Ten sam pomiar ujawnił
-#: trzy ZASTANE miejsca poza granicą karty (enm/**, network_model/**, analysis — inne
-#: karty): skalowanie wrażliwości ΔU ~ U² w `lf_sensitivity`, spadek napięcia
-#: (R·P + X·Q)/U² w pakiecie dowodowym i X''·U²/S maszyny w `core/machine.py`. Wpisane
-#: do zapadki z pomiarem (tylko w dół); przeniesienie do `pochodne/` = osobna karta.
+#: eksportera CGMES). Pomiar poszerzonej reguły ujawnił 4 zastane trafienia
+#: (`lf_sensitivity` ΔU·U²/U'², pakiet dowodowy VDROP Z·S/U²·100 ×2, X″d·U²/S maszyny) —
+#: karta C4 przeniosła je do `pochodne/wielkosci_pochodne.py` bit w bit; rodzina G ma
+#: w zapadce 0.
 ZASTANE: dict[str, dict[str, int]] = {
-    "analysis/lf_sensitivity/builder.py": {"G_z_u2_s": 1},
-    "application/proof_engine/proof_generator.py": {"G_z_u2_s": 2},
     "application/result_mapping/short_circuit_to_resultset_v1.py": {"J_skalowanie_jednostek": 2},
-    "network_model/core/machine.py": {"G_z_u2_s": 1},
 }
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)

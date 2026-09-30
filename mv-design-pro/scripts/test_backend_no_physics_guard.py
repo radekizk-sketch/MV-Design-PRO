@@ -701,13 +701,9 @@ def test_pin_stanu_repozytorium() -> None:
     na stałe, karta CV-3.3-A2), więc te dwa literały `/1000.0` nigdy nie
     trafią do `pochodne/jednostki.py` (B-01, CLAUDE.md)."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) == {
-        "application/result_mapping/short_circuit_to_resultset_v1.py",
-        # Karta C3: rodzina G poszerzona — trzy zmierzone miejsca poza granicą karty.
-        "analysis/lf_sensitivity/builder.py",
-        "application/proof_engine/proof_generator.py",
-        "network_model/core/machine.py",
-    }
+    # Karta C4: cztery trafienia rodziny G ujawnione w C3 przeniesione do `pochodne/`.
+    assert set(ZASTANE) == {"application/result_mapping/short_circuit_to_resultset_v1.py"}
+    assert all("G_z_u2_s" not in licznik for licznik in ZASTANE.values())
 
 
 def test_rodzina_e_zastane_jest_pusta_po_w3c1() -> None:

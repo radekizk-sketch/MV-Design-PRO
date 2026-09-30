@@ -56,6 +56,7 @@ from network_model.pochodne import (
     impedancja_odniesiona_do_napiecia_ohm,
     impedancja_z_napiecia_i_mocy_ohm,
     m_na_km,
+    moc_bierna_z_susceptancji_mvar,
     mw_na_kw,
 )
 
@@ -665,9 +666,9 @@ def _importuj_kondensatory(
 ) -> list[ShuntCapacitor]:
     """LinearShuntCompensator -> ShuntCapacitor (bateria stała, wszystkie sekcje razem).
 
-    Moc znamionowa Q = U_n²·B·N (U_n = ``nomU``, B = ``bPerSection``, N =
-    ``maximumSections``), liczona recenzowaną formułą U²/X z ``pochodne`` z reaktancją
-    baterii X_C = 1/(B·N) — odwrotność ``cgmes_exporter._emit_shunt``. Status z
+    Moc znamionowa Q = B·N·U_n² (U_n = ``nomU``, B = ``bPerSection``, N =
+    ``maximumSections``) — ``pochodne.moc_bierna_z_susceptancji_mvar``, para funkcji
+    eksportu ``susceptancja_z_mocy_biernej_s``. Status z
     ``sections``: 0 = otwarta, N = załączona. Czego model stałej baterii nie wyrazi
     (dławik B < 0, częściowe załączenie, brak nomU/bPerSection/sections, straty G ≠ 0),
     jest NAZWANE; element niewyrażalny pominięty — nigdy liczba zastępcza.
@@ -722,7 +723,7 @@ def _importuj_kondensatory(
                 name=name,
                 bus_ref=szyna,
                 rated_kv=rated_kv,
-                rated_mvar=impedancja_z_napiecia_i_mocy_ohm(rated_kv, 1.0 / (b_s * sekcje_max)),
+                rated_mvar=moc_bierna_z_susceptancji_mvar(b_s * sekcje_max, rated_kv),
                 status="open" if sekcje == 0.0 else "closed",
                 catalog_ref=None,
                 source_mode="MIGRACJA",

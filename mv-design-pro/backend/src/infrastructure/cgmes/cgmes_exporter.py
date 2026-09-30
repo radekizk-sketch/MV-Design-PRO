@@ -67,6 +67,7 @@ from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     kw_na_mw,
     prad_znamionowy_a,
+    susceptancja_z_mocy_biernej_s,
 )
 
 from .mrid import mrid_for, urn
@@ -799,9 +800,8 @@ def _emit_load(eq: ET.Element, tp: ET.Element, load: Load) -> None:
 def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
     """ShuntCapacitor -> LinearShuntCompensator (D-06c).
 
-    Susceptancja na sekcję: B = 1/X_C, X_C = U_n²/Q_n — recenzowana formuła U²/S z
-    ``pochodne`` (karta C3; stan PRZED liczył Q/U² w infrastrukturze). Bateria 0 Mvar ma
-    B = 0 (reaktancja nieskończona — granica wzoru, nie podstawienie). Napięcie ≤ 0 =
+    Susceptancja na sekcję: B = Q_n/U_n² — ``pochodne.susceptancja_z_mocy_biernej_s``
+    (karty C3/C4; stan PRZED liczył ten wzór w infrastrukturze). Napięcie ≤ 0 =
     nazwana odmowa (stan PRZED zapisywał po cichu B = 0). Jeden stopień
     (maximumSections=1, sections=1 gdy załączona).
     """
@@ -813,11 +813,7 @@ def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
     mrid = mrid_for("LinearShuntCompensator", cap.ref_id)
     lsc = _obj(eq, "LinearShuntCompensator", mrid)
     _prop(lsc, "IdentifiedObject.name", cap.name)
-    b_per_section = (
-        1.0 / impedancja_z_napiecia_i_mocy_ohm(cap.rated_kv, cap.rated_mvar)
-        if cap.rated_mvar != 0
-        else 0.0
-    )
+    b_per_section = susceptancja_z_mocy_biernej_s(cap.rated_mvar, cap.rated_kv)
     _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(b_per_section))
     _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(0.0))
     _prop(lsc, "ShuntCompensator.nomU", fmt_float(kv_to_v(cap.rated_kv)))
