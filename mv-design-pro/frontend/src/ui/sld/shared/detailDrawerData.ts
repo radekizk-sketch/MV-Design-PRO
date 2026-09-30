@@ -74,7 +74,7 @@ import type {
   Substation,
 } from '../../../types/enm';
 import type { SelectedElement } from '../../types';
-import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
+import { opisRozdzielnicyStacjiPl } from '../../shared/rodzajStacji';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
 import { stationSideBusRefs } from './stationBusResolution';
@@ -198,7 +198,7 @@ export function buildStationDetailDrawerData(
   const stationLabelOverride = substation && snapshot
     ? stationPublicIdentity(snapshot, substation).displayName
     : null;
-  const switchgearDescription = formatStationSwitchgearDescriptionPl(substation?.station_type);
+  const switchgearDescription = opisRozdzielnicyStacjiPl(snapshot, substation);
 
   const transformers = selectStationDistributionTransformers(snapshot, substation ?? null);
   const tr = transformers[0];

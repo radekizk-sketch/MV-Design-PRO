@@ -17,6 +17,7 @@ interface SekcjaCeluProps {
   trybEkspercki: boolean;
   onKlikWiersza: (elementRef: string) => void;
   onNaprawa: (problem: ProblemGotowosci) => void;
+  nazwaElementu: (elementRef: string) => string;
 }
 
 export function SekcjaCelu({
@@ -27,6 +28,7 @@ export function SekcjaCelu({
   trybEkspercki,
   onKlikWiersza,
   onNaprawa,
+  nazwaElementu,
 }: SekcjaCeluProps) {
   const etykieta = ETYKIETA_CELU[grupa.cel];
   const idTresci = `mvd-cel-tresc-${grupa.cel}`;
@@ -74,6 +76,7 @@ export function SekcjaCelu({
                 trybEkspercki={trybEkspercki}
                 onKlikWiersza={onKlikWiersza}
                 onNaprawa={onNaprawa}
+                nazwaElementu={nazwaElementu}
               />
             ))
           )}

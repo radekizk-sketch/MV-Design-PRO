@@ -215,8 +215,15 @@ describe('buildHierarchy — CableRuns', () => {
     expect(h.cableRuns.map((r) => r.id)).toEqual(['run_a', 'run_z']);
   });
 
-  describe('infers topologicalType from external ports', () => {
-    function makeRun(externalPorts: Array<{ id: string; kind: string }>) {
+  describe('rodzaj stacji z JEDNEJ reguły produktu (karta ETYKIETA-STACJI-PRZELOTOWEJ)', () => {
+    // Dawna reguła z portów zewnętrznych skasowana: porty NIE przesądzają o rodzaju, rodzaj
+    // idzie za polami rozdzielnicy (`ui/shared/rodzajStacji.ts`, §19.3) — iloczyn cech
+    // {porty mówią X} × {pola mówią Y} dowodzi, że drzewo hierarchii czyta pola.
+    function makeRun(
+      externalPorts: readonly string[],
+      bayRoles: readonly string[],
+      stationType = 'inline',
+    ) {
       return {
         ...simpleGpzEnm(),
         line_runs: [
@@ -235,11 +242,14 @@ describe('buildHierarchy — CableRuns', () => {
           {
             ref_id: 'st_1',
             name: 'Stacja A',
-            station_type: 'mv_distribution',
-            bus_refs: [],
-            external_ports: externalPorts.map((p) => ({
-              id: p.id,
-              kind: p.kind as 'sn_input' | 'sn_output' | 'sn_branch' | 'sn_coupler',
+            station_type: stationType,
+            bus_refs: ['st_1/sn'],
+            meta: {
+              field_specs: bayRoles.map((rola, i) => ({ field_ref: `st_1/pole-${i}`, bus_ref: 'st_1/sn', bay_role: rola })),
+            },
+            external_ports: externalPorts.map((kind, i) => ({
+              id: `port_${i}`,
+              kind: kind as 'sn_input' | 'sn_output' | 'sn_branch' | 'sn_coupler',
               nominal_voltage_kv: 15,
               bay_ref: null,
               substation_ref: 'st_1',
@@ -250,41 +260,25 @@ describe('buildHierarchy — CableRuns', () => {
       };
     }
 
-    it('końcowa (no in/out)', () => {
-      const h = buildHierarchy(makeRun([]));
-      expect(h.cableRuns[0].stations[0].topologicalType).toBe('końcowa');
-    });
-
-    it('przelotowa (1 in + 1 out, no branch)', () => {
-      const h = buildHierarchy(
-        makeRun([
-          { id: 'port_in_1', kind: 'sn_input' },
-          { id: 'port_out_1', kind: 'sn_output' },
-        ]),
-      );
-      expect(h.cableRuns[0].stations[0].topologicalType).toBe('przelotowa');
-    });
-
-    it('odgałęźna (1 in + 1 out + 1 branch)', () => {
-      const h = buildHierarchy(
-        makeRun([
-          { id: 'port_in_1', kind: 'sn_input' },
-          { id: 'port_out_1', kind: 'sn_output' },
-          { id: 'port_branch_1', kind: 'sn_branch' },
-        ]),
-      );
+    it('3 pola liniowe ⇒ odgałęźna, choć porty i deklaracja mówią „przelotowa"', () => {
+      const h = buildHierarchy(makeRun(['sn_input', 'sn_output'], ['IN', 'OUT', 'FEEDER', 'TR']));
       expect(h.cableRuns[0].stations[0].topologicalType).toBe('odgałęźna');
     });
 
-    it('sekcyjna (2 in + 1 coupler)', () => {
-      const h = buildHierarchy(
-        makeRun([
-          { id: 'port_in_1', kind: 'sn_input' },
-          { id: 'port_in_2', kind: 'sn_input' },
-          { id: 'port_coupler_1', kind: 'sn_coupler' },
-        ]),
-      );
+    it('sprzęgło w rozdzielnicy ⇒ sekcyjna, choć portów sprzęgła brak', () => {
+      const h = buildHierarchy(makeRun([], ['IN', 'COUPLER', 'OUT']));
       expect(h.cableRuns[0].stations[0].topologicalType).toBe('sekcyjna');
+    });
+
+    it('2 pola liniowe bez połączenia z inną stacją ⇒ końcowa, choć porty mówią „odgałęźna"', () => {
+      const h = buildHierarchy(makeRun(['sn_input', 'sn_output', 'sn_branch'], ['IN', 'OUT', 'TR']));
+      expect(h.cableRuns[0].stations[0].topologicalType).toBe('końcowa');
+    });
+
+    it('stacja ciągu nieobecna w modelu ⇒ brak rodzaju (bez domysłu)', () => {
+      const enm = makeRun([], ['IN']);
+      const h = buildHierarchy({ ...enm, substations: simpleGpzEnm().substations });
+      expect(h.cableRuns[0].stations[0].topologicalType).toBeNull();
     });
   });
 });

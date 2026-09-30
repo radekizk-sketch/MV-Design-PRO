@@ -9,7 +9,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { podpisStacjiPl } from '../../shared/rodzajStacji';
 import { useSelectionStore } from '../../selection';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
@@ -56,7 +56,7 @@ export function IncompleteStationsReview() {
       return {
         id: station.id,
         name: station.name,
-        stationType: formatStationTypeLabelPl(station.station_type),
+        stationType: podpisStacjiPl(snapshot, station),
         transformerCount: trCount,
         snBayCount: bayCount,
         nnBusCount: nnCount,

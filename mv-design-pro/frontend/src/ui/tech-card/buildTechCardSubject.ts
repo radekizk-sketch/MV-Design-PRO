@@ -25,7 +25,7 @@ import {
   segmentPublicIdentity,
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
-import { formatStationSwitchgearLayoutLabelPl } from '../shared/stationTypeLabels';
+import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
 import { stationSnFieldSpecs, stationSnapshotBays } from '../network-build/stationSnFields';
@@ -262,7 +262,7 @@ function buildStationSubject(
   const isGpz = String(station.station_type ?? '').toLowerCase() === 'gpz';
   const kind: TechCardKind = isGpz ? 'gpz' : 'station';
   const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);
-  const switchgearLabel = formatStationSwitchgearLayoutLabelPl(station.station_type);
+  const switchgearLabel = ukladRozdzielnicyStacjiPl(snapshot, station);
 
   // Pola rozdzielni SN — TA SAMA kolejność źródeł co liczność pól na karcie stacji
   // (`stationSnFieldCount`): specyfikacje pól stacji (`meta.field_specs`, jedyna postać pól

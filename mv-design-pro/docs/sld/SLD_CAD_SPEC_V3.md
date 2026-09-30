@@ -834,8 +834,13 @@ jako WARSTWA ADNOTACJI schematu.
   adnotacją, nie pierwotną prawdą fizyczną, więc Opcja A NIE łamie §12.1, tylko wskazuje właściwe
   źródło). Rozstrzyga K-D2-B — zapisane jako **V12K-034**.
 - **Źródło danych:** inwentarz pól/transformatorów stacji + `line_runs` (warstwa adapter/analysis;
-  BEZ nowego pola DOMAIN). Dziś: `classifyTopologicalType` czyta `station_type` 1:1 — do zastąpienia
-  wyprowadzeniem.
+  BEZ nowego pola DOMAIN). Stan (karta ETYKIETA-STACJI-PRZELOTOWEJ, 2026-09-30): jedna reguła
+  w backendzie `enm/rodzaj_stacji.py` (walidator W043 `station.kind_mismatch`, akcja naprawcza
+  zmiany deklaracji) i jedno lustro frontu `ui/shared/rodzajStacji.ts` z parytetem przypiętym
+  testem; `classifyTopologicalType` (deklaracja 1:1) i reguła sceny z liczby pól skasowane.
+  „Przelotowa" wymaga dwóch pól liniowych POŁĄCZONYCH z innymi stacjami (recenzja NO-GO
+  2026-07-17 pkt 7); pola potrzeb własnych, rezerwowe i odgromnikowe nie są liniowe. Szczegóły:
+  `docs/sld/SLD_TYPY_STACJI_KANONICZNE.md`.
 - **Wyrocznia odbioru:** `station_type_topology_probe` — (a) etykieta typu stacji == typ wyprowadzony
   z topologii; (b) niezgodność z `station_type` (dana) daje `missingData`/ostrzeżenie, nie zmienia
   rysunku; (c) 3 pola liniowe ⇒ typ „odgałęźna"; (d) determinizm.

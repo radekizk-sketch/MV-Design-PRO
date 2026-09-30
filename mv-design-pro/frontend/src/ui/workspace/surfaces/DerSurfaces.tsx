@@ -79,6 +79,7 @@ import type {
   StationDerConnection,
 } from '../../network-build/station-der';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
+import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { EnergyNetworkModel, Generator, Substation } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
@@ -141,57 +142,17 @@ function publicProjectName(value: string | null | undefined): string | undefined
   return value;
 }
 
-function stationTypeLabel(value: string | null | undefined): string {
-  switch ((value ?? '').toLowerCase()) {
-    case 'inline':
-      return 'stacja przelotowa';
-    case 'terminal':
-      return 'stacja końcowa';
-    case 'sectional':
-      return 'stacja sekcyjna';
-    case 'branch':
-    case 'branching':
-      return 'stacja rozgałęźna';
-    case 'gpz':
-      return 'GPZ';
-    default:
-      return 'stacja SN/nN';
-  }
-}
-
-function isGenericStationName(value: string | null | undefined): boolean {
-  const normalized = value?.trim().toLowerCase();
-  return normalized === 'stacja inline'
-    || normalized === 'stacja terminal'
-    || normalized === 'stacja sectional'
-    || normalized === 'stacja branch';
-}
-
-function stationOrdinal(snapshot: EnergyNetworkModel | null, station: Substation | null): number | null {
-  if (!snapshot || !station) return null;
-  const stations = (snapshot.substations ?? []).filter((item) => item.station_type !== 'gpz');
-  const index = stations.findIndex((item) => item.ref_id === station.ref_id || item.id === station.id);
-  return index >= 0 ? index + 1 : null;
-}
-
+/** Nazwa stacji na powierzchniach DER — tożsamość z JEDNEGO miejsca (`stationPublicIdentity`:
+ *  nazwa z modelu albo „S0x · rodzaj", rodzaj z topologii — `ui/shared/rodzajStacji.ts`).
+ *  Dawny lokalny słownik deklaracji (`branch` → „stacja rozgałęźna", `mv_lv` → „stacja SN/nN")
+ *  i własna kopia reguły nazw ogólnych skasowane (karta ETYKIETA-STACJI-PRZELOTOWEJ). */
 function publicStationName(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
   fallbackRef: string,
 ): string {
-  const name = station?.name?.trim();
-  if (name && !isGenericStationName(name) && !isInternalLabel(name)) {
-    return name;
-  }
-
-  const codeNumber = stationOrdinal(snapshot, station);
-  const typeLabel = stationTypeLabel(
-    station?.station_type ?? (asRecord(station?.meta).station_type_semantic as string | undefined),
-  );
-  if (codeNumber !== null) {
-    return `S${String(codeNumber).padStart(2, '0')} · ${typeLabel}`;
-  }
-  return isInternalLabel(fallbackRef) ? typeLabel : fallbackRef;
+  if (snapshot && station) return stationPublicIdentity(snapshot, station).displayName;
+  return isInternalLabel(fallbackRef) ? 'Stacja SN/nN' : fallbackRef;
 }
 
 /**

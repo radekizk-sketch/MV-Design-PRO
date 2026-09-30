@@ -67,35 +67,10 @@ export type FieldRoleV1 = (typeof FieldRoleV1)[keyof typeof FieldRoleV1];
 // EMBEDDING ROLE (trunk↔station binding)
 // =============================================================================
 
-/**
- * Rola stacji wzgledem trunk segmentacji.
- *
- * Wyznaczana deterministycznie z:
- * - incidentTrunkEdges (ile krawedzi TRUNK dotyka stacji)
- * - incidentBranchEdges (ile krawedzi BRANCH)
- * - busSections count (ile szynozbirczych)
- * - coupler presence
- *
- * MAPOWANIE NA TYPY STACJI (A/B/C/D):
- * - A = TRUNK_LEAF
- * - B = TRUNK_INLINE
- * - C = TRUNK_BRANCH
- * - D = LOCAL_SECTIONAL
- *
- * UWAGA: Nie uzywaj "A/B/C/D" w runtime. Tylko w docs jako mapowanie.
- */
-export const EmbeddingRoleV1 = {
-  /** Stacja koncowa — 1 krawedz TRUNK, brak BRANCH, brak wyjscia trunk */
-  TRUNK_LEAF: 'TRUNK_LEAF',
-  /** Stacja przelotowa — 2 krawedzie TRUNK, brak BRANCH */
-  TRUNK_INLINE: 'TRUNK_INLINE',
-  /** Stacja odgalezieniowa — 1 krawedz TRUNK + >= 1 BRANCH */
-  TRUNK_BRANCH: 'TRUNK_BRANCH',
-  /** Stacja sekcyjna — >= 2 busSections, sprzeglo */
-  LOCAL_SECTIONAL: 'LOCAL_SECTIONAL',
-} as const;
-
-export type EmbeddingRoleV1 = (typeof EmbeddingRoleV1)[keyof typeof EmbeddingRoleV1];
+// Rola stacji w segmentacji ciągu (dawne `EmbeddingRoleV1` TRUNK_LEAF/INLINE/BRANCH/
+// LOCAL_SECTIONAL i walidator `validateStationBlock`) — skasowane kartą
+// ETYKIETA-STACJI-PRZELOTOWEJ: równoległa klasyfikacja rodzaju stacji bez producenta i bez
+// wywołań. Rodzaj stacji ma w produkcie jedną regułę: `ui/shared/rodzajStacji.ts`.
 
 // =============================================================================
 // DEVICE ELECTRICAL ROLE
@@ -352,8 +327,6 @@ export interface BusSectionV1 {
 export interface StationBlockDetailV1 {
   /** ID bloku (= id stacji w VisualGraphV1) */
   readonly blockId: string;
-  /** Rola w trunk segmentacji */
-  readonly embeddingRole: EmbeddingRoleV1;
   /** Sekcje szyn (sortowane po orderIndex) */
   readonly busSections: readonly BusSectionV1[];
   /** Pola (sortowane po id) */
@@ -498,8 +471,6 @@ export const FieldDeviceFixCodes = {
   FIELD_DEVICE_MISSING_GENERATOR: 'field.device_missing.generator',
 
   // Stacje
-  STATION_EMBEDDING_UNDETERMINED: 'station.embedding_role_undetermined',
-  STATION_TYPOLOGY_CONFLICT: 'station.typology_conflict',
   STATION_COUPLER_MISSING: 'station.coupler_missing',
   STATION_TRANSFORMER_MISSING: 'station.transformer_missing_for_sn_nn',
   STATION_LINE_IN_MISSING: 'station.line_in_field_missing',
@@ -1080,173 +1051,3 @@ export function buildApparatusSymbolBinding(device: DeviceV1): ApparatusSymbolBi
   };
 }
 
-// =============================================================================
-// VALIDATORS (continued)
-// =============================================================================
-
-/**
- * Waliduje stacje pod katem embeddingRole i wymagan portow/pol.
- */
-export function validateStationBlock(
-  block: StationBlockDetailV1,
-): readonly FieldDeviceFixActionV1[] {
-  const fixActions: FieldDeviceFixActionV1[] = [];
-  const hasFieldRole = (role: FieldRoleV1): boolean =>
-    block.fields.some(field => field.fieldRole === role);
-  const hasAnyFieldRole = (roles: readonly FieldRoleV1[]): boolean =>
-    block.fields.some(field => roles.includes(field.fieldRole));
-  const isMainSubstationBlock = hasFieldRole(FieldRoleV1.GPZ_LINE_BAY);
-
-  // BusSections non-empty
-  if (block.busSections.length === 0) {
-    fixActions.push({
-      code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja ${block.blockId}: brak sekcji szyn (busSections puste)`,
-      elementId: block.blockId,
-      fixHint: `Dodaj przynajmniej jedną sekcję szyny do stacji ${block.blockId}`,
-    });
-  }
-
-  // Fields non-empty
-  if (block.fields.length === 0) {
-    fixActions.push({
-      code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja ${block.blockId}: brak pol (fields puste)`,
-      elementId: block.blockId,
-      fixHint: `Dodaj przynajmniej jedno pole do stacji ${block.blockId}`,
-    });
-  }
-
-  // LOCAL_SECTIONAL: coupler required
-  if (block.embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL && block.couplerFieldId === null) {
-    fixActions.push({
-      code: FieldDeviceFixCodes.STATION_COUPLER_MISSING,
-      message: `Stacja sekcyjna ${block.blockId}: brak pola sprzegla`,
-      elementId: block.blockId,
-      fixHint: `Dodaj pole COUPLER_SN do stacji sekcyjnej ${block.blockId}`,
-    });
-  }
-
-  // Port consistency per embedding role
-  const { ports, embeddingRole } = block;
-  if (embeddingRole === EmbeddingRoleV1.TRUNK_LEAF && !ports.trunkInPort) {
-    fixActions.push({
-      code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja TRUNK_LEAF ${block.blockId}: brak trunkInPort`,
-      elementId: block.blockId,
-      fixHint: `Przypisz trunkInPort do stacji ${block.blockId}`,
-    });
-  }
-
-  if (embeddingRole === EmbeddingRoleV1.TRUNK_INLINE) {
-    if (!ports.trunkInPort) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-        message: `Stacja TRUNK_INLINE ${block.blockId}: brak trunkInPort`,
-        elementId: block.blockId,
-        fixHint: `Przypisz trunkInPort do stacji ${block.blockId}`,
-      });
-    }
-    if (!ports.trunkOutPort) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-        message: `Stacja TRUNK_INLINE ${block.blockId}: brak trunkOutPort`,
-        elementId: block.blockId,
-        fixHint: `Przypisz trunkOutPort do stacji ${block.blockId}`,
-      });
-    }
-  }
-
-  if (embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH && !ports.branchPort) {
-    fixActions.push({
-      code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja TRUNK_BRANCH ${block.blockId}: brak branchPort`,
-      elementId: block.blockId,
-      fixHint: `Przypisz branchPort do stacji ${block.blockId}`,
-    });
-  }
-
-  if (embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL) {
-    if (!ports.trunkInPort || !ports.trunkOutPort) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-        message: `Stacja LOCAL_SECTIONAL ${block.blockId}: brak trunkInPort lub trunkOutPort`,
-        elementId: block.blockId,
-        fixHint: `Przypisz trunkInPort i trunkOutPort do stacji sekcyjnej ${block.blockId}`,
-      });
-    }
-  }
-
-  // Station switchgear structure: renderer nie moze zredukowac stacji SN/nN do
-  // samego transformatora. Braki sa FixAction, nigdy auto-uzupelnieniem.
-  if (!isMainSubstationBlock) {
-    const requiresLineIn = embeddingRole === EmbeddingRoleV1.TRUNK_LEAF
-      || embeddingRole === EmbeddingRoleV1.TRUNK_INLINE
-      || embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH
-      || embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
-    const requiresLineOut = embeddingRole === EmbeddingRoleV1.TRUNK_INLINE
-      || embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH
-      || embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
-    const requiresBranchField = embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH;
-    const requiresCouplerField = embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
-
-    if (requiresLineIn && !hasFieldRole(FieldRoleV1.LINE_IN)) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_LINE_IN_MISSING,
-        message: `Stacja ${block.blockId}: brak pola liniowego wejsciowego SN`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole LINE_IN do rozdzielnicy SN stacji ${block.blockId}`,
-      });
-    }
-
-    if (requiresLineOut && !hasFieldRole(FieldRoleV1.LINE_OUT)) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_LINE_OUT_MISSING,
-        message: `Stacja ${block.blockId}: brak pola liniowego wyjsciowego SN`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole LINE_OUT do rozdzielnicy SN stacji ${block.blockId}`,
-      });
-    }
-
-    if (requiresBranchField && !hasFieldRole(FieldRoleV1.LINE_BRANCH)) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_BRANCH_FIELD_MISSING,
-        message: `Stacja ${block.blockId}: brak pola odgalezieniowego SN`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole LINE_BRANCH do stacji odgalezieniowej ${block.blockId}`,
-      });
-    }
-
-    if (requiresCouplerField && !hasFieldRole(FieldRoleV1.COUPLER_SN)) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_COUPLER_MISSING,
-        message: `Stacja sekcyjna ${block.blockId}: brak pola sekcyjnego`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole COUPLER_SN do stacji sekcyjnej ${block.blockId}`,
-      });
-    }
-
-    if (!hasFieldRole(FieldRoleV1.TRANSFORMER_SN_NN)) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_TRANSFORMER_MISSING,
-        message: `Stacja ${block.blockId}: brak pola transformatorowego SN/nN`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole TRANSFORMER_SN_NN z transformatorem stacyjnym do stacji ${block.blockId}`,
-      });
-    } else if (!hasAnyFieldRole([
-      FieldRoleV1.MAIN_NN,
-      FieldRoleV1.FEEDER_NN,
-      FieldRoleV1.PV_NN,
-      FieldRoleV1.BESS_NN,
-    ])) {
-      fixActions.push({
-        code: FieldDeviceFixCodes.STATION_NN_SWITCHGEAR_MISSING,
-        message: `Stacja ${block.blockId}: brak rozdzielnicy nN za transformatorem stacyjnym`,
-        elementId: block.blockId,
-        fixHint: `Dodaj pole MAIN_NN albo pola FEEDER_NN do rozdzielnicy nN stacji ${block.blockId}`,
-      });
-    }
-  }
-
-  return fixActions;
-}

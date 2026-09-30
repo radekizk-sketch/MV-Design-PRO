@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { jestRodzajemStacji, podpisRodzajuStacjiPl } from '../../shared/rodzajStacji';
 
 import {
   applyStationTemplate,
@@ -756,7 +757,12 @@ function PreviewStep(props: {
               {preview.template_name_pl}
             </div>
             <div className="text-xs text-emerald-300 mt-1">
-              Typ: {preview.station_type}
+              {/* Rodzaj stacji po wstawieniu w odcinek — backend wyprowadza go ze SKŁADU pól
+                  szablonu tą samą regułą co rodzaj w modelu (`enm.rodzaj_stacji`); dawniej
+                  surowy kod deklaracji („Typ: inline”). */}
+              {jestRodzajemStacji(preview.station_type)
+                ? `Rodzaj po wstawieniu w odcinek: ${podpisRodzajuStacjiPl(preview.station_type).toLowerCase()}`
+                : 'Rodzaj stacji nieustalony w podglądzie'}
               {preview.nc_rfg_type && ` · NC RfG typ ${preview.nc_rfg_type}`}
               {preview.catalog_profile_applied &&
                 ` · Profil: ${preview.catalog_profile_applied}`}

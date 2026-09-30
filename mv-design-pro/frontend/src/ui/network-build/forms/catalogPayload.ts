@@ -1,9 +1,5 @@
 import type { CatalogBinding, CatalogNamespace } from '../../catalog/types';
 import { CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
-import {
-  normalizeTopologicalStationKind,
-  type TopologicalStationKind,
-} from '../../shared/stationTypeLabels';
 
 export type ManualSourceShortCircuitMode = 'SHORT_CIRCUIT_POWER' | 'IMPEDANCE';
 
@@ -108,6 +104,3 @@ export function normalizeSwitchState(value: unknown): 'open' | 'closed' {
   return 'closed';
 }
 
-export function normalizeStationType(value: unknown): TopologicalStationKind {
-  return normalizeTopologicalStationKind(value);
-}

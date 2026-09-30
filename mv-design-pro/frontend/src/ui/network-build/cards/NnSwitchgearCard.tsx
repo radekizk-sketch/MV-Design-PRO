@@ -13,7 +13,7 @@ import { useMemo, useCallback } from 'react';
 import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
-import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { podpisStacjiPl } from '../../shared/rodzajStacji';
 import { FIELD_SOURCE_LABEL_PL, fieldLabelPluralPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
@@ -128,7 +128,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       fields: [
         { key: 'id', label: 'ID stacji', value: station.id },
         { key: 'name', label: 'Nazwa', value: station.name },
-        { key: 'type', label: 'Typ topologiczny', value: formatStationTypeLabelPl(station.station_type) },
+        { key: 'type', label: 'Rodzaj stacji', value: podpisStacjiPl(snapshot, station) },
       ],
     };
 

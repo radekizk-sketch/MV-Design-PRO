@@ -44,6 +44,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../shared/rodzajStacji';
 import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
@@ -83,7 +84,9 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
   return {
     basic: {
       stationName,
-      topologicalType: 'końcowa' as const,
+      // Brak danych stacji w migawce = rodzaj nieustalony (bez domysłu „końcowa”).
+      topologicalType: null,
+      topologicalReasonPl: null,
       constructionType: 'kontenerowa' as const,
       snVoltageKv: 15,
       nnVoltageLevels: [0.4],
@@ -321,25 +324,6 @@ function findStation(
   return (snapshot.substations ?? []).find(
     (station) => station.ref_id === stationRef || station.id === stationRef,
   ) ?? null;
-}
-
-function stationTopologicalType(
-  stationType: Substation['station_type'] | null | undefined,
-): 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' {
-  switch (stationType) {
-    case 'terminal':
-      return 'końcowa';
-    case 'branch':
-      return 'odgałęźna';
-    case 'sectional':
-      return 'sekcyjna';
-    case 'inline':
-    case 'mv_lv':
-    case 'customer':
-    case 'switching':
-    default:
-      return 'przelotowa';
-  }
 }
 
 function bayDesignation(bay: Bay, index: number): string {
@@ -1098,6 +1082,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     [projectId, stationRef, audit2Config.data, updateAudit2Config],
   );
 
+  const rodzajKonfiguratora = useMemo(
+    () => rodzajStacji(snapshot, station?.ref_id ?? null),
+    [snapshot, station?.ref_id],
+  );
+
   const configuratorProps = useMemo(() => {
     const base = buildBaseStationProps(stationName, localConfig);
     const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
@@ -1110,7 +1099,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ...base,
       basic: {
         ...base.basic,
-        topologicalType: stationTopologicalType(station?.station_type),
+        // Rodzaj z JEDNEJ reguły produktu (`ui/shared/rodzajStacji.ts`, §19.3) — dawne
+        // mapowanie deklaracji `station_type` (z domyślnym „przelotowa”) skasowane.
+        topologicalType: rodzajKonfiguratora ? NAZWA_RODZAJU_STACJI_PL[rodzajKonfiguratora.rodzaj] : null,
+        topologicalReasonPl: rodzajKonfiguratora?.przyczynaPl ?? null,
         snVoltageKv: stationSnVoltageKv,
         nnVoltageLevels: stationLvVoltages,
         completeness:
@@ -1228,7 +1220,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       },
     };
   }, [
-    station?.station_type,
+    rodzajKonfiguratora,
     stationBays,
     stationTransformerCatalogOptions,
     stationLvVoltages,

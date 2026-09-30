@@ -38,7 +38,8 @@ import {
   earthSwitchLateralGaps,
   lineBayCaptionGaps,
   pathTerminationLabelGaps,
-  stationTypeTopologyMismatches,
+  stationTypeLabelGaps,
+  stationTypeLabels,
   switchSymbolUnambiguityGaps,
   vtParallelGaps,
   allCtAnnotationsValid,
@@ -930,36 +931,41 @@ line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne �
   );
 }
 
-// F10.2 (spec §19.3, V12K-034): station_type_topology_probe — NIEZALEŻNA od
-// buildSceneV3/lod (działa WPROST na snapshot ENM przez adapter v2) — (a)
-// typ stacji WYPROWADZONY z topologii == typ w danych na fixturze
-// referencyjnej (dowód pozytywny: 0 niezgodności na 53 realnych stacjach —
-// spójne dane, żaden false positive); (c) sprawdzone niezależnie w
-// `compose/__tests__/directions.test.ts` (3 pola liniowe ⇒ „odgałęźna").
+// F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ:
+// station_type_topology_probe — (a) podpis rodzaju KAŻDEJ stacji na scenie == rodzaj
+// wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`, lustro
+// backendu `enm/rodzaj_stacji.py`, sonda liczy rodzaj wprost z migawki); (b) deklaracja
+// `station_type` NIE zmienia rysunku — podmiana deklaracji każdej stacji zostawia podpisy
+// bez zmian (niezgodność zgłasza walidator backendu W043, nie scena); (c) stacja z ≥ 3
+// polami liniowymi jest podpisana „stacja odgałęźna" — na fiksturze referencyjnej są takie
+// stacje (źródła lateralów); (d) determinizm — dwie budowy sceny, te same podpisy.
 {
-  const mismatches = stationTypeTopologyMismatches(enm);
+  const scenaRodzaju = buildSceneV3(enm, 2);
+  const luki = stationTypeLabelGaps(scenaRodzaju, enm);
+  const podpisy = stationTypeLabels(scenaRodzaju);
   check(
-    'station_type_topology_probe (§19.3 a): 0 niezgodności typ-z-topologii vs station_type (dana) na fixturze referencyjnej',
-    mismatches.length === 0,
-    `niezgodności=${mismatches.length}${mismatches.length ? ' np. ' + JSON.stringify(mismatches[0]) : ''}`,
+    'station_type_topology_probe (§19.3 a): podpis rodzaju każdej stacji == rodzaj z jednej reguły produktu',
+    podpisy.length > 0 && luki.length === 0,
+    `podpisów=${podpisy.length} luk=${luki.length}${luki.length ? ' np. ' + JSON.stringify(luki[0]) : ''}`,
   );
-  // Test negatywny (b) — dowód, że wyrocznia GRYZIE: snapshot z PODMIENIONYM
-  // station_type jednej stacji (branch→terminal, mimo 3 pól liniowych w
-  // danych) MUSI dać niezgodność zgłoszoną (nie cichą akceptację).
-  const sabotagedStation = enm.substations.find((s) => s.station_type === 'branch');
-  if (sabotagedStation) {
-    const sabotagedEnm = {
-      ...enm,
-      substations: enm.substations.map((s) =>
-        s === sabotagedStation ? { ...s, station_type: 'terminal' } : s,
-      ),
-    };
-    const sabotagedMismatches = stationTypeTopologyMismatches(sabotagedEnm);
-    check(
-      'station_type_topology_probe (test negatywny (b) — dowód, że wyrocznia gryzie): station_type podmieniony (branch→terminal) MUSI dać niezgodność zgłoszoną',
-      sabotagedMismatches.some((m) => m.stationId === sabotagedStation.ref_id),
-    );
-  }
+  const zamiana = { inline: 'terminal', terminal: 'branch', branch: 'sectional', sectional: 'inline', mv_lv: 'branch' };
+  const podmienione = {
+    ...enm,
+    substations: enm.substations.map((s) => (s.station_type in zamiana ? { ...s, station_type: zamiana[s.station_type] } : s)),
+  };
+  const podpisyPoPodmianie = stationTypeLabels(buildSceneV3(podmienione, 2));
+  check(
+    'station_type_topology_probe (§19.3 b): podmiana deklaracji station_type KAŻDEJ stacji nie zmienia żadnego podpisu rodzaju',
+    JSON.stringify(podpisyPoPodmianie) === JSON.stringify(podpisy),
+  );
+  check(
+    'station_type_topology_probe (§19.3 c): stacje z ≥ 3 polami liniowymi podpisane „stacja odgałęźna" (obecne na fiksturze)',
+    podpisy.some(([, tekst]) => tekst === 'stacja odgałęźna'),
+  );
+  check(
+    'station_type_topology_probe (§19.3 d): determinizm podpisów rodzaju',
+    JSON.stringify(stationTypeLabels(buildSceneV3(enm, 2))) === JSON.stringify(podpisy),
+  );
 }
 
 // F9.7 (§15.2 lod_path_probe): sygnatury topologii ciągu głównego per LOD —

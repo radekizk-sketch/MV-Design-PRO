@@ -44,6 +44,7 @@ import type {
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
@@ -2220,7 +2221,9 @@ function classifyTerminalElementType(
   if (stationRef) {
     const station = (snapshot.substations ?? []).find((candidate) => candidate.ref_id === stationRef);
     if (station?.station_type === 'gpz') return 'bay';
-    if (station?.station_type === 'branch') return 'branch_pole';
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju `branch` (stacja odgałęźna SN/nN)
+    // nie czyni stacji słupem odgałęźnym — dawna gałąź `branch → 'branch_pole'` myliła rodzaj
+    // stacji z punktem rozgałęźnym. Słup i ZKSN rozpoznaje wyłącznie `branch_points` wyżej.
     if (station?.station_type === 'switching') return 'zksn';
     return 'station';
   }
@@ -3274,6 +3277,7 @@ function collectFieldStationByRef(snapshot: EnergyNetworkModel): Map<string, Sub
 }
 
 function stationShellsForLineInference(
+  snapshot: EnergyNetworkModel,
   fieldStationByRef: ReadonlyMap<string, Substation>,
 ): StationOnRunRendererProps[] {
   return [...fieldStationByRef.values()].map((station) => ({
@@ -3281,7 +3285,7 @@ function stationShellsForLineInference(
     x: 0,
     y: 0,
     name: station.name || station.ref_id,
-    topologicalType: classifyTopologicalType(station),
+    topologicalType: stationTopologicalType(snapshot, station),
     nnVoltageLevelsCount: 1,
   }));
 }
@@ -3503,7 +3507,7 @@ function buildSldLineRunsForLayout(
   const synthesizedRuns = inferLineRunsFromBranchChain(
     snapshot,
     uncoveredCables,
-    stationShellsForLineInference(fieldStationByRef),
+    stationShellsForLineInference(snapshot, fieldStationByRef),
   )
     .filter((run) => run.segments.length > 0 && run.stations.length > 0);
 
@@ -3709,7 +3713,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         y: Y_RUN_BASE + runIdx * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
         name: normalizeStationName(sub.name, sub.ref_id),
         stationCode,
-        topologicalType: classifyTopologicalType(sub),
+        topologicalType: stationTopologicalType(snapshot, sub),
         nnVoltageLevelsCount: 1,
         footprintType: stationSldDetails.footprintType,
         snBays: stationSldDetails.snBays,
@@ -3762,7 +3766,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           + STATION_RUN_TRUNK_OFFSET_Y,
         name: normalizeStationName(sub.name, sub.ref_id),
         stationCode: stationCodeFromName(sub.name, stationSequence),
-        topologicalType: classifyTopologicalType(sub),
+        topologicalType: stationTopologicalType(snapshot, sub),
         nnVoltageLevelsCount: 1,
         footprintType: stationSldDetails.footprintType,
         snBays: stationSldDetails.snBays,
@@ -3858,11 +3862,14 @@ function buildStationMiniBlockDetails(
   const explicitBays = buildExplicitStationMiniBays(snapshot, station);
   const derSourceBays = buildDedicatedDerStationMiniBays(snapshot, station, explicitBays);
   const snBays = [...explicitBays, ...derSourceBays];
-  const explicitRoles = snBays.map((bay) => bay.fieldRole);
   const hasMvSideDer =
     derSourceBays.length > 0 ||
     derBadges.some((badge) => badge.connectionSide !== 'nn');
-  const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
+  const rodzaj = rodzajStacji(snapshot, station.ref_id);
+  if (!rodzaj) {
+    throw new Error(`Stacja pola „${station.name}" bez rodzaju topologicznego (GPZ albo rozdzielnica nN).`);
+  }
+  const footprintType = deriveFootprintType(station.station_type, rodzaj.rodzaj, hasMvSideDer);
   const transformerUnits = collectStationTransformerUnits(snapshot, station);
   const transformerRefs = transformerUnits.map((unit) => unit.ref);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
@@ -4855,21 +4862,23 @@ function mapGeneratorConnectionSide(gen: Generator): MiniBlockDerBadge['connecti
   }
 }
 
-function classifyTopologicalType(
-  s: Substation,
+/** Podpis rodzaju stacji na rysunku — rodzaj WYPROWADZONY z topologii JEDNĄ regułą
+ *  (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, SLD_CAD_SPEC_V3
+ *  §19.3, V12K-034). Dawne 1:1 mapowanie deklaracji `station_type` (z cichym domyślnym
+ *  „końcowa" dla `mv_lv`, `customer`, `switching`) skasowane: deklaracja służy wyłącznie
+ *  walidacji (walidator backendu W043). Stacja pola (`FIELD_STATION_KINDS`) zawsze ma rodzaj
+ *  — brak wyniku to naruszenie niezmiennika (GPZ albo rozdzielnica nN w stacjach pól). */
+function stationTopologicalType(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
 ): StationOnRunRendererProps['topologicalType'] {
-  switch (s.station_type) {
-    case 'terminal':
-      return 'końcowa';
-    case 'inline':
-      return 'przelotowa';
-    case 'branch':
-      return 'odgałęźna';
-    case 'sectional':
-      return 'sekcyjna';
-    default:
-      return 'końcowa';
+  const wynik = rodzajStacji(snapshot, station.ref_id);
+  if (!wynik) {
+    throw new Error(
+      `Stacja pola „${station.name}" bez rodzaju topologicznego — rodzaj nie dotyczy GPZ ani rozdzielnicy nN.`,
+    );
   }
+  return NAZWA_RODZAJU_STACJI_PL[wynik.rodzaj];
 }
 
 // -----------------------------------------------------------------------------

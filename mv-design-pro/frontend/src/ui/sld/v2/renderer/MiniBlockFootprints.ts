@@ -12,6 +12,7 @@
  */
 
 import { FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
+import type { RodzajStacji } from '../../../shared/rodzajStacji';
 
 // =============================================================================
 // 7 typów footprintu
@@ -148,15 +149,18 @@ export const MINI_BLOCK_FOOTPRINT: Readonly<Record<StationFootprintType, Station
 // =============================================================================
 
 /**
- * Wnioskuje footprint type z substation_type + bay roles.
+ * Footprint mini-bloku: FUNKCJA stacji z deklaracji (`switching`, `customer`), źródło DER,
+ * a układ SN z rodzaju stacji WYPROWADZONEGO z topologii (`ui/shared/rodzajStacji.ts`,
+ * SLD_CAD_SPEC_V3 §19.3). Karta ETYKIETA-STACJI-PRZELOTOWEJ: dawniej układ brał deklarację
+ * rodzaju (`inline` ⇒ przelotowy nawet przy trzech polach liniowych) albo własne liczenie
+ * pól liniowych — druga reguła rodzaju obok reguły schematu.
  *
- * Reguła: footprint NIE wymusza geometrii — to mini-RMU komponuje się
- * z faktycznych pól. Footprint jest tylko domyślnym layoutem dla badge i
- * koloru wewnętrznego.
+ * Reguła: footprint NIE wymusza geometrii — to mini-RMU komponuje się z faktycznych pól.
+ * Footprint jest tylko domyślnym layoutem dla badge i koloru wewnętrznego.
  */
 export function deriveFootprintType(
   stationType: string,
-  bayRoles: readonly FieldRole[],
+  rodzaj: RodzajStacji,
   hasDer: boolean,
 ): StationFootprintType {
   // GPZ nie ma footprintu mini-bloku.
@@ -165,20 +169,10 @@ export function deriveFootprintType(
   }
   if (stationType === 'switching') return 'switching_station';
   if (stationType === 'customer') return 'mv_lv_customer';
-  if (stationType === 'sectional') return 'mv_lv_sectional';
+  if (rodzaj === 'sectional') return 'mv_lv_sectional';
   if (hasDer) return 'der_station';
-
-  // mv_lv / inline / branch / terminal — rozróżniamy po liczbie pól liniowych SN.
-  const lineLikeCount = bayRoles.filter(
-    (r) =>
-      r === FIELD_ROLE.LINE_IN ||
-      r === FIELD_ROLE.LINE_OUT ||
-      r === FIELD_ROLE.LINE_BRANCH ||
-      r === FIELD_ROLE.RMU_LINE,
-  ).length;
-  if (stationType === 'inline' || lineLikeCount === 2) return 'mv_lv_inline';
-  if (stationType === 'branch' || lineLikeCount >= 3) return 'mv_lv_branch';
-  // 'terminal', 'mv_lv' default lub 1 line bay.
+  if (rodzaj === 'inline') return 'mv_lv_inline';
+  if (rodzaj === 'branch') return 'mv_lv_branch';
   return 'mv_lv_terminal';
 }
 

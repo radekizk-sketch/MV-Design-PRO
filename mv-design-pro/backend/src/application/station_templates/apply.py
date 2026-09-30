@@ -14,6 +14,7 @@ Returns: { created_element_refs, snapshot, readiness }
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from application.station_templates.schema import (
@@ -29,9 +30,11 @@ from application.station_templates.schema import (
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
+from enm.rodzaj_stacji import rodzaj_ze_skladu_pol
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
+from enm.tor_pola import pola_do_domkniecia
 from network_model.pochodne import mva_na_kva
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
@@ -394,7 +397,7 @@ def _zastosuj_szablon_pod_blokada(
         station_payload: dict[str, Any] = {
             "segment_id": target_segment_id,
             "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
-            "station": {**station_spec, "station_type": _resolve_station_type(template)},
+            "station": {**station_spec, "station_type": _resolve_station_type(sn_bay_roles)},
             "transformer": transformer_spec,
             "sn_fields": sn_field_specs,
             "nn_block": nn_block_spec,
@@ -1388,16 +1391,19 @@ def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
     return result
 
 
-def _resolve_station_type(template: StationTemplate) -> str:
-    """Map template category → station_type string."""
-    if template.category == TemplateCategory.SLUPOWA:
-        return "terminal"
-    if template.category in (
-        TemplateCategory.SEKCYJNA,
-        TemplateCategory.ROZDZIELNIA_SIECIOWA,
-        TemplateCategory.REZERWA_ZASILANIA,
+def _resolve_station_type(bay_roles: Sequence[str]) -> str:
+    """Deklaracja rodzaju stacji wstawianej z szablonu W ODCINEK — ze SKŁADU pól, tą samą
+    regułą co rodzaj wyprowadzany z topologii (`enm.rodzaj_stacji`, §19.3 V12K-034).
+
+    Do karty ETYKIETA-STACJI-PRZELOTOWEJ deklaracja szła z KATEGORII szablonu (słupowa →
+    końcowa, sekcyjne → sekcyjna, WSZYSTKO inne → przelotowa), więc szablon z polem
+    odgałęźnym deklarował stację przelotową, a schemat wyprowadzał odgałęźną. Skład pól
+    liczony jest PO domknięciu pól toru, które wykona operacja wcięcia (WE, WY, TR —
+    `enm.tor_pola.pola_do_domkniecia`), a wcięcie w odcinek łączy oba końce (dwa połączone
+    wyprowadzenia)."""
+    role = [str(rola).upper() for rola in bay_roles]
+    for pozycja, rola in pola_do_domkniecia(
+        role, wymaga_pola_we=True, wymaga_pola_wy=True, wymaga_pola_tr=False
     ):
-        # Dwusekcyjne, ze sprzęgłem (V12T-016: RS/RSM i rezerwa zasilania
-        # mają rolę COUPLER w `sn_bay_roles`, tak jak SEKCYJNA).
-        return "sectional"
-    return "inline"
+        role.insert(pozycja, rola)
+    return rodzaj_ze_skladu_pol(role, polaczone_wyprowadzenia=2)

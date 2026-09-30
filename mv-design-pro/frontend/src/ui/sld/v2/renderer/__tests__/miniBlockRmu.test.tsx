@@ -612,38 +612,47 @@ describe('MiniBlockFootprints — kanon', () => {
 });
 
 describe('MiniBlockFootprints — deriveFootprintType', () => {
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: FUNKCJA stacji z deklaracji (GPZ, switching, customer),
+  // UKŁAD SN wyłącznie z rodzaju WYPROWADZONEGO z topologii — deklaracja rodzaju (`inline`,
+  // `branch`, `terminal`, `sectional`) nie ma na footprint wpływu.
   it('GPZ rzuca wyjątek (osobny renderer)', () => {
-    expect(() => deriveFootprintType('gpz', [], false)).toThrow(/GPZ/);
+    expect(() => deriveFootprintType('gpz', 'terminal', false)).toThrow(/GPZ/);
   });
 
-  it('switching → switching_station', () => {
-    expect(deriveFootprintType('switching', [], false)).toBe('switching_station');
+  it('switching → switching_station (funkcja stacji, niezależnie od rodzaju)', () => {
+    expect(deriveFootprintType('switching', 'inline', false)).toBe('switching_station');
   });
 
-  it('customer → mv_lv_customer', () => {
-    expect(deriveFootprintType('customer', [], false)).toBe('mv_lv_customer');
+  it('customer → mv_lv_customer (funkcja stacji, niezależnie od rodzaju)', () => {
+    expect(deriveFootprintType('customer', 'branch', false)).toBe('mv_lv_customer');
   });
 
-  it('sectional → mv_lv_sectional', () => {
-    expect(deriveFootprintType('sectional', [], false)).toBe('mv_lv_sectional');
+  it('rodzaj sekcyjny → mv_lv_sectional także przy DER', () => {
+    expect(deriveFootprintType('mv_lv', 'sectional', true)).toBe('mv_lv_sectional');
   });
 
-  it('hasDer=true → der_station (priorytetowo)', () => {
-    expect(deriveFootprintType('inline', [], true)).toBe('der_station');
+  it('hasDer=true → der_station przed układem przelotowym/odgałęźnym/końcowym', () => {
+    for (const rodzaj of ['terminal', 'inline', 'branch'] as const) {
+      expect(deriveFootprintType('inline', rodzaj, true)).toBe('der_station');
+    }
   });
 
-  it('inline → mv_lv_inline', () => {
-    expect(deriveFootprintType('inline', [FIELD_ROLE.RMU_LINE, FIELD_ROLE.RMU_LINE], false)).toBe('mv_lv_inline');
-  });
-
-  it('branch → mv_lv_branch', () => {
-    expect(
-      deriveFootprintType('branch', [FIELD_ROLE.RMU_LINE, FIELD_ROLE.RMU_LINE, FIELD_ROLE.RMU_LINE], false),
-    ).toBe('mv_lv_branch');
-  });
-
-  it('terminal → mv_lv_terminal', () => {
-    expect(deriveFootprintType('terminal', [FIELD_ROLE.RMU_LINE], false)).toBe('mv_lv_terminal');
+  it('iloczyn deklaracja × rodzaj wyprowadzony: układ SN idzie za rodzajem, nie za deklaracją', () => {
+    const oczekiwany = {
+      terminal: 'mv_lv_terminal',
+      inline: 'mv_lv_inline',
+      branch: 'mv_lv_branch',
+      sectional: 'mv_lv_sectional',
+    } as const;
+    for (const deklaracja of ['mv_lv', 'inline', 'branch', 'terminal', 'sectional']) {
+      for (const rodzaj of ['terminal', 'inline', 'branch', 'sectional'] as const) {
+        expect({ deklaracja, rodzaj, fp: deriveFootprintType(deklaracja, rodzaj, false) }).toEqual({
+          deklaracja,
+          rodzaj,
+          fp: oczekiwany[rodzaj],
+        });
+      }
+    }
   });
 });
 

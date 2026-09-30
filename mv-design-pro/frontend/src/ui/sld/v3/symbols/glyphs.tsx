@@ -83,7 +83,7 @@ export interface GlyphProps {
    *  wpisem legendy arkusza). */
   readonly meterQuantity?: 'A' | 'V';
   /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): stacja SEKCYJNA (sprzęgło w
-   *  topologii, `classifyStationTopologicalType`) — WYŁĄCZNIE `Station
+   *  topologii, rodzaj z `ui/shared/rodzajStacji.ts`) — WYŁĄCZNIE `Station
    *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `labelLines`).
    *  Rodzaj stacji (SN/nN · rozdzielnia sieciowa · sekcyjna) WYPROWADZONY z
    *  TYPU elementów, nie z nazw (spec §19.3). */

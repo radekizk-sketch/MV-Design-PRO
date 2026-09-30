@@ -971,6 +971,31 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
     ),
+    # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji niezgodna z rodzajem wyprowadzonym
+    # z topologii (`enm/rodzaj_stacji.py`, walidator W043, SLD_CAD_SPEC_V3 §19.3).
+    "station.kind_mismatch": ReadinessCodeSpec(
+        code="station.kind_mismatch",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii "
+            "(liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii"
+        ),
+        fix_navigation={"panel": "inspector", "modal": "update_element_parameters"},
+    ),
+    # Pole rozdzielnicy SN o roli spoza słownika — nie liczy się do rodzaju stacji (W044).
+    "station.field_role_unknown": ReadinessCodeSpec(
+        code="station.field_role_unknown",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono "
+            "bez tego pola"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     # Transformer
     "transformer.catalog_missing": ReadinessCodeSpec(
         code="transformer.catalog_missing",

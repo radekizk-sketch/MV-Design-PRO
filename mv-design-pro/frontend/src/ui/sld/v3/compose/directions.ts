@@ -40,12 +40,10 @@
  *     designation` DOMAIN, F10.6, gdy obecny WYGRYWA nad tekstem konwencji
  *     — `data-designation-source="dane"`; fallback konwencji ze znacznikiem
  *     `"konwencja"` gdy dana niedostarczona).
- *  4. `classifyStationTopologicalType` (F10.2, spec §19.3, V12K-034) — rodzaj
- *     stacji (końcowa/przelotowa/odgałęźna/sekcyjna) WYPROWADZONY z topologii
- *     (liczba pól liniowych + obecność sprzęgła w `snBays`), NIE z ręcznej
- *     danej `Substation.station_type`. Mieszka w tym pliku, bo używa TEJ
- *     SAMEJ `isLineLikeRole` co (1)/(2) — jedna prawda „co jest polem
- *     liniowym".
+ *  Rodzaj stacji (końcowa/przelotowa/odgałęźna/sekcyjna, F10.2 §19.3) NIE mieszka tu:
+ *  jedyną regułą produktu jest `ui/shared/rodzajStacji.ts` (lustro backendu
+ *  `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ), którą adapter wpisuje
+ *  w `StationOnRunRendererProps.topologicalType`.
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
@@ -197,33 +195,6 @@ export function fieldCaptionAt(
   }
   const rola = fieldFunctionalDesignation(snBays[index].fieldRole);
   return oznacznik ? `${oznacznik} · ${rola.replace(/^pole /, '')}` : rola;
-}
-
-/**
- * F10.2 (spec §19.3, V12K-034): rodzaj stacji WYPROWADZONY z topologii —
- * zastępuje dawne 1:1 mapowanie ręcznej danej `Substation.station_type`
- * (`classifyTopologicalType`, `v2/canvas/enmToSldAdapter.ts`, NIEZMIENIONE —
- * pozostaje jako `props.topologicalType`, źródło WYŁĄCZNIE dla WALIDACJI
- * niezgodności, `scene/buildScene.ts` `buildMeasureInput`, spec §19.3 „dana
- * służy WYŁĄCZNIE walidacji, bez cichego nadpisania rysunku").
- *
- * Reguła (spec §19.3, wyrocznia `station_type_topology_probe`):
- *  1. obecność pola sprzęgła (`FIELD_ROLE.COUPLER`) w `snBays` ⇒ „sekcyjna"
- *     (sprzęgło = dzieli stację na sekcje niezależnie od liczby pól
- *     liniowych — `mv_lv_sectional` ma 2 pola liniowe, ale JEST sekcyjna);
- *  2. inaczej liczba pól liniowych (`isLineLikeRole`) w `snBays`:
- *     0-1 ⇒ „końcowa", 2 (równorzędne) ⇒ „przelotowa", ≥3 ⇒ „odgałęźna".
- *
- * Czysta funkcja `snBays` — zero zależności od `station_type`/ID/nazwy.
- */
-export function classifyStationTopologicalType(
-  snBays: readonly MiniBlockBayDescriptor[],
-): 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' {
-  if (snBays.some((bay) => bay.fieldRole === FIELD_ROLE.COUPLER)) return 'sekcyjna';
-  const lineCount = snBays.filter((bay) => isLineLikeRole(bay.fieldRole)).length;
-  if (lineCount >= 3) return 'odgałęźna';
-  if (lineCount === 2) return 'przelotowa';
-  return 'końcowa';
 }
 
 /** Kierunek pola liniowego wynikający z pozycji wśród pól liniowych tej

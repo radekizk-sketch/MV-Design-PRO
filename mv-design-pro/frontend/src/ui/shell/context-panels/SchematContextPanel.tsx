@@ -12,6 +12,7 @@ import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import type { ElementType } from '../../types';
 import { fieldLabelInSentencePl, fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
+import { podpisStacjiPl, type ModelDlaRodzaju, type StacjaDlaRodzaju } from '../../shared/rodzajStacji';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   type EntityTypeCode,
@@ -602,7 +603,7 @@ function buildTreeSections(snapshot: SnapshotRecord | null, blockerRefs: Set<str
   const sections = [
     buildSection('GPZ i zasilanie', getCollection(snapshot, 'sources'), 'Układ zasilania GPZ', blockerRefs, sourceTarget, undefined),
     buildSection('Pola GPZ', gpzBays, 'Pole GPZ', blockerRefs, bayTarget, (item) => formatBayRole(item)),
-    buildSection('Stacje SN/nN', fieldStations, 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(item), formatStationTreeLabel),
+    buildSection('Stacje SN/nN', fieldStations, 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(snapshot, item), formatStationTreeLabel),
     buildSection('Magistrale i odcinki SN', lineBranches, 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(item)),
     buildSection('Układy PV/BESS/FW', getCollection(snapshot, 'generators'), 'Układ', blockerRefs, generatorTarget, (item) => formatGeneratorMeta(item, snapshot)),
     buildSection('Odbiory nN', getCollection(snapshot, 'loads'), 'Odbiór', blockerRefs, loadTarget, (item) => formatLoadMeta(item)),
@@ -948,16 +949,13 @@ function readReturnConductorSection(catalogData?: SnapshotRecord | null): string
   if (!Number.isFinite(value) || value <= 0) return null;
   return value.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
 }
-function formatStationType(item: SnapshotRecord): string | undefined {
-  const type = asText(item.station_type).toLowerCase();
-  if (type.includes('gpz')) return 'GPZ';
-  if (type.includes('inline') || type.includes('przelot')) return 'stacja przelotowa';
-  if (type.includes('terminal') || type.includes('konc') || type.includes('końc')) return 'stacja końcowa';
-  if (type.includes('section') || type.includes('sekcj')) return 'stacja sekcyjna';
-  if (type.includes('branch') || type.includes('rozgal') || type.includes('rozgał')) return 'stacja rozgałęźna';
-  if (type.includes('consumer') || type.includes('odbior')) return 'stacja odbiorcza';
-  if (type.includes('rmu') || type.includes('mv_lv') || type.includes('sn')) return 'stacja SN/nN';
-  return type ? 'stacja elektroenergetyczna' : undefined;
+/** Rodzaj stacji w wierszu drzewa projektu — JEDNA reguła produktu (`ui/shared/rodzajStacji.ts`,
+ *  rodzaj wyprowadzony z topologii, §19.3). Dawne dopasowanie podciągów deklaracji
+ *  `station_type` („inline"/„przelot" ⇒ przelotowa, „branch" ⇒ „rozgałęźna") skasowane: drzewo
+ *  mówiło „przelotowa" o stacji, którą schemat — zgodnie z polami — podpisywał „odgałęźna". */
+function formatStationType(snapshot: SnapshotRecord, item: SnapshotRecord): string {
+  const podpis = podpisStacjiPl(snapshot as ModelDlaRodzaju, item as StacjaDlaRodzaju);
+  return podpis === 'GPZ' ? podpis : podpis.charAt(0).toLowerCase() + podpis.slice(1);
 }
 
 function formatStationTreeLabel(item: SnapshotRecord, index: number, fallbackLabel: string): string {

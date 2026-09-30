@@ -39,6 +39,7 @@ from enm.models import (
     OverheadLine,
     SwitchBranch,
 )
+from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
@@ -803,7 +804,10 @@ class EligibilityService:
         tak samo jak `_check_transformer_uk` blokuje SC_3F dla KAŻDEGO
         transformatora bez uk%, nie tylko dla pierwszego napotkanego).
         """
-        mv_lv_stations = [s for s in enm.substations if s.station_type == "mv_lv"]
+        # Stacja SN/nN = deklaracja funkcji `mv_lv` ALBO rodzaj topologiczny (`TYPY_STACJI_SN_NN`)
+        # — operacja wcięcia zapisuje rodzaj, więc sam `mv_lv` gubił stacje przelotowe,
+        # odgałęźne, końcowe i sekcyjne (fałszywa blokada braku stacji SN/nN).
+        mv_lv_stations = [s for s in enm.substations if s.station_type in TYPY_STACJI_SN_NN]
         if not mv_lv_stations:
             blockers.append(
                 AnalysisEligibilityIssue(

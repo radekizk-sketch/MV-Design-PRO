@@ -206,7 +206,7 @@ def preview_station_template(
         "template_name_pl": template.name_pl,
         "category": template.category.value,
         "nc_rfg_type": template.nc_rfg_type,
-        "station_type": _resolve_station_type(template),
+        "station_type": _resolve_station_type(bay_roles),
         "catalog_profile_applied": profile,
         "effective_config": {
             "transformer_ref": transformer_ref,

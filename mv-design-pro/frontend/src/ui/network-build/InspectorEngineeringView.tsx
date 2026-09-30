@@ -38,15 +38,11 @@ import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
+import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import {
-  formatStationSwitchgearLayoutLabelPl,
-  formatStationTypeLabelPl,
-} from '../shared/stationTypeLabels';
-import {
-  isGenericStationName,
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
-  stationOrdinalCode,
+  stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
 import {
   stationReadModelSnFields,
@@ -904,18 +900,6 @@ function semanticActionContext(
   };
 }
 
-function stationPublicName(
-  snapshot: EnergyNetworkModel,
-  station: NonNullable<EnergyNetworkModel['substations']>[number],
-): { code: string; typeLabel: string; displayName: string } {
-  const code = stationOrdinalCode(snapshot, station);
-  const typeLabel = formatStationTypeLabelPl(station.station_type);
-  const displayName = isGenericStationName(station.name)
-    ? `${code} · ${typeLabel}`
-    : publicTechnicalLabel(station.name, `${code} · ${typeLabel}`);
-  return { code, typeLabel, displayName };
-}
-
 function isSemanticMvSegment(selectedElement: SelectedElement): boolean {
   return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
     || selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
@@ -1016,13 +1000,8 @@ function stationDisplayNameForInternalRef(
   const station = (snapshot.substations ?? []).find((item) =>
     item.ref_id === stationRef || item.id === stationRef,
   );
-  if (!station) return 'Stacja SN/nN';
-  const stationCode = stationOrdinalCode(snapshot, station);
-  const stationTypeLabel = formatStationTypeLabelPl(station.station_type);
-  const fallback = [stationCode, stationTypeLabel].join(' · ');
-  return isGenericStationName(station.name)
-    ? fallback
-    : publicTechnicalLabel(station.name, fallback);
+  // Tożsamość stacji z JEDNEGO miejsca (`stationPublicIdentity`: kod · rodzaj z topologii).
+  return station ? stationPublicIdentity(snapshot, station).displayName : 'Stacja SN/nN';
 }
 
 function buildInternalStationElementSections(
@@ -2323,7 +2302,7 @@ function buildSectionsForElement(
     : snapshot.substations?.find((s) => s.id === elementId || s.ref_id === elementId);
   if (station) {
     elementType = 'substation';
-    const stationIdentity = stationPublicName(snapshot, station);
+    const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
     const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
     const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
@@ -2331,7 +2310,7 @@ function buildSectionsForElement(
       ? `${snFieldCount} pól SN`
       : stationFieldItems.length > 0
         ? `${stationFieldItems.length} pól SN`
-        : formatStationSwitchgearLayoutLabelPl(station.station_type);
+        : ukladRozdzielnicyStacjiPl(snapshot, station);
     const stationTransformers = (snapshot.transformers ?? []).filter((t) =>
       station.transformer_refs.includes(t.ref_id),
     );

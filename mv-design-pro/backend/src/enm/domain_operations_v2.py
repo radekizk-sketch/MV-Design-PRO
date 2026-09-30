@@ -70,6 +70,7 @@ from .domain_operations import (
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
     _apply_screen_bonding,
+    POLE_RODZAJU_POLA,
     _build_field_spec,
     _compute_seed,
     _copy_split_segment_fields,
@@ -88,6 +89,7 @@ from .domain_operations import (
     blad_pomiaru_w_torze_tranzytu,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
+    metadane_pochodzenia_pola,
     wybor_bloku_fabrycznego,
 )
 from .dynamika_z_katalogu import (
@@ -2252,6 +2254,12 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # wyrobu, z którego pochodzi (blok widać było wyłącznie w podglądzie trybu
     # próby, czyli w odpowiedzi, która niczego nie utrwala).
     wybor_bloku = wybor_bloku_fabrycznego(payload)
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj pola katalogowego (`bay_kind`) — ta sama droga
+    # odczytu metadanych pochodzenia, co w operacjach stacyjnych. Rola modelu nie odróżnia pola
+    # liniowego od pola potrzeb własnych czy rezerwowego (w katalogu wszystkie są `FEEDER`),
+    # a rodzaj stacji liczy wyłącznie pola liniowe (`enm.rodzaj_stacji`) — bez zapisu rodzaju
+    # dodanie pola potrzeb własnych robiło ze stacji przelotowej „odgałęźną".
+    pochodzenie_pola = metadane_pochodzenia_pola(payload)
     # Tylko podane refy (bez clobber istniejących wartości na None przy re-konfiguracji).
     producer_refs: dict[str, Any] = {
         key: value
@@ -2264,6 +2272,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if value
     }
     producer_refs.update(wybor_bloku)
+    producer_refs.update(pochodzenie_pola)
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
@@ -2518,6 +2527,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             switchgear_family_ref=switchgear_family_ref,
             manufacturer_ref=manufacturer_ref,
             wybor_bloku=wybor_bloku,
+            metadane_pochodzenia=pochodzenie_pola,
             primary_devices=primary_devices_spec or None,
             tags=list(payload.get("tags") or []),
             funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
@@ -2708,6 +2718,9 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         "bay_role": plan.bay_role,
         "bay_template_ref": plan.bay_template_ref,
         "switchgear_family_ref": plan.switchgear_family_ref,
+        # Rodzaj pola z KATALOGU (liniowe / potrzeb własnych / rezerwowe…) — przesądza, czy
+        # pole liczy się do rodzaju stacji (`enm.rodzaj_stacji`).
+        POLE_RODZAJU_POLA: plan.bay_kind,
     }
     if plan.manufacturer_ref:
         payload_pola["manufacturer_ref"] = plan.manufacturer_ref

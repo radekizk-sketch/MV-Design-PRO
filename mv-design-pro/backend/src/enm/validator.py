@@ -43,6 +43,12 @@ from .models import (
 )
 from .nazwy_elementow import nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
+from .rodzaj_stacji import (
+    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
+    KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+    RodzajStacji,
+    rodzaje_stacji,
+)
 from .severity import (
     SEVERITY_BLOCKER,
     SEVERITY_IMPORTANT,
@@ -57,6 +63,7 @@ from .severity import (
     severity_rank,
 )
 from .slownik_komunikatow import (
+    NAZWY_RODZAJOW_STACJI_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
     nazwa_rodzaju_generatora,
     opis_elementu,
@@ -161,6 +168,8 @@ class ENMValidator:
         self._check_transformer_sn_bay(enm, issues)
         # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy
         self._check_zasada_toru(enm, issues)
+        # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
+        self._check_rodzaj_stacji(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -1593,6 +1602,115 @@ class ENMValidator:
                 )
             )
 
+    @staticmethod
+    def _rodzaje_stacji(enm: EnergyNetworkModel) -> dict[str, RodzajStacji]:
+        """Rodzaj każdej stacji z JEDNEJ reguły `enm.rodzaj_stacji` (widok słownikowy modelu)."""
+        return rodzaje_stacji(
+            {
+                "substations": [
+                    {
+                        "ref_id": s.ref_id,
+                        "id": s.id,
+                        "name": s.name,
+                        "station_type": s.station_type,
+                        "bus_refs": list(s.bus_refs),
+                        "meta": s.meta,
+                    }
+                    for s in enm.substations
+                ],
+                "branches": [
+                    {
+                        "ref_id": b.ref_id,
+                        "type": getattr(b, "type", None),
+                        "from_bus_ref": getattr(b, "from_bus_ref", None),
+                        "to_bus_ref": getattr(b, "to_bus_ref", None),
+                        "meta": b.meta,
+                    }
+                    for b in enm.branches
+                ],
+                "bays": [
+                    {
+                        "ref_id": b.ref_id,
+                        "name": b.name,
+                        "substation_ref": b.substation_ref,
+                        "bay_role": b.bay_role,
+                        "meta": b.meta,
+                    }
+                    for b in enm.bays
+                ],
+            }
+        )
+
+    def _check_rodzaj_stacji(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W043 / W044: rodzaj stacji wobec topologii (karta ETYKIETA-STACJI-PRZELOTOWEJ).
+
+        Rodzaj stacji jest WYPROWADZANY z topologii (`enm.rodzaj_stacji`, `SLD_CAD_SPEC_V3`
+        §19.3, V12K-034), a deklaracja `Substation.station_type` służy wyłącznie walidacji:
+        W043 — deklaracja różni się od rodzaju wyprowadzonego (rysunek, drzewo, karty
+        pokazują wyprowadzony; akcja naprawcza zmienia deklarację operacją
+        `update_element_parameters`, alternatywą jest zmiana pól w konfiguratorze stacji);
+        W044 — pole rozdzielnicy SN o roli nierozpoznanej nie liczy się do rodzaju (akcja:
+        wskazanie roli pola w konfiguratorze). Poziom IMPORTANT: obliczenia sieci są poprawne,
+        niespójna jest dokumentacja stacji (deklaracja wobec zbudowanego układu).
+        """
+        for rodzaj in self._rodzaje_stacji(enm).values():
+            stacja = opis_nazwy(rodzaj.station_name, "Stacja")
+            if not rodzaj.zgodny_z_deklaracja and rodzaj.deklaracja is not None:
+                deklarowany = NAZWY_RODZAJOW_STACJI_PL[rodzaj.deklaracja]
+                issues.append(
+                    ValidationIssue(
+                        code=KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{stacja} jest zadeklarowana jako {deklarowany}, a z topologii "
+                            f"wynika stacja {rodzaj.nazwa_pl}: {rodzaj.przyczyna_pl}. Schemat, "
+                            "drzewo projektu i karty pokazują rodzaj wynikający z topologii."
+                        ),
+                        element_refs=[rodzaj.station_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            f"Zmień deklarację rodzaju stacji na „{rodzaj.nazwa_pl}” albo "
+                            "dostosuj pola rozdzielnicy SN w konfiguratorze stacji do rodzaju "
+                            f"„{deklarowany}”."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=rodzaj.station_ref,
+                            modal_type="update_element_parameters",
+                            payload_hint={
+                                "element_ref": rodzaj.station_ref,
+                                "field": "station_type",
+                                "value": rodzaj.rodzaj,
+                            },
+                        ),
+                    )
+                )
+            for pole_sn in rodzaj.pola_nierozpoznane:
+                issues.append(
+                    ValidationIssue(
+                        code=KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis_nazwy(pole_sn.nazwa, 'Pole SN')} w "
+                            f"{opis_nazwy(rodzaj.station_name, 'stacji')} ma rolę spoza "
+                            "słownika ról pól rozdzielnicy SN — nie liczy się do rodzaju stacji "
+                            f"(pola liniowe, sprzęgło); rodzaj „{rodzaj.nazwa_pl}” wyznaczono "
+                            "bez tego pola."
+                        ),
+                        element_refs=[rodzaj.station_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            "Przejdź do stacji i zastąp to pole polem o znanej roli (liniowe "
+                            "wejściowe, wyjściowe, odgałęźne, transformatorowe, sprzęgła albo "
+                            "pomiarowe)."
+                        ),
+                        fix_action=FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT",
+                            element_ref=rodzaj.station_ref,
+                        ),
+                    )
+                )
+
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
     # ------------------------------------------------------------------
@@ -1931,7 +2049,7 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'pole') for ref in offending_bays))}"
                             ") nie są podpięte do szyny SN. Ciągłość SN nie może "
@@ -1944,10 +2062,10 @@ class ENMValidator:
                             "(wspólna szyna SN)."
                         ),
                         fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                            # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                            # do elementu, przy którym projektant naprawia układ.
+                            action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=sub.ref_id,
-                            modal_type="SubstationModal",
-                            payload_hint={"required": "through_station_mv_bus"},
                         ),
                     )
                 )
@@ -1966,10 +2084,11 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe podpięte do różnych szyn SN ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'szyna') for ref in mv_buses_used))}"
-                            "). Ciągłość SN przez stację przelotową wymaga wspólnej magistrali SN."
+                            "). Ciągłość SN między polem wejściowym a wyjściowym stacji wymaga "
+                            "wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
@@ -1978,10 +2097,10 @@ class ENMValidator:
                             "stacji."
                         ),
                         fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                            # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                            # do elementu, przy którym projektant naprawia układ.
+                            action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=sub.ref_id,
-                            modal_type="SubstationModal",
-                            payload_hint={"required": "through_station_mv_bus"},
                         ),
                     )
                 )
@@ -2634,10 +2753,10 @@ class ENMValidator:
                         "wprowadź logikę SZR."
                     ),
                     fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                        # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                        # do elementu, przy którym projektant naprawia układ.
+                        action_type="NAVIGATE_TO_ELEMENT",
                         element_ref=bus_ref,
-                        modal_type="SubstationModal",
-                        payload_hint={"required": "nn_parallel_sources"},
                     ),
                 )
             )

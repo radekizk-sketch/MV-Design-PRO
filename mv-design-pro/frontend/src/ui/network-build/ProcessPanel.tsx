@@ -16,7 +16,7 @@ import type {
 import type { BranchViewV1, TerminalRef, TrunkViewV1 } from '../../types/enm';
 import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
 import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
-import { formatStationTypeShortLabelPl } from '../shared/stationTypeLabels';
+import { skrotRodzajuStacjiPl } from '../shared/rodzajStacji';
 import {
   buildControlDeviceOptions,
   measurementCountsForField,
@@ -480,7 +480,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
                     station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
                   )}
                 >
-                  {formatStationTypeShortLabelPl(station.stationType)}
+                  {station.rodzaj ? skrotRodzajuStacjiPl(station.rodzaj) : 'Rozdz. nN'}
                 </span>
                 <span className="flex-1 truncate">{station.name}</span>
                 {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}

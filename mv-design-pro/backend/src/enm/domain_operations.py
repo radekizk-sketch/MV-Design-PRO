@@ -82,6 +82,7 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     rozwiaz_aparaty_pola,
 )
+from .rodzaj_stacji import TYPY_STACJI_SN_NN
 from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
@@ -5359,17 +5360,21 @@ def _domyslna_nazwa_gpz(enm: dict[str, Any], voltage_kv: object) -> str:
     return f"{bazowa} ({numer})"
 
 
-def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -> str:
+def _unique_default_station_name(enm: dict[str, Any]) -> str:
     """Domyślna nazwa stacji z UNIKATOWYM kodem Sxx (recenzja NO-GO 2026-07-17
     pkt 14): kolejny wolny numer ponad najwyższy kod ``S\\d{2,3}`` już użyty w
     nazwach substations (deterministycznie, bez kolizji z nazwami ręcznymi).
     Frontend (`stationCodeFromName`, enmToSldAdapter.ts) czyta kod z nazwy —
-    unikatowa nazwa ⇒ unikatowy kod na rysunku."""
+    unikatowa nazwa ⇒ unikatowy kod na rysunku.
+
+    Nazwa NIE niesie rodzaju stacji (dawniej „Stacja S01 (typ inline)" — kod angielski
+    w tekście dla projektanta i rodzaj zamrożony w nazwie): rodzaj jest wyprowadzany
+    z topologii (`enm.rodzaj_stacji`) i zmienia się razem z polami, nazwa — nie."""
     highest = 0
     for sub in enm.get("substations", []):
         for match in re.finditer(r"\bS(\d{2,3})\b", str(sub.get("name") or "")):
             highest = max(highest, int(match.group(1)))
-    return f"Stacja S{highest + 1:02d} (typ {station_type_label})"
+    return f"Stacja S{highest + 1:02d}"
 
 
 def _build_neutral_grounding(
@@ -6514,6 +6519,29 @@ _SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
 }
 
 
+def _odmowa_roli_pola_spoza_slownika(
+    sn_fields: list[dict[str, Any]], *, operacja: str, kod: str
+) -> dict[str, Any] | None:
+    """Jawna odmowa wpisu pola SN o roli spoza słownika ról (karta ETYKIETA-STACJI-PRZELOTOWEJ).
+
+    Do tej karty obie drogi budowy stacji rozstrzygały taką rolę po cichu i każda inaczej:
+    wcięcie w odcinek zapisywało pole jako odgałęźne (`FEEDER` — trzecie pole liniowe, więc
+    stacja przelotowa z polem źródłowym PV stawała się na schemacie „odgałęźną"), a stacja
+    końca ciągu pole pomijała (szablon deklarował pole, model go nie miał). Rola pola decyduje
+    o rodzaju stacji (`enm.rodzaj_stacji`), więc nie wolno jej zgadywać."""
+    dozwolone = lista_pl(nazwa_roli_pola_sn(rola) for rola in _SN_FIELD_ROLE_TO_BAY_ROLE)
+    for numer, field in enumerate(sn_fields, start=1):
+        rola = field.get("field_role") if isinstance(field, dict) else None
+        if kanoniczna_rola_pola_sn(rola) not in _SN_FIELD_ROLE_TO_BAY_ROLE:
+            return _error_response(
+                f"{pole('sn_fields', operacja)}: pole nr {numer} ma rolę spoza słownika ról pól "
+                f"rozdzielnicy SN — rola pola przesądza o rodzaju stacji, więc nie jest "
+                f"zgadywana. Dozwolone: {dozwolone}.",
+                kod,
+            )
+    return None
+
+
 def _nazwa_pola_w_modelu(enm: dict[str, Any], field_ref: str, field_role: str) -> str:
     """Nazwa pola do komunikatu dla projektanta: nazwa elementu pola z modelu, a dla pola
     opisanego specyfikacją stacji — `nazwa_pola_ze_specyfikacji`; pole nieznane — nazwa roli.
@@ -6935,6 +6963,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             )
         else:
             sn_fields.append(item)
+    odmowa_roli = _odmowa_roli_pola_spoza_slownika(
+        sn_fields, operacja="insert_station_on_segment_sn", kod="station.insert.field_role_invalid"
+    )
+    if odmowa_roli is not None:
+        return odmowa_roli
 
     # --- Krok 0: Walidacja wejścia ---
     if not segment_id:
@@ -6968,7 +7001,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "sectional": "D",  # Stacja sekcyjna → typ D (ze sprzęgłem)
     }
     substation_type_map: dict[str, str] = {
-        "A": "mv_lv",
+        "A": "terminal",
         "B": "inline",
         "C": "branch",
         "D": "sectional",
@@ -7073,7 +7106,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # w klasę C), a błąd braku aparatu nazywa najpierw pole projektanta. Pole domknięte bez
     # wspólnego wskazania aparatu kończy operację tym samym błędem B-12 (pętla pól niżej).
     for pozycja, rola in pola_do_domkniecia(
-        [_SN_FIELD_ROLE_TO_BAY_ROLE.get(str(f.get("field_role", "")), "FEEDER") for f in sn_fields],
+        [_SN_FIELD_ROLE_TO_BAY_ROLE[str(f.get("field_role", ""))] for f in sn_fields],
         wymaga_pola_we=True,
         wymaga_pola_wy=True,
         wymaga_pola_tr=bool(transformer.get("create", True)),
@@ -7095,7 +7128,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Rola pola w modelu z JEDNEJ tablicy (`_SN_FIELD_ROLE_TO_BAY_ROLE`) — tej samej, którą
     # pętla pól niżej zapisuje w specyfikacjach; skład pól jest już domknięty (wyżej).
     role_pol_w_modelu = [
-        _SN_FIELD_ROLE_TO_BAY_ROLE.get(str(field_spec.get("field_role", "")), "FEEDER")
+        _SN_FIELD_ROLE_TO_BAY_ROLE[str(field_spec.get("field_role", ""))]
         for field_spec in sn_fields
     ]
     idx_pola_we = indeks_pola_toru(role_pol_w_modelu, ROLA_POLA_WE)
@@ -7116,7 +7149,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         # stacji (Sxx) u ŹRÓDŁA — dawny fallback "Stacja {typ}" produkował
         # duplikaty ("Stacja B" ×N), a kod na rysunku (frontend
         # `stationCodeFromName`) wywodzi się z nazwy.
-        or _unique_default_station_name(enm, station_type_raw or station_type)
+        or _unique_default_station_name(enm)
     )
 
     # Validate insert_at
@@ -7624,8 +7657,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "tags": [],
             **station_identity,
             "meta": {
-                "station_type_sn": station_type,
-                "station_type_semantic": station_type_raw,
                 "field_specs": field_specs,
                 "nn_field_specs": nn_field_specs,
             },
@@ -7868,7 +7899,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         events.append({**zdarzenie, "event_seq": ev_seq})
 
     audit.append(
-        {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
+        {
+            "step": ev_seq,
+            "action": f"Wstawiono {opis_nazwy(station_display_name, 'stację')}",
+            "element_id": stn_id,
+        }
     )
 
     response = _response(
@@ -8049,15 +8084,12 @@ def _build_split_preview_metadata(
             f"{opis_nazwy(segment.get('name'), 'Odcinek')} nie ma pozycji katalogowej — "
             "obie jego części po podziale też jej nie będą miały."
         )
-    if station_type in ("inline", "branch", "sectional", "mv_lv") and length_km <= 0:
+    # Podział odcinka o zerowej długości — niezależnie od deklaracji rodzaju stacji (dawna
+    # lista deklaracji pomijała stację końcową, a martwa gałąź `mv_lv` niczego nie robiła).
+    if length_km <= 0:
         missing_data_after.append(
             "Odcinek ma zerową długość — podział odcinka o zerowej długości jest niedozwolony."
         )
-    # Sprawdź czy nowa stacja będzie potrzebować transformatora (mv_lv typ)
-    if station_type == "mv_lv":
-        # Jeśli payload nie podał transformer — stacja będzie incomplete
-        # Heurystyka: stacja typu A (mv_lv) zawsze potrzebuje TR + bus nN
-        pass  # TR utworzony w glównej operacji jeśli był podany
 
     return {
         "inserted_station_id": inserted_station_id,
@@ -10175,6 +10207,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "name",
                 "entry_point_ref",
                 "meta",
+                # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
+                # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
+                "station_type",
             },
         }
         illegal_keys = sorted(
@@ -10190,6 +10225,22 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 f"{NAZWY_KOLEKCJI_PL.get(coll, 'element modelu')} — dozwolone są wyłącznie "
                 "parametry z listy dopuszczonej dla tego rodzaju elementu.",
                 "params.key_not_allowed",
+            )
+
+    # Deklaracja rodzaju stacji: zmiana wyłącznie w obrębie stacji SN/nN (deklaracja funkcji
+    # `mv_lv` albo rodzaj topologiczny) — rozdzielnia źródłowa i rozdzielnica nN mają inną
+    # budowę modelu (sekcje GPZ, sekcje nN), której zmiana deklaracji nie przebuduje.
+    if coll == "substations" and "station_type" in parameters:
+        if (
+            current_element.get("station_type") not in TYPY_STACJI_SN_NN
+            or parameters["station_type"] not in TYPY_STACJI_SN_NN
+        ):
+            return _error_response(
+                f"Pole {pole('station.station_type')}: "
+                "deklarację rodzaju można zmienić wyłącznie w stacji SN/nN, na rodzaj "
+                f"{lista_pl(NAZWY_RODZAJOW_STACJI_PL.values())} albo stację SN/nN bez "
+                "wskazania rodzaju.",
+                "station.station_type_change_invalid",
             )
 
     # Pola NC RfG modułu: JEDEN walidator z tworzeniem źródła (`add_converter_source`) —
@@ -11024,10 +11075,10 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     semantic_to_substation = {
         "inline": "inline",
         "branch": "branch",
-        "terminal": "mv_lv",
+        "terminal": "terminal",
         "sectional": "sectional",
         "mv_lv": "mv_lv",
-        "A": "mv_lv",
+        "A": "terminal",
         "B": "inline",
         "C": "branch",
         "D": "sectional",
@@ -11065,6 +11116,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     # w odcinek). Stacja końcowa nie prowadzi tranzytu, więc brama pomiaru
     # w torze tranzytu nie ma tu czego bramkować (kontrakt pary predykatów
     # w `szyna_prowadzi_tranzyt_sn`).
+    odmowa_roli = _odmowa_roli_pola_spoza_slownika(
+        sn_fields, operacja="append_station_on_endpoint", kod="station.append.field_role_invalid"
+    )
+    if odmowa_roli is not None:
+        return odmowa_roli
     blad_pomiaru = rozstrzygnij_pomiary_pol(
         sn_fields, domyslna_funkcja=FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI
     )
@@ -11083,9 +11139,8 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # (`continue` niżej), więc stacja abonencka na końcu gałęzi powstawała
         # bez układu pomiarowego, choć szablon go deklarował.
         field_role = kanoniczna_rola_pola_sn(field.get("field_role"))
-        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role)
-        if not bay_role:
-            continue
+        # Rola spoza słownika została odrzucona przed budową (`_odmowa_roli_pola_spoza_slownika`).
+        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE[field_role]
         field_role_counts[field_role] = field_role_counts.get(field_role, 0) + 1
         role_index = field_role_counts[field_role]
         if field_role == "LINIA_IN" and role_index == 1:
@@ -11399,7 +11454,6 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         **station_identity,
         "meta": {
             "created_by": "append_station_on_endpoint",
-            "station_type_semantic": station_type_raw,
             "switchgear": station_payload.get("switchgear") or payload.get("switchgear") or {},
             "field_specs": field_specs,
         },

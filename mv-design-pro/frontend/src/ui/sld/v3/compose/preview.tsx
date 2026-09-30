@@ -404,12 +404,12 @@ export interface GpzCompactGlyphSummary {
  *  mini-RMU na L0 (`AUDYT_SCHEMATOW_OD_ZERA_2026-07` §3 „Stacja"). Wszystkie
  *  pola WYPROWADZONE z realnej topologii/danych stacji (zero fabrykacji). */
 export interface StationCompactGlyphSummary {
-  /** Stacja sekcyjna (sprzęgło w `snBays`, `classifyStationTopologicalType`). */
+  /** Stacja sekcyjna (sprzęgło w rozdzielnicy — rodzaj z `ui/shared/rodzajStacji.ts`). */
   readonly sectioned: boolean;
   /** GS-5 (uwaga właściciela 2026-07-23): topologia pól liniowych sylwetki z
-   *  ROLI stacji w ciągu — TA SAMA reguła prezentacji co L1/L2 (typ z TYPU
-   *  elementów §19.3 + stacja ostatnia w ciągu bez NO prezentuje się jako
-   *  końcowa, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
+   *  RODZAJU stacji — TA SAMA reguła co podpis L1/L2 (jedna reguła produktu
+   *  `ui/shared/rodzajStacji.ts`, §19.3; przelotowa ⇔ oba pola liniowe
+   *  połączone, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
    *  fantomowego toru na wylot), 'przelotowa' = dwa pola, 'odgałęźna' = dwa
    *  pola + węzeł odgałęzienia na szynie. Sekcyjna ⇒ 'przelotowa' (dwustronna
    *  z definicji) + `sectioned`. */
