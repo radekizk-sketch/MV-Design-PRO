@@ -21,7 +21,7 @@
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
-import { szynyStacji } from '../../../../ui/shared/szynyStacji';
+import { indeksGaleziPolNn, szynyStacji } from '../../../../ui/shared/szynyStacji';
 
 /**
  * Stacje, w których leży punkt zwarcia. Punkt zwarcia to węzeł (szyna) —
@@ -43,11 +43,12 @@ export function stacjeDlaPunktu(
     [row.element_id, row.target_id].filter((v): v is string => Boolean(v)),
   );
   const znalezione = new Set<string>();
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches ?? []);
 
   for (const stacja of snapshot.substations ?? []) {
     const ref = stacja.ref_id ?? stacja.id;
     if (!ref) continue;
-    const szyny = szynyStacji(stacja, snapshot.branches ?? []);
+    const szyny = szynyStacji(stacja, snapshot.branches ?? [], indeksPolNn);
     if ([...refy].some((busRef) => szyny.has(busRef))) znalezione.add(ref);
   }
   return [...znalezione].sort((a, b) => a.localeCompare(b));

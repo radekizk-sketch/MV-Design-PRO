@@ -18,7 +18,12 @@
  */
 import type { Bus, Substation } from '../../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
-import { szynyStacji, type GalazDlaSzyn, type StacjaDlaSzyn } from '../../shared/szynyStacji';
+import {
+  szynyStacji,
+  type GalazDlaSzyn,
+  type IndeksGaleziPolNn,
+  type StacjaDlaSzyn,
+} from '../../shared/szynyStacji';
 
 /* Granica stron stacji — jedno lustro granic pasm (`ui2/model/pasmaNapieciowe`).
  * Do karty PASMO-1KV strony dzieliła tu własna liczba 0,5 kV (od K30-37: „0.4 kV
@@ -91,14 +96,16 @@ export function pickStationBus(
  * `ui2/model/pasmaNapieciowe`). Nie jest trzecią regułą: nie dodaje ani nie odejmuje szyny
  * spoza iloczynu tych dwóch. Szyna bez rekordu `Bus` albo bez `voltage_kv` nie należy do
  * żadnej strony (brak danej ≠ strona nN). Kolejność wyniku = posortowane refy.
+ * `indeksPolNn` — indeks gałęzi pól nN tablicy `branches` (wołający pytający o wiele stacji).
  */
 export function stationSideBusRefs(
   substation: StacjaDlaSzyn,
   branches: readonly GalazDlaSzyn[],
   busByRef: ReadonlyMap<string, Pick<Bus, 'voltage_kv'>>,
   side: StationBusSide,
+  indeksPolNn?: IndeksGaleziPolNn,
 ): readonly string[] {
-  return [...szynyStacji(substation, branches)]
+  return [...szynyStacji(substation, branches, indeksPolNn)]
     .filter((busRef) => {
       const v = busByRef.get(busRef)?.voltage_kv;
       return typeof v === 'number' && Number.isFinite(v) && belongsToSide(v, side);

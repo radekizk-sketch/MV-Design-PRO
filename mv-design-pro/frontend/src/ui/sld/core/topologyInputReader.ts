@@ -24,7 +24,7 @@ import type {
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
-import { transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
+import { kontekstTransformatorowStacji, transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
@@ -508,6 +508,8 @@ export function readTopologyFromENM(
   // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra backendu `szynyStacji` (szyny
   // główne, zaciski pól SN, końce aparatów pól nN); szyna wspólna → pierwsza stacja modelu.
   const stationBusMap = new Map<string, string>(stacjaSzyn(enm.substations, enm.branches));
+  const kontekstTransformatorow = kontekstTransformatorowStacji(enm);
+  const indeksPolNn = kontekstTransformatorow.indeksPolNn;
   const stations: TopologyStationV1[] = enm.substations.map((sub) => {
     const meta = (sub as { meta?: unknown }).meta;
     const stationKind = enmStationKind(sub);
@@ -525,10 +527,10 @@ export function readTopologyFromENM(
       voltageKv: sub.bus_refs.length > 0
         ? (busVoltageMap.get(sub.bus_refs[0]) ?? null)
         : null,
-      busIds: [...szynyStacji(sub, enm.branches)].sort(),
+      busIds: [...szynyStacji(sub, enm.branches, indeksPolNn)].sort(),
       branchIds: [],
       switchIds: [],
-      transformerIds: transformatoryNalezaceDoStacji(enm, sub).map((tr) => tr.ref_id).sort(),
+      transformerIds: transformatoryNalezaceDoStacji(enm, sub, kontekstTransformatorow).map((tr) => tr.ref_id).sort(),
       fieldSpecs: renderableFieldSpecs.length > 0
         ? renderableFieldSpecs
         : (!hasExplicitSnFieldSpecs && sub.gpz_sections?.length
