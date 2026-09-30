@@ -375,6 +375,7 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
         "der_count",
         "pominiete",
         "certyfikaty_odrzucone",
+        "certyfikaty_brakujace",
         "bieg",
     }
     assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU

@@ -1829,6 +1829,10 @@ def _execute_v126(run: CanonicalRun) -> None:
     pominiete_zrodla = options.get("pominiete_zrodla")
     if pominiete_zrodla:
         run_record["pominiete_zrodla"] = pominiete_zrodla
+    # Karta OD-17a: nazwane odmowy braku pakietu danych właściciela (addytywne).
+    braki_pakietow = options.get("braki_pakietow")
+    if braki_pakietow:
+        run_record["braki_pakietow"] = braki_pakietow
     proof = build_v126_proof_artifact(run_record)
     report = build_v126_report_artifact(run_record, proof)
     run_record["proof"] = proof

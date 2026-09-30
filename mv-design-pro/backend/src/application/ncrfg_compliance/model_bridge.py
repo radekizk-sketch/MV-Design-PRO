@@ -97,7 +97,12 @@ from catalog.profiles.nc_rfg import NcRfgProfile, TypModulu, load_nc_rfg_profile
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
 from enm.nazwy_elementow import nazwa_elementu, nazwa_nadana_pozycji_katalogu
-from network_model.catalog.mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
+from enm.odmowy_pakietow_danych import odmowa_braku_certyfikatu
+from network_model.catalog.mv_ptpiree_catalog import (
+    certyfikat_niewskazany,
+    get_all_ptpiree_generator_certificates,
+)
+from network_model.odmowa_pakietu import OdmowaBrakuPakietuDanych, RekordBrakuPakietu
 from network_model.pochodne import mw_na_kw, udzial_mocy_biernej_pu
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeModuleInput
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
@@ -165,6 +170,9 @@ class WejsciaZgodnosciZModelu(BaseModel):
     pominiete: list[NcRfgDerPominiety]
     certyfikaty: dict[str, DowodCertyfikatu]
     certyfikaty_odrzucone: list[NcRfgCertyfikatOdrzucony]
+    #: Karta OD-17a: DER, których tabliczka nie wskazuje certyfikatu (``certyfikat_niewskazany``)
+    #: — nazwana odmowa braku danych pakietu wykazu PTPiREE (po ``der_ref``).
+    certyfikaty_brakujace: dict[str, RekordBrakuPakietu]
 
 
 def _slownik(value: Any) -> dict[str, Any]:
@@ -248,6 +256,17 @@ def _podstawa_dowodu(
     )
 
 
+def _odmowa_braku_certyfikatu(generator: Generator) -> OdmowaBrakuPakietuDanych:
+    """Odmowa braku certyfikatu dla DER, dla którego ``weryfikacja_certyfikatu`` dała ``None``
+    (predykat ``certyfikat_niewskazany`` — ten sam w obu miejscach, więc odmowa istnieje)."""
+    odmowa = odmowa_braku_certyfikatu(generator)
+    if odmowa is None:
+        raise RuntimeError(
+            "Rozjazd predykatów braku certyfikatu: weryfikacja dała brak, a odmowa nie powstała."
+        )
+    return odmowa
+
+
 def weryfikacja_certyfikatu(
     der_ref: str,
     tabliczka: dict[str, Any],
@@ -257,12 +276,17 @@ def weryfikacja_certyfikatu(
 ) -> DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None:
     """Dowód certyfikatu urządzenia wyprowadzony PO STRONIE SERWERA z tabliczki × rejestr.
 
-    ``None`` — tabliczka nie wskazuje certyfikatu (status inny niż ``POWIAZANY`` i brak
-    referencji rekordu). ``NcRfgCertyfikatOdrzucony`` — tabliczka wskazuje certyfikat, ale
+    ``None`` — tabliczka nie wskazuje certyfikatu (``certyfikat_niewskazany``: status inny niż
+    ``POWIAZANY`` i brak referencji rekordu) — brak danych pakietu wykazu, który wołający
+    nazywa odmową ``_odmowa_braku_certyfikatu`` (karta OD-17a). ``NcRfgCertyfikatOdrzucony`` — tabliczka wskazuje certyfikat, ale
     rekord nie istnieje w rejestrze, tabliczka przeczy rekordowi, zakres typów rekordu jest
     nieczytelny, wersja wykazu jest spoza warstwy WiPWC profilu albo data umowy leży poza
     oknem akceptacji tej wersji. ``DowodCertyfikatu`` — pola z REKORDU REJESTRU.
     """
+    if certyfikat_niewskazany(tabliczka):
+        # Karta OD-17a: TEN SAM predykat braku co gotowość modelu — wołający zamienia `None`
+        # na nazwaną odmowę braku danych pakietu wykazu PTPiREE (`odmowa_braku_certyfikatu`).
+        return None
     referencja = tabliczka.get("ptpiree_certificate_ref")
     powiazany = tabliczka.get("ptpiree_status") == "POWIAZANY"
     if not _niepusty_tekst(referencja):
@@ -499,6 +523,7 @@ def build_ncrfg_module_inputs_from_enm(
     pominiete: list[NcRfgDerPominiety] = []
     certyfikaty: dict[str, DowodCertyfikatu] = {}
     odrzucone: list[NcRfgCertyfikatOdrzucony] = []
+    brakujace: dict[str, RekordBrakuPakietu] = {}
     for generator in enm.generators:
         if generator.gen_type not in _INVERTER_GEN_TYPES:
             continue
@@ -524,6 +549,8 @@ def build_ncrfg_module_inputs_from_enm(
                 certyfikaty[generator.ref_id] = weryfikacja
             elif weryfikacja is not None:
                 odrzucone.append(weryfikacja)
+            else:
+                brakujace[generator.ref_id] = _odmowa_braku_certyfikatu(generator).rekord()
             continue
         pominiete.append(
             NcRfgDerPominiety(
@@ -539,30 +566,40 @@ def build_ncrfg_module_inputs_from_enm(
         pominiete=pominiete,
         certyfikaty=certyfikaty,
         certyfikaty_odrzucone=odrzucone,
+        certyfikaty_brakujace=brakujace,
     )
 
 
 def weryfikacje_certyfikatow_typu(
     enm: EnergyNetworkModel, catalog_item_id: str, *, operator_id: str
-) -> list[tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None]]:
+) -> list[tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | RekordBrakuPakietu]]:
     """Dowody certyfikatu urządzeń modelu związanych z TYPEM katalogowym (dokument studium).
 
     Tożsamość urządzenia w studium to typ katalogowy przekształtnika, nie moduł biegu —
     dopasowanie idzie po ``catalog_item_id`` tabliczki; kolejność = kolejność urządzeń w
     modelu. Każde urządzenie przechodzi TĘ SAMĄ weryfikację tabliczki × rejestr co moduły
-    biegu zgodności.
+    biegu zgodności; tabliczka bez certyfikatu daje TĘ SAMĄ nazwaną odmowę braku danych
+    pakietu wykazu PTPiREE co most zgodności (karta OD-17a).
     """
     profil = load_nc_rfg_profile(operator_id)
-    return [
-        (
+    wynik: list[tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | RekordBrakuPakietu]] = []
+    for generator in enm.generators:
+        if _slownik(generator.materialized_params).get("catalog_item_id") != catalog_item_id:
+            continue
+        weryfikacja = weryfikacja_certyfikatu(
             generator.ref_id,
-            weryfikacja_certyfikatu(
-                generator.ref_id,
-                _slownik(generator.materialized_params),
-                profile=profil,
-                data_umowy=generator.data_umowy_przylaczeniowej,
-            ),
+            _slownik(generator.materialized_params),
+            profile=profil,
+            data_umowy=generator.data_umowy_przylaczeniowej,
         )
-        for generator in enm.generators
-        if _slownik(generator.materialized_params).get("catalog_item_id") == catalog_item_id
-    ]
+        wynik.append(
+            (
+                generator.ref_id,
+                (
+                    weryfikacja
+                    if weryfikacja is not None
+                    else _odmowa_braku_certyfikatu(generator).rekord()
+                ),
+            )
+        )
+    return wynik

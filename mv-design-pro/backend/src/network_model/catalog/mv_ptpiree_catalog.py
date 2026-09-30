@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -432,6 +433,20 @@ def _match_note(match_params: dict[str, Any]) -> str:
         # zobaczyc, bo bez spelnienia warunku certyfikat nie obowiazuje.
         return f"{base} Warunek ważności certyfikatu: {condition}"
     return base
+
+
+def certyfikat_niewskazany(tabliczka: Mapping[str, Any]) -> bool:
+    """Tabliczka urządzenia NIE wskazuje certyfikatu z wykazu PTPiREE (karta OD-17a).
+
+    JEDEN predykat braku certyfikatu dla gotowości modelu (ostrzeżenie o przetwornicy bez
+    certyfikatu) i dla mostu zgodności NC RfG (dowód certyfikatu po stronie serwera): brak
+    statusu ``POWIAZANY`` ORAZ brak referencji rekordu wykazu. Tabliczka wskazująca certyfikat
+    choćby jednym z tych pól NIE jest brakiem danych — jej spójność z rejestrem ocenia most
+    (odrzucenie z powodem), nie ten predykat.
+    """
+    ref = tabliczka.get("ptpiree_certificate_ref")
+    wskazuje_rekord = isinstance(ref, str) and bool(ref.strip())
+    return tabliczka.get("ptpiree_status") != "POWIAZANY" and not wskazuje_rekord
 
 
 def annotate_with_ptpiree_status(record: dict[str, Any]) -> dict[str, Any]:

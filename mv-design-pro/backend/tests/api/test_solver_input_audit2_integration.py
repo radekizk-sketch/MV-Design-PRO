@@ -537,3 +537,35 @@ def test_audit2_half_pair_fails_run_with_explicit_reason(app_client):
     executed = _create_and_execute_run(app_client, case_id, "LOAD_FLOW", {"audit2_project_id": pid})
     assert executed["status"] == "FAILED", executed
     assert "połową pary" in (executed.get("error_message") or "")
+
+
+@pytest.mark.parametrize(
+    ("config", "scenariusz", "oczekiwane"),
+    [
+        ({"thermal_time_seconds": 0.5}, "MAX", {"thermal_time_seconds": 0.5}),
+        ({"c_factor_max": 1.05}, "MAX", {"c_factor": 1.05}),
+        ({"c_factor_min": 0.9}, "MIN", {"c_factor": 0.9}),
+        ({"include_inverter_contribution": False}, "MAX", {"include_inverter_contribution": False}),
+    ],
+)
+def test_koperta_wejscia_niesie_konfiguracje_przypadku_nie_domyslna(
+    app_client, config: dict, scenariusz: str, oczekiwane: dict
+):
+    """Karta OD-17a (znalezisko uboczne): koperta wejścia solvera czytała konfigurację z
+    zaślepki `StudyCaseConfig()` — każdy przypadek dostawał współczynniki domyślne niezależnie
+    od własnej konfiguracji. Test przez realną ścieżkę: przypadek z konfiguracją z API."""
+    pid = _create_project(app_client)
+    res = app_client.post(
+        "/api/study-cases",
+        json={"project_id": pid, "name": "Konfiguracja przypadku", "config": config},
+    )
+    assert res.status_code == 201, res.text
+    case_id = str(res.json()["id"])
+    odp = app_client.get(
+        f"/api/cases/{case_id}/analysis/solver-input/short_circuit_3f",
+        params={"scenario": scenariusz},
+    )
+    assert odp.status_code == 200, odp.text
+    opcje = odp.json()["payload"]
+    for klucz, wartosc in oczekiwane.items():
+        assert opcje[klucz] == wartosc, (klucz, opcje)

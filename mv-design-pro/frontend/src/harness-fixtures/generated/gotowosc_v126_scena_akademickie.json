@@ -43,7 +43,26 @@
             "pv/9d008ed355939bef762652554f56b2e4/converter"
           ],
           "blokujacy": true,
-          "klucz_parametru": "harmonic_spectra"
+          "klucz_parametru": "harmonic_spectra",
+          "braki_pakietow": [
+            {
+              "kod": "BRAK_KARTY_PRODUCENTA:widmo_harmoniczne",
+              "rodzaj": "BRAK_KARTY_PRODUCENTA",
+              "pakiet": "P2",
+              "identyfikator": "widmo_harmoniczne",
+              "nazwa_elementu": "Farma PV",
+              "status_maszynowy": "NIE_OCENIONO",
+              "komunikat_pl": "Źródło „Farma PV”: brak danych karty producenta — widmo prądu harmonicznych przekształtnika. Przekształtnik nie wchodzi do analizy harmonicznych jako źródło odkształcające; widmo można też podać ręcznie w oknie analizy. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+              "wyjasnienie": {
+                "zdanie_pl": "Źródło „Farma PV”: brak danych karty producenta — widmo prądu harmonicznych przekształtnika. Przekształtnik nie wchodzi do analizy harmonicznych jako źródło odkształcające; widmo można też podać ręcznie w oknie analizy. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+                "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet kart katalogowych producentów, dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+                "czego_brakuje": [
+                  "dane karty producenta: widmo prądu harmonicznych przekształtnika"
+                ],
+                "zastrzezenia": []
+              }
+            }
+          ]
         }
       ],
       "braki": [
@@ -55,7 +74,26 @@
             "pv/9d008ed355939bef762652554f56b2e4/converter"
           ],
           "blokujacy": true,
-          "klucz_parametru": "harmonic_spectra"
+          "klucz_parametru": "harmonic_spectra",
+          "braki_pakietow": [
+            {
+              "kod": "BRAK_KARTY_PRODUCENTA:widmo_harmoniczne",
+              "rodzaj": "BRAK_KARTY_PRODUCENTA",
+              "pakiet": "P2",
+              "identyfikator": "widmo_harmoniczne",
+              "nazwa_elementu": "Farma PV",
+              "status_maszynowy": "NIE_OCENIONO",
+              "komunikat_pl": "Źródło „Farma PV”: brak danych karty producenta — widmo prądu harmonicznych przekształtnika. Przekształtnik nie wchodzi do analizy harmonicznych jako źródło odkształcające; widmo można też podać ręcznie w oknie analizy. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+              "wyjasnienie": {
+                "zdanie_pl": "Źródło „Farma PV”: brak danych karty producenta — widmo prądu harmonicznych przekształtnika. Przekształtnik nie wchodzi do analizy harmonicznych jako źródło odkształcające; widmo można też podać ręcznie w oknie analizy. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+                "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet kart katalogowych producentów, dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+                "czego_brakuje": [
+                  "dane karty producenta: widmo prądu harmonicznych przekształtnika"
+                ],
+                "zastrzezenia": []
+              }
+            }
+          ]
         }
       ],
       "uwagi": [],

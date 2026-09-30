@@ -5,7 +5,9 @@ from enum import StrEnum
 from typing import Any
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
+from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
+from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 from pydantic import BaseModel, Field
@@ -263,6 +265,48 @@ def ograniczniki_bez_uziemienia_sieci(enm: EnergyNetworkModel) -> tuple[str, ...
     punktu neutralnego (ani szyna, ani transformator) — wejście koordynacji izolacji
     NIE jest dla nich budowane (W5-D p. 12: zero podstawionego ``"isolated"``)."""
     return _wejscia_izolacji(enm)[1]
+
+
+def braki_poziomu_izolacji(
+    enm: EnergyNetworkModel, wiersze: list[V126InsulationInput]
+) -> list[RekordBrakuPakietu]:
+    """P2 (karta OD-17a): miejsca koordynacji izolacji bez poziomu izolacji udarowej
+    chronionych aparatów z karty producenta — rekord na KAŻDY wiersz wejścia ``wiersze``,
+    które solver faktycznie liczy (gotowość podaje wiersze z modelu, bieg — wiersze wejścia po
+    danych projektanta; ta sama funkcja po obu stronach, predykaty parami).
+
+    ``V126InsulationInput`` nie ma pola poziomu izolacji aparatów, a żaden typ katalogowy
+    aparatu, kabla ani transformatora nie niesie poziomu BIL/LIWL pozycji (tylko klasę
+    napięciową), więc margines ochrony solver V12.6 (rdzeń B-01) liczy wobec poziomu
+    normowego IEC 60071-1 dla U_m — rekord ``BRAK_PODSTAWY``: wynik informacyjny wobec
+    przyjętej wartości normowej, a nie wobec danych zainstalowanych aparatów.
+    """
+    szyny = {bus.ref_id: bus for bus in enm.buses}
+    rekordy: list[RekordBrakuPakietu] = []
+    for wiersz in wiersze:
+        szyna = szyny.get(wiersz.location_bus_ref)
+        rekordy.append(
+            brak_karty_producenta(
+                [
+                    (
+                        "poziom_izolacji_udarowej",
+                        "znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych "
+                        "aparatów",
+                    )
+                ],
+                nazwa_elementu=(
+                    nazwa_elementu(szyna, "buses") if szyna is not None else "szyna spoza modelu"
+                ),
+                rodzaj_elementu_pl="Szyna z ogranicznikiem przepięć",
+                skutek_pl=(
+                    "Margines ochrony ogranicznika liczony jest informacyjnie wobec poziomu "
+                    "normowego IEC 60071-1 dla napięcia najwyższego urządzeń, a nie wobec "
+                    "poziomu izolacji zainstalowanych aparatów."
+                ),
+                status="BRAK_PODSTAWY",
+            ).rekord()
+        )
+    return rekordy
 
 
 def _wejscia_izolacji(
@@ -565,6 +609,23 @@ class OcenaKartyPrzeksztaltnika:
     spectrum_provenance: str | None
     spectrum_kod: str | None
     spectrum_powod: str | None
+    #: Karta OD-17a: brak widma z karty producenta (źródło bez karty widmowej i bez widma
+    #: ręcznego) — nazwana odmowa braku pakietu kart producentów; `spectrum_powod` = jej zdanie.
+    odmowa_widma: RekordBrakuPakietu | None = None
+
+
+def odmowa_braku_widma(generator: Any) -> RekordBrakuPakietu:
+    """P2: przekształtnik bez widma harmonicznych z karty producenta — JEDNA nazwana odmowa
+    (kod ``BRAK_KARTY_PRODUCENTA:widmo_harmoniczne``) dla wejścia V12.6 i jego gotowości."""
+    return brak_karty_producenta(
+        [("widmo_harmoniczne", "widmo prądu harmonicznych przekształtnika")],
+        nazwa_elementu=nazwa_elementu(generator, "generators"),
+        rodzaj_elementu_pl="Źródło",
+        skutek_pl=(
+            "Przekształtnik nie wchodzi do analizy harmonicznych jako źródło odkształcające; "
+            "widmo można też podać ręcznie w oknie analizy."
+        ),
+    ).rekord()
 
 
 def _oceb_karte_przeksztaltnika(
@@ -639,6 +700,7 @@ def _oceb_karte_przeksztaltnika(
     # więc odczyt klucza z `materialized_params` czytałby wyłącznie wartość wstrzykniętą
     # mimo katalogu — tor skasowany u źródła, nie osłonięty.
     widmo_reczne = jawne_widma.widma.get(ref)
+    odmowa_widma: RekordBrakuPakietu | None = None
     if widmo_reczne:
         spectrum: dict[int, float] | None = widmo_reczne
         spectrum_provenance: str | None = "RECZNE"
@@ -652,14 +714,22 @@ def _oceb_karte_przeksztaltnika(
             "Widmo ręczne przekształtnika odrzucone w całości — "
             f"{jawne_widma.odrzucone[ref]}. Popraw widmo w oknie analizy."
         )
-    else:
+    elif generator.modele_widmowe is not None and generator.modele_widmowe.zrodla:
+        # Źródło MA kartę widmową (dane producenta są w modelu), ale wejście audytowe V12.6
+        # przyjmuje wyłącznie widmo ręczne — to nie jest brak danych pakietu właściciela.
         spectrum = None
         spectrum_provenance = None
         spectrum_kod = "generator.harmonic_spectrum_missing"
         spectrum_powod = (
-            "Brak widma prądu harmonicznych przekształtnika w wejściu analizy — podaj "
-            "widmo ręcznie w oknie analizy (karta katalogowa typu nie niesie widma)."
+            "Źródło ma przypisaną kartę widmową, ale wejście analizy audytowej przyjmuje "
+            "wyłącznie widmo podane ręcznie — podaj widmo w oknie analizy."
         )
+    else:
+        spectrum = None
+        spectrum_provenance = None
+        spectrum_kod = "generator.harmonic_spectrum_missing"
+        odmowa_widma = odmowa_braku_widma(generator)
+        spectrum_powod = odmowa_widma.komunikat_pl
 
     return OcenaKartyPrzeksztaltnika(
         generator_ref=ref,
@@ -675,6 +745,7 @@ def _oceb_karte_przeksztaltnika(
         spectrum_provenance=spectrum_provenance,
         spectrum_kod=spectrum_kod,
         spectrum_powod=spectrum_powod,
+        odmowa_widma=odmowa_widma,
     )
 
 
@@ -723,7 +794,7 @@ def odbiorcy_z_parametrow(parameters: dict[str, Any] | None) -> OdbiorcyZParamet
 
 def pominiete_zrodla_v126(
     enm: EnergyNetworkModel, *, parameters: dict[str, Any] | None = None
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     """Generatory PV/BESS/wiatrowe pominięte (całkowicie albo tylko co do widma
     harmonicznych) w wejściu V12.6 — TA SAMA ocena karty co
     `build_v126_input_from_enm` (`_oceb_karte_przeksztaltnika`, JEDNO źródło
@@ -731,9 +802,10 @@ def pominiete_zrodla_v126(
     co faktycznie trafiło do modelu solvera. Używane przez `api/v126_academic.py`
     do bramki 422 (żadne źródło nie ma danych) i pola `pominiete_zrodla`
     (część ma dane). Zwraca listę `{ref, kod, powod}` — pusta, gdy wszystkie
-    kandydujące generatory mają kompletne dane."""
+    kandydujące generatory mają kompletne dane. Pominięcie z braku widma w karcie producenta
+    niesie dodatkowo `odmowa_pakietu` (rekord nazwanej odmowy braku pakietu, karta OD-17a)."""
     jawne_widma = _widma_jawne_z_parametrow(parameters)
-    wynik: list[dict[str, str]] = []
+    wynik: list[dict[str, Any]] = []
     for generator in enm.generators:
         if generator.gen_type not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
@@ -747,13 +819,14 @@ def pominiete_zrodla_v126(
                 }
             )
         elif ocena.spectrum_kod is not None:
-            wynik.append(
-                {
-                    "ref": ocena.generator_ref,
-                    "kod": ocena.spectrum_kod,
-                    "powod": ocena.spectrum_powod or "",
-                }
-            )
+            wpis: dict[str, Any] = {
+                "ref": ocena.generator_ref,
+                "kod": ocena.spectrum_kod,
+                "powod": ocena.spectrum_powod or "",
+            }
+            if ocena.odmowa_widma is not None:
+                wpis["odmowa_pakietu"] = ocena.odmowa_widma.model_dump(mode="json")
+            wynik.append(wpis)
     return wynik
 
 

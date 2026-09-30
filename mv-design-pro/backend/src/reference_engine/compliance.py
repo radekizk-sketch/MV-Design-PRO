@@ -33,6 +33,7 @@ from network_model.catalog.switchgear.complete_mv_bay_template import (
     nazwa_rodzaju_pola_katalogowego_pl,
 )
 from network_model.catalog.switchgear.device_instance import nazwa_rodzaju_aparatu_pl
+from network_model.odmowa_pakietu import OdmowaBrakuPakietuDanych, RekordBrakuPakietu
 from network_model.pochodne import mva_na_kva
 
 from .models import (
@@ -48,6 +49,7 @@ from .registry import (
     field_profile_for_bay,
     get_reference_pack,
     list_reference_packs,
+    pakiet_osd_operatora,
 )
 
 # Nazwy PL aparatów — z JEDYNEGO słownika symboli (pakiet iec60617).
@@ -705,21 +707,45 @@ def _checks_for_pack(
 
 
 def evaluate_enm(
-    enm: EnergyNetworkModel, pack_ids: list[str] | None = None
+    enm: EnergyNetworkModel,
+    pack_ids: list[str] | None = None,
+    *,
+    operator_przypadku: str | None = None,
+    nazwa_przypadku: str | None = None,
 ) -> ReferenceComplianceReport:
     """Raport zgodności referencyjnej + Reference Score (spec §7/§8).
 
     `pack_ids=None` ⇒ wszystkie pakiety rejestru (tabela score per referencja,
     pkt 8 dyrektywy). Deterministyczny: sortowanie pakietów po `pack_id`,
     sprawdzeń po (element_ref, rule_code, message_pl).
+
+    Karta OD-17a: raport PRZYPADKU (`operator_przypadku` z `StudyCaseConfig.
+    operator_profile_id`, `nazwa_przypadku` — nazwa przypadku) ocenia pakiety norm
+    i producentów rejestru oraz WYŁĄCZNIE pakiet OSD operatora przypadku — standard innego
+    operatora nie jest podstawą oceny projektu przyłączanego do tej sieci. Rejestr bez
+    pakietu tego operatora ⇒ nazwana odmowa w `braki_pakietow` (kod
+    `BRAK_PAKIETU_OSD:<operator>`), nigdy cichy brak pakietu OSD w raporcie. Jawna lista
+    `pack_ids` ocenia dokładnie wskazane pakiety (wołający sprawdził je wcześniej).
     """
-    if pack_ids is None:
-        packs = list_reference_packs()
-    else:
+    braki: list[RekordBrakuPakietu] = []
+    if pack_ids is not None:
         packs = sorted(
             (get_reference_pack(pack_id) for pack_id in pack_ids),
             key=lambda p: p.pack_id,
         )
+    elif operator_przypadku is None:
+        packs = list_reference_packs()
+    else:
+        if nazwa_przypadku is None:
+            raise ValueError(
+                "Raport przypadku wymaga nazwy przypadku (treść odmowy braku pakietu)."
+            )
+        packs = [p for p in list_reference_packs() if p.kind != "osd"]
+        try:
+            packs.append(pakiet_osd_operatora(operator_przypadku, nazwa_przypadku=nazwa_przypadku))
+        except OdmowaBrakuPakietuDanych as odmowa:
+            braki.append(odmowa.rekord())
+        packs.sort(key=lambda p: p.pack_id)
 
     substations_by_ref = {s.ref_id: s for s in enm.substations}
     buses_voltage_kv = {
@@ -747,4 +773,4 @@ def evaluate_enm(
                 checks=checks,
             )
         )
-    return ReferenceComplianceReport(packs=reports)
+    return ReferenceComplianceReport(packs=reports, braki_pakietow=braki)

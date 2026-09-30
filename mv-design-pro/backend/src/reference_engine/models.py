@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from network_model.odmowa_pakietu import RekordBrakuPakietu
 from pydantic import BaseModel, Field
 
 # Słownik aparatów = kanon `BayPrimaryDevice.kind` (enm/models.py) — jedna
@@ -190,6 +191,12 @@ class PackComplianceReport(BaseModel):
 
 
 class ReferenceComplianceReport(BaseModel):
-    """Pełny raport zgodności referencyjnej projektu (deterministyczny)."""
+    """Pełny raport zgodności referencyjnej projektu (deterministyczny).
+
+    ``braki_pakietow`` (karta OD-17a, addytywne): pakiety wymagań, których ocena przypadku
+    WYMAGA, a rejestr ich nie ma (dziś: pakiet operatora wskazanego w przypadku) — nazwana
+    odmowa z kodem ``BRAK_PAKIETU_OSD:<operator>``, nigdy cichy brak pakietu w ``packs``.
+    """
 
     packs: list[PackComplianceReport] = Field(default_factory=list)
+    braki_pakietow: list[RekordBrakuPakietu] = Field(default_factory=list)

@@ -20,7 +20,6 @@ from application.calculation_readiness.service import CalculationReadinessServic
 from enm.domain_operations import execute_domain_operation
 from enm.dynamika_z_katalogu import (
     KOD_KOPIA_NIEAKTUALNA,
-    KOD_MAGAZYN_DANE,
     KOD_PROFIL_NIEZGODNY,
     KOD_RODZINA_BEZ_PROFILI,
     KOD_TABLICZKA_BRAK,
@@ -60,6 +59,12 @@ _BLOK_WLASNY = {
     "u_min_ciagle_pu": 0.85,
     "u_max_ciagle_pu": 1.1,
 }
+
+#: Karta OD-17a: magazyn bez danych zasobnika z karty producenta — kod nazwanej odmowy braku
+#: pakietu kart producentów (pola w kolejności kontraktu `Magazyn`).
+KOD_BRAKU_KARTY_ZASOBNIKA = (
+    "BRAK_KARTY_PRODUCENTA:sprawnosc_ladowania,sprawnosc_rozladowania,soc_min,soc_max"
+)
 
 
 def _generator(ref: str, gen_type: str | None, *, sn_mva: float | None = 2.0, **pola) -> dict:
@@ -262,9 +267,14 @@ def test_magazyn_bez_danych_zasobnika_odmawia_nazwanym_kodem(profil: str) -> Non
     assert wynik.get("error") is None
     assert _gen(wynik, "g1").get("dynamika") is None
     stan = stan_dynamiki_generatorow(wynik["snapshot"])[0]
-    assert (stan.stan, stan.odmowa_kod) == ("odmowa", KOD_MAGAZYN_DANE)
+    # Karta OD-17a: brak danych zasobnika z karty producenta = nazwana odmowa braku pakietu
+    # kart producentów (kod w polu); początkowy stan naładowania NIE jest daną karty
+    # (warunek początkowy punktu pracy, O-57 pkt 3), więc nie należy do tej odmowy.
+    assert (stan.stan, stan.odmowa_kod) == ("odmowa", KOD_BRAKU_KARTY_ZASOBNIKA)
     komunikat = stan.odmowa_komunikat or ""
-    assert "początkowy stan naładowania" in komunikat
+    for opis in ("sprawność ładowania", "sprawność rozładowania", "stan naładowania"):
+        assert opis in komunikat
+    assert "początkowy stan naładowania" not in komunikat
     assert "soc_" not in komunikat and "sprawnosc_" not in komunikat
 
 
@@ -280,7 +290,7 @@ def test_magazyn_bez_danych_zasobnika_odmawia_nazwanym_kodem(profil: str) -> Non
         ("synchronous", "default_pv_gfl", 2.0, KOD_RODZINA_BEZ_PROFILI),
         ("pv_inverter", "default_wind_type_3", 2.0, KOD_PROFIL_NIEZGODNY),
         ("pv_inverter", "default_pv_gfl", None, KOD_TABLICZKA_BRAK),
-        ("bess", "default_bess_gfl", 2.0, KOD_MAGAZYN_DANE),
+        ("bess", "default_bess_gfl", 2.0, KOD_BRAKU_KARTY_ZASOBNIKA),
     ],
 )
 def test_kazda_odmowa_nazywa_wytworce_i_profil_bez_identyfikatorow(
@@ -298,7 +308,7 @@ def test_kazda_odmowa_nazywa_wytworce_i_profil_bez_identyfikatorow(
     assert "gen-x-01”" in tresc and "'gen-x-01'" not in tresc
     for identyfikator in (profil, gen_type, "sn_mva"):
         assert identyfikator not in tresc.replace("„Wytwórca gen-x-01”", ""), tresc
-    if kod in (KOD_PROFIL_NIEZGODNY, KOD_MAGAZYN_DANE):
+    if kod in (KOD_PROFIL_NIEZGODNY, KOD_BRAKU_KARTY_ZASOBNIKA):
         assert f"„{get_profile(profil).profile_name_pl}”" in tresc
 
 
@@ -408,8 +418,8 @@ def test_materializacja_kazdego_profilu_katalogu_jest_zbadana() -> None:
         else:
             wyniki[profil] = "kopia"
     assert wyniki == {
-        "default_bess_gfl": KOD_MAGAZYN_DANE,
-        "default_bess_gfm": KOD_MAGAZYN_DANE,
+        "default_bess_gfl": KOD_BRAKU_KARTY_ZASOBNIKA,
+        "default_bess_gfm": KOD_BRAKU_KARTY_ZASOBNIKA,
         "default_pv_gfl": "kopia",
         "default_pv_gfm": "kopia",
         "default_wind_type_1": "kopia",

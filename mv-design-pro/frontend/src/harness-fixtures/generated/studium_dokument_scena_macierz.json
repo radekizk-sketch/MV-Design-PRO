@@ -55,6 +55,7 @@
             }
           },
           "odrzucony": null,
+          "brak_certyfikatu": null,
           "wiersze": [
             {
               "etykieta_pl": "Dowód certyfikatu urządzenia",
@@ -261,7 +262,7 @@
   ],
   "odciski_sekcji_sha256": {
     "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "7686bbfb310d78303c109b59d7b404853020213f0ced858eb25633f515965a51",
-    "zalozenia": "0ded4d3539ad6d5e37b50609e140eccbec0eb5c4715cf104f9c0504ccb49ddac",
+    "zalozenia": "9d38d63fb488def5604c928bb9978103cd5f20230dbaafbd63f065411399e9df",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },
   "input_hash": "f763d2209f0b2bbefb4799adfe1a8407a913812b504ea7da9da943751c44c29c"

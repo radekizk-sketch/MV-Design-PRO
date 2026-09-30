@@ -177,6 +177,7 @@ class _OcenaModulu:
         *,
         input_hash: str,
         certyfikat_odrzucony_pl: str | None,
+        certyfikat_brakujacy_pl: str | None = None,
     ) -> None:
         if modul.der_ref != wynik.der_ref:
             raise ValueError(
@@ -189,6 +190,9 @@ class _OcenaModulu:
         self.technologia = wynik.technologia
         self.certyfikat: DowodCertyfikatu | None = wynik.dowod_certyfikatu
         self.certyfikat_odrzucony_pl = certyfikat_odrzucony_pl
+        #: Karta OD-17a: tabliczka bez certyfikatu — brak danych pakietu wykazu PTPiREE nazwany
+        #: odmową mostu (`certyfikaty_brakujace`), nie cichy brak dowodu.
+        self.certyfikat_brakujacy_pl = certyfikat_brakujacy_pl
         self.klient = wynik.zrodlo_danych == "ZADANIE_KLIENTA"
         self.input_hash = input_hash
         self.testy: dict[str, OcenaKryterium] = {t.test_id: t.ocena for t in wynik.tests}
@@ -625,6 +629,8 @@ class _OcenaModulu:
                     f"{self.klasyfikacja.modul} albo reguła WiPWC nie przewiduje pokrycia tego "
                     "wymagania certyfikatem"
                 )
+            elif self.certyfikat_brakujacy_pl is not None:
+                braki.append(self.certyfikat_brakujacy_pl)
         pokrycie, pokrycie_pl = self._pokrycie(metoda, skladowe, stosowalnosc.dotyczy)
         wykluczenia = tuple(
             dict.fromkeys(
@@ -661,10 +667,15 @@ def ocen_wymagania_modulu(
     *,
     input_hash: str,
     certyfikat_odrzucony_pl: str | None = None,
+    certyfikat_brakujacy_pl: str | None = None,
 ) -> OcenaWymaganModulu:
     """Rekord ``WynikWymagania`` dla KAŻDEGO wymagania profilu operatora modułu."""
     ocena = _OcenaModulu(
-        modul, wynik, input_hash=input_hash, certyfikat_odrzucony_pl=certyfikat_odrzucony_pl
+        modul,
+        wynik,
+        input_hash=input_hash,
+        certyfikat_odrzucony_pl=certyfikat_odrzucony_pl,
+        certyfikat_brakujacy_pl=certyfikat_brakujacy_pl,
     )
     return OcenaWymaganModulu(
         der_ref=wynik.der_ref,
@@ -681,9 +692,15 @@ def ocen_wymagania_biegu(
     result: NcRfgPtpireeRunResult,
     *,
     certyfikaty_odrzucone: Mapping[str, str] | None = None,
+    certyfikaty_brakujace: Mapping[str, str] | None = None,
 ) -> list[OcenaWymaganModulu]:
-    """Ocena wymagań wszystkich modułów biegu (kolejność modułów żądania)."""
+    """Ocena wymagań wszystkich modułów biegu (kolejność modułów żądania).
+
+    ``certyfikaty_brakujace`` (``der_ref`` → brak nazwany z pakietem, karta OD-17a) — moduły
+    bez certyfikatu na tabliczce; trafiają do braków wymagań bez metody wykazania.
+    """
     odrzucone = certyfikaty_odrzucone or {}
+    brakujace = certyfikaty_brakujace or {}
     if [m.der_ref for m in request.modules] != [m.der_ref for m in result.modules]:
         raise ValueError("Moduły wyniku solvera nie odpowiadają modułom żądania.")
     return [
@@ -692,6 +709,7 @@ def ocen_wymagania_biegu(
             wynik,
             input_hash=result.input_hash,
             certyfikat_odrzucony_pl=odrzucone.get(modul.der_ref),
+            certyfikat_brakujacy_pl=brakujace.get(modul.der_ref),
         )
         for modul, wynik in zip(request.modules, result.modules, strict=True)
     ]

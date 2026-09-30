@@ -32,6 +32,7 @@ import {
   type ReferenceComplianceReport,
   type ReferencePackComplianceReport,
 } from '../../referencje/api';
+import { BrakiPakietowDanych } from '../../referencje/BrakiPakietowDanych';
 import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 import { GOTOWOSC_STRINGS } from './strings';
@@ -107,6 +108,7 @@ export function SekcjaZgodnosciReferencyjnej() {
         <div id={idTresci} className="mvd-ref-tresc">
           <p className="mvd-ref-opis">{GOTOWOSC_STRINGS.refSekcjaOpis}</p>
           <WyborPakietuReferencyjnego idKontrolki="mvd-ref-wybor-gotowosc" />
+          {caseId && !ladowanie && !blad && <BrakiPakietowDanych braki={raport?.braki_pakietow} />}
           {!caseId ? (
             <p className="mvd-ref-stan" data-testid="mvd-ref-brak-przypadku">
               {GOTOWOSC_STRINGS.refBrakPrzypadku}

@@ -31,6 +31,7 @@ from solver_input.v126_contracts import (
     V126InsulationInput,
     V126MotorInput,
     V126RunRequest,
+    braki_poziomu_izolacji,
     build_v126_input_from_enm,
     pominiete_zrodla_v126,
 )
@@ -288,9 +289,17 @@ def run_v126_analysis(
     # reguła KLASA §3). Puste dla rodzajów, które `harmonic_sources`/`converters`
     # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — gotowość
     # powyżej już to rozstrzygnęła).
-    pominiete_zrodla: list[dict[str, str]] = []
+    pominiete_zrodla: list[dict[str, Any]] = []
     if analysis_type in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
         pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=parametry)
+    # Karta OD-17a: nazwane odmowy braku pakietu danych właściciela dla wierszy, które solver
+    # liczy (dziś: poziom izolacji udarowej chronionych aparatów z karty producenta) — ta sama
+    # funkcja co warunek gotowości; pole addytywne `braki_pakietow` zapisu biegu.
+    braki_pakietow: list[dict[str, Any]] = []
+    if analysis_type == V126AnalysisType.INSULATION_COORDINATION:
+        braki_pakietow = [
+            r.model_dump(mode="json") for r in braki_poziomu_izolacji(enm, model.insulation)
+        ]
     # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
     # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
     # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
@@ -303,7 +312,12 @@ def run_v126_analysis(
         case_id=str(case_id),
         klucz_twin=klucz,
         analysis_type=f"v126:{analysis_type.value}",
-        options={"model": model.model_dump(mode="json"), "pominiete_zrodla": pominiete_zrodla},
+        options={
+            "model": model.model_dump(mode="json"),
+            "pominiete_zrodla": pominiete_zrodla,
+            # Klucz tylko, gdy są braki — opcje biegów bez braków bajtowo bez zmian.
+            **({"braki_pakietow": braki_pakietow} if braki_pakietow else {}),
+        },
     )
     run = _execute_canonical_run(run.id)
     if run.status == "FAILED" or run.raw_result is None:
@@ -349,6 +363,11 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
     pominiete = run.get("pominiete_zrodla")
     if pominiete:
         payload["pominiete_zrodla"] = pominiete
+    # Karta OD-17a: nazwane odmowy braku pakietu danych właściciela zapisane przy tworzeniu
+    # biegu (przeniesione przez wykonawcę `_execute_v126` jak `pominiete_zrodla`).
+    braki_pakietow = run.get("braki_pakietow")
+    if braki_pakietow:
+        payload["braki_pakietow"] = braki_pakietow
     zrodla_widma = [
         {"ref": zrodlo["source_ref"], "proweniencja": zrodlo.get("spectrum_provenance", "KATALOG")}
         for zrodlo in run.get("input", {}).get("harmonic_sources", [])

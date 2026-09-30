@@ -263,3 +263,56 @@ describe('SekcjaZgodnosciReferencyjnej — rozwinięcie sprawdzeń', () => {
     await waitFor(() => expect(screen.queryByTestId('mvd-ref-checks-p')).not.toBeInTheDocument());
   });
 });
+
+describe('SekcjaZgodnosciReferencyjnej — brak pakietu operatora przypadku (karta OD-17a)', () => {
+  const KOMUNIKAT =
+    'Przypadek obliczeniowy „Wariant A”: operator Energa Operator nie ma pakietu wymagań ' +
+    'w rejestrze wymagań referencyjnych, więc zgodności ze standardami tego operatora nie ' +
+    'oceniono.';
+
+  function raportZBrakiem(packs: ReferencePackComplianceReport[]): ReferenceComplianceReport {
+    return {
+      packs,
+      braki_pakietow: [
+        {
+          kod: 'BRAK_PAKIETU_OSD:energa',
+          rodzaj: 'BRAK_PAKIETU_OSD',
+          pakiet: 'P3',
+          identyfikator: 'energa',
+          nazwa_elementu: 'Wariant A',
+          status_maszynowy: 'BRAK_PODSTAWY',
+          komunikat_pl: KOMUNIKAT,
+          wyjasnienie: {
+            zdanie_pl: KOMUNIKAT,
+            przyczyna_pl: 'brak danych zewnętrznych',
+            czego_brakuje: ['pakiet wymagań operatora Energa Operator'],
+            zastrzezenia: [],
+          },
+        },
+      ],
+    };
+  }
+
+  it('zdanie odmowy z backendu widoczne obok tabeli pakietów, bez kodu maszynowego', async () => {
+    mockFetchOk(raportZBrakiem([pack()]));
+    render(<SekcjaZgodnosciReferencyjnej />);
+    const braki = await screen.findByTestId('mvd-braki-pakietow');
+    expect(within(braki).getByTestId('mvd-brak-pakietu-P3')).toHaveTextContent(KOMUNIKAT);
+    expect(braki.textContent).not.toContain('BRAK_PAKIETU_OSD');
+    expect(screen.getByTestId('mvd-ref-tabela')).toBeInTheDocument();
+  });
+
+  it('odmowa widoczna także, gdy raport nie ma żadnego pakietu (brak danych ≠ brak pakietów)', async () => {
+    mockFetchOk(raportZBrakiem([]));
+    render(<SekcjaZgodnosciReferencyjnej />);
+    expect(await screen.findByTestId('mvd-brak-pakietu-P3')).toHaveTextContent(KOMUNIKAT);
+    expect(screen.getByTestId('mvd-ref-brak-pakietow')).toBeInTheDocument();
+  });
+
+  it('raport bez braków: brak listy odmów', async () => {
+    mockFetchOk(raport([pack()]));
+    render(<SekcjaZgodnosciReferencyjnej />);
+    await screen.findByTestId('mvd-ref-tabela');
+    expect(screen.queryByTestId('mvd-braki-pakietow')).not.toBeInTheDocument();
+  });
+});

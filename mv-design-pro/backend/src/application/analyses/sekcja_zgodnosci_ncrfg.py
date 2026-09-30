@@ -25,6 +25,7 @@ from application.ncrfg_compliance import (
     OcenaWymaganModulu,
 )
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_pakietu import RekordBrakuPakietu
 from network_model.solvers.ncrfg_ptpiree.contracts import (
     DowodCertyfikatu,
     NcRfgPtpireeModuleResult,
@@ -43,7 +44,9 @@ POZYCJA_PODSTAWA_DOWODU = "Podstawa dowodu certyfikatu"
 POZYCJA_CERTYFIKAT_ODRZUCONY = "Certyfikat z tabliczki odrzucony"
 POZYCJA_POMINIETY = "Źródło nieobjęte oceną"
 
-#: Uczciwy stan zerowy dowodu certyfikatu (tabliczka nie wskazuje rekordu wykazu).
+#: Uczciwy stan zerowy dowodu certyfikatu, gdy wołający nie ma rekordu odmowy braku pakietu
+#: (bieg bez modelu: tabliczka nie wskazuje rekordu wykazu). Moduły mostu modelu dostają
+#: w tym miejscu zdanie nazwanej odmowy braku certyfikatu (karta OD-17a).
 BRAK_CERTYFIKATU_PL = (
     "tabliczka urządzenia w modelu nie wskazuje rekordu wykazu certyfikowanych urządzeń PTPiREE"
 )
@@ -72,10 +75,12 @@ def opis_dowodu_certyfikatu(dowod: DowodCertyfikatu) -> str:
 
 
 def wiersze_dowodu(
-    dowod: DowodCertyfikatu | None, odrzucony: NcRfgCertyfikatOdrzucony | None
+    dowod: DowodCertyfikatu | None,
+    odrzucony: NcRfgCertyfikatOdrzucony | None,
+    brak: RekordBrakuPakietu | None = None,
 ) -> list[PozycjaBloku]:
     """Wiersze dowodu certyfikatu urządzenia: rekord wykazu z podstawą, powód odrzucenia
-    tabliczki albo jawny stan zerowy."""
+    tabliczki, nazwana odmowa braku certyfikatu (karta OD-17a) albo jawny stan zerowy."""
     if dowod is not None:
         return [
             PozycjaBloku(
@@ -87,6 +92,8 @@ def wiersze_dowodu(
         ]
     if odrzucony is not None:
         return [PozycjaBloku(etykieta_pl=POZYCJA_CERTYFIKAT_ODRZUCONY, tresc_pl=odrzucony.powod_pl)]
+    if brak is not None:
+        return [PozycjaBloku(etykieta_pl=POZYCJA_DOWOD_CERTYFIKATU, tresc_pl=brak.komunikat_pl)]
     return [PozycjaBloku(etykieta_pl=POZYCJA_DOWOD_CERTYFIKATU, tresc_pl=BRAK_CERTYFIKATU_PL)]
 
 
@@ -97,7 +104,9 @@ def _nazwa_modulu(der_name: str | None) -> str:
 
 
 def _wiersze_modulu(
-    modul: NcRfgPtpireeModuleResult, odrzucony: NcRfgCertyfikatOdrzucony | None
+    modul: NcRfgPtpireeModuleResult,
+    odrzucony: NcRfgCertyfikatOdrzucony | None,
+    brak: RekordBrakuPakietu | None = None,
 ) -> list[PozycjaBloku]:
     return [
         PozycjaBloku(
@@ -116,7 +125,7 @@ def _wiersze_modulu(
         PozycjaBloku(
             etykieta_pl=POZYCJA_TECHNOLOGIA, tresc_pl=NAZWA_TECHNOLOGII_PL[modul.technologia]
         ),
-        *wiersze_dowodu(modul.dowod_certyfikatu, odrzucony),
+        *wiersze_dowodu(modul.dowod_certyfikatu, odrzucony, brak),
     ]
 
 
@@ -124,6 +133,7 @@ def sekcja_modulu(
     modul: NcRfgPtpireeModuleResult,
     ocena: OcenaWymaganModulu,
     odrzucony: NcRfgCertyfikatOdrzucony | None,
+    brak: RekordBrakuPakietu | None = None,
 ) -> dict[str, Any]:
     """Sekcja jednego modułu: dane, na których stoją rekordy, i rekordy W z blokami."""
     if modul.der_ref != ocena.der_ref:
@@ -145,7 +155,8 @@ def sekcja_modulu(
         "certyfikat_odrzucony": (
             odrzucony.model_dump(mode="json") if odrzucony is not None else None
         ),
-        "wiersze": [p.model_dump(mode="json") for p in _wiersze_modulu(modul, odrzucony)],
+        "certyfikat_brakujacy": brak.model_dump(mode="json") if brak is not None else None,
+        "wiersze": [p.model_dump(mode="json") for p in _wiersze_modulu(modul, odrzucony, brak)],
         "wymagania": [
             {
                 "rekord": rekord.model_dump(mode="json"),
@@ -161,8 +172,9 @@ def sekcje_modulow(zgodnosc: NcRfgCaseComplianceResponse) -> list[dict[str, Any]
     if zgodnosc.bieg is None:
         return []
     odrzucone = {o.der_ref: o for o in zgodnosc.certyfikaty_odrzucone}
+    brakujace = zgodnosc.certyfikaty_brakujace
     return [
-        sekcja_modulu(modul, ocena, odrzucone.get(modul.der_ref))
+        sekcja_modulu(modul, ocena, odrzucone.get(modul.der_ref), brakujace.get(modul.der_ref))
         for modul, ocena in zip(zgodnosc.bieg.modules, zgodnosc.bieg.ocena_wymagan, strict=True)
     ]
 

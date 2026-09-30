@@ -173,7 +173,8 @@ ENM: parametry dynamiczne maszyn synchronicznych (Xd, X'd, X''d, T'd0, T''d0, H,
 (odbiory, generacja, ceny) z konsumentem; `OperatingScenario` o zdarzenia w czasie (`FaultDelta`, `der_trip`,
 zmiana topologii, komendy regulacji); `CanonicalRun` o kontrakt wyniku czasowego (ResultSet dynamiczny, D-08(b));
 readiness per rodzina źródła i per zdolność; profile WOS z wersją i datą obowiązywania (D-10); katalog `APARAT_SN`
-o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17).
+o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17; od karty OD-17a brak pakietu
+operatora przypadku, certyfikatu WiPWC albo danych karty producenta kończy się jedną nazwaną odmową z kodem w polu).
 
 ### 12. Co wymaga wymiany?
 

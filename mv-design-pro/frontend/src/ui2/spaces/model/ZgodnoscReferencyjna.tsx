@@ -34,6 +34,7 @@ import {
   type ReferenceComplianceReport,
   type ReferenceStationRule,
 } from '../../referencje/api';
+import { BrakiPakietowDanych } from '../../referencje/BrakiPakietowDanych';
 import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 
@@ -172,6 +173,7 @@ export function ZgodnoscReferencyjna({
         </p>
       ) : (
         <>
+          <BrakiPakietowDanych braki={raport?.braki_pakietow} />
           {pakietyElementu.length === 0 ? (
             <p className="mvd-zgodnosc-nota" data-testid="mvd-zgodnosc-brak-sprawdzen">
               {T.brakSprawdzen}

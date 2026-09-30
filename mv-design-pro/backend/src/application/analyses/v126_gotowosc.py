@@ -41,6 +41,7 @@ from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
+    braki_poziomu_izolacji,
     build_v126_input_from_enm,
     generatory_przeksztaltnikowe_v126,
     odbiorcy_z_parametrow,
@@ -124,9 +125,12 @@ class Warunek:
     blokujacy: bool = True
     #: Klucz parametru projektanta, który usuwa brak (gdy brak jest do uzupełnienia).
     klucz_parametru: str | None = None
+    #: Karta OD-17a: nazwane odmowy braku pakietu danych właściciela, z których wynika warunek
+    #: (rekordy ``RekordBrakuPakietu`` w postaci JSON; klucz w odpowiedzi tylko, gdy są).
+    braki_pakietow: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "kod": self.kod,
             "opis_pl": self.opis_pl,
             "spelniony": self.spelniony,
@@ -134,6 +138,9 @@ class Warunek:
             "blokujacy": self.blokujacy,
             "klucz_parametru": self.klucz_parametru,
         }
+        if self.braki_pakietow:
+            wynik["braki_pakietow"] = list(self.braki_pakietow)
+        return wynik
 
 
 @dataclass(frozen=True)
@@ -410,6 +417,11 @@ def _warunki_harmoniczne(
         # `tests/application/analyses/test_v126_gotowosc.py`).
         bez_karty = tuple(p["ref"] for p in pominiete if p["kod"] == _KOD_KARTA)
         bez_widma = tuple(p["ref"] for p in pominiete if p["kod"] == _KOD_WIDMO)
+        braki_widma = tuple(
+            p["odmowa_pakietu"]
+            for p in pominiete
+            if p["kod"] == _KOD_WIDMO and "odmowa_pakietu" in p
+        )
         if bez_karty:
             warunki.append(
                 Warunek(
@@ -434,6 +446,7 @@ def _warunki_harmoniczne(
                     spelniony=False,
                     elementy=bez_widma,
                     klucz_parametru="harmonic_spectra",
+                    braki_pakietow=braki_widma,
                 )
             )
     else:
@@ -674,6 +687,26 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
             elementy=tuple(i.location_bus_ref for i in model.insulation),
         )
     ]
+    # Karta OD-17a: poziom izolacji udarowej chronionych aparatów to dana karty producenta
+    # (pakiet właściciela) — brak nazwany odmową z rekordami, warunek NIEBLOKUJĄCY (status
+    # `BRAK_PODSTAWY`: wynik informacyjny wobec poziomu normowego). Ta sama lista trafia do
+    # zapisu biegu (`api/v126_academic.py`, pole `braki_pakietow`).
+    braki_bil = braki_poziomu_izolacji(enm, model.insulation)
+    if braki_bil:
+        warunki.append(
+            Warunek(
+                kod="ograniczniki.poziom_izolacji_z_karty",
+                opis_pl=(
+                    f"{len(braki_bil)} z {len(model.insulation)} miejsc bez poziomu izolacji "
+                    "udarowej chronionych aparatów z karty producenta — margines ochrony "
+                    "informacyjnie wobec poziomu normowego IEC 60071-1"
+                ),
+                spelniony=False,
+                elementy=tuple(i.location_bus_ref for i in model.insulation),
+                blokujacy=False,
+                braki_pakietow=tuple(r.model_dump(mode="json") for r in braki_bil),
+            )
+        )
     bez_karty = tuple(i.location_bus_ref for i in model.insulation if i.arrester_mcov_kv is None)
     if bez_karty:
         warunki.append(

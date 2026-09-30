@@ -34,6 +34,7 @@ from application.ncrfg_compliance.ocena_wymagan import (
 )
 from enm.models import EnergyNetworkModel
 from network_model.odmowa_danych import odmowa_rdzenia_b01
+from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_z_pakietem_pl
 from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeModuleInput,
     NcRfgPtpireeRunRequest,
@@ -41,7 +42,7 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeSolver,
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu, ZrodloDanych
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 _solver = NcRfgPtpireeSolver()
 _BRAK_CERTYFIKATOW: Mapping[str, DowodCertyfikatu] = {}
@@ -85,6 +86,9 @@ class NcRfgCaseComplianceResponse(BaseModel):
     der_count: int
     pominiete: list[NcRfgDerPominiety]
     certyfikaty_odrzucone: list[NcRfgCertyfikatOdrzucony]
+    #: Karta OD-17a (addytywne): moduły bez certyfikatu na tabliczce (po ``der_ref``) — nazwana
+    #: odmowa braku danych pakietu wykazu PTPiREE (kod ``BRAK_CERTYFIKATU_WIPWC:<model>``).
+    certyfikaty_brakujace: dict[str, RekordBrakuPakietu] = Field(default_factory=dict)
     bieg: NcRfgPtpireeRunResponse | None
 
     @model_validator(mode="after")
@@ -155,6 +159,7 @@ def bieg_ncrfg(
     zrodlo_danych: ZrodloDanych,
     certyfikaty: Mapping[str, DowodCertyfikatu] = _BRAK_CERTYFIKATOW,
     certyfikaty_odrzucone: Mapping[str, str] | None = None,
+    certyfikaty_brakujace: Mapping[str, str] | None = None,
 ) -> NcRfgPtpireeRunResponse:
     """Bieg solvera + ocena wymagań profilu + koperta — JEDNA kompozycja dla obu tras.
 
@@ -167,7 +172,12 @@ def bieg_ncrfg(
     # nazwaną odmowę danych (karta ODMOWA-DANYCH-422).
     with odmowa_rdzenia_b01():
         result = _solver.run(request, zrodlo_danych=zrodlo_danych, certyfikaty=certyfikaty)
-    ocena = ocen_wymagania_biegu(request, result, certyfikaty_odrzucone=certyfikaty_odrzucone)
+    ocena = ocen_wymagania_biegu(
+        request,
+        result,
+        certyfikaty_odrzucone=certyfikaty_odrzucone,
+        certyfikaty_brakujace=certyfikaty_brakujace,
+    )
     return odpowiedz_biegu_ncrfg(result, ocena)
 
 
@@ -190,6 +200,10 @@ def zgodnosc_ncrfg_przypadku(
             zrodlo_danych="ZATWIERDZONY_MODEL",
             certyfikaty=wejscia.certyfikaty,
             certyfikaty_odrzucone={o.der_ref: o.powod_pl for o in wejscia.certyfikaty_odrzucone},
+            certyfikaty_brakujace={
+                der_ref: brak_z_pakietem_pl(rekord)
+                for der_ref, rekord in wejscia.certyfikaty_brakujace.items()
+            },
         )
     return NcRfgCaseComplianceResponse(
         case_id=case_id,
@@ -197,5 +211,6 @@ def zgodnosc_ncrfg_przypadku(
         der_count=len(wejscia.modules),
         pominiete=wejscia.pominiete,
         certyfikaty_odrzucone=wejscia.certyfikaty_odrzucone,
+        certyfikaty_brakujace=wejscia.certyfikaty_brakujace,
         bieg=bieg,
     )

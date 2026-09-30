@@ -76,6 +76,7 @@ from .migrations.nn_field_specs_promocja import (
 )
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY, nazwa_pola_ze_specyfikacji
+from .odmowy_pakietow_danych import odmowa_braku_certyfikatu
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -2240,7 +2241,6 @@ def _build_readiness(
         if (gen.get("gen_type") or "") not in _GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         tabliczka = gen.get("materialized_params") or {}
-        status_ptpiree = tabliczka.get("ptpiree_status")
         nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
         # Styk P1/P2 (V12K-321): nota istnieje dla KAZDEGO dopasowania
         # (opis dowodowy wykazu), wiec „warunkowo" kluczujemy na OSOBNYM
@@ -2248,13 +2248,24 @@ def _build_readiness(
         warunek_ptpiree = str(tabliczka.get("ptpiree_certificate_condition") or "").strip()
         wos_przejsciowy = tabliczka.get("ptpiree_wos_version") == "WOS 2018"
         zrodlo_der = opis_nazwy(gen.get("name"), "źródła DER")
-        if status_ptpiree != "POWIAZANY":
+        # Karta OD-17a: brak certyfikatu = brak danych pakietu wykazu PTPiREE (P1) — JEDNA
+        # nazwana odmowa (kod `BRAK_CERTYFIKATU_WIPWC:<model>` w polu `odmowa_pakietu`, zdanie
+        # z fabryki), TEN SAM predykat co most zgodności NC RfG (`certyfikat_niewskazany`).
+        odmowa_certyfikatu = odmowa_braku_certyfikatu(gen)
+        odmowa_rekord: dict[str, Any] | None = None
+        if odmowa_certyfikatu is not None:
+            kod = "der.inverter_certificate_unlinked"
+            komunikat = odmowa_certyfikatu.komunikat
+            odmowa_rekord = odmowa_certyfikatu.rekord().model_dump(mode="json")
+            naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
+        elif tabliczka.get("ptpiree_status") != "POWIAZANY":
+            # Tabliczka wskazuje rekord wykazu, ale nie ma statusu powiązania — to niespójność
+            # tabliczki (most NC RfG odrzuca ją z powodem), nie brak danych pakietu wykazu.
             kod = "der.inverter_certificate_unlinked"
             komunikat = (
-                f"Przetwornica {zrodlo_der} nie ma powiązanego "
-                f"certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. "
-                f"Ostateczna akceptacja przyłączeniowa pozostaje po stronie "
-                f"właściwego OSD."
+                f"Przetwornica {zrodlo_der} wskazuje rekord wykazu PTPiREE, ale nie ma "
+                "powiązanego certyfikatu — wniosek do OSD może zostać odrzucony. Ostateczna "
+                "akceptacja przyłączeniowa pozostaje po stronie właściwego OSD."
             )
             naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
         elif warunek_ptpiree or wos_przejsciowy:
@@ -2271,14 +2282,15 @@ def _build_readiness(
             naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
         else:
             continue
-        warnings.append(
-            {
-                "code": kod,
-                "message_pl": komunikat,
-                "element_ref": gen.get("ref_id"),
-                "severity": "OSTRZEZENIE",
-            }
-        )
+        ostrzezenie: dict[str, Any] = {
+            "code": kod,
+            "message_pl": komunikat,
+            "element_ref": gen.get("ref_id"),
+            "severity": "OSTRZEZENIE",
+        }
+        if odmowa_rekord is not None:
+            ostrzezenie["odmowa_pakietu"] = odmowa_rekord
+        warnings.append(ostrzezenie)
         fix_actions.append(
             {
                 "code": kod,

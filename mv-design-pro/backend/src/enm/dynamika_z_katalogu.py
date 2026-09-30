@@ -57,6 +57,7 @@ from network_model.catalog.der_dynamic import (
     list_all_profile_ids,
 )
 from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_pakietu import OdmowaBrakuPakietuDanych, brak_karty_producenta
 from pydantic import TypeAdapter, ValidationError
 
 from .dynamika_modele import ParametryDynamiczne
@@ -93,15 +94,35 @@ _TYPY_TURBINY_WYTWORCY: dict[str, str] = {
 }
 _RODZAJ_FALOWNIKA_WYTWORCY: dict[str, str] = {"pv_inverter": "PV", "bess": "BESS"}
 
-#: Pola kontraktu `Magazyn`, których nie niesie ani profil, ani tabliczka wytwórcy —
-#: z opisem dla projektanta (komunikat odmowy nie niesie nazw pól kontraktu, karta #142).
-_POLA_ZASOBNIKA_SPOZA_KATALOGU: dict[str, str] = {
+#: Dane ZASOBNIKA z karty producenta, których kontrakt `Magazyn` wymaga, a których nie
+#: niesie ani profil, ani katalog (karta OD-17a, decyzja O-57 pkt 3: dane tabliczki elementu
+#: BEZ domyślki) — klucz tabliczki (`materialized_params`) = nazwa pola kontraktu; opis dla
+#: projektanta (komunikat odmowy nie niesie nazw pól kontraktu, karta #142). Kolejność =
+#: kolejność kodu odmowy `BRAK_KARTY_PRODUCENTA:<pola>`.
+_POLA_ZASOBNIKA_Z_KARTY: dict[str, str] = {
     "sprawnosc_ladowania": "sprawność ładowania",
     "sprawnosc_rozladowania": "sprawność rozładowania",
     "soc_min": "minimalny stan naładowania",
     "soc_max": "maksymalny stan naładowania",
-    "soc_poczatkowy": "początkowy stan naładowania",
 }
+#: Początkowy stan naładowania to WARUNEK POCZĄTKOWY punktu pracy (scenariusz), nie dana
+#: urządzenia (O-57 pkt 3) — nie należy do pakietu kart producentów i nie wchodzi do odmowy
+#: braku karty; materializacja katalogowa nie ma skąd go wziąć, więc odmawia osobno.
+_OPIS_SOC_POCZATKOWEGO = "początkowy stan naładowania"
+
+
+def pola_zasobnika_bez_karty(generator: Mapping[str, Any]) -> tuple[str, ...]:
+    """Pola danych zasobnika z karty producenta, których tabliczka magazynu nie niesie
+    (liczba skończona; kolejność `_POLA_ZASOBNIKA_Z_KARTY`) — JEDEN predykat dla odmowy
+    materializacji i dla stanu dynamiki w gotowości."""
+    tabliczka = generator.get("materialized_params") or {}
+    if not isinstance(tabliczka, Mapping):
+        return tuple(_POLA_ZASOBNIKA_Z_KARTY)
+    return tuple(
+        pole
+        for pole in _POLA_ZASOBNIKA_Z_KARTY
+        if isinstance(tabliczka.get(pole), bool) or not isinstance(tabliczka.get(pole), int | float)
+    )
 
 
 def _nazwa_profilu(profile_id: str) -> str:
@@ -110,12 +131,28 @@ def _nazwa_profilu(profile_id: str) -> str:
 
 
 class BladMaterializacjiDynamiki(OdmowaDanychError):
-    """Nazwana odmowa materializacji profilu (``kod`` = kod błędu operacji/gotowości)."""
+    """Nazwana odmowa materializacji profilu (``kod`` = kod błędu operacji/gotowości).
 
-    def __init__(self, kod: str, komunikat: str) -> None:
+    ``odmowa_pakietu`` — gdy przyczyną jest brak danych karty producenta (pakiet właściciela,
+    karta OD-17a): ``kod`` i ``komunikat`` pochodzą wtedy z TEJ odmowy (jedno źródło treści).
+    """
+
+    def __init__(
+        self,
+        kod: str,
+        komunikat: str,
+        *,
+        odmowa_pakietu: OdmowaBrakuPakietuDanych | None = None,
+    ) -> None:
         super().__init__(komunikat)
         self.kod = kod
         self.komunikat = komunikat
+        self.odmowa_pakietu = odmowa_pakietu
+
+    @classmethod
+    def z_odmowy_pakietu(cls, odmowa: OdmowaBrakuPakietuDanych) -> BladMaterializacjiDynamiki:
+        """Odmowa materializacji z przyczyną „brak danych pakietu właściciela"."""
+        return cls(odmowa.kod, odmowa.komunikat, odmowa_pakietu=odmowa)
 
 
 class OdmowaKopiiDynamiki(OdmowaDanychError):
@@ -249,12 +286,28 @@ def materializuj_dynamike(profile_id: str, generator: Mapping[str, Any]) -> dict
             "Przypisz typ katalogowy z mocą znamionową.",
         )
     if gen_type == "bess":
+        brakujace = pola_zasobnika_bez_karty(generator)
+        if brakujace:
+            # Karta OD-17a: dane zasobnika są daną karty producenta (pakiet właściciela) —
+            # JEDNA nazwana odmowa braku pakietu, nie własny komunikat.
+            raise BladMaterializacjiDynamiki.z_odmowy_pakietu(
+                brak_karty_producenta(
+                    [(pole, _POLA_ZASOBNIKA_Z_KARTY[pole]) for pole in brakujace],
+                    nazwa_elementu=nazwa,
+                    rodzaj_elementu_pl="Magazyn",
+                    skutek_pl=(
+                        f"Profil {_nazwa_profilu(profile_id)} opisuje wyłącznie przekształtnik, "
+                        "a przekształtnik bez zasobnika byłby innym urządzeniem niż "
+                        "zaprojektowane, więc modelu dynamicznego magazynu nie zbudowano."
+                    ),
+                )
+            )
         raise BladMaterializacjiDynamiki(
             KOD_MAGAZYN_DANE,
-            f"Magazyn „{nazwa}”: profil {_nazwa_profilu(profile_id)} opisuje przekształtnik "
-            "(PCS), a model dynamiczny magazynu wymaga też danych zasobnika, których nie ma "
-            f"katalog: {lista_pl(_POLA_ZASOBNIKA_SPOZA_KATALOGU.values(), 'i')}. Przekształtnik "
-            "bez zasobnika byłby innym urządzeniem niż zaprojektowane.",
+            f"Magazyn „{nazwa}”: dane zasobnika z karty producenta są w tabliczce, ale model "
+            f"dynamiczny wymaga też {_OPIS_SOC_POCZATKOWEGO}, który jest warunkiem początkowym "
+            "punktu pracy (scenariusza), a nie daną urządzenia — kopia z katalogu go nie niesie. "
+            "Podaj blok parametrów dynamicznych magazynu wprost.",
         )
     parametry = get_profile(profile_id).to_parametry_dynamiczne(s_n_mva=baza)
     return parametry.model_dump(mode="json")
