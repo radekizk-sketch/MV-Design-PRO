@@ -467,7 +467,8 @@ class CanonicalRunTimeSeriesORM(Base):
     #: odczyt jednego kanalu nie wymagal JOIN-a do drugiej tabeli.
     os_czasu_s_json: Mapped[list[float]] = mapped_column(DeterministicJSON(), nullable=False)
     #: Probki kanalu; `null` to wartosc NIEDOSTEPNA (czestotliwosc w chwili zdarzenia,
-    #: kat fazora zerowego — przyczyne niesie kanal jakosci albo stanu elementu),
+    #: kat fazora zerowego albo pradu nierozroznialnego od zera — przyczyne niesie kanal
+    #: jakosci, stanu elementu albo modul pradu wobec tolerancji rozwiazania w nastawach),
     #: nigdy liczba podstawiona (karta AB-1b.1 par. 0 pkt 6).
     probki_json: Mapped[list[float | None]] = mapped_column(DeterministicJSON(), nullable=False)
     #: Strona kazdej probki osi czasu (`C` siatka, `L` przed zdarzeniem, `P` po

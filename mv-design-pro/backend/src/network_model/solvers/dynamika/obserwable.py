@@ -93,6 +93,15 @@ traci sens, gdy fazor lezy WEWNATRZ WLASNEJ KULI NIEPEWNOSCI, czyli gdy `|V| <= 
 jest dokladnie warunek, przy ktorym mianownik nierownosci skonczonej przestaje byc dodatni.
 Kryterium jest wyprowadzone z pomiaru, nie z progu napieciowego przyjetego z gory.
 
+RESIDUUM NA GRANICY WLASNEGO BLEDU ZAOKRAGLEN (korekta 2026-09-29, karta
+DETERMINIZM-KATA-FAZORA). Newton moze zakonczyc sie residuum, ktore jest juz tylko szumem
+formowania `Y V - I` (np. gdy punkt startowy kroku lezy w tolerancji i iteracja w ogole sie
+nie wykonuje). `J^-1 r` jest wtedy realizacja szumu, a nie estymata bledu: w tej samej
+probce sceny harnessu dawalo 16x rozne `u_f` zaleznie od liczby watkow BLAS i przelaczalo
+kod jakosci. Gdy KAZDA skladowa `|r|` miesci sie w granicy `rho = gamma_m (|Y||V| + sum|I|)`
+(`siec.granica_zaokraglen_residuum`), estymata bledu rozwiazania to `J^-1 rho` — wektor
+deterministyczny; residuum znaczace idzie droga `J^-1 r` jak dotad (Higham 2002, par. 7.2).
+
 ZBIEZNOSC NIE JEST WIARYGODNOSCIA (par. 6). Jesli jakobian algebry jest osobliwy, albo
 punkt skorygowany lezy tam, gdzie model odbioru o stalej mocy przestaje byc obliczalny,
 niepewnosci NIE DA SIE zmierzyc — i wtedy obserwabla jest NIEDOSTEPNA, a bieg trwa dalej.
@@ -117,6 +126,7 @@ from .kontrakty import (
 from .siec import (
     ModelSieci,
     czwornik_galezi,
+    granica_zaokraglen_residuum,
     jakobian_algebry,
     ograniczenia_napiecia,
     prad_wezla_ograniczonego,
@@ -293,9 +303,24 @@ def pochodna_napiec_z_niepewnoscia(
     `u_V` to pierwszorzedowa poprawka Newtona `|J^-1 r|` na wezle. Rozklad LU jest TEN SAM,
     ktorym liczymy pochodna, wiec kosztuje to jedno dodatkowe podstawienie.
 
-    `u_Vdot` to zmiana pochodnej miedzy punktem obliczonym a skorygowanym `y - J^-1 r`.
-    Druga faktoryzacja jest konieczna: pomiar obalil zalozenie, ze blad pochodnej jest
-    proporcjonalny do bledu napiecia.
+    RESIDUUM NA POZIOMIE WLASNEGO BLEDU ZAOKRAGLEN (korekta 2026-09-29, karta
+    DETERMINIZM-KATA-FAZORA). Gdy KAZDA skladowa residuum miesci sie w granicy bledu, z jakim
+    residuum jest obliczalne (`siec.granica_zaokraglen_residuum`, rho), rozwiazanie zbieglo
+    do precyzji arytmetyki, a obliczone `r` jest realizacja szumu zaokraglen — nie niesie
+    informacji o bledzie rozwiazania. `J^-1 r` jest wtedy losowe: pomiar na scenie dynamiki
+    harnessu dal w tej samej probce estymate pochodnej 1,9e-9 i 1,2e-10 pu/s zaleznie od
+    liczby watkow BLAS (1/4 wobec 2), a kod jakosci czestotliwosci przelaczal sie miedzy
+    „rozroznialna" i „nierozroznialna". Estymata bledu jest wtedy PROPAGACJA SAMEJ GRANICY,
+    `J^-1 rho` (Higham 2002, par. 7.2: blad rozwiazania z residuum obarczonym bledem
+    zaokraglen) — wektor deterministyczny, bo rho jest suma wyrazow nieujemnych. Residuum
+    znaczace (choc jedna skladowa ponad granica, np. Newton zatrzymany na luznej tolerancji)
+    idzie drogą jak dotad, bitowo.
+
+    `u_Vdot` to zmiana pochodnej miedzy punktem obliczonym a przesunietym o estymate bledu:
+    `y - J^-1 r` (krok Newtona) przy residuum znaczacym, `y - J^-1 rho` (przesuniecie o skale
+    bledu zaokraglen) przy residuum na granicy zaokraglen. Druga faktoryzacja jest
+    konieczna: pomiar obalil zalozenie, ze blad pochodnej jest proporcjonalny do bledu
+    napiecia.
 
     KOLEJNOSC JEST CZESCIA KONTRAKTU (korekta par. 7 rundy kwalifikacyjnej). Punkt
     skorygowany liczymy DOPIERO po sprawdzeniu, czy w ogole wolno go dotknac. Gdy
@@ -318,8 +343,12 @@ def pochodna_napiec_z_niepewnoscia(
     pochodna = _zespolone(
         rozklad.solve(_prawa_strona_dae(model, urzadzenia, stany, napiecia)), liczba
     )
+    residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
+    granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
+    granica_rzeczywista = np.concatenate((granica, granica))
+    residuum_znaczace = bool(np.any(np.abs(residuum) > granica_rzeczywista))
     blad_napiecia = _zespolone(
-        rozklad.solve(residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)), liczba
+        rozklad.solve(residuum if residuum_znaczace else granica_rzeczywista), liczba
     )
     niepewnosc_napiecia = np.abs(blad_napiecia)
     napiecia_skorygowane = napiecia - blad_napiecia

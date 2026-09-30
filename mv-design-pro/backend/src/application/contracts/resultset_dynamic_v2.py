@@ -2,7 +2,8 @@
 karta AB-1b.1 par. 0 pkt 14).
 
 DLACZEGO V2, A NIE ROZSZERZENIE V1. Zmiany nie sa addytywne: probka moze byc `None`
-(czestotliwosc niedostepna z kodem jakosci, kat fazora zerowego), a os czasu niesie
+(czestotliwosc niedostepna z kodem jakosci, kat fazora zerowego albo pradu
+nierozroznialnego od zera), a os czasu niesie
 POWTORZONE chwile (probki obustronne `L`/`P` w chwilach zdarzen), rozroznione polem
 `strona_probki`. Konsument v1 czytajacy `os_czasu_s` jako os scisle rosnaca albo
 zamieniajacy brak na liczbe dostalby wynik bledny bez sladu — dlatego nowa nazwa

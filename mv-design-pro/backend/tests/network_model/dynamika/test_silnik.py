@@ -393,22 +393,25 @@ def test_zaden_kanal_wyniku_nie_wpuszcza_NaN_ani_Inf_jako_wartosci_inzynierskiej
             SkokObciazenia(t_s=0.5, odbior="ODB1", delta_p_pu=0.15, delta_q_pu=0.05),
         )
     )
-    wynik = SilnikDynamiki(
-        uklad.wejscie(harmonogram, nastawy(dt_s=0.002, horyzont_s=1.0, krok_wyjscia_s=0.005))
-    ).uruchom()
+    wejscie = uklad.wejscie(harmonogram, nastawy(dt_s=0.002, horyzont_s=1.0, krok_wyjscia_s=0.005))
+    wynik = SilnikDynamiki(wejscie).uruchom()
+    rozdzielczosc = wejscie.nastawy.tolerancja
 
     assert len(wynik.kanaly) > 10, "Bieg bez kanalow nie sprawdzilby niczego"
     # Od karty AB-1b.1 (par. 0 pkt 6-8) wartosc NIEDOSTEPNA jest `None`, nie liczba. `None`
     # jest dopuszczalne WYLACZNIE z nazwana przyczyna w innym kanale tej samej probki:
-    # czestotliwosc — kod jakosci 2/3/4; kat fazora — modul DOKLADNIE zero. Kazda liczba
-    # jest skonczona (zero NaN/Inf).
+    # czestotliwosc — kod jakosci 2/3/4; kat fazora napiecia — modul DOKLADNIE zero; kat
+    # fazora pradu — modul nie wiekszy niz tolerancja rozwiazania sieci (karta
+    # DETERMINIZM-KATA-FAZORA 2026-09-29: prad ponizej rozdzielczosci rozwiazania jest
+    # nierozroznialny od niezbilansowania, a jego „kat" byl kierunkiem bledu zaokraglen
+    # zaleznym od liczby watkow BLAS). Kazda liczba jest skonczona (zero NaN/Inf).
     przyczyny = {
         "f_hz": ("jakosc_f", lambda wartosc: wartosc in (2.0, 3.0, 4.0)),
         "u_f_est_hz": ("jakosc_f", lambda wartosc: wartosc in (2.0, 3.0, 4.0)),
         "kat_deg": ("u_pu", lambda wartosc: wartosc == 0.0),
-        "i_od_kat_deg": ("i_od_pu", lambda wartosc: wartosc == 0.0),
-        "i_do_kat_deg": ("i_do_pu", lambda wartosc: wartosc == 0.0),
-        "i_zwarcia_kat_deg": ("i_zwarcia_pu", lambda wartosc: wartosc == 0.0),
+        "i_od_kat_deg": ("i_od_pu", lambda wartosc: wartosc <= rozdzielczosc),
+        "i_do_kat_deg": ("i_do_pu", lambda wartosc: wartosc <= rozdzielczosc),
+        "i_zwarcia_kat_deg": ("i_zwarcia_pu", lambda wartosc: wartosc <= rozdzielczosc),
     }
     liczba_none = 0
     for kanal in wynik.kanaly:
