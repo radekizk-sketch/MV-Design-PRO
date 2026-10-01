@@ -23,9 +23,14 @@ on:
 jobs:
   full-real-backend-e2e:
     runs-on: ubuntu-latest
-    # Karta SZYBKIE-TESTY (2026-09-30): suita dzielona na 4 shardy (`--shard=k/4`), kazdy
-    # na wlasnym runnerze z wlasnym backendem i baza (izolacja biegu w playwright.config.ts).
-    # Pomiar przed zmiana (lokalnie, lancuch p5): 502 przypadki w jednym biegu — 41,7 min.
+    # Karta SZYBKIE-TESTY (2026-09-30): suita dzielona na 4 shardy, kazdy na wlasnym runnerze
+    # z wlasnym backendem i baza (izolacja biegu w playwright.config.ts). Pliki speców
+    # przydziela `scripts/e2e_shardy.py` algorytmem LPT wg czasow zmierzonych w
+    # `frontend/e2e/czasy_specow.json` — wbudowane `--shard=k/n` dzieli po LICZBIE testow, a
+    # czasy speców roznia sie o rzedy wielkosci (pomiar 2026-09-30, 511 przypadkow, 1 871 s
+    # sumy: najwolniejszy shard wbudowanego podzialu ~714 s, LPT ~468 s). Przed zmiana: jeden
+    # bieg 25 min na runnerze (przebieg 36706845707). Shardy sa rozlaczne i razem daja komplet
+    # `e2e/*.spec.ts` (samotest `scripts/test_e2e_shardy.py`); spec bez pomiaru dostaje mediane.
     # `fail-fast: false` — czerwony shard nie ucina pozostalych, raport jest kompletny.
     strategy:
       fail-fast: false
@@ -62,7 +67,10 @@ jobs:
         run: npm run test:e2e:setup:real
 
       # Shard pełnej suity — jedno wywołanie Playwrighta uruchamia backend + vite
-      # RAZ (webServer) na shard, niezależnie od liczby plików speców.
+      # RAZ (webServer) na shard, niezależnie od liczby plików speców. Lista plików z
+      # `e2e_shardy.py` (kod != 0 przy pomiarze speku usuniętego przerywa krok).
       - name: Run full real-backend E2E suite (shard ${{ matrix.shard }}/4)
         working-directory: mv-design-pro/frontend
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
+        run: |
+          PLIKI="$(python ../scripts/e2e_shardy.py --shard ${{ matrix.shard }}/4)"
+          npm run test:e2e -- $PLIKI

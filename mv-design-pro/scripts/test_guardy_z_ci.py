@@ -253,3 +253,14 @@ def test_samotesty_przez_xdist_tylko_przy_rownoleglosci() -> None:
     assert "-n" not in sekwencyjnie
     assert rownolegle[-2:] == ["-n", "4"]
     assert rownolegle[:-2] == sekwencyjnie
+
+
+def test_narzedzia_ci_sa_wolane_i_maja_samotest() -> None:
+    """Lista narzędzi kroku CI (nie strażników) jest zamknięta i żywa: każdy wpis jest
+    wołany przez workflow, ma własny samotest i NIE trafia do listy strażników."""
+    wolane = {nazwa for nazwa, _argumenty in runner._wszystkie_wywolania()}
+    straznicy = set(runner.guardy_z_workflowow())
+    for nazwa in runner.NARZEDZIA_CI:
+        assert nazwa in wolane, f"{nazwa}: na liscie NARZEDZIA_CI, ale zaden workflow go nie wola"
+        assert (runner.SCRIPTS_DIR / f"test_{nazwa}.py").is_file(), f"{nazwa}: brak samotestu"
+        assert nazwa not in straznicy

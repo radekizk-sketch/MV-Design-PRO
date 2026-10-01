@@ -79,16 +79,31 @@ WYWOLANIE_GUARDA = re.compile(
 MIN_GUARDOW = 30
 
 
-def wywolania_z_workflowow() -> list[tuple[str, tuple[str, ...]]]:
-    """Wywołania guardów z workflowów CI: (nazwa, argumenty), bez powtórzeń,
-    posortowane. Ten sam guard wołany z różnymi argumentami (np. z `--strict`
-    i bez) to dwa wywołania — oba muszą być zielone, jak na CI."""
+#: Skrypty wołane przez workflowy, które NIE są strażnikami, tylko narzędziami kroku CI
+#: (wynik jest wejściem kolejnego polecenia, a argumenty pochodzą z macierzy joba, np.
+#: `${{ matrix.shard }}`, więc lokalnie nie da się ich odtworzyć 1:1). Lista ZAMKNIĘTA:
+#: każdy wpis musi być wołany przez workflow i mieć własny samotest w `scripts/`
+#: (pilnuje `test_guardy_z_ci.py::test_narzedzia_ci_sa_wolane_i_maja_samotest`) — samotesty
+#: biegną w czwartej części tego runnera, więc kontrakt narzędzia nie wypada z odbioru.
+#: * `e2e_shardy` — lista plików speców sharda pełnego e2e (`frontend-e2e-full.yml`).
+NARZEDZIA_CI: frozenset[str] = frozenset({"e2e_shardy"})
+
+
+def _wszystkie_wywolania() -> list[tuple[str, tuple[str, ...]]]:
+    """Każde `python …scripts/<nazwa>.py` z workflowów: (nazwa, argumenty), posortowane."""
     wywolania: set[tuple[str, tuple[str, ...]]] = set()
     for plik in sorted(WORKFLOWS_DIR.glob("*.y*ml")):
         for dopasowanie in WYWOLANIE_GUARDA.finditer(plik.read_text(encoding="utf-8")):
             argumenty = tuple(dopasowanie.group(2).split())
             wywolania.add((dopasowanie.group(1), argumenty))
     return sorted(wywolania)
+
+
+def wywolania_z_workflowow() -> list[tuple[str, tuple[str, ...]]]:
+    """Wywołania guardów z workflowów CI: (nazwa, argumenty), bez powtórzeń,
+    posortowane, bez narzędzi kroku (`NARZEDZIA_CI`). Ten sam guard wołany z różnymi
+    argumentami (np. z `--strict` i bez) to dwa wywołania — oba muszą być zielone, jak na CI."""
+    return [w for w in _wszystkie_wywolania() if w[0] not in NARZEDZIA_CI]
 
 
 def guardy_z_workflowow() -> list[str]:

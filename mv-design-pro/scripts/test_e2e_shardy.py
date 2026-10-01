@@ -108,3 +108,9 @@ def test_czasy_z_raportu_sumuja_proby_testow_pliku() -> None:
         ]
     }
     assert shardy.czasy_z_raportu(raport) == {"e2e/a.spec.ts": 5.0, "e2e/b.spec.ts": 0.2}
+
+
+def test_repozytorium_plik_czasow_mierzy_wylacznie_istniejace_speki() -> None:
+    """Pin stanu repo: każdy wpis pomiaru ma plik speku (CI odrzuciłoby podział)."""
+    _wagi, _bez_pomiaru, bez_pliku = shardy.wagi(shardy.speki(), shardy.wczytaj_czasy())
+    assert bez_pliku == []
