@@ -44,7 +44,7 @@ odbioru: integrator powtarza ją na drzewie scalonym (karta nie widzi zmian inny
 2. `python scripts/guardy_z_ci.py` (komplet strażników CI) i samotesty strażników, które karta
    zmienia (uruchamiane OSOBNO z katalogu `scripts`, nie razem z testami backendu).
 3. Frontend (jeśli dotknięty): `npx tsc --noEmit -p tsconfig.json`, `npm run lint`, vitest
-   modułów dotkniętych (`npx vitest run --no-file-parallelism <katalogi>`), speki e2e ekranów
+   modułów dotkniętych (`npx vitest run <katalogi>` — pula procesów, karta SZYBKIE-TESTY), speki e2e ekranów
    dotkniętych na realnym backendzie (porty z karty, serwery sprzątane po biegu).
 4. Generatory fikstur i migawek, które karta może zmienić (OpenAPI, harness, projekcje nN,
    `emit_sld_network_fixture`), z dowodem determinizmu (dwa biegi = te same bajty).
@@ -56,8 +56,10 @@ odbioru: integrator powtarza ją na drzewie scalonym (karta nie widzi zmian inny
    odwrócenie macierzy 800×800 (×6) przy domyślnych 4 wątkach OpenBLAS — 17,6 s ścienne i 9,3 s CPU,
    przy 1 wątku — 3,9 s i 1,6 s (wątki BLAS wirują w oczekiwaniu i mnożą obciążenie całej maszyny);
    bieg zwarcia sieci 50 stacji w e2e — 866 s zamiast 6 s. Wyjątek: testy, które same ustawiają liczbę
-   wątków w podprocesach (oś determinizmu). W CI pytest i vitest biegną na domyślnej liczbie wątków
-   runnera (jeden proces liczący na runner), backend e2e — na jednym wątku z konfiguracji.
+   wątków w podprocesach (oś determinizmu). Od karty SZYBKIE-TESTY (2026-09-30) pytest biegnie
+   w CI i lokalnie w procesach xdist (`-n auto`/`-n 4 --dist loadfile`) — każdy worker dostaje jeden
+   wątek BLAS z `tests/conftest.py` (rzeczywista liczba wątków przypięta testem
+   `tests/ci/test_izolacja_procesow_testowych.py`); backend e2e — jeden wątek z konfiguracji.
 
 Pełnej regresji backendu, pełnego vitest i pełnego e2e wykonawca NIE uruchamia, chyba że karta
 wprost tego żąda (np. zmiana rdzenia solvera z parytetem całej suity).
@@ -65,8 +67,8 @@ wprost tego żąda (np. zmiana rdzenia solvera z parytetem całej suity).
 #### Integrator (sesja główna, drzewo `odbior-*` partii)
 
 Raz na partię, na drzewie scalonym, jeden bieg naraz: pełna regresja backendu
-`-m "not pandapower and not andes"` z prywatnym `--basetemp`, `guardy_z_ci.py`, generatory
-fikstur, type-check, lint, pełny vitest `--no-file-parallelism`, speki e2e partii na realnym
+`-n 4 --dist loadfile -m "not pandapower and not andes"` z prywatnym `--basetemp`, `guardy_z_ci.py`, generatory
+fikstur, type-check, lint, pełny vitest (`npm test` — pula procesów), speki e2e partii na realnym
 backendzie. Kody wyjścia łapane bezpośrednio do pliku stanu łańcucha.
 
 ---

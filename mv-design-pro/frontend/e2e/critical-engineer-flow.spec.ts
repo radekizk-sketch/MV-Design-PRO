@@ -9,7 +9,7 @@
  * 5. Resulting ENM has expected elements (station + bays + transformer + feeders)
  *
  * This test runs against running mock or real backend (E2E:RUN=real).
- * Per project conventions: uses --no-file-parallelism (vitest), Playwright
+ * Per project conventions: vitest files run in the forks pool (vite.config.ts), Playwright
  * z mock backend by default.
  */
 

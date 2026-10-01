@@ -434,7 +434,9 @@ cd mv-design-pro/backend
 poetry install --with dev
 
 # Run tests (full suite: 4 processes via pytest-xdist, as CI — `-n auto` there; a file
-# stays on one process, `--dist loadfile`). Single process: drop `-n`/`--dist`.
+# stays on one process, `--dist loadfile`; each worker gets its own ENM store, session DB and
+# one BLAS thread — tests/conftest.py). Single process: drop `-n`/`--dist`.
+# Measured 2026-09-30 on 4 vCPU: 27 043 tests — 1 process 5 015 s, `-n 4 --dist loadfile` ~1 350 s.
 poetry run pytest -q -n 4 --dist loadfile
 
 # Run specific test file
@@ -475,9 +477,12 @@ npm run test:coverage
 
 # Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
 npm run test:e2e
-# One shard of the full suite (CI runs 4 in parallel; locally give each shard its own
-# PLAYWRIGHT_BACKEND_URL/PLAYWRIGHT_FRONTEND_URL ports — backend, database and stores are per run)
-npm run test:e2e -- --shard=1/2
+# One shard of the full suite — files assigned by measured spec times (LPT,
+# `scripts/e2e_shardy.py`, times in `e2e/czasy_specow.json`); CI runs 4 shards on 4 runners.
+# Locally give each concurrent shard its own PLAYWRIGHT_BACKEND_URL/PLAYWRIGHT_FRONTEND_URL ports.
+npm run test:e2e -- $(python ../scripts/e2e_shardy.py --shard 1/4)
+# Refresh the spec times after a full run with `--reporter=json` (PLAYWRIGHT_JSON_OUTPUT_NAME):
+python ../scripts/e2e_shardy.py --aktualizuj raport.json --zrodlo "<opis pomiaru>"
 
 # Run e2e against real backend (critical path)
 npm run test:e2e:real

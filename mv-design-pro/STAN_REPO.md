@@ -302,21 +302,28 @@ kończone po PID, prywatny `--basetemp`.
 ```bash
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1  # maszyna współdzielona — reguła biegów pkt 6
 cd "$DRZEWO"                                   # …/mv-design-pro
-python scripts/guardy_z_ci.py                   # komplet strażników CI + black/ruff + tsc + eslint + samotesty
+python scripts/guardy_z_ci.py                   # komplet strażników CI + black/ruff + tsc + eslint + samotesty (4 procesy, samotesty -n 4)
 cd backend
 PYTHONPATH=src:. python -m pytest -q -p no:cacheprovider --basetemp="$BT/fix" \
   tests/ci/test_fixtury_harnessu.py tests/api/test_openapi_snapshot.py          # fikstury (tolerancja) + OpenAPI
 PYTHONPATH=src:. python -m pytest -q -p no:cacheprovider --basetemp="$BT/reg" \
-  -m "not pandapower and not andes"                                               # pełna regresja (~26 600 testów)
+  -n 4 --dist loadfile -m "not pandapower and not andes"                          # pełna regresja (~27 000 testów, xdist)
 PYTHONPATH=src:. "$PP_VENV/bin/python" -m pytest -q -m pandapower tests         # wyrocznia pandapower (venv: pandapower 3.5.4, scipy<1.17)
 PYTHONPATH=src:. python -m tests.walidacja_fizyczna.mutacje M30 M32 …           # harness mutacji (wybrane albo komplet)
 cd ../frontend
-npx vitest run --no-file-parallelism                                             # pełny vitest
+npx vitest run                                                                   # pełny vitest (pula procesów)
 PLAYWRIGHT_REAL_BACKEND=1 PLAYWRIGHT_BACKEND_URL=http://127.0.0.1:18793 \
 PLAYWRIGHT_FRONTEND_URL=http://127.0.0.1:5213 VITE_API_URL_DEV=http://127.0.0.1:18793 \
 PLAYWRIGHT_BACKEND_PYTHON="$(cd ../backend && poetry env info -p)/bin/python" \
   npx playwright test e2e/ --workers=1 --reporter=line                           # pełny e2e na realnym backendzie
+# shard e2e (CI: 4 runnery): npx playwright test $(python ../scripts/e2e_shardy.py --shard k/4) …
 ```
+
+Czasy (karta SZYBKIE-TESTY, pomiar 2026-09-30/10-01 na maszynie 4 vCPU bez obcego obciążenia, te same
+warunki przed i po): pełny backend 27 043 testy — jeden proces 5 015 s, `-n 4 --dist loadfile` 1 350–1 417 s;
+pełny vitest 886 plików — `--no-file-parallelism` (pula wątków) 1 754 s, pula procesów 683–754 s;
+`guardy_z_ci.py` — sekwencyjnie 855 s, 4 procesy 309 s; pełne e2e (`workers: 1`) 1 925 s, shard LPT
+~470 s szacunku. Wyniki równoległe = sekwencyjne co do identyfikatora i statusu (dowód w meldunku karty).
 
 Generatory fikstur: `backend/scripts/eksport_fixtur_harnessu.py` (`--sprawdz` porównuje bajtowo — na maszynie
 innej niż ta, na której fikstury powstały, zgłasza szum ostatnich cyfr; rozstrzygnięciem repo jest komparator
