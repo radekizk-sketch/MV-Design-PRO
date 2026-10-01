@@ -38,6 +38,7 @@ _CATEGORY_ORDER: dict[str, int] = {
 #: Opis parametrów pozycji dla projektanta (karta W10-2a): klucz pola ``parametry`` →
 #: (etykieta, jednostka). Kolejność = kolejność wyświetlania. ``parametry`` zostaje kontraktem
 #: maszynowym; interfejs pokazuje wyłącznie ``parametry_opis`` (bez kluczy i kodów).
+#: ``typ_galezi`` opisuje ten sam fakt co ``rodzaj_aparatu`` i nie jest pokazywany osobno.
 _OPIS_PARAMETROW: tuple[tuple[str, str, str | None], ...] = (
     ("typ", "Rodzaj źródła", None),
     ("rodzaj_aparatu", "Rodzaj aparatu", None),
@@ -53,14 +54,6 @@ _OPIS_PARAMETROW: tuple[tuple[str, str, str | None], ...] = (
     ("obciazalnosc_a", "Obciążalność", "A"),
     ("dlugosc_km", "Długość", "km"),
 )
-#: Rodzaj aparatu pola (``meta.apparatus_kind``) → nazwa; ``typ_galezi`` opisuje ten sam fakt
-#: słownikiem gałęzi i nie jest pokazywany osobno.
-_NAZWY_RODZAJOW_APARATU_PL: dict[str, str] = {
-    "BREAKER": "wyłącznik",
-    "DISCONNECTOR": "odłącznik",
-    "LOAD_SWITCH": "rozłącznik",
-    "MEASUREMENT": "pole pomiarowe",
-}
 
 
 def _wartosc_opisu(klucz: str, parametry: dict[str, Any]) -> object | None:
@@ -68,9 +61,8 @@ def _wartosc_opisu(klucz: str, parametry: dict[str, Any]) -> object | None:
     if klucz == "typ":
         return NAZWY_RODZAJOW_GENERATORA_PL.get(str(wartosc), "rodzaj nieokreślony")
     if klucz == "rodzaj_aparatu":
-        nazwa = _NAZWY_RODZAJOW_APARATU_PL.get(str(wartosc or "").upper())
-        if nazwa is not None:
-            return nazwa
+        # Rodzaj aparatu w słowniku gałęzi modelu (`typ_galezi`, jedno źródło nazw rodzajów
+        # elementów); surowy `rodzaj_aparatu` zostaje w kontrakcie maszynowym `parametry`.
         return NAZWY_RODZAJOW_GALEZI_PL.get(str(parametry.get("typ_galezi")), "rodzaj nieokreślony")
     return wartosc
 

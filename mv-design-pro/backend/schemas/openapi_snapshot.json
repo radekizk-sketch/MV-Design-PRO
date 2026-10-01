@@ -7771,6 +7771,13 @@
       "title": "Case Id",
       "type": "string"
      },
+     "certyfikaty_brakujace": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/RekordBrakuPakietu"
+      },
+      "title": "Certyfikaty Brakujace",
+      "type": "object"
+     },
      "certyfikaty_odrzucone": {
       "items": {
        "$ref": "#/components/schemas/NcRfgCertyfikatOdrzucony"
@@ -12777,6 +12784,70 @@
      "pozycje"
     ],
     "title": "RejestrKartWidmowych",
+    "type": "object"
+   },
+   "RekordBrakuPakietu": {
+    "additionalProperties": false,
+    "description": "Rekord nazwanej odmowy w liście ocen albo warunków gotowości (addytywny w kontraktach).\n\nTen sam ``kod`` i ``komunikat_pl`` co wyjątek, z którego powstał (``odmowa.rekord()``).\n``status_maszynowy`` służy wyłącznie agregacji i filtrom; człowiek czyta ``wyjasnienie``.",
+    "properties": {
+     "identyfikator": {
+      "title": "Identyfikator",
+      "type": "string"
+     },
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "komunikat_pl": {
+      "title": "Komunikat Pl",
+      "type": "string"
+     },
+     "nazwa_elementu": {
+      "title": "Nazwa Elementu",
+      "type": "string"
+     },
+     "pakiet": {
+      "enum": [
+       "P1",
+       "P2",
+       "P3"
+      ],
+      "title": "Pakiet",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "BRAK_CERTYFIKATU_WIPWC",
+       "BRAK_KARTY_PRODUCENTA",
+       "BRAK_PAKIETU_OSD"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "status_maszynowy": {
+      "enum": [
+       "NIE_OCENIONO",
+       "BRAK_PODSTAWY",
+       "BRAK_DOWODU"
+      ],
+      "title": "Status Maszynowy",
+      "type": "string"
+     },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     }
+    },
+    "required": [
+     "kod",
+     "rodzaj",
+     "pakiet",
+     "identyfikator",
+     "nazwa_elementu",
+     "status_maszynowy",
+     "komunikat_pl",
+     "wyjasnienie"
+    ],
+    "title": "RekordBrakuPakietu",
     "type": "object"
    },
    "ResultFreshness": {
@@ -20891,7 +20962,7 @@
   },
   "/api/cases/{case_id}/reference/compliance": {
    "get": {
-    "description": "Raport zgodności referencyjnej + Reference Score dla ENM case'a.",
+    "description": "Raport zgodności referencyjnej + Reference Score dla ENM case'a.\n\nKarta OD-17a: bez ``?packs=`` raport ocenia pakiety norm i producentów oraz pakiet\noperatora wskazanego w przypadku; brak pakietu tego operatora = rekord w\n``braki_pakietow``. Jawne żądanie pakietu operatora, którego rejestr nie ma → 422\n(nazwana odmowa ``BRAK_PAKIETU_OSD:<operator>``); nieznany identyfikator → 404.",
     "operationId": "get_reference_compliance_api_cases__case_id__reference_compliance_get",
     "parameters": [
      {

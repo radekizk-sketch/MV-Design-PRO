@@ -216,7 +216,9 @@ def _cena(wartosc: object, gdzie: str) -> float | None:
 def _zrodlo(surowe: object, gdzie: str) -> ZrodloCeny:
     """Źródło ceny z obniżeniem stanu przy braku dokumentu lub daty (OD-16)."""
     if not isinstance(surowe, Mapping):
-        raise BladCennika(f"{gdzie}: brak sekcji „zrodlo” (stan źródła każdej wartości).")
+        raise BladCennika(
+            f"{gdzie}: brak sekcji źródła ceny (stan źródła każdej wartości jest obowiązkowy)."
+        )
     status = surowe.get("status")
     if status not in KOLEJNOSC_STANOW:
         raise BladCennika(f"{gdzie}: stan źródła „{status}” spoza {', '.join(KOLEJNOSC_STANOW)}.")
