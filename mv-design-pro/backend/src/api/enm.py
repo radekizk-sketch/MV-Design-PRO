@@ -151,7 +151,17 @@ def get_enm(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     return enm.model_dump(mode="json")
 
 
-@router.get("/{case_id}/enm/eksport-cgmes")
+@router.get(
+    "/{case_id}/enm/eksport-cgmes",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/zip": {}},
+            "description": "Archiwum CGMES (EQ.xml, TP.xml, refmap.json, manifest.json).",
+        },
+        422: {"description": "Model sieci niekompletny dla CGMES — nazwane braki w `detail`."},
+    },
+)
 def get_enm_eksport_cgmes(case_id: str, klucz: KluczTwin) -> Response:
     """Eksport modelu sieci do CGMES (IEC 61970-552, profile EQ + TP) jako archiwum ZIP.
 

@@ -19674,6 +19674,38 @@
     ]
    }
   },
+  "/api/cases/{case_id}/enm/eksport-cgmes": {
+   "get": {
+    "description": "Eksport modelu sieci do CGMES (IEC 61970-552, profile EQ + TP) jako archiwum ZIP.\n\nJEDYNA ścieżka eksportu modelu sieci (karta KASACJA-SCL-I-CIM-KLIENT, decyzja\nK-14/D-41): klient nie buduje pliku modelu sam. Wejście: ENM tylko do odczytu\n(``get_enm`` — żadnego zapisu, żadnej rewizji). Wynik deterministyczny bajt w\nbajt (``application/cgmes/service.py`` — stały porządek członów, przypięty czas\nZIP, zero znaczników czasu). Model, z którego nie powstaje poprawny graf CGMES,\ndostaje 422 z nazwanymi brakami (``application/cgmes/kompletnosc.py``), nie 500.\nNazwę pliku nadaje klient wg jednej konwencji nazw eksportu\n(``ui/sld/v3/export/exportNames.ts``), więc nagłówek jej nie powtarza —\npodaje natomiast rewizję i odcisk WYEKSPORTOWANEGO modelu\n(``X-Model-Rewizja``/``X-Model-Odcisk``), żeby nazwa pliku niosła wersję,\nktórą plik faktycznie zawiera, a nie wersję migawki przeglądarki.",
+    "operationId": "get_enm_eksport_cgmes_api_cases__case_id__enm_eksport_cgmes_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/zip": {}
+      },
+      "description": "Archiwum CGMES (EQ.xml, TP.xml, refmap.json, manifest.json)."
+     },
+     "422": {
+      "description": "Model sieci niekompletny dla CGMES — nazwane braki w `detail`."
+     }
+    },
+    "summary": "Get Enm Eksport Cgmes",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
   "/api/cases/{case_id}/enm/elementy/{ref}/sekcje-modelu": {
    "get": {
     "description": "Osiem sekcji modelu urządzenia elementu ENM (katalog MODELU, karty z proweniencją).",
