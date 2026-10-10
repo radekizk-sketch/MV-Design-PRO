@@ -25,6 +25,7 @@ Karty duże programu A/B mają osobne pliki: `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.
 | AB-1c | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | O-52 | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | CICHE-ZERO | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
+| AUDYT-SC-SN-NN (SC-P0-IB / SC-P0-C / SC-P0-SNN / SC-P1-DER-THERMAL) | NOWE — 2026-10-10, P0 potwierdzone liczbami; nic niescalone | `karta-partia7` (baza); `karta-wspolczynnik-c` (istniejąca poprawka) | `audit/sc-60909-sn-nn-fable-plan-20261010` (tylko dokumentacja) |
 
 ## Reguła biegów weryfikacyjnych (obowiązuje wykonawców i integratora)
 
@@ -1445,3 +1446,42 @@ Pomiar: 60 klas `BaseModel` w `enm/models.py`, `ConfigDict(... strict ...)` — 
 **Stan 2026-09-30:** NIE ROZPOCZĘTA — szkic §0; pierwsza instancja klasy w karcie GOTOWOSC-DER-BACKEND.
 
 Pomiar: front (kod produkcyjny) 258 × `?? 0`, 25 × `?? false`; backend 57 × `or 0.0`, 11 × `or 0`, 3 × `or False` (np. `infrastructure/cgmes/cgmes_importer.py:260-266, :375-376`; `solvers/equipment_checks/vt_burden_voltage_drop.py:211`, `ct_burden_saturation.py:244`; `pochodne/pasma_napieciowe.py:105`; `v126_academic.py:640-641` — B-01). Istniejący strażnik `scripts/false_zero_guard.py` jest TYLKO raportujący (`:1-24`: „report-only … zawsze EXIT 0”) — deklaracja bez zęba. **§0:** (1) definicja klasy: wartość zastępcza (`?? 0`, `?? false`, `or 0.0`, `or False`, `.get(k, 0)`) zasilająca DECYZJĘ (próg, warunek, werdykt, gotowość, dobór) albo wynik dla projektanta; dozwolone wyłącznie dla wielkości, dla których zero jest faktem (licznik elementów, suma pustej kolekcji) — z komentarzem uzasadnienia przy każdym wystąpieniu; (2) inwentarz klasy z decyzją per wystąpienie (brak danej → nazwany kod gotowości/odmowa z akcją; fakt → uzasadnienie); (3) strażnik: `false_zero_guard` przechodzi w tryb ścisły z budżetem 0 i rozszerza się o wzorce backendu (`or 0.0`/`or False` w wyrażeniu warunkowym lub przekazane do funkcji domenowej) — jedna reguła dla obu języków, lista dozwolona z uzasadnieniem per wpis, samotest; (4) rdzenie B-01 → pozycja bramki; (5) testy iloczynu: {brak danej, dana = 0 prawdziwe, dana obecna} × {oś decyzji: gotowość, dobór, werdykt, wyświetlenie}. **Kryterium:** strażnik czerwony na bazie z liczbą, zielony po; zero `?? 0`/`or 0.0` zasilających decyzję poza listą; e2e ekranu gotowości DER (po GOTOWOSC-DER-BACKEND) z brakiem mocy → „brak danych”, nie „niewymagane”.
+
+---
+
+## AUDYT-SC-SN-NN — poprawki liczbowe zwarć SN, transformatorów i nN (2026-10-10)
+
+**Status:** P0 POTWIERDZONE OBLICZENIAMI, REALIZACJA NIEODEBRANA. **Dokument nadrzędny:** `PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.3 (wejścia, dokładne liczby, sposób weryfikacji i ograniczenia wydań normy); §12.2 — bramka B-01, O-59 — delegacja decyzji. Ta karta NIE zmienia zamrożonych rdzeni, nie jest nowym ADR i NIE zatwierdza zgodności z IEC 60909-0:2026.
+
+### Karta SC-P0-IB — prąd wyłączeniowy, nie składowa nieokresowa
+
+**Stan źródła:** `network_model/solvers/short_circuit_core.py::compute_post_fault_quantities` liczy `ib_a` przez pierwiastek z `1 + ((kappa-1)*exp(-tb/Ta))**2`. Dla testu 33 kV z `expected/iec60909_example.json`: `I''k=4563,542872 A`; `Ib_kod=5844,684014 A`; wymagana wartość symetryczna przy zwarciu odległym od generatora `Ib=4563,542872 A` (+28,0734% w kodzie).
+
+**§0 bez dyskusji:** (1) Nie zmieniać znaczenia pola `ib_a` w Result API; poprawić fizykę symetrycznej składowej AC; (2) rozróżnić zwarcia bliskie i odległe od generatora, właściwie modelować zanikanie udziałów maszyn; (3) czas pierwszego rozdzielenia styków z jawnej danej/uzasadnionego założenia; (4) nie podstawiać składowej DC do `Ib`; (5) do czasu odbioru wynik `Ib` oznaczyć nieautorytatywnym dla doboru aparatury i EAZ; (6) zmiana rdzenia B-01 wymaga wpisu i decyzji w §12.2, a nie obejścia przez drugi solver lub korektę w interfejsie.
+
+**Testy:** funkcja najpierw czerwonego testu na `main` → zielonego na poprawce; tabela {źródło sieci/maszyna/silnik} × {zwarcie bliskie/odległe} × {`tb` 0,02/0,05/0,10/0,25 s} × {SN/nN}; osobne testy `Ikss`, `ip`, `Ib`, `Ith`; mutacja przywracająca człon DC musi zostać wykryta. Dowód A–D z `Ib` i źródłem danych.
+
+### Karta SC-P0-C — współczynnik c na ścieżce użytkownika
+
+**Stan źródła:** `domain/fault_scenario.py` domyślnie `c_factor=1.10`, `enm/assembler.py` jawne `c_factor` nadpisuje pasmo napięcia. **Nie duplikować istniejącej pracy:** `claude/mv-design-pro-twin-audit-u4lhy0-karta-wspolczynnik-c`, commit `d98d9e2f`; scalić semantycznie z bazą partii 7, przy zachowaniu pozostałych zmian Fable.
+
+**§0:** (1) jedna definicja doboru `c` dla miejsca zwarcia w kanonicznym biegu ENM → assembler → solver → White Box; (2) wejście: MAX/MIN, poziom napięcia, tolerancja nN z podstawą, nadpisanie wartości tylko z uzasadnieniem; (3) macierz IEC 60909-0:2016: SN = 1,10/1,00; nN ±6% = 1,05/0,95; nN ±10% = 1,10/0,90; kwalifikacja postanowień wydania 2026 dopiero po porównaniu tekstu; (4) brak danych autorytatywnych → nazwany brak gotowości, żadna cicha konwencja ±6%; (5) dowód zapisuje `c_zrodlo`, wybrany węzeł i wydanie normy.
+
+**Testy:** {15/0,4 kV} × {MAX/MIN} × {±6%/±10%/brak} × {AUTO/nadpisanie uzasadnione/nieuzasadnione} × {API/ENM/zapis-odczyt/White Box}; nie wystarczy test samej funkcji `c_for_node`. Stary klucz `c_factor` nie może cicho przejść jako globalny parametr nN.
+
+### Karta SC-P0-SNN — jedna rzeczywista trasa zwarciowa GPZ–SN–TR–nN
+
+**Dane syntetyczne i tabela oczekiwanych wyników:** §12.3.4 planu (15 kV, 165,94 MVA, 1,2 km SN, TR 1000 kVA 15/0,4 kV, kabel 60 m nN). Odrębne warianty tolerancji nN ±6% i ±10%, z odtworzeniem `K_T`, `Z_Q`, `Z_1`, `I''k3` i `ip`. Nie używać w testach rzeczywistych nazw obiektów ani katalogowych parametrów bez karty źródłowej.
+
+**§0:** model ENM zasilający jeden bieg i jeden identyfikator obliczenia; cztery miejsca pomiaru (GPZ, koniec SN, szyny nN, koniec odpływu nN); pola SN i aparaty nN w rzeczywistym torze, transformator jako wejście sekcji nN; sprzęgło OPEN/CLOSED i izolacja uszkodzenia muszą aktualizować graf, nie tylko rysunek. Koordynacja z POLA-W-TORZE, SZYNY-STACJI-LUSTRO, BIEG-ZABEZPIECZEN-Z-MODELU i W5, bez przerysowywania SLD.
+
+**Testy:** wyników z §12.3.4 rtol ≤ 1e-4; prawo Kirchhoffa w gałęziach, prąd przez otwarty aparat = 0, porównanie LOD 0/1/2; brak `Sk,min` → brak autorytetu MIN; poprawki/porównania pandapower oznaczone wydaniem biblioteki; test mutacyjny wyjęcia aparatu z toru i globalnego `c` nN. Odbiór = jeden kompletny test wykonania na realnym backendzie oraz dowód A–D.
+
+### Karta SC-P1-DER-THERMAL — walidacja wkładów źródeł i obciążenia cieplnego
+
+`short_circuit_iec60909.py::_compute_fault_result` sumuje moduły `ikss_thevenin + ik_inverters`; zbadać rzeczywistą domenę poprawności tej procedury wg właściwego wydania normy, w tym wpływ fazy/kierunku i rodzaju zwarcia. Dla falownika bez deklaracji `k_sc`: `DEFAULT_FORBIDDEN` dla decyzji doborowych — bez domyślki jako faktu. `_thermal_mn_factors` daje `n=1` także dla źródeł synchronicznych: oddzielić wariant blisko generatora, `Ith` [A] od `I²t` [A²s], czas obciążenia cieplnego od czasu symetrycznego prądu wyłączeniowego; testy źródeł PV/BESS, maszyny synchronicznej i silników z niezależnymi wyroczniami. Łączyć z G01 (ziemnozwarcia SN), G09 (CT/VT/EAZ) i W4/W5/W6 bez tworzenia drugiego modelu.
+
+### Bramka odbioru kart SC
+
+Fable działa na kolejnej *osobnej gałęzi kodu* wyprowadzonej z właściwego HEAD integracyjnego, nie nadpisuje automatycznie `main`. Dla każdej karty: red test na bazie, minimalny diff, werdykt fizyczny, testy mutacyjne, porównanie niezależne, prawidłowe kody odmów, ten sam model ENM i dane z proweniencją. Integrator uruchamia pełny zestaw z § „Reguła biegów weryfikacyjnych”; istniejące trzy czerwone workflowy partii 7 nie stają się zielone przez samą zmianę dokumentów. Brak zgody B-01 albo danych normowych => brak deklaracji `DONE`/zgodności IEC 60909-0:2026.
+
