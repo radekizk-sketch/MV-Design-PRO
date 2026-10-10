@@ -26,6 +26,7 @@ Karty duże programu A/B mają osobne pliki: `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.
 | O-52 | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | CICHE-ZERO | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | AUDYT-SC-SN-NN (SC-P0-IB / SC-P0-C / SC-P0-SNN / SC-P1-DER-THERMAL) | NOWE — 2026-10-10, P0 potwierdzone liczbami; nic niescalone | `karta-partia7` (baza); `karta-wspolczynnik-c` (istniejąca poprawka) | `audit/sc-60909-sn-nn-fable-plan-20261010` (tylko dokumentacja) |
+| AUDYT-SOL-EAZ-RMS — EAZ/CT, SWZ, GFL, charakterystyki RI, BFS | NOWE — 2026-10-10; audyt z podziałem P0/P1; Fable AB-1b.2 i W6-F istnieją | `karta-partia7` (baza); kod i istniejące karty Fable | `audit/sc-60909-sn-nn-fable-plan-20261010` (dokumentacja) |
 
 ## Reguła biegów weryfikacyjnych (obowiązuje wykonawców i integratora)
 
@@ -1484,4 +1485,62 @@ Pomiar: front (kod produkcyjny) 258 × `?? 0`, 25 × `?? false`; backend 57 × `
 ### Bramka odbioru kart SC
 
 Fable działa na kolejnej *osobnej gałęzi kodu* wyprowadzonej z właściwego HEAD integracyjnego, nie nadpisuje automatycznie `main`. Dla każdej karty: red test na bazie, minimalny diff, werdykt fizyczny, testy mutacyjne, porównanie niezależne, prawidłowe kody odmów, ten sam model ENM i dane z proweniencją. Integrator uruchamia pełny zestaw z § „Reguła biegów weryfikacyjnych”; istniejące trzy czerwone workflowy partii 7 nie stają się zielone przez samą zmianę dokumentów. Brak zgody B-01 albo danych normowych => brak deklaracji `DONE`/zgodności IEC 60909-0:2026.
+
+---
+
+## AUDYT-SOL-EAZ-RMS — audyt kolejnych solverów, zabezpieczeń i dynamiki (2026-10-10)
+
+**Status:** FAKTY Z KODU + RACHUNKI KONTROLNE; IMPLEMENTACJA NIEODEBRANA. Wymagania i pełne wyniki: `PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.4. Ta karta nie zastępuje `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`, W5 ani W6-F. Wejście do rdzenia B-01 wymaga obowiązującej decyzji właściciela.
+
+### SOL-P0-EAZ-PRAD — rzeczywisty prąd CT w każdym polu
+
+**Defekt:** `api/enm.py::post_wytrzymalosc_aparatury` odbiera opcjonalne `i_peak_ka`, `i_thermal_ka`, `ik_ka` jako liczby żądania; `czasy_wylaczenia_pol_stacji` stosuje jedną liczbę `ik_ka` do zabezpieczeń wszystkich pól stacji. `ocena_nadpradowa.py::prad_przekaznika` ma osobną ścieżkę rzeczywistych udziałów gałęziowych — istnieje z czego skorzystać, ale przypadki po obu stronach TR są aktualnie odmawiane. Nie wolno zastępować prądu zacisku aparatu modułem `Ik''` punktu zwarcia.
+
+**§0:** związać analizę wytrzymałości i czas wyłączenia z tożsamością biegu SC (`run_id`, `input_hash`, `snapshot_hash`), wybrać prąd przez CT konkretnego pola, uwzględnić przekładnię i kierunek oraz rozpływ na obu stronach TR; aparaty OPEN = zero; brak rozpływu = brak dowodu. Tryb ręcznego prądu zachować wyłącznie jako jawny wariant studialny, bez etykiety wyniku projektowo zatwierdzonego. Nie kopiować drugiego silnika EAZ.
+
+**Test czerwony→zielony:** sieć dwa pola/dwa źródła, `Ik''_total=5000 A`, `I_CT_1=1000 A`, `I_CT_2=4000 A` (syntetyczny bilans); `Is=500 A, TMS=0.10, IEC NI`: `t_1=1.002902702 s`, błędne użycie 5000 A dawałoby `0.297059862 s`. Weryfikacja KCL z rzeczywistych fazorów, nie sumy modułów; osobne podgrafy SN i nN, aparaty przed/za transformatorami, rejestrator dowodu White Box A–D. Rozróżnić czas członu i pełny czas usunięcia zwarcia.
+
+### SOL-P0-EAZ-CT — znamionowy ALF nie dowodzi poprawnego odwzorowania prądu
+
+**Defekt:** `ocena_nadpradowa.py::wiarygodnosc_punktu` klasyfikuje `WIARYGODNY`, gdy `I <= ALF_n·I1n`, bez sprawdzenia znamionowego i rzeczywistego obciążenia obwodu wtórnego, rezystancji uzwojenia przekładnika, przewodów i wejścia IED. Jest to fałszywy dowód, zwłaszcza dla dużych prądów z offsetem DC; ALF znamionowy zależy od znamionowego obciążenia. Producent ABB REX615 (instrukcja techniczna) podaje `ALF_actual ≈ ALF_n × (S_internal + S_rated)/(S_internal + S_actual)`.
+
+**§0:** model CT obejmuje `I1n/I2n`, klasę i ALF znamionowy, `S_n[VA]`, `R_ct[Ω]`, tor przewodów (`L`, przekrój, R lub pomiar impedancji), obciążenie wejścia IED i pozostałe przyłączone odbiorniki; przy ocenie przejściowej dane magnesowania/remanencji/stałej DC lub jawna `NIEOCENIONO`. Odróżnić dokładność przy stanie ustalonym, możliwe nasycenie przejściowe i termiczną odporność przekładnika. Nie pisać „rdzeń się nasyca” na podstawie samego przekroczenia ALF nazwanego; to przekroczenie granicy GWARANTOWANEJ dokładności, nie dowód punktu nasycenia.
+
+**Test obalający:** 200/5 A, 5P10, `S_n=10 VA`, `R_ct=0.15 Ω`, `S_actual=20 VA`. `ALF_actual≈5.78947`, granica dokładności `≈1157.895 A` wobec `ALF_n·I1n=2000 A`. Przy 1500 A obecne `WIARYGODNY` jest nieuprawnione. Testy {dane kompletne, brak R_ct, brak obciążenia, zbyt duże S_actual, ALF z katalogu, pomiar, CT wielordzeniowy, dodatkowy analizator na listwie} z prawidłową oceną zakresu zastosowania. Bez dowodu → `NIEUSTALONA`. Bramka G09 i W4.
+
+### SOL-P0-SWZ-C — jedna reguła współczynnika c w SC i pętli zwarcia nN
+
+**Defekt:** `fault_loop_iec60364.py` ustawia `C_MIN_LV=0.95` i `C_MAX_LV=1.05`, a wynik konsumuje `application/analyses/swz/service.py`. Przy zadeklarowanym nN ±10% minimalny prąd powinien wynikać z właściwego `c_min=0.90` (zgodnie z tabelą wydania IEC 60909-0:2016; nowe wydanie 2026 do kwalifikacji), nie ze stałej. TT/IT aktualnie jawnie odmawiane — nie zapisywać tego jako błędnego PASS.
+
+**Test:** `U0=230 V`, `|Zs|=0.35 Ω`: teraz `Ik_min=624.285714 A`, wymagane dla wariantu nN ±10% `591.428571 A` (+5.5556% nadwyżki). Matryca pasma × temperatura kabla × TN-C/S/CS × wyłącznik/bezpiecznik × SWZ przy granicznym progu; jeden dobór `c` pochodzący z SC-P0-C, bez podwójnego magazynu danych. Brak deklaracji tolerancji = niewyznaczony autorytatywny wynik, a nie domyślne `±6%`.
+
+### SOL-P0-GFL — odebrać istniejące AB-1b.2 S0/S1, bez restartu prac
+
+**S0 (prąd rzeczywisty):** `prady_zadane` ogranicza zadanie, lecz `prad_siec` wstrzykuje prąd ze stanów dwóch członów inercyjnych o odmiennych `T_p/T_iq`. Sonda Fable w `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md` §0 S0: `max|I|/I_max=1.0738` (Tp/Tiq=5, P=.30) i `1.1407` (Tp/Tiq=10, P=.30). Bezpieczny w sensie kontraktu model prądowy musi spełniać `|I(t)|<=I_max` **po całym torze dynamiki** w rzeczywistych stanach wyjściowych, w każdym przyjętym kroku i w próbkach L/P. Test mutacyjny ograniczenia wyłącznie na zadaniu musi upaść.
+
+**S1 (baza statyzmu):** ten sam dokument §0 S1: `S_n=30 MVA`, `S_b=100 MVA`, `ΔP_kod=-25 MW` kontra `-7.5 MW`, `ΔQ_kod=-40 Mvar` kontra `-12 Mvar`. Nie usuwać błędu zmianą wartości danych benchmarku na `S_n=S_b`. Ponowić sondę na nowym HEAD; porównać warianty `S_n/S_b=0.3,1,3` i zewnętrzną wyrocznię; wymaga odbioru AB-1b.2 i W6-F. Trapez niejawny jest solverem produkcyjnym, RK4 jawnym tylko diagnostycznym — ten test sprawdza fizykę przekształtnika, nie etykietę integratora.
+
+### SOL-P1-RI-LTI — rozdzielić identyfikatory krzywych
+
+**Wykazany błąd nazewniczo-normowy:** rdzeń `protection_iec60255.py` publikuje typ `RI` o wzorze `120/(M−1)`; Siemens 7SJ602, dokumentacja techniczna str. 33, nazywa taki wzór **Long Time Inverse**; prawdziwe RI to `1/(0.339−0.236/M)`. Dla `M=4, TMS=.1`: `LTI=4.000 s`, `RI=0.357143 s`. **Ważne:** w `ocena_nadpradowa.py` wejście `IEC_LI` jest świadomie przypisane do typu `RI` ze względu na tożsame stałe LTI — dopóki nie ma dowodu konsumenta prawdziwej RI, **nie** twierdzić o błędnym czasie użytkowego `IEC_LI`.
+
+**§0:** sprawdzić wszystkie importy `IEC60255CurveType.RI`/serializacje/ekrany/ślady, dodać prawdziwe rozróżnienie LTI/RI albo skorygować etykiety z zachowaniem migracji i kontroli B-01, dodać niezależne testy z tabeli Siemens, nie tylko `_expected_ri()` kopiujące wzór z solvera. Nie zmieniać krzywej LTI użytkownikowi „przy okazji”.
+
+### SOL-P1-BFS — kontrakt baz, topologia i wyrocznie
+
+KOREKTA źródła: `canonical_analysis.py::_execute_power_flow_unbalanced` **jest konsumentem produkcyjnym** `solve_unbalanced_backward_forward_sweep`; assembler przelicza `base_mva=S_b/3` i `base_kv=U_LL/√3`, więc trzykrotny błąd bez tego przeliczenia NIE WYSTĘPUJE w tym torze. Test bezpośredni przekazujący moc trójfazową zamiast fazowej może mieć błędne wejście, nie implikuje błędu kanonu. Wykazać testem wielkości fizycznych powiązanym z ENM.
+
+**§0:** zabezpieczyć kontrakt `UnbalancedNetworkInput` (moc i napięcie BAZY FAZY, symbole i proweniencja), wykryć pierścień zamknięty i nie pozwolić przeglądowi wszerz odrzucić gałęzi bez śladu; przypadki z dwoma źródłami i dwiema wyspami, składową zerową, jednofazowymi odbiorami i transformatorami. Wyrocznia zewnętrzna CIGRE/IEEE albo trójfazowy solver macierzowy; zielone testy symetrycznie rozłożonego IEEE 34 nie wystarczają jako niezależny dowód fizyki niesymetrycznej.
+
+### SOL-P1-THERMAL i pozostałe solwery
+
+`czas_wylaczenia_pola.py` przy braku czasu własnego aparatu wylicza `t_clearing_s=t_stopnia` z jawnym kodem `brak_czasu_wlasnego`; `wytrzymalosc_aparatury_pol.py` nadal uruchamia `ocen_wytrzymalosc_aparatu` z tą wartością. Wymusić rozdział **OCENA_WARIANTOWA** / **DOWOD_DOBOROWY**: brak pełnego czasu wyłączenia nie może wytworzyć autorytatywnego PASS. `wytrzymalosc_cieplna_przewodow.py` ma jawny fallback `tk_s` do założenia przypadku — zachować jako wariant z proweniencją, nie zamieniać na znany czas EAZ. Sprawdzić I²t osobno w każdej gałęzi, czas własny aparatu i charakterystyki TCC.
+
+**NR/GS/FD, OLTC, WLS:** wykonano audyt struktury; nie wykazano nowego błędu liczbowego tych rodzin. WLS po B01-RUNDA-1 stosuje `scipy.stats.chi2.ppf` bez cichej aproksymacji. Testy odbiorowe nadal obowiązują: porównanie NR/GS/FD dla NOP OPEN/CLOSED, straty KCL/KVL i napięcia PV→PQ, OLTC różne zaczepy, WLS obserwowalność i zła dana, pełny ślad dowodowy. Brak biegu oznacza status *NIEZBADANE LICZBOWO*, nie PASS.
+
+**Dynamika:** GFL/GFM/BESS/wiatr pozostają `UNVALIDATED_MODEL` dla rodzin bez niezależnej wyroczni. Wyrocznia ANDES na SMIB nie waliduje GFL/GFM; nie kasować etykiety przez zielony test jednej rodziny. Karty W6-F i AB-1d_min już posiadają wymagania — Fable ma je odebrać, nie dopisywać fikcyjnego DONE.
+
+### Odbiór zbiorczy
+
+Bramki przed przyjęciem: (1) reprodukcja czerwonego testu na starym HEAD, (2) izolowany diff z rzeczywistym torem użytkownika, (3) wyrocznia producenta/normy lub niezależnej implementacji z wydaniem, (4) pełny test fizyczny SN–TR–nN–EAZ–dynamika, (5) mutacje, dowód A–D, brak nowych pustych liczb albo fikcyjnych PASS, (6) pełne CI na gałęzi integracyjnej; dla FROZEN B-01 decyzja właściciela z jednym rejestrem. Ta karta nie jest dowodem wykonania ani zgodą na samoczynne scalenie.
 
