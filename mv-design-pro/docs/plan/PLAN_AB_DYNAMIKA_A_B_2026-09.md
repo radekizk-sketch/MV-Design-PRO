@@ -970,7 +970,7 @@ predykaty nazwy w rdzeniach zostawione przez kartę NAZWY-JEDNO-ZRODLO (lista `D
 
 ## 12.3 Audyt numeryczny zwarć SN–TR–nN (2026-10-10) — korekty P0 do programu Fable
 
-> **DYSPozycja wykonawcza, NIE nowa decyzja O-xx ani zgoda na zmianę B-01.** Źródło: niezależny rachunek liczb na wzorach kodu `main` (`8f7ed3c2`), dwóch fiksturach `tests/golden/parytet_benchmarkow/expected/` oraz odczyt gałęzi Fable `claude/mv-design-pro-twin-audit-u4lhy0-karta-partia7` (`f58c326a`, 2026-10-01). Pozycje SC-P0-* dopisać do rzeczywistej kolejki przed kwalifikacją wyników zwarciowych dla doboru aparatury. Nie podmieniać historycznych danych, nie zmieniać grafu sekwencji AB-*, nie deklarować wykonania na podstawie dokumentu. Karty wykonawcze: `docs/plan/KARTY_OTWARTE_2026-09.md` § „AUDYT-SC-SN-NN”.
+> **Dyspozycja wykonawcza, NIE nowa decyzja O-xx ani zgoda na zmianę B-01.** Źródło: niezależny rachunek liczb na wzorach kodu `main` (`8f7ed3c2`), dwóch fiksturach `tests/golden/parytet_benchmarkow/expected/` oraz odczyt gałęzi Fable `claude/mv-design-pro-twin-audit-u4lhy0-karta-partia7` (`f58c326a`, 2026-10-01). Pozycje SC-P0-* dopisać do rzeczywistej kolejki przed kwalifikacją wyników zwarciowych dla doboru aparatury. Nie podmieniać historycznych danych, nie zmieniać grafu sekwencji AB-*, nie deklarować wykonania na podstawie dokumentu. Karty wykonawcze: `docs/plan/KARTY_OTWARTE_2026-09.md` § „AUDYT-SC-SN-NN”.
 
 ### 12.3.1 Ustalenia sprawdzone numerycznie (wejścia jawne, wyrocznia niezależna od funkcji produktu)
 
@@ -1002,7 +1002,7 @@ predykaty nazwy w rdzeniach zostawione przez kartę NAZWY-JEDNO-ZRODLO (lista `D
 
 **Tabela testów wydania 2016:** SN (>1 kV): MAX `c=1.10`, MIN `c=1.00`; nN (100–1000 V) przy zadeklarowanej tolerancji ±6%: `1.05/0.95`; nN przy ±10%: `1.10/0.90`. Istniejący `voltage_factor.py` koduje tylko nN ±6% i SN — obsługę ±10% oraz wymóg deklaracji/źródła tolerancji dodać bez cichego zgadywania. Przed uznaniem tabeli za wiążącą dla wydania 2026 należy zweryfikować właściwą tabelę w pełnym tekście normy.
 
-**Obowiązek Fable:** reużyć i scalić semantycznie istniejącą kartę `karta-wspolczynnik-c`, nie pisać drugiej drogi; zachować kanoniczny przepływ ENM → assembler → rdzeń → dowód; parametr `c` dobierać dla NAPIĘCIA MIEJSCA ZWARCIA, nie całego przypadku, z uwzględnieniem deklaracji tolerancji nN i jawnego źródła decyzji. Test iloczynu: {SN 15 kV, nN 0,4 kV} × {MAX,MIN} × {±6%, ±10%, brak deklaracji} × {brak nadpisania, uzasadnione, nieuzasadnione} × {scenariusz/API/zapis-odczyt/wynik/White-Box}; brak nie może przyjąć domyślnie tolerancji ±6% w przypadku autorytatywnym. Przypiąć negatywny test ścieżki globalnego `c_factor=1.10` nN.
+**Obowiązek Fable:** wykorzystać i scalić semantycznie istniejącą kartę `karta-wspolczynnik-c`, nie pisać drugiej drogi; zachować kanoniczny przepływ ENM → assembler → rdzeń → dowód; parametr `c` dobierać dla NAPIĘCIA MIEJSCA ZWARCIA, nie całego przypadku, z uwzględnieniem deklaracji tolerancji nN i jawnego źródła decyzji. Test iloczynu: {SN 15 kV, nN 0,4 kV} × {MAX,MIN} × {±6%, ±10%, brak deklaracji} × {brak nadpisania, uzasadnione, nieuzasadnione} × {scenariusz/API/zapis-odczyt/wynik/White-Box}; brak nie może przyjąć domyślnie tolerancji ±6% w przypadku autorytatywnym. Przypiąć negatywny test ścieżki globalnego `c_factor=1.10` nN.
 
 ### 12.3.4 SC-P0-SNN — liczbowy test integracyjny całej sieci SN–TR–nN
 
