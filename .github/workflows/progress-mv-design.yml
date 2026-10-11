@@ -1,0 +1,70 @@
+name: Postęp inżynierski MV-DESIGN PRO
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "docs/progress/**"
+      - ".github/workflows/progress-mv-design.yml"
+      - "mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md"
+      - "mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md"
+  workflow_run:
+    workflows:
+      - "Architectural And Repo Hygiene Guard"
+      - "Docs Integrity Guard"
+      - "Frontend checks"
+      - "Frontend E2E smoke"
+      - "Frontend E2E full"
+      - "P0 Extended Guards (V12K invariants)"
+      - "Physics Label Guard (Catalog-First)"
+      - "Python tests"
+      - "SLD Determinism Guards"
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: mv-design-progress-pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz kod
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Uruchom Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Kompletność kanonicznych planów
+        run: node --test docs/progress/test-tracker.mjs
+      - name: Bramka odbioru inżynierskiego
+        run: node docs/progress/audit.mjs
+
+  publish:
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main')
+    needs: test
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - name: Pobierz gałąź główną
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Przygotuj GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Przekaż stronę
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/progress
+      - name: Opublikuj panel
+        uses: actions/deploy-pages@v4
