@@ -192,6 +192,11 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
     expected_der_count = template.schema.der_total_count.default
     der_ops = [op for op in payload["operations_log"] if op.get("op") == "add_converter_source"]
     assert len(der_ops) == expected_der_count
+    # Przekrojowy test prawdy: liczebnosc kazdej technologii w ENM ma wynikac
+    # z definicji szablonu, a nie naprzemiennej kolejnosci dodawania generatorow.
+    if len(template.schema.der_options) > 1:
+        for spec in template.schema.der_options:
+            assert sum(op.get("kind") == spec.kind for op in der_ops) == spec.default_count
     if expected_der_count > 0:
         station_generators = [
             generator
