@@ -25,6 +25,7 @@ from application.station_templates.schema import (
     _opcja_transformatora_wg_tokenu_id,
     resolve_template_default_shunt_choice,
     template_wchodzi_w_segment,
+    rozstrzygnij_sklad_der,
     transformer_voltages_kv,
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
@@ -90,6 +91,14 @@ def apply_template_to_case(
     Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
     przypadkach nadal biegna rownolegle.
     """
+    # Waliduj skład technologiczny PRZED pobraniem lub modyfikacją modelu sieci.
+    try:
+        rozstrzygnij_sklad_der(template, params_override)
+    except (TypeError, ValueError) as exc:
+        raise TemplateApplyError(
+            code="template.der_mix_invalid",
+            message_pl=f"Nieprawidłowy skład źródeł PV/BESS: {exc}",
+        ) from exc
     if template_wchodzi_w_segment(template) and not target_segment_id:
         raise TemplateApplyError(
             code="template.target_segment_required",
@@ -489,10 +498,9 @@ def _zastosuj_szablon_pod_blokada(
             )
 
     # Step 4: chain DER additions
-    der_total = int(overrides.get("der_total_count", template.schema.der_total_count.default))
-    if station_ref and der_total > 0 and template.schema.der_options:
-        for i in range(der_total):
-            der_spec = template.schema.der_options[i % len(template.schema.der_options)]
+    der_specs = rozstrzygnij_sklad_der(template, overrides)
+    if station_ref and der_specs:
+        for der_spec in der_specs:
             der_p_mw_each = float(
                 overrides.get(f"der_{der_spec.kind}_p_mw_each", der_spec.default_p_mw_each)
             )
@@ -1211,17 +1219,12 @@ def _template_der_required_kva(
     `overrides`, więc bez ryzyka rozjazdu z wersją wyświetlania (`schema.py::
     _wymagana_moc_der_domyslna_kva`, ta sama logika z `overrides={}`).
     """
-    der_specs = template.schema.der_options
+    der_specs = rozstrzygnij_sklad_der(template, overrides)
     if not der_specs:
         return None
 
-    der_total = int(overrides.get("der_total_count", template.schema.der_total_count.default))
-    if der_total <= 0:
-        return None
-
     total_mva = 0.0
-    for i in range(der_total):
-        spec = der_specs[i % len(der_specs)]
+    for spec in der_specs:
         override_key = f"der_{spec.kind}_p_mw_each"
         p_mw_each = float(overrides.get(override_key, spec.default_p_mw_each))
         # Jedna prawda mocy (decyzja O-53): tor tworzenia sprawdza
