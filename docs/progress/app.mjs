@@ -1,7 +1,7 @@
 import {REPO,PLAN,MAPA,parse,status} from './tracker.mjs';
 const $=id=>document.getElementById(id);
 const repository='https://github.com/'+REPO;
-const source='https://raw.githubusercontent.com/'+REPO+'/main/';
+const source='https://raw.githubusercontent.com/'+REPO+'/';
 const api='https://api.github.com/repos/'+REPO;
 const expected=['Architectural And Repo Hygiene Guard','Docs Integrity Guard','Frontend checks','Frontend E2E smoke','Frontend E2E full','P0 Extended Guards (V12K invariants)','Physics Label Guard (Catalog-First)','Python tests','SLD Determinism Guards','Postęp inżynierski MV-DESIGN PRO'];
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,6 +27,7 @@ function draw(){
  $('accepted-bar').style.width=ratio+'%';
  $('traced-bar').style.width=fraction(traced,tasks.length)+'%';
  $('m-items').textContent=tasks.length;
+ $('denom').textContent=tasks.length;
  $('m-waves').textContent=data.wycinki.length;
  $('m-abilities').textContent=[...data.domeny,...data.rodziny].reduce((s,g)=>s+g.zdolnosci.length,0);
  const all=view==='ab'?tasks:view==='w'?data.wycinki:view==='d'?data.domeny:data.rodziny;
@@ -60,15 +61,17 @@ async function refresh(){
  $('refresh').disabled=true;
  $('error').classList.add('hidden');
  try{
-  const [plan,map,record,head]=await Promise.all([
-   get(source+PLAN+'?v='+Date.now(),true),
-   get(source+MAPA+'?v='+Date.now(),true),
-   get(source+'docs/progress/odbior.json?v='+Date.now(),true),
-   get(api+'/commits/main')]);
-  data=parse(plan,map,JSON.parse(record));
+  const branch=$('branch').value.trim()||'main';
+  if(!/^[A-Za-z0-9._/-]{1,150}$/.test(branch)||branch.includes('..')||branch.startsWith('/'))throw Error('Niepoprawna nazwa gałęzi');
+  const head=await get(api+'/commits/'+encodeURIComponent(branch));
   const sha=head.sha;
+  const [plan,map,record]=await Promise.all([
+   get(source+sha+'/'+PLAN+'?v='+Date.now(),true),
+   get(source+sha+'/'+MAPA+'?v='+Date.now(),true),
+   get(source+'main/docs/progress/odbior.json?v='+Date.now(),true)]);
+  data=parse(plan,map,JSON.parse(record));
   $('sha').textContent=sha.slice(0,12);
-  $('updated').textContent='Odczyt: '+new Date().toLocaleString('pl-PL')+' · main';
+  $('updated').textContent='Odczyt: '+new Date().toLocaleString('pl-PL')+' · '+branch;
   $('live').textContent='Połączono z GitHub';
   const statuses=new Map(expected.map(x=>[x,'brak przebiegu']));
   try{
@@ -84,7 +87,7 @@ async function refresh(){
   $('checks').innerHTML=[...statuses].map(([name,s])=>'<div class="check" data-state="'+escape(s)+'"><span class="label">'+escape(name)+'</span><span class="state">'+escape(s)+'</span></div>').join('');
   draw();
   try{
-   const commits=await get(api+'/commits?sha=main&per_page=7');
+   const commits=await get(api+'/commits?sha='+encodeURIComponent(branch)+'&per_page=7');
    $('commits').innerHTML=commits.map(c=>'<div class="commit"><span class="commit-code">'+anchor(repository+'/commit/'+c.sha,c.sha.slice(0,9))+'</span><div><span class="commit-msg">Zmiana w repozytorium</span><span class="commit-time">'+escape(new Date(c.commit.committer.date).toLocaleString('pl-PL'))+'</span></div></div>').join('');
   }catch{$('commits').textContent='Historia commitów niedostępna.';}
  }catch(e){
@@ -100,5 +103,9 @@ document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('clic
 $('search').addEventListener('input',draw);
 $('filter').addEventListener('change',draw);
 $('refresh').addEventListener('click',refresh);
+$('branch').addEventListener('change',refresh);
+$('branch').addEventListener('keydown',e=>{if(e.key==='Enter')refresh();});
+const initial=new URLSearchParams(window.location.search).get('branch');
+if(initial)$('branch').value=initial;
 refresh();
 setInterval(()=>{if(!document.hidden)refresh();},120000);
