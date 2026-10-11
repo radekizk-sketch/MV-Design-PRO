@@ -1544,3 +1544,37 @@ KOREKTA źródła: `canonical_analysis.py::_execute_power_flow_unbalanced` **jes
 
 Bramki przed przyjęciem: (1) reprodukcja czerwonego testu na starym HEAD, (2) izolowany diff z rzeczywistym torem użytkownika, (3) wyrocznia producenta/normy lub niezależnej implementacji z wydaniem, (4) pełny test fizyczny SN–TR–nN–EAZ–dynamika, (5) mutacje, dowód A–D, brak nowych pustych liczb albo fikcyjnych PASS, (6) pełne CI na gałęzi integracyjnej; dla FROZEN B-01 decyzja właściciela z jednym rejestrem. Ta karta nie jest dowodem wykonania ani zgodą na samoczynne scalenie.
 
+
+---
+
+## KSR-STACJE-OZE-BESS — globalne karty programu Fable (2026-10-11)
+
+**Status wszystkich kart: OTWARTE / NIEODEBRANE.** Są to karty przekrojowe, nie nowy projekt i nie osobna ścieżka wdrożeniowa. Źródłem pełnej dyrektywy wykonawczej jest [prompt Fable](../prompts/PROMPT_FABLE_KSR_STACJE_OZE_BESS_2026-10-11.md). Program nadrzędny: PLAN_AB_DYNAMIKA_A_B_2026-09.md §12.5, mapa §8, STAN_REPO.md §7. Audyt KSR i propozycja kodu — PR #478, nieprzyjęte; raport SC/EAZ — PR #477. Wykonanie tylko po ponownym sprawdzeniu na aktualnym HEAD Fable.
+
+### KSR-P0-ZAPIS — jedna prawda konfiguracji i trwałość
+
+**Dowód kodowy:** backend/src/api/switchgear_config.py:120, 207–217 zapisuje konfigurację do _config_store w pamięci procesu; api/audit2_station_config.py:98–124 używa ORM; obie trasy rejestruje api/main.py:139,192. **Zadanie projektowe:** inwentarz realnych konsumentów obu tras, trzy warianty architektoniczne (operacje kanoniczne ENM, agregat ENM, projekcja edycyjna z materializacją do ENM), wybór wariantu zgodnego z W1/CV-4 i likwidacja duplikatu. Zaprojektować tożsamość projektu/stacji, rewizję, atomowy zapis, ochronę przed nadpisaniem, inwalidację biegu, deterministyczny odczyt. **Zależności:** W1, ENDPOINTY-BEZ-KONSUMENTA. **Testy:** KSR-G09; zapis przez HTTP, restart procesu, ponowne otwarcie projektu, ten sam ENM/SLD/raport; dwa równoczesne zapisy oraz celowa awaria zapisu. **Odbiór:** żaden użytkownik nie może zatwierdzić stanu istniejącego wyłącznie w pamięci procesu.
+
+### KSR-P0-POLA — rodzina producenta, kompletne pole, realne zaciski
+
+**Dowód kodowy:** backend/src/domain/switchgear_config.py:399–449 uniwersalnie żąda CB dla pola liniowego/TR; :638–669 szuka TR w tym samym polu PV/BESS. Nie jest to poprawna walidacja każdej rzeczywistej konfiguracji RMU i osobnego transformatora blokowego. **Zadanie projektowe:** producent → rodzina → konfiguracja fabryczna lub katalogowy szablon pola → aparaty, głowice i porty → połączenia ENM. Wykorzystać istniejące CompleteMvBayTemplate, FactoryConfiguration, family_validation, enm/pole_katalogowe.py i add_sn_bay_from_catalog. Rozdzielić rozłącznik, odłącznik, wyłącznik, rozłącznik bezpiecznikowy, uziemnik, CT, VT, VPIS i głowicę; zwalidować topologię w każdej ścieżce edycji. **Zależności:** POLA-W-TORZE, W5-B, SIEC-ZLOTA-KATALOG, KSR-P0-ZAPIS. **Testy:** KSR-G01–G03, G07, G11, G13–G14; mutacje bez aparatu w torze, dodatkowej jednostki RMU, podwójnego kabla w jednym przyłączu. **Odbiór:** otwarcie aparatu fizycznie zmienia tor zasilania i wyniki EAZ/solwerów, a schemat nie wymyśla brakujących aparatów.
+
+### KSR-P0-ZRODLA — PV/BESS/wiatr od PCC, bilans liczby i mocy
+
+**Dowód kodowy:** application/station_templates/templates/hybrydowe.py:58 gubi zadeklarowane udziały PV/BESS, apply.py:502–505,1211–1221 dzieli urządzenia naprzemiennie. PR #478 zawiera propozycję wspólnego rozstrzygania składu — **nie jest jeszcze odebrana na gałęzi Fable**. **Zadanie projektowe:** jawne liczebności urządzeń i ich Pn, Sn, Un, katalog TR, przyłącze i fizyczny tor PCC → pole SN → linia/kabel → TR blokowy → PCS/generator, bez fikcyjnej mocy akumulatora w MWh. Naprawa całej klasy szablonów oraz powiązania z doborami i gotowością. **Zależności:** O-53b, GOTOWOSC-DER-BACKEND, POLA-W-TORZE, SC-P1-DER-THERMAL, KSR-P0-POLA. **Testy:** KSR-G04–G06, G08, G12, regresje wszystkich 73 szablonów (z odpowiednią kwalifikacją kategorii), mix 4 PV+1 BESS i 10 PV+3 BESS, zmiana liczebności, przekroczenie mocy TR i odmowa bez katalogu. **Odbiór:** podgląd = ENM = dobór TR = EAZ = SLD = raport.
+
+### KSR-P0-DANE — neutralny SN i wtórne napięcie TR bez domyślnych faktów
+
+**Dowód kodowy:** application/station_templates/apply.py:229 wstawia grounding=isolated, :322 podstawia or 0.4. **Zadanie projektowe:** parametry neutralnego i transformatora pochodzą z warunków przyłączenia/katalogu, nie z wygodnej wartości domyślnej. Dla izolowanej/skompensowanej/rezystorowo uziemionej sieci wymagany jawny model składowej zerowej i wiarygodność danych. Bez danych nie wydawać pozytywnej kwalifikacji zwarć doziemnych, SWZ ani EAZ. **Zależności:** W5, CICHE-ZERO, SC-P0-C i SOL-P0-SWZ-C. **Testy:** KSR-G08/G13; dane poprawne, brak, konflikt napięć 15/20 kV i TR 15/0,4 kV, wszystkie sposoby uziemienia z legalnym źródłem. **Odbiór:** żadne 0,4 kV ani isolated nie wchodzi jako niepodparta podstawa obliczeniowa.
+
+### KSR-P1-BESS-EAZ — kompletna konfiguracja PCS/SOC i zabezpieczeń
+
+**Stan kodu:** istnieją ENM.Generator, modele dynamiki GFL/GFM, magazyn, katalogi i analiza zabezpieczeń. **Zadanie projektowe:** wspólny formularz edycji bazujący na modelu i katalogu dla Pn/Sn/Q/Un, ilości, E [MWh], SOC0/SOCmin/SOCmax, sprawności, limitów ładowania i rozładowania, sterowania, PCC, typu GFL/GFM. Każdy prąd EAZ musi pochodzić z właściwego CT/zacisku modelu, w tym przy zasilaniu zwrotnym, z nastawami, czasem pełnego otwarcia CB, funkcją przekaźnika i parametrami toru wtórnego. Granica ważności modelu magazynu po osiągnięciu SOC NIE jest dowodem działania BMS — propagować jawne ograniczenie modelu. **Zależności:** AB-1b.2, W6-F, BIEG-ZABEZPIECZEN-Z-MODELU, SOL-P0-EAZ-PRAD/CT, KSR-P0-ZRODLA. **Testy:** KSR-G07–G08, G10–G12, brak DTR/k_sc/parametru CT, przeciążenie PCS, granice SOC oraz wyrocznie niezależne. **Odbiór:** brak danych lub ważnej wyroczni ≠ wynik VALIDATED.
+
+### KSR-P1-SLD-RAPORT — jedno ENM, jedno SLD V3, jeden raport
+
+**Źródło:** istniejące frontend/src/ui/sld/v3/canvas/SldCanvasV3.tsx, scene/buildScene.ts, nakładki wyników, raporty i pakiety WHITE BOX. **Zadanie projektowe:** wyświetlić realną kolejność aparatów, porty i fizyczny tor GPZ/SN/TR/nN/PCC/DER z jednego grafu; LOD 0/1/2 różni szczegóły, nie łączność; kliknięcie elementu prowadzi do jego rzeczywistej konfiguracji, nie atrapy. Raport PDF/DOCX i White Box A–D czytają identyczne biegi, referencje, katalogi i statusy gotowości. **Zależności:** SLD-SUBSTRAT, SC-P0-SNN, KSR-P0-*, B-02. **Testy:** KSR-G01, G04–G05, G09–G10, G12 plus porównanie ENM ↔ SLD ↔ wynik ↔ raport przed i po zmianie pola lub sprzęgła. **Odbiór:** pełny test realnego backendu i niezależny werdykt wizualny właściciela B-02.
+
+### KSR — macierz końcowa i orkiestracja
+
+Dwa tryby: **INWENTARYZACJA SIECI ISTNIEJĄCEJ** i **PROJEKTOWANIE NOWEJ STACJI/PRZYŁĄCZA OD PCC**. Wspólny model sieci, inne wymagania wiarygodności źródła. Zakres SN/nN; WN jako równoważnik graniczny. Graf prac: W1 → KSR-P0-ZAPIS → KSR-P0-POLA → KSR-P0-ZRODLA → KSR-P1-BESS-EAZ → KSR-P1-SLD-RAPORT; KSR-P0-DANE współbieżnie po W5 i przed akceptacją obliczeń. Istniejące karty O-53b, POLA-W-TORZE, AB-1b.2, W6-F, SC-P0-SNN są zależnościami, NIE duplikatami. Integrator Fable odbiera jedną gałąź z jednym ENM i jednym biegiem. KSR-G01…G14 + testy mutacyjne, wyrocznie numeryczne, restart, katalogi producentów z wersją dokumentu, inwalidacja wyników, bramki B-01 i B-02. Sam kod i zielone testy jednostkowe bez testu przekrojowego nie nadają statusu DONE.
