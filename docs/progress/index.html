@@ -122,14 +122,14 @@ h1{font-size:clamp(27px,3.4vw,46px);line-height:1.14;letter-spacing:-.04em;margi
  <div class="topright"><span class="live" id="live">Łączenie z repozytorium</span><a class="secondary" href="https://github.com/radekizk-sketch/MV-Design-PRO" target="_blank" rel="noopener noreferrer">Repozytorium ↗</a><button class="secondary" id="refresh" type="button">Odśwież ↻</button></div>
 </header>
 <section class="hero">
- <div><div class="eyebrow">Raport wdrożenia · źródło: GitHub</div><h1>Postęp inżynierski produktu<span style="color:var(--cyan)">.</span></h1><p class="lede">25 przyrostów programu Fable, 12 wycinków W1–W12, 12 domen i 12 rodzin zdolności. Każdy status powiązany z kanonicznym planem i dowodami. Commit nie jest dowodem odbioru.</p></div>
+ <div><div class="eyebrow">Raport wdrożenia · źródło: GitHub</div><h1>Postęp inżynierski produktu<span style="color:var(--cyan)">.</span></h1><p class="lede">Przyrosty programu Fable, 12 wycinków W1–W12, 12 domen i 12 rodzin zdolności. Każdy status powiązany z kanonicznym planem i dowodami. Commit nie jest dowodem odbioru.</p></div>
  <div class="head-meta">AKTUALNY COMMIT <strong id="sha">—</strong><span id="updated">Sprawdzanie stanu…</span></div>
 </section>
 <div id="error" class="hidden" role="alert"></div>
 <div class="dashboard">
  <section class="panel summary" aria-label="Wskaźniki postępu">
   <div class="kicker">Formalnie odebrane przyrosty programu A/B</div>
-  <div class="major"><div class="dial" id="dial" style="--percent:0%"><div class="dial-content"><div class="dial-big" id="percent">—</div><div class="dial-sub">ODBIÓR / 25</div></div></div><div class="summary-blurb"><h2>Stan potwierdzony, nie deklarowany</h2><p>Wskaźnik rośnie tylko po powiązaniu zadania z dowodami, przeglądem i pozytywnymi kontrolami CI dla aktualnego commita.</p>
+  <div class="major"><div class="dial" id="dial" style="--percent:0%"><div class="dial-content"><div class="dial-big" id="percent">—</div><div class="dial-sub">ODBIÓR / <span id="denom">25</span></div></div></div><div class="summary-blurb"><h2>Stan potwierdzony, nie deklarowany</h2><p>Wskaźnik rośnie tylko po powiązaniu zadania z dowodami, przeglądem i pozytywnymi kontrolami CI dla aktualnego commita.</p>
   <div class="barwrap"><div class="bar-label"><span>Przyjęte do odbioru</span><strong id="accepted-number">— / 25</strong></div><div class="track"><div class="fill" id="accepted-bar" style="width:0%"></div></div></div>
   <div class="barwrap"><div class="bar-label"><span>Zapisane ślady wdrożenia w planie §7</span><strong id="traced-number">— / 25</strong></div><div class="track"><div class="fill alt" id="traced-bar" style="width:0%"></div></div></div></div></div>
   <p class="small-note">0% oznacza brak formalnych wpisów odbioru w tym rejestrze — nie oznacza, że produkt nie ma zaimplementowanych funkcji.</p>
@@ -143,7 +143,7 @@ h1{font-size:clamp(27px,3.4vw,46px);line-height:1.14;letter-spacing:-.04em;margi
 </div>
 <section class="section" id="plan">
  <div class="section-title"><div><div class="kicker">Przegląd wdrożenia</div><h2>Rejestr zadań i zdolności</h2><p>Otwórz dowolny element, aby przejść do jego wymagań i dowodów.</p></div><a href="https://github.com/radekizk-sketch/MV-Design-PRO/blob/main/mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md" target="_blank" rel="noopener noreferrer">Plan Fable ↗</a></div>
- <div class="toolbar"><div class="tabs" role="tablist" aria-label="Rodzaj planu">
+ <div class="toolbar"><label for="branch" style="color:var(--muted);font-size:12px">Gałąź <input class="input" id="branch" type="text" value="main" placeholder="main lub claude/…" style="min-width:210px;margin-left:8px" aria-label="Śledzona gałąź repozytorium"></label><div class="tabs" role="tablist" aria-label="Rodzaj planu">
   <button class="tab" role="tab" aria-selected="true" data-view="ab">Program A/B</button>
   <button class="tab" role="tab" aria-selected="false" data-view="w">Wycinki W1–W12</button>
   <button class="tab" role="tab" aria-selected="false" data-view="d">12 domen</button>
