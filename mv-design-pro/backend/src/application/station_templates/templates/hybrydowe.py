@@ -104,7 +104,7 @@ HYBRYDOWE_TEMPLATES = (
         "Hybryda PV 3 MW + BESS 2 MW/4 MWh",
         "Średnia hybryda 3+2 MW dla pełnego firmness.",
         pv_count=6,
-        bess_count=1,
+        bess_count=2,
         nc_rfg_type="C",
     ),
     _hybrid(
@@ -112,7 +112,7 @@ HYBRYDOWE_TEMPLATES = (
         "Hybryda PV 5 MW + BESS 3 MW/6 MWh",
         "Duża hybryda flagship 5+3 MW z grid services.",
         pv_count=10,
-        bess_count=1,
+        bess_count=3,
         nc_rfg_type="D",
     ),
 )
