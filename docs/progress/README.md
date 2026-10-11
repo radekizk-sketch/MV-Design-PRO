@@ -1,7 +1,7 @@
 # MV-DESIGN PRO — monitor postępu inżynierskiego
 
 Dostęp: panel GitHub Pages (po scaleniu i włączeniu źródła GitHub Actions w Settings → Pages).
-Źródło: repozytorium radekizk-sketch/MV-Design-PRO, gałąź main. Otwarta strona odświeża dane co 120 sekund. Przycisk „Odśwież” pobiera dane natychmiast.
+Źródło: repozytorium radekizk-sketch/MV-Design-PRO, gałąź main. Otwarta strona odświeża dane co 120 sekund. Przycisk „Odśwież” pobiera dane natychmiast. Pole „Gałąź” pozwala śledzić zarówno main, jak i aktywną gałąź wykonawczą Fable (np. claude/przejecie-nadzoru-fable-dtie3b), a parametr adresu ?branch=... otwiera określoną gałąź. Plan i mapa są zawsze pobierane z tego samego, ustalonego SHA.
 
 ## Jedna prawda o planie
 
