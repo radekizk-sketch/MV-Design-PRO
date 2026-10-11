@@ -396,3 +396,73 @@ describe('StationTemplateWizard', () => {
     expect(onAppliedSuccess).toHaveBeenCalledWith(applyMock);
   });
 });
+
+
+describe('KSR — liczby PV i BESS w jednym szablonie', () => {
+  it('udostępnia odrębne liczebności i aktualizuje sumę bez naprzemiennego dzielenia', async () => {
+    const hybridTemplate = {
+      ...MOCK_TEMPLATE_FULL,
+      id: 'tpl_hybrid_pv2_bess1',
+      name_pl: 'Hybryda PV 2 MW + BESS 1 MW',
+      category: 'hybrydowa',
+      schema: {
+        ...MOCK_TEMPLATE_FULL.schema,
+        der_total_count: {
+          default: 5,
+          min_value: 2,
+          max_value: 20,
+          step: 1,
+          label_pl: 'Liczba modułów DER',
+        },
+        der_options: [
+          {
+            kind: 'PV',
+            label_pl: 'Źródła PV',
+            catalog_options: [],
+            default_count: 4,
+            default_p_mw_each: 0.5,
+            connection_variant_options: ['block_transformer'],
+          },
+          {
+            kind: 'BESS',
+            label_pl: 'Magazyny BESS',
+            catalog_options: [],
+            default_count: 1,
+            default_p_mw_each: 1,
+            connection_variant_options: ['block_transformer'],
+          },
+        ],
+      },
+    };
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/station-templates/categories') {
+        return Promise.resolve(_mockResponse(MOCK_CATEGORIES));
+      }
+      if (url === '/api/station-templates/tpl_hybrid_pv2_bess1') {
+        return Promise.resolve(_mockResponse(hybridTemplate));
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <StationTemplateWizard
+        initialTemplateId="tpl_hybrid_pv2_bess1"
+        targetSegmentRef="seg/abc/segment"
+      />,
+    );
+    await waitFor(() => screen.getByTestId('wizard-step-content-location'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('params-tab-der'));
+
+    const pv = screen.getByTestId('param-int-Liczba jednostek PV');
+    const bess = screen.getByTestId('param-int-Liczba jednostek BESS');
+    expect((pv.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('4');
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('1');
+    fireEvent.change(bess.querySelector('input[type="number"]') as HTMLInputElement, {
+      target: { value: '2' },
+    });
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('2');
+    expect(screen.getByText(/Łączna liczba modułów DER: 6/)).toBeTruthy();
+  });
+});
