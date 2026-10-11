@@ -944,3 +944,30 @@ kolumnę „Zależność" tabeli §11; dla każdego przyrostu każda zależnoś�
 sekwencji") musi stać wcześniej w sekwencji; cykl = czerwony guard; self-test z przypadkiem
 negatywnym (dawny porządek AB-4 → AB-H1 → AB-H2 z zależnością AB-4 ← AB-H2) i pozytywnym (sekwencja
 bieżąca). Wpięcie: `guardy_z_ci.py` przez `docs-guard.yml` (Pakiet E karty AB-1a).
+
+
+## 14. KSR — przekrojowa konfiguracja stacji SN/nN, rozdzielnic, OZE/BESS i EAZ (mandat 2026-10-11)
+
+**Status: SPECYFIKACJA ZAPISANA / IMPLEMENTACJA NIEPOTWIERDZONA.** Niniejsza pozycja jest integralną częścią programu Fable A/B i misji domknięcia produktu, **nie osobnym kreatorem ani nową roadmapą**. Dokument wykonawczy: [KSR_GLOBAL_KONFIGURATOR_STACJI_2026-10-11.md](../spec/KSR_GLOBAL_KONFIGURATOR_STACJI_2026-10-11.md); dyrektywa Fable: [FABLE_KSR_GLOBAL_WDROZENIE_2026-10-11.md](../prompts/FABLE_KSR_GLOBAL_WDROZENIE_2026-10-11.md).
+
+**Powód:** obecne 17 etapów `StationConfigurator` i istniejące katalogi nie gwarantują jeszcze jednej, sprawdzalnej ścieżki od kompletnego pola OEM i fizycznego zacisku przez ENM, SLD V3, PF/SC/nN/dynamikę/EAZ do raportu. Makieta HTML jest wzorcem interakcji, a nie fizyki. Każdy nowy ekran musi mieć jednego właściciela danych i rzeczywistego konsumenta.
+
+**Graf realizacji (bez zmiany sekwencji §5 i zależności §11):**
+
+| Karta | Zakres | Zależność / bramka | Status 2026-10-11 |
+|---|---|---|---|
+| KSR-G0 | audyt HEAD, PR, API, właścicieli i testów czerwonych | `STAN_REPO`, plan A/B, B-01/B-02 | DO WYKONANIA |
+| KSR-G1 | kanoniczny tor pole–port–kabel, transakcje i rewizje | POLA-W-TORZE, POLE-ZAJĘTE, SLD-SUBSTRAT | DO WYKONANIA |
+| KSR-G2 | kompletne jednostki OEM, BOM, bloki RMU, walidacja | G1, katalog źródłowy | DO WYKONANIA |
+| KSR-G3 | 17 etapów, inspektor, SLD V3, nawigacja | G1–G2 | DO WYKONANIA |
+| KSR-G4 | gotowość domen, unieważnianie StudyRun, White Box | G1–G3, GOTOWOSC-DER-BACKEND | DO WYKONANIA |
+| KSR-G5 | PV/BESS/PCS/PCC i skład źródeł | G1–G4; PR #478 po odbiorze | DO WYKONANIA |
+| KSR-G6 | CT/VT, EAZ, obwody wyłączeń, sterowanie | BIEG-ZABEZPIECZEN-Z-MODELU | DO WYKONANIA |
+| KSR-G7 | domena nN, LOD, SWZ, uziemienie, BOM | G1–G4, W5 | DO WYKONANIA |
+| KSR-G8 | testy T01–T20, regresja, dowody i raport | G0–G7, odbiór integratora | DO WYKONANIA |
+
+**Niezmienniki P0:** brak fikcyjnego SLD i aparatów; kompletne zaciski obu końców kabla; jedna prawda ENM; katalogowy komplet pola; zgodność bloku RMU; rozdzielenie fizyki i stanu łączeniowego; PV/BESS z rzeczywistym PCC i parametrami P/S/E; brak syntetycznych wyników i cichych zer; ważność `StudyRun` związana z rewizją; CT/VT/EAZ z rzeczywistym torem; wyniki normowe wyłącznie po dowodzie wersji metody.
+
+**PR zależne (pomiar 2026-10-11):** #477 — OPEN/DRAFT, cel gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-partia7`; #478 — OPEN/DRAFT, cel `main`. Nie przypisujemy im statusu scalonego. Fable uzgadnia zmiany przed integracją i aktualizuje ten rejestr wyłącznie z faktycznymi SHA i logami. Nie modyfikować tabel generowanych §12.1 ani sekwencji §5 bez zgodnej decyzji i przejścia strażników.
+
+**Kryterium odbioru:** testy T01–T20 z karty, pytest, tsc, lint, vitest, e2e z realnym backendem, strażnicy, determinizm i audyt B-02. Sam dokument, makieta ani zielona kontrolka w UI nie są dowodem wdrożenia. Rejestr §7 uzupełnić po każdym faktycznym commicie wykonawczym.
