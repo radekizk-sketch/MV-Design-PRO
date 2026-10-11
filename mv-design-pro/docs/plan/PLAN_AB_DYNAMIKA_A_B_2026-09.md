@@ -1067,6 +1067,39 @@ W `short_circuit_iec60909.py::_compute_fault_result` obecnie `ik_total = ikss_th
 
 Kolejność bez restartu: **(1)** odczyt i odbiór AB-1b.2 S0/S1 oraz W6-F, **(2)** P0 EAZ prąd pola + CT i SWZ c, **(3)** fizyka GFL prąd rzeczywisty/statyzm w już istniejącej karcie, **(4)** LTI/RI i pozostałe P1 wraz z testami, **(5)** scalony bieg SN–TR–nN–PV/BESS–EAZ oraz niezależny dowód. Przed autorytatywnym wynikiem aparatu: jeden `run_id`, graf ENM, prąd właściwego CT, nastawy zabezpieczenia, czas otwarcia aparatu, podstawa ALF rzeczywistego i jawny status danych. Brak któregokolwiek źródła = nieprzyjęty dowód, nie fikcyjny PASS. GFL nie osiąga `VALIDATED` bez wyroczni dla swojej rodziny i testów granicznych. Zmiany rdzeni `protection_iec60255.py`, `power_flow_unbalanced.py` (sprawdzić listę B-01), NR/GS/FD — zgodnie z `scripts/rdzenie_b01.py`; żadnych alternatywnych solverów omijających bramkę.
 
+## 12.5 KSR — przekrojowy projekt konfiguracji stacji SN/nN i OZE/BESS (2026-10-11, WPIS DO PROGRAMU FABLE)
+
+> **Status:** POTWIERDZONE W KODZIE / DO ZAPROJEKTOWANIA I WYKONANIA; nie DONE. To rozszerzenie programu Fable, nie nowy produkt i nie zmiana decyzji O-xx. Wykonawczy prompt z pełnym zakresem i kontraktem: `docs/prompts/PROMPT_FABLE_KSR_STACJE_OZE_BESS_2026-10-11.md`. Karty i testy: `docs/plan/KARTY_OTWARTE_2026-09.md` §„KSR-STACJE-OZE-BESS” oraz KSR-G01…G14 w audycie na gałęzi PR #478. PR #478 nie jest scalony do tej bazy, PR #477 jest TYLKO dokumentacją. **Nie scalać PR #478 bez adwersaryjnego testu na gałęzi Fable.**
+
+### 12.5.1 Dowody z istniejącej gałęzi Fable (`karta-partia7`) i obszary błędów
+
+| Karta | Punkt w kodzie (odczyt na bazie `karta-partia7`) | Problem kwalifikacyjny | Kolizja / istniejąca praca |
+|---|---|---|---|
+| **KSR-P0-ZAPIS** | `api/switchgear_config.py:120-126, 207-217` trzyma `_config_store` w pamięci; `api/audit2_station_config.py:98-124` zapisuje ORM; `api/main.py:139,192` rejestruje obie trasy | brak jednej trwałej tożsamości stacji i gwarancji odczytu po restarcie | W1/CV-4, `ENDPOINTY-BEZ-KONSUMENTA`; nie dodawać nowego repozytorium konfiguracji |
+| **KSR-P0-POLA** | `domain/switchgear_config.py:399-449` uzależnia wyposażenie od samej roli, wymusza `CB` również dla pól liniowych/TR; `:638-669` wymaga TR w TYM polu PV/BESS | niepoprawna kwalifikacja realnego rozłącznika/RMU i rzeczywistej drogi SN–TR–nN | `POLA-W-TORZE`, W5-B, `SIEC-ZLOTA-KATALOG`; katalogowy `CompleteMvBayTemplate` i `add_sn_bay_from_catalog` już istnieją |
+| **KSR-P0-ZRODLA** | `application/station_templates/templates/hybrydowe.py:58` nie przenosi `pv_count,bess_count`; `apply.py:502-505,1211-1221` rozdziela naprzemiennie jednostki | liczba PV/BESS różna od opisu szablonu, mocy TR i podglądu | **PR #478** (wersja robocza, nieprzyjęta), `O-53b`, `GOTOWOSC-DER-BACKEND`, SC-P1-DER-THERMAL |
+| **KSR-P0-DANE** | `application/station_templates/apply.py:229`: `grounding=isolated`; `:322`: `or 0.4` gdy brak wtórnego `U_n` TR | brak jawnej podstawy do obliczenia doziemnego i walidacji napięcia nN | W5, `CICHE-ZERO`, SC-P0-C / SOL-P0-SWZ-C |
+| **KSR-P1-BESS-EAZ** | `enm/models.py:571+` (Generator), `network_model/solvers/dynamika/urzadzenia/magazyn.py` oraz `application/analyses/protection/` już istnieją | dowieść połączenia PCS/SOC/PCC z rzeczywistym pomiarem CT/VT, działaniem EAZ i zakresem ważności modelu | AB-1b.2, W6-F, `BIEG-ZABEZPIECZEN-Z-MODELU`, SOL-P0-EAZ-CT/PRAD |
+| **KSR-P1-SLD-RAPORT** | `frontend/src/ui/sld/v3/canvas/SldCanvasV3.tsx`, `scene/buildScene.ts` i eksporty; rzeczywisty ENM jest źródłem sceny | podgląd, schemat, wyniki i dokument muszą opisywać TEN SAM układ elektryczny | `SLD-SUBSTRAT`, SC-P0-SNN, B-02 |
+
+**Granice dowodu:** testy PR #478 są wymagane; brak niezależnego odbioru całej gałęzi. Weryfikacja kodu na czubku Fable po odbiorze pozostałych prac może zmienić status każdej pozycji. Nie przenoś daty pomiaru z października na historyczny wrzesień.
+
+### 12.5.2 Decyzje projektowe, które Fable musi podjąć PRZED zmianą modelu
+
+1. Ustal jednego właściciela konfiguracji i trwałości: porównaj trzy kierunki opisane w prompcie KSR (operacje ENM / agregat ENM / projekcja edycyjna z jedną materializacją). Przed decyzją zidentyfikuj wszystkich konsumentów obu API, ich zapis, autoryzację projektu i następstwa migracji/likwidacji prototypowego `_config_store`.
+2. Zdefiniuj od producenta do portu: `Manufacturer → SwitchgearFamily → FactoryConfiguration/CompleteMvBayTemplate → DeviceInstance → Bay → Port → ConnectionNode → ENM`. Sprawdź dostępne pola/typy zamiast tworzenia nowej, konkurencyjnej taksonomii; aparatura i fizyczna łączność mają pochodzić z rzeczywistych katalogów i operacji.
+3. Rozdziel tryb INWENTARYZACJI sieci istniejącej od PROJEKTOWANIA nowej stacji i OZE/BESS od PCC; różny autorytet danych, lecz jeden model.
+4. Przygotuj macierz propagacji zmiany: `katalog/TR/PCS/SOC/styk/sekcja/PCC → ENM → inwalidacja StudyRun → PF/SC/EAZ/RMS → SLD V3 → White Box A–D → PDF/DOCX`. Każda zmiana fizyki w rdzeniu wymaga B-01, zmiana grafiki schematu i jej akceptacja wymagają B-02.
+5. Udowodnij kompatybilność z W5 `LvDomainProjectionV1`, W4 i polami `Bay`; zakaz drugiego grafu i osobnego solwera w kreatorze. Parametry katalogowe brakujące/niezweryfikowane muszą pozostać jawnie niekompletne.
+
+### 12.5.3 Odbiór i graf zależności (nie nowa sekwencja AB)
+
+**Fala weryfikacji:** identyfikacja aktualnej bazy i testów PR #478 → wybór kierunku architektonicznego → prace P0 trwałość/pola/DER/dane na tej samej gałęzi integracyjnej → P1 BESS/EAZ/SLD/raport → jeden test całej drogi. Fable może delegować rozłączne karty równolegle zgodnie z `ORKIESTRACJA_AGENTOW.md`; nie czekać z klasami zależnymi do osobnego nieokreślonego programu.
+
+**Zależności:** `W1, CV-4 → KSR-P0-ZAPIS`; `KSR-P0-ZAPIS + POLA-W-TORZE + W5-B → KSR-P0-POLA`; `KSR-P0-POLA + O-53b + PR #478 (po odbiorze) → KSR-P0-ZRODLA`; `W5 + CICHE-ZERO + SC-P0-C → KSR-P0-DANE`; `KSR-P0-ZRODLA + BIEG-ZABEZPIECZEN-Z-MODELU + AB-1b.2 + W6-F → KSR-P1-BESS-EAZ`; `SLD-SUBSTRAT + SC-P0-SNN + wszystkie KSR-P0 → KSR-P1-SLD-RAPORT`.
+
+**Definition of Done:** warianty stacji i technologii z testów KSR-G01…G14 przechodzą przez *rzeczywisty* HTTP → ENM → zapis/odczyt między procesami → solwer z niezależną wyrocznią → EAZ z prądem zacisku → SldCanvasV3 (LOD 0/1/2) → raport z proweniencją; brak ukrytych nastaw/rodzajów łącznika/napięć/neutralnego; testy negatywne mutacyjne odrzucają uszkodzoną topologię. Wszystkie statusy obliczeniowe i wersje norm są jawne. B-02 tylko po werdykcie właściciela, B-01 tylko po właściwej decyzji. Nie deklarować DONE na podstawie obecności kodu lub CI bez wyroczni.
+
 ## 13. Strażnik zależności planu (O-35)
 
 `scripts/plan_ab_zaleznosci_guard.py` parsuje wiersz sekwencji §5 (pogrubiony ciąg `AB-…`) i
