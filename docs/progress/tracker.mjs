@@ -58,8 +58,9 @@ export function parse(plan,map,registr={approvals:[]}) {
   if(domeny.length!==12||rodziny.length!==12||[...domeny,...rodziny].some(g=>!g.zdolnosci.length))throw Error('Niekompletne domeny lub rodziny');
   if(!Array.isArray(registr.approvals))throw Error('Rejestr odbiorów jest nieprawidłowy');
   const ids=new Set(przyrosty.map(x=>x.id)),seen=new Set();
+  const required=['funkcja','kanoniczny_enm','brak_drugiej_prawdy','przypadki_rzeczywiste','niezalezna_wyrocznia','testy_backendu','testy_frontendu','testy_e2e','straznicy','zdalne_ci','ocena_interfejsu','dokumentacja','ograniczenia'];
   for(const a of registr.approvals){
-    if(!ids.has(a.id)||seen.has(a.id)||! /^[a-f0-9]{40}$/.test(a.commit||'')||
+    if(!ids.has(a.id)||seen.has(a.id)||!a.kryteria||!required.every(k=>a.kryteria[k]===true)||Object.keys(a.kryteria).length!==13||! /^[a-f0-9]{40}$/.test(a.commit||'')||
       !Array.isArray(a.dowody)||!a.dowody.length||!Array.isArray(a.testy)||!a.testy.length||
       !String(a.przeglad||'').startsWith('https://github.com/'+REPO+'/pull/'))throw Error('Nieważny wpis odbioru: '+a.id);
     seen.add(a.id);przyrosty.find(x=>x.id===a.id).odbior=a;
