@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id);
 const repository='https://github.com/'+REPO;
 const source='https://raw.githubusercontent.com/'+REPO+'/main/';
 const api='https://api.github.com/repos/'+REPO;
-const expected=['Architectural And Repo Hygiene Guard','Docs Integrity Guard','Frontend checks','Frontend E2E smoke','Frontend E2E full','P0 Extended Guards (V12K invariants)','Physics Label Guard (Catalog-First)','Python tests','SLD Determinism Guards'];
+const expected=['Architectural And Repo Hygiene Guard','Docs Integrity Guard','Frontend checks','Frontend E2E smoke','Frontend E2E full','P0 Extended Guards (V12K invariants)','Physics Label Guard (Catalog-First)','Python tests','SLD Determinism Guards','Postęp inżynierski MV-DESIGN PRO'];
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const anchor=(u,s)=>'<a href="'+escape(u)+'" target="_blank" rel="noopener noreferrer">'+escape(s)+'</a>';
 const badge=(s,kind='')=>'<span class="pill '+kind+'">'+escape(s)+'</span>';
@@ -80,7 +80,7 @@ async function refresh(){
     [...statuses.values()].some(x=>['failure','cancelled','timed_out'].includes(x))?'niezaliczone':'w toku';
   }catch{ci='nieustalone';}
   $('ci-status').className='pill '+(ci==='zaliczone'?'ok':ci==='niezaliczone'?'bad':'pending');
-  $('ci-status').textContent=ci==='zaliczone'?'9/9 zaliczone':ci==='niezaliczone'?'Wykryto błąd':ci==='w toku'?'Weryfikacja trwa':'Brak odczytu';
+  $('ci-status').textContent=ci==='zaliczone'?'10/10 zaliczone':ci==='niezaliczone'?'Wykryto błąd':ci==='w toku'?'Weryfikacja trwa':'Brak odczytu';
   $('checks').innerHTML=[...statuses].map(([name,s])=>'<div class="check" data-state="'+escape(s)+'"><span class="label">'+escape(name)+'</span><span class="state">'+escape(s)+'</span></div>').join('');
   draw();
   try{
