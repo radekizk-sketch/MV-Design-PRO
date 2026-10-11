@@ -8,14 +8,14 @@ Dostęp: panel GitHub Pages (po scaleniu i włączeniu źródła GitHub Actions 
 Panel nie utrzymuje konkurencyjnej roadmapy. Parser tracker.mjs czyta bezpośrednio:
 - mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md §5 (25 przyrostów), §7 (rejestr postępu i commitów);
 - mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md §3 (12 domen), §3a (12 rodzin A–L), §8 (W1–W12);
-- GitHub API: HEAD gałęzi main, wyniki 9 workflowów CI dla dokładnie tego commita, historia ostatnich commitów;
+- GitHub API: HEAD gałęzi main, wyniki 9 istniejących workflowów CI oraz kontroli panelu dla dokładnie tego commita, historia ostatnich commitów;
 - docs/progress/odbior.json — formalne decyzje odbioru.
 
 Zniknięcie przyrostu, wycinka, domeny lub rodziny z planu powoduje błąd parsowania, a nie ciche zaniżenie mianownika.
 
 ## Odbiór — żadnej samocertyfikacji
 
-Wskaźnik procentowy liczy tylko formalnie odebrane przyrosty (licznik / 25, równe wagi). Sam wpis w §7 dokumentuje „ślad wdrożenia”, lecz nie oznacza odbioru. Wpis odbioru musi zawierać: id, commit (40 znaków SHA), dowody (ścieżki plików w repo), testy (ścieżki), przeglad (adres PR), kryteria — wszystkie 13 wymagane poniżej oznaczone true. Skrypt audit.mjs sprawdza istnienie plików, historię commitów i spójność deklaracji; licznik panelu wymaga także sukcesu wszystkich 9 kontroli CI bieżącego SHA.
+Wskaźnik procentowy liczy tylko formalnie odebrane przyrosty (licznik / 25, równe wagi). Sam wpis w §7 dokumentuje „ślad wdrożenia”, lecz nie oznacza odbioru. Wpis odbioru musi zawierać: id, commit (40 znaków SHA), dowody (ścieżki plików w repo), testy (ścieżki), przeglad (adres PR), kryteria — wszystkie 13 wymagane poniżej oznaczone true. Skrypt audit.mjs sprawdza istnienie plików, historię commitów i spójność deklaracji; licznik panelu wymaga także sukcesu wszystkich 9 dotychczasowych kontroli CI oraz workflowu samego panelu bieżącego SHA.
 
 Trzynaście kluczy obiektu kryteria:
 - funkcja
