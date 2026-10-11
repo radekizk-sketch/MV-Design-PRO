@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from application.station_templates._choices import (
     CT_OPTIONS,
     DER_BESS_SN,
@@ -55,7 +57,10 @@ def _hybrid(
                 default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(DER_PV_SN, DER_BESS_SN),
+            der_options=(
+                replace(DER_PV_SN, default_count=pv_count),
+                replace(DER_BESS_SN, default_count=bess_count),
+            ),
             der_total_count=TemplateParamInt(
                 default=pv_count + bess_count,
                 min_value=2,
