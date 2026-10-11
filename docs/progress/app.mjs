@@ -63,8 +63,9 @@ async function refresh(){
  try{
   const branch=$('branch').value.trim()||'main';
   if(!/^[A-Za-z0-9._/-]{1,150}$/.test(branch)||branch.includes('..')||branch.startsWith('/'))throw Error('Niepoprawna nazwa gałęzi');
-  const head=await get(api+'/commits/'+encodeURIComponent(branch));
-  const sha=head.sha;
+  const last=await get(api+'/commits?sha='+encodeURIComponent(branch)+'&per_page=1');
+  if(!Array.isArray(last)||last.length!==1)throw Error('Nie znaleziono gałęzi: '+branch);
+  const sha=last[0].sha;
   const [plan,map,record]=await Promise.all([
    get(source+sha+'/'+PLAN+'?v='+Date.now(),true),
    get(source+sha+'/'+MAPA+'?v='+Date.now(),true),
