@@ -31,7 +31,7 @@ export function parse(plan,map,registr={approvals:[]}) {
     const c=cells(line),m=c[0]?.match(/^\*\*((?:AB-[A-Za-z0-9._-]+|W6-K))\*\*/);
     if(m&&c.length>=4)przyrosty.push({id:m[1],opis:clean(c[1],520),wymagania:clean(c[3],330),wpisy:[]});
   }
-  if(przyrosty.length!==25||new Set(przyrosty.map(x=>x.id)).size!==25)throw Error('Niezgodna liczba 25 przyrostów A/B');
+  if(przyrosty.length<25||new Set(przyrosty.map(x=>x.id)).size!==przyrosty.length)throw Error('Niekompletny albo powtórzony wykaz przyrostów A/B');
   for(const line of section(plan,'## 7. Rejestr postępu','## 8.')){
     const c=cells(line);if(c.length<5||!/^20\d{2}-\d\d-\d\d$/.test(c[0]))continue;
     const codes=c[1].split(/[^A-Za-z0-9._-]+/),sha=c[2].match(/\b[0-9a-f]{8,40}\b/i);
