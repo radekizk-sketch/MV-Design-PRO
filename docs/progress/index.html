@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#070e18">
+<meta name="description" content="MV-DESIGN PRO: audytowalny postęp programu Fable, 12 domen, 12 wycinków i rejestr commitów.">
+<title>Postęp inżynierski | MV-DESIGN PRO</title>
+<style>
+:root{color-scheme:dark;--bg:#070d16;--panel:#0e1928;--panel2:#101f30;--border:#26374a;--muted:#91a4b6;--text:#e9f2f8;--cyan:#00e5ff;--amber:#ffab43;--green:#70e7ae;--red:#ff8693}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 68% 34% at 65% -5%,#073348 0%,transparent 80%),var(--bg);font-family:Inter,"Segoe UI",system-ui,Arial,sans-serif;color:var(--text);font-size:14px;line-height:1.55}
+a{color:#8ceffe;text-decoration:none}a:hover{text-decoration:underline}
+button,input,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.shell{max-width:1580px;margin:auto;padding:0 36px 80px}
+.top{min-height:82px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:13px;letter-spacing:.11em;font-weight:750}
+.logo{display:grid;place-items:center;width:40px;height:40px;background:linear-gradient(145deg,#0e4657,#071522);border:1px solid var(--cyan);color:var(--cyan);border-radius:10px;font-size:12px;letter-spacing:0}
+.brand small{display:block;color:var(--muted);font-weight:500;letter-spacing:.05em;font-size:10px;margin-top:2px}
+.topright{display:flex;align-items:center;gap:16px}
+.live{color:var(--green);font-size:12px;display:flex;align-items:center;gap:8px}
+.live:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 12px currentColor}
+.secondary{border:1px solid var(--border);background:transparent;color:var(--text);padding:9px 13px;border-radius:9px}
+.secondary:hover{border-color:var(--cyan)}
+.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:.22em;font-weight:700;text-transform:uppercase}
+.hero{padding:44px 0 27px;display:flex;justify-content:space-between;align-items:end;gap:24px}
+h1{font-size:clamp(27px,3.4vw,46px);line-height:1.14;letter-spacing:-.04em;margin:11px 0}
+.lede{color:var(--muted);max-width:760px;margin:0;font-size:14px}
+.head-meta{text-align:right;min-width:260px;color:var(--muted);font-size:12px}
+.head-meta strong{color:#cde7f0;font-weight:600;display:block;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.dashboard{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(310px,1fr);gap:16px}
+.panel{border:1px solid var(--border);border-radius:15px;background:linear-gradient(145deg,#111f30 0%,#0b1725 95%);min-width:0}
+.summary{padding:27px 29px}
+.kicker{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.18em;font-weight:700}
+.major{display:flex;gap:32px;align-items:center;margin:18px 0 22px}
+.dial{flex:0 0 auto;width:166px;height:166px;display:grid;place-items:center;background:conic-gradient(var(--cyan) 0% var(--percent,0%),#283d52 var(--percent,0%) 100%);border-radius:50%;position:relative;box-shadow:0 0 45px #00e5ff12}
+.dial:before{content:"";position:absolute;inset:14px;border-radius:50%;background:#101d2d}
+.dial-content{z-index:1;text-align:center}
+.dial-big{font-size:46px;letter-spacing:-.07em;font-weight:740;font-variant-numeric:tabular-nums;line-height:1.1}
+.dial-sub{color:var(--muted);font-size:10px;letter-spacing:.05em}
+.summary-blurb{flex:1}
+.summary-blurb h2{font-size:22px;letter-spacing:-.03em;line-height:1.3;margin:0 0 10px}
+.summary-blurb p{color:var(--muted);margin:0 0 14px;font-size:13px}
+.bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:10px;margin:0 0 8px}
+.bar-label strong{color:var(--text)}
+.track{height:8px;background:#283c50;border-radius:10px;overflow:hidden}
+.fill{height:100%;background:linear-gradient(90deg,#0098bb,#00e5ff);border-radius:10px;transition:width .4s ease}
+.fill.alt{background:linear-gradient(90deg,#9a6324,#ffab43)}
+.barwrap{margin-top:14px}
+.small-note{font-size:11px;color:var(--muted);margin:14px 0 0}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:25px;border-top:1px solid var(--border);padding-top:21px}
+.metric{padding-right:12px;border-right:1px solid var(--border)}
+.metric:last-child{border:0}
+.metric b{font-size:27px;display:block;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.metric span{font-size:11px;color:var(--muted)}
+.ci{padding:26px}
+.ci-header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ci h2,.section-title h2{font-size:16px;margin:4px 0 5px;letter-spacing:-.015em}
+.pill{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;white-space:nowrap;color:#c6d6e1}
+.pill.ok{color:var(--green);border-color:#285b4c;background:#10332d}
+.pill.bad{color:var(--red);border-color:#654047;background:#311a23}
+.pill.pending{color:var(--amber);border-color:#634e32;background:#30251b}
+.ci-note{color:var(--muted);font-size:12px;margin:12px 0 19px}
+.checks{max-height:256px;overflow:auto;scrollbar-width:thin}
+.check{border-top:1px solid #233448;padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px}
+.check:before{content:"";display:block;flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#637b90}
+.check[data-state=success]:before{background:var(--green)}
+.check[data-state=failure]:before{background:var(--red)}
+.check[data-state=in_progress]:before{background:var(--amber)}
+.check .label{flex:1;color:#c7d6e1}
+.check .state{font-size:10px;color:var(--muted);white-space:nowrap}
+.section{margin-top:35px}
+.section-title{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:15px}
+.section-title p{color:var(--muted);margin:0;font-size:12px}
+.toolbar{border:1px solid var(--border);background:#101c2a;border-radius:13px;padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:5px}
+.tab{border:0;border-radius:8px;padding:9px 14px;background:transparent;color:var(--muted);font-size:12px}
+.tab[aria-selected=true]{background:#183a4a;color:var(--cyan);font-weight:700}
+.grow{flex:1}
+.input,select{min-width:150px;background:#0a1522;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:12px}
+.input{min-width:220px;max-width:330px;width:100%}
+.input::placeholder{color:#7890a4}
+.results-label{color:var(--muted);font-size:11px;margin-bottom:9px}
+.items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.item{border:1px solid var(--border);border-radius:12px;padding:18px 20px;background:#0c1826;min-width:0;transition:border-color .15s}
+.item:hover{border-color:#375873}
+.item-head{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.item-id{font:700 13px ui-monospace,Consolas,monospace;color:var(--cyan);margin-right:10px}
+.item h3{font-size:14px;margin:11px 0 7px;line-height:1.38;letter-spacing:-.01em}
+.item p{color:var(--muted);font-size:12px;margin:0}
+.item details{margin-top:12px;padding-top:11px;border-top:1px solid #243448}
+.item summary{color:#b6d7e5;font-size:12px;cursor:pointer}
+.item details p{margin-top:10px}
+.item .evidence{margin-top:10px;font-size:11px;color:var(--muted)}
+.item .evidence a{display:inline-block;margin:3px 10px 3px 0}
+.item.wide{grid-column:1/-1}
+.progress-mini{height:5px;background:#2a3b4b;border-radius:9px;margin:14px 0 9px;overflow:hidden}
+.progress-mini span{display:block;height:100%;background:var(--cyan)}
+.twocol{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+.recent{padding:22px 25px}
+.recent h2{margin:0 0 16px;font-size:16px}
+.commit{display:flex;gap:15px;padding:11px 0;border-top:1px solid #263748}
+.commit-code{font:600 11px ui-monospace,Consolas,monospace;white-space:nowrap}
+.commit-msg{font-size:12px;color:#c5d6e1}
+.commit-time{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.method{padding:23px 25px}
+.method h2{font-size:16px;margin:0 0 14px}
+.method p{color:var(--muted);font-size:12px}
+.method strong{color:var(--text)}
+.footer{font-size:11px;color:#8297a8;border-top:1px solid var(--border);margin-top:36px;padding:19px 0;display:flex;justify-content:space-between;gap:15px}
+.hidden{display:none!important}
+#error{background:#3c202a;border:1px solid #8e4a55;color:#ffbec5;padding:14px 18px;border-radius:10px;margin:15px 0}
+@media(max-width:1000px){.dashboard,.twocol{grid-template-columns:1fr}.items{grid-template-columns:1fr}.shell{padding:0 20px 60px}}
+@media(max-width:630px){.top{min-height:70px}.brand{font-size:12px}.topright .live{display:none}.hero{display:block}.head-meta{text-align:left;margin-top:17px}.summary{padding:23px 18px}.major{flex-direction:column;align-items:flex-start}.metrics{gap:7px}.metric b{font-size:21px}.toolbar{align-items:stretch}.tabs{width:100%}.tab{padding:8px 11px}.input{max-width:none}.footer{display:block}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+ <div class="brand"><span class="logo" aria-hidden="true">MV</span><div>MV-DESIGN PRO<small>REJESTR JAKOŚCI INŻYNIERSKIEJ</small></div></div>
+ <div class="topright"><span class="live" id="live">Łączenie z repozytorium</span><a class="secondary" href="https://github.com/radekizk-sketch/MV-Design-PRO" target="_blank" rel="noopener noreferrer">Repozytorium ↗</a><button class="secondary" id="refresh" type="button">Odśwież ↻</button></div>
+</header>
+<section class="hero">
+ <div><div class="eyebrow">Raport wdrożenia · źródło: GitHub</div><h1>Postęp inżynierski produktu<span style="color:var(--cyan)">.</span></h1><p class="lede">25 przyrostów programu Fable, 12 wycinków W1–W12, 12 domen i 12 rodzin zdolności. Każdy status powiązany z kanonicznym planem i dowodami. Commit nie jest dowodem odbioru.</p></div>
+ <div class="head-meta">AKTUALNY COMMIT <strong id="sha">—</strong><span id="updated">Sprawdzanie stanu…</span></div>
+</section>
+<div id="error" class="hidden" role="alert"></div>
+<div class="dashboard">
+ <section class="panel summary" aria-label="Wskaźniki postępu">
+  <div class="kicker">Formalnie odebrane przyrosty programu A/B</div>
+  <div class="major"><div class="dial" id="dial" style="--percent:0%"><div class="dial-content"><div class="dial-big" id="percent">—</div><div class="dial-sub">ODBIÓR / 25</div></div></div><div class="summary-blurb"><h2>Stan potwierdzony, nie deklarowany</h2><p>Wskaźnik rośnie tylko po powiązaniu zadania z dowodami, przeglądem i pozytywnymi kontrolami CI dla aktualnego commita.</p>
+  <div class="barwrap"><div class="bar-label"><span>Przyjęte do odbioru</span><strong id="accepted-number">— / 25</strong></div><div class="track"><div class="fill" id="accepted-bar" style="width:0%"></div></div></div>
+  <div class="barwrap"><div class="bar-label"><span>Zapisane ślady wdrożenia w planie §7</span><strong id="traced-number">— / 25</strong></div><div class="track"><div class="fill alt" id="traced-bar" style="width:0%"></div></div></div></div></div>
+  <p class="small-note">0% oznacza brak formalnych wpisów odbioru w tym rejestrze — nie oznacza, że produkt nie ma zaimplementowanych funkcji.</p>
+  <div class="metrics"><div class="metric"><b id="m-items">25</b><span>przyrostów A/B</span></div><div class="metric"><b id="m-abilities">—</b><span>zdolności w mapie</span></div><div class="metric"><b id="m-waves">12</b><span>wycinków produktu</span></div></div>
+ </section>
+ <section class="panel ci" aria-label="Kontrole integracji">
+  <div class="ci-header"><div><div class="kicker">Bramka weryfikacji</div><h2>Kontrole CI na bieżącym commicie</h2></div><span class="pill pending" id="ci-status">Sprawdzanie</span></div>
+  <p class="ci-note">Wyniki muszą dotyczyć dokładnie wskazanego SHA. Zaliczenie starszego commita nie jest automatycznie przenoszone.</p>
+  <div class="checks" id="checks" aria-live="polite"></div>
+ </section>
+</div>
+<section class="section" id="plan">
+ <div class="section-title"><div><div class="kicker">Przegląd wdrożenia</div><h2>Rejestr zadań i zdolności</h2><p>Otwórz dowolny element, aby przejść do jego wymagań i dowodów.</p></div><a href="https://github.com/radekizk-sketch/MV-Design-PRO/blob/main/mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md" target="_blank" rel="noopener noreferrer">Plan Fable ↗</a></div>
+ <div class="toolbar"><div class="tabs" role="tablist" aria-label="Rodzaj planu">
+  <button class="tab" role="tab" aria-selected="true" data-view="ab">Program A/B</button>
+  <button class="tab" role="tab" aria-selected="false" data-view="w">Wycinki W1–W12</button>
+  <button class="tab" role="tab" aria-selected="false" data-view="d">12 domen</button>
+  <button class="tab" role="tab" aria-selected="false" data-view="r">Rodziny A–L</button>
+ </div><div class="grow"></div><input id="search" class="input" type="search" placeholder="Szukaj zadania, elementu, normy…" aria-label="Szukaj w wyświetlanej grupie"><select id="filter" aria-label="Filtr statusu"><option value="all">Wszystkie statusy</option><option value="trace">Ślad wdrożenia</option><option value="none">Brak odbioru</option><option value="accept">Odebrane</option></select></div>
+ <div id="count" class="results-label" aria-live="polite">Wczytywanie danych…</div>
+ <div id="items" class="items"></div>
+</section>
+<section class="section twocol">
+ <div class="panel recent"><div class="kicker">Historia zmian</div><h2>Ostatnie commity</h2><div id="commits">Odczyt historii…</div></div>
+ <div class="panel method"><div class="kicker">Kontrakt wiarygodności</div><h2>Co oznacza postęp?</h2><p><strong>Ślad wdrożenia:</strong> zadanie występuje w rejestrze postępu Fable z identyfikatorem commita. Nie świadczy to jeszcze o jakości fizyki i zastosowalności rozwiązania.</p><p><strong>Odbiór:</strong> powiązanie z niezależnym przeglądem, wynikami testów i dowodem, a wszystkie kontrole bieżącego commita muszą być zielone. Bez tych warunków procent pozostaje niezmieniony.</p><p><strong>12 domen i rodziny A–L:</strong> klasyfikacje zdolności są historycznymi pomiarami mapy z września 2026 r. Nie należy interpretować ich jako świeżych wyników testów.</p><p><a href="https://github.com/radekizk-sketch/MV-Design-PRO/blob/main/mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md">Otwórz mapę produktu ↗</a></p></div>
+</section>
+<footer class="footer"><span>MV-DESIGN PRO · panel tylko do odczytu · dane pobierane z kanonicznego repozytorium · brak danych projektowych</span><span id="poll">Automatyczne sprawdzanie co 120 s</span></footer>
+</div>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
