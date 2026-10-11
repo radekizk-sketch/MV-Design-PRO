@@ -27,6 +27,7 @@ from application.station_templates.apply import (
     TemplateApplyError,
     apply_template_to_case,
 )
+from application.station_templates.schema import _der_catalog_for_power, rozstrzygnij_sklad_der
 from application.station_templates.service import count_by_category
 from application.station_templates.user_store import (
     lista_szablonow_uzytkownika as list_user_templates,
@@ -138,7 +139,14 @@ def preview_station_template(
     nn_feeders_count = int(
         overrides.get("nn_feeders_count", template.schema.nn_feeders_count.default)
     )
-    der_count = int(overrides.get("der_total_count", template.schema.der_total_count.default))
+    try:
+        resolved_der_specs = rozstrzygnij_sklad_der(template, overrides)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "template.der_mix_invalid", "message_pl": str(exc)},
+        ) from exc
+    der_count = len(resolved_der_specs)
     transformer_count = int(
         overrides.get("transformer_count", template.schema.transformer_count.default)
     )
@@ -164,16 +172,21 @@ def preview_station_template(
 
     der_summary = []
     for der_spec in template.schema.der_options:
-        der_ref = overrides.get(f"der_{der_spec.kind}_ref") or _first_default_choice(
-            der_spec.catalog_options
+        der_power = float(
+            overrides.get(f"der_{der_spec.kind}_p_mw_each", der_spec.default_p_mw_each)
+        )
+        der_ref = (
+            overrides.get(f"der_{der_spec.kind}_ref")
+            or _der_catalog_for_power(der_spec, der_power)
+            or _first_default_choice(der_spec.catalog_options)
         )
         der_summary.append(
             {
                 "kind": der_spec.kind,
                 "catalog_ref": der_ref,
                 "connection_variant": der_spec.connection_variant_options[0],
-                "expected_count_per_kind": max(
-                    1, der_count // max(1, len(template.schema.der_options))
+                "expected_count_per_kind": sum(
+                    spec.kind == der_spec.kind for spec in resolved_der_specs
                 ),
             }
         )

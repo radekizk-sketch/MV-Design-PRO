@@ -192,6 +192,11 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
     expected_der_count = template.schema.der_total_count.default
     der_ops = [op for op in payload["operations_log"] if op.get("op") == "add_converter_source"]
     assert len(der_ops) == expected_der_count
+    # Przekrojowy test prawdy: liczebnosc kazdej technologii w ENM ma wynikac
+    # z definicji szablonu, a nie naprzemiennej kolejnosci dodawania generatorow.
+    if len(template.schema.der_options) > 1:
+        for spec in template.schema.der_options:
+            assert sum(op.get("kind") == spec.kind for op in der_ops) == spec.default_count
     if expected_der_count > 0:
         station_generators = [
             generator
@@ -300,3 +305,26 @@ def test_podglad_szablonu_z_pomiarem_ponizej_minimum_pol_zwraca_422(app_client) 
     detail = response.json()["detail"]
     assert detail["code"] == "template.sn_bays_count_below_minimum"
     assert "pól SN" in detail["message_pl"]
+
+
+def test_hybrydowy_podglad_api_zachowuje_jawny_sklad_pv_bess(app_client) -> None:
+    response = app_client.post(
+        "/api/station-templates/tpl_hybrid_pv2_bess1/preview",
+        json={"params_override": {}},
+    )
+    assert response.status_code == 200, response.text
+    cfg = response.json()["effective_config"]
+    assert cfg["der_total_count"] == 5
+    assert {item["kind"]: item["expected_count_per_kind"] for item in cfg["der_mix"]} == {
+        "PV": 4,
+        "BESS": 1,
+    }
+
+
+def test_podglad_api_odrzuca_niejawny_podzial_modulow(app_client) -> None:
+    response = app_client.post(
+        "/api/station-templates/tpl_hybrid_pv2_bess1/preview",
+        json={"params_override": {"der_total_count": 3}},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "template.der_mix_invalid"

@@ -445,21 +445,52 @@ def _moc_wymagana_jednostki_der_mva(
     )
 
 
+def rozstrzygnij_sklad_der(
+    template: StationTemplate,
+    overrides: Mapping[str, Any] | None = None,
+) -> tuple[DerKindSpec, ...]:
+    """Jedno źródło prawdy o liczbie jednostek DER dla podglądu, doboru i zapisu.
+
+    Szablon jednorodny zachowuje edycję sumy modułów. Dla kilku technologii
+    liczebności są jawne; nie wolno dzielić sumy po równo ani naprzemiennie.
+    Niezgodna suma kończy się odmową zamiast cichej zmiany konfiguracji.
+    """
+    specs = template.schema.der_options
+    if not specs:
+        return ()
+    params = overrides or {}
+    total = int(params.get("der_total_count", template.schema.der_total_count.default))
+    limits = template.schema.der_total_count
+    if not limits.min_value <= total <= limits.max_value:
+        raise ValueError("Liczba modułów DER jest poza zakresem szablonu.")
+    if len(specs) == 1:
+        declared = params.get(f"der_{specs[0].kind}_count")
+        if declared is not None and int(declared) != total:
+            raise ValueError("Liczba jednostek DER nie zgadza się z liczbą łączną.")
+        return (specs[0],) * total
+
+    counts = [int(params.get(f"der_{spec.kind}_count", spec.default_count)) for spec in specs]
+    if any(count < 0 for count in counts):
+        raise ValueError("Liczba jednostek PV/BESS nie może być ujemna.")
+    if sum(counts) != total:
+        raise ValueError(
+            "Suma liczby jednostek poszczególnych technologii DER musi być "
+            "równa liczbie łącznej; określ liczby PV i BESS jawnie."
+        )
+    return tuple(spec for spec, count in zip(specs, counts, strict=True) for _ in range(count))
+
+
 def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
     """Moc pozorna [kVA] wymagana przez DOMYŚLNY (bez nadpisań) mix DER
     szablonu — `None` gdy szablon nie niesie DER-ów albo domyślna liczba
     modułów wynosi 0. Odpowiednik `apply.py::_template_der_required_kva` z
     PUSTYMI nadpisaniami (`overrides={}`) — dokładnie stan, który
     `structural_fields()` ma pokazać (szablon BEZ ingerencji projektanta)."""
-    der_specs = template.schema.der_options
+    der_specs = rozstrzygnij_sklad_der(template)
     if not der_specs:
         return None
-    der_total = template.schema.der_total_count.default
-    if der_total <= 0:
-        return None
     total_mva = 0.0
-    for i in range(der_total):
-        spec = der_specs[i % len(der_specs)]
+    for spec in der_specs:
         p_mw_each = spec.default_p_mw_each
         catalog_ref = _der_catalog_for_power(spec, p_mw_each)
         total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
