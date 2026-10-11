@@ -59,6 +59,20 @@ Wiążący `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` identyfikuje braki w
 
 `network_model/catalog/switchgear/registry.py` przechowuje producentów jako `requires_catalog`; `switchgear/families.py` ma rodziny `repo_verified`. Są to różne poziomy potwierdzenia, a nie błąd do usunięcia przez bezwarunkowe ustawienie `verified`. Każdego pola, aparatu, wytrzymałości zwarciowej i blokady wymaga odniesienia do konkretnego dokumentu, jego wydania i wariantu; nie wyciągać konstrukcji z nazwy producenta.
 
+### P1 — domena nN i dynamika BESS: nie gubić już istniejących kontraktów
+
+`backend/src/application/analyses/lv_domain/projection_v1.py` implementuje wersjonowaną projekcję `LvDomainProjectionV1` o wersji ładunku `4.0.0`: graf nN, kotwice upstream SN, stany zasilania, wynik, pętle zwarciowe i SWZ z jednego odczytu ENM. Nowy kreator NIE powinien pisać drugiego modelu nN ani obchodzić niezmienników tej projekcji. `backend/src/enm/models.py:571-746` ma już `Generator.connection_variant`, `blocking_transformer_ref`, `station_ref` i walidator ich zgodności. Trzeba połączyć z nimi wszystkie opcje kreatorów OZE/BESS, nie tworzyć nowych pól równoważnych.
+
+`network_model/solvers/dynamika/urzadzenia/magazyn.py:109-149` jawnie ogranicza model dynamiki RMS: przy osiągnięciu granicy SOC nie modeluje odcięcia BMS ani dalszej godzinowej regulacji energii, lecz kończy przebieg odmową. Odbiór KSR powinien potwierdzić propagację tego stanu przez API, SLD i raport; niedopuszczalne byłoby pokazanie wyniku „zgodny” po przekroczeniu zakresu modelu.
+
+### P1 — katalog sterowników i dowód funkcjonalności EAZ
+
+`backend/src/application/analyses/protection/catalog/vendors/elektrometal_etango_v0.py` deklaruje w `supported_devices()` modele e²TANGO 450/600/800/1000/1200. Takie wpisy w kodzie NIE są dowodem istnienia danego wariantu fabrycznego ani potwierdzenia funkcji urządzenia; każdy kod i mapa rejestrów/nastaw wymagają konkretnej wersji DTR i karty producenta. Walidacja EAZ musi wykazać wiązania z wyłącznikiem, CT/VT, obwodem cewki i przełączeniami, również w stanie zasilania zwrotnego PV/BESS.
+
+### P1 — osobna kwalifikacja solwera zwarciowego do wydania normy
+
+`backend/src/application/solvers/short_circuit_binding.py` wiąże typy zwarcia SC_3F/SC_1F/SC_2F i ustala współczynnik napięciowy zależnie od węzła i scenariusza. Kod ten nie stanowi automatycznie dowodu zgodności z wydaniem IEC 60909-0:2026. Wymagana niezależna kontrola różnic między wydaniami, obliczenia odniesienia oraz jawna wersja normy i dokument dowodowy w raporcie.
+
 ## 4. Docelowy niezmiennik systemowy
 
 `Wariant stacji -> szablon producenta -> kompletna aparatura i zaciski -> porty/połączenia ENM -> pełny tor SN–TR–nN/PCC -> graf solwera -> wielkości zwarciowe i EAZ -> geometria istniejącego SldCanvasV3 -> dokumentacja -> trwały zapis`.
