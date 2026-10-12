@@ -1,18 +1,14 @@
 /**
- * BayConfiguratorSurface (E-11) — wrapper konfiguratora pola SN.
- *
- * Etap 3 dostawy: udostępnia istniejący BayConfigurator (8 sekcji + 6 reguł
- * walidacji R1-R6) jako powierzchnię workspace. Dane bay'a czytane z snapshotu
- * (snapshot.bays); gdy brak — minimalny kontekst rezerwowy.
+ * E05 — powierzchnia rzeczywistego pola SN.
+ * Domyślnie stanowisko E05: ENM + katalog OEM + SldCanvasV3.
+ * Dotychczasowy BayConfigurator zachowany jako widok pomocniczy, bez
+ * konstruowania fikcyjnego pola rezerwowego lub sekcji sprzęgła.
  */
-
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { BayConfigurator } from '../../network-build/bay-configurator/BayConfigurator';
-import type {
-  BayRoleForValidation,
-  BayValidationContext,
-} from '../../network-build/bay-configurator/bayValidation';
+import { E05BayEngineeringEditor } from '../../network-build/bay-configurator/E05BayEngineeringEditor';
+import type { BayRoleForValidation, BayValidationContext } from '../../network-build/bay-configurator/bayValidation';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
@@ -20,86 +16,46 @@ interface BayConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
 }
 
-const DEFAULT_BAY_CONTEXT: BayValidationContext = {
-  bayRole: 'OUT',
-  designation: 'pole rezerwowe',
-  hasOutgoingRun: false,
-  isReserveSlot: true,
-  hasOutflowPort: true,
-  couplerSectionRefs: [],
-};
-
-export function BayConfiguratorSurface(props: BayConfiguratorSurfaceProps): JSX.Element {
-  const { surface } = props;
-  const snapshot = useSnapshotStore((state) => state.snapshot);
+export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps): JSX.Element {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const [legacy, setLegacy] = useState(false);
   const bayRef = surface.entityRef ?? null;
+  const bay = useMemo(() => snapshot?.bays.find((b) => b.ref_id === bayRef), [snapshot, bayRef]);
 
-  const { designation, context } = useMemo(() => {
-    if (!bayRef) {
-      return { designation: 'Pole niewybrane', context: DEFAULT_BAY_CONTEXT };
-    }
-    if (!snapshot) {
-      return {
-        designation: bayRef,
-        context: { ...DEFAULT_BAY_CONTEXT, designation: bayRef },
-      };
-    }
-    const bay = (snapshot.bays ?? []).find(
-      (b: { ref_id: string }) => b.ref_id === bayRef,
-    ) as
-      | {
-          ref_id: string;
-          name?: string;
-          bay_role?: string;
-          reserve_slot?: boolean;
-        }
-      | undefined;
-    if (!bay) {
-      return {
-        designation: bayRef,
-        context: { ...DEFAULT_BAY_CONTEXT, designation: bayRef },
-      };
-    }
-    const role: BayRoleForValidation =
-      bay.bay_role && ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE'].includes(bay.bay_role)
-        ? (bay.bay_role as BayRoleForValidation)
-        : 'OUT';
+  // Starszy walidator R1–R6 wymaga kontekstu. Przekazujemy WYŁĄCZNIE fakty
+  // obecne w ENM; brak jawnych danych sekcji sprzęgła pozostaje brakiem.
+  const context: BayValidationContext | null = useMemo(() => {
+    if (!bay) return null;
+    const role: BayRoleForValidation = bay.bay_role;
+    const ports = bay.ports ?? [];
     return {
-      designation: bay.name ?? bayRef,
-      context: {
-        bayRole: role,
-        designation: bay.name ?? bayRef,
-        hasOutgoingRun: false,
-        isReserveSlot: Boolean(bay.reserve_slot),
-        hasOutflowPort: role !== 'MEASUREMENT',
-        couplerSectionRefs: role === 'COUPLER' ? ['SEC-1', 'SEC-2'] : [],
-      },
+      bayRole: role,
+      designation: bay.name,
+      hasOutgoingRun: ports.some((p) => Boolean(p.occupied_by) && p.kind !== 'sn_input'),
+      isReserveSlot: ports.some((p) => p.kind === 'sn_reserve') && ports.every((p) => !p.occupied_by),
+      hasOutflowPort: ports.some((p) => p.kind === 'sn_output' || p.kind === 'sn_branch' || p.kind === 'sn_transformer'),
+      transformerConnectedRef: role === 'TR' ? bay.outgoing_destination_ref ?? null : undefined,
+      derAttachmentPointPl: role === 'OZE' ? bay.outgoing_destination_ref ?? null : undefined,
+      derKind: undefined,
+      // Sekcje sprzęgła wymagają osobnego kontraktu ENM; nigdy ['SEC-1','SEC-2'].
+      couplerSectionRefs: [],
     };
-  }, [bayRef, snapshot]);
+  }, [bay]);
 
   return (
-    <div data-testid="bay-configurator-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-11 · Konfigurator pola SN
-        </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {designation}
-        </h2>
-        {!bayRef && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
-            Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
-            modelu lub kliknij pole w SLD i wybierz "Otwórz okno pola".
-          </p>
-        )}
-      </div>
-      <div className="flex-1 overflow-auto rounded border border-scada-border">
-        <BayConfigurator
-          bayId={bayRef ?? 'unselected'}
-          designation={designation}
-          bayContext={context}
-        />
-      </div>
+    <div data-testid="bay-configurator-surface" className="flex h-full min-h-0 w-full flex-col">
+      {legacy && context && bay ? (
+        <>
+          <div className="flex items-center justify-between border-b border-scada-border bg-scada-surface px-4 py-2 text-xs">
+            <span className="text-status-warn">Widok starszego konfiguratora · niepełny kontekst połączeń i sprzęgła</span>
+            <button type="button" onClick={() => setLegacy(false)}
+              className="rounded border border-scada-border px-3 py-1.5">Powrót do E05</button>
+          </div>
+          <div className="min-h-0 flex-1"><BayConfigurator bayId={bay.ref_id} designation={bay.name} bayContext={context}/></div>
+        </>
+      ) : (
+        <E05BayEngineeringEditor bayRef={bayRef} onOpenLegacyEditor={context ? () => setLegacy(true) : undefined}/>
+      )}
     </div>
   );
 }
