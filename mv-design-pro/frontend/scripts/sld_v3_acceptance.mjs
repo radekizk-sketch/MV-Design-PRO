@@ -2732,15 +2732,26 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       refySpozaModelu === 0 ? `tematów=${[...wgKlasy.values()].reduce((s, w) => s + w.tematow, 0)}` : `złych=${refySpozaModelu}, np. ${pierwszyZlyRef}`,
     );
 
-    // (c) Pokrycie łańcucha: stacje i odcinki z realnym wejściem budowy.
-    const stacjeZWejsciem = obszary.filter((a) => {
-      if (a.klasa !== 'stacja') return false;
+    // (c) Pokrycie łańcucha: stacje z menu stacji na rysunku, a aktywność „Kontynuuj ciąg"
+    // KAŻDEJ z nich SPAROWANA z niezależną wyrocznią zajętości backendu (`line_fields`: wolne
+    // pole OUT/FEEDER stacji) — predykaty parami (reguła KLASA pkt 3). Karta POLE-ZAJĘTE:
+    // wejście wymaga WOLNEGO pola liniowego, a sieć referencyjna 52 stacji jest układem
+    // zamkniętym (każde pole liniowe stacji zajęte), więc dawne kryterium „≥ 15 stacji z
+    // AKTYWNYM wejściem" przeczyło kanonowi (czerwone od partii integracji 6, zmierzone na
+    // bazie f3c435b6: stacji=0). Ten sam kanon co vitest `menuBudowyNaKanwie.test.tsx`;
+    // ścieżkę pozytywną (wolne pole → aktywne wejście) przypina tam scena z generatora backendu.
+    const wolnePoleStacji = (stacjaRef) => (widokiLogiczneEnm.line_fields ?? []).some(
+      (w) => w.station_ref === stacjaRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
+    );
+    const stacjeZMenu = obszary.flatMap((a) => {
+      if (a.klasa !== 'stacja') return [];
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
-      // S95-START: wejście jest REALNE tylko z punktem startu ciągu (predykaty parami).
-      return w.stan === 'temat'
-        && w.temat.menuKind === 'station'
-        && resolveTrunkStartAvailability(enm, widokiLogiczneEnm, 'station', w.temat.modelRef)?.['continue-trunk'] === true;
-    }).length;
+      return w.stan === 'temat' && w.temat.menuKind === 'station' ? [w.temat.modelRef] : [];
+    });
+    const rozjazdyWejscia = stacjeZMenu.filter(
+      (ref) => (resolveTrunkStartAvailability(enm, widokiLogiczneEnm, 'station', ref)?.['continue-trunk'] === true)
+        !== wolnePoleStacji(ref),
+    );
     const odcinkiZWejsciem = obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
@@ -2748,9 +2759,16 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     }).length;
     if (lod === 0) {
       check(
-        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z wejściem „kontynuuj ciąg / odgałęzienie" na rysunku`,
-        stacjeZWejsciem >= PROG_STACJI,
-        `stacji=${stacjeZWejsciem}`,
+        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z menu stacji na rysunku`,
+        stacjeZMenu.length >= PROG_STACJI,
+        `stacji=${stacjeZMenu.length}`,
+      );
+      check(
+        'menu_chain_probe (S9-5, POLE-ZAJĘTE) LOD 0: wejście „kontynuuj ciąg" KAŻDEJ stacji = wolne pole liniowe wg line_fields',
+        rozjazdyWejscia.length === 0,
+        rozjazdyWejscia.length === 0
+          ? `stacji=${stacjeZMenu.length}, z wolnym polem=${stacjeZMenu.filter(wolnePoleStacji).length}`
+          : `rozjazdów=${rozjazdyWejscia.length}, np. ${rozjazdyWejscia[0]}`,
       );
     }
     check(
