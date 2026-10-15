@@ -1,0 +1,121 @@
+# Meldunek karty SZYBKIE-TESTY — przyspieszenie testów bez utraty determinizmu
+
+Gałąź: `claude/mv-design-pro-twin-audit-u4lhy0-karta-szybkie-testy`, baza `615f3b24` (partia 6),
+drzewo wynikowe kodu `2000e4d5`. Maszyna pomiarowa: kontener 4 vCPU, 15 GB RAM, bez obcego
+obciążenia (load average w logach biegów); pomiary przed i po w tych samych warunkach, z
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` i prywatnym `--basetemp` poza drzewem.
+
+## 1. Wynik i dowód
+
+| Bieg | Przed | Po | Przyspieszenie | Wynik równoległy = sekwencyjny |
+|---|---|---|---|---|
+| Pełny backend `-m "not pandapower and not andes"` | 5 015 s (1 proces, host A, 2026-09-30) · 5 873 s (1 proces, host B, 2026-10-15, drzewo `2000e4d5`) | `-n 4 --dist loadfile`: 1 645 s i 1 591 s (host B, `2000e4d5`) · 1 352 s (host A) | 3,57–3,69× (ten sam host) | TAK — 27 064 × passed w biegu sekwencyjnym i w obu równoległych, 0 różnic identyfikatorów i statusów (junit) |
+| Pełny vitest (887 plików) | 1 753,9 s (`--no-file-parallelism`, pula wątków, czyste drzewo bazy) | 682,5 s i 753,9 s (pula procesów `forks`) | 2,3–2,6× | TAK — per plik i per test identycznie (jedyna różnica: nowy plik `pulaTestow.test.ts`, 2 passed) |
+| `scripts/guardy_z_ci.py` | 854,8 s (runner bazy, sekwencyjnie) | 309,3 s i 318,7 s (4 procesy, samotesty `-n 4`) | 2,7× | samotesty: 3 332 → 3 352 passed (nowe samotesty karty) |
+| Pełne e2e (realny backend, `workers: 1`) | 1 925 s jeden bieg (511 przypadków) | 4 shardy LPT: 472,7 / 418,6 / 397,6 / 417,2 s | najwolniejszy shard 4,1× krótszy | TAK — suma shardów = bieg pełny: 511 przypadków, shardy rozłączne, 0 różnic statusu |
+
+`nproc` i `uptime` są w nagłówku i stopce każdego logu biegu. Uwaga pomiarowa: `nproc` pod
+`OMP_NUM_THREADS=1` zwraca 1 — liczba rdzeni zapisywana jest przez `nproc --all`.
+
+**CI (GitHub Actions, ubuntu-latest 4 vCPU)** — przed: przebieg na `a2ab18fc` (2026-09-30),
+po: przebiegi na `fcf59e0b` i `2000e4d5`:
+
+| Krok / job | Przed | Po |
+|---|---|---|
+| `Run pytest` | 68,5 min | 37,5 min (`fcf59e0b`), 38,8 min (`2000e4d5`) — 27 064 passed |
+| Samotesty strażników (`pytest -n auto ../scripts`) | 6,8 min | 3,3 min |
+| Job `pytest` (ścieżka krytyczna workflowu Python) | 79 min | 45 min |
+| vitest w `frontend-checks` | 24,4 min (12 shardów kolejno) | 14,1 min (jeden bieg, pula procesów) |
+| Job `frontend` | 27,7 min | 16,4 min |
+| E2E full | 1 job, krok 25,1 min | 4 joby równolegle, kroki 7,6–9,6 min (joby 10,0–11,4 min) |
+
+Zajętość runnerów (trzy joby testowe razem): przed 79 + 27,7 + 25,8 ≈ 132,5 runner-min, po
+45 + 16,4 + 41,1 ≈ 102,5 runner-min. E2E zużywa więcej runner-minut (4 × setup ≈ +15 min), ale
+skraca ścieżkę krytyczną o ~15 min; backend i vitest oszczędzają ~45 runner-min.
+
+`Python tests` na `2000e4d5` — **zielony** (pytest, samotesty, lint, mutacje, ANDES, pandapower,
+PostgreSQL). Czerwone na gałęzi karty są wyłącznie joby czerwone także na CI bazy `615f3b24`
+(sprawdzone przez check-runs bazy), z identycznym zbiorem czerwieni — patrz §4.
+
+## 2. Co zrobiono (commity kodu)
+
+- `3725a08d` — migawka WIP `061bbed6` przeniesiona na bazę bez konfliktów: `pytest-xdist` w dev,
+  vitest `pool: 'forks'` (pomocnik czasu procesora odmawia pomiaru poza wątkiem głównym procesu,
+  `pulaTestow.test.ts` przypina pulę), równoległy runner `guardy_z_ci.py` z samotestami,
+  workflowy CI, CLAUDE.md.
+- `91b51007` — **izolacja procesów pytest pod xdist** (inwentarz §3) + jeden wątek BLAS na worker.
+- `43ed0301`, `0a5f7a88` — `scripts/e2e_shardy.py` (LPT wg `frontend/e2e/czasy_specow.json`),
+  samotest, wpięcie w `frontend-e2e-full.yml`; zamknięta lista `NARZEDZIA_CI` w `guardy_z_ci.py`
+  (inaczej runner uruchamiałby narzędzie kroku jako strażnika z argumentami `${{ … }}`).
+- `fcf59e0b` — polecenia i liczby z pomiaru w CLAUDE.md, STAN_REPO §7 G, regule biegów
+  `KARTY_OTWARTE_2026-09.md`, definicjach wykonawców `.claude/agents/worker*.md`.
+- `2000e4d5` — poprawka mojego testu wątków BLAS po czerwieni CI: w workerze załadowane są DWIE
+  biblioteki OpenBLAS (numpy i scipy), test sprawdza teraz każdą.
+
+Dobór `-n` i `--dist` z pomiaru: suma czasów testów 4 709 s w 789 plikach, najdłuższy plik
+561,5 s (`walidacja_fizyczna/test_bramki.py`) < 1/4 sumy, więc LPT po plikach daje teoretycznie
+ten sam makespan co po testach (1 177 s przy n = 4). `--dist loadfile` zachowuje fikstury modułowe
+(TestClient z lifespanem) i łańcuchy kroków w jednym pliku (`e2e/test_nn_full_chain.py`) — bez
+`xdist_group` i bez wykluczeń. `-n 4` = liczba rdzeni (CI: `-n auto`).
+
+## 3. Inwentarz defektów izolacji (klasa: stan współdzielony przez procesy)
+
+Pomiar przed naprawą: `-n 4 --dist loadfile` — 22 czerwone testy, których bieg jednoprocesowy nie
+ma (`e2e/test_nn_full_chain.py` ×15, `api/test_station_templates_apply_api.py` ×2,
+`application/test_fikstury_enm_generowane.py` ×2, `enm/test_short_circuit_migracja_e3_golden.py`,
+`api/test_solver_input_audit2_integration.py`, `test_fault_scenarios_api.py`); w logu
+`No such file or directory: '/tmp/enm-store-pytest-…/<klucz>.json'`. Narzędzia: grep
+`os.getenv` w `backend/src` + rejestr zapisów hakiem audytu PEP 578 w biegu równoległym
+(68 460 operacji zapisu poza `--basetemp`; wszystkie poza magazynami — nazwy losowe) + kontrola
+plików w drzewie po biegu (SQLite otwiera plik z biblioteki C, hak go nie widzi).
+
+| Miejsce (źródło) | Mechanizm współdzielenia | Naprawa |
+|---|---|---|
+| `tests/conftest.py` (dawne l. 26–49) + `enm/store.py:144`, `enm/dziennik_zmian.py:154`, `enm/rewizje.py:84`, `enm/scenariusze.py:1289` (`ENM_STORE_DIR`) | kontroler xdist importuje `conftest.py` i eksportuje katalog; workery dziedziczą zmienną i brały ją za „wskazaną z zewnątrz” → jeden magazyn ENM dla 4 procesów, `reset_enm_store()` jednego kasował model drugiego | znacznik `<ZMIENNA>_PYTEST_PID`: proces widzący obcy PID tworzy własny katalog; wartość bez znacznika (spoza pytest) honorowana |
+| `application/station_templates/user_store.py:44` (`STATION_USER_TEMPLATES_DIR`) | jak wyżej | jak wyżej |
+| `api/main.py:79`, `infrastructure/persistence/repositories/canonical_run_repository.py:137` (`DATABASE_URL`, domyślnie `./mv_design_pro.db`) | fikstury MODUŁOWE z lifespanem API (`test_fault_scenarios_api.py`, `test_fault_scenarios_run_integration.py`, `test_batch_execution.py`, `enm/test_brak_katalogu_aparatu_nn_os_analiz.py`, `e2e/test_nn_full_chain.py`) startują przed fikstura per test i pisały do `backend/mv_design_pro.db` W DRZEWIE repo — wspólny plik workerów, trwały między biegami | baza sesji w katalogu procesu; per test nadal `_izolowana_baza_przebiegow`; po biegach pliku w drzewie brak (sprawdzone) |
+| `api/cloud_backup.py:65` (`CLOUD_BACKUP_BUCKET`, domyślnie `/tmp/mv-design-pro-backups`) | katalog wspólny dla procesów i biegów na maszynie | katalog na proces |
+| `api/celery_app.py:7` (`REDIS_URL`) | poza klasą — testy nie łączą się z Redisem | bez zmiany |
+| wątki OpenBLAS (numpy i scipy) | 4 workery × 4 wątki na 4 rdzeniach; wynik czasu i kolejność sumowania zależne od obciążenia | `setdefault(OPENBLAS_NUM_THREADS/OMP_NUM_THREADS, "1")` w workerze przed importem numpy |
+
+Testy (`backend/tests/ci/test_izolacja_procesow_testowych.py`): iloczyn {4 zmienne} × {brak,
+z zewnątrz, obcy PID, własny PID}; wartość sesji bieżącego procesu poza drzewem repo; liczba wątków
+KAŻDEJ załadowanej biblioteki OpenBLAS odczytana z biblioteki (`/proc/self/maps` + symbol
+`*openblas_get_num_threads*`). Iniekcja: bez bloku wątków — 1 failed / 21.
+
+Przypadek NIE będący defektem izolacji: `ci/test_fikstura_dialektu_produkcyjnego.py` czerwony w
+jednym biegu, bo edytowałem `conftest.py` w trakcie biegu (`inspect.getsource` czytał nowy plik
+z liniami starego modułu); osobno 12 passed, w biegach końcowych zielony.
+
+## 4. Czerwień bazy (nie tej karty) — ten sam status w obu trybach
+
+- vitest: `menuBudowyNaKanwie` ×2, `pathInvariants` ×1 (lokalnie i w CI). Budżety czasu
+  `buildScene.p1Recenzja:271` i `buildScene.schemat10s7p6:207` przeszły we wszystkich biegach,
+  także równoległych i w CI.
+- akceptacja SLD v3 (`npm run accept:sld-v3`): `menu_chain_probe` LOD 0 „stacji=0” — czerwona
+  także na czystym drzewie `615f3b24` (sprawdzone lokalnie) i na CI bazy.
+- e2e: 8 przypadków (`sld-pa-powerflow-tor` N-2/N-3, `tr2w-bez-pola` ×3, scena „koordynacja”
+  ×3) — identycznie w biegu pełnym, w shardach lokalnie i w shardach CI.
+
+## 5. Do decyzji integratora
+
+- Commity `0d8a80c5` (bez poprawki `main([])` w `backend/tests/ci/test_guardy_z_ci.py`, która
+  należy do tej karty) i `646aabf9` naprawiają czerwień bazy (test migracji nN karty #151, kod
+  `catalog.assign_failed`, predykat nazwy w `enm/validator.py`, budżet bramki typów 81 > 80),
+  którą wg uwagi integratora z 2026-10-01 naprawia karta PARTIA-6-BACKEND (`65b00094`) —
+  powstały przed tą uwagą. Przy integracji wybrać jedną wersję.
+- Commity `3725a08d` i `0d8a80c5` mają committera `radek.izk@gmail.com`; od następnych
+  committer to `noreply@anthropic.com`, autor wg karty. Historii nie przepisywałem (zakaz
+  amend/force push).
+
+## 6. Czego nie zrobiono i dlaczego (uczciwie)
+
+- Joby ANDES, pandapower i mutacji zostają jednoprocesowe: po zmianie nie leżą na ścieżce
+  krytycznej (10–18 min wobec 45 min joba pytest), a ANDES/pandapower biegną w izolowanych venv,
+  których pod xdist nie mogłem zweryfikować lokalnie — zmiana bez dowodu równości byłaby wbrew
+  karcie.
+- Liczba procesów vitest zostaje domyślna (rdzenie − 1); innej nie mierzyłem.
+- Znalezisko poza kartą: pełne e2e nadpisuje ~220 śledzonych PNG w `docs/` (specy zrzutowe
+  dokumentacji renderują je przy każdym biegu, bajty zależą od renderu). Różne specy piszą różne
+  pliki, więc nie koliduje to z podziałem na shardy; po biegach przywróciłem drzewo. Zmiana
+  wymaga decyzji o roli tych zrzutów w dokumentacji (artefakt biegu czy plik repo).
