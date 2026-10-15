@@ -396,3 +396,155 @@ describe('StationTemplateWizard', () => {
     expect(onAppliedSuccess).toHaveBeenCalledWith(applyMock);
   });
 });
+
+
+describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
+  const BESS_05 = {
+    catalog_ref: 'conv-bess-0.5mw-1mwh-15kv',
+    label_pl: 'BESS 0.5 MW / 1 MWh',
+    namespace: 'ZRODLO_NN_BESS',
+  };
+  const BESS_1 = {
+    catalog_ref: 'conv-bess-1mw-2mwh-15kv',
+    label_pl: 'BESS 1 MW / 2 MWh',
+    namespace: 'ZRODLO_NN_BESS',
+  };
+  const PV_05 = {
+    catalog_ref: 'conv-pv-0.5mw-15kv',
+    label_pl: 'PV 0.5 MW 15 kV',
+    namespace: 'ZRODLO_NN_PV',
+    default: true,
+  };
+  const hybridTemplate = {
+    ...MOCK_TEMPLATE_FULL,
+    id: 'tpl_hybrid_pv2_bess1',
+    name_pl: 'Hybryda PV 2 MW + BESS 1 MW/2 MWh',
+    category: 'hybrydowa',
+    schema: {
+      ...MOCK_TEMPLATE_FULL.schema,
+      der_total_count: {
+        default: 5,
+        min_value: 2,
+        max_value: 20,
+        step: 1,
+        label_pl: 'Liczba modułów DER (PV + BESS)',
+      },
+      der_options: [
+        {
+          kind: 'PV',
+          label_pl: 'Falownik PV SN przez block TR',
+          catalog_options: [PV_05],
+          default_count: 4,
+          default_p_mw_each: 0.5,
+          default_catalog_ref: PV_05.catalog_ref,
+          connection_variant_options: ['block_transformer'],
+        },
+        {
+          kind: 'BESS',
+          label_pl: 'Magazyn BESS SN przez block TR',
+          // Pierwsza opcja listy (0,5 MW) NIE jest tą, którą backend wybierze dla jednostki
+          // 1 MW — kreator ma pokazać pozycję z kontraktu (`default_catalog_ref`).
+          catalog_options: [BESS_05, BESS_1],
+          default_count: 1,
+          default_p_mw_each: 1,
+          default_catalog_ref: BESS_1.catalog_ref,
+          connection_variant_options: ['block_transformer'],
+        },
+      ],
+    },
+  };
+
+  it('pokazuje pozycję katalogu z doboru backendu, edytuje liczby i wysyła je do podglądu', async () => {
+    const previewBodies: Record<string, unknown>[] = [];
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/station-templates/categories') {
+        return Promise.resolve(_mockResponse(MOCK_CATEGORIES));
+      }
+      if (url === '/api/station-templates/tpl_hybrid_pv2_bess1') {
+        return Promise.resolve(_mockResponse(hybridTemplate));
+      }
+      if (url === '/api/station-templates/tpl_hybrid_pv2_bess1/preview' && init?.method === 'POST') {
+        previewBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        return Promise.resolve(
+          _mockResponse({
+            template_id: 'tpl_hybrid_pv2_bess1',
+            template_name_pl: hybridTemplate.name_pl,
+            category: 'hybrydowa',
+            nc_rfg_type: 'C',
+            station_type: 'inline',
+            catalog_profile_applied: null,
+            effective_config: {
+              transformer_ref: 'tr-sn-nn-15-04-2500kva-dyn11',
+              transformer_count: 1,
+              sn_bays_count: 3,
+              sn_bay_roles: ['IN', 'MEASUREMENT', 'OUT'],
+              sn_fields: [],
+              sn_manufacturer: 'ZPUE_WLOSZCZOWA',
+              nn_feeders_count: 0,
+              nn_feeder_cb_ref: null,
+              protection_relay_ref: null,
+              der_total_count: 6,
+              der_mix: [
+                {
+                  kind: 'PV',
+                  catalog_ref: PV_05.catalog_ref,
+                  p_mw_each: 0.5,
+                  connection_variant: 'block_transformer',
+                  expected_count_per_kind: 4,
+                },
+                {
+                  kind: 'BESS',
+                  catalog_ref: BESS_1.catalog_ref,
+                  p_mw_each: 1,
+                  connection_variant: 'block_transformer',
+                  expected_count_per_kind: 2,
+                },
+              ],
+            },
+            estimated_elements_count: 11,
+          }),
+        );
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <StationTemplateWizard
+        initialTemplateId="tpl_hybrid_pv2_bess1"
+        targetSegmentRef="seg/abc/segment"
+      />,
+    );
+    await waitFor(() => screen.getByTestId('wizard-step-content-location'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('params-tab-der'));
+
+    const bessSelect = screen
+      .getByTestId('choice-Katalog BESS')
+      .querySelector('select') as HTMLSelectElement;
+    expect(bessSelect.value).toBe(BESS_1.catalog_ref);
+
+    const pv = screen.getByTestId('param-int-Liczba jednostek PV');
+    const bess = screen.getByTestId('param-int-Liczba jednostek BESS');
+    expect((pv.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('4');
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('1');
+    // Suma nie jest osobnym polem dla kilku technologii — tylko wynikiem liczebności.
+    expect(screen.queryByTestId('param-int-Liczba modułów DER (PV + BESS)')).toBeNull();
+    fireEvent.change(bess.querySelector('input[type="number"]') as HTMLInputElement, {
+      target: { value: '2' },
+    });
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('2');
+    expect(screen.getByText(/Łączna liczba modułów DER: 6/)).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-profile'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-preview'));
+    await waitFor(() => screen.getByText(/4× PV 0.5 MW, conv-pv-0.5mw-15kv/));
+    expect(screen.getByText(/2× BESS 1 MW, conv-bess-1mw-2mwh-15kv/)).toBeTruthy();
+
+    const override = previewBodies.at(-1)?.params_override as Record<string, unknown>;
+    expect(override.der_BESS_count).toBe(2);
+    expect(override.der_total_count).toBe(6);
+  });
+});

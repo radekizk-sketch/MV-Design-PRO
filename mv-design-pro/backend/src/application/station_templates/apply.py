@@ -18,14 +18,17 @@ from collections.abc import Sequence
 from typing import Any
 
 from application.station_templates.schema import (
+    JednostkaDer,
+    NieprawidlowySkladDerError,
     StationTemplate,
-    _der_catalog_for_power,
-    _moc_wymagana_jednostki_der_mva,
+    _first_default_choice,
     _opcja_transformatora_dla_wymaganej_mocy,
     _opcja_transformatora_wg_tokenu_id,
     resolve_template_default_shunt_choice,
+    rozstrzygnij_sklad_der,
     template_wchodzi_w_segment,
     transformer_voltages_kv,
+    wymagana_moc_der_kva,
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
@@ -34,7 +37,6 @@ from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.tor_pola import pola_do_domkniecia
-from network_model.pochodne import mva_na_kva
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 logger = logging.getLogger(__name__)
@@ -92,6 +94,9 @@ def apply_template_to_case(
     Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
     przypadkach nadal biegna rownolegle.
     """
+    # Skład DER (liczebności, moc jednostki, pozycja katalogu) rozstrzygnięty PRZED
+    # odczytem modelu i blokadą — niespójne wejście nie zostawia w modelu żadnego śladu.
+    sklad_der = rozstrzygnij_sklad_der_lub_odmowa(template, params_override)
     if template_wchodzi_w_segment(template) and not target_segment_id:
         raise TemplateApplyError(
             code="template.target_segment_required",
@@ -136,6 +141,7 @@ def apply_template_to_case(
             insert_at_ratio=insert_at_ratio,
             params_override=params_override,
             catalog_profile=catalog_profile,
+            sklad_der=sklad_der,
         )
 
 
@@ -277,6 +283,7 @@ def _zastosuj_szablon_pod_blokada(
     insert_at_ratio: float,
     params_override: dict[str, Any] | None,
     catalog_profile: str | None,
+    sklad_der: tuple[JednostkaDer, ...],
 ) -> dict[str, Any]:
     overrides = params_override or {}
 
@@ -500,19 +507,12 @@ def _zastosuj_szablon_pod_blokada(
                 }
             )
 
-    # Step 4: chain DER additions
-    der_total = int(overrides.get("der_total_count", template.schema.der_total_count.default))
-    if station_ref and der_total > 0 and template.schema.der_options:
-        for i in range(der_total):
-            der_spec = template.schema.der_options[i % len(template.schema.der_options)]
-            der_p_mw_each = float(
-                overrides.get(f"der_{der_spec.kind}_p_mw_each", der_spec.default_p_mw_each)
-            )
-            der_catalog = (
-                overrides.get(f"der_{der_spec.kind}_ref")
-                or _der_catalog_for_power(der_spec, der_p_mw_each)
-                or _first_default_choice(der_spec.catalog_options)
-            )
+    # Step 4: chain DER additions — jednostki z JEDNEGO rozstrzygnięcia składu (to samo,
+    # które widzi podgląd i dobór transformatora).
+    if station_ref and sklad_der:
+        for jednostka in sklad_der:
+            der_spec = jednostka.spec
+            der_catalog = jednostka.catalog_ref
             if not der_catalog:
                 raise TemplateApplyError(
                     code="template.der_catalog_missing",
@@ -527,12 +527,7 @@ def _zastosuj_szablon_pod_blokada(
                 "catalog_ref": der_catalog,
                 "connection_variant": connection_variant,
                 "station_ref": station_ref,
-                "power_setpoint_mw": float(
-                    overrides.get(
-                        f"der_{der_spec.kind}_p_mw_each",
-                        der_spec.default_p_mw_each,
-                    )
-                ),
+                "power_setpoint_mw": jednostka.p_mw_each,
                 "quantity": 1,
             }
             if connection_variant == "nn_side" and nn_bus_ref:
@@ -1123,16 +1118,6 @@ def _resolve_load_ref_for_template(template: StationTemplate, *, load_kw: float)
     return "load_mieszk_15kw"
 
 
-def _first_default_choice(options: tuple[Any, ...] | list[Any]) -> str | None:
-    """Return catalog_ref of default option, or first if no default flagged."""
-    if not options:
-        return None
-    for o in options:
-        if getattr(o, "default", False):
-            return getattr(o, "catalog_ref", None)
-    return getattr(options[0], "catalog_ref", None)
-
-
 def _cascade_manufacturer_choice(
     options: tuple[Any, ...] | list[Any],
     manufacturer: str | None,
@@ -1186,7 +1171,10 @@ def _resolve_transformer_ref_for_template(
     if wg_id is not None:
         return wg_id.catalog_ref
 
-    der_required_kva = _template_der_required_kva(template, overrides)
+    # Jedna prawda mocy (decyzja O-53): selektor liczy TĘ SAMĄ wielkość
+    # `max(S_n,jedn, |P|/cosφ)` na tabliczce pozycji, którą tor tworzenia źródła porównuje
+    # z transformatorem — po jednostkach z tego samego rozstrzygnięcia składu.
+    der_required_kva = wymagana_moc_der_kva(template, overrides)
     if der_required_kva is not None:
         wg_der = _opcja_transformatora_dla_wymaganej_mocy(
             template.schema.transformer_options, der_required_kva
@@ -1197,46 +1185,18 @@ def _resolve_transformer_ref_for_template(
     return manufacturer_match or _first_default_choice(template.schema.transformer_options)
 
 
-def _template_der_required_kva(
-    template: StationTemplate,
-    overrides: dict[str, Any],
-) -> int | None:
-    """Return apparent catalog size hint from template DER defaults/overrides.
-
-    This is only a deterministic catalog selector. Network physics still lives
-    in solver/domain code and uses materialized catalog data. `_der_catalog_
-    for_power`/`_moc_wymagana_jednostki_der_mva` są WSPÓLNYMI prymitywami ze
-    `schema.py` (2026-09, przegląd V12T-016) — czyste, bez zależności od
-    `overrides`, więc bez ryzyka rozjazdu z wersją wyświetlania (`schema.py::
-    _wymagana_moc_der_domyslna_kva`, ta sama logika z `overrides={}`).
-    """
-    der_specs = template.schema.der_options
-    if not der_specs:
-        return None
-
-    der_total = int(overrides.get("der_total_count", template.schema.der_total_count.default))
-    if der_total <= 0:
-        return None
-
-    total_mva = 0.0
-    for i in range(der_total):
-        spec = der_specs[i % len(der_specs)]
-        override_key = f"der_{spec.kind}_p_mw_each"
-        p_mw_each = float(overrides.get(override_key, spec.default_p_mw_each))
-        # Jedna prawda mocy (decyzja O-53): tor tworzenia sprawdza
-        # `converter.transformer_capacity_exceeded` regułą `max(S_n,jedn·n, P/cosφ)·k_j`
-        # na tabliczce pozycji — selektor transformatora liczy TĘ SAMĄ wielkość tą samą
-        # funkcją (`_moc_wymagana_jednostki_der_mva`), inaczej dobierałby TR po innej
-        # mocy niż ta, którą operacja potem odrzuca (np. Vestas 3 MW: S_n = 3,3 MVA,
-        # nie 3,0 MW — 3300 > 3150 kVA).
-        catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(
-            spec, p_mw_each
-        )
-        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
-
-    if total_mva <= 0:
-        return None
-    return int(round(mva_na_kva(total_mva)))
+def rozstrzygnij_sklad_der_lub_odmowa(
+    template: StationTemplate, overrides: dict[str, Any] | None
+) -> tuple[JednostkaDer, ...]:
+    """`rozstrzygnij_sklad_der` z odmową przetłumaczoną na błąd zastosowania szablonu
+    (`template.der_mix_invalid`) — jedno tłumaczenie dla zastosowania i podglądu."""
+    try:
+        return rozstrzygnij_sklad_der(template, overrides)
+    except NieprawidlowySkladDerError as exc:
+        raise TemplateApplyError(
+            code="template.der_mix_invalid",
+            message_pl=f"Nieprawidłowy skład źródeł przekształtnikowych szablonu: {exc}",
+        ) from exc
 
 
 def _resolve_sn_field_specs(

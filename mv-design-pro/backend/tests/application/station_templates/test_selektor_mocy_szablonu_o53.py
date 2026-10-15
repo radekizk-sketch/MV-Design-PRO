@@ -8,7 +8,7 @@ były drugą, niezależną regułą tej samej klasy „moc źródła × transfor
   `conv-pv-residential-50kw-04kv` nie dawały tokenu, więc selektor zwracał `None`
   dla KAŻDEJ mocy, a szablon brał pozycję domyślną 50 kW także przy nastawie 0,5 MW
   (tor tworzenia odmawiał wtedy `converter.setpoint_above_rating`);
-* dobór transformatora (`_template_der_required_kva`) liczył jednostkę jako `sn_mva`
+* dobór transformatora (dziś `schema.wymagana_moc_der_kva`) liczył jednostkę jako `sn_mva`
   pozycji, a bez pozycji — jako moc CZYNNĄ nastawy; szablony prosumenckie dobierały
   przez to transformator do mocy czynnej (100 kW → 100 kVA) przy falownikach
   2 × 55 kVA (S_n,jedn z karty), czyli ponad moc znamionową transformatora.
@@ -28,12 +28,11 @@ from __future__ import annotations
 
 import pytest
 from application.station_templates import list_templates
-from application.station_templates.apply import _template_der_required_kva
 from application.station_templates.schema import (
     _der_catalog_for_power,
     _moc_wymagana_jednostki_der_mva,
-    _wymagana_moc_der_domyslna_kva,
     resolve_template_default_transformer_choice,
+    wymagana_moc_der_kva,
 )
 from domain.generator_validation import (
     moc_czynna_jednostki_mw,
@@ -117,13 +116,6 @@ def test_moc_wymagana_jednostki_selektora_to_regula_domenowa(szablon, spec) -> N
         assert oczekiwana >= s_jednostki - 1e-12
 
 
-@pytest.mark.parametrize("szablon", _SZABLONY_Z_DER, ids=lambda t: t.id)
-def test_wyswietlanie_i_materializacja_licza_te_sama_moc_wymagana(szablon) -> None:
-    # Predykaty parami: `structural_fields()` (wyświetlanie) i `apply()` (materializacja)
-    # liczą moc doboru TR tą samą funkcją jednostki — bez nadpisań wynik identyczny.
-    assert _wymagana_moc_der_domyslna_kva(szablon) == _template_der_required_kva(szablon, {})
-
-
 def test_pozycje_nn_bez_tokenu_mocy_w_nazwie_sa_dobierane_po_tabliczce() -> None:
     # Regresja: dawny parser tokenu `-(\\d+)mw` nie widział `-0p5mw-` ani `-50kw-` — dla
     # KAŻDEJ mocy zwracał `None` i szablon brał pozycję domyślną 50 kW.
@@ -150,7 +142,7 @@ def test_transformator_prosumenta_dobrany_do_mocy_pozornej_falownikow(
     template_id: str, oczekiwana_kva: int, oczekiwany_tr: str
 ) -> None:
     szablon = next(t for t in _SZABLONY_Z_DER if t.id == template_id)
-    assert _wymagana_moc_der_domyslna_kva(szablon) == oczekiwana_kva
+    assert wymagana_moc_der_kva(szablon) == oczekiwana_kva
     wybor = resolve_template_default_transformer_choice(szablon)
     assert wybor is not None
     assert wybor.catalog_ref == oczekiwany_tr

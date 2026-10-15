@@ -175,6 +175,7 @@ export function szablonFarmaPv(over: SzablonPelnyOverrides = {}): StationTemplat
         catalog_options: [opcja('conv-pv-1mw-15kv', 'PV 1 MW 15 kV', 'ZRODLO_NN_PV', { default: true })],
         default_count: 2,
         default_p_mw_each: 0.5,
+        default_catalog_ref: 'conv-pv-1mw-15kv',
         connection_variant_options: ['block_transformer'],
       },
     ],
@@ -209,6 +210,7 @@ export function szablonHybrydowy(): StationTemplateFull {
         catalog_options: [opcja('conv-pv-1mw-15kv', 'PV 1 MW 15 kV', 'ZRODLO_NN_PV', { default: true })],
         default_count: 2,
         default_p_mw_each: 0.5,
+        default_catalog_ref: 'conv-pv-1mw-15kv',
         connection_variant_options: ['block_transformer'],
       },
       {
@@ -217,6 +219,7 @@ export function szablonHybrydowy(): StationTemplateFull {
         catalog_options: [opcja('conv-bess-1mw-2mwh-15kv', 'BESS 1 MW / 2 MWh', 'ZRODLO_NN_BESS')],
         default_count: 1,
         default_p_mw_each: 1.0,
+        default_catalog_ref: 'conv-bess-1mw-2mwh-15kv',
         connection_variant_options: ['block_transformer'],
       },
     ],

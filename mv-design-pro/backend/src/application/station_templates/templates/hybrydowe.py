@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from application.station_templates._choices import (
     CT_OPTIONS,
     DER_BESS_SN,
@@ -28,8 +30,12 @@ def _hybrid(
     *,
     pv_count: int,
     bess_count: int,
+    bess_p_mw_each: float,
     nc_rfg_type: str = "C",
 ) -> StationTemplate:
+    """Hybryda PV + BESS. Liczebności i moc jednostki BESS są JAWNE per szablon — skład
+    zapisany w nazwie („PV x MW + BESS y MW / z MWh”) musi wynikać z `pv_count · 0,5 MW`
+    i `bess_count · bess_p_mw_each` (przypina `test_der_mix_integrity`)."""
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,
@@ -55,7 +61,10 @@ def _hybrid(
                 default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(DER_PV_SN, DER_BESS_SN),
+            der_options=(
+                replace(DER_PV_SN, default_count=pv_count),
+                replace(DER_BESS_SN, default_count=bess_count, default_p_mw_each=bess_p_mw_each),
+            ),
             der_total_count=TemplateParamInt(
                 default=pv_count + bess_count,
                 min_value=2,
@@ -76,6 +85,7 @@ HYBRYDOWE_TEMPLATES = (
         "Mała hybryda 0.5+0.5 MW dla samobilansowania.",
         pv_count=1,
         bess_count=1,
+        bess_p_mw_each=0.5,
         nc_rfg_type="B",
     ),
     _hybrid(
@@ -84,6 +94,7 @@ HYBRYDOWE_TEMPLATES = (
         "Standardowa hybryda 1+1 MW.",
         pv_count=2,
         bess_count=1,
+        bess_p_mw_each=1.0,
         nc_rfg_type="C",
     ),
     _hybrid(
@@ -92,6 +103,7 @@ HYBRYDOWE_TEMPLATES = (
         "Hybryda z większą mocą PV niż BESS.",
         pv_count=4,
         bess_count=1,
+        bess_p_mw_each=1.0,
         nc_rfg_type="C",
     ),
     _hybrid(
@@ -99,7 +111,8 @@ HYBRYDOWE_TEMPLATES = (
         "Hybryda PV 3 MW + BESS 2 MW/4 MWh",
         "Średnia hybryda 3+2 MW dla pełnego firmness.",
         pv_count=6,
-        bess_count=1,
+        bess_count=2,
+        bess_p_mw_each=1.0,
         nc_rfg_type="C",
     ),
     _hybrid(
@@ -107,7 +120,8 @@ HYBRYDOWE_TEMPLATES = (
         "Hybryda PV 5 MW + BESS 3 MW/6 MWh",
         "Duża hybryda flagship 5+3 MW z grid services.",
         pv_count=10,
-        bess_count=1,
+        bess_count=3,
+        bess_p_mw_each=1.0,
         nc_rfg_type="D",
     ),
 )

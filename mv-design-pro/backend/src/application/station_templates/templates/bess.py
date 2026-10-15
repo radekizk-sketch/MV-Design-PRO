@@ -76,8 +76,12 @@ def _bess(
 # po 2,5 MW" nie miały pozycji katalogowej 2,5 MW — dobór brał jednostkę 2 MW z nastawą
 # 2,5 MW, czyli nastawę ponad moc znamionową falownika (dziś odmowa nazwana
 # `converter.setpoint_above_rating`), a jednostka 5 MW (S_n 5,5 MVA) przekracza TR blokowy
-# 2,5 MVA. Moc i energia szablonu bez zmian: FCR_N 5 × 1 MW / 2 MWh = 5 MW / 10 MWh,
-# aFRR 10 × 0,5 MW / 1 MWh = 5 MW / 5 MWh.
+# 2,5 MVA. Moc i energia szablonu: FCR_N 5 × 1 MW / 2 MWh = 5 MW / 10 MWh,
+# aFRR 10 × 0,5 MW / 1 MWh = 5 MW / 10 MWh. Korekta 2026-10-15: szablon aFRR obiecywał
+# „5 MW / 5 MWh (C-rate 1,0)", a materializował 10 kontenerów po 1 MWh, czyli 10 MWh
+# energii użytecznej w modelu (`usable_capacity_kwh` z pozycji katalogu) — katalog nie ma
+# kontenera o C-rate 1,0. Nazwa i opis mówią teraz to, co szablon tworzy; zgodność nazwy
+# ze składem przypina `test_der_mix_integrity` dla każdego szablonu z DER.
 BESS_TEMPLATES = (
     _bess(
         "tpl_bess_500kw_1mwh",
@@ -116,8 +120,8 @@ BESS_TEMPLATES = (
     ),
     _bess(
         "tpl_bess_5mw_5mwh_afrr",
-        "BESS 5 MW / 5 MWh (C-rate 1.0, aFRR services)",
-        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna) — 10 kontenerów po "
+        "BESS 5 MW / 10 MWh (C-rate 0.5, aFRR services)",
+        "Magazyn 5 MW/10 MWh do aFRR (rezerwa wtórna automatyczna) — 10 kontenerów po "
         "0,5 MW / 1 MWh.",
         bess_count=10,
         bess_p_mw_each=0.5,

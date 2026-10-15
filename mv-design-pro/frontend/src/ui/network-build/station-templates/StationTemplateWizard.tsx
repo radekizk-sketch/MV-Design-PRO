@@ -327,10 +327,24 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
             template={activeTemplate}
             overrides={state.paramOverrides}
             onChange={(key, value) =>
-              setState((s) => ({
-                ...s,
-                paramOverrides: { ...s.paramOverrides, [key]: value },
-              }))
+              setState((s) => {
+                const paramOverrides = { ...s.paramOverrides, [key]: value };
+                if (
+                  activeTemplate.schema.der_options.length > 1 &&
+                  key.startsWith('der_') &&
+                  key.endsWith('_count')
+                ) {
+                  paramOverrides.der_total_count = activeTemplate.schema.der_options.reduce(
+                    (sum, der) =>
+                      sum +
+                      Number(
+                        paramOverrides[`der_${der.kind}_count`] ?? der.default_count,
+                      ),
+                    0,
+                  );
+                }
+                return { ...s, paramOverrides };
+              })
             }
           />
         )}
@@ -607,20 +621,44 @@ function ParamsStep(props: {
             <div className="text-sm text-zinc-400">Ten szablon nie zawiera modułów DER.</div>
           ) : (
             <>
-              <ParamInt
-                label={template.schema.der_total_count.label_pl}
-                value={(overrides.der_total_count as number) ?? template.schema.der_total_count.default}
-                min={template.schema.der_total_count.min_value}
-                max={template.schema.der_total_count.max_value}
-                onChange={(v) => onChange('der_total_count', v)}
-              />
+              {template.schema.der_options.length === 1 ? (
+                <ParamInt
+                  label={template.schema.der_total_count.label_pl}
+                  value={(overrides.der_total_count as number) ?? template.schema.der_total_count.default}
+                  min={template.schema.der_total_count.min_value}
+                  max={template.schema.der_total_count.max_value}
+                  onChange={(v) => onChange('der_total_count', v)}
+                />
+              ) : (
+                <p className="text-sm text-zinc-300">
+                  Łączna liczba modułów DER:{' '}
+                  {template.schema.der_options.reduce(
+                    (total, der) =>
+                      total + Number(overrides[`der_${der.kind}_count`] ?? der.default_count),
+                    0,
+                  )}
+                </p>
+              )}
               {template.schema.der_options.map((der) => (
                 <div key={der.kind} className="bg-zinc-800 p-2 rounded">
                   <div className="font-bold text-sm mb-2">{der.label_pl}</div>
+                  {template.schema.der_options.length > 1 && (
+                    <ParamInt
+                      label={`Liczba jednostek ${der.kind}`}
+                      value={(overrides[`der_${der.kind}_count`] as number) ?? der.default_count}
+                      min={0}
+                      max={template.schema.der_total_count.max_value}
+                      onChange={(v) => onChange(`der_${der.kind}_count`, v)}
+                    />
+                  )}
                   <ChoiceSelect
                     label={`Katalog ${der.kind}`}
                     options={der.catalog_options}
-                    value={overrides[`der_${der.kind}_ref`] as string | undefined}
+                    value={
+                      (overrides[`der_${der.kind}_ref`] as string | undefined) ??
+                      der.default_catalog_ref ??
+                      undefined
+                    }
                     onChange={(v) => onChange(`der_${der.kind}_ref`, v)}
                   />
                 </div>
@@ -806,7 +844,13 @@ function PreviewStep(props: {
                 <span className="text-zinc-400">DER: </span>
                 <span className="text-zinc-300">{preview.effective_config.der_total_count}× </span>
                 <span className="text-xs text-zinc-500">
-                  ({preview.effective_config.der_mix.map((d) => `${d.kind} (${d.connection_variant})`).join(', ')})
+                  ({preview.effective_config.der_mix
+                    .filter((d) => d.expected_count_per_kind > 0)
+                    .map(
+                      (d) =>
+                        `${d.expected_count_per_kind}× ${d.kind} ${d.p_mw_each ?? '—'} MW, ${d.catalog_ref ?? 'brak pozycji'} (${d.connection_variant})`,
+                    )
+                    .join('; ')})
                 </span>
               </div>
             )}

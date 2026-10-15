@@ -128,11 +128,11 @@ def preview_station_template(
     from application.station_templates.apply import (
         TemplateApplyError,
         _cascade_manufacturer_choice,
-        _first_default_choice,
         _resolve_sn_bay_roles,
         _resolve_sn_field_specs,
         _resolve_station_type,
         _resolve_transformer_ref_for_template,
+        rozstrzygnij_sklad_der_lub_odmowa,
     )
 
     overrides = request.params_override
@@ -143,7 +143,15 @@ def preview_station_template(
     nn_feeders_count = int(
         overrides.get("nn_feeders_count", template.schema.nn_feeders_count.default)
     )
-    der_count = int(overrides.get("der_total_count", template.schema.der_total_count.default))
+    # Skład DER z TEGO SAMEGO rozstrzygnięcia co zastosowanie szablonu (liczebności, moc
+    # jednostki, pozycja katalogu) — przed doborem transformatora, który z niego korzysta.
+    try:
+        sklad_der = rozstrzygnij_sklad_der_lub_odmowa(template, overrides)
+    except TemplateApplyError as exc:
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
+        ) from exc
+    der_count = len(sklad_der)
     transformer_count = int(
         overrides.get("transformer_count", template.schema.transformer_count.default)
     )
@@ -169,17 +177,15 @@ def preview_station_template(
 
     der_summary = []
     for der_spec in template.schema.der_options:
-        der_ref = overrides.get(f"der_{der_spec.kind}_ref") or _first_default_choice(
-            der_spec.catalog_options
-        )
+        jednostki = [j for j in sklad_der if j.spec is der_spec]
         der_summary.append(
             {
                 "kind": der_spec.kind,
-                "catalog_ref": der_ref,
+                # Bez jednostek tej technologii (liczba 0) — pozycja i moc nie dotyczą.
+                "catalog_ref": jednostki[0].catalog_ref if jednostki else None,
+                "p_mw_each": jednostki[0].p_mw_each if jednostki else None,
                 "connection_variant": der_spec.connection_variant_options[0],
-                "expected_count_per_kind": max(
-                    1, der_count // max(1, len(template.schema.der_options))
-                ),
+                "expected_count_per_kind": len(jednostki),
             }
         )
 

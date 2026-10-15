@@ -15,6 +15,7 @@ Schema covers:
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -445,24 +446,184 @@ def _moc_wymagana_jednostki_der_mva(
     )
 
 
-def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
-    """Moc pozorna [kVA] wymagana przez DOMYŚLNY (bez nadpisań) mix DER
-    szablonu — `None` gdy szablon nie niesie DER-ów albo domyślna liczba
-    modułów wynosi 0. Odpowiednik `apply.py::_template_der_required_kva` z
-    PUSTYMI nadpisaniami (`overrides={}`) — dokładnie stan, który
-    `structural_fields()` ma pokazać (szablon BEZ ingerencji projektanta)."""
-    der_specs = template.schema.der_options
-    if not der_specs:
+class NieprawidlowySkladDerError(ValueError):
+    """Odmowa rozstrzygnięcia składu DER szablonu — komunikat po polsku dla projektanta.
+
+    Wołający tłumaczy ją na kod `template.der_mix_invalid` (podgląd: HTTP 422, zastosowanie:
+    `TemplateApplyError` PRZED odczytem modelu)."""
+
+
+@dataclass(frozen=True)
+class JednostkaDer:
+    """Jedna jednostka DER, którą szablon zmaterializuje: technologia (specyfikacja szablonu),
+    nastawa mocy czynnej jednostki [MW] i pozycja katalogu. Ten sam rekord czytają podgląd,
+    dobór transformatora i materializacja (`apply.py`), więc nie mogą się rozjechać."""
+
+    spec: DerKindSpec
+    p_mw_each: float
+    catalog_ref: str | None
+
+    @property
+    def kind(self) -> str:
+        return self.spec.kind
+
+
+def _first_default_choice(options: tuple[Any, ...] | list[Any]) -> str | None:
+    """`catalog_ref` opcji oznaczonej jako domyślna, a bez oznaczenia — pierwszej."""
+    if not options:
         return None
-    der_total = template.schema.der_total_count.default
-    if der_total <= 0:
-        return None
+    for o in options:
+        if getattr(o, "default", False):
+            return getattr(o, "catalog_ref", None)
+    return getattr(options[0], "catalog_ref", None)
+
+
+def _liczba_calkowita_skladu(wartosc: object, nazwa_pl: str) -> int:
+    """Liczba całkowita z nadpisania projektanta — bez cichego obcięcia (`int(2.7)` = 2)
+    i bez `bool` (w Pythonie `True` jest liczbą 1)."""
+    if isinstance(wartosc, bool):
+        raise NieprawidlowySkladDerError(f"{nazwa_pl} musi być liczbą całkowitą.")
+    if isinstance(wartosc, int):
+        return wartosc
+    if isinstance(wartosc, float) and math.isfinite(wartosc) and wartosc.is_integer():
+        return int(wartosc)
+    if isinstance(wartosc, str) and re.fullmatch(r"\s*-?\d+\s*", wartosc):
+        return int(wartosc)
+    raise NieprawidlowySkladDerError(f"{nazwa_pl} musi być liczbą całkowitą (podano: {wartosc!r}).")
+
+
+def _moc_jednostki_skladu(wartosc: object, kind: str) -> float:
+    """Nastawa mocy czynnej jednostki [MW] — skończona liczba dodatnia."""
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float | str):
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+        )
+    try:
+        moc = float(wartosc)
+    except ValueError as exc:
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+        ) from exc
+    if not math.isfinite(moc) or moc <= 0.0:
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być dodatnia i skończona (podano: {wartosc!r} MW)."
+        )
+    return moc
+
+
+def _liczebnosci_der(
+    template: StationTemplate, params: Mapping[str, Any]
+) -> list[tuple[DerKindSpec, int]]:
+    """Liczba jednostek każdej technologii szablonu.
+
+    Szablon jednej technologii: liczba = `der_total_count` (opcjonalne `der_{kind}_count`
+    musi się z nią zgadzać). Szablon kilku technologii: liczebności `der_{kind}_count`
+    (domyślnie `default_count` specyfikacji) są JEDYNĄ prawdą — suma jest z nich
+    wyprowadzona, a podane `der_total_count` musi być jej równe (dawniej suma była dzielona
+    naprzemiennie między technologie i hybryda „PV 2 MW + BESS 1 MW” dostawała 3 PV + 2 BESS).
+    """
+    specs = template.schema.der_options
+    granice = template.schema.der_total_count
+    podana_suma = params.get("der_total_count")
+    if len(specs) == 1:
+        spec = specs[0]
+        suma = _liczba_calkowita_skladu(
+            podana_suma if podana_suma is not None else granice.default,
+            "Liczba modułów DER",
+        )
+        zadeklarowana = params.get(f"der_{spec.kind}_count")
+        if (
+            zadeklarowana is not None
+            and _liczba_calkowita_skladu(zadeklarowana, f"Liczba jednostek {spec.kind}") != suma
+        ):
+            raise NieprawidlowySkladDerError(
+                f"Liczba jednostek {spec.kind} nie zgadza się z łączną liczbą modułów DER ({suma})."
+            )
+        liczebnosci = [(spec, suma)]
+    else:
+        liczebnosci = [
+            (
+                spec,
+                _liczba_calkowita_skladu(
+                    params.get(f"der_{spec.kind}_count", spec.default_count),
+                    f"Liczba jednostek {spec.kind}",
+                ),
+            )
+            for spec in specs
+        ]
+        suma = sum(liczba for _, liczba in liczebnosci)
+        if podana_suma is not None:
+            podana = _liczba_calkowita_skladu(podana_suma, "Liczba modułów DER")
+            if podana != suma:
+                opis = " + ".join(f"{liczba} {spec.kind}" for spec, liczba in liczebnosci)
+                raise NieprawidlowySkladDerError(
+                    f"Łączna liczba modułów DER ({podana}) nie jest równa sumie liczb jednostek "
+                    f"poszczególnych technologii ({opis} = {suma}); określ liczby jawnie."
+                )
+    for spec, liczba in liczebnosci:
+        if liczba < 0:
+            raise NieprawidlowySkladDerError(f"Liczba jednostek {spec.kind} nie może być ujemna.")
+    if not granice.min_value <= suma <= granice.max_value:
+        raise NieprawidlowySkladDerError(
+            f"Łączna liczba modułów DER ({suma}) jest poza zakresem szablonu "
+            f"{granice.min_value}–{granice.max_value}."
+        )
+    return liczebnosci
+
+
+def rozstrzygnij_sklad_der(
+    template: StationTemplate,
+    overrides: Mapping[str, Any] | None = None,
+) -> tuple[JednostkaDer, ...]:
+    """JEDNO źródło prawdy o składzie DER szablonu: liczba jednostek każdej technologii,
+    nastawa mocy jednostki i pozycja katalogu — dla podglądu (`api/station_templates.py`),
+    doboru transformatora (`wymagana_moc_der_kva`) i materializacji (`apply.py`).
+
+    Kolejność jednostek: technologie w kolejności `der_options`, w obrębie technologii
+    kolejne jednostki (deterministyczna — od niej zależą identyfikatory tworzonych źródeł).
+    Pozycja katalogu: wskazanie projektanta `der_{kind}_ref`, inaczej najmniejsza pozycja
+    wydająca nastawę (`_der_catalog_for_power`), inaczej opcja domyślna. Niespójne wejście
+    kończy się `NieprawidlowySkladDerError` — nigdy cichą zmianą składu.
+    """
+    if not template.schema.der_options:
+        return ()
+    params: Mapping[str, Any] = overrides or {}
+    jednostki: list[JednostkaDer] = []
+    for spec, liczba in _liczebnosci_der(template, params):
+        p_mw_each = _moc_jednostki_skladu(
+            params.get(f"der_{spec.kind}_p_mw_each", spec.default_p_mw_each), spec.kind
+        )
+        wskazana = params.get(f"der_{spec.kind}_ref")
+        if wskazana is not None and not (isinstance(wskazana, str) and wskazana.strip()):
+            raise NieprawidlowySkladDerError(
+                f"Pozycja katalogu {spec.kind} musi być identyfikatorem pozycji "
+                f"(podano: {wskazana!r})."
+            )
+        catalog_ref = (
+            wskazana.strip()
+            if isinstance(wskazana, str)
+            else _der_catalog_for_power(spec, p_mw_each)
+            or _first_default_choice(spec.catalog_options)
+        )
+        jednostki.extend(JednostkaDer(spec, p_mw_each, catalog_ref) for _ in range(liczba))
+    return tuple(jednostki)
+
+
+def wymagana_moc_der_kva(
+    template: StationTemplate, overrides: Mapping[str, Any] | None = None
+) -> int | None:
+    """Moc pozorna [kVA] wymagana przez skład DER szablonu (z nadpisaniami projektanta albo
+    domyślny) — suma reguły domenowej `max(S_n,jedn, |P|/cosφ)` (decyzja O-53) po jednostkach
+    `rozstrzygnij_sklad_der`; `None`, gdy szablon nie tworzy żadnego źródła. Jedyna funkcja
+    tej wielkości dla wyświetlania (`structural_fields`) i materializacji (`apply.py`)."""
     total_mva = 0.0
-    for i in range(der_total):
-        spec = der_specs[i % len(der_specs)]
-        p_mw_each = spec.default_p_mw_each
-        catalog_ref = _der_catalog_for_power(spec, p_mw_each)
-        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
+    for jednostka in rozstrzygnij_sklad_der(template, overrides):
+        total_mva += (
+            _moc_wymagana_jednostki_der_mva(
+                jednostka.kind, jednostka.catalog_ref, jednostka.p_mw_each
+            )
+            or 0.0
+        )
     if total_mva <= 0:
         return None
     return int(round(mva_na_kva(total_mva)))
@@ -480,7 +641,7 @@ def resolve_template_default_transformer_choice(template: StationTemplate) -> Ca
     wg_id = _opcja_transformatora_wg_tokenu_id(template.schema.transformer_options, template.id)
     if wg_id is not None:
         return wg_id
-    wymagana_kva = _wymagana_moc_der_domyslna_kva(template)
+    wymagana_kva = wymagana_moc_der_kva(template)
     if wymagana_kva is not None:
         wg_der = _opcja_transformatora_dla_wymaganej_mocy(
             template.schema.transformer_options, wymagana_kva
@@ -756,5 +917,11 @@ def _der_spec_to_dict(d: DerKindSpec) -> dict:
         "catalog_options": [_choice_to_dict(c) for c in d.catalog_options],
         "default_count": d.default_count,
         "default_p_mw_each": d.default_p_mw_each,
+        # Pozycja katalogu, którą zastosowanie szablonu wybierze BEZ wskazania projektanta
+        # (dobór do mocy jednostki — ta sama reguła co `rozstrzygnij_sklad_der`). Kreator
+        # pokazuje ją jako bieżący wybór; dawniej pokazywał pierwszą opcję listy (np. BESS
+        # 0,5 MW), a model dostawał jednostkę 1 MW.
+        "default_catalog_ref": _der_catalog_for_power(d, d.default_p_mw_each)
+        or _first_default_choice(d.catalog_options),
         "connection_variant_options": list(d.connection_variant_options),
     }
