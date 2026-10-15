@@ -458,10 +458,20 @@ definicja metryki, wartość, punkt, warunek, limit z podstawą, definicja margi
 Etykietę PL i semantykę koloru liczy BACKEND (`werdykt/etykiety.py`) i niesie je każdy rekord
 (`etykieta`); jeden wspólny komponent karty werdyktu (warstwa `ui2/wyniki/wzorzec`) jest JEDYNYM
 miejscem mapowania SEMANTYKI (`pozytywna` / `negatywna` / `ostrzegawcza` / `neutralna`) na kolor —
-interfejs nie definiuje żadnej mapy „status → etykieta" (przegląd #40). Minimum na karcie: **Ocena · Kryterium
-(`MathInline`) · Wynik · Limit · Margines (z wzorem) · Wyjaśnienie · Podstawa (ze stanem źródła) ·
-Dowód (metoda, poziom, status modelu, status danych)**; zakres ważności i ślad — rozwijane, zawsze
-osiągalne jednym kliknięciem. Zdanie wyjaśnienia jest widoczne bez rozwijania (nie w dymku).
+interfejs nie definiuje żadnej mapy „status → etykieta" (przegląd #40).
+
+**Pierwszy plan (dyrektywa nadrzędna właściciela 2026-10-15, `V12K-351`):** **Kryterium
+(`MathInline`) · Wynik z jednostką · Limit z przywołaniem normy · Margines · krótka ocena
+techniczna · jedno zdanie przyczyny technicznej** — to jest obliczenie i jego wynik, nie
+ewidencja. **Szczegóły na żądanie (jedno kliknięcie):** wzór → parametry → podstawienie liczbowe
+→ wynik → sprawdzenie wymagania (ślad WHITE BOX), a w zwiniętych informacjach audytowych
+(`InformacjeAudytowe`): stan źródła podstawy, metoda i poziom dowodu, status modelu i danych,
+zakres ważności, identyfikatory biegu. Rekord API niesie pełny komplet pól §4 bez zmian —
+zmienia się wyłącznie hierarchia wyświetlania. Stan dowodu (`BRAK_PODSTAWY`, `BRAK_DOWODU`,
+`NIEPELNY`) nie jest ramką ani akapitem pierwszego planu: gdy wartość i limit są policzalne,
+pierwszy plan pokazuje porównanie liczbowe, a stan dowodu jest znacznikiem w szczegółach;
+gdy limitu brak, pierwszy plan mówi jednym zdaniem, czego brakuje do porównania (konkretny
+parametr), bez kolorowej ramki ostrzegawczej.
 
 Etykieta zależy od POZIOMU rekordu: na poziomie K „Kryterium …", na poziomie W „Wymaganie …"
 (`etykieta(status, kompletnosc, poziom)`); tabela podaje brzmienie dla K, a na poziomie W słowo

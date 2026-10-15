@@ -1,6 +1,7 @@
 # Kontrakt prowadzenia projektanta — filozofia walidacji MV-DESIGN-PRO
 
-Status: WIĄŻĄCY (dyrektywa właściciela 2026-10-15). Obowiązuje wszystkie kreatory,
+Status: WIĄŻĄCY (dyrektywa właściciela 2026-10-15; korekta tego samego dnia dyrektywą nadrzędną
+„MV-DESIGN PRO ma być narzędziem projektowym, nie systemem ewidencji dowodów” — §6). Obowiązuje wszystkie kreatory,
 konfiguratory, panele powłoki, kanwę SLD i moduły obliczeniowe. Podporządkowany kanonowi
 V12.xx; współistnieje z `KONTRAKT_WERDYKTU_WYJASNIALNEGO.md` (wynik oceny bez danych dalej
 mówi uczciwie „brak podstawy / brak dowodu” — to jest WYNIK, nie szum edycji).
@@ -19,7 +20,7 @@ klasy. Klasa decyduje, czy i kiedy sygnał jest widoczny.
 | `NARUSZENIE_OGRANICZENIA` | Wynik albo nastawa przekracza ograniczenie techniczne lub normowe | przeciążenie kabla, prąd zwarciowy ponad wytrzymałość aparatu, nastawa poza zakresem przekaźnika, spadek napięcia ponad limit | zawsze — jako wynik z werdyktem wyjaśnialnym |
 | `BRAK_DO_OPERACJI` | Brak parametru niezbędnego do konkretnej operacji (zapis elementu, obliczenie, eksport) | brak tabliczki transformatora przy uruchomieniu rozpływu; brak nastaw przy ocenie zabezpieczeń | DOPIERO przy próbie tej operacji: jedno wskazanie konkretnego parametru (co, gdzie, po co) z akcją, która do niego prowadzi; nigdy ogólne „uzupełnij dane” |
 | `KONFIGURACJA_W_TOKU` | Stan pośredni pracy, którą użytkownik jeszcze buduje | stacja bez odbiorów w trakcie budowy; pole bez wybranej pozycji katalogu przed zapisem kreatora; deklaracja rodzaju stacji przed dodaniem pól | nigdy jako ostrzeżenie; postęp pokazuje tok pracy (krok kreatora, następny krok), nie lista braków |
-| `AUTO_PRZYJETE` | Wartość dobrana automatycznie z szablonu, katalogu producenta, wartości domyślnej albo zależności | rodzina rozdzielnicy z szablonu stacji; napięcie nN z transformatora; przekrój z katalogu dla wybranej rodziny | widoczna dyskretnie jako „przyjęto: X (źródło)” przy polu, zawsze edytowalna; nigdy jako ostrzeżenie |
+| `AUTO_PRZYJETE` | Wartość dobrana automatycznie z szablonu, katalogu producenta, wartości domyślnej albo zależności | rodzina rozdzielnicy z szablonu stacji; napięcie nN z transformatora; przekrój z katalogu dla wybranej rodziny | w polu jako zwykła, edytowalna wartość — bez etykiety pochodzenia, bez ostrzeżenia; pochodzenie wyłącznie w danych modelu (zaplecze) |
 
 ## 2. Reguły
 
@@ -39,17 +40,22 @@ klasy. Klasa decyduje, czy i kiedy sygnał jest widoczny.
    producenta albo jawnego wyboru projektanta (Catalog Binding Rule,
    `domain_no_guessing_guard`). Gdy nie ma jednoznacznego źródła, wartość pozostaje pusta i
    staje się `BRAK_DO_OPERACJI` dopiero dla operacji, która jej potrzebuje.
-5. **Jawność przyjętego.** Każda wartość `AUTO_PRZYJETE` niesie pochodzenie (szablon / katalog /
-   zależność / wartość domyślna z podstawą) widoczne przy polu i w danych modelu (znacznik
-   pochodzenia), jest edytowalna, a edycja zdejmuje znacznik „przyjęto”.
+5. **Przyjęte = zwykła wartość projektu.** Wartość `AUTO_PRZYJETE` stoi w polu jak każda inna,
+   jest edytowalna i od razu bierze udział w obliczeniach. Pochodzenie (szablon / katalog /
+   zależność / wartość domyślna z podstawą) zapisuje się WYŁĄCZNIE w danych modelu (znacznik
+   pochodzenia w zapleczu, dla raportu i audytu); edycja zdejmuje znacznik. Interfejs nie
+   wyświetla przy polu etykiet „przyjęto”, źródła ani wiarygodności (dyrektywa nadrzędna, §6).
 6. **Topologia, nie heurystyka.** Rodzaj stacji i poprawność konfiguracji wynikają z
    rzeczywistej topologii ENM (`enm/rodzaj_stacji.py` i jego lustro `ui/shared/rodzajStacji.ts`),
    liczonej na zapisanym modelu — nie z deklaracji formularza ani z przedwczesnej reguły
    w kreatorze. Kreator może pokazać rodzaj wynikowy, ale nie ostrzega o niezgodności,
    zanim konfiguracja pól nie jest zakończona.
-7. **Wynik to nie szum.** Ekrany wyników zachowują pełny kontrakt werdyktu wyjaśnialnego
-   (status + kryterium + wartość + limit + przyczyna). Stan „nie obliczono” to jedna akcja
-   („Uruchom …”), nie akapit objaśnień.
+7. **Wynik to obliczenie, nie ewidencja.** Pierwszy plan wyniku: kryterium · wartość z
+   jednostką · limit z przywołaniem normy · margines · krótka ocena techniczna. Szczegóły na
+   żądanie: wzór → parametry → podstawienie liczbowe → wynik → sprawdzenie wymagania. Stan
+   źródła limitu, poziom dowodu, status modelu i danych, zakres ważności, identyfikatory biegu
+   — wyłącznie w szczegółach audytowych (zwinięte) i w raporcie, nigdy jako ramka ani akapit
+   pierwszego planu. Stan „nie obliczono” to jedna akcja („Uruchom …”), nie akapit objaśnień.
 
 ## 3. Strażnicy
 
@@ -109,3 +115,24 @@ Karty (2026-10-15):
 | PROWADZENIE-KREATORY | 24 kreatory: cisza o pracy w toku, brak wskazywany przy zapisie z przejściem do pola, auto-przyjęcia jawne, zero zgadywania, rodzaj stacji bez przedwczesnych ostrzeżeń | 1–6 |
 | PROWADZENIE-OBLICZENIA | ekrany obliczeń: braki właściwe dla analizy przy próbie, jedna akcja zamiast akapitów, jedno źródło „biegu wejściowego” | 3, 7 |
 | PROWADZENIE-POWLOKA (po kartach backendu) | liczniki i paski powłoki tylko KT/NO, konfiguratory bez heurystyk i fizyki, inspektor, SLD, kasacja martwych komponentów | 2, 3, 5 |
+
+## 6. Dyrektywa nadrzędna 2026-10-15 — narzędzie projektowe, nie ewidencja dowodów
+
+Kryterium oceny każdej zmiany: czy pomaga wykonać konkretną czynność projektową na schemacie
+(wstawić i dobrać obiekt, policzyć, porównać warianty, zobaczyć skutek zmiany). Zakazane:
+kolejne warstwy prezentacyjne statusów, wiarygodności, pochodzenia danych, identyfikatorów
+obliczeń i diagnostyki wewnętrznej w widoku pracy projektanta (te informacje żyją w zapleczu:
+dane modelu, API, `InformacjeAudytowe`, raport). Schemat SLD V3 i jego projekcja nN są
+podstawą pracy — doskonalimy istniejący silnik, nie budujemy nowego. Każdy element sieci jest
+obiektem projektowym z obliczeniami (kabel: obciążalność po współczynnikach, spadek napięcia,
+straty, Ik min/max, wytrzymałość cieplna, dopasowanie zabezpieczenia; transformator:
+obciążenie, straty, parametry zwarciowe, dobór zabezpieczenia; pole SN: aparatura, CT/VT,
+zabezpieczenia i nastawy; ochrona przeciwporażeniowa: obliczenie wg układu sieci z oceną
+wariantów). Dobór z katalogu przelicza skutki zależne. Konflikt z dotychczasowym brzmieniem
+kontraktu werdyktu wyjaśnialnego §9: wiersz `V12K-351` rejestru konfliktów.
+
+Scenariusz odbioru (wiążący dla kart wdrożenia): stacja SN/nN z transformatorem 630 kVA,
+rozdzielnicą nN, zabezpieczeniami i kilkoma odpływami — (1) dobór urządzeń z katalogów,
+(2) poprawny schemat, (3) długości i parametry kabli, (4) rozpływ mocy, (5) zwarcia,
+(6) obciążalność i spadki napięć, (7) ochrona przeciwporażeniowa, (8) dobór zabezpieczeń i
+koordynacja, (9) zmiana parametru, (10) skutek zmiany na schemacie i w wynikach.
