@@ -112,12 +112,12 @@ function ustawFetch(): void {
         return odpowiedz({ runs: atrapa.biegi, count: atrapa.biegi.length });
       }
       if (adres.endsWith('/api/execution/runs/run-nowy/execute')) {
-        // Wykonanie trwa (żądanie wisi) — interfejs odpytuje stan w tym czasie.
-        await new Promise((r) => setTimeout(r, 30));
-        return odpowiedz({ id: 'run-nowy', status: 'DONE', analysis_type: 'DYNAMIKA_RMS' });
+        // Karta DYNAMIKA-W-TLE: zlecenie wraca natychmiast z 202 i stanem QUEUED —
+        // interfejs odpytuje stan do końca (`stanyBiegu`, ostatni stan = końcowy).
+        return odpowiedz({ id: 'run-nowy', status: 'QUEUED', analysis_type: 'DYNAMIKA_RMS' }, 202);
       }
       if (adres.endsWith('/api/execution/runs/run-nowy')) {
-        const status = atrapa.stanyBiegu.shift() ?? 'RUNNING';
+        const status = atrapa.stanyBiegu.length > 1 ? atrapa.stanyBiegu.shift() : (atrapa.stanyBiegu[0] ?? 'DONE');
         return odpowiedz({ id: 'run-nowy', status, analysis_type: 'DYNAMIKA_RMS' });
       }
       if (adres.includes('/results/dynamika/time-series')) {

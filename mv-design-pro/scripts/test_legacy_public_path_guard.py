@@ -2759,3 +2759,74 @@ def test_guard_rejects_solver_in_phase_state_pack(tmp_path, monkeypatch, tresc) 
 
 def test_guard_accepts_current_repo_state_tory() -> None:
     assert guard.check_tory_testowe_resurrection() == []
+
+
+# --- Karta DYNAMIKA-W-TLE (2026-09-30): Celery/Redis/MongoDB ---------------------------------
+
+
+def _patch_dynamika_w_tle_tree(monkeypatch, tmp_path):
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    monkeypatch.setattr(guard, "CELERY_MODULE", src / "api" / "celery_app.py")
+    monkeypatch.setattr(guard, "BACKEND_PYPROJECT", tmp_path / "backend" / "pyproject.toml")
+    monkeypatch.setattr(guard, "DOCKER_COMPOSE", tmp_path / "docker-compose.yml")
+    return src
+
+
+def test_guard_dynamika_w_tle_clean_tree(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "api" / "main.py", "import threading\n")
+    _zapisz(
+        tmp_path / "backend" / "pyproject.toml",
+        "[tool.poetry.dependencies]\nfastapi = \"^0.110\"\n\n[tool.poetry.group.dev.dependencies]\n",
+    )
+    _zapisz(tmp_path / "docker-compose.yml", "services:\n  backend:\n    image: x\n  postgres:\n    image: y\n")
+    assert guard.check_dynamika_w_tle_queue_resurrection() == []
+
+
+def test_guard_rejects_resurrected_celery_module(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "api" / "celery_app.py", "X = 1\n")
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any("[resurrected-module]" in n and "celery_app.py" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("modul", guard.FORBIDDEN_QUEUE_IMPORTS)
+def test_guard_rejects_queue_import_anywhere(tmp_path, monkeypatch, modul) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "application" / "nowy.py", f"from {modul}.cos import X\n")
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any("[resurrected-import]" in n and f"import {modul}.cos" in n for n in naruszenia), naruszenia
+
+
+def test_guard_ignores_queue_name_in_comment(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "application" / "nowy.py", "# dawniej: import celery\nX = 'redis://'\n")
+    assert guard.check_dynamika_w_tle_queue_resurrection() == []
+
+
+@pytest.mark.parametrize("zaleznosc", guard.FORBIDDEN_QUEUE_DEPENDENCIES)
+def test_guard_rejects_queue_dependency_in_pyproject(tmp_path, monkeypatch, zaleznosc) -> None:
+    _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(
+        tmp_path / "backend" / "pyproject.toml",
+        f"[tool.poetry.dependencies]\n{zaleznosc} = \"^1.0\"\n\n[tool.poetry.group.dev.dependencies]\n{zaleznosc} = \"^1.0\"\n",
+    )
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert [n for n in naruszenia if "[resurrected-dependency]" in n] == [
+        n for n in naruszenia if f": {zaleznosc} (" in n
+    ]
+    assert len([n for n in naruszenia if "[resurrected-dependency]" in n]) == 1, naruszenia
+
+
+@pytest.mark.parametrize("usluga", guard.FORBIDDEN_COMPOSE_SERVICES)
+def test_guard_rejects_queue_service_in_compose(tmp_path, monkeypatch, usluga) -> None:
+    _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(
+        tmp_path / "docker-compose.yml",
+        f"services:\n  backend:\n    image: x\n  {usluga}:\n    image: y\n",
+    )
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any("[resurrected-service]" in n and f"usługa {usluga} " in n for n in naruszenia), naruszenia

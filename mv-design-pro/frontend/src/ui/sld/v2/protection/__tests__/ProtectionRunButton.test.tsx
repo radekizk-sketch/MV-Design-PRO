@@ -239,9 +239,15 @@ describe('ProtectionRunButton — slownik statusu z backendu', () => {
     await waitFor(() => expect(onRunComplete).toHaveBeenCalledWith('pr-1'));
     unmount();
 
+    // Karta DYNAMIKA-W-TLE: `execute` zleca bieg (202, QUEUED), a stan koncowy
+    // przychodzi z odpytywania `GET /api/protection-runs/{id}` — obcy slownik
+    // (DONE) w odpowiedzi odpytywania konczy petle i jest bledem, nie sukcesem.
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ id: 'pr-2' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'QUEUED' }), { status: 202 }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ status: 'DONE' }), { status: 200 }),

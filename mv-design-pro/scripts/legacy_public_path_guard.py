@@ -2737,6 +2737,77 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     return violations
 
 
+# --- Karta DYNAMIKA-W-TLE (2026-09-30): martwa infrastruktura kolejki — bramka wskrzeszenia ---
+# Celery (0 zadań `@app.task`/`shared_task`, 0 importerów `api.celery_app`), Redis (jedyny
+# czytelnik `REDIS_URL` — Celery) i MongoDB (`motor`, 0 importów) skasowane procedurą jako
+# zadeklarowana infrastruktura bez konsumenta (ta sama klasa: usługa w compose + zależność
+# w pyproject, której żaden kod nie woła). Wykonanie biegów w tle to wykonawca W PROCESIE
+# API (`application/execution/wykonawca.py`, decyzja O-57 pkt 2). Poniższe sprawdza, że
+# moduł, zależności i usługi NIE wracają bez decyzji właściciela.
+CELERY_MODULE = BACKEND_SRC_DIR / "api" / "celery_app.py"
+#: Importy zakazane w `backend/src` (AST `Import`/`ImportFrom`, nie tekst w komentarzu).
+FORBIDDEN_QUEUE_IMPORTS = ("celery", "redis", "aioredis", "motor", "pymongo")
+#: Zależności zakazane w `backend/pyproject.toml` (klucz tabeli `[tool.poetry.dependencies]`).
+FORBIDDEN_QUEUE_DEPENDENCIES = ("celery", "redis", "motor", "pymongo", "kombu")
+#: Usługi zakazane w `docker-compose.yml` (klucz usługi na drugim poziomie wcięcia).
+FORBIDDEN_COMPOSE_SERVICES = ("celery-worker", "celery", "redis", "mongodb", "mongo")
+BACKEND_PYPROJECT = ROOT / "backend" / "pyproject.toml"
+DOCKER_COMPOSE = ROOT / "docker-compose.yml"
+
+
+def check_dynamika_w_tle_queue_resurrection() -> list[str]:
+    """Karta DYNAMIKA-W-TLE: Celery/Redis/MongoDB nie wracają — ani jako moduł, ani jako
+    import, zależność czy usługa compose."""
+    violations: list[str] = []
+    znak = "karta DYNAMIKA-W-TLE — biegi liczy wykonawca w procesie API"
+    if zrodlo_istnieje(CELERY_MODULE):
+        violations.append(
+            f"[resurrected-module] {CELERY_MODULE.relative_to(ROOT).as_posix()}: "
+            f"usunięty ({znak}) — nie odtwarzaj"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                nazwy: list[str] = []
+                if isinstance(node, ast.Import):
+                    nazwy = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    nazwy = [node.module]
+                for nazwa in nazwy:
+                    korzen = nazwa.split(".")[0]
+                    if korzen in FORBIDDEN_QUEUE_IMPORTS:
+                        violations.append(
+                            f"[resurrected-import] {rel_path}:{node.lineno}: import {nazwa} "
+                            f"({znak}) — zakazany"
+                        )
+    if BACKEND_PYPROJECT.exists():
+        w_zaleznosciach = False
+        for numer, linia in enumerate(read_text(BACKEND_PYPROJECT).splitlines(), start=1):
+            if linia.strip().startswith("["):
+                w_zaleznosciach = linia.strip() == "[tool.poetry.dependencies]"
+                continue
+            if not w_zaleznosciach:
+                continue
+            klucz = linia.split("=", 1)[0].strip().strip('"')
+            if klucz in FORBIDDEN_QUEUE_DEPENDENCIES:
+                violations.append(
+                    f"[resurrected-dependency] backend/pyproject.toml:{numer}: {klucz} "
+                    f"({znak}) — zależność bez konsumenta"
+                )
+    if DOCKER_COMPOSE.exists():
+        for numer, linia in enumerate(read_text(DOCKER_COMPOSE).splitlines(), start=1):
+            if linia.startswith("  ") and not linia.startswith("   ") and linia.rstrip().endswith(":"):
+                usluga = linia.strip()[:-1]
+                if usluga in FORBIDDEN_COMPOSE_SERVICES:
+                    violations.append(
+                        f"[resurrected-service] docker-compose.yml:{numer}: usługa {usluga} "
+                        f"({znak}) — bez konsumenta"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2760,6 +2831,7 @@ def main() -> int:
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
         + check_abp1_dynamika_resurrection()
+        + check_dynamika_w_tle_queue_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
