@@ -380,12 +380,35 @@ Pola zgodne z mandatem R2 §2: `domain_type`, `symbol_role`, `IEC_reference`, `p
 
 ---
 
+
+### 20 · `cad.wylacznikRoznicowopradowy`
+- **domain_type:** gałąź `switch` z katalogu `APARAT_NN_RCD` (wyłącznik różnicowoprądowy,
+  IEC 61008-1; operacja `add_nn_rcd`, karta W5-E-TTIT 2026-10-15) — rozstrzyga PRZESTRZEŃ
+  katalogu, nie typ gałęzi
+- **symbol_role:** aparat łączeniowy toru instalacji odbiorczej wyłączający przy prądzie
+  różnicowym (ochrona przeciwporażeniowa w układzie TT, IEC 60364-4-41 §411.5)
+- **IEC_reference:** S00227 (styk zwierny) + S00219 (funkcja wyłącznika, krzyżyk) + rdzeń
+  sumacyjny (przekładnik pierścieniowy obejmujący przewody toru) + S00144 (sprzężenie
+  mechaniczne, linia kreskowa) do napędu styku — zwyczaj rysunkowy RCD/RCCB
+- **polish_name:** WYŁĄCZNIK RÓŻNICOWOPRĄDOWY
+- **project_designation:** F (IEC 81346-2, klasa główna „ochrona"; lustro
+  `graph_view.DESIGNATION_RCD`)
+- **graphic_variant:** przewód górny + krzyżyk + nóż jak 01; elipsa 6,8×3 u na przewodzie
+  dolnym (y = 21 u), od niej sprzężenie kreskowe po prawej stronie osi do wysokości napędu
+  noża (y = 12,4 u) — kreski jawne, nieruchome
+- **open_variant:** nóż −30°; krzyżyk, rdzeń i sprzężenie nieruchome
+- **closed_variant:** nóż w osi
+- **notes:** parametry (IΔn, rodzaj prądu różnicowego, selektywność, In) NIE są częścią
+  symbolu — niesie je tabliczka aparatu na rysunku z `materialized_params` katalogu
+  (`graph.devices[].rcd`); status ENGINEERING_REVIEWED — do porównania z bazą IEC 60617
+  przed NORMATIVE_VERIFIED
+- **verification_status:** ENGINEERING_REVIEWED
 ## 2. Podsumowanie statusów
 
 | Status | Symbole |
 |---|---|
 | NORMATIVE_VERIFIED | — (0) |
-| ENGINEERING_REVIEWED | 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 18, 19 (17) |
+| ENGINEERING_REVIEWED | 01, 02, 03, 04, 05, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20 (18) |
 | DRAFT | 06 uziemnik, 17 zabezpieczenie (2) |
 
 Droga do NORMATIVE_VERIFIED: porównanie geometrii z grafiką bazy IEC 60617 (DB) dla

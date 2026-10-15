@@ -70,7 +70,8 @@ describe('Scenariusze 01–19 — kształt kontraktu 4.0.0 z backendu', () => {
       if (p.graph.status !== 'OK') return;
       for (const d of p.graph.devices) {
         expect(['incomer', 'feeder', 'coupler', 'boundary', 'internal']).toContain(d.device_role);
-        expect(['QF', 'QS', 'FU', 'QBC', 'W']).toContain(d.designation_class);
+        // 'F' — wyłącznik różnicowoprądowy (IEC 81346-2 klasa ochrony, W5-E-TTIT).
+        expect(['QF', 'QS', 'FU', 'QBC', 'W', 'F']).toContain(d.designation_class);
         expect(['OPEN', 'CLOSED', 'UNKNOWN']).toContain(d.device_state);
       }
     });

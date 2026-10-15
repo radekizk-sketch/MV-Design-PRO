@@ -126,6 +126,14 @@ export interface LvDomainBranch {
   readonly device_kind?: string | null;
 }
 
+/** Tabliczka RCD (lustro `graph_view._rcd_dict`): wartości z katalogu, nie z fizyki. */
+export interface LvDomainRcdTabliczka {
+  readonly i_delta_n_a: number;
+  readonly rcd_type: string | null;
+  readonly selective: boolean;
+  readonly in_a: number | null;
+}
+
 /** Urządzenie = gałąź domeny z ROLĄ z topologii (§4/§8) — mirror `graph.devices[]`. */
 export interface LvDomainDevice {
   readonly ref_id: string;
@@ -137,7 +145,10 @@ export interface LvDomainDevice {
    *  breaker z `APARAT_NN_MCB` = wyłącznik instalacyjny (symbol z wyzwalaczami,
    *  R2.1), breaker z `APARAT_NN` = wyłącznik mocy (krzyżyk). Pole addytywne. */
   readonly catalog_namespace?: string | null;
-  readonly designation_class: 'QF' | 'QS' | 'FU' | 'QBC' | 'W' | 'Q';
+  readonly designation_class: 'QF' | 'QS' | 'FU' | 'QBC' | 'W' | 'Q' | 'F';
+  /** Tabliczka wyłącznika różnicowoprądowego z katalogu (`APARAT_NN_RCD`, karta W5-E-TTIT) —
+   *  obecna WYŁĄCZNIE dla RCD; opis aparatu na rysunku (I_Δn, typ, selektywność, In). */
+  readonly rcd?: LvDomainRcdTabliczka;
   readonly device_role: LvDeviceRole;
   readonly feeder_kind: LvFeederKind | null;
   readonly transformer_ref: string | null;

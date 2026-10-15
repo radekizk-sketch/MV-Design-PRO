@@ -25,8 +25,8 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 
-import { buildSwzOverlayFromResponses, jestWerdyktemTtIt, statusNakladkiZRekordu, type SwzOverlayEntry } from '../canvas/overlay';
-import { KartaWerdyktu } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
+import { KartaObwoduNn } from './KartaObwoduNn';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
@@ -40,7 +40,7 @@ import {
   type LvDomainSceneEdgeKind,
   type LvDomainSceneNode,
 } from './composeLvDomainScene';
-import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, technologiaZrodlaPl, wpisAparatu, znakiIec, znakiIecPelne } from './symbolRegistry';
+import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, technologiaZrodlaPl, znakiIec, znakiIecPelne } from './symbolRegistry';
 import {
   BUS_STROKE_SCREEN_PX,
   CAD_U_PX,
@@ -83,7 +83,7 @@ import type {
   LvDomainIsland,
   LvDomainOverlayId,
   LvDomainProjectionV1,
-  LvDomainSwzFeederV1,
+  LvDomainRcdTabliczka,
   LvDomainValidationMessage,
   LvDomainVoltageProfileRow,
   LvEnergizationState,
@@ -274,13 +274,19 @@ function maxCharsForWidth(worldWidth: number, fontPx: number, fit: SceneFit, rat
 }
 
 /** Szerokość pasa etykiety aparatu [px ekranu] — od prawej krawędzi symbolu
- *  do granicy slotu sąsiada (R2 §17: pole ma MIN_FIELD_WIDTH, etykieta nie
- *  jest ściskana ani obracana; nadmiar ucina wielokropek, pełna nazwa w
- *  podpowiedzi i w panelu). */
+ *  do najbliższej kreski pionowej albo symbolu po prawej (pomiar kompozytora
+ *  `wolnyPasPrawy`; ostatnia kolumna sięga rezerwy etykiet arkusza). R2 §17:
+ *  etykieta nie jest ściskana ani obracana; dopiero gdy dwa wiersze po
+ *  słowach nie wystarczą, ostatni kończy wielokropek, a pełna nazwa żyje w
+ *  podpowiedzi i w karcie obwodu. */
 function pasEtykietyAparatuPx(node: LvDomainSceneNode, ctx: KontekstRysunku): number {
   const glyph = glyphScreenSize(node, ctx.fit);
-  return Math.max(24, TOKENY_GEOMETRII.feederGap * ctx.fit.s - glyph.w / 2 - TOKENY_GEOMETRII.labelGap - 6);
+  const pasSwiat = node.wolnyPasPrawy ?? TOKENY_GEOMETRII.feederGap;
+  return Math.max(24, pasSwiat * ctx.fit.s - glyph.w / 2 - TOKENY_GEOMETRII.labelGap - 6);
 }
+
+/** Oznaczenie aparatu na arkuszu: najwyżej dwa wiersze po słowach. */
+export const WIERSZE_OZNACZENIA_APARATU = 2;
 
 function formatujMetryke(metric: RawMetricValue): string {
   const value = metric.value;
@@ -346,6 +352,18 @@ function etykietaWyspy(island: LvDomainIsland, nameByRef: ReadonlyMap<string, st
 function skrotPrzebiegu(runId: string): string {
   const id = runId.replace(/^przebieg-/, '');
   return id.length <= 24 ? `przebieg ${id}` : `przebieg ${id.slice(0, 8)}`;
+}
+
+/** Szerokość karty obwodu w kolumnie obok rysunku [px] i najmniejsza szerokość widoku,
+ *  przy której karta staje obok (rysunek zachowuje ≥ 380 px; szuflada nN ma co najmniej
+ *  760 px przy kanwie 1200 px — `toolbarLayout.stationInternalPanelWidthPx`). */
+export const SZEROKOSC_KARTY_OBWODU_PX = 360;
+export const SZEROKOSC_MIN_DOKU_KARTY_PX = 740;
+
+/** Metryki przebiegu aparatu odpływu (formatowanie, zero przeliczeń). */
+function metrykiOdplywu(payload: RawOverlayPayload | null, ref: string): { readonly kod: string; readonly tekst: string }[] {
+  const element = payload?.elements[ref];
+  return Object.values(element?.metrics ?? {}).map((metric) => ({ kod: metric.code, tekst: formatujMetryke(metric) }));
 }
 
 function statusWynikuLabel(projection: LvDomainProjectionV1): string {
@@ -475,9 +493,16 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     );
   }
 
-  const viewportWidth = width ?? DEFAULT_VIEWPORT.width;
+  const outerWidth = width ?? DEFAULT_VIEWPORT.width;
   const viewportHeight = height ?? DEFAULT_VIEWPORT.height;
   const canvasHeight = Math.max(240, viewportHeight - HEADER_ALLOWANCE_PX);
+  // Werdykt B-02 właściciela (2026-10-15): karta obwodu NIE przykrywa rysunku. Przy
+  // szerokości, która mieści rysunek i kartę, karta staje w kolumnie obok (rysunek
+  // dopasowuje się do węższego pola, jak arkusz z tabelką z boku); na wąskim ekranie
+  // zostaje nakładką (jedyna możliwa postać, §43).
+  const selectedFeederEntry = selectedRef ? feederByRef.get(selectedRef) ?? null : null;
+  const kartaDokowana = selectedFeederEntry !== null && outerWidth >= SZEROKOSC_MIN_DOKU_KARTY_PX;
+  const viewportWidth = kartaDokowana ? outerWidth - SZEROKOSC_KARTY_OBWODU_PX : outerWidth;
   const fit = fitSceneToViewport(scene.width, scene.height, viewportWidth, canvasHeight, lod);
   const ctx: KontekstRysunku = {
     fit,
@@ -513,7 +538,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
         : outdated
           ? `nakładka: ${OVERLAY_LABELS_PL[activeOverlay]} · wartości NIEAKTUALNE (przebieg sprzed zmiany modelu)`
           : `nakładka: ${OVERLAY_LABELS_PL[activeOverlay]}`;
-  const selectedFeeder = selectedRef ? feederByRef.get(selectedRef) ?? null : null;
+  const selectedFeeder = selectedFeederEntry;
   const blockerCount = projection.validation_messages.filter((m) => m.severity === 'BLOCKER').length;
   const importantCount = projection.validation_messages.filter((m) => m.severity === 'IMPORTANT').length;
 
@@ -589,7 +614,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           ) : null}
         </div>
       ) : null}
-      <div data-testid="lv-domain-scroll" data-scroll={fit.scroll ? 'true' : 'false'} style={{ width: viewportWidth, height: canvasHeight, overflow: fit.scroll ? 'auto' : 'hidden' }}>
+      <div data-testid="lv-domain-arkusz" style={{ display: 'flex', alignItems: 'stretch' }}>
+      <div data-testid="lv-domain-scroll" data-scroll={fit.scroll ? 'true' : 'false'} style={{ width: viewportWidth, height: canvasHeight, overflow: fit.scroll ? 'auto' : 'hidden', flex: '0 0 auto' }}>
       <svg data-testid="lv-domain-svg" data-fit-scale={fit.s} width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ display: 'block' }}>
         <rect x={0} y={0} width={svgWidth} height={svgHeight} fill={paleta.tlo} />
         <g data-testid="lv-domain-world" transform={`translate(${fit.tx} ${fit.ty}) scale(${fit.s})`}>
@@ -645,11 +671,36 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
         </g>
       </svg>
       </div>
+      {selectedFeeder && kartaDokowana ? (
+        <KartaObwoduNn
+          feeder={selectedFeeder.feeder}
+          transformerRef={selectedFeeder.transformerRef}
+          projection={projection}
+          paleta={paleta}
+          metryki={metrykiOdplywu(resultOverlayPayload, selectedFeeder.feeder.feeder_root_branch_ref)}
+          wynikPrzebiegu={{ tekst: statusWynikuLabel(projection), nieaktualny: outdated }}
+          ulozenie="dok"
+          szerokosc={SZEROKOSC_KARTY_OBWODU_PX}
+          wysokosc={canvasHeight}
+          onClose={() => setSelectedRef(null)}
+        />
+      ) : null}
+      </div>
       {warningsOpen ? (
         <WarningsPanel messages={projection.validation_messages} paleta={paleta} onPick={(ref) => setSelectedRef(ref)} onClose={() => setWarningsOpen(false)} />
       ) : null}
-      {selectedFeeder ? (
-        <LvFeederPanel feeder={selectedFeeder.feeder} transformerRef={selectedFeeder.transformerRef} projection={projection} paleta={paleta} resultOverlayPayload={resultOverlayPayload} onClose={() => setSelectedRef(null)} />
+      {selectedFeeder && !kartaDokowana ? (
+        <KartaObwoduNn
+          feeder={selectedFeeder.feeder}
+          transformerRef={selectedFeeder.transformerRef}
+          projection={projection}
+          paleta={paleta}
+          metryki={metrykiOdplywu(resultOverlayPayload, selectedFeeder.feeder.feeder_root_branch_ref)}
+          wynikPrzebiegu={{ tekst: statusWynikuLabel(projection), nieaktualny: outdated }}
+          ulozenie="nakladka"
+          szerokosc={SZEROKOSC_KARTY_OBWODU_PX}
+          onClose={() => setSelectedRef(null)}
+        />
       ) : null}
     </div>
   );
@@ -690,130 +741,6 @@ function WarningsPanel({ messages, paleta, onPick, onClose }: {
           ))}
         </ol>
       )}
-    </aside>
-  );
-}
-
-function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverlayPayload, onClose }: {
-  readonly feeder: LvDomainSwzFeederV1;
-  readonly transformerRef: string;
-  readonly projection: LvDomainProjectionV1;
-  readonly paleta: PaletaNn;
-  readonly resultOverlayPayload: RawOverlayPayload | null;
-  readonly onClose: () => void;
-}): JSX.Element {
-  const resultElement = resultOverlayPayload?.elements[feeder.feeder_root_branch_ref];
-  const metrics = Object.values(resultElement?.metrics ?? {});
-  const swz = feeder.swz.swz;
-  // Karta W5-E-TTIT: werdykt TT/IT to rekord W werdyktu wyjaśnialnego (ton z jego statusu
-  // maszynowego), werdykt TN — werdykt 3-stanowy z dowodem liczbowym.
-  const statusNakladki = swz ? (jestWerdyktemTtIt(swz) ? statusNakladkiZRekordu(swz.wymaganie.status_maszynowy) : swz.status) : null;
-  const statusTone = statusNakladki === 'spełnia' ? paleta.tonOk : statusNakladki === 'nie spełnia' ? paleta.tonBledu : paleta.tonOstrzegawczy;
-  const shortHash = (value: string): string => (value.length > 14 ? `${value.slice(0, 14)}…` : value);
-  const segment = projection.graph.segments.find((s) => s.segment_id === feeder.feeder_root_branch_ref);
-  const zabezpieczenia = projection.graph.protection_assignments.filter((p) => p.breaker_ref === feeder.feeder_root_branch_ref);
-  const urzadzenie = projection.graph.devices.find((d) => d.ref_id === feeder.feeder_root_branch_ref);
-  const galaz = projection.graph.branches.find((b) => b.ref_id === feeder.feeder_root_branch_ref);
-  const aparat = urzadzenie ? wpisAparatu(urzadzenie.device_type, urzadzenie.device_kind, urzadzenie.catalog_namespace) : null;
-  return (
-    <aside data-testid="lv-domain-feeder-panel" data-feeder-ref={feeder.feeder_root_branch_ref} style={{ position: 'absolute', top: 100, right: 16, bottom: 16, width: 350, maxWidth: 'calc(100% - 32px)', overflow: 'auto', padding: 16, border: `1px solid ${paleta.kreskaWygaszona}`, borderRadius: 6, background: paleta.panelTlo, boxShadow: paleta.panelCien, zIndex: 4, fontSize: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <div style={{ color: paleta.kreskaBazowa, fontWeight: 700 }}>Odpływ nN</div>
-          <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>{feeder.feeder_root_branch_ref}</div>
-        </div>
-        <button type="button" onClick={onClose} style={overlayButtonStyle(false, paleta)}>Zamknij</button>
-      </div>
-      <section style={{ marginTop: 14 }} data-testid="lv-domain-feeder-aparat">
-        <div style={{ fontWeight: 600 }}>Aparat pola</div>
-        {aparat && urzadzenie ? (
-          <>
-            <div style={{ marginTop: 4 }}>{`${galaz?.name ?? urzadzenie.ref_id} · ${aparat.nazwaPl.toUpperCase()}`}</div>
-            <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
-              {`${aparat.klasaOznaczenia} · stan: ${stanSlowny(urzadzenie.device_state)} · katalog: ${galaz?.catalog_ref ?? 'brak'}${urzadzenie.device_kind ? ` · rodzaj: ${urzadzenie.device_kind}` : ' · rodzaj: katalog nie klasyfikuje'}`}
-            </div>
-          </>
-        ) : (
-          <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>Odpływ bez aparatu w modelu (audyt NN-AUD-07).</div>
-        )}
-      </section>
-      <section style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 600 }}>Stan zacisków (topologia)</div>
-        <div data-testid="lv-domain-feeder-terminals" style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
-          {segment
-            ? `łączność: ${segment.connectivity_state === 'CLOSED' ? 'zamknięty' : 'otwarty'} · zacisk A: ${segment.from_terminal.energization_state} (${segment.from_terminal.island_ref}) · zacisk B: ${segment.to_terminal.energization_state} (${segment.to_terminal.island_ref})`
-            : 'brak danych odcinka'}
-        </div>
-      </section>
-      <section style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 600 }}>Zabezpieczenia aparatu</div>
-        {zabezpieczenia.length === 0 ? (
-          <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>Model nie przypisuje zabezpieczenia do tego aparatu.</div>
-        ) : zabezpieczenia.map((z) => (
-          <div key={z.ref_id} data-testid={`lv-domain-feeder-relay-${z.ref_id}`} style={{ marginTop: 4 }}>
-            <div>{z.name}</div>
-            <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
-              {`funkcje: ${znakiIecPelne(z.function_codes).join(' · ') || '—'} (ANSI ${kodyAnsiPelne(z.function_codes).join(', ') || '—'}) · CT: ${z.ct_ref ?? 'brak'} · ${z.is_enabled ? 'aktywne' : 'wyłączone'}`}
-            </div>
-            <div style={{ color: paleta.kreskaWygaszona }}>
-              {nazwyFunkcjiPl(z.function_codes).join(' · ') || '—'}
-            </div>
-          </div>
-        ))}
-      </section>
-      <section style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 600 }}>Model ENM</div>
-        <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>{`rewizja ${projection.model_snapshot.revision} · scenariusz ${projection.scenario_id}`}</div>
-        <div title={projection.model_snapshot.model_hash} style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>{`model ${shortHash(projection.model_snapshot.model_hash)}`}</div>
-      </section>
-      <section style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 600 }}>Wynik przebiegu</div>
-        <div style={{ color: projection.result_snapshot.status === 'OUTDATED' ? paleta.tonOstrzegawczy : paleta.kreskaWygaszona, marginTop: 4 }}>{statusWynikuLabel(projection)}</div>
-        {metrics.length > 0 ? metrics.map((metric) => (
-          <div key={metric.code} style={{ fontFamily: 'monospace', marginTop: 3 }}>{`${metric.code}: ${formatujMetryke(metric)}`}</div>
-        )) : (
-          <div style={{ color: paleta.kreskaWygaszona, marginTop: 3 }}>Brak metryk tego odpływu w aktywnym przebiegu.</div>
-        )}
-      </section>
-      <section style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 600 }}>Pętla zwarcia i SWZ</div>
-        <div data-testid="lv-domain-feeder-transformer" data-transformer-ref={transformerRef} style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
-          {`liczone od transformatora: ${transformerRef} · zasilanie: ${feeder.supply ?? 'brak danych'}`}
-        </div>
-        {feeder.supply_assumption_pl ? (
-          <div data-testid="lv-domain-feeder-supply-assumption" style={{ color: paleta.tonOstrzegawczy, marginTop: 4 }}>{feeder.supply_assumption_pl}</div>
-        ) : null}
-        <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>{`punkt najgorszy: ${feeder.worst_point_bus_ref ?? 'brak'} · punkty: ${feeder.points.length}`}</div>
-        {swz && jestWerdyktemTtIt(swz) ? (
-          <div data-testid="lv-domain-feeder-werdykt-tt-it" data-uklad={swz.uklad} data-status-wymagania={swz.wymaganie.status_maszynowy} style={{ marginTop: 6 }}>
-            <div style={{ color: statusTone, fontWeight: 700 }}>{`SWZ w układzie ${swz.uklad}: ${statusNakladki}`}</div>
-            <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`I_d min = ${plFixed(swz.ik1_min_a, 2)} A`}</div>
-            {swz.t_wymagany_s != null ? (
-              <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`t wymagany = ${plFixed(swz.t_wymagany_s, 2)} s (pasmo U0 ${swz.pasmo_u0 ?? '—'}, obwód ${swz.rodzaj_obwodu}; tabela czasów repo, status referencyjny)`}</div>
-            ) : null}
-            {swz.kod_odmowy_limitu ? (
-              <div data-testid="lv-domain-feeder-werdykt-tt-it-limit" style={{ color: paleta.tonOstrzegawczy, marginTop: 3 }}>
-                {`Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy (kod: ${swz.kod_odmowy_limitu}).`}
-              </div>
-            ) : null}
-            <div style={{ marginTop: 8 }}>
-              <KartaWerdyktu rekord={swz.wymaganie} naglowek={`Werdykt wyjaśnialny — układ ${swz.uklad}`} />
-            </div>
-          </div>
-        ) : swz ? (
-          <>
-            <div style={{ color: statusTone, fontWeight: 700, marginTop: 6 }}>{`SWZ: ${swz.status}`}</div>
-            <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`Ik₁ min = ${plFixed(swz.ik1_min_a, 0)} A`}</div>
-            {swz.ia_wymagane_a != null ? <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`Ia wymagane = ${plFixed(swz.ia_wymagane_a, 0)} A`}</div> : null}
-            <div style={{ color: paleta.kreskaWygaszona, marginTop: 6 }}>{swz.przyczyna_pl}</div>
-          </>
-        ) : (
-          <div data-testid="lv-domain-feeder-swz-odmowa" data-kod-odmowy={feeder.swz.kod_odmowy ?? undefined} style={{ color: paleta.tonOstrzegawczy, marginTop: 6 }}>
-            {feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}
-            {feeder.swz.kod_odmowy ? ` (kod odmowy: ${feeder.swz.kod_odmowy})` : ''}
-          </div>
-        )}
-      </section>
     </aside>
   );
 }
@@ -1215,6 +1142,15 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
 // Etykiety węzłów (cztery poziomy graficzne §20).
 // ---------------------------------------------------------------------------
 
+/** Opis tabliczki RCD na rysunku: „IΔn 30 mA · A · S · 40 A" (S — selektywny). */
+export function tabliczkaRcd(rcd: LvDomainRcdTabliczka): string {
+  const czesci = [`IΔn ${plNumber(Math.round(rcd.i_delta_n_a * 1000))} mA`];
+  if (rcd.rcd_type) czesci.push(rcd.rcd_type);
+  if (rcd.selective) czesci.push('S');
+  if (rcd.in_a != null) czesci.push(`${plNumber(rcd.in_a)} A`);
+  return czesci.join(' · ');
+}
+
 function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element | null {
   const glyph = glyphScreenSize(node, ctx.fit);
   const pokazNazwe = ctx.widoczne(elementNazwy(node));
@@ -1279,12 +1215,30 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     // ściskana — nadmiar ucina wielokropek (pełna nazwa w podpowiedzi).
     const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
     const fontPx = SLD_LABEL.PRIMARY - 2;
-    const oznaczenie = zawinNazwe(node.label, limitZnakow(pasEtykietyAparatuPx(node, ctx), fontPx, CHAR_WIDTH_RATIO_BOLD), 1)[0];
-    const stanY = node.y + ctx.sp(4 + SLD_LABEL.STATUS * LINE_HEIGHT);
+    const oznaczenie = zawinNazwe(
+      node.label,
+      limitZnakow(pasEtykietyAparatuPx(node, ctx), fontPx, CHAR_WIDTH_RATIO_BOLD),
+      WIERSZE_OZNACZENIA_APARATU,
+    );
+    const dodatkoweWiersze = pokazNazwe ? oznaczenie.length - 1 : 0;
+    const stanY = node.y + ctx.sp(4 + (1 + dodatkoweWiersze) * SLD_LABEL.STATUS * LINE_HEIGHT);
+    // Tabliczka RCD (W5-E-TTIT) w drugim wierszu, jak opis aparatu na rysunku wykonawczym:
+    // „IΔn 30 mA · A · 40 A" — wartości z katalogu, nie z fizyki.
+    const rcd = node.meta?.rcd as LvDomainRcdTabliczka | undefined;
+    const pokazRcd = Boolean(rcd) && pokazNazwe && ctx.widoczne('tabliczkaAparatu');
     return (
       <g {...textHalo(ctx)}>
         {pokazNazwe ? (
-          <text x={xText} y={node.y + ctx.sp(4)} textAnchor="start" fontSize={ctx.sp(fontPx)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>{oznaczenie}</text>
+          <text data-testid={`lv-domain-oznaczenie-${node.ref}`} x={xText} y={node.y + ctx.sp(4)} textAnchor="start" fontSize={ctx.sp(fontPx)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>
+            {oznaczenie.map((wiersz, i) => (
+              <tspan key={i} x={xText} dy={i === 0 ? 0 : ctx.sp(fontPx * LINE_HEIGHT)}>{wiersz}</tspan>
+            ))}
+          </text>
+        ) : null}
+        {pokazRcd && rcd ? (
+          <text data-testid={`lv-domain-tabliczka-rcd-${node.ref}`} x={xText} y={node.y + ctx.sp(4 - SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+            {tabliczkaRcd(rcd)}
+          </text>
         ) : null}
         {pokazStan ? (
           <text data-testid={`lv-domain-stan-${node.ref}`} x={xText} y={stanY} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.STATUS)} fontWeight={700} fill={ctx.paleta.tonOstrzegawczy}>{stateWord}</text>
@@ -1505,7 +1459,7 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
   // wiersz wchodził w glif sąsiedniego odpływu (zrzut 18_swz_overlay).
   const linie = [
     `SWZ ${symbol}`,
-    `Ik₁min ${plFixed(entry.ik1MinA, 0)} A`,
+    `${entry.oznaczeniePradu} ${plFixed(entry.ik1MinA, entry.ik1MinA < 10 ? 2 : 0)} A`,
     ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
     ...(entry.tWymaganyS != null ? [`t ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
   ];

@@ -152,14 +152,18 @@ async function zbudujSiecTt(request: APIRequestContext) {
 
   // Korzeń odpływu (aparat pola) wg KONTRAKTU projekcji nN — ten sam ref, którym kanwa
   // znakuje węzeł (`lv-domain-node-<ref>`); `created_element_ids` pola to identyfikator
-  // specyfikacji pola, nie gałęzi aparatu.
-  const projekcja = await request.get(
-    `${BACKEND_BASE}/api/cases/${caseId}/enm/lv-domain/${encodeURIComponent(stacja!.ref_id)}/projection/v1`,
-  );
-  expect(projekcja.ok(), `projekcja nN: HTTP ${projekcja.status()}`).toBeTruthy();
-  const swzSnapshot = ((await projekcja.json()) as { swz_snapshot?: { transformers?: Array<{ feeders?: Array<{ feeder_root_branch_ref: string }> }> } }).swz_snapshot;
-  const feederRootRef = swzSnapshot?.transformers?.flatMap((t) => t.feeders ?? [])[0]?.feeder_root_branch_ref;
-  expect(feederRootRef, 'korzeń odpływu nN w projekcji').toBeTruthy();
+  // specyfikacji pola, nie gałęzi aparatu. Tylko faza „po" klika odpływ (w bazie trasa
+  // projekcji z „/" w referencji stacji odpowiadała 404 — defekt naprawiony tą kartą).
+  let feederRootRef: string | undefined = String(feederRef);
+  if (FAZA === 'po') {
+    const projekcja = await request.get(
+      `${BACKEND_BASE}/api/cases/${caseId}/enm/lv-domain/${encodeURIComponent(stacja!.ref_id)}/projection/v1`,
+    );
+    expect(projekcja.ok(), `projekcja nN: HTTP ${projekcja.status()}`).toBeTruthy();
+    const swzSnapshot = ((await projekcja.json()) as { swz_snapshot?: { transformers?: Array<{ feeders?: Array<{ feeder_root_branch_ref: string }> }> } }).swz_snapshot;
+    feederRootRef = swzSnapshot?.transformers?.flatMap((t) => t.feeders ?? [])[0]?.feeder_root_branch_ref;
+    expect(feederRootRef, 'korzeń odpływu nN w projekcji').toBeTruthy();
+  }
 
   return { projectId: project.id, projectName, caseId, caseName, stationRef: stacja!.ref_id, feederRef: String(feederRootRef) };
 }
@@ -174,7 +178,9 @@ async function otworzSchemat(page: Page, seed: Awaited<ReturnType<typeof zbudujS
       },
       version: 1,
     }));
-    localStorage.setItem('mvd-theme-mode', JSON.stringify({ state: { mode: s.motyw }, version: 0 }));
+    // Słownik motywu powłoki (`ui2/theme/themeMode.ts`): wartość spoza niego = motyw domyślny
+    // (ciemny) — wcześniejsze `light`/`dark` dawały dwa ciemne kadry.
+    localStorage.setItem('mvd-theme-mode', JSON.stringify({ state: { mode: s.motyw === 'light' ? 'light_technical' : 'dark_scada' }, version: 0 }));
   }, { ...seed, motyw });
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/', { waitUntil: 'commit' });
@@ -190,7 +196,13 @@ async function otworzPortalNn(page: Page): Promise<void> {
   const box = await portal.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await expect(page.getByTestId('lv-domain-view-root')).toBeVisible({ timeout: 30000 });
+  // Faza „przed" (baza `f3c435b6`): projekcja stacji z „/" w referencji odpowiadała 404 — portal
+  // pokazywał błąd. Kadr bazy utrwala TEN stan (dowód defektu naprawionego kartą), faza „po"
+  // wymaga widoku domeny.
+  const oczekiwany = FAZA === 'przed'
+    ? page.locator('[data-testid="lv-domain-view-root"], [data-testid="lv-domain-portal-error"]').first()
+    : page.getByTestId('lv-domain-view-root');
+  await expect(oczekiwany).toBeVisible({ timeout: 30000 });
   await page.waitForTimeout(500);
 }
 
@@ -207,6 +219,12 @@ for (const motyw of MOTYWY) {
     const seed = await zbudujSiecTt(request);
     await otworzSchemat(page, seed, motyw);
     await otworzPortalNn(page);
+
+    if (FAZA === 'przed' && (await page.getByTestId('lv-domain-portal-error').count()) > 0) {
+      await expect(page.getByTestId('lv-domain-portal-error')).toContainText('Not Found');
+      await zrzut(page, '01_projekcja_nn_nakladka_swz', motyw);
+      return;
+    }
 
     // Nakładka SWZ na projekcji nN.
     await page.getByTestId('lv-domain-overlay-swz').click();

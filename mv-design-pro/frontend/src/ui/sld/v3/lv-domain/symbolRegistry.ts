@@ -33,7 +33,7 @@ import type { LvDeviceType, LvDomainGenerator, LvDomainMeasurement } from './typ
 
 export type NosnikStanu = 'noz' | 'brak';
 
-export type KlasaOznaczenia = 'QF' | 'QS' | 'FU' | 'QBC' | 'W';
+export type KlasaOznaczenia = 'QF' | 'QS' | 'FU' | 'QBC' | 'W' | 'F';
 
 export interface WpisRejestruSymbolu {
   /** Symbol CAD; `null` = przewód (bez symbolu). */
@@ -88,6 +88,11 @@ function normalizujKind(deviceKind: string | null | undefined): string | null {
  *  pierwowzorze właściciela (R2.1: -F1 B16A vs -QPV1 400 A). */
 const PRZESTRZEN_KATALOGU_MCB = 'APARAT_NN_MCB';
 
+/** Przestrzeń katalogu wyłączników RÓŻNICOWOPRĄDOWYCH (karta W5-E-TTIT): wyrób z tej
+ *  przestrzeni dostaje symbol RCD niezależnie od typu gałęzi (RCD jest gałęzią `switch`)
+ *  i klasę oznaczenia „F" (IEC 81346-2 — ochrona; lustro `graph_view.DESIGNATION_RCD`). */
+export const PRZESTRZEN_KATALOGU_RCD = 'APARAT_NN_RCD';
+
 /** Symbol CAD aparatu z DANYCH: typ gałęzi × klasa funkcjonalna wyrobu ×
  *  przestrzeń katalogu. Funkcja wyłącznika (breaker albo sprzęgło o klasie
  *  WYLACZNIK_*) realizowana wyrobem z `APARAT_NN_MCB` = wyłącznik
@@ -98,6 +103,7 @@ export function symbolAparatu(
   catalogNamespace?: string | null,
 ): CadSymbolId | null {
   const kind = normalizujKind(deviceKind);
+  if (normalizujKind(catalogNamespace) === PRZESTRZEN_KATALOGU_RCD) return 'cad.wylacznikRoznicowopradowy';
   const podstawowy = ((): CadSymbolId | null => {
     switch (deviceType) {
       case 'breaker':
@@ -127,7 +133,8 @@ export function wpisAparatu(
   catalogNamespace?: string | null,
 ): WpisRejestruSymbolu {
   const symbolId = symbolAparatu(deviceType, deviceKind, catalogNamespace);
-  const klasaOznaczenia = KLASA_PO_TYPIE[deviceType];
+  const klasaOznaczenia: KlasaOznaczenia =
+    normalizujKind(catalogNamespace) === PRZESTRZEN_KATALOGU_RCD ? 'F' : KLASA_PO_TYPIE[deviceType];
   if (symbolId === null) {
     return {
       symbolId: null,

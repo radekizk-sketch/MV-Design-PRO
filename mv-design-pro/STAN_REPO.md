@@ -181,13 +181,13 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 |---|---|
 | **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E, PRZENOSNOSC-NIEPEWNOSCI (poprawka 1); partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
-| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6), POLA-W-TORZE (`71c27cbf`, `wip-pola-w-torze-gotowy`), SLD-SUBSTRAT faza 2 (`2eb83c40`, `wip-sld-substrat-gotowy`) — partia 6; AB-1b.3b (`f0cabe57`, `wip-ab-1b3b-gotowy`), BIEG-ZABEZPIECZEN-Z-MODELU (`1551dc49`, `wip-nastawy-gotowy`) — partia 7 |
+| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6), POLA-W-TORZE (`71c27cbf`, `wip-pola-w-torze-gotowy`), SLD-SUBSTRAT faza 2 (`2eb83c40`, `wip-sld-substrat-gotowy`) — partia 6; AB-1b.3b (`f0cabe57`, `wip-ab-1b3b-gotowy`), BIEG-ZABEZPIECZEN-Z-MODELU (`1551dc49`, `wip-nastawy-gotowy`) — partia 7; W5-E-TTIT (gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-w5e-ttit`, `859234c5`, `7cf006c4` i commit naprawy ekranu nN po werdykcie B-02; meldunek `MELDUNEK_W5E_TTIT.md`) |
 | **IN PROGRESS** | GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE (commity wykonawcy `4a7329ad`, `1ca6ca08` na gałęzi programu jako `f1c27d8a`, `ce138c51`; weryfikacja integratora na połączonym drzewie w toku), SZYNY-STACJI-LUSTRO (wykonawca, drzewo `szyny-stacji`), AB-1b.3b-NA-CZUBKU (wykonawca rdzenia, drzewo `odbior-ab1b3b-r`), partia 6 — pełna regresja (`odbior-p6b`), SZYBKIE-TESTY (tabela A.3) |
-| **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
+| **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J); B-02 ekranu odpływu nN TT/IT (werdykt właściciela 0/10 z 2026-10-15, ekran przebudowany na arkusz rysunkowy z kartą obwodu, nowe zrzuty `docs/audit/visual/w5e_ttit/` czekają na ponowną ocenę) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
 | **NOT STARTED (szkic §0 z O-57)** | DYNAMIKA-W-TLE, KATALOG-DYNAMIKI-BRAKI, AB-1c, O-52, CICHE-ZERO (szkice na końcu `KARTY_OTWARTE_2026-09.md`) |
-| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-B, W5-C, W5-E, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
+| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-B, W5-C, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
 
 ### C. Rejestr niedokończonych kart
 
@@ -220,7 +220,7 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | O-52 | P2 | szkic §0 | ODMOWA-DANYCH-422 (typ odmowy) | łagodne rzutowanie pydantic na granicach danych; strażnik AST `strict=True` |
 | AB-1c | P1 (ścieżka krytyczna A/B) | szkic §0 | AB-1b.2, AB-1d_min, KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE; odpowiedź właściciela o delegację B-01 dla kasacji `frt_hvrt` | profil wzorcowy testowy do odbioru logiki (O-57 pkt 10) |
 | AB-H1 | P1 (tor równoległy) | bez karty (plan §5, §11) | AB-H0 ✓, AB-1a ✓ | nowe pakiety `solvers/harmoniczne/`, `core/stemplowanie_galezi.py`; zakaz `dynamika/**` i `v126_academic.py` |
-| W5-B → W5-C ∥ W5-E → W5-T → SZABLONY-NN | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-A ✓, W5-D ✓ | W5-B: `LEGACY_FIELD_COLLECTIONS`/`field_specs` → typowany `Bay`; W5-E bez solvera do OD-25 |
+| W5-B → W5-C → W5-T → SZABLONY-NN (W5-E ✓) | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-A ✓, W5-D ✓ | W5-B: `LEGACY_FIELD_COLLECTIONS`/`field_specs` → typowany `Bay`; W5-E WYKONANE kartą W5-E-TTIT (2026-10-15, OD-25 rozstrzygnięte decyzją O-59); limit napięcia dotykowego TT/IT czeka na pakiet danych właściciela P-C |
 | CV-6 G01 (W8), W4-2, W6-K, W6-8, W7, W9–W12, AB-6b | wg części D | nierozpoczęte | część D | |
 
 ### D. Graf zależności i ścieżka krytyczna (plan §5 i §11 po O-57)
@@ -243,7 +243,7 @@ ANDES) → AB-2 → AB-3 → … → AB-7.
 |---|---|
 | R — rdzeń dynamiki | partia 7: AB-1b.3b → AB-1b.2 (0/A/B/C/D) → DYNAMIKA-W-TLE → AB-1b.2 (E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
 | H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3: migawki punktu pracy) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
-| M — model ENM | partia 6 (POLE-ZAJĘTE, POLA-W-TORZE, SLD-SUBSTRAT faza 2, ODMOWA-DANYCH-422) → W5-B → W5-C ∥ W5-E → W5-T → SZABLONY-NN → W7 → W8 (sieć kompensowana G01) |
+| M — model ENM | partia 6 (POLE-ZAJĘTE, POLA-W-TORZE, SLD-SUBSTRAT faza 2, ODMOWA-DANYCH-422) → W5-B → W5-C → W5-T → SZABLONY-NN → W7 (W5-E ✓ 2026-10-15) → W8 (sieć kompensowana G01) |
 | Z — zabezpieczenia | W4-1 = BIEG-ZABEZPIECZEN-Z-MODELU (w toku) → W4-2 (67/67N, 21, 87T, 25, 50BF, grupy, TRIP; po W5-B) → wejście do AB-5 |
 | D — dokumenty, UX, higiena | P0: SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, AB-H0b; P1: O-53b, CICHE-ZERO, O-52, ENDPOINTY-BEZ-KONSUMENTA (po ODMOWA-DANYCH-422); P2: KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2; W10-1 → W9 → W10-2 → W11 → W12 |
 

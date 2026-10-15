@@ -45,11 +45,12 @@ const SYMBOLE_CAD = [
   'cad.zabezpieczenie',
   'cad.zacisk',
   'cad.wezel',
+  'cad.wylacznikRoznicowopradowy',
 ] as const;
 
-const ZE_STANEM = ['cad.wylacznik', 'cad.wylacznikInstalacyjny', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
+const ZE_STANEM = ['cad.wylacznik', 'cad.wylacznikInstalacyjny', 'cad.wylacznikRoznicowopradowy', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
 /** Pozycje tablicy rozpoznawalności (klucz w dokumencie pakietu §6). */
-const POZYCJE_ROZPOZNANIA = 26;
+const POZYCJE_ROZPOZNANIA = 28;
 
 function sha256Pliku(sciezka: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(sciezka)).digest('hex');

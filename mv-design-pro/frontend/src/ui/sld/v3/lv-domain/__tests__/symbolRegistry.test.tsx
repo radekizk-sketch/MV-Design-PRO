@@ -74,6 +74,20 @@ describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind × przestrzeń 
     }
   });
 
+  it('wyłącznik RÓŻNICOWOPRĄDOWY (W5-E-TTIT) wynika z przestrzeni APARAT_NN_RCD dla KAŻDEGO typu gałęzi i rodzaju — symbol RCD i klasa „F"; inne przestrzenie nietknięte', () => {
+    const typy = ['breaker', 'switch', 'disconnector', 'fuse', 'bus_coupler'] as const;
+    for (const typ of typy) {
+      for (const kind of [null, 'ROZLACZNIK', 'WYLACZNIK']) {
+        for (const ns of ['APARAT_NN_RCD', 'aparat_nn_rcd', ' APARAT_NN_RCD ']) {
+          expect(symbolAparatu(typ, kind, ns), `${typ} × ${kind} × ${ns}`).toBe('cad.wylacznikRoznicowopradowy');
+          expect(wpisAparatu(typ, kind, ns).klasaOznaczenia).toBe('F');
+        }
+        expect(symbolAparatu(typ, kind, 'APARAT_NN')).not.toBe('cad.wylacznikRoznicowopradowy');
+      }
+    }
+    expect(wpisAparatu('switch', null, 'APARAT_NN_RCD').nazwaPl).toBe('Wyłącznik różnicowoprądowy');
+  });
+
   it('wyłącznik INSTALACYJNY wynika z przestrzeni katalogu APARAT_NN_MCB (R2.1) — dla KAŻDEJ roli z funkcją wyłącznika: breaker i sprzęgło o klasie WYLACZNIK_*; inne rodziny nietknięte', () => {
     for (const kind of ['WYLACZNIK', 'WYLACZNIK_GLOWNY', 'WYLACZNIK_ODPLYWOWY', 'REKLOZER', 'wylacznik'] as const) {
       expect(symbolAparatu('bus_coupler', kind, 'APARAT_NN_MCB'), `sprzęgło × ${kind}`).toBe('cad.wylacznikInstalacyjny');

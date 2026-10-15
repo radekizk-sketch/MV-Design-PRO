@@ -265,13 +265,19 @@
         "board_bus_ref": null,
         "catalog_namespace": "APARAT_NN_RCD",
         "child_bus_ref": "QF-01_instalacja",
-        "designation_class": "QS",
+        "designation_class": "F",
         "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "switch",
         "feeder_kind": null,
         "parent_bus_ref": "QF-01_koniec",
+        "rcd": {
+          "i_delta_n_a": 0.03,
+          "in_a": 40.0,
+          "rcd_type": "A",
+          "selective": false
+        },
         "ref_id": "RCD-01",
         "terminal_a": "QF-01_koniec",
         "terminal_b": "QF-01_instalacja",
@@ -650,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "ca0dd75da07cb8edd520baeb7aa79e590f8986594c8eb9ac0d943c51c26d662a",
+  "projection_hash": "b64d3097317140399c6f9ea85105594829906e94868b83f0a3ad3cb2e34d27ab",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

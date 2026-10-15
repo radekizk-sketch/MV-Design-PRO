@@ -151,7 +151,7 @@ const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
 };
 
 /** Stan źródła podstawy — lustro `werdykt.wyjasnienie.NAZWA_STANU_ZRODLA_PL`. */
-const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
+export const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
   ZWERYFIKOWANE: 'zweryfikowane',
   WSKAZANE: 'wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)',
   NIEUSTALONE: 'nieustalone',
@@ -360,7 +360,12 @@ function liczbaZeZnakiem(wartosc: number): string {
   });
 }
 
-/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie). */
+/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie).
+ *  Eksportowana (`wielkoscPl`) dla tabelki karty obwodu nN — jeden zapis liczb rekordu. */
+export function wielkoscPl(w: Wielkosc, zeZnakiem = false): string {
+  return wielkosc(w, zeZnakiem);
+}
+
 function wielkosc(w: Wielkosc, zeZnakiem = false): string {
   const tekst = zeZnakiem ? liczbaZeZnakiem(w.wartosc) : liczba(w.wartosc);
   return w.jednostka === '1' ? tekst : `${tekst} ${w.jednostka}`;
