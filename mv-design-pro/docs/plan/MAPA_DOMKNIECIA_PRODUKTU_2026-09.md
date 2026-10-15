@@ -740,6 +740,10 @@ komentarza, ale plik leży pod B-01; (f) do pozycji (d) dochodzą stałe V12.6: 
 
 ## 8. Kolejność wycinków W1–W12 (decyzja architekta; misja §29: zależność → ryzyko → wartość, pionowo)
 
+> **KSR-STACJE-OZE-BESS (2026-10-11, nieodebrana delta do programu Fable):** luka konfiguratora nie jest odrębnym W13 ani alternatywną mapą. Wpisano sześć przekrojowych kart do planu A/B §12.5 i KARTY_OTWARTE_2026-09.md oraz wspólny prompt w docs/prompts/PROMPT_FABLE_KSR_STACJE_OZE_BESS_2026-10-11.md. Mapowanie do istniejącej tabeli W1–W12: **W1** — KSR-P0-ZAPIS (jedno ENM i trwałość), **W5** — KSR-P0-POLA i KSR-P0-DANE (pola, porty, neutralny, nN), **W2/W3** — KSR-P0-ZRODLA (prawda składu PV/BESS, katalog, inwalidacja), **W4** — KSR-P1-BESS-EAZ (CT/VT, zaciski, nastawy i prąd), **W6 i AB-1b.2/W6-F** — granice modelu PCS/SOC/GFL/GFM, **W8** — KSR-P1-SLD-RAPORT (istniejący SldCanvasV3), **W10** — dokumentacja i dowody. PR #477 to odrębny, nierozliczony pakiet audytu zwarć/EAZ, a PR #478 to nierozliczony szkic poprawki składu PV/BESS; nie wolno przypisać im statusu ACCEPTED. Nie zmieniać sekwencji AB-* bez strażnika zależności §13. Wpis w tej mapie jest **zobowiązaniem wykonawczym**, nie nowym dowodem produkcyjnego działania.
+
+
+
 > **Aktualizacja 2026-09-30 (plan A/B, decyzja O-57 — synteza architekta zweryfikowana z repozytorium):** kolejność wykonawcza biegnie w torach równoległych opisanych w `STAN_REPO.md` §7 D. W5-A i W5-D oraz W6-1…W6-3 są wykonane; W6-4/W6-5 wchłonął program A/B (AB-1b.1, AB-1c); zawartość W6-6 przeszła do przyrostu AB-6b; W6-8 zostaje torem W zależnym od danych OD-17; W4 dzieli się na W4-1 (ocena z nastaw modelu) i W4-2 (funkcje 67/67N, 21, 87T, 25, 50BF, grupy, TRIP — po W5-B); W10 na W10-1 (dobór przekroju z pakietem dowodowym) i W10-2 (BOM, koszty OD-16, `NetworkVariation`).
 
 | W | Wycinek | Zakres (klasy defektów) | Domeny | Zależy od | Dlaczego w tym miejscu | Mapowanie na W-8 / CV |

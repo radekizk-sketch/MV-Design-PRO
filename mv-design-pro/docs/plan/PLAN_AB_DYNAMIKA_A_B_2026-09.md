@@ -526,6 +526,8 @@ emisji w punkcie przyłączenia (AB-H1, O-40), T15 (AB-1c), turbiny wiatrowe typ
 
 | Data | Przyrost | Commit | Stan | Dowód |
 |------|----------|--------|------|-------|
+| 2026-10-10 | AUDYT-SOL-EAZ-RMS (SOL-P0-EAZ-PRAD / CT / SWZ-C / GFL-LIMIT / GFL-BASE; SOL-P1-RI-LTI / BFS-TOPO / THERMAL) | aneks §12.4 (wyłącznie dokumentacja) | USTALENIA I TESTY KONTROLNE; nowe implementacje NIEODEBRANE; prace AB-1b.2 i W6-F NIE są duplikowane | kod ścieżek `api/enm.py`, `czas_wylaczenia_pola.py`, `ocena_nadpradowa.py`, `fault_loop_iec60364.py`, `dynamika/urzadzenia/przeksztaltnik_gfl.py`, `enm/assembler.py`; Siemens 7SJ602 s.33, ABB REX615 |
+| 2026-10-10 | AUDYT-SC-SN-NN (SC-P0-IB / SC-P0-C / SC-P0-SNN / SC-P1-DER-THERMAL) | aneks §12.3 (karta dokumentacyjna) | SPECYFIKACJA I DOWÓD LICZBOWY; implementacja NIEODEBRANA, błędy P0 OTWARTE | `short_circuit_core.py`, `enm/assembler.py`, `fault_scenario.py`, `expected/iec60909_example.json`, `expected/pandapower_iec60909_radial.json`; CI `f58c326a` 6/9 workflowów PASS |
 | 2026-09-22 | AB-0 | (ten dokument) | plan i decyzje zapisane | — |
 | 2026-09-22 | AB-1a (w toku) | — (nie zacommitowane, worktree r10) | warstwy profilu `warstwy/*.yaml` + `operatorzy/*.yaml`, loader z proweniencją i `klasyfikuj_modul`, refaktor solvera PTPiREE (kryteria z profilu, `criterion_source`, T12 wg art. 13 ust. 6, T14/T15 `no_data`, T01 A/B bez certyfikatu, T17 tylko PPM B, kontrakt V2); do dostosowania do kontraktu werdyktu (p. 4–5 karty) i migracji konsumentów | sonda solvera 2026-09-22 (4 moduły A/B/poniżej progu/SPGM) |
 | 2026-09-22 | poprawka „zakaz lakonicznych werdyktów" | `dc9c55f3` | kontrakt `docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`, decyzje O-2′, O-11…O-16, §4, §5, §6, §8 | — |
@@ -966,6 +968,137 @@ w strażniku klasy PL-ZNAKI (karta PL-ZNAKI-2 §0 pkt 1); poprawa wyłącznie po
 (`short_circuit_iec60909.py:985`: „Prąd zwarciowy Thevenina w gałęzi {branch_id}”) i trzy lokalne
 predykaty nazwy w rdzeniach zostawione przez kartę NAZWY-JEDNO-ZRODLO (lista `DOZWOLONE` w
 `tests/enm/test_nazwy_jedno_zrodlo.py`).
+
+## 12.3 Audyt numeryczny zwarć SN–TR–nN (2026-10-10) — korekty P0 do programu Fable
+
+> **Dyspozycja wykonawcza, NIE nowa decyzja O-xx ani zgoda na zmianę B-01.** Źródło: niezależny rachunek liczb na wzorach kodu `main` (`8f7ed3c2`), dwóch fiksturach `tests/golden/parytet_benchmarkow/expected/` oraz odczyt gałęzi Fable `claude/mv-design-pro-twin-audit-u4lhy0-karta-partia7` (`f58c326a`, 2026-10-01). Pozycje SC-P0-* dopisać do rzeczywistej kolejki przed kwalifikacją wyników zwarciowych dla doboru aparatury. Nie podmieniać historycznych danych, nie zmieniać grafu sekwencji AB-*, nie deklarować wykonania na podstawie dokumentu. Karty wykonawcze: `docs/plan/KARTY_OTWARTE_2026-09.md` § „AUDYT-SC-SN-NN”.
+
+### 12.3.1 Ustalenia sprawdzone numerycznie (wejścia jawne, wyrocznia niezależna od funkcji produktu)
+
+| Przypadek | Źródło/dane | Wielkość | Rachunek niezależny | Expected w repo | Kwalifikacja |
+|---|---|---|---:|---:|---|
+| SC-REF-20 | `pandapower_iec60909_radial.json`; 20 kV, idealne źródło, 1 km, R=0,2 Ω/km, X=0,4 Ω/km, c=1,10 | `Ikss` | 28 401,877872 A | 28 401,878 A | zgodność |
+| SC-REF-20 | j.w., κ=1,238667557 | `ip` | 49 752,718561 A | 49 752,719 A | zgodność |
+| SC-REF-20 | j.w., t_k=1 s, m=0,006979908, n=1 | `Ith` | **28 500,826754 A** | **28 500,711 A** | różnica 0,115754 A (4,06 ppm); mieści się w rtol=0,001, ale rozjazd wprowadzić do śladu, NIE dopasowywać tolerancji |
+| SC-REF-33 | `iec60909_example.json`; źródło 110 kV, 4000 MVA, X/R=10; TR 25 MVA 110/33 kV, uk=10%, Pkr=0 | `Ikss3` | 4 563,542872 A | 4 563,543 A | zgodność |
+| SC-REF-33 | j.w.; Z_Q'=0,029798876+j0,297988763 Ω, K_T=0,985849057, Z_k=0,029798876+j4,592347253 Ω | `Ikss2` | 3 952,144059 A | 3 952,144 A | zgodność |
+| SC-REF-33 | j.w.; κ=1,981107376 | `ip3` | 12 785,718774 A | 12 785,719 A | zgodność |
+| SC-REF-33 | j.w.; m=0,512733267, n=1, t_k=1 s | `Ith3` | 5 612,848419 A | 5 612,848 A | zgodność |
+
+**Status źródeł:** `iec60909_example.json` jest *uproszczonym wariantem opracowanym w repo* na podstawie IEC TR 60909-4:2000, a NIE przepisanym pełnym przypadkiem z IEC TR 60909-4:2021. Wyrocznie w tabeli są kontrolą wzorów i wewnętrznej spójności dla metody IEC 60909-0:2016. Nie są potwierdzeniem zgodności z IEC 60909-0:2026. Rachunki powyżej nie stanowią nowego uruchomienia całego backendu ani pandapower.
+
+### 12.3.2 SC-P0-IB — błędna definicja symetrycznego prądu wyłączeniowego
+
+**Pomiar kodu:** `backend/src/network_model/solvers/short_circuit_core.py::compute_post_fault_quantities` oblicza `ib_a = ikss * sqrt(1 + ((kappa - 1) * exp(-tb/Ta)) ** 2)`. W ten sposób do wielkości opisanej w kontrakcie jako *symetryczny prąd wyłączeniowy* wprowadzany jest składnik związany z zanikiem DC. `tb_s=0.1` jest ponadto ustawiane sztywno w `application/solvers/short_circuit_binding.py` (weryfikować również żywą ścieżkę `enm/assembler.py`).
+
+**Test obalający:** SC-REF-33, `t_b=0,1 s`, `T_a=0,490551898 s`, `I''k=4563,542872 A`, `κ=1,981107376`: kod daje `Ib_kod=5844,684014 A`; dla sieci źródła odległego od generatora, bez zaniku składowej symetrycznej, `Ib_sym=I''k=4563,542872 A`. **Błąd +1281,141142 A; +28,0734%.** To nie jest błąd zaokrąglenia ani dopuszczalne udokumentowane odstępstwo. Osobny pomiar `ip` pozostaje poprawny.
+
+**Obowiązek Fable:** nadać P0, wpisać poprawkę rdzenia na JEDNĄ listę B-01 (§12.2) z odrębną zgodą według O-59; rozdzielić `Ib` (symetryczna składowa AC w chwili rozdzielenia styków) od `ip` i składowej DC; dla źródła odległego `Ib=I''k`, dla generatorów synchronicznych bliskich zwarciu i udziału silników — zastosować kwalifikowane współczynniki/zależności zależne od rodzaju źródła i czasu, nie jeden globalny wzór. `t_b` musi mieć jawne źródło w scenariuszu/urządzeniu lub odnotowane założenie; brak danych istotnych dla wyniku doborowego = odmowa autorytetu, nie domyślne 0,1 s.
+
+**Odbiór:** test pierwotnie czerwony → zielony `SC-REF-33 Ib`; tabela {daleko/blisko generatora} × {0,02/0,05/0,1/0,25 s} × {źródło sieci, generator synchroniczny, silnik} z jawnie udokumentowanym zakresem kwalifikacji; mutacje wzoru oraz zabronionego powrotu DC do `Ib`; zero zmian liczb `Ikss/ip` przy poprawie wyłącznie `Ib`, chyba że niezależnie wykazano błąd; parytet White-Box i ResultSet. Dopóki P0 otwarte: `Ib` bez prawa zasilania doboru zdolności wyłączalnej i werdyktu EAZ.
+
+### 12.3.3 SC-P0-C — jedno źródło współczynnika napięciowego dla SN i nN
+
+**Pomiar kodu:** `domain/fault_scenario.py::ShortCircuitConfig` w `main` ma `c_factor=1.10`; `enm/assembler.py::zloz_wejscie_zwarcia` traktuje jawne `c_factor` jako globalne nadpisanie dla wszystkich węzłów. Tym samym automatyczny dobór per pasmo z `network_model/core/voltage_factor.py` może zostać ominięty. **Istniejąca implementacja Fable:** gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-wspolczynnik-c` (HEAD `d98d9e2f` z 2026-09-30) przenosi decyzję do scenariusza MAX/MIN, wprowadza `nadpisanie_c {wartosc,uzasadnienie}` i usuwa stary `c_factor` — nie jest w `main` ani na `karta-partia7`.
+
+**Tabela testów wydania 2016:** SN (>1 kV): MAX `c=1.10`, MIN `c=1.00`; nN (100–1000 V) przy zadeklarowanej tolerancji ±6%: `1.05/0.95`; nN przy ±10%: `1.10/0.90`. Istniejący `voltage_factor.py` koduje tylko nN ±6% i SN — obsługę ±10% oraz wymóg deklaracji/źródła tolerancji dodać bez cichego zgadywania. Przed uznaniem tabeli za wiążącą dla wydania 2026 należy zweryfikować właściwą tabelę w pełnym tekście normy.
+
+**Obowiązek Fable:** wykorzystać i scalić semantycznie istniejącą kartę `karta-wspolczynnik-c`, nie pisać drugiej drogi; zachować kanoniczny przepływ ENM → assembler → rdzeń → dowód; parametr `c` dobierać dla NAPIĘCIA MIEJSCA ZWARCIA, nie całego przypadku, z uwzględnieniem deklaracji tolerancji nN i jawnego źródła decyzji. Test iloczynu: {SN 15 kV, nN 0,4 kV} × {MAX,MIN} × {±6%, ±10%, brak deklaracji} × {brak nadpisania, uzasadnione, nieuzasadnione} × {scenariusz/API/zapis-odczyt/wynik/White-Box}; brak nie może przyjąć domyślnie tolerancji ±6% w przypadku autorytatywnym. Przypiąć negatywny test ścieżki globalnego `c_factor=1.10` nN.
+
+### 12.3.4 SC-P0-SNN — liczbowy test integracyjny całej sieci SN–TR–nN
+
+Wymagana jedna fikstura syntetyczna, bez danych obiektowych, z prawdziwego ENM: GPZ 15 kV, `Sk''Q=165,94 MVA`, `X/R=10`, kabel SN 1,2 km (`r=0,125 Ω/km; x=0,110 Ω/km`), transformator 15/0,4 kV 1000 kVA (`uk=6%; Pkr=10 kW`), odpływ nN Cu 60 m (`r=0,0754 Ω/km; x=0,080 Ω/km`). Źródło jest wyłącznie sieciowe; impedancje linii są syntetyczne (nie udawać karty producenta); brak OZE i silników w tej fiksturze. `c_SN,max=1,10`. Rozdzielić dwa warianty zadeklarowanej tolerancji nN, bez globalnego `c`.
+
+| Punkt | nN ±6%, c_nN,max=1,05 | nN ±10%, c_nN,max=1,10 |
+|---|---:|---:|
+| Koniec kabla SN: `I''k3` | 5796,617372 A | 5796,617372 A |
+| Szyny nN: `I''k3` | 23 279,641664 A | 23 398,960279 A |
+| Koniec odpływu nN: `I''k3` | 14 855,555196 A | 15 164,109097 A |
+| Szyny nN: `ip3` | 52 909,967657 A | 53 185,289123 A |
+| Koniec odpływu nN: `ip3` | 27 328,683243 A | 28 022,910917 A |
+
+Dane pomocnicze do ręcznej kontroli: `Z_Q=(0,148410091+j1,484100907) Ω` po stronie SN; `Z_SN=(0,298410091+j1,616100907) Ω`; `K_T=0,963306028` dla ±6%, `K_T=1,009177744` dla ±10%; `Z_k` na szynach nN odpowiednio `(0,001753492+j0,010267620) Ω` i `(0,001826887+j0,010701829) Ω`. Wyrocznia arytmetyczna, nie nowy wynik uruchomienia backendu.
+
+**Odbiór:** wynik każdego punktu z tego samego `calculation_run_id`; identyczny w LOD 0/1/2; tożsamość węzłów i prądów gałęziowych; aparat OPEN → prąd tego aparatu dokładnie zero i prawidłowa zmiana zasilania/wysp, CLOSED → elektryczny tor rzeczywiście połączony (zależności POLA-W-TORZE i SZYNY-STACJI-LUSTRO); transformator ze składowymi R+jX i korekcją `K_T` z jednego wejścia, nie kopie modelu SN i nN. Weryfikować przekrój/temperaturę kabla osobno, gdy dokumentacja katalogowa jest dostępna. Akceptacja numeryczna dla niezależnych liczb ręcznych: rtol ≤ 1e-4 bez zakrywania znanej rozbieżności; porównać osobno z pandapower i oznaczyć wydanie biblioteki.
+
+### 12.3.5 SC-P1-DER-THERMAL — kontrola wyników zależnych od modelu źródeł i czasu
+
+W `short_circuit_iec60909.py::_compute_fault_result` obecnie `ik_total = ikss_thevenin + ik_inverters` (sumowanie modułów). Nie stwierdzać zgodności fizyki z IEC 60909-0:2026 bez porównania zasad agregacji i kątów wkładów dla PV/BESS/GFL/GFM. Zakwalifikować procedurę składania wkładów dla określonego rodzaju zwarcia i wydania normy; testować przypadki przeciwfazowe/kierunkowe i rozpływ w zaciskach, a nie wyłącznie dodatnie wartości udziałów. `k_sc` bez deklaracji pozostaje `DEFAULT_FORBIDDEN` dla doboru aparatów i EAZ. Nie przyjmować wartości systemowej jako katalogowej. W `short_circuit_core.py::_thermal_mn_factors` przyjęto `n=1` dla całej sieci: dopuszczalne w określonej klasie zwarć odległych od generatora, nie jako domyślna wyrocznia dla generatorów synchronicznych. Rozdzielić `Ith` [A] od `I²t = Ith² · t_k` [A²s] i czasu wyłączenia konkretnej gałęzi; obliczenia doborowe blokować przy braku podstawy modelu `n`.
+
+### 12.3.6 Bramka kwalifikacji IEC 60909-0:2026 i kolejność w istniejącym programie
+
+**Etapy bez naruszania sekwencji AB-***: (1) rozliczenie znanych czerwonych CI na `karta-partia7` (na HEAD `f58c326a`, 2026-10-01: `Python tests`, `Frontend E2E full`, `Frontend checks` = FAIL; wyrocznie pandapower/ANDES = PASS) z dowodem odróżnienia błędów bazy i karty; (2) SC-P0-IB i SC-P0-C przy zachowaniu B-01 oraz istniejącej gałęzi poprawki c; (3) SC-P0-SNN po integracji POLA-W-TORZE i BIEG-ZABEZPIECZEN-Z-MODELU, bez drugiego grafu; (4) SC-P1-DER-THERMAL + G01/G09 i pełna wyrocznia TT/IT/SWZ; (5) macierz *wymaganie normy 2016 → wymaganie 2026 → kod → niezależny wynik → werdykt* oparta na licencjonowanym tekście IEC 60909-0:2026 i IEC TR 60909-4:2021. Testy starego wydania nie uzasadniają etykiety `IEC 60909-0:2026 VERIFIED`.
+
+**Nie wolno ogłosić DONE** bez: kodu w jednej gałęzi integracyjnej, 0 czerwonych regresji na tej bazie, negatywnych testów mutacyjnych, niezależnej wyroczni, śladu White Box A–D z proweniencją oraz świadomej kwalifikacji wydania normy. Zablokować wynik `Ib`, `Ith` i wkłady źródeł dla doboru EAZ/zdolności wyłączalnej, gdy nie mają odpowiedniej podstawy. Nie tworzyć nowego SLD: korzystać z istniejącego renderera kanonicznego i grafu ENM.
+
+## 12.4 Audyt solverów rozpływu, dynamiki i EAZ (2026-10-10) — połączenie z programem Fable
+
+> **Rozszerzenie §12.3 — nie nowa decyzja O-xx i nie zgoda B-01.** Weryfikacja przez odczyt ścieżek kodu gałęzi `claude/mv-design-pro-twin-audit-u4lhy0-karta-partia7` (`f58c326a`), niezależne przeliczenia oraz odniesienia producentów. Nie jest ponownym pomiarem pełnej regresji CI ani potwierdzeniem fizyki całej dynamiki. Karty wykonywalne: `KARTY_OTWARTE_2026-09.md` „AUDYT-SOL-EAZ-RMS”. Fable nie powiela istniejących prac AB-1b.2/AB-1d_min/W5/W6 — integruje je i uzupełnia bramkami.
+
+### 12.4.1 Wyniki i kwalifikacja odpowiedzialności
+
+| Kod | Warstwa | Dowód aktualny i skutek | Klasa | Działanie |
+|---|---|---|---|---|
+| SOL-P0-EAZ-PRAD | `api/enm.py` → `czas_wylaczenia_pola.py` → `wytrzymalosc_aparatury_pol.py` | Endpoint `/enm/wytrzymalosc-aparatury` przyjmuje `ik_ka` i przekazuje **tę samą liczbę do każdego pola**; `i_peak_ka` i `i_thermal_ka` również przyjmowane jako skalary z żądania, bez wymuszonego dowodu pochodzenia z biegu. Prąd CT danego pola może różnić się od `Ik''` punktu. | **P0, ścieżka doborowa** | Bieg źródłowy + prąd zacisku przekładnika i aparatu per pole; tryb ręczny jawnie nieautorytatywny |
+| SOL-P0-EAZ-CT | `application/analyses/protection/ocena_nadpradowa.py::wiarygodnosc_punktu` | Warunek `I <= ALF_n·I1n` sam nadaje status `WIARYGODNY`, bez znamionowego i rzeczywistego obciążenia CT, rezystancji uzwojenia/toru wtórnego ani nasycenia przejściowego. Znamionowy ALF nie jest granicą rzeczywistą dla dowolnego obciążenia. | **P0, fałszywie pewny werdykt EAZ** | ALF rzeczywisty lub `NIEUSTALONA`; rozdzielić analizę ustaloną i przejściową; brak dowodu ≠ WIARYGODNY |
+| SOL-P0-SWZ-C | `network_model/solvers/fault_loop_iec60364.py` + `application/analyses/swz/service.py` | Rzeczywisty konsument SWZ używa twardo `C_MIN_LV=0.95`, `C_MAX_LV=1.05` bez wariantu tolerancji ±10%. Brak obsługi TT/IT jest **jawnie** zgłaszany, nie jest cichym pozytywnym wynikiem. | **P0 tylko dla wariantów, dla których przyjęte c jest błędne; TT/IT luka zakresu** | Wspólne źródło decyzji `c` z SC-P0-C, bez drugiego słownika; pełna walidacja TN/SWZ |
+| SOL-P0-GFL-LIMIT | `dynamika/urzadzenia/przeksztaltnik_gfl.py` oraz istniejąca karta AB-1b.2 §0 S0 | `ogranicz_prad` dotyczy **zadania**, a do sieci podawany jest prąd ze stanów filtrów Tp/Tiq. Udokumentowana sonda Fable: `max|I|/Imax=1.0738` i `1.1407` w badanych kombinacjach (7,38% i 14,07% przekroczenia). Bieżąca gałąź nie zawiera odbioru poprawki. | **P0 fizyki dynamiki GFL** | **Kontynuować AB-1b.2, nie zaczynać drugiego solvera**; twardy niezmiennik `|I(t)| <= Imax` na każdym zaakceptowanym kroku, także L/P i między próbkami |
+| SOL-P0-GFL-BASE | `przeksztaltnik_gfl.py::zadania_pradu` oraz karta AB-1b.2 §0 S1 | Sonda Fable dla `S_n=30 MVA`, `S_b=100 MVA`: odchyłka statyzmu `ΔP=-25 MW` zamiast `-7,5 MW`, `ΔQ=-40 Mvar` zamiast `-12 Mvar`; źródłem jest niespójność bazy urządzenia i systemu. W obecnej funkcji korekta wciąż działa na zadaniu `pu` bez wyraźnego przeliczenia w tym miejscu; odbiór integracyjny otwarty. | **P0, o ile odtworzy się w najnowszym biegu** | Z istniejącą kartą AB-1b.2 przeprowadzić red-test na HEAD, poprawić raz w fabryce/rdzeniu (bez podwójnej korekty), sprawdzić `S_n=S_b` i `S_n≠S_b` |
+| SOL-P1-RI-LTI | `protection_iec60255.py`, `ocena_nadpradowa.py`, `test_protection_iec60255.py` | Rdzeń publiczny nazywa `RI` zależność `120/(M−1)`, czyli **LTI**, podczas gdy prawdziwa RI ma mianownik `0,339−0,236/M`. Aplikacja słusznie mapuje `IEC_LI→RI` *po stałych*, więc nie wolno zgłaszać błędu czasu dla produkcyjnego `IEC_LI` bez nowej reprodukcji; błąd jest w identyfikacji publicznej `RI` i samopotwierdzających testach. | **P1: nazwa, kontrakt, zakres zastosowania; P0 gdy wykryty żywy konsument prawdziwej RI** | Rozdzielić `IEC_LTI` i `RI`, sprawdzić konsumentów, test z zewnętrznej karty Siemens/ABB; zmiana rdzenia wyłącznie B-01 |
+| SOL-P1-BFS-TOPO | `power_flow_unbalanced.py` i `enm/assembler.py` | **KOREKTA AUDYTU:** BFS ma konsumenta produkcyjnego `canonical_analysis::_execute_power_flow_unbalanced`; assembler prawidłowo przekazuje `S_{b,faza}=S_b/3` i `U_{b,faza}=U_{LL}/√3` (linie 2014–2045). Nie wolno twierdzić o błędzie ×3 na tym torze. Sam BFS wybiera drzewo przeglądem wszerz, więc otwarty pozostaje dowód jawnej odmowy pierścienia i odłączonej wyspy oraz jakość danych fazowych. | **P1: ograniczenia i niezależna wyrocznia** | Test pierścienia i bazy per faza, kontrakt jednostek, IEEE 13/34 z niezależną wyrocznią; zależność W5 |
+| SOL-P1-THERMAL | `czas_wylaczenia_pola.py`, `wytrzymalosc_aparatury_pol.py`, `wytrzymalosc_cieplna_przewodow.py` | Gdy brak czasu własnego wyłącznika, `czas_wylaczenia_pola.py` przyjmuje `t_clearing = t_nastawy` z kodem gotowości. Weryfikator aparatu nadal może liczyć werdykt na tym czasie, a czas ochrony linii może przejść na jawne globalne założenie. To dopuszczalne jako **wariant założeniowy**, lecz nie jako bezwarunkowy dowód doborowy. | **P1/P0 zależnie od statusu użycia** | Oddzielić `OCENA_WARIANTOWA` od `DOWOD_DOBOROWY`; brak rzeczywistego czasu pełnego wyłączenia blokuje PASS autorytatywny |
+
+### 12.4.2 Rachunki obalające — nie zastępują testu backendu
+
+- **EAZ — niewłaściwy prąd przez CT.** Charakterystyka IEC normalnie odwrotna `t=0.14·TMS/(M^0.02−1)`, `TMS=0.10`, `Is=500 A`: przy rzeczywistym prądzie pola 1000 A `t=1.002902702 s`; po podstawieniu całkowitego prądu zwarcia 5000 A `t=0.297059862 s`. Błąd czasu **−70,38%**. Wartości prądów są ilustracyjne; defekt polega na źródle wejścia do rzeczywistej ścieżki.
+- **CT ALF rzeczywisty.** Przykład analityczny 5P10, 200/5 A, `S_n=10 VA`, `R_ct=0.15 Ω`, `S_actual=20 VA` (uproszczone obciążenie rezystancyjne): `R_n=10/5²=0.4 Ω`, `R_actual=20/5²=0.8 Ω`, `ALF_actual≈10(0.15+0.4)/(0.15+0.8)=5.78947`, granica dokładności `≈1157.9 A`, zamiast wartości znamionowej `2000 A`. Dla 1500 A obecna funkcja oznaczyłaby `WIARYGODNY` mimo braku wykazania dokładności rzeczywistej. Nie oznacza to automatycznego dowodu nasycenia w konkretnej chwili: model przejściowy wymaga dalszych parametrów. Podstawa producenta: ABB REX615 Technical Manual, „Current-transformer requirements for transformer differential protection” (rzeczywisty ALF z obciążenia).
+- **SWZ — pasmo nN.** `U0=230 V, |Zs|=0.35 Ω`: kod `Ik_min=0.95·230/0.35=624.286 A`; dla zadeklarowanego nN ±10% `0.90·230/0.35=591.429 A`; **+32.857 A, +5.556%**. Odrębnie poprawić temperaturę R toru, nie maskować różnicy między pasmem a temperaturą.
+- **RI vs LTI.** `M=4`, `TMS=0.10`: bieżący `IEC60255CurveType.RI` daje `t=0.10·120/(4−1)=4.000 s` (LTI), natomiast `RI` wg Siemens 7SJ602, tabela charakterystyk na s. 33, to `t=0.10/(0.339−0.236/4)=0.357143 s`. Wynik `IEC_LI` pozostaje prawidłowy jako LTI — zmienić nazwę/typ, nie stałe pod nią bez oceny wpływu.
+
+### 12.4.3 Stan pozostałych rodzin — bez przedwczesnych FAIL
+
+- **NR/GS/FD i OLTC:** kod i testy istnieją; na potrzeby tego audytu nie wykazano nowego błędu liczbowego. Odbiór = niezależny benchmark SN+nN z przełączaniem PV→PQ, limitami Q, zaczepami, pierścieniem NOP, stratami i bilansem KCL/KVL; nie mylić „test przechodzi” z wyrocznią fizyczną. Rdzenie NR/GS/FD należą do B-01.
+- **Rozpływ niesymetryczny:** assembler fazowy jest realnym konsumentem solvera BFS i jawnie oblicza bazy fazowe. Występują niedostatecznie pokryte przypadki oczkowe, składowej zerowej i rzeczywistych odbiorów jednofazowych; bez nowego benchmarku nie wydawać wyroku o błędzie liczbowym.
+- **WLS:** na badanej gałęzi `_chi_square_threshold` stosuje `scipy.stats.chi2.ppf` bez ukrytej aproksymacji — pozycja wcześniejszej karty B-01 wykonana. Wymagana niezależna weryfikacja obserwowalności, złych danych, wrażliwości i progu χ², ale nie zgłaszano nowego P0.
+- **Dynamika RMS:** istnieje silnik DAE, trapez niejawny, jawny RK4 diagnostyczny, model maszyny synchronicznej 6. rzędu, GFL, GFM i automat zdarzeń. Testy ANDES są dodatnie dla wybranych maszyn/SMIB. Dla GFL/GFM/BESS/wiatru brak pełnej niezależnej wyroczni; obowiązuje `UNVALIDATED_MODEL` i istniejąca karta W6-F/AB-1d_min. Sukces CI na wyroczni ANDES **nie waliduje wszystkich rodzin**.
+- **Zabezpieczenia:** funkcje 50/51 z nastawami z ENM i przekładnią CT mają realny kod; 50N/51N/67/67N w `ocena_nadpradowa.py` są wyraźnie nieoceniane (odmowy, nie fikcja). G01/G09 i model EAZ składowej zerowej pozostają niedokończone. Należy odrębnie wykazać prądy przez zaciski po obu stronach TR, nasycenie CT i margines koordynacji z rzeczywistym czasem aparatu.
+
+### 12.4.4 Zasady wykonania / bramki Fable
+
+Kolejność bez restartu: **(1)** odczyt i odbiór AB-1b.2 S0/S1 oraz W6-F, **(2)** P0 EAZ prąd pola + CT i SWZ c, **(3)** fizyka GFL prąd rzeczywisty/statyzm w już istniejącej karcie, **(4)** LTI/RI i pozostałe P1 wraz z testami, **(5)** scalony bieg SN–TR–nN–PV/BESS–EAZ oraz niezależny dowód. Przed autorytatywnym wynikiem aparatu: jeden `run_id`, graf ENM, prąd właściwego CT, nastawy zabezpieczenia, czas otwarcia aparatu, podstawa ALF rzeczywistego i jawny status danych. Brak któregokolwiek źródła = nieprzyjęty dowód, nie fikcyjny PASS. GFL nie osiąga `VALIDATED` bez wyroczni dla swojej rodziny i testów granicznych. Zmiany rdzeni `protection_iec60255.py`, `power_flow_unbalanced.py` (sprawdzić listę B-01), NR/GS/FD — zgodnie z `scripts/rdzenie_b01.py`; żadnych alternatywnych solverów omijających bramkę.
+
+## 12.5 KSR — przekrojowy projekt konfiguracji stacji SN/nN i OZE/BESS (2026-10-11, WPIS DO PROGRAMU FABLE)
+
+> **Status:** POTWIERDZONE W KODZIE / DO ZAPROJEKTOWANIA I WYKONANIA; nie DONE. To rozszerzenie programu Fable, nie nowy produkt i nie zmiana decyzji O-xx. Wykonawczy prompt z pełnym zakresem i kontraktem: `docs/prompts/PROMPT_FABLE_KSR_STACJE_OZE_BESS_2026-10-11.md`. Karty i testy: `docs/plan/KARTY_OTWARTE_2026-09.md` §„KSR-STACJE-OZE-BESS” oraz KSR-G01…G14 w audycie na gałęzi PR #478. PR #478 nie jest scalony do tej bazy, PR #477 jest TYLKO dokumentacją. **Nie scalać PR #478 bez adwersaryjnego testu na gałęzi Fable.**
+
+### 12.5.1 Dowody z istniejącej gałęzi Fable (`karta-partia7`) i obszary błędów
+
+| Karta | Punkt w kodzie (odczyt na bazie `karta-partia7`) | Problem kwalifikacyjny | Kolizja / istniejąca praca |
+|---|---|---|---|
+| **KSR-P0-ZAPIS** | `api/switchgear_config.py:120-126, 207-217` trzyma `_config_store` w pamięci; `api/audit2_station_config.py:98-124` zapisuje ORM; `api/main.py:139,192` rejestruje obie trasy | brak jednej trwałej tożsamości stacji i gwarancji odczytu po restarcie | W1/CV-4, `ENDPOINTY-BEZ-KONSUMENTA`; nie dodawać nowego repozytorium konfiguracji |
+| **KSR-P0-POLA** | `domain/switchgear_config.py:399-449` uzależnia wyposażenie od samej roli, wymusza `CB` również dla pól liniowych/TR; `:638-669` wymaga TR w TYM polu PV/BESS | niepoprawna kwalifikacja realnego rozłącznika/RMU i rzeczywistej drogi SN–TR–nN | `POLA-W-TORZE`, W5-B, `SIEC-ZLOTA-KATALOG`; katalogowy `CompleteMvBayTemplate` i `add_sn_bay_from_catalog` już istnieją |
+| **KSR-P0-ZRODLA** | `application/station_templates/templates/hybrydowe.py:58` nie przenosi `pv_count,bess_count`; `apply.py:502-505,1211-1221` rozdziela naprzemiennie jednostki | liczba PV/BESS różna od opisu szablonu, mocy TR i podglądu | **PR #478** (wersja robocza, nieprzyjęta), `O-53b`, `GOTOWOSC-DER-BACKEND`, SC-P1-DER-THERMAL |
+| **KSR-P0-DANE** | `application/station_templates/apply.py:229`: `grounding=isolated`; `:322`: `or 0.4` gdy brak wtórnego `U_n` TR | brak jawnej podstawy do obliczenia doziemnego i walidacji napięcia nN | W5, `CICHE-ZERO`, SC-P0-C / SOL-P0-SWZ-C |
+| **KSR-P1-BESS-EAZ** | `enm/models.py:571+` (Generator), `network_model/solvers/dynamika/urzadzenia/magazyn.py` oraz `application/analyses/protection/` już istnieją | dowieść połączenia PCS/SOC/PCC z rzeczywistym pomiarem CT/VT, działaniem EAZ i zakresem ważności modelu | AB-1b.2, W6-F, `BIEG-ZABEZPIECZEN-Z-MODELU`, SOL-P0-EAZ-CT/PRAD |
+| **KSR-P1-SLD-RAPORT** | `frontend/src/ui/sld/v3/canvas/SldCanvasV3.tsx`, `scene/buildScene.ts` i eksporty; rzeczywisty ENM jest źródłem sceny | podgląd, schemat, wyniki i dokument muszą opisywać TEN SAM układ elektryczny | `SLD-SUBSTRAT`, SC-P0-SNN, B-02 |
+
+**Granice dowodu:** testy PR #478 są wymagane; brak niezależnego odbioru całej gałęzi. Weryfikacja kodu na czubku Fable po odbiorze pozostałych prac może zmienić status każdej pozycji. Nie przenoś daty pomiaru z października na historyczny wrzesień.
+
+### 12.5.2 Decyzje projektowe, które Fable musi podjąć PRZED zmianą modelu
+
+1. Ustal jednego właściciela konfiguracji i trwałości: porównaj trzy kierunki opisane w prompcie KSR (operacje ENM / agregat ENM / projekcja edycyjna z jedną materializacją). Przed decyzją zidentyfikuj wszystkich konsumentów obu API, ich zapis, autoryzację projektu i następstwa migracji/likwidacji prototypowego `_config_store`.
+2. Zdefiniuj od producenta do portu: `Manufacturer → SwitchgearFamily → FactoryConfiguration/CompleteMvBayTemplate → DeviceInstance → Bay → Port → ConnectionNode → ENM`. Sprawdź dostępne pola/typy zamiast tworzenia nowej, konkurencyjnej taksonomii; aparatura i fizyczna łączność mają pochodzić z rzeczywistych katalogów i operacji.
+3. Rozdziel tryb INWENTARYZACJI sieci istniejącej od PROJEKTOWANIA nowej stacji i OZE/BESS od PCC; różny autorytet danych, lecz jeden model.
+4. Przygotuj macierz propagacji zmiany: `katalog/TR/PCS/SOC/styk/sekcja/PCC → ENM → inwalidacja StudyRun → PF/SC/EAZ/RMS → SLD V3 → White Box A–D → PDF/DOCX`. Każda zmiana fizyki w rdzeniu wymaga B-01, zmiana grafiki schematu i jej akceptacja wymagają B-02.
+5. Udowodnij kompatybilność z W5 `LvDomainProjectionV1`, W4 i polami `Bay`; zakaz drugiego grafu i osobnego solwera w kreatorze. Parametry katalogowe brakujące/niezweryfikowane muszą pozostać jawnie niekompletne.
+
+### 12.5.3 Odbiór i graf zależności (nie nowa sekwencja AB)
+
+**Fala weryfikacji:** identyfikacja aktualnej bazy i testów PR #478 → wybór kierunku architektonicznego → prace P0 trwałość/pola/DER/dane na tej samej gałęzi integracyjnej → P1 BESS/EAZ/SLD/raport → jeden test całej drogi. Fable może delegować rozłączne karty równolegle zgodnie z `ORKIESTRACJA_AGENTOW.md`; nie czekać z klasami zależnymi do osobnego nieokreślonego programu.
+
+**Zależności:** `W1, CV-4 → KSR-P0-ZAPIS`; `KSR-P0-ZAPIS + POLA-W-TORZE + W5-B → KSR-P0-POLA`; `KSR-P0-POLA + O-53b + PR #478 (po odbiorze) → KSR-P0-ZRODLA`; `W5 + CICHE-ZERO + SC-P0-C → KSR-P0-DANE`; `KSR-P0-ZRODLA + BIEG-ZABEZPIECZEN-Z-MODELU + AB-1b.2 + W6-F → KSR-P1-BESS-EAZ`; `SLD-SUBSTRAT + SC-P0-SNN + wszystkie KSR-P0 → KSR-P1-SLD-RAPORT`.
+
+**Definition of Done:** warianty stacji i technologii z testów KSR-G01…G14 przechodzą przez *rzeczywisty* HTTP → ENM → zapis/odczyt między procesami → solwer z niezależną wyrocznią → EAZ z prądem zacisku → SldCanvasV3 (LOD 0/1/2) → raport z proweniencją; brak ukrytych nastaw/rodzajów łącznika/napięć/neutralnego; testy negatywne mutacyjne odrzucają uszkodzoną topologię. Wszystkie statusy obliczeniowe i wersje norm są jawne. B-02 tylko po werdykcie właściciela, B-01 tylko po właściwej decyzji. Nie deklarować DONE na podstawie obecności kodu lub CI bez wyroczni.
 
 ## 13. Strażnik zależności planu (O-35)
 
