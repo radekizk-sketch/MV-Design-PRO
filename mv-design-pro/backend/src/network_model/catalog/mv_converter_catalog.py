@@ -129,6 +129,9 @@ def _converter_record(
     # Optional flicker emission coefficient c(psi_k) [-], > 0. Added to params
     # only when provided so records without it stay byte-identical.
     flicker_c: float | None = None,
+    # Tor maszyny turbiny wiatrowej (`types.POLA_TORU_MASZYNY`) — klucze WYŁĄCZNIE
+    # podane (pozycje bez toru maszyny bajtowo identyczne).
+    tor_maszyny: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
         "kind": kind,
@@ -181,6 +184,8 @@ def _converter_record(
         ]
     if flicker_c is not None:
         params["flicker_c"] = flicker_c
+    if tor_maszyny:
+        params.update({k: v for k, v in tor_maszyny.items() if v is not None})
     return {"id": item_id, "name": name, "params": params}
 
 
@@ -869,6 +874,265 @@ CONVERTER_WIND_NN: list[dict[str, Any]] = [
         name_prefix="Falownik FW",
     )
 ]
+
+
+# -----------------------------------------------------------------------------
+# Vestas V112 — tor maszyny z dokumentów producenta (karta KATALOG-TURBINY-TOR-V112)
+# -----------------------------------------------------------------------------
+#
+# Tor: generator (PMSG 710 V albo klatkowy 750 V, częstotliwość zmienna) → przekształtnik
+# pełnej mocy → AC 650 V (`un_kv`) → transformator blokowy 0,65 kV/SN → rozdzielnica SN.
+# `un_kv` jest stroną SIECI przekształtnika — z nią wiąże się uzwojenie nN transformatora
+# blokowego (`der.inverter_voltage_mismatch`); napięcie stojana nie wchodzi do solwerów.
+# Moc turbiny (`pmax_mw`) ≠ moc generatora (`generator_rated_power_mw`).
+# Udział zwarciowy (`k_sc`): dokumenty podają wyłącznie domyślną NASTAWĘ regulatora prądu
+# biernego przy zapadzie (1 pu prądu znamionowego, rozdz. 9.6.1) — to nie jest
+# deklaracja maksymalnego prądu zwarciowego wg IEC 60909-0, więc pole zostaje puste;
+# konsument zwarć nazywa brak (`inverter.k_sc_default_forbidden`, wynik ROBOCZY).
+# Profil dynamiczny: dokumenty go nie podają — pole puste (dynamika odmawia jawnie).
+
+_ZRODLO_VESTAS_V112_3_0 = (
+    PREFIKS_KOPII_KARTY + "Vestas Wind Systems A/S, „General Specification V112-3.0 MW 50/60 "
+    "Hz”, dok. 0011-9181 V03, 2010-11-29: rozdz. 1 (str. 5), rozdz. 3.1 tab. 3-1 i rozdz. 3.2 "
+    "tab. 3-2 (str. 11–12), rozdz. 9.4 rys. 9-1 (str. 26); kopia: "
+    "https://docs.wind-watch.org/Vestas-specs-V112-3MW.pdf (dostęp 2026-10-15)"
+)
+_ZRODLO_VESTAS_V112_3_3 = (
+    PREFIKS_KOPII_KARTY + "Vestas Wind Systems A/S, „General Specification V112-3.3 MW”, "
+    "dok. 0034-7282 V04, 2013-04-04: rozdz. 1 (str. 5), rozdz. 3.1 tab. 3-1 (str. 11), "
+    "rozdz. 3.2 tab. 3-2 (str. 11–12), rozdz. 9.4 rys. 9-2 (str. 27–28) — załącznik "
+    "dokumentacji Maine DEP (Bingham Wind), str. PDF 146–147 i 162–163; kopia: "
+    "https://www.maine.gov/dep/ftp/WindPowerProjectFiles/BinghamWind/archive/"
+    "review_documents/Bingham_MDEP_NRPA_Mod_Summary_111413.pdf (dostęp 2026-10-15)"
+)
+_DOKUMENT_DNV_V112_3_45 = (
+    "deklaracja zgodności DNV GL DE-DNVGL-SE-0074-02109-0, zał. 1 s. 4/5, wg dokumentacji "
+    "projektu (Étude de dangers, https://www.pas-de-calais.gouv.fr/contenu/telechargement/"
+    "34741/224250/file/5.2_Etude_de_dangers.pdf) — dokument nieodczytany (pobranie odrzucone "
+    "przez serwer 2026-10-15), dane podane przez właściciela"
+)
+
+#: Pola karty turbiny wypełnione z dokumentu — jakość ESTIMATED (kopia u strony trzeciej
+#: albo deklaracja nieodczytana), jedna lista dla trzech pozycji z dokumentów Vestas.
+_POLA_KARTY_TURBINY_V112: tuple[str, ...] = (
+    "un_kv",
+    "sn_mva",
+    "pmax_mw",
+    "cosphi_min",
+    "cosphi_max",
+    "manufacturer",
+    "model",
+    "generator_machine_type",
+    "converter_topology",
+    "generator_rated_power_mw",
+    "generator_stator_voltage_kv",
+    "generator_stator_frequency_max_hz",
+    "converter_machine_side_voltage_kv",
+)
+
+
+def _pola_obecne(pola: tuple[str, ...], *, nieobecne: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(p for p in pola if p not in nieobecne)
+
+
+CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
+    _converter_record(
+        item_id="vestas_v112_3_0mw_pmsg",
+        name="Vestas V112-3.0 MW (PMSG 710 V) / 0,65 kV",
+        kind="WIND",
+        un_kv=0.65,
+        sn_mva=3.8,
+        pmax_mw=3.075,
+        qmin_mvar=None,
+        qmax_mvar=None,
+        cosphi_min=0.87,
+        cosphi_max=1.0,
+        manufacturer="Vestas",
+        model="V112-3.0 MW",
+        source_reference=_ZRODLO_VESTAS_V112_3_0,
+        verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        note=(
+            "Kopia dokumentu producenta: moc znamionowa turbiny 3,075 MW (rozdz. 1); "
+            "generator synchroniczny z magnesami trwałymi P_N = 3,3 MW, S_N = 3880 kVA "
+            "(cos φ 0,85), f_N = 145 Hz, stojan 3 × 710 V przy 1450 obr./min, gwiazda "
+            "(tab. 3-1); przekształtnik pełnej mocy S_N = 3800 kVA, strona sieci 650 V, "
+            "strona generatora 710 V, I_N = 3440 A (tab. 3-2); zdolność bierna cos φ = 0,87 "
+            "poj./ind. po stronie nN transformatora (rys. 9-1). Moc biernej w Mvar dokument nie "
+            "podaje (pola puste). Udział zwarciowy i profil dynamiczny — brak w dokumencie. "
+            "Wykluczona z doboru szablonu do czasu dokumentu z kanału producenta."
+        ),
+        card_field_status=_status_pol_kopii(_ZRODLO_VESTAS_V112_3_0, pola=_POLA_KARTY_TURBINY_V112),
+        tor_maszyny={
+            "generator_machine_type": "PMSG",
+            "converter_topology": "FULL_CONVERTER",
+            "generator_rated_power_mw": 3.3,
+            "generator_stator_voltage_kv": 0.71,
+            "generator_stator_frequency_max_hz": 145.0,
+            "converter_machine_side_voltage_kv": 0.71,
+        },
+    ),
+    _converter_record(
+        item_id="vestas_v112_3_3mw_pmsg",
+        name="Vestas V112-3.3 MW wariant 1 (PMSG 710 V) / 0,65 kV",
+        kind="WIND",
+        un_kv=0.65,
+        # Dokument nie podaje mocy pozornej przekształtnika — wartość wyprowadzona z mocy
+        # znamionowej turbiny i najmniejszego cos φ wykresu 9-2: 3,3 MW / 0,863 = 3,824 MVA
+        # (jakość ESTIMATED z tą notą, nie dana karty).
+        sn_mva=3.824,
+        pmax_mw=3.3,
+        qmin_mvar=None,
+        qmax_mvar=None,
+        cosphi_min=None,
+        cosphi_max=1.0,
+        manufacturer="Vestas",
+        model="V112-3.3 MW",
+        source_reference=_ZRODLO_VESTAS_V112_3_3,
+        verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        note=(
+            "Kopia dokumentu producenta, alternatywa 1 generatora: synchroniczny z magnesami "
+            "trwałymi, f_N 0–200 Hz, stojan 3 × 710 V przy prędkości znamionowej, 12 biegunów, "
+            "gwiazda (tab. 3-1); przekształtnik pełnej mocy, strona sieci 650 V, strona "
+            "generatora do 710 V zależnie od prędkości (rozdz. 3.2); moc znamionowa turbiny "
+            "3,3 MW (rozdz. 1). Zdolność bierna niesymetryczna: cos φ = 0,863 przy "
+            "przewzbudzeniu i 0,933 przy niedowzbudzeniu po stronie nN transformatora "
+            "(rys. 9-2) — kontrakt ma jedno pole cos φ_min, więc zostaje puste. S_n "
+            "wyprowadzona (3,3 / 0,863), nie z karty. Mocy znamionowej generatora dokument nie "
+            "podaje. Udział zwarciowy i profil dynamiczny — brak w dokumencie. Wykluczona "
+            "z doboru szablonu do czasu dokumentu z kanału producenta."
+        ),
+        card_field_status={
+            **_status_pol_kopii(
+                _ZRODLO_VESTAS_V112_3_3,
+                pola=_pola_obecne(
+                    _POLA_KARTY_TURBINY_V112,
+                    nieobecne=("sn_mva", "cosphi_min", "generator_rated_power_mw"),
+                ),
+            ),
+            "sn_mva": {
+                "field_name": "sn_mva",
+                "quality": "ESTIMATED",
+                "source_ref": _ZRODLO_VESTAS_V112_3_3,
+                "note": "wyprowadzona: P_n 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
+                "podaje mocy pozornej przekształtnika",
+            },
+        },
+        tor_maszyny={
+            "generator_machine_type": "PMSG",
+            "converter_topology": "FULL_CONVERTER",
+            "generator_stator_voltage_kv": 0.71,
+            "generator_stator_frequency_max_hz": 200.0,
+            "converter_machine_side_voltage_kv": 0.71,
+        },
+    ),
+    _converter_record(
+        item_id="vestas_v112_3_3mw_scig",
+        name="Vestas V112-3.3 MW wariant 2 (generator klatkowy 750 V) / 0,65 kV",
+        kind="WIND",
+        un_kv=0.65,
+        sn_mva=3.824,
+        pmax_mw=3.3,
+        qmin_mvar=None,
+        qmax_mvar=None,
+        cosphi_min=None,
+        cosphi_max=1.0,
+        manufacturer="Vestas",
+        model="V112-3.3 MW",
+        source_reference=_ZRODLO_VESTAS_V112_3_3,
+        verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        note=(
+            "Kopia dokumentu producenta, alternatywa 2 generatora: asynchroniczny klatkowy, "
+            "f_N 0–100 Hz, stojan 3 × 750 V przy prędkości znamionowej, 4/6 biegunów, gwiazda "
+            "albo trójkąt (tab. 3-1), za przekształtnikiem pełnej mocy — strona sieci 650 V "
+            "(rozdz. 3.2). Napięcie przekształtnika po stronie generatora: dokument podaje "
+            "„do 710 V” wspólnie dla obu alternatyw, co przeczy stojanowi 750 V alternatywy 2 — "
+            "pole zostaje puste (sprzeczność dokumentu, nie wybór). Zdolność bierna i S_n — jak "
+            "w alternatywie 1 (rys. 9-2; S_n wyprowadzona 3,3 / 0,863). Udział zwarciowy "
+            "pochodzi z przekształtnika, nie z impedancji maszyny klatkowej; dokument go nie "
+            "deklaruje. Wykluczona z doboru szablonu do czasu dokumentu z kanału producenta."
+        ),
+        card_field_status={
+            **_status_pol_kopii(
+                _ZRODLO_VESTAS_V112_3_3,
+                pola=_pola_obecne(
+                    _POLA_KARTY_TURBINY_V112,
+                    nieobecne=(
+                        "sn_mva",
+                        "cosphi_min",
+                        "generator_rated_power_mw",
+                        "converter_machine_side_voltage_kv",
+                    ),
+                ),
+            ),
+            "sn_mva": {
+                "field_name": "sn_mva",
+                "quality": "ESTIMATED",
+                "source_ref": _ZRODLO_VESTAS_V112_3_3,
+                "note": "wyprowadzona: P_n 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
+                "podaje mocy pozornej przekształtnika",
+            },
+        },
+        tor_maszyny={
+            "generator_machine_type": "SCIG",
+            "converter_topology": "FULL_CONVERTER",
+            "generator_stator_voltage_kv": 0.75,
+            "generator_stator_frequency_max_hz": 100.0,
+        },
+    ),
+    # Identyfikator dawnej karty turbiny (`wind_turbines.catalog`, skasowany model
+    # równoległy) ZACHOWANY — migracja kontrolowana do jedynego typu turbiny w ścieżce
+    # użytkownika. Dawne 0,69 kV „napięcia generatora” było fałszywe (generator 750 V,
+    # przekształtnik 650 V), a 1,2/1,1 pu zwarcia nie miały źródła — nie przeniesione.
+    _converter_record(
+        item_id="vestas_v112_3_45mw",
+        name="Vestas V112-3.45 MW (generator klatkowy 750 V) / 0,65 kV",
+        kind="WIND",
+        un_kv=0.65,
+        sn_mva=4.4,
+        pmax_mw=3.45,
+        qmin_mvar=None,
+        qmax_mvar=None,
+        cosphi_min=None,
+        cosphi_max=None,
+        manufacturer="Vestas",
+        model="V112-3.45 MW",
+        source_reference=_zrodlo_deklarowane(_DOKUMENT_DNV_V112_3_45),
+        verification_status=CatalogVerificationStatus.NIEWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        note=(
+            "Deklaracja (dokument nieodczytany): turbina 3450 kW, wirnik 112 m; generator "
+            "asynchroniczny klatkowy VND SFIG V2 – DASG 560/6M, 750 V, 1450 obr./min, "
+            "izolacja H, IP54; przekształtnik pełnej mocy Vestas — strona generatora 750 V AC, "
+            "strona sieci 650 V AC, S_n 4,4 MVA, U_DC 1150 V, 50/60 Hz po stronie sieci. "
+            "Transformator blokowy tej konfiguracji (suchy 4000 kVA, 0,65/33 kV, Dyn5) nie "
+            "wchodzi do katalogu: 33 kV nie jest napięciem sieci polskiej, a deklaracja nie "
+            "podaje u_k ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy "
+            "i profil dynamiczny — brak w deklaracji (pola puste)."
+        ),
+        card_field_status=_reference_card_field_status(
+            datasheet_ref=_DOKUMENT_DNV_V112_3_45,
+            rating_fields=_pola_obecne(
+                _POLA_KARTY_TURBINY_V112,
+                nieobecne=(
+                    "cosphi_min",
+                    "cosphi_max",
+                    "generator_rated_power_mw",
+                    "generator_stator_frequency_max_hz",
+                ),
+            ),
+        ),
+        tor_maszyny={
+            "generator_machine_type": "SCIG",
+            "converter_topology": "FULL_CONVERTER",
+            "generator_stator_voltage_kv": 0.75,
+            "converter_machine_side_voltage_kv": 0.75,
+        },
+    ),
+]
+CONVERTER_WIND_NN.extend(CONVERTER_WIND_NN_VESTAS_V112)
 
 
 # =============================================================================

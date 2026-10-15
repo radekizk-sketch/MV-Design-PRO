@@ -67,7 +67,13 @@ from tests.dziedziny import fabryki as f
 #: bess_battery_types 2 i load_types 3 — wyłącznie source_reference. Żadna liczba nie
 #: zmieniła się w żadnej istniejącej pozycji. Poprzednia wartość:
 #: af5870bada5cec0c5e006883de568982ba1c2874335a50200426444791a563f0.
-ODCISK_SPRZED_KARTY = "001314a4d39aaad8faedd59a538eb8a06888ac2b4305776208247d2a4ee425cc"
+#: Karta KATALOG-TURBINY-TOR-V112 (2026-10-15): dowód liść po liściu (baza `2dc3c7044` vs
+#: drzewo): converter_types +4 (Vestas V112-3.0 PMSG, V112-3.3 PMSG, V112-3.3 klatkowy,
+#: V112-3.45 klatkowy — tor maszyny jako pola addytywne `POLA_TORU_MASZYNY`, poza odciskiem
+#: pozycji, które ich nie niosą), transformer_types +18 (blokowe 0,65 kV); 0 zmienionych
+#: pozycji istniejących. Poprzednia wartość:
+#: 001314a4d39aaad8faedd59a538eb8a06888ac2b4305776208247d2a4ee425cc.
+ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636f0cae56"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -111,7 +117,7 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
 def test_pole_skasowane_zostaje_w_zrzucie_jako_null() -> None:
     zrzut = zrzut_kanoniczny(get_default_mv_catalog())
     przeksztaltniki = zrzut["converter_types"]
-    assert len(przeksztaltniki) == 188
+    assert len(przeksztaltniki) == 192
     assert all(p["harmonic_spectrum_percent"] is None for p in przeksztaltniki.values())
 
 

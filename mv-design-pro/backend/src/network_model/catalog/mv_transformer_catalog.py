@@ -1321,7 +1321,8 @@ TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
 #
 # Napiecia strony nN: napiecia wyjsciowe falownikow z kart producentow w katalogu
 # przeksztaltnikow (0,385 kV — SMA SC 2200; 0,434 kV — SMA SC 2475; 0,48 kV — Tesla
-# Megapack 2 XL; 0,69 kV — typowe wyjscie turbin i PCS; 0,8 kV — Huawei
+# Megapack 2 XL; 0,65 kV — strona sieci przeksztaltnika Vestas V112, General Specification
+# 0011-9181 i 0034-7282 tab. 3-2; 0,69 kV — typowe wyjscie turbin i PCS; 0,8 kV — Huawei
 # SUN2000-330KTL-H1) oraz napiecia referencyjnych
 # modeli obliczeniowych (0,5 i 1,0 kV). Wszystkie <= 1,1 kV, wiec tab. I.2 bez korekty I.3.
 # Wykonanie suche (zywiczne): jedyna karta producenta transformatora blokowego w zrodlach
@@ -1330,13 +1331,18 @@ TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
 #
 # Moce > 3150 kVA (dawne 4,0/5,0 MVA): rozporzadzenie podaje dla nich tylko minimalny PEI
 # (tab. I.4/I.5), z ktorego P0 i Pk osobno wyznaczyc sie nie da — pozycji brak (zablokowane
-# danymi). Strona dolna SN (dawne 3,15/6,0/6,3 kV): pulapy P0/Pk dalyby sie wyznaczyc
+# danymi). Transformatory blokowe turbin Vestas V112 (3450 kVA 10–35/0,65 kV Dyn5 — dok.
+# 0011-9181 tab. 3-3; 3750 kVA 11,1–22/0,65 kV Dyn5 — dok. 0034-7282 tab. 3-3) maja
+# w dokumentach u_k i straty, ale zgodnosci z Tier 2 powyzej 3150 kVA (minimalny PEI
+# tab. I.5) nie da sie ocenic bez tabeli, ktorej repozytorium nie cytuje, a 4000 kVA
+# 0,65/33 kV (deklaracja DNV V112-3.45) nie podaje u_k ani strat i ma 33 kV — pozycji
+# brak (zablokowane danymi). Strona dolna SN (dawne 3,15/6,0/6,3 kV): pulapy P0/Pk dalyby sie wyznaczyc
 # (tab. I.3: +10 % P0, +10 % Pk dla drugiego uzwojenia Um > 1,1 kV), ale zadne zrodlo
 # w materialach nie podaje u_k ani i0 transformatora SN/SN (seria GEAFOL obejmuje tylko
 # strone nN; IEC 60076-5 tab. 1 nieodczytana) — pozycji brak (zablokowane danymi), zamiast
 # dawnego szacunku bez zrodla.
 
-_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.48, 0.5, 0.69, 0.8, 1.0)
+_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.48, 0.5, 0.65, 0.69, 0.8, 1.0)
 _MOCE_BLOKOWYCH_KVA: tuple[int, ...] = (500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150)
 
 

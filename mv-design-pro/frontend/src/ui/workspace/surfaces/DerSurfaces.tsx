@@ -675,6 +675,53 @@ function PtpireeCertificateRowFromRegistry({ certificateRef }: { readonly certif
  * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
  * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
  */
+const RODZAJ_GENERATORA_PL: Record<NonNullable<ConverterType['generator_machine_type']>, string> = {
+  PMSG: 'synchroniczny z magnesami trwałymi (PMSG)',
+  SCIG: 'asynchroniczny klatkowy (SCIG)',
+  DFIG: 'asynchroniczny dwustronnie zasilany (DFIG)',
+};
+
+const TOPOLOGIA_PRZEKSZTALTNIKA_PL: Record<NonNullable<ConverterType['converter_topology']>, string> = {
+  FULL_CONVERTER: 'pełnej mocy (generator odsprzężony od sieci)',
+  DFIG_ROTOR_CONVERTER: 'w obwodzie wirnika (DFIG)',
+};
+
+/** Brak pola w karcie turbiny = dokument producenta tej wartości nie podaje (nigdy domyślka). */
+const BRAK_W_KARCIE_TURBINY_PL = 'karta producenta nie podaje';
+
+function wartoscToruPl(wartosc: number | null | undefined, jednostka: string): string {
+  return typeof wartosc === 'number' ? `${wartosc} ${jednostka}` : BRAK_W_KARCIE_TURBINY_PL;
+}
+
+/**
+ * Tor maszyny turbiny z karty katalogowej (`ConverterType` WIND, KAT-T-042…044):
+ * generator → przekształtnik → strona sieci. Napięcie stojana NIE jest napięciem
+ * sieci ani uzwojenia nN TR — do bilansu i zwarć wchodzi wyłącznie strona sieci
+ * przekształtnika (`un_kv`), co ekran mówi wprost.
+ */
+function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null }) {
+  if (!turbina) return null;
+  const rodzaj = turbina.generator_machine_type;
+  const topologia = turbina.converter_topology;
+  return (
+    <>
+      <FieldRow label="Generator" value={rodzaj ? RODZAJ_GENERATORA_PL[rodzaj] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow label="Napięcie stojana generatora" value={wartoscToruPl(turbina.generator_stator_voltage_kv, 'kV')} />
+      <FieldRow
+        label="Częstotliwość stojana (maks.)"
+        value={wartoscToruPl(turbina.generator_stator_frequency_max_hz, 'Hz')}
+      />
+      <FieldRow label="Moc generatora" value={wartoscToruPl(turbina.generator_rated_power_mw, 'MW')} />
+      <FieldRow label="Moc turbiny" value={`${turbina.pmax_mw} MW`} />
+      <FieldRow label="Przekształtnik" value={topologia ? TOPOLOGIA_PRZEKSZTALTNIKA_PL[topologia] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow
+        label="Przekształtnik — strona maszynowa"
+        value={wartoscToruPl(turbina.converter_machine_side_voltage_kv, 'kV')}
+      />
+    </>
+  );
+}
+
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="grid grid-cols-1 gap-0.5 border-b border-scada-border/60 py-1.5 last:border-b-0 sm:grid-cols-[170px_1fr] sm:gap-3">
@@ -815,9 +862,10 @@ function buildDerCards(
           <FieldRow label={der.der_kind === 'FW' ? 'Turbina z katalogu' : 'Falownik / PCS'} value={findDeviceLabel(der, converters)} />
           <FieldRow label="Producent" value={inverter?.manufacturer ?? MISSING_DASH} />
           <FieldRow
-            label="Napięcie urządzenia"
+            label={der.der_kind === 'FW' ? 'Przekształtnik — strona sieci (nN TR)' : 'Napięcie urządzenia'}
             value={inverter ? `${inverter.un_kv} kV` : MISSING_DASH}
           />
+          {der.der_kind === 'FW' && <TorMaszynyTurbiny turbina={inverter} />}
           <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
           <FieldRow label="Bateria BESS" value={bateriaLabel} />
         </dl>

@@ -119,7 +119,23 @@ export interface SwitchEquipmentType extends CatalogType {
  */
 export interface ConverterType extends CatalogType {
   kind: 'PV' | 'WIND' | 'BESS';
+  /**
+   * Napięcie przekształtnika po stronie SIECI [kV] = uzwojenie nN transformatora
+   * blokowego. Dla turbiny NIE jest to napięcie generatora (to niesie
+   * `generator_stator_voltage_kv`).
+   */
   un_kv: number;
+  /**
+   * Tor maszyny turbiny wiatrowej (tylko `kind: 'WIND'`, KAT-T-042…044). Brak pola =
+   * dokument nie podaje wartości — nigdy domyślka.
+   */
+  generator_machine_type?: 'PMSG' | 'SCIG' | 'DFIG' | null;
+  converter_topology?: 'FULL_CONVERTER' | 'DFIG_ROTOR_CONVERTER' | null;
+  generator_rated_power_mw?: number | null;
+  generator_stator_voltage_kv?: number | null;
+  /** Maksymalna częstotliwość stojana za przekształtnikiem [Hz] — nie częstotliwość sieci. */
+  generator_stator_frequency_max_hz?: number | null;
+  converter_machine_side_voltage_kv?: number | null;
   sn_mva: number;
   pmax_mw: number;
   qmin_mvar?: number;

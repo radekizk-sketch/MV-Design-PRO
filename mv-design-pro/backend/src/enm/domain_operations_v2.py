@@ -40,7 +40,11 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.switchgear.family_validation import nazwa_rodziny_pl
-from network_model.catalog.types import CatalogBinding, pola_karty_obecne
+from network_model.catalog.types import (
+    CatalogBinding,
+    pola_karty_obecne,
+    pola_toru_maszyny_obecne,
+)
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
@@ -4752,6 +4756,11 @@ def _build_converter_materialized_params(
             # Karta AB-H0 §0.8 — jak w gałęzi PV (dawniej tor atomowy wiatru gubił
             # pasma regulatorów i filtr, które przestrzeń CONVERTER materializuje).
             **pola_karty_obecne(z_katalogu),
+            # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny (rodzaj i napięcie
+            # stojana generatora, topologia przekształtnika) — WYŁĄCZNIE obecny w pozycji.
+            # Do bilansu i zwarć wchodzi `un_kv` (strona sieci przekształtnika); pola
+            # toru maszyny są opisem modelu w karcie elementu, nie wejściem solwera.
+            **pola_toru_maszyny_obecne(z_katalogu),
         }
 
     tabliczka.update(_certyfikat_ptpiree_z_katalogu(namespace, catalog_ref))
