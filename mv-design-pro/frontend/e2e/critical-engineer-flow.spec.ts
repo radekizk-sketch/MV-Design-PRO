@@ -100,7 +100,6 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
       data: {
         voltage_kv: 15.0,
         expected_power_mva: 0.63,
-        prefer_ptpire_certified: true,
       },
     });
     expect(response.ok()).toBe(true);
@@ -142,11 +141,11 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
 
   test('POST /api/catalog/auto-populate/cable filters by cross-section', async ({ request }) => {
     const response = await request.post(`${API_BASE}/api/catalog/auto-populate/cable`, {
-      data: { voltage_kv: 20.0, cross_section_mm2: 150.0, prefer_ptpire_certified: true },
+      data: { voltage_kv: 20.0, cross_section_mm2: 150.0 },
     });
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    // YHAKXS 150 (Polish PN-HD 620) must rank high.
+    // Przekrój 150 mm² musi być w czołówce (filtr przekroju).
     const refs: string[] = (data.suggestions.slice(0, 5) as Array<Record<string, unknown>>).map(
       (s) => String(s['catalog_ref'] ?? ''),
     );

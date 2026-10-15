@@ -346,11 +346,6 @@
       ],
       "title": "Prefer Manufacturer"
      },
-     "prefer_ptpire_certified": {
-      "default": true,
-      "title": "Prefer Ptpire Certified",
-      "type": "boolean"
-     },
      "voltage_kv": {
       "anyOf": [
        {

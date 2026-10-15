@@ -86,6 +86,9 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 
 ## 4. ZADANIE BIEŻĄCE
 
+Partia integracji 7 (2026-10-15, gałąź `…-karta-partia7`, meldunek `MELDUNEK_PARTIA7.md`): siedem kart scalonych na
+`861e4656` — PARTIA-6-BACKEND, B01-RUNDA-1, PF-OD19, ZAPIS-DECYZJI, AB-1b.3b-NA-PARTII-6, BIEG-ZABEZPIECZEN-NA-PARTII-6,
+ETYKIETA-STACJI-PRZELOTOWEJ — plus poprawki przeglądu PARTIA-6-BACKEND; do przewinięcia na gałąź programu. Wcześniej:
 Partia integracji 6 (POLE-ZAJĘTE, DOWOD-CIEPLNY i karty kończone przez wykonawców: ODMOWA-DANYCH-422, POLA-W-TORZE,
 SLD-SUBSTRAT faza 2, AB-1b.3b, BIEG-ZABEZPIECZEN-Z-MODELU) na czubku gałęzi po partii 5; scalenie PR #474 do `main` po zielonym
 CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.

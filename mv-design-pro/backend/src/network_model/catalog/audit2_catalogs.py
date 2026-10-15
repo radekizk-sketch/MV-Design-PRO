@@ -942,9 +942,17 @@ def get_pf_curve(curve_id: str) -> PfCurveItem | None:
 #     4,0 MVA, a podstawienie sasiedniej mocy byloby falszowaniem znamionu;
 #   * `btr_fw_30_15_30000` — 30/15 kV 30 MVA; katalog nie ma zadnego typu na
 #     napiecie 30 kV.
-# W ich miejsce wchodza pozycje SN/SN i wiekszych mocy oparte na REALNYCH typach
-# (patrz nizej), wiec farma wiatrowa nie traci ani transformatora blokowego, ani
-# wariantu SN/SN — traci tylko dwie pozycje bez pokrycia.
+#
+# KARTA KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15): transformatory blokowe w katalogu
+# transformatorow sa pozycjami NORMATYWNYMI (straty = pulap Tier 2 tab. I.2, u_k/i0 =
+# seria Siemens GEAFOL) do 3150 kVA wlacznie — funkcja szacujaca parametry z mocy
+# zniknela. Usuniete dalsze pozycje bez zrodla:
+#   * `btr_der_15_069_4000` (4 MVA) — powyzej 3150 kVA rozporzadzenie podaje tylko
+#     minimalny PEI, a zadne dolaczone zrodlo nie podaje u_k; zastepuje ja najwieksza
+#     pozycja ze zrodlem `btr_der_15_069_3150`;
+#   * `btr_der_15_063_10000` (SN/SN 15/6,3 kV 10 MVA) — brak zrodla u_k i strat.
+# `btr_pv_15_04_1000` / `btr_bess_15_04_1600` wskazuja pozycje normatywne suche Tier 2
+# (jednostki istniejace 15/0,4 kV przekraczaja pulap strat — nie do nowych projektow).
 
 
 @dataclass(frozen=True)
@@ -1110,7 +1118,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
         catalog_namespace="block_transformer",
         catalog_version=AUDIT2_CATALOG_VERSION,
         label_pl="Transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-04-1000kva-dyn11",
+        transformer_type_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
@@ -1118,23 +1126,15 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
         catalog_namespace="block_transformer",
         catalog_version=AUDIT2_CATALOG_VERSION,
         label_pl="Transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-04-1600kva-dyn11",
+        transformer_type_ref="tr-sn-nn-15-04-1600kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_der_15_069_4000",
+        id="btr_der_15_069_3150",
         catalog_namespace="block_transformer",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Transformator dedykowany 15/0,69 kV · 4000 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-4mva-dyn11-inverter",
-        applicable_der_kinds=_DER_WSZYSTKIE,
-    ),
-    BlockTransformerItem(
-        id="btr_der_15_063_10000",
-        catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Transformator dedykowany SN/SN 15/6,3 kV · 10 MVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-6p3-10mva-dyn11-inverter",
+        label_pl="Transformator dedykowany 15/0,69 kV · 3150 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-3p15mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
 )

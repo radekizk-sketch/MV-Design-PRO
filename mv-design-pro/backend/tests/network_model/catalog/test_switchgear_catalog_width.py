@@ -38,16 +38,18 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert "Siemens" in stats["producenci"]
     assert stats["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
+        "NIEWERYFIKOWANY",
         "ZWERYFIKOWANY",
     ]
     assert stats["statusy_katalogowe"] == [
         "PRODUKCYJNY_V1",
         "REFERENCYJNY_V1",
     ]
-    # 33 baseline + 12 Polish all verified = 45
-    assert stats["liczba_zweryfikowanych"] == 45
+    # 33 pozycje bazowe zweryfikowane; 12 polskich ma źródło wyłącznie deklarowane
+    # (dokument nie jest w repozytorium), więc są NIEWERYFIKOWANY.
+    assert stats["liczba_zweryfikowanych"] == 33
     assert stats["liczba_czesciowo_zweryfikowanych"] == 3
-    assert stats["liczba_nieweryfikowanych"] == 0
+    assert stats["liczba_nieweryfikowanych"] == 12
     assert stats["liczba_referencyjnych"] == 0
     assert len({item["params"]["un_kv"] for item in all_types}) == 4
     # 7 baseline + 2 Polish = 9 manufacturers
@@ -64,8 +66,13 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert Counter(item["params"]["equipment_kind"] for item in all_types)["CIRCUIT_BREAKER"] == 20
 
 
-def test_polish_ptpire_apparatus_marked_certified() -> None:
-    """K30-22: ZPUE + Elektrometal entries must have ptpire_certified=True."""
+def test_polish_apparatus_declared_without_certificate_flag() -> None:
+    """K30-22: ZPUE + Elektrometal — źródło deklarowane, bez dokumentu w repozytorium.
+
+    Flaga certyfikatu PTPiREE wymaga dokumentu (reguła przypięta dla wszystkich
+    katalogów w test_katalog_proweniencja_kompletnosc), więc jej nie ma,
+    a status to NIEWERYFIKOWANY / REFERENCYJNY_V1.
+    """
     polish = [
         t
         for t in get_all_switch_equipment_types()
@@ -73,7 +80,11 @@ def test_polish_ptpire_apparatus_marked_certified() -> None:
     ]
     assert len(polish) == 12, f"Expected 12 Polish apparatus, got {len(polish)}"
     for item in polish:
-        assert item["params"].get("ptpire_certified") is True
+        params = item["params"]
+        assert "ptpire_certified" not in params
+        assert params["source_reference"].startswith("Deklarowane: ")
+        assert params["verification_status"] == "NIEWERYFIKOWANY"
+        assert params["catalog_status"] == "REFERENCYJNY_V1"
 
 
 def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
@@ -82,6 +93,7 @@ def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
         assert params["verification_status"] in {
             "ZWERYFIKOWANY",
             "CZESCIOWO_ZWERYFIKOWANY",
+            "NIEWERYFIKOWANY",
         }
         assert params["catalog_status"] in {
             "PRODUKCYJNY_V1",
@@ -92,3 +104,6 @@ def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
         assert params["source_reference"].strip()
         if params["catalog_status"] == "PRODUKCYJNY_V1":
             assert params["verification_status"] == "ZWERYFIKOWANY"
+        if params["verification_status"] == "NIEWERYFIKOWANY":
+            assert params["source_reference"].startswith("Deklarowane: ")
+            assert params["catalog_status"] == "REFERENCYJNY_V1"

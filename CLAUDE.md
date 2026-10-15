@@ -30,15 +30,29 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 - Sesja główna: Claude Opus 5.5 (`claude-opus-5-5`), effort `high` — planuje, deleguje,
   a po powrocie wykonawców sama recenzuje i weryfikuje (bramki uruchamia niezależnie).
 - Wykonawcy — definicje w `.claude/agents/` (jedno źródło; Claude Code ładuje je jako typy
-  subagentów), Opus 5.5, effort `medium` domyślnie: `explorer` — czytanie kodu i pomiar klasy
-  defektu (bez edycji); `worker` — edycje + testy w swoim drzewie (commit bez push); `researcher`
-  — dokumentacja i normy; `worker-rdzen` — rola `worker` z effort `high` dla rdzenia solvera,
-  wyroczni i bramek poprawności. Effort wykonawcy podnosisz tylko, gdy zadanie tego wymaga.
+  subagentów), Opus 5.5: `explorer` (effort `low`) — czytanie kodu i pomiar klasy defektu (bez
+  edycji); `researcher` (effort `low`) — dokumentacja i normy; `worker` (effort `medium`) — edycje +
+  testy w swoim drzewie (commit bez push); `worker-rdzen` (effort `high`) — rola `worker` dla rdzenia
+  solvera, wyroczni i bramek poprawności. Effort podnosisz tylko, gdy zadanie tego wymaga.
+- Sesje w chmurze (karty roju) i wykonawcy decyzji: domyślnie Opus 5.5 (`medium`; `high` dla
+  rdzeni B-01). Decyzje architektoniczne z delegacji O-59 wydaje sesja główna Opus 5.5.
+- **Claude Fable 5.1 (`claude-fable-5-1`) — wyłącznie ostatecznie, dla zadań najtrudniejszych**
+  (dyrektywa właściciela 2026-10-15): po dwóch nieudanych podejściach Opus do tego samego problemu
+  albo dla decyzji, której Opus nie umie ugruntować w dowodach repo. Nie jest modelem głównym ani
+  domyślnym wykonawcą kart.
+- Oszczędność tokenów (wg dokumentacji Claude Code „Manage costs”): wąskie karty z plikiem:linią
+  zamiast szerokiego skanowania; gadatliwe wyjścia (testy, logi, listy sesji) do pliku, do kontekstu
+  tylko podsumowanie i kody wyjścia; jeden pełny bieg regresji na końcu karty, nie po każdym kroku;
+  bezczynna sesja z dużym kontekstem nie jest wybudzana po wygaśnięciu pamięci podręcznej promptu
+  (1 h) — kontynuację prowadzi nowa sesja z kartą i gałęzią jako stanem; check-iny planowane rzadko
+  (każdy niesie pełny kontekst); workflowy i przeglądy adwersarzowe tylko dla zmian rdzenia
+  i kart dużych; okno autokompakcji 400 tys. tokenów (`autoCompactWindow` w `.claude/settings.json`,
+  zamiast domyślnych ~967 tys.) — każde żądanie niesie mniejszy kontekst.
 - Metody użycia agentów (delegacja asynchroniczna, weryfikator ze świeżym kontekstem, meldunki
   ugruntowane w kodach wyjścia, granice nazwane w karcie, karta bez listy kroków, wznawianie
   wykonawców zamiast tworzenia nowych): `mv-design-pro/ORKIESTRACJA_AGENTOW.md` §3–§3a.
-- Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela; przejście
-  na Claude Fable 5.1 (`claude-fable-5-1`) to decyzja właściciela.
+- Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela albo przejście
+  na Fable 5.1 zgodnie z punktem wyżej.
 
 Kontrakt API modeli (Claude Fable 5.1, GPT-6 Astra: parametry, zakazy 400, caching, koszty,
 wywołanie Codex CLI) jest w `mv-design-pro/docs/prompts/KONTRAKT_API_MODELI.md` — czytaj go,

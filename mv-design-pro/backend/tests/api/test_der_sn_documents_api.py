@@ -238,30 +238,34 @@ def test_opt_in_store_captures_documents(app_client) -> None:
 # każe projektantowi cofnąć dobrą decyzję.
 # ===========================================================================
 
-_TR_BLOCK_4MVA = "tr-sn-nn-15-0p69-4mva-dyn11-inverter"
+# Karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15): dawny TR 4 MVA (parametry szacowane
+# bez źródła) usunięty; największa pozycja blokowa ze źródłem (normatywna Tier 2) to
+# 3,15 MVA. Okno testu zostaje: I_SN 121,24 A leży między 119,3 A (50 mm² w ziemi)
+# a 160 A (50 mm² katalogowo).
+_TR_BLOCK_3P15MVA = "tr-sn-nn-15-0p69-3p15mva-dyn11-inverter"
 
 
-def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> dict:
-    """Tor 4 MVA / 15 kV ⇒ I_SN = 153,96 A — jedyne okno, w którym korekta ziemna
-    (0,74538) przesuwa dobór: 50 mm² ma Iz 160 A (przechodzi katalogowo), a po korekcie
-    119,3 A (nie przechodzi)."""
+def _der_payload_3p15mva(*, cable_ref: str, laying_conditions: object | None) -> dict:
+    """Tor 3,15 MVA / 15 kV ⇒ I_SN = 121,24 A — okno, w którym korekta ziemna (0,74538)
+    przesuwa dobór: 50 mm² ma Iz 160 A (przechodzi katalogowo), a po korekcie 119,3 A
+    (nie przechodzi)."""
     payload = _der_sn_payload()
-    payload["source_name"] = "Blok PV SN 4 MVA"
-    # Decyzja O-53: 3 × 1 MW (S_n,jedn·n = 3,3 MVA) mieszczą się w TR 4 MVA; dawne
-    # 2 × 2 MW (4,4 MVA) przekraczały go — tor DER-SN porównywał wyłącznie P/cosφ.
-    payload["quantity"] = 3
+    payload["source_name"] = "Blok PV SN 3,15 MVA"
+    # Decyzja O-53: 2 × 1 MW (S_n,jedn·n = 2,2 MVA) mieszczą się w TR 3,15 MVA; 3 × 1 MW
+    # (3,3 MVA) już nie — tor DER-SN porównuje S_n jednostek z mocą transformatora.
+    payload["quantity"] = 2
     payload["power_setpoint_mw"] = 2.0
     payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-1mw-0p69kv"
     topology = payload["der_topology"]
     topology["inverter_output_voltage_kv"] = 0.69
     topology["block_transformer"] = {
-        "rated_power_mva": 4.0,
+        "rated_power_mva": 3.15,
         "primary_voltage_kv": 15.0,
         "secondary_voltage_kv": 0.69,
-        "catalog_ref": _TR_BLOCK_4MVA,
+        "catalog_ref": _TR_BLOCK_3P15MVA,
         "catalog_binding": {
             "catalog_namespace": "TRAFO_SN_NN",
-            "catalog_item_id": _TR_BLOCK_4MVA,
+            "catalog_item_id": _TR_BLOCK_3P15MVA,
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
@@ -275,13 +279,13 @@ def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> di
     return payload
 
 
-def _seed_case_4mva(
+def _seed_case_3p15mva(
     client, case_id: str, *, cable_ref: str, laying_conditions: object | None
 ) -> None:
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
-        _der_payload_4mva(cable_ref=cable_ref, laying_conditions=laying_conditions),
+        _der_payload_3p15mva(cable_ref=cable_ref, laying_conditions=laying_conditions),
     )
     assert not result.get("error"), result.get("error")
     set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
@@ -298,12 +302,12 @@ def _odstepstwo_przekroju(body: dict) -> dict | None:
 def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) -> None:
     """Kabel 70 mm² dobrany dla warunków ziemnych NIE MOŻE być odstępstwem.
 
-    Propozycja przy warunkach ziemnych to 70 mm² (50 mm² odpada: 119,3 A < 154,0 A),
+    Propozycja przy warunkach ziemnych to 70 mm² (50 mm² odpada: 119,3 A < 121,2 A),
     więc zastosowanie 70 mm² jest zgodne z propozycją. Gdyby raport liczył propozycję
     dla warunków katalogowych, dostałby 50 mm² i zgłosił ⚠ za dobrą decyzję.
     """
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva(
+    _seed_case_3p15mva(
         app_client,
         case_id,
         cable_ref="cable-base-xlpe-cu-1c-70",
@@ -322,12 +326,12 @@ def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) ->
 def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
     """Odwrotna strona: 50 mm² przy warunkach ziemnych to PRAWDZIWE odstępstwo (⚠).
 
-    Kabel przechodzi katalogowo (160 A ≥ 154,0 A), ale w ziemi w grupie przenosi
+    Kabel przechodzi katalogowo (160 A ≥ 121,2 A), ale w ziemi w grupie przenosi
     119,3 A — czyli mniej niż prąd toru. Powiązanie warunków z modelem musi ten
     przypadek nadal wyłapać, a nie „wyciszyć" odstępstw w ogóle.
     """
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva(
+    _seed_case_3p15mva(
         app_client,
         case_id,
         cable_ref="cable-polish-yhakxs-1c-50",
@@ -343,15 +347,15 @@ def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
     assert pozycja["code"] == "der_sn.d2.odstepstwo"
 
 
-def _seed_case_4mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: str) -> None:
-    """Jak ``_seed_case_4mva``, ale kabel MV traci ``cross_section_mm2`` PO
+def _seed_case_3p15mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: str) -> None:
+    """Jak ``_seed_case_3p15mva``, ale kabel MV traci ``cross_section_mm2`` PO
     materializacji (symuluje tor zapisany zanim to pole zaczęło być
     materializowane — nadal PRZECHODZI walidację modelu, bo pole jest
     opcjonalne, więc to REALNY, osiągalny stan magazynu, nie fikcja testu)."""
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
-        _der_payload_4mva(cable_ref=cable_ref, laying_conditions=None),
+        _der_payload_3p15mva(cable_ref=cable_ref, laying_conditions=None),
     )
     assert not result.get("error"), result.get("error")
     for branch in result["snapshot"].get("branches", []):
@@ -366,7 +370,9 @@ def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) ->
     NIE zgłasza fikcyjnego „zastosowano 0 mm²" jako fałszywego odstępstwa.
     Przypadek seedowany przez realny projekt (klucz twin, CV-1-W)."""
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva_bez_przekroju_kabla(app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50")
+    _seed_case_3p15mva_bez_przekroju_kabla(
+        app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50"
+    )
     resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
@@ -398,7 +404,7 @@ def test_blad_programu_przy_propozycji_d2_wybucha_zamiast_pominiecia_sekcji(
 
     monkeypatch.setattr(dobor, "propose_block_transformer", _zepsuty)
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva(
+    _seed_case_3p15mva(
         app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None
     )
     with pytest.raises(typ, match="błąd programu"):
@@ -413,7 +419,7 @@ def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, mo
 
     monkeypatch.setattr(dobor, "propose_block_transformer", _odmowa)
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva(
+    _seed_case_3p15mva(
         app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None
     )
     resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
@@ -428,7 +434,7 @@ def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, mo
 def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
     """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja 50 mm²."""
     case_id = _nowy_przypadek(app_client)
-    _seed_case_4mva(
+    _seed_case_3p15mva(
         app_client,
         case_id,
         cable_ref="cable-polish-yhakxs-1c-50",
@@ -452,7 +458,7 @@ def test_zapis_warunkow_ulozenia_uszkodzony_to_d2_nieoceniona_nie_warunki_katalo
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
-        _der_payload_4mva(cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None),
+        _der_payload_3p15mva(cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None),
     )
     assert not result.get("error"), result.get("error")
     for branch in result["snapshot"].get("branches", []):

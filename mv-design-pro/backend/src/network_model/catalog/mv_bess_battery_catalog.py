@@ -10,8 +10,11 @@ PROWENIENCJA. Dwie pozycje mirrorowane z frontendu (`bess_bat_byd_2880`/
 `bess_bat_catl_5000`) niosły w identyfikatorze markę producenta (BYD, CATL)
 BEZ karty katalogowej potwierdzającej te konkretne liczby — dokładnie ten sam
 wzorzec „marka + zaokrąglone liczby bez źródła", jaki karta K-Q usunęła z
-`PV_INVERTER_CATALOG`/`WIND_TURBINE_CATALOG` (patrz `_DEFAULT_SOURCE_REFERENCE`
-poniżej). Liczby (2880/5000 kWh, 1230/1500 V DC) są fizycznie wiarygodne dla
+`PV_INVERTER_CATALOG`/`WIND_TURBINE_CATALOG`. Źródło jest argumentem WYMAGANYM
+(karta KATALOG-KOMPLETNY-PROWENIENCJA): obie pozycje to referencyjny model obliczeniowy
+(`ZRODLO_MODELU_REFERENCYJNEGO`). Sungrow ST2752UX (karta „Preliminary”, wersja US)
+ZABLOKOWANA danymi: karta podaje zakres napięcia baterii 1160–1500 V, a nie napięcie
+znamionowe, i nie podaje C-rate — oba pola są w tym kontrakcie wymagane. Liczby (2880/5000 kWh, 1230/1500 V DC) są fizycznie wiarygodne dla
 kontenerowych magazynów sieciowych LFP tej klasy — zostają jako profile
 REFERENCYJNE, tylko bez marki w identyfikatorze i z jawnym źródłem.
 C-rate 0,5 (2-godzinny czas pełnego rozładowania) to typowa wartość
@@ -20,9 +23,9 @@ referencyjna dla magazynów sieciowych — nie dana konkretnego wyrobu.
 
 from __future__ import annotations
 
+from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.REFERENCYJNY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.REFERENCYJNY_V1.value
 
@@ -36,6 +39,7 @@ def _battery_record(
     nominal_voltage_dc_v: float,
     c_rate: float,
     note: str,
+    source_reference: str,
 ) -> dict:
     return {
         "id": item_id,
@@ -46,7 +50,7 @@ def _battery_record(
             "nominal_voltage_dc_v": nominal_voltage_dc_v,
             "c_rate": c_rate,
             "verification_status": _DEFAULT_VERIFICATION_STATUS,
-            "source_reference": _DEFAULT_SOURCE_REFERENCE,
+            "source_reference": source_reference,
             "catalog_status": _DEFAULT_CATALOG_STATUS,
             "contract_version": CATALOG_CONTRACT_VERSION,
             "verification_note": note,
@@ -64,6 +68,7 @@ def get_all_bess_battery_types() -> list[dict]:
             capacity_kwh=2880.0,
             nominal_voltage_dc_v=1230.0,
             c_rate=0.5,
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             note=(
                 "Profil referencyjny magazynu kontenerowego LFP klasy 2-3 MWh — "
                 "C-rate 0,5 (2 h) typowy dla magazynów sieciowych; niepowiązany "
@@ -77,6 +82,7 @@ def get_all_bess_battery_types() -> list[dict]:
             capacity_kwh=5000.0,
             nominal_voltage_dc_v=1500.0,
             c_rate=0.5,
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             note=(
                 "Profil referencyjny magazynu kontenerowego LFP dużej pojemności — "
                 "C-rate 0,5 (2 h) typowy dla magazynów sieciowych; niepowiązany "

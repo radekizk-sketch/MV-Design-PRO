@@ -860,8 +860,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
     # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
-    # „plaski start" metody Newtona: wynik ZBIEZNY nie zalezy od punktu startowego,
-    # zmienia sie tylko droga do niego. Forma jest ta sama, co w defekcie, wiec
+    # „plaski start" metody Newtona: start plaski 1,0 pu lezy w basenie galezi roboczej
+    # (zmierzone na szynach obciazonych w pasmie startow testu). Korekta zakresu z
+    # diagnozy OD-19 (karta PF-OD19, partia integracji 7): twierdzenie „wynik zbiezny
+    # nie zalezy od startu" jest FALSZYWE dla szyny PQ o zerowej mocy i dla startu
+    # bliskiego zera szyny obciazonej (dwa rozwiazania zbiezne — przypiete w
+    # `test_od19_diagnoza_rozwiazania_zerowego.py`); wpis budzetu stoi na basenie startu
+    # plaskiego, nie na jednoznacznosci rozwiazania. Forma jest ta sama, co w defekcie, wiec
     # rozstrzyga merytoryka — i dlatego twierdzenie MA PRZYPIETY TEST (regula
     # „deklaracja bez testu = falszywa pewnosc"):
     # `backend/tests/network_model/solvers/test_punkt_startowy_nie_zmienia_wyniku.py`
