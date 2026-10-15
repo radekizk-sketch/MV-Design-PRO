@@ -9872,20 +9872,20 @@
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
           ],
-          "stn/b18b63376532b6c69f111ebced4fb650/station": [
-            "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus",
-            "nn/a24891ce027efbafd92397f238e3552c/feeder_bus",
-            "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus",
-            "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus",
-            "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus",
-            "nn/f83d394f3b2e4248156b30fd3c5ee52e/feeder_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004"
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/station": [
+            "nn/1824e7319723877961289b024bb26475/feeder_bus",
+            "nn/607cba5e38e803fb4e5114e62a4b9cdf/feeder_bus",
+            "nn/6cba2d59c8574d9ff99a8003cc1fcaa5/feeder_bus",
+            "nn/9ac95624ad9e0d551563f0053eef4814/feeder_bus",
+            "nn/eca9dac3b3adc0f84a45a71dc6e738b1/feeder_bus",
+            "nn/f741f87024e94982bfe795c1f6fd03b9/feeder_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/000",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/001",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/002",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/003",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/004"
           ]
         },
         "szyny_glowne": {
@@ -9893,37 +9893,37 @@
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
           },
-          "stn/b18b63376532b6c69f111ebced4fb650/station": {
-            "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "nn/a24891ce027efbafd92397f238e3552c/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "nn/f83d394f3b2e4248156b30fd3c5ee52e/feeder_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/nn_bus": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_bus": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
-            "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus"
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/station": {
+            "nn/1824e7319723877961289b024bb26475/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "nn/607cba5e38e803fb4e5114e62a4b9cdf/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "nn/6cba2d59c8574d9ff99a8003cc1fcaa5/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "nn/9ac95624ad9e0d551563f0053eef4814/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "nn/eca9dac3b3adc0f84a45a71dc6e738b1/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "nn/f741f87024e94982bfe795c1f6fd03b9/feeder_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/000": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/001": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/002": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/003": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/004": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus"
           }
         },
         "transformatory": {
           "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": [
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn"
           ],
-          "stn/b18b63376532b6c69f111ebced4fb650/station": [
-            "stn/b18b63376532b6c69f111ebced4fb650/transformer"
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/station": [
+            "stn/00fb3dfeeddd7716ad2a042e99dd461c/transformer"
           ]
         },
         "zaciski_pol": {
           "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": null,
-          "stn/b18b63376532b6c69f111ebced4fb650/sn_field/000": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000",
-          "stn/b18b63376532b6c69f111ebced4fb650/sn_field/001": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001",
-          "stn/b18b63376532b6c69f111ebced4fb650/sn_field/002": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002",
-          "stn/b18b63376532b6c69f111ebced4fb650/sn_field/003": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003",
-          "stn/b18b63376532b6c69f111ebced4fb650/sn_field/004": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004"
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field/000": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/000",
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field/001": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/001",
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field/002": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/002",
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field/003": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/003",
+          "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field/004": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_field_terminal/004"
         }
       }
     },
@@ -10909,28 +10909,28 @@
     "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json": {
       "/enm": {
         "punkty_przylaczenia_rekordow_pol": {
-          "bay/8e61dd2fa354691b85bb85078b4cbdf2/in": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/001",
-          "bay/8e61dd2fa354691b85bb85078b4cbdf2/linia_out_1": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/004",
-          "bay/8e61dd2fa354691b85bb85078b4cbdf2/pomiarowe_1": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003",
-          "bay/8e61dd2fa354691b85bb85078b4cbdf2/tr": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/002"
+          "bay/a52682b095377b622b5590d712712e52/in": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/001",
+          "bay/a52682b095377b622b5590d712712e52/linia_out_1": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/004",
+          "bay/a52682b095377b622b5590d712712e52/pomiarowe_1": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003",
+          "bay/a52682b095377b622b5590d712712e52/tr": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/002"
         },
         "szyny": {
           "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": [
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
           ],
-          "sub/8e61dd2fa354691b85bb85078b4cbdf2/substation": [
+          "sub/a52682b095377b622b5590d712712e52/substation": [
             "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/001",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/002",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/004",
-            "nn/1a4e56d3f42909137c5e4e6137471039/feeder_bus",
-            "nn/32e69fcb800595b90897997e16c5f6e5/feeder_bus",
-            "nn/73fdb97d4b057d23b165501bb9371485/feeder_bus",
-            "nn/da4a3c5442409313901d04298880f8cd/feeder_bus",
-            "nn/da7c1ac66368eb6e59126fb1b73a7c89/feeder_bus"
+            "bus/a52682b095377b622b5590d712712e52/nn",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/001",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/002",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/004",
+            "nn/05658c67bc9eb5a03ae185435d4341f8/feeder_bus",
+            "nn/2f4b86eee78662c5f9a7b71a2760f8ce/feeder_bus",
+            "nn/b95eae2bfff5ffb6ece14902f82e4787/feeder_bus",
+            "nn/e137f445ffd06a54d2763e5ba5a4edb4/feeder_bus",
+            "nn/e2d199d1181bcff2a8717a4ec7df7815/feeder_bus"
           ]
         },
         "szyny_glowne": {
@@ -10938,33 +10938,33 @@
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
           },
-          "sub/8e61dd2fa354691b85bb85078b4cbdf2/substation": {
+          "sub/a52682b095377b622b5590d712712e52/substation": {
             "bus/075377a5d7297c0ba5060d4b31fec786/branch_end": "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/001": "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/002": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003": "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
-            "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/004": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003",
-            "nn/1a4e56d3f42909137c5e4e6137471039/feeder_bus": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "nn/32e69fcb800595b90897997e16c5f6e5/feeder_bus": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "nn/73fdb97d4b057d23b165501bb9371485/feeder_bus": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "nn/da4a3c5442409313901d04298880f8cd/feeder_bus": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn",
-            "nn/da7c1ac66368eb6e59126fb1b73a7c89/feeder_bus": "bus/8e61dd2fa354691b85bb85078b4cbdf2/nn"
+            "bus/a52682b095377b622b5590d712712e52/nn": "bus/a52682b095377b622b5590d712712e52/nn",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/001": "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/002": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003": "bus/075377a5d7297c0ba5060d4b31fec786/branch_end",
+            "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/004": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003",
+            "nn/05658c67bc9eb5a03ae185435d4341f8/feeder_bus": "bus/a52682b095377b622b5590d712712e52/nn",
+            "nn/2f4b86eee78662c5f9a7b71a2760f8ce/feeder_bus": "bus/a52682b095377b622b5590d712712e52/nn",
+            "nn/b95eae2bfff5ffb6ece14902f82e4787/feeder_bus": "bus/a52682b095377b622b5590d712712e52/nn",
+            "nn/e137f445ffd06a54d2763e5ba5a4edb4/feeder_bus": "bus/a52682b095377b622b5590d712712e52/nn",
+            "nn/e2d199d1181bcff2a8717a4ec7df7815/feeder_bus": "bus/a52682b095377b622b5590d712712e52/nn"
           }
         },
         "transformatory": {
           "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": [
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn"
           ],
-          "sub/8e61dd2fa354691b85bb85078b4cbdf2/substation": [
-            "tr/8e61dd2fa354691b85bb85078b4cbdf2/transformer"
+          "sub/a52682b095377b622b5590d712712e52/substation": [
+            "tr/a52682b095377b622b5590d712712e52/transformer"
           ]
         },
         "zaciski_pol": {
-          "field/8e61dd2fa354691b85bb85078b4cbdf2/1": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/001",
-          "field/8e61dd2fa354691b85bb85078b4cbdf2/2": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/003",
-          "field/8e61dd2fa354691b85bb85078b4cbdf2/3": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/002",
-          "field/8e61dd2fa354691b85bb85078b4cbdf2/4": "bus/8e61dd2fa354691b85bb85078b4cbdf2/sn_field_terminal/004",
+          "field/a52682b095377b622b5590d712712e52/1": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/001",
+          "field/a52682b095377b622b5590d712712e52/2": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/003",
+          "field/a52682b095377b622b5590d712712e52/3": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/002",
+          "field/a52682b095377b622b5590d712712e52/4": "bus/a52682b095377b622b5590d712712e52/sn_field_terminal/004",
           "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": null
         }
       }

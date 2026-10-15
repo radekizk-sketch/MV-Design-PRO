@@ -621,7 +621,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "e924978f440f4ff86f4220a88bb3317d09291115e344186373ad4fbc14cc61a1",
+    "hash_sha256": "d15b438bc6f715928bb692b1acc7f1ebd0d5ab7950db81e8b58394355325dc73",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1025,9 +1025,7 @@
             ]
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja wytwórcy",
       "nn_sections": [],

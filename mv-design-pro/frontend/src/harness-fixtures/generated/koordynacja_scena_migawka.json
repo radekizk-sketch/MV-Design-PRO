@@ -1837,7 +1837,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cc7a4196b01bd7369a4bed066feb351c1bfac4725865590652560ca2c03480e4",
+    "hash_sha256": "7e9683019866c44a5dbe9203bcb6139d6fa08c0484df7762943bcfa056689bfe",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1893,6 +1893,7 @@
       "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_bus",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": null,
       "id": "b8916bf3-aa19-5952-be26-9cb673781f7b",
       "materialized_params": null,
       "meta": {
@@ -1917,6 +1918,7 @@
       "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_bus",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": null,
       "id": "5fd3dadd-b07f-5958-aa62-36c8eb6c7ebc",
       "materialized_params": null,
       "meta": {
@@ -2052,6 +2054,7 @@
       "bus_ref": "nn/d629da4317912df5c40e25b1b9a576ef/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "15a64f2a-cda1-5d73-926f-582c81da7b1e",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -2094,6 +2097,7 @@
       "bus_ref": "nn/a63b39680855586a27dc13779517b823/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "1a4a366a-1bf2-5aa1-837a-e38c9551a4e1",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -2602,9 +2606,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S01",
       "nn_sections": [],
@@ -2737,9 +2739,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S02",
       "nn_sections": [],
@@ -2872,9 +2872,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S03",
       "nn_sections": [],
@@ -3007,9 +3005,7 @@
             "tags": []
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja S04",
       "nn_sections": [],
