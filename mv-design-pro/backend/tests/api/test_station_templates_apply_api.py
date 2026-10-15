@@ -6,6 +6,7 @@ import pytest
 from application.station_templates import get_template, list_templates
 from application.station_templates.apply import _template_der_required_kva
 from domain.generator_validation import moc_pozorna_wymagana_generatora_mva
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 from network_model.pochodne import mva_na_kva
 
 pytest.importorskip("fastapi")
@@ -164,11 +165,10 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
         for station in snapshot["substations"]
         if station["ref_id"] == payload["station_ref"]
     )
-    nn_specs = station.get("meta", {}).get("nn_field_specs", [])
     feeder_refs = [
-        spec["field_ref"]
-        for spec in nn_specs
-        if spec.get("bay_role") == "FEEDER" and isinstance(spec.get("field_ref"), str)
+        spec["ref_id"]
+        for spec in pola_nn_stacji(snapshot, station["ref_id"])
+        if spec.get("bay_role") == "FEEDER"
     ]
     expected_feeders = template.schema.nn_feeders_count.default
     assert len(feeder_refs) == expected_feeders
@@ -283,7 +283,7 @@ def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_cli
     snapshot = app_client.get(f"/api/cases/{case_id}/enm").json()
     stacja = next(s for s in snapshot["substations"] if s["ref_id"] == payload["station_ref"])
     assert stacja["station_type"] == "mv_lv", "Stacja klienta musi być KOŃCOWA"
-    role = [spec["bay_role"] for spec in stacja["meta"]["field_specs"]]
+    role = [spec["bay_role"] for spec in pola_sn_stacji(snapshot, stacja["ref_id"])]
     assert role == ["IN", "MEASUREMENT", "TR", "OUT"], role
     assert len(snapshot["branch_points"]) == 1
 

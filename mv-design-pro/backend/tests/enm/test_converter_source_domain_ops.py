@@ -127,15 +127,15 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
     assert not result.get("error")
     snapshot = result["snapshot"]
     generator = snapshot["generators"][0]
-    field_specs = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
+    pola_nn_zrodla = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
     assert generator["gen_type"] == "pv_inverter"
     assert generator["catalog_namespace"] == "ZRODLO_NN_PV"
     assert generator["connection_variant"] == "nn_side"
     assert generator["p_mw"] == 0.5
-    assert generator["meta"]["field_ref"] == field_specs[0]["ref_id"]
-    assert field_specs[0]["meta"]["source_field_kind"] == "PV"
-    assert field_specs[0]["apparatus_catalog_ref"] == _APARAT_NN
+    assert generator["meta"]["field_ref"] == pola_nn_zrodla[0]["ref_id"]
+    assert pola_nn_zrodla[0]["meta"]["source_field_kind"] == "PV"
+    assert pola_nn_zrodla[0]["apparatus_catalog_ref"] == _APARAT_NN
 
     EnergyNetworkModel.model_validate(snapshot)
 
@@ -334,8 +334,8 @@ def test_nn_field_operations_tolerate_station_without_fields(
 
     assert not result.get("error"), result.get("error")
     snapshot = result["snapshot"]
-    nn_field_specs = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
+    pola_nn_zrodla = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
-    assert isinstance(nn_field_specs, list)
-    assert len(nn_field_specs) == 1
-    assert nn_field_specs[0]["bay_role"] == expected_role
+    assert isinstance(pola_nn_zrodla, list)
+    assert len(pola_nn_zrodla) == 1
+    assert pola_nn_zrodla[0]["bay_role"] == expected_role

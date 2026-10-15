@@ -164,17 +164,12 @@ def test_nazwa_pola_zrodlowego_bez_znanej_technologii_nie_zgaduje(technologia: o
 
 
 def _pola_stacji(migawka: dict[str, Any], przed: dict[str, Any]) -> list[dict[str, Any]]:
-    """Pola stacji utworzonych operacją, w obu nośnikach modelu: element `bays` i specyfikacja
-    pola w meta stacji (pola stacji istniejących wcześniej, np. GPZ, nie należą do przypadku)."""
+    """Pola stacji utworzonych operacją — rekordy `bays` (jedyny nośnik pól od W5-B; pola
+    stacji istniejących wcześniej, np. GPZ, nie należą do przypadku)."""
     stare = {s["ref_id"] for s in przed.get("substations", [])}
-    nowe = [s for s in migawka.get("substations", []) if s["ref_id"] not in stare]
-    refy = {s["ref_id"] for s in nowe}
+    refy = {s["ref_id"] for s in migawka.get("substations", []) if s["ref_id"] not in stare}
     pola = [dict(b) for b in migawka.get("bays", []) if b.get("substation_ref") in refy]
-    for stacja in nowe:
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []:
-            # Specyfikacja bez nazwy (droga stacji dołączanej) — nazwę niesie element `bays`.
-            if spec.get("name") is not None:
-                pola.append({"name": spec.get("name"), "bay_role": spec.get("bay_role")})
+    assert pola, "operacja nie utworzyła żadnego pola stacji — test nie miałby czego sprawdzić"
     return pola
 
 

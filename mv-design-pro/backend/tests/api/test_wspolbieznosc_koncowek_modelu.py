@@ -43,10 +43,10 @@ patrz `docs/audit/AUDYT_SZCZYTU_2026-08-01.md`, sekcja 4 pkt 7.
 
 REWIZJE PONIZEJ FORMULY „+N" (P0.1 nN, LV-INV-12). Kazde zastosowanie szablonu
 `tpl_sn_nn_630kva` i kazde `POST /generators` (zrodlo nn_side) zostawia po sobie
-NIEPROMOWANY wpis `substation.meta.nn_field_specs` (odpowiednio: pole glowne +
+NIEPROMOWANE pole nN (rekord `bays`) (odpowiednio: pole glowne +
 odplywy nN; pole zrodlowe DER). `get_enm` promuje WSZYSTKIE oczekujace wpisy
 JEDNEGO przypadku w JEDNYM przebiegu automigracji
-(`enm/migrations/nn_field_specs_promocja.py`), ktora — jak kazda automigracja
+(`enm/migrations/promocja_aparatow_nn.py`), ktora — jak kazda automigracja
 tej rodziny — PODNOSI REWIZJE, gdy cos zmienila (ten sam wzorzec co migracja
 punktu przylaczenia w `enm/store.py::_get_enm_pod_blokada`). Kazdy odczyt modelu
 (`_model(app_client, case_id)`, czyli `get_enm`) miedzy dwoma zapisami — WLASNY na starcie
@@ -245,12 +245,10 @@ def _model(app_client, case_id: str) -> Any:
     return get_enm(_klucz(app_client, case_id))
 
 
-# Klucze, pod ktorymi model trzyma TOZSAMOSC elementu. Elementy kolekcji glownych
-# (szyny, galezie, transformatory, wytworcy, stacje) uzywaja `ref_id`; pola stacji i
-# GPZ zyja jako `field_spec` w `meta` stacji i uzywaja `field_ref` (`_build_field_spec`
-# w `enm/domain_operations.py`). Zbior musi obejmowac OBA — inaczej bramka „brak
-# fabrykacji" zglasza falszywy alarm na poprawnie zapisanym polu nN wytworcy.
-KLUCZE_TOZSAMOSCI = ("ref_id", "field_ref")
+# Klucz, pod ktorym model trzyma TOZSAMOSC elementu: `ref_id` — takze pola stacji i GPZ
+# (rekordy `bays`, karta W5-B; dawniej wpisy `meta` stacji z kluczem `field_ref`, ktory
+# bramka „brak fabrykacji" musiala obejmowac osobno).
+KLUCZE_TOZSAMOSCI = ("ref_id",)
 
 
 def _refy_modelu(app_client, case_id: str) -> set[str]:
@@ -550,7 +548,7 @@ class TestWyscigTworzeniaWytworcy:
         """3 rownolegle `POST /generators` na jednej stacji: rewizja +6, zero utraty.
 
         P0.1 nN: kazde zadanie DER (`add_converter_source`, nn_side) zostawia WLASNE
-        pole zrodlowe nN jako nowy niepromowany wpis `nn_field_specs`
+        pole zrodlowe nN jako nowy niepromowany rekord `bays`
         (`_append_converter_field_if_needed`). Zadania sa serializowane blokada
         przypadku (P5), wiec KAZDE kolejne najpierw promuje pole POPRZEDNIEGO
         zadania (+1), potem zapisuje WLASNE (+1) — to 2 rewizje na zadanie, a
@@ -730,7 +728,7 @@ class TestWyscigWiazanWytworcy:
         )
 
     def test_wiazania_rownolegle_z_szablonem_nie_gubia_pracy(self, app_client) -> None:
-        """P0.1 nN: PATCH /bindings sam nie tworzy wpisu `nn_field_specs` (tylko
+        """P0.1 nN: PATCH /bindings sam nie tworzy pola nN (tylko
         szablon zostawia WLASNE pole nN do promocji, patrz nota na gorze pliku) —
         2 wlasne zapisy + 1 promocja pola szablonu (wewnatrz wyscigu albo przy
         koncowym odczycie, zaleznie od kolejnosci — zawsze dokladnie jedna) = +3.

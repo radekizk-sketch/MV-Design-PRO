@@ -74,9 +74,9 @@ _OPERACJE_POZA_TAKSONOMIA_RODZAJOW: frozenset[str] = frozenset(
         # (nie jest jednym z: cable/line_overhead/transformer/source/generator/
         # load/switch/breaker/fuse/measurement/protection/shunt_capacitor).
         "add_surge_arrester_sn",
-        # Aparat odpływowy nN: katalog materializowany PRZY PROMOCJI wpisu
-        # (`enm.migrations.nn_field_specs_promocja`), nie przez tę operację —
-        # `api/domain_ops_policy.py` nagłówek modułu, karta NAPRAWA-B.
+        # Aparat odpływowy nN: operacja sprawdza wskazaną pozycję i zapisuje wiązanie na
+        # polu, a aparat z katalogu tworzy PROMOCJA aparatów nN
+        # (`enm.migrations.promocja_aparatow_nn`) — nie ta operacja (karta W5-B).
         "add_nn_outgoing_field",
         # Rozdzielnica nN i sekcja GPZ tworzą `Substation`/metadane stacji —
         # kontener bez fizyki, nie element jednego z 12 rodzajów.

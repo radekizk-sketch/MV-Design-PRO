@@ -43,6 +43,7 @@ from application.station_templates.schema import transformer_voltages_kv
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 
 #: Szablony reprezentujące trzy klasy przyłączenia kontraktu §3.
 SZABLON_KLASY_A = "tpl_sn_nn_630kva"  # dystrybucyjna OSD: IN, OUT, TR
@@ -228,13 +229,13 @@ def _sciezka_zasilania(enm: dict[str, Any], cel_bus: str) -> list[str]:
 
 
 def _role_pol_stacji(enm: dict[str, Any], station_ref: str) -> list[str]:
-    """Role pól SN stacji W KOLEJNOŚCI Z DANYCH (`meta.field_specs`).
+    """Role pól SN stacji W KOLEJNOŚCI Z DANYCH (rekordy `bays` stacji, kolejność zapisu).
 
     To ta sama tablica, z której rysunek bierze kolejność pól
     (`buildStationMiniBaysFromFieldSpecs`, V12K-330).
     """
     substation = next(s for s in enm["substations"] if s["ref_id"] == station_ref)
-    return [str(spec.get("bay_role")) for spec in (substation.get("meta") or {})["field_specs"]]
+    return [str(spec.get("bay_role")) for spec in pola_sn_stacji(enm, substation["ref_id"])]
 
 
 # ---------------------------------------------------------------------------
@@ -737,12 +738,12 @@ def test_uklad_podstawowy_utrwalony_na_obu_drogach_zabudowy(template_id: str) ->
     enm, odcinki = _magistrala(3)
     wynik = _zastosuj_szablon(enm, template_id, odcinki[1])
     substation = next(s for s in wynik["enm"]["substations"] if s["ref_id"] == wynik["station_ref"])
-    specyfikacje = (substation.get("meta") or {})["field_specs"]
+    specyfikacje = pola_sn_stacji(wynik["enm"], substation["ref_id"])
     pomiary = [spec for spec in specyfikacje if spec.get("bay_role") == "MEASUREMENT"]
     assert len(pomiary) == 1, specyfikacje
     assert pomiary[0].get("funkcja_pomiaru") == "UKLAD_ENERGII"
     assert pomiary[0].get("rodzaj_pomiaru") == "PODSTAWOWY"
     for spec in specyfikacje:
         if spec.get("bay_role") != "MEASUREMENT":
-            assert "funkcja_pomiaru" not in spec
-            assert "rodzaj_pomiaru" not in spec
+            assert spec["funkcja_pomiaru"] is None
+            assert spec["rodzaj_pomiaru"] is None

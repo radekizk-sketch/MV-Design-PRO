@@ -228,7 +228,7 @@ def _block_transformer(snapshot: dict) -> dict:
     )
 
 
-def _field_specs(snapshot: dict) -> list[dict]:
+def _pola_sn(snapshot: dict) -> list[dict]:
     return pola_sn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
 
@@ -267,10 +267,10 @@ def test_case2_pv_full_sn_chain_materializes_all_elements() -> None:
     assert gen["bus_ref"] == producer_bus["ref_id"]
     assert gen["connection_variant"] == "block_transformer"
     assert gen["blocking_transformer_ref"] == block_tr["ref_id"]
-    assert gen["meta"]["der_mv_field_ref"] == _field_specs(snap)[0]["ref_id"]
+    assert gen["meta"]["der_mv_field_ref"] == _pola_sn(snap)[0]["ref_id"]
 
     # Dedykowane pole źródłowe SN z aparatami pierwotnymi wg konfiguracji kreatora.
-    field = _field_specs(snap)[0]
+    field = _pola_sn(snap)[0]
     assert field["bay_role"] == "OZE"
     kinds = [d["kind"] for d in field["primary_devices"]]
     assert kinds == ["DS", "CB", "CT", "VT", "DS", "ES", "SURGE_ARRESTER", "CABLE_HEAD"]
@@ -287,7 +287,7 @@ def test_case2_mv_field_config_is_load_bearing_no_phantom() -> None:
         _der_sn_payload(vt=False, surge_arrester=False),
     )
     assert not result.get("error"), result.get("error")
-    field = _field_specs(result["snapshot"])[0]
+    field = _pola_sn(result["snapshot"])[0]
     kinds = [d["kind"] for d in field["primary_devices"]]
     assert "VT" not in kinds
     assert "SURGE_ARRESTER" not in kinds
@@ -457,7 +457,7 @@ def test_case7_two_der_different_topologies_same_sn_bus() -> None:
     assert block_trs[0]["ref_id"] != block_trs[1]["ref_id"]
     assert len(snap["generators"]) == 2
     # Dwa dedykowane pola źródłowe SN na tej samej szynie SN.
-    oze_fields = [f for f in _field_specs(snap) if f["bay_role"] == "OZE"]
+    oze_fields = [f for f in _pola_sn(snap) if f["bay_role"] == "OZE"]
     assert len(oze_fields) == 2
     assert all(f["bus_ref"] == "bus_sn" for f in oze_fields)
     EnergyNetworkModel.model_validate(snap)
@@ -486,7 +486,7 @@ def test_case8_der_sn_beside_station_transformer() -> None:
     assert station_tr["ref_id"] == "tr_station"
     assert block_tr["meta"]["catalog_role"] == "TRANSFORMATOR_BLOKOWY_DER"
     # Pole DER (OZE) współistnieje z transformatorem odbiorczym stacji.
-    assert any(f["bay_role"] == "OZE" for f in _field_specs(snap))
+    assert any(f["bay_role"] == "OZE" for f in _pola_sn(snap))
     EnergyNetworkModel.model_validate(snap)
 
 

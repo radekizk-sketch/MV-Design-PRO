@@ -333,7 +333,7 @@ def test_operacje_stacyjne_nie_czytaja_referencji_spoza_inwentarza() -> None:
         "_materialize_sn_field_apparatus_catalog",
         "_sn_field_apparatus_catalog_ref",
         "_payload_field_apparatus_catalog_ref",
-        "_build_nn_field_specs",
+        "_zbuduj_pola_nn",
         "_materialize_station_auxiliary_load",
     }
     wezly = [

@@ -105,7 +105,7 @@ def test_lancuch_rgnn_kabel_podrozdzielnica_odbior() -> None:
     assert kabel["catalog_namespace"] == "KABEL_NN"
     assert kabel["materialized_params"]["r_ohm_per_km"] > 0
 
-    # Odpływ nN legacy (nn_field_specs) na RGnN-2 + odbiór za nim.
+    # Odpływ nN (rekord `bays` na szynie nN) na RGnN-2 + odbiór za nim.
     wynik = _wykonaj(snap, "add_nn_outgoing_field", {"bus_nn_ref": bus2, "field_name": "Odpływ K1"})
     snap = wynik["snapshot"]
     field_ref = wynik["changes"]["created_element_ids"][0]
@@ -127,7 +127,7 @@ def test_lancuch_rgnn_kabel_podrozdzielnica_odbior() -> None:
     assert odbior["p_mw"] == pytest.approx(0.012)
     # Przed promocją migracji odbiór wisi wprost na szynie stacji (zachowanie
     # sprzed P0.1) — promocja i przeniesienie sprawdzone w
-    # test_nn_field_specs_promocja.py.
+    # test_promocja_aparatow_nn.py.
     assert odbior["bus_ref"] == bus2
 
 
@@ -1088,8 +1088,8 @@ def test_copy_nn_feeder_kopiuje_odbior_z_przemapowanym_feeder_ref() -> None:
 
     # Odbiór dołożony wprost na szynie odpływu (bus2), z `meta.feeder_ref`
     # wskazującym aparat odpływowy — TAKĄ referencją posługuje się promocja
-    # `nn_field_specs` (wzorzec: `Load.meta.feeder_ref`, `enm/migrations/
-    # nn_field_specs_promocja.py`). Sprawdzamy, że kopia poddrzewa przemapowuje
+    # pola nN (wzorzec: `Load.meta.feeder_ref`, `enm/migrations/
+    # promocja_aparatow_nn.py`). Sprawdzamy, że kopia poddrzewa przemapowuje
     # tę referencję na kopię aparatu, nie zostawia jej wskazującą oryginał.
     snap["loads"].append(
         {

@@ -121,6 +121,7 @@ from .pola import (
     dodaj_pole,
     pola_nn_stacji,
     pola_sn_stacji,
+    pola_stacji,
     pole_istnieje,
     punkt_przylaczenia_pola,
     zbuduj_pole,
@@ -5132,7 +5133,9 @@ def _dodaj_pole_zrodla_sn(
     if blad_toru is not None:
         # Zacisk/aparat o identyfikatorze z ziarna pola już istnieje — błąd programu (ziarno
         # liczy kolejne pole źródłowe szyny), nie odmowa danych (karta #151).
-        raise DomainInvariantError(str(blad_toru.get("error")))
+        raise DomainInvariantError(
+            str(blad_toru.get("error_code")), str(blad_toru.get("error")), [field_ref]
+        )
     dodaj_pole(
         tor,
         zbuduj_pole(
@@ -5195,7 +5198,9 @@ def _append_converter_field_if_needed(
     source_index = len(
         [
             rekord
-            for rekord in pola_nn_stacji(new_enm, station.get("ref_id"))
+            # Pola źródłowe NA TEJ SZYNIE — obu poziomów (pole źródła na szynie SN też jest
+            # polem tej szyny); kolejny numer = kolejne ziarno, bez kolizji identyfikatorów.
+            for rekord in pola_stacji(new_enm, station.get("ref_id"))
             if rekord.get("bus_ref") == bus_nn_ref
             and "nn_source_field" in list(rekord.get("tags") or [])
         ]
@@ -6580,14 +6585,22 @@ def _next_converter_source_sequence(
     catalog_ref: str,
     name: str,
 ) -> int:
-    """Return deterministic ordinal for repeated identical DER sources."""
+    """Kolejny numer powtarzalnego, identycznego źródła przekształtnikowego (ziarno ref).
+
+    Szyna źródła liczy się po SZYNIE ROZDZIELNICY jego pola (`bus_ref` rekordu pola z
+    `meta.field_ref`), a bez pola — po szynie źródła: źródło stoi na ZACISKU swojego pola
+    (pole SN od razu, pole nN po promocji aparatów nN), więc porównanie samego `bus_ref`
+    źródła z szyną z ładunku nie widziałoby źródeł już przyłączonych przez pole i dawało
+    dubel identyfikatora (karta W5-B)."""
     sequence = 0
     for existing in enm.get("generators", []):
         if not isinstance(existing, dict):
             continue
+        pole_zrodla = pole_modelu(enm, (existing.get("meta") or {}).get("field_ref"))
+        szyna_zrodla = (pole_zrodla or {}).get("bus_ref") or existing.get("bus_ref")
         if (
             existing.get("station_ref") == station_ref
-            and existing.get("bus_ref") == bus_ref
+            and szyna_zrodla == bus_ref
             and existing.get("gen_type") == gen_type
             and existing.get("catalog_ref") == catalog_ref
             and existing.get("name") == name
