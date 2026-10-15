@@ -1535,17 +1535,6 @@ export interface BayEarthFaultPath {
   earth_return_split_factor?: number | null;
 }
 
-export interface BayVerificationResult {
-  continuous_current_ok?: boolean | null;
-  thermal_withstand_ok?: boolean | null;
-  dynamic_withstand_ok?: boolean | null;
-  ct_ok?: boolean | null;
-  vt_ok?: boolean | null;
-  cable_head_ok?: boolean | null;
-  main_switch_ok?: boolean | null;
-  whole_power_path_ok?: boolean | null;
-}
-
 export interface BayProofBinding {
   proof_ref: string;
   primary_result_refs: string[];
@@ -1563,7 +1552,6 @@ export interface BayProjectResults {
   main_power_flow_results_ref?: string | null;
   source_contributions_sc: BayShortCircuitSourceContribution[];
   source_contributions_pf: BayPowerFlowSourceContribution[];
-  verification: BayVerificationResult;
   earth_fault_path?: BayEarthFaultPath | null;
   proof_binding: BayProofBinding;
 }

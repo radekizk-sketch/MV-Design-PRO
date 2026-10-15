@@ -45,8 +45,8 @@ from .models import (
 from .nazwy_elementow import nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .rodzaj_stacji import (
-    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
     RodzajStacji,
     rodzaje_stacji,
 )
@@ -2089,8 +2089,8 @@ class ENMValidator:
                             f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe podpięte do różnych szyn SN ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'szyna') for ref in mv_buses_used))}"
-                            "). Ciągłość SN między polem wejściowym a wyjściowym stacji wymaga "
-                            "wspólnej magistrali SN."
+                            "). Ciągłość SN między polami liniowymi wejściowym i wyjściowym "
+                            "stacji wymaga wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",

@@ -25,7 +25,6 @@ from enm.models import (
     BayShortCircuitSourceContribution,
     BaySourceEndpoint,
     BaySwitchState,
-    BayVerificationResult,
     Branch,
     EnergyNetworkModel,
     Generator,
@@ -1175,12 +1174,6 @@ def _build_project_results(
         main_power_flow_results_ref=latest_pf_run_id,
         source_contributions_sc=sc_contributions,
         source_contributions_pf=pf_contributions,
-        verification=BayVerificationResult(
-            ct_ok=True if measurement_chain and measurement_chain.ct_refs else None,
-            vt_ok=True if measurement_chain and measurement_chain.vt_refs else None,
-            cable_head_ok=None,
-            whole_power_path_ok=bool(bay.equipment_refs),
-        ),
         earth_fault_path=earth_fault_path,
         proof_binding=proof_binding,
     )
