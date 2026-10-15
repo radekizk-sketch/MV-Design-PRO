@@ -34,8 +34,9 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     zaciski_galezi,
 )
 from enm.domain_operations_v2 import transformatory_sciezki_zasilania
-from enm.migrations.nn_field_specs_promocja import migruj
+from enm.migrations.promocja_aparatow_nn import migruj
 from enm.models import EnergyNetworkModel
+from enm.pola import pola_nn_stacji, pola_sn_stacji, zacisk_pola
 from enm.tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
     naruszenia_zasady_toru,
@@ -43,7 +44,7 @@ from enm.tor_pola import (
     szyny_stacji,
 )
 from enm.validator import ENMValidator
-from enm.zajetosc_pol import zacisk_pola, zajetosc_pola
+from enm.zajetosc_pol import zajetosc_pola
 
 from tests.golden.sld_substrate_power_flow import compute_substrate_power_flow
 from tests.reference_networks.sceny_zajetosci_pol import (
@@ -79,6 +80,16 @@ def _odcinki(enm: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _stacja(enm: dict[str, Any], nazwa: str) -> dict[str, Any]:
     return next(s for s in enm["substations"] if s.get("name") == nazwa)
+
+
+def _pola_sn(enm: dict[str, Any], stacja: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pola SN stacji — rekordy `bays` (karta W5-B: jedyny nośnik pól)."""
+    return pola_sn_stacji(enm, stacja["ref_id"])
+
+
+def _pola_nn(enm: dict[str, Any], stacja: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pola nN stacji — rekordy `bays` na szynie nN (predykat `enm.pola.czy_pole_nn`)."""
+    return pola_nn_stacji(enm, stacja["ref_id"])
 
 
 def _wciecie(
@@ -125,7 +136,7 @@ def _koniec_ciagu(sn_fields: list[str], *, nazwa: str = "Stacja Brzozowa") -> di
 def _pole_zacisku(enm: dict[str, Any], szyna: str) -> dict[str, Any] | None:
     """Specyfikacja pola SN, którego WŁASNYM zaciskiem jest `szyna`."""
     for stacja in enm["substations"]:
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []:
+        for spec in _pola_sn(enm, stacja):
             zacisk = zacisk_pola(spec)
             if zacisk == szyna and zacisk != spec.get("bus_ref"):
                 return spec
@@ -141,7 +152,7 @@ def _aparat_pola(enm: dict[str, Any], spec: dict[str, Any]) -> dict[str, Any]:
         if b.get("type") in RODZAJE_LACZNIKOW
         and {b["from_bus_ref"], b["to_bus_ref"]} == {szyna, zacisk}
     ]
-    assert len(aparaty) == 1, (spec["field_ref"], aparaty)
+    assert len(aparaty) == 1, (spec["ref_id"], aparaty)
     return aparaty[0]
 
 
@@ -159,7 +170,7 @@ def _szyna_glowna_niesie_tylko_aparaty(enm: dict[str, Any]) -> None:
             # GPZ nie modeluje pola zasilającego transformatora WN/SN ani pola źródła — na
             # sekcji nie ma aparatu, który mógłby być martwy (pozycja inwentarza w meldunku).
             continue
-        specs = (stacja.get("meta") or {}).get("field_specs") or []
+        specs = _pola_sn(enm, stacja)
         szyny_z_polami = {
             s["bus_ref"] for s in specs if zacisk_pola(s) and zacisk_pola(s) != s.get("bus_ref")
         }
@@ -226,7 +237,7 @@ def test_wciecie_polowki_i_transformator_na_zaciskach_pol(typ: str) -> None:
 def test_wciecie_domyka_brakujace_pola_toru() -> None:
     """Skład pól bez pola WY i TR — operacja DOMYKA je (ta sama reguła w obu drogach budowy)."""
     enm = _wciecie("B", ["IN"])
-    role = [s["bay_role"] for s in _stacja(enm, "Stacja Lipowa")["meta"]["field_specs"]]
+    role = [s["bay_role"] for s in _pola_sn(enm, _stacja(enm, "Stacja Lipowa"))]
     assert role == ["IN", "OUT", "TR"]
     _szyna_glowna_niesie_tylko_aparaty(enm)
 
@@ -285,8 +296,8 @@ def test_pomiar_rozliczeniowy_w_torze_czesc_kliencka_za_polem_pomiaru() -> None:
     magistrali pomiar jest zakazany bramą pomiaru)."""
     enm = _koniec_ciagu(["LINIA_IN", "POMIAROWE", "TRANSFORMATOROWE"])
     stacja = _stacja(enm, "Stacja Brzozowa")
-    specs = {s["bay_role"]: s for s in stacja["meta"]["field_specs"]}
-    pomiar = next(s for s in stacja["meta"]["field_specs"] if s.get("field_role") == "POMIAROWE")
+    specs = {s["bay_role"]: s for s in _pola_sn(enm, stacja)}
+    pomiar = next(s for s in _pola_sn(enm, stacja) if s.get("field_role") == "POMIAROWE")
     assert pomiar.get("funkcja_pomiaru") == "UKLAD_ENERGII"
     assert specs["TR"]["bus_ref"] == zacisk_pola(pomiar)
     transformator = next(
@@ -356,7 +367,7 @@ def test_transformator_na_szynie_bez_pol_bez_zmian() -> None:
 def _stacja_z_odbiorem_nn() -> tuple[EnergyNetworkModel, dict[str, Any]]:
     enm = _wciecie("B", ["IN", "OUT"], nn_feeders=2)
     stacja = _stacja(enm, "Stacja Lipowa")
-    odplyw = next(f["field_ref"] for f in stacja["meta"]["nn_field_specs"] if f["bay_role"] != "IN")
+    odplyw = next(f["ref_id"] for f in _pola_nn(enm, stacja) if f["bay_role"] != "IN")
     enm = ok(
         op(enm, "add_nn_load", {"feeder_ref": odplyw, "active_power_kw": 100.0, "cos_phi": 0.9})
     )
@@ -373,9 +384,9 @@ def _aparat_promowany(model: EnergyNetworkModel, field_ref: str) -> Any:
 
 def test_promocja_nn_wylacznik_glowny_w_torze_transformator_szyna_nn() -> None:
     model, stacja = _stacja_z_odbiorem_nn()
-    specs = stacja["meta"]["nn_field_specs"]
+    specs = _pola_nn(model.model_dump(mode="json"), stacja)
     wylacznik = next(s for s in specs if s["bay_role"] == "IN")
-    aparat_in = _aparat_promowany(model, wylacznik["field_ref"])
+    aparat_in = _aparat_promowany(model, wylacznik["ref_id"])
     transformator = next(t for t in model.transformers if t.ref_id in stacja["transformer_refs"])
     # Tor: transformator (strona dolna) → wyłącznik główny nN → szyna nN.
     assert transformator.lv_bus_ref == aparat_in.to_bus_ref
@@ -397,14 +408,16 @@ def test_promocja_nn_wczesniej_promowany_wpis_przepina_transformator() -> None:
     """Model promowany dawną regułą (aparat IN obok transformatora wiszącego na szynie nN) —
     ta sama reguła toru przepina transformator za wyłącznik główny przy odczycie."""
     model, stacja = _stacja_z_odbiorem_nn()
-    wylacznik = next(s for s in stacja["meta"]["nn_field_specs"] if s["bay_role"] == "IN")
+    wylacznik = next(
+        s for s in _pola_nn(model.model_dump(mode="json"), stacja) if s["bay_role"] == "IN"
+    )
     dawny = model.model_copy(deep=True)
     for t in dawny.transformers:
         if t.ref_id in stacja["transformer_refs"]:
             t.lv_bus_ref = wylacznik["bus_ref"]
     naprawiony, zmieniono = migruj(dawny)
     assert zmieniono
-    aparat_in = _aparat_promowany(naprawiony, wylacznik["field_ref"])
+    aparat_in = _aparat_promowany(naprawiony, wylacznik["ref_id"])
     assert any(t.lv_bus_ref == aparat_in.to_bus_ref for t in naprawiony.transformers)
 
 
@@ -419,8 +432,8 @@ def _szyny_bez_zasilania(model: EnergyNetworkModel) -> set[str]:
     return set(wynik["de_energized_bus_refs"])
 
 
-def _pole_sn(stacja: dict[str, Any], rola: str) -> dict[str, Any]:
-    return next(s for s in stacja["meta"]["field_specs"] if s["bay_role"] == rola)
+def _pole_sn(enm: dict[str, Any], stacja: dict[str, Any], rola: str) -> dict[str, Any]:
+    return next(s for s in _pola_sn(enm, stacja) if s["bay_role"] == rola)
 
 
 @pytest.mark.parametrize("stan", ["closed", "open"])
@@ -433,19 +446,19 @@ def test_otwarcie_aparatu_pola_odlacza_element_w_rozplywie(stan: str, pole: str)
     )
     odbior = enm["loads"][0]
     prawa = next(b for b in _odcinki(enm) if b["ref_id"].endswith("segment_R"))
-    wylacznik_nn = next(s for s in stacja["meta"]["nn_field_specs"] if s["bay_role"] == "IN")
+    wylacznik_nn = next(s for s in _pola_nn(enm, stacja) if s["bay_role"] == "IN")
     if pole == "WE":
-        aparat_ref = _aparat_pola(enm, _pole_sn(stacja, "IN"))["ref_id"]
+        aparat_ref = _aparat_pola(enm, _pole_sn(enm, stacja, "IN"))["ref_id"]
         # Stacja zasilana wyłącznie przez pole WE: bez niego gaśnie stacja i dalszy ciąg.
         odlaczone = {transformator["lv_bus_ref"], odbior["bus_ref"], prawa["to_bus_ref"]}
     elif pole == "WY":
-        aparat_ref = _aparat_pola(enm, _pole_sn(stacja, "OUT"))["ref_id"]
+        aparat_ref = _aparat_pola(enm, _pole_sn(enm, stacja, "OUT"))["ref_id"]
         odlaczone = {prawa["to_bus_ref"]}
     elif pole == "TR":
-        aparat_ref = _aparat_pola(enm, _pole_sn(stacja, "TR"))["ref_id"]
+        aparat_ref = _aparat_pola(enm, _pole_sn(enm, stacja, "TR"))["ref_id"]
         odlaczone = {transformator["lv_bus_ref"], odbior["bus_ref"]}
     elif pole == "IN_nN":
-        aparat_ref = _aparat_promowany(model, wylacznik_nn["field_ref"]).ref_id
+        aparat_ref = _aparat_promowany(model, wylacznik_nn["ref_id"]).ref_id
         odlaczone = {wylacznik_nn["bus_ref"], odbior["bus_ref"]}
     else:
         aparat_ref = _aparat_promowany(model, odbior["meta"]["feeder_ref"]).ref_id
@@ -475,7 +488,7 @@ def test_aparat_pola_w_szeregu_z_zaciskiem_elementu(rola: str, element: str, zac
     milczał; aparat w torze — model rozstrzyga zacisk elementu, któremu pole służy."""
     enm = _wciecie("B", ["IN", "OUT"])
     stacja = _stacja(enm, "Stacja Lipowa")
-    aparat = _aparat_pola(enm, _pole_sn(stacja, rola))
+    aparat = _aparat_pola(enm, _pole_sn(enm, stacja, rola))
     element_ref = next(
         r
         for r in [b["ref_id"] for b in enm["branches"]] + [t["ref_id"] for t in enm["transformers"]]
@@ -489,9 +502,9 @@ def test_aparat_pola_w_szeregu_z_zaciskiem_elementu(rola: str, element: str, zac
 def test_zajetosc_pola_wy_stacji_przelotowej_z_jednego_zrodla() -> None:
     enm = _wciecie("B", ["IN", "OUT", "FEEDER"])
     stacja = _stacja(enm, "Stacja Lipowa")
-    assert zajetosc_pola(enm, _pole_sn(stacja, "OUT")["field_ref"]).zajete
-    assert zajetosc_pola(enm, _pole_sn(stacja, "IN")["field_ref"]).zajete
-    assert not zajetosc_pola(enm, _pole_sn(stacja, "FEEDER")["field_ref"]).zajete
+    assert zajetosc_pola(enm, _pole_sn(enm, stacja, "OUT")["ref_id"]).zajete
+    assert zajetosc_pola(enm, _pole_sn(enm, stacja, "IN")["ref_id"]).zajete
+    assert not zajetosc_pola(enm, _pole_sn(enm, stacja, "FEEDER")["ref_id"]).zajete
     # „Kontynuuj ciąg" ze stacji: kabel z WOLNEGO pola, nigdy z zajętego.
     wynik = ok(
         op(
@@ -501,7 +514,7 @@ def test_zajetosc_pola_wy_stacji_przelotowej_z_jednego_zrodla() -> None:
         )
     )
     nowy = _odcinki(wynik)[-1]
-    assert nowy["from_bus_ref"] == zacisk_pola(_pole_sn(stacja, "FEEDER"))
+    assert nowy["from_bus_ref"] == zacisk_pola(_pole_sn(enm, stacja, "FEEDER"))
 
 
 def test_kontynuacja_ze_stacji_bez_wolnego_pola_to_nazwana_odmowa() -> None:
@@ -520,30 +533,43 @@ def test_kontynuacja_ze_stacji_bez_wolnego_pola_to_nazwana_odmowa() -> None:
 def test_przynaleznosc_szyn_do_stacji_obejmuje_zaciski_pol() -> None:
     model, stacja = _stacja_z_odbiorem_nn()
     enm = model.model_dump(mode="json")
-    szyny = szyny_stacji(
-        stacja
-        | {"meta": next(s for s in enm["substations"] if s["ref_id"] == stacja["ref_id"])["meta"]},
-        enm["branches"],
-    )
+    szyny = szyny_stacji(enm, stacja)
     transformator = next(
         t for t in enm["transformers"] if t["ref_id"] in stacja["transformer_refs"]
     )
     assert transformator["hv_bus_ref"] in szyny and transformator["lv_bus_ref"] in szyny
     assert enm["loads"][0]["bus_ref"] in szyny
     # Szyna główna za zaciskiem: SN — szyna pola; nN za wyłącznikiem głównym — szyna nN.
-    wylacznik_nn = next(s for s in stacja["meta"]["nn_field_specs"] if s["bay_role"] == "IN")
-    assert (
-        szyna_glowna_stacji(stacja, enm["branches"], transformator["lv_bus_ref"])
-        == wylacznik_nn["bus_ref"]
-    )
-    assert (
-        szyna_glowna_stacji(stacja, enm["branches"], transformator["hv_bus_ref"])
-        == stacja["bus_refs"][0]
-    )
-    assert szyna_glowna_stacji(stacja, enm["branches"], "szyna-obca") is None
+    wylacznik_nn = next(s for s in _pola_nn(enm, stacja) if s["bay_role"] == "IN")
+    assert szyna_glowna_stacji(enm, stacja, transformator["lv_bus_ref"]) == wylacznik_nn["bus_ref"]
+    assert szyna_glowna_stacji(enm, stacja, transformator["hv_bus_ref"]) == stacja["bus_refs"][0]
+    assert szyna_glowna_stacji(enm, stacja, "szyna-obca") is None
     # Ten sam wynik na obiektach modelu (konsumenci pracują na obu postaciach).
     stacja_model = next(s for s in model.substations if s.ref_id == stacja["ref_id"])
-    assert szyny_stacji(stacja_model, model.branches) == szyny
+    assert szyny_stacji(model, stacja_model) == szyny
+
+
+def test_aparaty_pol_nn_rekord_pola_rowny_znacznikowi_galezi() -> None:
+    """Karta W5-B: przynależność aparatu do pola nN ma JEDNO źródło — rekord pola
+    (`Bay.equipment_refs`, zacisk `Bay.terminal_bus_ref`); znacznik gałęzi
+    `nn_field_migrowany_z` zostaje źródłem idempotencji promocji. Oba muszą wskazywać te
+    same pary (pole, aparat) — rozjazd przestawiłby przynależność szyn do stacji."""
+    model, stacja = _stacja_z_odbiorem_nn()
+    enm = model.model_dump(mode="json")
+    pola_nn = _pola_nn(enm, stacja)
+    assert pola_nn
+    z_rekordu = {(p["ref_id"], a) for p in pola_nn for a in p["equipment_refs"]}
+    ze_znacznika = {
+        (b["meta"]["nn_field_migrowany_z"], b["ref_id"])
+        for b in enm["branches"]
+        if (b.get("meta") or {}).get("nn_field_migrowany_z")
+    }
+    assert z_rekordu == ze_znacznika
+    aparaty = {b["ref_id"]: b for b in enm["branches"]}
+    for p in pola_nn:
+        (aparat_ref,) = p["equipment_refs"]
+        assert zacisk_pola(p) == aparaty[aparat_ref]["to_bus_ref"]
+        assert p["bus_ref"] == aparaty[aparat_ref]["from_bus_ref"]
 
 
 def test_zgodnosc_osd_stacja_slupowa_widzi_kabel_na_zacisku_pola() -> None:
@@ -638,7 +664,7 @@ def test_brama_zrodla_nn_przyjmuje_zrodlo_za_polem_na_stacji_z_torem() -> None:
     zacisku pola TR, strona dolna za wyłącznikiem głównym) — brama widzi transformator."""
     model, stacja = _stacja_z_odbiorem_nn()
     enm = model.model_dump(mode="json")
-    wylacznik_nn = next(s for s in stacja["meta"]["nn_field_specs"] if s["bay_role"] == "IN")
+    wylacznik_nn = next(s for s in _pola_nn(enm, stacja) if s["bay_role"] == "IN")
     assert transformatory_sciezki_zasilania(enm, wylacznik_nn["bus_ref"])
 
 
@@ -678,9 +704,7 @@ def test_walidator_w042_wskazuje_element_i_pole_z_akcja_naprawcza() -> None:
         assert zgloszenie.fix_action is not None
         assert zgloszenie.fix_action.modal_type == "przepnij_element_na_pole"
         field_ref = zgloszenie.fix_action.payload_hint["field_ref"]
-        rola = next(
-            s["bay_role"] for s in stacja["meta"]["field_specs"] if s["field_ref"] == field_ref
-        )
+        rola = next(s["bay_role"] for s in _pola_sn(enm, stacja) if s["ref_id"] == field_ref)
         assert (
             rola
             == {"segment_L": "IN", "segment_R": "OUT", "transformer": "TR"}[
@@ -711,7 +735,7 @@ def test_akcja_naprawcza_odmowy_nazwane_bez_skutku() -> None:
     przed = copy.deepcopy(enm)
     lewa = next(b["ref_id"] for b in enm["branches"] if b["ref_id"].endswith("segment_L"))
     transformator = stacja["transformer_refs"][0]
-    pola = {s["bay_role"]: s["field_ref"] for s in stacja["meta"]["field_specs"]}
+    pola = {s["bay_role"]: s["ref_id"] for s in _pola_sn(enm, stacja)}
     przypadki = [
         ({}, "tor.element_missing"),
         (
@@ -741,7 +765,7 @@ def test_akcja_naprawcza_odmowy_nazwane_bez_skutku() -> None:
 
 def test_akcja_naprawcza_pole_zajete_i_brak_wolnego_pola() -> None:
     enm, stacja = _model_zastany()
-    pola = {s["bay_role"]: s["field_ref"] for s in stacja["meta"]["field_specs"]}
+    pola = {s["bay_role"]: s["ref_id"] for s in _pola_sn(enm, stacja)}
     lewa = next(b["ref_id"] for b in enm["branches"] if b["ref_id"].endswith("segment_L"))
     prawa = next(b["ref_id"] for b in enm["branches"] if b["ref_id"].endswith("segment_R"))
     # Prawa połówka przepięta na pole FEEDER (wolne) — potem pole to jest zajęte.
@@ -752,11 +776,8 @@ def test_akcja_naprawcza_pole_zajete_i_brak_wolnego_pola() -> None:
     assert zajete.get("error_code") in {"tor.field_role_mismatch", "field.line_field_occupied"}
     # Stacja bez wolnego pola TR: transformator bez celu — odmowa z akcją „dodaj pole".
     bez_tr = copy.deepcopy(enm)
-    for s in bez_tr["substations"]:
-        if s["ref_id"] == stacja["ref_id"]:
-            s["meta"]["field_specs"] = [
-                f for f in s["meta"]["field_specs"] if f["bay_role"] != "TR"
-            ]
+    tr_stacji = {f["ref_id"] for f in _pola_sn(bez_tr, stacja) if f["bay_role"] == "TR"}
+    bez_tr["bays"] = [f for f in bez_tr["bays"] if f["ref_id"] not in tr_stacji]
     wynik = op(bez_tr, "przepnij_element_na_pole", {"element_ref": stacja["transformer_refs"][0]})
     assert wynik.get("error_code") in {"tor.element_not_bypassing_field", "tor.field_missing"}
 
@@ -801,7 +822,7 @@ def test_szyna_raportowa_zacisku_pola_to_szyna_pola_tylko_przy_zamknietym_aparac
 
     enm = _wciecie("B", ["IN", "OUT"])
     stacja = _stacja(enm, "Stacja Lipowa")
-    pole_we = _pole_sn(stacja, "IN")
+    pole_we = _pole_sn(enm, stacja, "IN")
     aparat = _aparat_pola(enm, pole_we)
     aparat["status"] = stan
     zacisk = zacisk_pola(pole_we)
@@ -1015,8 +1036,13 @@ def test_stacja_z_bloku_rmu_prowadzi_tor_przez_jednostke_liniowa_w_roli_wejsciow
     snap = ok(wynik)
     _szyna_glowna_niesie_tylko_aparaty(snap)
     stacja = _stacja(snap, "Stacja Blokowa")
-    specs = stacja["meta"]["field_specs"]
-    assert [s.get("factory_unit_index") for s in specs if s.get("factory_unit_index")] == [
+    specs = _pola_sn(snap, stacja)
+
+    def _jednostka(pole: dict[str, Any]) -> int | None:
+        # Karta W5-B: wybór jednostki bloku fabrycznego — typowane `Bay.wybor_bloku`.
+        return (pole.get("wybor_bloku") or {}).get("factory_unit_index")
+
+    assert [_jednostka(s) for s in specs if _jednostka(s)] == [
         p["factory_unit_index"] for p in pola
     ]
     # Obie połówki odcinka kończą się po stronie stacji na zaciskach pól: jedna na polu
@@ -1029,5 +1055,5 @@ def test_stacja_z_bloku_rmu_prowadzi_tor_przez_jednostke_liniowa_w_roli_wejsciow
                 _w_torze_pola(snap, szyna, {"IN", "OUT"})
                 role_polowek.add(str(spec["bay_role"]).upper())
                 if spec["bay_role"] == "IN":
-                    assert spec.get("factory_unit_index") == pola[0]["factory_unit_index"]
+                    assert _jednostka(spec) == pola[0]["factory_unit_index"]
     assert role_polowek == {"IN", "OUT"}

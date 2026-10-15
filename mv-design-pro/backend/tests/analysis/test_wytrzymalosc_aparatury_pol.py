@@ -20,6 +20,7 @@ from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
 from enm.models import (
+    Bay,
     Bus,
     EnergyNetworkModel,
     ENMDefaults,
@@ -64,23 +65,12 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
                 name="Stacja Sady",
                 station_type="mv_lv",
                 bus_refs=["sn"],
-                meta={
-                    "field_specs": [
-                        {
-                            "field_ref": "pole/in",
-                            "name": "P-01",
-                            "bay_role": "IN",
-                            "bus_ref": "sn",
-                        },
-                        {
-                            "field_ref": "pole/tr",
-                            "name": "P-02",
-                            "bay_role": "TR",
-                            "bus_ref": "sn",
-                        },
-                    ]
-                },
             )
+        ],
+        # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
+        bays=[
+            Bay(ref_id="pole/in", name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn"),
+            Bay(ref_id="pole/tr", name="P-02", bay_role="TR", substation_ref="stn", bus_ref="sn"),
         ],
     )
 

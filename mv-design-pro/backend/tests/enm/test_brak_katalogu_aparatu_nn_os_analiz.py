@@ -73,11 +73,15 @@ def test_aparaty_nn_po_migracji_sa_bez_katalogu_i_kazdy_nazwany_w061(siec: Any) 
         (i for i in gotowosc["issues"] if i["code"] == "W061"), key=lambda i: i["element_refs"]
     )
     assert [i["element_refs"] for i in w061] == [[a["ref_id"]] for a in aparaty]
+    pola = {p["ref_id"]: p for p in b.migawka()["bays"]}
     for issue, aparat in zip(w061, aparaty, strict=True):
         assert issue["fix_action"]["element_ref"] == aparat["ref_id"]
-        assert issue["fix_action"]["payload_hint"]["field_ref"] == (
-            aparat["meta"]["nn_field_migrowany_z"]
-        )
+        # Karta W5-B: pole aparatu wskazuje REKORD pola (`Bay.equipment_refs`); znacznik
+        # gałęzi (źródło idempotencji promocji) wskazuje to samo pole — oba źródła równe.
+        field_ref = issue["fix_action"]["payload_hint"]["field_ref"]
+        assert field_ref == aparat["meta"]["nn_field_migrowany_z"]
+        assert aparat["ref_id"] in pola[field_ref]["equipment_refs"]
+        assert pola[field_ref]["name"] in issue["message_pl"]
 
 
 def test_rozplyw_i_zwarcia_nie_sa_blokowane_brakiem_katalogu_aparatu_nn(siec: Any) -> None:

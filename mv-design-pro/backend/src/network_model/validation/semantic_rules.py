@@ -14,8 +14,9 @@ Reguły startowe (PR-C konsolidacji UI):
    rozgałęźnego (branch_pole jest punktem na linii napowietrznej).
 2. OverheadCannotStartFromZksn — linia napowietrzna nie może wychodzić
    z ZKSN (zlaczka kablowa SN to punkt na kablu).
-3. DerMustMatchBayType — generator OZE musi być na polu o typie zgodnym
-   z jego rodzajem (PV/wiatr/BESS w pole DER, nie w pole obce).
+3. DerMustMatchBayType — generator musi stać w polu przyjmującym źródło (rola
+   `Bay.bay_role` OZE albo FEEDER; nie w polu liniowym, transformatorowym, sprzęgłowym,
+   pomiarowym).
 
 Każda reguła to czysta funkcja: enm_dict -> list[ValidationIssue].
 Reguły są pure — bez mutacji ENM, bez stanu globalnego.
@@ -137,26 +138,23 @@ def rule_overhead_cannot_start_from_zksn(enm: dict) -> list[ValidationIssue]:
     return issues
 
 
-def _bay_role_for_generator_gen_type(gen_type: str) -> set[str]:
-    """
-    Mapuje gen_type generatora na dopuszczalne typy pola SN.
-    DER musi siedzieć w polu o roli "der_*" zgodnej z jego typem.
-    """
-    if gen_type in ("PV", "BESS", "WIND", "FW"):
-        # Wszystkie OZE/BESS akceptowane w polu der_*
-        return {"der", "der_pv", "der_bess", "der_wind", "customer_oze", "feeder"}
-    if gen_type in ("INVERTER", "CONVERTER"):
-        return {"der", "der_inverter", "customer_oze", "feeder"}
-    # Inne (genset, UPS) — szeroka tolerancja
-    return {"feeder", "customer", "der", "auxiliary"}
+#: Role pola (kontrakt `enm.models.Bay.bay_role`), w których może stać źródło wytwórcze:
+#: pole źródłowe SN (`OZE` — kanonicznie PV_SN/BESS_SN/FW_SN) i pole odpływowe (`FEEDER` —
+#: także pole źródła nN z `meta.feeder_role` ZRODLO_NN_*). Pole wejściowe, wyjściowe
+#: liniowe, transformatorowe, sprzęgłowe i pomiarowe źródła nie przyjmuje.
+ROLE_POLA_ZRODLA: frozenset[str] = frozenset({"OZE", "FEEDER"})
 
 
 def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
     """
-    Generator OZE/BESS musi być w polu o typie zgodnym z jego rodzajem.
-    Sprawdzane przez bay_ref → bay.bay_role / bay_kind.
+    Generator musi stać w polu, które przyjmuje źródło (`ROLE_POLA_ZRODLA`).
+    Sprawdzane przez `Generator.bay_ref` → rekord `bays` → `Bay.bay_role`.
 
-    Nowa reguła — nie ma odpowiednika inline w domain_operations.py.
+    Karta W5-B (defekt zmierzony przy przepięciu czytelników na rekord `bays`): reguła
+    porównywała rolę pola ze słownikiem spoza kontraktu `Bay` (`der`, `feeder`, `customer`
+    małymi literami) i z nieistniejącym kluczem rekordu `bay_kind` — rola z kontraktu
+    (`OZE`, `FEEDER`, …) nigdy nie należała do dopuszczonego zbioru, więc każdy generator
+    ze wskazaniem pola byłby „w polu obcym". Teraz reguła czyta rolę z kontraktu.
     """
     issues: list[ValidationIssue] = []
     bays_by_id = {b.get("ref_id"): b for b in _bays(enm)}
@@ -167,12 +165,10 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
         bay = bays_by_id.get(bay_ref)
         if not bay:
             continue
-        gen_type = gen.get("gen_type") or gen.get("source_kind") or ""
-        bay_role = bay.get("bay_role") or bay.get("bay_kind") or ""
-        if not gen_type or not bay_role:
+        bay_role = str(bay.get("bay_role") or "").upper()
+        if not bay_role:
             continue
-        allowed = _bay_role_for_generator_gen_type(gen_type)
-        if bay_role not in allowed:
+        if bay_role not in ROLE_POLA_ZRODLA:
             issues.append(
                 ValidationIssue(
                     code="semantic.der_bay_type_mismatch",

@@ -34,9 +34,9 @@ from __future__ import annotations
 from typing import Any
 
 from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
-from application.field_read_model import collect_bays
 from enm.models import Bay, EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import pola_stacji as pola_stacji_modelu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
@@ -260,7 +260,9 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     }
     czasy = dict(czasy_pol or {})
     aparaty = aparaty_pol_stacji(enm, stacja)
-    pola_stacji = [bay for bay in collect_bays(enm) if bay.substation_ref == stacja.ref_id]
+    # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — te same, które widzi
+    # read-model pola, w kolejności identyfikatorów.
+    pola_stacji = sorted(pola_stacji_modelu(enm, stacja.ref_id), key=lambda b: b.ref_id)
 
     wiersze: list[dict[str, Any]] = []
     zuzyte_klucze_konfiguracji: set[str] = set()

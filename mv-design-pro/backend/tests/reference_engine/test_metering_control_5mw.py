@@ -18,6 +18,7 @@ Test obu stron progu:
 from __future__ import annotations
 
 from enm.models import (
+    Bay,
     Bus,
     ConnectionConditions,
     EnergyNetworkModel,
@@ -33,35 +34,54 @@ def _enm(
     *,
     moc_mw: float | None,
     rodzaje_ukladow: list[str],
+    rodzaje_ukladow_nn: list[str] | None = None,
 ) -> EnergyNetworkModel:
-    """Model ze stacją kliencką niosącą układy pomiarowe energii o podanych
-    rodzajach (specyfikacje pól w `meta.field_specs`, jak zapisują je operacje
-    domenowe) + mocą przyłączeniową w nagłówku (dane dokumentu OSD, karta K2)."""
-    field_specs = [
-        {
-            "field_ref": f"field/{i}",
-            "bay_role": "MEASUREMENT",
-            "bus_ref": "bus/sn",
-            "funkcja_pomiaru": "UKLAD_ENERGII",
-            "rodzaj_pomiaru": rodzaj,
-        }
+    """Model ze stacją kliencką niosącą pola pomiarowe o podanych rodzajach układu
+    pomiarowego energii (rekordy `bays` z typowanymi `funkcja_pomiaru`/`rodzaj_pomiaru`,
+    karta W5-B) + mocą przyłączeniową w nagłówku (dane dokumentu OSD, karta K2).
+    `rodzaje_ukladow_nn` — pola pomiarowe na szynie nN (poza regułą układu SN)."""
+    bays = [
+        Bay(
+            ref_id=f"field/{i}",
+            name=f"Pole pomiarowe {i}",
+            bay_role="MEASUREMENT",
+            substation_ref="st/klient",
+            bus_ref="bus/sn",
+            funkcja_pomiaru="UKLAD_ENERGII",
+            rodzaj_pomiaru=rodzaj,
+        )
         for i, rodzaj in enumerate(rodzaje_ukladow, start=1)
+    ]
+    bays += [
+        Bay(
+            ref_id=f"field/nn/{i}",
+            name=f"Pole pomiarowe nN {i}",
+            bay_role="MEASUREMENT",
+            substation_ref="st/klient",
+            bus_ref="bus/nn",
+            funkcja_pomiaru="UKLAD_ENERGII",
+            rodzaj_pomiaru=rodzaj,
+        )
+        for i, rodzaj in enumerate(rodzaje_ukladow_nn or [], start=1)
     ]
     header = ENMHeader(name="Test 5 MW")
     if moc_mw is not None:
         header.connection_conditions = ConnectionConditions(moc_przylaczeniowa_mw=moc_mw)
     return EnergyNetworkModel(
         header=header,
-        buses=[Bus(ref_id="bus/sn", name="Szyna SN", voltage_kv=15.0)],
+        buses=[
+            Bus(ref_id="bus/sn", name="Szyna SN", voltage_kv=15.0),
+            Bus(ref_id="bus/nn", name="Szyna nN", voltage_kv=0.4),
+        ],
         substations=[
             Substation(
                 ref_id="st/klient",
                 name="Stacja abonencka",
                 station_type="mv_lv",
-                bus_refs=["bus/sn"],
-                meta={"field_specs": field_specs},
+                bus_refs=["bus/sn", "bus/nn"],
             )
         ],
+        bays=bays,
     )
 
 
@@ -98,3 +118,15 @@ def test_bramki_danych_bez_mocy_lub_bez_ukladu_energii() -> None:
     (ocenia WYPOSAŻENIE układu, nie jego istnienie)."""
     assert _checks(_enm(moc_mw=None, rodzaje_ukladow=["PODSTAWOWY"])) == []
     assert _checks(_enm(moc_mw=6.0, rodzaje_ukladow=[])) == []
+
+
+def test_pole_pomiarowe_na_szynie_nn_nie_jest_ukladem_rozliczeniowym_sn() -> None:
+    """Karta W5-B: kolekcja `bays` niesie pola SN i nN; reguła ocenia układ pomiarowy energii
+    pól SN (poziom pola z napięcia szyny, `enm.pola.czy_pole_nn`). Iloczyn: {układ kontrolny
+    w polu SN, w polu nN} — kontrolny wyłącznie w polu nN NIE spełnia wymogu SN, a pole nN
+    samo (bez pola SN) nie uruchamia reguły."""
+    tylko_nn_kontrolny = _checks(
+        _enm(moc_mw=6.0, rodzaje_ukladow=["PODSTAWOWY"], rodzaje_ukladow_nn=["KONTROLNY"])
+    )
+    assert [c.status for c in tylko_nn_kontrolny] == ["fail"]
+    assert _checks(_enm(moc_mw=6.0, rodzaje_ukladow=[], rodzaje_ukladow_nn=["KONTROLNY"])) == []

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 
+from enm.pola import czy_pole_nn, napiecia_szyn
 from enm.tor_pola import szyny_stacji
 
 from tests.reference_networks.szyny_stacji_parytet import (
@@ -55,13 +56,20 @@ def test_parytet_zawiera_wszystkie_trzy_skladniki_zbioru() -> None:
             model = dane
             for czesc in [c for c in wskaznik.split("/") if c]:
                 model = model[int(czesc)] if isinstance(model, list) else model[czesc]
+            # Karta W5-B: pola nN to rekordy `bays` na szynie nN — model bez aparatów pól nN
+            # = rekordy pól nN bez `equipment_refs`.
+            napiecia = napiecia_szyn(model)
+            bez_aparatow_nn = {
+                **model,
+                "bays": [
+                    {**p, "equipment_refs": []} if czy_pole_nn(model, p, napiecia) else p
+                    for p in model.get("bays") or []
+                ],
+            }
             for stacja in model["substations"]:
                 glowne = set(stacja.get("bus_refs") or [])
-                bez_nn = szyny_stacji(
-                    {**stacja, "meta": {**(stacja.get("meta") or {}), "nn_field_specs": []}},
-                    model["branches"],
-                )
-                pelne = szyny_stacji(stacja, model["branches"])
+                bez_nn = szyny_stacji(bez_aparatow_nn, stacja)
+                pelne = szyny_stacji(model, stacja)
                 zaciski += len(bez_nn - glowne)
                 aparaty += len(pelne - bez_nn)
     assert zaciski > 0
@@ -72,7 +80,7 @@ def test_parytet_cwiczy_kazda_odpowiedz_klasy() -> None:
     """Commit 2: każda odpowiedź klasy „stacja i jej szyny” ma w pliku dane, na których
     iniekcja w lustrze frontu mogłaby się ujawnić — szyny główne różne od samej szyny (zacisk
     → szyna pola, koniec aparatu → szyna główna), `null` dla szyny za łańcuchem, transformatory
-    z bazy i z iloczynu, zaciski pól i punkty przyłączenia rekordów `bays` z szablonu."""
+    z bazy i z iloczynu, zaciski pól i punkty przyłączenia rekordów `bays`."""
     dane = oczekiwane_szyny_stacji()
     modele = [m for pliki in dane["pliki"].values() for m in pliki.values()]
     przypisane = [
@@ -87,4 +95,12 @@ def test_parytet_cwiczy_kazda_odpowiedz_klasy() -> None:
     assert sum(len(m["zaciski_pol"]) for m in modele) > 0
     iloczyn = dane["iloczyn"]
     assert iloczyn["transformatory"]["A/stacja"] == ["T/na-szynie-glownej", "T/na-zacisku"]
-    assert iloczyn["punkty_przylaczenia_rekordow_pol"]["B/pole-szablon"] == "A/zacisk-z-szablonu"
+    # Punkt przyłączenia rekordu pola: własny zacisk (`terminal_bus_ref`, po obcięciu spacji),
+    # bez zacisku — szyna pola (karta W5-B: jedyny nośnik zacisku).
+    punkty = iloczyn["punkty_przylaczenia_rekordow_pol"]
+    assert punkty["A/pole-tr"] == "A/zacisk-tr"
+    assert punkty["A/pole-bez-zacisku"] == "A/sn"
+    # Aparat ze znacznikiem gałęzi, którego żaden rekord pola nie wskazuje, nie wnosi szyny.
+    assert "A/sierota" not in iloczyn["szyny"]["A/stacja"]
+    # Aparat wskazany przez pole INNEJ stacji nie należy do stacji A.
+    assert "X/obca" not in iloczyn["szyny"]["A/stacja"]

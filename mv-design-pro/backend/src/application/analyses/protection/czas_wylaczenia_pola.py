@@ -41,9 +41,9 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     czas_z_nastawy,
     nastawa_zwarciowa,
 )
-from application.field_read_model import collect_bays
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import pola_stacji
 from network_model.catalog import get_default_mv_catalog
 from network_model.pochodne import ka_na_a
 
@@ -134,9 +134,9 @@ def czasy_wylaczenia_pol_stacji(
     prad_a = ka_na_a(ik_ka) if ik_ka is not None else None
     wynik: dict[str, dict[str, Any]] = {}
 
-    for bay in collect_bays(enm):
-        if bay.substation_ref != stacja.ref_id:
-            continue
+    # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — w kolejności
+    # identyfikatorów, jak read-model pola.
+    for bay in sorted(pola_stacji(enm, stacja.ref_id), key=lambda b: b.ref_id):
         aparaty_pola = aparaty.get(bay.ref_id, [])
         if not aparaty_pola:
             wynik[bay.ref_id] = _bez_czasu(

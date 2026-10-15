@@ -187,14 +187,21 @@ def _do_przepiecia(enm: EnergyNetworkModel) -> list[tuple[Any, str, str, str]]:
 
 
 def _rekordy_do_uzupelnienia(enm: EnergyNetworkModel) -> list[tuple[Bay, SwitchBranch]]:
-    """Pola nN promowane wcześniej, których rekord nie niesie jeszcze aparatu albo zacisku
-    (migawki sprzed karty W5-B)."""
+    """Pola promowane wcześniej, których rekord nie niesie jeszcze aparatu albo zacisku
+    (migawki sprzed karty W5-B).
+
+    KAŻDE pole ze wskazującym je aparatem promocji — nie tylko pole na szynie nN: dawna
+    promocja promowała każdy wpis `nn_field_specs`, także pole źródła zapisane operacją nN na
+    szynie SN (zmierzone na scenach harnessu OZE i LoM: aparat między szyną SN a szyną
+    odpływu, źródło za aparatem). Po migracji wpisów taki rekord leży na szynie SN (predykat
+    poziomu `czy_pole_nn` = NIE nN), a jego aparat istnieje — bez zapisu na rekordzie aparat
+    i szyna za nim wypadłyby z przynależności do stacji (`enm.tor_pola.szyny_stacji` czyta
+    rekord pola, jedyne źródło przynależności aparatu)."""
     aparaty = _aparaty_promowane(enm)
     wynik: list[tuple[Bay, SwitchBranch]] = []
-    napiecia = napiecia_szyn(enm)
     for bay in enm.bays:
         aparat = aparaty.get(bay.ref_id)
-        if aparat is None or not czy_pole_nn(enm, bay, napiecia):
+        if aparat is None:
             continue
         if aparat.ref_id not in bay.equipment_refs or bay.terminal_bus_ref != aparat.to_bus_ref:
             wynik.append((bay, aparat))
