@@ -54,7 +54,9 @@ describe('SettingsPanel UI', () => {
     render(<SettingsPanel isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId('settings-theme-light'));
     const lightBtn = screen.getByTestId('settings-theme-light');
-    expect(lightBtn.className).toContain('border-blue-500');
+    // Wybrany motyw jest wyróżniony obrysem akcentu informacji (token motywu
+    // `border-sygnal-info`, karta KOLORY-ZASZYTE-POD-MOTYW; dawniej `border-blue-500`).
+    expect(lightBtn.className).toContain('border-sygnal-info');
   });
 
   it('save persistuje + wywołuje onChange', () => {
@@ -77,7 +79,7 @@ describe('SettingsPanel UI', () => {
     render(<SettingsPanel isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId('settings-reset'));
     const darkBtn = screen.getByTestId('settings-theme-dark');
-    expect(darkBtn.className).toContain('border-blue-500');
+    expect(darkBtn.className).toContain('border-sygnal-info');
   });
 
   it('EN język pokazuje warning o niepełnym tłumaczeniu', () => {

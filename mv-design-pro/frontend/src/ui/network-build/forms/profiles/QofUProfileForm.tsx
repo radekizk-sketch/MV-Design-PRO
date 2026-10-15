@@ -187,7 +187,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
 
       {validationError && (
         <p
-          className="text-xs text-red-400 border border-red-400/30 px-2 py-1 rounded"
+          className="text-xs text-sygnal-blokada border border-sygnal-blokada/30 px-2 py-1 rounded"
           data-testid="qu-validation-error"
         >
           {validationError}

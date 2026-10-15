@@ -299,7 +299,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
           </div>
           <div className="mt-2 space-y-2">
             {branchPorts.length === 0 ? (
-              <p className="text-[11px] text-amber-300">
+              <p className="text-[11px] text-sygnal-uwaga">
                 Brak wolnych pól odgałęźnych w materializacji ZK SN.
               </p>
             ) : (
@@ -426,7 +426,7 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
             </button>
           )}
           {!branchSourceRef && !branchPortOccupied && (
-            <p className="mt-2 text-[11px] text-amber-300">
+            <p className="mt-2 text-[11px] text-sygnal-uwaga">
               Najpierw wybierz wolny port odgałęźny słupa.
             </p>
           )}
@@ -572,7 +572,7 @@ function Field({ label, value, onChange, placeholder, required }: FieldProps) {
     <div>
       <label className="mb-1 block text-xs text-scada-muted">
         {label}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <input
         type="text"

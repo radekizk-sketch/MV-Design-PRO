@@ -129,7 +129,7 @@ export function CreateScenarioModal({
                   key={ft}
                   className={`flex-1 px-3 py-2 text-sm border rounded ${
                     faultType === ft
-                      ? 'bg-blue-500 text-white border-blue-500'
+                      ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
                   }`}
                   onClick={() => setFaultType(ft)}
@@ -201,7 +201,7 @@ export function CreateScenarioModal({
             <button
               onClick={handleSubmit}
               disabled={isCreating}
-              className="flex-1 bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 disabled:opacity-50"
+              className="flex-1 bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
             >
               {isCreating ? 'Tworzenie...' : 'Utwórz scenariusz'}
             </button>

@@ -182,7 +182,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
               data-testid="work-csv-input"
             />
             {importError && (
-              <span className="text-red-400" data-testid="work-csv-error">
+              <span className="text-sygnal-blokada" data-testid="work-csv-error">
                 {importError}
               </span>
             )}
@@ -309,7 +309,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
       )}
 
       {validationError && (
-        <p className="text-xs text-red-400" data-testid="work-validation-error">
+        <p className="text-xs text-sygnal-blokada" data-testid="work-validation-error">
           {validationError}
         </p>
       )}

@@ -124,48 +124,57 @@ const STEPS: readonly StepDefinition[] = [
   { id: 'readiness', n: 17, label: 'Obliczenia i raport', sub: 'Zakres obliczeń, dowody i eksport', group: 'Raport', code: 'RP-1' },
 ];
 
+/**
+ * Barwy grup kroków konfiguratora — KATEGORIE, nie stany. Każda grupa czyta
+ * token motywu (`scada-*` / `sygnal-*`, wartości per motyw w `src/index.css`),
+ * a nie literał palety Tailwinda: dawne jasne odcienie tekstu i ciemne tła
+ * palety były dobrane pod motyw ciemny i w motywie jasnym znikały (karta
+ * KOLORY-ZASZYTE-POD-MOTYW). Tekst grupy stoi na panelu, przycisk niesie tusz
+ * tła aplikacji na akcencie grupy — obie pary mają ≥ 4,5:1 w OBU motywach
+ * (`ui/__tests__/scadaTokens.test.ts`).
+ */
 const GROUP_STYLE: Record<StepGroup, { readonly text: string; readonly border: string; readonly bg: string; readonly button: string }> = {
   SN: {
     text: 'text-scada-sn',
     border: 'border-scada-sn',
-    bg: 'bg-cyan-950/25',
+    bg: 'bg-scada-sn/10',
     button: 'bg-scada-sn text-scada-bg',
   },
   Pomiary: {
-    text: 'text-sky-300',
-    border: 'border-sky-400',
-    bg: 'bg-sky-950/25',
-    button: 'bg-sky-400 text-slate-950',
+    text: 'text-scada-nn',
+    border: 'border-scada-nn',
+    bg: 'bg-scada-nn/10',
+    button: 'bg-scada-nn text-scada-bg',
   },
   Stacja: {
-    text: 'text-emerald-300',
-    border: 'border-emerald-400',
-    bg: 'bg-emerald-950/20',
-    button: 'bg-emerald-400 text-slate-950',
+    text: 'text-scada-energized',
+    border: 'border-scada-energized',
+    bg: 'bg-scada-energized/10',
+    button: 'bg-scada-energized text-scada-bg',
   },
   OZE: {
-    text: 'text-amber-300',
-    border: 'border-amber-400',
-    bg: 'bg-amber-950/20',
-    button: 'bg-amber-400 text-slate-950',
+    text: 'text-sygnal-uwaga',
+    border: 'border-sygnal-uwaga',
+    bg: 'bg-sygnal-uwaga/10',
+    button: 'bg-sygnal-uwaga text-scada-bg',
   },
   Ochrona: {
-    text: 'text-rose-300',
-    border: 'border-rose-400',
-    bg: 'bg-rose-950/20',
-    button: 'bg-rose-400 text-slate-950',
+    text: 'text-scada-alarm',
+    border: 'border-scada-alarm',
+    bg: 'bg-scada-alarm/10',
+    button: 'bg-scada-alarm text-scada-bg',
   },
   Infrastruktura: {
-    text: 'text-orange-300',
-    border: 'border-orange-400',
-    bg: 'bg-orange-950/20',
-    button: 'bg-orange-400 text-slate-950',
+    text: 'text-scada-grounded',
+    border: 'border-scada-grounded',
+    bg: 'bg-scada-grounded/10',
+    button: 'bg-scada-grounded text-scada-bg',
   },
   Raport: {
-    text: 'text-lime-300',
-    border: 'border-lime-400',
-    bg: 'bg-lime-950/20',
-    button: 'bg-lime-400 text-slate-950',
+    text: 'text-scada-wn',
+    border: 'border-scada-wn',
+    bg: 'bg-scada-wn/10',
+    button: 'bg-scada-wn text-scada-bg',
   },
 };
 
@@ -437,9 +446,9 @@ function StationBayTechnicalPanel({ bays }: { readonly bays: StationConfigBaysCa
 function BayMiniSld({ bay }: { readonly bay: StationConfigBaysCardProps['bays'][number] }): JSX.Element {
   // Barwa pola z ROLI (kanon ról pól, karta #141), nie z tekstu etykiety.
   const tone = canonicalFieldRole(bay.bayRole) === 'TRANSFORMATOROWE'
-    ? 'border-emerald-400 text-emerald-200'
+    ? 'border-sygnal-ok text-sygnal-ok'
     : isSourceFieldRole(bay.bayRole)
-      ? 'border-amber-400 text-amber-200'
+      ? 'border-sygnal-uwaga text-sygnal-uwaga'
       : 'border-scada-sn text-scada-sn';
   return (
     <div className={`w-28 shrink-0 rounded border bg-scada-panel p-2 ${tone}`} data-testid={`station-bay-mini-${bay.bayId}`}>

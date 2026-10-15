@@ -53,8 +53,13 @@
     --scada-focus: 56 189 248;
     /* Skala komunikatów (KD-8 poz. 3): blokada > ostrzeżenie > informacja.
      * Każdy poziom ma TRZY tokeny — akcent (obrys/ikona), tło i TUSZ; tusz jest
-     * osobny, bo sam akcent na własnym tle nie osiąga 4,5:1. */
-    --scada-status-err: 221 90 82;
+     * osobny, bo sam akcent na własnym tle nie zawsze osiąga 4,5:1.
+     * AKCENT jest też tekstem na zwykłym panelu (`text-sygnal-*`: pole wymagane,
+     * komunikat błędu formularza, stan w wierszu) — musi mieć ≥ 4,5:1 na
+     * `bg`/`surface`/`panel`/`panel-raised` i na własnym tle (karta
+     * KOLORY-ZASZYTE-POD-MOTYW; pomiar przed: blokada na `panel-raised`
+     * 4,34:1, po: 4,63:1). */
+    --scada-status-err: 223 98 91;
     --scada-status-err-bg: 46 21 18;
     --scada-status-err-ink: 255 217 213;
     --scada-status-warn: 227 166 60;
@@ -94,16 +99,22 @@
     --scada-hover-nav: 229 236 243;
     --scada-border-strong: 154 168 182;
     --scada-focus: 31 127 181;
-    --scada-status-err: 179 56 47;
+    /* Akcenty przyciemnione (karta KOLORY-ZASZYTE-POD-MOTYW). Pomiar przed:
+     * ostrzeżenie / potwierdzenie / informacja jako tekst na `bg` 4,16 / 4,47 /
+     * 3,89:1, na `bg-hover` 3,83 / 4,11 / 3,58:1. Po: ≥ 4,56:1 na `bg`,
+     * `bg-hover`, `hover-nav`, panelach i własnym tle. Blokada przyciemniona
+     * razem z nimi, żeby zachować odstęp jasności blokada ≠ ostrzeżenie
+     * (`ui/__tests__/scadaTokens.test.ts`). */
+    --scada-status-err: 170 53 45;
     --scada-status-err-bg: 249 228 226;
     --scada-status-err-ink: 122 36 29;
-    --scada-status-warn: 154 106 20;
+    --scada-status-warn: 138 95 18;
     --scada-status-warn-bg: 248 238 218;
     --scada-status-warn-ink: 107 74 14;
-    --scada-status-ok: 30 126 75;
+    --scada-status-ok: 28 118 71;
     --scada-status-ok-bg: 226 243 233;
     --scada-status-ok-ink: 20 96 58;
-    --scada-status-info: 31 127 181;
+    --scada-status-info: 27 109 156;
     --scada-status-info-bg: 228 240 248;
     --scada-status-info-ink: 18 88 127;
     --scada-shadow-panel: 0 8px 24px rgb(20 30 40 / 0.14);

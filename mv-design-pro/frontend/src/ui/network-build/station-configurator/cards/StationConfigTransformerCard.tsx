@@ -131,9 +131,9 @@ export function StationConfigTransformerCard(
       {transformers.length === 0 ? (
         <div
           data-testid="station-transformer-empty-state"
-          className="rounded border border-amber-500/40 bg-amber-500/10 p-3 text-amber-100"
+          className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-3 text-sygnal-uwaga-tusz"
         >
-          <div className="font-semibold text-amber-50">Brak transformatora SN/nN w modelu stacji.</div>
+          <div className="font-semibold text-sygnal-uwaga-tusz">Brak transformatora SN/nN w modelu stacji.</div>
           <p className="mt-1 leading-5">
             Transformator musi zostać dodany jako element ENM z pozycji katalogowej. Bez tego obliczenia zwarciowe,
             rozpływ mocy, dobór zabezpieczeń i raport pozostają zablokowane dla toru nN.
@@ -143,7 +143,7 @@ export function StationConfigTransformerCard(
               type="button"
               data-testid="station-add-transformer-from-catalog"
               onClick={onAddTransformer}
-              className="mt-3 rounded border border-amber-300 bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200"
+              className="mt-3 rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga px-3 py-1.5 font-semibold text-scada-bg transition hover:bg-sygnal-uwaga/85"
             >
               Dodaj transformator z katalogu
             </button>
@@ -194,7 +194,7 @@ export function StationConfigTransformerCard(
                   </label>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
                     {tr.catalogRef ? (
-                      <span className="rounded border border-status-ok/40 bg-emerald-950/30 px-2 py-1 text-status-ok">
+                      <span className="rounded border border-sygnal-ok/40 bg-sygnal-ok-tlo px-2 py-1 text-sygnal-ok-tusz">
                         katalog: {selectedCatalog?.name ?? tr.catalogRef}
                       </span>
                     ) : recommendedCatalog ? (

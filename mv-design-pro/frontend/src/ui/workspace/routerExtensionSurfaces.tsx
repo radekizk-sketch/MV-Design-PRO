@@ -100,7 +100,7 @@ export function AnalysisSurfaceComparisonWizard({
 
   if (availableRuns.length < 2) {
     return (
-      <div className="rounded border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+      <div className="rounded border border-sygnal-uwaga/30 bg-sygnal-uwaga-tlo p-4 text-sm text-sygnal-uwaga-tusz">
         <div className="font-semibold">Brak dostępnych przebiegów do porównania</div>
         <p className="mt-1 text-xs">
           Wymagane min. 2 ukończone przebiegi obliczeniowe. Uruchom obliczenia w co najmniej 2 wariantach.
@@ -161,7 +161,7 @@ export function ReportSurfaceOsdAndProfileActions({
         <button
           type="button"
           data-testid="report-osd-open"
-          className="rounded border border-slate-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+          className="rounded border border-slate-300 bg-sygnal-uwaga-tlo px-3 py-1.5 text-xs font-semibold text-sygnal-uwaga-tusz hover:border-sygnal-uwaga"
           onClick={() => setOsdOpen(true)}
           title="Otwórz formularz danych OSD (operator, inwestor, projektant, faza, SEP)"
         >
@@ -170,7 +170,7 @@ export function ReportSurfaceOsdAndProfileActions({
         <button
           type="button"
           data-testid="report-profile-open"
-          className="rounded border border-slate-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-900 hover:bg-sky-100"
+          className="rounded border border-slate-300 bg-sygnal-info-tlo px-3 py-1.5 text-xs font-semibold text-sygnal-info-tusz hover:border-sygnal-info"
           onClick={() => setProfileOpen(true)}
           title="Wybierz profil raportu (OSD / PW / PR / Pełny techniczny)"
         >

@@ -18,24 +18,24 @@ export interface TopContextBarProps {
 
 const PHASE_STYLES: Record<string, { badge: string; dot: string }> = {
   NO_SOURCE: {
-    badge: 'border-rose-500/35 bg-rose-500/12 text-rose-100',
-    dot: 'bg-rose-400',
+    badge: 'border-sygnal-blokada/35 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz',
+    dot: 'bg-sygnal-blokada',
   },
   HAS_SOURCE: {
-    badge: 'border-amber-500/35 bg-amber-500/12 text-amber-100',
-    dot: 'bg-amber-400',
+    badge: 'border-sygnal-uwaga/35 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+    dot: 'bg-sygnal-uwaga',
   },
   HAS_TRUNKS: {
-    badge: 'border-yellow-500/35 bg-yellow-500/12 text-yellow-100',
-    dot: 'bg-yellow-400',
+    badge: 'border-sygnal-uwaga/35 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+    dot: 'bg-sygnal-uwaga',
   },
   HAS_STATIONS: {
-    badge: 'border-sky-500/35 bg-sky-500/12 text-sky-100',
-    dot: 'bg-sky-400',
+    badge: 'border-sygnal-info/35 bg-sygnal-info-tlo text-sygnal-info-tusz',
+    dot: 'bg-sygnal-info',
   },
   READY: {
-    badge: 'border-emerald-500/35 bg-emerald-500/12 text-emerald-100',
-    dot: 'bg-emerald-400',
+    badge: 'border-sygnal-ok/35 bg-sygnal-ok-tlo text-sygnal-ok-tusz',
+    dot: 'bg-sygnal-ok',
   },
 };
 
@@ -74,7 +74,7 @@ function StatPill({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-full border border-scada-border bg-scada-bg px-2.5 py-1 text-[10px] font-medium text-scada-text">
       <span className="text-scada-muted">{label}</span>
-      <span className="ml-1 font-semibold text-slate-100">{value}</span>
+      <span className="ml-1 font-semibold text-scada-text">{value}</span>
     </div>
   );
 }
@@ -115,28 +115,27 @@ export function TopContextBar({
   return (
     <div
       className={clsx(
-        'flex items-center gap-3 border-b border-chrome-800',
-        'bg-[radial-gradient(circle_at_top_left,rgba(14,116,144,0.18),transparent_32%),linear-gradient(180deg,#07131c_0%,#08141d_100%)]',
-        'px-3 py-2 text-[11px] text-chrome-200 shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]',
+        'flex items-center gap-3 border-b border-scada-border bg-scada-panel',
+        'px-3 py-2 text-[11px] text-scada-text shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]',
         className,
       )}
       data-testid="top-context-bar"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="min-w-0 rounded-[16px] border border-scada-border bg-[rgba(9,22,33,0.82)] px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
+        <div className="min-w-0 rounded-[16px] border border-scada-border bg-scada-surface px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
           <div className="scada-shell-eyebrow">Kontekst projektu</div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             {projectName ? (
               <button
                 type="button"
                 onClick={onOpenProjectMetadata}
-                className="truncate text-sm font-semibold text-slate-50 transition-colors hover:text-cyan-100"
+                className="truncate text-sm font-semibold text-scada-text transition-colors hover:text-sygnal-info"
                 title="Edytuj metadane projektu"
               >
                 {projectName}
               </button>
             ) : (
-              <span className="text-sm font-semibold text-slate-50">Projekt bez nazwy</span>
+              <span className="text-sm font-semibold text-scada-text">Projekt bez nazwy</span>
             )}
             {caseName ? (
               <>
@@ -160,20 +159,20 @@ export function TopContextBar({
 
           {!readinessUstalona ? (
             <div
-              className="rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[10px] font-medium text-slate-200"
+              className="rounded-full border border-scada-border-strong bg-scada-surface px-3 py-1 text-[10px] font-medium text-scada-muted"
               data-testid="top-context-gotowosc-nieustalona"
             >
               {GOTOWOSC_STRINGS.nieustalonaTytul}
             </div>
           ) : blockersByCategory.total > 0 ? (
-            <div className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-medium text-rose-100">
+            <div className="rounded-full border border-sygnal-blokada/30 bg-sygnal-blokada-tlo px-3 py-1 text-[10px] font-medium text-sygnal-blokada-tusz">
               {blockersByCategory.total} zagadnień konfiguracji
-              <span className="ml-2 text-rose-200/70">
+              <span className="ml-2 text-sygnal-blokada-tusz/80">
                 T:{blockersByCategory.topologia} K:{blockersByCategory.katalogi} E:{blockersByCategory.eksploatacja}
               </span>
             </div>
           ) : (
-            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-medium text-emerald-100">
+            <div className="rounded-full border border-sygnal-ok/30 bg-sygnal-ok-tlo px-3 py-1 text-[10px] font-medium text-sygnal-ok-tusz">
               Układ bez zagadnień konfiguracji
             </div>
           )}
@@ -234,7 +233,7 @@ export function TopContextBar({
         />
 
         <div className={isReady ? 'scada-chip-ok' : 'scada-chip-warn'}>
-          <span className={clsx('h-2 w-2 rounded-full', isReady ? 'bg-emerald-400' : 'bg-amber-400')} />
+          <span className={clsx('h-2 w-2 rounded-full', isReady ? 'bg-sygnal-ok' : 'bg-sygnal-uwaga')} />
           <span>{isReady ? 'Układ do analizy' : 'Układ w konfiguracji'}</span>
         </div>
       </div>

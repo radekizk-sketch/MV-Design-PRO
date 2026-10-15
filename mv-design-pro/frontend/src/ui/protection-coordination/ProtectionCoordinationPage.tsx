@@ -400,7 +400,7 @@ export function ProtectionCoordinationPage() {
             <button
               onClick={() => void handleRun()}
               disabled={status === 'RUNNING'}
-              className="w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded bg-emerald-700 px-4 py-3 font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="run-analysis-button"
             >
               {status === 'RUNNING' ? LABELS.status.running : LABELS.actions.runAnalysis}

@@ -86,7 +86,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
 
   if (!isOpen) return null;
 
-  const inputClass = 'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded focus:outline-none focus:border-blue-400';
+  const inputClass = 'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded focus:outline-none focus:border-sygnal-info';
 
   return (
     <div
@@ -126,7 +126,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
                   onClick={() => update('theme', 'dark_scada')}
                   className={`flex-1 rounded border px-3 py-2 text-[11px] ${
                     settings.theme === 'dark_scada'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
+                      ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz font-semibold'
                       : 'border-gray-200 text-gray-600'
                   }`}
                   data-testid="settings-theme-dark"
@@ -138,7 +138,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
                   onClick={() => update('theme', 'light_technical')}
                   className={`flex-1 rounded border px-3 py-2 text-[11px] ${
                     settings.theme === 'light_technical'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
+                      ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz font-semibold'
                       : 'border-gray-200 text-gray-600'
                   }`}
                   data-testid="settings-theme-light"
@@ -190,7 +190,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
                 <option value="EN">English (EN) - tłumaczenie niepełne</option>
               </select>
               {settings.language === 'EN' && (
-                <p className="mt-1 text-[10px] text-amber-700">
+                <p className="mt-1 text-[10px] text-sygnal-uwaga">
                   Tłumaczenie angielskie jeszcze nieukończone. PL pozostaje domyślne dla raportów OSD.
                 </p>
               )}
@@ -217,7 +217,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
               <div>
                 <label className="block text-[11px] text-gray-500 mb-0.5">
                   Uprawnienia SEP
-                  <span className="ml-1 text-blue-400 cursor-help" title="Numer uprawnień SEP D (dozór) lub E (eksploatacja). Auto-wypełnione w raporcie OSD.">
+                  <span className="ml-1 text-sygnal-info cursor-help" title="Numer uprawnień SEP D (dozór) lub E (eksploatacja). Auto-wypełnione w raporcie OSD.">
                     ⓘ
                   </span>
                 </label>

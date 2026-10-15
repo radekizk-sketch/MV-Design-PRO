@@ -219,7 +219,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-6 text-sm text-sygnal-blokada-tusz"
         >
           <div className="font-semibold">Błąd pobierania listy projektów</div>
-          <div className="mt-1 text-red-300">{state.errorMessage ?? MISSING_DASH}</div>
+          <div className="mt-1 text-sygnal-blokada">{state.errorMessage ?? MISSING_DASH}</div>
           <button
             type="button"
             onClick={() => void refresh()}

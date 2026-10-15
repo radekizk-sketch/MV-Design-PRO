@@ -206,7 +206,7 @@ export function AuditTrailPanel({
                 <button
                   type="button"
                   onClick={() => onSelectElement(entry.elementRef!)}
-                  className="text-[10px] text-blue-400 hover:underline self-start"
+                  className="text-[10px] text-sygnal-info hover:underline self-start"
                   data-testid={`audit-trail-show-element-${entry.id}`}
                 >
                   Pokaż element na SLD

@@ -1638,11 +1638,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 && autoBlockTransformer && (
                 <div
                   data-testid="add-der-auto-block-transformer"
-                  className="rounded border border-emerald-700 bg-emerald-950/30 p-2 text-[11px] text-scada-text"
+                  className="rounded border border-sygnal-ok bg-sygnal-ok-tlo p-2 text-[11px] text-scada-text"
                 >
                   Automatycznie dobrano transformator dedykowany:
                   {' '}
-                  <span className="font-medium text-emerald-200">
+                  <span className="font-medium text-sygnal-ok-tusz">
                     {autoBlockTransformer.label_pl}
                   </span>
                   {' '}
@@ -1729,16 +1729,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   data-testid="add-der-voltage-mismatch-warning"
                   className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
-                  <div className="font-semibold text-red-200">
+                  <div className="font-semibold text-sygnal-blokada-tusz">
                     Niezgodność napięciowa blokuje zapis wariantu nN.
                   </div>
                   <div>{voltageMismatchWarning}</div>
                   {autoBlockTransformer ? (
-                    <div className="text-red-100/80">
+                    <div className="text-sygnal-uwaga-tusz/80">
                       Sugestia katalogowa: {autoBlockTransformer.label_pl}.
                     </div>
                   ) : (
-                    <div className="text-red-100/80">
+                    <div className="text-sygnal-uwaga-tusz/80">
                       Katalog nie wskazał transformatora dedykowanego dla tego urządzenia.
                     </div>
                   )}
@@ -1748,7 +1748,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       data-testid="add-der-switch-dedicated-transformer"
                       onClick={handleSwitchToDedicatedTransformer}
                       disabled={!autoBlockTransformer}
-                      className="rounded border border-red-300 px-3 py-1 text-[11px] font-semibold text-red-50 transition hover:bg-red-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded border border-sygnal-blokada/40 px-3 py-1 text-[11px] font-semibold text-sygnal-blokada-tusz transition hover:bg-sygnal-blokada-tlo disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Przełącz na TR dedykowany
                     </button>
@@ -2312,7 +2312,7 @@ function Field({
     <div>
       <label className="mb-1 block text-[11px] text-scada-muted">
         {label}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <input
         type="text"
@@ -2347,7 +2347,7 @@ function Select({
     <div>
       <label className="mb-1 block text-[11px] text-scada-muted">
         {label}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <select
         data-testid={testId}

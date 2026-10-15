@@ -206,17 +206,17 @@ export function GpzSectionsEditor({ station }: Props) {
         className="flex items-center justify-between gap-2 py-1 text-sm"
       >
         <span className="flex-1 font-mono">
-          <span className="text-zinc-300">{section.section_id}</span>
-          <span className="text-zinc-500"> · porządek {section.order}</span>
-          <span className="text-zinc-400">{section.name ? ` · ${section.name}` : ''}</span>
-          <span className="text-zinc-500"> · szyna {section.bus_ref}</span>
+          <span className="text-scada-text">{section.section_id}</span>
+          <span className="text-scada-muted"> · porządek {section.order}</span>
+          <span className="text-scada-muted">{section.name ? ` · ${section.name}` : ''}</span>
+          <span className="text-scada-muted"> · szyna {section.bus_ref}</span>
         </span>
         {isPendingDelete ? (
           <span
             data-testid={`gpz-section-delete-confirm-${side}-${section.section_id}`}
             className="flex items-center gap-1"
           >
-            <span className="text-xs text-red-300">Potwierdź usunięcie?</span>
+            <span className="text-xs text-sygnal-blokada">Potwierdź usunięcie?</span>
             <button
               type="button"
               data-testid={`gpz-section-delete-confirm-yes-${side}-${section.section_id}`}
@@ -228,7 +228,7 @@ export function GpzSectionsEditor({ station }: Props) {
             <button
               type="button"
               data-testid={`gpz-section-delete-confirm-no-${side}-${section.section_id}`}
-              className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300"
+              className="rounded border border-scada-border-strong px-2 py-0.5 text-xs text-scada-text"
               onClick={cancelDelete}
             >
               Anuluj
@@ -239,7 +239,7 @@ export function GpzSectionsEditor({ station }: Props) {
             <button
               type="button"
               data-testid={`gpz-section-edit-${side}-${section.section_id}`}
-              className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
+              className="rounded border border-scada-border-strong px-2 py-0.5 text-xs text-scada-text hover:bg-scada-bg-hover"
               onClick={() => startEdit(side, section)}
             >
               Edytuj
@@ -267,18 +267,18 @@ export function GpzSectionsEditor({ station }: Props) {
         data-testid="gpz-sections-editor-form"
         data-mode={editor.mode}
         data-side={editor.side}
-        className="mt-2 rounded border border-zinc-700 bg-zinc-900 p-3"
+        className="mt-2 rounded border border-scada-border-strong bg-scada-panel p-3"
       >
-        <div className="mb-2 text-xs font-semibold uppercase text-zinc-400">
+        <div className="mb-2 text-xs font-semibold uppercase text-scada-muted">
           {isEdit ? 'Edycja sekcji' : 'Nowa sekcja'} {editor.side.toUpperCase()}
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-400">ID sekcji</span>
+            <span className="text-xs text-scada-muted">ID sekcji</span>
             <input
               type="text"
               data-testid="gpz-sections-editor-input-section-id"
-              className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 font-mono text-zinc-100 disabled:opacity-50"
+              className="rounded border border-scada-border-strong bg-scada-surface px-2 py-1 font-mono text-scada-text disabled:opacity-50"
               value={editor.section_id}
               disabled={isEdit /* immutable */}
               onChange={(e) => setEditor({ ...editor, section_id: e.target.value })}
@@ -286,32 +286,32 @@ export function GpzSectionsEditor({ station }: Props) {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-400">Porządek</span>
+            <span className="text-xs text-scada-muted">Porządek</span>
             <input
               type="number"
               data-testid="gpz-sections-editor-input-order"
-              className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-100"
+              className="rounded border border-scada-border-strong bg-scada-surface px-2 py-1 text-scada-text"
               value={editor.order}
               onChange={(e) => setEditor({ ...editor, order: e.target.value })}
               placeholder="auto"
             />
           </label>
           <label className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs text-zinc-400">Nazwa</span>
+            <span className="text-xs text-scada-muted">Nazwa</span>
             <input
               type="text"
               data-testid="gpz-sections-editor-input-name"
-              className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-100"
+              className="rounded border border-scada-border-strong bg-scada-surface px-2 py-1 text-scada-text"
               value={editor.name}
               onChange={(e) => setEditor({ ...editor, name: e.target.value })}
               placeholder="np. sekcja A"
             />
           </label>
           <label className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs text-zinc-400">Szyna</span>
+            <span className="text-xs text-scada-muted">Szyna</span>
             <select
               data-testid="gpz-sections-editor-select-bus"
-              className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 font-mono text-zinc-100"
+              className="rounded border border-scada-border-strong bg-scada-surface px-2 py-1 font-mono text-scada-text"
               value={editor.bus_ref}
               onChange={(e) => setEditor({ ...editor, bus_ref: e.target.value })}
             >
@@ -325,7 +325,7 @@ export function GpzSectionsEditor({ station }: Props) {
           </label>
         </div>
         {validationError ? (
-          <div data-testid="gpz-sections-editor-error" className="mt-2 text-xs text-red-400">
+          <div data-testid="gpz-sections-editor-error" className="mt-2 text-xs text-sygnal-blokada">
             {validationError}
           </div>
         ) : null}
@@ -333,7 +333,7 @@ export function GpzSectionsEditor({ station }: Props) {
           <button
             type="button"
             data-testid="gpz-sections-editor-cancel"
-            className="rounded border border-zinc-600 px-3 py-1 text-xs text-zinc-300"
+            className="rounded border border-scada-border-strong px-3 py-1 text-xs text-scada-text"
             onClick={closeEditor}
           >
             Anuluj
@@ -356,15 +356,15 @@ export function GpzSectionsEditor({ station }: Props) {
   return (
     <section
       data-testid="gpz-sections-editor"
-      className="border-t border-zinc-800 px-4 py-3"
+      className="border-t border-scada-border px-4 py-3"
     >
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-zinc-200">Sekcje GPZ</h3>
+        <h3 className="text-sm font-semibold text-scada-text">Sekcje GPZ</h3>
         <div className="flex gap-2">
           <button
             type="button"
             data-testid="gpz-sections-editor-add-lv"
-            className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+            className="rounded border border-scada-border-strong px-2 py-0.5 text-xs text-scada-text hover:bg-scada-bg-hover"
             onClick={() => startAdd('lv')}
           >
             + LV (SN)
@@ -372,7 +372,7 @@ export function GpzSectionsEditor({ station }: Props) {
           <button
             type="button"
             data-testid="gpz-sections-editor-add-hv"
-            className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+            className="rounded border border-scada-border-strong px-2 py-0.5 text-xs text-scada-text hover:bg-scada-bg-hover"
             onClick={() => startAdd('hv')}
           >
             + HV (110 kV)
@@ -381,9 +381,9 @@ export function GpzSectionsEditor({ station }: Props) {
       </div>
 
       <div className="mb-2">
-        <div className="text-xs uppercase text-zinc-500">LV (SN)</div>
+        <div className="text-xs uppercase text-scada-muted">LV (SN)</div>
         {lvSections.length === 0 ? (
-          <div className="py-1 text-xs text-zinc-500">Sekcje do konfiguracji.</div>
+          <div className="py-1 text-xs text-scada-muted">Sekcje do konfiguracji.</div>
         ) : (
           <ul data-testid="gpz-sections-editor-list-lv">
             {lvSections
@@ -395,9 +395,9 @@ export function GpzSectionsEditor({ station }: Props) {
       </div>
 
       <div>
-        <div className="text-xs uppercase text-zinc-500">HV (110 kV)</div>
+        <div className="text-xs uppercase text-scada-muted">HV (110 kV)</div>
         {hvSections.length === 0 ? (
-          <div className="py-1 text-xs text-zinc-500">Sekcje do konfiguracji.</div>
+          <div className="py-1 text-xs text-scada-muted">Sekcje do konfiguracji.</div>
         ) : (
           <ul data-testid="gpz-sections-editor-list-hv">
             {hvSections

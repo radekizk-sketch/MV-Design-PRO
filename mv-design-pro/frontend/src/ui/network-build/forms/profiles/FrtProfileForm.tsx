@@ -143,7 +143,7 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
       </button>
       {monotonicError && (
         <p
-          className="text-xs text-red-400 mt-1"
+          className="text-xs text-sygnal-blokada mt-1"
           data-testid={`frt-${phase}-error`}
         >
           {monotonicError}

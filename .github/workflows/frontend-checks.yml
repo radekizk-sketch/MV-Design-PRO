@@ -120,3 +120,12 @@ jobs:
       - name: CSS Jedno Zrodlo Klasy Guard
         working-directory: mv-design-pro
         run: python scripts/css_jedno_zrodlo_klasy_guard.py
+      # Karta KOLORY-ZASZYTE-POD-MOTYW: w `frontend/src/ui` i `frontend/src/ui2` zakaz
+      # odcieni palety Tailwinda dobranych pod tlo ciemne (`text-<barwa>-50..400`,
+      # `bg-<barwa>-400..600/NN`, `bg-<barwa>-900/950`, `bg-<barwa>-800/NN`) oraz
+      # bialego napisu na pelnym tle < 4,5:1. Kolor semantyczny idzie z tokenow
+      # `sygnal-*`, neutralny ze `scada-*` (wartosci per motyw w `src/index.css`).
+      # Lista dozwolona pusta. Samotest: `scripts/test_kolory_pod_motyw_guard.py`.
+      - name: Kolory pod motyw guard
+        working-directory: mv-design-pro
+        run: python scripts/kolory_pod_motyw_guard.py

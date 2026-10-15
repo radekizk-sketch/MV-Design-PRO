@@ -84,7 +84,7 @@ export function ScenarioList({
               ) : (
                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                   <button
-                    className="text-xs bg-red-500 text-white px-2 py-0.5 rounded"
+                    className="text-xs bg-red-700 text-white px-2 py-0.5 rounded"
                     disabled={isDeleting}
                     onClick={() => handleDelete(scenario.scenario_id)}
                   >

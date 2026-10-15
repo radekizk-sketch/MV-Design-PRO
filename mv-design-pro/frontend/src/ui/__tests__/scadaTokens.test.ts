@@ -102,6 +102,18 @@ describe('tokeny powierzchni — kontrast tekstu (≥ 4,5:1 w obu motywach)', ()
     ['--scada-alarm', '--scada-panel'],
     ['--scada-grounded', '--scada-panel'],
     ['--scada-dead', '--scada-bg'],
+    // Przycisk grupy kroków konfiguratora stacji (`StationConfigurator.tsx`,
+    // GROUP_STYLE): tło = akcent grupy, napis = `text-scada-bg`.
+    ['--scada-bg', '--scada-sn'],
+    ['--scada-bg', '--scada-nn'],
+    ['--scada-bg', '--scada-energized'],
+    ['--scada-bg', '--scada-status-warn'],
+    ['--scada-bg', '--scada-alarm'],
+    ['--scada-bg', '--scada-grounded'],
+    ['--scada-bg', '--scada-wn'],
+    // Tekst grupy kroku na panelu konfiguratora.
+    ['--scada-grounded', '--scada-surface'],
+    ['--scada-wn', '--scada-surface'],
   ];
 
   for (const [nazwa, mapa] of MOTYWY) {
@@ -134,6 +146,36 @@ describe('komunikaty — hierarchia blokada > ostrzeżenie > informacja (KD-8 po
         const roznica = Math.max(...tlo.map((v, i) => Math.abs(v - panel[i])));
         expect(roznica, `${nazwa} ${poziom}`).toBeGreaterThanOrEqual(12);
       });
+    }
+
+    // Karta KOLORY-ZASZYTE-POD-MOTYW: akcent `text-sygnal-*` jest TEKSTEM na
+    // zwykłym panelu (gwiazdka pola wymaganego, błąd formularza, stan wiersza,
+    // etykieta przycisku-łącza) i na własnym tle komunikatu. Dawne odcienie
+    // palety Tailwinda zastąpiono tym tokenem, więc to on musi nieść ≥ 4,5:1
+    // na KAŻDEJ powierzchni, na której stoi — także w stanie najechania.
+    for (const poziom of POZIOMY) {
+      for (const tlo of [
+        '--scada-bg',
+        '--scada-bg-hover',
+        '--scada-hover-nav',
+        '--scada-surface',
+        '--scada-panel',
+        '--scada-panel-raised',
+        `--scada-status-${poziom}-bg`,
+      ]) {
+        it(`${nazwa}: akcent „${poziom}" jako tekst na ${tlo} ≥ 4,5:1`, () => {
+          expect(kontrast(mapa, `--scada-status-${poziom}`, tlo)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+      // Tusz jednego poziomu stoi czasem na tle INNEGO poziomu (nagłówek
+      // blokady w ramce ostrzeżenia kreatora OZE) — tusz musi to wytrzymać.
+      for (const inny of POZIOMY) {
+        it(`${nazwa}: tusz „${poziom}" na tle „${inny}" ≥ 4,5:1`, () => {
+          expect(
+            kontrast(mapa, `--scada-status-${poziom}-ink`, `--scada-status-${inny}-bg`),
+          ).toBeGreaterThanOrEqual(4.5);
+        });
+      }
     }
 
     it(`${nazwa}: akcent blokady odróżnia się od akcentu ostrzeżenia`, () => {

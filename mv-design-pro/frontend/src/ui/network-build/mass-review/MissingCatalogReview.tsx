@@ -147,12 +147,12 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
           </div>
           <div className="flex items-center gap-2 text-[10px]">
             {errorCount > 0 && (
-              <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-medium">
+              <span className="px-1.5 py-0.5 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz rounded font-medium">
                 {errorCount} krytycznych
               </span>
             )}
             {warningCount > 0 && (
-              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+              <span className="px-1.5 py-0.5 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz rounded font-medium">
                 {warningCount} ostrzeżeń
               </span>
             )}
@@ -165,7 +165,7 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
         {rows.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <svg className="w-8 h-8 mx-auto text-green-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <svg className="w-8 h-8 mx-auto text-sygnal-ok mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-[11px] text-gray-500">Wszystkie elementy mają przypisane katalogi</p>
@@ -187,13 +187,13 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
                 <tr
                   key={row.id}
                   onClick={() => handleRowClick(row)}
-                  className="cursor-pointer border-b border-gray-50 hover:bg-blue-50 transition-colors"
+                  className="cursor-pointer border-b border-gray-50 hover:bg-sygnal-info-tlo transition-colors"
                 >
                   <td className="px-3 py-1.5">
                     <span
                       className={clsx(
                         'inline-block w-2 h-2 rounded-full',
-                        row.severity === 'error' ? 'bg-red-500' : 'bg-amber-400',
+                        row.severity === 'error' ? 'bg-sygnal-blokada' : 'bg-sygnal-uwaga',
                       )}
                     />
                   </td>

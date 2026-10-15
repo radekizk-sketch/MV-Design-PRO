@@ -373,7 +373,7 @@ function Field({ label, value, onChange, placeholder, required }: FieldProps) {
     <div>
       <label className="mb-1 block text-xs text-scada-muted">
         {label}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <input
         type="text"
@@ -401,7 +401,7 @@ function NumberField({ label, unit, value, onChange, placeholder, required }: Nu
       <label className="mb-1 block text-xs text-scada-muted">
         {label}
         {unit && <span className="text-scada-muted"> [{unit}]</span>}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <input
         type="number"
@@ -435,7 +435,7 @@ function SelectField({ label, value, onChange, options, required }: SelectFieldP
     <div>
       <label className="mb-1 block text-xs text-scada-muted">
         {label}
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-sygnal-blokada"> *</span>}
       </label>
       <select
         value={value}

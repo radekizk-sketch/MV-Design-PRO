@@ -312,7 +312,7 @@ function RowAction({
       className={
         'rounded border px-2 py-0.5 text-[10px] font-medium '
         + (destructive
-          ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz hover:bg-red-900/40'
+          ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz hover:underline'
           : 'border-scada-border bg-scada-panel text-scada-text hover:border-scada-sn')
       }
     >

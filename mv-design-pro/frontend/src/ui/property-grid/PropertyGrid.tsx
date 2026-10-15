@@ -433,7 +433,7 @@ function PropertyFieldRow({
           <div className="flex gap-2">
             <button
               onClick={field.onAssignType}
-              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               {hasTypeRef ? 'Zmień typ...' : 'Przypisz typ...'}
             </button>

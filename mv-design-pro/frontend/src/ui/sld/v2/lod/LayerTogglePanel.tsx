@@ -108,7 +108,7 @@ export function LayerTogglePanel({
                 type="checkbox"
                 checked={layer.visible}
                 onChange={() => onToggleLayer(layer.id)}
-                className="h-3 w-3 cursor-pointer accent-cyan-400"
+                className="h-3 w-3 cursor-pointer accent-sygnal-info"
                 aria-label={`Warstwa ${layer.label}`}
               />
               <span
@@ -118,7 +118,7 @@ export function LayerTogglePanel({
               </span>
               {layer.overridden && (
                 <span
-                  className="ml-auto font-mono-eng text-[9px] text-amber-300"
+                  className="ml-auto font-mono-eng text-[9px] text-sygnal-uwaga"
                   aria-label="Ręczne nadpisanie"
                   title="Warstwa nadpisana ręcznie (różna od domyślnej dla LOD)"
                 >

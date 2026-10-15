@@ -88,7 +88,7 @@ export function SldExportFormatMenu({ onExport, className, onExported, onError }
               >
                 <span className="font-semibold">{d.labelPl}</span>
                 <span className="ml-auto text-[10px] text-scada-muted">.{d.extension}</span>
-                {busy === d.id ? <span className="text-[10px] text-amber-400">…</span> : null}
+                {busy === d.id ? <span className="text-[10px] text-sygnal-uwaga">…</span> : null}
               </button>
               <p className="px-2 pb-1 text-[10px] text-scada-muted">{d.descriptionPl}</p>
             </li>

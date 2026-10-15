@@ -33,9 +33,9 @@ export interface RunListViewProps {
 }
 
 const STATUS_COLORS: Readonly<Record<RunStatus, string>> = Object.freeze({
-  success: 'text-green-300',
-  failed: 'text-red-300',
-  running: 'text-yellow-300',
+  success: 'text-sygnal-ok',
+  failed: 'text-sygnal-blokada',
+  running: 'text-sygnal-uwaga',
   cancelled: 'text-scada-muted',
 });
 

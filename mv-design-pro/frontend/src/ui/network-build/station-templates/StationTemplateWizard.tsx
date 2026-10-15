@@ -268,10 +268,10 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
   return (
     <div
       data-testid="sld-v2-station-template-wizard"
-      className="flex flex-col h-full bg-zinc-900 text-zinc-100"
+      className="flex flex-col h-full bg-scada-panel text-scada-text"
     >
       {/* Stepper header */}
-      <header className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+      <header className="px-4 py-3 border-b border-scada-border flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
         {STEP_ORDER.map((s, idx) => (
           <div
             key={s}
@@ -281,8 +281,8 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
               s === state.step
                 ? 'bg-cyan-700 text-white'
                 : idx < currentStepIndex
-                ? 'bg-zinc-700 text-zinc-200'
-                : 'bg-zinc-800 text-zinc-500'
+                ? 'bg-scada-active text-scada-text'
+                : 'bg-scada-surface text-scada-muted'
             }`}
           >
             {idx + 1}. {STEP_LABELS_PL[s]}
@@ -297,7 +297,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
           </div>
         )}
         {loading && (
-          <div data-testid="wizard-loading" className="text-zinc-400 text-sm">
+          <div data-testid="wizard-loading" className="text-scada-muted text-sm">
             Ładowanie…
           </div>
         )}
@@ -362,11 +362,11 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
         )}
       </main>
 
-      <footer className="px-4 py-3 border-t border-zinc-800 flex justify-between gap-2">
+      <footer className="px-4 py-3 border-t border-scada-border flex justify-between gap-2">
         <button
           type="button"
           onClick={props.onCancel}
-          className="px-3 py-1.5 text-sm text-zinc-300 hover:text-white"
+          className="px-3 py-1.5 text-sm text-scada-muted hover:text-scada-text"
           data-testid="wizard-cancel"
         >
           Anuluj
@@ -376,7 +376,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
             type="button"
             onClick={handlePrev}
             disabled={currentStepIndex === 0}
-            className="px-3 py-1.5 text-sm bg-zinc-700 text-zinc-100 rounded disabled:opacity-40"
+            className="px-3 py-1.5 text-sm bg-scada-panel-raised text-scada-text rounded disabled:opacity-40"
             data-testid="wizard-prev"
           >
             ← Wstecz
@@ -386,7 +386,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
               type="button"
               onClick={handleApply}
               disabled={applying || applyResult != null}
-              className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40"
+              className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-800 disabled:opacity-40"
               data-testid="wizard-apply"
             >
               {applying
@@ -434,13 +434,13 @@ function CategoryStep(props: {
             onClick={() => props.onSelect(cat.id)}
             className={`text-left p-3 rounded border ${
               cat.id === props.selected
-                ? 'border-cyan-500 bg-cyan-950'
-                : 'border-zinc-700 hover:border-zinc-500 bg-zinc-800'
+                ? 'border-sygnal-info bg-sygnal-info-tlo'
+                : 'border-scada-border-strong hover:border-scada-muted bg-scada-surface'
             }`}
           >
             <div className="font-bold text-sm">{cat.label_pl}</div>
-            <div className="text-xs text-zinc-400 mt-1">{cat.description_pl}</div>
-            <div className="text-xs text-cyan-300 mt-1">
+            <div className="text-xs text-scada-muted mt-1">{cat.description_pl}</div>
+            <div className="text-xs text-sygnal-info mt-1">
               {cat.template_count} szablonów
             </div>
           </button>
@@ -468,13 +468,13 @@ function TemplateStep(props: {
             onClick={() => props.onSelect(t.id)}
             className={`block w-full text-left p-3 rounded border ${
               t.id === props.selected
-                ? 'border-cyan-500 bg-cyan-950'
-                : 'border-zinc-700 hover:border-zinc-500 bg-zinc-800'
+                ? 'border-sygnal-info bg-sygnal-info-tlo'
+                : 'border-scada-border-strong hover:border-scada-muted bg-scada-surface'
             }`}
           >
             <div className="font-bold text-sm">{t.name_pl}</div>
-            <div className="text-xs text-zinc-400 mt-1">{t.description_pl}</div>
-            <div className="text-xs text-zinc-500 mt-1">{t.use_case_pl}</div>
+            <div className="text-xs text-scada-muted mt-1">{t.description_pl}</div>
+            <div className="text-xs text-scada-muted mt-1">{t.use_case_pl}</div>
             {t.nc_rfg_type != null && (
               <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz rounded">
                 NC RfG typ {t.nc_rfg_type}
@@ -492,14 +492,14 @@ function LocationStep(props: { targetSegmentRef: string | null }): JSX.Element {
     <div data-testid="wizard-step-content-location">
       <h2 className="text-lg font-bold mb-3">Lokalizacja stacji</h2>
       {props.targetSegmentRef != null ? (
-        <div className="text-sm text-zinc-300">
+        <div className="text-sm text-scada-text">
           <div>Segment docelowy:</div>
-          <div className="font-mono text-xs bg-zinc-800 p-2 rounded mt-1">
+          <div className="font-mono text-xs bg-scada-surface p-2 rounded mt-1">
             {props.targetSegmentRef}
           </div>
         </div>
       ) : (
-        <div className="text-sm text-amber-300">
+        <div className="text-sm text-sygnal-uwaga">
           Kliknij segment trunk na schemacie SLD, aby wybrać miejsce wstawienia stacji.
         </div>
       )}
@@ -538,7 +538,7 @@ function ParamsStep(props: {
             data-active={tab === id}
             onClick={() => setTab(id)}
             className={`px-3 py-1 rounded ${
-              tab === id ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300'
+              tab === id ? 'bg-cyan-700 text-white' : 'bg-scada-surface text-scada-text'
             }`}
           >
             {label}
@@ -604,7 +604,7 @@ function ParamsStep(props: {
       {tab === 'der' && (
         <div className="space-y-3">
           {template.schema.der_options.length === 0 ? (
-            <div className="text-sm text-zinc-400">Ten szablon nie zawiera modułów DER.</div>
+            <div className="text-sm text-scada-muted">Ten szablon nie zawiera modułów DER.</div>
           ) : (
             <>
               <ParamInt
@@ -615,7 +615,7 @@ function ParamsStep(props: {
                 onChange={(v) => onChange('der_total_count', v)}
               />
               {template.schema.der_options.map((der) => (
-                <div key={der.kind} className="bg-zinc-800 p-2 rounded">
+                <div key={der.kind} className="bg-scada-surface p-2 rounded">
                   <div className="font-bold text-sm mb-2">{der.label_pl}</div>
                   <ChoiceSelect
                     label={`Katalog ${der.kind}`}
@@ -632,7 +632,7 @@ function ParamsStep(props: {
 
       {tab === 'protection' && (
         <div className="space-y-3">
-          <div className="text-sm text-zinc-300 mb-2">
+          <div className="text-sm text-scada-text mb-2">
             Wybierz przekaźniki zabezpieczeń per pole:
           </div>
           {template.schema.sn_bay_protection_options.map((prot) => (
@@ -644,12 +644,12 @@ function ParamsStep(props: {
               onClick={() => onChange('protection_ref', prot.device_catalog_ref)}
               className={`block w-full text-left p-2 rounded border ${
                 overrides.protection_ref === prot.device_catalog_ref
-                  ? 'border-cyan-500 bg-cyan-950'
-                  : 'border-zinc-700 bg-zinc-800'
+                  ? 'border-sygnal-info bg-sygnal-info-tlo'
+                  : 'border-scada-border-strong bg-scada-surface'
               }`}
             >
               <div className="font-bold text-sm">{prot.label_pl}</div>
-              <div className="text-xs text-zinc-400">{prot.vendor}</div>
+              <div className="text-xs text-scada-muted">{prot.vendor}</div>
               {prot.badge_pl && (
                 <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-sygnal-ok-tlo text-sygnal-ok-tusz rounded">
                   {prot.badge_pl}
@@ -688,7 +688,7 @@ function ProfileStep(props: {
   return (
     <div data-testid="wizard-step-content-profile">
       <h2 className="text-lg font-bold mb-3">Profil dostawcy (cascade)</h2>
-      <div className="text-sm text-zinc-300 mb-3">
+      <div className="text-sm text-scada-text mb-3">
         Wybierz dostawcę — domyślnie dotyczy wszystkich pól (możliwy override per element).
       </div>
       <SelectStr
@@ -741,7 +741,7 @@ function PreviewStep(props: {
     <div data-testid="wizard-step-content-preview">
       <h2 className="text-lg font-bold mb-3">Podgląd konfiguracji (live preview)</h2>
       {loading && (
-        <div data-testid="preview-loading" className="text-zinc-400 text-sm mb-2">
+        <div data-testid="preview-loading" className="text-scada-muted text-sm mb-2">
           Aktualizowanie podglądu…
         </div>
       )}
@@ -752,11 +752,11 @@ function PreviewStep(props: {
       )}
       {preview != null && (
         <div data-testid="preview-content" className="space-y-3 text-sm">
-          <div className="bg-emerald-950 border border-emerald-700 px-3 py-2 rounded">
-            <div className="font-bold text-emerald-200">
+          <div className="bg-sygnal-ok-tlo border border-sygnal-ok px-3 py-2 rounded">
+            <div className="font-bold text-sygnal-ok-tusz">
               {preview.template_name_pl}
             </div>
-            <div className="text-xs text-emerald-300 mt-1">
+            <div className="text-xs text-sygnal-ok-tusz mt-1">
               {/* Rodzaj stacji po wstawieniu w odcinek — backend wyprowadza go ze SKŁADU pól
                   szablonu tą samą regułą co rodzaj w modelu (`enm.rodzaj_stacji`); dawniej
                   surowy kod deklaracji („Typ: inline”). */}
@@ -769,51 +769,51 @@ function PreviewStep(props: {
             </div>
           </div>
 
-          <div className="bg-zinc-800 p-3 rounded space-y-2 text-xs">
+          <div className="bg-scada-surface p-3 rounded space-y-2 text-xs">
             <div>
-              <span className="text-zinc-400">Transformator: </span>
-              <span className="font-mono text-cyan-300">
+              <span className="text-scada-muted">Transformator: </span>
+              <span className="font-mono text-sygnal-info">
                 {preview.effective_config.transformer_ref ?? '—'}
               </span>
-              <span className="text-zinc-500"> × {preview.effective_config.transformer_count}</span>
+              <span className="text-scada-muted"> × {preview.effective_config.transformer_count}</span>
             </div>
             <div>
-              <span className="text-zinc-400">Rozdzielnia SN: </span>
-              <span className="font-mono text-cyan-300">
+              <span className="text-scada-muted">Rozdzielnia SN: </span>
+              <span className="font-mono text-sygnal-info">
                 {preview.effective_config.sn_manufacturer}
               </span>
-              <span className="text-zinc-500"> ({preview.effective_config.sn_bays_count} pól)</span>
+              <span className="text-scada-muted"> ({preview.effective_config.sn_bays_count} pól)</span>
             </div>
             <div>
-              <span className="text-zinc-400">Pola SN: </span>
-              <span className="text-zinc-300">
+              <span className="text-scada-muted">Pola SN: </span>
+              <span className="text-scada-text">
                 {preview.effective_config.sn_bay_roles.join(' → ')}
               </span>
             </div>
             <div>
-              <span className="text-zinc-400">Odpływy nN: </span>
-              <span className="text-zinc-300">{preview.effective_config.nn_feeders_count}</span>
-              <span className="text-zinc-500"> ({preview.effective_config.nn_feeder_cb_ref ?? 'auto'})</span>
+              <span className="text-scada-muted">Odpływy nN: </span>
+              <span className="text-scada-text">{preview.effective_config.nn_feeders_count}</span>
+              <span className="text-scada-muted"> ({preview.effective_config.nn_feeder_cb_ref ?? 'auto'})</span>
             </div>
             <div>
-              <span className="text-zinc-400">Zabezpieczenia: </span>
-              <span className="font-mono text-cyan-300">
+              <span className="text-scada-muted">Zabezpieczenia: </span>
+              <span className="font-mono text-sygnal-info">
                 {preview.effective_config.protection_relay_ref ?? '—'}
               </span>
             </div>
             {preview.effective_config.der_total_count > 0 && (
               <div>
-                <span className="text-zinc-400">DER: </span>
-                <span className="text-zinc-300">{preview.effective_config.der_total_count}× </span>
-                <span className="text-xs text-zinc-500">
+                <span className="text-scada-muted">DER: </span>
+                <span className="text-scada-text">{preview.effective_config.der_total_count}× </span>
+                <span className="text-xs text-scada-muted">
                   ({preview.effective_config.der_mix.map((d) => `${d.kind} (${d.connection_variant})`).join(', ')})
                 </span>
               </div>
             )}
           </div>
 
-          <div className="bg-amber-950/30 border border-amber-700/50 px-3 py-2 rounded text-xs">
-            <div className="text-amber-300">
+          <div className="bg-sygnal-uwaga-tlo border border-sygnal-uwaga/50 px-3 py-2 rounded text-xs">
+            <div className="text-sygnal-uwaga-tusz">
               📐 Szacowana liczba elementów do utworzenia:{' '}
               <span className="font-bold">{preview.estimated_elements_count}</span>
             </div>
@@ -837,39 +837,39 @@ function ApplyStep(props: {
       {props.template != null ? (
         <div className="text-sm">
           <div>Stacja zostanie utworzona na podstawie szablonu:</div>
-          <div className="font-bold text-cyan-300 mt-1">{props.template.name_pl}</div>
+          <div className="font-bold text-sygnal-info mt-1">{props.template.name_pl}</div>
           {props.applying && (
-            <div data-testid="apply-pending" className="mt-3 text-amber-300">
+            <div data-testid="apply-pending" className="mt-3 text-sygnal-uwaga">
               Wykonywanie operacji na snapshot ENM…
             </div>
           )}
           {props.applyResult != null && (
-            <div data-testid="apply-success" className="mt-3 bg-emerald-950 border border-emerald-700 p-3 rounded">
-              <div className="font-bold text-emerald-200">
+            <div data-testid="apply-success" className="mt-3 bg-sygnal-ok-tlo border border-sygnal-ok p-3 rounded">
+              <div className="font-bold text-sygnal-ok-tusz">
                 ✓ Stacja utworzona pomyślnie
               </div>
-              <div className="text-xs text-emerald-300 mt-2">
+              <div className="text-xs text-sygnal-ok-tusz mt-2">
                 Station ref: <span className="font-mono">{props.applyResult.station_ref ?? '—'}</span>
               </div>
-              <div className="text-xs text-emerald-300 mt-1">
+              <div className="text-xs text-sygnal-ok-tusz mt-1">
                 Utworzone elementy:{' '}
                 <span className="font-mono">{props.applyResult.created_element_refs.length}</span>
               </div>
-              <div className="text-xs text-emerald-300 mt-1">
+              <div className="text-xs text-sygnal-ok-tusz mt-1">
                 Operacji wykonano:{' '}
                 <span className="font-mono">{props.applyResult.operations_log.length}</span>
               </div>
             </div>
           )}
           {props.applyResult == null && !props.applying && (
-            <div className="text-xs text-zinc-400 mt-3">
+            <div className="text-xs text-scada-muted mt-3">
               Po zatwierdzeniu system wykona operację <code>apply_station_template</code> na
               aktywnym snapshocie ENM.
             </div>
           )}
         </div>
       ) : (
-        <div className="text-sm text-amber-300">Wybierz szablon katalogowy.</div>
+        <div className="text-sm text-sygnal-uwaga">Wybierz szablon katalogowy.</div>
       )}
     </div>
   );
@@ -895,28 +895,28 @@ function FieldHint(props: { id: string } & FieldHintData): JSX.Element {
         type="button"
         aria-label={`Podpowiedź: ${props.whatIsIt}`}
         data-testid={`hint-icon-${props.id}`}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-200 hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-scada-panel-raised text-[10px] text-scada-text hover:bg-scada-bg-hover focus:outline-none focus:ring-1 focus:ring-sygnal-info"
       >
         ⓘ
       </button>
       <span
         role="tooltip"
         data-testid={`hint-content-${props.id}`}
-        className="pointer-events-none absolute left-0 top-5 z-20 hidden w-64 rounded border border-zinc-700 bg-zinc-950 p-2 text-xs text-zinc-200 shadow-xl group-hover:block group-focus-within:block"
+        className="pointer-events-none absolute left-0 top-5 z-20 hidden w-64 rounded border border-scada-border-strong bg-scada-panel-raised p-2 text-xs text-scada-text shadow-xl group-hover:block group-focus-within:block"
       >
         <div>
-          <span className="text-zinc-500">CO TO JEST: </span>
+          <span className="text-scada-muted">CO TO JEST: </span>
           {props.whatIsIt}
         </div>
         {props.rangeText != null && (
           <div className="mt-1">
-            <span className="text-zinc-500">ZAKRES TYPOWY: </span>
+            <span className="text-scada-muted">ZAKRES TYPOWY: </span>
             {props.rangeText}
           </div>
         )}
         {props.sourceText != null && (
           <div className="mt-1">
-            <span className="text-zinc-500">SKĄD DOMYŚLNA: </span>
+            <span className="text-scada-muted">SKĄD DOMYŚLNA: </span>
             {props.sourceText}
           </div>
         )}
@@ -939,7 +939,7 @@ function ParamInt(props: {
   const hintId = `param-int-${props.label}`;
   return (
     <div data-testid={`param-int-${props.label}`}>
-      <label className="flex items-center text-xs text-zinc-400 mb-1">
+      <label className="flex items-center text-xs text-scada-muted mb-1">
         {props.label}
         <FieldHint
           id={hintId}
@@ -963,10 +963,10 @@ function ParamInt(props: {
           max={props.max}
           value={props.value}
           onChange={(e) => props.onChange(Number(e.target.value))}
-          className="w-16 px-2 py-1 bg-zinc-800 text-zinc-100 rounded text-sm"
+          className="w-16 px-2 py-1 bg-scada-surface text-scada-text rounded text-sm"
         />
       </div>
-      <div className="text-xs text-zinc-500">
+      <div className="text-xs text-scada-muted">
         zakres: {props.min} — {props.max}
       </div>
     </div>
@@ -996,7 +996,7 @@ function ChoiceSelect(props: {
   const hintId = `choice-${props.label}`;
   return (
     <div data-testid={`choice-${props.label}`}>
-      <label className="flex items-center text-xs text-zinc-400 mb-1">
+      <label className="flex items-center text-xs text-scada-muted mb-1">
         {props.label}
         {props.options.length > 0 && (
           <FieldHint
@@ -1014,7 +1014,7 @@ function ChoiceSelect(props: {
       <select
         value={effective}
         onChange={(e) => props.onChange(e.target.value)}
-        className="w-full px-2 py-1.5 bg-zinc-800 text-zinc-100 rounded text-sm"
+        className="w-full px-2 py-1.5 bg-scada-surface text-scada-text rounded text-sm"
       >
         {props.options.map((opt) => (
           <option key={opt.catalog_ref} value={opt.catalog_ref}>
@@ -1037,7 +1037,7 @@ function SelectStr(props: {
   const hintId = `select-${props.label}`;
   return (
     <div data-testid={`select-${props.label}`}>
-      <label className="flex items-center text-xs text-zinc-400 mb-1">
+      <label className="flex items-center text-xs text-scada-muted mb-1">
         {props.label}
         {props.options.length > 0 && props.defaultValue != null && (
           <FieldHint
@@ -1051,7 +1051,7 @@ function SelectStr(props: {
       <select
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
-        className="w-full px-2 py-1.5 bg-zinc-800 text-zinc-100 rounded text-sm"
+        className="w-full px-2 py-1.5 bg-scada-surface text-scada-text rounded text-sm"
       >
         {props.options.map((opt) => (
           <option key={opt} value={opt}>

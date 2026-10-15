@@ -87,27 +87,27 @@ function ErrorFallback({ error, errorInfo, onReset, sectionLabel }: ErrorFallbac
       className="flex h-full w-full items-center justify-center bg-scada-bg p-6"
       data-testid="error-boundary-fallback"
     >
-      <div className="max-w-2xl rounded border border-red-700 bg-red-950/30 p-6 text-scada-text">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-red-300">
+      <div className="max-w-2xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-6 text-scada-text">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-sygnal-blokada-tusz">
           {sectionLabel ? `Błąd w sekcji: ${sectionLabel}` : 'Nieoczekiwany błąd aplikacji'}
         </div>
-        <h2 className="mb-3 text-lg font-semibold text-red-100">
+        <h2 className="mb-3 text-lg font-semibold text-sygnal-blokada-tusz">
           Coś poszło nie tak
         </h2>
-        <p className="mb-4 text-sm text-red-200">
+        <p className="mb-4 text-sm text-sygnal-blokada-tusz">
           Komponent przerwał działanie z powodu wyjątku. Twoje dane projektu
           są bezpieczne — błąd nastąpił w warstwie wyświetlania. Spróbuj
           ponownie. Jeśli błąd się powtarza, zgłoś go zespołowi.
         </p>
 
-        <div className="mb-4 rounded border border-red-800/50 bg-black/30 p-3 text-[11px] font-mono text-red-200">
+        <div className="mb-4 rounded border border-sygnal-blokada/50 bg-scada-bg p-3 text-[11px] font-mono text-sygnal-blokada">
           <div className="font-semibold mb-1">Komunikat:</div>
           <div>{error.message}</div>
         </div>
 
         {isDev && errorInfo?.componentStack && (
-          <details className="mb-4 text-[10px] font-mono text-red-300">
-            <summary className="cursor-pointer text-red-200">
+          <details className="mb-4 text-[10px] font-mono text-sygnal-blokada-tusz">
+            <summary className="cursor-pointer text-sygnal-blokada-tusz">
               Stack trace (tryb dev)
             </summary>
             <pre className="mt-2 max-h-48 overflow-auto rounded bg-black/40 p-2">

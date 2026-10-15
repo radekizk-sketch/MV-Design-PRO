@@ -303,14 +303,14 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
           type="submit"
           disabled={!gotoweDoWyslania || stan === 'loading'}
           data-testid="nn-circuit-proof-submit"
-          className="mt-1 rounded border border-emerald-500/40 px-1.5 py-1 text-emerald-300 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1 rounded border border-sygnal-ok/40 px-1.5 py-1 text-sygnal-ok hover:bg-sygnal-ok-tlo disabled:cursor-not-allowed disabled:opacity-50"
         >
           {stan === 'loading' ? 'Pobieranie…' : 'Pobierz pakiet ZIP'}
         </button>
         {komunikat && (
           <p
             data-testid="nn-circuit-proof-status"
-            className={stan === 'error' ? 'text-red-400' : 'text-emerald-300'}
+            className={stan === 'error' ? 'text-sygnal-blokada' : 'text-sygnal-ok'}
             role={stan === 'error' ? 'alert' : 'status'}
           >
             {komunikat}

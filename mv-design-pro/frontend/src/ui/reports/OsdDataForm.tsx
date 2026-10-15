@@ -137,7 +137,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
 
   const inputClass = clsx(
     'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded',
-    'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
+    'focus:outline-none focus:border-sygnal-info focus:ring-1 focus:ring-sygnal-info',
   );
 
   return (
@@ -177,8 +177,8 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
             </legend>
             <div>
               <label className="block text-[11px] text-gray-500 mb-0.5">
-                Operator OSD <span className="text-red-500">*</span>
-                <span className="ml-1 cursor-help text-blue-400" title="PSE = Krajowy operator przesyłowy. Reszta = OSD dystrybucji.">
+                Operator OSD <span className="text-sygnal-blokada">*</span>
+                <span className="ml-1 cursor-help text-sygnal-info" title="PSE = Krajowy operator przesyłowy. Reszta = OSD dystrybucji.">
                   ⓘ
                 </span>
               </label>
@@ -191,7 +191,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
                     className={clsx(
                       'px-3 py-1.5 text-[11px] rounded border',
                       operatorKey === key
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
+                        ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz font-semibold'
                         : 'border-gray-200 text-gray-600 hover:bg-gray-50',
                     )}
                     data-testid={`osd-operator-${key}`}
@@ -249,7 +249,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
             <div>
               <label className="block text-[11px] text-gray-500 mb-0.5">
                 Inwestor
-                <span className="ml-1 cursor-help text-blue-400" title="Podmiot zlecający projekt - wymagane przez OSD.">ⓘ</span>
+                <span className="ml-1 cursor-help text-sygnal-info" title="Podmiot zlecający projekt - wymagane przez OSD.">ⓘ</span>
               </label>
               <input
                 type="text"
@@ -275,7 +275,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
               <div>
                 <label className="block text-[11px] text-gray-500 mb-0.5">
                   Faza projektu
-                  <span className="ml-1 cursor-help text-blue-400" title="PB - budowlany, PW - wykonawczy, PR - rozbudowy, PK - koncepcyjny">ⓘ</span>
+                  <span className="ml-1 cursor-help text-sygnal-info" title="PB - budowlany, PW - wykonawczy, PR - rozbudowy, PK - koncepcyjny">ⓘ</span>
                 </label>
                 <select
                   value={form.phase ?? ''}
@@ -329,7 +329,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
               <div>
                 <label className="block text-[11px] text-gray-500 mb-0.5">
                   Projektant
-                  <span className="ml-1 cursor-help text-blue-400" title="Imię i nazwisko projektanta odpowiedzialnego.">ⓘ</span>
+                  <span className="ml-1 cursor-help text-sygnal-info" title="Imię i nazwisko projektanta odpowiedzialnego.">ⓘ</span>
                 </label>
                 <input
                   type="text"
@@ -343,7 +343,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
               <div>
                 <label className="block text-[11px] text-gray-500 mb-0.5">
                   Uprawnienia SEP D
-                  <span className="ml-1 cursor-help text-blue-400" title="Numer uprawnień SEP D (dozór E) - kategoria 1 (urządzenia, instalacje, sieci do 1 kV) lub kategoria E (powyżej 1 kV).">ⓘ</span>
+                  <span className="ml-1 cursor-help text-sygnal-info" title="Numer uprawnień SEP D (dozór E) - kategoria 1 (urządzenia, instalacje, sieci do 1 kV) lub kategoria E (powyżej 1 kV).">ⓘ</span>
                 </label>
                 <input
                   type="text"
@@ -370,7 +370,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
               <div>
                 <label className="block text-[11px] text-gray-500 mb-0.5">
                   Uprawnienia SEP E
-                  <span className="ml-1 cursor-help text-blue-400" title="Numer uprawnień SEP E (eksploatacja E).">ⓘ</span>
+                  <span className="ml-1 cursor-help text-sygnal-info" title="Numer uprawnień SEP E (eksploatacja E).">ⓘ</span>
                 </label>
                 <input
                   type="text"
@@ -434,7 +434,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           {saveError && (
             <div
-              className="mr-auto max-w-[400px] text-[11px] leading-snug text-red-700"
+              className="mr-auto max-w-[400px] text-[11px] leading-snug text-sygnal-blokada"
               role="alert"
               data-testid="osd-save-error"
             >

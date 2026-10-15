@@ -314,7 +314,7 @@ export function PropertyGridMultiEdit({
                   'px-3 py-1 text-xs rounded transition-colors',
                   hasBlockingErrors || !canEdit
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
                 )}
               >
                 Zastosuj

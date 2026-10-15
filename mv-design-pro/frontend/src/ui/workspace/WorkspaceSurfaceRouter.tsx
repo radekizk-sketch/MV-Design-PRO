@@ -885,7 +885,7 @@ function AnalysisDataTable({
                 <td className="px-3 py-2 text-slate-600">{row.input}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
-                <td className="px-3 py-2 text-amber-700">{row.status}</td>
+                <td className="px-3 py-2 text-sygnal-uwaga">{row.status}</td>
               </tr>
             ))}
           </tbody>
@@ -1203,14 +1203,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     return 'gotowy';
   })();
   const reportStatusInfo: Record<typeof reportStatus, { label: string; tone: string }> = {
-    gotowy: { label: 'Raport gotowy', tone: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    gotowy: { label: 'Raport gotowy', tone: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz border-sygnal-ok/40' },
     czesciowy: {
       label: 'Raport częściowy — dokończ konfigurację danych',
-      tone: 'bg-amber-100 text-amber-800 border-amber-300',
+      tone: 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz border-sygnal-uwaga/40',
     },
     zablokowany: {
       label: 'Raport wstrzymany — najpierw skonfiguruj układ i uruchom obliczenia',
-      tone: 'bg-rose-100 text-rose-800 border-rose-300',
+      tone: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border-sygnal-blokada/40',
     },
   };
   const reportNextAction = activeRunFailed
@@ -1715,7 +1715,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </div>
         {audit2ProofPack.data && <PakietDowodowProjektu dane={audit2ProofPack.data} />}
         {audit2ProofPack.isError && (
-          <div className="mt-2 text-xs text-rose-700">
+          <div className="mt-2 text-xs text-sygnal-blokada">
             Błąd generowania pakietu: {audit2ProofPack.error.message}
           </div>
         )}
@@ -1734,7 +1734,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
         )}
         {audit2Report.isError && (
-          <div className="mt-2 text-xs text-rose-700">
+          <div className="mt-2 text-xs text-sygnal-blokada">
             Błąd renderowania raportu: {audit2Report.error.message}
           </div>
         )}
@@ -1792,7 +1792,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         {!hasResults && (
           <div
             data-testid="variants-empty-state"
-            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            className="mt-4 rounded-lg border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-4 py-3 text-sm text-sygnal-uwaga-tusz"
           >
             Nie wykonano jeszcze obliczeń dla tego wariantu. Najpierw ustaw konfigurację układu,
             a potem wykonaj obliczenie zwarciowe albo rozpływ mocy.
@@ -2106,13 +2106,13 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                 <li
                   key={`${blocker.code}-${idx}`}
                   data-testid={`gap-blocker-${idx}`}
-                  className="rounded border border-red-700 bg-red-950/30 p-3"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-3"
                 >
-                  <div className="text-sm font-semibold text-red-200">
+                  <div className="text-sm font-semibold text-sygnal-blokada-tusz">
                     {sanitizeReadinessMessage(blocker.message_pl, snapshot)}
                   </div>
-                  <details className="mt-1 text-[11px] text-red-300">
-                    <summary className="cursor-pointer text-red-200">Szczegóły techniczne</summary>
+                  <details className="mt-1 text-[11px] text-sygnal-blokada-tusz">
+                    <summary className="cursor-pointer text-sygnal-blokada-tusz">Szczegóły techniczne</summary>
                     <div className="mt-1">
                       Kod: <code>{blocker.code}</code>
                       {blocker.element_ref && (
@@ -2131,7 +2131,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       >
                         Konfiguruj układ
                       </button>
-                      <span className="text-[11px] text-red-200">{action.message_pl}</span>
+                      <span className="text-[11px] text-sygnal-blokada-tusz">{action.message_pl}</span>
                     </div>
                   )}
                 </li>
@@ -2151,19 +2151,19 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
               <li
                 key={`${warning.code}-${idx}`}
                 data-testid={`gap-warning-${idx}`}
-                className="rounded border border-amber-700 bg-amber-950/30 p-3"
+                className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3"
               >
-                <div className="flex items-start justify-between gap-3 text-sm font-semibold text-amber-200">
+                <div className="flex items-start justify-between gap-3 text-sm font-semibold text-sygnal-uwaga-tusz">
                   <span>{warning.message}</span>
                   {warning.count > 1 && (
-                    <span className="shrink-0 rounded border border-amber-500/50 px-2 py-0.5 text-[11px] text-amber-100">
+                    <span className="shrink-0 rounded border border-sygnal-uwaga/50 px-2 py-0.5 text-[11px] text-sygnal-uwaga-tusz">
                       {warning.count} wystąpień
                     </span>
                   )}
                 </div>
-                <div className="mt-1 text-[11px] text-amber-300">
+                <div className="mt-1 text-[11px] text-sygnal-uwaga-tusz">
                   <details>
-                    <summary className="cursor-pointer text-amber-200">Szczegóły techniczne</summary>
+                    <summary className="cursor-pointer text-sygnal-uwaga-tusz">Szczegóły techniczne</summary>
                     <div className="mt-1">Kod: <code>{warning.code}</code></div>
                   </details>
                 </div>
@@ -2175,7 +2175,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 
       {readiness && blockerCount === 0 && warningCount === 0 && (
         <SectionCard title="Układ przygotowany do obliczeń" eyebrow="Przegląd techniczny">
-          <p className="text-sm text-emerald-300">
+          <p className="text-sm text-sygnal-ok">
             Układ spełnia reguły projektowe. Możesz uruchomić
             obliczenia (Ctrl+Shift+P → "Oblicz") albo przejść do raportów (E-25).
           </p>
@@ -2221,10 +2221,10 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       className={
                         'flex items-center justify-between rounded px-2 py-1 text-[11px] '
                         + (axis.status === 'ready'
-                          ? 'bg-emerald-50 text-emerald-700'
+                          ? 'bg-sygnal-ok-tlo text-sygnal-ok-tusz'
                           : axis.status === 'partial'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-rose-50 text-rose-700')
+                            ? 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
+                            : 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz')
                       }
                     >
                       <span>{axis.label_pl}</span>
@@ -2253,7 +2253,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
               <div
                 key={wiersz.klucz}
                 data-testid="hosting-capacity-nieznane-stacja"
-                className="rounded border border-slate-600 bg-slate-900/40 p-3 text-sm text-slate-300"
+                className="rounded border border-scada-border-strong bg-scada-surface p-3 text-sm text-scada-text"
               >
                 <div className="font-semibold">Stacja: {wiersz.stationNazwa}</div>
                 <div className="mt-1 text-[11px]">
@@ -2467,7 +2467,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </button>
         {generateProofPack.data && <PakietDowodowProjektu dane={generateProofPack.data} />}
         {generateProofPack.isError && (
-          <div className="mt-2 text-xs text-rose-700">
+          <div className="mt-2 text-xs text-sygnal-blokada">
             Błąd generowania: {generateProofPack.error.message}
           </div>
         )}
@@ -2487,12 +2487,12 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
           {snapshotId ? (
             <>
-              <span className="text-emerald-700">●</span> Aktywna wersja układu — wczytana
+              <span className="text-sygnal-ok">●</span> Aktywna wersja układu — wczytana
               do obliczeń.
             </>
           ) : (
             <>
-              <span className="text-amber-700">●</span> Nie wybrano aktywnej wersji układu —
+              <span className="text-sygnal-uwaga">●</span> Nie wybrano aktywnej wersji układu —
               wykonaj operację projektową albo odśwież schemat przed obliczeniem.
             </>
           )}
@@ -2533,14 +2533,14 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom rozpływ mocy rozszerzony'}
         </button>
         {runPowerFlow.data && (
-          <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
+          <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-sygnal-info/40 bg-sygnal-info-tlo p-3 text-xs text-sygnal-info-tusz">
             <div className="font-semibold">
               Wynik rozszerzonego rozpływu mocy
             </div>
             <div>
               Obliczenie serwerowe: {runPowerFlow.data.status === 'DONE' ? 'uruchomione' : 'nieuruchomione'}
               {runPowerFlow.data.errorMessage && (
-                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.errorMessage.slice(0, 80)})</span>
+                <span className="ml-2 text-sygnal-blokada">(błąd: {runPowerFlow.data.errorMessage.slice(0, 80)})</span>
               )}
             </div>
             <div>
@@ -2562,7 +2562,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
         )}
         {runPowerFlow.isError && (
-          <div className="mt-2 text-xs text-rose-700">
+          <div className="mt-2 text-xs text-sygnal-blokada">
             Błąd uruchomienia: {runPowerFlow.error.message}
           </div>
         )}
@@ -2764,7 +2764,7 @@ function OperationWithoutFormNotice({ operation }: { operation: CanonicalOpName 
     : 'Odświeżenie modelu';
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+    <div className="rounded-xl border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-4 text-sm text-sygnal-uwaga-tusz">
       <div className="font-semibold">{label}</div>
       <p className="mt-2">
         Ta akcja wymaga wskazanego obiektu i jest wykonywana bez osobnego formularza.
@@ -2774,7 +2774,7 @@ function OperationWithoutFormNotice({ operation }: { operation: CanonicalOpName 
       <button
         type="button"
         onClick={closeActiveSurface}
-        className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+        className="mt-3 rounded-lg border border-sygnal-uwaga/40 bg-white px-3 py-1.5 text-xs font-semibold text-sygnal-uwaga hover:bg-sygnal-uwaga-tlo"
       >
         Wróć do SLD
       </button>
@@ -2784,14 +2784,14 @@ function OperationWithoutFormNotice({ operation }: { operation: CanonicalOpName 
 
 function OperationBindingError({ value }: { value: unknown }) {
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+    <div className="rounded-xl border border-sygnal-blokada/40 bg-sygnal-blokada-tlo p-4 text-sm text-sygnal-blokada-tusz">
       <div className="font-semibold">Nie znaleziono formularza akcji</div>
       <p className="mt-2">
         System nie rozpoznał powiązania akcji z formularzem konfiguracji. Zamknij
         panel i uruchom akcję ponownie z właściwego elementu SLD.
       </p>
       {typeof value === 'string' && value.trim() && (
-        <p className="mt-2 text-xs text-red-700">Identyfikator akcji: {value}</p>
+        <p className="mt-2 text-xs text-sygnal-blokada">Identyfikator akcji: {value}</p>
       )}
     </div>
   );

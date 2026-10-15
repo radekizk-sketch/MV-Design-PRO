@@ -155,7 +155,7 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
 
       {validationError && (
         <p
-          className="text-xs text-red-400 border border-red-400/30 px-2 py-1 rounded"
+          className="text-xs text-sygnal-blokada border border-sygnal-blokada/30 px-2 py-1 rounded"
           data-testid="cosphi-validation-error"
         >
           {validationError}

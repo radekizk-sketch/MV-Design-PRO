@@ -19,7 +19,7 @@ export function NotFoundPage({ attemptedRoute, onReturnHome, onReportIssue }: No
       data-testid="screen-not-found"
     >
       <div className="flex flex-col items-center gap-2">
-        <div className="text-7xl font-bold text-amber-400" aria-hidden="true">
+        <div className="text-7xl font-bold text-sygnal-uwaga" aria-hidden="true">
           404
         </div>
         <h1 className="text-2xl font-semibold">Nie znaleziono ekranu</h1>
@@ -40,7 +40,7 @@ export function NotFoundPage({ attemptedRoute, onReturnHome, onReportIssue }: No
         <button
           type="button"
           onClick={onReturnHome}
-          className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+          className="rounded-lg bg-sygnal-uwaga px-5 py-2 text-sm font-semibold text-scada-bg hover:bg-sygnal-uwaga/85 focus:outline-none focus:ring-2 focus:ring-sygnal-uwaga focus:ring-offset-2 focus:ring-offset-scada-bg"
           data-testid="return-home"
         >
           Wróć do pulpitu projektu

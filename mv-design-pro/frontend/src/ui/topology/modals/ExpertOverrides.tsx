@@ -124,7 +124,7 @@ export function ExpertOverrides({
           <div className="flex gap-2">
             <button
               onClick={confirmExpert}
-              className="px-3 py-1 text-xs font-medium text-white bg-amber-600 rounded hover:bg-amber-700"
+              className="px-3 py-1 text-xs font-medium text-white bg-amber-700 rounded hover:bg-amber-800"
               data-testid="expert-confirm"
             >
               Włącz tryb EKSPERT

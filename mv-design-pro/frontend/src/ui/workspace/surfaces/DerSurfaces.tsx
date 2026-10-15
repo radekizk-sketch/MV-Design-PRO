@@ -995,7 +995,7 @@ function PvInverterCatalogPanel({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Szukaj producenta, modelu, dokumentu..."
-                className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-cyan-400 md:w-80"
+                className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-sygnal-info md:w-80"
                 aria-label="Szukaj w certyfikatach PTPiREE"
               />
             </div>
@@ -1011,10 +1011,10 @@ function PvInverterCatalogPanel({
                   href={source.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-cyan-400"
+                  className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-sygnal-info"
                 >
                   <span className="block font-semibold">WiPWC {source.wipwc_version} · publikacja {source.publication_date}</span>
-                  <span className="mt-1 block text-cyan-200">{source.record_count} pozycji w wykazie</span>
+                  <span className="mt-1 block text-sygnal-info">{source.record_count} pozycji w wykazie</span>
                 </a>
               ))}
             </div>
@@ -1041,7 +1041,7 @@ function PvInverterCatalogPanel({
                           <div className="text-scada-muted">{item.model}</div>
                           <div className="text-scada-muted/80">{item.device_type}</div>
                           {item.verification_note && (
-                            <div className="mt-1 text-amber-200">warunek ważności certyfikatu: {item.verification_note}</div>
+                            <div className="mt-1 text-sygnal-uwaga">warunek ważności certyfikatu: {item.verification_note}</div>
                           )}
                         </td>
                         <td className="py-2 pr-3">
@@ -1057,7 +1057,7 @@ function PvInverterCatalogPanel({
                             href={item.source_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-cyan-200 hover:text-cyan-100"
+                            className="text-sygnal-info hover:underline"
                           >
                             WiPWC {item.wipwc_version}, publikacja {item.publication_date ?? MISSING_DASH}
                           </a>
@@ -1067,7 +1067,7 @@ function PvInverterCatalogPanel({
                               z backendu (der.catalogs.ptpiree_certificate_ref), nie z kliku
                               na tej liście referencyjnej. */}
                           {selected ? (
-                            <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                            <span className="rounded border border-sygnal-ok/50 bg-sygnal-ok-tlo px-2 py-1 text-[11px] font-semibold text-sygnal-ok-tusz">
                               zgodne z modelem
                             </span>
                           ) : (

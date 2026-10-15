@@ -78,7 +78,7 @@ export function FaultLocationSelector({
               key={lt}
               className={`px-3 py-1 text-sm border rounded ${
                 locationType === lt
-                  ? 'bg-blue-500 text-white border-blue-500'
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
               }`}
               onClick={() => {
@@ -133,7 +133,7 @@ export function FaultLocationSelector({
 
       <button
         onClick={handleApply}
-        className="w-full bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600"
+        className="w-full bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700"
       >
         Zatwierdź lokalizację
       </button>

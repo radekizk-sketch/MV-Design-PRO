@@ -217,7 +217,7 @@ export function ProtectionLibraryBrowser({
             <button
               onClick={handleImportClick}
               disabled={loading}
-              className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
             >
               Importuj
             </button>

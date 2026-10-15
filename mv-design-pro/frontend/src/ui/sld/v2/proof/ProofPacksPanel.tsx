@@ -152,8 +152,8 @@ export function ProofPacksPanel({
                   pack.status === 'blocked'
                     ? 'cursor-not-allowed text-scada-muted opacity-60'
                     : pack.status === 'requires_calculation'
-                      ? 'cursor-pointer text-amber-200 hover:bg-scada-hover-nav'
-                      : 'cursor-pointer text-emerald-300 hover:bg-scada-hover-nav',
+                      ? 'cursor-pointer text-sygnal-uwaga hover:bg-scada-hover-nav'
+                      : 'cursor-pointer text-sygnal-ok hover:bg-scada-hover-nav',
                 ].join(' ')}
               >
                 <span>{pack.labelPl}</span>
@@ -175,7 +175,7 @@ export function ProofPacksPanel({
                     <button
                       type="button"
                       onClick={() => onGeneratePack(pack.id)}
-                      className="rounded border border-amber-500/40 px-1.5 py-0.5 text-[9px] text-amber-300 hover:bg-amber-500/10"
+                      className="rounded border border-sygnal-uwaga/40 px-1.5 py-0.5 text-[9px] text-sygnal-uwaga hover:bg-sygnal-uwaga-tlo"
                       data-testid={`sld-proof-pack-generate-${pack.id}`}
                       title={`Wygeneruj dowód: ${pack.labelPl}`}
                     >
@@ -186,7 +186,7 @@ export function ProofPacksPanel({
                     <button
                       type="button"
                       onClick={() => onShowPack(pack.id)}
-                      className="rounded border border-emerald-500/40 px-1.5 py-0.5 text-[9px] text-emerald-300 hover:bg-emerald-500/10"
+                      className="rounded border border-sygnal-ok/40 px-1.5 py-0.5 text-[9px] text-sygnal-ok hover:bg-sygnal-ok-tlo"
                       data-testid={`sld-proof-pack-show-${pack.id}`}
                       title={`Pokaż ślad obliczeń: ${pack.labelPl}`}
                     >
@@ -198,7 +198,7 @@ export function ProofPacksPanel({
                       <button
                         type="button"
                         onClick={() => onExportPack(pack.id, 'pdf')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        className="rounded border border-sygnal-info/40 px-1.5 py-0.5 text-[9px] text-sygnal-info hover:bg-sygnal-info-tlo"
                         data-testid={`sld-proof-pack-export-pdf-${pack.id}`}
                         title="Eksport jako PDF (KaTeX rendered)"
                       >
@@ -207,7 +207,7 @@ export function ProofPacksPanel({
                       <button
                         type="button"
                         onClick={() => onExportPack(pack.id, 'latex')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        className="rounded border border-sygnal-info/40 px-1.5 py-0.5 text-[9px] text-sygnal-info hover:bg-sygnal-info-tlo"
                         data-testid={`sld-proof-pack-export-latex-${pack.id}`}
                         title="Eksport jako LaTeX (.tex source)"
                       >
@@ -216,7 +216,7 @@ export function ProofPacksPanel({
                       <button
                         type="button"
                         onClick={() => onExportPack(pack.id, 'json')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        className="rounded border border-sygnal-info/40 px-1.5 py-0.5 text-[9px] text-sygnal-info hover:bg-sygnal-info-tlo"
                         data-testid={`sld-proof-pack-export-json-${pack.id}`}
                         title="Eksport jako JSON (strukturalny)"
                       >
