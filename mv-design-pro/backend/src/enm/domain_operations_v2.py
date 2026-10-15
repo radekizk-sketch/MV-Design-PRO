@@ -7744,7 +7744,12 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
 
 
 def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw etykietę (label) elementu."""
+    """Ustaw etykietę pola rozdzielnicy na schemacie — krótką nazwę odpływu (`Bay.feeder_short_name`).
+
+    Etykieta schematu istnieje w kontrakcie modelu WYŁĄCZNIE dla pola (nagłówek kolumny pola,
+    osobny od nazwy). Inne elementy schemat opisuje ich nazwą (`rename_element`); dawny zapis
+    klucza `label` na ich rekordzie meldował sukces, a walidacja modelu go gubiła (kontrakt
+    `ENMElement` nie ma takiego pola) — operacja odmawia teraz nazwanym błędem."""
     element_ref = payload.get("element_ref")
     label = payload.get("label")
     legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
@@ -7760,14 +7765,18 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if not loc:
         return _error_response("Wskazany element nie istnieje w modelu sieci.", "label.not_found")
 
+    coll, _idx = loc
+    if coll != "bays":
+        return _error_response(
+            f"{opis_elementu(enm, element_ref, 'Element')} nie ma osobnej etykiety na schemacie — "
+            "etykietę (krótką nazwę odpływu) ma wyłącznie pole rozdzielnicy, a ten element schemat "
+            "opisuje jego nazwą. Zmień nazwę elementu.",
+            "label.element_without_label",
+        )
     new_enm = kopia_graniczna_enm(enm)
-    coll, idx = loc
-    if coll == "bays":
-        # Etykieta pola rozdzielnicy = krótka nazwa odpływu (`Bay.feeder_short_name`) —
-        # nagłówek kolumny pola na schemacie, osobny od nazwy pola. Pusta etykieta zdejmuje ją.
-        zmien_pole(new_enm, element_ref, feeder_short_name=nazwa_nadana(label))
-    else:
-        new_enm[coll][idx]["label"] = label
+    # Etykieta pola rozdzielnicy = krótka nazwa odpływu (`Bay.feeder_short_name`) —
+    # nagłówek kolumny pola na schemacie, osobny od nazwy pola. Pusta etykieta zdejmuje ją.
+    zmien_pole(new_enm, element_ref, feeder_short_name=nazwa_nadana(label))
 
     return _response(
         new_enm,

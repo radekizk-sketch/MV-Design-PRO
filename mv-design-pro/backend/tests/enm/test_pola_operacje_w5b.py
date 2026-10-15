@@ -256,6 +256,27 @@ def test_rename_i_etykieta_pola_przez_jedynego_pisarza(poziom: str) -> None:
     EnergyNetworkModel.model_validate(po_etykiecie)
 
 
+#: Kolekcje modelu, których elementy schemat opisuje NAZWĄ — etykietę (krótką nazwę
+#: odpływu) ma wyłącznie pole rozdzielnicy (`Bay.feeder_short_name`).
+KOLEKCJE_BEZ_ETYKIETY = ("buses", "branches", "transformers", "sources", "substations")
+
+
+@pytest.mark.parametrize("kolekcja", KOLEKCJE_BEZ_ETYKIETY)
+def test_etykieta_elementu_bez_etykiety_to_odmowa_bez_skutku(kolekcja: str) -> None:
+    """Dawniej `set_label` zapisywał klucz `label` na rekordzie elementu spoza pól i meldował
+    sukces, a walidacja modelu gubiła ten klucz (kontrakt `ENMElement` go nie ma) — fałszywy
+    sukces bez skutku. Teraz: nazwana odmowa, model nietknięty."""
+    snap = _wstawiona_stacja()
+    element = snap[kolekcja][0]
+    wynik = execute_domain_operation(
+        snap, "set_label", {"element_ref": element["ref_id"], "label": "ETYKIETA"}
+    )
+    assert wynik["error_code"] == "label.element_without_label"
+    assert element["ref_id"] not in (wynik.get("error") or "")
+    assert "nazwę" in (wynik.get("error") or "")
+    assert "ETYKIETA" not in str(wynik.get("snapshot") or {})
+
+
 @pytest.mark.parametrize("poziom", ["SN", "nN"])
 def test_update_parametrow_pola(poziom: str) -> None:
     snap = _wstawiona_stacja()

@@ -428,7 +428,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "set_label": OperationSpec(
         canonical_name="set_label",
         category=OperationCategory.UNIVERSAL,
-        description_pl="Ustawienie etykiety na schemacie SLD",
+        description_pl="Ustawienie etykiety pola rozdzielnicy (krótka nazwa odpływu) na schemacie SLD",
         target_layer="Application / SLD",
         required_fields=("element_ref", "label"),
         creates_elements=False,
