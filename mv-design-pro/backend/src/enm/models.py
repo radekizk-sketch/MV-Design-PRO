@@ -1619,17 +1619,6 @@ class BayEarthFaultPath(BaseModel):
     earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
-class BayVerificationResult(BaseModel):
-    continuous_current_ok: bool | None = None
-    thermal_withstand_ok: bool | None = None
-    dynamic_withstand_ok: bool | None = None
-    ct_ok: bool | None = None
-    vt_ok: bool | None = None
-    cable_head_ok: bool | None = None
-    main_switch_ok: bool | None = None
-    whole_power_path_ok: bool | None = None
-
-
 class BayProofBinding(BaseModel):
     proof_ref: str
     primary_result_refs: list[str] = []
@@ -1647,7 +1636,6 @@ class BayProjectResults(BaseModel):
     main_power_flow_results_ref: str | None = None
     source_contributions_sc: list[BayShortCircuitSourceContribution] = []
     source_contributions_pf: list[BayPowerFlowSourceContribution] = []
-    verification: BayVerificationResult = Field(default_factory=BayVerificationResult)
     earth_fault_path: BayEarthFaultPath | None = None
     proof_binding: BayProofBinding
 
