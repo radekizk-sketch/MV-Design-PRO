@@ -45,8 +45,8 @@ from .models import (
 from .nazwy_elementow import nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .rodzaj_stacji import (
-    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
     RodzajStacji,
     rodzaje_stacji,
 )
