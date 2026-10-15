@@ -127,7 +127,7 @@ def _valid_enm_payload_with_z0(name: str) -> dict:
 
 def _valid_enm_with_field(name: str) -> dict:
     """Model ze stacją i JEDNYM polem SN `field_in_1` — rekord `bays` (karta W5-B; dawniej
-    wpis `meta.field_specs` stacji)."""
+    wpis dawny słownik pól SN w `meta` stacji stacji)."""
     payload = _valid_enm_payload(name)
     payload["substations"] = [
         {

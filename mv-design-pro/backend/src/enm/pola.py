@@ -1,8 +1,8 @@
 """Pola rozdzielnicy w modelu ENM — JEDEN akcesor, JEDEN builder, JEDEN pisarz (karta W5-B).
 
 DLACZEGO. Do karty W5-B pole rozdzielnicy żyło w trzech nietypowanych słownikach
-(`Substation.meta.field_specs`, `Substation.meta.nn_field_specs`,
-`BranchPointSN.materialized_params.switchgear_field_specs`) i w typowanej kolekcji `bays`
+(dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji,
+dawny słownik pól ZKSN punktu rozgałęzienia) i w typowanej kolekcji `bays`
 naraz. Każdy czytelnik (operacje, walidator, zajętość pól, tor pola, kompilator grafu,
 read-model pola, ocena LoM, SLD) składał te kanały po swojemu, z własną kolejnością
 pierwszeństwa i własnym zbiorem kluczy; rekord pola `bays` był dopisywany obok wpisu tego
@@ -192,12 +192,12 @@ def czy_pole_nn(
     napiecia: Mapping[str, float | None] | None = None,
 ) -> bool:
     """Czy pole leży na szynie nN — JEDYNY predykat poziomu pola (dawna przynależność wpisu do
-    kolekcji `nn_field_specs`). Rozstrzyga pasmo napięcia szyny `bus_ref`
+    kolekcji dawny słownik pól nN). Rozstrzyga pasmo napięcia szyny `bus_ref`
     (`pasma_napieciowe.w_pasmie_nn`: 0 < Uₙ ≤ 1 kV); szyna nieznana albo bez napięcia = NIE nN.
 
     Pole stacji GPZ (`station_type == "gpz"`) NIGDY nie jest polem nN: GPZ to punkt zasilania
     sieci, jego pola są polami liniowymi magistrali niezależnie od pasma napięcia ekwiwalentu
-    (sieć benchmarkowa CIGRE LV ma GPZ 0,4 kV). Dawna kolekcja `nn_field_specs` nigdy nie
+    (sieć benchmarkowa CIGRE LV ma GPZ 0,4 kV). Dawna kolekcja dawny słownik pól nN nigdy nie
     zawierała pól GPZ — bez tego wyjątku równoważność „predykat = dawna kolekcja" pękałaby
     dokładnie na GPZ w paśmie nN (odejście magistrali, zajętość pól, walidator, scena)."""
     if _czy_pole_gpz(enm, rekord):
@@ -524,7 +524,7 @@ def usun_pole(enm: dict[str, Any], ref_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Pola rozdzielnicy odgałęźnej ZKSN — jedno źródło (dawne trzy kopie `_zksn_*field_specs`)
+# Pola rozdzielnicy odgałęźnej ZKSN — jedno źródło (dawne trzy kopie `_zksn_*` (dawny słownik pól ZKSN))
 # ---------------------------------------------------------------------------
 
 PORT_ZKSN_WEJSCIE = "MAIN_IN"

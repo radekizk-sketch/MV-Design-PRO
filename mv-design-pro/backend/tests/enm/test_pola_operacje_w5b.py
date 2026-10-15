@@ -1,7 +1,7 @@
 """Operacje domenowe na typowanym polu `Bay` — iloczyn cech karty W5-B/A.
 
 DLACZEGO. Do karty W5-B operacje budowały pole w trzech nietypowanych słownikach
-(`meta.field_specs`, `meta.nn_field_specs`, `switchgear_field_specs`), a operacja stacji końca
+(dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji, dawny słownik pól ZKSN punktu rozgałęzienia), a operacja stacji końca
 ciągu dopisywała obok wpisu rekord `bays` tego samego pola. Ogólne operacje (zmiana nazwy,
 etykiety, parametrów, typu, usunięcie) na polu odmawiały kodem `field.legacy_write_disabled`.
 Od W5-B każde pole jest JEDNYM rekordem `bays` budowanym `enm.pola.zbuduj_pole` i zapisywanym
@@ -24,6 +24,15 @@ from typing import Any
 import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.kompilator_grafu import pusty_enm
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_NN_FIELD_SPECS as KLUCZ_NN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_SWITCHGEAR_FIELD_SPECS as KLUCZ_ZKSN,
+)
 from enm.models import EnergyNetworkModel
 from enm.pola import (
     czy_pole_nn,
@@ -156,8 +165,8 @@ def test_kazde_pole_stacji_to_jeden_rekord_bays(droga: str) -> None:
     # Brak dubli identyfikatorów i dawnych kluczy.
     refy = [p["ref_id"] for p in pola(snap)]
     assert len(refy) == len(set(refy))
-    assert "field_specs" not in stacja.get("meta", {})
-    assert "nn_field_specs" not in stacja.get("meta", {})
+    assert KLUCZ_SN not in stacja.get("meta", {})
+    assert KLUCZ_NN not in stacja.get("meta", {})
     EnergyNetworkModel.model_validate(snap)
 
 
@@ -213,8 +222,8 @@ def test_pola_zksn_jako_rekordy_punktu_rozgalezienia() -> None:
     zksn = pola_zksn(nowy, punkt["ref_id"])
     assert [p["branch_point_port_id"] for p in zksn] == ["MAIN_IN", "MAIN_OUT", "BRANCH"]
     assert all(p["substation_ref"] is None for p in zksn)
-    assert "switchgear_field_specs" not in punkt["materialized_params"]
-    assert "switchgear_field_specs" not in punkt["runtime_inputs"]
+    assert KLUCZ_ZKSN not in punkt["materialized_params"]
+    assert KLUCZ_ZKSN not in punkt["runtime_inputs"]
     assert {p["ref_id"] for p in zksn} <= set(wynik["changes"]["created_element_ids"])
 
 
@@ -536,7 +545,8 @@ def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
 
 def _do_dawnych_kluczy(snap: dict[str, Any]) -> dict[str, Any]:
     """Odwzorowanie świeżo zbudowanej migawki na kształt sprzed W5-B: pola stacji jako wpisy
-    `meta.field_specs`/`meta.nn_field_specs` (klucze dawnego wpisu, zacisk w `meta`)."""
+    dawny słownik pól SN w `meta` stacji/dawny słownik pól nN w `meta` stacji (klucze dawnego wpisu, zacisk w `meta`).
+    """
     dawna = copy.deepcopy(snap)
     stacje = {s["ref_id"]: s for s in dawna["substations"]}
     pozostale = []
@@ -583,7 +593,7 @@ def _do_dawnych_kluczy(snap: dict[str, Any]) -> dict[str, Any]:
             wpis.update({k: v for k, v in rekord["metadane_pochodzenia"].items() if v})
         if rekord.get("wybor_bloku"):
             wpis.update({k: v for k, v in rekord["wybor_bloku"].items() if v is not None})
-        klucz_stacji = "nn_field_specs" if czy_pole_nn(snap, rekord) else "field_specs"
+        klucz_stacji = KLUCZ_NN if czy_pole_nn(snap, rekord) else KLUCZ_SN
         stacja.setdefault("meta", {}).setdefault(klucz_stacji, []).append(wpis)
     dawna["bays"] = pozostale
     return dawna
@@ -601,7 +611,7 @@ def test_archiwum_z_dawnymi_kluczami_daje_te_same_rekordy_co_swieza_budowa(droga
     b = sorted(_bez_id(ze_swiezej.model_dump(mode="json")["bays"]), key=lambda r: r["ref_id"])
     assert a == b
     for stacja in z_archiwum.model_dump(mode="json")["substations"]:
-        assert "field_specs" not in stacja["meta"] and "nn_field_specs" not in stacja["meta"]
+        assert KLUCZ_SN not in stacja["meta"] and KLUCZ_NN not in stacja["meta"]
 
 
 def test_wyposazenie_pola_wskazuje_rekord_pola() -> None:
@@ -668,7 +678,7 @@ def _odejscie(snap: dict[str, Any], field_ref: str, nazwa: str) -> dict[str, Any
 
 
 def test_pola_gpz_w_pasmie_nn_sa_polami_magistrali_nie_nn() -> None:
-    """Dawna kolekcja `nn_field_specs` nigdy nie zawierała pól GPZ; predykat poziomu musi
+    """Dawna kolekcja dawny słownik pól nN nigdy nie zawierała pól GPZ; predykat poziomu musi
     zachować tę równoważność także dla GPZ 0,4 kV — inaczej odejście magistrali, zajętość pól,
     walidator i scena traktowałyby pola GPZ jako odpływy nN."""
     snap = _gpz_04kv()

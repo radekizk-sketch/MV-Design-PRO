@@ -12,6 +12,9 @@ import itertools
 
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji
 
@@ -537,7 +540,7 @@ class TestInsertStationCreatesStructure:
         assert len(nowe_pola) == 4
         assert len({b["ref_id"] for b in nowe_pola}) == len(nowe_pola)
         assert [b["bay_role"] for b in _pola_nn_stacji(s, inserted_station["ref_id"])] == ["IN"]
-        assert "field_specs" not in inserted_station.get("meta", {})
+        assert KLUCZ_SN not in inserted_station.get("meta", {})
         field_roles = [
             spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
@@ -623,7 +626,7 @@ class TestInsertStationCreatesStructure:
 class TestNnFieldAdapters:
     def test_add_sn_bay_dopisuje_jeden_rekord_bays(self):
         """Intencja (przepisana w W5-B): operacja pola zapisuje pole w JEDNYM nośniku — dawniej
-        `meta.field_specs` przy zablokowanym `bays`, teraz rekord `bays`; istniejące rekordy
+        dawny słownik pól SN w `meta` stacji przy zablokowanym `bays`, teraz rekord `bays`; istniejące rekordy
         pól zostają bajtowo nietknięte, przybywa dokładnie jeden."""
         gpz_result = _add_grid_source(_empty_enm())
         assert gpz_result.get("snapshot") is not None, f"Error: {gpz_result.get('error')}"
@@ -655,9 +658,7 @@ class TestNnFieldAdapters:
         assert nowe["bay_role"] == "OUT"
         assert nowe["meta"]["apparatus_kind"] == "BREAKER"
         assert nowe["terminal_bus_ref"] in result["changes"]["created_element_ids"]
-        assert (
-            "field_specs" not in _find_by_ref(updated, "substations", substation["ref_id"])["meta"]
-        )
+        assert KLUCZ_SN not in _find_by_ref(updated, "substations", substation["ref_id"])["meta"]
 
     def test_add_sn_bay_binds_producer_bay_template(self):
         """G-POLE-R (V12K-058): pole SN wiąże szablon pola producenta (parytet ze stacją/GPZ).

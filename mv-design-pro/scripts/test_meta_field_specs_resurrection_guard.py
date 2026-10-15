@@ -13,11 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from meta_field_specs_resurrection_guard import (
+from meta_field_specs_resurrection_guard import (  # noqa: E402
     ALLOWLIST,
     KATALOGI_KODU,
     sprawdz,
-)  # noqa: E402
+)
 
 INIEKCJE_KOD: tuple[tuple[str, str], ...] = (
     ("backend/src/enm/x.py", 'specs = sub["meta"].get("field_specs")\n'),
@@ -51,9 +51,7 @@ def _czyste_drzewo(tmp: Path) -> None:
     for rel in KATALOGI_KODU:
         (tmp / rel).mkdir(parents=True, exist_ok=True)
     (tmp / "backend/src/enm").mkdir(parents=True, exist_ok=True)
-    (tmp / "backend/src/enm/pola.py").write_text(
-        "bays = enm.get('bays')\n", encoding="utf-8"
-    )
+    (tmp / "backend/src/enm/pola.py").write_text("bays = enm.get('bays')\n", encoding="utf-8")
     (tmp / "frontend/public/test-fixtures").mkdir(parents=True, exist_ok=True)
     (tmp / "frontend/public/test-fixtures/czysty.enm.json").write_text(
         json.dumps({"bays": [{"ref_id": "p1", "substation_ref": "s1"}]}),
@@ -92,9 +90,7 @@ def test_kazda_iniekcja_danych_czerwona() -> None:
             plik.parent.mkdir(parents=True, exist_ok=True)
             plik.write_text(json.dumps(dane), encoding="utf-8")
             naruszenia = sprawdz(tmp)
-            assert naruszenia == [
-                f"DANE {rel}: obiekt z kluczem dawnego nośnika pól"
-            ], (
+            assert naruszenia == [f"DANE {rel}: obiekt z kluczem dawnego nośnika pól"], (
                 rel,
                 naruszenia,
             )
@@ -115,13 +111,15 @@ def test_allowlista_przepuszcza_tylko_nazwane_pliki() -> None:
 
 
 def test_allowlista_jest_zamknieta() -> None:
-    """Zapadka tylko w dół: cztery nazwane pliki (migracja, jej test, guard, self-test)."""
+    """Zapadka tylko w dół: migracja, jej test, guard, self-test i strażnik ścieżek legacy
+    (musi nazywać ścieżkę skasowanego modułu promocji, żeby wykryć jego wskrzeszenie)."""
     assert ALLOWLIST == frozenset(
         {
             "backend/src/enm/migrations/field_specs_promocja.py",
             "backend/tests/enm/migrations/test_field_specs_promocja.py",
             "scripts/meta_field_specs_resurrection_guard.py",
             "scripts/test_meta_field_specs_resurrection_guard.py",
+            "scripts/legacy_public_path_guard.py",
         }
     )
 

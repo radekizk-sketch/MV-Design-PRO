@@ -18,6 +18,12 @@ from application.twin_key import klucz_twin_dla_przypadku
 from domain.models import Project
 from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs, run_short_circuit_now
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_NN_FIELD_SPECS as KLUCZ_NN,
+)
 from enm.models import EnergyNetworkModel
 from enm.store import (
     LegacyFieldSpecsError,
@@ -233,7 +239,7 @@ def _enm_with_field_specs_only() -> dict:
     payload = _enm_with_bay()
     bay = payload["bays"].pop(0)
     payload["substations"][0]["meta"] = {
-        "field_specs": [
+        KLUCZ_SN: [
             {
                 "field_ref": bay["ref_id"],
                 "name": bay["name"],
@@ -251,8 +257,8 @@ def _enm_with_field_specs_only() -> dict:
 
 def _enm_with_nn_field_specs_only() -> dict:
     payload = _enm_with_field_specs_only()
-    spec = payload["substations"][0]["meta"].pop("field_specs")[0]
-    payload["substations"][0]["meta"]["nn_field_specs"] = [spec]
+    spec = payload["substations"][0]["meta"].pop(KLUCZ_SN)[0]
+    payload["substations"][0]["meta"][KLUCZ_NN] = [spec]
     return payload
 
 
@@ -380,8 +386,8 @@ def test_zapis_modelu_z_dawnymi_wpisami_pol_to_nazwana_odmowa(uow_factory):
             _seed_enm(case_id, payload, uow_factory)
 
 
-# Intencja zachowana (karta W5-B): pole opisane dawnym wpisem stacji (`field_specs` albo
-# `nn_field_specs`) jest w read-modelu pola — teraz przez migrację wejścia do rekordu `bays`,
+# Intencja zachowana (karta W5-B): pole opisane dawnym wpisem stacji (dawny słownik pól SN albo
+# dawny słownik pól nN) jest w read-modelu pola — teraz przez migrację wejścia do rekordu `bays`,
 # a nie przez drugą projekcję wpisu w read-modelu.
 @pytest.mark.parametrize(
     "payload", [_enm_with_field_specs_only, _enm_with_nn_field_specs_only], ids=["sn", "nn"]

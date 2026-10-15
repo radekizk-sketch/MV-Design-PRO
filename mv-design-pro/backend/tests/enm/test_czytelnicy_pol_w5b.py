@@ -209,7 +209,6 @@ def test_szyny_stacji_w_starej_kolejnosci_argumentow_to_blad_a_nie_puste_zero() 
     Wołanie w dawnej kolejności `(stacja, gałęzie)` zwracało po cichu pusty zbiór (zmierzone:
     scena koordynacji harnessu bez ani jednego zabezpieczenia) — teraz to błąd programu."""
     import pytest
-
     from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 
     stacja = {"ref_id": "st", "bus_refs": ["sn"]}

@@ -15,6 +15,9 @@ import pytest
 from domain.readiness_fix_actions import KNOWN_BLOCKER_CODES, resolve_fix_action
 from enm.catalog_completion import complete_catalog_defaults
 from enm.domain_operations import execute_domain_operation
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_SWITCHGEAR_FIELD_SPECS as KLUCZ_ZKSN,
+)
 from enm.models import (
     BranchPointSN,
     BranchPointSNPorts,
@@ -309,8 +312,8 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
         # Pola rozdzielnicy ZKSN są rekordami `bays` punktu rozgałęzienia (karta W5-B; dawniej
-        # `materialized_params.switchgear_field_specs` z rolą „BRANCH" spoza kontraktu Bay).
-        assert "switchgear_field_specs" not in bp.materialized_params
+        # dawny słownik pól ZKSN punktu rozgałęzienia z rolą „BRANCH" spoza kontraktu Bay).
+        assert KLUCZ_ZKSN not in bp.materialized_params
         pola_punktu = pola_zksn(enm, bp.ref_id)
         assert [(p.bay_role, p.field_role) for p in pola_punktu] == [
             ("IN", "LINIA_IN"),
@@ -463,7 +466,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
         # Uzupełnienie katalogowe dokłada brakujące pola ZKSN jako rekordy `bays`.
-        assert "switchgear_field_specs" not in bp.materialized_params
+        assert KLUCZ_ZKSN not in bp.materialized_params
         pola_punktu = pola_zksn(completed, bp.ref_id)
         assert [p.field_role for p in pola_punktu] == [
             "LINIA_IN",

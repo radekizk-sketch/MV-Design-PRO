@@ -22,6 +22,9 @@ import copy
 from typing import Any
 
 from enm.domain_operations import append_station_on_endpoint, execute_domain_operation
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji, pola_stacji
 
@@ -423,10 +426,10 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
     }
     assert field_apparatus_refs
     sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja Przelotowa")
-    # Intencja (W5-B): JEDEN rekord `bays` na pole — dawniej wpis `meta.field_specs` + rekord
+    # Intencja (W5-B): JEDEN rekord `bays` na pole — dawniej wpis dawny słownik pól SN w `meta` stacji + rekord
     # `bays` tego samego pola pod `bay/{seed}/…` (pole liczone dwa razy).
     pola_sn = pola_sn_stacji(new_snap, sub["ref_id"])
-    assert "field_specs" not in sub.get("meta", {})
+    assert KLUCZ_SN not in sub.get("meta", {})
     assert all(spec["ref_id"].startswith("field/") for spec in pola_sn)
     assert not any(str(b.get("ref_id")).startswith("bay/") for b in new_snap.get("bays", []))
     assert {spec["field_role"] for spec in pola_sn} == {

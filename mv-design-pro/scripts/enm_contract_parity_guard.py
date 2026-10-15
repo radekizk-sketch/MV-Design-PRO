@@ -134,7 +134,7 @@ SPRAWDZANE: dict[str, str] = {
     "Load": "Load",
     "Measurement": "Measurement",
     "MeasurementRating": "MeasurementRating",
-    # Karta W5-B: struktury typowane rekordu pola `Bay` (dawne klucze wpisu `meta.field_specs`).
+    # Karta W5-B: struktury typowane rekordu pola `Bay` (dawne klucze wpisu dawny słownik pól SN w `meta` stacji).
     "MetadanePochodzeniaPola": "MetadanePochodzeniaPola",
     "ModeleWidmoweElementu": "ModeleWidmoweElementu",
     "OgranicznikPrzepiecPola": "OgranicznikPrzepiecPola",

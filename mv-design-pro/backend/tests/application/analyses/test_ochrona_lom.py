@@ -11,6 +11,12 @@ import json
 
 import pytest
 from application.analyses.ochrona_lom import _spz_verdict, build_ochrona_lom_view
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_NN_FIELD_SPECS as KLUCZ_NN,
+)
 from enm.migrations.field_specs_promocja import BladMigracjiPol
 from enm.migrations.field_specs_promocja import migruj as migruj_pola
 from enm.models import (
@@ -462,7 +468,7 @@ def _wpis_pola_archiwum(
 def _enm_z_archiwum(
     wpisy: list[dict],
     *,
-    klucz_archiwum: str = "field_specs",
+    klucz_archiwum: str = KLUCZ_SN,
     protection_assignments: list[ProtectionAssignment] | None = None,
     bays: list[Bay] | None = None,
 ) -> EnergyNetworkModel:
@@ -484,7 +490,7 @@ def _enm_z_archiwum(
     )
 
 
-@pytest.mark.parametrize("klucz", ["field_specs", "nn_field_specs"])
+@pytest.mark.parametrize("klucz", [KLUCZ_SN, KLUCZ_NN])
 def test_pole_z_archiwum_po_migracji_jest_oceniane(klucz: str) -> None:
     """Pole zapisane dawnym wpisem stacji MUSI być oceniane — po migracji wejścia do
     rekordu `bays` (karta W5-B), nie drugą projekcją wpisu w ocenie LoM.

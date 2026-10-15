@@ -464,7 +464,8 @@ class TestValidatorTopologyEntities:
 
     def test_i003_accepts_station_with_field_record(self):
         """Intencja (przepisana w W5-B): stacja z polem nie dostaje I003 — pole jest rekordem
-        `bays` (jedyny nośnik), dawniej wpisem `meta.field_specs` przy pustym `bays`."""
+        `bays` (jedyny nośnik), dawniej wpisem dawny słownik pól SN w `meta` stacji przy pustym `bays`.
+        """
         enm = _base_enm()
         enm.substations = [
             Substation(ref_id="sub_1", name="S1", station_type="gpz", bus_refs=["bus_sn_a"]),

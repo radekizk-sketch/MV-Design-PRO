@@ -71,8 +71,8 @@ logger = logging.getLogger(__name__)
 
 
 class LegacyFieldSpecsError(ValueError):
-    """Zapis modelu z dawnymi kluczami pol (`meta.field_specs`, `meta.nn_field_specs`,
-    `materialized_params.switchgear_field_specs`) — od karty W5-B jedynym nosnikiem pol jest
+    """Zapis modelu z dawnymi kluczami pol (dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji,
+    dawny słownik pól ZKSN punktu rozgałęzienia) — od karty W5-B jedynym nosnikiem pol jest
     kolekcja `bays`; brak trybu zgodnosci (zasady inzynierskie wlasciciela)."""
 
 
@@ -280,8 +280,8 @@ def przygotuj_model_po_odczycie(enm: EnergyNetworkModel) -> tuple[EnergyNetworkM
     # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Idzie PRZED
     # uzupełnianiem katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
     model, zmieniona_nazwa = migruj_punkt_przylaczenia(enm)
-    # Karta W5-B: dawne wpisy pol (`meta.field_specs`/`nn_field_specs`/
-    # `switchgear_field_specs`) → typowane rekordy `bays`. PRZED promocja aparatow nN,
+    # Karta W5-B: dawne wpisy pol (dawny słownik pól SN w `meta` stacji/dawny słownik pól nN/
+    # dawny słownik pól ZKSN punktu rozgałęzienia) → typowane rekordy `bays`. PRZED promocja aparatow nN,
     # ktora czyta juz wylacznie `bays`.
     model, zmienione_pola = promuj_pola_do_bays(model)
     # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja pol nN → realne elementy grafu
@@ -381,8 +381,8 @@ def set_enm(
         # magazynu wylacznie przez `przygotuj_model_po_odczycie` (migracja), a operacja,
         # ktora je zapisala, jest bledem programu, nie danych.
         raise LegacyFieldSpecsError(
-            "model niesie dawne wpisy pol (meta.field_specs / nn_field_specs / "
-            "switchgear_field_specs); jedynym nosnikiem pol jest kolekcja `bays` — "
+            "model niesie dawne wpisy pol (dawny słownik pól SN w `meta` stacji / dawny słownik pól nN / "
+            "dawny słownik pól ZKSN punktu rozgałęzienia); jedynym nosnikiem pol jest kolekcja `bays` — "
             "zmigruj model funkcja `przygotuj_model_po_odczycie` przed zapisem"
         )
     with blokada_twin(klucz):

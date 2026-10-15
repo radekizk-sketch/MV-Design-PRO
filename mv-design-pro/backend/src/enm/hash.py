@@ -71,7 +71,7 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "transformers": ("lv_earthing_system",),
     "branches": ("screen_bonding",),
     # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
-    # `meta.field_specs`). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
+    # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
     # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
     # (zacisk, rola kanoniczna, pomiar, powiazania producenckie) jest trescia modelu.
     "bays": (

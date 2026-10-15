@@ -54,9 +54,7 @@ KATALOGI_DANYCH: tuple[str, ...] = (
     "backend/tests",
     "backend/schemas",
 )
-ROZSZERZENIA_KODU: frozenset[str] = frozenset(
-    {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs"}
-)
+ROZSZERZENIA_KODU: frozenset[str] = frozenset({".py", ".ts", ".tsx", ".js", ".mjs", ".cjs"})
 POMIJANE_KATALOGI: frozenset[str] = frozenset(
     {
         "node_modules",
@@ -75,6 +73,9 @@ ALLOWLIST: frozenset[str] = frozenset(
         "backend/tests/enm/migrations/test_field_specs_promocja.py",
         "scripts/meta_field_specs_resurrection_guard.py",
         "scripts/test_meta_field_specs_resurrection_guard.py",
+        # Strażnik ścieżek legacy nazywa ŚCIEŻKĘ skasowanego modułu promocji pól nN — bez niej
+        # nie wykryłby wskrzeszenia pliku (`W1_LEGACY_RELATIVE_PATHS`).
+        "scripts/legacy_public_path_guard.py",
     }
 )
 
@@ -86,9 +87,7 @@ WZORZEC_KODU = re.compile(
 )
 
 
-def _pliki(
-    root: Path, katalogi: tuple[str, ...], rozszerzenia: frozenset[str]
-) -> list[Path]:
+def _pliki(root: Path, katalogi: tuple[str, ...], rozszerzenia: frozenset[str]) -> list[Path]:
     wynik: list[Path] = []
     for rel in katalogi:
         katalog = root / rel
@@ -97,9 +96,7 @@ def _pliki(
         for plik in katalog.rglob("*"):
             if not plik.is_file() or plik.suffix not in rozszerzenia:
                 continue
-            if any(
-                czesc in POMIJANE_KATALOGI for czesc in plik.relative_to(root).parts
-            ):
+            if any(czesc in POMIJANE_KATALOGI for czesc in plik.relative_to(root).parts):
                 continue
             wynik.append(plik)
     return sorted(wynik)
@@ -144,9 +141,7 @@ def sprawdz(root: Path) -> list[str]:
 
 def main() -> int:
     if not any((PROJECT_ROOT / rel).is_dir() for rel in KATALOGI_KODU):
-        print(
-            "meta_field_specs_resurrection_guard: brak katalogów skanu", file=sys.stderr
-        )
+        print("meta_field_specs_resurrection_guard: brak katalogów skanu", file=sys.stderr)
         return 2
     naruszenia = sprawdz(PROJECT_ROOT)
     if naruszenia:

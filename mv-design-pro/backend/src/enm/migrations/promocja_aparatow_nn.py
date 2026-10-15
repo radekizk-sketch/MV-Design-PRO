@@ -9,7 +9,7 @@ rekordzie pola aparat (`equipment_refs`) oraz zacisk (`terminal_bus_ref`) — po
 tę samą postać, co pole SN z aparatem w torze (jedna reguła `enm.pola.zacisk_pola`).
 
 Karta W5-B: pola nN czyta się WYŁĄCZNIE z `bays` (predykat poziomu `enm.pola.czy_pole_nn` —
-pasmo napięcia szyny pola); dawny słownik `Substation.meta.nn_field_specs` nie istnieje.
+pasmo napięcia szyny pola); dawny słownik dawny słownik pól nN w `meta` stacji nie istnieje.
 
 WŁASNOŚCI (jak pozostałe automigracje ENM):
 - **idempotentna** — sprawdzenie GRANULARNE per pole (istnienie gałęzi z meta-znacznikiem
@@ -191,7 +191,7 @@ def _rekordy_do_uzupelnienia(enm: EnergyNetworkModel) -> list[tuple[Bay, SwitchB
     (migawki sprzed karty W5-B).
 
     KAŻDE pole ze wskazującym je aparatem promocji — nie tylko pole na szynie nN: dawna
-    promocja promowała każdy wpis `nn_field_specs`, także pole źródła zapisane operacją nN na
+    promocja promowała każdy wpis dawny słownik pól nN, także pole źródła zapisane operacją nN na
     szynie SN (zmierzone na scenach harnessu OZE i LoM: aparat między szyną SN a szyną
     odpływu, źródło za aparatem). Po migracji wpisów taki rekord leży na szynie SN (predykat
     poziomu `czy_pole_nn` = NIE nN), a jego aparat istnieje — bez zapisu na rekordzie aparat

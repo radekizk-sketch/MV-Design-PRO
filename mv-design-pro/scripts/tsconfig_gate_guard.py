@@ -407,7 +407,7 @@ POMIJANE_KATALOGI = {
 #: karty, listy bledow porownane): 81 -> 78. Zeszly: TS2532 w
 #: `ui/sld/shared/__tests__/szynyStacjiKonsumenci.test.ts` (czerwien bazy 81 > 80 — `gpzs[0]`
 #: zastapione `gpzs.slice(0, 1)` z jawna obsluga braku sekcji) oraz TS2339 + TS7006 w
-#: `ui/sld/v3/scene/__tests__/buildScene.gpzFeeder.test.ts` (rzutowany ksztalt `meta.field_specs`
+#: `ui/sld/v3/scene/__tests__/buildScene.gpzFeeder.test.ts` (rzutowany ksztalt dawny słownik pól SN w `meta` stacji
 #: zastapiony typowanymi rekordami `bays`). Zero nowych bledow.
 BUDZET_BLEDOW_POZA_BRAMKA = 78
 

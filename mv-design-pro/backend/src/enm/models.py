@@ -1140,7 +1140,7 @@ class NnSection(BaseModel):
 
 class MetadanePochodzeniaPola(BaseModel):
     """Metadane POCHODZENIA pola (karta W5-B, dawne klucze `bay_kind`/`source_status`/
-    `source_refs` wpisu `meta.field_specs`): skąd pole wzięło się w modelu (kreator, szablon,
+    `source_refs` wpisu dawny słownik pól SN w `meta` stacji): skąd pole wzięło się w modelu (kreator, szablon,
     import) i z jakich źródeł danych. Dane inżynierskie o pochodzeniu, nie fizyka."""
 
     bay_kind: str | None = None
@@ -1169,8 +1169,8 @@ class OgranicznikPrzepiecPola(BaseModel):
 class Bay(ENMElement):
     """Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (karta W5-B, 2026-09-30).
 
-    Do karty W5-B pola żyły w trzech nietypowanych słownikach (`Substation.meta.field_specs`,
-    `Substation.meta.nn_field_specs`, `BranchPointSN.materialized_params.switchgear_field_specs`)
+    Do karty W5-B pola żyły w trzech nietypowanych słownikach (dawny słownik pól SN w `meta` stacji,
+    dawny słownik pól nN w `meta` stacji, dawny słownik pól ZKSN punktu rozgałęzienia)
     i w tej kolekcji naraz; każdy czytelnik składał je po swojemu. Teraz kolekcja `bays` jest
     jedynym źródłem: pole stacji wskazuje `substation_ref`, pole rozdzielnicy odgałęźnej ZKSN
     wskazuje `branch_point_ref` (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem
