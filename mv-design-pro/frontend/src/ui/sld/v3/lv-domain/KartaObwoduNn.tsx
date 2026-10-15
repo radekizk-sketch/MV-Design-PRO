@@ -18,9 +18,9 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import { MathInline } from '../../../proof/MathRenderer';
-import { KartaWerdyktu, NAZWA_STANU_ZRODLA_PL, wielkoscPl } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import { EtykietaWerdyktu, KartaWerdyktu, NAZWA_STANU_ZRODLA_PL, wielkoscPl } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../../../ui2/wyniki/wzorzec/InformacjeAudytowe';
-import type { OcenaKryterium, PodstawaWymagania, SemantykaKoloru } from '../../../../ui2/wyniki/wzorzec/werdykt';
+import type { OcenaKryterium, PodstawaWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { jestWerdyktemTtIt, type SwzTnVerdict, type SwzTtItVerdict } from '../canvas/overlay';
 import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, wpisAparatu, znakiIecPelne } from './symbolRegistry';
@@ -60,34 +60,9 @@ function slowoStanu(state: LvEnergizationState | undefined): string {
   return state ? SLOWO_STANU_ZASILANIA[state] ?? state : 'brak danych';
 }
 
-/** Znak oceny wiersza z SEMANTYKI etykiety backendu (nie ze statusu — mapa statusu
- *  na tekst żyje wyłącznie w backendzie; tu tylko kolor i glif). */
-function znakSemantyki(semantyka: SemantykaKoloru): string {
-  switch (semantyka) {
-    case 'pozytywna':
-      return '✓';
-    case 'negatywna':
-      return '✗';
-    case 'ostrzegawcza':
-      return '?';
-    default:
-      return '–';
-  }
-}
-
-function tonSemantyki(semantyka: SemantykaKoloru, paleta: PaletaNn): string {
-  switch (semantyka) {
-    case 'pozytywna':
-      return paleta.tonOk;
-    case 'negatywna':
-      return paleta.tonBledu;
-    case 'ostrzegawcza':
-      return paleta.tonOstrzegawczy;
-    default:
-      return paleta.kreskaWygaszona;
-  }
-}
-
+/** Ton werdyktu TN (3-stanowy werdykt backendu, `SwzTnVerdict.status`) — dług migracji E77
+ *  przeniesiony z dawnego panelu odpływu (`LvFeederPanel.statusTone`) do karty obwodu;
+ *  tekst oceny TN to wprost słowo backendu, mapa daje wyłącznie kolor. */
 function tonStatusuTn(status: SwzTnVerdict['status'], paleta: PaletaNn): string {
   if (status === 'spełnia') return paleta.tonOk;
   if (status === 'nie spełnia') return paleta.tonBledu;
@@ -149,9 +124,8 @@ function TabelaWarunkow({ paleta, wiersze }: {
     readonly wynik: string;
     readonly limit: string;
     readonly przypis: number | null;
-    readonly znak: string;
-    readonly ton: string;
-    readonly ocena: string;
+    /** Ocena wiersza: plakietka etykiety rekordu backendu (TT/IT) albo słowo werdyktu TN. */
+    readonly ocena: ReactNode;
   }[];
 }): JSX.Element {
   const kreska = `1px solid ${paleta.kreskaWygaszona}`;
@@ -174,10 +148,7 @@ function TabelaWarunkow({ paleta, wiersze }: {
               {w.limit}
               {w.przypis != null ? <sup style={{ color: paleta.kreskaWygaszona }}>{` [${w.przypis}]`}</sup> : null}
             </td>
-            <td style={{ ...KOMORKA, borderLeft: kreska, color: w.ton }} title={w.ocena}>
-              <span style={{ fontWeight: 700, marginRight: 4 }}>{w.znak}</span>
-              <span style={{ fontSize: 10 }}>{w.ocena}</span>
-            </td>
+            <td style={{ ...KOMORKA, borderLeft: kreska, fontSize: 10 }}>{w.ocena}</td>
           </tr>
         ))}
       </tbody>
@@ -235,9 +206,14 @@ function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly
       wynik: k.wynik ? wielkoscPl(k.wynik.wartosc) : '—',
       limit: limit != null ? wielkoscPl(limit) : '—',
       przypis,
-      znak: znakSemantyki(k.etykieta.semantyka),
-      ton: tonSemantyki(k.etykieta.semantyka, paleta),
-      ocena: k.etykieta.etykieta_pl,
+      ocena: (
+        <EtykietaWerdyktu
+          etykieta={k.etykieta}
+          status={k.status_maszynowy}
+          testid={`karta-obwodu-ocena-${k.kryterium_id}`}
+          zwarta
+        />
+      ),
     };
   });
   return (
@@ -249,9 +225,7 @@ function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly
       <TabelaWarunkow paleta={paleta} wiersze={wiersze} />
       <div data-testid="karta-obwodu-ocena-wymagania" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: 11 }}>
         <span style={{ color: paleta.kreskaWygaszona }}>{`Wymaganie (układ ${swz.uklad})`}</span>
-        <span style={{ color: tonSemantyki(w.etykieta.semantyka, paleta), fontWeight: 700, textAlign: 'right' }}>
-          {`${znakSemantyki(w.etykieta.semantyka)} ${w.etykieta.etykieta_pl}`}
-        </span>
+        <EtykietaWerdyktu etykieta={w.etykieta} status={w.status_maszynowy} zwarta />
       </div>
       <Przypisy paleta={paleta} pozycje={przypisy} />
       <details data-testid="karta-obwodu-rekord-dowodu" style={{ marginTop: 8, fontSize: 11 }}>
@@ -276,9 +250,7 @@ function SekcjaSwzTn({ swz, paleta }: { readonly swz: SwzTnVerdict; readonly pal
             wynik: `${plFixed(swz.ik1_min_a, 0)} A`,
             limit: swz.ia_wymagane_a != null ? `${plFixed(swz.ia_wymagane_a, 0)} A` : '—',
             przypis: 1,
-            znak: swz.status === 'spełnia' ? '✓' : swz.status === 'nie spełnia' ? '✗' : '?',
-            ton: tonStatusuTn(swz.status, paleta),
-            ocena: swz.status,
+            ocena: <span style={{ color: tonStatusuTn(swz.status, paleta), fontWeight: 700 }}>{swz.status}</span>,
           },
         ]}
       />

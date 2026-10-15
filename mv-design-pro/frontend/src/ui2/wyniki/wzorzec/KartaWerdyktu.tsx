@@ -1181,6 +1181,8 @@ export interface EtykietaWerdyktuProps {
   /** Status maszynowy rekordu — wyłącznie atrybut `data-status` (filtry, testy), nigdy tekst. */
   readonly status?: StatusWerdyktu | null;
   readonly testid?: string;
+  /** Wariant zwarty (prostokątny, mniejsze pismo) do tabel arkusza — ta sama etykieta i kolor. */
+  readonly zwarta?: boolean;
 }
 
 /**
@@ -1189,11 +1191,11 @@ export interface EtykietaWerdyktuProps {
  * Szczegół rekordu pokazuje `KartaWerdyktu`; plakietka nie zastępuje karty (§9: etykieta bez
  * wyjaśnienia nie jest odpowiedzią inżynierską — konsument zawsze prowadzi do karty).
  */
-export function EtykietaWerdyktu({ etykieta, status = null, testid }: EtykietaWerdyktuProps) {
+export function EtykietaWerdyktu({ etykieta, status = null, testid, zwarta = false }: EtykietaWerdyktuProps) {
   const styl: StylKarty = { '--mvd-werdykt-kolor': SEMANTYKA_KOLOR[etykieta.semantyka] };
   return (
     <span
-      className="mvd-werdykt-plakietka"
+      className={zwarta ? 'mvd-werdykt-plakietka mvd-werdykt-plakietka--zwarta' : 'mvd-werdykt-plakietka'}
       style={styl}
       data-testid={testid}
       data-semantyka={etykieta.semantyka}

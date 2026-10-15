@@ -698,6 +698,45 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "wiąże rekord z konkretnym wyciągiem, więc podmiana dokumentu jest wykrywalna."
         ),
     ),
+    RegulaKatalogu(
+        kod="KAT-T-042",
+        nazwa="Rodzaj prądu różnicowego RCD ze słownika AC / A / F / B",
+        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
+        podstawa=(
+            "IEC 61008-1 i IEC 61009-1 (rodzaje AC i A), IEC 62423 (rodzaje F i B) — "
+            "słownik `RODZAJE_PRADU_ROZNICOWEGO_RCD`"
+        ),
+        uzasadnienie=(
+            "Rodzaj prądu różnicowego decyduje, jakie prądy doziemne RCD w ogóle wykrywa; "
+            "rekord spoza słownika nie ma zdefiniowanego zachowania, więc werdykt SWZ TT "
+            "nie miałby czego cytować."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-043",
+        nazwa="Prąd znamionowy, prąd różnicowy znamionowy i czas wyłączenia RCD dodatnie",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja wielkości znamionowych aparatu (prąd i czas są dodatnie)",
+        uzasadnienie=(
+            "Zerowy albo ujemny I_n, I_Δn lub czas wyłączenia opisuje aparat, który nie "
+            "istnieje; napięcie dotykowe R_A·I_Δn i porównanie czasu z tablicą czasów "
+            "wyłączenia nie miałyby sensu fizycznego."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-044",
+        nazwa="RCD selektywny (typ S) z minimalnym czasem niezadziałania",
+        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
+        podstawa=(
+            "IEC 61008-1 Tabela 1 (kl. 9.9.2) — wiersz typu S definiuje minimalny czas "
+            "niezadziałania"
+        ),
+        uzasadnienie=(
+            "Selektywność RCD typu S wobec RCD ogólnego opiera się właśnie na czasie "
+            "niezadziałania; rekord typu S bez tej wartości twierdziłby selektywność bez danej, "
+            "która ją definiuje."
+        ),
+    ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa
     # -----------------------------------------------------------------------

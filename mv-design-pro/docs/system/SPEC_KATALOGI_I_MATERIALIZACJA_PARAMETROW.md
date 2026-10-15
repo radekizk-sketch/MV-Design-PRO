@@ -174,7 +174,7 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-041` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-044` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola

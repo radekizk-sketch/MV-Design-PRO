@@ -3357,7 +3357,7 @@ class LVRcdType:
     def __post_init__(self) -> None:
         if self.rcd_type not in RODZAJE_PRADU_ROZNICOWEGO_RCD:
             odmowa_twarda(
-                "KAT-T-040",
+                "KAT-T-042",
                 f"RCD '{self.id}': rodzaj prądu różnicowego {self.rcd_type!r} spoza słownika "
                 f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
             )
@@ -3368,13 +3368,13 @@ class LVRcdType:
         ):
             if wartosc <= 0:
                 odmowa_twarda(
-                    "KAT-T-041",
+                    "KAT-T-043",
                     f"RCD '{self.id}': pole {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
                     "bez niego werdykt SWZ TT nie ma z czego liczyć.",
                 )
         if self.selective and self.t_nieczuly_min_s is None:
             odmowa_twarda(
-                "KAT-T-042",
+                "KAT-T-044",
                 f"RCD '{self.id}' typu S bez minimalnego czasu niezadziałania — Tabela 1 "
                 "IEC 61008-1 definiuje go dla każdego RCD selektywnego.",
             )

@@ -45,6 +45,7 @@ from network_model.catalog.types import (
     ConverterKind,
     ConverterType,
     LVFuseLinkType,
+    LVRcdType,
     _normalize_catalog_status,
     _normalize_verification_status,
     _validate_float_range,
@@ -466,7 +467,37 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _karty_statyczne(z_wyciagiem=False),
         lambda: _karty_statyczne(z_wyciagiem=True),
     ),
+    # Karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (`LVRcdType`).
+    "KAT-T-042": (
+        lambda: _rcd(rcd_type="AB"),
+        # Rodzaj B (IEC 62423) jest legalny, choć rodzina referencyjna niesie tylko AC i A.
+        lambda: _rcd(rcd_type="B"),
+    ),
+    "KAT-T-043": (
+        lambda: _rcd(i_delta_n_a=0.0),
+        # Bardzo mały, ale dodatni I_Δn (10 mA) jest legalny.
+        lambda: _rcd(i_delta_n_a=0.01),
+    ),
+    "KAT-T-044": (
+        lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5),
+        lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5, t_nieczuly_min_s=0.13),
+    ),
 }
+
+
+def _rcd(**zmiany: Any) -> LVRcdType:
+    """Rekord RCD z danymi TESTOWYMI (kształt rekordu, nie wartości katalogowe)."""
+    pola: dict[str, Any] = {
+        "id": "rcd_test",
+        "name": "RCD testowy",
+        "in_a": 40.0,
+        "i_delta_n_a": 0.03,
+        "rcd_type": "A",
+        "selective": False,
+        "t_a_s": 0.3,
+    }
+    pola.update(zmiany)
+    return LVRcdType(**pola)
 
 
 def test_kazdy_kod_twardy_ma_pare_przypadkow() -> None:

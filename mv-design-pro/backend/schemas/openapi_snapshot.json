@@ -21940,6 +21940,33 @@
     ]
    }
   },
+  "/api/catalog/lv-rcd-types": {
+   "get": {
+    "description": "List all LV residual current device (RCCB IEC 61008-1 / RCBO IEC 61009-1) types.",
+    "operationId": "list_lv_rcd_types_api_catalog_lv_rcd_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Lv Rcd Types Api Catalog Lv Rcd Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Lv Rcd Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/manufacturers": {
    "get": {
     "description": "Lista producentów rozdzielnic SN (goal §11A).\n\nWszyscy startowi producenci mają `status='requires_catalog'` dopóki nie\npojawią się zweryfikowane source_refs. UI ma pokazać badge ostrzegawczy.",

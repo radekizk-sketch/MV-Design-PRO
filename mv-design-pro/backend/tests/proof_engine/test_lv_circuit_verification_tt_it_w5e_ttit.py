@@ -133,6 +133,16 @@ class TestDowodTt:
         assert "REFERENCYJNY" in krok10.source_keys["zrodlo_czasu"]
         assert "BRAK_PODSTAWY" in krok10.substitution_latex
         assert doc.summary.overall_status in {"NIEROZSTRZYGALNE", "FAIL"}
+        # Każda ocena składowa w kroku 10 nazwana OPISEM kryterium z kontraktu werdyktu,
+        # nigdy identyfikatorem maszynowym (dawny zapas `kryterium_id` przy braku nazwy).
+        oceny = wynik["wejscie"].swz_tt_it["wymaganie"]["oceny_skladowe"]
+        assert oceny
+        for ocena in oceny:
+            opis = ocena["kryterium"]["opis_pl"]
+            assert opis.replace("\\", "/").replace("{", "(").replace("}", ")") in (
+                krok10.substitution_latex
+            )
+            assert ocena["kryterium_id"] + ":" not in krok10.substitution_latex
 
     def test_pakiet_tt_jest_deterministyczny(self) -> None:
         # Ten sam wzorzec co dowód TN: dwa biegi → identyczne bajty ZIP.

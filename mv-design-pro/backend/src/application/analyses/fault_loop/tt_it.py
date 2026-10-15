@@ -36,11 +36,11 @@ from enm.models import (
     Transformer,
     liczba_torow,
 )
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze
 from enm.slownik_komunikatow import opis_obiektu
 from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt, PojemnoscDoziemnaOdcinka
 
-from .route import LvBusPath, bfs_paths_from
+from .route import LvBusPath, RouteExtractionError, bfs_paths_from
 
 #: Kody odmów nazwanych (rejestr: ``domain/canonical_operations.READINESS_CODES``).
 KOD_BRAK_R_A = "nn.brak_r_a"
@@ -50,9 +50,6 @@ KOD_BRAK_POJEMNOSCI = "nn.brak_pojemnosci_doziemnej"
 
 #: Przestrzeń katalogu wyłącznika różnicowoprądowego (``network_model.catalog.types``).
 PRZESTRZEN_RCD = "APARAT_NN_RCD"
-
-#: Typ punktu neutralnego nN, przy którym ``lv_neutral.r_ohm`` jest rezystancją uziomu R_B.
-_PUNKT_NEUTRALNY_UZIEMIONY_BEZPOSREDNIO = "directly_grounded"
 
 
 @dataclass(frozen=True)
@@ -170,7 +167,9 @@ def r_b_transformatora(trafo: Transformer) -> tuple[float | None, str | None]:
             f"{opis} nie ma opisu punktu neutralnego strony nN — układ TT wymaga punktu "
             "neutralnego uziemionego bezpośrednio z rezystancją uziomu R_B."
         )
-    if cfg.type != _PUNKT_NEUTRALNY_UZIEMIONY_BEZPOSREDNIO:
+    # ``lv_neutral.r_ohm`` jest rezystancją uziomu R_B wyłącznie przy punkcie bezpośrednio
+    # uziemionym (słownik typów: ``network_model.core.uziemienie.TypPunktuNeutralnego``).
+    if cfg.type != "directly_grounded":
         return None, (
             f"{opis}: punkt neutralny nN opisany jako „{cfg.type}” — układ TT wymaga punktu "
             "neutralnego uziemionego bezpośrednio (R_B = rezystancja uziomu)."
@@ -222,10 +221,7 @@ def pojemnosci_sieci_it(
     (ta sama definicja aktywnej topologii co trasa pętli). Zwraca odcinki z ``b_0`` i listę
     referencji odcinków BEZ ``b0_siemens_per_km`` (niepusta = odmowa u wołającego).
     """
-    try:
-        paths = bfs_paths_from(enm, trafo.lv_bus_ref)
-    except Exception:  # RouteExtractionError — brak szyny nN w modelu
-        return (), [trafo.lv_bus_ref]
+    paths = bfs_paths_from(enm, trafo.lv_bus_ref)
     widziane: dict[str, Cable | OverheadLine] = {}
     for path in paths.values():
         for branch in path.branches:
@@ -278,7 +274,7 @@ def dane_tt_dla_punktu(
             kod=KOD_BRAK_R_A,
             reason_pl=(
                 "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej "
-                f"R_A — żaden odbiór na szynie „{bus_ref}” nie deklaruje rezystancji uziomu "
+                f"R_A — żaden odbiór na szynie „{nazwa_po_identyfikatorze(bus_ref, enm)}” nie deklaruje rezystancji uziomu "
                 "(pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym "
                 "punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej."
             ),
@@ -291,7 +287,7 @@ def dane_tt_dla_punktu(
             kod=KOD_BRAK_RCD,
             reason_pl=(
                 "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku "
-                f"różnicowoprądowym — na trasie do punktu „{bus_ref}” nie ma aparatu z wiązaniem "
+                f"różnicowoprądowym — na trasie do punktu „{nazwa_po_identyfikatorze(bus_ref, enm)}” nie ma aparatu z wiązaniem "
                 "katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy "
                 "wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej."
             ),
@@ -323,7 +319,17 @@ def dane_sieci_it(
     Dane są własnością SIECI (nie punktu): widok odpływów odmawia nimi w całości,
     a punkt — tym samym czytnikiem (jedno źródło prawdy odmowy `nn.brak_pojemnosci_doziemnej`).
     """
-    odcinki, braki = pojemnosci_sieci_it(enm, trafo)
+    try:
+        odcinki, braki = pojemnosci_sieci_it(enm, trafo)
+    except RouteExtractionError as exc:
+        # Szyna nN transformatora poza modelem: sieci IT nie da się wyznaczyć — odmowa tym
+        # samym kształtem co punkt bez trasy w widoku odpływów (`service.py`).
+        return {
+            **context,
+            "status": "brak danych",
+            "reason_pl": str(exc),
+            "missing_data": [f"{trafo.ref_id}:lv_bus_ref"],
+        }
     if braki or not odcinki:
         return odmowa_tt_it(
             context,
@@ -395,4 +401,4 @@ def dane_tt_it_dla_punktu(
         return dane_tt_dla_punktu(enm, trafo, path, bus_ref, context)
     if uklad == "IT":
         return dane_it_dla_punktu(enm, trafo, path, bus_ref, context)
-    raise ValueError(f"Układ {uklad!r} nie jest układem TT/IT.")
+    raise AssertionError(f"Błąd programu: układ {uklad!r} nie jest układem TT/IT.")

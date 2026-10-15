@@ -234,9 +234,8 @@ def _swz_feeder_rows(
             # odpowiedź niosła KOD odmowy nazwanej tego punktu, a nie ogólnik.
             punkty = [p for p in feeder.get("points", []) if isinstance(p, dict)]
             if punkty:
-                najdalszy = max(
-                    punkty, key=lambda p: (int(p.get("hop_count", 0)), str(p["bus_ref"]))
-                )
+                # `hop_count` jest polem obowiązkowym punktu (`LvPointResult`) — bez zapasu.
+                najdalszy = max(punkty, key=lambda p: (int(p["hop_count"]), str(p["bus_ref"])))
                 worst_bus_ref = najdalszy.get("bus_ref")
         if worst_bus_ref:
             swz = build_swz_view(

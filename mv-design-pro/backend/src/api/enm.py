@@ -9,9 +9,9 @@ Routes:
   GET  /api/cases/{case_id}/enm/topology/summary → TopologySummary (graph view: adjacency, spine, laterals)
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref:path}
                                               → graf domeny nN (LOD L2, karta T5b)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent
                                               → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
   GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
   GET  /api/cases/{case_id}/enm/rewizje/{rewizja}

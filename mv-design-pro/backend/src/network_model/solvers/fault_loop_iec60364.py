@@ -201,7 +201,7 @@ def _validate_input(data: FaultLoopInput) -> None:
     if data.network_type in (NetworkType.TT, NetworkType.IT):
         if data.dane_tt_it is None:
             logger.warning(
-                "fault_loop reject: brak danych petli TT/IT",
+                "fault_loop reject: brak danych pętli TT/IT",
                 extra={
                     "fault_node_id": data.fault_node_id,
                     "network_type": data.network_type.value,

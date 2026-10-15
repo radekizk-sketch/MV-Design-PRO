@@ -936,6 +936,7 @@
       "bus_ref": "bus/fab0e40bf1455775b1286ab17b598f58/downstream",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "earth_electrode_r_ohm": null,
       "id": "6a28385c-8574-5eb1-84e4-f77699c2cb32",
       "materialized_params": null,
       "meta": {

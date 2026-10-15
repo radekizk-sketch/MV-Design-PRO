@@ -260,7 +260,7 @@ def _slad(wynik: FaultLoopResult, krok: str, opis: str) -> tuple[OdnosnikSladu, 
 
 
 def _kryterium_prad_rcd(
-    wynik: FaultLoopResult, rcd: RcdNaTrasie, przedmiot: Przedmiot
+    wynik: FaultLoopResult, rcd: RcdNaTrasie, przedmiot: Przedmiot, punkt: str
 ) -> OcenaKryterium:
     return ocen_kryterium(
         kryterium_id="swz.tt.prad_rcd",
@@ -282,7 +282,7 @@ def _kryterium_prad_rcd(
             wielkosc_pl="prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B)",
             symbol_latex="I_{d,min}",
             wartosc=_w(wynik.ik_min_a, _J_A),
-            punkt_krytyczny_pl=f"punkt {wynik.fault_node_id}",
+            punkt_krytyczny_pl=f"punkt „{punkt}”",
             metoda="OBLICZENIE",
         ),
         limit=LimitKryterium(
@@ -291,7 +291,7 @@ def _kryterium_prad_rcd(
             zakres_stosowalnosci_pl=f"wyłącznik różnicowoprądowy „{rcd.nazwa}” najbliższy punktowi",
         ),
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"pętla doziemna TT w punkcie {wynik.fault_node_id}"),
+        dowod=_dowod_obliczenia(f"pętla doziemna TT w punkcie „{punkt}”"),
         zakres_waznosci=_zakres(
             "TT", "Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A"
         ),
@@ -398,7 +398,11 @@ def _kryterium_czas_rcd(
 
 
 def _kryterium_napiecie_dotykowe_tt(
-    wynik: FaultLoopResult, rcd: RcdNaTrasie, limit: LimitKryterium | None, przedmiot: Przedmiot
+    wynik: FaultLoopResult,
+    rcd: RcdNaTrasie,
+    limit: LimitKryterium | None,
+    przedmiot: Przedmiot,
+    punkt: str,
 ) -> OcenaKryterium:
     assert wynik.tt_it is not None and wynik.tt_it.u_dotyk_v is not None
     assert wynik.tt_it.r_a_ohm is not None  # solver TT nie liczy U_dotyk bez R_A
@@ -427,7 +431,7 @@ def _kryterium_napiecie_dotykowe_tt(
         ),
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"U_dotyk = R_A · I_Δn w punkcie {wynik.fault_node_id}"),
+        dowod=_dowod_obliczenia(f"U_dotyk = R_A · I_Δn w punkcie „{punkt}”"),
         zakres_waznosci=_zakres(
             "TT", "Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD"
         ),
@@ -502,7 +506,7 @@ def _kryterium_pierwsze_zwarcie_it(
 
 
 def _kryterium_drugie_zwarcie_it(
-    wynik: FaultLoopResult, limit: LimitKryterium | None, przedmiot: Przedmiot
+    wynik: FaultLoopResult, limit: LimitKryterium | None, przedmiot: Przedmiot, punkt: str
 ) -> OcenaKryterium:
     assert wynik.tt_it is not None
     return ocen_kryterium(
@@ -526,12 +530,12 @@ def _kryterium_drugie_zwarcie_it(
             wielkosc_pl="prąd drugiego zwarcia doziemnego minimalny",
             symbol_latex="I_{d2,min}",
             wartosc=_w(wynik.ik_min_a, _J_A),
-            punkt_krytyczny_pl=f"punkt {wynik.fault_node_id} (obie usterki w tym samym punkcie)",
+            punkt_krytyczny_pl=f"punkt „{punkt}” (obie usterki w tym samym punkcie)",
             metoda="OBLICZENIE",
         ),
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie {wynik.fault_node_id}"),
+        dowod=_dowod_obliczenia(f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie „{punkt}”"),
         zakres_waznosci=_zakres(
             "IT",
             "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie napędowe U_LL/2",
@@ -551,12 +555,16 @@ def ocen_swz_tt_it(
     dane_punktu: DanePunktuTtIt,
     u0_v: float,
     przedmiot: Przedmiot,
+    nazwa_punktu_pl: str,
     aparat_in_a: float | None = None,
     rodzaj_obwodu: str | None = None,
     limit_napiecia_dotykowego: LimitKryterium | None = None,
     limit_drugiego_zwarcia_it: LimitKryterium | None = None,
 ) -> SwzTtItWynik:
     """Werdykt SWZ układu TT albo IT z gotowego wyniku pętli doziemnej.
+
+    ``nazwa_punktu_pl`` — nazwa punktu oceny z modelu (jedno źródło nazw); wchodzi do punktu
+    krytycznego i odniesień dowodu zamiast identyfikatora maszynowego.
 
     ``limit_*`` — dopuszczalne wartości z tekstu normy; domyślnie ``None`` (brak w repozytorium →
     ``BRAK_PODSTAWY`` z kodem ``KOD_LIMIT_BRAK_TEKSTU_NORMY``). Podanie limitu to dana
@@ -566,7 +574,9 @@ def ocen_swz_tt_it(
         NetworkType.TT,
         NetworkType.IT,
     ):
-        raise ValueError("Werdykt SWZ TT/IT wymaga wyniku pętli układu TT albo IT (pole tt_it).")
+        raise AssertionError(
+            "Błąd programu: werdykt SWZ TT/IT wymaga wyniku pętli układu TT albo IT (pole tt_it)."
+        )
     uklad = wynik_petli.network_type.value
     rodzaj = rodzaj_obwodu_dla_aparatu(aparat_in_a, rodzaj_obwodu)
     pasmo = pasmo_dla_u0(u0_v)
@@ -575,7 +585,9 @@ def ocen_swz_tt_it(
     if uklad == "TT":
         rcd = dane_punktu.rcd
         if rcd is None:
-            raise ValueError("Werdykt SWZ TT wymaga RCD najbliższego punktowi (odmowa wcześniej).")
+            raise AssertionError(
+                "Błąd programu: werdykt SWZ TT wymaga RCD najbliższego punktowi (odmowa wcześniej)."
+            )
         wpis = TABLICA_TT_ODBIORCZE[pasmo] if rodzaj == "odbiorczy" else CZAS_TT_ROZDZIELCZY
         jednostka_redakcyjna = (
             "Tab. 41.1 (układ TT, obwody odbiorcze)"
@@ -584,11 +596,13 @@ def ocen_swz_tt_it(
         )
         t_wymagany = wpis.czas_s
         kryteria = [
-            _kryterium_prad_rcd(wynik_petli, rcd, przedmiot),
+            _kryterium_prad_rcd(wynik_petli, rcd, przedmiot, nazwa_punktu_pl),
             _kryterium_czas_rcd(
                 wynik_petli, rcd, wpis, jednostka_redakcyjna, rodzaj, pasmo, przedmiot
             ),
-            _kryterium_napiecie_dotykowe_tt(wynik_petli, rcd, limit_napiecia_dotykowego, przedmiot),
+            _kryterium_napiecie_dotykowe_tt(
+                wynik_petli, rcd, limit_napiecia_dotykowego, przedmiot, nazwa_punktu_pl
+            ),
         ]
         podstawa_w, nazwa_w = (
             _PODSTAWA_WYMAGANIA_TT,
@@ -599,7 +613,9 @@ def ocen_swz_tt_it(
     else:
         kryteria = [
             _kryterium_pierwsze_zwarcie_it(wynik_petli, limit_napiecia_dotykowego, przedmiot),
-            _kryterium_drugie_zwarcie_it(wynik_petli, limit_drugiego_zwarcia_it, przedmiot),
+            _kryterium_drugie_zwarcie_it(
+                wynik_petli, limit_drugiego_zwarcia_it, przedmiot, nazwa_punktu_pl
+            ),
         ]
         podstawa_w, nazwa_w = (
             _PODSTAWA_WYMAGANIA_IT,
@@ -620,7 +636,7 @@ def ocen_swz_tt_it(
         oceny_skladowe=tuple(kryteria),
         pokrycie_programu="NIE_DOTYCZY",
         pokrycie_programu_pl="ocena obwodu nN — program badań modułu wytwórczego nie dotyczy",
-        dowod=_dowod_obliczenia(f"pętla doziemna {uklad} w punkcie {wynik_petli.fault_node_id}"),
+        dowod=_dowod_obliczenia(f"pętla doziemna {uklad} w punkcie „{nazwa_punktu_pl}”"),
         zakres_waznosci=_zakres(uklad, f"Ochrona przeciwporażeniowa obwodu nN w układzie {uklad}"),
         slad=[odnosnik for ocena in kryteria for odnosnik in ocena.slad],
     )

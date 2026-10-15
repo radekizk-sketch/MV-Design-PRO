@@ -115,6 +115,15 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     // Warunki z backendu renderowane wzorem (KaTeX), nie tekstem LaTeX.
     expect(werdykt.querySelector('[data-testid="math-fallback"]')).toBeNull();
     expect(screen.getByTestId('karta-obwodu-ocena-wymagania').textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+    // Ocena kryterium = kanoniczna plakietka etykiety rekordu (tekst i semantyka z backendu,
+    // status maszynowy tylko w atrybucie), w wariancie zwartym arkusza — zero mapy statusu w UI.
+    for (const kryterium of ['swz.tt.prad_rcd', 'swz.tt.czas_wylaczenia', 'swz.tt.napiecie_dotykowe']) {
+      const plakietka = screen.getByTestId(`karta-obwodu-ocena-${kryterium}`);
+      expect(plakietka.className).toContain('mvd-werdykt-plakietka--zwarta');
+      expect(plakietka.getAttribute('data-semantyka')).toBeTruthy();
+      expect(plakietka.getAttribute('data-status')).toBeTruthy();
+      expect((plakietka.textContent ?? '').length).toBeGreaterThan(0);
+    }
     // Pełny rekord dowodu dostępny, ale zwinięty (nie na pierwszym planie).
     expect(screen.getByTestId('karta-obwodu-rekord-dowodu')).not.toHaveAttribute('open');
     // Limit napięcia dotykowego spoza repozytorium — nazwany kod, nie liczba z pamięci.

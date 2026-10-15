@@ -35,7 +35,8 @@ from application.analyses.fault_loop.service import (
     uklad_nn_transformatora,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from enm.slownik_komunikatow import opis_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
@@ -246,6 +247,7 @@ def build_swz_view(
             dane_punktu=skladowe.dane_punktu,
             u0_v=u_phase_v,
             przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
+            nazwa_punktu_pl=nazwa_po_identyfikatorze(bus_ref, enm),
             aparat_in_a=aparat.in_a if aparat is not None else None,
         )
         return {
@@ -277,16 +279,20 @@ def build_swz_view(
 def przedmiot_obwodu_nn(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str, breaker_ref: str
 ) -> Przedmiot:
-    """Przedmiot oceny SWZ TT/IT: obwód nN od aparatu korzenia odpływu do punktu."""
-    branch = _find_branch(enm, breaker_ref)
-    szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
-    nazwa_aparatu = nazwa_elementu(branch, "branches") if branch is not None else breaker_ref
-    nazwa_szyny = nazwa_elementu(szyna, "buses") if szyna is not None else bus_ref
+    """Przedmiot oceny SWZ TT/IT: obwód nN od aparatu korzenia odpływu do punktu.
+
+    Nazwy z modelu (jedno źródło nazw); element spoza migawki opisuje jawny brak, nigdy
+    identyfikator maszynowy.
+    """
+    indeks = zbuduj_indeks_nazw(enm)
+    nazwa_aparatu = nazwa_po_identyfikatorze(breaker_ref, indeks=indeks)
+    nazwa_szyny = nazwa_po_identyfikatorze(bus_ref, indeks=indeks)
     return Przedmiot(
         element_ref=bus_ref,
         nazwa_pl=f"Obwód nN: {nazwa_aparatu} → {nazwa_szyny}",
         opis_pl=(
-            f"Obwód nN stacji {station_ref} od aparatu „{nazwa_aparatu}” do punktu "
-            f"„{nazwa_szyny}” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+            f"Obwód nN — {opis_elementu(enm, station_ref, 'stacja')} — od aparatu "
+            f"„{nazwa_aparatu}” do punktu „{nazwa_szyny}” — ochrona przeciwporażeniowa przez "
+            "samoczynne wyłączenie zasilania"
         ),
     )

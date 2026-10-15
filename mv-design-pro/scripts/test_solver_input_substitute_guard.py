@@ -1725,7 +1725,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta W5-E-TTIT (2026-10-15): 4116 -> 4151 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym `f3c435b6`, roznica zbiorow: +35 (petla doziemna TT/IT i jej wejscie:
+    # `DaneTtIt`/`WynikTtIt`/`PojemnoscDoziemnaOdcinka` w `solvers/petla_zwarcia_tt_it.py` —
+    # `r_a_ohm`, `r_b_ohm`, `rcd`, `i_delta_n_a`, `u_dotyk_v`, `i_d_pierwsze_zwarcie_a`,
+    # `u_dotyk_pierwsze_zwarcie_v`, `i_d2_min_a`, `i_d2_max_a`, `u_ll_v`, `b_e_s`, `c_e_f`,
+    # `rodzaj_pradu_pl`, `odcinki_pojemnosci`, `pojemnosci`, `uziom`, `tt_it`, `dane_tt_it`;
+    # katalog RCD `LVRcdType` — `rcd_type`, `selective`, `t_a_s`, `t_a_2idn_s`, `t_a_5idn_s`,
+    # `t_nieczuly_min_s`, oraz `lv_rcd_types` repozytorium katalogu; `Load.earth_electrode_r_ohm`;
+    # `pominiete_load_refs` uziomu instalacji (`fault_loop/tt_it.py`); `load_ref` operacji
+    # `add_nn_rcd`; wejscie dowodu i werdyktu — `swz_tt_it`, `wymaganie`, `kod_odmowy`,
+    # `kod_odmowy_limitu`, `dane_punktu`, `phase_component`, `return_component`), -0. PASS
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4151." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,7 +1915,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-E-TTIT (2026-10-15): 561 -> 565 (+4: `network_model/solvers/
+        # petla_zwarcia_tt_it.py`, `enm/uziom_instalacji.py`, `application/analyses/fault_loop/
+        # tt_it.py`, `application/analyses/swz/werdykt_tt_it.py`). POMIAR guardem na drzewie karty.
+        "Przeskanowano 565 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2027,7 +2042,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta W5-E-TTIT: network_model 183 -> 184 (+1 `solvers/petla_zwarcia_tt_it.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  network_model: pliki_skanowane=184, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2071,7 +2088,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
         # BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta W5-E-TTIT: enm 58 -> 59 (+1 `enm/uziom_instalacji.py`); dlug/wykluczenia BEZ
+        # ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=59, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2130,7 +2149,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta W5-E-TTIT: application 245 -> 247 (+2 `analyses/fault_loop/tt_it.py`,
+        # `analyses/swz/werdykt_tt_it.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=247, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]

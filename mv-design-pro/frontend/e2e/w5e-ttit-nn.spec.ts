@@ -49,7 +49,7 @@ type Snapshot = {
   substations?: Array<{ ref_id: string; station_type?: string; bus_refs?: string[] }>;
   transformers?: Array<{ ref_id: string; lv_earthing_system?: string | null; lv_neutral?: { type: string; r_ohm?: number | null } | null }>;
   loads?: Array<{ ref_id: string; earth_electrode_r_ohm?: number | null }>;
-  branches?: Array<{ ref_id: string; catalog_namespace?: string | null; from_bus_ref: string; to_bus_ref: string }>;
+  branches?: Array<{ ref_id: string; catalog_namespace?: string | null }>;
 };
 type DomainOpResponse = { error?: string | null; snapshot?: Snapshot; changes?: { created_element_ids?: string[] } };
 

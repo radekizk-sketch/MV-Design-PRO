@@ -80,7 +80,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
-from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
@@ -368,7 +368,10 @@ def pola_swz_z_werdyktu_tt_it(werdykt: SwzTtItWynik) -> dict[str, Any]:
 def werdykt_rcd(werdykt: SwzTtItWynik) -> float | None:
     """I_Δn RCD z kryterium `swz.tt.prad_rcd` (limit kryterium) — ``None`` poza TT."""
     for ocena in werdykt.kryteria:
-        if ocena.kryterium_id == "swz.tt.prad_rcd" and ocena.limit is not None:
+        if ocena.kryterium_id != "swz.tt.prad_rcd" or ocena.limit is None:
+            continue
+        # Limit bez wartości (BRAK_PODSTAWY) nie niesie I_Δn — szukamy dalej, nie zgadujemy.
+        if ocena.limit.wartosc is not None:
             return float(ocena.limit.wartosc.wartosc)
     return None
 
@@ -445,6 +448,7 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             dane_punktu=petla.dane_punktu,
             u0_v=petla.u0_v,
             przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
+            nazwa_punktu_pl=nazwa_po_identyfikatorze(bus_ref, enm),
             aparat_in_a=urzadzenie.in_a,
         )
         pola_swz = pola_swz_z_werdyktu_tt_it(werdykt_tt_it)

@@ -643,6 +643,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("device_class", "catalog_ref", "catalog_binding", "name"),
         creates_elements=True,
     ),
+    "add_nn_rcd": OperationSpec(
+        canonical_name="add_nn_rcd",
+        category=OperationCategory.NN_NETWORK,
+        description_pl=(
+            "Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji odbioru "
+            "(ochrona przez samoczynne wyłączenie w układzie TT/IT)"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref",),
+        optional_fields=("catalog_ref", "catalog_binding", "name"),
+        creates_elements=True,
+    ),
     "add_nn_section_coupler": OperationSpec(
         canonical_name="add_nn_section_coupler",
         category=OperationCategory.NN_NETWORK,

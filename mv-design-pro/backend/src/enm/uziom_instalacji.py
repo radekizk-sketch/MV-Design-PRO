@@ -16,17 +16,16 @@ Kod błędu `load.earth_electrode_r_ohm_invalid` jest kodem ODPOWIEDZI operacji 
 from __future__ import annotations
 
 import math
-from typing import Any
 
 KOD_BLEDU_R_A = "load.earth_electrode_r_ohm_invalid"
 
 
-def waliduj_r_a(wartosc: Any) -> tuple[float | None, str | None]:
+def waliduj_r_a(wartosc: object) -> tuple[float | None, str | None]:
     """Zwraca `(r_a_ohm, blad)`: liczba skończona > 0 albo `None` (brak deklaracji);
     `blad` = komunikat PL dla wartości niebędącej dodatnią liczbą skończoną."""
     if wartosc is None:
         return None, None
-    if isinstance(wartosc, bool):
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float | str):
         return None, _blad(wartosc)
     try:
         liczba = float(wartosc)
@@ -37,7 +36,7 @@ def waliduj_r_a(wartosc: Any) -> tuple[float | None, str | None]:
     return liczba, None
 
 
-def _blad(wartosc: Any) -> str:
+def _blad(wartosc: object) -> str:
     return (
         f"Nieprawidłowa rezystancja uziomu instalacji odbiorczej R_A: {wartosc!r}. Podaj dodatnią "
         "liczbę w omach (brak = dana nieobecna; zero nie jest wartością uziomu)."

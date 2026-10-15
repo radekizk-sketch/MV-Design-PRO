@@ -76,3 +76,23 @@ def test_widoki_petli_i_swz_odmawiaja_tym_samym_predykatem(uklad):
         assert swz["status"] == "brak danych" and swz["kod_odmowy"] == KOD_BRAK_POJEMNOSCI
     else:
         assert swz["status"] == "OK"
+
+
+def test_siec_it_bez_szyny_nn_transformatora_to_odmowa_trasy_nie_wyjatek():
+    """Szyna nN transformatora poza modelem: wyznaczenie sieci IT zgłasza nazwany błąd trasy,
+    a dane sieci IT zamieniają go w odmowę „brak danych" z komunikatem trasy i brakiem
+    `lv_bus_ref` transformatora (nie połknięty wyjątek, nie fałszywy brak pojemności)."""
+    from application.analyses.fault_loop.route import RouteExtractionError
+    from application.analyses.fault_loop.tt_it import dane_sieci_it, pojemnosci_sieci_it
+
+    enm = zbuduj_stacje_nn(uklad_uziemienia="IT")
+    trafo = enm.transformers[0].model_copy(update={"lv_bus_ref": "szyna-spoza-modelu"})
+    with pytest.raises(RouteExtractionError):
+        pojemnosci_sieci_it(enm, trafo)
+    odmowa = dane_sieci_it(enm, trafo, {"station_ref": REF_STACJA})
+    assert isinstance(odmowa, dict)
+    assert odmowa["status"] == "brak danych"
+    assert odmowa["missing_data"] == [f"{trafo.ref_id}:lv_bus_ref"]
+    assert "szyna-spoza-modelu" in odmowa["reason_pl"]
+    assert odmowa["station_ref"] == REF_STACJA
+    assert odmowa.get("kod_odmowy") != KOD_BRAK_POJEMNOSCI

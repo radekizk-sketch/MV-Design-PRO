@@ -656,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "b64d3097317140399c6f9ea85105594829906e94868b83f0a3ad3cb2e34d27ab",
+  "projection_hash": "541c4fd6d221932ad53f85b3f2a6baa9883d8f9a298493ecad34e6e6775e9ace",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -846,7 +846,7 @@
                 "fault_loop": null,
                 "hop_count": 3,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-01_koniec” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „Zacisk Odbiór z RCD” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               },
@@ -855,7 +855,7 @@
                 "fault_loop": null,
                 "hop_count": 2,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-01_zacisk” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-01 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               }
@@ -1006,7 +1006,7 @@
                   "dowod": {
                     "domena_pl": null,
                     "metoda": "OBLICZENIE",
-                    "odniesienie": "pętla doziemna TT w punkcie QF-01_instalacja",
+                    "odniesienie": "pętla doziemna TT w punkcie „Zaciski instalacji: Odbiór z RCD”",
                     "poziom": "UNVALIDATED_MODEL",
                     "rodzaj_twierdzenia": "STATIC_CALCULATION",
                     "status_danych": {
@@ -1029,7 +1029,7 @@
                       "dowod": {
                         "domena_pl": null,
                         "metoda": "OBLICZENIE",
-                        "odniesienie": "pętla doziemna TT w punkcie QF-01_instalacja",
+                        "odniesienie": "pętla doziemna TT w punkcie „Zaciski instalacji: Odbiór z RCD”",
                         "poziom": "UNVALIDATED_MODEL",
                         "rodzaj_twierdzenia": "STATIC_CALCULATION",
                         "status_danych": {
@@ -1075,7 +1075,7 @@
                         "definicja_latex": "m = x - x_{\\lim}",
                         "niedefiniowalny": false,
                         "powod_pl": null,
-                        "punkt_pl": "punkt QF-01_instalacja",
+                        "punkt_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
                         "skala": {
                           "jednostka": "A",
                           "wartosc": 0.03
@@ -1108,7 +1108,7 @@
                       "przedmiot": {
                         "element_ref": "QF-01_instalacja",
                         "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
-                        "opis_pl": "Obwód nN stacji stTT od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
                       },
                       "slad": [
                         {
@@ -1139,12 +1139,12 @@
                           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                           "Zakres ważności: Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
                         ],
-                        "zdanie_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B): 8,092 A wobec wymaganych ≥ 0,03 A wg „rekord katalogowy wyłącznika różnicowoprądowego” (margines +8,062 A, punkt: punkt QF-01_instalacja, względnie +26870 % wartości granicznej)."
+                        "zdanie_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B): 8,092 A wobec wymaganych ≥ 0,03 A wg „rekord katalogowy wyłącznika różnicowoprądowego” (margines +8,062 A, punkt: punkt „Zaciski instalacji: Odbiór z RCD”, względnie +26870 % wartości granicznej)."
                       },
                       "wynik": {
                         "chwila_s": null,
                         "metoda": "OBLICZENIE",
-                        "punkt_krytyczny_pl": "punkt QF-01_instalacja",
+                        "punkt_krytyczny_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
                         "symbol_latex": "I_{d,min}",
                         "wartosc": {
                           "jednostka": "A",
@@ -1260,7 +1260,7 @@
                       "przedmiot": {
                         "element_ref": "QF-01_instalacja",
                         "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
-                        "opis_pl": "Obwód nN stacji stTT od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
                       },
                       "slad": [
                         {
@@ -1322,7 +1322,7 @@
                       "dowod": {
                         "domena_pl": null,
                         "metoda": "OBLICZENIE",
-                        "odniesienie": "U_dotyk = R_A · I_Δn w punkcie QF-01_instalacja",
+                        "odniesienie": "U_dotyk = R_A · I_Δn w punkcie „Zaciski instalacji: Odbiór z RCD”",
                         "poziom": "UNVALIDATED_MODEL",
                         "rodzaj_twierdzenia": "STATIC_CALCULATION",
                         "status_danych": {
@@ -1367,7 +1367,7 @@
                       "przedmiot": {
                         "element_ref": "QF-01_instalacja",
                         "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
-                        "opis_pl": "Obwód nN stacji stTT od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
                       },
                       "slad": [
                         {
@@ -1557,7 +1557,7 @@
                 "fault_loop": null,
                 "hop_count": 3,
                 "kod_odmowy": "nn.brak_rcd",
-                "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „QF-02_koniec” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+                "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
                 "status": "brak danych",
                 "tt_it": null
               },
@@ -1566,7 +1566,7 @@
                 "fault_loop": null,
                 "hop_count": 2,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-02_zacisk” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-02 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               }
@@ -1581,7 +1581,7 @@
                 "rcd"
               ],
               "network_system": "TT",
-              "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „QF-02_koniec” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+              "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
               "station_name": "Stacja TT",
               "station_ref": "stTT",
               "status": "brak danych"

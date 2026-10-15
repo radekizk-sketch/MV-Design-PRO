@@ -679,7 +679,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
         kryterium = ocena.get("kryterium", {}) or {}
         podstawa = ocena.get("podstawa", {}) or {}
         linie.append(
-            f"{kryterium.get('nazwa_pl', ocena.get('kryterium_id', ''))}: "
+            f"{kryterium['opis_pl']}: "
             f"{ocena.get('status_maszynowy', '')} — "
             f"{(ocena.get('wyjasnienie') or {}).get('zdanie_pl', '')} "
             f"[podstawa: {podstawa.get('dokument', '')} {podstawa.get('jednostka_redakcyjna', '')}, "

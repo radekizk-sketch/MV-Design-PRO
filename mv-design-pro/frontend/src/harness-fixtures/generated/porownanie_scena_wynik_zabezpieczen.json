@@ -55,11 +55,11 @@
     "input_hash": "7787e4246c026c6235b590913160d1efd4d17484d1b0710dcdd240ce275dec93",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
+      "catalog_fingerprint": "bd6c5f4ec17309d25bc71fea46588fe4ad25c6f528c2eb2bff406e09a061fa1f",
       "model_revision": 2,
       "options_hash": "7787e4246c026c6235b590913160d1efd4d17484d1b0710dcdd240ce275dec93",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "75dfc1d48392278c6b4eb56a7264956df692e5ed860fc9235fb7e4716e019e36",
+      "semantic_fingerprint": "ca051bcef8e820e7f6070b7eefca1d1ce52dc4cd6ff26c63291f8c715c84719a",
       "snapshot_hash": "467274709c07c928f411dec4cb73076dc80a7c450e0a09649aa9c61712d5aa77",
       "wersja": 1
     }
@@ -72,11 +72,11 @@
     "input_hash": "c82d7684cc89ca799c6727a77af0368f45fe8098fdb064925ae873686055941b",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
+      "catalog_fingerprint": "bd6c5f4ec17309d25bc71fea46588fe4ad25c6f528c2eb2bff406e09a061fa1f",
       "model_revision": 2,
       "options_hash": "c82d7684cc89ca799c6727a77af0368f45fe8098fdb064925ae873686055941b",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "6885e00256054d27ad015f2f140aa8bd70cb4b7edf05c7255b5453b72d4a4658",
+      "semantic_fingerprint": "90650b3d44f6a2d1ca60245d3f60b225adb1fe6f066645305fb985e2d731a94c",
       "snapshot_hash": "f6957f2b0fc89feab052d5bb196f2fa55bf48a598df3e4238ec5abfa4e665401",
       "wersja": 1
     }
