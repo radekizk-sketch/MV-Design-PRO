@@ -38,7 +38,7 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
-from .pola import pola_stacji, pole_aparatu, stacja_pola
+from .pola import czy_pole_nn, napiecia_szyn, pola_stacji, pole_aparatu, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .severity import (
@@ -74,6 +74,10 @@ from .zajetosc_pol import zajetosc_pol
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
+
+#: Role kanoniczne pól liniowych SN (`enm.rola_pola_sn`), które stacja przelotowa łączy
+#: wspólną magistralą SN (E021).
+_ROLE_LINIOWE_SN: frozenset[str] = frozenset({"LINIA_IN", "LINIA_OUT"})
 
 
 def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
@@ -1311,9 +1315,26 @@ class ENMValidator:
                         )
                     )
 
-        # W006: Pole (Bay) referencja do nieistniejącej stacji lub szyny
+        # W006: Pole (Bay) referencja do nieistniejącego właściciela (stacji albo — pole
+        # rozdzielnicy odgałęźnej ZKSN, karta W5-B — punktu rozgałęzienia) lub szyny.
+        branch_point_refs = {p.ref_id for p in enm.branch_points}
         for bay in enm.bays:
-            if bay.substation_ref not in substation_refs:
+            if bay.branch_point_ref is not None:
+                if bay.branch_point_ref not in branch_point_refs:
+                    issues.append(
+                        ValidationIssue(
+                            code="W006",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis_obiektu(bay, 'Pole')} odwołuje się do punktu "
+                                "rozgałęzienia, którego nie ma w modelu sieci."
+                            ),
+                            element_refs=[bay.ref_id, bay.branch_point_ref],
+                            wizard_step_hint="K3",
+                            suggested_fix="Przypisz pole do istniejącego punktu rozgałęzienia.",
+                        )
+                    )
+            elif bay.substation_ref not in substation_refs:
                 issues.append(
                     ValidationIssue(
                         code="W006",
@@ -1322,7 +1343,7 @@ class ENMValidator:
                             f"{opis_obiektu(bay, 'Pole')} odwołuje się do stacji, której nie ma "
                             "w modelu sieci."
                         ),
-                        element_refs=[bay.ref_id, bay.substation_ref],
+                        element_refs=[bay.ref_id, str(bay.substation_ref)],
                         wizard_step_hint="K3",
                         suggested_fix="Przypisz pole do istniejącej stacji.",
                     )
@@ -1884,8 +1905,19 @@ class ENMValidator:
         bus_by_ref = {b.ref_id: b for b in enm.buses}
 
         # Group bays by substation_ref
+        # Karta W5-B: kolekcja `bays` niesie pola SN, nN i ZKSN. Ciągłość SN przez stację
+        # dotyczy pól liniowych rozdzielnicy SN stacji: pole na szynie nN BEZ jawnej roli
+        # liniowej SN jest polem nN z definicji poziomu (`enm.pola.czy_pole_nn` — np.
+        # wyłącznik główny nN roli IN); pole z jawną rolą liniową SN (`field_role`
+        # LINIA_IN/LINIA_OUT) na szynie nN jest naruszeniem, które ta reguła zgłasza.
+        # Pole ZKSN nie należy do stacji.
+        napiecia = napiecia_szyn(enm)
         bays_by_station: dict[str, list] = {}
         for bay in enm.bays:
+            if bay.substation_ref is None:
+                continue
+            if czy_pole_nn(enm, bay, napiecia) and bay.field_role not in _ROLE_LINIOWE_SN:
+                continue
             bays_by_station.setdefault(bay.substation_ref, []).append(bay)
 
         for sub in enm.substations:
