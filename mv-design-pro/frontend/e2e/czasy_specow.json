@@ -1,5 +1,5 @@
 {
-  "zrodlo": "pelny bieg e2e na realnym backendzie, workers 1, 2026-09-30, maszyna 4 vCPU bez obcego obciazenia (load average 1-4), drzewo 646aabf9; 511 przypadkow, 1925 s scienne",
+  "zrodlo": "pelny bieg e2e na realnym backendzie, workers 1, 2026-09-30, maszyna 4 vCPU bez obcego obciazenia (load average 1-4), drzewo 646aabf9; 511 przypadkow, 1925 s scienne; e2e/straznik-drzewa.spec.ts z biegu shardow 2026-10-15 (drzewo 2dc8215c)",
   "czasy_s": {
     "e2e/archiwum-porownanie-wersji.spec.ts": 4.6,
     "e2e/audit2-backend-integration.spec.ts": 3.3,
@@ -94,6 +94,7 @@
     "e2e/stan-ruchowy-pola-brak-telemetrii.spec.ts": 4.0,
     "e2e/stany-zerowe-akcje.spec.ts": 13.9,
     "e2e/station-rozdzielnia-screenshot.spec.ts": 4.4,
+    "e2e/straznik-drzewa.spec.ts": 0.1,
     "e2e/swiezosc-po-edycji-modelu.spec.ts": 7.9,
     "e2e/szablony-rola-a-screenshot.spec.ts": 5.4,
     "e2e/tr2w-bez-pola.spec.ts": 0.8,
