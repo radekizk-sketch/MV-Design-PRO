@@ -83,11 +83,10 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _payload_konwerter_der_sn,
     _payload_zrodla,
     _pole_nn_ref,
-    _stacja_ref,
-    _szyna_nn_ref,
     _pole_sn_ref,
     _siec_ze_stacja,
     _stacja_ref,
+    _szyna_nn_ref,
     _szyna_sn_ref,
     _wykonaj,
 )
@@ -476,6 +475,9 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
             "_add_converter_source_der_sn",
             "_materialize_der_block_transformer",
             "_materialize_der_mv_cable",
+            # Tor pola źródłowego SN (zacisk + aparat) — wspólny z polem źródła
+            # przekształtnika na szynie SN (karta W5-B).
+            "_utworz_tor_pola_zrodlowego_sn",
         ),
         _payload_der_sn_obca,
         _znaczniki_der_sn,

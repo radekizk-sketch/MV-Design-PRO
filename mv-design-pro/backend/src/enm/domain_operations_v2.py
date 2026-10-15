@@ -4999,6 +4999,174 @@ def _resolve_converter_defaults(
     )
 
 
+def _utworz_tor_pola_zrodlowego_sn(
+    new_enm: dict[str, Any],
+    *,
+    field_ref: str,
+    terminal_bus_ref: str,
+    apparatus_ref: str,
+    szyna_sn_ref: str,
+    napiecie_kv: float,
+    station_ref: str,
+    nazwa: str,
+    apparatus_kind: str,
+    apparatus_binding: object,
+    port_kind: str,
+    tagi_aparatu: list[str],
+    kod_bledu: str,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Tor POLA ŹRÓDŁOWEGO SN — zacisk pola i aparat pola w torze (POLA-W-TORZE): JEDNA droga
+    dla pola źródłowego DER-SN (`_add_converter_source_der_sn`) i pola źródła przekształtnika
+    na szynie SN (`_append_converter_field_if_needed`). Pozycja aparatu (`APARAT_SN`) musi być
+    sprawdzona przez wołającego PRZED mutacją modelu (`_blad_aparatu_pola`); bez wskazania
+    aparat jest kanoniczny (`requires_catalog_binding`). Zwraca `(migawka, odpowiedź_błędu)`."""
+    apparatus_catalog_ref = (
+        _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+    )
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": terminal_bus_ref,
+            "name": f"Zacisk pola źródłowego SN {nazwa}",
+            "voltage_kv": napiecie_kv,
+            "tags": ["helper_bus", "field_terminal"],
+            "meta": {
+                "visual_role": "FIELD_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "port_kind": port_kind,
+            },
+        },
+    )
+    if not result.success:
+        return new_enm, _error_response(
+            "Nie udało się utworzyć zacisku pola źródłowego SN.",
+            f"{kod_bledu}.field_terminal_failed",
+        )
+    result = create_branch(
+        result.enm,
+        {
+            "ref_id": apparatus_ref,
+            "name": f"Aparat pola źródłowego SN {nazwa}",
+            "type": _sn_bay_branch_type(apparatus_kind),
+            "from_bus_ref": szyna_sn_ref,
+            "to_bus_ref": terminal_bus_ref,
+            "status": "closed",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+            "source_mode": "KATALOG" if apparatus_catalog_ref else None,
+            "catalog_namespace": (_PRZESTRZEN_APARATU_POLA_SN if apparatus_catalog_ref else None),
+            "catalog_ref": apparatus_catalog_ref,
+            "tags": list(tagi_aparatu),
+            "meta": {
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "bay_role": "OZE",
+                "apparatus_kind": apparatus_kind,
+                "terminal_bus_ref": terminal_bus_ref,
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "requires_catalog_binding": apparatus_catalog_ref is None,
+                # Wiązanie zapisane do migawki niesie przestrzeń, w której
+                # sprawdzono ISTNIENIE aparatu, a nie tę z żądania.
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
+                ),
+            },
+        },
+    )
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return new_enm, _error_response(
+            f"Nie udało się utworzyć aparatu pola źródłowego SN: {message}",
+            f"{kod_bledu}.field_apparatus_failed",
+        )
+    return result.enm, None
+
+
+def _dodaj_pole_zrodla_sn(
+    new_enm: dict[str, Any],
+    *,
+    field_ref: str,
+    field_seed: str,
+    station: dict[str, Any],
+    szyna_sn_ref: str,
+    technology: str,
+    source_field_payload: dict[str, Any],
+    field_meta: dict[str, Any],
+) -> tuple[str | None, list[str], list[dict[str, Any]]] | tuple[None, None, None]:
+    """Pole źródła przekształtnika na szynie SN — zacisk i aparat pola w torze (jedna reguła
+    pola źródłowego SN z `_add_converter_source_der_sn`), rekord pola z zaciskiem, aparatem
+    i wiązaniem `APARAT_SN` (sprawdzonym przez wołającego przed mutacją modelu)."""
+    station_ref = str(station.get("ref_id"))
+    terminal_bus_ref = _make_id("sn", field_seed, "source_field_terminal")
+    apparatus_ref = _make_id("sn", field_seed, "source_field_device")
+    switching_device = str(source_field_payload.get("switching_device") or "CB").upper()
+    apparatus_kind = "LOAD_SWITCH" if switching_device in {"LBS", "LOAD_SWITCH"} else "BREAKER"
+    apparatus_binding = source_field_payload.get("catalog_binding")
+    apparatus_catalog_ref = (
+        _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+    )
+    napiecie = _bus_voltage_kv(new_enm, szyna_sn_ref)
+    nazwa = nazwa_nadana(source_field_payload.get("field_name")) or _nazwa_z_klasa_szyny(
+        new_enm, szyna_sn_ref, "Pole", technology, "{klasa}"
+    )
+    tor = _utworz_tor_pola_zrodlowego_sn(
+        new_enm,
+        field_ref=field_ref,
+        terminal_bus_ref=terminal_bus_ref,
+        apparatus_ref=apparatus_ref,
+        szyna_sn_ref=szyna_sn_ref,
+        napiecie_kv=float(napiecie or 0.0),
+        station_ref=station_ref,
+        nazwa=nazwa,
+        apparatus_kind=apparatus_kind,
+        apparatus_binding=apparatus_binding,
+        port_kind="source_in",
+        tagi_aparatu=["gpz_field_device", "source_field_device"],
+        kod_bledu="converter",
+    )
+    tor, blad_toru = tor
+    if blad_toru is not None:
+        # Zacisk/aparat o identyfikatorze z ziarna pola już istnieje — błąd programu (ziarno
+        # liczy kolejne pole źródłowe szyny), nie odmowa danych (karta #151).
+        raise DomainInvariantError(str(blad_toru.get("error")))
+    dodaj_pole(
+        tor,
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=nazwa,
+            bay_role="OZE",
+            bus_ref=szyna_sn_ref,
+            substation_ref=station_ref,
+            terminal_bus_ref=terminal_bus_ref,
+            equipment_refs=[apparatus_ref],
+            apparatus_catalog_ref=apparatus_catalog_ref,
+            tags=["nn_source_field"],
+            meta={
+                **field_meta,
+                "apparatus_kind": apparatus_kind,
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
+                ),
+                "default_device_ref": apparatus_ref,
+                "field_status": "CONFIGURED_FOR_TRUNK",
+            },
+        ),
+    )
+    return (
+        field_ref,
+        [field_ref, terminal_bus_ref, apparatus_ref],
+        [
+            {"event_type": "FIELD_TERMINAL_CREATED_SN", "element_id": terminal_bus_ref},
+            {"event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
+            {"event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
+        ],
+    )
+
+
 def _append_converter_field_if_needed(
     new_enm: dict[str, Any],
     *,
@@ -5045,6 +5213,21 @@ def _append_converter_field_if_needed(
     source_field = payload.get("source_field")
     source_field_payload = source_field if isinstance(source_field, dict) else {}
     field_meta = {"source_field_kind": source_field_payload.get("source_field_kind") or technology}
+    if not w_pasmie_nn(_bus_voltage_kv(new_enm, bus_nn_ref)):
+        # Pole źródła na szynie SN (falownik SN za transformatorem blokowym): pole SN
+        # z aparatem pola W TORZE — TA SAMA droga, co pole źródłowe DER-SN
+        # (`_utworz_tor_pola_zrodlowego_sn`). Promocja aparatów nN obejmuje wyłącznie pola
+        # w paśmie nN, więc pole SN bez aparatu zostałoby bez aparatu na zawsze.
+        return _dodaj_pole_zrodla_sn(
+            new_enm,
+            field_ref=field_ref,
+            field_seed=field_seed,
+            station=station,
+            szyna_sn_ref=bus_nn_ref,
+            technology=technology,
+            source_field_payload=source_field_payload,
+            field_meta=field_meta,
+        )
     aparat_pola_ref: str | None = None
     apparatus_binding = source_field_payload.get("catalog_binding")
     if isinstance(apparatus_binding, dict):
@@ -5729,76 +5912,31 @@ def _add_converter_source_der_sn(
         mv_field_cfg = {}
     switching_device = str(mv_field_cfg.get("switching_device") or "CB").upper()
     apparatus_kind = "LOAD_SWITCH" if switching_device in {"LBS", "LOAD_SWITCH"} else "BREAKER"
-    branch_type = _sn_bay_branch_type(apparatus_kind)
     apparatus_binding = mv_field_cfg.get("apparatus_catalog_binding")
     apparatus_catalog_ref = (
         _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
     )
 
-    result = create_node(
+    tor_pola = _utworz_tor_pola_zrodlowego_sn(
         new_enm,
-        {
-            "ref_id": terminal_bus_ref,
-            "name": f"Zacisk pola źródłowego SN {name}",
-            "voltage_kv": mv_bus_voltage_kv,
-            "tags": ["helper_bus", "field_terminal"],
-            "meta": {
-                "visual_role": "FIELD_TERMINAL",
-                "render_on_sld": False,
-                "show_in_project_tree": False,
-                "field_ref": field_ref,
-                "station_ref": station_ref,
-                "port_kind": "der_source_in",
-            },
-        },
+        field_ref=field_ref,
+        terminal_bus_ref=terminal_bus_ref,
+        apparatus_ref=apparatus_ref,
+        szyna_sn_ref=mv_bus_ref,
+        napiecie_kv=mv_bus_voltage_kv,
+        station_ref=station_ref,
+        nazwa=name,
+        apparatus_kind=apparatus_kind,
+        apparatus_binding=apparatus_binding,
+        port_kind="der_source_in",
+        tagi_aparatu=["gpz_field_device", "der_source_field_device"],
+        kod_bledu="der",
     )
-    if not result.success:
-        return _error_response(
-            "Nie udało się utworzyć zacisku pola źródłowego SN.", "der.field_terminal_failed"
-        )
-    new_enm = result.enm
+    new_enm, blad_toru = tor_pola
+    if blad_toru is not None:
+        return blad_toru
     created.append(terminal_bus_ref)
     _emit("FIELD_TERMINAL_CREATED_SN", terminal_bus_ref)
-
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": apparatus_ref,
-            "name": f"Aparat pola źródłowego SN {name}",
-            "type": branch_type,
-            "from_bus_ref": mv_bus_ref,
-            "to_bus_ref": terminal_bus_ref,
-            "status": "closed",
-            "r_ohm": 0.0,
-            "x_ohm": 0.0,
-            "source_mode": "KATALOG" if apparatus_catalog_ref else None,
-            "catalog_namespace": (_PRZESTRZEN_APARATU_POLA_SN if apparatus_catalog_ref else None),
-            "catalog_ref": apparatus_catalog_ref,
-            "tags": ["gpz_field_device", "der_source_field_device"],
-            "meta": {
-                "field_ref": field_ref,
-                "station_ref": station_ref,
-                "bay_role": "OZE",
-                "apparatus_kind": apparatus_kind,
-                "terminal_bus_ref": terminal_bus_ref,
-                "render_on_sld": False,
-                "show_in_project_tree": False,
-                "requires_catalog_binding": apparatus_catalog_ref is None,
-                # Wiązanie zapisane do migawki niesie przestrzeń, w której
-                # sprawdzono ISTNIENIE aparatu, a nie tę z żądania.
-                "catalog_binding": _wiazanie_w_przestrzeni(
-                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
-                ),
-            },
-        },
-    )
-    if not result.success:
-        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
-        return _error_response(
-            f"Nie udało się utworzyć aparatu pola źródłowego SN: {message}",
-            "der.field_apparatus_failed",
-        )
-    new_enm = result.enm
     created.append(apparatus_ref)
     _emit("FIELD_DEVICE_CREATED_SN", apparatus_ref)
 
@@ -5842,6 +5980,7 @@ def _add_converter_source_der_sn(
             substation_ref=str(station.get("ref_id")),
             terminal_bus_ref=terminal_bus_ref,
             equipment_refs=[apparatus_ref],
+            apparatus_catalog_ref=apparatus_catalog_ref,
             protection_codes=protection_codes,
             bay_template_ref=szablon_pola_der,
             primary_devices=aparaty_pola,
@@ -6142,7 +6281,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                     # POLA-W-TORZE: transformator stacji leży na ZACISKACH pól (strona górna
                     # na zacisku pola TR, dolna za wyłącznikiem głównym nN) — przynależność
                     # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-                    station_buses = set(szyny_stacji(station_for_auto, enm.get("branches") or []))
+                    station_buses = set(szyny_stacji(enm, station_for_auto))
                     station_transformers = [
                         tr
                         for tr in enm.get("transformers", [])
@@ -6334,16 +6473,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     prefix = technology.lower()
     generator_ref = _make_id(prefix, source_seed, "converter")
 
-    # Aparat pola źródłowego nN — sprawdzany PRZED mutacją modelu, żeby zła
-    # referencja nie zostawiła w migawce pola z martwym `apparatus_catalog_ref`.
+    # Aparat pola źródłowego — sprawdzany PRZED mutacją modelu, żeby zła referencja nie
+    # zostawiła w migawce pola z martwym `apparatus_catalog_ref`. Przestrzeń z POZIOMU pola
+    # (szyna w paśmie nN → aparat nN; szyna SN → aparat SN pola źródłowego SN, ta sama
+    # przestrzeń, którą zapisuje `_utworz_tor_pola_zrodlowego_sn`).
+    pole_zrodla_sn = not w_pasmie_nn(bus_voltage_kv)
     blad_aparatu = _blad_aparatu_pola(
         (
             (payload.get("source_field") or {}).get("catalog_binding")
             if isinstance(payload.get("source_field"), dict)
             else None
         ),
-        namespace=_PRZESTRZEN_APARATU_POLA_NN,
-        opis_pl="Aparat pola źródłowego nN",
+        namespace=_PRZESTRZEN_APARATU_POLA_SN if pole_zrodla_sn else _PRZESTRZEN_APARATU_POLA_NN,
+        opis_pl="Aparat pola źródłowego SN" if pole_zrodla_sn else "Aparat pola źródłowego nN",
     )
     if blad_aparatu is not None:
         return blad_aparatu
@@ -6363,6 +6505,11 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.field_not_found",
         )
 
+    # POLA-W-TORZE: źródło przyłącza się do ZACISKU swojego nowego pola SN (aparat pola
+    # w torze); pole nN dostaje zacisk dopiero promocją aparatów nN, która przepina źródło.
+    szyna_generatora = bus_nn_ref
+    if pole_zrodla_sn and created_field_ids:
+        szyna_generatora = punkt_przylaczenia_pola(pole_modelu(new_enm, field_ref)) or bus_nn_ref
     generator_meta = {
         **meta,
         "field_ref": field_ref,
@@ -6373,7 +6520,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         {
             "ref_id": generator_ref,
             "name": name,
-            "bus_ref": bus_nn_ref,
+            "bus_ref": szyna_generatora,
             "gen_type": gen_type,
             "p_mw": p_mw,
             "q_mvar": q_mvar,

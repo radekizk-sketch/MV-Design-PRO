@@ -4577,6 +4577,26 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 zacisk_pola_gpz = None
 
             default_bay_role = "OUT" if line_field_apparatus is not None else "FEEDER"
+            # Rola pola z kompozycji sekcji: alias modelu (`OUT`, `FEEDER`, …) albo rola
+            # kanoniczna (`LINIA_ODG`, …) — JEDNA tablica ról (`enm.rola_pola_sn`). Dawniej
+            # wpis zapisywał tekst payloadu bez sprawdzenia (rola kanoniczna lądowała w
+            # `bay_role`); rola spoza kanonu to odmowa nazwana, nie pole o nieznanej roli.
+            rola_payloadu = bay_spec.get("bay_role")
+            rola_kanoniczna_pola: str | None = None
+            if rola_payloadu:
+                if str(rola_payloadu).strip().upper() == "OZE":
+                    bay_role_pola = "OZE"
+                else:
+                    rola_kanoniczna_pola = kanoniczna_rola_pola_sn(rola_payloadu)
+                    bay_role_pola = _SN_FIELD_ROLE_TO_BAY_ROLE.get(rola_kanoniczna_pola, "")
+                if not bay_role_pola:
+                    return _error_response(
+                        f"{bay_name}: nieznana rola pola „{rola_payloadu}” — dozwolone role pól "
+                        f"SN: {lista_pl(nazwa_roli_pola_sn(r) for r in _SN_FIELD_ROLE_TO_BAY_ROLE)}.",
+                        "source.bay_role_invalid",
+                    )
+            else:
+                bay_role_pola = default_bay_role
             aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
                 field_ref=bay_ref,
                 bay_template_ref=bay_template_ref,
@@ -4589,7 +4609,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     zbuduj_pole(
                         ref_id=bay_ref,
                         name=bay_name,
-                        bay_role=bay_spec.get("bay_role") or default_bay_role,
+                        bay_role=bay_role_pola,
+                        field_role=rola_kanoniczna_pola,
                         bus_ref=section["bus_ref"],
                         substation_ref=substation_ref,
                         terminal_bus_ref=zacisk_pola_gpz,

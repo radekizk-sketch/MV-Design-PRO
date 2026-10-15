@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji
 
 #: RZECZYWISTE pozycje katalogu. Testy podawały wcześniej wymyślone identyfikatory
 #: („conv-pv-1mw", „ap-nn-630") razem z `materialized_params` — i przechodziły
@@ -72,9 +73,11 @@ def _station_enm() -> dict:
     return enm
 
 
-def _station_enm_without_nn_field_specs() -> dict:
+def _station_enm_bez_pol() -> dict:
+    """Stacja bez żadnego pola (pusta kolekcja `bays`, puste `meta` stacji)."""
     enm = _station_enm()
-    enm["substations"][0]["meta"] = {"nn_field_specs": None}
+    enm["substations"][0]["meta"] = {}
+    enm["bays"] = []
     return enm
 
 
@@ -124,15 +127,15 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
     assert not result.get("error")
     snapshot = result["snapshot"]
     generator = snapshot["generators"][0]
-    field_specs = snapshot["substations"][0]["meta"]["nn_field_specs"]
+    field_specs = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
     assert generator["gen_type"] == "pv_inverter"
     assert generator["catalog_namespace"] == "ZRODLO_NN_PV"
     assert generator["connection_variant"] == "nn_side"
     assert generator["p_mw"] == 0.5
-    assert generator["meta"]["field_ref"] == field_specs[0]["field_ref"]
+    assert generator["meta"]["field_ref"] == field_specs[0]["ref_id"]
     assert field_specs[0]["meta"]["source_field_kind"] == "PV"
-    assert field_specs[0]["meta"]["apparatus_catalog_ref"] == _APARAT_NN
+    assert field_specs[0]["apparatus_catalog_ref"] == _APARAT_NN
 
     EnergyNetworkModel.model_validate(snapshot)
 
@@ -322,16 +325,16 @@ def test_add_converter_source_rejects_catalog_voltage_mismatch_with_nn_bus() -> 
         ),
     ],
 )
-def test_nn_field_operations_tolerate_missing_nn_field_specs_list(
+def test_nn_field_operations_tolerate_station_without_fields(
     op_name: str,
     payload: dict,
     expected_role: str,
 ) -> None:
-    result = execute_domain_operation(_station_enm_without_nn_field_specs(), op_name, payload)
+    result = execute_domain_operation(_station_enm_bez_pol(), op_name, payload)
 
     assert not result.get("error"), result.get("error")
     snapshot = result["snapshot"]
-    nn_field_specs = snapshot["substations"][0]["meta"]["nn_field_specs"]
+    nn_field_specs = pola_nn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
     assert isinstance(nn_field_specs, list)
     assert len(nn_field_specs) == 1

@@ -30,7 +30,6 @@ Walidacja normatywna 5 MW (V12K-336 pkt 2) —
 
 from __future__ import annotations
 
-from enm.pola import pola_sn_stacji
 import copy
 import json
 from typing import Any
@@ -49,6 +48,7 @@ from enm.domain_operations import (
 )
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 
 APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"

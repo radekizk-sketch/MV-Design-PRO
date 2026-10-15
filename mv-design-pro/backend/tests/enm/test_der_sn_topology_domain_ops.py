@@ -13,6 +13,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
@@ -228,7 +229,7 @@ def _block_transformer(snapshot: dict) -> dict:
 
 
 def _field_specs(snapshot: dict) -> list[dict]:
-    return snapshot["substations"][0]["meta"].get("field_specs") or []
+    return pola_sn_stacji(snapshot, snapshot["substations"][0]["ref_id"])
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +267,7 @@ def test_case2_pv_full_sn_chain_materializes_all_elements() -> None:
     assert gen["bus_ref"] == producer_bus["ref_id"]
     assert gen["connection_variant"] == "block_transformer"
     assert gen["blocking_transformer_ref"] == block_tr["ref_id"]
-    assert gen["meta"]["der_mv_field_ref"] == _field_specs(snap)[0]["field_ref"]
+    assert gen["meta"]["der_mv_field_ref"] == _field_specs(snap)[0]["ref_id"]
 
     # Dedykowane pole źródłowe SN z aparatami pierwotnymi wg konfiguracji kreatora.
     field = _field_specs(snap)[0]
