@@ -306,7 +306,7 @@ budżecie zadania.
 | `import.catalog_mapping_required` (791) | BLOCKER | `fix_import_catalog_mapping` | NIE | nie ustalono |
 | `catalog.binding_version_missing` (804) | BLOCKER | `fix_catalog_version` | NIE | nie ustalono |
 | `catalog.binding_missing` (817) | BLOCKER | `fix_catalog_binding` | NIE | nie ustalono |
-| `catalog.materialization_failed` (830) | BLOCKER | `fix_catalog_rematerialize` | NIE | nie ustalono |
+| ~~`catalog.materialization_failed`~~ (830) | — | — | — | skasowany 2026-10-15 (partia integracji 7): kod bez producenta; odmowa materializacji niesie kod z kontraktu `MaterializationResult` |
 | `oze.pv_no_transformer` (840) | BLOCKER | `fix_pv_transformer` | NIE | `pv.control_mode_missing` (`fixActionRouting.ts:23`, częściowo pokrewne) |
 | `oze.bess_no_transformer` (853) | BLOCKER | `fix_bess_transformer` | NIE | `bess.missing_transformer` (`fixActionRouting.ts:20`) |
 | `apparatus.sn_catalog_missing` (867) | BLOCKER | `fix_apparatus_sn_catalog` | NIE | nie ustalono |

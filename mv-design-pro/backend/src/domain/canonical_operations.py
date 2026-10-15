@@ -2131,14 +2131,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
     ),
-    "catalog.materialization_failed": ReadinessCodeSpec(
-        code="catalog.materialization_failed",
-        area=ReadinessArea.CATALOGS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl="Materializacja parametrów z katalogu nie powiodła się",
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
-    ),
     # ------------------------------------------------------------------
     # BRAMY KATALOGOWE — kody odrzucenia operacji (karta W4, dług V12K-317)
     # ------------------------------------------------------------------

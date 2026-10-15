@@ -248,7 +248,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'import.catalog_mapping_required': 'wspolne',
   'catalog.binding_version_missing': 'wspolne',
   'catalog.binding_missing': 'wspolne',
-  'catalog.materialization_failed': 'wspolne',
   // Bramy katalogowe (karta W4, dług V12K-317). Do tej karty rejestr znał tylko
   // cztery kody przestrzeni `catalog.`, a bramy emitują ich siedemnaście więcej —
   // z `catalog.item_not_found` na czele, bo po ujednoliceniu parytetu torów

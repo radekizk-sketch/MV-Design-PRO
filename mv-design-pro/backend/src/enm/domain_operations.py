@@ -2927,8 +2927,8 @@ def _materialize_catalog_payload(
     result = materialize_catalog_binding(binding, catalog)
     if not result.success:
         return _error_response(
-            result.error_message_pl or "Materializacja katalogu nie powiodła się.",
-            result.error_code or "catalog.materialization_incomplete",
+            result.komunikat_odmowy_pl,
+            result.kod_odmowy,
         )
 
     materialized_params = {
@@ -3718,6 +3718,7 @@ def _error_response(
     brama rekordu katalogu: należy do maszynowej części odpowiedzi (obok ``error_code``),
     nie do zdania dla projektanta (karta #142). Bez kodu reguły odpowiedź nie niesie klucza.
     """
+    assert code.strip(), "odmowa operacji domenowej bez kodu"
     odpowiedz: dict[str, Any] = {
         "error": message,
         "error_code": code,

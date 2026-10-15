@@ -86,10 +86,6 @@
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.materialization_failed"
-    },
-    {
-      "area": "CATALOGS",
       "code": "catalog.materialization_incomplete"
     },
     {
@@ -589,5 +585,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 147
+  "count": 146
 }

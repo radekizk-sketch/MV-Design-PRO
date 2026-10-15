@@ -401,7 +401,6 @@ Odrzucenie: `_error_response("...", "catalog.ref_required")`.
 |-----|-------------|-----------|
 | `catalog.binding_required` | Element techniczny wymaga powiazania z katalogiem | CatalogPicker |
 | `catalog.binding_incomplete` | Niekompletne powiazanie katalogowe | CatalogPicker |
-| `catalog.materialization_failed` | Blad materializacji parametrow katalogowych | CatalogPicker |
 | `operation.unknown` | Nieznana operacja: {nazwa} | — |
 | `operation.payload_invalid` | Nieprawidlowy payload operacji | — |
 

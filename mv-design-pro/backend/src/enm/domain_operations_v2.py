@@ -794,10 +794,17 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     przestrzen_katalogu = "CT"
     binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Przekładnik prądowy CT wymaga wyboru pozycji katalogowej.",
-            catalog_error or "ct.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Przekładnik prądowy CT wymaga wyboru pozycji katalogowej.",
+            "ct.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -972,10 +979,17 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     przestrzen_katalogu = "VT"
     binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Przekładnik napięciowy VT wymaga wyboru pozycji katalogowej.",
-            catalog_error or "vt.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Przekładnik napięciowy VT wymaga wyboru pozycji katalogowej.",
+            "vt.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -1222,10 +1236,17 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     przestrzen_katalogu = "ZABEZPIECZENIE"
     binding = _relay_catalog_binding(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
-            catalog_error or "relay.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
+            "relay.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -1888,8 +1909,13 @@ def _materialize_nn_source_params(
     namespace: str,
     catalog_ref: str,
     required_fields: list[str],
-) -> tuple[dict[str, Any] | None, str | None]:
+) -> dict[str, Any] | str:
     """Tabliczka źródła nN WYŁĄCZNIE z katalogu (kanał payloadu nie istnieje).
+
+    Zwraca tabliczkę ALBO kod odmowy (napis) — jeden wynik, jeden predykat u wołającego
+    (`isinstance(wynik, str)`). Dawna para ``(tabliczka | None, kod | None)`` z warunkiem
+    ``blad or tabliczka is None`` i zapasem ``blad or "catalog.materialization_incomplete"``
+    miała dwa niezależne warunki i martwy kod zapasowy (przegląd karty PARTIA-6-BACKEND).
 
     Dawny parametr `explicit_params` był drugą, nieweryfikowaną drogą podania
     tabliczki — usunięty razem z wczesnym zwrotem w
@@ -1903,7 +1929,7 @@ def _materialize_nn_source_params(
     )
     result = materialize_catalog_binding(binding, katalog_biezacy())
     if not result.success:
-        return None, result.error_code or "catalog.materialization_incomplete"
+        return result.kod_odmowy
 
     if namespace == "ZRODLO_NN_PV":
         zmapowane = {
@@ -1951,12 +1977,12 @@ def _materialize_nn_source_params(
         # `get_wind_types()` był równoległą ścieżką z własnym kodem błędu.
         zmapowane = dict(result.solver_fields)
     else:
-        return None, "catalog.materialization_incomplete"
+        return "catalog.materialization_incomplete"
 
     _, brak = _validate_required_materialization(zmapowane, required_fields)
     if brak is not None:
-        return None, brak
-    return zmapowane, None
+        return brak
+    return zmapowane
 
 
 def _normalize_nn_field_role(payload: dict[str, Any]) -> str:
@@ -4646,13 +4672,13 @@ def _build_converter_materialized_params(
         )
 
     if technology == "PV":
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=["un_kv", "rated_power_ac_kw", "max_power_kw", "control_mode"],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka: dict[str, Any] = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -4671,7 +4697,7 @@ def _build_converter_materialized_params(
             **pola_karty_obecne(z_katalogu),
         }
     elif technology == "BESS":
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=[
@@ -4682,8 +4708,8 @@ def _build_converter_materialized_params(
                 "s_n_kva",
             ],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -4705,13 +4731,13 @@ def _build_converter_materialized_params(
             **pola_karty_obecne(z_katalogu),
         }
     else:
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=["un_kv", "pmax_mw", "sn_mva"],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -6125,10 +6151,17 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # K30-15: rozwiąż catalog_ref wcześniej — potrzebny dla block_transformer
     # voltage matching (MV-side BESS/FW vs LV-side PV decision).
     catalog_ref, catalog_error = _resolve_converter_catalog_ref(payload, technology)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
-            catalog_error or "catalog.ref_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
+            "catalog.ref_required",
         )
 
     # JEDNA przestrzeń katalogu: wybiera pozycję do materializacji tabliczki i jest

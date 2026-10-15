@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **146** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -98,7 +98,6 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `branch.zero_sequence_missing` | CATALOGS | 2 | BLOCKER | Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `catalog.binding_missing` | CATALOGS | 2 | BLOCKER | Element obliczeniowy nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.gate_result_mismatch` | CATALOGS | 2 | BLOCKER | Model zapisałby dla wskazanej pozycji katalogowej inne wartości niż zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian | panel: `inspector`, tab: `katalog` |
-| `catalog.materialization_failed` | CATALOGS | 2 | BLOCKER | Materializacja parametrów z katalogu nie powiodła się | panel: `inspector`, tab: `katalog` |
 | `catalog.materialization_incomplete` | CATALOGS | 2 | BLOCKER | Materializacja katalogu nie dała wszystkich parametrów wymaganych przez solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną | panel: `inspector`, tab: `katalog` |
 | `catalog.materialization_required` | CATALOGS | 2 | BLOCKER | Wiązanie wyłącza materializację, a element techniczny musi brać parametry z katalogu | panel: `inspector`, tab: `katalog` |
 | `catalog.nameplate_mismatch` | CATALOGS | 2 | BLOCKER | Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą z katalogu, więc wybierz pozycję o właściwych parametrach | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
@@ -208,21 +207,21 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 93 |
+| BLOCKER | 92 |
 | WARNING | 53 |
 | INFO | 1 |
-| **Razem** | **147** |
+| **Razem** | **146** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
-| CATALOGS | 48 |
+| CATALOGS | 47 |
 | STATIONS | 17 |
 | GENERATORS | 25 |
 | PROTECTION | 13 |
 | ANALYSIS | 22 |
-| **Razem** | **147** |
+| **Razem** | **146** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 
