@@ -1,8 +1,46 @@
 # Meldunek karty SZYBKIE-TESTY — przyspieszenie testów bez utraty determinizmu
 
 Gałąź: `claude/mv-design-pro-twin-audit-u4lhy0-karta-szybkie-testy`, baza `615f3b24` (partia 6),
-drzewo wynikowe kodu `73629deb` (po scaleniu z PARTIA-6-BACKEND `65b00094` w `01b6cb78`
-i po wydzieleniu kroku budżetów czasu procesora). Maszyna pomiarowa: kontener 4 vCPU, 15 GB RAM, bez obcego
+drzewo wynikowe kodu `fd095959` — scalona z gałęzią integracji `claude/mv-design-pro-twin-audit-u4lhy0`
+(`c136c6bb`, partia integracji 7, zawiera przegląd PARTIA-6-BACKEND); wcześniej scalenie z
+PARTIA-6-BACKEND `65b00094` (`01b6cb78`) i wydzielenie kroku budżetów czasu procesora (`73629deb`).
+**Do scalenia u orkiestratora: §0.**
+
+## 0. Dla orkiestratora — scalenie bez błędów
+
+- Gałąź karty zawiera w całości czubek gałęzi integracji `c136c6bb`, więc jej scalenie do
+  `claude/mv-design-pro-twin-audit-u4lhy0` jest **przewijaniem (fast-forward), bez konfliktów**,
+  dopóki czubek integracji się nie przesunie. `origin/main` (`8f7ed3c2`) też jest jej przodkiem.
+- Konflikty rozwiązane w `fd095959` (opis w komunikacie commita):
+  `backend/tests/conftest.py` — dwie naprawy tej samej klasy (magazyn sesji współdzielony przez
+  robotników xdist: AB-1b.3b-NA-CZUBKU i ta karta) zredukowane do JEDNEGO mechanizmu
+  (`<ZMIENNA>_PYTEST_PID`, cztery wartości); test podprocesowy
+  `tests/ci/test_fikstura_dialektu_produkcyjnego.py` przepisany na ten znacznik z zachowaniem
+  intencji — jedyna zmieniona oczekiwana wartość: proces bez xdist z katalogiem OBCEJ sesji
+  pytest (zagnieżdżona sesja) dostaje teraz własny katalog, bo to ta sama klasa co robotnik;
+  `test_nn_field_specs_promocja_aparat.py` — wersja integracji (przegląd `f076ee46`, nadzbiór).
+  Kod `backend/src` drzewa scalonego jest identyczny z gałęzią integracji (0 plików różnicy).
+- Dowody na `fd095959` (host 4 vCPU, `nproc --all` = 4, load average przed biegiem 0,85):
+
+  | Bieg | Wynik | Czas |
+  |---|---|---|
+  | Pełny backend `-n 4 --dist loadfile -m "not pandapower and not andes"` | **27 644 passed, 0 failed** | 1 629 s |
+  | `scripts/guardy_z_ci.py` | **KOMPLET ZIELONY**, 3 462 samotesty passed | 326 s |
+  | vitest krok główny | **877 / 877 plików, 12 979 passed, 0 failed** | 715 s |
+  | vitest krok budżetów `--mode budzety` | **8 / 8 plików, 193 passed** | 115 s |
+  | `npm run type-check`, `npm run lint` | RC = 0, RC = 0 | — |
+
+  Czerwień bazy vitest z §4 (`menuBudowyNaKanwie`, `pathInvariants`) na drzewie scalonym jest
+  już zielona — naprawiona na gałęzi integracji. Krok budżetów przeszedł w tym biegu, ale §4 i
+  §5 pkt 6 pozostają aktualne: budżety stoją na granicy wydajności maszyny.
+  Uwaga środowiskowa: pierwszy bieg `guardy_z_ci.py` po restarcie kontenera użył systemowego
+  Pythona bez zależności (`No module named 'networkx'`) — powtórzony z Pythonem środowiska
+  backendu; to nie jest stan repozytorium.
+- E2E nie powtórzyłem na `fd095959`: zmiany scalenia w e2e to wyłącznie wpięcie
+  `katalogZrzutow` w speki z gałęzi integracji (fuzja automatyczna, type-check i lint zielone);
+  ostatni pełny bieg e2e tej karty — §5 pkt 2. CI gałęzi pokaże shardy na drzewie scalonym.
+- Commity mają autora `radekizk-sketch <radek.izk@gmail.com>` wg karty, bez podpisu — GitHub
+  pokaże je jako niezweryfikowane; zakaz `--amend` i przepisywania historii ma pierwszeństwo. Maszyna pomiarowa: kontener 4 vCPU, 15 GB RAM, bez obcego
 obciążenia (load average w logach biegów); pomiary przed i po w tych samych warunkach, z
 `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` i prywatnym `--basetemp` poza drzewem.
 
@@ -60,6 +98,7 @@ KOMPLET ZIELONY. Pozostałe czerwone joby CI to joby czerwone także na CI bazy 
   biblioteki OpenBLAS (numpy i scipy), test sprawdza teraz każdą.
 - `01b6cb78` — scalenie z PARTIA-6-BACKEND (`65b00094`), polecenie właściciela.
 - `73629deb` — testy budżetu czasu procesora w osobnym kroku sekwencyjnym vitest (§5 pkt 6).
+- `fd095959` — scalenie z gałęzią integracji `c136c6bb` (§0).
 
 Dobór `-n` i `--dist` z pomiaru: suma czasów testów 4 709 s w 789 plikach, najdłuższy plik
 561,5 s (`walidacja_fizyczna/test_bramki.py`) < 1/4 sumy, więc LPT po plikach daje teoretycznie
