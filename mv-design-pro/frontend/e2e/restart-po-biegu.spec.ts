@@ -44,12 +44,7 @@ type DomainOpResponse = {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
-    substations?: Array<{
-      ref_id: string;
-      meta?: {
-        field_specs?: Array<{ field_ref?: string; field_role?: string; bay_role?: string }>;
-      };
-    }>;
+    substations?: Array<{ ref_id: string }>;
   };
 };
 

@@ -18,6 +18,8 @@
  * dispatchEvent).
  */
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import type { Bay } from '../src/types/enm';
+import { polaSnStacji } from '../src/ui/shared/polaStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -36,12 +38,10 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    substations?: Array<{
-      ref_id: string;
-      meta?: {
-        field_specs?: Array<{ field_ref?: string }>;
-      };
-    }>;
+    substations?: Array<{ ref_id: string }>;
+    // Karta W5-B: pola stacji to rekordy `bays`; poziom pola z napięcia szyny.
+    buses?: Array<{ ref_id: string; voltage_kv?: number | null }>;
+    bays?: Bay[];
   };
 };
 
@@ -189,13 +189,12 @@ async function zbudujSiecZeStacja(
     },
   });
 
-  // REALNE refy pól SN z modelu (`substations[].meta.field_specs[].field_ref`
-  // — ta sama ścieżka co typ DomainOpResponse w restart-po-biegu; ENM `bays`
-  // jest tu puste). Celujemy prawym klikiem w aparat pola po `data-owner-ref`
-  // (scena v3: aparat niesie ref pola macierzystego).
+  // REALNE refy pól SN z modelu (rekordy `bays` stacji na szynie SN — karta W5-B). Celujemy
+  // prawym klikiem w aparat pola po `data-owner-ref` (scena v3: aparat niesie ref pola
+  // macierzystego).
   const bayRefs = (op.snapshot?.substations ?? [])
-    .flatMap((substation) => substation.meta?.field_specs ?? [])
-    .map((fieldSpec) => fieldSpec.field_ref ?? '')
+    .flatMap((substation) => polaSnStacji(op.snapshot, substation.ref_id))
+    .map((pole) => pole.ref_id)
     .filter((ref) => ref.length > 0);
   expect(bayRefs.length).toBeGreaterThan(0);
 

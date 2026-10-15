@@ -36,7 +36,12 @@ const KATALOG_ZRZUTOW = resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09'
 type Enm = {
   substations?: Array<{ ref_id: string; name?: string; station_type?: string | null; meta?: Record<string, unknown> }>;
   branches?: Array<{ ref_id: string; name?: string; type?: string; from_bus_ref?: string; to_bus_ref?: string }>;
+  // Karta W5-B: pola stacji to rekordy `bays`.
+  bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
 };
+
+const polaStacjiEnm = (enm: Enm, stacjaRef: string | undefined) =>
+  (enm.bays ?? []).filter((b) => stacjaRef !== undefined && b.substation_ref === stacjaRef);
 
 let licznik = 0;
 
@@ -91,7 +96,7 @@ async function siecKadrow(request: APIRequestContext) {
     gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },
   });
   const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz');
-  const poleGpz = ((gpz?.meta?.field_specs as Array<{ field_ref: string }> | undefined) ?? [])[0]?.field_ref;
+  const poleGpz = polaStacjiEnm(enm, gpz?.ref_id)[0]?.ref_id;
   expect(poleGpz).toBeTruthy();
   enm = await operacja(request, caseId, 'continue_trunk_segment_sn', { field_ref: poleGpz, segment: odcinek(500, 'Odcinek 1') });
   for (const n of [2, 3]) {
@@ -129,9 +134,9 @@ async function siecKadrow(request: APIRequestContext) {
     sn_fields: [{ field_role: 'LINIA_IN' }, { field_role: 'LINIA_OUT' }],
   });
   const przelotowa = (enm.substations ?? []).find((s) => s.name === 'Stacja Przelotowa');
-  const polaOdgalezne = ((przelotowa?.meta?.field_specs as Array<{ field_ref: string; bay_role: string }> | undefined) ?? [])
+  const polaOdgalezne = polaStacjiEnm(enm, przelotowa?.ref_id)
     .filter((f) => f.bay_role === 'FEEDER')
-    .map((f) => f.field_ref);
+    .map((f) => f.ref_id);
   expect(polaOdgalezne.length).toBe(2);
   enm = await operacja(request, caseId, 'start_branch_segment_sn', {
     from_ref: `${polaOdgalezne[1]}.BRANCH`,

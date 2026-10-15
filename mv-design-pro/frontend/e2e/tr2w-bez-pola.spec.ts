@@ -65,8 +65,9 @@ type DomainOpResponse = {
     substations?: Array<{
       ref_id: string;
       transformer_refs?: string[];
-      meta?: { field_specs?: Array<{ bay_role?: string }> };
     }>;
+    // Karta W5-B: pola stacji to rekordy `bays`.
+    bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
   };
 };
 
@@ -190,7 +191,9 @@ async function buildStationNetworkBezPolaTr(
   // sam z siebie, albo przestał tworzyć transformator).
   const station = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
   expect(station, 'stacja SN/nN w migawce').toBeTruthy();
-  const role = (station!.meta?.field_specs ?? []).map((f) => String(f.bay_role ?? '').toUpperCase());
+  const role = (op.snapshot?.bays ?? [])
+    .filter((f) => f.substation_ref === station!.ref_id)
+    .map((f) => String(f.bay_role ?? '').toUpperCase());
   expect(role, 'pola stacji NIE mogą zawierać roli TR — inaczej spec nie ćwiczy defektu').not.toContain('TR');
 
   // Transformator STACJI, nie GPZ: sieć ma DWA transformatory (GPZ WN/SN +
