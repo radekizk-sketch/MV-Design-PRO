@@ -13,6 +13,7 @@ import itertools
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,6 +32,16 @@ def _snapshot_hash(snapshot: dict) -> str:
     """Oblicz hash snapshot'a (przez EnergyNetworkModel)."""
     enm = EnergyNetworkModel.model_validate(snapshot)
     return compute_enm_hash(enm)
+
+
+def _pola_sn_stacji(snapshot: dict, station_ref: str) -> list[dict]:
+    """Rekordy pól SN stacji (`bays`, kolejność zapisu) — JEDYNY nośnik pól od karty W5-B."""
+    return pola_sn_stacji(snapshot, station_ref)
+
+
+def _pola_nn_stacji(snapshot: dict, station_ref: str) -> list[dict]:
+    """Rekordy pól nN stacji (`bays` na szynie nN, predykat `enm.pola.czy_pole_nn`)."""
+    return pola_nn_stacji(snapshot, station_ref)
 
 
 def _count(snapshot: dict, collection: str) -> int:
@@ -320,7 +331,7 @@ class TestContinueTrunkSegmentSN:
 
 class TestSnBayLogicalViews:
     def test_add_sn_bay_exposes_trunk_start_terminal_and_continue_uses_field_ref(self):
-        """Pole SN dodane jako field_specs musi byc widocznym terminalem startu magistrali."""
+        """Pole SN dodane jako rekord bays musi byc widocznym terminalem startu magistrali."""
         enm = _empty_enm()
         result_gpz = _add_grid_source(enm)
         assert result_gpz.get("snapshot") is not None
@@ -467,7 +478,9 @@ class TestInsertStationCreatesStructure:
         Assert: station substation created.
         Assert: original segment deleted, 2 new segments created.
         Assert: sn_bus, nn_bus, transformer created.
-        Assert: legacy bays are not created for sn_fields.
+        Assert: KAŻDE pole stacji (SN i nN) jest JEDNYM rekordem `bays` (karta W5-B — `bays`
+        jest jedynym nośnikiem pól; dawniej ten test pinował odwrotnie: pola żyły w `meta`
+        stacji, a `bays` było zablokowane).
         """
         _, snapshot = _build_gpz_plus_segments(2)
         first_seg = _get_first_segment_ref(snapshot)
@@ -512,13 +525,21 @@ class TestInsertStationCreatesStructure:
         # Transformer created (SN/nn)
         assert _count(s, "transformers") > trafos_before
 
-        # Legacy bays are no longer created; field specs live in substation meta.
-        assert _count(s, "bays") == bays_before
+        # Intencja (W5-B): pola stacji powstają WYŁĄCZNIE jako rekordy `bays` wskazujące stację
+        # — 3 pola SN (IN, OUT, TR domknięte) i wyłącznik główny nN, bez dubli.
         inserted_station = next(
             sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
+        nowe_pola = [
+            b for b in s.get("bays", []) if b.get("substation_ref") == inserted_station["ref_id"]
+        ]
+        assert _count(s, "bays") == bays_before + len(nowe_pola)
+        assert len(nowe_pola) == 4
+        assert len({b["ref_id"] for b in nowe_pola}) == len(nowe_pola)
+        assert [b["bay_role"] for b in _pola_nn_stacji(s, inserted_station["ref_id"])] == ["IN"]
+        assert "field_specs" not in inserted_station.get("meta", {})
         field_roles = [
-            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+            spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
         # POLA-W-TORZE: transformator tworzony razem ze stacją leży na zacisku pola
         # transformatorowego — skład pól bez niego operacja DOMYKA (na końcu składu).
@@ -600,7 +621,10 @@ class TestInsertStationCreatesStructure:
 
 
 class TestNnFieldAdapters:
-    def test_add_sn_bay_uses_station_meta_instead_of_legacy_bays(self):
+    def test_add_sn_bay_dopisuje_jeden_rekord_bays(self):
+        """Intencja (przepisana w W5-B): operacja pola zapisuje pole w JEDNYM nośniku — dawniej
+        `meta.field_specs` przy zablokowanym `bays`, teraz rekord `bays`; istniejące rekordy
+        pól zostają bajtowo nietknięte, przybywa dokładnie jeden."""
         gpz_result = _add_grid_source(_empty_enm())
         assert gpz_result.get("snapshot") is not None, f"Error: {gpz_result.get('error')}"
 
@@ -608,7 +632,6 @@ class TestNnFieldAdapters:
         substation = gpz_snapshot["substations"][0]
         bus_ref = substation["bus_refs"][0]
         bays_before = copy.deepcopy(gpz_snapshot.get("bays", []))
-        field_specs_before = copy.deepcopy(substation.get("meta", {}).get("field_specs", []))
 
         result = execute_domain_operation(
             enm_dict=gpz_snapshot,
@@ -624,15 +647,17 @@ class TestNnFieldAdapters:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         updated = result["snapshot"]
-        assert updated.get("bays", []) == bays_before
-
-        substation_after = _find_by_ref(updated, "substations", substation["ref_id"])
-        assert substation_after is not None
-        field_specs_after = substation_after.get("meta", {}).get("field_specs", [])
-        assert len(field_specs_after) == len(field_specs_before) + 1
-        assert field_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
-        assert field_specs_after[-1]["bay_role"] == "OUT"
-        assert field_specs_after[-1]["meta"]["apparatus_kind"] == "BREAKER"
+        assert updated["bays"][: len(bays_before)] == bays_before
+        assert len(updated["bays"]) == len(bays_before) + 1
+        nowe = updated["bays"][-1]
+        assert nowe["ref_id"] == result["changes"]["created_element_ids"][0]
+        assert nowe["substation_ref"] == substation["ref_id"]
+        assert nowe["bay_role"] == "OUT"
+        assert nowe["meta"]["apparatus_kind"] == "BREAKER"
+        assert nowe["terminal_bus_ref"] in result["changes"]["created_element_ids"]
+        assert (
+            "field_specs" not in _find_by_ref(updated, "substations", substation["ref_id"])["meta"]
+        )
 
     def test_add_sn_bay_binds_producer_bay_template(self):
         """G-POLE-R (V12K-058): pole SN wiąże szablon pola producenta (parytet ze stacją/GPZ).
@@ -659,8 +684,7 @@ class TestNnFieldAdapters:
             },
         )
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
-        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
-        spec = substation_after["meta"]["field_specs"][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["bay_template_ref"] == "abb_unigear_zs1__liniowe_odplywowe"
         assert spec["switchgear_family_ref"] == "abb_unigear_zs1"
         assert spec["manufacturer_ref"] == "abb"
@@ -687,8 +711,7 @@ class TestNnFieldAdapters:
             },
         )
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
-        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
-        spec = substation_after["meta"]["field_specs"][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         devices = spec.get("primary_devices")
         assert devices, "field_spec MUSI nieść zmaterializowane aparaty pierwotne"
         # Kanoniczny tor liniowy §12.2: DS_szyn → CB → CT → DS_lin → ES → głowica.
@@ -736,12 +759,8 @@ class TestNnFieldAdapters:
         second = execute_domain_operation(
             enm_dict=copy.deepcopy(gpz_snapshot), op_name="add_sn_bay", payload=dict(payload)
         )
-        spec1 = _find_by_ref(first["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
-        spec2 = _find_by_ref(second["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
+        spec1 = _pola_sn_stacji(first["snapshot"], substation["ref_id"])[-1]
+        spec2 = _pola_sn_stacji(second["snapshot"], substation["ref_id"])[-1]
         assert spec1["primary_devices"] == spec2["primary_devices"]
 
     def test_add_sn_bay_apparatus_kind_overrides_main_switch(self):
@@ -762,9 +781,7 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "LOAD_SWITCH",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         kinds = [d["kind"] for d in spec["primary_devices"]]
         assert "LOAD_SWITCH" in kinds
         assert "CB" not in kinds
@@ -786,10 +803,8 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "BREAKER",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
-        assert "primary_devices" not in spec
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
+        assert spec["primary_devices"] == []
 
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
         """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
@@ -808,12 +823,10 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "MEASUREMENT",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
-        assert "bay_template_ref" not in spec
-        assert "switchgear_family_ref" not in spec
-        assert "protection_codes" not in spec
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
+        assert spec["bay_template_ref"] is None
+        assert spec["switchgear_family_ref"] is None
+        assert spec["protection_codes"] == []
 
     def test_add_sn_bay_tr_materializes_protection_codes(self):
         """Audyt V12K-059 (B): pole transformatorowe materializuje wymagane funkcje
@@ -834,9 +847,7 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "BREAKER",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
 
     def test_add_sn_bay_feeder_role_materializes_canonical_protection_codes(self):
@@ -857,9 +868,7 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "BREAKER",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["OUT"]
 
     def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):
@@ -878,12 +887,10 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "BREAKER",
             },
         )
-        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
-            "field_specs"
-        ][-1]
+        spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["protection_codes"] == list(OZE_INTERFACE_BAY_PROTECTION_CODES)
 
-    def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
+    def test_add_nn_outgoing_field_dopisuje_jeden_rekord_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
         first_seg = _get_first_segment_ref(snapshot)
 
@@ -919,7 +926,7 @@ class TestNnFieldAdapters:
             if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
         )
         bays_before = copy.deepcopy(station_snapshot.get("bays", []))
-        nn_specs_before = copy.deepcopy(inserted_station.get("meta", {}).get("nn_field_specs", []))
+        nn_before = _pola_nn_stacji(station_snapshot, inserted_station["ref_id"])
 
         result = execute_domain_operation(
             enm_dict=station_snapshot,
@@ -929,14 +936,12 @@ class TestNnFieldAdapters:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         updated = result["snapshot"]
-        assert updated.get("bays", []) == bays_before
-
-        station_after = _find_by_ref(updated, "substations", inserted_station["ref_id"])
-        assert station_after is not None
-        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
-        assert len(nn_specs_after) == len(nn_specs_before) + 1
-        assert nn_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
-        assert nn_specs_after[-1]["bay_role"] == "FEEDER"
+        # Intencja (W5-B): istniejące pola nietknięte, pole nN = jeden nowy rekord `bays`.
+        assert updated["bays"][: len(bays_before)] == bays_before
+        nn_after = _pola_nn_stacji(updated, inserted_station["ref_id"])
+        assert len(nn_after) == len(nn_before) + 1
+        assert nn_after[-1]["ref_id"] == result["changes"]["created_element_ids"][0]
+        assert nn_after[-1]["bay_role"] == "FEEDER"
 
     def test_add_nn_load_preserves_catalog_binding(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -1060,12 +1065,12 @@ class TestNnFieldAdapters:
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         station_after = _find_by_ref(result["snapshot"], "substations", inserted_station["ref_id"])
         assert station_after is not None
-        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
+        nn_specs_after = _pola_nn_stacji(result["snapshot"], inserted_station["ref_id"])
         assert nn_specs_after[-1]["bay_role"] == "OZE"
         assert "nn_source_field" in nn_specs_after[-1]["tags"]
         assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
 
-    def test_add_converter_source_uses_station_meta_instead_of_legacy_bays(self):
+    def test_add_converter_source_dopisuje_jeden_rekord_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
         first_seg = _get_first_segment_ref(snapshot)
 
@@ -1101,7 +1106,7 @@ class TestNnFieldAdapters:
             if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
         )
         bays_before = copy.deepcopy(station_snapshot.get("bays", []))
-        nn_specs_before = copy.deepcopy(inserted_station.get("meta", {}).get("nn_field_specs", []))
+        nn_before = _pola_nn_stacji(station_snapshot, inserted_station["ref_id"])
 
         result = execute_domain_operation(
             enm_dict=station_snapshot,
@@ -1139,13 +1144,11 @@ class TestNnFieldAdapters:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         updated = result["snapshot"]
-        assert updated.get("bays", []) == bays_before
+        assert updated["bays"][: len(bays_before)] == bays_before
 
-        station_after = _find_by_ref(updated, "substations", inserted_station["ref_id"])
-        assert station_after is not None
-        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
-        assert len(nn_specs_after) == len(nn_specs_before) + 1
-        assert nn_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
+        nn_specs_after = _pola_nn_stacji(updated, inserted_station["ref_id"])
+        assert len(nn_specs_after) == len(nn_before) + 1
+        assert nn_specs_after[-1]["ref_id"] == result["changes"]["created_element_ids"][0]
         assert nn_specs_after[-1]["bay_role"] == "OZE"
         assert "nn_source_field" in nn_specs_after[-1]["tags"]
         assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
@@ -1469,7 +1472,10 @@ class TestPermutationInvarianceSNFields:
             wynik = _wykonaj(perm)
             stacja_ref = wynik["selection_hint"]["element_id"]
             stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == stacja_ref)
-            role_w_modelu = [spec.get("bay_role") for spec in stacja["meta"]["field_specs"]]
+            role_w_modelu = [
+                spec.get("bay_role")
+                for spec in _pola_sn_stacji(wynik["snapshot"], stacja["ref_id"])
+            ]
             assert role_w_modelu == [role_z_payloadu[r] for r in perm], (
                 f"Permutacja {perm}: model niesie układ {role_w_modelu} — kolejność "
                 "pól musi pochodzić Z DANYCH (V12K-330), nie z normalizacji."
@@ -1933,7 +1939,7 @@ class TestStationTypeBPassthrough:
             sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
         field_roles = [
-            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+            spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
         assert "IN" in field_roles, "Type B station should have IN field spec"
         assert "OUT" in field_roles, "Type B station should have OUT field spec"
@@ -2017,7 +2023,7 @@ class TestStationTypeCBranch:
             sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
         field_roles = [
-            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+            spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
 
         assert "IN" in field_roles, "Type C station should have IN field spec"
@@ -2064,7 +2070,7 @@ class TestStationTypeCBranch:
         assert inserted_station.get("meta", {}).get("station_type_sn") == "C"
 
         field_roles = [
-            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+            spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
         assert "IN" in field_roles
         assert "OUT" in field_roles
@@ -2110,7 +2116,7 @@ class TestStationTypeDSectional:
             sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
         field_roles = [
-            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+            spec.get("bay_role") for spec in _pola_sn_stacji(s, inserted_station["ref_id"])
         ]
 
         assert (
@@ -2165,10 +2171,8 @@ class TestStationTypeDSectional:
         ]
         assert right_segments, "Prawy odcinek musi wychodzić z pola na sekcji B"
         # Pole SPRZEGLO powiązane z realnym sprzęgłem (nie zdublowany aparat).
-        specs = station.get("meta", {}).get("field_specs", [])
-        coupler_spec = next(
-            (sp for sp in specs if (sp.get("meta") or {}).get("field_role") == "SPRZEGLO"), None
-        )
+        specs = _pola_sn_stacji(s, station["ref_id"])
+        coupler_spec = next((sp for sp in specs if sp.get("field_role") == "SPRZEGLO"), None)
         assert coupler_spec is not None
         assert coupler["ref_id"] in coupler_spec.get("equipment_refs", [])
 
@@ -2235,7 +2239,8 @@ class TestInsertStationFieldTemplateBinding:
             if sub.get("ref_id", "").startswith("stn/")
         )
         specs = {
-            (sp.get("meta") or {}).get("field_role"): sp for sp in station["meta"]["field_specs"]
+            sp.get("field_role"): sp
+            for sp in _pola_sn_stacji(result["snapshot"], station["ref_id"])
         }
 
         # PS-2: pole SPRZĘGŁO materializuje kody zabezpieczeń COUPLER (51/50).

@@ -16,6 +16,7 @@ import copy
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 
 CATALOG_LINE_35 = "line-base-al-st-35"
 CATALOG_LINE_70 = "line-base-al-st-70"
@@ -364,7 +365,7 @@ class TestE2E2BranchFromStation:
         branch_bus = sub["bus_refs"][0]
         pole_odg = next(
             spec
-            for spec in sub["meta"]["field_specs"]
+            for spec in pola_sn_stacji(s, sub["ref_id"])
             if str(spec.get("bay_role")).upper() == "FEEDER"
         )
 
@@ -380,7 +381,7 @@ class TestE2E2BranchFromStation:
         odgalezienie = next(
             b for b in result["snapshot"]["branches"] if "branch_segment" in b["ref_id"]
         )
-        assert odgalezienie["from_bus_ref"] == pole_odg["meta"]["terminal_bus_ref"]
+        assert odgalezienie["from_bus_ref"] == pole_odg["terminal_bus_ref"]
 
         # Dwa WOLNE pola odgałęźne na szynie — bez jawnego portu odmowa (niejednoznaczność).
         s2 = op(
@@ -465,10 +466,10 @@ class TestE2E2BranchFromStation:
         s = _insert_station(s, seg_id, "Stacja B", "branch")
 
         sub = s.get("substations", [])[-1]
-        field_specs = sub.get("meta", {}).get("field_specs", [])
-        feeder = next(spec for spec in field_specs if spec.get("bay_role") == "FEEDER")
-        field_ref = feeder["field_ref"]
-        terminal_bus_ref = feeder["meta"]["terminal_bus_ref"]
+        pola_sn = pola_sn_stacji(s, sub["ref_id"])
+        feeder = next(spec for spec in pola_sn if spec.get("bay_role") == "FEEDER")
+        field_ref = feeder["ref_id"]
+        terminal_bus_ref = feeder["terminal_bus_ref"]
 
         result = execute_domain_operation(
             s,

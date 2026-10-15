@@ -632,9 +632,9 @@ def aparaty_pola_z_referencji(
     """Aparaty pierwotne pola z SAMYCH REFERENCJI pola (bez payloadu operacji).
 
     Drugie wejście tego samego resolvera — dla ścieżek, które nie mają payloadu
-    kreatora, tylko rozstrzygnięte już referencje wpisywane do `field_spec`
-    (`_build_field_spec`: pola GPZ, pola stacji wstawianej na odcinku, pola
-    sekcji, pola nN). Do tej pory te ścieżki wołały WYŁĄCZNIE
+    kreatora, tylko rozstrzygnięte już referencje wpisywane na rekord pola
+    (`domain_operations._aparaty_i_konfiguracja_pola` przed `enm.pola.zbuduj_pole`:
+    pola GPZ, pola stacji wstawianej na odcinku, pola sekcji, pola nN). Do tej pory te ścieżki wołały WYŁĄCZNIE
     `template_primary_devices`, który zna jedną nomenklaturę: referencja
     katalogowego pola rodziny dawała po cichu PUSTĄ listę aparatów, więc pole
     GPZ/stacyjne wybrane z katalogu producenta lądowało w ENM bez ani jednego

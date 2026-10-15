@@ -462,26 +462,22 @@ class TestValidatorTopologyEntities:
         codes = [i.code for i in result.issues]
         assert "I003" in codes
 
-    def test_i003_accepts_canonical_field_specs_without_legacy_bays(self):
+    def test_i003_accepts_station_with_field_record(self):
+        """Intencja (przepisana w W5-B): stacja z polem nie dostaje I003 — pole jest rekordem
+        `bays` (jedyny nośnik), dawniej wpisem `meta.field_specs` przy pustym `bays`."""
         enm = _base_enm()
         enm.substations = [
-            Substation(
-                ref_id="sub_1",
-                name="S1",
-                station_type="gpz",
-                bus_refs=["bus_sn_a"],
-                meta={
-                    "field_specs": [
-                        {
-                            "field_ref": "sub_1/bay/out",
-                            "bay_role": "OUT",
-                            "bus_ref": "bus_sn_a",
-                        }
-                    ]
-                },
-            ),
+            Substation(ref_id="sub_1", name="S1", station_type="gpz", bus_refs=["bus_sn_a"]),
         ]
-        enm.bays = []
+        enm.bays = [
+            Bay(
+                ref_id="sub_1/bay/out",
+                name="Pole liniowe wyjściowe",
+                bay_role="OUT",
+                substation_ref="sub_1",
+                bus_ref="bus_sn_a",
+            )
+        ]
 
         result = ENMValidator().validate(enm)
         codes = [i.code for i in result.issues]

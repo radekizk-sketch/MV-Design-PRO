@@ -532,11 +532,26 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"feeder_ref": "nn-1", "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR)},
         lambda p: _zepsuj_wiazanie(p),
     ),
-    # `add_nn_outgoing_field` NIE MA tu iniekcji — karta NAPRAWA-B, znalezisko #2:
-    # usunięta z `API_CATALOG_GATE_INVENTORY` (operacja nie czyta `catalog_ref`
-    # w żadnej gałęzi; dawna pozycja bramkowała referencję, której materializacja
-    # nigdzie nie trafiała). Parytet pinuje
-    # `test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame` niżej.
+    # Aparat pola nN (karta W5-B): operacja CZYTA wskazanie (wiązanie na polu dla promocji
+    # aparatów nN), więc brama sprawdza ISTNIENIE pozycji — wskazanie jest opcjonalne
+    # (kreator pola nN go nie wysyła, szablon stacji tak).
+    IniekcjaBramy(
+        "add_nn_outgoing_field",
+        "catalog_ref",
+        lambda: {"station_ref": "st-1", "bus_nn_ref": "nn-bus-1", "catalog_ref": "cb_nn_630a"},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_outgoing_field",
+        "catalog_binding",
+        lambda: {
+            "station_ref": "st-1",
+            "bus_nn_ref": "nn-bus-1",
+            "field_role": "SOURCE",
+            "catalog_binding": _wiazanie("APARAT_NN", "cb_nn_630a"),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN -----------------------
     IniekcjaBramy(
         "add_converter_source",
@@ -1128,18 +1143,16 @@ def test_predykat_wiazan_der_jest_ten_sam_co_w_warstwie_domenowej() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Karta NAPRAWA-B, znalezisko #2 — rozjazd kontraktu catalog_ref
-# `add_nn_outgoing_field`. Pomiar: operacja domenowa nie czyta
-# `catalog_ref`/`catalog_binding` z payloadu w ŻADNEJ gałęzi (FEEDER ani
-# SOURCE) — usunięta z `CATALOG_REQUIRED_OPERATIONS` i z
-# `API_CATALOG_GATE_INVENTORY`. Testy niżej pinują naprawę I pilnują, żeby
-# WHOLE rejestr (`CATALOG_REQUIRED_OPERATIONS` × frontendowy odpowiednik
-# `catalogFirstRules.ts`) nie rozjechał się po cichu w przyszłości.
+# Kontrakt katalogowy `add_nn_outgoing_field` (karta NAPRAWA-B #2, przepisany w W5-B).
+# NAPRAWA-B: brama nie może WYMAGAĆ referencji (kreator pola nN jej nie wysyła). W5-B:
+# operacja CZYTA wskazaną pozycję (wiązanie na polu dla promocji aparatów nN — koniec
+# cichego gubienia `catalog_ref` szablonu stacji, W061), więc wskazanie NIEISTNIEJĄCE jest
+# odrzucane, a brak wskazania przechodzi. Iloczyn: rola pola × {brak, poprawne, błędne}.
 # ---------------------------------------------------------------------------
 
 
 def test_add_nn_outgoing_field_poza_wymaganymi_operacjami_katalogowymi() -> None:
-    """Pin rejestru: operacja, która nie konsumuje catalog_ref, nie może go wymagać."""
+    """Pin rejestru: wskazanie aparatu pola nN jest opcjonalne — operacja go nie wymaga."""
     assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
 
 
@@ -1168,22 +1181,23 @@ def test_add_nn_outgoing_field_poza_wymaganymi_operacjami_katalogowymi() -> None
     ],
 )
 def test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame(payload: dict[str, Any]) -> None:
-    """Dokładny payload PRODUKCYJNEGO kreatora (`KreatorPolaNn.tsx`) — bez `catalog_ref`,
-    bo formularz świadomie go nie pokazuje. Przed naprawą: `422 catalog.ref_required`
-    na KAŻDE żądanie (dla obu ról, FEEDER i SOURCE). Iloczyn cech: rola pola ×
-    obecność/brak `catalog_ref` — nie tylko przykład z karty.
-    """
+    """Dokładny payload PRODUKCYJNEGO kreatora (`KreatorPolaNn.tsx`) — bez `catalog_ref`:
+    brama przepuszcza. Wskazanie POPRAWNE też przechodzi; wskazanie NIEISTNIEJĄCE —
+    odmowa `catalog.item_not_found` (operacja zapisuje wiązanie na polu, więc brama nie może
+    przepuścić martwej referencji)."""
     blad, pola = validate_and_materialize_catalog_binding("add_nn_outgoing_field", payload)
     assert blad is None, f"Kreator 'Pole odpływowe nN' zostałby odrzucony bramą: {blad}"
     assert pola == {}
 
-    # Payload z JAWNIE podanym (niepoprawnym) catalog_ref też przechodzi bramę —
-    # operacja go i tak nie czyta, więc bramkowanie byłoby fikcją kontroli.
+    z_poprawna = {**payload, "catalog_ref": "cb_nn_630a"}
+    blad_ok, _ = validate_and_materialize_catalog_binding("add_nn_outgoing_field", z_poprawna)
+    assert blad_ok is None, blad_ok
+
     z_bledna_referencja = {**payload, "catalog_ref": "nie-istnieje-w-katalogu"}
     blad2, _ = validate_and_materialize_catalog_binding(
         "add_nn_outgoing_field", z_bledna_referencja
     )
-    assert blad2 is None, f"Nieużywana referencja nie powinna nic bramkować: {blad2}"
+    assert blad2 is not None and blad2.code == "catalog.item_not_found", blad2
 
 
 def _frontend_catalog_first_operations() -> set[str]:
@@ -1278,9 +1292,9 @@ def test_bramka_i_frontend_zgadzaja_sie_co_do_wymogu_katalogu() -> None:
         f"{sorted(frontend_bez_backendu)}"
     )
 
-    # `add_nn_outgoing_field`: NIE MA w żadnym z dwóch zbiorów (naprawa #2) — pin
-    # jawny, żeby regresja (przywrócenie do CATALOG_REQUIRED_OPERATIONS bez
-    # równoczesnej naprawy operacji/frontu) zapaliła ten test od razu.
+    # `add_nn_outgoing_field`: NIE MA w żadnym z dwóch zbiorów (wskazanie opcjonalne,
+    # naprawa NAPRAWA-B #2) — pin jawny, żeby przywrócenie wymogu bez naprawy kreatora
+    # zapaliło ten test od razu.
     assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
     assert "add_nn_outgoing_field" not in frontend
 
@@ -1304,7 +1318,7 @@ def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
 
     Zwraca (migawka, feeder_ref) — `feeder_ref` pochodzi z `selection_hint`
     operacji, TAK SAMO jak w `_enm_with_feeder`, bo miejsce przechowania pola
-    w migawce (`bays` czy `substations[].meta.nn_field_specs`) jest szczegółem
+    w migawce (rekord `bays`) jest szczegółem
     implementacyjnym `_field_ref_exists`, nie kontraktem tego testu.
     """
     enm: dict[str, Any] = {
@@ -1316,7 +1330,6 @@ def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
                 "name": "ST-1",
                 "station_type": "mv_lv",
                 "bus_refs": ["bus-nn"],
-                "field_specs": [],
             }
         ],
     }

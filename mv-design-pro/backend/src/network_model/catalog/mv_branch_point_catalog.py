@@ -44,36 +44,6 @@ def _route_ports(*, branch_ports_count: int, medium: str) -> list[dict[str, Any]
     return ports
 
 
-def _zksn_field_specs(branch_ports_count: int) -> list[dict[str, Any]]:
-    fields = [
-        {
-            "field_ref": "FIELD_IN",
-            "designation": "WE",
-            "bay_role": "IN",
-            "field_type": "pole_liniowe",
-            "port_id": "MAIN_IN",
-        },
-        {
-            "field_ref": "FIELD_OUT",
-            "designation": "WY",
-            "bay_role": "OUT",
-            "field_type": "pole_liniowe",
-            "port_id": "MAIN_OUT",
-        },
-    ]
-    fields.extend(
-        {
-            "field_ref": f"FIELD_BRANCH_{idx}",
-            "designation": f"ODG {idx}",
-            "bay_role": "BRANCH",
-            "field_type": "pole_odgalezne",
-            "port_id": f"BRANCH_{idx}" if branch_ports_count > 1 else "BRANCH",
-        }
-        for idx in range(1, branch_ports_count + 1)
-    )
-    return fields
-
-
 def _zksn_solution(branch_ports_count: int) -> dict[str, Any]:
     return {
         "object_role": "MV_SWITCHGEAR_BRANCH_NODE",
@@ -81,7 +51,9 @@ def _zksn_solution(branch_ports_count: int) -> dict[str, Any]:
         "switchgear_kind": "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA",
         "has_transformer": False,
         "route_ports": _route_ports(branch_ports_count=branch_ports_count, medium="CABLE"),
-        "switchgear_field_specs": _zksn_field_specs(branch_ports_count),
+        # Pola rozdzielnicy (WE, WY, ODG n) NIE są parametrem katalogu: operacja wstawienia
+        # ZKSN tworzy je jako rekordy `bays` modelu z portów punktu (`enm.pola.
+        # pola_zksn_z_portow`) — jeden nośnik pól SN, nN i ZKSN (karta W5-B).
     }
 
 

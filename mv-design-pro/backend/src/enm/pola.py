@@ -173,12 +173,32 @@ def czy_pole_nn(
 ) -> bool:
     """Czy pole leży na szynie nN — JEDYNY predykat poziomu pola (dawna przynależność wpisu do
     kolekcji `nn_field_specs`). Rozstrzyga pasmo napięcia szyny `bus_ref`
-    (`pasma_napieciowe.w_pasmie_nn`: 0 < Uₙ ≤ 1 kV); szyna nieznana albo bez napięcia = NIE nN."""
+    (`pasma_napieciowe.w_pasmie_nn`: 0 < Uₙ ≤ 1 kV); szyna nieznana albo bez napięcia = NIE nN.
+
+    Pole stacji GPZ (`station_type == "gpz"`) NIGDY nie jest polem nN: GPZ to punkt zasilania
+    sieci, jego pola są polami liniowymi magistrali niezależnie od pasma napięcia ekwiwalentu
+    (sieć benchmarkowa CIGRE LV ma GPZ 0,4 kV). Dawna kolekcja `nn_field_specs` nigdy nie
+    zawierała pól GPZ — bez tego wyjątku równoważność „predykat = dawna kolekcja" pękałaby
+    dokładnie na GPZ w paśmie nN (odejście magistrali, zajętość pól, walidator, scena)."""
+    if _czy_pole_gpz(enm, rekord):
+        return False
     mapa = napiecia if napiecia is not None else napiecia_szyn(enm)
     szyna = _napis(_pole_rekordu(rekord, "bus_ref"))
     if szyna is None:
         return False
     return w_pasmie_nn(mapa.get(szyna))
+
+
+def _czy_pole_gpz(enm: Mapping[str, Any] | EnergyNetworkModel, rekord: Any) -> bool:
+    """Czy pole należy do stacji typu GPZ (typowane `Substation.station_type`)."""
+    wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
+    if wlasciciel is None:
+        return False
+    return any(
+        _pole_rekordu(stacja, "ref_id") == wlasciciel
+        and _pole_rekordu(stacja, "station_type") == "gpz"
+        for stacja in _kolekcja(enm, "substations")
+    )
 
 
 def pola_sn_stacji(
@@ -295,7 +315,14 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
         model = Bay.model_validate(dict(rekord))
     except ValueError as blad:
         raise BladPola(f"pole {rekord.get('ref_id')!r}: {blad}") from blad
-    return model.model_dump(mode="json")
+    # DETERMINIZM: `ENMElement.id` ma fabrykę `uuid4` — rekord zbudowany operacją (bez `id`)
+    # dostałby LOSOWY identyfikator techniczny, a ta sama operacja na tym samym wejściu dawałaby
+    # różne migawki. Rekord bez `id` zostaje bez `id` (jak każdy element dopisywany operacjami
+    # topologii); rekord z `id` (odczyt z magazynu) zachowuje go bez zmian.
+    wynik = model.model_dump(mode="json")
+    if "id" not in rekord:
+        wynik.pop("id", None)
+    return wynik
 
 
 def zbuduj_pole(

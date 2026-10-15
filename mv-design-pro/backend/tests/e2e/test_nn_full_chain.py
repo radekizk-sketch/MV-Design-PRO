@@ -53,11 +53,11 @@ czytelnika, NIE jako aktualny opis testów poniżej. Karta NAPRAWA-A:
 KARTA D3 (2026-08-14) — FLIP DRUGI: zabity trwały fantom odbioru ST-03, który
 NAPRAWA-A świadomie zostawiła poza zakresem (patrz stan historyczny niżej,
 TRZECIE ZNALEZISKO BRAMKI). Diagnoza pomiarem krok-po-kroku substratu
-(zrzut `enm.loads`/`substation.meta.nn_field_specs` po KAŻDEJ operacji
+(zrzut `enm.loads`/pól nN (`bays`) po KAŻDEJ operacji
 domenowej) wykazała: fantom materializował się natychmiast PO
 `insert_station_on_segment_sn`, na WBUDOWANYM starterze „Odpływ nN 1" — nie
 przez wyścig NAPRAWA-B (ten dowodnie zabity, patrz pkt 4), tylko przez
-`enm.domain_operations._build_nn_field_specs` (wspólny builder
+`enm.domain_operations._zbuduj_pola_nn` (wspólny builder
 `insert_station_on_segment_sn`/`append_station_on_endpoint`), który
 FABRYKOWAŁ jeden nieproszony odpływ (`max(1, len(feeders))`) nawet wtedy, gdy
 wołający NIE dotknął `nn_block` w ogóle. Taki wpis, bez własnego odbioru i
@@ -65,7 +65,7 @@ bez znacznika `nn_field_origin` (marker zapisują WYŁĄCZNIE
 `add_nn_outgoing_field`/`_append_nn_source_meta_field`), był dla migracji
 katalogowej NIEODRÓŻNIALNY od prawdziwego legacy odpływu — migracja SŁUSZNIE
 wg WŁASNEGO kryterium materializowała mu odbiór przy KAŻDYM odczycie modelu.
-Naprawa u źródła (`_build_nn_field_specs`): brak klucza
+Naprawa u źródła (`_zbuduj_pola_nn`): brak klucza
 `outgoing_feeders_nn_count` w `nn_block` daje TERAZ zero odpływów (nie floor
 „co najmniej 1") — jawny count (nawet 1) tworzy tyle odpływów i ZOSTAJE
 legalnym kandydatem migracji (NAPRAWA-B pin, `tests/enm/
@@ -144,7 +144,7 @@ kreatora, tworzony PRZEZ `insert_station_on_segment_sn`, NIE przez
 więc jego fantomowy odbiór 30 kW był TRWAŁY (regenerował się przy każdym
 odczycie) — jeden, znany, udokumentowany artefakt, osobny od naprawionego
 wyścigu K2/K3. KARTA D3 zabiła TEN fantom u JEGO źródła (patrz wyżej) —
-`_build_nn_field_specs` przestała FABRYKOWAĆ ten starter, gdy wołający nie
+`_zbuduj_pola_nn` przestała FABRYKOWAĆ ten starter, gdy wołający nie
 zażądał żadnego odpływu (`nn_block` bez `outgoing_feeders_nn_count`) — KROK 0
 asertuje dziś ZERO fantomów, nie jeden trwały.
 
@@ -461,7 +461,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
     )
     # KARTA D3: ST-03 NIE dostaje żadnego wbudowanego domyślnego "Odpływu
     # nN 1" — payload powyżej świadomie NIE niesie `nn_block`, więc
-    # `_build_nn_field_specs` (naprawiona tą kartą) nie fabrykuje nieproszonego
+    # `_zbuduj_pola_nn` (naprawiona tą kartą) nie fabrykuje nieproszonego
     # startera i migracja katalogowa nie ma czego materializować na ST-03
     # (dawny trwały fantom, poza zakresem NAPRAWA-B — patrz docstring modułu,
     # sekcja "KARTA D3"). Zweryfikowane wprost jako ZERO fantomów w
@@ -793,7 +793,7 @@ class TestNnFullChain:
         trwały fantom (ST-03, „Odpływ nN 1", starter wbudowany przez
         `insert_station_on_segment_sn` — poza zakresem NAPRAWA-B, INNA
         przyczyna źródłowa). Karta D3 zabiła TEN fantom u JEGO źródła
-        (`enm.domain_operations._build_nn_field_specs` przestała FABRYKOWAĆ
+        (`enm.domain_operations._zbuduj_pola_nn` przestała FABRYKOWAĆ
         nieproszony starter, gdy `nn_block` nie niesie jawnego
         `outgoing_feeders_nn_count` — patrz docstring modułu, sekcja „KARTA
         D3") — substrat poniżej NIE wysyła `nn_block` w ogóle przy
@@ -829,7 +829,7 @@ class TestNnFullChain:
         ), "Silnik M1 NIE MOŻE sam być fantomem migracji — to zaprojektowany odbiór"
 
         # DOWÓD NAPRAWY D3: KARTA D3 zabiła u źródła fantom ST-03, który
-        # NAPRAWA-B świadomie zostawiła poza zakresem (`_build_nn_field_specs`
+        # NAPRAWA-B świadomie zostawiła poza zakresem (`_zbuduj_pola_nn`
         # przestała fabrykować nieproszony starter „Odpływ nN 1" gdy
         # `insert_station_on_segment_sn`/`append_station_on_endpoint` dostają
         # `nn_block` bez jawnego `outgoing_feeders_nn_count` — patrz docstring
