@@ -445,7 +445,8 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   generator: 'rozplyw',
   // O-53 (AB-H0, 2026-09-24): jedna regula mocy zrodla emituje kody `converter.*` w obszarze
   // GENERATORS (`transformer_capacity_exceeded`, `setpoint_above_rating`,
-  // `power_check_input_invalid`) — ten sam cel co `generator.*`.
+  // `power_check_input_invalid`, a od punktu 1 karty O-53b `power_check_group_ambiguous`)
+  // — ten sam cel co `generator.*`.
   converter: 'rozplyw',
   oze: 'rozplyw',
   pv_bess: 'rozplyw',

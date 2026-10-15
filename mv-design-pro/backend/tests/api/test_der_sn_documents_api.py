@@ -388,7 +388,10 @@ def test_blad_programu_przy_propozycji_d2_wybucha_zamiast_pominiecia_sekcji(
     solvera doboru nie znika w „sekcja D2 pominięta" — dociera do wołającego (500).
     Karta ODMOWA-DANYCH-422: także zwykły `ValueError` jest obcym wyjątkiem — sekcję D2
     „nieocenioną" daje wyłącznie nazwana odmowa `OdmowaDanychError`."""
-    import network_model.solvers.der_selection_preview as dobor
+    # Karta GPT-478: dokumenty DER-SN dobierają TR blokowy przez wspólną kaskadę
+    # `application.analyses.dobor_toru_der_sn` (ta sama co podgląd i szablony) — tam jest
+    # wywołanie silnika, więc tam podmieniamy krok doboru transformatora.
+    import application.analyses.dobor_toru_der_sn as dobor
 
     def _zepsuty(*args, **kwargs):
         raise typ("błąd programu")
@@ -403,7 +406,7 @@ def test_blad_programu_przy_propozycji_d2_wybucha_zamiast_pominiecia_sekcji(
 
 
 def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, monkeypatch) -> None:
-    import network_model.solvers.der_selection_preview as dobor
+    import application.analyses.dobor_toru_der_sn as dobor
 
     def _odmowa(*args, **kwargs):
         raise OdmowaDanychError("ΣS falowników musi być dodatnie.")

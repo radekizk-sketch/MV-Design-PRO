@@ -76,12 +76,14 @@ function blockTransformerFixture(
     galvanic_isolation: true, source_reference: 'Fikstura testowa', verification_status: 'VERIFIED',
   };
 }
-// Karta FAB-J: 4000 kVA jest tu CELOWO — falownik 2500 kW wymaga ≥2778 kVA
+// Karta FAB-J: 3150 kVA jest tu CELOWO — falownik 2500 kW wymaga ≥2778 kVA
 // (cos φ 0,90), więc auto-dobór wybiera najmniejszy typoszereg, który to
-// przenosi. Bez pozycji 4000 kVA test 1 nie miałby czego dobrać.
+// przenosi. Bez pozycji 3150 kVA test 1 nie miałby czego dobrać. Identyfikator
+// odpowiada istniejącej pozycji katalogu (`btr_der_15_069_3150`); dawna pozycja
+// 4000 kVA została usunięta z katalogu (powyżej 3150 kVA brak źródła strat Tier 2).
 const BLOCK_TRANSFORMER_FIXTURES = [
   blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
-  blockTransformerFixture('btr_der_15_069_4000', 4000, 15, 0.69),
+  blockTransformerFixture('btr_der_15_069_3150', 3150, 15, 0.69),
 ];
 
 // Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
@@ -292,7 +294,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     // KONCZYL SIE na 2500 kVA, wiec zaden kandydat nie spelnial warunku, dobor
     // zwracal null i kreator przyjmowal recznie wskazany, ZA MALY transformator.
     // Typoszereg oparty na realnym katalogu ma 4 MVA — i to jest teraz wynik.
-    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_der_15_069_4000');
+    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_der_15_069_3150');
     expect(der.profiles.pf_curve_ref).toBe('pf_droop_5');
     // BESS modes nie powinny byc dla PV.
     expect(der.profiles.bess_operation_mode_refs).toEqual([]);

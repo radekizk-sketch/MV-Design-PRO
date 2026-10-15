@@ -37,7 +37,7 @@ describe('<SzczegolySzablonu /> — panel szczegółów (karta §2)', () => {
     const szablon = szablonFarmaPv();
     render(<SzczegolySzablonu szablon={szablon} onZastosuj={() => {}} />);
     expect(screen.queryByText(SZABLONY_STRINGS.szczegolyBrakDer)).not.toBeInTheDocument();
-    expect(screen.getByText('Falownik PV SN przez block TR')).toBeInTheDocument();
+    expect(screen.getByText('Falownik PV przez własny transformator blokowy nN/SN')).toBeInTheDocument();
   });
 
   it('klik „Zastosuj i edytuj" woła onZastosuj z id szablonu', () => {

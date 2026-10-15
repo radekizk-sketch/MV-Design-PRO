@@ -46,6 +46,11 @@ class DerSnTrack:
     field_spec: dict[str, Any] | None
     apparatus: dict[str, Any] | None
     mv_bus: dict[str, Any] | None
+    transformatory_grupy: tuple[dict[str, Any], ...]
+    """Transformatory grupy kontroli mocy O-53 źródła (`enm.domain_operations_v2.
+    grupa_kontroli_mocy` — ta sama grupa, którą sprawdza operacja zapisu)."""
+    pozostale_zrodla_grupy: tuple[dict[str, Any], ...]
+    """Pozostałe źródła przekształtnikowe zasilane przez te transformatory (suma O-53)."""
 
     @property
     def source_ref(self) -> str:
@@ -153,6 +158,9 @@ def extract_der_sn_track(
 
     field_ref = meta.get("der_mv_field_ref")
     field_spec = _field_spec_for(enm, field_ref if isinstance(field_ref, str) else None)
+    from enm.domain_operations_v2 import grupa_kontroli_mocy
+
+    grupa = grupa_kontroli_mocy(enm, generator)
 
     return DerSnTrack(
         generator=generator,
@@ -168,6 +176,8 @@ def extract_der_sn_track(
         field_spec=field_spec,
         apparatus=_apparatus_for(branch_index, field_ref if isinstance(field_ref, str) else None),
         mv_bus=bus_index.get(str(meta.get("der_mv_bus_ref") or "")),
+        transformatory_grupy=grupa.transformatory,
+        pozostale_zrodla_grupy=grupa.pozostale_zrodla,
     )
 
 

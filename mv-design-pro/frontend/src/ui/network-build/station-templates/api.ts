@@ -243,6 +243,15 @@ export interface PreviewTemplateResult {
       p_mw_each: number | null;
       connection_variant: string;
       expected_count_per_kind: number;
+      /** Tor jednostki po stronie SN (addytywne): WŁASNY transformator blokowy nN/SN, kabel
+       *  SN i aparat pola z kaskady doboru backendu; `null` dla jednostek po stronie nN. */
+      block_transformer_ref: string | null;
+      block_transformer_name: string | null;
+      block_transformer_sn_mva: number | null;
+      required_apparent_power_mva_each: number | null;
+      inverter_output_kv: number | null;
+      mv_cable_ref: string | null;
+      mv_field_apparatus_ref: string | null;
     }[];
   };
   estimated_elements_count: number;

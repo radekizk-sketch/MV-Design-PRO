@@ -472,6 +472,8 @@ const biblioteka = vi.hoisted(() => {
       });
     },
     oczekujace: null as Promise<void> | null,
+    /** Gdy ustawione — podgląd szablonu odpowiada odmową (np. HTTP 422 z kodem odmowy). */
+    odmowaPodgladu: null as string | null,
     zwolnij(): void {
       wstrzymaj?.();
       wstrzymaj = null;
@@ -524,7 +526,9 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
       },
     }),
   previewStationTemplate: () =>
-    Promise.resolve({
+    biblioteka.odmowaPodgladu !== null
+      ? Promise.reject(new Error(biblioteka.odmowaPodgladu))
+      : Promise.resolve({
       template_id: 'tpl_farma_pv_1mw',
       template_name_pl: 'Farma PV 1 MW',
       category: 'farma_pv',
@@ -1529,6 +1533,32 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
         (screen.getByTestId('mvd-kreator-stacja-pole-szablon-1') as HTMLSelectElement).value,
       ).not.toBe('');
     });
+  });
+
+  /**
+   * Karta GPT-478 pkt 7.3 — odmowa podglądu szablonu (np. niedobór transformatora stacji)
+   * dochodzi do projektanta. Dawniej `catch(() => null)` wypełniało formularz bez doboru
+   * transformatora i bez słowa wyjaśnienia.
+   */
+  it('odmowa podglądu szablonu jest pokazana, a nie połknięta', async () => {
+    biblioteka.odmowaPodgladu =
+      'Transformator stacji 100 kVA nie pokrywa mocy wymaganej 105 kVA.';
+    try {
+      render(<KreatorStacjiSnNn />);
+      const wybor = (await screen.findByTestId(
+        'mvd-kreator-stacja-szablon-wybor',
+      )) as HTMLSelectElement;
+      await waitFor(() => {
+        expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull();
+      });
+      await userEvent.selectOptions(wybor, 'tpl_typowa_400');
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zastosuj'));
+      const blad = await screen.findByTestId('mvd-kreator-stacja-szablon-blad');
+      expect(blad.textContent).toContain('Podgląd szablonu odrzucony');
+      expect(blad.textContent).toContain('nie pokrywa mocy wymaganej 105 kVA');
+    } finally {
+      biblioteka.odmowaPodgladu = null;
+    }
   });
 
   it('rodziny NIEDOSTĘPNE są WIDOCZNE i wyłączone — z jawnym powodem', async () => {

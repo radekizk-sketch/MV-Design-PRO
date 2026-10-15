@@ -10,7 +10,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
-    TR_BLOCK_BESS_OPTIONS,
+    TR_OPTIONS_POTRZEBY_WLASNE,
     VT_OPTIONS,
 )
 from application.station_templates.schema import (
@@ -42,7 +42,7 @@ def _bess(
         icon="station-bess",
         tags=("BESS", "magazyn", "OZE", f"NC_RfG_{nc_rfg_type}"),
         schema=TemplateSchema(
-            transformer_options=TR_BLOCK_BESS_OPTIONS,
+            transformer_options=TR_OPTIONS_POTRZEBY_WLASNE,
             sn_bays_count=TemplateParamInt(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),

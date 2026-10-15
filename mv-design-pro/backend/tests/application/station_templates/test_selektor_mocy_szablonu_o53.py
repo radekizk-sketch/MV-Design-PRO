@@ -8,7 +8,7 @@ były drugą, niezależną regułą tej samej klasy „moc źródła × transfor
   `conv-pv-residential-50kw-04kv` nie dawały tokenu, więc selektor zwracał `None`
   dla KAŻDEJ mocy, a szablon brał pozycję domyślną 50 kW także przy nastawie 0,5 MW
   (tor tworzenia odmawiał wtedy `converter.setpoint_above_rating`);
-* dobór transformatora (dziś `schema.wymagana_moc_der_kva`) liczył jednostkę jako `sn_mva`
+* dobór transformatora (dziś `schema.wymagania_transformatora_stacji`) liczył jednostkę jako `sn_mva`
   pozycji, a bez pozycji — jako moc CZYNNĄ nastawy; szablony prosumenckie dobierały
   przez to transformator do mocy czynnej (100 kW → 100 kVA) przy falownikach
   2 × 55 kVA (S_n,jedn z karty), czyli ponad moc znamionową transformatora.
@@ -29,10 +29,11 @@ from __future__ import annotations
 import pytest
 from application.station_templates import list_templates
 from application.station_templates.schema import (
+    COS_PHI_ODBIORU_NN_SZABLONU,
     _der_catalog_for_power,
     _moc_wymagana_jednostki_der_mva,
     resolve_template_default_transformer_choice,
-    wymagana_moc_der_kva,
+    wymagania_transformatora_stacji,
 )
 from domain.generator_validation import (
     moc_czynna_jednostki_mw,
@@ -127,22 +128,34 @@ def test_pozycje_nn_bez_tokenu_mocy_w_nazwie_sa_dobierane_po_tabliczce() -> None
 
 
 @pytest.mark.parametrize(
-    ("template_id", "oczekiwana_kva", "oczekiwany_tr"),
+    ("template_id", "oczekiwana_zrodel_kva", "oczekiwany_tr"),
     [
         # 2 × falownik 50 kW, S_n,jedn = 55 kVA z karty → 110 kVA > 100 kVA: dawny dobór
         # po mocy czynnej (100 kW → 100 kVA) dawał transformator poniżej mocy falowników.
         ("tpl_pv_prosument_100kw", 110, "tr-sn-nn-15-04-160kva-dyn11"),
         # 5 × 55 kVA = 275 kVA > 250 kVA — ta sama klasa.
         ("tpl_pv_prosument_250kw", 275, "tr-sn-nn-15-04-400kva-dyn11"),
-        # 1 × 55 kVA (karta 50 kW; mniejszej pozycji PV nN katalog nie ma) → 63 kVA.
-        ("tpl_pv_prosument_5kw", 55, "tr-sn-nn-15-04-63kva-dyn11"),
     ],
 )
 def test_transformator_prosumenta_dobrany_do_mocy_pozornej_falownikow(
-    template_id: str, oczekiwana_kva: int, oczekiwany_tr: str
+    template_id: str, oczekiwana_zrodel_kva: int, oczekiwany_tr: str
 ) -> None:
     szablon = next(t for t in _SZABLONY_Z_DER if t.id == template_id)
-    assert wymagana_moc_der_kva(szablon) == oczekiwana_kva
+    wymagania = wymagania_transformatora_stacji(szablon)
+    assert round(wymagania.moc_zrodel_nn_kva) == oczekiwana_zrodel_kva
     wybor = resolve_template_default_transformer_choice(szablon)
     assert wybor is not None
     assert wybor.catalog_ref == oczekiwany_tr
+
+
+def test_transformator_prosumenta_pokrywa_tez_odbiory_nn() -> None:
+    # Korekta 2026-10-15: transformator stacji zasila także odbiory nN szablonu (2 × 50 kW
+    # przy cosφ 0,95 = 105 kVA). Dawny dobór patrzył wyłącznie na moc źródeł i dla
+    # mikroinstalacji 5 kW dawał 63 kVA przy 105 kVA odbiorów.
+    szablon = next(t for t in _SZABLONY_Z_DER if t.id == "tpl_pv_prosument_5kw")
+    wymagania = wymagania_transformatora_stacji(szablon)
+    odbiory_kva = 2 * 50.0 / COS_PHI_ODBIORU_NN_SZABLONU
+    assert wymagania.moc_odbiorow_kva == pytest.approx(odbiory_kva)
+    assert wymagania.wymagana_kva == pytest.approx(odbiory_kva)
+    wybor = resolve_template_default_transformer_choice(szablon)
+    assert wybor is not None and wybor.catalog_ref == "tr-sn-nn-15-04-160kva-dyn11"

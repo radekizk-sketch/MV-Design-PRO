@@ -1,4 +1,10 @@
-"""Stacje OZE wiatrowe — 4 templates (1-3 MW turbiny + farma)."""
+"""Stacje OZE wiatrowe — 4 szablony (turbiny 1–3 MW + farma).
+
+Korekta 2026-10-15 (karta GPT-478, pkt 7.4): nazwy obiecywały modele producenta
+(„Vestas V90/V112"), których pozycje katalogowe nie niosą, a szablon „1 MW" tworzył
+pozycję 2 MW z nastawą 1 MW. Każda turbina jest pozycją po stronie nN (generator 0,69 kV)
+z WŁASNYM transformatorem blokowym nN/SN dobieranym z katalogu (`schema.
+dobor_toru_jednostki_der_sn`); pozycja 1 MW pochodzi z katalogu z proweniencją."""
 
 from __future__ import annotations
 
@@ -10,7 +16,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
-    TR_BLOCK_FW_OPTIONS,
+    TR_OPTIONS_POTRZEBY_WLASNE,
     VT_OPTIONS,
 )
 from application.station_templates.schema import (
@@ -39,9 +45,9 @@ def _wiatr(
         use_case_pl="Stacja przyłączeniowa turbin wiatrowych.",
         nc_rfg_type=nc_rfg_type,
         icon="station-wind",
-        tags=("wiatr", "FW", "OZE", "Vestas", f"NC_RfG_{nc_rfg_type}"),
+        tags=("wiatr", "FW", "OZE", "block_transformer", f"NC_RfG_{nc_rfg_type}"),
         schema=TemplateSchema(
-            transformer_options=TR_BLOCK_FW_OPTIONS,
+            transformer_options=TR_OPTIONS_POTRZEBY_WLASNE,
             sn_bays_count=TemplateParamInt(
                 default=2, min_value=1, max_value=8, label_pl="Liczba pól SN"
             ),
@@ -69,24 +75,25 @@ def _wiatr(
 WIATROWE_TEMPLATES = (
     _wiatr(
         "tpl_wiatr_1mw_pojedyncza",
-        "Turbina wiatrowa 1 MW (Vestas V90)",
-        "Pojedyncza turbina 1 MW z block TR.",
+        "Turbina wiatrowa 1 MW",
+        "Pojedyncza turbina 1 MW (generator 0,69 kV) z własnym transformatorem blokowym nN/SN.",
         fw_count=1,
         fw_p_mw_each=1.0,
         nc_rfg_type="B",
     ),
     _wiatr(
         "tpl_wiatr_2mw",
-        "Turbina wiatrowa 2 MW (Vestas V90-2MW)",
-        "Turbina 2 MW NC RfG typ B.",
+        "Turbina wiatrowa 2 MW",
+        "Turbina 2 MW (generator 0,69 kV) z własnym transformatorem blokowym, NC RfG typ B.",
         fw_count=1,
         fw_p_mw_each=2.0,
         nc_rfg_type="B",
     ),
     _wiatr(
         "tpl_wiatr_3mw",
-        "Turbina wiatrowa 3 MW (Vestas V112-3MW)",
-        "Turbina 3 MW NC RfG typ C-D z usługami systemowymi.",
+        "Turbina wiatrowa 3 MW",
+        "Turbina 3 MW (generator 0,69 kV) z własnym transformatorem blokowym, NC RfG typ C-D "
+        "z usługami systemowymi.",
         fw_count=1,
         fw_p_mw_each=3.0,
         nc_rfg_type="C",
@@ -94,7 +101,7 @@ WIATROWE_TEMPLATES = (
     _wiatr(
         "tpl_wiatr_farma_5x2mw",
         "Farma wiatrowa 5× 2 MW kolektor SN",
-        "Farma 10 MW (5 turbin × 2 MW) z kolektorem SN.",
+        "Farma 10 MW (5 turbin × 2 MW, każda z własnym transformatorem blokowym) z kolektorem SN.",
         fw_count=5,
         fw_p_mw_each=2.0,
         nc_rfg_type="D",

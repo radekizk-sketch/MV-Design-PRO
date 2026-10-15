@@ -131,36 +131,27 @@ def preview_station_template(
         _resolve_sn_bay_roles,
         _resolve_sn_field_specs,
         _resolve_station_type,
-        _resolve_transformer_ref_for_template,
-        rozstrzygnij_sklad_der_lub_odmowa,
+        rozstrzygnij_parametry_szablonu,
     )
 
     overrides = request.params_override
     profile = request.catalog_profile
 
-    # Resolve effective config
-    sn_bays_count = int(overrides.get("sn_bays_count", template.schema.sn_bays_count.default))
-    nn_feeders_count = int(
-        overrides.get("nn_feeders_count", template.schema.nn_feeders_count.default)
-    )
-    # Skład DER z TEGO SAMEGO rozstrzygnięcia co zastosowanie szablonu (liczebności, moc
-    # jednostki, pozycja katalogu) — przed doborem transformatora, który z niego korzysta.
+    # Parametry projektanta, skład DER, transformator stacji i tory jednostek DER-SN z TEJ
+    # SAMEJ funkcji co zastosowanie szablonu — jedna odmowa (HTTP 422 z kodem klasy odmowy)
+    # zamiast dawnych cichych `int(...)`.
     try:
-        sklad_der = rozstrzygnij_sklad_der_lub_odmowa(template, overrides)
+        parametry = rozstrzygnij_parametry_szablonu(template, overrides, profile)
     except TemplateApplyError as exc:
         raise HTTPException(
             status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
         ) from exc
+    sklad_der = parametry.sklad_der
+    sn_bays_count = parametry.sn_bays_count
+    nn_feeders_count = parametry.nn_feeders_count
     der_count = len(sklad_der)
-    transformer_count = int(
-        overrides.get("transformer_count", template.schema.transformer_count.default)
-    )
-
-    transformer_ref = _resolve_transformer_ref_for_template(
-        template,
-        overrides=overrides,
-        catalog_profile=profile,
-    )
+    transformer_count = parametry.transformer_count
+    transformer_ref = parametry.transformer_ref
     cb_catalog = overrides.get("nn_feeder_cb_ref") or _cascade_manufacturer_choice(
         template.schema.nn_feeder_cb_options, profile
     )
@@ -177,15 +168,30 @@ def preview_station_template(
 
     der_summary = []
     for der_spec in template.schema.der_options:
-        jednostki = [j for j in sklad_der if j.spec is der_spec]
+        pary = [
+            (j, tor)
+            for j, tor in zip(sklad_der, parametry.tory_der_sn, strict=True)
+            if j.spec is der_spec
+        ]
+        tor = pary[0][1] if pary else None
         der_summary.append(
             {
                 "kind": der_spec.kind,
                 # Bez jednostek tej technologii (liczba 0) — pozycja i moc nie dotyczą.
-                "catalog_ref": jednostki[0].catalog_ref if jednostki else None,
-                "p_mw_each": jednostki[0].p_mw_each if jednostki else None,
+                "catalog_ref": pary[0][0].catalog_ref if pary else None,
+                "p_mw_each": pary[0][0].p_mw_each if pary else None,
                 "connection_variant": der_spec.connection_variant_options[0],
-                "expected_count_per_kind": len(jednostki),
+                "expected_count_per_kind": len(pary),
+                # Tor jednostki po stronie SN (addytywne): WŁASNY transformator blokowy,
+                # kabel SN i aparat pola źródłowego z kaskady doboru — te same refy
+                # materializuje zastosowanie. `None` dla jednostek po stronie nN.
+                "block_transformer_ref": tor.transformator_ref if tor else None,
+                "block_transformer_name": tor.transformator_nazwa if tor else None,
+                "block_transformer_sn_mva": tor.transformator_sn_mva if tor else None,
+                "required_apparent_power_mva_each": tor.moc_wymagana_mva if tor else None,
+                "inverter_output_kv": tor.napiecie_falownika_kv if tor else None,
+                "mv_cable_ref": tor.kabel_ref if tor else None,
+                "mv_field_apparatus_ref": tor.aparat_ref if tor else None,
             }
         )
 
@@ -433,11 +439,11 @@ _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
     TemplateCategory.SLUPOWA: "Stacje słupowe ZSP (50-400 kVA, wieś)",
     TemplateCategory.ZKSN_WNETRZOWA: "Stacje wnętrzowe z RMU (630-2500 kVA, miasto)",
     TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV 5-250 kW (NC RfG typ A-C)",
-    TemplateCategory.FARMA_PV: "Farmy PV SN 0.5-5 MW z block transformer",
+    TemplateCategory.FARMA_PV: "Farmy PV SN 0,5-5 MW, falowniki z transformatorami blokowymi nN/SN",
     TemplateCategory.BESS: "Magazyny BESS 0.5-5 MW z usługami systemowymi",
     TemplateCategory.HYBRYDOWA: "Farmy hybrydowe PV + BESS",
     TemplateCategory.PRZEMYSLOWA: "Stacje przemysłowe odbiorcze (zakłady, silniki)",
-    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe (Vestas V90/V112)",
+    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe, turbiny z transformatorami blokowymi nN/SN",
     TemplateCategory.SEKCYJNA: "Stacje sekcyjne/pętlowe z NOP/SZR",
     TemplateCategory.GPZ_110_SN: "GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem",
     TemplateCategory.ROZDZIELNIA_SIECIOWA: "Rozdzielnie sieciowe RS/RSM — bez transformatora",

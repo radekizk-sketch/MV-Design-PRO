@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import copy
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -441,6 +442,11 @@ def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
 #: ISTNIENIA pozycji (`_blad_aparatu_pola`) i znacznik pochodzenia zapisywany do
 #: migawki muszą pytać o TĘ SAMĄ przestrzeń (V12K-316 dług 4).
 _PRZESTRZEN_APARATU_POLA_SN = "APARAT_SN"
+
+#: Długość kabla SN przyłączeniowego toru DER-SN [km] (krótki odcinek 50 m: TR blokowy przy
+#: stacji), gdy wołający jej nie podaje — JEDNA stała dla materializacji toru i dla doboru
+#: kabla, który przed materializacją robią szablony stacji (`application/station_templates`).
+DLUGOSC_KABLA_PRZYLACZENIOWEGO_DER_SN_KM = 0.05
 _PRZESTRZEN_APARATU_POLA_NN = "APARAT_NN"
 
 
@@ -1571,7 +1577,79 @@ def _transformatory_zasilajace(
     return transformatory_sciezki_zasilania(enm, szyna, indeks)
 
 
-def _moc_transformatorow_mva(transformatory: list[dict[str, Any]]) -> float | None:
+@dataclass(frozen=True)
+class GrupaKontroliMocy:
+    """Grupa kontroli mocy O-53 źródła przekształtnikowego: transformatory, które je
+    zasilają, i POZOSTAŁE źródła przekształtnikowe zasilane przez którykolwiek z nich —
+    domknięte (źródło → jego transformatory → inne źródła tych transformatorów → ich
+    transformatory), w kolejności `ref_id`."""
+
+    transformatory: tuple[dict[str, Any], ...]
+    pozostale_zrodla: tuple[dict[str, Any], ...]
+
+
+def _refy_transformatorow(transformatory: list[dict[str, Any]]) -> set[str]:
+    return {
+        str(transformator.get("ref_id"))
+        for transformator in transformatory
+        if isinstance(transformator.get("ref_id"), str)
+    }
+
+
+def grupa_kontroli_mocy(
+    enm: dict[str, Any],
+    generator: dict[str, Any],
+    indeks: dict[str, list[dict[str, Any]]] | None = None,
+) -> GrupaKontroliMocy:
+    """Grupa, którą kontrola O-53 porównuje z transformatorami SUMĄ (punkt 1 karty O-53b,
+    rozstrzygnięcie architekta 2026-10-15): transformator wspólny kilku źródeł — także
+    źródeł po stronie nN stacji i źródła w wariancie z transformatorem blokowym wskazującym
+    ten sam transformator — przenosi ich moc łącznie.
+
+    `generator` to rekord, który operacja zapisze; rekord modelu o tym samym `ref_id`
+    (stan przed zmianą) nie wchodzi do pozostałych źródeł. Topologia zasilania każdego
+    źródła — `_transformatory_zasilajace` (ta sama dla każdej drogi zapisu)."""
+    if indeks is None:
+        indeks = _indeks_transformatorow_wysp(enm)
+    wlasne = _transformatory_zasilajace(enm, generator, indeks)
+    refy = _refy_transformatorow(wlasne)
+    if not refy:
+        return GrupaKontroliMocy(tuple(wlasne), ())
+    ref_zrodla = generator.get("ref_id")
+    inne = [
+        zrodlo
+        for zrodlo in enm.get("generators", [])
+        if isinstance(zrodlo, dict)
+        and technologia_generatora(zrodlo) is not None
+        and (ref_zrodla is None or zrodlo.get("ref_id") != ref_zrodla)
+    ]
+    zasilanie_innych = [
+        _refy_transformatorow(_transformatory_zasilajace(enm, zrodlo, indeks)) for zrodlo in inne
+    ]
+    czlonkowie: set[int] = set()
+    zmiana = True
+    while zmiana:
+        zmiana = False
+        for numer, zasilanie in enumerate(zasilanie_innych):
+            if numer not in czlonkowie and zasilanie & refy:
+                czlonkowie.add(numer)
+                refy |= zasilanie
+                zmiana = True
+    transformatory = sorted(
+        (
+            transformator
+            for transformator in enm.get("transformers", [])
+            if isinstance(transformator, dict) and transformator.get("ref_id") in refy
+        ),
+        key=lambda transformator: str(transformator.get("ref_id")),
+    )
+    pozostale = sorted(
+        (inne[numer] for numer in czlonkowie), key=lambda zrodlo: str(zrodlo.get("ref_id") or "")
+    )
+    return GrupaKontroliMocy(tuple(transformatory), tuple(pozostale))
+
+
+def moc_transformatorow_mva(transformatory: Sequence[dict[str, Any]]) -> float | None:
     """Σ S_n,TR · liczba torów (`liczba_torow` — ta sama reguła co solver)."""
     suma = 0.0
     for transformator in transformatory:
@@ -1592,15 +1670,17 @@ def kontrola_mocy_generatora_w_modelu(
     indeks: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Decyzja O-53 dla rekordu generatora w modelu `enm`: nastawa ≤ moc znamionowa
-    instalacji oraz moc transformatora zasilającego — `domain.generator_validation.
-    sprawdz_moc_generatora`, jedna reguła i jeden kod dla każdej drogi zapisu.
+    instalacji oraz moc transformatorów zasilających wobec SUMY grupy
+    (`grupa_kontroli_mocy`) — `domain.generator_validation.sprawdz_moc_generatora`, jedna
+    reguła i jeden kod dla każdej drogi zapisu.
     Zwraca odpowiedź błędu albo `None`."""
-    transformatory = _transformatory_zasilajace(enm, generator, indeks)
+    grupa = grupa_kontroli_mocy(enm, generator, indeks)
     odmowa = sprawdz_moc_generatora(
         generator,
-        moc_transformatorow_mva=_moc_transformatorow_mva(transformatory),
+        moc_transformatorow_mva=moc_transformatorow_mva(grupa.transformatory),
         tabliczka=tabliczka,
         sprawdz_nastawe=sprawdz_nastawe,
+        pozostale_zrodla=grupa.pozostale_zrodla,
     )
     if odmowa is None:
         return None
@@ -1634,7 +1714,7 @@ def _moc_zasilajaca_generator_mva(
     generator: dict[str, Any],
     indeks: dict[str, list[dict[str, Any]]],
 ) -> float | None:
-    return _moc_transformatorow_mva(_transformatory_zasilajace(enm, generator, indeks))
+    return moc_transformatorow_mva(_transformatory_zasilajace(enm, generator, indeks))
 
 
 def odmowa_kontroli_mocy_po_zmianie(
@@ -5935,7 +6015,7 @@ def _add_converter_source_der_sn(
     # 4. Kabel SN przyłączeniowy: szyna SN TR blokowego → zacisk pola źródłowego SN.
     cable_length_km = _as_float(mv_field_cfg.get("cable_length_km"))
     if cable_length_km is None or cable_length_km <= 0:
-        cable_length_km = 0.05  # krótki odcinek przyłączeniowy (50 m) — domyślny
+        cable_length_km = DLUGOSC_KABLA_PRZYLACZENIOWEGO_DER_SN_KM
     laying_conditions, laying_error = _der_cable_laying_conditions(mv_field_cfg)
     if laying_error is not None:
         return _error_response(laying_error, "der.mv_cable_laying_conditions_invalid")

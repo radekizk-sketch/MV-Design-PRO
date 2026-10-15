@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 from application.station_templates import get_template, list_templates
-from application.station_templates.schema import wymagana_moc_der_kva
+from application.station_templates.schema import wymagania_transformatora_stacji
 from domain.generator_validation import moc_pozorna_wymagana_generatora_mva
 from network_model.pochodne import mva_na_kva
 
@@ -140,8 +140,24 @@ def _sprawdz_parytet_podgladu_i_modelu(podglad: dict, payload: dict, snapshot: d
     assert w_modelu == w_podgladzie
     assert cfg["der_total_count"] == sum(liczba for liczba, _, _ in w_modelu.values())
     transformatory = [t for t in snapshot["transformers"] if t["ref_id"] in utworzone]
-    if transformatory:
-        assert {t["catalog_ref"] for t in transformatory} == {cfg["transformer_ref"]}
+    stacyjne = [
+        t
+        for t in transformatory
+        if (t.get("meta") or {}).get("catalog_role") != "TRANSFORMATOR_BLOKOWY_DER"
+    ]
+    blokowe = [t for t in transformatory if t not in stacyjne]
+    if stacyjne:
+        assert {t["catalog_ref"] for t in stacyjne} == {cfg["transformer_ref"]}
+        # Liczba transformatorów szablonu jest w modelu (n_parallel), nie tylko w podglądzie.
+        assert {t.get("n_parallel") or 1 for t in stacyjne} == {cfg["transformer_count"]}
+    # Transformatory blokowe: po jednym na jednostkę po stronie SN, refy z podglądu.
+    oczekiwane_blokowe = sorted(
+        item["block_transformer_ref"]
+        for item in cfg["der_mix"]
+        if item.get("block_transformer_ref")
+        for _ in range(item["expected_count_per_kind"])
+    )
+    assert sorted(t["catalog_ref"] for t in blokowe) == oczekiwane_blokowe
 
 
 #: Decyzja O-53 (KLASA, nie instancja): KAŻDY szablon z źródłem przekształtnikowym musi
@@ -149,6 +165,17 @@ def _sprawdz_parytet_podgladu_i_modelu(podglad: dict, payload: dict, snapshot: d
 #: szablon BESS 5 MW (2 kontenery po 2,5 MW bez pozycji katalogowej 2,5 MW) przechodził
 #: tylko dlatego, że tor nie sprawdzał nastawy. Lista wyprowadzona z katalogu szablonów.
 _SZABLONY_Z_OZE = tuple(sorted(t.id for t in list_templates() if t.schema.der_options))
+
+#: Karta GPT-478: szablony stacji wstawianych w odcinek z ≥ 2 transformatorami — parytet
+#: `n_parallel` == `transformer_count` (dawniej parametr był pokazywany i ignorowany).
+#: Lista wyprowadzona z katalogu szablonów; GPZ (korzeń modelu) ma własną ścieżkę.
+_SZABLONY_WIELOTRANSFORMATOROWE = tuple(
+    sorted(
+        t.id
+        for t in list_templates()
+        if t.schema.transformer_count.default >= 2 and t.category.value != "gpz_110_sn"
+    )
+)
 
 
 @pytest.mark.parametrize(
@@ -162,6 +189,7 @@ _SZABLONY_Z_OZE = tuple(sorted(t.id for t in list_templates() if t.schema.der_op
             "tpl_bess_5mw_10mwh_fcr_n",
             "tpl_wiatr_3mw",
             *_SZABLONY_Z_OZE,
+            *_SZABLONY_WIELOTRANSFORMATOROWE,
         }
     ),
 )
@@ -267,11 +295,38 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
             if generator["ref_id"] in utworzone
         ]
         assert len(generatory_szablonu) == expected_der_count
-        suma_wymagana_mva = sum(
-            moc_pozorna_wymagana_generatora_mva(generator) or 0.0
+        generatory_nn = [
+            generator
             for generator in generatory_szablonu
+            if generator.get("connection_variant") == "nn_side"
+        ]
+        suma_wymagana_mva = sum(
+            moc_pozorna_wymagana_generatora_mva(generator) or 0.0 for generator in generatory_nn
         )
-        assert wymagana_moc_der_kva(template, {}) == int(round(mva_na_kva(suma_wymagana_mva)))
+        assert wymagania_transformatora_stacji(template, {}).moc_zrodel_nn_kva == pytest.approx(
+            mva_na_kva(suma_wymagana_mva)
+        )
+        # Rozstrzygnięcie 2026-10-15: jednostka po stronie SN ma WŁASNY transformator blokowy
+        # z katalogu NA ŚCIEŻCE MOCY (generator na jego szynie nN), ten sam, który pokazał
+        # podgląd, o mocy pokrywającej moc wymaganą jednostki (O-53). Żaden generator
+        # szablonu nie stoi na szynie SN stacji ani nie wskazuje transformatora stacji.
+        transformatory = {tr["ref_id"]: tr for tr in snapshot.get("transformers", [])}
+        podglad_mix = {
+            wpis["catalog_ref"]: wpis for wpis in podglad.json()["effective_config"]["der_mix"]
+        }
+        for generator in generatory_szablonu:
+            if generator.get("connection_variant") == "nn_side":
+                continue
+            blokowy = transformatory[generator["blocking_transformer_ref"]]
+            assert blokowy["lv_bus_ref"] == generator["bus_ref"]
+            assert (blokowy.get("meta") or {}).get("catalog_role") == "TRANSFORMATOR_BLOKOWY_DER"
+            assert (
+                blokowy["catalog_ref"]
+                == podglad_mix[generator["catalog_ref"]]["block_transformer_ref"]
+            )
+            assert blokowy["sn_mva"] + 1e-9 >= (
+                moc_pozorna_wymagana_generatora_mva(generator) or 0.0
+            )
 
 
 def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_client) -> None:
@@ -371,7 +426,7 @@ def test_podglad_szablonu_z_pomiarem_ponizej_minimum_pol_zwraca_422(app_client) 
         ),
         (
             "tpl_hybrid_pv1_bess1",
-            {"der_BESS_ref": "conv-bess-2mw-4mwh-15kv"},
+            {"der_BESS_ref": "conv-bess-nn-2mw-0p69kv"},
             {"PV": 2, "BESS": 1},
         ),
         ("tpl_hybrid_pv1_bess1", {"der_PV_count": 2, "der_BESS_count": 0}, {"PV": 2}),
@@ -438,6 +493,64 @@ def test_niespojny_sklad_der_odmowa_422_bez_sladu_w_modelu(app_client, overrides
     )
     assert response.status_code == 422, response.text
     assert response.json()["detail"]["code"] == "template.der_mix_invalid"
+    assert response.json()["detail"]["message_pl"] == podglad.json()["detail"]["message_pl"]
+    assert app_client.get(f"/api/cases/{case_id}/enm").json() == przed
+
+
+@pytest.mark.parametrize(
+    ("template_id", "overrides", "kod"),
+    [
+        ("tpl_sn_nn_400kva", {"sn_bays_count": 2.5}, "template.param_invalid"),
+        ("tpl_sn_nn_400kva", {"nn_feeders_count": "abc"}, "template.param_invalid"),
+        ("tpl_sn_nn_400kva", {"transformer_count": 99}, "template.param_invalid"),
+        ("tpl_sn_nn_400kva", {"nn_load_default_kw": "dużo"}, "template.param_invalid"),
+        ("tpl_sn_nn_1000kva", {"branch_length_m": 12.5}, "template.param_invalid"),
+        ("tpl_sn_nn_1000kva", {"branch_length_m": 0}, "template.branch_length_invalid"),
+        (
+            "tpl_sn_nn_100kva",
+            {"nn_load_default_kw": 100.0},
+            "template.transformer_capacity_insufficient",
+        ),
+        (
+            "tpl_sn_nn_630kva",
+            {"transformer_ref": "tr-sn-nn-15-04-100kva-dyn11"},
+            "template.transformer_capacity_insufficient",
+        ),
+        (
+            "tpl_hybrid_pv1_bess1",
+            {"der_BESS_ref": "conv-bess-2mw-4mwh-15kv"},
+            "converter.der_sn.dobor_tr_brak_kandydata",
+        ),
+    ],
+)
+def test_odmowa_parametrow_jedna_w_podgladzie_i_zastosowaniu_bez_sladu(
+    app_client, template_id: str, overrides: dict, kod: str
+) -> None:
+    """Karta GPT-478 pkt 7.3 — iloczyn: rodzaj odmowy (parametr całkowity, obciążenie,
+    długość odgałęzienia, niedobór transformatora stacji z tokenu i ze wskazania, brak
+    transformatora blokowego) × końcówka (podgląd, zastosowanie) × stan modelu. Dawne
+    ciche `int(...)` obcinało ułamek albo kończyło się błędem 500; teraz jedna funkcja
+    odmowy daje ten sam kod i komunikat w obu końcówkach, a model zostaje nietknięty."""
+    case_id, segment_ref = _przypadek_z_odcinkiem(app_client)
+    przed = app_client.get(f"/api/cases/{case_id}/enm").json()
+    podglad = app_client.post(
+        f"/api/station-templates/{template_id}/preview",
+        json={"params_override": overrides, "catalog_profile": None},
+    )
+    assert podglad.status_code == 422, podglad.text
+    assert podglad.json()["detail"]["code"] == kod
+    response = app_client.post(
+        f"/api/station-templates/{template_id}/apply",
+        json={
+            "case_id": case_id,
+            "target_segment_id": segment_ref,
+            "insert_at_ratio": 0.5,
+            "params_override": overrides,
+            "catalog_profile": None,
+        },
+    )
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"]["code"] == kod
     assert response.json()["detail"]["message_pl"] == podglad.json()["detail"]["message_pl"]
     assert app_client.get(f"/api/cases/{case_id}/enm").json() == przed
 

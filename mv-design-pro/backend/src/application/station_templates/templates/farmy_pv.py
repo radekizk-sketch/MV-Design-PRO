@@ -10,7 +10,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
-    TR_BLOCK_PV_OPTIONS,
+    TR_OPTIONS_POTRZEBY_WLASNE,
     VT_OPTIONS,
 )
 from application.station_templates.schema import (
@@ -41,7 +41,7 @@ def _farma(
         icon="station-pv-farm",
         tags=("farma PV", "OZE", "block_transformer", f"NC_RfG_{nc_rfg_type}"),
         schema=TemplateSchema(
-            transformer_options=TR_BLOCK_PV_OPTIONS,
+            transformer_options=TR_OPTIONS_POTRZEBY_WLASNE,
             sn_bays_count=TemplateParamInt(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),
@@ -71,7 +71,7 @@ def _farma(
 FARMY_PV_TEMPLATES = (
     _farma(
         "tpl_farma_pv_500kw",
-        "Farma PV 500 kW z block TR 0.4/15 kV",
+        "Farma PV 500 kW, falownik z transformatorem blokowym",
         "Mała farma 500 kW przyłączona z 1 falownikiem PV.",
         pv_count=1,
         pv_p_mw_each=0.5,
@@ -79,7 +79,7 @@ FARMY_PV_TEMPLATES = (
     ),
     _farma(
         "tpl_farma_pv_1mw",
-        "Farma PV 1 MW, 2× falownik, block TR 1.25 MVA",
+        "Farma PV 1 MW, 2× falownik 500 kW",
         "Standardowa farma 1 MW: 2 falowniki 500 kW.",
         pv_count=2,
         pv_p_mw_each=0.5,

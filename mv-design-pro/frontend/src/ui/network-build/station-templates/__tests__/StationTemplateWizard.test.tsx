@@ -280,6 +280,26 @@ describe('StationTemplateWizard', () => {
     ).toBeNull();
   });
 
+  it('obciążenie odpływu nN jest polem kreatora i trafia do nadpisań podglądu', async () => {
+    render(<StationTemplateWizard targetSegmentRef="seg/abc/segment" />);
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('params-tab-nn_feeders'));
+    // Parametr szablonu `nn_load_default_kw` (backend: zakres + dobór transformatora stacji).
+    const pole = screen
+      .getByTestId('param-num-Obciążenie odpływu nN [kW]')
+      .querySelector('input') as HTMLInputElement;
+    expect(pole.value).toBe('50');
+    fireEvent.change(pole, { target: { value: '120' } });
+    expect(pole.value).toBe('120');
+  });
+
   it('protection tab shows E2Tango option with PTPiREE badge', async () => {
     render(<StationTemplateWizard targetSegmentRef="seg/x/segment" />);
     await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
@@ -400,18 +420,18 @@ describe('StationTemplateWizard', () => {
 
 describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
   const BESS_05 = {
-    catalog_ref: 'conv-bess-0.5mw-1mwh-15kv',
-    label_pl: 'BESS 0.5 MW / 1 MWh',
+    catalog_ref: 'conv-bess-nn-0p5mw-0p69kv',
+    label_pl: 'BESS 0,5 MW / 1 MWh 0,69 kV',
     namespace: 'ZRODLO_NN_BESS',
   };
   const BESS_1 = {
-    catalog_ref: 'conv-bess-1mw-2mwh-15kv',
-    label_pl: 'BESS 1 MW / 2 MWh',
+    catalog_ref: 'conv-bess-nn-1mw-0p69kv',
+    label_pl: 'BESS 1 MW / 2 MWh 0,69 kV',
     namespace: 'ZRODLO_NN_BESS',
   };
   const PV_05 = {
-    catalog_ref: 'conv-pv-0.5mw-15kv',
-    label_pl: 'PV 0.5 MW 15 kV',
+    catalog_ref: 'conv-pv-nn-0p5mw-0p69kv',
+    label_pl: 'Falownik PV 0,5 MW 0,69 kV',
     namespace: 'ZRODLO_NN_PV',
     default: true,
   };
@@ -432,7 +452,7 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
       der_options: [
         {
           kind: 'PV',
-          label_pl: 'Falownik PV SN przez block TR',
+          label_pl: 'Falownik PV przez własny transformator blokowy nN/SN',
           catalog_options: [PV_05],
           default_count: 4,
           default_p_mw_each: 0.5,
@@ -441,7 +461,7 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
         },
         {
           kind: 'BESS',
-          label_pl: 'Magazyn BESS SN przez block TR',
+          label_pl: 'Magazyn BESS przez własny transformator blokowy nN/SN',
           // Pierwsza opcja listy (0,5 MW) NIE jest tą, którą backend wybierze dla jednostki
           // 1 MW — kreator ma pokazać pozycję z kontraktu (`default_catalog_ref`).
           catalog_options: [BESS_05, BESS_1],
@@ -474,7 +494,7 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
             station_type: 'inline',
             catalog_profile_applied: null,
             effective_config: {
-              transformer_ref: 'tr-sn-nn-15-04-2500kva-dyn11',
+              transformer_ref: 'tr-sn-nn-15-04-63kva-dyn11',
               transformer_count: 1,
               sn_bays_count: 3,
               sn_bay_roles: ['IN', 'MEASUREMENT', 'OUT'],
@@ -491,13 +511,28 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
                   p_mw_each: 0.5,
                   connection_variant: 'block_transformer',
                   expected_count_per_kind: 4,
+                  block_transformer_ref: 'tr-sn-nn-15-0p69-0p63mva-dyn11-inverter',
+                  block_transformer_name: 'TR 15/0.69 kV 630 kVA Dyn11 PV/BESS/FW',
+                  block_transformer_sn_mva: 0.63,
+                  required_apparent_power_mva_each: 0.55,
+                  inverter_output_kv: 0.69,
+                  mv_cable_ref: 'cable-polish-yhakxs-1c-50',
+                  mv_field_apparatus_ref: 'sw-ls-abb-nal-24kv-400a',
                 },
                 {
                   kind: 'BESS',
-                  catalog_ref: BESS_1.catalog_ref,
-                  p_mw_each: 1,
+                  // Backend dobiera pozycję do mocy jednostki 1,5 MW (O-53): 2 MW, nie 1 MW.
+                  catalog_ref: 'conv-bess-nn-2mw-0p69kv',
+                  p_mw_each: 1.5,
                   connection_variant: 'block_transformer',
                   expected_count_per_kind: 2,
+                  block_transformer_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
+                  block_transformer_name: 'TR 15/0.69 kV 2.5 MVA Dyn11 PV/BESS/FW',
+                  block_transformer_sn_mva: 2.5,
+                  required_apparent_power_mva_each: 2.2,
+                  inverter_output_kv: 0.69,
+                  mv_cable_ref: 'cable-polish-yhakxs-1c-50',
+                  mv_field_apparatus_ref: 'sw-ls-abb-nal-24kv-400a',
                 },
               ],
             },
@@ -535,16 +570,32 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
     });
     expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('2');
     expect(screen.getByText(/Łączna liczba modułów DER: 6/)).toBeTruthy();
+    // Pkt 7.2: moc jednostki jest polem kreatora (`der_<rodzaj>_p_mw_each`), wysyłanym do
+    // backendu bez przeliczeń — dobór pozycji i toru robi backend.
+    const mocBess = screen
+      .getByTestId('param-num-Moc jednostki BESS [MW]')
+      .querySelector('input') as HTMLInputElement;
+    expect(mocBess.value).toBe('1');
+    fireEvent.change(mocBess, { target: { value: '1.5' } });
+    expect(mocBess.value).toBe('1.5');
 
     fireEvent.click(screen.getByTestId('wizard-next'));
     await waitFor(() => screen.getByTestId('wizard-step-content-profile'));
     fireEvent.click(screen.getByTestId('wizard-next'));
     await waitFor(() => screen.getByTestId('wizard-step-content-preview'));
-    await waitFor(() => screen.getByText(/4× PV 0.5 MW, conv-pv-0.5mw-15kv/));
-    expect(screen.getByText(/2× BESS 1 MW, conv-bess-1mw-2mwh-15kv/)).toBeTruthy();
+    await waitFor(() => screen.getByText(/4× PV 0.5 MW, conv-pv-nn-0p5mw-0p69kv/));
+    expect(screen.getByText(/2× BESS 1.5 MW, conv-bess-nn-2mw-0p69kv/)).toBeTruthy();
+    // Tor jednostki po stronie SN: własny transformator blokowy z doboru backendu.
+    const trBess = screen.getByTestId('preview-tr-blokowy-BESS');
+    expect(trBess.textContent).toContain('2× TR 15/0.69 kV 2.5 MVA Dyn11 PV/BESS/FW');
+    expect(trBess.textContent).toContain('Sn 2.5 MVA, wymagane 2.2 MVA na jednostkę');
+    expect(screen.getByTestId('preview-tr-blokowy-PV').textContent).toContain(
+      '4× TR 15/0.69 kV 630 kVA Dyn11 PV/BESS/FW',
+    );
 
     const override = previewBodies.at(-1)?.params_override as Record<string, unknown>;
     expect(override.der_BESS_count).toBe(2);
+    expect(override.der_BESS_p_mw_each).toBe(1.5);
     expect(override.der_total_count).toBe(6);
   });
 });

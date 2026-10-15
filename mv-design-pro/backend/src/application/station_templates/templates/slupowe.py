@@ -21,6 +21,7 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    obciazenie_odplywu_param,
 )
 
 
@@ -30,6 +31,7 @@ def _slupowa(
     description_pl: str,
     *,
     default_feeders: int,
+    obciazenie_odplywu_kw: float = 50.0,
     with_der: bool = False,
     nc_rfg_type: str | None = None,
 ) -> StationTemplate:
@@ -63,6 +65,7 @@ def _slupowa(
                 default=default_feeders, min_value=1, max_value=4, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
+            nn_load_default_kw=obciazenie_odplywu_param(obciazenie_odplywu_kw),
             der_options=der_options,
             der_total_count=der_count,
             ct_options=CT_OPTIONS,
@@ -78,12 +81,18 @@ SLUPOWE_TEMPLATES = (
         "Stacja słupowa 50 kVA, 1 pole, 2 odpływy",
         "Mała wieś / kolonia (50 kVA) — słup pojedynczy.",
         default_feeders=2,
+        # Transformator 63 kVA (typoszereg 50 kVA nie istnieje w katalogu): 2 × 20 kW przy
+        # cosφ 0,95 = 42 kVA. Dawne 2 × 50 kW (105 kVA) przekraczały transformator, który
+        # szablon obiecuje nazwą (pomiar 2026-10-15).
+        obciazenie_odplywu_kw=20.0,
     ),
     _slupowa(
         "tpl_slupowa_100kva",
         "Stacja słupowa 100 kVA, 1 pole, 2 odpływy",
         "Standardowa wieś (100 kVA).",
         default_feeders=2,
+        # 2 × 45 kW przy cosφ 0,95 = 95 kVA ≤ 100 kVA (dawne 2 × 50 kW = 105 kVA).
+        obciazenie_odplywu_kw=45.0,
     ),
     _slupowa(
         "tpl_slupowa_160kva",

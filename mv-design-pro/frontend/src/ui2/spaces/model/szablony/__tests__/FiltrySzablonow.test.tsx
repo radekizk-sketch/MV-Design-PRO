@@ -149,9 +149,10 @@ describe('filtrujSzablony — kompozycja filtrów (funkcja czysta, iloczyn cech)
     expect(wynik.map((s) => s.id)).toEqual(['a']);
   });
 
-  it('filtruje po zakresie mocy (rated_power_kva: 630 vs 1250)', () => {
-    const wynik = filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, mocMinKva: 1000 });
+  it('filtruje po zakresie mocy transformatora stacji (rated_power_kva: 630 vs 63)', () => {
+    const wynik = filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, mocMaxKva: 100 });
     expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_1mw']);
+    expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, mocMinKva: 600 }).map((s) => s.id)).toEqual(['a']);
   });
 
   it('filtruje po napięciu (obie fixture mają domyślnie 15 kV — filtr 20 kV nie dopasowuje nic)', () => {

@@ -1357,7 +1357,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dotad mialo zaszyte `cos_phi=0.95` (liczba niewidoczna dla skanera — dlug ukryty,
     # teraz objety tym jednym wpisem). Funkcja przyjmuje nosnik z polem `cos_phi`, zeby
     # forma B pozostala widoczna dla skanera (parametr skalarny wypadlby ze wzorca).
-    "api/grid_source_preview.py": {
+    # Karta GPT-478 (2026-10-15): klucz pliku "api/grid_source_preview.py" ->
+    # "application/analyses/dobor_toru_der_sn.py" (budzet BEZ ZMIANY, 1). Kaskada doboru toru
+    # DER-SN (TR blokowy -> kabel -> pole) przeniesiona z modulu API do JEDNEJ orkiestracji
+    # aplikacyjnej `cos_phi_doboru_kabla`/`dobierz_tor_der_sn`, wolanej przez podglad kreatora,
+    # odstepstwa dokumentu DER-SN i szablony stacji — to samo jedno podstawienie.
+    "application/analyses/dobor_toru_der_sn.py": {
         "B:ifexp:zrodlo.cos_phi": 1,
     },
     "application/analyses/fault_loop/route.py": {

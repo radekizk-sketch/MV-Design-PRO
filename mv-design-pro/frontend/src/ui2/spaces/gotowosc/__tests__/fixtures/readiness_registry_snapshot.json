@@ -146,6 +146,10 @@
     },
     {
       "area": "GENERATORS",
+      "code": "converter.power_check_group_ambiguous"
+    },
+    {
+      "area": "GENERATORS",
       "code": "converter.power_check_input_invalid"
     },
     {
@@ -585,5 +589,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 146
+  "count": 147
 }

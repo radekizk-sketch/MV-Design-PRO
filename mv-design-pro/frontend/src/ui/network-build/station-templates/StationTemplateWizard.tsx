@@ -606,6 +606,17 @@ function ParamsStep(props: {
             max={template.schema.nn_feeders_count.max_value}
             onChange={(v) => onChange('nn_feeders_count', v)}
           />
+          {/* Obciążenie jednego odpływu nN — parametr szablonu `nn_load_default_kw`; backend
+              sprawdza zakres i dobiera z niego moc transformatora stacji (odmowa przy
+              niedoborze zamiast cichego wyboru największej opcji). */}
+          <ParamNumber
+            label={`${template.schema.nn_load_default_kw.label_pl || 'Obciążenie odpływu nN'} [${template.schema.nn_load_default_kw.unit}]`}
+            value={(overrides.nn_load_default_kw as number | string | undefined) ?? template.schema.nn_load_default_kw.default}
+            min={template.schema.nn_load_default_kw.min_value}
+            max={template.schema.nn_load_default_kw.max_value}
+            step={template.schema.nn_load_default_kw.step}
+            onChange={(v) => onChange('nn_load_default_kw', v)}
+          />
           <ChoiceSelect
             label="Aparatura CB odpływów nN"
             options={template.schema.nn_feeder_cb_options}
@@ -651,6 +662,16 @@ function ParamsStep(props: {
                       onChange={(v) => onChange(`der_${der.kind}_count`, v)}
                     />
                   )}
+                  {/* Nastawa mocy czynnej jednostki (`der_<rodzaj>_p_mw_each`) — backend
+                      dobiera do niej pozycję katalogu i tor (transformator blokowy, kabel,
+                      aparat pola); wynik doboru pokazuje podgląd. Zero fizyki w UI. */}
+                  <ParamNumber
+                    label={`Moc jednostki ${der.kind} [MW]`}
+                    value={(overrides[`der_${der.kind}_p_mw_each`] as number | string | undefined) ?? der.default_p_mw_each}
+                    min={0}
+                    step={0.1}
+                    onChange={(v) => onChange(`der_${der.kind}_p_mw_each`, v)}
+                  />
                   <ChoiceSelect
                     label={`Katalog ${der.kind}`}
                     options={der.catalog_options}
@@ -854,6 +875,22 @@ function PreviewStep(props: {
                 </span>
               </div>
             )}
+            {/* Tor jednostek po stronie SN: WŁASNY transformator blokowy nN/SN z kaskady doboru
+                backendu (te same pozycje materializuje zastosowanie) — moc wymagana i moc
+                znamionowa z backendu, bez obliczeń w UI. */}
+            {preview.effective_config.der_mix
+              .filter((d) => d.expected_count_per_kind > 0 && d.block_transformer_ref != null)
+              .map((d) => (
+                <div key={`tr-blokowy-${d.kind}`} data-testid={`preview-tr-blokowy-${d.kind}`}>
+                  <span className="text-zinc-400">Transformator blokowy {d.kind}: </span>
+                  <span className="text-zinc-300">
+                    {d.expected_count_per_kind}× {d.block_transformer_name ?? d.block_transformer_ref}
+                  </span>
+                  <span className="text-zinc-500">
+                    {` (Sn ${d.block_transformer_sn_mva ?? '—'} MVA, wymagane ${d.required_apparent_power_mva_each ?? '—'} MVA na jednostkę; falownik ${d.inverter_output_kv ?? '—'} kV; kabel ${d.mv_cable_ref ?? '—'}; aparat pola ${d.mv_field_apparatus_ref ?? '—'})`}
+                  </span>
+                </div>
+              ))}
           </div>
 
           <div className="bg-amber-950/30 border border-amber-700/50 px-3 py-2 rounded text-xs">
@@ -1013,6 +1050,47 @@ function ParamInt(props: {
       <div className="text-xs text-zinc-500">
         zakres: {props.min} — {props.max}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Pole liczby rzeczywistej (MW, kW) — wartość wysyłana do backendu bez zaokrąglenia; puste
+ * pole wysyła pusty tekst, który backend odrzuca nazwaną odmową (`template.param_invalid`
+ * albo `template.der_mix_invalid`), zamiast cichego zera.
+ */
+function ParamNumber(props: {
+  label: string;
+  value: number | string;
+  min?: number;
+  max?: number;
+  step: number;
+  onChange: (v: number | string) => void;
+}): JSX.Element {
+  return (
+    <div data-testid={`param-num-${props.label}`}>
+      <label className="flex items-center text-xs text-zinc-400 mb-1">
+        {props.label}
+        <FieldHint
+          id={`param-num-${props.label}`}
+          whatIsIt={props.label}
+          rangeText={
+            props.max != null ? `${props.min ?? '—'}–${props.max}` : `> ${props.min ?? 0}`
+          }
+          sourceText="szablon stacji (wartość domyślna z definicji szablonu)"
+        />
+      </label>
+      <input
+        type="number"
+        min={props.min}
+        max={props.max}
+        step={props.step}
+        value={props.value}
+        onChange={(e) =>
+          props.onChange(e.target.value === '' ? '' : Number(e.target.value))
+        }
+        className="w-24 px-2 py-1 bg-zinc-800 text-zinc-100 rounded text-sm"
+      />
     </div>
   );
 }

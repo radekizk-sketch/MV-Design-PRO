@@ -33,7 +33,7 @@ from application.station_templates.schema import (
     NieprawidlowySkladDerError,
     _moc_wymagana_jednostki_der_mva,
     rozstrzygnij_sklad_der,
-    wymagana_moc_der_kva,
+    wymagania_transformatora_stacji,
 )
 from enm.domain_operations_v2 import tabliczka_zrodla_przeksztaltnikowego
 
@@ -151,12 +151,16 @@ def test_pozycja_domyslna_kontraktu_szablonu_to_pozycja_materializacji(template)
 
 
 @pytest.mark.parametrize("template", _SZABLONY_Z_DER, ids=lambda t: t.id)
-def test_moc_doboru_tr_to_suma_jednostek_skladu(template) -> None:
+def test_moc_zrodel_transformatora_stacji_to_suma_jednostek_po_stronie_nn(template) -> None:
+    # Transformator stacji przenosi moc WYŁĄCZNIE źródeł po stronie nN; jednostki po stronie
+    # SN mają własne transformatory blokowe (rozstrzygnięcie 2026-10-15).
     oczekiwana_mva = sum(
         _moc_wymagana_jednostki_der_mva(j.kind, j.catalog_ref, j.p_mw_each) or 0.0
         for j in rozstrzygnij_sklad_der(template)
+        if j.spec.connection_variant_options[0] == "nn_side"
     )
-    assert wymagana_moc_der_kva(template) == round(oczekiwana_mva * 1000.0)
+    wymagania = wymagania_transformatora_stacji(template)
+    assert wymagania.moc_zrodel_nn_kva == pytest.approx(oczekiwana_mva * 1000.0)
 
 
 def test_liczebnosci_hybrydy_sa_jedyna_prawda_a_suma_jest_wyprowadzona() -> None:
@@ -207,14 +211,14 @@ def test_moc_jednostki_wybiera_pozycje_a_wskazanie_projektanta_ma_pierwszenstwo(
     template = _hybryda()
     sklad = _sklad(template, {"der_BESS_p_mw_each": 2.0})
     assert sklad["BESS"][1] == {2.0}
-    assert sklad["BESS"][2] == {"conv-bess-2mw-4mwh-15kv"}
+    assert sklad["BESS"][2] == {"conv-bess-nn-2mw-0p69kv"}
     wskazana = _sklad(
-        template, {"der_BESS_p_mw_each": 1.0, "der_BESS_ref": "conv-bess-5mw-10mwh-15kv"}
+        template, {"der_BESS_p_mw_each": 1.0, "der_BESS_ref": "conv-bess-nn-2mw-0p69kv"}
     )
     assert wskazana["BESS"][1] == {1.0}
-    assert wskazana["BESS"][2] == {"conv-bess-5mw-10mwh-15kv"}
+    assert wskazana["BESS"][2] == {"conv-bess-nn-2mw-0p69kv"}
     # Technologia bez nadpisań zostaje przy swoim składzie domyślnym.
-    assert sklad["PV"] == (4, {0.5}, {"conv-pv-0.5mw-15kv"})
+    assert sklad["PV"] == (4, {0.5}, {"conv-pv-nn-0p5mw-0p69kv"})
 
 
 @pytest.mark.parametrize(

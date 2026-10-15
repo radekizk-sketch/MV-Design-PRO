@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
+from application.analyses.dobor_toru_der_sn import OpisUlozeniaKabla, dobierz_tor_der_sn
 from application.analyses.ocena_doboru_magistrali import (
     OdcinekMagistrali,
     ocen_dobor_magistrali,
@@ -13,16 +14,7 @@ from domain.generator_validation import (
     blad_wejsc_kontroli_mocy,
     moc_pozorna_z_nastawy_mva,
 )
-from enm.der_sn_validation import (
-    NN_VOLTAGE_TOLERANCE_KV,
-    SN_VOLTAGE_TOLERANCE_KV,
-    rated_current_a,
-)
-from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, HTTPException
-from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
-from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
-from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
@@ -39,16 +31,7 @@ from network_model.solvers.cable_voltage_drop import (
     compute_cable_voltage_drop,
 )
 from network_model.solvers.der_selection_preview import (
-    BlockTransformerCandidate,
-    BlockTransformerSelectionInput,
-    CableCandidate,
-    CableSelectionInput,
-    FieldApparatusCandidate,
-    FieldApparatusSelectionInput,
     RejectedCandidate,
-    propose_block_transformer,
-    propose_mv_cable,
-    propose_mv_field_apparatus,
 )
 from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
@@ -818,120 +801,6 @@ def _rejected_response(
     ]
 
 
-def _cos_phi_doboru_kabla(
-    zrodlo: DerSelectionPreviewRequest | JawneWejsciaKontroliMocy,
-) -> float:
-    """cosφ prądu toru w doborze kabla (ΔU): jawny cosφ falownika, a bez niego 1,0
-    (sama moc czynna — człon bierny ΔU znika).
-
-    JEDNA reguła dla podglądu kreatora (żądanie podglądu) i dla sprawdzenia odstępstw
-    dokumentu DER-SN (jawne wejścia zapisane przez tor tworzenia, `api/der_sn_documents.py`)
-    — dokument liczy propozycję kabla ponownie i porównuje ją z zastosowanym przekrojem;
-    przy innym cosφ niż w doborze (dawniej zaszyte 0,95) zgłaszałby odstępstwo od
-    propozycji, której kreator nigdy nie pokazał. Podstawienie 1,0 za brak cosφ jest
-    długiem nazwanym w `solver_input_substitute_guard` (jeden wpis dla obu miejsc)."""
-    return zrodlo.cos_phi if zrodlo.cos_phi is not None else 1.0
-
-
-def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
-    candidates: list[BlockTransformerCandidate] = []
-    for record in get_sn_nn_transformer_types():
-        params = record.get("params") or {}
-        sn_mva = params.get("rated_power_mva")
-        primary_kv = params.get("voltage_hv_kv")
-        secondary_kv = params.get("voltage_lv_kv")
-        if sn_mva is None or primary_kv is None or secondary_kv is None:
-            continue
-        candidates.append(
-            BlockTransformerCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                sn_mva=float(sn_mva),
-                primary_kv=float(primary_kv),
-                secondary_kv=float(secondary_kv),
-                uk_percent=(
-                    float(params["uk_percent"]) if params.get("uk_percent") is not None else None
-                ),
-                vector_group=params.get("vector_group"),
-            )
-        )
-    return tuple(candidates)
-
-
-def _opcjonalna_liczba(value: Any) -> float | None:
-    """Liczba katalogowa albo None — brak danej nie moze stac sie zerem."""
-    return float(value) if value is not None else None
-
-
-def _cable_candidates() -> tuple[CableCandidate, ...]:
-    candidates: list[CableCandidate] = []
-    for record in get_all_cable_types():
-        params = record.get("params") or {}
-        cross = params.get("cross_section_mm2")
-        ampacity = params.get("rated_current_a")
-        r_km = params.get("r_ohm_per_km")
-        x_km = params.get("x_ohm_per_km")
-        # Katalog-first: pomijamy rekordy niekompletne (brak obciążalności/impedancji).
-        if cross is None or ampacity is None or r_km is None or x_km is None:
-            continue
-        candidates.append(
-            CableCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                cross_section_mm2=float(cross),
-                rated_current_a=float(ampacity),
-                r_ohm_per_km=float(r_km),
-                x_ohm_per_km=float(x_km),
-                voltage_rating_kv=(
-                    float(params["voltage_rating_kv"])
-                    if params.get("voltage_rating_kv") is not None
-                    else None
-                ),
-                # V12K-224: dane cieplne kandydata. Bez nich kryterium wytrzymalosci
-                # zwarciowej zyly (IEC 60949) bylo w doborze kabla ZAKODOWANE, ale
-                # nigdy nie odpalalo — zaden z 63 typow nie mial czym byc sprawdzony,
-                # a odrzucenie „wytrzymalosc_zwarciowa_niewystarczajaca" bylo martwe.
-                ith_1s_a=_opcjonalna_liczba(params.get("ith_1s_a")),
-                jth_1s_a_per_mm2=_opcjonalna_liczba(params.get("jth_1s_a_per_mm2")),
-                conductor_material=(
-                    str(params["conductor_material"])
-                    if params.get("conductor_material") is not None
-                    else None
-                ),
-                insulation=(
-                    str(params["insulation_type"])
-                    if params.get("insulation_type") is not None
-                    else None
-                ),
-                temp_operating_c=_opcjonalna_liczba(params.get("max_temperature_c")),
-                temp_short_circuit_c=_opcjonalna_liczba(params.get("short_circuit_temperature_c")),
-            )
-        )
-    return tuple(candidates)
-
-
-def _field_apparatus_candidates() -> tuple[FieldApparatusCandidate, ...]:
-    candidates: list[FieldApparatusCandidate] = []
-    for record in get_all_switch_equipment_types():
-        params = record.get("params") or {}
-        kind = params.get("equipment_kind")
-        un_kv = params.get("un_kv")
-        in_a = params.get("in_a")
-        if kind is None or un_kv is None or in_a is None:
-            continue
-        candidates.append(
-            FieldApparatusCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                equipment_kind=str(kind),
-                un_kv=float(un_kv),
-                in_a=float(in_a),
-                ik_ka=(float(params["ik_ka"]) if params.get("ik_ka") is not None else None),
-            )
-        )
-    return tuple(candidates)
-
-
 @router.get(
     "/api/solver/cable-laying-conditions",
     response_model=CableLayingConditionsResponse,
@@ -980,25 +849,39 @@ def preview_der_selection(
     )
     if odmowa is not None:
         raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
+    laying = request.laying_conditions
     try:
         sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(
             request.sum_active_power_mw, request.cos_phi
         )
-        tr_result = propose_block_transformer(
-            BlockTransformerSelectionInput(
-                sum_apparent_power_mva=sum_apparent_power_mva,
-                primary_voltage_kv=request.sn_bus_voltage_kv,
-                secondary_voltage_kv=request.inverter_output_kv,
-                candidates=_block_transformer_candidates(),
-                simultaneity_factor=request.simultaneity_factor,
-                reserve_pu=request.transformer_reserve_pu,
-                loadability_pu=request.loadability_pu,
-                sn_tolerance_kv=SN_VOLTAGE_TOLERANCE_KV,
-                nn_tolerance_kv=NN_VOLTAGE_TOLERANCE_KV,
-            )
+        wynik = dobierz_tor_der_sn(
+            moc_pozorna_mva=sum_apparent_power_mva,
+            napiecie_sn_kv=request.sn_bus_voltage_kv,
+            napiecie_falownika_kv=request.inverter_output_kv,
+            dlugosc_kabla_km=request.cable_length_km,
+            nosnik_cos_phi=request,
+            wspolczynnik_jednoczesnosci=request.simultaneity_factor,
+            przeciazalnosc_pu=request.loadability_pu,
+            rezerwa_transformatora_pu=request.transformer_reserve_pu,
+            rezerwa_kabla_pu=request.cable_reserve_pu,
+            rezerwa_pola_pu=request.field_reserve_pu,
+            maks_spadek_napiecia_pct=request.max_delta_u_pct,
+            charakter_mocy_biernej=request.reactive_character,
+            ulozenie=(
+                OpisUlozeniaKabla(
+                    set_name=laying.set_name,
+                    f_grunt=laying.f_grunt,
+                    f_wiazka=laying.f_wiazka,
+                    f_grupa=laying.f_grupa,
+                    opis_pl=laying.opis_pl,
+                )
+                if laying is not None
+                else None
+            ),
         )
     except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    tr_result = wynik.transformator
 
     transformer_response = BlockTransformerSelectionResponse(
         proposal=(
@@ -1024,7 +907,10 @@ def preview_der_selection(
     )
 
     # Kaskada kabla/pola zależy od prądu SN zaproponowanego TR — bez TR nie proponujemy.
-    if tr_result.proposal is None:
+    cable_result = wynik.kabel
+    field_result = wynik.aparat_pola
+    transformer_current_a = wynik.prad_transformatora_a
+    if cable_result is None or field_result is None or transformer_current_a is None:
         return DerSelectionPreviewResponse(
             sum_apparent_power_mva=sum_apparent_power_mva,
             transformer_current_a=None,
@@ -1032,50 +918,6 @@ def preview_der_selection(
             cable=None,
             field_apparatus=None,
         )
-
-    transformer_current_a = rated_current_a(tr_result.proposal.sn_mva, request.sn_bus_voltage_kv)
-    if transformer_current_a is None:
-        raise HTTPException(
-            status_code=422,
-            detail="Nie można wyznaczyć prądu znamionowego TR (moc/napięcie).",
-        )
-
-    cos_phi_load = _cos_phi_doboru_kabla(request)
-    try:
-        # F-K7: nazwa zestawu / współczynniki własne → współczynniki. Nieznany zestaw i
-        # brak opisu warunków własnych kończą się 422 (fail-closed), nie cichym
-        # przyjęciem warunków katalogowych.
-        laying = request.laying_conditions
-        derating = wspolczynniki_z_opisu(
-            laying.set_name if laying is not None else None,
-            f_grunt=laying.f_grunt if laying is not None else None,
-            f_wiazka=laying.f_wiazka if laying is not None else None,
-            f_grupa=laying.f_grupa if laying is not None else None,
-            opis_pl=laying.opis_pl if laying is not None else None,
-        )
-        cable_result = propose_mv_cable(
-            CableSelectionInput(
-                transformer_current_a=transformer_current_a,
-                length_km=request.cable_length_km,
-                line_voltage_v=kv_na_v(request.sn_bus_voltage_kv),
-                cos_phi=cos_phi_load,
-                candidates=_cable_candidates(),
-                reserve_pu=request.cable_reserve_pu,
-                max_delta_u_pct=request.max_delta_u_pct,
-                reactive_character=request.reactive_character,
-                derating=derating,
-            )
-        )
-        field_result = propose_mv_field_apparatus(
-            FieldApparatusSelectionInput(
-                transformer_current_a=transformer_current_a,
-                system_voltage_kv=request.sn_bus_voltage_kv,
-                candidates=_field_apparatus_candidates(),
-                reserve_pu=request.field_reserve_pu,
-            )
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     cable_response = CableSelectionResponse(
         proposal=(
