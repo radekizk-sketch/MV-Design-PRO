@@ -38,6 +38,7 @@ import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -61,7 +62,7 @@ const kaPl = (wartosc: number): string =>
   wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const CREATOR_HARNESS_URL = adresHarnessu('creator-harness.html');
 const SCREENSHOT_HARNESS_URL = adresHarnessu('screenshot-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('zwarcia-rozplyw:screenshot', () => {

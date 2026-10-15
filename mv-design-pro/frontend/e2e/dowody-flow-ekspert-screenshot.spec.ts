@@ -25,9 +25,10 @@ import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const THEMES = ['light', 'dark'] as const;
 
 interface Scena {

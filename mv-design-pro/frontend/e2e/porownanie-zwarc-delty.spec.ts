@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 
+import { katalogZrzutow } from './katalogZrzutow';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -37,7 +38,7 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
-const OUTPUT_DIR = path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert'));
 
 let opCounter = 0;
 let entityCounter = 0;

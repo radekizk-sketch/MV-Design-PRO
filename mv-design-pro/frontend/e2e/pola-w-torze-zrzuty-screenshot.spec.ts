@@ -19,6 +19,7 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const WERSJA_KATALOGU = '2024.1';
 const APARAT = 'sw-cb-abb-vd4-17kv-630a';
@@ -31,7 +32,7 @@ function katalog(namespace: string, itemId: string) {
   return { catalog_namespace: namespace, catalog_item_id: itemId, catalog_item_version: WERSJA_KATALOGU };
 }
 const HERE = dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09');
+const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09'));
 
 type Enm = {
   substations?: Array<{ ref_id: string; name?: string; station_type?: string | null; meta?: Record<string, unknown> }>;

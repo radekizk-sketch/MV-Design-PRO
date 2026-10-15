@@ -483,6 +483,10 @@ npm run test:e2e
 npm run test:e2e -- $(python ../scripts/e2e_shardy.py --shard 1/4)
 # Refresh the spec times after a full run with `--reporter=json` (PLAYWRIGHT_JSON_OUTPUT_NAME):
 python ../scripts/e2e_shardy.py --aktualizuj raport.json --zrodlo "<opis pomiaru>"
+# An e2e run never changes the repository tree (globalTeardown `e2e/straznikDrzewa.ts` fails the run
+# otherwise). Screenshot specs write to test-results/zrzuty-dokumentacji/<path> by default
+# (`e2e/katalogZrzutow.ts`); refreshing the committed documentation screenshots is explicit:
+ZRZUTY_DO_DOKUMENTACJI=1 npm run test:e2e -- e2e/<spec zrzutowy>.spec.ts
 
 # Run e2e against real backend (critical path)
 npm run test:e2e:real

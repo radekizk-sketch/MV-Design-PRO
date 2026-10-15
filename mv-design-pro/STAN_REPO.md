@@ -317,6 +317,8 @@ PLAYWRIGHT_FRONTEND_URL=http://127.0.0.1:5213 VITE_API_URL_DEV=http://127.0.0.1:
 PLAYWRIGHT_BACKEND_PYTHON="$(cd ../backend && poetry env info -p)/bin/python" \
   npx playwright test e2e/ --workers=1 --reporter=line                           # pełny e2e na realnym backendzie
 # shard e2e (CI: 4 runnery): npx playwright test $(python ../scripts/e2e_shardy.py --shard k/4) …
+# bieg e2e nie zmienia drzewa repo (globalTeardown `e2e/straznikDrzewa.ts`); zrzuty dokumentacji
+# w docs/ tylko jawnie: ZRZUTY_DO_DOKUMENTACJI=1 npx playwright test e2e/<spec zrzutowy>.spec.ts
 ```
 
 Czasy (karta SZYBKIE-TESTY, pomiar 2026-09-30/10-01 na maszynie 4 vCPU bez obcego obciążenia, te same

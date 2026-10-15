@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -51,7 +52,7 @@ const MU_GENERATORA_SYNCHRONICZNEGO = ZWARCIA_WKLADY[
 const liczbaZwarciowaPl = (wartosc: number, miejsca: number): string =>
   wartosc.toLocaleString('pl-PL', { minimumFractionDigits: miejsca, maximumFractionDigits: miejsca });
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('zwarcia-f2:screenshot', () => {

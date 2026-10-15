@@ -25,9 +25,10 @@ import { adresHarnessu } from './adresHarnessu';
 import { otworzAnalize, uruchomAnalize, wypelnijUziomIPotwierdz } from './formularzV126';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const BAZA = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/sld/audyt-2026-08');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/sld/audyt-2026-08'));
 const MOTYWY = ['light', 'dark'] as const;
 
 const WIDOKI = [

@@ -18,12 +18,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-08');
+const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-08'));
 
 let opCounter = 0;
 
