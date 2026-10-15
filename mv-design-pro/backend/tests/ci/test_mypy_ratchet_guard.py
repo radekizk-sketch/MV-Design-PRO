@@ -95,8 +95,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `CatalogRepository(uow.session)`, które zawsze kończyło się połkniętym `TypeError`
     # (3 błędy `call-arg`) ⇒ 226/35 → 223/34; pomiar na scalonym drzewie partii 5 (AB-P1,
     # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
-    assert modul.BASELINE_ERRORS == 223
-    assert modul.BASELINE_FILES == 34
+    # Karta W5-B (2026-10-15): przepisanie pól ZKSN w `enm/catalog_completion.py` na jeden
+    # builder `enm.pola.pola_zksn_z_portow` usunęło 2 błędy `assignment` (różnica zbiorów
+    # błędów baza `f3c435b66` vs gałąź karty; zero nowych) ⇒ 223/34 → 221/33.
+    assert modul.BASELINE_ERRORS == 221
+    assert modul.BASELINE_FILES == 33
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
