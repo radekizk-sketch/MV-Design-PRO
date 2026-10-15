@@ -22,6 +22,7 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
 )
+from enm.pola import pola_zksn
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 
@@ -307,9 +308,24 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
-        field_specs = bp.materialized_params["switchgear_field_specs"]
-        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
-        assert "TR" not in {field.get("bay_role") for field in field_specs}
+        # Pola rozdzielnicy ZKSN są rekordami `bays` punktu rozgałęzienia (karta W5-B; dawniej
+        # `materialized_params.switchgear_field_specs` z rolą „BRANCH" spoza kontraktu Bay).
+        assert "switchgear_field_specs" not in bp.materialized_params
+        pola_punktu = pola_zksn(enm, bp.ref_id)
+        assert [(p.bay_role, p.field_role) for p in pola_punktu] == [
+            ("IN", "LINIA_IN"),
+            ("OUT", "LINIA_OUT"),
+            ("OUT", "LINIA_ODG"),
+            ("OUT", "LINIA_ODG"),
+        ]
+        assert [p.branch_point_port_id for p in pola_punktu] == [
+            "MAIN_IN",
+            "MAIN_OUT",
+            "BRANCH_1",
+            "BRANCH_2",
+        ]
+        assert all(p.substation_ref is None and p.bus_ref == bp.bus_ref for p in pola_punktu)
+        assert "TR" not in {p.bay_role for p in pola_punktu}
 
     def test_insert_zksn_on_endpoint_terminates_cable_without_zero_length_split(self) -> None:
         snapshot, seg_id = _seed_with_cable_segment()
@@ -446,9 +462,20 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
-        field_specs = bp.materialized_params["switchgear_field_specs"]
-        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
-        assert "TR" not in {field.get("bay_role") for field in field_specs}
+        # Uzupełnienie katalogowe dokłada brakujące pola ZKSN jako rekordy `bays`.
+        assert "switchgear_field_specs" not in bp.materialized_params
+        pola_punktu = pola_zksn(completed, bp.ref_id)
+        assert [p.field_role for p in pola_punktu] == [
+            "LINIA_IN",
+            "LINIA_OUT",
+            "LINIA_ODG",
+            "LINIA_ODG",
+        ]
+        assert "TR" not in {p.bay_role for p in pola_punktu}
+        # Idempotencja: drugi przebieg nie dubluje pól.
+        ponownie, zmieniono = complete_catalog_defaults(completed)
+        assert zmieniono is False
+        assert len(pola_zksn(ponownie, bp.ref_id)) == 4
 
     def test_repeated_branch_pole_split_keeps_segment_names_readable(self) -> None:
         snapshot, seg_id = _seed_with_overhead_segment()

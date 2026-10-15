@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMHeader
+from enm.pola import pole
 from solver_input.v126_contracts import build_v126_insulation_from_enm
 
 from tests.enm.model_minimalny import model_minimalny
@@ -37,17 +38,16 @@ def _enm_with_field(voltage_kv: float = 20.0) -> dict:
                     "name": "Stacja 1",
                     "station_type": "mv_lv",
                     "bus_refs": ["BUS_SN"],
-                    "meta": {
-                        "field_specs": [
-                            {
-                                "field_ref": "POLE-IN",
-                                "name": "Pole liniowe",
-                                "bay_role": "IN",
-                                "bus_ref": "BUS_SN",
-                                "equipment_refs": [],
-                            }
-                        ]
-                    },
+                }
+            ],
+            "bays": [
+                {
+                    "ref_id": "POLE-IN",
+                    "name": "Pole liniowe",
+                    "bay_role": "IN",
+                    "substation_ref": "ST1",
+                    "bus_ref": "BUS_SN",
+                    "equipment_refs": [],
                 }
             ],
         }
@@ -59,7 +59,7 @@ def _add(enm: dict, payload: dict) -> dict:
 
 
 def _field_spec(snapshot: dict) -> dict:
-    return snapshot["substations"][0]["meta"]["field_specs"][0]
+    return pole(snapshot, "POLE-IN")
 
 
 def test_materializes_arrester_on_field_spec_from_catalog() -> None:
@@ -92,7 +92,7 @@ def test_unknown_catalog_ref_rejected() -> None:
 
 def test_missing_field_rejected() -> None:
     enm = _enm_with_field()
-    enm["substations"][0]["meta"]["field_specs"] = []
+    enm["bays"] = []
     result = _add(enm, {"bus_ref": "BUS_SN", **_binding(_ARRESTER_ID)})
     assert result.get("error")
     assert result["error_code"] == "spd.field_not_found"

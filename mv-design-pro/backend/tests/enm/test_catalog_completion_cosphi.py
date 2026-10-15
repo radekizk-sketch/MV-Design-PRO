@@ -42,6 +42,7 @@ from enm.catalog_completion import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji
 from enm.store import get_enm, reset_enm_store, set_enm
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import LoadType
@@ -325,13 +326,13 @@ def test_szyna_nn_pobiera_moc_bierna_odbiorow() -> None:
     wyniki = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
 
     # P0.1 nN (LV-INV-12): `create_run` czyta model przez `get_enm`, który
-    # promuje KAŻDY wpis `nn_field_specs` do WŁASNEGO aparatu odpływowego —
+    # promuje KAŻDE pole odpływowe nN do WŁASNEGO aparatu odpływowego —
     # trzy odbiory dołożone migracją katalogową (defekt D7) NIE SĄ już
     # zagregowane na jednej szynie stacji: każdy przenosi się za SWÓJ aparat,
     # na WŁASNĄ (nową) szynę odpływu. Sumujemy moc wstrzykiwaną na tych trzech
     # szynach — fizyka odbiorów (P, Q z katalogowego cosφ) jest identyczna,
     # zmieniła się WYŁĄCZNIE topologia (bus_ref odbioru), którą sprawdza
-    # `tests/enm/test_nn_field_specs_promocja.py`.
+    # `tests/enm/test_promocja_aparatow_nn.py`.
     promowany = get_enm("case-d7-q")
     assert (
         len(promowany.loads) == 3
@@ -405,7 +406,7 @@ def test_materializacja_odbiorow_jest_powtarzalna() -> None:
 #
 # Iloczyn cech na JEDNEJ stacji (nie dwa osobne testy, żeby udowodnić, że
 # predykat pochodzenia faktycznie ROZRÓŻNIA, a nie tylko przypadkiem trafia):
-#   * odpływ LEGACY (wbudowany starter szablonu stacji, `_build_nn_field_specs`,
+#   * odpływ LEGACY (wbudowany starter szablonu stacji, `_zbuduj_pola_nn`,
 #     BEZ znacznika pochodzenia) — MA dostać domyślny odbiór migracji;
 #   * odpływ P0.1 (`add_nn_outgoing_field`, ZE znacznikiem pochodzenia) —
 #     NIGDY nie dostaje fantomu, ani po odczycie między żądaniami, ani po
@@ -437,7 +438,7 @@ def _szyna_nn_stacji(enm: EnergyNetworkModel, station_ref: str) -> str:
     """Szyna nN STACJI (nie szyna odpływu za aparatem promocji P0.1).
 
     `_szyna_nn` wyżej zakłada JEDNĄ szynę nN w całym modelu — założenie prawdziwe
-    tylko PRZED promocją `nn_field_specs_promocja` (każdy promowany odpływ dostaje
+    tylko PRZED promocją aparatów nN (każdy promowany odpływ dostaje
     WŁASNĄ nową szynę, więc po promocji szyn nN jest tyle, ile odpływów + 1).
     Tu wybieramy szynę wprost z `substation.bus_refs`, tak jak robi to
     `application.station_templates.apply._szyna_nn_stacji`.
@@ -451,19 +452,14 @@ def _szyna_nn_stacji(enm: EnergyNetworkModel, station_ref: str) -> str:
 
 
 def _feeder_refs_by_origin(enm: EnergyNetworkModel, station_ref: str) -> dict[str, list[str]]:
-    """`field_ref` odpływów FEEDER stacji, pogrupowane wg pochodzenia wpisu."""
-    substation = next(s for s in enm.substations if s.ref_id == station_ref)
-    meta = substation.meta if isinstance(substation.meta, dict) else {}
-    specs = meta.get("nn_field_specs") or []
+    """Identyfikatory pól odpływowych nN stacji (rekordy `bays`), pogrupowane wg pochodzenia."""
     wynik: dict[str, list[str]] = {"legacy": [], "operacja": []}
-    for spec in specs:
-        if not isinstance(spec, dict) or spec.get("bay_role") != "FEEDER":
+    for pole_nn in pola_nn_stacji(enm, station_ref):
+        if pole_nn.bay_role != "FEEDER":
             continue
-        field_ref = spec.get("field_ref")
-        assert isinstance(field_ref, str)
-        pochodzenie = (spec.get("meta") or {}).get("nn_field_origin")
+        pochodzenie = (pole_nn.meta or {}).get("nn_field_origin")
         klucz = "operacja" if pochodzenie == NN_FIELD_ORIGIN_OPERACJA_DOMENOWA else "legacy"
-        wynik[klucz].append(field_ref)
+        wynik[klucz].append(pole_nn.ref_id)
     return wynik
 
 
@@ -485,7 +481,7 @@ def test_sekwencja_kreatora_p01_nie_zostawia_fantomu_a_legacy_dalej_migruje(
 
     # Krok 0: stacja z JEDNYM odpływem LEGACY (starter wbudowany przez
     # `insert_station_on_segment_sn` — dokładnie ten mechanizm, który migracja
-    # ma nadal obsługiwać: `_build_nn_field_specs` nigdy nie znaczy wpisu).
+    # ma nadal obsługiwać: `_zbuduj_pola_nn` nigdy nie znaczy pola).
     # `set_enm` sam uruchamia `complete_catalog_defaults` (nie tylko odczyt) —
     # więc odpływ legacy dostaje domyślny odbiór JUŻ TUTAJ, zanim kreator
     # wykona choćby jedno żądanie. To jest INTENCJA migracji: legacy ma zostać
