@@ -2,7 +2,7 @@
 FIX-12: Protection Coordination PDF Report Generator
 
 Creates human-readable engineering report with:
-- Summary with overall verdict
+- Summary numbers (smallest grading margin and ratios — no verdict, P-06)
 - Device settings table
 - Sensitivity checks table
 - Selectivity checks table
@@ -18,6 +18,7 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+import math
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -25,12 +26,16 @@ from typing import Any
 from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
+    NAGLOWKI_NASTAW_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
     powod_braku_pl,
+    uzasadnienia_sprawdzen,
+    wiersze_nastaw_urzadzenia,
+    wiersze_podsumowania_pl,
 )
 
 # Check for reportlab availability at import time
@@ -47,31 +52,13 @@ except ImportError:
     rl_config = None
 
 
-# =============================================================================
-# POLISH LABELS
-# =============================================================================
-
-VERDICT_COLORS = {
-    "PASS": "#16a34a",  # green
-    "MARGINAL": "#d97706",  # amber
-    "FAIL": "#dc2626",  # red
-    "ERROR": "#6b7280",  # gray
-}
-
-VERDICT_LABELS_PL = {
-    "PASS": "Prawidłowa",
-    "MARGINAL": "Margines niski",
-    "FAIL": "Nieskoordynowane",
-    "ERROR": "Błąd analizy",
-}
-
-
 def _format_value(value: Any) -> str:
     """Format a value for display in the report."""
     if value is None:
         return "—"
     if isinstance(value, float):
-        if value == float("inf") or value > 900:
+        # Wynik nie niesie liczb zastępczych (brak = ``None``); ∞ wyłącznie dla nieskończoności.
+        if math.isinf(value):
             return "∞"
         return f"{value:.3f}"
     if isinstance(value, bool):
@@ -172,20 +159,15 @@ def export_protection_coordination_to_pdf(
         c.setFillColor(HexColor("#000000"))  # Reset color
         y -= line_height
 
-    def draw_verdict_badge(verdict: str, x: float, y_pos: float) -> None:
-        """Draw a colored verdict badge."""
-        color = VERDICT_COLORS.get(verdict, "#6b7280")
-        label = VERDICT_LABELS_PL.get(verdict, verdict)
-
-        # Draw background rectangle
-        c.setFillColor(HexColor(color))
-        c.roundRect(x, y_pos - 2 * mm, 30 * mm, 6 * mm, 2 * mm, fill=1, stroke=0)
-
-        # Draw text
-        c.setFillColor(HexColor("#ffffff"))
-        c.setFont("DejaVuSans-Bold", 9)
-        c.drawString(x + 2 * mm, y_pos, label)
-        c.setFillColor(HexColor("#000000"))
+    def draw_uzasadnienia(sprawdzenia: list[dict[str, Any]]) -> None:
+        """Zdania z liczbami sprawdzeń pod tabelą (punkt zwarcia, prądy, czasy, wymagania)."""
+        nonlocal y
+        for zdanie in uzasadnienia_sprawdzen(sprawdzenia, nazwy):
+            for fragment in textwrap.wrap(zdanie, width=110):
+                y = check_page_break(line_height)
+                c.setFont("DejaVuSans-Oblique", 8)
+                c.drawString(left_margin + 4 * mm, y, fragment)
+                y -= line_height
 
     # ==========================================================================
     # 1) TITLE
@@ -197,19 +179,8 @@ def export_protection_coordination_to_pdf(
     y -= 12 * mm
 
     # ==========================================================================
-    # 2) OVERALL VERDICT
+    # 2) METADATA — koordynacja nie wydaje werdyktu ogólnego (P-06), tylko liczby niżej
     # ==========================================================================
-    overall_verdict = result.get("overall_verdict", "ERROR")
-    verdict_pl = result.get("summary", {}).get(
-        "overall_verdict_pl", VERDICT_LABELS_PL.get(overall_verdict, overall_verdict)
-    )
-
-    c.setFont("DejaVuSans", 12)
-    c.drawString(left_margin, y, "Wynik analizy:")
-    draw_verdict_badge(overall_verdict, left_margin + 35 * mm, y)
-    y -= 8 * mm
-
-    # Metadata
     if metadata:
         meta_parts = []
         if jest_nazwa(metadata.get("project_name")):
@@ -230,17 +201,7 @@ def export_protection_coordination_to_pdf(
     draw_text("Podsumowanie", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
-    summary = result.get("summary", {})
-    summary_fields = [
-        ("Liczba urządzeń:", str(summary.get("total_devices", 0))),
-        ("Łączna liczba sprawdzeń:", str(summary.get("total_checks", 0))),
-        ("Czułość - prawidłowe:", str(summary.get("sensitivity", {}).get("pass", 0))),
-        ("Czułość - nieprawidłowe:", str(summary.get("sensitivity", {}).get("fail", 0))),
-        ("Selektywność - prawidłowe:", str(summary.get("selectivity", {}).get("pass", 0))),
-        ("Selektywność - nieprawidłowe:", str(summary.get("selectivity", {}).get("fail", 0))),
-        ("Przeciążalność - prawidłowe:", str(summary.get("overload", {}).get("pass", 0))),
-        ("Przeciążalność - nieprawidłowe:", str(summary.get("overload", {}).get("fail", 0))),
-    ]
+    summary_fields = wiersze_podsumowania_pl(result["summary"], _format_value)
 
     label_x = left_margin
     value_x = left_margin + 55 * mm
@@ -269,29 +230,18 @@ def export_protection_coordination_to_pdf(
         sorted_devices = sorted(
             devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
         )
-        dev_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm]
-        draw_table_row(
-            ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"], dev_cols, left_margin, bold=True
-        )
+        dev_cols = [35 * mm, 20 * mm, 30 * mm, 30 * mm, 25 * mm]
+        draw_table_row(list(NAGLOWKI_NASTAW_PL), dev_cols, left_margin, bold=True)
         y -= 2 * mm
 
         for dev in sorted_devices:
-            y = check_page_break(line_height)
-            settings = dev.get("settings", {})
-            stage_51 = settings.get("stage_51", {})
-            curve_settings = stage_51.get("curve_settings", {})
-
-            draw_table_row(
-                [
-                    nazwa_wpisu_urzadzenia(dev)[:12],
-                    dev.get("device_type", "—")[:10],
-                    _format_value(stage_51.get("pickup_current_a")),
-                    _format_value(curve_settings.get("time_multiplier")),
-                    curve_settings.get("variant", "—"),
-                ],
-                dev_cols,
-                left_margin,
-            )
+            for wiersz in wiersze_nastaw_urzadzenia(dev):
+                y = check_page_break(line_height)
+                draw_table_row(
+                    [wiersz[0][:14], *wiersz[1:]],
+                    dev_cols,
+                    left_margin,
+                )
     else:
         c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak urządzeń")
@@ -303,14 +253,14 @@ def export_protection_coordination_to_pdf(
     # 5) SENSITIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Sprawdzenie czułości (I_min / I_pickup)", left_margin, font_size=14, bold=True)
+    draw_text("Czułość — iloraz I_min / I_s", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
     sensitivity_checks = result.get("sensitivity_checks", [])
     if sensitivity_checks:
         sens_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
-            ["Urządzenie", "I_min [A]", "I_pickup [A]", "Margines [%]", "Werdykt"],
+            ["Urządzenie", "I_min [A]", "I_s [A]", "Iloraz", "Wymagany"],
             sens_cols,
             left_margin,
             bold=True,
@@ -319,24 +269,20 @@ def export_protection_coordination_to_pdf(
 
         for check in sensitivity_checks:
             y = check_page_break(line_height)
-            verdict = check.get("verdict", "ERROR")
-            verdict_pl = VERDICT_LABELS_PL.get(verdict, verdict)
-            verdict_color = VERDICT_COLORS.get(verdict, "#000000")
-
             draw_table_row(
                 [
                     textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check.get("device_id")), 20, placeholder="…"
+                        nazwa_urzadzenia(nazwy, check["device_id"]), 20, placeholder="…"
                     ),
-                    _format_value(check.get("i_fault_min_a")),
-                    _format_value(check.get("i_pickup_a")),
-                    _format_value(check.get("margin_percent")),
-                    verdict_pl,
+                    _format_value(check["i_fault_min_a"]),
+                    _format_value(check["i_pickup_a"]),
+                    _format_value(check["ratio"]),
+                    _format_value(check["required_ratio"]),
                 ],
                 sens_cols,
                 left_margin,
-                colors=[None, None, None, None, verdict_color],
             )
+        draw_uzasadnienia(sensitivity_checks)
     else:
         c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak danych")
@@ -348,14 +294,14 @@ def export_protection_coordination_to_pdf(
     # 6) SELECTIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Sprawdzenie selektywności czasowej (Δt)", left_margin, font_size=14, bold=True)
+    draw_text("Selektywność czasowa — odstęp t_nad − t_pod", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
         sel_cols = [30 * mm, 30 * mm, 22 * mm, 22 * mm, 22 * mm, 25 * mm]
         draw_table_row(
-            ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Δt [s]", "Werdykt"],
+            ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"],
             sel_cols,
             left_margin,
             bold=True,
@@ -364,34 +310,34 @@ def export_protection_coordination_to_pdf(
 
         for check in selectivity_checks:
             y = check_page_break(line_height)
-            verdict = check.get("verdict", "ERROR")
-            verdict_pl = VERDICT_LABELS_PL.get(verdict, verdict)
-            verdict_color = VERDICT_COLORS.get(verdict, "#000000")
-
             draw_table_row(
                 [
                     textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check.get("downstream_device_id")),
+                        nazwa_urzadzenia(nazwy, check["downstream_device_id"]),
                         20,
                         placeholder="…",
                     ),
                     textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check.get("upstream_device_id")),
+                        nazwa_urzadzenia(nazwy, check["upstream_device_id"]),
                         20,
                         placeholder="…",
                     ),
-                    _format_value(check.get("t_downstream_s")),
-                    _format_value(check.get("t_upstream_s")),
-                    _format_value(check.get("margin_s")),
-                    verdict_pl,
+                    _format_value(check["t_downstream_s"]),
+                    _format_value(check["t_upstream_s"]),
+                    _format_value(check["margin_s"]),
+                    _format_value(check["required_margin_s"]),
                 ],
                 sel_cols,
                 left_margin,
-                colors=[None, None, None, None, None, verdict_color],
             )
+        draw_uzasadnienia(selectivity_checks)
     else:
         c.setFont("DejaVuSans-Oblique", 10)
-        c.drawString(left_margin, y, "Brak danych (wymaga min. 2 urządzeń)")
+        c.drawString(
+            left_margin,
+            y,
+            "Brak par stopniowania (strefy urządzeń nie są zagnieżdżone albo para jest nierozstrzygalna)",
+        )
         y -= line_height
 
     y -= section_spacing
@@ -400,16 +346,14 @@ def export_protection_coordination_to_pdf(
     # 7) OVERLOAD CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text(
-        "Sprawdzenie przeciążalności (I_pickup / I_rob)", left_margin, font_size=14, bold=True
-    )
+    draw_text("Przeciążalność — iloraz I_s / I_rob", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
     overload_checks = result.get("overload_checks", [])
     if overload_checks:
         ovl_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
-            ["Urządzenie", "I_rob [A]", "I_pickup [A]", "Margines [%]", "Werdykt"],
+            ["Urządzenie", "I_rob [A]", "I_s [A]", "Iloraz", "Wymagany"],
             ovl_cols,
             left_margin,
             bold=True,
@@ -418,24 +362,20 @@ def export_protection_coordination_to_pdf(
 
         for check in overload_checks:
             y = check_page_break(line_height)
-            verdict = check.get("verdict", "ERROR")
-            verdict_pl = VERDICT_LABELS_PL.get(verdict, verdict)
-            verdict_color = VERDICT_COLORS.get(verdict, "#000000")
-
             draw_table_row(
                 [
                     textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check.get("device_id")), 20, placeholder="…"
+                        nazwa_urzadzenia(nazwy, check["device_id"]), 20, placeholder="…"
                     ),
-                    _format_value(check.get("i_operating_a")),
-                    _format_value(check.get("i_pickup_a")),
-                    _format_value(check.get("margin_percent")),
-                    verdict_pl,
+                    _format_value(check["i_operating_a"]),
+                    _format_value(check["i_pickup_a"]),
+                    _format_value(check["ratio"]),
+                    _format_value(check["required_ratio"]),
                 ],
                 ovl_cols,
                 left_margin,
-                colors=[None, None, None, None, verdict_color],
             )
+        draw_uzasadnienia(overload_checks)
     else:
         c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak danych")
@@ -454,7 +394,7 @@ def export_protection_coordination_to_pdf(
     if tcc_curves:
         tcc_cols = [40 * mm, 30 * mm, 30 * mm, 30 * mm]
         draw_table_row(
-            ["Urządzenie", "Typ krzywej", "I_pickup [A]", "TMS"], tcc_cols, left_margin, bold=True
+            ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"], tcc_cols, left_margin, bold=True
         )
         y -= 2 * mm
 
@@ -463,7 +403,8 @@ def export_protection_coordination_to_pdf(
             draw_table_row(
                 [
                     nazwa_wpisu_urzadzenia(curve, "device_name")[:20],
-                    etykieta_typu_krzywej_pl(curve),
+                    # Komórka: kod charakterystyki; pełny opis stopni niżej, zawinięty.
+                    etykieta_typu_krzywej_pl({**curve, "opis_pl": None}),
                     _format_value(curve.get("pickup_current_a")),
                     etykieta_tms(curve, _format_value(curve.get("time_multiplier"))),
                 ],
@@ -473,9 +414,9 @@ def export_protection_coordination_to_pdf(
             # Pozycja bez podstawy (np. bezpiecznik bez pasma topikowego) niesie
             # PELNE zdanie po polsku — sama etykieta w komorce nie tlumaczy,
             # dlaczego krzywej nie ma (karta N-D5-FUSE).
-            powod = powod_braku_pl(curve)
+            powod = powod_braku_pl(curve) or curve.get("opis_pl")
             if powod:
-                for fragment in textwrap.wrap(powod, width=110):
+                for fragment in textwrap.wrap(str(powod), width=110):
                     y = check_page_break(line_height)
                     c.setFont("DejaVuSans-Oblique", 8)
                     c.drawString(left_margin + 4 * mm, y, fragment)
@@ -483,7 +424,7 @@ def export_protection_coordination_to_pdf(
 
         y -= 3 * mm
         c.setFont("DejaVuSans-Oblique", 9)
-        c.drawString(left_margin, y, "Wykres TCC dostępny w eksporcie interaktywnym")
+        c.drawString(left_margin, y, "Wykres TCC dostępny na ekranie koordynacji zabezpieczeń")
         y -= line_height
     else:
         c.setFont("DejaVuSans-Oblique", 10)
@@ -497,7 +438,7 @@ def export_protection_coordination_to_pdf(
     y -= section_spacing
     c.setFont("DejaVuSans", 8)
     c.setFillColor(HexColor("#6b7280"))
-    c.drawString(left_margin, y, f"Run ID: {result.get('run_id', '—')}")
+    c.drawString(left_margin, y, f"Identyfikator obliczenia: {result['run_id']}")
     c.drawString(left_margin, y - 4 * mm, f"Wygenerowano: {result.get('created_at', '—')[:19]}")
     c.setFillColor(HexColor("#000000"))
 

@@ -368,6 +368,11 @@ def test_get_field_view_returns_canonical_bay_contract(uow_factory):
     assert results["main_short_circuit_results_ref"] == results["run_ref"]
     assert results["source_contributions_sc"][0]["source_ref"] == "src_grid"
     assert results["proof_binding"]["proof_ref"].startswith("proof:bay_in_1:")
+    # Korekta 2026-10-15 (kontrakt werdyktu wyjaśnialnego): rekord `verification` niósł gołe
+    # flagi „spełnia" wyliczane z OBECNOŚCI danych (`whole_power_path_ok = bool(equipment_refs)`,
+    # `ct_ok = True` przy samym istnieniu przekładnika) — werdykt bez kryterium, wartości
+    # i limitu. Skasowany; model odczytu pola nie wystawia żadnej oceny toru pola.
+    assert "verification" not in results
 
 
 def _seed_z_archiwum(case_id: str, payload: dict, uow_factory) -> None:

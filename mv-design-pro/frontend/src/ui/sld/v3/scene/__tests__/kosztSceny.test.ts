@@ -395,11 +395,34 @@ interface OdciskiLod {
  *    ogonów — dwa słupki „koniec otwarty" i ich etykiety zastępują dwa znaki
  *    powiązania i dwa odsyłacze „powiązanie" (L2). Etykiety zmieniają się WYŁĄCZNIE na
  *    L2, stąd declutter/plany L0/L1 bez zmian — i tak wychodzi w odciskach.
+ *
+ * AKTUALIZACJA ŚWIADOMA (ETYKIETA-STACJI-PRZELOTOWEJ, 2026-09-30) — przeliczone odciski;
+ * z 54 wpisów tablicy 16 bez zmian (L0: declutter i 7 z 7 planów w obu sieciach).
+ * Sonda 2×2 (kod HEAD/nowy × fikstura przed/po regeneracji): regeneracja fikstury NIE
+ * rusza żadnego odcisku; zmienia je WYŁĄCZNIE kod — jedna reguła rodzaju stacji
+ * (`ui/shared/rodzajStacji.ts`) w miejsce prezentacji „ostatnia w ciągu ⇒ końcowa":
+ *  · „Stacja L6-3" i „Stacja L7-4" (końce odcinka powiązania „Rezerwa pierścieniowa
+ *    (odcinek NOP)") — oba pola liniowe prowadzą do innych stacji ⇒ sylwetka L0 i podpis
+ *    L1/L2 „stacja końcowa" → „stacja przelotowa" (w sieci podwojonej po dwie kopie);
+ *  · 12 notatek STOP `station.type.terminal`/niezgodności deklaracji znika ze sceny L1/L2
+ *    (13 → 1, w podwojonej 26 → 2) — niezgodność deklaracji z topologią melduje odtąd
+ *    walidator (ostrzeżenie W043 z akcją naprawy), a nie notatka rysunku z identyfikatorem.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPT-478, 2026-10-15) — przeliczone odciski; z 54 wpisów tablicy
+ * 18 bez zmian (L0: scena, declutter i 7 z 7 planów w obu sieciach). Przyczyna WYŁĄCZNIE
+ * w DANYCH (kod SLD nietknięty): kontrola O-53 sumuje źródła zasilane przez ten sam
+ * transformator (V12K-022), więc konfiguracja mieszana PV 0,5 MW + BESS 0,5 MW (Σ S_n
+ * 1,1 MVA) na czterech stacjach odgałęzień substratu nie mieści się w 630 kVA — budowniczy
+ * (`sld_substrate_52s.py` krok 5(d)) przepina ich transformator na 1250 kVA, a fikstura
+ * regenerowana narzędziem repo. Jedyna różnica wejścia (diff fikstury): parametry tych
+ * czterech transformatorów (pozycja, S_n, u_k, straty) i wynik rozpływu substratu — zmienia
+ * to scenę i etykiety L1/L2; L0 bez zmian.
+ * Dawniej budowniczy dokładał magazyn mimo przekroczenia mocy transformatora.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '6a45dce8afd3e1d11647fc3092e742b9',
+      scena: '001d8e6a8f798131bc13479430cc6221',
       declutter: '7b3f5739b2b54790f4ec28cb4df70cd0',
       plany: [
         'e75f905bdb8cdcd336de41517bafb8d0',
@@ -412,35 +435,35 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '161c1771078ae1e3838c58a4b6d9d74a',
-      declutter: '5efb86a74e37f1f46520803329d87b65',
+      scena: 'a8696d92c937c1d547c597d8eebdb059',
+      declutter: 'de32421abfe56d2498bb3b88cf30a786',
       plany: [
-        'f6b9fccddd26b56d6145c78fb11e7086',
-        '9b24c1690ae8fe4a2844723fb2b9f1d8',
-        '46d78be91891ee92639f1d681e0be9ba',
-        '6fadc8107cfcd0f03b3f8db259e49471',
-        'e3e504e7629d76e814b2964d36d5d046',
-        'b582ca17e7af1b50beb7d9646633a7d7',
-        'b582ca17e7af1b50beb7d9646633a7d7',
+        'f57e9e8ca945efcc488705983df7d2d1',
+        '4b483d0146f0f9b872601ff9d8aeeafb',
+        'b31c6fee256b9287e5275778739a4aaa',
+        '229116bf9fc98b146a690e52328de0c5',
+        '987e2c255387528f4cdb973142439a9a',
+        'f7506f785ea58af34c3b24802cc68366',
+        'f7506f785ea58af34c3b24802cc68366',
       ],
     },
     {
-      scena: '494694352036c23fc2a1f55e6e9f9ebb',
-      declutter: 'afa36cf19585808f81e545f8c9cb5727',
+      scena: 'c09afdae41dbaf72f184ff0b6ad80b30',
+      declutter: '8032ff0a9dd3688eeb0b3e0b76e094c8',
       plany: [
-        '8691b8cd95e6f651f8c3520084be52db',
-        '17115a3d22dc580d6526dd9fc9ebfc47',
-        '197a64add7a1faaf46fb456d5b5fa327',
-        '0451075c8e7f8835aa1b8fe3621b5bca',
-        '5f27d5e32d89ff608452d770b3355fe1',
-        '1d2b0d11738277f5a72ff434c3625a81',
-        '1d2b0d11738277f5a72ff434c3625a81',
+        '1b22b96d963d9765391b05963553d043',
+        'e2f437ab7267999592214294b9ce8a56',
+        'c772b7e3936f9f4c331b76674d43f327',
+        '45f98039c3d0394de39c67c1735acdfb',
+        '46bccad935fca1bc18e7b724e30a8a1a',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
       ],
     },
   ],
   podwojona: [
     {
-      scena: 'f1d04acfc54b75d24c4cbf574688594b',
+      scena: 'b59d59a2c47da25a63edbcb8f758cfb2',
       declutter: '4f488776de89329b8735c9fd2989656a',
       plany: [
         '06b04c6ddf7dcf58f8433e9ea72ff59c',
@@ -453,29 +476,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '44496af5dae06ddf32ad9f0256a9c850',
-      declutter: '9ec09ea7c46483b3acfbbd3959370421',
+      scena: '7c63f839d89579c47111b4d07616b886',
+      declutter: 'b2ccb3ef57c6b6e7b0575297b0770e53',
       plany: [
-        '8d85f79f29c1510ec5e8aced91ee6c0f',
-        '2291428a1a3909c355df0be532f0dcc6',
-        '2a49c54a2386958dedd4398d9d9a0064',
-        'fee024f8ec196c5c56be654bfa54e14c',
-        'eb5a4f29fc201bd3aa5f33969adbb930',
-        '8160befe6e75fef96d910f898f50078c',
-        '8160befe6e75fef96d910f898f50078c',
+        'e791a2f4fed507b51ed9572ec838b435',
+        '0a8d9a2a41c93eacb09808d21c057340',
+        'cf746819d46976764e97a7d45273cff1',
+        'b1104d367bda5c9e70095d6235d9a504',
+        '3d72f0dc3304f288cffc206a8c781aee',
+        '5532accf58fcd34c16619d9a80d27ca0',
+        '5532accf58fcd34c16619d9a80d27ca0',
       ],
     },
     {
-      scena: '8a64b08abb04846121cb82a298354e2f',
-      declutter: 'def50f0cb46d9c71aeca92331b9923b5',
+      scena: '95a7fdd8d2d49e0ccd3a96f7d0c5505f',
+      declutter: 'ffa61e5df7ad3f6b47efbcc195a31a3a',
       plany: [
-        '7ad848c93b45a110b21e33b9ef84996d',
-        'b9411a44292e0865bc34ac5ff6e66647',
-        '76a7ba2605f2f2a9cfe4871f5637715a',
-        '0743fd87922f27d3634c3c371d413d18',
-        '40877a42ae8ebd9c4a3b03e562d8e075',
-        'b82da1192552488938af23e40a8780b1',
-        'b82da1192552488938af23e40a8780b1',
+        '91cd1c0d8ea2e0ffd92c39524b6332a7',
+        '9a76d195b471e0b591e7c7a99eaa1f14',
+        '5077fad1fada2faebff555feca0d63ee',
+        'b0d391decbacd1b16230500c45dfd4b2',
+        '6e14e5153ce1a90049e24efca892e815',
+        '4b322b94556377c0a5cd125234dafbba',
+        '4b322b94556377c0a5cd125234dafbba',
       ],
     },
   ],

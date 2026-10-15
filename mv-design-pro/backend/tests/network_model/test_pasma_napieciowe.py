@@ -31,11 +31,7 @@ from analysis.sanity_bounds import evaluate_short_circuit_current
 from enm.domain_operations import _sn_bus_refs_for_substation
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMDefaults, ENMHeader, Generator
 from enm.validator import ENMValidator
-from network_model.catalog.mv_transformer_catalog import (
-    _INVERTER_TR_POWER_MVA_LOW_LV,
-    _INVERTER_TR_POWER_MVA_MEDIUM_LV,
-    _build_inverter_transformer_types,
-)
+from network_model.catalog.mv_transformer_catalog import TRANSFORMER_SN_NN_INVERTER_BLOCK
 from network_model.core.machine import _asynchronous_r_over_x, _synchronous_r_over_x
 from network_model.core.voltage_factor import c_for_node
 from network_model.pochodne import pasma_napieciowe as zrodlo
@@ -209,13 +205,19 @@ def test_napiecie_spoza_pasm_odmowa_zamiast_wiersza_nn(dobor, napiecie: float) -
         dobor(napiecie)
 
 
-@pytest.mark.parametrize(("napiecie", "nn"), [(1.0, True), (1.001, False)])
-def test_katalog_transformatorow_blokowych_z_granicy_pasma(napiecie: float, nn: bool) -> None:
-    moce = tuple(
-        r["params"]["rated_power_mva"] for r in _build_inverter_transformer_types(15.0, napiecie)
-    )
-    oczekiwane = _INVERTER_TR_POWER_MVA_LOW_LV if nn else _INVERTER_TR_POWER_MVA_MEDIUM_LV
-    assert moce == oczekiwane
+def test_katalog_transformatorow_blokowych_z_granicy_pasma() -> None:
+    """Strona dolna transformatora blokowego leży w paśmie nN — granica 1 kV włącznie.
+
+    Do 2026-10-15 katalog dobierał szereg mocy szacowanych pozycji blokowych zależnie od
+    pasma strony dolnej (nN albo SN). Szacunek usunięto: pozycje są normatywne (pułapy
+    Tier 2 rozporządzenia UE 548/2014, tab. I.2 dla strony dolnej do 1,1 kV), a strony dolnej
+    SN nie ma, bo rozporządzenie nie podaje dla niej P0 i Pk. Intencja testu zostaje:
+    granica pasma nN z jednego źródła (``w_pasmie_nn``) obejmuje 1,0 kV i nic powyżej.
+    """
+    napiecia_nn = {r["params"]["voltage_lv_kv"] for r in TRANSFORMER_SN_NN_INVERTER_BLOCK}
+    assert 1.0 in napiecia_nn
+    assert all(w_pasmie_nn(u) for u in napiecia_nn)
+    assert not any(powyzej_pasma_nn(u) for u in napiecia_nn)
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,10 @@
-"""Stacje prosumenta PV — 6 templates (5-250 kW, NC RfG typ A-C)."""
+"""Stacje prosumenta PV — 6 szablonów (8–250 kW).
+
+Przeprojektowanie 2026-10-15 (decyzja właściciela): falowniki z kartą producenta SMA Sunny
+Tripower 8.0 / 10.0 (0,4 kV), moc = liczba × moc z karty. Dawne pozycje 5/10/30 kW nie
+istniały w katalogu (brak karty falownika 5 kW i 30 kW), a 50 kW jest modelem referencyjnym;
+szablon 5 kW zastąpił szablon 8 kW (najmniejsza karta 3-fazowa w katalogu). Typ modułu
+NC RfG wynika ze składu (`schema.typ_modulu_nc_rfg_skladu`, przyłączenie po stronie nN)."""
 
 from __future__ import annotations
 
@@ -19,6 +25,7 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    typ_modulu_nc_rfg_skladu,
 )
 from network_model.pochodne import kw_na_mw
 
@@ -30,8 +37,11 @@ def _prosument(
     *,
     pv_count: int,
     pv_p_kw_each: float,
-    nc_rfg_type: str,
 ) -> StationTemplate:
+    der_options = (
+        replace(DER_PV_NN, default_p_mw_each=kw_na_mw(pv_p_kw_each), default_count=pv_count),
+    )
+    nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 0.4)
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,
@@ -53,13 +63,9 @@ def _prosument(
                 default=2, min_value=1, max_value=4, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(
-                replace(
-                    DER_PV_NN, default_p_mw_each=kw_na_mw(pv_p_kw_each), default_count=pv_count
-                ),
-            ),
+            der_options=der_options,
             der_total_count=TemplateParamInt(
-                default=pv_count, min_value=1, max_value=10, label_pl="Liczba falowników PV"
+                default=pv_count, min_value=1, max_value=30, label_pl="Liczba falowników PV"
             ),
             ct_options=CT_OPTIONS,
             vt_options=VT_OPTIONS,
@@ -72,51 +78,46 @@ def _prosument(
 
 PROSUMENT_PV_TEMPLATES = (
     _prosument(
-        "tpl_pv_prosument_5kw",
-        "Mikroinstalacja PV 5 kW (Fronius, NC RfG typ A)",
-        "Pojedyncza mikroinstalacja PV 5 kW 1-fazowa, Fronius/SMA falownik.",
+        "tpl_pv_prosument_8kw",
+        "Mikroinstalacja PV 8 kW (SMA Sunny Tripower 8.0)",
+        "Mikroinstalacja PV 8 kW: falownik 3-fazowy SMA Sunny Tripower 8.0 (8 kVA, 0,4 kV).",
         pv_count=1,
-        pv_p_kw_each=5.0,
-        nc_rfg_type="A",
+        pv_p_kw_each=8.0,
     ),
     _prosument(
         "tpl_pv_prosument_10kw",
-        "PV 10 kW prosument 1-fazowy",
-        "Standardowa prosumencka 10 kW (1-fazowa, typ A).",
+        "Mikroinstalacja PV 10 kW (SMA Sunny Tripower 10.0)",
+        "Mikroinstalacja PV 10 kW: falownik 3-fazowy SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV).",
         pv_count=1,
         pv_p_kw_each=10.0,
-        nc_rfg_type="A",
     ),
     _prosument(
         "tpl_pv_prosument_30kw",
-        "PV 30 kW prosument 3-fazowy (typ A)",
-        "PV 30 kW 3-fazowy, NC RfG typ A.",
-        pv_count=1,
-        pv_p_kw_each=30.0,
-        nc_rfg_type="A",
+        "PV 30 kW, 3× SMA Sunny Tripower 10.0",
+        "Instalacja PV 30 kW: 3 falowniki SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV).",
+        pv_count=3,
+        pv_p_kw_each=10.0,
     ),
     _prosument(
         "tpl_pv_prosument_50kw",
-        "PV 50 kW prosument graniczna typ A",
-        "Graniczny limit typu A: PV 50 kW (NC RfG).",
-        pv_count=1,
-        pv_p_kw_each=50.0,
-        nc_rfg_type="A",
+        "PV 50 kW, 5× SMA Sunny Tripower 10.0",
+        "Instalacja PV 50 kW: 5 falowników SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV).",
+        pv_count=5,
+        pv_p_kw_each=10.0,
     ),
     _prosument(
         "tpl_pv_prosument_100kw",
-        "PV 100 kW (typ B, wymaga uzgodnień)",
-        "Większa instalacja 100 kW: NC RfG typ B z obowiązkiem zgłoszenia OSD.",
-        pv_count=2,
-        pv_p_kw_each=50.0,
-        nc_rfg_type="B",
+        "PV 100 kW, 10× SMA Sunny Tripower 10.0",
+        "Instalacja PV 100 kW: 10 falowników SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV).",
+        pv_count=10,
+        pv_p_kw_each=10.0,
     ),
     _prosument(
         "tpl_pv_prosument_250kw",
-        "PV 250 kW (typ B-C, pełne uzgodnienia)",
-        "Duża instalacja 250 kW: NC RfG typ B-C z pełnymi uzgodnieniami.",
-        pv_count=5,
-        pv_p_kw_each=50.0,
-        nc_rfg_type="B",
+        "PV 250 kW, 25× SMA Sunny Tripower 10.0",
+        "Instalacja PV 250 kW: 25 falowników SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV), "
+        "NC RfG typ B z obowiązkiem zgłoszenia OSD.",
+        pv_count=25,
+        pv_p_kw_each=10.0,
     ),
 )

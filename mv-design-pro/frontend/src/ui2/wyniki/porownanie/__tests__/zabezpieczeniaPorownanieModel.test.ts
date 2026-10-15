@@ -1,3 +1,11 @@
+/**
+ * Model porównania A/B zabezpieczeń — wejście to PRAWDZIWE odpowiedzi backendu dla sieci
+ * złotej G08 (wariant A i wariant B z wydłużoną magistralą, urządzenia i nastawy z modelu),
+ * wygenerowane przez `backend/scripts/eksport_fixtur_harnessu.py`. Warianty brzegowe
+ * (brak wartości, utrata zadziałania, wynik niewiarygodny) budowane jako zmiana JEDNEGO pola
+ * realnego wiersza — nigdy ręcznie wpisany kształt (karta BIEG-ZABEZPIECZEN-Z-MODELU).
+ */
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,205 +20,209 @@ import {
   tylkoZmianyStanowZabezpieczen,
 } from '../porownanieModel';
 import {
-  podsumowanieZabezpieczenFixture,
-  porownanieZabezpieczenFixture,
-  przebiegZabezpieczenFixture,
-  provenanceZabezpieczenFixture,
-  rankingZabezpieczenFixture,
-  wierszZabezpieczenFixture,
-} from './zabezpieczeniaFixtures';
+  fmtCzasZadzialania,
+  fmtDeltaPradZwarciowy,
+  fmtMarginesProcent,
+  rodzajProblemuZabezpieczenPL,
+  wagaPL,
+} from '../strings';
+import {
+  WIARYGODNOSC_PL,
+  type ProtectionComparisonResult,
+  type ProtectionComparisonRow,
+  type ProtectionRunItem,
+} from '../../../../ui/protection-comparison/types';
+import wynikSceny from '../../../../harness-fixtures/generated/porownanie_scena_wynik_zabezpieczen.json';
+import biegiSceny from '../../../../harness-fixtures/generated/porownanie_scena_biegi_zabezpieczen.json';
+
+const WYNIK = wynikSceny as unknown as ProtectionComparisonResult;
+const BIEGI = (biegiSceny as unknown as { runs: ProtectionRunItem[] }).runs;
+const [WIERSZ] = WYNIK.rows as [ProtectionComparisonRow];
 
 /** Most nazw w testach (karta #145): prefiks odróżnia nazwę od identyfikatora. */
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
   nazwaZWyniku ?? `nazwa ${ref}`;
 
-describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
-  describe('mapaWagWierszyZabezpieczen — klucz PARY (element, punkt zwarcia)', () => {
-    it('klucz wagi jest per (element, punkt), nie sam element', () => {
-      const mapa = mapaWagWierszyZabezpieczen([
-        {
-          issue_code: 'TRIP_LOST',
-          severity: 5,
-          element_ref: 'BRK-F01',
-          fault_target_id: 'BUS-A',
-          description_pl: 'x',
-          evidence_refs: [],
-        },
-        {
-          issue_code: 'MARGIN_DECREASED',
-          severity: 2,
-          element_ref: 'BRK-F01',
-          fault_target_id: 'BUS-B',
-          description_pl: 'y',
-          evidence_refs: [],
-        },
-      ]);
-      // Ten sam element (BRK-F01), DWA różne punkty zwarcia -> DWIE różne wagi
-      // w mapie (dowód, że klucz nie jest tylko `element_ref` jak w rozpływie).
-      expect(mapa.get('BRK-F01::BUS-A')).toBe(5);
-      expect(mapa.get('BRK-F01::BUS-B')).toBe(2);
-      expect(mapa.size).toBe(2);
-    });
+function wiersz(zmiana: Partial<ProtectionComparisonRow>): ProtectionComparisonRow {
+  return { ...WIERSZ, ...zmiana };
+}
 
-    it('bierze WAGĘ MAKSYMALNĄ, gdy ta sama para ma wiele problemów', () => {
-      const mapa = mapaWagWierszyZabezpieczen([
-        {
-          issue_code: 'DELAY_INCREASED',
-          severity: 2,
-          element_ref: 'BRK-F01',
-          fault_target_id: 'BUS-A',
-          description_pl: 'x',
-          evidence_refs: [],
-        },
-        {
-          issue_code: 'TRIP_LOST',
-          severity: 5,
-          element_ref: 'BRK-F01',
-          fault_target_id: 'BUS-A',
-          description_pl: 'y',
-          evidence_refs: [],
-        },
-      ]);
-      expect(mapa.get('BRK-F01::BUS-A')).toBe(5);
-    });
+describe('wynik sieci złotej G08 — kontrakt wiersza', () => {
+  it('każdy wiersz niesie nazwę urządzenia i punktu z modelu oraz wiarygodność obu biegów', () => {
+    expect(WYNIK.rows.length).toBeGreaterThan(0);
+    for (const r of WYNIK.rows) {
+      expect(r.nazwa_urzadzenia_pl).not.toBe('');
+      expect(r.nazwa_punktu_pl).not.toBe('');
+      expect(Object.keys(WIARYGODNOSC_PL)).toContain(r.wiarygodnosc_a);
+      expect(Object.keys(WIARYGODNOSC_PL)).toContain(r.wiarygodnosc_b);
+    }
   });
 
-  describe('naWierszeStanowZabezpieczen — komórki A/B/Δ, nullowalne pola, dowód', () => {
-    it('wartość obecna dostaje dowodRef strony; wartość null → kreska bez dowodu', () => {
-      const wagi = new Map<string, number>();
-      const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture({ t_trip_s_b: null })], wagi, NAZWA);
-      expect(wiersz.czasA.wartosc).toBe('0,350');
-      expect(wiersz.czasA.dowodRef).toBe('A:BRK-F01::BUS-GPZ');
-      expect(wiersz.czasB.wartosc).toBe('—');
-      expect(wiersz.czasB.dowodRef).toBeUndefined();
-    });
+  it('ślad porównania nie niesie odcisków biblioteki (nastawy są w modelu)', () => {
+    expect(JSON.stringify(WYNIK)).not.toContain('library_fingerprint');
+  });
+});
 
-    it('deltę Δt/ΔI oznacza tagiem ostrzeżenia WYŁĄCZNIE wg wagi z rankingu backendu', () => {
-      const wagi = mapaWagWierszyZabezpieczen(rankingZabezpieczenFixture());
-      const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()], // BRK-F01 / BUS-GPZ ma severity 5 w fixturze rankingu
-        wagi,
-        NAZWA,
+describe('mapaWagWierszyZabezpieczen — klucz PARY (element, punkt zwarcia)', () => {
+  it('ranking realnego porównania: jedna waga na parę, maksimum przy wielu problemach', () => {
+    const mapa = mapaWagWierszyZabezpieczen(WYNIK.ranking);
+    for (const issue of WYNIK.ranking) {
+      const klucz = `${issue.element_ref}::${issue.fault_target_id}`;
+      const maks = Math.max(
+        ...WYNIK.ranking
+          .filter((i) => i.element_ref === issue.element_ref && i.fault_target_id === issue.fault_target_id)
+          .map((i) => i.severity),
       );
-      expect(wiersz.czasD.ostrzezenie).toBeUndefined(); // delta_t_s jest null -> kreska, bez ostrzezenia
-      expect(wiersz.pradD.wartosc).toBe('-270,2');
-      expect(wiersz.pradD.ostrzezenie).toBe(true);
-      expect(wiersz.pradD.dowodRef).toBeUndefined(); // Δ nigdy nie ma dowodu (R3-C)
-    });
-
-    it('stan zadziałania po polsku (TRIPS/NO_TRIP) oraz zmiana klasyfikacji z STATE_CHANGE_LABELS', () => {
-      const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()], new Map(), NAZWA);
-      expect(wiersz.stanA.wartosc).toBe('Zadziałanie');
-      expect(wiersz.stanB.wartosc).toBe('Brak zadziałania');
-      expect(wiersz.zmiana.wartosc).toBe('Utrata zadziałania');
-    });
-
-    it('element i punkt zwarcia nazwane mostem nazw; identyfikator urządzenia nie jest komórką (karta #145)', () => {
-      const [wiersz] = naWierszeStanowZabezpieczen([wierszZabezpieczenFixture()], new Map(), NAZWA);
-      expect(wiersz.element.wartosc).toBe('nazwa BRK-F01');
-      expect(wiersz.punkt.wartosc).toBe('nazwa BUS-GPZ');
-      expect(wiersz.urzadzenieA).toBeUndefined();
-      expect(wiersz.urzadzenieB).toBeUndefined();
-      expect(Object.values(wiersz).map((k) => k.wartosc)).not.toContain('REL-OC-001');
-      expect(KOLUMNY_STANOW_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('urzadzenieA');
-    });
-
-    it('margines A/B pokazuje się osobno, BEZ kolumny Δ (backend nie publikuje delty marginesu)', () => {
-      const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()], new Map(), NAZWA);
-      expect(wiersz.marginesA.wartosc).toBe('12,50');
-      expect(wiersz.marginesB.wartosc).toBe('8,10');
-      expect(wiersz.marginesD).toBeUndefined();
-    });
-
-    it('klucz React wiersza (`klucz`) jest indeksem źródłowym — stabilny, unikalny nawet przy powtórzonym elemencie', () => {
-      const wiersze = naWierszeStanowZabezpieczen(
-        [
-          wierszZabezpieczenFixture({ fault_target_id: 'BUS-A' }),
-          wierszZabezpieczenFixture({ fault_target_id: 'BUS-B' }), // ten sam element, inny punkt
-        ], new Map(), NAZWA);
-      expect(wiersze[0].klucz.wartosc).toBe('0');
-      expect(wiersze[1].klucz.wartosc).toBe('1');
-    });
+      expect(mapa.get(klucz)).toBe(maks);
+    }
+    const [pierwszy] = WYNIK.ranking;
+    const zwiekszony = mapaWagWierszyZabezpieczen([...WYNIK.ranking, { ...pierwszy, severity: 5 }]);
+    expect(zwiekszony.get(`${pierwszy.element_ref}::${pierwszy.fault_target_id}`)).toBe(5);
   });
 
-  describe('tylkoZmianyStanowZabezpieczen — filtr „pokaż tylko zmiany"', () => {
-    it('odfiltrowuje wiersze ze state_change = NO_CHANGE, zostawia resztę', () => {
-      const rows = [
-        wierszZabezpieczenFixture({ state_change: 'NO_CHANGE' }),
-        wierszZabezpieczenFixture({ state_change: 'TRIP_TO_NO_TRIP' }),
-      ];
-      const wynik = tylkoZmianyStanowZabezpieczen(rows);
-      expect(wynik).toHaveLength(1);
-      expect(wynik[0].state_change).toBe('TRIP_TO_NO_TRIP');
-    });
+  it('ten sam element w dwóch punktach zwarcia → dwie niezależne wagi', () => {
+    const [pierwszy] = WYNIK.ranking;
+    const mapa = mapaWagWierszyZabezpieczen([
+      { ...pierwszy, fault_target_id: 'punkt-1', severity: 5 },
+      { ...pierwszy, fault_target_id: 'punkt-2', severity: 2 },
+    ]);
+    expect(mapa.get(`${pierwszy.element_ref}::punkt-1`)).toBe(5);
+    expect(mapa.get(`${pierwszy.element_ref}::punkt-2`)).toBe(2);
+  });
+});
+
+describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pola, dowód', () => {
+  it('urządzenie i punkt z nazw backendu; identyfikator urządzenia nie jest komórką (karta #145)', () => {
+    const [w] = naWierszeStanowZabezpieczen([WIERSZ], new Map());
+    expect(w.element.wartosc).toBe(WIERSZ.nazwa_urzadzenia_pl);
+    expect(w.punkt.wartosc).toBe(WIERSZ.nazwa_punktu_pl);
+    expect(Object.values(w).map((k) => k.wartosc)).not.toContain(WIERSZ.device_id_a);
+    expect(KOLUMNY_STANOW_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('urzadzenieA');
   });
 
-  describe('naWierszeRankinguZabezpieczen — waga PL, rodzaj PL, punkt zwarcia (rozszerzenie vs rozpływ)', () => {
-    it('mapuje wagę i rodzaj problemu na polskie etykiety, dokłada punkt zwarcia', () => {
-      const [wiersz] = naWierszeRankinguZabezpieczen(rankingZabezpieczenFixture(), NAZWA);
-      expect(wiersz.waga.wartosc).toBe('Krytyczny');
-      expect(wiersz.rodzaj.wartosc).toBe('Utrata zadziałania');
-      expect(wiersz.element.wartosc).toBe('nazwa BRK-F01');
-      expect(wiersz.punkt.wartosc).toBe('nazwa BUS-GPZ');
-      // Karta #145: kod problemu nie jest komórką tabeli w żadnym trybie.
-      expect(wiersz.kodTechniczny).toBeUndefined();
-      expect(KOLUMNY_RANKINGU_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('kodTechniczny');
-    });
+  it('wartość obecna dostaje dowodRef strony; wartość null → kreska bez dowodu', () => {
+    const [w] = naWierszeStanowZabezpieczen([wiersz({ t_trip_s_b: null })], new Map());
+    expect(w.czasA.wartosc).toBe(fmtCzasZadzialania(WIERSZ.t_trip_s_a!));
+    expect(w.czasA.dowodRef).toBe(`A:${WIERSZ.protected_element_ref}::${WIERSZ.fault_target_id}`);
+    expect(w.czasB.wartosc).toBe('—');
+    expect(w.czasB.dowodRef).toBeUndefined();
   });
 
-  describe('naZalozeniaPorownaniaZabezpieczen — podsumowanie jako ZAŁOŻENIA wzorca', () => {
-    it('pokazuje porównań łącznie oraz zmiany stanu z pól backendu', () => {
-      const zal = naZalozeniaPorownaniaZabezpieczen(podsumowanieZabezpieczenFixture());
-      const porownan = zal.find((w) => w.etykieta === 'Porównań łącznie');
-      expect(porownan?.wartosc).toBe(2);
-      const zmiany = zal.find((w) => w.etykieta.startsWith('Zmiany stanu'));
-      expect(zmiany?.wartosc).toBe('1 · 0 · 0 · 0');
-    });
+  it('różnicę oznacza tagiem ostrzeżenia WYŁĄCZNIE wg wagi z rankingu backendu; różnica bez dowodu', () => {
+    const klucz = `${WIERSZ.protected_element_ref}::${WIERSZ.fault_target_id}`;
+    const [zWaga] = naWierszeStanowZabezpieczen([WIERSZ], new Map([[klucz, 5]]));
+    expect(zWaga.pradD.wartosc).toBe(fmtDeltaPradZwarciowy(WIERSZ.delta_i_fault_a!));
+    expect(zWaga.pradD.ostrzezenie).toBe(true);
+    expect(zWaga.pradD.dowodRef).toBeUndefined();
+    const [bezWagi] = naWierszeStanowZabezpieczen([WIERSZ], new Map());
+    expect(bezWagi.pradD.ostrzezenie).toBe(false);
   });
 
-  describe('etykietaPrzebieguZabezpieczen — BEZ segmentu zbieżności (ProtectionRunItem go nie ma)', () => {
-    it('analiza + rewizja + data; bez odcisku i identyfikatorów (karta #145)', () => {
-      const etykieta = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture());
-      expect(etykieta).toBe('Ocena zabezpieczeń · rew. 1 · 2026-07-10 08:15');
-      expect(etykieta).not.toContain('run-zab-a');
-      expect(etykieta).not.toContain('case-1');
-      expect(etykieta).not.toContain('snap-zab');
-    });
-
-    it('scenariusz koperty ma pierwszeństwo przed rewizją modelu', () => {
-      const etykieta = etykietaPrzebieguZabezpieczen(
-        przebiegZabezpieczenFixture({ scenario_ref: ['sc-1', 3] }),
-      );
-      expect(etykieta).toContain('scenariusz sc-1 rew. 3');
-    });
-
-    it('nazwa przypadku ze store\'u dołącza się, gdy podana; brak -> etykieta bez niej', () => {
-      const zNazwa = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), 'Wariant letni');
-      expect(zNazwa).toContain('Wariant letni');
-      const bezNazwy = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), null);
-      expect(bezNazwy).not.toContain('Wariant letni');
-    });
+  it('utrata zadziałania: stan po polsku, różnica czasu niewyznaczona → kreska', () => {
+    const [w] = naWierszeStanowZabezpieczen(
+      [wiersz({ trip_state_b: 'NO_TRIP', t_trip_s_b: null, delta_t_s: null, state_change: 'TRIP_TO_NO_TRIP' })],
+      new Map(),
+    );
+    expect(w.stanA.wartosc).toBe('Zadziałanie');
+    expect(w.stanB.wartosc).toBe('Brak zadziałania');
+    expect(w.czasD.wartosc).toBe('—');
+    expect(w.zmiana.wartosc).toBe('Utrata zadziałania');
   });
 
-  describe('naLinieProweniencji — TEN SAM adapter proweniencji co rozpływ (D1/D2: zero duplikacji)', () => {
-    it('przyjmuje RunProvenance biegu zabezpieczeń (protection_sn) bez rzutowania', () => {
-      const linie = naLinieProweniencji(provenanceZabezpieczenFixture());
-      const rodzaj = linie.find((l) => l.etykieta === 'Rodzaj analizy');
-      expect(rodzaj?.wartosc).toBe('protection_sn');
-      const status = linie.find((l) => l.etykieta === 'Status');
-      expect(status?.wartosc).toBe('FINISHED');
-    });
+  it('zapas czułości A/B osobno, BEZ kolumny różnicy; wiarygodność obu biegów po polsku', () => {
+    const [w] = naWierszeStanowZabezpieczen(
+      [wiersz({ wiarygodnosc_b: 'NIEWIARYGODNY' })],
+      new Map(),
+    );
+    expect(w.marginesA.wartosc).toBe(fmtMarginesProcent(WIERSZ.margin_percent_a!));
+    expect(w.marginesD).toBeUndefined();
+    expect(w.wiarygodnoscA.wartosc).toBe(WIARYGODNOSC_PL.WIARYGODNY);
+    expect(w.wiarygodnoscB.wartosc).toBe(WIARYGODNOSC_PL.NIEWIARYGODNY);
+    expect(KOLUMNY_STANOW_ZABEZPIECZEN.map((k) => k.etykieta).join(' ')).not.toContain('Margines');
   });
 
-  describe('porownanieZabezpieczenFixture — kształt 1:1 z ProtectionComparisonResult', () => {
-    it('niesie provenance_a/b WYMAGANE (B1, karta CV-3.3-B)', () => {
-      const wynik = porownanieZabezpieczenFixture();
-      expect(wynik.provenance_a.run_id).toBe('run-zab-a');
-      expect(wynik.provenance_b.run_id).toBe('run-zab-b');
-      expect(wynik.provenance_a.snapshot_hash).not.toBe(wynik.provenance_b.snapshot_hash);
+  it('brak oceny w jednym biegu (pusty stan wiarygodności) → kreska, nie „wiarygodny"', () => {
+    const [w] = naWierszeStanowZabezpieczen(
+      [wiersz({ wiarygodnosc_b: '', trip_state_b: 'MISSING', t_trip_s_b: null })],
+      new Map(),
+    );
+    expect(w.wiarygodnoscB.wartosc).toBe('—');
+  });
+
+  it('klucz React wiersza jest indeksem źródłowym — unikalny także przy tym samym urządzeniu', () => {
+    const wiersze = naWierszeStanowZabezpieczen(WYNIK.rows, new Map());
+    expect(wiersze.map((w) => w.klucz.wartosc)).toEqual(WYNIK.rows.map((_r, i) => String(i)));
+  });
+});
+
+describe('tylkoZmianyStanowZabezpieczen — filtr „pokaż tylko zmiany"', () => {
+  it('realne porównanie bez zmian stanu → pusta lista; wiersz ze zmianą zostaje', () => {
+    expect(WYNIK.rows.every((r) => r.state_change === 'NO_CHANGE')).toBe(true);
+    expect(tylkoZmianyStanowZabezpieczen(WYNIK.rows)).toHaveLength(0);
+    const zeZmiana = wiersz({ state_change: 'TRIP_TO_NO_TRIP' });
+    expect(tylkoZmianyStanowZabezpieczen([...WYNIK.rows, zeZmiana])).toEqual([zeZmiana]);
+  });
+});
+
+describe('naWierszeRankinguZabezpieczen — waga PL, rodzaj PL, punkt zwarcia', () => {
+  it('mapuje realny ranking na polskie etykiety i opis z backendu', () => {
+    const wiersze = naWierszeRankinguZabezpieczen(WYNIK.ranking, NAZWA);
+    expect(wiersze).toHaveLength(WYNIK.ranking.length);
+    WYNIK.ranking.forEach((issue, i) => {
+      expect(wiersze[i].waga.wartosc).toBe(wagaPL(issue.severity));
+      expect(wiersze[i].rodzaj.wartosc).toBe(rodzajProblemuZabezpieczenPL(issue.issue_code));
+      expect(wiersze[i].opis.wartosc).toBe(issue.description_pl);
+      expect(wiersze[i].rodzaj.wartosc).not.toBe(issue.issue_code);
     });
+    expect(KOLUMNY_RANKINGU_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('kodTechniczny');
+  });
+
+  it.each(['TRIP_LOST', 'TRIP_GAINED', 'DELAY_INCREASED', 'DELAY_DECREASED', 'INVALID_STATE', 'MARGIN_DECREASED', 'MARGIN_INCREASED', 'UNRELIABLE_RESULT'] as const)(
+    'kod %s ma polską nazwę (słownik = IssueCode backendu)',
+    (kod) => {
+      expect(rodzajProblemuZabezpieczenPL(kod)).not.toBe(kod);
+    },
+  );
+});
+
+describe('naZalozeniaPorownaniaZabezpieczen — podsumowanie jako ZAŁOŻENIA wzorca', () => {
+  it('liczba porównań i zmiany stanu z pól backendu', () => {
+    const zal = naZalozeniaPorownaniaZabezpieczen(WYNIK.summary);
+    expect(zal.find((w) => w.etykieta === 'Porównań łącznie')?.wartosc).toBe(WYNIK.summary.total_rows);
+    const s = WYNIK.summary;
+    expect(zal.find((w) => w.etykieta.startsWith('Zmiany stanu'))?.wartosc).toBe(
+      `${s.trip_to_no_trip_count} · ${s.no_trip_to_trip_count} · ${s.invalid_change_count} · ${s.no_change_count}`,
+    );
+  });
+});
+
+describe('etykietaPrzebieguZabezpieczen — bez identyfikatorów i odcisków (karta #145)', () => {
+  it('realny bieg: rodzaj + rewizja + data, bez identyfikatora biegu i odcisku migawki', () => {
+    for (const bieg of BIEGI) {
+      const etykieta = etykietaPrzebieguZabezpieczen(bieg);
+      expect(etykieta).toContain('Ocena zabezpieczeń');
+      expect(etykieta).toContain(`rew. ${bieg.model_revision}`);
+      expect(etykieta).not.toContain(bieg.id);
+      expect(etykieta).not.toContain(bieg.snapshot_hash.slice(0, 8));
+    }
+  });
+
+  it('scenariusz koperty ma pierwszeństwo przed rewizją modelu', () => {
+    const etykieta = etykietaPrzebieguZabezpieczen({ ...BIEGI[0], scenario_ref: ['sc-1', 3] });
+    expect(etykieta).toContain('scenariusz sc-1 rew. 3');
+  });
+
+  it('nazwa przypadku dołącza się, gdy podana; brak → etykieta bez niej', () => {
+    expect(etykietaPrzebieguZabezpieczen(BIEGI[0], 'Wariant letni')).toContain('Wariant letni');
+    expect(etykietaPrzebieguZabezpieczen(BIEGI[0], null)).not.toContain('Wariant letni');
+  });
+});
+
+describe('naLinieProweniencji — ten sam adapter proweniencji co rozpływ', () => {
+  it('przyjmuje proweniencję biegu oceny zabezpieczeń bez rzutowania', () => {
+    const linie = naLinieProweniencji(WYNIK.provenance_a);
+    expect(linie.find((l) => l.etykieta === 'Rodzaj analizy')?.wartosc).toBe('protection_sn');
+    expect(linie.find((l) => l.etykieta === 'Status')?.wartosc).toBe('FINISHED');
+    expect(WYNIK.provenance_a.snapshot_hash).not.toBe(WYNIK.provenance_b.snapshot_hash);
   });
 });

@@ -494,7 +494,19 @@ def test_kazdy_rekord_katalogu_przetwornic_ma_status_ptpiree() -> None:
 #: wykazu WiPWC 1.2). Pozostale 175 rekordow to karty referencyjne MV/utility i
 #: turbiny wiatrowe, ktorych wykaz PTPiREE (urzadzenia typu A/B, glownie nN) nie
 #: obejmuje — ich NIEPOWIAZANY jest prawdziwy, a nie wynikajacy z braku danych.
-POMIAR_POWIAZANYCH_PO_KARCIE = 1
+#: Karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15, wtedy 182 rekordy): dochodzi pozycja z karty
+#: producenta `conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv` — HUAWEI SUN2000-330KTL-H1
+#: figuruje w wykazie, wiec POWIAZANY rosnie do 2 z pomiaru, nie z deklaracji.
+#: Druga czesc karty (2026-10-15, 188 rekordow): pole `model` pozycji z karty niesie
+#: OZNACZENIE TYPU z dokumentu producenta (np. „SC 2200-10", „STP10.0-3AV-40"), a nie
+#: nazwe handlowa z oznaczeniem w nawiasie — dawne „Sunny Central 2200 (SC-2200-10)"
+#: ani „Sunny Central 4000 UP" nie trafialy w zaden klucz wykazu, wiec certyfikowane
+#: SC 2200-10, SC 2475-10 i SC 4000/4200/4400/4600 UP dostawaly falszywy NIEPOWIAZANY.
+#: Po korekcie POWIAZANY = 11 (pomiar): 2 Huawei, 6 SMA Sunny Central, 2 SMA Sunny Tripower
+#: 3AV-40, Fronius Symo 10.0-3-M (kopia karty). Tesla Megapack w wykazie nie figuruje.
+#: Karta KATALOG-TURBINY-TOR-V112 (2026-10-15, 192 rekordy): 4 warianty Vestas V112 —
+#: turbina nie figuruje w wykazie, POWIAZANY bez zmian (pomiar).
+POMIAR_POWIAZANYCH_PO_KARCIE = 11
 
 
 def test_pomiar_liczby_rekordow_powiazanych_z_wykazem() -> None:
@@ -502,6 +514,18 @@ def test_pomiar_liczby_rekordow_powiazanych_z_wykazem() -> None:
     powiazane = [r for r in records if r["params"]["ptpiree_status"] == "POWIAZANY"]
 
     assert len(powiazane) == POMIAR_POWIAZANYCH_PO_KARCIE
-    assert {r["id"] for r in powiazane} == {"conv-pv-card-huawei-sun2000-215ktl"}
+    assert {r["id"] for r in powiazane} == {
+        "conv-pv-card-huawei-sun2000-215ktl",
+        "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+        "conv-pv-nn-sma-sc2200-0p385kv",
+        "conv-pv-nn-sma-sc2475-0p434kv",
+        "conv-pv-nn-sma-sc4000up-0p6kv",
+        "conv-pv-nn-sma-sc4200up-0p63kv",
+        "conv-pv-nn-sma-sc4400up-0p66kv",
+        "conv-pv-nn-sma-sc4600up-0p69kv",
+        "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
+        "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
+        "conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
+    }
     # Pomiar bez licznosci calego zbioru przeszedlby na pustym katalogu.
-    assert len(records) == 176
+    assert len(records) == 192

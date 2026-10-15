@@ -41,16 +41,38 @@ sys.path.insert(0, str(backend_src))
 # katalogu wskazanego z zewnatrz nie ruszamy.
 
 
+# ROBOTNICY pytest-xdist (`PYTEST_XDIST_WORKER`) dziedzicza srodowisko procesu nadzorczego,
+# ktory zaimportowal ten plik pierwszy — bez rozroznienia wszyscy robotnicy dzielili JEDEN
+# magazyn plikowy sesji i kasowali sobie nawzajem pliki robocze (pomiar 2026-09-30, karta
+# AB-1b.3b-NA-CZUBKU: `pytest -n 3 tests/ci/test_fixtury_harnessu.py` — 3 ze 110 przypadkow
+# czerwone przez `FileNotFoundError: …/enm-store-pytest-*/….rev/2.json.gz.*.tmp`, inny zestaw
+# w kazdym biegu; bieg szeregowy zielony). Katalog UTWORZONY przez sesje pytest jest
+# oznaczony w `_ZNACZNIK_KATALOGOW_SESJI`, wiec robotnik tworzy wlasny, a katalog wskazany
+# jawnie z zewnatrz (bez znacznika) nadal wygrywa — takze pod xdist.
+_ZNACZNIK_KATALOGOW_SESJI = "MV_TESTY_KATALOGI_SESJI"
+
+
 def _katalog_sesji(prefiks: str) -> str:
     katalog = tempfile.mkdtemp(prefix=prefiks)
     atexit.register(shutil.rmtree, katalog, True)
     return katalog
 
 
-if "ENM_STORE_DIR" not in os.environ:
-    os.environ["ENM_STORE_DIR"] = _katalog_sesji("enm-store-pytest-")
-if "STATION_USER_TEMPLATES_DIR" not in os.environ:
-    os.environ["STATION_USER_TEMPLATES_DIR"] = _katalog_sesji("szablony-pytest-")
+def _ustaw_katalog_sesji(zmienna: str, prefiks: str) -> None:
+    utworzone_przez_sesje = set(os.environ.get(_ZNACZNIK_KATALOGOW_SESJI, "").split(os.pathsep))
+    odziedziczony_przez_robotnika = (
+        "PYTEST_XDIST_WORKER" in os.environ and zmienna in utworzone_przez_sesje
+    )
+    if zmienna in os.environ and not odziedziczony_przez_robotnika:
+        return
+    os.environ[zmienna] = _katalog_sesji(prefiks)
+    utworzone_przez_sesje.discard("")
+    utworzone_przez_sesje.add(zmienna)
+    os.environ[_ZNACZNIK_KATALOGOW_SESJI] = os.pathsep.join(sorted(utworzone_przez_sesje))
+
+
+_ustaw_katalog_sesji("ENM_STORE_DIR", "enm-store-pytest-")
+_ustaw_katalog_sesji("STATION_USER_TEMPLATES_DIR", "szablony-pytest-")
 
 # Korzen backendu na sciezce — WYMAGANY przez tryb importu `importlib`
 # (pyproject: `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`;

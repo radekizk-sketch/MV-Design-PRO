@@ -60,7 +60,9 @@ pytest.importorskip("sqlalchemy")
 from tests.golden.enm_builders.dynamika_projektanta import (  # noqa: E402
     NAZWA_DETEKTORA_ZAPADU,
     NAZWA_KONCA_MAGISTRALI,
+    NAZWA_ODBIORU,
     NAZWA_ODCINKA_ZWARCIA,
+    PROFIL_ODBIORU,
     PROG_DETEKTORA_ZAPADU_PU,
     build_dynamika_projektanta_enm,
     refy_sieci,
@@ -74,7 +76,7 @@ from tests.test_dynamika_rms_run import (  # noqa: E402
 )
 
 #: Sieć toku pracy dynamiki (operacje domenowe z katalogu) i jej identyfikatory — z NAZW.
-_SIEC = build_dynamika_projektanta_enm(z_modelem_pv=False)
+_SIEC = build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False)
 REFY = refy_sieci(_SIEC)
 #: Zwarcie 3F w połowie „Odcinek 2", usunięte IZOLACJĄ: odcinek otwierany w chwili usunięcia
 #: (miejsce zwarcia leży wewnątrz gałęzi), koniec magistrali z odbiorem zostaje odcięty.
@@ -366,6 +368,22 @@ def test_brak_modelu_odmowa_akcja_wiazanie_i_bieg_przechodzi(client: TestClient)
     assert f"„{pv['nazwa']}”" in brak["komunikat_pl"] and REFY.pv not in brak["komunikat_pl"]
     powody = " ".join(gotowosc["gotowosc"]["missing_fields_pl"])
     assert f"wytwórca „{pv['nazwa']}”" in powody and REFY.pv not in powody
+    # Karta modeli odbiorów: odbiór bez modelu dynamicznego — ten sam wzorzec (stan, akcja
+    # naprawcza kanonu z nawigacją do TEJ SAMEJ sekcji ekranu, powód z nazwą odbioru).
+    (odbior,) = gotowosc["odbiory"]
+    assert odbior["ref_id"] == REFY.odbior and odbior["stan"] == "brak"
+    assert odbior["akcja_naprawcza"]["kod"] == "load.dynamika_missing"
+    assert odbior["akcja_naprawcza"]["nawigacja"] == pv["akcja_naprawcza"]["nawigacja"]
+    assert [p["profile_id"] for p in gotowosc["profile_odbiorow"]] == [PROFIL_ODBIORU]
+    assert all(
+        p["podstawa_u_min_pl"] and p["jakosc"] == "ESTIMATED" for p in gotowosc["profile_odbiorow"]
+    )
+    (brak_odbioru,) = (
+        b for b in gotowosc["braki_modelu"] if b["kod"] == "dynamika.odbior_bez_bloku_dynamiki"
+    )
+    assert brak_odbioru["elementy"] == [{"ref_id": REFY.odbior, "nazwa": odbior["nazwa"]}]
+    assert REFY.odbior not in brak_odbioru["komunikat_pl"]
+    assert f"odbiór „{odbior['nazwa']}”" in powody and "load.dynamika_missing" in powody
 
     scenariusz = client.post(
         f"/api/dynamika/study-cases/{case_id}/scenariusze",
@@ -393,6 +411,29 @@ def test_brak_modelu_odmowa_akcja_wiazanie_i_bieg_przechodzi(client: TestClient)
     )
     # Wiązanie zmieniło migawkę: rozpływ sprzed wiązania NIE jest punktem pracy tej sieci.
     assert gotowosc_po["biegi_rozplywu"] == []
+
+    # Iloczyn gotowość <-> akcja <-> bieg dla KAŻDEGO kodu braku: po związaniu PV bieg nadal
+    # odmawia — tym razem odbiorem bez modelu (nazwa odbioru w komunikacie, nie identyfikator).
+    pf_bez_odbioru = _uruchom_rozplyw(client, case_id)
+    odmowa_odbioru = _bieg(client, case_id, scenariusz["scenario_id"], pf_bez_odbioru)
+    assert odmowa_odbioru["status"] == "FAILED"
+    assert "dynamika.odbior_bez_bloku_dynamiki" in odmowa_odbioru["error_message"]
+    assert REFY.odbior not in odmowa_odbioru["error_message"]
+    assert f"„{NAZWA_ODBIORU}”" in odmowa_odbioru["error_message"]
+
+    wiazanie_odbioru = _operacja(
+        client,
+        case_id,
+        "set_load_dynamic_binding",
+        {"load_ref": REFY.odbior, "dynamic_model_ref": PROFIL_ODBIORU},
+    )
+    (odbior_po,) = wiazanie_odbioru["snapshot"]["loads"]
+    assert odbior_po["dynamika"]["u_min_pu"] == 0.7
+    assert odbior_po["dynamika"]["t_pomiaru_czestotliwosci_s"] is None
+    gotowosc_z_odbiorem = client.get(gotowosc_adres).json()
+    assert [o["stan"] for o in gotowosc_z_odbiorem["odbiory"]] == ["z_katalogu"]
+    assert gotowosc_z_odbiorem["odbiory"][0]["akcja_naprawcza"] is None
+    assert gotowosc_z_odbiorem["braki_modelu"] == []
 
     pf_po = _uruchom_rozplyw(client, case_id)
     bieg = _bieg(client, case_id, scenariusz["scenario_id"], pf_po)
@@ -496,7 +537,7 @@ def test_bieg_z_detektorem_przekroczenie_z_opisem_a_bez_tolerancji_odmowa(
     from enm.store import set_enm
 
     klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
-    siec = build_dynamika_projektanta_enm(z_modelem_pv=True)
+    siec = build_dynamika_projektanta_enm(z_modelem_pv=True, z_modelem_odbioru=True)
     set_enm(klucz, EnergyNetworkModel.model_validate(siec))
     scenariusz = client.post(
         f"/api/dynamika/study-cases/{case_id}/scenariusze",
@@ -667,23 +708,13 @@ def test_pole_referencji_bez_roli_w_predykacie_zatrzymuje_opis() -> None:
     _bez_brakow_rol(Detektor, ("bus_ref",), {"bus_ref": ("buses",)})
 
 
-@pytest.mark.parametrize("zapis_zgodny", [True, False])
-def test_zalozenia_rozdzielone_na_model_i_zapis_rdzenia(zapis_zgodny: bool) -> None:
-    """Karta AB-P1 (klasa #145): pierwszy plan ekranu niesie założenia MODELU (zdania po
-    polsku z nazwami), zdania rdzenia (bez nazw elementów) idą do widoku technicznego.
-    Iloczyn: sufiks zgodny z `zalozenia_wejscia` migawki × zapis sprzed zmiany treści —
-    wtedy cała lista zostaje w zapisie rdzenia (nic nie ginie, nic nie wchodzi na
-    pierwszy plan bez sprawdzenia). Suma obu części = lista wyniku, kolejność zachowana."""
-    from enm.adapter_dynamiki import zalozenia_wejscia
-
-    rdzen = ["Zdanie rdzenia 1.", "Zdanie rdzenia 2."]
-    modelu = list(zalozenia_wejscia(_SIEC))
-    zapis = [*rdzen, *modelu] if zapis_zgodny else [*rdzen, *modelu[:-1], "Stara treść."]
-    ladunek: dict[str, Any] = {"zalozenia": zapis}
-    opis = opis_wyniku_dynamiki(ladunek, _SIEC, baza_mocy_mva=None)
-    assert opis["zalozenia_rdzenia"] + opis["zalozenia_modelu"] == zapis
-    if zapis_zgodny:
-        assert opis["zalozenia_modelu"] == modelu and opis["zalozenia_rdzenia"] == rdzen
-        assert modelu, "sieć testowa musi mieć założenia modelu (inaczej test pusty)"
-    else:
-        assert opis["zalozenia_modelu"] == [] and opis["zalozenia_rdzenia"] == zapis
+def test_zalozenia_sa_jedna_lista_zdan_z_nazwami() -> None:
+    """Przepisane z intencją (karta modeli odbiorów, §0 pkt 6): dawniej opis wyniku dzielił
+    założenia na część MODELU (zdania z nazwami) i ZAPIS RDZENIA (zdania silnika bez nazw,
+    z identyfikatorami — zwinięty widok techniczny). Rdzeń oddaje dziś rekordy, a zdania z
+    nazwami składa warstwa aplikacji, więc na pierwszym planie jest JEDNA lista — ta sama,
+    którą niesie pole `zalozenia` wyniku; opis nie ma już części „zapisu rdzenia"."""
+    zapis = ["Zdanie pierwsze.", "Zdanie drugie."]
+    opis = opis_wyniku_dynamiki({"zalozenia": zapis}, _SIEC, baza_mocy_mva=None)
+    assert opis["zalozenia_modelu"] == zapis
+    assert "zalozenia_rdzenia" not in opis

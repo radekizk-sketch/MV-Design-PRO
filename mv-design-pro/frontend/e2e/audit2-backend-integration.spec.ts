@@ -149,12 +149,22 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     }
   });
 
-  test('G. block-transformers: SN/SN dla turbinowni FW', async ({ request }) => {
+  test('G. block-transformers: pozycje dla FW z proweniencja, bez SN/SN bez zrodla', async ({
+    request,
+  }) => {
     const res = await request.get(`${BACKEND_BASE}/api/v1/catalog/audit2/block-transformers`);
     const body = await res.json();
+    const dlaFw = body.filter((b: { applicable_der_kinds: string[] }) =>
+      b.applicable_der_kinds.includes('FW'),
+    );
+    expect(dlaFw.length).toBeGreaterThan(0);
+    for (const b of body as Array<{ source_reference: string }>) {
+      expect(b.source_reference.trim().length).toBeGreaterThan(0);
+    }
+    // Pozycja SN/SN zablokowana danymi (brak zrodla u_k i strat) — karta
+    // KATALOG-KOMPLETNY-PROWENIENCJA usunela dawny szacunek 15/6,3 kV 10 MVA.
     const mvToMv = body.filter((b: { is_mv_to_mv: boolean }) => b.is_mv_to_mv);
-    expect(mvToMv.length).toBeGreaterThan(0);
-    expect(mvToMv[0].applicable_der_kinds).toContain('FW');
+    expect(mvToMv).toEqual([]);
   });
 
   test('H. MV neutral groundings: 4 typy', async ({ request }) => {

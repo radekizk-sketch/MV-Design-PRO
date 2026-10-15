@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
-import { formatStationTypeLabelPl } from '../shared/stationTypeLabels';
+import { podpisStacjiPl } from '../shared/rodzajStacji';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { useSelectionStore } from '../selection';
 
@@ -156,7 +156,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           category: 'stations',
           categoryLabel: CATEGORY_LABELS.stations,
           elementType: 'Station',
-          detail: `Typ: ${formatStationTypeLabelPl(s.station_type)}`,
+          detail: podpisStacjiPl(snapshot, s),
         });
       }
     }

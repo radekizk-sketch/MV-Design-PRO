@@ -55,6 +55,11 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Element przyłączony do szyny głównej stacji z pominięciem pola" == ten sam warunek
     # (jedno źródło predykatu `enm/tor_pola.py::naruszenia_zasady_toru`, karta POLA-W-TORZE).
     "W042": "station.element_bypasses_field",
+    # „Deklaracja rodzaju stacji niezgodna z topologią" == ten sam warunek (jedno źródło
+    # `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ).
+    "W043": "station.kind_mismatch",
+    # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
+    "W044": "station.field_role_unknown",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia

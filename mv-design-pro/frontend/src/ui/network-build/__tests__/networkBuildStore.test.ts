@@ -323,6 +323,9 @@ describe('selectStationSummaries', () => {
           station_type: 'inline',
           bus_refs: [],
           transformer_refs: [],
+          // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z pól (3 liniowe ⇒ odgałęźna), nie
+          // z deklaracji „inline".
+          // Pola stacji: rekordy `bays` (karta W5-B — jedyny nośnik pól).
         },
         {
           id: 'station-a',
@@ -333,14 +336,21 @@ describe('selectStationSummaries', () => {
           transformer_refs: [],
         },
       ],
+      bays: [
+        { ref_id: 'p-in', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'IN', equipment_refs: [] },
+        { ref_id: 'p-out', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'OUT', equipment_refs: [] },
+        { ref_id: 'p-odg', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'FEEDER', equipment_refs: [] },
+      ],
     } as unknown as EnergyNetworkModel;
 
     const summaries = selectStationSummaries(snapshot, new Map());
 
     expect(summaries).toHaveLength(2);
-    expect(summaries[0]?.name).toBe('S01 · Stacja przelotowa');
+    expect(summaries[0]?.name).toBe('S01 · Stacja odgałęźna');
     expect(summaries[0]?.name).not.toContain('inline');
+    expect(summaries[0]?.rodzaj).toBe('branch');
     expect(summaries[1]?.name).toBe('S02 · Stacja końcowa');
+    expect(summaries[1]?.rodzaj).toBe('terminal');
   });
 });
 

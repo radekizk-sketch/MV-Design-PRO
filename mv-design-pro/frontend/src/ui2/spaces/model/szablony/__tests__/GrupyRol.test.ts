@@ -67,10 +67,10 @@ describe('zbudujDrzewkoRol — drzewko z realnych 15 kategorii /categories', () 
     expect(rolaB.liczbaSzablonow).toBe(10 + 6 + 8);
   });
 
-  it('rola D agreguje 5 kategorii OZE = 25 szablonów', () => {
+  it('rola D agreguje 5 kategorii OZE = 23 szablony (2 wiatrowe wycofane 2026-10-15)', () => {
     const rolaD = drzewko.find((w) => w.id === 'D')!;
     expect(rolaD.kategorie).toHaveLength(5);
-    expect(rolaD.liczbaSzablonow).toBe(6 + 5 + 5 + 5 + 4);
+    expect(rolaD.liczbaSzablonow).toBe(6 + 5 + 5 + 5 + 2);
   });
 
   it('rola C zawiera przemyslowa + stacja_abonencka (V12T-016) = 9 szablonów', () => {
@@ -92,11 +92,11 @@ describe('zbudujDrzewkoRol — drzewko z realnych 15 kategorii /categories', () 
     expect(typowe.liczbaSzablonow).toBe(10);
   });
 
-  it('suma szablonów wszystkich ról odpowiada sumie liczników wejściowych (73)', () => {
+  it('suma szablonów wszystkich ról odpowiada sumie liczników wejściowych (71)', () => {
     const suma = drzewko.reduce((s, w) => s + w.liczbaSzablonow, 0);
     const sumaWejsciowa = KATEGORIE_FIXTURE.reduce((s, k) => s + k.template_count, 0);
     expect(suma).toBe(sumaWejsciowa);
-    expect(suma).toBe(73);
+    expect(suma).toBe(71);
   });
 });
 

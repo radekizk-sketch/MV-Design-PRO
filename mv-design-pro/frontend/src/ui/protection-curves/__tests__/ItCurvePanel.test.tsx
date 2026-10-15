@@ -148,9 +148,22 @@ describe('itCurveAdapter', () => {
     expect(itCurveMissingReasonsPl(['time_multiplier'])).toEqual([
       'Brak mnożnika czasowego (TMS) — krzywa odwrotna niedostępna',
     ]);
-    expect(itCurveMissingReasonsPl(['pickup_current'])[0]).toContain(
-      'Brak progu rozruchowego',
-    );
+    // Para z backendem: KAŻDY kod braku, który emituje `protection_read_model`
+    // (`_build_functions` / `_build_it_curve`, pin `KODY_BRAKU_KRZYWEJ_IT` w
+    // `backend/tests/enm/test_enm_protection_view_api.py`), ma zdanie po polsku — kod
+    // maszynowy nie trafia na ekran.
+    for (const kod of [
+      'time_multiplier',
+      'definite_time',
+      'curve_type',
+      'threshold_unit',
+      'ct_ratio',
+      'it_curve_points',
+    ]) {
+      const [powod] = itCurveMissingReasonsPl([kod]);
+      expect(powod).not.toBe(kod);
+      expect(powod).toMatch(/^Brak|^Próg|^Solver/);
+    }
     // Nieznany kod zwracany bez ukrywania.
     expect(itCurveMissingReasonsPl(['nieznany_kod'])).toEqual(['nieznany_kod']);
   });

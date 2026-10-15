@@ -9,6 +9,8 @@
  *  - stan wejścia: brak aktywnego projektu / brak zakończonego przebiegu
  *    zwarciowego → uczciwy stan zerowy z akcją naprawczą prowadzącą we właściwą
  *    przestrzeń (`useShellStore.setActiveSpace`), NIE pusta tabela,
+ *  - sekcja oceny zabezpieczeń z modelu na biegu zwarciowym (`SekcjaOcenyZabezpieczen`,
+ *    bieg `protection_sn`: uruchomienie i wynik z odmowami i akcjami naprawczymi),
  *  - poniżej: REALNA strona `ProtectionCoordinationPage` (klient
  *    `protection-coordination/api.ts` → POST/GET /api/protection-coordination/...).
  *
@@ -26,6 +28,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { jestPrzebiegiemZwarciowym } from '../jakosc';
 import { SekcjaNastaw } from './SekcjaNastaw';
+import { SekcjaOcenyZabezpieczen } from './SekcjaOcenyZabezpieczen';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
 function StanZerowy({
@@ -100,6 +103,12 @@ export function EkranKoordynacji() {
               nie ma czego porównywać. Sekcja mówi też wprost, których nastaw
               nie da się wyznaczyć i co uzupełnić (dług V12K-189). */}
           {activeCaseId ? <SekcjaNastaw caseId={activeCaseId} /> : null}
+          {/* Ocena zabezpieczeń z modelu na biegu zwarciowym (bieg `protection_sn`): czy
+              każde zabezpieczenie zadziała w punktach swojej strefy i w jakim czasie —
+              przed parami selektywności poniżej, które na tej samej ocenie się opierają. */}
+          {activeCaseId ? (
+            <SekcjaOcenyZabezpieczen projectId={activeProjectId} caseId={activeCaseId} />
+          ) : null}
           <div className="mvd-koordynacja-strona" data-testid="mvd-koordynacja-strona">
             <ProtectionCoordinationPage />
           </div>

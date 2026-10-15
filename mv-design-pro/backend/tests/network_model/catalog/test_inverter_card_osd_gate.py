@@ -20,10 +20,17 @@ from __future__ import annotations
 
 import pytest
 from network_model.catalog.mv_converter_catalog import (
+    _POLA_KARTY_MEGAPACK,
+    _POLA_KARTY_PV,
     _REFERENCE_BANDWIDTH_FIELDS,
     _REFERENCE_POWER_HIERARCHY_FIELDS,
     _REFERENCE_RATING_FIELDS,
+    CONVERTER_BESS_NN_KOPIE_KART,
+    CONVERTER_PV_NN_KARTY_PRODUCENTOW,
+    CONVERTER_PV_NN_KOPIE_KART,
     CONVERTER_REFERENCE_CARDS,
+    CONVERTER_WIND_NN_VESTAS_V112,
+    PREFIKS_KOPII_KARTY,
 )
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import ConverterKind, ConverterType
@@ -144,14 +151,79 @@ def test_reference_card_builds_and_validates_power_hierarchy(card_id: str) -> No
 
 
 @pytest.mark.parametrize("card_id", _REFERENCE_CARD_IDS)
-def test_reference_card_ratings_are_datasheet(card_id: str) -> None:
+def test_reference_card_ratings_are_declared_not_datasheet(card_id: str) -> None:
+    """Karta KATALOG-KOMPLETNY-PROWENIENCJA: karta techniczna referencyjnych pozycji jest
+    DEKLAROWANA (dokument niedołączony), więc ratingi NIE są DATASHEET — są ESTIMATED ze
+    źródłem nazwanym jako deklaracja. Intencja dawnego testu (rating cytuje kartę
+    techniczną producenta) zostaje: cytat jest, ale z prawdziwym statusem."""
     card = _reference_cards_from_catalog()[card_id]
+    assert card.verification_status == "NIEWERYFIKOWANY"
+    assert card.source_reference.startswith("Deklarowane: Karta techniczna")
     quality_map = resolve_card_field_quality_map(card)
     for name in _REFERENCE_RATING_FIELDS + _REFERENCE_POWER_HIERARCHY_FIELDS:
-        assert quality_map[name].quality is FieldQuality.DATASHEET, name
-        # DATASHEET fields cite the manufacturer datasheet.
+        assert quality_map[name].quality is FieldQuality.ESTIMATED, name
         assert quality_map[name].source_ref
+        assert quality_map[name].source_ref.startswith("Deklarowane: ")
         assert "karta techniczna" in quality_map[name].source_ref.lower()
+    # Założenie rekordu (nadwymiarowanie DC) — ESTIMATED z nazwanym założeniem.
+    p_inst = quality_map["p_installed_mw"]
+    assert p_inst.quality is FieldQuality.ESTIMATED
+    assert p_inst.note and "założenie" in p_inst.note
+
+
+def test_manufacturer_card_ratings_are_datasheet_with_cited_document() -> None:
+    """Pozycje z kartą producenta (ZWERYFIKOWANY): każde pole ratingu DATASHEET ze źródłem
+    z adresem dokumentu; tryb regulacji = nastawa projektu (SYSTEM_DEFAULT)."""
+    repo = get_default_mv_catalog()
+    ids = [rec["id"] for rec in CONVERTER_PV_NN_KARTY_PRODUCENTOW]
+    # 7 kart z pierwszej części karty + 2 SMA Sunny Tripower 8.0/10.0 3AV-40 (runda 3).
+    assert len(ids) == 9
+    for cid in ids:
+        card = repo.converter_types[cid]
+        assert card.verification_status == "ZWERYFIKOWANY", cid
+        assert "https://" in card.source_reference, cid
+        quality_map = resolve_card_field_quality_map(card)
+        for name in _REFERENCE_RATING_FIELDS:
+            assert quality_map[name].quality is FieldQuality.DATASHEET, (cid, name)
+            assert quality_map[name].source_ref == card.source_reference, (cid, name)
+        assert quality_map["control_mode"].quality is FieldQuality.SYSTEM_DEFAULT, cid
+
+
+_KOPIE_KART = [
+    *[
+        (rec["id"], tuple(p for p in _POLA_KARTY_PV if p != "cosphi_min"))
+        for rec in CONVERTER_PV_NN_KOPIE_KART
+    ],
+    *[(rec["id"], _POLA_KARTY_MEGAPACK) for rec in CONVERTER_BESS_NN_KOPIE_KART],
+    # Karta KATALOG-TURBINY-TOR-V112: kopie dokumentów Vestas (V112-3.0, V112-3.3 × 2
+    # warianty generatora) — każde pole niesione z dokumentu ESTIMATED z adresem kopii.
+    *[
+        (rec["id"], tuple(sorted(rec["params"]["card_field_status"])))
+        for rec in CONVERTER_WIND_NN_VESTAS_V112
+        if rec["params"]["source_reference"].startswith(PREFIKS_KOPII_KARTY)
+    ],
+]
+
+
+@pytest.mark.parametrize(("card_id", "pola"), _KOPIE_KART, ids=[c for c, _ in _KOPIE_KART])
+def test_copy_of_manufacturer_card_is_estimated_never_datasheet(
+    card_id: str, pola: tuple[str, ...]
+) -> None:
+    """Kopia karty na serwerze strony trzeciej: wartości są z dokumentu producenta, ale
+    autentyczność kopii nie jest potwierdzona kanałem producenta — status
+    CZESCIOWO_ZWERYFIKOWANY, każde pole karty ESTIMATED z cytowanym adresem kopii,
+    NIGDY DATASHEET (DATASHEET daje wyłącznie ZWERYFIKOWANY)."""
+    card = get_default_mv_catalog().converter_types[card_id]
+    assert card.verification_status == "CZESCIOWO_ZWERYFIKOWANY"
+    assert card.catalog_status == "REFERENCYJNY_V1"
+    assert card.source_reference.startswith(PREFIKS_KOPII_KARTY)
+    assert "https://" in card.source_reference
+    quality_map = resolve_card_field_quality_map(card)
+    for name in pola:
+        assert quality_map[name].quality is FieldQuality.ESTIMATED, (card_id, name)
+        assert quality_map[name].source_ref == card.source_reference, (card_id, name)
+    for name, status in quality_map.items():
+        assert status.quality is not FieldQuality.DATASHEET, (card_id, name)
 
 
 @pytest.mark.parametrize("card_id", _REFERENCE_CARD_IDS)
@@ -175,7 +247,14 @@ def test_reference_card_bandwidths_are_estimated_never_datasheet(card_id: str) -
 
 def test_published_non_reference_converters_have_no_card_field_status() -> None:
     repo = get_default_mv_catalog()
-    reference_ids = set(_REFERENCE_CARD_IDS)
+    # Karty referencyjne, karty producentów i kopie kart deklarują proweniencję per pole.
+    reference_ids = (
+        set(_REFERENCE_CARD_IDS)
+        | {rec["id"] for rec in CONVERTER_PV_NN_KARTY_PRODUCENTOW}
+        | {card_id for card_id, _ in _KOPIE_KART}
+        # V112-3.45: deklaracja DNV nieodczytana — pola karty ESTIMATED z nazwą deklaracji.
+        | {"vestas_v112_3_45mw"}
+    )
     for c in repo.list_converter_types():
         if c.id in reference_ids:
             continue

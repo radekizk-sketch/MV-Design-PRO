@@ -1,18 +1,26 @@
 /**
  * Testy ekranu „Koordynacja zabezpieczeń" (rama prowadząca F-E5b).
- * Kliki natywne (userEvent). Test przebiegu analizy mockuje `fetch` 1:1 z
- * kontraktem `protection-coordination/api.ts` (POST .../projects/:id/run,
- * GET .../:runId) — bez fabrykacji danych po stronie ekranu.
+ * Kliki natywne (userEvent). Testy przebiegów mockują `fetch` 1:1 z kontraktem backendu
+ * (koordynacja: POST .../projects/:id/run z samymi identyfikatorami biegów, GET .../:runId;
+ * ocena zabezpieczeń: POST /projects/:id/protection-runs, POST .../execute, GET .../results),
+ * a wyniki to PRAWDZIWE odpowiedzi backendu z generatora fikstur (sieć złota G08).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
-import type { CoordinationResult, CoordinationSummaryResponse } from '../../../../ui/protection-coordination/types';
+import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
+import type {
+  CoordinationResult,
+  CoordinationSummaryResponse,
+} from '../../../../ui/protection-coordination/types';
+import type { WynikOcenyZabezpieczen } from '../ocenaZabezpieczenApi';
+import wynikKoordynacjiSceny from '../../../../harness-fixtures/generated/koordynacja_scena_wynik.json';
+import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
 import { EkranKoordynacji } from '../EkranKoordynacji';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
 
@@ -24,9 +32,7 @@ const DONE_SC_RUN = {
   started_at: '2026-07-18T09:59:00Z',
 } as never;
 
-/** Drugi bieg zwarciowy (przypadek minimalny c = 0,95). Od karty F-K4 faza 3b prądy
- *  koordynacji pochodzą WYŁĄCZNIE z biegów, a Ik_min wymaga osobnego przypadku —
- *  wcześniej były losowane w UI (`Math.random()`), więc test nie potrzebował biegów. */
+/** Drugi bieg zwarciowy (wariant minimalny) — czułość wymaga osobnego biegu MIN. */
 const DONE_SC_RUN_MIN = {
   id: 'run-sc-2',
   analysis_type: 'SC_3F',
@@ -50,20 +56,26 @@ function konfiguracjaBiegu(scenariusz: 'MAX' | 'MIN', cFactor: number) {
   };
 }
 
-/** Wiersz wyniku zwarciowego dla lokalizacji pierwszego urządzenia (`bus_1`). */
-function wierszSC(cFactor: number, ikssKa: number) {
-  return {
-    target_id: 'bus_1',
-    element_id: 'bus_1',
-    target_name: 'Szyna 1',
-    ikss_ka: ikssKa,
-    ip_ka: null,
-    ith_ka: null,
-    sk_mva: null,
-    fault_type: '3F',
-    flags: [],
-    c_factor: cFactor,
-  };
+/** Prawdziwe wyniki backendu dla sieci złotej G08 (generator fikstur harnessu). */
+const WYNIK_KOORDYNACJI = wynikKoordynacjiSceny as unknown as CoordinationResult;
+const WYNIK_OCENY = wynikOcenySceny as unknown as WynikOcenyZabezpieczen;
+
+/** Odpowiedzi tła ekranu (sekcja nastaw, lista biegów oceny) — nieistotne dla danego testu. */
+function odpowiedzTla(url: string): Response {
+  if (url.includes('/protection-runs')) {
+    return { ok: true, status: 200, json: async () => ({ runs: [] }) } as Response;
+  }
+  if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ run_id: 'run-sc-1', dostepny: false, powod_pl: 'brak', linie: [] }),
+    } as Response;
+  }
+  if (url.includes('/api/catalog/protection/device-types')) {
+    return { ok: true, status: 200, json: async () => [] } as Response;
+  }
+  throw new Error(`Niespodziewane wywołanie fetch: ${url}`);
 }
 
 function ustawKompletnyKontekst() {
@@ -78,10 +90,13 @@ beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
   useShellStore.setState({ activeSpace: 'wyniki' });
+  // Tło bez biegów: ekrany wołają listę biegów oceny i dostępność nastaw.
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => odpowiedzTla(String(input))));
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('EkranKoordynacji — rama prowadząca', () => {
@@ -154,45 +169,11 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
   it('przebieg analizy koordynacji woła API 1:1 z kontraktem api.ts (POST run + GET wynik)', async () => {
     const user = userEvent.setup();
     ustawKompletnyKontekst();
-    // Koordynacja bez prądów z biegów jest zablokowana (F-K4 faza 3b) — dajemy
-    // przypadek maksymalny i minimalny, czyli warunki, w których analiza ma sens.
+    // Koordynacja wymaga biegu maksymalnego i minimalnego (scenariusz zapisany NA BIEGU).
     useExecutionRunsStore.setState({ runs: [DONE_SC_RUN, DONE_SC_RUN_MIN] });
 
-    const summary: CoordinationSummaryResponse = {
-      run_id: 'coord-run-1',
-      project_id: 'project-1',
-      overall_verdict: 'PASS',
-      overall_verdict_pl: 'Pozytywny',
-      total_devices: 1,
-      total_checks: 1,
-      sensitivity_pass: 1,
-      sensitivity_fail: 0,
-      selectivity_pass: 1,
-      selectivity_fail: 0,
-      overload_pass: 1,
-    } as CoordinationSummaryResponse;
-
-    const result: CoordinationResult = {
-      run_id: 'coord-run-1',
-      project_id: 'project-1',
-      sensitivity_checks: [],
-      selectivity_checks: [],
-      overload_checks: [],
-      tcc_curves: [],
-      fault_markers: [],
-      overall_verdict: 'PASS',
-      summary: {
-        total_devices: 1,
-        total_checks: 1,
-        sensitivity: { pass: 1, marginal: 0, fail: 0, error: 0 },
-        selectivity: { pass: 1, marginal: 0, fail: 0, error: 0 },
-        overload: { pass: 1, marginal: 0, fail: 0, error: 0 },
-        overall_verdict: 'PASS',
-        overall_verdict_pl: 'Pozytywny',
-      },
-      trace_steps: [],
-      created_at: '2026-07-18T10:05:00Z',
-    };
+    const summary = { run_id: 'coord-run-1' } as CoordinationSummaryResponse;
+    const result = WYNIK_KOORDYNACJI;
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -202,77 +183,215 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
       if (url === '/api/protection-coordination/coord-run-1') {
         return { ok: true, status: 200, json: async () => result } as Response;
       }
-      // Prądy koordynacji z realnych biegów (F-K4 faza 3b): przypadek maksymalny
-      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po WARIANCIE
-      // ZAPISANYM NA BIEGU (`konfiguracja_biegu.scenariusz`, kontrakt
-      // `api/canonical_run_views.py::build_short_circuit_results_response`), nie po
-      // współczynniku `c` wiersza: na sieci SN c_min = 1,00 (IEC 60909-0 Tabela 1),
-      // więc `c` nie odróżnia biegu minimalnego od maksymalnego.
       if (url === '/api/analysis-runs/run-sc-1/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({
-            run_id: 'run-sc-1',
-            rows: [wierszSC(1.1, 8.4)],
-            konfiguracja_biegu: konfiguracjaBiegu('MAX', 1.1),
-          }),
+          json: async () => ({ run_id: 'run-sc-1', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MAX', 1.1) }),
         } as Response;
       }
       if (url === '/api/analysis-runs/run-sc-2/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({
-            run_id: 'run-sc-2',
-            rows: [wierszSC(1.0, 3.1)],
-            konfiguracja_biegu: konfiguracjaBiegu('MIN', 1.0),
-          }),
+          json: async () => ({ run_id: 'run-sc-2', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MIN', 1.0) }),
         } as Response;
       }
-      // V12K-262: lokalizacja urządzenia pochodzi z MIGAWKI MODELU przypadku;
-      // `ref_id` jest tą samą przestrzenią nazw co `element_id` wiersza wyniku.
-      if (url === '/api/cases/case-1/enm') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            buses: [{ id: 'b1', ref_id: 'bus_1', name: 'Szyna 1' }],
-            branches: [],
-            transformers: [],
-          }),
-        } as Response;
-      }
-      throw new Error(`Niespodziewane wywołanie fetch: ${init?.method ?? 'GET'} ${url}`);
+      return odpowiedzTla(url);
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<EkranKoordynacji />);
 
-    // Realna ścieżka użytkownika: dodaj urządzenie, WSKAŻ element modelu
-    // (V12K-262 — ekran nie wymyśla już lokalizacji), zapisz, uruchom analizę.
-    await user.click(screen.getByRole('button', { name: 'Dodaj urządzenie' }));
-    await user.selectOptions(await screen.findByTestId('device-location-select'), 'bus_1');
-    await user.click(screen.getByRole('button', { name: 'Zapisz konfigurację' }));
-    await user.click(screen.getByTestId('run-analysis-button'));
+    // Realna ścieżka: biegi wskazane z listy biegów przypadku, klik „Wykonaj analizę".
+    const strona = screen.getByTestId('protection-coordination-page');
+    await waitFor(() =>
+      expect(within(strona).getByTestId('coordination-run-min')).toHaveTextContent('✓'),
+    );
+    await user.click(within(strona).getByTestId('run-analysis-button'));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/protection-coordination/projects/project-1/run',
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/protection-coordination/coord-run-1');
     });
-
-    // Ciało POST jest zgodne z RunCoordinationRequest (devices niepuste).
+    // Ciało POST: WYŁĄCZNIE identyfikatory biegów — urządzenia i nastawy z modelu.
     const postCall = fetchMock.mock.calls.find(
       ([u]) => String(u) === '/api/protection-coordination/projects/project-1/run',
     );
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string);
-    expect(Array.isArray(body.devices)).toBe(true);
-    expect(body.devices.length).toBeGreaterThan(0);
+    expect(JSON.parse((postCall?.[1] as RequestInit).body as string)).toEqual({
+      sc_run_id: 'run-sc-1',
+      sc_run_id_min: 'run-sc-2',
+    });
+    expect(await within(strona).findByTestId('coordination-devices')).toHaveTextContent(
+      result.devices[0].name,
+    );
+    vi.unstubAllGlobals();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ocena zabezpieczeń z modelu na biegu zwarciowym (bieg `protection_sn`) — uruchomienie
+// i wynik NA ŚCIEŻCE projektanta (karta BIEG-ZABEZPIECZEN-Z-MODELU). Wynik = PRAWDZIWA
+// odpowiedź backendu dla sieci złotej G08 (`koordynacja_scena_ocena`).
+// Iloczyn cech: {brak biegu oceny, bieg oceny istnieje} × {uruchomienie udane, bieg FAILED}
+// × {świeży, nieaktualny} × {odmowa z akcją naprawczą}.
+// ---------------------------------------------------------------------------
+
+describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
+  function kontekstOceny(): void {
+    ustawKompletnyKontekst();
+    useExecutionRunsStore.setState({ runs: [DONE_SC_RUN, DONE_SC_RUN_MIN] });
+  }
+
+  function mockOceny(opcje: {
+    lista?: { id: string; status: string; created_at: string }[];
+    wynik?: unknown;
+    statusWykonania?: string;
+  }) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/projects/project-1/protection-runs' && init?.method === 'POST') {
+        return { ok: true, status: 201, json: async () => ({ id: 'ocena-1', status: 'CREATED' }) } as Response;
+      }
+      if (url === '/api/protection-runs/ocena-1/execute') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'ocena-1',
+            status: opcje.statusWykonania ?? 'FINISHED',
+            error_message: opcje.statusWykonania === 'FAILED' ? 'Bieg zwarciowy nie istnieje.' : null,
+          }),
+        } as Response;
+      }
+      if (url.startsWith('/api/protection-runs/') && url.endsWith('/results')) {
+        return { ok: true, status: 200, json: async () => opcje.wynik ?? WYNIK_OCENY } as Response;
+      }
+      if (url === '/api/projects/project-1/protection-runs') {
+        return { ok: true, status: 200, json: async () => ({ runs: opcje.lista ?? [] }) } as Response;
+      }
+      if (url.endsWith('/results/short-circuit')) {
+        const max = url.includes('run-sc-1');
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ rows: [], konfiguracja_biegu: konfiguracjaBiegu(max ? 'MAX' : 'MIN', 1.0) }),
+        } as Response;
+      }
+      return odpowiedzTla(url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('bez biegu oceny: stan nazwany; klik „Oceń" tworzy i wykonuje bieg na biegu MAX i pokazuje oceny', async () => {
+    const user = userEvent.setup();
+    kontekstOceny();
+    const fetchMock = mockOceny({});
+    render(<EkranKoordynacji />);
+
+    expect(await screen.findByTestId('mvd-ocena-zabezpieczen-brak-wyniku')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom')).not.toBeDisabled(),
+    );
+    await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom'));
+
+    const wynik = await screen.findByTestId('mvd-ocena-zabezpieczen-wynik');
+    const utworzenie = fetchMock.mock.calls.find(
+      ([u, i]) => String(u) === '/api/projects/project-1/protection-runs' && i?.method === 'POST',
+    );
+    expect(JSON.parse((utworzenie?.[1] as RequestInit).body as string)).toEqual({
+      sc_run_id: 'run-sc-1',
+      protection_case_id: 'case-1',
+    });
+    expect(WYNIK_OCENY.evaluations.length).toBeGreaterThan(0);
+    for (const o of WYNIK_OCENY.evaluations) {
+      const wiersz = within(wynik).getByTestId(
+        `mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`,
+      );
+      expect(wiersz).toHaveTextContent(o.nazwa_urzadzenia_pl);
+      expect(wiersz).toHaveTextContent(o.nazwa_punktu_pl);
+      expect(wiersz).toHaveTextContent(o.ocena.etykieta.etykieta_pl);
+      expect(wiersz).toHaveTextContent(o.ocena.wyjasnienie.zdanie_pl);
+      expect(wiersz).not.toHaveTextContent(o.device_id);
+    }
+    expect(screen.queryByTestId('mvd-ocena-zabezpieczen-nieaktualny')).not.toBeInTheDocument();
+  });
+
+  it('wariant minimalny wskazany w polu wyboru trafia do żądania', async () => {
+    const user = userEvent.setup();
+    kontekstOceny();
+    const fetchMock = mockOceny({});
+    render(<EkranKoordynacji />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom')).not.toBeDisabled(),
+    );
+    await user.selectOptions(screen.getByTestId('mvd-ocena-zabezpieczen-wariant'), 'min');
+    await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom'));
+    await screen.findByTestId('mvd-ocena-zabezpieczen-wynik');
+    const utworzenie = fetchMock.mock.calls.find(
+      ([u, i]) => String(u) === '/api/projects/project-1/protection-runs' && i?.method === 'POST',
+    );
+    expect(JSON.parse((utworzenie?.[1] as RequestInit).body as string).sc_run_id).toBe('run-sc-2');
+  });
+
+  it('bieg zakończony porażką — komunikat backendu, nie pusty wynik', async () => {
+    const user = userEvent.setup();
+    kontekstOceny();
+    mockOceny({ statusWykonania: 'FAILED' });
+    render(<EkranKoordynacji />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom')).not.toBeDisabled(),
+    );
+    await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom'));
+    expect(await screen.findByTestId('mvd-ocena-zabezpieczen-blad')).toHaveTextContent(
+      'Bieg zwarciowy nie istnieje.',
+    );
+    expect(screen.queryByTestId('mvd-ocena-zabezpieczen-wynik')).not.toBeInTheDocument();
+  });
+
+  it('istniejący bieg oceny wczytany po wejściu; nieaktualny — baner z przyczyną; odmowa prowadzi do edycji w modelu', async () => {
+    const user = userEvent.setup();
+    kontekstOceny();
+    const openRouteSurface = vi.fn();
+    useNetworkBuildStore.setState({ openRouteSurface } as never);
+    mockOceny({
+      lista: [{ id: 'ocena-stara', status: 'FINISHED', created_at: '2026-09-01T10:00:00Z' }],
+      wynik: {
+        ...WYNIK_OCENY,
+        result_status: 'OUTDATED',
+        result_status_reason_pl: 'Model zmienił się od biegu (zmiana nastaw zabezpieczenia).',
+        odmowy: [
+          {
+            urzadzenie_ref: 'relay-q9',
+            nazwa_pl: 'Zabezpieczenie Q9',
+            breaker_ref: 'br-q9',
+            braki: [
+              {
+                kod: 'protection.ct_missing',
+                komunikat_pl: 'Wyłącznik nie ma przekładnika prądowego.',
+                akcja_naprawcza_pl: 'Dodaj przekładnik prądowy przy wyłączniku.',
+                funkcja: null,
+              },
+            ],
+            kandydaci_naprawy: [],
+          },
+        ],
+      },
+    });
+    render(<EkranKoordynacji />);
+
+    expect(await screen.findByTestId('mvd-ocena-zabezpieczen-nieaktualny')).toHaveTextContent(
+      'zmiana nastaw zabezpieczenia',
+    );
+    const odmowy = screen.getByTestId('mvd-ocena-zabezpieczen-odmowy');
+    expect(odmowy).toHaveTextContent('Zabezpieczenie Q9:');
+    expect(odmowy).toHaveTextContent('Dodaj przekładnik prądowy przy wyłączniku.');
+    await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uzupelnij-relay-q9'));
+    expect(openRouteSurface).toHaveBeenCalledWith('E-27');
   });
 });
 
@@ -323,6 +442,7 @@ describe('EkranKoordynacji — nastawy z analizy (karta W3-C1)', () => {
         if (url.includes('/api/catalog/protection/device-types')) {
           return { ok: true, status: 200, json: async () => [] } as Response;
         }
+        if (url.includes('/protection-runs')) return odpowiedzTla(url);
         // Strona selektywności ma własne wywołania — dla tego testu nieistotne.
         return { ok: true, status: 200, json: async () => ({ rows: [] }) } as Response;
       }),

@@ -87,14 +87,71 @@ function transformatorStacji(
   return szynyStacjiRefs.has(transformer.hv_bus_ref) || szynyStacjiRefs.has(transformer.lv_bus_ref);
 }
 
+/**
+ * Dane reguły, które zależą WYŁĄCZNIE od migawki (nie od stacji): refy transformatorów blokowych DER i zbiór transformatorów blokowych. Wołający, który
+ * pyta o wiele stacji albo wiele transformatorów tej samej migawki (adapter SLD, eksport,
+ * kompletność rysunku, topologia), buduje go RAZ — bez tego każde pytanie przeglądało wszystkie
+ * gałęzie i generatory (koszt O(stacje × migawka)). Wynik reguły z kontekstem i bez jest
+ * identyczny; kontekst zbudowany dla innej migawki jest błędem wołającego (wyjątek).
+ */
+export interface KontekstTransformatorowStacji {
+  readonly snapshot: ModelTransformatorow;
+  readonly refyBlokowe: ReadonlySet<string>;
+  /** Transformatory migawki spełniające `transformatorBlokowyDer` (jedyny filtr, wyżej). */
+  readonly blokowe: ReadonlySet<Transformer>;
+  /** Pamięć szyn i deklaracji stacji (wyliczane raz na stację migawki przy pierwszym pytaniu —
+   *  odwrotność reguły pyta o każdą stację dla każdego transformatora). */
+  readonly stacje: Map<Substation, DaneStacji>;
+}
+
+interface DaneStacji {
+  readonly deklarowane: ReadonlySet<string>;
+  readonly szyny: ReadonlySet<string>;
+}
+
+export function kontekstTransformatorowStacji(snapshot: ModelTransformatorow): KontekstTransformatorowStacji {
+  const refyBlokowe = refyTransformatorowBlokowych(snapshot);
+  return {
+    snapshot,
+    refyBlokowe,
+    blokowe: new Set(
+      (snapshot.transformers ?? []).filter((transformer) => transformatorBlokowyDer(transformer, refyBlokowe)),
+    ),
+    stacje: new Map(),
+  };
+}
+
+function kontekstDla(
+  snapshot: ModelTransformatorow,
+  kontekst: KontekstTransformatorowStacji | undefined,
+): KontekstTransformatorowStacji {
+  if (!kontekst) return kontekstTransformatorowStacji(snapshot);
+  if (kontekst.snapshot !== snapshot) {
+    throw new Error('Kontekst transformatorów stacji zbudowany dla innej migawki');
+  }
+  return kontekst;
+}
+
+function daneStacji(station: Substation, kontekst: KontekstTransformatorowStacji): DaneStacji {
+  let dane = kontekst.stacje.get(station);
+  if (!dane) {
+    dane = {
+      deklarowane: new Set((station.transformer_refs ?? []).filter(nonEmptyRef)),
+      szyny: szynyStacji(kontekst.snapshot, station),
+    };
+    kontekst.stacje.set(station, dane);
+  }
+  return dane;
+}
+
 export function selectStationDistributionTransformers(
   snapshot: ModelTransformatorow | null | undefined,
   station: Substation | null | undefined,
+  kontekst?: KontekstTransformatorowStacji,
 ): Transformer[] {
   if (!snapshot || !station) return [];
-  const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  const szyny = szynyStacji(snapshot, station);
-  const refyBlokowe = refyTransformatorowBlokowych(snapshot);
+  const pelny = kontekstDla(snapshot, kontekst);
+  const { deklarowane, szyny } = daneStacji(station, pelny);
   // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA: transformator blokowy
   // źródła DER jest wykluczony TAKŻE wtedy, gdy stacja deklaruje go w `transformer_refs`
   // (operacja DER dopisuje tam transformator blokowy toru źródłowego). Stacja, której jedyny
@@ -103,7 +160,7 @@ export function selectStationDistributionTransformers(
   // ZNANA GRANICA po obu stronach parytetu, nie cichy wyjątek.
   return (snapshot.transformers ?? []).filter(
     (transformer) =>
-      !transformatorBlokowyDer(transformer, refyBlokowe)
+      !pelny.blokowe.has(transformer)
       && transformatorStacji(transformer, deklarowane, szyny),
   );
 }
@@ -117,10 +174,11 @@ export function selectStationDistributionTransformers(
 export function transformatoryNalezaceDoStacji(
   snapshot: ModelTransformatorow | null | undefined,
   station: Substation | null | undefined,
+  kontekst?: KontekstTransformatorowStacji,
 ): Transformer[] {
   if (!snapshot || !station) return [];
-  const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  const szyny = szynyStacji(snapshot, station);
+  const pelny = kontekstDla(snapshot, kontekst);
+  const { deklarowane, szyny } = daneStacji(station, pelny);
   return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny));
 }
 
@@ -132,12 +190,14 @@ export function transformatoryNalezaceDoStacji(
 export function stationRefOfTransformer(
   snapshot: ModelTransformatorow | null | undefined,
   transformerRef: string,
+  kontekst?: KontekstTransformatorowStacji,
 ): string | null {
   const transformer = (snapshot?.transformers ?? []).find((item) => transformerRefs(item).includes(transformerRef));
   if (!snapshot || !transformer) return null;
+  const pelny = kontekstDla(snapshot, kontekst);
   for (const station of snapshot.substations ?? []) {
-    const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-    if (transformatorStacji(transformer, deklarowane, szynyStacji(snapshot, station))) {
+    const { deklarowane, szyny } = daneStacji(station, pelny);
+    if (transformatorStacji(transformer, deklarowane, szyny)) {
       return station.ref_id ?? null;
     }
   }

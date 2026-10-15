@@ -284,6 +284,8 @@ def _werdykt_niejednoznaczny() -> dict[str, Any]:
         pole=None,
         apparatus=None,
         mv_bus={"ref_id": "bus-sn-1", "voltage_kv": 15.0},
+        transformatory_grupy=(),
+        pozostale_zrodla_grupy=(),
     )
     rozplyw = {
         "items": [

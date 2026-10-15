@@ -67,13 +67,12 @@
 
 | Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
 |----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 20 | `add_ct`                          | Dodanie przekladnika pradowego (CT)                            | Domain / NetworkModel     |
+| 20 | `add_ct`                          | Dodanie przekladnika pradowego (CT) w polu albo przy wylaczniku liniowym (`breaker_ref`) | Domain / NetworkModel     |
 | 21 | `add_vt`                          | Dodanie przekladnika napieciowego (VT)                         | Domain / NetworkModel     |
-| 22 | `add_relay`                       | Dodanie przekaznika zabezpieczeniowego                         | Domain / NetworkModel     |
-| 23 | `update_relay_settings`           | Aktualizacja nastaw przekaznika (Is, TMS, I>>, I>>>)           | Domain / NetworkModel     |
-| 24 | `link_relay_to_field`             | Powiazanie przekaznika z polem rozdzielczym                    | Domain / NetworkModel     |
-| 25 | `calculate_tcc_curve`             | Obliczenie krzywej czas-prad (TCC) dla przekaznika             | Analysis / Protection     |
-| 26 | `validate_selectivity`            | Walidacja selektywnosci miedzy urzadzeniami zabezpieczeniowymi | Analysis / Protection     |
+| 22 | `add_relay`                       | Dodanie przekaznika zabezpieczeniowego (w polu albo przy wylaczniku liniowym) z nastawami albo z nazwanym brakiem nastaw | Domain / NetworkModel     |
+| 23 | `update_protection_settings` (karta BIEG-ZABEZPIECZEN-Z-MODELU, 2026-09-30) | Zapis nastaw zabezpieczenia w MODELU (`ProtectionAssignment.settings`, D-21); nastawy sprzeczne odrzucone kodem `relay.settings_invalid`, niekompletne przyjete (brak nazywa ocena) | Domain / NetworkModel     |
+| — | `update_relay_settings`, `link_relay_to_field`, `validate_selectivity` | USUNIETE (karta BIEG-ZABEZPIECZEN-Z-MODELU, 2026-09-30): zaslepki z odmowa i selektywnosc z kolejnosci listy (prad 10 × nastawa). Selektywnosc liczy koordynacja E-28 na urzadzeniach i nastawach z modelu (`POST /api/protection-coordination/projects/{id}/run`) | — |
+| — | `calculate_tcc_curve`             | USUNIETA (karta W3-A, 2026-09) — krzywe TCC niesie wynik koordynacji E-28 | — |
 | 26a | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | Zapis/aktualizacja obwodu wtornego CT/VT na JUZ ISTNIEJACYM przekladniku -- jedyna droga edycji po utworzeniu (`update_element_parameters` odrzuca kolekcje `measurements`, patrz `LEGACY_FIELD_COLLECTIONS`) | Domain / NetworkModel |
 
 ### 1.5 Operacje StudyCase (Przypadki obliczeniowe) -- USUNIETE (CV-3.2, 58e520ce)
@@ -402,58 +401,17 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
     "timestamp_utc": "2026-02-17T10:11:00Z"
   },
   "payload": {
-    "field_id": "field-sn-odpl-01",
-    "relay_name": "Zabezpieczenie nadpradowe F1 pole L1",
-    "device_type": "RELAY",
-    "manufacturer": "Schneider Electric",
-    "model": "Sepam 20",
-    "ct_id": "ct-field-sn-01",
-    "rated_current_a": 5.0,
-    "settings": {
-      "stage_51": {
-        "enabled": true,
-        "pickup_current_a": 300.0,
-        "time_s": null,
-        "curve_settings": {
-          "standard": "IEC",
-          "variant": "SI",
-          "pickup_current_a": 300.0,
-          "time_multiplier": 0.30,
-          "definite_time_s": null,
-          "reset_time_s": 0.0
-        },
-        "directional": false
-      },
-      "stage_50": {
-        "enabled": true,
-        "pickup_current_a": 2500.0,
-        "time_s": 0.05,
-        "curve_settings": null,
-        "directional": false
-      },
-      "stage_50_high": null,
-      "stage_51n": {
-        "enabled": true,
-        "pickup_current_a": 30.0,
-        "time_s": null,
-        "curve_settings": {
-          "standard": "IEC",
-          "variant": "SI",
-          "pickup_current_a": 30.0,
-          "time_multiplier": 0.25,
-          "definite_time_s": null,
-          "reset_time_s": 0.0
-        },
-        "directional": false
-      },
-      "stage_50n": {
-        "enabled": true,
-        "pickup_current_a": 250.0,
-        "time_s": 0.10,
-        "curve_settings": null,
-        "directional": false
-      }
-    }
+    "breaker_ref": "sw/.../switch",
+    "ct_ref": "ct/.../measurement",
+    "relay_type": "NADPRADOWY",
+    "catalog_ref": "REF-OC-200",
+    "name": "Zabezpieczenie odejscia S01",
+    "settings": [
+      {"function_type": "overcurrent_51", "threshold_a": 1.5, "threshold_unit": "A_WTORNY",
+       "curve_type": "IEC_SI", "time_multiplier": 0.1},
+      {"function_type": "overcurrent_50", "threshold_a": 15.0, "threshold_unit": "A_WTORNY",
+       "curve_type": "DT", "time_delay_s": 0.1}
+    ]
   }
 }
 ```
@@ -654,38 +612,32 @@ obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambigu
 | `operating_mode`       | `string` | NIE      | GRID_SUPPORT / ISLAND / PEAK_SHAVE / OFF | Tryb pracy              |
 | `in_service`           | `bool`   | NIE      | dom. true               | Czy urzadzenie jest w pracy           |
 
-### 4.13 `add_relay` -- AddRelayPayload
+### 4.13 `add_relay` -- payload (kod: `enm/domain_operations_v2.py::add_relay`)
 
 | Pole              | Typ      | Wymagane | Ograniczenia              | Opis                                    |
 |-------------------|----------|----------|---------------------------|-----------------------------------------|
-| `field_id`        | `string` | TAK      | musi istniec w modelu     | ID pola rozdzielczego                   |
-| `relay_name`      | `string` | TAK      | min 1                     | Nazwa przekaznika                       |
-| `device_type`     | `string` | TAK      | RELAY / FUSE / RECLOSER / CIRCUIT_BREAKER | Typ urzadzenia zabezpieczeniowego |
-| `manufacturer`    | `string` | NIE      |                           | Producent                               |
-| `model`           | `string` | NIE      |                           | Model                                   |
-| `ct_id`           | `string` | NIE      | musi istniec (jesli podane) | ID przekladnika pradowego CT          |
-| `rated_current_a` | `float`  | NIE      | > 0                       | Prad znamionowy urzadzenia [A]          |
-| `settings`        | `object` | TAK      | OvercurrentProtectionSettings | Nastawy zabezpieczenia nadpradowego |
+| `bay_ref` / `field_ref` | `string` | jedno z kotwic | musi istniec w modelu | Pole rozdzielcze zabezpieczenia |
+| `breaker_ref`     | `string` | jedno z kotwic | wylacznik liniowy POZA polem (`relay.breaker_in_field`, `relay.breaker_not_found`) | Wylacznik liniowy wstawiony `insert_section_switch_sn` |
+| `ct_ref`          | `string` | NIE      | przekladnik pradowy tego pola/wylacznika | Przekladnik zasilajacy przekaznik |
+| `relay_type`      | `string` | NIE      | typ przekaznika            | Rodzaj zabezpieczenia                    |
+| `catalog_ref`     | `string` | TAK      | brama katalogowa (katalog MV, przestrzen ZABEZPIECZENIE) | Pozycja katalogowa przekaznika |
+| `name`            | `string` | NIE      |                           | Nazwa zabezpieczenia                    |
+| `settings`        | `list`   | NIE      | lista `ProtectionSetting` | Nastawy stopni; brak pola = przypisanie z nazwanym brakiem nastaw |
 
-**Struktura `settings` (OvercurrentProtectionSettings)**:
+**Struktura wpisu `settings` (`enm/models.py::ProtectionSetting`)** — pola nieustawione sa brakiem,
+nie wartoscia domyslna:
 
-| Pole         | Typ      | Wymagane | Opis                                      |
-|--------------|----------|----------|-------------------------------------------|
-| `stage_51`   | `object` | TAK      | Stopien I> (czas-zalezny)                 |
-| `stage_50`   | `object` | NIE      | Stopien I>> (szybki)                      |
-| `stage_50_high` | `object` | NIE   | Stopien I>>> (bardzo szybki)              |
-| `stage_51n`  | `object` | NIE      | Stopien I0> (ziemnozwarciowy czas-zalezny)|
-| `stage_50n`  | `object` | NIE      | Stopien I0>> (ziemnozwarciowy szybki)     |
+| Pole              | Typ      | Opis                                                            |
+|-------------------|----------|-----------------------------------------------------------------|
+| `function_type`   | `string` | `overcurrent_51`, `overcurrent_50`, funkcje ziemnozwarciowe, kierunkowe i LoM |
+| `threshold_a`     | `float`  | Prog rozruchowy                                                  |
+| `threshold_unit`  | `string` | `A_WTORNY` albo `A_PIERWOTNY` — strona przekladnika progu (PZ-09) |
+| `curve_type`      | `string` | `DT`, `IEC_SI`, `IEC_VI`, `IEC_EI`, `IEC_LI`, `IEEE_MI`, `IEEE_VI`, `IEEE_EI` |
+| `time_multiplier` | `float`  | TMS charakterystyki zaleznej (tylko przy krzywej zaleznej)      |
+| `time_delay_s`    | `float`  | Zwloka czasu niezaleznego (tylko przy `DT`)                     |
 
-**Struktura kazdego stopnia (OvercurrentStageSettings)**:
-
-| Pole               | Typ      | Wymagane | Opis                                |
-|--------------------|----------|----------|-------------------------------------|
-| `enabled`          | `bool`   | TAK      | Czy stopien jest aktywny            |
-| `pickup_current_a` | `float`  | TAK      | Prad rozruchowy [A]                 |
-| `time_s`           | `float`  | NIE      | Czas dzialania [s] (dla DT)        |
-| `curve_settings`   | `object` | NIE      | Nastawy krzywej (dla IT)           |
-| `directional`      | `bool`   | NIE      | Czy stopien jest kierunkowy         |
+`update_protection_settings`: `protection_ref` (przypisanie z modelu) i `settings` (pelna lista jak
+wyzej — zastepuje nastawy przypisania). Regula zapisu: `enm/nastawy_zabezpieczen.py::bledy_nastaw`.
 
 <!-- 4.14-4.16 (`create_study_case`/`run_short_circuit`/`run_power_flow` jako operacje C3
      "study_cases[] w ENM") USUNIETE CV-3.2, 58e520ce -- patrz sekcja 1.5. -->
@@ -713,13 +665,10 @@ obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambigu
 | `add_ups_nn`                | `nn_bus_id`, `ups_name`, `rated_power_kva`, `battery_time_min`, `in_rated_a` | AddUPSNNPayload            |
 | `set_source_operating_mode` | `source_id`, `operating_mode`, `power_setpoint_kw`             | SetSourceOperatingModePayload         |
 | `set_dynamic_profile`       | `source_id`, `profile_name`, `time_series`                     | SetDynamicProfilePayload              |
-| `add_ct`                    | `field_id`, `ct_name`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | AddCTPayload              |
+| `add_ct`                    | `field_ref` albo `breaker_ref` (wylacznik liniowy poza polem), `catalog_ref`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | `enm/domain_operations_v2.py::add_ct` |
 | `add_vt`                    | `field_id`, `vt_name`, `ratio_primary_kv`, `ratio_secondary_v`, `accuracy_class` | AddVTPayload              |
 | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | `measurement_ref`, `obwod_wtorny` (`dlugosc_przewodu_m?`, `przekroj_przewodu_mm2?`, `obciazenia_aparatow?`, `moc_stykow_va?`), `vt_uzwojenie?` (WYLACZNIE gdy measurement jest VT) | `enm/models.py::ObwodWtorny` (patrz `Measurement.obwod_wtorny`) — realne pola operacji, nie schemat aspiracyjny jak sasiednie wiersze `add_ct`/`add_vt` powyzej (`field_id` -> realnie `field_ref`, patrz kod) |
-| `update_relay_settings`     | `relay_id`, `settings`                                         | UpdateRelaySettingsPayload            |
-| `link_relay_to_field`       | `relay_id`, `field_id`                                         | LinkRelayToFieldPayload               |
-| `calculate_tcc_curve`       | `relay_id`, `current_range_a`                                  | CalculateTCCCurvePayload              |
-| `validate_selectivity`      | `device_ids`, `fault_current_range_a`                          | ValidateSelectivityPayload            |
+| `update_protection_settings` | `protection_ref`, `settings`                                  | `enm/domain_operations_v2.py::update_protection_settings` |
 | `set_case_switch_state`     | `case_id`, `switch_id`, `state`                                | SetCaseSwitchStatePayload             |
 | `set_case_normal_state`     | `case_id`                                                      | SetCaseNormalStatePayload             |
 | `set_case_source_mode`      | `case_id`, `source_id`, `mode`                                 | SetCaseSourceModePayload              |
@@ -816,10 +765,7 @@ class DomainEvent(str, Enum):
 | `add_ct`                          | `CT_CREATED`                                                               |
 | `add_vt`                          | `VT_CREATED`                                                               |
 | `add_relay`                       | `RELAY_CREATED`                                                            |
-| `update_relay_settings`           | `RELAY_SETTINGS_UPDATED`                                                   |
-| `link_relay_to_field`             | `RELAY_SETTINGS_UPDATED`                                                   |
-| `calculate_tcc_curve`             | `TCC_CURVE_COMPUTED`                                                       |
-| `validate_selectivity`            | `SELECTIVITY_VALIDATED`                                                    |
+| `update_protection_settings`      | `RELAY_SETTINGS_UPDATED`                                                   |
 | `assign_catalog_to_element`       | `DEVICES_CREATED_SN` lub `DEVICES_CREATED_NN` (zaleznie od warstwy)        |
 | `update_element_parameters`       | `CASE_STATE_UPDATED`                                                       |
 | `rename_element`                  | `LOGICAL_VIEWS_UPDATED`                                                    |

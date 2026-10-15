@@ -48,6 +48,7 @@ def test_pliki_z_odciskiem_sa_podzbiorem_listy() -> None:
         ("network_model/solvers/ncrfg_ptpiree/engine.py", True),
         ("catalog/profiles/nc_rfg/warstwy/nc_rfg.yaml", True),
         ("network_model/solvers/frt_hvrt/__init__.py", True),
+        ("network_model/solvers/stability_rms/engine.py", False),
         ("network_model/solvers/cable_ampacity_derating.py", False),
         ("network_model/solvers/fault_loop_builder.py", False),
         ("network_model/solvers/dynamika/silnik.py", False),
@@ -58,6 +59,14 @@ def test_pliki_z_odciskiem_sa_podzbiorem_listy() -> None:
 )
 def test_przynaleznosc_do_rdzenia(sciezka: str, oczekiwane: bool) -> None:
     assert rdzenie_b01.jest_rdzeniem_b01(sciezka) is oczekiwane
+
+
+def test_stabilnosc_rms_zdjeta_z_listy_po_kasacji() -> None:
+    """Pozycja (i) planu A/B §12.2 (decyzja B-01 z 2026-09-30): solver skasowany, wpis zdjęty
+    w tym samym commicie — lista nie wskazuje już ani grupy, ani ścieżki."""
+    assert "Stabilność RMS" not in rdzenie_b01.RDZENIE_B01
+    assert not any("stability_rms" in wpis for wpis in rdzenie_b01.sciezki_b01())
+    assert not list((SRC / "network_model" / "solvers" / "stability_rms").glob("**/*.py"))
 
 
 @pytest.mark.parametrize("dokument", DOKUMENTY_GRANICY, ids=lambda p: p.name)

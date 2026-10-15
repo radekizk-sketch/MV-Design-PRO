@@ -218,9 +218,13 @@ def test_metryki_maja_odniesienie_do_wzoru(ladunek: dict) -> None:
 
 
 def test_zalozenia_sa_przeniesione_do_ladunku(ladunek: dict) -> None:
+    """Rdzen oddaje zalozenia jako REKORDY (kod, elementy, wielkosci, pozycje); zdania z
+    nazwami z modelu sklada warstwa aplikacji, wiec pole zdan z rdzenia wychodzi puste."""
     wynik = _kontrakt(ladunek)
-    assert wynik.zalozenia
-    assert any("zgodnej" in zalozenie for zalozenie in wynik.zalozenia)
+    assert wynik.zalozenia == ()
+    kody = [zalozenie.kod for zalozenie in wynik.zalozenia_rdzenia]
+    assert kody[0] == "model_rms_skladowej_zgodnej"
+    assert "rodziny_urzadzen" in kody
 
 
 def test_dwa_biegi_daja_IDENTYCZNY_ladunek() -> None:

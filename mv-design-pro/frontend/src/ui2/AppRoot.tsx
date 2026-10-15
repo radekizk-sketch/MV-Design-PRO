@@ -75,6 +75,9 @@ import { mostTrasyPrzestrzeni, przejdzDoPrzestrzeni } from './shell/przejsciaPrz
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
+import { notify } from '../ui/notifications/store';
+import { useSelectionStore } from '../ui/selection';
+import { executeFixActionSurface } from '../ui/shared/fixActionSurfaceExecutor';
 import { useAppStateStore } from '../ui/app-state';
 import { AreaContextPanel } from '../ui/shell/context-panels';
 import { obszarDlaTrasy } from './legacy/mostObszarow';
@@ -318,11 +321,27 @@ export function AppRoot() {
    * przestrzeni „Schemat" — TĄ SAMĄ ścieżką nawigacji co reszta powłoki
    * (`przejdzDoPrzestrzeni`, kanon D1), bez drugiej logiki przejścia.
    */
+  // „Napraw…" na liście gotowości wykonuje akcję naprawczą POZYCJI (kontrakt
+  // `fix_action` backendu) tym samym wykonawcą co pasek gotowości
+  // (`executeFixActionSurface`): OPEN_MODAL otwiera kartę operacji z podpowiedzią
+  // ładunku (np. W043 → edycja deklaracji rodzaju stacji), NAVIGATE_TO_ELEMENT
+  // zaznacza i centruje element. Dawniej przycisk tylko zaznaczał element
+  // i przełączał na schemat — każda akcja OPEN_MODAL była martwym kliknięciem.
   const wykonajAkcjeNaprawcza = (problem: ProblemGotowosci) => {
     if (problem.elementRef) {
       emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
     }
     wybierzPrzestrzen('schemat');
+    if (problem.fixAction) {
+      const wybor = useSelectionStore.getState();
+      executeFixActionSurface(problem.fixAction, {
+        snapshot: useSnapshotStore.getState().snapshot,
+        openOperationForm: useNetworkBuildStore.getState().openOperationForm,
+        selectElement: wybor.selectElement,
+        centerSldOnElement: wybor.centerSldOnElement,
+        notify,
+      });
+    }
   };
   // D4: JEDNA ścieżka wykonania — pozycja sama niesie swoją akcję. Dawny
   // rozdzielacz po przedrostku identyfikatora obsługiwał cztery przypadki, a

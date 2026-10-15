@@ -1,6 +1,6 @@
 # ADR-018: Provenance i świeżość wyników; hash kanoniczny niezależny od platformy
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** PROPOSED (2026-09-30, O-63: decyzja przy wycinku W-x; warunek wejścia = konsument w kodzie, nie „M1–M7 STOP” — bramka M0 wiąże tylko plan docs/twin, V12K-340)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §14; `../twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md` §5, §8
 

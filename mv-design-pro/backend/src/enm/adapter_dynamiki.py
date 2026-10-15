@@ -67,6 +67,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.dynamika_modele import NAZWY_ZRODEL_PROWENIENCJI_PL, ParametryDynamiczne
+from enm.dynamika_z_katalogu import BladMaterializacjiDynamiki, wymagania_odbioru
 from enm.mapping import ref_to_graph_id
 from enm.models import (
     Cable,
@@ -154,7 +155,6 @@ from network_model.solvers.dynamika.odbiory import (
     charakterystyka_stalej_mocy,
     charakterystyka_z_wielomianu,
     moc_poboru_w_punkcie_pracy,
-    sprawdz_odbior_biegu,
 )
 from network_model.solvers.dynamika.urzadzenia import (
     PunktPracyUrzadzenia,
@@ -211,10 +211,16 @@ KOD_WIELE_URZADZEN_W_WEZLE = "dynamika.wiele_urzadzen_w_wezle"
 #: z wypadkową szyny z rozpływu — podział byłby domysłem.
 KOD_PODZIAL_MOCY_NIESPOJNY = "dynamika.podzial_mocy_wezla_niespojny"
 #: Odbiór, którego modelu danych (moc bazowa, współczynniki ZIP rozpływu) rdzeń nie
-#: przyjmuje: odbiór czuły częstotliwościowo (rdzeń nie ma modelu częstotliwości widzianej
-#: przez odbiór), ujemna moc czynna bazowa, charakterystyka sprzeczna. Komunikat niesie
-#: powód z kontraktu rdzenia (ten sam predykat, którym rdzeń odmówiłby biegu).
+#: przyjmuje: ujemna moc czynna bazowa, współczynniki odrzucone przez rozpływ,
+#: charakterystyka sprzeczna. Komunikat niesie powód z kontraktu rdzenia (ten sam
+#: predykat, którym rdzeń odmówiłby biegu).
 KOD_ODBIOR_NIEODWZOROWANY = "dynamika.odbior_nieodwzorowany"
+#: Odbiór bez modelu dynamicznego `Load.dynamika` (kopii profilu katalogu `load_dynamic`) —
+#: brak danej przed biegiem; akcja naprawcza: kod gotowości `load.dynamika_missing`.
+KOD_ODBIOR_BEZ_BLOKU = "dynamika.odbior_bez_bloku_dynamiki"
+#: Blok `Load.dynamika` niezgodny z kształtem charakterystyki odbioru: brak pola, które
+#: równania czytają, albo pole, którego nie czytają (`kontrakty.wymagane_parametry_odbioru`).
+KOD_ODBIOR_PARAMETRY_NIESPOJNE = "dynamika.odbior_parametry_dynamiczne_niespojne"
 #: Źródło sieciowe bez impedancji zastępczej — szyna sztywna jej wymaga.
 KOD_ZRODLO_BEZ_IMPEDANCJI = "dynamika.zrodlo_bez_impedancji"
 #: Gałąź modelu, której rdzeń nie umie odwzorować w modelu pi.
@@ -229,7 +235,9 @@ KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_GALAZ_NIEOBSLUGIWANA,
     KOD_NASTAWY_BRAK,
+    KOD_ODBIOR_BEZ_BLOKU,
     KOD_ODBIOR_NIEODWZOROWANY,
+    KOD_ODBIOR_PARAMETRY_NIESPOJNE,
     KOD_PUNKT_PRACY_BRAK,
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIEPELNY,
@@ -260,6 +268,8 @@ class OdmowaWejsciaDynamiki(OdmowaDanychError):
             )
         super().__init__(f"{komunikat} (kod gotowości: {kod})")
         self.kod = kod
+        #: Treść bez kodu — warstwa aplikacji zamienia w niej identyfikatory na nazwy.
+        self.komunikat = komunikat
         self.elementy = elementy
 
 
@@ -366,26 +376,79 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
             )
         )
 
-    # Model odbioru z JEDNEGO źródła prawdy (O-49 pkt 2): współczynniki, które czyta
-    # rozpływ (`zip_coeffs_from_materialized_params`), a nie pole `Load.model`. Kontrakt
-    # odbioru sprawdza RDZEŃ (`OdbiorDynamiki`, `sprawdz_odbior_biegu`) — adapter nie ma
-    # własnego predykatu. Sprawdzenia kontraktu są niezmiennicze względem bazy mocy (znak
-    # mocy czynnej, kształt charakterystyki), więc bramka gotowości buduje odbiór w bazie
-    # 1 MVA — ten sam konstruktor, co bieg.
+    # Model odbioru (O-49 pkt 2, O-56): KAŻDY odbiór wymaga bloku `Load.dynamika` — kopii
+    # profilu katalogu `load_dynamic` (akcja naprawcza `load.dynamika_missing`). Blok musi
+    # zgadzać się z KSZTAŁTEM charakterystyki odbioru (pole podane <=> czytane przez
+    # równania): regułę rozstrzyga jedna funkcja rdzenia `wymagane_parametry_odbioru`,
+    # wołana przez `dynamika_z_katalogu.wymagania_odbioru` — tę samą, z której materializacja
+    # buduje kopię. Współczynniki czyta ta sama funkcja, co rozpływ
+    # (`zip_coeffs_from_materialized_params`). Pozostały kontrakt odbioru (znak mocy
+    # czynnej, zakresy pól) sprawdza RDZEŃ przy budowie `OdbiorDynamiki` — adapter nie ma
+    # własnego predykatu; sprawdzenia są niezmiennicze względem bazy mocy, więc bramka
+    # buduje odbiór w bazie 1 MVA — ten sam konstruktor, co bieg.
     f_studium_hz = float(enm.header.defaults.frequency_hz)
+    bez_bloku_odbioru = tuple(sorted(load.ref_id for load in enm.loads if load.dynamika is None))
+    if bez_bloku_odbioru:
+        braki.append(
+            BrakDynamiki(
+                kod=KOD_ODBIOR_BEZ_BLOKU,
+                komunikat_pl=(
+                    "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru "
+                    "(profil z katalogu profili odbiorów: napięcie przejścia do stałej "
+                    "impedancji i pomiar częstotliwości). Brak modelu: "
+                    f"{', '.join(bez_bloku_odbioru)}."
+                ),
+                elementy=bez_bloku_odbioru,
+            )
+        )
+    niespojne: list[tuple[str, str]] = []
     nieodwzorowane: list[tuple[str, str]] = []
     for load in sorted(enm.loads, key=lambda odbior: odbior.ref_id):
+        if load.dynamika is None:
+            continue
         try:
-            sprawdz_odbior_biegu(_odbior_dynamiki(load, base_mva=1.0, f_studium_hz=f_studium_hz))
+            wymagania = wymagania_odbioru(load.model_dump(mode="json"), f_studium_hz)
+        except BladMaterializacjiDynamiki as blad:
+            nieodwzorowane.append((load.ref_id, f"{load.ref_id}: {blad.komunikat}"))
+            continue
+        rozbieznosci: list[str] = []
+        for podane, wymagane, pole_pl in (
+            (
+                load.dynamika.u_min_pu is not None,
+                wymagania.u_min_pu,
+                "napięcie przejścia do stałej impedancji",
+            ),
+            (
+                load.dynamika.t_pomiaru_czestotliwosci_s is not None,
+                wymagania.t_pomiaru_czestotliwosci_s,
+                "stała czasowa pomiaru częstotliwości",
+            ),
+        ):
+            if podane != wymagane:
+                rozbieznosci.append(
+                    f"{pole_pl} — {'wymagane, a brak' if wymagane else 'podane, a zbędne'}"
+                )
+        if rozbieznosci:
+            niespojne.append((load.ref_id, f"{load.ref_id}: {', '.join(rozbieznosci)}"))
+            continue
+        try:
+            _odbior_dynamiki(load, base_mva=1.0, f_studium_hz=f_studium_hz)
         except OdmowaDynamiki as odmowa:
             nieodwzorowane.append((load.ref_id, f"{load.ref_id}: {odmowa}"))
-        except ValueError as blad:
-            # Współczynniki ZIP odrzucone przez regułę rozpływu (`validate_zip_coeffs`) —
-            # pisarze modelu nie wpuszczają takiej tabliczki, a gdyby jednak trafiła do
-            # migawki, rozpływ i tak by jej nie policzył.
-            nieodwzorowane.append(
-                (load.ref_id, f"{load.ref_id}: współczynniki ZIP odrzucone przez rozpływ ({blad})")
+    if niespojne:
+        braki.append(
+            BrakDynamiki(
+                kod=KOD_ODBIOR_PARAMETRY_NIESPOJNE,
+                komunikat_pl=(
+                    "Model dynamiczny odbioru nie pasuje do kształtu jego charakterystyki "
+                    "(pole wymagane przez równania odbioru jest puste albo podane pole nie "
+                    "jest przez nie czytane) — odśwież wiązanie profilu: "
+                    + "; ".join(opis for _ref, opis in niespojne)
+                    + "."
+                ),
+                elementy=tuple(ref for ref, _opis in niespojne),
             )
+        )
     if nieodwzorowane:
         braki.append(
             BrakDynamiki(
@@ -541,7 +604,8 @@ def punkt_pracy_z_biegu_rozplywu(
     if not isinstance(wynik, dict):
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {run_id!r} nie niesie wyniku w kontrakcie `result_v1`",
+            f"Bieg rozpływu {run_id!r} nie niesie wyniku rozpływu (napięć szyn i mocy "
+            "wstrzykiwanych) — nie ma punktu pracy do startu",
             elementy=(run_id,),
         )
     if not wynik.get("converged"):
@@ -1107,18 +1171,42 @@ def zloz_widok_sieci(
 
 
 def _charakterystyka_odbioru(load: Load, f_studium_hz: float) -> CharakterystykaOdbioru:
-    """Charakterystyka rdzenia z TYCH SAMYCH współczynników, które czyta rozpływ.
+    """Charakterystyka rdzenia z TYCH SAMYCH współczynników, które czyta rozpływ, i z bloku
+    modelu dynamicznego odbioru (`Load.dynamika` — kopia profilu katalogu).
 
     `zip_coeffs_from_materialized_params` rozstrzyga odniesienia tak jak rozpływ (brak
     `v0` = 1,0 pu, brak `f0` = częstotliwość studium); regułę „pole bez znaczenia = None"
-    stosuje rdzeń (`charakterystyka_z_wielomianu`). Napięcie przejścia do stałej
-    impedancji NIE jest zadeklarowane: model sieci nie niesie jeszcze bloku danych
-    dynamicznych odbioru, a wartość domyślna byłaby fabrykacją decyzji inżynierskiej
-    (O-49 pkt 2) — odbiór liczy się charakterystyką przy każdym napięciu dodatnim.
+    stosuje rdzeń (`charakterystyka_z_wielomianu`). Napięcie przejścia i stała pomiaru
+    częstotliwości pochodzą z bloku bez zmian — ich zgodność z kształtem sprawdza kontrakt
+    rdzenia (ta sama funkcja, co bramka `braki_modelu_dynamiki`).
     """
+    blok = load.dynamika
+    if blok is None:
+        raise OdmowaWejsciaDynamiki(
+            KOD_ODBIOR_BEZ_BLOKU,
+            f"Odbiór {load.ref_id} nie ma modelu dynamicznego — bieg czasowy nie ma z czego "
+            "zbudować jego charakterystyki",
+            elementy=(load.ref_id,),
+        )
     wspolczynniki = zip_coeffs_from_materialized_params(load.materialized_params, f_studium_hz)
     if wspolczynniki is None:
-        return charakterystyka_stalej_mocy(u_min_pu=None)
+        if blok.u_min_pu is None or blok.t_pomiaru_czestotliwosci_s is not None:
+            # Odbiór stałej mocy: kontrakt rdzenia nazwie pole z adresem (brak/fantom).
+            return CharakterystykaOdbioru(
+                a_p=0.0,
+                b_p=0.0,
+                c_p=1.0,
+                a_q=0.0,
+                b_q=0.0,
+                c_q=1.0,
+                v0_pu=None,
+                k_pf=0.0,
+                k_qf=0.0,
+                f0_hz=None,
+                u_min_pu=blok.u_min_pu,
+                t_pomiaru_czestotliwosci_s=blok.t_pomiaru_czestotliwosci_s,
+            )
+        return charakterystyka_stalej_mocy(u_min_pu=blok.u_min_pu)
     return charakterystyka_z_wielomianu(
         a_p=wspolczynniki.a_p,
         b_p=wspolczynniki.b_p,
@@ -1130,7 +1218,8 @@ def _charakterystyka_odbioru(load: Load, f_studium_hz: float) -> Charakterystyka
         k_pf=wspolczynniki.k_pf,
         k_qf=wspolczynniki.k_qf,
         f0_hz=wspolczynniki.f0_hz,
-        u_min_pu=None,
+        u_min_pu=blok.u_min_pu,
+        t_pomiaru_czestotliwosci_s=blok.t_pomiaru_czestotliwosci_s,
     )
 
 
@@ -1176,6 +1265,7 @@ def _moc_wypadkowa_urzadzen_pu(
     szyna: str,
     punkt: PunktPracyRozplywu,
     odbiory: tuple[OdbiorDynamiki, ...],
+    f_bazowa_hz: float,
 ) -> complex:
     """Moc WSZYSTKICH urządzeń szyny = wstrzyk wypadkowy + moc POBIERANA przez odbiory szyny.
 
@@ -1190,7 +1280,7 @@ def _moc_wypadkowa_urzadzen_pu(
     """
     moc_odbiorow = sum(
         (
-            moc_poboru_w_punkcie_pracy(odbior, punkt.napiecia_pu[szyna])
+            moc_poboru_w_punkcie_pracy(odbior, punkt.napiecia_pu[szyna], f_bazowa_hz)
             for odbior in odbiory
             if odbior.wezel == szyna
         ),
@@ -1230,6 +1320,7 @@ def _moce_urzadzen_pu(
     wytworcy: tuple[Generator, ...],
     punkt: PunktPracyRozplywu,
     odbiory: tuple[OdbiorDynamiki, ...],
+    f_bazowa_hz: float,
     eps_init: float,
 ) -> dict[str, complex]:
     """Podział mocy szyny między jej wytwórców — dana wejściowa albo nazwana odmowa.
@@ -1255,7 +1346,9 @@ def _moce_urzadzen_pu(
     i tak zostałby odrzucony przez rdzeń; ta odmowa tylko NAZYWA przyczynę zamiast
     zostawiać projektanta z komunikatem o niezbieżnej inicjalizacji.
     """
-    wypadkowa = _moc_wypadkowa_urzadzen_pu(szyna=szyna, punkt=punkt, odbiory=odbiory)
+    wypadkowa = _moc_wypadkowa_urzadzen_pu(
+        szyna=szyna, punkt=punkt, odbiory=odbiory, f_bazowa_hz=f_bazowa_hz
+    )
     if len(wytworcy) == 1:
         return {wytworcy[0].ref_id: wypadkowa}
 
@@ -1357,7 +1450,11 @@ def zloz_urzadzenia(
                 )
             )
             moce[zrodlo.ref_id] = _moc_reszty_szyny_pu(
-                zrodlo.bus_ref, wytworcy_szyny, punkt=punkt, odbiory=odbiory
+                zrodlo.bus_ref,
+                wytworcy_szyny,
+                punkt=punkt,
+                odbiory=odbiory,
+                f_bazowa_hz=f_bazowa_hz,
             )
             continue
         z_ohm = _impedancja_zrodla_ohm(zrodlo, impedancje_zrodel)
@@ -1399,7 +1496,11 @@ def zloz_urzadzenia(
         # Źródło sieciowe jest jedynym źródłem swojej szyny (bramka
         # `KOD_WIELE_URZADZEN_W_WEZLE`) i bierze RESZTĘ bilansu szyny.
         moce[zrodlo.ref_id] = _moc_reszty_szyny_pu(
-            zrodlo.bus_ref, wytworcy_szyny, punkt=punkt, odbiory=odbiory
+            zrodlo.bus_ref,
+            wytworcy_szyny,
+            punkt=punkt,
+            odbiory=odbiory,
+            f_bazowa_hz=f_bazowa_hz,
         )
 
     for szyna, wytworcy in sorted(wytworcy_szyny.items()):
@@ -1413,6 +1514,7 @@ def zloz_urzadzenia(
                 wytworcy=tuple(wytworcy),
                 punkt=punkt,
                 odbiory=odbiory,
+                f_bazowa_hz=f_bazowa_hz,
                 eps_init=eps_init,
             )
         )
@@ -1448,11 +1550,14 @@ def _moc_reszty_szyny_pu(
     *,
     punkt: PunktPracyRozplywu,
     odbiory: tuple[OdbiorDynamiki, ...],
+    f_bazowa_hz: float,
 ) -> complex:
     """REGUŁA RESZTY: moc źródła sieciowego = wypadkowa szyny + odbiory szyny − wytwórcy
     szyny z modelu. Szyna bez wytwórców: cała moc urządzeń szyny (zachowanie sprzed reguły,
     bit w bit — odejmowana jest suma pusta)."""
-    wypadkowa = _moc_wypadkowa_urzadzen_pu(szyna=szyna, punkt=punkt, odbiory=odbiory)
+    wypadkowa = _moc_wypadkowa_urzadzen_pu(
+        szyna=szyna, punkt=punkt, odbiory=odbiory, f_bazowa_hz=f_bazowa_hz
+    )
     wytworcy = tuple(wytworcy_szyny.get(szyna, ()))
     if not wytworcy:
         return wypadkowa
@@ -1575,6 +1680,22 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
             f"Parametry dynamiczne wytwórcy „{nazwa_elementu(gen, 'generators')}”: "
             f"{NAZWY_ZRODEL_PROWENIENCJI_PL[proweniencja.zrodlo]} ({proweniencja.odniesienie})."
         )
+    # Proweniencja modelu dynamicznego odbiorów (karta modeli odbiorów, O-56): odbiory
+    # zgrupowane po pochodzeniu bloku — sieć ma zwykle wiele odbiorów z tego samego profilu,
+    # a zdanie ma powiedzieć, SKĄD są napięcie przejścia i stała pomiaru częstotliwości.
+    grupy: dict[tuple[str, str], list[str]] = {}
+    for load in sorted(enm.loads, key=lambda o: o.ref_id):
+        if load.dynamika is None:  # pragma: no cover — odmowa zadziałałaby wcześniej
+            continue
+        klucz = (load.dynamika.proweniencja.zrodlo, load.dynamika.proweniencja.odniesienie)
+        grupy.setdefault(klucz, []).append(f"„{nazwa_elementu(load, 'loads')}”")
+    for (zrodlo, odniesienie), nazwy_odbiorow in sorted(grupy.items()):
+        liczba = "odbioru" if len(nazwy_odbiorow) == 1 else "odbiorów"
+        zalozenia.append(
+            f"Model dynamiczny {liczba} {', '.join(nazwy_odbiorow)} (napięcie przejścia do "
+            "stałej impedancji, pomiar częstotliwości): "
+            f"{NAZWY_ZRODEL_PROWENIENCJI_PL[zrodlo]} ({odniesienie})."
+        )
     return tuple(zalozenia)
 
 
@@ -1587,7 +1708,9 @@ __all__ = [
     "KOD_ELEMENT_BEZ_SZYNY",
     "KOD_GALAZ_NIEOBSLUGIWANA",
     "KOD_NASTAWY_BRAK",
+    "KOD_ODBIOR_BEZ_BLOKU",
     "KOD_ODBIOR_NIEODWZOROWANY",
+    "KOD_ODBIOR_PARAMETRY_NIESPOJNE",
     "KOD_PUNKT_PRACY_BRAK",
     "KOD_PUNKT_PRACY_INNA_MIGAWKA",
     "KOD_PUNKT_PRACY_NIEPELNY",

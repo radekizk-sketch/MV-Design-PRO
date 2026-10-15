@@ -31,8 +31,8 @@ Prąd ZACISKU (bez obciążenia) czytają z tabeli gałęzi (kolumny `i_a` — z
 `i_do_a` — zacisk `do`) wyłącznie przez zacisk rozstrzygnięty jawnie: pakiet nastaw
 (`protection_settings/batch_run.py`, zacisk zabezpieczenia), arkusz obwodów nN
 (`application/analyses/nn_circuit_sheet.py`, zacisk od strony rozdzielnicy wzdłuż
-trasy) i prąd roboczy urządzeń koordynacji (frontend, miejsce z
-`zacisk_zabezpieczenia.miejsce_urzadzenia`).
+trasy) i prąd roboczy wyłącznika urządzenia koordynacji (gałąź na granicy strefy
+urządzenia, `ocena_nadpradowa.prad_roboczy_przekaznika`).
 """
 
 from __future__ import annotations

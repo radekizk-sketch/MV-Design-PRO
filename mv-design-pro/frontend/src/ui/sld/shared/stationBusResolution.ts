@@ -91,6 +91,7 @@ export function pickStationBus(
  * `ui2/model/pasmaNapieciowe`). Nie jest trzecią regułą: nie dodaje ani nie odejmuje szyny
  * spoza iloczynu tych dwóch. Szyna bez rekordu `Bus` albo bez `voltage_kv` nie należy do
  * żadnej strony (brak danej ≠ strona nN). Kolejność wyniku = posortowane refy.
+ * Szyny stacji z lustra `szynyStacji` (indeksy migawki — pamięć lustra, PARTIA-6-FRONT).
  */
 export function stationSideBusRefs(
   model: ModelSzyn,

@@ -30,9 +30,12 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
  * żywej aplikacji — każde ogniwo łańcucha wykonane natywnym prawym klikiem na
  * rysunku, z realnym zapisem do modelu przez backend. POWTARZALNOŚĆ do 15
  * stacji mierzy sonda odbioru `scripts/sld_v3_acceptance.mjs`
- * (`menu_chain_probe`): na sieci referencyjnej 53 stacje i 115 odcinków mają
- * realne wejście budowy, przy progu karty 15 (pomiar po karcie S95-START; dawne 54
- * liczyło też GPZ bez wolnego pola liniowego). Rozdzielenie jest świadome —
+ * (`menu_chain_probe`) i test `canvas/__tests__/menuBudowyNaKanwie.test.tsx` (sekcja E)
+ * na scenie W BUDOWIE z generatora backendu (`ciag_w_budowie_etapy`): 15 kolejnych ogniw,
+ * na każdym pole startu z menu kanwy = pole, z którego backend zbudował następny etap.
+ * Sieć referencyjna jest GOTOWA (karta PARTIA-6-FRONT: każde pole liniowe stacji niesie
+ * kabel), więc jej stacje uczciwie blokują kontynuację (0 wejść), a wejściem budowy
+ * zostaje 115 odcinków (LOD 0). Rozdzielenie jest świadome —
  * pętla 15 kreatorów w e2e mierzyłaby czas kreatorów, nie dostępność operacji
  * z rysunku (dług `S9-5-DLUG-E2E-PETLA` w rejestrze).
  */

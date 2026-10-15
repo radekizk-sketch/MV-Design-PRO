@@ -929,8 +929,9 @@ class AutoPopulateRequest(BaseModel):
     """Cross-section dla cables (50/95/120/150/240/300 mm²)."""
     prefer_manufacturer: str | None = None
     """Preferred manufacturer cascade (ZPUE/Elektrometal/ABB/Siemens)."""
-    prefer_ptpire_certified: bool = True
-    """K30-23: prefer Polish PTPiRE-certified entries by default."""
+    # Dawne pole `prefer_ptpire_certified` usunięte (karta KATALOG-KOMPLETNY-PROWENIENCJA):
+    # żaden tor go nie czytał — certyfikat zawsze wchodzi do klucza sortowania
+    # (`AutoPopulateSuggestion.klucz_sortowania`), więc kontrolka była fantomem.
 
 
 #: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
@@ -1208,7 +1209,11 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
             and req.prefer_manufacturer.lower() in manufacturer.lower()
         ):
             dopasowanie = "PELNE"
-        # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
+        # Polski producent to informacja o pochodzeniu, NIE certyfikat: wykaz PTPiREE
+        # (WiPWC) obejmuje moduły wytwarzania energii, nie przekaźniki zabezpieczeniowe,
+        # a katalog zabezpieczeń nie niesie żadnego dokumentu certyfikatu. Dawne
+        # `certyfikat_ptpiree=is_polish` nadawało flagę certyfikatu z narodowości
+        # producenta (karta KATALOG-KOMPLETNY-PROWENIENCJA: flaga certyfikatu ⇒ źródło).
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
@@ -1228,7 +1233,7 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
                 label_pl=label_pl,
                 manufacturer=manufacturer,
                 dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_polish,
+                certyfikat_ptpiree=False,
                 badge_pl=(
                     "Polski producent"
                     if is_polish

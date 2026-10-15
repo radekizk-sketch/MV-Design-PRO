@@ -68,6 +68,9 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_ct: KreatorPomiaru,
   add_vt: KreatorPomiaru,
   add_relay: KreatorPrzekaznika,
+  // Nastawy zabezpieczenia modelu edytuje formularz INLINE `EdytorNastawZabezpieczenia`
+  // (ekran „Zabezpieczenia i automatyka" i karta elementu na schemacie) — bez okna kreatora.
+  update_protection_settings: null,
   // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — reuse ISTNIEJĄCYCH
   // operacji domenowych (enm/domain_operations_v2.py, P0.1), brakowało wyłącznie
   // dostawcy dialogu (patrz komentarz przy CANONICAL_OPERATION_NAMES).
@@ -92,6 +95,10 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   // jeszcze formularza — typy istnieją dla wywołań programowych.
   set_source_operating_mode: null,
   set_dynamic_profile: null,
+  // Karta modeli odbiorów: wiązanie modelu dynamicznego odbioru z profilem katalogu jest
+  // akcją naprawczą INLINE w sekcji modeli ekranu dynamiki (`ui2/wyniki/dynamika/
+  // SekcjaModeliZrodel.tsx`, kod gotowości `load.dynamika_missing`) — bez okna kreatora.
+  set_load_dynamic_binding: null,
 };
 
 /**

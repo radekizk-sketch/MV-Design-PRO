@@ -42,7 +42,7 @@ miedzyprocesowa (uvicorn z wieloma pracownikami) to osobna decyzja wdrozeniowa �
 patrz `docs/audit/AUDYT_SZCZYTU_2026-08-01.md`, sekcja 4 pkt 7.
 
 REWIZJE PONIZEJ FORMULY „+N" (P0.1 nN, LV-INV-12). Kazde zastosowanie szablonu
-`tpl_sn_nn_630kva` i kazde `POST /generators` (zrodlo nn_side) zostawia po sobie
+`tpl_sn_nn_2000kva` i kazde `POST /generators` (zrodlo nn_side) zostawia po sobie
 NIEPROMOWANE pole nN (rekord `bays`) (odpowiednio: pole glowne +
 odplywy nN; pole zrodlowe DER). `get_enm` promuje WSZYSTKIE oczekujace wpisy
 JEDNEGO przypadku w JEDNYM przebiegu automigracji
@@ -74,7 +74,11 @@ pytest.importorskip("fastapi")
 # na zwolniona maszyne CI (naturalne pasmo strat to ulamki milisekundy).
 OKNO_S = 1.5
 
-SZABLON = "tpl_sn_nn_630kva"
+# Stacja 2 MVA: test wyścigu tworzy na JEDNEJ stacji trzy źródła PV z katalogu po 0,5 MW
+# (S_n 550 kVA każde). Kontrola O-53 sumuje źródła zasilane przez ten sam transformator
+# (Σ 1650 kVA), więc dawny 630 kVA odrzucał drugie i trzecie zadanie — test ma ćwiczyć
+# współbieżność, nie odmowę mocy.
+SZABLON = "tpl_sn_nn_2000kva"
 CATALOG_VERSION = "2024.1"
 CABLE_ID = "cable-tfk-yakxs-3x120"
 SOURCE_ID = "src-gpz-15kv-250mva-rx010"

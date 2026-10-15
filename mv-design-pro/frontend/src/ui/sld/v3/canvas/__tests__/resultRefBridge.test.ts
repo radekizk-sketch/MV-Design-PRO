@@ -33,7 +33,7 @@ const enm = JSON.parse(
 // z ziaren identyfikatorów — fikstura jest regenerowana z API (karta SLD-SUBSTRAT:
 // ziarna odcinków i stacji zmieniły się z CV-4.3 K1; szablon 1250 kVA ma pole TR na
 // pozycji 002, dawny zrzut 1000 kVA — na 003).
-const stacjaInline = (enm.substations ?? []).find((s) => s.station_type === 'inline')!;
+const stacjaInline = (enm.substations ?? []).find((s) => s.station_type !== 'gpz')!;
 const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
 // Karta W5-B: pola stacji = rekordy `bays` (pola SN stacji).
 const polaStacji = polaSnStacji(enm, stacjaInline.ref_id);

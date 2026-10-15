@@ -704,8 +704,8 @@ def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> 
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
-                "code": result.get("error_code") or "generator.create_failed",
-                "message_pl": result.get("error") or "Nie udało się zapisać konfiguracji DER.",
+                "code": result["error_code"],
+                "message_pl": result["error"],
             },
         )
 
@@ -773,8 +773,8 @@ def _zapisz_wiazania_pod_blokada(klucz: str, payload: dict[str, Any]) -> dict[st
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
-                "code": result.get("error_code") or "der_bindings.failed",
-                "message_pl": result.get("error") or "Nie udało się zapisać wiązań wytwórcy.",
+                "code": result["error_code"],
+                "message_pl": result["error"],
             },
         )
 

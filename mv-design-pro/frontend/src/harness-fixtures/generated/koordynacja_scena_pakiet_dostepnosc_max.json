@@ -2,28 +2,28 @@
   "dostepny": true,
   "linie": [
     {
-      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L",
       "nastepne_szyny_wg_zacisku": {
         "do": [],
         "od": [
-          "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+          "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/000"
         ]
       },
-      "nazwa": "Magistrala GPZ (1)",
+      "nazwa": "Magistrala GPZ (2) (2) (1)",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15 kV albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "wymaga_wskazania_zacisku": true,
       "zacisk_z_modelu": null,
       "zaciski": {
         "do": {
           "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
+          "szyna_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/000"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
-          "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
         }
       },
       "zaciski_dozwolone": [
@@ -32,28 +32,28 @@
       ]
     },
     {
-      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_L",
       "nastepne_szyny_wg_zacisku": {
         "do": [
-          "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+          "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
         ],
         "od": []
       },
-      "nazwa": "Magistrala GPZ (2) (1)",
+      "nazwa": "Magistrala GPZ (2) (2) (2) (1)",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "wymaga_wskazania_zacisku": true,
       "zacisk_z_modelu": null,
       "zaciski": {
         "do": {
           "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+          "szyna_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/000"
         },
         "od": {
           "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
+          "szyna_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/001"
         }
       },
       "zaciski_dozwolone": [

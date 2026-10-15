@@ -22,7 +22,11 @@
 import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { fieldRoleLabelPl } from '../../v2/station-rozdzielnia/contract';
 import { szynyStacji } from '../../../shared/szynyStacji';
-import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+} from '../../../shared/transformatoryStacji';
 import type { Iec61850Bay, Iec61850Equipment, Iec61850ExportInput, Iec61850VoltageLevel } from '../../v2/export/exportIec61850';
 import type {
   CimAcLineSegment,
@@ -70,6 +74,7 @@ function bayName(bay: Bay): string {
 export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: string | null): Iec61850ExportInput {
   const busVoltage = new Map(snapshot.buses.map((bus) => [bus.ref_id, bus.voltage_kv]));
   const branchByRef = new Map(snapshot.branches.map((branch) => [branch.ref_id, branch]));
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   const substations = snapshot.substations.map((substation) => {
     const baysOfStation = snapshot.bays.filter((bay) => bay.substation_ref === substation.ref_id);
@@ -102,7 +107,7 @@ export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: str
           // SZYNY-STACJI-LUSTRO: transformatory ROZDZIELCZE stacji z jednej reguły (blokowy
           // transformator źródła DER nie jest aparatem pola TR).
           if (bay.bay_role === 'TR') {
-            for (const transformer of selectStationDistributionTransformers(snapshot, substation)) {
+            for (const transformer of selectStationDistributionTransformers(snapshot, substation, kontekstTransformatorow)) {
               equipment.push({ name: transformer.ref_id, type: 'PTR', desc: transformer.name });
             }
           }
@@ -128,6 +133,7 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
 
   const voltageLevels: CimVoltageLevel[] = [];
   const voltageLevelMridByBus = new Map<string, string>();
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const substation of snapshot.substations) {
     // SZYNY-STACJI-LUSTRO: kontener poziomu napięcia obejmuje KAŻDĄ szynę stacji z lustra
     // `szynyStacji` (pole na zacisku pola trafia do poziomu swojej stacji); szyna wspólna
@@ -181,7 +187,7 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
   const powerTransformers: CimPowerTransformer[] = snapshot.transformers.map((transformer) => ({
     mrid: transformer.ref_id,
     name: transformer.name || transformer.ref_id,
-    substation_mrid: stationRefOfTransformer(snapshot, transformer.ref_id) ?? '',
+    substation_mrid: stationRefOfTransformer(snapshot, transformer.ref_id, kontekstTransformatorow) ?? '',
     ratedS_mva: transformer.sn_mva,
     hv_kv: transformer.uhv_kv,
     lv_kv: transformer.ulv_kv,

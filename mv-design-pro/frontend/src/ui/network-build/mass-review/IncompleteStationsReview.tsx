@@ -9,10 +9,13 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { podpisStacjiPl } from '../../shared/rodzajStacji';
 import { useSelectionStore } from '../../selection';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
-import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+} from '../../shared/transformatoryStacji';
 import { polaSnStacji } from '../../shared/polaStacji';
 
 // =============================================================================
@@ -41,9 +44,11 @@ export function IncompleteStationsReview() {
 
   const rows = useMemo((): StationRow[] => {
     if (!snapshot) return [];
+    // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+    const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
     return (snapshot.substations ?? []).map((station) => {
       // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
-      const trCount = selectStationDistributionTransformers(snapshot, station).length;
+      const trCount = selectStationDistributionTransformers(snapshot, station, kontekstTransformatorow).length;
       // Karta W5-B: pola SN stacji (rekordy `bays` na szynie SN).
       const bayCount = polaSnStacji(snapshot, station.ref_id).length;
       const nnCount = (snapshot.buses ?? []).filter(
@@ -56,7 +61,7 @@ export function IncompleteStationsReview() {
       return {
         id: station.id,
         name: station.name,
-        stationType: formatStationTypeLabelPl(station.station_type),
+        stationType: podpisStacjiPl(snapshot, station),
         transformerCount: trCount,
         snBayCount: bayCount,
         nnBusCount: nnCount,

@@ -801,24 +801,24 @@ def _wpisy_zwarcia_galezi(
     if galaz is None:
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_BEZ_ELEMENTU,
-            f"Zdarzenie wskazuje galaz {zdarzenie.galaz!r}, ktorej model nie ma",
+            f"Zdarzenie wskazuje gałąź {zdarzenie.galaz!r}, której model nie ma",
             ref=zdarzenie.galaz,
             rodzina="galaz",
         )
     if zdarzenie.typ != TYP_ZWARCIA_TROJFAZOWEGO:
         raise OdmowaDynamiki(
             KOD_ZWARCIE_NIESYMETRYCZNE,
-            f"Zwarcie typu {zdarzenie.typ!r} w galezi {zdarzenie.galaz!r} wymaga skladowych "
-            f"symetrycznych — rdzen liczy wylacznie zwarcia {TYP_ZWARCIA_TROJFAZOWEGO}",
+            f"Zwarcie typu {zdarzenie.typ!r} w gałęzi {zdarzenie.galaz!r} wymaga składowych "
+            f"symetrycznych — rdzeń liczy wyłącznie zwarcia {TYP_ZWARCIA_TROJFAZOWEGO}",
             typ=zdarzenie.typ,
             galaz=zdarzenie.galaz,
         )
     if galaz.rodzaj not in ("linia", "kabel") or galaz.przekladnia != 1:
         raise OdmowaDynamiki(
             KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE,
-            f"Zwarcie w miejscu x*L galezi {zdarzenie.galaz!r} (rodzaj {galaz.rodzaj!r}, "
-            f"przekladnia {galaz.przekladnia}) — dlugosc elektryczna istnieje wylacznie dla "
-            "linii i kabla; zwarcie na zacisku transformatora albo lacznika zadaje sie w wezle",
+            f"Zwarcie w miejscu x·L gałęzi {zdarzenie.galaz!r} (rodzaj {galaz.rodzaj!r}, "
+            f"przekładnia {galaz.przekladnia}) — długość elektryczna istnieje wyłącznie dla "
+            "linii i kabla; zwarcie na zacisku transformatora albo łącznika zadaje się w węźle",
             galaz=zdarzenie.galaz,
             rodzaj=galaz.rodzaj,
         )
@@ -901,7 +901,7 @@ def zastosuj(wpis: WpisHarmonogramu, stan: StanScenariusza) -> StanScenariusza:
         )
     if wpis.rodzaj in ("zwarcie_galezi", "zdjecie_zwarcia_galezi"):
         if wpis.polozenie_wzgledne is None:  # pragma: no cover — gwarantowane budowa wpisu
-            raise AssertionError("Wpis zwarcia w galezi bez polozenia")
+            raise AssertionError("Wpis zwarcia w gałęzi bez położenia")
         miejsce = (wpis.ref, wpis.polozenie_wzgledne)
         pozostale_galezi = tuple(
             pozycja for pozycja in stan.zwarcia_galezi if (pozycja[0], pozycja[1]) != miejsce
@@ -965,7 +965,7 @@ def zastosuj(wpis: WpisHarmonogramu, stan: StanScenariusza) -> StanScenariusza:
         return stan
     if wpis.rodzaj == "skok_obciazenia":
         if wpis.delta_mocy_pu is None:  # pragma: no cover — gwarantowane budowa wpisu
-            raise AssertionError("Wpis skoku obciazenia bez delty mocy")
+            raise AssertionError("Wpis skoku obciążenia bez delty mocy")
         biezaca = stan.delta_odbioru(wpis.ref)
         pozostale = tuple(pozycja for pozycja in stan.delty_odbiorow if pozycja[0] != wpis.ref)
         return replace(

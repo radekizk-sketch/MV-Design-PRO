@@ -310,6 +310,22 @@ def _line_records_with_quality() -> list[dict[str, Any]]:
     return production + tests
 
 
+#: Karta KATALOG-KOMPLETNY-PROWENIENCJA (runda 3): kable „PN-HD 620 S2" polskich producentow
+#: niosly ZWERYFIKOWANY/PRODUKCYJNY_V1 i flage `ptpire_certified` bez zadnego dokumentu
+#: (bez numeru karty, strony, adresu; „PTPiREE WiPWC" bez numeru certyfikatu). Ta sama
+#: klasa co polskie transformatory: deklaracja bez dokumentu => NIEWERYFIKOWANY, flaga
+#: certyfikatu zdjeta (flaga wymaga zrodla z dokumentem certyfikatu).
+ZRODLO_KABLI_POLSKICH_DEKLAROWANE = (
+    "Deklarowane: PN-HD 620 S2 / TF Kable Telefonika / Bitner Kable / PTPiREE WiPWC — "
+    "dokument nie jest dołączony do repozytorium (niezweryfikowany)"
+)
+NOTA_KABLI_POLSKICH_DEKLAROWANYCH = (
+    "Pozycja deklarowana: brak karty katalogowej producenta (numer, strona, adres) i brak "
+    "dokumentu certyfikatu PTPiREE — status NIEWERYFIKOWANY, bez flagi certyfikatu. "
+    "Parametry do potwierdzenia kartą producenta."
+)
+
+
 def _cable_records_with_quality() -> list[dict[str, Any]]:
     operator_records = [
         _with_catalog_quality(
@@ -355,9 +371,10 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     polish_pn_hd_records = [
         _with_catalog_quality(
             _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
-            source_reference="PN-HD 620 S2 / TF Kable Telefonika / Bitner Kable / PTPiREE WiPWC",
-            verification_status=CatalogVerificationStatus.ZWERYFIKOWANY.value,
-            catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
+            source_reference=ZRODLO_KABLI_POLSKICH_DEKLAROWANE,
+            verification_status=CatalogVerificationStatus.NIEWERYFIKOWANY.value,
+            catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+            verification_note=NOTA_KABLI_POLSKICH_DEKLAROWANYCH,
         )
         for record in CABLE_POLISH_PN_HD_620
     ]
@@ -2201,7 +2218,8 @@ def get_cable_catalog_quality_summary() -> dict[str, Any]:
 # - AXRUHKXS — XLPE aluminum multi-core
 #
 # Producenci: TF Kable Telefonika, NKT, Bitner, ELPAR (Polski Producent
-# Aparatury Rozdzielczej Niskiego Napięcia). Wszystkie wpisy PTPiREE-aligned.
+# Aparatury Rozdzielczej Niskiego Napięcia). Deklaracja zgodnosci z PTPiREE bez dokumentu —
+# pozycje NIEWERYFIKOWANE (patrz ZRODLO_KABLI_POLSKICH_DEKLAROWANE).
 
 CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
     # YHAKXS 12/20 kV — aluminum single-core (najczesciej uzywany w PL)
@@ -2225,7 +2243,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHAKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2248,7 +2265,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHAKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2271,7 +2287,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHAKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2294,7 +2309,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHAKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2317,7 +2331,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHAKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     # YHKXS 12/20 kV — copper single-core (industrial/data center)
@@ -2341,7 +2354,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "TF Kable Telefonika",
             "series": "YHKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2364,7 +2376,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "Bitner Kable",
             "series": "YHKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
     {
@@ -2387,7 +2398,6 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "manufacturer": "Bitner Kable",
             "series": "YHKXS",
             "standard": "PN-HD 620 S2",
-            "ptpire_certified": True,
         },
     },
 ]

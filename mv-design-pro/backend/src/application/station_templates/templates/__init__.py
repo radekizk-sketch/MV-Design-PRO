@@ -1,4 +1,4 @@
-"""Station template registry — K30-16/V12T-016, 73 templates across 15 categories."""
+"""Station template registry — K30-16/V12T-016, 71 templates across 15 categories."""
 
 from application.station_templates.schema import StationTemplate
 from application.station_templates.templates.bess import BESS_TEMPLATES
@@ -41,5 +41,6 @@ ALL_TEMPLATES: tuple[StationTemplate, ...] = (
     *KOMPENSACJA_TEMPLATES,  # 3 (rola E)
     *REZERWA_ZASILANIA_TEMPLATES,  # 3 (rola E)
 )
-# Total: 73 templates (57 + 16 V12T-016 delta: 3 GPZ + 3 RS/RSM + 4 abonencka
-# + 3 kompensacja + 3 rezerwa zasilania)
+# Total: 71 templates (57 + 16 V12T-016 delta: 3 GPZ + 3 RS/RSM + 4 abonencka
+# + 3 kompensacja + 3 rezerwa zasilania; minus 2 wiatrowe wycofane 2026-10-15 —
+# `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`)

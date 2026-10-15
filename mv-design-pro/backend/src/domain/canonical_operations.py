@@ -317,6 +317,17 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         creates_elements=False,
     ),
+    # Karta modeli odbiorów (O-56): wiązanie odbioru z profilem modelu dynamicznego katalogu
+    # `load_dynamic` — kopię `Load.dynamika` buduje `enm.dynamika_z_katalogu`. Akcja
+    # naprawcza kodu gotowości `load.dynamika_missing` (ekran dynamiki).
+    "set_load_dynamic_binding": OperationSpec(
+        canonical_name="set_load_dynamic_binding",
+        category=OperationCategory.OZE_NN,
+        description_pl="Wiązanie odbioru z profilem modelu dynamicznego z katalogu",
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref", "dynamic_model_ref"),
+        creates_elements=False,
+    ),
     # Karta AB-H0 §0.7.3: karta widmowa PROJEKTU (dane inżyniera — widmo ręczne albo
     # import raportu badań dla projektu) w sekcji `katalog_projektu.karty_widmowe`.
     "dodaj_karte_widmowa_projektu": OperationSpec(
@@ -327,7 +338,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("karta",),
         creates_elements=False,
     ),
-    # --- Protection (6 operations) ---
+    # --- Protection (5 operations) ---
     # W3-A (2026-09): "calculate_tcc_curve" skasowana razem z zaslepka w
     # enm/domain_operations_v2.py (zwracala wylacznie blad
     # "tcc.legacy_write_disabled", bez fizyki) — rodzina IDMT KLASA-NIE-
@@ -345,6 +356,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
             # W3-B (mapa 4 #3): obwód wtórny — koniec liczenia „na kartce".
             "obwod_wtorny",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: kotwica przy wyłączniku liniowym bez pola.
+            "breaker_ref",
         ),
     ),
     "add_vt": OperationSpec(
@@ -380,31 +393,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie przekaźnika zabezpieczeniowego",
         target_layer="Domain / NetworkModel",
         required_fields=("target_ct_ref",),
-        optional_fields=("relay_type", "manufacturer", "catalog_binding"),
+        optional_fields=(
+            "relay_type",
+            "manufacturer",
+            "catalog_binding",
+            "settings",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik liniowy bez pola jako kotwica.
+            "breaker_ref",
+        ),
     ),
-    "update_relay_settings": OperationSpec(
-        canonical_name="update_relay_settings",
+    "update_protection_settings": OperationSpec(
+        canonical_name="update_protection_settings",
         category=OperationCategory.PROTECTION,
-        description_pl="Aktualizacja nastaw przekaźnika",
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu —
+        # następca skasowanej zaślepki `update_relay_settings`.
+        description_pl="Zapis nastaw zabezpieczenia w modelu sieci",
         target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "settings"),
-        creates_elements=False,
-    ),
-    "link_relay_to_field": OperationSpec(
-        canonical_name="link_relay_to_field",
-        category=OperationCategory.PROTECTION,
-        description_pl="Powiązanie przekaźnika z polem rozdzielczym",
-        target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "field_ref"),
-        creates_elements=False,
-    ),
-    "validate_selectivity": OperationSpec(
-        canonical_name="validate_selectivity",
-        category=OperationCategory.PROTECTION,
-        description_pl="Walidacja selektywności między urządzeniami",
-        target_layer="Analysis / Protection",
-        required_fields=("upstream_ref", "downstream_ref"),
-        mutates_model=False,
+        required_fields=("protection_ref", "settings"),
         creates_elements=False,
     ),
     # --- Universal (4 operations) ---
@@ -971,6 +976,31 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
     ),
+    # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji niezgodna z rodzajem wyprowadzonym
+    # z topologii (`enm/rodzaj_stacji.py`, walidator W043, SLD_CAD_SPEC_V3 §19.3).
+    "station.kind_mismatch": ReadinessCodeSpec(
+        code="station.kind_mismatch",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii "
+            "(liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii"
+        ),
+        fix_navigation={"panel": "inspector", "modal": "update_element_parameters"},
+    ),
+    # Pole rozdzielnicy SN o roli spoza słownika — nie liczy się do rodzaju stacji (W044).
+    "station.field_role_unknown": ReadinessCodeSpec(
+        code="station.field_role_unknown",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono "
+            "bez tego pola"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     # Transformer
     "transformer.catalog_missing": ReadinessCodeSpec(
         code="transformer.catalog_missing",
@@ -1127,6 +1157,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
             "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
+    ),
+    # Karta modeli odbiorów (O-49 pkt 2 i 11, O-56): odbiór bez kopii `Load.dynamika`
+    # (profil modelu dynamicznego z katalogu `load_dynamic`) — bieg `dynamika_rms` odmawia
+    # (`dynamika.odbior_bez_bloku_dynamiki`). Nawigacja prowadzi do WIĄZANIA profilu na
+    # ekranie dynamiki, w tej samej sekcji co modele źródeł (`der.dynamika_missing`);
+    # akcja wykonuje `set_load_dynamic_binding`. Edytora pól ręcznych nie ma (reguła 10
+    # katalogu) — to zastępuje „edytor w AB-1c" z O-49 pkt 11.
+    "load.dynamika_missing": ReadinessCodeSpec(
+        code="load.dynamika_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, "
+            "pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; "
+            "zwiąż odbiór z profilem z katalogu"
         ),
         fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),
@@ -1324,6 +1372,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry"},
     ),
+    # Punkt 1 karty O-53b (rozstrzygnięcie architekta 2026-10-15): kontrola mocy PER
+    # TRANSFORMATOR sumą po grupie źródeł; grupa ma jeden współczynnik jednoczesności
+    # i jedną przeciążalność transformatora — różne jawne wartości w źródłach grupy to
+    # niejednoznaczność nazwana, nie wybór jednej z nich.
+    "converter.power_check_group_ambiguous": ReadinessCodeSpec(
+        code="converter.power_check_group_ambiguous",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Źródła zasilane przez ten sam transformator mają różne jawne wartości "
+            "współczynnika jednoczesności albo przeciążalności transformatora — grupa ma "
+            "jeden współczynnik"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",
@@ -1425,18 +1489,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z "
             "przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi"
-        ),
-        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
-    ),
-    "protection.device_breaker_not_in_series": ReadinessCodeSpec(
-        code="protection.device_breaker_not_in_series",
-        area=ReadinessArea.PROTECTION,
-        priority=3,
-        level=ReadinessLevel.BLOCKER,
-        message_pl=(
-            "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej "
-            "gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej "
-            "zacisk jako miejsce urządzenia"
         ),
         fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
     ),
@@ -2094,14 +2146,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "katalog",
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
-    ),
-    "catalog.materialization_failed": ReadinessCodeSpec(
-        code="catalog.materialization_failed",
-        area=ReadinessArea.CATALOGS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl="Materializacja parametrów z katalogu nie powiodła się",
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # ------------------------------------------------------------------
     # BRAMY KATALOGOWE — kody odrzucenia operacji (karta W4, dług V12K-317)

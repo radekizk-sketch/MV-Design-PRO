@@ -883,7 +883,7 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
     assert wynik["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
     assert wynik["pf_run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA_PF
     _run_idy_nie_sa_uuid(wynik)
-    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False))
     odcinek = refy.odcinek_zwarcia
     assert [(z["rodzaj"], z["ref"]) for z in wynik["zdarzenia_wykonane"]] == [
         ("zwarcie_galezi", odcinek),
@@ -912,7 +912,9 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
 
 def test_dynamika_scena_gotowosc_przed_i_po_wiazaniu_katalogowym() -> None:
     przed = eksport.dynamika_scena_gotowosc_brak()
-    pv_ref = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False)).pv
+    pv_ref = refy_sieci(
+        build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False)
+    ).pv
     pv_przed = next(z for z in przed["zrodla"] if z["ref_id"] == pv_ref)
     assert pv_przed["stan"] == "brak"
     assert pv_przed["akcja_naprawcza"]["kod"] == "der.dynamika_missing"
@@ -1381,3 +1383,35 @@ def test_zapis_na_brakujacym_katalogu_tworzy_go_i_zapisuje(
     assert eksport.main([]) == 0
     assert json.loads((katalog / "probka.json").read_text(encoding="utf-8")) == {"wartosc": 1}
     assert eksport.main(["--sprawdz"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scena koordynacji: punkt zwarcia KAŻDEJ oceny zabezpieczenia ma wiersz w OBU biegach.
+# Intencja testu karty AB-1b.3b-NA-PARTII-6 (dawniej na atrapie miejsca urządzenia
+# `koordynacja_scena_miejsca`, skasowanej przez kartę BIEG-ZABEZPIECZEN-Z-MODELU):
+# punkt, pod którym ocena czyta prąd zwarciowy (po POLA-W-TORZE szyna raportowa pola,
+# `enm.tor_pola.szyna_raportowa`), musi być węzłem raportowanym przez bieg MAX, na którym
+# ocena stoi, i przez bieg MIN — inaczej ekran koordynacji odmówiłby pary MIN. Dziś
+# ocena powstaje w backendzie (`ocena_nadpradowa`), więc test przypina daną fikstur
+# sceny: ocena + oba biegi zwarciowe (partia integracji 7).
+# ---------------------------------------------------------------------------
+
+
+def _fikstura_repo(nazwa: str) -> dict[str, Any]:
+    return json.loads((eksport.FIXTURES_DIR / f"{nazwa}.json").read_text(encoding="utf-8"))
+
+
+def test_koordynacja_punkt_zwarcia_oceny_ma_wiersz_w_obu_biegach() -> None:
+    ocena = _fikstura_repo("koordynacja_scena_ocena")
+    oceny = ocena["evaluations"]
+    assert oceny, "scena koordynacji bez ocen zabezpieczeń"
+    bieg_max = _fikstura_repo("koordynacja_scena_zwarcia_max")
+    assert ocena["sc_run_id"] == bieg_max["run_id"], "ocena nie stoi na biegu MAX sceny"
+    for nazwa_biegu in ("koordynacja_scena_zwarcia_max", "koordynacja_scena_zwarcia_min"):
+        punkty = {w["target_id"] for w in _fikstura_repo(nazwa_biegu)["rows"]}
+        for wpis in oceny:
+            assert wpis["fault_target_id"] in punkty, (
+                nazwa_biegu,
+                wpis["nazwa_urzadzenia_pl"],
+                wpis["nazwa_punktu_pl"],
+            )

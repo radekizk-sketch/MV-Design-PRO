@@ -109,56 +109,6 @@ class StudyCaseConfig:
 
 
 @dataclass(frozen=True)
-class ProtectionConfig:
-    """
-    Protection configuration for study case (P14c).
-
-    Contains reference to ProtectionSettingTemplate and optional overrides.
-    NO calculations, NO solver logic - just configuration data.
-
-    INVARIANTS:
-    - Case stores reference (template_ref + fingerprint), NOT copied data
-    - Overrides are optional (values + units)
-    - library_manifest_ref tracks source library for auditability
-    - bound_at is timestamp when template was bound to case
-
-    Attributes:
-        template_ref: ID of ProtectionSettingTemplate from catalog.
-        template_fingerprint: Fingerprint of the template at bind time (for audit).
-        library_manifest_ref: Reference to library manifest (library_id + revision).
-        overrides: Optional overrides for setting fields (dict[field_name, value]).
-        bound_at: Timestamp when template was bound to this case.
-    """
-
-    template_ref: str | None = None
-    template_fingerprint: str | None = None
-    library_manifest_ref: dict[str, Any] | None = None
-    overrides: dict[str, Any] = field(default_factory=dict)
-    bound_at: datetime | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary for storage."""
-        return {
-            "template_ref": self.template_ref,
-            "template_fingerprint": self.template_fingerprint,
-            "library_manifest_ref": self.library_manifest_ref,
-            "overrides": self.overrides or {},
-            "bound_at": self.bound_at.isoformat() if self.bound_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionConfig:
-        """Deserialize from dictionary."""
-        return cls(
-            template_ref=data.get("template_ref"),
-            template_fingerprint=data.get("template_fingerprint"),
-            library_manifest_ref=data.get("library_manifest_ref"),
-            overrides=data.get("overrides") or {},
-            bound_at=datetime.fromisoformat(data["bound_at"]) if data.get("bound_at") else None,
-        )
-
-
-@dataclass(frozen=True)
 class StudyCase:
     """
     Study Case entity — configuration for calculations (P10a).
@@ -181,8 +131,8 @@ class StudyCase:
     # Configuration (calculation parameters only)
     config: StudyCaseConfig = field(default_factory=StudyCaseConfig)
 
-    # P14c: Protection configuration (reference to template + overrides)
-    protection_config: ProtectionConfig = field(default_factory=ProtectionConfig)
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): przypadek NIE przechowuje nastaw ani szablonu
+    # zabezpieczeń — nastawy bazowe żyją przy urządzeniu w modelu (`protection_assignments`).
 
     # Active case indicator (exactly one per project)
     is_active: bool = False
@@ -208,28 +158,11 @@ class StudyCase:
             name=self.name,
             description=self.description,
             config=config,
-            protection_config=self.protection_config,
             is_active=self.is_active,
             revision=self.revision + 1,
             created_at=self.created_at,
             updated_at=datetime.now(UTC),
             study_payload=config.to_dict(),
-        )
-
-    def with_protection_config(self, protection_config: ProtectionConfig) -> StudyCase:
-        """Create a new StudyCase with updated protection config (P14c)."""
-        return StudyCase(
-            id=self.id,
-            project_id=self.project_id,
-            name=self.name,
-            description=self.description,
-            config=self.config,
-            protection_config=protection_config,
-            is_active=self.is_active,
-            revision=self.revision + 1,
-            created_at=self.created_at,
-            updated_at=datetime.now(UTC),
-            study_payload=self.study_payload,
         )
 
     def with_name(self, name: str) -> StudyCase:
@@ -240,7 +173,6 @@ class StudyCase:
             name=name,
             description=self.description,
             config=self.config,
-            protection_config=self.protection_config,
             is_active=self.is_active,
             revision=self.revision + 1,
             created_at=self.created_at,
@@ -256,7 +188,6 @@ class StudyCase:
             name=self.name,
             description=description,
             config=self.config,
-            protection_config=self.protection_config,
             is_active=self.is_active,
             revision=self.revision + 1,
             created_at=self.created_at,
@@ -272,7 +203,6 @@ class StudyCase:
             name=self.name,
             description=self.description,
             config=self.config,
-            protection_config=self.protection_config,
             is_active=True,
             revision=self.revision,
             created_at=self.created_at,
@@ -288,7 +218,6 @@ class StudyCase:
             name=self.name,
             description=self.description,
             config=self.config,
-            protection_config=self.protection_config,
             is_active=False,
             revision=self.revision,
             created_at=self.created_at,
@@ -301,7 +230,7 @@ class StudyCase:
         Clone this case with new ID.
 
         CLONING RULES (canonical-style):
-        - Configuration is copied (including protection_config)
+        - Configuration is copied
         - Results are NOT copied (klon nie ma wlasnych biegow, wiec jego status
           wynikow wychodzi NONE bez zapisywania czegokolwiek)
         - New case is NOT active
@@ -313,7 +242,6 @@ class StudyCase:
             name=new_name or f"{self.name} (kopia)",
             description=self.description,
             config=self.config,
-            protection_config=self.protection_config,  # P14c: Copy protection config
             is_active=False,  # Clone is not active
             revision=1,
             created_at=now,
@@ -334,7 +262,6 @@ class StudyCase:
             "name": self.name,
             "description": self.description,
             "config": self.config.to_dict(),
-            "protection_config": self.protection_config.to_dict(),  # P14c
             "is_active": self.is_active,
             "revision": self.revision,
             "created_at": self.created_at.isoformat(),
@@ -345,14 +272,12 @@ class StudyCase:
     def from_dict(cls, data: dict[str, Any]) -> StudyCase:
         """Deserialize from dictionary."""
         config = StudyCaseConfig.from_dict(data.get("config", {}))
-        protection_config = ProtectionConfig.from_dict(data.get("protection_config", {}))  # P14c
         return cls(
             id=UUID(data["id"]),
             project_id=UUID(data["project_id"]),
             name=data["name"],
             description=data.get("description", ""),
             config=config,
-            protection_config=protection_config,  # P14c
             is_active=data.get("is_active", False),
             revision=data.get("revision", 1),
             created_at=(
@@ -377,7 +302,7 @@ def new_study_case(
     is_active: bool = False,
 ) -> StudyCase:
     """
-    Factory function to create a new StudyCase (P10a + P14c).
+    Factory function to create a new StudyCase (P10a).
 
     Args:
         project_id: ID of the project this case belongs to
@@ -397,7 +322,6 @@ def new_study_case(
         name=name,
         description=description,
         config=cfg,
-        protection_config=ProtectionConfig(),  # P14c: Empty protection config by default
         is_active=is_active,
         revision=1,
         created_at=now,

@@ -33,7 +33,7 @@ import {
   resolveGpzTrunkStartFieldRef,
   resolveTrunkStartAvailability,
 } from '../../../shared/sldActionExecutor';
-import { getMenuActions } from '../../../v2/command/SldCommandService';
+import { getMenuActions, powodBrakuStartuCiagu } from '../../../v2/command/SldCommandService';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
@@ -51,6 +51,8 @@ import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { maStartOperacjiCiagu } from '../../../../../ui2/kreatory/magistrala/magistralaModel';
+import { stacjeWgRoli, stacjeZWejsciemKontynuacji, type WejscieObszaru } from './pomiarWejscBudowy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -176,6 +178,11 @@ async function zamknijMenu(): Promise<void> {
 }
 
 const indexModelu = buildCanvasModelIndex(enm);
+
+/** Obszary kanwy z kanałem `busRef` — wejście wspólnego pomiaru wejść budowy. */
+function wejsciaKanwy(kanwa: Kanwa): WejscieObszaru[] {
+  return kanwa.obszary.map((area) => ({ area, busRef: kanwa.busRefy.get(area.testId) }));
+}
 
 /** Temat menu obiektu (albo `null`, gdy menu się dla niego nie otwiera). */
 function tematObiektu(kanwa: Kanwa, area: CanvasHitArea): CanvasMenuSubject | null {
@@ -457,6 +464,40 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
     expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
     expect(openOperationForm.mock.calls[0][1]).toMatchObject({ station_ref: stacja!.ownerRef });
+  }, 120000);
+
+  /**
+   * KARTA PARTIA-6-FRONT — sieć referencyjna jest GOTOWA: każde pole liniowe stacji niesie
+   * kabel (zajętość z modelu odczytu backendu, karta POLE-ZAJĘTE). Właściwą odpowiedzią
+   * produktu jest tu uczciwa blokada OBU pozycji budowy z powodem po polsku — zdolność
+   * budowy dowodzi scena W BUDOWIE (sekcja E). Iloczyn {stacja środkowa / końcowa ciągu /
+   * GPZ rysowany symbolem stacji na LOD 0} × {kontynuacja / odgałęzienie}.
+   */
+  it.each([
+    ['środkowa ciągu', 'srodkowa' as const],
+    ['końcowa ciągu', 'koncowa' as const],
+    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const],
+  ])('sieć GOTOWA, stacja %s: „Prowadź ciąg dalej" i „Rozpocznij odgałęzienie" zablokowane z powodem', async (_n, rola) => {
+    const openOperationForm = vi.fn();
+    useNetworkBuildStore.setState({ openOperationForm } as never);
+    const kanwa = renderKanwe(0);
+    const stacjaRef = stacjeWgRoli(enm, widokiEnm)[rola][0];
+    expect(stacjaRef, `sieć referencyjna ma stację roli ${rola}`).toBeTruthy();
+    const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
+    expect(obszar, `stacja ${stacjaRef} jest na kanwie LOD 0`).toBeTruthy();
+    const menu = await prawyKlik(kanwa, obszar!.testId);
+    expect(menu, 'menu stacji otwarte').toBeTruthy();
+    const kontynuacja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
+    const odgalezienie = within(menu!).getByTestId('sld-menu-start-branch') as HTMLButtonElement;
+    expect(kontynuacja.disabled, 'kontynuacja bez wolnego pola liniowego').toBe(true);
+    expect(kontynuacja.title).toBe(powodBrakuStartuCiagu('station'));
+    expect(odgalezienie.disabled, 'odgałęzienie bez wolnego pola odgałęźnego').toBe(true);
+    expect(odgalezienie.title ?? '').toContain('pola odgałęźnego');
+    // Predykaty PARAMI: blokada menu = brak operacji w wykonawcy (to samo rozstrzygnięcie).
+    expect(buildSldOperationContext('continue-trunk', 'station', stacjaRef, enm, widokiEnm)).toBeNull();
+    await userEvent.click(kontynuacja);
+    expect(openOperationForm).not.toHaveBeenCalled();
+    await zamknijMenu();
   }, 120000);
 
   /**
@@ -744,4 +785,134 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
     expect(pozycja!.disabled, 'pozycja aktywna — kreator dostanie punkt startu').toBe(false);
     await zamknijMenu();
   });
+});
+
+// ---------------------------------------------------------------------------
+// E. KRYTERIUM 15 OGNIW NA SCENIE W BUDOWIE (karta PARTIA-6-FRONT)
+// ---------------------------------------------------------------------------
+
+describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W BUDOWIE)', () => {
+  /**
+   * Etapy z generatora backendu (`tests/reference_networks/scena_ciagu_w_budowie.py`):
+   * etap k = GPZ i k stacji, zbudowane operacjami, które otwiera menu kanwy. `pole_startu`
+   * wybrał BACKEND z własnej zajętości pól (`enm/zajetosc_pol.py`) i to z niego zbudował
+   * etap k+1 — front rozstrzyga punkt startu niezależnie z tej samej migawki, więc zgodność
+   * obu jest dowodem, że ogniwo k → k+1 da się wykonać wyłącznie z kanwy.
+   */
+  interface EtapCiagu {
+    readonly liczba_stacji: number;
+    readonly stacja_startu: string;
+    readonly pole_startu: string | null;
+    readonly snapshot: EnergyNetworkModel;
+    readonly logical_views: LogicalViewsV1;
+  }
+  const ciag = JSON.parse(readFileSync(resolve(generated, 'ciag_w_budowie_etapy.json'), 'utf8')) as {
+    readonly liczba_ogniw: number;
+    readonly etapy: readonly EtapCiagu[];
+  };
+  const ogniwa = ciag.etapy.filter((etap) => etap.pole_startu !== null);
+
+  function ustawEtap(etap: EtapCiagu): void {
+    useSnapshotStore.setState({ snapshot: etap.snapshot, logicalViews: etap.logical_views });
+  }
+
+  it('fikstura niesie 15 kolejnych ogniw: etap k ma k stacji i punkt startu następnego ogniwa', () => {
+    expect(ciag.liczba_ogniw).toBe(15);
+    expect(ciag.etapy.map((etap) => etap.liczba_stacji)).toEqual([...Array(16).keys()]);
+    expect(ogniwa).toHaveLength(15);
+    for (const etap of ciag.etapy) {
+      const stacjeSnN = (etap.snapshot.substations ?? []).filter((s) => String(s.station_type) !== 'gpz');
+      expect(stacjeSnN, `etap ${etap.liczba_stacji}`).toHaveLength(etap.liczba_stacji);
+    }
+  });
+
+  it.each(ogniwa.map((etap) => [etap.liczba_stacji + 1, etap] as const))(
+    'ogniwo %i/15: natywny prawy klik w stację startu → „Prowadź ciąg dalej" AKTYWNE i kreator dostaje pole startu wybrane przez backend',
+    async (_numer, etap) => {
+      ustawEtap(etap);
+      const openOperationForm = vi.fn();
+      useNetworkBuildStore.setState({ openOperationForm } as never);
+      const kanwa = renderKanwe(0, etap.snapshot);
+      const indeks = buildCanvasModelIndex(etap.snapshot);
+      // Pomiar TEJ SAMEJ funkcji co sonda odbioru `menu_chain_probe`: na scenie w budowie
+      // wejściem kontynuacji jest stacja startu (koniec ciągu albo GPZ na etapie 0).
+      expect(stacjeZWejsciemKontynuacji(wejsciaKanwy(kanwa), etap.snapshot, etap.logical_views, indeks))
+        .toContain(etap.stacja_startu);
+      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === etap.stacja_startu);
+      expect(obszar, `stacja startu ${etap.stacja_startu} jest na kanwie`).toBeTruthy();
+      const menu = await prawyKlik(kanwa, obszar!.testId);
+      expect(menu, 'menu stacji startu otwarte').toBeTruthy();
+      expect(pozycjaAktywna(menu!, 'continue-trunk'), 'kontynuacja aktywna na końcu ciągu').toBe(true);
+      await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
+      expect(openOperationForm).toHaveBeenCalledTimes(1);
+      const [op, kontekst] = openOperationForm.mock.calls[0] as [string, Record<string, unknown>];
+      expect(op).toBe('continue_trunk_segment_sn');
+      // Wyjście = wejście: kreator zapisze ogniwo z pola, z którego backend zbudował etap k+1.
+      expect(kontekst.field_ref).toBe(etap.pole_startu);
+      expect(maStartOperacjiCiagu(kontekst), 'kreator magistrali ma punkt startu').toBe(true);
+    },
+    120000,
+  );
+
+  /**
+   * Iloczyn {stacja środkowa / końcowa ciągu / GPZ} × {kontynuacja / odgałęzienie} na scenie
+   * W BUDOWIE (etap 15). Każda stacja SN/nN ciągu ma pola IN, OUT i FEEDER: środkowa ma
+   * wolne tylko pole odgałęźne, końcowa — wyjściowe i odgałęźne, GPZ — drugie pole liniowe.
+   * Pole startu każdej pozycji to pole WOLNE wg zajętości backendu, o roli wynikającej
+   * z kanonu (kontynuacja: OUT przed FEEDER; odgałęzienie: wyłącznie FEEDER).
+   */
+  const koniec = ciag.etapy[ciag.etapy.length - 1];
+  const roleKonca = stacjeWgRoli(koniec.snapshot, koniec.logical_views);
+  const wolnePole = (stacjaRef: string, rola: string): string | undefined =>
+    (koniec.logical_views.line_fields ?? []).find(
+      (pole) => pole.station_ref === stacjaRef && pole.bay_role === rola && !pole.occupied,
+    )?.field_ref;
+
+  it('role stacji sceny w budowie: 1 GPZ, 1 końcowa (ostatnia dołożona), 14 środkowych', () => {
+    expect(roleKonca.gpz).toHaveLength(1);
+    expect(roleKonca.koncowa).toEqual([koniec.stacja_startu]);
+    expect(roleKonca.srodkowa).toHaveLength(14);
+  });
+
+  it.each([
+    ['środkowa', 'srodkowa' as const, 'FEEDER', true],
+    ['końcowa', 'koncowa' as const, 'OUT', true],
+    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const, 'OUT', false],
+  ])(
+    'scena W BUDOWIE, stacja %s: kontynuacja z pola %s, odgałęzienie aktywne=%s — menu i kreator z jednego rozstrzygnięcia',
+    async (_n, rola, rolaPolaKontynuacji, odgalezienieAktywne) => {
+      ustawEtap(koniec);
+      const openOperationForm = vi.fn();
+      useNetworkBuildStore.setState({ openOperationForm } as never);
+      const stacjaRef = roleKonca[rola][rola === 'srodkowa' ? 6 : 0];
+      const poleKontynuacji = wolnePole(stacjaRef, rolaPolaKontynuacji);
+      expect(poleKontynuacji, `stacja ${stacjaRef} ma wolne pole ${rolaPolaKontynuacji}`).toBeTruthy();
+      const kanwa = renderKanwe(0, koniec.snapshot);
+      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
+      expect(obszar, `stacja ${stacjaRef} jest na kanwie`).toBeTruthy();
+
+      const menu = await prawyKlik(kanwa, obszar!.testId);
+      expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
+      const odgalezienie = within(menu!).getByTestId('sld-menu-start-branch') as HTMLButtonElement;
+      expect(!odgalezienie.disabled).toBe(odgalezienieAktywne);
+      expect(!odgalezienie.disabled).toBe(
+        resolveBranchStartAvailability(koniec.snapshot, koniec.logical_views, 'station', stacjaRef),
+      );
+      if (!odgalezienieAktywne) expect(odgalezienie.title ?? '').toContain('pola odgałęźnego');
+      await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
+      expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
+      expect((openOperationForm.mock.calls[0][1] as Record<string, unknown>).field_ref).toBe(poleKontynuacji);
+
+      if (odgalezienieAktywne) {
+        const menu2 = await prawyKlik(kanwa, obszar!.testId);
+        await userEvent.click(within(menu2!).getByTestId('sld-menu-start-branch'));
+        expect(openOperationForm.mock.calls[1][0]).toBe('start_branch_segment_sn');
+        const poleOdgalezienia = wolnePole(stacjaRef, 'FEEDER');
+        expect(String((openOperationForm.mock.calls[1][1] as Record<string, unknown>).from_ref ?? ''))
+          .toBe(`${poleOdgalezienia}.BRANCH`); // ui-terminology-ignore
+      }
+      await zamknijMenu();
+    },
+    120000,
+  );
 });

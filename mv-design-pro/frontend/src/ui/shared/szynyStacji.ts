@@ -67,8 +67,33 @@ function zaciskiWgSzynyPola(model: ModelSzyn, stacja: StacjaDlaSzyn): ReadonlyMa
   return wynik;
 }
 
+/**
+ * Indeks gałęzi migawki: `ref_id` → pozycje w tablicy `branches` (w kolejności tablicy).
+ * Migawka jest niemutowalna, więc indeks żyje tyle, co tablica gałęzi (dopisanie gałęzi do tej
+ * samej tablicy w teście unieważnia go po zmianie długości) — jak indeks pól w `polaStacji.ts`.
+ * Bez niego pytanie o aparaty pól nN każdej stacji przeglądało wszystkie gałęzie (O(stacje ×
+ * gałęzie) w `stacjaSzyn` i w każdej pętli po stacjach; karta PARTIA-6-FRONT — budowa sceny
+ * SLD liniowa w liczbie stacji).
+ */
+const INDEKSY_GALEZI = new WeakMap<readonly unknown[], { readonly dlugosc: number; readonly wgRefu: ReadonlyMap<string, readonly number[]> }>();
+
+function indeksGalezi(galezie: readonly GalazDlaSzyn[]): ReadonlyMap<string, readonly number[]> {
+  const zapisany = INDEKSY_GALEZI.get(galezie);
+  if (zapisany && zapisany.dlugosc === galezie.length) return zapisany.wgRefu;
+  const wgRefu = new Map<string, number[]>();
+  galezie.forEach((galaz, pozycja) => {
+    const ref = galaz?.ref_id;
+    if (typeof ref !== 'string') return;
+    const lista = wgRefu.get(ref);
+    if (lista) lista.push(pozycja);
+    else wgRefu.set(ref, [pozycja]);
+  });
+  INDEKSY_GALEZI.set(galezie, { dlugosc: galezie.length, wgRefu });
+  return wgRefu;
+}
+
 /** Aparaty pól nN stacji — lustro `enm.tor_pola._aparaty_pol_nn_stacji`: gałęzie wskazane
- *  przez `equipment_refs` rekordów pól nN TEJ stacji. */
+ *  przez `equipment_refs` rekordów pól nN TEJ stacji, w KOLEJNOŚCI TABLICY `branches`. */
 function aparatyPolNn(model: ModelSzyn, stacja: StacjaDlaSzyn): readonly GalazDlaSzyn[] {
   const napiecia = napieciaSzyn(model);
   const aparaty = new Set<string>();
@@ -77,7 +102,10 @@ function aparatyPolNn(model: ModelSzyn, stacja: StacjaDlaSzyn): readonly GalazDl
     for (const ref of rekord.equipment_refs ?? []) aparaty.add(String(ref));
   }
   if (aparaty.size === 0) return [];
-  return (model.branches ?? []).filter((galaz) => typeof galaz?.ref_id === 'string' && aparaty.has(galaz.ref_id));
+  const galezie = model.branches ?? [];
+  const wgRefu = indeksGalezi(galezie);
+  const pozycje = [...new Set([...aparaty].flatMap((ref) => wgRefu.get(ref) ?? []))].sort((a, b) => a - b);
+  return pozycje.map((pozycja) => galezie[pozycja]);
 }
 
 /** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji(enm, stacja)` (opis reguły:

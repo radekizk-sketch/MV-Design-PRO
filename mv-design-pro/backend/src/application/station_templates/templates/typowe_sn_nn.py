@@ -22,6 +22,7 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    obciazenie_odplywu_param,
 )
 
 
@@ -40,6 +41,7 @@ def _typowa(
     *,
     tr_options: tuple,
     default_feeders: int,
+    obciazenie_odplywu_kw: float = 50.0,
     default_bays: int,
     max_feeders: int = 8,
     icon: str = "station-distribution",
@@ -73,6 +75,7 @@ def _typowa(
                 label_pl="Liczba odpływów nN",
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
+            nn_load_default_kw=obciazenie_odplywu_param(obciazenie_odplywu_kw),
             ct_options=CT_OPTIONS,
             vt_options=VT_OPTIONS,
             protection_settings_default="tpl_feeder_15kv_typowa",
@@ -88,6 +91,9 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_SMALL,
         default_feeders=2,
         default_bays=1,
+        # 2 × 45 kW przy cosφ 0,95 = 95 kVA ≤ 100 kVA (dawne 2 × 50 kW = 105 kVA przekraczały
+        # transformator obiecany nazwą; pomiar 2026-10-15).
+        obciazenie_odplywu_kw=45.0,
     ),
     _typowa(
         "tpl_sn_nn_160kva",

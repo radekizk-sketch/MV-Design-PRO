@@ -28,7 +28,7 @@ import {
 } from 'recharts';
 
 import type {
-  ProtectionCurve,
+  KrzywaWykresuTcc,
   FaultMarker,
   TimeCurrentChartConfig,
   CurvePoint,
@@ -44,8 +44,8 @@ import {
 // =============================================================================
 
 interface TimeCurrentChartProps {
-  /** Protection curves to display */
-  curves: ProtectionCurve[];
+  /** Krzywe do narysowania — wykres czyta wyłącznie punkty z backendu, nazwę i kolor. */
+  curves: KrzywaWykresuTcc[];
   /** Fault current markers */
   faultMarkers?: FaultMarker[];
   /** Chart configuration */
@@ -70,7 +70,7 @@ interface CustomTooltipProps {
     payload: ChartDataPoint;
   }>;
   label?: number;
-  curves: ProtectionCurve[];
+  curves: KrzywaWykresuTcc[];
 }
 
 // =============================================================================

@@ -52,6 +52,9 @@ export interface DerKindSpec {
   catalog_options: readonly CatalogChoice[];
   default_count: number;
   default_p_mw_each: number;
+  /** Pozycja katalogu, którą zastosowanie szablonu wybierze bez wskazania projektanta
+   *  (dobór do mocy jednostki po stronie backendu); `null` — rodzaj bez pozycji. */
+  default_catalog_ref: string | null;
   connection_variant_options: readonly string[];
 }
 
@@ -234,9 +237,21 @@ export interface PreviewTemplateResult {
     der_total_count: number;
     der_mix: readonly {
       kind: string;
+      /** `null`, gdy szablon nie tworzy jednostek tej technologii (liczba 0). */
       catalog_ref: string | null;
+      /** Nastawa mocy czynnej jednostki [MW]; `null` przy liczbie 0. */
+      p_mw_each: number | null;
       connection_variant: string;
       expected_count_per_kind: number;
+      /** Tor jednostki po stronie SN (addytywne): WŁASNY transformator blokowy nN/SN, kabel
+       *  SN i aparat pola z kaskady doboru backendu; `null` dla jednostek po stronie nN. */
+      block_transformer_ref: string | null;
+      block_transformer_name: string | null;
+      block_transformer_sn_mva: number | null;
+      required_apparent_power_mva_each: number | null;
+      inverter_output_kv: number | null;
+      mv_cable_ref: string | null;
+      mv_field_apparatus_ref: string | null;
     }[];
   };
   estimated_elements_count: number;

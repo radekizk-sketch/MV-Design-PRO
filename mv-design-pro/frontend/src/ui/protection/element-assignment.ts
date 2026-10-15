@@ -18,6 +18,7 @@
  * Implementacja wymaga rozszerzenia modelu NetworkModel lub osobnego store.
  */
 
+import type { NastawyUrzadzeniaWidok } from './nastawyModelu';
 import type { ElementType } from '../types';
 
 // =============================================================================
@@ -71,6 +72,12 @@ export interface ElementProtectionAssignment {
 
   /** Kluczowe nastawy (read-only, dla tooltipa) */
   settings_summary?: ProtectionSettingsSummary;
+
+  /**
+   * Nastawy z modelu rozwiązane przez backend (karta BIEG-ZABEZPIECZEN-Z-MODELU) — źródło
+   * edytora nastaw (`ui2/kreatory/przekaznik/EdytorNastawZabezpieczenia`).
+   */
+  nastawy?: NastawyUrzadzeniaWidok;
 }
 
 /**

@@ -98,9 +98,11 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
   });
 
   // === Test D: Pole SN (E-11) ===
-  it('D. Pole SN ma 8 sekcji konfiguratora', () => {
+  it('D. Pole SN otwiera kartę pola (bez szkieletu zakładek z tekstem zastępczym)', () => {
     render(<BayConfiguratorSurface surface={sampleSurface} />);
     expect(screen.getByTestId('bay-configurator-surface')).toBeInTheDocument();
+    expect(screen.getByText('Karta pola SN')).toBeInTheDocument();
+    expect(screen.queryByText(/zostanie pokazany po wyborze wariantu pola/)).not.toBeInTheDocument();
   });
 
   // === Test E: Stacja (E-13) ===

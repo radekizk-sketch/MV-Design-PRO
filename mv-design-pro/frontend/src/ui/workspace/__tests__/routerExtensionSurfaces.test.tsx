@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithQueryClient as render } from '../../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../../app-state';

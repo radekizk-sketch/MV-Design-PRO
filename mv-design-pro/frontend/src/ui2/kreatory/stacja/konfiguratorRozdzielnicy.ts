@@ -34,6 +34,7 @@ import type {
 } from '../../../ui/catalog/BayTemplatePicker';
 import {
   CONSTRUCTION_LABELS_PL,
+  czyRodzinaDoBudowania,
   type FactoryConfigurationUnitWire,
   type FactoryConfigurationWire,
   type SwitchgearFamily,
@@ -73,18 +74,6 @@ export function torRodziny(rodzina: SwitchgearFamily | null | undefined): TorKon
 }
 
 // --------------------------------------- Oferta rodzin producenta (widok)
-
-/**
- * Statusy rodziny, przy których katalog POZWALA budować konfigurację —
- * odwzorowanie `POTWIERDZONE_STATUSY_RODZINY` z pakietu katalogu
- * (`switchgear/families.py`, polityka `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`).
- * `requires_catalog` i `deprecated` są POZA tym zbiorem.
- */
-const STATUSY_POZWALAJACE_BUDOWAC: ReadonlySet<SwitchgearFamily['status']> = new Set([
-  'verified',
-  'repo_verified',
-  'user_defined',
-]);
 
 /** Powód, dla którego rodziny katalogu NIE MOŻNA dziś użyć (albo `null`). */
 export type PowodNiedostepnosci = 'WYMAGA_KARTY' | 'WYCOFANA' | 'INNA_KLASA_NAPIECIOWA';
@@ -159,10 +148,12 @@ function powodNiedostepnosci(
   snVoltageKv: number,
 ): PowodNiedostepnosci | null {
   if (rodzina.status === 'deprecated') return 'WYCOFANA';
-  if (!STATUSY_POZWALAJACE_BUDOWAC.has(rodzina.status)) return 'WYMAGA_KARTY';
+  // Statusy dopuszczające budowę — jeden predykat frontu (`czyRodzinaDoBudowania`, lustro
+  // `POTWIERDZONE_STATUSY_RODZINY` z `switchgear/families.py`, parytet przypięty testem).
+  if (!czyRodzinaDoBudowania(rodzina)) return 'WYMAGA_KARTY';
   // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
   // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
-  if (rodzina.status !== 'user_defined' && rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
+  if (rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
   if (!rodzinaObslugujeNapiecie(rodzina, snVoltageKv)) return 'INNA_KLASA_NAPIECIOWA';
   return null;
 }

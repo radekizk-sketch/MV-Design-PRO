@@ -175,11 +175,11 @@ import {
 import {
   resolveStationDirectionContext,
   stationBayCaptions,
-  classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { junctionDotGaps, interiorCrossings } from './crossings';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { elementyToru } from './elementyToru';
 import {
   bayHasProtectionAnnotation,
@@ -1028,27 +1028,14 @@ function dominantDerGlyphKind(
  *     szyny, gdy model MÓWI nN);
  *   - `derBehindTr` bez transformatora = sprzeczność modelu (źródło „za TR"
  *     w stacji bez TR) — jawny stopNote, glif nie rysuje nN bez pola TR. */
-/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7:
- *  JEDNA reguła prezentacji roli topologicznej stacji dla WSZYSTKICH LOD —
- *  typ WYPROWADZONY z TYPU elementów (`classifyStationTopologicalType`,
- *  spec §19.3), a stacja OSTATNIA w ciągu (drugie pole = wiszący koniec,
- *  nie NO) prezentuje się jako KOŃCOWA. Wydzielone, żeby L0 (sylwetka
- *  mini-RMU) i L1/L2 (etykieta typu) NIE mogły się rozjechać (zero cienia
- *  reguły — wcześniej logika żyła tylko w gałęzi lod>=1, przez co L0
- *  rysował KAŻDĄ stację dwustronnie, jak przelotową). */
-function presentedStationTopologicalType(
-  props: StationOnRunRendererProps,
-  terminalInRun: boolean,
-): {
-  readonly derived: ReturnType<typeof classifyStationTopologicalType>;
-  readonly presented: ReturnType<typeof classifyStationTopologicalType>;
-} {
-  const derived = classifyStationTopologicalType(props.snBays ?? []);
-  const presented =
-    terminalInRun && !props.isNop && derived === 'przelotowa' ? 'końcowa' : derived;
-  return { derived, presented };
-}
-
+/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7 + karta
+ *  ETYKIETA-STACJI-PRZELOTOWEJ: rola topologiczna stacji dla WSZYSTKICH LOD (sylwetka L0
+ *  i podpis L1/L2) to `props.topologicalType` — rodzaj WYPROWADZONY z topologii JEDNĄ regułą
+ *  produktu (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, §19.3),
+ *  którą adapter wpisuje w propsy. Reguła zawiera już „przelotowa ⇔ oba pola liniowe
+ *  POŁĄCZONE" (stacja z drugim polem wolnym albo z wiszącym odcinkiem jest końcowa). Dawna
+ *  druga reguła sceny (liczba pól `snBays` + „ostatnia stacja wiersza/ciągu") skasowana —
+ *  zależała od łamania arkusza i rozjeżdżała się z drzewem projektu. */
 /**
  * TR2W-BEZ-POLA: JEDNA prawda faktu domenowego „stacja ma transformator
  * SN/nN". Przed tą kartą L0 (sylwetka, niżej) i L1/L2 (`hasLvSection` w
@@ -1070,7 +1057,6 @@ function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
-  terminalInRun: boolean,
 ): StationCompactGlyphSummary {
   const hasTransformer = stationHasTransformerFact(props);
   const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
@@ -1079,13 +1065,13 @@ function stationCompactGlyphSummary(
       `station.der.behindTrBezTR: stacja „${props.name}" (${props.id}) — źródło DER na szynie nN (za TR), ale stacja bez transformatora; sprzeczność modelu ENM (GS-4), sylwetka L0 nie rysuje strony nN bez pola TR.`,
     );
   }
-  const { derived, presented } = presentedStationTopologicalType(props, terminalInRun);
+  const rodzaj = props.topologicalType;
   return {
-    sectioned: derived === 'sekcyjna',
-    // GS-5: pola liniowe sylwetki z ROLI stacji w ciągu (nie założenia
-    // „każda przelotowa"). Sekcyjna ⇒ dwustronna z definicji (mv_lv_
-    // sectional ma 2 pola liniowe) — mapuje na 'przelotowa' + `sectioned`.
-    lineTopology: presented === 'sekcyjna' ? 'przelotowa' : presented,
+    sectioned: rodzaj === 'sekcyjna',
+    // GS-5: pola liniowe sylwetki z RODZAJU stacji (jedna reguła produktu). Sekcyjna ⇒
+    // dwustronna z definicji (mv_lv_sectional ma 2 pola liniowe) — mapuje na
+    // 'przelotowa' + `sectioned`.
+    lineTopology: rodzaj === 'sekcyjna' ? 'przelotowa' : rodzaj,
     hasTransformer,
     derOnMv: dominantDerGlyphKind(derSources, ['sn', 'unknown']),
     derBehindTr,
@@ -1099,10 +1085,6 @@ function buildMeasureInput(
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   stopNotes: string[],
-  // Recenzja NO-GO 2026-07-17 pkt 7: stacja OSTATNIA w ciągu (drugie pole
-  // liniowe = wiszący koniec, nie NO) jest topologicznie KOŃCOWA — sama
-  // liczba pól w `snBays` tego nie widzi (pole jest, kabel z niego wisi).
-  terminalInRun = false,
 ): StationMeasureInput {
   if (lod === 0) {
     // L0 (spec §7 „stacje jako ∎16 z kodem Sxx + NO"): stacja = symbol
@@ -1110,10 +1092,9 @@ function buildMeasureInput(
     // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
     // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
     // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
-    // kodu, zero zmian w measure.ts. Walidacyjne stopNotes typu (§19.3)
-    // emitowane są WYŁĄCZNIE w gałęzi lod>=1 niżej (raz, nie per LOD) —
-    // ale ROLA topologiczna stacji (GS-5) liczona jest TĄ SAMĄ regułą
-    // (`presentedStationTopologicalType`) i wchodzi do `compactGlyph`.
+    // kodu, zero zmian w measure.ts. ROLA topologiczna stacji (GS-5) to ten
+    // sam rodzaj, który podpisuje L1/L2 (`props.topologicalType`, jedna reguła
+    // produktu) i wchodzi do `compactGlyph`.
     // GS-1 (V12K-137, GAP §10.4): L0 niesie SYLWETKĘ mini-RMU — typ stacji/TR/
     // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
     // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
@@ -1122,43 +1103,22 @@ function buildMeasureInput(
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
-      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes, terminalInRun),
+      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes),
     };
   }
   const includeCableAndPorts = lod === 2;
-  // F10.2 (spec §19.3, V12K-034): typ stacji WYPROWADZONY z topologii
-  // (liczba pól liniowych + obecność sprzęgła w `snBays`) — `props.
-  // topologicalType` (dana `Substation.station_type`, adapter v2,
-  // `classifyTopologicalType` NIEZMIENIONE) służy WYŁĄCZNIE walidacji
-  // niezgodności (ostrzeżenie w `stopNotes`, BEZ cichego nadpisania
-  // rysunku — spec §19.3 „dana degradowana do walidacji").
+  // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ: podpis rodzaju to
+  // rodzaj WYPROWADZONY z topologii jedną regułą produktu (`props.topologicalType`, adapter
+  // v2 ← `ui/shared/rodzajStacji.ts`). Niezgodność z deklaracją `Substation.station_type`
+  // zgłasza walidator backendu (W043, ostrzeżenie z akcją naprawczą, bez identyfikatorów
+  // w tekście) — scena nie emituje własnej notatki niezgodności.
   const snBays = props.snBays ?? [];
-  // GS-5: JEDNA reguła wyprowadzenia i prezentacji typu dla wszystkich LOD
-  // (`presentedStationTopologicalType` wyżej) — tu dodatkowo jawne stopNotes
-  // walidacyjne (emitowane raz, w gałęzi szczegółowej).
-  const { derived: derivedType, presented: presentedType } =
-    presentedStationTopologicalType(props, terminalInRun);
-  if (derivedType !== props.topologicalType) {
-    stopNotes.push(
-      `station.type.mismatch: stacja „${props.name}" (${props.id}) — dana Substation.station_type ⇒ „${props.topologicalType}", topologia (pola liniowe/sprzęgło z snBays) ⇒ „${derivedType}"; rysunek pokazuje wyprowadzenie z topologii (spec §19.3).`,
-    );
-  }
-  // Recenzja NO-GO 2026-07-17 pkt 7: „przelotowa ⇔ oba pola liniowe
-  // POŁĄCZONE". Stacja terminalna ciągu (bez następnej stacji; NO-punkt
-  // wyłączony — tam drugie pole JEST okablowane do sąsiedniego ciągu)
-  // prezentuje się jako KOŃCOWA, a rozjazd względem liczby pól idzie w
-  // jawny stopNote.
-  if (presentedType !== derivedType) {
-    stopNotes.push(
-      `station.type.terminal: stacja „${props.name}" (${props.id}) — pola liniowe sugerują „${derivedType}", ale drugie pole kończy się wiszącym odcinkiem (stacja ostatnia w ciągu, bez NO) — rysunek pokazuje „${presentedType}" (recenzja NO-GO 2026-07-17 pkt 7).`,
-    );
-  }
   return {
     id: props.id,
     name: props.name,
     stationCode: props.stationCode ?? null,
     transformerRatedKva: props.transformerRatedKva ?? null,
-    stationTypeLabel: stationTypeLabelPl(presentedType),
+    stationTypeLabel: stationTypeLabelPl(props.topologicalType),
     snBays,
     bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
     // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
@@ -1204,13 +1164,6 @@ function buildRowLayout(
   // pierwszego przęsła wiersza mierzyłaby tekst „GPZ ↔ …", a rysowany byłby
   // „S12 ↔ S13 …" (rozjazd measure↔draw, wzór pkt 13 recenzji NO-GO).
   entryNodeCode: string = gpzNodeCode,
-  // S9-1 (łamanie arkusza): czy OSTATNIA stacja tej listy jest ostatnią stacją
-  // CAŁEGO ciągu. Dla wiersza arkusza `k < R-1` NIE jest — a od tego zależy
-  // prezentacja roli topologicznej („końcowa" vs „przelotowa",
-  // `presentedStationTopologicalType`, recenzja NO-GO 2026-07-17 pkt 7).
-  // Bez tego rozróżnienia złamanie arkusza KŁAMAŁOBY o topologii: stacja w
-  // środku magistrali rysowałaby się jako koniec ciągu.
-  runEndsAtLastStation = true,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
@@ -1222,7 +1175,7 @@ function buildRowLayout(
   // oba zestawy są indeksowo zgodne (`composeRowStation` zipuje kolumny z
   // renderInputs po indeksie, sekcja 5/6).
   const buildInputs = (measureLod: SceneLod, notes: string[]): StationMeasureInput[] => {
-    const arr = stationIds.map((id, idx) => {
+    const arr = stationIds.map((id) => {
       const props = stationById.get(id);
       if (!props) {
         notes.push(
@@ -1232,16 +1185,7 @@ function buildRowLayout(
       }
       const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
       const captions = stationBayCaptions(props.snBays ?? [], context);
-      // pkt 7 (recenzja NO-GO 2026-07-17): ostatnia stacja ciągu = terminalna
-      // (za nią żadna stacja; ewentualny ogon ENM to wiszący koniec §16-v3).
-      return buildMeasureInput(
-        props,
-        measureLod,
-        captions,
-        derSourcesByStationId,
-        notes,
-        runEndsAtLastStation && idx === stationIds.length - 1,
-      );
+      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId, notes);
     });
     let valid = arr.filter((m): m is StationMeasureInput => m != null);
     // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
@@ -3251,7 +3195,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     entryNodeCode: string,
     entryFromAbove: boolean,
     notes: string[],
-    runEndsAtLastStation = true,
   ): RowLayout =>
     buildRowLayout(
       ids,
@@ -3265,7 +3208,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       entryFromAbove,
       TOP_LEVEL_FIELD_CLEARANCE,
       entryNodeCode,
-      runEndsAtLastStation,
     );
 
   // Sonda geometrii NIEZŁAMANEGO ciągu — WYŁĄCZNIE źródło szerokości kolumn dla
@@ -3335,7 +3277,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       start === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(start - 1),
       start > 0,
       [],
-      endExclusive === trunkStationIds.length,
     ).bandsResult.totalHeight;
     bandHeightCache.set(key, value);
     return value;
@@ -3362,7 +3303,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           rowIndex === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(range.start - 1),
           rowIndex > 0,
           stopNotes,
-          range.endExclusive === trunkStationIds.length,
         ),
       )
     : mainTrunkRun
@@ -6097,41 +6037,44 @@ export function allSheetContinuationsMarked(scene: SceneV3): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// F10.2 (spec §19.3, V12K-034) — station_type_topology_probe: typ stacji
-// WYPROWADZONY z topologii; dana `station_type` służy WYŁĄCZNIE walidacji
-// (niezgodność ⇒ `missingData`/ostrzeżenie w `stopNotes`, NIE cichy
-// nadpisanie rysunku — dowiedzione już PRZEZ `buildMeasureInput` wyżej,
-// funkcja niżej to NIEZALEŻNA sonda na poziomie snapshotu ENM, do użycia
-// przez skrypt akceptacyjny/testy bez budowania pełnej sceny).
+// F10.2 (spec §19.3, V12K-034) — station_type_topology_probe (karta
+// ETYKIETA-STACJI-PRZELOTOWEJ): (a) podpis rodzaju KAŻDEJ stacji na scenie ==
+// rodzaj wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`,
+// lustro backendu `enm/rodzaj_stacji.py`); (b) deklaracja `station_type` nie zmienia
+// rysunku (niezgodność zgłasza walidator backendu W043) — sprawdza skrypt akceptacyjny
+// podmianą deklaracji; (c) 3 pola liniowe ⇒ „odgałęźna" — parytet reguły z backendem.
+// Sonda NIEZALEŻNA od adaptera: rodzaj liczy wprost z migawki ENM, podpis czyta ze sceny.
 // ---------------------------------------------------------------------------
 
-export interface StationTypeTopologyMismatch {
+export interface StationTypeLabelGap {
   readonly stationId: string;
-  readonly dataType: StationOnRunRendererProps['topologicalType'];
-  readonly derivedType: StationOnRunRendererProps['topologicalType'];
+  readonly label: string;
+  readonly expected: string | null;
 }
 
-/**
- * Uruchamia adapter v2 (`buildSldDataFromSnapshot`) + klasyfikator
- * topologiczny (`classifyStationTopologicalType`) na WSZYSTKICH stacjach
- * snapshotu i zwraca te, gdzie wyprowadzenie z topologii NIE zgadza się z
- * ręczną daną `Substation.station_type` (`props.topologicalType`).
- * NIEZALEŻNA od `buildSceneV3`/`buildMeasureInput` (nie re-używa ich
- * wewnętrznego stanu) — druga, osobna ścieżka dowodowa dla wyroczni
- * `station_type_topology_probe`.
- */
-export function stationTypeTopologyMismatches(
+/** Podpisy rodzaju stacji na scenie (tekst „stacja …" pisany małą literą — wiersz danych
+ *  bloku stacji), które nie są rodzajem wyprowadzonym z topologii tej stacji. */
+export function stationTypeLabelGaps(
+  scene: SceneV3,
   snapshot: EnergyNetworkModel,
-): readonly StationTypeTopologyMismatch[] {
-  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
-  const mismatches: StationTypeTopologyMismatch[] = [];
-  for (const s of sldData.stations) {
-    const derivedType = classifyStationTopologicalType(s.snBays ?? []);
-    if (derivedType !== s.topologicalType) {
-      mismatches.push({ stationId: s.id, dataType: s.topologicalType, derivedType });
-    }
+): readonly StationTypeLabelGap[] {
+  const gaps: StationTypeLabelGap[] = [];
+  for (const [stationId, text] of stationTypeLabels(scene)) {
+    const wynik = rodzajStacji(snapshot, stationId);
+    const expected = wynik ? `stacja ${NAZWA_RODZAJU_STACJI_PL[wynik.rodzaj]}` : null;
+    if (text !== expected) gaps.push({ stationId, label: text, expected });
   }
-  return mismatches;
+  return gaps;
+}
+
+/** Podpisy rodzaju stacji na scenie (stacja → tekst), posortowane — do porównania dwóch
+ *  scen (np. przed i po podmianie deklaracji `station_type`). Właściciel wiersza pasma nazw
+ *  to `${stacja}#name-row-N` — stacja to część przed `#`. */
+export function stationTypeLabels(scene: SceneV3): readonly (readonly [string, string])[] {
+  return scene.labels
+    .filter((label) => label.text.startsWith('stacja '))
+    .map((label) => [label.ownerRef.split('#')[0], label.text] as const)
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -6157,8 +6100,7 @@ export interface BayTemplateGap {
  *  (a) `RMU_LINE` konwencji: ZERO symboli `breaker`/`currentTransformer`
  *      i ≥1 `loadBreakSwitch`,
  *  (b) `RMU_TRANSFORMER` konwencji: ≥1 `earthSwitch`.
- * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`), jak
- * `stationTypeTopologyMismatches`. Pola nienarysowane (L0 — stacje
+ * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`). Pola nienarysowane (L0 — stacje
  * zbiorcze) poza zakresem (nie ma czego mierzyć).
  */
 export function bayTemplateGaps(scene: SceneV3, snapshot: EnergyNetworkModel): readonly BayTemplateGap[] {

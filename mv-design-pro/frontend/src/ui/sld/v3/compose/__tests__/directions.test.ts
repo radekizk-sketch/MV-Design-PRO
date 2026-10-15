@@ -11,7 +11,6 @@ import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRe
 import type { LineRunV1 } from '../../../../../types/enm';
 import {
   bayDirectionCaption,
-  classifyStationTopologicalType,
   fieldFunctionalDesignation,
   resolveStationDirectionContext,
   stationBayCaptions,
@@ -388,55 +387,3 @@ describe('fieldFunctionalDesignation (spec §19.1 — oznaczenie funkcyjne pola,
   });
 });
 
-// ---------------------------------------------------------------------------
-// F10.2 (spec §19.3, V12K-034, wyrocznia station_type_topology_probe):
-// `classifyStationTopologicalType` — typ stacji WYPROWADZONY z topologii
-// (`snBays`), NIE z ręcznej danej `station_type`.
-// ---------------------------------------------------------------------------
-
-describe('classifyStationTopologicalType (spec §19.3 — typ stacji z topologii)', () => {
-  it('1 pole liniowe (+ TR) ⇒ "końcowa"', () => {
-    const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
-    expect(classifyStationTopologicalType(snBays)).toBe('końcowa');
-  });
-
-  it('0 pól liniowych (samo TR) ⇒ "końcowa" (degradacja bezpieczna)', () => {
-    expect(classifyStationTopologicalType([makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0)])).toBe('końcowa');
-  });
-
-  it('2 pola liniowe równorzędne ⇒ "przelotowa"', () => {
-    const snBays = [
-      makeBay(FIELD_ROLE.RMU_LINE, 0),
-      makeBay(FIELD_ROLE.RMU_LINE, 1),
-      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 2),
-    ];
-    expect(classifyStationTopologicalType(snBays)).toBe('przelotowa');
-  });
-
-  it('3 pola liniowe ⇒ "odgałęźna" (wyrocznia station_type_topology_probe (c))', () => {
-    const snBays = [
-      makeBay(FIELD_ROLE.RMU_LINE, 0),
-      makeBay(FIELD_ROLE.RMU_LINE, 1),
-      makeBay(FIELD_ROLE.RMU_LINE, 2),
-      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 3),
-    ];
-    expect(classifyStationTopologicalType(snBays)).toBe('odgałęźna');
-  });
-
-  it('obecność sprzęgła (COUPLER) ⇒ "sekcyjna", NAWET z tylko 2 polami liniowymi (mv_lv_sectional)', () => {
-    const snBays = [
-      makeBay(FIELD_ROLE.RMU_LINE, 0),
-      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1),
-      makeBay(FIELD_ROLE.COUPLER, 2),
-      makeBay(FIELD_ROLE.RMU_LINE, 3),
-      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 4),
-    ];
-    expect(classifyStationTopologicalType(snBays)).toBe('sekcyjna');
-  });
-
-  it('czysta funkcja `snBays` — kolejność pól nie wpływa na wynik (liczność, nie pozycja)', () => {
-    const a = [makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0), makeBay(FIELD_ROLE.RMU_LINE, 1), makeBay(FIELD_ROLE.RMU_LINE, 2)];
-    const b = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_LINE, 1), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 2)];
-    expect(classifyStationTopologicalType(a)).toBe(classifyStationTopologicalType(b));
-  });
-});

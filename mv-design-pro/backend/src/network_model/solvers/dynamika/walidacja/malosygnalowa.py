@@ -16,9 +16,11 @@ punkcie, bez ani jednego kroku calkowania). Rozjazd tych dwoch liczb oznacza
 blad w jakobianie albo w calkowaniu — i nie da sie go schowac, bo zadna z nich
 nie korzysta z kodu tej drugiej.
 
-BLOKI JAKOBIANU pochodza z tych samych metod urzadzen, ktorych uzywa krok
-calkowania (`jakobian_stan_stan`, `jakobian_stan_napiecie`, `jakobian_prad_stan`)
-oraz z `siec.jakobian_algebry`. To jest zamierzone: gdyby analiza malosygnalowa
+BLOKI JAKOBIANU pochodza z tych samych metod elementow stanowych (urzadzen i odbiorow
+ze stanem estymatora czestotliwosci), ktorych uzywa krok calkowania
+(`jakobian_stan_stan`, `jakobian_stan_napiecie`, a blok `dg/dx` — z TEJ SAMEJ funkcji
+`calkowanie.blok_algebry_po_stanie`, co jakobian sprzezony kroku: wiersz ograniczenia,
+urzadzenie napieciowe i odbior bez obwodu wg jednej reguly) oraz z `siec.jakobian_algebry`. To jest zamierzone: gdyby analiza malosygnalowa
 miala wlasna kopie pochodnych, zgodnosc dowodzilaby zgodnosci dwoch kopii, a nie
 poprawnosci jednej.
 """
@@ -30,8 +32,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..calkowanie import KontekstKroku
-from ..siec import jakobian_algebry
+from ..calkowanie import KontekstKroku, blok_algebry_po_stanie
+from ..siec import jakobian_algebry, ograniczenia_napiecia
 
 
 @dataclass(frozen=True)
@@ -57,19 +59,27 @@ def macierz_stanu(
     f_y = np.zeros((liczba_stanow, 2 * liczba_wezlow), dtype=float)
     g_x = np.zeros((2 * liczba_wezlow, liczba_stanow), dtype=float)
 
+    ograniczone = {
+        pozycja for pozycja, _ in ograniczenia_napiecia(kontekst.model, kontekst.urzadzenia)
+    }
     przesuniecie = 0
-    for urzadzenie, stan, wymiar in zip(kontekst.urzadzenia, stany, wymiary, strict=True):
-        pozycja = kontekst.model.indeks_wezla[urzadzenie.wezel]
+    for indeks, (element, stan, wymiar) in enumerate(
+        zip(kontekst.elementy, stany, wymiary, strict=True)
+    ):
+        pozycja = kontekst.model.indeks_wezla[element.wezel]
         napiecie = complex(napiecia[pozycja])
         f_x[przesuniecie : przesuniecie + wymiar, przesuniecie : przesuniecie + wymiar] = (
-            urzadzenie.jakobian_stan_stan(stan, napiecie)
+            element.jakobian_stan_stan(stan, napiecie)
         )
-        blok_fy = urzadzenie.jakobian_stan_napiecie(stan, napiecie)
+        blok_fy = element.jakobian_stan_napiecie(stan, napiecie)
         f_y[przesuniecie : przesuniecie + wymiar, pozycja] = blok_fy[:, 0]
         f_y[przesuniecie : przesuniecie + wymiar, pozycja + liczba_wezlow] = blok_fy[:, 1]
-        blok_ix = urzadzenie.jakobian_prad_stan(stan, napiecie)
-        g_x[pozycja, przesuniecie : przesuniecie + wymiar] = -blok_ix[0, :]
-        g_x[pozycja + liczba_wezlow, przesuniecie : przesuniecie + wymiar] = -blok_ix[1, :]
+        # Ten sam blok `-dg/dx`, ktorym krok calkowania sklada jakobian sprzezony — wiersz
+        # ograniczenia i urzadzenie napieciowe wg tej samej reguly (`blok_algebry_po_stanie`).
+        blok_gx = blok_algebry_po_stanie(kontekst, indeks, stan, napiecie, ograniczone)
+        if blok_gx is not None:
+            g_x[pozycja, przesuniecie : przesuniecie + wymiar] = -blok_gx[0, :]
+            g_x[pozycja + liczba_wezlow, przesuniecie : przesuniecie + wymiar] = -blok_gx[1, :]
         przesuniecie += wymiar
 
     g_y = jakobian_algebry(
@@ -120,8 +130,8 @@ def mod_oscylacyjny(mody_ukladu: tuple[Mod, ...]) -> Mod:
     oscylacyjne = [mod for mod in mody_ukladu if mod.czestotliwosc_hz > 0.0]
     if not oscylacyjne:
         raise ValueError(
-            "Uklad nie ma modu oscylacyjnego (wszystkie wartosci wlasne rzeczywiste) — "
-            "nie ma czego porownywac z czestotliwoscia przebiegu."
+            "Układ nie ma modu oscylacyjnego (wszystkie wartości własne rzeczywiste) — "
+            "nie ma czego porównywać z częstotliwością przebiegu."
         )
     return oscylacyjne[0]
 

@@ -80,6 +80,12 @@ Equipment in a field:
 
 ### EmbeddingRoleV1
 
+> **Skasowane (karta ETYKIETA-STACJI-PRZELOTOWEJ, 2026-09-30).** `EmbeddingRoleV1`, pole
+> `StationBlockDetailV1.embeddingRole` i walidator `validateStationBlock` nie miały producenta ani
+> wywołań (`stationBlockBuilder.ts` usunięty wcześniej) — były drugą, martwą klasyfikacją rodzaju
+> stacji. Rodzaj stacji ma jedną regułę: `docs/sld/SLD_TYPY_STACJI_KANONICZNE.md`. Tabela niżej
+> jest zapisem historycznym.
+
 Station's role relative to trunk segmentation:
 
 | Role | Condition | Description |

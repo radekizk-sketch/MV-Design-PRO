@@ -86,8 +86,23 @@ export interface ProtectionSetting {
     | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
     | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
+  /**
+   * Karta BIEG-ZABEZPIECZEN-Z-MODELU (PZ-09): strona przekładnika, po której podano próg —
+   * `A_WTORNY` (nastawa przekaźnika) albo `A_PIERWOTNY`. Próg bez jednostki jest odrzucany
+   * przy zapisie (`enm/nastawy_zabezpieczen.py::bledy_nastaw`).
+   */
+  threshold_unit?: 'A_WTORNY' | 'A_PIERWOTNY' | null;
   time_delay_s?: number | null;
-  curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
+  curve_type?:
+    | 'DT'
+    | 'IEC_SI'
+    | 'IEC_VI'
+    | 'IEC_EI'
+    | 'IEC_LI'
+    | 'IEEE_MI'
+    | 'IEEE_VI'
+    | 'IEEE_EI'
+    | null;
   /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
   time_multiplier?: number | null;
   is_directional?: boolean;
@@ -453,6 +468,8 @@ export interface Load extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Model dynamiczny odbioru — kopia profilu katalogu `load_dynamic` (karta modeli odbiorów). */
+  dynamika?: ModelDynamicznyOdbioru | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,6 +651,18 @@ export interface TurbinaWiatrowa {
 }
 
 /** Unia dyskryminowana po `rodzina` — jeden blok parametrow dynamicznych zrodla. */
+/**
+ * Model dynamiczny ODBIORU (`Load.dynamika`, lustro `enm/dynamika_modele.py::
+ * ModelDynamicznyOdbioru`): napięcie przejścia do stałej impedancji (`null` wyłącznie dla
+ * odbioru czysto impedancyjnego) i stała pomiaru częstotliwości (`null` wyłącznie dla odbioru
+ * bez czułości częstotliwościowej). Kształt charakterystyki (ZIP, k) żyje w typie odbioru.
+ */
+export interface ModelDynamicznyOdbioru {
+  proweniencja: ProweniencjaParametrow;
+  u_min_pu: number | null;
+  t_pomiaru_czestotliwosci_s: number | null;
+}
+
 export type ParametryDynamiczne =
   | MaszynaSynchroniczna
   | PrzeksztaltnikGFL
@@ -1558,17 +1587,6 @@ export interface BayEarthFaultPath {
   earth_return_split_factor?: number | null;
 }
 
-export interface BayVerificationResult {
-  continuous_current_ok?: boolean | null;
-  thermal_withstand_ok?: boolean | null;
-  dynamic_withstand_ok?: boolean | null;
-  ct_ok?: boolean | null;
-  vt_ok?: boolean | null;
-  cable_head_ok?: boolean | null;
-  main_switch_ok?: boolean | null;
-  whole_power_path_ok?: boolean | null;
-}
-
 export interface BayProofBinding {
   proof_ref: string;
   primary_result_refs: string[];
@@ -1586,7 +1604,6 @@ export interface BayProjectResults {
   main_power_flow_results_ref?: string | null;
   source_contributions_sc: BayShortCircuitSourceContribution[];
   source_contributions_pf: BayPowerFlowSourceContribution[];
-  verification: BayVerificationResult;
   earth_fault_path?: BayEarthFaultPath | null;
   proof_binding: BayProofBinding;
 }

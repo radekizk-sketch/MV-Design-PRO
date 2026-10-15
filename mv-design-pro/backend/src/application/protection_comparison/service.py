@@ -6,7 +6,8 @@ Orchestrates protection comparison:
    analysis_type == "protection_sn", FINISHED, tego samego projektu
 2. FETCH: `ResultSetV1` obu biegów (`build_resultset_v1_from_canonical_run` —
    JEDYNY producent projekcji wyników; zero własnego parsowania raw_result)
-3. COMPARE: Match by (protected_element_ref, fault_target_id)
+3. COMPARE: Match by (device_id, fault_target_id) — urządzenie MODELU (przypisanie
+   zabezpieczenia, D-21) i punkt zwarcia jego strefy
 4. RANK: Generate deterministic issue ranking
 5. TRACE: Record all steps for audit, z proweniencją (snapshot_hash/input_hash/
    koperta) OBU biegów R1 (B1, karta CV-3.3-B)
@@ -58,8 +59,14 @@ from enm.canonical_analysis import CanonicalRun, get_run
 # Time difference threshold for significant delay change [s]
 DELAY_CHANGE_THRESHOLD_S = 0.05  # 50ms
 
-# Margin difference threshold for significant margin change [%]
-MARGIN_CHANGE_THRESHOLD_PERCENT = 5.0
+# Próg raportowania zmiany zapasu czułości: WZGLĘDNA zmiana krotności M = I/Is o więcej niż
+# 5 %. Próg w punktach procentowych marginesu (dawny 5 p.p.) nie miał sensu przy krotnościach
+# rzędu dziesiątek — 5 p.p. przy M = 20 to 0,25 % zmiany. Próg raportowania, nie kryterium
+# normowe (porównanie A/B jest faktograficzne, bez werdyktu).
+MARGIN_CHANGE_THRESHOLD_RELATIVE = 0.05
+
+#: Stan wiarygodności wyniku, przy którym czasu i zapasu czułości nie porównuje się.
+_NIEWIARYGODNY = "NIEWIARYGODNY"
 
 #: Separator w `comparison_id` — porównanie jest BEZSTANOWE (zob. nagłówek
 #: modułu): `comparison_id` koduje wprost parę biegów R1.
@@ -157,7 +164,10 @@ class ProtectionComparisonService:
         trace_steps.append(
             ProtectionComparisonTraceStep(
                 step="MATCH_EVALUATIONS",
-                description_pl="Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
+                description_pl=(
+                    "Dopasowanie ocen zabezpieczeń obu biegów po parze (urządzenie modelu, "
+                    "punkt zwarcia)"
+                ),
                 inputs={
                     "evaluations_a_count": len(evaluations_a),
                     "evaluations_b_count": len(evaluations_b),
@@ -168,7 +178,10 @@ class ProtectionComparisonService:
         rows, matched_count = self._match_evaluations(evaluations_a, evaluations_b)
         trace_steps[-1] = ProtectionComparisonTraceStep(
             step="MATCH_EVALUATIONS",
-            description_pl="Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
+            description_pl=(
+                "Dopasowanie ocen zabezpieczeń obu biegów po parze (urządzenie modelu, "
+                "punkt zwarcia)"
+            ),
             inputs={
                 "evaluations_a_count": len(evaluations_a),
                 "evaluations_b_count": len(evaluations_b),
@@ -185,7 +198,6 @@ class ProtectionComparisonService:
                 outputs={},
             )
         )
-        rows = self._compute_deltas(rows)
         state_change_counts = self._count_state_changes(rows)
         trace_steps[-1] = ProtectionComparisonTraceStep(
             step="COMPUTE_DELTAS",
@@ -215,7 +227,7 @@ class ProtectionComparisonService:
                 inputs={
                     "row_count": len(rows),
                     "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,
-                    "margin_threshold_percent": MARGIN_CHANGE_THRESHOLD_PERCENT,
+                    "margin_threshold_relative": MARGIN_CHANGE_THRESHOLD_RELATIVE,
                 },
                 outputs={},
             )
@@ -228,7 +240,7 @@ class ProtectionComparisonService:
             inputs={
                 "row_count": len(rows),
                 "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,
-                "margin_threshold_percent": MARGIN_CHANGE_THRESHOLD_PERCENT,
+                "margin_threshold_relative": MARGIN_CHANGE_THRESHOLD_RELATIVE,
             },
             outputs={"total_issues": len(ranking), **severity_counts},
         )
@@ -256,8 +268,6 @@ class ProtectionComparisonService:
             comparison_id=comparison_id,
             run_a_id=run_a_id,
             run_b_id=run_b_id,
-            library_fingerprint_a=result_set_a.global_results.get("template_fingerprint"),
-            library_fingerprint_b=result_set_b.global_results.get("template_fingerprint"),
             steps=tuple(trace_steps),
         )
         return result, trace
@@ -296,60 +306,72 @@ class ProtectionComparisonService:
         evaluations_a: list[dict[str, Any]],
         evaluations_b: list[dict[str, Any]],
     ) -> tuple[list[ProtectionComparisonRow], int]:
-        """
-        Match evaluations from A and B by (protected_element_ref, fault_target_id).
+        """Dopasuj oceny A i B po (urządzenie modelu, punkt zwarcia).
 
-        Returns:
-            Tuple of (rows, matched_count)
+        Urządzenie jest elementem MODELU (``device_id`` = ``ref_id`` przypisania), więc jego
+        tożsamość jest stała między biegami tego samego projektu — w przeciwieństwie do
+        dawnego syntetycznego ``device_{węzeł}`` z pierwszego węzła zwarcia. Czas i jego
+        zmiana są porównywane wyłącznie, gdy oba biegi dają zadziałanie z wynikiem
+        wiarygodnym.
         """
-        index_a: dict[tuple[str, str], dict[str, Any]] = {
-            (str(ev["protected_element_ref"]), str(ev["fault_target_id"])): ev
-            for ev in evaluations_a
-        }
-        index_b: dict[tuple[str, str], dict[str, Any]] = {
-            (str(ev["protected_element_ref"]), str(ev["fault_target_id"])): ev
-            for ev in evaluations_b
-        }
-
-        all_keys = sorted(set(index_a.keys()) | set(index_b.keys()))
+        index_a = {(str(ev["device_id"]), str(ev["fault_target_id"])): ev for ev in evaluations_a}
+        index_b = {(str(ev["device_id"]), str(ev["fault_target_id"])): ev for ev in evaluations_b}
 
         rows: list[ProtectionComparisonRow] = []
         matched_count = 0
-
-        for key in all_keys:
+        for key in sorted(set(index_a) | set(index_b)):
             eval_a = index_a.get(key)
             eval_b = index_b.get(key)
-
             if eval_a is not None and eval_b is not None:
                 matched_count += 1
-
-            state_change = self._compute_state_change(eval_a, eval_b)
-
-            row = ProtectionComparisonRow(
-                protected_element_ref=key[0],
-                fault_target_id=key[1],
-                device_id_a=str(eval_a["device_id"]) if eval_a else "",
-                device_id_b=str(eval_b["device_id"]) if eval_b else "",
-                trip_state_a=str(eval_a["trip_state"]) if eval_a else "MISSING",
-                trip_state_b=str(eval_b["trip_state"]) if eval_b else "MISSING",
-                t_trip_s_a=self._optional_float(eval_a, "t_trip_s"),
-                t_trip_s_b=self._optional_float(eval_b, "t_trip_s"),
-                # FAB-E (E1, zachowane): element nieobecny w run A/B (eval_a/
-                # eval_b brak) -> None, nie fikcyjny prad zwarciowy 0.0 A.
-                i_fault_a_a=self._optional_float(eval_a, "i_fault_a"),
-                i_fault_a_b=self._optional_float(eval_b, "i_fault_a"),
-                delta_t_s=None,  # Computed in next step
-                delta_i_fault_a=(
-                    (float(eval_b["i_fault_a"]) - float(eval_a["i_fault_a"]))
-                    if (eval_a and eval_b)
-                    else None
-                ),
-                margin_percent_a=self._optional_float(eval_a, "margin_percent"),
-                margin_percent_b=self._optional_float(eval_b, "margin_percent"),
-                state_change=state_change,
+            dowolna = eval_a if eval_a is not None else eval_b
+            assert dowolna is not None
+            t_a = self._optional_float(eval_a, "t_trip_s")
+            t_b = self._optional_float(eval_b, "t_trip_s")
+            wiar_a = str(eval_a.get("wiarygodnosc", "")) if eval_a else ""
+            wiar_b = str(eval_b.get("wiarygodnosc", "")) if eval_b else ""
+            trip_a = str(eval_a["trip_state"]) if eval_a else "MISSING"
+            trip_b = str(eval_b["trip_state"]) if eval_b else "MISSING"
+            delta_t_s = (
+                t_b - t_a
+                if trip_a == "TRIPS"
+                and trip_b == "TRIPS"
+                and t_a is not None
+                and t_b is not None
+                and _NIEWIARYGODNY not in (wiar_a, wiar_b)
+                else None
             )
-            rows.append(row)
-
+            rows.append(
+                ProtectionComparisonRow(
+                    protected_element_ref=str(dowolna["protected_element_ref"]),
+                    fault_target_id=key[1],
+                    device_id_a=key[0] if eval_a else "",
+                    device_id_b=key[0] if eval_b else "",
+                    trip_state_a=trip_a,
+                    trip_state_b=trip_b,
+                    t_trip_s_a=t_a,
+                    t_trip_s_b=t_b,
+                    # FAB-E (E1, zachowane): urządzenie bez oceny w biegu → None, nie
+                    # fikcyjny prąd 0,0 A.
+                    i_fault_a_a=self._optional_float(eval_a, "i_fault_a"),
+                    i_fault_a_b=self._optional_float(eval_b, "i_fault_a"),
+                    delta_t_s=delta_t_s,
+                    delta_i_fault_a=(
+                        (float(eval_b["i_fault_a"]) - float(eval_a["i_fault_a"]))
+                        if (eval_a and eval_b)
+                        else None
+                    ),
+                    margin_percent_a=self._optional_float(eval_a, "margin_percent"),
+                    margin_percent_b=self._optional_float(eval_b, "margin_percent"),
+                    state_change=self._compute_state_change(eval_a, eval_b),
+                    nazwa_urzadzenia_pl=str(dowolna.get("nazwa_urzadzenia_pl", "")),
+                    nazwa_punktu_pl=str(dowolna.get("nazwa_punktu_pl", "")),
+                    krotnosc_m_a=self._optional_float(eval_a, "krotnosc_m"),
+                    krotnosc_m_b=self._optional_float(eval_b, "krotnosc_m"),
+                    wiarygodnosc_a=wiar_a,
+                    wiarygodnosc_b=wiar_b,
+                )
+            )
         return rows, matched_count
 
     @staticmethod
@@ -364,66 +386,18 @@ class ProtectionComparisonService:
         eval_a: dict[str, Any] | None,
         eval_b: dict[str, Any] | None,
     ) -> StateChange:
-        """
-        Compute state change between two evaluations.
-        """
+        """Zmiana stanu zadziałania; brak oceny w jednym z biegów = zmiana nieoceniona."""
         if eval_a is None or eval_b is None:
             return StateChange.INVALID_CHANGE
-
         state_a = str(eval_a["trip_state"])
         state_b = str(eval_b["trip_state"])
-
-        if state_a == "INVALID" or state_b == "INVALID":
-            return StateChange.INVALID_CHANGE
-
         if state_a == state_b:
             return StateChange.NO_CHANGE
-
         if state_a == "TRIPS" and state_b == "NO_TRIP":
             return StateChange.TRIP_TO_NO_TRIP
-
         if state_a == "NO_TRIP" and state_b == "TRIPS":
             return StateChange.NO_TRIP_TO_TRIP
-
         return StateChange.INVALID_CHANGE
-
-    def _compute_deltas(self, rows: list[ProtectionComparisonRow]) -> list[ProtectionComparisonRow]:
-        """
-        Compute time deltas for rows where both states are TRIPS.
-        """
-        updated_rows: list[ProtectionComparisonRow] = []
-
-        for row in rows:
-            delta_t_s: float | None = None
-
-            if (
-                row.trip_state_a == "TRIPS"
-                and row.trip_state_b == "TRIPS"
-                and row.t_trip_s_a is not None
-                and row.t_trip_s_b is not None
-            ):
-                delta_t_s = row.t_trip_s_b - row.t_trip_s_a
-
-            updated_row = ProtectionComparisonRow(
-                protected_element_ref=row.protected_element_ref,
-                fault_target_id=row.fault_target_id,
-                device_id_a=row.device_id_a,
-                device_id_b=row.device_id_b,
-                trip_state_a=row.trip_state_a,
-                trip_state_b=row.trip_state_b,
-                t_trip_s_a=row.t_trip_s_a,
-                t_trip_s_b=row.t_trip_s_b,
-                i_fault_a_a=row.i_fault_a_a,
-                i_fault_a_b=row.i_fault_a_b,
-                delta_t_s=delta_t_s,
-                delta_i_fault_a=row.delta_i_fault_a,
-                margin_percent_a=row.margin_percent_a,
-                margin_percent_b=row.margin_percent_b,
-                state_change=row.state_change,
-            )
-            updated_rows.append(updated_row)
-
-        return updated_rows
 
     def _count_state_changes(self, rows: list[ProtectionComparisonRow]) -> dict[str, int]:
         """
@@ -501,7 +475,7 @@ class ProtectionComparisonService:
                             row.protected_element_ref,
                             row.fault_target_id,
                             (idx,),
-                            extra_info=f"Δt = {row.delta_t_s:.3f} s",
+                            extra_info=f"zmiana czasu {_liczba(row.delta_t_s, znak=True)} s",
                         )
                     )
                 elif row.delta_t_s < -DELAY_CHANGE_THRESHOLD_S:
@@ -511,30 +485,50 @@ class ProtectionComparisonService:
                             row.protected_element_ref,
                             row.fault_target_id,
                             (idx,),
-                            extra_info=f"Δt = {row.delta_t_s:.3f} s",
+                            extra_info=f"zmiana czasu {_liczba(row.delta_t_s, znak=True)} s",
                         )
                     )
 
-            if row.margin_percent_a is not None and row.margin_percent_b is not None:
-                margin_delta = row.margin_percent_b - row.margin_percent_a
-                if margin_delta < -MARGIN_CHANGE_THRESHOLD_PERCENT:
+            if _NIEWIARYGODNY in (row.wiarygodnosc_a, row.wiarygodnosc_b):
+                biegi = " i ".join(
+                    nazwa
+                    for nazwa, stan in (("A", row.wiarygodnosc_a), ("B", row.wiarygodnosc_b))
+                    if stan == _NIEWIARYGODNY
+                )
+                issues.append(
+                    self._create_issue(
+                        IssueCode.UNRELIABLE_RESULT,
+                        row.protected_element_ref,
+                        row.fault_target_id,
+                        (idx,),
+                        extra_info=f"bieg {biegi}",
+                    )
+                )
+                continue
+            if row.krotnosc_m_a is not None and row.krotnosc_m_b is not None:
+                zmiana = row.krotnosc_m_b / row.krotnosc_m_a - 1.0
+                opis = (
+                    f"krotność prądu rozruchowego z {_liczba(row.krotnosc_m_a)} na "
+                    f"{_liczba(row.krotnosc_m_b)}, zmiana {_liczba(zmiana * 100.0, znak=True)} %"
+                )
+                if zmiana < -MARGIN_CHANGE_THRESHOLD_RELATIVE:
                     issues.append(
                         self._create_issue(
                             IssueCode.MARGIN_DECREASED,
                             row.protected_element_ref,
                             row.fault_target_id,
                             (idx,),
-                            extra_info=f"Δmargin = {margin_delta:.1f}%",
+                            extra_info=opis,
                         )
                     )
-                elif margin_delta > MARGIN_CHANGE_THRESHOLD_PERCENT:
+                elif zmiana > MARGIN_CHANGE_THRESHOLD_RELATIVE:
                     issues.append(
                         self._create_issue(
                             IssueCode.MARGIN_INCREASED,
                             row.protected_element_ref,
                             row.fault_target_id,
                             (idx,),
-                            extra_info=f"Δmargin = +{margin_delta:.1f}%",
+                            extra_info=opis,
                         )
                     )
 
@@ -621,3 +615,11 @@ class ProtectionComparisonService:
             moderate_issues=severities["moderate_issues"],
             minor_issues=severities["minor_issues"],
         )
+
+
+def _liczba(wartosc: float, *, znak: bool = False) -> str:
+    """Liczba w opisie dla projektanta: przecinek dziesiętny, do trzech cyfr po przecinku bez
+    zer końcowych, opcjonalnie ze znakiem (zmiana)."""
+    tekst = f"{wartosc:+.3f}" if znak else f"{wartosc:.3f}"
+    tekst = tekst.rstrip("0").rstrip(".")
+    return tekst.replace(".", ",").replace("-", "−")

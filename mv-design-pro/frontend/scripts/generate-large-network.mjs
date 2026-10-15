@@ -60,7 +60,7 @@ async function build() {
   }
 
   const PV_ID = 'conv-pv-sma-1p5mw-15kv';
-  const BESS_ID = 'bess_pcs_sma_2200';
+  const BESS_ID = 'bess_pcs_abb_500';
   // Karta W5-B: pola stacji to rekordy `bays` migawki — stacja niesie swoje pola z tej samej
   // odpowiedzi operacji (`pola`), żeby wybór pola odgałęźnego nie czytał innej migawki.
   const newestStation = (o) => {

@@ -133,6 +133,10 @@ BUDZET_ODSTAWIONYCH_TRAS = 4
 # Reguła wlasciciela: montowac WYLACZNIE z konsumentem — trasa bez odbiorcy jest
 # fantomem. Wpis, ktory przestal byc prawdziwy (modul zniknal albo zostal wpiety),
 # zapala czerwien: `[router-nieaktualny-wpis]`.
+# K-16 (V12K-346, O-71, 2026-09-30): konsument trasy = wywolanie w sciezce
+# uzytkownika (ekran/akcja UI ALBO narzedzie MCP dzialajace w jego imieniu —
+# ADR-029); narzedzia MCP nie sa APIRouterami i nie podlegaja temu guardowi;
+# zadnej klasy wyjatku „API integracyjne" — wyjatki wylacznie per trasa, tutaj.
 # --------------------------------------------------------------------------
 SWIADOMIE_ODSTAWIONE: dict[str, tuple[tuple[str, ...], str]] = {
     # protection_coordination ZAMONTOWANY (karta ZAB-100-BACKEND, 2026-08-13,

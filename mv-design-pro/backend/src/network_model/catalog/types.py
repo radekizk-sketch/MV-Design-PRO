@@ -563,6 +563,119 @@ def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
 
 
 # =============================================================================
+# TOR MASZYNY TURBINY WIATROWEJ (karta KATALOG-TURBINY-TOR-V112, 2026-10-15)
+# =============================================================================
+#
+# Turbina z przekształtnikiem ma DWA napięcia, których nie wolno utożsamiać: stojan
+# generatora (np. V112: 710 V PMSG / 750 V SCIG, częstotliwość zmienna) i strona sieci
+# przekształtnika (V112: 650 V, częstotliwość sieci). Strona sieci przekształtnika jest
+# JEDNYM polem `ConverterType.un_kv` — to ono wiąże się z uzwojeniem nN transformatora
+# blokowego (`der.inverter_voltage_mismatch`) i wchodzi do rozpływu i zwarć. Pola toru
+# maszyny opisują to, co jest ZA przekształtnikiem: żaden solver ich nie czyta, bo
+# przekształtnik pełnej mocy odsprzęga maszynę od sieci (udział zwarciowy pochodzi
+# z przekształtnika — `k_sc` — nigdy z impedancji maszyny). Napięcie strony WN
+# transformatora blokowego nie jest daną turbiny: należy do typu transformatora
+# wybranego w torze DER-SN (dokument V112 podaje zakres 10–35 kV).
+
+#: Rodzaj maszyny → topologia przekształtnika, którą ta maszyna wymaga. JEDNO źródło
+#: dla obu stron predykatu (rodzaj maszyny ⇔ topologia): generator synchroniczny
+#: z magnesami trwałymi i generator klatkowy pracują za przekształtnikiem pełnej mocy,
+#: generator dwustronnie zasilany — za przekształtnikiem w obwodzie wirnika.
+TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY: dict[str, str] = {
+    "PMSG": "FULL_CONVERTER",
+    "SCIG": "FULL_CONVERTER",
+    "DFIG": "DFIG_ROTOR_CONVERTER",
+}
+TOPOLOGIE_PRZEKSZTALTNIKA: frozenset[str] = frozenset(TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY.values())
+
+#: Pola liczbowe toru maszyny (wartość skończona > 0, gdy podana).
+_POLA_LICZBOWE_TORU_MASZYNY: tuple[str, ...] = (
+    "generator_rated_power_mw",
+    "generator_stator_voltage_kv",
+    "generator_stator_frequency_max_hz",
+    "converter_machine_side_voltage_kv",
+)
+
+#: Wszystkie pola toru maszyny — materializowane do elementu i serializowane WYŁĄCZNIE,
+#: gdy obecne (pozycja bez nich zachowuje `to_dict` i tabliczkę bajtowo identyczne).
+POLA_TORU_MASZYNY: tuple[str, ...] = (
+    "generator_machine_type",
+    "converter_topology",
+    *_POLA_LICZBOWE_TORU_MASZYNY,
+)
+
+
+def pola_toru_maszyny_obecne(zrodlo: Any) -> dict[str, Any]:
+    """Pola `POLA_TORU_MASZYNY` o wartości różnej od `None` — z mapy albo z obiektu typu."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_TORU_MASZYNY:
+        wartosc = zrodlo.get(nazwa) if isinstance(zrodlo, dict) else getattr(zrodlo, nazwa, None)
+        if wartosc is not None:
+            wynik[nazwa] = wartosc
+    return wynik
+
+
+def _pola_toru_maszyny_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Odczyt pól toru maszyny (round-trip `pola_toru_maszyny_obecne`)."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_TORU_MASZYNY:
+        wartosc = data.get(nazwa)
+        if wartosc is None:
+            wynik[nazwa] = None
+        elif nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
+            wynik[nazwa] = float(wartosc)
+        else:
+            wynik[nazwa] = str(wartosc)
+    return wynik
+
+
+def _waliduj_tor_maszyny(obiekt: Any) -> None:
+    """Reguły toru maszyny (KAT-T-042…044) — jedno ciało dla wszystkich pozycji."""
+    obecne = pola_toru_maszyny_obecne(obiekt)
+    if not obecne:
+        return
+    if obiekt.kind is not ConverterKind.WIND:
+        odmowa_twarda(
+            "KAT-T-042",
+            f"Pola toru maszyny ({', '.join(sorted(obecne))}) dotyczą wyłącznie turbin "
+            f"wiatrowych, a pozycja '{obiekt.id}' jest rodzaju {obiekt.kind.value}.",
+        )
+    for nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
+        wartosc = obecne.get(nazwa)
+        if wartosc is not None and (not math.isfinite(wartosc) or wartosc <= 0):
+            odmowa_twarda(
+                "KAT-T-043",
+                f"Pole toru maszyny {nazwa} musi być liczbą skończoną > 0, otrzymano "
+                f"{wartosc!r} (pozycja '{obiekt.id}').",
+            )
+    maszyna = obiekt.generator_machine_type
+    topologia = obiekt.converter_topology
+    if maszyna is not None and maszyna not in TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY:
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Nieznany rodzaj maszyny {maszyna!r} (pozycja '{obiekt.id}'); dozwolone: "
+            f"{', '.join(sorted(TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY))}.",
+        )
+    if topologia is not None and topologia not in TOPOLOGIE_PRZEKSZTALTNIKA:
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Nieznana topologia przekształtnika {topologia!r} (pozycja '{obiekt.id}'); "
+            f"dozwolone: {', '.join(sorted(TOPOLOGIE_PRZEKSZTALTNIKA))}.",
+        )
+    if (
+        maszyna is not None
+        and topologia is not None
+        and TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY[maszyna] != topologia
+    ):
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Maszyna {maszyna} wymaga topologii "
+            f"{TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY[maszyna]}, a pozycja '{obiekt.id}' "
+            f"deklaruje {topologia}.",
+        )
+
+
+# =============================================================================
 # P-Q CAPABILITY CURVE ("krzywa zdolnosci P-Q falownika") — optional, additive.
 # A deterministic list of (p_mw, q_min_mvar, q_max_mvar) points, ascending by
 # p_mw, describing the manufacturer's reactive-power envelope at rated voltage.
@@ -1480,6 +1593,10 @@ class ConverterType:
         dynamic_profile_id: Dynamic model profile reference (optional).
         droop_p_f_percent: Grid-forming P/f droop statism [%] (optional).
         droop_q_u_percent: Grid-forming Q/U droop statism [%] (optional).
+        generator_machine_type / converter_topology / generator_rated_power_mw /
+        generator_stator_voltage_kv / generator_stator_frequency_max_hz /
+        converter_machine_side_voltage_kv: machine path behind the converter of a
+            wind turbine (optional, WIND only). ``un_kv`` is the grid-side voltage.
     """
 
     id: str
@@ -1584,6 +1701,17 @@ class ConverterType:
     # grid-forming (VSM/droop control), w %. Karta katalogowa producenta.
     # Zrodlo `V126ConverterInput.droop_q_u_percent`, jak wyzej.
     droop_q_u_percent: float | None = None
+    # Tor maszyny turbiny wiatrowej (karta KATALOG-TURBINY-TOR-V112): co jest ZA
+    # przekształtnikiem — rodzaj maszyny, napięcie i częstotliwość stojana, moc
+    # znamionowa generatora (≠ moc turbiny `pmax_mw`), topologia przekształtnika i jego
+    # napięcie po stronie maszyny. Strona sieci przekształtnika = `un_kv` (jedno pole).
+    # Wyłącznie rodzaj WIND (KAT-T-042); emitowane tylko, gdy podane.
+    generator_machine_type: str | None = None
+    converter_topology: str | None = None
+    generator_rated_power_mw: float | None = None
+    generator_stator_voltage_kv: float | None = None
+    generator_stator_frequency_max_hz: float | None = None
+    converter_machine_side_voltage_kv: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1609,8 +1737,10 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate optional additive fields (P-Q curve, flicker coefficient, droops, k_sc)."""
+        """Validate optional additive fields (P-Q curve, flicker coefficient, droops, k_sc,
+        machine path of a wind turbine)."""
         _waliduj_pola_karty_przeksztaltnika(self, kontekst="ConverterType")
+        _waliduj_tor_maszyny(self)
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1678,6 +1808,9 @@ class ConverterType:
                 if self.droop_q_u_percent is not None
                 else {}
             ),
+            # Tor maszyny turbiny: emitowany WYŁĄCZNIE, gdy podany (pozostałe pozycje
+            # bajtowo identyczne).
+            **pola_toru_maszyny_obecne(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1735,6 +1868,7 @@ class ConverterType:
             flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
             droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
             droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
+            **_pola_toru_maszyny_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -4593,6 +4727,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pq_curve",
             "card_field_status",
             "dynamic_profile_id",
+            # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny (za przekształtnikiem).
+            *POLA_TORU_MASZYNY,
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
@@ -4610,6 +4746,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pq_curve",
             "card_field_status",
             "dynamic_profile_id",
+            *POLA_TORU_MASZYNY,
         ),
     ),
     CatalogNamespace.KARTA_WIDMOWA.value: MaterializationContract(

@@ -37,6 +37,7 @@ from __future__ import annotations
 from typing import Any
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.golden.enm_builders.odbiory_dynamiki import zwiaz_odbiory_z_profilem
 
 #: Proweniencja bloków: maszyna z karty producenta, przekształtnik z profilu
 #: typowego normy — DWIE różne wartości osi proweniencji w jednej sieci, żeby
@@ -105,6 +106,14 @@ PRZEKSZTALTNIK_GFL: dict[str, Any] = {
 
 def build_dynamika_rms_enm() -> dict[str, Any]:
     """Migawka ENM sieci G16 — słownik walidujący się jako `EnergyNetworkModel`."""
+    # Karta modeli odbiorów (O-56): odbiory związane z profilem modelu dynamicznego
+    # katalogu tą samą operacją domenową, którą wykonuje projektant (dana testowa
+    # `U_min = 0,7 pu` — `odbiory_dynamiki.py`).
+    return zwiaz_odbiory_z_profilem(_migawka_bez_modeli_odbiorow())
+
+
+def _migawka_bez_modeli_odbiorow() -> dict[str, Any]:
+    """Migawka sieci przed związaniem odbiorów z profilem modelu dynamicznego."""
     return {
         "header": {
             "name": "G16 — sieć wzorcowa biegu czasowego RMS",

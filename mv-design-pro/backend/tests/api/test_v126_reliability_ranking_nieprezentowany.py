@@ -167,6 +167,8 @@ def test_wrapper_zdejmuje_klucze_rankingu_i_przelicza_status_wiarygodnosci() -> 
 
     assert wynik["ranking_n1"] == {
         "status": "NIEPREZENTOWANY",
+        # Pozycja (g) planu A/B §12.2 (AB-H0b pkt 3): jawna metoda obciążenia N-1 V12.6.
+        "metoda_pl": "szacunek bez rozpływu",
         "powod_pl": (
             "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking "
             "kanoniczny = pełny re-solve"
@@ -203,6 +205,7 @@ def test_trzy_konsumenci_api_nie_niosa_kluczy_rankingu() -> None:
     for klucz in _KLUCZE_RANKINGU:
         assert klucz not in payload_wyniku, f"results: {klucz} nie zostało zdjęte"
     assert payload_wyniku["ranking_n1"]["status"] == "NIEPREZENTOWANY"
+    assert payload_wyniku["ranking_n1"]["metoda_pl"] == "szacunek bez rozpływu"
     assert payload_wyniku["ranking_n1"]["trasa"] == "/api/insights/n-1-contingency"
     # Wskaźniki niezawodności widoczne bez zmian.
     assert "saidi_min_per_year" in payload_wyniku["indices"]

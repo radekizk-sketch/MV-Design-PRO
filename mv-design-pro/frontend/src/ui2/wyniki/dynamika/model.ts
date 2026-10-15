@@ -115,6 +115,39 @@ export interface ZrodloDynamiki {
   readonly akcja_naprawcza: AkcjaNaprawczaDynamiki | null;
 }
 
+export type StanModeluOdbioru = 'z_katalogu' | 'brak' | 'odmowa' | 'nieaktualna';
+
+/** Stan modelu dynamicznego odbioru (`enm/dynamika_z_katalogu.py::StanDynamikiOdbioru`). */
+export interface OdbiorDynamiki {
+  readonly ref_id: string;
+  readonly nazwa: string;
+  readonly wiazanie: string | null;
+  readonly stan: StanModeluOdbioru;
+  readonly u_min_pu: number | null;
+  readonly t_pomiaru_czestotliwosci_s: number | null;
+  /** Czy równania odbioru czytają stałą pomiaru częstotliwości; `null` — kształtu nie wyznaczono. */
+  readonly czuly_czestotliwosciowo: boolean | null;
+  readonly zrodlo_proweniencji: string | null;
+  readonly odniesienie_proweniencji: string | null;
+  readonly odmowa_kod: string | null;
+  readonly odmowa_komunikat: string | null;
+  readonly akcja_naprawcza: AkcjaNaprawczaDynamiki | null;
+}
+
+/** Profil katalogu modeli dynamicznych odbiorów (`profile_odbiorow` — z podstawą wartości). */
+export interface ProfilOdbioru {
+  readonly profile_id: string;
+  readonly nazwa: string;
+  readonly opis_pl: string;
+  readonly jakosc: string;
+  readonly u_min_pu: number;
+  readonly podstawa_u_min_pl: string;
+  readonly t_pomiaru_czestotliwosci_s: number;
+  readonly podstawa_t_pomiaru_pl: string;
+  readonly zrodlo_proweniencji: string;
+  readonly odniesienie_proweniencji: string;
+}
+
 export interface BrakModelu {
   readonly kod: string;
   readonly komunikat_pl: string;
@@ -137,6 +170,8 @@ export interface GotowoscDynamiki {
   readonly braki_modelu: readonly BrakModelu[];
   readonly kopie_nieaktualne: readonly string[];
   readonly zrodla: readonly ZrodloDynamiki[];
+  readonly odbiory: readonly OdbiorDynamiki[];
+  readonly profile_odbiorow: readonly ProfilOdbioru[];
   readonly biegi_rozplywu: readonly BiegRozplywu[];
 }
 
@@ -187,7 +222,7 @@ export interface KanalWyniku {
   readonly opis_pl: string;
 }
 
-export type GrupaKanalu = 'szyna' | 'urzadzenie' | 'galaz' | 'miejsce_zwarcia';
+export type GrupaKanalu = 'szyna' | 'urzadzenie' | 'odbior' | 'galaz' | 'miejsce_zwarcia';
 
 export interface OpisKanalu {
   readonly klucz: string;
@@ -302,10 +337,9 @@ export interface OpisWyniku {
   readonly przekroczenia: readonly OpisPrzekroczenia[];
   readonly elementy: Readonly<Record<string, OpisElementu>>;
   readonly baza_mocy_mva: number | null;
-  /** Założenia modelu wejścia biegu — zdania po polsku z nazwami elementów (pierwszy plan). */
+  /** Założenia biegu — zdania po polsku z nazwami elementów, złożone przez warstwę aplikacji
+   * z rekordów rdzenia i założeń wejścia (jedna lista, pierwszy plan). */
   readonly zalozenia_modelu: readonly string[];
-  /** Założenia zapisane przez rdzeń obliczeń (identyfikatory węzłów) — widok techniczny. */
-  readonly zalozenia_rdzenia: readonly string[];
 }
 
 export interface WynikDynamiki {
@@ -394,6 +428,7 @@ const KOLEJNOSC_GRUP: Record<GrupaKanalu, number> = {
   galaz: 1,
   miejsce_zwarcia: 2,
   urzadzenie: 3,
+  odbior: 4,
 };
 
 export interface TekstyKanalow {

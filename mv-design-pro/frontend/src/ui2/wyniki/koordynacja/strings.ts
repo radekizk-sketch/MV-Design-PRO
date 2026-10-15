@@ -10,15 +10,16 @@ export const KOORDYNACJA_STRINGS = {
   // Cel jednym zdaniem (cytat z karty F-E5b §0.2).
   // Nazwy polskie ocen par, nie kody (PASS/MARGINAL/FAIL) — tekst dla człowieka nie niesie
   // kodów werdyktu (kontrakt werdyktu §12, strażnik reguła 6b).
-  cel: 'Dobór nastaw i selektywność zabezpieczeń nadprądowych: ocena każdej pary '
-    + 'zabezpieczeń (selektywna, na granicy, nieselektywna), marginesy stopniowania czasowego '
-    + 'i krzywe czasowo-prądowe — z przebiegu zwarciowego i biblioteki zabezpieczeń.',
+  cel: 'Działanie i selektywność zabezpieczeń nadprądowych: ocena każdego zabezpieczenia '
+    + 'w punktach jego strefy, ocena każdej pary (selektywna, na granicy, nieselektywna), '
+    + 'odstępy stopniowania czasowego i krzywe czasowo-prądowe — urządzenia i nastawy z modelu '
+    + 'sieci, prądy z biegów zwarciowych i rozpływu.',
 
   // Stan zerowy — brak aktywnego projektu.
   brakProjektuTytul: 'Brak aktywnego projektu',
-  brakProjektuOpis: 'Koordynacja zabezpieczeń pracuje na modelu sieci i bibliotece '
-    + 'zabezpieczeń wybranego projektu. Bez aktywnego projektu nie ma z czego dobrać '
-    + 'nastaw ani policzyć marginesów selektywności.',
+  brakProjektuOpis: 'Koordynacja zabezpieczeń pracuje na urządzeniach i nastawach z modelu '
+    + 'sieci wybranego projektu. Bez aktywnego projektu nie ma czego ocenić ani z czego '
+    + 'policzyć odstępów selektywności.',
   brakProjektuAkcja: 'Wybierz projekt',
 
   // Stan zerowy — brak zakończonego przebiegu zwarciowego.
@@ -122,6 +123,38 @@ export const KOORDYNACJA_STRINGS = {
 
   nastawyKolumnaWartosc: 'Wartość',
   nastawyKolumnaWarunek: 'Warunek',
+
+  // Ocena zabezpieczeń z modelu na biegu zwarciowym (bieg `protection_sn`).
+  ocenaTytul: 'Ocena zabezpieczeń na biegu zwarciowym',
+  ocenaOpis: 'Każde zabezpieczenie nadprądowe z modelu oceniane w punktach zwarcia swojej '
+    + 'strefy: prąd przekaźnika z rozpływu zwarciowego, próg i czas z nastaw (charakterystyki '
+    + 'IEC 60255), wiarygodność względem granicy dokładności przekładnika. Nastawy edytujesz '
+    + 'na ekranie „Zabezpieczenia i automatyka".',
+  ocenaWariant: 'Bieg zwarciowy',
+  ocenaWariantMax: 'wariant maksymalny',
+  ocenaWariantMin: 'wariant minimalny',
+  ocenaBrakBiegu: 'Brak zakończonego biegu zwarciowego 3F albo 2F z zapisanym wariantem — '
+    + 'uruchom obliczenie zwarciowe.',
+  ocenaUruchom: 'Oceń zabezpieczenia',
+  ocenaWToku: 'Ocena w toku…',
+  ocenaWczytywanie: 'Wczytywanie ostatniej oceny…',
+  ocenaBrakWyniku: 'Nie oceniono jeszcze zabezpieczeń w tym projekcie.',
+  ocenaNieaktualna: 'Wynik nieaktualny',
+  ocenaPodsumowanie: (
+    ocen: number, zadzialan: number, bezZadzialania: number, niewiarygodnych: number,
+  ) => `Ocen: ${ocen} · zadziała: ${zadzialan} · nie zadziała: ${bezZadzialania} · `
+    + `niewiarygodnych: ${niewiarygodnych}`,
+  ocenaKolUrzadzenie: 'Zabezpieczenie',
+  ocenaKolPunkt: 'Punkt zwarcia',
+  ocenaKolPrad: 'Prąd przekaźnika [A]',
+  ocenaKolStopien: 'Stopień decydujący',
+  ocenaKolCzas: 'Czas zadziałania [s]',
+  ocenaKolWiarygodnosc: 'Wiarygodność',
+  ocenaKolOcena: 'Ocena',
+  ocenaNieZadziala: 'nie zadziała',
+  ocenaOdmowyTytul: 'Zabezpieczenia bez oceny — nazwane braki',
+  ocenaPominieteTytul: 'Zabezpieczenia, których ocena nadprądowa nie dotyczy',
+  ocenaUzupelnij: 'Uzupełnij w modelu',
 
   // V12K-262 (kontynuacja): stan spoza kontraktu NIE MOŻE czytać się jak wynik.
   nastawyStanNieznany: 'Stan nierozpoznany — nie traktuj tej wartości jak wyznaczonej',

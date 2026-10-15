@@ -4,14 +4,15 @@
  *
  * Tor pracy (kontrakt ekranu prowadzącego, FLOW §0.3):
  *  1. dane wejściowe — braki modelu, przez które bieg odmówi, z nazwami elementów;
- *  2. modele dynamiczne źródeł — stan, pochodzenie, wiązanie z profilem katalogowym
- *     (cel akcji naprawczej `der.dynamika_missing`);
+ *  2. modele dynamiczne źródeł i odbiorów — stan, pochodzenie, wiązanie z profilem
+ *     katalogowym (cel akcji naprawczych `der.dynamika_missing` i `load.dynamika_missing`);
  *  3. punkt pracy — JAWNIE wybrany zakończony rozpływ tej samej migawki (akcja: policz);
  *  4. scenariusz zdarzeń (nazwany, z edytora generowanego z kontraktu) i nastawy solvera;
  *  5. bieg istniejącą ścieżką wykonania z odpytywaniem stanu;
  *  6. wynik — rekordy „nie oceniono" z backendu, poziom dowodowy (model niezwalidowany),
- *     założenia, oś zdarzeń, wielkości charakterystyczne i przeglądarka przebiegów
- *     sprzężona ze schematem.
+ *     założenia (zdania z nazwami elementów, złożone w backendzie z rekordów rdzenia — bez
+ *     zapisu technicznego rdzenia), oś zdarzeń, wielkości charakterystyczne i przeglądarka
+ *     przebiegów sprzężona ze schematem.
  *
  * ZERO fizyki, ZERO werdyktu, ZERO wartości domyślnych w UI. Metadane produkcyjne biegu
  * (identyfikator, wersja solvera, własności numeryczne) wyłącznie w `InformacjeAudytowe`.
@@ -37,7 +38,6 @@ import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
-import { ZapisTechniczny } from '../wzorzec/ZapisTechniczny';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 import { nazwaObiektuZMigawki } from '../wzorzec/useNazwaObiektu';
 import { OcenaNiewykonana } from '../wzorzec/OcenaNiewykonana';
@@ -204,9 +204,9 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   }, [snapshot]);
 
   const pokazNaSchemacie = useCallback(
-    (ref: string, nazwa?: string) => {
+    (ref: string, nazwa?: string, typElementu?: 'Generator' | 'Load') => {
       const element = wynik?.stan === 'gotowe' ? wynik.dane.opis_wyniku.elementy[ref] : undefined;
-      const typ = typZaznaczenia(element) ?? 'Generator';
+      const typ = typZaznaczenia(element) ?? typElementu ?? 'Generator';
       selectElement({ id: ref, type: typ, name: nazwa ?? element?.nazwa ?? T.brakNazwy });
       centerSldOnElement(ref);
       setActiveSpace('schemat');
@@ -238,6 +238,38 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
       await odswiezGotowosc();
     },
     [caseId, odswiezGotowosc, projektId, setSnapshot],
+  );
+
+  // Wiązanie modelu dynamicznego ODBIORU: kanoniczna operacja `set_load_dynamic_binding`
+  // przez magazyn migawki (ta sama droga co każda operacja domenowa — blokada modelu,
+  // podmiana migawki, historia operacji); backend buduje kopię `Load.dynamika` z profilu.
+  const powiazOdbior = useCallback(
+    async (loadRef: string, profileId: string | null) => {
+      if (!caseId) return;
+      setZapisywanyRef(loadRef);
+      setBladWiazania(null);
+      try {
+        const odpowiedz = await useSnapshotStore
+          .getState()
+          .executeDomainOperation(caseId, 'set_load_dynamic_binding', {
+            load_ref: loadRef,
+            dynamic_model_ref: profileId,
+          });
+        // Potwierdzenie sukcesu wydaje magazyn migawki (centralny komunikat operacji
+        // domenowej); tu zostaje odmowa backendu pokazana wprost przy sekcji.
+        if (odpowiedz === null) {
+          setBladWiazania(useSnapshotStore.getState().error ?? T.wiazanieOdbioruBlad);
+        } else if (odpowiedz.error) {
+          setBladWiazania(odpowiedz.error);
+        }
+      } catch (blad) {
+        setBladWiazania(komunikat(blad));
+      } finally {
+        setZapisywanyRef(null);
+      }
+      await odswiezGotowosc();
+    },
+    [caseId, odswiezGotowosc],
   );
 
   const zapiszScenariusz = useCallback(
@@ -348,10 +380,19 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
           )}
           <SekcjaModeliZrodel
             zrodla={dane.zrodla}
+            odbiory={dane.odbiory}
+            profileOdbiorow={dane.profile_odbiorow}
             wskazanyRef={wskazanyElement}
             zapisywanyRef={zapisywanyRef}
             onPowiaz={(ref, profil) => void powiaz(ref, profil)}
-            onPokazNaSchemacie={(ref, nazwa) => pokazNaSchemacie(ref, nazwa)}
+            onPowiazOdbior={(ref, profil) => void powiazOdbior(ref, profil)}
+            onPokazNaSchemacie={(ref, nazwa) =>
+              pokazNaSchemacie(
+                ref,
+                nazwa,
+                dane.odbiory.some((o) => o.ref_id === ref) ? 'Load' : 'Generator',
+              )
+            }
           />
 
           <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-punkt-pracy">
@@ -539,22 +580,14 @@ function Wynik({
       </section>
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-zalozenia">
         <h4>{T.zalozeniaTytul}</h4>
+        {/* Jedna lista: zdania z nazwami elementów złożone w backendzie z rekordów rdzenia
+            i założeń wejścia (karta modeli odbiorów — rdzeń dynamiki nie pisze zdań, więc
+            zapisu technicznego rdzenia na tym ekranie nie ma). */}
         <ul>
           {wynik.opis_wyniku.zalozenia_modelu.map((z) => (
             <li key={z}>{z}</li>
           ))}
         </ul>
-        {/* Zdania rdzenia obliczeń (bez nazw elementów modelu) — podpisany widok techniczny
-            wspólnego wzorca wyników, jak zapis silnika zamrożonego (karta #145). */}
-        {wynik.opis_wyniku.zalozenia_rdzenia.length > 0 && (
-          <ZapisTechniczny podpis={T.zalozeniaRdzeniaPodpis} testid="mvd-dynamika-zalozenia-rdzenia">
-            <ul>
-              {wynik.opis_wyniku.zalozenia_rdzenia.map((z) => (
-                <li key={z}>{z}</li>
-              ))}
-            </ul>
-          </ZapisTechniczny>
-        )}
       </section>
       <PrzegladarkaPrzebiegow
         wynik={wynik}

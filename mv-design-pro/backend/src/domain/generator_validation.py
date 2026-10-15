@@ -19,7 +19,7 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -217,8 +217,16 @@ def validate_generator_connections(
 # wobec Sn·k_obc, bez mocy znamionowej falownika) z DWOMA kodami — ten sam model
 # dostawał różne werdykty zależnie od drogi, a pozycja 5 MW przechodziła na TR 1 MVA.
 #
-#   S_wym = max(S_n,jedn · n, |P_nastawa| / cosφ) · k_j  ≤  S_n,TR · k_obc
+#   Σ_i max(S_n,jedn,i · n_i, |P_nastawa,i| / cosφ_i) · k_j  ≤  Σ S_n,TR · k_obc
 #   |P_nastawa| ≤ P_max,jedn · n
+#
+# * suma po GRUPIE: wszystkie źródła przekształtnikowe zasilane przez transformatory
+#   sprawdzanego źródła (domknięcie: źródło → jego transformatory → inne źródła tych
+#   transformatorów → ich transformatory), wyznaczana w `enm.domain_operations_v2.
+#   grupa_kontroli_mocy` (punkt 1 karty O-53b, rozstrzygnięcie architekta 2026-10-15:
+#   transformator wspólny kilku jednostek jest sprawdzany SUMĄ, nie per jednostka);
+# * k_j, k_obc grupy — wspólna jawna wartość jej źródeł, brak = 1,0, różne = odmowa
+#   `converter.power_check_group_ambiguous`;
 #
 # * n — `enm.models.liczba_jednostek_zrodla` (ta sama reguła co solver);
 # * S_n,jedn, P_max,jedn — z tabliczki (karty) jednostki;
@@ -231,6 +239,7 @@ def validate_generator_connections(
 KOD_MOC_TRANSFORMATORA = "converter.transformer_capacity_exceeded"
 KOD_NASTAWA_POWYZEJ_MOCY_ZNAMIONOWEJ = "converter.setpoint_above_rating"
 KOD_WEJSCIE_KONTROLI_MOCY = "converter.power_check_input_invalid"
+KOD_WEJSCIA_GRUPY_NIEJEDNOZNACZNE = "converter.power_check_group_ambiguous"
 
 #: Klucz `Generator.meta` z jawnymi wejściami kontroli mocy (zapisuje tor tworzenia,
 #: czyta przypisanie typu, aktualizacja parametrów i raport zgodności).
@@ -421,6 +430,46 @@ def moc_pozorna_z_nastawy_mva(moc_czynna_mw: float, cos_phi: float | None) -> fl
     return abs(moc_czynna_mw)
 
 
+@dataclass(frozen=True)
+class SkladnikGrupyMocy:
+    """Jedno źródło w grupie zasilanej przez te same transformatory: moc wymagana
+    `max(S_n,jedn · n, |P|/cosφ)` [MVA] (bez k_j) i jego jawne wejścia kontroli mocy."""
+
+    s_wymagana_mva: float
+    wejscia: JawneWejsciaKontroliMocy
+
+
+def skladnik_grupy_generatora(generator: Mapping[str, Any]) -> SkladnikGrupyMocy | None:
+    """Składnik grupy dla rekordu generatora z modelu (`None` — nie źródło
+    przekształtnikowe albo tabliczka i nastawa nie dają mocy wymaganej)."""
+    s_wymagana = moc_pozorna_wymagana_generatora_mva(generator)
+    if s_wymagana is None:
+        return None
+    return SkladnikGrupyMocy(s_wymagana, JawneWejsciaKontroliMocy.z_meta(generator.get("meta")))
+
+
+def _wspolny_wspolczynnik(
+    wartosci: list[float | None], nazwa_pl: str
+) -> tuple[float, OdmowaKontroliMocy | None]:
+    """Współczynnik GRUPY z jawnych wartości jej źródeł: wszystkie jawne równe — ta
+    wartość; brak jawnych — 1,0 (element neutralny, nie domysł); różne — odmowa nazwana
+    (grupa nie ma jednego współczynnika, a wybór jednego z nich byłby domysłem)."""
+    jawne = sorted({wartosc for wartosc in wartosci if wartosc is not None})
+    if not jawne:
+        return BEZ_REDUKCJI, None
+    if jawne[-1] - jawne[0] > _TOLERANCJA_MVA:
+        return BEZ_REDUKCJI, OdmowaKontroliMocy(
+            KOD_WEJSCIA_GRUPY_NIEJEDNOZNACZNE,
+            (
+                f"Źródła zasilane przez ten sam transformator mają różne jawne wartości "
+                f"{nazwa_pl} ({', '.join(f'{wartosc:g}' for wartosc in jawne)}) — grupa ma "
+                "jeden współczynnik. Ustaw tę samą wartość we wszystkich źródłach grupy albo "
+                "usuń ją tam, gdzie nie obowiązuje."
+            ),
+        )
+    return jawne[0], None
+
+
 def sprawdz_moc_transformatora(
     *,
     technologia: str,
@@ -429,9 +478,14 @@ def sprawdz_moc_transformatora(
     moc_czynna_mw: float | None,
     wejscia: JawneWejsciaKontroliMocy,
     moc_transformatorow_mva: float | None,
+    pozostale_zrodla: Sequence[SkladnikGrupyMocy] = (),
 ) -> OdmowaKontroliMocy | None:
-    """S_wym · k_j ≤ S_n,TR · k_obc. Brak transformatora (albo jego mocy) w torze —
-    nie ma czego porównać (np. stacja bez transformatora)."""
+    """Σ S_wym,i · k_j ≤ S_n,TR · k_obc — SUMA po wszystkich źródłach grupy zasilanej przez
+    te same transformatory (decyzja O-53, punkt 1 karty O-53b: kontrola PER TRANSFORMATOR,
+    nie per jednostka). `pozostale_zrodla` — pozostałe źródła grupy (wyznacza wołający
+    z topologii modelu), źródło sprawdzane opisują pozostałe argumenty. k_j i k_obc grupy —
+    `_wspolny_wspolczynnik`. Brak transformatora (albo jego mocy) w torze — nie ma czego
+    porównać (np. stacja bez transformatora)."""
     blad = blad_wejsc_kontroli_mocy(wejscia)
     if blad is not None:
         return blad
@@ -446,24 +500,42 @@ def sprawdz_moc_transformatora(
     )
     if s_wymagana is None:
         return None
-    k_j = BEZ_REDUKCJI
-    if wejscia.wspolczynnik_jednoczesnosci is not None:
-        k_j = wejscia.wspolczynnik_jednoczesnosci
-    k_obc = BEZ_REDUKCJI
-    if wejscia.przeciazalnosc_transformatora_pu is not None:
-        k_obc = wejscia.przeciazalnosc_transformatora_pu
-    obciazenie = s_wymagana * k_j
+    wszystkie = (SkladnikGrupyMocy(s_wymagana, wejscia), *pozostale_zrodla)
+    k_j, blad = _wspolny_wspolczynnik(
+        [skladnik.wejscia.wspolczynnik_jednoczesnosci for skladnik in wszystkie],
+        "współczynnika jednoczesności",
+    )
+    if blad is not None:
+        return blad
+    k_obc, blad = _wspolny_wspolczynnik(
+        [skladnik.wejscia.przeciazalnosc_transformatora_pu for skladnik in wszystkie],
+        "przeciążalności transformatora",
+    )
+    if blad is not None:
+        return blad
+    s_grupy = sum(skladnik.s_wymagana_mva for skladnik in wszystkie)
+    obciazenie = s_grupy * k_j
     dopuszczalna = moc_transformatorow_mva * k_obc
     if obciazenie <= dopuszczalna + _TOLERANCJA_MVA:
         return None
+    if pozostale_zrodla:
+        opis_wymagania = (
+            f"Moc wymagana źródeł zasilanych przez ten sam transformator "
+            f"({mva_na_kva(obciazenie):.0f} kVA = Σ max(S_n,jedn·n; P/cosφ) · k_j po "
+            f"{len(wszystkie)} źródłach: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
+            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, k_j = {k_j:g})"
+        )
+    else:
+        opis_wymagania = (
+            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA = "
+            f"max(S_n,jedn·n; P/cosφ) · k_j, k_j = {k_j:g})"
+        )
     return OdmowaKontroliMocy(
         KOD_MOC_TRANSFORMATORA,
         (
-            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA = "
-            f"max(S_n,jedn·n; P/cosφ) · k_j, k_j = {k_j:g}) przekracza dopuszczalną moc "
-            f"transformatora ({mva_na_kva(dopuszczalna):.0f} kVA = S_n,TR · k_obc, "
-            f"k_obc = {k_obc:g}). Wybierz mniejszy wariant źródła albo transformator o "
-            "większej mocy."
+            f"{opis_wymagania} przekracza dopuszczalną moc transformatora "
+            f"({mva_na_kva(dopuszczalna):.0f} kVA = S_n,TR · k_obc, k_obc = {k_obc:g}). "
+            "Wybierz mniejszy wariant źródła albo transformator o większej mocy."
         ),
     )
 
@@ -479,10 +551,12 @@ def sprawdz_moc_generatora(
     moc_transformatorow_mva: float | None,
     tabliczka: Mapping[str, Any] | None = None,
     sprawdz_nastawe: bool = True,
+    pozostale_zrodla: Sequence[Mapping[str, Any]] = (),
 ) -> OdmowaKontroliMocy | None:
     """Obie kontrole O-53 dla generatora z MODELU (rekord migawki): nastawa ≤ moc
-    znamionowa instalacji oraz moc transformatora zasilającego (`moc_transformatorow_mva`
-    wyznacza wołający z topologii). `tabliczka` — nowa tabliczka (przypisanie typu),
+    znamionowa instalacji oraz moc transformatorów zasilających (`moc_transformatorow_mva`
+    i `pozostale_zrodla` grupy wyznacza wołający z topologii — suma po grupie,
+    `sprawdz_moc_transformatora`). `tabliczka` — nowa tabliczka (przypisanie typu),
     inaczej `materialized_params` generatora; wejścia jawne z `meta.kontrola_mocy_zrodla`."""
     technologia = technologia_generatora(generator)
     if technologia is None:
@@ -508,6 +582,11 @@ def sprawdz_moc_generatora(
         moc_czynna_mw=moc_czynna,
         wejscia=JawneWejsciaKontroliMocy.z_meta(generator.get("meta")),
         moc_transformatorow_mva=moc_transformatorow_mva,
+        pozostale_zrodla=tuple(
+            skladnik
+            for skladnik in (skladnik_grupy_generatora(zrodlo) for zrodlo in pozostale_zrodla)
+            if skladnik is not None
+        ),
     )
 
 

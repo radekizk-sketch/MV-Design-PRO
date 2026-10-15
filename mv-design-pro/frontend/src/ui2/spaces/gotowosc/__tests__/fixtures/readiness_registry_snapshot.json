@@ -86,10 +86,6 @@
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.materialization_failed"
-    },
-    {
-      "area": "CATALOGS",
       "code": "catalog.materialization_incomplete"
     },
     {
@@ -147,6 +143,10 @@
     {
       "area": "SOURCES",
       "code": "connection.power_limit_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.power_check_group_ambiguous"
     },
     {
       "area": "GENERATORS",
@@ -251,6 +251,10 @@
     {
       "area": "CATALOGS",
       "code": "load.catalog_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "load.dynamika_missing"
     },
     {
       "area": "CATALOGS",
@@ -382,10 +386,6 @@
     },
     {
       "area": "PROTECTION",
-      "code": "protection.device_breaker_not_in_series"
-    },
-    {
-      "area": "PROTECTION",
       "code": "protection.fault_current_missing"
     },
     {
@@ -459,6 +459,22 @@
     {
       "area": "SOURCES",
       "code": "source.voltage_invalid"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.element_bypasses_field"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.field_role_unknown"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.kind_mismatch"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.line_field_multiple_segments"
     },
     {
       "area": "STATIONS",
@@ -573,5 +589,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 147
 }

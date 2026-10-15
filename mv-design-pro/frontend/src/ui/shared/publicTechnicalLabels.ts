@@ -1,6 +1,6 @@
 import type { Branch, EnergyNetworkModel, Substation } from '../../types/enm';
 import { isTerrainSnSegment } from './enmVisibility';
-import { formatStationTypeLabelPl } from './stationTypeLabels';
+import { podpisStacjiPl } from './rodzajStacji';
 
 export function isRawTechnicalIdentifier(value: string | null | undefined): boolean {
   if (!value) return false;
@@ -34,7 +34,8 @@ export function stationPublicIdentity(
   station: Substation,
 ): { code: string; typeLabel: string; displayName: string } {
   const code = stationOrdinalCode(snapshot, station);
-  const typeLabel = formatStationTypeLabelPl(station.station_type);
+  // Rodzaj z JEDNEJ reguły produktu (`rodzajStacji.ts`) — nie z deklaracji `station_type`.
+  const typeLabel = podpisStacjiPl(snapshot, station);
   const fallback = `${code} · ${typeLabel}`;
   const displayName = isGenericStationName(station.name)
     ? fallback

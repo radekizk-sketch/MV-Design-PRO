@@ -1,7 +1,7 @@
 ﻿# ADR-002: UnitSystem i BaseQuantities
 
 ## Status
-Accepted
+Accepted — **EXTENDED by K-05 (2026-09-30, O-61/O-63, V12K-343):** rejestr jednostek inżynierskich (kV, MVA, Ω, A, kA, s, pu — sufiksy `_kv/_mva/_ohm`) zadeklarowany RAZ w istniejącym `backend/src/domain/units.py` (nie nowy moduł); `Quantity(value, unit)` z `UnitDimension` wyłącznie na granicy (OpenAPI `x-unit`, jeden formatter ui2, ten sam dla PDF/DOCX/LaTeX); `BaseQuantities` (0 importerów poza `domain/`) albo staje się jedynym konwerterem pu na granicy, albo jest kasowana w karcie JEDNOSTKI-GRANICA — bez martwego kodu. Opcja B (zmiana sygnatur `ShortCircuitResult`/`PowerFlowResult`) odrzucona.
 
 ## Context
 System wymaga spójnego i deterministycznego systemu jednostek, aby utrzymać jakość

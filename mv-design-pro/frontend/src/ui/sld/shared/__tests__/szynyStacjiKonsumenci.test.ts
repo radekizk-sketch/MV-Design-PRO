@@ -206,10 +206,12 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
       readFileSync(resolve(here, '../../v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json'), 'utf8'),
     ) as { readonly enm: EnergyNetworkModel }
   ).enm;
-  const polaLiniowe = (model: EnergyNetworkModel) =>
-    buildSldDataFromSnapshot(model, model.logical_views ?? null, null)
-      .gpzs.slice(0, 1).flatMap((gpz) => (gpz.sections ?? []).flatMap((s) => s.bays))
-      .filter((b) => b.fieldRole === 'LINE_OUT');
+  const polaLiniowe = (model: EnergyNetworkModel) => {
+    // Fikstura ma GPZ z sekcjami; ich brak to zepsuta fikstura, nie pusty wynik.
+    const [gpz] = buildSldDataFromSnapshot(model, model.logical_views ?? null, null).gpzs;
+    if (gpz?.sections === undefined) throw new Error('fikstura gpzProtectionDataPath bez sekcji GPZ');
+    return gpz.sections.flatMap((s) => s.bays).filter((b) => b.fieldRole === 'LINE_OUT');
+  };
 
   it('dwa odcinki z tej samej szyny sekcji do DWÓCH stacji ⇒ żadne pole nie dostaje celu', () => {
     const pola = polaLiniowe(siec);
@@ -223,7 +225,7 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
   });
 
   it('jeden odcinek do stacji (koniec na zacisku pola stacji) ⇒ cel = ta stacja i dane TEGO odcinka', () => {
-    const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02 (typ B)')!;
+    const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02')!;
     const szynyS02 = szynyStacji(siec, s02);
     const bezS02 = {
       ...siec,
@@ -232,7 +234,7 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
     const pola = polaLiniowe(bezS02);
     expect(pola.length).toBeGreaterThan(0);
     for (const pole of pola) {
-      expect(pole.outgoingFeeder?.destination).toBe('→ Stacja S01 (typ B)');
+      expect(pole.outgoingFeeder?.destination).toBe('→ Stacja S01');
       expect(pole.outgoingFeeder?.segmentTypeLabel).toBe('Kabel SN');
     }
   });

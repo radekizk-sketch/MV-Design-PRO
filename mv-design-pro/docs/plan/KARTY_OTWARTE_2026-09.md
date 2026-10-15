@@ -25,6 +25,14 @@ Karty duże programu A/B mają osobne pliki: `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.
 | AB-1c | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | O-52 | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | CICHE-ZERO | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
+| SC-IB-ITH-ZRODLA (B-01 (n)) | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| C-TOLERANCJA-NN | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| SC-WYROCZNIA-SN-TR-NN | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| WYTRZYMALOSC-PRAD-POLA | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| CT-JEDEN-WERDYKT | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| KSR-SKLAD-DER | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| SZABLONY-BEZ-DOMYSLOW | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| KSR-KRYTERIA-POMIAR | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
 
 ## Reguła biegów weryfikacyjnych (obowiązuje wykonawców i integratora)
 
@@ -559,8 +567,10 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
    - IEEE liczone wzorem IEC;
    - DT bez zwłoki = 0 s.
 
-   Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. Jego kasacja wymaga
-   OD-18, więc wpisz go do meldunku z tą zależnością i nie ruszaj.
+   Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. OD-18 ROZSTRZYGNIĘTE
+   2026-09-30 (V12K-341, zgoda B-01 w ramach O-59): kasacja na amen w osobnej karcie W3-A-DOMKNIĘCIE
+   (sankcja `SANCTIONED_CHANGES` już wpisana) — w tej karcie nadal go nie ruszaj, wpisz do meldunku
+   odsyłacz do W3-A-DOMKNIĘCIE.
 4. **Zero wartości domyślnych i połkniętych błędów.**
    - `_extract_setting_value` i każde miejsce inwentarza z domyślnym prądem, TMS, zwłoką, krzywą,
      prądem testowym „10× nastawa” albo progiem 0 (`protection_read_model`) znika.
@@ -913,6 +923,15 @@ w `frontend/src` poza testami i fiksturami): 31 z 321 ścieżek (341 operacji). 
   `nn-device-selection`, `lv-domain/{station_ref}/upstream-equivalent`,
   `elementy/{ref}/sekcje-modelu`, `analysis/solver-input/{analysis_type}`;
 - `wizard/can-proceed`, `sld-overrides`, `sld/{diagram_id}/protection-overlay`.
+- (dopisek przeglądu PR #477/#478, 2026-10-15) `/api/switchgear/{station_id}/config` (GET, PUT) i
+  `/{station_id}/validate` (`api/switchgear_config.py:196-231`, magazyn w pamięci procesu `_config_store`
+  `:120`, rejestracja `api/main.py:192`) — heurystyka pomiaru jej nie wykryła, bo słowo „switchgear”
+  występuje we froncie w innych znaczeniach; konsumenta w `frontend/src` brak, jedynym klientem jest
+  `backend/tests/test_switchgear_config_api.py`. Razem z trasą bez konsumenta zostaje model
+  `domain/switchgear_config.py` (`SwitchgearConfigV1`, `_REQUIRED_DEVICES` `:399` — wyłącznik w każdym
+  polu liniowym, reguła 6 `:638-669` — transformator wewnątrz pola PV/BESS), który nie odpowiada
+  katalogowym konfiguracjom RMU; kanonem zapisu konfiguracji stacji jest `api/audit2_station_config.py`
+  (ORM, konsument `ui/network-build/station-der/audit2-api.ts`).
 
 Heurystyka ma luki w obie strony:
 
@@ -1240,7 +1259,7 @@ literałów w 105 plikach `backend/src`, ale zostawiła trzy obszary z uzasadnie
 nie broni:
 1. **35 plików `network_model/solvers/**`, 239 literałów** — „rdzenie FROZEN, B-01”. Granica B-01
    to od `525ec765` jedna lista `scripts/rdzenie_b01.py` (IEC 60909 ×3, NR/GS/FD ×4,
-   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, stability_rms/, state_estimation_wls,
+   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, state_estimation_wls,
    phase_state_sn, v126_academic, catalog/profiles/nc_rfg/). Pozostałe solvery (np.
    `cable_ampacity_derating.py`, `fault_loop_builder.py`, `cable_voltage_drop.py`) edytuje się
    jak każdy kod. Test `tests/ci/test_polskie_znaki.py` nadal traktuje cały
@@ -1382,6 +1401,10 @@ Zebrane z odbiorów 2026-09-23 (karta powstanie po scaleniu AB-H0 i Pakietu 0; b
    szyny `to` przy U_n bez rozpływu (pomiar wykonawcy AB-1b.1a, 2026-09-23). Rdzeń FROZEN → B-01: wiersz §12
    planu wpisuje AB-1b.1a; w AB-H0b: prezentacja tej liczby wyłącznie z etykietą „szacunek bez rozpływu" z
    rekordu backendu (proweniencja), naprawa właściwa = bieg PF per kontyngencja po zgodzie właściciela.
+   **Stan 2026-09-30 (karta B01-RUNDA-1, R0-g):** liczba nieprezentowana na żadnym ekranie ani w raporcie
+   (karta W3-E zdejmuje ranking); rekord `ranking_n1.metoda_pl` = „szacunek bez rozpływu” (stała
+   `RANKING_N1_METODA_V126`) i panel ekranu analiz akademickich pokazują metodę z rekordu. Kasacja szacunku i
+   N-1 z rozpływu — zmiana zakresu (g) wg decyzji B-01 z 2026-09-30.
 4. Import CSV/XLSX → Pakiet G (poza AB-H0b; tu tylko odsyłacz).
 5. Jakość energii — warstwa profili → AB-H1 (poza AB-H0b; odsyłacz).
 6. `enm_contract_parity` — SPRAWDZANE po scaleniu AB-H0 (wpis z karty integracji AB-H0).
@@ -1400,7 +1423,7 @@ doprecyzowane (O-57)”.
 
 **Stan 2026-09-30:** NIE ROZPOCZĘTA — szkic §0.
 
-Fakty: bieg synchroniczny w żądaniu (`api/execution_runs.py:236-253`), Celery bez zadań i bez wykonawcy (`api/celery_app.py`; `infrastructure/persistence/repositories/canonical_run_repository.py:482`: „`ExecutionBackend` z DT-12 nie jest wdrożony”), klient E-32 już odpytuje (`frontend/src/ui2/wyniki/dynamika/api.ts:140-175`), maszyna 4 CPU, narzędzie jednostanowiskowe (OD-13/OD-27), horyzont do 600 s, bieg kontrolny 3×. **Decyzja:** `ExecutionBackend` (DT-12) jako wykonawca w procesie: kolejka z jednym ciężkim biegiem naraz, stan biegu utrwalany (`PENDING → RUNNING → FINISHED/FAILED/CANCELLED`) w istniejącym rejestrze `canonical_runs`, `POST …/execute` zwraca natychmiast 202 ze stanem, klient odpytuje jak dziś, anulowanie jako zdarzenie sprawdzane między krokami całkowania (flaga w kontekście biegu — jedyny punkt styku z rdzeniem, addytywny), czas biegu i limit jawnie w wyniku (`czas_obliczen_s` już jest — `dynamika/wynik.py:134`). Martwa konfiguracja Celery (`api/celery_app.py`, usługa `celery` w `docker-compose.yml`) — kasacja z bramką wskrzeszenia (ZASADA NR 1; „co przestarzałe, usunąć”). Alternatywa (Celery jako wykonawca) odrzucona: zależność od Redis w testach i pracy lokalnej, brak wartości dla jednego użytkownika, prewencyjna abstrakcja. Zakres plików: `api/execution_runs.py`, nowy `application/execution/wykonawca.py`, `infrastructure/persistence/**` (status), `enm/canonical_analysis.py` — wyłącznie punkt wejścia `execute_run` (koordynacja z torem R), `frontend/src/ui2/wyniki/dynamika/api.ts`; test iloczynu: {rodzaj biegu: rozpływ, zwarcie, dynamika} × {krótki, długi, anulowany, błąd} × {odpytywanie: przed, w trakcie, po}; e2e: bieg > limitu czasu odpowiedzi kończy się bez zerwania żądania.
+Fakty: bieg synchroniczny w żądaniu (`api/execution_runs.py:236-253`), Celery bez zadań i bez wykonawcy (`api/celery_app.py`; `infrastructure/persistence/repositories/canonical_run_repository.py:482`: „`ExecutionBackend` z DT-12 nie jest wdrożony”), klient E-32 już odpytuje (`frontend/src/ui2/wyniki/dynamika/api.ts:140-175`), maszyna 4 CPU, narzędzie jednostanowiskowe (OD-13/OD-27), horyzont do 600 s, bieg kontrolny 3×. **Adnotacja 2026-09-30 (ADR-029, V12K-346):** przesłanka „narzędzie jednostanowiskowe (OD-13/OD-27)” potwierdzona — OD-27 zamknięta decyzją 2026-08-05, OD-13 rozstrzygnięta jako lokalna płaszczyzna MCP; przesłanka karty bez zmian. **Decyzja:** `ExecutionBackend` (DT-12) jako wykonawca w procesie: kolejka z jednym ciężkim biegiem naraz, stan biegu utrwalany (`PENDING → RUNNING → FINISHED/FAILED/CANCELLED`) w istniejącym rejestrze `canonical_runs`, `POST …/execute` zwraca natychmiast 202 ze stanem, klient odpytuje jak dziś, anulowanie jako zdarzenie sprawdzane między krokami całkowania (flaga w kontekście biegu — jedyny punkt styku z rdzeniem, addytywny), czas biegu i limit jawnie w wyniku (`czas_obliczen_s` już jest — `dynamika/wynik.py:134`). Martwa konfiguracja Celery (`api/celery_app.py`, usługa `celery` w `docker-compose.yml`) — kasacja z bramką wskrzeszenia (ZASADA NR 1; „co przestarzałe, usunąć”). Alternatywa (Celery jako wykonawca) odrzucona: zależność od Redis w testach i pracy lokalnej, brak wartości dla jednego użytkownika, prewencyjna abstrakcja. Zakres plików: `api/execution_runs.py`, nowy `application/execution/wykonawca.py`, `infrastructure/persistence/**` (status), `enm/canonical_analysis.py` — wyłącznie punkt wejścia `execute_run` (koordynacja z torem R), `frontend/src/ui2/wyniki/dynamika/api.ts`; test iloczynu: {rodzaj biegu: rozpływ, zwarcie, dynamika} × {krótki, długi, anulowany, błąd} × {odpytywanie: przed, w trakcie, po}; e2e: bieg > limitu czasu odpowiedzi kończy się bez zerwania żądania.
 
 **Koszt biegu jako kryterium (PERF-DYN-0).** Karta AB-1b.2 §5 R3 mierzy 3,6 s dla układu dwuwęzłowego przy 600 krokach; brak pomiaru dla sieci 50 stacji (PERF-DYN-0 z karty W6-2 §0 pkt 9 — budżet ≤ 60 s — nie ma wpisu w rejestrze). **Decyzja:** PERF-DYN-0 wykonać w DYNAMIKA-W-TLE (pomiar na scenie harnessu i sieci złotej, wartość do meldunku), a AB-1b.2 Pakiet E raportuje koszt przed/po biegu kontrolnym; przekroczenie budżetu bez wykonawcy w tle = STOP integracji Pakietu E. Pomiar PERF-DYN-0 obejmuje liczbę wątków BLAS (jeden i domyślna) na hoście bez obcego obciążenia: polityka wątków obrazu Dockera (dziś domyślna) wynika z tego pomiaru, nie z założenia — backend e2e ma jeden wątek od karty WATKI-BLAS-E2E (`playwright.config.ts`), bo bieg zwarciowy sieci 50 stacji przy obcym obciążeniu i wątkach domyślnych trwał 866 s zamiast 6 s.
 
@@ -1418,7 +1441,8 @@ KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE (plan §11).
 **Inwentarz kasacji toru `frt_hvrt` (pełniejszy niż O-44):** O-44 wymienia trzy miejsca. Pomiar: 5 plików backendu (`application/calculation_readiness/service.py:66, :90, :595-627, :884, :908`; `application/analyses/frt_trajektorie.py:30-35, :318, :408`; `application/analyses/frt_sekwencja.py:50`; `application/ncrfg_compliance/frt_input.py:14`; `solver_input/provenance.py:312`) i 7 plików frontu (`ui2/oze/api.ts`, `ui2/oze/macierz/MacierzNcRfg.tsx`, `ui/network-build/station-der/readiness.ts`, `ui/network-build/der-configurator/DerConfigurator.tsx`, `ui/workspace/surfaces/DerSurfaces.tsx`, `ui/sld/shared/sldActionExecutor.ts`, `ui/sld/v2/command/SldCommandService.ts`) plus ekran `ui2/oze/frt/` (EkranFrt.tsx, SekcjaSekwencjiZapadow.tsx, WykresTrajektoriiChart.tsx). Karta AB-1c (jeszcze nienapisana) ma nieść ten inwentarz jako klasę.
 
 **Rozstrzygnięcia wejściowe:** (1) kasacja `frt_hvrt/**` i `stability_rms/**` wymaga odpowiedzi właściciela
-o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — do tego czasu tor T3 zostaje z
+o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — stan 2026-09-30: `stability_rms/**`
+skasowany w karcie B01-RUNDA-1 (decyzja ostateczna, O-59); `frt_hvrt/**` zostaje do AB-1c — do tego czasu tor T3 zostaje z
 `NIE_OCENIONO`; (2) blok `Generator.dynamika` wyłącznie z materializacji katalogu, `p_dostepna_mw` jako
 wielkość warunków pracy z edytorem w scenariuszu i punkcie pracy (O-57 pkt 8); (3) S_k,min i X/R punktu
 przyłączenia jako dane warunków przyłączenia modułu w `Generator.deklaracje_modulu` z kodem gotowości
@@ -1438,3 +1462,234 @@ Pomiar: 60 klas `BaseModel` w `enm/models.py`, `ConfigDict(... strict ...)` — 
 **Stan 2026-09-30:** NIE ROZPOCZĘTA — szkic §0; pierwsza instancja klasy w karcie GOTOWOSC-DER-BACKEND.
 
 Pomiar: front (kod produkcyjny) 258 × `?? 0`, 25 × `?? false`; backend 57 × `or 0.0`, 11 × `or 0`, 3 × `or False` (np. `infrastructure/cgmes/cgmes_importer.py:260-266, :375-376`; `solvers/equipment_checks/vt_burden_voltage_drop.py:211`, `ct_burden_saturation.py:244`; `pochodne/pasma_napieciowe.py:105`; `v126_academic.py:640-641` — B-01). Istniejący strażnik `scripts/false_zero_guard.py` jest TYLKO raportujący (`:1-24`: „report-only … zawsze EXIT 0”) — deklaracja bez zęba. **§0:** (1) definicja klasy: wartość zastępcza (`?? 0`, `?? false`, `or 0.0`, `or False`, `.get(k, 0)`) zasilająca DECYZJĘ (próg, warunek, werdykt, gotowość, dobór) albo wynik dla projektanta; dozwolone wyłącznie dla wielkości, dla których zero jest faktem (licznik elementów, suma pustej kolekcji) — z komentarzem uzasadnienia przy każdym wystąpieniu; (2) inwentarz klasy z decyzją per wystąpienie (brak danej → nazwany kod gotowości/odmowa z akcją; fakt → uzasadnienie); (3) strażnik: `false_zero_guard` przechodzi w tryb ścisły z budżetem 0 i rozszerza się o wzorce backendu (`or 0.0`/`or False` w wyrażeniu warunkowym lub przekazane do funkcji domenowej) — jedna reguła dla obu języków, lista dozwolona z uzasadnieniem per wpis, samotest; (4) rdzenie B-01 → pozycja bramki; (5) testy iloczynu: {brak danej, dana = 0 prawdziwe, dana obecna} × {oś decyzji: gotowość, dobór, werdykt, wyświetlenie}. **Kryterium:** strażnik czerwony na bazie z liczbą, zielony po; zero `?? 0`/`or 0.0` zasilających decyzję poza listą; e2e ekranu gotowości DER (po GOTOWOSC-DER-BACKEND) z brakiem mocy → „brak danych”, nie „niewymagane”.
+
+## Przegląd zewnętrznych PR (2026-10-15)
+
+Karty poniżej pochodzą z niezależnej weryfikacji PR #477, #479, #480 i dokumentu
+`KSR_AUDYT_GLOBALNY_OZE_BESS_2026_10_11.md` z PR #478 (plan A/B §14; pomiar na `df3bcc99` torem
+kanonicznym, liczby policzone ręcznie wg normy). Każda karta niesie fakty z `plik:linia`, powód,
+granice i kryterium ukończenia; inwentarz klasy w karcie jest pomiarem przeglądu — wykonawca
+uzupełnia go grepem PRZED naprawą i zostawia poza naprawą tylko miejsca z uzasadnieniem
+merytorycznym. Granice wspólne wszystkich kart: rdzenie z `scripts/rdzenie_b01.py` wyłącznie za
+zgodą B-01; kontrakty FROZEN (`ShortCircuitResult`, `PowerFlowResult`) tylko addytywnie; determinizm
+(to samo wejście → te same liczby, identyfikatory i hashe; zmiana liczby ⇒ jawna aktualizacja
+fikstury z ręcznym wyliczeniem w komentarzu); jeden model sieci (ENM) — bez drugiego nośnika danych;
+status maszynowy zawsze z wyjaśnieniem (kontrakt werdyktu wyjaśnialnego).
+
+### SC-IB-ITH-ZRODLA — prąd wyłączeniowy `I_b` wg definicji IEC 60909-0 i jedno źródło `I_th` (B-01 (n))
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — wymaga zgody B-01 na pozycję (n) planu §12.2.
+
+**Powód.** `network_model/solvers/short_circuit_core.py:202-203` liczy
+`I_b = I''k·√(1 + ((κ − 1)·e^{−t_b/t_a})²)` — wielkość, która nie jest ani symetrycznym prądem
+wyłączeniowym normy (dla zwarcia odległego od generatora `I_b = I''k`), ani niesymetrycznym
+(`√(I_b² + i_DC²)`, `i_DC = √2·I''k·e^{−t_b/t_a}`). Pomiar (`iec60909_example`, szyna 33 kV,
+`t_b` = 0,1 s): kod 5 844,684014 A, symetryczny 4 563,542872 A (+28,07 %), niesymetryczny
+6 966,471144 A. Projektant dostaje w wyniku, w dowodzie SC3F i w eksporcie liczbę bez definicji.
+
+**Inwentarz klasy (pomiar przeglądu).** Wzór: `short_circuit_core.py:202-203`; ślad `Ib`:
+`short_circuit_iec60909.py:543-568`; równanie `EQ_SC3F_014` z opisem „z zanikiem składowej DC”
+(`application/proof_engine/equation_registry.py:519-529`); krok 6 dowodu SC3F
+(`application/proof_engine/proof_generator.py:1910-1957`); domyślne `tb_s: float = 0.1` w czterech
+sygnaturach (`short_circuit_iec60909.py:1075, :1217, :1320, :1419`) — czas zwłoki to dana aparatu
+(czas własny wyłącznika + minimalny czas przekaźnika), nie stała solvera; nieaktualny docstring
+`short_circuit_iec60909.py:1086` („Ith = Ik'' * sqrt(tk)”, kod liczy `√(m + n)`);
+`n = 1` w `_thermal_mn_factors` jako udokumentowane ograniczenie (`short_circuit_core.py:142-148`) —
+dla zwarć bliskich generatora `n < 1` wg normy. Mechanizm wzorcowy już istnieje:
+`machine_sc_iec60909.py` liczy `I_b = μ·q·I''k` dla maszyn (rdzeń poza listą B-01). Konsumenci:
+ResultSet, nakładka SLD, dowód SC3F, eksport PDF/DOCX; dobór zdolności wyłączalnej czyta dziś
+`ikss_ka` (`application/equipment_proof/generator.py:97-132`) — decyzja, czy kryterium zdolności
+wyłączalnej ma czytać `I_b`, należy do tej karty i musi być jawna w meldunku.
+
+**Rozstrzygnięcie wejściowe.** Definicja `I_b` w wyniku: symetryczny prąd wyłączeniowy
+IEC 60909-0 (`I_b = I''k` dla zwarcia odległego od generatora; dla udziału maszyn `μ·q·I''k` z
+istniejącego `machine_sc_iec60909.py`, bez drugiej implementacji); składowa nieokresowa
+`i_DC(t_b)` jako osobna, jawnie nazwana wielkość addytywna; `t_b` z danych aparatu albo jawnego
+parametru przypadku obliczeniowego, nigdy cicha stała. Zmiana liczb rdzenia = aktualizacja fikstur
+złotych z ręcznym wyliczeniem.
+
+**Testy jako iloczyn cech.** {zwarcie odległe od generatora, bliskie z udziałem maszyny, z udziałem
+przekształtników} × {`t_b`: 0,02 s, 0,1 s, 0,25 s, brak danej} × {ślad, dowód SC3F, eksport, ResultSet}
+— każda komórka sprawdza tę samą liczbę z ręcznym wyliczeniem; iniekcja: przywrócony wzór
+`√(1 + ((κ − 1)e^{−t_b/t_a})²)` czerwieni test wyroczni `iec60909_example`.
+
+**Kryterium ukończenia.** Jedna definicja `I_b` w rdzeniu, śladzie, rejestrze równań i dowodzie;
+liczba dla `iec60909_example` = 4 563,542872 A (symetryczny) i `i_DC` zgodne z ręką; `t_b` z danych
+albo nazwana odmowa gotowości; docstring `:1086` zgodny z kodem; pełna regresja zwarć zielona;
+`rdzenie_b01` z zapisem zgody.
+
+### C-TOLERANCJA-NN — współczynnik `c` nN wg deklarowanej tolerancji napięcia i jedno źródło stałych `c`
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — zależność: scalenie WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-75, `d98d9e2f`).
+
+**Powód.** IEC 60909-0:2016 tabela 1 rozróżnia sieci nN o tolerancji ±6 % (`c_max` 1,05,
+`c_min` 0,95) i ±10 % (`c_max` 1,10, `c_min` 0,90). Repozytorium zna tylko wariant ±6 %
+(`network_model/core/voltage_factor.py:43-46`), a druga kopia stałych żyje w
+`network_model/solvers/fault_loop_iec60364.py:154-155` (`C_MIN_LV = 0.95`, `C_MAX_LV = 1.05`),
+importowana do dowodu `application/proof_engine/packs/lv_circuit_verification.py:96, :862`.
+Pomiar SWZ: `U_0` = 230 V, `|Z_s|` = 0,35 Ω → kod `I_k,min` 624,285714 A; przy ±10 % 591,428571 A
+(kod +5,56 % po stronie niebezpiecznej dla samoczynnego wyłączenia). Pomiar zwarcia na szynach nN
+sieci SN–TR–nN: AUTO ±6 % 23 279,641664 A; spójnie ±10 % (`c` 1,10 i `K_T` 1,009177744)
+23 398,960279 A.
+
+**Inwentarz klasy (pomiar przeglądu, literały `c` poza `voltage_factor.py`).**
+`solver_input/contracts.py:253`; `api/proof_pack.py:128, :143`; `machine_sc_iec60909.py:166`;
+`short_circuit_iec60909.py:25-26`; `sc_symmetrical.py:61`; `sc_asymmetrical.py:223`;
+`domain/study_case.py:43-44`; `domain/fault_scenario.py:144`; `api/fault_scenarios.py:301, :408`;
+`enm/scenariusze.py:1269` (scenariusz zawsze wysyła `c_factor`); `enm/assembler.py:982-986`
+(płaskie nadpisanie `c` dla wszystkich poziomów napięć — instancja O-75);
+`fault_loop_iec60364.py:154-155`; `lv_circuit_verification.py:96, :862`. Rdzenie z listy B-01 w tym
+zbiorze = pozycja bramki, nie edycja bez zgody.
+
+**Rozstrzygnięcie wejściowe.** Tolerancja napięcia sieci nN jest daną modelu (poziom napięcia albo
+transformator zasilający), nie domysłem; brak deklaracji = nazwany kod gotowości, nie ±6 % po cichu.
+Jedno źródło `c_max`/`c_min` dla zwarć i pętli zwarcia — `voltage_factor.py` rozszerzony o ±10 %;
+`K_T` liczony z tego samego `c_max`, co prąd (predykaty parami: wejście i wyjście z jednego nośnika).
+
+**Testy jako iloczyn cech.** {tolerancja ±6 %, ±10 %, brak deklaracji} × {zwarcie szyn nN, koniec
+odpływu, pętla SWZ `I_k,min`, `K_T` transformatora} × {`c_max`, `c_min`} × {scenariusz z `c_factor`,
+bez}; iniekcja: przywrócona stała 0,95 w `fault_loop_iec60364.py` czerwieni komórkę ±10 %.
+
+**Kryterium ukończenia.** Zero literałów `c` poza jednym źródłem (strażnik albo test inwentarza
+grepem z zamkniętą listą); liczby SWZ i szyn nN zgodne z ręką w obu tolerancjach; dowód
+`lv_circuit_verification` pokazuje `c_min` z deklaracji z podstawą normy.
+
+### SC-WYROCZNIA-SN-TR-NN — wyrocznia integracyjna zwarć GPZ – kabel SN – TR – odpływ nN
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — część ±6 % od razu; część ±10 % po C-TOLERANCJA-NN; stany
+aparatów po POLA-W-TORZE.
+
+**Powód.** Brak testu integracyjnego toru kanonicznego (ENM → `enm/assembler.py` → rdzeń) przez
+transformator SN/nN do końca odpływu nN z ręcznie policzonymi liczbami. Przegląd policzył je
+(GPZ 15 kV – kabel SN – TR 1000 kVA – odpływ nN, ±6 %): koniec SN 5 796,617372 A; szyny nN
+23 279,641664 A, `i_p` 52 909,967657 A; koniec odpływu 14 855,555196 A, `i_p` 27 328,683243 A —
+kod = ręka do 1e-6 A. Kolumna ±10 %: szyny 23 398,960279 A / `i_p` 53 185,289123 A; odpływ
+15 164,109097 A / 28 022,910917 A. Ta sama karta porządkuje higienę fikstury REF-20:
+`expected` `I_th` 28 500,711 A, kod 28 500,800633 A, ręka 28 500,826754 A — notatka „z solvera”
+jest nieprawdziwa (różnica w rtol 1e-3, nie defekt fizyki).
+
+**Granice.** Sieć budowana operacjami domenowymi i typami z katalogu (bez wstrzykiwania parametrów
+poza katalogiem; jeśli katalog nie ma pozycji — dopisanie pozycji z proweniencją, nie typ
+syntetyczny w teście); bez zmian rdzeni.
+
+**Testy jako iloczyn cech.** {koniec SN, szyny nN, koniec odpływu} × {`I''k3`, `i_p`, `I_th`} ×
+{±6 %, ±10 %} × {wyłącznik pola zamknięty, otwarty (po POLA-W-TORZE)} — każda liczba z ręcznym
+wyliczeniem w komentarzu (`Z_Q`, `K_T`, `Z_k`, κ, m).
+
+**Kryterium ukończenia.** Test wyroczni w `backend/tests` zielony na torze kanonicznym, iniekcja
+(zmiana `K_T` albo `c`) czerwieni go; fikstura REF-20 z liczbą odtworzoną ręcznie i prawdziwą notatką
+pochodzenia.
+
+### WYTRZYMALOSC-PRAD-POLA — wytrzymałość aparatury pola na prądzie i czasie wykazanych dla tego pola
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — po BIEG-ZABEZPIECZEN-Z-MODELU (ten sam plik `ocena_nadpradowa.py`).
+
+**Powód.** Jedna liczba `ik_ka` z żądania zasila czasy wyłączenia i wytrzymałość wszystkich pól
+(`api/enm.py:590-595, :614`; `application/analyses/protection/czas_wylaczenia_pola.py:137`). Dla IEC NI
+(`I_s` = 500 A, TMS 0,10) czas przy 1 000 A wynosi 1,002903 s, przy 5 000 A 0,297060 s (−70,38 %) —
+pole o mniejszym prądzie dostaje czas i werdykt cieplny cudzego prądu. Ponadto `t_clearing` to czas
+członu bez czasu własnego aparatu (`czas_wylaczenia_pola.py:210-221`), a
+`application/analyses/wytrzymalosc_aparatury_pol.py:143-153` wystawia werdykt mimo braku czasu, gubiąc kod
+`brak_czasu_wlasnego` z kodów wiersza — czas zaniżony, werdykt cieplny po stronie niebezpiecznej.
+
+**Inwentarz klasy.** Każdy konsument `ik_ka` z żądania w ocenie pól i aparatury (grep `ik_ka` w
+`api/enm.py`, `application/analyses/protection/czas_wylaczenia_pola.py`, `wytrzymalosc_aparatury_pol.py`,
+`ocena_nadpradowa.py`); każde miejsce składające `t_k` z członów bez czasu własnego aparatu.
+
+**Rozstrzygnięcie wejściowe.** Prąd pola = wynik zwarcia w punkcie zabudowy tego pola (przypisanie z
+ResultSet zwarciowego modelu), nie parametr żądania; `t_k` = czas członu + czas własny aparatu z
+katalogu; brak którejkolwiek danej = `BRAK_PODSTAWY` z nazwaną przyczyną, nie werdykt.
+
+**Testy jako iloczyn cech.** {pole blisko zasilania, daleko} × {czas własny aparatu: jest, brak} ×
+{charakterystyka NI, VI, EI, DT} × {werdykt cieplny, dynamiczny}; iniekcja: przywrócona wspólna
+liczba `ik_ka` czerwieni test dwóch pól o różnych prądach.
+
+**Kryterium ukończenia.** Każde pole oceniane na własnym prądzie i pełnym czasie; brak czasu
+własnego nigdy nie daje `SPELNIA`; wyjaśnienie werdyktu pokazuje prąd, czas, limit i margines.
+
+### CT-JEDEN-WERDYKT — jeden werdykt nasycenia przekładnika prądowego
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — po BIEG-ZABEZPIECZEN-Z-MODELU (ten sam plik).
+
+**Powód.** `wiarygodnosc_punktu` w `application/analyses/protection/ocena_nadpradowa.py:1696-1724` liczy granicę
+wiarygodności jako `ALF·I_1n` z pominięciem obciążenia wtórnego. Pomiar (200/5 A 5P10, `S_n` 10 VA,
+`R_ct` 0,15 Ω, obciążenie 20 VA, 1 500 A): ocena zabezpieczeń → WIARYGODNY (granica 2 000 A); jądro
+`network_model/solvers/equipment_checks/ct_burden_saturation.py` → ALF_eff 5,789474, granica
+1 157,895 A, `status_nasycenia` FAIL. Ręcznie: 10·(0,15 + 0,4)/(0,15 + 0,8) = 5,789474. Dwa sprzeczne
+werdykty tej samej fizyki, a MAPA dom. 4 #3 deklaruje jądro jako „jedyny werdykt nasycenia” —
+deklaracja bez testu (fałszywa pewność).
+
+**Rozstrzygnięcie wejściowe.** Naprawa = delegacja `wiarygodnosc_punktu` do istniejącego jądra
+(wzór W3-B z `domain/dobor_przekladnika.py`), nie trzeci model CT; brak obwodu wtórnego = nazwany kod
+gotowości jądra, nie `ALF·I_1n`; komunikat dla projektanta mówi, przy jakim prądzie rdzeń się nasyca
+i dlaczego (obciążenie, `R_ct`).
+
+**Testy jako iloczyn cech.** {obwód wtórny zapisany, brak} × {`R_ct` z katalogu, brak} × {ALF z pola,
+z klasy, brak} × {prąd poniżej granicy, pomiędzy granicą jądra a `ALF·I_1n`, powyżej} — komórka
+„pomiędzy” jest tą, na której dziś werdykty się rozjeżdżają; test inwentarza: zero formuł `ALF·I_1n`
+jako werdyktu poza jądrem (grep z zamkniętą listą), co przypina deklarację MAPY.
+
+**Kryterium ukończenia.** Jeden werdykt nasycenia w repo; przykład z pomiaru daje w ocenie
+zabezpieczeń ten sam status co jądro, z wyjaśnieniem (ALF_eff, granica, margines −1,710526).
+
+### KSR-SKLAD-DER — skład PV/BESS stacji z szablonu równy deklaracji szablonu
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — kandydat naprawy: wynik karty PR-478; przed O-53b (suma mocy na
+transformatorze czyta skład).
+
+**Powód.** Pomiar: 3 z 5 szablonów hybrydowych tworzą inny skład niż deklarowany —
+`tpl_hybrid_pv2_bess1` 4 PV + 1 BESS → 3 + 2; `tpl_hybrid_pv3_bess2` 6 + 1 → 4 + 3;
+`tpl_hybrid_pv5_bess3` 10 + 1 → 6 + 5 (zgodne: `pv05_bess05`, `pv1_bess1`). Przyczyna:
+`application/station_templates/apply.py:507` i `:1223` przypisują rodzaj źródła przez
+`i % len(der_options)`, a deklaracja liczby PV i BESS (`application/station_templates/templates/hybrydowe.py:29-30`) trafia tylko do sumy
+(`:60`). Projektant dostaje stację z innym magazynem i inną mocą PV niż wybrał.
+
+**Inwentarz klasy.** Każde miejsce, w którym szablon rozdziela źródła po polach (`apply.py:507,
+:1223` i każde inne użycie `der_options`), każdy szablon niosący liczności rodzajów źródeł
+(`ALL_TEMPLATES` — 73 szablony), konsumenci składu (suma mocy na transformatorze O-53/O-53b,
+gotowość DER, SLD).
+
+**Testy jako iloczyn cech.** {każdy szablon z licznościami} × {stacja przelotowa, końcowa} ×
+{liczba pól DER = suma, mniejsza (odmowa nazwana)} — porównanie składu modelu z deklaracją dla
+wszystkich szablonów, nie dla przykładów.
+
+**Kryterium ukończenia.** Dla każdego z 73 szablonów skład modelu = deklaracja (test generowany po
+`ALL_TEMPLATES`); iniekcja `i % len(...)` czerwieni test.
+
+### SZABLONY-BEZ-DOMYSLOW — szablony stacji bez danych wymyślonych w kodzie
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA — sposób uziemienia po W5-B/W5-E; pozostałe instancje od razu (klasa
+CICHE-ZERO).
+
+**Powód.** `application/station_templates/apply.py` wpisuje do modelu dane, których projektant nie
+podał i które nie pochodzą z katalogu: `:231` uziemienie `isolated`; `:324` i `:948` napięcie
+`or 0.4`; `:482` `cos_phi` 0,95; `:1235` `or 0.0` w sumie mocy transformatorów (brak mocy liczony
+jako zero mocy); `:992` `or 1` dla liczby portów gałęzi przy wyborze kandydata katalogowego. Dane te
+zasilają rozpływ, zwarcia, ocenę mocy źródeł × transformator i dobór — liczby wyglądają na dane
+projektu.
+
+**Inwentarz klasy.** Każde `or <stała>`, `.get(k, <stała>)` i literał fizyczny w
+`application/station_templates/**` zasilający model albo decyzję (grep przed naprawą, decyzja per
+wystąpienie: dana z katalogu / dana projektanta z kodem gotowości / fakt z uzasadnieniem).
+
+**Testy jako iloczyn cech.** {dana podana, brak, zero prawdziwe} × {uziemienie, napięcie, cos φ, moc
+TR, liczba portów} × {szablon SN, nN, hybrydowy}; brak danej = kod gotowości, nie wartość.
+
+**Kryterium ukończenia.** Zero domyśleń fizycznych w szablonach poza listą z uzasadnieniem; brak mocy
+transformatora nigdy nie zeruje sumy; po W5-B/W5-E sposób uziemienia z modelu.
+
+### KSR-KRYTERIA-POMIAR — pomiar kryteriów KSR bez karty
+
+**Stan 2026-10-15:** NIE ROZPOCZĘTA.
+
+**Powód.** Kryteria odbioru z PR #478 (KSR-G01…G14) i #480 (T01–T20) przypisano kartom istniejącym
+(plan §14.3). Kryteria T02, T03, T05, T06, T12, T14, T15, T17 oraz G02, G03, G07, G09, G12, G14 nie
+mają dziś karty; nie wiadomo, czy kod je spełnia. Bez pomiaru byłyby albo cichą obietnicą, albo
+konkurencyjnym programem.
+
+**Granice.** Brak nowego programu ani sekwencji; kryterium bez wartości inżynierskiej (np. motyw
+wizualny, makieta spoza repo) odrzucone z uzasadnieniem, nie mierzone.
+
+**Kryterium ukończenia.** Dla każdego z 14 kryteriów: stan kodu z `plik:linia`, istniejący test
+(ścieżka) albo czerwony test i karta naprawcza w tej samej kolejce; wynik dopisany do plan A/B §14.3
+i §7.

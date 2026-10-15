@@ -399,6 +399,7 @@ export const AKADEMICKIE_STRINGS = {
   // Ranking N-1 nieprezentowany (karta W3-E) — stan zamiast tabeli
   rankingN1Tytul: 'Ranking dotkliwości kontyngencji',
   rankingN1Nieprezentowany: 'Ranking nie jest prezentowany na tym ekranie',
+  rankingN1Metoda: 'Obciążenie gałęzi po kontyngencji w tej analizie',
   rankingN1Przejdz: 'Otwórz ekran Kontyngencje',
 
   // Brama opracowania (V126-JEZYK — ocena właściciela 0/10 z 2026-08-07)

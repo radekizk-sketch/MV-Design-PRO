@@ -25,7 +25,7 @@ import type {
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
 import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
 import { polaSnStacji } from '../../shared/polaStacji';
-import { transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
+import { kontekstTransformatorowStacji, transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
@@ -464,6 +464,7 @@ export function readTopologyFromENM(
   // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra backendu `szynyStacji` (szyny
   // główne, zaciski pól SN, końce aparatów pól nN); szyna wspólna → pierwsza stacja modelu.
   const stationBusMap = new Map<string, string>(stacjaSzyn(enm));
+  const kontekstTransformatorow = kontekstTransformatorowStacji(enm);
   const stations: TopologyStationV1[] = enm.substations.map((sub) => {
     const stationKind = enmStationKind(sub);
     // Karta W5-B: pola SN stacji = rekordy `bays` (pole GPZ bez rekordu = brak pola — dawna
@@ -481,7 +482,7 @@ export function readTopologyFromENM(
       busIds: [...szynyStacji(enm, sub)].sort(),
       branchIds: [],
       switchIds: [],
-      transformerIds: transformatoryNalezaceDoStacji(enm, sub).map((tr) => tr.ref_id).sort(),
+      transformerIds: transformatoryNalezaceDoStacji(enm, sub, kontekstTransformatorow).map((tr) => tr.ref_id).sort(),
       pola: rysowane.length > 0 ? rysowane : undefined,
     };
   });

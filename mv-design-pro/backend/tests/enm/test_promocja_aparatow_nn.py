@@ -576,7 +576,9 @@ def test_pozycja_spoza_katalogu_to_odmowa_danych_bez_wyjatku(klucz: str) -> None
     assert zmieniono is True
     aparat = zmigrowany.branches[0]
     assert aparat.catalog_ref is None
-    assert isinstance(aparat.meta[META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA], str)
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    # Kod odmowy NAZWANY, czytany wprost z odpowiedzi operacji (bez zapasu spoza rejestru).
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] == "catalog.item_not_found"
 
 
 @pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
@@ -585,12 +587,20 @@ def test_blad_programu_wiazania_wybucha(typ: type[Exception], monkeypatch: Any) 
     `except Exception: return None, None` gubiło wiązanie po cichu)."""
     import enm.domain_operations as operacje
 
-    def _zepsuty(*args: Any, **kwargs: Any) -> Any:
-        raise typ("błąd programu")
+    # Psujemy materializator, z którego czyta operacja akcji naprawczej — wyjątek musi
+    # przejść przez `assign_catalog_to_element` i `_przypisz_wiazania` aż do `migruj`.
+    # Dowodem jest TOŻSAMOŚĆ rekordu wyjątku (ten sam obiekt, ten sam typ), nie treść
+    # komunikatu: przepakowanie w inny wyjątek z tym samym napisem też by „pasowało”.
+    wstrzykniety = typ("wyjątek wstrzyknięty do materializatora")
 
-    monkeypatch.setattr(operacje, "assign_catalog_to_element", _zepsuty)
-    with pytest.raises(typ):
+    def _zepsuty(*args: Any, **kwargs: Any) -> Any:
+        raise wstrzykniety
+
+    monkeypatch.setattr(operacje, "materialize_catalog_binding", _zepsuty)
+    with pytest.raises(typ) as zlapany:
         migruj(_stary_model(z_wiazaniem=True))
+    assert type(zlapany.value) is typ
+    assert zlapany.value is wstrzykniety
 
 
 def test_rekord_pola_promowanego_przed_w5b_dostaje_aparat_i_zacisk() -> None:
@@ -636,3 +646,25 @@ def test_rekord_pola_promowanego_przed_w5b_dostaje_aparat_i_zacisk() -> None:
         assert pole.equipment_refs == ["nn/x/feeder_device"]
         assert pole.terminal_bus_ref == "nn/x/feeder_bus"
         assert migruj(zmigrowany) == (zmigrowany, False)
+
+
+# Iloczyn {nazwa pola: nadana, same spacje, pusta} × {nazwa stacji: nadana, same spacje}.
+# Rekord `bays` ma nazwę obowiązkową (napis), więc „brak” nazwy to napis pusty.
+# Walidator pyta o nazwę moduł nazw (`network_model.nazwy`, zapadka NAZWY-JEDNO-ZRODLO):
+# napis z samych spacji nie jest nazwą, więc W061 nie opisuje pola cudzysłowem wokół pustki.
+@pytest.mark.parametrize("nazwa_pola", ["Odpływ 1", "   ", ""])
+@pytest.mark.parametrize("nazwa_stacji", ["ST-1", "   "])
+def test_w061_opisuje_pole_tylko_gdy_pole_i_stacja_maja_nazwe(
+    nazwa_pola: str, nazwa_stacji: str
+) -> None:
+    stary = _stary_model()
+    stary.substations[0].name = nazwa_stacji
+    stary.bays[0].name = nazwa_pola
+    zmigrowany, _ = migruj(stary)
+    w061 = [i for i in ENMValidator().validate(zmigrowany).issues if i.code == "W061"]
+    assert len(w061) == 1
+    opisuje = nazwa_pola == "Odpływ 1" and nazwa_stacji == "ST-1"
+    assert (" — pole „" in w061[0].message_pl) is opisuje
+    assert "„   ”" not in w061[0].message_pl
+    if opisuje:
+        assert "„Odpływ 1”" in w061[0].message_pl and "„ST-1”" in w061[0].message_pl

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
@@ -261,6 +262,31 @@ describe('InspectorEngineeringView', () => {
         semantic_engineering_role: 'MV_OVERHEAD_SEGMENT',
         semantic_hash: 'semantic:v1',
       }),
+    );
+  });
+
+  it.each([
+    ['MV_OVERHEAD_SEGMENT'],
+    ['MV_CABLE_SEGMENT'],
+  ])('karta odcinka (%s) otwiera wstawienie łącznika sekcyjnego z kontekstem odcinka', async (rola) => {
+    // Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze odcinka jest kotwicą przekładnika i
+    // przekaźnika — karta techniczna (która zastępuje szybkie akcje) musi go udostępniać.
+    mockSelectedElements = [{
+      id: 'seg-1',
+      type: 'LineBranch',
+      name: 'Segment testowy',
+      semanticHash: 'semantic:v1',
+      semanticElementKind: rola,
+      semanticEngineeringRole: rola,
+    }];
+    mockReadinessIssues = [];
+
+    render(<InspectorEngineeringView />);
+    await userEvent.click(screen.getByRole('button', { name: 'Wstaw łącznik sekcyjny' }));
+
+    expect(openOperationForm).toHaveBeenCalledWith(
+      'insert_section_switch_sn',
+      expect.objectContaining({ segment_id: 'seg-1', segmentRef: 'seg-1' }),
     );
   });
 
@@ -556,16 +582,6 @@ describe('InspectorEngineeringView', () => {
             main_power_flow_results_ref: 'pf-1',
             source_contributions_sc: [{ source_ref: 'src-grid' }],
             source_contributions_pf: [{ source_ref: 'src-grid' }],
-            verification: {
-              continuous_current_ok: true,
-              thermal_withstand_ok: true,
-              dynamic_withstand_ok: true,
-              ct_ok: true,
-              vt_ok: true,
-              cable_head_ok: true,
-              main_switch_ok: true,
-              whole_power_path_ok: true,
-            },
             earth_fault_path: {
               neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
@@ -834,16 +850,6 @@ describe('InspectorEngineeringView', () => {
             main_power_flow_results_ref: 'pf-1',
             source_contributions_sc: [{ source_ref: 'src-grid' }],
             source_contributions_pf: [{ source_ref: 'src-grid' }],
-            verification: {
-              continuous_current_ok: true,
-              thermal_withstand_ok: true,
-              dynamic_withstand_ok: true,
-              ct_ok: true,
-              vt_ok: true,
-              cable_head_ok: true,
-              main_switch_ok: true,
-              whole_power_path_ok: true,
-            },
             earth_fault_path: {
               neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
@@ -1000,5 +1006,71 @@ describe('InspectorEngineeringView', () => {
     expect(screen.queryByText('Aparaty pierwotne')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bay-svg-renderer')).not.toBeInTheDocument();
     expect(screen.queryByText('equipment_refs')).not.toBeInTheDocument();
+  });
+  // Karta KARTA-POLA-E11: karta pola w inspektorze i na powierzchni E-11 składa TA SAMA funkcja
+  // (`buildBaySections`) z tymi samymi wejściami — sekcje „Katalog producenta" (treść z katalogu
+  // przez `useKatalogPola`) i „Zaciski pola" (`Bay.ports`) muszą być także tutaj, inaczej dwa
+  // widoki tego samego pola rozjadą się po cichu.
+  it('karta pola w inspektorze ma sekcje katalogu producenta i zacisków jak powierzchnia E-11', async () => {
+    const { wyczyscPamiecKataloguPola } = await import('../../field/useKatalogPola');
+    wyczyscPamiecKataloguPola();
+    const odpowiedz = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: async () => body });
+    vi.stubGlobal('fetch', vi.fn((url: string | URL) => {
+      const u = url.toString();
+      if (u.startsWith('/api/catalog/complete-bay-templates')) {
+        return odpowiedz([{
+          template_ref: 'ZPUE__ROTOBLOK__L', base_template: {}, manufacturer_ref: 'ZPUE',
+          switchgear_family_ref: 'ZPUE__ROTOBLOK', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT',
+          source_status: 'repo_verified', source_refs: ['karta'], version: '1.2', hash: 'h',
+          notes_pl: null, template_name_pl: 'Pole liniowe Rotoblok', template_code: 'L',
+        }]);
+      }
+      if (u.startsWith('/api/catalog/switchgear-families')) return odpowiedz([]);
+      if (u.startsWith('/api/catalog/manufacturers')) return odpowiedz([]);
+      return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', json: async () => ({}) });
+    }));
+    mockSelectedElements = [{ id: 'bay-1', type: 'BaySN', name: 'Pole liniowe 1' }];
+    mockReadinessIssues = [];
+    const pole = {
+      bay_id: 'bay-1',
+      bay_ref: 'bay_ref_1',
+      bay_name: 'Pole liniowe 1',
+      canonical_model: {
+        schema_version: 'v10.bay.1',
+        created_from: 'szablon',
+        integrity_status: 'kompletny',
+        base_model: {
+          bay_ref: 'bay_ref_1', bay_role: 'LINIA_OUT', specialization: 'BRAK', substation_ref: 'st-1',
+          primary_devices: [], measurement_chain: null, secondary_units: [],
+          secondary_architecture: { type: 'brak_urzadzenia_wtornego', measurement_provider: 'brak' },
+          protection_config: null,
+          control_surface: {
+            controllable_device_refs: [], open_requires_confirmation: false,
+            close_requires_confirmation: true, kas_available: false, local_remote_transfer_supported: false,
+          },
+          interlocks: { entries: [] }, source_endpoint: null,
+          bay_template_ref: 'ZPUE__ROTOBLOK__L', switchgear_family_ref: null,
+        },
+        runtime_state: null, scenario_state: null, project_results_ref: null,
+      },
+      project_results: null,
+    };
+    mockFieldReadModel = {
+      data: { fields: [pole] },
+      itemsByBayRef: new Map([['bay_ref_1', pole]]),
+      itemsByBayId: new Map([['bay-1', pole]]),
+      isLoading: false,
+      error: null,
+    };
+
+    render(<InspectorEngineeringView />);
+
+    expect(await screen.findByText('Pole liniowe Rotoblok · L')).toBeInTheDocument();
+    expect(screen.getByTestId('engineering-section-typ_i_katalog')).toHaveTextContent('Katalog producenta');
+    // Rodzina wynika z szablonu i nie ma jej w odpowiedzi katalogu — jawny stan, nie pustka.
+    expect(screen.getByTestId('engineering-field-family_missing')).toHaveTextContent('nie występuje w katalogu');
+    expect(screen.getByTestId('engineering-field-no_ports')).toHaveTextContent('nie zawiera jawnych zacisków');
+    expect(screen.queryByText('Tor pola spełnia wymagania')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });

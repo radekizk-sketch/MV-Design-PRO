@@ -1,6 +1,6 @@
 # ADR-023: Warstwy prezentacji, scena semantyczna z backendu i polityki CAD / SCADA / ENGINEERING
 
-**Status:** PROPOSED (program Digital Twin 2026-09; werdykt wizualny B-02 należy do właściciela)
+**Status:** PROPOSED (2026-09-30, O-63: zależy od werdyktu wizualnego B-02, który pozostaje poza delegacją O-59; nie „M1–M7 STOP” — V12K-340)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md`; `../twin/SLD_SYMBOL_SYSTEM_PLAN.md`
 

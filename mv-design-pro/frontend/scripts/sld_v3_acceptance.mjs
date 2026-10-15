@@ -38,7 +38,8 @@ import {
   earthSwitchLateralGaps,
   lineBayCaptionGaps,
   pathTerminationLabelGaps,
-  stationTypeTopologyMismatches,
+  stationTypeLabelGaps,
+  stationTypeLabels,
   switchSymbolUnambiguityGaps,
   vtParallelGaps,
   allCtAnnotationsValid,
@@ -181,9 +182,15 @@ import {
 } from '../src/ui/sld/v2/command/SldCommandService.ts';
 // Karta S95-START: punkt startu ciągu z TEGO SAMEGO rozstrzygnięcia co menu i kreator.
 import {
+  buildSldOperationContext,
   isTrunkContinuationAction,
-  resolveTrunkStartAvailability,
 } from '../src/ui/sld/shared/sldActionExecutor.ts';
+// Karta PARTIA-6-FRONT: wejścia budowy liczone TĄ SAMĄ funkcją co test
+// `canvas/__tests__/menuBudowyNaKanwie.test.tsx` (sekcje B i E).
+import {
+  stacjeWgRoli,
+  stacjeZWejsciemKontynuacji,
+} from '../src/ui/sld/v3/canvas/__tests__/pomiarWejscBudowy.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -930,36 +937,41 @@ line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne �
   );
 }
 
-// F10.2 (spec §19.3, V12K-034): station_type_topology_probe — NIEZALEŻNA od
-// buildSceneV3/lod (działa WPROST na snapshot ENM przez adapter v2) — (a)
-// typ stacji WYPROWADZONY z topologii == typ w danych na fixturze
-// referencyjnej (dowód pozytywny: 0 niezgodności na 53 realnych stacjach —
-// spójne dane, żaden false positive); (c) sprawdzone niezależnie w
-// `compose/__tests__/directions.test.ts` (3 pola liniowe ⇒ „odgałęźna").
+// F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ:
+// station_type_topology_probe — (a) podpis rodzaju KAŻDEJ stacji na scenie == rodzaj
+// wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`, lustro
+// backendu `enm/rodzaj_stacji.py`, sonda liczy rodzaj wprost z migawki); (b) deklaracja
+// `station_type` NIE zmienia rysunku — podmiana deklaracji każdej stacji zostawia podpisy
+// bez zmian (niezgodność zgłasza walidator backendu W043, nie scena); (c) stacja z ≥ 3
+// polami liniowymi jest podpisana „stacja odgałęźna" — na fiksturze referencyjnej są takie
+// stacje (źródła lateralów); (d) determinizm — dwie budowy sceny, te same podpisy.
 {
-  const mismatches = stationTypeTopologyMismatches(enm);
+  const scenaRodzaju = buildSceneV3(enm, 2);
+  const luki = stationTypeLabelGaps(scenaRodzaju, enm);
+  const podpisy = stationTypeLabels(scenaRodzaju);
   check(
-    'station_type_topology_probe (§19.3 a): 0 niezgodności typ-z-topologii vs station_type (dana) na fixturze referencyjnej',
-    mismatches.length === 0,
-    `niezgodności=${mismatches.length}${mismatches.length ? ' np. ' + JSON.stringify(mismatches[0]) : ''}`,
+    'station_type_topology_probe (§19.3 a): podpis rodzaju każdej stacji == rodzaj z jednej reguły produktu',
+    podpisy.length > 0 && luki.length === 0,
+    `podpisów=${podpisy.length} luk=${luki.length}${luki.length ? ' np. ' + JSON.stringify(luki[0]) : ''}`,
   );
-  // Test negatywny (b) — dowód, że wyrocznia GRYZIE: snapshot z PODMIENIONYM
-  // station_type jednej stacji (branch→terminal, mimo 3 pól liniowych w
-  // danych) MUSI dać niezgodność zgłoszoną (nie cichą akceptację).
-  const sabotagedStation = enm.substations.find((s) => s.station_type === 'branch');
-  if (sabotagedStation) {
-    const sabotagedEnm = {
-      ...enm,
-      substations: enm.substations.map((s) =>
-        s === sabotagedStation ? { ...s, station_type: 'terminal' } : s,
-      ),
-    };
-    const sabotagedMismatches = stationTypeTopologyMismatches(sabotagedEnm);
-    check(
-      'station_type_topology_probe (test negatywny (b) — dowód, że wyrocznia gryzie): station_type podmieniony (branch→terminal) MUSI dać niezgodność zgłoszoną',
-      sabotagedMismatches.some((m) => m.stationId === sabotagedStation.ref_id),
-    );
-  }
+  const zamiana = { inline: 'terminal', terminal: 'branch', branch: 'sectional', sectional: 'inline', mv_lv: 'branch' };
+  const podmienione = {
+    ...enm,
+    substations: enm.substations.map((s) => (s.station_type in zamiana ? { ...s, station_type: zamiana[s.station_type] } : s)),
+  };
+  const podpisyPoPodmianie = stationTypeLabels(buildSceneV3(podmienione, 2));
+  check(
+    'station_type_topology_probe (§19.3 b): podmiana deklaracji station_type KAŻDEJ stacji nie zmienia żadnego podpisu rodzaju',
+    JSON.stringify(podpisyPoPodmianie) === JSON.stringify(podpisy),
+  );
+  check(
+    'station_type_topology_probe (§19.3 c): stacje z ≥ 3 polami liniowymi podpisane „stacja odgałęźna" (obecne na fiksturze)',
+    podpisy.some(([, tekst]) => tekst === 'stacja odgałęźna'),
+  );
+  check(
+    'station_type_topology_probe (§19.3 d): determinizm podpisów rodzaju',
+    JSON.stringify(stationTypeLabels(buildSceneV3(enm, 2))) === JSON.stringify(podpisy),
+  );
 }
 
 // F9.7 (§15.2 lod_path_probe): sygnatury topologii ciągu głównego per LOD —
@@ -2787,6 +2799,55 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
         })
         .join(' '),
     );
+  }
+
+  // (c2) KRYTERIUM ODBIORU S9-5 na scenie W BUDOWIE (karta PARTIA-6-FRONT): etapy ciągu
+  //      z generatora backendu (`tests/reference_networks/scena_ciagu_w_budowie.py`) — na
+  //      etapie k stacja startu (GPZ albo koniec ciągu) jest wejściem kontynuacji na kanwie
+  //      LOD 0, a operacja z menu niesie pole startu, z którego BACKEND zbudował etap k+1.
+  {
+    const ciag = JSON.parse(
+      readFileSync(resolve(here, '..', 'src', 'harness-fixtures', 'generated', 'ciag_w_budowie_etapy.json'), 'utf8'),
+    );
+    let ogniwZKanwy = 0;
+    let pierwszeZerwane = null;
+    for (const etap of ciag.etapy) {
+      if (etap.pole_startu === null) continue;
+      const scena = buildSceneV3(etap.snapshot, 0);
+      const planEtapu = planSceneLabels(scena.labels, sceneObstacleRects(scena), 1, sheetSizeFor(scena));
+      const busRefyEtapu = busRefSceny(scena);
+      const obszaryEtapu = buildCanvasHitAreas({
+        symbols: scena.symbols, segments: scena.segments, labels: planEtapu.drawn, resultMarkers: [], scale: 1,
+      });
+      const wejscia = stacjeZWejsciemKontynuacji(
+        obszaryEtapu.map((area) => ({ area, busRef: busRefyEtapu.get(area.testId) })),
+        etap.snapshot,
+        etap.logical_views,
+        buildCanvasModelIndex(etap.snapshot),
+      );
+      const operacja = buildSldOperationContext('continue-trunk', 'station', etap.stacja_startu, etap.snapshot, etap.logical_views);
+      if (wejscia.includes(etap.stacja_startu) && operacja?.context.field_ref === etap.pole_startu) {
+        ogniwZKanwy += 1;
+      } else {
+        pierwszeZerwane ??= `etap ${etap.liczba_stacji}: wejście=${wejscia.includes(etap.stacja_startu)} pole=${operacja?.context.field_ref ?? '—'} (backend ${etap.pole_startu})`;
+      }
+    }
+    check(
+      `menu_chain_probe (S9-5, kryterium odbioru) scena W BUDOWIE: ${PROG_STACJI} kolejnych ogniw ciągu z kanwy (pole startu menu = pole startu backendu)`,
+      ogniwZKanwy >= PROG_STACJI && pierwszeZerwane === null,
+      pierwszeZerwane ?? `ogniw=${ogniwZKanwy}`,
+    );
+    // Iloczyn ról na scenie gotowej: GPZ, stacja środkowa i końcowa ciągu — żadna nie jest
+    // wejściem kontynuacji (predykat tej samej funkcji; rola z topologii, nie z predykatu).
+    const role = stacjeWgRoli(enm, widokiLogiczneEnm);
+    for (const [rola, refy] of Object.entries(role)) {
+      const aktywne = refy.filter((ref) => buildSldOperationContext('continue-trunk', 'station', ref, enm, widokiLogiczneEnm) !== null);
+      check(
+        `menu_chain_probe (PARTIA-6-FRONT) sieć GOTOWA, stacje roli „${rola}": kontynuacja zablokowana (brak wolnego pola liniowego)`,
+        refy.length > 0 && aktywne.length === 0,
+        `stacji=${refy.length} aktywnych=${aktywne.length}`,
+      );
+    }
   }
 
   // (d) Rodzina gałęzi rozstrzyga kategorię — obie rodziny obecne i ROZŁĄCZNE.

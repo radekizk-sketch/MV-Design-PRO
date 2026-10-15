@@ -38,7 +38,6 @@ from application.protection_settings.batch_run import (
 from application.protection_settings.zacisk_zabezpieczenia import (
     FUNKCJE_PAKIETU_NASTAW,
     KOD_BRAK_WSKAZANIA,
-    KOD_LACZNIK_POZA_SZEREGIEM,
     KOD_PETLA_WYLACZNIKA,
     KOD_SPRZECZNY_Z_MODELEM,
     KOD_WYBOR_ZACISKU,
@@ -262,7 +261,9 @@ def test_typ_czysta_87L_poza_filtrem_typ_bez_funkcji_kandydatem(
     50/51 nie wskazuje zacisku pakietu nastaw I>/I>>; typ bez danych o funkcjach liczy się
     jako kandydat (bez zgadywania)."""
 
-    def funkcje(catalog_ref: str | None, _przestrzen: str | None) -> tuple[str, ...] | None:
+    def funkcje(
+        catalog_ref: str | None, _przestrzen: str | None, *, migawka: object
+    ) -> tuple[str, ...] | None:
         return {"TYP-87L": ("87L",), "TYP-87L-51": ("87L", "51")}.get(catalog_ref or "")
 
     monkeypatch.setattr(modul, "funkcje_typu_zabezpieczenia", funkcje)
@@ -280,14 +281,16 @@ def test_typ_czysta_87L_poza_filtrem_typ_bez_funkcji_kandydatem(
 
 def test_funkcje_typu_z_katalogu_mv_i_biblioteki_analitycznej() -> None:
     """Droga danych filtra bez podmiany: katalog MV → `analytical_library_ref` → biblioteka."""
-    assert set(funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "ZABEZPIECZENIE") or ()) == {
+    assert set(
+        funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "ZABEZPIECZENIE", migawka={}) or ()
+    ) == {
         "50",
         "51",
     }
-    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, None) is not None
-    assert funkcje_typu_zabezpieczenia("TYP-SPOZA-KATALOGU", "ZABEZPIECZENIE") is None
-    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "CT") is None
-    assert funkcje_typu_zabezpieczenia(None, None) is None
+    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, None, migawka={}) is not None
+    assert funkcje_typu_zabezpieczenia("TYP-SPOZA-KATALOGU", "ZABEZPIECZENIE", migawka={}) is None
+    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "CT", migawka={}) is None
+    assert funkcje_typu_zabezpieczenia(None, None, migawka={}) is None
 
 
 def test_funkcje_pakietu_to_stopnie_ktore_nastawy_wypelniaja() -> None:
@@ -590,9 +593,9 @@ def test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce() -> Non
     magistrali nie są punktami raportowalnymi), więc na nich test sprawdza równość odmów;
     trójki budowane pochodzą z sieci 110/15 kV (bez pola i z polem, w którym model
     rozstrzyga zacisk). Reguła szeregowa rozstrzyga na tych sieciach sześć linii: GN_02
-    (odgałęzienie, `od`), GN_03 (odcinek SL, `do`), połówki od strony zasilania GN_01, GN_04
-    i GN_05 (`do` — zacisk pola wejściowego stacji, karta POLA-W-TORZE) i k1 sieci z polem
-    (`od`)."""
+    (odgałęzienie, `od`), GN_03 (odcinek SL, `do`), połówki od strony zasilania GN_01 i GN_04
+    (`do` — zacisk pola wejściowego stacji, karta POLA-W-TORZE), odcinek GN_05 od GPZ do
+    wyłącznika liniowego (`do`) i k1 sieci z polem (`od`)."""
     from application.proof_engine.pakiet_nastaw import dostepnosc_pakietu_nastaw
 
     kotwice = _kotwice_rejestru() + [
@@ -659,281 +662,15 @@ def test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce() -> Non
         ("build_gn02_sn_odgalezienie", "branch_segment", "od"),
         ("build_gn03_sn_pierscien", "segment_SL", "do"),
         ("build_gn04_sn_nn_oze", "segment_L", "do"),
-        ("build_gn05_sn_nn_oze_ochrona", "segment_L", "do"),
+        # GN_05 ma od karty BIEG-ZABEZPIECZEN-Z-MODELU realne zabezpieczenie przy wyłączniku
+        # liniowym wstawionym w odcinek zasilający magistrali: wyłącznik dzieli odcinek na dwie
+        # linie (SL: GPZ → wyłącznik, SR: wyłącznik → stacja). SL ma zabezpieczenie w szeregu
+        # tylko z zaciskiem `do`, więc model go rozstrzyga. SR po karcie POLA-W-TORZE kończy się
+        # na zacisku pola wejściowego stacji z zabezpieczeniem pola WE, więc ma zabezpieczenie
+        # w szeregu z OBOMA zaciskami (wyłącznik liniowy przy `od`, wyłącznik pola przy `do`) —
+        # model nie wybiera, dla którego przekaźnika jest pakiet: odmowa `KOD_WYBOR_ZACISKU`
+        # (wskazanie projektanta), a nie rozstrzygnięcie. Pomiar na drzewie przeniesienia karty
+        # na partię integracji 6 (BIEG-ZABEZPIECZEN-NA-PARTII-6).
+        ("build_gn05_sn_nn_oze_ochrona", "segment_L_SL", "do"),
         ("syntetyczna_110_15_z_polem", "k1", "od"),
     ]
-
-
-# ---------------------------------------------------------------------------
-# Miejsce urządzenia koordynacji (decyzja O-51 pkt 7) — ten sam resolver
-# ---------------------------------------------------------------------------
-
-
-def _siec_sekcjonera() -> dict:
-    """Linia 1 (A → B) — łącznik sekcyjny QS (B → C) — linia 2 (C → D): węzły B i C mają
-    po dwa elementy mocy, więc przez QS płynie prąd zacisku `do` linii 1 i zacisku `od`
-    linii 2 (ten sam prąd — I prawo Kirchhoffa)."""
-    enm = EnergyNetworkModel(
-        header=ENMHeader(name="Sekcjoner w linii"),
-        buses=[Bus(ref_id=r, name=f"Szyna {r}", voltage_kv=15.0) for r in ("A", "B", "C", "D")],
-        branches=[
-            _linia("L1", "A", "B"),
-            _lacznik("QS", "B", "C", "switch"),
-            _linia("L2", "C", "D"),
-        ],
-        sources=[
-            Source(
-                ref_id="src",
-                name="Zasilanie",
-                bus_ref="A",
-                model="short_circuit_power",
-                sk3_mva=500.0,
-                rx_ratio=0.1,
-            )
-        ],
-        loads=[Load(ref_id="ld", name="Odbiór", bus_ref="D", p_mw=1.0, q_mvar=0.3)],
-    )
-    return enm.model_dump(mode="json")
-
-
-def _werdykt_miejsca(wynik: Any) -> tuple[str, str, str] | str | None:
-    if wynik is None or isinstance(wynik, OdmowaZacisku):
-        return None if wynik is None else wynik.kod
-    return (wynik.galaz_ref, wynik.zacisk, wynik.zrodlo)
-
-
-PRZYPADKI_MIEJSCA = [
-    # (sieć, lokalizacja, rodzaj, {wskazanie: oczekiwany werdykt})
-    (
-        "wprost-brak",
-        "L",
-        "galaz",
-        {
-            None: KOD_BRAK_WSKAZANIA,
-            "od": ("L", "od", "wskazanie"),
-            "do": ("L", "do", "wskazanie"),
-        },
-    ),
-    (
-        "wprost-od",
-        "CB_od",
-        "lacznik",
-        {
-            None: ("L", "od", "model"),
-            "od": ("L", "od", "model"),
-            "do": KOD_SPRZECZNY_Z_MODELEM,
-        },
-    ),
-    (
-        "lancuch-do",
-        "CB_do",
-        "lacznik",
-        {
-            None: ("L", "do", "model"),
-            "do": ("L", "do", "model"),
-            "od": KOD_SPRZECZNY_Z_MODELEM,
-        },
-    ),
-    (
-        "lancuch_otwarty-do",
-        "CB_do",
-        "lacznik",
-        {
-            None: ("L", "do", "model"),
-            "do": ("L", "do", "model"),
-            "od": KOD_SPRZECZNY_Z_MODELEM,
-        },
-    ),
-    (
-        "bocznik-od",
-        "CB_od",
-        "lacznik",
-        {
-            None: KOD_LACZNIK_POZA_SZEREGIEM,
-            "od": KOD_LACZNIK_POZA_SZEREGIEM,
-            "do": KOD_LACZNIK_POZA_SZEREGIEM,
-        },
-    ),
-    (
-        "szyna-od",
-        "CB_od",
-        "lacznik",
-        {
-            None: ("Odplyw_od", "od", "model"),
-            "od": ("Odplyw_od", "od", "model"),
-            "do": KOD_SPRZECZNY_Z_MODELEM,
-        },
-    ),
-    (
-        "szyna-od",
-        "CB_przyl_od",
-        "lacznik",
-        {
-            None: KOD_LACZNIK_POZA_SZEREGIEM,
-            "od": KOD_LACZNIK_POZA_SZEREGIEM,
-            "do": KOD_LACZNIK_POZA_SZEREGIEM,
-        },
-    ),
-    (
-        "petla-petla",
-        "CB_petla",
-        "lacznik",
-        {
-            None: KOD_PETLA_WYLACZNIKA,
-            "od": KOD_PETLA_WYLACZNIKA,
-            "do": KOD_PETLA_WYLACZNIKA,
-        },
-    ),
-    ("wprost-brak", "F", "szyna", {None: None, "od": None, "do": None}),
-    ("wprost-brak", "NIE_MA", "brak", {None: None, "od": None, "do": None}),
-    (
-        "sekcjoner",
-        "QS",
-        "lacznik",
-        {
-            None: ("L1", "do", "model"),
-            "do": ("L1", "do", "model"),
-            "od": KOD_SPRZECZNY_Z_MODELEM,
-        },
-    ),
-]
-
-
-def _siec_przypadku_miejsca(nazwa: str) -> dict:
-    if nazwa == "sekcjoner":
-        return _siec_sekcjonera()
-    ksztalt, przypiecia = nazwa.split("-")
-    return _siec_resolvera("wprost" if ksztalt == "petla" else ksztalt, przypiecia)
-
-
-@pytest.mark.parametrize(
-    ("siec", "lokalizacja", "rodzaj", "oczekiwane"),
-    PRZYPADKI_MIEJSCA,
-    ids=[f"{s}-{lok}" for s, lok, _r, _o in PRZYPADKI_MIEJSCA],
-)
-def test_miejsce_urzadzenia_iloczyn_lokalizacja_wskazanie(
-    siec: str, lokalizacja: str, rodzaj: str, oczekiwane: dict
-) -> None:
-    snapshot = _siec_przypadku_miejsca(siec)
-    assert modul.rodzaj_lokalizacji(snapshot, lokalizacja) == rodzaj
-    for wskazanie, werdykt in oczekiwane.items():
-        wynik = modul.miejsce_urzadzenia(snapshot, lokalizacja, wskazanie)
-        assert _werdykt_miejsca(wynik) == werdykt, (wskazanie, wynik)
-        opis = modul.opis_miejsca_urzadzenia(snapshot, lokalizacja, wskazanie)
-        assert opis["rodzaj_lokalizacji"] == rodzaj
-        assert opis["wymaga_wskazania_zacisku"] is (rodzaj == "galaz")
-        if isinstance(werdykt, tuple):
-            assert (
-                opis["galaz_ref"],
-                opis["zacisk"],
-                opis["zrodlo_zacisku"],
-            ) == werdykt
-            assert opis["zaciski"][werdykt[1]]["etykieta_pl"].startswith("Zacisk ")
-            assert opis["odmowa_zacisku"] is None
-        elif werdykt is None:
-            assert opis["odmowa_zacisku"] is None and opis["galaz_ref"] is None
-        else:
-            assert opis["odmowa_zacisku"]["kod"] == werdykt
-            assert opis["galaz_ref"] is None
-
-
-def test_miejsce_urzadzenia_transformator_wymaga_wskazania_od_to_strona_gn() -> None:
-    snapshot = _siec_110_15(z_polem=False).model_dump(mode="json")
-    assert _werdykt_miejsca(modul.miejsce_urzadzenia(snapshot, "T1", None)) == KOD_BRAK_WSKAZANIA
-    wynik = modul.miejsce_urzadzenia(snapshot, "T1", "do")
-    assert _werdykt_miejsca(wynik) == ("T1", "do", "wskazanie")
-    assert wynik.zaciski.szyna_do_ref == "b_gpz"
-
-
-def test_miejsce_urzadzenia_lacznik_pola_110_15_to_zacisk_od_kabla() -> None:
-    """Wyłącznik pola GPZ (b_gpz → b_p1) stoi w szeregu z zaciskiem `od` kabla k1."""
-    snapshot = _siec_110_15(z_polem=True).model_dump(mode="json")
-    assert _werdykt_miejsca(modul.miejsce_urzadzenia(snapshot, "CB1", None)) == (
-        "k1",
-        "od",
-        "model",
-    )
-
-
-def test_odmowy_zaciskow_urzadzen_walidacja_addytywna() -> None:
-    snapshot = _siec_resolvera("wprost", "od")
-
-    def urzadzenie(lokalizacja: str, zacisk: object) -> dict:
-        return {
-            "id": "d",
-            "name": "Urządzenie",
-            "location_element_id": lokalizacja,
-            "zacisk": zacisk,
-        }
-
-    prefiks = modul.PREFIKS_URZADZENIA_KOORDYNACJI
-    assert modul.odmowy_zaciskow_urzadzen(snapshot, {}) == []
-    # Bez pola `zacisk` — brak wskazania nie blokuje zapisu; klucze obce pomijane.
-    assert (
-        modul.odmowy_zaciskow_urzadzen(
-            snapshot,
-            {
-                f"{prefiks}d": {"id": "d", "location_element_id": "L"},
-                "I>": {"value": 1},
-            },
-        )
-        == []
-    )
-    assert modul.odmowy_zaciskow_urzadzen(snapshot, {f"{prefiks}d": urzadzenie("L", "do")}) == []
-    assert (
-        modul.odmowy_zaciskow_urzadzen(snapshot, {f"{prefiks}d": urzadzenie("CB_od", "od")}) == []
-    )
-    literal = modul.odmowy_zaciskow_urzadzen(None, {f"{prefiks}d": urzadzenie("L", "srodek")})
-    assert len(literal) == 1 and "'srodek'" in literal[0]
-    assert modul.odmowy_zaciskow_urzadzen(None, {f"{prefiks}d": urzadzenie("CB_od", "do")}) == []
-    szyna = modul.odmowy_zaciskow_urzadzen(snapshot, {f"{prefiks}d": urzadzenie("F", "od")})
-    assert len(szyna) == 1 and "bez zacisków" in szyna[0]
-    sprzeczne = modul.odmowy_zaciskow_urzadzen(snapshot, {f"{prefiks}d": urzadzenie("CB_od", "do")})
-    assert len(sprzeczne) == 1
-    assert READINESS_CODES[KOD_SPRZECZNY_Z_MODELEM].message_pl in sprzeczne[0]
-
-
-@pytest.mark.parametrize(
-    ("siec", "lokalizacja", "rodzaj", "oczekiwane"),
-    PRZYPADKI_MIEJSCA,
-    ids=[f"{s}-{lok}" for s, lok, _r, _o in PRZYPADKI_MIEJSCA],
-)
-def test_szyna_zwarcia_lokalizacji_para_z_opisem_dla_ekranu(
-    siec: str, lokalizacja: str, rodzaj: str, oczekiwane: dict
-) -> None:
-    """PREDYKATY PARAMI (decyzja O-51 pkt 7): szyna, wobec której backend potwierdza prąd
-    zwarciowy lokalizacji w żądaniu koordynacji, jest TĄ SAMĄ szyną, z której ekran czyta
-    prąd (`opis_miejsca_urzadzenia` → `zaciski[zacisk].szyna_ref`); odmowa resolvera to
-    ten sam powód po obu stronach. Iloczyn: każdy przypadek miejsca × każde wskazanie.
-    """
-    snapshot = _siec_przypadku_miejsca(siec)
-    for wskazanie in oczekiwane:
-        szyny, odmowy = modul.szyny_zwarcia_lokalizacji(snapshot, [(lokalizacja, wskazanie)])
-        opis = modul.opis_miejsca_urzadzenia(snapshot, lokalizacja, wskazanie)
-        if opis["zacisk"] is not None:
-            assert szyny == {lokalizacja: opis["zaciski"][opis["zacisk"]]["szyna_ref"]}
-            assert odmowy == {}
-        elif opis["odmowa_zacisku"] is not None:
-            assert szyny == {}
-            assert odmowy == {lokalizacja: opis["odmowa_zacisku"]["powod_pl"]}
-        else:
-            assert (szyny, odmowy) == ({}, {}), (rodzaj, wskazanie)
-
-
-def test_szyna_zwarcia_dwa_urzadzenia_jednej_lokalizacji() -> None:
-    """Dwa urządzenia na TEJ SAMEJ gałęzi: ten sam zacisk → jedna szyna; różne zaciski →
-    odmowa (kontrakt koordynacji kluczuje prąd zwarciowy lokalizacją — jedna lokalizacja
-    nie niesie dwóch prądów); odmowa jednego z nich → odmowa lokalizacji niezależnie od
-    kolejności."""
-    snapshot = _siec_resolvera("wprost", "brak")
-    szyna_od = modul.zaciski_galezi(snapshot, "L").szyna("od")
-    assert modul.szyny_zwarcia_lokalizacji(snapshot, [("L", "od"), ("L", "od")]) == (
-        {"L": szyna_od},
-        {},
-    )
-    szyny, odmowy = modul.szyny_zwarcia_lokalizacji(snapshot, [("L", "od"), ("L", "do")])
-    assert szyny == {} and "dwóch różnych zaciskach" in odmowy["L"]
-    for kolejnosc in ([("L", "od"), ("L", None)], [("L", None), ("L", "od")]):
-        szyny, odmowy = modul.szyny_zwarcia_lokalizacji(snapshot, kolejnosc)
-        assert szyny == {}
-        assert odmowy["L"].startswith(READINESS_CODES[KOD_BRAK_WSKAZANIA].message_pl)

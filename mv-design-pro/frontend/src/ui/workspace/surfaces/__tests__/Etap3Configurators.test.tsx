@@ -128,22 +128,16 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('BayConfiguratorSurface (E-11)', () => {
-    it('renderuje BayConfigurator z domyślnymi propsami przy braku entityRef', () => {
+    // Intencja (przepisane 2026-10-15): bez referencji pola karta mówi, co zrobić, i NIE
+    // pokazuje żadnej sekcji ani oceny pola. Dawny szkielet ośmiu zakładek konfiguratora
+    // z tekstem zastępczym skasowano — karta pola czyta jeden model pola (osobny plik testów
+    // `BayConfiguratorSurface.kartaPola.test.tsx`).
+    it('bez referencji pola pokazuje wskazówkę i żadnej sekcji karty', () => {
       render(<BayConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('bay-configurator-surface')).toBeInTheDocument();
       expect(screen.getByText(/Brak referencji do pola SN/)).toBeInTheDocument();
-    });
-
-    it('renderuje 8 sekcji konfiguratora', () => {
-      render(<BayConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByText('Dane podstawowe')).toBeInTheDocument();
-      expect(screen.getByText('Aparatura pierwotna')).toBeInTheDocument();
-      expect(screen.getByText(/Przek/)).toBeInTheDocument();
-      expect(screen.getByText('Zabezpieczenia')).toBeInTheDocument();
-      expect(screen.getByText('Pomiary')).toBeInTheDocument();
-      expect(screen.getByText(/porty/)).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'Podgląd SLD' })).toBeInTheDocument();
-      expect(screen.getByText('Obliczenia')).toBeInTheDocument();
+      expect(screen.queryByTestId('bay-card-sections')).not.toBeInTheDocument();
+      expect(screen.queryByText(/zgodne z regułami/)).not.toBeInTheDocument();
     });
   });
 

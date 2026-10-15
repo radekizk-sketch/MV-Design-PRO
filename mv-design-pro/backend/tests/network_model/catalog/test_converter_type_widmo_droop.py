@@ -112,15 +112,19 @@ def test_droop_q_u_niedodatni_jest_odrzucony(wartosc: float) -> None:
 
 
 def test_zadna_opublikowana_pozycja_katalogu_nie_ma_widma_ani_droopu() -> None:
-    """PIN 0: żaden ze 176 opublikowanych typów przekształtników (pomiar
-    `get_all_converter_types()` 2026-09-23) nie deklaruje statyzmów GFM ani nie niesie
+    """PIN 0: żaden ze 192 opublikowanych typów przekształtników (pomiar
+    `get_all_converter_types()` 2026-10-15: 176 z 2026-09-23 − rekord SCS 2200 bez
+    karty + 7 kart producentów SMA/Huawei + 2 karty SMA Sunny Tripower 3AV-40 + 4 kopie
+    kart (Fronius Symo 10.0-3-M, 3 × Tesla Megapack 2 XL), karta
+    KATALOG-KOMPLETNY-PROWENIENCJA, + 4 warianty Vestas V112 (3 kopie dokumentów, 1
+    deklaracja), karta KATALOG-TURBINY-TOR-V112; żadna z tych kart nie podaje statyzmów GFM) nie deklaruje statyzmów GFM ani nie niesie
     skasowanego klucza widma, bo REPO nie ma żadnej realnej karty producenta z tymi
     danymi — podanie liczby bez źródła byłoby fabrykacją, którą karta W2-C usunęła z
     `solver_input/v126_contracts.py`. Rośnie wyłącznie wtedy, gdy do repo trafia
     policzalna karta producenta (karta OD-17); widmo — wyłącznie jako karta widmowa
     z wyciągiem dokumentu (`network_model/catalog/karty_widmowe/`)."""
     rekordy = get_all_converter_types()
-    assert len(rekordy) == 176, "pomiar bazowy 2026-09-23 — zmiana liczby to inny katalog"
+    assert len(rekordy) == 192, "pomiar bazowy 2026-10-15 — zmiana liczby to inny katalog"
     z_widmem = [r["id"] for r in rekordy if "harmonic_spectrum_percent" in r["params"]]
     z_droop = [
         r["id"]

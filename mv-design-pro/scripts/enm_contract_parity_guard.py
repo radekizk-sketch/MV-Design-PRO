@@ -102,7 +102,6 @@ SPRAWDZANE: dict[str, str] = {
     "BayShortCircuitSourceContribution": "BayShortCircuitSourceContribution",
     "BaySourceEndpoint": "BaySourceEndpoint",
     "BaySwitchState": "BaySwitchState",
-    "BayVerificationResult": "BayVerificationResult",
     "BranchBase": "BranchBase",
     "BranchPointSN": "BranchPointSN",
     "BranchRating": "BranchRating",

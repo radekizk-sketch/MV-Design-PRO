@@ -20,6 +20,9 @@ istniejący plik albo katalog i że dokumenty wskazujące granicę B-01 odsyłaj
 from __future__ import annotations
 
 #: Ścieżki względem `backend/src`; wpis zakończony `/` obejmuje cały katalog.
+#: Wpis „Stabilność RMS" (`network_model/solvers/stability_rms/`) zdjęty razem z kasacją
+#: solvera — decyzja B-01 z 2026-09-30 (delegacja właściciela, O-59), pozycja (i) planu A/B
+#: §12.2; nawrót ścieżki pilnuje `legacy_public_path_guard.check_abp1_dynamika_resurrection`.
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",
@@ -38,7 +41,6 @@ RDZENIE_B01: dict[str, tuple[str, ...]] = {
         "catalog/profiles/nc_rfg/",
     ),
     "FRT/HVRT": ("network_model/solvers/frt_hvrt/",),
-    "Stabilność RMS": ("network_model/solvers/stability_rms/",),
     "Estymacja stanu WLS": ("network_model/solvers/state_estimation_wls.py",),
     "Stan fazowy SN": ("network_model/solvers/phase_state_sn.py",),
     "V12.6": ("network_model/solvers/v126_academic.py",),

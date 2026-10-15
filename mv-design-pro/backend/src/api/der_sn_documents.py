@@ -11,7 +11,7 @@ F-E8.3 — dokładnie wzorcem istniejących przechwyceń (``store_generated_docu
 Zapis wymaga ``project_id`` (bez niego magazyn jest addytywnie pomijany).
 
 Odstępstwa od propozycji D2 liczy warstwa API reużyciem istniejących kandydatów
-katalogu (``grid_source_preview``) i solvera doboru (``der_selection_preview``) —
+katalogu i doboru TR z kaskady toru DER-SN (``application.analyses.dobor_toru_der_sn``) oraz solvera doboru kabla (``der_selection_preview``) —
 solver pozostaje czysty, katalog wiąże API. Brak/niekompletność katalogu ⇒ sekcja
 D2 pominięta jawnie (uczciwy brak, nie fabrykacja).
 """
@@ -126,8 +126,8 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     ``except Exception`` → ``None`` chowało KAŻDY błąd, także programu, w cichym
     pominięciu sekcji). Inny wyjątek jest błędem programu i wybucha (500).
 
-    Reużywa kandydatów katalogu (``grid_source_preview``) i solvera doboru
-    (``der_selection_preview``). Porównuje: przekrój kabla, moc TR, grupę połączeń.
+    Reużywa kandydatów katalogu i doboru TR z kaskady toru DER-SN
+    (``application.analyses.dobor_toru_der_sn``) oraz solvera doboru kabla. Porównuje: przekrój kabla, moc TR, grupę połączeń.
     """
     tr = track.block_transformer
     cable = track.mv_cable
@@ -140,16 +140,14 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         return None
 
     try:
-        from api.grid_source_preview import (
-            _block_transformer_candidates,
-            _cable_candidates,
-            _cos_phi_doboru_kabla,
+        from application.analyses.dobor_toru_der_sn import (
+            cos_phi_doboru_kabla,
+            dobierz_transformator_blokowy,
+            kandydaci_kabli_sn,
         )
-        from domain.generator_validation import JawneWejsciaKontroliMocy
+        from domain.generator_validation import BEZ_REDUKCJI, JawneWejsciaKontroliMocy
         from network_model.solvers.der_selection_preview import (
-            BlockTransformerSelectionInput,
             CableSelectionInput,
-            propose_block_transformer,
             propose_mv_cable,
         )
 
@@ -160,19 +158,22 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         # max(S_n,jedn·n, P/cosφ) i jawne współczynniki zapisane przez tor tworzenia (brak
         # jawnego współczynnika = 1,0, bez redukcji — jak kontrola).
         wejscia = JawneWejsciaKontroliMocy.z_meta(track.generator.get("meta"))
-        dodatkowe: dict[str, float] = {}
-        if wejscia.wspolczynnik_jednoczesnosci is not None:
-            dodatkowe["simultaneity_factor"] = wejscia.wspolczynnik_jednoczesnosci
-        if wejscia.przeciazalnosc_transformatora_pu is not None:
-            dodatkowe["loadability_pu"] = wejscia.przeciazalnosc_transformatora_pu
-        tr_result = propose_block_transformer(
-            BlockTransformerSelectionInput(
-                sum_apparent_power_mva=sum_apparent,
-                primary_voltage_kv=float(sn_bus_kv),
-                secondary_voltage_kv=float(inverter_kv),
-                candidates=_block_transformer_candidates(),
-                **dodatkowe,
-            )
+        # Ten sam dobór co kaskada kreatora i szablonów (tolerancje napięć D1) — dawniej
+        # dokument wołał silnik z jego domyślnymi tolerancjami, inną regułą niż podgląd.
+        tr_result = dobierz_transformator_blokowy(
+            moc_pozorna_mva=sum_apparent,
+            napiecie_sn_kv=float(sn_bus_kv),
+            napiecie_falownika_kv=float(inverter_kv),
+            wspolczynnik_jednoczesnosci=(
+                wejscia.wspolczynnik_jednoczesnosci
+                if wejscia.wspolczynnik_jednoczesnosci is not None
+                else BEZ_REDUKCJI
+            ),
+            przeciazalnosc_pu=(
+                wejscia.przeciazalnosc_transformatora_pu
+                if wejscia.przeciazalnosc_transformatora_pu is not None
+                else BEZ_REDUKCJI
+            ),
         )
         deviations: list[dict[str, Any]] = []
         if tr_result.proposal is not None:
@@ -214,8 +215,8 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     # cosφ z TEJ SAMEJ reguły co podgląd kreatora (jawny cosφ zapisany
                     # przez tor tworzenia, bez niego 1,0) — dawne zaszyte 0,95 dawało
                     # propozycję przy innym założeniu niż dobór (fałszywe ⚠).
-                    cos_phi=_cos_phi_doboru_kabla(wejscia),
-                    candidates=_cable_candidates(),
+                    cos_phi=cos_phi_doboru_kabla(wejscia),
+                    candidates=kandydaci_kabli_sn(),
                     derating=_cable_derating_from_model(cable),
                 )
             )

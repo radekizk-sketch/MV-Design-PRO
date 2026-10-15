@@ -49,6 +49,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     OdmowaZacisku,
     Zacisk,
     ZaciskZabezpieczenia,
+    przekladnia_zacisku,
     rozstrzygnij_zacisk,
     zaciski_galezi,
 )
@@ -402,7 +403,16 @@ def zbuduj_odpowiedz_dopasowania(
         raise PakietNastawError(str(exc), kod=exc.kod) from exc
 
     wymaganie = wymaganie_z_nastaw(nastawy.wynik)
-    dopasowanie = dopasuj_do_aparatu(wymaganie, device_id=device_id)
+    # Zakres prądowy aparatu jest cechą strony wtórnej (PZ-09): przekładnia z przekładnika
+    # zabezpieczenia stojącego w modelu przy zacisku linii — bez niego zakres jest nazwanym
+    # brakiem sprawdzenia, nie porównaniem prądu pierwotnego z zakresem wtórnym.
+    dopasowanie = dopasuj_do_aparatu(
+        wymaganie,
+        device_id=device_id,
+        przekladnia_a=przekladnia_zacisku(
+            run.snapshot, line_id, nastawy.wejscie.zacisk_zabezpieczenia
+        ),
+    )
     return {
         **dopasowanie,
         "proweniencja_nastaw": _proweniencja_wejscia(

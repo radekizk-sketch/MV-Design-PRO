@@ -48,6 +48,7 @@ import { SekcjaGranicySieci } from './SekcjaGranicySieci';
 import { SekcjaPokryciaAnaliz } from './SekcjaPokryciaAnaliz';
 import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
+import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { ETYKIETA_CELU } from './grupowanieCelow';
 
 export interface PanelGotowosciProps {
@@ -66,6 +67,7 @@ export function PanelGotowosci({
 }: PanelGotowosciProps) {
   const stan = useStanGotowosci();
   const issues = useProblemyGotowosci();
+  const nazwaElementu = useNazwaObiektu();
   const ponowOdczytGotowosci = usePonowOdczytGotowosci();
   const nastepnaAkcja = useNastepnaAkcja();
   const trybEkspercki = trybZaawansowania === 'expert';
@@ -196,6 +198,7 @@ export function PanelGotowosci({
                 trybEkspercki={trybEkspercki}
                 onKlikWiersza={onSelekcja}
                 onNaprawa={onAkcjaNaprawcza}
+                nazwaElementu={nazwaElementu}
               />
             ))}
           </div>

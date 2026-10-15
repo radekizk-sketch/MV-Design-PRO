@@ -24,7 +24,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel, Substation } from '../../../types/enm';
 import { szynaGlownaStacji, szynyStacji } from '../szynyStacji';
-import { selectStationDistributionTransformers } from '../transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+  transformatoryNalezaceDoStacji,
+  type ModelTransformatorow,
+} from '../transformatoryStacji';
 import { punktPrzylaczeniaPola, zaciskPola } from '../polaStacji';
 
 const FRONTEND = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -59,9 +65,15 @@ const przypadki = Object.entries(parytet.pliki).flatMap(([plik, modele]) => {
   }));
 });
 
-/** Wszystkie odpowiedzi klasy policzone lustrami frontu — w kształcie pliku backendu. */
-function odpowiedziFrontu(model: EnergyNetworkModel): Oczekiwane {
+/** Wszystkie odpowiedzi klasy policzone lustrami frontu — w kształcie pliku backendu.
+ *  `zIndeksami` — te same pytania z kontekstem transformatorów stacji budowanym RAZ na migawkę
+ *  (ścieżka adaptera SLD, eksportu i przeglądów, PARTIA-6-FRONT): wynik musi być identyczny
+ *  z backendem tak samo jak pojedyncze pytanie bez kontekstu. Indeksy pól i gałęzi lustra szyn
+ *  (`polaStacji.ts`, `szynyStacji.ts`) są pamięcią migawki — obie ścieżki je dzielą. */
+function odpowiedziFrontu(model: EnergyNetworkModel, zIndeksami = false): Oczekiwane {
   const stacje = (model.substations ?? []).filter((s): s is Substation => typeof s?.ref_id === 'string');
+  const modelTr: ModelTransformatorow = { ...model, transformers: model.transformers ?? [] };
+  const kontekst = zIndeksami ? kontekstTransformatorowStacji(modelTr) : undefined;
   const szyny: Record<string, string[]> = {};
   const glowne: Record<string, Record<string, string | null>> = {};
   const transformatory: Record<string, string[]> = {};
@@ -69,10 +81,8 @@ function odpowiedziFrontu(model: EnergyNetworkModel): Oczekiwane {
     const nalezace = [...szynyStacji(model, stacja)].sort();
     szyny[stacja.ref_id] = nalezace;
     glowne[stacja.ref_id] = Object.fromEntries(nalezace.map((s) => [s, szynaGlownaStacji(model, stacja, s)]));
-    transformatory[stacja.ref_id] = selectStationDistributionTransformers(
-      { ...model, transformers: model.transformers ?? [] },
-      stacja,
-    ).map((t) => String(t.ref_id)).sort();
+    transformatory[stacja.ref_id] = selectStationDistributionTransformers(modelTr, stacja, kontekst)
+      .map((t) => String(t.ref_id)).sort();
   }
   const refyStacji = new Set(stacje.map((s) => s.ref_id));
   const zaciski: Record<string, string | null> = {};
@@ -108,8 +118,13 @@ describe('lustra klasy „stacja i jej szyny” — parytet z backendem na fikst
     expect(transformatorow).toBeGreaterThan(0);
   });
 
-  it.each(przypadki.map((p) => [p.nazwa, p] as const))('%s — wszystkie odpowiedzi = backend', (_n, { model, oczekiwane }) => {
-    const front = odpowiedziFrontu(model);
+  it.each(
+    przypadki.flatMap((p) => [
+      [p.nazwa, 'pojedyncze pytania', p, false],
+      [p.nazwa, 'indeksy migawki', p, true],
+    ] as const),
+  )('%s (%s) — wszystkie odpowiedzi = backend', (_n, _tryb, { model, oczekiwane }, zIndeksami) => {
+    const front = odpowiedziFrontu(model, zIndeksami);
     expect(front.szyny).toEqual(oczekiwane.szyny);
     expect(front.szyny_glowne).toEqual(oczekiwane.szyny_glowne);
     expect(front.transformatory).toEqual(oczekiwane.transformatory);
@@ -124,5 +139,85 @@ describe('lustra klasy „stacja i jej szyny” — parytet z backendem na fikst
         expect([...szynyStacji(odwrocone, stacja)].sort()).toEqual(oczekiwane.szyny[String(stacja.ref_id)]);
       }
     }
+  });
+});
+
+/**
+ * PARTIA-6-FRONT × SZYNY-STACJI-LUSTRO (2) × W5-B — kontekst migawki reguły transformatorów
+ * stacji i pamięć indeksów lustra szyn. Iloczyn cech: {każdy model fikstur} × {każdy
+ * transformator / każda stacja} × {bez kontekstu, z kontekstem zbudowanym raz}; pole nN
+ * z kilkoma aparatami × {kolejność gałęzi prosta, odwrócona}; pamięć indeksu × dopisanie gałęzi
+ * do tej samej tablicy; kontekst zbudowany dla innej migawki = wyjątek (nie cichy zły wynik).
+ */
+describe('kontekst migawki reguł SZYNY-STACJI-LUSTRO — ta sama odpowiedź co pojedyncze pytanie', () => {
+  it.each(przypadki.map((p) => [p.nazwa, p] as const))('%s', (_n, { model }) => {
+    const modelTr: ModelTransformatorow = { ...model, transformers: model.transformers ?? [] };
+    const kontekst = kontekstTransformatorowStacji(modelTr);
+    for (const transformer of modelTr.transformers) {
+      expect(stationRefOfTransformer(modelTr, transformer.ref_id, kontekst))
+        .toBe(stationRefOfTransformer(modelTr, transformer.ref_id));
+    }
+    const stacje = (model.substations ?? []).filter((s): s is Substation => typeof s?.ref_id === 'string');
+    for (const stacja of stacje) {
+      expect(transformatoryNalezaceDoStacji(modelTr, stacja, kontekst))
+        .toEqual(transformatoryNalezaceDoStacji(modelTr, stacja));
+    }
+  });
+
+  /** Stacja z dwoma polami nN (rekordy `bays` na szynie 0,4 kV); pole 1 ma łańcuch DWÓCH
+   *  aparatów w `equipment_refs`. */
+  function modelPolaNnZLancuchem(galezie: EnergyNetworkModel['branches']): EnergyNetworkModel {
+    return {
+      buses: [{ ref_id: 'szyna-nn', voltage_kv: 0.4 }],
+      substations: [{ ref_id: 'st-1', bus_refs: ['szyna-nn'] }],
+      bays: [
+        { ref_id: 'pole-nn-1', bus_ref: 'szyna-nn', bay_role: 'FEEDER', substation_ref: 'st-1', equipment_refs: ['ap-1a', 'ap-1b'] },
+        { ref_id: 'pole-nn-2', bus_ref: 'szyna-nn', bay_role: 'FEEDER', substation_ref: 'st-1', equipment_refs: ['ap-2'] },
+      ],
+      branches: galezie,
+    } as unknown as EnergyNetworkModel;
+  }
+
+  const GALEZIE_NN = [
+    { ref_id: 'obca', from_bus_ref: 'x', to_bus_ref: 'y' },
+    { ref_id: 'ap-2', from_bus_ref: 'szyna-nn', to_bus_ref: 'odplyw-2' },
+    { ref_id: 'ap-1a', from_bus_ref: 'szyna-nn', to_bus_ref: 'posrednia-1' },
+    { ref_id: 'ap-1b', from_bus_ref: 'posrednia-1', to_bus_ref: 'odplyw-1' },
+  ] as unknown as EnergyNetworkModel['branches'];
+
+  it.each([
+    ['prosta', GALEZIE_NN, ['szyna-nn', 'odplyw-2', 'posrednia-1', 'odplyw-1']],
+    ['odwrócona', [...(GALEZIE_NN ?? [])].reverse(), ['szyna-nn', 'posrednia-1', 'odplyw-1', 'odplyw-2']],
+  ] as const)('pole nN z KILKOMA aparatami, kolejność gałęzi %s: każda gałąź w szynach, w kolejności tablicy', (_n, galezie, oczekiwane) => {
+    // Lustro backendu `_aparaty_pol_nn_stacji` zwraca WSZYSTKIE aparaty z `equipment_refs`
+    // pól nN — indeks gałęzi niesie listę pozycji, nie pierwszą gałąź (kształt spoza fikstur).
+    const model = modelPolaNnZLancuchem([...galezie]);
+    const stacja = (model.substations ?? [])[0] as Substation;
+    expect([...szynyStacji(model, stacja)]).toEqual(oczekiwane);
+    expect(szynaGlownaStacji(model, stacja, 'posrednia-1')).toBe('szyna-nn');
+    expect(szynaGlownaStacji(model, stacja, 'odplyw-2')).toBe('szyna-nn');
+    // Za łańcuchem aparatów (początek aparatu nie jest szyną główną) — `null` jak backend.
+    expect(szynaGlownaStacji(model, stacja, 'odplyw-1')).toBeNull();
+  });
+
+  it('pamięć indeksu gałęzi: dopisanie aparatu do TEJ SAMEJ tablicy jest widoczne (indeks unieważniony)', () => {
+    const galezie = [...(GALEZIE_NN ?? [])].filter((g) => g.ref_id !== 'ap-2');
+    const model = modelPolaNnZLancuchem(galezie);
+    const stacja = (model.substations ?? [])[0] as Substation;
+    expect(szynyStacji(model, stacja).has('odplyw-2')).toBe(false);
+    galezie.push({ ref_id: 'ap-2', from_bus_ref: 'szyna-nn', to_bus_ref: 'odplyw-2' } as never);
+    expect(szynyStacji(model, stacja).has('odplyw-2')).toBe(true);
+  });
+
+  it('kontekst zbudowany dla innej migawki: wyjątek w każdej regule, nie cichy zły wynik', () => {
+    const [{ model }] = przypadki.filter((p) => (p.model.substations ?? []).length > 0);
+    const modelTr: ModelTransformatorow = { ...model, transformers: model.transformers ?? [] };
+    const innyTr: ModelTransformatorow = { ...modelTr };
+    const stacja = (model.substations ?? [])[0] as Substation;
+    const obcyKontekst = kontekstTransformatorowStacji(innyTr);
+    expect(() => selectStationDistributionTransformers(modelTr, stacja, obcyKontekst)).toThrow();
+    expect(() => transformatoryNalezaceDoStacji(modelTr, stacja, obcyKontekst)).toThrow();
+    const tr = modelTr.transformers[0];
+    if (tr) expect(() => stationRefOfTransformer(modelTr, tr.ref_id, obcyKontekst)).toThrow();
   });
 });

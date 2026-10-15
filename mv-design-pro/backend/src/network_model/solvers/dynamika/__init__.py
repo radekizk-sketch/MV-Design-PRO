@@ -7,7 +7,8 @@ importow calego pakietu jest pilnowana przez
 `scipy.sparse`, `network_model.pochodne` i zamkniety zbior modulow jezykowych
 biblioteki standardowej.
 
-UKLAD RAZ, W JEDNYM ZDANIU: `dx/dt = f(x, y)` (urzadzenia), `0 = g(x, y)` (siec),
+UKLAD RAZ, W JEDNYM ZDANIU: `dx/dt = f(x, y)` (elementy stanowe: odbiory ze stanem
+estymatora czestotliwosci i urzadzenia), `0 = g(x, y)` (siec),
 krok trapezem niejawnym na ukladzie SPRZEZONYM, zdarzenia z dokladnym czasem,
 re-inicjalizacja algebry przy TRZYMANYCH stanach rozniczkowych, tozsamosc biegu z
 pieciu odciskow.
@@ -28,9 +29,11 @@ from .calkowanie import (
 from .kontrakty import (
     KODY_ODMOW,
     CharakterystykaOdbioru,
+    ElementStanowy,
     GalazDynamiki,
     HarmonogramDynamiki,
     KomendaRegulacji,
+    ModelOdbioru,
     NastawySolvera,
     OdbiorDynamiki,
     OdlaczenieZrodla,
@@ -43,21 +46,27 @@ from .kontrakty import (
     UtrataCzesciowaZrodla,
     WejscieDynamiki,
     WezelDynamiki,
+    WymaganiaOdbioru,
     ZmianaGalezi,
     ZmianaOdbioru,
     ZmianaOdsprzegu,
     ZwarcieGalezi,
     ZwarcieWezla,
+    wymagane_parametry_odbioru,
 )
+from .odbiory import OdbiorCharakterystyczny
 from .reinicjalizacja import RaportReinicjalizacji, reinicjalizuj
 from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre, zloz_model_sieci
 from .silnik import SilnikDynamiki
 from .tozsamosc import WERSJA_SOLVERA, TozsamoscBiegu, zbuduj_tozsamosc
 from .wynik import (
+    KODY_ZALOZEN_RDZENIA,
     KanalWyniku,
     Metryka,
+    WielkoscZalozenia,
     WlasnosciBiegu,
     WynikDynamiki,
+    ZalozenieRdzenia,
     ZdarzenieWykonane,
     ladunek_resultset_dynamic_v2,
 )
@@ -65,8 +74,10 @@ from .wynik import (
 __all__ = [
     "INTEGRATORY",
     "KODY_ODMOW",
+    "KODY_ZALOZEN_RDZENIA",
     "WERSJA_SOLVERA",
     "CharakterystykaOdbioru",
+    "ElementStanowy",
     "GalazDynamiki",
     "HarmonogramDynamiki",
     "Integrator",
@@ -74,8 +85,10 @@ __all__ = [
     "KomendaRegulacji",
     "KontekstKroku",
     "Metryka",
+    "ModelOdbioru",
     "ModelSieci",
     "NastawySolvera",
+    "OdbiorCharakterystyczny",
     "OdbiorDynamiki",
     "OdlaczenieZrodla",
     "OdmowaDynamiki",
@@ -92,9 +105,12 @@ __all__ = [
     "UtrataCzesciowaZrodla",
     "WejscieDynamiki",
     "WezelDynamiki",
+    "WielkoscZalozenia",
     "WlasnosciBiegu",
+    "WymaganiaOdbioru",
     "WynikDynamiki",
     "WynikKroku",
+    "ZalozenieRdzenia",
     "ZdarzenieWykonane",
     "ZmianaGalezi",
     "ZmianaOdbioru",
@@ -106,6 +122,7 @@ __all__ = [
     "reinicjalizuj",
     "residuum_kcl_niezalezne",
     "rozwiaz_algebre",
+    "wymagane_parametry_odbioru",
     "zbuduj_tozsamosc",
     "zloz_model_sieci",
 ]

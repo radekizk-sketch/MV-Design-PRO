@@ -954,23 +954,39 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.gpzs[0].hvSections).toBeUndefined();
   });
 
-  it('Stacje pole-wymiarowe → StationOnRunRendererProps z poprawnym topologicalType', () => {
+  it('Stacje pole-wymiarowe → topologicalType z POL i POŁĄCZEŃ, nie z deklaracji station_type', () => {
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ (§19.3): każda stacja deklaruje rodzaj INNY niż wynika
+    // z jej rozdzielnicy — rysunek idzie za polami (1 pole ⇒ końcowa, 2 połączone ⇒ przelotowa,
+    // 3 ⇒ odgałęźna, sprzęgło ⇒ sekcyjna).
+    // Pola rozdzielnic: rekordy `bays` (karta W5-B — jedyny nośnik pól).
+    const pola = (ref: string, role: readonly string[]) => role.map((rola, i) => ({
+      ref_id: `${ref}/p${i}`, substation_ref: ref, bus_ref: `${ref}/sn`, bay_role: rola, equipment_refs: [],
+    }) as never);
     const snap = buildEmptySnapshot();
     snap.substations = [
-      { id: 's1', ref_id: 'ST-1', name: 'Stacja-1', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's2', ref_id: 'ST-2', name: 'Stacja-2', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's3', ref_id: 'ST-3', name: 'Stacja-3', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: {}, station_type: 'sectional', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's5', ref_id: 'ST-5', name: 'Stacja-5', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's1', ref_id: 'ST-1', name: 'Stacja-1', tags: [], meta: {}, station_type: 'branch', bus_refs: ['ST-1/sn'], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja-2', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['ST-2/sn'], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'Stacja-3', tags: [], meta: {}, station_type: 'inline', bus_refs: ['ST-3/sn'], transformer_refs: [] } as never,
+      { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: ['ST-4/sn'], transformer_refs: [] } as never,
     ];
-    attachMainRun(snap, ['ST-1', 'ST-2', 'ST-3', 'ST-4', 'ST-5'], 'run-station-types');
+    snap.bays = [
+      ...pola('ST-1', ['IN']),
+      ...pola('ST-2', ['IN', 'OUT']),
+      ...pola('ST-3', ['IN', 'OUT', 'FEEDER']),
+      ...pola('ST-4', ['IN', 'COUPLER', 'OUT']),
+    ];
+    snap.branches = [
+      { id: 'kabel-1-2', ref_id: 'kabel-1-2', name: 'Kabel 1-2', type: 'cable', from_bus_ref: 'ST-1/sn', to_bus_ref: 'ST-2/sn', tags: [], meta: {} } as never,
+      { id: 'kabel-2-3', ref_id: 'kabel-2-3', name: 'Kabel 2-3', type: 'cable', from_bus_ref: 'ST-2/sn', to_bus_ref: 'ST-3/sn', tags: [], meta: {} } as never,
+    ];
+    attachMainRun(snap, ['ST-1', 'ST-2', 'ST-3', 'ST-4'], 'run-station-types');
     const r = buildSldDataFromSnapshot(snap, null);
-    expect(r.stations).toHaveLength(5);
-    const types = r.stations.map((s) => s.topologicalType);
-    expect(types).toContain('końcowa');
-    expect(types).toContain('przelotowa');
-    expect(types).toContain('odgałęźna');
-    expect(types).toContain('sekcyjna');
+    expect(Object.fromEntries(r.stations.map((s) => [s.id, s.topologicalType]))).toEqual({
+      'ST-1': 'końcowa',
+      'ST-2': 'przelotowa',
+      'ST-3': 'odgałęźna',
+      'ST-4': 'sekcyjna',
+    });
   });
 
   it('stacje terenowe są poza strefą GPZ i nie są osadzane w ramce rozdzielni', () => {
@@ -1001,7 +1017,8 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.snBays).toBeDefined();
     expect(station.snBays).toEqual([]);
     expect(station.hasTransformer).toBe(false);
-    expect(station.footprintType).toBe('mv_lv_inline');
+    // Bez pól liniowych stacja jest końcowa (rodzaj z pól, nie z deklaracji `inline`).
+    expect(station.footprintType).toBe('mv_lv_terminal');
   });
 
   it('pola SN stacji z rekordów `bays`: kolejność zapisu, rola kanoniczna, oznaczenie z roli; pola nN poza blokiem SN', () => {
@@ -1276,7 +1293,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
 
-    expect(station.footprintType).toBe('mv_lv_inline');
+    // Stacja bez pól liniowych ⇒ układ końcowy (rodzaj z pól); DER po stronie nN nie zmienia
+    // układu SN na „der_station".
+    expect(station.footprintType).toBe('mv_lv_terminal');
     expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', hasBlockTransformer: false, count: 1, totalPMw: expect.any(Number) }]);
     // Zero fabrykacji (B-02): bez rekordów pól nN liczba odpływów nN = 0,
     // NIE „2 bo jest DER".
@@ -1938,8 +1957,19 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
   it('ciąg kablowy kończy się na ostatniej stacji i pokazuje trasę do kolejnej stacji', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
-      { id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's2', ref_id: 'ST-2', name: 'Stacja 2', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+      // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z topologii — Stacja 1 na szynie B2 między
+      // odcinkami, z kablem od szyny innej stacji (B1, „Stacja 0") i do Stacji 2 (B3), z polami
+      // WE i WY ⇒ przelotowa; dawniej z deklaracji `inline` na stacji bez pól i szyn.
+      { id: 's0', ref_id: 'ST-0', name: 'Stacja 0', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: ['B1'], transformer_refs: [] } as never,
+      {
+        id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], station_type: 'inline', bus_refs: ['B2'], transformer_refs: [], meta: {},
+      } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja 2', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['B3'], transformer_refs: [] } as never,
+    ];
+    // Pola WE i WY Stacji 1: rekordy `bays` (karta W5-B — jedyny nośnik pól).
+    snap.bays = [
+      { ref_id: 'ST-1/in', substation_ref: 'ST-1', bus_ref: 'B2', bay_role: 'IN', equipment_refs: [] } as never,
+      { ref_id: 'ST-1/out', substation_ref: 'ST-1', bus_ref: 'B2', bay_role: 'OUT', equipment_refs: [] } as never,
     ];
     snap.branches = [
       {
@@ -2575,10 +2605,19 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
       const id = `S${i.toString().padStart(2, '0')}`;
       const trId = `TR-${id}`;
       snap.substations.push({
-        id, ref_id: id, name: `Stacja ${id}`, tags: [], meta: {},
+        id, ref_id: id, name: `Stacja ${id}`, tags: [],
+        // Karta ETYKIETA-STACJI-PRZELOTOWEJ: S28 jest sekcyjna, bo MA sprzęgło w rozdzielnicy
+        // (rodzaj z pól — rekordy `bays` niżej, karta W5-B), a nie dlatego, że tak ją zadeklarowano.
+        meta: {},
         station_type: i === 28 ? 'sectional' : 'inline',
         bus_refs: [], transformer_refs: [trId],
       } as never);
+      if (i === 28) {
+        (snap.bays as never[]).push(
+          { ref_id: `${id}/in`, substation_ref: id, bus_ref: `${id}/sn`, bay_role: 'IN', equipment_refs: [] } as never,
+          { ref_id: `${id}/sp`, substation_ref: id, bus_ref: `${id}/sn`, bay_role: 'COUPLER', equipment_refs: [] } as never,
+        );
+      }
       (snap.transformers as never[]).push({
         id: `tr${i}`, ref_id: trId, name: trId, tags: [], meta: {},
         hv_bus_ref: 'busA', lv_bus_ref: `${id}-lv`,

@@ -70,6 +70,13 @@ export interface FaultMarker {
 }
 
 /**
+ * Krzywa na wykresie czasowo-prądowym — dokładnie te pola, które wykres czyta: punkty
+ * policzone w backendzie, nazwa, kolor i widoczność. Krzywa złożona urządzenia (kilka stopni) nie ma
+ * jednej normy ani jednego wariantu charakterystyki, więc wykres ich nie wymaga.
+ */
+export type KrzywaWykresuTcc = Pick<ProtectionCurve, 'id' | 'name_pl' | 'color' | 'points' | 'enabled'>;
+
+/**
  * Complete curve definition for editor.
  */
 export interface ProtectionCurve {

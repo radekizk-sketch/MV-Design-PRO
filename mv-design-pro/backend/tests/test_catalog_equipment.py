@@ -59,12 +59,48 @@ class TestTransformerCatalog:
             assert p["voltage_lv_kv"] in (15.0, 20.0)
 
     def test_sn_nn_voltage_levels(self):
-        """Transformatory SN/nN maja poprawne napiecia."""
-        allowed_lv_levels = {0.4, 0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3}
+        """Uzwojenie nN każdego transformatora SN/nN ma odbiorcę po stronie nN.
+
+        INTENCJA (zamiast zaszytego zbioru, który rozjeżdżał się z katalogiem przy każdej
+        nowej pozycji): napięcie nN transformatora ma sens fizyczny tylko wtedy, gdy coś
+        może pod nim pracować.
+        - Transformator blokowy DER (`TRANSFORMER_SN_NN_INVERTER_BLOCK`): uzwojenie nN =
+          `un_kv` (strona sieci) co najmniej jednego przekształtnika z katalogu — tor
+          przekształtnik → TR blokowy jest spójny (walidacja toru DER-SN odrzuca każdą
+          inną parę kodem `der.inverter_voltage_mismatch`).
+        - Pozostałe transformatory SN/nN: napięcie standardowe sieci nN 50 Hz wg IEC 60038
+          tab. 1 (230/400 V, 400/690 V, 1000 V); karta producenta o innym napięciu nN jest
+          dopuszczona tylko wtedy, gdy zasila przekształtnik z katalogu (np. 20/0,48 kV
+          pod PCS BESS 480 V).
+        """
+        from network_model.catalog.mv_transformer_catalog import TRANSFORMER_SN_NN_INVERTER_BLOCK
+
+        katalog = get_default_mv_catalog()
+        napiecia_przeksztaltnikow = {
+            t.un_kv
+            for t in (
+                *katalog.list_converter_types(),
+                *katalog.list_pv_inverter_types(),
+                *katalog.list_bess_inverter_types(),
+            )
+            if t.un_kv is not None
+        }
+        napiecia_standardowe_nn = {0.4, 0.69, 1.0}
+        blokowe = {t["id"] for t in TRANSFORMER_SN_NN_INVERTER_BLOCK}
+        assert blokowe, "katalog musi mieć transformatory blokowe DER"
         for t in get_sn_nn_transformer_types():
             p = t["params"]
-            assert p["voltage_hv_kv"] in (15.0, 20.0)
-            assert p["voltage_lv_kv"] in allowed_lv_levels
+            assert p["voltage_hv_kv"] in (15.0, 20.0), t["id"]
+            if t["id"] in blokowe:
+                assert p["voltage_lv_kv"] in napiecia_przeksztaltnikow, (
+                    f"{t['id']}: uzwojenie nN {p['voltage_lv_kv']} kV nie odpowiada "
+                    "napięciu żadnego przekształtnika z katalogu"
+                )
+            else:
+                assert (
+                    p["voltage_lv_kv"] in napiecia_standardowe_nn
+                    or p["voltage_lv_kv"] in napiecia_przeksztaltnikow
+                ), f"{t['id']}: napięcie nN {p['voltage_lv_kv']} kV bez odbiorcy"
 
     def test_transformer_uk_positive(self):
         """Wszystkie transformatory maja uk% > 0."""

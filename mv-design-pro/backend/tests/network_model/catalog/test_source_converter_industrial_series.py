@@ -17,6 +17,10 @@ from network_model.catalog.types import (
     CatalogVerificationStatus,
 )
 
+from tests.network_model.catalog.test_katalog_proweniencja_kompletnosc import (
+    oczekiwana_proweniencja,
+)
+
 
 def test_source_records_have_explicit_quality_metadata() -> None:
     assert len(SOURCE_SYSTEM_TYPES) >= 20
@@ -39,14 +43,18 @@ def test_source_catalog_statistics_reflect_wide_operating_range() -> None:
     assert len(stats["verification_statuses"]) == 1
 
 
+def _oczekiwana_proweniencja(params: dict) -> tuple[str, str]:
+    return oczekiwana_proweniencja(params["source_reference"])
+
+
 def test_converter_records_have_explicit_quality_metadata() -> None:
     all_records = CONVERTER_PV + CONVERTER_WIND + CONVERTER_BESS
     assert len(all_records) >= 20
     for record in all_records:
         params = record["params"]
-        assert params["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert params["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
-        assert params["source_reference"]
+        assert (params["verification_status"], params["catalog_status"]) == (
+            _oczekiwana_proweniencja(params)
+        ), record["id"]
         assert params["contract_version"] == CATALOG_CONTRACT_VERSION
 
 
@@ -70,7 +78,7 @@ def test_derived_pv_and_bess_namespaces_remain_provenanced() -> None:
 
     for item in pv + bess:
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
-        assert data["source_reference"]
+        assert (data["verification_status"], data["catalog_status"]) == (
+            _oczekiwana_proweniencja(data)
+        ), data["id"]
         assert data["contract_version"] == CATALOG_CONTRACT_VERSION

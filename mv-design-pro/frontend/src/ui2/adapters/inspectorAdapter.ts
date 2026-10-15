@@ -65,6 +65,7 @@ import type {
 import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
+import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -328,21 +329,26 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   ]);
 }
 
-const ETYKIETA_RODZAJU_STACJI: Readonly<Record<string, string>> = {
+/** Funkcja stacji z deklaracji (GPZ, rozdzielnica nN, rozdzielcza, odbiorcza) — to NIE jest rodzaj
+ *  topologiczny; ten pochodzi z jednej reguły produktu (`ui/shared/rodzajStacji.ts`). */
+const ETYKIETA_FUNKCJI_STACJI: Readonly<Record<string, string>> = {
   gpz: 'GPZ',
-  mv_lv: 'SN/nN',
   switching: 'Rozdzielcza',
   customer: 'Odbiorcza',
-  inline: 'Przelotowa',
-  branch: 'Odgałęźna',
-  terminal: 'Końcowa',
-  sectional: 'Sekcyjna',
   rozdzielnica_nn: 'Rozdzielnica nN',
 };
 
-function wlasciwosciStacji(el: Substation): WierszWlasciwosci[] {
+function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWlasciwosci[] {
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: „Rodzaj stacji" z topologii (liczba pól liniowych,
+  // sprzęgło, połączenia) — dawniej 1:1 z deklaracji `station_type` (inna odpowiedź niż schemat).
+  const rodzaj = rodzajStacji(model, el.ref_id);
   return bezNulli([
-    wr('Rodzaj stacji', ETYKIETA_RODZAJU_STACJI[el.station_type] ?? el.station_type),
+    wr(
+      'Rodzaj stacji',
+      rodzaj ? podpisRodzajuStacjiPl(rodzaj.rodzaj) : (ETYKIETA_FUNKCJI_STACJI[el.station_type] ?? 'Stacja SN/nN'),
+    ),
+    w('Podstawa rodzaju', rodzaj?.przyczynaPl ?? null),
+    w('Funkcja stacji', ETYKIETA_FUNKCJI_STACJI[el.station_type] ?? null),
     w('Konstrukcja', el.construction_type ?? null),
     w('Oznaczenie', el.designation ?? null),
     wr('Liczba szyn', el.bus_refs.length),
@@ -486,7 +492,11 @@ function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
  * fixture z KOMPLETEM pól} sprawdza, że KAŻDY typ zwraca >= 1 wiersz —
  * brak wpisu (nowy typ w `EnergyNetworkModel`) jest czerwony.
  */
-function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWlasciwosci[] {
+function wlasciwosciKatalogoweWgTypu(
+  typ: string,
+  element: ENMElement,
+  model: EnergyNetworkModel,
+): WierszWlasciwosci[] {
   switch (typ) {
     case 'szyna':
       return wlasciwosciSzyny(element as unknown as Bus);
@@ -509,7 +519,7 @@ function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWl
     case 'bateria_kondensatorow':
       return wlasciwosciBaterii(element as unknown as ShuntCapacitor);
     case 'stacja':
-      return wlasciwosciStacji(element as unknown as Substation);
+      return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
       return wlasciwosciPola(element as unknown as Bay);
     case 'wezel':
@@ -531,8 +541,12 @@ function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWl
   }
 }
 
-function sekcjaWlasciwosciKatalogowych(typ: string, element: ENMElement): SekcjaWlasciwosci | null {
-  const wiersze = wlasciwosciKatalogoweWgTypu(typ, element);
+function sekcjaWlasciwosciKatalogowych(
+  typ: string,
+  element: ENMElement,
+  model: EnergyNetworkModel,
+): SekcjaWlasciwosci | null {
+  const wiersze = wlasciwosciKatalogoweWgTypu(typ, element, model);
   if (wiersze.length === 0) return null;
   return { id: 'katalogowe', tytul: 'Właściwości katalogowe', wiersze };
 }
@@ -546,7 +560,7 @@ export function mapowanieObiektuInspektora(
   const znaleziony = znajdzElement(model, id);
   if (!znaleziony) return null;
   const { element, typ, typEtykieta } = znaleziony;
-  const sekcjaKatalogowa = sekcjaWlasciwosciKatalogowych(typ, element);
+  const sekcjaKatalogowa = sekcjaWlasciwosciKatalogowych(typ, element, model);
   return {
     id: element.id,
     typ,

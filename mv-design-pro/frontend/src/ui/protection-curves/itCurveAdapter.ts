@@ -23,11 +23,14 @@ import { CURVE_COLORS } from './types';
  * Kody braku danych krzywej I-t (z backendu) → uczciwe przyczyny po polsku.
  * Zgodne z `protection_read_model._build_it_curve` (`missing.append(...)`).
  */
-const IT_CURVE_MISSING_REASON_PL: Record<string, string> = {
+export const IT_CURVE_MISSING_REASON_PL: Record<string, string> = {
   time_multiplier:
     'Brak mnożnika czasowego (TMS) — krzywa odwrotna niedostępna',
-  pickup_current: 'Brak progu rozruchowego (nastawy prądowej Ip)',
   definite_time: 'Brak zwłoki czasowej dla charakterystyki niezależnej (DT)',
+  curve_type: 'Brak charakterystyki czasowo-prądowej stopnia',
+  threshold_unit:
+    'Próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna) — prądu pierwotnego nie wyznaczono',
+  ct_ratio: 'Brak przekładni przekładnika prądowego — prądu pierwotnego progu nie wyznaczono',
   it_curve_points: 'Solver nie zwrócił punktów krzywej',
 };
 

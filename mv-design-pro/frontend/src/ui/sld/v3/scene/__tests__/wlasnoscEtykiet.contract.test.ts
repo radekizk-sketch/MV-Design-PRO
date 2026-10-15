@@ -502,8 +502,6 @@ describe('BLOK-LATERAL-WLASNOSC §6 — deklaracja celu kliknięcia zgadza się 
    *    korzeń JEST jej uczciwym właścicielem. To samo dotyczy badge „NO".
    *    Szkodliwy jest ref CUDZEGO obiektu, nie ref własnego rodzica.
    */
-  const DEKLARACJE_SPRAWDZANE = ['segment', 'station', 'der'] as const;
-
   for (const lod of LODY) {
     it(`L${lod}: każda deklaracja z tabeli trafień zgadza się z tym, czym ref NAPRAWDĘ jest`, () => {
       const scene = sceneByLod[lod];
