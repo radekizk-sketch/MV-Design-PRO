@@ -1725,7 +1725,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta DYNAMIKA-W-TLE (2026-10-15): 4116 -> 4126 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`f3c435b6`), roznica zbiorow: +10 (`wykonane`, `razem`,
+    # `ulamek` — `PostepBiegu`; `czy_anulowano`, `zglos_postep` — `KontekstWykonania`
+    # w `domain/execution.py`; `anulowanie`, `w_toku`, `wykonaj`, `postep` — rekord zlecenia
+    # wykonawcy w `application/execution/wykonawca.py`; `nadzorca` — pole `SilnikDynamiki`,
+    # punkt przerwania po kroku calkowania), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4126." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,7 +1909,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta DYNAMIKA-W-TLE (2026-10-15): 561 -> 563 (+1 `network_model/solvers/dynamika/
+        # przerwanie.py`, +2 `application/execution/{__init__,wykonawca}.py`, -1 `api/celery_app.py`
+        # — martwa konfiguracja Celery skasowana z bramka wskrzeszenia). POMIAR guardem.
+        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2027,7 +2036,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta DYNAMIKA-W-TLE (2026-10-15): network_model 183 -> 184 (+1 `solvers/dynamika/
+        # przerwanie.py` — protokol nadzorcy biegu i wyjatek przerwania); dlug i wykluczenia
+        # BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  network_model: pliki_skanowane=184, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2130,9 +2142,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta DYNAMIKA-W-TLE (2026-10-15): application 245 -> 247 (+2 `application/execution/
+        # {__init__,wykonawca}.py` — wykonawca biegow w procesie); dlug i wykluczenia BEZ ZMIAN.
+        "  application: pliki_skanowane=247, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
+        # Karta DYNAMIKA-W-TLE (2026-10-15): api 64 -> 63 (-1 `api/celery_app.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  api: pliki_skanowane=63, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
