@@ -72,34 +72,53 @@ def test_biezacy_proces_ma_wlasna_wartosc_poza_drzewem_repo(zmienna: str) -> Non
     assert not Path(sciezka).resolve().is_relative_to(REPO), wartosc
 
 
-def _watki_openblas_procesu() -> int:
-    """Liczba wątków OpenBLAS załadowanego przez numpy W TYM procesie (z `/proc/self/maps`)."""
+#: Funkcje odczytu liczby wątków w bibliotekach OpenBLAS kół numpy (`openblas64_` z
+#: przyrostkiem ILP64) i scipy (`scipy_openblas`, własna kopia biblioteki w `scipy.libs`).
+SYMBOLE_WATKOW = (
+    "openblas_get_num_threads64_",
+    "openblas_get_num_threads",
+    "scipy_openblas_get_num_threads64_",
+    "scipy_openblas_get_num_threads",
+)
+
+
+def _watki_openblas_procesu() -> dict[str, int]:
+    """Liczba wątków KAŻDEJ biblioteki OpenBLAS załadowanej w tym procesie (`/proc/self/maps`).
+
+    numpy i scipy niosą OSOBNE kopie OpenBLAS (pomiar CI 2026-10-01: w workerze xdist
+    załadowane obie), a każda czyta zmienną środowiska przy własnym załadowaniu — więc
+    sprawdzamy obie, po jawnym wywołaniu algebry z każdego pakietu."""
     import ctypes
 
     import numpy as np
+    import scipy.linalg
 
-    np.dot(np.ones((2, 2)), np.ones((2, 2)))  # biblioteka załadowana i zainicjowana
-    sciezki = {
-        linia.split()[-1]
-        for linia in Path("/proc/self/maps").read_text(encoding="utf-8").splitlines()
-        if "openblas" in linia.rsplit("/", 1)[-1]
-    }
-    assert len(sciezki) == 1, sciezki
-    biblioteka = ctypes.CDLL(sciezki.pop())
-    for symbol in ("openblas_get_num_threads64_", "openblas_get_num_threads"):
-        funkcja = getattr(biblioteka, symbol, None)
-        if funkcja is not None:
-            return int(funkcja())
-    raise AssertionError("OpenBLAS bez funkcji openblas_get_num_threads")
+    np.dot(np.ones((2, 2)), np.ones((2, 2)))
+    scipy.linalg.inv(np.eye(2))
+    wynik: dict[str, int] = {}
+    for sciezka in sorted(
+        {
+            linia.split()[-1]
+            for linia in Path("/proc/self/maps").read_text(encoding="utf-8").splitlines()
+            if "openblas" in linia.rsplit("/", 1)[-1]
+        }
+    ):
+        biblioteka = ctypes.CDLL(sciezka)
+        funkcje = [getattr(biblioteka, s) for s in SYMBOLE_WATKOW if hasattr(biblioteka, s)]
+        assert funkcje, f"{sciezka}: OpenBLAS bez funkcji odczytu liczby wątków"
+        wynik[Path(sciezka).name] = int(funkcje[0]())
+    return wynik
 
 
 def test_worker_xdist_liczy_jednym_watkiem_blas() -> None:
     """Pod xdist każdy worker ma `OPENBLAS_NUM_THREADS=1` (chyba że wskazano inaczej
-    z zewnątrz) i biblioteka NAPRAWDĘ liczy tyloma wątkami — czyli zmienna weszła przed
-    pierwszym importem numpy. W biegu jednoprocesowym sprawdzamy tę samą zgodność, gdy
-    zmienna jest ustawiona."""
+    z zewnątrz) i KAŻDA załadowana biblioteka OpenBLAS (numpy i scipy) naprawdę liczy tyloma
+    wątkami — czyli zmienna weszła przed pierwszym importem obu pakietów. W biegu
+    jednoprocesowym sprawdzamy tę samą zgodność, gdy zmienna jest ustawiona."""
     if "PYTEST_XDIST_WORKER" in os.environ:
         assert os.environ.get("OPENBLAS_NUM_THREADS"), "worker xdist bez OPENBLAS_NUM_THREADS"
     wartosc = os.environ.get("OPENBLAS_NUM_THREADS")
     if wartosc:
-        assert _watki_openblas_procesu() == int(wartosc)
+        watki = _watki_openblas_procesu()
+        assert len(watki) >= 2, watki  # numpy + scipy
+        assert set(watki.values()) == {int(wartosc)}, watki
