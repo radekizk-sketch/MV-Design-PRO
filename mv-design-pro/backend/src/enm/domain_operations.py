@@ -3698,9 +3698,15 @@ def _response(
 
 
 def _error_response(
-    message: str, code: str = "UNKNOWN", *, kod_reguly_katalogu: str | None = None
+    message: str, code: str, *, kod_reguly_katalogu: str | None = None
 ) -> dict[str, Any]:
     """Odpowiedź błędu operacji.
+
+    ``code`` jest OBOWIĄZKOWY: każda odmowa operacji domenowej niesie nazwany
+    ``error_code``, więc wołający czytają go wprost (``wynik["error_code"]``), bez zapasu —
+    dawny domyślny ``"UNKNOWN"`` i zapasy wołających (``"catalog.assign_failed"``,
+    ``"generator.create_failed"``, ``"der_bindings.failed"``) były kodami spoza
+    ``READINESS_CODES``.
 
     ``kod_reguly_katalogu`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmowę zgłosiła
     brama rekordu katalogu: należy do maszynowej części odpowiedzi (obok ``error_code``),
@@ -5780,7 +5786,7 @@ def _brama_katalogowa_aparatu_sn(
         # katalogu”) i nazwę grupy — drugie zdanie o tym samym byłoby powtórzeniem.
         return _error_response(
             f"{opis_pl}: {materialization['error']}",
-            str(materialization.get("error_code") or "catalog.item_not_found"),
+            str(materialization["error_code"]),
         )
     return materialization
 
@@ -5913,7 +5919,7 @@ def _zastosuj_wyposazenie_pol(
                     return _error_response(
                         f"{nazwa_pola} — nie udało się dodać {etykieta}: "
                         f"{materializacja['error']}",
-                        str(materializacja.get("error_code") or kod_bledu),
+                        str(materializacja["error_code"]),
                     )
             odpowiedz = handlery[nazwa_operacji](new_enm, {**dane, "bay_ref": field_ref})
             blad = odpowiedz.get("error")
@@ -5921,7 +5927,7 @@ def _zastosuj_wyposazenie_pol(
                 nazwa_pola = _nazwa_pola_w_modelu(new_enm, field_ref, field_role)
                 return _error_response(
                     f"{nazwa_pola} — nie udało się dodać {etykieta}: {blad}",
-                    str(odpowiedz.get("error_code") or kod_bledu),
+                    str(odpowiedz["error_code"]),
                 )
             migawka = odpowiedz.get("snapshot")
             if not isinstance(migawka, dict):
@@ -5989,7 +5995,7 @@ def _zastosuj_zaczepy_transformatora(
     if blad:
         return _error_response(
             f"{transformator} — nie udało się ustawić zaczepów: {blad}",
-            str(odpowiedz.get("error_code") or kod_bledu),
+            str(odpowiedz["error_code"]),
         )
     migawka = odpowiedz.get("snapshot")
     if not isinstance(migawka, dict):
@@ -6309,7 +6315,7 @@ def _materialize_nn_source(
             if isinstance(protection_materialization, dict):
                 return _error_response(
                     f"Zabezpieczenie źródła nN: {protection_materialization['error']}",
-                    str(protection_materialization.get("error_code") or "catalog.item_not_found"),
+                    str(protection_materialization["error_code"]),
                 )
 
     generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
