@@ -40,10 +40,20 @@ from dynamic_lab.tozsamosc import pole_artefakt, pole_nastawa, pole_opisowe
 
 
 class UrzadzenieDynamiczne(Protocol):
-    """Kontrakt urządzenia dynamicznego — solver-neutralny."""
+    """Kontrakt urządzenia dynamicznego — solver-neutralny.
 
-    ref: str
-    szyna: str
+    Składowe TYLKO DO ODCZYTU: urządzenia bywają zamrożonymi dataklasami, a
+    `ZespolSynchroniczny` wystawia `ref`/`szyna` jako właściwości wyprowadzone
+    z maszyny. Protokół ze zmiennymi modyfikowalnymi nie był przez nie
+    spełniany, więc silnik typował listę urządzeń jako `list[object]` i każde
+    sięgnięcie po `u.szyna` było błędem typów.
+    """
+
+    @property
+    def ref(self) -> str: ...
+
+    @property
+    def szyna(self) -> str: ...
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         """Nazwy stanów w kolejności wektora ``x`` (dokumentacja + diagnostyka)."""

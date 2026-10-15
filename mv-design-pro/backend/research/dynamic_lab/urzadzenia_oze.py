@@ -201,6 +201,14 @@ class JednostkaSterowana(Protocol):
 
     def nazwy_stanow(self) -> tuple[str, ...]: ...
 
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Jednostki stanów — CZĘŚĆ KONTRAKTU, nie szczegół implementacji.
+
+        Wołający (`RegulatorElektrowniPPC`) składa wektor stanu z jednostek
+        podjednostek; protokół, który ich nie deklaruje, pozwala wpiąć jednostkę
+        bez jednostek i wykryć to dopiero w czasie wykonania."""
+        ...
+
     def pochodne_ze_zadaniem(
         self,
         x: NDArray[np.float64],

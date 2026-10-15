@@ -51,7 +51,7 @@ from dynamic_lab.mutacje import KlasaDefektu, Mutacja
 # ---------------------------------------------------------------------------
 
 
-def _bez_kontroli_czasu() -> AbstractContextManager[None]:
+def _bez_kontroli_czasu() -> AbstractContextManager[Any]:
     """Usuwa kontrolę ŚCISŁEJ MONOTONICZNOŚCI osi czasu z kontraktu wyniku.
 
     Pozostałe kontrole zostają — mutacja ma być PUNKTOWA, inaczej nie wiadomo,
@@ -81,10 +81,10 @@ def _bez_kontroli_czasu() -> AbstractContextManager[None]:
         if len(set(tozsamosci)) != len(tozsamosci):
             raise KolizjaSygnaluError("mutacja: kontrola kolizji zachowana")
 
-    return patch.object(WynikDynamiczny, "__post_init__", zmutowany)
+    return patch.object(WynikDynamiczny, "__post_init__", new=zmutowany)
 
 
-def _bez_kontroli_dlugosci_kanalow() -> AbstractContextManager[None]:
+def _bez_kontroli_dlugosci_kanalow() -> AbstractContextManager[Any]:
     """Usuwa kontrolę RÓWNOLEGŁOŚCI SERII (długość przebiegu = długość osi czasu)."""
     from dynamic_lab.skonczonosc import wymagaj_skonczonosci
     from dynamic_lab.wynik import (
@@ -109,10 +109,10 @@ def _bez_kontroli_dlugosci_kanalow() -> AbstractContextManager[None]:
         if len(set(tozsamosci)) != len(tozsamosci):
             raise KolizjaSygnaluError("mutacja: kontrola kolizji zachowana")
 
-    return patch.object(WynikDynamiczny, "__post_init__", zmutowany)
+    return patch.object(WynikDynamiczny, "__post_init__", new=zmutowany)
 
 
-def _zdarzenie_ignoruje_tozsamosc() -> AbstractContextManager[None]:
+def _zdarzenie_ignoruje_tozsamosc() -> AbstractContextManager[Any]:
     """Zdarzenie wyłącza PIERWSZĄ załączoną gałąź zamiast wskazanej tożsamością.
 
     To jest defekt adresowania w najczystszej postaci: scenariusz mówi „wyłącz
@@ -127,7 +127,7 @@ def _zdarzenie_ignoruje_tozsamosc() -> AbstractContextManager[None]:
                 return topologia.z_wylaczona_galezia_po_id(galaz.ident)
         raise ValueError("mutacja: brak załączonej gałęzi")
 
-    return patch.object(WylaczenieGalezi, "zastosuj", zmutowany)
+    return patch.object(WylaczenieGalezi, "zastosuj", new=zmutowany)
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ def _zdarzenie_ignoruje_tozsamosc() -> AbstractContextManager[None]:
 # ---------------------------------------------------------------------------
 
 
-def _akceptuje_nan_i_inf() -> AbstractContextManager[None]:
+def _akceptuje_nan_i_inf() -> AbstractContextManager[Any]:
     """``wymagaj_skonczonosci`` przestaje cokolwiek wymagać.
 
     Podmieniane jest JEDNO miejsce, przez które przechodzą wszystkie kontrole
@@ -153,17 +153,17 @@ def _akceptuje_nan_i_inf() -> AbstractContextManager[None]:
     @contextmanager
     def instaluj() -> Iterator[None]:
         with (
-            patch.object(skonczonosc, "wymagaj_skonczonosci", zmutowany),
-            patch.object(calkowanie, "wymagaj_skonczonosci", zmutowany),
-            patch.object(silnik, "wymagaj_skonczonosci", zmutowany),
-            patch.object(wynik, "wymagaj_skonczonosci", zmutowany),
+            patch.object(skonczonosc, "wymagaj_skonczonosci", new=zmutowany),
+            patch.object(calkowanie, "wymagaj_skonczonosci", new=zmutowany),
+            patch.object(silnik, "wymagaj_skonczonosci", new=zmutowany),
+            patch.object(wynik, "wymagaj_skonczonosci", new=zmutowany),
         ):
             yield
 
     return instaluj()
 
 
-def _falszywa_zbieznosc_scisla() -> AbstractContextManager[None]:
+def _falszywa_zbieznosc_scisla() -> AbstractContextManager[Any]:
     """Krok metody jawnej melduje ``STRICT_CONVERGENCE`` BEZWARUNKOWO.
 
     Dokładnie stan sprzed naprawy §2: „nie ma układu nieliniowego, więc nie ma
@@ -185,10 +185,10 @@ def _falszywa_zbieznosc_scisla() -> AbstractContextManager[None]:
             przyczyna="mutacja: status bezwarunkowy",
         )
 
-    return patch.object(calkowanie, "_sprawozdanie_metody_jawnej", zmutowany)
+    return patch.object(calkowanie, "_sprawozdanie_metody_jawnej", new=zmutowany)
 
 
-def _rk4_degradowane_do_rzedu_drugiego() -> AbstractContextManager[None]:
+def _rk4_degradowane_do_rzedu_drugiego() -> AbstractContextManager[Any]:
     """``Rk4`` liczy punktem środkowym (rząd 2), ale nadal deklaruje ``rzad = 4``.
 
     MUTANT C RECENZJI NIEZALEŻNEJ (P1-DELTA-19), który PRZEŻYŁ kampanię na
@@ -208,10 +208,10 @@ def _rk4_degradowane_do_rzedu_drugiego() -> AbstractContextManager[None]:
         x1 = x + dt * k2
         return x1, calkowanie._sprawozdanie_metody_jawnej(2, x1, metoda=self.nazwa)
 
-    return patch.object(calkowanie.Rk4, "krok_ze_sprawozdaniem", krok_ze_sprawozdaniem)
+    return patch.object(calkowanie.Rk4, "krok_ze_sprawozdaniem", new=krok_ze_sprawozdaniem)
 
 
-def _przebieg_przyjmuje_wadliwa_os_czasu() -> AbstractContextManager[None]:
+def _przebieg_przyjmuje_wadliwa_os_czasu() -> AbstractContextManager[Any]:
     """``Przebieg`` przestaje sprawdzać oś czasu i wartości.
 
     P1-DELTA-20 recenzji niezależnej: katalog mutacji NIE ATAKOWAŁ klasy
@@ -225,10 +225,10 @@ def _przebieg_przyjmuje_wadliwa_os_czasu() -> AbstractContextManager[None]:
     def bez_kontroli(self: Any) -> None:
         return None
 
-    return patch.object(wzorzec_trajektoria.Przebieg, "__post_init__", bez_kontroli)
+    return patch.object(wzorzec_trajektoria.Przebieg, "__post_init__", new=bez_kontroli)
 
 
-def _tolerancja_kroku_przestaje_zalezec_od_kroku() -> AbstractContextManager[None]:
+def _tolerancja_kroku_przestaje_zalezec_od_kroku() -> AbstractContextManager[Any]:
     """Tolerancja równania kroku znów STAŁA, niezależna od ``dt``.
 
     Odtworzenie defektu ZNALEZIONEGO przy okazji §5 i naprawionego u źródła.
@@ -246,10 +246,10 @@ def _tolerancja_kroku_przestaje_zalezec_od_kroku() -> AbstractContextManager[Non
     def zmutowany(dt: float, rzad: int) -> float:
         return 1.0
 
-    return patch.object(calkowanie, "wspolczynnik_kroku", zmutowany)
+    return patch.object(calkowanie, "wspolczynnik_kroku", new=zmutowany)
 
 
-def _rzutowanie_przyjmuje_wartosci_niepoprawne() -> AbstractContextManager[None]:
+def _rzutowanie_przyjmuje_wartosci_niepoprawne() -> AbstractContextManager[Any]:
     """Nakładka niezmienników RZUTUJE ``NaN`` na granicę przedziału.
 
     Odtworzenie mechanizmu sprzed naprawy §2: ``NaN`` przechodził przez predykat
@@ -281,7 +281,7 @@ def _rzutowanie_przyjmuje_wartosci_niepoprawne() -> AbstractContextManager[None]
             )
         return wynik
 
-    return patch.object(IntegratorZNiezmiennikami, "_rzutuj", zmutowany)
+    return patch.object(IntegratorZNiezmiennikami, "_rzutuj", new=zmutowany)
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +289,7 @@ def _rzutowanie_przyjmuje_wartosci_niepoprawne() -> AbstractContextManager[None]
 # ---------------------------------------------------------------------------
 
 
-def _odwrocony_znak_w_rownaniu_wahan() -> AbstractContextManager[None]:
+def _odwrocony_znak_w_rownaniu_wahan() -> AbstractContextManager[Any]:
     """``d(delta)/dt = -OMEGA_S·(omega - 1)`` — zgubiony znak w równaniu wahań.
 
     Klasyczny defekt symulacji: przebieg nadal wygląda jak oscylacja, więc oko
@@ -313,10 +313,10 @@ def _odwrocony_znak_w_rownaniu_wahan() -> AbstractContextManager[None]:
         dx[0] = -OMEGA_S * (float(x[1]) - 1.0)
         return dx
 
-    return patch.object(MaszynaSynchroniczna4Rzedu, "pochodne_bez_regulatorow", zmutowany)
+    return patch.object(MaszynaSynchroniczna4Rzedu, "pochodne_bez_regulatorow", new=zmutowany)
 
 
-def _magazyn_bez_limitu_energii() -> AbstractContextManager[None]:
+def _magazyn_bez_limitu_energii() -> AbstractContextManager[Any]:
     """Bramka okna SOC przestaje ograniczać moc — magazyn oddaje bez końca.
 
     Defekt P0 z §1 w czystej postaci: zapas energii istnieje jako stan, ale nie
@@ -327,10 +327,10 @@ def _magazyn_bez_limitu_energii() -> AbstractContextManager[None]:
     def zmutowany(self: Any, soc: float, p_pu: float) -> float:
         return 1.0
 
-    return patch.object(MagazynEnergiiBESS, "bramka_energii", zmutowany)
+    return patch.object(MagazynEnergiiBESS, "bramka_energii", new=zmutowany)
 
 
-def _wylaczenie_rozpina_korytarz() -> AbstractContextManager[None]:
+def _wylaczenie_rozpina_korytarz() -> AbstractContextManager[Any]:
     """Wyłączenie gałęzi po tożsamości wyłącza WSZYSTKIE gałęzie tej pary szyn.
 
     Odtworzenie defektu sprzed naprawy: przy dwóch torach równoległych
@@ -351,7 +351,7 @@ def _wylaczenie_rozpina_korytarz() -> AbstractContextManager[None]:
         ]
         return replace(self, galezie=nowe)
 
-    return patch.object(TopologiaSieci, "z_wylaczona_galezia_po_id", zmutowany)
+    return patch.object(TopologiaSieci, "z_wylaczona_galezia_po_id", new=zmutowany)
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +359,7 @@ def _wylaczenie_rozpina_korytarz() -> AbstractContextManager[None]:
 # ---------------------------------------------------------------------------
 
 
-def _staly_odcisk_implementacji() -> AbstractContextManager[None]:
+def _staly_odcisk_implementacji() -> AbstractContextManager[Any]:
     """``odcisk_implementacji`` zwraca STAŁĄ zamiast skrótu treści modułów.
 
     Zarzut audytu wprost: „po zastąpieniu odcisku stałym SHA kampania nadal
@@ -373,8 +373,8 @@ def _staly_odcisk_implementacji() -> AbstractContextManager[None]:
     @contextmanager
     def instaluj() -> Iterator[None]:
         with (
-            patch.object(tozsamosc, "odcisk_implementacji", zmutowany),
-            patch.object(tozsamosc, "_policz_odcisk_implementacji", zmutowany),
+            patch.object(tozsamosc, "odcisk_implementacji", new=zmutowany),
+            patch.object(tozsamosc, "_policz_odcisk_implementacji", new=zmutowany),
         ):
             yield
 

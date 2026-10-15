@@ -33,11 +33,23 @@ class NieobslugiwaneZdarzenieError(RuntimeError):
 
 
 class Zdarzenie(Protocol):
-    """Zdarzenie stosowane do modelu w chwili ``czas_s``."""
+    """Zdarzenie stosowane do modelu w chwili ``czas_s``.
 
-    czas_s: float
-    priorytet: int
-    opis: str
+    Składowe TYLKO DO ODCZYTU — wszystkie zdarzenia są zamrożonymi dataklasami,
+    więc protokół ze zmiennymi MODYFIKOWALNYMI nie byłby przez nie spełniany.
+    To nie jest kosmetyka typów: dopóki protokół deklarował zmienne, ŻADNA
+    konkretna klasa zdarzenia go nie spełniała i system typów był dla całej
+    rodziny bezczynny.
+    """
+
+    @property
+    def czas_s(self) -> float: ...
+
+    @property
+    def priorytet(self) -> int: ...
+
+    @property
+    def opis(self) -> str: ...
 
     def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
         """Zwróć NOWĄ topologię po zastosowaniu zdarzenia."""

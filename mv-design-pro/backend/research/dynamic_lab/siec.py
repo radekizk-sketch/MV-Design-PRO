@@ -32,6 +32,7 @@ docelowo będzie chciał trzymać faktoryzację LU między krokami.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 import numpy as np
@@ -661,8 +662,12 @@ class SolverSieci:
         return jak
 
 
-FunkcjaWstrzyknięć = object
-"""Alias dokumentacyjny: wywoływalne ``NDArray[complex] -> NDArray[complex]``."""
+FunkcjaWstrzyknięć = Callable[[NDArray[np.complex128]], NDArray[np.complex128]]
+"""Wstrzyknięcia prądów w funkcji napięć: ``NDArray[complex] -> NDArray[complex]``.
+
+Alias był wcześniej `object`, czyli NIE TYPOWAŁ NICZEGO: każde wywołanie
+argumentu tego typu mypy zgłaszał jako „object not callable", a kontrakt
+funkcji wstrzyknięć istniał wyłącznie w docstringu."""
 
 
 def ybus_z_produkcji(

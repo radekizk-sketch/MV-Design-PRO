@@ -19,6 +19,7 @@ a przez nie prądy, moce i pochodne wszystkich urządzeń.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 import numpy as np
@@ -44,6 +45,7 @@ from dynamic_lab.tozsamosc import (
     odcisk_topologii,
 )
 from dynamic_lab.tozsamosc import odcisk as odcisk_kanoniczny
+from dynamic_lab.urzadzenia import UrzadzenieDynamiczne
 from dynamic_lab.wynik import (
     KONTRAKT,
     BladSolvera,
@@ -84,7 +86,7 @@ class ModelDynamiczny:
     """Kompletny model: topologia + urządzenia + baza mocy."""
 
     topologia: TopologiaSieci
-    urzadzenia: list[object]
+    urzadzenia: list[UrzadzenieDynamiczne]
     s_bazowa_mva: float = 100.0
 
     def __post_init__(self) -> None:
@@ -105,7 +107,7 @@ class UkladStanu:
     dlugosc: int = 0
 
     @classmethod
-    def zbuduj(cls, urzadzenia: list[object]) -> UkladStanu:
+    def zbuduj(cls, urzadzenia: list[UrzadzenieDynamiczne]) -> UkladStanu:
         uklad = cls()
         pozycja = 0
         for u in urzadzenia:
@@ -168,7 +170,9 @@ class SilnikRMS:
 
     # -- warstwa algebraiczna -------------------------------------------------
 
-    def _wstrzykniecia(self, x: NDArray[np.float64]):
+    def _wstrzykniecia(
+        self, x: NDArray[np.float64]
+    ) -> Callable[[NDArray[np.complex128]], NDArray[np.complex128]]:
         idx = self.model.topologia.indeks
 
         def funkcja(v: NDArray[np.complex128]) -> NDArray[np.complex128]:

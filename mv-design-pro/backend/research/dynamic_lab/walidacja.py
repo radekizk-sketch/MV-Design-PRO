@@ -114,7 +114,8 @@ def przeregulowanie(sygnal: NDArray[np.float64] | list[float], *, wartosc_ustalo
     y = np.asarray(sygnal, dtype=np.float64)
     if abs(wartosc_ustalona) < 1e-12:
         return float(np.max(np.abs(y)))
-    return float(max(0.0, (np.max(y) - wartosc_ustalona) / abs(wartosc_ustalona)))
+    nadwyzka = (float(np.max(y)) - wartosc_ustalona) / abs(wartosc_ustalona)
+    return max(0.0, nadwyzka)
 
 
 # ---------------------------------------------------------------------------

@@ -321,11 +321,21 @@ class DziennikKrokow:
 
 
 class Integrator(Protocol):
-    """Kontrakt integratora: jeden krok o długości ``dt``."""
+    """Kontrakt integratora: jeden krok o długości ``dt``.
 
-    nazwa: str
-    rzad: int
-    jawny: bool
+    Składowe TYLKO DO ODCZYTU — integratory są zamrożonymi dataklasami, więc
+    protokół ze zmiennymi modyfikowalnymi nie był przez nie spełniany i rejestr
+    `INTEGRATORY` nie typował się wcale.
+    """
+
+    @property
+    def nazwa(self) -> str: ...
+
+    @property
+    def rzad(self) -> int: ...
+
+    @property
+    def jawny(self) -> bool: ...
 
     def krok(
         self, f: Pochodna, x: NDArray[np.float64], t: float, dt: float
@@ -521,16 +531,27 @@ _ZASTOJ_POD_RZAD = 3
 
 
 class _IntegratorNiejawny(Protocol):
-    rzad: int
-    """Rząd metody — wchodzi do SKALOWANIA tolerancji równania kroku.
+    @property
+    def rzad(self) -> int:
+        """Rząd metody — wchodzi do SKALOWANIA tolerancji równania kroku.
 
-    Tolerancja rozwiązania musi leżeć poniżej błędu obcięcia, a ten zależy od
-    rzędu. Metoda, która nie deklaruje rzędu, nie umie skalibrować własnej
-    tolerancji — dlatego rząd jest częścią protokołu, nie szczegółem klasy."""
-    kryterium: KryteriumZbieznosci
-    maks_iteracji: int
-    dopuszczaj_zastoj: bool
-    dziennik: DziennikKrokow | None
+        Tolerancja rozwiązania musi leżeć poniżej błędu obcięcia, a ten zależy
+        od rzędu. Metoda, która nie deklaruje rzędu, nie umie skalibrować
+        własnej tolerancji — dlatego rząd jest częścią protokołu, nie szczegółem
+        klasy."""
+        ...
+
+    @property
+    def kryterium(self) -> KryteriumZbieznosci: ...
+
+    @property
+    def maks_iteracji(self) -> int: ...
+
+    @property
+    def dopuszczaj_zastoj(self) -> bool: ...
+
+    @property
+    def dziennik(self) -> DziennikKrokow | None: ...
 
 
 def _krok_niejawny(
