@@ -567,10 +567,10 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
    - IEEE liczone wzorem IEC;
    - DT bez zwłoki = 0 s.
 
-   Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. OD-18 ROZSTRZYGNIĘTE
-   2026-09-30 (V12K-341, zgoda B-01 w ramach O-59): kasacja na amen w osobnej karcie W3-A-DOMKNIĘCIE
-   (sankcja `SANCTIONED_CHANGES` już wpisana) — w tej karcie nadal go nie ruszaj, wpisz do meldunku
-   odsyłacz do W3-A-DOMKNIĘCIE.
+   Martwy `domain/protection_engine_v1.py` był pod `solver_boundary_guard`. OD-18 ROZSTRZYGNIĘTE
+   2026-09-30 (V12K-341, zgoda B-01 w ramach O-59). **Stan 2026-09-30:** `domain/protection_engine_v1.py`
+   skasowany w karcie RESULTSET-MARTWE-MAPPERY i zdjęty z `solver_boundary_guard.py::WATCHED_PATHS`
+   (scalona w partii integracji 8); punkt nieaktualny.
 4. **Zero wartości domyślnych i połkniętych błędów.**
    - `_extract_setting_value` i każde miejsce inwentarza z domyślnym prądem, TMS, zwłoką, krzywą,
      prądem testowym „10× nastawa” albo progiem 0 (`protection_read_model`) znika.

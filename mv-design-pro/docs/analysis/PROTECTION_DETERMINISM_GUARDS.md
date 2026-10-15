@@ -87,6 +87,8 @@ backend/src/application/execution_engine/service.py  (PROTECTION sections only)
 frontend/src/ui/protection/
 ```
 
+> **Stan 2026-09-30:** lista powyżej jest historyczna — `domain/protection_engine_v1.py` i `protection_to_resultset_v1.py` skasowane w karcie RESULTSET-MARTWE-MAPPERY (decyzja O-59), `execution_engine/service.py` w CV-3.3-A; realne `SCAN_FILES` w `scripts/protection_no_heuristics_guard.py` to `application/protection_analysis/engine.py` i `enm/domain_operations_v2.py`.
+
 **Forbidden patterns**:
 
 | Pattern | Reason |

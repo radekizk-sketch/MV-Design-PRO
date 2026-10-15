@@ -166,6 +166,7 @@ katalogu `TapChangerItem` przez picker (reużycie).
 2. **WATCHED SC** (`short_circuit_iec60909*.py`, `short_circuit_contributions.py`,
    `protection_engine_v1.py`): `solver_boundary_guard.py` twardo blokuje diff.
    OLTC **nie wymaga** zmian w tych plikach (K_T znamionowe — §6). Nie ruszamy.
+   (Stan 2026-09-30: `protection_engine_v1.py` skasowany w karcie RESULTSET-MARTWE-MAPPERY i zdjęty z `WATCHED_PATHS`.)
 3. **Determinizm:** ten sam wejściowy model → identyczny ślad OLTC i wyniki.
 4. **Single Model Rule:** jeden `TapChanger` per transformator; brak kopii.
 5. **Wątek SLD osobny:** pliki `frontend/src/ui/sld/**`, `sld-editor/**`,

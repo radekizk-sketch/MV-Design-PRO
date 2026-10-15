@@ -5,10 +5,11 @@ Funkcje ``wynik_zwarcia_1f_ze_snapshotu`` i ``zwarcie_3f_ze_snapshotu`` mapują 
 ENM na graf i wołają zamrożony solver IEC 60909 dla pakietów dowodowych SC1/SC3F —
 pakiet dowodowy opisuje wynik, nie produkuje go.
 
-``ShortCircuitBindingResult`` zostaje wyłącznie jako typ wejścia zamrożonego mappera
-``application/result_mapping/short_circuit_to_resultset_v1.py`` i jego sąsiada
-``sc_binding_meta.py`` (oba poza kasacją — decyzja właściciela B-01, karta CV-3.3-A2,
-``scripts/resultset_v1_schema_guard.py``).
+Karta RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w decyzji O-59): typ
+``ShortCircuitBindingResult`` skasowany razem z jedynymi konsumentami — martwymi
+mapperami ``short_circuit_to_resultset_v1.py`` i ``sc_binding_meta.py``. Jedynym
+producentem ``ResultSetV1`` jest ``application/result_mapping/canonical_run_to_resultset_v1.py``;
+bramka wskrzeszenia: ``scripts/resultset_v1_schema_guard.py``.
 
 Karta TORY-TYLKO-W-TESTACH (2026-09-30): dawny punkt wejścia ``execute_short_circuit``
 (ścieżka execution engine, skasowanego kartą CV-3.3-A) z własną regułą rozstrzygania c
@@ -23,33 +24,14 @@ opcjach, scenariusz MIN z ``build_min_scenario_graph``). Bramka wskrzeszenia:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
-from domain.execution import ExecutionAnalysisType
 from network_model.core.graph import NetworkGraph
 from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
-
-Scenario = Literal["MAX", "MIN"]
-
-
-@dataclass(frozen=True)
-class ShortCircuitBindingResult:
-    """Wrapper around solver result with binding metadata."""
-
-    solver_result: ShortCircuitResult
-    analysis_type: ExecutionAnalysisType
-    fault_node_id: str
-    # Karta P0.3 (c per pasmo + scenariusz MIN) — additive binding-layer metadata.
-    # NOT part of the FROZEN ShortCircuitResult (solver) API: these fields live
-    # on the wrapper only, so the solver's own frozen contract stays untouched.
-    scenario: Scenario = "MAX"
-    c_factor_auto: float = 0.0
-    c_factor_override: bool = False
-    temperature_correction_notes: tuple[dict[str, object], ...] = ()
 
 
 def wynik_zwarcia_1f_ze_snapshotu(

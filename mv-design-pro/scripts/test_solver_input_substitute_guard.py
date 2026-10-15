@@ -745,6 +745,26 @@ def test_martwy_wpis_wykluczen_jest_naruszeniem(tmp_path, monkeypatch, capsys) -
     assert "WYKLUCZENIA_SKANERA" in wyjscie
 
 
+def test_martwe_zrodlo_kontraktu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Wpis CONTRACT_SOURCES wskazujacy plik, ktorego nie ma, byl po cichu pomijany (dwa
+    wpisy-widma przezyly kasacje swoich plikow — karta RESULTSET-MARTWE-MAPPERY)."""
+    root = _drzewo(tmp_path, {"solver_input/kontrakt.py": "class K:\n    x: float\n"})
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "domain/zniknal.py"))
+    monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
+    kod = guard.main()
+    wyjscie = capsys.readouterr().out
+    assert kod == 1, wyjscie
+    assert "zrodla kontraktu wskazuja pliki, ktorych nie ma" in wyjscie
+    assert "domain/zniknal.py — zdejmij wpis z CONTRACT_SOURCES" in wyjscie
+
+
+def test_realne_zrodla_kontraktu_istnieja() -> None:
+    brak = [rel for rel in guard.CONTRACT_SOURCES if not (guard.BACKEND_SRC / rel).exists()]
+    assert brak == []
+
+
 def test_dlug_i_wykluczenie_razem_w_jednym_pliku_dzialaja_niezaleznie(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -975,8 +995,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # {load_flow_to_resultset_v1,protection_to_overlay_v1}.py` (-2 pliki,
     # -6 pol: `LoadFlowResultSetV1`/`LoadFlowNodeResult`/`LoadFlowBranchResult`/
     # `LoadFlowTotals`) i `domain/analysis_kind.py` (poza zakresem skanu);
-    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTAJA
-    # (zamrozone przez `resultset_v1_schema_guard.PROTECTED_FILES`, B-01);
+    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTALY wtedy
+    # (skasowane pozniej w karcie RESULTSET-MARTWE-MAPPERY, 2026-09-30);
     # dlug/wykluczenia bez zmian.
     # 3599 pol / 576 plikow / application 320 / dlug 63 plikow suma 312 /
     # wykluczenia 17 plikow suma 49 (CV-3.3-B, 2026-09-05): porownania A/B
@@ -1770,7 +1790,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
     # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
     # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
+    # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 4116 -> 4098 — POMIAR `contract_fields()`
+    # na drzewie karty i na bazie `f3c435b6`, roznica zbiorow: +0, -18 — wylacznie pola klas
+    # skasowanych w karcie: `domain/protection_engine_v1.py` (`attached_cb_id`, `f50`, `f51`,
+    # `function_results`, `i_a_primary`, `i_a_secondary`, `max_time_s`, `per_test_point`,
+    # `pickup_a_secondary`, `point_id`, `primary_a`, `relay_id`, `relay_results`, `relays`,
+    # `secondary_a`, `test_points`) i `ShortCircuitBindingResult` (`solver_result`,
+    # `c_factor_auto`). PASS niezmieniony (zero podstawien).
+    # Partia integracji 8 (2026-10-15, + RESULTSET-MARTWE-MAPPERY na gałęzi integracji): POMIAR
+    # guardem na drzewie partii — baza integracji 4143 (pin 4125 był nieaktualny po kartach
+    # katalogu i PR-478), po kasacji martwych mapperów 4124 (-19: 18 pól z meldunku karty
+    # i `ct_ratio` z `RelayV1` — na bazie karty pole miał też skasowany od tego czasu
+    # `domain/protection_vendors.py`, więc karta go nie liczyła). Zbiory porównane, +0.
+    assert "Pol kontraktow wejsciowych: 4124." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1974,7 +2006,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # jedna regula rodzaju stacji z topologii), -1 (skasowany osierocony
         # `network_model/catalog/station_templates.py`) = 561. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 564 - 1 = 563. POMIAR.
-        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 561 -> 558 (-3 skasowane martwe mappery
+        # `application/result_mapping/{short_circuit,protection}_to_resultset_v1.py`,
+        # `sc_binding_meta.py`; zero wpisow). POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): baza integracji 564, -3 skasowane
+        # martwe mappery = 561. POMIAR guardem na drzewie partii.
+        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2250,9 +2287,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
         # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=247, dlug=29 plikow/suma 89, "
+        # Karta RESULTSET-MARTWE-MAPPERY: application 245 -> 242 (-3 skasowane martwe mappery);
+        # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): application na bazie integracji 248,
+        # -3 skasowane martwe mappery = 245; dlug 30/90 (pomiar bazy; pin 29/89 był nieaktualny).
+        "  application: pliki_skanowane=245, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
+        # Partia integracji 8: api dlug 2/3 -> 1/2 — POMIAR guardem na drzewie bazy integracji
+        # (53551167b, przed scaleniami partii); pin 2/3 był nieaktualny na bazie.
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

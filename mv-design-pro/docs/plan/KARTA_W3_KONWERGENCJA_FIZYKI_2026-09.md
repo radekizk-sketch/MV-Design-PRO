@@ -100,7 +100,8 @@ guardy_z_ci, vitest, e2e) na drzewie gałęzi + push + CI 9/9.
    zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18). **Rozstrzygnięte 2026-09-30 (O-74 (2), V12K-341):**
    martwe mappery `short_circuit_to_resultset_v1.py`, `protection_to_resultset_v1.py` i `sc_binding_meta.py` KASOWANE
    razem z OD-18 (0 importerów; żywy producent ResultSet v1 = `canonical_run_to_resultset_v1.py`) — wyjątek znika
-   z plikiem.
+   z plikiem. **Stan 2026-09-30:** wykonane w karcie RESULTSET-MARTWE-MAPPERY (scalona w partii integracji 8),
+   `ZASTANE` w `backend_no_physics_guard.py` puste.
 2. Trzy metodyki nastaw → jedna (Hoppel) z pakietem dowodowym osiągalnym z ekranu koordynacji; wzorzec
    referencyjny liczony tą samą metodyką.
 3. V12.6: `hosting_capacity`/`opf_loss_lcc` niedostępne jako nowe biegi (410 z odesłaniem), ranking N-1 poza
@@ -150,6 +151,8 @@ a `application/result_mapping/protection_to_resultset_v1.py` pod `resultset_v1_s
 przywrócone bit w bit do `a16f8d2b`; artefakty zależne (komentarze, bramka, guard, pin) skorygowane. Decyzja
 właściciela: mapa §7 **OD-18**. Ograniczenie guarda nazwane i przypięte testem: pętla w `protection_engine_v1.py:483-559`
 ma warunkowe ponowne przypisanie floora (`if denominator <= 1e-12: …`) niewidoczne dla `E_idmt_shape`.
+**Stan 2026-09-30:** OD-18 rozstrzygnięte decyzją O-59 — oba pliki i `tests/test_protection_engine_v1.py` skasowane w karcie
+RESULTSET-MARTWE-MAPPERY; ograniczenie guarda przestało mieć przedmiot (jedyna fizyka IDMT: `protection_iec60255.py::compute_idmt_generic`).
 
 **Nazwane, nie ukryte:** (1) `application/trace_emitters/protection_emitter.py` (`TraceEmitterProtection`) — 0 importerów
 produkcyjnych poza własnym `__init__`; pomiar klasy w odbiorze (2026-09-10): martwy jest CAŁY klaster ślad v2 —
@@ -435,9 +438,10 @@ deklaracją „nigdy cichy" bez testu → test × {kotwica MAX, MIN} (atrapa `wy
 `renderEkranZwarc.tsx`, 0 ostrzeżeń, 155 passed). Znalezisko: `application/solvers/short_circuit_binding.py::execute_short_circuit`
 — 0 konsumentów produkcyjnych, 5 harnessów testowych parytetu; typ wyniku konsumowany przez chroniony `short_circuit_to_resultset_v1.py`
 → ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna. **Zgoda wydana
-2026-09-30 w ramach delegacji O-59 (V12K-341, O-69/O-74):** kasacja na amen w karcie W3-A-DOMKNIĘCIE — wpis
-`SANCTIONED_CHANGES` w `solver_boundary_guard.py` z tym numerem rejestru; zdjęcie z `WATCHED_PATHS` i `PROTECTED_FILES`
-w commicie kasacji; pięć guardów traci wyjątki i dostaje testy negatywne z iniekcją fizyki IDMT poza solverami.
+2026-09-30 w ramach delegacji O-59 (V12K-341, O-69/O-74).** Stan 2026-09-30: `execute_short_circuit`
+skasowany w karcie TORY-TYLKO-W-TESTACH, `ShortCircuitBindingResult`, `short_circuit_to_resultset_v1.py`
+i `domain/protection_engine_v1.py` w karcie RESULTSET-MARTWE-MAPPERY (zdjęte z `WATCHED_PATHS`,
+`SANCTIONED_CHANGES` i `PROTECTED_FILES` w commicie kasacji; scalona w partii integracji 8).
 
 #### W3-G2 (2026-09-10) — pasma zdrowego rozsądku rozpływu — UCZCIWOŚĆ
 Wykonane: `analysis/sanity_bounds/power_flow_bounds.py` (napięcia ±10 % Un PN-EN 50160 — pasmo WIARYGODNOŚCI, obciążenia ≤ In

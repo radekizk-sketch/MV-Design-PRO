@@ -134,6 +134,13 @@ odstawiony z uzasadnieniem; zapadka działa w obie strony).
   przez `resultset_v1_schema_guard.py`, mimo zera importerów — B-01),
   `application/protection_current_resolver.py`), snapshots, topology_links.
   Uzasadnienie per moduł w komunikacie commitu kasacji.
+  **STAN 2026-09-30 (karta RESULTSET-MARTWE-MAPPERY, zgoda B-01 w decyzji O-59):**
+  `domain/protection_engine_v1.py` oraz `application/result_mapping/protection_to_resultset_v1.py`,
+  `short_circuit_to_resultset_v1.py` i `sc_binding_meta.py` SKASOWANE (0 importerów w
+  `backend/src`; zdania „zostaje"/„pozostaje żywy"/„ZAMROŻONY" powyżej są historią). Żywy tor
+  zabezpieczeń: `application/protection_analysis/engine.py` (tor `protection_sn`), fizyka IDMT
+  wyłącznie w `network_model/solvers/protection_iec60255.py::compute_idmt_generic`; jedyny
+  producent ResultSetV1: `application/result_mapping/canonical_run_to_resultset_v1.py`.
 - **USUNIĘTE W1 (2026-09-09)** (legacy persystencja sieci — jedna prawda sieci to ENM): router `sld`
   (+ SLD ORM, `application/sld/**`, `network_model/sld_projection.py`), `GET /api/cases/{id}/enm/diff`
   (`diagnostics/diff.py`), `GET /api/analysis-runs/{id}/overlay`, eksport/import biblioteki typów

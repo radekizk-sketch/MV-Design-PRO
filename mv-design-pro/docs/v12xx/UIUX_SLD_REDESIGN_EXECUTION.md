@@ -39,7 +39,7 @@ Pięć wpisów dodanych do `REJESTR_DECYZJI_SEMANTYCZNYCH.md`:
 - **V12S-008** — Generator.connection_variant walidowany krzyżowo z station_ref/blocking_transformer_ref.
 - **V12S-009** — Katalog-first hard w action envelope, soft w modelu (draft=True tworzy LogicalSketch).
 - **V12S-010** — Split jednolitego ENM hash na pięć ortogonalnych: semantic / input / case / variant / switching_snapshot.
-- **V12S-011** — Wyniki solverów niosą `element_ref_id` (zaplanowane, nie wdrożone w tej iteracji).
+- **V12S-011** — Wyniki solverów niosą `element_ref_id` (zaplanowane, nie wdrożone w tej iteracji). **Stan 2026-09-30:** wdrożone 2026-09-30 w żywym mapperze `application/result_mapping/canonical_run_to_resultset_v1.py`, karta RESULTSET-MARTWE-MAPPERY; pole jest tylko w ResultSetV1, solver nietknięty.
 
 ---
 
@@ -84,7 +84,7 @@ Pięć wpisów dodanych do `REJESTR_DECYZJI_SEMANTYCZNYCH.md`:
 ## 5. Backlog — to, czego ta iteracja NIE wdrożyła
 
 ### Faza 2 — pozostałe
-- **Commit 6 (V12S-011): `element_ref_id` w wynikach solverów.** Wymaga rozszerzenia `backend/src/application/result_mapping/`, dodania pola w `ShortCircuitResult` / `PowerFlowNewtonSolution` (additive, default `None`), update `backend/schemas/resultset_v1_schema.json`, rozszerzenie `scripts/resultset_v1_schema_guard.py`. **Powód odłożenia:** zakres zmian + kontekst sesji. **Wpływ na produkt:** FE już dziś robi UUID lookup — nie blokuje raportów. Hash chain (V12S-010) jest dostępny niezależnie.
+- **Commit 6 (V12S-011): `element_ref_id` w wynikach solverów.** Wymaga rozszerzenia `backend/src/application/result_mapping/`, dodania pola w `ShortCircuitResult` / `PowerFlowNewtonSolution` (additive, default `None`), update `backend/schemas/resultset_v1_schema.json`, rozszerzenie `scripts/resultset_v1_schema_guard.py`. **Powód odłożenia:** zakres zmian + kontekst sesji. **Wpływ na produkt:** FE już dziś robi UUID lookup — nie blokuje raportów. Hash chain (V12S-010) jest dostępny niezależnie. **Stan 2026-09-30:** wdrożone 2026-09-30 w żywym mapperze `application/result_mapping/canonical_run_to_resultset_v1.py`, karta RESULTSET-MARTWE-MAPPERY; pole jest tylko w ResultSetV1, solver nietknięty (bez pola w `ShortCircuitResult`/`PowerFlowNewtonSolution`; test `backend/tests/application/test_result_mapping_ref_id.py`).
 
 ### Faza 3 — polot wizualny (commits 7-10)
 Wszystkie odłożone z powodu konieczności wizualnej weryfikacji w przeglądarce, której CLI nie zapewnia wiarygodnie:
@@ -103,7 +103,7 @@ Wszystkie odłożone z powodu konieczności wizualnej weryfikacji w przeglądarc
 - `ModeSelector.test.tsx` (NOWY)
 - `WorkflowContextStrip.nextAction.test.tsx` (NOWY)
 - `e2e/generator-connection-variants.spec.ts` (NOWY)
-- `e2e/proof-hash-chain.spec.ts` (NOWY)
+- `e2e/proof-hash-chain.spec.ts` (NOWY; stan 2026-09-30: pliku nie ma w `frontend/e2e`)
 
 ### Audyt języka polskiego
 Zaplanowane skanowanie `grep` po `feeder/snapshot/busbar/switchgear/wizard/modal/dialog` w JSX/template-literal (nie w komentarzach kodu — komentarze techniczne pozostają zgodnie z briefem). Strażnicy `forbidden_ui_terms_guard.py` i `ui_terminology_guard.py` po stronie projektu nadal zachowane.
@@ -156,7 +156,7 @@ Strażnicy wymagający uruchomienia po pełnym wdrożeniu Fazy 3 (z briefu):
 | Single Model rule (variant_hash) | `compute_variant_hash` operuje na delcie/overlay, nie na osobnym modelu. Udokumentowane w docstring | ✓ |
 | BoundaryNode resurfacing przez walidator napięć | Walidacja działa na `Bus.voltage_kv`, nie wprowadza PCC | ✓ (`pcc_zero_guard` PASS) |
 | Wymóg V12S-N w rejestrze przed commitem | V12S-007..V12S-011 dodane w pierwszym commicie (`ef8c73b`) przed kodem | ✓ |
-| Złamanie WHITE BOX przez `element_ref_id` | Nie wdrożone w tej iteracji; plan zachowuje WHITE BOX (mapping na boundary, nie w solverze) | otwarte |
+| Złamanie WHITE BOX przez `element_ref_id` | Nie wdrożone w tej iteracji; plan zachowuje WHITE BOX (mapping na boundary, nie w solverze) | zamknięte 2026-09-30 (wdrożone 2026-09-30 w żywym mapperze `application/result_mapping/canonical_run_to_resultset_v1.py`, karta RESULTSET-MARTWE-MAPPERY; pole jest tylko w ResultSetV1, solver nietknięty) |
 | Migracja FE z 5 nowych hashy | FE konsumuje opcjonalnie (Optional fields) — placeholder „Hash audytu w toku" do czasu commitu 8 | otwarte |
 
 ---
@@ -171,14 +171,14 @@ Strażnicy wymagający uruchomienia po pełnym wdrożeniu Fazy 3 (z briefu):
 - [x] Wsteczna kompatybilność `compute_enm_hash` (zachowana semantyka, deterministyczność).
 - [x] 4348/4348 testów backendu PASS, 0 regresji.
 - [x] `semantic_architecture_guard.py` + `pcc_zero_guard.py` PASS.
-- [ ] `element_ref_id` w wynikach solverów — odłożone do następnej iteracji.
+- [x] `element_ref_id` w wynikach solverów — odłożone do następnej iteracji. **Stan 2026-09-30:** wdrożone 2026-09-30 w żywym mapperze `application/result_mapping/canonical_run_to_resultset_v1.py`, karta RESULTSET-MARTWE-MAPPERY; pole jest tylko w ResultSetV1, solver nietknięty.
 - [ ] Polot wizualny FE (commits 7-10) — odłożone do iteracji z weryfikacją w przeglądarce.
 
 ---
 
 ## 10. Co dalej (rekomendowana następna iteracja)
 
-1. **Commit 6 (V12S-011)** — element_ref_id w `result_mapping/`, schema v1 update, FE może wtedy zrezygnować z UUID lookup. Małe ryzyko, duża wygoda.
+1. **Commit 6 (V12S-011)** — element_ref_id w `result_mapping/`, schema v1 update, FE może wtedy zrezygnować z UUID lookup. Małe ryzyko, duża wygoda. **Stan 2026-09-30:** wdrożone 2026-09-30 w żywym mapperze `application/result_mapping/canonical_run_to_resultset_v1.py`, karta RESULTSET-MARTWE-MAPPERY; pole jest tylko w ResultSetV1, solver nietknięty.
 2. **Commit 7-10 (Faza 3)** — w sesji z dostępnym dev-serwerem i Browser Use / Playwright. Wymaga pixel-level review.
 3. **Audyt PL** — finalne `grep` w JSX, run `forbidden_ui_terms_guard` i `ui_terminology_guard` przed/po.
 4. **E2E real backend** — uruchomienie `npm run test:e2e:real` po wdrożeniu Fazy 3 dla pełnej weryfikacji łańcucha wynikowego.
