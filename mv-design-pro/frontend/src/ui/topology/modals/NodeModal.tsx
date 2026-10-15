@@ -144,7 +144,7 @@ export function NodeModal({
               placeholder="np. bus_sn_01"
             />
             {getFieldError('ref_id') && (
-              <p className="mt-1 text-xs text-red-600">{getFieldError('ref_id')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada">{getFieldError('ref_id')}</p>
             )}
           </div>
 
@@ -163,7 +163,7 @@ export function NodeModal({
               placeholder="np. Szyna główna SN"
             />
             {getFieldError('name') && (
-              <p className="mt-1 text-xs text-red-600">{getFieldError('name')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada">{getFieldError('name')}</p>
             )}
           </div>
 
@@ -183,7 +183,7 @@ export function NodeModal({
               }`}
             />
             {getFieldError('voltage_kv') && (
-              <p className="mt-1 text-xs text-red-600">{getFieldError('voltage_kv')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada">{getFieldError('voltage_kv')}</p>
             )}
           </div>
 

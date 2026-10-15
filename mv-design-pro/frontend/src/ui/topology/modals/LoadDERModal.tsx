@@ -220,7 +220,7 @@ export function LoadDERModal({
                   getError('ref_id') ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
-              {getError('ref_id') && <p className="mt-1 text-xs text-red-600">{getError('ref_id')}</p>}
+              {getError('ref_id') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('ref_id')}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nazwa</label>
@@ -232,7 +232,7 @@ export function LoadDERModal({
                   getError('name') ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
-              {getError('name') && <p className="mt-1 text-xs text-red-600">{getError('name')}</p>}
+              {getError('name') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('name')}</p>}
             </div>
           </div>
 
@@ -266,7 +266,7 @@ export function LoadDERModal({
                 </option>
               ))}
             </select>
-            {getError('bus_ref') && <p className="mt-1 text-xs text-red-600">{getError('bus_ref')}</p>}
+            {getError('bus_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('bus_ref')}</p>}
           </div>
 
           {/* Load model (topological/operational property) */}
@@ -318,7 +318,7 @@ export function LoadDERModal({
                 }`}
                 data-testid="quantity-input"
               />
-              {getError('quantity') && <p className="mt-1 text-xs text-red-600">{getError('quantity')}</p>}
+              {getError('quantity') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('quantity')}</p>}
             </div>
           )}
 

@@ -325,9 +325,9 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
  */
 export const RUN_STATUS_COLORS: Record<RunStatus, string> = {
   PENDING: 'text-gray-500',
-  RUNNING: 'text-blue-500',
-  DONE: 'text-green-600',
-  FAILED: 'text-red-600',
+  RUNNING: 'text-sygnal-info',
+  DONE: 'text-sygnal-ok',
+  FAILED: 'text-sygnal-blokada',
 };
 
 /**

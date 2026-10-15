@@ -35,9 +35,9 @@ function scoreLabel(pack: ReferencePackComplianceReport): string {
 
 function scoreClass(pack: ReferencePackComplianceReport): string {
   if (pack.score_percent == null) return 'text-slate-400';
-  if (pack.score_percent === 100) return 'text-emerald-600';
-  if (pack.score_percent >= 80) return 'text-amber-600';
-  return 'text-rose-600';
+  if (pack.score_percent === 100) return 'text-sygnal-ok';
+  if (pack.score_percent >= 80) return 'text-sygnal-uwaga';
+  return 'text-sygnal-blokada';
 }
 
 export function ReferencePanel({ caseId }: ReferencePanelProps) {
@@ -102,7 +102,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
   }
   if (error) {
     return (
-      <div className="p-4 text-xs text-rose-600" data-testid="reference-panel-error">
+      <div className="p-4 text-xs text-sygnal-blokada" data-testid="reference-panel-error">
         {wybor}
         {error}
       </div>
@@ -168,8 +168,8 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
                           <span
                             className={
                               check.status === 'pass'
-                                ? 'text-emerald-600'
-                                : 'text-rose-600'
+                                ? 'text-sygnal-ok'
+                                : 'text-sygnal-blokada'
                             }
                             aria-label={
                               check.status === 'pass' ? 'zgodne' : 'niezgodne'

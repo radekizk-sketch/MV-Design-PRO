@@ -102,14 +102,14 @@ export function AuditTrailDiff({ beforeEntry, afterEntry, className }: AuditTrai
             {diff.map((entry) => (
               <tr
                 key={entry.key}
-                className={entry.changed ? 'bg-amber-50' : ''}
+                className={entry.changed ? 'bg-sygnal-uwaga-tlo' : ''}
                 data-testid={`diff-row-${entry.key}`}
               >
                 <td className="py-1 pr-2 font-medium text-slate-700">{entry.label}</td>
                 <td className="py-1 pr-2 text-slate-600">
                   {formatValue(entry.before)}
                 </td>
-                <td className={`py-1 pr-2 ${entry.changed ? 'font-semibold text-amber-900' : 'text-slate-600'}`}>
+                <td className={`py-1 pr-2 ${entry.changed ? 'font-semibold text-sygnal-uwaga-tusz' : 'text-slate-600'}`}>
                   {formatValue(entry.after)}
                 </td>
               </tr>

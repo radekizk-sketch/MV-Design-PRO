@@ -61,8 +61,9 @@ describe('SupplyPathLegend', () => {
       '[data-testid="supply-path-legend-open-points"]',
     );
     expect(openPoints?.textContent).toContain('2');
-    // Klasa text-red-700 obecna gdy openPointCount > 0.
-    expect(openPoints?.className).toContain('text-red-700');
+    // Akcent blokady obecny gdy openPointCount > 0 (token motywu
+    // `text-sygnal-blokada`, karta TUSZ-POD-TLO-JASNE; dawniej `text-red-700`).
+    expect(openPoints?.className).toContain('text-sygnal-blokada');
   });
 
   it('DER energized → pokazuje wiersz "DER pod napięciem"', () => {

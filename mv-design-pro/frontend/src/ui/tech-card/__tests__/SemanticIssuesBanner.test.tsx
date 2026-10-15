@@ -85,7 +85,8 @@ describe('SemanticIssuesBanner', () => {
         issues={[makeIssue({ severity: 'WARNING', message: 'Ostrzeżenie' })]}
       />,
     );
-    const msg = container.querySelector('.text-amber-700');
+    // Token motywu ostrzeżenia (karta TUSZ-POD-TLO-JASNE; dawniej `text-amber-700`).
+    const msg = container.querySelector('.text-sygnal-uwaga');
     expect(msg).toBeTruthy();
   });
 });

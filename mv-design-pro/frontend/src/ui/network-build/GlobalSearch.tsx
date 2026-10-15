@@ -347,7 +347,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     className={clsx(
                       'w-full text-left px-4 py-2 flex items-center gap-3 transition-colors',
                       selectedIndex === idx
-                        ? 'bg-blue-50'
+                        ? 'bg-sygnal-info-tlo'
                         : 'hover:bg-gray-50',
                     )}
                   >

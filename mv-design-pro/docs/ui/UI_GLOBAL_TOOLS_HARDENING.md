@@ -24,6 +24,10 @@ Audyt obejmuje:
 
 ## 2. TopContextBar
 
+> **Stan 2026-10-15:** komponent skasowany (karta TUSZ-POD-TLO-JASNE) — od zastapienia przez
+> `ui/shell/WorkflowContextStrip.tsx` nie mial konsumenta produkcyjnego (tylko eksport z barrela
+> i testy). Ponizszy opis jest historyczny.
+
 ### 2.1. Struktura paska
 
 TopContextBar jest stalym komponentem widocznym w gornej czesci aplikacji.
@@ -213,7 +217,7 @@ Wymaga implementacji backendowej (poza zakresem obecnego audytu).
 
 | Komponent | Stan | Hardening |
 |-----------|------|-----------|
-| TopContextBar | Produkcyjny | Pelny — wszystkie sekcje aktywne |
+| TopContextBar | Skasowany 2026-10-15 | Brak konsumenta produkcyjnego; role przejely `ui/shell/WorkflowContextStrip.tsx` i `ui2/shell/StatusBar.tsx` |
 | GlobalSearch (Ctrl+K) | Produkcyjny | Pelny — fuzzy search, nawigacja, grupowanie |
 | MassReviewPanel | Produkcyjny | Pelny — 6 zakladek, akcje naprawcze |
 | ProjectMetadataModal | Produkcyjny | Pelny — edycja i walidacja metadanych |

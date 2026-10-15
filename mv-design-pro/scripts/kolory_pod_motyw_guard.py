@@ -38,13 +38,46 @@ nasyconych z ``RODZINY`` i z dowolnym wariantem (``hover:``, ``focus:``…):
    Zasięg wiersza: ``className`` rozbity na kilka wierszy przez ``clsx`` nie jest
    przez ten wzorzec widziany — to jawne ograniczenie, nie obietnica.
 
+KLASA LUSTRZANA — barwy dobrane pod tło JASNE (karta TUSZ-POD-TLO-JASNE,
+2026-10-15). Motyw ciemny (``dark_scada``, domyślny) przemapowuje w ``index.css``
+(``.mv-dark-scada``) WYŁĄCZNIE rodziny neutralne (``bg-white``/``gray``/``slate``/
+``zinc``/``chrome``) — zmierzone, nie założone; nasycone ``text-red-600``,
+``bg-amber-50``, ``border-blue-200`` przechodzą do motywu ciemnego bez zmian.
+Pomiar przed naprawą (ten strażnik na drzewie ``bf69ad3d1``): 681 naruszeń w 86
+plikach — 335 tuszów 500–900, 206 jasnych teł 50–300, 120 jasnych obrysów 50–400,
+3 jasne pierścienie, 17 białych napisów bez stałego tła; z tego 2 w ``src/ui2``
+(strona nieznanej trasy ``LegacyWarsztat``: ``bg-amber-50`` z ``text-slate-900``,
+który motyw ciemny przemapowuje na jasny tusz — napis znikał) i 1 w martwym
+``ui/status-bar`` (skasowanym tą samą kartą). Po naprawie: 0. Wzorce 5–9:
+
+5. ``text-<rodzina>-{500,600,700,800,900,950}`` — tusz dobrany pod tło jasne.
+   Żaden odcień 500–800 żadnej rodziny nie ma ≥ 4,5:1 JEDNOCZEŚNIE na białym
+   panelu i na panelu motywu ciemnego (``PANEL_CIEMNY``): maksimum minimum obu
+   kontrastów to 4,10:1 (pomiar w samoteście z tabeli ``PALETA``); 900/950 są
+   ciemniejsze od 800, więc na panelu ciemnym jeszcze gorsze. Przykład z karty:
+   ``text-red-600`` na panelu ciemnym 3,60:1.
+6. ``bg-<rodzina>-{50,100,200,300}`` (z przezroczystością albo bez) — jasne tło
+   komunikatu; w motywie ciemnym zostaje jasną wyspą (odcień 300 jest ≥ 8,7 raza
+   jaśniejszy od panelu ciemnego), a tusz panelu (``text-scada-text``, jasny)
+   znika na niej.
+7. ``border(-l/-r/-t/-b/-x/-y)-<rodzina>-{50,100,200,300,400}`` — jasny obrys
+   tej samej plamy; poza parą z jasnym tłem zostaje świecącą ramką w motywie
+   ciemnym.
+8. ``ring-<rodzina>-{50,100,200,300}`` — jasny pierścień, jak wzorzec 7.
+9. ``text-white`` w wierszu bez żadnego STAŁEGO tła palety (``bg-<barwa>-N``,
+   ``bg-black``) — biały napis na powierzchni motywu (``bg-scada-*``,
+   ``bg-sygnal-*``) albo bez własnego tła znika w motywie jasnym; na akcencie
+   ``bg-sygnal-info`` motywu ciemnego ma 2,66:1. Tekst na akcencie ``sygnal-*``
+   to ``text-scada-bg`` (kontrast przypięty w ``scadaTokens.test.ts``). Zasięg
+   wiersza jak we wzorcu 4.
+
 CO ŚWIADOMIE NIE JEST ZAKAZANE (z uzasadnieniem merytorycznym):
 - pełne tło przycisku z ``text-white``, na którym biały ma ≥ 4,5:1 (np.
   ``blue-600`` 5,17:1, ``cyan-700`` 5,36:1, ``green-700`` 5,02:1) — tło nie
   przechodzi przez panel motywu, więc kontrast jest NIEZALEŻNY od motywu;
-- jasne tło komunikatu z ciemnym tuszem tej samej rodziny (``bg-*-50`` +
-  ``text-*-700``) — para ma własne tło, więc jest czytelna w obu motywach;
-  ``komunikatyKontrast.test.ts`` pilnuje kształtu „tło 8xx/9xx + tusz 1xx–4xx”;
+- pełne tło 400/500 bez tekstu (kropka stanu, pasek postępu) i obrys/pierścień
+  500+ (zaznaczenie, fokus) — to obiekty graficzne, nie tusz; wzorce 5–8 ich nie
+  dotyczą (kryterium WCAG 1.4.11 3:1, nie 1.4.3);
 - rodziny neutralne (``slate``, ``gray``, ``zinc``…) — warstwa legacy jest
   natywnie jasna, a motyw ciemny przemapowuje jej klasy neutralne w
   ``index.css`` (``.mv-dark-scada``).
@@ -113,7 +146,27 @@ WZORCE: tuple[tuple[str, re.Pattern[str]], ...] = (
         "ciemne tło komunikatu",
         re.compile(rf"{_PRZED}bg-(?:{_R})-(?:(?:900|950)(?:/\d+)?|800/\d+){_PO}"),
     ),
+    (
+        "tusz pod tło jasne",
+        re.compile(rf"{_PRZED}text-(?:{_R})-(?:500|600|700|800|900|950)(?:/\d+)?{_PO}"),
+    ),
+    (
+        "jasne tło pod motyw jasny",
+        re.compile(rf"{_PRZED}bg-(?:{_R})-(?:50|100|200|300)(?:/\d+)?{_PO}"),
+    ),
+    (
+        "jasny obrys pod motyw jasny",
+        re.compile(rf"{_PRZED}border(?:-[lrtbxy])?-(?:{_R})-(?:50|100|200|300|400)(?:/\d+)?{_PO}"),
+    ),
+    (
+        "jasny pierścień pod motyw jasny",
+        re.compile(rf"{_PRZED}ring-(?:{_R})-(?:50|100|200|300)(?:/\d+)?{_PO}"),
+    ),
 )
+
+#: Panel motywu ciemnego (``--scada-panel`` w ``frontend/src/index.css``) — podstawa
+#: deklaracji wzorca 5; samotest pilnuje zgodności z arkuszem.
+PANEL_CIEMNY = (17, 27, 38)
 
 #: Wartości palety Tailwind 3.4 (``tailwindcss/colors``) dla odcieni 300–800 —
 #: podstawa wzorca 4 (biały napis na pełnym tle). Odcienie spoza tabeli (50–200,
@@ -260,12 +313,29 @@ PALETA: dict[str, dict[int, str]] = {
 
 _TEXT_WHITE = re.compile(r"(?<![\w-])text-white(?![\w/-])")
 _PELNE_TLO = re.compile(rf"(?<![\w/-])(?:[a-z-]+:)*bg-({_R})-(\d{{2,3}})(?![\w/-])")
+#: Rodziny neutralne palety (stałe tło przycisku ``bg-slate-900 text-white``).
+NEUTRALNE = ("slate", "gray", "zinc", "neutral", "stone", "chrome")
+#: Dowolne stałe tło palety w wierszu (wzorzec 9 milczy, wzorce 2–4 oceniają je same).
+_STALE_TLO = re.compile(
+    rf"(?<![\w/-])(?:[a-z-]+:)*bg-(?:(?:{_R}|{'|'.join(NEUTRALNE)})-\d{{2,3}}(?:/\d+)?|black)"
+    r"(?![\w-])"
+)
 
 
 def _luminancja(hex_: str) -> float:
     kanaly = [int(hex_[i : i + 2], 16) / 255 for i in (1, 3, 5)]
     lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in kanaly]
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def kontrast_na(rodzina: str, odcien: int, tlo: tuple[int, int, int]) -> float:
+    """Kontrast WCAG tuszu ``text-<rodzina>-<odcien>`` (odcienie 300–800) na tle RGB."""
+    kanaly = [c / 255 for c in tlo]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in kanaly]
+    l_tla = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    l_tuszu = _luminancja(PALETA[rodzina][odcien])
+    jasniejsza, ciemniejsza = max(l_tla, l_tuszu), min(l_tla, l_tuszu)
+    return (jasniejsza + 0.05) / (ciemniejsza + 0.05)
 
 
 def kontrast_bialego(rodzina: str, odcien: int) -> float:
@@ -295,6 +365,9 @@ def naruszenia_tekstu(tekst: str) -> list[tuple[int, str, str]]:
         for nazwa, wzorzec in WZORCE:
             for dopasowanie in wzorzec.finditer(wiersz):
                 wynik.append((numer, dopasowanie.group(0), nazwa))
+        if _TEXT_WHITE.search(wiersz) and not _STALE_TLO.search(wiersz):
+            for dopasowanie in re.finditer(r"(?<![\w-])(?:[a-z-]+:)*text-white(?![\w/-])", wiersz):
+                wynik.append((numer, dopasowanie.group(0), "biały napis bez stałego tła"))
         if _TEXT_WHITE.search(wiersz):
             for dopasowanie in _PELNE_TLO.finditer(wiersz):
                 rodzina, odcien = dopasowanie.group(1), int(dopasowanie.group(2))
@@ -345,12 +418,14 @@ def main() -> int:
         print("kolory_pod_motyw_guard: BŁĄD — zakres skanu nie zawiera ani jednego pliku.")
         return 1
     if meldunki:
-        print(f"kolory_pod_motyw_guard: {len(meldunki)} klas zaszytych pod motyw ciemny:")
+        print(f"kolory_pod_motyw_guard: {len(meldunki)} klas zaszytych pod jeden motyw:")
         for meldunek in meldunki:
             print(f"  {meldunek}")
         print(
             "Naprawa u źródła: kolor semantyczny z tokenów `sygnal-*` (`-tlo` tło, `-tusz` "
-            "tekst na tle, bazowy na panelu), neutralny z `scada-*`. Lista dozwolona jest pusta."
+            "tekst na tle, bazowy na panelu), kategoria z `scada-*` (`sn`/`nn`/`wn`/"
+            "`energized`/`grounded`), tekst neutralny `text-scada-text`, napis na akcencie "
+            "`text-scada-bg`. Lista dozwolona jest pusta."
         )
         return 1
     print(f"kolory_pod_motyw_guard: OK — {liczba} plików, zero klas zaszytych pod motyw.")

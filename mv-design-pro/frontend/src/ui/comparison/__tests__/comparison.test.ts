@@ -31,8 +31,9 @@ describe('Comparison Types', () => {
   });
 
   it('exports color classes for comparison status', () => {
-    expect(COMPARISON_STATUS_COLORS.IMPROVED).toContain('green');
-    expect(COMPARISON_STATUS_COLORS.REGRESSED).toContain('red');
+    // Tokeny motywu (karta TUSZ-POD-TLO-JASNE; dawniej green/red palety).
+    expect(COMPARISON_STATUS_COLORS.IMPROVED).toContain('sygnal-ok');
+    expect(COMPARISON_STATUS_COLORS.REGRESSED).toContain('sygnal-blokada');
     expect(COMPARISON_STATUS_COLORS.NO_CHANGE).toContain('gray');
   });
 

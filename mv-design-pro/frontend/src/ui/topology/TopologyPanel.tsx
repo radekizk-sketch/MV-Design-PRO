@@ -212,7 +212,7 @@ export function TopologyPanel({
 
       {/* Op issues banner */}
       {lastOpIssues.length > 0 && (
-        <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+        <div className="px-3 py-2 bg-sygnal-uwaga-tlo border-b border-sygnal-uwaga/40 text-xs text-sygnal-uwaga-tusz">
           {lastOpIssues.map((issue, i) => (
             <div key={i}>
               <span className="font-medium">[{issue.severity}]</span>{' '}

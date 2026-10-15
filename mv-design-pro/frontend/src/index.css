@@ -58,8 +58,12 @@
      * komunikat błędu formularza, stan w wierszu) — musi mieć ≥ 4,5:1 na
      * `bg`/`surface`/`panel`/`panel-raised` i na własnym tle (karta
      * KOLORY-ZASZYTE-POD-MOTYW; pomiar przed: blokada na `panel-raised`
-     * 4,34:1, po: 4,63:1). */
-    --scada-status-err: 223 98 91;
+     * 4,34:1, po: 4,63:1). Karta TUSZ-POD-TLO-JASNE: akcent stoi też na tle
+     * INNEGO poziomu (błąd pola w ramce ostrzeżenia, tytuł blokady w panelu
+     * informacji) — blokada na tle informacji miała 4,39:1, ostrzeżenia
+     * 4,49:1; `223 98 91` → `226 104 97` daje ≥ 4,65:1 na każdym tle
+     * komunikatu przy zachowanym odstępie jasności od ostrzeżenia. */
+    --scada-status-err: 226 104 97;
     --scada-status-err-bg: 46 21 18;
     --scada-status-err-ink: 255 217 213;
     --scada-status-warn: 227 166 60;

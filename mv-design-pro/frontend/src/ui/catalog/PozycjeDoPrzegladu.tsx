@@ -66,8 +66,8 @@ export function PozycjeDoPrzegladu() {
         className="border-b border-gray-200 bg-white px-6 py-3"
         data-testid="pozycje-do-przegladu"
       >
-        <p className="text-sm font-medium text-red-700">Pozycje do przeglądu</p>
-        <p className="text-sm text-red-600" data-testid="pozycje-do-przegladu-blad">
+        <p className="text-sm font-medium text-sygnal-blokada">Pozycje do przeglądu</p>
+        <p className="text-sm text-sygnal-blokada" data-testid="pozycje-do-przegladu-blad">
           {blad}
         </p>
       </section>
@@ -127,7 +127,7 @@ export function PozycjeDoPrzegladu() {
                 className={clsx(
                   'rounded-md border px-3 py-2',
                   rodzina.liczba_odstepstw > 0
-                    ? 'border-amber-300 bg-amber-50'
+                    ? 'border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo'
                     : 'border-gray-200 bg-gray-50',
                 )}
                 data-testid={`pozycje-do-przegladu-rodzina-${rodzina.rodzina}`}
@@ -145,7 +145,7 @@ export function PozycjeDoPrzegladu() {
                 {rodzina.odstepstwa.map((odstepstwo) => (
                   <p
                     key={`${odstepstwo.kod}-${odstepstwo.pozycja_id}`}
-                    className="mt-1 text-xs text-amber-900"
+                    className="mt-1 text-xs text-sygnal-uwaga-tusz"
                     data-testid={`pozycje-do-przegladu-odstepstwo-${odstepstwo.pozycja_id}`}
                   >
                     <span className="font-mono">{odstepstwo.kod}</span> · {odstepstwo.pozycja_id} ·{' '}

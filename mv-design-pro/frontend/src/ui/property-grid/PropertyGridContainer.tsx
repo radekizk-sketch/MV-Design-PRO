@@ -164,14 +164,14 @@ export function PropertyGridContainer({
     <>
       {/* Error display */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+        <div className="mb-4 p-3 bg-sygnal-blokada-tlo border border-sygnal-blokada/40 rounded text-sm text-sygnal-blokada-tusz">
           {error}
         </div>
       )}
 
       {/* Processing indicator */}
       {isProcessing && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+        <div className="mb-4 p-3 bg-sygnal-info-tlo border border-sygnal-info/40 rounded text-sm text-sygnal-info-tusz">
           Przetwarzanie...
         </div>
       )}

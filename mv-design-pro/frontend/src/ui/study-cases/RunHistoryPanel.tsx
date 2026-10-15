@@ -71,7 +71,7 @@ const RunRow: React.FC<{
   return (
     <tr
       className={`border-b cursor-pointer hover:bg-gray-50 ${
-        isSelected ? 'bg-blue-50' : ''
+        isSelected ? 'bg-sygnal-info-tlo' : ''
       }`}
       onClick={() => onSelect?.(run.id)}
       title={

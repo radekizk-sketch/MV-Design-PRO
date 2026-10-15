@@ -38,7 +38,7 @@ import { LegacyPasekNarzedzi } from './LegacyPasekNarzedzi';
 function UnknownRoutePage({ route }: { route: string }) {
   return (
     <div className="flex h-full items-center justify-center bg-slate-50">
-      <div className="max-w-lg rounded-lg border border-amber-300 bg-amber-50 px-6 py-5 text-slate-900 shadow-sm">
+      <div className="max-w-lg rounded-lg border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-6 py-5 text-sygnal-uwaga-tusz shadow-sm">
         <h1 className="text-lg font-semibold">Nieznana trasa interfejsu</h1>
         <p className="mt-2 text-sm leading-6">
           Aktywna trasa <code>{route || '(pusta)'}</code> nie jest zmapowana do kanonicznego

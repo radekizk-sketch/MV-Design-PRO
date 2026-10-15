@@ -52,7 +52,7 @@ export function SurfaceHeader({ surface }: { surface: WorkspaceSurfaceDescriptor
         </div>
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
           {session?.hasUnsavedChanges && (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">
+            <span className="rounded-full border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-2 py-0.5 text-sygnal-uwaga-tusz">
               Zmiany robocze
             </span>
           )}

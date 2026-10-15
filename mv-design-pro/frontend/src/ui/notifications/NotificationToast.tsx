@@ -9,10 +9,10 @@ import { clsx } from 'clsx';
 import { useNotificationStore, type NotificationType } from './store';
 
 const TYPE_STYLES: Record<NotificationType, string> = {
-  error: 'bg-red-50 border-red-400 text-red-800',
-  warning: 'bg-yellow-50 border-yellow-400 text-yellow-800',
-  info: 'bg-blue-50 border-blue-400 text-blue-800',
-  success: 'bg-green-50 border-green-400 text-green-800',
+  error: 'bg-sygnal-blokada-tlo border-sygnal-blokada text-sygnal-blokada-tusz',
+  warning: 'bg-sygnal-uwaga-tlo border-sygnal-uwaga text-sygnal-uwaga-tusz',
+  info: 'bg-sygnal-info-tlo border-sygnal-info text-sygnal-info-tusz',
+  success: 'bg-sygnal-ok-tlo border-sygnal-ok text-sygnal-ok-tusz',
 };
 
 const TYPE_ICONS: Record<NotificationType, string> = {
@@ -73,7 +73,7 @@ export function NotificationToast() {
                   className={clsx(
                     'rounded border px-2 py-0.5 text-[11px] font-medium',
                     action.variant === 'danger'
-                      ? 'border-red-400 text-red-700 hover:bg-red-100'
+                      ? 'border-sygnal-blokada text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo'
                       : 'border-current text-current hover:opacity-80',
                   )}
                   data-testid={`notification-action-${n.id}-${idx}`}

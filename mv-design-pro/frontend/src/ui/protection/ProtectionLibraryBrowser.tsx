@@ -240,7 +240,7 @@ export function ProtectionLibraryBrowser({
 
       {/* Manifest Panel (P14b) */}
       {showManifestPanel && manifest && (
-        <div className="border-b border-gray-200 bg-blue-50 px-4 py-3">
+        <div className="border-b border-gray-200 bg-sygnal-info-tlo px-4 py-3">
           <div className="text-sm space-y-1">
             <div><strong>Biblioteka:</strong> {manifest.name_pl}</div>
             <div><strong>Producent:</strong> {manifest.vendor}</div>
@@ -262,7 +262,7 @@ export function ProtectionLibraryBrowser({
               className={clsx(
                 'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-blue-500 text-sygnal-info'
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               )}
             >
@@ -297,7 +297,7 @@ export function ProtectionLibraryBrowser({
             )}
 
             {error && (
-              <div className="m-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="m-4 rounded border border-sygnal-blokada/40 bg-sygnal-blokada-tlo p-3 text-sm text-sygnal-blokada-tusz">
                 {error}
               </div>
             )}
@@ -317,7 +317,7 @@ export function ProtectionLibraryBrowser({
                     className={clsx(
                       'w-full px-4 py-3 text-left transition-colors',
                       selectedTypeId === type.id
-                        ? 'bg-blue-50 text-blue-700'
+                        ? 'bg-sygnal-info-tlo text-sygnal-info-tusz'
                         : 'hover:bg-gray-50'
                     )}
                   >
@@ -330,7 +330,7 @@ export function ProtectionLibraryBrowser({
                       </div>
                     )}
                     {(type as any).unverified && (
-                      <div className="mt-1 text-xs font-medium text-amber-700">
+                      <div className="mt-1 text-xs font-medium text-sygnal-uwaga">
                         Dane analityczne - wymagaja weryfikacji
                       </div>
                     )}
@@ -413,7 +413,7 @@ function DeviceTypeDetails({ type }: { type: ProtectionDeviceType }) {
   return (
     <>
       {type.unverified && (
-        <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-2 text-sm text-sygnal-uwaga-tusz">
           Rekord analityczny. Dane urzadzenia lub zakresow nie sa jeszcze zweryfikowane
           produkcyjnie.
         </div>
@@ -509,11 +509,11 @@ function TemplateDetails({ type }: { type: ProtectionSettingTemplate }) {
           <div className="text-xs font-medium text-gray-600 mb-2">Pola nastaw:</div>
           <div className="space-y-2">
             {type.setting_fields.map((field, idx) => (
-              <div key={idx} className="border-l-2 border-blue-300 pl-3 py-1 text-xs">
+              <div key={idx} className="border-l-2 border-sygnal-info/40 pl-3 py-1 text-xs">
                 <div className="font-medium text-gray-700">{field.name}</div>
                 {field.unit && <div className="text-gray-500">Jednostka: {field.unit}</div>}
                 {field.jednostka_status === 'NIEUSTALONA' && (
-                  <div className="text-amber-700" data-testid="szablon-jednostka-nieustalona">
+                  <div className="text-sygnal-uwaga" data-testid="szablon-jednostka-nieustalona">
                     Jednostka: nieustalona — brak podstawy (ampery wtórne, krotność In wejścia
                     przekaźnika czy ampery pierwotne); zakres nie jest źródłem nastaw oceny
                   </div>
@@ -607,14 +607,14 @@ function ProtectionImportReportDialog({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {/* Success/Failure Banner */}
           {report.success ? (
-            <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3">
-              <p className="text-green-800 font-medium">
+            <div className="bg-sygnal-ok-tlo border border-sygnal-ok/40 rounded-md px-4 py-3">
+              <p className="text-sygnal-ok-tusz font-medium">
                 Import zakonczony sukcesem
               </p>
             </div>
           ) : (
-            <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3">
-              <p className="text-red-800 font-medium">
+            <div className="bg-sygnal-blokada-tlo border border-sygnal-blokada/40 rounded-md px-4 py-3">
+              <p className="text-sygnal-blokada-tusz font-medium">
                 Import zakonczony bledami
               </p>
             </div>
@@ -657,17 +657,17 @@ function ProtectionImportReportDialog({
           {/* Conflicts */}
           {report.conflicts.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-red-700 uppercase tracking-wider mb-2">
+              <h3 className="text-sm font-semibold text-sygnal-blokada uppercase tracking-wider mb-2">
                 Konflikty ({report.conflicts.length})
               </h3>
               <ul className="space-y-2">
                 {report.conflicts.map((item) => (
                   <li
                     key={item.id}
-                    className="bg-red-50 border border-red-200 rounded-md px-3 py-2"
+                    className="bg-sygnal-blokada-tlo border border-sygnal-blokada/40 rounded-md px-3 py-2"
                   >
-                    <p className="text-sm font-mono text-red-800">{item.id}</p>
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="text-sm font-mono text-sygnal-blokada-tusz">{item.id}</p>
+                    <p className="text-xs text-sygnal-blokada mt-1">
                       {item.kind}: {item.name_pl} - {item.reason_code}
                     </p>
                   </li>
@@ -679,17 +679,17 @@ function ProtectionImportReportDialog({
           {/* Blocked Items (REPLACE mode) */}
           {report.blocked.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-orange-700 uppercase tracking-wider mb-2">
+              <h3 className="text-sm font-semibold text-sygnal-uwaga uppercase tracking-wider mb-2">
                 Zablokowane (w użyciu) ({report.blocked.length})
               </h3>
               <ul className="space-y-2">
                 {report.blocked.map((item) => (
                   <li
                     key={item.id}
-                    className="bg-orange-50 border border-orange-200 rounded-md px-3 py-2"
+                    className="bg-sygnal-uwaga-tlo border border-sygnal-uwaga/40 rounded-md px-3 py-2"
                   >
-                    <p className="text-sm font-mono text-orange-800">{item.id}</p>
-                    <p className="text-xs text-orange-600 mt-1">
+                    <p className="text-sm font-mono text-sygnal-uwaga-tusz">{item.id}</p>
+                    <p className="text-xs text-sygnal-uwaga mt-1">
                       {item.kind}: {item.name_pl} - {item.reason_code}
                     </p>
                   </li>

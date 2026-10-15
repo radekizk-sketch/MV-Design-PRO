@@ -30,8 +30,8 @@ export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: Sem
   if (filtered.length === 0) return null;
 
   return (
-    <div className="border-l-4 border-red-500 bg-red-50 px-4 py-2.5" data-testid="semantic-issues-banner">
-      <h4 className="text-[10px] font-semibold text-red-700 uppercase tracking-wide mb-1.5">
+    <div className="border-l-4 border-red-500 bg-sygnal-blokada-tlo px-4 py-2.5" data-testid="semantic-issues-banner">
+      <h4 className="text-[10px] font-semibold text-sygnal-blokada uppercase tracking-wide mb-1.5">
         Naruszenia semantyki ({filtered.length})
       </h4>
       <ul className="space-y-1.5">
@@ -41,7 +41,7 @@ export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: Sem
             className="text-[11px]"
             data-issue-code={issue.code}
           >
-            <div className={clsx('font-medium', issue.severity === 'ERROR' ? 'text-red-700' : 'text-amber-700')}>
+            <div className={clsx('font-medium', issue.severity === 'ERROR' ? 'text-sygnal-blokada' : 'text-sygnal-uwaga')}>
               {issue.message}
             </div>
             {issue.suggested_fix && (
@@ -53,7 +53,7 @@ export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: Sem
               <button
                 type="button"
                 onClick={() => onSelectElement(issue.element_id!)}
-                className="text-blue-600 hover:underline mt-0.5"
+                className="text-sygnal-info hover:underline mt-0.5"
                 data-testid={`semantic-issue-action-${issue.code}`}
               >
                 {issueActionLabel(issue)}

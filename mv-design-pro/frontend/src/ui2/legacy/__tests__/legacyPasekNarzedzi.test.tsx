@@ -50,7 +50,6 @@ const {
 vi.mock('../../../ui/app-state', () => ({
   useActiveCaseId: () => 'case-1',
   useActiveMode: () => mockActiveMode.value,
-  useIssuePanelOpen: () => false,
 }));
 
 vi.mock('../../../ui/app-state/store', () => ({

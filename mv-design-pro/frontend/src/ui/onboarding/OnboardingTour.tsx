@@ -155,7 +155,7 @@ export function OnboardingTour({ isOpen, onClose, onComplete }: OnboardingTourPr
         </h3>
         <p className="mb-3 text-sm text-gray-700">{step.description}</p>
 
-        <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-[11px] text-blue-900" data-testid="onboarding-tip">
+        <div className="mb-4 rounded border border-sygnal-info/40 bg-sygnal-info-tlo p-3 text-[11px] text-sygnal-info-tusz" data-testid="onboarding-tip">
           💡 {step.tipPl}
         </div>
 
@@ -185,8 +185,10 @@ export function OnboardingTour({ isOpen, onClose, onComplete }: OnboardingTourPr
           <button
             type="button"
             onClick={next}
-            className={`px-4 py-1.5 text-[11px] text-white rounded font-medium ${
-              isLast ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
+            className={`px-4 py-1.5 text-[11px] rounded font-medium ${
+              isLast
+                ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
             data-testid="onboarding-next"
           >

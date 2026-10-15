@@ -55,7 +55,7 @@ export function ScenarioList({
             key={scenario.scenario_id}
             className={`p-3 border rounded cursor-pointer transition-colors ${
               isSelected
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-blue-500 bg-sygnal-info-tlo'
                 : 'border-gray-200 hover:border-gray-400'
             }`}
             onClick={() => onSelect(scenario.scenario_id)}
@@ -72,7 +72,7 @@ export function ScenarioList({
 
               {deleteConfirmId !== scenario.scenario_id ? (
                 <button
-                  className="text-xs text-gray-400 hover:text-red-500"
+                  className="text-xs text-gray-400 hover:text-sygnal-blokada"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteConfirmId(scenario.scenario_id);

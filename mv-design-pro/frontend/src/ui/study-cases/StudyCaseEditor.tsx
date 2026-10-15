@@ -111,9 +111,9 @@ export const StudyCaseEditor: React.FC<StudyCaseEditorProps> = ({
     studyCase.result_status;
   const statusColor =
     studyCase.result_status === 'FRESH'
-      ? 'text-green-600'
+      ? 'text-sygnal-ok'
       : studyCase.result_status === 'OUTDATED'
-        ? 'text-orange-500'
+        ? 'text-sygnal-uwaga'
         : 'text-gray-500';
 
   return (
@@ -142,7 +142,7 @@ export const StudyCaseEditor: React.FC<StudyCaseEditorProps> = ({
           Uruchom obliczenie
         </div>
         {!readinessReady && (
-          <div className="text-sm text-orange-600 mb-2">
+          <div className="text-sm text-sygnal-uwaga mb-2">
             Sieć nie jest gotowa do obliczeń. Sprawdź panel gotowości.
           </div>
         )}

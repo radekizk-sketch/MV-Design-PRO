@@ -248,7 +248,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
                 className={clsx(
                   'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] transition-colors',
                   activeNamespace === namespace
-                    ? 'bg-blue-50 font-medium text-blue-800'
+                    ? 'bg-sygnal-info-tlo font-medium text-sygnal-info-tusz'
                     : 'text-gray-600 hover:bg-gray-50',
                 )}
               >
@@ -279,7 +279,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
               </div>
             ) : error ? (
               <div className="flex h-full items-center justify-center px-4">
-                <p className="text-center text-[11px] text-red-600">{error}</p>
+                <p className="text-center text-[11px] text-sygnal-blokada">{error}</p>
               </div>
             ) : filteredTypes.length === 0 ? (
               <div className="flex h-full items-center justify-center">
@@ -305,7 +305,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
                       onClick={() => setSelectedTypeId(item.id)}
                       className={clsx(
                         'cursor-pointer border-b border-gray-50 transition-colors',
-                        selectedTypeId === item.id ? 'bg-blue-50' : 'hover:bg-gray-50',
+                        selectedTypeId === item.id ? 'bg-sygnal-info-tlo' : 'hover:bg-gray-50',
                       )}
                     >
                       <td className="px-3 py-1.5 font-medium text-gray-800">{item.name}</td>

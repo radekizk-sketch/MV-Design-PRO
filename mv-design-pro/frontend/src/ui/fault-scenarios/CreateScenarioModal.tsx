@@ -183,7 +183,7 @@ export function CreateScenarioModal({
 
           {/* SC_1F warning */}
           {faultType === 'SC_1F' && (
-            <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 p-2 rounded">
+            <div className="text-sm text-sygnal-uwaga-tusz bg-sygnal-uwaga-tlo border border-sygnal-uwaga/40 p-2 rounded">
               Zwarcie jednofazowe wymaga danych impedancji zerowej (Z0).
               Upewnij się, że dane Z0 są dostępne w modelu sieci.
             </div>
@@ -191,7 +191,7 @@ export function CreateScenarioModal({
 
           {/* Error */}
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded">
+            <div className="text-sm text-sygnal-blokada-tusz bg-sygnal-blokada-tlo border border-sygnal-blokada/40 p-2 rounded">
               {error}
             </div>
           )}

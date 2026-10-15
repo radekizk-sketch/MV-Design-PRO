@@ -140,7 +140,7 @@ export function FaultScenarioModal() {
             <input
               type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="np. Zwarcie na szynie głównej"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
               data-testid="fault-scenario-name-input" autoFocus
             />
           </div>
@@ -150,7 +150,7 @@ export function FaultScenarioModal() {
             <label className="block text-xs font-medium text-slate-600 mb-1">Typ analizy</label>
             <select
               value={faultType} onChange={(e) => setFaultType(e.target.value as FaultTypeValue)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
               data-testid="fault-scenario-type-select"
             >
               {FAULT_TYPES.map((ft) => (<option key={ft} value={ft}>{FAULT_TYPE_LABELS[ft]}</option>))}
@@ -162,7 +162,7 @@ export function FaultScenarioModal() {
             <label className="block text-xs font-medium text-slate-600 mb-1">Tryb zwarcia</label>
             <select
               value={faultMode} onChange={(e) => setFaultMode(e.target.value as FaultModeValue)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
               data-testid="fault-scenario-mode-select"
             >
               {FAULT_MODES.map((fm) => (<option key={fm} value={fm}>{FAULT_MODE_LABELS[fm]}</option>))}
@@ -171,24 +171,24 @@ export function FaultScenarioModal() {
 
           {/* Impedancja zwarcia Zf (v2) — aktywne tylko dla IMPEDANCE */}
           {faultMode === 'IMPEDANCE' && (
-            <div className="p-3 rounded border border-amber-200 bg-amber-50">
-              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja zwarcia Zf</label>
+            <div className="p-3 rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo">
+              <label className="block text-xs font-medium text-sygnal-uwaga-tusz mb-2">Impedancja zwarcia Zf</label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">R [Ω]</label>
+                  <label className="block text-xs text-sygnal-uwaga mb-0.5">R [Ω]</label>
                   <input
                     type="number" step="any" value={rOhm} onChange={(e) => setROhm(e.target.value)}
                     placeholder="0.0"
-                    className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
+                    className="w-full px-2 py-1.5 text-sm border border-sygnal-uwaga/40 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-r-ohm-input"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">X [Ω]</label>
+                  <label className="block text-xs text-sygnal-uwaga mb-0.5">X [Ω]</label>
                   <input
                     type="number" step="any" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
                     placeholder="0.0"
-                    className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
+                    className="w-full px-2 py-1.5 text-sm border border-sygnal-uwaga/40 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-x-ohm-input"
                   />
                 </div>
@@ -201,7 +201,7 @@ export function FaultScenarioModal() {
             <label className="block text-xs font-medium text-slate-600 mb-1">Typ lokalizacji</label>
             <select
               value={locationType} onChange={(e) => setLocationType(e.target.value as LocationType)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
               data-testid="fault-scenario-location-type-select"
             >
               {LOCATION_TYPES.map((lt) => (<option key={lt} value={lt}>{LOCATION_TYPE_LABELS[lt]}</option>))}
@@ -216,7 +216,7 @@ export function FaultScenarioModal() {
             <input
               type="text" value={elementRef} onChange={(e) => setElementRef(e.target.value)}
               placeholder={locationType === 'BRANCH_POINT' ? 'np. line-1' : 'np. bus-1'}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
               data-testid="fault-scenario-node-input"
             />
           </div>
@@ -231,7 +231,7 @@ export function FaultScenarioModal() {
                 type="number" step="0.01" min="0" max="1" value={alpha}
                 onChange={(e) => setAlpha(e.target.value)}
                 placeholder="0.5"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-sygnal-info"
                 data-testid="fault-scenario-alpha-input"
               />
               <p className="mt-1 text-xs text-slate-400">
@@ -242,12 +242,12 @@ export function FaultScenarioModal() {
 
           {/* Errors */}
           {validationError && (
-            <div className="p-2 text-xs rounded bg-rose-50 text-rose-700 border border-rose-200" data-testid="fault-scenario-validation-error">
+            <div className="p-2 text-xs rounded bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border border-sygnal-blokada/40" data-testid="fault-scenario-validation-error">
               {validationError}
             </div>
           )}
           {error && (
-            <div className="p-2 text-xs rounded bg-rose-50 text-rose-700 border border-rose-200" data-testid="fault-scenario-api-error">
+            <div className="p-2 text-xs rounded bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border border-sygnal-blokada/40" data-testid="fault-scenario-api-error">
               {error}
             </div>
           )}

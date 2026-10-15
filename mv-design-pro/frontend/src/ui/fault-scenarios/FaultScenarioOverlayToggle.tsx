@@ -37,7 +37,7 @@ export function FaultScenarioOverlayToggle({ onOverlayToggle }: FaultScenarioOve
       <label className="text-xs font-medium text-slate-600">Pokaż scenariusz na schemacie</label>
       {selectedScenario ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-amber-700 font-medium">{selectedScenario.name}</span>
+          <span className="text-xs text-sygnal-uwaga font-medium">{selectedScenario.name}</span>
           <button
             onClick={handleToggle}
             className="px-2 py-0.5 text-xs rounded border border-slate-300 text-slate-500 hover:bg-slate-100"

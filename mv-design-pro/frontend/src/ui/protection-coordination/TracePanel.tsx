@@ -73,7 +73,7 @@ function TraceStepItem({ step, index, isExpanded, onToggle }: TraceStepItemProps
   return (
     <div
       className={`rounded border transition-colors ${
-        isExpanded ? 'border-blue-200 bg-blue-50/50' : 'border-slate-200'
+        isExpanded ? 'border-sygnal-info/40 bg-sygnal-info-tlo/50' : 'border-slate-200'
       }`}
       data-testid={`trace-step-${index}`}
     >

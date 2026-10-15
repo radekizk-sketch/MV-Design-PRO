@@ -90,7 +90,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sygnal-info">
             Pełny wywód matematyczny
           </div>
           <h3 className="mt-1 text-base font-semibold text-slate-900">
@@ -117,7 +117,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
             data-testid="proof-latex-copy"
             onClick={copyLatex}
             disabled={state.status !== 'ready' || !state.source}
-            className="rounded border border-cyan-500/70 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-cyan-500/70 px-3 py-1.5 text-xs font-semibold text-sygnal-info-tusz hover:bg-sygnal-info-tlo disabled:cursor-not-allowed disabled:opacity-50"
           >
             Kopiuj LaTeX
           </button>
@@ -126,7 +126,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
             data-testid="proof-latex-download"
             onClick={downloadLatex}
             disabled={state.status !== 'ready' || !state.source}
-            className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Pobierz .tex
           </button>
@@ -136,7 +136,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
       {!runId ? (
         <div
           data-testid="proof-latex-empty"
-          className="rounded border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+          className="rounded border border-amber-500/40 bg-sygnal-uwaga-tlo px-3 py-2 text-sm text-sygnal-uwaga-tusz"
         >
           Nie wybrano ostatniego obliczenia. Najpierw wykonaj obliczenia albo otwórz wynik z historii.
         </div>
@@ -150,7 +150,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
       ) : state.status === 'error' ? (
         <div
           data-testid="proof-latex-error"
-          className="rounded border border-rose-500/50 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+          className="rounded border border-rose-500/50 bg-sygnal-blokada-tlo px-3 py-2 text-sm text-sygnal-blokada-tusz"
         >
           Nie udało się pobrać pełnego wywodu LaTeX: {state.error}
         </div>
@@ -180,8 +180,8 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
               data-testid="proof-latex-copy-status"
               className={
                 copyStatus === 'copied'
-                  ? 'rounded border border-emerald-500/50 bg-emerald-50 px-3 py-2 text-xs text-emerald-700'
-                  : 'rounded border border-amber-500/50 bg-amber-50 px-3 py-2 text-xs text-amber-700'
+                  ? 'rounded border border-emerald-500/50 bg-sygnal-ok-tlo px-3 py-2 text-xs text-sygnal-ok-tusz'
+                  : 'rounded border border-amber-500/50 bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz'
               }
             >
               {copyStatus === 'copied'

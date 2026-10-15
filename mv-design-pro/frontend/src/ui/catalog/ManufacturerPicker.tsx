@@ -28,9 +28,9 @@ export interface ManufacturerPickerProps {
 }
 
 const STATUS_BADGE_CLASS: Record<ManufacturerStatus, string> = {
-  verified: 'bg-green-100 text-green-800 border-green-300',
-  user_defined: 'bg-blue-100 text-blue-800 border-blue-300',
-  requires_catalog: 'bg-red-100 text-red-800 border-red-300',
+  verified: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz border-sygnal-ok/40',
+  user_defined: 'bg-sygnal-info-tlo text-sygnal-info-tusz border-sygnal-info/40',
+  requires_catalog: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border-sygnal-blokada/40',
   deprecated: 'bg-gray-100 text-gray-700 border-gray-300',
 };
 
@@ -70,7 +70,7 @@ export function ManufacturerPicker({
               className={clsx(
                 'flex w-full flex-col items-start rounded border p-2 text-left transition-colors',
                 isSelected
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-blue-500 bg-sygnal-info-tlo'
                   : 'border-gray-200 bg-white hover:bg-gray-50',
               )}
             >
@@ -93,7 +93,7 @@ export function ManufacturerPicker({
                 <span
                   className={clsx(
                     'mt-1 text-[11px]',
-                    isBlocked ? 'text-red-700' : 'text-gray-600',
+                    isBlocked ? 'text-sygnal-blokada' : 'text-gray-600',
                   )}
                 >
                   {m.notes_pl}
@@ -102,7 +102,7 @@ export function ManufacturerPicker({
               {isBlocked && (
                 <span
                   data-testid={`manufacturer-picker-blocked-${m.manufacturer_ref}`}
-                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-red-700"
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-sygnal-blokada"
                 >
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-600" />
                   Pole renderowane jako szablon kanoniczny ogólny (rozwiązanie zapasowe).

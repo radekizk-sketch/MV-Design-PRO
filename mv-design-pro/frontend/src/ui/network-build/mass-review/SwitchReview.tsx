@@ -120,7 +120,7 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                 <tr
                   key={row.id}
                   onClick={() => handleRowClick(row)}
-                  className="cursor-pointer border-b border-gray-50 hover:bg-blue-50 transition-colors"
+                  className="cursor-pointer border-b border-gray-50 hover:bg-sygnal-info-tlo transition-colors"
                 >
                   <td className="px-3 py-1.5 font-medium text-gray-800">{row.name}</td>
                   <td className="px-3 py-1.5 text-gray-500">{switchTypeLabel(row.switchType)}</td>
@@ -129,8 +129,8 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                       className={clsx(
                         'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium',
                         row.state === 'open'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-green-100 text-green-700',
+                          ? 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
+                          : 'bg-sygnal-ok-tlo text-sygnal-ok-tusz',
                       )}
                     >
                       <span
@@ -144,7 +144,7 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                   </td>
                   <td className="px-3 py-1.5 text-center">
                     {row.isNOP ? (
-                      <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-medium">
+                      <span className="px-1.5 py-0.5 border border-scada-wn/50 text-scada-wn rounded text-[10px] font-medium">
                         NOP
                       </span>
                     ) : (
@@ -153,7 +153,7 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                   </td>
                   <td className="px-3 py-1.5">
                     {row.catalogRef ? (
-                      <span className="text-green-600">{row.catalogRef}</span>
+                      <span className="text-sygnal-ok">{row.catalogRef}</span>
                     ) : (
                       <span className="text-gray-300">—</span>
                     )}

@@ -203,7 +203,7 @@ export function SwitchgearFamilyPicker({
     return (
       <div
         className={clsx(
-          'rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900',
+          'rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-3 text-sm text-sygnal-uwaga-tusz',
           className,
         )}
         data-testid="switchgear-family-picker-fallback"
@@ -241,7 +241,7 @@ export function SwitchgearFamilyPicker({
                 !doWyboru
                   ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-70'
                   : isSelected
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-blue-500 bg-sygnal-info-tlo'
                     : 'border-gray-200 bg-white hover:bg-gray-50',
               )}
             >
@@ -266,7 +266,7 @@ export function SwitchgearFamilyPicker({
               )}
               {powodBlokady && (
                 <span
-                  className="mt-1 text-[11px] font-medium text-amber-800"
+                  className="mt-1 text-[11px] font-medium text-sygnal-uwaga-tusz"
                   data-testid={`switchgear-family-picker-blocked-${family.switchgear_family_ref}`}
                 >
                   {powodBlokady}

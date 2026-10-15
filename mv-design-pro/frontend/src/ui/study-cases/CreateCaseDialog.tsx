@@ -119,7 +119,7 @@ export function CreateCaseDialog({
         <form onSubmit={handleSubmit}>
           <div className="max-h-[60vh] space-y-4 overflow-y-auto px-6 py-4">
             {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="rounded-md border border-sygnal-blokada/40 bg-sygnal-blokada-tlo p-3 text-sm text-sygnal-blokada-tusz">
                 {error}
               </div>
             )}
@@ -141,7 +141,7 @@ export function CreateCaseDialog({
                 aria-invalid={!name.trim()}
               />
               {!name.trim() && (
-                <p className="mt-1 text-xs text-red-600">Nazwa zakresu jest wymagana.</p>
+                <p className="mt-1 text-xs text-sygnal-blokada">Nazwa zakresu jest wymagana.</p>
               )}
             </div>
 
@@ -165,7 +165,7 @@ export function CreateCaseDialog({
                 id="setActive"
                 checked={setActive}
                 onChange={(e) => setSetActive(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-gray-300 text-sygnal-info focus:ring-blue-500"
               />
               <label htmlFor="setActive" className="ml-2 text-sm text-gray-700">
                 Ustaw jako aktywny zakres
@@ -232,7 +232,7 @@ export function CreateCaseDialog({
             </div>
 
             {config.sc_input_mode === 'simplified' && (
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-3">
+              <div className="rounded-md border border-sygnal-info/40 bg-sygnal-info-tlo p-3 space-y-3">
                 <div>
                   <label
                     htmlFor="sc-sk-mva"
@@ -298,7 +298,7 @@ export function CreateCaseDialog({
                 id="useDefaultConfig"
                 checked={useDefaultConfig}
                 onChange={(e) => setUseDefaultConfig(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-gray-300 text-sygnal-info focus:ring-blue-500"
               />
               <label htmlFor="useDefaultConfig" className="ml-2 text-sm text-gray-700">
                 Użyj pozostałych parametrów obliczeń jako domyślnych
@@ -413,7 +413,7 @@ function ConfigCheckbox({ label, checked, onChange }: ConfigCheckboxProps) {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        className="h-4 w-4 rounded border-gray-300 text-sygnal-info focus:ring-blue-500"
       />
       <label className="ml-2 text-sm text-gray-600">{label}</label>
     </div>

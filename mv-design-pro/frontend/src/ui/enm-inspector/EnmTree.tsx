@@ -171,7 +171,7 @@ export function EnmTree({
                       key={el.id}
                       className={`flex items-center justify-between w-full px-2 py-0.5 text-xs rounded cursor-pointer ${
                         isSelected
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-sygnal-info-tlo text-sygnal-info-tusz'
                           : 'text-slate-700 hover:bg-slate-50'
                       }`}
                       onClick={() => handleElementClick(el.id, cat.elementType)}
@@ -188,7 +188,7 @@ export function EnmTree({
                           </span>
                         )}
                         {issueCount > 0 && (
-                          <span className="inline-flex items-center justify-center w-4 h-4 text-xs bg-rose-100 text-rose-700 rounded-full">
+                          <span className="inline-flex items-center justify-center w-4 h-4 text-xs bg-sygnal-blokada-tlo text-sygnal-blokada-tusz rounded-full">
                             {issueCount}
                           </span>
                         )}

@@ -68,10 +68,10 @@ const UNIT_CATEGORIES: Record<string, UnitCategory> = {
 };
 
 const CATEGORY_STYLES: Record<UnitCategory, string> = {
-  voltage: 'text-blue-600',
-  current: 'text-orange-600',
-  power: 'text-green-600',
-  impedance: 'text-purple-600',
+  voltage: 'text-scada-nn',
+  current: 'text-scada-grounded',
+  power: 'text-scada-energized',
+  impedance: 'text-scada-wn',
   length: 'text-gray-600',
   percentage: 'text-gray-500',
   angle: 'text-gray-500',

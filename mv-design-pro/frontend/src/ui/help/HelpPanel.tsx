@@ -193,7 +193,7 @@ export function HelpPanel({ isOpen, onClose, initialTab = 'docs' }: HelpPanelPro
               onClick={() => setActiveTab(key)}
               className={`px-4 py-2 text-xs font-medium border-b-2 ${
                 activeTab === key
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-blue-600 text-sygnal-info'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
               data-testid={`help-tab-${key}`}
@@ -250,7 +250,7 @@ export function HelpPanel({ isOpen, onClose, initialTab = 'docs' }: HelpPanelPro
               <dl className="space-y-3">
                 {filteredGlossary.map((entry) => (
                   <div key={entry.term} className="rounded border border-gray-200 p-3" data-testid={`glossary-entry-${entry.term}`}>
-                    <dt className="text-xs font-semibold text-blue-700">{entry.term}</dt>
+                    <dt className="text-xs font-semibold text-sygnal-info">{entry.term}</dt>
                     <dd className="mt-1 text-xs text-gray-700">{entry.definition}</dd>
                     {entry.normative && (
                       <div className="mt-1 text-[10px] italic text-gray-500">Norma: {entry.normative}</div>

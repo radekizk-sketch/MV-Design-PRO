@@ -72,21 +72,21 @@ export function DiagnosticsPanel({
           count={report.blocker_count}
           active={severityFilter === 'BLOCKER'}
           onClick={() => setSeverityFilter('BLOCKER')}
-          colorClass="text-rose-600"
+          colorClass="text-sygnal-blokada"
         />
         <FilterButton
           label="Ostrzeżenia"
           count={report.warning_count}
           active={severityFilter === 'WARN'}
           onClick={() => setSeverityFilter('WARN')}
-          colorClass="text-amber-600"
+          colorClass="text-sygnal-uwaga"
         />
         <FilterButton
           label="Informacje"
           count={report.info_count}
           active={severityFilter === 'INFO'}
           onClick={() => setSeverityFilter('INFO')}
-          colorClass="text-blue-600"
+          colorClass="text-sygnal-info"
         />
       </div>
 
@@ -127,10 +127,10 @@ function StatusHeader({
 }) {
   const statusColor =
     status === 'FAIL'
-      ? 'bg-rose-50 border-rose-200 text-rose-700'
+      ? 'bg-sygnal-blokada-tlo border-sygnal-blokada/40 text-sygnal-blokada-tusz'
       : status === 'WARN'
-        ? 'bg-amber-50 border-amber-200 text-amber-700'
-        : 'bg-green-50 border-green-200 text-green-700';
+        ? 'bg-sygnal-uwaga-tlo border-sygnal-uwaga/40 text-sygnal-uwaga-tusz'
+        : 'bg-sygnal-ok-tlo border-sygnal-ok/40 text-sygnal-ok-tusz';
 
   return (
     <div
@@ -143,12 +143,12 @@ function StatusHeader({
         </span>
         <div className="flex gap-2 text-xs">
           {report.blocker_count > 0 && (
-            <span className="text-rose-600">
+            <span className="text-sygnal-blokada">
               {report.blocker_count} blokad
             </span>
           )}
           {report.warning_count > 0 && (
-            <span className="text-amber-600">
+            <span className="text-sygnal-uwaga">
               {report.warning_count} ostrzeżeń
             </span>
           )}
@@ -175,7 +175,7 @@ function FilterButton({
     <button
       className={`px-2 py-0.5 text-xs rounded border ${
         active
-          ? 'bg-blue-100 border-blue-300 text-blue-800'
+          ? 'bg-sygnal-info-tlo border-sygnal-info/40 text-sygnal-info-tusz'
           : 'border-slate-200 text-slate-500 hover:bg-slate-50'
       }`}
       onClick={onClick}
@@ -199,8 +199,8 @@ function IssueRow({
         issue.severity === 'BLOCKER'
           ? 'border-l-rose-500'
           : issue.severity === 'WARN'
-            ? 'border-l-amber-400'
-            : 'border-l-blue-400'
+            ? 'border-l-sygnal-uwaga'
+            : 'border-l-sygnal-info'
       }`}
       onClick={onClick}
       data-testid={`diagnostic-issue-${issue.code}`}

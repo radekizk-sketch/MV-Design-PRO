@@ -175,8 +175,8 @@ export const COMPARISON_STATUS_LABELS: Record<ComparisonStatusChange, string> = 
  * Per CASE_COMPARISON_UI_CONTRACT.md § 3.3.2
  */
 export const COMPARISON_STATUS_COLORS: Record<ComparisonStatusChange, string> = {
-  IMPROVED: 'bg-green-100 text-green-700',
-  REGRESSED: 'bg-red-100 text-red-700',
+  IMPROVED: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz',
+  REGRESSED: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz',
   NO_CHANGE: 'bg-gray-50 text-gray-600',
 };
 

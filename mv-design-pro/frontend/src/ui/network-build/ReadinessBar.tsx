@@ -129,14 +129,14 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
     return (
       <div
         className={clsx(
-          'flex items-center gap-3 border-t border-green-200 bg-green-50 px-4 py-1.5',
+          'flex items-center gap-3 border-t border-sygnal-ok/40 bg-sygnal-ok-tlo px-4 py-1.5',
           className,
         )}
         data-testid="readiness-bar"
         data-ready="true"
       >
         <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
-        <span className="text-[11px] font-semibold text-green-700">Układ dopuszczony do analizy</span>
+        <span className="text-[11px] font-semibold text-sygnal-ok">Układ dopuszczony do analizy</span>
         <span className="text-[10px] text-gray-500">
           {warnings.length > 0 ? `${warnings.length} uwag projektowych` : 'Bez uwag projektowych'}
         </span>
@@ -170,12 +170,12 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
 
         <div className="flex flex-shrink-0 items-center gap-3">
           {blockersByCategory.total > 0 && (
-            <span className="text-[11px] font-semibold text-red-600">
+            <span className="text-[11px] font-semibold text-sygnal-blokada">
               {blockersByCategory.total} pozycji kontroli
             </span>
           )}
           {warnings.length > 0 && (
-            <span className="text-[11px] font-semibold text-amber-600">
+            <span className="text-[11px] font-semibold text-sygnal-uwaga">
               {warnings.length} uwag technicznych
             </span>
           )}
@@ -200,7 +200,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
                 className={clsx(
                   'whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] transition-colors',
                   activeFilter === category
-                    ? 'bg-blue-100 font-medium text-blue-800'
+                    ? 'bg-sygnal-info-tlo font-medium text-sygnal-info-tusz'
                     : 'text-gray-500 hover:bg-gray-100',
                 )}
               >
@@ -226,7 +226,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
               <div key={`${blocker.code}-${index}`} className="group flex items-center gap-2">
                 <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-400" />
                 <span
-                  className="max-w-[220px] cursor-pointer truncate text-[10px] text-red-700 hover:underline"
+                  className="max-w-[220px] cursor-pointer truncate text-[10px] text-sygnal-blokada hover:underline"
                   title={publicMessage}
                   onClick={() => blocker.element_ref && handleNavigateToElement(blocker.element_ref)}
                 >
@@ -236,7 +236,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
                   <button
                     type="button"
                     onClick={() => handleNavigateToElement(blocker.element_ref!)}
-                    className="text-[9px] text-blue-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-blue-700"
+                    className="text-[9px] text-sygnal-info opacity-0 transition-opacity group-hover:opacity-100 hover:text-sygnal-info-tusz"
                     title="Pokaż na SLD"
                   >
                     ⊕
@@ -246,7 +246,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
                   <button
                     type="button"
                     onClick={() => handleFixAction(matchingFix)}
-                    className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-blue-100"
+                    className="rounded bg-sygnal-info-tlo/60 px-1.5 py-0.5 text-[9px] text-sygnal-info-tusz opacity-0 transition-opacity group-hover:opacity-100 hover:bg-sygnal-info-tlo"
                     title={publicFixMessage ?? undefined}
                   >
                     Konfiguruj

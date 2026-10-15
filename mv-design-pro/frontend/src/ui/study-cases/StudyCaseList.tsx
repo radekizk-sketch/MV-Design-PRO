@@ -151,7 +151,7 @@ export function StudyCaseList({
           <button
             type="button"
             onClick={handleCreate}
-            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            className="text-xs text-sygnal-info hover:text-sygnal-info-tusz hover:underline"
             title="Utwórz nowy zakres obliczeń"
           >
             + Nowy
@@ -165,7 +165,7 @@ export function StudyCaseList({
               'text-xs',
               createDisabled || !onCreateCase
                 ? 'cursor-not-allowed text-gray-400'
-                : 'text-blue-600 hover:text-blue-800 hover:underline',
+                : 'text-sygnal-info hover:text-sygnal-info-tusz hover:underline',
             )}
             title={createDisabled || !onCreateCase ? createDisabledReason : 'Utwórz nowy zakres obliczeń'}
           >
@@ -231,7 +231,7 @@ function StudyCaseRow({ caseItem, onClick, onContextMenu, onDoubleClick }: Study
       className={clsx(
         'flex cursor-pointer items-center px-3 py-2 transition-colors',
         'hover:bg-gray-50',
-        caseItem.is_active && 'bg-blue-50 hover:bg-blue-100',
+        caseItem.is_active && 'bg-sygnal-info-tlo/60 hover:bg-sygnal-info-tlo',
       )}
       onClick={onClick}
       onContextMenu={onContextMenu}
@@ -239,7 +239,7 @@ function StudyCaseRow({ caseItem, onClick, onContextMenu, onDoubleClick }: Study
     >
       <span className="mr-2 w-4 text-center">
         {caseItem.is_active && (
-          <span className="font-bold text-blue-600" title="Aktywny zakres obliczeń">
+          <span className="font-bold text-sygnal-info" title="Aktywny zakres obliczeń">
             &gt;
           </span>
         )}
@@ -255,7 +255,7 @@ function StudyCaseRow({ caseItem, onClick, onContextMenu, onDoubleClick }: Study
       </span>
 
       {caseItem.is_active && (
-        <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">
+        <span className="ml-2 rounded bg-sygnal-info-tlo px-1.5 py-0.5 text-xs text-sygnal-info-tusz">
           aktywny
         </span>
       )}
@@ -313,7 +313,7 @@ function StudyCaseContextMenu({
 
       <button
         type="button"
-        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+        className="w-full px-4 py-2 text-left text-sm text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
         onClick={() => onDelete(caseId)}
       >
         Usuń zakres

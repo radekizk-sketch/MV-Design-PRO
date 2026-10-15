@@ -22,9 +22,10 @@
  * 1. frontend/src/ui/app-state/store.ts — useAppStateStore.activeCaseId
  *    -> 'przypadek-aktywny'.przypadekId.
  *    Wybor uzasadnienie: to jest KANONICZNY store aktywnego przypadku — czytaja
- *    z niego m.in. ActiveCaseBar (ui/active-case-bar/ActiveCaseBar.tsx, przez
- *    useActiveCaseName/useHasActiveCase/useCanCalculate z app-state) oraz
- *    CaseConfigPage/StudyCaseList. `useExecutionRunsStore.activeStudyCaseId`
+ *    z niego m.in. pasek stanu powloki (ui2/shell/shellStatus.ts, przez
+ *    useActiveCaseName z app-state), pasek kontekstu procesu
+ *    (ui/shell/WorkflowContextStrip.tsx) i powierzchnie warsztatu
+ *    (ui/workspace/WorkspaceSurfaceRouter.tsx). `useExecutionRunsStore.activeStudyCaseId`
  *    (study-cases/runStore.ts) jest odrebnym polem sluzacym WYLACZNIE do
  *    skopowania historii przebiegow (run history) danego przypadku i nie jest
  *    uzywane jako globalny kontekst aktywnego przypadku w powloce.

@@ -162,15 +162,15 @@ function ComparisonResultView({ comparison }: ComparisonResultViewProps) {
     <div className="flex-1 overflow-auto p-4">
       {/* Header */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <div className="text-xs text-blue-600 font-medium">Wariant pracy A</div>
+        <div className="border border-scada-nn/50 p-3 rounded-lg">
+          <div className="text-xs text-scada-nn font-medium">Wariant pracy A</div>
           <div className="text-sm font-semibold text-gray-900">{comparison.case_a_name}</div>
           <div className={clsx('text-xs mt-1', getStatusColor(comparison.status_a))}>
             {RESULT_STATUS_LABELS[comparison.status_a]}
           </div>
         </div>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <div className="text-xs text-green-600 font-medium">Wariant pracy B</div>
+        <div className="border border-scada-energized/50 p-3 rounded-lg">
+          <div className="text-xs text-scada-energized font-medium">Wariant pracy B</div>
           <div className="text-sm font-semibold text-gray-900">{comparison.case_b_name}</div>
           <div className={clsx('text-xs mt-1', getStatusColor(comparison.status_b))}>
             {RESULT_STATUS_LABELS[comparison.status_b]}
@@ -187,13 +187,13 @@ function ComparisonResultView({ comparison }: ComparisonResultViewProps) {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                   Parametr
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-blue-600 uppercase">
+                <th className="px-4 py-2 text-left text-xs font-medium text-scada-nn uppercase">
                   Wariant pracy A
                 </th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-400">
                   →
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-green-600 uppercase">
+                <th className="px-4 py-2 text-left text-xs font-medium text-scada-energized uppercase">
                   Wariant pracy B
                 </th>
               </tr>
@@ -204,11 +204,11 @@ function ComparisonResultView({ comparison }: ComparisonResultViewProps) {
                   <td className="px-4 py-2 font-medium text-gray-700">
                     {getFieldLabel(diff.field)}
                   </td>
-                  <td className="px-4 py-2 text-gray-600 bg-blue-50/30">
+                  <td className="px-4 py-2 text-gray-600">
                     {formatValue(diff.value_a)}
                   </td>
                   <td className="px-4 py-2 text-center text-gray-400">→</td>
-                  <td className="px-4 py-2 text-gray-600 bg-green-50/30">
+                  <td className="px-4 py-2 text-gray-600">
                     {formatValue(diff.value_b)}
                   </td>
                 </tr>
@@ -218,7 +218,7 @@ function ComparisonResultView({ comparison }: ComparisonResultViewProps) {
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          <div className="text-4xl mb-2 font-bold text-green-600">OK</div>
+          <div className="text-4xl mb-2 font-bold text-sygnal-ok">OK</div>
           <div className="text-sm">Konfiguracje są identyczne.</div>
         </div>
       )}
@@ -259,9 +259,9 @@ function formatValue(value: unknown): string {
 function getStatusColor(status: string): string {
   switch (status) {
     case 'FRESH':
-      return 'text-green-600';
+      return 'text-sygnal-ok';
     case 'OUTDATED':
-      return 'text-amber-600';
+      return 'text-sygnal-uwaga';
     case 'NONE':
     default:
       return 'text-gray-500';

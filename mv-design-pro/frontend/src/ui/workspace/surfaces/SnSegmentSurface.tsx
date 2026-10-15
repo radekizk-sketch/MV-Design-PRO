@@ -634,7 +634,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
               data-testid="segment-endpoint-occupied"
               className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs leading-5 text-sygnal-uwaga-tusz"
             >
-              <div className="font-semibold text-white">Końcowy zacisk odcinka jest zajęty</div>
+              <div className="font-semibold text-sygnal-uwaga-tusz">Końcowy zacisk odcinka jest zajęty</div>
               <div className="mt-1">{endpointStatus.reasonPl}</div>
               {endpointStatus.station && (
                 <button

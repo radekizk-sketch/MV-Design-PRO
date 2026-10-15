@@ -174,10 +174,10 @@ export const CatalogMaterializationDialog: React.FC<CatalogMaterializationDialog
                     className={clsx(
                       'w-full text-left px-4 py-2.5 border-b border-gray-50 transition-colors',
                       selectedId === item.id
-                        ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                        ? 'bg-sygnal-info-tlo border-l-4 border-l-blue-500'
                         : 'hover:bg-gray-50 border-l-4 border-l-transparent',
                       currentItemId === item.id && selectedId !== item.id &&
-                        'bg-green-50/50',
+                        'bg-sygnal-ok-tlo/50',
                     )}
                     data-testid={`catalog-item-${item.id}`}
                   >
@@ -188,7 +188,7 @@ export const CatalogMaterializationDialog: React.FC<CatalogMaterializationDialog
                       {item.id} | wer. {item.version}
                     </div>
                     {currentItemId === item.id && (
-                      <span className="text-xs text-green-600 font-medium">
+                      <span className="text-xs text-sygnal-ok font-medium">
                         Aktualnie przypisany
                       </span>
                     )}
@@ -215,7 +215,7 @@ export const CatalogMaterializationDialog: React.FC<CatalogMaterializationDialog
                     <span>Wersja: {preview.itemVersion}</span>
                     <span>Materializacja: {preview.materializationCount} pól</span>
                     {preview.isUpdate && preview.changedFieldCount > 0 && (
-                      <span className="text-amber-600 font-medium">
+                      <span className="text-sygnal-uwaga font-medium">
                         Zmienione: {preview.changedFieldCount}
                       </span>
                     )}
@@ -303,7 +303,7 @@ const FieldRow: React.FC<FieldRowProps> = ({ field }) => {
     <div
       className={clsx(
         'flex items-center justify-between px-3 py-1.5 rounded text-sm',
-        field.hasChanged ? 'bg-amber-50' : 'bg-gray-50',
+        field.hasChanged ? 'bg-sygnal-uwaga-tlo' : 'bg-gray-50',
       )}
       data-testid={`preview-field-${field.fieldName}`}
     >
@@ -324,7 +324,7 @@ const FieldRow: React.FC<FieldRowProps> = ({ field }) => {
         <span
           className={clsx(
             'font-mono font-medium',
-            field.hasChanged ? 'text-amber-700' : 'text-gray-800',
+            field.hasChanged ? 'text-sygnal-uwaga' : 'text-gray-800',
           )}
         >
           {formattedValue}

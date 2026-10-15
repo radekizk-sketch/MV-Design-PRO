@@ -9,20 +9,7 @@ export {
   useActiveProjectId,
   useActiveCaseId,
   useActiveCaseName,
-  useActiveCaseKind,
   useActiveMode,
-  useActiveModeLabel,
-  useCaseKindLabel,
-  useResultStatusLabel,
-  useHasActiveCase,
-  useCanCalculate,
-  useIssuePanelOpen,
-  // UI_INTEGRATION_E2E + canonical layout:
-  useActiveSnapshotId,
-  useActiveAnalysisType,
-  useActiveAnalysisTypeLabel,
-  useActiveRunId,
-  useUIContext,
 } from './store';
 
 export type { CaseKind, AnalysisType, WorkMode, EnmHashChainState } from './store';

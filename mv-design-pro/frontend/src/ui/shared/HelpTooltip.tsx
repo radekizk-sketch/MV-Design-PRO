@@ -32,7 +32,7 @@ export function HelpTooltip({ text, norm, inline }: HelpTooltipProps) {
     <span className={inline ? 'inline-flex' : 'inline-flex'} data-testid="help-tooltip">
       <button
         type="button"
-        className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-400 text-[10px] font-semibold text-slate-500 hover:border-amber-500 hover:text-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-400 text-[10px] font-semibold text-slate-500 hover:border-amber-500 hover:text-sygnal-uwaga focus:outline-none focus:ring-2 focus:ring-amber-400"
         aria-label="Pokaż wyjaśnienie pola"
         aria-describedby={tooltipId}
         onMouseEnter={() => setOpen(true)}
@@ -55,7 +55,7 @@ export function HelpTooltip({ text, norm, inline }: HelpTooltipProps) {
       >
         {text}
         {norm ? (
-          <span className="mt-1 block text-amber-700">
+          <span className="mt-1 block text-sygnal-uwaga">
             {norm}
           </span>
         ) : null}

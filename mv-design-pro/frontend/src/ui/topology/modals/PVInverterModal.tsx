@@ -251,12 +251,12 @@ export function PVInverterModal({
                       <option key={f.ref_id} value={f.ref_id}>{f.name} ({f.kind})</option>
                     ))}
                   </select>
-                  {getError('existing_field_ref') && <p className="mt-1 text-xs text-red-600">{getError('existing_field_ref')}</p>}
+                  {getError('existing_field_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('existing_field_ref')}</p>}
                 </div>
               )}
 
               {isNewField && (
-                <div className="space-y-3 pl-4 border-l-2 border-blue-200">
+                <div className="space-y-3 pl-4 border-l-2 border-sygnal-info/40">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Aparat łączeniowy pola *</label>
@@ -270,7 +270,7 @@ export function PVInverterModal({
                           <option key={val} value={val}>{label}</option>
                         ))}
                       </select>
-                      {getError('new_field_switch_kind') && <p className="mt-1 text-xs text-red-600">{getError('new_field_switch_kind')}</p>}
+                      {getError('new_field_switch_kind') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_switch_kind')}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Stan normalny aparatu *</label>
@@ -284,7 +284,7 @@ export function PVInverterModal({
                           <option key={val} value={val}>{label}</option>
                         ))}
                       </select>
-                      {getError('new_field_switch_state') && <p className="mt-1 text-xs text-red-600">{getError('new_field_switch_state')}</p>}
+                      {getError('new_field_switch_state') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_switch_state')}</p>}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -298,7 +298,7 @@ export function PVInverterModal({
                         className={`w-full px-3 py-2 border rounded-md text-sm ${getError('new_field_voltage_nn_kv') ? 'border-red-500' : 'border-gray-300'}`}
                         placeholder="np. 0.4"
                       />
-                      {getError('new_field_voltage_nn_kv') && <p className="mt-1 text-xs text-red-600">{getError('new_field_voltage_nn_kv')}</p>}
+                      {getError('new_field_voltage_nn_kv') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_voltage_nn_kv')}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nazwa pola</label>
@@ -344,7 +344,7 @@ export function PVInverterModal({
                     step="any"
                     className={`w-full px-3 py-2 border rounded-md text-sm ${getError('rated_power_ac_kw') ? 'border-red-500' : 'border-gray-300'}`}
                   />
-                  {getError('rated_power_ac_kw') && <p className="mt-1 text-xs text-red-600">{getError('rated_power_ac_kw')}</p>}
+                  {getError('rated_power_ac_kw') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('rated_power_ac_kw')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Moc maksymalna (kW) *</label>
@@ -355,7 +355,7 @@ export function PVInverterModal({
                     step="any"
                     className={`w-full px-3 py-2 border rounded-md text-sm ${getError('max_power_kw') ? 'border-red-500' : 'border-gray-300'}`}
                   />
-                  {getError('max_power_kw') && <p className="mt-1 text-xs text-red-600">{getError('max_power_kw')}</p>}
+                  {getError('max_power_kw') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('max_power_kw')}</p>}
                 </div>
               </div>
 
@@ -371,7 +371,7 @@ export function PVInverterModal({
                     <option key={val} value={val}>{label}</option>
                   ))}
                 </select>
-                {getError('control_mode') && <p className="mt-1 text-xs text-red-600">{getError('control_mode')}</p>}
+                {getError('control_mode') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('control_mode')}</p>}
               </div>
 
               {showCosPhi && (
@@ -386,7 +386,7 @@ export function PVInverterModal({
                     max="1"
                     className={`w-full px-3 py-2 border rounded-md text-sm ${getError('cos_phi') ? 'border-red-500' : 'border-gray-300'}`}
                   />
-                  {getError('cos_phi') && <p className="mt-1 text-xs text-red-600">{getError('cos_phi')}</p>}
+                  {getError('cos_phi') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('cos_phi')}</p>}
                 </div>
               )}
             </div>
@@ -450,7 +450,7 @@ export function PVInverterModal({
                       <option key={m.ref_id} value={m.ref_id}>{m.name}</option>
                     ))}
                   </select>
-                  {getError('existing_measurement_ref') && <p className="mt-1 text-xs text-red-600">{getError('existing_measurement_ref')}</p>}
+                  {getError('existing_measurement_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('existing_measurement_ref')}</p>}
                 </div>
               )}
 

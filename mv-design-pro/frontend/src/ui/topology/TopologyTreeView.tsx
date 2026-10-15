@@ -169,7 +169,7 @@ export function TopologyTreeView({
 
   if (error) {
     return (
-      <div className="p-4 text-sm text-red-600" data-testid="topology-tree-error">
+      <div className="p-4 text-sm text-sygnal-blokada" data-testid="topology-tree-error">
         {error}
       </div>
     );
@@ -239,7 +239,7 @@ export function TopologyTreeView({
                     isSelected={selectedNodeRef === lat}
                     onSelect={onNodeSelect}
                     badge="odgałęzienie"
-                    badgeColor="bg-amber-100 text-amber-700"
+                    badgeColor="border border-scada-sn/50 text-scada-sn"
                   />
                 ))}
               </div>
@@ -265,7 +265,7 @@ export function TopologyTreeView({
                     isSelected={selectedNodeRef === n}
                     onSelect={onNodeSelect}
                     badge="izolowany"
-                    badgeColor="bg-red-100 text-red-700"
+                    badgeColor="bg-sygnal-blokada-tlo text-sygnal-blokada-tusz"
                   />
                 ))}
               </div>
@@ -335,7 +335,7 @@ function SpineNodeItem({
         className={clsx(
           'flex items-center py-1 px-2 rounded cursor-pointer text-xs',
           'hover:bg-gray-100 transition-colors',
-          isSelected && 'bg-blue-100 hover:bg-blue-100'
+          isSelected && 'bg-sygnal-info-tlo hover:bg-sygnal-info-tlo'
         )}
         style={{ paddingLeft: `${node.depth * 12 + 4}px` }}
         onClick={() => onSelect?.(node.ref_id)}
@@ -346,7 +346,7 @@ function SpineNodeItem({
 
         {/* Source badge */}
         {node.is_source && (
-          <span className="px-1 py-0.5 bg-green-100 text-green-700 text-[9px] rounded mr-1.5 flex-shrink-0">
+          <span className="px-1 py-0.5 border border-scada-energized/50 text-scada-energized text-[9px] rounded mr-1.5 flex-shrink-0">
             GPZ
           </span>
         )}
@@ -363,7 +363,7 @@ function SpineNodeItem({
 
         {/* Laterals count */}
         {node.laterals.length > 0 && (
-          <span className="text-amber-500 text-[10px] ml-1">
+          <span className="text-scada-sn text-[10px] ml-1">
             +{node.laterals.length} odg.
           </span>
         )}
@@ -377,7 +377,7 @@ function SpineNodeItem({
           style={{ paddingLeft: `${(node.depth + 1) * 12 + 4}px` }}
           onClick={() => onSelect?.(lat.ref_id)}
         >
-          <span className="w-2 h-2 border border-amber-400 rounded-full mr-1.5 flex-shrink-0" />
+          <span className="w-2 h-2 border border-scada-sn rounded-full mr-1.5 flex-shrink-0" />
           <span className="truncate">{lat.ref_id}</span>
         </div>
       ))}
@@ -403,7 +403,7 @@ function NodeItem({
       className={clsx(
         'flex items-center py-1 px-2 rounded cursor-pointer text-xs',
         'hover:bg-gray-100 transition-colors',
-        isSelected && 'bg-blue-100 hover:bg-blue-100'
+        isSelected && 'bg-sygnal-info-tlo hover:bg-sygnal-info-tlo'
       )}
       onClick={() => onSelect?.(refId)}
       data-testid={`topology-node-${refId}`}

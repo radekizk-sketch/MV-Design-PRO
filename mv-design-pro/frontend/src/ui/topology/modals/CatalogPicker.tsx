@@ -108,7 +108,7 @@ export function CatalogPicker({
         <div className="border border-sygnal-info bg-scada-surface px-3 py-2">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{selectedEntry.name}</p>
+              <p className="truncate text-sm font-semibold text-scada-text">{selectedEntry.name}</p>
               <p className="mt-0.5 text-xs text-scada-text">
                 {[selectedEntry.manufacturer, formatCatalogMeta(selectedEntry)]
                   .filter(Boolean)
@@ -122,7 +122,7 @@ export function CatalogPicker({
               <button
                 type="button"
                 onClick={handleClear}
-                className="shrink-0 border border-scada-border-strong px-2 py-1 text-xs font-semibold text-sygnal-info-tusz hover:border-sygnal-info hover:text-white"
+                className="shrink-0 border border-scada-border-strong px-2 py-1 text-xs font-semibold text-sygnal-info-tusz hover:border-sygnal-info hover:text-scada-text"
                 title="Zmień typ katalogowy"
               >
                 Zmień
@@ -143,7 +143,7 @@ export function CatalogPicker({
             disabled={disabled}
             className={`w-full border px-3 py-2 text-sm ${
               error ? 'border-sygnal-blokada' : 'border-scada-border-strong'
-            } bg-scada-bg text-white outline-none placeholder:text-scada-muted focus:border-sygnal-info disabled:opacity-60`}
+            } bg-scada-bg text-scada-text outline-none placeholder:text-scada-muted focus:border-sygnal-info disabled:opacity-60`}
             placeholder={placeholder}
             data-testid="catalog-picker-search"
           />
@@ -154,7 +154,7 @@ export function CatalogPicker({
                   key={entry.id}
                   type="button"
                   onClick={() => handleSelect(entry.id)}
-                  className="w-full border-b border-scada-border px-3 py-2 text-left text-sm text-white last:border-b-0 hover:bg-scada-panel-raised"
+                  className="w-full border-b border-scada-border px-3 py-2 text-left text-sm text-scada-text last:border-b-0 hover:bg-scada-panel-raised"
                   data-testid={`catalog-entry-${entry.id}`}
                 >
                   <span className="font-medium">{entry.name}</span>

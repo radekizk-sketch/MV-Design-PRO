@@ -103,7 +103,7 @@ export function ExpertOverrides({
           type="checkbox"
           checked={isExpertMode}
           onChange={(e) => handleToggle(e.target.checked)}
-          className="h-4 w-4 text-amber-600 border-gray-300 rounded"
+          className="h-4 w-4 text-sygnal-uwaga border-gray-300 rounded"
           data-testid="expert-mode-toggle"
         />
         <label className="text-sm font-medium text-gray-700">
@@ -113,11 +113,11 @@ export function ExpertOverrides({
 
       {/* Warning dialog */}
       {showWarning && (
-        <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-md" data-testid="expert-warning">
-          <p className="text-sm text-amber-800 font-medium mb-2">
+        <div className="mb-3 p-3 bg-sygnal-uwaga-tlo border border-sygnal-uwaga/40 rounded-md" data-testid="expert-warning">
+          <p className="text-sm text-sygnal-uwaga-tusz font-medium mb-2">
             Tryb EKSPERT pozwala na nadpisanie parametrów katalogowych.
           </p>
-          <p className="text-xs text-amber-700 mb-3">
+          <p className="text-xs text-sygnal-uwaga mb-3">
             Wszystkie zmiany wymagają podania powodu i zostaną zapisane w historii audytu.
             Nadpisania nie zmieniają struktury elementu ani nie dodają nowych parametrów.
           </p>
@@ -147,7 +147,7 @@ export function ExpertOverrides({
             return (
               <div
                 key={override.key}
-                className="p-2 bg-amber-50 border border-amber-200 rounded text-sm"
+                className="p-2 bg-sygnal-uwaga-tlo border border-sygnal-uwaga/40 rounded text-sm"
                 data-testid={`override-${override.key}`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -156,7 +156,7 @@ export function ExpertOverrides({
                   </span>
                   <button
                     onClick={() => removeOverride(idx)}
-                    className="text-xs text-red-500 hover:text-red-700"
+                    className="text-xs text-sygnal-blokada hover:text-sygnal-blokada-tusz"
                   >
                     Usuń
                   </button>
@@ -170,7 +170,7 @@ export function ExpertOverrides({
                       type="text"
                       value={override.value}
                       onChange={(e) => updateOverride(idx, 'value', e.target.value)}
-                      className="w-full px-2 py-1 border border-amber-300 rounded text-xs"
+                      className="w-full px-2 py-1 border border-sygnal-uwaga/40 rounded text-xs"
                       data-testid={`override-value-${override.key}`}
                     />
                   </div>
@@ -181,7 +181,7 @@ export function ExpertOverrides({
                       value={override.reason}
                       onChange={(e) => updateOverride(idx, 'reason', e.target.value)}
                       placeholder="Wymagane"
-                      className="w-full px-2 py-1 border border-amber-300 rounded text-xs"
+                      className="w-full px-2 py-1 border border-sygnal-uwaga/40 rounded text-xs"
                       data-testid={`override-reason-${override.key}`}
                     />
                   </div>

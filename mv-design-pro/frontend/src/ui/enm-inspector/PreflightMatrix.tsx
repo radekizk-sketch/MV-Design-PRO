@@ -41,27 +41,27 @@ export function PreflightMatrix({ report, loading = false }: PreflightMatrixProp
       <div
         className={`px-3 py-2 border-b ${
           report.ready
-            ? 'bg-green-50 border-green-200'
-            : 'bg-rose-50 border-rose-200'
+            ? 'bg-sygnal-ok-tlo border-sygnal-ok/40'
+            : 'bg-sygnal-blokada-tlo border-sygnal-blokada/40'
         }`}
         data-testid="preflight-readiness"
       >
         <div className="flex items-center justify-between">
           <span
             className={`text-xs font-semibold ${
-              report.ready ? 'text-green-700' : 'text-rose-700'
+              report.ready ? 'text-sygnal-ok' : 'text-sygnal-blokada'
             }`}
           >
             {report.ready ? 'Gotowy do analizy' : 'Analiza zablokowana'}
           </span>
           <div className="flex gap-2 text-xs">
             {report.blocker_count > 0 && (
-              <span className="text-rose-600">
+              <span className="text-sygnal-blokada">
                 {report.blocker_count} blokad
               </span>
             )}
             {report.warning_count > 0 && (
-              <span className="text-amber-600">
+              <span className="text-sygnal-uwaga">
                 {report.warning_count} ostrzeżeń
               </span>
             )}
@@ -112,14 +112,14 @@ function PreflightRow({ check }: { check: PreflightCheckEntry }) {
       <td className="py-2">
         <span className="text-slate-700">{check.analysis_label_pl}</span>
         {!isAvailable && check.reason_pl && (
-          <p className="text-xs text-rose-500 mt-0.5">{check.reason_pl}</p>
+          <p className="text-xs text-sygnal-blokada mt-0.5">{check.reason_pl}</p>
         )}
         {!isAvailable && check.blocking_codes.length > 0 && (
           <div className="flex gap-1 mt-0.5">
             {check.blocking_codes.map((code) => (
               <span
                 key={code}
-                className="text-xs font-mono px-1 bg-rose-50 text-rose-600 rounded"
+                className="text-xs font-mono px-1 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz rounded"
               >
                 {code}
               </span>
@@ -131,8 +131,8 @@ function PreflightRow({ check }: { check: PreflightCheckEntry }) {
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
             isAvailable
-              ? 'bg-green-100 text-green-700'
-              : 'bg-rose-100 text-rose-700'
+              ? 'bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+              : 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
           }`}
         >
           {isAvailable ? 'Dostępna' : 'Zablokowana'}

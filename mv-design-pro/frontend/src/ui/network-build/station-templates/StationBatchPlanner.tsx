@@ -212,8 +212,8 @@ function statusLabel(status: BatchRowStatus): string {
 
 function statusClass(status: BatchRowStatus): string {
   return status === 'gotowe'
-    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-    : 'border-amber-300 bg-amber-50 text-amber-800';
+    ? 'border-sygnal-ok/40 bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+    : 'border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz';
 }
 
 export interface StationBatchPlannerProps {
@@ -402,7 +402,7 @@ export function StationBatchPlanner({
       </div>
 
       {loading && <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">Pobieranie szablonów stacji...</div>}
-      {error && <div className="rounded border border-rose-200 bg-rose-50 p-2 text-xs text-rose-800">{error}</div>}
+      {error && <div className="rounded border border-sygnal-blokada/40 bg-sygnal-blokada-tlo p-2 text-xs text-sygnal-blokada-tusz">{error}</div>}
 
       <div className="flex flex-wrap gap-2">
         <button

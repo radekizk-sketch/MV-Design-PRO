@@ -140,7 +140,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
               className={clsx(
                 'flex items-center gap-1.5 px-3 py-2 text-[11px] border-b-2 transition-colors',
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-700 font-medium bg-white'
+                  ? 'border-blue-600 text-sygnal-info font-medium bg-white'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
               )}
               title={tab.description}
@@ -151,7 +151,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
                   className={clsx(
                     'px-1.5 py-0.5 rounded-full text-[9px] font-medium',
                     tab.id === 'catalog' && counts.catalog > 0
-                      ? 'bg-red-100 text-red-700'
+                      ? 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
                       : 'bg-gray-100 text-gray-500',
                   )}
                 >

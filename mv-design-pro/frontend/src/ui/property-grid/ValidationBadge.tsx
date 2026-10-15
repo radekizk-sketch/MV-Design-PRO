@@ -43,15 +43,15 @@ const SEVERITY_STYLES: Record<ValidationSeverity, {
   icon: string;
 }> = {
   ERROR: {
-    badge: 'bg-red-100 text-red-800 border-red-200',
-    text: 'text-red-700',
-    bg: 'bg-red-50',
+    badge: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border-sygnal-blokada/40',
+    text: 'text-sygnal-blokada',
+    bg: 'bg-sygnal-blokada-tlo',
     icon: 'E',
   },
   WARNING: {
-    badge: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    text: 'text-yellow-700',
-    bg: 'bg-yellow-50',
+    badge: 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz border-sygnal-uwaga/40',
+    text: 'text-sygnal-uwaga',
+    bg: 'bg-sygnal-uwaga-tlo',
     icon: 'W',
   },
 };
@@ -173,8 +173,8 @@ export function ValidationSummary({
 }: ValidationSummaryProps) {
   if (messages.length === 0) {
     return (
-      <div className={clsx('text-xs text-green-600 flex items-center gap-1', className)}>
-        <span className="text-green-500 font-bold">OK</span>
+      <div className={clsx('text-xs text-sygnal-ok flex items-center gap-1', className)}>
+        <span className="text-sygnal-ok font-bold">OK</span>
         Brak błędów walidacji
       </div>
     );
@@ -190,13 +190,13 @@ export function ValidationSummary({
       {/* Summary counts */}
       <div className="flex items-center gap-3 text-xs">
         {errors.length > 0 && (
-          <span className="flex items-center gap-1 text-red-700">
+          <span className="flex items-center gap-1 text-sygnal-blokada">
             <ValidationIcon severity="ERROR" />
             {errors.length} {errors.length === 1 ? 'błąd' : 'błędów'}
           </span>
         )}
         {warnings.length > 0 && (
-          <span className="flex items-center gap-1 text-yellow-700">
+          <span className="flex items-center gap-1 text-sygnal-uwaga">
             <ValidationIcon severity="WARNING" />
             {warnings.length} {warnings.length === 1 ? 'ostrzeżenie' : 'ostrzeżeń'}
           </span>

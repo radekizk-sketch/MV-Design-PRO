@@ -128,7 +128,7 @@ export function FaultLocationSelector({
       )}
 
       {error && (
-        <div className="text-sm text-red-600">{error}</div>
+        <div className="text-sm text-sygnal-blokada">{error}</div>
       )}
 
       <button

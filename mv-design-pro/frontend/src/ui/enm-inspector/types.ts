@@ -100,15 +100,15 @@ export const SEVERITY_LABELS_PL: Record<DiagnosticSeverity, string> = {
 };
 
 export const SEVERITY_COLORS: Record<DiagnosticSeverity, string> = {
-  BLOCKER: 'text-rose-600',
-  WARN: 'text-amber-600',
-  INFO: 'text-blue-600',
+  BLOCKER: 'text-sygnal-blokada',
+  WARN: 'text-sygnal-uwaga',
+  INFO: 'text-sygnal-info',
 };
 
 export const SEVERITY_BG_COLORS: Record<DiagnosticSeverity, string> = {
-  BLOCKER: 'bg-rose-50 border-rose-200',
-  WARN: 'bg-amber-50 border-amber-200',
-  INFO: 'bg-blue-50 border-blue-200',
+  BLOCKER: 'bg-sygnal-blokada-tlo border-sygnal-blokada/40',
+  WARN: 'bg-sygnal-uwaga-tlo border-sygnal-uwaga/40',
+  INFO: 'bg-sygnal-info-tlo border-sygnal-info/40',
 };
 
 export const STATUS_LABELS_PL: Record<DiagnosticStatus, string> = {

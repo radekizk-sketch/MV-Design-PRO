@@ -310,9 +310,9 @@ function EquivalentImpedanceProof({ step }: { step: TraceStep }) {
   return (
     <div
       data-testid="equivalent-impedance-proof"
-      className="space-y-2 rounded border border-blue-200 bg-blue-50/70 p-3"
+      className="space-y-2 rounded border border-sygnal-info/40 bg-sygnal-info-tlo/70 p-3"
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sygnal-info">
         Wyprowadzenie impedancji zastępczej
       </div>
       <p className="text-[11px] leading-5 text-slate-700">
@@ -451,7 +451,7 @@ function TraceStepCard({ step, index }: { step: TraceStep; index: number }) {
       <TraceValuesTable title="Wynik kroku" values={step.result} />
 
       {step.notes && (
-        <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+        <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-2 py-1.5 text-[11px] text-sygnal-uwaga-tusz">
           {step.notes}
         </div>
       )}
@@ -464,7 +464,7 @@ function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
     return (
       <div
         data-testid="element-proof-no-short-circuit"
-        className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz"
       >
         Nie wyznaczono wyniku zwarciowego dla tego obiektu w aktywnym obliczeniu.
       </div>
@@ -572,7 +572,7 @@ export function ElementCalculationProofPanel({
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sygnal-info">
             Wywód obliczeń
           </div>
           <h4 className="text-sm font-semibold text-slate-900">
@@ -592,7 +592,7 @@ export function ElementCalculationProofPanel({
       </div>
 
       {!runId ? (
-        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz">
           Brak aktywnego obliczenia. Uruchom obliczenia, aby zobaczyć wywód dla elementu.
         </div>
       ) : !selectedElement ? (
@@ -604,13 +604,13 @@ export function ElementCalculationProofPanel({
           Pobieram wynik zwarciowy i ślad obliczeń dla zaznaczonego obiektu.
         </div>
       ) : state.status === 'error' ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+        <div className="rounded border border-sygnal-blokada/40 bg-sygnal-blokada-tlo px-3 py-2 text-xs text-sygnal-blokada-tusz">
           Nie udało się pobrać wywodu obliczeń: {state.errors.join(' ')}
         </div>
       ) : (
         <div className="space-y-3">
           {state.errors.length > 0 && (
-            <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+            <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-2 text-[11px] text-sygnal-uwaga-tusz">
               {state.errors.join(' ')}
             </div>
           )}
@@ -633,7 +633,7 @@ export function ElementCalculationProofPanel({
           ) : (
             <div
               data-testid="element-proof-no-trace"
-              className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+              className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz"
             >
               Ślad obliczeń jest dostępny, ale nie ma kroku bezpośrednio powiązanego
               z zaznaczonym obiektem. Otwórz pełny plik .tex albo wybierz węzeł

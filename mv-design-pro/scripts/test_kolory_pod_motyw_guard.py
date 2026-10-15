@@ -8,14 +8,25 @@ komentarz) — nie. Skan katalogu przechodzi przez realne pliki w katalogu
 tymczasowym (pomijanie ``__tests__`` i ``*.test.*``), a nie przez atrapę.
 Deklaracje docstringu strażnika (kontrast białego napisu na pełnym przycisku,
 nieczytelność tuszu 400 na białym panelu) są przypięte pomiarem (CLAUDE.md, reguła KLASA NIE INSTANCJA pkt 4).
+
+Karta TUSZ-POD-TLO-JASNE (2026-10-15) dołożyła klasę lustrzaną — wzorce 5–9
+(tusz 500–950, jasne tło 50–300, jasny obrys 50–400, jasny pierścień 50–300,
+biały napis bez stałego tła). Iloczyn: wzorzec × rodzina × odcień × wariant ×
+przezroczystość; dla wzorca 9: wariant × rodzaj tła w wierszu (brak, powierzchnia
+``scada-*``, akcent ``sygnal-*``, tło ``-tlo``, stałe tło palety). Deklaracje
+docstringu (żaden tusz 500–800 nie jest czytelny w obu motywach, motyw ciemny nie
+przemapowuje rodzin nasyconych, panel ciemny = token arkusza) przypięte pomiarem.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import kolory_pod_motyw_guard as guard
 import pytest
+
+INDEX_CSS = (guard.FRONTEND / "src" / "index.css").read_text(encoding="utf-8")
 
 WARIANTY = ("", "hover:", "focus:", "md:", "group-hover:")
 
@@ -35,8 +46,10 @@ class TestWzorzecJasnegoTuszu:
         assert guard.naruszenia_tekstu(f"'text-{rodzina}-100/80'")
 
     @pytest.mark.parametrize("odcien", (500, 600, 700, 800, 900))
-    def test_ciemny_tusz_nie_jest_tym_wzorcem(self, odcien: int) -> None:
-        assert guard.naruszenia_tekstu(f"'text-red-{odcien}'") == []
+    def test_ciemny_tusz_lapie_wzorzec_lustrzany_nie_ten(self, odcien: int) -> None:
+        assert [w for _n, _k, w in guard.naruszenia_tekstu(f"'text-red-{odcien}'")] == [
+            "tusz pod tło jasne"
+        ]
 
 
 class TestWzorzecPolprzezroczystejPlamy:
@@ -76,9 +89,10 @@ class TestKlasyDozwolone:
             "'text-sygnal-blokada'",
             "'bg-scada-sn/10 text-scada-sn'",
             "'bg-blue-600 text-white hover:bg-blue-700'",
-            "'bg-amber-50 text-amber-900 border-amber-200'",
             "'text-slate-300 bg-slate-900 text-zinc-200 bg-zinc-950/40'",
-            "'border-red-400/30 ring-cyan-500 accent-cyan-400'",
+            "'border-red-500/30 ring-cyan-500 accent-cyan-400'",
+            "'border-sygnal-uwaga/40 ring-sygnal-info/40 text-scada-energized'",
+            "'h-2 w-2 rounded-full bg-amber-500 border-blue-600 ring-blue-400'",
             "'text-red-1000 text-redx-300 xtext-red-300'",
         ],
     )
@@ -151,7 +165,10 @@ class TestWzorzecBialegoNapisu:
         ],
     )
     def test_lapie(self, wiersz: str, klasa: str) -> None:
-        assert [k for _n, k, _w in guard.naruszenia_tekstu(wiersz)] == [klasa]
+        bialy = [
+            k for _n, k, w in guard.naruszenia_tekstu(wiersz) if w.startswith("biały napis na")
+        ]
+        assert bialy == [klasa]
 
     @pytest.mark.parametrize(
         "wiersz",
@@ -208,3 +225,149 @@ def test_repozytorium_jest_zielone() -> None:
     liczba, meldunki = guard.sprawdz()
     assert liczba > 500
     assert meldunki == []
+
+
+def _nazwy(tekst: str) -> list[tuple[str, str]]:
+    return [(k, w) for _n, k, w in guard.naruszenia_tekstu(tekst)]
+
+
+class TestWzorceKlasyLustrzanej:
+    """Wzorce 5–8: barwa nasycona dobrana pod tło jasne — iloczyn cech."""
+
+    @pytest.mark.parametrize("rodzina", guard.RODZINY)
+    @pytest.mark.parametrize("odcien", (500, 600, 700, 800, 900, 950))
+    @pytest.mark.parametrize("wariant", WARIANTY)
+    @pytest.mark.parametrize("alfa", ("", "/80"))
+    def test_tusz(self, rodzina: str, odcien: int, wariant: str, alfa: str) -> None:
+        klasa = f"{wariant}text-{rodzina}-{odcien}{alfa}"
+        assert _nazwy(f'<p className="x {klasa}" />') == [(klasa, "tusz pod tło jasne")]
+
+    @pytest.mark.parametrize("rodzina", guard.RODZINY)
+    @pytest.mark.parametrize("odcien", (50, 100, 200, 300))
+    @pytest.mark.parametrize("wariant", WARIANTY)
+    @pytest.mark.parametrize("alfa", ("", "/50"))
+    def test_tlo(self, rodzina: str, odcien: int, wariant: str, alfa: str) -> None:
+        klasa = f"{wariant}bg-{rodzina}-{odcien}{alfa}"
+        assert _nazwy(f"'{klasa}'") == [(klasa, "jasne tło pod motyw jasny")]
+
+    @pytest.mark.parametrize("rodzina", guard.RODZINY)
+    @pytest.mark.parametrize("odcien", (50, 100, 200, 300, 400))
+    @pytest.mark.parametrize("bok", ("", "-l", "-t", "-b", "-r", "-x", "-y"))
+    @pytest.mark.parametrize("wariant", ("", "hover:", "focus:"))
+    def test_obrys(self, rodzina: str, odcien: int, bok: str, wariant: str) -> None:
+        klasa = f"{wariant}border{bok}-{rodzina}-{odcien}"
+        assert _nazwy(f"'{klasa}'") == [(klasa, "jasny obrys pod motyw jasny")]
+
+    @pytest.mark.parametrize("rodzina", guard.RODZINY)
+    @pytest.mark.parametrize("odcien", (50, 100, 200, 300))
+    @pytest.mark.parametrize("wariant", ("", "focus:", "focus-visible:"))
+    def test_pierscien(self, rodzina: str, odcien: int, wariant: str) -> None:
+        klasa = f"{wariant}ring-{rodzina}-{odcien}"
+        assert _nazwy(f"'{klasa}'") == [(klasa, "jasny pierścień pod motyw jasny")]
+
+    def test_para_komunikatu_to_trzy_naruszenia(self) -> None:
+        """Dawny wyjątek „bg-*-50 + text-*-700 czytelne w obu motywach” jest
+        fałszywy: plama jest jasną wyspą motywu ciemnego (pomiar niżej)."""
+        assert [w for _k, w in _nazwy("'border-red-200 bg-red-50 text-red-700'")] == [
+            "jasne tło pod motyw jasny",
+            "jasny obrys pod motyw jasny",
+            "tusz pod tło jasne",
+        ]
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "'text-red-1000 text-redx-600 xtext-red-700 border-red-4000'",
+            "'bg-red-400 bg-red-500 bg-red-600 bg-red-700'",
+            "'border-red-500 border-l-blue-600 ring-amber-500 ring-cyan-400'",
+            "'text-sygnal-blokada text-sygnal-ok-tusz bg-sygnal-info-tlo/60'",
+        ],
+    )
+    def test_nie_lapie(self, tekst: str) -> None:
+        assert guard.naruszenia_tekstu(tekst) == []
+
+
+class TestWzorzecBialegoNapisuBezTla:
+    """Wzorzec 9: ``text-white`` × wariant × rodzaj tła w wierszu."""
+
+    @pytest.mark.parametrize("wariant", ("", "hover:", "group-hover:"))
+    @pytest.mark.parametrize(
+        "tlo",
+        ("", "bg-scada-bg", "bg-scada-surface", "bg-sygnal-info", "bg-sygnal-ok-tlo"),
+    )
+    def test_lapie(self, wariant: str, tlo: str) -> None:
+        assert _nazwy(f"'{tlo} {wariant}text-white'") == [
+            (f"{wariant}text-white", "biały napis bez stałego tła")
+        ]
+
+    @pytest.mark.parametrize(
+        "tlo",
+        ("bg-blue-600", "bg-slate-900", "bg-zinc-800", "bg-black", "hover:bg-emerald-700"),
+    )
+    def test_stale_tlo_palety_nie_jest_tym_wzorcem(self, tlo: str) -> None:
+        assert guard.naruszenia_tekstu(f"'{tlo} text-white'") == []
+
+    def test_plama_z_bialym_napisem_nadal_jednym_naruszeniem(self) -> None:
+        assert [w for _k, w in _nazwy("'bg-blue-500/10 text-white'")] == [
+            "półprzezroczysta plama nasyconej barwy"
+        ]
+
+    def test_text_white_nie_myli_sie_z_text_white_alfa_ani_dluzsza_nazwa(self) -> None:
+        assert guard.naruszenia_tekstu("'text-white/80 text-whitesmoke'") == []
+
+
+def _token(motyw: str, nazwa: str) -> tuple[int, int, int]:
+    blok = re.search(rf"\[data-theme='{motyw}'\]\s*\{{([\s\S]*?)\n  \}}", INDEX_CSS)
+    assert blok is not None, motyw
+    wartosc = re.search(rf"--scada-{nazwa}\s*:\s*(\d+) (\d+) (\d+);", blok.group(1))
+    assert wartosc is not None, nazwa
+    r, g, b = (int(x) for x in wartosc.groups())
+    return (r, g, b)
+
+
+def _kontrast_rgb(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    def lum(c: tuple[int, int, int]) -> float:
+        s = [v / 255 for v in c]
+        s = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in s]
+        return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2]
+
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+class TestDeklaracjeKlasyLustrzanej:
+    def test_panel_ciemny_to_token_arkusza(self) -> None:
+        assert guard.PANEL_CIEMNY == _token("dark_scada", "panel")
+
+    def test_motyw_ciemny_nie_przemapowuje_rodzin_nasyconych(self) -> None:
+        """Karta: „zmierz, nie zakładaj” — selektory ``.mv-dark-scada`` w arkuszu
+        nie wymieniają żadnej klasy rodziny nasyconej, więc ``text-red-600``
+        i ``bg-amber-50`` przechodzą do motywu ciemnego bez zmian."""
+        selektory = re.findall(r"\.mv-dark-scada[^{]*\{", INDEX_CSS)
+        assert len(selektory) > 10
+        nasycone = re.compile(rf"\.(?:[a-z]+-)+(?:{'|'.join(guard.RODZINY)})-\d+")
+        assert [s for s in selektory if nasycone.search(s)] == []
+
+    def test_zaden_tusz_500_800_nie_jest_czytelny_w_obu_motywach(self) -> None:
+        najlepszy = max(
+            min(
+                guard.kontrast_na(r, o, guard.PANEL_CIEMNY),
+                guard.kontrast_na(r, o, (255, 255, 255)),
+            )
+            for r in guard.RODZINY
+            for o in (500, 600, 700, 800)
+        )
+        assert najlepszy < 4.5
+        assert najlepszy == pytest.approx(4.10, abs=0.01)
+
+    def test_przyklad_z_karty_red_600_na_panelu_ciemnym(self) -> None:
+        assert guard.kontrast_na("red", 600, guard.PANEL_CIEMNY) == pytest.approx(3.60, abs=0.01)
+
+    @pytest.mark.parametrize("rodzina", guard.RODZINY)
+    def test_jasne_tlo_300_jest_jasna_wyspa_motywu_ciemnego(self, rodzina: str) -> None:
+        assert guard.kontrast_na(rodzina, 300, guard.PANEL_CIEMNY) >= 8.7
+
+    def test_bialy_na_akcencie_informacji_motywu_ciemnego(self) -> None:
+        kontrast = _kontrast_rgb((255, 255, 255), _token("dark_scada", "status-info"))
+        assert kontrast == pytest.approx(2.66, abs=0.01)
+        assert kontrast < 4.5

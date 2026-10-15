@@ -213,7 +213,7 @@ export function GuidedBuildActionPanel() {
         <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.24em] text-sygnal-info-tusz">
           Konfiguracja układu
         </p>
-        <h2 className="mt-2 text-sm font-semibold text-white">{buildPhaseLabel}</h2>
+        <h2 className="mt-2 text-sm font-semibold text-scada-text">{buildPhaseLabel}</h2>
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
@@ -222,7 +222,7 @@ export function GuidedBuildActionPanel() {
             <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-sygnal-info-tusz">
               Następny krok projektowy
             </p>
-            <h3 className="mt-2 text-base font-semibold text-white">{nextAction.title}</h3>
+            <h3 className="mt-2 text-base font-semibold text-scada-text">{nextAction.title}</h3>
             <p className="mt-2 text-xs leading-5 text-scada-text">{nextAction.detail}</p>
           </div>
           <div className="space-y-3 px-4 py-4">
@@ -231,7 +231,7 @@ export function GuidedBuildActionPanel() {
               className={clsx(
                 'w-full border px-4 py-3 text-left text-sm font-semibold transition-colors',
                 nextAction.enabled
-                  ? 'border-sygnal-info bg-sygnal-info-tlo text-white hover:bg-sygnal-info-tlo'
+                  ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz hover:bg-sygnal-info-tlo/70'
                   : 'cursor-not-allowed border-scada-border bg-scada-bg text-scada-muted',
               )}
               onClick={handlePrimaryAction}
@@ -258,14 +258,14 @@ export function GuidedBuildActionPanel() {
             <div className="flex gap-3">
               <StatusDot ok={sourceCount > 0} />
               <div>
-                <p className="font-semibold text-white">Źródło zasilania GPZ</p>
+                <p className="font-semibold text-scada-text">Źródło zasilania GPZ</p>
                 <p className="text-scada-text">{sourceCount > 0 ? 'Gotowe' : 'Wymagane jako pierwszy krok'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={configuredGpzSnFieldCount > 0} />
               <div>
-                <p className="font-semibold text-white">Pole SN GPZ</p>
+                <p className="font-semibold text-scada-text">Pole SN GPZ</p>
                 <p className="text-scada-text">
                   {configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount} pole liniowe` : 'Wymagane przed magistralą'}
                 </p>
@@ -274,21 +274,21 @@ export function GuidedBuildActionPanel() {
             <div className="flex gap-3">
               <StatusDot ok={trunkSegmentCount > 0} />
               <div>
-                <p className="font-semibold text-white">Magistrala SN</p>
+                <p className="font-semibold text-scada-text">Magistrala SN</p>
                 <p className="text-scada-text">{trunkSegmentCount > 0 ? `${trunkSegmentCount} odc. SN` : 'Po skonfigurowaniu pola SN'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={stationCount > 0} />
               <div>
-                <p className="font-semibold text-white">Stacje SN/nN</p>
+                <p className="font-semibold text-scada-text">Stacje SN/nN</p>
                 <p className="text-scada-text">{stationCount > 0 ? `${stationCount} stacji` : 'Po wyprowadzeniu magistrali'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={transformerCount > 0} />
               <div>
-                <p className="font-semibold text-white">Transformatory i odbiory</p>
+                <p className="font-semibold text-scada-text">Transformatory i odbiory</p>
                 <p className="text-scada-text">{transformerCount > 0 ? `${transformerCount} transformatorów` : 'Uzupełniane w kartach stacji'}</p>
               </div>
             </div>

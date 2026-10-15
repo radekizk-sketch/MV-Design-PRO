@@ -158,7 +158,7 @@ export function TransformerStationEditor({
     <>
       {!hideHeader && (
         <div className="border-b border-scada-border-strong px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-scada-text">
             {mode === 'create'
               ? 'Nowa stacja transformatorowa'
               : 'Edycja stacji transformatorowej'}
@@ -315,7 +315,7 @@ export function TransformerStationEditor({
         <button
           onClick={handleSubmit}
           data-testid="transformer-station-submit"
-          className="rounded-md bg-sygnal-info px-4 py-2 text-sm font-medium text-white hover:bg-sygnal-info"
+          className="rounded-md bg-sygnal-info px-4 py-2 text-sm font-medium text-scada-bg hover:bg-sygnal-info/85"
         >
           {submitLabel ?? (mode === 'create' ? 'Dodaj' : 'Zapisz')}
         </button>

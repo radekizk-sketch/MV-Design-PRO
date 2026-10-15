@@ -91,31 +91,31 @@ export function ProtectionSection({
       <button
         type="button"
         onClick={toggleCollapse}
-        className="w-full flex items-center justify-between px-4 py-2 bg-amber-50 hover:bg-amber-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2 bg-sygnal-uwaga-tlo/60 hover:bg-sygnal-uwaga-tlo transition-colors"
         data-testid="protection-section-toggle"
       >
-        <span className="text-xs font-medium text-amber-800 flex items-center gap-2">
+        <span className="text-xs font-medium text-sygnal-uwaga-tusz flex items-center gap-2">
           {collapsed ? '[+]' : '[-]'} Zabezpieczenia
           {hasProtection && (
-            <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded text-xs">
+            <span className="px-1.5 py-0.5 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz rounded text-xs">
               {assignments.length}
             </span>
           )}
         </span>
-        <span className="text-xs text-amber-600">
+        <span className="text-xs text-sygnal-uwaga">
           {hasProtection ? `${assignments.length} urzadzen` : 'brak'}
         </span>
       </button>
 
       {/* Section Content */}
       {!collapsed && (
-        <div className="px-4 py-3 bg-amber-50/50 space-y-3">
+        <div className="px-4 py-3 bg-sygnal-uwaga-tlo/50 space-y-3">
           {isLoading ? (
             <div className="text-xs text-gray-500 italic" data-testid="protection-section-loading">
               Ladowanie...
             </div>
           ) : error ? (
-            <div className="text-xs text-red-600 italic" data-testid="protection-section-error">
+            <div className="text-xs text-sygnal-blokada italic" data-testid="protection-section-error">
               Nie udalo sie pobrac zabezpieczen: {error}
             </div>
           ) : hasProtection ? (
@@ -148,7 +148,7 @@ function ProtectionAssignmentCard({ assignment }: ProtectionAssignmentCardProps)
 
   return (
     <div
-      className="bg-white border border-amber-200 rounded p-3 shadow-sm"
+      className="bg-white border border-sygnal-uwaga/40 rounded p-3 shadow-sm"
       data-testid={`protection-assignment-${assignment.device_id}`}
     >
       {/* Device header */}
@@ -244,17 +244,17 @@ function FunctionSummaryRow({ func }: FunctionSummaryRowProps) {
 
   return (
     <div
-      className="text-xs border-l-2 border-amber-300 pl-2 py-1"
+      className="text-xs border-l-2 border-sygnal-uwaga/40 pl-2 py-1"
       data-testid={formatted.testId}
     >
       {/* Glowna linia: ANSI shortcut: setpoint (computed), T=time */}
       <div className="flex items-baseline gap-1 flex-wrap">
         {/* ANSI code */}
-        <span className="font-mono font-semibold text-amber-800">
+        <span className="font-mono font-semibold text-sygnal-uwaga-tusz">
           {formatted.ansiCodes}
         </span>
         {/* Shortcut (I>>, U<, etc.) */}
-        <span className="font-mono font-medium text-amber-700">
+        <span className="font-mono font-medium text-sygnal-uwaga">
           {formatted.shortcut}:
         </span>
         {/* Setpoint (3×In, 0,8×Un, etc.) */}

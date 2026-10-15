@@ -37,8 +37,8 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
           className={
             'rounded border px-2 py-1 text-[11px] '
             + (dowod.pass_status
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-              : 'border-rose-300 bg-rose-50 text-rose-800')
+              ? 'border-sygnal-ok/40 bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+              : 'border-sygnal-blokada/40 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz')
           }
         >
           <span className="font-medium">{dowod.rodzaj_pl}</span>: {dowod.summary_pl}
@@ -49,7 +49,7 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
           key={`${brak.proof_type}-${indeks}`}
           data-testid="audit2-brak-danych"
           data-proof-type={brak.proof_type}
-          className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-900"
+          className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-2 py-1 text-[11px] text-sygnal-uwaga-tusz"
         >
           <span className="font-medium">{brak.rodzaj_pl}</span> — brak danych: {brak.przyczyna_pl}
         </div>

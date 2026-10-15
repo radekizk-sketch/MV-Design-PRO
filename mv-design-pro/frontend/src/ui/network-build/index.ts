@@ -34,8 +34,6 @@ export type {
 // Krok V — Context menu, visual modes, catalog, search, mass review, modals
 export { CatalogBrowser } from './CatalogBrowser';
 export { GlobalSearch } from './GlobalSearch';
-export { TopContextBar } from './TopContextBar';
-export type { TopContextBarProps } from './TopContextBar';
 export { ProjectMetadataModal } from './ProjectMetadataModal';
 export type { ProjectMetadataModalProps, ProjectMetadata } from './ProjectMetadataModal';
 // SnapshotHistoryModal removed (Phase 0 #3) - historia migawek dostępna przez E-09 audit screen

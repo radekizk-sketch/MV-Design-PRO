@@ -139,7 +139,7 @@ export function OzeReview({ className }: OzeReviewProps) {
                   onClick={() => handleRowClick(row)}
                   className={clsx(
                     'cursor-pointer border-b border-gray-50 transition-colors',
-                    row.hasBlocker ? 'bg-red-50/30 hover:bg-red-50' : 'hover:bg-blue-50',
+                    row.hasBlocker ? 'bg-sygnal-blokada-tlo/30 hover:bg-sygnal-blokada-tlo' : 'hover:bg-sygnal-info-tlo',
                   )}
                 >
                   <td className="px-3 py-1.5">
@@ -155,9 +155,9 @@ export function OzeReview({ className }: OzeReviewProps) {
                     <span
                       className={clsx(
                         'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                        row.genType === 'pv_inverter' ? 'bg-yellow-100 text-yellow-700'
-                          : row.genType === 'bess' ? 'bg-emerald-100 text-emerald-700'
-                          : row.genType === 'wind_inverter' ? 'bg-sky-100 text-sky-700'
+                        row.genType === 'pv_inverter' ? 'border border-scada-grounded/50 text-scada-grounded'
+                          : row.genType === 'bess' ? 'border border-scada-energized/50 text-scada-energized'
+                          : row.genType === 'wind_inverter' ? 'border border-scada-nn/50 text-scada-nn'
                           : 'bg-gray-100 text-gray-600',
                       )}
                     >
@@ -173,15 +173,15 @@ export function OzeReview({ className }: OzeReviewProps) {
                   <td className="px-3 py-1.5 text-gray-500">
                     {connectionLabel(row.connectionVariant)}
                     {row.hasBlockingTr && (
-                      <span className="ml-1 text-[10px] text-blue-500">+ trafo</span>
+                      <span className="ml-1 text-[10px] text-sygnal-info">+ trafo</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-gray-500">{row.stationName}</td>
                   <td className="px-3 py-1.5">
                     {row.catalogRef ? (
-                      <span className="text-green-600">{row.catalogRef}</span>
+                      <span className="text-sygnal-ok">{row.catalogRef}</span>
                     ) : (
-                      <span className="text-red-500 font-medium">Brak</span>
+                      <span className="text-sygnal-blokada font-medium">Brak</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-right">

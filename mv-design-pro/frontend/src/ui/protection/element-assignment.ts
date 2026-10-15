@@ -188,9 +188,9 @@ export const PROTECTION_STATUS_LABELS: Record<ProtectionDeviceStatus, string> = 
 };
 
 export const PROTECTION_STATUS_COLORS: Record<ProtectionDeviceStatus, string> = {
-  ACTIVE: 'text-emerald-600 bg-emerald-50',
-  BLOCKED: 'text-rose-600 bg-rose-50',
-  TEST: 'text-amber-600 bg-amber-50',
+  ACTIVE: 'text-sygnal-ok-tusz bg-sygnal-ok-tlo',
+  BLOCKED: 'text-sygnal-blokada-tusz bg-sygnal-blokada-tlo',
+  TEST: 'text-sygnal-uwaga-tusz bg-sygnal-uwaga-tlo',
   UNKNOWN: 'text-gray-600 bg-gray-50',
 };
 

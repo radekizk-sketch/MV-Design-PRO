@@ -116,25 +116,25 @@ export function IncompleteStationsReview() {
           {rows.map((r) => (
             <tr
               key={r.id}
-              className="border-b border-gray-100 hover:bg-blue-50/50 cursor-pointer"
+              className="border-b border-gray-100 hover:bg-sygnal-info-tlo/50 cursor-pointer"
               onClick={() => handleNavigate(r.id)}
             >
               <td className="px-3 py-1.5 font-medium text-gray-800">{r.name}</td>
               <td className="px-3 py-1.5 text-gray-600">{r.stationType}</td>
               <td className="px-3 py-1.5 text-center">
-                <span className={r.transformerCount === 0 ? 'text-red-600 font-medium' : 'text-gray-700'}>
+                <span className={r.transformerCount === 0 ? 'text-sygnal-blokada font-medium' : 'text-gray-700'}>
                   {r.transformerCount}
                 </span>
               </td>
               <td className="px-3 py-1.5 text-center">
-                <span className={r.snBayCount === 0 ? 'text-red-600 font-medium' : 'text-gray-700'}>
+                <span className={r.snBayCount === 0 ? 'text-sygnal-blokada font-medium' : 'text-gray-700'}>
                   {r.snBayCount}
                 </span>
               </td>
               <td className="px-3 py-1.5 text-center text-gray-700">{r.nnBusCount}</td>
               <td className="px-3 py-1.5 text-center">
                 {r.blockerCount > 0 ? (
-                  <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[9px] font-medium">
+                  <span className="px-1.5 py-0.5 rounded-full bg-sygnal-blokada-tlo text-sygnal-blokada-tusz text-[9px] font-medium">
                     {r.blockerCount}
                   </span>
                 ) : (

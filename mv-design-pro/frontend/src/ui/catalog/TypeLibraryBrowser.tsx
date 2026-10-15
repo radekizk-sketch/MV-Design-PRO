@@ -426,7 +426,7 @@ export function TypeLibraryBrowser({
                 className={clsx(
                   'rounded-md border px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    ? 'border-blue-600 bg-sygnal-info-tlo text-sygnal-info-tusz'
                     : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800',
                 )}
               >
@@ -466,7 +466,7 @@ export function TypeLibraryBrowser({
           ) : null}
 
           {error ? (
-            <div className="flex h-32 flex-col items-center justify-center text-red-600">
+            <div className="flex h-32 flex-col items-center justify-center text-sygnal-blokada">
               <p className="font-semibold">Błąd</p>
               <p className="text-sm">{error}</p>
             </div>
@@ -503,8 +503,8 @@ export function TypeLibraryBrowser({
                       key={type.id}
                       onClick={() => handleSelectType(type.id)}
                       className={clsx(
-                        'cursor-pointer transition-colors hover:bg-blue-50',
-                        isSelected && 'bg-blue-100',
+                        'cursor-pointer transition-colors hover:bg-sygnal-info-tlo',
+                        isSelected && 'bg-sygnal-info-tlo',
                       )}
                     >
                       <td className="px-4 py-3">

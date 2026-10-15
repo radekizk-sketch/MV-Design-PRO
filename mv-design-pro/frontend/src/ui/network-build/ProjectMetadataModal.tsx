@@ -295,7 +295,7 @@ export function ProjectMetadataModal({
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           {saveError ? (
             <div
-              className="mr-auto max-w-[320px] text-[11px] leading-snug text-red-700"
+              className="mr-auto max-w-[320px] text-[11px] leading-snug text-sygnal-blokada"
               role="alert"
               data-testid="project-metadata-save-error"
             >
@@ -355,7 +355,7 @@ function SelectField({
         data-testid={dataTestId}
         className={clsx(
           'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded bg-white',
-          'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
+          'focus:outline-none focus:border-sygnal-info focus:ring-1 focus:ring-sygnal-info/40',
         )}
       >
         {options.map((opt) => (
@@ -397,7 +397,7 @@ function Field({
     <div>
       <label className="block text-[11px] text-gray-500 mb-0.5">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="text-sygnal-blokada ml-0.5">*</span>}
       </label>
       {multiline ? (
         <textarea
@@ -407,7 +407,7 @@ function Field({
           rows={rows}
           className={clsx(
             'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded',
-            'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
+            'focus:outline-none focus:border-sygnal-info focus:ring-1 focus:ring-sygnal-info/40',
             'placeholder:text-gray-300 resize-none',
           )}
         />
@@ -423,12 +423,12 @@ function Field({
           data-testid={dataTestId}
           className={clsx(
             'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded',
-            'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
+            'focus:outline-none focus:border-sygnal-info focus:ring-1 focus:ring-sygnal-info/40',
             'placeholder:text-gray-300',
           )}
         />
       )}
-      {error && <div className="mt-1 text-[10px] text-red-600">{error}</div>}
+      {error && <div className="mt-1 text-[10px] text-sygnal-blokada">{error}</div>}
     </div>
   );
 }

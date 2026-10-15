@@ -153,7 +153,7 @@ export function EnmInspectorPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="px-4 py-2 bg-rose-50 border-b border-rose-200 text-xs text-rose-600">
+        <div className="px-4 py-2 bg-sygnal-blokada-tlo border-b border-sygnal-blokada/40 text-xs text-sygnal-blokada-tusz">
           {error}
         </div>
       )}
@@ -165,7 +165,7 @@ export function EnmInspectorPage() {
             key={tab.id}
             className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-blue-500 text-sygnal-info'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
             onClick={() => setActiveTab(tab.id)}

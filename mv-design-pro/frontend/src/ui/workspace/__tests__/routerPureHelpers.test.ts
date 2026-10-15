@@ -4,17 +4,20 @@ import {
   resolveLatestCompletedRun,
 } from '../routerPureHelpers';
 
+// Kolor stanu = poziom komunikatu (brak → uwaga, pozytywna → ok, niezaliczony →
+// blokada) z tokenów motywu `sygnal-*` (karta TUSZ-POD-TLO-JASNE; dawniej odcienie
+// palety amber/emerald/rose, nieczytelne w motywie ciemnym).
 describe('auditProofPackStatus', () => {
   it('zwraca "Brak dowodów" gdy proof_count = 0', () => {
     const r = auditProofPackStatus({ proof_count: 0, all_pass: true, braki_danych: [] } as never);
     expect(r.label).toContain('Brak dowodów');
-    expect(r.className).toContain('amber');
+    expect(r.className).toBe('text-sygnal-uwaga');
   });
 
   it('zwraca "Weryfikacja pozytywna" gdy all_pass=true', () => {
     const r = auditProofPackStatus({ proof_count: 5, all_pass: true, braki_danych: [] } as never);
     expect(r.label).toContain('pozytywna');
-    expect(r.className).toContain('emerald');
+    expect(r.className).toBe('text-sygnal-ok');
   });
 
   it('pakiet z brakami danych nie jest "Weryfikacja pozytywna" (brak danych ≠ spełnia)', () => {
@@ -25,7 +28,7 @@ describe('auditProofPackStatus', () => {
     } as never);
     expect(r.label).toContain('Niekompletny');
     expect(r.label).not.toContain('pozytywna');
-    expect(r.className).toContain('amber');
+    expect(r.className).toBe('text-sygnal-uwaga');
   });
 
   it('dowód niezaliczony ma pierwszeństwo przed brakami danych', () => {
@@ -40,7 +43,7 @@ describe('auditProofPackStatus', () => {
   it('zwraca "Wymaga sprawdzenia" gdy all_pass=false', () => {
     const r = auditProofPackStatus({ proof_count: 5, all_pass: false, braki_danych: [] } as never);
     expect(r.label).toContain('sprawdzenia');
-    expect(r.className).toContain('rose');
+    expect(r.className).toBe('text-sygnal-blokada');
   });
 });
 

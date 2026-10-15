@@ -260,8 +260,8 @@ export function PropertyGridMultiEdit({
           <span
             className={clsx(
               'text-xs px-2 py-1 rounded',
-              mode === 'MODEL_EDIT' && 'bg-blue-100 text-blue-800',
-              mode === 'RESULT_VIEW' && 'bg-green-100 text-green-800'
+              mode === 'MODEL_EDIT' && 'bg-sygnal-info-tlo text-sygnal-info-tusz',
+              mode === 'RESULT_VIEW' && 'bg-sygnal-ok-tlo text-sygnal-ok-tusz'
             )}
           >
             {getModeLabel()}
@@ -271,8 +271,8 @@ export function PropertyGridMultiEdit({
 
       {/* P30e: Read-only message for RESULT_VIEW mode */}
       {mode === 'RESULT_VIEW' && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-green-800">
+        <div className="bg-sygnal-ok-tlo border-b border-sygnal-ok/40 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs text-sygnal-ok-tusz">
             <span>🔒</span>
             <span>Tryb wyników — edycja niedostępna. Wszystkie pola są tylko do odczytu.</span>
           </div>
@@ -281,8 +281,8 @@ export function PropertyGridMultiEdit({
 
       {/* Blocked message (CASE_CONFIG) */}
       {blockedMessage && mode !== 'RESULT_VIEW' && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-yellow-800">
+        <div className="bg-sygnal-uwaga-tlo border-b border-sygnal-uwaga/40 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs text-sygnal-uwaga-tusz">
             <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
             <span>{blockedMessage}</span>
           </div>
@@ -291,9 +291,9 @@ export function PropertyGridMultiEdit({
 
       {/* Draft indicator (hidden in RESULT_VIEW) */}
       {isDirty && mode !== 'RESULT_VIEW' && (
-        <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+        <div className="bg-sygnal-info-tlo border-b border-sygnal-info/40 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-blue-800">
+            <div className="flex items-center gap-2 text-xs text-sygnal-info-tusz">
               <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
               <span>Niezapisane zmiany: {draftChanges.size} {
                 draftChanges.size === 1 ? 'pole' :
@@ -361,8 +361,8 @@ export function PropertyGridMultiEdit({
                     className={clsx(
                       'px-1.5 py-0.5 rounded text-xs',
                       errorCount > 0
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
+                        ? 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
+                        : 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
                     )}
                   >
                     {localValidationErrors.size}
@@ -386,8 +386,8 @@ export function PropertyGridMultiEdit({
 
       {/* Error indicator (footer) */}
       {errorCount > 0 && (
-        <div className="bg-red-50 border-t border-red-200 px-4 py-2">
-          <div className="flex items-center gap-2 text-xs text-red-700">
+        <div className="bg-sygnal-blokada-tlo border-t border-sygnal-blokada/40 px-4 py-2">
+          <div className="flex items-center gap-2 text-xs text-sygnal-blokada">
             <ValidationIcon severity="ERROR" />
             <span>
               {errorCount} {errorCount === 1 ? 'błąd' : 'błędów'} walidacji
@@ -501,8 +501,8 @@ function PropertyFieldRow({ field, onFieldChange, mode, canEdit }: PropertyField
     <div
       className={clsx(
         'flex items-center py-1',
-        field.validation?.severity === 'ERROR' && 'bg-red-50 -mx-2 px-2 rounded',
-        field.validation?.severity === 'WARNING' && 'bg-yellow-50 -mx-2 px-2 rounded'
+        field.validation?.severity === 'ERROR' && 'bg-sygnal-blokada-tlo -mx-2 px-2 rounded',
+        field.validation?.severity === 'WARNING' && 'bg-sygnal-uwaga-tlo -mx-2 px-2 rounded'
       )}
     >
       {/* Label */}
@@ -606,7 +606,7 @@ function FieldInput({ field, multiEditValue, onChange }: FieldInputProps) {
           type="checkbox"
           checked={Boolean(actualValue)}
           onChange={(e) => handleImmediateChange(e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="h-4 w-4 text-sygnal-info border-gray-300 rounded focus:ring-blue-500"
         />
       );
 
@@ -639,7 +639,7 @@ function FieldInput({ field, multiEditValue, onChange }: FieldInputProps) {
           placeholder={getMultiEditPlaceholder(multiEditValue, field.unit)}
           className={clsx(
             'text-xs font-mono w-24 border rounded px-2 py-1 text-right focus:ring-blue-500 focus:border-blue-500',
-            hasError ? 'border-red-500 bg-red-50' : 'border-gray-300',
+            hasError ? 'border-red-500 bg-sygnal-blokada-tlo' : 'border-gray-300',
             multiEditValue.kind === 'mixed' && 'placeholder-gray-500 italic'
           )}
         />

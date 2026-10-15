@@ -39,21 +39,21 @@ export const SEVERITY_COLORS: Record<SanityCheckSeverity, {
   marker: string;
 }> = {
   ERROR: {
-    bg: 'bg-rose-50',
+    bg: 'bg-sygnal-blokada-tlo',
     border: 'border-rose-500',
-    text: 'text-rose-700',
+    text: 'text-sygnal-blokada',
     marker: 'bg-rose-500',
   },
   WARN: {
-    bg: 'bg-amber-50',
+    bg: 'bg-sygnal-uwaga-tlo',
     border: 'border-amber-500',
-    text: 'text-amber-700',
+    text: 'text-sygnal-uwaga',
     marker: 'bg-amber-500',
   },
   INFO: {
-    bg: 'bg-blue-50',
+    bg: 'bg-sygnal-info-tlo',
     border: 'border-blue-500',
-    text: 'text-blue-700',
+    text: 'text-sygnal-info',
     marker: 'bg-blue-500',
   },
 };

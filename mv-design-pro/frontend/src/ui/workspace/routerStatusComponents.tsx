@@ -14,7 +14,7 @@ interface ContractStatusCardProps {
 export function ContractStatusCard({ tone, title, message }: ContractStatusCardProps) {
   const toneClass =
     tone === 'error'
-      ? 'border-rose-200 bg-rose-50 text-rose-700'
+      ? 'border-sygnal-blokada/40 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
       : tone === 'loading'
         ? 'border-slate-200 bg-slate-50 text-slate-600'
         : 'border-slate-200 bg-slate-50 text-slate-700';
@@ -41,7 +41,7 @@ export function ScopePills({ scopes }: ScopePillsProps) {
       {scopes.map((scope) => (
         <span
           key={scope}
-          className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700"
+          className="rounded-full border border-sygnal-ok/40 bg-sygnal-ok-tlo px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sygnal-ok-tusz"
         >
           {formatContractValue(scope)}
         </span>

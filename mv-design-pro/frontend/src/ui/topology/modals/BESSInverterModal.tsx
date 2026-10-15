@@ -193,11 +193,11 @@ export function BESSInverterModal({
                     <option value="">— wybierz —</option>
                     {fieldOptions.map((f) => (<option key={f.ref_id} value={f.ref_id}>{f.name} ({f.kind})</option>))}
                   </select>
-                  {getError('existing_field_ref') && <p className="mt-1 text-xs text-red-600">{getError('existing_field_ref')}</p>}
+                  {getError('existing_field_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('existing_field_ref')}</p>}
                 </div>
               )}
               {isNewField && (
-                <div className="space-y-3 pl-4 border-l-2 border-blue-200">
+                <div className="space-y-3 pl-4 border-l-2 border-sygnal-info/40">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Aparat łączeniowy pola *</label>
@@ -206,7 +206,7 @@ export function BESSInverterModal({
                         <option value="">— wybierz —</option>
                         {(Object.entries(SWITCH_KIND_LABELS) as [NNSwitchKind, string][]).map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
                       </select>
-                      {getError('new_field_switch_kind') && <p className="mt-1 text-xs text-red-600">{getError('new_field_switch_kind')}</p>}
+                      {getError('new_field_switch_kind') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_switch_kind')}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Stan normalny aparatu *</label>
@@ -215,7 +215,7 @@ export function BESSInverterModal({
                         <option value="">— wybierz —</option>
                         {(Object.entries(SWITCH_STATE_LABELS) as [NNSwitchState, string][]).map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
                       </select>
-                      {getError('new_field_switch_state') && <p className="mt-1 text-xs text-red-600">{getError('new_field_switch_state')}</p>}
+                      {getError('new_field_switch_state') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_switch_state')}</p>}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -223,7 +223,7 @@ export function BESSInverterModal({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Napięcie nN (kV) *</label>
                       <input type="number" value={form.new_field_voltage_nn_kv ?? ''} onChange={(e) => set('new_field_voltage_nn_kv', e.target.value ? parseFloat(e.target.value) : null)}
                         step="any" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('new_field_voltage_nn_kv') ? 'border-red-500' : 'border-gray-300'}`} placeholder="np. 0.4" />
-                      {getError('new_field_voltage_nn_kv') && <p className="mt-1 text-xs text-red-600">{getError('new_field_voltage_nn_kv')}</p>}
+                      {getError('new_field_voltage_nn_kv') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('new_field_voltage_nn_kv')}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nazwa pola</label>
@@ -251,19 +251,19 @@ export function BESSInverterModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pojemność użyteczna (kWh) *</label>
                   <input type="number" value={form.usable_capacity_kwh ?? ''} onChange={(e) => set('usable_capacity_kwh', e.target.value ? parseFloat(e.target.value) : null)}
                     step="any" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('usable_capacity_kwh') ? 'border-red-500' : 'border-gray-300'}`} />
-                  {getError('usable_capacity_kwh') && <p className="mt-1 text-xs text-red-600">{getError('usable_capacity_kwh')}</p>}
+                  {getError('usable_capacity_kwh') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('usable_capacity_kwh')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Moc ładowania (kW) *</label>
                   <input type="number" value={form.charge_power_kw ?? ''} onChange={(e) => set('charge_power_kw', e.target.value ? parseFloat(e.target.value) : null)}
                     step="any" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('charge_power_kw') ? 'border-red-500' : 'border-gray-300'}`} />
-                  {getError('charge_power_kw') && <p className="mt-1 text-xs text-red-600">{getError('charge_power_kw')}</p>}
+                  {getError('charge_power_kw') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('charge_power_kw')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Moc rozładowania (kW) *</label>
                   <input type="number" value={form.discharge_power_kw ?? ''} onChange={(e) => set('discharge_power_kw', e.target.value ? parseFloat(e.target.value) : null)}
                     step="any" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('discharge_power_kw') ? 'border-red-500' : 'border-gray-300'}`} />
-                  {getError('discharge_power_kw') && <p className="mt-1 text-xs text-red-600">{getError('discharge_power_kw')}</p>}
+                  {getError('discharge_power_kw') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('discharge_power_kw')}</p>}
                 </div>
               </div>
             </div>
@@ -281,7 +281,7 @@ export function BESSInverterModal({
                     <option value="">— wybierz —</option>
                     {(Object.entries(OPERATION_MODE_LABELS) as [BESSOperationMode, string][]).map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
                   </select>
-                  {getError('operation_mode') && <p className="mt-1 text-xs text-red-600">{getError('operation_mode')}</p>}
+                  {getError('operation_mode') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('operation_mode')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Strategia sterowania *</label>
@@ -290,7 +290,7 @@ export function BESSInverterModal({
                     <option value="">— wybierz —</option>
                     {(Object.entries(CONTROL_STRATEGY_LABELS) as [BESSControlStrategy, string][]).map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
                   </select>
-                  {getError('control_strategy') && <p className="mt-1 text-xs text-red-600">{getError('control_strategy')}</p>}
+                  {getError('control_strategy') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('control_strategy')}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -298,13 +298,13 @@ export function BESSInverterModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">SOC min (%) *</label>
                   <input type="number" value={form.soc_min_percent ?? ''} onChange={(e) => set('soc_min_percent', e.target.value ? parseFloat(e.target.value) : null)}
                     step="1" min="0" max="100" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('soc_min_percent') ? 'border-red-500' : 'border-gray-300'}`} />
-                  {getError('soc_min_percent') && <p className="mt-1 text-xs text-red-600">{getError('soc_min_percent')}</p>}
+                  {getError('soc_min_percent') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('soc_min_percent')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">SOC max (%) *</label>
                   <input type="number" value={form.soc_max_percent ?? ''} onChange={(e) => set('soc_max_percent', e.target.value ? parseFloat(e.target.value) : null)}
                     step="1" min="0" max="100" className={`w-full px-3 py-2 border rounded-md text-sm ${getError('soc_max_percent') ? 'border-red-500' : 'border-gray-300'}`} />
-                  {getError('soc_max_percent') && <p className="mt-1 text-xs text-red-600">{getError('soc_max_percent')}</p>}
+                  {getError('soc_max_percent') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('soc_max_percent')}</p>}
                 </div>
               </div>
             </div>

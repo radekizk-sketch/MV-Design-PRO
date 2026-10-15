@@ -46,7 +46,6 @@ import { useAppStateStore } from '../../app-state';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { ProcessPanel } from '../ProcessPanel';
-import { TopContextBar } from '../TopContextBar';
 import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview';
 import { useSelectionStore } from '../../selection/store';
 import { getProject } from '../../projects/api';
@@ -184,8 +183,7 @@ function Probe() {
     <>
       <SondaBudowy />
       <KropkaElementu />
-      {/* V12K-319 (karta X3): trzej pozostali konsumenci tej samej klasy. */}
-      <TopContextBar />
+      {/* V12K-319 (karta X3): pozostali konsumenci tej samej klasy (6/7 skasowany). */}
       <ReadinessBlockersReview />
       <ProcessPanel />
     </>
@@ -309,10 +307,13 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
   // -------------------------------------------------------------------------
   // Konsumenci 5-7 (karta X3, V12K-319) — reszta klasy „zero z braku pomiaru"
   //
-  // Ci trzej czytelnicy wyprowadzali werdykt POZYTYWNY z pustej listy blokad,
+  // Ci czytelnicy wyprowadzali werdykt POZYTYWNY z pustej listy blokad,
   // nie sprawdzajac, czy lista jest pusta z POMIARU czy z jego braku. Testy ida
   // po ILOCZYNIE CECH: {nieustalona, ustalona z blokadami, ustalona bez uwag}
-  // x {przeglad masowy, pasek kontekstu, panel procesu}.
+  // x {przeglad masowy, panel procesu}. Konsument 6/7 (pasek kontekstu budowy,
+  // `ui/network-build/TopContextBar.tsx`) SKASOWANY 2026-10-15 (karta
+  // TUSZ-POD-TLO-JASNE): brak konsumenta produkcyjnego, tylko eksport z barrela;
+  // jego przypadki zeszly razem z nim, numeracja pozostalych zostaje.
   // -------------------------------------------------------------------------
   describe('5/7 przegląd masowy blokad', () => {
     it('NIEUSTALONA → uczciwy stan zerowy zamiast „bez zagadnień krytycznych"', async () => {
@@ -341,33 +342,6 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
         ).toBeInTheDocument();
       });
       expect(screen.queryByTestId('readiness-blockers-nieustalona')).toBeNull();
-    });
-  });
-
-  describe('6/7 pasek kontekstu budowy', () => {
-    it('NIEUSTALONA → brak zielonej plakietki „Układ bez zagadnień konfiguracji"', async () => {
-      await uruchom('nieustalona');
-
-      expect(await screen.findByTestId('top-context-gotowosc-nieustalona')).toBeInTheDocument();
-      expect(screen.queryByText('Układ bez zagadnień konfiguracji')).toBeNull();
-    });
-
-    it('USTALONA z blokadami → plakietka nazywa liczbę zagadnień', async () => {
-      await uruchom('ustalona-z-blokadami');
-
-      await waitFor(() => {
-        expect(screen.getByText(/zagadnień konfiguracji/)).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
-    });
-
-    it('USTALONA bez uwag → zielona plakietka nadal działa', async () => {
-      await uruchom('ustalona-bez-uwag');
-
-      await waitFor(() => {
-        expect(screen.getByText('Układ bez zagadnień konfiguracji')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
     });
   });
 

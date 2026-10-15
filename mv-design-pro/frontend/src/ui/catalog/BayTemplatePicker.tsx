@@ -184,27 +184,27 @@ export interface BayTemplatePickerProps {
 
 const SOURCE_STATUS_BADGE: Record<BayTemplateSourceStatus, { class: string; label: string }> = {
   official_catalog: {
-    class: 'bg-green-100 text-green-800 border-green-300',
+    class: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz border-sygnal-ok/40',
     label: 'Oficjalny katalog producenta',
   },
   repo_verified: {
-    class: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    class: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz border-sygnal-ok/40',
     label: 'Zweryfikowany w repozytorium',
   },
   user_defined: {
-    class: 'bg-blue-100 text-blue-800 border-blue-300',
+    class: 'bg-sygnal-info-tlo text-sygnal-info-tusz border-sygnal-info/40',
     label: 'Definicja użytkownika',
   },
   canonical_fallback: {
-    class: 'bg-amber-100 text-amber-800 border-amber-300',
+    class: 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz border-sygnal-uwaga/40',
     label: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
   },
   requires_catalog: {
-    class: 'bg-red-100 text-red-800 border-red-300',
+    class: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border-sygnal-blokada/40',
     label: 'Wymaga uzupełnienia katalogu',
   },
   incomplete_requires_review: {
-    class: 'bg-red-100 text-red-800 border-red-300',
+    class: 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz border-sygnal-blokada/40',
     label: 'Niekompletny — wymaga przeglądu',
   },
 };
@@ -293,7 +293,7 @@ export function BayTemplatePicker({
               className={clsx(
                 'flex w-full flex-col items-start rounded border p-2 text-left transition-colors',
                 isSelected
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-blue-500 bg-sygnal-info-tlo'
                   : 'border-gray-200 bg-white hover:bg-gray-50',
               )}
             >

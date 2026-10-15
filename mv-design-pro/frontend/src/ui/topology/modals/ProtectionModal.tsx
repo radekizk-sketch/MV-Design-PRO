@@ -199,7 +199,7 @@ export function ProtectionModal({
                   getError('ref_id') ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
-              {getError('ref_id') && <p className="mt-1 text-xs text-red-600">{getError('ref_id')}</p>}
+              {getError('ref_id') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('ref_id')}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nazwa</label>
@@ -242,12 +242,12 @@ export function ProtectionModal({
                   <option key={b.ref_id} value={b.ref_id}>{b.name}</option>
                 ))}
               </select>
-              {getError('breaker_ref') && <p className="mt-1 text-xs text-red-600">{getError('breaker_ref')}</p>}
+              {getError('breaker_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('breaker_ref')}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Przekładnik CT
-                {CT_REQUIRED_TYPES.has(formData.device_type) && <span className="text-red-500"> *</span>}
+                {CT_REQUIRED_TYPES.has(formData.device_type) && <span className="text-sygnal-blokada"> *</span>}
               </label>
               <select
                 value={formData.ct_ref}
@@ -263,7 +263,7 @@ export function ProtectionModal({
                   </option>
                 ))}
               </select>
-              {getError('ct_ref') && <p className="mt-1 text-xs text-red-600">{getError('ct_ref')}</p>}
+              {getError('ct_ref') && <p className="mt-1 text-xs text-sygnal-blokada">{getError('ct_ref')}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Przekladnik napieciowy</label>
@@ -318,7 +318,7 @@ export function ProtectionModal({
               type="checkbox"
               checked={formData.is_enabled}
               onChange={(e) => handleChange('is_enabled', e.target.checked)}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              className="h-4 w-4 text-sygnal-info border-gray-300 rounded"
             />
             <label className="text-sm text-gray-700">Zabezpieczenie aktywne</label>
           </div>

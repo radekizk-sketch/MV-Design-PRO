@@ -104,7 +104,7 @@ export function DerPccVariantInfo({
     return (
       <div
         className={clsx(
-          'rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900',
+          'rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-3 text-sm text-sygnal-uwaga-tusz',
           className,
         )}
         data-testid="der-pcc-variant-info-missing"
@@ -121,7 +121,7 @@ export function DerPccVariantInfo({
     return (
       <div
         className={clsx(
-          'rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900',
+          'rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-3 text-sm text-sygnal-uwaga-tusz',
           className,
         )}
         data-testid="der-pcc-variant-info-unknown"
@@ -137,7 +137,7 @@ export function DerPccVariantInfo({
     <div
       className={clsx(
         'rounded border p-3 text-sm',
-        isComplete ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50',
+        isComplete ? 'border-sygnal-ok/40 bg-sygnal-ok-tlo' : 'border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo',
         className,
       )}
       data-testid="der-pcc-variant-info"
@@ -150,8 +150,8 @@ export function DerPccVariantInfo({
           className={clsx(
             'rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase',
             isComplete
-              ? 'border-green-400 bg-green-100 text-green-800'
-              : 'border-amber-400 bg-amber-100 text-amber-900',
+              ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+              : 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
           )}
         >
           {isComplete ? 'Skonfigurowany' : 'Do konfiguracji'}

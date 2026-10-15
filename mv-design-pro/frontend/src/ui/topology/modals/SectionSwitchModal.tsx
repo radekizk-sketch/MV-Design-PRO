@@ -197,7 +197,7 @@ export function SectionSwitchModal({
                 placeholder="np. SW-001"
               />
               {getFieldError('ref_id') && (
-                <p className="mt-1 text-xs text-red-600">{getFieldError('ref_id')}</p>
+                <p className="mt-1 text-xs text-sygnal-blokada">{getFieldError('ref_id')}</p>
               )}
             </div>
 
@@ -216,7 +216,7 @@ export function SectionSwitchModal({
                 placeholder="np. Łącznik sekcyjny S1"
               />
               {getFieldError('name') && (
-                <p className="mt-1 text-xs text-red-600">{getFieldError('name')}</p>
+                <p className="mt-1 text-xs text-sygnal-blokada">{getFieldError('name')}</p>
               )}
             </div>
 
@@ -292,7 +292,7 @@ export function SectionSwitchModal({
                 }`}
               />
               {getFieldError('position_on_segment') && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-sygnal-blokada">
                   {getFieldError('position_on_segment')}
                 </p>
               )}

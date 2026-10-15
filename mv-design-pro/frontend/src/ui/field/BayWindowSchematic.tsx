@@ -145,7 +145,7 @@ export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+          <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sygnal-info">
             Schemat Kanoniczny
           </h4>
           <p className="mt-1 text-xs text-slate-600">{item.bay_name}</p>

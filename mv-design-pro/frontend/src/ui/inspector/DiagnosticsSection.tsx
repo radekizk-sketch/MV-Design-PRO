@@ -81,27 +81,27 @@ export function DiagnosticsSection({
       <button
         type="button"
         onClick={toggleCollapse}
-        className="w-full flex items-center justify-between px-4 py-2 bg-rose-50 hover:bg-rose-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2 bg-sygnal-blokada-tlo/60 hover:bg-sygnal-blokada-tlo transition-colors"
         data-testid="diagnostics-section-toggle"
       >
-        <span className="text-xs font-medium text-rose-800 flex items-center gap-2">
+        <span className="text-xs font-medium text-sygnal-blokada-tusz flex items-center gap-2">
           {collapsed ? '[+]' : '[-]'} Diagnostyka
           {hasDiagnostics && diagnostics && (
             <>
               {diagnostics.error_count > 0 && (
-                <span className="px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded text-xs">
+                <span className="px-1.5 py-0.5 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz rounded text-xs">
                   {diagnostics.error_count} bledow
                 </span>
               )}
               {diagnostics.warn_count > 0 && (
-                <span className="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded text-xs">
+                <span className="px-1.5 py-0.5 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz rounded text-xs">
                   {diagnostics.warn_count} ostrzezen
                 </span>
               )}
             </>
           )}
         </span>
-        <span className="text-xs text-rose-600">
+        <span className="text-xs text-sygnal-blokada">
           {hasDiagnostics && diagnostics
             ? `${diagnostics.results.length} wynikow`
             : 'brak'}
@@ -110,7 +110,7 @@ export function DiagnosticsSection({
 
       {/* Section Content */}
       {!collapsed && (
-        <div className="px-4 py-3 bg-rose-50/50 space-y-2">
+        <div className="px-4 py-3 bg-sygnal-blokada-tlo/50 space-y-2">
           {isLoading ? (
             <div className="text-xs text-gray-500 italic">Ladowanie...</div>
           ) : hasDiagnostics && diagnostics ? (
@@ -124,8 +124,8 @@ export function DiagnosticsSection({
           )}
 
           {/* Placeholder notice */}
-          <div className="mt-2 pt-2 border-t border-rose-200">
-            <div className="text-xs text-rose-700 italic flex items-center gap-1">
+          <div className="mt-2 pt-2 border-t border-sygnal-blokada/40">
+            <div className="text-xs text-sygnal-blokada italic flex items-center gap-1">
               <span>*</span>
               <span>Dane demonstracyjne (fixture)</span>
             </div>

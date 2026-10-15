@@ -122,7 +122,7 @@ export function TransformerReview({ className }: TransformerReviewProps) {
                   onClick={() => handleRowClick(row)}
                   className={clsx(
                     'cursor-pointer border-b border-gray-50 transition-colors',
-                    row.hasBlocker ? 'bg-red-50/30 hover:bg-red-50' : 'hover:bg-blue-50',
+                    row.hasBlocker ? 'bg-sygnal-blokada-tlo/30 hover:bg-sygnal-blokada-tlo' : 'hover:bg-sygnal-info-tlo',
                   )}
                 >
                   <td className="px-3 py-1.5">
@@ -140,9 +140,9 @@ export function TransformerReview({ className }: TransformerReviewProps) {
                   <td className="px-3 py-1.5 text-gray-500">{row.stationName}</td>
                   <td className="px-3 py-1.5">
                     {row.catalogRef ? (
-                      <span className="text-green-600">{row.catalogRef}</span>
+                      <span className="text-sygnal-ok">{row.catalogRef}</span>
                     ) : (
-                      <span className="text-red-500 font-medium">Brak</span>
+                      <span className="text-sygnal-blokada font-medium">Brak</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-right">

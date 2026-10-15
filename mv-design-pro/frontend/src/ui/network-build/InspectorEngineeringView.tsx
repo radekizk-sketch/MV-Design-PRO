@@ -2853,7 +2853,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
               type="button"
               data-testid="open-pv-inverter-config"
               onClick={handleOpenConverterSurface}
-              className="rounded border border-cyan-300 bg-cyan-50 px-2 py-1.5 text-left font-medium text-cyan-800 hover:border-cyan-500"
+              className="rounded border border-sygnal-info/40 bg-sygnal-info-tlo px-2 py-1.5 text-left font-medium text-sygnal-info-tusz hover:border-cyan-500"
             >
               Otwórz konfigurację falownika
             </button>
@@ -2865,12 +2865,12 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
                 op: 'update_element_parameters',
                 context: { element_ref: selectedConverterRef },
               })}
-              className="rounded border border-cyan-200 px-2 py-1.5 text-left font-medium text-cyan-800 hover:border-cyan-500"
+              className="rounded border border-sygnal-info/40 px-2 py-1.5 text-left font-medium text-sygnal-info-tusz hover:border-cyan-500"
             >
               Uzupełnij dane wejściowe
             </button>
           </div>
-          <div className="mt-2 text-[10px] leading-4 text-cyan-700">
+          <div className="mt-2 text-[10px] leading-4 text-sygnal-info">
             Karta obejmuje falownik z katalogu, PCC, tor SN/nN, NC RfG, Q(U), P(f),
             FRT/HVRT, rozpływ mocy, wkład zwarciowy i zabezpieczenia nN.
           </div>
@@ -2908,7 +2908,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
                     action.variant === 'primary'
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : action.variant === 'danger'
-                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                      ? 'bg-sygnal-blokada-tlo/60 text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
                   )}
                 >
@@ -3140,11 +3140,11 @@ function EngineeringField({
 
   const valueClassName = clsx(
     'text-[11px] font-medium text-right truncate max-w-[55%]',
-    editable ? 'cursor-pointer rounded px-1 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400' : '',
-    field.source === 'catalog' ? 'text-blue-700' : 'text-gray-800',
-    field.source === 'calculated' ? 'text-green-700 italic' : '',
-    field.label === 'Konfiguracja' ? 'text-red-600 font-normal' : '',
-    field.label === 'Ostrzeżenie' ? 'text-amber-600 font-normal' : '',
+    editable ? 'cursor-pointer rounded px-1 hover:bg-sygnal-info-tlo focus:outline-none focus:ring-1 focus:ring-blue-400' : '',
+    field.source === 'catalog' ? 'text-sygnal-info' : 'text-gray-800',
+    field.source === 'calculated' ? 'text-sygnal-ok italic' : '',
+    field.label === 'Konfiguracja' ? 'text-sygnal-blokada font-normal' : '',
+    field.label === 'Ostrzeżenie' ? 'text-sygnal-uwaga font-normal' : '',
   );
 
   return (
@@ -3166,7 +3166,7 @@ function EngineeringField({
               reset();
             }
           }}
-          className="max-w-[60%] rounded border border-blue-300 bg-white px-1.5 py-0.5 text-right text-[11px] font-medium text-gray-900 shadow-sm"
+          className="max-w-[60%] rounded border border-sygnal-info/40 bg-white px-1.5 py-0.5 text-right text-[11px] font-medium text-gray-900 shadow-sm"
           autoFocus
         />
       ) : (

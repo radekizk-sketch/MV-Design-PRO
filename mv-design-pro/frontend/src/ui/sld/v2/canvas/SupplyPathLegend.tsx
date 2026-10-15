@@ -39,7 +39,7 @@ export function SupplyPathLegend({
     return (
       <div
         className={clsx(
-          'rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900',
+          'rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz',
           className,
         )}
         data-testid="supply-path-legend-no-source"
@@ -112,7 +112,7 @@ export function SupplyPathLegend({
         <li
           className={clsx(
             'flex items-center justify-between gap-2',
-            openPointCount > 0 ? 'text-red-700' : 'text-gray-500',
+            openPointCount > 0 ? 'text-sygnal-blokada' : 'text-gray-500',
           )}
           data-testid="supply-path-legend-open-points"
         >
@@ -130,7 +130,7 @@ export function SupplyPathLegend({
 
         {highlight.energizedGeneratorRefs.length > 0 && (
           <li
-            className="flex items-center justify-between gap-2 text-amber-700"
+            className="flex items-center justify-between gap-2 text-sygnal-uwaga"
             data-testid="supply-path-legend-energized-ders"
           >
             <span className="flex items-center gap-1">

@@ -188,8 +188,8 @@ export function PropertyGrid({
           <span
             className={clsx(
               'text-xs px-2 py-1 rounded',
-              mode === 'MODEL_EDIT' && 'bg-blue-100 text-blue-800',
-              mode === 'RESULT_VIEW' && 'bg-green-100 text-green-800'
+              mode === 'MODEL_EDIT' && 'bg-sygnal-info-tlo text-sygnal-info-tusz',
+              mode === 'RESULT_VIEW' && 'bg-sygnal-ok-tlo text-sygnal-ok-tusz'
             )}
           >
             {getModeLabel()}
@@ -199,8 +199,8 @@ export function PropertyGrid({
 
       {/* P30e: Read-only message for RESULT_VIEW mode */}
       {mode === 'RESULT_VIEW' && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-green-800">
+        <div className="bg-sygnal-ok-tlo border-b border-sygnal-ok/40 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs text-sygnal-ok-tusz">
             <span className="font-bold">[RO]</span>
             <span>Tryb wyników — edycja niedostępna. Wszystkie pola sa tylko do odczytu.</span>
           </div>
@@ -234,8 +234,8 @@ export function PropertyGrid({
                 <span className={clsx(
                   'px-1.5 py-0.5 rounded text-xs',
                   allValidationMessages.some((m) => m.severity === 'ERROR')
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-yellow-100 text-yellow-700'
+                    ? 'bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
+                    : 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
                 )}>
                   {allValidationMessages.length}
                 </span>
@@ -257,8 +257,8 @@ export function PropertyGrid({
 
       {/* Quick Error Indicator (footer) */}
       {allValidationMessages.some((m) => m.severity === 'ERROR') && (
-        <div className="bg-red-50 border-t border-red-200 px-4 py-2">
-          <div className="flex items-center gap-2 text-xs text-red-700">
+        <div className="bg-sygnal-blokada-tlo border-t border-sygnal-blokada/40 px-4 py-2">
+          <div className="flex items-center gap-2 text-xs text-sygnal-blokada">
             <ValidationIcon severity="ERROR" />
             <span>Obiekt zawiera błędy walidacji</span>
           </div>
@@ -403,8 +403,8 @@ function PropertyFieldRow({
       <div
         className={clsx(
           'py-2',
-          field.validation?.severity === 'ERROR' && 'bg-red-50 -mx-2 px-2 rounded',
-          field.validation?.severity === 'WARNING' && 'bg-yellow-50 -mx-2 px-2 rounded'
+          field.validation?.severity === 'ERROR' && 'bg-sygnal-blokada-tlo -mx-2 px-2 rounded',
+          field.validation?.severity === 'WARNING' && 'bg-sygnal-uwaga-tlo -mx-2 px-2 rounded'
         )}
       >
         {/* Label */}
@@ -463,8 +463,8 @@ function PropertyFieldRow({
     <div
       className={clsx(
         'flex items-center py-1',
-        field.validation?.severity === 'ERROR' && 'bg-red-50 -mx-2 px-2 rounded',
-        field.validation?.severity === 'WARNING' && 'bg-yellow-50 -mx-2 px-2 rounded'
+        field.validation?.severity === 'ERROR' && 'bg-sygnal-blokada-tlo -mx-2 px-2 rounded',
+        field.validation?.severity === 'WARNING' && 'bg-sygnal-uwaga-tlo -mx-2 px-2 rounded'
       )}
     >
       {/* Label */}
@@ -487,14 +487,14 @@ function PropertyFieldRow({
                 unit={field.unit}
                 valueClassName={clsx(
                   'text-xs',
-                  field.source === 'calculated' ? 'text-blue-700' : 'text-gray-900'
+                  field.source === 'calculated' ? 'text-sygnal-info' : 'text-gray-900'
                 )}
               />
             ) : (
               <span
                 className={clsx(
                   'text-xs font-mono',
-                  field.source === 'calculated' ? 'text-blue-700' : 'text-gray-900'
+                  field.source === 'calculated' ? 'text-sygnal-info' : 'text-gray-900'
                 )}
               >
                 {formatValue(field.value)}
@@ -584,7 +584,7 @@ function FieldInput({ field, onChange, elementType: _elementType }: FieldInputPr
           type="checkbox"
           checked={Boolean(field.value)}
           onChange={(e) => handleImmediateChange(e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="h-4 w-4 text-sygnal-info border-gray-300 rounded focus:ring-blue-500"
         />
       );
 
@@ -616,7 +616,7 @@ function FieldInput({ field, onChange, elementType: _elementType }: FieldInputPr
           onBlur={handleBlur}
           className={clsx(
             'text-xs font-mono w-24 border rounded px-2 py-1 text-right focus:ring-blue-500 focus:border-blue-500',
-            hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            hasError ? 'border-red-500 bg-sygnal-blokada-tlo' : 'border-gray-300'
           )}
           placeholder={field.unit ? `(${field.unit})` : undefined}
         />

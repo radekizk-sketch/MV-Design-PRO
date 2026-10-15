@@ -107,10 +107,10 @@ const STATUS_LABELS: Record<EngineeringStageStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<EngineeringStageStatus, string> = {
-  gotowe: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  brak_danych: 'border-amber-200 bg-amber-50 text-amber-800',
-  wynik_zablokowany: 'border-rose-200 bg-rose-50 text-rose-800',
-  czesciowy: 'border-sky-200 bg-sky-50 text-sky-800',
+  gotowe: 'border-sygnal-ok/40 bg-sygnal-ok-tlo text-sygnal-ok-tusz',
+  brak_danych: 'border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+  wynik_zablokowany: 'border-sygnal-blokada/40 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz',
+  czesciowy: 'border-sygnal-info/40 bg-sygnal-info-tlo text-sygnal-info-tusz',
   do_sprawdzenia: 'border-slate-200 bg-slate-50 text-slate-700',
 };
 
@@ -293,7 +293,7 @@ export function EmptyEngineeringState({
   onAction?: () => void;
 }) {
   return (
-    <div data-testid="empty-engineering-state" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+    <div data-testid="empty-engineering-state" className="rounded-lg border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
       <div className="font-semibold">{title}</div>
       <p className="mt-1">{reason}</p>
       <p className="mt-1"><span className="font-semibold">Wymagane dane:</span> {requiredData}</p>

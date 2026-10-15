@@ -114,6 +114,21 @@ describe('tokeny powierzchni — kontrast tekstu (≥ 4,5:1 w obu motywach)', ()
     // Tekst grupy kroku na panelu konfiguratora.
     ['--scada-grounded', '--scada-surface'],
     ['--scada-wn', '--scada-surface'],
+    // Karta TUSZ-POD-TLO-JASNE: kategorie nie-stanowe (jednostka wielkości,
+    // rodzaj źródła OZE, rola węzła w drzewie topologii, wariant porównania,
+    // punkt normalnie otwarty) niosą tusz `text-scada-<kategoria>` bez własnego
+    // tła, z obrysem — tusz stoi na KAŻDEJ powierzchni powłoki.
+    ...(['sn', 'nn', 'wn', 'energized', 'grounded'] as const).flatMap((kat) =>
+      (['bg', 'surface', 'panel', 'panel-raised'] as const).map(
+        (tlo) => [`--scada-${kat}`, `--scada-${tlo}`] as const,
+      ),
+    ),
+    // Napis na pełnym akcencie stanu (`bg-sygnal-* text-scada-bg`: przycisk
+    // edytora stacji, przycisk akcji kontekstu, kafel trybu) — dawniej
+    // `text-white`, w motywie ciemnym 2,66:1 na akcencie informacji.
+    ['--scada-bg', '--scada-status-info'],
+    ['--scada-bg', '--scada-status-ok'],
+    ['--scada-bg', '--scada-status-err'],
   ];
 
   for (const [nazwa, mapa] of MOTYWY) {
@@ -165,6 +180,30 @@ describe('komunikaty — hierarchia blokada > ostrzeżenie > informacja (KD-8 po
       ]) {
         it(`${nazwa}: akcent „${poziom}" jako tekst na ${tlo} ≥ 4,5:1`, () => {
           expect(kontrast(mapa, `--scada-status-${poziom}`, tlo)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+      // Karta TUSZ-POD-TLO-JASNE: akcent jednego poziomu stoi na tle INNEGO
+      // (błąd pola w ramce ostrzeżenia, ostrzeżenie w banerze blokady).
+      for (const inny of POZIOMY) {
+        it(`${nazwa}: akcent „${poziom}" na tle „${inny}" ≥ 4,5:1`, () => {
+          expect(
+            kontrast(mapa, `--scada-status-${poziom}`, `--scada-status-${inny}-bg`),
+          ).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+      // Karta TUSZ-POD-TLO-JASNE: tusz `-tusz` stoi też BEZ własnego tła —
+      // na zwykłej powierzchni (nagłówek w ramce komunikatu dziedziczy tło
+      // rodzica, a stan najechania łącza przechodzi z akcentu na tusz).
+      for (const tlo of [
+        '--scada-bg',
+        '--scada-bg-hover',
+        '--scada-hover-nav',
+        '--scada-surface',
+        '--scada-panel',
+        '--scada-panel-raised',
+      ]) {
+        it(`${nazwa}: tusz „${poziom}" jako tekst na ${tlo} ≥ 4,5:1`, () => {
+          expect(kontrast(mapa, `--scada-status-${poziom}-ink`, tlo)).toBeGreaterThanOrEqual(4.5);
         });
       }
       // Tusz jednego poziomu stoi czasem na tle INNEGO poziomu (nagłówek

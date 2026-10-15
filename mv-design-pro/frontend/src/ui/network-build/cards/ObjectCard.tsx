@@ -118,10 +118,10 @@ export function ObjectCard({
                     <span
                       className={clsx(
                         'text-[11px] font-medium text-right truncate max-w-[55%]',
-                        field.source === 'catalog' && 'text-blue-700',
-                        field.source === 'calculated' && 'text-green-700 italic',
-                        field.severity === 'error' && 'text-red-600',
-                        field.severity === 'warning' && 'text-amber-600',
+                        field.source === 'catalog' && 'text-sygnal-info',
+                        field.source === 'calculated' && 'text-sygnal-ok italic',
+                        field.severity === 'error' && 'text-sygnal-blokada',
+                        field.severity === 'warning' && 'text-sygnal-uwaga',
                         !field.source && !field.severity && 'text-gray-800',
                       )}
                       title={formatCardValue(field.value)}
@@ -152,7 +152,7 @@ export function ObjectCard({
                   'px-2.5 py-1 text-[10px] font-medium rounded transition-colors',
                   action.disabled && 'opacity-50 cursor-not-allowed',
                   action.variant === 'primary' && 'bg-blue-600 text-white hover:bg-blue-700',
-                  action.variant === 'danger' && 'bg-red-50 text-red-600 hover:bg-red-100',
+                  action.variant === 'danger' && 'bg-sygnal-blokada-tlo/60 text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo',
                   (!action.variant || action.variant === 'secondary') && 'bg-gray-100 text-gray-700 hover:bg-gray-200',
                 )}
               >

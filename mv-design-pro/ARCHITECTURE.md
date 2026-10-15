@@ -387,7 +387,7 @@ React 18 + TypeScript, Vite, Zustand (state), @tanstack/react-query (data fetchi
 | Reference Patterns | `ui/reference-patterns/` | Reference network patterns |
 | Context Menu | `ui/context-menu/` | Right-click actions |
 | Issue Panel | `ui/issue-panel/` | Validation issues display |
-| Status Bar | `ui/status-bar/` | Global status display |
+| Status Bar | `ui2/shell/StatusBar.tsx` | Global status display (`ui/status-bar/` skasowany 2026-10-15 — brak konsumenta) |
 | Inspector Panel | `ui/inspector-panel/` | Element property inspection |
 | SLD Editor (CAD) | `ui/sld-editor/` | CAD geometry editing tools |
 | Project Archive | `ui/project-archive/` | Import/export dialog |

@@ -328,7 +328,7 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
               <h1 className="text-2xl font-semibold text-slate-900">Porównanie A/B</h1>
             </div>
             <div className="flex items-center gap-3">
-              <div className="rounded border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo px-3 py-1 text-xs font-semibold text-sygnal-uwaga-tusz">
                 Tylko do odczytu
               </div>
               {onClose && (
@@ -379,7 +379,7 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
                 type="checkbox"
                 checked={showOnlyChanges}
                 onChange={(e) => setShowOnlyChanges(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-slate-300 text-sygnal-info focus:ring-blue-500"
               />
               Pokaż tylko różnice
             </label>
@@ -388,7 +388,7 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
 
         {/* Error Display */}
         {error && (
-          <div className="mt-4 rounded border border-rose-200 bg-rose-50 p-4 text-rose-700">
+          <div className="mt-4 rounded border border-sygnal-blokada/40 bg-sygnal-blokada-tlo p-4 text-sygnal-blokada-tusz">
             <p className="font-semibold">Błąd</p>
             <p className="text-sm">{error}</p>
           </div>
@@ -409,7 +409,7 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
                     onClick={() => setActiveTab('BUSES')}
                     className={`px-4 py-2 text-sm font-medium ${
                       activeTab === 'BUSES'
-                        ? 'border-b-2 border-blue-600 text-blue-600'
+                        ? 'border-b-2 border-blue-600 text-sygnal-info'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -420,7 +420,7 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
                     onClick={() => setActiveTab('BRANCHES')}
                     className={`px-4 py-2 text-sm font-medium ${
                       activeTab === 'BRANCHES'
-                        ? 'border-b-2 border-blue-600 text-blue-600'
+                        ? 'border-b-2 border-blue-600 text-sygnal-info'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >

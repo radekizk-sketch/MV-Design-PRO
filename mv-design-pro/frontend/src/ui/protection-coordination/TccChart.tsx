@@ -246,7 +246,7 @@ function MarkerList({ faultMarkers, operatingCurrents }: MarkerListProps) {
               {faultMarkers.map((marker) => (
                 <span
                   key={marker.id}
-                  className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-rose-700"
+                  className="inline-flex items-center gap-1 rounded bg-sygnal-blokada-tlo px-2 py-0.5 text-sygnal-blokada-tusz"
                 >
                   <span className="h-2 w-2 rounded-full bg-rose-500" />
                   {etykietaZnacznikaZwarcia(marker, nazwaObiektu)}: {marker.current_a.toFixed(0)} A
@@ -264,7 +264,7 @@ function MarkerList({ faultMarkers, operatingCurrents }: MarkerListProps) {
               {operatingCurrents.map((oc, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-blue-700"
+                  className="inline-flex items-center gap-1 rounded bg-sygnal-info-tlo px-2 py-0.5 text-sygnal-info-tusz"
                 >
                   <span className="h-2 w-2 rounded-full bg-blue-500" />
                   {nazwaObiektu(oc.location)}: {oc.current_a.toFixed(0)} A

@@ -142,7 +142,7 @@ export function ReadinessBlockersReview() {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="text-center">
-          <p className="text-sm font-medium text-green-600">
+          <p className="text-sm font-medium text-sygnal-ok">
             Kontrola konfiguracji bez zagadnień krytycznych
           </p>
           <p className="mt-1 text-xs text-gray-500">{helperMessage}</p>
@@ -167,10 +167,10 @@ export function ReadinessBlockersReview() {
           {blockers.map((blocker, index) => (
             <tr
               key={`${blocker.code}-${index}`}
-              className="cursor-pointer border-b border-gray-100 hover:bg-blue-50/50"
+              className="cursor-pointer border-b border-gray-100 hover:bg-sygnal-info-tlo/50"
               onClick={() => blocker.element_ref && handleNavigate(blocker.element_ref)}
             >
-              <td className="whitespace-nowrap px-3 py-1.5 font-mono text-red-600">
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono text-sygnal-blokada">
                 {blocker.code}
               </td>
               <td className="max-w-[140px] truncate px-3 py-1.5 text-gray-700">
@@ -192,7 +192,7 @@ export function ReadinessBlockersReview() {
                       event.stopPropagation();
                       handleFix(blocker.element_ref!);
                     }}
-                    className="rounded bg-blue-50 px-2 py-0.5 text-[9px] text-blue-600 hover:bg-blue-100"
+                    className="rounded bg-sygnal-info-tlo/60 px-2 py-0.5 text-[9px] text-sygnal-info-tusz hover:bg-sygnal-info-tlo"
                   >
                     Napraw
                   </button>

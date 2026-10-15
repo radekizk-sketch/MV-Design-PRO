@@ -106,7 +106,7 @@ function PanelBiegow({ biegi }: { biegi: BiegiKoordynacji }) {
   const wiersz = (etykieta: string, id: string | null, testid: string) => (
     <div className="flex justify-between gap-4 text-sm" data-testid={testid}>
       <span className="text-slate-600">{etykieta}</span>
-      <span className={id ? 'text-emerald-700' : 'text-amber-700'}>
+      <span className={id ? 'text-sygnal-ok' : 'text-sygnal-uwaga'}>
         {id ? '✓' : L.brak}
       </span>
     </div>
@@ -118,7 +118,7 @@ function PanelBiegow({ biegi }: { biegi: BiegiKoordynacji }) {
       {wiersz(L.min, biegi.min, 'coordination-run-min')}
       {wiersz(L.pf, biegi.pf, 'coordination-run-pf')}
       {!biegi.max || !biegi.min ? (
-        <p className="text-sm text-amber-800" data-testid="coordination-runs-missing">
+        <p className="text-sm text-sygnal-uwaga-tusz" data-testid="coordination-runs-missing">
           {L.brakMaxMin}
         </p>
       ) : !biegi.pf ? (
@@ -182,9 +182,9 @@ function PanelUrzadzen({ result }: { result: CoordinationResult }) {
         </div>
       ) : null}
       {result.odmowy_urzadzen.length > 0 ? (
-        <div className="rounded border border-amber-300 bg-amber-50 p-2" data-testid="coordination-refusals">
-          <h4 className="text-sm font-medium text-amber-900">{L.odmowyTytul}</h4>
-          <ul className="space-y-1 text-xs text-amber-900">
+        <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-2" data-testid="coordination-refusals">
+          <h4 className="text-sm font-medium text-sygnal-uwaga-tusz">{L.odmowyTytul}</h4>
+          <ul className="space-y-1 text-xs text-sygnal-uwaga-tusz">
             {result.odmowy_urzadzen.map((o) => (
               <li key={o.urzadzenie_ref}>
                 <span className="font-medium">{o.nazwa_pl}:</span>{' '}
@@ -195,9 +195,9 @@ function PanelUrzadzen({ result }: { result: CoordinationResult }) {
         </div>
       ) : null}
       {result.odmowy_par.length > 0 ? (
-        <div className="rounded border border-amber-300 bg-amber-50 p-2" data-testid="coordination-pair-refusals">
-          <h4 className="text-sm font-medium text-amber-900">{L.odmowyParTytul}</h4>
-          <ul className="space-y-1 text-xs text-amber-900">
+        <div className="rounded border border-sygnal-uwaga/40 bg-sygnal-uwaga-tlo p-2" data-testid="coordination-pair-refusals">
+          <h4 className="text-sm font-medium text-sygnal-uwaga-tusz">{L.odmowyParTytul}</h4>
+          <ul className="space-y-1 text-xs text-sygnal-uwaga-tusz">
             {result.odmowy_par.map((o) => (
               <li key={`${o.podrzedne_ref}-${o.kod}`}>
                 {nazwa(o.podrzedne_ref)}: {o.powod_pl}
@@ -411,10 +411,10 @@ export function ProtectionCoordinationPage() {
                 role={status === 'ERROR' ? 'alert' : undefined}
                 className={`rounded p-3 text-sm ${
                   status === 'ERROR'
-                    ? 'border border-rose-200 bg-rose-50 text-rose-700'
+                    ? 'border border-sygnal-blokada/40 bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
                     : status === 'SUCCESS'
-                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border border-blue-200 bg-blue-50 text-blue-700'
+                      ? 'border border-sygnal-ok/40 bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+                      : 'border border-sygnal-info/40 bg-sygnal-info-tlo text-sygnal-info-tusz'
                 }`}
               >
                 {error || statusText}

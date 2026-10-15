@@ -44,15 +44,15 @@ export function auditProofPackStatus(data: Audit2ProofPackResponse): AuditProofP
   if (data.proof_count <= 0) {
     return {
       label: 'Brak dowodów do oceny',
-      className: 'text-amber-700',
+      className: 'text-sygnal-uwaga',
     };
   }
   if (!data.all_pass) {
-    return { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
+    return { label: 'Wymaga sprawdzenia', className: 'text-sygnal-blokada' };
   }
   return data.braki_danych.length !== 0
-    ? { label: 'Niekompletny — część rodzajów bez danych', className: 'text-amber-700' }
-    : { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' };
+    ? { label: 'Niekompletny — część rodzajów bez danych', className: 'text-sygnal-uwaga' }
+    : { label: 'Weryfikacja pozytywna', className: 'text-sygnal-ok' };
 }
 
 export function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {
