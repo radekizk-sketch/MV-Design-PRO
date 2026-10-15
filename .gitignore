@@ -57,9 +57,11 @@ htmlcov/
 venv/
 .env
 # Katalog lokalny Claude Code (drzewa robocze, pliki tymczasowe) poza repozytorium;
-# definicje subagentów drzewa właściciela (ORKIESTRACJA_AGENTOW.md §3) są częścią projektu.
+# definicje subagentów drzewa właściciela (ORKIESTRACJA_AGENTOW.md §3) i ustawienia projektu
+# (okno autokompakcji) są częścią projektu.
 .claude/*
 !.claude/agents/
+!.claude/settings.json
 .playwright-mcp/
 mv-design-pro/qa-*.png
 mv-design-ui-implementation-*.png

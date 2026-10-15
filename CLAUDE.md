@@ -46,7 +46,8 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
   bezczynna sesja z dużym kontekstem nie jest wybudzana po wygaśnięciu pamięci podręcznej promptu
   (1 h) — kontynuację prowadzi nowa sesja z kartą i gałęzią jako stanem; check-iny planowane rzadko
   (każdy niesie pełny kontekst); workflowy i przeglądy adwersarzowe tylko dla zmian rdzenia
-  i kart dużych.
+  i kart dużych; okno autokompakcji 400 tys. tokenów (`autoCompactWindow` w `.claude/settings.json`,
+  zamiast domyślnych ~967 tys.) — każde żądanie niesie mniejszy kontekst.
 - Metody użycia agentów (delegacja asynchroniczna, weryfikator ze świeżym kontekstem, meldunki
   ugruntowane w kodach wyjścia, granice nazwane w karcie, karta bez listy kroków, wznawianie
   wykonawców zamiast tworzenia nowych): `mv-design-pro/ORKIESTRACJA_AGENTOW.md` §3–§3a.
