@@ -1,9 +1,8 @@
 """Pola rozdzielnicy w modelu ENM — JEDEN akcesor, JEDEN builder, JEDEN pisarz (karta W5-B).
 
 DLACZEGO. Do karty W5-B pole rozdzielnicy żyło w trzech nietypowanych słownikach
-(dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji,
-dawny słownik pól ZKSN punktu rozgałęzienia) i w typowanej kolekcji `bays`
-naraz. Każdy czytelnik (operacje, walidator, zajętość pól, tor pola, kompilator grafu,
+(pola SN i nN w `meta` stacji, pola ZKSN w parametrach punktu rozgałęzienia) i w
+typowanej kolekcji `bays` naraz. Każdy czytelnik (operacje, walidator, zajętość pól, tor pola, kompilator grafu,
 read-model pola, ocena LoM, SLD) składał te kanały po swojemu, z własną kolejnością
 pierwszeństwa i własnym zbiorem kluczy; rekord pola `bays` był dopisywany obok wpisu tego
 samego pola (stacja końca ciągu liczyła każde pole dwa razy). Od W5-B pole ma JEDEN nośnik —
@@ -32,7 +31,7 @@ from network_model.nazwy import nazwa_nadana
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
 from .models import Bay, EnergyNetworkModel
-from .rola_pola_sn import kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
+from .rola_pola_sn import kanoniczna_rola_pola_sn, nazwa_roli_pola_nn, nazwa_roli_pola_sn
 
 #: Kolejność ról przy grupowaniu pól po szynie — pola liniowe wyjściowe przed odgałęźnymi,
 #: te przed wejściowymi (kolejność wyboru wolnego pola startu ciągu; ta sama, którą miała
@@ -56,21 +55,6 @@ KLUCZE_META_ZAKAZANE: frozenset[str] = frozenset(
     }
 )
 
-#: Nazwy domyślne pól nN wg roli modelu — TA SAMA reguła dla buildera (pole bez nazwy
-#: projektanta) i migracji wpisów historycznych bez nazwy. Pole odpływowe nN rozróżnia
-#: odpływ odbiorczy od pola źródła po `meta.feeder_role` (`ZRODLO_NN_*`).
-_NAZWA_ROLI_POLA_NN_PL: dict[str, str] = {
-    "IN": "Wyłącznik główny nN",
-    "FEEDER": "Odpływ nN",
-    "OZE": "Pole źródła nN",
-    "TR": "Pole transformatorowe nN",
-    "COUPLER": "Sprzęgło nN",
-    "MEASUREMENT": "Pole pomiarowe nN",
-    "OUT": "Odpływ nN",
-}
-_NAZWA_POLA_ZRODLA_NN_PL = "Pole źródła nN"
-_PRZEDROSTEK_ROLI_ZRODLA_NN = "ZRODLO_NN"
-
 
 class BladPola(ValueError):
     """Odmowa zapisu rekordu pola: kształt spoza kontraktu `Bay`, dubel identyfikatora albo
@@ -89,7 +73,7 @@ def _kolekcja(enm: Mapping[str, Any] | EnergyNetworkModel, klucz: str) -> list[A
     return list(getattr(enm, klucz, []) or [])
 
 
-def _pole_rekordu(rekord: Any, klucz: str) -> Any:
+def _pole_rekordu(rekord: object, klucz: str) -> object:
     if isinstance(rekord, Mapping):
         return rekord.get(klucz)
     return getattr(rekord, klucz, None)
@@ -132,7 +116,8 @@ def pole_aparatu(enm: Mapping[str, Any] | EnergyNetworkModel, element_ref: objec
     if szukany is None:
         return None
     for rekord in pola(enm):
-        if szukany in (_pole_rekordu(rekord, "equipment_refs") or []):
+        aparaty = _pole_rekordu(rekord, "equipment_refs")
+        if isinstance(aparaty, list | tuple) and szukany in aparaty:
             return rekord
     return None
 
@@ -188,7 +173,7 @@ def napiecia_szyn(enm: Mapping[str, Any] | EnergyNetworkModel) -> dict[str, floa
 
 def czy_pole_nn(
     enm: Mapping[str, Any] | EnergyNetworkModel,
-    rekord: Any,
+    rekord: object,
     napiecia: Mapping[str, float | None] | None = None,
 ) -> bool:
     """Czy pole leży na szynie nN — JEDYNY predykat poziomu pola (dawna przynależność wpisu do
@@ -209,7 +194,7 @@ def czy_pole_nn(
     return w_pasmie_nn(mapa.get(szyna))
 
 
-def _czy_pole_gpz(enm: Mapping[str, Any] | EnergyNetworkModel, rekord: Any) -> bool:
+def _czy_pole_gpz(enm: Mapping[str, Any] | EnergyNetworkModel, rekord: object) -> bool:
     """Czy pole należy do stacji typu GPZ (typowane `Substation.station_type`)."""
     wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
     if wlasciciel is None:
@@ -272,26 +257,26 @@ def pola_wg_szyny(
 KLUCZ_POLA_WYTWORCY = "field_ref"
 
 
-def ref_pola_wytworcy(generator: Any) -> str | None:
+def ref_pola_wytworcy(generator: object) -> str | None:
     """Identyfikator pola, w którym stoi wytwórca (`Generator.meta.field_ref`), albo `None`."""
     meta = _pole_rekordu(generator, "meta")
     return _napis(meta.get(KLUCZ_POLA_WYTWORCY)) if isinstance(meta, Mapping) else None
 
 
-def zacisk_pola(rekord: Any) -> str | None:
+def zacisk_pola(rekord: object) -> str | None:
     """Własny zacisk pola (szyna za aparatem pola) — `terminal_bus_ref`, jedyny nośnik."""
     if rekord is None:
         return None
     return _napis(_pole_rekordu(rekord, "terminal_bus_ref"))
 
 
-def punkt_przylaczenia_pola(rekord: Any) -> str | None:
+def punkt_przylaczenia_pola(rekord: object) -> str | None:
     """Szyna, na której pole przyłącza element, któremu służy: własny zacisk, a bez zacisku —
     szyna pola (POLA-W-TORZE)."""
     return zacisk_pola(rekord) or _napis(_pole_rekordu(rekord, "bus_ref"))
 
 
-def rola_kanoniczna_pola(rekord: Any) -> str:
+def rola_kanoniczna_pola(rekord: object) -> str:
     """Rola kanoniczna pola: `field_role`, a bez niej alias `bay_role` przez kanon."""
     return kanoniczna_rola_pola_sn(
         _pole_rekordu(rekord, "field_role") or _pole_rekordu(rekord, "bay_role")
@@ -311,13 +296,10 @@ def nazwa_domyslna_pola(
     feeder_role: object = None,
 ) -> str:
     """Nazwa pola, gdy projektant jej nie nadał — z kanonu ról (SN: `enm.rola_pola_sn`;
-    nN: słownik tego modułu). Nigdy identyfikator pola (karta #144). TA SAMA reguła dla
+    nN: `enm.rola_pola_sn.nazwa_roli_pola_nn`). Nigdy identyfikator pola (karta #144). TA SAMA reguła dla
     buildera i migracji wpisów historycznych."""
     if poziom_nn:
-        rola_odplywu = str(feeder_role or "").strip().upper()
-        if rola_odplywu.startswith(_PRZEDROSTEK_ROLI_ZRODLA_NN):
-            return _NAZWA_POLA_ZRODLA_NN_PL
-        return _NAZWA_ROLI_POLA_NN_PL.get(str(bay_role or "").strip().upper(), "Pole nN")
+        return nazwa_roli_pola_nn(bay_role, feeder_role)
     return nazwa_roli_pola_sn(field_role or bay_role)
 
 

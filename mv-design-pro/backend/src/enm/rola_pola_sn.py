@@ -69,6 +69,33 @@ ROLA_POLA_ZRODLOWEGO_SN_Z_TECHNOLOGII: dict[str, str] = {
 }
 
 
+#: Karta W5-B: polska nazwa pola nN wg roli modelu (`Bay.bay_role`), gdy projektant jej nie
+#: nadał — jedna lista nazw ról w backendzie (ten moduł). Czytają: builder rekordu pola
+#: (`enm.pola.zbuduj_pole`) i migracja wpisów historycznych bez nazwy. Pole odpływowe nN
+#: rozróżnia odpływ odbiorczy od pola źródła po roli odpływu (`ZRODLO_NN_*`).
+NAZWA_ROLI_POLA_NN_PL: dict[str, str] = {
+    "IN": "Wyłącznik główny nN",
+    "FEEDER": "Odpływ nN",
+    "OZE": "Pole źródła nN",
+    "TR": "Pole transformatorowe nN",
+    "COUPLER": "Sprzęgło nN",
+    "MEASUREMENT": "Pole pomiarowe nN",
+    "OUT": "Odpływ nN",
+}
+#: Pole źródła nN (rola odpływu `ZRODLO_NN_*`) i pole nN bez rozpoznanej roli.
+NAZWA_POLA_ZRODLA_NN_PL = "Pole źródła nN"
+NAZWA_POLA_NN_OGOLNA_PL = "Pole nN"
+_PRZEDROSTEK_ROLI_ZRODLA_NN = "ZRODLO_NN"
+
+
+def nazwa_roli_pola_nn(bay_role: object, feeder_role: object = None) -> str:
+    """Polska nazwa pola nN dla roli modelu; rola odpływu `ZRODLO_NN_*` = pole źródła nN;
+    rola nierozpoznana — nazwa ogólna „Pole nN" (funkcja nie zgaduje roli)."""
+    if str(feeder_role or "").strip().upper().startswith(_PRZEDROSTEK_ROLI_ZRODLA_NN):
+        return NAZWA_POLA_ZRODLA_NN_PL
+    return NAZWA_ROLI_POLA_NN_PL.get(str(bay_role or "").strip().upper(), NAZWA_POLA_NN_OGOLNA_PL)
+
+
 def kanoniczna_rola_pola_sn(raw: object) -> str:
     """Kanoniczna rola pola SN z dowolnego przyjmowanego aliasu.
 

@@ -1,8 +1,8 @@
 """Operacje domenowe na typowanym polu `Bay` — iloczyn cech karty W5-B/A.
 
 DLACZEGO. Do karty W5-B operacje budowały pole w trzech nietypowanych słownikach
-(dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji, dawny słownik pól ZKSN punktu rozgałęzienia), a operacja stacji końca
-ciągu dopisywała obok wpisu rekord `bays` tego samego pola. Ogólne operacje (zmiana nazwy,
+(pola SN i nN w `meta` stacji, pola ZKSN w parametrach punktu rozgałęzienia), a operacja
+stacji końca ciągu dopisywała obok wpisu rekord `bays` tego samego pola. Ogólne operacje (zmiana nazwy,
 etykiety, parametrów, typu, usunięcie) na polu odmawiały kodem `field.legacy_write_disabled`.
 Od W5-B każde pole jest JEDNYM rekordem `bays` budowanym `enm.pola.zbuduj_pole` i zapisywanym
 `dodaj_pole`, a ogólne operacje działają na nim przez `zmien_pole`/`usun_pole`.
@@ -545,8 +545,7 @@ def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
 
 def _do_dawnych_kluczy(snap: dict[str, Any]) -> dict[str, Any]:
     """Odwzorowanie świeżo zbudowanej migawki na kształt sprzed W5-B: pola stacji jako wpisy
-    dawny słownik pól SN w `meta` stacji/dawny słownik pól nN w `meta` stacji (klucze dawnego wpisu, zacisk w `meta`).
-    """
+    dawnych słowników pól SN i nN w `meta` stacji (klucze dawnego wpisu, zacisk w `meta`)."""
     dawna = copy.deepcopy(snap)
     stacje = {s["ref_id"]: s for s in dawna["substations"]}
     pozostale = []

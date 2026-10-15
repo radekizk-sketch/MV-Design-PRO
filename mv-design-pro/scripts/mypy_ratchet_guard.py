@@ -207,8 +207,13 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
-BASELINE_ERRORS = 223
-BASELINE_FILES = 34
+# Karta W5-B (2026-10-15, baza `f3c435b6`): 223/34 -> 221/33. Znikneły 2 bledy `assignment`
+# w `enm/catalog_completion.py` (stan lacznika punktu rozgalezienia przypisywany ze `str` do
+# pola `Literal["open", "closed"] | None` — kod materializacji pol ZKSN przepisany na rekordy
+# `bays`). Zero nowych bledow (roznica zbiorow `mypy src` baza vs drzewo karty = dokladnie te
+# 2 wiersze).
+BASELINE_ERRORS = 221
+BASELINE_FILES = 33
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

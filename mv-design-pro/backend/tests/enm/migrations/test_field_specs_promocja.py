@@ -13,6 +13,7 @@ dawnymi kluczami w magazynie i migracja substratu 52 stacji (371 pól, 199 nN z 
 from __future__ import annotations
 
 import copy
+import gzip
 import json
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,12 @@ from enm.models import EnergyNetworkModel
 from enm.pola import czy_pole_nn, pola_nn, zacisk_pola
 from enm.store import LegacyFieldSpecsError, przygotuj_model_po_odczycie, reset_enm_store, set_enm
 
+#: ARCHIWUM: migawka substratu 52 stacji zapisana PRZED kartą W5-B (drzewo `f3c435b6`,
+#: ścieżka produktu — 172 wpisy pól SN i 199 wpisów pól nN w `meta` stacji). Zamrożona celowo:
+#: fikstury generowane po W5-B nie niosą już dawnych kluczy, a migracja musi umieć wczytać
+#: projekt zapisany przed kartą. Nie regenerować (to dane historyczne, nie wyjście generatora).
+ARCHIWUM_52S = Path(__file__).parent / "dane" / "substrat52s_przed_w5b.enm.json.gz"
+#: Ten sam substrat zbudowany DZIŚ ścieżką produktu (fikstura generowana).
 FIKSTURA_52S = (
     Path(__file__).resolve().parents[4] / "frontend/public/test-fixtures/sldSubstrate52s.enm.json"
 )
@@ -258,12 +265,11 @@ def test_magazyn_odmawia_zapisu_modelu_z_dawnymi_kluczami(monkeypatch: Any, tmp_
 
 
 def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
-    """Fikstura z dawnymi kluczami (substrat 52 stacji, ścieżka produktu): 172 pola SN +
+    """Archiwum z dawnymi kluczami (substrat 52 stacji sprzed W5-B): 172 pola SN +
     199 pól nN = 371 rekordów; każde pole nN ma aparat i zacisk; zero dawnych kluczy; drugi
     przebieg bez zmian."""
-    surowe = json.loads(FIKSTURA_52S.read_text(encoding="utf-8"))["enm"]
-    if not any("field_specs" in (s.get("meta") or {}) for s in surowe["substations"]):
-        pytest.fail("fikstura bez dawnych kluczy — po regeneracji przenieś ten test na archiwum")
+    surowe = json.loads(gzip.decompress(ARCHIWUM_52S.read_bytes()).decode("utf-8"))["enm"]
+    assert any("field_specs" in (s.get("meta") or {}) for s in surowe["substations"])
     model, zmieniono = przygotuj_model_po_odczycie(EnergyNetworkModel.model_validate(surowe))
     assert zmieniono
     dane = model.model_dump(mode="json")
@@ -280,3 +286,32 @@ def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
     drugi, zmieniono_drugi = przygotuj_model_po_odczycie(copy.deepcopy(model))
     assert zmieniono_drugi is False
     assert drugi.model_dump(mode="json") == dane
+    # Parytet archiwum ↔ ścieżka produktu po W5-B: projekt zapisany przed kartą, wczytany
+    # dziś, ma DOKŁADNIE te same pola (tożsamość, rola, szyna, zacisk, aparaty, nazwa) i ten
+    # sam graf, co substrat zbudowany dziś operacjami (fikstura generowana `sld_substrate_fixtures`).
+    swiezy, _ = przygotuj_model_po_odczycie(
+        EnergyNetworkModel.model_validate(
+            json.loads(FIKSTURA_52S.read_text(encoding="utf-8"))["enm"]
+        )
+    )
+
+    def _pola(m: EnergyNetworkModel) -> list[tuple[object, ...]]:
+        return sorted(
+            (
+                b.ref_id,
+                b.bay_role,
+                b.bus_ref,
+                b.terminal_bus_ref,
+                b.substation_ref,
+                tuple(b.equipment_refs),
+                b.field_role,
+                b.name,
+            )
+            for b in m.bays
+        )
+
+    assert _pola(model) == _pola(swiezy)
+    for kolekcja in ("buses", "branches", "loads", "generators", "transformers"):
+        assert sorted(e.ref_id for e in getattr(model, kolekcja)) == sorted(
+            e.ref_id for e in getattr(swiezy, kolekcja)
+        ), kolekcja

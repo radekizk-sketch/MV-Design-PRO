@@ -177,11 +177,15 @@ def rekord_z_wpisu(
             if wartosc is not None and wartosc != "" and wartosc != {}:
                 z_meta[pole_docelowe] = wartosc
 
-    def _z_wpisu(klucz: str) -> Any:
+    def _z_wpisu(klucz: str) -> object:
         wartosc = wpis.get(klucz)
         if wartosc is None or wartosc == "" or wartosc == [] or wartosc == {}:
             wartosc = scalany.get(klucz)
         return wartosc
+
+    def _lista_z_wpisu(klucz: str) -> list[Any]:
+        wartosc = _z_wpisu(klucz)
+        return list(wartosc) if isinstance(wartosc, list | tuple) else []
 
     equipment = list(wpis.get("equipment_refs") or [])
     for ref in scalany.get("equipment_refs") or []:
@@ -209,7 +213,7 @@ def rekord_z_wpisu(
         gpz_section_id=_napis(_z_wpisu("gpz_section_id")) or _napis(z_meta.get("gpz_section_id")),
         equipment_refs=equipment,
         protection_ref=_napis(_z_wpisu("protection_ref")),
-        protection_codes=list(_z_wpisu("protection_codes") or []),
+        protection_codes=_lista_z_wpisu("protection_codes"),
         bay_template_ref=_napis(_z_wpisu("bay_template_ref")),
         switchgear_family_ref=_napis(_z_wpisu("switchgear_family_ref")),
         manufacturer_ref=_napis(_z_wpisu("manufacturer_ref")),
@@ -225,7 +229,7 @@ def rekord_z_wpisu(
                 else None
             )
         ),
-        primary_devices=list(_z_wpisu("primary_devices") or []),
+        primary_devices=_lista_z_wpisu("primary_devices"),
         tags=tags,
         meta=meta,
         funkcja_pomiaru=_napis(_z_wpisu("funkcja_pomiaru")),
@@ -239,7 +243,7 @@ def rekord_z_wpisu(
             "source_status": wpis.get("source_status"),
             "source_refs": wpis.get("source_refs") or [],
         },
-        surge_arresters=list(_z_wpisu("surge_arresters") or []),
+        surge_arresters=_lista_z_wpisu("surge_arresters"),
         bay_number=_napis(scalany.get("bay_number")),
         feeder_short_name=_napis(scalany.get("feeder_short_name")),
         outgoing_destination_ref=_napis(scalany.get("outgoing_destination_ref")),

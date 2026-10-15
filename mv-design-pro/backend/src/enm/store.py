@@ -71,9 +71,9 @@ logger = logging.getLogger(__name__)
 
 
 class LegacyFieldSpecsError(ValueError):
-    """Zapis modelu z dawnymi kluczami pol (dawny słownik pól SN w `meta` stacji, dawny słownik pól nN w `meta` stacji,
-    dawny słownik pól ZKSN punktu rozgałęzienia) — od karty W5-B jedynym nosnikiem pol jest
-    kolekcja `bays`; brak trybu zgodnosci (zasady inzynierskie wlasciciela)."""
+    """Zapis modelu z dawnymi słownikami pól (SN i nN w `meta` stacji, ZKSN w parametrach
+    punktu rozgałęzienia) — od karty W5-B jedynym nośnikiem pól jest kolekcja `bays`; brak
+    trybu zgodności (zasady inżynierskie właściciela)."""
 
 
 #: Nazwane awarie ZAPISU modelu po operacji (karta #151) — jedno źródło dla każdego
@@ -280,9 +280,9 @@ def przygotuj_model_po_odczycie(enm: EnergyNetworkModel) -> tuple[EnergyNetworkM
     # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Idzie PRZED
     # uzupełnianiem katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
     model, zmieniona_nazwa = migruj_punkt_przylaczenia(enm)
-    # Karta W5-B: dawne wpisy pol (dawny słownik pól SN w `meta` stacji/dawny słownik pól nN/
-    # dawny słownik pól ZKSN punktu rozgałęzienia) → typowane rekordy `bays`. PRZED promocja aparatow nN,
-    # ktora czyta juz wylacznie `bays`.
+    # Karta W5-B: dawne słowniki pól (SN i nN w `meta` stacji, ZKSN w parametrach punktu
+    # rozgałęzienia) → typowane rekordy `bays`. PRZED promocją aparatów nN, która czyta już
+    # wyłącznie `bays`.
     model, zmienione_pola = promuj_pola_do_bays(model)
     # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja pol nN → realne elementy grafu
     # (aparat + szyna odplywu). PO migracji punktu przylaczenia, PRZED uzupelnianiem
@@ -377,13 +377,13 @@ def set_enm(
     granice tej gwarancji: `_wycofaj_nieudany_zapis` nizej.
     """
     if niesie_dawne_wpisy_pol(enm):
-        # Karta W5-B: dawne klucze pol nie maja trybu zgodnosci — model wchodzi do
-        # magazynu wylacznie przez `przygotuj_model_po_odczycie` (migracja), a operacja,
-        # ktora je zapisala, jest bledem programu, nie danych.
+        # Karta W5-B: dawne słowniki pól nie mają trybu zgodności — model wchodzi do
+        # magazynu wyłącznie przez `przygotuj_model_po_odczycie` (migracja), a operacja,
+        # która je zapisała, jest błędem programu, nie danych.
         raise LegacyFieldSpecsError(
-            "model niesie dawne wpisy pol (dawny słownik pól SN w `meta` stacji / dawny słownik pól nN / "
-            "dawny słownik pól ZKSN punktu rozgałęzienia); jedynym nosnikiem pol jest kolekcja `bays` — "
-            "zmigruj model funkcja `przygotuj_model_po_odczycie` przed zapisem"
+            "Model niesie dawne słowniki pól w `meta` stacji albo w parametrach punktu "
+            "rozgałęzienia; jedynym nośnikiem pól jest kolekcja `bays`. Zmigruj model funkcją "
+            "`przygotuj_model_po_odczycie` przed zapisem."
         )
     with blokada_twin(klucz):
         return _set_enm_pod_blokada(klucz, enm, zrodlo_zmiany=zrodlo_zmiany)

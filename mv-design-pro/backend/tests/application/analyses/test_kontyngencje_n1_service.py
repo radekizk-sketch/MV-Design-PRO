@@ -863,8 +863,13 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # Różnica modelu wejściowego: połówki odcinków i strona górna transformatora stacji leżą
     # na zaciskach pól (aparat pola w torze), pole TR domknięte przy wstawieniu stacji.
     # Enumeracja kontyngencji, dotkliwości, odbiory bez zasilania i ranking identyczne.
-    "gn01_promieniowa": "f1cbcb3509f5315e0da61529238bfbfb41d7f8b062d98dc3125aa126c7ec38cd",
-    "gn03_pierscien": "2cacc16c88dac3b7d044900dae16f6a950888c76a06dacda99863139a87407ef",
+    # 2026-10-15 (karta W5-B): gn01 f1cbcb35… → 6a119a2b…, gn03 2cacc16c… → 5c5ded2b….
+    # Pełne widoki z kodu bazy `f3c435b6` (odtwarzają dokładnie poprzednie piny) i po karcie
+    # porównane liść po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Różnica modelu wejściowego: pola rozdzielnic w kolekcji `bays` zamiast dawnych słowników
+    # `meta` stacji (nośnik danych, nie fizyka). Wynik kontyngencji identyczny.
+    "gn01_promieniowa": "6a119a2b796ae8ef01c0157bec8d882a26e7dc32fc2daffe1f2913a649e41fbd",
+    "gn03_pierscien": "5c5ded2b83b0ef3e509d14f88abe1bfa647abc0299e2b245ae818610514f1637",
 }
 
 

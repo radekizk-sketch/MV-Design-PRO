@@ -225,7 +225,7 @@ def _wiazanie_z_pola(bay: Bay) -> dict[str, str] | None:
     ``assign_catalog_to_element``; ``None``, gdy pole nie wskazuje pozycji (np. wiązanie źródła
     przekształtnikowego ``catalog_bindings.source_converter`` — to NIE jest aparat pola)."""
     meta: dict[str, Any] = bay.meta if isinstance(bay.meta, dict) else {}
-    surowe: Any = meta.get("catalog_binding")
+    surowe: object = meta.get("catalog_binding")
     if surowe is None:
         surowe = bay.catalog_bindings
     if not isinstance(surowe, dict):
