@@ -130,11 +130,15 @@ def test_materializacja_kopiuje_pola_karty_wylacznie_obecne(katalog: CatalogRepo
                     zmienione.add(typ_id)
     assert sorted(zmienione) == [
         "conv-bess-card-sungrow-sc2000ud-mv",
+        "conv-bess-nn-tesla-megapack-2xl-2h-c010-0p48kv",
+        "conv-bess-nn-tesla-megapack-2xl-4h-c010-0p48kv",
+        "conv-bess-nn-tesla-megapack-2xl-4h-c012-0p48kv",
         "conv-bess-tesla-megapack-3p9mw-15kv",
         "conv-bess-wartsila-gridforming-50mw-30kv",
         "conv-pv-card-huawei-sun2000-215ktl",
         "conv-pv-card-sungrow-sg3150u-mv",
         "conv-pv-gfm-2mw-15kv",
+        "conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
         "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
         "conv-pv-nn-sma-sc2200-0p385kv",
         "conv-pv-nn-sma-sc2475-0p434kv",
@@ -142,6 +146,8 @@ def test_materializacja_kopiuje_pola_karty_wylacznie_obecne(katalog: CatalogRepo
         "conv-pv-nn-sma-sc4200up-0p63kv",
         "conv-pv-nn-sma-sc4400up-0p66kv",
         "conv-pv-nn-sma-sc4600up-0p69kv",
+        "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
+        "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
 
 

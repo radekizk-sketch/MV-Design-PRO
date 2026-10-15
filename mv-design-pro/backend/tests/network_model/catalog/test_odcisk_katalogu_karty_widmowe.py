@@ -54,7 +54,20 @@ from tests.dziedziny import fabryki as f
 #: pv_inverter_types +7, 66 zmienionych tekstowo; bess_inverter_types −1, 63 zmienione
 #: tekstowo. Poprzednia wartość:
 #: a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6.
-ODCISK_SPRZED_KARTY = "af5870bada5cec0c5e006883de568982ba1c2874335a50200426444791a563f0"
+#: Druga część karty KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15, runda 3 danych): dowód liść
+#: po liściu (zrzut z wyciętymi polami karty projekcji, baza `b1f5aad60` vs drzewo):
+#: converter_types +6 (SMA STP 8.0/10.0-3AV-40, Fronius Symo 10.0-3-M, 3 × Tesla Megapack 2
+#: XL), 6 zmienionych — `model` SMA SC 2200-10, SC 2475-10, SC 4000/4200/4400/4600 UP
+#: (oznaczenie typu z karty zamiast nazwy handlowej) i w ślad za nim 9 kluczy `ptpiree_*`
+#: (NIEPOWIAZANY → POWIAZANY); pv_inverter_types +3, 6 zmienionych (te same klucze
+#: `ptpiree_*`); bess_inverter_types +3;
+#: transformer_types +18 (blokowe 0,48 kV); cable_types 8 i switch_equipment_types 12 oraz
+#: mv_apparatus_types 12 zmienionych wyłącznie w verification_status, catalog_status,
+#: source_reference, verification_note (pozycje deklarowane polskich producentów);
+#: bess_battery_types 2 i load_types 3 — wyłącznie source_reference. Żadna liczba nie
+#: zmieniła się w żadnej istniejącej pozycji. Poprzednia wartość:
+#: af5870bada5cec0c5e006883de568982ba1c2874335a50200426444791a563f0.
+ODCISK_SPRZED_KARTY = "001314a4d39aaad8faedd59a538eb8a06888ac2b4305776208247d2a4ee425cc"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -76,8 +89,12 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
                 postac.pop(nazwa, None)
     assert sorted(wzbogacone) == [
         "conv-bess-card-sungrow-sc2000ud-mv",
+        "conv-bess-nn-tesla-megapack-2xl-2h-c010-0p48kv",
+        "conv-bess-nn-tesla-megapack-2xl-4h-c010-0p48kv",
+        "conv-bess-nn-tesla-megapack-2xl-4h-c012-0p48kv",
         "conv-pv-card-huawei-sun2000-215ktl",
         "conv-pv-card-sungrow-sg3150u-mv",
+        "conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
         "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
         "conv-pv-nn-sma-sc2200-0p385kv",
         "conv-pv-nn-sma-sc2475-0p434kv",
@@ -85,6 +102,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-sc4200up-0p63kv",
         "conv-pv-nn-sma-sc4400up-0p66kv",
         "conv-pv-nn-sma-sc4600up-0p69kv",
+        "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
+        "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
     assert _odcisk_zrzutu(zrzut) == ODCISK_SPRZED_KARTY
 
@@ -92,7 +111,7 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
 def test_pole_skasowane_zostaje_w_zrzucie_jako_null() -> None:
     zrzut = zrzut_kanoniczny(get_default_mv_catalog())
     przeksztaltniki = zrzut["converter_types"]
-    assert len(przeksztaltniki) == 182
+    assert len(przeksztaltniki) == 188
     assert all(p["harmonic_spectrum_percent"] is None for p in przeksztaltniki.values())
 
 

@@ -27,6 +27,13 @@ from typing import Any
 import pytest
 from network_model.catalog import mv_converter_catalog as konw
 from network_model.catalog import mv_transformer_catalog as tr
+from network_model.catalog.mv_ptpiree_catalog import (
+    get_all_ptpiree_generator_certificates,
+    manufacturers_match,
+    match_ptpiree_certificate,
+    model_match_keys,
+    normalize_ptpiree_key,
+)
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogStatus, CatalogVerificationStatus
 from network_model.catalog.wind_turbines.catalog import (
@@ -38,6 +45,7 @@ from pydantic import ValidationError
 ZWERYFIKOWANY = CatalogVerificationStatus.ZWERYFIKOWANY.value
 NIEWERYFIKOWANY = CatalogVerificationStatus.NIEWERYFIKOWANY.value
 REFERENCYJNY = CatalogVerificationStatus.REFERENCYJNY.value
+CZESCIOWO = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
 
 _KATALOG_SRC = Path(tr.__file__).resolve().parent
 
@@ -57,6 +65,9 @@ def _rodzaj_zrodla(zrodlo: str) -> str:
         return "NORMATYWNA"
     if zrodlo.startswith("Deklarowane: "):
         return "DEKLAROWANA"
+    if zrodlo.startswith(konw.PREFIKS_KOPII_KARTY):
+        assert "https://" in zrodlo and "(dostęp " in zrodlo, zrodlo
+        return "KOPIA_KARTY"
     if "https://" in zrodlo and "(dostęp " in zrodlo:
         return "KARTA_PRODUCENTA"
     raise AssertionError(f"nierozpoznany rodzaj źródła: {zrodlo!r}")
@@ -66,6 +77,9 @@ _STATUS_WG_RODZAJU = {
     "MODEL_REFERENCYJNY": (REFERENCYJNY, CatalogStatus.REFERENCYJNY_V1.value),
     "NORMATYWNA": (REFERENCYJNY, CatalogStatus.REFERENCYJNY_V1.value),
     "DEKLAROWANA": (NIEWERYFIKOWANY, CatalogStatus.REFERENCYJNY_V1.value),
+    # Kopia dokumentu producenta u strony trzeciej: treść producenta, autentyczność
+    # i wersja niepotwierdzone u producenta -> częściowo zweryfikowana, poza doborem.
+    "KOPIA_KARTY": (CZESCIOWO, CatalogStatus.REFERENCYJNY_V1.value),
     "KARTA_PRODUCENTA": (ZWERYFIKOWANY, CatalogStatus.PRODUKCYJNY_V1.value),
 }
 
@@ -206,11 +220,12 @@ def test_znacznik_przekroczenia_wtedy_i_tylko_wtedy_gdy_niezgodny_z_tier2(
 
 def test_pomiar_przekroczen_tier2() -> None:
     """Pomiar 2026-10-15: 50 pozycji przekracza Tier 2 (10 WN/SN + 24 SN/nN jednostek
-    istniejących + 16 polskich deklaracji); 157 jest zgodnych (156 normatywnych + karta
-    Siemens GEAFOL Neo, której straty gwarantowane są równe pułapowi)."""
+    istniejących + 16 polskich deklaracji); 175 jest zgodnych (174 normatywne — po rundzie 3
+    także 18 blokowych 0,48 kV — + karta Siemens GEAFOL Neo, której straty gwarantowane są
+    równe pułapowi)."""
     wszystkie = tr.get_all_transformer_types()
     niezgodne = [r["id"] for r in wszystkie if _niezgodny_z_tier2(r["params"])]
-    assert len(wszystkie) == 207
+    assert len(wszystkie) == 225
     assert len(niezgodne) == 50
 
 
@@ -347,7 +362,9 @@ def test_potrzeby_f_identyfikatory_istniejace_maja_proweniencje(rekord_id: str) 
     [
         # turbina ok. 1 MW: źródła nie podają napięcia generatora ani S_n
         "conv-wind-nn-1mw-0p69kv",
-        # falowniki prosumenckie 5/10/30 kW: brak karty producenta w zebranych danych
+        # falowniki prosumenckie 5/30 kW: brak karty producenta w zebranych danych
+        # (10 kW ma pozycje z kart: SMA STP10.0-3AV-40, Fronius Symo 10.0-3-M — pod
+        # identyfikatorami producenta, nie pod identyfikatorem mocy)
         "conv-pv-nn-5kw-0p4kv",
         "conv-pv-nn-10kw-0p4kv",
         "conv-pv-nn-30kw-0p4kv",
@@ -390,3 +407,261 @@ def test_brak_funkcji_szacujacych_w_katalogu() -> None:
             if wzorzec.search(linia):
                 trafienia.append(f"{plik.name}:{numer}: {linia.strip()}")
     assert trafienia == []
+
+
+# ---------------------------------------------------------------------------
+# Runda 3: kopie kart, magazyny, małe falowniki, flagi certyfikatu, źródło jawne wszędzie
+# ---------------------------------------------------------------------------
+
+
+def _surowe_rekordy_wszystkich_katalogow() -> list[tuple[str, dict[str, Any]]]:
+    """Surowe rekordy WSZYSTKICH rodzin, z których składa się katalog domyślny
+    (`repository.get_default_mv_catalog`) — to samo wejście, które czyta repozytorium."""
+    from network_model.catalog import mv_auxiliary_catalog as aux
+    from network_model.catalog import mv_benchmark_catalog as bench
+    from network_model.catalog import mv_bess_battery_catalog as bat
+    from network_model.catalog import mv_cable_line_catalog as cl
+    from network_model.catalog import mv_ptpiree_catalog as pt
+    from network_model.catalog import mv_shunt_capacitor_catalog as sc
+    from network_model.catalog import mv_source_catalog as so
+    from network_model.catalog import mv_surge_arrester_catalog as sa
+    from network_model.catalog import mv_switch_catalog as sw
+
+    zrodla = (
+        cl.get_all_line_types,
+        bench.get_all_benchmark_line_records,
+        cl.get_all_cable_types,
+        tr.get_all_transformer_types,
+        bench.get_all_benchmark_transformer_records,
+        sw.get_all_switch_equipment_types,
+        konw.get_all_converter_types,
+        bat.get_all_bess_battery_types,
+        aux.get_all_protection_device_types,
+        aux.get_all_protection_curves,
+        aux.get_all_protection_setting_templates,
+        aux.get_all_lv_cable_types,
+        aux.get_all_load_types,
+        aux.get_all_lv_apparatus_types,
+        aux.get_all_lv_breaker_mcb_types,
+        aux.get_all_lv_fuse_link_types,
+        aux.get_all_ct_types,
+        aux.get_all_vt_types,
+        so.get_all_source_system_types,
+        sa.get_all_surge_arrester_types,
+        sc.get_all_shunt_capacitor_records,
+        bench.get_all_benchmark_shunt_capacitor_records,
+        bench.get_all_benchmark_synchronous_generator_records,
+        pt.get_all_ptpiree_generator_certificates,
+    )
+    rekordy: list[tuple[str, dict[str, Any]]] = []
+    for funkcja in zrodla:
+        for rekord in funkcja():
+            params = rekord.get("params", rekord)
+            rekordy.append((f"{funkcja.__name__}:{rekord.get('id')}", {**rekord, **params}))
+    return rekordy
+
+
+def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
+    """Źródło domyślne typu (`_catalog_metadata_kwargs(default_source_reference=…)`) nie
+    może zastępować źródła pozycji: każdy rekord danych niesie `source_reference` jawnie
+    (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy")."""
+    rekordy = _surowe_rekordy_wszystkich_katalogow()
+    assert len(rekordy) == 7829
+    bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
+    assert bez_zrodla == []
+
+
+def test_flaga_certyfikatu_wymaga_zrodla_z_dokumentem_we_wszystkich_katalogach() -> None:
+    """Flaga `ptpire_certified` ⇒ źródło z adresem dokumentu i datą dostępu — dla KAŻDEJ
+    rodziny katalogu. Pomiar rundy 3: flag bez dokumentu było 8 (kable) + 12 (aparatura,
+    jedno miejsce w kodzie) + 16 (transformatory, runda 1) — wszystkie zdjęte."""
+    flagowane = [
+        (klucz, str(dane.get("source_reference") or ""))
+        for klucz, dane in _surowe_rekordy_wszystkich_katalogow()
+        if dane.get("ptpire_certified")
+    ]
+    bez_dokumentu = [
+        klucz for klucz, zrodlo in flagowane if not ("https://" in zrodlo and "(dostęp " in zrodlo)
+    ]
+    assert bez_dokumentu == []
+
+
+def test_flaga_certyfikatu_bez_dokumentu_bylaby_wykryta() -> None:
+    """Sprawdzian samego predykatu na rekordzie syntetycznym (deklaracja bez testu = fałszywa
+    pewność): flaga z ogólnikowym źródłem nie przechodzi."""
+    zrodlo = "ZPUE Włoszczowa Rotoblok katalog 2024 / PTPiREE WiPWC"
+    assert not ("https://" in zrodlo and "(dostęp " in zrodlo)
+
+
+@pytest.mark.parametrize(
+    ("rodzina", "prefiks_id", "liczba"),
+    [("kable", "cable-polish-", 8), ("aparatura", "sw-", 12)],
+)
+def test_pozycje_deklarowane_polskich_producentow_niezweryfikowane(
+    rodzina: str, prefiks_id: str, liczba: int
+) -> None:
+    repo = get_default_mv_catalog()
+    typy = repo.list_cable_types() if rodzina == "kable" else repo.list_switch_equipment_types()
+    deklarowane = [
+        t.to_dict()
+        for t in typy
+        if t.to_dict()["id"].startswith(prefiks_id)
+        and str(t.to_dict()["source_reference"]).startswith("Deklarowane: ")
+    ]
+    assert len(deklarowane) == liczba
+    for dane in deklarowane:
+        assert dane["verification_status"] == NIEWERYFIKOWANY, dane["id"]
+        assert dane["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value, dane["id"]
+        assert "PTPiREE" in dane["verification_note"], dane["id"]
+
+
+def test_bateria_bez_zrodla_nie_powstaje_a_pozycje_to_model_referencyjny() -> None:
+    from network_model.catalog import mv_bess_battery_catalog as bat
+
+    with pytest.raises(TypeError, match="source_reference"):
+        bat._battery_record(  # type: ignore[call-arg]
+            item_id="x",
+            name="x",
+            chemistry="LFP",
+            capacity_kwh=1.0,
+            nominal_voltage_dc_v=1.0,
+            c_rate=0.5,
+            note="x",
+        )
+    baterie = get_default_mv_catalog().list_bess_battery_types()
+    assert len(baterie) == 2  # Sungrow ST2752UX zablokowany danymi (brak U_DC zn., C-rate)
+    for bateria in baterie:
+        assert bateria.source_reference == konw.ZRODLO_MODELU_REFERENCYJNEGO
+        assert bateria.verification_status == REFERENCYJNY
+
+
+#: Iloczyn: pozycja z dokumentu producenta × kanał dokumentu (producent / kopia) × status
+#: × dopuszczenie do doboru × jakość pól karty — wartości literalne z dokumentów.
+_RUNDA_3 = [
+    # (id, kanał, un_kv, sn_mva, pmax_mw, |Q| albo None, e_kwh albo None)
+    ("conv-pv-nn-sma-stp8p0-3av-40-0p4kv", "KARTA_PRODUCENTA", 0.4, 0.008, 0.008, 0.0048, None),
+    ("conv-pv-nn-sma-stp10p0-3av-40-0p4kv", "KARTA_PRODUCENTA", 0.4, 0.01, 0.01, 0.006, None),
+    ("conv-pv-nn-fronius-symo-10p0-3-m-0p4kv", "KOPIA_KARTY", 0.4, 0.01, 0.01, 0.01, None),
+    ("conv-bess-nn-tesla-megapack-2xl-2h-c010-0p48kv", "KOPIA_KARTY", 0.48, 2.4, 1.927, None, 3854),
+    (
+        "conv-bess-nn-tesla-megapack-2xl-4h-c010-0p48kv",
+        "KOPIA_KARTY",
+        0.48,
+        1.32,
+        0.979,
+        None,
+        3916,
+    ),
+    (
+        "conv-bess-nn-tesla-megapack-2xl-4h-c012-0p48kv",
+        "KOPIA_KARTY",
+        0.48,
+        1.32,
+        1.075,
+        None,
+        4300,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("rekord_id", "kanal", "un_kv", "sn_mva", "pmax_mw", "q_mvar", "e_kwh"), _RUNDA_3
+)
+def test_pozycje_rundy_3_z_dokumentu_producenta(
+    rekord_id: str,
+    kanal: str,
+    un_kv: float,
+    sn_mva: float,
+    pmax_mw: float,
+    q_mvar: float | None,
+    e_kwh: float | None,
+) -> None:
+    from solver_input.provenance import resolve_card_field_quality_map
+
+    repo = get_default_mv_catalog()
+    typ = repo.converter_types[rekord_id]
+    params = {r["id"]: r["params"] for r in konw.get_all_converter_types()}[rekord_id]
+    assert _rodzaj_zrodla(params["source_reference"]) == kanal
+    assert (typ.un_kv, typ.sn_mva, typ.pmax_mw) == (un_kv, sn_mva, pmax_mw)
+    if q_mvar is None:
+        # karta nie podaje zakresu Q ani cos φ — pola puste, nie zgadywane
+        assert (typ.qmin_mvar, typ.qmax_mvar, typ.cosphi_min, typ.cosphi_max) == (None,) * 4
+    else:
+        assert (typ.qmin_mvar, typ.qmax_mvar) == (-q_mvar, q_mvar)
+    assert typ.e_kwh == e_kwh
+    z_kanalu_producenta = kanal == "KARTA_PRODUCENTA"
+    assert konw.dopuszczona_do_doboru_szablonu(params) is z_kanalu_producenta
+    jakosc = resolve_card_field_quality_map(typ)
+    oczekiwana = "DATASHEET" if z_kanalu_producenta else "ESTIMATED"
+    for pole in ("un_kv", "sn_mva", "pmax_mw"):
+        assert jakosc[pole].quality.value == oczekiwana, (rekord_id, pole)
+    if e_kwh is not None:
+        # magazyn zintegrowany: projekcja BESS powstaje (wymaga e_kwh)
+        assert rekord_id in {t.id for t in repo.list_bess_inverter_types()}
+
+
+def test_v112_napiecie_niepotwierdzone_jest_jawne_a_liczba_bez_zmiany() -> None:
+    turbina = {t.catalog_id: t for t in list_wind_turbines()}["vestas_v112_3_45mw"]
+    assert turbina.nominal_voltage_kv == 0.69
+    assert turbina.verification_note is not None
+    assert "NIEPOTWIERDZONE" in turbina.verification_note
+    assert "750 V" in turbina.verification_note
+    assert turbina.verification_status == REFERENCYJNY
+
+
+def test_zablokowane_danymi_po_rundzie_3() -> None:
+    """Pin nieobecności: magazyn Sungrow ST2752UX (karta wstępna, brak napięcia DC
+    znamionowego i C-rate), transformatory > 3150 kVA."""
+    repo = get_default_mv_catalog()
+    assert not any("st2752" in i.lower() for i in repo.bess_battery_types)
+    assert not any("st2752" in i.lower() for i in repo.converter_types)
+    assert (
+        max(t.rated_power_mva for t in repo.list_transformer_types() if t.voltage_lv_kv <= 1.1)
+        == 3.15
+    )
+
+
+def _rekordy_z_dokumentu_producenta() -> list[dict[str, Any]]:
+    """Pozycje, których dane pochodzą z dokumentu producenta (karta albo jej kopia)."""
+    return [
+        r
+        for r in konw.get_all_converter_types()
+        if _rodzaj_zrodla(r["params"]["source_reference"]) in {"KARTA_PRODUCENTA", "KOPIA_KARTY"}
+    ]
+
+
+def test_pozycja_z_dokumentu_producenta_obecna_w_wykazie_ptpiree_jest_powiazana() -> None:
+    """KLASA: pole `model` pozycji z dokumentu producenta niesie OZNACZENIE TYPU, pod którym
+    urządzenie figuruje w wykazie PTPiREE. Nazwa handlowa z oznaczeniem w nawiasie
+    („Sunny Central 2200 (SC-2200-10)") nie trafiała w żaden klucz wykazu i dawała fałszywy
+    NIEPOWIAZANY certyfikowanemu falownikowi. Wykrycie niezależne od dopasowania
+    produkcyjnego: oznaczenie typu (ostatni człon klucza wykazu) zawarte w złożonej nazwie
+    modelu pozycji tego samego producenta ⇒ pozycja musi być POWIAZANY."""
+    wykaz = get_all_ptpiree_generator_certificates()
+    rekordy = _rekordy_z_dokumentu_producenta()
+    # Pomiar 2026-10-15: 9 kart producentów PV (SMA SC, SMA STP, Huawei) + 4 kopie kart
+    # (Fronius Symo, 3 × Tesla Megapack 2 XL).
+    assert len(rekordy) == 13
+    for rekord in rekordy:
+        params = rekord["params"]
+        model = normalize_ptpiree_key(params["model"])
+        trafienia = [
+            w["id"]
+            for w in wykaz
+            if manufacturers_match(params["manufacturer"], w["params"]["manufacturer"])
+            and any(
+                re.search(rf"(^| ){re.escape(klucz)}($| )", model)
+                for klucz in model_match_keys(w["params"]["model"])[-1:]
+            )
+        ]
+        if trafienia:
+            assert params["ptpiree_status"] == "POWIAZANY", (rekord["id"], trafienia)
+
+
+def test_oznaczenie_typu_w_nawiasie_byloby_wykryte() -> None:
+    """Iniekcja: dawny zapis modelu (nazwa handlowa + oznaczenie w nawiasie) nie trafia
+    w wykaz, a detektor klasy go widzi."""
+    zapis = "Sunny Central 2200 (SC-2200-10)"
+    assert match_ptpiree_certificate(manufacturer="SMA", model=zapis) is None
+    assert re.search(r"(^| )SC 2200 10($| )", normalize_ptpiree_key(zapis))
+    assert match_ptpiree_certificate(manufacturer="SMA", model="SC 2200-10") is not None

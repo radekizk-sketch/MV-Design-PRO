@@ -280,9 +280,9 @@ decyzje podejmuje czlowiek.
 | Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Pola bez ani jednej wartości | Duplikaty id |
 |---|---:|---:|---:|---:|---:|---|---|
 | `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
-| `bess-inverter` | 63 | 0 | 43 | 9,8 | 63 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
-| `cable` | 63 | 62 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
-| `converter` | 182 | 7 | 50 | 21,0 | 182 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `bess-inverter` | 66 | 0 | 43 | 9,9 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `cable` | 63 | 54 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
+| `converter` | 188 | 9 | 50 | 21,5 | 188 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
@@ -290,27 +290,27 @@ decyzje podejmuje czlowiek.
 | `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | `manufacturer`, `poles` | brak |
 | `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
-| `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
+| `mv-apparatus` | 48 | 33 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
-| `pv-inverter` | 73 | 7 | 46 | 16,3 | 73 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `pv-inverter` | 76 | 9 | 46 | 18,1 | 76 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | `manufacturer` | brak |
 | `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
 | `spectral-card` | 0 | 0 | 0 | — | 0 | brak | brak |
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
-| `switch-equipment` | 48 | 45 | 4 | 85,4 | 48 | brak | brak |
+| `switch-equipment` | 48 | 33 | 4 | 85,4 | 48 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
-| `transformer` | 227 | 1 | 5 | 80,5 | 227 | brak | brak |
+| `transformer` | 245 | 1 | 5 | 80,5 | 245 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 25. Pozycji łącznie: 7989, w tym produkcyjnych: 7119. Pozycji z proweniencją strukturalną: 7989.
+Rodzin objętych pomiarem: 25. Pozycji łącznie: 8019, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8019.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 
 Rodziny z duplikatami identyfikatorów: brak.
 
-Karty widmowe: 0. Typów przekształtników z co najmniej jedną kartą widmową: 0 z 182. Karty wg statusu weryfikacji: brak kart.
+Karty widmowe: 0. Typów przekształtników z co najmniej jedną kartą widmową: 0 z 188. Karty wg statusu weryfikacji: brak kart.
 
 <!-- GENEROWANE: gotowosc katalogow — koniec -->

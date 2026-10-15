@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from network_model.catalog.mv_cable_line_catalog import (
     TEMP_OPERATING_XLPE_C,
+    ZRODLO_KABLI_POLSKICH_DEKLAROWANE,
     get_all_cable_types,
     get_all_line_types,
     get_cable_catalog_quality_summary,
@@ -25,13 +26,18 @@ def test_overhead_line_catalog_has_industrial_series_width() -> None:
 
 
 def test_mv_cable_catalog_has_industrial_series_width() -> None:
-    """K30-22: 55 baseline + 8 Polish PN-HD 620 S2 (YHAKXS + YHKXS) = 63."""
+    """K30-22: 55 baseline + 8 Polish PN-HD 620 S2 (YHAKXS + YHKXS) = 63.
+
+    Osiem pozycji polskich producentów ma źródło wyłącznie deklarowane (dokument
+    nie jest w repozytorium), więc jest NIEWERYFIKOWANY / REFERENCYJNY_V1 i nie
+    liczy się do kabli produkcyjnych: 62 − 8 = 54.
+    """
     stats = get_catalog_statistics()
     summary = get_cable_catalog_quality_summary()
 
     assert stats["liczba_kabli_ogolem"] == 63
-    assert stats["liczba_kabli_produkcyjnych"] == 62
-    assert summary["liczba_kabli_produkcyjnych"] == 62
+    assert stats["liczba_kabli_produkcyjnych"] == 54
+    assert summary["liczba_kabli_produkcyjnych"] == 54
     assert summary["liczba_kabli_testowych"] == 1
     # K30-22: + POLISH family (YHAKXS, YHKXS)
     assert "POLISH" in summary["rodziny_kabli"] or any(
@@ -45,14 +51,19 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     assert summary["liczba_typow_3z"] == 22
     assert summary["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
+        "NIEWERYFIKOWANY",
         "REFERENCYJNY",
         "ZWERYFIKOWANY",
     ]
-    assert summary["statusy_katalogowe"] == ["PRODUKCYJNY_V1", "TESTOWY"]
+    assert summary["statusy_katalogowe"] == ["PRODUKCYJNY_V1", "REFERENCYJNY_V1", "TESTOWY"]
 
 
 def test_polish_pn_hd_620_cables_present() -> None:
-    """K30-22: YHAKXS Al + YHKXS Cu single-core MV cables."""
+    """K30-22: YHAKXS Al + YHKXS Cu single-core MV cables.
+
+    Flaga certyfikatu PTPiREE wymaga dokumentu; źródło tych pozycji jest tylko
+    deklarowane, więc flagi nie ma, a status to NIEWERYFIKOWANY.
+    """
     cables = get_all_cable_types()
     polish_cables = [c for c in cables if c["id"].startswith("cable-polish-")]
     assert len(polish_cables) == 8
@@ -62,8 +73,11 @@ def test_polish_pn_hd_620_cables_present() -> None:
     assert len(yhkxs) == 3  # 95/150/240 Cu
     for c in polish_cables:
         params = c["params"]
-        assert params.get("ptpire_certified") is True
+        assert "ptpire_certified" not in params
         assert params["standard"] == "PN-HD 620 S2"
+        assert params["source_reference"] == ZRODLO_KABLI_POLSKICH_DEKLAROWANE
+        assert params["verification_status"] == "NIEWERYFIKOWANY"
+        assert params["catalog_status"] == "REFERENCYJNY_V1"
 
 
 def test_overhead_line_records_have_explicit_quality_metadata() -> None:
@@ -97,6 +111,10 @@ def test_mv_cable_records_have_explicit_quality_metadata() -> None:
         if item["id"] == "cable-incomplete-test":
             assert params["catalog_status"] == "TESTOWY"
             assert params["verification_status"] == "REFERENCYJNY"
+            continue
+        if params["source_reference"] == ZRODLO_KABLI_POLSKICH_DEKLAROWANE:
+            assert params["catalog_status"] == "REFERENCYJNY_V1"
+            assert params["verification_status"] == "NIEWERYFIKOWANY"
             continue
         assert params["catalog_status"] == "PRODUKCYJNY_V1"
         assert params["verification_status"] in {

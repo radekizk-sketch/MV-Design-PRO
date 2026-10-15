@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+
 # Karta NAPRAWA-A (§0.1): dane żyły powrotnej PE/PEN dla WSZYSTKICH 17 pozycji
 # kab_nn_* — brakowały od P0.2 (`return_conductor_r_ohm_per_km_20c`/
 # `return_conductor_x_ohm_per_km` oba `None` dla każdej pozycji), blokując
@@ -524,6 +526,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.95,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
         {
@@ -535,6 +540,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.92,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
         {
@@ -547,6 +555,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.94,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
     ]

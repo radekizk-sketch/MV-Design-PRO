@@ -33,11 +33,11 @@ METADATA (proweniencja, ten sam mechanizm co w pozostalych katalogach):
 - source_reference: cytat zrodla; verification_note: zakres i zastrzezenia
 - contract_version: "2.0" — zamrozony kontrakt katalogu
 
-TYPOSZEREG (207 rekordow, pomiar 2026-10-15):
+TYPOSZEREG (225 rekordow, pomiar 2026-10-15):
   WN/SN 110/15 i 110/20 kV: 10, 16, 25, 40, 63 MVA Yd11 — 10 jednostek istniejacych
   SN/nN 15|20/0,4 kV jednostki istniejace: 24 (Dyn11/Yd11, 63–2500 kVA)
   SN/nN 15|20/0,4 kV normatywne Tier 2: 48 (olejowe i suche, 250–3150 kVA)
-  SN/nN blokowe 15|20/0,385|0,434|0,5|0,69|0,8|1,0 kV: 108 normatywnych (500–3150 kVA)
+  SN/nN blokowe 15|20/0,385|0,434|0,48|0,5|0,69|0,8|1,0 kV: 126 normatywnych (500–3150 kVA)
   Karty producentow: 1; polscy producenci (deklarowane, niezweryfikowane): 16
 """
 
@@ -1320,8 +1320,9 @@ TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
 # i fotowoltaice" — transformator blokowy PV/FW podlega Tier 2 tak jak dystrybucyjny.
 #
 # Napiecia strony nN: napiecia wyjsciowe falownikow z kart producentow w katalogu
-# przeksztaltnikow (0,385 kV — SMA SC 2200; 0,434 kV — SMA SC 2475; 0,69 kV — typowe
-# wyjscie turbin i PCS; 0,8 kV — Huawei SUN2000-330KTL-H1) oraz napiecia referencyjnych
+# przeksztaltnikow (0,385 kV — SMA SC 2200; 0,434 kV — SMA SC 2475; 0,48 kV — Tesla
+# Megapack 2 XL; 0,69 kV — typowe wyjscie turbin i PCS; 0,8 kV — Huawei
+# SUN2000-330KTL-H1) oraz napiecia referencyjnych
 # modeli obliczeniowych (0,5 i 1,0 kV). Wszystkie <= 1,1 kV, wiec tab. I.2 bez korekty I.3.
 # Wykonanie suche (zywiczne): jedyna karta producenta transformatora blokowego w zrodlach
 # (Siemens Energy GEAFOL Neo 2000 kVA 20/0,48 kV, nizej) jest sucha, a seria zrodlowa
@@ -1335,7 +1336,7 @@ TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
 # strone nN; IEC 60076-5 tab. 1 nieodczytana) — pozycji brak (zablokowane danymi), zamiast
 # dawnego szacunku bez zrodla.
 
-_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.5, 0.69, 0.8, 1.0)
+_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.48, 0.5, 0.69, 0.8, 1.0)
 _MOCE_BLOKOWYCH_KVA: tuple[int, ...] = (500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150)
 
 

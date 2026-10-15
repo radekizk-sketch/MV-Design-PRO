@@ -26,6 +26,17 @@ from pydantic import BaseModel
 _STATUS_REFERENCYJNY = CatalogVerificationStatus.REFERENCYJNY.value
 
 
+#: Rozbieznosc wykryta w rundzie 3 karty KATALOG-KOMPLETNY-PROWENIENCJA: liczba w rekordzie
+#: zostaje (bez karty producenta nie ma podstawy do zmiany), ale nota mowi prawde o jej
+#: statusie.
+NOTA_V112_NAPIECIE_NIEPOTWIERDZONE = (
+    "Napięcie generatora 0,69 kV NIEPOTWIERDZONE: karta producenta Vestas nie została "
+    "odczytana (specyfikacja na commissiemer.nl — HTTP 404, 2026-10-15), a źródło wtórne "
+    "(baza wind-turbine-models.com, nie dokument producenta) podaje 750 V. Wartość "
+    "pozostaje założeniem modelu referencyjnego do czasu karty producenta."
+)
+
+
 class WindTurbineCatalogEntry(BaseModel):
     """Pojedyncza pozycja katalogu turbin wiatrowych."""
 
@@ -49,6 +60,8 @@ class WindTurbineCatalogEntry(BaseModel):
     # zrodla nie powstanie. Te same nazwy i znaczenie co w pozostalych katalogach.
     source_reference: str
     verification_status: str
+    # Zastrzezenia do konkretnej liczby pozycji (rozbieznosc ze zrodlem wtornym itp.).
+    verification_note: str | None = None
     # Profil dynamiczny IEC 61400-27 (default per converter_type, override możliwy)
     dynamic_profile_id: str | None = None
     """Referencja do profilu w `der_dynamic` (default mapowany z converter_type).
@@ -99,6 +112,7 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         p_f_droop_capable=True,
         source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         verification_status=_STATUS_REFERENCYJNY,
+        verification_note=NOTA_V112_NAPIECIE_NIEPOTWIERDZONE,
     ),
     WindTurbineCatalogEntry(
         catalog_id="vestas_v150_4_2mw",

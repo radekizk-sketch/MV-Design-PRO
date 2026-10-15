@@ -40,6 +40,15 @@ _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.REFERENCYJNY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.REFERENCYJNY_V1.value
 
 
+#: Kopia dokumentu producenta odczytana z serwera STRONY TRZECIEJ (urząd, sprzedawca) —
+#: treść jest dokumentem producenta, ale autentyczności i aktualności wersji nie
+#: potwierdzono u producenta. Reguła (karta KATALOG-KOMPLETNY-PROWENIENCJA, runda 3):
+#: status CZESCIOWO_ZWERYFIKOWANY / REFERENCYJNY_V1, pola karty ESTIMATED, pozycja
+#: wykluczona z doboru szablonu (dobór wymaga ZWERYFIKOWANY — dokumentu z kanału
+#: producenta). Źródło zaczyna się od tego prefiksu i cytuje adres kopii z datą dostępu.
+PREFIKS_KOPII_KARTY = "Kopia karty producenta na serwerze strony trzeciej: "
+
+
 def dopuszczona_do_doboru_szablonu(params: dict[str, Any]) -> bool:
     """Jedno zrodlo prawdy: czy pozycja przeksztaltnika moze zostac dobrana przez
     szablon stacji. Dopuszczona jest WYLACZNIE pozycja z karta producenta
@@ -87,10 +96,10 @@ def _converter_record(
     un_kv: float,
     sn_mva: float,
     pmax_mw: float,
-    qmin_mvar: float,
-    qmax_mvar: float,
-    cosphi_min: float,
-    cosphi_max: float,
+    qmin_mvar: float | None,
+    qmax_mvar: float | None,
+    cosphi_min: float | None,
+    cosphi_max: float | None,
     manufacturer: str,
     model: str,
     source_reference: str,
@@ -555,7 +564,7 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
     _karta_pv(
         item_id="conv-pv-nn-sma-sc2200-0p385kv",
         name="SMA Sunny Central 2200 2,2 MVA / 0,385 kV",
-        model="Sunny Central 2200 (SC-2200-10)",
+        model="SC 2200-10",
         manufacturer="SMA",
         un_kv=0.385,
         sn_mva=2.2,
@@ -572,7 +581,7 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
     _karta_pv(
         item_id="conv-pv-nn-sma-sc2475-0p434kv",
         name="SMA Sunny Central 2475 2,475 MVA / 0,434 kV",
-        model="Sunny Central 2475 (SC-2475-10)",
+        model="SC 2475-10",
         manufacturer="SMA",
         un_kv=0.434,
         sn_mva=2.475,
@@ -590,7 +599,7 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         _karta_pv(
             item_id=f"conv-pv-nn-sma-sc{kva}up-{napiecie_token}kv",
             name=f"SMA Sunny Central {kva} UP {sn_mva:g} MVA / {un_kv:g} kV",
-            model=f"Sunny Central {kva} UP",
+            model=f"SC {kva} UP",
             manufacturer="SMA",
             un_kv=un_kv,
             sn_mva=sn_mva,
@@ -633,7 +642,118 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         ),
     ),
 ]
+_ZRODLO_SMA_STP_3AV_40 = (
+    "SMA Solar Technology AG, instrukcja online „Sunny Tripower 8.0 / 10.0” "
+    "(STP8.0-3AV-40 / STP10.0-3AV-40), rozdział „Technical data”, tabela „AC output”; "
+    "https://manuals.sma.de/STP8-10-3AV-40/en-US/4176094859.html (dostęp 2026-10-15)"
+)
+
+CONVERTER_PV_NN_KARTY_PRODUCENTOW.extend(
+    [
+        _karta_pv(
+            item_id=f"conv-pv-nn-sma-stp{token}-3av-40-0p4kv",
+            name=f"SMA Sunny Tripower {kw:g}.0 {kw:g} kVA / 0,4 kV",
+            model=f"STP{kw:g}.0-3AV-40",
+            manufacturer="SMA",
+            un_kv=0.4,
+            sn_mva=sn_mva,
+            pmax_mw=sn_mva,
+            q_mvar=q_mvar,
+            zrodlo=_ZRODLO_SMA_STP_3AV_40,
+            nota=(
+                f"Instrukcja: moc znamionowa {w} W (230 V, 50 Hz), maksymalna i znamionowa "
+                f"moc pozorna przy cos φ = 1 {w} VA, sieć 3/N/PE 230 V / 400 V (także "
+                f"220/380 i 240/415 V; zakres 180–280 V), prąd znamionowy przy 230 V "
+                f"3 × {i_a} A, współczynnik mocy przy mocy znamionowej 1, cos φ regulowany "
+                "0,8 przewzbudzenie – 0,8 niedowzbudzenie."
+            ),
+            nota_q=(
+                "|Q| = 0,6·S_n: cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie "
+                "w granicy mocy pozornej S_n (przy mocy znamionowej cos φ = 1 — moc bierną "
+                "uzyskuje się kosztem mocy czynnej; interpretacja, instrukcja nie podaje Q "
+                "wprost)"
+            ),
+        )
+        for token, kw, w, sn_mva, q_mvar, i_a in (
+            ("8p0", 8.0, 8000, 0.008, 0.0048, "11,6"),
+            ("10p0", 10.0, 10000, 0.01, 0.006, "14,5"),
+        )
+    ]
+)
 CONVERTER_PV_NN.extend(CONVERTER_PV_NN_KARTY_PRODUCENTOW)
+
+
+# =============================================================================
+# KOPIE KART PRODUCENTOW (serwer strony trzeciej) — status CZESCIOWO_ZWERYFIKOWANY
+# =============================================================================
+
+_NOTA_POLA_KOPII = (
+    "wartość z kopii karty producenta na serwerze strony trzeciej — autentyczność "
+    "i aktualność wersji niepotwierdzone u producenta"
+)
+
+
+def _status_pol_kopii(zrodlo: str, *, pola: tuple[str, ...]) -> dict[str, dict[str, Any]]:
+    return {
+        name: {
+            "field_name": name,
+            "quality": "ESTIMATED",
+            "source_ref": zrodlo,
+            "note": _NOTA_POLA_KOPII,
+        }
+        for name in pola
+    }
+
+
+_ZRODLO_FRONIUS_SYMO_10 = (
+    PREFIKS_KOPII_KARTY + "Fronius International, „Technical data Fronius Symo "
+    "10.0-3-M-OS”, tabela „OUTPUT DATA”; kopia u sprzedawcy: "
+    "https://www.sparkydirect.com.au/assets/brochures/SYMO10.0-3-M.pdf (dostęp 2026-10-15)"
+)
+
+CONVERTER_PV_NN_KOPIE_KART: list[dict[str, Any]] = [
+    _converter_record(
+        item_id="conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
+        name="Fronius Symo 10.0-3-M 10 kVA / 0,4 kV",
+        kind="PV",
+        un_kv=0.4,
+        sn_mva=0.01,
+        pmax_mw=0.01,
+        # cos φ 0–1 ind./poj. przy S_max = 10 000 VA: |Q| do S_max (interpretacja — karta
+        # nie podaje Q wprost; cos φ = 0 oznacza całą moc pozorną jako bierną). Pole
+        # `cosphi_min` kontraktu przyjmuje (0; 1] — dolna granica karty (0) jest więc
+        # niesiona przez zakres Q, a pole zostaje puste (bez zastępczej liczby).
+        qmin_mvar=-0.01,
+        qmax_mvar=0.01,
+        cosphi_min=None,
+        cosphi_max=1.0,
+        manufacturer="Fronius",
+        model="Symo 10.0-3-M",
+        source_reference=_ZRODLO_FRONIUS_SYMO_10,
+        verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        control_mode="STALY_COS_PHI",
+        note=(
+            "Kopia karty: P_ac,r = 10 000 W, moc maksymalna 10 000 VA, I_ac,nom = 14,4 A, sieć "
+            "3-NPE 400 V / 230 V albo 380 V / 220 V (+20 % / −30 %), 50/60 Hz, cos φ 0–1 "
+            "ind./poj. Karta dotyczy wariantu 10.0-3-M-OS (rynek australijski) — przyjęcie tych "
+            "danych dla wersji standardowej 10.0-3-M jest interpretacją, niepotwierdzoną. "
+            "Wykluczona z doboru szablonu do czasu karty z kanału producenta."
+        ),
+        card_field_status={
+            **_status_pol_kopii(
+                _ZRODLO_FRONIUS_SYMO_10,
+                pola=tuple(p for p in _POLA_KARTY_PV if p != "cosphi_min"),
+            ),
+            "control_mode": {
+                "field_name": "control_mode",
+                "quality": "SYSTEM_DEFAULT",
+                "note": "tryb regulacji mocy biernej jest nastawą projektu, nie daną karty",
+            },
+        },
+    ),
+]
+CONVERTER_PV_NN.extend(CONVERTER_PV_NN_KOPIE_KART)
 
 
 CONVERTER_BESS_NN: list[dict[str, Any]] = [
@@ -680,6 +800,61 @@ CONVERTER_BESS_NN.extend(
         ),
     ]
 )
+
+
+_ZRODLO_TESLA_MEGAPACK_2XL = (
+    PREFIKS_KOPII_KARTY + "Tesla, Inc., „Megapack 2 XL Datasheet”, Rev. 2.0, "
+    "2025-11-13, tabele „POWER AND ENERGY” i „ELECTRICAL” (str. 1); kopia w dokumentacji "
+    "hrabstwa Cayuga: https://ny-cayugacounty.civicplus.com/DocumentCenter/View/33252/"
+    "Tesla-Megapack-Datasheet (dostęp 2026-10-15)"
+)
+_POLA_KARTY_MEGAPACK: tuple[str, ...] = (
+    "un_kv",
+    "sn_mva",
+    "pmax_mw",
+    "e_kwh",
+    "manufacturer",
+    "model",
+)
+
+#: Tesla Megapack 2 XL — zintegrowany kontener (przekształtnik + bateria), więc moc,
+#: energia i moc pozorna falownika są w JEDNYM rekordzie przekształtnika BESS. Karta nie
+#: podaje zakresu mocy biernej ani cos φ — pola puste (nie zgadywane). Napięcie 480 V AC
+#: (moc pozorna falownika konfigurowalna od 400 kVA co 50 kVA; w rekordzie maksimum karty).
+CONVERTER_BESS_NN_KOPIE_KART: list[dict[str, Any]] = [
+    _converter_record(
+        item_id=f"conv-bess-nn-tesla-megapack-2xl-{token}-0p48kv",
+        name=f"Tesla Megapack 2 XL {opis} {p_kw} kW / {e_kwh} kWh / 0,48 kV",
+        kind="BESS",
+        un_kv=0.48,
+        sn_mva=sn_mva,
+        pmax_mw=pmax_mw,
+        qmin_mvar=None,
+        qmax_mvar=None,
+        cosphi_min=None,
+        cosphi_max=None,
+        manufacturer="Tesla",
+        model=f"Megapack 2 XL {opis}",
+        source_reference=_ZRODLO_TESLA_MEGAPACK_2XL,
+        verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
+        e_kwh=float(e_kwh),
+        note=(
+            f"Kopia karty (Rev. 2.0): konfiguracja {opis} — moc AC {p_kw} kW, energia "
+            f"nominalna {e_kwh} kWh (25 °C), moc pozorna falownika maks. {s_kva} kVA "
+            "(skalowalna od 400 kVA co 50 kVA), 480 V AC 3-faz., 50 lub 60 Hz. Karta nie "
+            "podaje zakresu mocy biernej ani cos φ (pola puste). Wykluczona z doboru "
+            "szablonu do czasu karty z kanału producenta."
+        ),
+        card_field_status=_status_pol_kopii(_ZRODLO_TESLA_MEGAPACK_2XL, pola=_POLA_KARTY_MEGAPACK),
+    )
+    for token, opis, p_kw, pmax_mw, e_kwh, s_kva, sn_mva in (
+        ("2h-c010", "2-Hour C010/C011", 1927, 1.927, 3854, 2400, 2.4),
+        ("4h-c010", "4-Hour C010/C011", 979, 0.979, 3916, 1320, 1.32),
+        ("4h-c012", "4-Hour C012", 1075, 1.075, 4300, 1320, 1.32),
+    )
+]
+CONVERTER_BESS_NN.extend(CONVERTER_BESS_NN_KOPIE_KART)
 
 
 CONVERTER_WIND_NN: list[dict[str, Any]] = [

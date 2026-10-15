@@ -9,10 +9,11 @@ from network_model.catalog.mv_transformer_catalog import (
 
 # Pomiar 2026-10-15 (karta KATALOG-KOMPLETNY-PROWENIENCJA): 10 WN/SN + 24 SN/nN jednostek
 # istniejacych + 16 pozycji polskich producentow (deklarowane) + 48 normatywnych 0,4 kV
-# Tier 2 + 108 normatywnych blokowych + 1 karta producenta = 207. Dawne 50
+# Tier 2 + 126 normatywnych blokowych (9 mocy × 2 napiecia SN × 7 napiec nN; druga czesc
+# karty doklada 0,48 kV dla Tesla Megapack 2 XL: 108 + 18) + 1 karta producenta = 225. Dawne 50
 # „ZWERYFIKOWANYCH" nie mialo dolaczonego dokumentu i przekraczalo pulap strat Tier 2 —
 # sa NIEWERYFIKOWANY; ZWERYFIKOWANY ma wylacznie pozycja z karta producenta (1).
-EXPECTED_TOTAL = 207
+EXPECTED_TOTAL = 225
 EXPECTED_VERIFIED = 1
 EXPECTED_UNVERIFIED = 50
 
