@@ -1683,91 +1683,6 @@
     "title": "CableAgingResponse",
     "type": "object"
    },
-   "CableAmpacityDeratingRequest": {
-    "description": "Korekta obciążalności kabla wg warunków ułożenia (V12K-207, karta F-K7).\n\nWarstwa prezentacji NIE MOŻE mnożyć obciążalności przez współczynniki sama — to\nkryterium doborowe, więc rachunek należy do backendu (reguła braku fizyki w UI).",
-    "properties": {
-     "design_current_a": {
-      "exclusiveMinimum": 0.0,
-      "title": "Design Current A",
-      "type": "number"
-     },
-     "laying_conditions": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/CableLayingConditionsRequest"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "rated_ampacity_a": {
-      "exclusiveMinimum": 0.0,
-      "title": "Rated Ampacity A",
-      "type": "number"
-     }
-    },
-    "required": [
-     "rated_ampacity_a",
-     "design_current_a"
-    ],
-    "title": "CableAmpacityDeratingRequest",
-    "type": "object"
-   },
-   "CableAmpacityDeratingResponse": {
-    "description": "I′z = Iz · f_grunt · f_wiazka · f_grupa oraz werdykt I_obl ≤ I′z.",
-    "properties": {
-     "assumption_pl": {
-      "title": "Assumption Pl",
-      "type": "string"
-     },
-     "derating_set": {
-      "title": "Derating Set",
-      "type": "string"
-     },
-     "derating_total": {
-      "title": "Derating Total",
-      "type": "number"
-     },
-     "design_current_a": {
-      "title": "Design Current A",
-      "type": "number"
-     },
-     "effective_ampacity_a": {
-      "title": "Effective Ampacity A",
-      "type": "number"
-     },
-     "formula_ref": {
-      "title": "Formula Ref",
-      "type": "string"
-     },
-     "ok": {
-      "title": "Ok",
-      "type": "boolean"
-     },
-     "rated_ampacity_a": {
-      "title": "Rated Ampacity A",
-      "type": "number"
-     },
-     "utilization_pct": {
-      "title": "Utilization Pct",
-      "type": "number"
-     }
-    },
-    "required": [
-     "rated_ampacity_a",
-     "effective_ampacity_a",
-     "design_current_a",
-     "derating_total",
-     "derating_set",
-     "utilization_pct",
-     "ok",
-     "formula_ref",
-     "assumption_pl"
-    ],
-    "title": "CableAmpacityDeratingResponse",
-    "type": "object"
-   },
    "CableLayingConditionsRequest": {
     "description": "Warunki UŁOŻENIA kabla (V12K-207, karta F-K7).\n\n`set_name` to nazwa zestawu o udokumentowanej podstawie albo „wlasne\" — wtedy trzy\nwspółczynniki i opis warunków są WYMAGANE (bez opisu wynik doboru nie dałby się\nobronić w dokumentacji projektu). Pominięcie całego obiektu = warunki katalogowe,\nczyli zachowanie dotychczasowe co do bitu.",
     "properties": {
@@ -6690,266 +6605,6 @@
      "przypadek_decydujacy"
     ],
     "title": "LVCircuitReportRequest",
-    "type": "object"
-   },
-   "LVCircuitVerificationPackRequest": {
-    "description": "Wejście pakietu dowodowego weryfikacji obwodu nN.\n\nGrupuje parametry wg dostawcy: (1) tożsamość pakietu/kontekst, (2) obwód w\nmodelu ENM (``case_id`` — ta sama przestrzeń co ``/api/cases/{case_id}/\nenm/...``), (3) dane mocy dla Ib, (4) warunki ułożenia G-D1 dla Iz′ (REUSE\n``wspolczynniki_nn``), (5) Ik″max w punkcie zabudowy (osobny bieg zwarciowy\n— parametr wejściowy, wzorzec ``nn_device_selection``), (6) dane cieplne\nI²t (REUSE ``check_conductor_thermal_withstand``), (7) ΔU (REUSE pakietu\nVDROP / ``vdrop_chain_binding`` — headline U_source/ΔU_total).",
-    "properties": {
-     "apparatus_branch_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Apparatus Branch Ref"
-     },
-     "breaker_ref": {
-      "title": "Breaker Ref",
-      "type": "string"
-     },
-     "bus_ref": {
-      "title": "Bus Ref",
-      "type": "string"
-     },
-     "case_id": {
-      "title": "Case Id",
-      "type": "string"
-     },
-     "case_name": {
-      "title": "Case Name",
-      "type": "string"
-     },
-     "conductor_material": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Conductor Material"
-     },
-     "cross_section_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Cross Section Mm2"
-     },
-     "fault_duration_s": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Fault Duration S"
-     },
-     "ik_max_ka": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ik Max Ka"
-     },
-     "ith_1s_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ith 1S A"
-     },
-     "ith_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ith A"
-     },
-     "iz_katalogowe_a": {
-      "title": "Iz Katalogowe A",
-      "type": "number"
-     },
-     "izolacja": {
-      "enum": [
-       "PVC",
-       "XLPE"
-      ],
-      "title": "Izolacja",
-      "type": "string"
-     },
-     "jth_1s_a_per_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Jth 1S A Per Mm2"
-     },
-     "liczba_obwodow": {
-      "title": "Liczba Obwodow",
-      "type": "integer"
-     },
-     "p_mw": {
-      "title": "P Mw",
-      "type": "number"
-     },
-     "project_id": {
-      "title": "Project Id",
-      "type": "string"
-     },
-     "project_name": {
-      "title": "Project Name",
-      "type": "string"
-     },
-     "q_mvar": {
-      "title": "Q Mvar",
-      "type": "number"
-     },
-     "rezystywnosc_gruntu_km_w": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Rezystywnosc Gruntu Km W"
-     },
-     "run_id": {
-      "title": "Run Id",
-      "type": "string"
-     },
-     "run_timestamp": {
-      "format": "date-time",
-      "title": "Run Timestamp",
-      "type": "string"
-     },
-     "segment_ref": {
-      "title": "Segment Ref",
-      "type": "string"
-     },
-     "snapshot_id": {
-      "title": "Snapshot Id",
-      "type": "string"
-     },
-     "solver_version": {
-      "default": "lv-circuit-verification-1.0",
-      "title": "Solver Version",
-      "type": "string"
-     },
-     "srodowisko": {
-      "enum": [
-       "powietrze",
-       "grunt"
-      ],
-      "title": "Srodowisko",
-      "type": "string"
-     },
-     "station_ref": {
-      "title": "Station Ref",
-      "type": "string"
-     },
-     "temp_operating_c": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Temp Operating C"
-     },
-     "temp_short_circuit_c": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Temp Short Circuit C"
-     },
-     "temperatura_c": {
-      "title": "Temperatura C",
-      "type": "number"
-     },
-     "u_ll_kv": {
-      "title": "U Ll Kv",
-      "type": "number"
-     },
-     "vdrop_delta_u_total_kv": {
-      "title": "Vdrop Delta U Total Kv",
-      "type": "number"
-     },
-     "vdrop_delta_u_total_percent": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Vdrop Delta U Total Percent"
-     },
-     "vdrop_u_source_kv": {
-      "title": "Vdrop U Source Kv",
-      "type": "number"
-     }
-    },
-    "required": [
-     "project_id",
-     "case_id",
-     "run_id",
-     "snapshot_id",
-     "project_name",
-     "case_name",
-     "run_timestamp",
-     "station_ref",
-     "bus_ref",
-     "breaker_ref",
-     "segment_ref",
-     "p_mw",
-     "q_mvar",
-     "u_ll_kv",
-     "iz_katalogowe_a",
-     "srodowisko",
-     "izolacja",
-     "temperatura_c",
-     "liczba_obwodow",
-     "vdrop_u_source_kv",
-     "vdrop_delta_u_total_kv"
-    ],
-    "title": "LVCircuitVerificationPackRequest",
     "type": "object"
    },
    "LimitKryterium": {
@@ -19575,6 +19230,218 @@
     ]
    }
   },
+  "/api/cases/{case_id}/enm/nn-cable": {
+   "get": {
+    "description": "Obliczenia odcinka kabla nN: wielkości, kryteria (rekordy werdyktu), opcje ułożenia.",
+    "operationId": "get_obliczenia_kabla_nn_api_cases__case_id__enm_nn_cable_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "cable_ref",
+      "required": true,
+      "schema": {
+       "title": "Cable Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Obliczenia Kabla Nn Api Cases  Case Id  Enm Nn Cable Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Obliczenia Kabla Nn",
+    "tags": [
+     "kabel-nn"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/nn-cable/dowod": {
+   "get": {
+    "description": "Dowód weryfikacji obwodu nN (LV_CIRCUIT_VERIFICATION) dla kabla — z modelu i biegu.",
+    "operationId": "get_dowod_obwodu_kabla_nn_api_cases__case_id__enm_nn_cable_dowod_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "cable_ref",
+      "required": true,
+      "schema": {
+       "title": "Cable Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Dowod Obwodu Kabla Nn Api Cases  Case Id  Enm Nn Cable Dowod Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Dowod Obwodu Kabla Nn",
+    "tags": [
+     "kabel-nn"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/nn-cable/dowod/pakiet": {
+   "get": {
+    "description": "Pakiet dowodowy obwodu nN (ZIP) — identyfikatory z modelu i biegu, nie syntetyczne.",
+    "operationId": "get_pakiet_dowodu_obwodu_kabla_nn_api_cases__case_id__enm_nn_cable_dowod_pakiet_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "cable_ref",
+      "required": true,
+      "schema": {
+       "title": "Cable Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Pakiet Dowodu Obwodu Kabla Nn",
+    "tags": [
+     "kabel-nn"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/nn-cable/warianty-przekroju": {
+   "get": {
+    "description": "Porównanie wariantów przekroju z katalogu kabli nN (ta sama funkcja obliczeń).",
+    "operationId": "get_warianty_przekroju_kabla_nn_api_cases__case_id__enm_nn_cable_warianty_przekroju_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "cable_ref",
+      "required": true,
+      "schema": {
+       "title": "Cable Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Warianty Przekroju Kabla Nn Api Cases  Case Id  Enm Nn Cable Warianty Przekroju Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Warianty Przekroju Kabla Nn",
+    "tags": [
+     "kabel-nn"
+    ]
+   }
+  },
   "/api/cases/{case_id}/enm/nn-circuit-sheet": {
    "get": {
     "description": "Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,\ndocs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).\n\nJeden wiersz PER ODPŁYW rozdzielnicy/stacji nN: Ib (z biegu rozpływu, gdy\n``load_flow_run_id`` podany i biegu ma wynik dla obwodu, inaczej „z\ntabliczki\" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,\nIz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),\ndługość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/\nIk1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),\nstatus doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych\ndostawców (zero fizyki tutaj).\n\n``load_flow_run_id``/``short_circuit_run_id`` OPCJONALNE — bez nich\nkolumny zależne od biegu dostają uczciwy trzeci stan „brak danych\" z\nakcją naprawczą po stronie UI („uruchom bieg\"), nie fabrykowaną liczbę.",
@@ -24403,90 +24270,6 @@
     "summary": "Run Ncrfg Ptpiree Tests",
     "tags": [
      "ncrfg-ptpiree-tests"
-    ]
-   }
-  },
-  "/api/nn-proof/circuit/pack": {
-   "post": {
-    "description": "Pakiet dowodowy LV_CIRCUIT_VERIFICATION (ZIP) dla obwodu nN.\n\n10 kroków (Ib → Iz′ → dobór → I2 → zdolność wyłączania → I²t → ΔU →\nIk1_min → SWZ), Formula→Data→Substitution→Result→Unit, deterministyczny\ndla identycznego modelu ENM i identycznych parametrów wejściowych.",
-    "operationId": "download_lv_circuit_verification_pack_api_nn_proof_circuit_pack_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/LVCircuitVerificationPackRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {}
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Download Lv Circuit Verification Pack",
-    "tags": [
-     "nn-proof"
-    ]
-   }
-  },
-  "/api/nn-proof/circuit/preview": {
-   "post": {
-    "description": "Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie).",
-    "operationId": "preview_lv_circuit_verification_pack_api_nn_proof_circuit_preview_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/LVCircuitVerificationPackRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Preview Lv Circuit Verification Pack Api Nn Proof Circuit Preview Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Preview Lv Circuit Verification Pack",
-    "tags": [
-     "nn-proof"
     ]
    }
   },
@@ -29772,48 +29555,6 @@
     "summary": "Get Capability",
     "tags": [
      "solver-capabilities"
-    ]
-   }
-  },
-  "/api/solver/cable-ampacity-derating-preview": {
-   "post": {
-    "description": "Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego.",
-    "operationId": "preview_cable_ampacity_derating_api_solver_cable_ampacity_derating_preview_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/CableAmpacityDeratingRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CableAmpacityDeratingResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Preview Cable Ampacity Derating",
-    "tags": [
-     "grid-source-preview"
     ]
    }
   },

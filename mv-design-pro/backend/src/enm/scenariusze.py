@@ -20,12 +20,13 @@ WYLACZNIE pola, ktore maja dzis dostawce w kodzie (zasada „zero pol bez
 dostawcy", rejestr decyzji OW-9): `out_of_service` (N-1, nastawy), `setpoints`
 (polecenie OSD), `gen_scaling` (noc doboru kompensacji), `injections` (sondy
 zdolnosci przylaczeniowej i obszaru P-Q), `probe_shunts` (sonda baterii),
+`zamiany_katalogu` (warianty doboru przekroju kabla nN, karta OBIEKT-KABEL-NN),
 `fault_spec` (scenariusz zwarciowy C6). Stany lacznikow, zaczepy, tryby zrodel,
 profile czasowe, tryby DER/BESS i generator zestawow kontyngencji NIE wchodza,
 dopoki nie ma ich konsumenta — deklaracja pola bez konsumenta bylaby fantomem.
 
 SEMANTYKA NADPISAN (kolejnosc STALA: out_of_service → setpoints → gen_scaling →
-injections → probe_shunts; kazde nadpisanie zostawia wpis proweniencji w
+injections → probe_shunts → zamiany_katalogu; kazde nadpisanie zostawia wpis proweniencji w
 `EffectiveNetworkSnapshot.nadpisania`):
   * `out_of_service` — element NIEOBECNY w migawce efektywnej (dokladnie tak, jak
     dzisiejsza kontyngencja N-1 usuwa galaz z listy), nie „status open";
@@ -35,7 +36,11 @@ injections → probe_shunts; kazde nadpisanie zostawia wpis proweniencji w
     JSON migawki i hash maja byc te same, co przy jawnym wyzerowaniu);
   * `injections` — dopisany generator-sonda o deterministycznym `id` (`uuid5`
     z jawnego ziarna) — ten sam ksztalt, jaki budowaly rodziny D2/D3;
-  * `probe_shunts` — dopisana bateria kondensatorow z katalogu (catalog-first).
+  * `probe_shunts` — dopisana bateria kondensatorow z katalogu (catalog-first);
+  * `zamiany_katalogu` — inna pozycja katalogu przypieta do ISTNIEJACEGO elementu,
+    zastosowana TA SAMA operacja domenowa `assign_catalog_to_element`, ktora
+    projektant wykonuje, wybierajac wariant — migawka wariantu jest co do bitu
+    modelem po wyborze (zero drugiej materializacji katalogu).
 `ref_id` nieobecny w modelu = `ScenariuszNieprzystajeError` z nazwa elementu i
 scenariusza — nigdy cichy skip (cichy skip zamienialby „N-1 bez galezi X" w
 „stan normalny" bez sladu).
@@ -806,6 +811,17 @@ class SondaKondensatora(BaseModel):
         return _domyslne_ziarno(dane, "scenario-shunt-probe")
 
 
+class ZamianaKatalogu(BaseModel):
+    """Inna pozycja katalogu dla ISTNIEJACEGO elementu (wariant doboru, karta OBIEKT-KABEL-NN)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    element_ref: str = Field(min_length=1)
+    catalog_namespace: str = Field(min_length=1)
+    catalog_item_id: str = Field(min_length=1)
+    catalog_item_version: str | None = None
+
+
 def czy_scenariusz_przejsciowy(scenario_id: str) -> bool:
     """JEDYNY predykat „przejsciowy" — dla magazynu (odmowa zapisu), koperty
     (referencja bez rewizji magazynu) i swiezosci (brak sprawdzenia rewizji)."""
@@ -844,6 +860,7 @@ class OperatingScenario(BaseModel):
     gen_scaling: dict[str, float] = Field(default_factory=dict)
     injections: tuple[Wstrzyk, ...] = ()
     probe_shunts: tuple[SondaKondensatora, ...] = ()
+    zamiany_katalogu: tuple[ZamianaKatalogu, ...] = ()
     fault_spec: FaultScenario | None = None
     dynamika: ScenariuszDynamiczny | None = None
     """
@@ -862,6 +879,9 @@ class OperatingScenario(BaseModel):
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
             raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
+        zamieniane = [z.element_ref for z in self.zamiany_katalogu]
+        if len(set(zamieniane)) != len(zamieniane):
+            raise ValueError("zamiany_katalogu zawierają powtórzony element_ref")
         for ref, mnoznik in self.gen_scaling.items():
             if not ref:
                 raise ValueError("gen_scaling: pusty ref_id")
@@ -882,6 +902,7 @@ class OperatingScenario(BaseModel):
             or self.gen_scaling
             or self.injections
             or self.probe_shunts
+            or self.zamiany_katalogu
         )
 
     def tresc(self) -> dict[str, Any]:
@@ -904,6 +925,13 @@ class OperatingScenario(BaseModel):
             "injections": [w.model_dump(mode="json") for w in self.injections],
             "probe_shunts": [s.model_dump(mode="json") for s in self.probe_shunts],
             "fault_spec": _tresc_zwarcia(self.fault_spec),
+            # Klucz WYLACZNIE gdy zamiany sa ustawione (wzorzec `dynamika`): scenariusze
+            # bez zamian maja bajtowo te sama tresc/hash co przed karta OBIEKT-KABEL-NN.
+            **(
+                {"zamiany_katalogu": [z.model_dump(mode="json") for z in self.zamiany_katalogu]}
+                if self.zamiany_katalogu
+                else {}
+            ),
             **({"dynamika": self.dynamika.tresc()} if self.dynamika is not None else {}),
         }
 
@@ -1097,6 +1125,47 @@ def _przeskaluj(p_mw: float, mnoznik: float) -> float:
     return 0.0 if mnoznik == 0.0 else p_mw * mnoznik
 
 
+def _zastosuj_zamiane_katalogu(
+    snapshot: dict[str, Any],
+    scenariusz: OperatingScenario,
+    zamiana: ZamianaKatalogu,
+    nadpisania: list[Nadpisanie],
+) -> dict[str, Any]:
+    """Zamiana pozycji katalogu elementu TA SAMA operacja domenowa, ktora wykonuje wybor.
+
+    Import leniwy: modul operacji domenowych jest ciezki i importuje warstwy, ktore
+    same siegaja po migawki — import na poziomie modulu tworzylby cykl.
+    """
+    from .domain_operations import assign_catalog_to_element
+
+    kolekcja = _znajdz_kolekcje(snapshot, zamiana.element_ref)
+    if kolekcja is None:
+        raise ScenariuszNieprzystajeError(
+            scenariusz.scenario_id, zamiana.element_ref, "brak elementu do zamiany typu"
+        )
+    przed = _indeks_elementow(snapshot, kolekcja)[zamiana.element_ref].get("catalog_ref")
+    wynik = assign_catalog_to_element(
+        snapshot,
+        {
+            "element_ref": zamiana.element_ref,
+            "catalog_binding": {
+                "catalog_namespace": zamiana.catalog_namespace,
+                "catalog_item_id": zamiana.catalog_item_id,
+                "catalog_item_version": zamiana.catalog_item_version,
+            },
+        },
+    )
+    if wynik.get("error"):
+        raise ScenariuszNieprzystajeError(
+            scenariusz.scenario_id, zamiana.element_ref, str(wynik["error"])
+        )
+    nadpisania.append(
+        Nadpisanie("catalog_ref", kolekcja, zamiana.element_ref, przed, zamiana.catalog_item_id)
+    )
+    nowa: dict[str, Any] = wynik["snapshot"]
+    return nowa
+
+
 def apply_scenario(
     enm: EnergyNetworkModel, scenariusz: OperatingScenario
 ) -> EffectiveNetworkSnapshot:
@@ -1197,6 +1266,9 @@ def apply_scenario(
                 )
             )
         snapshot["shunt_capacitors"] = lista
+
+    for zamiana in scenariusz.zamiany_katalogu:
+        snapshot = _zastosuj_zamiane_katalogu(snapshot, scenariusz, zamiana, nadpisania)
 
     if scenariusz.dynamika is not None:
         _waliduj_zdarzenia_dynamiczne(snapshot, scenariusz)

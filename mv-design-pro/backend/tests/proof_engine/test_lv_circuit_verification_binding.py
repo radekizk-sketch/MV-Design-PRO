@@ -339,7 +339,11 @@ def test_brak_materialized_params_jest_uczciwie_odrzucany() -> None:
     )
     urzadzenie, powod = resolve_urzadzenie_ochronne(branch)
     assert urzadzenie is None
-    assert "materialized_params" in (powod or "") or "katalogow" in (powod or "").lower()
+    # Powód nazywa aparat NAZWĄ z modelu i brak wiązania z katalogiem (karta OBIEKT-KABEL-NN:
+    # tekst trafia do pierwszego planu sekcji kabla — bez identyfikatorów i nazw pól).
+    assert "katalog" in (powod or "").lower()
+    assert "„AP1”" in (powod or "")
+    assert "materialized_params" not in (powod or "")
 
 
 def test_nieznany_namespace_jest_uczciwie_odrzucany() -> None:

@@ -77,6 +77,7 @@ from .route import (
     incomer_branch_refs,
     path_to_bus,
     route_segments,
+    route_segments_min_scenario,
 )
 
 #: Klucz `missing_data` przy braku układu sieci nN na transformatorze (W5-A §1 p. 2:
@@ -578,6 +579,81 @@ def oblicz_petle_na_trasie(
         return_label=return_component.label,
     )
     return compute_fault_loop(build_fault_loop_input(request))
+
+
+@dataclass(frozen=True)
+class PetlaMinWPunkcie:
+    """Pętla zwarcia minimalnego w punkcie nN obwodu + kontekst SWZ (U0, układ sieci)."""
+
+    fault_loop: FaultLoopResult
+    u0_v: float
+    system: str
+
+
+def petla_zwarcia_min_w_punkcie(
+    enm: EnergyNetworkModel, station_ref: str, bus_ref: str
+) -> tuple[PetlaMinWPunkcie | None, list[str], str | None, str | None]:
+    """Pętla zwarcia minimalnego (scenariusz MIN) w punkcie ``bus_ref`` — JEDNA sekwencja.
+
+    Karta OBIEKT-KABEL-NN (klasa „ta sama sekwencja w wielu modułach"): dobór aparatu
+    nN (`nn_device_selection._ik1_min_i_u0`), dowód weryfikacji obwodu nN
+    (`lv_circuit_verification_binding`) i sekcja obliczeń kabla nN (`kabel_nn`) liczyły
+    Ik1_min w punkcie DWIEMA identycznymi kopiami tej sekwencji. Zwraca
+    ``(petla, missing_data, reason_pl, kod_odmowy)``; ``kod_odmowy`` ustawiony dla
+    odmowy nazwanej (układ sieci nN brak/TT/IT albo strona dolna poza pasmem nN).
+    """
+    station = _find_station(enm, station_ref)
+    if station is None:
+        return None, ["station"], None, None
+
+    # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
+    # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
+    if trafo is None:
+        return None, transformer_missing, None, None
+
+    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    odmowa = odmowa_analizy_nn({}, trafo)
+    if odmowa is not None:
+        return (
+            None,
+            list(odmowa.get("missing_data", [])),
+            odmowa.get("reason_pl"),
+            odmowa.get("kod_odmowy"),
+        )
+    assert system is not None
+
+    z_tr, missing = _transformer_loop_impedance(trafo)
+    if z_tr is None:
+        return None, missing, None, None
+
+    upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
+    if upstream is None:
+        return None, upstream_missing, None, None
+
+    try:
+        path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
+        segments = route_segments_min_scenario(path)
+    except RouteExtractionError as exc:
+        return None, ["route"], str(exc), None
+
+    phase_component, return_component = sum_phase_and_return_route(segments)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
+
+    loop_result = oblicz_petle_na_trasie(
+        trafo=trafo,
+        fault_node_id=bus_ref,
+        u_phase_v=u_phase_v,
+        net_type=net_type,
+        protection=protection,
+        z_tr=z_tr,
+        upstream=upstream,
+        phase_component=phase_component,
+        return_component=return_component,
+    )
+    return PetlaMinWPunkcie(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None, None
 
 
 def build_station_fault_loop_view(

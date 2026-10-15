@@ -127,6 +127,12 @@ export interface LvDomainViewProps {
   readonly mono?: boolean;
   /** Element wybrany na start (podświetlenie toru zasilania). */
   readonly initialSelectedRef?: string | null;
+  /**
+   * Wybór kabla nN na rysunku (odnośnik gałęzi modelu). Widok nie zna magistrali selekcji —
+   * gospodarz (portal domeny nN) przekazuje wybór do globalnej selekcji, a inspektor pokazuje
+   * obiekt kabla nN z obliczeniami. Bez gospodarza kabel podświetla tylko tor (stan lokalny).
+   */
+  readonly onWybierzKabel?: (cableRef: string) => void;
 }
 
 function textHalo(ctx: KontekstRysunku): {
@@ -370,6 +376,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     theme = 'dark_scada',
     mono = false,
     initialSelectedRef = null,
+    onWybierzKabel,
   } = props;
   const view = projection.graph;
   const [activeOverlay, setActiveOverlay] = useState<LvDomainOverlayId | null>(initialOverlay);
@@ -601,7 +608,16 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           </g>
           <g data-testid="lv-domain-edges">
             {scene.edges.map((edge) => (
-              <SceneEdgeLine key={edge.ref} edge={edge} scene={scene} ctx={ctx} />
+              <SceneEdgeLine
+                key={edge.ref}
+                edge={edge}
+                scene={scene}
+                ctx={ctx}
+                onWybierzKabel={(ref) => {
+                  onSelect(ref);
+                  onWybierzKabel?.(ref);
+                }}
+              />
             ))}
           </g>
           <g data-testid="lv-domain-nodes">
@@ -1123,9 +1139,17 @@ function ElementNode({ node, ctx, activeOverlay, resultOverlayPayload, swzEntry,
 // Krawędzie.
 // ---------------------------------------------------------------------------
 
-function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge; readonly scene: LvDomainScene; readonly ctx: KontekstRysunku }): JSX.Element | null {
+function SceneEdgeLine({ edge, scene, ctx, onWybierzKabel }: {
+  readonly edge: LvDomainSceneEdge;
+  readonly scene: LvDomainScene;
+  readonly ctx: KontekstRysunku;
+  readonly onWybierzKabel: (ref: string) => void;
+}): JSX.Element | null {
   if (!ctx.widoczne(elementKrawedzi(edge.kind))) return null;
   const isCable = edge.kind === 'cable';
+  // Kabel modelu (krawędź z odnośnikiem gałęzi — bez członów pomocniczych `…#a/#b`) jest
+  // obiektem do wskazania: klik zaznacza kabel nN (inspektor: obliczenia i warianty).
+  const kabelModelu = isCable && !edge.ref.includes('#');
   const isBoundaryLink = edge.kind === 'boundaryLink';
   const isRelayLink = edge.kind === 'relayLink';
   const energization = edge.meta?.energization as LvEnergizationState | undefined;
@@ -1166,7 +1190,24 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
     }
   }
   return (
-    <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind} data-energization={energization} data-connectivity={typeof edge.meta?.connectivity === 'string' ? edge.meta.connectivity : undefined}>
+    <g
+      data-testid={`lv-domain-edge-${edge.ref}`}
+      data-edge-kind={edge.kind}
+      data-energization={energization}
+      data-connectivity={typeof edge.meta?.connectivity === 'string' ? edge.meta.connectivity : undefined}
+      data-selected={kabelModelu && ctx.selectedRef === edge.ref ? 'true' : undefined}
+      role={kabelModelu ? 'button' : undefined}
+      tabIndex={kabelModelu ? 0 : undefined}
+      aria-label={kabelModelu ? `Kabel nN ${ctx.nameByRef.get(edge.ref) ?? edge.ref}` : undefined}
+      onClick={kabelModelu ? () => onWybierzKabel(edge.ref) : undefined}
+      onKeyDown={kabelModelu ? (event) => { if (event.key === 'Enter' || event.key === ' ') onWybierzKabel(edge.ref); } : undefined}
+      style={kabelModelu ? { cursor: 'pointer' } : undefined}
+    >
+      {kabelModelu ? (
+        // Pas trafienia: przewód ma kilka pikseli — przezroczysta szeroka ścieżka pod nim
+        // daje wygodny cel kliknięcia bez zmiany rysunku.
+        <path data-testid={`lv-domain-edge-hit-${edge.ref}`} d={sciezkaOrtogonalna(x1, y1, x2, y2)} fill="none" stroke="transparent" strokeWidth={ctx.sp(14)} pointerEvents="stroke" />
+      ) : null}
       <path d={sciezkaOrtogonalna(x1, y1, x2, y2)} fill="none" stroke={stroke} strokeWidth={width} strokeDasharray={dash} strokeLinecap={isCable ? 'round' : undefined} strokeLinejoin="round" />
       {isBoundaryLink ? <path d={`M ${x2} ${y2} l ${-ctx.sp(9)} ${-ctx.sp(4)} l 0 ${ctx.sp(8)} Z`} fill={ctx.paleta.kreskaGranicy} stroke="none" /> : null}
       {energization === 'UNKNOWN' && !isRelayLink ? (

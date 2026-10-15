@@ -28,7 +28,6 @@ from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
     NAZWA_WLASNE,
-    obciazalnosc_skorygowana,
     widok_zestawow,
     wspolczynniki_z_opisu,
 )
@@ -532,66 +531,6 @@ class CableLayingConditionsResponse(BaseModel):
     custom_name: str
     default_name: str
     limitation_pl: str
-
-
-class CableAmpacityDeratingRequest(BaseModel):
-    """Korekta obciążalności kabla wg warunków ułożenia (V12K-207, karta F-K7).
-
-    Warstwa prezentacji NIE MOŻE mnożyć obciążalności przez współczynniki sama — to
-    kryterium doborowe, więc rachunek należy do backendu (reguła braku fizyki w UI).
-    """
-
-    rated_ampacity_a: float = Field(gt=0)
-    design_current_a: float = Field(gt=0)
-    laying_conditions: CableLayingConditionsRequest | None = None
-
-
-class CableAmpacityDeratingResponse(BaseModel):
-    """I′z = Iz · f_grunt · f_wiazka · f_grupa oraz werdykt I_obl ≤ I′z."""
-
-    rated_ampacity_a: float
-    effective_ampacity_a: float
-    design_current_a: float
-    derating_total: float
-    derating_set: str
-    utilization_pct: float
-    ok: bool
-    formula_ref: str
-    assumption_pl: str
-
-
-@router.post(
-    "/api/solver/cable-ampacity-derating-preview",
-    response_model=CableAmpacityDeratingResponse,
-)
-def preview_cable_ampacity_derating(
-    request: CableAmpacityDeratingRequest,
-) -> CableAmpacityDeratingResponse:
-    """Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego."""
-    laying = request.laying_conditions
-    try:
-        derating = wspolczynniki_z_opisu(
-            laying.set_name if laying is not None else None,
-            f_grunt=laying.f_grunt if laying is not None else None,
-            f_wiazka=laying.f_wiazka if laying is not None else None,
-            f_grupa=laying.f_grupa if laying is not None else None,
-            opis_pl=laying.opis_pl if laying is not None else None,
-        )
-        effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    return CableAmpacityDeratingResponse(
-        rated_ampacity_a=request.rated_ampacity_a,
-        effective_ampacity_a=effective,
-        design_current_a=request.design_current_a,
-        derating_total=derating.iloczyn,
-        derating_set=derating.nazwa,
-        utilization_pct=request.design_current_a / effective * 100.0,
-        ok=request.design_current_a <= effective,
-        formula_ref="I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
-        assumption_pl=derating.zalozenie_pl(),
-    )
 
 
 class TransformerRatedCurrentsRequest(BaseModel):

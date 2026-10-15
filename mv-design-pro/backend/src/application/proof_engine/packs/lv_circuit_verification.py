@@ -68,6 +68,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from application.analyses.swz.werdykt import SwzStatus
 from application.proof_engine.proof_pack import (
     ProofPackBuilder,
     ProofPackContext,
@@ -85,16 +86,15 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
-from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
+from network_model.pochodne import ka_na_a, kv_na_v, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
+    WARUNKI_KATALOGOWE,
     WspolczynnikiObciazalnosciNN,
     obciazalnosc_skorygowana,
 )
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_iec60364 import C_MIN_LV, FaultLoopResult
-from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
 
 # =============================================================================
 # Rodzaje urządzenia chroniącego obwód — namespace'y katalogu nN (P0.2/P0.7)
@@ -205,13 +205,38 @@ class UrzadzenieOchronneNn:
 
 
 @dataclass(frozen=True)
-class LVCircuitVerificationInput:
-    """Dane wejściowe pakietu dowodowego weryfikacji obwodu nN (10 kroków).
+class StratyOdcinka:
+    """Straty mocy czynnej odcinka z biegu rozpływu (krok 11, opcjonalny).
 
-    Kroki 1-2 i 4-5 są ARYTMETYKĄ jawnie wykonywaną w generatorze na tych
+    ``straty_mw`` jest WYNIKIEM solvera rozpływu (``PowerFlowBranchResult.
+    losses_p_mw`` = P_od + P_do, `network_model/solvers/power_flow_result.py`) —
+    krok go nie liczy, tylko pokazuje składniki z tego samego wyniku.
+    """
+
+    p_od_mw: float
+    p_do_mw: float
+    straty_mw: float
+
+
+@dataclass(frozen=True)
+class LVCircuitVerificationInput:
+    """Dane wejściowe pakietu dowodowego weryfikacji obwodu nN (10 kroków + straty).
+
+    Kroki 1-2 i 4 są ARYTMETYKĄ jawnie wykonywaną w generatorze na tych
     polach (ten sam wzorzec co P15/VDROP — proste działania na wejściach, nie
-    na wyniku dowodu). Kroki 3, 7, 9, 10 konsumują GOTOWE obiekty wyniku
+    na wyniku dowodu). Kroki 3, 5, 7, 9, 10 konsumują GOTOWE wyniki
     solverów/analiz (zero drugiej fizyki, zob. docstring modułu).
+
+    ``wspolczynniki`` = ``None`` — kabel bez zadeklarowanych warunków ułożenia:
+    obciążalność katalogowa bez korekty (ta sama konwencja co kod W060 i arkusz
+    obwodów nN), krok 3 mówi to wprost zamiast udawać zestaw tablic.
+
+    ``i2_a``/``i2_zrodlo_pl``/``i2_uzasadnienie_pl`` — próg gwarantowanego
+    zadziałania I2 z JEDNEGO źródła: kryterium (ii) doboru aparatu
+    (`application.analyses.nn_device_selection.kryterium_i2`), policzone przez
+    orkiestrację wejścia. Pakiet nie trzyma własnej kopii mnożników aparatów
+    (do karty OBIEKT-KABEL-NN trzymał — i dla MCCB z nastawami Ir/tr meldował
+    „nierozstrzygalne", choć dobór aparatu ten sam próg rozstrzygał).
     """
 
     project_name: str
@@ -231,13 +256,18 @@ class LVCircuitVerificationInput:
     q_mvar: float
     u_ll_kv: float
 
-    # Krok 3: Iz′ (REUSE cable_ampacity_derating)
+    # Krok 3: Iz′ (REUSE cable_ampacity_derating); None = warunki katalogowe
     iz_katalogowe_a: float
-    wspolczynniki: WspolczynnikiObciazalnosciNN
+    wspolczynniki: WspolczynnikiObciazalnosciNN | None
 
     # Krok 4-6: urządzenie zainstalowane + Ik″max w punkcie zabudowy
     urzadzenie: UrzadzenieOchronneNn
     ik_max_ka: float | None
+
+    # Krok 5: I2 z kryterium (ii) doboru aparatu (jedno źródło progu)
+    i2_a: float | None
+    i2_zrodlo_pl: str
+    i2_uzasadnienie_pl: str
 
     # Krok 7: I²t ≤ k²S² (REUSE conductor_thermal_withstand)
     thermal: ConductorThermalResult
@@ -257,6 +287,9 @@ class LVCircuitVerificationInput:
     swz_margines: float | None
 
     vdrop_delta_u_total_percent: float | None = None
+
+    # Krok 11 (opcjonalny): straty mocy czynnej odcinka z biegu rozpływu
+    straty: StratyOdcinka | None = None
 
 
 # =============================================================================
@@ -436,8 +469,654 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
 
 
 # =============================================================================
-# Generator — 10 kroków
+# Generator — kroki jako funkcje wielokrotnego użytku
 # =============================================================================
+#
+# KARTA OBIEKT-KABEL-NN: każdy krok pakietu jest osobną funkcją budującą
+# ``ProofStep`` z WEJŚĆ tego kroku. Pakiet składa je w dokument (kroki 1-10 +
+# opcjonalny 11), a sekcja obliczeń kabla nN (`application.analyses.kabel_nn`)
+# składa z TYCH SAMYCH funkcji szczegół na żądanie wiersza kryterium — jedno
+# źródło zapisu wzoru, parametrów i podstawienia dla dokumentu i dla ekranu.
+
+#: Przedrostek identyfikatora kroku dokumentu pakietu (``LVCV_STEP_001``…).
+PRZEDROSTEK_KROKU_PAKIETU = "LVCV"
+
+
+def krok_moc_pozorna(
+    p_mw: float, q_mvar: float, numer: int, przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU
+) -> tuple[ProofStep, float]:
+    """Krok: S = sqrt(P^2+Q^2) (REUSE EQ_LC_001)."""
+    s_mva = (p_mw**2 + q_mvar**2) ** 0.5
+    eq1 = _eq(
+        "EQ_LC_001",
+        r"S = \sqrt{P^{2} + Q^{2}}",
+        "Moc pozorna",
+        "praktyka inżynierska",
+        [
+            _sym("S", "MVA", "Moc pozorna", "s_mva"),
+            _sym("P", "MW", "Moc czynna", "p_mw"),
+            _sym("Q", "Mvar", "Moc bierna", "q_mvar"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Dane wejściowe obwodu — moc pozorna",
+        equation=eq1,
+        input_values=(
+            _pv("P", p_mw, "MW", "p_mw"),
+            _pv("Q", q_mvar, "Mvar", "q_mvar"),
+        ),
+        substitution_latex=(
+            f"$$S = \\sqrt{{{p_mw:.4f}^2 + {q_mvar:.4f}^2}} = {s_mva:.4f}" r"\;\mathrm{MVA}$$"
+        ),
+        result=_pv("S", s_mva, "MVA", "s_mva"),
+        unit_check=_uc("MVA", "MVA", "MW² + Mvar² = MVA² → MVA"),
+    )
+    return krok, s_mva
+
+
+def krok_prad_obliczeniowy(
+    s_mva: float, u_ll_kv: float, numer: int, przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU
+) -> tuple[ProofStep, float]:
+    """Krok: Ib = S/(sqrt(3)*U_LL) (REUSE EQ_LC_002)."""
+    ib_ka = prad_z_mocy_pozornej_ka(s_mva, u_ll_kv)
+    ib_a = ka_na_a(ib_ka)
+    eq2 = _eq(
+        "EQ_LC_002",
+        r"I = \frac{S}{\sqrt{3}\,U_{LL}}",
+        "Prąd obliczeniowy obwodu",
+        "praktyka inżynierska",
+        [
+            _sym("I_b", "A", "Prąd obliczeniowy obwodu", "ib_a"),
+            _sym("S", "MVA", "Moc pozorna", "s_mva"),
+            _sym("U_{LL}", "kV", "Napięcie międzyfazowe", "u_ll_kv"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Prąd obliczeniowy obwodu Ib",
+        equation=eq2,
+        input_values=(
+            _pv("S", s_mva, "MVA", "s_mva"),
+            _pv("U_{LL}", u_ll_kv, "kV", "u_ll_kv"),
+        ),
+        substitution_latex=(
+            f"$$I_b = \\frac{{{s_mva:.4f}}}{{\\sqrt{{3}} \\cdot {u_ll_kv:g}}} "
+            f"= {ib_a:.2f}\\;\\mathrm{{A}}$$"
+        ),
+        result=_pv("I_b", ib_a, "A", "ib_a"),
+        unit_check=_uc("A", "A", "MVA / kV = kA (MVA = kV·kA) → A"),
+    )
+    return krok, ib_a
+
+
+def opis_warunkow_ulozenia_pl(wspolczynniki: WspolczynnikiObciazalnosciNN | None) -> str:
+    """Zdanie założenia obciążalności — dla zestawu tablic albo warunków katalogowych."""
+    if wspolczynniki is None:
+        return (
+            "warunki katalogowe — kabel bez zadeklarowanych warunków ułożenia, obciążalność "
+            "z karty typu bez korekty; w rzeczywistej trasie może być mniejsza"
+        )
+    return wspolczynniki.zalozenie_pl()
+
+
+def krok_obciazalnosc(
+    iz_katalogowe_a: float,
+    wspolczynniki: WspolczynnikiObciazalnosciNN | None,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, float]:
+    """Krok: Iz' = Iz · f_θ · f_ρ · f_N (NEW EQ_LVCV_001, iloczyn REUSE solvera).
+
+    ``wspolczynniki is None`` — warunki katalogowe: wszystkie współczynniki 1,0
+    i iloczyn przez TO SAMO mnożenie solvera (`obciazalnosc_skorygowana` z
+    zestawem ``WARUNKI_KATALOGOWE``), więc liczba jest tą samą liczbą co w
+    arkuszu obwodów i kodzie W060.
+    """
+    if wspolczynniki is None:
+        iz_prime_a = obciazalnosc_skorygowana(iz_katalogowe_a, WARUNKI_KATALOGOWE)
+        f_t = f_r = f_n = 1.0
+        zrodla = {"srodowisko": "warunki katalogowe"}
+    else:
+        iz_prime_a = obciazalnosc_skorygowana(iz_katalogowe_a, wspolczynniki)
+        f_t = wspolczynniki.f_temperatura
+        f_r = wspolczynniki.f_rezystywnosc_gruntu
+        f_n = wspolczynniki.f_grupowanie
+        zrodla = {"srodowisko": wspolczynniki.srodowisko}
+    zalozenie = opis_warunkow_ulozenia_pl(wspolczynniki)
+    eq3 = _eq(
+        "EQ_LVCV_001",
+        r"I_z' = I_z \cdot f_{\theta} \cdot f_{\rho} \cdot f_{N}",
+        "Obciążalność dopuszczalna po korektach (Iz′)",
+        "PN-HD 60364-5-52 (zestaw korekcyjny G-D1)",
+        [
+            _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
+            _sym("I_z", "A", "Obciążalność katalogowa", "iz_katalogowe_a"),
+            _sym("f_{\\theta}", "—", "Korekta temperatury otoczenia", "f_temperatura"),
+            _sym("f_{\\rho}", "—", "Korekta rezystywności gruntu", "f_rezystywnosc_gruntu"),
+            _sym("f_{N}", "—", "Korekta grupowania obwodów", "f_grupowanie"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl=f"Obciążalność dopuszczalna po korektach ({zalozenie})",
+        equation=eq3,
+        input_values=(
+            _pv("I_z", iz_katalogowe_a, "A", "iz_katalogowe_a"),
+            _pv("f_{\\theta}", f_t, "—", "f_temperatura"),
+            _pv("f_{\\rho}", f_r, "—", "f_rezystywnosc_gruntu"),
+            _pv("f_{N}", f_n, "—", "f_grupowanie"),
+        ),
+        substitution_latex=(
+            f"$$I_z' = {iz_katalogowe_a:g} \\cdot {f_t:g} \\cdot "
+            f"{f_r:g} \\cdot {f_n:g} = "
+            f"{iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
+        ),
+        result=_pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
+        unit_check=_uc("A", "A", "A · (—)·(—)·(—) = A"),
+        source_keys={**zrodla, "podstawa_iloczynu": zalozenie},
+    )
+    return krok, iz_prime_a
+
+
+def krok_dobor_zabezpieczenia(
+    ib_a: float,
+    urzadzenie: UrzadzenieOchronneNn,
+    iz_prime_a: float,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, bool]:
+    """Krok: Ib ≤ In ≤ Iz' (NEW EQ_LVCV_002, IEC 60364-4-43 §433.1)."""
+    in_a = urzadzenie.in_a
+    dobor_spelnia = ib_a <= in_a <= iz_prime_a
+    eq4 = _eq(
+        "EQ_LVCV_002",
+        r"I_b \le I_n \le I_z'",
+        "Dobór zabezpieczenia obwodu",
+        "IEC 60364-4-43 §433.1",
+        [
+            _sym("I_b", "A", "Prąd obliczeniowy obwodu", "ib_a"),
+            _sym("I_n", "A", "Prąd znamionowy zabezpieczenia", "in_a"),
+            _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl=f"Dobór zabezpieczenia ({urzadzenie.nazwa})",
+        equation=eq4,
+        input_values=(
+            _pv("I_b", ib_a, "A", "ib_a"),
+            _pv("I_n", in_a, "A", "in_a"),
+            _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
+        ),
+        substitution_latex=(
+            # Podstawienie = nierówność liczbowa; ocenę niesie rekord kryterium (werdykt
+            # wyjaśnialny), nie słowo w zapisie wzoru.
+            f"$${ib_a:.2f}\\;\\mathrm{{A}} \\le {in_a:g}\\;\\mathrm{{A}} "
+            f"\\le {iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
+        ),
+        result=_pv("I_n", in_a, "A", "in_a"),
+        unit_check=_uc("A", "A", "A ≤ A ≤ A"),
+        source_keys={},
+    )
+    return krok, dobor_spelnia
+
+
+def krok_prad_zadzialania(
+    i2_a: float | None,
+    i2_zrodlo_pl: str,
+    i2_uzasadnienie_pl: str,
+    iz_prime_a: float,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, bool | None]:
+    """Krok: I2 ≤ 1,45·Iz' (NEW EQ_LVCV_003, IEC 60364-4-43 §433.1.1).
+
+    I2 przychodzi z kryterium (ii) doboru aparatu (jedno źródło progu — MCB
+    1,45×In, wkładka gG If=1,6×In, MCCB 1,3×Ir z nastawy); ``None`` = próg
+    nierozstrzygalny z powodem ``i2_uzasadnienie_pl`` (zero fabrykacji).
+    """
+    limit_a = 1.45 * iz_prime_a
+    i2_spelnia = None if i2_a is None else i2_a <= limit_a
+    eq5 = _eq(
+        "EQ_LVCV_003",
+        r"I_2 \le 1{,}45 \cdot I_z'",
+        "Warunek zadziałania zabezpieczenia",
+        "IEC 60364-4-43 §433.1.1",
+        [
+            _sym("I_2", "A", "Prąd gwarantowanego zadziałania", "i2_a"),
+            _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
+            _sym("1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna I2", "limit_a"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl=f"Warunek zadziałania I2 ({i2_zrodlo_pl})",
+        equation=eq5,
+        input_values=(
+            _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
+            _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
+        ),
+        substitution_latex=(
+            f"$$I_2 = {i2_a:.2f}\\;\\mathrm{{A}} \\le 1{{,}}45 \\cdot {iz_prime_a:.2f} "
+            f"= {limit_a:.2f}\\;\\mathrm{{A}}$$"
+            if i2_a is not None
+            else r"$$I_2 \text{ — nierozstrzygalne}$$"
+        ),
+        result=_pv(
+            "I_2",
+            i2_a if i2_a is not None else "NIEROZSTRZYGALNE",
+            "A",
+            "i2_a",
+        ),
+        unit_check=_uc("A", "A", "A ≤ A"),
+        source_keys={"uzasadnienie_pl": i2_uzasadnienie_pl},
+    )
+    return krok, i2_spelnia
+
+
+def krok_zdolnosc_wylaczania(
+    urzadzenie: UrzadzenieOchronneNn,
+    ik_max_ka: float | None,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, ZdolnoscWylaczaniaDwaZdania]:
+    """Krok: zdolność wyłączania — DWA ZDANIA (NEW EQ_LVCV_004, runda 5b)."""
+    zdolnosc = ocen_zdolnosc_wylaczania_dwa_zdania(urzadzenie=urzadzenie, ik_max_ka=ik_max_ka)
+    eq6 = _eq(
+        "EQ_LVCV_004",
+        r"I_{cond} \ge I''_{k,max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I''_{k,max}",
+        "Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
+        "IEC 60947 / IEC 60898-1 / IEC 60269-1",
+        [
+            _sym(
+                "I_{cond}",
+                "kA",
+                "Prąd warunkowy KOMBINACJI aparat+wkładka",
+                "conditional_sc_current_ka",
+            ),
+            _sym("I_{cu/cn}", "kA", "Własna zdolność GOŁEGO aparatu", "icu_or_icn_ka"),
+            _sym("I''_{k,max}", "kA", "Prąd zwarciowy początkowy maksymalny", "ik_max_ka"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Zdolność wyłączania — dwa zdania inżynierskie (kombinacja / goły aparat)",
+        equation=eq6,
+        input_values=(
+            _pv(
+                "I_{cond}",
+                (
+                    zdolnosc.kombinacja_wartosc_ka
+                    if zdolnosc.kombinacja_wartosc_ka is not None
+                    else "NIE_DOTYCZY"
+                ),
+                "kA",
+                "conditional_sc_current_ka",
+            ),
+            _pv(
+                "I_{cu/cn}",
+                (
+                    zdolnosc.goly_aparat_wartosc_ka
+                    if zdolnosc.goly_aparat_wartosc_ka is not None
+                    else "NIE_DOTYCZY"
+                ),
+                "kA",
+                "icu_or_icn_ka",
+            ),
+            _pv(
+                "I''_{k,max}",
+                ik_max_ka if ik_max_ka is not None else "NIEDOSTĘPNE",
+                "kA",
+                "ik_max_ka",
+            ),
+        ),
+        substitution_latex=(
+            # Zdania inżynierskie to proza — w trybie tekstowym z ucieczką znaków LaTeX
+            # (dawniej trafiały gołe do trybu matematycznego: polskie litery i „_" psuły wzór).
+            f"$${_tekst_latex('kombinacja: ' + zdolnosc.zdanie_kombinacja_pl)}$$\n"
+            f"$${_tekst_latex('goły aparat: ' + zdolnosc.zdanie_goly_aparat_pl)}$$"
+        ),
+        result=_pv(
+            "\\text{werdykt}",
+            f"kombinacja={zdolnosc.kombinacja_status}; goły_aparat={zdolnosc.goly_aparat_status}",
+            "—",
+            "zdolnosc_wylaczania_werdykt",
+        ),
+        unit_check=_uc("kA", "kA", "kA ≥ kA"),
+        source_keys={
+            "zdanie_kombinacja_pl": zdolnosc.zdanie_kombinacja_pl,
+            "zdanie_goly_aparat_pl": zdolnosc.zdanie_goly_aparat_pl,
+        },
+    )
+    return krok, zdolnosc
+
+
+def krok_wytrzymalosc_cieplna(
+    thermal: ConductorThermalResult, numer: int, przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU
+) -> ProofStep:
+    """Krok: I²t ≤ k²S² (NEW EQ_LVCV_005, REUSE check_conductor_thermal_withstand)."""
+    th = thermal
+    eq7 = _eq(
+        "EQ_LVCV_005",
+        r"\int i^{2}\,dt \le k^{2} S^{2}",
+        "Wytrzymałość cieplna przewodu (bilans energii zwarciowej)",
+        "IEC 60949",
+        [
+            _sym("\\int i^{2}\\,dt", "A²s", "Energia zwarciowa rzeczywista", "i2t_a2s"),
+            _sym("k^{2} S^{2}", "A²s", "Energia dopuszczalna", "i2t_admissible_a2s"),
+        ],
+    )
+    i2t = th.i2t_a2s if th.i2t_a2s is not None else 0.0
+    i2t_dop = th.i2t_admissible_a2s if th.i2t_admissible_a2s is not None else 0.0
+    return ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Wytrzymałość cieplna przewodu I²t ≤ k²S²",
+        equation=eq7,
+        input_values=(
+            _pv(
+                "\\int i^{2}\\,dt",
+                i2t if th.i2t_a2s is not None else "NIEDOSTĘPNE",
+                "A²s",
+                "i2t_a2s",
+            ),
+            _pv(
+                "k^{2} S^{2}",
+                i2t_dop if th.i2t_admissible_a2s is not None else "NIEDOSTĘPNE",
+                "A²s",
+                "i2t_admissible_a2s",
+            ),
+        ),
+        substitution_latex=(
+            f"$${i2t:.1f}\\;\\mathrm{{A^2s}} \\le {i2t_dop:.1f}\\;\\mathrm{{A^2s}} "
+            f"\\Rightarrow \\text{{{th.status}}}$$"
+            if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
+            else rf"$$\text{{{th.status}}}$$"
+        ),
+        result=_pv("\\text{status}", th.status, "—", "thermal_status"),
+        unit_check=_uc("A²s", "A²s", "A²·s ≤ (A·√s/mm²)² · mm² = A²·s"),
+        source_keys={
+            "decision_reason_pl": th.decision_reason_pl or "",
+            "readiness_codes": ",".join(th.readiness_codes),
+        },
+    )
+
+
+def krok_napiecie_w_punkcie(
+    u_source_kv: float,
+    delta_u_total_kv: float,
+    delta_u_total_percent: float | None,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, float]:
+    """Krok: U = U_source − ΔU_total (REUSE EQ_VDROP_007, headline łańcucha)."""
+    u_target_kv = u_source_kv - delta_u_total_kv
+    eq8 = _eq(
+        "EQ_VDROP_007",
+        r"U = U_{source} - \Delta U_{total}^{kV}",
+        "Napięcie w punkcie po uwzględnieniu spadku",
+        "—",
+        [
+            _sym("U", "kV", "Napięcie w punkcie", "u_kv"),
+            _sym("U_{source}", "kV", "Napięcie źródła", "u_source_kv"),
+            _sym("\\Delta U_{total}^{kV}", "kV", "Sumaryczny spadek napięcia", "delta_u_total_kv"),
+        ],
+    )
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Spadek napięcia — łańcuch źródło → punkt (dowód pełny w pakiecie VDROP)",
+        equation=eq8,
+        input_values=(
+            _pv("U_{source}", u_source_kv, "kV", "u_source_kv"),
+            _pv("\\Delta U_{total}^{kV}", delta_u_total_kv, "kV", "delta_u_total_kv"),
+        ),
+        substitution_latex=(
+            f"$$U = {u_source_kv:.4f} - {delta_u_total_kv:.4f} "
+            f"= {u_target_kv:.4f}\\;\\mathrm{{kV}}$$"
+        ),
+        result=_pv("U", u_target_kv, "kV", "u_kv"),
+        unit_check=_uc("kV", "kV", "kV − kV = kV"),
+        source_keys={
+            "delta_u_total_percent": (
+                f"{delta_u_total_percent:.4f}" if delta_u_total_percent is not None else "brak"
+            )
+        },
+    )
+    return krok, u_target_kv
+
+
+@dataclass(frozen=True)
+class SpadekOdcinkaTrasy:
+    """Spadek napięcia JEDNEGO odcinka trasy z dekompozycji biegu rozpływu (P0.4)."""
+
+    nazwa: str
+    delta_u_kv: float
+    delta_u_percent: float
+
+
+def krok_spadek_napiecia_trasy(
+    odcinki: tuple[SpadekOdcinkaTrasy, ...],
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> tuple[ProofStep, float, float]:
+    """Krok: ΔU_% = Σ ΔU_%,i po odcinkach trasy (dekompozycja ΔU biegu rozpływu).
+
+    Składniki są WYNIKAMI dekompozycji spadku napięcia biegu rozpływu
+    (`analysis.voltage_profile.segment_decomposition`, karta P0.4); krok je
+    sumuje — ta sama arytmetyka co arkusz obwodów nN (``calkowity_procent``).
+    """
+    du_kv = sum(o.delta_u_kv for o in odcinki)
+    du_pct = sum(o.delta_u_percent for o in odcinki)
+    eq = _eq(
+        "EQ_LVCV_008",
+        r"\Delta U_{\%} = \sum_{i} \Delta U_{\%,i}",
+        "Spadek napięcia wzdłuż trasy obwodu nN",
+        "PN-HD 60364-5-52 Załącznik G (spadek napięcia w instalacji)",
+        [
+            _sym("\\Delta U_{\\%}", "%", "Spadek napięcia od zacisków nN transformatora", "du_pct"),
+            _sym("\\Delta U_{\\%,i}", "%", "Spadek napięcia odcinka i", "du_pct_i"),
+        ],
+    )
+    skladniki = " + ".join(f"{o.delta_u_percent:.3f}" for o in odcinki) or "0"
+    krok = ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Spadek napięcia wzdłuż trasy — suma odcinków z biegu rozpływu",
+        equation=eq,
+        input_values=tuple(
+            _pv(f"\\Delta U_{{\\%,{i}}}", o.delta_u_percent, "%", f"du_pct_{i}")
+            for i, o in enumerate(odcinki, start=1)
+        ),
+        substitution_latex=f"$$\\Delta U_{{\\%}} = {skladniki} = {du_pct:.3f}\\;\\%$$",
+        result=_pv("\\Delta U_{\\%}", du_pct, "%", "du_pct"),
+        unit_check=_uc("%", "%", "Σ % = %"),
+        source_keys={
+            "odcinki": "; ".join(f"{o.nazwa}: {kv_na_v(o.delta_u_kv):.2f} V" for o in odcinki),
+            "delta_u_total_kv": f"{du_kv:.6f}",
+        },
+    )
+    return krok, du_kv, du_pct
+
+
+def krok_prad_zwarcia_min(
+    fault_loop: FaultLoopResult, numer: int, przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU
+) -> ProofStep:
+    """Krok: Ik1_min = c_min·U0/|Z_loop| (NEW EQ_LVCV_006, REUSE compute_fault_loop)."""
+    fl = fault_loop
+    eq9 = _eq(
+        "EQ_LVCV_006",
+        r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
+        "Prąd zwarcia minimalnego z pętli",
+        "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
+        [
+            _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
+            _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
+            _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
+            _sym("Z_{loop}", "Ω", "Moduł impedancji pętli zwarcia", "z_loop_magnitude_ohm"),
+        ],
+    )
+    return ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
+        equation=eq9,
+        input_values=(
+            _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+            _pv("U_0", fl.u_nom_v, "V", "u0_v"),
+            _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
+        ),
+        substitution_latex=(
+            f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+            f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
+        ),
+        result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
+        unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+        source_keys={
+            "trasa": ";".join(c.label for c in fl.components),
+            "network_type": fl.network_type.value,
+        },
+    )
+
+
+@dataclass(frozen=True)
+class WynikSwzKroku:
+    """Wynik SWZ (`swz.werdykt.ocen_swz`) przeniesiony do kroku 10 — bez przeliczania."""
+
+    rozstrzygniecie: SwzStatus
+    przyczyna_pl: str
+    ia_wymagane_a: float | None
+    t_wymagany_s: float | None
+    pasmo_u0: str
+    rodzaj_obwodu: str
+
+
+def krok_swz(
+    fault_loop: FaultLoopResult,
+    swz: WynikSwzKroku,
+    numer: int,
+    przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU,
+) -> ProofStep:
+    """Krok: SWZ Ik1_min ≥ Ia(t_wym) (NEW EQ_LVCV_007, REUSE ocen_swz)."""
+    fl = fault_loop
+    eq10 = _eq(
+        "EQ_LVCV_007",
+        r"I_{k1,min} \ge I_a(t_{wym})",
+        "Samoczynne wyłączenie zasilania (SWZ)",
+        "IEC 60364-4-41 Tab. 41.1 (G-D3)",
+        [
+            _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
+            _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
+            _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
+        ],
+    )
+    return ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl=(
+            f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={swz.pasmo_u0}, "
+            f"obwód {swz.rodzaj_obwodu})"
+        ),
+        equation=eq10,
+        input_values=(
+            _pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
+            _pv(
+                "I_a",
+                swz.ia_wymagane_a if swz.ia_wymagane_a is not None else "NIEDOSTĘPNE",
+                "A",
+                "ia_wymagane_a",
+            ),
+            _pv(
+                "t_{wym}",
+                swz.t_wymagany_s if swz.t_wymagany_s is not None else "NIEDOSTĘPNE",
+                "s",
+                "t_wymagany_s",
+            ),
+        ),
+        substitution_latex=_podstawienie_swz(fl.ik_min_a, swz),
+        result=_pv("\\text{SWZ}", swz.rozstrzygniecie.value, "—", "swz_status"),
+        unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
+        source_keys={
+            "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
+            "pasmo_u0": swz.pasmo_u0,
+            "rodzaj_obwodu": swz.rodzaj_obwodu,
+        },
+    )
+
+
+def _tekst_latex(tekst: str) -> str:
+    """Proza w trybie ``\\text{}`` z ucieczką znaków specjalnych LaTeX."""
+    for znak, zamiennik in (
+        ("\\", r"\textbackslash{}"),
+        ("&", r"\&"),
+        ("%", r"\%"),
+        ("$", r"\$"),
+        ("#", r"\#"),
+        ("_", r"\_"),
+        ("{", r"\{"),
+        ("}", r"\}"),
+    ):
+        tekst = tekst.replace(znak, zamiennik)
+    return rf"\text{{{tekst}}}"
+
+
+def _podstawienie_swz(ik1_min_a: float, swz: WynikSwzKroku) -> str:
+    """Podstawienie SWZ: liczby, gdy silnik rozstrzygnął i podał Ia; inaczej przyczyna prozą.
+
+    Werdykt nierozstrzygalny (np. bramka umowna wkładki gG) nie ma porównania liczbowego —
+    wtedy podstawieniem jest uzasadnienie silnika SWZ (bez nierówności, która by je udawała).
+    """
+    if swz.ia_wymagane_a is not None and swz.rozstrzygniecie != SwzStatus.NIEROZSTRZYGALNE:
+        relacja = r"\ge" if ik1_min_a >= swz.ia_wymagane_a else "<"
+        return (
+            rf"$$I_{{k1,min}} = {ik1_min_a:.1f}\;\mathrm{{A}} {relacja} "
+            rf"I_a = {swz.ia_wymagane_a:.1f}\;\mathrm{{A}}$$"
+        )
+    return f"$${_tekst_latex(swz.przyczyna_pl)}$$"
+
+
+def krok_straty(
+    straty: StratyOdcinka, numer: int, przedrostek: str = PRZEDROSTEK_KROKU_PAKIETU
+) -> ProofStep:
+    """Krok: ΔP = P_od + P_do — straty mocy czynnej odcinka z biegu rozpływu.
+
+    Wszystkie trzy liczby są wynikiem solvera rozpływu (moce zacisków i ich
+    suma), krok ich nie liczy — pokazuje, z czego składa się wynik.
+    """
+    eq = _eq(
+        "EQ_LVCV_009",
+        r"\Delta P = P_{od} + P_{do}",
+        "Straty mocy czynnej odcinka",
+        "bilans mocy zacisków gałęzi (rozpływ mocy)",
+        [
+            _sym("\\Delta P", "MW", "Straty mocy czynnej odcinka", "straty_mw"),
+            _sym("P_{od}", "MW", "Moc czynna wpływająca zaciskiem początkowym", "p_od_mw"),
+            _sym("P_{do}", "MW", "Moc czynna wpływająca zaciskiem końcowym", "p_do_mw"),
+        ],
+    )
+    return ProofStep(
+        step_id=ProofStep.generate_step_id(przedrostek, numer),
+        step_number=numer,
+        title_pl="Straty mocy czynnej odcinka (bieg rozpływu mocy)",
+        equation=eq,
+        input_values=(
+            _pv("P_{od}", straty.p_od_mw, "MW", "p_od_mw"),
+            _pv("P_{do}", straty.p_do_mw, "MW", "p_do_mw"),
+        ),
+        substitution_latex=(
+            f"$$\\Delta P = {straty.p_od_mw:.6f} + ({straty.p_do_mw:.6f}) = "
+            f"{straty.straty_mw:.6f}\\;\\mathrm{{MW}}$$"
+        ),
+        result=_pv("\\Delta P", straty.straty_mw, "MW", "straty_mw"),
+        unit_check=_uc("MW", "MW", "MW + MW = MW"),
+    )
 
 
 class LVCircuitVerificationProofPack:
@@ -452,486 +1131,58 @@ class LVCircuitVerificationProofPack:
 
         steps: list[ProofStep] = []
 
-        # ---------------------------------------------------------------
-        # Krok 1: S = sqrt(P^2+Q^2)                              REUSE EQ_LC_001
-        # ---------------------------------------------------------------
-        s_mva = (data.p_mw**2 + data.q_mvar**2) ** 0.5
-        eq1 = _eq(
-            "EQ_LC_001",
-            r"S = \sqrt{P^{2} + Q^{2}}",
-            "Moc pozorna",
-            "praktyka inżynierska",
-            [
-                _sym("S", "MVA", "Moc pozorna", "s_mva"),
-                _sym("P", "MW", "Moc czynna", "p_mw"),
-                _sym("Q", "Mvar", "Moc bierna", "q_mvar"),
-            ],
+        krok1, s_mva = krok_moc_pozorna(data.p_mw, data.q_mvar, 1)
+        steps.append(krok1)
+        krok2, ib_a = krok_prad_obliczeniowy(s_mva, data.u_ll_kv, 2)
+        steps.append(krok2)
+        krok3, iz_prime_a = krok_obciazalnosc(data.iz_katalogowe_a, data.wspolczynniki, 3)
+        steps.append(krok3)
+        krok4, dobor_spelnia = krok_dobor_zabezpieczenia(ib_a, data.urzadzenie, iz_prime_a, 4)
+        steps.append(krok4)
+        krok5, i2_spelnia = krok_prad_zadzialania(
+            data.i2_a, data.i2_zrodlo_pl, data.i2_uzasadnienie_pl, iz_prime_a, 5
         )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 1),
-                step_number=1,
-                title_pl="Dane wejściowe obwodu — moc pozorna",
-                equation=eq1,
-                input_values=(
-                    _pv("P", data.p_mw, "MW", "p_mw"),
-                    _pv("Q", data.q_mvar, "Mvar", "q_mvar"),
-                ),
-                substitution_latex=(
-                    f"$$S = \\sqrt{{{data.p_mw:.4f}^2 + {data.q_mvar:.4f}^2}} = {s_mva:.4f}"
-                    r"\;\mathrm{MVA}$$"
-                ),
-                result=_pv("S", s_mva, "MVA", "s_mva"),
-                unit_check=_uc("MVA", "MVA", "MW² + Mvar² = MVA² → MVA"),
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 2: Ib = S/(sqrt(3)*U_LL)                          REUSE EQ_LC_002
-        # ---------------------------------------------------------------
-        ib_ka = prad_z_mocy_pozornej_ka(s_mva, data.u_ll_kv)
-        ib_a = ka_na_a(ib_ka)
-        eq2 = _eq(
-            "EQ_LC_002",
-            r"I = \frac{S}{\sqrt{3}\,U_{LL}}",
-            "Prąd obliczeniowy obwodu",
-            "praktyka inżynierska",
-            [
-                _sym("I_b", "A", "Prąd obliczeniowy obwodu", "ib_a"),
-                _sym("S", "MVA", "Moc pozorna", "s_mva"),
-                _sym("U_{LL}", "kV", "Napięcie międzyfazowe", "u_ll_kv"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 2),
-                step_number=2,
-                title_pl="Prąd obliczeniowy obwodu Ib",
-                equation=eq2,
-                input_values=(
-                    _pv("S", s_mva, "MVA", "s_mva"),
-                    _pv("U_{LL}", data.u_ll_kv, "kV", "u_ll_kv"),
-                ),
-                substitution_latex=(
-                    f"$$I_b = \\frac{{{s_mva:.4f}}}{{\\sqrt{{3}} \\cdot {data.u_ll_kv:g}}} "
-                    f"= {ib_a:.2f}\\;\\mathrm{{A}}$$"
-                ),
-                result=_pv("I_b", ib_a, "A", "ib_a"),
-                unit_check=_uc("A", "A", "MVA / kV = kA (MVA = kV·kA) → A"),
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 3: Iz' = Iz * f_temp * f_grunt * f_grupa           NEW EQ_LVCV_001
-        # ---------------------------------------------------------------
-        iz_prime_a = obciazalnosc_skorygowana(data.iz_katalogowe_a, data.wspolczynniki)
-        w = data.wspolczynniki
-        eq3 = _eq(
-            "EQ_LVCV_001",
-            r"I_z' = I_z \cdot f_{\theta} \cdot f_{\rho} \cdot f_{N}",
-            "Obciążalność dopuszczalna po korektach (Iz′)",
-            "PN-HD 60364-5-52 (zestaw korekcyjny G-D1)",
-            [
-                _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
-                _sym("I_z", "A", "Obciążalność katalogowa", "iz_katalogowe_a"),
-                _sym("f_{\\theta}", "—", "Korekta temperatury otoczenia", "f_temperatura"),
-                _sym("f_{\\rho}", "—", "Korekta rezystywności gruntu", "f_rezystywnosc_gruntu"),
-                _sym("f_{N}", "—", "Korekta grupowania obwodów", "f_grupowanie"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 3),
-                step_number=3,
-                title_pl=f"Obciążalność dopuszczalna po korektach ({w.zalozenie_pl()})",
-                equation=eq3,
-                input_values=(
-                    _pv("I_z", data.iz_katalogowe_a, "A", "iz_katalogowe_a"),
-                    _pv("f_{\\theta}", w.f_temperatura, "—", "f_temperatura"),
-                    _pv("f_{\\rho}", w.f_rezystywnosc_gruntu, "—", "f_rezystywnosc_gruntu"),
-                    _pv("f_{N}", w.f_grupowanie, "—", "f_grupowanie"),
-                ),
-                substitution_latex=(
-                    f"$$I_z' = {data.iz_katalogowe_a:g} \\cdot {w.f_temperatura:g} \\cdot "
-                    f"{w.f_rezystywnosc_gruntu:g} \\cdot {w.f_grupowanie:g} = "
-                    f"{iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
-                ),
-                result=_pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
-                unit_check=_uc("A", "A", "A · (—)·(—)·(—) = A"),
-                source_keys={"srodowisko": w.srodowisko, "podstawa_iloczynu": w.zalozenie_pl()},
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 4: Dobór Ib <= In <= Iz'                          NEW EQ_LVCV_002
-        # ---------------------------------------------------------------
-        in_a = data.urzadzenie.in_a
-        dobor_spelnia = ib_a <= in_a <= iz_prime_a
-        eq4 = _eq(
-            "EQ_LVCV_002",
-            r"I_b \le I_n \le I_z'",
-            "Dobór zabezpieczenia obwodu",
-            "IEC 60364-4-43 §433.1",
-            [
-                _sym("I_b", "A", "Prąd obliczeniowy obwodu", "ib_a"),
-                _sym("I_n", "A", "Prąd znamionowy zabezpieczenia", "in_a"),
-                _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 4),
-                step_number=4,
-                title_pl=f"Dobór zabezpieczenia ({data.urzadzenie.nazwa})",
-                equation=eq4,
-                input_values=(
-                    _pv("I_b", ib_a, "A", "ib_a"),
-                    _pv("I_n", in_a, "A", "in_a"),
-                    _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
-                ),
-                substitution_latex=(
-                    f"$${ib_a:.2f} \\le {in_a:g} \\le {iz_prime_a:.2f}\\;\\mathrm{{A}} "
-                    f"\\Rightarrow \\text{{{'spełnia' if dobor_spelnia else 'nie spełnia'}}}$$"
-                ),
-                result=_pv("I_n", in_a, "A", "in_a"),
-                unit_check=_uc("A", "A", "A ≤ A ≤ A"),
-                source_keys={"werdykt": "spełnia" if dobor_spelnia else "nie spełnia"},
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 5: I2 <= 1,45*Iz' (MCB) / 1,6*In wkładki (FUSE_SWITCH)  NEW EQ_LVCV_003
-        # ---------------------------------------------------------------
-        limit_a = 1.45 * iz_prime_a
-        i2_a: float | None
-        i2_zrodlo: str
-        if data.urzadzenie.kind == KIND_MCB:
-            i2_a = PROG_CIEPLNY_WYZWALA_X_IN * in_a
-            i2_zrodlo = f"{PROG_CIEPLNY_WYZWALA_X_IN:g}×In (MCB, IEC 60898-1)"
-        elif data.urzadzenie.kind == KIND_FUSE_SWITCH:
-            i2_a = FUSE_GG_IF_MULTIPLIER * in_a
-            i2_zrodlo = f"If={FUSE_GG_IF_MULTIPLIER:g}×In wkładki (IEC 60269-1)"
-        else:
-            i2_a = None
-            i2_zrodlo = (
-                "MCCB z wyzwalaczem elektronicznym — brak normatywnego pojedynczego "
-                "mnożnika I2 niezależnego od nastaw producenta (zero fabrykacji)"
-            )
-        i2_spelnia = None if i2_a is None else i2_a <= limit_a
-        eq5 = _eq(
-            "EQ_LVCV_003",
-            r"I_2 \le 1{,}45 \cdot I_z'",
-            "Warunek zadziałania zabezpieczenia",
-            "IEC 60364-4-43 §433.1.1",
-            [
-                _sym("I_2", "A", "Prąd gwarantowanego zadziałania", "i2_a"),
-                _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
-                _sym("1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna I2", "limit_a"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 5),
-                step_number=5,
-                title_pl=f"Warunek zadziałania I2 ({i2_zrodlo})",
-                equation=eq5,
-                input_values=(
-                    _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
-                    _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
-                ),
-                substitution_latex=(
-                    f"$$I_2 = {i2_a:.2f}\\;\\mathrm{{A}} \\le 1{{,}}45 \\cdot {iz_prime_a:.2f} "
-                    f"= {limit_a:.2f}\\;\\mathrm{{A}}$$"
-                    if i2_a is not None
-                    else r"$$I_2 \text{ — NIEROZSTRZYGALNE (brak normatywnego mnożnika MCCB)}$$"
-                ),
-                result=_pv(
-                    "I_2",
-                    i2_a if i2_a is not None else "NIEROZSTRZYGALNE",
-                    "A",
-                    "i2_a",
-                ),
-                unit_check=_uc("A", "A", "A ≤ A"),
-                source_keys={
-                    "werdykt": (
-                        "nierozstrzygalne"
-                        if i2_spelnia is None
-                        else ("spełnia" if i2_spelnia else "nie spełnia")
-                    )
-                },
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 6: Zdolność wyłączania — DWA ZDANIA                NEW EQ_LVCV_004
-        # ---------------------------------------------------------------
-        zdolnosc = ocen_zdolnosc_wylaczania_dwa_zdania(
-            urzadzenie=data.urzadzenie, ik_max_ka=data.ik_max_ka
-        )
-        eq6 = _eq(
-            "EQ_LVCV_004",
-            r"I_{cond} \ge I_k''_{max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I_k''_{max}",
-            "Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
-            "IEC 60947 / IEC 60898-1 / IEC 60269-1",
-            [
-                _sym(
-                    "I_{cond}",
-                    "kA",
-                    "Prąd warunkowy KOMBINACJI aparat+wkładka",
-                    "conditional_sc_current_ka",
-                ),
-                _sym("I_{cu/cn}", "kA", "Własna zdolność GOŁEGO aparatu", "icu_or_icn_ka"),
-                _sym("I_k''_{max}", "kA", "Prąd zwarciowy początkowy maksymalny", "ik_max_ka"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 6),
-                step_number=6,
-                title_pl="Zdolność wyłączania — dwa zdania inżynierskie (kombinacja / goły aparat)",
-                equation=eq6,
-                input_values=(
-                    _pv(
-                        "I_{cond}",
-                        (
-                            zdolnosc.kombinacja_wartosc_ka
-                            if zdolnosc.kombinacja_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
-                        ),
-                        "kA",
-                        "conditional_sc_current_ka",
-                    ),
-                    _pv(
-                        "I_{cu/cn}",
-                        (
-                            zdolnosc.goly_aparat_wartosc_ka
-                            if zdolnosc.goly_aparat_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
-                        ),
-                        "kA",
-                        "icu_or_icn_ka",
-                    ),
-                    _pv(
-                        "I_k''_{max}",
-                        data.ik_max_ka if data.ik_max_ka is not None else "NIEDOSTĘPNE",
-                        "kA",
-                        "ik_max_ka",
-                    ),
-                ),
-                substitution_latex=(
-                    f"$$\\text{{kombinacja: }} {zdolnosc.zdanie_kombinacja_pl}$$\n"
-                    f"$$\\text{{goły aparat: }} {zdolnosc.zdanie_goly_aparat_pl}$$"
-                ),
-                result=_pv(
-                    "\\text{werdykt}",
-                    f"kombinacja={zdolnosc.kombinacja_status}; goły_aparat={zdolnosc.goly_aparat_status}",
-                    "—",
-                    "zdolnosc_wylaczania_werdykt",
-                ),
-                unit_check=_uc("kA", "kA", "kA ≥ kA"),
-                source_keys={
-                    "zdanie_kombinacja_pl": zdolnosc.zdanie_kombinacja_pl,
-                    "zdanie_goly_aparat_pl": zdolnosc.zdanie_goly_aparat_pl,
-                },
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 7: I^2*t <= k^2*S^2                                NEW EQ_LVCV_005
-        # ---------------------------------------------------------------
+        steps.append(krok5)
+        krok6, zdolnosc = krok_zdolnosc_wylaczania(data.urzadzenie, data.ik_max_ka, 6)
+        steps.append(krok6)
         th = data.thermal
-        eq7 = _eq(
-            "EQ_LVCV_005",
-            r"\int i^{2}\,dt \le k^{2} S^{2}",
-            "Wytrzymałość cieplna przewodu (bilans energii zwarciowej)",
-            "IEC 60949",
-            [
-                _sym("\\int i^{2}\\,dt", "A²s", "Energia zwarciowa rzeczywista", "i2t_a2s"),
-                _sym("k^{2} S^{2}", "A²s", "Energia dopuszczalna", "i2t_admissible_a2s"),
-            ],
-        )
+        steps.append(krok_wytrzymalosc_cieplna(th, 7))
+        # Wytrzymałość cieplna: UNAVAILABLE (brak Ith albo czasu wyłączenia) to brak
+        # danych, nie naruszenie — do karty OBIEKT-KABEL-NN agregat zliczał go jako
+        # „nie spełnia" i dawał FAIL obwodu bez żadnego przekroczenia.
         thermal_ok = th.status == "PASS"
-        i2t = th.i2t_a2s if th.i2t_a2s is not None else 0.0
-        i2t_dop = th.i2t_admissible_a2s if th.i2t_admissible_a2s is not None else 0.0
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 7),
-                step_number=7,
-                title_pl="Wytrzymałość cieplna przewodu I²t ≤ k²S²",
-                equation=eq7,
-                input_values=(
-                    _pv(
-                        "\\int i^{2}\\,dt",
-                        i2t if th.i2t_a2s is not None else "NIEDOSTĘPNE",
-                        "A²s",
-                        "i2t_a2s",
-                    ),
-                    _pv(
-                        "k^{2} S^{2}",
-                        i2t_dop if th.i2t_admissible_a2s is not None else "NIEDOSTĘPNE",
-                        "A²s",
-                        "i2t_admissible_a2s",
-                    ),
-                ),
-                substitution_latex=(
-                    f"$${i2t:.1f}\\;\\mathrm{{A^2s}} \\le {i2t_dop:.1f}\\;\\mathrm{{A^2s}} "
-                    f"\\Rightarrow \\text{{{th.status}}}$$"
-                    if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
-                    else rf"$$\text{{{th.status}}}$$"
-                ),
-                result=_pv("\\text{status}", th.status, "—", "thermal_status"),
-                unit_check=_uc("A²s", "A²s", "A²·s ≤ (A·√s/mm²)² · mm² = A²·s"),
-                source_keys={
-                    "decision_reason_pl": th.decision_reason_pl or "",
-                    "readiness_codes": ",".join(th.readiness_codes),
-                },
-            )
+        thermal_status = (
+            STATUS_NIEROZSTRZYGALNE
+            if not th.is_conclusive
+            else (STATUS_SPELNIA if thermal_ok else STATUS_NIE_SPELNIA)
         )
-
-        # ---------------------------------------------------------------
-        # Krok 8: ΔU dowód (headline)                             REUSE EQ_VDROP_007
-        # ---------------------------------------------------------------
-        u_target_kv = data.vdrop_u_source_kv - data.vdrop_delta_u_total_kv
-        eq8 = _eq(
-            "EQ_VDROP_007",
-            r"U = U_{source} - \Delta U_{total}^{kV}",
-            "Napięcie w punkcie po uwzględnieniu spadku",
-            "—",
-            [
-                _sym("U", "kV", "Napięcie w punkcie", "u_kv"),
-                _sym("U_{source}", "kV", "Napięcie źródła", "u_source_kv"),
-                _sym(
-                    "\\Delta U_{total}^{kV}", "kV", "Sumaryczny spadek napięcia", "delta_u_total_kv"
-                ),
-            ],
+        krok8, u_target_kv = krok_napiecie_w_punkcie(
+            data.vdrop_u_source_kv,
+            data.vdrop_delta_u_total_kv,
+            data.vdrop_delta_u_total_percent,
+            8,
         )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 8),
-                step_number=8,
-                title_pl="Spadek napięcia — łańcuch źródło → punkt (dowód pełny w pakiecie VDROP)",
-                equation=eq8,
-                input_values=(
-                    _pv("U_{source}", data.vdrop_u_source_kv, "kV", "u_source_kv"),
-                    _pv(
-                        "\\Delta U_{total}^{kV}",
-                        data.vdrop_delta_u_total_kv,
-                        "kV",
-                        "delta_u_total_kv",
-                    ),
-                ),
-                substitution_latex=(
-                    f"$$U = {data.vdrop_u_source_kv:.4f} - {data.vdrop_delta_u_total_kv:.4f} "
-                    f"= {u_target_kv:.4f}\\;\\mathrm{{kV}}$$"
-                ),
-                result=_pv("U", u_target_kv, "kV", "u_kv"),
-                unit_check=_uc("kV", "kV", "kV − kV = kV"),
-                source_keys={
-                    "delta_u_total_percent": (
-                        f"{data.vdrop_delta_u_total_percent:.4f}"
-                        if data.vdrop_delta_u_total_percent is not None
-                        else "brak"
-                    )
-                },
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 9: Ik1_min = c_min*U0/|Z_petli|                     NEW EQ_LVCV_006
-        # ---------------------------------------------------------------
+        steps.append(krok8)
         fl = data.fault_loop
-        eq9 = _eq(
-            "EQ_LVCV_006",
-            r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
-            "Prąd zwarcia minimalnego z pętli",
-            "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
-            [
-                _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-                _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
-                _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
-                _sym("Z_{loop}", "Ω", "Moduł impedancji pętli zwarcia", "z_loop_magnitude_ohm"),
-            ],
-        )
+        steps.append(krok_prad_zwarcia_min(fl, 9))
         steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 9),
-                step_number=9,
-                title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
-                equation=eq9,
-                input_values=(
-                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
-                    _pv("U_0", fl.u_nom_v, "V", "u0_v"),
-                    _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
+            krok_swz(
+                fl,
+                WynikSwzKroku(
+                    rozstrzygniecie=SwzStatus(data.swz_status),
+                    przyczyna_pl=data.swz_przyczyna_pl,
+                    ia_wymagane_a=data.swz_ia_wymagane_a,
+                    t_wymagany_s=data.swz_t_wymagany_s,
+                    pasmo_u0=data.swz_pasmo_u0,
+                    rodzaj_obwodu=data.swz_rodzaj_obwodu,
                 ),
-                substitution_latex=(
-                    f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
-                    f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
-                ),
-                result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-                unit_check=_uc("A", "A", "(—) · V / Ω = A"),
-                source_keys={
-                    "trasa": ";".join(c.label for c in fl.components),
-                    "network_type": fl.network_type.value,
-                },
+                10,
             )
         )
-
-        # ---------------------------------------------------------------
-        # Krok 10: SWZ Ik1_min >= Ia(t_wym)                        NEW EQ_LVCV_007
-        # ---------------------------------------------------------------
-        eq10 = _eq(
-            "EQ_LVCV_007",
-            r"I_{k1,min} \ge I_a(t_{wym})",
-            "Samoczynne wyłączenie zasilania (SWZ)",
-            "IEC 60364-4-41 Tab. 41.1 (G-D3)",
-            [
-                _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-                _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
-                _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 10),
-                step_number=10,
-                title_pl=(
-                    f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={data.swz_pasmo_u0}, "
-                    f"obwód {data.swz_rodzaj_obwodu})"
-                ),
-                equation=eq10,
-                input_values=(
-                    _pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-                    _pv(
-                        "I_a",
-                        (
-                            data.swz_ia_wymagane_a
-                            if data.swz_ia_wymagane_a is not None
-                            else "NIEDOSTĘPNE"
-                        ),
-                        "A",
-                        "ia_wymagane_a",
-                    ),
-                    _pv(
-                        "t_{wym}",
-                        (
-                            data.swz_t_wymagany_s
-                            if data.swz_t_wymagany_s is not None
-                            else "NIEDOSTĘPNE"
-                        ),
-                        "s",
-                        "t_wymagany_s",
-                    ),
-                ),
-                substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
-                result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-                unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
-                source_keys={
-                    "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
-                    "pasmo_u0": data.swz_pasmo_u0,
-                    "rodzaj_obwodu": data.swz_rodzaj_obwodu,
-                },
-            )
-        )
+        if data.straty is not None:
+            steps.append(krok_straty(data.straty, 11))
+        in_a = data.urzadzenie.in_a
+        i2_a = data.i2_a
 
         # ---------------------------------------------------------------
         # Podsumowanie
@@ -952,7 +1203,7 @@ class LVCircuitVerificationProofPack:
             ),
             zdolnosc.kombinacja_status,
             zdolnosc.goly_aparat_status,
-            STATUS_SPELNIA if thermal_ok else STATUS_NIE_SPELNIA,
+            thermal_status,
             data.swz_status,
         ]
         rozstrzygalne = [s for s in czesciowe_statusy if s not in (STATUS_NIE_DOTYCZY,)]
@@ -981,7 +1232,9 @@ class LVCircuitVerificationProofPack:
             "swz_status": _pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
         }
         if data.ik_max_ka is not None:
-            key_results["ik_max_ka"] = _pv("I_k''_{max}", data.ik_max_ka, "kA", "ik_max_ka")
+            key_results["ik_max_ka"] = _pv("I''_{k,max}", data.ik_max_ka, "kA", "ik_max_ka")
+        if data.straty is not None:
+            key_results["straty_mw"] = _pv("\\Delta P", data.straty.straty_mw, "MW", "straty_mw")
 
         summary = ProofSummary(
             key_results=key_results,

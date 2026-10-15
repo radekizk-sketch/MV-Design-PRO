@@ -1,0 +1,260 @@
+/* Sekcja „Obliczenia kabla nN" inspektora — tokeny motywu (oba motywy z jednego źródła). */
+
+.mvd-kabel-nn {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.mvd-kabel-nn-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-kabel-nn-podtytul {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mvd-kabel-nn-info {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-blad-operacji {
+  color: var(--mvd-err);
+}
+
+.mvd-kabel-nn-opis-obiektu {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.mvd-kabel-nn-opis-obiektu > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mvd-kabel-nn-opis-obiektu dt {
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-opis-obiektu dd {
+  margin: 0;
+  text-align: right;
+}
+
+.mvd-kabel-nn-blok {
+  border-top: 1px solid var(--mvd-line);
+  padding-top: 8px;
+}
+
+.mvd-kabel-nn-brak-biegow {
+  border: 1px solid var(--mvd-warn);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.mvd-kabel-nn-przyciski {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.mvd-kabel-nn-formularz {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.mvd-kabel-nn-formularz label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-kabel-nn-formularz label > span {
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-formularz select {
+  min-width: 9rem;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font: inherit;
+}
+
+.mvd-kabel-nn-przewijanie {
+  overflow-x: auto;
+}
+
+.mvd-kabel-nn-tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mvd-kabel-nn-tabela th,
+.mvd-kabel-nn-tabela td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.mvd-kabel-nn-tabela th {
+  font-weight: 600;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+
+.mvd-kabel-nn-wartosc {
+  white-space: nowrap;
+}
+
+.mvd-kabel-nn-brak {
+  color: var(--mvd-muted);
+  white-space: normal;
+}
+
+.mvd-kabel-nn-warunek {
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-norma {
+  color: var(--mvd-muted);
+  min-width: 10rem;
+}
+
+.mvd-kabel-nn-sprawdzenie {
+  white-space: nowrap;
+}
+
+.mvd-kabel-nn-ocena {
+  font-weight: 600;
+}
+
+.mvd-kabel-nn-maly {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.mvd-kabel-nn-znacznik {
+  font-size: 11px;
+  color: var(--mvd-accent);
+}
+
+.mvd-kabel-nn-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.mvd-kabel-nn-kroki {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-kabel-nn-krok-tytul {
+  font-weight: 600;
+}
+
+.mvd-kabel-nn-krok-podstawa,
+.mvd-kabel-nn-opis {
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-krok-etap {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+
+.mvd-kabel-nn-parametry {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-kabel-nn-parametr {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mvd-kabel-nn-parametr dd {
+  margin: 0;
+}
+
+.mvd-kabel-nn-skutek {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-kabel-nn-skutek li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mvd-kabel-nn-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mvd-kabel-nn-kryterium,
+.mvd-kabel-nn-wariant {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-kabel-nn-kryterium-glowa {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.mvd-kabel-nn-wariant-nazwa {
+  font-weight: 600;
+}
+
+.mvd-kabel-nn-sprawdzenie {
+  overflow-x: auto;
+}

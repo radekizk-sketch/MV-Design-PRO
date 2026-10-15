@@ -131,3 +131,23 @@ def test_todo_a_owned_paths_are_clean_on_real_repo() -> None:
     )
     naruszenia = [v for v in naruszenia if v.path not in guard.TODO_FIXME_FILE_EXEMPTIONS]
     assert naruszenia == [], [f"{v.path}:{v.line_no}: {v.context}" for v in naruszenia]
+
+
+def _e2e(tmp_path: Path, tresc: str) -> list:
+    plik = tmp_path / "frontend" / "e2e" / "przyklad.spec.ts"
+    plik.parent.mkdir(parents=True)
+    plik.write_text(tresc, encoding="utf-8")
+    return [
+        v for v in guard.check_legacy_catalog_payloads(root=tmp_path) if "from_bus_ref" in v.rule
+    ]
+
+
+def test_from_bus_ref_operacji_nn_w_e2e_jest_biezacym_kontraktem(tmp_path: Path) -> None:
+    """Karta OBIEKT-KABEL-NN: operacje nN niosą `from_bus_ref` — nie ma naruszenia."""
+    for op in guard.OPERACJE_NN_Z_FROM_BUS_REF:
+        assert not _e2e(tmp_path / op, f"await operacja(r, c, '{op}', {{\n  from_bus_ref: x,\n}});\n")
+
+
+def test_from_bus_ref_poza_operacja_nn_w_e2e_nadal_jest_naruszeniem(tmp_path: Path) -> None:
+    """Iniekcja czerwona: dawny wzorzec SN (bez operacji nN w oknie kontekstu) zostaje wykryty."""
+    assert _e2e(tmp_path, "await operacja(r, c, 'add_trunk_segment_sn', {\n  from_bus_ref: x,\n});\n")

@@ -44,7 +44,7 @@ ZERO NOWEJ FIZYKI — czysta KOMPOZYCJA istniejących dostawców:
                             kandydata — dokładnie ten wzorzec, co w module
                             źródłowym).
   - k2/I2:                  odczyt z `wartosci` kryterium (ii) zwróconego
-                            przez `oceniaj_kandydata` (`_kryterium_i2`) — nie
+                            przez `oceniaj_kandydata` (`kryterium_i2`) — nie
                             druga implementacja mnożnika; stałe P0.7
                             (`PROG_CIEPLNY_WYZWALA_X_IN`/`FUSE_GG_IF_
                             MULTIPLIER`/`MCCB_I2_MULTIPLIER`) importowane
@@ -124,6 +124,7 @@ from application.analyses.nn_device_selection import (
     KIND_MCB,
     KIND_MCCB,
     KandydatAparatuNn,
+    kandydat_z_urzadzenia,
     oceniaj_kandydata,
     wybierz_aparat_dla_obwodu_nn,
 )
@@ -154,11 +155,13 @@ from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_I
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
+    WspolczynnikiObciazalnosciNN,
     obciazalnosc_skorygowana,
     wspolczynniki_nn,
 )
 from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
+    ConductorThermalResult,
     check_conductor_thermal_withstand,
 )
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MCCB_I2_MULTIPLIER
@@ -169,7 +172,7 @@ from solver_input.uklad_sieci_nn import uklad_tn
 # arkusz i zakładka SWZ zgadzały się co do tego, KIEDY odpływ ma zamodelowany
 # aparat u początku (jedno źródło reguły, powielone celowo po obu stronach
 # granicy warstw — backend/frontend nie dzielą modułu Python).
-_TYPY_APARATU = frozenset({"switch", "breaker", "disconnector", "fuse"})
+TYPY_APARATU = frozenset({"switch", "breaker", "disconnector", "fuse"})
 
 # γ [MS/m przy 20°C] — konduktywność referencyjna wg IEC 60287-1-1 / PN-EN
 # 60228 (miedź: 58,0 MS/m; aluminium: 35,0 MS/m — wartości katalogowe
@@ -206,28 +209,10 @@ def _nierozstrzygalne(reason_pl: str) -> dict[str, Any]:
 
 
 # =============================================================================
-# Aparat zainstalowany → KandydatAparatuNn (reshaping czyste, zero fizyki) —
-# umożliwia REUSE `nn_device_selection.oceniaj_kandydata` dla aparatu
-# ZAINSTALOWANEGO (zamiast rankingu katalogu).
+# Nastawy aparatu zainstalowanego (przekształcenie aparatu w kandydata oceny żyje
+# w `nn_device_selection.kandydat_z_urzadzenia` — jedno miejsce dla arkusza,
+# dowodu obwodu i sekcji obliczeń kabla nN).
 # =============================================================================
-
-
-def _kandydat_z_urzadzenia(u: UrzadzenieOchronneNn) -> KandydatAparatuNn:
-    zdolnosc = u.conditional_sc_current_ka if u.kind == KIND_FUSE_SWITCH else u.wlasna_zdolnosc_ka
-    return KandydatAparatuNn(
-        id=u.id,
-        nazwa=u.nazwa,
-        kind=u.kind,
-        in_a=u.in_a,
-        zdolnosc_wylaczania_ka=zdolnosc,
-        klasa_mcb=u.klasa_mcb,
-        fuse_breaking_capacity_ka=u.fuse_breaking_capacity_ka,
-        ir_a=u.ir_a,
-        isd_a=u.isd_a,
-        ii_a=u.ii_a,
-        tr_s=u.tr_s,
-        tsd_s=u.tsd_s,
-    )
 
 
 def _nastawa_n_i_ir(u: UrzadzenieOchronneNn) -> tuple[float | None, float | None]:
@@ -259,7 +244,42 @@ def _k2_dla_rodzaju(kind: str) -> float | None:
 # =============================================================================
 
 
-def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
+def wspolczynniki_ulozenia_kabla(
+    cable: Cable,
+) -> tuple[WspolczynnikiObciazalnosciNN | None, str | None]:
+    """Współczynniki Iz′ z ZAPISANYCH warunków ułożenia kabla nN — JEDEN odczyt meta.
+
+    ``(None, None)`` — brak deklaracji (warunki katalogowe, kod W060);
+    ``(None, powód)`` — deklaracja niekompletna albo spoza rejestru tablic G-D1;
+    ``(współczynniki, None)`` — złożone przez solver (`wspolczynniki_nn`). Arkusz
+    obwodów i sekcja obliczeń kabla nN (`kabel_nn`) czytają warunki TĄ funkcją.
+    """
+    warunki = (cable.meta or {}).get("cable_laying_conditions") if cable.meta else None
+    if not warunki:
+        return None, None
+    try:
+        return (
+            wspolczynniki_nn(
+                srodowisko=warunki["environment"],
+                izolacja=warunki["insulation"],
+                temperatura_c=float(warunki["ambient_temperature_c"]),
+                liczba_obwodow=int(warunki["circuit_count"]),
+                rezystywnosc_gruntu_km_w=(
+                    float(warunki["soil_thermal_resistivity_km_w"])
+                    if warunki.get("soil_thermal_resistivity_km_w") is not None
+                    else None
+                ),
+            ),
+            None,
+        )
+    except (KeyError, ValueError) as exc:
+        return None, (
+            f"Warunki ułożenia kabla '{nazwa_elementu(cable, 'branches')}' "
+            f"niekompletne/niepoprawne: {exc}"
+        )
+
+
+def iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
     params = cable.materialized_params if isinstance(cable.materialized_params, dict) else None
     iz_katalogowe = params.get("i_max_a") if params else None
     if iz_katalogowe is None:
@@ -275,8 +295,17 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             ),
         }
     iz_katalogowe = float(iz_katalogowe)
-    warunki = (cable.meta or {}).get("cable_laying_conditions") if cable.meta else None
-    if not warunki:
+    wspolczynniki, blad_ulozenia = wspolczynniki_ulozenia_kabla(cable)
+    if blad_ulozenia is not None:
+        return {
+            "branch_ref": cable.ref_id,
+            "iz_katalogowe_a": iz_katalogowe,
+            "iz_prime_a": None,
+            "rozklad": None,
+            "status": "nierozstrzygalne",
+            "reason_pl": blad_ulozenia,
+        }
+    if wspolczynniki is None:
         return {
             "branch_ref": cable.ref_id,
             "iz_katalogowe_a": iz_katalogowe,
@@ -291,30 +320,6 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "reason_pl": (
                 "Warunki katalogowe (brak zadeklarowanych warunków ułożenia — kod W060); "
                 "w rzeczywistej trasie obciążalność może być mniejsza."
-            ),
-        }
-    try:
-        wspolczynniki = wspolczynniki_nn(
-            srodowisko=warunki["environment"],
-            izolacja=warunki["insulation"],
-            temperatura_c=float(warunki["ambient_temperature_c"]),
-            liczba_obwodow=int(warunki["circuit_count"]),
-            rezystywnosc_gruntu_km_w=(
-                float(warunki["soil_thermal_resistivity_km_w"])
-                if warunki.get("soil_thermal_resistivity_km_w") is not None
-                else None
-            ),
-        )
-    except (KeyError, ValueError) as exc:
-        return {
-            "branch_ref": cable.ref_id,
-            "iz_katalogowe_a": iz_katalogowe,
-            "iz_prime_a": None,
-            "rozklad": None,
-            "status": "nierozstrzygalne",
-            "reason_pl": (
-                f"Warunki ułożenia kabla '{nazwa_elementu(cable, 'branches')}' "
-                f"niekompletne/niepoprawne: {exc}"
             ),
         }
     iz_prime = obciazalnosc_skorygowana(iz_katalogowe, wspolczynniki)
@@ -378,7 +383,7 @@ def _ib_z_tabliczki(p_mw: float, q_mvar: float, u_ll_kv: float) -> float:
 # =============================================================================
 
 
-def _zacisk_od_strony_rozdzielnicy(
+def zacisk_od_strony_rozdzielnicy(
     path: LvBusPath | None, szyna_rozdzielnicy: str, branch_ref: str
 ) -> Literal["od", "do"] | None:
     """Zacisk gałęzi `branch_ref` BLIŻSZY rozdzielnicy wzdłuż trasy `path` (od szyny
@@ -403,7 +408,7 @@ def _zacisk_od_strony_rozdzielnicy(
     return None
 
 
-def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do"]) -> float | None:
+def ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do"]) -> float | None:
     """Prąd zacisku `zacisk` gałęzi `branch_ref` [A] z tabeli gałęzi biegu; `None` —
     gałęzi nie ma w wyniku (aparat bez impedancji) albo prąd zacisku nie jest wynikiem.
     """
@@ -414,7 +419,7 @@ def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do
     return None
 
 
-def _ik_z_biegu_zwarciowego(run: CanonicalRun, bus_ref: str) -> tuple[float | None, float | None]:
+def ik_z_biegu_zwarciowego(run: CanonicalRun, bus_ref: str) -> tuple[float | None, float | None]:
     """(ikss_ka, ith_ka) w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE
     build_short_circuit_results). ``(None, None)`` gdy punkt nie występuje
     w wyniku tego biegu (uczciwy brak, nie 0)."""
@@ -430,7 +435,7 @@ def _ik_z_biegu_zwarciowego(run: CanonicalRun, bus_ref: str) -> tuple[float | No
 # =============================================================================
 
 
-def _delta_u_dla_trasy(
+def delta_u_dla_trasy(
     run: CanonicalRun, route_branches: tuple[Any, ...], worst_bus_ref: str
 ) -> dict[str, Any]:
     try:
@@ -480,6 +485,26 @@ def _delta_u_dla_trasy(
 # =============================================================================
 
 
+def wytrzymalosc_cieplna_kabla(
+    cable: Cable, *, ith_a: float | None, czas_s: float | None
+) -> ConductorThermalResult:
+    """I²t ≤ k²S² kabla (solver `check_conductor_thermal_withstand`) — JEDNO odwzorowanie
+    pól kabla na wejście solvera dla arkusza obwodów i sekcji obliczeń kabla nN."""
+    return check_conductor_thermal_withstand(
+        ConductorThermalInput(
+            ith_a=ith_a,
+            fault_duration_s=czas_s,
+            ith_1s_a=cable.ith_1s_a,
+            jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
+            cross_section_mm2=cable.cross_section_mm2,
+            conductor_material=cable.conductor_material,
+            insulation=cable.insulation,
+            temp_operating_c=cable.operating_temperature_c,
+            temp_short_circuit_c=cable.short_circuit_temperature_c,
+        )
+    )
+
+
 def _i2t_dla_kabla(
     cable: Cable, *, ith_ka: float | None, fault_duration_s: float | None
 ) -> dict[str, Any]:
@@ -493,19 +518,7 @@ def _i2t_dla_kabla(
             "Brak czasu wyłączenia zwarcia (fault_duration_s) — wymaga analizy koordynacji "
             "zabezpieczeń (poza zakresem tej karty); podaj jako parametr żądania."
         )
-    wynik = check_conductor_thermal_withstand(
-        ConductorThermalInput(
-            ith_a=ka_na_a(ith_ka),
-            fault_duration_s=fault_duration_s,
-            ith_1s_a=cable.ith_1s_a,
-            jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
-            cross_section_mm2=cable.cross_section_mm2,
-            conductor_material=cable.conductor_material,
-            insulation=cable.insulation,
-            temp_operating_c=cable.operating_temperature_c,
-            temp_short_circuit_c=cable.short_circuit_temperature_c,
-        )
-    )
+    wynik = wytrzymalosc_cieplna_kabla(cable, ith_a=ka_na_a(ith_ka), czas_s=fault_duration_s)
     if wynik.status == "UNAVAILABLE":
         return _nierozstrzygalne(
             wynik.decision_reason_pl
@@ -576,7 +589,7 @@ def _build_row(
     # przez typ (a nie tylko przez pole `type`) — resolver aparatu przyjmuje wyłącznie te klasy.
     aparat_korzenia = (
         root_branch
-        if isinstance(root_branch, SwitchBranch | FuseBranch) and root_branch.type in _TYPY_APARATU
+        if isinstance(root_branch, SwitchBranch | FuseBranch) and root_branch.type in TYPY_APARATU
         else None
     )
 
@@ -614,7 +627,7 @@ def _build_row(
     galaz_ib_ref: str | None = None
     ib_odmowa_pl: str | None = None
     if load_flow_run is not None:
-        zacisk_korzenia = _zacisk_od_strony_rozdzielnicy(path, trafo.lv_bus_ref, root_branch_ref)
+        zacisk_korzenia = zacisk_od_strony_rozdzielnicy(path, trafo.lv_bus_ref, root_branch_ref)
         if zacisk_korzenia is None:
             ib_odmowa_pl = route_error or (
                 f"Gałąź {root_branch_ref} nie leży na trasie od szyny rozdzielnicy "
@@ -625,7 +638,7 @@ def _build_row(
             )
         else:
             galaz_ib_ref, zacisk_ib = root_branch_ref, zacisk_korzenia
-            ib_a = _ib_z_rozplywu(load_flow_run, root_branch_ref, zacisk_korzenia)
+            ib_a = ib_z_rozplywu(load_flow_run, root_branch_ref, zacisk_korzenia)
             if ib_a is None and kable:
                 # Aparat (switch/fuse) jest gałęzią BEZIMPEDANCYJNĄ dla solvera
                 # rozpływu — `enm.mapping.map_enm_to_network_graph` go nie
@@ -635,12 +648,12 @@ def _build_row(
                 # RÓWNA SIĘ prądowi zacisku pierwszego kabla trasy od strony
                 # rozdzielnicy (zachowanie prądu na gałęzi bezimpedancyjnej —
                 # tożsamość, nie nowa fizyka).
-                zacisk_kabla = _zacisk_od_strony_rozdzielnicy(
+                zacisk_kabla = zacisk_od_strony_rozdzielnicy(
                     path, trafo.lv_bus_ref, kable[0].ref_id
                 )
                 if zacisk_kabla is not None:
                     galaz_ib_ref, zacisk_ib = kable[0].ref_id, zacisk_kabla
-                    ib_a = _ib_z_rozplywu(load_flow_run, kable[0].ref_id, zacisk_kabla)
+                    ib_a = ib_z_rozplywu(load_flow_run, kable[0].ref_id, zacisk_kabla)
         if ib_a is not None:
             zrodlo_ib = "rozpływ"
             zrodlo_ib_pl = (
@@ -660,7 +673,7 @@ def _build_row(
 
     # --- Iz′ (min po kablach trasy — najsłabsze ogniwo) -----------------
     if kable:
-        rozklady_iz = [_iz_prime_dla_kabla(c) for c in kable]
+        rozklady_iz = [iz_prime_dla_kabla(c) for c in kable]
         rozstrzygalne = [r for r in rozklady_iz if r["status"] == "OK"]
         if rozstrzygalne:
             najgorszy = min(rozstrzygalne, key=lambda r: r["iz_prime_a"])
@@ -739,7 +752,7 @@ def _build_row(
     ith_ka: float | None = None
     zrodlo_ik_max_pl = ""
     if short_circuit_run is not None:
-        ikss_ka, ith_ka = _ik_z_biegu_zwarciowego(short_circuit_run, worst_bus_ref)
+        ikss_ka, ith_ka = ik_z_biegu_zwarciowego(short_circuit_run, worst_bus_ref)
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
     ik_max_sekcja = (
         _wartosc(ikss_ka, zrodlo_ik_max_pl)
@@ -806,7 +819,7 @@ def _build_row(
             kandydat_blad: str | None = None
             kandydat: KandydatAparatuNn | None
             try:
-                kandydat = _kandydat_z_urzadzenia(urzadzenie)
+                kandydat = kandydat_z_urzadzenia(urzadzenie)
             except OdmowaDanychError as exc:
                 kandydat = None
                 kandydat_blad = f"Dane katalogowe aparatu niespójne: {exc}"
@@ -896,7 +909,7 @@ def _build_row(
     elif path is None:
         delta_u_sekcja = _brak(route_error or "Trasa nierozwiązywalna.")
     else:
-        delta_u_sekcja = _delta_u_dla_trasy(load_flow_run, path.branches, worst_bus_ref)
+        delta_u_sekcja = delta_u_dla_trasy(load_flow_run, path.branches, worst_bus_ref)
 
     # Wiersz arkusza nazywa obwód nazwą odpływu z modelu albo opisem rodzaju — nigdy
     # identyfikatorem gałęzi (ten zostaje w `feeder_root_branch_ref`).

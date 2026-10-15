@@ -21,14 +21,11 @@ REUSE, ZERO DRUGIEJ FIZYKI:
   - SWZ: `application.analyses.swz.werdykt.ocen_swz` — JEDNO źródło werdyktu
     3-stanowego (P0.6, G-06); ten moduł NIE odtwarza logiki Ia/tabeli
     czasów, tylko woła istniejący silnik dla KAŻDEGO kandydata.
-  - Ik1_min/U0 dla wywołania SWZ: orkiestracja (`wybierz_aparat_dla_obwodu_nn`)
-    powtarza DOKŁADNIE tę samą sekwencję wywołań solvera pętli zwarcia, którą
-    używa `application.analyses.swz.service.build_swz_view` (import
-    prywatnych helperów `fault_loop.service` — WZORZEC już ustanowiony i
-    świadomie uzasadniony w `swz/service.py`; ten moduł powtarza go z tego
-    samego powodu: Ik1_min NIE zależy od tego, KTÓRY aparat jest oceniany —
-    tylko od trasy/impedancji, więc liczy się GO RAZ, nie per kandydat).
-    `application/analyses/swz/**` pozostaje NIETKNIĘTE (granica karty P0.6).
+  - Ik1_min/U0 dla wywołania SWZ: `fault_loop.service.petla_zwarcia_min_w_punkcie`
+    — JEDNA sekwencja pętli zwarcia minimalnego w punkcie, wspólna z dowodem
+    weryfikacji obwodu nN i sekcją obliczeń kabla nN (karta OBIEKT-KABEL-NN).
+    Ik1_min NIE zależy od tego, KTÓRY aparat jest oceniany — tylko od
+    trasy/impedancji, więc liczy się GO RAZ, nie per kandydat.
 
 ZERO FABRYKACJI: kryterium nieobliczalne (brak danej katalogowej, brak
 normatywnego mnożnika dla danego rodzaju aparatu) daje TRZECI STAN
@@ -47,31 +44,13 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from application.analyses.fault_loop.route import (
-    RouteExtractionError,
-    path_to_bus,
-    route_segments_min_scenario,
-)
-
-# Import ŚWIADOMY prywatnych helperów `fault_loop.service` — DOKŁADNIE ten
-# sam wzorzec i to samo uzasadnienie, co w `application.analyses.swz.service`
-# (patrz docstring modułu powyżej i tamtego modułu): Ik1_min/U0 dla obwodu
-# NIE zależą od ocenianego aparatu, więc liczą się RAZ, tą samą fizyką co
-# SWZ (zero drugiej ścieżki obliczeniowej pętli zwarcia).
-from application.analyses.fault_loop.service import (
-    _find_station,
-    _transformer_loop_impedance,
-    _upstream_thevenin_lv_component,
-    oblicz_petle_na_trasie,
-    odmowa_analizy_nn,
-    resolve_transformer_for_bus,
-    uklad_nn_transformatora,
-)
+from application.analyses.fault_loop.service import petla_zwarcia_min_w_punkcie
 from application.analyses.swz.werdykt import (
     AparatZabezpieczajacy,
     SwzStatus,
     ocen_swz,
 )
+from application.proof_engine.packs.lv_circuit_verification import UrzadzenieOchronneNn
 from enm.models import EnergyNetworkModel
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.catalog.lv_mccb_settings_iec60947_2 import (
@@ -80,10 +59,6 @@ from network_model.catalog.lv_mccb_settings_iec60947_2 import (
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import LVApparatusType
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne import kv_na_v, napiecie_fazowe_v
-from network_model.solvers.fault_loop_builder import (
-    sum_phase_and_return_route,
-)
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_IF_MULTIPLIER,
     MCCB_I2_MULTIPLIER,
@@ -92,7 +67,6 @@ from network_model.solvers.protection_lv_curves import (
     compute_mcb_thermal_point,
     compute_mccb_point,
 )
-from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 # =============================================================================
 # STAN KRYTERIUM (trzeci stan obowiązkowy)
@@ -206,6 +180,30 @@ class KandydatAparatuNn:
         }
 
 
+def kandydat_z_urzadzenia(u: UrzadzenieOchronneNn) -> KandydatAparatuNn:
+    """Aparat ZAINSTALOWANY → kandydat oceny (przekształcenie danych, zero fizyki).
+
+    Pozwala ocenić aparat zabudowany w modelu TYMI SAMYMI kryteriami co ranking
+    katalogu (`oceniaj_kandydata`, `kryterium_i2`) — arkusz obwodów nN, dowód
+    weryfikacji obwodu i sekcja obliczeń kabla nN wołają tę jedną funkcję.
+    """
+    zdolnosc = u.conditional_sc_current_ka if u.kind == KIND_FUSE_SWITCH else u.wlasna_zdolnosc_ka
+    return KandydatAparatuNn(
+        id=u.id,
+        nazwa=u.nazwa,
+        kind=u.kind,
+        in_a=u.in_a,
+        zdolnosc_wylaczania_ka=zdolnosc,
+        klasa_mcb=u.klasa_mcb,
+        fuse_breaking_capacity_ka=u.fuse_breaking_capacity_ka,
+        ir_a=u.ir_a,
+        isd_a=u.isd_a,
+        ii_a=u.ii_a,
+        tr_s=u.tr_s,
+        tsd_s=u.tsd_s,
+    )
+
+
 # =============================================================================
 # WYNIK JEDNEGO KRYTERIUM
 # =============================================================================
@@ -290,7 +288,7 @@ def _kryterium_ib_in_iz(*, ib_a: float, iz_prime_a: float, in_a: float) -> Kryte
     )
 
 
-def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> KryteriumWynik:
+def kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> KryteriumWynik:
     """(ii) I2 <= 1,45·Iz′ — IEC 60364-4-43 §433.1.1.
 
     I2 = próg gwarantowanego zadziałania w czasie umownym:
@@ -478,7 +476,7 @@ def oceniaj_kandydata(
     """Oceń JEDNEGO kandydata przeciw wszystkim czterem kryteriom (§0.5)."""
     kryteria = (
         _kryterium_ib_in_iz(ib_a=ib_a, iz_prime_a=iz_prime_a, in_a=kandydat.in_a),
-        _kryterium_i2(kandydat=kandydat, iz_prime_a=iz_prime_a),
+        kryterium_i2(kandydat=kandydat, iz_prime_a=iz_prime_a),
         _kryterium_zdolnosc_wylaczania(kandydat=kandydat, ik_max_ka=ik_max_ka),
         _kryterium_swz(kandydat=kandydat, ik1_min_a=ik1_min_a, u0_v=u0_v),
     )
@@ -677,60 +675,13 @@ def _ik1_min_i_u0(
     Zwraca ``(ik1_min_a, u0_v, missing_data, reason_pl, kod_odmowy)`` — pierwsze dwa
     ``None`` przy braku danych, `missing_data`/`reason_pl` nazywają powód, a
     ``kod_odmowy`` jest ustawiony dla odmowy nazwanej (strona dolna spoza pasma nN).
+    Sekwencja pętli żyje w JEDNYM miejscu (`fault_loop.service.
+    petla_zwarcia_min_w_punkcie`, karta OBIEKT-KABEL-NN).
     """
-    station = _find_station(enm, station_ref)
-    if station is None:
-        return None, None, ["station"], None, None
-
-    # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
-    # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
-    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
-    if trafo is None:
-        return None, None, transformer_missing, None, None
-
-    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
-    system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo)
-    if odmowa is not None:
-        return (
-            None,
-            None,
-            list(odmowa.get("missing_data", [])),
-            odmowa.get("reason_pl"),
-            odmowa.get("kod_odmowy"),
-        )
-    assert system is not None
-
-    z_tr, missing = _transformer_loop_impedance(trafo)
-    if z_tr is None:
-        return None, None, missing, None, None
-
-    upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
-    if upstream is None:
-        return None, None, upstream_missing, None, None
-
-    try:
-        path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
-        segments = route_segments_min_scenario(path)
-    except RouteExtractionError as exc:
-        return None, None, ["route"], str(exc), None
-
-    phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = typ_sieci_solvera(system)
-    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
-
-    loop_result = oblicz_petle_na_trasie(
-        trafo=trafo,
-        fault_node_id=bus_ref,
-        u_phase_v=u_phase_v,
-        net_type=net_type,
-        protection=protection,
-        z_tr=z_tr,
-        upstream=upstream,
-        phase_component=phase_component,
-        return_component=return_component,
-    )
-    return loop_result.ik_min_a, u_phase_v, [], None, None
+    petla, missing, reason_pl, kod_odmowy = petla_zwarcia_min_w_punkcie(enm, station_ref, bus_ref)
+    if petla is None:
+        return None, None, missing, reason_pl, kod_odmowy
+    return petla.fault_loop.ik_min_a, petla.u0_v, [], None, None
 
 
 def wybierz_aparat_dla_obwodu_nn(

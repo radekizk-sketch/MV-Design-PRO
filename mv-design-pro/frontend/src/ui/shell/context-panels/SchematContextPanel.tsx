@@ -14,6 +14,12 @@ import type { ElementType } from '../../types';
 import { fieldLabelInSentencePl, fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { podpisStacjiPl, type ModelDlaRodzaju, type StacjaDlaRodzaju } from '../../shared/rodzajStacji';
 import {
+  jestGaleziaNn,
+  jestRozdzielnicaNn,
+  rodzajGaleziPrzewodowejPl,
+  type ModelDoKlasyfikacji,
+} from '../../../ui2/model/elementNn';
+import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   type EntityTypeCode,
   type WorkspaceSurfaceCode,
@@ -28,6 +34,11 @@ interface NavigatorTarget {
   titlePl: string;
   tabId?: string | null;
   payload?: Record<string, unknown>;
+  /**
+   * Wiersz bez okna powierzchni — klik zaznacza element, a inspektor pokazuje jego kartę
+   * (odcinki i kable, rozdzielnice nN: ich obiekt projektowy żyje w inspektorze).
+   */
+  tylkoZaznaczenie?: boolean;
 }
 
 interface TreeRowSpec {
@@ -65,6 +76,8 @@ function visibleTreeRowsLimit(title: string): number {
   if (title === 'Pola GPZ') return 16;
   if (title === 'Stacje SN/nN') return 24;
   if (title === 'Magistrale i odcinki SN') return 18;
+  if (title === 'Odcinki nN') return 18;
+  if (title === 'Rozdzielnice i złącza nN') return 12;
   if (title === 'Układy PV/BESS/FW') return 12;
   if (title === 'Odbiory nN') return 8;
   return DEFAULT_VISIBLE_TREE_ROWS;
@@ -273,7 +286,7 @@ export function SchematContextPanel() {
   const handleTreeSelect = (row: TreeRowSpec) => {
     selectElement({ id: row.id, type: row.target.elementType, name: row.label });
     centerSldOnElement(row.id);
-    if (row.target.elementType === 'LineBranch') {
+    if (row.target.tylkoZaznaczenie) {
       clearRouteManagedSurface();
       return;
     }
@@ -490,7 +503,7 @@ export function SchematContextPanel() {
               const visibleRows = section.rows.slice(0, visibleLimit);
               const hiddenRowsCount = section.rows.length - visibleRows.length;
               return (
-                <div key={section.title} className="mb-1">
+                <div key={section.title} className="mb-1" data-testid={`model-tree-section-${slugForTestId(section.title)}`}>
                   <div className="flex h-7 items-center gap-1.5 rounded-sm px-1.5 text-scada-text">
                     <ChevronDown />
                     <span className="min-w-0 flex-1 truncate font-semibold">{section.title}</span>
@@ -598,13 +611,23 @@ function buildTreeSections(snapshot: SnapshotRecord | null, blockerRefs: Set<str
 
   const branches = getCollection(snapshot, 'branches');
   const lineBranches = branches.filter((item) => !isSwitchgearBranchRecord(item));
+  // Tożsamość pasma z JEDNEGO predykatu (`ui2/model/elementNn`): odcinek, którego oba końce
+  // leżą w paśmie nN, jest odcinkiem nN — nie „odcinkiem SN" (dawniej kable nN trafiały do
+  // magistral SN, a rozdzielnice nN/złącza kablowe — do stacji SN/nN).
+  const model = snapshot as ModelDoKlasyfikacji;
+  const odcinkiNn = lineBranches.filter((item) => jestGaleziaNn(model, item));
+  const odcinkiSn = lineBranches.filter((item) => !jestGaleziaNn(model, item));
   const gpzBays = getCollection(snapshot, 'bays').filter(isGpzScopedRecord);
   const fieldStations = getCollection(snapshot, 'substations').filter((item) => !isGpzSubstationRecord(item));
+  const rozdzielniceNn = fieldStations.filter((item) => jestRozdzielnicaNn(item));
+  const stacjeSnNn = fieldStations.filter((item) => !jestRozdzielnicaNn(item));
   const sections = [
     buildSection('GPZ i zasilanie', getCollection(snapshot, 'sources'), 'Układ zasilania GPZ', blockerRefs, sourceTarget, undefined),
     buildSection('Pola GPZ', gpzBays, 'Pole GPZ', blockerRefs, bayTarget, (item) => formatBayRole(item)),
-    buildSection('Stacje SN/nN', fieldStations, 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(snapshot, item), formatStationTreeLabel),
-    buildSection('Magistrale i odcinki SN', lineBranches, 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(item)),
+    buildSection('Stacje SN/nN', stacjeSnNn, 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(snapshot, item), formatStationTreeLabel),
+    buildSection('Magistrale i odcinki SN', odcinkiSn, 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(model, item)),
+    buildSection('Rozdzielnice i złącza nN', rozdzielniceNn, 'Rozdzielnica nN', blockerRefs, rozdzielnicaNnTarget, (item) => formatStationType(snapshot, item)),
+    buildSection('Odcinki nN', odcinkiNn, 'Kabel nN', blockerRefs, odcinekNnTarget, (item) => formatBranchMeta(model, item)),
     buildSection('Układy PV/BESS/FW', getCollection(snapshot, 'generators'), 'Układ', blockerRefs, generatorTarget, (item) => formatGeneratorMeta(item, snapshot)),
     buildSection('Odbiory nN', getCollection(snapshot, 'loads'), 'Odbiór', blockerRefs, loadTarget, (item) => formatLoadMeta(item)),
   ];
@@ -671,6 +694,29 @@ function branchTarget(_item: SnapshotRecord, label: string): NavigatorTarget {
     entityType: 'segment',
     titlePl: label || 'Odcinek SN',
     tabId: 'kabel-sn',
+    tylkoZaznaczenie: true,
+  };
+}
+
+/** Odcinek nN — ta sama selekcja gałęzi; inspektor pokazuje kartę i obliczenia kabla nN. */
+function odcinekNnTarget(_item: SnapshotRecord, label: string): NavigatorTarget {
+  return {
+    elementType: 'LineBranch',
+    surfaceCode: 'E-12',
+    entityType: 'segment',
+    titlePl: label || 'Kabel nN',
+    tylkoZaznaczenie: true,
+  };
+}
+
+/** Rozdzielnica nN (złącze kablowe) — zaznaczenie; inspektor pokazuje kartę rozdzielnicy nN. */
+function rozdzielnicaNnTarget(_item: SnapshotRecord, label: string): NavigatorTarget {
+  return {
+    elementType: 'Station',
+    surfaceCode: 'E-13',
+    entityType: 'station',
+    titlePl: label || 'Rozdzielnica nN',
+    tylkoZaznaczenie: true,
   };
 }
 
@@ -789,22 +835,20 @@ function formatBayRole(item: SnapshotRecord): string | undefined {
   return role.trim() ? fieldLabelInSentencePl(fieldRoleLabelPl(role)) : undefined;
 }
 
-function formatBranchMeta(item: SnapshotRecord): string | undefined {
+function formatBranchMeta(model: ModelDoKlasyfikacji, item: SnapshotRecord): string | undefined {
   const parts: string[] = [];
-  parts.push(readBranchCatalogLabel(item) ?? branchTypeLabel(item.type));
+  parts.push(readBranchCatalogLabel(item) ?? branchTypeLabel(model, item));
   if (typeof item.length_km === 'number') parts.push(formatLengthKm(item.length_km, { decimals: 2 }));
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
-function branchTypeLabel(value: unknown): string {
-  switch (value) {
-    case 'line_overhead':
-      return 'linia napowietrzna SN';
-    case 'cable':
-      return 'kabel SN';
-    default:
-      return 'odcinek SN';
+/** Rodzaj odcinka bez typu katalogowego — pasmo z modelu, nie założone SN. */
+function branchTypeLabel(model: ModelDoKlasyfikacji, item: SnapshotRecord): string {
+  if (item.type === 'line_overhead' || item.type === 'cable') {
+    const rodzaj = rodzajGaleziPrzewodowejPl(model, item);
+    return rodzaj.charAt(0).toLowerCase() + rodzaj.slice(1);
   }
+  return jestGaleziaNn(model, item) ? 'odcinek nN' : 'odcinek';
 }
 
 function readBranchCatalogLabel(item: SnapshotRecord): string | null {

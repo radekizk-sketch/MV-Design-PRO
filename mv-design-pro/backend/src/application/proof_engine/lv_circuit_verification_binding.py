@@ -46,43 +46,30 @@ NIGDY domyślna/zgadnięta wartość.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from application.analyses.fault_loop.route import (
-    RouteExtractionError,
-    path_to_bus,
-    route_segments_min_scenario,
-)
-from application.analyses.fault_loop.service import (
-    _find_station,
-    _transformer_loop_impedance,
-    _upstream_thevenin_lv_component,
-    oblicz_petle_na_trasie,
-    odmowa_analizy_nn,
-    resolve_transformer_for_bus,
-    uklad_nn_transformatora,
-)
+from application.analyses.fault_loop.service import petla_zwarcia_min_w_punkcie
+from application.analyses.nn_device_selection import kandydat_z_urzadzenia, kryterium_i2
 from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
 from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
     LVCircuitVerificationInput,
+    StratyOdcinka,
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne import kv_na_v, napiecie_fazowe_v
-from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
-from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
-from network_model.solvers.fault_loop_builder import (
-    sum_phase_and_return_route,
+from network_model.solvers.cable_ampacity_derating import (
+    WARUNKI_KATALOGOWE,
+    WspolczynnikiObciazalnosciNN,
+    obciazalnosc_skorygowana,
 )
-from solver_input.uklad_sieci_nn import typ_sieci_solvera
+from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 
 
 class LVCircuitVerificationInputError(OdmowaDanychError):
@@ -113,8 +100,8 @@ def resolve_urzadzenie_ochronne(
     params = breaker.materialized_params if isinstance(breaker.materialized_params, dict) else None
     if not params:
         return None, (
-            f"Aparat '{breaker.ref_id}' nie ma zmaterializowanych danych katalogowych "
-            "(materialized_params) — weryfikacja obwodu wymaga wiązania z katalogiem."
+            f"Aparat „{nazwa_elementu(breaker, 'branches')}” nie ma wiązania z katalogiem "
+            "aparatury nN — wskaż jego typ z katalogu."
         )
     namespace = breaker.catalog_namespace
 
@@ -123,8 +110,8 @@ def resolve_urzadzenie_ochronne(
         klasa = params.get("curve_class")
         if in_a is None or klasa is None:
             return None, (
-                f"MCB '{breaker.ref_id}' bez kompletu danych (in_a i/lub curve_class) "
-                "w materialized_params."
+                f"Wyłącznik „{nazwa_elementu(breaker, 'branches')}” bez prądu znamionowego "
+                "albo klasy wyzwalania w danych katalogowych."
             )
         return (
             UrzadzenieOchronneNn(
@@ -143,7 +130,10 @@ def resolve_urzadzenie_ochronne(
     if namespace == "WKLADKA_NN":
         in_a = params.get("in_a")
         if in_a is None:
-            return None, f"Wkładka '{breaker.ref_id}' bez in_a w materialized_params."
+            return None, (
+                f"Wkładka „{nazwa_elementu(breaker, 'branches')}” bez prądu znamionowego "
+                "w danych katalogowych."
+            )
         conditional_ka: float | None = None
         if apparatus_branch is not None:
             ap_params = (
@@ -167,7 +157,10 @@ def resolve_urzadzenie_ochronne(
     if namespace == "APARAT_NN":
         in_a = params.get("i_n_a")
         if in_a is None:
-            return None, f"Aparat '{breaker.ref_id}' bez i_n_a w materialized_params."
+            return None, (
+                f"Aparat „{nazwa_elementu(breaker, 'branches')}” bez prądu znamionowego "
+                "w danych katalogowych."
+            )
         device_kind = params.get("device_kind")
         if device_kind == "ROZLACZNIK_BEZPIECZNIKOWY":
             return (
@@ -226,74 +219,6 @@ def resolve_urzadzenie_ochronne(
     return None, f"Nieobsłużony namespace katalogu aparatu: {namespace!r}."
 
 
-@dataclass(frozen=True)
-class Ik1MinPetla:
-    """Wynik rozwiązania pętli zwarcia minimalnego + kontekst SWZ (krok 9-10)."""
-
-    fault_loop: Any  # FaultLoopResult — Any, żeby uniknąć cyklu importu w adnotacji
-    u0_v: float
-    system: str
-
-
-def _petla_zwarcia_min(
-    enm: EnergyNetworkModel, station_ref: str, bus_ref: str
-) -> tuple[Ik1MinPetla | None, list[str], str | None, str | None]:
-    """Rozwiąż pętlę zwarcia minimalnego dla obwodu (REUSE dokładnie tej samej
-    sekwencji co ``swz.service.build_swz_view``/``nn_device_selection._ik1_min_i_u0``)."""
-    station = _find_station(enm, station_ref)
-    if station is None:
-        return None, ["station"], None, None
-
-    # Transformator ZASILAJĄCY punkt obwodu (właściciel szyny po zamkniętych
-    # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
-    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
-    if trafo is None:
-        return None, transformer_missing, None, None
-
-    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
-    system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo)
-    if odmowa is not None:
-        return (
-            None,
-            list(odmowa.get("missing_data", [])),
-            odmowa.get("reason_pl"),
-            odmowa.get("kod_odmowy"),
-        )
-    assert system is not None
-
-    z_tr, missing = _transformer_loop_impedance(trafo)
-    if z_tr is None:
-        return None, missing, None, None
-
-    upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
-    if upstream is None:
-        return None, upstream_missing, None, None
-
-    try:
-        path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
-        segments = route_segments_min_scenario(path)
-    except RouteExtractionError as exc:
-        return None, ["route"], str(exc), None
-
-    phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = typ_sieci_solvera(system)
-    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
-
-    loop_result = oblicz_petle_na_trasie(
-        trafo=trafo,
-        fault_node_id=bus_ref,
-        u_phase_v=u_phase_v,
-        net_type=net_type,
-        protection=protection,
-        z_tr=z_tr,
-        upstream=upstream,
-        phase_component=phase_component,
-        return_component=return_component,
-    )
-    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None, None
-
-
 def zbuduj_wejscie_dowodu_obwodu_nn(
     *,
     enm: EnergyNetworkModel,
@@ -309,13 +234,14 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     q_mvar: float,
     u_ll_kv: float,
     iz_katalogowe_a: float,
-    wspolczynniki: WspolczynnikiObciazalnosciNN,
+    wspolczynniki: WspolczynnikiObciazalnosciNN | None,
     ik_max_ka: float | None,
     thermal: ConductorThermalResult,
     vdrop_u_source_kv: float,
     vdrop_delta_u_total_kv: float,
     vdrop_delta_u_total_percent: float | None = None,
     apparatus_branch_ref: str | None = None,
+    straty: StratyOdcinka | None = None,
 ) -> dict[str, Any]:
     """Złóż ``LVCircuitVerificationInput`` (10 kroków) dla obwodu nN.
 
@@ -344,7 +270,7 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             "reason_pl": reason,
         }
 
-    petla, missing, reason_pl, kod_odmowy = _petla_zwarcia_min(enm, station_ref, bus_ref)
+    petla, missing, reason_pl, kod_odmowy = petla_zwarcia_min_w_punkcie(enm, station_ref, bus_ref)
     if kod_odmowy is not None:
         return {
             "status": "nie dotyczy",
@@ -371,7 +297,26 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     )
     swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
 
-    odcinek = _find_branch(enm, segment_ref)
+    # Krok 5 (I2): JEDNO źródło progu — kryterium (ii) doboru aparatu, wołane dla aparatu
+    # zainstalowanego przy obciążalności po korektach tego samego kroku 3.
+    iz_prime_a = obciazalnosc_skorygowana(
+        iz_katalogowe_a, wspolczynniki if wspolczynniki is not None else WARUNKI_KATALOGOWE
+    )
+    try:
+        kandydat = kandydat_z_urzadzenia(urzadzenie)
+    except OdmowaDanychError as exc:
+        return {
+            "status": "brak danych",
+            "missing_data": ["breaker_catalog_binding"],
+            "reason_pl": f"Dane katalogowe aparatu niespójne: {exc}",
+        }
+    kr_i2 = kryterium_i2(kandydat=kandydat, iz_prime_a=iz_prime_a)
+    i2_a = kr_i2.wartosci.get("i2_a")
+
+    # Odcinek to KABEL (albo inna gałąź trasy), nie aparat — `_find_branch` zwraca
+    # wyłącznie łączniki i bezpieczniki, więc do karty OBIEKT-KABEL-NN tytuł dowodu
+    # zawsze mówił „element spoza modelu" dla każdego odcinka kablowego.
+    odcinek = next((b for b in enm.branches if b.ref_id == segment_ref), None)
     wejscie = LVCircuitVerificationInput(
         project_name=project_name,
         case_name=case_name,
@@ -393,6 +338,9 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         wspolczynniki=wspolczynniki,
         urzadzenie=urzadzenie,
         ik_max_ka=ik_max_ka,
+        i2_a=float(i2_a) if i2_a is not None else None,
+        i2_zrodlo_pl=str(kr_i2.wartosci.get("zrodlo") or "próg nierozstrzygalny"),
+        i2_uzasadnienie_pl=kr_i2.uzasadnienie_pl,
         thermal=thermal,
         vdrop_u_source_kv=vdrop_u_source_kv,
         vdrop_delta_u_total_kv=vdrop_delta_u_total_kv,
@@ -405,5 +353,6 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         swz_pasmo_u0=swz.pasmo_u0,
         swz_rodzaj_obwodu=swz.rodzaj_obwodu,
         swz_margines=swz.margines,
+        straty=straty,
     )
     return {"status": "OK", "wejscie": wejscie}

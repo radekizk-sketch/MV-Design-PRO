@@ -25,6 +25,8 @@ export type TechCardKind =
   | 'zksn'
   | 'branch_pole'
   | 'line_segment'
+  | 'kabel_nn'
+  | 'rozdzielnica_nn'
   | 'bay'
   | 'der';
 
@@ -72,6 +74,13 @@ export interface TechCardSubject {
 
   /** Komunikat blokady gotowości obliczeniowej (jeśli dotyczy). */
   readonly readinessBlocker?: string | null;
+
+  /**
+   * Kontekst operacji akcji `open_operation:*` wg identyfikatora akcji — dokładany przez
+   * warstwę wpinającą do kontekstu formularza (np. szyna końca kabla nN dla przedłużenia
+   * obwodu). Brak wpisu = kontekst wyłącznie z zaznaczonego elementu.
+   */
+  readonly actionContexts?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 }
 
 /**

@@ -317,18 +317,44 @@ def _przedmiot_odcinka(r: _Rozwiazany, napiecie_kv: float) -> Przedmiot:
     )
 
 
-def _podstawa_obciazalnosci_katalogu(typ: CableType | LineType) -> PodstawaWymagania:
-    """Podstawa limitu I_z: rekord katalogowy typu. Stan źródła wynika ze statusu weryfikacji
-    rekordu — tylko ``ZWERYFIKOWANY`` przenosi dokument źródłowy (``WSKAZANE``: dokument
-    i pozycja wskazane, treść karty producenta poza repozytorium)."""
+class RekordKatalogowy(Protocol):
+    """Pola rekordu katalogowego, z których wynika stan źródła podstawy wartości."""
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def verification_status(self) -> str: ...
+
+    @property
+    def source_reference(self) -> str: ...
+
+    @property
+    def contract_version(self) -> str: ...
+
+
+def podstawa_wartosci_katalogowej(
+    typ: RekordKatalogowy,
+    *,
+    katalog_pl: str = "katalog typów SN",
+    wielkosc_pl: str = "obciążalność długotrwała",
+    wielkosc_krotko_pl: str = "obciążalność",
+) -> PodstawaWymagania:
+    """Podstawa wartości z rekordu katalogowego (limit I_z, zdolność wyłączania aparatu…).
+
+    Stan źródła wynika ze statusu weryfikacji rekordu — tylko ``ZWERYFIKOWANY``
+    przenosi dokument źródłowy (``WSKAZANE``: dokument i pozycja wskazane, treść karty
+    producenta poza repozytorium). JEDNA reguła dla magistrali SN (ta karta) i dla
+    obiektu kabla nN (`application.analyses.kabel_nn`, karta OBIEKT-KABEL-NN).
+    """
     status_rekordu = typ.verification_status
     nazwa_statusu = NAZWY_STATUSOW_WERYFIKACJI_PL.get(status_rekordu, status_rekordu.lower())
     if status_rekordu == "ZWERYFIKOWANY":
         return PodstawaWymagania(
             rodzaj="KATALOG_PRODUCENTA",
             dokument=typ.source_reference,
-            wydanie=f"katalog typów SN, kontrakt katalogu {typ.contract_version}",
-            jednostka_redakcyjna=f"pozycja „{typ.name}” — obciążalność długotrwała",
+            wydanie=f"{katalog_pl}, kontrakt katalogu {typ.contract_version}",
+            jednostka_redakcyjna=f"pozycja „{typ.name}” — {wielkosc_pl}",
             status="WSKAZANE",
         )
     return PodstawaWymagania(
@@ -337,7 +363,7 @@ def _podstawa_obciazalnosci_katalogu(typ: CableType | LineType) -> PodstawaWymag
         status="NIEUSTALONE",
         uwagi_pl=(
             f"rekord katalogowy „{typ.name}” ma status weryfikacji „{nazwa_statusu.lower()}” "
-            "— obciążalność nie jest przeniesiona z zweryfikowanej karty producenta"
+            f"— {wielkosc_krotko_pl} nie jest przeniesiona z zweryfikowanej karty producenta"
         ),
     )
 
@@ -398,7 +424,7 @@ def _ocena_obciazalnosci(r: _Rozwiazany, napiecie_kv: float) -> OcenaKryterium:
             sladu_iz = f"{format_liczba(_r(iz))} A"
             limit = LimitKryterium(
                 wartosc=Wielkosc(wartosc=_r(iz), jednostka=_J_A),
-                podstawa=_podstawa_obciazalnosci_katalogu(r.typ),
+                podstawa=podstawa_wartosci_katalogowej(r.typ),
                 zakres_stosowalnosci_pl=(
                     f"obciążalność długotrwała typu {r.typ.name} w warunkach odniesienia "
                     "producenta"

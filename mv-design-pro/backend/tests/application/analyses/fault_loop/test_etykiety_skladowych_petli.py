@@ -30,10 +30,10 @@ from application.analyses.fault_loop.service import (
     build_station_fault_loop_view,
     etykieta_sieci_zasilajacej_petli,
     etykieta_transformatora_petli,
+    petla_zwarcia_min_w_punkcie,
 )
 from application.analyses.nn_device_selection import _ik1_min_i_u0
 from application.analyses.swz.service import build_swz_view
-from application.proof_engine.lv_circuit_verification_binding import _petla_zwarcia_min
 from enm.models import (
     Bus,
     Cable,
@@ -157,7 +157,7 @@ def _pobierz_dobor_aparatow(enm: EnergyNetworkModel) -> Any:
 
 
 def _pobierz_dowod_obwodu(enm: EnergyNetworkModel) -> Any:
-    return _petla_zwarcia_min(enm, "stn", "b1")
+    return petla_zwarcia_min_w_punkcie(enm, "stn", "b1")
 
 
 _SCIEZKI = {

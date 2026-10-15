@@ -1397,7 +1397,7 @@ EQ_LVCV_004 = EquationDefinition(
     equation_id="EQ_LVCV_004",
     name_pl="Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
     standard_ref="IEC 60947 / IEC 60898-1 / IEC 60269-1",
-    latex=r"I_{cond} \ge I_k''_{max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I_k''_{max}",
+    latex=r"I_{cond} \ge I''_{k,max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I''_{k,max}",
     symbols=(
         SymbolDefinition(
             symbol="I_{cond}",
@@ -1412,7 +1412,7 @@ EQ_LVCV_004 = EquationDefinition(
             mapping_key="icu_or_icn_ka",
         ),
         SymbolDefinition(
-            symbol="I_k''_{max}",
+            symbol="I''_{k,max}",
             unit="kA",
             description_pl="Prąd zwarciowy początkowy maksymalny w punkcie zabudowy",
             mapping_key="ik_max_ka",
@@ -2393,8 +2393,8 @@ EQ_SC1_006 = EquationDefinition(
         r"\begin{aligned}"
         r"\text{1F–Z:} \quad & I_1 = I_2 = I_0 = \frac{U_f}{Z_k} \\"
         r"\text{2F:} \quad & I_1 = \frac{U_f}{Z_k}, \quad I_2 = -I_1, \quad I_0 = 0 \\"
-        r"\text{2F–Z:} \quad & I_1 = \frac{U_f}{Z_k}, \quad"
-        r"I_2 = -\frac{Z_0}{Z_2 + Z_0} I_1, \quad"
+        r"\text{2F–Z:} \quad & I_1 = \frac{U_f}{Z_k}, \quad "
+        r"I_2 = -\frac{Z_0}{Z_2 + Z_0} I_1, \quad "
         r"I_0 = -\frac{Z_2}{Z_2 + Z_0} I_1"
         r"\end{aligned}"
     ),

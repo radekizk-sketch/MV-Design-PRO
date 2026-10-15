@@ -11,7 +11,6 @@ odmawia dla nich NAZWANIE, zamiast liczyć.
 
 from __future__ import annotations
 
-from enm.models import UkladSieciNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import NetworkType, ProtectionArrangement
 
@@ -27,7 +26,7 @@ _MAPA: dict[str, tuple[NetworkType, ProtectionArrangement]] = {
 }
 
 
-def typ_sieci_solvera(uklad: UkladSieciNn) -> tuple[NetworkType, ProtectionArrangement]:
+def typ_sieci_solvera(uklad: str) -> tuple[NetworkType, ProtectionArrangement]:
     """Układ modelu → (typ sieci solvera, sposób ochrony). Wartość spoza literału = błąd nazwany."""
     try:
         return _MAPA[uklad]

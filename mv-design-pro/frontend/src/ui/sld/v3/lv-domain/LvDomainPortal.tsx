@@ -4,6 +4,7 @@ import { LvDomainView } from './LvDomainView';
 import { fetchLvDomainProjectionV1 } from './projectionApi';
 import type { LvDomainProjectionV1 } from './types';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
+import { useSelectionStore } from '../../../selection';
 
 export const LV_DOMAIN_PORTAL_MAX_WIDTH_PX = 760;
 
@@ -32,6 +33,9 @@ export function LvDomainPortal({
   // kanwy SN (`SldCanvasV3Workspace`). Bez tego jasna powłoka pokazywałaby
   // czarny arkusz nN: deklaracja motywu bez pokrycia.
   const themeMode = useThemeModeStore((state) => state.mode);
+  // Kabel wskazany na rysunku domeny nN trafia do GLOBALNEJ selekcji — ten sam tor co klik
+  // elementu kanwy SN i drzewa układu, więc inspektor pokazuje obiekt kabla nN.
+  const selectElement = useSelectionStore((state) => state.selectElement);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,7 +74,13 @@ export function LvDomainPortal({
         Zamknij
       </button>
       {projection ? (
-        <LvDomainView projection={projection} width={width} height={height} theme={themeMode} />
+        <LvDomainView
+          projection={projection}
+          width={width}
+          height={height}
+          theme={themeMode}
+          onWybierzKabel={(cableRef) => selectElement({ id: cableRef, type: 'LineBranch', name: cableRef })}
+        />
       ) : error ? (
         <div
           data-testid="lv-domain-portal-error"

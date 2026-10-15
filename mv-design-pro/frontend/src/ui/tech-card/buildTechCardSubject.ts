@@ -26,6 +26,7 @@ import {
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
 import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
+import { jestKablemNn, jestRozdzielnicaNn } from '../../ui2/model/elementNn';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
 import { stationSnFieldSpecs, stationSnapshotBays } from '../network-build/stationSnFields';
@@ -133,6 +134,9 @@ function buildSegmentSubject(
   options: BuildTechCardOptions,
   selectedElement: SelectedElement | null | undefined,
 ): TechCardSubject {
+  // Kabel nN (oba końce w paśmie nN — JEDEN predykat `ui2/model/elementNn`) to inny obiekt niż
+  // odcinek SN: bez akcji ciągu SN, z katalogiem kabli nN i obliczeniami w inspektorze.
+  if (jestKablemNn(snapshot, segment)) return buildKabelNnSubject(snapshot, segment, options);
   const { displayName } = segmentPublicIdentity(snapshot, segment);
   const semanticKind = selectedElement?.semanticElementKind
     ?? selectedElement?.semanticEngineeringRole
@@ -265,11 +269,149 @@ function buildSegmentSubject(
   };
 }
 
+/** Długość odcinka [km] z modelu; wartość nieliczbowa = brak danej (nie zero). */
+function dlugoscOdcinkaKm(segment: Branch): number | null {
+  const km = 'length_km' in segment ? Number(segment.length_km) : Number.NaN;
+  return Number.isFinite(km) ? km : null;
+}
+
+function buildKabelNnSubject(
+  snapshot: EnergyNetworkModel,
+  segment: Branch,
+  options: BuildTechCardOptions,
+): TechCardSubject {
+  const { displayName } = segmentPublicIdentity(snapshot, segment);
+  const technicalId = segment.ref_id || segment.id;
+  const przedluzenie = 'open_operation:add_nn_cable_segment';
+  return {
+    kind: 'kabel_nn',
+    displayName,
+    typeLabelPl: 'Kabel nN',
+    technicalId,
+    status: 'none',
+    sections: [
+      {
+        id: 'rola',
+        label: 'Rola w sieci',
+        fields: [
+          { key: 'rodzaj_odcinka', label: 'Rodzaj odcinka', value: 'Kabel nN' },
+          { key: 'dlugosc', label: 'Długość', value: dlugoscOdcinkaKm(segment), unit: 'km' },
+        ],
+      },
+      {
+        id: 'katalog',
+        label: 'Katalog',
+        fields: [
+          {
+            key: 'pozycja_katalogowa',
+            label: 'Pozycja katalogowa',
+            value: publicCatalogValue(segment.catalog_ref),
+            source: 'catalog',
+          },
+          { key: 'przestrzen_katalogu', label: 'Przestrzeń katalogu', value: 'Kable nN', source: 'catalog' },
+        ],
+      },
+      {
+        id: 'topologia',
+        label: 'Topologia',
+        fields: [
+          {
+            key: 'koniec_a',
+            label: 'Początek kabla',
+            value: terminalLabelForSegment(snapshot, segment.from_bus_ref),
+          },
+          {
+            key: 'koniec_b',
+            label: 'Koniec kabla',
+            value: terminalLabelForSegment(snapshot, segment.to_bus_ref),
+          },
+        ],
+      },
+    ],
+    actions: [
+      {
+        id: przedluzenie,
+        label: 'Przedłuż obwód kablem nN od końca',
+        variant: 'secondary',
+        onClick: () => undefined,
+      },
+    ],
+    // Przedłużenie startuje z szyny KOŃCA tego kabla (kreator `add_nn_cable_segment` czyta
+    // `bus_nn_ref`) — bez tego kreator nie znałby punktu startu z zaznaczenia kabla.
+    actionContexts: { [przedluzenie]: { bus_nn_ref: segment.to_bus_ref } },
+    diagnostics: diagnosticsForRef(technicalId, {
+      from_bus_ref: segment.from_bus_ref,
+      to_bus_ref: segment.to_bus_ref,
+      catalog_ref: segment.catalog_ref,
+    }),
+    readinessBlocker: options.readinessBlocker ?? null,
+  };
+}
+
+function buildRozdzielnicaNnSubject(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
+  options: BuildTechCardOptions,
+): TechCardSubject {
+  const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);
+  const technicalId = station.ref_id || station.id;
+  const szyna = station.bus_refs?.[0] ?? null;
+  const kabel = 'open_operation:add_nn_cable_segment';
+  const pole = 'open_operation:add_nn_outgoing_field';
+  const zasilajace = (snapshot.branches ?? []).filter(
+    (b) => b.type === 'cable' && szyna !== null && b.to_bus_ref === szyna,
+  );
+  return {
+    kind: 'rozdzielnica_nn',
+    displayName,
+    typeLabelPl: typeLabel,
+    technicalId,
+    status: 'none',
+    sections: [
+      {
+        id: 'rola',
+        label: 'Rola w sieci',
+        fields: [
+          { key: 'typ_stacji', label: 'Rodzaj', value: typeLabel },
+          { key: 'szyny', label: 'Liczba szyn nN', value: (station.bus_refs ?? []).length },
+          {
+            key: 'zasilanie',
+            label: 'Zasilanie',
+            value: zasilajace.length > 0
+              ? zasilajace.map((b) => b.name || b.ref_id).join(', ')
+              : 'brak kabla zasilającego',
+          },
+        ],
+      },
+    ],
+    actions: szyna
+      ? [
+        { id: pole, label: 'Dodaj pole odpływowe nN', variant: 'primary', onClick: () => undefined },
+        { id: kabel, label: 'Wyprowadź kabel nN', variant: 'secondary', onClick: () => undefined },
+      ]
+      : [],
+    actionContexts: szyna
+      ? {
+        [pole]: { station_ref: technicalId, bus_nn_ref: szyna },
+        [kabel]: { bus_nn_ref: szyna },
+      }
+      : undefined,
+    diagnostics: diagnosticsForRef(technicalId, {
+      station_type: station.station_type,
+      bus_refs: (station.bus_refs ?? []).join(', '),
+    }),
+    readinessBlocker: options.readinessBlocker ?? null,
+  };
+}
+
 function buildStationSubject(
   snapshot: EnergyNetworkModel,
   station: Substation,
   options: BuildTechCardOptions,
 ): TechCardSubject {
+  // Rozdzielnica nN (złącze kablowe, rozdzielnica odbiorcza) nie ma rozdzielni SN, pól SN ani
+  // ciągu SN — osobny podmiot karty z akcjami strony nN.
+  if (jestRozdzielnicaNn(station)) return buildRozdzielnicaNnSubject(snapshot, station, options);
   const isGpz = String(station.station_type ?? '').toLowerCase() === 'gpz';
   const kind: TechCardKind = isGpz ? 'gpz' : 'station';
   const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);

@@ -78,8 +78,10 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_nn_distribution_board: KreatorRozdzielnicyNn,
   add_nn_switch_device: KreatorAparatuNn,
   add_nn_section_coupler: KreatorRozdzielnicyNn,
-  // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
-  // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
+  // Warunki ułożenia istniejącego kabla nN zmienia formularz INLINE sekcji „Obliczenia kabla
+  // nN" inspektora (`ui2/inspector/SekcjaKablaNn.tsx`, wybór z rejestru tablic zwróconego przez
+  // `GET …/enm/nn-cable`) — bez okna kreatora; nowy odcinek dostaje warunki w kreatorze
+  // `add_nn_cable_segment`.
   set_nn_cable_laying_conditions: null,
   // Operacje bez formularza modalnego (delete, refresh, GPZ sections CRUD oraz warunki
   // przyłączenia OSD — te mają formularz inline w kaflu pulpitu projektu, nie w oknie

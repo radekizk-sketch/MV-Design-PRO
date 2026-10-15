@@ -220,13 +220,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "api.grid_source_preview:CableAmpacityDeratingResponse.ok",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C36 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C36"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "api.incremental_archive:IncrementalImportResponse.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -1165,7 +1158,7 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.nn_circuit_sheet:_iz_prime_dla_kabla.status",
+   "tozsamosc": "application.analyses.nn_circuit_sheet:iz_prime_dla_kabla.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`nn_circuit_sheet.py`, karta 144). Merytorycznie ta sama flaga dostępności danych co inwentarz C26 (ENUM_WEWNETRZNY) — klasę potwierdza integrator po scaleniu karty 144; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
@@ -1267,13 +1260,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ENUM_WEWNETRZNY): koperta widoku łańcucha nN `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` to flaga dostępności danych (widok policzony albo czego brakuje — `missing_data`), nie ocena wobec kryterium; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.source_keys.werdykt",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
@@ -1519,20 +1505,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A36 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.substitution_latex:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.substitution_latex:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
@@ -1848,6 +1820,27 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A5 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A5 (dopasowanie po pliku)"
+  },
+  {
+   "sprawdzenie": "6a_ladunek_werdyktu",
+   "tozsamosc": "application.analyses.kabel_nn:obliczenia_kabla_nn.status",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Inwentarz C26: koperta odpowiedzi `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` obiektu kabla nN (karta OBIEKT-KABEL-NN) — ta sama flaga dostępności danych co koperty nN C26 (`nn_circuit_sheet`, `fault_loop/service`). Ocena każdego kryterium jest osobnym rekordem `OcenaKryterium` z wyjaśnieniem w polu `kryteria`. **ENUM_WEWNETRZNY**.",
+   "wiersz_inwentarza": "C26"
+  },
+  {
+   "sprawdzenie": "6a_ladunek_werdyktu",
+   "tozsamosc": "application.analyses.kabel_nn:warianty_przekroju_kabla_nn.status",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Inwentarz C26: koperta odpowiedzi `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` obiektu kabla nN (karta OBIEKT-KABEL-NN) — ta sama flaga dostępności danych co koperty nN C26 (`nn_circuit_sheet`, `fault_loop/service`). Ocena każdego kryterium jest osobnym rekordem `OcenaKryterium` z wyjaśnieniem w polu `kryteria`. **ENUM_WEWNETRZNY**.",
+   "wiersz_inwentarza": "C26"
+  },
+  {
+   "sprawdzenie": "1_backend",
+   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:WynikSwzKroku.rozstrzygniecie",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Nośnik rozstrzygnięcia silnika SWZ (`SwzStatus`, inwentarz C25) do kroku 10 dowodu obwodu nN — bez przeliczania; w tym samym rekordzie kroku jest `przyczyna_pl` silnika, a ocenę dla projektanta niesie rekord `OcenaKryterium` kryterium `kabel_nn.samoczynne_wylaczenie` z wyjaśnieniem (karta OBIEKT-KABEL-NN). Typ enumu zamiast dawnego `str` — wartości znane statycznie.",
+   "wiersz_inwentarza": "C25"
   }
  ]
 }

@@ -83,6 +83,14 @@ import {
 } from './station-der/derRemoteCatalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
+import {
+  jestGaleziaNn,
+  jestKablemNn,
+  PRZESTRZEN_KABLI_NN,
+  rodzajGaleziPrzewodowejPl,
+} from '../../ui2/model/elementNn';
+import { SekcjaKablaNn } from '../../ui2/inspector/SekcjaKablaNn';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
 import {
@@ -425,7 +433,11 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   bus: 'Szyna',
   branch: 'Gałąź',
   line_overhead: 'Linia napowietrzna',
-  cable: 'Kabel SN',
+  cable: 'Kabel',
+  cable_nn: 'Kabel nN',
+  cable_sn: 'Kabel SN',
+  line_overhead_nn: 'Linia napowietrzna nN',
+  line_overhead_sn: 'Linia napowietrzna SN',
   transformer: 'Transformator',
   source: 'Źródło zasilania',
   load: 'Obciążenie',
@@ -2108,13 +2120,19 @@ function buildSectionsForElement(
       return { sections, elementType, elementName, actions };
     }
 
-    elementType = branch.type;
+    // Tożsamość pasma z modelu (JEDEN predykat `ui2/model/elementNn`, parami z backendem):
+    // gałąź nN to kabel/linia nN — nie „odcinek SN" z akcjami ciągu SN.
+    const galazNn = jestGaleziaNn(snapshot, branch);
+    const rodzajPl = isLineCable(branch) ? rodzajGaleziPrzewodowejPl(snapshot, branch) : null;
+    elementType = isLineCable(branch) && rodzajPl
+      ? `${branch.type}${rodzajPl.endsWith(' nN') ? '_nn' : rodzajPl.endsWith(' SN') ? '_sn' : ''}`
+      : branch.type;
     elementName = branch.name;
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
         { key: 'ref_id', label: 'Oznaczenie odcinka', value: branch.ref_id },
         { key: 'name', label: 'Nazwa', value: branch.name },
-        { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS[branch.type] ?? branch.type },
+        { key: 'type', label: 'Typ', value: rodzajPl ?? ELEMENT_TYPE_LABELS[branch.type] ?? branch.type },
         { key: 'status', label: 'Stan', value: branch.status },
       ],
     });
@@ -2160,7 +2178,10 @@ function buildSectionsForElement(
       ],
     });
     actions.push({ id: 'assign_catalog', label: 'Przypisz katalog', op: 'assign_catalog_to_element', context: { element_ref: branch.ref_id } });
-    if (isLineCable(branch)) {
+    // Akcje ciągu SN (wstaw stację, ZKSN, łącznik, słup) dotyczą WYŁĄCZNIE odcinka SN; kabel nN
+    // ma akcje obiektu nN w sekcji „Obliczenia kabla nN" (warunki ułożenia, dobór przekroju,
+    // dowód obwodu) i wybór typu z katalogu kabli nN.
+    if (isLineCable(branch) && !galazNn) {
       actions.push({ id: 'insert_station_on_segment_sn', label: 'Wstaw stację', op: 'insert_station_on_segment_sn', context: { segment_ref: branch.ref_id } });
       if (branch.type === 'line_overhead') {
         actions.push({ id: 'insert_branch_pole_on_segment_sn', label: 'Wstaw słup rozgałęźny', op: 'insert_branch_pole_on_segment_sn', context: { segment_ref: branch.ref_id } });
@@ -2539,8 +2560,10 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const isSelectedSegment = selectedElement?.type === 'LineBranch'
     && (!selectedSegment || isLineCable(selectedSegment));
   const selectedSegmentCatalogRef = selectedSegment?.catalog_ref ?? null;
-  const selectedSegmentCatalogNamespace = inferSegmentCatalogNamespace(selectedSegment);
-  const selectedSegmentPickerCategory = inferSegmentPickerCategory(selectedSegment);
+  const selectedSegmentIsNnCable = jestKablemNn(snapshot, selectedSegment);
+  const selectedSegmentCatalogNamespace = inferSegmentCatalogNamespace(snapshot, selectedSegment);
+  const selectedSegmentPickerCategory = inferSegmentPickerCategory(snapshot, selectedSegment);
+  const trybEkspercki = useShellStore((s) => s.advancementMode) === 'expert';
   const selectedConverterGenerator = useMemo(
     () => selectedElement && snapshot
       ? findGeneratorForSelectedConverter(selectedElement, snapshot)
@@ -2738,7 +2761,11 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
             // wywołana z karty traciła tożsamość semantyczną elementu, którą
             // pilnował test „wybiera akcje segmentu po semantyce selekcji…"
             // (wykluczony w vite.config zamiast naprawiony; dług 2026-07-17).
-            extraContext: semanticActionContext(selectedElement, {}),
+            // Kontekst akcji podmiotu karty (np. szyna końca kabla nN dla przedłużenia
+            // obwodu) — punkt startu, którego nie da się wyprowadzić z samego zaznaczenia.
+            extraContext: semanticActionContext(selectedElement, {
+              ...(techCardSubject.actionContexts?.[action.id] ?? {}),
+            }),
           }));
         },
       };
@@ -2816,7 +2843,11 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           data-testid="sld-segment-inspector"
           className="border-b border-gray-200 bg-white px-4 py-2 text-[10px] text-gray-700"
         >
-          <div className="font-semibold text-gray-800">Odcinek SN</div>
+          <div className="font-semibold text-gray-800" data-testid="sld-segment-inspector-title">
+            {selectedSegment && isLineCable(selectedSegment)
+              ? rodzajGaleziPrzewodowejPl(snapshot, selectedSegment)
+              : 'Odcinek'}
+          </div>
           <div>Oznaczenie: {publicTechnicalLabel(elementId, elementName)}</div>
           <div data-testid="sld-segment-inspector-catalog">
             Katalog: {selectedSegmentCatalogRef ?? 'nie wybrano typu'}
@@ -2837,6 +2868,12 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
               Zmień typ katalogowy
             </button>
           )}
+        </div>
+      )}
+
+      {isSelectedSegment && selectedSegmentIsNnCable && selectedSegment && (
+        <div className="border-b border-gray-200 px-2">
+          <SekcjaKablaNn cableRef={selectedSegment.ref_id} trybEkspercki={trybEkspercki} />
         </div>
       )}
 
@@ -2934,14 +2971,28 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   );
 }
 
-function inferSegmentCatalogNamespace(branch: Branch | null | undefined): CatalogNamespace | null {
+/**
+ * Przestrzeń katalogu odcinka. Kabel nN (oba końce w paśmie nN — `jestKablemNn`) wiąże się
+ * WYŁĄCZNIE z katalogiem kabli nN, niezależnie od zapisanej przestrzeni (dawniej kabel nN bez
+ * przestrzeni dostawał `KABEL_SN` i katalog kabli SN, w którym nie ma kabli nN).
+ */
+function inferSegmentCatalogNamespace(
+  snapshot: EnergyNetworkModel | null,
+  branch: Branch | null | undefined,
+): CatalogNamespace | null {
+  if (jestKablemNn(snapshot, branch)) return PRZESTRZEN_KABLI_NN;
   if (branch?.catalog_namespace) return branch.catalog_namespace as CatalogNamespace;
   if (branch?.type === 'line_overhead') return 'LINIA_SN';
   if (branch?.type === 'cable') return 'KABEL_SN';
   return null;
 }
 
-function inferSegmentPickerCategory(branch: Branch | null | undefined): TypeCategory | null {
+/** Kategoria wyboru typu — ta sama tożsamość pasma co przestrzeń katalogu (predykat parami). */
+function inferSegmentPickerCategory(
+  snapshot: EnergyNetworkModel | null,
+  branch: Branch | null | undefined,
+): TypeCategory | null {
+  if (jestKablemNn(snapshot, branch)) return 'LV_CABLE';
   if (branch?.type === 'line_overhead') return 'LINE';
   if (branch?.type === 'cable') return 'CABLE';
   return null;

@@ -16,6 +16,7 @@ from uuid import UUID
 from zipfile import ZipFile
 
 import pytest
+from application.analyses.nn_device_selection import kandydat_z_urzadzenia, kryterium_i2
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
@@ -27,6 +28,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
     STATUS_SPELNIA,
     LVCircuitVerificationInput,
     LVCircuitVerificationProofPack,
+    StratyOdcinka,
     UrzadzenieOchronneNn,
     ocen_zdolnosc_wylaczania_dwa_zdania,
 )
@@ -88,6 +90,9 @@ def _input(
     swz_status: str = "spełnia",
     p_mw: float = 0.005,
     q_mvar: float = 0.002,
+    wspolczynniki: object = "domyslne",
+    thermal: object | None = None,
+    straty: StratyOdcinka | None = None,
 ) -> LVCircuitVerificationInput:
     if urzadzenie is None:
         urzadzenie = UrzadzenieOchronneNn(
@@ -98,6 +103,11 @@ def _input(
             klasa_mcb="B",
             wlasna_zdolnosc_ka=6.0,
         )
+    wsp = _wspolczynniki() if wspolczynniki == "domyslne" else wspolczynniki
+    # I2 z JEDNEGO źródła progu (kryterium (ii) doboru aparatu) — tak samo jak orkiestracja
+    # wejścia pakietu (`lv_circuit_verification_binding`).
+    iz_prime = obciazalnosc_skorygowana(100.0, wsp) if wsp is not None else 100.0
+    kr_i2 = kryterium_i2(kandydat=kandydat_z_urzadzenia(urzadzenie), iz_prime_a=iz_prime)
     return LVCircuitVerificationInput(
         project_name="Projekt testowy",
         case_name="Przypadek testowy",
@@ -112,10 +122,13 @@ def _input(
         q_mvar=q_mvar,
         u_ll_kv=0.4,
         iz_katalogowe_a=100.0,
-        wspolczynniki=_wspolczynniki(),
+        wspolczynniki=wsp,  # type: ignore[arg-type]
         urzadzenie=urzadzenie,
         ik_max_ka=ik_max_ka,
-        thermal=_thermal(),
+        i2_a=kr_i2.wartosci.get("i2_a"),
+        i2_zrodlo_pl=str(kr_i2.wartosci.get("zrodlo") or "próg nierozstrzygalny"),
+        i2_uzasadnienie_pl=kr_i2.uzasadnienie_pl,
+        thermal=thermal if thermal is not None else _thermal(),  # type: ignore[arg-type]
         vdrop_u_source_kv=0.4,
         vdrop_delta_u_total_kv=0.005,
         vdrop_delta_u_total_percent=1.25,
@@ -127,6 +140,7 @@ def _input(
         swz_pasmo_u0="120<U0<=230",
         swz_rodzaj_obwodu="odbiorczy",
         swz_margines=3.0 if swz_status != "nierozstrzygalne" else None,
+        straty=straty,
     )
 
 
@@ -389,3 +403,79 @@ def test_zip_manifest_niesie_proof_type_lv_circuit_verification() -> None:
 def test_artifact_id_jest_uuid_gdy_niepodany() -> None:
     doc = LVCircuitVerificationProofPack.generate(_input())
     assert isinstance(doc.artifact_id, UUID)
+
+
+# =============================================================================
+# Karta OBIEKT-KABEL-NN — iloczyn cech nowych wejść pakietu
+# =============================================================================
+
+
+@pytest.mark.parametrize(
+    ("urzadzenie", "i2_oczekiwane"),
+    [
+        (
+            UrzadzenieOchronneNn(
+                KIND_MCB, "m1", "MCB B16", 16.0, klasa_mcb="B", wlasna_zdolnosc_ka=6.0
+            ),
+            1.45 * 16.0,
+        ),
+        (
+            UrzadzenieOchronneNn(
+                KIND_FUSE_SWITCH, "f1", "Rozłącznik+gG63", 63.0, conditional_sc_current_ka=50.0
+            ),
+            1.6 * 63.0,
+        ),
+        # MCCB z rozwiązanymi nastawami Ir/tr: I2 = 1,3·Ir — do karty pakiet meldował tu
+        # „nierozstrzygalne", choć kryterium doboru aparatu ten sam próg rozstrzygało.
+        (
+            UrzadzenieOchronneNn(
+                KIND_MCCB, "c1", "MCCB 63A", 63.0, wlasna_zdolnosc_ka=25.0, ir_a=63.0, tr_s=10.0
+            ),
+            1.3 * 63.0,
+        ),
+        (UrzadzenieOchronneNn(KIND_MCCB, "c2", "MCCB bez nastaw", 63.0), None),
+    ],
+)
+def test_krok5_i2_z_jednego_zrodla_dla_kazdego_rodzaju_aparatu(urzadzenie, i2_oczekiwane) -> None:
+    doc = LVCircuitVerificationProofPack.generate(_input(urzadzenie=urzadzenie))
+    krok5 = next(s for s in doc.steps if s.step_number == 5)
+    if i2_oczekiwane is None:
+        assert krok5.result.value == "NIEROZSTRZYGALNE"
+    else:
+        assert krok5.result.value == pytest.approx(i2_oczekiwane)
+
+
+def test_krok3_warunki_katalogowe_bez_zestawu_tablic() -> None:
+    """Kabel bez zadeklarowanych warunków ułożenia: Iz′ = Iz, krok mówi to wprost."""
+    doc = LVCircuitVerificationProofPack.generate(_input(wspolczynniki=None))
+    krok3 = next(s for s in doc.steps if s.step_number == 3)
+    assert krok3.result.value == pytest.approx(100.0)
+    assert "warunki katalogowe" in krok3.title_pl
+    assert [v.value for v in krok3.input_values[1:]] == [1.0, 1.0, 1.0]
+
+
+def test_brak_czasu_wylaczenia_to_brak_danych_nie_naruszenie() -> None:
+    """I²t UNAVAILABLE (brak czasu wyłączenia) nie daje FAIL obwodu — to brak danych."""
+    th = check_conductor_thermal_withstand(
+        ConductorThermalInput(
+            ith_a=200.0,
+            fault_duration_s=None,
+            ith_1s_a=6000.0,
+            cross_section_mm2=120.0,
+            jth_1s_a_per_mm2=50.0,
+        )
+    )
+    assert th.status == "UNAVAILABLE"
+    doc = LVCircuitVerificationProofPack.generate(_input(thermal=th))
+    assert doc.summary.overall_status == "NIEROZSTRZYGALNE"
+
+
+def test_krok11_straty_tylko_gdy_podane_i_rowne_wynikowi_solvera() -> None:
+    bez = LVCircuitVerificationProofPack.generate(_input())
+    assert bez.summary.total_steps == 10
+    straty = StratyOdcinka(p_od_mw=0.0101, p_do_mw=-0.0100, straty_mw=0.0001)
+    z = LVCircuitVerificationProofPack.generate(_input(straty=straty))
+    assert z.summary.total_steps == 11
+    krok11 = next(s for s in z.steps if s.step_number == 11)
+    assert krok11.result.value == pytest.approx(0.0001)
+    assert z.summary.key_results["straty_mw"].value == pytest.approx(0.0001)

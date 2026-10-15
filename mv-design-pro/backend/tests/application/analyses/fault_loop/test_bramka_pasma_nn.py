@@ -40,6 +40,7 @@ from application.analyses.fault_loop.service import (
     build_feeder_fault_loop_view,
     build_feeder_fault_loop_view_for_transformer,
     build_station_fault_loop_view,
+    petla_zwarcia_min_w_punkcie,
 )
 from application.analyses.lv_domain.graph_view import build_lv_domain_view
 from application.analyses.nn_circuit_sheet import (
@@ -50,7 +51,6 @@ from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_n
 from application.analyses.swz.service import build_swz_view
 from application.eligibility_service import EligibilityService
 from application.proof_engine.lv_circuit_verification_binding import (
-    _petla_zwarcia_min,
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
 from enm.domain_operations import execute_domain_operation
@@ -91,7 +91,7 @@ def _odmowa_nie_liczona(wynik: dict[str, Any], nazwa: str, napiecie: float) -> N
 
 
 def _petla_dowodu(enm: EnergyNetworkModel) -> dict[str, Any]:
-    petla, braki, powod, kod = _petla_zwarcia_min(enm, "stn", "b1")
+    petla, braki, powod, kod = petla_zwarcia_min_w_punkcie(enm, "stn", "b1")
     if kod is not None:
         return {"status": "nie dotyczy", "kod_odmowy": kod, "reason_pl": powod}
     return {"status": "OK" if petla is not None else "brak danych", "missing_data": braki}

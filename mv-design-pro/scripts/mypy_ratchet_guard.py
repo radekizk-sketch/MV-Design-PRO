@@ -207,8 +207,13 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
-BASELINE_ERRORS = 223
-BASELINE_FILES = 34
+# Karta OBIEKT-KABEL-NN (2026-10-15, baza `2690bca8c`): 223/34 -> 217/31. Zniknęło dokładnie
+# 6 błędów `arg-type` „typ_sieci_solvera(str)" (fault_loop/service.py ×3, nn_device_selection,
+# swz/service, lv_circuit_verification_binding): funkcja i tak odmawia nazwanie wartości spoza
+# słownika układów, więc jej parametr to `str`, nie literał. Pomiar `mypy src`: drzewo HEAD
+# 223/34, drzewo karty 217/31; różnica zbiorów = te 6 wierszy, zero nowych.
+BASELINE_ERRORS = 217
+BASELINE_FILES = 31
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

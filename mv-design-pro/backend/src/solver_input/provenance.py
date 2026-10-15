@@ -282,6 +282,31 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="kabel_nn.obliczenia_rozplywu",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Obliczenia odcinka kabla nN z rozpływu mocy na bieżącym modelu (prąd "
+                "obliczeniowy, spadek napięcia, straty) oraz porównanie z obciążalnością po "
+                "współczynnikach PN-HD 60364-5-52 (application/analyses/kabel_nn.py) — wynik "
+                "jest policzony, ale zgodności solvera rozpływu z siecią referencyjną nN nie "
+                "wykazano, więc nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta OBIEKT-KABEL-NN (dyrektywa właściciela 2026-10-15 §6)",
+        ),
+        CapabilityEvidence(
+            capability_id="kabel_nn.obliczenia_zwarciowe",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Obliczenia zwarciowe odcinka kabla nN na bieżącym modelu: Ik″max IEC 60909, "
+                "Ik1 min z pętli zwarcia IEC 60364-4-41, wytrzymałość cieplna I²t ≤ k²S² przy "
+                "czasie z charakterystyki normowej aparatu (application/analyses/kabel_nn.py) — "
+                "wynik policzony, poprawność na sieci referencyjnej nN niewykazana."
+            ),
+            audit_ref="karta OBIEKT-KABEL-NN (dyrektywa właściciela 2026-10-15 §6)",
+        ),
+        CapabilityEvidence(
             capability_id="zabezpieczenia.ocena_nadpradowa",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

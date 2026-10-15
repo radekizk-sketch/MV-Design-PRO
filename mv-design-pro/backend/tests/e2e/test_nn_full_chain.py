@@ -20,7 +20,8 @@ run_power_flow_now` / `run_short_circuit_now` (cienkie opakowania `create_run`+
 wołane BEZPOŚREDNIO tu i w testach silnika, niezależnie od HTTP), oraz publiczne serwisy
 warstwy `application/analyses/*` (te same, których używają GET-y
 `/enm/fault-loop-point`, `/enm/swz`, `/enm/nn-device-selection`) i
-`POST /api/nn-proof/circuit/pack|report`. Zero sięgania po prywatne
+`POST /api/nn-proof/circuit/report` i obiekt kabla nN
+(`GET /api/cases/{id}/enm/nn-cable/...`). Zero sięgania po prywatne
 `_execute_*`.
 
 KARTA NAPRAWA-A (2026-08-14) — FLIP tego pliku z fail-closed na pełny
@@ -702,6 +703,19 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         "leaf_pv_bus": leaf_pv_bus,
         "leaf_bess_bus": leaf_bess_bus,
     }
+
+
+def _biegi_przypadku_na_biezacym_modelu() -> None:
+    """Biegi rozpływu i zwarć przypadku łańcucha w BAZIE BIEŻĄCEGO TESTU.
+
+    Baza biegów jest izolowana per test (`tests/conftest.py::_izolowana_baza_przebiegow`),
+    a obiekt kabla nN bierze opcje z ostatnich zakończonych biegów przypadku — krok,
+    który go woła, uruchamia je sam (te same serwisy co KROK 1 i KROK 4).
+    """
+    pf = run_power_flow_now(case_id=_CASE_ID, klucz_twin=_KLUCZ, project_id=None, options={})
+    assert pf.status == "FINISHED", pf.error_message
+    sc = run_short_circuit_now(case_id=_CASE_ID, klucz_twin=_KLUCZ, project_id=None, options={})
+    assert sc.status == "FINISHED", sc.error_message
 
 
 def _typed_pf_result(model: EnergyNetworkModel):
@@ -1569,128 +1583,77 @@ class TestNnFullChain:
     # -- KROK 10: pakiet dowodowy + raport -----------------------------------
 
     def test_krok_10a_pakiet_dowodowy_obwod_silnika_pelny_przebieg(self, app_client) -> None:
-        """FLIP (karta NAPRAWA-A §0.3.10, „pakiet dowodowy dla obwodu
-        silnika"): pakiet LV_CIRCUIT_VERIFICATION dla obwodu Silnika M1 był
-        422 z uczciwym powodem (SAMO ZNALEZISKO co dawne KROK 5b/7b — pakiet
-        wewnętrznie odtwarza TĘ SAMĄ ścieżkę Ik1_min/route przez
-        `lv_circuit_verification_binding._petla_zwarcia_min`). Karta
-        NAPRAWA-A zasiliła żyłę powrotną PE/PEN dla WSZYSTKICH kabli trasy —
-        pakiet teraz DZIAŁA W PEŁNI dla REALNEGO obwodu silnikowego (nie
-        tylko u źródła jak KROK 10b), z ZIP w 10 krokach, deterministyczny,
-        zawierający sekcję doboru z PEŁNĄ rekomendacją (MCB B40, Icn 10 kA,
-        KROK 7b)."""
-        payload = {
-            "project_id": "proj-nn-e2e",
-            "case_id": _CASE_ID,
-            "run_id": str(_STAN["sc_max_run_po_zmianie"].id),
-            "snapshot_id": "snap-krok10",
-            "project_name": "MV-Design-PRO — bramka nN P0",
-            "case_name": "Bramka końcowa P0 nN",
-            "run_timestamp": "2026-08-14T12:00:00Z",
-            "station_ref": _REFS["station_ref"],
-            "bus_ref": _REFS["leaf_silnik_bus"],
-            "breaker_ref": _REFS["aparat_k2_ref"],
-            "segment_ref": _REFS["k2_cable_ref"],
-            "p_mw": 0.022,
-            "q_mvar": 0.013,
-            "u_ll_kv": 0.4,
-            "iz_katalogowe_a": _STAN["iz_katalogowe_a_k2"],
-            "srodowisko": "grunt",
-            "izolacja": "PVC",
-            "temperatura_c": 20.0,
-            "liczba_obwodow": 1,
-            "rezystywnosc_gruntu_km_w": 1.0,
-            "ik_max_ka": _STAN["ik_max_ka_leaf_silnik"],
-            "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
-            "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
-        }
-        preview_resp = app_client.post("/api/nn-proof/circuit/preview", json=payload)
-        assert preview_resp.status_code == 200
-        preview_body = preview_resp.json()
-        # Sukces (`wynik["status"] == "OK"` wewnątrz endpointu) zwraca
-        # DOKUMENT dowodu (`serialize_lv_circuit_verification_pack`), nie
-        # kopertę `{"status": ...}` — ta koperta istnieje WYŁĄCZNIE na
-        # ścieżce błędu (`api/nn_proof.py::preview_lv_circuit_verification_
-        # pack`, `if wynik["status"] != "OK": return wynik`). Brak klucza
-        # "status" na najwyższym poziomie JEST dowodem sukcesu.
-        assert "status" not in preview_body, preview_body
-        assert preview_body["pack_type"] == "LV_CIRCUIT_VERIFICATION"
-        assert preview_body["summary"]["proof_type"] == "LV_CIRCUIT_VERIFICATION"
-        assert preview_body["summary"]["total_steps"] == 10
+        """Pakiet LV_CIRCUIT_VERIFICATION obwodu Silnika M1 — Z MODELU I BIEGU (karta
+        OBIEKT-KABEL-NN). Dawniej ten krok wysyłał ręcznie wpisane P/Q/Iz/ΔU/Ik″max i
+        syntetyczny identyfikator biegu do `POST /api/nn-proof/circuit/pack` (trasa
+        skasowana); dziś dowód kabla K2 składa się z modelu (aparat K2 MCB C25 na trasie,
+        typ kabla z katalogu, warunki ułożenia z meta) i biegów przypadku. ZIP w 11
+        krokach (10 + straty odcinka), deterministyczny bajt w bajt."""
+        k2 = _REFS["k2_cable_ref"]
+        _biegi_przypadku_na_biezacym_modelu()
+        dowod = app_client.get(
+            f"/api/cases/{_CASE_ID}/enm/nn-cable/dowod", params={"cable_ref": k2}
+        )
+        assert dowod.status_code == 200, dowod.text[:1000]
+        body = dowod.json()
+        assert body["pack_type"] == "LV_CIRCUIT_VERIFICATION"
+        assert body["summary"]["total_steps"] == 11
+        # Zabezpieczenie odcinka = aparat K2 z modelu (nie wpisany parametr).
+        assert "Aparat K2" in body["title_pl"]
 
-        resp1 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
+        resp1 = app_client.get(
+            f"/api/cases/{_CASE_ID}/enm/nn-cable/dowod/pakiet", params={"cable_ref": k2}
+        )
         assert resp1.status_code == 200, resp1.text[:1000]
         assert resp1.headers["content-type"] == "application/zip"
         import io
         from zipfile import ZipFile
 
         with ZipFile(io.BytesIO(resp1.content)) as zf:
-            names = set(zf.namelist())
-            assert "proof_pack/proof.json" in names
             proof_json = zf.read("proof_pack/proof.json").decode("utf-8")
         assert '"proof_type": "LV_CIRCUIT_VERIFICATION"' in proof_json
-        assert '"step_number": 10' in proof_json
-        # Dowód, że pakiet REALNIE liczy trasę Silnika M1 (nie u źródła jak
-        # KROK 10b) — nagłówek dokumentu wskazuje kabel K2 jako element trasy.
-        assert _REFS["k2_cable_ref"] in proof_json
+        assert '"step_number": 11' in proof_json
+        assert k2 in proof_json
 
-        # Determinizm — dwa pobrania dają identyczny ZIP bajt-w-bajt (ten sam
-        # dowód co KROK 10b, teraz na REALNYM obwodzie z kablem na trasie).
-        resp2 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
+        resp2 = app_client.get(
+            f"/api/cases/{_CASE_ID}/enm/nn-cable/dowod/pakiet", params={"cable_ref": k2}
+        )
         assert resp2.status_code == 200
         assert (
             hashlib.sha256(resp1.content).hexdigest() == hashlib.sha256(resp2.content).hexdigest()
         ), "Pakiet dowodowy obwodu Silnika M1 nie jest deterministyczny (2 pobrania różne)"
 
-    def test_krok_10b_pakiet_dowodowy_u_zrodla_dziala_i_deterministyczny(self, app_client) -> None:
-        """Dowód pozytywny: pakiet LV_CIRCUIT_VERIFICATION DZIAŁA w pełni (ZIP,
-        10 kroków) dla obwodu, gdzie dane są kompletne (u źródła, zero-hop) —
-        mechanizm sam w sobie jest sprawny, blokuje go WYŁĄCZNIE brak danych
-        katalogowych (krok 10a). Dwa pobrania → identyczny ZIP bajt-w-bajt
-        (determinizm)."""
-        payload = {
-            "project_id": "proj-nn-e2e",
-            "case_id": _CASE_ID,
-            "run_id": str(_STAN["sc_max_run_po_zmianie"].id),
-            "snapshot_id": "snap-krok10b",
-            "project_name": "MV-Design-PRO — bramka nN P0",
-            "case_name": "Bramka końcowa P0 nN",
-            "run_timestamp": "2026-08-14T12:00:00Z",
-            "station_ref": _REFS["station_ref"],
-            "bus_ref": _REFS["rgnn_bus"],
-            "breaker_ref": _REFS["aparat_k2_ref"],
-            "segment_ref": _REFS["k2_cable_ref"],
-            "p_mw": 0.022,
-            "q_mvar": 0.013,
-            "u_ll_kv": 0.4,
-            "iz_katalogowe_a": _STAN["iz_katalogowe_a_k2"],
-            "srodowisko": "grunt",
-            "izolacja": "PVC",
-            "temperatura_c": 20.0,
-            "liczba_obwodow": 1,
-            "rezystywnosc_gruntu_km_w": 1.0,
-            "ik_max_ka": _STAN["ik_max_ka_rgnn"],
-            "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
-            "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
-        }
-        resp1 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
-        assert resp1.status_code == 200, resp1.text[:1000]
-        assert resp1.headers["content-type"] == "application/zip"
-        import io
-        from zipfile import ZipFile
-
-        with ZipFile(io.BytesIO(resp1.content)) as zf:
-            names = set(zf.namelist())
-            assert "proof_pack/proof.json" in names
-            proof_json = zf.read("proof_pack/proof.json").decode("utf-8")
-        assert '"proof_type": "LV_CIRCUIT_VERIFICATION"' in proof_json
-        assert '"step_number": 10' in proof_json
-
-        resp2 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
-        assert resp2.status_code == 200
-        assert (
-            hashlib.sha256(resp1.content).hexdigest() == hashlib.sha256(resp2.content).hexdigest()
-        ), "Pakiet dowodowy nie jest deterministyczny (2 pobrania dają różny ZIP)"
+    def test_krok_10b_obliczenia_kabla_z_aparatem_bez_katalogu_nazywaja_brak(
+        self, app_client
+    ) -> None:
+        """Kabel K1 (RGnN → R1): najbliższym aparatem przed nim jest wyłącznik główny nN
+        stacji bez wiązania z katalogiem. Sekcja obliczeń kabla liczy obciążalność i spadek
+        napięcia, a kryteria zależne od zabezpieczenia nazywają JEDEN konkretny brak — nazwą
+        aparatu z modelu, nie identyfikatorem; dowód obwodu odmawia z tym samym powodem (422),
+        nigdy ZIP z wymyślonym aparatem."""
+        _biegi_przypadku_na_biezacym_modelu()
+        enm = get_enm(_KLUCZ)
+        k1 = next(b.ref_id for b in enm.branches if b.name == "K1")
+        sekcja = app_client.get(f"/api/cases/{_CASE_ID}/enm/nn-cable", params={"cable_ref": k1})
+        assert sekcja.status_code == 200, sekcja.text[:1000]
+        body = sekcja.json()
+        assert body["status"] == "OK"
+        assert body["obwod"]["aparat_nazwa"] == "Wyłącznik główny nN"
+        dobor = next(
+            k for k in body["kryteria"] if k["kryterium_id"] == "kabel_nn.dobor_zabezpieczenia"
+        )
+        assert dobor["ocena_semantyka"] == "neutralna"
+        assert "Wyłącznik główny nN" in dobor["ocena_techniczna_pl"]
+        assert "feeder_device" not in dobor["ocena_techniczna_pl"]
+        obciazalnosc = next(
+            k for k in body["kryteria"] if k["kryterium_id"] == "kabel_nn.obciazalnosc"
+        )
+        assert obciazalnosc["ocena_semantyka"] == "pozytywna"
+        dowod = app_client.get(
+            f"/api/cases/{_CASE_ID}/enm/nn-cable/dowod", params={"cable_ref": k1}
+        )
+        assert dowod.status_code == 422
+        assert "zabezpieczenia" in dowod.json()["detail"]
 
     def test_krok_10c_raport_json_sekcje_nn(self, app_client) -> None:
         """FLIP (karta NAPRAWA-A §0.3.10): raport nN (`POST /api/nn-proof/

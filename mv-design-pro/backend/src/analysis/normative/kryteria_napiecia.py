@@ -142,6 +142,30 @@ KRYTERIUM_SPADKU_CIAGU_SN_JEDNOSTKA_REDAKCYJNA: str | None = None
 KRYTERIUM_SPADKU_CIAGU_SN_STAN_ZRODLA: Final = "NIEUSTALONE"
 
 
+# =============================================================================
+# 5. Kryterium SPADKU NAPIECIA obwodu nN — karta OBIEKT-KABEL-NN
+# =============================================================================
+
+#: Dopuszczalny spadek napiecia w obwodzie nN od zaciskow nN transformatora do
+#: odbioru [% Un]. Wartosc normy: PN-HD 60364-5-52 Zalacznik G (informacyjny),
+#: tablica G.52.1 — instalacja typu A (zasilana bezposrednio z sieci rozdzielczej nN),
+#: odbiory inne niz oswietlenie: 5 %. Podstawa jest NORMA z wydaniem i jednostka
+#: redakcyjna (stan `WSKAZANE` — tresc normy poza repozytorium). Zastosowanie do
+#: obwodu liczonego od zaciskow nN transformatora stacji (poczatek sieci nN modelu)
+#: jest zalozeniem projektowym zapisanym w zakresie waznosci kazdej oceny.
+KRYTERIUM_SPADKU_OBWODU_NN_PROCENT: float = 5.0
+KRYTERIUM_SPADKU_OBWODU_NN_DOKUMENT_PL = (
+    "PN-HD 60364-5-52 Instalacje elektryczne niskiego napięcia — Dobór i montaż wyposażenia "
+    "elektrycznego — Oprzewodowanie"
+)
+KRYTERIUM_SPADKU_OBWODU_NN_WYDANIE: Final = "2011"
+KRYTERIUM_SPADKU_OBWODU_NN_JEDNOSTKA_REDAKCYJNA: Final = (
+    "Załącznik G (informacyjny), tablica G.52.1 — instalacja typu A, odbiory inne niż oświetlenie"
+)
+KRYTERIUM_SPADKU_OBWODU_NN_RODZAJ_PODSTAWY: Final = "NORMA"
+KRYTERIUM_SPADKU_OBWODU_NN_STAN_ZRODLA: Final = "WSKAZANE"
+
+
 def pasmo_pu(procent: float) -> tuple[float, float]:
     """Przedzial [min_pu, max_pu] wokol 1,0 p.u. dla podanego procentu.
 

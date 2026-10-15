@@ -33,6 +33,7 @@ import { PropertySection } from './PropertySection';
 import { LinksTab } from './LinksTab';
 import { FreshnessBadge } from './FreshnessBadge';
 import { SekcjaPetlaZwarcia } from './SekcjaPetlaZwarcia';
+import { SekcjaKablaNn } from './SekcjaKablaNn';
 
 export function InspectorPanel({
   obiekt,
@@ -251,6 +252,9 @@ function TabWlasciwosci({
 }) {
   return (
     <>
+      {obiekt.kabelNnRef ? (
+        <SekcjaKablaNn cableRef={obiekt.kabelNnRef} trybEkspercki={ekspercki} />
+      ) : null}
       {obiekt.wlasciwosci.map((sekcja) => (
         <PropertySection
           key={sekcja.id}

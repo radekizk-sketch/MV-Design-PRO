@@ -295,6 +295,12 @@ def check_conductor_thermal_withstand(
         if k_derivation is not None:
             jth = k_derivation.k_a_s05_per_mm2
             ith_1s = jth * section
+    elif ith_1s is None and jth is not None and section is not None:
+        # Katalog podaje gęstość prądu 1 s (J_th = k), nie prąd 1 s: I_th,1s = J_th · S.
+        # Do karty OBIEKT-KABEL-NN ta gałąź nie istniała — każdy kabel nN z katalogu
+        # (jth_1s_a_per_mm2 bez ith_1s_a) dostawał UNAVAILABLE „brak danych cieplnych",
+        # choć dana producenta była w modelu.
+        ith_1s = jth * section
 
     braki: list[str] = []
     if ith is None:

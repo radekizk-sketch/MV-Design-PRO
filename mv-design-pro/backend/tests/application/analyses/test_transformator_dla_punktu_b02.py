@@ -5,7 +5,7 @@ stacji" dla punktu nN w DOWOLNEJ sekcji:
 
 * ``swz.service.build_swz_view`` (werdykt SWZ punktu bez wskazania TR),
 * ``nn_device_selection._ik1_min_i_u0`` (Ik1_min doboru aparatu),
-* ``proof_engine.lv_circuit_verification_binding._petla_zwarcia_min``
+* ``fault_loop.service.petla_zwarcia_min_w_punkcie``
   (pakiet dowodowy obwodu),
 * ``nn_circuit_sheet.build_nn_circuit_sheet`` (arkusz całej stacji) i
   ``build_nn_circuit_sheet_row_for_breaker`` (wiersz wskazany wprost),
@@ -25,6 +25,7 @@ import pytest
 from api.analysis_run_exports import build_nn_circuit_report_section
 from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
+    petla_zwarcia_min_w_punkcie,
     resolve_transformer_for_bus,
 )
 from application.analyses.nn_circuit_sheet import (
@@ -33,7 +34,6 @@ from application.analyses.nn_circuit_sheet import (
 )
 from application.analyses.nn_device_selection import _ik1_min_i_u0
 from application.analyses.swz.service import build_swz_view
-from application.proof_engine.lv_circuit_verification_binding import _petla_zwarcia_min
 from enm.models import EnergyNetworkModel
 
 from tests.application.analyses.lv_domain.fixtury_stacji_nn import REF_STACJA, zbuduj_stacje_nn
@@ -124,7 +124,7 @@ class TestPakietDowodowyObwodu:
     @pytest.mark.parametrize("sprzeglo", ["open", "closed"])
     def test_petla_min_liczona_od_tr2(self, sprzeglo: str) -> None:
         enm = _stacja(sprzeglo)
-        petla, missing, reason, kod_odmowy = _petla_zwarcia_min(enm, REF_STACJA, PUNKT_B)
+        petla, missing, reason, kod_odmowy = petla_zwarcia_min_w_punkcie(enm, REF_STACJA, PUNKT_B)
         assert (missing, reason, kod_odmowy) == ([], None, None)
         assert petla is not None
         assert petla.fault_loop.ik_min_a == pytest.approx(_ik_min_od(enm, "tr2"))

@@ -66,6 +66,12 @@ import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
+import {
+  jestKablemNn,
+  jestRozdzielnicaNn,
+  rodzajGaleziPrzewodowejPl,
+  type GalazDoKlasyfikacji,
+} from '../model/elementNn';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -131,6 +137,16 @@ interface Znaleziony {
   typEtykieta: string;
 }
 
+/** Etykieta typu z tożsamości pasma (kabel/linia nN albo SN; rozdzielnica nN) — jeden predykat. */
+function etykietaZPasma(model: EnergyNetworkModel, el: ENMElement, bazowa: string): string {
+  const rekord = el as unknown as { type?: string; station_type?: string };
+  if (rekord.type === 'cable' || rekord.type === 'line_overhead') {
+    return rodzajGaleziPrzewodowejPl(model, rekord as GalazDoKlasyfikacji);
+  }
+  if (jestRozdzielnicaNn(rekord)) return 'Rozdzielnica nN';
+  return bazowa;
+}
+
 function znajdzElement(model: EnergyNetworkModel, id: string): Znaleziony | null {
   for (const kolekcja of KOLEKCJE) {
     const lista = model[kolekcja.klucz];
@@ -145,9 +161,17 @@ function znajdzElement(model: EnergyNetworkModel, id: string): Znaleziony | null
             typGalezi && typGalezi in ETYKIETA_TYPU_GALEZI
               ? ETYKIETA_TYPU_GALEZI[typGalezi]
               : kolekcja.typEtykieta;
-          return { element: el, typ: typGalezi ?? kolekcja.typ, typEtykieta };
+          return {
+            element: el,
+            typ: typGalezi ?? kolekcja.typ,
+            typEtykieta: etykietaZPasma(model, el, typEtykieta),
+          };
         }
-        return { element: el, typ: kolekcja.typ, typEtykieta: kolekcja.typEtykieta };
+        return {
+          element: el,
+          typ: kolekcja.typ,
+          typEtykieta: etykietaZPasma(model, el, kolekcja.typEtykieta),
+        };
       }
     }
   }
@@ -584,6 +608,9 @@ export function mapowanieObiektuInspektora(
       { klucz: 'Identyfikator', wartosc: element.id },
       { klucz: 'Odnośnik', wartosc: element.ref_id },
     ],
+    ...(jestKablemNn(model, element as unknown as GalazDoKlasyfikacji)
+      ? { kabelNnRef: element.ref_id }
+      : {}),
   };
 }
 

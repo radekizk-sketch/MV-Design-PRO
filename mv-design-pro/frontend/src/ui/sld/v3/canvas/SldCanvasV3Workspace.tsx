@@ -146,7 +146,6 @@ import {
 import { SldExportFormatMenu } from '../../v2/export/SldExportFormatMenu';
 import { NetworkHierarchyTree } from '../../v2/domain/NetworkHierarchyTree';
 import { buildNetworkHierarchyFromSnapshot } from '../../shared/networkHierarchyFromSnapshot';
-import { NnCircuitProofPanel } from '../../v2/proof/NnCircuitProofPanel';
 import { ProofPacksPanel } from '../../v2/proof/ProofPacksPanel';
 import { LvDomainPortal, LV_DOMAIN_PORTAL_MAX_WIDTH_PX } from '../lv-domain/LvDomainPortal';
 import { LassoSelector, pointInLasso, rectFromPoints, type LassoRect } from '../../v2/canvas/LassoSelector';
@@ -3071,13 +3070,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         {proofPanelOpen && (
           <ProofPacksPanel hasNetworkModel={hasNetworkModel} className="max-h-[150px] w-[216px] overflow-y-auto" />
         )}
-        {/* Karta P0.10 (nN): pakiet LV_CIRCUIT_VERIFICATION — osobny panel od
-            `ProofPacksPanel` (8 kanonicznych paczek V12.xx, lista zamrożona),
-            bo obwód nN identyfikują parametry (stacja/punkt/aparat/odcinek),
-            nie `run_id` z istniejącego przebiegu. */}
-        {proofPanelOpen && hasNetworkModel && (
-          <NnCircuitProofPanel className="max-h-[420px] w-[320px] overflow-y-auto" />
-        )}
+        {/* Dowód obwodu nN (LV_CIRCUIT_VERIFICATION) otwiera się z OBIEKTU kabla nN w
+            inspektorze (`ui2/inspector/SekcjaKablaNn.tsx`) — z modelu i biegu; dawny formularz
+            ręcznych parametrów z syntetycznym identyfikatorem biegu skasowano (karta
+            OBIEKT-KABEL-NN). */}
       </div>
 
       {/* F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny

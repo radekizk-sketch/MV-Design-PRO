@@ -81,6 +81,7 @@ import { executeFixActionSurface } from '../ui/shared/fixActionSurfaceExecutor';
 import { useAppStateStore } from '../ui/app-state';
 import { AreaContextPanel } from '../ui/shell/context-panels';
 import { obszarDlaTrasy } from './legacy/mostObszarow';
+import { obiektyDoWyszukiwania } from './search/obiektyModelu';
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
@@ -274,11 +275,7 @@ export function AppRoot() {
     () =>
       zbudujIndeksWyszukiwania({
         akcje: akcjeWyszukiwarki,
-        obiekty: () =>
-          (snapshot?.buses ?? []).map((szyna) => ({
-            id: szyna.ref_id || szyna.id,
-            nazwa: szyna.name || szyna.ref_id,
-          })),
+        obiekty: () => obiektyDoWyszukiwania(snapshot),
       }),
     [akcjeWyszukiwarki, snapshot],
   );

@@ -145,6 +145,13 @@ LEGACY_PAYLOAD_TARGETS = [
     "frontend/e2e",
 ]
 
+#: Operacje domenowe nN, których bieżący kontrakt niesie `from_bus_ref` (wyjątek reguły e2e).
+OPERACJE_NN_Z_FROM_BUS_REF = (
+    "add_nn_cable_segment",
+    "add_nn_switch_device",
+    "add_nn_distribution_board",
+)
+
 LEGACY_PAYLOAD_PATTERNS = [
     (
         re.compile(r"\bcatalog_ref\s*:"),
@@ -320,6 +327,11 @@ def check_legacy_catalog_payloads(root: Path = PROJECT_ROOT) -> list[Violation]:
 
             context_window = "\n".join(lines[max(0, line_no - 8) : line_no])
             if "connect_secondary_ring_sn" in context_window:
+                continue
+            # Operacje nN (P0.1, `enm/domain_operations_v2.py`) przyjmują `from_bus_ref` jako
+            # BIEŻĄCY kontrakt (kabel, aparat w torze, zasilenie rozdzielnicy) — ten sam wyjątek
+            # co `AddNNCableSegmentPayload` w `domainOps.ts`; reguła celuje w dawny wzorzec SN.
+            if any(op in context_window for op in OPERACJE_NN_Z_FROM_BUS_REF):
                 continue
 
             violations.append(

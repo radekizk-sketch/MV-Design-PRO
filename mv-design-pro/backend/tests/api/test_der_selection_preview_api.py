@@ -390,54 +390,20 @@ def test_wspolczynniki_przy_nazwanym_zestawie_sa_odrzucane(app_client) -> None:
 
 
 # ===========================================================================
-# Karta F-K7: koncowka korekty obciazalnosci (rachunek przeniesiony z frontu)
+# Karta F-K7 — koncowka `POST /api/solver/cable-ampacity-derating-preview` SKASOWANA
+# (karta OBIEKT-KABEL-NN): klient frontu nie mial ani jednego konsumenta, a koncowka
+# liczyla zestawy SN (f_grunt/f_wiazka/f_grupa). Korekte toru SN liczy podglad doboru
+# toru DER (`der-selection-preview`), obciazalnosc kabla nN — obiekt kabla nN
+# (`GET /api/cases/{case_id}/enm/nn-cable`).
 # ===========================================================================
 
 
-def test_korekta_obciazalnosci_liczy_backend_z_werdyktem(app_client) -> None:
-    """Excel MT880: 285 A × 0,74538 = 212,43 A; I_obl = 162,06 A ⇒ kryterium spełnione."""
+def test_koncowka_korekty_obciazalnosci_bez_konsumenta_skasowana(app_client) -> None:
     response = app_client.post(
         "/api/solver/cable-ampacity-derating-preview",
-        json={
-            "rated_ampacity_a": 285.0,
-            "design_current_a": 162.06,
-            "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"},
-        },
+        json={"rated_ampacity_a": 285.0, "design_current_a": 162.06},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["effective_ampacity_a"] == pytest.approx(212.4333, abs=1e-3)
-    assert data["derating_total"] == pytest.approx(0.74538, abs=1e-9)
-    assert data["ok"] is True
-    assert data["utilization_pct"] == pytest.approx(162.06 / 212.4333 * 100.0, abs=1e-3)
-    assert "ziemia" in data["assumption_pl"].lower()
-
-
-def test_korekta_obciazalnosci_bez_warunkow_daje_wartosc_katalogowa(app_client) -> None:
-    """Brak warunków = obciążalność katalogowa, ale z JAWNYM założeniem w odpowiedzi."""
-    data = app_client.post(
-        "/api/solver/cable-ampacity-derating-preview",
-        json={"rated_ampacity_a": 285.0, "design_current_a": 250.0},
-    ).json()
-    assert data["effective_ampacity_a"] == pytest.approx(285.0)
-    assert data["derating_total"] == pytest.approx(1.0)
-    assert data["derating_set"] == "warunki_katalogowe"
-    assert data["ok"] is True
-    assert "WARUNKÓW KATALOGOWYCH" in data["assumption_pl"]
-
-
-def test_korekta_obciazalnosci_zglasza_przekroczenie(app_client) -> None:
-    """I_obl 250 A > I′z 212,4 A ⇒ kryterium NIESPEŁNIONE, wykorzystanie > 100 %."""
-    data = app_client.post(
-        "/api/solver/cable-ampacity-derating-preview",
-        json={
-            "rated_ampacity_a": 285.0,
-            "design_current_a": 250.0,
-            "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"},
-        },
-    ).json()
-    assert data["ok"] is False
-    assert data["utilization_pct"] > 100.0
+    assert response.status_code in (404, 405)
 
 
 # ---------------------------------------------------------------------------

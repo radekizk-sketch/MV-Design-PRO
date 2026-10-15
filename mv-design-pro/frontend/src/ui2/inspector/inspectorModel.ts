@@ -111,6 +111,11 @@ export interface ObiektInspektora {
   rewizjaWynikow?: number;
   /** Pary techniczne dla trybu Eksperckiego. */
   szczegolyTechniczne?: SzczegolTechniczny[];
+  /**
+   * Odnośnik kabla nN (gałąź `cable` z obu końcami w paśmie nN — `ui2/model/elementNn`):
+   * zakładka Właściwości pokazuje sekcję „Obliczenia kabla nN" (obiekt projektowy).
+   */
+  kabelNnRef?: string;
 }
 
 /** Props głównego komponentu (karta §3). */
