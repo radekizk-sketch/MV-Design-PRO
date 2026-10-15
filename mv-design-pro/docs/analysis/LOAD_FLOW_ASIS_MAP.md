@@ -4,6 +4,14 @@
 > **Date**: 2026-02-13
 > **Scope**: Current state of Load Flow integration across all layers — before RUN #2A closure
 > **Rule**: This document describes AS-IS state only. No proposals, no new entities.
+>
+> **KOREKTA 2026-09-30 (karty TORY-TYLKO-W-TESTACH i TORY-POPRAWKI):** dokument opisuje
+> stan z 2026-02-13. `analysis/power_flow/solver.py` (`PowerFlowSolver`,
+> `solve_power_flow`), `analysis/power_flow/analysis.py` (`assemble_power_flow_result`),
+> `analysis/power_flow/_internal.py`, `violations.py`, `violations_report.py` oraz
+> `AnalysisRunService` (§3.2) nie istnieją. Rozpływ liczy bieg kanoniczny
+> `enm/canonical_analysis.py::_execute_power_flow`; pakiet `analysis/power_flow/` to dziś
+> `result.py` i `types.py` (typy wyniku i reeksport kontraktu wejścia).
 
 ---
 
@@ -336,13 +344,13 @@ Each iteration trace includes: mismatch_per_bus, norm_mismatch, max_mismatch_pu,
 
 | File | Purpose |
 |------|---------|
-| `solver.py` | Deprecated adapter → delegates to `PowerFlowNewtonSolver` |
+| ~~`solver.py`~~ | (skasowany 2026-09-30) Deprecated adapter → delegates to `PowerFlowNewtonSolver` |
 | `types.py` | Re-exports from `network_model.solvers.power_flow_types` |
 | `result.py` | PowerFlowResult (legacy wrapper) |
-| `analysis.py` | `assemble_power_flow_result()` — assembles result from solver output |
-| `violations.py` | Voltage/loading violation detection |
-| `violations_report.py` | Report formatting for violations |
-| `_internal.py` | Internal helpers (build_slack_island, validate_input) |
+| ~~`analysis.py`~~ | (skasowany 2026-09-30) `assemble_power_flow_result()` — assembles result from solver output |
+| ~~`violations.py`~~ | (nie istnieje) Voltage/loading violation detection |
+| ~~`violations_report.py`~~ | (nie istnieje) Report formatting for violations |
+| ~~`_internal.py`~~ | (skasowany 2026-09-30) Internal helpers (build_slack_island, validate_input) |
 
 ### 3.2 AnalysisRunService (Load Flow Execution Path)
 

@@ -102,12 +102,9 @@ Load Flow (LF) computes the **steady-state AC power flow** for a balanced three-
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      APPLICATION LAYER                               │
 │  application/analysis_run/service.py                                 │
-│    AnalysisRunService.create_power_flow_run()                        │
-│    AnalysisRunService.execute_run() → _execute_power_flow()          │
-│    Snapshot construction, input hash, deduplication                   │
-│  application/execution_engine/service.py                             │
-│    ExecutionEngineService (target: unified execute_run_load_flow())   │
-│    Run lifecycle: PENDING → RUNNING → DONE | FAILED                  │
+│    (stan 2026-02; AnalysisRunService i ExecutionEngineService        │
+│     skasowane — rozpływ liczy enm/canonical_analysis.py::            │
+│     _execute_power_flow, patrz korekta w nagłówku i §7.1, §12)       │
 │  application/result_mapping/                                         │
 │    LF solver output → LoadFlowResultSetV1 (future)                   │
 │  application/proof_engine/packs/p14_power_flow.py                    │
@@ -118,12 +115,11 @@ Load Flow (LF) computes the **steady-state AC power flow** for a balanced three-
 ┌──────────────────────────────────────────────────────────────────────┐
 │                       ANALYSIS LAYER                                 │
 │  analysis/power_flow/                                                │
-│    analysis.py      — result assembly, violations, balance check     │
-│    violations.py    — VoltageViolationsDetector (Umin/Umax)          │
-│    violations_report.py  — PDF section builder                       │
 │    result.py        — PowerFlowResult (analysis-level composite)     │
-│    solver.py        — deprecated adapter (delegates to solver layer) │
 │    types.py         — re-exports from solver types                   │
+│    (korekta 2026-09-30: analysis.py, solver.py, _internal.py,        │
+│     violations*.py — nie istnieją; naruszenia napięć i obciążeń:     │
+│     analysis/energy_validation, analysis/power_flow_interpretation)  │
 │  analysis/power_flow_interpretation/                                 │
 │    PowerFlowInterpretationBuilder (P22)                              │
 │  INTERPRETATION ONLY. No physics. Uses solver results read-only.     │

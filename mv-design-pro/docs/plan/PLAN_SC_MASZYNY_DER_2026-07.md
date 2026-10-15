@@ -64,7 +64,7 @@ sieci ENM.
 | Operacja domenowa | `add_converter_source`, `add_genset_nn`, `add_ups_nn` | ✅ jest |
 | **Most ENM→graf** | `map_enm_to_network_graph` buduje `Synchronous/Asynchronous/InverterSource` | ❌ **BRAK — sedno G-SCM** |
 | Y-bus / solver | bocznik maszyny + superpozycja prądu falownika | ✅ jest |
-| Analiza | `interpret_machine_contributions` (§6.6 μ/q, small-motor) | ✅ jest (nie wpięta w kanoniczny wynik) |
+| Analiza | ~~`interpret_machine_contributions`~~ (§6.6 μ/q, small-motor) — skasowane kartą TORY-TYLKO-W-TESTACH 2026-09-30 (bez konsumenta w produkcie); wkłady maszyn z wywodem: `POST /api/proof/sc3f/contributions` (`api/proof_pack.py::sc3f_contributions`) i pakiet `application/proof_engine/packs/sc_symmetrical.py` | ❌ brak w warstwie analizy (wkłady — w pakiecie dowodowym SC3F) |
 | Proof/raport | proof maszynowy | ✅ istnieje (`proof_engine`) |
 
 ---

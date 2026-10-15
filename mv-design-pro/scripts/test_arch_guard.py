@@ -162,7 +162,9 @@ def test_skasowany_adapter_rozplywu_bylby_czerwony(tmp_path: Path) -> None:
     (import `PowerFlowNewtonSolver` i `.solve()` w warstwie interpretacji)."""
     backend = _drzewo(tmp_path, "src/analysis/power_flow/solver.py", WYWOLANIE_NR)
 
-    naruszenie = arch_guard._scan_file(backend / "src/analysis/power_flow/solver.py", backend)
+    naruszenie = arch_guard._scan_file(
+        backend / "src/analysis/power_flow/solver.py", backend
+    )
 
     assert naruszenie is not None
     assert "network_model.solvers.power_flow_newton" in naruszenie[1]
@@ -177,8 +179,12 @@ def _importy_solverow_w_analizie() -> dict[str, set[str]]:
         for wezel in ast.walk(ast.parse(plik.read_text(encoding="utf-8"))):
             if isinstance(wezel, ast.ImportFrom):
                 baza = modul_bazowy(pakiet, wezel)
-                if baza == "network_model.solvers" or baza.startswith("network_model.solvers."):
-                    zmierzone.setdefault(baza, set()).update(a.name for a in wezel.names)
+                if baza == "network_model.solvers" or baza.startswith(
+                    "network_model.solvers."
+                ):
+                    zmierzone.setdefault(baza, set()).update(
+                        a.name for a in wezel.names
+                    )
     return zmierzone
 
 
@@ -190,9 +196,389 @@ def test_lista_dozwolona_bez_martwych_wpisow() -> None:
     zmierzone = _importy_solverow_w_analizie()
 
     assert zmierzone == {
-        modul: set(nazwy) for modul, nazwy in arch_guard.ANALIZA_DOZWOLONE_Z_SOLVEROW.items()
+        modul: set(nazwy)
+        for modul, nazwy in arch_guard.ANALIZA_DOZWOLONE_Z_SOLVEROW.items()
     }
 
 
 def test_zywe_drzewo_zielone() -> None:
     assert arch_guard.main() == 0
+
+
+# =============================================================================
+# KARTA TORY-POPRAWKI (2026-09-30): reguła po DOSTĘPIE, nie po ścieżce importu.
+#
+# Przegląd adwersarzowy wykazał, że pierwsza wersja reguły pilnowała ścieżki
+# `network_model.solvers…`, a solver był osiągalny bokiem. Każda forma poniżej jest
+# wstrzykiwana do KOPII REALNEGO drzewa `backend/src` (reeksporty, gorliwe `__init__`,
+# alias `src` są prawdziwe) i sprawdzana przez `main()` (kod wyjścia).
+#
+# ILOCZYN CECH: {droga do obiektu: import statyczny wiążący pakiet-przodka, reeksport
+# symbolu przez moduł produktu, obiekt modułu reeksportującego, obiekt pakietu przez
+# podmoduł, alias pakietu `src`, łańcuch atrybutów, przypisanie/dziedziczenie w module
+# reeksportującym, import dynamiczny (`importlib.import_module`, `from importlib import
+# import_module`, `__import__`) × {nazwa stała, `name=`, `package=`/`level=` względnie,
+# `fromlist`, konkatenacja, f-string, nazwa nie-stała, alias funkcji, `getattr`},
+# refleksja (`sys.modules`, moduły refleksji, `__globals__`, `eval`)} × {miejsce: poziom
+# modułu, ciało funkcji, `TYPE_CHECKING`} × {cel: obiekt solvera spoza listy / typ z listy
+# (para zielona) / moduł spoza solverów (para zielona)}.
+# =============================================================================
+
+import shutil  # noqa: E402
+
+PRAWDZIWY_SRC = arch_guard.REPO_ROOT / "backend" / "src"
+
+
+@pytest.fixture(scope="module")
+def kopia_drzewa(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    korzen = tmp_path_factory.mktemp("realne_drzewo")
+    shutil.copytree(
+        PRAWDZIWY_SRC,
+        korzen / "backend" / "src",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    return korzen
+
+
+def _main_z_iniekcja(
+    korzen: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    pliki: dict[str, str],
+) -> tuple[int, str]:
+    src = korzen / "backend" / "src"
+    zapisane: list[Path] = []
+    try:
+        for wzgledna, tresc in pliki.items():
+            sciezka = src / wzgledna
+            assert not sciezka.exists(), sciezka
+            sciezka.parent.mkdir(parents=True, exist_ok=True)
+            sciezka.write_text(tresc, encoding="utf-8")
+            zapisane.append(sciezka)
+        monkeypatch.setattr(arch_guard, "REPO_ROOT", korzen)
+        rc = arch_guard.main()
+    finally:
+        for sciezka in zapisane:
+            sciezka.unlink()
+    wyjscie = capsys.readouterr()
+    return rc, wyjscie.out + wyjscie.err
+
+
+INIEKCJA = "analysis/voltage_profile/_iniekcja_testowa.py"
+
+DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
+    # --- punkt 2(a): pakiet-przodek solverów związany legalnym importem ---
+    (
+        "import-core-wiaze-network-model-i-lancuch",
+        {
+            INIEKCJA: "import network_model.core.graph\n"
+            "from network_model.solvers.power_flow_types import PowerFlowInput\n\n\n"
+            "def f(x: PowerFlowInput):\n"
+            "    return network_model.solvers.power_flow_newton.PowerFlowNewtonSolver()"
+            ".solve(x)\n"
+        },
+    ),
+    ("import-core-bez-aliasu", {INIEKCJA: "import network_model.core.graph\n"}),
+    (
+        "lancuch-atrybutow-bez-importu",
+        {
+            INIEKCJA: "def f(network_model):\n    return network_model.solvers.power_flow_newton\n"
+        },
+    ),
+    # --- punkt 2(b): reeksport ---
+    (
+        "reeksport-klasy-solvera-nr",
+        {INIEKCJA: "from enm.canonical_analysis import PowerFlowNewtonSolver\n"},
+    ),
+    (
+        "reeksport-funkcji-oltc",
+        {INIEKCJA: "from enm.canonical_analysis import solve_with_oltc\n"},
+    ),
+    (
+        "reeksport-solvera-fazowego",
+        {INIEKCJA: "from enm.canonical_analysis import PhaseStateSNSolver as S\n"},
+    ),
+    (
+        "reeksport-solvera-v126",
+        {INIEKCJA: "from enm.canonical_analysis import V126AcademicSolver\n"},
+    ),
+    (
+        "reeksport-w-ciele-funkcji",
+        {
+            INIEKCJA: "def f(g):\n"
+            "    from enm.canonical_analysis import solve_with_oltc\n\n"
+            "    return solve_with_oltc(g)\n"
+        },
+    ),
+    (
+        "reeksport-pod-type-checking",
+        {
+            INIEKCJA: "from typing import TYPE_CHECKING\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from enm.canonical_analysis import PowerFlowNewtonSolver\n"
+        },
+    ),
+    (
+        "obiekt-modulu-reeksportujacego",
+        {INIEKCJA: "from enm import canonical_analysis\n"},
+    ),
+    ("obiekt-pakietu-wiazania", {INIEKCJA: "from application import solvers\n"}),
+    (
+        "reeksport-przez-przypisanie-instancji",
+        {
+            "enm/_iniekcja_reeksport.py": "from network_model.solvers.power_flow_newton import "
+            "PowerFlowNewtonSolver\n\nSOLVER = PowerFlowNewtonSolver()\n",
+            INIEKCJA: "from enm._iniekcja_reeksport import SOLVER\n",
+        },
+    ),
+    (
+        "reeksport-przez-dziedziczenie",
+        {
+            "enm/_iniekcja_reeksport.py": "from network_model.solvers.power_flow_newton import "
+            "PowerFlowNewtonSolver\n\n\nclass Rozplyw(PowerFlowNewtonSolver):\n    pass\n",
+            INIEKCJA: "from enm._iniekcja_reeksport import Rozplyw\n",
+        },
+    ),
+    (
+        "reeksport-wzgledny-w-module-posrednim",
+        {
+            "network_model/core/_iniekcja_reeksport.py": "from ..solvers import "
+            "power_flow_newton as nr\n",
+            INIEKCJA: "from network_model.core._iniekcja_reeksport import nr\n",
+        },
+    ),
+    (
+        "nazwa-bez-dowodu-pochodzenia",
+        {
+            "enm/_iniekcja_reeksport.py": "globals()['X'] = 1\n",
+            INIEKCJA: "from enm._iniekcja_reeksport import X\n",
+        },
+    ),
+    # --- punkt 2(c): alias pakietu `src` ---
+    (
+        "alias-src-modul-solvera",
+        {
+            INIEKCJA: "from src.network_model.solvers.power_flow_newton import PowerFlowNewtonSolver\n"
+        },
+    ),
+    (
+        "alias-src-pakiet-solverow",
+        {INIEKCJA: "from src.network_model import solvers\n"},
+    ),
+    ("alias-src-pakiet", {INIEKCJA: "import src\n"}),
+    (
+        "alias-src-reeksport",
+        {INIEKCJA: "from src.enm.canonical_analysis import solve_with_oltc\n"},
+    ),
+    (
+        "pakiet-solverow-typ-z-listy-przez-init",
+        {INIEKCJA: "from network_model.solvers import PowerFlowResultV1\n"},
+    ),
+    # --- punkt 1: import dynamiczny ---
+    (
+        "dynamiczny-name-keyword",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "m = importlib.import_module(name='network_model.solvers.power_flow_newton')\n"
+        },
+    ),
+    (
+        "dynamiczny-wzgledny-package",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "m = importlib.import_module('.power_flow_newton', package='network_model.solvers')\n"
+        },
+    ),
+    (
+        "dynamiczny-wzgledny-package-pozycyjnie",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "m = importlib.import_module('.solvers.power_flow_newton', 'network_model')\n"
+        },
+    ),
+    (
+        "dynamiczny-alias-funkcji",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "im = importlib.import_module\n"
+            "m = im('analysis.normative')\n"
+        },
+    ),
+    (
+        "dynamiczny-funkcja-jako-argument",
+        {
+            INIEKCJA: "import importlib\n\nm = list(map(importlib.import_module, ['a']))\n"
+        },
+    ),
+    (
+        "dynamiczny-from-importlib-z-aliasem",
+        {
+            INIEKCJA: "from importlib import import_module as im\n\n"
+            "m = im('network_model.solvers.power_flow_newton')\n"
+        },
+    ),
+    (
+        "dynamiczny-getattr-importlib",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "m = getattr(importlib, 'import_module')('network_model.solvers.power_flow_newton')\n"
+        },
+    ),
+    (
+        "dynamiczny-dunder-fromlist-modul",
+        {
+            INIEKCJA: "m = __import__('network_model.solvers', fromlist=['power_flow_newton'])\n"
+        },
+    ),
+    (
+        "dynamiczny-dunder-fromlist-pakiet",
+        {INIEKCJA: "m = __import__('network_model', fromlist=['solvers'])\n"},
+    ),
+    (
+        "dynamiczny-dunder-zwraca-przodka",
+        {INIEKCJA: "nm = __import__('network_model.core.graph')\n"},
+    ),
+    (
+        "dynamiczny-dunder-alias-src",
+        {INIEKCJA: "m = __import__('src.network_model.solvers.power_flow_newton')\n"},
+    ),
+    (
+        "dynamiczny-konkatenacja-stala",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "m = importlib.import_module('network_model.' + 'solvers.power_flow_newton')\n"
+        },
+    ),
+    (
+        "dynamiczny-konkatenacja-zmienna",
+        {
+            INIEKCJA: "import importlib\n\n\ndef f(x):\n"
+            "    return importlib.import_module('network_model.' + x)\n"
+        },
+    ),
+    (
+        "dynamiczny-fstring-zmienna",
+        {
+            INIEKCJA: "import importlib\n\n\ndef f(m):\n"
+            "    return importlib.import_module(f'network_model.solvers.{m}')\n"
+        },
+    ),
+    (
+        "dynamiczny-nazwa-zmienna",
+        {
+            INIEKCJA: "import importlib\n\n\ndef f(n):\n    return importlib.import_module(n)\n"
+        },
+    ),
+    (
+        "dynamiczny-kwargs",
+        {
+            INIEKCJA: "import importlib\n\n\ndef f(**k):\n    return importlib.import_module(**k)\n"
+        },
+    ),
+    (
+        "dynamiczny-modul-reeksportujacy",
+        {
+            INIEKCJA: "import importlib\n\nm = importlib.import_module('enm.canonical_analysis')\n"
+        },
+    ),
+    (
+        "dynamiczny-importlib-util",
+        {
+            INIEKCJA: "import importlib.util\n\n"
+            "s = importlib.util.find_spec('network_model.solvers.power_flow_newton')\n"
+        },
+    ),
+    # --- refleksja ---
+    (
+        "sys-modules",
+        {
+            INIEKCJA: "import sys\n\nm = sys.modules['network_model.solvers.power_flow_newton']\n"
+        },
+    ),
+    ("from-sys-modules", {INIEKCJA: "from sys import modules\n"}),
+    ("inspect", {INIEKCJA: "import inspect\n"}),
+    ("builtins", {INIEKCJA: "from builtins import __import__ as imp\n"}),
+    (
+        "globals-funkcji-reeksportowanej",
+        {
+            INIEKCJA: "from enm.canonical_analysis import CanonicalRun\n\n"
+            "S = CanonicalRun.__init__.__globals__['PowerFlowNewtonSolver']\n"
+        },
+    ),
+    ("eval", {INIEKCJA: "S = eval('1')\n"}),
+]
+
+DOSTEP_ZIELONE: list[tuple[str, dict[str, str]]] = [
+    (
+        "typ-z-listy-reeksportowany-przez-enm",
+        {INIEKCJA: "from enm.canonical_analysis import CanonicalRun, PowerFlowInput\n"},
+    ),
+    (
+        "klasa-rdzenia-modelu",
+        {INIEKCJA: "from network_model.core.graph import NetworkGraph\n"},
+    ),
+    (
+        "dynamiczny-stala-spoza-solverow",
+        {
+            INIEKCJA: "import importlib\n\n"
+            "a = importlib.import_module('analysis.normative')\n"
+            "b = importlib.import_module('.normative', package='analysis')\n"
+            "c = importlib.import_module(f\"analysis.{'normative'}\")\n"
+            "d = __import__('math')\n"
+        },
+    ),
+    ("sys-poza-modules", {INIEKCJA: "import sys\n\nprint('x', file=sys.stderr)\n"}),
+]
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "pliki"), DOSTEP_CZERWONE, ids=[s[0] for s in DOSTEP_CZERWONE]
+)
+def test_dostep_do_solvera_czerwony_przez_main(
+    kopia_drzewa: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    nazwa: str,
+    pliki: dict[str, str],
+) -> None:
+    rc, wyjscie = _main_z_iniekcja(kopia_drzewa, monkeypatch, capsys, pliki)
+
+    assert rc == 1, (nazwa, wyjscie)
+    assert "ARCH-GUARD VIOLATION" in wyjscie
+    assert "_iniekcja_testowa.py" in wyjscie, wyjscie
+    assert "network_model" in wyjscie, wyjscie
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "pliki"), DOSTEP_ZIELONE, ids=[s[0] for s in DOSTEP_ZIELONE]
+)
+def test_dostep_do_solvera_para_zielona_przez_main(
+    kopia_drzewa: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    nazwa: str,
+    pliki: dict[str, str],
+) -> None:
+    rc, wyjscie = _main_z_iniekcja(kopia_drzewa, monkeypatch, capsys, pliki)
+
+    assert rc == 0, (nazwa, wyjscie)
+
+
+def test_solver_w_tescie_analizy_na_realnym_drzewie(
+    kopia_drzewa: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Para zielona: test w `backend/tests/analysis` woła solver (dowód fizyki)."""
+    test = kopia_drzewa / "backend" / "tests" / "analysis" / "test_iniekcja.py"
+    test.parent.mkdir(parents=True, exist_ok=True)
+    test.write_text(
+        "from enm.canonical_analysis import solve_with_oltc\n"
+        "import network_model.core.graph\n",
+        encoding="utf-8",
+    )
+    try:
+        monkeypatch.setattr(arch_guard, "REPO_ROOT", kopia_drzewa)
+        assert arch_guard.main() == 0, capsys.readouterr()
+    finally:
+        shutil.rmtree(kopia_drzewa / "backend" / "tests")
