@@ -1,7 +1,8 @@
 # Meldunek karty SZYBKIE-TESTY — przyspieszenie testów bez utraty determinizmu
 
 Gałąź: `claude/mv-design-pro-twin-audit-u4lhy0-karta-szybkie-testy`, baza `615f3b24` (partia 6),
-drzewo wynikowe kodu `2000e4d5`. Maszyna pomiarowa: kontener 4 vCPU, 15 GB RAM, bez obcego
+drzewo wynikowe kodu `73629deb` (po scaleniu z PARTIA-6-BACKEND `65b00094` w `01b6cb78`
+i po wydzieleniu kroku budżetów czasu procesora). Maszyna pomiarowa: kontener 4 vCPU, 15 GB RAM, bez obcego
 obciążenia (load average w logach biegów); pomiary przed i po w tych samych warunkach, z
 `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` i prywatnym `--basetemp` poza drzewem.
 
@@ -34,9 +35,12 @@ Zajętość runnerów (trzy joby testowe razem): przed 79 + 27,7 + 25,8 ≈ 132,
 skraca ścieżkę krytyczną o ~15 min; backend i vitest oszczędzają ~45 runner-min.
 
 `Python tests` na `2000e4d5` — **zielony** (pytest, samotesty, lint, mutacje, ANDES, pandapower,
-PostgreSQL). Od `4cd7d6e7` naprawy czerwieni bazy są oddane PARTIA-6-BACKEND (§5 pkt 1), więc
-sam czubek tej gałęzi ma znów czerwień bazy w testach migracji nN, rejestru kodów i nazw
-(stan `615f3b24`); zielony jest po scaleniu z `65b00094` (sprawdzone na drzewie scalonym). Czerwone na gałęzi karty są wyłącznie joby czerwone także na CI bazy `615f3b24`
+PostgreSQL). Naprawy czerwieni bazy należą do PARTIA-6-BACKEND (§5 pkt 1); na polecenie
+właściciela gałąź karty jest z nią **scalona** (`01b6cb78`, fuzja bez konfliktów). Dowody na
+drzewie scalonym: `guardy_z_ci.py` — KOMPLET ZIELONY (343 s, w tym `tsconfig_gate_guard` 80/80);
+pełny backend `-n 4 --dist loadfile` — **27 078 passed, 0 failed** (1 860 s); vitest — wyłącznie
+znana czerwień bazy z §4. Po `73629deb` ponownie `guardy_z_ci.py` — 3 352 samotestów passed,
+KOMPLET ZIELONY. Pozostałe czerwone joby CI to joby czerwone także na CI bazy `615f3b24`
 (sprawdzone przez check-runs bazy), z identycznym zbiorem czerwieni — patrz §4.
 
 ## 2. Co zrobiono (commity kodu)
@@ -54,6 +58,8 @@ sam czubek tej gałęzi ma znów czerwień bazy w testach migracji nN, rejestru 
 - `4cd7d6e7`, `2dc8215c`, `64971f48`, `65584f80` — rozstrzygnięcia z §5.
 - `2000e4d5` — poprawka mojego testu wątków BLAS po czerwieni CI: w workerze załadowane są DWIE
   biblioteki OpenBLAS (numpy i scipy), test sprawdza teraz każdą.
+- `01b6cb78` — scalenie z PARTIA-6-BACKEND (`65b00094`), polecenie właściciela.
+- `73629deb` — testy budżetu czasu procesora w osobnym kroku sekwencyjnym vitest (§5 pkt 6).
 
 Dobór `-n` i `--dist` z pomiaru: suma czasów testów 4 709 s w 789 plikach, najdłuższy plik
 561,5 s (`walidacja_fizyczna/test_bramki.py`) < 1/4 sumy, więc LPT po plikach daje teoretycznie
@@ -92,9 +98,15 @@ z liniami starego modułu); osobno 12 passed, w biegach końcowych zielony.
 
 ## 4. Czerwień bazy (nie tej karty) — ten sam status w obu trybach
 
-- vitest: `menuBudowyNaKanwie` ×2, `pathInvariants` ×1 (lokalnie i w CI). Budżety czasu
-  `buildScene.p1Recenzja:271` i `buildScene.schemat10s7p6:207` przeszły we wszystkich biegach,
-  także równoległych i w CI.
+- vitest: `menuBudowyNaKanwie` ×2, `pathInvariants` ×1 (lokalnie i w CI; po scaleniu krok
+  główny: 880 plików, 3 failed / 12 790 passed, 789 s).
+- vitest, testy budżetu czasu procesora (8 plików, 193 testy): **niestabilne także w biegu
+  całkowicie sekwencyjnym** — po scaleniu w biegu z pulą procesów `buildScene.p1Recenzja`
+  („H ~500 stacji, 3×LOD w budżecie 30 000 ms”) wyszedł ponad próg; w trzech biegach samego
+  kroku sekwencyjnego `--mode budzety` po 1, 2 i 1 przekroczeniu (30 252–33 730 ms przy progu
+  30 000 ms; jeden test ilorazowy 3,007 przy progu 3). Budżety stoją na granicy możliwości
+  maszyny 4 vCPU niezależnie od równoległości — to defekt budżetów/wydajności sceny SLD (obszar
+  kart SLD), nie izolacji testów. Progu nie podniosłem (zakaz karty); szczegóły §5 pkt 6.
 - akceptacja SLD v3 (`npm run accept:sld-v3`): `menu_chain_probe` LOD 0 „stacji=0” — czerwona
   także na czystym drzewie `615f3b24` (sprawdzone lokalnie) i na CI bazy.
 - e2e: 8 przypadków (`sld-pa-powerflow-tor` N-2/N-3, `tr2w-bez-pola` ×3, scena „koordynacja”
@@ -125,10 +137,24 @@ z liniami starego modułu); osobno 12 passed, w biegach końcowych zielony.
    ryzykiem bez zysku czasu workflowu.
 5. **Committer `radek.izk@gmail.com` w `3725a08d` i `0d8a80c5` zostaje** — zakaz przepisywania
    historii ma pierwszeństwo.
+6. **Testy budżetu czasu procesora w osobnym kroku sekwencyjnym** (`73629deb`). Zbiór plików
+   wyprowadzany z JEDNEGO źródła — `plikiBudzetuCzasu()` w `vite.config.ts` (każdy plik testów
+   importujący `src/test/czasProcesora.ts`); krok główny je wyklucza, krok `vitest run --mode
+   budzety` uruchamia tylko je, plik po pliku (`fileParallelism: false`). Pomocnik odmawia
+   pomiaru poza tym trybem i poza wątkiem głównym procesu, więc nowy test budżetu nie może
+   trafić do puli równoległej po cichu. `npm test`/`test:ci` uruchamiają oba kroki i zwracają
+   błąd, gdy zawiedzie którykolwiek; CI `frontend-checks` ma osobny krok. Przypięte testem
+   `src/test/__tests__/plikiBudzetuCzasu.test.ts` (inwentarz 8 plików, odmowa w kroku głównym,
+   ta sama stała trybu w konfiguracji i pomocniku). Wynik: krok sekwencyjny ~253 s; niestabilność
+   progu nadal występuje (§4) — rozdzielenie usuwa wpływ równoległości, ale nie naprawia budżetów
+   ustawionych na granicy wydajności maszyny; to zostaje jawnie nazwane, nie zamaskowane.
 
 ## 6. Ograniczenia pomiarów (uczciwie)
 
 - Pomiary 2026-09-30 i 2026-10-15 pochodzą z dwóch hostów 4 vCPU (kontener uruchamiany ponownie);
   każde porównanie przed/po w tabelach jest z tego samego hosta i tego samego dnia.
+- Krok budżetów czasu procesora jest niestabilny także sekwencyjnie (§4, §5 pkt 6) — porównania
+  równoległy = sekwencyjny w §1 dotyczą zbioru poza tym krokiem i biegów, w których budżety
+  przeszły.
 - CI: joby czekają w kolejce runnerów konta, więc czas całego przebiegu workflowu zależy od
   kolejki; porównuję czasy kroków i jobów.
