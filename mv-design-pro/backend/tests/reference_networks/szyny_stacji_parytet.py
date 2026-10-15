@@ -16,9 +16,17 @@ zapisujemy wskaźnikiem JSON (RFC 6901), żeby test frontu czytał TEN SAM obiek
 Zakres (commit 2 karty — jedna klasa „stacja i jej szyny”), klucze na każdy model:
 ``szyny`` (``szyny_stacji``), ``szyny_glowne`` (``szyna_glowna_stacji`` dla każdej szyny stacji;
 w modelu iloczynu także dla każdego końca gałęzi), ``transformatory`` (``enm.pole_transformatorowe.
-transformatory_stacji``), ``zaciski_pol`` (``enm.zajetosc_pol.zacisk_pola`` każdej specyfikacji
-pola) i ``punkty_przylaczenia_rekordow_pol`` (``application.field_read_model.
-punkt_przylaczenia_pola`` każdego rekordu ``bays``).
+transformatory_stacji``), ``zaciski_pol`` (``enm.pola.zacisk_pola`` każdego rekordu ``bays``
+stacji) i ``punkty_przylaczenia_rekordow_pol`` (``enm.pola.punkt_przylaczenia_pola`` każdego
+rekordu ``bays``). Karta W5-B: pola czytane WYŁĄCZNIE z rekordów ``bays`` (SN i nN; poziom
+z napięcia szyny pola) — dawne wpisy ``meta`` stacji nie istnieją.
+
+Sekcja ``pola`` (karta W5-B/C — lustro frontu ``frontend/src/ui/shared/polaStacji.ts``,
+test ``polaStacji.parytet.test.ts``): akcesory ``enm.pola`` na każdym modelu —
+``stacje`` (``pola_sn_stacji``/``pola_nn_stacji``: ``ref_id`` pól w kolejności zapisu),
+``czy_pole_nn`` (każdy rekord), ``stacja_pola`` (każdy rekord), ``zksn``
+(``pola_zksn`` każdego punktu rozgałęzienia) i ``wg_szyny`` (``pola_wg_szyny``: kolejność
+OUT < FEEDER < IN < pozostałe, potem ``ref_id``).
 
 Determinizm: sortowane pliki, klucze i szyny; żadnej liczby zmiennoprzecinkowej (wynik nie
 zależy od numeryki ani liczby wątków BLAS). Zapis przez ``tests/golden/zapis_fikstur``.
@@ -33,13 +41,22 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
-from application.field_read_model import punkt_przylaczenia_pola
+from enm.pola import (
+    czy_pole_nn,
+    napiecia_szyn,
+    pola,
+    pola_nn_stacji,
+    pola_sn_stacji,
+    pola_wg_szyny,
+    pola_zksn,
+    punkt_przylaczenia_pola,
+    stacja_pola,
+    zacisk_pola,
+)
 from enm.pole_transformatorowe import transformatory_stacji
 from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
-from enm.zajetosc_pol import zacisk_pola
 
 from tests.golden.zapis_fikstur import json_fikstury
 
@@ -86,6 +103,7 @@ def _modele(dane: Any, sciezka: tuple[str, ...] = ()) -> list[tuple[str, dict[st
 
 
 def _nn(pole: str, z: str, do: str, ref: str) -> dict[str, Any]:
+    """Aparat pola nN z automigracji (znacznik gałęzi = źródło idempotencji promocji)."""
     return {
         "ref_id": ref,
         "from_bus_ref": z,
@@ -94,84 +112,49 @@ def _nn(pole: str, z: str, do: str, ref: str) -> dict[str, Any]:
     }
 
 
+def _pole(ref: str, stacja: str, szyna: str | None, **dane: Any) -> dict[str, Any]:
+    """Rekord pola (`bays`) modelu iloczynu — tylko klucze, które czyta reguła szyn stacji."""
+    rekord: dict[str, Any] = {"ref_id": ref, "substation_ref": stacja, "bay_role": "OUT"}
+    if szyna is not None:
+        rekord["bus_ref"] = szyna
+    return rekord | dane
+
+
 #: Model ILOCZYNU CECH (reguła KLASA §2): dane brzegowe, których fikstury z API nie niosą, a
-#: w których lustro frontu mogłoby się rozjechać z backendem. Cechy:
-#:  * zacisk pola SN: każdy z czterech kluczy zacisku; zacisk = szyna pola (dane zastane);
-#:    pusty ``field_ref``; brak ``bus_ref``; zacisk z białymi znakami;
-#:  * aparat pola nN: z szyny głównej; ŁAŃCUCH aparatów podany w odwrotnej kolejności
-#:    gałęzi (sekcja po odpływie za nią); z OBCEJ szyny, ale z deklaracją pola tej stacji;
-#:    z deklaracją pola innej stacji; na zacisku wyłącznika głównego nN;
+#: w których lustro frontu mogłoby się rozjechać z backendem. Karta W5-B: pola są rekordami
+#: `bays` (SN i nN), poziom pola rozstrzyga napięcie szyny `bus_ref`. Cechy:
+#:  * zacisk pola SN (`terminal_bus_ref`): zwykły; z białymi znakami; zacisk = szyna pola
+#:    (dane zastane); pusty `ref_id`; brak `bus_ref`; pole na szynie bez napięcia (poziom
+#:    nieznany = SN); pole bez zacisku;
+#:  * aparat pola nN (`equipment_refs` rekordu pola nN): z szyny głównej; ŁAŃCUCH aparatów
+#:    podany w odwrotnej kolejności gałęzi (sekcja po odpływie za nią); z OBCEJ szyny, ale
+#:    wskazany przez pole tej stacji; wskazany przez pole innej stacji; na zacisku wyłącznika
+#:    głównego nN; aparat ze znacznikiem gałęzi, którego ŻADEN rekord pola nie wskazuje
+#:    (znacznik nie jest źródłem przynależności);
 #:  * podrozdzielnica nN jako osobna ``Substation`` zasilana aparatem pola stacji;
 #:  * szyna bez stacji (``Z/wolna``) i pusta szyna w ``bus_refs``;
-#:  * stacja bez ``meta`` oraz ``nn_field_specs`` bez gałęzi.
+#:  * stacja bez pól oraz pole nN bez aparatu.
 #: Stacja A niesie jednocześnie zaciski pól SN i aparaty pól nN — kombinacja, na której
 #: rozjeżdżały się dwie połówki reguły we froncie (karta SZYNY-STACJI-LUSTRO).
 MODEL_ILOCZYNU: dict[str, Any] = {
+    "buses": [
+        {"ref_id": "A/sn", "voltage_kv": 15.0},
+        {"ref_id": "A/nn", "voltage_kv": 0.4},
+        {"ref_id": "A/sekcja", "voltage_kv": 0.4},
+        {"ref_id": "A/bez-napiecia", "voltage_kv": None},
+        {"ref_id": "B/board", "voltage_kv": 0.4},
+        {"ref_id": "D/sn", "voltage_kv": 15.0},
+        {"ref_id": "D/nn", "voltage_kv": 0.4},
+    ],
     "substations": [
-        {
-            "ref_id": "A/stacja",
-            "station_type": "mv_lv",
-            "bus_refs": ["A/sn", "A/nn", "  "],
-            "meta": {
-                "field_specs": [
-                    {
-                        "field_ref": "A/pole-in",
-                        "bus_ref": "A/sn",
-                        "meta": {"terminal_bus_ref": "A/zacisk-in"},
-                    },
-                    {
-                        "field_ref": "A/pole-out",
-                        "bus_ref": "A/sn",
-                        "meta": {"field_terminal_bus_ref": "A/zacisk-out"},
-                    },
-                    {
-                        "field_ref": "A/pole-oze",
-                        "bus_ref": "A/sn",
-                        "field_terminal_bus_ref": "A/zacisk-oze",
-                    },
-                    {
-                        "field_ref": "A/pole-pomiar",
-                        "bus_ref": "A/sn",
-                        "terminal_bus_ref": "A/zacisk-pomiar",
-                    },
-                    {
-                        "field_ref": "A/pole-tr",
-                        "bus_ref": "A/sn",
-                        "meta": {"field_terminal_bus_ref": " A/zacisk-tr "},
-                    },
-                    {
-                        "field_ref": "A/pole-stare",
-                        "bus_ref": "A/sn",
-                        "meta": {"terminal_bus_ref": "A/sn"},
-                    },
-                    {
-                        "field_ref": "",
-                        "bus_ref": "A/sn",
-                        "meta": {"terminal_bus_ref": "A/zacisk-bez-refu"},
-                    },
-                    {
-                        "field_ref": "A/pole-bez-szyny",
-                        "meta": {"terminal_bus_ref": "A/zacisk-bez-szyny"},
-                    },
-                ],
-                "nn_field_specs": [
-                    {"field_ref": "A/nn-main"},
-                    {"field_ref": "A/nn-odp-1"},
-                    {"field_ref": "A/nn-sekcja"},
-                    {"field_ref": "A/nn-odp-2"},
-                    {"field_ref": "A/nn-pod"},
-                    {"field_ref": "A/nn-odp-3"},
-                ],
-            },
-        },
+        {"ref_id": "A/stacja", "station_type": "mv_lv", "bus_refs": ["A/sn", "A/nn", "  "]},
         {
             "ref_id": "B/podrozdzielnica",
             "station_type": "rozdzielnica_nn",
             "bus_refs": ["B/board"],
-            "meta": {"nn_field_specs": [{"field_ref": "B/odp"}]},
         },
         {
-            "ref_id": "C/stacja-bez-meta",
+            "ref_id": "C/stacja-bez-pol",
             "station_type": "mv_lv",
             "bus_refs": ["C/sn"],
             "transformer_refs": ["T/deklarowany-w-C"],
@@ -180,8 +163,33 @@ MODEL_ILOCZYNU: dict[str, Any] = {
             "ref_id": "D/stacja-bez-aparatow",
             "station_type": "mv_lv",
             "bus_refs": ["D/sn", "D/nn"],
-            "meta": {"field_specs": "nie-lista", "nn_field_specs": [{"field_ref": "D/nn-odp"}]},
         },
+    ],
+    "bays": [
+        _pole("A/pole-in", "A/stacja", "A/sn", terminal_bus_ref="A/zacisk-in"),
+        _pole("A/pole-out", "A/stacja", "A/sn", terminal_bus_ref="A/zacisk-out"),
+        _pole("A/pole-oze", "A/stacja", "A/sn", terminal_bus_ref="A/zacisk-oze"),
+        _pole("A/pole-pomiar", "A/stacja", "A/sn", terminal_bus_ref="A/zacisk-pomiar"),
+        _pole("A/pole-tr", "A/stacja", "A/sn", terminal_bus_ref=" A/zacisk-tr "),
+        _pole("A/pole-stare", "A/stacja", "A/sn", terminal_bus_ref="A/sn"),
+        _pole("", "A/stacja", "A/sn", terminal_bus_ref="A/zacisk-bez-refu"),
+        _pole("A/pole-bez-szyny", "A/stacja", None, terminal_bus_ref="A/zacisk-bez-szyny"),
+        _pole(
+            "A/pole-szyna-bez-napiecia",
+            "A/stacja",
+            "A/bez-napiecia",
+            terminal_bus_ref="A/zacisk-szyny-bez-napiecia",
+        ),
+        _pole("A/pole-bez-zacisku", "A/stacja", "A/sn"),
+        _pole("A/nn-main", "A/stacja", "A/nn", equipment_refs=["A/aparat-main"]),
+        _pole("A/nn-odp-1", "A/stacja", "A/nn", equipment_refs=["A/aparat-odp-1"]),
+        _pole("A/nn-sekcja", "A/stacja", "A/nn", equipment_refs=["A/aparat-sekcja"]),
+        _pole("A/nn-odp-2", "A/stacja", "A/sekcja", equipment_refs=["A/aparat-odp-2"]),
+        _pole("A/nn-pod", "A/stacja", "A/nn", equipment_refs=["A/aparat-pod"]),
+        _pole("A/nn-odp-3", "A/stacja", "A/nn", equipment_refs=["A/aparat-z-obcej-szyny"]),
+        _pole("X/nn-pole", "X/stacja", "A/nn", equipment_refs=["X/aparat-obcej-stacji"]),
+        _pole("B/odp", "B/podrozdzielnica", "B/board", equipment_refs=["B/aparat-odp"]),
+        _pole("D/nn-odp", "D/stacja-bez-aparatow", "D/nn"),
     ],
     "branches": [
         _nn("A/nn-main", "A/zacisk-wg-nn", "A/nn", "A/aparat-main"),
@@ -192,6 +200,7 @@ MODEL_ILOCZYNU: dict[str, Any] = {
         _nn("A/nn-odp-3", "Y/szyna-obca", "A/odp-3", "A/aparat-z-obcej-szyny"),
         _nn("X/nn-pole", "A/nn", "X/obca", "X/aparat-obcej-stacji"),
         _nn("B/odp", "B/board", "B/odp-bus", "B/aparat-odp"),
+        _nn("A/nn-sierota", "A/nn", "A/sierota", "A/aparat-sierota"),
         {"ref_id": "kabel", "from_bus_ref": "A/zacisk-in", "to_bus_ref": "Z/wolna", "meta": {}},
     ],
     # Transformatory: {na szynie głównej, na zacisku pola, blokowy przez wskazanie źródła,
@@ -226,52 +235,136 @@ MODEL_ILOCZYNU: dict[str, Any] = {
         },
     ],
     "generators": [{"ref_id": "G/pv", "blocking_transformer_ref": "T/blokowy-wskazany"}],
-    # Rekordy pól (`bays`): {zacisk w meta rekordu / w szablonie / w obu, różne / brak}.
-    "bays": [
-        {
-            "ref_id": "B/pole-meta",
-            "substation_ref": "A/stacja",
-            "bus_ref": "A/sn",
-            "meta": {"field_terminal_bus_ref": "A/zacisk-z-meta"},
-        },
-        {
-            "ref_id": "B/pole-szablon",
-            "substation_ref": "A/stacja",
-            "bus_ref": "A/sn",
-            "meta": {"sn_field_template": {"meta": {"terminal_bus_ref": "A/zacisk-z-szablonu"}}},
-        },
-        {
-            "ref_id": "B/pole-szablon-gorny-klucz",
-            "substation_ref": "A/stacja",
-            "bus_ref": "A/sn",
-            "meta": {"sn_field_template": {"field_terminal_bus_ref": "A/zacisk-szablon-gorny"}},
-        },
-        {
-            "ref_id": "B/pole-oba",
-            "substation_ref": "A/stacja",
-            "bus_ref": "A/sn",
-            "meta": {
-                "terminal_bus_ref": "A/zacisk-meta-wygrywa",
-                "sn_field_template": {"meta": {"field_terminal_bus_ref": "A/zacisk-przegrywa"}},
-            },
-        },
-        {
-            "ref_id": "B/pole-bez-zacisku",
-            "substation_ref": "A/stacja",
-            "bus_ref": "A/sn",
-            "meta": {},
-        },
-    ],
 }
 
 
-def _punkt_przylaczenia_rekordu(bay: dict[str, Any]) -> str:
-    """Backend `application.field_read_model.punkt_przylaczenia_pola` na rekordzie `bays`."""
-    return str(
-        punkt_przylaczenia_pola(
-            SimpleNamespace(meta=bay.get("meta") or {}, bus_ref=bay.get("bus_ref"))  # type: ignore[arg-type]
-        )
+def _iloczyn_pol() -> dict[str, Any]:
+    """Model ILOCZYNU CECH sekcji ``pola`` (karta W5-B/C, reguła KLASA §2): {pole stacji SN,
+    pole stacji nN, pole ZKSN} × {z własnym zaciskiem, bez zacisku, zacisk = szyna pola} ×
+    {rola IN / OUT / OUT+LINIA_ODG / FEEDER+LINIA_ODG / TR / COUPLER / MEASUREMENT / OZE /
+    rezerwa (pole bez aparatu)}, plus pole na szynie bez napięcia (poziom nieznany = SN), pole
+    stacji spoza modelu (stacja pola = brak) i identyfikatory podane NIE w porządku
+    leksykalnym (kolejność ``wg_szyny`` z rangi roli, potem ``ref_id``)."""
+    role: list[tuple[str, str, str | None]] = [
+        ("in", "IN", "LINIA_IN"),
+        ("out", "OUT", "LINIA_OUT"),
+        ("odg-out", "OUT", "LINIA_ODG"),
+        ("odg", "FEEDER", "LINIA_ODG"),
+        ("tr", "TR", "TRANSFORMATOROWE"),
+        ("spr", "COUPLER", "SPRZEGLO"),
+        ("pom", "MEASUREMENT", "POMIAROWE"),
+        ("oze", "OZE", None),
+        ("rez", "OUT", None),
+    ]
+    zaciski: list[tuple[str, str | None]] = [
+        ("zacisk", "wlasny"),
+        ("bez", None),
+        ("rowny", "szyna"),
+    ]
+    bays: list[dict[str, Any]] = []
+    # Kolejność zapisu odwrócona względem leksykalnej — ranking ról musi ją przestawić.
+    for poziom, szyna in (("sn", "S/sn"), ("nn", "S/nn")):
+        for nazwa, bay_role, field_role in reversed(role):
+            for wariant, zacisk in zaciski:
+                ref = f"S/{poziom}/{nazwa}/{wariant}"
+                rekord: dict[str, Any] = {
+                    "ref_id": ref,
+                    "substation_ref": "S/stacja",
+                    "bus_ref": szyna,
+                    "bay_role": bay_role,
+                    "equipment_refs": [] if nazwa == "rez" else [f"{ref}/aparat"],
+                }
+                if field_role is not None:
+                    rekord["field_role"] = field_role
+                if zacisk == "wlasny":
+                    rekord["terminal_bus_ref"] = f"{ref}/zacisk"
+                elif zacisk == "szyna":
+                    rekord["terminal_bus_ref"] = szyna
+                bays.append(rekord)
+    for port, bay_role, field_role in (
+        ("MAIN_IN", "IN", "LINIA_IN"),
+        ("MAIN_OUT", "OUT", "LINIA_OUT"),
+        ("BRANCH_2", "OUT", "LINIA_ODG"),
+        ("BRANCH_1", "OUT", "LINIA_ODG"),
+    ):
+        rekord = {
+            "ref_id": f"P/zksn/pole/{port}",
+            "branch_point_ref": "P/zksn",
+            "branch_point_port_id": port,
+            "bus_ref": "P/szyna",
+            "bay_role": bay_role,
+            "field_role": field_role,
+        }
+        if port == "BRANCH_1":
+            rekord["terminal_bus_ref"] = "P/zacisk-odg-1"
+        bays.append(rekord)
+    bays.append(
+        {
+            "ref_id": "S/sn/bez-napiecia",
+            "substation_ref": "S/stacja",
+            "bus_ref": "S/bez-napiecia",
+            "bay_role": "OUT",
+            "terminal_bus_ref": "S/zacisk-bez-napiecia",
+        }
     )
+    bays.append(
+        {"ref_id": "Q/pole-obcej", "substation_ref": "Q/brak", "bus_ref": "S/sn", "bay_role": "IN"}
+    )
+    return {
+        "buses": [
+            {"ref_id": "S/sn", "voltage_kv": 15.0},
+            {"ref_id": "S/nn", "voltage_kv": 0.4},
+            {"ref_id": "S/bez-napiecia", "voltage_kv": None},
+            {"ref_id": "P/szyna", "voltage_kv": 15.0},
+        ],
+        "substations": [
+            {"ref_id": "S/stacja", "station_type": "mv_lv", "bus_refs": ["S/sn", "S/nn"]},
+            {"ref_id": "S/pusta", "station_type": "mv_lv", "bus_refs": []},
+        ],
+        "branch_points": [{"ref_id": "P/zksn", "branch_point_type": "zksn", "bus_ref": "P/szyna"}],
+        "bays": bays,
+        "branches": [],
+    }
+
+
+#: Model iloczynu cech sekcji ``pola`` (osobny od modelu szyn stacji — inne cechy).
+MODEL_ILOCZYNU_POL: dict[str, Any] = _iloczyn_pol()
+
+
+def _pola_modelu(model: dict[str, Any], stacje: list[dict[str, Any]]) -> dict[str, Any]:
+    """Odpowiedzi akcesorów ``enm.pola`` dla jednego modelu (sekcja ``pola``, karta W5-B/C).
+
+    Rekordy z pustym albo nienapisowym ``ref_id`` pomijamy w mapach po identyfikatorze (klucz
+    mapy nie byłby jednoznaczny); w listach ``stacje``/``zksn``/``wg_szyny`` występują tak,
+    jak zwraca je backend."""
+    napiecia = napiecia_szyn(model)
+    rekordy = [r for r in pola(model) if isinstance(r.get("ref_id"), str) and r["ref_id"].strip()]
+    punkty = sorted(
+        str(p["ref_id"])
+        for p in model.get("branch_points") or []
+        if isinstance(p, dict) and isinstance(p.get("ref_id"), str)
+    )
+
+    def _stacja_pola(ref: str) -> str | None:
+        stacja = stacja_pola(model, ref)
+        return str(stacja["ref_id"]) if stacja is not None else None
+
+    return {
+        "czy_pole_nn": {str(r["ref_id"]): czy_pole_nn(model, r, napiecia) for r in rekordy},
+        "stacja_pola": {str(r["ref_id"]): _stacja_pola(str(r["ref_id"])) for r in rekordy},
+        "stacje": {
+            str(s["ref_id"]): {
+                "nn": [str(r.get("ref_id")) for r in pola_nn_stacji(model, s["ref_id"])],
+                "sn": [str(r.get("ref_id")) for r in pola_sn_stacji(model, s["ref_id"])],
+            }
+            for s in stacje
+        },
+        "wg_szyny": {
+            szyna: [str(r.get("ref_id")) for r in lista]
+            for szyna, lista in sorted(pola_wg_szyny(model).items())
+        },
+        "zksn": {ref: [str(r.get("ref_id")) for r in pola_zksn(model, ref)] for ref in punkty},
+    }
 
 
 def _oczekiwane_modelu(model: dict[str, Any], *, szyny_obce: bool = False) -> dict[str, Any] | None:
@@ -298,35 +391,32 @@ def _oczekiwane_modelu(model: dict[str, Any], *, szyny_obce: bool = False) -> di
     transformatory: dict[str, Any] = {}
     for stacja in stacje:
         ref = str(stacja["ref_id"])
-        nalezace = szyny_stacji(stacja, galezie)
+        nalezace = szyny_stacji(model, stacja)
         szyny[ref] = sorted(nalezace)
         # Szyna główna: każda szyna stacji; w modelu iloczynu także każdy koniec gałęzi modelu
         # (szyny obce — `null`). Na fiksturach szyny obce pomijamy (rozmiar pliku ×20, a cechę
         # pokrywa model iloczynu).
         pytane = nalezace | set(konce) if szyny_obce else nalezace
-        glowne[ref] = {
-            szyna: szyna_glowna_stacji(stacja, galezie, szyna) for szyna in sorted(pytane)
-        }
+        glowne[ref] = {szyna: szyna_glowna_stacji(model, stacja, szyna) for szyna in sorted(pytane)}
         transformatory[ref] = sorted(
-            str(t.get("ref_id"))
-            for t in transformatory_stacji(
-                stacja, model.get("transformers") or [], galezie, model.get("generators") or []
-            )
+            str(t.get("ref_id")) for t in transformatory_stacji(model, stacja)
         )
+    refy_stacji = {str(s["ref_id"]) for s in stacje}
     zaciski_pol = {
-        str(spec["field_ref"]): zacisk_pola(spec)
-        for stacja in stacje
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []
-        if isinstance(spec, dict)
-        and isinstance(spec.get("field_ref"), str)
-        and spec["field_ref"].strip()
+        str(bay["ref_id"]): zacisk_pola(bay)
+        for bay in model.get("bays") or []
+        if isinstance(bay, dict)
+        and isinstance(bay.get("ref_id"), str)
+        and bay["ref_id"].strip()
+        and bay.get("substation_ref") in refy_stacji
     }
     rekordy_pol = {
-        str(bay["ref_id"]): _punkt_przylaczenia_rekordu(bay)
+        str(bay["ref_id"]): punkt_przylaczenia_pola(bay)
         for bay in model.get("bays") or []
         if isinstance(bay, dict) and isinstance(bay.get("ref_id"), str)
     }
     return {
+        "pola": _pola_modelu(model, stacje),
         "punkty_przylaczenia_rekordow_pol": rekordy_pol,
         "szyny": szyny,
         "szyny_glowne": glowne,
@@ -352,6 +442,10 @@ def oczekiwane_szyny_stacji() -> dict[str, Any]:
         "iloczyn": {
             "model": MODEL_ILOCZYNU,
             **(_oczekiwane_modelu(MODEL_ILOCZYNU, szyny_obce=True) or {}),
+        },
+        "iloczyn_pol": {
+            "model": MODEL_ILOCZYNU_POL,
+            **(_oczekiwane_modelu(MODEL_ILOCZYNU_POL) or {}),
         },
         "pliki": pliki,
     }
