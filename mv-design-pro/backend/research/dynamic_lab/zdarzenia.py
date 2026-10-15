@@ -83,14 +83,31 @@ class ZwarcieTrojfazowe:
 
     @property
     def identyfikator(self) -> str:
-        """TOŻSAMOŚĆ tego zwarcia — deterministyczna, z miejsca i chwili.
+        """TOŻSAMOŚĆ tego zwarcia — deterministyczna i INJEKTYWNA.
 
         Bocznik zwarciowy niesie ją jako ``Bocznik.zrodlo``, dzięki czemu zdjęcie
         zwarcia usuwa DOKŁADNIE ten bocznik, a nie wszystko, co na tej szynie
-        wisi (defekt E1 audytu). Dwa zwarcia na tej samej szynie w różnych
-        chwilach mają różne tożsamości i są zdejmowane niezależnie.
+        wisi (defekt E1 audytu).
+
+        DLACZEGO W KLUCZU JEST TAKŻE IMPEDANCJA (§11 audytu niezależnego).
+        Poprzednia postać ``f"zwarcie:{szyna}:{czas!r}"`` NIE BYŁA injektywna:
+        dwa zwarcia na tej samej szynie w tej samej chwili, ale o różnej
+        impedancji, dostawały TEN SAM identyfikator. ZMIERZONE: ``x_f = 0,30``
+        (admitancja −3,3333j) i ``x_f = 0,05`` (−20j) dawały oba
+        ``zwarcie:B:0.5``; po przyłożeniu obu ``zrodla_bocznikow_na("B")``
+        raportowało JEDNO źródło, a ``ZdjecieZwarcia`` ze wskazaniem pierwszego
+        usuwało OBA boczniki — drugie zwarcie znikało bez śladu i bez komunikatu.
+
+        Klucz obejmuje więc KOMPLET pól definiujących bocznik zwarciowy: miejsce,
+        chwilę, obie składowe impedancji i ewentualne nadpisanie regularizacji
+        metalicznej. Dwa zwarcia różniące się CZYMKOLWIEK z tej listy są od tej
+        pory rozróżnialne; dwa identyczne co do wszystkich tych pól opisują to
+        samo zwarcie i mają dzielić tożsamość — to nie kolizja, tylko równość.
         """
-        return f"zwarcie:{self.szyna}:{self.czas_s!r}"
+        return (
+            f"zwarcie:{self.szyna}:{self.czas_s!r}"
+            f":r{self.r_f_pu!r}:x{self.x_f_pu!r}:m{self.admitancja_metaliczna_pu!r}"
+        )
 
     def admitancja_zwarcia(self) -> complex:
         """Admitancja bocznika zwarciowego [p.u.] — z jawną regularizacją metaliczną."""

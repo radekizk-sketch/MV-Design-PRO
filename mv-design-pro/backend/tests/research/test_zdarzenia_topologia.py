@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from dynamic_lab.benchmarki import czas_krytyczny_zwarcia, harmonogram_zwarcia, smib
-from dynamic_lab.siec import ZRODLO_MODEL, Bocznik, TopologiaSieci
+from dynamic_lab.siec import ZRODLO_MODEL, Bocznik, Galaz, TopologiaSieci
 from dynamic_lab.silnik import SilnikRMS
 from dynamic_lab.zdarzenia import (
     HarmonogramZdarzen,
@@ -193,3 +193,94 @@ def test_cct_nie_zalezy_istotnie_od_regularizacji() -> None:
         f"CCT zależy od regularizacji: 1e6 -> {cct_6 * 1000:.1f} ms, "
         f"1e8 -> {cct_8 * 1000:.1f} ms"
     )
+
+
+# ---------------------------------------------------------------------------
+# §11 audytu — INJEKTYWNOŚĆ tożsamości zwarcia
+# ---------------------------------------------------------------------------
+
+
+def _topo_AB() -> TopologiaSieci:
+    return TopologiaSieci(
+        szyny=("A", "B"),
+        galezie=[Galaz("A", "B", 0.01, 0.1)],
+        szyny_sztywne={"A": complex(1.0, 0.0)},
+    )
+
+
+def test_dwa_ROZNE_zwarcia_w_tej_samej_chwili_i_szynie_maja_ROZNE_tozsamosci() -> None:
+    """ODTWORZENIE DEFEKTU: klucz z samej szyny i chwili NIE był injektywny.
+
+    ZMIERZONE przed naprawą: x_f = 0,30 (admitancja −3,3333j) i x_f = 0,05 (−20j)
+    dawały oba identyfikator `zwarcie:B:0.5`. Po przyłożeniu obu
+    `zrodla_bocznikow_na("B")` raportowało JEDNO źródło, a zdjęcie pierwszego
+    usuwało OBA boczniki — drugie zwarcie znikało bez śladu i bez komunikatu.
+    """
+    z1 = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.30)
+    z2 = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.05)
+    assert z1.admitancja_zwarcia() != z2.admitancja_zwarcia(), (
+        "zwarcia muszą być FIZYCZNIE różne, inaczej test nie bada injektywności"
+    )
+    assert z1.identyfikator != z2.identyfikator
+
+
+def test_zdjecie_JEDNEGO_zwarcia_zostawia_DRUGIE_aktywne() -> None:
+    """Skutek injektywności mierzony na TOPOLOGII, nie na samym napisie."""
+    z1 = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.30)
+    z2 = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.05)
+    po_obu = z2.zastosuj(z1.zastosuj(_topo_AB()))
+    assert len(po_obu.zrodla_bocznikow_na("B")) == 2
+
+    zdjete = ZdjecieZwarcia(
+        czas_s=0.6, szyna="B", identyfikator_zwarcia=z1.identyfikator
+    ).zastosuj(po_obu)
+    pozostale = zdjete.zrodla_bocznikow_na("B")
+    assert pozostale == (z2.identyfikator,), (
+        "zdjęcie wskazanego zwarcia usunęło coś innego niż wskazane"
+    )
+
+
+@pytest.mark.parametrize(
+    ("pole", "wartosc"),
+    [
+        ("szyna", "A"),
+        ("czas_s", 0.7),
+        ("r_f_pu", 0.02),
+        ("x_f_pu", 0.11),
+        ("admitancja_metaliczna_pu", 1.0e4),
+    ],
+)
+def test_KAZDE_pole_definiujace_zwarcie_wchodzi_do_tozsamosci(pole: str, wartosc: object) -> None:
+    """ILOCZYN CECH, nie przykład z karty: każde pole bocznika z osobna.
+
+    Naprawa dołożenia jednego pola (impedancji) zostawiłaby defekt dla pozostałych.
+    Test przechodzi po KOMPLECIE pól definiujących bocznik zwarciowy.
+    """
+    import dataclasses
+
+    bazowe = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", r_f_pu=0.0, x_f_pu=0.1)
+    inne = dataclasses.replace(bazowe, **{pole: wartosc})
+    assert bazowe.identyfikator != inne.identyfikator, (
+        f"zmiana pola {pole!r} nie zmienia tożsamości — dwa różne zwarcia byłyby "
+        "nieodróżnialne, a zdjęcie jednego usunęłoby oba"
+    )
+
+
+def test_IDENTYCZNE_zwarcia_dziela_tozsamosc_i_to_NIE_jest_kolizja() -> None:
+    """Kierunek przeciwny — injektywność to nie unikalność per wywołanie."""
+    a = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.1)
+    b = ZwarcieTrojfazowe(czas_s=0.5, szyna="B", x_f_pu=0.1)
+    assert a.identyfikator == b.identyfikator
+
+
+def test_niejednoznaczne_zrodlo_bocznika_jest_bledem_GLOSNYM() -> None:
+    """Dwa boczniki o jednym źródle: błąd, nie powód do usunięcia obu.
+
+    Injektywność czyni ten stan nieosiągalnym przez zdarzenia — ale kontrakt
+    `bez_bocznika_o_zrodle` nie może opierać się na tym, że nikt go nie obejdzie.
+    """
+    topo = _topo_AB()
+    z_dwoma = topo.z_bocznikiem(Bocznik(szyna="B", g_pu=1.0, b_pu=0.0, zrodlo="to-samo"))
+    z_dwoma = z_dwoma.z_bocznikiem(Bocznik(szyna="B", g_pu=2.0, b_pu=0.0, zrodlo="to-samo"))
+    with pytest.raises(ValueError, match="NIEJEDNOZNACZNE"):
+        z_dwoma.bez_bocznika_o_zrodle("to-samo")

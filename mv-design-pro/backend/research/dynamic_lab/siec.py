@@ -243,6 +243,19 @@ class TopologiaSieci:
         szynie. Nieistniejące źródło jest błędem GŁOŚNYM: zdjęcie zwarcia,
         którego nie ma, znaczy, że scenariusz opisuje inną sieć niż liczona.
         """
+        trafione = [b for b in self.boczniki if b.zrodlo == zrodlo]
+        if len(trafione) > 1:
+            # NIEJEDNOZNACZNOŚĆ JEST BŁĘDEM, NIE POWODEM DO KASOWANIA WSZYSTKIEGO.
+            # Tożsamość zwarcia jest injektywna (patrz `ZwarcieTrojfazowe.identyfikator`),
+            # więc dwa boczniki o jednym źródle znaczą, że ktoś tę injektywność
+            # obszedł. Ciche usunięcie obu było dokładnie tym defektem §11:
+            # drugie zwarcie znikało bez śladu i bez komunikatu.
+            raise ValueError(
+                f"Źródło bocznika {zrodlo!r} wskazuje {len(trafione)} boczniki — "
+                "zdjęcie jest NIEJEDNOZNACZNE. Tożsamość bocznika zwarciowego ma być "
+                "injektywna; dwa boczniki o jednym źródle to naruszenie tego kontraktu, "
+                "a nie sytuacja do rozstrzygnięcia przez usunięcie obu."
+            )
         zostaja = [b for b in self.boczniki if b.zrodlo != zrodlo]
         if len(zostaja) == len(self.boczniki):
             dostepne = sorted({b.zrodlo for b in self.boczniki})
