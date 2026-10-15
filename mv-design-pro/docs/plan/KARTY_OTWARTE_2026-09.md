@@ -20,7 +20,7 @@ Karty duże programu A/B mają osobne pliki: `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.
 | PL-ZNAKI-2 | NIE ROZPOCZĘTA | — | — |
 | O-53b (moc źródeł × transformator × nastawa) | NIE ROZPOCZĘTA | — | — |
 | AB-H0b (pozycje zebrane) | NIE ROZPOCZĘTA — lista pozycji, karta do napisania | — | — |
-| DYNAMIKA-W-TLE | WYKONANA (2026-09-30 → 2026-10-15, gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-dynamika-w-tle`; meldunek `MELDUNEK_DYNAMIKA_W_TLE.md` w katalogu głównym) | wykonawca w procesie (`application/execution/wykonawca.py`), 202 + odpytywanie, anulowanie i postęp, kasacja Celery/Redis/MongoDB, PERF-DYN-0 | odbiór integratora: regresja backendu, vitest, e2e na realnym backendzie (4 testy dynamiki), `guardy_z_ci.py` |
+| DYNAMIKA-W-TLE | WYKONANA (2026-09-30 → 2026-10-15, gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-dynamika-w-tle`; meldunek `MELDUNEK_DYNAMIKA_W_TLE.md` w katalogu głównym) | wykonawca w procesie (`application/execution/wykonawca.py`), 202 + odpytywanie, anulowanie i postęp, kasacja Celery/Redis/MongoDB, PERF-DYN-0 | odbiór integratora: regresja backendu, vitest, e2e na realnym backendzie (19 speców / 48 testów: 4 testy dynamiki z paskiem postępu i „Anuluj bieg” + 18 speców na pomocniku `e2e/biegi.ts`, w tym 13 speców, które czekały na gotowość biegu przez `results/index` zamiast przez stan biegu), `guardy_z_ci.py` |
 | KATALOG-DYNAMIKI-BRAKI | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | AB-1c | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
 | O-52 | NIE ROZPOCZĘTA — szkic §0 (O-57, koniec dokumentu) | — | — |
