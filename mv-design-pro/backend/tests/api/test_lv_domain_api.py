@@ -401,3 +401,34 @@ class TestLvDomainProjectionV1Endpoint:
         assert body["model_snapshot"]["model_hash"] == wzorzec["model_snapshot"]["model_hash"]
         assert body["projection_hash"] == wzorzec["projection_hash"]
         assert [row["transformer_ref"] for row in body["swz_snapshot"]["transformers"]] == ["tr1"]
+
+
+class TestStationRefZUkosnikiem:
+    """Identyfikatory stacji z operacji domenowych niosą ukośniki (`stn/<ziarno>/...`), a
+    serwer ASGI dekoduje `%2F` przed dopasowaniem trasy. Do karty W5-E-TTIT parametr
+    jednosegmentowy `{station_ref}` dawał 404 dla KAŻDEJ takiej stacji — portal projekcji nN
+    na żywej aplikacji nie otwierał się nigdy (wykryte natywnym klikiem e2e). Iloczyn cech:
+    {trzy trasy lv-domain} × {ref z ukośnikami, zakodowany i surowy}.
+    """
+
+    REF = "stn/abc123/station"
+
+    def _zasiej_z_ukosnikami(self, client, case_id: str) -> None:
+        enm = zbuduj_stacje_nn()
+        stacja = enm.substations[0].model_copy(update={"ref_id": self.REF})
+        _zasiej(client, case_id, enm.model_copy(update={"substations": [stacja]}))
+
+    @pytest.mark.parametrize("sufiks", ["", "/upstream-equivalent", "/projection/v1"])
+    @pytest.mark.parametrize("kodowany", [True, False])
+    def test_trasy_lv_domain_przyjmuja_ref_z_ukosnikami(self, app_client, sufiks, kodowany):
+        case_id = _nowy_przypadek(app_client)
+        self._zasiej_z_ukosnikami(app_client, case_id)
+        ref = self.REF.replace("/", "%2F") if kodowany else self.REF
+        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/{ref}{sufiks}")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body.get("status") == "OK", body
+        if sufiks == "/projection/v1":
+            assert body["graph"]["station_ref"] == self.REF
+        elif sufiks == "":
+            assert body["station_ref"] == self.REF

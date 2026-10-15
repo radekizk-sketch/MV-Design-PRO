@@ -77,7 +77,7 @@ def _enm(**pola: str) -> EnergyNetworkModel:
 
 
 def test_rejestr_pol_addytywnych_niesie_fazy_odbioru() -> None:
-    assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE["loads"] == ("phases",)
+    assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE["loads"] == ("phases", "earth_electrode_r_ohm")
 
 
 def test_odbior_bez_faz_ma_odcisk_migawki_sprzed_karty() -> None:

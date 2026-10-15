@@ -386,23 +386,47 @@ def get_fault_loop_feeders(case_id: str, klucz: KluczTwin, station_ref: str) -> 
     return build_feeder_fault_loop_view(enm, station_ref)
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}")
-def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
-    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
-    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
+# Identyfikatory stacji niosą ukośniki (`stn/<ziarno>/...`, `enm/domain_operations._make_id`),
+# a serwer ASGI dekoduje `%2F` przed dopasowaniem trasy — parametr jednosegmentowy dawał
+# 404 „Not Found” dla KAŻDEJ stacji zbudowanej operacjami domenowymi (portal projekcji nN
+# na żywej aplikacji był martwy; wykryte natywnym klikiem w e2e karty W5-E-TTIT). Konwerter
+# `:path` przyjmuje ukośniki; trasy bardziej szczegółowe (projekcja, kotwica SN) są
+# zarejestrowane PRZED trasą ogólną, bo `:path` jest zachłanny i dopasowałby także
+# sufiksy `/projection/v1` i `/upstream-equivalent`.
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/projection/v1")
+def get_lv_domain_projection_v1(
+    case_id: str,
+    klucz: KluczTwin,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    run_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
 
-    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
-    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
-    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
-    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
-    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
-    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
+    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
+    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
+    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
+    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
     """
     enm = _get_enm(klucz)
-    return build_lv_domain_view(enm, station_ref)
+    run = None
+    if run_id is not None:
+        run = _get_canonical_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
+    try:
+        return build_lv_domain_projection_v1(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            run=run,
+        )
+    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent")
 def get_lv_domain_upstream_equivalent(
     case_id: str,
     klucz: KluczTwin,
@@ -435,37 +459,20 @@ def get_lv_domain_upstream_equivalent(
     )
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
-def get_lv_domain_projection_v1(
-    case_id: str,
-    klucz: KluczTwin,
-    station_ref: str,
-    scenario: UpstreamEquivalentScenario = "MAX",
-    run_id: UUID | None = None,
-) -> dict[str, Any]:
-    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}")
+def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
+    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
+    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
 
-    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
-    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
-    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
-    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
+    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
+    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
+    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
+    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
+    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
+    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
     """
     enm = _get_enm(klucz)
-    run = None
-    if run_id is not None:
-        run = _get_canonical_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
-    try:
-        return build_lv_domain_projection_v1(
-            enm,
-            case_id,
-            station_ref,
-            scenario=scenario,
-            run=run,
-        )
-    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return build_lv_domain_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/swz")

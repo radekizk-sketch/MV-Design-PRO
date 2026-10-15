@@ -1371,6 +1371,9 @@ class AddNNLoadPayload(_FrozenBase):
     phases: PhaseSet | None = None
     """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
 
+    earth_electrode_r_ohm: float | None = None
+    """Rezystancja uziomu instalacji odbiorczej R_A [Ω] (W5-E-TTIT, układy TT/IT); brak = dana nieobecna."""
+
     load_name: str | None = None
     load_label: str | None = None
 

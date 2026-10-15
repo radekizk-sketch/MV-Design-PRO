@@ -25,23 +25,27 @@ from application.analyses.fault_loop.route import (
 )
 from application.analyses.fault_loop.service import (
     _find_station,
-    _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    impedancja_transformatora_dla_ukladu,
     oblicz_petle_na_trasie,
     odmowa_analizy_nn,
     resolve_station_transformer,
     resolve_transformer_for_bus,
+    skladowe_punktu,
     uklad_nn_transformatora,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     sum_phase_and_return_route,
 )
-from solver_input.uklad_sieci_nn import typ_sieci_solvera
+from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
+from werdykt import Przedmiot
 
 from .werdykt import AparatZabezpieczajacy, ocen_swz
+from .werdykt_tt_it import ocen_swz_tt_it
 
 
 def _find_branch(enm: EnergyNetworkModel, branch_ref: str) -> SwitchBranch | FuseBranch | None:
@@ -178,7 +182,7 @@ def build_swz_view(
         return odmowa
     assert system is not None
 
-    z_tr, missing = _transformer_loop_impedance(trafo)
+    z_tr, missing = impedancja_transformatora_dla_ukladu(trafo, system)
     if z_tr is None:
         return {**context, "status": "brak danych", "missing_data": missing}
 
@@ -191,7 +195,10 @@ def build_swz_view(
         return {**context, "status": "brak danych", "missing_data": ["breaker"]}
 
     aparat, reason = _aparat_from_branch(branch)
-    if aparat is None:
+    # Układ TT/IT: aparat nadprądowy korzenia odpływu daje wyłącznie RODZAJ obwodu (prąd
+    # znamionowy); ochronę przeciwporażeniową ocenia RCD/pojemności (werdykt_tt_it), więc
+    # aparat bez wiązania katalogowego nie odmawia — brak In nazywa rodzaj obwodu.
+    if aparat is None and uklad_tn(system):
         return {
             **context,
             "status": "brak danych",
@@ -213,6 +220,11 @@ def build_swz_view(
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
+    skladowe = skladowe_punktu(
+        enm, trafo, system, path, bus_ref, phase_component, return_component, context
+    )
+    if isinstance(skladowe, dict):
+        return skladowe
 
     loop_result = oblicz_petle_na_trasie(
         trafo=trafo,
@@ -222,10 +234,31 @@ def build_swz_view(
         protection=protection,
         z_tr=z_tr,
         upstream=upstream,
-        phase_component=phase_component,
-        return_component=return_component,
+        phase_component=skladowe.phase_component,
+        return_component=skladowe.return_component,
+        dane_tt_it=skladowe.dane_tt_it,
     )
 
+    if skladowe.dane_punktu is not None:
+        # Karta W5-E-TTIT: układ TT/IT — werdykt wyjaśnialny (pakiet `werdykt`).
+        werdykt = ocen_swz_tt_it(
+            wynik_petli=loop_result,
+            dane_punktu=skladowe.dane_punktu,
+            u0_v=u_phase_v,
+            przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
+            aparat_in_a=aparat.in_a if aparat is not None else None,
+        )
+        return {
+            **context,
+            "status": "OK",
+            "transformer_ref": trafo.ref_id,
+            "swz": werdykt.to_dict(),
+            "fault_loop_min_scenario": loop_result.to_dict(),
+            "tt_it": skladowe.dane_punktu.to_dict(),
+            "missing_data": [],
+        }
+
+    assert aparat is not None
     swz = ocen_swz(ik1_min_a=loop_result.ik_min_a, u0_v=u_phase_v, aparat=aparat)
 
     return {
@@ -239,3 +272,21 @@ def build_swz_view(
         "fault_loop_min_scenario": loop_result.to_dict(),
         "missing_data": [],
     }
+
+
+def przedmiot_obwodu_nn(
+    enm: EnergyNetworkModel, station_ref: str, bus_ref: str, breaker_ref: str
+) -> Przedmiot:
+    """Przedmiot oceny SWZ TT/IT: obwód nN od aparatu korzenia odpływu do punktu."""
+    branch = _find_branch(enm, breaker_ref)
+    szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+    nazwa_aparatu = nazwa_elementu(branch, "branches") if branch is not None else breaker_ref
+    nazwa_szyny = nazwa_elementu(szyna, "buses") if szyna is not None else bus_ref
+    return Przedmiot(
+        element_ref=bus_ref,
+        nazwa_pl=f"Obwód nN: {nazwa_aparatu} → {nazwa_szyny}",
+        opis_pl=(
+            f"Obwód nN stacji {station_ref} od aparatu „{nazwa_aparatu}” do punktu "
+            f"„{nazwa_szyny}” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+        ),
+    )

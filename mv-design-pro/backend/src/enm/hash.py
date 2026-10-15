@@ -65,7 +65,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
     # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
-    "loads": ("phases",),
+    # + karta W5-E-TTIT: uziom instalacji odbiorczej R_A (`None` = dana nieobecna, poza
+    # odciskiem; podana wartość zmienia wynik pętli TT/IT, więc zmienia odcisk).
+    "loads": ("phases", "earth_electrode_r_ohm"),
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),

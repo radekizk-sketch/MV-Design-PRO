@@ -31,6 +31,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
@@ -39,6 +40,9 @@ from network_model.solvers.fault_loop_iec60364 import (
     NetworkType,
     ProtectionArrangement,
 )
+
+if TYPE_CHECKING:
+    from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,10 @@ class FaultLoopBuildRequest:
     return_label: str = "Przewód powrotny (PE/PEN)"
     transformer_label: str = "Transformator"
     upstream_label: str = "Sieć zasilająca (upstream Thevenin)"
+    # Karta W5-E-TTIT: dane pętli doziemnej TT/IT przekazywane 1:1 do `FaultLoopInput`
+    # (wołający z warstwy aplikacji buduje DTO, nie woła solvera z parametrami — guard
+    # `no_direct_fault_params_guard`).
+    dane_tt_it: DaneTtIt | None = None
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -128,6 +136,7 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         upstream_impedance=upstream,
         network_type=request.network_type,
         protection_arrangement=request.protection_arrangement,
+        dane_tt_it=request.dane_tt_it,
     )
 
 

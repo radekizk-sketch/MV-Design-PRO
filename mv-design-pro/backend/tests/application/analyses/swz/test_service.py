@@ -169,7 +169,8 @@ def test_swz_unknown_breaker_ref_is_honest() -> None:
     assert "breaker" in view["missing_data"]
 
 
-def test_swz_it_system_not_applicable() -> None:
+def test_swz_it_system_bez_pojemnosci_odmawia_kodem() -> None:
+    """Karta W5-E-TTIT: IT liczone pętlą doziemną — bez b_0 odcinków odmowa nazwana kodem."""
     enm = _enm(
         cable_length_km=0.05,
         catalog_namespace="APARAT_NN_MCB",
@@ -177,7 +178,8 @@ def test_swz_it_system_not_applicable() -> None:
     )
     enm.transformers[0].lv_earthing_system = "IT"
     view = build_swz_view(enm, "stn", "b1", "ap1")
-    assert view["status"] == "nie dotyczy"
+    assert view["status"] == "brak danych"
+    assert view["kod_odmowy"] == "nn.brak_pojemnosci_doziemnej"
 
 
 def test_swz_determinism_two_runs_identical() -> None:

@@ -58,6 +58,7 @@ from network_model.solvers.fault_loop_builder import (
     build_fault_loop_input,
     refer_upstream_impedance_to_lv_ohm,
     sum_phase_and_return_route,
+    transformer_lv_impedance_ohm,
     zero_sequence_transformer_loop_impedance_ohm,
 )
 from network_model.solvers.fault_loop_iec60364 import (
@@ -66,6 +67,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     ProtectionArrangement,
     compute_fault_loop,
 )
+from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt
 from network_model.solvers.short_circuit_core import build_zbus
 from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
 
@@ -78,6 +80,7 @@ from .route import (
     path_to_bus,
     route_segments,
 )
+from .tt_it import DanePunktuTtIt, dane_sieci_it, dane_tt_it_dla_punktu
 
 #: Klucz `missing_data` przy braku układu sieci nN na transformatorze (W5-A §1 p. 2:
 #: brak = odmowa nazwana, NIGDY domyślka — skasowana domyślka ``"TN-C-S"``).
@@ -395,6 +398,83 @@ def _transformer_loop_impedance(
     return z_tr, []
 
 
+def impedancja_transformatora_dla_ukladu(
+    trafo: Transformer, uklad: str
+) -> tuple[TransformerLoopImpedance | None, list[str]]:
+    """Impedancja transformatora WŁAŚCIWA dla pętli danego układu (karta W5-E-TTIT).
+
+    TN i TT — pętla domyka się przez uzwojenie nN i punkt neutralny (TN: PE/PEN, TT: uziomy
+    R_A/R_B), więc składowa zgodna z grupą połączeń (``_transformer_loop_impedance``, z0
+    rodziny Dyn). IT — drugie zwarcie doziemne L-PE-L nie płynie przez punkt neutralny (jest
+    izolowany): pętla dwóch faz widzi impedancję zgodną Z1 transformatora
+    (``transformer_lv_impedance_ohm`` z uk%, Sn, Ulv, Pk — warstwa solvera).
+    """
+    if uklad != "IT":
+        return _transformer_loop_impedance(trafo)
+    missing: list[str] = []
+    if not trafo.sn_mva or trafo.sn_mva <= 0:
+        missing.append("sn_mva")
+    if not trafo.uk_percent or trafo.uk_percent <= 0:
+        missing.append("uk_percent")
+    if not trafo.ulv_kv or trafo.ulv_kv <= 0:
+        missing.append("ulv_kv")
+    if missing:
+        return None, missing
+    return (
+        transformer_lv_impedance_ohm(
+            sn_mva=trafo.sn_mva,
+            uk_percent=trafo.uk_percent,
+            ulv_kv=trafo.ulv_kv,
+            pk_kw=trafo.pk_kw,
+        ),
+        [],
+    )
+
+
+#: Etykieta zerowej składowej powrotnej pętli TT (PE kabla nie należy do pętli doziemnej).
+ETYKIETA_POWROT_TT = "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)"
+
+
+@dataclass(frozen=True)
+class SkladowePunktu:
+    """Składowe pętli punktu wg układu: trasa + dane TT/IT (``None`` dla TN)."""
+
+    phase_component: LoopImpedanceComponent
+    return_component: LoopImpedanceComponent
+    dane_tt_it: DaneTtIt | None
+    dane_punktu: DanePunktuTtIt | None
+
+
+def skladowe_punktu(
+    enm: EnergyNetworkModel,
+    trafo: Transformer,
+    uklad: str,
+    path: LvBusPath | None,
+    bus_ref: str,
+    phase_component: LoopImpedanceComponent,
+    return_component: LoopImpedanceComponent,
+    context: dict[str, Any],
+) -> SkladowePunktu | dict[str, Any]:
+    """Składowe pętli dla punktu WEDŁUG UKŁADU — jedno miejsce dla wszystkich widoków nN.
+
+    TN: trasa fazowa + powrotna (PE/PEN). TT: trasa fazowa, powrót przez uziomy (składowa
+    powrotna zerowa, R_A/R_B dochodzą w solverze), RCD z trasy. IT: trasa fazowa + PE
+    (drugie zwarcie), pojemności sieci (pierwsze zwarcie). Brak danej TT/IT = odmowa
+    nazwana z kodem (słownik odmów w ``tt_it``).
+    """
+    if uklad_tn(uklad):
+        return SkladowePunktu(phase_component, return_component, None, None)
+    dane = dane_tt_it_dla_punktu(enm, trafo, uklad, path, bus_ref, context)
+    if isinstance(dane, dict):
+        return dane
+    powrot = (
+        LoopImpedanceComponent(label=ETYKIETA_POWROT_TT, r_ohm=0.0, x_ohm=0.0)
+        if uklad == "TT"
+        else return_component
+    )
+    return SkladowePunktu(phase_component, powrot, dane.dane, dane)
+
+
 def _upstream_thevenin_lv_component(
     enm: EnergyNetworkModel, trafo: Transformer
 ) -> tuple[LoopImpedanceComponent | None, list[str]]:
@@ -437,10 +517,12 @@ def uklad_nn_transformatora(trafo: Transformer) -> str | None:
 
 
 def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, Any] | None:
-    """Odmowa NAZWANA, gdy pętli TN nie da się liczyć: brak układu albo układ TT/IT.
+    """Odmowa NAZWANA, gdy transformator nie deklaruje układu sieci nN.
 
-    Zwraca gotową odpowiedź widoku albo ``None`` (układ TN — licz dalej). Jedno
-    miejsce dla widoków pętli zwarcia, SWZ, doboru aparatów nN i wiązania dowodu.
+    Zwraca gotową odpowiedź widoku albo ``None`` (układ zadeklarowany — licz dalej:
+    TN pętlą L-PE/L-PEN, TT/IT pętlą doziemną ``petla_zwarcia_tt_it`` przez to samo
+    wejście ``compute_fault_loop``; karta W5-E-TTIT skasowała dawne „nie dotyczy" dla TT/IT).
+    Jedno miejsce dla widoków pętli zwarcia, SWZ, doboru aparatów nN i wiązania dowodu.
     """
     if uklad is None:
         return {
@@ -449,19 +531,9 @@ def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, An
             "missing_data": [BRAK_UKLADU_NN],
             "reason_pl": (
                 "Transformator zasilający nie deklaruje układu uziemienia sieci nN "
-                "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia TN nie jest liczona; brak danej "
+                "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia nie jest liczona; brak danej "
                 "nie jest zastępowany żadnym układem domyślnym."
             ),
-        }
-    if not uklad_tn(uklad):
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {uklad}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
         }
     return None
 
@@ -552,6 +624,7 @@ def oblicz_petle_na_trasie(
     upstream: LoopImpedanceComponent,
     phase_component: LoopImpedanceComponent,
     return_component: LoopImpedanceComponent,
+    dane_tt_it: DaneTtIt | None = None,
 ) -> FaultLoopResult:
     """Pętla zwarcia na trasie punkt → transformator: JEDNO złożenie wejścia solvera.
 
@@ -576,6 +649,7 @@ def oblicz_petle_na_trasie(
         upstream_label=upstream.label,
         phase_label=phase_component.label,
         return_label=return_component.label,
+        dane_tt_it=dane_tt_it,
     )
     return compute_fault_loop(build_fault_loop_input(request))
 
@@ -588,6 +662,11 @@ def build_station_fault_loop_view(
     Trasa zerodługościowa (punkt zwarcia = szyna nN transformatora) — przypadek
     szczególny TEJ SAMEJ funkcji, której używa ``build_fault_loop_view_at_point``
     dla dowolnego punktu (jedna ścieżka fizyki, zero duplikacji).
+
+    Układ TT (karta W5-E-TTIT): pętla doziemna domyka się przez uziom INSTALACJI odbiorczej
+    R_A, a na szynie nN transformatora nie ma instalacji — widok u źródła odmawia kodem
+    `nn.brak_r_a` (dane punktu odpływu z odbiorem daje `build_fault_loop_view_at_point`).
+    Układ IT: prąd pierwszego zwarcia (pojemności całej sieci) i drugie zwarcie u źródła.
 
     ``transformer_ref`` (karta B-02) wskazuje transformator stacji; bez
     wskazania — domyślny (pierwszy po ``ref_id``). Przy stacji 2×TR „źródło" nie
@@ -615,7 +694,7 @@ def build_station_fault_loop_view(
         return odmowa
     assert system is not None
 
-    z_tr, missing = _transformer_loop_impedance(trafo)
+    z_tr, missing = impedancja_transformatora_dla_ukladu(trafo, system)
     if z_tr is None:
         return {**context, "status": "brak danych", "missing_data": missing}
 
@@ -626,6 +705,11 @@ def build_station_fault_loop_view(
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
     zero_component = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
+    skladowe = skladowe_punktu(
+        enm, trafo, system, None, trafo.lv_bus_ref, zero_component, zero_component, context
+    )
+    if isinstance(skladowe, dict):
+        return skladowe
 
     result = oblicz_petle_na_trasie(
         trafo=trafo,
@@ -635,8 +719,9 @@ def build_station_fault_loop_view(
         protection=protection,
         z_tr=z_tr,
         upstream=upstream,
-        phase_component=zero_component,
-        return_component=zero_component,
+        phase_component=skladowe.phase_component,
+        return_component=skladowe.return_component,
+        dane_tt_it=skladowe.dane_tt_it,
     )
 
     return {
@@ -647,6 +732,7 @@ def build_station_fault_loop_view(
         "transformer_impedance_ohm": {"r": z_tr.r_ohm, "x": z_tr.x_ohm},
         "upstream_impedance_ohm": {"r": upstream.r_ohm, "x": upstream.x_ohm},
         "fault_loop": result.to_dict(),
+        "tt_it": skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None,
         "missing_data": [],
         "note_pl": (
             "Impedancja pętli zwarcia u źródła (szyna nN) — startowa dla obwodów nN. "
@@ -704,7 +790,7 @@ def build_fault_loop_view_at_point(
         return odmowa
     assert system is not None
 
-    z_tr, missing = _transformer_loop_impedance(trafo)
+    z_tr, missing = impedancja_transformatora_dla_ukladu(trafo, system)
     if z_tr is None:
         return {**context, "status": "brak danych", "missing_data": missing}
 
@@ -726,6 +812,11 @@ def build_fault_loop_view_at_point(
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
+    skladowe = skladowe_punktu(
+        enm, trafo, system, path, bus_ref, phase_component, return_component, context
+    )
+    if isinstance(skladowe, dict):
+        return skladowe
 
     result = oblicz_petle_na_trasie(
         trafo=trafo,
@@ -735,8 +826,9 @@ def build_fault_loop_view_at_point(
         protection=protection,
         z_tr=z_tr,
         upstream=upstream,
-        phase_component=phase_component,
-        return_component=return_component,
+        phase_component=skladowe.phase_component,
+        return_component=skladowe.return_component,
+        dane_tt_it=skladowe.dane_tt_it,
     )
 
     return {
@@ -749,6 +841,7 @@ def build_fault_loop_view_at_point(
         "transformer_impedance_ohm": {"r": z_tr.r_ohm, "x": z_tr.x_ohm},
         "upstream_impedance_ohm": {"r": upstream.r_ohm, "x": upstream.x_ohm},
         "fault_loop": result.to_dict(),
+        "tt_it": skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None,
         "missing_data": [],
     }
 
@@ -762,6 +855,9 @@ class LvPointResult:
     status: str  # "OK" | "brak danych"
     fault_loop: dict[str, Any] | None = None
     reason_pl: str | None = None
+    #: Karta W5-E-TTIT: kod odmowy nazwanej danych TT/IT punktu (R_A, RCD, pojemności).
+    kod_odmowy: str | None = None
+    tt_it: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -823,7 +919,7 @@ def build_feeder_fault_loop_view_for_transformer(
         return {**odmowa, "feeders": []}
     assert system is not None
 
-    z_tr, missing = _transformer_loop_impedance(trafo)
+    z_tr, missing = impedancja_transformatora_dla_ukladu(trafo, system)
     if z_tr is None:
         return {**context, "status": "brak danych", "missing_data": missing, "feeders": []}
 
@@ -835,6 +931,13 @@ def build_feeder_fault_loop_view_for_transformer(
             "missing_data": upstream_missing,
             "feeders": [],
         }
+
+    if system == "IT":
+        # Dane sieci IT (pojemności doziemne, częstotliwość) są własnością SIECI, nie punktu —
+        # ich brak odmawia całego widoku odpływów tym samym kodem co punkt i źródło.
+        siec_it = dane_sieci_it(enm, trafo, context)
+        if isinstance(siec_it, dict):
+            return {**siec_it, "feeders": []}
 
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
@@ -877,6 +980,22 @@ def build_feeder_fault_loop_view_for_transformer(
                 )
                 continue
             phase_component, return_component = sum_phase_and_return_route(segments)
+            skladowe = skladowe_punktu(
+                enm, trafo, system, path, bus_ref, phase_component, return_component, {}
+            )
+            if isinstance(skladowe, dict):
+                # Odmowa nazwana danych TT/IT PUNKTU (brak R_A instalacji w tym punkcie itp.)
+                # — nie ukrywa pozostałych punktów odpływu.
+                points.append(
+                    LvPointResult(
+                        bus_ref=bus_ref,
+                        hop_count=path.hop_count,
+                        status="brak danych",
+                        reason_pl=skladowe.get("reason_pl"),
+                        kod_odmowy=skladowe.get("kod_odmowy"),
+                    )
+                )
+                continue
             result = oblicz_petle_na_trasie(
                 trafo=trafo,
                 fault_node_id=bus_ref,
@@ -885,8 +1004,9 @@ def build_feeder_fault_loop_view_for_transformer(
                 protection=protection,
                 z_tr=z_tr,
                 upstream=upstream,
-                phase_component=phase_component,
-                return_component=return_component,
+                phase_component=skladowe.phase_component,
+                return_component=skladowe.return_component,
+                dane_tt_it=skladowe.dane_tt_it,
             )
             points.append(
                 LvPointResult(
@@ -894,6 +1014,9 @@ def build_feeder_fault_loop_view_for_transformer(
                     hop_count=path.hop_count,
                     status="OK",
                     fault_loop=result.to_dict(),
+                    tt_it=(
+                        skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None
+                    ),
                 )
             )
             magnitude = abs(result.z_loop_ohm)
@@ -916,6 +1039,8 @@ def build_feeder_fault_loop_view_for_transformer(
                         "status": p.status,
                         "fault_loop": p.fault_loop,
                         "reason_pl": p.reason_pl,
+                        "kod_odmowy": p.kod_odmowy,
+                        "tt_it": p.tt_it,
                     }
                     for p in points
                 ],
@@ -1006,11 +1131,22 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
         # nich (stacja 1×TR: DOKŁADNIE poprzednie zachowanie, bo prefiks braku
         # dokłada się dopiero przy stacji wielotransformatorowej).
         first = per_transformer[0]
+        # Odmowa nazwana (kod + przyczyna) pierwszego transformatora nie ginie w widoku
+        # stacji — konsument (ekran nN, SWZ, dowód) dostaje ten sam kod co per transformator.
+        odmowa_nazwana = {
+            k: first[k] for k in ("kod_odmowy", "reason_pl") if first.get(k) is not None
+        }
         if len(transformers) == 1:
-            return {**context, **{k: first[k] for k in ("status", "missing_data")}, "feeders": []}
+            return {
+                **context,
+                **{k: first[k] for k in ("status", "missing_data")},
+                **odmowa_nazwana,
+                "feeders": [],
+            }
         return {
             **context,
             "status": "brak danych",
+            **odmowa_nazwana,
             "missing_data": missing_data,
             "feeders": [],
         }

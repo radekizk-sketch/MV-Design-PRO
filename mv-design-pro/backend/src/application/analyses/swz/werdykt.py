@@ -7,8 +7,8 @@ normatywne (G-D3/G-D4). Werdykt 3-STANOWY (§0.3 karty P0.6): spełnia / nie
 spełnia / NIEROZSTRZYGALNE — trzeci stan jest OBOWIĄZKOWY dla dowolnego
 aparatu bez wystarczających danych — NIGDY „spełnia" bez dowodu liczbowego.
 
-Zakres (§0.3): wyłącznie TN (fault_loop solver nie obsługuje TT/IT — MVP
-scope, ``fault_loop_iec60364.py``). Ia liczone WYŁĄCZNIE z gwarantowanej
+Zakres (§0.3): układ TN (pętla L-PE/L-PEN); układy TT/IT ocenia ``werdykt_tt_it``
+(karta W5-E-TTIT) na kontrakcie werdyktu wyjaśnialnego. Ia liczone WYŁĄCZNIE z gwarantowanej
 górnej granicy pasma magnetycznego MCB (IEC 60898-1, G-D4) — dolna granica
 NIE jest gwarancją zadziałania.
 
@@ -64,6 +64,23 @@ from network_model.solvers.protection_lv_curves import (
 PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
 _TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
+
+
+def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> str:
+    """Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDEN predykat dla werdyktu TN i TT/IT.
+
+    Jawnie podany rodzaj wygrywa; bez niego próg ``PROG_PRADU_OBWODU_ODBIORCZEGO_A`` na prądzie
+    znamionowym aparatu (uproszczenie karty P0.6, patrz komentarz stałej); aparat bez In =
+    obwód rozdzielczy (dłuższy czas — zachowanie zastane werdyktu TN, wołający TT/IT nazywa
+    brak In w śladzie).
+    """
+    if rodzaj_jawny is not None:
+        return rodzaj_jawny
+    return (
+        "odbiorczy"
+        if (in_a is not None and in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A)
+        else "rozdzielczy"
+    )
 
 
 class SwzStatus(StrEnum):
@@ -162,14 +179,7 @@ def ocen_swz(
     trace: list[dict[str, Any]] = []
     pasmo = pasmo_dla_u0(u0_v)
 
-    if rodzaj_obwodu is None:
-        rodzaj = (
-            "odbiorczy"
-            if (aparat.in_a is not None and aparat.in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A)
-            else "rozdzielczy"
-        )
-    else:
-        rodzaj = rodzaj_obwodu
+    rodzaj = rodzaj_obwodu_dla_aparatu(aparat.in_a, rodzaj_obwodu)
 
     wpis_czasu = TABLICA_TN_ODBIORCZE[pasmo] if rodzaj == "odbiorczy" else CZAS_TN_ROZDZIELCZY
     t_wymagany = wpis_czasu.czas_s

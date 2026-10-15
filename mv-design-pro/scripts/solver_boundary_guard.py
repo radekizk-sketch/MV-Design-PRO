@@ -35,6 +35,11 @@ WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
     "backend/src/network_model/solvers/short_circuit_contributions.py",
     "backend/src/domain/protection_engine_v1.py",
+    # Karta W5-E-TTIT (decyzja O-59 OD-25, 2026-09-30): JEDYNE wejście fizyki Ik1 nN
+    # (`compute_fault_loop`, dyspozycja po układzie) i pętla doziemna TT/IT (jądro sumowania
+    # składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN").
+    "backend/src/network_model/solvers/fault_loop_iec60364.py",
+    "backend/src/network_model/solvers/petla_zwarcia_tt_it.py",
 ]
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
@@ -93,6 +98,21 @@ SANCTIONED_CHANGES = {
         "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
         "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
         "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/fault_loop_iec60364.py": (
+        "W5-E-TTIT (O-59 OD-25, D-11-fault_loop-TT-IT): kasacja NotImplementedError dla "
+        "ukladow TT/IT -> dyspozycja po network_type do `petla_zwarcia_tt_it` przez to samo "
+        "wejscie `compute_fault_loop`; jadro `zsumuj_skladowe_petli`/`prad_z_petli` wydzielone "
+        "i wspolne z TN; pola ADDYTYWNE `FaultLoopInput.dane_tt_it`, `FaultLoopResult.tt_it` "
+        "(to_dict dopisuje `tt_it` tylko gdy obecne). Dowod bit-identycznosci TN: "
+        "tests/test_petla_tn_tozsamosc_w5e_ttit.py (18 przypadkow, sha256 to_dict przed/po). "
+        "Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/petla_zwarcia_tt_it.py": (
+        "W5-E-TTIT (O-59 OD-25): NOWY modul pętli doziemnej TT (I_d przez R_A+R_B, "
+        "U_dotyk = R_A*I_dn) i IT (I_d = 3*omega*C_e*U_0 z b_0 odcinkow, drugie zwarcie "
+        "L-PE-L z Z1 transformatora), WHITE BOX; limity normy NIE sa w kodzie (BRAK_PODSTAWY "
+        "w werdykcie). Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "

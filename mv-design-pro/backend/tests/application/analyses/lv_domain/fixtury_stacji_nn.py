@@ -27,6 +27,7 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
     Generator,
+    GroundingConfig,
     Load,
     Source,
     Substation,
@@ -43,6 +44,7 @@ def _transformator(
     lv_bus_ref: str,
     sn_mva: float = 0.63,
     uklad: str | None = "TN-C-S",
+    r_b_ohm: float | None = None,
 ) -> Transformer:
     return Transformer(
         ref_id=ref_id,
@@ -58,6 +60,12 @@ def _transformator(
         catalog_ref="tr-15-04-630kva-dyn11",
         # W5-A: uklad sieci nN niesie transformator zasilajacy (jedyny nosnik).
         lv_earthing_system=uklad,
+        # W5-E-TTIT: uziom punktu neutralnego nN R_B (uklad TT) — tylko gdy podany.
+        lv_neutral=(
+            GroundingConfig(type="directly_grounded", r_ohm=r_b_ohm)
+            if r_b_ohm is not None
+            else None
+        ),
     )
 
 
@@ -74,7 +82,14 @@ def _aparat(ref_id: str, from_bus: str, to_bus: str) -> SwitchBranch:
     )
 
 
-def _kabel(ref_id: str, from_bus: str, to_bus: str, *, length_km: float = 0.05) -> Cable:
+def _kabel(
+    ref_id: str,
+    from_bus: str,
+    to_bus: str,
+    *,
+    length_km: float = 0.05,
+    b0_s_per_km: float | None = None,
+) -> Cable:
     return Cable(
         ref_id=ref_id,
         name=ref_id,
@@ -88,6 +103,8 @@ def _kabel(ref_id: str, from_bus: str, to_bus: str, *, length_km: float = 0.05) 
         short_circuit_temperature_c=160.0,
         catalog_ref="kabel-nn-yaky-4x120",
         catalog_namespace="KABEL_NN",
+        # W5-E-TTIT: susceptancja doziemna (pojemnosc) odcinka — uklad IT; None = brak danej.
+        b0_siemens_per_km=b0_s_per_km,
     )
 
 
@@ -105,6 +122,10 @@ def zbuduj_stacje_nn(
     zdolnosc_pv: str | None = None,
     niezalezny_system_sn_tr2: bool = False,
     pv_wprost_na_sekcji: bool = False,
+    r_b_ohm: float | None = None,
+    r_a_ohm: float | None = None,
+    rcd: bool = False,
+    b0_s_per_km: float | None = None,
 ) -> EnergyNetworkModel:
     """Zbuduj stację SN/nN o zadanych cechach.
 
@@ -125,6 +146,11 @@ def zbuduj_stacje_nn(
     WŁASNYM źródłem (dwa niezależne systemy SN; sprzęgło zamknięte = konflikt).
     ``pv_wprost_na_sekcji`` — PV przyłączone wprost do szyny ``nn_a`` (bez pola
     — przypadek audytu NN-AUD-07), zamiast na ``a2``.
+    ``r_b_ohm`` / ``r_a_ohm`` / ``rcd`` / ``b0_s_per_km`` (karta W5-E-TTIT) — uziom punktu
+    neutralnego nN transformatorow, uziom instalacji KAZDEGO odbioru, wylacznik
+    roznicowopradowy w torze odbioru A (szyna zaciskow ``a3``, odbior przeniesiony na ``a3``)
+    i pojemnosc doziemna kabli (uklad IT). Kazda cecha domyslnie NIEOBECNA (``None``/``False``),
+    wiec fikstury TN haszuja jak przed karta.
     """
     if transformatory not in (1, 2):
         raise ValueError("Fikstura obsługuje 1 albo 2 transformatory stacji.")
@@ -144,9 +170,48 @@ def zbuduj_stacje_nn(
         Bus(ref_id="a1", name="A1", voltage_kv=0.4),
         Bus(ref_id="a2", name="A2", voltage_kv=0.4),
     ]
-    transformers = [_transformator("tr1", "TR1", "nn_a", uklad=uklad_uziemienia)]
-    branches: list = [_aparat("ap_a", "nn_a", "a1"), _kabel("c_a", "a1", "a2")]
-    loads = [Load(ref_id="load_a", name="Odbiór A", bus_ref="a2", p_mw=0.05, q_mvar=0.01)]
+    transformers = [_transformator("tr1", "TR1", "nn_a", uklad=uklad_uziemienia, r_b_ohm=r_b_ohm)]
+    branches: list = [
+        _aparat("ap_a", "nn_a", "a1"),
+        _kabel("c_a", "a1", "a2", b0_s_per_km=b0_s_per_km),
+    ]
+    szyna_odbioru_a = "a2"
+    if rcd:
+        buses.append(Bus(ref_id="a3", name="Zaciski instalacji A", voltage_kv=0.4))
+        branches.append(
+            SwitchBranch(
+                ref_id="rcd_a",
+                name="RCD A",
+                type="switch",
+                from_bus_ref="a2",
+                to_bus_ref="a3",
+                r_ohm=0.0,
+                x_ohm=0.0,
+                catalog_ref="rcd_nn_a_40a_30ma",
+                catalog_namespace="APARAT_NN_RCD",
+                materialized_params={
+                    "in_a": 40.0,
+                    "i_delta_n_a": 0.03,
+                    "rcd_type": "A",
+                    "selective": False,
+                    "t_a_s": 0.3,
+                    "t_a_2idn_s": 0.15,
+                    "t_a_5idn_s": 0.04,
+                    "verification_status": "REFERENCYJNY",
+                },
+            )
+        )
+        szyna_odbioru_a = "a3"
+    loads = [
+        Load(
+            ref_id="load_a",
+            name="Odbiór A",
+            bus_ref=szyna_odbioru_a,
+            p_mw=0.05,
+            q_mvar=0.01,
+            earth_electrode_r_ohm=r_a_ohm,
+        )
+    ]
     generators: list[Generator] = []
     sources = [
         Source(
@@ -163,7 +228,9 @@ def zbuduj_stacje_nn(
     transformer_refs = ["tr1"]
 
     if transformatory == 2:
-        tr2 = _transformator("tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva, uklad=uklad_uziemienia)
+        tr2 = _transformator(
+            "tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva, uklad=uklad_uziemienia, r_b_ohm=r_b_ohm
+        )
         if niezalezny_system_sn_tr2:
             buses.append(Bus(ref_id="sn2", name="SN drugi system", voltage_kv=15.0))
             tr2 = tr2.model_copy(update={"hv_bus_ref": "sn2"})
@@ -189,10 +256,19 @@ def zbuduj_stacje_nn(
         branches.extend(
             [
                 _aparat("ap_b", druga_szyna, "b1"),
-                _kabel("c_b", "b1", "b2", length_km=dlugosc_kabla_b_km),
+                _kabel("c_b", "b1", "b2", length_km=dlugosc_kabla_b_km, b0_s_per_km=b0_s_per_km),
             ]
         )
-        loads.append(Load(ref_id="load_b", name="Odbiór B", bus_ref="b2", p_mw=0.05, q_mvar=0.01))
+        loads.append(
+            Load(
+                ref_id="load_b",
+                name="Odbiór B",
+                bus_ref="b2",
+                p_mw=0.05,
+                q_mvar=0.01,
+                earth_electrode_r_ohm=r_a_ohm,
+            )
+        )
         if not wspolna_szyna_nn:
             buses.append(Bus(ref_id="nn_b", name="RGnN sekcja B", voltage_kv=0.4))
             station_bus_refs.append("nn_b")

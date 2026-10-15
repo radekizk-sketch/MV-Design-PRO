@@ -262,6 +262,22 @@
     },
     {
       "area": "STATIONS",
+      "code": "nn.brak_pojemnosci_doziemnej"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_a"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_b"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_rcd"
+    },
+    {
+      "area": "STATIONS",
       "code": "nn.bus_missing"
     },
     {
@@ -295,6 +311,10 @@
     {
       "area": "CATALOGS",
       "code": "nn.switch.catalog_ref_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.transformer_lv_not_nn_band"
     },
     {
       "area": "STATIONS",
@@ -462,6 +482,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "station.element_bypasses_field"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.line_field_multiple_segments"
+    },
+    {
+      "area": "STATIONS",
       "code": "station.nn_outgoing_min_1"
     },
     {
@@ -479,6 +507,10 @@
     {
       "area": "ANALYSIS",
       "code": "study_case.missing_base_snapshot"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "swz.limit_tt_it_brak_tekstu_normy"
     },
     {
       "area": "STATIONS",
@@ -573,5 +605,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 151
 }

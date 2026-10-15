@@ -99,6 +99,7 @@ RODZINY_MIERNIKA: dict[str, str] = {
     "lv-cable": "lv_cable_types",
     "lv-breaker-mcb": "lv_breaker_mcb_types",
     "lv-fuse-link": "lv_fuse_link_types",
+    "lv-rcd": "lv_rcd_types",
     "load": "load_types",
     "ct": "ct_types",
     "vt": "vt_types",

@@ -290,6 +290,7 @@ decyzje podejmuje czlowiek.
 | `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | `manufacturer`, `poles` | brak |
 | `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
+| `lv-rcd` | 56 | 0 | 5 | 48,6 | 56 | `manufacturer`, `poles` | brak |
 | `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
@@ -305,7 +306,7 @@ decyzje podejmuje czlowiek.
 | `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 25. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
+Rodzin objętych pomiarem: 26. Pozycji łącznie: 8018, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 8018.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

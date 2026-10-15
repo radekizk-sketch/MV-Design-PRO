@@ -258,6 +258,11 @@ class LVCircuitVerificationInput:
 
     vdrop_delta_u_total_percent: float | None = None
 
+    #: Karta W5-E-TTIT: werdykt wyjaśnialny SWZ TT/IT (``swz.werdykt_tt_it.SwzTtItWynik``,
+    #: ``to_dict()``) — obecny WYŁĄCZNIE gdy ``fault_loop.tt_it`` jest obecne (układ TT/IT);
+    #: kroki 9-10 cytują wtedy pętlę doziemną i rekord werdyktu zamiast Ik1_min ≥ Ia(t_wym).
+    swz_tt_it: dict[str, Any] | None = None
+
 
 # =============================================================================
 # Helpers (wzorzec protection_settings.py / sc_symmetrical.py)
@@ -438,6 +443,321 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
 # =============================================================================
 # Generator — 10 kroków
 # =============================================================================
+
+
+def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[ProofStep]:
+    """Kroki 9-10 układu TN: Ik1_min z pętli L-PE/L-PEN i SWZ Ik1_min ≥ Ia(t_wym)."""
+    kroki: list[ProofStep] = []
+    # ---------------------------------------------------------------
+    # Krok 9: Ik1_min = c_min*U0/|Z_petli|                     NEW EQ_LVCV_006
+    # ---------------------------------------------------------------
+    eq9 = _eq(
+        "EQ_LVCV_006",
+        r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
+        "Prąd zwarcia minimalnego z pętli",
+        "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
+        [
+            _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
+            _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
+            _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
+            _sym("Z_{loop}", "Ω", "Moduł impedancji pętli zwarcia", "z_loop_magnitude_ohm"),
+        ],
+    )
+    kroki.append(
+        ProofStep(
+            step_id=ProofStep.generate_step_id("LVCV", 9),
+            step_number=9,
+            title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
+            equation=eq9,
+            input_values=(
+                _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                _pv("U_0", fl.u_nom_v, "V", "u0_v"),
+                _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
+            ),
+            substitution_latex=(
+                f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+                f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
+            ),
+            result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
+            unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+            source_keys={
+                "trasa": ";".join(c.label for c in fl.components),
+                "network_type": fl.network_type.value,
+            },
+        )
+    )
+
+    # ---------------------------------------------------------------
+    # Krok 10: SWZ Ik1_min >= Ia(t_wym)                        NEW EQ_LVCV_007
+    # ---------------------------------------------------------------
+    eq10 = _eq(
+        "EQ_LVCV_007",
+        r"I_{k1,min} \ge I_a(t_{wym})",
+        "Samoczynne wyłączenie zasilania (SWZ)",
+        "IEC 60364-4-41 Tab. 41.1 (G-D3)",
+        [
+            _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
+            _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
+            _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
+        ],
+    )
+    kroki.append(
+        ProofStep(
+            step_id=ProofStep.generate_step_id("LVCV", 10),
+            step_number=10,
+            title_pl=(
+                f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={data.swz_pasmo_u0}, "
+                f"obwód {data.swz_rodzaj_obwodu})"
+            ),
+            equation=eq10,
+            input_values=(
+                _pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
+                _pv(
+                    "I_a",
+                    (
+                        data.swz_ia_wymagane_a
+                        if data.swz_ia_wymagane_a is not None
+                        else "NIEDOSTĘPNE"
+                    ),
+                    "A",
+                    "ia_wymagane_a",
+                ),
+                _pv(
+                    "t_{wym}",
+                    (data.swz_t_wymagany_s if data.swz_t_wymagany_s is not None else "NIEDOSTĘPNE"),
+                    "s",
+                    "t_wymagany_s",
+                ),
+            ),
+            substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
+            result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
+            unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
+            source_keys={
+                "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
+                "pasmo_u0": data.swz_pasmo_u0,
+                "rodzaj_obwodu": data.swz_rodzaj_obwodu,
+            },
+        )
+    )
+
+    return kroki
+
+
+def _wartosc_lub_brak(value: float | None) -> float | str:
+    return value if value is not None else "NIEDOSTĘPNE"
+
+
+def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[ProofStep]:
+    """Kroki 9-10 układów TT/IT (karta W5-E-TTIT).
+
+    Krok 9 cytuje pętlę doziemną solvera ``petla_zwarcia_tt_it`` (TT: I_d przez R_A+R_B,
+    EQ_LVCV_008; IT: I_d pierwszego zwarcia przez pojemności, EQ_LVCV_010, oraz I_d2 drugiego
+    zwarcia, EQ_LVCV_011). Krok 10 cytuje rekord werdyktu wyjaśnialnego (``swz_tt_it``):
+    zdanie, kryteria składowe ze statusami i podstawami — limit napięcia dotykowego U_L
+    (EQ_LVCV_009) nie jest w repozytorium, więc kryterium ma status BRAK_PODSTAWY.
+    """
+    tt = fl.tt_it
+    assert tt is not None
+    assert data.swz_tt_it is not None
+    kroki: list[ProofStep] = []
+    uklad = tt.uklad.value
+
+    if uklad == "TT":
+        eq9 = _eq(
+            "EQ_LVCV_008",
+            r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
+            "Prąd zwarcia doziemnego w układzie TT",
+            "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+            [
+                _sym("I_d", "A", "Prąd zwarcia doziemnego (L–PE przez uziomy)", "ik1_min_a"),
+                _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
+                _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
+                _sym("Z_s", "Ω", "Moduł impedancji pętli doziemnej", "z_loop_magnitude_ohm"),
+                _sym("R_A", "Ω", "Rezystancja uziomu instalacji odbiorczej", "r_a_ohm"),
+                _sym("R_B", "Ω", "Rezystancja uziomu punktu neutralnego stacji", "r_b_ohm"),
+            ],
+        )
+        kroki.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("LVCV", 9),
+                step_number=9,
+                title_pl="Prąd zwarcia doziemnego z pętli TT (scenariusz MIN)",
+                equation=eq9,
+                input_values=(
+                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                    _pv("U_0", fl.u_nom_v, "V", "u0_v"),
+                    _pv("R_A", _wartosc_lub_brak(tt.r_a_ohm), "Ω", "r_a_ohm"),
+                    _pv("R_B", _wartosc_lub_brak(tt.r_b_ohm), "Ω", "r_b_ohm"),
+                    _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
+                ),
+                substitution_latex=(
+                    f"$$I_d = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+                    f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
+                ),
+                result=_pv("I_d", fl.ik_min_a, "A", "ik1_min_a"),
+                unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+                source_keys={
+                    "trasa": ";".join(c.label for c in fl.components),
+                    "network_type": fl.network_type.value,
+                    "rodzaj_pradu": tt.rodzaj_pradu_pl,
+                },
+            )
+        )
+    else:
+        eq9 = _eq(
+            "EQ_LVCV_010",
+            r"I_d = 3 \cdot \omega \cdot C_e \cdot U_0,\quad \omega = 2\pi f",
+            "Prąd pierwszego zwarcia doziemnego w układzie IT",
+            "IEC 60364-4-41 §411.6 (układ IT, pierwsze zwarcie — prąd pojemnościowy)",
+            [
+                _sym("I_d", "A", "Prąd pierwszego zwarcia doziemnego", "i_d_pierwsze_zwarcie_a"),
+                _sym("C_e", "F", "Pojemność doziemna jednej fazy sieci IT", "c_e_f"),
+                _sym("f", "Hz", "Częstotliwość sieci", "czestotliwosc_hz"),
+                _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
+            ],
+        )
+        # Wynik pętli IT niesie komplet (solver odmawia bez pojemności/częstotliwości) —
+        # brak którejś wielkości to błąd kontraktu, nie dana do podstawienia zerem.
+        if (
+            tt.i_d_pierwsze_zwarcie_a is None
+            or tt.c_e_f is None
+            or tt.czestotliwosc_hz is None
+            or tt.u_ll_v is None
+        ):
+            raise OdmowaDanychError(
+                "Wynik pętli doziemnej IT bez prądu pierwszego zwarcia, pojemności C_e, "
+                "częstotliwości albo napięcia międzyprzewodowego — pakiet nie cytuje zera."
+            )
+        i_d1 = tt.i_d_pierwsze_zwarcie_a
+        c_e = tt.c_e_f
+        f_hz = tt.czestotliwosc_hz
+        u_ll_v = tt.u_ll_v
+        kroki.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("LVCV", 9),
+                step_number=9,
+                title_pl="Prąd pierwszego i drugiego zwarcia doziemnego w układzie IT",
+                equation=eq9,
+                input_values=(
+                    _pv("C_e", c_e, "F", "c_e_f"),
+                    _pv("f", f_hz, "Hz", "czestotliwosc_hz"),
+                    _pv("U_0", fl.u_nom_v, "V", "u0_v"),
+                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                    _pv("U_{LL}", u_ll_v, "V", "u_ll_v"),
+                    _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
+                ),
+                substitution_latex=(
+                    f"$$I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
+                    f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}}$$"
+                    "$$I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
+                    f"\\frac{{{C_MIN_LV:g} \\cdot {u_ll_v:.2f}}}"
+                    f"{{2 \\cdot {fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}"
+                    "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})$$"
+                ),
+                result=_pv("I_d", i_d1, "A", "i_d_pierwsze_zwarcie_a"),
+                unit_check=_uc("A", "A", "(1/s) · F · V = A; (—) · V / Ω = A"),
+                source_keys={
+                    "trasa_drugiego_zwarcia": ";".join(c.label for c in fl.components),
+                    "network_type": fl.network_type.value,
+                    "rownanie_drugiego_zwarcia": "EQ_LVCV_011",
+                    "i_d2_min_a": f"{fl.ik_min_a:.4f}",
+                    "odcinki_pojemnosci": ";".join(
+                        str(o.get("branch_ref", "")) for o in tt.pojemnosci
+                    ),
+                },
+            )
+        )
+
+    # Krok 10: werdykt wyjaśnialny — zdanie + kryteria składowe z podstawami
+    wymaganie = data.swz_tt_it.get("wymaganie", {})
+    wyjasnienie = wymaganie.get("wyjasnienie", {}) if isinstance(wymaganie, dict) else {}
+    oceny = wymaganie.get("oceny_skladowe", []) if isinstance(wymaganie, dict) else []
+    linie: list[str] = [str(wyjasnienie.get("zdanie_pl") or data.swz_przyczyna_pl)]
+    for ocena in oceny:
+        if not isinstance(ocena, dict):
+            continue
+        kryterium = ocena.get("kryterium", {}) or {}
+        podstawa = ocena.get("podstawa", {}) or {}
+        linie.append(
+            f"{kryterium.get('nazwa_pl', ocena.get('kryterium_id', ''))}: "
+            f"{ocena.get('status_maszynowy', '')} — "
+            f"{(ocena.get('wyjasnienie') or {}).get('zdanie_pl', '')} "
+            f"[podstawa: {podstawa.get('dokument', '')} {podstawa.get('jednostka_redakcyjna', '')}, "
+            f"stan: {podstawa.get('stan', '')}]"
+        )
+    i_wyl = tt.i_delta_n_a if uklad == "TT" else tt.i_d_pierwsze_zwarcie_a
+    u_dotyk = tt.u_dotyk_v if uklad == "TT" else tt.u_dotyk_pierwsze_zwarcie_v
+    eq10 = _eq(
+        "EQ_LVCV_009",
+        r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
+        "Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
+        "IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+        [
+            _sym("U_{dotyk}", "V", "Napięcie dotykowe na uziomie instalacji", "u_dotyk_v"),
+            _sym("R_A", "Ω", "Rezystancja uziomu instalacji odbiorczej", "r_a_ohm"),
+            _sym(
+                r"I_{\Delta n}",
+                "A",
+                "Prąd różnicowy znamionowy RCD (TT) / prąd pierwszego zwarcia (IT)",
+                "i_delta_n_a",
+            ),
+            _sym(
+                "U_L",
+                "V",
+                "Dopuszczalne napięcie dotykowe — tekst normy spoza repozytorium",
+                "limit_napiecia_dotykowego_v",
+            ),
+        ],
+    )
+    kroki.append(
+        ProofStep(
+            step_id=ProofStep.generate_step_id("LVCV", 10),
+            step_number=10,
+            title_pl=(
+                f"SWZ w układzie {uklad} — werdykt wyjaśnialny (pasmo U0={data.swz_pasmo_u0}, "
+                f"obwód {data.swz_rodzaj_obwodu})"
+            ),
+            equation=eq10,
+            input_values=(
+                _pv("R_A", _wartosc_lub_brak(tt.r_a_ohm), "Ω", "r_a_ohm"),
+                _pv(r"I_{\Delta n}", _wartosc_lub_brak(i_wyl), "A", "i_delta_n_a"),
+                _pv("U_{dotyk}", _wartosc_lub_brak(u_dotyk), "V", "u_dotyk_v"),
+                _pv(
+                    "U_L",
+                    "BRAK_PODSTAWY" if data.swz_tt_it.get("kod_odmowy_limitu") else "wg rekordu",
+                    "V",
+                    "limit_napiecia_dotykowego_v",
+                ),
+                _pv("t_{wym}", _wartosc_lub_brak(data.swz_t_wymagany_s), "s", "t_wymagany_s"),
+            ),
+            substitution_latex="".join(
+                "$$\\text{" + linia.replace("\\", "/").replace("{", "(").replace("}", ")") + "}$$"
+                for linia in linie
+            ),
+            result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
+            unit_check=_uc("V", "V", "Ω · A = V"),
+            source_keys={
+                "kontrakt": str(data.swz_tt_it.get("kontrakt", "")),
+                "wymaganie_id": (
+                    str(wymaganie.get("wymaganie_id", "")) if isinstance(wymaganie, dict) else ""
+                ),
+                "status_wymagania": (
+                    str(wymaganie.get("status_maszynowy", ""))
+                    if isinstance(wymaganie, dict)
+                    else ""
+                ),
+                "kod_odmowy_limitu": str(data.swz_tt_it.get("kod_odmowy_limitu") or ""),
+                "zrodlo_czasu": (
+                    "TABLICA_TT_ODBIORCZE / CZAS_TT_ROZDZIELCZY (status REFERENCYJNY)"
+                    if uklad == "TT"
+                    else "—"
+                ),
+                "pasmo_u0": str(data.swz_pasmo_u0),
+                "rodzaj_obwodu": str(data.swz_rodzaj_obwodu),
+            },
+        )
+    )
+    return kroki
 
 
 class LVCircuitVerificationProofPack:
@@ -837,101 +1157,24 @@ class LVCircuitVerificationProofPack:
         )
 
         # ---------------------------------------------------------------
-        # Krok 9: Ik1_min = c_min*U0/|Z_petli|                     NEW EQ_LVCV_006
+        # Krok 9-10: pętla zwarcia minimalnego + SWZ — WEDŁUG UKŁADU sieci nN.
+        # TN: Ik1_min = c_min·U0/|Z_loop| (EQ_LVCV_006) i Ik1_min ≥ Ia(t_wym)
+        # (EQ_LVCV_007). TT/IT (karta W5-E-TTIT): pętla doziemna przez uziomy /
+        # pojemności (EQ_LVCV_008 / EQ_LVCV_010 + EQ_LVCV_011) i werdykt
+        # wyjaśnialny z limitem U_L (EQ_LVCV_009) — BRAK_PODSTAWY, gdy limit nie
+        # jest w repozytorium; żadnej liczby z pamięci.
         # ---------------------------------------------------------------
         fl = data.fault_loop
-        eq9 = _eq(
-            "EQ_LVCV_006",
-            r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
-            "Prąd zwarcia minimalnego z pętli",
-            "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
-            [
-                _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-                _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
-                _sym("U_0", "V", "Napięcie fazowe znamionowe", "u0_v"),
-                _sym("Z_{loop}", "Ω", "Moduł impedancji pętli zwarcia", "z_loop_magnitude_ohm"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 9),
-                step_number=9,
-                title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
-                equation=eq9,
-                input_values=(
-                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
-                    _pv("U_0", fl.u_nom_v, "V", "u0_v"),
-                    _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
-                ),
-                substitution_latex=(
-                    f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
-                    f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
-                ),
-                result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-                unit_check=_uc("A", "A", "(—) · V / Ω = A"),
-                source_keys={
-                    "trasa": ";".join(c.label for c in fl.components),
-                    "network_type": fl.network_type.value,
-                },
-            )
-        )
-
-        # ---------------------------------------------------------------
-        # Krok 10: SWZ Ik1_min >= Ia(t_wym)                        NEW EQ_LVCV_007
-        # ---------------------------------------------------------------
-        eq10 = _eq(
-            "EQ_LVCV_007",
-            r"I_{k1,min} \ge I_a(t_{wym})",
-            "Samoczynne wyłączenie zasilania (SWZ)",
-            "IEC 60364-4-41 Tab. 41.1 (G-D3)",
-            [
-                _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-                _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
-                _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
-            ],
-        )
-        steps.append(
-            ProofStep(
-                step_id=ProofStep.generate_step_id("LVCV", 10),
-                step_number=10,
-                title_pl=(
-                    f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={data.swz_pasmo_u0}, "
-                    f"obwód {data.swz_rodzaj_obwodu})"
-                ),
-                equation=eq10,
-                input_values=(
-                    _pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-                    _pv(
-                        "I_a",
-                        (
-                            data.swz_ia_wymagane_a
-                            if data.swz_ia_wymagane_a is not None
-                            else "NIEDOSTĘPNE"
-                        ),
-                        "A",
-                        "ia_wymagane_a",
-                    ),
-                    _pv(
-                        "t_{wym}",
-                        (
-                            data.swz_t_wymagany_s
-                            if data.swz_t_wymagany_s is not None
-                            else "NIEDOSTĘPNE"
-                        ),
-                        "s",
-                        "t_wymagany_s",
-                    ),
-                ),
-                substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
-                result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-                unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
-                source_keys={
-                    "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
-                    "pasmo_u0": data.swz_pasmo_u0,
-                    "rodzaj_obwodu": data.swz_rodzaj_obwodu,
-                },
-            )
-        )
+        if fl.tt_it is not None:
+            if data.swz_tt_it is None:
+                raise OdmowaDanychError(
+                    "Pakiet dowodowy obwodu nN w układzie TT/IT wymaga rekordu werdyktu "
+                    "wyjaśnialnego SWZ TT/IT (pole swz_tt_it) — bez niego krok 10 nie ma "
+                    "czego cytować."
+                )
+            steps.extend(_kroki_tt_it(data, fl))
+        else:
+            steps.extend(_kroki_tn(data, fl))
 
         # ---------------------------------------------------------------
         # Podsumowanie

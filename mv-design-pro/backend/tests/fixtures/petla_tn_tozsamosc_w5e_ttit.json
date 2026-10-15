@@ -1,0 +1,1454 @@
+{
+ "opis": "Tożsamość liczb pętli TN przed/po karcie W5-E-TTIT: to_dict() i SHA-256 wyniku compute_fault_loop na drzewie sprzed wydzielenia jądra (f3c435b6 + naprawa tras lv-domain).",
+ "przypadki": [
+  {
+   "fault_node_id": "bus-TN-S-noup-L",
+   "sha256": "2b12eb8940b82b922f2c99d43d57730759025697b3523172a131b0fac1627c35",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-S-noup-L",
+    "ik_max_a": 5841.587105252895,
+    "ik_min_a": 5285.2454761811905,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.041341504568653514,
+       "r_total_ohm": 0.036399999999999995,
+       "x_total_ohm": 0.0196
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5841.587105252895,
+      "ik_min_a": 5285.2454761811905,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.041341504568653514
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.0196,
+     "magnitude": 0.041341504568653514,
+     "re": 0.036399999999999995
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-S-noup-—",
+   "sha256": "a9fc1ea9125999053c0c552c28e14d9917c7d8d5c946fe9d9aecd4b9b74a2d20",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-S-noup-—",
+    "ik_max_a": 15336.231610144656,
+    "ik_min_a": 13875.638123464209,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.015811388300841896,
+       "r_total_ohm": 0.005,
+       "x_total_ohm": 0.015
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 15336.231610144656,
+      "ik_min_a": 13875.638123464209,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.015811388300841896
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.015,
+     "magnitude": 0.015811388300841896,
+     "re": 0.005
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-S-noup-L (trasa)",
+   "sha256": "0591ccf5dfa525357c73ddb69c1ffe07568e032ff0211d9f151f937b4009357f",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-S-noup-L (trasa)",
+    "ik_max_a": 338.6698003652866,
+    "ik_min_a": 306.41553366383073,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7130839529816948,
+       "r_total_ohm": 0.7064199999999999,
+       "x_total_ohm": 0.09726
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 338.6698003652866,
+      "ik_min_a": 306.41553366383073,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7130839529816948
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.09726,
+     "magnitude": 0.7130839529816948,
+     "re": 0.7064199999999999
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-S-up-L",
+   "sha256": "a29475ef4a0314c0959451129b9e4f908b46eafb091e05c91e250a5d38c3fc67",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-S-up-L",
+    "ik_max_a": 5400.47883687816,
+    "ik_min_a": 4886.14751908024,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.044718256898050035,
+       "r_total_ohm": 0.03763,
+       "x_total_ohm": 0.02416
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5400.47883687816,
+      "ik_min_a": 4886.14751908024,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.044718256898050035
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.02416,
+     "magnitude": 0.044718256898050035,
+     "re": 0.03763
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-S-up-—",
+   "sha256": "0d1d9db9b1aec8ef35117415dd09b95b87ad98de3088c82eae48d50b93e8180f",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-S-up-—",
+    "ik_max_a": 11812.397362940497,
+    "ik_min_a": 10687.407137898543,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.020528187937565265,
+       "r_total_ohm": 0.00623,
+       "x_total_ohm": 0.01956
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 11812.397362940497,
+      "ik_min_a": 10687.407137898543,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.020528187937565265
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.01956,
+     "magnitude": 0.020528187937565265,
+     "re": 0.00623
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-S-up-L (trasa)",
+   "sha256": "849c925a3f677f2ea9df9d760dc9a10c6546ddae41e33a88ca68f76f8853a1f9",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-S-up-L (trasa)",
+    "ik_max_a": 337.7916969473915,
+    "ik_min_a": 305.621059142878,
+    "network_type": "TN-S",
+    "protection_arrangement": "PE",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7149376440641518,
+       "r_total_ohm": 0.7076499999999999,
+       "x_total_ohm": 0.10182
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 337.7916969473915,
+      "ik_min_a": 305.621059142878,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7149376440641518
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.10182,
+     "magnitude": 0.7149376440641518,
+     "re": 0.7076499999999999
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-noup-L",
+   "sha256": "987de2f58536604b864af9b9e15cc6bbb8445aaa75d083cb75665d99cbf2b3ff",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-noup-L",
+    "ik_max_a": 5841.587105252895,
+    "ik_min_a": 5285.2454761811905,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.041341504568653514,
+       "r_total_ohm": 0.036399999999999995,
+       "x_total_ohm": 0.0196
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5841.587105252895,
+      "ik_min_a": 5285.2454761811905,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.041341504568653514
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.0196,
+     "magnitude": 0.041341504568653514,
+     "re": 0.036399999999999995
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-noup-—",
+   "sha256": "262738d1c26d48ab51fa19135189ed712c81f7a4062ffe386b47372f5106eb5c",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-noup-—",
+    "ik_max_a": 15336.231610144656,
+    "ik_min_a": 13875.638123464209,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.015811388300841896,
+       "r_total_ohm": 0.005,
+       "x_total_ohm": 0.015
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 15336.231610144656,
+      "ik_min_a": 13875.638123464209,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.015811388300841896
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.015,
+     "magnitude": 0.015811388300841896,
+     "re": 0.005
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-noup-L (trasa)",
+   "sha256": "094fcad918228e5199a8752cba3333d89759271cd7402a39ee2691e516b682bf",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-noup-L (trasa)",
+    "ik_max_a": 338.6698003652866,
+    "ik_min_a": 306.41553366383073,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7130839529816948,
+       "r_total_ohm": 0.7064199999999999,
+       "x_total_ohm": 0.09726
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 338.6698003652866,
+      "ik_min_a": 306.41553366383073,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7130839529816948
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.09726,
+     "magnitude": 0.7130839529816948,
+     "re": 0.7064199999999999
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-up-L",
+   "sha256": "dd789806c1fba1cc94845e0f9b1ac617022648800a8ded174bbb649244e76ab9",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-up-L",
+    "ik_max_a": 5400.47883687816,
+    "ik_min_a": 4886.14751908024,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.044718256898050035,
+       "r_total_ohm": 0.03763,
+       "x_total_ohm": 0.02416
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5400.47883687816,
+      "ik_min_a": 4886.14751908024,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.044718256898050035
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.02416,
+     "magnitude": 0.044718256898050035,
+     "re": 0.03763
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-up-—",
+   "sha256": "01d276f5c804d9466e22102ad636ea12d6080b5b8e10af34fcc1018b5220ed06",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-up-—",
+    "ik_max_a": 11812.397362940497,
+    "ik_min_a": 10687.407137898543,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.020528187937565265,
+       "r_total_ohm": 0.00623,
+       "x_total_ohm": 0.01956
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 11812.397362940497,
+      "ik_min_a": 10687.407137898543,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.020528187937565265
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.01956,
+     "magnitude": 0.020528187937565265,
+     "re": 0.00623
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-S-up-L (trasa)",
+   "sha256": "3cdade2cf70d8e7ae2aa033e13c72376d26fedf1551f3897938927836791f9c2",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-S-up-L (trasa)",
+    "ik_max_a": 337.7916969473915,
+    "ik_min_a": 305.621059142878,
+    "network_type": "TN-C-S",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7149376440641518,
+       "r_total_ohm": 0.7076499999999999,
+       "x_total_ohm": 0.10182
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 337.7916969473915,
+      "ik_min_a": 305.621059142878,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7149376440641518
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.10182,
+     "magnitude": 0.7149376440641518,
+     "re": 0.7076499999999999
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-noup-L",
+   "sha256": "2850d79ab44f141ab51454ee6a273e97dabc6d1a8738dbee5a2fc63aa92cd909",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-noup-L",
+    "ik_max_a": 5841.587105252895,
+    "ik_min_a": 5285.2454761811905,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.041341504568653514,
+       "r_total_ohm": 0.036399999999999995,
+       "x_total_ohm": 0.0196
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5841.587105252895,
+      "ik_min_a": 5285.2454761811905,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.041341504568653514
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.0196,
+     "magnitude": 0.041341504568653514,
+     "re": 0.036399999999999995
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-noup-—",
+   "sha256": "3cd13666b7039bd1c0031756b0783533c5c39509e2ede1e45063f9bf665bc289",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-noup-—",
+    "ik_max_a": 15336.231610144656,
+    "ik_min_a": 13875.638123464209,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.015811388300841896,
+       "r_total_ohm": 0.005,
+       "x_total_ohm": 0.015
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 15336.231610144656,
+      "ik_min_a": 13875.638123464209,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.015811388300841896
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.015,
+     "magnitude": 0.015811388300841896,
+     "re": 0.005
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-noup-L (trasa)",
+   "sha256": "92550585ba768cc0ffbb254297c69436dc15daca72d4645903f6d3b98c7bbd15",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     }
+    ],
+    "fault_node_id": "bus-TN-C-noup-L (trasa)",
+    "ik_max_a": 338.6698003652866,
+    "ik_min_a": 306.41553366383073,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7130839529816948,
+       "r_total_ohm": 0.7064199999999999,
+       "x_total_ohm": 0.09726
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 338.6698003652866,
+      "ik_min_a": 306.41553366383073,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7130839529816948
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.09726,
+     "magnitude": 0.7130839529816948,
+     "re": 0.7064199999999999
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-up-L",
+   "sha256": "a602c3b89ba4f17914a707f16b2d7897188c40302c04a43b4a19ff4d856275e4",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "PE",
+      "magnitude_ohm": 0.015867577004697347,
+      "r_ohm": 0.0157,
+      "x_ohm": 0.0023
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-up-L",
+    "ik_max_a": 5400.47883687816,
+    "ik_min_a": 4886.14751908024,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "PE",
+        "r_ohm": 0.0157,
+        "x_ohm": 0.0023
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.044718256898050035,
+       "r_total_ohm": 0.03763,
+       "x_total_ohm": 0.02416
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 5400.47883687816,
+      "ik_min_a": 4886.14751908024,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.044718256898050035
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.02416,
+     "magnitude": 0.044718256898050035,
+     "re": 0.03763
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-up-—",
+   "sha256": "e90f1df1ab4a0bbc05b768738ad512153afa72c3f5772cc312f4ba272b677d48",
+   "to_dict": {
+    "components": [
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "—",
+      "magnitude_ohm": 0.0,
+      "r_ohm": 0.0,
+      "x_ohm": 0.0
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-up-—",
+    "ik_max_a": 11812.397362940497,
+    "ik_min_a": 10687.407137898543,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.94010767585033,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "—",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.020528187937565265,
+       "r_total_ohm": 0.00623,
+       "x_total_ohm": 0.01956
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 11812.397362940497,
+      "ik_min_a": 10687.407137898543,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.94010767585033,
+      "z_magnitude_ohm": 0.020528187937565265
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.01956,
+     "magnitude": 0.020528187937565265,
+     "re": 0.00623
+    }
+   }
+  },
+  {
+   "fault_node_id": "bus-TN-C-up-L (trasa)",
+   "sha256": "6d96340b21c6cfbe21fa910e365434f1732dc29955a1f29e425c1748d5b871ac",
+   "to_dict": {
+    "components": [
+     {
+      "label": "L (trasa)",
+      "magnitude_ohm": 0.31540326726272194,
+      "r_ohm": 0.31271,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "PE/PEN (trasa)",
+      "magnitude_ohm": 0.3908799572758879,
+      "r_ohm": 0.38871,
+      "x_ohm": 0.04113
+     },
+     {
+      "label": "Transformator",
+      "magnitude_ohm": 0.015811388300841896,
+      "r_ohm": 0.005,
+      "x_ohm": 0.015
+     },
+     {
+      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+      "magnitude_ohm": 0.004722975756871932,
+      "r_ohm": 0.00123,
+      "x_ohm": 0.00456
+     }
+    ],
+    "fault_node_id": "bus-TN-C-up-L (trasa)",
+    "ik_max_a": 337.7916969473915,
+    "ik_min_a": 305.621059142878,
+    "network_type": "TN-C",
+    "protection_arrangement": "PEN",
+    "u_nom_v": 230.0,
+    "white_box_trace": [
+     {
+      "components": [
+       {
+        "label": "L (trasa)",
+        "r_ohm": 0.31271,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "PE/PEN (trasa)",
+        "r_ohm": 0.38871,
+        "x_ohm": 0.04113
+       },
+       {
+        "label": "Transformator",
+        "r_ohm": 0.005,
+        "x_ohm": 0.015
+       },
+       {
+        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+        "r_ohm": 0.00123,
+        "x_ohm": 0.00456
+       }
+      ],
+      "method": "Z_loop = Σ(R_i + jX_i)",
+      "result": {
+       "magnitude_ohm": 0.7149376440641518,
+       "r_total_ohm": 0.7076499999999999,
+       "x_total_ohm": 0.10182
+      },
+      "step": "sum_components"
+     },
+     {
+      "c_max": 1.05,
+      "c_min": 0.95,
+      "ik_max_a": 337.7916969473915,
+      "ik_min_a": 305.621059142878,
+      "method": "I_k = c * U_n / |Z_loop|",
+      "step": "compute_ik",
+      "u_nom_v": 230.0,
+      "z_magnitude_ohm": 0.7149376440641518
+     }
+    ],
+    "z_loop_ohm": {
+     "im": 0.10182,
+     "magnitude": 0.7149376440641518,
+     "re": 0.7076499999999999
+    }
+   }
+  }
+ ]
+}

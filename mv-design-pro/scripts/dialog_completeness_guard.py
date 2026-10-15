@@ -115,6 +115,7 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_nn_cable_segment": ["KreatorOdcinkaNn", "OdcinekNn"],
     "add_nn_distribution_board": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
     "add_nn_switch_device": ["KreatorAparatuNn", "AparatNn"],
+    "add_nn_rcd": ["KreatorRcdNn", "RcdNn"],
     "add_nn_section_coupler": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
     # POLA-W-TORZE: akcja naprawcza W042 — przepięcie elementu na zacisk pola.
     "przepnij_element_na_pole": ["KreatorPrzepieciaNaPole", "PrzepiecieNaPole"],

@@ -510,6 +510,12 @@ class Load(ENMElement):
     # (`enm/domain_operations_v2.py`) i `update_element_parameters` — każdy przez
     # JEDEN walidator `enm/fazy_odbioru.py::waliduj_fazy_odbioru`.
     phases: PhaseSet | None = None
+    # Karta W5-E-TTIT: rezystancja uziomu instalacji odbiorczej R_A [Ω] — dana projektowa
+    # układów TT/IT (pętla doziemna przez R_A i R_B, napięcie dotykowe R_A·I_Δn — solver
+    # `network_model/solvers/petla_zwarcia_tt_it.py`). `None` = dana nieobecna (werdykt TT/IT
+    # odmawia kodem `nn.brak_r_a`), nigdy zero. Pole addytywne: `None` poza odciskiem
+    # (`enm/hash.py`), pisarze przez JEDEN walidator `enm/uziom_instalacji.py::waliduj_r_a`.
+    earth_electrode_r_ohm: Annotated[float, Field(gt=0)] | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     quantity: int | None = None

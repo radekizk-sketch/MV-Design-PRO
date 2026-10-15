@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **151** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -127,6 +127,10 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
 | `nn.voltage_missing` | STATIONS | 1 | BLOCKER | Napięcie szyny nN nie jest określone | panel: `inspector`, tab: `parametry`, focus: `voltage_nn_kv` |
+| `nn.brak_pojemnosci_doziemnej` | STATIONS | 2 | BLOCKER | Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancja b_0 na km) — prąd pierwszego zwarcia doziemnego nie jest liczony | panel: `inspector`, tab: `parametry`, focus: `b0_siemens_per_km` |
+| `nn.brak_r_a` | STATIONS | 2 | BLOCKER | Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji R_A — pętla doziemna i napięcie dotykowe nie są liczone | panel: `inspector`, tab: `parametry`, focus: `earth_electrode_r_ohm` |
+| `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu R_B | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
+| `nn.brak_rcd` | STATIONS | 2 | BLOCKER | Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć | panel: `inspector`, tab: `nn`, modal: `add_nn_rcd` |
 | `nn.bus_missing` | STATIONS | 2 | BLOCKER | Stacja wymaga szyny nN | panel: `inspector`, tab: `nn` |
 | `station.type_invalid` | STATIONS | 2 | BLOCKER | Nieprawidłowy typ stacji | panel: `inspector`, tab: `parametry` |
 | `station.voltage_missing` | STATIONS | 2 | BLOCKER | Stacja nie ma zdefiniowanego napięcia | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
@@ -136,6 +140,7 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
+| `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
 | `station.element_bypasses_field` | STATIONS | 3 | WARNING | Element jest przyłączony do szyny głównej stacji z pominięciem pola rozdzielnicy — aparat pola nie leży w jego torze prądowym | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `station.line_field_multiple_segments` | STATIONS | 3 | BLOCKER | Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek | panel: `inspector`, tab: `pola` |
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | panel: `inspector`, tab: `pola` |
@@ -195,6 +200,7 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `verdict.run_missing` | ANALYSIS | 2 | WARNING | Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, by je ocenić | panel: `analizy` |
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
 | `analysis.as_built_measurement_terminal_missing` | ANALYSIS | 3 | BLOCKER | Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce | panel: `analizy`, tab: `odbior` |
+| `swz.limit_tt_it_brak_tekstu_normy` | ANALYSIS | 3 | WARNING | Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy | panel: `analizy`, tab: `zwarciowa` |
 | `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
 | `power_flow.unbalanced_shunt_admittance_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową | panel: `inspector`, tab: `parametry`, focus: `b_siemens_per_km` |
@@ -206,21 +212,21 @@ Wszystkie **145** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 93 |
-| WARNING | 51 |
-| INFO | 1 |
-| **Razem** | **145** |
+| BLOCKER | 97 |
+| WARNING | 52 |
+| INFO | 2 |
+| **Razem** | **151** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
 | CATALOGS | 48 |
-| STATIONS | 15 |
+| STATIONS | 20 |
 | GENERATORS | 25 |
 | PROTECTION | 14 |
-| ANALYSIS | 21 |
-| **Razem** | **145** |
+| ANALYSIS | 22 |
+| **Razem** | **151** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

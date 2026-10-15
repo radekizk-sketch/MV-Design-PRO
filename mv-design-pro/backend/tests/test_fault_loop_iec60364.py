@@ -6,12 +6,13 @@ Verifies:
 - compute_fault_loop math (Z_loop summation, Ik = c·U/|Z|)
 - WHITE BOX trace audyt
 - Validation reguły (no heuristics, polskie błędy)
-- TT/IT deferred per MVP scope
+- TT/IT: dyspozycja do `petla_zwarcia_tt_it` (karta W5-E-TTIT); tu pinujemy odmowę nazwaną bez danych TT/IT
 """
 
 import math
 
 import pytest
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
     C_MAX_LV,
     C_MIN_LV,
@@ -189,19 +190,22 @@ class TestValidation:
         with pytest.raises(ValueError, match="ujemną R lub X"):
             compute_fault_loop(bad)
 
-    def test_tt_network_deferred(self) -> None:
+    def test_tt_bez_danych_petli_doziemnej_odmawia_nazwanie(self) -> None:
+        """W5-E-TTIT: układ TT bez R_A/R_B/I_Δn = odmowa nazwana (nigdy NotImplementedError,
+        nigdy wartość zastępcza)."""
         data = FaultLoopInput(
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
-            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.0, x_ohm=0.0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.005, x_ohm=0.015),
             network_type=NetworkType.TT,
+            protection_arrangement=ProtectionArrangement.NONE,
         )
-        with pytest.raises(NotImplementedError, match="TT"):
+        with pytest.raises(OdmowaDanychError, match="Układ TT"):
             compute_fault_loop(data)
 
-    def test_it_network_deferred(self) -> None:
+    def test_it_bez_danych_sieci_it_odmawia_nazwanie(self) -> None:
         data = FaultLoopInput(
             fault_node_id="x",
             u_nom_v=230.0,
@@ -209,8 +213,26 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.005, x_ohm=0.015),
             network_type=NetworkType.IT,
+            protection_arrangement=ProtectionArrangement.NONE,
         )
-        with pytest.raises(NotImplementedError, match="IT"):
+        with pytest.raises(OdmowaDanychError, match="Układ IT"):
+            compute_fault_loop(data)
+
+    def test_tn_z_danymi_tt_it_odmawia(self) -> None:
+        """Dane pętli doziemnej przy układzie TN to sprzeczność wejścia — odmowa, nie ciche
+        zignorowanie (predykaty parami: TT/IT wymaga danych, TN ich zabrania)."""
+        from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt
+
+        data = FaultLoopInput(
+            fault_node_id="x",
+            u_nom_v=230.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.005, x_ohm=0.015),
+            network_type=NetworkType.TN_S,
+            dane_tt_it=DaneTtIt(r_a_ohm=20.0, r_b_ohm=2.0, i_delta_n_a=0.03),
+        )
+        with pytest.raises(OdmowaDanychError, match="nie mają zastosowania"):
             compute_fault_loop(data)
 
     def test_zero_loop_impedance_rejected(self) -> None:
@@ -265,19 +287,19 @@ class TestErrorLogging:
         assert "u_nom_v" in warnings[0].message
         assert getattr(warnings[0], "fault_node_id", None) == "bus_LV_42"
 
-    def test_tt_network_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_tt_bez_danych_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         from network_model.solvers.fault_loop_iec60364 import NetworkType
 
         bad = FaultLoopInput(
             fault_node_id="bus_TT_1",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.1, x_ohm=0.05),
-            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.0, x_ohm=0.0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
             network_type=NetworkType.TT,
         )
         with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
-            with pytest.raises(NotImplementedError):
+            with pytest.raises(OdmowaDanychError):
                 compute_fault_loop(bad)
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
         assert len(warnings) == 1

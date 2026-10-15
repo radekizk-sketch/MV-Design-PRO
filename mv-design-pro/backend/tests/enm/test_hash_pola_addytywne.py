@@ -71,7 +71,7 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # `tests/enm/test_deklaracje_modulu.py::test_deklaracje_poza_odciskiem_gdy_none`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
         "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
-        "loads": ("phases",),
+        "loads": ("phases", "earth_electrode_r_ohm"),
         "transformers": ("lv_earthing_system",),
         "branches": ("screen_bonding",),
         "generators": (

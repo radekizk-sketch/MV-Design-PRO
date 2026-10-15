@@ -32,6 +32,10 @@ from tests.dziedziny import fabryki as f
 #: name 36, data_source 22, name_pl 12, notes_pl 10) — żadna liczba ani identyfikator.
 #: Poprzednia wartość: 0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95.
 ODCISK_SPRZED_KARTY = "ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455"
+#: Karta W5-E-TTIT (2026-09-30): nowa przestrzeń `lv_rcd_types` (56 rekordów RCCB, IEC 61008-1).
+#: Dowód: zrzut kanoniczny BEZ tej przestrzeni daje DOKŁADNIE `ODCISK_SPRZED_KARTY` (żadna
+#: inna przestrzeń ani liść nie zmieniły się), a z nią — wartość poniżej.
+ODCISK_PO_W5E_TTIT = "608a933f6aa8f20aec807801dad1e71fbdbfd7cee9110e1e0dc105c05dc01d80"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -56,7 +60,11 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-card-huawei-sun2000-215ktl",
         "conv-pv-card-sungrow-sg3150u-mv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_SPRZED_KARTY
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
+    bez_rcd = {
+        przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
+    }
+    assert _odcisk_zrzutu(bez_rcd) == ODCISK_SPRZED_KARTY
 
 
 def test_pole_skasowane_zostaje_w_zrzucie_jako_null() -> None:

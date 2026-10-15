@@ -39,6 +39,7 @@ class TestCatalogNamespace:
             "KABEL_NN",
             "APARAT_NN_MCB",
             "WKLADKA_NN",
+            "APARAT_NN_RCD",  # karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (RCCB/RCBO)
             "CT",
             "VT",
             "OBCIAZENIE",
@@ -240,6 +241,7 @@ class TestMaterializationContracts:
             "KABEL_NN",
             "APARAT_NN_MCB",
             "WKLADKA_NN",
+            "APARAT_NN_RCD",  # karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (RCCB/RCBO)
             "CT",
             "VT",
             "OBCIAZENIE",

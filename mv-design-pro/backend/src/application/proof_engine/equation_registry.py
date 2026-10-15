@@ -1548,6 +1548,190 @@ EQ_LVCV_007 = EquationDefinition(
 )
 
 
+# Karta W5-E-TTIT (2026-09-30): układy TT i IT — pętla doziemna (`network_model.solvers.
+# petla_zwarcia_tt_it` przez JEDYNE wejście `fault_loop_iec60364.compute_fault_loop`).
+# Równania NAZYWAJĄ wielkości solvera i kryteria normy; limity (dopuszczalne napięcie
+# dotykowe U_L, warunki drugiego zwarcia IT) NIE są w repozytorium — krok dowodu cytuje
+# rekord werdyktu wyjaśnialnego (`swz.werdykt_tt_it`) ze statusem BRAK_PODSTAWY, nigdy
+# liczbę z pamięci.
+
+EQ_LVCV_008 = EquationDefinition(
+    equation_id="EQ_LVCV_008",
+    name_pl="Prąd zwarcia doziemnego w układzie TT",
+    standard_ref="IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+    latex=r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad "
+    r"Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_d",
+            unit="A",
+            description_pl="Prąd zwarcia doziemnego (L–PE przez uziomy instalacji i stacji)",
+            mapping_key="ik1_min_a",
+        ),
+        SymbolDefinition(
+            symbol="c_{min}",
+            unit="—",
+            description_pl="Współczynnik napięciowy minimalny (IEC 60909-0, nN: 0,95)",
+            mapping_key="c_min",
+        ),
+        SymbolDefinition(
+            symbol="U_0",
+            unit="V",
+            description_pl="Napięcie fazowe znamionowe",
+            mapping_key="u0_v",
+        ),
+        SymbolDefinition(
+            symbol="Z_s",
+            unit="Ω",
+            description_pl="Moduł impedancji pętli doziemnej (upstream SN + TR + żyła fazowa + R_B + R_A)",
+            mapping_key="z_loop_magnitude_ohm",
+        ),
+        SymbolDefinition(
+            symbol="R_A",
+            unit="Ω",
+            description_pl="Rezystancja uziomu instalacji odbiorczej (model: odbiór nN)",
+            mapping_key="r_a_ohm",
+        ),
+        SymbolDefinition(
+            symbol="R_B",
+            unit="Ω",
+            description_pl="Rezystancja uziomu punktu neutralnego stacji (model: transformator)",
+            mapping_key="r_b_ohm",
+        ),
+    ),
+    unit_derivation="(—) · V / Ω = A",
+    notes=(
+        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_tt` (jądro sumowania "
+        "składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN”). "
+        "Przewód ochronny kabla NIE należy do pętli TT (powrót przez uziomy)."
+    ),
+)
+
+EQ_LVCV_009 = EquationDefinition(
+    equation_id="EQ_LVCV_009",
+    name_pl="Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
+    standard_ref="IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+    latex=r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
+    symbols=(
+        SymbolDefinition(
+            symbol="U_{dotyk}",
+            unit="V",
+            description_pl="Napięcie dotykowe na uziomie instalacji przy prądzie wyłączającym",
+            mapping_key="u_dotyk_v",
+        ),
+        SymbolDefinition(
+            symbol="R_A",
+            unit="Ω",
+            description_pl="Rezystancja uziomu instalacji odbiorczej",
+            mapping_key="r_a_ohm",
+        ),
+        SymbolDefinition(
+            symbol=r"I_{\Delta n}",
+            unit="A",
+            description_pl=(
+                "Prąd różnicowy znamionowy RCD (TT) albo prąd pierwszego zwarcia doziemnego (IT)"
+            ),
+            mapping_key="i_delta_n_a",
+        ),
+        SymbolDefinition(
+            symbol="U_L",
+            unit="V",
+            description_pl=(
+                "Dopuszczalne napięcie dotykowe — tekst normy spoza repozytorium "
+                "(brak podstawy do czasu pakietu danych właściciela)"
+            ),
+            mapping_key="limit_napiecia_dotykowego_v",
+        ),
+    ),
+    unit_derivation="Ω · A = V",
+    notes=(
+        "Wartość U_dotyk liczy solver (`petla_zwarcia_tt_it`, krok `napiecie_dotykowe_rcd` / "
+        "`napiecie_dotykowe_pierwszego_zwarcia_it`). Limit U_L NIE jest w repozytorium — "
+        "kryterium `swz.tt.napiecie_dotykowe` / `swz.it.pierwsze_zwarcie` ma status "
+        "BRAK_PODSTAWY z kodem `swz.limit_tt_it_brak_tekstu_normy`; żadnej liczby z pamięci."
+    ),
+)
+
+EQ_LVCV_010 = EquationDefinition(
+    equation_id="EQ_LVCV_010",
+    name_pl="Prąd pierwszego zwarcia doziemnego w układzie IT",
+    standard_ref="IEC 60364-4-41 §411.6 (układ IT, pierwsze zwarcie — prąd pojemnościowy)",
+    latex=r"I_d = 3 \cdot \omega \cdot C_e \cdot U_0,\quad "
+    r"C_e = \frac{\sum_i b_{0,i} \cdot l_i \cdot n_i}{\omega},\quad \omega = 2\pi f",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_d",
+            unit="A",
+            description_pl="Prąd pierwszego zwarcia doziemnego (zamyka się przez pojemności sieci)",
+            mapping_key="i_d_pierwsze_zwarcie_a",
+        ),
+        SymbolDefinition(
+            symbol="C_e",
+            unit="F",
+            description_pl="Pojemność doziemna jednej fazy całej sieci IT (suma odcinków)",
+            mapping_key="c_e_f",
+        ),
+        SymbolDefinition(
+            symbol="f",
+            unit="Hz",
+            description_pl="Częstotliwość sieci (nagłówek modelu)",
+            mapping_key="czestotliwosc_hz",
+        ),
+        SymbolDefinition(
+            symbol="U_0",
+            unit="V",
+            description_pl="Napięcie fazowe znamionowe",
+            mapping_key="u0_v",
+        ),
+    ),
+    unit_derivation="(1/s) · F · V = A",
+    notes=(
+        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
+        "`pojemnosc_doziemna_sieci_it`, `prad_pierwszego_zwarcia_it`). Susceptancja b_0 "
+        "odcinków z modelu (pole b0_siemens_per_km) — brak = odmowa nazwana, nie domysł."
+    ),
+)
+
+EQ_LVCV_011 = EquationDefinition(
+    equation_id="EQ_LVCV_011",
+    name_pl="Prąd drugiego zwarcia doziemnego w układzie IT (L–PE–L)",
+    standard_ref="IEC 60364-4-41 §411.6.4 (układ IT, drugie zwarcie) / IEC 60909-0 §5.3.2 (c)",
+    latex=r"I_{d2} = \frac{c \cdot U_{LL}}{2 \cdot |Z_s|},\quad U_{LL} = \sqrt{3} \cdot U_0",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_{d2}",
+            unit="A",
+            description_pl="Prąd drugiego zwarcia doziemnego (dwie fazy przez przewód ochronny)",
+            mapping_key="i_d2_min_a",
+        ),
+        SymbolDefinition(
+            symbol="c",
+            unit="—",
+            description_pl="Współczynnik napięciowy (c_min dla wartości minimalnej)",
+            mapping_key="c_min",
+        ),
+        SymbolDefinition(
+            symbol="U_{LL}",
+            unit="V",
+            description_pl="Napięcie międzyprzewodowe znamionowe",
+            mapping_key="u_ll_v",
+        ),
+        SymbolDefinition(
+            symbol="Z_s",
+            unit="Ω",
+            description_pl="Moduł impedancji pętli jednej fazy (upstream SN + Z1 TR + żyła fazowa + PE)",
+            mapping_key="z_loop_magnitude_ohm",
+        ),
+    ),
+    unit_derivation="(—) · V / Ω = A",
+    notes=(
+        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
+        "`sum_components_drugie_zwarcie_it`, `prad_drugiego_zwarcia_it`); impedancja "
+        "transformatora to składowa ZGODNA Z1 (punkt neutralny izolowany nie prowadzi pętli)."
+    ),
+)
+
+
 # =============================================================================
 # P17: Losses Energy Profile — Kanoniczne równania (BINDING)
 # =============================================================================
@@ -2904,6 +3088,10 @@ LVCV_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_LVCV_005": EQ_LVCV_005,
     "EQ_LVCV_006": EQ_LVCV_006,
     "EQ_LVCV_007": EQ_LVCV_007,
+    "EQ_LVCV_008": EQ_LVCV_008,
+    "EQ_LVCV_009": EQ_LVCV_009,
+    "EQ_LVCV_010": EQ_LVCV_010,
+    "EQ_LVCV_011": EQ_LVCV_011,
 }
 
 # P17: Losses Energy Profile equations registry

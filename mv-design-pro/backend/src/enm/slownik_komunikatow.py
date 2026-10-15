@@ -109,6 +109,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "factory_configuration_ref": "Blok fabryczny",  # stacja/strings.ts blokWybor
     "factory_unit_index": "Jednostki bloku (skład stały)",  # stacja/strings.ts blokJednostkiTytul
     "feeder_ref": "Odpływ nN",  # odbior/strings.ts wierszOdplyw
+    "load_ref": "Odbiór nN",  # rcd/strings.ts odbior (karta W5-E-TTIT)
     "add_nn_cable_segment:from_bus_ref": "Szyna źródłowa",  # odcinek-nn/strings.ts szynaZrodlowa
     "add_nn_switch_device:from_bus_ref": "Szyna od",  # aparat-nn/strings.ts szynaOd
     "connect_secondary_ring_sn:from_bus_ref": "Zacisk A",  # pierscien/strings.ts zaciskA
