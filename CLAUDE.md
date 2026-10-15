@@ -205,7 +205,7 @@ MV-Design-PRO/
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   ├── ui/               # React components — 49 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
+│   │   │   ├── ui/               # React components — 48 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
 │   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
 │   │   │   │   ├── app-state/             # Globalny store Zustand
 │   │   │   │   ├── audit/                 # Narzedzia audytowe
@@ -257,7 +257,6 @@ MV-Design-PRO/
 │   │   │   │   │   ├── v3/
 │   │   │   │   ├── sld-editor/            # Edycja SLD (geometria CAD, przeciaganie, trasowanie)
 │   │   │   │   ├── sld-overlay/           # Nakladka wynikow na SLD
-│   │   │   │   ├── status-bar/            # Pasek stanu
 │   │   │   │   ├── study-cases/           # Menedzer przypadkow obliczeniowych
 │   │   │   │   ├── tech-card/             # Karta techniczna elementu
 │   │   │   │   ├── topology/              # Drzewo topologii
