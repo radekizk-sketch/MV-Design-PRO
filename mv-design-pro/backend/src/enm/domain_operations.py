@@ -10197,41 +10197,52 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 
 
-def _zaleznosci_pola(enm: dict[str, Any], field_ref: str) -> list[str]:
-    """Zależności pola, które blokują jego usunięcie (opisy po polsku, bez identyfikatorów):
-    elementy pola (`equipment_refs`), przekładniki, zabezpieczenia i źródła wskazujące pole
-    (`bay_ref`), zajętość pola liniowego (JEDNO źródło `enm.zajetosc_pol`: odcinek przyłączony
-    do zacisku albo przydział ciągu) oraz port punktu rozgałęzienia, któremu pole ZKSN służy
-    (pola rozdzielnicy odgałęźnej wynikają z portów punktu — znikają razem z punktem)."""
+#: Rodzaj elementu wskazującego pole przez `bay_ref` → słowo rodzaju w opisie zależności.
+_KOLEKCJE_WSKAZUJACE_POLE: tuple[tuple[str, str], ...] = (
+    ("measurements", "przekładnik"),
+    ("protection_assignments", "zabezpieczenie"),
+    ("generators", "źródło"),
+)
+
+
+def _zaleznosci_pola(enm: dict[str, Any], field_ref: str) -> list[tuple[str, str, list[str]]]:
+    """Zależności pola, które blokują jego usunięcie — dane, nie zdania: krotki
+    ``(rodzaj_zaleznosci, rodzaj_elementu, refs)``. Rodzaje: ``elementy`` (`equipment_refs`),
+    ``wskazuje`` (przekładniki, zabezpieczenia i źródła wskazujące pole przez `bay_ref`),
+    ``zajete`` (zajętość pola liniowego — JEDNO źródło `enm.zajetosc_pol`: odcinek przyłączony
+    do zacisku albo przydział ciągu) oraz ``zksn`` (pole rozdzielnicy odgałęźnej wynika z portu
+    punktu rozgałęzienia — znika razem z punktem). Opis po polsku: `_opis_zaleznosci_pola`."""
     rekord = pole_modelu(enm, field_ref) or {}
-    opisy: list[str] = []
+    zaleznosci: list[tuple[str, str, list[str]]] = []
     elementy = [r for r in rekord.get("equipment_refs") or [] if isinstance(r, str)]
     if elementy:
-        opisy.append(
-            "w polu są elementy: "
-            + lista_pl((opis_elementu(enm, r, "element") for r in elementy), "i")
-        )
-    for kolekcja, rodzaj in (
-        ("measurements", "przekładnik"),
-        ("protection_assignments", "zabezpieczenie"),
-        ("generators", "źródło"),
-    ):
+        zaleznosci.append(("elementy", "element", elementy))
+    for kolekcja, rodzaj in _KOLEKCJE_WSKAZUJACE_POLE:
         wskazujace = [
             str(e.get("ref_id"))
             for e in enm.get(kolekcja, [])
             if isinstance(e, dict) and e.get("bay_ref") == field_ref
         ]
         if wskazujace:
-            opisy.append(
-                "pole wskazuje "
-                + lista_pl((opis_elementu(enm, r, rodzaj) for r in wskazujace), "i")
-            )
+            zaleznosci.append(("wskazuje", rodzaj, wskazujace))
     zajetosc = zajetosc_pola(enm, field_ref)
     if zajetosc is not None and zajetosc.zajete:
-        opisy.append("pole zasila ciąg SN")
+        zaleznosci.append(("zajete", "", []))
     if rekord.get("branch_point_ref"):
-        opisy.append("pole należy do rozdzielnicy punktu rozgałęzienia i znika razem z nim")
-    return opisy
+        zaleznosci.append(("zksn", "", []))
+    return zaleznosci
+
+
+def _opis_zaleznosci_pola(enm: dict[str, Any], zaleznosc: tuple[str, str, list[str]]) -> str:
+    """Zależność pola po polsku, bez identyfikatorów (nazwy elementów z modelu)."""
+    rodzaj_zaleznosci, rodzaj, refs = zaleznosc
+    if rodzaj_zaleznosci == "elementy":
+        return "w polu są elementy: " + lista_pl((opis_elementu(enm, r, rodzaj) for r in refs), "i")
+    if rodzaj_zaleznosci == "wskazuje":
+        return "pole wskazuje " + lista_pl((opis_elementu(enm, r, rodzaj) for r in refs), "i")
+    if rodzaj_zaleznosci == "zajete":
+        return "pole zasila ciąg SN"
+    return "pole należy do rozdzielnicy punktu rozgałęzienia i znika razem z nim"
 
 
 def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -10254,7 +10265,8 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         if zaleznosci:
             return _error_response(
                 f"{_nazwa_pola_w_modelu(enm, element_ref)} nie może zostać usunięte — "
-                f"{lista_pl(zaleznosci, 'i')}. Usuń najpierw elementy pola albo odepnij je od "
+                f"{lista_pl((_opis_zaleznosci_pola(enm, z) for z in zaleznosci), 'i')}. "
+                "Usuń najpierw elementy pola albo odepnij je od "
                 "pola; usunąć można wyłącznie pole puste (rezerwę).",
                 "field.has_dependencies",
             )
