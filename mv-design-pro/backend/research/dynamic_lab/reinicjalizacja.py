@@ -57,12 +57,34 @@ if TYPE_CHECKING:  # pragma: no cover - tylko dla typów
 
 
 class ReinicjalizacjaNieudanaError(RuntimeError):
-    """Algebra nowej topologii nie ma rozwiązania dla TRZYMANEGO stanu.
+    """Solver NIE ZNALAZŁ rozwiązania algebry nowej topologii dla TRZYMANEGO stanu.
 
-    To NIE jest sygnał do zresetowania stanów. Sieć bez rozwiązania przy
-    fizycznie poprawnym stanie oznacza albo topologię odciętą od źródła, albo
-    model urządzenia bez punktu pracy w tych warunkach — i jedno, i drugie jest
-    informacją, nie usterką do zamaskowania.
+    SEMANTYKA JEST SOLVER-WZGLĘDNA I TO NIE JEST OSTROŻNOŚĆ JĘZYKOWA.
+    Poprzednia redakcja mówiła „algebra nie ma rozwiązania", wyprowadzając to
+    wyłącznie z wyjątku Newtona. Matematycznie::
+
+        Newton zawiódł  ≠  dowód, że pierwiastek nie istnieje
+
+    Brak zbieżności może wynikać z punktu startowego, skalowania, kryterium
+    stopu, liczby iteracji albo z tego, że pierwiastek leży w basenie, do
+    którego ta metoda nie trafia. Żadna z tych rzeczy nie jest własnością
+    UKŁADU — wszystkie są własnościami ALGORYTMU. Twierdzenie o nieistnieniu
+    wymagałoby dowodu innej klasy: warunku granicznego w postaci zamkniętej,
+    przejścia continuation przez punkt zagięcia (saddle-node), metody
+    przedziałowej Newtona, testu Krawczyka albo innego certyfikowanego
+    ograniczenia istnienia. Multi-start nie wystarcza — pokazuje wyłącznie, że
+    KILKA startów nie trafiło.
+
+    TRZY RZECZY, KTÓRE KOMUNIKAT MUSI NAZWAĆ, bo bez nich zdanie „nie znalazł"
+    jest nieweryfikowalne: użyty ALGORYTM, PUNKT STARTOWY i KRYTERIUM
+    ZBIEŻNOŚCI. Przypięte `test_komunikat_NIE_TWIERDZI_nieistnienia_rozwiazania`
+    — poprzednia redakcja nie miała ŻADNEGO testu, więc mutacja przywracająca
+    twierdzenie o nieistnieniu przechodziła całą regresję.
+
+    To NIE jest sygnał do zresetowania stanów. Nieznalezienie rozwiązania przy
+    fizycznie poprawnym stanie wskazuje albo na topologię odciętą od źródła,
+    albo na model urządzenia bez punktu pracy w tych warunkach, albo na granicę
+    metody — każde z tych trzech jest informacją, nie usterką do zamaskowania.
     """
 
 
@@ -325,8 +347,10 @@ def reinicjalizuj(
             )
         except Exception as blad:  # noqa: BLE001 — klasa błędu solvera jest różna
             raise ReinicjalizacjaNieudanaError(
-                "Algebra sieci nie ma rozwiązania dla trzymanego stanu na topologii "
-                f"docelowej: {type(blad).__name__}: {blad}"
+                "Solver nie znalazł rozwiązania algebry sieci dla trzymanego stanu na "
+                "topologii docelowej, przy użytym algorytmie, punkcie startowym i "
+                "kryterium zbieżności. To NIE jest dowód, że rozwiązanie nie istnieje "
+                f"(patrz `ReinicjalizacjaNieudanaError`): {type(blad).__name__}: {blad}"
             ) from blad
         v_po = rozwiazanie.napiecia
         wymagaj_skonczonosci(v_po, co="napięcia po re-inicjalizacji", gdzie="algebra sieci")

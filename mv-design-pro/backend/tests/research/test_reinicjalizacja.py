@@ -665,3 +665,63 @@ def test_po_UDANEJ_reinicjalizacji_punkt_pracy_JEST_zatwierdzony() -> None:
         silnik, topologia_docelowa=_topologia_zwarciowa(silnik), x_przed=x0
     )
     assert np.allclose(np.asarray(silnik._v_zatwierdzone), np.asarray(wynik.v))
+
+
+# ---------------------------------------------------------------------------
+# §3 audytu — brak zbieżności Newtona NIE JEST dowodem nieistnienia
+# ---------------------------------------------------------------------------
+
+
+def test_komunikat_NIE_TWIERDZI_nieistnienia_rozwiazania() -> None:
+    """Pin TREŚCI twierdzenia, nie jego brzmienia.
+
+    Poprzedni komunikat brzmiał „Algebra sieci NIE MA rozwiązania dla trzymanego
+    stanu" i wyprowadzał to wyłącznie z wyjątku Newtona. To jest podniesienie
+    niepowodzenia ALGORYTMU do twierdzenia o UKŁADZIE — a dowód nieistnienia
+    wymaga innej klasy argumentu (warunek graniczny w postaci zamkniętej,
+    continuation przez punkt zagięcia, metoda przedziałowa, test Krawczyka).
+
+    DLACZEGO TEN TEST MUSI ISTNIEĆ. Kampania mutacyjna pokazała, że mutacja
+    przywracająca stare brzmienie PRZEŻYWAŁA komplet 30 testów re-inicjalizacji:
+    naprawa była deklaracją bez mechanizmu kontroli.
+
+    Test sprawdza TREŚĆ, nie dosłowne zdanie: wymaga nazwania trzech
+    relatywizatorów (algorytm, punkt startowy, kryterium zbieżności) i jawnego
+    zaprzeczenia dowodowi nieistnienia. Przeredagowanie komunikatu z zachowaniem
+    tych czterech rzeczy przejdzie; usunięcie którejkolwiek — nie.
+    """
+    silnik, x0, _ = _silnik_i_punkt()
+    przed = silnik.model.topologia
+    odcieta = TopologiaSieci(
+        szyny=(*przed.szyny, "WISZACA"),
+        galezie=list(przed.galezie),
+        szyny_sztywne=dict(przed.szyny_sztywne),
+    )
+    with pytest.raises(ReinicjalizacjaNieudanaError) as zlapany:
+        reinicjalizuj(silnik, topologia_docelowa=odcieta, x_przed=x0)
+
+    komunikat = str(zlapany.value).lower()
+    for relatywizator in ("algorytmie", "punkcie startowym", "kryterium zbieżności"):
+        assert relatywizator in komunikat, (
+            f"komunikat nie nazywa relatywizatora {relatywizator!r} — bez niego zdanie "
+            "o nieznalezieniu rozwiązania jest nieweryfikowalne i czyta się jak "
+            "twierdzenie o układzie, a nie o algorytmie"
+        )
+    assert "nie jest dowód" in komunikat, (
+        "komunikat nie zaprzecza wprost dowodowi nieistnienia — czytelnik weźmie "
+        "niepowodzenie Newtona za własność sieci"
+    )
+    assert "nie znalazł" in komunikat, "komunikat musi przypisać niepowodzenie SOLVEROWI"
+
+
+def test_docstring_wyjatku_NAZYWA_klase_dowodu_wymaganego_do_nieistnienia() -> None:
+    """Deklaracja bez testu = fałszywa pewność — także w docstringu.
+
+    Docstring jest jedynym miejscem, gdzie stoi uzasadnienie semantyki
+    solver-względnej. Jeżeli ktoś je usunie, komunikat zostanie bez oparcia,
+    a następna redakcja wróci do „nie ma rozwiązania".
+    """
+    opis = (ReinicjalizacjaNieudanaError.__doc__ or "").lower()
+    assert "saddle-node" in opis or "zagięcia" in opis
+    assert "krawczyka" in opis
+    assert "multi-start nie wystarcza" in opis
