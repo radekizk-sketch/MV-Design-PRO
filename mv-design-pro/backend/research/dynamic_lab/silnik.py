@@ -805,6 +805,12 @@ class SilnikRMS:
             ),
             niezmienniki_stanu_egzekwowane=len(self.ograniczenia_stanu),
         )
+        # JEDNO wyliczenie tożsamości scenariusza: wynik niesie OBIEKT, a skrót
+        # jest z niego wyprowadzony. Dwa niezależne wyliczenia byłyby dwoma
+        # źródłami prawdy o tym samym biegu.
+        scenariusz_biegu = self._scenariusz_biegu(
+            czas_koncowy_s, harmonogram, wejscie_zagadnienia, integrator_biegu
+        )
         return WynikDynamiczny(
             kontrakt=KONTRAKT,
             czas_s=tuple(czasy),
@@ -812,11 +818,10 @@ class SilnikRMS:
             modele=self._tozsamosci(),
             zdarzenia=tuple(zastosowane),
             diagnostyka=diagnostyka,
-            odcisk_scenariusza=self._odcisk_scenariusza(
-                czas_koncowy_s, harmonogram, wejscie_zagadnienia, integrator_biegu
-            ),
+            odcisk_scenariusza=scenariusz_biegu.odcisk,
             odcisk_topologii=self._odcisk_topologii(),
             odcisk_implementacji=odcisk_implementacji(),
+            scenariusz=scenariusz_biegu,
         )
 
     def _zapisz_probki(
@@ -1030,14 +1035,18 @@ class SilnikRMS:
             "v0": [[_l(v.real), _l(v.imag)] for v in np.asarray(v0).tolist()],
         }
 
-    def _odcisk_scenariusza(
+    def _scenariusz_biegu(
         self,
         czas_koncowy_s: float,
         harmonogram: HarmonogramZdarzen,
         wejscie_zagadnienia: dict[str, object],
         integrator_biegu: Integrator,
-    ) -> str:
-        """Odcisk scenariusza — razem z MIGAWKĄ wejścia i nastawami solvera.
+    ) -> TozsamoscScenariusza:
+        """TOŻSAMOŚĆ scenariusza — razem z MIGAWKĄ wejścia i nastawami solvera.
+
+        Zwraca OBIEKT, nie skrót: wynik musi nieść tożsamość, z której skrót da
+        się wyprowadzić, bo inaczej nikt poza silnikiem nie umie jej odtworzyć
+        i łańcuch dowodowy nie domyka się — patrz `WynikDynamiczny.scenariusz`.
 
         Poprzednia wersja brała ``{zdarzenia, krok_s, czas_koncowy_s, integrator}``,
         więc ten sam harmonogram policzony na INNEJ sieci miał ten sam odcisk
@@ -1068,7 +1077,7 @@ class SilnikRMS:
             czas_koncowy_s=float(czas_koncowy_s),
             harmonogram=tuple(harmonogram.zdarzenia),
             parametry=wejscie_zagadnienia,
-        ).odcisk
+        )
 
     def _tozsamosci(self) -> tuple[TozsamoscModelu, ...]:
         """Tożsamości modeli — z REKURENCYJNEJ postaci kanonicznej, nie z pól skalarnych.

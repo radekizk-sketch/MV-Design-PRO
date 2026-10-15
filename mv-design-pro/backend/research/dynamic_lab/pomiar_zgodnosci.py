@@ -48,12 +48,17 @@ from __future__ import annotations
 import math
 from dataclasses import InitVar, dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
 
 from dynamic_lab.tozsamosc import TozsamoscScenariusza, odcisk
+from dynamic_lab.wiazanie_biegu import NiezgodnaProweniencjaError
 from dynamic_lab.wzorzec_trajektoria import Przebieg
+
+if TYPE_CHECKING:  # pragma: no cover - tylko dla typów
+    from dynamic_lab.wiazanie_biegu import PrzebiegZwiazany
 
 __all__ = [
     "PomiarNiepowiazanyError",
@@ -62,6 +67,7 @@ __all__ = [
     "RodzajMetryki",
     "odcisk_przebiegu",
     "zmierz_zgodnosc",
+    "zmierz_zgodnosc_zwiazana",
 ]
 
 
@@ -263,4 +269,61 @@ def zmierz_zgodnosc(
         probki_wzorca=tuple(float(w) for w in probki_wzorca),
         siatka_s=tuple(float(t) for t in siatka),
         zeton=_ZETON,
+    )
+
+
+def zmierz_zgodnosc_zwiazana(
+    *,
+    nazwa: str,
+    rodzaj: RodzajMetryki,
+    badany: PrzebiegZwiazany,
+    wzorzec: Przebieg,
+    okno_s: tuple[float, float],
+    scenariusz: TozsamoscScenariusza,
+    liczba_probek: int = 201,
+    wymagaj_materialu_dowodowego: bool = True,
+) -> PomiarZgodnosci:
+    """Pomiar na przebiegu ZWIĄZANYM Z BIEGIEM — z kontrolą pochodzenia.
+
+    §9 audytu: `zmierz_zgodnosc` przyjmuje przebieg i scenariusz OSOBNO, więc
+    para „trajektoria z biegu A + scenariusz biegu B" przechodziła bez jednego
+    wyjątku. Pomiar wiązał się wtedy odciskiem z biegiem, którego nie widział —
+    i wyglądał identycznie jak pomiar poprawny.
+
+    Tutaj pochodzenie jest SPRAWDZANE, nie deklarowane: `PrzebiegZwiazany` niesie
+    odcisk scenariusza biegu, z którego został wyjęty, i musi on zgadzać się
+    z odciskiem scenariusza, pod który pomiar jest podpinany.
+
+    ``wymagaj_materialu_dowodowego`` (domyślnie włączone) odrzuca dodatkowo bieg
+    niezbieżny, przerwany albo z krokami poniżej zadeklarowanej tolerancji.
+    Wyłączenie jest świadomym rozluźnieniem dla badania samego biegu, nie drogą
+    na skróty przy składaniu dowodu.
+
+    `zmierz_zgodnosc` NIE znika i nie dostaje tej kontroli: to droga dla
+    przebiegów, które NIE pochodzą z biegu laboratorium (import, wzorzec
+    zewnętrzny, przypadek ręczny). Różnica między dwiema drogami ma być
+    ŚWIADOMA, a nie odkrywana przez pomyłkę — przypięte testem.
+    """
+    if not badany.zgodny_ze_scenariuszem(scenariusz):
+        raise NiezgodnaProweniencjaError(
+            f'Przebieg „{badany.tozsamosc_kanalu}” pochodzi z biegu o scenariuszu '
+            f"{badany.bieg.odcisk_scenariusza[:12]}…, a pomiar deklaruje scenariusz "
+            f"{scenariusz.odcisk[:12]}…. Pomiar orzekałby wtedy o biegu, którego nie "
+            "widział — a wyglądałby na związany."
+        )
+    if wymagaj_materialu_dowodowego and not badany.bieg.material_dowodowy:
+        raise NiezgodnaProweniencjaError(
+            f'Bieg przebiegu „{badany.tozsamosc_kanalu}” nie jest materiałem dowodowym '
+            f"(zbiegł={badany.bieg.zbiegl}, kompletność={badany.bieg.kompletnosc}, "
+            f"kroki na podłodze numerycznej={badany.bieg.kroki_na_podlodze_numerycznej}). "
+            "Metryka z takiego biegu jest liczbą o nieznanej dokładności."
+        )
+    return zmierz_zgodnosc(
+        nazwa=nazwa,
+        rodzaj=rodzaj,
+        badany=badany.przebieg,
+        wzorzec=wzorzec,
+        okno_s=okno_s,
+        scenariusz=scenariusz,
+        liczba_probek=liczba_probek,
     )

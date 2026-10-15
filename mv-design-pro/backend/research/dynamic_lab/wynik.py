@@ -30,6 +30,7 @@ from enum import StrEnum
 from typing import Any
 
 from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+from dynamic_lab.tozsamosc import TozsamoscScenariusza
 
 KONTRAKT = "DynamicResultSetKandydatV1"
 
@@ -75,6 +76,10 @@ class NiezgodnaDlugoscPrzebieguError(ValueError):
 
 class NiemonotonicznaOsCzasuError(ValueError):
     """Oś czasu nie rośnie ściśle — chwila powtórzona albo cofnięta."""
+
+
+class NiespojnaTozsamoscScenariuszaError(ValueError):
+    """Skrót scenariusza w wyniku nie zgadza się z niesionym obiektem tożsamości."""
 
 
 #: Tolerancja porównań czasu w diagnostyce [s].
@@ -424,6 +429,32 @@ class WynikDynamiczny:
         "Wynik z laboratorium badawczego. NIE jest dowodem regulacyjnym "
         "ani zwalidowaną symulacją fizyczną."
     )
+    scenariusz: TozsamoscScenariusza | None = None
+    """TOŻSAMOŚĆ scenariusza — OBIEKT, nie tylko jego skrót.
+
+    DLACZEGO SAM ODCISK NIE WYSTARCZAŁ (zmierzone, nie wydedukowane). Wynik niósł
+    wyłącznie ``odcisk_scenariusza``; obiekt ``TozsamoscScenariusza`` powstawał
+    w prywatnej metodzie silnika i był natychmiast zamieniany na skrót. Z ZEWNĄTRZ
+    nie dawało się go odtworzyć, bo jego pole ``parametry`` to ``_wejscie_zagadnienia()``
+    — migawka ``x0``, ``v0`` i modeli, niedostępna z wyniku. Najlepsza możliwa
+    rekonstrukcja z zewnątrz dawała ``43919a22be64…`` wobec ``bea5edf91b51…`` z biegu.
+
+    SKUTEK: ŻADEN dowód nie dawał się złożyć z prawdziwego biegu.
+    ``DowodWalidacji.__post_init__`` żąda, by ``pomiar.odcisk_scenariusza`` był
+    wśród ``{p.scenariusz.odcisk}`` przypadków, a ``PrzypadekWalidacji`` wymaga
+    OBIEKTU scenariusza. Wszystkie SZEŚĆ miejsc budujących ``PrzypadekWalidacji``
+    w repozytorium to przebiegi syntetyczne — ani jeden bieg ``SilnikRMS``.
+    Łańcuch dowodowy nie był „jeszcze niedokończony": był strukturalnie
+    NIEZAMYKALNY, a wyglądał na kompletny, bo każdy człon z osobna miał testy.
+
+    JEDNO ŹRÓDŁO PRAWDY. Obiekt i skrót nie są dwoma niezależnymi polami, które
+    „dziś się zgadzają": ``__post_init__`` odrzuca parę niespójną, więc nie da się
+    zbudować wyniku deklarującego scenariusz inny niż jego własny odcisk.
+
+    ``None`` znaczy „wynik zbudowany poza silnikiem" (import, konwersja, ręcznie
+    złożony przypadek testowy) — tak samo uczciwy meldunek braku jak pusty
+    ``odcisk_implementacji``. NIE jest to zaproszenie do pominięcia: bieg
+    z laboratorium zawsze niesie obiekt."""
 
     def __post_init__(self) -> None:
         """RÓWNOLEGŁOŚĆ SERII: jedna próbka na sygnał na każdą chwilę osi czasu.
@@ -479,6 +510,18 @@ class WynikDynamiczny:
                 f"Dwa sygnały o tej samej tożsamości (przestrzeń, klucz, element): "
                 f"{powtorzone}. Tożsamość sygnału musi być jednoznaczna, inaczej "
                 "``sygnal()`` zgaduje, o którą wielkość pytał konsument."
+            )
+        # JEDNO ŹRÓDŁO PRAWDY dla scenariusza. Obiekt i skrót opisują tę samą
+        # rzecz, więc para niespójna nie jest „drobną niezgodnością metadanych" —
+        # jest wynikiem twierdzącym, że policzono co innego, niż niesie jego własna
+        # tożsamość. Dwa niezależne pola, które „dziś się zgadzają", to defekt
+        # czekający na dane brzegowe.
+        if self.scenariusz is not None and self.scenariusz.odcisk != self.odcisk_scenariusza:
+            raise NiespojnaTozsamoscScenariuszaError(
+                f"Wynik deklaruje odcisk scenariusza {self.odcisk_scenariusza[:12]}…, "
+                f"a niesiony obiekt tożsamości ma odcisk {self.scenariusz.odcisk[:12]}…. "
+                "Skrót i obiekt muszą pochodzić z jednego scenariusza, inaczej dowód "
+                "wskazywałby na bieg, którego ten wynik nie opisuje."
             )
 
     def sygnal(
