@@ -96,8 +96,12 @@ oraz platform.claude.com „Claude prompting best practices”.
 
 ## Granice (niezmienne)
 
-- B-01: zmiana zamrożonego rdzenia solvera/dynamiki tylko za zgodą właściciela. B-02: werdykt
-  wizualny SLD wystawia właściciel. Bez samocertyfikacji jakości wizualnej.
+- B-01 (dyrektywa właściciela 2026-10-15, wpisana w `CLAUDE.md`): o przyjęciu karty zmieniającej
+  zamrożony rdzeń solvera/dynamiki decyduje zarządca jako architekt — po niezależnej weryfikacji
+  (pełna regresja, sonda liczbowa zmienionych wartości z podstawą normową, determinizm/hash,
+  iniekcje); kontrakt FROZEN zmienia się wyłącznie z podniesieniem wersji. Kolejność i plan
+  end-to-end ustala zarządca. B-02: werdykt wizualny SLD wystawia właściciel; bez
+  samocertyfikacji jakości wizualnej.
 - Bez force push, bez przepisywania historii (`--amend`, rebase cudzych gałęzi), bez
   `git stash`/`reset --hard`/`clean -x` bez nazwy, bez `pkill -f`. Laboratorium dynamiki
   niezwalidowane nie wchodzi do produktu. PR #475 nie do scalenia. Bez PR i scalenia do `main`
