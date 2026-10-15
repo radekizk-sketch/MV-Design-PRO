@@ -18,6 +18,7 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from pydantic import BaseModel, Field, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
@@ -448,6 +449,12 @@ class Transformer(ENMElement):
     # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
     # nigdy domyślka.
     lv_earthing_system: UkladSieciNn | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): tolerancja napięcia sieci nN
+    # zasilanej z tego transformatora wg przypisów tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95;
+    # +10 % → c 1,10/0,90). JEDYNY nośnik wiersza nN tabeli c: czyta go `enm.tolerancja_nn`
+    # (węzły nN wyspy zasilanej) i K_T tego transformatora. Brak = odmowa nazwana
+    # (`fault.c_tolerancja_nn_brak`), nigdy domyślka.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
     # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).

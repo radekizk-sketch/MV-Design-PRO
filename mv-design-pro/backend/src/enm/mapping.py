@@ -38,7 +38,12 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.voltage_factor import Scenario, c_for_node
+from network_model.core.voltage_factor import (
+    Scenario,
+    TolerancjaNapieciaNn,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_NIEPOPRAWNE,
@@ -75,6 +80,7 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .tolerancja_nn import tolerancje_wezlow_nn
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
 
 
@@ -188,8 +194,12 @@ def impedancja_zasilania_systemowego(
     sk3_min_mva: float | None = None,
     ik3_min_ka: float | None = None,
     rx_ratio_min: float | None = None,
+    tolerancja_nn: TolerancjaNapieciaNn | None = None,
 ) -> tuple[complex, dict[str, Any]] | None:
     """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
+
+    ``tolerancja_nn`` — tolerancja sieci nN węzła Q (``enm.tolerancja_nn``); czytana
+    wyłącznie dla węzła Q w paśmie nN (wiersz nN tabeli 1), dla SN/WN bez znaczenia.
 
     IEC 60909-0:2016 §6.2.1 eq. (6): Z_Q = c·U_nQ / (√3·I''_kQ) = c·U_nQ²/S''_kQ —
     współczynnik napięciowy c (Tab. 1, pasmo napięcia węzła przyłączenia Q,
@@ -254,7 +264,7 @@ def impedancja_zasilania_systemowego(
     if uzyj_min:
         assert tryb_min is not None
         tryb_uzyty = tryb_min
-        c = c_for_node(u_nq_kv, "MIN")
+        c = c_for_node(u_nq_kv, "MIN", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_min_mva, ik3_min_ka
         etykieta = f"{tryb_uzyty.value}_MIN"
         if dodatnia(rx_ratio_min):
@@ -268,7 +278,7 @@ def impedancja_zasilania_systemowego(
             )
     else:
         tryb_uzyty = tryb
-        c = c_for_node(u_nq_kv, "MAX")
+        c = c_for_node(u_nq_kv, "MAX", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
         etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
         if dodatnia(rx_ratio):
@@ -301,6 +311,9 @@ def impedancja_zasilania_systemowego(
         **({"ik3_ka": ik} if ik is not None else {}),
         "c": c,
         "pasmo_c": "SN/WN" if powyzej_pasma_nn(u_nq_kv) else "nN",
+        "c_zrodlo": zrodlo_c_z_tabeli(
+            u_nq_kv, "MIN" if uzyj_min else "MAX", tolerancja_nn=tolerancja_nn
+        ),
         "rx_ratio": rx,
         "rx_ratio_zrodlo": rx_zrodlo,
         "z_q_abs_ohm": z_abs,
@@ -323,9 +336,16 @@ def impedancja_zasilania_systemowego(
 
 
 def impedancja_zrodla_sieciowego(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> tuple[complex, dict[str, Any]] | None:
-    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
+    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``.
+
+    ``tolerancja_nn`` — tolerancja sieci nN szyny źródła (``enm.tolerancja_nn``), jawnie
+    podawana przez wołającego (``None`` poza pasmem nN albo przy braku deklaracji)."""
     return impedancja_zasilania_systemowego(
         ref_id=source.ref_id,
         r_ohm=source.r_ohm,
@@ -338,19 +358,30 @@ def impedancja_zrodla_sieciowego(
         sk3_min_mva=source.sk3_min_mva,
         ik3_min_ka=source.ik3_min_ka,
         rx_ratio_min=source.rx_ratio_min,
+        tolerancja_nn=tolerancja_nn,
     )
 
 
 def _source_positive_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
-    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv, scenario)
+    wynik = impedancja_zrodla_sieciowego(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     return None if wynik is None else wynik[0]
 
 
 def _source_zero_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Z0 źródła: jawne R0/X0 (fizyczne, bez scenariusza) albo (Z0/Z1)·Z_Q(scenariusz)."""
     if source.r0_ohm is not None and source.x0_ohm is not None:
@@ -358,7 +389,9 @@ def _source_zero_impedance_ohm(
     if not dodatnia(source.z0_z1_ratio):
         return None
     assert source.z0_z1_ratio is not None
-    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+    z1 = _source_positive_impedance_ohm(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     if z1 is None:
         return None
     return z1 * source.z0_z1_ratio
@@ -396,6 +429,8 @@ def _assemble_zero_sequence_y0(
     przerwie / boczniku do ziemi prądu zerowego.
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
+
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
 
     from .zero_sequence_transformer import (
         ZeroSeqConnection,
@@ -532,7 +567,9 @@ def _assemble_zero_sequence_y0(
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
-        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv, scenario)
+        z0_source_ohm = _source_zero_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
@@ -952,12 +989,15 @@ def build_grid_source_trace(
     ma bocznika Y_Q w grafie (``map_enm_to_network_graph``): jeden predykat.
     """
     napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
     slad: list[dict[str, Any]] = []
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         u_kv = napiecie.get(source.bus_ref, 0.0)
         if u_kv <= 0:
             continue
-        wynik = impedancja_zrodla_sieciowego(source, u_kv, scenario)
+        wynik = impedancja_zrodla_sieciowego(
+            source, u_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if wynik is None or wynik[0] == 0:
             continue
         slad.append(wynik[1])
@@ -982,6 +1022,9 @@ def map_enm_to_network_graph(
     This is a pure, deterministic function: same ENM → same NetworkGraph.
     """
     graph = NetworkGraph()
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN per szyna — JEDEN predykat
+    # (`enm.tolerancja_nn`); węzły nN niosą ją do doboru c, źródła nN do Z_Q (eq. 6).
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
 
     # Collect source bus refs for SLACK identification
     source_bus_refs: set[str] = {s.bus_ref for s in enm.sources}
@@ -1099,6 +1142,7 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.SLACK,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
                 voltage_magnitude=1.0,
                 voltage_angle=0.0,
                 active_power=p if p != 0.0 else None,
@@ -1120,6 +1164,7 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PV,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
                 voltage_magnitude=bus_voltage_control[bus.ref_id],
                 active_power=p,
                 reactive_power=q if q != 0.0 else None,
@@ -1130,6 +1175,7 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PQ,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
                 active_power=p,
                 reactive_power=q,
                 zip_coeffs=bus_zip,
@@ -1315,6 +1361,8 @@ def map_enm_to_network_graph(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
             ),
             tap_changer=tap_changer,
+            # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z deklaracji TEGO transformatora.
+            tolerancja_nn_dolna=trafo.lv_voltage_tolerance,
         )
         graph.add_branch(tb)
 
@@ -1346,7 +1394,9 @@ def map_enm_to_network_graph(
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+        z_ohm = _source_positive_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z_ohm is None or z_ohm == 0:
             continue
 

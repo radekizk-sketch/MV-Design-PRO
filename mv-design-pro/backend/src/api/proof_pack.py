@@ -19,6 +19,7 @@ from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core.voltage_factor import (
     NadpisanieC,
     Scenario,
+    TolerancjaNapieciaNn,
     dobierz_c,
     nadpisanie_c_z_danych,
 )
@@ -59,6 +60,8 @@ class SCAsymmetricalPackRequest(BaseModel):
     #: `voltage_factor.dobierz_c` dla U_n i scenariusza albo z nadpisania z uzasadnieniem.
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
+    #: Tolerancja sieci nN węzła zwarcia (wiersz nN tabeli 1); wymagana, gdy U_n w paśmie nN.
+    tolerancja_nn: TolerancjaNapieciaNn | None = None
     u_prefault_kv: float
     z1_re_ohm: float
     z1_im_ohm: float
@@ -109,7 +112,12 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         snapshot_id=payload.snapshot_id,
         mv_design_pro_version=resolve_mv_design_pro_version(),
     )
-    dobor_c = dobierz_c(payload.u_n_kv, payload.scenariusz, _nadpisanie(payload.nadpisanie_c))
+    dobor_c = dobierz_c(
+        payload.u_n_kv,
+        payload.scenariusz,
+        _nadpisanie(payload.nadpisanie_c),
+        tolerancja_nn=payload.tolerancja_nn,
+    )
     pack_input = SCAsymmetricalPackInput(
         project_name=payload.project_name,
         case_name=payload.case_name,

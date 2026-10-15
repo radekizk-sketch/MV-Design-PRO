@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from network_model.core.voltage_factor import Scenario, c_for_node
+from network_model.core.voltage_factor import Scenario, TolerancjaNapieciaNn, c_for_node
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
@@ -19,6 +19,8 @@ class GridSourcePreviewInput:
     #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: scenariusz podglądu (MAX dla danych Sk3max,
     #: MIN dla Sk3min) — c z tabeli 1 IEC 60909-0 dla U_nQ, jak w biegu (`enm.mapping`).
     scenariusz: Scenario
+    #: Tolerancja sieci nN (wiersz nN tabeli 1) — wymagana wyłącznie dla U_nQ w paśmie nN.
+    tolerancja_nn: TolerancjaNapieciaNn | None = None
     sk3_mva: float | None = None
     rx_ratio: float | None = None
     r_ohm: float | None = None
@@ -53,7 +55,7 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
     Z_Q zgadza się z grafem biegu. Tryb impedancji jawnej: I″k = c·U/(√3·|Z|) — dotąd
     zaniżone o czynnik c względem biegu.
     """
-    c = c_for_node(data.voltage_kv, data.scenariusz)
+    c = c_for_node(data.voltage_kv, data.scenariusz, tolerancja_nn=data.tolerancja_nn)
     z1 = _build_positive_sequence_impedance(data, c)
     un_v = data.voltage_kv * 1000.0
     ik3_a = compute_ikss(

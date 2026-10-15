@@ -2136,8 +2136,12 @@ def _dobor_c_punktu(wejscie: WejscieZwarcia, node_id: str) -> DoborC:
     WŁASNEGO węzła i scenariusza biegu albo nadpisanie z uzasadnieniem. Wołana przez
     bieg i przez wkłady na żądanie — c i ``c_zrodlo`` wiersza mają jedno źródło.
     """
+    wezel = wejscie.graph.nodes[node_id]
     return dobierz_c(
-        wejscie.graph.nodes[node_id].voltage_level, wejscie.scenario_c, wejscie.nadpisanie_c
+        wezel.voltage_level,
+        wejscie.scenario_c,
+        wejscie.nadpisanie_c,
+        tolerancja_nn=wezel.tolerancja_nn,
     )
 
 

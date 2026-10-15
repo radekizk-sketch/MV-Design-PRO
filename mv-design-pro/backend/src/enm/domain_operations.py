@@ -34,6 +34,7 @@ from network_model.core.uziemienie import (
     TYPY_PUNKTU_NEUTRALNEGO,
     UZIEMIENIA_EKRANU_KABLA,
 )
+from network_model.core.voltage_factor import ETYKIETA_TOLERANCJI_NN, TOLERANCJE_NAPIECIA_NN
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
     PROWENIENCJA_WYPROWADZONE,
@@ -5448,6 +5449,13 @@ def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any]
             f"Układ sieci nN '{uklad}' spoza słownika ({', '.join(UKLADY_SIECI_NN)}).",
             "transformer.invalid_lv_earthing_system",
         )
+    tolerancja = parameters.get("lv_voltage_tolerance")
+    if tolerancja is not None and tolerancja not in TOLERANCJE_NAPIECIA_NN:
+        return _error_response(
+            f"Tolerancja napięcia sieci nN '{tolerancja}' spoza słownika tabeli 1 IEC 60909-0 "
+            f"({', '.join(ETYKIETA_TOLERANCJI_NN[t] for t in TOLERANCJE_NAPIECIA_NN)}).",
+            "transformer.invalid_lv_voltage_tolerance",
+        )
     for klucz, strona in (("hv_neutral", "górnej"), ("lv_neutral", "dolnej")):
         config = parameters.get(klucz)
         if config is None:
@@ -10154,6 +10162,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "hv_neutral",
                 "lv_neutral",
                 "lv_earthing_system",
+                "lv_voltage_tolerance",
                 "n_parallel",
                 "tap_position",
                 "tap_min",

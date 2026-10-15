@@ -41,6 +41,7 @@ from enm.models import (
 )
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
+from enm.tolerancja_nn import wyspy_nn
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
@@ -156,6 +157,7 @@ class EligibilityService:
 
         # B6: source short-circuit params
         self._check_source_sc_params(enm, blockers)
+        self._check_tolerancja_nn(enm, blockers)
 
         return build_eligibility_result(
             analysis_type=AnalysisType.SC_3F,
@@ -187,6 +189,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_tolerancja_nn(enm, blockers)
 
         # C1: Z0 on branches
         self._check_branch_z0(enm, blockers)
@@ -227,6 +230,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_tolerancja_nn(enm, blockers)
 
         # D1: Z2 (negative sequence) data on branches
         # Per IEC 60909, for overhead lines Z2 = Z1 is standard, but we
@@ -347,6 +351,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_tolerancja_nn(enm, blockers)
 
         # F2: stacja SN/nN z układem uziemienia nN + transformator o
         # kompletnych danych impedancji pętli L-PE/L-PEN
@@ -386,6 +391,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_tolerancja_nn(enm, blockers)
         self._check_nn_station_transformer_loop(enm, blockers)
         self._check_nn_route_topology(enm, blockers)
 
@@ -618,6 +624,73 @@ class EligibilityService:
     # ------------------------------------------------------------------
     # SC_1F specific checks
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_tolerancja_nn(
+        enm: EnergyNetworkModel,
+        blockers: list[AnalysisEligibilityIssue],
+    ) -> None:
+        """Wiersz nN tabeli 1 IEC 60909-0 wymaga tolerancji sieci nN (karta WSPOLCZYNNIK-C).
+
+        JEDEN predykat z biegiem: ``enm.tolerancja_nn.wyspy_nn`` (ten sam, który mapper
+        grafu wpisuje do węzłów nN i który ``voltage_factor.c_for_node`` odmawia przy
+        ``None``). Zgłoszenie na transformator bez deklaracji (akcja naprawcza otwiera
+        jego pole) albo na wyspę bez nośnika (sprzeczne deklaracje, brak transformatora).
+        """
+        for wyspa in wyspy_nn(enm):
+            if wyspa.tolerancja is not None:
+                continue
+            if wyspa.powod == "BRAK_DEKLARACJI":
+                for ref in wyspa.bez_deklaracji:
+                    blockers.append(
+                        AnalysisEligibilityIssue(
+                            code="ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+                            severity=IssueSeverity.BLOCKER,
+                            message_pl=(
+                                f"Transformator '{ref}' zasila sieć nN, ale nie deklaruje jej "
+                                "tolerancji napięcia (+6 % albo +10 %) — współczynnika c "
+                                "(IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać."
+                            ),
+                            element_ref=ref,
+                            element_type="transformer",
+                            fix_action=FixAction(
+                                action_type="OPEN_MODAL",
+                                element_ref=ref,
+                                modal_type="TransformerModal",
+                                payload_hint={"required": "lv_voltage_tolerance"},
+                            ),
+                        )
+                    )
+                continue
+            pierwszy = wyspa.transformator_refs[0] if wyspa.transformator_refs else None
+            opis = (
+                "transformatory zasilające tę sieć nN deklarują różne tolerancje napięcia"
+                if wyspa.powod == "DEKLARACJE_SPRZECZNE"
+                else "sieć nN nie ma transformatora zasilającego, który niósłby deklarację "
+                "tolerancji napięcia"
+            )
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        f"Sieć nN (szyny: {', '.join(wyspa.bus_refs)}): {opis} — "
+                        "współczynnika c (IEC 60909-0, tabela 1) nie da się dobrać."
+                    ),
+                    element_ref=pierwszy or wyspa.bus_refs[0],
+                    element_type="transformer" if pierwszy else "bus",
+                    fix_action=(
+                        FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=pierwszy,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "lv_voltage_tolerance"},
+                        )
+                        if pierwszy
+                        else None
+                    ),
+                )
+            )
 
     @staticmethod
     def _check_branch_z0(

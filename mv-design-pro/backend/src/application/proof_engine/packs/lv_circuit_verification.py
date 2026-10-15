@@ -86,7 +86,6 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
-from network_model.core.voltage_factor import LV_C_MIN
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
@@ -860,12 +859,12 @@ class LVCircuitVerificationProofPack:
                 title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
                 equation=eq9,
                 input_values=(
-                    _pv("c_{min}", LV_C_MIN, "—", "c_min"),
+                    _pv("c_{min}", fl.c_min, "—", "c_min"),
                     _pv("U_0", fl.u_nom_v, "V", "u0_v"),
                     _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
                 substitution_latex=(
-                    f"$$I_{{k1,min}} = \\frac{{{LV_C_MIN:g} \\cdot {fl.u_nom_v:.2f}}}"
+                    f"$$I_{{k1,min}} = \\frac{{{fl.c_min:g} \\cdot {fl.u_nom_v:.2f}}}"
                     f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
@@ -873,6 +872,7 @@ class LVCircuitVerificationProofPack:
                 source_keys={
                     "trasa": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
+                    "c_zrodlo_min": fl.c_zrodlo_min,
                 },
             )
         )

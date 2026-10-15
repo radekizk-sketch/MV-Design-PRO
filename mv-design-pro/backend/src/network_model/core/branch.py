@@ -26,7 +26,7 @@ from network_model.catalog import (
     resolve_transformer_params,
 )
 from network_model.catalog.types import TransformerType
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import TolerancjaNapieciaNn, c_for_node
 from network_model.ir_fields import wymagany_float
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import OdmowaDanychError
@@ -774,6 +774,12 @@ class TransformerBranch(Branch):
     # V12K-045: canonical tap-changer state (single source of truth). None keeps
     # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
     tap_changer: TapChanger | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN po stronie dolnej
+    # ("PLUS_6"/"PLUS_10") — kopia `enm.Transformer.lv_voltage_tolerance` (jedyny nośnik).
+    # c_max strony dolnej we wzorze K_T (IEC 60909-0 eq. 12a) czyta ją przez `c_for_node`;
+    # None przy stronie dolnej nN = odmowa nazwana (nigdy wiersz +6 % po cichu). Nie
+    # serializowane — ścieżka kanoniczna odbudowuje graf z ENM.
+    tolerancja_nn_dolna: TolerancjaNapieciaNn | None = None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
@@ -967,7 +973,11 @@ class TransformerBranch(Branch):
             Maximum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MAX")
+        return c_for_node(
+            self.voltage_lv_kv,
+            "MAX",
+            tolerancja_nn=self.tolerancja_nn_dolna,
+        )
 
     def get_voltage_factor_c_min(self) -> float:
         """
@@ -981,7 +991,11 @@ class TransformerBranch(Branch):
             Minimum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MIN")
+        return c_for_node(
+            self.voltage_lv_kv,
+            "MIN",
+            tolerancja_nn=self.tolerancja_nn_dolna,
+        )
 
     def get_ikss_lv_ka(self, c: float) -> float:
         """

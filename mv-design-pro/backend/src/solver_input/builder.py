@@ -72,7 +72,9 @@ def _build_bus_payloads(
                 voltage_angle_rad=node.voltage_angle,
                 active_power_mw=node.active_power,
                 reactive_power_mvar=node.reactive_power,
-                c_factor_iec60909=c_for_node(node.voltage_level, scenario),
+                c_factor_iec60909=c_for_node(
+                    node.voltage_level, scenario, tolerancja_nn=node.tolerancja_nn
+                ),
             )
         )
     return payloads

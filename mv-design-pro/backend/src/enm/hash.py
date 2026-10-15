@@ -72,7 +72,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "loads": ("phases", "dynamika"),
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
-    "transformers": ("lv_earthing_system",),
+    # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
+    # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
+    "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
     "branches": ("screen_bonding",),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego

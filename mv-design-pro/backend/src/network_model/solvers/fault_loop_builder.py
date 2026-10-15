@@ -32,6 +32,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
@@ -75,6 +76,9 @@ class FaultLoopBuildRequest:
     return_label: str = "Przewód powrotny (PE/PEN)"
     transformer_label: str = "Transformator"
     upstream_label: str = "Sieć zasilająca (upstream Thevenin)"
+    # Tolerancja napięcia sieci nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z nośnika
+    # `Transformer.lv_voltage_tolerance` przez `enm.tolerancja_nn`; brak = odmowa solvera.
+    tolerancja_nn: TolerancjaNapieciaNn | None = None
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -128,6 +132,7 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         upstream_impedance=upstream,
         network_type=request.network_type,
         protection_arrangement=request.protection_arrangement,
+        tolerancja_nn=request.tolerancja_nn,
     )
 
 

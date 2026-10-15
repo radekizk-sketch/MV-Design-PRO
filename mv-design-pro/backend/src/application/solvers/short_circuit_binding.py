@@ -90,10 +90,12 @@ def _dobor_c_wezla(wejscie: WejscieZwarcia, fault_node_id: str) -> DoborC:
             f"Węzeł zwarcia {fault_node_id!r} nie istnieje w modelu sieci — pakietu "
             "dowodowego nie da się złożyć."
         )
+    wezel = wejscie.graph.nodes[fault_node_id]
     return dobierz_c(
-        wejscie.graph.nodes[fault_node_id].voltage_level,
+        wezel.voltage_level,
         wejscie.scenario_c,
         wejscie.nadpisanie_c,
+        tolerancja_nn=wezel.tolerancja_nn,
     )
 
 

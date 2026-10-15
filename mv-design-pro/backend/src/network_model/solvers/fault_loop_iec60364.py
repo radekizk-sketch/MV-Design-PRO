@@ -43,7 +43,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from network_model.core.voltage_factor import LV_C_MAX, LV_C_MIN
+from network_model.core.voltage_factor import (
+    TolerancjaNapieciaNn,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger(__name__)
@@ -109,8 +113,14 @@ class FaultLoopResult:
 
     # Wyniki obliczeń
     z_loop_ohm: complex  # R + jX całkowite [Ω]
-    ik_min_a: float  # min current per c_factor 0.95 (cold-system case)
-    ik_max_a: float  # max current per c_factor 1.05 (hot-system case)
+    ik_min_a: float  # I_k,min = c_min·U_0/|Z_s| (c_min z tabeli 1 dla tolerancji sieci nN)
+    ik_max_a: float  # I_k,max = c_max·U_0/|Z_s|
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c użyte w wyniku i ich podstawa (White Box) —
+    # tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci (+6 %: 1,05/0,95; +10 %: 1,10/0,90).
+    c_min: float
+    c_max: float
+    c_zrodlo_min: str
+    c_zrodlo_max: str
 
     # Determinizm + audyt
     white_box_trace: tuple[dict[str, Any], ...] = field(default_factory=tuple)
@@ -142,6 +152,10 @@ class FaultLoopResult:
             },
             "ik_min_a": self.ik_min_a,
             "ik_max_a": self.ik_max_a,
+            "c_min": self.c_min,
+            "c_max": self.c_max,
+            "c_zrodlo_min": self.c_zrodlo_min,
+            "c_zrodlo_max": self.c_zrodlo_max,
             "white_box_trace": list(self.white_box_trace),
         }
 
@@ -151,8 +165,9 @@ class FaultLoopResult:
 # ---------------------------------------------------------------------------
 
 
-# c per IEC 60909-0 Table 1, low-voltage (≤ 1 kV) systems — values from the ONE place
-# of the table (`network_model.core.voltage_factor`, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+# c per IEC 60909-0 Table 1, low-voltage (≤ 1 kV) systems — read from the ONE place of the
+# table (`network_model.core.voltage_factor.c_for_node`) with the declared tolerance of the nN
+# system (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); no c value lives in this module.
 
 
 @dataclass(frozen=True)
@@ -169,6 +184,9 @@ class FaultLoopInput:
     upstream_impedance: LoopImpedanceComponent | None = None  # opcjonalna SN side
     network_type: NetworkType = NetworkType.TN_S
     protection_arrangement: ProtectionArrangement = ProtectionArrangement.PE
+    # Tolerancja napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0) z nośnika
+    # `Transformer.lv_voltage_tolerance` — brak = odmowa nazwana `fault.c_tolerancja_nn_brak`.
+    tolerancja_nn: TolerancjaNapieciaNn | None = None
 
 
 def _validate_input(data: FaultLoopInput) -> None:
@@ -233,7 +251,8 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         I_k = c * U_n / |Z_loop|
 
     gdzie:
-        c — factor napięciowy IEC 60909-0 § 5.3.2 (LV: c_min=0.95, c_max=1.05)
+        c — współczynnik napięciowy IEC 60909-0 tab. 1 dla sieci nN o zadeklarowanej
+            tolerancji (+6 %: c_min 0,95, c_max 1,05; +10 %: c_min 0,90, c_max 1,10)
         U_n — napięcie fazowe [V] (typowo 230 V dla 400/230 sieci 3F4W)
     """
     _validate_input(data)
@@ -290,16 +309,24 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
             "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
 
-    # Krok 2: oblicz Ik z c_factor MIN/MAX
-    ik_min = (LV_C_MIN * data.u_nom_v) / z_magnitude
-    ik_max = (LV_C_MAX * data.u_nom_v) / z_magnitude
+    # Krok 2: oblicz Ik z c MIN/MAX (tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci).
+    # U_0 [V] → kV wyłącznie do wyboru pasma (U_0 i U_n sieci 230/400 V leżą w tym samym nN).
+    u_kv = data.u_nom_v / 1000.0
+    c_min = c_for_node(u_kv, "MIN", tolerancja_nn=data.tolerancja_nn)
+    c_max = c_for_node(u_kv, "MAX", tolerancja_nn=data.tolerancja_nn)
+    c_zrodlo_min = zrodlo_c_z_tabeli(u_kv, "MIN", tolerancja_nn=data.tolerancja_nn)
+    c_zrodlo_max = zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=data.tolerancja_nn)
+    ik_min = (c_min * data.u_nom_v) / z_magnitude
+    ik_max = (c_max * data.u_nom_v) / z_magnitude
 
     trace.append(
         {
             "step": "compute_ik",
             "method": "I_k = c * U_n / |Z_loop|",
-            "c_min": LV_C_MIN,
-            "c_max": LV_C_MAX,
+            "c_min": c_min,
+            "c_max": c_max,
+            "c_zrodlo_min": c_zrodlo_min,
+            "c_zrodlo_max": c_zrodlo_max,
             "u_nom_v": data.u_nom_v,
             "z_magnitude_ohm": z_magnitude,
             "ik_min_a": ik_min,
@@ -316,5 +343,9 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         z_loop_ohm=z_loop_complex,
         ik_min_a=ik_min,
         ik_max_a=ik_max,
+        c_min=c_min,
+        c_max=c_max,
+        c_zrodlo_min=c_zrodlo_min,
+        c_zrodlo_max=c_zrodlo_max,
         white_box_trace=tuple(trace),
     )
