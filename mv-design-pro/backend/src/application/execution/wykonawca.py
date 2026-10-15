@@ -60,9 +60,7 @@ POWOD_ANULOWANIA_PRZED_STARTEM = (
 #: bieg czasowy (po każdym kroku całkowania), zwarcie (między punktami zwarcia).
 #: Lista ZAMKNIĘTA — dopisanie rodzaju wymaga punktu przerwania w jego wykonawcy
 #: (przypięte testem: każdy rodzaj z listy przerywa bieg w toku, żaden spoza niej).
-RODZAJE_Z_PUNKTAMI_PRZERWANIA: frozenset[str] = frozenset(
-    {"dynamika_rms", "short_circuit_sn"}
-)
+RODZAJE_Z_PUNKTAMI_PRZERWANIA: frozenset[str] = frozenset({"dynamika_rms", "short_circuit_sn"})
 
 
 class BiegNieDoAnulowaniaError(OdmowaDanychError):
@@ -93,9 +91,7 @@ class WykonawcaBiegow:
 
     # ------------------------------------------------------------------ biegi
 
-    def zlec_bieg(
-        self, run_id: UUID, uow_factory: Callable[[], Any] | None
-    ) -> CanonicalRun:
+    def zlec_bieg(self, run_id: UUID, uow_factory: Callable[[], Any] | None) -> CanonicalRun:
         """Przyjmij bieg do kolejki (CREATED → QUEUED atomowo) i wróć natychmiast.
 
         Przegrany wyścig o ten sam bieg (drugi `POST …/execute`) nie zleca nic i
@@ -228,9 +224,7 @@ class WykonawcaBiegow:
         właśnie kończy się błędem programu (jest jeszcze żywy w swoim `finally`)."""
         if not zastap and self._watek is not None and self._watek.is_alive():
             return
-        self._watek = threading.Thread(
-            target=self._petla, name="wykonawca-biegow", daemon=True
-        )
+        self._watek = threading.Thread(target=self._petla, name="wykonawca-biegow", daemon=True)
         self._watek.start()
 
     def _petla(self) -> None:

@@ -15,7 +15,7 @@
  * Wzorzec seedu i biegów: e2e/deep-link-wyniki.spec.ts.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { wykonajBiegZabezpieczenDoKonca } from './biegi';
+import { wykonajBiegDoKonca, wykonajBiegZabezpieczenDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { nazwaElementuZBackendu } from './nazwyModelu';
 import fs from 'node:fs';
@@ -270,19 +270,11 @@ async function uruchomBiegSc(request: APIRequestContext, caseId: string): Promis
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
 
-  const executeResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-
-  const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    if (response.ok()) return run.id;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla przebiegu ${run.id}`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki backendu', async ({

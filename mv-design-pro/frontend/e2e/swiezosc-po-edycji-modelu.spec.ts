@@ -19,6 +19,7 @@
  * Wzorzec seedu i budowy sieci: e2e/gotowosc-po-biegu.spec.ts (real backend).
  */
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
@@ -255,21 +256,11 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
 
-  const executeResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-
-  const deadline = Date.now() + 15000;
-  let lastStatus = 0;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) return run.id;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla runu ${run.id} (status=${lastStatus})`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (bramka U5)', async ({

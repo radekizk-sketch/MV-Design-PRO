@@ -1,5 +1,5 @@
 ﻿import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { czekajNaKoniecBiegu } from './biegi';
+import { czekajNaKoniecBiegu, wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -232,47 +232,6 @@ async function openCaseInUi(
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
 }
 
-async function waitForAnalysisRunIndex(
-  request: APIRequestContext,
-  runId: string,
-  // DWA zmierzone konteksty (2026-07-30, po naprawie V12K-281): w IZOLACJI
-  // pierwszy GET = 4,0 s (jednorazowa budowa kontekstu biegu + deserializacja
-  // artefaktu; było 49 s). W PEŁNEJ suicie e2e (318 testów, współdzielone CPU,
-  // baza urośnięta o sieci setek testów) ten sam GET przekroczył 60 s —
-  // pozostały koszt (deserializacja pełnego artefaktu przy KAŻDYM odczycie
-  // biegu, rosnący z bazą) = karta wydajności persystencji (rejestr, dług
-  // nazwany). 240 s budżetu pętli pokrywa oba konteksty.
-  timeoutMs = 240000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastStatus = 0;
-  let lastBody = '';
-  while (Date.now() < deadline) {
-    // Jawny timeout żądania (fixture `request` dziedziczy actionTimeout 10 s
-    // z playwright.config.ts). Timeout POJEDYNCZEGO żądania to w tej pętli
-    // stan „jeszcze nie gotowe", nie porażka specu — łapiemy i ponawiamy do
-    // zewnętrznego budżetu (bez tego jeden przeciążony GET wywala cały spec).
-    let response;
-    try {
-      response = await request.get(
-        `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
-        { timeout: 120000 },
-      );
-    } catch {
-      lastStatus = 0;
-      lastBody = 'timeout żądania (backend pod obciążeniem)';
-      continue;
-    }
-    lastStatus = response.status();
-    if (response.ok()) {
-      return;
-    }
-    lastBody = await response.text();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index niedostępny dla runu ${runId}: ${lastStatus} ${lastBody}`);
-}
-
 test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody i eksporty', async ({
   page,
   request,
@@ -457,12 +416,12 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // obcym obciążeniu (karta WATKI-BLAS-E2E). Wzrostu z pomiaru 2026-09-06 w
   // obecnym stanie nie ma; jego przyczyny nie ustalono (wymagałoby to pomiaru
   // na drzewie z tamtego dnia). Limit 240 000 ms bez zmian.
-  const executeRunResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
-    { timeout: 240000 },
-  );
-  expect(executeRunResponse.ok(), await executeRunResponse.text()).toBeTruthy();
-  await waitForAnalysisRunIndex(request, scRun.id);
+  //
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) i wraca od razu; limit
+  // 240 000 ms jest teraz budżetem ODPYTYWANIA stanu biegu do DONE (`biegi.ts`).
+  // Dawna pętla po `results/index` nie była bramką gotowości — ta końcówka odpowiada
+  // 200 także dla biegu w toku (indeks bez wierszy), a `trace` wtedy odmawia.
+  await wykonajBiegDoKonca(request, BACKEND_BASE, scRun.id, 240000);
 
   // Pomiary 2026-07-30 PO naprawie V12K-281 (K13, sieć 50 stacji, bezczynna
   // maszyna): report/json 0,9 MiB / 4,6 s (przed naprawą 729,8 MB / 254 s —

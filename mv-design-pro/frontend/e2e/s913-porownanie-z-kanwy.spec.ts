@@ -23,6 +23,7 @@
  *   node ./scripts/playwright-run-real.mjs e2e/s913-porownanie-z-kanwy.spec.ts
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import { mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -211,17 +212,11 @@ async function uruchomBiegSc(request: APIRequestContext, caseId: string): Promis
   });
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
-  const executeResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`, {
-    timeout: 90000,
-  });
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-  const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    if (response.ok()) return run.id;
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla przebiegu ${run.id}`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 async function otworzSchematZBiegiem(

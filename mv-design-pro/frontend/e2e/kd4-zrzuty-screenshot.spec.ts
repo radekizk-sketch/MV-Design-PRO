@@ -9,6 +9,7 @@
  * bramki 1) — żadnego harnessu i żadnych zaszczepionych wyników.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -81,16 +82,6 @@ async function domainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
-}
-
-async function czekajNaWynik(request: APIRequestContext, runId: string): Promise<void> {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`);
-    if (response.ok()) return;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`Wynik biegu ${runId} nie pojawił się w czasie budżetu.`);
 }
 
 async function zbudujScene(request: APIRequestContext): Promise<Scena> {
@@ -213,9 +204,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   );
   expect(createRun.ok()).toBeTruthy();
   const run = (await createRun.json()) as { id: string };
-  const executeRun = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`);
-  expect(executeRun.ok()).toBeTruthy();
-  await czekajNaWynik(request, run.id);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); gotowość = stan DONE
+  // biegu (`biegi.ts`), nie 200 z `results/index` (ten jest 200 także w toku).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
 
   const wynikResponse = await request.get(
     `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
