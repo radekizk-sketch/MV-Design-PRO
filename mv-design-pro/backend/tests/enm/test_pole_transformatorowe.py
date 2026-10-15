@@ -47,11 +47,13 @@ def _migawka_z_wiersza(wiersz: dict[str, Any]) -> dict[str, Any]:
         buses.append({"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": stacja["nn_bus_kv"]})
         bus_refs.append("bus-nn")
 
-    field_specs = [
+    # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
+    bays = [
         {
-            "field_ref": f"pole-{index:03d}",
+            "ref_id": f"pole-{index:03d}",
             "name": f"Pole {rola}",
             "bay_role": rola,
+            "substation_ref": "stn-1",
             "bus_ref": "bus-sn",
         }
         for index, rola in enumerate(stacja["role_pol"])
@@ -100,7 +102,7 @@ def _migawka_z_wiersza(wiersz: dict[str, Any]) -> dict[str, Any]:
         "buses": buses,
         "transformers": transformers,
         "generators": generators,
-        "bays": [],
+        "bays": bays,
         "substations": [
             {
                 "ref_id": "stn-1",
@@ -108,7 +110,6 @@ def _migawka_z_wiersza(wiersz: dict[str, Any]) -> dict[str, Any]:
                 "station_type": "mv_lv",
                 "bus_refs": bus_refs,
                 "transformer_refs": transformer_refs,
-                "meta": {"field_specs": field_specs},
             }
         ],
     }
@@ -144,12 +145,21 @@ def test_tablica_parytetu_pokrywa_iloczyn_cech() -> None:
     assert werdykty == {True, False}
 
 
-def test_pole_tr_w_rekordzie_bay_tez_domyka_konfiguracje() -> None:
-    """Kanał `Bay.bay_role` (operacja `add_sn_bay`) liczy się tak samo jak field_specs.
-
-    Adapter rysunku czyta OBA kanały — predykat, który zna tylko jeden, zapaliłby
-    ostrzeżenie dla stacji, na której marker już zgasł (albo odwrotnie).
-    """
+@pytest.mark.parametrize(
+    ("stacja_pola", "szyna_pola", "domyka"),
+    [
+        ("stn-1", "bus-sn", True),
+        ("stn-1", "bus-nn", False),
+        ("stn-obca", "bus-sn", False),
+    ],
+    ids=["pole-tr-sn-tej-stacji", "pole-tr-na-szynie-nn", "pole-tr-innej-stacji"],
+)
+def test_pole_tr_domyka_konfiguracje_tylko_jako_pole_sn_tej_stacji(
+    stacja_pola: str, szyna_pola: str, domyka: bool
+) -> None:
+    """Karta W5-B: jeden nośnik pól — rekord `bays`. Konfigurację domyka pole roli TR tej
+    stacji na szynie SN (poziom z napięcia szyny, `enm.pola.czy_pole_nn`); pole TR na szynie
+    nN albo pole innej stacji jej nie domyka. Iloczyn: {stacja pola} × {poziom szyny pola}."""
     migawka = _migawka_z_wiersza(
         {
             "stacja": {
@@ -163,16 +173,16 @@ def test_pole_tr_w_rekordzie_bay_tez_domyka_konfiguracje() -> None:
     )
     assert transformatory_bez_pola_sn(migawka), "bez pola TR luka MUSI być zgłoszona"
 
-    migawka["bays"] = [
+    migawka["bays"].append(
         {
             "ref_id": "bay-tr",
             "name": "Pole transformatorowe",
             "bay_role": "TR",
-            "substation_ref": "stn-1",
-            "bus_ref": "bus-sn",
+            "substation_ref": stacja_pola,
+            "bus_ref": szyna_pola,
         }
-    ]
-    assert not transformatory_bez_pola_sn(migawka), "pole TR w `bays[]` domyka konfigurację"
+    )
+    assert (not transformatory_bez_pola_sn(migawka)) is domyka
 
 
 def test_walidator_zglasza_w041_jako_ostrzezenie_a_nie_blokade() -> None:

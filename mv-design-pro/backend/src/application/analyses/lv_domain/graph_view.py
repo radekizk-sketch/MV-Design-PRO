@@ -278,7 +278,7 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
     for st in enm.substations:
         # POLA-W-TORZE: szyny za aparatami pól nN (odpływy, zacisk wyłącznika głównego) należą
         # do stacji — jedno źródło przynależności (`enm.tor_pola.szyny_stacji`).
-        for bus_ref in sorted(szyny_stacji(st, enm.branches)):
+        for bus_ref in sorted(szyny_stacji(enm, st)):
             owner_by_bus.setdefault(bus_ref, st)
 
     # Sąsiedztwo z WSZYSTKICH gałęzi, niezależnie od `status` — topologia

@@ -39,7 +39,7 @@ from typing import Any
 
 import pytest
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
-from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
+from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
 from enm.models import EnergyNetworkModel
 
 from tests.ci.tolerancja_fikstur import (
@@ -767,12 +767,10 @@ def _falownik_sceny_oze() -> dict[str, Any]:
     przepisywać je ręcznie — intencja bez zmian: wpis dotyczy węzła z falownikiem
     katalogowym, a moc/współczynnik pochodzą z karty. Szyna: magazyn modelu
     (`enm/store.py`) promuje pole źródłowe nN do realnego aparatu i szyny odpływu
-    (`enm/migrations/nn_field_specs_promocja.py`, LV-INV-12), więc falownik wariantu
+    (`enm/migrations/promocja_aparatow_nn.py`, LV-INV-12), więc falownik wariantu
     `nn_side` stoi w biegu na szynie odpływu za aparatem pola, nie na szynie
     zbiorczej nN — test stosuje TĘ SAMĄ migrację."""
-    model, _ = promuj_nn_field_specs(
-        EnergyNetworkModel.model_validate(eksport._enm_sceny_oze_analiz())
-    )
+    model, _ = promuj_aparaty_nn(EnergyNetworkModel.model_validate(eksport._enm_sceny_oze_analiz()))
     falowniki = [
         g.model_dump(mode="json")
         for g in model.generators

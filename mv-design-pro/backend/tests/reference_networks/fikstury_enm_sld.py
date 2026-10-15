@@ -366,6 +366,8 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
     """``openBranch`` ze stroną nN: cztery odpływy stacji (odbiory na 1, 2 i 4), odpływ 3
     zasila kablem podrozdzielnicę RGnN-2, która ma sprzęgło sekcji i 14 odpływów w sekcji 2,
     a szyna nN stacji niesie źródło PV (lv-portal-screenshot.spec.ts: portal domeny nN)."""
+    from enm.pola import pola_nn_stacji
+
     b.gpz()
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=4)
@@ -373,7 +375,7 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
     enm = b.migawka()
     stacja = next(s for s in enm["substations"] if s.get("station_type") == "inline")
     szyna_nn = next(r for r in stacja["bus_refs"] if r.endswith("/nn_bus"))
-    odplywy = [s for s in stacja["meta"]["nn_field_specs"] if s.get("bay_role") == "FEEDER"]
+    odplywy = [s for s in pola_nn_stacji(enm, stacja["ref_id"]) if s.get("bay_role") == "FEEDER"]
     for indeks, katalog in (
         (0, "load_mieszk_15kw"),
         (1, "load_mieszk_15kw"),
@@ -384,13 +386,13 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
             {
                 "station_ref": stacja["ref_id"],
                 "bus_nn_ref": szyna_nn,
-                "feeder_ref": odplywy[indeks]["field_ref"],
+                "feeder_ref": odplywy[indeks]["ref_id"],
                 "catalog_binding": wiazanie("OBCIAZENIE", katalog),
                 "cos_phi": 0.95,
                 "load_name": f"Odbiór {indeks + 1}",
             },
         )
-    szyna_odplywu_3 = _szyna_odplywu_nn(b.migawka(), odplywy[2]["field_ref"])
+    szyna_odplywu_3 = _szyna_odplywu_nn(b.migawka(), odplywy[2]["ref_id"])
     b.operacja(
         "add_nn_distribution_board",
         {
@@ -552,8 +554,12 @@ def _b2_drogi(klient: TestClient) -> tuple[dict[str, dict[str, Any]], dict[str, 
         _stacja_b2(b, segmenty_korytarza(b.migawka())[1], "Stacja S01 (typ B)"),
     )
     stacja = next(s for s in b.migawka()["substations"] if s.get("station_type") == "inline")
+    from enm.pola import pola_sn_stacji
+
     pole_odg = next(
-        f["field_ref"] for f in stacja["meta"]["field_specs"] if f.get("bay_role") == "FEEDER"
+        f["ref_id"]
+        for f in pola_sn_stacji(b.migawka(), stacja["ref_id"])
+        if f.get("bay_role") == "FEEDER"
     )
     zapisz("start_branch_segment_sn", b.odgalezienie(f"{pole_odg}.BRANCH", 180))
     gpz = next(s for s in b.migawka()["substations"] if s.get("station_type") == "gpz")

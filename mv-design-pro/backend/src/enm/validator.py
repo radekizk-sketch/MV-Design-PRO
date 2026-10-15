@@ -30,10 +30,7 @@ from pydantic import BaseModel
 from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
-from .migrations.promocja_aparatow_nn import (
-    META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
-    META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
-)
+from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
     Cable,
@@ -41,7 +38,8 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
-from .nazwy_elementow import nazwa_pola_ze_specyfikacji
+from .pola import czy_pole_nn, napiecia_szyn, pola_stacji, pole_aparatu, stacja_pola
+from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .severity import (
     SEVERITY_BLOCKER,
@@ -77,6 +75,10 @@ from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pa
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
 
+#: Role kanoniczne pól liniowych SN (`enm.rola_pola_sn`), które stacja przelotowa łączy
+#: wspólną magistralą SN (E021).
+_ROLE_LINIOWE_SN: frozenset[str] = frozenset({"LINIA_IN", "LINIA_OUT"})
+
 
 def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
     """Aparaty pola w treści komunikatu: oznaczenie operatorskie (Q0, QE1), nie
@@ -86,19 +88,17 @@ def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
     )
 
 
-def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str | None, str | None]:
-    """Nazwa pola nN (`Substation.meta.nn_field_specs`) o danym `field_ref` i nazwa
-    jego stacji — do pozycji gotowości aparatu z automigracji; ``(None, None)``,
-    gdy wpisu nie ma (ref osierocony)."""
-    if not isinstance(field_ref, str) or not field_ref:
-        return None, None
-    for stacja in enm.substations:
-        meta = stacja.meta if isinstance(stacja.meta, dict) else {}
-        for spec in meta.get("nn_field_specs") or []:
-            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                nazwa = spec.get("name")
-                return (str(nazwa) if nazwa else None), stacja.name
-    return None, None
+def _pole_nn_i_stacja(
+    enm: EnergyNetworkModel, aparat_ref: str
+) -> tuple[str | None, str | None, str | None]:
+    """Pole nN, którego `equipment_refs` wskazuje aparat z automigracji: identyfikator pola,
+    jego nazwa (`Bay.name`, nadana przez builder albo migrację) i nazwa stacji — do pozycji
+    gotowości aparatu; ``(None, None, None)``, gdy żaden rekord `bays` aparatu nie wskazuje."""
+    rekord = pole_aparatu(enm, aparat_ref)
+    if rekord is None:
+        return None, None, None
+    stacja = stacja_pola(enm, rekord.ref_id)
+    return rekord.ref_id, rekord.name, (stacja.name if stacja is not None else None)
 
 
 def _strict_port_binding_enabled() -> bool:
@@ -1315,9 +1315,26 @@ class ENMValidator:
                         )
                     )
 
-        # W006: Pole (Bay) referencja do nieistniejącej stacji lub szyny
+        # W006: Pole (Bay) referencja do nieistniejącego właściciela (stacji albo — pole
+        # rozdzielnicy odgałęźnej ZKSN, karta W5-B — punktu rozgałęzienia) lub szyny.
+        branch_point_refs = {p.ref_id for p in enm.branch_points}
         for bay in enm.bays:
-            if bay.substation_ref not in substation_refs:
+            if bay.branch_point_ref is not None:
+                if bay.branch_point_ref not in branch_point_refs:
+                    issues.append(
+                        ValidationIssue(
+                            code="W006",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis_obiektu(bay, 'Pole')} odwołuje się do punktu "
+                                "rozgałęzienia, którego nie ma w modelu sieci."
+                            ),
+                            element_refs=[bay.ref_id, bay.branch_point_ref],
+                            wizard_step_hint="K3",
+                            suggested_fix="Przypisz pole do istniejącego punktu rozgałęzienia.",
+                        )
+                    )
+            elif bay.substation_ref not in substation_refs:
                 issues.append(
                     ValidationIssue(
                         code="W006",
@@ -1326,7 +1343,7 @@ class ENMValidator:
                             f"{opis_obiektu(bay, 'Pole')} odwołuje się do stacji, której nie ma "
                             "w modelu sieci."
                         ),
-                        element_refs=[bay.ref_id, bay.substation_ref],
+                        element_refs=[bay.ref_id, str(bay.substation_ref)],
                         wizard_step_hint="K3",
                         suggested_fix="Przypisz pole do istniejącej stacji.",
                     )
@@ -1396,21 +1413,10 @@ class ENMValidator:
                         )
                     )
 
-        # I003: Stacja bez pól (bayów)
-        substations_with_bays = {bay.substation_ref for bay in enm.bays}
-        for sub in enm.substations:
-            meta = sub.meta if isinstance(sub.meta, dict) else {}
-            field_specs = meta.get("field_specs")
-            nn_field_specs = meta.get("nn_field_specs")
-            has_field_specs = (
-                isinstance(field_specs, list)
-                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in field_specs)
-            ) or (
-                isinstance(nn_field_specs, list)
-                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in nn_field_specs)
-            )
-            if has_field_specs:
-                substations_with_bays.add(sub.ref_id)
+        # I003: Stacja bez pól — rekordy `bays` stacji (jedyny nośnik pól SN i nN, karta W5-B).
+        substations_with_bays = {
+            sub.ref_id for sub in enm.substations if pola_stacji(enm, sub.ref_id)
+        }
         for sub in enm.substations:
             if sub.ref_id not in substations_with_bays:
                 issues.append(
@@ -1899,8 +1905,19 @@ class ENMValidator:
         bus_by_ref = {b.ref_id: b for b in enm.buses}
 
         # Group bays by substation_ref
+        # Karta W5-B: kolekcja `bays` niesie pola SN, nN i ZKSN. Ciągłość SN przez stację
+        # dotyczy pól liniowych rozdzielnicy SN stacji: pole na szynie nN BEZ jawnej roli
+        # liniowej SN jest polem nN z definicji poziomu (`enm.pola.czy_pole_nn` — np.
+        # wyłącznik główny nN roli IN); pole z jawną rolą liniową SN (`field_role`
+        # LINIA_IN/LINIA_OUT) na szynie nN jest naruszeniem, które ta reguła zgłasza.
+        # Pole ZKSN nie należy do stacji.
+        napiecia = napiecia_szyn(enm)
         bays_by_station: dict[str, list] = {}
         for bay in enm.bays:
+            if bay.substation_ref is None:
+                continue
+            if czy_pole_nn(enm, bay, napiecia) and bay.field_role not in _ROLE_LINIOWE_SN:
+                continue
             bays_by_station.setdefault(bay.substation_ref, []).append(bay)
 
         for sub in enm.substations:
@@ -2022,10 +2039,14 @@ class ENMValidator:
         archiwum albo zbudowany przed kartą POLE-ZAJĘTE może ten stan nieść. Zajętość liczy
         JEDNO źródło prawdy (`enm.zajetosc_pol`, przyłączenie fizyczne: reguły R1 i R2).
         """
+        # Widok słownikowy dla `enm.zajetosc_pol` (postać operacji domenowych): pola z rekordów
+        # `bays`, szyny z napięciem — poziom pola (SN/nN) rozstrzyga napięcie szyny pola.
         widok = {
             "substations": [
                 {"ref_id": s.ref_id, "name": s.name, "meta": s.meta} for s in enm.substations
             ],
+            "buses": [{"ref_id": b.ref_id, "voltage_kv": b.voltage_kv} for b in enm.buses],
+            "bays": [b.model_dump(mode="json") for b in enm.bays],
             "branches": [
                 {
                     "ref_id": b.ref_id,
@@ -2042,19 +2063,12 @@ class ENMValidator:
             ],
         }
         stacje = {s.ref_id: s for s in enm.substations}
-        nazwy_pol: dict[object, object] = {b.ref_id: b.name for b in enm.bays}
         for zajetosc in zajetosc_pol(widok).values():
             if not zajetosc.przeciazone:
                 continue
             stacja = stacje.get(zajetosc.station_ref)
-            spec = next(
-                (
-                    f
-                    for f in ((stacja.meta if stacja else {}) or {}).get("field_specs") or []
-                    if isinstance(f, dict) and f.get("field_ref") == zajetosc.field_ref
-                ),
-                {},
-            )
+            rekord_pola = pole_modelu(enm, zajetosc.field_ref)
+            nazwa_pola = rekord_pola.name if rekord_pola is not None else "Pole liniowe"
             odcinki = ", ".join(
                 opis_elementu(enm, ref, "odcinek") for ref in zajetosc.odcinki_fizyczne
             )
@@ -2063,7 +2077,7 @@ class ENMValidator:
                     code="E022",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"{nazwa_pola_ze_specyfikacji(spec, nazwy_pol)} w "
+                        f"{nazwa_pola} w "
                         f"{opis_obiektu(stacja, 'stacji')}: z jednego pola liniowego wychodzi "
                         f"{len(zajetosc.odcinki_fizyczne)} odcinków ({odcinki}). Z jednego "
                         "pola liniowego wolno wyprowadzić tylko jeden kabel."
@@ -2322,7 +2336,7 @@ class ENMValidator:
         E061 - galaz z OBOMA koncami w pasmie nN bez wiazania katalogowego
                KABEL_NN/APARAT_NN (catalog_ref); wyjatek: galaz z automigracji
                promocji pol nN (meta `nn_promocja_bez_wiazania_katalogowej`,
-               `enm/migrations/nn_field_specs_promocja.py`) bez wiazania -> W061
+               `enm/migrations/promocja_aparatow_nn.py`) bez wiazania -> W061
                (LV-INV-12, C §4.2 — dane historyczne, ktorych katalog nie widzial).
         E062 - dwie szyny nN o ROZNYCH napieciach znamionowych polaczone galezia
                NIE-transformatorowa. Zaostrzenie E020 WEWNATRZ pasma nN: E020
@@ -2437,8 +2451,7 @@ class ENMValidator:
                 # TEN aparat i TO pole — projektant nie szuka, którego z odpływów
                 # dotyczy brak. Brak katalogu blokuje analizy czytające dane aparatu
                 # nN (bramka kwalifikacji SWZ nN), nie rysunek.
-                field_ref = branch_meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
-                nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, field_ref)
+                field_ref, nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, branch.ref_id)
                 opis_pola = (
                     f" — pole „{nazwa_pola}” stacji „{nazwa_stacji}”"
                     if nazwa_pola and nazwa_stacji

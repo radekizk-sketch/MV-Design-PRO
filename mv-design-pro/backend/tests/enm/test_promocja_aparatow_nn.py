@@ -1,11 +1,18 @@
-"""P0.1 nN — automigracja promocji `nn_field_specs` → realne elementy (karta P0.1, C §4.2).
+"""P0.1 nN — automigracja promocji pól nN → realne elementy (karta P0.1, C §4.2; karta W5-B).
 
-Sprawdzamy to, na czym zależy projektantowi: stary ENM zapisany przed P0.1
-(odpływ/pole źródłowe nN wyłącznie jako wpis w `Substation.meta.nn_field_specs`)
-dostaje po wczytaniu REALNY `SwitchBranch` (aparat) + szynę odpływu — solver i
-SLD czytają odtąd JEDEN graf (LV-INV-12), a `nn_field_specs` zostaje wyłącznie
-projekcją odczytu. Migracja jest idempotentna (per wpis, nie per stacja —
-patrz docstring modułu) i podnosi rewizję modelu DOKŁADNIE RAZ.
+Sprawdzamy to, na czym zależy projektantowi: pole nN (rekord `bays` na szynie nN — karta
+W5-B: jedyny nośnik pól; poziom z napięcia szyny, `enm.pola.czy_pole_nn`) bez aparatu
+dostaje po wczytaniu REALNY `SwitchBranch` (aparat) + szynę odpływu — solver i SLD czytają
+odtąd JEDEN graf (LV-INV-12), a rekord pola niesie swój aparat (`equipment_refs`) i zacisk
+(`terminal_bus_ref` = szyna odpływu) tak jak pole SN z aparatem w torze. Migracja jest
+idempotentna (per pole, nie per stacja — patrz docstring modułu) i podnosi rewizję modelu
+DOKŁADNIE RAZ.
+
+Dawny test `tests/enm/migrations/test_nn_field_specs_promocja_aparat.py` (8 przypadków
+wołających nieistniejącą funkcję `_materializuj_aparat`) skasowany w karcie W5-B; jego
+intencja — {odmowa danych pozycji spoza katalogu bez wyjątku, brak wiązania = brak
+materializacji, błąd programu wybucha} — jest przypięta testami niżej, na realnej ścieżce
+wiązania (`assign_catalog_to_element`).
 """
 
 from __future__ import annotations
@@ -14,7 +21,7 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation
-from enm.migrations.nn_field_specs_promocja import (
+from enm.migrations.promocja_aparatow_nn import (
     META_KLUCZ_GALAZ_ROLA_POLA,
     META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
@@ -24,6 +31,7 @@ from enm.migrations.nn_field_specs_promocja import (
     wymaga_migracji,
 )
 from enm.models import (
+    Bay,
     Bus,
     EnergyNetworkModel,
     ENMDefaults,
@@ -46,33 +54,33 @@ def _reset_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> Any:
     reset_enm_store()
 
 
+def _pole_nn(ref: str, nazwa: str, **dane: Any) -> Bay:
+    """Rekord pola odpływowego nN na szynie nN stacji `st1` (bez aparatu)."""
+    return Bay(
+        ref_id=ref,
+        name=nazwa,
+        bay_role="FEEDER",
+        substation_ref="st1",
+        bus_ref=dane.pop("bus_ref", "bus-nn"),
+        meta={"feeder_role": "ODPLYW_NN", **dane.pop("meta", {})},
+        **dane,
+    )
+
+
 def _stary_model(*, z_wiazaniem: bool = False) -> EnergyNetworkModel:
-    """Model „sprzed P0.1": odpływ nN WYŁĄCZNIE jako wpis nn_field_specs + odbiór na szynie stacji."""
-    field_spec: dict[str, Any] = {
-        "field_ref": "nn/legacy/outgoing-1",
-        "name": "Odpływ 1",
-        "bay_role": "FEEDER",
-        "bus_ref": "bus-nn",
-        "equipment_refs": [],
-        "protection_ref": None,
-        "tags": [],
-        "meta": {"feeder_role": "ODPLYW_NN"},
-    }
+    """Model „sprzed P0.1": pole odpływowe nN bez aparatu (rekord `bays` na szynie nN) +
+    odbiór na szynie stacji."""
+    meta: dict[str, Any] = {}
     if z_wiazaniem:
-        field_spec["meta"]["catalog_binding"] = {"catalog_item_id": REF_APARAT_NN}
+        meta["catalog_binding"] = {"catalog_item_id": REF_APARAT_NN}
 
     return EnergyNetworkModel(
         header=ENMHeader(name="stary", defaults=ENMDefaults()),
         buses=[Bus(ref_id="bus-nn", name="Szyna nN", voltage_kv=0.4)],
         substations=[
-            Substation(
-                ref_id="st1",
-                name="ST-1",
-                station_type="mv_lv",
-                bus_refs=["bus-nn"],
-                meta={"nn_field_specs": [field_spec]},
-            )
+            Substation(ref_id="st1", name="ST-1", station_type="mv_lv", bus_refs=["bus-nn"])
         ],
+        bays=[_pole_nn("nn/legacy/outgoing-1", "Odpływ 1", meta=meta)],
         loads=[
             Load(
                 ref_id="ld1",
@@ -86,6 +94,10 @@ def _stary_model(*, z_wiazaniem: bool = False) -> EnergyNetworkModel:
     )
 
 
+def _pole(model: EnergyNetworkModel, ref: str = "nn/legacy/outgoing-1") -> Bay:
+    return next(b for b in model.bays if b.ref_id == ref)
+
+
 # ---------------------------------------------------------------------------
 # Migracja bezpośrednio (jednostkowo, jak test_punkt_przylaczenia_der.py)
 # ---------------------------------------------------------------------------
@@ -95,7 +107,7 @@ def test_wymaga_migracji_true_dla_niepromowanego_wpisu() -> None:
     assert wymaga_migracji(_stary_model()) is True
 
 
-def test_wymaga_migracji_false_dla_modelu_bez_nn_field_specs() -> None:
+def test_wymaga_migracji_false_dla_modelu_bez_pol_nn() -> None:
     pusty = EnergyNetworkModel(header=ENMHeader(name="pusty", defaults=ENMDefaults()))
     assert wymaga_migracji(pusty) is False
 
@@ -122,11 +134,13 @@ def test_migracja_tworzy_realny_aparat_i_szyne_odplywu() -> None:
     # LV-INV-12: odbiór PRZENIESIONY z szyny stacji na szynę odpływu.
     assert zmigrowany.loads[0].bus_ref == nowa_szyna_ref
 
-    # `nn_field_specs` NIE jest kasowany — zostaje projekcją odczytu.
-    assert (
-        zmigrowany.substations[0].meta["nn_field_specs"]
-        == stary.substations[0].meta["nn_field_specs"]
-    )
+    # Karta W5-B: rekord pola niesie swój aparat i zacisk (szyna odpływu) — jedna reguła
+    # zacisku pola dla SN i nN (`enm.pola.zacisk_pola`); rekord wejściowy nietknięty.
+    pole = _pole(zmigrowany)
+    assert pole.equipment_refs == [aparat.ref_id]
+    assert pole.terminal_bus_ref == nowa_szyna_ref
+    assert pole.bus_ref == "bus-nn"
+    assert _pole(stary).equipment_refs == [] and _pole(stary).terminal_bus_ref is None
     assert zmigrowany.substations[0].meta[META_KLUCZ_STACJA_PROMOWANA] is True
 
 
@@ -147,9 +161,7 @@ def test_migracja_materializuje_wiazanie_katalogowe_gdy_jest() -> None:
 def test_migracja_z_nieistniejaca_pozycja_katalogowa_nie_wywala_migracji() -> None:
     """Dane historyczne mogą wskazywać pozycję, której już nie ma — migracja nie ma prawa runąć."""
     stary = _stary_model(z_wiazaniem=True)
-    stary.substations[0].meta["nn_field_specs"][0]["meta"]["catalog_binding"][
-        "catalog_item_id"
-    ] = "nieistnieje-w-katalogu"
+    _pole(stary).meta["catalog_binding"]["catalog_item_id"] = "nieistnieje-w-katalogu"
     zmigrowany, zmieniono = migruj(stary)
 
     assert zmieniono is True
@@ -173,26 +185,15 @@ def test_migracja_jest_idempotentna_per_wpis_nie_per_stacja() -> None:
 
     To jest dokładnie ta klasa błędu, którą CLAUDE.md nazywa „reguła KLASA, nie
     INSTANCJA": bramka pilnująca idempotencji PO CAŁEJ stacji (a nie per wpis)
-    zostawiłaby drugi, dopisany później wpis `nn_field_specs` NIGDY nie
-    promowanym — mimo że stacja formalnie „już przeszła" migrację.
+    zostawiłaby drugie, dopisane później pole nN NIGDY nie promowanym — mimo że
+    stacja formalnie „już przeszła" migrację.
     """
     stary = _stary_model()
     raz, _ = migruj(stary)
     assert raz.substations[0].meta[META_KLUCZ_STACJA_PROMOWANA] is True
 
     z_nowym_wpisem = raz.model_copy(deep=True)
-    z_nowym_wpisem.substations[0].meta["nn_field_specs"].append(
-        {
-            "field_ref": "nn/legacy/outgoing-2",
-            "name": "Odpływ 2",
-            "bay_role": "FEEDER",
-            "bus_ref": "bus-nn",
-            "equipment_refs": [],
-            "protection_ref": None,
-            "tags": [],
-            "meta": {"feeder_role": "ODPLYW_NN"},
-        }
-    )
+    z_nowym_wpisem.bays.append(_pole_nn("nn/legacy/outgoing-2", "Odpływ 2"))
     assert wymaga_migracji(z_nowym_wpisem) is True
     dwa, zmieniono = migruj(z_nowym_wpisem)
     assert zmieniono is True
@@ -203,12 +204,14 @@ def test_migracja_jest_idempotentna_per_wpis_nie_per_stacja() -> None:
         if b.meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) == "nn/legacy/outgoing-2"
     )
     assert nowy_aparat.from_bus_ref == "bus-nn"
+    assert _pole(dwa, "nn/legacy/outgoing-2").equipment_refs == [nowy_aparat.ref_id]
 
 
 def test_migracja_pomija_wpis_osierocony_bez_awarii() -> None:
-    """Wpis wskazujący nieistniejącą szynę stacji — pomijamy, nie crashujemy migracji."""
+    """Pole wskazujące nieistniejącą szynę — poziom pola nierozstrzygalny (szyna nieznana =
+    NIE nN), pomijamy, nie crashujemy migracji."""
     stary = _stary_model()
-    stary.substations[0].meta["nn_field_specs"][0]["bus_ref"] = "szyna-widmo"
+    _pole(stary).bus_ref = "szyna-widmo"
     zmigrowany, zmieniono = migruj(stary)
     assert zmieniono is False
     assert zmigrowany is stary
@@ -248,7 +251,7 @@ def test_get_enm_promuje_automatycznie_i_podbija_rewizje_raz() -> None:
     assert odczytany_ponownie.header.hash_sha256 == hash_po_pierwszym
 
 
-def test_get_enm_bez_nn_field_specs_nie_podbija_rewizji() -> None:
+def test_get_enm_bez_pol_nn_nie_podbija_rewizji() -> None:
     case_id = "case-bez-promocji"
     czysty = EnergyNetworkModel(
         header=ENMHeader(name="czysty", defaults=ENMDefaults()),
@@ -421,7 +424,7 @@ def test_po_promocji_ct_przylacza_sie_do_szyny_odplywu() -> None:
 # ---------------------------------------------------------------------------
 # Karta SLD-SUBSTRAT (kontynuacja): migracja wiąże aparat TĄ SAMĄ operacją co
 # akcja naprawcza projektanta (`assign_catalog_to_element`). Iloczyn cech:
-# klucz wiązania we wpisie {catalog_binding, catalog_bindings} × stan pozycji
+# nośnik wiązania na polu {meta.catalog_binding, Bay.catalog_bindings} × stan pozycji
 # {istniejąca, nieistniejąca, wiązanie nie-aparatu (źródło przekształtnikowe)}.
 # ---------------------------------------------------------------------------
 
@@ -434,9 +437,14 @@ _POLA_WIAZANIA = (
 )
 
 
-def _model_z_wiazaniem(klucz: str, wiazanie: dict[str, Any]) -> EnergyNetworkModel:
+def _model_z_wiazaniem(klucz: str, wiazanie: Any) -> EnergyNetworkModel:
+    """Wiązanie zapisane na polu: `meta.catalog_binding` (operacja, import) albo typowane
+    `Bay.catalog_bindings` (szablon stacji; karta W5-B — dawne `meta.catalog_bindings`)."""
     stary = _stary_model()
-    stary.substations[0].meta["nn_field_specs"][0]["meta"][klucz] = wiazanie
+    if klucz == "catalog_bindings":
+        _pole(stary).catalog_bindings = wiazanie
+    else:
+        _pole(stary).meta[klucz] = wiazanie
     return stary
 
 
@@ -537,3 +545,94 @@ def test_w061_nazywa_pole_i_stacje_a_akcja_wskazuje_aparat_i_pole() -> None:
         "catalog_namespace": "APARAT_NN",
         "field_ref": "nn/legacy/outgoing-1",
     }
+
+
+# ---------------------------------------------------------------------------
+# Intencja skasowanego `test_nn_field_specs_promocja_aparat.py` (karta #151) na realnej
+# ścieżce wiązania: {odmowa danych, brak wiązania, błąd programu} — iloczyn z nośnikiem.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("wiazanie", [None, "napis", {}, {"catalog_item_id": "  "}])
+def test_brak_wiazania_to_aparat_bez_materializacji(wiazanie: Any) -> None:
+    """Pole bez wskazania pozycji: aparat powstaje BEZ wiązania i z nazwanym brakiem
+    (W061), bez kodu odmowy — operacja wiązania nie jest w ogóle wołana."""
+    zmigrowany, zmieniono = migruj(_model_z_wiazaniem("catalog_binding", wiazanie))
+    assert zmieniono is True
+    aparat = zmigrowany.branches[0]
+    assert aparat.catalog_ref is None
+    assert aparat.materialized_params is None
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    assert META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA not in aparat.meta
+
+
+@pytest.mark.parametrize("klucz", ["catalog_binding", "catalog_bindings"])
+def test_pozycja_spoza_katalogu_to_odmowa_danych_bez_wyjatku(klucz: str) -> None:
+    """Odmowa danych (pozycji nie ma w katalogu) nie przerywa migracji wyjątkiem — aparat
+    zostaje bez wiązania z kodem odmowy operacji."""
+    zmigrowany, zmieniono = migruj(
+        _model_z_wiazaniem(klucz, {"catalog_item_id": "aparat-ktorego-nie-ma"})
+    )
+    assert zmieniono is True
+    aparat = zmigrowany.branches[0]
+    assert aparat.catalog_ref is None
+    assert isinstance(aparat.meta[META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA], str)
+
+
+@pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+def test_blad_programu_wiazania_wybucha(typ: type[Exception], monkeypatch: Any) -> None:
+    """Wyjątek operacji wiązania to błąd programu — migracja go NIE połyka (dawne
+    `except Exception: return None, None` gubiło wiązanie po cichu)."""
+    import enm.domain_operations as operacje
+
+    def _zepsuty(*args: Any, **kwargs: Any) -> Any:
+        raise typ("błąd programu")
+
+    monkeypatch.setattr(operacje, "assign_catalog_to_element", _zepsuty)
+    with pytest.raises(typ):
+        migruj(_stary_model(z_wiazaniem=True))
+
+
+def test_rekord_pola_promowanego_przed_w5b_dostaje_aparat_i_zacisk() -> None:
+    """Migawka sprzed karty W5-B: aparat pola istnieje (znacznik gałęzi), rekord pola go nie
+    niesie — migracja zapisuje aparat i zacisk na rekordzie (idempotentnie). Iloczyn: {pole
+    nN, pole zapisane dawniej jako pole nN, lecz na szynie SN (pole źródła przekształtnika —
+    zmierzone na scenach harnessu OZE/LoM)}."""
+    for szyna, napiecie in (("bus-nn", 0.4), ("bus-sn", 15.0)):
+        aparat = SwitchBranch(
+            ref_id="nn/x/feeder_device",
+            name="Aparat",
+            type="breaker",
+            from_bus_ref=szyna,
+            to_bus_ref="nn/x/feeder_bus",
+            status="closed",
+            meta={META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: "pole-1", META_KLUCZ_GALAZ_ROLA_POLA: "OZE"},
+        )
+        model = EnergyNetworkModel(
+            header=ENMHeader(name="dawny", defaults=ENMDefaults()),
+            buses=[
+                Bus(ref_id=szyna, name="Szyna", voltage_kv=napiecie),
+                Bus(ref_id="nn/x/feeder_bus", name="Odpływ", voltage_kv=napiecie),
+            ],
+            substations=[
+                Substation(ref_id="st1", name="ST-1", station_type="mv_lv", bus_refs=[szyna])
+            ],
+            bays=[
+                Bay(
+                    ref_id="pole-1",
+                    name="Pole",
+                    bay_role="OZE",
+                    substation_ref="st1",
+                    bus_ref=szyna,
+                )
+            ],
+            branches=[aparat],
+        )
+        assert wymaga_migracji(model) is True
+        zmigrowany, zmieniono = migruj(model)
+        assert zmieniono is True, szyna
+        assert len(zmigrowany.branches) == 1, "pole z aparatem nie dostaje drugiego aparatu"
+        pole = _pole(zmigrowany, "pole-1")
+        assert pole.equipment_refs == ["nn/x/feeder_device"]
+        assert pole.terminal_bus_ref == "nn/x/feeder_bus"
+        assert migruj(zmigrowany) == (zmigrowany, False)

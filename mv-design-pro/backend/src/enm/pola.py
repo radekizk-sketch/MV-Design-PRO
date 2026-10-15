@@ -124,12 +124,32 @@ def pole_istnieje(enm: Mapping[str, Any] | EnergyNetworkModel, ref_id: object) -
     return pole(enm, ref_id) is not None
 
 
+def pole_aparatu(enm: Mapping[str, Any] | EnergyNetworkModel, element_ref: object) -> Any | None:
+    """Pole, którego `equipment_refs` wskazuje element (aparat pola, przekładnik,
+    transformator) — pierwsze w kolejności zapisu; `None`, gdy element nie należy do pola.
+    Rekord pola jest JEDYNYM źródłem przynależności elementu do pola."""
+    szukany = _napis(element_ref)
+    if szukany is None:
+        return None
+    for rekord in pola(enm):
+        if szukany in (_pole_rekordu(rekord, "equipment_refs") or []):
+            return rekord
+    return None
+
+
 def pola_stacji(enm: Mapping[str, Any] | EnergyNetworkModel, substation_ref: object) -> list[Any]:
     """Pola stacji (SN i nN) w kolejności zapisu."""
     stacja = _napis(substation_ref)
     if stacja is None:
         return []
     return [r for r in pola(enm) if _pole_rekordu(r, "substation_ref") == stacja]
+
+
+def pola_wszystkich_stacji(enm: Mapping[str, Any] | EnergyNetworkModel) -> list[Any]:
+    """Pola WSZYSTKICH stacji (SN i nN) w kolejności zapisu — bez pól rozdzielnic odgałęźnych
+    ZKSN (te należą do punktu rozgałęzienia, `pola_zksn`). Zbiór read-modelu pola i analiz
+    czytających pola stacji (kontrakt `BayBaseModel.substation_ref` jest wymagany)."""
+    return [r for r in pola(enm) if _napis(_pole_rekordu(r, "substation_ref")) is not None]
 
 
 def pola_zksn(enm: Mapping[str, Any] | EnergyNetworkModel, branch_point_ref: object) -> list[Any]:

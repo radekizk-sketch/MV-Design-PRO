@@ -24,7 +24,10 @@ Reguły (wyłącznie z JAWNYCH danych modelu, bez domysłu):
 R1 i R2 to przyłączenie FIZYCZNE (odcinek ma koniec na polu) — tylko one liczą się do stanu
 „dwa odcinki na jednym polu”. R3 i R4 to przyłączenie DEKLARATYWNE (pole zasila korytarz).
 
-Moduł-liść: biblioteka standardowa, operuje na słowniku ENM (postać operacji domenowych).
+Pola czyta wyłącznie z rekordów `bays` przez akcesor `enm.pola` (karta W5-B): pola SN stacji
+(`pola_sn_stacji`), zacisk pola z `Bay.terminal_bus_ref` (`zacisk_pola`). Operuje na słowniku
+ENM (postać operacji domenowych); widok przekazany przez wołającego MUSI nieść `bays` i `buses`
+(poziom pola rozstrzyga napięcie szyny).
 """
 
 from __future__ import annotations
@@ -32,6 +35,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
+
+from .pola import czy_pole_nn, napiecia_szyn, pola_stacji, zacisk_pola
 
 #: Rodzaje gałęzi, które są odcinkiem terenowym SN (kabel, linia napowietrzna).
 TYPY_ODCINKA_TERENOWEGO: frozenset[str] = frozenset({"cable", "line_overhead"})
@@ -77,33 +82,22 @@ def _napis(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
-def zacisk_pola(spec: Mapping[str, Any]) -> str | None:
-    """Własny zacisk pola z jego specyfikacji (ta sama kolejność kluczy co operacje)."""
-    meta = _slownik(spec.get("meta"))
-    for kandydat in (
-        meta.get("field_terminal_bus_ref"),
-        meta.get("terminal_bus_ref"),
-        spec.get("field_terminal_bus_ref"),
-        spec.get("terminal_bus_ref"),
-    ):
-        wartosc = _napis(kandydat)
-        if wartosc:
-            return wartosc
-    return None
-
-
-def _specyfikacje_pol(enm: Mapping[str, Any]) -> Iterable[tuple[str, Mapping[str, Any]]]:
+def _pola_sn_stacji(enm: Mapping[str, Any]) -> Iterable[tuple[str, Mapping[str, Any]]]:
+    """Pola SN stacji modelu (rekordy `bays`, predykat poziomu `enm.pola.czy_pole_nn`) w
+    kolejności stacji i zapisu pól. Pola nN i pola ZKSN nie są polami liniowymi stacji SN."""
+    napiecia = napiecia_szyn(enm)
     for stacja in enm.get("substations") or []:
         if not isinstance(stacja, Mapping):
             continue
         station_ref = _napis(stacja.get("ref_id")) or ""
-        for spec in _slownik(stacja.get("meta")).get("field_specs") or []:
-            if isinstance(spec, Mapping) and _napis(spec.get("field_ref")):
-                yield station_ref, spec
+        for rekord in pola_stacji(enm, station_ref):
+            if _napis(rekord.get("ref_id")) and not czy_pole_nn(enm, rekord, napiecia):
+                yield station_ref, rekord
 
 
 def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
-    """Zajętość KAŻDEGO pola rozdzielnicy SN modelu (klucz: `field_ref`), deterministycznie."""
+    """Zajętość KAŻDEGO pola rozdzielnicy SN modelu (klucz: identyfikator pola `Bay.ref_id`),
+    deterministycznie."""
     odcinki_terenowe = [
         galaz
         for galaz in enm.get("branches") or []
@@ -135,8 +129,8 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
     }
 
     wynik: dict[str, ZajetoscPola] = {}
-    for station_ref, spec in _specyfikacje_pol(enm):
-        field_ref = str(_napis(spec.get("field_ref")))
+    for station_ref, spec in _pola_sn_stacji(enm):
+        field_ref = str(_napis(spec.get("ref_id")))
         szyna_pola = _napis(spec.get("bus_ref"))
         zacisk = zacisk_pola(spec)
         wlasny_zacisk = bool(zacisk and zacisk != szyna_pola)

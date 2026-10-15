@@ -281,7 +281,7 @@ def _werdykt_niejednoznaczny() -> dict[str, Any]:
             "vector_group": "Dyn11",
         },
         mv_cable={"ref_id": "kab-sn-1", "rating": {}},
-        field_spec=None,
+        pole=None,
         apparatus=None,
         mv_bus={"ref_id": "bus-sn-1", "voltage_kv": 15.0},
     )

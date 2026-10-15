@@ -316,7 +316,7 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     bus_to_sub: dict[str, str] = {}
     for sub in enm.substations:
         # POLA-W-TORZE: zaciski pól SN i szyny za aparatami pól nN należą do stacji.
-        for br in sorted(szyny_stacji(sub, enm.branches)):
+        for br in sorted(szyny_stacji(enm, sub)):
             bus_to_sub.setdefault(br, sub.ref_id)
 
     # Bus → junction mapping

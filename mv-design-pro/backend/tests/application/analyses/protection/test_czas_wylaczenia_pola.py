@@ -20,6 +20,7 @@ from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
 )
 from enm.models import (
+    Bay,
     Bus,
     EnergyNetworkModel,
     ENMDefaults,
@@ -86,13 +87,10 @@ def _enm(
                 name="Stacja Sady",
                 station_type="mv_lv",
                 bus_refs=["sn"],
-                meta={
-                    "field_specs": [
-                        {"field_ref": POLE, "name": "P-01", "bay_role": "IN", "bus_ref": "sn"}
-                    ]
-                },
             )
         ],
+        # Karta W5-B: pole stacji jest rekordem `bays` (jedyny nośnik pól).
+        bays=[Bay(ref_id=POLE, name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn")],
     )
 
 

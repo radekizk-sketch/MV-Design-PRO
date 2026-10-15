@@ -386,21 +386,18 @@ def test_analysis_run_snapshot_completes_legacy_station_catalog_loads(
                 "station_type": "inline",
                 "bus_refs": ["stn/test/sn_bus", nn_bus_ref],
                 "transformer_refs": [],
-                "meta": {
-                    "nn_field_specs": [
-                        {
-                            "field_ref": "stn/test/nn_feeder/001",
-                            "bus_ref": nn_bus_ref,
-                            "bay_role": "FEEDER",
-                        },
-                        {
-                            "field_ref": "stn/test/nn_feeder/002",
-                            "bus_ref": nn_bus_ref,
-                            "bay_role": "FEEDER",
-                        },
-                    ]
-                },
             }
+        ],
+        # Karta W5-B: pola odpływowe nN są rekordami `bays` (szyna nN = poziom nN).
+        "bays": [
+            {
+                "ref_id": f"stn/test/nn_feeder/00{n}",
+                "name": f"Odpływ nN {n}",
+                "bay_role": "FEEDER",
+                "substation_ref": station_ref,
+                "bus_ref": nn_bus_ref,
+            }
+            for n in (1, 2)
         ],
     }
     with canonical_run_repository_scope() as repository:

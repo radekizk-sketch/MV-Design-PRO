@@ -274,7 +274,8 @@ def _przepisz_bay_ref(dane: dict[str, Any], stary: str, nowy: str) -> None:
 def _oczysc_meta_rekordu(rekord: dict[str, Any]) -> dict[str, Any]:
     """Istniejący rekord `bays` (bez wpisu do scalenia) — klucze `meta` z typowanym
     odpowiednikiem przechodzą na pole typowane, martwe znikają; potem walidacja kontraktem."""
-    meta = rekord.get("meta") if isinstance(rekord.get("meta"), dict) else {}
+    surowe_meta = rekord.get("meta")
+    meta: dict[str, Any] = surowe_meta if isinstance(surowe_meta, dict) else {}
     if not (set(meta) & (KLUCZE_META_ZAKAZANE)):
         return waliduj_rekord_pola(rekord)
     nowe_meta: dict[str, Any] = {}

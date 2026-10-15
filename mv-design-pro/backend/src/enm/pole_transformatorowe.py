@@ -32,9 +32,9 @@ REGUŁA (dyspozycja recenzenta-właściciela 2026-08-12 §7):
     → OSTRZEŻENIE
 
 `valid_transformer_bay_configuration` = stacja, do której należy transformator,
-ma pole roli ``TR`` (kanał `Substation.meta.field_specs[].bay_role` ALBO rekord
-`Bay.bay_role`; oba kanały czyta też adapter rysunku
-`enmToSldAdapter.ts`, więc jeden pominięty kanał = natychmiastowy rozjazd).
+ma pole SN roli ``TR`` — rekord `Bay.bay_role` z `substation_ref` tej stacji (karta W5-B:
+kolekcja `bays` jest JEDYNYM nośnikiem pól; poziom pola z napięcia szyny,
+`enm.pola.czy_pole_nn`). Adapter rysunku `enmToSldAdapter.ts` czyta ten sam rekord.
 
 CZEGO PREDYKAT NIE ROBI (zero zgadywania):
   * nie domyśla się przynależności transformatora do stacji — bierze deklarację
@@ -57,6 +57,8 @@ from typing import TypeAlias
 
 from network_model.pochodne.pasma_napieciowe import szyna_poza_pasmem_sn
 
+from .models import EnergyNetworkModel
+from .pola import czy_pole_nn, napiecia_szyn, pola_stacji
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
 
@@ -188,10 +190,7 @@ def transformator_blokowy_der(transformator: ElementEnm, refy_blokowe: set[str])
 
 
 def transformatory_stacji(
-    stacja: ElementEnm,
-    transformers: Sequence[ElementEnm],
-    galezie: Sequence[ElementEnm],
-    generators: Sequence[ElementEnm],
+    enm: Mapping[str, object] | EnergyNetworkModel, stacja: ElementEnm
 ) -> list[ElementEnm]:
     """Transformatory ROZDZIELCZE stacji — JEDNA reguła, lustrzana wobec rysunku
     (`frontend/src/ui/shared/transformatoryStacji.ts::selectStationDistributionTransformers`,
@@ -209,11 +208,11 @@ def transformatory_stacji(
     jest przypięty wierszem `tr-stacji-z-der-na-nn` tablicy `pole_transformatorowe_parytet_v1.json`
     (stacja bez ostrzeżenia i bez markera) — ZNANA GRANICA, nie cichy wyjątek.
     """
-    refy_blokowe = _refy_transformatorow_blokowych(generators)
+    refy_blokowe = _refy_transformatorow_blokowych(_lista(enm, "generators"))
     zadeklarowane = set(_teksty(_lista(stacja, "transformer_refs")))
-    szyny = szyny_stacji(stacja, galezie)
+    szyny = szyny_stacji(enm, stacja)
     wynik: list[ElementEnm] = []
-    for transformator in transformers:
+    for transformator in _lista(enm, "transformers"):
         if transformator_blokowy_der(transformator, refy_blokowe):
             continue
         if zadeklarowane:
@@ -228,30 +227,21 @@ def transformatory_stacji(
     return wynik
 
 
-def stacja_ma_pole_transformatorowe(stacja: ElementEnm, bays: Sequence[ElementEnm]) -> bool:
-    """Czy stacja ma pole roli ``TR`` — OBA kanały danych.
-
-    Kanał 1: `Substation.meta.field_specs[].bay_role` (operacje stacyjne i
-    szablony). Kanał 2: rekord `Bay.bay_role` z `substation_ref` tej stacji
-    (`add_sn_bay`, dane starsze). Adapter rysunku czyta oba, więc pominięcie
-    jednego z nich zapaliłoby marker bez ostrzeżenia albo odwrotnie.
-    """
-    meta = _pole(stacja, "meta", {})
-    for spec in _lista(meta, "field_specs"):
-        if _tekst(spec, "bay_role").upper() == "TR":
-            return True
-
-    refy_stacji = set(_teksty([_tekst(stacja, "ref_id"), _tekst(stacja, "id")]))
-    for bay in bays:
-        wlasciciel = _tekst(bay, "substation_ref")
-        if not wlasciciel or wlasciciel not in refy_stacji:
-            continue
-        if _tekst(bay, "bay_role").upper() == "TR":
-            return True
-    return False
+def stacja_ma_pole_transformatorowe(
+    enm: Mapping[str, object] | EnergyNetworkModel, stacja: ElementEnm
+) -> bool:
+    """Czy stacja ma pole SN roli ``TR`` — rekord `bays` z `substation_ref` tej stacji
+    (JEDYNY nośnik pól od karty W5-B; pole na szynie nN nie jest polem rozdzielni SN)."""
+    napiecia = napiecia_szyn(enm)
+    return any(
+        _tekst(bay, "bay_role").upper() == "TR" and not czy_pole_nn(enm, bay, napiecia)
+        for bay in pola_stacji(enm, _ref(stacja))
+    )
 
 
-def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
+def transformatory_bez_pola_sn(
+    enm: Mapping[str, object] | EnergyNetworkModel,
+) -> list[TransformatorBezPolaSN]:
     """Transformatory na szynie SN stacji, dla których nie ma pola roli ``TR``.
 
     Wynik uporządkowany deterministycznie (stacja, transformator) — ten sam
@@ -259,11 +249,7 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
     do dokumentacji.
     """
     substations = _lista(enm, "substations")
-    transformers = _lista(enm, "transformers")
     buses = _lista(enm, "buses")
-    bays = _lista(enm, "bays")
-    generators = _lista(enm, "generators")
-    galezie = _lista(enm, "branches")
     szyna_wg_refu = {ref: bus for bus in buses for ref in _refy(bus)}
 
     znaleziska: list[TransformatorBezPolaSN] = []
@@ -272,13 +258,13 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
         # SZYNY-STACJI-LUSTRO: szyny stacji z JEDNEJ reguły (`enm.tor_pola.szyny_stacji`) —
         # dawny drugi kanał `Bus.substation_ref` był martwy (model `Bus` nie ma tego pola).
         szyny = {
-            ref: szyna_wg_refu[ref] for ref in szyny_stacji(stacja, galezie) if ref in szyna_wg_refu
+            ref: szyna_wg_refu[ref] for ref in szyny_stacji(enm, stacja) if ref in szyna_wg_refu
         }
         if not szyny:
             continue
-        if stacja_ma_pole_transformatorowe(stacja, bays):
+        if stacja_ma_pole_transformatorowe(enm, stacja):
             continue
-        for transformator in transformatory_stacji(stacja, transformers, galezie, generators):
+        for transformator in transformatory_stacji(enm, stacja):
             hv = _tekst(transformator, "hv_bus_ref")
             if not hv or hv not in szyny:
                 continue

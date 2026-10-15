@@ -242,7 +242,7 @@ def moce_odbiorow_stacji_kw(model: EnergyNetworkModel | None) -> dict[str, float
         moce[stacja.ref_id] = 0.0
         # POLA-W-TORZE: odbiór nN leży za aparatem pola nN (szyna odpływu) — przynależność
         # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-        for bus_ref in sorted(szyny_stacji(stacja, model.branches)):
+        for bus_ref in sorted(szyny_stacji(model, stacja)):
             stacja_szyny.setdefault(bus_ref, stacja.ref_id)
     for odbior in model.loads:
         stacja_ref = stacja_szyny.get(odbior.bus_ref)
