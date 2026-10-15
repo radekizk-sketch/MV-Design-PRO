@@ -238,7 +238,7 @@
   color: var(--mvd-muted);
 }
 .mvd-pole-blad {
-  font: 500 10.5px/1.35 var(--mvd-font-mono);
+  font: 500 11.5px/1.4 var(--mvd-font-sans);
   color: var(--mvd-err);
 }
 
@@ -251,7 +251,12 @@
   border-radius: 8px;
   background: var(--mvd-bg);
   color: var(--mvd-ink);
-  font: 600 12.5px/1 var(--mvd-font-mono);
+  /* Wartości pól zwykłą czcionką z cyframi tabelarycznymi (oględziny 2026-10-15): pogrubiona
+   * czcionka o stałej szerokości dla całych napisów („przełącznik bez wzbudzenia (DETC)”)
+   * była trudna do czytania; w narzędziach klasy PowerFactory pola formularza mają czcionkę
+   * interfejsu, a stała szerokość zostaje dla tabel liczb. */
+  font: 500 13px/1 var(--mvd-font-sans);
+  font-variant-numeric: tabular-nums;
   outline: none;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
@@ -427,14 +432,21 @@
   border-top: 1px solid var(--mvd-line);
   background: var(--mvd-panel);
 }
+/* Komunikat walidacji zabiera tylko wolne miejsce; przyciski i licznik kroków nie łamią się
+ * (oględziny 2026-10-15: „← Wstecz”, „Dalej →”, „Zapisz stację”, „Krok 3 z 9” w 2–3 liniach). */
 .mvd-kreator-stopka-walidacja {
   margin-right: auto;
-  font-size: 11.5px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--mvd-warn);
 }
-.mvd-kreator-stopka-nawigacja { margin-right: auto; display: flex; gap: 10px; align-items: center; }
-.mvd-kreator-stopka-licznik { font: 600 11px/1 var(--mvd-font-mono); color: var(--mvd-muted); }
+.mvd-kreator-stopka-nawigacja { margin-right: auto; display: flex; flex: none; gap: 10px; align-items: center; }
+.mvd-kreator-stopka-licznik { flex: none; white-space: nowrap; font: 600 11.5px/1 var(--mvd-font-sans); color: var(--mvd-muted); }
 .mvd-kreator-btn {
+  flex: none;
+  white-space: nowrap;
   height: 36px;
   padding: 0 18px;
   border-radius: 8px;
