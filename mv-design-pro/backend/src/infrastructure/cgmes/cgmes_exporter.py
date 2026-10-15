@@ -592,11 +592,3 @@ def build_eq_tp_trees(enm: EnergyNetworkModel) -> tuple[ET.Element, ET.Element]:
         _emit_substation(eq, sub, bus_kv)
 
     return eq, tp
-
-
-def export_eq_tp_bytes(enm: EnergyNetworkModel) -> tuple[bytes, bytes]:
-    """Serialize the ENM to (EQ bytes, TP bytes) canonical RDF/XML."""
-    from .rdf_writer import to_bytes
-
-    eq, tp = build_eq_tp_trees(enm)
-    return to_bytes(eq), to_bytes(tp)

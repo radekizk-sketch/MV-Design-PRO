@@ -21,7 +21,7 @@ import zipfile
 from typing import TYPE_CHECKING, Any
 
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
-from infrastructure.cgmes.cgmes_exporter import export_eq_tp_bytes
+from infrastructure.cgmes.cgmes_exporter import build_eq_tp_trees
 from infrastructure.cgmes.cgmes_importer import (
     CgmesImportResult,
     CgmesImportStatus,
@@ -37,12 +37,15 @@ from infrastructure.cgmes.profiles import (
     PROFILE_TP,
     TP_PROFILE_ID,
 )
+from infrastructure.cgmes.rdf_writer import to_bytes
 from infrastructure.cgmes.refmap import (
     LOSSY_BOUNDARY,
     REFMAP_SCHEMA_VERSION,
     CgmesRefMap,
 )
 from network_model.nazwy import nazwa_nadana
+
+from .kompletnosc import ModelNiekompletnyDlaCgmesError, braki_kompletnosci_cgmes
 
 if TYPE_CHECKING:
     from enm.models import EnergyNetworkModel
@@ -145,8 +148,18 @@ def _gen_class(gen: Any) -> str:
 
 
 def export_cgmes(enm: EnergyNetworkModel) -> bytes:
-    """Export the ENM to a deterministic CGMES ZIP (EQ + TP + side-car + manifest)."""
-    eq_bytes, tp_bytes = export_eq_tp_bytes(enm)
+    """Export the ENM to a deterministic CGMES ZIP (EQ + TP + side-car + manifest).
+
+    Raises ``ModelNiekompletnyDlaCgmesError`` (named reasons, Polish) when the EQ/TP
+    graph built from the model would not be a data exchange (no node, non-positive
+    base voltage, terminal pointing at a node absent from the file) — see
+    ``kompletnosc.py``. No file is produced in that case.
+    """
+    eq_tree, tp_tree = build_eq_tp_trees(enm)
+    braki = braki_kompletnosci_cgmes(enm, eq_tree, tp_tree)
+    if braki:
+        raise ModelNiekompletnyDlaCgmesError(braki)
+    eq_bytes, tp_bytes = to_bytes(eq_tree), to_bytes(tp_tree)
     refmap = build_refmap(enm)
     refmap_bytes = refmap.to_json().encode("utf-8")
 

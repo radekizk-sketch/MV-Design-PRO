@@ -34,7 +34,7 @@
  * ----------
  * - Default mode = 'dark_scada' (ekran)
  * - Mode change via CSS variables (instant, no re-render flicker)
- * - Eksport zawsze light_technical (egzekwowane w exportSvg.ts / exportPdf.ts)
+ * - Eksport zawsze light_technical (egzekwowane w `ui/sld/v3/export/exportPalette.ts`)
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';

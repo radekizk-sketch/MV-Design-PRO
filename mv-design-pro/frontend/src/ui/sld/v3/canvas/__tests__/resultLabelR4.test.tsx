@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
@@ -157,7 +157,7 @@ describe('R4 — przełączanie analiz na WSPÓLNYM rejestrze (wym. 13)', () => 
 });
 
 describe('R4 — eksport warstwy wynikowej bez utraty pozycji (wym. 18)', () => {
-  it('eksport SVG (ta sama serializacja co ekran) zawiera etykiety wynikowe na POZYCJACH ekranowych', () => {
+  it('eksport SVG (ta sama serializacja co ekran) zawiera etykiety wynikowe na POZYCJACH ekranowych', async () => {
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r1'));
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
 
@@ -176,11 +176,14 @@ describe('R4 — eksport warstwy wynikowej bez utraty pozycji (wym. 18)', () => 
     const RealBlob = globalThis.Blob;
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
     vi.stubGlobal('Blob', blobCtorSpy);
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+    // Eksport jest asynchroniczny od karty KASACJA-SCL-I-CIM-KLIENT (jedna ścieżka dla
+    // rysunku i modelu z serwera) — pobranie następuje po rozwiązaniu obietnicy.
+    await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalledTimes(1));
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
     vi.unstubAllGlobals();
 

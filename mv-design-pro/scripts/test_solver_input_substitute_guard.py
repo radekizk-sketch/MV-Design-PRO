@@ -2011,7 +2011,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `sc_binding_meta.py`; zero wpisow). POMIAR guardem na drzewie karty.
         # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): baza integracji 564, -3 skasowane
         # martwe mappery = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): 561 -> 562 (+1
+        # `application/cgmes/kompletnosc.py` — bramka kompletnosci eksportu CGMES, zero
+        # wpisow dlugu; application 30 plikow/suma 91 bez zmian). POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
+        # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
+        "Przeskanowano 562 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2291,7 +2296,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): application na bazie integracji 248,
         # -3 skasowane martwe mappery = 245; dlug 30/90 (pomiar bazy; pin 29/89 był nieaktualny).
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 90, "
+        # Karta KASACJA-SCL-I-CIM-KLIENT: application 245 -> 246 (+1
+        # `application/cgmes/kompletnosc.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
+        # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=246, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
         # Partia integracji 8: api dlug 2/3 -> 1/2 — POMIAR guardem na drzewie bazy integracji
         # (53551167b, przed scaleniami partii); pin 2/3 był nieaktualny na bazie.

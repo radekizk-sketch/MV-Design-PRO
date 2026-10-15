@@ -3,8 +3,11 @@
  * ILOCZYN CECH: transformator {na szynie głównej, na zacisku pola, blokowy przez wskazanie
  * źródła, blokowy przez rolę katalogową, na szynie obcej, zadeklarowany w stacji bez szyn}
  * × konsument {podsumowanie transformatorów budowy sieci, szuflada (stacja transformatora),
- * eksport CIM (kontener), topologia SLD (transformatory stacji), karta i przegląd stacji
- * (transformatory rozdzielcze)}. Model = model iloczynu z pliku parytetu (zbiory backendu).
+ * topologia SLD (transformatory stacji), karta i przegląd stacji (transformatory rozdzielcze)}.
+ * Konsument „eksport CIM (kontener)” zniknął razem z klientowym eksporterem CIM (karta
+ * KASACJA-SCL-I-CIM-KLIENT, decyzja K-14/D-41): model sieci eksportuje wyłącznie backend
+ * (CGMES EQ+TP), który przynależności transformatora do stacji nie zapisuje w EQ (pola i
+ * kontenery idą w side-car) — w kliencie nie ma już czwartego czytelnika tej reguły. Model = model iloczynu z pliku parytetu (zbiory backendu).
  * Dawna reguła „samo `transformer_refs`” gubiła transformator na zacisku pola stacji bez
  * deklaracji — te asercje ją czerwienią (iniekcja w meldunku karty).
  */
@@ -18,7 +21,6 @@ import type { EnergyNetworkModel, Substation } from '../../../types/enm';
 import { selectTransformerSummaries } from '../../network-build/networkBuildStore';
 import { readTopologyFromENM } from '../../sld/core/topologyInputReader';
 import { stationRefForTransformerSelection } from '../../sld/shared/detailDrawerData';
-import { buildCimInput } from '../../sld/v3/export/exportModelData';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../transformatoryStacji';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -60,7 +62,6 @@ describe('stacja transformatora — każdy konsument na jednej regule', () => {
     expect(stationRefOfTransformer(enm, tr)).toBe(stacja);
     expect(stationRefForTransformerSelection(enm, tr)).toBe(stacja);
     expect(selectTransformerSummaries(enm).find((t) => t.id === tr)?.stationRef ?? null).toBe(stacja);
-    expect(buildCimInput(enm).powerTransformers.find((t) => t.mrid === tr)?.substation_mrid).toBe(stacja ?? '');
   });
 
   it('topologia SLD: transformatory stacji A = rozdzielcze i blokowe (przynależność, bez filtra)', () => {

@@ -15,6 +15,10 @@
  * wołający jednym propem `onExport`, którego implementacja jest mapą
  * `Record<SldExportFormat, …>` (`v3/export/sldExport.ts`), więc kompilator
  * pilnuje, żeby oferta i pokrycie nie mogły się rozjechać.
+ *
+ * Karta KASACJA-SCL-I-CIM-KLIENT: `onExport` jest ASYNCHRONICZNY — pozycja
+ * modelu sieci (CGMES) pobiera archiwum z serwera. Na czas pobrania pozycja
+ * pokazuje stan pracy, a pozostałe są zablokowane (jedno pobranie naraz).
  */
 
 import { useState } from 'react';
@@ -29,7 +33,7 @@ export interface SldExportFormatMenuProps {
    * `null`, gdy nie ma czego eksportować (brak rysunku/modelu). Błąd budowy
    * pliku ma polecieć WYJĄTKIEM — menu pokaże komunikat przez `onError`.
    */
-  readonly onExport: (format: SldExportFormat) => string | null;
+  readonly onExport: (format: SldExportFormat) => Promise<string | null>;
   readonly className?: string;
   readonly onExported?: (filename: string, format: SldExportFormat) => void;
   readonly onError?: (message: string) => void;
@@ -39,11 +43,11 @@ export function SldExportFormatMenu({ onExport, className, onExported, onError }
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<SldExportFormat | null>(null);
 
-  const handleExport = (format: SldExportFormat): void => {
+  const handleExport = async (format: SldExportFormat): Promise<void> => {
     if (busy) return;
     setBusy(format);
     try {
-      const filename = onExport(format);
+      const filename = await onExport(format);
       if (filename === null) {
         onError?.('Nie ma czego wyeksportować — najpierw wczytaj model sieci.');
         return;
@@ -81,7 +85,7 @@ export function SldExportFormatMenu({ onExport, className, onExported, onError }
                 type="button"
                 role="menuitem"
                 disabled={busy !== null}
-                onClick={() => handleExport(d.id)}
+                onClick={() => void handleExport(d.id)}
                 title={d.descriptionPl}
                 data-testid={`sld-export-format-${d.id}`}
                 className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left text-sm text-scada-text hover:bg-scada-panel disabled:opacity-50"
