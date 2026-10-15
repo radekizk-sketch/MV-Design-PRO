@@ -1,7 +1,7 @@
 {
-  "input_hash": "2cb6ef4958287efd05eea71595f3967357e4fa4e82513d8e97da02eea8ed9ffb",
+  "input_hash": "009f9235851383d89fd2fce8ba8b670ebc58f8fa3c16cd34a9ce174b9a4ace9a",
   "kontekst_sily_sieci": {
-    "bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+    "bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
     "is_weak": false,
     "missing_data": [],
     "modules": [

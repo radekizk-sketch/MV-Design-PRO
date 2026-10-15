@@ -272,3 +272,18 @@ def test_wszystkie_ref_id_lustro_topology_ops_z_punktami_rozgalezienia() -> None
         k for k in kolekcje if f"{k}/1" not in oczekiwane and k not in {"katalog_projektu"}
     )
     assert poza == sorted(set(poza)), poza
+
+
+def test_relacja_wytworcy_z_polem_z_jednego_klucza() -> None:
+    """Karta W5-B: pole wytwórcy to `Generator.meta.field_ref` (`enm.pola.ref_pola_wytworcy`)
+    — dla słownika migawki i modelu; klucz `bay_ref` (nieistniejące pole modelu) nie jest
+    relacją."""
+    from enm.models import Generator
+    from enm.pola import ref_pola_wytworcy
+
+    assert ref_pola_wytworcy({"meta": {"field_ref": "pole-1"}}) == "pole-1"
+    assert ref_pola_wytworcy({"meta": {"bay_ref": "pole-1"}}) is None
+    assert ref_pola_wytworcy({"meta": {"field_ref": "  "}}) is None
+    assert ref_pola_wytworcy({}) is None
+    gen = Generator(ref_id="g", name="G", bus_ref="b", p_mw=1.0, meta={"field_ref": "pole-2"})
+    assert ref_pola_wytworcy(gen) == "pole-2"

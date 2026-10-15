@@ -1346,7 +1346,9 @@ def test_dobor_ct_uzywa_obwodu_wtornego_z_pomiaru_modelu(app_client) -> None:
                     "bus_ref": "b_sn",
                     "p_mw": 1.0,
                     "meta": {
-                        "bay_ref": "field_der",
+                        # Relacja wytwórcy z polem: `meta.field_ref` (karta W5-B; model
+                        # `Generator` nie ma pola `bay_ref`).
+                        "field_ref": "field_der",
                         "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                     },
                     "tags": [],
@@ -1429,7 +1431,9 @@ def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> N
                     "bus_ref": "b_sn",
                     "p_mw": 1.0,
                     "meta": {
-                        "bay_ref": "field_der",
+                        # Relacja wytwórcy z polem: `meta.field_ref` (karta W5-B; model
+                        # `Generator` nie ma pola `bay_ref`).
+                        "field_ref": "field_der",
                         "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                     },
                     "tags": [],

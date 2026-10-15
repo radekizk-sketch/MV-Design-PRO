@@ -265,6 +265,19 @@ def pola_wg_szyny(
     return wg_szyny
 
 
+#: Klucz relacji wytwórcy z polem rozdzielnicy (`Generator.meta`) — zapisują go operacje
+#: budowy źródła i promocja aparatów nN; czytają: reguła DER walidatora semantycznego, widoki
+#: wytwórcy (przekładniki, funkcje zabezpieczeń) i ta funkcja. Model `Generator` nie ma pola
+#: `bay_ref` — do karty W5-B czytelnicy szukali relacji pod tym kluczem i zawsze dostawali brak.
+KLUCZ_POLA_WYTWORCY = "field_ref"
+
+
+def ref_pola_wytworcy(generator: Any) -> str | None:
+    """Identyfikator pola, w którym stoi wytwórca (`Generator.meta.field_ref`), albo `None`."""
+    meta = _pole_rekordu(generator, "meta")
+    return _napis(meta.get(KLUCZ_POLA_WYTWORCY)) if isinstance(meta, Mapping) else None
+
+
 def zacisk_pola(rekord: Any) -> str | None:
     """Własny zacisk pola (szyna za aparatem pola) — `terminal_bus_ref`, jedyny nośnik."""
     if rekord is None:

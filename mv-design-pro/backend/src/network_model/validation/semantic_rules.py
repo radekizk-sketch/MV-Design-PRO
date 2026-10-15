@@ -24,6 +24,7 @@ Reguły są pure — bez mutacji ENM, bez stanu globalnego.
 
 from collections.abc import Callable
 
+from enm.pola import ref_pola_wytworcy
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 
 from .validator import Severity, ValidationIssue
@@ -162,8 +163,7 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     bays_by_id = {b.get("ref_id"): b for b in _bays(enm)}
     for gen in _generators(enm):
-        meta = gen.get("meta")
-        bay_ref = meta.get("field_ref") if isinstance(meta, dict) else None
+        bay_ref = ref_pola_wytworcy(gen)
         if not bay_ref:
             continue
         bay = bays_by_id.get(bay_ref)

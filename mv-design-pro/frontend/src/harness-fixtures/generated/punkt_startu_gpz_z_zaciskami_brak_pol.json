@@ -518,7 +518,6 @@
         ],
         "id": "fe5be262-8b68-57e1-879e-60e8d4294318",
         "meta": {
-          "field_specs": [],
           "gpz_hv_bus_refs": [
             "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
             "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"

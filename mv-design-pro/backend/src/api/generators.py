@@ -41,6 +41,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import ref_pola_wytworcy
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -916,11 +917,8 @@ def get_der_protection_functions(
 
     zmaterializowane = generator.get("materialized_params") or {}
     meta = generator.get("meta") or {}
-    bay_ref = None
-    for zrodlo in (zmaterializowane, meta):
-        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("bay_ref"), str):
-            bay_ref = zrodlo["bay_ref"]
-            break
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
 
     sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka)
@@ -1061,7 +1059,8 @@ def get_der_instrument_transformers(
         _slownik_pomocniczy(generator.get("materialized_params")),
         _slownik_pomocniczy(generator.get("meta")),
     )
-    bay_ref = _pierwsza_wartosc(zrodla, "bay_ref")
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
     sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref) or {}
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
@@ -1259,18 +1258,11 @@ def _obwod_wtorny_pomiaru(
     pierwszy po posortowanym `ref_id` (determinizm, zero zaleznosci od kolejnosci
     zapisu w licie).
 
-    STAN ZMIERZONY 2026-09-09 (poza zakresem karty W3-B, nazwany uczciwie):
-    `Generator.bay_ref` NIE JEST dzis ustawiany zadna droga produkcyjna —
-    `DerGeneratorCreateRequest` nie ma takiego pola, a `DER_BINDING_KEYS`
-    operacji `set_der_catalog_bindings` (jedyna droga edycji wiazan wytworcy
-    PO utworzeniu) go nie zawiera. W praktyce `bay_ref` na tej funkcji jest
-    wiec DZIS zawsze `None` dla KAZDEGO wytworcy w produkcji — ta funkcja
-    (i cala reszta kodu ponizej zaleznego od `bay_ref`, w tym ISTNIEJACE
-    PRZED TA KARTA `_sciezka_zwarcia_dla_pola`) czeka na przyszla karte, ktora
-    doda wytworcy `bay_ref` (przypiecie do pola rozdzielnicy). Droga
-    model → domena → jadro jest POPRAWNA i przetestowana (fixtury reczne
-    ustawiajace `meta.bay_ref`), ale NIEOSIAGALNA z biezacego kreatora DER —
-    to PRE-ISTNIEJACA luka (brak `bay_ref` wytworcy), nie defekt tej karty.
+    Pole wytwórcy (`bay_ref` tej funkcji) to relacja `Generator.meta.field_ref`
+    (`enm.pola.ref_pola_wytworcy`), zapisywana przez operacje budowy źródła i promocję
+    aparatów nN. KOREKTA karty W5-B: dawny opis „`Generator.bay_ref` nie jest ustawiany
+    żadną drogą" był prawdą o NIEISTNIEJĄCYM kluczu — relacja istniała pod `meta.field_ref`,
+    a czytelnicy szukali jej pod `bay_ref` i zawsze dostawali brak (luka zamknięta).
     """
     if not bay_ref:
         return _OBWOD_WTORNY_PUSTY

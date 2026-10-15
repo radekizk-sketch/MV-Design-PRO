@@ -1,0 +1,602 @@
+{
+ "mv-design-pro/frontend/public/test-fixtures/gpzFeeder.enm.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/public/test-fixtures/nnBoardDemo.enm.json": {
+  "klasy": {
+   "nosnik_pol": 5,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/public/test-fixtures/sldSubstrate52s.enm.json": {
+  "klasy": {
+   "odcisk": 2,
+   "nosnik_pol": 108
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/public/test-fixtures/sldSubstrate52s.powerflow.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/public/test-fixtures/sldSubstrate52s.powerflow.maintenance.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/scripts/demo-oze-sc/demoOzeSc.enm.json": {
+  "klasy": {
+   "odcisk": 2,
+   "nosnik_pol": 26
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/scripts/demo-oze-sc/demoOzeSc.sc.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/dynamika_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "inne": 8,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".buses[10].id: 50780a4a-b35f-5c33-918b-c72106824b19 → f5fbc020-4119-5040-aa28-bc4419c12f14",
+    ".buses[10].meta.nn_field_migrowany_z: stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_main_breaker → nn/6edff2fc35703d7dafcba4dfbb5d3509/source_field",
+    ".buses[10].name: Wyłącznik główny nN → Pole PV nN",
+    ".buses[10].ref_id: nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus → nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/dynamika_scena_przebiegi.json": {
+  "klasy": {
+   "odcisk": 7
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/dynamika_scena_wyniki.json": {
+  "klasy": {
+   "odcisk": 7
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/frt_scena_przebieg_zwarciowy.json": {
+  "klasy": {
+   "rewizja": 1,
+   "odcisk": 2
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/frt_scena_sekwencja.json": {
+  "klasy": {
+   "odcisk": 1,
+   "inne": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".kontekst_sily_sieci.bus_ref: nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus → sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/gotowosc_v126_scena_akademickie.json": {
+  "klasy": {
+   "inne": 4,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".analizy[5].braki[len 1→2]: None → None",
+    ".analizy[5].braki[0].opis_pl: Model nie zawiera ograniczników przepięć (aparaty pierwotne  → Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi ",
+    ".analizy[5].warunki[len 2→3]: None → None",
+    ".analizy[5].warunki[1].opis_pl: Model nie zawiera ograniczników przepięć (aparaty pierwotne  → Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi "
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/identyfikatory_grafu.json": {
+  "klasy": {
+   "inne": 131
+  },
+  "przyklady": {
+   "inne": [
+    ".pary[len 68→82]: None → None",
+    ".pary[0].graph_id: c34c8725-98ca-5f04-84aa-2114851a4221 → edf8817a-c4e9-516c-93f9-7e119c5532a8",
+    ".pary[0].ref_id: bay/44936bf0357b61ace2fcd8cd13ccbaac/in → bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+    ".pary[1].graph_id: 0227e15d-809f-5c1c-99f9-a7a997b72a75 → 3a2d900c-62a0-5687-8038-9194d84d7bff"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/koordynacja_scena_galezie.json": {
+  "klasy": {
+   "odcisk": 8
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/koordynacja_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/koordynacja_scena_zwarcia_max.json": {
+  "klasy": {
+   "odcisk": 8,
+   "inne": 18
+  },
+  "przyklady": {
+   "inne": [
+    ".rows[0].proof_binding.proof_ref: proof:short-circuit:965e6d28b7402590829b40a0a88272ec1289c670 → proof:short-circuit:02d111cdd9d8f71e89f51005bac923de6107596a",
+    ".rows[0].proof_ref: proof:short-circuit:965e6d28b7402590829b40a0a88272ec1289c670 → proof:short-circuit:02d111cdd9d8f71e89f51005bac923de6107596a",
+    ".rows[1].proof_binding.proof_ref: proof:short-circuit:5c33f8da2f28052b2fcf41d4cb800a0be8dddf9f → proof:short-circuit:c7d841b1f22bfe889e153c0cd1cb27a949fed012",
+    ".rows[1].proof_ref: proof:short-circuit:5c33f8da2f28052b2fcf41d4cb800a0be8dddf9f → proof:short-circuit:c7d841b1f22bfe889e153c0cd1cb27a949fed012"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/koordynacja_scena_zwarcia_min.json": {
+  "klasy": {
+   "odcisk": 8,
+   "inne": 18
+  },
+  "przyklady": {
+   "inne": [
+    ".rows[0].proof_binding.proof_ref: proof:short-circuit:6aa9cc8c58ad19c0f72b9dbecbc543b71ab2a2fe → proof:short-circuit:2c10b7502bb6b152495f7b8e79d7c5661c560217",
+    ".rows[0].proof_ref: proof:short-circuit:6aa9cc8c58ad19c0f72b9dbecbc543b71ab2a2fe → proof:short-circuit:2c10b7502bb6b152495f7b8e79d7c5661c560217",
+    ".rows[1].proof_binding.proof_ref: proof:short-circuit:fa32e35018591f9eb3bab361645ed7c334848ac3 → proof:short-circuit:86295f61b96a185cff91146260d1501ba3c4c412",
+    ".rows[1].proof_ref: proof:short-circuit:fa32e35018591f9eb3bab361645ed7c334848ac3 → proof:short-circuit:86295f61b96a185cff91146260d1501ba3c4c412"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/lom_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "inne": 177,
+   "LICZBA": 2,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".branches[4].catalog_namespace: None → APARAT_SN",
+    ".branches[4].catalog_ref: None → sw-cb-abb-vd4-17kv-630a",
+    ".branches[4].id: 5d9c63d4-ae1a-539b-af5b-c1bda21f36e0 → 91484a7c-65b4-5330-9f53-83a57ec255bc",
+    ".branches[4].materialized_params: None → {'catalog_item_id': 'sw-cb-abb-vd4-17kv-630a', 'catalog_item"
+   ],
+   "LICZBA": [
+    ".buses[8].voltage_kv: 0.4 → 15.0",
+    ".buses[10].voltage_kv: 15.0 → 0.4"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/lom_scena_wynik.json": {
+  "klasy": {
+   "inne": 15,
+   "odcisk": 1,
+   "LICZBA": 2
+  },
+  "przyklady": {
+   "inne": [
+    ".fields[len 4→1]: None → None",
+    ".summary.ocena.etykieta.etykieta_pl: Ocena niewykonana → Brak zweryfikowanej podstawy wymagania",
+    ".summary.ocena.etykieta.semantyka: neutralna → ostrzegawcza",
+    ".summary.ocena.oceny_skladowe[len 7→1]: None → None"
+   ],
+   "LICZBA": [
+    ".summary.fields_total: 4 → 1",
+    ".summary.statusy[0].liczba: 3 → 1"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/macierz_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/magazyn_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/migotanie_scena_wynik.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/nazwy_obiektow_scen_akademickich.json": {
+  "klasy": {
+   "nosnik_pol": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/oze_analiz_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 59,
+   "inne": 4,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".branches[3].meta.bay_ref: bay/44936bf0357b61ace2fcd8cd13ccbaac/in → <brak>",
+    ".branches[5].meta.bay_ref: bay/44936bf0357b61ace2fcd8cd13ccbaac/tr → <brak>",
+    ".buses[3].meta.bay_ref: bay/44936bf0357b61ace2fcd8cd13ccbaac/in → <brak>",
+    ".buses[4].meta.bay_ref: bay/44936bf0357b61ace2fcd8cd13ccbaac/tr → <brak>"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/oze_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "inne": 32,
+   "odcisk": 1,
+   "rewizja": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".branches[0].id: 060a0c1e-f10e-5467-a7ef-e9077792bb6f → d41f5583-7f42-54c6-9088-7014da1937bf",
+    ".branches[0].meta.apparatus_kind: <brak> → BREAKER",
+    ".branches[0].meta.bay_role: <brak> → OZE",
+    ".branches[0].meta.catalog_binding: <brak> → None"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/porownanie_scena_biegi_zabezpieczen.json": {
+  "klasy": {
+   "odcisk": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/porownanie_scena_wynik_zabezpieczen.json": {
+  "klasy": {
+   "odcisk": 10
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_brak_pol.json": {
+  "klasy": {
+   "nosnik_pol": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_wolne_jedno.json": {
+  "klasy": {
+   "nosnik_pol": 2
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_wolne_kilka.json": {
+  "klasy": {
+   "nosnik_pol": 2
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_zajete_wszystkie.json": {
+  "klasy": {
+   "nosnik_pol": 2
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_brak_pol.json": {
+  "klasy": {
+   "nosnik_pol": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_wolne_jedno.json": {
+  "klasy": {
+   "nosnik_pol": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_wolne_kilka.json": {
+  "klasy": {
+   "nosnik_pol": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_zajete_wszystkie.json": {
+  "klasy": {
+   "nosnik_pol": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/segmenty_referencji_modelu.json": {
+  "klasy": {
+   "inne": 60
+  },
+  "przyklady": {
+   "inne": [
+    ".pliki_zrodlowe[3]: src/enm/migrations/nn_field_specs_promocja.py → src/enm/migrations/promocja_aparatow_nn.py",
+    ".segmenty[len 112→108]: None → None",
+    ".segmenty[50]: linia_in_1 → load",
+    ".segmenty[51]: linia_odg_1 → lv_auto"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/sila_sieci_scena_wynik.json": {
+  "klasy": {
+   "odcisk": 2
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/stacja_demo_scena_migawka.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/studium_dokument_scena_macierz.json": {
+  "klasy": {
+   "odcisk": 3,
+   "inne": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".zalozenia_pl[2]: Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4 → Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/wiazania_scena_funkcje_zabezpieczen.json": {
+  "klasy": {
+   "inne": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".bay_ref: None → nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/wiazania_scena_przekladniki.json": {
+  "klasy": {
+   "inne": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".bay_ref: None → nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/wniosek_scena_macierz_przebiegi.json": {
+  "klasy": {
+   "odcisk": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/harness-fixtures/generated/wniosek_scena_magazyn_przebiegi.json": {
+  "klasy": {
+   "odcisk": 4
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/shared/__tests__/fixtures/szynyStacjiParytet.json": {
+  "klasy": {
+   "nosnik_pol": 21,
+   "inne": 2182
+  },
+  "przyklady": {
+   "inne": [
+    ".iloczyn.model.branches[len 9→10]: None → None",
+    ".iloczyn.model.branches[8].from_bus_ref: A/zacisk-in → A/nn",
+    ".iloczyn.model.branches[8].meta.nn_field_migrowany_z: <brak> → A/nn-sierota",
+    ".iloczyn.model.branches[8].ref_id: kabel → A/aparat-sierota"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json": {
+  "klasy": {
+   "odcisk": 2,
+   "nosnik_pol": 108
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.powerflow.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.powerflow.maintenance.json": {
+  "klasy": {
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-add_grid_source_sn.enm.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-add_sn_bay.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-continue_trunk_segment_sn.enm.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-insert_station_on_segment_sn.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-start_branch_segment_sn.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPo.enm.json": {
+  "klasy": {
+   "nosnik_pol": 30,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPrzed.enm.json": {
+  "klasy": {
+   "nosnik_pol": 28,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPo.enm.json": {
+  "klasy": {
+   "nosnik_pol": 8,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPrzed.enm.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/canvas/__tests__/fixtures/s95GpzSwiezy.enm.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-lacznik.enm.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-slup.enm.json": {
+  "klasy": {
+   "nosnik_pol": 15,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-wezel.enm.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-zksn.enm.json": {
+  "klasy": {
+   "nosnik_pol": 18,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/gpzFeeder.enm.json": {
+  "klasy": {
+   "nosnik_pol": 6,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json": {
+  "klasy": {
+   "nosnik_pol": 100,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/openBranch.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/openTerminal.enm.json": {
+  "klasy": {
+   "nosnik_pol": 2,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/openTrunkChain.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/pomiarOdgalezienie.enm.json": {
+  "klasy": {
+   "nosnik_pol": 200,
+   "inne": 18,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".enm.branches[35].meta.bay_ref: bay/a2dac1e21ec0f3b6c481c9f679d00a74/in → <brak>",
+    ".enm.branches[36].meta.bay_ref: bay/a2dac1e21ec0f3b6c481c9f679d00a74/pomiarowe_1 → <brak>",
+    ".enm.branches[37].meta.bay_ref: bay/a2dac1e21ec0f3b6c481c9f679d00a74/tr → <brak>",
+    ".enm.branches[47].meta.bay_ref: bay/f4f8335d49dcfcf911fa6e3ee8b89735/in → <brak>"
+   ]
+  }
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/stacjaPolePomiarowe.enm.json": {
+  "klasy": {
+   "nosnik_pol": 4,
+   "odcisk": 1
+  },
+  "przyklady": {}
+ },
+ "mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json": {
+  "klasy": {
+   "nosnik_pol": 103,
+   "inne": 10,
+   "odcisk": 1
+  },
+  "przyklady": {
+   "inne": [
+    ".enm.branches[5].meta.bay_ref: bay/8e61dd2fa354691b85bb85078b4cbdf2/in → <brak>",
+    ".enm.branches[6].meta.bay_ref: bay/8e61dd2fa354691b85bb85078b4cbdf2/pomiarowe_1 → <brak>",
+    ".enm.branches[7].meta.bay_ref: bay/8e61dd2fa354691b85bb85078b4cbdf2/tr → <brak>",
+    ".enm.branches[8].meta.bay_ref: bay/8e61dd2fa354691b85bb85078b4cbdf2/linia_out_1 → <brak>"
+   ]
+  }
+ }
+}

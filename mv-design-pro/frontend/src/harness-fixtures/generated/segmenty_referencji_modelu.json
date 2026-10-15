@@ -50,9 +50,6 @@
     "gpz",
     "hv_auto",
     "in",
-    "linia_in_1",
-    "linia_odg_1",
-    "linia_out_1",
     "load",
     "lv_auto",
     "main",
@@ -65,7 +62,6 @@
     "nn_main_breaker",
     "nn_source",
     "outgoing",
-    "pomiarowe_1",
     "producer_nn_bus",
     "protection",
     "pv",
@@ -89,11 +85,12 @@
     "sn_field_terminal",
     "source",
     "source_field",
+    "source_field_device",
+    "source_field_terminal",
     "spd",
     "split_bus",
     "split_left",
     "split_right",
-    "sprzeglo_1",
     "station",
     "stn",
     "sub",
@@ -105,7 +102,6 @@
     "switch_node_2",
     "terminal",
     "tr",
-    "transformatorowe_1",
     "transformer",
     "ups",
     "vt",
@@ -127,6 +123,6 @@
     "src/enm/catalog_completion.py",
     "src/enm/domain_operations.py",
     "src/enm/domain_operations_v2.py",
-    "src/enm/migrations/nn_field_specs_promocja.py"
+    "src/enm/migrations/promocja_aparatow_nn.py"
   ]
 }
