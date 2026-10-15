@@ -37,7 +37,7 @@ export const KOMPENSATOR_STRINGS = {
   podgladZrodloWartosc: 'Obliczenie po stronie serwera z pierwszych zasad (solver podglądu baterii)',
   podgladBrak: 'Wybierz typ baterii, aby zobaczyć susceptancję i prąd.',
   podgladBlad: 'Nie udało się wyznaczyć podglądu baterii.',
-  ostrzezenieNapiecie: 'Napięcie typu nie pasuje do napięcia szyny — dobierz typ dla właściwego napięcia.',
+  ostrzezenieNapiecie: 'Napięcie znamionowe typu nie pasuje do napięcia szyny — wybierz typ na napięcie szyny.',
 
   // Downstream — „co to uruchamia".
   downstreamTytul: 'Co to uruchamia',
@@ -64,12 +64,9 @@ export const KOMPENSATOR_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz baterię SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem baterii.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać baterię.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog baterii kondensatorów ładuje się asynchronicznie; zapis bez
-  // niego byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu baterii kondensatorów SN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis baterii unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać baterii kondensatorów SN.',
+  szynaDoWskazania: 'Do wskazania na schemacie',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: kompensacja mocy biernej baterią kondensatorów',

@@ -4,6 +4,8 @@
  */
 
 export const ZRODLO_STRINGS = {
+  /** Nazwa karty pola bez nazwy handlowej i składu kanonicznego. */
+  kartaPolaZapas: 'Karta pola z katalogu',
   eyebrow: 'MODEL SIECI · ŹRÓDŁO ZASILANIA',
   celTworzenie:
     'Dodaj Główny Punkt Zasilający (GPZ) — źródło systemowe SN dla obliczeń. '
@@ -26,9 +28,7 @@ export const ZRODLO_STRINGS = {
   katalogPlaceholder: '— wybierz źródło systemowe GPZ —',
   katalogLadowanie: 'Ładowanie katalogu źródeł…',
   katalogBlad: 'Nie udało się pobrać katalogu źródeł systemowych SN.',
-  katalogPomoc:
-    'Pakiet katalogowy GPZ wnosi napięcie SN, moc zwarciową Sk″ i stosunek R/X. '
-    + 'Wartości liczbowe zawsze pochodzą z katalogu — nie z ręcznego wpisu.',
+  katalogPomoc: 'Pozycja katalogu GPZ — napięcie SN, moc zwarciowa Sk″ i R/X sieci zasilającej.',
   zrodloParametrow: 'Źródło parametrów',
   powiazanieKatalogowe: 'Powiązanie katalogowe',
   powiazanieBrak: 'wybierz wariant katalogowy',
@@ -64,17 +64,11 @@ export const ZRODLO_STRINGS = {
   ik3Min: 'Ik″min',
   ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla Sk″min, gdy OSD podaje prąd, nie moc.',
   rxMin: 'Stosunek R/X (MIN)',
-  rxMinPomoc:
-    'Stosunek R/X dla scenariusza MIN. Wymaga podanego Sk″min albo Ik″min — bez nich '
-    + 'nie ma zastosowania (scenariusz MIN liczony z danych maksymalnych).',
+  rxMinPomoc: 'R/X scenariusza minimalnego — działa razem z Sk″min albo Ik″min.',
 
   // Napięcie zadane szyny bilansującej (CV-4.3 K7c) — niezależne od scenariusza MIN.
   uSetPu: 'Napięcie zadane szyny bilansującej',
-  uSetPuPomoc:
-    'Po co: nastawa modułu napięcia szyny bilansującej (MATPOWER Vm węzła slack) '
-    + '— punkt startowy i referencja rozpływu mocy całej sieci SN. Z czego: warunki '
-    + 'przyłączenia OSD albo profil pracy sieci nadrzędnej. Puste = znamionowe '
-    + '(1,0 p.u.). Pasmo dopuszczalne: 0,8–1,2 p.u.',
+  uSetPuPomoc: 'Napięcie szyny bilansującej [p.u.] — referencja rozpływu; puste — 1,0 p.u.',
 
   // Parametry normowe.
   normyTytul: 'Parametry normowe',
@@ -283,9 +277,11 @@ export const ZRODLO_STRINGS = {
   // Akcje / błędy.
   zapisz: 'Zapisz GPZ',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem GPZ.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać GPZ.',
-  katalogLadowanieStopka: 'Ładowanie katalogu systemów zasilających — zapis chwilę poczeka.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis GPZ unieważnia jego wyniki.',
+  wybierz: '— wybierz —',
+  napiecieSnPlaceholder: '— wybierz napięcie —',
+  podsumCzeka: 'Podgląd IEC 60909 policzy backend po podaniu napięcia, parametrów zwarciowych i czasu tk.',
+  czasCieplnyPomoc: 'Czas trwania zwarcia do wytrzymałości cieplnej Ith.',
 
   // Opcje.
   rodzajeAparatu: [

@@ -11,16 +11,14 @@ export const PRZYPISANIE_KATALOGU_STRINGS = {
 
   elementTytul: 'Element docelowy',
   element: 'Element',
-  elementPomoc: 'Element modelu, do którego przypisujesz typ. Po przypisaniu backend materializuje '
-    + 'parametry znamionowe z katalogu (np. R, X, In).',
+  elementPomoc: 'Element modelu, któremu przypisujesz typ — parametry znamionowe wchodzą z katalogu.',
   przestrzen: 'Przestrzeń katalogowa',
   przestrzenAuto: 'Wyznaczana automatycznie z typu elementu',
 
   katalogTytul: 'Pozycja katalogowa',
   identyfikator: 'Identyfikator pozycji katalogowej',
   identyfikatorPlaceholder: 'np. kabel_sn_3x120_al',
-  identyfikatorPomoc: 'Identyfikator typu z biblioteki katalogu. Jeśli operacja została uruchomiona z '
-    + 'bramki katalogowej, pole jest już wypełnione.',
+  identyfikatorPomoc: 'Pozycja biblioteki katalogu — z bramki katalogowej przychodzi już wskazana.',
   wersja: 'Wersja pozycji (opcjonalnie)',
   wersjaPlaceholder: 'np. 2024.1',
 
@@ -39,10 +37,10 @@ export const PRZYPISANIE_KATALOGU_STRINGS = {
 
   zapisz: 'Przypisz katalog',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed przypisaniem katalogu.',
-  brakElementuWalid: 'Brak identyfikatora elementu docelowego.',
-  brakIdentyfikatora: 'Podaj identyfikator pozycji katalogowej.',
-  walidacjaStopka: 'Wskaż element i pozycję katalogową, aby przypisać typ.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — przypisanie katalogu unieważnia jego wyniki.',
+  identyfikatorWalid:
+    'Podaj identyfikator pozycji katalogowej — parametry elementu zmaterializują się z tej pozycji.',
+  elementWalid: 'Zaznacz na schemacie element, któremu chcesz przypisać typ z katalogu.',
   bladDodania: 'Nie udało się przypisać katalogu.',
 
   // Panel teorii

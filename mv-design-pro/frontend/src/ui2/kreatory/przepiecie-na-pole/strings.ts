@@ -22,10 +22,7 @@ export const PRZEPIECIE_NA_POLE_STRINGS = {
   poleTytul: 'Pole docelowe',
   pole: 'Pole docelowe',
   poleAuto: 'Pole wskazane przez kontrolę modelu (wolne pole właściwej roli)',
-  polePomoc:
-    'Połówka odcinka od strony zasilania przechodzi przez pole liniowe wejściowe, dalsza — przez '
-    + 'pole liniowe wyjściowe albo odgałęźne, transformator — przez pole transformatorowe. Rolę i zajętość '
-    + 'pola sprawdza model; niewłaściwe pole kończy się nazwaną odmową bez zmiany modelu.',
+  polePomoc: 'Pole, przez które przechodzi przypinany element — rolę i zajętość pola sprawdza model.',
 
   kontrolaTytul: 'Kontrola przepięcia',
   wierszElement: 'Element',
@@ -38,8 +35,8 @@ export const PRZEPIECIE_NA_POLE_STRINGS = {
 
   zapisz: 'Przepnij na pole',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed przepięciem elementu.',
-  walidacjaStopka: 'Wskaż element, który leży na szynie głównej stacji.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — przepięcie elementu unieważnia jego wyniki.',
+  brakElementuWalid: 'Zaznacz na schemacie element leżący na szynie głównej stacji — to on zostanie przepięty na pole.',
   bladDodania: 'Nie udało się przepiąć elementu na pole.',
 
   teoriaTytul: 'Teoria: aparat pola w torze prądowym',

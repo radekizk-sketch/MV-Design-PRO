@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { DANE_DOMYSLNE, walidujFormularz, type StacjaFormData } from '../stacjaModel';
+import { DANE_DOMYSLNE, konfliktyFormularza, type StacjaFormData } from '../stacjaModel';
 import { wPasmieNn } from '../../../model/pasmaNapieciowe';
 
 interface Wiersz {
@@ -54,7 +54,8 @@ describe('pasmo nN — parytet z bramkami backendu', () => {
       .filter((w) => w.napiecie_kv !== null && w.napiecie_kv > 0)
       .map((w) => [w.napiecie_kv as number, w.w_pasmie_nn] as const),
   )('kreator: napięcie strony nN %s kV → formularz poprawny = %s', (napiecie, oczekiwane) => {
-    const bledy = walidujFormularz(dane(napiecie)).filter((e) => e.field === 'nn_voltage_kv');
+    // Napięcie spoza pasma to KONFLIKT przy polu (widoczny od razu), nie brak przy zapisie.
+    const bledy = konfliktyFormularza(dane(napiecie)).filter((e) => e.field === 'nn_voltage_kv');
     expect(bledy.length === 0).toBe(oczekiwane);
   });
 });

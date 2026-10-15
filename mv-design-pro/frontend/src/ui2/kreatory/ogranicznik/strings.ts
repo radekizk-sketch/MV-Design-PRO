@@ -15,9 +15,7 @@ export const OGRANICZNIK_STRINGS = {
   typKatalog: 'Typ ogranicznika z katalogu',
   typKatalogPlaceholder: '— wybierz typ ogranicznika —',
   typBlad: 'Nie udało się pobrać katalogu ograniczników przepięć SN.',
-  typPomoc:
-    'Typ wnosi U_m, MCOV, napięcie obniżone U_res(10 kA) i poziom ochrony BIL — '
-    + 'wartości z karty katalogowej (PN-EN 60099-4), nie z ręki.',
+  typPomoc: 'Typ z katalogu niesie U_m, MCOV, U_res(10 kA) i BIL ogranicznika (PN-EN 60099-4).',
 
   // Parametry katalogu (odczyt).
   paramUm: 'Najwyższe napięcie urządzenia U_m',
@@ -55,12 +53,9 @@ export const OGRANICZNIK_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz ogranicznik SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem ogranicznika.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać ogranicznik.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog ograniczników ładuje się asynchronicznie; zapis bez niego byłby
-  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu ograniczników przepięć SN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis ogranicznika unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać ogranicznika przepięć SN.',
+  miejsceDoWskazania: 'Do wskazania na schemacie',
 
   // Panel teorii (V12K-066: standard „must-have").
   teoriaTytul: 'Teoria: koordynacja izolacji i ochrona przepięciowa (IEC 60071)',

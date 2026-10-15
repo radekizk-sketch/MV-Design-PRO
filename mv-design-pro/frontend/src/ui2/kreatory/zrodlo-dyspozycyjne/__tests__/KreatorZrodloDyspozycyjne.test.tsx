@@ -43,20 +43,24 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectElement: selectElementMock, centerSldOnElement: centerMock }),
 }));
 
+const resolverState: { busRef: string | null; szyny: Array<{ ref_id: string; name: string; voltage_kv: number }> } = {
+  busRef: 'bus-nn',
+  szyny: [{ ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4 }],
+};
+
 vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   resolveStationRef: () => 'st-1',
   stationLabel: () => 'Stacja A',
-  resolveBusNnRef: () => 'bus-nn',
-  listNnBusOptions: () => [{ ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4 }],
+  resolveBusNnRef: () => resolverState.busRef,
+  listNnBusOptions: () => resolverState.szyny,
   listNnSourceFieldOptions: () => [],
 }));
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
-// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania. Katalogu zasilań
+// systemowych (GPZ) kreator już nie pobiera — to inna dziedzina niż agregat/UPS.
 const { fetchSourceSystemTypesMock, fetchLvApparatusTypesMock } = vi.hoisted(() => ({
-  fetchSourceSystemTypesMock: vi.fn(() =>
-    Promise.resolve([{ id: 'gs-1', name: 'Agregat 250 kVA', voltage_rating_kv: 0.4, sk3_mva: 2 }]),
-  ),
+  fetchSourceSystemTypesMock: vi.fn(() => Promise.resolve([])),
   fetchLvApparatusTypesMock: vi.fn(() =>
     Promise.resolve([{ id: 'lv-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 400, device_kind: 'WYLACZNIK' }]),
   ),
@@ -80,6 +84,8 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     centerMock.mockReset();
     fetchSourceSystemTypesMock.mockClear();
     fetchLvApparatusTypesMock.mockClear();
+    resolverState.busRef = 'bus-nn';
+    resolverState.szyny = [{ ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4 }];
   });
 
   afterEach(() => cleanup());
@@ -95,14 +101,15 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toBeInTheDocument());
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
-    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie-nn'), '0.4');
+    // Napięcie nN pola z szyny przyłączenia (topologia) stoi w polu jak zwykła wartość.
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie-nn')).toHaveValue(0.4);
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
 
     // Krok 2: parametry agregatu
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog')).toBeInTheDocument());
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog'), 'gs-1');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc')).toBeInTheDocument());
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-dysp-katalog')).toBeNull();
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc'), '250');
-    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie'), '0.4');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-cosfi'), '0.8');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-tryb-genset'), 'PRACA_AWARYJNA');
 
@@ -116,7 +123,7 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
           bus_nn_ref: 'bus-nn',
           station_ref: 'st-1',
           placement: 'NEW_FIELD',
-          genset_spec: expect.objectContaining({ catalog_item_id: 'gs-1', rated_power_kw: 250, power_factor: 0.8 }),
+          genset_spec: expect.objectContaining({ rated_power_kw: 250, rated_voltage_kv: 0.4, power_factor: 0.8 }),
         }),
       );
     });
@@ -136,12 +143,83 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('walidacja blokuje niekompletny zapis (brak katalogu/mocy)', async () => {
+  // Intencja dawnego „walidacja blokuje niekompletny zapis”: operacja nie wychodzi bez
+  // danych — w nowym kanonie przez JEDNO wskazanie pierwszego brakującego parametru.
+  it('świeży kreator: zero alertów; zapis wskazuje aparat pola, potem moc na kroku parametrów', async () => {
     render(<KreatorZrodloDyspozycyjne />);
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-gotowosc').querySelector('[data-stan="konflikt"]')).toBeNull();
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toHaveFocus();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toBe(
+      'Wybierz aparat pola przyłączeniowego — odłącza źródło od szyny nN.',
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
+    await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-krok-parametry')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj moc znamionową źródła — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
-    expect((await screen.findAllByText(/Uzupełnij wymagane pola, aby zapisać źródło\./)).length).toBeGreaterThan(0);
+  });
+
+  it('konflikt widoczny od razu przy polu: cos φ > 1', async () => {
+    render(<KreatorZrodloDyspozycyjne />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-cosfi'), '1.2');
+    expect(screen.getByRole('alert').textContent).toBe('Współczynnik mocy musi leżeć w przedziale (0; 1].');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+  });
+
+  it('szyna z kontekstu stoi w polu; projektant zmienia ją na inną, automat nie nadpisuje', async () => {
+    resolverState.szyny = [
+      { ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4 },
+      { ref_id: 'bus-nn-2', name: 'Szyna nN II', voltage_kv: 0.4 },
+    ];
+    render(<KreatorZrodloDyspozycyjne />);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna')).toHaveValue('bus-nn');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna'), 'bus-nn-2');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna')).toHaveValue('bus-nn-2');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+  });
+
+  it('kilka szyn nN bez wskazania: kreator nie zgaduje pierwszej, zapis wskazuje szynę', async () => {
+    resolverState.busRef = null;
+    resolverState.szyny = [
+      { ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4 },
+      { ref_id: 'bus-nn-2', name: 'Szyna nN II', voltage_kv: 0.4 },
+    ];
+    render(<KreatorZrodloDyspozycyjne />);
+    expect((screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna') as HTMLSelectElement).value).toBe('');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz szynę nN przyłączenia — /);
+  });
+
+  it('jedyna szyna nN stacji bez wskazania: stoi w polu', async () => {
+    resolverState.busRef = null;
+    render(<KreatorZrodloDyspozycyjne />);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-szyna')).toHaveValue('bus-nn');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+  });
+
+  it('bez aktywnego przypadku: kompletny zapis wskazuje przypadek, operacja nie wychodzi', async () => {
+    appState.activeCaseId = null;
+    activeForm = { op: 'add_ups_nn', context: {} };
+    render(<KreatorZrodloDyspozycyjne />);
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
+    await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc'), '100');
+    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-backup'), '15');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-tryb-ups'), 'ONLINE');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeEnabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
   /**
@@ -150,8 +228,7 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
    * `zapisMozliwy` nie sprawdzał, czy katalogi (system źródła + aparat nN)
    * już doszły.
    */
-  it('iloczyn cech: katalog jeszcze się ładuje × szyna nN dostępna → zapis zablokowany z komunikatem', async () => {
-    fetchSourceSystemTypesMock.mockReturnValueOnce(new Promise(() => {}));
+  it('iloczyn cech: katalog aparatów nN jeszcze się ładuje × szyna nN dostępna → zapis wyszarzony z jednym zdaniem', async () => {
     fetchLvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorZrodloDyspozycyjne />);
 
@@ -159,7 +236,8 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
       expect(screen.getByTestId('mvd-kreator-zrodlo-dysp')).toHaveAttribute('data-status', 'ladowanie');
     });
     expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/Wczytywanie katalogu/);
+    expect(fetchSourceSystemTypesMock).not.toHaveBeenCalled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });
@@ -179,11 +257,11 @@ describe('KreatorZrodloDyspozycyjne — UPS', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toBeInTheDocument());
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
-    await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie-nn'), '0.4');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog')).toBeInTheDocument());
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog'), 'gs-1');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc')).toBeInTheDocument());
+    // UPS nie ma pola napięcia znamionowego agregatu — znacznik dotyczy tylko agregatu.
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-dysp-napiecie')).toBeNull();
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc'), '100');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-backup'), '15');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-tryb-ups'), 'ONLINE');

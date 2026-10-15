@@ -9,10 +9,11 @@
  * przez KaTeX (TekstZWzorami → MathInline) — surowe wzory tekstowe są zakazane.
  */
 
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 
 import type { OpcjaWyboru, StatusPobrania } from './model';
 import { TekstZWzorami } from './tekstZWzorami';
+import { WskazanieKontekst } from './wskazanieKontekst';
 
 interface PolakoszulkaProps {
   etykieta: string;
@@ -21,10 +22,17 @@ interface PolakoszulkaProps {
   blad?: string;
   pomoc?: string;
   htmlFor?: string;
+  /** `data-testid` kontrolki — klucz wskazania braku przy próbie zapisu. */
+  testid?: string;
   children: ReactNode;
 }
 
-/** Koszulka pola: etykieta + jednostka + gwiazdka + błąd + pomoc. */
+/**
+ * Koszulka pola: etykieta + jednostka + gwiazdka + pomoc + błąd.
+ * `blad` jest WYŁĄCZNIE dla konfliktu technicznego albo naruszenia ograniczenia (widoczny od
+ * razu); brak wartości nie jest błędem pola — wskazuje go rama przy próbie zapisu, a koszulka
+ * wskazanego pola oznacza się `data-wskazane`.
+ */
 function Polakoszulka({
   etykieta,
   jednostka,
@@ -32,10 +40,15 @@ function Polakoszulka({
   blad,
   pomoc,
   htmlFor,
+  testid,
   children,
 }: PolakoszulkaProps) {
+  const wskazane = useContext(WskazanieKontekst);
   return (
-    <div className="mvd-pole">
+    <div
+      className="mvd-pole"
+      data-wskazane={testid !== undefined && wskazane === testid ? 'tak' : undefined}
+    >
       <label className="mvd-pole-etykieta" htmlFor={htmlFor}>
         {etykieta}
         {jednostka ? <span className="mvd-pole-jednostka">[{jednostka}]</span> : null}
@@ -51,6 +64,7 @@ function Polakoszulka({
 // ------------------------------------------------------------- Pole tekstowe
 
 export interface PoleTekstoweProps {
+  /** AUTO_PRZYJETE — znacznik przy polu; edycja w kreatorze go zdejmuje. */
   etykieta: string;
   wartosc: string;
   onZmiana?: (wartosc: string) => void;
@@ -74,7 +88,7 @@ export function PoleTekstowe({
   testid,
 }: PoleTekstoweProps) {
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} testid={testid}>
       <input
         type="text"
         className="mvd-pole-input"
@@ -93,6 +107,7 @@ export function PoleTekstowe({
 // ------------------------------------------------------------- Pole liczbowe
 
 export interface PoleLiczboweProps {
+  /** AUTO_PRZYJETE — znacznik przy polu; edycja w kreatorze go zdejmuje. */
   etykieta: string;
   jednostka?: string;
   wartosc: number | null;
@@ -124,7 +139,15 @@ export function PoleLiczbowe({
   testid,
 }: PoleLiczboweProps) {
   return (
-    <Polakoszulka etykieta={etykieta} jednostka={jednostka} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka
+      etykieta={etykieta}
+      jednostka={jednostka}
+      wymagane={wymagane}
+      blad={blad}
+      pomoc={pomoc}
+     
+      testid={testid}
+    >
       <input
         type="number"
         className="mvd-pole-input"
@@ -152,6 +175,7 @@ export function PoleLiczbowe({
 // -------------------------------------------------------------- Pole wyboru
 
 export interface PoleWyboruProps {
+  /** AUTO_PRZYJETE — znacznik przy polu; edycja w kreatorze go zdejmuje. */
   etykieta: string;
   wartosc: string;
   onZmiana: (wartosc: string) => void;
@@ -175,7 +199,7 @@ export function PoleWyboru({
   testid,
 }: PoleWyboruProps) {
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} testid={testid}>
       <select
         className="mvd-pole-select"
         value={wartosc}
@@ -275,6 +299,7 @@ export function PolePrzelacznikBinarny({
 // --------------------------------------------------------- Pole katalogu
 
 export interface PoleKataloguProps {
+  /** AUTO_PRZYJETE — znacznik przy polu; edycja w kreatorze go zdejmuje. */
   etykieta: string;
   wartosc: string | null;
   onZmiana: (id: string | null) => void;
@@ -308,7 +333,7 @@ export function PoleKatalogu({
   testid,
 }: PoleKataloguProps) {
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} testid={testid}>
       <select
         className="mvd-pole-select"
         value={wartosc ?? ''}

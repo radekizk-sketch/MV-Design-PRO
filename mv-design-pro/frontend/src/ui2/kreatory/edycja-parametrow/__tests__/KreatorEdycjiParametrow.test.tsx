@@ -103,9 +103,15 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     });
   });
 
-  it('uczciwy stan zerowy: bez parametru zapis zablokowany', async () => {
+  // Intencja dawnego „zapis zablokowany bez parametru”: operacja nie rusza bez parametru —
+  // w nowym kanonie zapis jest klikalny, a próba wskazuje pole klucza z celem.
+  it('bez parametru: zero alertów w toku, próba zapisu wskazuje pole klucza', async () => {
     render(<KreatorEdycjiParametrow />);
-    expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj klucz i wartość parametru — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -136,7 +142,8 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       // Brak deklaracji w modelu = „nie zadeklarowano", nigdy „nie".
       expect(screen.getByTestId(`${T}-flaga-has_disturbance_recorder`)).toHaveValue('nieustalone');
       expect(screen.getByTestId(`${T}-liczba-ramp_rate_pct_per_min`)).toHaveValue('10');
-      expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+      // Nic nie zmieniono: zapis klikalny, a próba nazywa brak zmian (bez wyszarzenia).
+      expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeEnabled();
     });
 
     it('zmiana jednej deklaracji → zapis WYŁĄCZNIE bloku deklaracji (pozostałe pola bez nadpisania)', async () => {
@@ -166,11 +173,12 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       expect(payload.parameters).toEqual({ data_umowy_przylaczeniowej: null });
     });
 
-    it('deklaracja bez źródła → nazwany błąd pola, zapis zablokowany (backend odrzuciłby 422)', async () => {
+    it('deklaracja bez źródła → konflikt widoczny od razu przy polu; zapis go wskazuje (backend odrzuciłby 422)', async () => {
       render(<KreatorEdycjiParametrow />);
       await userEvent.clear(screen.getByTestId(`${T}-zrodlo_deklaracji`));
       expect(screen.getByTestId(`${T}-zrodlo_deklaracji-blad`)).toHaveTextContent('źródło deklaracji');
-      expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/Dane modułu NC RfG są sprzeczne/);
       expect(executeDomainOperationMock).not.toHaveBeenCalled();
     });
 

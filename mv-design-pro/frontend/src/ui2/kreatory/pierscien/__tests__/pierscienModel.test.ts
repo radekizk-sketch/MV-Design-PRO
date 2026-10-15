@@ -13,7 +13,7 @@ import {
 } from '../pierscienModel';
 
 function dane(over: Partial<PierscienFormData> = {}): PierscienFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'cab-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'cab-1', dlugosc_m: 500, ...over };
 }
 
 const KONTEKST: KontekstPierscienia = {
@@ -37,6 +37,9 @@ describe('pierscienModel — walidacja domknięcia', () => {
     expect(walidujDomkniecie(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
     expect(walidujDomkniecie(dane({ dlugosc_m: 0 })).some((e) => e.field === 'dlugosc_m')).toBe(true);
     expect(walidujDomkniecie(dane()).length).toBe(0);
+    // Stan startowy nie zgaduje długości odcinka domykającego (dawniej 500 m).
+    expect(DANE_DOMYSLNE.dlugosc_m).toBeNull();
+    expect(walidujDomkniecie({ ...DANE_DOMYSLNE }).map((e) => e.field)).toEqual(['catalog_ref', 'dlugosc_m']);
   });
 });
 

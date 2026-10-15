@@ -56,6 +56,9 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacjiBezNawigacji,
   type WierszGotowosci,
 } from '../rama';
@@ -116,21 +119,51 @@ export function KreatorOdcinkaNn() {
   const [nParallel, setNParallel] = useState<number | null>(1);
   const [screenBonding, setScreenBonding] = useState<UziemienieEkranuKabla | ''>('');
   const [trybUlozenia, setTrybUlozenia] = useState<TrybUlozenia>('katalogowe');
-  const [srodowisko, setSrodowisko] = useState<'powietrze' | 'grunt'>('powietrze');
-  const [izolacja, setIzolacja] = useState<'PVC' | 'XLPE'>('PVC');
-  const [temperaturaC, setTemperaturaC] = useState<number | null>(25);
-  const [liczbaObwodow, setLiczbaObwodow] = useState<number | null>(1);
+  // Warunki ułożenia własne — bez wartości domyślnych (dawniej powietrze / PVC / 25 °C / 1 obwód):
+  // korygują obciążalność Iz′, więc pochodzą od projektanta albo z katalogu (izolacja kabla).
+  const [srodowisko, setSrodowisko] = useState<'powietrze' | 'grunt' | ''>('');
+  const [izolacja, setIzolacja] = useState<'PVC' | 'XLPE' | ''>('');
+  const [temperaturaC, setTemperaturaC] = useState<number | null>(null);
+  const [liczbaObwodow, setLiczbaObwodow] = useState<number | null>(null);
   const [rezystywnoscGruntu, setRezystywnoscGruntu] = useState<number | null>(null);
   const [ibPodgladu, setIbPodgladu] = useState<number | null>(null);
+  // cosφ podglądu ΔU — jawne pole (dawniej ukryte 0,9 w zapytaniu podglądu).
+  const [cosPhiPodgladu, setCosPhiPodgladu] = useState<number | null>(null);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [zbudowane, setZbudowane] = useState<Zbudowany[]>([]);
+  const prowadzenie = useProwadzenie();
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'izolacja'>();
 
   const wybranyKabel = useMemo(() => kable.find((k) => k.id === catalogRef) ?? null, [kable, catalogRef]);
+
+  // AUTO_PRZYJETE: izolacja żyły z pozycji katalogowej kabla (PVC/XLPE), gdy katalog ją niesie.
+  useEffect(() => {
+    if (decyzjaProjektanta('izolacja')) return;
+    const zKatalogu = wybranyKabel?.insulation_type?.toUpperCase();
+    if (zKatalogu === 'PVC' || zKatalogu === 'XLPE') {
+      setIzolacja(zKatalogu);
+    } else {
+      setIzolacja('');
+    }
+  }, [decyzjaProjektanta, wybranyKabel]);
+
+  const cosPhiPoprawny = cosPhiPodgladu !== null && cosPhiPodgladu > 0 && cosPhiPodgladu <= 1;
+  const konfliktCosPhi = cosPhiPodgladu !== null && !cosPhiPoprawny ? T.konfliktCosPhi : undefined;
+  const konfliktDlugosci = dlugoscM !== null && !(dlugoscM > 0) ? T.konfliktDlugosci : undefined;
 
   const [podglad, setPodglad] = useState<CableVoltageDropResponse | null>(null);
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
   useEffect(() => {
-    if (!wybranyKabel || !ibPodgladu || ibPodgladu <= 0 || !dlugoscM || dlugoscM <= 0 || !fromBus) {
+    if (
+      !wybranyKabel
+      || !ibPodgladu
+      || ibPodgladu <= 0
+      || !dlugoscM
+      || dlugoscM <= 0
+      || !fromBus
+      || cosPhiPodgladu === null
+      || !(cosPhiPodgladu > 0 && cosPhiPodgladu <= 1)
+    ) {
       setPodglad(null);
       setBladPodgladu(null);
       return;
@@ -142,7 +175,7 @@ export function KreatorOdcinkaNn() {
         length_km: dlugoscM / 1000,
         r_ohm_per_km: wybranyKabel.r_ohm_per_km,
         x_ohm_per_km: wybranyKabel.x_ohm_per_km,
-        cos_phi: 0.9,
+        cos_phi: cosPhiPodgladu,
         line_voltage_v: fromBus.voltage_kv * 1000,
       })
         .then((res) => {
@@ -162,20 +195,26 @@ export function KreatorOdcinkaNn() {
       anulowane = true;
       clearTimeout(t);
     };
-  }, [wybranyKabel, ibPodgladu, dlugoscM, fromBus]);
+  }, [wybranyKabel, ibPodgladu, dlugoscM, fromBus, cosPhiPodgladu]);
 
+  // Warunki własne trafiają do operacji WYŁĄCZNIE kompletne — dawniej niekompletne były cicho
+  // pomijane (projektant wybrał „własne”, a operacja szła z warunkami katalogowymi).
   const layingConditions: NNCableLayingConditionsDescription | null =
-    trybUlozenia === 'wlasne' && temperaturaC !== null && liczbaObwodow !== null
+    trybUlozenia === 'wlasne'
+    && srodowisko
+    && izolacja
+    && temperaturaC !== null
+    && liczbaObwodow !== null
+    && (srodowisko !== 'grunt' || rezystywnoscGruntu !== null)
       ? {
           environment: srodowisko,
           insulation: izolacja,
           ambient_temperature_c: temperaturaC,
           circuit_count: liczbaObwodow,
-          ...(srodowisko === 'grunt' ? { soil_thermal_resistivity_km_w: rezystywnoscGruntu ?? undefined } : {}),
+          ...(srodowisko === 'grunt' ? { soil_thermal_resistivity_km_w: rezystywnoscGruntu } : {}),
         }
       : null;
 
-  const kompletne = Boolean(fromBusRef && catalogRef && dlugoscM && dlugoscM > 0);
   const brakStartu = !fromBusRef;
 
   const resetujFormularz = useCallback((noweFromBusRef: string) => {
@@ -188,14 +227,25 @@ export function KreatorOdcinkaNn() {
 
   const onZapisz = useCallback(
     async (kontynuuj: boolean) => {
-      if (!fromBusRef) {
-        setBladGlobalny(T.brakStartuOpis);
+      const wlasne = trybUlozenia === 'wlasne';
+      const brak = pierwszyBrak([
+        !fromBusRef && { komunikat: T.brakStartuOpis },
+        konfliktDlugosci ? { komunikat: konfliktDlugosci, pole: 'mvd-kreator-odcinek-nn-dlugosc' } : null,
+        !catalogRef && { komunikat: T.brakKablaWalid, pole: 'mvd-kreator-odcinek-nn-kabel' },
+        dlugoscM === null && { komunikat: T.brakDlugosciWalid, pole: 'mvd-kreator-odcinek-nn-dlugosc' },
+        wlasne && !srodowisko && { komunikat: T.brakSrodowiskaWalid, pole: 'mvd-kreator-odcinek-nn-srodowisko' },
+        wlasne && !izolacja && { komunikat: T.brakIzolacjiWalid, pole: 'mvd-kreator-odcinek-nn-izolacja' },
+        wlasne && temperaturaC === null && { komunikat: T.brakTemperaturyWalid, pole: 'mvd-kreator-odcinek-nn-temperatura' },
+        wlasne && liczbaObwodow === null && { komunikat: T.brakObwodowWalid, pole: 'mvd-kreator-odcinek-nn-liczba-obwodow' },
+        wlasne && srodowisko === 'grunt' && rezystywnoscGruntu === null
+          && { komunikat: T.brakRezystywnosciWalid, pole: 'mvd-kreator-odcinek-nn-rezystywnosc' },
+        !activeCaseId && { komunikat: T.brakZakresu },
+      ]);
+      if (brak || !fromBusRef || !activeCaseId) {
+        if (brak) prowadzenie.wskaz(brak);
         return;
       }
-      if (!activeCaseId) {
-        setBladGlobalny(T.brakZakresu);
-        return;
-      }
+      prowadzenie.zgas();
       const payload: AddNNCableSegmentPayload = {
         from_bus_ref: fromBusRef,
         length_m: dlugoscM ?? 0,
@@ -244,13 +294,17 @@ export function KreatorOdcinkaNn() {
         setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
       }
     },
-    [activeCaseId, catalogRef, closeForm, dlugoscM, executeDomainOperation, fromBusRef, layingConditions, nazwa, nParallel, resetujFormularz, screenBonding, selekcja, wybranyKabel],
+    [activeCaseId, catalogRef, closeForm, dlugoscM, executeDomainOperation, fromBusRef, izolacja, konfliktDlugosci, layingConditions, liczbaObwodow, nazwa, nParallel, prowadzenie, resetujFormularz, rezystywnoscGruntu, screenBonding, selekcja, srodowisko, temperaturaC, trybUlozenia, wybranyKabel],
   );
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBus?.name ?? fromBusRef ?? '—' },
-    { etykieta: T.wierszKabel, stan: catalogRef ? 'kompletne' : 'brak', wartosc: wybranyKabel?.name ?? 'Do wyboru' },
-    { etykieta: T.wierszDlugosc, stan: dlugoscM && dlugoscM > 0 ? 'kompletne' : 'brak', wartosc: dlugoscM ? `${dlugoscM} m` : 'Do wprowadzenia' },
+    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'ustalone' : 'do_wyboru', wartosc: fromBus?.name ?? '' },
+    { etykieta: T.wierszKabel, stan: catalogRef ? 'ustalone' : 'do_wyboru', wartosc: wybranyKabel?.name ?? '' },
+    {
+      etykieta: T.wierszDlugosc,
+      stan: konfliktDlugosci ? 'konflikt' : dlugoscM !== null ? 'ustalone' : 'do_wyboru',
+      wartosc: dlugoscM !== null ? `${dlugoscM} m` : '',
+    },
   ];
 
   const aside = (
@@ -295,11 +349,11 @@ export function KreatorOdcinkaNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={{
         etykieta: T.builderDodaj,
         onClick: () => onZapisz(true),
-        zablokowana: !kompletne || !activeCaseId,
+        blokada: kable.length === 0 && !bladKatalogu ? 'ladowanie' : null,
         testid: 'mvd-kreator-odcinek-nn-zapisz',
       }}
       akcjaAnuluj={
@@ -360,6 +414,7 @@ export function KreatorOdcinkaNn() {
             wartosc={dlugoscM}
             onZmiana={setDlugoscM}
             wymagane
+            blad={konfliktDlugosci}
             testid="mvd-kreator-odcinek-nn-dlugosc"
           />
           <PoleLiczbowe
@@ -388,6 +443,15 @@ export function KreatorOdcinkaNn() {
           pomoc={T.ibPodgladuPomoc}
           testid="mvd-kreator-odcinek-nn-ib"
         />
+        <PoleLiczbowe
+          etykieta={T.cosPhiPodgladu}
+          wartosc={cosPhiPodgladu}
+          onZmiana={setCosPhiPodgladu}
+          krok={0.01}
+          pomoc={T.cosPhiPodgladuPomoc}
+          blad={konfliktCosPhi}
+          testid="mvd-kreator-odcinek-nn-cosphi"
+        />
       </KreatorSekcja>
 
       <KreatorSekcja tytul={T.sekcjaUlozenieTytul} testid="mvd-kreator-odcinek-nn-ulozenie">
@@ -406,8 +470,9 @@ export function KreatorOdcinkaNn() {
             <PoleWyboru
               etykieta={T.srodowisko}
               wartosc={srodowisko}
-              onZmiana={(v) => setSrodowisko(v as 'powietrze' | 'grunt')}
+              onZmiana={(v) => setSrodowisko(v as 'powietrze' | 'grunt' | '')}
               opcje={[
+                { id: '', etykieta: T.srodowiskoPlaceholder },
                 { id: 'powietrze', etykieta: T.srodowiskoPowietrze },
                 { id: 'grunt', etykieta: T.srodowiskoGrunt },
               ]}
@@ -416,8 +481,12 @@ export function KreatorOdcinkaNn() {
             <PoleWyboru
               etykieta={T.izolacja}
               wartosc={izolacja}
-              onZmiana={(v) => setIzolacja(v as 'PVC' | 'XLPE')}
+              onZmiana={(v) => {
+                setIzolacja(v as 'PVC' | 'XLPE' | '');
+                edytowane('izolacja');
+              }}
               opcje={[
+                { id: '', etykieta: T.izolacjaPlaceholder },
                 { id: 'PVC', etykieta: 'PVC' },
                 { id: 'XLPE', etykieta: 'XLPE' },
               ]}

@@ -292,7 +292,7 @@ decyzje podejmuje czlowiek.
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
 | `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
-| `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
+| `protection-device` | 16 | 0 | 6 | 84,4 | 16 | brak | brak |
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
 | `pv-inverter` | 66 | 0 | 46 | 16,2 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
@@ -305,7 +305,7 @@ decyzje podejmuje czlowiek.
 | `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 25. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
+Rodzin objętych pomiarem: 25. Pozycji łącznie: 7966, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7966.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

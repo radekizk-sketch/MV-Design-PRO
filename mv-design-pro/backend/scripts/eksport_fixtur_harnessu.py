@@ -3542,9 +3542,11 @@ def magistrala_ocena_scena_brak_danych() -> dict[str, Any]:
 
 
 def magistrala_ocena_scena_katalog_bazowy() -> dict[str, Any]:
-    """15 kV, kabel bazowy (status weryfikacji „częściowo zweryfikowany"), bez prądu
-    roboczego — obciążalność nieoceniona, spadek liczony przy prądzie przyjętym równym
-    obciążalności (dana przyjęta, dowód niepełny)."""
+    """15 kV, kabel bazowy (status weryfikacji „częściowo zweryfikowany"), prąd roboczy
+    200 A — obciążalność z wynikiem i marginesem, ale bez podstawy limitu (rekord katalogu
+    nie przenosi dokumentu); spadek odcinka 2500 m policzony przy prądzie projektanta.
+    Prąd roboczy jest daną projektową — bez niego ocena nie liczy się przy prądzie
+    przyjętym za projektanta (scena `brak_danych`)."""
     return _ocena_magistrali(
         {
             "napiecie_kv": 15.0,
@@ -3552,6 +3554,7 @@ def magistrala_ocena_scena_katalog_bazowy() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "catalog_ref": _KABEL_MAGISTRALI_BAZOWY,
                 "dlugosc_m": 2500.0,
+                "prad_roboczy_a": 200.0,
                 "cos_phi": 0.95,
             },
         }

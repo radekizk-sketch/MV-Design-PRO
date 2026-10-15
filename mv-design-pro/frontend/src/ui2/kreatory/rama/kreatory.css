@@ -241,6 +241,12 @@
   font: 500 11.5px/1.4 var(--mvd-font-sans);
   color: var(--mvd-err);
 }
+/* Pole wskazane przy próbie zapisu (BRAK_DO_OPERACJI) — obrys akcentem, nie czerwienią. */
+.mvd-pole[data-wskazane="tak"] .mvd-pole-input,
+.mvd-pole[data-wskazane="tak"] .mvd-pole-select {
+  border-color: var(--mvd-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mvd-accent) 30%, transparent);
+}
 
 .mvd-pole-input,
 .mvd-pole-select {
@@ -397,9 +403,12 @@
 }
 .mvd-kreator-gotowosc-stan .mvd-kreator-gotowosc-kropka { flex: none; transform: translateY(-1px); }
 .mvd-kreator-gotowosc-kropka { width: 8px; height: 8px; border-radius: 999px; background: var(--mvd-muted); }
-.mvd-kreator-gotowosc-stan[data-stan="kompletne"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-ok); }
-.mvd-kreator-gotowosc-stan[data-stan="ostrzezenie"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-warn); }
-.mvd-kreator-gotowosc-stan[data-stan="brak"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-err); }
+/* Kontrakt prowadzenia projektanta: tok pracy neutralnie — czerwień WYŁĄCZNIE dla konfliktu
+ * technicznego / naruszenia ograniczenia; „do wyboru” to szara kropka, nie ostrzeżenie. */
+.mvd-kreator-gotowosc-stan[data-stan="ustalone"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-ok); }
+.mvd-kreator-gotowosc-stan[data-stan="do_wyboru"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-muted); }
+.mvd-kreator-gotowosc-stan[data-stan="konflikt"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-err); }
+.mvd-kreator-gotowosc-stan[data-stan="do_wyboru"] { color: var(--mvd-muted); }
 
 /* ------------------------------------------------------ Następny krok (flow) */
 
@@ -427,21 +436,29 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  /* Wąski panel (kreator w doku inspektora): grupy przycisków przechodzą do drugiego
+   * wiersza zamiast wypychać „← Wstecz / Dalej →” poza lewą krawędź panelu pod kanwę
+   * (pomiar e2e 2026-10-15: przycisk „Dalej →” kreatora OZE przykryty przez kanwę). */
+  flex-wrap: wrap;
+  row-gap: 8px;
+  column-gap: 10px;
   padding: 12px 18px;
   border-top: 1px solid var(--mvd-line);
   background: var(--mvd-panel);
 }
 /* Komunikat walidacji zabiera tylko wolne miejsce; przyciski i licznik kroków nie łamią się
  * (oględziny 2026-10-15: „← Wstecz”, „Dalej →”, „Zapisz stację”, „Krok 3 z 9” w 2–3 liniach). */
-.mvd-kreator-stopka-walidacja {
+/* Jedno wskazanie BRAKU_DO_OPERACJI (dopiero po próbie zapisu) i powód blokady zapisu. */
+.mvd-kreator-stopka-wskazanie,
+.mvd-kreator-stopka-blokada {
   margin-right: auto;
   flex: 1 1 auto;
   min-width: 0;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--mvd-warn);
 }
+.mvd-kreator-stopka-wskazanie { color: var(--mvd-ink); font-weight: 600; }
+.mvd-kreator-stopka-blokada { color: var(--mvd-muted); }
 .mvd-kreator-stopka-nawigacja { margin-right: auto; display: flex; flex: none; gap: 10px; align-items: center; }
 .mvd-kreator-stopka-licznik { flex: none; white-space: nowrap; font: 600 11.5px/1 var(--mvd-font-sans); color: var(--mvd-muted); }
 .mvd-kreator-btn {

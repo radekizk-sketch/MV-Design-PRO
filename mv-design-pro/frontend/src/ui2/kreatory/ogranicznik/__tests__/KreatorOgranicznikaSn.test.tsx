@@ -45,23 +45,22 @@ vi.mock('../../../../ui/navigation/routes', () => ({
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const OGR_24 = {
+  id: 'arrester-abb-polim-d-24kv-10ka',
+  name: 'ABB POLIM-D 24 kV 10 kA',
+  u_m_kv: 24,
+  mcov_kv: 20.4,
+  u_rated_kv: 24,
+  u_residual_at_10ka_kv: 75,
+  tov_10s_kv: 28.8,
+  energy_class: 2,
+  energy_absorption_kj_per_kv: 4,
+  bil_protected_kv: 125,
+};
+const OGR_12 = { ...OGR_24, id: 'arrester-12kv', name: 'Ogranicznik 12 kV', u_m_kv: 12, mcov_kv: 10, bil_protected_kv: 75 };
+
 const { fetchSurgeArresterTypesMock } = vi.hoisted(() => ({
-  fetchSurgeArresterTypesMock: vi.fn(() =>
-    Promise.resolve([
-      {
-        id: 'arrester-abb-polim-d-24kv-10ka',
-        name: 'ABB POLIM-D 24 kV 10 kA',
-        u_m_kv: 24,
-        mcov_kv: 20.4,
-        u_rated_kv: 24,
-        u_residual_at_10ka_kv: 75,
-        tov_10s_kv: 28.8,
-        energy_class: 2,
-        energy_absorption_kj_per_kv: 4,
-        bil_protected_kv: 125,
-      },
-    ]),
-  ),
+  fetchSurgeArresterTypesMock: vi.fn(),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -88,7 +87,8 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
-    fetchSurgeArresterTypesMock.mockClear();
+    fetchSurgeArresterTypesMock.mockReset();
+    fetchSurgeArresterTypesMock.mockImplementation(() => Promise.resolve([OGR_24, OGR_12]));
   });
 
   afterEach(() => cleanup());
@@ -129,17 +129,47 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwy stan zerowy: bez pola/szyny zapis jest zablokowany', async () => {
+  // Intencja dawnego „uczciwego stanu zerowego”: bez miejsca operacja nie rusza — teraz
+  // przez jedno wskazanie przy próbie zapisu (kontrakt prowadzenia projektanta).
+  it('bez pola/szyny: próba zapisu nazywa brak miejsca, operacja nie rusza', async () => {
     context = {};
     render(<KreatorOgranicznikaSn />);
-    // Montaż pobiera katalog ograniczników (mikrotaski) — czekamy na realny
-    // stan końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja
-    // stanu domknęła się w act.
     await screen.findByRole('option', { name: /ABB POLIM-D/ });
     expect(screen.getByTestId('mvd-kreator-ogranicznik-brak-miejsca')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-ogranicznik-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-ogranicznik')).toHaveAttribute('data-status', 'zablokowany');
+    await userEvent.click(screen.getByTestId('mvd-kreator-ogranicznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/Zaznacz na schemacie pole SN/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: bez alertu i bez czerwieni; próba zapisu wskazuje typ z celem', async () => {
+    render(<KreatorOgranicznikaSn />);
+    await screen.findByRole('option', { name: /ABB POLIM-D/ });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-gotowosc').querySelector('[data-stan="konflikt"]')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-ogranicznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz typ ogranicznika przepięć z katalogu — /);
+  });
+
+  it('szyna 15 kV: jedyny ogranicznik o U_m ≥ 15 kV stoi w polu i daje się zmienić', async () => {
+    context = { bus_ref: 'B1', bus_name: 'Szyna SN', bus_voltage_kv: 15 };
+    render(<KreatorOgranicznikaSn />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-ogranicznik-katalog')).toHaveValue('arrester-abb-polim-d-24kv-10ka'),
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-ogranicznik-katalog'), '');
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-katalog')).toHaveValue('');
+  });
+
+  it('konflikt widoczny od razu: U_m 12 kV na szynie 15 kV', async () => {
+    context = { bus_ref: 'B1', bus_name: 'Szyna SN', bus_voltage_kv: 15 };
+    render(<KreatorOgranicznikaSn />);
+    await screen.findByRole('option', { name: /Ogranicznik 12 kV/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-ogranicznik-katalog'), 'arrester-12kv');
+    expect(screen.getByRole('alert').textContent).toMatch(/U_m ogranicznika jest niższe/);
+    expect(
+      screen.getByTestId('mvd-kreator-ogranicznik-gotowosc').querySelector('[data-stan="konflikt"]'),
+    ).not.toBeNull();
   });
 
   /**
@@ -153,7 +183,7 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-ogranicznik-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-ogranicznik')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 

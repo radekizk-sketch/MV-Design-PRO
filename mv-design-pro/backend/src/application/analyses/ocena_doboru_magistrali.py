@@ -23,6 +23,15 @@ statusu weryfikacji rekordu (tylko rekord ``ZWERYFIKOWANY`` przenosi dokument �
 reguła co ``dziedziny.sekcje``). Brak danych (typ, długość, prąd) daje ``NIE_OCENIONO``
 z nazwanym brakiem, nigdy „spełnia" ani ciche pominięcie.
 
+Prąd roboczy odcinka I_B jest daną PROJEKTOWĄ (prąd odbiorów, które odcinek ma zasilać).
+Nie jest zastępowany niczym: dawne przyjęcie I_B = I_z (obciążalność typu) przy braku
+prądu dawało spadek napięcia liczony przy prądzie, którego nikt nie zaprojektował
+(przejście scenariusza „stacja 630 kVA”, pkt 8; kontrakt prowadzenia projektanta
+2026-10-15 — zero zgadywania wartości wpływających na wyniki). Odcinek dokładany na końcu
+ciągu nie ma jeszcze odbiorów za sobą, więc ani rozpływ, ani bilans odbiorów nie niosą
+jego prądu — bez I_B od projektanta ocena obciążalności i spadku czeka (``NIE_OCENIONO``
+z nazwanym brakiem).
+
 Warstwa aplikacji: zero fizyki — spadki liczy solver, obciążalność skorygowaną liczy
 ``cable_ampacity_derating``; tu wyłącznie składanie rekordów i sumowanie długości (geometria
 ciągu do opisu przedmiotu oceny).
@@ -62,8 +71,6 @@ from network_model.solvers.cable_voltage_drop import (
 )
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
-    DanaPrzyjeta,
-    FieldQuality,
     Kryterium,
     LimitKryterium,
     Niepewnosc,
@@ -170,7 +177,6 @@ class SpadekOdcinka:
 
     wynik: CableVoltageDropResult
     prad_obliczeniowy_a: float
-    prad_z_obciazalnosci: bool
 
 
 @dataclass(frozen=True)
@@ -208,7 +214,6 @@ class _Rozwiazany:
     odcinek: OdcinekMagistrali
     typ: CableType | LineType | None
     wejscie: CableVoltageDropInput | None
-    prad_z_obciazalnosci: bool
     #: Brak typu z katalogu (pusty wybór albo pozycja nieistniejąca) — osobno, bo bez typu
     #: nie ma przedmiotu oceny obciążalności.
     brak_typu: str | None
@@ -248,18 +253,10 @@ def _rozwiaz(
     if odcinek.dlugosc_m is None:
         braki.append("długość odcinka")
     prad = odcinek.prad_roboczy_a
-    prad_z_obciazalnosci = False
-    if prad is None and typ is not None:
-        # Brak prądu roboczego: spadek liczony przy obciążalności typu — dana PRZYJĘTA,
-        # jawnie w statusie danych dowodu (`_dana_pradu`), nigdy cicho.
-        if typ.rated_current_a > 0.0:
-            prad = typ.rated_current_a
-            prad_z_obciazalnosci = True
-        else:
-            braki.append(
-                "prąd roboczy odcinka — typ nie ma obciążalności długotrwałej w karcie "
-                "katalogowej, więc nie ma czym go zastąpić w obliczeniu spadku"
-            )
+    if prad is None:
+        braki.append(
+            "prąd roboczy odcinka I_B — prąd projektowy odbiorów, które odcinek ma zasilać"
+        )
     wejscie: CableVoltageDropInput | None = None
     if not braki and typ is not None and prad is not None and odcinek.dlugosc_m is not None:
         wejscie = CableVoltageDropInput(
@@ -275,7 +272,6 @@ def _rozwiaz(
         odcinek=odcinek,
         typ=typ,
         wejscie=wejscie,
-        prad_z_obciazalnosci=prad_z_obciazalnosci,
         brak_typu=brak_typu,
         braki=tuple(braki),
     )
@@ -506,34 +502,16 @@ def _limit_spadku(podstawa: PodstawaWymagania) -> LimitKryterium:
     )
 
 
-def _dana_pradu(r: _Rozwiazany) -> DanaPrzyjeta:
-    assert r.wejscie is not None and r.typ is not None
-    return DanaPrzyjeta(
-        nazwa_pl=f"prąd obliczeniowy odcinka {r.indeks} (spadek napięcia)",
-        wartosc=Wielkosc(wartosc=_r(r.wejscie.current_a), jednostka=_J_A),
-        powod_pl=(
-            f"projektant nie podał prądu roboczego — przyjęto obciążalność długotrwałą typu "
-            f"{r.typ.name}, czyli największy prąd długotrwały odcinka"
-        ),
-        jakosc=FieldQuality.SYSTEM_DEFAULT,
-    )
-
-
-def _status_danych(odcinki: Sequence[_Rozwiazany]) -> StatusDanych:
-    przyjete = tuple(_dana_pradu(r) for r in odcinki if r.prad_z_obciazalnosci and r.wejscie)
-    if przyjete:
-        return StatusDanych(stan="UNVALIDATED_INPUT", dane_przyjete=przyjete)
-    return StatusDanych(stan="ZWALIDOWANE")
-
-
-def _dowod_spadku(odcinki: Sequence[_Rozwiazany], odniesienie: str) -> StatusDowodu:
+def _dowod_spadku(odniesienie: str) -> StatusDowodu:
+    # Wejścia spadku to wyłącznie dane projektanta i karty katalogowej (bez danych
+    # przyjętych za projektanta), więc status danych dowodu jest zwalidowany.
     zdolnosc = classify_dynamic_capability(ZDOLNOSC_SPADKU)
     return StatusDowodu(
         metoda="OBLICZENIE",
         poziom=zdolnosc.tier,
         rodzaj_twierdzenia=zdolnosc.claim_kind,
         status_modelu="NIE_DOTYCZY",
-        status_danych=_status_danych(odcinki),
+        status_danych=StatusDanych(stan="ZWALIDOWANE"),
         odniesienie=odniesienie,
     )
 
@@ -588,7 +566,7 @@ def _ocena_spadku_odcinka(
         wynik=wynik,
         limit=_limit_spadku(podstawa),
         niepewnosc=_NIEPEWNOSC_SPADKU,
-        dowod=_dowod_spadku((r,), "podgląd spadku napięcia odcinka (solver spadku napięcia)"),
+        dowod=_dowod_spadku("podgląd spadku napięcia odcinka (solver spadku napięcia)"),
         zakres_waznosci=ZakresWaznosci(
             rodzaj_analizy="POWER_FLOW",
             opis_pl=(
@@ -671,7 +649,7 @@ def _ocena_spadku_ciagu(
         wynik=wynik,
         limit=_limit_spadku(podstawa),
         niepewnosc=_NIEPEWNOSC_SPADKU,
-        dowod=_dowod_spadku(odcinki, "suma spadków odcinków (solver spadku napięcia ciągu)"),
+        dowod=_dowod_spadku("suma spadków odcinków (solver spadku napięcia ciągu)"),
         zakres_waznosci=ZakresWaznosci(
             rodzaj_analizy="POWER_FLOW",
             opis_pl=(
@@ -715,7 +693,6 @@ def ocen_dobor_magistrali(
         spadek_odcinka = SpadekOdcinka(
             wynik=compute_cable_voltage_drop(biezacy.wejscie),
             prad_obliczeniowy_a=biezacy.wejscie.current_a,
-            prad_z_obciazalnosci=biezacy.prad_z_obciazalnosci,
         )
 
     kompletne = all(r.wejscie is not None for r in rozwiazane)

@@ -240,10 +240,10 @@ test.describe('Catalog-First Enforcement - realny backend', () => {
     // (operationFormRegistry: insert_section_switch_sn → mvd-kreator-lacznik),
     // nie dawny `insert-section-switch-form` z przyciskiem „Zastosuj".
     // INTENCJA BEZ ZMIAN: ślepe wstawienie łącznika jest niemożliwe — kreator
-    // wymaga aparatu z katalogu (pole katalogowe + kontrola gotowości
-    // „Do konfiguracji"), a zapis bez kompletnego kontekstu jest twardo
-    // ZABLOKOWANY (przycisk zapisu wyłączony; wejście z panelu procesu nie
-    // niesie odcinka). Bramkę katalogową samego backendu pokrywa w tym pliku
+    // wymaga aparatu z katalogu i miejsca na odcinku. Zmienia się środek (karta
+    // PROWADZENIE-KREATORY): zapis nie jest wyszarzany brakiem danych — klik „Zapisz"
+    // przy braku daje jedno wskazanie „co — po co" i NIE wysyła operacji (kreator
+    // zostaje otwarty). Bramkę katalogową samego backendu pokrywa w tym pliku
     // test „backend odrzuca insert_section_switch_sn bez katalogu".
     await createCaseFromUi(page, request);
     await page.getByTestId('left-panel-mode-readiness').click();
@@ -256,14 +256,15 @@ test.describe('Catalog-First Enforcement - realny backend', () => {
     // Konfiguracja jest katalog-first: pole wyboru aparatu z katalogu SN
     // widoczne, a kontrola gotowości uczciwie raportuje brak aparatu.
     await expect(page.getByTestId('mvd-kreator-lacznik-katalog')).toBeVisible();
-    await expect(page.getByTestId('mvd-kreator-lacznik-gotowosc')).toContainText('Do konfiguracji');
+    await expect(page.getByTestId('mvd-kreator-lacznik-gotowosc')).toContainText('Do wyboru');
 
-    // Realna ścieżka projektanta: nazwa uzupełniona, katalog celowo pominięty —
-    // zapis pozostaje zablokowany (disabled), więc ślepe wstawienie nie ma drogi.
+    // Realna ścieżka projektanta: nazwa uzupełniona, katalog celowo pominięty — klik
+    // zapisu wskazuje brak (stopka ramy), a kreator zostaje otwarty: operacja nie wyszła.
     await page.getByTestId('mvd-kreator-lacznik-nazwa').fill('Lacznik testowy');
-    await expect(page.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
-    // Stopka kreatora nazywa powód blokady (brak wskazanego odcinka SN).
-    await expect(page.getByTestId('mvd-kreator-walidacja')).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-lacznik-zapisz')).toBeEnabled();
+    await page.getByTestId('mvd-kreator-lacznik-zapisz').click();
+    await expect(page.getByTestId('mvd-kreator-wskazanie')).toBeVisible();
+    await expect(kreator).toBeVisible();
   });
 
   test('przycisk domkniecia pierscienia jest nieaktywny bez kandydatow ringu', async ({ page, request }) => {

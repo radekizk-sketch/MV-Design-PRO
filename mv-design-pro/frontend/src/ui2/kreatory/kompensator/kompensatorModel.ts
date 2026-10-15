@@ -31,12 +31,31 @@ export const DANE_DOMYSLNE: KompensatorFormData = {
   status: 'closed',
 };
 
+/**
+ * BRAK_DO_OPERACJI — pokazywany dopiero przy zapisie (kontrakt prowadzenia projektanta).
+ * Konflikt napięcia typu z szyną to KONFLIKT_TECHNICZNY (`napiecieNiezgodne`), widoczny
+ * od razu przy polu typu.
+ */
 export function walidujFormularz(data: KompensatorFormData): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ baterii kondensatorów z katalogu.' });
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz typ baterii kondensatorów z katalogu — moc znamionowa i napięcie typu '
+        + 'wyznaczają susceptancję w rozpływie mocy.',
+    });
   }
   return errors;
+}
+
+/** Typy baterii zgodne napięciem z szyną (ta sama tolerancja co `napiecieNiezgodne`). */
+export function typyZgodneZSzyna(
+  typy: readonly ShuntCapacitorCatalogType[],
+  napiecieSzynyKv: number | null,
+): ShuntCapacitorCatalogType[] {
+  if (napiecieSzynyKv === null) return [...typy];
+  return typy.filter((t) => TOLERANCJA_NAPIECIA_KV >= Math.abs(t.rated_kv - napiecieSzynyKv));
 }
 
 export interface ParametryBaterii {
@@ -74,7 +93,10 @@ export function maSzyne(kontekst: KontekstKompensatora): boolean {
   return Boolean(kontekst.bus_ref?.trim());
 }
 
-/** Ostrzeżenie o niezgodności napięcia typu i szyny (backend blokuje twardo). */
+/** Tolerancja zgodności napięcia znamionowego typu z napięciem szyny [kV]. */
+const TOLERANCJA_NAPIECIA_KV = 0.5;
+
+/** KONFLIKT_TECHNICZNY: napięcie typu niezgodne z szyną (backend blokuje twardo). */
 export function napiecieNiezgodne(
   params: ParametryBaterii | null,
   kontekst: KontekstKompensatora,
@@ -82,7 +104,7 @@ export function napiecieNiezgodne(
   if (!params || typeof kontekst.bus_voltage_kv !== 'number' || kontekst.bus_voltage_kv <= 0) {
     return false;
   }
-  return Math.abs(params.rated_kv - kontekst.bus_voltage_kv) > 0.5;
+  return Math.abs(params.rated_kv - kontekst.bus_voltage_kv) > TOLERANCJA_NAPIECIA_KV;
 }
 
 export function zbudujPayload(

@@ -74,7 +74,7 @@ async function pick(id = 'zk-2') {
 describe('KreatorZksn — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', segmentLabel: 'Kabel A' };
+    context = { segment_id: 'seg-1', segmentLabel: 'Kabel A', position_on_segment: 0.5 };
     snapshotState.error = null;
     snapshot.branches = [{ id: 'seg-1', ref_id: 'seg-1', type: 'cable', name: 'Kabel A' }];
     closeFormMock.mockReset();
@@ -82,7 +82,13 @@ describe('KreatorZksn — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
-    fetchBranchPointTypesMock.mockClear();
+    fetchBranchPointTypesMock.mockReset();
+    fetchBranchPointTypesMock.mockImplementation(() =>
+      Promise.resolve([
+        { id: 'zk-1', name: 'ZK przelotowe', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK' },
+        { id: 'zk-2', name: 'ZK odgałęźne', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 2, switch_device_kind: 'ROZLACZNIK' },
+      ]),
+    );
   });
 
   afterEach(() => cleanup());
@@ -121,21 +127,61 @@ describe('KreatorZksn — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('blokuje wstawienie na linii napowietrznej (nieprawidłowy tor)', async () => {
-    context = { segment_id: 'seg-line' };
+  // Intencja dawnych testów „zapis zablokowany”: na złym torze i bez odcinka operacja nie
+  // rusza — w nowym kanonie konflikt widać od razu, a brak nazywa wskazanie przy zapisie.
+  it('konflikt toru (ZKSN na linii napowietrznej) widoczny od razu i blokuje operację', async () => {
+    context = { segment_id: 'seg-line', position_on_segment: 0.5 };
     snapshot.branches = [{ id: 'seg-line', ref_id: 'seg-line', type: 'line_overhead', name: 'Linia B' }];
     render(<KreatorZksn />);
     await screen.findByTestId('mvd-kreator-zksn-tor');
-    expect(screen.getByTestId('mvd-kreator-zksn-zapisz')).toBeDisabled();
+    expect(
+      screen.getByTestId('mvd-kreator-zksn-gotowosc').querySelector('[data-stan="konflikt"]'),
+    ).not.toBeNull();
+    await pick('zk-2');
+    await userEvent.click(screen.getByTestId('mvd-kreator-zksn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/tylko na kablu SN/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('uczciwy stan zerowy: bez odcinka zapis zablokowany', async () => {
+  it('bez odcinka: próba zapisu nazywa brak odcinka', async () => {
     context = {};
     render(<KreatorZksn />);
     await screen.findByTestId('mvd-kreator-zksn-brak');
-    expect(screen.getByTestId('mvd-kreator-zksn-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'zablokowany');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'gotowy'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-zksn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/odcinek/i);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('dopięcie na końcu odcinka nie podstawia położenia; świeży kreator bez alertu; zapis wskazuje wariant', async () => {
+    context = { segment_id: 'seg-1', placement_mode: 'ENDPOINT_APPEND', position_on_segment: 1 };
+    render(<KreatorZksn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'gotowy'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByTestId('mvd-kreator-zksn-polozenie') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-zksn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zksn-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz wariant ZKSN z katalogu — /);
+  });
+
+  it('jedyny wariant w katalogu stoi w polu, liczba portów z wariantu', async () => {
+    fetchBranchPointTypesMock.mockImplementation(() =>
+      Promise.resolve([
+        { id: 'zk-2', name: 'ZK odgałęźne', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 2, switch_device_kind: 'ROZLACZNIK' },
+      ]),
+    );
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorZksn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zksn-katalog')).toHaveValue('zk-2'));
+    expect(screen.getByTestId('mvd-kreator-zksn-katalog')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-zksn-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_zksn_on_segment_sn',
+        expect.objectContaining({ branch_ports_count: 2, insert_at: { mode: 'RATIO', value: 0.5 } }),
+      );
+    });
   });
 
   /**
@@ -149,7 +195,7 @@ describe('KreatorZksn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-zksn-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

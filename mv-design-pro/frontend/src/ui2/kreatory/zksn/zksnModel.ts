@@ -15,8 +15,11 @@ export interface ZksnFormData {
   catalog_ref: string | null;
   /** Liczba portów odgałęzienia — z wariantu katalogowego. */
   branch_ports_count: number;
-  /** Położenie na odcinku 0..1 (RATIO). */
-  polozenie: number;
+  /**
+   * Położenie na odcinku 0..1 (RATIO) — dzieli długość kabla, a z nią impedancje obu części,
+   * więc bez wartości domyślnej (kontrakt prowadzenia projektanta, reguła 4).
+   */
+  polozenie: number | null;
   nazwa: string;
 }
 
@@ -28,7 +31,7 @@ export interface BladPola {
 export const DANE_DOMYSLNE: ZksnFormData = {
   catalog_ref: null,
   branch_ports_count: 1,
-  polozenie: 0.5,
+  polozenie: null,
   nazwa: '',
 };
 
@@ -39,7 +42,7 @@ export interface KontekstZksn {
   segment_type?: string;
   /** Stan łącznika pola z kontekstu operacji (open/closed). */
   switch_state?: unknown;
-  /** Wstępna pozycja RATIO z kontekstu (endpoint append => 1). */
+  /** Położenie wskazane przez miejsce wywołania (RATIO w (0, 1)). */
   polozenie?: number;
 }
 
@@ -67,15 +70,36 @@ export function opisWariantu(branchPortsCount: number): string {
   return branchPortsCount >= 2 ? 'Odgałęźny (2 porty)' : 'Przelotowy (1 port)';
 }
 
-export function walidujFormularz(data: ZksnFormData): BladPola[] {
+/** KONFLIKT_TECHNICZNY — widoczny od razu przy polu: położenie spoza odcinka. */
+export function konfliktyFormularza(data: ZksnFormData): BladPola[] {
+  if (data.polozenie !== null && !(data.polozenie > 0 && data.polozenie < 1)) {
+    return [{ field: 'polozenie', message: 'Położenie na odcinku musi być w zakresie (0, 1).' }];
+  }
+  return [];
+}
+
+/** BRAK_DO_OPERACJI — w kolejności pracy; pokazywany dopiero przy zapisie. */
+export function brakiFormularza(data: ZksnFormData): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz wariant ZKSN z katalogu.' });
+    errors.push({
+      field: 'catalog_ref',
+      message: 'Wybierz wariant ZKSN z katalogu — liczba portów odgałęzienia wynika z wariantu.',
+    });
   }
-  if (!(data.polozenie > 0 && data.polozenie < 1)) {
-    errors.push({ field: 'polozenie', message: 'Położenie na odcinku musi być w zakresie (0, 1).' });
+  if (data.polozenie === null) {
+    errors.push({
+      field: 'polozenie',
+      message:
+        'Podaj położenie ZKSN na odcinku (0–1) — dzieli długość kabla, a z nią impedancje obu części.',
+    });
   }
   return errors;
+}
+
+/** Komplet kontroli przed zapisem: konflikty, potem braki. */
+export function walidujFormularz(data: ZksnFormData): BladPola[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data)];
 }
 
 export function zbudujPayload(
@@ -93,6 +117,6 @@ export function zbudujPayload(
   };
 }
 
-export function fmtPct01(v: number): string {
-  return `${Math.round(v * 100)} %`;
+export function fmtPct01(v: number | null): string {
+  return v === null ? '—' : `${Math.round(v * 100)} %`;
 }

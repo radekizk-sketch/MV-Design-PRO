@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { LoadCatalogType } from '../../../../ui/catalog/types';
 import {
+  brakiFormularza,
   connectionTypeZFaz,
   czyZipDomyslny,
   DANE_DOMYSLNE,
   FAZY_PRZYLACZENIA,
+  konfliktyFormularza,
   fmtA,
   fmtKw,
   maOdplyw,
@@ -44,8 +46,9 @@ function zip(over: Partial<ModelZip> = {}): ModelZip {
   return { ...ZIP_DOMYSLNY, ...over };
 }
 
+/** Dane z mocą i cosφ podanymi przez projektanta (formularz startuje bez nich). */
 function dane(over: Partial<OdbiorFormData> = {}): OdbiorFormData {
-  return { ...DANE_DOMYSLNE, ...over };
+  return { ...DANE_DOMYSLNE, active_power_kw: 50, cos_phi: 0.93, ...over };
 }
 
 describe('odbiorModel — walidacja', () => {
@@ -59,6 +62,36 @@ describe('odbiorModel — walidacja', () => {
     expect(walidujFormularz(dane({ catalog_ref: 'load-1' })).length).toBe(0);
     expect(walidujFormularz(dane({ manual_mode: true })).length).toBe(0);
     expect(walidujFormularz(dane()).some((e) => e.field === 'catalog_ref')).toBe(true);
+  });
+
+  it('formularz startuje bez mocy i cosφ (bez zgadniętych 50 kW / 0,93)', () => {
+    expect(DANE_DOMYSLNE.active_power_kw).toBeNull();
+    expect(DANE_DOMYSLNE.cos_phi).toBeNull();
+  });
+
+  // Iloczyn cech: parametr (moc, cosφ) × pusty/niepoprawny — pusty to BRAK (przy zapisie),
+  // niepoprawny to KONFLIKT (od razu), nigdy oba naraz dla tego samego pola.
+  it.each([
+    ['active_power_kw', 0],
+    ['cos_phi', 1.5],
+  ] as const)('%s: pusty = brak, niepoprawny = konflikt', (pole, zle) => {
+    const pusty = dane({ manual_mode: true, [pole]: null });
+    expect(brakiFormularza(pusty).map((b) => b.field)).toContain(pole);
+    expect(konfliktyFormularza(pusty).map((b) => b.field)).not.toContain(pole);
+    const niepoprawny = dane({ manual_mode: true, [pole]: zle });
+    expect(konfliktyFormularza(niepoprawny).map((b) => b.field)).toContain(pole);
+    expect(brakiFormularza(niepoprawny).map((b) => b.field)).not.toContain(pole);
+  });
+
+  it('braki niosą „co — po co”, bez ogólnego „Uzupełnij”', () => {
+    for (const b of brakiFormularza({ ...DANE_DOMYSLNE })) {
+      expect(b.message).toMatch(/ — /);
+      expect(b.message).not.toMatch(/Uzupełnij/);
+    }
+  });
+
+  it('podgląd prądu nie rusza bez napięcia (dawniej stałe 0,4 kV)', () => {
+    expect(zbudujZapytaniePodgladu(dane(), null)).toBeNull();
   });
 });
 

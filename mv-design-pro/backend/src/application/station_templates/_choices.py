@@ -217,57 +217,6 @@ PROT_FEEDER_OPTIONS = (
     ),
 )
 
-PROT_TRANSFORMER_OPTIONS = (
-    ProtectionRelaySpec(
-        device_catalog_ref="EM_E2TANGO_800",
-        label_pl="Elektrometal e2TANGO-800 z 87T",
-        vendor="ELEKTROMETAL",
-        settings_template_id="tpl_transformer_diff_typowa",
-        badge_pl="PTPiREE",
-    ),
-    ProtectionRelaySpec(
-        device_catalog_ref="SIEMENS_7UT85",
-        label_pl="Siemens SIPROTEC 7UT85",
-        vendor="SIEMENS",
-        settings_template_id="tpl_transformer_diff_typowa",
-    ),
-    ProtectionRelaySpec(
-        device_catalog_ref="ABB_RET615",
-        label_pl="ABB Relion RET615",
-        vendor="ABB",
-        settings_template_id="tpl_transformer_diff_typowa",
-    ),
-)
-
-PROT_GENERATOR_OPTIONS = (
-    ProtectionRelaySpec(
-        device_catalog_ref="EM_E2TANGO_1200",
-        label_pl="Elektrometal e2TANGO-1200 flagship",
-        vendor="ELEKTROMETAL",
-        settings_template_id="tpl_generator_full",
-        badge_pl="PTPiREE",
-    ),
-    ProtectionRelaySpec(
-        device_catalog_ref="SIEMENS_7UM85",
-        label_pl="Siemens SIPROTEC 7UM85",
-        vendor="SIEMENS",
-        settings_template_id="tpl_generator_full",
-    ),
-    ProtectionRelaySpec(
-        device_catalog_ref="ABB_REG670",
-        label_pl="ABB Relion REG670",
-        vendor="ABB",
-        settings_template_id="tpl_generator_full",
-    ),
-    ProtectionRelaySpec(
-        device_catalog_ref="ENERGOTEST_GMG110",
-        label_pl="Energotest GMG-110 (PL)",
-        vendor="ENERGOTEST",
-        settings_template_id="tpl_generator_full",
-        badge_pl="PTPiREE",
-    ),
-)
-
 
 # =============================================================================
 # Aparatura pól SN (APARAT_SN) — B-12: szablon WSKAZUJE aparat, nie zgaduje go

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  brakiFormularza,
   DANE_DOMYSLNE,
+  konfliktyFormularza,
   operacjaDla,
   rodzajZOperacji,
   walidujFormularz,
@@ -17,7 +19,6 @@ function genset(over: Partial<ZrodloDyspozycyjneFormData> = {}): ZrodloDyspozycy
     new_field_switch_kind: 'WYLACZNIK',
     new_field_switch_state: 'ZAMKNIETY',
     new_field_voltage_nn_kv: 0.4,
-    catalog_item_id: 'gs-1',
     rated_power_kw: 250,
     rated_voltage_kv: 0.4,
     power_factor: 0.8,
@@ -34,7 +35,6 @@ function ups(over: Partial<ZrodloDyspozycyjneFormData> = {}): ZrodloDyspozycyjne
     new_field_switch_kind: 'WYLACZNIK',
     new_field_switch_state: 'ZAMKNIETY',
     new_field_voltage_nn_kv: 0.4,
-    catalog_item_id: 'ups-1',
     rated_power_kw: 100,
     backup_time_min: 15,
     ups_operation_mode: 'ONLINE',
@@ -65,6 +65,41 @@ describe('zrodloDyspozycyjneModel — walidacja', () => {
     expect(b.some((e) => e.field === 'new_field_switch_kind')).toBe(true);
     expect(b.some((e) => e.field === 'new_field_voltage_nn_kv')).toBe(true);
   });
+  // Iloczyn cech: rodzaj (agregat/UPS) × parametr pusty/niepoprawny — pusty to BRAK (przy
+  // zapisie), niepoprawny to KONFLIKT (od razu), nigdy oba naraz dla tego samego pola.
+  it.each([
+    ['GENSET', 'rated_power_kw'],
+    ['GENSET', 'rated_voltage_kv'],
+    ['GENSET', 'power_factor'],
+    ['UPS', 'rated_power_kw'],
+    ['UPS', 'backup_time_min'],
+  ] as const)('%s / %s: pusty = brak, zero = konflikt', (rodzaj, pole) => {
+    const baza = rodzaj === 'GENSET' ? genset : ups;
+    const pusty = baza({ [pole]: null });
+    expect(brakiFormularza(pusty, rodzaj).map((b) => b.field)).toContain(pole);
+    expect(konfliktyFormularza(pusty, rodzaj).map((b) => b.field)).not.toContain(pole);
+    const zero = baza({ [pole]: 0 });
+    expect(konfliktyFormularza(zero, rodzaj).map((b) => b.field)).toContain(pole);
+    expect(brakiFormularza(zero, rodzaj).map((b) => b.field)).not.toContain(pole);
+  });
+
+  it('braki niosą „co — po co”, bez ogólnego „Uzupełnij”', () => {
+    const braki = brakiFormularza({ ...DANE_DOMYSLNE }, 'GENSET');
+    expect(braki.length).toBeGreaterThan(0);
+    for (const b of braki) {
+      expect(b.message).toMatch(/ — /);
+      expect(b.message).not.toMatch(/Uzupełnij/);
+    }
+  });
+
+  it('katalog źródła nie jest wymagany (kontrakt GensetSpec/UPSSpec: catalog_item_id opcjonalny)', () => {
+    expect(walidujFormularz(genset(), 'GENSET')).toEqual([]);
+    expect(walidujFormularz(ups(), 'UPS')).toEqual([]);
+    expect(zbudujPayload(genset(), 'GENSET', { station_ref: 'st-1', station_label: 'A' }).genset_spec).not.toHaveProperty(
+      'catalog_item_id',
+    );
+  });
+
   it('istniejące pole wymaga wskazania pola', () => {
     const b = walidujFormularz(genset({ placement: 'EXISTING_FIELD', existing_field_ref: null }), 'GENSET');
     expect(b.some((e) => e.field === 'existing_field_ref')).toBe(true);
@@ -82,7 +117,6 @@ describe('zrodloDyspozycyjneModel — payload', () => {
       placement: 'NEW_FIELD',
       existing_field_ref: null,
       genset_spec: expect.objectContaining({
-        catalog_item_id: 'gs-1',
         rated_power_kw: 250,
         power_factor: 0.8,
         operation_mode: 'PRACA_AWARYJNA',

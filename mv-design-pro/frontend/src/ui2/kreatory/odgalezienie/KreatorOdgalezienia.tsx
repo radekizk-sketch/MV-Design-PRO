@@ -19,6 +19,7 @@ import { resolveTrunkOriginKind } from '../../../ui/network-build/trunkOriginRes
 import { validateTrunkSegmentOrigin, type TrunkBranchKind } from '../../../ui/network-build/semanticValidator';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -31,17 +32,23 @@ import {
   PoleLiczbowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   efektywnyRodzaj,
+  konfliktyFormularza,
   maZrodlo,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type KontekstOdgalezienia,
   type OdgaleznieFormData,
   type RodzajOdcinka,
@@ -53,6 +60,12 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'odcinek', tytul: T.krokOdcinek },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  dlugosc_km: { krok: 'odcinek', pole: 'mvd-kreator-odgalezienie-dlugosc' },
+  catalog_ref: { krok: 'odcinek', pole: 'mvd-kreator-odgalezienie-katalog' },
+};
 
 /** Tor wymuszony przez typ źródła (ZKSN=kabel, słup=linia napowietrzna). */
 function wymuszonyRodzaj(sourceType: string): RodzajOdcinka | null {
@@ -99,9 +112,10 @@ export function KreatorOdgalezienia() {
     segment_type: kontekst.forced_segment_type ?? kontekst.initial_segment_type,
     catalog_ref: kontekst.initial_catalog_ref,
   }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('odcinek');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'catalog_ref'>();
 
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
@@ -174,35 +188,58 @@ export function KreatorOdgalezienia() {
   const zmien = useCallback(
     <K extends keyof OdgaleznieFormData>(pole: K, wartosc: OdgaleznieFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'catalog_ref') edytowane('catalog_ref');
     },
-    [],
+    [edytowane],
   );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // AUTO_PRZYJETE: typ odcinka wskazany w kontekście operacji albo jedyna pozycja katalogu
+  // dla rodzaju odcinka. Kilka pozycji = wybór projektanta (lista), nigdy pierwsza.
+  const pulaRodzaju: readonly (CableType | LineType)[] = rodzaj === 'line_overhead' ? linie : kable;
+  const jedynyTyp = useMemo(() => jedynaZgodna(pulaRodzaju), [pulaRodzaju]);
+  useEffect(() => {
+    if (katalogLadowanie || decyzjaProjektanta('catalog_ref')) return;
+    if (kontekst.initial_catalog_ref && dane.catalog_ref === kontekst.initial_catalog_ref) return;
+    if (dane.catalog_ref && pulaRodzaju.some((t) => t.id === dane.catalog_ref)) return;
+    if (dane.catalog_ref) {
+      // Pozycja spoza puli rodzaju (zmiana rodzaju odcinka) — źródło przestało obowiązywać.
+      setDane((p) => ({ ...p, catalog_ref: null }));
+      return;
+    }
+    if (jedynyTyp) {
+      setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+    }
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp, katalogLadowanie, kontekst.initial_catalog_ref, pulaRodzaju]);
 
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasZrodlo || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisMozliwy = stanGotowosci === 'gotowy';
+  // KONFLIKT_TECHNICZNY — widoczny od razu: długość niedodatnia, tor niezgodny ze źródłem
+  // (kabel nie wychodzi ze słupa itd. — guard torowości zachowany z legacy).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
+  const konfliktToru = useMemo(() => {
+    const originKind = resolveTrunkOriginKind(snapshot, {
+      ...context,
+      from_ref: kontekst.from_ref,
+      source_type_label: kontekst.source_type_label,
+    });
+    if (!originKind) return null;
+    const branchKind: TrunkBranchKind = rodzaj === 'line_overhead' ? 'overhead_line_sn' : 'cable_sn';
+    const semantyka = validateTrunkSegmentOrigin({ branchKind, originKind });
+    return semantyka.ok ? null : `${semantyka.messagePl} ${semantyka.suggestedFixPl}`;
+  }, [context, kontekst.from_ref, kontekst.source_type_label, rodzaj, snapshot]);
 
   const onZapisz = useCallback(async () => {
-    if (!hasZrodlo) {
-      setBladGlobalny(T.brakZrodlaOpis);
+    const brak = pierwszyBrak([
+      !hasZrodlo && { komunikat: T.brakZrodlaOpis },
+      konfliktToru ? { komunikat: konfliktToru, krok: 'odcinek', pole: 'mvd-kreator-odgalezienie-rodzaj' } : null,
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
 
     const payload = zbudujPayload(dane, kontekst);
     const bladKatalogFirst = validateCatalogFirst('start_branch_segment_sn', payload);
@@ -211,26 +248,11 @@ export function KreatorOdgalezienia() {
       return;
     }
 
-    // Guard torowości (zachowany z legacy): kabel nie wychodzi ze słupa itd.
-    const originKind = resolveTrunkOriginKind(snapshot, {
-      ...context,
-      from_ref: kontekst.from_ref,
-      source_type_label: kontekst.source_type_label,
-    });
-    if (originKind) {
-      const branchKind: TrunkBranchKind = rodzaj === 'line_overhead' ? 'overhead_line_sn' : 'cable_sn';
-      const semantyka = validateTrunkSegmentOrigin({ branchKind, originKind });
-      if (!semantyka.ok) {
-        setBladGlobalny(`${semantyka.messagePl} ${semantyka.suggestedFixPl}`);
-        return;
-      }
-    }
-
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'start_branch_segment_sn', payload);
+      const response = await executeDomainOperation(activeCaseId as string, 'start_branch_segment_sn', payload);
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? 'Nie udało się rozpocząć odgałęzienia SN.');
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -240,30 +262,30 @@ export function KreatorOdgalezienia() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'LineBranch', name: 'Nowe odgałęzienie SN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, context, dane, executeDomainOperation, hasZrodlo, kontekst, rodzaj, selekcjaPoOperacji, snapshot]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasZrodlo, konfliktToru, kontekst, prowadzenie, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszZrodlo,
-      stan: hasZrodlo ? 'kompletne' : 'brak',
-      wartosc: hasZrodlo ? kontekst.source_name : 'Brak',
+      stan: hasZrodlo ? 'ustalone' : 'do_wyboru',
+      wartosc: hasZrodlo ? kontekst.source_name : T.zrodloDoWskazania,
     },
     {
       etykieta: T.wierszRodzaj,
-      stan: 'kompletne',
+      stan: konfliktToru ? 'konflikt' : 'ustalone',
       wartosc: rodzaj === 'line_overhead' ? 'Linia napowietrzna SN' : 'Kabel SN',
     },
     {
       etykieta: T.wierszDlugosc,
-      stan: dane.dlugosc_km && dane.dlugosc_km > 0 ? 'kompletne' : 'brak',
-      wartosc: dane.dlugosc_km ? `${dane.dlugosc_km} km` : 'Do uzupełnienia',
+      stan: konfliktDlaPola('dlugosc_km') ? 'konflikt' : dane.dlugosc_km === null ? 'do_wyboru' : 'ustalone',
+      wartosc: dane.dlugosc_km !== null ? `${dane.dlugosc_km} km` : '',
     },
     {
       etykieta: T.wierszKatalog,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? params?.name ?? 'Kompletne' : 'Do konfiguracji',
+      stan: !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: params?.name ?? '',
     },
   ];
 
@@ -296,17 +318,13 @@ export function KreatorOdgalezienia() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasZrodlo
-              ? T.brakZrodlaOpis
-              : null
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-odgalezienie-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-odgalezienie-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-odgalezienie-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -329,7 +347,10 @@ export function KreatorOdgalezienia() {
 
       <KreatorSekcja tytul={T.zrodloSekcja} testid="mvd-kreator-odgalezienie-zrodlo">
         <KreatorSiatka kolumny={3}>
-          <RzadWartosci etykieta={T.zrodloPunkt} wartosc={kontekst.from_ref || '—'} />
+          <RzadWartosci
+            etykieta={T.zrodloPunkt}
+            wartosc={kontekst.from_ref ? nazwaObiektuZMigawki(snapshot, kontekst.from_ref) : '—'}
+          />
           <RzadWartosci etykieta={T.zrodloTyp} wartosc={kontekst.source_type_label} />
           <RzadWartosci etykieta={T.zrodloNazwa} wartosc={kontekst.source_name} />
         </KreatorSiatka>
@@ -344,6 +365,7 @@ export function KreatorOdgalezienia() {
               onZmiana={(v) => zmien('segment_type', v as RodzajOdcinka)}
               opcje={T.rodzajOpcje}
               pomoc={wymuszonyKomunikat ?? T.rodzajPomoc}
+              blad={konfliktToru ?? undefined}
               wylaczone={rodzajZablokowany}
               testid="mvd-kreator-odgalezienie-rodzaj"
             />
@@ -365,7 +387,7 @@ export function KreatorOdgalezienia() {
               krok={0.01}
               min={0}
               pomoc={T.dlugoscPomoc}
-              blad={bladDlaPola('dlugosc_km')}
+              blad={konfliktDlaPola('dlugosc_km')}
               wymagane
               testid="mvd-kreator-odgalezienie-dlugosc"
             />
@@ -379,7 +401,6 @@ export function KreatorOdgalezienia() {
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}
-            blad={bladDlaPola('catalog_ref')}
             wymagane
             testid="mvd-kreator-odgalezienie-katalog"
           />

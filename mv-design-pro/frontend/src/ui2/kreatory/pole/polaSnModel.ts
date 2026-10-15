@@ -61,8 +61,13 @@ export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
 }
 
 export interface PolaSnFormData {
-  bay_role: RolaPola;
-  apparatus_kind: RodzajAparatu;
+  /** Rola pola — z kontekstu wywołania (AUTO_PRZYJETE) albo wybór projektanta; `null` = jeszcze nie. */
+  bay_role: RolaPola | null;
+  /**
+   * Rodzaj aparatu — przyjmowany z `device_kind` wybranej pozycji katalogowej (ta sama reguła
+   * co backend: rodzaj z katalogu wygrywa z deklaracją), edytowalny; `null` = jeszcze nie.
+   */
+  apparatus_kind: RodzajAparatu | null;
   /** Wybór pomiaru — znaczący wyłącznie dla roli MEASUREMENT (POMIAR-RODZAJ). */
   wybor_pomiaru: WyborPomiaru;
   catalog_ref: string | null;
@@ -88,9 +93,15 @@ export interface KontekstPola {
   gpz_section_id?: string;
 }
 
+/**
+ * Stan startowy. Rola i rodzaj aparatu NIE są zgadywane (dawniej „pole liniowe wyjściowe”
+ * z wyłącznikiem): rola przychodzi z kontekstu wywołania albo od projektanta, rodzaj aparatu
+ * z wybranej pozycji katalogowej. Wybór pomiaru (`NAPIECIA_SZYN`) to reguła domyślna
+ * kontraktu pomiaru (§5) — ta sama co backend — pokazywana jako AUTO_PRZYJETE.
+ */
 export const DANE_DOMYSLNE: PolaSnFormData = {
-  bay_role: 'OUT',
-  apparatus_kind: 'BREAKER',
+  bay_role: null,
+  apparatus_kind: null,
   // Spójnie z regułą domyślną backendu dla dokładanego pola (kontrakt §5):
   // status układu pomiarowego ENERGII wymaga świadomego wyboru projektanta,
   // nigdy domysłu — domyślnie pole pomiaru napięcia szyn rozdzielni.
@@ -140,13 +151,35 @@ const WYBOR_POMIARU_LABEL = new Map<WyborPomiaru, string>(
 );
 
 /** Polska nazwa roli pola (mapowanie totalne — nigdy nie pokazuje surowego kodu). */
-export function rolaLabel(role: RolaPola): string {
-  return ROLE_LABEL.get(role) ?? '';
+export function rolaLabel(role: RolaPola | null): string {
+  return role ? ROLE_LABEL.get(role) ?? '' : '';
 }
 
 /** Polska nazwa rodzaju aparatu (mapowanie totalne). */
-export function aparatLabel(kind: RodzajAparatu): string {
-  return APARAT_LABEL.get(kind) ?? '';
+export function aparatLabel(kind: RodzajAparatu | null): string {
+  return kind ? APARAT_LABEL.get(kind) ?? '' : '';
+}
+
+/** Czy wartość jest kodem roli pola przyjmowanym przez `add_sn_bay`. */
+export function czyRolaPola(value: unknown): value is RolaPola {
+  return typeof value === 'string' && (ROLE_KOLEJNOSC as readonly string[]).includes(value);
+}
+
+/**
+ * `device_kind` pozycji APARAT_SN → rodzaj aparatu kreatora. Lustro reguły backendu
+ * (`_sn_bay_branch_type` + „rodzaj z katalogu wygrywa z deklaracją”); rodzaj spoza mapy
+ * (np. uziemnik) = `null` — projektant wybiera sam.
+ */
+const RODZAJ_Z_KATALOGU: Readonly<Record<string, RodzajAparatu>> = {
+  WYLACZNIK: 'BREAKER',
+  REKLOZER: 'BREAKER',
+  ROZLACZNIK: 'LOAD_SWITCH',
+  ROZLACZNIK_BEZPIECZNIKOWY: 'DISCONNECTOR',
+  ODLACZNIK: 'DISCONNECTOR',
+};
+
+export function rodzajAparatuZKatalogu(deviceKind: string | null | undefined): RodzajAparatu | null {
+  return deviceKind ? RODZAJ_Z_KATALOGU[deviceKind] ?? null : null;
 }
 
 /** Polska nazwa wyboru pomiaru (mapowanie totalne). */
@@ -158,10 +191,27 @@ export function maSzyne(kontekst: KontekstPola): boolean {
   return Boolean(kontekst.bus_ref?.trim() && kontekst.station_ref?.trim());
 }
 
+/** BRAK_DO_OPERACJI — w kolejności pracy w kreatorze; pokazywany dopiero przy zapisie. */
 export function walidujFormularz(data: PolaSnFormData): BladPola[] {
   const errors: BladPola[] = [];
+  if (!data.bay_role) {
+    errors.push({
+      field: 'bay_role',
+      message: 'Wybierz rolę pola — od niej zależą przyłączany element i wymagane zabezpieczenia.',
+    });
+  }
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz aparat pola z katalogu SN.' });
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz aparat pola z katalogu SN — jego prąd znamionowy i zdolność łączeniowa wchodzą do oceny zwarć.',
+    });
+  }
+  if (!data.apparatus_kind) {
+    errors.push({
+      field: 'apparatus_kind',
+      message: 'Wybierz rodzaj aparatu pola — od niego zależy, czy pole wyłącza prąd zwarciowy.',
+    });
   }
   return errors;
 }
@@ -174,7 +224,7 @@ export function zbudujPayload(
     bus_ref: kontekst.bus_ref?.trim(),
     station_ref: kontekst.station_ref?.trim(),
     existing_field_ref: kontekst.existing_field_ref?.trim() || undefined,
-    bay_role: data.bay_role,
+    bay_role: data.bay_role ?? undefined,
     // Pomiar WYŁĄCZNIE dla pola pomiarowego — na innej roli backend odrzuca
     // deklarację (`sn.pomiar_poza_polem_pomiarowym`). Kreator deklaruje jawnie
     // (zero fantomów — mapa na realne pola `add_sn_bay.funkcja_pomiaru` /
@@ -190,7 +240,7 @@ export function zbudujPayload(
         ? data.wybor_pomiaru
         : undefined,
     field_name: data.field_name.trim() || undefined,
-    apparatus_kind: data.apparatus_kind,
+    apparatus_kind: data.apparatus_kind ?? undefined,
     gpz_section_id: kontekst.gpz_section_id?.trim() || undefined,
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'APARAT_SN') ?? undefined,
     // Powiązanie z szablonem producenta (Reference Engine) — addytywnie (exclude_none).

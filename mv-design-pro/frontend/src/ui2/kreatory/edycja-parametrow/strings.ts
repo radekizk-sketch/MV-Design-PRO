@@ -12,12 +12,10 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   elementTytul: 'Element docelowy',
   element: 'Element',
   zrodloParametrow: 'Źródło parametrów',
-  elementPomoc: 'Element modelu, którego parametry edytujesz. Backend sprawdza dopuszczalność kluczy '
-    + 'dla danego typu elementu (lista dozwolonych pól) i odrzuca niedozwolone.',
+  elementPomoc: 'Element modelu, którego parametry zmieniasz — backend przyjmuje tylko pola dozwolone dla jego typu.',
 
   parametryTytul: 'Parametry do ustawienia',
-  parametryPomoc: 'Podaj pary klucz → wartość. Wartości liczbowe, logiczne (true/false) i puste (null) '
-    + 'są wykrywane automatycznie; pozostałe traktowane jako tekst.',
+  parametryPomoc: 'Pary klucz → wartość; liczby, true/false i null rozpoznawane są same, reszta jako tekst.',
   klucz: 'Klucz',
   kluczPlaceholder: 'np. tap_position',
   wartosc: 'Wartość',
@@ -43,10 +41,10 @@ export const EDYCJA_PARAMETROW_STRINGS = {
 
   zapisz: 'Zapisz parametry',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem parametrów.',
-  brakElementuWalid: 'Brak identyfikatora elementu docelowego.',
-  brakParametrow: 'Dodaj co najmniej jeden parametr z kluczem i wartością.',
-  walidacjaStopka: 'Wskaż element i przynajmniej jeden parametr, aby zapisać.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zmiana parametrów unieważnia jego wyniki.',
+  brakElementuWalid: 'Zaznacz na schemacie element, którego parametry chcesz zmienić.',
+  brakParametrow: 'Podaj klucz i wartość parametru — bez nich operacja nie ma czego zmienić.',
+  powodOpcjonalny: 'Opcjonalne',
   bladDodania: 'Nie udało się zaktualizować parametrów.',
 
   // Panel teorii
@@ -65,9 +63,7 @@ export const EDYCJA_PARAMETROW_STRINGS = {
     + 'pod kontrolą katalogu.',
   teoriaPodstawa: 'Podstawa: reguła Catalog Binding + ślad audytowy zmian modelu (architektura ENM).',
   daneModuluTytul: 'Dane modułu NC RfG źródła',
-  daneModuluPomoc:
-    'Zapisywane są wyłącznie pola zmienione względem modelu — ten sam walidator co przy '
-    + 'tworzeniu źródła; brak danej pozostaje brakiem, nigdy wartością typową.',
+  daneModuluPomoc: 'Zapisują się tylko zmienione pola, tym samym walidatorem co przy tworzeniu; puste pole zostaje brakiem.',
   bledneDaneModulu:
-    'Dane modułu NC RfG zawierają błędy pól — popraw je przed zapisem (pola oznaczone niżej).',
+    'Dane modułu NC RfG są sprzeczne — popraw pola oznaczone w sekcji danych modułu.',
 } as const;

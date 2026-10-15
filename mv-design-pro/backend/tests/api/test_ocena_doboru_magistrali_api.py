@@ -116,7 +116,9 @@ def test_trasa_bez_lakonicznego_werdyktu_obok_liczb(app_client) -> None:
     assert not zakazane & set(dane)
     assert not zakazane & set(dane["spadek_odcinka"])
     assert not zakazane & set(dane["ciag"])
-    assert dane["spadek_odcinka"]["prad_z_obciazalnosci"] is False
+    # Dawna flaga „prąd przyjęty równy obciążalności” zniknęła razem z przyjęciem (prąd
+    # roboczy jest wyłącznie daną projektanta) — odpowiedź nie niesie jej ani jako fałszu.
+    assert "prad_z_obciazalnosci" not in dane["spadek_odcinka"]
     assert dane["ciag"]["liczba_odcinkow"] == 1
 
 

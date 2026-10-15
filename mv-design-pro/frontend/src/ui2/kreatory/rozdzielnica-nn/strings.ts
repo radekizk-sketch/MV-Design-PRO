@@ -65,8 +65,16 @@ export function rozdzielnicaNnStrings(trybSekcja: boolean) {
     zapisz: 'Zapisz rozdzielnicę',
     zapiszSekcja: 'Zapisz sekcję',
     anuluj: 'Anuluj',
-    walidacjaStopka: 'Uzupełnij wymagane pola przed zapisem.',
-    brakZakresu: 'Brak aktywnego przypadku obliczeniowego.',
+    brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis unieważnia jego wyniki.',
+    brakNapieciaWalid: 'Podaj napięcie znamionowe rozdzielnicy — wyznacza poziom napięcia szyny nN.',
+    brakSzynyZasilajacejWalid:
+      'Wskaż szynę zasilającą (otwórz kreator z szyny nN) albo wyłącz zasilenie kablem — dodasz je osobno.',
+    brakKablaWalid: 'Wybierz kabel zasilający z katalogu nN — R, X i obciążalność pochodzą z pozycji katalogowej.',
+    brakDlugosciWalid: 'Podaj długość kabla zasilającego — od niej zależą spadek napięcia i pętla zwarcia.',
+    brakStacjiWalid: 'Wskaż rozdzielnicę nN, do której dokładasz sekcję.',
+    brakSprzeglaWalid: 'Wybierz aparat sprzęgła z katalogu nN — łączy nową sekcję z istniejącą.',
+    konfliktNapiecia: 'Napięcie znamionowe musi być dodatnie.',
+    konfliktDlugosci: 'Długość kabla musi być dodatnia.',
     bladDodania: trybSekcja ? 'Nie udało się dodać sekcji rozdzielnicy nN.' : 'Nie udało się dodać rozdzielnicy nN.',
   } as const;
 }

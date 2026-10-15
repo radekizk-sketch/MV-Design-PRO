@@ -42,6 +42,7 @@ import {
   RODZINA_UNIGEAR,
   SZABLON_SAFERING_LINE_IN,
   SZABLON_SAFERING_LINE_OUT,
+  SZABLON_SAFERING_LINE_OUT_PRODUCENCKI,
   SZABLON_SAFERING_TRANSFORMER,
   SZABLON_UNIGEAR_COUPLER,
   SZABLON_UNIGEAR_LINE_OUT,
@@ -383,12 +384,13 @@ describe('SLD-GEN-POLA — nagłówek pakietu rozdzielnicy', () => {
   });
 
   it('werdykt konfiguracji pochodzi z WEJŚCIA (walidator backendu), nie z UI', () => {
-    // Cztery stany odczytu, każdy z własną prezentacją; UI nie ma trybu, w
-    // którym sam orzeka o poprawności.
+    // Trzy stany odczytu z własną prezentacją; UI nie ma trybu, w którym sam orzeka
+    // o poprawności. Czwarty stan — „niesprawdzona” (konfiguracja w toku) — NIE niesie
+    // znacznika: kontrakt prowadzenia projektanta (2026-10-15) zakazuje sygnałów pracy
+    // w toku; walidator rusza dopiero przy kompletnej konfiguracji.
     for (const [status, tekst] of [
       ['VALID', 'przyjęta'],
       ['INVALID', 'odrzucona'],
-      ['NIESPRAWDZONA', 'niesprawdzona'],
       ['SPRAWDZANIE', 'sprawdza'],
     ] as const) {
       const { container } = render(
@@ -405,6 +407,17 @@ describe('SLD-GEN-POLA — nagłówek pakietu rozdzielnicy', () => {
       expect(badge?.getAttribute('data-status')).toBe(status);
       expect(badge?.textContent?.toLowerCase()).toContain(tekst);
     }
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={snFields}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        rodzina={RODZINA_SAFERING}
+        statusKonfiguracji="NIESPRAWDZONA"
+      />,
+    );
+    expect(container.querySelector('[data-testid="mvd-podglad-status"]')).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain('niesprawdzona');
   });
 
   it('komunikat odrzucenia pokazywany jest BEZ tłumaczenia w UI', () => {
@@ -453,7 +466,11 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
     expect(tekst).toContain('25 kA');
   });
 
-  it('opis pola niesie RODZINĘ i KOD KATALOGOWY pola, gdy pakiet jest dobrany', () => {
+  // Intencja dawnego testu („opis niesie rodzinę i kod katalogowy pola”) zostaje: rysunek
+  // nazywa kartę pola. Zmienia się nośnik — karta PROWADZENIE-KREATORY: nazwa karty z kodem
+  // producenta (jak w liście kart kreatora), nigdy identyfikator karty ani status źródła.
+  // Iloczyn: karta {bez kodu producenta, z kodem} × rysunek.
+  it('opis pola niesie RODZINĘ i NAZWĘ karty pola, bez identyfikatora i statusu źródła', () => {
     const { container } = render(
       <PodgladRozdzielnicySn
         snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref)]}
@@ -465,7 +482,23 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
     );
     const tekst = tekstRysunku(container);
     expect(tekst).toContain('SafeRing');
-    expect(tekst).toContain('ABB__SAFERING__LINE_OUT');
+    expect(tekst).toContain('Pole liniowe wyjściowe');
+    expect(tekst).not.toContain('ABB__SAFERING__LINE_OUT');
+    expect(tekst).not.toContain('pakiet katalogowy');
+    expect(tekst).not.toContain('brak szablonu pola');
+
+    const zKodem = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT_PRODUCENCKI.template_ref)]}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        szablonyPol={[SZABLON_SAFERING_LINE_OUT_PRODUCENCKI]}
+        rodzina={RODZINA_SAFERING}
+      />,
+    );
+    const tekstZKodem = tekstRysunku(zKodem.container);
+    expect(tekstZKodem).toContain('SAFERING-C');
+    expect(tekstZKodem).not.toContain('ABB__SAFERING__LINE_OUT__PROD');
   });
 
   it('zmiana pozycji katalogowej zmienia etykietę (etykieta nie jest zaszyta)', () => {
@@ -557,13 +590,14 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
     expect(container.querySelectorAll('[data-symbol-canon]').length).toBe(0);
   });
 
-  it('brak aparatu jest ZNACZONY jako usterka, nie zwykly opis (kolor bledu)', () => {
+  it('brak aparatu jest WYROZNIONY jako niekompletny, ale nie kolorem bledu', () => {
     // Znalezisko odbioru nadzoru (2026-08-13, karta MINI-RMU-CAD): sam komunikat
     // „aparat pola niewskazany" byl przypiety, ale FLAGA `brakAparatu` — jedyne,
-    // co odrozni ten stan wizualnie (kolor bledu etykiety) — juz nie:
-    // podmiana `brakAparatu` na stale `false` NIE czerwienila zadnego testu.
-    // Deklaracja bez testu (KLASA-NIE-INSTANCJA §4): stan niekompletny musi byc
-    // WIDOCZNY jako niekompletny, inaczej czyta sie jak poprawna konfiguracja.
+    // co odrozni ten stan wizualnie — juz nie: podmiana `brakAparatu` na stale
+    // `false` NIE czerwienila zadnego testu. Intencja zostaje (stan niekompletny musi
+    // byc WIDOCZNY jako niekompletny), zmienia sie srodek: karta PROWADZENIE-KREATORY
+    // rezerwuje kolor bledu dla konfliktow, a brak w trakcie pracy rysuje kursywa
+    // w kolorze stonowanym (`data-brak-aparatu`).
     const bez = zbudujPodglad({
       snFields: [pole('LINIA_IN', null)],
       aparaty: KATALOG,
@@ -585,10 +619,15 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
     const { container } = render(
       <PodgladRozdzielnicySn snFields={[pole('LINIA_IN', null)]} aparaty={KATALOG} snVoltageKv={15} />,
     );
-    const wErr = Array.from(container.querySelectorAll('text')).filter(
-      (t) => (t.getAttribute('fill') ?? '').includes('--mvd-err'),
+    const teksty = Array.from(container.querySelectorAll('text'));
+    const wyroznione = teksty.filter((t) => t.getAttribute('data-brak-aparatu') === 'tak');
+    expect(wyroznione.length).toBeGreaterThan(0);
+    expect(wyroznione.every((t) => t.getAttribute('font-style') === 'italic')).toBe(true);
+    expect(teksty.some((t) => (t.getAttribute('fill') ?? '').includes('--mvd-err'))).toBe(false);
+    const zAparatemRender = render(
+      <PodgladRozdzielnicySn snFields={[pole('LINIA_IN', 'ap-WYLACZNIK')]} aparaty={KATALOG} snVoltageKv={15} />,
     );
-    expect(wErr.length).toBeGreaterThan(0);
+    expect(zAparatemRender.container.querySelectorAll('[data-brak-aparatu]').length).toBe(0);
   });
 
   it('napięcie szyny z kontekstu; bez kontekstu — bez zmyślonej liczby', () => {

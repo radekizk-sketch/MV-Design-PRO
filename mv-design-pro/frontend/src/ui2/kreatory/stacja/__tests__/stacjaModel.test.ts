@@ -20,6 +20,14 @@ import {
   namespaceZrodlaNn,
   nazwaOperacji,
   normalizujTypStacji,
+  typStacjiStartowy,
+  rodzajStacjiZKreatora,
+  konfliktyFormularza,
+  brakiFormularza,
+  brakiNnIUziemienia,
+  brakiPol,
+  etykietaKartyPola,
+  nowyWpisPola,
   blokZaczepow,
   nowyWpisWyposazenia,
   ogranicznikOdplywow,
@@ -28,10 +36,8 @@ import {
   rolePolaStacji,
   szablonyDlaWyboru,
   szablonyPerRola,
-  walidujFormularz,
   wymaganeNapiecieNn,
   wyznaczTryb,
-  czyAparaturaKompletna,
   zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
@@ -160,13 +166,33 @@ const falowniki = [
   { id: 'wind-04', name: 'FW 0,4kV', kind: 'WIND', un_kv: 0.4, sn_mva: 0.6, pmax_mw: 0.5 },
 ] as unknown as ConverterType[];
 
+/**
+ * Dane kompletne do zapisu. Formularz startuje bez wartości wpływających na wyniki (kontrakt
+ * prowadzenia projektanta, 2026-10-15: bez 0,4 kV, bez 2 odpływów, bez TN-C-S), więc komplet
+ * niesie je jawnie — tak, jak wnosi je projektant albo szablon stacji.
+ */
 function dane(over: Partial<StacjaFormData> = {}): StacjaFormData {
   return {
     ...DANE_DOMYSLNE,
     catalog_ref: 'trafo-630-15-04',
     manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_ROTOBLOK',
+    nn_voltage_kv: 0.4,
+    outgoing_feeders_nn_count: 2,
+    uklad_sieci_nn: 'TN-C-S',
+    neutral_point: 'directly_grounded',
     ...over,
   };
+}
+
+/** Konflikty i braki (dawny `walidujFormularz`) — ten sam zbiór, który kreator wskazuje przy zapisie. */
+function walidacja(d: StacjaFormData, k: KontekstStacji = kontekst()) {
+  return [
+    ...konfliktyFormularza(d),
+    ...brakiFormularza(d, k),
+    ...brakiPol(d.pola, d.wyposazenie),
+    ...brakiNnIUziemienia(d, k),
+  ];
 }
 
 function kontekst(over: Partial<KontekstStacji> = {}): KontekstStacji {
@@ -212,13 +238,45 @@ describe('stacjaModel — tryb i operacja', () => {
 });
 
 describe('stacjaModel — typ stacji', () => {
-  it('normalizuje wariant semantyczny i legacy', () => {
+  it('normalizuje wariant semantyczny i legacy; nieznany = brak (bez cichej „odgałęźnej”)', () => {
     expect(normalizujTypStacji('inline')).toBe('inline');
     expect(normalizujTypStacji('sectional')).toBe('sectional');
     expect(normalizujTypStacji('B')).toBe('inline');
     expect(normalizujTypStacji('D')).toBe('sectional');
-    expect(normalizujTypStacji('gpz')).toBe('branch');
-    expect(normalizujTypStacji(undefined)).toBe('branch');
+    // Intencja (karta PROWADZENIE-KREATORY): nieznana deklaracja nie zamienia się po cichu
+    // w stację odgałęźną — dawniej 'gpz'/undefined dawały 'branch'.
+    expect(normalizujTypStacji('gpz')).toBeNull();
+    expect(normalizujTypStacji(undefined)).toBeNull();
+  });
+
+  it.each([
+    // deklaracja × umiejscowienie → startowa lista pól (minimalny zbiór pól toru bez deklaracji)
+    [undefined, 'ENDPOINT_APPEND', 'terminal'],
+    [undefined, 'SPLIT', 'inline'],
+    ['gpz', 'SPLIT', 'inline'],
+    ['branch', 'SPLIT', 'branch'],
+    ['branch', 'ENDPOINT_APPEND', 'branch'],
+    ['sectional', 'ENDPOINT_APPEND', 'sectional'],
+  ] as const)('typStacjiStartowy(%s, %s) = %s', (raw, tryb, oczekiwany) => {
+    expect(typStacjiStartowy(raw, tryb)).toBe(oczekiwany);
+  });
+
+  it.each([
+    // skład pól × umiejscowienie → rodzaj wynikowy zapisywany do modelu
+    [['LINIA_IN', 'TRANSFORMATOROWE'], 'ENDPOINT_APPEND', 'terminal'],
+    [['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE'], 'SPLIT', 'inline'],
+    [['LINIA_IN', 'LINIA_OUT', 'LINIA_ODG', 'TRANSFORMATOROWE'], 'SPLIT', 'branch'],
+    [['LINIA_IN', 'LINIA_OUT', 'SPRZEGLO', 'TRANSFORMATOROWE'], 'SPLIT', 'sectional'],
+  ] as const)('rodzaj wynikowy: skład %j, tryb %s → %s (to on jedzie w payloadzie)', (role, tryb, rodzaj) => {
+    const pola = role.map((rola, i) => nowyWpisPola(rola, 'tpl', 'ap', i + 1));
+    expect(rodzajStacjiZKreatora(pola, tryb)).toBe(rodzaj);
+    const payload = zbudujPayload(
+      dane({ station_type: 'sectional', pola }),
+      kontekst({ tryb, endpointBusRef: tryb === 'ENDPOINT_APPEND' ? 'bus-end' : '' }),
+      rozdzielnica('branch'),
+    );
+    // Deklaracja z kroku „Rodzaj” (tu celowo inna) nie trafia do modelu.
+    expect(payload.station_type).toBe(rodzaj);
   });
 
   it('rozpoznaje typ końcowy (terminal) — semantyczny, legacy A i mv_lv', () => {
@@ -235,26 +293,69 @@ describe('stacjaModel — typ stacji', () => {
   });
 });
 
-describe('stacjaModel — walidacja', () => {
-  it('wymaga katalogu i dodatniego napięcia nN', () => {
-    expect(walidujFormularz(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
-    expect(walidujFormularz(dane({ nn_voltage_kv: 0 })).some((e) => e.field === 'nn_voltage_kv')).toBe(true);
-    expect(walidujFormularz(dane()).length).toBe(0);
+describe('stacjaModel — konflikty i braki', () => {
+  it('brak transformatora i napięcia nN to braki „co — po co”, wartość ujemna to konflikt', () => {
+    expect(brakiFormularza(dane({ catalog_ref: null }), kontekst()).some((e) => e.field === 'catalog_ref')).toBe(true);
+    expect(brakiFormularza(dane({ nn_voltage_kv: null }), kontekst()).some((e) => e.field === 'nn_voltage_kv')).toBe(true);
+    expect(konfliktyFormularza(dane({ nn_voltage_kv: 0 })).some((e) => e.field === 'nn_voltage_kv')).toBe(true);
+    expect(walidacja(dane())).toEqual([]);
   });
 
-  it('wymaga producenta rozdzielnicy SN', () => {
-    expect(
-      walidujFormularz(dane({ manufacturer_ref: '' })).some((e) => e.field === 'manufacturer_ref'),
-    ).toBe(true);
+  it('formularz startowy nie ma konfliktów (cisza w trakcie pracy), a braki są jawne', () => {
+    expect(konfliktyFormularza(DANE_DOMYSLNE)).toEqual([]);
+    const pola = brakiFormularza(DANE_DOMYSLNE, kontekst()).map((e) => e.field);
+    expect(pola).toEqual(
+      expect.arrayContaining(['nn_voltage_kv', 'catalog_ref', 'manufacturer_ref', 'switchgear_family_ref']),
+    );
+    const nn = brakiNnIUziemienia(DANE_DOMYSLNE, kontekst()).map((e) => e.field);
+    expect(nn).toEqual(expect.arrayContaining(['outgoing_feeders_nn_count', 'uklad_sieci_nn', 'neutral_point']));
   });
 
-  it('blokuje zapis, gdy pola rozdzielnicy niekompletne', () => {
-    // Pusty zestaw pól SN → walidacja z snFields zgłasza brak.
-    expect(walidujFormularz(dane(), []).some((e) => e.field === 'sn_fields')).toBe(true);
-    // Komplet szablonów → brak błędu sn_fields.
+  it('każdy brak mówi „co — po co” (myślnik z celem), bez ogólnika', () => {
+    for (const blad of walidacja(DANE_DOMYSLNE)) {
+      expect(blad.message).toMatch(/ — /);
+      expect(blad.message).not.toMatch(/Uzupełnij|wymagane pola/i);
+    }
+  });
+
+  it('wymaga producenta i rodziny rozdzielnicy SN', () => {
+    expect(walidacja(dane({ manufacturer_ref: '' })).some((e) => e.field === 'manufacturer_ref')).toBe(true);
+    expect(walidacja(dane({ switchgear_family_ref: null })).some((e) => e.field === 'switchgear_family_ref')).toBe(true);
+  });
+
+  it('pole bez karty katalogowej albo aparatu = brak przy tym polu (B-12)', () => {
+    // Intencja: operacja domenowa NIE dobiera karty ani aparatu pola, więc kreator wskazuje
+    // konkretne pole (klucz `pole:<id>:…`), a nie ogólny „niekompletny zestaw pól”.
+    const bezKarty = nowyWpisPola('LINIA_IN', null, 'ap', 1);
+    const bezAparatu = nowyWpisPola('TRANSFORMATOROWE', 'tpl-tr', null, 2);
+    const bledy = brakiPol([bezKarty, bezAparatu], {}).map((e) => e.field);
+    expect(bledy).toEqual([`pole:${bezKarty.id}:szablon`, `pole:${bezAparatu.id}:aparat`]);
+    expect(brakiPol([nowyWpisPola('LINIA_IN', 'tpl-in', 'ap', 1)], {})).toEqual([]);
+  });
+
+  it('zabezpieczenie pola bez rodzaju albo bez CT = brak przy polu; VT bez kategorii uzwojenia = brak', () => {
+    const pole = nowyWpisPola('LINIA_IN', 'tpl-in', 'ap', 1);
+    const bezRodzaju = brakiPol([pole], {
+      [pole.id]: nowyWpisWyposazenia({ relay_catalog_ref: 'REF-OC-100', ct_catalog_ref: 'ct-1' }),
+    }).map((e) => e.field);
+    expect(bezRodzaju).toEqual([`pole:${pole.id}:rodzaj_zabezpieczenia`]);
+    const bezCt = brakiPol([pole], {
+      [pole.id]: nowyWpisWyposazenia({ relay_catalog_ref: 'REF-OC-100', relay_type: 'NADPRADOWY' }),
+    }).map((e) => e.field);
+    expect(bezCt).toEqual([`pole:${pole.id}:ct`]);
+    const vt = brakiPol([pole], {
+      [pole.id]: nowyWpisWyposazenia({ vt_catalog_ref: 'vt-1' }),
+    }).map((e) => e.field);
+    expect(vt).toEqual([`pole:${pole.id}:vt_uzwojenie`]);
+  });
+
+  it('nazwa karty pola: nazwa handlowa i kod, bez identyfikatora szablonu i statusu źródła', () => {
+    const karta = szablon({ template_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK__LINE_IN' });
+    expect(etykietaKartyPola(karta, 'LINIA_IN')).toBe('Pole');
     expect(
-      walidujFormularz(dane(), rozdzielnica('branch').snFields).some((e) => e.field === 'sn_fields'),
-    ).toBe(false);
+      etykietaKartyPola({ ...karta, template_name_pl: 'Pole liniowe Rotoblok', template_code: 'RL-1' }, 'LINIA_IN'),
+    ).toBe('Pole liniowe Rotoblok (RL-1)');
+    expect(etykietaKartyPola(karta, 'LINIA_IN')).not.toMatch(/ROTOBLOK__|repo|zweryfikowan/i);
   });
 
   it.each([
@@ -270,36 +371,9 @@ describe('stacjaModel — walidacja', () => {
   ] as const satisfies ReadonlyArray<
     readonly [TrybUmiejscowienia, readonly SnFieldRole[], readonly SnFieldRole[]]
   >)('pola toru: tryb %s, skład %j → brak %j', (tryb, role, brak) => {
+    // Zapis kreatora wskazuje brak pól toru tym samym predykatem (jedno źródło) — test
+    // ścieżki zapisu jest w `KreatorStacjiSnNn.test.tsx`.
     expect(brakujacePolaToru(role.map((field_role) => ({ field_role })), tryb)).toEqual(brak);
-    // Walidacja zapisu korzysta z TEGO SAMEGO predykatu (jedno źródło): błąd pól toru
-    // pojawia się dokładnie wtedy, gdy predykat zgłasza brak.
-    const sklad = new Set<SnFieldRole>(role);
-    const bledy = walidujFormularz(
-      dane(),
-      rozdzielnica('branch').snFields.filter((f) => sklad.has(f.field_role)),
-      tryb,
-    ).filter((e) => e.field === 'sn_fields_tor');
-    expect(bledy.length > 0).toBe(brak.length > 0);
-  });
-
-  it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {
-    // Intencja: operacja domenowa NIE dobiera aparatu pola (usunięty fallback),
-    // więc kreator musi wymusić jawne wskazanie z katalogu APARAT_SN.
-    const byRole = szablonyPerRola(SZABLONY_KOMPLET, 'branch', {});
-    const bezAparatu = zbudujPolaSn('branch', byRole, {
-      manufacturerRef: 'ZPUE_WLOSZCZOWA',
-      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
-    });
-    expect(czyAparaturaKompletna(bezAparatu)).toBe(false);
-    expect(
-      walidujFormularz(dane(), bezAparatu).some((e) => e.field === 'sn_field_apparatus_refs'),
-    ).toBe(true);
-    expect(czyAparaturaKompletna(rozdzielnica('branch').snFields)).toBe(true);
-    expect(
-      walidujFormularz(dane(), rozdzielnica('branch').snFields).some(
-        (e) => e.field === 'sn_field_apparatus_refs',
-      ),
-    ).toBe(false);
   });
 
   it('payload niesie jawny aparat per pole (B-12)', () => {
@@ -309,10 +383,11 @@ describe('stacjaModel — walidacja', () => {
     expect(snFields.every((f) => f.apparatus_catalog_ref === 'sw-cb-abb-vd4-17kv-630a')).toBe(true);
   });
 
-  it('ogranicza liczbę odpływów do zakresu', () => {
+  it('ogranicza liczbę odpływów do zakresu; brak wartości zostaje brakiem', () => {
     expect(ogranicznikOdplywow(0)).toBe(1);
     expect(ogranicznikOdplywow(99)).toBe(8);
     expect(ogranicznikOdplywow(3)).toBe(3);
+    expect(ogranicznikOdplywow(null)).toBeNull();
   });
 });
 
@@ -348,7 +423,6 @@ describe('stacjaModel — payload', () => {
     );
     expect(payload).toMatchObject({
       name: 'ST-3',
-      station_type: 'branch',
       endpoint_bus_ref: 'bus-end',
       run_ref: 'run-1',
       station: expect.objectContaining({ nn_voltage_kv: 0.4, station_role: 'STACJA_SN_NN' }),
@@ -364,6 +438,10 @@ describe('stacjaModel — payload', () => {
     });
     expect(payload).not.toHaveProperty('segment_id');
     expect(payload).not.toHaveProperty('insert_at');
+    // Nazwa stacji w obu kluczach, które czytają operacje (`station.name` dla dopięcia
+    // na końcu odcinka, `station.station_name` dla podziału) — przejście scenariusza 630 kVA,
+    // pkt 2: nazwa z kroku 2 ginęła i model dostawał „Nowa stacja”.
+    expect(payload.station).toMatchObject({ name: 'ST-3', station_name: 'ST-3' });
     // KOMPLETNOSC-POLA-TR: blok `options` USUNIĘTY z kontraktu — jego trzy flagi
     // (`create_transformer_field`/`create_default_fields`/`create_nn_bus`) nie były
     // przez operację CZYTANE, więc opisywały sterowanie, którego nie było (phantom).
@@ -384,6 +462,20 @@ describe('stacjaModel — payload', () => {
     expect(payload).not.toHaveProperty('endpoint_bus_ref');
     // nazwa domyślna z kontekstu, gdy pole puste
     expect(payload).toHaveProperty('name', 'Stacja ST-3');
+  });
+
+  it('podział bez wskazanego miejsca na odcinku nie zgaduje środka (insert_at z odległości)', () => {
+    const bezMiejsca = zbudujPayload(
+      dane({ insert_at_m: '120' }),
+      kontekst({ tryb: 'SPLIT', positionOnSegment: null }),
+      rozdzielnica('branch'),
+    );
+    expect(bezMiejsca.insert_at).not.toEqual({ mode: 'RATIO', value: 0.5 });
+    expect(
+      brakiNnIUziemienia(dane(), kontekst({ tryb: 'SPLIT', positionOnSegment: null })).some(
+        (e) => e.field === 'insert_at_m',
+      ),
+    ).toBe(true);
   });
 
   it('napięcie SN w payloadzie pochodzi z kontekstu (szyny), nie z UI', () => {
@@ -463,12 +555,12 @@ describe('stacjaModel — payload', () => {
     expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
   });
 
-  it('walidacja: uziemienie impedancyjne bez składowej dominującej = błąd nazwany (ten sam predykat co backend)', () => {
-    const bledyRezystor = walidujFormularz(dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '' }));
+  it('uziemienie impedancyjne: pusta składowa = brak nazwany, zero = konflikt (ten sam predykat co backend)', () => {
+    const bledyRezystor = walidacja(dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '' }));
     expect(bledyRezystor.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('R_N'))).toBe(true);
-    const bledyCewka = walidujFormularz(dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '0' }));
-    expect(bledyCewka.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('X_N'))).toBe(true);
-    const bezBledu = walidujFormularz(dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }));
+    const bledyCewka = walidacja(dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '0' }));
+    expect(bledyCewka.some((b) => b.field === 'neutral_impedance_ohm')).toBe(true);
+    const bezBledu = walidacja(dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }));
     expect(bezBledu.some((b) => b.field === 'neutral_impedance_ohm')).toBe(false);
   });
 
@@ -571,9 +663,9 @@ describe('stacjaModel — blok nN / PV', () => {
 
   it('walidacja PV: wymaga wybranego falownika', () => {
     const bezFalownika = dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: null });
-    expect(walidujFormularz(bezFalownika).some((e) => e.field === 'source_converter_ref')).toBe(true);
+    expect(walidacja(bezFalownika).some((e) => e.field === 'source_converter_ref')).toBe(true);
     const zFalownikiem = dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: 'pv-800-069' });
-    expect(walidujFormularz(zFalownikiem).some((e) => e.field === 'source_converter_ref')).toBe(false);
+    expect(walidacja(zFalownikiem).some((e) => e.field === 'source_converter_ref')).toBe(false);
   });
 
   it('zabezpieczenieZrodla: intencja tylko dla PV', () => {
@@ -666,12 +758,12 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
 
   it('walidacja: warianty źródłowe wymagają falownika (BESS/FW)', () => {
     expect(
-      walidujFormularz(dane({ nn_configuration: 'BESS_INVERTER', source_converter_ref: null })).some(
+      walidacja(dane({ nn_configuration: 'BESS_INVERTER', source_converter_ref: null })).some(
         (e) => e.field === 'source_converter_ref',
       ),
     ).toBe(true);
     expect(
-      walidujFormularz(dane({ nn_configuration: 'FW_INVERTER', source_converter_ref: null })).some(
+      walidacja(dane({ nn_configuration: 'FW_INVERTER', source_converter_ref: null })).some(
         (e) => e.field === 'source_converter_ref',
       ),
     ).toBe(true);

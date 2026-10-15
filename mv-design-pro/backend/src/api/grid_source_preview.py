@@ -374,7 +374,6 @@ class SpadekOdcinkaMagistraliResponse(BaseModel):
     """Spadek napięcia odcinka bieżącego (WHITE BOX solvera) i prąd, przy którym policzony."""
 
     prad_obliczeniowy_a: float
-    prad_z_obciazalnosci: bool
     delta_u_v: float
     delta_u_pct: float
     r_total_ohm: float
@@ -442,7 +441,6 @@ def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMag
         spadek_odcinka=(
             SpadekOdcinkaMagistraliResponse(
                 prad_obliczeniowy_a=spadek.prad_obliczeniowy_a,
-                prad_z_obciazalnosci=spadek.prad_z_obciazalnosci,
                 delta_u_v=spadek.wynik.delta_u_v,
                 delta_u_pct=spadek.wynik.delta_u_pct,
                 r_total_ohm=spadek.wynik.r_total_ohm,

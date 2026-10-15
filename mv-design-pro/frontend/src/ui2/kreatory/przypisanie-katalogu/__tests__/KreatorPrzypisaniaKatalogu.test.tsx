@@ -22,10 +22,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+// Nazwa obiektu w kreatorze idzie przez REALNY `selectElementName` (to samo źródło nazw co
+// schemat, `nazwaObiektuZMigawki`) — atrapa podmienia wyłącznie store migawki.
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { useSnapshotStore, selectElementName: oryginal.selectElementName };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -90,9 +93,14 @@ describe('KreatorPrzypisaniaKatalogu — realna ścieżka', () => {
     });
   });
 
-  it('uczciwy stan zerowy: bez identyfikatora zapis zablokowany', async () => {
+  // Intencja dawnego „zapis zablokowany”: bez identyfikatora operacja nie rusza — w nowym
+  // kanonie zapis jest klikalny, a próba wskazuje pole identyfikatora z celem.
+  it('bez identyfikatora: zero alertów w toku, próba zapisu wskazuje pole identyfikatora', async () => {
     render(<KreatorPrzypisaniaKatalogu />);
-    expect(screen.getByTestId('mvd-kreator-przypisanie-zapisz')).toBeDisabled();
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przypisanie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-przypisanie-id')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj identyfikator pozycji katalogowej — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

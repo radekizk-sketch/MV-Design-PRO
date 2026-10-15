@@ -12,6 +12,7 @@
  */
 
 import type {
+  CatalogChoice,
   PreviewTemplateResult,
   StationTemplateFull,
 } from '../../../ui/network-build/station-templates/api';
@@ -79,32 +80,35 @@ export function polaZPodgladu(podglad: PreviewTemplateResult | null): PoleZSzabl
     .filter((pole): pole is PoleZSzablonu => pole.field_role !== null);
 }
 
-/** Aparat proponowany przez szablon (pierwsza pozycja domyślna listy szablonu). */
-export function aparatSzablonu(szablon: StationTemplateFull | null): string | null {
-  const opcje = szablon?.schema?.sn_bay_apparatus_options ?? [];
-  if (opcje.length === 0) return null;
-  const domyslna = opcje.find((o) => o.default) ?? opcje[0];
-  return domyslna?.catalog_ref ?? null;
+/**
+ * Propozycja z listy wyboru szablonu: pozycja JAWNIE oznaczona przez autora szablonu
+ * (`default`) albo jedyna pozycja listy. Kilka pozycji bez oznaczenia = wybór projektanta
+ * (dawniej pierwsza z listy).
+ */
+function propozycjaListy(opcje: readonly CatalogChoice[]): string | null {
+  const domyslne = opcje.filter((o) => o.default);
+  if (domyslne.length === 1) return domyslne[0].catalog_ref;
+  return opcje.length === 1 ? opcje[0].catalog_ref : null;
 }
 
-/** Zabezpieczenie proponowane przez szablon (readout do kroku pomiarów). */
+/** Aparat proponowany przez szablon (oznaczony albo jedyny). */
+export function aparatSzablonu(szablon: StationTemplateFull | null): string | null {
+  return propozycjaListy(szablon?.schema?.sn_bay_apparatus_options ?? []);
+}
+
+/**
+ * Zabezpieczenie proponowane przez szablon — WYŁĄCZNIE jedyna opcja listy szablonu.
+ * Lista kilku przekaźników różnych producentów to wybór projektanta; podgląd backendu
+ * (`protection_relay_ref`) bierze pierwszą z nich, więc nie jest jednoznacznym źródłem.
+ */
 export function zabezpieczenieSzablonu(szablon: StationTemplateFull | null): string | null {
   const opcje = szablon?.schema?.sn_bay_protection_options ?? [];
-  return opcje[0]?.device_catalog_ref ?? null;
+  return opcje.length === 1 ? opcje[0].device_catalog_ref : null;
 }
 
-/** Przekładnik prądowy proponowany przez szablon. */
+/** Przekładnik prądowy proponowany przez szablon (oznaczony albo jedyny). */
 export function ctSzablonu(szablon: StationTemplateFull | null): string | null {
-  const opcje = szablon?.schema?.ct_options ?? [];
-  if (opcje.length === 0) return null;
-  return (opcje.find((o) => o.default) ?? opcje[0]).catalog_ref;
-}
-
-/** Przekładnik napięciowy proponowany przez szablon. */
-export function vtSzablonu(szablon: StationTemplateFull | null): string | null {
-  const opcje = szablon?.schema?.vt_options ?? [];
-  if (opcje.length === 0) return null;
-  return (opcje.find((o) => o.default) ?? opcje[0]).catalog_ref;
+  return propozycjaListy(szablon?.schema?.ct_options ?? []);
 }
 
 /** Wypełnienie formularza z szablonu — wartości pochodzą wyłącznie z backendu. */
@@ -118,14 +122,16 @@ export interface WypelnienieZSzablonu {
   pola: PoleZSzablonu[];
   aparatRef: string | null;
   ctRef: string | null;
-  vtRef: string | null;
   przekaznikRef: string | null;
+  /** Producent rozdzielnicy SN z efektywnej konfiguracji szablonu (rejestr producentów). */
+  producentRef: string | null;
 }
 
 /**
  * Buduje wypełnienie formularza z pary (definicja szablonu, podgląd `preview`).
  * Podgląd jest źródłem wartości EFEKTYWNYCH (po kaskadzie producenta), definicja
- * — źródłem list wyboru (aparat/CT/VT/zabezpieczenie).
+ * — źródłem list wyboru (aparat/CT/zabezpieczenie). Przekładnik napięciowy nie jest
+ * proponowany: VT dobiera projektant per pole (szablon nie wie, które pole go ma).
  */
 export function wypelnienieZSzablonu(
   szablon: StationTemplateFull,
@@ -142,8 +148,7 @@ export function wypelnienieZSzablonu(
     pola,
     aparatRef: aparatSzablonu(szablon),
     ctRef: ctSzablonu(szablon),
-    vtRef: vtSzablonu(szablon),
-    przekaznikRef:
-      podglad?.effective_config?.protection_relay_ref ?? zabezpieczenieSzablonu(szablon),
+    przekaznikRef: zabezpieczenieSzablonu(szablon),
+    producentRef: podglad?.effective_config?.sn_manufacturer || null,
   };
 }

@@ -17,6 +17,7 @@ import { listAllNnBusOptions, resolveBusNnRef } from '../../../ui/network-build/
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { useActiveOperationForm, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import type { AddNNSwitchDevicePayload, NNSwitchDeviceClass } from '../../../types/domainOps';
 import {
   KreatorGotowosc,
@@ -30,10 +31,25 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacjiBezNawigacji,
   type WierszGotowosci,
 } from '../rama';
 import { APARAT_NN_STRINGS as T } from './strings';
+
+/**
+ * `device_kind` pozycji APARAT_NN → klasa aparatu w torze (`device_class` operacji):
+ * rozłącznik bezpiecznikowy niesie wkładkę (`fuse`), wyłączniki i łączniki — `switch`.
+ */
+function klasaZKatalogu(deviceKind: string | null | undefined): NNSwitchDeviceClass | null {
+  if (!deviceKind) return null;
+  if (deviceKind === 'ROZLACZNIK_BEZPIECZNIKOWY') return 'fuse';
+  if (deviceKind.startsWith('WYLACZNIK') || deviceKind === 'ROZLACZNIK' || deviceKind === 'ODLACZNIK') return 'switch';
+  return null;
+}
 
 function fmt(n: number | null | undefined, jedn: string, miejsca = 1): string {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
@@ -57,10 +73,14 @@ export function KreatorAparatuNn() {
   const opcjeDo = useMemo(() => listAllNnBusOptions(snapshot, fromBusRef), [snapshot, fromBusRef]);
 
   const [toBusRef, setToBusRef] = useState('');
-  const [deviceClass, setDeviceClass] = useState<NNSwitchDeviceClass>('switch');
+  // Rodzaj aparatu: z pozycji katalogowej (AUTO_PRZYJETE) albo wybór projektanta — bez
+  // domyślnego „wyłącznik” (KONFIGURACJA_W_TOKU nie jest wartością).
+  const [deviceClass, setDeviceClass] = useState<NNSwitchDeviceClass | ''>('');
   const [catalogRef, setCatalogRef] = useState<string | null>(null);
   const [nazwa, setNazwa] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const prowadzenie = useProwadzenie();
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'szyna_do' | 'rodzaj'>();
 
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -81,17 +101,41 @@ export function KreatorAparatuNn() {
   const wybranyAparat = useMemo(() => aparaty.find((a) => a.id === catalogRef) ?? null, [aparaty, catalogRef]);
 
   const brakStartu = !fromBusRef;
-  const kompletne = Boolean(fromBusRef && toBusRef && catalogRef);
+
+  // AUTO_PRZYJETE: jedyna inna szyna nN w modelu i rodzaj z wybranej pozycji katalogowej.
+  const jedynaSzyna = useMemo(() => jedynaZgodna(opcjeDo), [opcjeDo]);
+  useEffect(() => {
+    if (!jedynaSzyna || toBusRef || decyzjaProjektanta('szyna_do')) return;
+    setToBusRef(jedynaSzyna.ref_id);
+  }, [decyzjaProjektanta, jedynaSzyna, toBusRef]);
+  const klasaKatalogu = klasaZKatalogu(wybranyAparat?.device_kind);
+  useEffect(() => {
+    if (!klasaKatalogu || decyzjaProjektanta('rodzaj')) return;
+    setDeviceClass(klasaKatalogu);
+  }, [decyzjaProjektanta, klasaKatalogu]);
+
+  // KONFLIKT_TECHNICZNY — widoczny od razu: szyny różnych napięć, rodzaj ≠ pozycja katalogu.
+  const szynaDo = opcjeDo.find((b) => b.ref_id === toBusRef) ?? null;
+  const konfliktNapiec =
+    fromBus && szynaDo && Math.abs(fromBus.voltage_kv - szynaDo.voltage_kv) > 1e-6 ? T.konfliktNapiec : undefined;
+  const konfliktRodzaju =
+    deviceClass && klasaKatalogu && deviceClass !== klasaKatalogu ? T.konfliktRodzaju : undefined;
 
   const onZapisz = useCallback(async () => {
-    if (!fromBusRef) {
-      setBladGlobalny(T.brakStartuOpis);
+    const brak = pierwszyBrak([
+      !fromBusRef && { komunikat: T.brakStartuOpis },
+      konfliktNapiec ? { komunikat: konfliktNapiec, pole: 'mvd-kreator-aparat-nn-szyna-do' } : null,
+      konfliktRodzaju ? { komunikat: konfliktRodzaju, pole: 'mvd-kreator-aparat-nn-rodzaj-przelacznik' } : null,
+      !toBusRef && { komunikat: T.brakSzynyDoWalid, pole: 'mvd-kreator-aparat-nn-szyna-do' },
+      !catalogRef && { komunikat: T.brakTypuWalid, pole: 'mvd-kreator-aparat-nn-katalog' },
+      !deviceClass && { komunikat: T.brakRodzajuWalid, pole: 'mvd-kreator-aparat-nn-rodzaj-przelacznik' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !fromBusRef || !activeCaseId || !deviceClass) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     const payload: AddNNSwitchDevicePayload = {
       from_bus_ref: fromBusRef,
       to_bus_ref: toBusRef,
@@ -124,12 +168,20 @@ export function KreatorAparatuNn() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, catalogRef, closeForm, deviceClass, executeDomainOperation, fromBusRef, nazwa, selekcja, toBusRef]);
+  }, [activeCaseId, catalogRef, closeForm, deviceClass, executeDomainOperation, fromBusRef, konfliktNapiec, konfliktRodzaju, nazwa, prowadzenie, selekcja, toBusRef]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszOd, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBus?.name ?? fromBusRef ?? '—' },
-    { etykieta: T.wierszDo, stan: toBusRef ? 'kompletne' : 'brak', wartosc: opcjeDo.find((b) => b.ref_id === toBusRef)?.name ?? 'Do wyboru' },
-    { etykieta: T.wierszTyp, stan: catalogRef ? 'kompletne' : 'brak', wartosc: wybranyAparat?.name ?? 'Do wyboru' },
+    { etykieta: T.wierszOd, stan: fromBusRef ? 'ustalone' : 'do_wyboru', wartosc: fromBus?.name ?? '' },
+    {
+      etykieta: T.wierszDo,
+      stan: konfliktNapiec ? 'konflikt' : !toBusRef ? 'do_wyboru' : 'ustalone',
+      wartosc: szynaDo?.name ?? '',
+    },
+    {
+      etykieta: T.wierszTyp,
+      stan: konfliktRodzaju ? 'konflikt' : catalogRef ? 'ustalone' : 'do_wyboru',
+      wartosc: wybranyAparat?.name ?? '',
+    },
   ];
 
   const aside = (
@@ -148,8 +200,13 @@ export function KreatorAparatuNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-aparat-nn-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: aparaty.length === 0 && !bladKatalogu ? 'ladowanie' : null,
+        testid: 'mvd-kreator-aparat-nn-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-aparat-nn-anuluj' }}
       testid="mvd-kreator-aparat-nn"
     >
@@ -167,18 +224,29 @@ export function KreatorAparatuNn() {
             { id: 'fuse', etykieta: T.rodzajFuse },
           ]}
           wartosc={deviceClass}
-          onZmiana={(v) => setDeviceClass(v as NNSwitchDeviceClass)}
+          onZmiana={(v) => {
+            setDeviceClass(v as NNSwitchDeviceClass);
+            edytowane('rodzaj');
+          }}
           testid="mvd-kreator-aparat-nn-rodzaj-przelacznik"
         />
+        {konfliktRodzaju ? <p className="mvd-pole-blad" role="alert">{konfliktRodzaju}</p> : null}
       </KreatorSekcja>
 
       <KreatorSekcja tytul={T.torTytul} nota={fromBus?.name ?? undefined} testid="mvd-kreator-aparat-nn-tor">
         <KreatorSiatka kolumny={2}>
-          <RzadWartosci etykieta={T.szynaOd} wartosc={fromBus?.name ?? fromBusRef ?? '—'} />
+          <RzadWartosci
+            etykieta={T.szynaOd}
+            wartosc={fromBusRef ? nazwaObiektuZMigawki(snapshot, fromBusRef) : '—'}
+          />
           <PoleWyboru
             etykieta={T.szynaDo}
             wartosc={toBusRef}
-            onZmiana={setToBusRef}
+            onZmiana={(v) => {
+              setToBusRef(v);
+              edytowane('szyna_do');
+            }}
+            blad={konfliktNapiec}
             opcje={[
               { id: '', etykieta: T.szynaDoPlaceholder },
               ...opcjeDo.map((b) => ({ id: b.ref_id, etykieta: `${b.name} (${b.voltage_kv} kV)` })),

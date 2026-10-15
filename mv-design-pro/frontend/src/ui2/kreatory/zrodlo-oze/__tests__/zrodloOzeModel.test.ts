@@ -18,7 +18,6 @@ import {
   sugerujDerSn,
   technologiaLabel,
   refUtworzonegoWytworcy,
-  trybQWymagaWartosci,
   walidujDerSn,
   walidujFormularz,
   wariantLabel,
@@ -30,6 +29,7 @@ import {
   type OzeFormData,
   type TransformatorBlokowy,
 } from '../zrodloOzeModel';
+import { OZE_STRINGS } from '../strings';
 
 const KONWERTER: ConverterType = {
   id: 'conv-pv-1',
@@ -360,15 +360,27 @@ describe('zrodloOzeModel — payload add_converter_source (kontrakt 1:1)', () =>
     expect(domyslne.has_hvrt_curve).toBeUndefined();
   });
 
-  it('trybQWymagaWartosci: tryb Q wybrany bez wartości rządzącej = regulacja pasywna', () => {
-    // Domyślnie STALY_COS_PHI bez cos_phi_target → wymaga wartości.
-    expect(trybQWymagaWartosci(dane())).toBe(true);
-    expect(trybQWymagaWartosci(dane({ cos_phi_target: 0.95 }))).toBe(false);
-    expect(trybQWymagaWartosci(dane({ control_mode: 'Q_OD_U' }))).toBe(true);
-    expect(trybQWymagaWartosci(dane({ control_mode: 'Q_OD_U', qu_slope_pu_per_pu: 4 }))).toBe(false);
-    // Tryby bez wartości rządzącej (P(U), wyłączone) nie są „pasywne z brakiem".
-    expect(trybQWymagaWartosci(dane({ control_mode: 'WYLACZONE' }))).toBe(false);
-    expect(trybQWymagaWartosci(dane({ control_mode: 'P_OD_U' }))).toBe(false);
+  // Intencja dawnego testu `trybQWymagaWartosci` (ostrzeżenie „regulacja pasywna” w trakcie
+  // pracy): projektant ma wiedzieć, co znaczy puste pole wartości rządzącej. Karta
+  // PROWADZENIE-KREATORY zastąpiła sygnał w toku jednym zdaniem pomocy przy polu (zachowanie
+  // backendu: cosφ → 1, nachylenie Q(U) → 0, czyli bez Q). Iloczyn: tryb Q × wartość
+  // {pusta, podana} — pusta nie jest brakiem blokującym zapis ani konfliktem, a wartość
+  // podana trafia do payloadu tylko w swoim trybie.
+  it.each([
+    ['STALY_COS_PHI', 'cos_phi_target', 0.95, 'cos_phi'],
+    ['Q_OD_U', 'qu_slope_pu_per_pu', 4, 'qu_slope_pu_per_pu'],
+  ] as const)('tryb %s: puste pole %s nie blokuje zapisu, podane jedzie do modelu', (tryb, pole, wartosc, klucz) => {
+    const pusta = dane({ control_mode: tryb });
+    expect(walidujFormularz(pusta, KONTEKST).map((b) => b.field)).not.toContain(pole);
+    expect((zbudujPayload(pusta, KONTEKST, KONWERTER, null) as Record<string, unknown>)[klucz]).toBeUndefined();
+    const podana = dane({ control_mode: tryb, [pole]: wartosc });
+    expect(walidujFormularz(podana, KONTEKST).map((b) => b.field)).not.toContain(pole);
+    expect((zbudujPayload(podana, KONTEKST, KONWERTER, null) as Record<string, unknown>)[klucz]).toBe(wartosc);
+  });
+
+  it('pomoc pól wartości rządzącej mówi, co backend robi z pustym polem', () => {
+    expect(OZE_STRINGS.cosPhiCelPomoc).toContain('puste pole liczy się jako 1');
+    expect(OZE_STRINGS.quNachyleniePomoc).toContain('puste pole liczy się jako 0');
   });
 
   it('materialized_params niesie tabliczkę + certyfikat PTPiREE z katalogu', () => {

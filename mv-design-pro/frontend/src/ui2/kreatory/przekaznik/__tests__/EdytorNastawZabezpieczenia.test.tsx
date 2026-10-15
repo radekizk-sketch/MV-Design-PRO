@@ -198,10 +198,15 @@ describe('edytor na danych sieci złotej', () => {
     );
   });
 
-  it('brak aktywnego przypadku — zapis zablokowany', () => {
+  it('brak aktywnego przypadku — klik zapisu nazywa brak, nic nie zapisuje', async () => {
+    // Intencja (dawniej: przycisk wyszarzony): bez przypadku nastawy nie trafiają do modelu.
+    const user = userEvent.setup();
     useAppStateStore.getState().reset();
     renderuj();
-    expect(screen.getByTestId('edytor-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('edytor-zapisz')).toBeEnabled();
+    await user.click(screen.getByTestId('edytor-zapisz'));
+    expect(await screen.findByTestId('edytor-blad')).toHaveTextContent('Brak aktywnego przypadku');
+    expect(zapis).not.toHaveBeenCalled();
   });
 
   it('braki z backendu wyświetlone z akcją naprawczą zamiast „gotowe"', () => {

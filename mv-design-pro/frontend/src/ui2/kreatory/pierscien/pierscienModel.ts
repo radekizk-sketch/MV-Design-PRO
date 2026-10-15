@@ -47,11 +47,16 @@ export interface KontekstPierscienia {
   kandydaciNop: KandydatNop[];
 }
 
+/**
+ * Stan startowy. Długość odcinka domykającego NIE ma wartości domyślnej (dawniej 500 m):
+ * wyznacza impedancję pętli, więc pochodzi wyłącznie od projektanta (kontrakt prowadzenia
+ * projektanta, reguła 4). Rodzaj „kabel” to filtr listy katalogowej, nie wartość obliczeniowa.
+ */
 export const DANE_DOMYSLNE: PierscienFormData = {
   rodzaj: 'KABEL',
   catalog_ref: null,
   screen_bonding: '',
-  dlugosc_m: 500,
+  dlugosc_m: null,
   nop_ref: null,
 };
 
@@ -68,20 +73,40 @@ export function maZaciski(kontekst: KontekstPierscienia): boolean {
   return Boolean(kontekst.terminalA_id?.trim() && kontekst.terminalB_id?.trim());
 }
 
-export function walidujDomkniecie(data: PierscienFormData): BladPola[] {
-  const errors: BladPola[] = [];
-  if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ odcinka pierścienia z katalogu (kabel lub linia).' });
+/** KONFLIKT_TECHNICZNY — widoczny od razu przy polu: długość niedodatnia. */
+export function konfliktyDomkniecia(data: PierscienFormData): BladPola[] {
+  if (data.dlugosc_m !== null && !isPositive(data.dlugosc_m)) {
+    return [{ field: 'dlugosc_m', message: 'Długość odcinka pierścienia musi być dodatnia.' }];
   }
-  if (!isPositive(data.dlugosc_m)) {
-    errors.push({ field: 'dlugosc_m', message: 'Długość odcinka pierścienia musi być dodatnia.' });
+  return [];
+}
+
+/** Kontrola domknięcia przed zapisem: konflikty, potem BRAK_DO_OPERACJI w kolejności pracy. */
+export function walidujDomkniecie(data: PierscienFormData): BladPola[] {
+  const errors: BladPola[] = [...konfliktyDomkniecia(data)];
+  if (!data.catalog_ref?.trim()) {
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz typ odcinka pierścienia z katalogu — R, X i obciążalność pętli pochodzą z pozycji katalogowej.',
+    });
+  }
+  if (data.dlugosc_m === null) {
+    errors.push({
+      field: 'dlugosc_m',
+      message: 'Podaj długość odcinka domykającego — wyznacza impedancję pętli i rozpływ w pierścieniu.',
+    });
   }
   return errors;
 }
 
 export function walidujNop(data: PierscienFormData): BladPola[] {
   if (!data.nop_ref?.trim()) {
-    return [{ field: 'nop_ref', message: 'Wskaż łącznik punktu normalnie otwartego (NOP).' }];
+    return [{
+      field: 'nop_ref',
+      message:
+        'Wskaż łącznik punktu normalnie otwartego (NOP) — bez niego sieć pracuje w pętli zamkniętej.',
+    }];
   }
   return [];
 }

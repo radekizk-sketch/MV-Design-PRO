@@ -26,6 +26,8 @@ import {
   PanelTeorii,
   PoleWyboru,
   RzadWartosci,
+  pierwszyBrak,
+  useProwadzenie,
   useSelekcjaPoOperacji,
   type OpcjaWyboru,
   type WierszGotowosci,
@@ -104,19 +106,21 @@ export function KreatorPrzepieciaNaPole() {
     opis?.pola.some((p) => p.id === poleZKontekstu) ? poleZKontekstu : '',
   );
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const prowadzenie = useProwadzenie();
 
   const opcjePol: OpcjaWyboru[] = [{ id: '', etykieta: T.poleAuto }, ...(opis?.pola ?? [])];
-  const kompletne = opis !== null;
 
   const onZapisz = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    // BRAK_DO_OPERACJI — jedno wskazanie przy próbie zapisu (kontrakt prowadzenia projektanta).
+    const brak = pierwszyBrak([
+      !opis && { komunikat: T.brakElementuWalid },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !opis || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!opis) {
-      setBladGlobalny(T.walidacjaStopka);
-      return;
-    }
+    prowadzenie.zgas();
     const payload: Record<string, unknown> = { element_ref: elementRef };
     if (poleRef) payload.field_ref = poleRef;
     setBladGlobalny(null);
@@ -138,13 +142,13 @@ export function KreatorPrzepieciaNaPole() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, opis, poleRef, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, opis, poleRef, prowadzenie, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszElement, stan: opis ? 'kompletne' : 'brak', wartosc: opis?.nazwa ?? 'Brak' },
+    { etykieta: T.wierszElement, stan: opis ? 'ustalone' : 'do_wyboru', wartosc: opis?.nazwa ?? '' },
     {
       etykieta: T.wierszPole,
-      stan: 'kompletne',
+      stan: 'ustalone',
       wartosc: opcjePol.find((o) => o.id === poleRef)?.etykieta ?? T.poleAuto,
     },
   ];
@@ -162,8 +166,8 @@ export function KreatorPrzepieciaNaPole() {
         </>
       )}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-przepiecie-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, testid: 'mvd-kreator-przepiecie-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-przepiecie-anuluj' }}
       testid="mvd-kreator-przepiecie"
     >

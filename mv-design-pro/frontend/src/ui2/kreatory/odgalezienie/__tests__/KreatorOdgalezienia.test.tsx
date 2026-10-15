@@ -27,10 +27,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+// Nazwa obiektu w kreatorze idzie przez REALNY `selectElementName` (to samo źródło nazw co
+// schemat, `nazwaObiektuZMigawki`) — atrapa podmienia wyłącznie store migawki.
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { useSnapshotStore, selectElementName: oryginal.selectElementName };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -50,12 +53,11 @@ vi.mock('../../../../ui/selection', () => ({
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const KABEL_120 = { id: 'cab-1', name: 'XRUHAKXS 3x120', cross_section_mm2: 120, rated_current_a: 280, voltage_rating_kv: 20 };
+const KABEL_240 = { id: 'cab-2', name: 'XRUHAKXS 3x240', cross_section_mm2: 240, rated_current_a: 420, voltage_rating_kv: 20 };
+
 const { fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => ({
-  fetchCableTypesMock: vi.fn(() =>
-    Promise.resolve([
-      { id: 'cab-1', name: 'XRUHAKXS 3x120', cross_section_mm2: 120, rated_current_a: 280, voltage_rating_kv: 20 },
-    ]),
-  ),
+  fetchCableTypesMock: vi.fn((): Promise<unknown[]> => Promise.resolve([])),
   fetchLineTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'line-1', name: 'AFL-6 70', cross_section_mm2: 70, rated_current_a: 290, voltage_rating_kv: 20 },
@@ -86,7 +88,8 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
-    fetchCableTypesMock.mockClear();
+    fetchCableTypesMock.mockReset();
+    fetchCableTypesMock.mockImplementation(() => Promise.resolve([KABEL_120, KABEL_240]));
     fetchLineTypesMock.mockClear();
   });
 
@@ -99,6 +102,7 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
     });
     render(<KreatorOdgalezienia />);
     await pickCable();
+    await userEvent.type(screen.getByTestId('mvd-kreator-odgalezienie-dlugosc'), '1');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-odgalezienie-zapisz'));
 
@@ -130,20 +134,55 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwy stan zerowy: bez źródła zapis zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany”: bez źródła i bez przypadku operacja nie
+  // rusza — w nowym kanonie przez jedno wskazanie przy próbie zapisu.
+  it('bez źródła: próba zapisu nazywa brak źródła, operacja nie rusza', async () => {
     context = {};
     render(<KreatorOdgalezienia />);
     await screen.findByTestId('mvd-kreator-odgalezienie-brak');
-    expect(screen.getByTestId('mvd-kreator-odgalezienie-zapisz')).toBeDisabled();
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odgalezienie')).toHaveAttribute('data-status', 'gotowy'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-odgalezienie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).toBeInTheDocument();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorOdgalezienia />);
     await pickCable();
-    expect(screen.getByTestId('mvd-kreator-odgalezienie-zapisz')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('mvd-kreator-odgalezienie-dlugosc'), '0.4');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odgalezienie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: bez alertu, długość pusta (bez zgadywanego 1 km); zapis wskazuje długość z celem', async () => {
+    render(<KreatorOdgalezienia />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odgalezienie')).toHaveAttribute('data-status', 'gotowy'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByTestId('mvd-kreator-odgalezienie-dlugosc') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odgalezienie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odgalezienie-dlugosc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj długość odgałęzienia — /);
+    await userEvent.type(screen.getByTestId('mvd-kreator-odgalezienie-dlugosc'), '0.8');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odgalezienie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odgalezienie-katalog')).toHaveFocus();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('konflikt widoczny od razu: długość niedodatnia', async () => {
+    render(<KreatorOdgalezienia />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odgalezienie')).toHaveAttribute('data-status', 'gotowy'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odgalezienie-dlugosc'), '0');
+    expect(screen.getByRole('alert').textContent).toMatch(/większa od zera/);
+  });
+
+  it('jedyna pozycja katalogu dla rodzaju odcinka stoi w polu i daje się zmienić', async () => {
+    fetchCableTypesMock.mockImplementation(() => Promise.resolve([KABEL_120]));
+    render(<KreatorOdgalezienia />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odgalezienie-katalog')).toHaveValue('cab-1'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odgalezienie-katalog'), '');
+    expect(screen.getByTestId('mvd-kreator-odgalezienie-katalog')).toHaveValue('');
   });
 
   /**
@@ -158,7 +197,7 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-odgalezienie-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-odgalezienie')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

@@ -28,14 +28,10 @@ export const PIERSCIEN_STRINGS = {
   dlugoscPomoc: 'Długość odcinka domykającego pętlę [m] — wpływa na impedancję pierścienia.',
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
-    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
-    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
+    'Sposób uziemienia ekranu — katalogowe R0/X0 dotyczą układu odniesienia typu kabla.',
 
   nopTytul: 'Punkt normalnie otwarty (NOP)',
-  nopPomoc:
-    'Wskaż łącznik, który w stanie normalnym pozostaje otwarty — sieć pracuje '
-    + 'radialnie, a pierścień stanowi rezerwę. Rozpływ mocy honoruje ten stan.',
+  nopPomoc: 'Łącznik otwarty w stanie normalnym — sieć pracuje promieniowo, pierścień jest rezerwą.',
   nopPlaceholder: '— wybierz łącznik NOP —',
   nopBrakKandydatow: 'Brak kandydatów NOP na domkniętym pierścieniu.',
 
@@ -61,12 +57,9 @@ export const PIERSCIEN_STRINGS = {
   domknij: 'Domknij pierścień',
   zapiszNop: 'Zapisz punkt NOP',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pierścienia.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby domknąć pierścień.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog kabli/linii pierścienia ładuje się asynchronicznie; „Domknij"
-  // bez niego byłoby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — domknięcie będzie dostępne po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — domknięcie pierścienia unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać pierścienia.',
+  zaciskiDoWskazania: 'Do wskazania na schemacie',
   pierscienDomkniety: 'Pierścień domknięty — wskaż teraz punkt normalnie otwarty.',
 
   // Panel teorii (V12K-066: standard „must-have")

@@ -38,8 +38,13 @@ import {
   PoleWyboru,
   RzadWartosci,
   TekstZWzorami,
+  napiecieSzyny,
+  pierwszyBrak,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -48,13 +53,13 @@ import {
   fmtA,
   fmtKva,
   fmtKw,
+  konfliktyFormularza,
   maOdplyw,
   prefillZKatalogu,
   sumaUdzialowZip,
   walidujFormularz,
   zbudujPayload,
   zbudujZapytaniePodgladu,
-  type BladPola,
   type KontekstOdbioru,
   type LoadKind,
   type OdbiorFormData,
@@ -75,6 +80,23 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'zapis', tytul: T.krokZapis },
 ];
 
+/** Miejsce pola modelu w kreatorze — cel wskazania BRAKU_DO_OPERACJI. */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'dane', pole: 'mvd-kreator-odbior-katalog' },
+  active_power_kw: { krok: 'dane', pole: 'mvd-kreator-odbior-moc' },
+  cos_phi: { krok: 'dane', pole: 'mvd-kreator-odbior-cosphi' },
+  'zip.a_p': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-ap' },
+  'zip.b_p': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-bp' },
+  'zip.c_p': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-cp' },
+  'zip.a_q': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-aq' },
+  'zip.b_q': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-bq' },
+  'zip.c_q': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-cq' },
+  'zip.k_pf': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-kpf' },
+  'zip.k_qf': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-kqf' },
+  'zip.suma_p': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-cp' },
+  'zip.suma_q': { krok: 'dane', pole: 'mvd-kreator-odbior-zip-cq' },
+};
+
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -94,17 +116,21 @@ export function KreatorOdbioruNn() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
   const hasOdplyw = maOdplyw(kontekst);
-  const napiecieV = (kontekst.bus_voltage_kv ?? 0.4) * 1000;
+  // Napięcie podglądu prądu: z kontekstu wywołania albo z szyny nN odpływu w modelu
+  // (topologia). Bez napięcia podglądu nie ma — dawniej stałe 0,4 kV.
+  const napiecieKv = kontekst.bus_voltage_kv ?? napiecieSzyny(snapshot, kontekst.bus_nn_ref ?? null);
+  const napiecieV = napiecieKv !== null ? napiecieKv * 1000 : null;
 
   const [dane, setDane] = useState<OdbiorFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('dane');
+  const prowadzenie = useProwadzenie(setKrok);
 
   const [typy, setTypy] = useState<LoadCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -180,20 +206,21 @@ export function KreatorOdbioruNn() {
     setDane((p) => ({ ...p, zip: { ...p.zip, [pole]: wartosc ?? 0 } }));
   }, []);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — przy polu od razu; braki dopiero przy próbie zapisu (wskazanie ramy).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const bladDlaPola = (pole: string): string | undefined => konflikty.find((b) => b.field === pole)?.message;
 
   const onZapisz = useCallback(async () => {
-    if (!hasOdplyw) {
-      setBladGlobalny(T.brakOdplywuOpis);
+    const brak = pierwszyBrak([
+      !hasOdplyw && { komunikat: T.brakOdplywuWalid },
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     const payload = zbudujPayload(dane, kontekst);
     const bladKatalogFirst = validateCatalogFirst('add_nn_load', payload);
     if (bladKatalogFirst) {
@@ -204,7 +231,7 @@ export function KreatorOdbioruNn() {
     try {
       const response = await executeDomainOperation(activeCaseId, 'add_nn_load', payload);
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -214,36 +241,42 @@ export function KreatorOdbioruNn() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'LoadNN', name: dane.nazwa.trim() || 'Odbiór nN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst, prowadzenie, selekcjaPoOperacji]);
 
+  // Panel kontroli neutralny: „do wyboru” w trakcie pracy, czerwień tylko dla konfliktu.
+  const konfliktPola = (pole: string) => konflikty.some((b) => b.field === pole);
+  const konfliktZip = konflikty.some((b) => b.field.startsWith('zip.'));
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszOdplyw,
-      stan: hasOdplyw ? 'kompletne' : 'brak',
-      wartosc: kontekst.feeder_name || (hasOdplyw ? 'Wskazany' : 'Brak'),
+      stan: hasOdplyw ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.feeder_name || (hasOdplyw ? T.odplywWskazany : ''),
     },
     {
       etykieta: T.pochodzenieDanychTytul,
-      stan: dane.manual_mode || dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.manual_mode ? T.pochodzenieReczne : dane.catalog_ref ? T.pochodzenieKatalog : '—',
+      stan: dane.manual_mode || dane.catalog_ref ? 'ustalone' : 'do_wyboru',
+      wartosc: dane.manual_mode ? T.pochodzenieReczne : dane.catalog_ref ? T.pochodzenieKatalog : '',
     },
     {
       etykieta: T.wierszMoc,
-      stan: dane.active_power_kw && dane.active_power_kw > 0 ? 'kompletne' : 'brak',
-      wartosc: fmtKw(dane.active_power_kw),
+      stan: konfliktPola('active_power_kw') ? 'konflikt' : dane.active_power_kw !== null ? 'ustalone' : 'do_wyboru',
+      wartosc: dane.active_power_kw !== null ? fmtKw(dane.active_power_kw) : '',
     },
-    { etykieta: T.wierszCos, stan: 'kompletne', wartosc: dane.cos_phi.toFixed(2) },
+    {
+      etykieta: T.wierszCos,
+      stan: konfliktPola('cos_phi') ? 'konflikt' : dane.cos_phi !== null ? 'ustalone' : 'do_wyboru',
+      wartosc: dane.cos_phi !== null ? dane.cos_phi.toFixed(2) : '',
+    },
     {
       etykieta: T.zipWierszModel,
-      stan: bledy.some((b) => b.field.startsWith('zip.')) ? 'brak' : 'kompletne',
+      stan: konfliktZip ? 'konflikt' : 'ustalone',
       wartosc: czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny,
     },
     // Brak wskazania faz NIE blokuje zapisu (odbiór trójfazowy symetryczny to
     // pełnoprawny model) — wiersz mówi wprost, jak odbiór zostanie policzony.
-    { etykieta: T.wierszFazy, stan: 'kompletne', wartosc: etykietaFaz(dane.phases) },
-    { etykieta: T.wierszPrad, stan: podglad ? 'kompletne' : 'ostrzezenie', wartosc: fmtA(podglad?.rated_current_a) },
+    { etykieta: T.wierszFazy, stan: 'ustalone', wartosc: etykietaFaz(dane.phases) },
   ];
 
   const aside = (
@@ -273,23 +306,6 @@ export function KreatorOdbioruNn() {
   );
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  /**
-   * S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-   * dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-   * karta i ten sam mechanizm powtórzony w tym pliku). Odbiór ma DWIE
-   * ścieżki pochodzenia parametrów (`walidujFormularz`: katalog ALBO
-   * `manual_mode`) — bramka ładowania katalogu dotyczy WYŁĄCZNIE ścieżki
-   * katalogowej; w trybie ręcznym katalog jest nieużywany, więc jego stan
-   * ładowania nie może blokować zapisu (inaczej user w trybie ręcznym
-   * czekałby na zasób, którego nie potrzebuje).
-   */
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasOdplyw || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie && !dane.manual_mode
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -303,17 +319,15 @@ export function KreatorOdbioruNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasOdplyw
-              ? T.brakOdplywuOpis
-              : null
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-odbior-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        // Wyszarzenie tylko na czas wczytywania katalogu — i tylko w trybie katalogowym (tryb
+        // ręczny katalogu nie potrzebuje).
+        blokada: katalogLadowanie && !dane.manual_mode ? 'ladowanie' : null,
+        testid: 'mvd-kreator-odbior-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-odbior-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -380,8 +394,9 @@ export function KreatorOdbioruNn() {
             <PoleLiczbowe
               etykieta={T.cosPhi}
               wartosc={dane.cos_phi}
-              onZmiana={(v) => zmien('cos_phi', v ?? 0)}
+              onZmiana={(v) => zmien('cos_phi', v)}
               krok={0.01}
+              wymagane
               blad={bladDlaPola('cos_phi')}
               testid="mvd-kreator-odbior-cosphi"
             />
@@ -505,10 +520,12 @@ export function KreatorOdbioruNn() {
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-odbior-teoria"
           >
-            <figure className="mvd-wykres-fig">
-              <WykresTrojkatMocy cosPhi={dane.cos_phi} />
-              <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={T.teoriaJakCzytac} /></figcaption>
-            </figure>
+            {dane.cos_phi !== null && 0 < dane.cos_phi && dane.cos_phi <= 1 ? (
+              <figure className="mvd-wykres-fig">
+                <WykresTrojkatMocy cosPhi={dane.cos_phi} />
+                <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={T.teoriaJakCzytac} /></figcaption>
+              </figure>
+            ) : null}
           </PanelTeorii>
         </KreatorSekcja>
       ) : null}
@@ -522,7 +539,7 @@ export function KreatorOdbioruNn() {
               wartosc={dane.manual_mode ? T.pochodzenieReczne : T.pochodzenieKatalog}
             />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtKw(dane.active_power_kw)} />
-            <RzadWartosci etykieta={T.wierszCos} wartosc={dane.cos_phi.toFixed(2)} />
+            <RzadWartosci etykieta={T.wierszCos} wartosc={dane.cos_phi !== null ? dane.cos_phi.toFixed(2) : '—'} />
             <RzadWartosci
               etykieta={T.zipWierszModel}
               wartosc={czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny}

@@ -50,6 +50,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchCtTypes: () =>
     Promise.resolve([
       { id: 'ct-1', name: 'CT 300/5', manufacturer: 'ABB', ratio_primary_a: 300, ratio_secondary_a: 5, accuracy_class: '5P20', burden_va: 15 },
+      { id: 'ct-bez-klasy', name: 'CT 200/1', manufacturer: 'ABB', ratio_primary_a: 200, ratio_secondary_a: 1 },
     ]),
   fetchVtTypes: () =>
     Promise.resolve([
@@ -96,6 +97,13 @@ describe('KreatorPomiaru — realna ścieżka', () => {
     render(<KreatorPomiaru />);
     await pickCt();
 
+    // Jedyne pole SN modelu przyjęte automatycznie; dane znamionowe z karty katalogowej.
+    expect(screen.getByTestId('mvd-kreator-pomiar-bay')).toHaveValue('bay-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-znamionowe'));
+    expect(screen.getByTestId('mvd-kreator-pomiar-secondary')).toHaveValue(5);
+    expect(screen.getByTestId('mvd-kreator-pomiar-klasa')).toHaveValue('5P20');
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
+
     await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
 
     await waitFor(() => {
@@ -132,11 +140,41 @@ describe('KreatorPomiaru — realna ścieżka', () => {
     });
   });
 
-  it('uczciwy stan zerowy: bez katalogu zapis zablokowany', async () => {
+  // Intencja dawnego „bez katalogu zapis zablokowany”: operacja nie rusza bez typu — teraz
+  // przez wskazanie katalogu przy próbie zapisu; dane znamionowe bez karty pozostają puste.
+  it('bez katalogu: wtórna i klasa puste (bez domyślnych 5 A / „0.5”), zapis wskazuje katalog', async () => {
     render(<KreatorPomiaru />);
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toBeInTheDocument());
-    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-znamionowe'));
+    expect((screen.getByTestId('mvd-kreator-pomiar-secondary') as HTMLInputElement).value).toBe('');
+    expect((screen.getByTestId('mvd-kreator-pomiar-klasa') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-krok-pole')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz typ przekładnika z katalogu — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('karta bez klasy dokładności: klasa pusta (bez „0.5”); przekładnia z karty daje się zmienić', async () => {
+    render(<KreatorPomiaru />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pomiar-katalog'), 'ct-bez-klasy');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-znamionowe'));
+    expect((screen.getByTestId('mvd-kreator-pomiar-klasa') as HTMLInputElement).value).toBe('');
+    expect(screen.getByTestId('mvd-kreator-pomiar-primary')).toHaveValue(200);
+    await userEvent.clear(screen.getByTestId('mvd-kreator-pomiar-primary'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-pomiar-primary'), '150');
+    expect(screen.getByTestId('mvd-kreator-pomiar-primary')).toHaveValue(150);
+  });
+
+  it('konflikt widoczny od razu: przekładnia niedodatnia', async () => {
+    render(<KreatorPomiaru />);
+    await pickCt();
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-znamionowe'));
+    await userEvent.clear(screen.getByTestId('mvd-kreator-pomiar-secondary'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-pomiar-secondary'), '0');
+    expect(screen.getByRole('alert').textContent).toBe('Wartości przekładni muszą być dodatnie.');
   });
 });
 
@@ -168,7 +206,8 @@ describe('KreatorPomiaru — kotwica wyłącznika liniowego', () => {
     render(<KreatorPomiaru />);
     expect(screen.getByTestId('mvd-kreator-pomiar-pole')).toHaveTextContent('Wyłącznik odcinka 1');
     expect(screen.queryByTestId('mvd-kreator-pomiar-bay')).not.toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
+    // Zapis klikalny od startu (brak danych nie wyszarza zapisu — kontrakt prowadzenia).
+    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeEnabled();
     await wybierzKatalog();
     await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
@@ -183,11 +222,12 @@ describe('KreatorPomiaru — kotwica wyłącznika liniowego', () => {
     expect(ladunek).not.toHaveProperty('bay_ref');
   });
 
-  it('wyłącznika nie ma w modelu — zapis zablokowany mimo wybranego katalogu', async () => {
+  it('wyłącznika nie ma w modelu — próba zapisu nazywa brak kotwicy mimo wybranego katalogu', async () => {
     snapshotState.snapshot = { branches: [] };
     render(<KreatorPomiaru />);
     await wybierzKatalog();
-    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wskazanego wyłącznika liniowego nie ma w modelu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

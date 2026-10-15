@@ -54,6 +54,7 @@ import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import { nazwaKartyPola } from '../rama/nazwyKatalogu';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -88,8 +89,6 @@ export const NAPIECIA_NN_KV = [0.4, 0.69] as const;
  * legacy `NN_VOLTAGE_OPTIONS_KV` (0,4–6,3 kV). Projektant wybiera jawnie.
  */
 export const NAPIECIA_NN_CUSTOM_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3] as const;
-export const DOMYSLNE_NAPIECIE_NN_KV = 0.4;
-export const DOMYSLNA_LICZBA_ODPLYWOW_NN = 2;
 
 /** Układ sieci nN (`nn_earthing.lv_system` → `Transformer.lv_earthing_system`) i typ pracy
  *  punktu neutralnego (`GroundingConfig.type`) — literały wspólne z `types/uziemienie.ts`
@@ -130,6 +129,7 @@ export interface WyposazeniePolaWpis {
   ct_catalog_ref: string | null;
   vt_catalog_ref: string | null;
   relay_catalog_ref: string | null;
+  /** Rodzaj zabezpieczenia (`add_relay`); pusty = nie wybrano (bez domyślnego „nadprądowego”). */
   relay_type: string;
   /**
    * Obwody wtórne CT i VT (karta KD-3, domknięte kartą W3-B). Wejście do
@@ -151,8 +151,11 @@ export interface WyposazeniePolaWpis {
   vt_moc_aparatow_va: number | null;
   /** Moc tracona na stykach i zaciskach obwodu VT [VA] — podana TYLKO jawnie. */
   vt_moc_stykow_va: number | null;
-  /** Które uzwojenie VT sprawdzamy (limit ΔU zależy od kategorii uzwojenia). */
-  vt_uzwojenie: 'POMIAROWE' | 'ZABEZPIECZENIOWE';
+  /**
+   * Które uzwojenie VT sprawdzamy (limit ΔU zależy od kategorii uzwojenia). Z klasy
+   * dokładności pozycji katalogowej (`uzwojenieVtZKlasy`) albo od projektanta; `null` = brak.
+   */
+  vt_uzwojenie: 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null;
 }
 
 /** Rodzaje zabezpieczeń pola przyjmowane przez operację `add_relay`. */
@@ -176,7 +179,7 @@ export function nowyWpisWyposazenia(
     ct_catalog_ref: null,
     vt_catalog_ref: null,
     relay_catalog_ref: null,
-    relay_type: RODZAJE_ZABEZPIECZEN[0],
+    relay_type: '',
     ct_dlugosc_m: null,
     ct_przekroj_mm2: null,
     ct_moc_aparatow_va: null,
@@ -185,10 +188,57 @@ export function nowyWpisWyposazenia(
     vt_przekroj_mm2: null,
     vt_moc_aparatow_va: null,
     vt_moc_stykow_va: null,
-    vt_uzwojenie: 'POMIAROWE',
+    vt_uzwojenie: null,
     ...nadpisania,
   };
 }
+
+/**
+ * Kategoria uzwojenia VT z klasy dokładności pozycji katalogowej (PN-EN 61869-3): klasy
+ * 3P/6P to uzwojenia zabezpieczeniowe, klasy 0,1–3 — pomiarowe. Klasa nieznana = `null`
+ * (kategorię wybiera projektant).
+ */
+export function uzwojenieVtZKlasy(
+  klasa: string | null | undefined,
+): 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null {
+  const tekst = (klasa ?? '').trim().toUpperCase().replace(',', '.');
+  if (!tekst) return null;
+  if (/^\d+(\.\d+)?P$/.test(tekst)) return 'ZABEZPIECZENIOWE';
+  if (/^(0\.1|0\.2|0\.5|1|1\.0|3|3\.0)$/.test(tekst)) return 'POMIAROWE';
+  return null;
+}
+
+/** Kod funkcji ANSI (readout backendu) → rodzaj zabezpieczenia operacji `add_relay`. */
+const RODZAJ_ZABEZPIECZENIA_KODU: Readonly<Record<string, string>> = {
+  '50': 'NADPRADOWY',
+  '51': 'NADPRADOWY',
+  '51V': 'NADPRADOWY',
+  '50N': 'ZIEMNOZWARCIOWY',
+  '51N': 'ZIEMNOZWARCIOWY',
+  '67': 'KIERUNKOWY_NADPRADOWY',
+  '67N': 'KIERUNKOWY_NADPRADOWY',
+  '21': 'ODLEGLOSCIOWY',
+  '87T': 'ROZNICOWY',
+  '87L': 'ROZNICOWY',
+  '87G': 'ROZNICOWY',
+  '87BB': 'ROZNICOWY',
+};
+
+/**
+ * Rodzaj zabezpieczenia z kanonicznych kodów funkcji roli pola (readout backendu) —
+ * WYŁĄCZNIE gdy kody wskazują jeden rodzaj (np. tylko 50/51 ⇒ `NADPRADOWY`). Kody kilku
+ * rodzajów (51 + 51N, 51 + 87T) albo brak kodów zabezpieczeniowych = `''`: rodzaj wybiera
+ * projektant (dawniej pierwszy rodzaj z listy).
+ */
+export function rodzajZabezpieczeniaZKodow(kody: readonly string[]): string {
+  const rodzaje = new Set(
+    kody.map((kod) => RODZAJ_ZABEZPIECZENIA_KODU[kod.trim().toUpperCase()]).filter(Boolean),
+  );
+  return rodzaje.size === 1 ? [...rodzaje][0] : '';
+}
+
+/** Rodzaje aparatu, które wyłączają prąd zwarciowy — tylko przy nich pole ma przekaźnik i CT. */
+export const APARATY_WYLACZAJACE: ReadonlySet<string> = new Set(['WYLACZNIK', 'REKLOZER']);
 
 export interface StacjaFormData {
   station_type: TypStacji;
@@ -204,23 +254,26 @@ export interface StacjaFormData {
   pola: PoleSnWpis[];
   /** Wyposażenie pól (krok 4), kluczowane identyfikatorem wpisu pola. */
   wyposazenie: Record<string, WyposazeniePolaWpis>;
-  /** Miejsce wstawienia stacji w metrach od początku odcinka (krok 7); puste = środek. */
+  /**
+   * Miejsce wstawienia stacji w metrach od początku odcinka (krok 8); puste = miejsce
+   * wskazane na schemacie (kontekst operacji). Bez obu — brak przy zapisie (dawniej środek).
+   */
   insert_at_m: string;
   /** Konfiguracja strony nN (odbiorcza vs źródło PV za transformatorem). */
   nn_configuration: NnConfiguration;
-  /** Układ sieci nN (uziemienie) — G-STK-1. */
-  uklad_sieci_nn: UkladSieciNn;
-  /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
-  neutral_point: PunktNeutralny;
+  /** Układ sieci nN (uziemienie) — wybór projektanta (`null` = nie wybrano). */
+  uklad_sieci_nn: UkladSieciNn | null;
+  /** Typ pracy punktu neutralnego transformatora (strona nN) — wybór projektanta. */
+  neutral_point: PunktNeutralny | null;
   /** Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika (tekst PL, przecinek). */
   neutral_impedance_ohm: string;
-  /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
-  nn_voltage_kv: number;
+  /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN); `null` = nie wybrano. */
+  nn_voltage_kv: number | null;
   /** Referencja katalogowa falownika PV (tylko dla PV_INVERTER). */
   source_converter_ref: string | null;
   catalog_ref: string | null;
-  /** Liczba odpływów nN odbiorczych (minimalny blok nN). */
-  outgoing_feeders_nn_count: number;
+  /** Liczba odpływów nN odbiorczych (minimalny blok nN); `null` = nie podano. */
+  outgoing_feeders_nn_count: number | null;
   /** Producent rozdzielnicy SN (referencja katalogowa). */
   manufacturer_ref: string;
   /** Rodzina rozdzielnicy SN wybranego producenta (wymagana — katalog-first). */
@@ -253,12 +306,12 @@ export interface StacjaFormData {
    * `NONE` = bez regulacji (blok pomijany w payloadzie, zgodność wsteczna).
    */
   transformer_regulation_type: 'NONE' | 'DETC' | 'OLTC';
-  transformer_regulated_winding: 'HV' | 'LV';
-  transformer_tap_neutral_position: number;
-  transformer_tap_current_position: number;
-  transformer_tap_min_position: number;
-  transformer_tap_max_position: number;
-  transformer_tap_step_percent: number;
+  transformer_regulated_winding: 'HV' | 'LV' | null;
+  transformer_tap_neutral_position: number | null;
+  transformer_tap_current_position: number | null;
+  transformer_tap_min_position: number | null;
+  transformer_tap_max_position: number | null;
+  transformer_tap_step_percent: number | null;
 }
 
 export interface BladPola {
@@ -266,8 +319,16 @@ export interface BladPola {
   message: string;
 }
 
+/**
+ * Stan startowy kreatora. Wartości wpływające na wyniki i bezpieczeństwo NIE mają wartości
+ * startowych (kontrakt prowadzenia projektanta, 2026-10-15): układ sieci nN, punkt neutralny,
+ * napięcie nN, liczba odpływów nN, cosφ potrzeb własnych i zaczepy transformatora pochodzą z
+ * katalogu (szablon stacji, tabliczka transformatora) albo od projektanta. Dawne TN-C-S,
+ * punkt uziemiony bezpośrednio, 0,4 kV, 2 odpływy, „0,95” i ±2 × 2,5 % trafiały do modelu
+ * bez decyzji. Rodzaj stacji startowo z umiejscowienia (komponent), zapisywany ze składu pól.
+ */
 export const DANE_DOMYSLNE: StacjaFormData = {
-  station_type: 'branch',
+  station_type: 'inline',
   station_name: '',
   designation: '',
   construction_type: '',
@@ -277,33 +338,31 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   wyposazenie: {},
   insert_at_m: '',
   nn_configuration: 'LOAD_NN',
-  // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
-  // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
-  uklad_sieci_nn: 'TN-C-S',
-  neutral_point: 'directly_grounded',
+  uklad_sieci_nn: null,
+  neutral_point: null,
   neutral_impedance_ohm: '',
-  nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
+  nn_voltage_kv: null,
   source_converter_ref: null,
   catalog_ref: null,
-  outgoing_feeders_nn_count: DOMYSLNA_LICZBA_ODPLYWOW_NN,
+  outgoing_feeders_nn_count: null,
   manufacturer_ref: '',
   switchgear_family_ref: null,
   factory_configuration_ref: null,
   bay_template_refs: {},
   sn_field_apparatus_refs: {},
   station_auxiliary_kw: '',
-  station_auxiliary_cosphi: '0,95',
+  station_auxiliary_cosphi: '',
   transformer_units: 1,
-  // Domyślnie BEZ regulacji — projektant włącza ją świadomie. Typowy
-  // transformator dystrybucyjny SN/nN ma przełącznik bez wzbudzenia ±2 × 2,5 %,
-  // dlatego takie są wartości startowe po włączeniu regulacji.
+  // Domyślnie BEZ regulacji — projektant włącza ją świadomie; nastawy zaczepów przychodzą
+  // wtedy z tabliczki wybranego transformatora (`zaczepyZTabliczki`, jedno źródło z kreatorem
+  // transformatora) albo od projektanta.
   transformer_regulation_type: 'NONE',
-  transformer_regulated_winding: 'HV',
-  transformer_tap_neutral_position: 0,
-  transformer_tap_current_position: 0,
-  transformer_tap_min_position: -2,
-  transformer_tap_max_position: 2,
-  transformer_tap_step_percent: 2.5,
+  transformer_regulated_winding: null,
+  transformer_tap_neutral_position: null,
+  transformer_tap_current_position: null,
+  transformer_tap_min_position: null,
+  transformer_tap_max_position: null,
+  transformer_tap_step_percent: null,
 };
 
 /**
@@ -316,7 +375,8 @@ export interface KontekstStacji {
   endpointBusRef: string;
   runRef: string;
   segmentId: string;
-  positionOnSegment: number;
+  /** Udział długości odcinka wskazany na schemacie (0–1); `null` = miejsca nie wskazano. */
+  positionOnSegment: number | null;
   snVoltageKv: number;
   stationName: string;
   stationKind: TypStacji;
@@ -324,8 +384,11 @@ export interface KontekstStacji {
 
 const TYPY_STACJI: readonly TypStacji[] = ['terminal', 'branch', 'inline', 'sectional'];
 
-/** Normalizuje typ stacji z kontekstu do wariantu obsługiwanego przez D2. */
-export function normalizujTypStacji(raw: unknown): TypStacji {
+/**
+ * Normalizuje typ stacji z kontekstu. Wartość nieznana = `null` (dawniej cicho „odgałęźna”):
+ * rodzaj startowy wynika wtedy z umiejscowienia (`typStacjiStartowy`).
+ */
+export function normalizujTypStacji(raw: unknown): TypStacji | null {
   const value = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if ((TYPY_STACJI as readonly string[]).includes(value)) {
     return value as TypStacji;
@@ -335,7 +398,17 @@ export function normalizujTypStacji(raw: unknown): TypStacji {
   if (value === 'b') return 'inline';
   if (value === 'd') return 'sectional';
   if (value === 'c') return 'branch';
-  return 'branch';
+  return null;
+}
+
+/**
+ * Rodzaj startowy listy pól: zadeklarowany w kontekście albo — bez deklaracji — minimalny
+ * zbiór pól toru dla umiejscowienia (zakończenie odcinka: wejście + transformator = końcowa;
+ * podział odcinka: wejście + wyjście + transformator = przelotowa). Zapisywany rodzaj
+ * i tak wynika ze składu pól (`rodzajStacjiZKreatora`).
+ */
+export function typStacjiStartowy(raw: unknown, tryb: TrybUmiejscowienia): TypStacji {
+  return normalizujTypStacji(raw) ?? (tryb === 'ENDPOINT_APPEND' ? 'terminal' : 'inline');
 }
 
 /**
@@ -346,10 +419,10 @@ export function normalizujTypStacji(raw: unknown): TypStacji {
 export function wyznaczTryb(
   placementMode: string,
   endpointBusRef: string,
-  positionOnSegment: number,
+  positionOnSegment: number | null,
 ): TrybUmiejscowienia {
   const mode = placementMode.toUpperCase();
-  const naKoncu = mode === 'ENDPOINT_APPEND' || positionOnSegment >= 0.999;
+  const naKoncu = mode === 'ENDPOINT_APPEND' || (positionOnSegment !== null && positionOnSegment >= 0.999);
   return endpointBusRef && naKoncu ? 'ENDPOINT_APPEND' : 'SPLIT';
 }
 
@@ -372,84 +445,204 @@ export function kontekstKompletny(kontekst: KontekstStacji): boolean {
     : Boolean(kontekst.segmentId);
 }
 
-/** Ogranicza liczbę odpływów nN do sensownego zakresu (1..8). */
-export function ogranicznikOdplywow(value: number): number {
-  if (!Number.isFinite(value)) return 1;
+/** Ogranicza liczbę odpływów nN do zakresu pola (1..8); `null` = nie podano. */
+export function ogranicznikOdplywow(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) return null;
   return Math.max(1, Math.min(8, Math.trunc(value)));
 }
 
-export function walidujFormularz(
-  data: StacjaFormData,
-  snFields?: readonly StationSnFieldTemplate[],
-  tryb?: TrybUmiejscowienia,
-): BladPola[] {
+/**
+ * KONFLIKT_TECHNICZNY / NARUSZENIE_OGRANICZENIA — wartości podane, ale niedopuszczalne.
+ * Kreator pokazuje je od razu przy polu (w trakcie pracy).
+ */
+export function konfliktyFormularza(data: StacjaFormData): BladPola[] {
   const errors: BladPola[] = [];
+  if (data.nn_voltage_kv !== null) {
+    if (!(Number.isFinite(data.nn_voltage_kv) && data.nn_voltage_kv > 0)) {
+      errors.push({ field: 'nn_voltage_kv', message: 'Napięcie nN odbioru musi być dodatnie.' });
+    } else if (!wPasmieNn(data.nn_voltage_kv)) {
+      errors.push({
+        field: 'nn_voltage_kv',
+        message: `Napięcie strony nN musi leżeć w paśmie nN (${OPIS_PASMA_NN}).`,
+      });
+    }
+  }
+  if (data.outgoing_feeders_nn_count !== null && !(data.outgoing_feeders_nn_count >= 1)) {
+    errors.push({ field: 'outgoing_feeders_nn_count', message: 'Stacja wymaga co najmniej jednego odpływu nN.' });
+  }
+  if (data.neutral_impedance_ohm.trim() && liczbaDodatniaPL(data.neutral_impedance_ohm) === null) {
+    errors.push({ field: 'neutral_impedance_ohm', message: 'Impedancja uziemienia musi być liczbą dodatnią [Ω].' });
+  }
+  if (data.station_auxiliary_kw.trim() && liczbaDodatniaPL(data.station_auxiliary_kw) === null) {
+    errors.push({ field: 'station_auxiliary_kw', message: 'Moc potrzeb własnych musi być liczbą dodatnią [kW].' });
+  }
+  if (data.station_auxiliary_cosphi.trim()) {
+    const cos = liczbaDodatniaPL(data.station_auxiliary_cosphi);
+    if (cos === null || cos > 1) {
+      errors.push({ field: 'station_auxiliary_cosphi', message: 'cosφ potrzeb własnych musi leżeć w przedziale (0; 1].' });
+    }
+  }
+  if (data.transformer_regulation_type !== 'NONE') {
+    const { transformer_tap_min_position: min, transformer_tap_max_position: max } = data;
+    if (data.transformer_tap_step_percent !== null && !(data.transformer_tap_step_percent > 0)) {
+      errors.push({ field: 'transformer_tap_step_percent', message: 'Krok zaczepu musi być dodatni.' });
+    }
+    if (min !== null && max !== null) {
+      if (min >= max) {
+        errors.push({ field: 'transformer_tap_max_position', message: 'Zaczep minimalny musi być mniejszy od maksymalnego.' });
+      } else {
+        const neutral = data.transformer_tap_neutral_position;
+        const biezaca = data.transformer_tap_current_position;
+        if (neutral !== null && (neutral < min || neutral > max)) {
+          errors.push({ field: 'transformer_tap_neutral_position', message: 'Pozycja neutralna musi leżeć w zakresie zaczepów.' });
+        }
+        if (biezaca !== null && (biezaca < min || biezaca > max)) {
+          errors.push({ field: 'transformer_tap_current_position', message: 'Pozycja bieżąca musi leżeć w zakresie zaczepów.' });
+        }
+      }
+    }
+  }
+  return errors;
+}
+
+/**
+ * BRAK_DO_OPERACJI — parametry stacji niepodane, w kolejności kroków kreatora („co — po
+ * co”). Pola rozdzielnicy (karta, aparat, wyposażenie) nazywa `brakiPol`.
+ */
+export function brakiFormularza(data: StacjaFormData, kontekst: KontekstStacji): BladPola[] {
+  const errors: BladPola[] = [];
+  if (!kontekstKompletny(kontekst)) {
+    errors.push({
+      field: 'umiejscowienie',
+      message: 'Otwórz kreator z odcinka albo końca magistrali na schemacie — tam stanie stacja.',
+    });
+  }
+  if (czyZrodloNn(data.nn_configuration)) {
+    if (!data.source_converter_ref?.trim()) {
+      errors.push({
+        field: 'source_converter_ref',
+        message: 'Wybierz falownik źródła z katalogu — napięcie strony nN wynika z jego strony nN.',
+      });
+    }
+  } else if (data.nn_voltage_kv === null) {
+    errors.push({ field: 'nn_voltage_kv', message: 'Wybierz napięcie strony nN — od niego zależy dobór transformatora.' });
+  }
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ transformatora z katalogu.' });
+    errors.push({ field: 'catalog_ref', message: 'Wybierz transformator z katalogu — jego tabliczka wchodzi do rozpływu i zwarć.' });
   }
-  if (!(Number.isFinite(data.nn_voltage_kv) && data.nn_voltage_kv > 0)) {
-    errors.push({ field: 'nn_voltage_kv', message: 'Podaj napięcie nN odbioru większe od zera.' });
-  } else if (!wPasmieNn(data.nn_voltage_kv)) {
-    errors.push({
-      field: 'nn_voltage_kv',
-      message:
-        `Napięcie strony nN musi leżeć w paśmie nN (${OPIS_PASMA_NN}) — stacja SN/nN nie ma strony dolnej w paśmie SN.`,
-    });
-  }
-  if (ogranicznikOdplywow(data.outgoing_feeders_nn_count) < 1) {
-    errors.push({
-      field: 'outgoing_feeders_nn_count',
-      message: 'Stacja wymaga co najmniej jednego odpływu nN.',
-    });
-  }
-  if (czyZrodloNn(data.nn_configuration) && !data.source_converter_ref?.trim()) {
-    errors.push({
-      field: 'source_converter_ref',
-      message: 'Wybierz falownik źródła z katalogu — napięcie strony nN wynika z jego strony nN.',
-    });
+  if (data.transformer_regulation_type !== 'NONE') {
+    const zaczepy: Array<[keyof StacjaFormData, string]> = [
+      ['transformer_regulated_winding', 'Wybierz uzwojenie regulowane — po tej stronie zmienia się przekładnia.'],
+      ['transformer_tap_min_position', 'Podaj zaczep minimalny — dolna granica regulacji.'],
+      ['transformer_tap_max_position', 'Podaj zaczep maksymalny — górna granica regulacji.'],
+      ['transformer_tap_neutral_position', 'Podaj pozycję neutralną — zaczep przekładni znamionowej.'],
+      ['transformer_tap_current_position', 'Podaj pozycję bieżącą zaczepu — z nią liczy się rozpływ.'],
+      ['transformer_tap_step_percent', 'Podaj krok zaczepu — o tyle zmienia się przekładnia na zaczep.'],
+    ];
+    for (const [pole, komunikat] of zaczepy) {
+      if (data[pole] === null) errors.push({ field: pole, message: komunikat });
+    }
   }
   if (!data.manufacturer_ref?.trim()) {
-    errors.push({ field: 'manufacturer_ref', message: 'Wybierz producenta rozdzielnicy SN.' });
+    errors.push({ field: 'manufacturer_ref', message: 'Wybierz producenta rozdzielnicy SN — jego karty pól składają rozdzielnicę.' });
   }
-  // W5-A: ten sam predykat co backend (`blad_konfiguracji_uziemienia`) — uziemienie
-  // impedancyjne bez składowej dominującej to odmowa operacji, więc nazywamy ją tu.
-  if (
+  if (!data.switchgear_family_ref?.trim()) {
+    errors.push({ field: 'switchgear_family_ref', message: 'Wybierz rodzinę rozdzielnicy SN — pola stacji pochodzą z kart jednej rodziny.' });
+  }
+  return errors;
+}
+
+/** Braki strony nN i uziemienia (kroki 6–8) — po brakach rozdzielnicy, w kolejności kroków. */
+export function brakiNnIUziemienia(data: StacjaFormData, kontekst: KontekstStacji): BladPola[] {
+  const errors: BladPola[] = [];
+  if (data.outgoing_feeders_nn_count === null) {
+    errors.push({ field: 'outgoing_feeders_nn_count', message: 'Podaj liczbę odpływów nN — tyle pól odpływowych powstanie w rozdzielnicy nN.' });
+  }
+  if (liczbaDodatniaPL(data.station_auxiliary_kw) !== null && !data.station_auxiliary_cosphi.trim()) {
+    errors.push({ field: 'station_auxiliary_cosphi', message: 'Podaj cosφ potrzeb własnych — z niego wynika ich moc bierna.' });
+  }
+  if (data.uklad_sieci_nn === null) {
+    errors.push({ field: 'uklad_sieci_nn', message: 'Wybierz układ sieci nN — od niego zależą pętla zwarcia i ochrona przeciwporażeniowa.' });
+  }
+  if (data.neutral_point === null) {
+    errors.push({ field: 'neutral_point', message: 'Wybierz pracę punktu neutralnego strony nN — od niej zależy prąd zwarcia doziemnego.' });
+  } else if (
     PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)
     && liczbaDodatniaPL(data.neutral_impedance_ohm) === null
+    && !data.neutral_impedance_ohm.trim()
   ) {
+    // W5-A: ten sam predykat co backend (`blad_konfiguracji_uziemienia`).
     errors.push({
       field: 'neutral_impedance_ohm',
       message:
         data.neutral_point === 'petersen_coil'
-          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
-          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+          ? 'Podaj reaktancję dławika X_N — kompensuje prąd pojemnościowy.'
+          : 'Podaj rezystancję R_N rezystora uziemiającego — ogranicza prąd zwarcia doziemnego.',
     });
   }
-  if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
+  if (
+    !czyKoniecOdcinka(kontekst)
+    && kontekstKompletny(kontekst)
+    && kontekst.positionOnSegment === null
+    && liczbaDodatniaPL(data.insert_at_m) === null
+  ) {
     errors.push({
-      field: 'sn_fields',
-      message: 'Dobierz kompletny szablon rozdzielnicy SN dla każdego pola stacji.',
+      field: 'insert_at_m',
+      message: 'Podaj odległość stacji od początku odcinka — w tym miejscu odcinek zostanie podzielony.',
     });
   }
-  // B-12: aparat pola jest decyzją projektanta — backend go NIE dobiera.
-  if (snFields !== undefined && !czyAparaturaKompletna(snFields)) {
-    errors.push({
-      field: 'sn_field_apparatus_refs',
-      message: 'Dobierz aparat z katalogu SN dla każdego pola rozdzielnicy.',
-    });
-  }
-  // POLA-W-TORZE: pole toru nieobecne na liście = odmowa operacji (brak wspólnego aparatu).
-  if (snFields !== undefined && tryb !== undefined) {
-    const brak = brakujacePolaToru(snFields, tryb);
-    if (brak.length > 0) {
+  return errors;
+}
+
+/**
+ * Braki pól rozdzielnicy — per wpis pola (klucz `pole:<id>:…`), w kolejności listy pól:
+ * karta katalogowa pola, aparat, a przy wskazanym wyposażeniu — rodzaj zabezpieczenia
+ * i kategoria uzwojenia VT.
+ */
+export function brakiPol(
+  pola: readonly PoleSnWpis[],
+  wyposazenie: Readonly<Record<string, WyposazeniePolaWpis>>,
+): BladPola[] {
+  const errors: BladPola[] = [];
+  pola.forEach((pole, index) => {
+    const nr = index + 1;
+    const rola = FIELD_ROLE_LABEL_PL[pole.field_role].toLowerCase();
+    if (!pole.bay_template_ref) {
       errors.push({
-        field: 'sn_fields_tor',
-        message:
-          `Stacja wymaga pól toru: ${brak.map((rola) => FIELD_ROLE_LABEL_PL[rola]).join(', ')}`
-          + ' — dodaj je w kroku „Pola rozdzielnicy SN”.',
+        field: `pole:${pole.id}:szablon`,
+        message: `Wybierz kartę katalogową pola ${nr} (${rola}) — z niej pochodzi skład aparatury pola.`,
       });
     }
-  }
+    if (!pole.apparatus_catalog_ref) {
+      errors.push({
+        field: `pole:${pole.id}:aparat`,
+        message: `Wybierz aparat pola ${nr} (${rola}) z katalogu — odłącza element, któremu pole służy.`,
+      });
+    }
+  });
+  pola.forEach((pole, index) => {
+    const wpis = wyposazenie[pole.id];
+    if (!wpis) return;
+    const nr = index + 1;
+    if (wpis.relay_catalog_ref && !wpis.relay_type) {
+      errors.push({
+        field: `pole:${pole.id}:rodzaj_zabezpieczenia`,
+        message: `Wybierz rodzaj zabezpieczenia pola ${nr} — określa funkcje przekaźnika.`,
+      });
+    }
+    if (wpis.relay_catalog_ref && !wpis.ct_catalog_ref) {
+      errors.push({
+        field: `pole:${pole.id}:ct`,
+        message: `Wybierz przekładnik prądowy pola ${nr} — zabezpieczenie mierzy prąd z jego uzwojenia wtórnego.`,
+      });
+    }
+    if (wpis.vt_catalog_ref && wpis.vt_uzwojenie === null) {
+      errors.push({
+        field: `pole:${pole.id}:vt_uzwojenie`,
+        message: `Wybierz kategorię uzwojenia przekładnika napięciowego pola ${nr} — od niej zależy limit zmiany napięcia obwodu.`,
+      });
+    }
+  });
   return errors;
 }
 
@@ -463,9 +656,10 @@ export function walidujFormularz(
 export function doborTransformatorow(
   typy: readonly TransformerType[],
   snVoltageKv: number,
-  nnVoltageKv: number,
+  nnVoltageKv: number | null,
   sourcePowerMva: number | null = null,
 ): TransformerType[] {
+  if (nnVoltageKv === null) return [];
   const zgodne = typy.filter(
     (t) =>
       voltageMatches(t.voltage_hv_kv, snVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
@@ -582,6 +776,10 @@ export interface ParametryTransformatora {
   voltage_hv_kv: number;
   voltage_lv_kv: number;
   uk_percent: number;
+  /** Zakres i krok zaczepów z tabliczki (do nastaw regulacji — `zaczepyZTabliczki`). */
+  tap_min: number;
+  tap_max: number;
+  tap_step_percent: number;
 }
 
 export function parametryZKatalogu(
@@ -596,6 +794,9 @@ export function parametryZKatalogu(
     voltage_hv_kv: it.voltage_hv_kv,
     voltage_lv_kv: it.voltage_lv_kv,
     uk_percent: it.uk_percent,
+    tap_min: it.tap_min,
+    tap_max: it.tap_max,
+    tap_step_percent: it.tap_step_percent,
   };
 }
 
@@ -622,6 +823,19 @@ export function szablonyDlaWyboru(
       !familyRef || t.switchgear_family_ref == null || t.switchgear_family_ref === familyRef;
     return producentZgodny && rodzinaZgodna && isCompleteSourceStatus(t.source_status);
   });
+}
+
+/**
+ * Nazwa karty katalogowej pola w kreatorze: nazwa handlowa/katalogowa pola producenta
+ * (z kodem katalogowym, gdy karta go niesie), a bez niej nazwa pola z kanonicznego składu.
+ * Bez identyfikatora szablonu i bez statusu źródła danych (kreator projektuje, nie
+ * ewidencjonuje pochodzenia).
+ */
+export function etykietaKartyPola(
+  szablon: CompleteMvBayTemplateSummary,
+  rola: SnFieldRole,
+): string {
+  return nazwaKartyPola(szablon, FIELD_ROLE_LABEL_PL[rola]);
 }
 
 /** Kompletne opcje szablonów pola dla roli (posortowane, tylko repo_verified/kompletne). */
@@ -1062,6 +1276,7 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
  * ZERO fabrykacji: wartość tylko gdy podana; brak nazywa `walidujFormularz`.
  */
 function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
+  if (data.uklad_sieci_nn === null || data.neutral_point === null) return null;
   const blok: Record<string, unknown> = {
     lv_system: data.uklad_sieci_nn,
     neutral_point: data.neutral_point,
@@ -1107,9 +1322,12 @@ export function zbudujPayload(
   konwerter: ConverterType | null = null,
 ): Record<string, unknown> {
   const nazwa = data.station_name.trim() || kontekst.stationName.trim();
+  // Rodzaj zapisywany = rodzaj wynikający ze składu pól i umiejscowienia (jedna reguła
+  // produktu) — deklaracja z kroku „Rodzaj” służy tylko do startowej listy pól.
+  const rodzaj = rodzajStacjiZKreatora(data.pola, kontekst.tryb);
   const transformerBinding = normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN');
   const catalogItemId = data.catalog_ref?.trim() ?? '';
-  const feederCount = ogranicznikOdplywow(data.outgoing_feeders_nn_count);
+  const feederCount = ogranicznikOdplywow(data.outgoing_feeders_nn_count) ?? 0;
   const isZrodlo = czyZrodloNn(data.nn_configuration);
   const nnVoltage = isZrodlo ? konwerter?.un_kv ?? data.nn_voltage_kv : data.nn_voltage_kv;
   const protection = zabezpieczenieZrodla(data);
@@ -1154,14 +1372,17 @@ export function zbudujPayload(
   const auxiliary = blokPotrzebWlasnych(data);
 
   const commonPayload: Record<string, unknown> = {
-    ...(nazwa ? { name: nazwa } : {}),
-    station_type: data.station_type,
+    // Nazwa pod OBOMA kluczami, które czytają operacje: `append_station_on_endpoint` czyta
+    // `station.name`/`station_name`, `insert_station_on_segment_sn` — `station.station_name`
+    // (dawniej `append` gubił nazwę projektanta i zapisywał „Nowa stacja”).
+    ...(nazwa ? { name: nazwa, station_name: nazwa } : {}),
+    station_type: rodzaj,
     ...(nnEarthing ? { nn_earthing: nnEarthing } : {}),
     ...(auxiliary ? { station_auxiliary: auxiliary } : {}),
     station: {
-      station_type: data.station_type,
+      station_type: rodzaj,
       station_role: 'STACJA_SN_NN',
-      ...(nazwa ? { station_name: nazwa } : {}),
+      ...(nazwa ? { name: nazwa, station_name: nazwa } : {}),
       // B-4/B-5: pola tożsamości stacji — addytywne, tylko gdy wypełnione.
       ...(data.designation.trim() ? { designation: data.designation.trim() } : {}),
       ...(data.construction_type ? { construction_type: data.construction_type } : {}),
@@ -1209,7 +1430,9 @@ export function zbudujPayload(
     insert_at:
       metry !== null
         ? { mode: 'ODLEGLOSC_OD_POCZATKU_M', value: metry }
-        : { mode: 'RATIO', value: kontekst.positionOnSegment },
+        : kontekst.positionOnSegment !== null
+          ? { mode: 'RATIO', value: kontekst.positionOnSegment }
+          : undefined,
   };
 }
 

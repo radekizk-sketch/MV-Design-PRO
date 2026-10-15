@@ -47,7 +47,15 @@ import {
   PoleWyboru,
   RzadWartosci,
   TekstZWzorami,
+  jedynaZgodna,
+  napieciePola,
+  napiecieSzyny,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -57,7 +65,7 @@ import {
   fmtDlugosc,
   fmtPct,
   fmtV,
-  isPositive,
+  konfliktyFormularza,
   kontekstKontynuacji,
   kontekstMagistraliZOperacji,
   maStartCiagu,
@@ -68,7 +76,6 @@ import {
   walidujFormularz,
   zbudujPayload,
   zbudujZapytanieOceny,
-  type BladPola,
   type KontekstMagistrali,
   type MagistralaFormData,
   type OdcinekBudowy,
@@ -85,6 +92,17 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'parametry', tytul: T.krokParametry },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'typ', pole: 'mvd-kreator-magistrala-katalog' },
+  dlugosc_m: { krok: 'parametry', pole: 'mvd-kreator-magistrala-dlugosc' },
+  napiecie_kv: { krok: 'parametry', pole: 'mvd-kreator-magistrala-napiecie' },
+  cos_phi: { krok: 'parametry', pole: 'mvd-kreator-magistrala-cosphi' },
+  next_step: { krok: 'zapis', pole: 'mvd-kreator-magistrala-next' },
+};
+
+type PoleAuto = 'catalog_ref' | 'dlugosc_m' | 'napiecie_kv';
 
 function canResolveElementAsTrunkStart(
   elementType: string,
@@ -169,9 +187,10 @@ export function KreatorMagistralaSn() {
     ...DANE_DOMYSLNE,
     ...daneZKontekstu(rawContext),
   }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('typ');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
@@ -226,6 +245,29 @@ export function KreatorMagistralaSn() {
     return items.find((it) => it.id === dane.catalog_ref)?.name ?? '';
   }, [dane.rodzaj, dane.catalog_ref, kable, linie]);
 
+  // AUTO_PRZYJETE: napięcie ciągu z szyny startowej (zacisk albo pole SN) — topologia, nie
+  // stałe 15 kV. Nieznana szyna = pole puste (ocena spadku czeka na napięcie).
+  const napiecieStartu = useMemo(
+    () => napiecieSzyny(snapshot, kontekst.from_terminal_id) ?? napieciePola(snapshot, kontekst.field_ref),
+    [kontekst.field_ref, kontekst.from_terminal_id, snapshot],
+  );
+  useEffect(() => {
+    if (napiecieStartu === null || dane.napiecie_kv !== null || decyzjaProjektanta('napiecie_kv')) return;
+    setDane((p) => ({ ...p, napiecie_kv: napiecieStartu }));
+  }, [dane.napiecie_kv, decyzjaProjektanta, napiecieStartu]);
+
+  // AUTO_PRZYJETE: jedyna pozycja katalogu dla rodzaju odcinka (kilka = wybór projektanta).
+  const jedynyTyp = useMemo(
+    () => jedynaZgodna<CableType | LineType>(dane.rodzaj === 'KABEL' ? kable : linie),
+    [dane.rodzaj, kable, linie],
+  );
+  useEffect(() => {
+    if (katalogLadowanie || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    if (jedynyTyp) {
+      setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+    }
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp, katalogLadowanie]);
+
   // Ocena doboru odcinka i ciągu — liczy backend (spadki, limit z podstawą, rekordy
   // werdyktu); debounce przez sekwencję. Brak typu/długości/prądu NIE wstrzymuje żądania:
   // backend nazywa braki w rekordach `NIE_OCENIONO`, interfejs niczego nie rozstrzyga.
@@ -272,50 +314,49 @@ export function KreatorMagistralaSn() {
 
   const zmien = useCallback(<K extends keyof MagistralaFormData>(pole: K, wartosc: MagistralaFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
-  }, []);
+    if (pole === 'catalog_ref' || pole === 'dlugosc_m' || pole === 'napiecie_kv') edytowane(pole as PoleAuto);
+  }, [edytowane]);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — widoczny od razu: wartości poza dziedziną i tor niezgodny z polem
+  // źródłowym (kabel/linia vs pochodzenie odcinka — walidacja semantyczna zachowana).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
+  const konfliktToru = useMemo(() => {
+    const originKind = resolveTrunkOriginKind(snapshot, {
+      ...(context ?? {}),
+      field_ref: fieldRef,
+      terminal_id: terminalId,
+    });
+    if (!originKind) return null;
+    const semantic = validateTrunkSegmentOrigin({ branchKind: branchKindZRodzaju(dane.rodzaj), originKind });
+    return semantic.ok ? null : `${semantic.messagePl} ${semantic.suggestedFixPl}`;
+  }, [context, dane.rodzaj, fieldRef, snapshot, terminalId]);
 
   const onZapisz = useCallback(async () => {
-    if (!hasStart) {
-      setBladGlobalny(brakStartuReason);
+    const brak = pierwszyBrak([
+      !hasStart && { komunikat: brakStartuReason ?? T.brakStartuOgolny },
+      konfliktToru ? { komunikat: konfliktToru, krok: 'typ', pole: 'mvd-kreator-magistrala-rodzaj' } : null,
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     const payload = zbudujPayload(dane, kontekst);
     const catalogError = validateCatalogFirst('continue_trunk_segment_sn', payload);
     if (catalogError) {
       setBladGlobalny(catalogError);
       return;
     }
-    // Walidacja semantyczna pochodzenia odcinka (kabel/linia vs pole źródłowe).
-    const originKind = resolveTrunkOriginKind(snapshot, {
-      ...(context ?? {}),
-      field_ref: fieldRef,
-      terminal_id: terminalId,
-    });
-    if (originKind) {
-      const semantic = validateTrunkSegmentOrigin({
-        branchKind: branchKindZRodzaju(dane.rodzaj),
-        originKind,
-      });
-      if (!semantic.ok) {
-        setBladGlobalny(`${semantic.messagePl} ${semantic.suggestedFixPl}`);
-        return;
-      }
-    }
     setBladGlobalny(null);
     try {
       const previousSnapshot = snapshot;
-      const response = await executeDomainOperation(activeCaseId, 'continue_trunk_segment_sn', payload);
+      const response = await executeDomainOperation(activeCaseId as string, 'continue_trunk_segment_sn', payload);
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -348,14 +389,17 @@ export function KreatorMagistralaSn() {
         setNadpisanyKontekst(
           kontekstKontynuacji(nextEndpointBusRef, nextTrunkId, terminalVoltageLabel),
         );
+        // Kolejny odcinek tego samego ciągu: rodzaj, typ, napięcie i cosφ zostają (decyzje
+        // projektanta dla ciągu), długość i nazwa startują puste — każdy odcinek ma swoje.
         setDane((p) => ({
           ...DANE_DOMYSLNE,
           rodzaj: p.rodzaj,
           catalog_ref: p.catalog_ref,
           napiecie_kv: p.napiecie_kv,
+          cos_phi: p.cos_phi,
           next_step: 'continue',
         }));
-        setBledy([]);
+        prowadzenie.zgas();
         setKrok('parametry');
         selectElement({ id: nextSegmentRef, type: 'LineBranch', name: 'Nowy odcinek SN' });
         return;
@@ -374,20 +418,21 @@ export function KreatorMagistralaSn() {
       closeForm();
       scheduleNextOperationForm(openOperationForm, nextOperation, nextContext);
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
   }, [
     activeCaseId,
     brakStartuReason,
     closeForm,
-    context,
     dane,
     executeDomainOperation,
     fieldRef,
     hasStart,
+    konfliktToru,
     kontekst,
     openOperationForm,
     params,
+    prowadzenie,
     selectElement,
     snapshot,
     terminalId,
@@ -404,18 +449,22 @@ export function KreatorMagistralaSn() {
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszTyp,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: konfliktToru ? 'konflikt' : !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: typLabel,
     },
     {
       etykieta: T.wierszDlugosc,
-      stan: dane.dlugosc_m && dane.dlugosc_m > 0 ? 'kompletne' : 'brak',
-      wartosc: dane.dlugosc_m ? `${dane.dlugosc_m} m` : 'Do konfiguracji',
+      stan: konfliktDlaPola('dlugosc_m')
+        ? 'konflikt'
+        : dane.dlugosc_m === null
+          ? 'do_wyboru'
+          : 'ustalone',
+      wartosc: dane.dlugosc_m !== null ? `${dane.dlugosc_m} m` : '',
     },
     {
       etykieta: T.wierszDeltaU,
-      stan: podglad ? 'kompletne' : 'ostrzezenie',
-      wartosc: podglad ? fmtPct(podglad.delta_u_pct) : 'Podgląd',
+      stan: podglad ? 'ustalone' : 'do_wyboru',
+      wartosc: podglad ? fmtPct(podglad.delta_u_pct) : '',
     },
   ];
 
@@ -445,19 +494,24 @@ export function KreatorMagistralaSn() {
     </KreatorPodsumowanie>
   );
 
-  const rekordyOceny = ocena ? [...ocena.oceny_odcinka, ocena.ocena_ciagu] : [];
+  // Kryteria OCENIONE (z wynikiem, limitem albo brakiem podstawy). Rekord `NIE_OCENIONO`
+  // w kreatorze to praca w toku (brak typu, długości, prądu roboczego) — kontrakt prowadzenia
+  // projektanta: w trakcie pracy cisza, więc taki rekord nie dostaje karty ani plakietki
+  // (dawniej rama „Ocena niewykonana” z pełnym wywodem braków). Braki potrzebne do ZAPISU
+  // wskazuje zapis; ocena nie jest warunkiem zapisu.
+  const rekordyOceny = ocena
+    ? [...ocena.oceny_odcinka, ocena.ocena_ciagu].filter((r) => r.status_maszynowy !== 'NIE_OCENIONO')
+    : [];
   // Panel boczny: plakietki etykiet Z REKORDÓW (tekst i semantyka z backendu) prowadzące
   // do pełnych kart werdyktu w kroku „Długość i podgląd" — plakietka nie zastępuje karty.
-  const ocenaPanel = (
+  const ocenaPanel = rekordyOceny.length === 0 && !bladOceny ? null : (
     <KreatorPodsumowanie
       tytul={T.ocenaTytul}
       komunikat={bladOceny}
       komunikatTon="warn"
       testid="mvd-kreator-magistrala-ocena"
     >
-      {rekordyOceny.length === 0 ? (
-        <p className="mvd-podsum-komunikat">{T.ocenaPusto}</p>
-      ) : (
+      {rekordyOceny.length === 0 ? null : (
         <>
           {rekordyOceny.map((r) => (
             <div key={r.kryterium_id} className="mvd-rzad">
@@ -490,9 +544,6 @@ export function KreatorMagistralaSn() {
         {podglad ? (
           <>
             <RzadWartosci etykieta={T.podgladPrad} wartosc={fmtA(podglad.prad_obliczeniowy_a)} />
-            {podglad.prad_z_obciazalnosci ? (
-              <p className="mvd-podsum-komunikat">{T.podgladPradZObciazalnosci}</p>
-            ) : null}
             <RzadWartosci etykieta={T.podgladDeltaU} wartosc={fmtV(podglad.delta_u_v)} />
             <RzadWartosci etykieta={T.podgladDeltaUpct} wartosc={fmtPct(podglad.delta_u_pct)} />
             <RzadWartosci etykieta={T.podgladRtotal} wartosc={`${podglad.r_total_ohm.toFixed(3)} Ω`} />
@@ -544,8 +595,11 @@ export function KreatorMagistralaSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  /**
-   * S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`).
+  /*
+   * S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) — DAWNY opis
+   * (zachowany jako ślad decyzji; kontrakt prowadzenia projektanta 2026-10-15 zmienił
+   * regułę: brak długości NIE wyszarza już zapisu, tylko daje jedno wskazanie przy
+   * próbie zapisu; wyszarzenie zostaje WYŁĄCZNIE dla katalogu w drodze).
    * JEDNO źródło prawdy dla DWÓCH obserwowalnych powierzchni — `disabled`
    * przycisku zapisu ORAZ `data-status` korzenia kreatora (KreatorRama) —
    * żeby te dwie powierzchnie nie mogły rozjechać się w dwa niezależne
@@ -567,14 +621,6 @@ export function KreatorMagistralaSn() {
    *      `catalog_ref`/cosφ/`next_step` — biegnie NADAL na klik, jak
    *      dotychczas, i pokazuje błędy pól bez zamykania okna).
    */
-  const dlugoscPoprawna = isPositive(dane.dlugosc_m);
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasStart || !activeCaseId || !dlugoscPoprawna
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -588,22 +634,11 @@ export function KreatorMagistralaSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasStart
-              ? brakStartuReason
-              : !dlugoscPoprawna
-                ? T.dlugoscWymaganaStopka
-                : null
-      }
-      status={stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={{
         etykieta: zbudowane.length > 0 ? T.builderDodaj : T.zapisz,
         onClick: onZapisz,
-        zablokowana: zapisZablokowany,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
         testid: 'mvd-kreator-magistrala-zapisz',
       }}
       akcjaAnuluj={
@@ -637,8 +672,11 @@ export function KreatorMagistralaSn() {
             <PoleWyboru
               etykieta={T.rodzaj}
               wartosc={dane.rodzaj}
-              onZmiana={(v) => setDane((p) => ({ ...p, rodzaj: v as RodzajOdcinka, catalog_ref: null }))}
+              onZmiana={(v) => {
+                setDane((p) => ({ ...p, rodzaj: v as RodzajOdcinka, catalog_ref: null }));
+              }}
               opcje={T.rodzaje}
+              blad={konfliktToru ?? undefined}
               testid="mvd-kreator-magistrala-rodzaj"
             />
             <PoleTekstowe
@@ -669,7 +707,6 @@ export function KreatorMagistralaSn() {
             komunikatBledu={bladKatalogu ?? (dane.rodzaj === 'KABEL' ? T.typKabelBlad : T.typLiniaBlad)}
             testid="mvd-kreator-magistrala-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           {paramReadout}
         </KreatorSekcja>
       ) : null}
@@ -683,14 +720,15 @@ export function KreatorMagistralaSn() {
               wartosc={dane.dlugosc_m}
               onZmiana={(v) => zmien('dlugosc_m', v)}
               wymagane
-              blad={bladDlaPola('dlugosc_m')}
+              blad={konfliktDlaPola('dlugosc_m')}
               testid="mvd-kreator-magistrala-dlugosc"
             />
             <PoleLiczbowe
               etykieta={T.napiecie}
               jednostka="kV"
               wartosc={dane.napiecie_kv}
-              onZmiana={(v) => zmien('napiecie_kv', v ?? 0)}
+              onZmiana={(v) => zmien('napiecie_kv', v)}
+              blad={konfliktDlaPola('napiecie_kv')}
               testid="mvd-kreator-magistrala-napiecie"
             />
             <PoleLiczbowe
@@ -704,9 +742,10 @@ export function KreatorMagistralaSn() {
             <PoleLiczbowe
               etykieta={T.cosPhi}
               wartosc={dane.cos_phi}
-              onZmiana={(v) => zmien('cos_phi', v ?? 0)}
+              onZmiana={(v) => zmien('cos_phi', v)}
               krok={0.01}
-              blad={bladDlaPola('cos_phi')}
+              pomoc={T.cosPhiPomoc}
+              blad={konfliktDlaPola('cos_phi')}
               testid="mvd-kreator-magistrala-cosphi"
             />
           </KreatorSiatka>
@@ -724,10 +763,10 @@ export function KreatorMagistralaSn() {
         </KreatorSekcja>
       ) : null}
 
-      {krok === 'parametry' ? (
+      {krok === 'parametry' && (rekordyOceny.length > 0 || bladOceny) ? (
         <KreatorSekcja tytul={T.ocenaKartyTytul} testid="mvd-kreator-magistrala-ocena-karty">
           {rekordyOceny.length === 0 ? (
-            <KreatorInfo>{bladOceny ?? T.ocenaPusto}</KreatorInfo>
+            <KreatorInfo>{bladOceny}</KreatorInfo>
           ) : (
             rekordyOceny.map((r) => <KartaWerdyktu key={r.kryterium_id} rekord={r} />)
           )}
@@ -743,7 +782,7 @@ export function KreatorMagistralaSn() {
             onZmiana={(v) => zmien('next_step', v as TrunkNextStep)}
             opcje={opcjeNext}
             pomoc={T.krokNastepnyPomoc}
-            blad={bladDlaPola('next_step')}
+            blad={konfliktDlaPola('next_step')}
             testid="mvd-kreator-magistrala-next"
           />
           {dane.rodzaj === 'KABEL' ? (

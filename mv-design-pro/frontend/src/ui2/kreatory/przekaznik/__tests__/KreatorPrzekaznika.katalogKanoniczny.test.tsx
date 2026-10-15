@@ -14,6 +14,7 @@
  */
 
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPrzekaznika } from '../KreatorPrzekaznika';
@@ -158,6 +159,10 @@ describe('KreatorPrzekaznika — katalog KANONICZNY MV (parytet z bramą add_rel
     });
     // Jedyna opcja to placeholder — brak fabrykowanej pozycji zastępczej.
     expect(within(katalog).getByRole('option', { name: '— wybierz przekaźnik —' })).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();
+    // Pusty katalog nie wyszarza zapisu (kontrakt prowadzenia): próba zapisu nazywa brak typu,
+    // operacja nie wychodzi.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-przekaznik-rodzina'), 'NADPRADOWY');
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz typ zabezpieczenia z katalogu — /);
   });
 });

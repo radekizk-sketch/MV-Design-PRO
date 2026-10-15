@@ -11,10 +11,14 @@ import {
 } from '../slupOdgaleznyModel';
 
 function dane(over: Partial<SlupOdgaleznyFormData> = {}): SlupOdgaleznyFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'bp-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'bp-1', polozenie: 0.5, ...over };
 }
 
 describe('slupOdgaleznyModel — walidacja', () => {
+  it('stan startowy nie zgaduje położenia na odcinku', () => {
+    expect(DANE_DOMYSLNE.polozenie).toBeNull();
+    expect(walidujFormularz({ ...DANE_DOMYSLNE }).map((e) => e.field)).toEqual(['catalog_ref', 'polozenie']);
+  });
   it('wymaga słupa z katalogu', () => {
     expect(walidujFormularz(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
     expect(walidujFormularz(dane()).length).toBe(0);
@@ -61,6 +65,7 @@ describe('slupOdgaleznyModel — payload', () => {
 describe('slupOdgaleznyModel — formatery', () => {
   it('formatuje położenie jako procent', () => {
     expect(fmtPct01(0.5)).toBe('50 %');
+    expect(fmtPct01(null)).toBe('—');
     expect(fmtPct01(0.25)).toBe('25 %');
   });
 });

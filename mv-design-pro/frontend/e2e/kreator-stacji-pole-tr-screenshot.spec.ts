@@ -58,6 +58,11 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       const root = page.locator('[data-testid="creator-harness-root"]').first();
       await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
 
+      // Rodzaj stacji wynika z miejsca osadzenia (podział odcinka → przelotowa, trzy pola);
+      // stację ODGAŁĘŹNĄ (cztery pola) projektant wybiera natywnie w kroku „Rodzaj
+      // i umiejscowienie” — kreator nie przyjmuje jej po cichu (karta PROWADZENIE-KREATORY).
+      await page.getByRole('button', { name: /Rodzaj i umiejscowienie/ }).click();
+      await page.getByTestId('mvd-kreator-stacja-typ').selectOption('branch');
       // Krok „Pola rozdzielnicy SN" — nawigacja natywnym klikiem w nagłówek kroku.
       await page.getByRole('button', { name: /Pola rozdzielnicy SN/ }).click();
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 15000 });

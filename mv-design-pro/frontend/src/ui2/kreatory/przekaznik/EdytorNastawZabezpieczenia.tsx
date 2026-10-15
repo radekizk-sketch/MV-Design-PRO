@@ -319,7 +319,9 @@ export function EdytorNastawZabezpieczenia({
         type="button"
         className="mvd-edytor-nastaw-zapisz"
         onClick={() => void onZapisz()}
-        disabled={zapisywanie || !caseId}
+        // Wyszarzenie wyłącznie na czas zapisu; brak przypadku nazywa klik (kontrakt
+        // prowadzenia projektanta — brak danych nie wyszarza zapisu).
+        disabled={zapisywanie}
         data-testid={`${testid}-zapisz`}
       >
         {zapisywanie ? T.zapisywanie : T.zapisz}

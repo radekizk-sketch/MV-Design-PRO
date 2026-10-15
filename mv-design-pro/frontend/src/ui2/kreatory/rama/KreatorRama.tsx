@@ -4,20 +4,50 @@
  * krok · język inżynierski). Ekran-neutralna: logikę i teksty wnosi moduł.
  *
  * Układ: nagłówek (eyebrow · tytuł · cel · odznaka · opcjonalny pasek kroków) →
- * ciało (sekcje, z opcjonalnym banerem błędu) → stopka (walidacja + akcje).
+ * ciało (sekcje, z opcjonalnym banerem błędu) → stopka (jedno wskazanie braku przy próbie
+ * zapisu albo powód blokady + akcje). W trakcie pracy stopka milczy (kontrakt prowadzenia
+ * projektanta: KONFIGURACJA_W_TOKU nigdy nie jest ostrzeżeniem).
  * Stylowanie wyłącznie tokenami --mvd-* (oba motywy z automatu).
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ChangeEvent, type ReactNode } from 'react';
 
 import './kreatory.css';
 import type { KrokKreatora } from './model';
+import type { BlokadaZapisu, BrakDoOperacji } from './prowadzenie';
+import { WskazanieKontekst } from './wskazanieKontekst';
 
+/** Akcja nawigacji kroków (Wstecz/Dalej) — wyszarzana wyłącznie na krańcach toru kroków. */
 export interface AkcjaKreatora {
   readonly etykieta: string;
   readonly onClick: () => void;
   readonly zablokowana?: boolean;
   readonly testid?: string;
+}
+
+/**
+ * Akcja zapisu kreatora. NIE ma pola „zablokowana”: brak danych nie wyszarza zapisu
+ * (kontrakt prowadzenia projektanta — brak to BRAK_DO_OPERACJI przy kliknięciu, z jednym
+ * wskazaniem parametru). Wyszarzenie dopuszcza wyłącznie zamknięta lista `BlokadaZapisu`.
+ */
+export interface AkcjaZapisu {
+  readonly etykieta: string;
+  readonly onClick: () => void;
+  readonly blokada?: BlokadaZapisu | null;
+  readonly testid?: string;
+}
+
+/** Zdanie stopki dla blokady zapisu — jedno brzmienie we wszystkich kreatorach. */
+const TEKST_BLOKADY: Readonly<Record<BlokadaZapisu, string>> = {
+  ladowanie: 'Wczytywanie katalogu — zapis będzie dostępny po wczytaniu.',
+  zapis_w_toku: 'Trwa zapis…',
+};
+
+/** Pierwsza kontrolka, na którą da się przenieść fokus (samo pole albo jego wnętrze). */
+function kontrolkaFokusu(element: Element): HTMLElement | null {
+  const wybieralne = 'input, select, textarea, button, [tabindex]';
+  if (element instanceof HTMLElement && element.matches(wybieralne)) return element;
+  return element.querySelector<HTMLElement>(wybieralne);
 }
 
 export interface KreatorRamaProps {
@@ -29,8 +59,14 @@ export interface KreatorRamaProps {
   krokAktywny?: string;
   onKrok?: (id: string) => void;
   bladGlobalny?: string | null;
-  walidacja?: string | null;
-  akcjaGlowna: AkcjaKreatora;
+  /**
+   * BRAK_DO_OPERACJI wskazany przy próbie zapisu (`useProwadzenie`). Rama przechodzi do
+   * kontrolki `pole`, ustawia na niej fokus i pokazuje JEDNO zdanie w stopce.
+   */
+  wskazanie?: BrakDoOperacji | null;
+  /** Zdjęcie wskazania — rama woła je, gdy projektant zmieni wskazaną kontrolkę. */
+  onZgasWskazanie?: () => void;
+  akcjaGlowna: AkcjaZapisu;
   akcjaAnuluj: AkcjaKreatora;
   children: ReactNode;
   testid?: string;
@@ -43,19 +79,13 @@ export interface KreatorRamaProps {
   krokDalej?: AkcjaKreatora;
   /** Etykieta licznika kroków, np. „Krok 2 z 7". */
   licznikKrokow?: string;
-  /**
-   * Sygnał gotowości formularza (karta E2E-S95, klasa: bramka enable bez
-   * jawnego sygnału gotowości) — renderowany jako `data-status` na korzeniu
-   * kreatora. Moduł wołający MUSI wyprowadzić tę wartość z DOKŁADNIE TEGO
-   * SAMEGO wyrażenia, które zasila `akcjaGlowna.zablokowana` (jedno źródło
-   * prawdy — reguła KLASA NIE INSTANCJA, §"Predykaty parami"): `'gotowy'`
-   * zawsze i tylko wtedy, gdy zapis jest odblokowany. Dzięki temu e2e/testy
-   * czekają na REALNY stan gotowości zamiast odpytywać `disabled` z gołym
-   * limitem czasu, który nie odróżnia „zaraz się odblokuje" od „utknęło".
-   * Brak (`undefined`) = kreator nie rozróżnia stanów (bez zmiany zachowania
-   * dla kreatorów, które jeszcze go nie wystawiają).
+  /*
+   * Sygnał gotowości (`data-status` korzenia, karta E2E-S95) NIE jest już osobną
+   * właściwością: rama wyprowadza go z TEGO SAMEGO pola, które wyszarza zapis
+   * (`akcjaGlowna.blokada`) — jedno źródło prawdy, dwa nie mogą się rozjechać
+   * (reguła KLASA NIE INSTANCJA, „Predykaty parami”): `ladowanie` ⇔ katalog w drodze,
+   * `zablokowany` ⇔ zapis w toku, `gotowy` ⇔ przycisk zapisu klikalny.
    */
-  status?: 'ladowanie' | 'zablokowany' | 'gotowy';
 }
 
 export function KreatorRama({
@@ -67,7 +97,8 @@ export function KreatorRama({
   krokAktywny,
   onKrok,
   bladGlobalny,
-  walidacja,
+  wskazanie,
+  onZgasWskazanie,
   akcjaGlowna,
   akcjaAnuluj,
   children,
@@ -77,13 +108,40 @@ export function KreatorRama({
   krokWstecz,
   krokDalej,
   licznikKrokow,
-  status,
 }: KreatorRamaProps) {
+  const korzen = useRef<HTMLDivElement>(null);
+  const blokada = akcjaGlowna.blokada ?? null;
+  const status = blokada === 'ladowanie' ? 'ladowanie' : blokada ? 'zablokowany' : 'gotowy';
+
+  // Fokus na wskazanym parametrze — po zatwierdzeniu renderu, więc krok z polem jest już
+  // na ekranie (kreator przestawia krok i wskazanie w tym samym zdarzeniu kliknięcia).
+  useEffect(() => {
+    if (!wskazanie?.pole || !korzen.current) return;
+    const element = korzen.current.querySelector(`[data-testid="${wskazanie.pole}"]`);
+    if (!element) return;
+    const kontrolka = kontrolkaFokusu(element);
+    if (kontrolka && typeof kontrolka.scrollIntoView === 'function') {
+      kontrolka.scrollIntoView({ block: 'center' });
+    }
+    kontrolka?.focus();
+  }, [wskazanie]);
+
+  // Zmiana WSKAZANEJ kontrolki zdejmuje wskazanie — zdanie o braku nie wisi nad polem,
+  // które projektant właśnie wypełnia. Zmiana innej kontrolki go nie zdejmuje.
+  const onZmianaWKreatorze = (zdarzenie: ChangeEvent<HTMLDivElement>) => {
+    if (!wskazanie?.pole || !onZgasWskazanie) return;
+    const cel = zdarzenie.target as Element | null;
+    if (cel?.closest?.(`[data-testid="${wskazanie.pole}"]`)) onZgasWskazanie();
+  };
+
   return (
+    <WskazanieKontekst.Provider value={wskazanie?.pole ?? null}>
     <div
+      ref={korzen}
       className={pelny ? 'mvd-kreator mvd-kreator--pelny' : 'mvd-kreator'}
       data-testid={testid}
       data-status={status}
+      onChange={onZmianaWKreatorze}
     >
       <header className="mvd-kreator-head">
         <div className="mvd-kreator-head-gora">
@@ -173,9 +231,18 @@ export function KreatorRama({
             ) : null}
           </div>
         ) : null}
-        {walidacja ? (
-          <span className="mvd-kreator-stopka-walidacja" data-testid="mvd-kreator-walidacja">
-            {walidacja}
+        {wskazanie ? (
+          <span
+            className="mvd-kreator-stopka-wskazanie"
+            role="alert"
+            id="mvd-kreator-wskazanie"
+            data-testid="mvd-kreator-wskazanie"
+          >
+            {wskazanie.komunikat}
+          </span>
+        ) : blokada ? (
+          <span className="mvd-kreator-stopka-blokada" data-testid="mvd-kreator-blokada">
+            {TEKST_BLOKADY[blokada]}
           </span>
         ) : null}
         <button
@@ -189,7 +256,7 @@ export function KreatorRama({
         <button
           type="button"
           className="mvd-kreator-btn mvd-kreator-btn--glowna"
-          disabled={akcjaGlowna.zablokowana}
+          disabled={blokada !== null}
           data-testid={akcjaGlowna.testid}
           onClick={akcjaGlowna.onClick}
         >
@@ -197,6 +264,7 @@ export function KreatorRama({
         </button>
       </footer>
     </div>
+    </WskazanieKontekst.Provider>
   );
 }
 

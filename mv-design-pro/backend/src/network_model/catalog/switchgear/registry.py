@@ -152,6 +152,31 @@ MANUFACTURER_REGISTRY: dict[str, Manufacturer] = {
     m.manufacturer_ref: m for m in _STARTING_MANUFACTURERS
 }
 
+#: Nazwa producenta w pozycji katalogu APARAT_SN (``MVApparatusType.manufacturer``)
+#: → ``manufacturer_ref`` rejestru producentów rozdzielnic. Kreator stacji zawęża nią
+#: ofertę aparatów do producenta wybranej rodziny (aparat ABB nie trafia do celki
+#: ZPUE). Producenci aparatów, którzy nie są producentami rozdzielnic w rejestrze
+#: (bezpieczniki, reklozery, łączniki słupowe), mają jawne ``None``; test przypina,
+#: że każda nazwa z katalogu ma tu wpis, więc nowy producent nie przejdzie po cichu.
+MANUFACTURER_REF_FOR_APPARATUS_VENDOR: dict[str, str | None] = {
+    "ZPUE Włoszczowa": "ZPUE_WLOSZCZOWA",
+    "Elektrometal": "ELEKTROMETAL",
+    "ABB": "ABB",
+    "Siemens": "SIEMENS",
+    "Schneider Electric": "SCHNEIDER_ELECTRIC",
+    "ETI": None,
+    "Eaton": None,
+    "NOJA Power": None,
+    "Elpo": None,
+}
+
+
+def manufacturer_ref_for_apparatus_vendor(vendor: str | None) -> str | None:
+    """``manufacturer_ref`` producenta rozdzielnicy dla producenta aparatu (``None`` = brak)."""
+    if vendor is None:
+        return None
+    return MANUFACTURER_REF_FOR_APPARATUS_VENDOR.get(vendor)
+
 
 def list_manufacturers() -> list[Manufacturer]:
     """Lista producentów posortowana deterministycznie (manufacturer_ref)."""

@@ -264,33 +264,12 @@ export interface WalidacjaOpcje {
   torSnMaterializowany?: boolean;
 }
 
-export function walidujFormularz(
-  data: OzeFormData,
-  kontekst: KontekstOze,
-  opcje: WalidacjaOpcje = {},
-): BladPolaOze[] {
+/**
+ * KONFLIKT_TECHNICZNY / NARUSZENIE_OGRANICZENIA — wartości podane, ale niedopuszczalne
+ * (kreator pokazuje je od razu przy polu, w trakcie pracy).
+ */
+export function konfliktyFormularza(data: OzeFormData): BladPolaOze[] {
   const errors: BladPolaOze[] = [];
-  if (!data.converter_catalog_ref?.trim()) {
-    errors.push({ field: 'converter_catalog_ref', message: 'Wybierz układ PV/BESS/FW z katalogu.' });
-  }
-  if (data.connection_variant === 'nn_side') {
-    if (!kontekst.bus_nn_ref?.trim()) {
-      errors.push({ field: 'bus_nn_ref', message: 'Wskaż szynę nN rozdzielni dla przyłączenia bezpośredniego.' });
-    }
-    if (
-      data.placement === 'EXISTING_FIELD'
-      && !data.existing_field_ref?.trim()
-      && !kontekst.existing_field_ref?.trim()
-    ) {
-      errors.push({ field: 'existing_field_ref', message: 'Wskaż istniejące pole odpływowe nN.' });
-    }
-    if (data.placement === 'NEW_FIELD' && !data.apparatus_catalog_ref?.trim()) {
-      errors.push({ field: 'apparatus_catalog_ref', message: 'Dobierz aparat nN dla nowego pola źródłowego.' });
-    }
-  } else if (!opcje.torSnMaterializowany && !data.blocking_transformer_ref?.trim()) {
-    // Tor SN materializowany doborem (der_topology) nie potrzebuje istniejącego TR stacji.
-    errors.push({ field: 'blocking_transformer_ref', message: 'Wybierz transformator blokowy SN/nN.' });
-  }
   const qMin = data.q_min_mvar;
   const qMax = data.q_max_mvar;
   if (qMin !== null && qMax !== null && qMin > qMax) {
@@ -304,29 +283,23 @@ export function walidujFormularz(
     }
   }
   // V12K-064: napięciowe pasmo nieczułości Q(U) — dolna granica nie może przekraczać górnej
-  // (solver odrzuca low>high). Puste pola przyjmują domyślne 1,0 pu.
-  if (data.control_mode === 'Q_OD_U') {
-    const dbLow = data.qu_deadband_low_pu ?? 1.0;
-    const dbHigh = data.qu_deadband_high_pu ?? 1.0;
-    if (dbLow > dbHigh) {
-      errors.push({ field: 'qu_deadband_high_pu', message: 'Pasmo Q(U): napięcie dolne nie może przekraczać górnego.' });
-    }
+  // (solver odrzuca low>high). Sprawdzane, gdy podano OBIE granice; puste pole nie jedzie do
+  // modelu (dawniej walidacja podstawiała w jego miejsce 1,0 pu).
+  if (
+    data.control_mode === 'Q_OD_U'
+    && data.qu_deadband_low_pu !== null
+    && data.qu_deadband_high_pu !== null
+    && data.qu_deadband_low_pu > data.qu_deadband_high_pu
+  ) {
+    errors.push({ field: 'qu_deadband_high_pu', message: 'Pasmo Q(U): napięcie dolne nie może przekraczać górnego.' });
   }
-  // Karta CV-4.1b (A3-04): tryb regulacji napięcia wymaga nastawy U w paśmie [0,9; 1,1] pu
-  // oraz granic Q ŚCIŚLE q_min < q_max (walidator ENM blokuje `generators.voltage_control_incomplete`
-  // — kontrolka wypełnia dokładnie ten sam warunek PRZED wysłaniem żądania).
+  // Karta CV-4.1b (A3-04): tryb regulacji napięcia — nastawa U w paśmie [0,9; 1,1] pu oraz
+  // granice Q ŚCIŚLE q_min < q_max (walidator ENM: `generators.voltage_control_incomplete`).
   if (data.control_mode === 'REGULACJA_NAPIECIA') {
-    if (data.u_set_pu === null) {
-      errors.push({ field: 'u_set_pu', message: 'Podaj nastawę napięcia U (pu) trybu regulacji napięcia.' });
-    } else if (data.u_set_pu < 0.9 || data.u_set_pu > 1.1) {
+    if (data.u_set_pu !== null && (data.u_set_pu < 0.9 || data.u_set_pu > 1.1)) {
       errors.push({ field: 'u_set_pu', message: 'Nastawa napięcia musi mieścić się w paśmie [0,9; 1,1] pu.' });
     }
-    if (qMin === null || qMax === null) {
-      errors.push({
-        field: 'q_max_mvar',
-        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej (Q min i Q max).',
-      });
-    } else if (qMin >= qMax) {
+    if (qMin !== null && qMax !== null && qMin === qMax) {
       errors.push({
         field: 'q_max_mvar',
         message: 'Tryb regulacji napięcia wymaga Q min ściśle mniejszego od Q max.',
@@ -355,6 +328,72 @@ export function walidujFormularz(
     }
   }
   return errors;
+}
+
+/**
+ * BRAK_DO_OPERACJI — parametry niepodane, w kolejności kroków kreatora („co — po co”).
+ * Kreator pokazuje pierwszy dopiero przy próbie zapisu, z przejściem do pola.
+ */
+export function brakiFormularza(
+  data: OzeFormData,
+  kontekst: KontekstOze,
+  opcje: WalidacjaOpcje = {},
+): BladPolaOze[] {
+  const errors: BladPolaOze[] = [];
+  if (data.connection_variant === 'nn_side') {
+    if (!kontekst.bus_nn_ref?.trim()) {
+      errors.push({
+        field: 'bus_nn_ref',
+        message: 'Otwórz kreator z szyny nN rozdzielni na schemacie — do niej przyłączysz źródło.',
+      });
+    }
+    if (
+      data.placement === 'EXISTING_FIELD'
+      && !data.existing_field_ref?.trim()
+      && !kontekst.existing_field_ref?.trim()
+    ) {
+      errors.push({ field: 'existing_field_ref', message: 'Wskaż istniejące pole odpływowe nN — przez nie źródło zasili szynę.' });
+    }
+    if (data.placement === 'NEW_FIELD' && !data.apparatus_catalog_ref?.trim()) {
+      errors.push({
+        field: 'apparatus_catalog_ref',
+        message: 'Wybierz aparat nN nowego pola źródłowego z katalogu — odłącza źródło od szyny.',
+      });
+    }
+  } else if (!opcje.torSnMaterializowany && !data.blocking_transformer_ref?.trim()) {
+    // Tor SN materializowany doborem (der_topology) nie potrzebuje istniejącego TR stacji.
+    errors.push({
+      field: 'blocking_transformer_ref',
+      message: 'Wybierz transformator blokowy stacji albo zastosuj dobór toru SN — przez niego źródło trafia do sieci SN.',
+    });
+  }
+  if (!data.converter_catalog_ref?.trim()) {
+    errors.push({
+      field: 'converter_catalog_ref',
+      message: 'Wybierz układ PV/BESS/FW z katalogu — tabliczka falownika wchodzi do rozpływu i zwarć.',
+    });
+  }
+  if (data.control_mode === 'REGULACJA_NAPIECIA') {
+    if (data.u_set_pu === null) {
+      errors.push({ field: 'u_set_pu', message: 'Podaj nastawę napięcia U (pu) — cel trybu regulacji napięcia.' });
+    }
+    if (data.q_min_mvar === null) {
+      errors.push({ field: 'q_min_mvar', message: 'Podaj Q min — tryb regulacji napięcia działa w granicach mocy biernej.' });
+    }
+    if (data.q_max_mvar === null) {
+      errors.push({ field: 'q_max_mvar', message: 'Podaj Q max — tryb regulacji napięcia działa w granicach mocy biernej.' });
+    }
+  }
+  return errors;
+}
+
+/** Konflikty przed brakami: najpierw to, co podane źle, potem to, czego brak. */
+export function walidujFormularz(
+  data: OzeFormData,
+  kontekst: KontekstOze,
+  opcje: WalidacjaOpcje = {},
+): BladPolaOze[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data, kontekst, opcje)];
 }
 
 /** Tabliczka katalogowa falownika → materialized_params (kontrakt solvera). */
@@ -557,11 +596,6 @@ export function refUtworzonegoWytworcy(response: OdpowiedzZWytworca | null): str
 }
 
 /** Tryb Q wybrany, ale bez wartości rządzącej → regulacja pasywna (ostrzeżenie gotowości). */
-export function trybQWymagaWartosci(data: OzeFormData): boolean {
-  if (data.control_mode === 'STALY_COS_PHI') return data.cos_phi_target === null;
-  if (data.control_mode === 'Q_OD_U') return data.qu_slope_pu_per_pu === null;
-  return false;
-}
 
 /** Etykieta pozycji katalogu falownika. */
 export function etykietaKonwertera(item: ConverterType): string {
@@ -687,7 +721,10 @@ export function sugerujDerSn(
   };
 }
 
-/** Walidacja toru DER-SN — braki blokujące (każde pole realnie konsumowane przez backend). */
+/**
+ * Walidacja toru DER-SN materializowanego doborem — wpięta w zapis kreatora (krok „Dobór toru
+ * SN”): braki i niespójności pól realnie konsumowanych przez backend (`der_topology`).
+ */
 export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
   const errors: BladPolaOze[] = [];
   if (!data.block_transformer_catalog_ref?.trim()) {
@@ -722,7 +759,12 @@ export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
       message: 'Strona nN transformatora blokowego musi być zgodna z wyjściem falownika.',
     });
   }
-  if (data.mv_cable_length_km !== null && data.mv_cable_length_km <= 0) {
+  if (data.mv_cable_length_km === null) {
+    errors.push({
+      field: 'mv_cable_length_km',
+      message: 'Podaj długość kabla przyłączeniowego SN — od niej zależą spadek napięcia i obciążalność toru.',
+    });
+  } else if (data.mv_cable_length_km <= 0) {
     errors.push({
       field: 'mv_cable_length_km',
       message: 'Długość kabla przyłączeniowego musi być większa od zera.',

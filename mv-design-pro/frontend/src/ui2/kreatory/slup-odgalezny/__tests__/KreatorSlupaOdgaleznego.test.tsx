@@ -48,12 +48,11 @@ vi.mock('../../../../ui/selection', () => ({
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const SLUP_1 = { id: 'bp-1', name: 'Słup odczepowy', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400 };
+const SLUP_2 = { ...SLUP_1, id: 'bp-2', name: 'Słup odczepowy z wyłącznikiem', switch_device_kind: 'WYLACZNIK' };
+
 const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
-  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
-    Promise.resolve([
-      { id: 'bp-1', name: 'Słup odczepowy', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400 },
-    ]),
-  ),
+  fetchBranchPointTypesMock: vi.fn((_kind: string): Promise<unknown[]> => Promise.resolve([])),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -70,14 +69,15 @@ async function pick() {
 describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', segmentLabel: 'Linia A' };
+    context = { segment_id: 'seg-1', segmentLabel: 'Linia A', position_on_segment: 0.5 };
     snapshotState.error = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
-    fetchBranchPointTypesMock.mockClear();
+    fetchBranchPointTypesMock.mockReset();
+    fetchBranchPointTypesMock.mockImplementation(() => Promise.resolve([SLUP_1, SLUP_2]));
   });
 
   afterEach(() => cleanup());
@@ -116,29 +116,65 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwy stan zerowy: bez odcinka zapis zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany”: operacja nie rusza bez odcinka, na złym
+  // torze ani bez przypadku — w nowym kanonie przez jedno wskazanie przy próbie zapisu.
+  it('bez odcinka: próba zapisu nazywa brak odcinka, operacja nie rusza', async () => {
     context = {};
     render(<KreatorSlupaOdgaleznego />);
     await screen.findByTestId('mvd-kreator-slup-brak');
-    expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-slup')).toHaveAttribute('data-status', 'gotowy'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-slup-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/odcinek/i);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje wstawienie na kablu (nieprawidłowy tor)', async () => {
-    context = { segment_id: 'seg-cable' };
+  it('konflikt toru widoczny od razu (słup na kablu) i blokuje operację przy zapisie', async () => {
+    context = { segment_id: 'seg-cable', position_on_segment: 0.5 };
     snapshot.branches = [{ id: 'seg-cable', ref_id: 'seg-cable', type: 'cable', name: 'Kabel B' }];
     render(<KreatorSlupaOdgaleznego />);
     await screen.findByTestId('mvd-kreator-slup-tor');
-    expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
+    expect(
+      screen.getByTestId('mvd-kreator-slup-gotowosc').querySelector('[data-stan="konflikt"]'),
+    ).not.toBeNull();
+    await pick();
+    await userEvent.click(screen.getByTestId('mvd-kreator-slup-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/tylko na linii napowietrznej/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
     snapshot.branches = [{ id: 'seg-1', ref_id: 'seg-1', type: 'line_overhead', name: 'Linia A' }];
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorSlupaOdgaleznego />);
     await pick();
-    expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-slup-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator bez położenia w kontekście: zero alertów; zapis wskazuje typ, potem położenie', async () => {
+    context = { segment_id: 'seg-1', segmentLabel: 'Linia A' };
+    render(<KreatorSlupaOdgaleznego />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-slup')).toHaveAttribute('data-status', 'gotowy'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-slup-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-slup-katalog')).toHaveFocus();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-slup-katalog'), 'bp-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-slup-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-slup-polozenie')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj położenie słupa/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('jedyny słup w katalogu i położenie z kontekstu stoją w polach i dają się zmienić', async () => {
+    fetchBranchPointTypesMock.mockImplementation(() => Promise.resolve([SLUP_1]));
+    render(<KreatorSlupaOdgaleznego />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-slup-katalog')).toHaveValue('bp-1'));
+    expect(screen.getByTestId('mvd-kreator-slup-polozenie')).toHaveValue(0.5);
+    await userEvent.clear(screen.getByTestId('mvd-kreator-slup-polozenie'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-slup-polozenie'), '0.3');
+    expect(screen.getByTestId('mvd-kreator-slup-polozenie')).toHaveValue(0.3);
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
   });
 
   /**
@@ -152,7 +188,7 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-slup')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

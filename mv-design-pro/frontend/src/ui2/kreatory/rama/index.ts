@@ -4,7 +4,24 @@
  */
 
 export { KreatorRama, KreatorSekcja, KreatorInfo, KreatorSiatka } from './KreatorRama';
-export type { KreatorRamaProps, KreatorSekcjaProps, AkcjaKreatora } from './KreatorRama';
+export type { KreatorRamaProps, KreatorSekcjaProps, AkcjaKreatora, AkcjaZapisu } from './KreatorRama';
+
+export {
+  jedynaZgodna,
+  pierwszyBrak,
+  useAktualnoscWskazania,
+  useDecyzjeProjektanta,
+  useProwadzenie,
+  wskazanieZBledu,
+} from './prowadzenie';
+export type {
+  BlokadaZapisu,
+  BrakDoOperacji,
+  DecyzjeProjektanta,
+  KandydatBraku,
+  MiejscePola,
+  Prowadzenie,
+} from './prowadzenie';
 
 export {
   PoleTekstowe,
@@ -35,6 +52,10 @@ export type {
   KreatorGotowoscProps,
   KreatorNastepnyKrokProps,
 } from './gotowosc';
+
+export { napiecieSzyny, napiecieOdcinka, napieciePola, fmtKvPl, polozenieZKontekstu } from './topologia';
+
+export { nazwaKartyPola, nazwaRodziny } from './nazwyKatalogu';
 
 export { PanelTeorii, PANEL_TEORII_WYMOG_PREFIX } from './panelTeorii';
 export type { PanelTeoriiProps } from './panelTeorii';

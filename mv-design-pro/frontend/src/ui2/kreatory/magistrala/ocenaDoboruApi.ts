@@ -31,9 +31,8 @@ export interface OcenaDoboruMagistraliRequest {
 
 /** Spadek napięcia odcinka bieżącego (WHITE BOX solvera). */
 export interface SpadekOdcinkaMagistrali {
+  /** Prąd obliczeniowy = prąd roboczy podany przez projektanta (backend niczego nie przyjmuje). */
   prad_obliczeniowy_a: number;
-  /** Prąd obliczeniowy przyjęty równy obciążalności typu (projektant nie podał prądu). */
-  prad_z_obciazalnosci: boolean;
   delta_u_v: number;
   delta_u_pct: number;
   r_total_ohm: number;

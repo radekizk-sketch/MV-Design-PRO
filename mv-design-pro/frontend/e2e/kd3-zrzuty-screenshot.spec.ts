@@ -240,6 +240,9 @@ for (const motyw of MOTYWY) {
     await otworzKreatorStacji(page, segmentId);
 
     await przejdzDoKroku(page, 'Transformator i strona nN');
+    // Napięcie strony nN — wybór projektanta (karta PROWADZENIE-KREATORY: kreator nie
+    // przyjmuje 0,4 kV po cichu, a lista transformatorów zawęża się dopiero po nim).
+    await page.getByTestId('mvd-kreator-stacja-nn').selectOption('0.4');
     const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
     // POMIAR ZAMIAST „BYLE NIE JEDNA": `not.toHaveCount(1)` przechodziło TAKŻE
     // przy ZERZE opcji (pusty katalog), więc bramka nie sprawdzała tego, co

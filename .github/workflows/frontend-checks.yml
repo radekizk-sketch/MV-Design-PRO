@@ -129,3 +129,12 @@ jobs:
       - name: Kolory pod motyw guard
         working-directory: mv-design-pro
         run: python scripts/kolory_pod_motyw_guard.py
+      # Karta PROWADZENIE-KREATORY: kontrakt prowadzenia projektanta w kreatorach
+      # (`frontend/src/ui2/kreatory`) — zapis nie jest wyszarzany brakiem danych (jedyne
+      # blokady: wczytywanie katalogu i trwajacy zapis), bez ogolnikow „Uzupelnij wymagane
+      # pola”/„Do doboru”, bez etykiet pochodzenia „przyjeto:” i kryptonimow kart w tekscie
+      # dla projektanta. Lista dozwolona pusta. Samotest:
+      # `scripts/test_kreatory_prowadzenie_guard.py`.
+      - name: Kreatory prowadzenie guard
+        working-directory: mv-design-pro
+        run: python scripts/kreatory_prowadzenie_guard.py

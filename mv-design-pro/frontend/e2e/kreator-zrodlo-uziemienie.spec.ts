@@ -11,6 +11,8 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
+import { WARTOSCI_TESTOWE_GPZ, zapiszZPrzewodnikiem } from './prowadzenieKreatora';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 
@@ -144,12 +146,20 @@ test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 
   await page.getByTestId('mvd-kreator-zrodlo-uziemienie').selectOption('resistor_grounded');
   await page.getByTestId('mvd-kreator-zrodlo-uziemienie-ohm').fill('12');
 
-  // Zapis: jedna operacja domenowa `add_grid_source_sn`.
+  // Zapis: jedna operacja domenowa `add_grid_source_sn`. Zapis jest aktywny od początku
+  // (kontrakt prowadzenia projektanta) — braki, których kreator nie dobiera sam (aparat pól
+  // liniowych z kilku pozycji katalogu, czas zwarcia), wskazuje klik zapisu z przejściem do pola.
   await przejdzDoKroku(page, 'Podsumowanie i zapis');
-  const zapisz = page.getByTestId('mvd-kreator-zrodlo-zapisz');
-  await expect(zapisz).toBeEnabled({ timeout: 20000 });
-  await zapisz.click();
-  await expect(page.getByTestId('mvd-kreator-zrodlo')).toHaveCount(0, { timeout: 60000 });
+  await expect(page.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeEnabled();
+  const przebieg = await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-zrodlo',
+    zapisz: 'mvd-kreator-zrodlo-zapisz',
+    wartosci: WARTOSCI_TESTOWE_GPZ,
+  });
+  // Każde wskazanie nazywa konkretne pole i cel („co — po co”), nigdy ogólnik.
+  for (const w of przebieg) expect(w.komunikat).toMatch(/ — /);
+  expect(przebieg.map((w) => w.pole)).toContain('mvd-kreator-zrodlo-aparat-katalog');
+  expect(przebieg.map((w) => w.pole)).not.toContain('mvd-kreator-zrodlo-uziemienie');
 
   // ------------------------------------------------------- dowód przez API
   const enm = await pobierzEnm(request, caseId);

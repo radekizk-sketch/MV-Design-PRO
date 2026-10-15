@@ -81,6 +81,55 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+// Dobór toru SN (krok „dobor”, wariant z transformatorem blokowym): końcówki doboru i listy
+// warunków ułożenia — mock na granicy modułu klienta; reszta modułu (budowa zapytania,
+// ocena kompletności propozycji) prawdziwa.
+vi.mock('../derSelectionApi', async (importOriginal) => {
+  const oryginal = await importOriginal<typeof import('../derSelectionApi')>();
+  return {
+    ...oryginal,
+    fetchCableLayingConditions: () =>
+      Promise.resolve({
+        sets: [{ name: 'warunki_katalogowe', label_pl: 'Warunki katalogowe', f_grunt: 1, f_wiazka: 1, f_grupa: 1, total: 1, basis: 'x', assumption_pl: 'x' }],
+        custom_name: 'wlasne',
+        default_name: 'warunki_katalogowe',
+        limitation_pl: 'x',
+      }),
+    fetchDerSelectionPreview: () =>
+      Promise.resolve({
+        sum_apparent_power_mva: 1.0,
+        transformer_current_a: 38.5,
+        transformer: {
+          proposal: { catalog_ref: 'tr-1000', name: 'TR 1000 kVA 15/0.4', sn_mva: 1.0, primary_kv: 15.0, secondary_kv: 0.4, uk_percent: 6.0, vector_group: 'Dyn11' },
+          required_apparent_power_mva: 1.0,
+          effective_load_mva: 1.0,
+          rejected: [],
+          error_code: null,
+          error_pl: null,
+          available_vector_groups: ['Dyn11'],
+          formula_ref: 'S_wym',
+        },
+        cable: {
+          proposal: { catalog_ref: 'cab-50', name: 'Kabel 50 mm²', cross_section_mm2: 50, rated_current_a: 160, delta_u_v: 10, delta_u_pct: 0.4 },
+          required_ampacity_a: 38.5,
+          max_delta_u_pct: 2.0,
+          rejected: [],
+          error_code: null,
+          error_pl: null,
+          formula_ref: 'Iz',
+        },
+        field_apparatus: {
+          proposal: { catalog_ref: 'cb-400', name: 'Rozłącznik 400 A', equipment_kind: 'LOAD_SWITCH', un_kv: 12.0, in_a: 400, ik_ka: null },
+          required_current_a: 38.5,
+          rejected: [],
+          error_code: null,
+          error_pl: null,
+          formula_ref: 'In',
+        },
+      }),
+  };
+});
+
 // R5 (karta FAB-K, wzorzec E2E-S95): `vi.hoisted` (nie zwykłe `const` nad
 // `vi.mock`) — testy gotowości nadpisują implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog przekształtników/aparatury
@@ -927,7 +976,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-oze-sekwencja-limity')).toHaveAttribute('data-stan', 'pominiete');
   });
 
-  it('uczciwy stan zerowy: bez rozdzielni zapis zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany” (bez rozdzielni / bez przypadku): operacja nie
+  // wychodzi, a projektant wie dlaczego. Kontrakt prowadzenia: zapis klikalny, próba nazywa brak.
+  it('uczciwy stan zerowy: bez rozdzielni próba zapisu nazywa brak rozdzielni', async () => {
     resolved.station = null;
     resolved.bus = null;
     render(<KreatorZrodlaOze />);
@@ -936,20 +987,74 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     // stanu domknęły się w act.
     await screen.findByRole('option', { name: /Wyłącznik nN/ });
     expect(screen.getByTestId('mvd-kreator-oze-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
-    // R5 (S9-5): sygnał gotowości (data-status) jest JEDNYM źródłem prawdy
-    // z `disabled` (KLASA NIE INSTANCJA, predykaty parami).
-    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'zablokowany');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Otwórz kreator z rozdzielni/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: kompletny zapis wskazuje przypadek, operacja nie wychodzi', async () => {
     appState.activeCaseId = null;
     render(<KreatorZrodlaOze />);
-    // Realny stan końcowy montażu: opcja aparatu z katalogu (jak wyżej).
     await screen.findByRole('option', { name: /Wyłącznik nN/ });
-    expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'zablokowany');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: zero alertów i czerwieni; zapis wskazuje aparat nowego pola, potem falownik na kroku katalogu', async () => {
+    render(<KreatorZrodlaOze />);
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-oze-gotowosc').querySelector('[data-stan="konflikt"]')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-oze-aparat')).toHaveFocus();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz aparat nN nowego pola źródłowego z katalogu — /);
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-krok-katalog')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz układ PV\/BESS\/FW z katalogu — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('pasmo Q(U): puste granice nie są podstawiane 1,0 pu; odwrócone granice to konflikt od razu', async () => {
+    render(<KreatorZrodlaOze />);
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-regulacja'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb'), 'Q_OD_U');
+    // Sama górna granica 0,98 pu (dolna pusta): dawniej walidacja podstawiała dolną 1,0 i
+    // zgłaszała konflikt, którego projektant nie zadał.
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-qu-db-high'), '0.98');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-qu-db-low'), '1.02');
+    expect(screen.getByRole('alert').textContent).toBe('Pasmo Q(U): napięcie dolne nie może przekraczać górnego.');
+  });
+
+  it('tor SN z doboru: walidacja toru wpięta w zapis — długość kabla 0 wraca do kroku doboru', async () => {
+    render(<KreatorZrodlaOze />);
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-wariant'), 'block_transformer');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-katalog'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-dobor'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-dobor-dlugosc'), '1.5');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-dobor-zastosuj')).toBeEnabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dobor-zastosuj'));
+    await userEvent.clear(screen.getByTestId('mvd-kreator-oze-dobor-dlugosc'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-dobor-dlugosc'), '0');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-tech'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-krok-dobor')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-oze-dobor-dlugosc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toBe(
+      'Długość kabla przyłączeniowego musi być większa od zera.',
+    );
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -963,14 +1068,14 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
    * nierozstrzygnięty) × „kontekst i zakres obliczeń poprawne" → zapis MUSI
    * być zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
    */
-  it('iloczyn cech: katalog jeszcze się ładuje × kontekst/zakres poprawne → zapis zablokowany z komunikatem, nie w ciszy', () => {
+  it('iloczyn cech: katalog jeszcze się ładuje × kontekst/zakres poprawne → zapis wyszarzony z jednym zdaniem, nie w ciszy', () => {
     fetchConverterTypesMock.mockReturnValueOnce(new Promise(() => {}));
     fetchLvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorZrodlaOze />);
 
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/Wczytywanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 

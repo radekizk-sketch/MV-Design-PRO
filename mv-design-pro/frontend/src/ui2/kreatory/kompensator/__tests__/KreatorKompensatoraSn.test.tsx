@@ -27,10 +27,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+// Nazwa obiektu w kreatorze idzie przez REALNY `selectElementName` (to samo źródło nazw co
+// schemat, `nazwaObiektuZMigawki`) — atrapa podmienia wyłącznie store migawki.
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { useSnapshotStore, selectElementName: oryginal.selectElementName };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -49,12 +52,12 @@ vi.mock('../../../../ui/navigation/routes', () => ({
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const BATERIA_15 = { id: 'KOMP_SN_1V2_15KV', name: 'Bateria 1,2 Mvar 15 kV', rated_mvar: 1.2, rated_kv: 15, loss_kw: 0.6 };
+const BATERIA_15_B = { id: 'KOMP_SN_2V4_15KV', name: 'Bateria 2,4 Mvar 15 kV', rated_mvar: 2.4, rated_kv: 15, loss_kw: 1.1 };
+const BATERIA_20 = { id: 'KOMP_SN_1V2_20KV', name: 'Bateria 1,2 Mvar 20 kV', rated_mvar: 1.2, rated_kv: 20, loss_kw: 0.6 };
+
 const { fetchShuntCapacitorTypesMock } = vi.hoisted(() => ({
-  fetchShuntCapacitorTypesMock: vi.fn(() =>
-    Promise.resolve([
-      { id: 'KOMP_SN_1V2_15KV', name: 'Bateria 1,2 Mvar 15 kV', rated_mvar: 1.2, rated_kv: 15, loss_kw: 0.6 },
-    ]),
-  ),
+  fetchShuntCapacitorTypesMock: vi.fn(),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -90,7 +93,8 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
-    fetchShuntCapacitorTypesMock.mockClear();
+    fetchShuntCapacitorTypesMock.mockReset();
+    fetchShuntCapacitorTypesMock.mockImplementation(() => Promise.resolve([BATERIA_15, BATERIA_20]));
   });
 
   afterEach(() => cleanup());
@@ -130,26 +134,60 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwy stan zerowy: bez szyny zapis jest zablokowany', async () => {
+  // Intencja dawnego „uczciwego stanu zerowego”: bez szyny operacja nie rusza — w nowym
+  // kanonie przez jedno wskazanie przy próbie zapisu, nie wyszarzony przycisk.
+  it('bez szyny: próba zapisu nazywa brak szyny, operacja nie rusza', async () => {
     context = {};
     render(<KreatorKompensatoraSn />);
-    // Montaż pobiera katalog baterii (mikrotaski) — czekamy na realny stan
-    // końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja stanu
-    // domknęła się w act.
     await screen.findByRole('option', { name: /Bateria 1,2 Mvar 15 kV/ });
     expect(screen.getByTestId('mvd-kreator-kompensator-brak-szyny')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'zablokowany');
+    await userEvent.click(screen.getByTestId('mvd-kreator-kompensator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/Zaznacz na schemacie szynę SN/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorKompensatoraSn />);
     await pickType();
-    expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'zablokowany');
+    await userEvent.click(screen.getByTestId('mvd-kreator-kompensator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: bez alertu i bez czerwieni w panelu kontroli', async () => {
+    render(<KreatorKompensatoraSn />);
+    await screen.findByRole('option', { name: /Bateria 1,2 Mvar 15 kV/ });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-kompensator-gotowosc').querySelector('[data-stan="konflikt"]')).toBeNull();
+  });
+
+  it('jedyny typ na napięcie szyny stoi w polu; projektant może wybrać inny', async () => {
+    render(<KreatorKompensatoraSn />);
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-kompensator-katalog')).toHaveValue('KOMP_SN_1V2_15KV');
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-kompensator-katalog'), 'KOMP_SN_1V2_20KV');
+    expect(screen.getByTestId('mvd-kreator-kompensator-katalog')).toHaveValue('KOMP_SN_1V2_20KV');
+  });
+
+  it('konflikt widoczny od razu: typ 20 kV na szynie 15 kV; zapis wraca do pola typu', async () => {
+    render(<KreatorKompensatoraSn />);
+    await screen.findByRole('option', { name: /Bateria 1,2 Mvar 20 kV/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-kompensator-katalog'), 'KOMP_SN_1V2_20KV');
+    expect(screen.getByRole('alert').textContent).toMatch(/nie pasuje do napięcia szyny/);
+    await userEvent.click(screen.getByTestId('mvd-kreator-kompensator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-kompensator-katalog')).toHaveFocus();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('kilka typów na napięcie szyny: brak automatu, zapis wskazuje typ z celem', async () => {
+    fetchShuntCapacitorTypesMock.mockImplementation(() => Promise.resolve([BATERIA_15, BATERIA_15_B]));
+    render(<KreatorKompensatoraSn />);
+    await screen.findByRole('option', { name: /Bateria 2,4 Mvar 15 kV/ });
+    await userEvent.click(screen.getByTestId('mvd-kreator-kompensator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-kompensator-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz typ baterii kondensatorów z katalogu — /);
   });
 
   /**
@@ -163,7 +201,7 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 

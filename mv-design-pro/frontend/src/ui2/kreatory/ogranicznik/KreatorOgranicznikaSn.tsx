@@ -29,8 +29,16 @@ import {
   PanelTeorii,
   PoleKatalogu,
   RzadWartosci,
+  jedynaZgodna,
+  napieciePola,
+  napiecieSzyny,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -40,9 +48,9 @@ import {
   maMiejsce,
   napiecieNiezgodne,
   parametryZKatalogu,
+  typyZgodneZSzyna,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type KontekstOgranicznika,
   type OgranicznikFormData,
 } from './ogranicznikModel';
@@ -52,6 +60,11 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'typ', pole: 'mvd-kreator-ogranicznik-katalog' },
+};
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -88,6 +101,7 @@ export function KreatorOgranicznikaSn() {
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
 
   const selected = useMemo(
     () =>
@@ -97,13 +111,20 @@ export function KreatorOgranicznikaSn() {
     [selectedElement],
   );
 
-  const kontekst = useMemo(() => kontekstZOperacji(context, selected), [context, selected]);
+  // Napięcie miejsca: z kontekstu operacji, a gdy go brak — z migawki (szyna albo szyna pola).
+  const kontekst = useMemo(() => {
+    const k = kontekstZOperacji(context, selected);
+    if (k.bus_voltage_kv !== undefined) return k;
+    const kv = napiecieSzyny(snapshot, k.bus_ref) ?? napieciePola(snapshot, k.field_ref);
+    return { ...k, bus_voltage_kv: kv ?? undefined };
+  }, [context, selected, snapshot]);
   const hasMiejsce = maMiejsce(kontekst);
 
   const [dane, setDane] = useState<OgranicznikFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('typ');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'catalog_ref'>();
 
   const [typy, setTypy] = useState<SurgeArresterCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -144,39 +165,50 @@ export function KreatorOgranicznikaSn() {
     [typy],
   );
 
+  // AUTO_PRZYJETE: jedyny ogranicznik, którego U_m pokrywa napięcie miejsca.
+  const napiecieKv = kontekst.bus_voltage_kv ?? null;
+  const jedynyTyp = useMemo(
+    () => (napiecieKv !== null ? jedynaZgodna(typyZgodneZSzyna(typy, napiecieKv)) : null),
+    [napiecieKv, typy],
+  );
+  useEffect(() => {
+    if (!jedynyTyp || napiecieKv === null || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp, napiecieKv]);
+
   const zmien = useCallback(
     <K extends keyof OgranicznikFormData>(pole: K, wartosc: OgranicznikFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'catalog_ref') edytowane('catalog_ref');
     },
-    [],
+    [edytowane],
   );
 
-  const bladDlaPola = (pole: string): string | undefined =>
-    bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — U_m < napięcie szyny: widoczny od razu przy polu typu.
   const napBlad = napiecieNiezgodne(params, kontekst);
   const miejsceLabel = kontekst.field_name || kontekst.field_ref || kontekst.bus_name || kontekst.bus_ref || '—';
 
   const onZapisz = useCallback(async () => {
-    if (!hasMiejsce) {
-      setBladGlobalny(T.brakMiejscaOpis);
+    const brak = pierwszyBrak([
+      !hasMiejsce && { komunikat: T.brakMiejscaOpis },
+      napBlad && { komunikat: T.ostrzezenieNapiecie, ...MIEJSCA.catalog_ref },
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
-        activeCaseId,
+        activeCaseId as string,
         'add_surge_arrester_sn',
         zbudujPayload(dane, kontekst),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -186,7 +218,7 @@ export function KreatorOgranicznikaSn() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'BaySN', name: miejsceLabel });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
   }, [
     activeCaseId,
@@ -196,29 +228,32 @@ export function KreatorOgranicznikaSn() {
     hasMiejsce,
     kontekst,
     miejsceLabel,
+    napBlad,
+    prowadzenie,
     selekcjaPoOperacji,
   ]);
 
+  const nazwaTypu = typy.find((t) => t.id === dane.catalog_ref)?.name ?? '';
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszTyp,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: napBlad ? 'konflikt' : !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: nazwaTypu,
     },
     {
       etykieta: T.wierszMiejsce,
-      stan: hasMiejsce ? 'kompletne' : 'brak',
-      wartosc: hasMiejsce ? miejsceLabel : 'Brak',
+      stan: hasMiejsce ? 'ustalone' : 'do_wyboru',
+      wartosc: hasMiejsce ? miejsceLabel : T.miejsceDoWskazania,
     },
     {
       etykieta: T.wierszUm,
-      stan: napBlad ? 'ostrzezenie' : params ? 'kompletne' : 'ostrzezenie',
-      wartosc: napBlad ? 'Niezgodne' : fmtKv(params?.u_m_kv),
+      stan: napBlad ? 'konflikt' : params ? 'ustalone' : 'do_wyboru',
+      wartosc: params ? fmtKv(params.u_m_kv) : '',
     },
     {
       etykieta: T.wierszBil,
-      stan: params ? 'kompletne' : 'ostrzezenie',
-      wartosc: fmtKv(params?.bil_protected_kv),
+      stan: params ? 'ustalone' : 'do_wyboru',
+      wartosc: params ? fmtKv(params.bil_protected_kv) : '',
     },
   ];
 
@@ -226,8 +261,7 @@ export function KreatorOgranicznikaSn() {
     <>
       <KreatorPodsumowanie
         tytul={T.podsumowanieTytul}
-        komunikat={napBlad ? T.ostrzezenieNapiecie : null}
-        komunikatTon="warn"
+        komunikat={null}
         testid="mvd-kreator-ogranicznik-podsumowanie"
       >
         {params ? (
@@ -261,16 +295,6 @@ export function KreatorOgranicznikaSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasMiejsce || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -284,20 +308,11 @@ export function KreatorOgranicznikaSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasMiejsce
-              ? T.brakMiejscaOpis
-              : null
-      }
-      status={stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={{
         etykieta: T.zapisz,
         onClick: onZapisz,
-        zablokowana: zapisZablokowany,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
         testid: 'mvd-kreator-ogranicznik-zapisz',
       }}
       akcjaAnuluj={{
@@ -343,11 +358,9 @@ export function KreatorOgranicznikaSn() {
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}
+            blad={napBlad ? T.ostrzezenieNapiecie : undefined}
             testid="mvd-kreator-ogranicznik-katalog"
           />
-          {bladDlaPola('catalog_ref') ? (
-            <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p>
-          ) : null}
           {paramReadout}
           <PanelTeorii
             tytul={T.teoriaTytul}

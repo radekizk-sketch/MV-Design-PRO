@@ -78,7 +78,8 @@ export interface OdbiorFormData {
   manual_mode: boolean;
   nazwa: string;
   active_power_kw: number | null;
-  cos_phi: number;
+  /** cosφ odbioru — z pozycji katalogowej albo od projektanta; `null` = nie podano. */
+  cos_phi: number | null;
   /** Jawny override mocy biernej [kvar]; gdy null — backend wyprowadzi z cosφ. */
   reactive_power_kvar: number | null;
   load_kind: LoadKind;
@@ -97,8 +98,11 @@ export const DANE_DOMYSLNE: OdbiorFormData = {
   catalog_ref: null,
   manual_mode: false,
   nazwa: '',
-  active_power_kw: 50,
-  cos_phi: 0.93,
+  // Moc i cosφ bez wartości startowych (dawniej 50 kW / 0,93 — wartości zgadnięte, które
+  // trafiały do rozpływu, gdy projektant ich nie zmienił). Źródło: pozycja katalogowa
+  // (prefill) albo projektant.
+  active_power_kw: null,
+  cos_phi: null,
   reactive_power_kvar: null,
   load_kind: 'SKUPIONY',
   phases: null,
@@ -151,25 +155,47 @@ export function walidujZip(zip: ModelZip): BladPola[] {
   return errors;
 }
 
-export function walidujFormularz(data: OdbiorFormData): BladPola[] {
+/**
+ * KONFLIKT_TECHNICZNY — wartości podane, ale niedopuszczalne (moc niedodatnia, cosφ poza
+ * (0, 1], model ZIP niespójny). Widoczne od razu przy polu.
+ */
+export function konfliktyFormularza(data: OdbiorFormData): BladPola[] {
   const errors: BladPola[] = [];
-  if (!isPositive(data.active_power_kw)) {
+  if (data.active_power_kw !== null && !isPositive(data.active_power_kw)) {
     errors.push({ field: 'active_power_kw', message: 'Moc czynna odbioru musi być dodatnia.' });
   }
-  if (data.cos_phi <= 0 || data.cos_phi > 1) {
+  if (data.cos_phi !== null && (data.cos_phi <= 0 || data.cos_phi > 1)) {
     errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });
-  }
-  // Katalog-first pozostaje domyślne (karta D4): w trybie katalogowym pozycja
-  // katalogowa jest wymagana. Tryb ręczny (ekspercki) zwalnia z tego wymogu —
-  // JAWNIE, przez przełącznik, nie przez ciche pozostawienie pola pustym.
-  if (!data.manual_mode && !data.catalog_ref?.trim()) {
-    errors.push({
-      field: 'catalog_ref',
-      message: 'Wybierz typ odbioru z katalogu albo przełącz na tryb ręczny (ekspercki).',
-    });
   }
   errors.push(...walidujZip(data.zip));
   return errors;
+}
+
+/**
+ * BRAK_DO_OPERACJI — parametry niepodane, w kolejności pracy w kreatorze („co — po co”).
+ * Katalog-first (karta D4): w trybie katalogowym pozycja jest wymagana; tryb ręczny
+ * (ekspercki) zwalnia z niej JAWNIE, przez przełącznik.
+ */
+export function brakiFormularza(data: OdbiorFormData): BladPola[] {
+  const errors: BladPola[] = [];
+  if (!data.manual_mode && !data.catalog_ref?.trim()) {
+    errors.push({
+      field: 'catalog_ref',
+      message: 'Wybierz typ odbioru z katalogu — albo przełącz na tryb ręczny (ekspercki) i podaj moc sam.',
+    });
+  }
+  if (data.active_power_kw === null) {
+    errors.push({ field: 'active_power_kw', message: 'Podaj moc czynną odbioru — wchodzi do rozpływu i bilansu mocy.' });
+  }
+  if (data.cos_phi === null) {
+    errors.push({ field: 'cos_phi', message: 'Podaj cosφ odbioru — z niego wynika moc bierna w rozpływie.' });
+  }
+  return errors;
+}
+
+/** Konflikty przed brakami: najpierw to, co podane źle, potem to, czego brak. */
+export function walidujFormularz(data: OdbiorFormData): BladPola[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data)];
 }
 
 /**
@@ -207,9 +233,15 @@ export function prefillZKatalogu(
 /** Buduje żądanie podglądu prądu (R1 cable-rated-current) lub null. */
 export function zbudujZapytaniePodgladu(
   data: OdbiorFormData,
-  napiecie_v: number,
+  napiecie_v: number | null,
 ): CableRatedCurrentRequest | null {
-  if (!isPositive(data.active_power_kw) || data.cos_phi <= 0 || !isPositive(napiecie_v)) {
+  if (
+    !isPositive(data.active_power_kw)
+    || data.cos_phi === null
+    || data.cos_phi <= 0
+    || data.cos_phi > 1
+    || !isPositive(napiecie_v)
+  ) {
     return null;
   }
   return {

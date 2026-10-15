@@ -8,6 +8,7 @@
  * ZERO fizyki w UI.
  */
 
+import { voltageMatches } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { TransformerRatedCurrentsRequest } from '../../../ui/network-build/forms/transformerRatedCurrentsApi';
 import type { TransformerType } from '../../../ui/catalog/types';
@@ -25,11 +26,16 @@ export interface TransformatorFormData {
   nazwa: string;
   regulation_type: RegulationType;
   regulated_winding: RegulatedWinding;
-  tap_neutral_position: number;
-  tap_current_position: number;
-  tap_min_position: number;
-  tap_max_position: number;
-  tap_step_percent: number;
+  /**
+   * Zaczepy — WYŁĄCZNIE z tabliczki wybranej pozycji katalogowej (AUTO_PRZYJETE) albo od
+   * projektanta; `null` = jeszcze nieznane (dawniej stałe −9…9 × 1,25 % niezależnie od
+   * transformatora — inne niż w kreatorze stacji, ±2 × 2,5 %).
+   */
+  tap_neutral_position: number | null;
+  tap_current_position: number | null;
+  tap_min_position: number | null;
+  tap_max_position: number | null;
+  tap_step_percent: number | null;
   control_mode: ControlMode;
   voltage_setpoint_kv: number | null;
   deadband_kv: number | null;
@@ -48,40 +54,127 @@ export const DANE_DOMYSLNE: TransformatorFormData = {
   nazwa: '',
   regulation_type: 'NONE',
   regulated_winding: 'HV',
-  tap_neutral_position: 0,
-  tap_current_position: 0,
-  tap_min_position: -9,
-  tap_max_position: 9,
-  tap_step_percent: 1.25,
+  tap_neutral_position: null,
+  tap_current_position: null,
+  tap_min_position: null,
+  tap_max_position: null,
+  tap_step_percent: null,
   control_mode: 'MANUAL',
   voltage_setpoint_kv: null,
   deadband_kv: null,
 };
 
-export function walidujFormularz(data: TransformatorFormData): BladPola[] {
+/**
+ * KONFLIKT_TECHNICZNY — widoczny od razu przy polu (niezależnie od tego, czy praca jest
+ * skończona): ta sama szyna po obu stronach, napięcia tabliczki niezgodne z szynami,
+ * zaczep min ≥ max, krok niedodatni, napięcie zadane niedodatnie, pozycja poza zakresem.
+ */
+export function konfliktyFormularza(
+  data: TransformatorFormData,
+  params: ParametryTransformatora | null = null,
+  napiecieHvKv: number | null = null,
+  napiecieLvKv: number | null = null,
+): BladPola[] {
   const errors: BladPola[] = [];
-  if (!data.hv_bus_ref) errors.push({ field: 'hv_bus_ref', message: 'Wskaż szynę SN (górne napięcie).' });
-  if (!data.lv_bus_ref) errors.push({ field: 'lv_bus_ref', message: 'Wskaż szynę nN (dolne napięcie).' });
   if (data.hv_bus_ref && data.hv_bus_ref === data.lv_bus_ref) {
     errors.push({ field: 'lv_bus_ref', message: 'Szyna SN i nN muszą być różne.' });
   }
-  if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ transformatora z katalogu.' });
+  if (params) {
+    if (napiecieHvKv !== null && Math.abs(params.voltage_hv_kv - napiecieHvKv) > TOLERANCJA_NAPIECIA_KV) {
+      errors.push({
+        field: 'catalog_ref',
+        message: `Napięcie górne tabliczki (${params.voltage_hv_kv} kV) nie pasuje do szyny SN (${napiecieHvKv} kV).`,
+      });
+    } else if (napiecieLvKv !== null && Math.abs(params.voltage_lv_kv - napiecieLvKv) > TOLERANCJA_NAPIECIA_KV) {
+      errors.push({
+        field: 'catalog_ref',
+        message: `Napięcie dolne tabliczki (${params.voltage_lv_kv} kV) nie pasuje do szyny nN (${napiecieLvKv} kV).`,
+      });
+    }
   }
   if (data.regulation_type !== 'NONE') {
-    if (data.tap_min_position >= data.tap_max_position) {
+    const { tap_min_position: min, tap_max_position: max, tap_current_position: biezacy } = data;
+    if (min !== null && max !== null && min >= max) {
       errors.push({ field: 'tap_min_position', message: 'Zaczep minimalny musi być mniejszy od maksymalnego.' });
+    } else if (min !== null && max !== null && biezacy !== null && (biezacy < min || biezacy > max)) {
+      errors.push({ field: 'tap_current_position', message: 'Pozycja bieżąca musi leżeć w zakresie zaczepów.' });
     }
-    if (data.tap_step_percent <= 0) {
+    if (data.tap_step_percent !== null && data.tap_step_percent <= 0) {
       errors.push({ field: 'tap_step_percent', message: 'Krok zaczepu musi być dodatni.' });
     }
-    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTOMATIC') {
-      if (!(typeof data.voltage_setpoint_kv === 'number' && data.voltage_setpoint_kv > 0)) {
-        errors.push({ field: 'voltage_setpoint_kv', message: 'Regulacja automatyczna wymaga napięcia zadanego.' });
-      }
+    if (
+      data.regulation_type === 'OLTC'
+      && data.control_mode === 'AUTOMATIC'
+      && data.voltage_setpoint_kv !== null
+      && !(data.voltage_setpoint_kv > 0)
+    ) {
+      errors.push({ field: 'voltage_setpoint_kv', message: 'Napięcie zadane musi być dodatnie.' });
     }
   }
   return errors;
+}
+
+/** BRAK_DO_OPERACJI — w kolejności pracy w kreatorze; pokazywany dopiero przy zapisie. */
+export function brakiFormularza(data: TransformatorFormData): BladPola[] {
+  const errors: BladPola[] = [];
+  if (!data.hv_bus_ref) {
+    errors.push({ field: 'hv_bus_ref', message: 'Wskaż szynę SN — do niej przyłączy się strona górnego napięcia.' });
+  }
+  if (!data.lv_bus_ref) {
+    errors.push({ field: 'lv_bus_ref', message: 'Wskaż szynę nN — do niej przyłączy się strona dolnego napięcia.' });
+  }
+  if (!data.catalog_ref?.trim()) {
+    errors.push({
+      field: 'catalog_ref',
+      message: 'Wybierz transformator z katalogu — bez tabliczki nie da się policzyć rozpływu ani zwarć.',
+    });
+  }
+  if (data.regulation_type !== 'NONE') {
+    const pola: ReadonlyArray<[keyof TransformatorFormData, string]> = [
+      ['tap_min_position', 'Podaj zaczep minimalny — zakres zaczepów pochodzi z tabliczki transformatora.'],
+      ['tap_max_position', 'Podaj zaczep maksymalny — zakres zaczepów pochodzi z tabliczki transformatora.'],
+      ['tap_step_percent', 'Podaj krok zaczepu [%] — wyznacza zmianę przekładni na jeden zaczep.'],
+      ['tap_neutral_position', 'Podaj zaczep neutralny — przy nim przekładnia jest znamionowa.'],
+      ['tap_current_position', 'Podaj pozycję bieżącą zaczepu — od niej zależy przekładnia w rozpływie.'],
+    ];
+    for (const [pole, komunikat] of pola) {
+      if (data[pole] === null) errors.push({ field: pole, message: komunikat });
+    }
+    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTOMATIC' && data.voltage_setpoint_kv === null) {
+      errors.push({
+        field: 'voltage_setpoint_kv',
+        message: 'Podaj napięcie zadane regulatora — automatyka OLTC reguluje zaczep do tej wartości.',
+      });
+    }
+  }
+  return errors;
+}
+
+/** Komplet kontroli przed zapisem: konflikty (widoczne od razu), potem braki. */
+export function walidujFormularz(
+  data: TransformatorFormData,
+  params: ParametryTransformatora | null = null,
+  napiecieHvKv: number | null = null,
+  napiecieLvKv: number | null = null,
+): BladPola[] {
+  return [...konfliktyFormularza(data, params, napiecieHvKv, napiecieLvKv), ...brakiFormularza(data)];
+}
+
+/** Tolerancja zgodności napięcia tabliczki z napięciem szyny [kV]. */
+const TOLERANCJA_NAPIECIA_KV = 0.01;
+
+/** Czy tabliczka pasuje napięciowo do szyn (nieznane napięcie szyny nie wyklucza). */
+export function tabliczkaZgodnaZSzynami(
+  typ: Pick<TransformerType, 'voltage_hv_kv' | 'voltage_lv_kv'>,
+  napiecieHvKv: number | null,
+  napiecieLvKv: number | null,
+): boolean {
+  // Ten sam predykat zgodności napięcia, którym kreator stacji dobiera transformatory
+  // (`voltageMatches`) — jedno źródło porównania tabliczki z szyną.
+  return (
+    (napiecieHvKv === null || voltageMatches(typ.voltage_hv_kv, napiecieHvKv, TOLERANCJA_NAPIECIA_KV))
+    && (napiecieLvKv === null || voltageMatches(typ.voltage_lv_kv, napiecieLvKv, TOLERANCJA_NAPIECIA_KV))
+  );
 }
 
 export interface ParametryTransformatora {
@@ -115,18 +208,41 @@ export function parametryZKatalogu(
   };
 }
 
-/** Wypełnia zakres zaczepów z katalogu przy włączeniu regulacji. */
+/**
+ * Zaczepy z tabliczki wybranej pozycji katalogowej (JEDNO źródło zakresu i kroku — to samo
+ * w kreatorze transformatora i w kreatorze stacji). Pozycja neutralna i bieżąca: zaczep
+ * znamionowy 0, gdy zakres go obejmuje (numeracja symetryczna tabliczki); inaczej `null`
+ * (projektant poda). Brak pozycji katalogowej albo krok niedodatni = `null` (bez domysłu).
+ */
+export interface ZaczepyZTabliczki {
+  tap_min_position: number;
+  tap_max_position: number;
+  tap_step_percent: number;
+  tap_neutral_position: number | null;
+  tap_current_position: number | null;
+}
+
+export function zaczepyZTabliczki(
+  params: Pick<ParametryTransformatora, 'tap_min' | 'tap_max' | 'tap_step_percent'> | null,
+): ZaczepyZTabliczki | null {
+  if (!params || !(0 < params.tap_step_percent) || !(params.tap_min < params.tap_max)) return null;
+  const znamionowy = params.tap_min <= 0 && params.tap_max >= 0 ? 0 : null;
+  return {
+    tap_min_position: params.tap_min,
+    tap_max_position: params.tap_max,
+    tap_step_percent: params.tap_step_percent,
+    tap_neutral_position: znamionowy,
+    tap_current_position: znamionowy,
+  };
+}
+
+/** Wypełnia zaczepy z tabliczki (włączenie regulacji albo zmiana pozycji katalogowej). */
 export function seedRegulacjiZKatalogu(
   data: TransformatorFormData,
   params: ParametryTransformatora | null,
 ): TransformatorFormData {
-  if (!params) return data;
-  return {
-    ...data,
-    tap_min_position: params.tap_min,
-    tap_max_position: params.tap_max,
-    tap_step_percent: params.tap_step_percent || data.tap_step_percent,
-  };
+  const zaczepy = zaczepyZTabliczki(params);
+  return zaczepy ? { ...data, ...zaczepy } : data;
 }
 
 /** Buduje żądanie podglądu prądów I1/I2 (R2) lub null. */

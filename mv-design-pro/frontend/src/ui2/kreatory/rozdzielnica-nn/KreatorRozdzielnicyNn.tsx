@@ -20,6 +20,7 @@ import { resolveBusNnRef, resolveStationRef, stationLabel } from '../../../ui/ne
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { useActiveOperationForm, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import type { AddNNDistributionBoardPayload, AddNNSectionCouplerPayload } from '../../../types/domainOps';
 import {
   KreatorGotowosc,
@@ -33,7 +34,10 @@ import {
   PolePrzelacznikBinarny,
   PoleTekstowe,
   PoleWyboru,
+  pierwszyBrak,
   RzadWartosci,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacjiBezNawigacji,
   type WierszGotowosci,
 } from '../rama';
@@ -62,8 +66,17 @@ export function KreatorRozdzielnicyNn() {
     [snapshot, supplyFromBusRef],
   );
 
+  const prowadzenie = useProwadzenie();
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'napiecie'>();
+
   // --- Tryb A: nowa rozdzielnica ---
-  const [napiecieKv, setNapiecieKv] = useState<number | null>(supplyFromBus?.voltage_kv ?? 0.4);
+  // Napięcie: z szyny zasilającej (AUTO_PRZYJETE) albo od projektanta — dawniej stałe 0,4 kV.
+  const [napiecieKv, setNapiecieKv] = useState<number | null>(supplyFromBus?.voltage_kv ?? null);
+  useEffect(() => {
+    const kv = supplyFromBus?.voltage_kv;
+    if (typeof kv !== 'number' || !(kv > 0) || decyzjaProjektanta('napiecie')) return;
+    setNapiecieKv(kv);
+  }, [decyzjaProjektanta, supplyFromBus, T]);
   const [nazwa, setNazwa] = useState('');
   const [oznaczenie, setOznaczenie] = useState('');
   const [konstrukcja, setKonstrukcja] = useState('');
@@ -111,16 +124,27 @@ export function KreatorRozdzielnicyNn() {
 
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
 
-  const kompletneA = Boolean(napiecieKv && napiecieKv > 0)
-    && (!zasilWlaczone || Boolean(supplyFromBusRef && kableCatalogRef && kableDlugoscM && kableDlugoscM > 0));
-  const kompletneB = Boolean(stationRef && sprzegloCatalogRef);
-  const kompletne = trybSekcja ? kompletneB : kompletneA;
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu: wartości niedodatnie.
+  const konfliktNapiecia = napiecieKv !== null && !(napiecieKv > 0) ? T.konfliktNapiecia : undefined;
+  const konfliktDlugosci = kableDlugoscM !== null && !(kableDlugoscM > 0) ? T.konfliktDlugosci : undefined;
 
   const onZapiszRozdzielnica = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    const brak = pierwszyBrak([
+      konfliktNapiecia && { komunikat: konfliktNapiecia, pole: 'mvd-kreator-rozdzielnica-nn-napiecie' },
+      konfliktDlugosci && { komunikat: konfliktDlugosci, pole: 'mvd-kreator-rozdzielnica-nn-dlugosc' },
+      napiecieKv === null && { komunikat: T.brakNapieciaWalid, pole: 'mvd-kreator-rozdzielnica-nn-napiecie' },
+      zasilWlaczone && !supplyFromBusRef && { komunikat: T.brakSzynyZasilajacejWalid, pole: 'mvd-kreator-rozdzielnica-nn-zasil-przelacznik' },
+      zasilWlaczone && Boolean(supplyFromBusRef) && !kableCatalogRef
+        && { komunikat: T.brakKablaWalid, pole: 'mvd-kreator-rozdzielnica-nn-kabel' },
+      zasilWlaczone && Boolean(supplyFromBusRef) && kableDlugoscM === null
+        && { komunikat: T.brakDlugosciWalid, pole: 'mvd-kreator-rozdzielnica-nn-dlugosc' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
+    prowadzenie.zgas();
     const payload: AddNNDistributionBoardPayload = {
       voltage_kv: napiecieKv ?? 0,
       name: nazwa.trim() || undefined,
@@ -161,14 +185,19 @@ export function KreatorRozdzielnicyNn() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, executeDomainOperation, kableCatalogRef, kableDlugoscM, konstrukcja, nazwa, napiecieKv, oznaczenie, selekcja, supplyFromBusRef, zasilWlaczone, T]);
+  }, [activeCaseId, closeForm, executeDomainOperation, kableCatalogRef, kableDlugoscM, konfliktDlugosci, konfliktNapiecia, konstrukcja, nazwa, napiecieKv, oznaczenie, prowadzenie, selekcja, supplyFromBusRef, zasilWlaczone, T]);
 
   const onZapiszSekcja = useCallback(async () => {
-    if (!stationRef) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    const brak = pierwszyBrak([
+      !stationRef && { komunikat: T.brakStacjiWalid },
+      !sprzegloCatalogRef && { komunikat: T.brakSprzeglaWalid, pole: 'mvd-kreator-rozdzielnica-nn-sprzeglo' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !stationRef || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
+    prowadzenie.zgas();
     const payload: AddNNSectionCouplerPayload = {
       station_ref: stationRef,
       catalog_ref: sprzegloCatalogRef,
@@ -199,19 +228,27 @@ export function KreatorRozdzielnicyNn() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, executeDomainOperation, sekcjaNazwa, selekcja, sprzegloCatalogRef, stationRef, T]);
+  }, [activeCaseId, closeForm, executeDomainOperation, prowadzenie, sekcjaNazwa, selekcja, sprzegloCatalogRef, stationRef, T]);
 
   const wierszeGotowosciA: WierszGotowosci[] = [
-    { etykieta: T.wierszNapiecie, stan: napiecieKv && napiecieKv > 0 ? 'kompletne' : 'brak', wartosc: napiecieKv ? `${napiecieKv} kV` : 'Do wprowadzenia' },
+    {
+      etykieta: T.wierszNapiecie,
+      stan: konfliktNapiecia ? 'konflikt' : napiecieKv === null ? 'do_wyboru' : 'ustalone',
+      wartosc: napiecieKv !== null ? `${napiecieKv} kV` : '',
+    },
     {
       etykieta: T.wierszZasilenie,
-      stan: !zasilWlaczone ? 'kompletne' : kableCatalogRef && kableDlugoscM ? 'kompletne' : 'ostrzezenie',
-      wartosc: !zasilWlaczone ? 'Bez zasilenia (dodasz osobno)' : kableCatalogRef ? 'Skonfigurowane' : 'Do skonfigurowania',
+      stan: konfliktDlugosci ? 'konflikt' : !zasilWlaczone || (kableCatalogRef && kableDlugoscM !== null) ? 'ustalone' : 'do_wyboru',
+      wartosc: !zasilWlaczone ? 'Bez zasilenia (dodasz osobno)' : kableCatalogRef && kableDlugoscM !== null ? 'Skonfigurowane' : '',
     },
   ];
   const wierszeGotowosciB: WierszGotowosci[] = [
-    { etykieta: T.stacja, stan: stationRef ? 'kompletne' : 'brak', wartosc: stationLabel(snapshot, stationRef) },
-    { etykieta: T.wierszSprzeglo, stan: sprzegloCatalogRef ? 'kompletne' : 'brak', wartosc: aparaty.find((a) => a.id === sprzegloCatalogRef)?.name ?? 'Do wyboru' },
+    { etykieta: T.stacja, stan: stationRef ? 'ustalone' : 'do_wyboru', wartosc: stationLabel(snapshot, stationRef) },
+    {
+      etykieta: T.wierszSprzeglo,
+      stan: sprzegloCatalogRef ? 'ustalone' : 'do_wyboru',
+      wartosc: aparaty.find((a) => a.id === sprzegloCatalogRef)?.name ?? '',
+    },
   ];
 
   const aside = (
@@ -235,8 +272,13 @@ export function KreatorRozdzielnicyNn() {
         pelny
         aside={aside}
         bladGlobalny={bladGlobalny}
-        walidacja={!kompletne ? T.walidacjaStopka : null}
-        akcjaGlowna={{ etykieta: T.zapiszSekcja, onClick: onZapiszSekcja, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-rozdzielnica-nn-zapisz' }}
+        {...prowadzenie.propsRamy}
+        akcjaGlowna={{
+          etykieta: T.zapiszSekcja,
+          onClick: onZapiszSekcja,
+          blokada: aparaty.length === 0 && !bladAparatow ? 'ladowanie' : null,
+          testid: 'mvd-kreator-rozdzielnica-nn-zapisz',
+        }}
         akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-rozdzielnica-nn-anuluj' }}
         testid="mvd-kreator-rozdzielnica-nn"
       >
@@ -275,14 +317,25 @@ export function KreatorRozdzielnicyNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapiszRozdzielnica, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-rozdzielnica-nn-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapiszRozdzielnica, testid: 'mvd-kreator-rozdzielnica-nn-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-rozdzielnica-nn-anuluj' }}
       testid="mvd-kreator-rozdzielnica-nn"
     >
       <KreatorSekcja tytul={T.daneTytul} testid="mvd-kreator-rozdzielnica-nn-dane">
         <KreatorSiatka kolumny={2}>
-          <PoleLiczbowe etykieta={T.napiecie} jednostka="kV" wartosc={napiecieKv} onZmiana={setNapiecieKv} wymagane testid="mvd-kreator-rozdzielnica-nn-napiecie" />
+          <PoleLiczbowe
+            etykieta={T.napiecie}
+            jednostka="kV"
+            wartosc={napiecieKv}
+            onZmiana={(v) => {
+              setNapiecieKv(v);
+              edytowane('napiecie');
+            }}
+            wymagane
+            blad={konfliktNapiecia}
+            testid="mvd-kreator-rozdzielnica-nn-napiecie"
+          />
           <PoleTekstowe etykieta={T.nazwa} wartosc={nazwa} onZmiana={setNazwa} placeholder={T.nazwaPlaceholder} testid="mvd-kreator-rozdzielnica-nn-nazwa" />
           <PoleTekstowe etykieta={T.oznaczenie} wartosc={oznaczenie} onZmiana={setOznaczenie} placeholder={T.oznaczeniePlaceholder} testid="mvd-kreator-rozdzielnica-nn-oznaczenie" />
           <PoleWyboru etykieta={T.konstrukcja} wartosc={konstrukcja} onZmiana={setKonstrukcja} opcje={T.konstrukcjaOpcje} testid="mvd-kreator-rozdzielnica-nn-konstrukcja" />
@@ -296,7 +349,10 @@ export function KreatorRozdzielnicyNn() {
             <KreatorInfo>{T.brakSzynyZasilajacej}</KreatorInfo>
           ) : (
             <>
-              <RzadWartosci etykieta="Szyna źródłowa" wartosc={supplyFromBus?.name ?? supplyFromBusRef} />
+              <RzadWartosci
+                etykieta="Szyna źródłowa"
+                wartosc={supplyFromBusRef ? nazwaObiektuZMigawki(snapshot, supplyFromBusRef) : '—'}
+              />
               <KreatorSiatka kolumny={2}>
                 <PoleKatalogu
                   etykieta={T.kabel}
@@ -308,7 +364,7 @@ export function KreatorRozdzielnicyNn() {
                   komunikatBledu={bladKabli ?? T.kabelBlad}
                   testid="mvd-kreator-rozdzielnica-nn-kabel"
                 />
-                <PoleLiczbowe etykieta={T.dlugosc} jednostka="m" wartosc={kableDlugoscM} onZmiana={setKableDlugoscM} wymagane testid="mvd-kreator-rozdzielnica-nn-dlugosc" />
+                <PoleLiczbowe etykieta={T.dlugosc} jednostka="m" wartosc={kableDlugoscM} onZmiana={setKableDlugoscM} wymagane blad={konfliktDlugosci} testid="mvd-kreator-rozdzielnica-nn-dlugosc" />
               </KreatorSiatka>
             </>
           )

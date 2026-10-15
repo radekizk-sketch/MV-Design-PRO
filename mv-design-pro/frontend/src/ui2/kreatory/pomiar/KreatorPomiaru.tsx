@@ -33,6 +33,10 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
@@ -40,6 +44,10 @@ import {
 import { pomiarStrings } from './strings';
 
 type MeasurementCatalogType = CTCatalogType | VTCatalogType;
+
+const POLA_ZNAMIONOWE = ['primary', 'secondary', 'klasa', 'burden'] as const;
+type PoleZnamionowe = (typeof POLA_ZNAMIONOWE)[number];
+type PoleAuto = PoleZnamionowe | 'bay' | 'catalog';
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -86,23 +94,32 @@ export function KreatorPomiaru() {
 
   const [bayRef, setBayRef] = useState(initialBayRef);
   const [catalogRef, setCatalogRef] = useState('');
+  // Dane znamionowe WYŁĄCZNIE z karty katalogowej (AUTO_PRZYJETE) albo od projektanta —
+  // dawniej wtórna 5 A / 100 V i klasa „0.5” bez pozycji katalogowej.
   const [primary, setPrimary] = useState<number | null>(null);
-  const [secondary, setSecondary] = useState<number | null>(isCt ? 5 : 100);
-  const [klasa, setKlasa] = useState('0.5');
+  const [secondary, setSecondary] = useState<number | null>(null);
+  const [klasa, setKlasa] = useState('');
   const [burden, setBurden] = useState<number | null>(null);
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
+
+  // Pole: wskazane w kontekście albo JEDYNE pole SN modelu (dawniej pierwsze z listy).
+  const jedynePole = useMemo(() => jedynaZgodna(bayOptions), [bayOptions]);
+  useEffect(() => {
+    if (decyzjaProjektanta('bay')) return;
+    const auto = initialBayRef || jedynePole?.ref_id || '';
+    setBayRef(auto);
+  }, [decyzjaProjektanta, initialBayRef, jedynePole]);
 
   useEffect(() => {
-    setBayRef(initialBayRef || bayOptions[0]?.ref_id || '');
-  }, [bayOptions, initialBayRef]);
-
-  useEffect(() => {
-    setCatalogRef(readString(context?.catalog_item_id) || readString(context?.catalog_ref));
+    const zKontekstu = readString(context?.catalog_item_id) || readString(context?.catalog_ref);
+    setCatalogRef(zKontekstu);
   }, [context]);
 
   useEffect(() => {
     setPrimary(null);
-    setSecondary(isCt ? 5 : 100);
-    setKlasa('0.5');
+    setSecondary(null);
+    setKlasa('');
     setBurden(null);
   }, [isCt]);
 
@@ -124,24 +141,36 @@ export function KreatorPomiaru() {
     };
   }, [isCt, T.katalogBlad]);
 
-  // Katalog wypełnia dane znamionowe (katalog-first) — projektant może je doprecyzować.
+  // Karta katalogowa wypełnia dane znamionowe (AUTO_PRZYJETE ze źródłem) — projektant może je
+  // doprecyzować; edytowanej wartości automat już nie nadpisuje. Karta bez klasy = klasa pusta
+  // (dawniej „0.5”).
   useEffect(() => {
     const selected = typy.find((t) => t.id === catalogRef);
     if (!selected) return;
-    if (isCt) {
-      const e = selected as CTCatalogType;
-      setPrimary(e.ratio_primary_a);
-      setSecondary(e.ratio_secondary_a);
-      setKlasa(e.accuracy_class ?? '0.5');
-      setBurden(e.burden_va ?? null);
-    } else {
-      const e = selected as VTCatalogType;
-      setPrimary(e.ratio_primary_v);
-      setSecondary(e.ratio_secondary_v);
-      setKlasa(e.accuracy_class ?? '0.5');
-      setBurden(null);
+    const wartosci: Record<PoleZnamionowe, number | string | null> = isCt
+      ? {
+          primary: (selected as CTCatalogType).ratio_primary_a,
+          secondary: (selected as CTCatalogType).ratio_secondary_a,
+          klasa: selected.accuracy_class ?? null,
+          burden: (selected as CTCatalogType).burden_va ?? null,
+        }
+      : {
+          primary: (selected as VTCatalogType).ratio_primary_v,
+          secondary: (selected as VTCatalogType).ratio_secondary_v,
+          klasa: selected.accuracy_class ?? null,
+          burden: null,
+        };
+    const ustaw: Record<PoleZnamionowe, (v: number | string | null) => void> = {
+      primary: (v) => setPrimary(typeof v === 'number' ? v : null),
+      secondary: (v) => setSecondary(typeof v === 'number' ? v : null),
+      klasa: (v) => setKlasa(typeof v === 'string' ? v : ''),
+      burden: (v) => setBurden(typeof v === 'number' ? v : null),
+    };
+    for (const pole of POLA_ZNAMIONOWE) {
+      if (decyzjaProjektanta(pole)) continue;
+      ustaw[pole](wartosci[pole]);
     }
-  }, [catalogRef, typy, isCt]);
+  }, [catalogRef, decyzjaProjektanta, isCt, typy]);
 
   const opcjeBay = useMemo(
     () => bayOptions.map((o) => ({ id: o.ref_id, etykieta: `${o.station_name} / ${o.name} / ${o.bay_role}` })),
@@ -159,29 +188,29 @@ export function KreatorPomiaru() {
   const brakPol = !kotwicaWylacznik && bayOptions.length === 0;
   const przekladniaOk = primary !== null && primary > 0 && secondary !== null && secondary > 0;
   const kotwicaOk = kotwicaWylacznik ? Boolean(wylacznikLiniowy) : Boolean(bayRef);
-  const kompletne = Boolean(kotwicaOk && catalogRef.trim() && przekladniaOk);
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu: przekładnia niedodatnia, moc ujemna.
+  const konfliktPierwotnej = primary !== null && !(primary > 0) ? T.blednaPrzekladnia : undefined;
+  const konfliktWtornej = secondary !== null && !(secondary > 0) ? T.blednaPrzekladnia : undefined;
+  const konfliktBurden = burden !== null && burden < 0 ? T.blednaBurden : undefined;
 
   const onZapisz = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    const brak = pierwszyBrak([
+      konfliktPierwotnej && { komunikat: konfliktPierwotnej, krok: 'znamionowe', pole: 'mvd-kreator-pomiar-primary' },
+      konfliktWtornej && { komunikat: konfliktWtornej, krok: 'znamionowe', pole: 'mvd-kreator-pomiar-secondary' },
+      konfliktBurden && { komunikat: konfliktBurden, krok: 'znamionowe', pole: 'mvd-kreator-pomiar-burden' },
+      !kotwicaOk && (kotwicaWylacznik
+        ? { komunikat: T.brakWylacznikaWalid, krok: 'pole' }
+        : { komunikat: T.brakPolaWalid, krok: 'pole', pole: 'mvd-kreator-pomiar-bay' }),
+      !catalogRef.trim() && { komunikat: T.brakKatalogu, krok: 'pole', pole: 'mvd-kreator-pomiar-katalog' },
+      primary === null && { komunikat: T.brakPierwotnej, krok: 'znamionowe', pole: 'mvd-kreator-pomiar-primary' },
+      secondary === null && { komunikat: T.brakWtornej, krok: 'znamionowe', pole: 'mvd-kreator-pomiar-secondary' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId || !przekladniaOk) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!kotwicaOk) {
-      setBladGlobalny(T.brakPolaWalid);
-      return;
-    }
-    if (!catalogRef.trim()) {
-      setBladGlobalny(T.brakKatalogu);
-      return;
-    }
-    if (!przekladniaOk) {
-      setBladGlobalny(T.blednaPrzekladnia);
-      return;
-    }
-    if (burden !== null && burden < 0) {
-      setBladGlobalny(T.blednaBurden);
-      return;
-    }
+    prowadzenie.zgas();
     const payload: Record<string, unknown> = {
       ...(kotwicaWylacznik ? { breaker_ref: wylacznikLiniowyRef } : { bay_ref: bayRef }),
       catalog_ref: catalogRef.trim(),
@@ -217,17 +246,30 @@ export function KreatorPomiaru() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, bayRef, burden, catalogRef, closeForm, executeDomainOperation, isCt, klasa, kotwicaOk, kotwicaWylacznik, operation, primary, przekladniaOk, secondary, selekcjaPoOperacji, T, wylacznikLiniowyRef]);
+  }, [activeCaseId, bayRef, burden, catalogRef, closeForm, executeDomainOperation, isCt, klasa, konfliktBurden, konfliktPierwotnej, konfliktWtornej, kotwicaOk, kotwicaWylacznik, operation, primary, prowadzenie, przekladniaOk, secondary, selekcjaPoOperacji, T, wylacznikLiniowyRef]);
 
   const przekladniaTekst = przekladniaOk ? `${primary} / ${secondary} ${T.jednostka}` : '—';
+  const zmienZnamionowe = (pole: PoleZnamionowe) => edytowane(pole);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     kotwicaWylacznik
-      ? { etykieta: T.wierszWylacznik, stan: wylacznikLiniowy ? 'kompletne' : 'brak', wartosc: wylacznikLiniowy?.name || 'Brak' }
-      : { etykieta: T.wierszPole, stan: bayRef ? 'kompletne' : 'brak', wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : 'Brak') },
-    { etykieta: T.wierszKatalog, stan: catalogRef ? 'kompletne' : 'brak', wartosc: catalogRef ? 'Kompletne' : 'Do wyboru' },
-    { etykieta: T.wierszPrzekladnia, stan: przekladniaOk ? 'kompletne' : 'brak', wartosc: przekladniaTekst },
-    { etykieta: T.wierszKlasa, stan: 'kompletne', wartosc: klasa || '—' },
+      ? { etykieta: T.wierszWylacznik, stan: wylacznikLiniowy ? 'ustalone' : 'do_wyboru', wartosc: wylacznikLiniowy?.name || '' }
+      : {
+          etykieta: T.wierszPole,
+          stan: !bayRef ? 'do_wyboru' : 'ustalone',
+          wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : T.poleDoWyboru),
+        },
+    {
+      etykieta: T.wierszKatalog,
+      stan: !catalogRef ? 'do_wyboru' : 'ustalone',
+      wartosc: typy.find((t) => t.id === catalogRef)?.name ?? '',
+    },
+    {
+      etykieta: T.wierszPrzekladnia,
+      stan: konfliktPierwotnej || konfliktWtornej ? 'konflikt' : przekladniaOk ? 'ustalone' : 'do_wyboru',
+      wartosc: przekladniaOk ? przekladniaTekst : '',
+    },
+    { etykieta: T.wierszKlasa, stan: klasa ? 'ustalone' : 'do_wyboru', wartosc: klasa },
   ];
 
   const aside = (
@@ -256,8 +298,8 @@ export function KreatorPomiaru() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId || brakPol, testid: 'mvd-kreator-pomiar-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, testid: 'mvd-kreator-pomiar-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pomiar-anuluj' }}
       krokWstecz={krokIndex > 0 ? { etykieta: T.wstecz, onClick: () => setKrok(KROKI[krokIndex - 1].id), testid: 'mvd-kreator-pomiar-wstecz' } : undefined}
       krokDalej={krokIndex < KROKI.length - 1 ? { etykieta: T.dalej, onClick: () => setKrok(KROKI[krokIndex + 1].id), testid: 'mvd-kreator-pomiar-dalej' } : undefined}
@@ -282,7 +324,10 @@ export function KreatorPomiaru() {
             <PoleWyboru
               etykieta={T.poleSn}
               wartosc={bayRef}
-              onZmiana={setBayRef}
+              onZmiana={(v) => {
+                setBayRef(v);
+                edytowane('bay');
+              }}
               opcje={[{ id: '', etykieta: T.poleSnPlaceholder }, ...opcjeBay]}
               wymagane
               testid="mvd-kreator-pomiar-bay"
@@ -291,7 +336,10 @@ export function KreatorPomiaru() {
           <PoleKatalogu
             etykieta={T.katalog}
             wartosc={catalogRef || null}
-            onZmiana={(v) => setCatalogRef(v ?? '')}
+            onZmiana={(v) => {
+              setCatalogRef(v ?? '');
+              edytowane('catalog');
+            }}
             opcje={opcjeTypow}
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.katalogPlaceholder}
@@ -323,24 +371,35 @@ export function KreatorPomiaru() {
               etykieta={T.przekladniaPierwotna}
               jednostka={T.jednostka}
               wartosc={primary}
-              onZmiana={setPrimary}
+              onZmiana={(v) => {
+                setPrimary(v);
+                zmienZnamionowe('primary');
+              }}
               min={0}
               wymagane
+              blad={konfliktPierwotnej}
               testid="mvd-kreator-pomiar-primary"
             />
             <PoleLiczbowe
               etykieta={T.przekladniaWtorna}
               jednostka={T.jednostka}
               wartosc={secondary}
-              onZmiana={setSecondary}
+              onZmiana={(v) => {
+                setSecondary(v);
+                zmienZnamionowe('secondary');
+              }}
               min={0}
               wymagane
+              blad={konfliktWtornej}
               testid="mvd-kreator-pomiar-secondary"
             />
             <PoleTekstowe
               etykieta={T.klasa}
               wartosc={klasa}
-              onZmiana={setKlasa}
+              onZmiana={(v) => {
+                setKlasa(v);
+                zmienZnamionowe('klasa');
+              }}
               placeholder={T.klasaPlaceholder}
               pomoc={T.klasaPomoc}
               testid="mvd-kreator-pomiar-klasa"
@@ -349,8 +408,12 @@ export function KreatorPomiaru() {
               etykieta={T.burden}
               jednostka={T.burdenJednostka}
               wartosc={burden}
-              onZmiana={setBurden}
+              onZmiana={(v) => {
+                setBurden(v);
+                zmienZnamionowe('burden');
+              }}
               min={0}
+              blad={konfliktBurden}
               pomoc={T.burdenPomoc}
               testid="mvd-kreator-pomiar-burden"
             />
@@ -367,7 +430,10 @@ export function KreatorPomiaru() {
             ) : (
               <RzadWartosci etykieta={T.wierszPole} wartosc={selectedBayInfo?.name || '—'} />
             )}
-            <RzadWartosci etykieta={T.wierszKatalog} wartosc={catalogRef || '—'} />
+            <RzadWartosci
+              etykieta={T.wierszKatalog}
+              wartosc={typy.find((t) => t.id === catalogRef)?.name ?? '—'}
+            />
             <RzadWartosci etykieta={T.wierszPrzekladnia} wartosc={przekladniaTekst} />
             <RzadWartosci etykieta={T.wierszKlasa} wartosc={klasa || '—'} />
           </KreatorSiatka>

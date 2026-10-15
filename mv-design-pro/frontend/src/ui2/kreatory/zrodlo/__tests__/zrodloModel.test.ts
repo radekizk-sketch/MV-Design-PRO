@@ -7,8 +7,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  aparatZdatnyNaSn,
+  brakiFormularza,
   DANE_DOMYSLNE,
+  konfliktyFormularza,
+  pasujeRodzajAparatu,
   scalDanePoczatkowe,
+  transformatorPasujeDoSn,
   walidujFormularz,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
@@ -17,9 +22,23 @@ import {
   type GridSourceFormData,
 } from '../zrodloModel';
 
+/**
+ * Dane kompletne do zapisu. Formularz startuje bez wartości wpływających na wyniki (kontrakt
+ * prowadzenia, 2026-10-15), więc komplet niesie je jawnie — tak, jak wnosi je pozycja katalogu
+ * systemu zasilającego (15 kV, Sk″ 310 MVA, R/X 0,12), transformator (110 kV) i projektant
+ * (Z0/Z1, rezystor uziemiający 12 Ω, tk 1 s).
+ */
 function daneKompletne(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFormData {
   return {
     ...DANE_DOMYSLNE,
+    sn_voltage_kv: 15,
+    hv_voltage_kv: 110,
+    sk3_mva: 310,
+    rx_ratio: 0.12,
+    z0_z1_ratio: 3.2,
+    grounding_type: 'resistor_grounded',
+    grounding_r_ohm: 12,
+    thermal_time_s: 1,
     catalog_ref: 'GPZ-001',
     gpz_line_field_apparatus_catalog_ref: 'APP-001',
     // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY przez backend
@@ -215,6 +234,35 @@ describe('walidujFormularz — regulacja zaczepów (OLTC)', () => {
       oltc_step_percent: 0,
     }));
     expect(bledy.some((b) => b.field === 'oltc_step_percent')).toBe(true);
+  });
+
+  it('OLTC bez nastaw: braki nazywają uzwojenie, krok, zakres i tryb (bez stałych ±9 × 1,25 % AUTOMATIC)', () => {
+    const bledy = brakiFormularza(daneKompletne({ oltc_regulation_type: 'OLTC' })).map((b) => b.field);
+    expect(bledy).toEqual(expect.arrayContaining([
+      'oltc_regulated_winding',
+      'oltc_step_percent',
+      'oltc_min_position',
+      'oltc_max_position',
+      'oltc_neutral_position',
+      'oltc_current_position',
+      'oltc_control_mode',
+    ]));
+    // Brak nastaw to BRAK (przy zapisie), nie konflikt (czerwień w trakcie pracy).
+    expect(konfliktyFormularza(daneKompletne({ oltc_regulation_type: 'OLTC' }))).toEqual([]);
+  });
+
+  it('LDC włączone bez R/X: brak przy zapisie, bez cichego 0 Ω w payloadzie', () => {
+    const dane = daneKompletne({
+      oltc_regulation_type: 'OLTC',
+      oltc_control_mode: 'MANUAL',
+      oltc_ldc_enabled: true,
+    });
+    const pola = brakiFormularza(dane).map((b) => b.field);
+    expect(pola).toContain('oltc_ldc_r_ohm');
+    expect(pola).toContain('oltc_ldc_x_ohm');
+    const payload = zbudujPayloadZrodla(dane);
+    expect(payload.transformer_ldc_r_ohm).toBeNull();
+    expect(payload.transformer_ldc_x_ohm).toBeNull();
   });
 
   it('zły zakres (min >= max) jest blokowany', () => {
@@ -534,6 +582,79 @@ describe('walidujFormularz', () => {
     expect(walidujFormularz(daneKompletne())).toEqual([]);
   });
 
+  it('formularz startuje bez zgadniętych wartości wpływających na wyniki', () => {
+    expect(DANE_DOMYSLNE).toMatchObject({
+      sn_voltage_kv: null,
+      hv_voltage_kv: null,
+      sk3_mva: null,
+      rx_ratio: null,
+      z0_z1_ratio: null,
+      grounding_type: null,
+      grounding_r_ohm: null,
+      thermal_time_s: null,
+      oltc_regulated_winding: null,
+      oltc_step_percent: null,
+      oltc_min_position: null,
+      oltc_max_position: null,
+      oltc_control_mode: null,
+      oltc_voltage_setpoint_kv: null,
+      oltc_deadband_kv: null,
+      oltc_delay_seconds: null,
+    });
+  });
+
+  it('braki niosą „co — po co”, bez ogólnego „Uzupełnij”; konflikty puste dla pustego formularza', () => {
+    const braki = brakiFormularza({ ...DANE_DOMYSLNE, source_name: '' });
+    expect(braki.map((b) => b.field)).toEqual([
+      'source_name',
+      'sn_voltage_kv',
+      'catalog_ref',
+      'transformer_catalog_ref',
+      'grounding_type',
+      'gpz_line_field_apparatus_catalog_ref',
+    ]);
+    for (const b of braki) {
+      expect(b.message).toMatch(/ — /);
+      expect(b.message).not.toMatch(/Uzupełnij/);
+    }
+    expect(konfliktyFormularza(DANE_DOMYSLNE)).toEqual([]);
+  });
+
+  it('pozycja katalogu bez Sk″/R/X: brak wskazuje katalog (nie ukryte pole trybu ręcznego)', () => {
+    const braki = brakiFormularza(daneKompletne({ rx_ratio: null }));
+    expect(braki).toEqual([
+      { field: 'catalog_ref', message: expect.stringMatching(/nie ma Sk″ albo R\/X/) },
+    ]);
+  });
+
+  // Iloczyn cech: pozycja katalogowa (transformator / aparat) × napięcie SN zgodne / niezgodne /
+  // nieznane — ten sam predykat filtruje listę i zgłasza konflikt przy polu.
+  it.each([
+    [15, 15, true],
+    [20, 15, false],
+    [15, null, true],
+  ] as const)('transformator LV %s kV × SN %s kV → pasuje: %s', (lv, sn, pasuje) => {
+    expect(transformatorPasujeDoSn(lv, sn)).toBe(pasuje);
+    const konflikty = konfliktyFormularza(daneKompletne({ sn_voltage_kv: sn }), {
+      transformatorLvKv: lv,
+      aparatUnKv: null,
+    }).map((k) => k.field);
+    expect(konflikty.includes('transformer_catalog_ref')).toBe(!pasuje);
+  });
+
+  it.each([
+    [17.5, 15, true],
+    [12, 15, false],
+    [12, null, true],
+  ] as const)('aparat U_n %s kV × SN %s kV → zdatny: %s', (un, sn, zdatny) => {
+    expect(aparatZdatnyNaSn({ u_n_kv: un }, sn)).toBe(zdatny);
+    const konflikty = konfliktyFormularza(daneKompletne({ sn_voltage_kv: sn }), {
+      transformatorLvKv: null,
+      aparatUnKv: un,
+    }).map((k) => k.field);
+    expect(konflikty.includes('gpz_line_field_apparatus_catalog_ref')).toBe(!zdatny);
+  });
+
   it('wymaga nazwy GPZ', () => {
     const bledy = walidujFormularz(daneKompletne({ source_name: '   ' }));
     expect(bledy.some((b) => b.field === 'source_name')).toBe(true);
@@ -599,17 +720,34 @@ describe('zbudujZadaniePodgladu', () => {
   it('zwraca null gdy brak mocy zwarciowej', () => {
     expect(zbudujZadaniePodgladu(daneKompletne({ sk3_mva: null }))).toBeNull();
   });
+
+  it('zwraca null bez czasu tk (interfejs nie podstawia 1 s)', () => {
+    expect(zbudujZadaniePodgladu(daneKompletne({ thermal_time_s: null }))).toBeNull();
+  });
 });
 
+// Intencja dawnych testów („brak” / „ostrzeżenie”): panel kontroli mówi, co jeszcze przed
+// projektantem — w nowym kanonie neutralnie („do wyboru”), czerwień wyłącznie dla konfliktu.
 describe('wierszeGotowosci', () => {
-  it('oznacza brak identyfikacji jako brak', () => {
+  it('brak identyfikacji → do wyboru (neutralnie, nie czerwień)', () => {
     const wiersze = wierszeGotowosci(daneKompletne({ source_name: '' }));
-    expect(wiersze.find((w) => w.etykieta === 'Identyfikacja')?.stan).toBe('brak');
+    expect(wiersze.find((w) => w.etykieta === 'Identyfikacja')?.stan).toBe('do_wyboru');
   });
 
-  it('składowa zerowa wyłączona → ostrzeżenie', () => {
+  it('pusty formularz: żaden wiersz nie jest konfliktem', () => {
+    const wiersze = wierszeGotowosci(DANE_DOMYSLNE, konfliktyFormularza(DANE_DOMYSLNE));
+    expect(wiersze.some((w) => w.stan === 'konflikt')).toBe(false);
+  });
+
+  it('składowa zerowa wyłączona → ustalone („Wyłączona” to decyzja projektanta)', () => {
     const wiersze = wierszeGotowosci(daneKompletne({ zero_sequence_enabled: false }));
-    expect(wiersze.find((w) => w.etykieta === 'Składowa zerowa')?.stan).toBe('ostrzezenie');
+    expect(wiersze.find((w) => w.etykieta === 'Składowa zerowa')).toMatchObject({ stan: 'ustalone', wartosc: 'Wyłączona' });
+  });
+
+  it('konflikt napięcia → wiersz „Napięcie SN” w stanie konflikt', () => {
+    const dane = daneKompletne({ sn_voltage_kv: -1 });
+    const wiersze = wierszeGotowosci(dane, konfliktyFormularza(dane));
+    expect(wiersze.find((w) => w.etykieta === 'Napięcie SN')?.stan).toBe('konflikt');
   });
 });
 
@@ -627,4 +765,39 @@ describe('scalDanePoczatkowe / oznaczenie', () => {
   it('buduje czytelne oznaczenie GPZ', () => {
     expect(zbudujOznaczenieGpz('GPZ 1')).toBe('GPZ-01');
   });
+});
+
+
+/**
+ * Rodzaj aparatu pola liniowego GPZ × rodzaj pozycji katalogu (iloczyn cech, przejście
+ * scenariusza 630 kVA, pkt 5): pole wyłącznikowe GPZ to wyłącznik celkowy — reklozer
+ * (łącznik słupowy z SPZ) i uziemnik nie są aparatem toru pola GPZ.
+ */
+describe('pasujeRodzajAparatu — rodzaj pola GPZ × rodzaj pozycji katalogu', () => {
+  const pozycja = (device_kind: string) =>
+    ({ id: `a-${device_kind}`, name: device_kind, device_kind, u_n_kv: 17.5, i_n_a: 630 }) as Parameters<
+      typeof pasujeRodzajAparatu
+    >[0];
+  const oczekiwane: Record<string, readonly string[]> = {
+    BREAKER: ['WYLACZNIK'],
+    DISCONNECTOR: ['ODLACZNIK'],
+    LOAD_SWITCH: ['ROZLACZNIK', 'ROZLACZNIK_BEZPIECZNIKOWY'],
+  };
+  const rodzajeKatalogu = [
+    'WYLACZNIK',
+    'REKLOZER',
+    'ODLACZNIK',
+    'UZIEMNIK',
+    'ROZLACZNIK',
+    'ROZLACZNIK_BEZPIECZNIKOWY',
+  ];
+  for (const [rodzajPola, dopuszczone] of Object.entries(oczekiwane)) {
+    for (const rodzaj of rodzajeKatalogu) {
+      it(`${rodzajPola} × ${rodzaj} → ${dopuszczone.includes(rodzaj) ? 'tak' : 'nie'}`, () => {
+        expect(
+          pasujeRodzajAparatu(pozycja(rodzaj), rodzajPola as 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH'),
+        ).toBe(dopuszczone.includes(rodzaj));
+      });
+    }
+  }
 });

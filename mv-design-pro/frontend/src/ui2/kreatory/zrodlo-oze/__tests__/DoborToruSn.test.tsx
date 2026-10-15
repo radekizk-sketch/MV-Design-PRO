@@ -6,7 +6,7 @@
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import type { ConverterType } from '../../../../ui/catalog/types';
 import { DoborToruSn } from '../DoborToruSn';
@@ -115,7 +115,7 @@ function wywolaniaDoboru(): unknown[][] {
   );
 }
 
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock<[input: RequestInfo | URL], Promise<Response>>;
 /** Odpowiedź końcówki doboru — testy podmieniają ją na własną. */
 let odpowiedzDoboru: unknown = RESPONSE;
 
@@ -202,7 +202,9 @@ describe('DoborToruSn — krok doboru toru SN', () => {
     expect(onVectorGroupChange).toHaveBeenCalledWith('Yd11');
   });
 
-  it('bez długości kabla przycisk doboru jest zablokowany', () => {
+  it('bez długości kabla klik doboru nazywa brak długości i nie pyta backendu', async () => {
+    // Intencja (dawniej: przycisk wyszarzony): bez długości dobór nie rusza; kontrakt
+    // prowadzenia projektanta — przycisk aktywny, klik daje jedno wskazanie „co — po co”.
     render(
       <DoborToruSn
         converter={KONWERTER}
@@ -217,7 +219,11 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         applied={false}
       />,
     );
-    expect(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj')).toBeDisabled();
+    const przycisk = screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj');
+    expect(przycisk).toBeEnabled();
+    await userEvent.click(przycisk);
+    expect(await screen.findByText(/Podaj długość kabla SN/)).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-oze-dobor-propozycje')).toBeNull();
   });
 });
 

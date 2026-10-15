@@ -25,12 +25,27 @@ export const DANE_DOMYSLNE: OgranicznikFormData = {
   catalog_ref: null,
 };
 
+/** BRAK_DO_OPERACJI — pokazywany dopiero przy zapisie (kontrakt prowadzenia projektanta). */
 export function walidujFormularz(data: OgranicznikFormData): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ ogranicznika przepięć z katalogu.' });
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz typ ogranicznika przepięć z katalogu — U_m, napięcie obniżone i BIL chroniony '
+        + 'wchodzą do koordynacji izolacji pola.',
+    });
   }
   return errors;
+}
+
+/** Typy, których U_m pokrywa napięcie szyny (ten sam predykat co `napiecieNiezgodne`). */
+export function typyZgodneZSzyna(
+  typy: readonly SurgeArresterCatalogType[],
+  napiecieSzynyKv: number | null,
+): SurgeArresterCatalogType[] {
+  if (napiecieSzynyKv === null) return [...typy];
+  return typy.filter((t) => t.u_m_kv + 1e-6 >= napiecieSzynyKv);
 }
 
 export interface ParametryOgranicznika {
@@ -71,7 +86,7 @@ export function maMiejsce(kontekst: KontekstOgranicznika): boolean {
   return Boolean(kontekst.field_ref?.trim() || kontekst.bus_ref?.trim());
 }
 
-/** Ostrzeżenie o niezgodności U_m ogranicznika z napięciem szyny (informacyjnie). */
+/** KONFLIKT_TECHNICZNY: U_m ogranicznika niższe od napięcia szyny (widoczny od razu). */
 export function napiecieNiezgodne(
   params: ParametryOgranicznika | null,
   kontekst: KontekstOgranicznika,

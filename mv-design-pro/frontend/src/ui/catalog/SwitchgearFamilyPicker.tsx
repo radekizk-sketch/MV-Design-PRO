@@ -49,6 +49,11 @@ export interface SwitchgearFamily {
    */
   readonly rated_current_options?: readonly number[];
   readonly short_time_current_options?: readonly number[];
+  /**
+   * Rodzaje aparatów dopuszczone kartą producenta (`switchgear_family.py`,
+   * `allowed_apparatus_kinds`, słownik rodzin) — zawężają ofertę aparatów pól rodziny.
+   */
+  readonly allowed_apparatus_kinds?: readonly string[];
   readonly insulation_type: 'air' | 'sf6' | 'vacuum' | 'mixed' | 'unknown';
   readonly construction_type:
     | 'RMU'

@@ -16,6 +16,7 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { zapiszZPrzewodnikiem } from './prowadzenieKreatora';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -512,8 +513,13 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await page.getByTestId('mvd-kreator-lacznik-katalog').selectOption(KATALOG_WYLACZNIKA);
   await page.getByTestId('mvd-kreator-lacznik-rodzaj').selectOption('WYLACZNIK');
   await page.getByTestId('mvd-kreator-lacznik-nazwa').fill('Wyłącznik odcinka 1');
-  await page.getByTestId('mvd-kreator-lacznik-zapisz').click();
-  await expect(page.getByTestId('mvd-kreator-lacznik')).toHaveCount(0, { timeout: 20000 });
+  // Wejście z karty odcinka nie niesie położenia na odcinku — kreator go nie zgaduje
+  // (karta PROWADZENIE-KREATORY), więc zapis wskazuje pole położenia; spec podaje połowę.
+  await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-lacznik',
+    zapisz: 'mvd-kreator-lacznik-zapisz',
+    wartosci: { 'mvd-kreator-lacznik-polozenie': '0.5' },
+  });
 
   // (2) Przekładnik i przekaźnik przy wyłączniku — ekran „Zabezpieczenia i automatyka".
   // Wiersz TEGO wyłącznika (lista wyłączników liniowych SN — backend `wylaczniki_liniowe`;
@@ -539,8 +545,13 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await expect(page.getByTestId('mvd-kreator-przekaznik')).toBeVisible();
   await page.getByTestId('mvd-kreator-przekaznik-katalog').selectOption(KATALOG_PRZEKAZNIKA);
   await page.getByTestId('mvd-kreator-przekaznik-nazwa').fill(NAZWA_ZABEZPIECZENIA);
-  await page.getByTestId('mvd-kreator-przekaznik-zapisz').click();
-  await expect(page.getByTestId('mvd-kreator-przekaznik')).toHaveCount(0, { timeout: 20000 });
+  // Rodzina ochrony to wybór projektanta (kreator nie przyjmuje „nadprądowej” po cichu —
+  // karta PROWADZENIE-KREATORY); zapis wskazuje pole, spec wybiera ochronę nadprądową.
+  await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-przekaznik',
+    zapisz: 'mvd-kreator-przekaznik-zapisz',
+    wartosci: { 'mvd-kreator-przekaznik-rodzina': 'NADPRADOWY' },
+  });
 
   // (3) Nastawy w edytorze — przypisanie bez nastaw jest nazwanym brakiem, nie wartością domyślną.
   await otworzZabezpieczeniaIAutomatyke(page);

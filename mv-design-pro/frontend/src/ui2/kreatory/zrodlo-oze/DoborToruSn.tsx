@@ -106,15 +106,22 @@ export function DoborToruSn({
 
   const cableLength = derSn.mv_cable_length_km;
   const wybraneWarunki = derSn.mv_cable_laying_conditions;
-  const gotoweWejscie =
-    Boolean(converter) &&
-    snBusVoltageKv != null &&
-    snBusVoltageKv > 0 &&
-    cableLength != null &&
-    cableLength > 0;
 
   const onZaproponuj = useCallback(async () => {
-    if (!converter || snBusVoltageKv == null || cableLength == null) return;
+    // Przycisk nie jest wyszarzany brakiem danych (kontrakt prowadzenia projektanta) — klik
+    // przy braku nazywa JEDEN konkretny brak „co — po co”.
+    if (!converter) {
+      setBlad(T.doborBrakFalownika);
+      return;
+    }
+    if (snBusVoltageKv == null || !(snBusVoltageKv > 0)) {
+      setBlad(T.doborBrakKontekstu);
+      return;
+    }
+    if (cableLength == null || !(cableLength > 0)) {
+      setBlad(T.doborBrakDlugosci);
+      return;
+    }
     setLadowanie(true);
     setBlad(null);
     try {
@@ -177,8 +184,6 @@ export function DoborToruSn({
     <>
       <KreatorInfo>{T.doborPomoc}</KreatorInfo>
 
-      {!converter ? <KreatorInfo>{T.doborBrakFalownika}</KreatorInfo> : null}
-      {snBusVoltageKv == null ? <KreatorInfo>{T.doborBrakKontekstu}</KreatorInfo> : null}
 
       <KreatorSiatka kolumny={2}>
         <RzadWartosci
@@ -317,7 +322,7 @@ export function DoborToruSn({
         type="button"
         className="mvd-kreator-btn"
         onClick={onZaproponuj}
-        disabled={!gotoweWejscie || ladowanie}
+        disabled={ladowanie}
         data-testid={`${testid}-zaproponuj`}
       >
         {ladowanie ? T.doborPobieranie : T.doborZaproponuj}

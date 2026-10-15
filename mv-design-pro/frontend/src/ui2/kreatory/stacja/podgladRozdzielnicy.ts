@@ -49,11 +49,11 @@ import {
   type SwitchgearFamily,
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import {
-  SOURCE_STATUS_LABEL_PL,
-  type SnFieldRole,
-  type StationSnFieldTemplate,
+import type {
+  SnFieldRole,
+  StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { nazwaKartyPola } from '../rama/nazwyKatalogu';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
 import {
@@ -453,23 +453,20 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
             ]
           : zawinTekst(T.podgladBrakTransformatora, FONT_APARATU, MAKS_TEKST)
         : [];
-    // Pakiet katalogowy pola: rodzina + KOD KATALOGOWY pola (to on identyfikuje
-    // jednostkę funkcjonalną w ofercie producenta) + status pakietu — ten sam
-    // słownik statusów, co w pickerze szablonu pola (jedno źródło nazw).
+    // Karta katalogowa pola: rodzina + nazwa karty z kodem katalogowym producenta (to on
+    // identyfikuje jednostkę funkcjonalną w ofercie) — ta sama nazwa, co w liście kart
+    // kreatora (`nazwaKartyPola`). Rysunek NIE pokazuje identyfikatora karty
+    // (`ABB__SAFERING__LINE_OUT`) ani statusu źródła danych: to metadane katalogu, nie
+    // treść schematu, a kreator nie mówi o pochodzeniu danych (korekta kursu karty
+    // PROWADZENIE-KREATORY).
     const opisPakietu = szablon
       ? zawinCzesci(
-          [
-            rodzina?.family_name ?? szablon.switchgear_family_ref ?? '',
-            szablon.template_code ?? szablon.template_ref,
-          ],
+          [rodzina?.family_name ?? '', nazwaKartyPola(szablon, '')].filter((c) => c !== ''),
           FONT_APARATU,
           MAKS_TEKST,
         )
       : [];
-    const status = pole.bay_template_ref
-      ? SOURCE_STATUS_LABEL_PL[pole.source_status]
-      : T.podgladBrakSzablonu;
-    const wierszeOpisu = [...opisAparatu, ...opisTransformatora, ...opisPakietu, status];
+    const wierszeOpisu = [...opisAparatu, ...opisTransformatora, ...opisPakietu];
     return {
       pole,
       index,
@@ -563,7 +560,7 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     opisyY,
     sloty,
     naglowek: {
-      producent: producent ?? rodzina?.manufacturer_ref ?? null,
+      producent: producent ?? null,
       rodzina: rodzina?.family_name ?? null,
       konstrukcja: rodzina ? CONSTRUCTION_LABELS_PL[rodzina.construction_type] : null,
       // JEDNO źródło opisu napięć rodziny (nazywa obie wielkości karty),

@@ -454,7 +454,6 @@
     "delta_u_v": 79.3662882025,
     "formula_ref": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)",
     "prad_obliczeniowy_a": 400.0,
-    "prad_z_obciazalnosci": false,
     "r_total_ohm": 0.103,
     "x_total_ohm": 0.0535
   }

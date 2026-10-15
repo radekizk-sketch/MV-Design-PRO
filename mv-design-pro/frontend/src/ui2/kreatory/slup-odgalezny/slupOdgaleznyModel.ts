@@ -13,8 +13,12 @@ import { normalizeCatalogBinding, normalizeSwitchState } from '../../../ui/netwo
 
 export interface SlupOdgaleznyFormData {
   catalog_ref: string | null;
-  /** Położenie na odcinku 0..1 (RATIO). */
-  polozenie: number;
+  /**
+   * Położenie na odcinku 0..1 (RATIO) — dzieli długość, a z nią impedancje obu części linii,
+   * więc bez wartości domyślnej (kontrakt prowadzenia projektanta, reguła 4): z miejsca
+   * wskazania (AUTO_PRZYJETE) albo jawnie od projektanta.
+   */
+  polozenie: number | null;
   nazwa: string;
 }
 
@@ -25,7 +29,7 @@ export interface BladPola {
 
 export const DANE_DOMYSLNE: SlupOdgaleznyFormData = {
   catalog_ref: null,
-  polozenie: 0.5,
+  polozenie: null,
   nazwa: '',
 };
 
@@ -36,6 +40,8 @@ export interface KontekstSlupa {
   segment_type?: string;
   /** Stan łącznika słupa z kontekstu operacji (open/closed). */
   switch_state?: unknown;
+  /** Położenie wskazane przez miejsce wywołania (RATIO w (0, 1)). */
+  polozenie?: number;
 }
 
 export function maOdcinek(kontekst: KontekstSlupa): boolean {
@@ -57,15 +63,37 @@ export function problemTorowosci(kontekst: KontekstSlupa): string | null {
   return null;
 }
 
-export function walidujFormularz(data: SlupOdgaleznyFormData): BladPola[] {
+/** KONFLIKT_TECHNICZNY — widoczny od razu przy polu: położenie spoza odcinka. */
+export function konfliktyFormularza(data: SlupOdgaleznyFormData): BladPola[] {
+  if (data.polozenie !== null && !(data.polozenie > 0 && data.polozenie < 1)) {
+    return [{ field: 'polozenie', message: 'Położenie na odcinku musi być w zakresie (0, 1).' }];
+  }
+  return [];
+}
+
+/** BRAK_DO_OPERACJI — w kolejności pracy; pokazywany dopiero przy zapisie. */
+export function brakiFormularza(data: SlupOdgaleznyFormData): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ słupa rozgałęźnego z katalogu.' });
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz typ słupa rozgałęźnego z katalogu — łącznik słupa i liczba odczepów wynikają z typu.',
+    });
   }
-  if (!(data.polozenie > 0 && data.polozenie < 1)) {
-    errors.push({ field: 'polozenie', message: 'Położenie na odcinku musi być w zakresie (0, 1).' });
+  if (data.polozenie === null) {
+    errors.push({
+      field: 'polozenie',
+      message:
+        'Podaj położenie słupa na odcinku (0–1) — dzieli długość linii, a z nią impedancje obu części.',
+    });
   }
   return errors;
+}
+
+/** Komplet kontroli przed zapisem: konflikty, potem braki. */
+export function walidujFormularz(data: SlupOdgaleznyFormData): BladPola[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data)];
 }
 
 export function zbudujPayload(
@@ -82,6 +110,6 @@ export function zbudujPayload(
   };
 }
 
-export function fmtPct01(v: number): string {
-  return `${Math.round(v * 100)} %`;
+export function fmtPct01(v: number | null): string {
+  return v === null ? '—' : `${Math.round(v * 100)} %`;
 }

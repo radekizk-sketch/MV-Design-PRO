@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { CableType, LineType } from '../../../../ui/catalog/types';
 import {
   branchKindZRodzaju,
+  brakiFormularza,
   DANE_DOMYSLNE,
   fmtA,
   fmtDlugosc,
   fmtPct,
   fmtV,
+  konfliktyFormularza,
   kontekstKontynuacji,
   maStartCiagu,
   nextStepDozwolony,
@@ -52,7 +54,7 @@ const linia = {
 } as unknown as LineType;
 
 function dane(over: Partial<MagistralaFormData> = {}): MagistralaFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'kab-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'kab-1', dlugosc_m: 500, cos_phi: 0.95, napiecie_kv: 15, ...over };
 }
 
 describe('magistralaModel — mapowanie rodzaju', () => {
@@ -76,6 +78,19 @@ describe('magistralaModel — mapowanie rodzaju', () => {
 });
 
 describe('magistralaModel — walidacja', () => {
+  it('stan startowy nie zgaduje długości, cosφ ani napięcia ciągu', () => {
+    expect(DANE_DOMYSLNE.dlugosc_m).toBeNull();
+    expect(DANE_DOMYSLNE.cos_phi).toBeNull();
+    expect(DANE_DOMYSLNE.napiecie_kv).toBeNull();
+    // cosφ i napięcie nie trafiają do modelu — braki zapisu to wyłącznie typ i długość.
+    expect(walidujFormularz({ ...DANE_DOMYSLNE }).map((e) => e.field)).toEqual(['catalog_ref', 'dlugosc_m']);
+  });
+  it('wartości poza dziedziną to konflikty widoczne od razu', () => {
+    expect(konfliktyFormularza(dane({ dlugosc_m: 0 })).map((e) => e.field)).toEqual(['dlugosc_m']);
+    expect(konfliktyFormularza(dane({ napiecie_kv: 0 })).map((e) => e.field)).toEqual(['napiecie_kv']);
+    expect(konfliktyFormularza(dane({ cos_phi: null, dlugosc_m: null, napiecie_kv: null }))).toEqual([]);
+    expect(brakiFormularza(dane({ dlugosc_m: null })).map((e) => e.field)).toEqual(['dlugosc_m']);
+  });
   it('wymaga typu z katalogu', () => {
     const errs = walidujFormularz(dane({ catalog_ref: null }));
     expect(errs.some((e) => e.field === 'catalog_ref')).toBe(true);
@@ -200,7 +215,7 @@ describe('magistralaModel — katalog i podgląd', () => {
         catalog_ref: 'kab-1',
         dlugosc_m: 500,
         prad_roboczy_a: null,
-        cos_phi: DANE_DOMYSLNE.cos_phi,
+        cos_phi: 0.95,
         nazwa: null,
       },
       odcinki_zbudowane: [],
@@ -223,13 +238,16 @@ describe('magistralaModel — katalog i podgląd', () => {
   });
 
   it('żądanie oceny: cosφ poza dziedziną albo napięcie niedodatnie → brak żądania', () => {
+    // Brak cosφ albo napięcia = brak żądania (interfejs ich nie zgaduje).
+    expect(zbudujZapytanieOceny(dane({ cos_phi: null }), [])).toBeNull();
+    expect(zbudujZapytanieOceny(dane({ napiecie_kv: null }), [])).toBeNull();
     expect(zbudujZapytanieOceny(dane({ cos_phi: 0 }), [])).toBeNull();
     expect(zbudujZapytanieOceny(dane({ cos_phi: 1.2 }), [])).toBeNull();
     expect(zbudujZapytanieOceny(dane({ napiecie_kv: 0 }), [])).toBeNull();
   });
 
   it('odcinek oceny normalizuje puste pola do null', () => {
-    expect(odcinekOceny(dane({ catalog_ref: '  ', nazwa: ' ', dlugosc_m: 0, prad_a: -3 }))).toMatchObject({
+    expect(odcinekOceny(dane({ catalog_ref: '  ', nazwa: ' ', dlugosc_m: 0, prad_a: -3 }), 0.95)).toMatchObject({
       catalog_ref: null,
       nazwa: null,
       dlugosc_m: null,

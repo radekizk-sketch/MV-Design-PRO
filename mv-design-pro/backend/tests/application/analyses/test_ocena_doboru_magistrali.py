@@ -211,20 +211,53 @@ def test_obciazalnosc_katalogu_zweryfikowanego_ma_podstawe_wskazana() -> None:
     assert any("ułożenia" in w for w in rekord.zakres_waznosci.wykluczenia)
 
 
-def test_brak_pradu_roboczego_spadek_przy_obciazalnosci_jako_dana_przyjeta() -> None:
-    """Bez I_B: obciążalność NIE_OCENIONO; spadek liczony przy I = I_z (dana przyjęta,
-    kompletność NIEPELNY z nazwanym powodem) — nigdy ciche przyjęcie."""
-    typ = _kabel(KABEL_ZWERYFIKOWANY)
-    wynik = ocen_dobor_magistrali(napiecie_kv=15.0, odcinek=_odcinek(prad_roboczy_a=None))
-    assert _rekord(wynik, KRYTERIUM_OBCIAZALNOSCI).status_maszynowy == "NIE_OCENIONO"
-    assert wynik.spadek_odcinka is not None
-    assert wynik.spadek_odcinka.prad_z_obciazalnosci is True
-    assert wynik.spadek_odcinka.prad_obliczeniowy_a == typ.rated_current_a
+@pytest.mark.parametrize("katalog_ref", [KABEL_ZWERYFIKOWANY, KABEL_BAZOWY])
+@pytest.mark.parametrize("zbudowany_bez_pradu", [False, True])
+def test_brak_pradu_roboczego_nie_jest_zastepowany_obciazalnoscia(
+    katalog_ref: str, zbudowany_bez_pradu: bool
+) -> None:
+    """Bez I_B ŻADNA ocena nie liczy się przy prądzie przyjętym za projektanta.
+
+    Intencja (przejście scenariusza 630 kVA, pkt 8; kontrakt prowadzenia 2026-10-15): dawniej
+    spadek liczono przy I = I_z typu (dana przyjęta). Prąd roboczy to dana projektowa —
+    bez niej obciążalność, spadek odcinka i spadek ciągu są NIE_OCENIONO z nazwanym
+    brakiem, a podglądu spadku nie ma. Iloczyn: typ {zweryfikowany, bazowy} × brak prądu
+    {w odcinku bieżącym, w odcinku zbudowanym wcześniej}.
+    """
+    if zbudowany_bez_pradu:
+        wynik = ocen_dobor_magistrali(
+            napiecie_kv=15.0,
+            odcinek=_odcinek(catalog_ref=katalog_ref),
+            odcinki_zbudowane=[_odcinek(catalog_ref=katalog_ref, prad_roboczy_a=None)],
+        )
+        rekord = _rekord(wynik, KRYTERIUM_SPADKU_CIAGU)
+        assert rekord.status_maszynowy == "NIE_OCENIONO"
+        assert any("prąd roboczy odcinka I_B" in b for b in rekord.wyjasnienie.czego_brakuje)
+        assert wynik.ciag.spadek is None
+        return
+    wynik = ocen_dobor_magistrali(
+        napiecie_kv=15.0, odcinek=_odcinek(catalog_ref=katalog_ref, prad_roboczy_a=None)
+    )
+    assert wynik.spadek_odcinka is None
+    assert wynik.ciag.spadek is None
+    for kryterium_id in KRYTERIA:
+        rekord = _rekord(wynik, kryterium_id)
+        assert rekord.status_maszynowy == "NIE_OCENIONO"
+        assert rekord.wynik is None
     for kryterium_id in (KRYTERIUM_SPADKU_ODCINKA, KRYTERIUM_SPADKU_CIAGU):
         rekord = _rekord(wynik, kryterium_id)
-        assert rekord.dowod.status_danych.stan == "UNVALIDATED_INPUT"
-        assert rekord.kompletnosc_dowodu == "NIEPELNY"
-        assert any("prąd obliczeniowy" in p for p in rekord.powody_niepelnosci)
+        assert any("prąd roboczy odcinka I_B" in b for b in rekord.wyjasnienie.czego_brakuje)
+
+
+def test_spadek_z_pradem_projektanta_ma_dane_zwalidowane() -> None:
+    """Spadek liczy się wyłącznie z danych projektanta i karty — bez danych przyjętych."""
+    wynik = ocen_dobor_magistrali(napiecie_kv=15.0, odcinek=_odcinek(prad_roboczy_a=120.0))
+    assert wynik.spadek_odcinka is not None
+    assert wynik.spadek_odcinka.prad_obliczeniowy_a == 120.0
+    for kryterium_id in (KRYTERIUM_SPADKU_ODCINKA, KRYTERIUM_SPADKU_CIAGU):
+        rekord = _rekord(wynik, kryterium_id)
+        assert rekord.dowod.status_danych.stan == "ZWALIDOWANE"
+        assert not rekord.dowod.status_danych.dane_przyjete
 
 
 def test_typ_nieistniejacy_nazwany_w_brakach() -> None:
@@ -254,7 +287,7 @@ class _KatalogBezObciazalnosci:
 
 def test_typ_bez_obciazalnosci_w_katalogu() -> None:
     """Typ bez I_z: obciążalność BRAK_PODSTAWY (jest wynik, nie ma limitu) z nazwanym
-    brakiem; bez I_B spadek nie ma prądu zastępczego → NIE_OCENIONO z nazwanym brakiem."""
+    brakiem; bez I_B spadek nie ma prądu → NIE_OCENIONO z nazwanym brakiem."""
     katalog = _KatalogBezObciazalnosci()
     z_pradem = ocen_dobor_magistrali(napiecie_kv=15.0, odcinek=_odcinek(), katalog=katalog)
     obciazalnosc = _rekord(z_pradem, KRYTERIUM_OBCIAZALNOSCI)
@@ -266,7 +299,7 @@ def test_typ_bez_obciazalnosci_w_katalogu() -> None:
     )
     spadek = _rekord(bez_pradu, KRYTERIUM_SPADKU_ODCINKA)
     assert spadek.status_maszynowy == "NIE_OCENIONO"
-    assert any("nie ma czym go zastąpić" in b for b in spadek.wyjasnienie.czego_brakuje)
+    assert any("prąd roboczy odcinka I_B" in b for b in spadek.wyjasnienie.czego_brakuje)
 
 
 def test_linia_napowietrzna_bez_korekty_ulozenia() -> None:

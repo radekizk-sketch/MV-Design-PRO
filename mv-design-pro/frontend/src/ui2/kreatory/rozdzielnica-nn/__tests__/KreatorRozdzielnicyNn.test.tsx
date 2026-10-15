@@ -35,10 +35,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+// Nazwa obiektu w kreatorze idzie przez REALNY `selectElementName` (to samo źródło nazw co
+// schemat, `nazwaObiektuZMigawki`) — atrapa podmienia wyłącznie store migawki.
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { useSnapshotStore, selectElementName: oryginal.selectElementName };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -124,11 +127,51 @@ describe('KreatorRozdzielnicyNn — realna ścieżka', () => {
       });
     });
 
-    it('blokuje zapis, gdy zasilenie włączone, ale kabel nie wybrany', async () => {
+    // Intencja dawnego „blokuje zapis bez kabla”: operacja nie rusza z niekompletnym
+    // zasileniem — w nowym kanonie przez jedno wskazanie brakującego parametru przy zapisie.
+    it('zasilenie włączone bez kabla: zapis klikalny, wskazuje kabel, potem długość', async () => {
       render(<KreatorRozdzielnicyNn />);
       await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zasil-przelacznik'));
-      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz')).toBeDisabled();
       await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel')).not.toBeDisabled());
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz')).toBeEnabled();
+      expect(screen.queryByRole('alert')).toBeNull();
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz'));
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel')).toHaveFocus();
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+      expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz kabel zasilający z katalogu nN — /);
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel'), 'kabel-nn-1');
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz'));
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-dlugosc')).toHaveFocus();
+      expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj długość kabla zasilającego — /);
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    });
+
+    it('świeży kreator: napięcie z szyny zasilającej stoi w polu i daje się zmienić', async () => {
+      render(<KreatorRozdzielnicyNn />);
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-napiecie')).toHaveValue(0.4);
+      await userEvent.clear(screen.getByTestId('mvd-kreator-rozdzielnica-nn-napiecie'));
+      await userEvent.type(screen.getByTestId('mvd-kreator-rozdzielnica-nn-napiecie'), '0.23');
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-napiecie')).toHaveValue(0.23);
+      expect(screen.queryByText(/przyjęto/)).toBeNull();
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz')).toBeEnabled());
+    });
+
+    it('konflikt widoczny od razu: długość kabla zero', async () => {
+      render(<KreatorRozdzielnicyNn />);
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zasil-przelacznik'));
+      await userEvent.type(screen.getByTestId('mvd-kreator-rozdzielnica-nn-dlugosc'), '0');
+      expect(screen.getByRole('alert').textContent).toBe('Długość kabla musi być dodatnia.');
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel')).not.toBeDisabled());
+    });
+
+    it('bez aktywnego przypadku: zapis wskazuje przypadek, operacja nie wychodzi', async () => {
+      appState.activeCaseId = null;
+      render(<KreatorRozdzielnicyNn />);
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz'));
+      expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz')).toBeEnabled());
     });
   });
 
@@ -156,6 +199,16 @@ describe('KreatorRozdzielnicyNn — realna ścieżka', () => {
         );
       });
       expect(closeFormMock).toHaveBeenCalled();
+    });
+
+    it('sekcja bez sprzęgła: zapis wskazuje aparat sprzęgła z katalogu', async () => {
+      render(<KreatorRozdzielnicyNn />);
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-sprzeglo')).not.toBeDisabled());
+      expect(screen.queryByRole('alert')).toBeNull();
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zapisz'));
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-sprzeglo')).toHaveFocus();
+      expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz aparat sprzęgła z katalogu nN — /);
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
     });
 
     it('nie pokazuje pól rozdzielnicy (napięcie/nazwa) w trybie sekcji', async () => {

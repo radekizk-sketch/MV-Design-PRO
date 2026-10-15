@@ -15,6 +15,7 @@
  */
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
 import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
+import { WARTOSCI_TESTOWE_GPZ, zapiszZPrzewodnikiem } from './prowadzenieKreatora';
 
 interface ConsoleGuards {
   errors: string[];
@@ -330,6 +331,20 @@ async function openGpzCreator(page: Page): Promise<void> {
  * na auto-wybór pozycji katalogowej (mock: src-sys-1) — dopiero wtedy walidacja
  * `zapisz` ma komplet danych (catalog_ref + Sk″ + R/X z katalogu).
  */
+/**
+ * Zapis kreatora GPZ ścieżką prowadzenia projektanta (karta PROWADZENIE-KREATORY): zapis
+ * jest aktywny od początku, a wartości, których kreator nie dobiera za projektanta
+ * (uziemienie punktu neutralnego, czas zwarcia), wskazuje klik zapisu z przejściem do pola.
+ */
+async function zapiszGpz(page: Page): Promise<void> {
+  const przebieg = await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-zrodlo',
+    zapisz: 'mvd-kreator-zrodlo-zapisz',
+    wartosci: WARTOSCI_TESTOWE_GPZ,
+  });
+  for (const w of przebieg) expect(w.komunikat).toMatch(/ — /);
+}
+
 async function przejdzNaKrokZrodlaIZaczekajNaKatalog(page: Page): Promise<void> {
   await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
   await expect(page.getByTestId('mvd-kreator-zrodlo-katalog-select')).toHaveValue('src-sys-1');
@@ -369,7 +384,7 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
 
     // Zapis kreatora (operacja domenowa add_grid_source_sn — mock domain-ops
     // zwraca snapshot z GPZ).
-    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
+    await zapiszGpz(page);
 
     // C2 (intencja bez zmian): toast sukcesu widoczny z komunikatem PL.
     // Asercja po TREŚCI, nie po pozycji w stosie — `first()` łapał starszy
@@ -408,7 +423,7 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
 
     await openGpzCreator(page);
     await przejdzNaKrokZrodlaIZaczekajNaKatalog(page);
-    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
+    await zapiszGpz(page);
 
     // C3 (intencja bez zmian): globalny banner walidacji semantycznej widoczny
     // z treścią ostrzeżenia (SemanticIssuesBanner w warsztacie, store:

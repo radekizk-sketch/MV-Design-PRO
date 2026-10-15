@@ -27,18 +27,25 @@ import {
   PoleLiczbowe,
   PoleTekstowe,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  polozenieZKontekstu,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   fmtPct01,
+  konfliktyFormularza,
   maOdcinek,
   problemTorowosci,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type KontekstSlupa,
   type SlupOdgaleznyFormData,
 } from './slupOdgaleznyModel';
@@ -48,6 +55,14 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'slup', tytul: T.krokKatalog },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'slup', pole: 'mvd-kreator-slup-katalog' },
+  polozenie: { krok: 'slup', pole: 'mvd-kreator-slup-polozenie' },
+};
+
+type PoleAuto = 'catalog_ref' | 'polozenie';
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -80,6 +95,7 @@ function kontekstZOperacji(
       || (segId ? 'Linia napowietrzna SN' : undefined),
     segment_type: segment?.type,
     switch_state: context.switch_state,
+    polozenie: polozenieZKontekstu(context),
   };
 }
 
@@ -95,10 +111,14 @@ export function KreatorSlupaOdgaleznego() {
   const hasOdcinek = maOdcinek(kontekst);
   const problemTor = useMemo(() => problemTorowosci(kontekst), [kontekst]);
 
-  const [dane, setDane] = useState<SlupOdgaleznyFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
+  const [dane, setDane] = useState<SlupOdgaleznyFormData>(() => ({
+    ...DANE_DOMYSLNE,
+    polozenie: kontekst.polozenie ?? null,
+  }));
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('slup');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
   const [typy, setTypy] = useState<BranchPointCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -145,51 +165,47 @@ export function KreatorSlupaOdgaleznego() {
     [typy],
   );
 
+  // AUTO_PRZYJETE: położenie z miejsca wskazania i jedyny słup rozgałęźny w katalogu.
+  const jedynyTyp = useMemo(() => jedynaZgodna(typy), [typy]);
+  useEffect(() => {
+    if (!jedynyTyp || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp]);
+
   const zmien = useCallback(
     <K extends keyof SlupOdgaleznyFormData>(pole: K, wartosc: SlupOdgaleznyFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'catalog_ref' || pole === 'polozenie') edytowane(pole as PoleAuto);
     },
-    [],
+    [edytowane],
   );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
-
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasOdcinek || Boolean(problemTor) || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisMozliwy = stanGotowosci === 'gotowy';
+  // KONFLIKT_TECHNICZNY — widoczny od razu: położenie spoza odcinka, tor (kabel ≠ linia).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
 
   const onZapisz = useCallback(async () => {
-    if (!hasOdcinek) {
-      setBladGlobalny(T.brakOdcinkaOpis);
+    const brak = pierwszyBrak([
+      !hasOdcinek && { komunikat: T.brakOdcinkaOpis },
+      problemTor ? { komunikat: problemTor } : null,
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    if (problemTor) {
-      setBladGlobalny(problemTor);
-      return;
-    }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
-        activeCaseId,
+        activeCaseId as string,
         'insert_branch_pole_on_segment_sn',
         zbudujPayload(dane, kontekst),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -202,27 +218,35 @@ export function KreatorSlupaOdgaleznego() {
         name: dane.nazwa.trim() || 'Słup rozgałęźny SN',
       });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, problemTor, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, problemTor, prowadzenie, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszOdcinek,
-      stan: hasOdcinek ? 'kompletne' : 'brak',
-      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : 'Brak'),
+      stan: hasOdcinek ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : T.odcinekDoWskazania),
     },
     {
       etykieta: T.wierszTor,
-      stan: problemTor ? 'brak' : 'kompletne',
+      stan: problemTor ? 'konflikt' : 'ustalone',
       wartosc: problemTor ? 'Nieprawidłowy tor' : 'Linia napowietrzna SN',
     },
     {
       etykieta: T.wierszSlup,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: params?.name ?? '',
     },
-    { etykieta: T.wierszPolozenie, stan: 'kompletne', wartosc: fmtPct01(dane.polozenie) },
+    {
+      etykieta: T.wierszPolozenie,
+      stan: konfliktDlaPola('polozenie')
+        ? 'konflikt'
+        : dane.polozenie === null
+          ? 'do_wyboru'
+          : 'ustalone',
+      wartosc: dane.polozenie === null ? '' : fmtPct01(dane.polozenie),
+    },
   ];
 
   const aside = (
@@ -257,15 +281,13 @@ export function KreatorSlupaOdgaleznego() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : problemTor ?? (!hasOdcinek ? T.brakOdcinkaOpis : null)
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-slup-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-slup-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-slup-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -306,17 +328,16 @@ export function KreatorSlupaOdgaleznego() {
             wymagane
             testid="mvd-kreator-slup-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           <KreatorSiatka kolumny={2}>
             <PoleLiczbowe
               etykieta={T.polozenie}
               wartosc={dane.polozenie}
-              onZmiana={(v) => zmien('polozenie', v ?? 0)}
+              onZmiana={(v) => zmien('polozenie', v)}
               krok={0.05}
               min={0}
               max={1}
               pomoc={T.polozeniePomoc}
-              blad={bladDlaPola('polozenie')}
+              blad={konfliktDlaPola('polozenie')}
               testid="mvd-kreator-slup-polozenie"
             />
             <PoleTekstowe

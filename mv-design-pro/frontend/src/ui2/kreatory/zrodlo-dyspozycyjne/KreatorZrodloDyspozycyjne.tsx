@@ -9,8 +9,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchLvApparatusTypes, fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
-import type { LVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
+import { fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import type { LVApparatusType } from '../../../ui/catalog/types';
 import {
   listNnBusOptions,
   listNnSourceFieldOptions,
@@ -33,17 +33,23 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
+  konfliktyFormularza,
   operacjaDla,
   rodzajZOperacji,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type GensetFuelType,
   type GensetOperationMode,
   type NNSwitchKind,
@@ -60,6 +66,24 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'parametry', tytul: T.krokParametry },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Miejsce pola modelu w kreatorze — cel wskazania BRAKU_DO_OPERACJI. */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  bus_nn_ref: { krok: 'pole', pole: 'mvd-kreator-zrodlo-dysp-szyna' },
+  existing_field_ref: { krok: 'pole', pole: 'mvd-kreator-zrodlo-dysp-pole-istniejace' },
+  new_field_switch_kind: { krok: 'pole', pole: 'mvd-kreator-zrodlo-dysp-aparat' },
+  new_field_switch_state: { krok: 'pole', pole: 'mvd-kreator-zrodlo-dysp-stan' },
+  new_field_voltage_nn_kv: { krok: 'pole', pole: 'mvd-kreator-zrodlo-dysp-napiecie-nn' },
+  rated_power_kw: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-moc' },
+  rated_voltage_kv: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-napiecie' },
+  power_factor: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-cosfi' },
+  genset_operation_mode: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-tryb-genset' },
+  backup_time_min: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-backup' },
+  ups_operation_mode: { krok: 'parametry', pole: 'mvd-kreator-zrodlo-dysp-tryb-ups' },
+};
+
+/** Pola, które kreator może przyjąć automatycznie z topologii (AUTO_PRZYJETE). */
+type PoleAuto = 'bus_nn_ref' | 'new_field_voltage_nn_kv' | 'rated_voltage_kv';
 
 export function KreatorZrodloDyspozycyjne() {
   const activeForm = useActiveOperationForm();
@@ -78,42 +102,51 @@ export function KreatorZrodloDyspozycyjne() {
   const busOptions = useMemo(() => listNnBusOptions(snapshot, stationRef), [snapshot, stationRef]);
   const initialBusRef = useMemo(() => resolveBusNnRef(context, snapshot), [context, snapshot]);
 
-  const [dane, setDane] = useState<ZrodloDyspozycyjneFormData>(() => ({
-    ...DANE_DOMYSLNE,
-    bus_nn_ref: initialBusRef ?? busOptions[0]?.ref_id ?? '',
-  }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
+  const [dane, setDane] = useState<ZrodloDyspozycyjneFormData>(DANE_DOMYSLNE);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
-  const [zrodloKatalog, setZrodloKatalog] = useState<SourceSystemCatalogType[]>([]);
   const [aparatKatalog, setAparatKatalog] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
-  // ładowania OBU katalogów (system źródła + aparat nN), niezależny od
-  // długości tablic (katalog pusty PO wczytaniu wygląda inaczej niż katalog
-  // W TRAKCIE wczytywania).
   const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
-  // Ustal szynę, gdy kontekst/model dostarczy domyślną dopiero po montażu.
+  // AUTO_PRZYJETE: szyna z kontekstu wywołania albo jedyna szyna nN stacji. Kilka szyn bez
+  // wskazania = wybór projektanta (dawniej cicho pierwsza z listy).
+  const jedynaSzyna = useMemo(() => jedynaZgodna(busOptions), [busOptions]);
+  const szynaAutoRef = initialBusRef ?? jedynaSzyna?.ref_id ?? null;
   useEffect(() => {
-    const domyslna = initialBusRef ?? busOptions[0]?.ref_id ?? '';
-    setDane((p) => (p.bus_nn_ref ? p : { ...p, bus_nn_ref: domyslna }));
-  }, [initialBusRef, busOptions]);
+    if (!szynaAutoRef || decyzjaProjektanta('bus_nn_ref')) return;
+    setDane((p) => (p.bus_nn_ref === szynaAutoRef ? p : { ...p, bus_nn_ref: szynaAutoRef }));
+  }, [decyzjaProjektanta, szynaAutoRef]);
+
+  // AUTO_PRZYJETE: napięcie pola i napięcie znamionowe agregatu z napięcia wybranej szyny nN
+  // (topologia). Szyna bez znanego napięcia = pola puste, projektant podaje je sam.
+  const napiecieSzyny = useMemo(() => {
+    const kv = busOptions.find((b) => b.ref_id === dane.bus_nn_ref)?.voltage_kv;
+    return typeof kv === 'number' && kv > 0 ? kv : null;
+  }, [busOptions, dane.bus_nn_ref]);
+  useEffect(() => {
+    if (napiecieSzyny === null) return;
+    if (!decyzjaProjektanta('new_field_voltage_nn_kv')) {
+      setDane((p) => ({ ...p, new_field_voltage_nn_kv: napiecieSzyny }));
+    }
+    if (kind === 'GENSET' && !decyzjaProjektanta('rated_voltage_kv')) {
+      setDane((p) => ({ ...p, rated_voltage_kv: napiecieSzyny }));
+    }
+  }, [decyzjaProjektanta, kind, napiecieSzyny]);
 
   useEffect(() => {
     let active = true;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
-    Promise.all([fetchSourceSystemTypes(), fetchLvApparatusTypes()])
-      .then(([src, lv]) => {
-        if (!active) return;
-        setZrodloKatalog(Array.isArray(src) ? src : []);
-        setAparatKatalog(Array.isArray(lv) ? lv : []);
+    fetchLvApparatusTypes()
+      .then((lv) => {
+        if (active) setAparatKatalog(Array.isArray(lv) ? lv : []);
       })
       .catch((e: unknown) => {
         if (!active) return;
-        setZrodloKatalog([]);
         setAparatKatalog([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       })
@@ -133,11 +166,16 @@ export function KreatorZrodloDyspozycyjne() {
   const zmien = useCallback(
     <K extends keyof ZrodloDyspozycyjneFormData>(pole: K, wartosc: ZrodloDyspozycyjneFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'bus_nn_ref' || pole === 'new_field_voltage_nn_kv' || pole === 'rated_voltage_kv') {
+        edytowane(pole as PoleAuto);
+      }
     },
-    [],
+    [edytowane],
   );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — przy polu od razu; braki dopiero przy próbie zapisu (wskazanie ramy).
+  const konflikty = useMemo(() => konfliktyFormularza(dane, kind), [dane, kind]);
+  const bladDlaPola = (pole: string): string | undefined => konflikty.find((b) => b.field === pole)?.message;
 
   const opcjeSzyn = useMemo(
     () => busOptions.map((b) => ({ id: b.ref_id, etykieta: `${b.name} (${b.voltage_kv} kV)` })),
@@ -147,47 +185,23 @@ export function KreatorZrodloDyspozycyjne() {
     () => fieldOptions.map((f) => ({ id: f.ref_id, etykieta: f.name })),
     [fieldOptions],
   );
-  const opcjeZrodla = useMemo(
-    () =>
-      zrodloKatalog.map((s) => ({
-        id: s.id,
-        etykieta: `${s.name} · ${s.voltage_rating_kv} kV · Sk'' ${s.sk3_mva} MVA`,
-      })),
-    [zrodloKatalog],
-  );
   const opcjeAparatu = useMemo(
     () => aparatKatalog.map((a) => ({ id: a.id, etykieta: `${a.name} · ${a.u_n_kv} kV · ${a.i_n_a} A` })),
     [aparatKatalog],
   );
 
-  const params = useMemo(
-    () => (dane.catalog_item_id ? zrodloKatalog.find((s) => s.id === dane.catalog_item_id) ?? null : null),
-    [dane.catalog_item_id, zrodloKatalog],
-  );
-
   const isNewField = dane.placement === 'NEW_FIELD';
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !dane.bus_nn_ref || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   const onZapisz = useCallback(async () => {
-    const walid = walidujFormularz(dane, kind);
-    setBledy(walid);
-    if (walid.length > 0) {
-      setBladGlobalny(T.walidacjaStopka);
+    const brak = pierwszyBrak([
+      ...walidujFormularz(dane, kind).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
@@ -196,7 +210,7 @@ export function KreatorZrodloDyspozycyjne() {
         zbudujPayload(dane, kind, { station_ref: stationRef, station_label: stationName }),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -209,36 +223,31 @@ export function KreatorZrodloDyspozycyjne() {
         name: dane.source_name.trim() || (kind === 'GENSET' ? 'Agregat nN' : 'UPS nN'),
       });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, kind, selekcjaPoOperacji, stationName, stationRef]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, kind, prowadzenie, selekcjaPoOperacji, stationName, stationRef]);
 
+  // Panel kontroli neutralny: „do wyboru” w trakcie pracy, czerwień tylko dla konfliktu.
+  const konfliktPola = konflikty.some((k) => k.field === 'new_field_voltage_nn_kv');
+  const poleKompletne = isNewField
+    ? Boolean(dane.new_field_switch_kind && dane.new_field_switch_state && dane.new_field_voltage_nn_kv !== null)
+    : Boolean(dane.existing_field_ref);
+  const konfliktMocy = konflikty.some((k) => k.field === 'rated_power_kw');
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszSzyna,
-      stan: dane.bus_nn_ref ? 'kompletne' : 'brak',
-      wartosc: dane.bus_nn_ref ? busOptions.find((b) => b.ref_id === dane.bus_nn_ref)?.name ?? 'Wskazana' : 'Brak',
+      stan: !dane.bus_nn_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: busOptions.find((b) => b.ref_id === dane.bus_nn_ref)?.name ?? '',
     },
     {
       etykieta: T.wierszPole,
-      stan: isNewField
-        ? dane.new_field_switch_kind && dane.new_field_voltage_nn_kv
-          ? 'kompletne'
-          : 'brak'
-        : dane.existing_field_ref
-          ? 'kompletne'
-          : 'brak',
-      wartosc: isNewField ? 'Nowe pole' : dane.existing_field_ref ? 'Istniejące' : 'Do wyboru',
-    },
-    {
-      etykieta: T.wierszKatalog,
-      stan: dane.catalog_item_id ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_item_id ? params?.name ?? 'Kompletne' : 'Do konfiguracji',
+      stan: konfliktPola ? 'konflikt' : poleKompletne ? 'ustalone' : 'do_wyboru',
+      wartosc: poleKompletne ? (isNewField ? T.wierszPoleNowe : T.wierszPoleIstniejace) : '',
     },
     {
       etykieta: T.wierszMoc,
-      stan: dane.rated_power_kw && dane.rated_power_kw > 0 ? 'kompletne' : 'brak',
-      wartosc: dane.rated_power_kw ? `${dane.rated_power_kw} kW` : 'Do uzupełnienia',
+      stan: konfliktMocy ? 'konflikt' : dane.rated_power_kw !== null ? 'ustalone' : 'do_wyboru',
+      wartosc: dane.rated_power_kw !== null ? `${dane.rated_power_kw} kW` : '',
     },
   ];
 
@@ -263,15 +272,14 @@ export function KreatorZrodloDyspozycyjne() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : null
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: tk.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-zrodlo-dysp-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: tk.zapisz,
+        onClick: onZapisz,
+        // Wyszarzenie tylko na czas wczytywania katalogu aparatów nN (zamknięta lista ramy).
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-zrodlo-dysp-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-zrodlo-dysp-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -296,9 +304,8 @@ export function KreatorZrodloDyspozycyjne() {
               etykieta={T.szyna}
               wartosc={dane.bus_nn_ref}
               onZmiana={(v) => zmien('bus_nn_ref', v)}
-              opcje={opcjeSzyn}
+              opcje={[{ id: '', etykieta: T.szynaPlaceholder }, ...opcjeSzyn]}
               pomoc={T.szynaPomoc}
-              blad={bladDlaPola('bus_nn_ref')}
               wymagane
               testid="mvd-kreator-zrodlo-dysp-szyna"
             />
@@ -321,7 +328,6 @@ export function KreatorZrodloDyspozycyjne() {
                 wartosc={dane.existing_field_ref ?? ''}
                 onZmiana={(v) => zmien('existing_field_ref', v || null)}
                 opcje={[{ id: '', etykieta: T.poleIstniejacePlaceholder }, ...opcjePol]}
-                blad={bladDlaPola('existing_field_ref')}
                 wymagane
                 testid="mvd-kreator-zrodlo-dysp-pole-istniejace"
               />
@@ -335,7 +341,6 @@ export function KreatorZrodloDyspozycyjne() {
                   onZmiana={(v) => zmien('new_field_switch_kind', (v || null) as NNSwitchKind | null)}
                   opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.aparatOpcje]}
                   pomoc={T.aparatPomoc}
-                  blad={bladDlaPola('new_field_switch_kind')}
                   wymagane
                   testid="mvd-kreator-zrodlo-dysp-aparat"
                 />
@@ -344,7 +349,6 @@ export function KreatorZrodloDyspozycyjne() {
                   wartosc={dane.new_field_switch_state ?? ''}
                   onZmiana={(v) => zmien('new_field_switch_state', (v || null) as NNSwitchState | null)}
                   opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.stanNormalnyOpcje]}
-                  blad={bladDlaPola('new_field_switch_state')}
                   wymagane
                   testid="mvd-kreator-zrodlo-dysp-stan"
                 />
@@ -388,20 +392,6 @@ export function KreatorZrodloDyspozycyjne() {
 
       {krok === 'parametry' ? (
         <KreatorSekcja tytul={T.krokParametry} testid="mvd-kreator-zrodlo-dysp-parametry">
-          <KreatorInfo>{T.katalogPomoc}</KreatorInfo>
-          <PoleKatalogu
-            etykieta={tk.katalog}
-            wartosc={dane.catalog_item_id}
-            onZmiana={(v) => zmien('catalog_item_id', v)}
-            opcje={opcjeZrodla}
-            status={bladKatalogu ? 'error' : 'ready'}
-            placeholder={T.katalogPlaceholder}
-            komunikatBledu={bladKatalogu ?? tk.katalogBlad}
-            blad={bladDlaPola('catalog_item_id')}
-            wymagane
-            testid="mvd-kreator-zrodlo-dysp-katalog"
-          />
-
           {kind === 'GENSET' ? (
             <>
               <KreatorSiatka kolumny={3}>
@@ -448,7 +438,6 @@ export function KreatorZrodloDyspozycyjne() {
                   wartosc={dane.genset_operation_mode ?? ''}
                   onZmiana={(v) => zmien('genset_operation_mode', (v || null) as GensetOperationMode | null)}
                   opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.trybGensetOpcje]}
-                  blad={bladDlaPola('genset_operation_mode')}
                   wymagane
                   testid="mvd-kreator-zrodlo-dysp-tryb-genset"
                 />
@@ -495,7 +484,6 @@ export function KreatorZrodloDyspozycyjne() {
                   wartosc={dane.ups_operation_mode ?? ''}
                   onZmiana={(v) => zmien('ups_operation_mode', (v || null) as UpsOperationMode | null)}
                   opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.trybUpsOpcje]}
-                  blad={bladDlaPola('ups_operation_mode')}
                   wymagane
                   testid="mvd-kreator-zrodlo-dysp-tryb-ups"
                 />
@@ -537,8 +525,7 @@ export function KreatorZrodloDyspozycyjne() {
               etykieta={T.wierszSzyna}
               wartosc={busOptions.find((b) => b.ref_id === dane.bus_nn_ref)?.name ?? '—'}
             />
-            <RzadWartosci etykieta={T.wierszKatalog} wartosc={params?.name ?? '—'} />
-            <RzadWartosci etykieta={T.wierszMoc} wartosc={dane.rated_power_kw ? `${dane.rated_power_kw} kW` : '—'} />
+            <RzadWartosci etykieta={T.wierszMoc} wartosc={dane.rated_power_kw !== null ? `${dane.rated_power_kw} kW` : '—'} />
           </KreatorSiatka>
         </KreatorSekcja>
       ) : null}

@@ -38,7 +38,13 @@ from tests.dziedziny import fabryki as f
 #: `unit`: "A" → null i 13 nowych kluczy `jednostka_status`: "NIEUSTALONA" w 8 szablonach;
 #: żadna liczba ani identyfikator. Poprzednia wartość:
 #: ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455.
-ODCISK_SPRZED_KARTY = "a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6"
+#: Karta PROWADZENIE-KREATORY (2026-10-15): odcisk przeliczony po dodaniu do przestrzeni
+#: ZABEZPIECZENIE pozycji kanonicznych czterech przekaźników z opcji szablonów stacji
+#: (EM_E2TANGO_600, SIEMENS_7SJ82, ABB_REF615, SCHNEIDER_P3M30). Dowód liść po liściu (zrzut
+#: kanoniczny baza `940a3fe0e` vs drzewo karty): 0 liści usuniętych, 0 zmienionych, 52 nowe —
+#: wyłącznie `protection_device_types/<te 4 id>/*` (13 pól × 4 pozycje). Poprzednia wartość:
+#: a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6.
+ODCISK_SPRZED_KARTY = "0514a053389146c4bdb38592a2c5f6143d950c872b53183ac069cc11a4941846"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 

@@ -6,11 +6,12 @@
  * CO POKAZUJĄ (trzy układy rozdzielnicy, oba motywy) — dowodem jest RENDER:
  *   1. `domyslny`   — stacja odgałęźna (4 pola): dwa pola liniowe, odgałęźne
  *      i transformatorowe z aparatem domyślnym dla roli,
- *   2. `warianty`   — TE SAME cztery pola z RÓŻNYMI aparatami: reklozer w polu
- *      liniowym wejściowym, rozłącznik w wyjściowym, wyłącznik w odgałęźnym,
- *      rozłącznik bezpiecznikowy w transformatorowym. To jest zrzut, który
- *      rozstrzyga o karcie: cztery różne aparaty MUSZĄ dać cztery różne symbole,
- *      a przed kartą dawały cztery identyczne kwadraty,
+ *   2. `warianty`   — TE SAME cztery pola z RÓŻNYMI aparatami z OFERTY RODZINY:
+ *      rozłącznik w polu liniowym wejściowym, wyłącznik w wyjściowym i odgałęźnym,
+ *      rozłącznik bezpiecznikowy w transformatorowym. Każdy rodzaj aparatu MUSI dać
+ *      własny symbol (przed kartą MINI-RMU-CAD wszystkie dawały identyczne kwadraty).
+ *      Reklozer (łącznik słupowy) i aparaty innych producentów nie należą do oferty
+ *      rodziny Rotoblok (karta PROWADZENIE-KREATORY), więc kadr nie może ich użyć,
  *   3. `sprzeglo`   — stacja sekcyjna: pole sprzęgłowe (łącznik szyn) z przerwą
  *      szyny, której układ przelotowy nie ma.
  *
@@ -30,14 +31,13 @@ const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
 const THEMES = ['light', 'dark'] as const;
 
 /**
- * REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`), serwowane przez
- * fiksturę harnessu. Zrzut z pozycjami spoza katalogu byłby dowodem pozornym:
- * rysunek wygląda poprawnie, a walidator backendu odrzuca każdą taką
- * konfigurację, więc widoczny na zrzucie werdykt nic nie znaczy.
+ * REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`) z OFERTY RODZINY Rotoblok
+ * (producent ZPUE + wkładki bezpiecznikowe jako komponent wymienny), serwowane przez
+ * realny backend. Zrzut z pozycjami spoza oferty byłby dowodem pozornym: kreator ich
+ * nie proponuje, a rozdzielnica złożona z aparatów innego producenta nie istnieje.
  */
-const REKLOZER = 'sw-rec-abb-rec615-17kv-630a';
-const ROZLACZNIK = 'sw-ls-schneider-rm6-17kv-400a';
-const WYLACZNIK = 'sw-cb-abb-vd4-17kv-630a';
+const ROZLACZNIK = 'sw-ls-zpue-nal-24kv-630a';
+const WYLACZNIK = 'sw-cb-zpue-rotoblok-24kv-630a';
 const ROZLACZNIK_BEZPIECZNIKOWY = 'sw-fuse-eti-vv-17kv-63a';
 
 /** Rodziny kanonu (refy 1:1 z `switchgear/families.py`). */
@@ -69,6 +69,11 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       const root = page.locator('[data-testid="creator-harness-root"]').first();
       await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
 
+      // Rodzaj stacji wynika z miejsca osadzenia (podział odcinka → przelotowa, trzy pola);
+      // stację ODGAŁĘŹNĄ (cztery pola) projektant wybiera natywnie w kroku „Rodzaj
+      // i umiejscowienie” — kreator nie przyjmuje jej po cichu (karta PROWADZENIE-KREATORY).
+      await page.getByRole('button', { name: /Rodzaj i umiejscowienie/ }).click();
+      await page.getByTestId('mvd-kreator-stacja-typ').selectOption('branch');
       await page.getByRole('button', { name: /Pola rozdzielnicy SN/ }).click();
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 15000 });
       await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
@@ -85,9 +90,9 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
         path: path.join(OUTPUT_DIR, `kreator_stacja_podglad_domyslny_${theme}.png`),
       });
 
-      // (2) Cztery RÓŻNE aparaty w czterech polach.
-      await page.getByTestId('mvd-kreator-stacja-aparat-1').selectOption(REKLOZER);
-      await page.getByTestId('mvd-kreator-stacja-aparat-2').selectOption(ROZLACZNIK);
+      // (2) Różne aparaty oferty rodziny w czterech polach.
+      await page.getByTestId('mvd-kreator-stacja-aparat-1').selectOption(ROZLACZNIK);
+      await page.getByTestId('mvd-kreator-stacja-aparat-2').selectOption(WYLACZNIK);
       await page.getByTestId('mvd-kreator-stacja-aparat-3').selectOption(WYLACZNIK);
       await page.getByTestId('mvd-kreator-stacja-aparat-4').selectOption(ROZLACZNIK_BEZPIECZNIKOWY);
       await page.waitForTimeout(300);

@@ -16,12 +16,13 @@
  */
 import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
 
+import { zapiszZPrzewodnikiem } from './prowadzenieKreatora';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 /** Aparat inny niż domyślny pierwszy z listy — dowód realnej zmiany z pickera. */
-const APARAT_ZMIENIONY = 'sw-cb-abb-vd4-24kv-1250a';
 
 /**
  * Predykat odpowiedzi bilansu wtórnego CT/VT: łapie TO żądanie, które niesie
@@ -241,6 +242,16 @@ async function otworzKreatorStacji(page: Page, segmentId: string): Promise<void>
   await expect(page.getByTestId('mvd-kreator-stacja')).toBeVisible({ timeout: 20000 });
 }
 
+/**
+ * Napięcie strony nN (wariant odbiorczy): katalog ma kilka napięć dolnych na napięcie SN
+ * szyny, więc kreator go nie przyjmuje za projektanta — wybór natywny, gdy pole puste.
+ */
+async function wybierzNapiecieNnGdyPuste(page: Page): Promise<void> {
+  const nn = page.getByTestId('mvd-kreator-stacja-nn');
+  if ((await nn.count()) === 0 || (await nn.inputValue()) !== '') return;
+  await nn.selectOption('0.4');
+}
+
 /** Klik natywny w krok kreatora (nagłówek kroków ramy). */
 async function przejdzDoKroku(page: Page, tytul: string): Promise<void> {
   await page.getByRole('button', { name: tytul, exact: false }).first().click();
@@ -255,6 +266,36 @@ async function przejdzDoKroku(page: Page, tytul: string): Promise<void> {
  * konkretnego wyrobu (który zmieni się z każdą transzą katalogu) pytamy DOM
  * o pierwszą pozycję, której katalog nie zablokował.
  */
+/**
+ * Wartości testowe kreatora stacji dla pól liczbowych, których kreator nie dobiera sam
+ * (wpływają na wyniki) — podawane jawnie, gdy klik zapisu wskaże brak.
+ */
+const WARTOSCI_TESTOWE_STACJI: Readonly<Record<string, string>> = {
+  'mvd-kreator-stacja-odplywy': '2',
+  'mvd-kreator-stacja-rezystancja-uziemienia': '10',
+  'mvd-kreator-stacja-zaczepy-min': '-2',
+  'mvd-kreator-stacja-zaczepy-max': '2',
+  'mvd-kreator-stacja-zaczepy-neutralna': '0',
+  'mvd-kreator-stacja-zaczepy-biezaca': '0',
+  'mvd-kreator-stacja-zaczepy-krok': '2.5',
+};
+
+/**
+ * Wyłącznik z OFERTY RODZINY dla pola o numerze `n` (lista pola niesie rodzaj aparatu
+ * w etykiecie). Oferta zależy od wskazanej rodziny i roli pola — kreator nie dobiera aparatu,
+ * gdy zdatnych pozycji jest kilka, więc wybiera go projektant (tu: test).
+ */
+async function wybierzWylacznikPola(page: Page, n: number): Promise<string> {
+  const aparat = page.getByTestId(`mvd-kreator-stacja-aparat-${n}`);
+  const opcja = aparat.locator('option', { hasText: /· wyłącznik ·/ }).first();
+  await expect(opcja).toHaveCount(1, { timeout: 20000 });
+  const ref = await opcja.getAttribute('value');
+  expect(ref, 'oferta rodziny musi mieć wyłącznik dla pola').toBeTruthy();
+  await aparat.selectOption(ref!);
+  await expect(aparat).toHaveValue(ref!);
+  return ref!;
+}
+
 async function wybierzPierwszaDostepnaRodzine(page: Page): Promise<void> {
   const rodzina = page.getByTestId('mvd-kreator-stacja-rodzina');
   await expect(rodzina.locator('option')).not.toHaveCount(1, { timeout: 20000 });
@@ -308,6 +349,7 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
 
   // ---------------------------------------------------------------- krok 2
   await przejdzDoKroku(page, 'Transformator i strona nN');
+  await wybierzNapiecieNnGdyPuste(page);
   const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
   await expect(katalogTrafo.locator('option')).not.toHaveCount(1, { timeout: 20000 });
   const trafoId = await katalogTrafo.locator('option').nth(1).getAttribute('value');
@@ -326,25 +368,28 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   await wybierzPierwszaDostepnaRodzine(page);
   await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({ timeout: 20000 });
   const aparat1 = page.getByTestId('mvd-kreator-stacja-aparat-1');
-  await expect(aparat1.locator(`option[value="${APARAT_ZMIENIONY}"]`)).toHaveCount(1, {
-    timeout: 20000,
-  });
-  await aparat1.selectOption(APARAT_ZMIENIONY);
-  await expect(aparat1).toHaveValue(APARAT_ZMIENIONY);
+  // Aparat pola 1 z oferty WSKAZANEJ rodziny (wyłącznik — pole niesie przekaźnik w kroku 4).
+  const aparatZmieniony = await wybierzWylacznikPola(page, 1);
 
   // POLA-W-TORZE: stacja wstawiana w odcinek prowadzi odcinek przez pole liniowe wejściowe
   // i wyjściowe, a transformator przez pole transformatorowe (aparat pola w torze elementu).
   // Szablon farmy PV niesie samo pole wejściowe — kreator NAZYWA brak pól toru i blokuje
-  // zapis, a projektant dokłada je natywnym kliknięciem (pole z doborem domyślnym roli).
+  // zapis, a projektant dokłada je natywnym kliknięciem. Kontrakt prowadzenia projektanta
+  // (2026-10-15): przycisk zapisu nie jest wyszarzany — klik nie zapisuje, a stopka niesie
+  // jedno wskazanie.
   await expect(page.getByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeVisible();
   await expect(page.getByTestId('mvd-kreator-stacja-brak-pola-tr')).toBeVisible();
-  await expect(page.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+  await expect(page.getByTestId('mvd-kreator-stacja-zapisz')).toBeEnabled();
+  await page.getByTestId('mvd-kreator-stacja-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-wskazanie')).toBeVisible();
+  await expect(page.getByTestId('mvd-kreator-stacja')).toBeVisible();
+  await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
   await page.getByTestId('mvd-kreator-stacja-dodaj-pole-toru-LINIA_OUT').click();
   await page.getByTestId('mvd-kreator-stacja-przywroc-pole-tr').click();
   await expect(page.getByTestId('mvd-kreator-stacja-brak-pol-toru')).toHaveCount(0);
   await expect(page.getByTestId('mvd-kreator-stacja-brak-pola-tr')).toHaveCount(0);
   // Pole wejściowe zostaje pierwsze — wybór aparatu z pickera nie przepadł.
-  await expect(aparat1).toHaveValue(APARAT_ZMIENIONY);
+  await expect(aparat1).toHaveValue(aparatZmieniony);
 
   // ---------------------------------------------------------------- krok 4
   await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
@@ -427,17 +472,22 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // ---------------------------------------------------------------- krok 7
   // Podgląd skutków WYŁĄCZNIE z dry_run — asercja, że dane backendu są widoczne.
   await przejdzDoKroku(page, 'Podgląd skutków');
-  const odpowiedzPodgladu = page.waitForResponse(
-    (response) =>
-      response.url().includes('/enm/domain-ops')
-      && response.request().method() === 'POST'
-      && (response.request().postData() ?? '').includes('"dry_run":true'),
-    { timeout: 30000 },
-  );
-  await page.getByTestId('mvd-kreator-stacja-podglad-przelicz').click();
-  await odpowiedzPodgladu;
+  // Podgląd na żądanie idzie tą samą ścieżką prowadzenia co zapis: przy brakach (aparaty
+  // dołożonych pól toru, rodzaj zabezpieczenia, odpływy nN) klik wskazuje pole zamiast
+  // wysyłać operację, którą backend by odrzucił; przy komplecie — `dry_run` backendu.
+  const przebiegPodgladu = await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-stacja',
+    zapisz: 'mvd-kreator-stacja-podglad-przelicz',
+    koniec: 'mvd-kreator-stacja-podglad-wynik',
+    przedAkcja: () => przejdzDoKroku(page, 'Podgląd skutków'),
+    wartosci: WARTOSCI_TESTOWE_STACJI,
+  });
+  for (const w of przebiegPodgladu) expect(w.komunikat).toMatch(/ — /);
   await expect(page.getByTestId('mvd-kreator-stacja-podglad-blad')).toHaveCount(0);
-  await expect(page.getByTestId('mvd-kreator-stacja-podglad-skutkow')).toContainText('/station');
+  // Readout skutków z backendu (punkt podziału, długości części) — bez identyfikatora
+  // stacji w treści (nazwy, nie referencje maszynowe).
+  await expect(page.getByTestId('mvd-kreator-stacja-podglad-wynik')).toContainText('Punkt podziału odcinka');
+  await expect(page.getByTestId('mvd-kreator-stacja-podglad-wynik')).not.toContainText('/station');
 
   // ------------------------------------------------- KD-3: „zapisz jako szablon" (B-8)
   const nazwaSzablonu = `Szablon KD-3 ${nextEntitySuffix()}`;
@@ -486,9 +536,14 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
     if (body.includes('"dry_run":true')) return;
     operacjeZapisu.push(body);
   });
-  const zapisz = page.getByTestId('mvd-kreator-stacja-zapisz');
-  await expect(zapisz).toBeEnabled({ timeout: 20000 });
-  await zapisz.click();
+  // Zapis ścieżką prowadzenia projektanta: braki (aparaty dodanych pól, rodzaj
+  // zabezpieczenia, odpływy nN) wskazuje klik zapisu, test uzupełnia je natywnie.
+  const przebieg = await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-stacja',
+    zapisz: 'mvd-kreator-stacja-zapisz',
+    wartosci: WARTOSCI_TESTOWE_STACJI,
+  });
+  for (const w of przebieg) expect(w.komunikat).toMatch(/ — /);
   await expect(page.getByTestId('mvd-kreator-stacja')).toHaveCount(0, { timeout: 60000 });
 
   expect(operacjeZapisu, 'zapis stacji = dokładnie jedna operacja domenowa').toHaveLength(1);
@@ -529,7 +584,7 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
     expect(aparat.catalog_ref, 'aparat pola ma referencję katalogową').toBeTruthy();
   }
   // Zmiana z pickera trafiła do modelu.
-  expect(aparaty.some((a) => a.catalog_ref === APARAT_ZMIENIONY)).toBe(true);
+  expect(aparaty.some((a) => a.catalog_ref === aparatZmieniony)).toBe(true);
 
   // Krok 4: CT/VT/zabezpieczenie obecne w modelu — utworzone W TEJ SAMEJ
   // operacji co stacja (B-3; dawniej sekwencja osobnych operacji po zapisie).
@@ -588,6 +643,7 @@ test('K9-B: ścieżka „od zera" (bez szablonu) przechodzi do zapisu (bramka 1)
   await page.getByTestId('mvd-kreator-stacja-nazwa').fill('Stacja od zera');
 
   await przejdzDoKroku(page, 'Transformator i strona nN');
+  await wybierzNapiecieNnGdyPuste(page);
   const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
   await expect(katalogTrafo.locator('option')).not.toHaveCount(1, { timeout: 20000 });
   const trafoId = await katalogTrafo.locator('option').nth(1).getAttribute('value');
@@ -596,13 +652,17 @@ test('K9-B: ścieżka „od zera" (bez szablonu) przechodzi do zapisu (bramka 1)
   // Krok 3: domyślne pola rodzaju stacji z aparatem z katalogu (bez szablonu
   // startowego, ale ZAWSZE z wskazaną rodziną — pole należy do wyrobu).
   await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
-  await expect(
-    page.getByTestId('mvd-kreator-stacja-producent').locator('option'),
-  ).not.toHaveCount(1, { timeout: 20000 });
+  const producent = page.getByTestId('mvd-kreator-stacja-producent');
+  await expect(producent.locator('option')).not.toHaveCount(1, { timeout: 20000 });
+  // Kilku producentów w katalogu — wybór projektanta (dawniej pierwszy z listy z automatu).
+  if ((await producent.inputValue()) === '') {
+    const ref = await producent.locator('option:not([value=""])').first().getAttribute('value');
+    await producent.selectOption(ref!);
+  }
   await wybierzPierwszaDostepnaRodzine(page);
   await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({ timeout: 20000 });
-  const aparat1 = page.getByTestId('mvd-kreator-stacja-aparat-1');
-  await expect(aparat1).not.toHaveValue('');
+  // Aparat pola: oferta rodziny ma kilka zdatnych pozycji — wybór projektanta.
+  await wybierzWylacznikPola(page, 1);
 
   // Dodanie pola odgałęźnego — lista jest edytowalna.
   const liczbaPrzed = await page.locator('[data-testid^="mvd-kreator-stacja-pole-wiersz-"]').count();
@@ -612,9 +672,14 @@ test('K9-B: ścieżka „od zera" (bez szablonu) przechodzi do zapisu (bramka 1)
   );
 
   await przejdzDoKroku(page, 'Podsumowanie i zapis');
-  const zapisz = page.getByTestId('mvd-kreator-stacja-zapisz');
-  await expect(zapisz).toBeEnabled({ timeout: 20000 });
-  await zapisz.click();
+  const przebieg = await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-stacja',
+    zapisz: 'mvd-kreator-stacja-zapisz',
+    wartosci: WARTOSCI_TESTOWE_STACJI,
+  });
+  // Formularz od zera: kreator wskazuje m.in. układ sieci nN (bez domysłu TN-C-S).
+  expect(przebieg.map((w) => w.pole)).toContain('mvd-kreator-stacja-uklad-nn');
+  for (const w of przebieg) expect(w.komunikat).toMatch(/ — /);
   await expect(page.getByTestId('mvd-kreator-stacja')).toHaveCount(0, { timeout: 60000 });
 
   const enm = await pobierzEnm(request, caseId);

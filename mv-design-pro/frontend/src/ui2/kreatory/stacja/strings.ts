@@ -31,9 +31,7 @@ export const STACJA_STRINGS = {
   szablonKategoriaPomoc: 'Kategorie pochodzą z biblioteki szablonów stacji (backend).',
   szablonWybor: 'Szablon stacji',
   szablonWyborPlaceholder: '— pracuj od zera (bez szablonu) —',
-  szablonWyborPomoc:
-    'Wybór wypełnia formularz wartościami szablonu. „Od zera" jest równoprawne — kreator '
-    + 'startuje wtedy domyślnymi polami rodzaju stacji.',
+  szablonWyborPomoc: 'Szablon wypełnia formularz; „Od zera” zaczyna od pól rodzaju stacji.',
   szablonZastosuj: 'Wypełnij formularz szablonem',
   szablonWyczysc: 'Pracuj od zera',
   szablonWybrany: 'Szablon użyty do wypełnienia',
@@ -117,9 +115,7 @@ export const STACJA_STRINGS = {
   // --- Blok fabryczny RMU ---
   blokWybor: 'Blok fabryczny',
   blokPlaceholder: '— wskaż blok fabryczny —',
-  blokPomoc:
-    'Blok wyznacza STAŁĄ sekwencję jednostek wyrobu (np. L-L-T). Zmiana bloku przebudowuje pola '
-    + 'rozdzielnicy; pojedynczej jednostki nie da się dostawić ani usunąć — to inny wyrób.',
+  blokPomoc: 'Blok fabryczny RMU ma stałą sekwencję jednostek (np. L-L-T) — zmiana bloku przebudowuje pola.',
   blokSekwencja: 'Sekwencja jednostek',
   blokSzerokosc: 'Szerokość całkowita',
   blokJednostkiTytul: 'Jednostki bloku (skład stały)',
@@ -154,9 +150,7 @@ export const STACJA_STRINGS = {
    * (`equipment.ct|vt|relay`), więc wskazanie pozycji katalogowej REALNIE
    * powstaje razem ze stacją. Kontrolka bez pokrycia w backendzie jest zakazana.
    */
-  opcjaPomoc:
-    'Doposażenie opcjonalne — wskaż pozycję katalogową, aby powstało razem ze stacją; '
-    + 'wyczyszczenie wyboru usuwa je z konfiguracji.',
+  opcjaPomoc: 'Doposażenie opcjonalne karty pola — wskazana pozycja powstaje razem ze stacją.',
   opcjaBezDostawcy:
     'Doposażenie opcjonalne wg karty katalogowej. Operacja tego kreatora nie ma pola dla tego '
     + 'rodzaju aparatu, więc kreator go nie zapisuje — świadomie nie pokazujemy przełącznika '
@@ -166,17 +160,14 @@ export const STACJA_STRINGS = {
 
   // Krok 4 — pomiar i zabezpieczenia pól.
   pomiarOpis:
-    'Przekładniki i zabezpieczenie pola. Zapis wykonuje sekwencję operacji: stacja → CT → VT → '
-    + 'zabezpieczenie (backend nie przyjmuje dziś tych elementów w jednej operacji stacyjnej — '
-    + 'dług B-3 prowadzony osobno). Przekładnie pochodzą z pozycji katalogowej.',
+    'Przekładniki i zabezpieczenie pola powstają razem ze stacją, w jednej operacji. '
+    + 'Przekładnie pochodzą z pozycji katalogowej.',
   pomiarCt: 'Przekładnik prądowy CT',
   pomiarCtPomoc: 'Przekładnia i klasa z katalogu CT. Puste — pole bez przekładnika prądowego.',
   pomiarVt: 'Przekładnik napięciowy VT',
   pomiarVtPomoc: 'Przekładnia z katalogu VT. Puste — pole bez przekładnika napięciowego.',
   pomiarPrzekaznik: 'Zabezpieczenie pola',
-  pomiarPrzekaznikPomoc:
-    'Urządzenie zabezpieczeniowe z katalogu. Zabezpieczenia nadprądowe/ziemnozwarciowe wymagają '
-    + 'CT w tym samym polu (walidacja backendu).',
+  pomiarPrzekaznikPomoc: 'Przekaźnik z katalogu — działa przez wyłącznik pola i mierzy prąd z CT tego pola.',
   pomiarRodzaj: 'Rodzaj zabezpieczenia',
   pomiarRodzajOpcje: [
     { id: 'NADPRADOWY', etykieta: 'Nadprądowy (50/51)' },
@@ -202,7 +193,6 @@ export const STACJA_STRINGS = {
   podgladBrakKontekstu: 'Wskaż miejsce osadzenia stacji, aby policzyć podgląd.',
   podgladLadowanie: 'Backend liczy skutki operacji…',
   podgladBlad: 'Nie udało się policzyć podglądu skutków.',
-  podgladStacja: 'Identyfikator stacji (po zapisie)',
   podgladPodzial: 'Punkt podziału odcinka',
   podgladDlugoscA: 'Długość części przed stacją',
   podgladDlugoscB: 'Długość części za stacją',
@@ -212,9 +202,7 @@ export const STACJA_STRINGS = {
   podgladPusty: 'Brak podglądu — uruchom przeliczenie.',
   insertAt: 'Odległość stacji od początku odcinka [m]',
   insertAtPlaceholder: 'np. 250',
-  insertAtPomoc:
-    'Puste — punkt wskazany na schemacie. Podana wartość idzie do operacji jako odległość '
-    + 'w metrach; przeliczenie na udział długości wykonuje backend z danych odcinka.',
+  insertAtPomoc: 'Odległość stacji od początku odcinka [m]; puste — miejsce wskazane na schemacie.',
 
   // Krok 8 — łańcuchowanie po zapisie.
   dalejTytul: 'Następny krok po zapisie',
@@ -235,11 +223,7 @@ export const STACJA_STRINGS = {
     { id: 'inline', etykieta: 'Przelotowa (wejście + wyjście)' },
     { id: 'sectional', etykieta: 'Sekcyjna (ze sprzęgłem)' },
   ],
-  typStacjiPomoc:
-    'Końcowa zamyka ciąg jednym polem liniowym wejściowym (bez pól liniowych wyjściowych/odgałęźnych); '
-    + 'odgałęźna oddaje odczep w bok (wejście + wyjście + odgałęzienie); przelotowa wcina się '
-    + 'w ciąg (wejście + wyjście); sekcyjna dzieli szynę sprzęgłem. '
-    + 'Rodzaj decyduje o polach rozdzielnicy SN.',
+  typStacjiPomoc: 'Rodzaj ustawia startową listę pól; zapisany rodzaj wynika ze składu pól i umiejscowienia.',
   nazwa: 'Nazwa stacji',
   nazwaPlaceholder: 'np. Stacja ST-3',
   nazwaPomoc: 'Puste — backend nada unikatową nazwę domyślną (kod stacji).',
@@ -271,17 +255,9 @@ export const STACJA_STRINGS = {
     { id: 'BESS_INVERTER', etykieta: 'Magazyn energii BESS przez falownik' },
     { id: 'FW_INVERTER', etykieta: 'Elektrownia wiatrowa przez falownik' },
   ],
-  konfiguracjaNnPomoc:
-    'Odbiorcza: stacja zasila odbiory nN (0,4 kV — typowa rozdzielnia). Własne napięcie: '
-    + 'wybierasz jawnie napięcie strony nN z rozszerzonej listy (do 6,3 kV). Warianty źródłowe '
-    + '(PV / magazyn BESS / elektrownia wiatrowa): za transformatorem pracuje źródło przez falownik — '
-    + 'napięcie strony nN i moc wynikają z katalogu falownika właściwego rodzaju, a transformator '
-    + 'dobiera się do tych wartości.',
+  konfiguracjaNnPomoc: 'Odbiorcza, własne napięcie nN albo źródło za transformatorem (PV, magazyn, wiatr) — od niej zależy strona nN.',
   falownikPlaceholder: '— wybierz falownik z katalogu —',
-  falownikPomoc:
-    'Pozycja katalogowa falownika (rodzaj wynika z wybranego wariantu źródła) wyznacza napięcie '
-    + 'strony nN (un) i moc źródła — transformator dobiera się do tych wartości. Brak wyboru '
-    + 'blokuje dobór transformatora.',
+  falownikPomoc: 'Falownik z katalogu — jego napięcie i moc wyznaczają dobór transformatora.',
   falownikBlad: 'Nie udało się pobrać katalogu falowników.',
   wymNnOdczyt: 'Wymagane napięcie strony nN',
   wymNnOczekuje: 'oczekuje na wybór falownika',
@@ -301,9 +277,7 @@ export const STACJA_STRINGS = {
     { id: '6', etykieta: '6 kV' },
     { id: '6.3', etykieta: '6,3 kV' },
   ],
-  nnVoltageCustomPomoc:
-    'Jawnie wybrane napięcie strony nN dla nietypowej rozdzielni — transformator dobiera się '
-    + 'z katalogu do tej przekładni (blokada, gdy brak zgodnego typu).',
+  nnVoltageCustomPomoc: 'Napięcie strony nN nietypowej rozdzielni — transformator dobiera się z katalogu do tej przekładni.',
   nnVoltagePomoc: 'Napięcie strony dolnej dobiera transformator z katalogu (przekładnia SN/nN).',
   // Etykiety per wariant źródła (falownik / sekcja / pole źródłowe / stany zerowe).
   zrodloEtykiety: {
@@ -314,7 +288,7 @@ export const STACJA_STRINGS = {
       wyborBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
         `Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
-        + 'Uzupełnij katalog falowników PV.',
+        + 'Wybierz inny rodzaj źródła albo dodaj falownik do katalogu.',
     },
     BESS_INVERTER: {
       falownik: 'Falownik magazynu BESS z katalogu',
@@ -323,7 +297,7 @@ export const STACJA_STRINGS = {
       wyborBrak: 'Wybierz falownik magazynu BESS z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
         `Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
-        + 'Uzupełnij katalog falowników BESS.',
+        + 'Wybierz inny rodzaj źródła albo dodaj falownik do katalogu.',
     },
     FW_INVERTER: {
       falownik: 'Falownik elektrowni wiatrowej z katalogu',
@@ -332,23 +306,19 @@ export const STACJA_STRINGS = {
       wyborBrak: 'Wybierz falownik elektrowni wiatrowej z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
         `Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
-        + 'Uzupełnij katalog falowników.',
+        + 'Wybierz inny rodzaj źródła albo dodaj falownik do katalogu.',
     },
   },
   snVoltageOdczyt: 'Napięcie SN szyny',
   typKatalog: 'Typ transformatora z katalogu',
   typKatalogPlaceholder: '— wybierz typ transformatora —',
-  typKatalogPomoc:
-    'Lista zawęża się do typów zgodnych z napięciem SN szyny i wybranym napięciem nN — '
-    + 'parametry (moc, uk, przekładnia) pochodzą z katalogu.',
+  typKatalogPomoc: 'Transformatory z katalogu zgodne z napięciem SN szyny i napięciem nN.',
   typBlad: 'Nie udało się pobrać katalogu transformatorów SN/nN.',
   brakDoboru:
     'Brak w katalogu transformatora zgodnego z napięciem SN szyny i wybranym napięciem nN. '
     + 'Zmień napięcie nN lub uzupełnij katalog.',
   liczbaOdplywow: 'Liczba odpływów nN odbiorczych',
-  liczbaOdplywowPomoc:
-    'Blok nN: szyna nN, wyłącznik główny i odpływy odbiorcze. Dla PV dochodzi osobne '
-    + 'pole źródłowe falownika (poza tą liczbą).',
+  liczbaOdplywowPomoc: 'Odpływy odbiorcze rozdzielnicy nN (pole źródłowe falownika dochodzi osobno).',
 
   // Parametry katalogu (odczyt).
   paramMoc: 'Moc znamionowa',
@@ -357,9 +327,7 @@ export const STACJA_STRINGS = {
 
   // Krok 3 — rozdzielnica SN.
   producent: 'Producent rozdzielnicy SN',
-  producentPomoc:
-    'Pakiet katalogowy producenta rozdzielnicy SN wyznacza dostępne rodziny i kompletne '
-    + 'szablony pól. Lista obejmuje wyłącznie producentów z konfiguracją katalogową.',
+  producentPomoc: 'Producent rozdzielnicy SN — jego rodziny i karty pól składają rozdzielnicę.',
   producentPlaceholder: '— wybierz producenta —',
   rodzina: 'Rodzina rozdzielnicy',
   /**
@@ -369,29 +337,24 @@ export const STACJA_STRINGS = {
    * funkcjonalnej KONKRETNEJ rodziny. Bez rodziny nie ma ani jej klas
    * znamionowych, ani toru konfiguracji, ani katalogowych pól.
    */
-  rodzinaPomoc:
-    'Rodzina to konkretna seria wyrobu producenta. Wyznacza klasy znamionowe (napięcie, prąd, '
-    + 'prąd zwarciowy), technologię i TOR KONFIGURACJI: rozdzielnica składana z pól albo blok '
-    + 'fabryczny RMU. Wskazanie jest wymagane — bez rodziny nie ma katalogowych pól.',
+  rodzinaPomoc: 'Seria wyrobu producenta — klasy znamionowe, technologia i tor konfiguracji (pola albo blok RMU).',
   rodzinaPlaceholder: '— wskaż rodzinę z katalogu —',
   poleRoliPomoc: 'Kompletny szablon pola z katalogu producenta (rozłącznik, przekładniki, zabezpieczenia).',
-  polePlaceholder: '— dobór automatyczny —',
+  polePlaceholder: '— wybierz kartę pola z katalogu —',
+  /** Puste wyposażenie pola (pole bez przekładnika / zabezpieczenia) — stan dozwolony. */
+  wyposazenieBrak: '— brak —',
   aparatPola: 'Aparat pola',
-  aparatPolaPomoc:
-    'Aparat łączeniowy pola z katalogu SN. Lista jest zawężona do rozwiązań stosowanych w tej roli '
-    + 'pola. Wskazanie jest wymagane — system nie dobiera aparatu za projektanta.',
+  aparatPolaPomoc: 'Aparat łączeniowy pola z oferty rodziny, zawężony do rozwiązań tej roli pola.',
   aparatPolaPlaceholder: '— wskaż aparat z katalogu —',
   aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
-  brakAparatow:
-    'Katalog aparatury SN nie zawiera pozycji na napięcie szyny. Uzupełnij katalog APARAT_SN.',
+  brakAparatow: 'Katalog aparatury SN nie ma pozycji na napięcie szyny tej stacji.',
   /** Rozwiązania dopuszczalne dla roli pola — wprost z katalogu (bez listy zaszytej w UI). */
   aparatPolaWarianty: (warianty: readonly string[]) =>
     warianty.length > 0
       ? `Rozwiązania stosowane w tym polu: ${warianty.join(' albo ')}.`
       : 'Katalog nie zawęża rodzaju aparatu dla tej roli pola.',
   brakAparatowRoli:
-    'Katalog aparatury SN nie ma pozycji stosowanej w tym polu na napięcie szyny. '
-    + 'Uzupełnij katalog APARAT_SN albo zmień rolę pola.',
+    'Oferta rodziny nie ma aparatu stosowanego w tym polu na napięcie szyny — zmień rolę pola albo rodzinę.',
 
   // KOMPLETNOSC-POLA-TR — świadoma rezygnacja z pola transformatorowego.
   polaBrakTrTytul: 'Stacja z transformatorem bez pola transformatorowego',
@@ -458,7 +421,6 @@ export const STACJA_STRINGS = {
   podgladSzynaBezNapiecia: 'Szyna SN',
   podgladBrakAparatu: 'aparat pola niewskazany',
   podgladBrakTransformatora: 'transformator — typ niewskazany',
-  podgladBrakSzablonu: 'brak szablonu pola',
   podgladPole: (numer: number) => `Pole ${numer}`,
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
   /**
@@ -468,9 +430,7 @@ export const STACJA_STRINGS = {
   brakRodzin:
     'Ten producent nie ma w katalogu rodziny na napięcie szyny SN. Wybierz innego producenta '
     + 'albo uzupełnij katalog rodzin rozdzielnic — bez rodziny nie ma katalogowych pól.',
-  brakSzablonow:
-    'Brak kompletnych szablonów pól dla wybranego producenta/rodziny. Wybierz inny pakiet katalogowy '
-    + 'lub uzupełnij katalog rozdzielnic SN.',
+  brakSzablonow: 'Wybrana rodzina nie ma w katalogu kart pól — wybierz inną rodzinę.',
   rozdzielnicaBlad: 'Nie udało się pobrać katalogu rozdzielnic SN.',
   wierszRozdzielnica: 'Rozdzielnica',
 
@@ -503,24 +463,11 @@ export const STACJA_STRINGS = {
   podsumNnKonfiguracja: 'Konfiguracja nN',
   podsumZrodlo: 'Źródło nN',
 
-  // Szybka ścieżka — stacja rekomendowana (skrót katalogowy).
-  szybkaTytul: 'Gotowa stacja z katalogu',
-  szybkaOpis:
-    'Zapisuje kompletną stację z rekomendowanym transformatorem, pakietem rozdzielnicy SN '
-    + 'i blokiem nN wynikającymi z bieżącej konfiguracji — bez ręcznego doboru pól.',
-  szybkaZapisz: 'Zapisz gotową stację z katalogu',
-  szybkaNiedostepna:
-    'Skrót dostępny po wczytaniu katalogu i skompletowaniu konfiguracji (miejsce, transformator, '
-    + 'rozdzielnica; dla PV — falownik).',
-
   // Kontrola.
   kontrolaTytul: 'Kontrola stacji',
   wierszTyp: 'Rodzaj',
-  /** Rodzaj wynikający ze składu pól i umiejscowienia (zgodny z deklaracją). */
+  /** Rodzaj wynikowy — ze składu pól i umiejscowienia; to on trafia do modelu. */
   rodzajWynikowy: (rodzaj: string) => `Stacja ${rodzaj} (ze składu pól)`,
-  /** Rodzaj wynikający ze składu pól różni się od deklaracji z kroku „Rodzaj”. */
-  rodzajNiezgodny: (rodzaj: string, deklaracja: string) =>
-    `Stacja ${rodzaj} ze składu pól — zadeklarowano: ${deklaracja}`,
   wierszUmiejscowienie: 'Umiejscowienie',
   wierszTransformator: 'Transformator',
   wierszNn: 'Blok nN',
@@ -537,8 +484,11 @@ export const STACJA_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz stację',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem stacji.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać stację.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis stacji unieważnia jego wyniki.',
+  bladZapisu: 'Zapis stacji nie powiódł się — spróbuj ponownie.',
+  wybierz: '— wybierz —',
+  szablonWybierzNajpierw: 'Wskaż szablon stacji z listy — szablon wypełnia formularz.',
+  blokBrakWalid: 'Wskaż blok fabryczny rozdzielnicy — od niego zależy skład pól.',
 
   // Panel teorii (V12K-066: standard „must-have").
   teoriaRodzajTytul: 'Teoria: rola stacji SN/nN i sposób osadzenia w sieci',
@@ -598,10 +548,7 @@ export const STACJA_STRINGS = {
 
   // Praca równoległa transformatorów (G-STK-6) — krok transformatora.
   liczbaTransformatorow: 'Liczba równoległych transformatorów',
-  liczbaTransformatorowPomoc:
-    'Identyczne jednostki pracujące równolegle w polu transformatorowym (rezerwa/moc). '
-    + 'Dla n jednostek impedancja zastępcza maleje n-krotnie ($Z/n$) — rozpływ i zwarcie liczy '
-    + 'backend na agregacie. 1 = pojedynczy transformator.',
+  liczbaTransformatorowPomoc: 'Identyczne jednostki pracujące równolegle — impedancja zastępcza $Z/n$.',
 
   // Szablony użytkownika (B-8) — zapis konfiguracji z kroku podglądu.
   szablonZapiszTytul: 'Zapisz jako szablon',
@@ -631,9 +578,7 @@ export const STACJA_STRINGS = {
     { id: 'DETC', etykieta: 'przełącznik bez wzbudzenia (DETC)' },
     { id: 'OLTC', etykieta: 'podobciążeniowy (OLTC)' },
   ],
-  zaczepyRodzajPomoc:
-    'Przełącznik bez wzbudzenia przestawia się przy wyłączonym transformatorze (typowy '
-    + 'w stacjach SN/nN); podobciążeniowy — pod napięciem i obciążeniem (typowy w GPZ).',
+  zaczepyRodzajPomoc: 'Bez wzbudzenia — przestawiany przy wyłączonym transformatorze; podobciążeniowy — pod obciążeniem.',
   zaczepyUzwojenie: 'Regulowane uzwojenie',
   zaczepyUzwojenieOpcje: [
     { id: 'HV', etykieta: 'górne (SN)' },
@@ -678,9 +623,7 @@ export const STACJA_STRINGS = {
     { id: 'TT', etykieta: 'TT (oddzielne uziemienia)' },
     { id: 'IT', etykieta: 'IT (izolowany / uziemiony przez impedancję)' },
   ],
-  uziemienieUkladPomoc:
-    'TN-C-S to typowy układ dystrybucyjny nN. IT stosuje się tam, gdzie wymagana jest ciągłość '
-    + 'zasilania przy pierwszym doziemieniu (z kontrolą stanu izolacji).',
+  uziemienieUkladPomoc: 'Układ sieci nN — od niego zależą pętla zwarcia i ochrona przeciwporażeniowa.',
   uziemieniePunkt: 'Punkt neutralny transformatora (nN)',
   uziemieniePunktOpcje: [
     { id: 'directly_grounded', etykieta: 'Bezpośrednio uziemiony' },
@@ -688,15 +631,11 @@ export const STACJA_STRINGS = {
     { id: 'petersen_coil', etykieta: 'Cewka Petersena (kompensacja)' },
     { id: 'isolated', etykieta: 'Izolowany (bez uziemienia)' },
   ],
-  uziemieniePunktPomoc:
-    'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
-    + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
+  uziemieniePunktPomoc: 'Praca punktu neutralnego — od niej zależy prąd zwarcia doziemnego.',
   uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
   uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
-  uziemienieRezystancjaPomoc:
-    'Wymagana dla uziemienia impedancyjnego: rezystor — R_N, cewka Petersena — X_N. '
-    + 'Backend odrzuca konfigurację bez składowej dominującej (nie podstawia zera).',
+  uziemienieRezystancjaPomoc: 'Składowa dominująca uziemienia impedancyjnego: R_N rezystora albo X_N dławika.',
   teoriaUziemienieTytul: 'Teoria: uziemienie punktu neutralnego a zwarcie doziemne',
   teoriaUziemienieOpis:
     'Sposób pracy punktu neutralnego wyznacza charakter zwarcia doziemnego: sieć bezpośrednio '

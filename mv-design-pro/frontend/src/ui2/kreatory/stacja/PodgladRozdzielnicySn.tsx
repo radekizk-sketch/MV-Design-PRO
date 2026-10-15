@@ -99,15 +99,19 @@ function NaglowekPakietu({ naglowek }: { naglowek: NaglowekRozdzielnicy }) {
     <div className="mvd-podglad-naglowek" data-testid="mvd-podglad-naglowek">
       <div className="mvd-podglad-naglowek-tytul">
         <strong>{naglowek.producent ?? T.naglowekBrakProducenta}</strong>
-        <span
-          className="mvd-podglad-naglowek-status"
-          data-testid="mvd-podglad-status"
-          data-status={naglowek.status}
-          style={{ color: status.token }}
-          title={naglowek.komunikatStatusu ?? undefined}
-        >
-          {status.etykieta}
-        </span>
+        {/* Konfiguracja w toku (niesprawdzona) nie niesie sygnału — kontrakt prowadzenia:
+            walidator rusza dopiero przy kompletnej konfiguracji. */}
+        {naglowek.status === 'NIESPRAWDZONA' ? null : (
+          <span
+            className="mvd-podglad-naglowek-status"
+            data-testid="mvd-podglad-status"
+            data-status={naglowek.status}
+            style={{ color: status.token }}
+            title={naglowek.komunikatStatusu ?? undefined}
+          >
+            {status.etykieta}
+          </span>
+        )}
       </div>
       <dl className="mvd-podglad-naglowek-dane">
         {pozycje.map((p) => (
@@ -364,21 +368,21 @@ export function PodgladRozdzielnicySn({
             })}
             {slot.wierszeOpisu.map((wiersz, i) => {
               const nazwa = i < slot.wierszyNazwy;
+              // Pole bez aparatu to praca w toku, nie usterka: opis wyróżniony kursywą
+              // w kolorze stonowanym (rysunek mówi „tu jeszcze nic nie ma”), bez koloru
+              // błędu — ten należy wyłącznie do konfliktów (karta PROWADZENIE-KREATORY).
+              const brak = slot.brakAparatu && nazwa;
               return (
                 <text
                   key={`opis-${slot.klucz}-${i}`}
                   x={slot.x}
                   y={rysunek.opisyY + i * WYS_WIERSZA_APARATU}
                   textAnchor="middle"
-                  fill={
-                    slot.brakAparatu && nazwa
-                      ? 'var(--mvd-err)'
-                      : nazwa
-                        ? 'currentColor'
-                        : 'var(--mvd-muted)'
-                  }
+                  fill={nazwa && !brak ? 'currentColor' : 'var(--mvd-muted)'}
                   fontSize={LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize}
-                  fontWeight={nazwa ? 700 : LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight}
+                  fontWeight={nazwa && !brak ? 700 : LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight}
+                  fontStyle={brak ? 'italic' : undefined}
+                  data-brak-aparatu={brak ? 'tak' : undefined}
                 >
                   {wiersz}
                 </text>

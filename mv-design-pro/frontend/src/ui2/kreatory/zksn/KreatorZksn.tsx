@@ -27,19 +27,26 @@ import {
   PoleLiczbowe,
   PoleTekstowe,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  polozenieZKontekstu,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   fmtPct01,
+  konfliktyFormularza,
   maOdcinek,
   opisWariantu,
   problemTorowosci,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type KontekstZksn,
   type ZksnFormData,
 } from './zksnModel';
@@ -49,6 +56,14 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'zksn', tytul: T.krokKatalog },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'zksn', pole: 'mvd-kreator-zksn-katalog' },
+  polozenie: { krok: 'zksn', pole: 'mvd-kreator-zksn-polozenie' },
+};
+
+type PoleAuto = 'catalog_ref' | 'polozenie';
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -66,18 +81,6 @@ function znajdzOdcinek(
   return snapshot?.branches?.find((b) => segmentRef(b) === segmentId || b.id === segmentId);
 }
 
-function pozycjaZKontekstu(context: Record<string, unknown> | null): number | undefined {
-  if (!context) return undefined;
-  const explicit = Number(context.position_on_segment);
-  if (Number.isFinite(explicit)) return Math.min(1, Math.max(0, explicit));
-  const insertAt = context.insert_at;
-  if (insertAt && typeof insertAt === 'object') {
-    const value = Number((insertAt as Record<string, unknown>).value);
-    if (Number.isFinite(value)) return Math.min(1, Math.max(0, value));
-  }
-  return context.placement_mode === 'ENDPOINT_APPEND' ? 1 : undefined;
-}
-
 function kontekstZOperacji(
   context: Record<string, unknown> | null,
   snapshot: EnergyNetworkModel | null | undefined,
@@ -93,7 +96,9 @@ function kontekstZOperacji(
       || (segId ? 'Kabel SN' : undefined),
     segment_type: segment?.type,
     switch_state: context.switch_state,
-    polozenie: pozycjaZKontekstu(context),
+    // Wyłącznie położenie WEWNĄTRZ odcinka; koniec odcinka (dopięcie) nie jest położeniem
+    // ZKSN „na odcinku” — dawniej przycinany do 1 i odrzucany walidacją (0, 1).
+    polozenie: polozenieZKontekstu(context),
   };
 }
 
@@ -111,11 +116,12 @@ export function KreatorZksn() {
 
   const [dane, setDane] = useState<ZksnFormData>(() => ({
     ...DANE_DOMYSLNE,
-    polozenie: kontekst.polozenie ?? DANE_DOMYSLNE.polozenie,
+    polozenie: kontekst.polozenie ?? null,
   }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('zksn');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
   const [typy, setTypy] = useState<BranchPointCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -158,12 +164,13 @@ export function KreatorZksn() {
   const zmien = useCallback(
     <K extends keyof ZksnFormData>(pole: K, wartosc: ZksnFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'polozenie') edytowane('polozenie');
     },
-    [],
+    [edytowane],
   );
 
   // Wybór wariantu z katalogu determinuje liczbę portów odgałęzienia (bez fabrykacji).
-  const wybierzKatalog = useCallback(
+  const ustawWariant = useCallback(
     (id: string | null) => {
       const wariant = id ? typy.find((t) => t.id === id) ?? null : null;
       setDane((p) => ({
@@ -175,45 +182,47 @@ export function KreatorZksn() {
     },
     [typy],
   );
+  const wybierzKatalog = useCallback(
+    (id: string | null) => {
+      ustawWariant(id);
+      edytowane('catalog_ref');
+    },
+    [edytowane, ustawWariant],
+  );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // AUTO_PRZYJETE: położenie z miejsca wskazania i jedyny wariant ZKSN w katalogu.
+  const jedynyWariant = useMemo(() => jedynaZgodna(typy), [typy]);
+  useEffect(() => {
+    if (!jedynyWariant || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    ustawWariant(jedynyWariant.id);
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyWariant, ustawWariant]);
 
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasOdcinek || Boolean(problemTor) || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisMozliwy = stanGotowosci === 'gotowy';
+  // KONFLIKT_TECHNICZNY — widoczny od razu: położenie spoza odcinka, tor (linia ≠ kabel).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
 
   const onZapisz = useCallback(async () => {
-    if (!hasOdcinek) {
-      setBladGlobalny(T.brakOdcinkaOpis);
+    const brak = pierwszyBrak([
+      !hasOdcinek && { komunikat: T.brakOdcinkaOpis },
+      problemTor ? { komunikat: problemTor } : null,
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    if (problemTor) {
-      setBladGlobalny(problemTor);
-      return;
-    }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
-        activeCaseId,
+        activeCaseId as string,
         'insert_zksn_on_segment_sn',
         zbudujPayload(dane, kontekst),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -223,27 +232,35 @@ export function KreatorZksn() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'BranchPole', name: dane.nazwa.trim() || 'ZKSN SN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, problemTor, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, problemTor, prowadzenie, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszOdcinek,
-      stan: hasOdcinek ? 'kompletne' : 'brak',
-      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : 'Brak'),
+      stan: hasOdcinek ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : T.odcinekDoWskazania),
     },
     {
       etykieta: T.wierszTor,
-      stan: problemTor ? 'brak' : 'kompletne',
+      stan: problemTor ? 'konflikt' : 'ustalone',
       wartosc: problemTor ? 'Nieprawidłowy tor' : 'Kabel SN',
     },
     {
       etykieta: T.wierszWariant,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? opisWariantu(dane.branch_ports_count) : 'Do konfiguracji',
+      stan: !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: dane.catalog_ref ? opisWariantu(dane.branch_ports_count) : '',
     },
-    { etykieta: T.wierszPolozenie, stan: 'kompletne', wartosc: fmtPct01(dane.polozenie) },
+    {
+      etykieta: T.wierszPolozenie,
+      stan: konfliktDlaPola('polozenie')
+        ? 'konflikt'
+        : dane.polozenie === null
+          ? 'do_wyboru'
+          : 'ustalone',
+      wartosc: dane.polozenie === null ? '' : fmtPct01(dane.polozenie),
+    },
   ];
 
   const aside = (
@@ -274,15 +291,13 @@ export function KreatorZksn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : problemTor ?? (!hasOdcinek ? T.brakOdcinkaOpis : null)
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-zksn-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-zksn-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-zksn-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -323,17 +338,16 @@ export function KreatorZksn() {
             wymagane
             testid="mvd-kreator-zksn-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           <KreatorSiatka kolumny={2}>
             <PoleLiczbowe
               etykieta={T.polozenie}
               wartosc={dane.polozenie}
-              onZmiana={(v) => zmien('polozenie', v ?? 0)}
+              onZmiana={(v) => zmien('polozenie', v)}
               krok={0.05}
               min={0}
               max={1}
               pomoc={T.polozeniePomoc}
-              blad={bladDlaPola('polozenie')}
+              blad={konfliktDlaPola('polozenie')}
               testid="mvd-kreator-zksn-polozenie"
             />
             <PoleTekstowe

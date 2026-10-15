@@ -4,6 +4,11 @@
  * Katalog-first (APARAT_SN); stan normalny (zamknięty/otwarty=NOP) honorowany
  * przez rozpływ mocy (zweryfikowane: open switch → brak gałęzi w Y-bus). Zapis =
  * operacja domenowa `insert_section_switch_sn`. ZERO fizyki w UI.
+ *
+ * Prowadzenie projektanta (kontrakt `KONTRAKT_PROWADZENIA_PROJEKTANTA.md`): w trakcie pracy
+ * kreator milczy; aparat jedyny zdatny na napięcie odcinka, rodzaj z pozycji katalogowej
+ * i położenie z miejsca wskazania trafiają do pól jako zwykłe wartości; brak przy zapisie to
+ * jedno wskazanie parametru z przejściem do pola.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,6 +18,7 @@ import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catal
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { aparatyDlaPola } from '../stacja/stacjaModel';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -26,17 +32,27 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  fmtKvPl,
+  jedynaZgodna,
+  napiecieOdcinka,
+  pierwszyBrak,
+  polozenieZKontekstu,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   fmtPct01,
+  konfliktyFormularza,
   maOdcinek,
+  rodzajZKatalogu,
   walidujFormularz,
   zbudujPayload,
-  type BladPola,
   type KontekstLacznika,
   type LacznikFormData,
   type NormalState,
@@ -49,6 +65,15 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'zapis', tytul: T.krokZapis },
 ];
 
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'aparat', pole: 'mvd-kreator-lacznik-katalog' },
+  switch_type: { krok: 'aparat', pole: 'mvd-kreator-lacznik-rodzaj' },
+  polozenie: { krok: 'aparat', pole: 'mvd-kreator-lacznik-polozenie' },
+};
+
+type PoleAuto = 'catalog_ref' | 'switch_type' | 'polozenie';
+
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -59,23 +84,35 @@ function kontekstZOperacji(context: Record<string, unknown> | null): KontekstLac
   return {
     segment_id: segId || undefined,
     segment_label: trimmed(context.segmentLabel ?? context.segment_name) || segId || undefined,
+    polozenie: polozenieZKontekstu(context),
   };
+}
+
+function etykietaRodzaju(rodzaj: SwitchType): string {
+  return T.rodzajOpcje.find((o) => o.id === rodzaj)?.etykieta ?? rodzaj;
 }
 
 export function KreatorLacznikaSekcyjnego() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
   const hasOdcinek = maOdcinek(kontekst);
+  const napiecieKv = useMemo(() => napiecieOdcinka(snapshot, kontekst.segment_id), [snapshot, kontekst.segment_id]);
 
-  const [dane, setDane] = useState<LacznikFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
+  const [dane, setDane] = useState<LacznikFormData>(() => ({
+    ...DANE_DOMYSLNE,
+    polozenie: kontekst.polozenie ?? null,
+  }));
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('aparat');
+  const prowadzenie = useProwadzenie(setKrok);
+  const przyjete = useDecyzjeProjektanta<PoleAuto>();
+  const { edytowane, decyzjaProjektanta } = przyjete;
 
   const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -110,34 +147,75 @@ export function KreatorLacznikaSekcyjnego() {
     [dane.catalog_ref, typy],
   );
 
+  // Aparaty zdatne na napięcie odcinka (U_n aparatu ≥ U_n sieci) — ten sam predykat co
+  // dobór aparatu pola w kreatorze stacji; napięcie nieznane = pełny katalog.
+  const zdatne = useMemo(() => aparatyDlaPola(typy, napiecieKv ?? 0), [typy, napiecieKv]);
   const opcjeTypow = useMemo(
-    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A` })),
-    [typy],
+    () => zdatne.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A` })),
+    [zdatne],
   );
 
-  const zmien = useCallback(<K extends keyof LacznikFormData>(pole: K, wartosc: LacznikFormData[K]) => {
-    setDane((p) => ({ ...p, [pole]: wartosc }));
-  }, []);
+  // AUTO_PRZYJETE: jedyny aparat katalogu zdatny na napięcie odcinka (źródło jednoznaczne).
+  // Kilka zdatnych = wybór projektanta z listy, nigdy pierwsza pozycja.
+  const jedynyAparat = useMemo(
+    () => (napiecieKv !== null ? jedynaZgodna(zdatne) : null),
+    [napiecieKv, zdatne],
+  );
+  useEffect(() => {
+    if (!jedynyAparat || napiecieKv === null || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyAparat.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyAparat, napiecieKv]);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // AUTO_PRZYJETE: rodzaj aparatu z wybranej pozycji katalogowej.
+  const rodzajKatalogu = rodzajZKatalogu(params?.device_kind);
+  useEffect(() => {
+    if (!rodzajKatalogu || decyzjaProjektanta('switch_type')) return;
+    setDane((p) => (p.switch_type === rodzajKatalogu ? p : { ...p, switch_type: rodzajKatalogu }));
+  }, [decyzjaProjektanta, rodzajKatalogu]);
+
+  const zmien = useCallback(
+    <K extends keyof LacznikFormData>(pole: K, wartosc: LacznikFormData[K]) => {
+      setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'catalog_ref' || pole === 'switch_type' || pole === 'polozenie') {
+        edytowane(pole as PoleAuto);
+      }
+    },
+    [edytowane],
+  );
+
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu (nie czeka na zapis).
+  const konflikty = useMemo(
+    () => konfliktyFormularza(dane, params?.device_kind ?? null),
+    [dane, params],
+  );
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
+  const konfliktNapiecia =
+    params && napiecieKv !== null && params.u_n_kv + 1e-6 < napiecieKv
+      ? T.konfliktNapiecia(fmtKvPl(napiecieKv))
+      : undefined;
 
   const onZapisz = useCallback(async () => {
-    if (!hasOdcinek) {
-      setBladGlobalny(T.brakOdcinkaOpis);
+    const brak = pierwszyBrak([
+      !hasOdcinek && { komunikat: T.brakOdcinkaOpis },
+      konfliktNapiecia ? { komunikat: konfliktNapiecia, ...MIEJSCA.catalog_ref } : null,
+      ...walidujFormularz(dane, params?.device_kind ?? null).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'insert_section_switch_sn', zbudujPayload(dane, kontekst));
+      const response = await executeDomainOperation(
+        activeCaseId as string,
+        'insert_section_switch_sn',
+        zbudujPayload(dane, kontekst),
+      );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -147,27 +225,49 @@ export function KreatorLacznikaSekcyjnego() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'Switch', name: dane.nazwa.trim() || 'Łącznik sekcyjny SN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, selekcjaPoOperacji]);
+  }, [
+    activeCaseId,
+    closeForm,
+    dane,
+    executeDomainOperation,
+    hasOdcinek,
+    konfliktNapiecia,
+    kontekst,
+    params,
+    prowadzenie,
+    selekcjaPoOperacji,
+  ]);
+
+  const stanAparatu: WierszGotowosci['stan'] = konfliktNapiecia
+    ? 'konflikt'
+    : !dane.catalog_ref
+      ? 'do_wyboru'
+      : 'ustalone';
+  const stanPolozenia: WierszGotowosci['stan'] = konfliktDlaPola('polozenie')
+    ? 'konflikt'
+    : dane.polozenie === null
+      ? 'do_wyboru'
+      : 'ustalone';
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszOdcinek,
-      stan: hasOdcinek ? 'kompletne' : 'brak',
-      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : 'Brak'),
+      stan: hasOdcinek ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.segment_label || (hasOdcinek ? 'Wskazany' : T.odcinekDoWskazania),
     },
-    {
-      etykieta: T.wierszAparat,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
-    },
+    { etykieta: T.wierszAparat, stan: stanAparatu, wartosc: params?.name ?? '' },
     {
       etykieta: T.wierszStan,
-      stan: dane.normal_state === 'open' ? 'ostrzezenie' : 'kompletne',
+      stan: 'ustalone',
       wartosc: dane.normal_state === 'open' ? 'Otwarty (NOP)' : 'Zamknięty',
     },
-    { etykieta: T.wierszPolozenie, stan: 'kompletne', wartosc: fmtPct01(dane.polozenie) },
+    {
+      etykieta: T.wierszPolozenie,
+      stan: stanPolozenia,
+      wartosc: dane.polozenie === null ? '' : fmtPct01(dane.polozenie),
+    },
   ];
 
   const aside = (
@@ -189,16 +289,6 @@ export function KreatorLacznikaSekcyjnego() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasOdcinek || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   return (
     <KreatorRama
@@ -212,17 +302,13 @@ export function KreatorLacznikaSekcyjnego() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasOdcinek
-              ? T.brakOdcinkaOpis
-              : null
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-lacznik-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-lacznik-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-lacznik-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -254,15 +340,16 @@ export function KreatorLacznikaSekcyjnego() {
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}
+            blad={konfliktNapiecia}
             testid="mvd-kreator-lacznik-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           <KreatorSiatka kolumny={2}>
             <PoleWyboru
               etykieta={T.rodzaj}
-              wartosc={dane.switch_type}
-              onZmiana={(v) => zmien('switch_type', v as SwitchType)}
-              opcje={T.rodzajOpcje}
+              wartosc={dane.switch_type ?? ''}
+              onZmiana={(v) => zmien('switch_type', (v || null) as SwitchType | null)}
+              opcje={[{ id: '', etykieta: T.rodzajPlaceholder }, ...T.rodzajOpcje]}
+              blad={konfliktDlaPola('switch_type')}
               testid="mvd-kreator-lacznik-rodzaj"
             />
             <PoleWyboru
@@ -275,11 +362,11 @@ export function KreatorLacznikaSekcyjnego() {
             <PoleLiczbowe
               etykieta={T.polozenie}
               wartosc={dane.polozenie}
-              onZmiana={(v) => zmien('polozenie', v ?? 0)}
+              onZmiana={(v) => zmien('polozenie', v)}
               krok={0.05}
               min={0}
               pomoc={T.polozeniePomoc}
-              blad={bladDlaPola('polozenie')}
+              blad={konfliktDlaPola('polozenie')}
               testid="mvd-kreator-lacznik-polozenie"
             />
             <PoleTekstowe
@@ -308,7 +395,7 @@ export function KreatorLacznikaSekcyjnego() {
             <RzadWartosci etykieta={T.wierszOdcinek} wartosc={kontekst.segment_label || '—'} />
             <RzadWartosci etykieta={T.wierszStan} wartosc={dane.normal_state === 'open' ? 'Otwarty (NOP)' : 'Zamknięty'} />
             <RzadWartosci etykieta={T.wierszPolozenie} wartosc={fmtPct01(dane.polozenie)} />
-            <RzadWartosci etykieta={T.rodzaj} wartosc={dane.switch_type} />
+            <RzadWartosci etykieta={T.rodzaj} wartosc={dane.switch_type ? etykietaRodzaju(dane.switch_type) : '—'} />
           </KreatorSiatka>
         </KreatorSekcja>
       ) : null}

@@ -66,6 +66,10 @@ export function KreatorPodsumowanie({
 
 // --------------------------------------------------------- Lista gotowości
 
+/**
+ * Panel kontroli kreatora — tok pracy, nie lista braków. Czerwień wyłącznie dla stanu
+ * `konflikt`; stan `do_wyboru` jest neutralny (kontrakt prowadzenia projektanta, reguła 2).
+ */
 export interface KreatorGotowoscProps {
   tytul: string;
   wiersze: readonly WierszGotowosci[];
@@ -73,9 +77,9 @@ export interface KreatorGotowoscProps {
 }
 
 const STAN_ETYKIETA: Record<WierszGotowosci['stan'], string> = {
-  kompletne: 'Kompletne',
-  ostrzezenie: 'Sprawdź',
-  brak: 'Brak',
+  ustalone: 'Wybrane',
+  do_wyboru: 'Do wyboru',
+  konflikt: 'Konflikt',
 };
 
 export function KreatorGotowosc({ tytul, wiersze, testid }: KreatorGotowoscProps) {

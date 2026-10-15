@@ -54,22 +54,14 @@ export const ODBIOR_STRINGS = {
     { id: 'BC', etykieta: 'Międzyfazowy L2–L3 (BC)' },
     { id: 'CA', etykieta: 'Międzyfazowy L3–L1 (CA)' },
   ],
-  fazyPomoc:
-    'Fazy czyta rozpływ niesymetryczny (napięcia i prądy per faza, VUF). Odbiór bez '
-    + 'wskazania liczy się jako trójfazowy symetryczny. Rozpływ niesymetryczny obsługuje '
-    + 'odbiory trójfazowe i faza–N (A/B/C); odbiór międzyfazowy (AB/BC/CA) zatrzyma ten '
-    + 'bieg nazwaną odmową z wskazaniem odbioru.',
+  fazyPomoc: 'Fazy przyłączenia dla rozpływu niesymetrycznego; bez wskazania odbiór jest trójfazowy symetryczny.',
   wierszFazy: 'Fazy przyłączenia',
   fazyNieWskazano: 'nie wskazano — trójfazowy symetryczny',
 
   // Model obciążenia (ZIP) — współczynniki czytane przez rozpływ mocy.
   zipTytul: 'Model obciążenia (ZIP)',
   zipNota: 'a + b + c = 1 osobno dla P i dla Q',
-  zipPomoc:
-    'Model określa, jak pobór zmienia się z napięciem: udział stałoimpedancyjny (a) '
-    + 'maleje z kwadratem napięcia, stałoprądowy (b) liniowo, stałomocowy (c) jest od '
-    + 'napięcia niezależny. Domyślnie odbiór jest stałomocowy (c = 1) — tak liczył '
-    + 'rozpływ do tej pory. Wybór typu z katalogu wypełnia model wartościami pozycji.',
+  zipPomoc: 'Udziały poboru stałoimpedancyjnego (a), stałoprądowego (b) i stałomocowego (c) — zależność mocy od napięcia.',
   zipNaglowekP: 'Moc czynna P',
   zipNaglowekQ: 'Moc bierna Q',
   zipAP: 'Udział stałoimpedancyjny P (a_P)',
@@ -127,13 +119,10 @@ export const ODBIOR_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz odbiór nN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odbioru.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odbiór.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog odbiorów ładuje się asynchronicznie; zapis z KATALOGOWEJ ścieżki
-  // pochodzenia bez niego byłby cichym no-op na pustym `catalog_ref`, więc
-  // blokujemy JAWNIE (tryb ręczny katalogu nie potrzebuje — patrz `stanGotowosci`).
-  katalogLadowanieStopka: 'Ładowanie katalogu typów odbiorów nN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis odbioru unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać odbioru — spróbuj ponownie.',
+  brakOdplywuWalid: 'Otwórz kreator z odpływu nN na schemacie — odbiór musi mieć odpływ, do którego trafi.',
+  odplywWskazany: 'Wskazany',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: odbiór nN — moc, współczynnik mocy i model obciążenia',

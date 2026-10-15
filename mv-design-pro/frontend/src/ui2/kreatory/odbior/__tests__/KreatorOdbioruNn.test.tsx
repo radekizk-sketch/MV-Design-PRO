@@ -85,6 +85,12 @@ async function fill() {
   });
 }
 
+/** Moc i cosφ podane przez projektanta (tryb ręczny nie ma pozycji katalogowej). */
+async function podajMocICos(p = '50', cos = '0.93') {
+  await userEvent.type(screen.getByTestId('mvd-kreator-odbior-moc'), p);
+  await userEvent.type(screen.getByTestId('mvd-kreator-odbior-cosphi'), cos);
+}
+
 describe('KreatorOdbioruNn — realna ścieżka', () => {
   beforeEach(() => {
     podgladOdpowiada = true;
@@ -99,18 +105,55 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
 
   afterEach(() => cleanup());
 
-  it('domyślna ścieżka (katalog-first): bez wyboru typu zapis jest zablokowany', async () => {
+  it('domyślna ścieżka (katalog-first): świeży kreator milczy, zapis bez typu wskazuje katalog', async () => {
     // Karta D4: katalog-first pozostaje domyślne — kreator nie wysyła żądania
-    // bez pozycji katalogowej ANI bez jawnej deklaracji trybu eksperckiego
-    // (dawniej payload leciał bez żadnego z nich i backend odrzucał go 422 —
-    // ślepy zaułek, bo UI nie mówiło, czego brakuje).
+    // bez pozycji katalogowej ANI bez jawnej deklaracji trybu eksperckiego.
+    // Kontrakt prowadzenia: w trakcie pracy cisza, przy zapisie JEDNO wskazanie z fokusem.
     render(<KreatorOdbioruNn />);
     await fill();
+    expect(screen.queryByRole('alert')).toBeNull();
+    // Moc i cosφ bez wartości startowych (dawniej 50 kW / 0,93).
+    expect(screen.getByTestId('mvd-kreator-odbior-moc')).toHaveValue(null);
+    expect(screen.getByTestId('mvd-kreator-odbior-cosphi')).toHaveValue(null);
 
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
 
-    expect(await screen.findByText(/Wybierz typ odbioru z katalogu/i)).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-odbior-katalog')).toHaveFocus();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz typ odbioru z katalogu — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('tryb ręczny bez mocy: zapis wskazuje moc, potem cosφ', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odbior-moc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj moc czynną odbioru — /);
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-moc'), '20');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odbior-cosphi')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj cosφ odbioru — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('konflikt widoczny od razu przy polu: cosφ > 1', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-cosphi'), '1.2');
+    expect(screen.getByRole('alert').textContent).toBe('Współczynnik mocy cosφ musi być w zakresie (0, 1].');
+  });
+
+  it('wybór typu z katalogu wpisuje moc i cosφ do pól (edytowalne)', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odbior-katalog'), 'L1');
+    expect(screen.getByTestId('mvd-kreator-odbior-moc')).toHaveValue(80);
+    expect(screen.getByTestId('mvd-kreator-odbior-cosphi')).toHaveValue(0.94);
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-moc'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-moc'), '70');
+    expect(screen.getByTestId('mvd-kreator-odbior-moc')).toHaveValue(70);
   });
 
   it('domyślna ścieżka (katalog-first): wybór typu z katalogu wysyła catalog_binding, bez source_mode', async () => {
@@ -149,6 +192,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
     expect(screen.getByText(/Tryb ekspercki/i)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-kreator-odbior-katalog')).toBeNull();
+    await podajMocICos();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
 
@@ -177,6 +221,8 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     // wykresem trójkąta mocy musi renderować KaTeX, nie surowy string.
     render(<KreatorOdbioruNn />);
     await fill();
+    // Wykres trójkąta mocy rysuje się dopiero przy podanym cosφ (bez zgadniętego 0,93).
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-cosphi'), '0.93');
     const wzory = screen.getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThanOrEqual(2);
     expect(
@@ -193,6 +239,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     podgladOdpowiada = false;
     render(<KreatorOdbioruNn />);
     await fill();
+    await podajMocICos();
 
     await waitFor(() => {
       expect(screen.getByText(/usługa obliczeń nie odpowiedziała/i)).toBeInTheDocument();
@@ -202,7 +249,9 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(screen.getByText(/spróbuj ponownie/i)).toBeInTheDocument();
   });
 
-  it('uczciwy stan zerowy: bez odpływu zapis zablokowany', async () => {
+  // Intencja dawnego „bez odpływu zapis zablokowany”: operacja nie wychodzi bez odpływu —
+  // w nowym kanonie zapis jest klikalny, a próba nazywa brak (jedno zdanie, co i po co).
+  it('uczciwy stan zerowy: bez odpływu próba zapisu nazywa brak odpływu', async () => {
     context = {};
     render(<KreatorOdbioruNn />);
     // Montaż pobiera katalog typów odbioru (mikrotaski) — czekamy na realny
@@ -210,7 +259,8 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     // stanu domknęła się w act.
     await screen.findByRole('option', { name: /Odbiór biurowy/ });
     expect(screen.getByTestId('mvd-kreator-odbior-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Otwórz kreator z odpływu nN/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -231,6 +281,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     // Test dotyczy modelu ZIP, nie doboru katalogu — tryb ręczny omija wymóg
     // katalogu (karta D4), żeby test pozostał skupiony na jednej rzeczy.
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await podajMocICos();
 
     // Odbiór stałoimpedancyjny: a = 1, c = 0 dla P i dla Q.
     await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-cp'));
@@ -254,7 +305,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('rozjechana suma udziałów blokuje zapis i mówi po polsku, ile wynosi', async () => {
+  it('rozjechana suma udziałów: konflikt widoczny od razu, zapis wraca do modelu ZIP', async () => {
     render(<KreatorOdbioruNn />);
     await fill();
 
@@ -262,11 +313,14 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-ap'));
     await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-ap'), '1');
 
-    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
-
-    const komunikat = await screen.findByText(/Suma udziałów a\+b\+c dla mocy czynnej P/);
+    // KONFLIKT_TECHNICZNY widoczny od razu — bez klikania „Zapisz”.
+    const komunikat = screen.getByRole('alert');
+    expect(komunikat).toHaveTextContent(/Suma udziałów a\+b\+c dla mocy czynnej P/);
     expect(komunikat).toHaveTextContent('2.000');
     expect(komunikat).toHaveTextContent('musi wynosić 1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Suma udziałów a\+b\+c dla mocy czynnej P/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -284,11 +338,13 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(screen.getByText('Własny model ZIP')).toBeInTheDocument();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: kompletny zapis wskazuje przypadek, operacja nie wychodzi', async () => {
     appState.activeCaseId = null;
     render(<KreatorOdbioruNn />);
     await fill();
-    expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odbior-katalog'), 'L1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -297,13 +353,13 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
    * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
    * zapis nie sprawdzał, czy katalog odbiorów już doszedł (ścieżka katalogowa).
    */
-  it('iloczyn cech: katalog jeszcze się ładuje × odpływ dostępny (tryb katalogowy) → zapis zablokowany z komunikatem', async () => {
+  it('iloczyn cech: katalog jeszcze się ładuje × odpływ dostępny (tryb katalogowy) → zapis wyszarzony z jednym zdaniem', async () => {
     fetchLoadTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorOdbioruNn />);
 
     expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-odbior')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/Wczytywanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -339,6 +395,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     );
 
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await podajMocICos();
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
@@ -351,6 +408,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     render(<KreatorOdbioruNn />);
     await fill();
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await podajMocICos();
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odbior-fazy'), 'A');
     expect(screen.getByTestId('mvd-kreator-odbior-gotowosc')).toHaveTextContent('Jednofazowy L1 (faza A)');
 

@@ -1,6 +1,8 @@
 /** Teksty PL kreatora „Dodaj pole SN" (G-POLE). Język inżynierski. */
 
 export const POLE_STRINGS = {
+  /** Nazwa karty pola bez nazwy handlowej i składu kanonicznego. */
+  kartaPolaZapas: 'Karta pola z katalogu',
   eyebrow: 'MODEL SIECI · POLE ROZDZIELNI SN',
   cel:
     'Dodaj pole rozdzielni SN — miejsce przyłączenia (linia, transformator, sprzęgło, '
@@ -17,27 +19,16 @@ export const POLE_STRINGS = {
   rolaPomoc: 'Rola pola wyznacza wymagane zabezpieczenia (np. 50/51/67, 87T, 27/59/81 dla OZE).',
 
   rolaUziemnika: 'Rola uziemnika pola',
-  rolaUziemnikaPomoc:
-    'Typologia uziemienia (spec SLD §12.5): uziemnik pola, uziemienie ekranów kabla, konstrukcji '
-    + 'albo punktu neutralnego. Domyślnie wg szablonu pola (uziemnik pola); rola bez uziemnika w torze '
-    + 'jest odrzucana przez backend.',
+  rolaUziemnikaPomoc: 'Co uziemia uziemnik: pole, ekrany kabla, konstrukcję albo punkt neutralny (rola bez uziemnika w torze jest odrzucana).',
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 
   rodzajPomiaru: 'Rodzaj pomiaru',
-  rodzajPomiaruPomoc:
-    'Układ pomiarowy energii (rozliczeniowy podstawowy, rezerwowy, równoważny lub '
-    + 'pomiarowo-kontrolny — wg standardu układów pomiarowych i IRiESD) mierzy energię przy '
-    + 'granicy stron i nie może leżeć w torze tranzytu magistrali. Pomiar napięcia szyn '
-    + '(przekładniki napięciowe sekcji rozdzielni) nie jest układem pomiarowym energii — '
-    + 'jest wolny w każdej topologii.',
+  rodzajPomiaruPomoc: 'Układ pomiarowy energii leży przy granicy stron, poza torem tranzytu magistrali; pomiar napięcia szyn — w każdej topologii.',
   wierszRodzajPomiaru: 'Rodzaj pomiaru',
 
   szablonTytul: 'Szablon pola producenta',
-  szablonPomoc:
-    'Powiąż pole z gotowym szablonem producenta (rodzina rozdzielnicy → szablon pola). '
-    + 'Szablon wnosi zabezpieczenia i konfigurację zgodnie z kartą producenta — spójnie ze '
-    + 'schematem i koordynacją. Zalecane; przy braku szablonu skonfiguruj aparat ekspercko.',
+  szablonPomoc: 'Karta pola z katalogu rodziny — wnosi skład aparatury i zabezpieczenia pola.',
   rodzina: 'Rodzina rozdzielnicy',
   rodzinaPlaceholder: '— wybierz rodzinę producenta —',
   szablon: 'Szablon pola',
@@ -78,12 +69,14 @@ export const POLE_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz pole SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pola.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać pole SN.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog aparatów pola / rodzin rozdzielnic ładuje się asynchronicznie;
-  // zapis bez niego byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu aparatów pola SN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis pola unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać pola SN.',
+  rolaPlaceholder: '— wybierz rolę pola —',
+  aparatPlaceholder: '— wybierz rodzaj aparatu —',
+  szablonOpcjonalny: 'Opcjonalny',
+  szynaDoWskazania: 'Do wskazania na schemacie',
+  konfliktNapiecia: (napiecie: string) =>
+    `Napięcie znamionowe aparatu jest niższe od napięcia szyny (${napiecie}) — wybierz aparat na wyższe napięcie.`,
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: pole rozdzielnicy SN i skład aparatury',

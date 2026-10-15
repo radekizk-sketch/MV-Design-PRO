@@ -12,13 +12,14 @@ import {
   maSzyne,
   rolaLabel,
   walidujFormularz,
+  rodzajAparatuZKatalogu,
   wyborPomiaruLabel,
   zbudujPayload,
   type PolaSnFormData,
 } from '../polaSnModel';
 
 function dane(over: Partial<PolaSnFormData> = {}): PolaSnFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'app-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'app-1', bay_role: 'OUT', apparatus_kind: 'BREAKER', ...over };
 }
 
 const KONTEKST = { bus_ref: 'bus-1', station_ref: 'st-1', station_label: 'ST-1' };
@@ -35,6 +36,22 @@ describe('polaSnModel — walidacja', () => {
   it('wymaga aparatu z katalogu', () => {
     expect(walidujFormularz(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
     expect(walidujFormularz(dane()).length).toBe(0);
+  });
+  it('stan startowy nie zgaduje roli pola ani rodzaju aparatu; braki w kolejności pracy', () => {
+    expect(DANE_DOMYSLNE.bay_role).toBeNull();
+    expect(DANE_DOMYSLNE.apparatus_kind).toBeNull();
+    expect(walidujFormularz({ ...DANE_DOMYSLNE }).map((e) => e.field)).toEqual([
+      'bay_role',
+      'catalog_ref',
+      'apparatus_kind',
+    ]);
+  });
+  it('rodzaj aparatu z pozycji katalogowej (lustro reguły backendu)', () => {
+    expect(rodzajAparatuZKatalogu('WYLACZNIK')).toBe('BREAKER');
+    expect(rodzajAparatuZKatalogu('ROZLACZNIK')).toBe('LOAD_SWITCH');
+    expect(rodzajAparatuZKatalogu('ROZLACZNIK_BEZPIECZNIKOWY')).toBe('DISCONNECTOR');
+    expect(rodzajAparatuZKatalogu('UZIEMNIK')).toBeNull();
+    expect(rodzajAparatuZKatalogu(null)).toBeNull();
   });
 });
 

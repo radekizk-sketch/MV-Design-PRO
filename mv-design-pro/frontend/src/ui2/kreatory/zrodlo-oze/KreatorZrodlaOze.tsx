@@ -40,8 +40,13 @@ import {
   PoleWyboru,
   RzadWartosci,
   TekstZWzorami,
+  pierwszyBrak,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
+  type BrakDoOperacji,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -55,13 +60,14 @@ import {
   WARIANT_OPCJE,
   bessLabel,
   etykietaKonwertera,
+  konfliktyFormularza,
   maKontekst,
   regulacjaLabel,
   refUtworzonegoWytworcy,
   sugerujDerSn,
   technologiaLabel,
   transformatoryBlokowe,
-  trybQWymagaWartosci,
+  walidujDerSn,
   walidujFormularz,
   wariantLabel,
   zbudujDerTopology,
@@ -108,6 +114,37 @@ import type { RunStatus } from '../../../ui/study-cases/types';
 import { transformatoryNalezaceDoStacji } from '../../../ui/shared/transformatoryStacji';
 
 type FazaPodsumowania = 'formularz' | 'bieg' | 'dokumenty' | 'gotowe';
+
+/** Miejsce pola modelu w kreatorze — cel wskazania BRAKU_DO_OPERACJI (krok + kontrolka). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  bus_nn_ref: { krok: 'tech' },
+  existing_field_ref: { krok: 'tech', pole: 'mvd-kreator-oze-istniejace-pole' },
+  apparatus_catalog_ref: { krok: 'tech', pole: 'mvd-kreator-oze-aparat' },
+  blocking_transformer_ref: { krok: 'tech', pole: 'mvd-kreator-oze-transformator' },
+  converter_catalog_ref: { krok: 'katalog', pole: 'mvd-kreator-oze-konwerter' },
+  cos_phi_target: { krok: 'regulacja', pole: 'mvd-kreator-oze-cosphi' },
+  qu_deadband_high_pu: { krok: 'regulacja', pole: 'mvd-kreator-oze-qu-db-high' },
+  u_set_pu: { krok: 'regulacja', pole: 'mvd-kreator-oze-u-set-pu' },
+  q_min_mvar: { krok: 'regulacja', pole: 'mvd-kreator-oze-qmin' },
+  q_max_mvar: { krok: 'regulacja', pole: 'mvd-kreator-oze-qmax' },
+  soc_min_percent: { krok: 'regulacja', pole: 'mvd-kreator-oze-soc-min' },
+  soc_max_percent: { krok: 'regulacja', pole: 'mvd-kreator-oze-soc-max' },
+  // Tor DER-SN materializowany doborem (`walidujDerSn`): pozycje katalogowe toru wnosi
+  // „Zastosuj dobór”, długość kabla podaje projektant.
+  block_transformer_catalog_ref: { krok: 'dobor', pole: 'mvd-kreator-oze-dobor-zastosuj' },
+  mv_field_apparatus_catalog_ref: { krok: 'dobor', pole: 'mvd-kreator-oze-dobor-zastosuj' },
+  mv_cable_catalog_ref: { krok: 'dobor', pole: 'mvd-kreator-oze-dobor-zastosuj' },
+  mv_cable_length_km: { krok: 'dobor', pole: 'mvd-kreator-oze-dobor-dlugosc' },
+  inverter_output_voltage_kv: { krok: 'katalog', pole: 'mvd-kreator-oze-konwerter' },
+  block_transformer_secondary_voltage_kv: { krok: 'dobor', pole: 'mvd-kreator-oze-dobor-zastosuj' },
+  connection_method: { krok: 'dobor' },
+};
+
+/** Wskazanie z błędu modelu — dane modułu NC RfG leżą na kroku „Zgodność przyłączeniowa”. */
+function wskazanieOze(blad: BladPolaOze): BrakDoOperacji {
+  if (blad.field.startsWith('dane_modulu_ncrfg.')) return { komunikat: blad.message, krok: 'zgodnosc' };
+  return wskazanieZBledu(blad, MIEJSCA);
+}
 
 // Krok „dobor" (dobór toru SN z katalogu) wchodzi po „katalog" tylko dla wariantu
 // z transformatorem blokowym (tor materializowany po stronie SN). K9-A: po doborze
@@ -191,9 +228,9 @@ export function KreatorZrodlaOze() {
   }, [snapshot, kontekst.station_ref]);
 
   const [dane, setDane] = useState<OzeFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPolaOze[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('tech');
+  const prowadzenie = useProwadzenie(setKrok);
 
   // D2: tor DER-SN materializowany doborem (der_topology). `derSnZastosowany` = użytkownik
   // zastosował propozycję → payload materializuje tor zamiast wiązać istniejący TR.
@@ -361,7 +398,7 @@ export function KreatorZrodlaOze() {
       setDane((d) => ({ ...d, control_mode: 'WYLACZONE', u_set_pu: null }));
       setKomunikatRegulacjiNapiecia(
         T.regulacjaNapieciaCofnieta(
-          profilNcRfgRegulacja?.operator_name_pl ?? dane.nc_rfg_profile_ref ?? '',
+          profilNcRfgRegulacja?.operator_name_pl ?? '',
         ),
       );
     }
@@ -429,27 +466,31 @@ export function KreatorZrodlaOze() {
     if (!isBlock && krok === 'dobor') setKrok('katalog');
   }, [isBlock, krok]);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — przy polu od razu; braki dopiero przy próbie zapisu (wskazanie ramy).
+  const konflikty = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const bladDlaPola = (pole: string): string | undefined => konflikty.find((b) => b.field === pole)?.message;
 
   // Tor SN materializowany doborem: użytkownik zastosował propozycję i mamy szynę SN.
   const materializowanyTorSn = isBlock && derSnZastosowany && Boolean(snBusRef);
 
   const onZapisz = useCallback(async () => {
-    if (!hasKontekst) {
-      setBladGlobalny(T.brakStacjiOpis);
+    // Tor DER-SN materializowany doborem: walidacja toru (`walidujDerSn`) na tych samych
+    // danych, które pójdą do `der_topology` (sugestia napięć z katalogu i szyny SN).
+    const torSn = materializowanyTorSn ? sugerujDerSn(derSn, wybranyKonwerter, snBusVoltageKv) : null;
+    const brak = pierwszyBrak([
+      !hasKontekst && { komunikat: T.brakStacjiWalid },
+      ...walidujFormularz(dane, kontekst, { torSnMaterializowany: materializowanyTorSn }).map(wskazanieOze),
+      ...(torSn ? walidujDerSn(torSn).map(wskazanieOze) : []),
+      // Pozycja wskazana, ale spoza katalogu wybranej technologii (np. po wczytaniu innego katalogu).
+      Boolean(dane.converter_catalog_ref) && !wybranyKonwerter
+        && { komunikat: T.brakFalownikaWalid, krok: 'katalog', pole: 'mvd-kreator-oze-konwerter' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId || !wybranyKonwerter) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane, kontekst, { torSnMaterializowany: materializowanyTorSn });
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!wybranyKonwerter) {
-      setBledy([{ field: 'converter_catalog_ref', message: T.katalogPlaceholder }]);
-      return;
-    }
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const derTopology =
@@ -459,7 +500,7 @@ export function KreatorZrodlaOze() {
       const payload = zbudujPayload(dane, kontekst, wybranyKonwerter, wybranyTransformator, derTopology);
       const response = await executeDomainOperation(activeCaseId, 'add_converter_source', payload);
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -491,7 +532,7 @@ export function KreatorZrodlaOze() {
           id: 'wiazania',
           etykieta: T.sekwencjaKrokWiazania,
           stan: 'blad',
-          komunikat: activeProjectId ? T.walidacjaStopka : T.brakProjektu,
+          komunikat: activeProjectId ? T.bladZapisu : T.brakProjektu,
         });
       } else {
         try {
@@ -505,7 +546,7 @@ export function KreatorZrodlaOze() {
             komunikat:
               bladWiazan instanceof DerPersistenceApiError || bladWiazan instanceof Error
                 ? bladWiazan.message
-                : T.walidacjaStopka,
+                : T.bladZapisu,
           });
         }
       }
@@ -513,7 +554,7 @@ export function KreatorZrodlaOze() {
       if (!dane.operating_mode) {
         etapy.push({ id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'pominiete' });
       } else if (!nowyRef) {
-        etapy.push({ id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'blad', komunikat: T.walidacjaStopka });
+        etapy.push({ id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'blad', komunikat: T.bladZapisu });
       } else {
         const odpTryb = await executeDomainOperation(activeCaseId, 'set_source_operating_mode', {
           source_ref: nowyRef,
@@ -525,7 +566,7 @@ export function KreatorZrodlaOze() {
                 id: 'tryb',
                 etykieta: T.sekwencjaKrokTryb,
                 stan: 'blad',
-                komunikat: odpTryb?.error ?? useSnapshotStore.getState().error ?? T.walidacjaStopka,
+                komunikat: odpTryb?.error ?? useSnapshotStore.getState().error ?? T.bladZapisu,
               }
             : { id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'zapisane' },
         );
@@ -535,7 +576,7 @@ export function KreatorZrodlaOze() {
       if (!limity) {
         etapy.push({ id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'pominiete' });
       } else if (!nowyRef) {
-        etapy.push({ id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'blad', komunikat: T.walidacjaStopka });
+        etapy.push({ id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'blad', komunikat: T.bladZapisu });
       } else {
         const odpLimity = await executeDomainOperation(activeCaseId, 'update_element_parameters', {
           element_ref: nowyRef,
@@ -547,7 +588,7 @@ export function KreatorZrodlaOze() {
                 id: 'limity',
                 etykieta: T.sekwencjaKrokLimity,
                 stan: 'blad',
-                komunikat: odpLimity?.error ?? useSnapshotStore.getState().error ?? T.walidacjaStopka,
+                komunikat: odpLimity?.error ?? useSnapshotStore.getState().error ?? T.bladZapisu,
               }
             : { id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'zapisane' },
         );
@@ -575,7 +616,7 @@ export function KreatorZrodlaOze() {
       setFaza('formularz');
       setBladGlobalny(e instanceof Error ? e.message : P.bladDokumentow);
     }
-  }, [activeCaseId, activeProjectId, autoBieg, dane, derSn, executeDomainOperation, hasKontekst, kontekst, materializowanyTorSn, selekcjaPoOperacji, snBusRef, snBusVoltageKv, wybranyKonwerter, wybranyTransformator, zapiszDoMagazynu]);
+  }, [activeCaseId, activeProjectId, autoBieg, dane, derSn, executeDomainOperation, hasKontekst, kontekst, materializowanyTorSn, prowadzenie, snBusRef, snBusVoltageKv, wybranyKonwerter, wybranyTransformator, zapiszDoMagazynu]);
 
   const otworzDokumentacje = useCallback(() => {
     setActiveSpace('dokumentacja');
@@ -606,60 +647,57 @@ export function KreatorZrodlaOze() {
   const przylaczenieWartosc = isBlock
     ? materializowanyTorSn
       ? 'Tor SN (dobór)'
-      : wybranyTransformator?.name ?? 'Transformator blokowy'
+      : wybranyTransformator?.name ?? ''
     : kontekst.bus_nn_ref
     ? 'Szyna nN'
-    : 'Brak';
+    : '';
 
+  // Panel kontroli neutralny (kontrakt prowadzenia): „do wyboru” w trakcie pracy, czerwień
+  // wyłącznie dla konfliktu (te same `konflikty`, co błędy przy polach).
+  const konfliktPola = (...pola: string[]) => konflikty.some((k) => pola.includes(k.field));
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszStacja,
-      stan: hasKontekst ? 'kompletne' : 'brak',
-      wartosc: kontekst.station_label || (hasKontekst ? 'Wskazana' : 'Brak'),
+      stan: hasKontekst ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.station_label || '',
     },
-    { etykieta: T.wierszTechnologia, stan: 'kompletne', wartosc: technologiaLabel(dane.source_technology) },
+    { etykieta: T.wierszTechnologia, stan: 'ustalone', wartosc: technologiaLabel(dane.source_technology) },
     {
       etykieta: T.wierszPrzylaczenie,
-      stan: isBlock
-        ? materializowanyTorSn || wybranyTransformator
-          ? 'kompletne'
-          : 'brak'
-        : kontekst.bus_nn_ref
-        ? 'kompletne'
-        : 'brak',
+      stan: (isBlock ? materializowanyTorSn || wybranyTransformator : kontekst.bus_nn_ref) ? 'ustalone' : 'do_wyboru',
       wartosc: przylaczenieWartosc,
     },
     {
       etykieta: T.wierszFalownik,
-      stan: dane.converter_catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.converter_catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: dane.converter_catalog_ref ? 'ustalone' : 'do_wyboru',
+      wartosc: wybranyKonwerter?.name ?? '',
     },
-    // K9-A: aparatura (3 wiązania katalogowe) i profile NC RfG (profil + 3 krzywe)
-    // — kontrola pokazuje postęp wyborów; komplet odblokowuje osie gotowości analiz.
+    // K9-A: aparatura (3 wiązania katalogowe) i profile NC RfG (profil + 3 krzywe) — postęp
+    // wyborów neutralnie; komplet odblokowuje osie gotowości analiz.
     {
       etykieta: T.wierszAparatura,
-      stan: liczbaAparatury === 3 ? 'kompletne' : liczbaAparatury > 0 ? 'ostrzezenie' : 'brak',
-      wartosc:
-        liczbaAparatury === 3
-          ? 'Kompletne'
-          : liczbaAparatury > 0
-          ? T.aparaturaCzesciowa(liczbaAparatury, 3)
-          : T.doKonfiguracji,
+      stan: liczbaAparatury === 3 ? 'ustalone' : 'do_wyboru',
+      wartosc: T.aparaturaCzesciowa(liczbaAparatury, 3),
     },
     {
       etykieta: T.wierszZgodnosc,
-      stan: liczbaProfili === 4 ? 'kompletne' : liczbaProfili > 0 ? 'ostrzezenie' : 'brak',
-      wartosc:
-        liczbaProfili === 4
-          ? 'Kompletne'
-          : liczbaProfili > 0
-          ? T.aparaturaCzesciowa(liczbaProfili, 4)
-          : T.doKonfiguracji,
+      stan: konflikty.some((k) => k.field.startsWith('dane_modulu_ncrfg.'))
+        ? 'konflikt'
+        : liczbaProfili === 4
+          ? 'ustalone'
+          : 'do_wyboru',
+      wartosc: T.aparaturaCzesciowa(liczbaProfili, 4),
     },
-    { etykieta: T.wierszRegulacja, stan: 'kompletne', wartosc: regulacjaLabel(dane.control_mode) },
+    {
+      etykieta: T.wierszRegulacja,
+      stan: konfliktPola('cos_phi_target', 'qu_deadband_high_pu', 'u_set_pu', 'q_max_mvar', 'soc_min_percent', 'soc_max_percent')
+        ? 'konflikt'
+        : 'ustalone',
+      wartosc: regulacjaLabel(dane.control_mode),
+    },
     {
       etykieta: T.wierszTrybPracy,
-      stan: 'kompletne',
+      stan: 'ustalone',
       wartosc: dane.operating_mode
         ? T.trybPracyOpcje.find((o) => o.id === dane.operating_mode)?.etykieta ?? dane.operating_mode
         : T.bezWskazania,
@@ -710,27 +748,8 @@ export function KreatorZrodlaOze() {
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
   const wToku = faza === 'bieg' || faza === 'dokumenty';
 
-  /**
-   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
-   * źródło prawdy dla DWÓCH obserwowalnych powierzchni — `zablokowana`
-   * przycisku zapisu ORAZ `status`/`data-status` korzenia `KreatorRama` —
-   * żeby te dwie powierzchnie nie mogły rozjechać się w dwa niezależne
-   * warunki (reguła KLASA NIE INSTANCJA, „Predykaty parami"). Poprzednia
-   * wersja miała TYLKO `zablokowana: !hasKontekst || !activeCaseId` — bez
-   * stanu ładowania katalogu przekształtników/aparatury nN, więc przycisk
-   * był klikalny (i `KreatorRama` nie niosła żadnego `status`) w chwili, gdy
-   * katalog jeszcze leciał — zapis wtedy widziałby pustą listę urządzeń.
-   * Dotyczy WYŁĄCZNIE fazy „formularz" — `wToku`/`'gotowe"` mają WŁASNE,
-   * jawnie nazwane stany (bieg/dokumenty/zakończ), nieporównywalne z
-   * gotowością formularza przed pierwszym zapisem.
-   */
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasKontekst || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-
+  // Zapis wyszarzony WYŁĄCZNIE na czas wczytywania katalogu (formularz) albo trwającego zapisu
+  // i dokumentów (bieg/dokumenty) — zamknięta lista ramy; brak danych wskazuje się przy kliku.
   const akcjaGlowna =
     faza === 'gotowe'
       ? { etykieta: P.zakoncz, onClick: zakonczPoZapisie, testid: 'mvd-kreator-oze-zapisz' }
@@ -738,13 +757,13 @@ export function KreatorZrodlaOze() {
       ? {
           etykieta: faza === 'bieg' ? P.fazaBieg : P.fazaDokumenty,
           onClick: () => {},
-          zablokowana: true,
+          blokada: 'zapis_w_toku' as const,
           testid: 'mvd-kreator-oze-zapisz',
         }
       : {
           etykieta: T.zapisz,
           onClick: onZapisz,
-          zablokowana: stanGotowosci !== 'gotowy',
+          blokada: katalogLadowanie ? ('ladowanie' as const) : null,
           testid: 'mvd-kreator-oze-zapisz',
         };
 
@@ -760,18 +779,7 @@ export function KreatorZrodlaOze() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        faza === 'gotowe' || wToku
-          ? null
-          : stanGotowosci === 'ladowanie'
-            ? T.katalogLadowanieStopka
-            : bledy.length > 0
-              ? T.walidacjaStopka
-              : !hasKontekst
-                ? T.brakStacjiOpis
-                : null
-      }
-      status={faza === 'gotowe' || wToku ? undefined : stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={akcjaGlowna}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-oze-anuluj' }}
       krokWstecz={
@@ -830,9 +838,6 @@ export function KreatorZrodlaOze() {
                 testid="mvd-kreator-oze-transformator"
               />
               {transformatory.length === 0 ? <KreatorInfo>{T.transformatorBrak}</KreatorInfo> : null}
-              {bladDlaPola('blocking_transformer_ref') ? (
-                <p className="mvd-pole-blad">{bladDlaPola('blocking_transformer_ref')}</p>
-              ) : null}
             </>
           ) : (
             <>
@@ -881,7 +886,6 @@ export function KreatorZrodlaOze() {
                   ) : null}
                 </>
               )}
-              {bladDlaPola('bus_nn_ref') ? <p className="mvd-pole-blad">{bladDlaPola('bus_nn_ref')}</p> : null}
             </>
           )}
           {/* K9-A O13: konsekwencje wariantu — opis strukturalny operacji (bez liczb). */}
@@ -1061,9 +1065,6 @@ export function KreatorZrodlaOze() {
                 testid="mvd-kreator-oze-u-set-pu"
               />
             ) : null}
-            {trybQWymagaWartosci(dane) ? (
-              <KreatorInfo><TekstZWzorami tekst={T.regulacjaPasywnaOstrzezenie} /></KreatorInfo>
-            ) : null}
             <KreatorSiatka kolumny={2}>
               <PoleLiczbowe
                 etykieta={T.qMin}
@@ -1189,7 +1190,7 @@ export function KreatorZrodlaOze() {
               {dane.control_mode === 'REGULACJA_NAPIECIA' ? (
                 <RzadWartosci
                   etykieta={T.uSetPu}
-                  wartosc={dane.u_set_pu !== null ? `${dane.u_set_pu} pu` : T.doKonfiguracji}
+                  wartosc={dane.u_set_pu !== null ? `${dane.u_set_pu} pu` : '—'}
                 />
               ) : null}
               {dane.source_technology === 'BESS' ? (
@@ -1198,11 +1199,11 @@ export function KreatorZrodlaOze() {
               <RzadWartosci etykieta={T.nazwa} wartosc={dane.source_name.trim() || tech.defaultName} />
               <RzadWartosci
                 etykieta={T.wierszAparatura}
-                wartosc={liczbaAparatury > 0 ? T.aparaturaCzesciowa(liczbaAparatury, 3) : T.doKonfiguracji}
+                wartosc={T.aparaturaCzesciowa(liczbaAparatury, 3)}
               />
               <RzadWartosci
                 etykieta={T.wierszZgodnosc}
-                wartosc={liczbaProfili > 0 ? T.aparaturaCzesciowa(liczbaProfili, 4) : T.doKonfiguracji}
+                wartosc={T.aparaturaCzesciowa(liczbaProfili, 4)}
               />
               <RzadWartosci
                 etykieta={T.wierszTrybPracy}

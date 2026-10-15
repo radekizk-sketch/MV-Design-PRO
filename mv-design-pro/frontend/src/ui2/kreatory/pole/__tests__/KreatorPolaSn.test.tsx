@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPolaSn } from '../KreatorPolaSn';
+import type { MVApparatusCatalogType } from '../../../../ui/catalog/types';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -14,9 +15,10 @@ const navigateToSldMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 const resolved: { station: string | null; bus: string | null } = { station: 'st-1', bus: 'bus-1' };
+// Szyna 15 kV — napięcie dla doboru aparatu (zdatne: U_n aparatu ≥ 15 kV).
 const snapshotState = {
   error: null as string | null,
-  snapshot: {},
+  snapshot: { buses: [{ id: 'bus-1', ref_id: 'bus-1', voltage_kv: 15 }] } as Record<string, unknown>,
   executeDomainOperation: executeDomainOperationMock,
 };
 
@@ -51,9 +53,11 @@ const fetchBayTemplatesMock = vi.fn();
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
 const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(() => ({
-  fetchMvApparatusTypesMock: vi.fn(() =>
+  fetchMvApparatusTypesMock: vi.fn((): Promise<MVApparatusCatalogType[]> =>
     Promise.resolve([
-      { id: 'app-1', name: 'Wyłącznik SN', device_kind: 'BREAKER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+      // Rzuty końcówki katalogu (producent rozdzielnicy, rodzaj w słowniku rodzin).
+      { id: 'app-1', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20, manufacturer_ref: 'ZPUE', family_apparatus_kind: 'circuit_breaker', interchangeable_across_families: false },
+      { id: 'app-2', name: 'Rozłącznik SN 12 kV', device_kind: 'ROZLACZNIK', u_n_kv: 12, i_n_a: 400, breaking_capacity_ka: 16, manufacturer_ref: 'ZPUE', family_apparatus_kind: 'switch_disconnector', interchangeable_across_families: false },
     ]),
   ),
   /**
@@ -73,6 +77,7 @@ const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(()
         um_classes_kv: [17.5, 24],
         rated_current_options: [630],
         short_time_current_options: [16],
+        allowed_apparatus_kinds: ['circuit_breaker', 'switch_disconnector', 'fuse_set'],
         insulation_type: 'air',
         construction_type: 'wnetrzowa',
         tor_konfiguracji: 'MODULARNY',
@@ -102,6 +107,8 @@ const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(()
 
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchManufacturers: () =>
+    Promise.resolve([{ manufacturer_ref: 'ZPUE', name: 'ZPUE S.A. (Włoszczowa)', normalized_code: 'ZPUE', country: 'PL', status: 'repo_verified', source_refs: [] }]),
   fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
   fetchSwitchgearFamilies: () => fetchSwitchgearFamiliesMock(),
   fetchCompleteBayTemplates: (manufacturerRef?: string | null, bayKind?: string | null) =>
@@ -109,8 +116,12 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick() {
+  // Czekamy na OPCJĘ z katalogu, nie na samą kontrolkę: lista istnieje (z podpowiedzią)
+  // zanim katalog się wczyta, więc wybór tuż po jej pojawieniu się był wyścigiem.
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-pole-katalog')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('mvd-kreator-pole-katalog').querySelector('option[value="app-1"]'),
+    ).not.toBeNull();
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-katalog'), 'app-1');
 }
@@ -137,6 +148,11 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     render(<KreatorPolaSn />);
     await pick();
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'TR');
+    // Rodzaj aparatu dobrany z pozycji katalogowej (wyłącznik) — zwykła, edytowalna wartość pola,
+    // bez etykiety pochodzenia (dyrektywa 2026-10-15: narzędzie projektowe, nie ewidencja).
+    expect(screen.getByTestId('mvd-kreator-pole-aparat')).toHaveValue('BREAKER');
+    expect(screen.getByTestId('mvd-kreator-pole-aparat')).toBeEnabled();
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
 
@@ -148,6 +164,7 @@ describe('KreatorPolaSn — realna ścieżka', () => {
           bus_ref: 'bus-1',
           station_ref: 'st-1',
           bay_role: 'TR',
+          apparatus_kind: 'BREAKER',
           catalog_binding: expect.objectContaining({ catalog_namespace: 'APARAT_SN', catalog_item_id: 'app-1' }),
         }),
       );
@@ -250,24 +267,39 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     expect(payload.rodzaj_pomiaru).toBeUndefined();
   });
 
-  it('uczciwy stan zerowy: bez szyny/stacji zapis zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany”: bez szyny/stacji i bez przypadku operacja
+  // nie rusza — w nowym kanonie przez jedno wskazanie przy próbie zapisu.
+  it('bez szyny/stacji: próba zapisu nazywa brak szyny, operacja nie rusza', async () => {
     resolved.station = null;
     resolved.bus = null;
     render(<KreatorPolaSn />);
-    // Montaż pobiera katalogi (aparaty + rodziny rozdzielnic) — czekamy na
-    // realny stan końcowy UI (opcja aparatu w selekcie katalogu), żeby
-    // aktualizacje stanu domknęły się w act.
     await screen.findByRole('option', { name: /Wyłącznik SN/ });
     expect(screen.getByTestId('mvd-kreator-pole-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).toBeInTheDocument();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorPolaSn />);
     await pick();
-    expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'OUT');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: zero alertów; jedyny aparat zdatny na 15 kV przyjęty; zapis wskazuje rolę pola', async () => {
+    render(<KreatorPolaSn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-pole-katalog')).toHaveValue('app-1'));
+    expect(screen.getByTestId('mvd-kreator-pole-katalog')).toBeEnabled();
+    expect(screen.queryByRole('alert')).toBeNull();
+    // Aparat 12 kV nie jest oferowany na szynie 15 kV (lista zawężona napięciem szyny).
+    expect(screen.queryByRole('option', { name: /Rozłącznik SN 12 kV/ })).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-pole-rola')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz rolę pola — /);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -283,7 +315,7 @@ describe('KreatorPolaSn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-pole')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });
@@ -339,6 +371,7 @@ describe('KreatorPolaSn — katalogowe pole rodziny (S3)', () => {
   it('nagłówek wybranej rodziny podaje klasy znamionowe, technologię i tor', async () => {
     render(<KreatorPolaSn />);
     await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'TR');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rodzina'), 'fam-1');
 
     const naglowek = await screen.findByTestId('mvd-kreator-pole-naglowek-rodziny');
@@ -347,6 +380,30 @@ describe('KreatorPolaSn — katalogowe pole rodziny (S3)', () => {
     expect(naglowek).toHaveTextContent('16 kA');
     expect(naglowek).toHaveTextContent('powietrzna');
     expect(naglowek).toHaveTextContent(/modułowy/i);
+    // Producent nazwą z rejestru producentów, nie identyfikatorem rodziny (`ZPUE`).
+    expect(naglowek).toHaveTextContent('ZPUE S.A. (Włoszczowa)');
+  });
+
+  // Ten sam predykat oferty co kreator stacji (`aparatWOfercieRodziny`). Iloczyn: producent
+  // {rodziny, inny, brak} × wymienność {tak, nie} × rodzaj {dopuszczony, spoza rodziny}.
+  it('po wyborze rodziny lista aparatów to oferta rodziny (z wkładkami wymiennymi)', async () => {
+    fetchMvApparatusTypesMock.mockReturnValueOnce(
+      Promise.resolve([
+        { id: 'app-1', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20, manufacturer_ref: 'ZPUE', family_apparatus_kind: 'circuit_breaker', interchangeable_across_families: false },
+        { id: 'app-siemens', name: 'Wyłącznik Siemens', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 1250, breaking_capacity_ka: 25, manufacturer_ref: 'SIEMENS', family_apparatus_kind: 'circuit_breaker', interchangeable_across_families: false },
+        { id: 'app-bezp', name: 'ETI VV 63 A', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63, breaking_capacity_ka: 20, manufacturer_ref: null, family_apparatus_kind: 'fuse_set', interchangeable_across_families: true },
+        { id: 'app-slup', name: 'Odłącznik słupowy', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 400, breaking_capacity_ka: 0, manufacturer_ref: null, family_apparatus_kind: 'switch_disconnector', interchangeable_across_families: false },
+        { id: 'app-rek', name: 'Reklozer', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 16, manufacturer_ref: 'ZPUE', family_apparatus_kind: null, interchangeable_across_families: false },
+      ]),
+    );
+    render(<KreatorPolaSn />);
+    const katalog = (await screen.findByTestId('mvd-kreator-pole-katalog')) as HTMLSelectElement;
+    const opcje = () => [...katalog.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+    await waitFor(() => expect(opcje()).toContain('app-siemens'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'TR');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rodzina'), 'fam-1');
+    await waitFor(() => expect(opcje()).not.toContain('app-siemens'));
+    expect([...opcje()].sort()).toEqual(['app-1', 'app-bezp']);
   });
 
   it('karta pola pokazuje PEŁNY skład katalogowy, a doposażenia NIE da się tu wskazać', async () => {

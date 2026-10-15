@@ -97,10 +97,41 @@ describe('KreatorPolaNn — realna ścieżka', () => {
     });
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  // Intencja dawnego testu „blokuje zapis”: bez przypadku operacja nie rusza — w nowym
+  // kanonie przez jedno wskazanie przy próbie zapisu (zapis nie jest wyszarzany).
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek, operacja nie rusza', async () => {
     appState.activeCaseId = null;
     render(<KreatorPolaNn />);
-    expect(screen.getByTestId('mvd-kreator-pole-nn-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-pole-nn-zapisz')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: zero alertów, szyna z kontekstu stoi w polu', () => {
+    render(<KreatorPolaNn />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-pole-nn-szyna')).toHaveValue('bus-nn-1');
+    expect(screen.getByTestId('mvd-kreator-pole-nn-szyna')).toBeEnabled();
+  });
+
+  it('pole źródłowe bez rodziny w kontekście: brak domyślnego „PV”, zapis wskazuje rodzinę', async () => {
+    context = { field_role: 'SOURCE' };
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaNn />);
+    expect((screen.getByTestId('mvd-kreator-pole-nn-rodzina') as HTMLSelectElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-pole-nn-rodzina')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz rodzinę źródła — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-nn-rodzina'), 'BESS');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-nn-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_nn_outgoing_field',
+        expect.objectContaining({ field_role: 'SOURCE', source_field_kind: 'BESS' }),
+      );
+    });
   });
 });

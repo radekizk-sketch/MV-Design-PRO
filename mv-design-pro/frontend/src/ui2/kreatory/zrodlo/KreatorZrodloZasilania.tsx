@@ -28,7 +28,7 @@ import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTempla
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import { rodzinaObslugujeNapiecie } from '../stacja/konfiguratorRozdzielnicy';
 import type {
-  MVApparatusType,
+  MVApparatusCatalogType,
   SourceSystemCatalogType,
   TapChangerCatalogType,
   TransformerType,
@@ -59,29 +59,41 @@ import {
   PoleWyboru,
   RzadWartosci,
   TekstZWzorami,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type StatusPobrania,
+  nazwaKartyPola,
+  nazwaRodziny,
 } from '../rama';
+import { aparatWOfercieRodziny } from '../stacja/zgodnoscPola';
 import {
   MAX_POL_NA_SEKCJE,
+  aparatZdatnyNaSn,
   etykietaAparatu,
   etykietaZrodlaKatalogu,
   formatujKa,
   formatujLiczbe,
   formatujMva,
   formatujZespolona,
+  konfliktyFormularza,
   normalizujSekcje,
   opisUziemienia,
   pasujeRodzajAparatu,
   scalDanePoczatkowe,
+  transformatorPasujeDoSn,
   walidujFormularz,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
   zbudujPayloadZrodla,
   zbudujZadaniePodgladu,
+  zastosujPozycjeKatalogu,
   znajdzPozycjeKatalogu,
-  type BladPolaZrodla,
   type GpzLineFieldApparatusKind,
   type GridSourceFormData,
 } from './zrodloModel';
@@ -98,6 +110,51 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'normy', tytul: T.krokNormy },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Miejsce pola modelu w kreatorze — cel wskazania BRAKU_DO_OPERACJI (krok + kontrolka). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  source_name: { krok: 'identyfikacja', pole: 'mvd-kreator-zrodlo-nazwa' },
+  sn_voltage_kv: { krok: 'identyfikacja', pole: 'mvd-kreator-zrodlo-napiecie' },
+  catalog_ref: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-katalog-select' },
+  hv_voltage_kv: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-hv-napiecie' },
+  sk3_hv_mva: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-sk3hv' },
+  sk3_mva: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-sk3' },
+  rx_ratio: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-rx' },
+  r_ohm: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-rohm' },
+  x_ohm: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-xohm' },
+  u_set_pu: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-uset' },
+  sk3_min_mva: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-sk3min' },
+  ik3_min_ka: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-ik3min' },
+  rx_ratio_min: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-rxmin' },
+  r0_ohm: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-r0' },
+  x0_ohm: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-x0' },
+  z0_z1_ratio: { krok: 'zrodlo', pole: 'mvd-kreator-zrodlo-z0z1' },
+  transformer_count: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-liczba-trafo' },
+  transformer_catalog_ref: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-transformator-katalog' },
+  oltc_regulated_winding: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-uzwojenie' },
+  oltc_step_percent: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-krok' },
+  oltc_neutral_position: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-neutral' },
+  oltc_min_position: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-min' },
+  oltc_current_position: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-biezaca' },
+  oltc_max_position: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-max' },
+  oltc_control_mode: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-tryb' },
+  oltc_voltage_setpoint_kv: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-setpoint' },
+  oltc_deadband_kv: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-deadband' },
+  oltc_ldc_r_ohm: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-ldc-r' },
+  oltc_ldc_x_ohm: { krok: 'transformatory', pole: 'mvd-kreator-zrodlo-oltc-ldc-x' },
+  sections_count: { krok: 'rozdzielnia', pole: 'mvd-kreator-zrodlo-liczba-sekcji' },
+  grounding_type: { krok: 'rozdzielnia', pole: 'mvd-kreator-zrodlo-uziemienie' },
+  grounding_r_ohm: { krok: 'rozdzielnia', pole: 'mvd-kreator-zrodlo-uziemienie-ohm' },
+  grounding_x_ohm: { krok: 'rozdzielnia', pole: 'mvd-kreator-zrodlo-uziemienie-ohm' },
+  line_fields_per_section: { krok: 'sekcje' },
+  gpz_section_name: { krok: 'sekcje' },
+  gpz_line_field_name: { krok: 'sekcje' },
+  gpz_line_field_apparatus_catalog_ref: { krok: 'sekcje', pole: 'mvd-kreator-zrodlo-aparat-katalog' },
+  thermal_time_s: { krok: 'normy', pole: 'mvd-kreator-zrodlo-tk' },
+};
+
+/** Pola, które kreator dobiera automatycznie z jednoznacznego źródła. */
+type PoleAuto = 'catalog_ref' | 'transformer_catalog_ref' | 'hv_voltage_kv' | 'gpz_line_field_apparatus_catalog_ref';
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -135,16 +192,16 @@ export function KreatorZrodloZasilania() {
   const [dane, setDane] = useState<GridSourceFormData>(() =>
     scalDanePoczatkowe(daneZKontekstu(context as Record<string, unknown> | null)),
   );
-  const [bledy, setBledy] = useState<BladPolaZrodla[]>([]);
-  const [dotkniete, setDotkniete] = useState<Set<string>>(new Set());
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('identyfikacja');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
   const [katalog, setKatalog] = useState<SourceSystemCatalogType[]>([]);
   const [statusKatalogu, setStatusKatalogu] = useState<StatusPobrania>('idle');
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
 
-  const [aparaty, setAparaty] = useState<MVApparatusType[]>([]);
+  const [aparaty, setAparaty] = useState<MVApparatusCatalogType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
@@ -180,23 +237,18 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, []);
 
+  // AUTO_PRZYJETE: system zasilający z katalogu tylko wtedy, gdy na napięcie SN pasuje JEDNA
+  // pozycja (dawniej cicho pierwsza z listy). Kilka pozycji = wybór projektanta. Dane pozycji
+  // (Sk″, R/X, MIN) idą do pól jak zwykłe wartości — `zastosujPozycjeKatalogu`, to samo co
+  // ręczny wybór.
+  const jedynySystem = useMemo(
+    () => jedynaZgodna(katalog, (s) => dane.sn_voltage_kv === null || s.voltage_rating_kv === dane.sn_voltage_kv),
+    [dane.sn_voltage_kv, katalog],
+  );
   useEffect(() => {
-    if (dane.manual_mode || dane.catalog_ref || katalog.length === 0) return;
-    const first = katalog[0];
-    setDane((p) => (p.catalog_ref ? p : {
-      ...p,
-      catalog_ref: first.id,
-      sn_voltage_kv: Number.isFinite(first.voltage_rating_kv) ? first.voltage_rating_kv : p.sn_voltage_kv,
-      sk3_mva: Number.isFinite(first.sk3_mva) ? first.sk3_mva : p.sk3_mva,
-      rx_ratio: typeof first.rx_ratio === 'number' && Number.isFinite(first.rx_ratio) ? first.rx_ratio : p.rx_ratio,
-      // CV-4.3 K7: dane MIN pochodzą z pozycji katalogowej — TEN SAM zestaw pierwszej
-      // pozycji, co Sk3/R-X powyżej (predykaty parami: jedno źródło prawdy o "jaka
-      // pozycja jest aktywna"). Brak w katalogu = null (zero fabrykacji).
-      sk3_min_mva: typeof first.sk3_min_mva === 'number' && Number.isFinite(first.sk3_min_mva) ? first.sk3_min_mva : null,
-      ik3_min_ka: typeof first.ik3_min_ka === 'number' && Number.isFinite(first.ik3_min_ka) ? first.ik3_min_ka : null,
-      rx_ratio_min: typeof first.rx_ratio_min === 'number' && Number.isFinite(first.rx_ratio_min) ? first.rx_ratio_min : null,
-    }));
-  }, [katalog, dane.catalog_ref, dane.manual_mode]);
+    if (dane.manual_mode || dane.catalog_ref || !jedynySystem || decyzjaProjektanta('catalog_ref')) return;
+    setDane((p) => (p.catalog_ref ? p : zastosujPozycjeKatalogu(p, jedynySystem.id, jedynySystem)));
+  }, [dane.catalog_ref, dane.manual_mode, decyzjaProjektanta, jedynySystem]);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,17 +336,30 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, []);
 
+  // Aparaty pól liniowych: rodzaj z wyboru + U_n aparatu ≥ U_n sieci (ten sam predykat co
+  // konflikt przy polu — `aparatZdatnyNaSn`) + oferta WYBRANEJ RODZINY rozdzielnicy GPZ
+  // (rodzaje karty rodziny, producent rodziny albo komponent wymienny — ten sam predykat
+  // co kreator stacji i kreator pola SN). Bez rodziny — pełny katalog zdatny.
+  const wybranaRodzinaGpz = useMemo(
+    () => rodziny.find((r) => r.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
+    [dane.switchgear_family_ref, rodziny],
+  );
   const filtrowaneAparaty = useMemo(
-    () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
-    [aparaty, dane.gpz_line_field_apparatus_kind],
+    () => aparaty.filter((item) =>
+      pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)
+      && aparatZdatnyNaSn(item, dane.sn_voltage_kv)
+      && (wybranaRodzinaGpz === null || aparatWOfercieRodziny(item, wybranaRodzinaGpz))),
+    [aparaty, dane.gpz_line_field_apparatus_kind, dane.sn_voltage_kv, wybranaRodzinaGpz],
   );
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
+  // Transformatory 110/SN: strona górna w paśmie WN, napięcie dolne = napięcie SN sieci
+  // (`transformatorPasujeDoSn`, ten sam predykat co konflikt przy polu; dawniej okno ±6 kV
+  // przepuszczało 110/20 kV do sieci 15 kV).
   const filtrowaneTransformatory = useMemo(
     () => transformatory.filter((t) =>
-      (!napiecieSn || Math.abs(t.voltage_lv_kv - napiecieSn) <= 6)
-      && wPasmieWn(t.voltage_hv_kv)),
-    [transformatory, napiecieSn],
+      transformatorPasujeDoSn(t.voltage_lv_kv, dane.sn_voltage_kv) && wPasmieWn(t.voltage_hv_kv)),
+    [transformatory, dane.sn_voltage_kv],
   );
   const opcjeTransformatorow = useMemo(
     () => filtrowaneTransformatory.map((t) => ({
@@ -303,7 +368,7 @@ export function KreatorZrodloZasilania() {
     })),
     [filtrowaneTransformatory],
   );
-  const wybierzTransformator = useCallback((catalogRef: string | null) => {
+  const ustawTransformator = useCallback((catalogRef: string | null) => {
     const t = transformatory.find((item) => item.id === catalogRef) ?? null;
     setDane((p) => ({
       ...p,
@@ -313,6 +378,10 @@ export function KreatorZrodloZasilania() {
       transformer_vector_group: t?.vector_group ?? null,
     }));
   }, [transformatory]);
+  const wybierzTransformator = useCallback((catalogRef: string | null) => {
+    ustawTransformator(catalogRef);
+    edytowane('transformer_catalog_ref');
+  }, [edytowane, ustawTransformator]);
 
   const opcjeTapChangerow = useMemo(
     () => tapChangery.map((tc) => ({ id: tc.id, etykieta: tc.label_pl })),
@@ -334,7 +403,8 @@ export function KreatorZrodloZasilania() {
         oltc_min_position: tc.neutral_position - half,
         oltc_max_position: tc.neutral_position + half,
         oltc_step_percent: tc.step_percent,
-        oltc_control_mode: tc.type === 'oltc' && tc.supports_avr ? 'AUTOMATIC' : 'MANUAL',
+        // Tryb sterowania to decyzja projektanta (katalog mówi tylko, czy AVR jest możliwy).
+        oltc_control_mode: tc.type === 'oltc' && tc.supports_avr ? p.oltc_control_mode : 'MANUAL',
       };
     });
   }, [tapChangery]);
@@ -346,11 +416,11 @@ export function KreatorZrodloZasilania() {
   const opcjeRodzin = useMemo(
     () => rodziny
       .filter((r) => rodzinaObslugujeNapiecie(r, napiecieSn))
-      .map((r) => ({ id: r.switchgear_family_ref, etykieta: `${r.family_name} · ${r.manufacturer_ref}` })),
+      .map((r) => ({ id: r.switchgear_family_ref, etykieta: nazwaRodziny(r) })),
     [rodziny, napiecieSn],
   );
   const opcjeSzablonow = useMemo(
-    () => szablonyPol.map((t) => ({ id: t.template_ref, etykieta: t.template_ref })),
+    () => szablonyPol.map((t) => ({ id: t.template_ref, etykieta: nazwaKartyPola(t, T.kartaPolaZapas) })),
     [szablonyPol],
   );
 
@@ -365,27 +435,37 @@ export function KreatorZrodloZasilania() {
     }));
   }, [rodziny]);
 
+  // AUTO_PRZYJETE: jedyny aparat zdatny (rodzaj + napięcie) i jedyny transformator 110/SN na
+  // napięcie SN — dawniej cicho pierwsze z listy. Kilka zdatnych = wybór projektanta.
+  const jedynyAparat = useMemo(
+    () => (dane.sn_voltage_kv !== null ? jedynaZgodna(filtrowaneAparaty) : null),
+    [dane.sn_voltage_kv, filtrowaneAparaty],
+  );
   useEffect(() => {
-    if (dane.gpz_line_field_apparatus_catalog_ref || filtrowaneAparaty.length === 0) return;
+    if (!jedynyAparat || dane.gpz_line_field_apparatus_catalog_ref) return;
+    if (decyzjaProjektanta('gpz_line_field_apparatus_catalog_ref')) return;
     setDane((p) => (p.gpz_line_field_apparatus_catalog_ref ? p : {
       ...p,
-      gpz_line_field_apparatus_catalog_ref: filtrowaneAparaty[0].id,
+      gpz_line_field_apparatus_catalog_ref: jedynyAparat.id,
     }));
-  }, [filtrowaneAparaty, dane.gpz_line_field_apparatus_catalog_ref]);
+  }, [dane.gpz_line_field_apparatus_catalog_ref, decyzjaProjektanta, jedynyAparat]);
 
-  // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY (zero fabrykacji
-  // mocy/napiecia po stronie backendu) — reuzycie wzorca auto-doboru aparatu
-  // pola powyzej, zeby projektant nie utknal na pustym, obowiazkowym polu.
+  const jedynyTransformator = useMemo(
+    () => (dane.sn_voltage_kv !== null ? jedynaZgodna(filtrowaneTransformatory) : null),
+    [dane.sn_voltage_kv, filtrowaneTransformatory],
+  );
   useEffect(() => {
-    if (dane.transformer_catalog_ref || filtrowaneTransformatory.length === 0) return;
-    setDane((p) => (p.transformer_catalog_ref ? p : {
-      ...p,
-      transformer_catalog_ref: filtrowaneTransformatory[0].id,
-      transformer_sn_mva: filtrowaneTransformatory[0].rated_power_mva,
-      transformer_uk_percent: filtrowaneTransformatory[0].uk_percent,
-      transformer_vector_group: filtrowaneTransformatory[0].vector_group,
-    }));
-  }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
+    if (!jedynyTransformator || dane.transformer_catalog_ref || decyzjaProjektanta('transformer_catalog_ref')) return;
+    ustawTransformator(jedynyTransformator.id);
+  }, [dane.transformer_catalog_ref, decyzjaProjektanta, jedynyTransformator, ustawTransformator]);
+
+  // AUTO_PRZYJETE: napięcie strony 110 kV z tabliczki wybranego transformatora (dawniej stałe
+  // 110 kV) — projektant może je zmienić w trybie ręcznym.
+  const napiecieGorneTrafo = transformatory.find((t) => t.id === dane.transformer_catalog_ref)?.voltage_hv_kv ?? null;
+  useEffect(() => {
+    if (napiecieGorneTrafo === null || decyzjaProjektanta('hv_voltage_kv')) return;
+    setDane((p) => (p.hv_voltage_kv === napiecieGorneTrafo ? p : { ...p, hv_voltage_kv: napiecieGorneTrafo }));
+  }, [decyzjaProjektanta, napiecieGorneTrafo]);
 
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
@@ -416,8 +496,8 @@ export function KreatorZrodloZasilania() {
 
   const zmien = useCallback(<K extends keyof GridSourceFormData>(pole: K, wartosc: GridSourceFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
-    setDotkniete((p) => new Set(p).add(pole as string));
-  }, []);
+    if (pole === 'hv_voltage_kv' || pole === 'gpz_line_field_apparatus_catalog_ref') edytowane(pole as PoleAuto);
+  }, [edytowane]);
 
   const ustawLiczbeSekcji = useCallback((n: number) => {
     setDane((p) => ({
@@ -434,39 +514,32 @@ export function KreatorZrodloZasilania() {
     }));
   }, []);
 
+  // CV-4.3 K7c: przełączenie pozycji ZASTĘPUJE dane wszystkich pól katalogowych danymi NOWEJ
+  // pozycji (`zastosujPozycjeKatalogu` — jedno miejsce z auto-wyborem jedynej pozycji).
   const wybierzKatalog = useCallback((catalogRef: string | null) => {
     const selected = znajdzPozycjeKatalogu(katalog, catalogRef);
-    setDane((p) => ({
-      ...p,
-      catalog_ref: catalogRef,
-      // CV-4.3 K7c: przełączenie pozycji katalogowej ZASTĘPUJE dane WSZYSTKICH pól
-      // katalogowych (nie tylko MIN) danymi NOWEJ pozycji (nie zostawia sierocych
-      // wartości poprzedniej pozycji, gdy ta nowa ich nie ma) — `selected` obecny
-      // ⇒ jego wartość (albo null) wygrywa zawsze; PRZED naprawą `sn_voltage_kv`/
-      // `sk3_mva`/`rx_ratio` używały `selected?.pole ?? p.pole`, więc pozycja BEZ
-      // `rx_ratio` (pole opcjonalne katalogu) cicho zachowywała R/X poprzedniej
-      // pozycji — ta sama klasa co pola MIN poniżej, teraz JEDNYM wzorcem.
-      sn_voltage_kv: selected ? selected.voltage_rating_kv : p.sn_voltage_kv,
-      sk3_mva: selected ? selected.sk3_mva : p.sk3_mva,
-      rx_ratio: selected ? selected.rx_ratio ?? null : p.rx_ratio,
-      sk3_min_mva: selected ? selected.sk3_min_mva ?? null : p.sk3_min_mva,
-      ik3_min_ka: selected ? selected.ik3_min_ka ?? null : p.ik3_min_ka,
-      rx_ratio_min: selected ? selected.rx_ratio_min ?? null : p.rx_ratio_min,
-    }));
-    setDotkniete((p) => new Set(p).add('catalog_ref'));
-  }, [katalog]);
+    setDane((p) => zastosujPozycjeKatalogu(p, catalogRef, selected));
+    edytowane('catalog_ref');
+  }, [edytowane, katalog]);
+
+  // Parametry pozycji katalogowych do sprawdzenia zgodności z napięciem SN (konflikty przy polu).
+  const zgodnosc = useMemo(() => ({
+    transformatorLvKv: transformatory.find((t) => t.id === dane.transformer_catalog_ref)?.voltage_lv_kv ?? null,
+    aparatUnKv: aparaty.find((a) => a.id === dane.gpz_line_field_apparatus_catalog_ref)?.u_n_kv ?? null,
+  }), [aparaty, dane.gpz_line_field_apparatus_catalog_ref, dane.transformer_catalog_ref, transformatory]);
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu; braki dopiero przy próbie zapisu.
+  const konflikty = useMemo(() => konfliktyFormularza(dane, zgodnosc), [dane, zgodnosc]);
 
   const zapisz = useCallback(async () => {
-    const walidacja = walidujFormularz(dane);
-    setBledy(walidacja);
-    if (walidacja.length > 0) {
-      setBladGlobalny(T.walidacjaStopka);
+    const brak = pierwszyBrak([
+      ...walidujFormularz(dane, zgodnosc).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     const payload = zbudujPayloadZrodla(dane);
     const validationError = validateCatalogFirst('add_grid_source_sn', payload);
     if (validationError) {
@@ -489,16 +562,13 @@ export function KreatorZrodloZasilania() {
       type: 'Station',
       name: dane.source_name.trim() || 'Źródło zasilania (GPZ)',
     });
-  }, [dane, activeCaseId, executeDomainOperation, collapseSurfaceStackTo, closeForm, selekcjaPoOperacji]);
+  }, [dane, activeCaseId, executeDomainOperation, collapseSurfaceStackTo, closeForm, prowadzenie, selekcjaPoOperacji, zgodnosc]);
 
-  const bladDlaPola = (pole: string): string | undefined => {
-    if (!dotkniete.has(pole) && bledy.length === 0) return undefined;
-    return bledy.find((b) => b.field === pole)?.message;
-  };
+  const bladDlaPola = (pole: string): string | undefined => konflikty.find((b) => b.field === pole)?.message;
 
   const oznaczenie = useMemo(() => zbudujOznaczenieGpz(dane.source_name), [dane.source_name]);
   const wybranaPozycja = useMemo(() => znajdzPozycjeKatalogu(katalog, dane.catalog_ref), [katalog, dane.catalog_ref]);
-  const gotowosc = useMemo(() => wierszeGotowosci(dane), [dane]);
+  const gotowosc = useMemo(() => wierszeGotowosci(dane, konflikty), [dane, konflikty]);
   const opcjeKatalogu = katalog.map((item) => ({ id: item.id, etykieta: etykietaZrodlaKatalogu(item) }));
   const opcjeAparatow = filtrowaneAparaty.map((item) => ({ id: item.id, etykieta: etykietaAparatu(item) }));
 
@@ -527,8 +597,14 @@ export function KreatorZrodloZasilania() {
       <KreatorPodsumowanie
         tytul={T.podsumTytul}
         status={statusPodgladu}
-        komunikat={statusPodgladu === 'error' ? (bladPodgladu ?? T.podsumBladDomyslny) : null}
-        komunikatTon="warn"
+        komunikat={
+          statusPodgladu === 'error'
+            ? (bladPodgladu ?? T.podsumBladDomyslny)
+            : zadaniePodgladu === null
+              ? T.podsumCzeka
+              : null
+        }
+        komunikatTon={statusPodgladu === 'error' ? 'warn' : undefined}
         testid="mvd-kreator-zrodlo-podsumowanie"
       >
         <RzadWartosci etykieta={T.podsumSk} wartosc={formatujMva(podglad?.sk_mva)} />
@@ -557,24 +633,6 @@ export function KreatorZrodloZasilania() {
     </>
   );
 
-  /**
-   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
-   * źródło prawdy dla `zablokowana` przycisku zapisu ORAZ `status`/
-   * `data-status` korzenia `KreatorRama` (reguła KLASA NIE INSTANCJA,
-   * „Predykaty parami"). Poprzednia wersja NIE MIAŁA `zablokowana` w ogóle —
-   * przycisk „Zapisz GPZ" był klikalny od pierwszego renderu, a walidacja
-   * (`!activeCaseId` → `T.brakZakresu`) biegła DOPIERO po kliknięciu
-   * (`zapisz()`), więc `KreatorRama` nigdy nie niosła sygnału gotowości.
-   * Ładowanie = katalog systemów zasilających (`statusKatalogu`) jeszcze w
-   * locie — bez niego pola napięcia/Sk″/R/X zasiane z katalogu byłyby puste.
-   */
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !activeCaseId
-      ? 'zablokowany'
-      : statusKatalogu === 'loading'
-        ? 'ladowanie'
-        : 'gotowy';
-
   return (
     <KreatorRama
       testid="mvd-kreator-zrodlo"
@@ -601,20 +659,13 @@ export function KreatorZrodloZasilania() {
         testid: 'mvd-kreator-zrodlo-dalej',
       }}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : stanGotowosci === 'zablokowany'
-            ? T.brakZakresu
-            : bledy.length > 0
-              ? T.walidacjaStopka
-              : null
-      }
-      status={stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={{
         etykieta: T.zapisz,
         onClick: () => void zapisz(),
-        zablokowana: stanGotowosci !== 'gotowy',
+        // Wyszarzenie tylko na czas wczytywania katalogu systemów zasilających (zamknięta lista
+        // ramy); brak danych i brak przypadku wskazuje się przy kliknięciu.
+        blokada: statusKatalogu === 'loading' ? 'ladowanie' : null,
         testid: 'mvd-kreator-zrodlo-zapisz',
       }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: closeForm, testid: 'mvd-kreator-zrodlo-anuluj' }}
@@ -636,8 +687,8 @@ export function KreatorZrodloZasilania() {
           <PoleWyboru
             etykieta={T.napiecieSn}
             wartosc={String(dane.sn_voltage_kv ?? '')}
-            onZmiana={(v) => zmien('sn_voltage_kv', Number(v))}
-            opcje={T.napieciaSn}
+            onZmiana={(v) => zmien('sn_voltage_kv', v === '' ? null : Number(v))}
+            opcje={[{ id: '', etykieta: T.napiecieSnPlaceholder }, ...T.napieciaSn]}
             pomoc={T.napiecieSnPomoc}
             wymagane
             blad={bladDlaPola('sn_voltage_kv')}
@@ -678,7 +729,7 @@ export function KreatorZrodloZasilania() {
                 blad={bladDlaPola('catalog_ref')}
                 testid="mvd-kreator-zrodlo-katalog-select"
               />
-              <RzadWartosci etykieta={T.zrodloParametrow} wartosc={wybranaPozycja?.name ?? dane.catalog_ref ?? '—'} />
+              <RzadWartosci etykieta={T.zrodloParametrow} wartosc={wybranaPozycja?.name ?? '—'} />
               <RzadWartosci
                 etykieta={T.powiazanieKatalogowe}
                 wartosc={wybranaPozycja ? etykietaZrodlaKatalogu(wybranaPozycja) : T.powiazanieBrak}
@@ -791,9 +842,9 @@ export function KreatorZrodloZasilania() {
               testid="mvd-kreator-zrodlo-zero-toggle"
             />
             <KreatorSiatka kolumny={3}>
-              <PoleLiczbowe etykieta={T.r0} jednostka="Ω" wartosc={dane.r0_ohm} onZmiana={(v) => zmien('r0_ohm', v)} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('r0_ohm')} />
-              <PoleLiczbowe etykieta={T.x0} jednostka="Ω" wartosc={dane.x0_ohm} onZmiana={(v) => zmien('x0_ohm', v)} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('x0_ohm')} />
-              <PoleLiczbowe etykieta={T.z0z1} wartosc={dane.z0_z1_ratio} onZmiana={(v) => zmien('z0_z1_ratio', v)} krok={0.1} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('z0_z1_ratio')} />
+              <PoleLiczbowe etykieta={T.r0} jednostka="Ω" wartosc={dane.r0_ohm} onZmiana={(v) => zmien('r0_ohm', v)} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('r0_ohm')} testid="mvd-kreator-zrodlo-r0" />
+              <PoleLiczbowe etykieta={T.x0} jednostka="Ω" wartosc={dane.x0_ohm} onZmiana={(v) => zmien('x0_ohm', v)} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('x0_ohm')} testid="mvd-kreator-zrodlo-x0" />
+              <PoleLiczbowe etykieta={T.z0z1} wartosc={dane.z0_z1_ratio} onZmiana={(v) => zmien('z0_z1_ratio', v)} krok={0.1} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('z0_z1_ratio')} testid="mvd-kreator-zrodlo-z0z1" />
             </KreatorSiatka>
           </KreatorSekcja>
           <PanelTeorii
@@ -873,9 +924,10 @@ export function KreatorZrodloZasilania() {
               <KreatorSiatka kolumny={3}>
                 <PoleWyboru
                   etykieta={T.oltcUzwojenie}
-                  wartosc={dane.oltc_regulated_winding}
-                  onZmiana={(v) => zmien('oltc_regulated_winding', v as GridSourceFormData['oltc_regulated_winding'])}
-                  opcje={T.oltcUzwojenia}
+                  wartosc={dane.oltc_regulated_winding ?? ''}
+                  onZmiana={(v) => zmien('oltc_regulated_winding', (v || null) as GridSourceFormData['oltc_regulated_winding'])}
+                  opcje={[{ id: '', etykieta: T.wybierz }, ...T.oltcUzwojenia]}
+                  wymagane
                   testid="mvd-kreator-zrodlo-oltc-uzwojenie"
                 />
                 <PoleLiczbowe etykieta={T.oltcKrok} jednostka="%" wartosc={dane.oltc_step_percent} onZmiana={(v) => zmien('oltc_step_percent', v)} krok={0.05} wymagane blad={bladDlaPola('oltc_step_percent')} testid="mvd-kreator-zrodlo-oltc-krok" />
@@ -889,9 +941,10 @@ export function KreatorZrodloZasilania() {
                 <>
                   <PoleWyboru
                     etykieta={T.oltcTryb}
-                    wartosc={dane.oltc_control_mode}
-                    onZmiana={(v) => zmien('oltc_control_mode', v as GridSourceFormData['oltc_control_mode'])}
-                    opcje={T.oltcTryby}
+                    wartosc={dane.oltc_control_mode ?? ''}
+                    onZmiana={(v) => zmien('oltc_control_mode', (v || null) as GridSourceFormData['oltc_control_mode'])}
+                    opcje={[{ id: '', etykieta: T.wybierz }, ...T.oltcTryby]}
+                    wymagane
                     pomoc={T.oltcTrybAutoInfo}
                     testid="mvd-kreator-zrodlo-oltc-tryb"
                   />
@@ -933,10 +986,11 @@ export function KreatorZrodloZasilania() {
             />
             <PoleWyboru
               etykieta={T.uziemienie}
-              wartosc={dane.grounding_type}
-              onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
-              opcje={T.typyUziemienia}
+              wartosc={dane.grounding_type ?? ''}
+              onZmiana={(v) => zmien('grounding_type', (v || null) as TypPunktuNeutralnego | null)}
+              opcje={[{ id: '', etykieta: T.wybierz }, ...T.typyUziemienia]}
               pomoc={opisUziemienia(dane.grounding_type)}
+              wymagane
               testid="mvd-kreator-zrodlo-uziemienie"
             />
           </KreatorSiatka>
@@ -947,6 +1001,7 @@ export function KreatorZrodloZasilania() {
               wartosc={dane.grounding_type === 'petersen_coil' ? dane.grounding_x_ohm : dane.grounding_r_ohm}
               onZmiana={(v) => zmien(dane.grounding_type === 'petersen_coil' ? 'grounding_x_ohm' : 'grounding_r_ohm', v)}
               blad={bladDlaPola(dane.grounding_type === 'petersen_coil' ? 'grounding_x_ohm' : 'grounding_r_ohm')}
+              wymagane
               testid="mvd-kreator-zrodlo-uziemienie-ohm"
             />
           ) : null}
@@ -1006,7 +1061,7 @@ export function KreatorZrodloZasilania() {
                 wartosc={dane.gpz_line_field_apparatus_kind}
                 onZmiana={(v) => {
                   zmien('gpz_line_field_apparatus_kind', v as GpzLineFieldApparatusKind);
-                  zmien('gpz_line_field_apparatus_catalog_ref', null);
+                  setDane((p) => ({ ...p, gpz_line_field_apparatus_catalog_ref: null }));
                 }}
                 opcje={T.rodzajeAparatu}
                 testid="mvd-kreator-zrodlo-aparat-rodzaj"
@@ -1038,10 +1093,10 @@ export function KreatorZrodloZasilania() {
             etykieta={T.czasCieplny}
             jednostka="s"
             wartosc={dane.thermal_time_s}
-            onZmiana={(v) => zmien('thermal_time_s', v ?? 0)}
+            onZmiana={(v) => zmien('thermal_time_s', v)}
             krok={0.1}
             min={0.1}
-            pomoc="Czas trwania zwarcia do sprawdzenia wytrzymałości cieplnej Ith (feeder do backendu)."
+            pomoc={T.czasCieplnyPomoc}
             blad={bladDlaPola('thermal_time_s')}
             testid="mvd-kreator-zrodlo-tk"
           />
@@ -1055,11 +1110,11 @@ export function KreatorZrodloZasilania() {
         <KreatorSekcja tytul={T.przegladTytul} testid="mvd-kreator-zrodlo-przeglad">
           <KreatorInfo>{T.przegladOpis}</KreatorInfo>
           <RzadWartosci etykieta={T.nazwa} wartosc={dane.source_name || '—'} />
-          <RzadWartosci etykieta={T.napiecieSn} wartosc={`${formatujLiczbe(dane.sn_voltage_kv, 0)} kV`} />
+          <RzadWartosci etykieta={T.napiecieSn} wartosc={dane.sn_voltage_kv !== null ? `${formatujLiczbe(dane.sn_voltage_kv, 0)} kV` : '—'} />
           <RzadWartosci etykieta={T.trybZrodlaTytul} wartosc={dane.manual_mode ? T.trybReczny : T.trybKatalog} />
           <RzadWartosci etykieta={T.liczbaSekcji} wartosc={String(dane.sections_count)} />
           <RzadWartosci etykieta={T.liczbaTrafo} wartosc={String(dane.transformer_count)} />
-          <RzadWartosci etykieta={T.uziemienie} wartosc={T.typyUziemienia.find((o) => o.id === dane.grounding_type)?.etykieta ?? dane.grounding_type} />
+          <RzadWartosci etykieta={T.uziemienie} wartosc={T.typyUziemienia.find((o) => o.id === dane.grounding_type)?.etykieta ?? '—'} />
           <KreatorNastepnyKrok opis={T.nastepnyOpis} testid="mvd-kreator-zrodlo-nastepny" />
         </KreatorSekcja>
       ) : null}

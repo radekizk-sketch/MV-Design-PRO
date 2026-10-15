@@ -420,7 +420,13 @@ POMIJANE_KATALOGI = {
 #: ETYKIETY-STACJI): 62 — zbiory zdjetych TS6133 kart BIEG-ZABEZPIECZEN (12) i ETYKIETA-STACJI
 #: (17) czesciowo wspolne, B01-RUNDA-1 i PARTIA-6-BACKEND naprawily ten sam blad bazy. Zero
 #: nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 62
+#: Karta PROWADZENIE-KREATORY (2026-10-15, pomiar `zmierz_dlug()` na drzewie karty): 62 -> 59.
+#: Zeszly 3 zastane bledy w testach kreatorow: TS2741 w `rama.test.tsx` (`PoleLiczbowe` bez
+#: wymaganego `onZmiana`), TS2322 w `DoborToruSn.test.tsx` i `derSelectionApi.test.ts` (atrapa
+#: `fetch` typowana `ReturnType<typeof vi.fn>` zamiast `Mock<[input, init?], Promise<Response>>`).
+#: Dwa bledy dopisane w trakcie karty (nieuzywany import, pole przekaznika) naprawione przed
+#: commitem. Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 59
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

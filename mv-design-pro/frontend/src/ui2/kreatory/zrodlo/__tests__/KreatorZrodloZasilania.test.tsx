@@ -65,20 +65,27 @@ const DOMYSLNY_KATALOG_ZRODEL = [
     rx_ratio: 0.12,
   },
 ];
-const { fetchSourceSystemTypesMock } = vi.hoisted(() => ({
-  fetchSourceSystemTypesMock: vi.fn(),
-}));
+// Rzuty końcówki katalogu (producent rozdzielnicy, rodzaj w słowniku rodzin, wymienność).
+// Domyślnie JEDEN wyłącznik producenta rodziny SafeRing (jedyny zdatny — przyjmowany
+// automatycznie); test oferty rodziny dokłada wyłącznik innego producenta.
+const { fetchSourceSystemTypesMock, fetchMvApparatusTypesMock, APARAT_ABB, APARAT_SIEMENS } = vi.hoisted(() => {
+  const abb = { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, manufacturer_ref: 'ABB', family_apparatus_kind: 'circuit_breaker', interchangeable_across_families: false };
+  const siemens = { id: 'APP-SIEMENS', name: 'Wyłącznik Siemens', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 1250, manufacturer_ref: 'SIEMENS', family_apparatus_kind: 'circuit_breaker', interchangeable_across_families: false };
+  return {
+    fetchSourceSystemTypesMock: vi.fn(),
+    fetchMvApparatusTypesMock: vi.fn(() => Promise.resolve([abb])),
+    APARAT_ABB: abb,
+    APARAT_SIEMENS: siemens,
+  };
+});
 
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchSourceSystemTypes: () => fetchSourceSystemTypesMock(),
-  fetchMvApparatusTypes: () =>
-    Promise.resolve([
-      { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
-    ]),
+  fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
   fetchSwitchgearFamilies: () =>
     Promise.resolve([
-      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
+      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], allowed_apparatus_kinds: ['switch_disconnector', 'circuit_breaker', 'earthing_switch', 'fuse_set'], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
     ]),
   fetchCompleteBayTemplates: () =>
     Promise.resolve([
@@ -118,21 +125,49 @@ vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({
   fetchGridSourcePreview: () => fetchGridSourcePreviewMock(),
 }));
 
+type Uzytkownik = ReturnType<typeof userEvent.setup>;
+
+/** Przycisk kroku w pasku kroków ramy (klik natywny). */
+function krok(id: string): HTMLElement {
+  return screen.getByTestId('mvd-kreator-kroki').querySelector(`[data-testid="mvd-kreator-krok-${id}"]`) as HTMLElement;
+}
+
 /**
- * Renderuje kreator i czeka na realny stan końcowy montażu. Montaż pobiera
- * 5 katalogów, po nich efekty auto-wybierają pozycję katalogu źródła i aparat,
- * co przelicza podgląd IEC 60909 po stronie serwera DRUGI raz (pierwszy bieg
- * rusza od danych domyślnych jeszcze przed katalogami). Czekamy na drugie
- * wywołanie podglądu, a ogon (wynik drugiego biegu to mikrotask bez
- * rozróżnialnego sygnału UI — treść podsumowania jest identyczna po obu
- * biegach) domykamy jawnym act(async) — bez tego React zgłasza
- * „An update to KreatorZrodloZasilania was not wrapped in act(...)".
+ * Renderuje kreator i czeka na realny stan końcowy montażu (5 katalogów + dobór jedynej
+ * pozycji systemu zasilającego, transformatora i aparatu). Bez czasu tk podgląd IEC 60909
+ * NIE rusza (interfejs nie podstawia 1 s) — kolumna podsumowania mówi, czego czeka.
  */
 async function renderujKreator() {
   const wynik = render(<KreatorZrodloZasilania />);
-  await waitFor(() => expect(fetchGridSourcePreviewMock).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(fetchSourceSystemTypesMock).toHaveBeenCalled());
   await act(async () => {});
-  // Stan końcowy widoczny dla użytkownika: podsumowanie z wynikiem backendu.
+  expect(screen.getByText(T.podsumCzeka)).toBeTruthy();
+  expect(fetchGridSourcePreviewMock).not.toHaveBeenCalled();
+  return wynik;
+}
+
+/** Decyzje projektanta, których kreator nie zgaduje (kontrakt prowadzenia, 2026-10-15). */
+async function podajTk(user: Uzytkownik, tk = '1') {
+  await user.click(krok('normy'));
+  await user.type(screen.getByTestId('mvd-kreator-zrodlo-tk'), tk);
+}
+async function wybierzUziemienie(user: Uzytkownik) {
+  await user.click(krok('rozdzielnia'));
+  await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-uziemienie'), 'directly_grounded');
+}
+async function wybierzNapiecieSn(user: Uzytkownik, kv = '15') {
+  await user.click(krok('identyfikacja'));
+  await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-napiecie'), kv);
+}
+
+/** Kreator z podglądem backendu: projektant podał tk, podgląd IEC 60909 policzony. */
+async function renderujZPodgladem() {
+  const user = userEvent.setup();
+  const wynik = render(<KreatorZrodloZasilania />);
+  await waitFor(() => expect(fetchSourceSystemTypesMock).toHaveBeenCalled());
+  await podajTk(user);
+  await waitFor(() => expect(fetchGridSourcePreviewMock).toHaveBeenCalled());
+  await act(async () => {});
   expect(screen.getByText('Obliczenie IEC 60909 po stronie serwera')).toBeTruthy();
   return wynik;
 }
@@ -169,6 +204,35 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect((screen.getByTestId('mvd-kreator-zrodlo-nazwa') as HTMLInputElement).value).toBe('GPZ Wschód');
   });
 
+  it('świeży kreator: zero alertów i czerwieni; dane jedynej pozycji katalogu w polach, uziemienie i tk puste', async () => {
+    const user = userEvent.setup();
+    await renderujKreator();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-kontrola').querySelector('[data-stan="konflikt"]')).toBeNull();
+    // Napięcie SN z jedynej pozycji katalogu systemu zasilającego — zwykła, edytowalna wartość.
+    expect(screen.getByTestId('mvd-kreator-zrodlo-napiecie')).toHaveValue('15');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-napiecie')).toBeEnabled();
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
+    await user.click(krok('rozdzielnia'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uziemienie')).toHaveValue('');
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-uziemienie-ohm')).toBeNull();
+    await user.click(krok('normy'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-tk')).toHaveValue(null);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeEnabled();
+  });
+
+  it('kilka pozycji katalogu na napięcie SN: kreator nie wybiera pierwszej', async () => {
+    fetchSourceSystemTypesMock.mockResolvedValue([
+      DOMYSLNY_KATALOG_ZRODEL[0],
+      { ...DOMYSLNY_KATALOG_ZRODEL[0], id: 'GPZ-003', name: 'Zasilanie GPZ 15 kV (B)', sk3_mva: 500 },
+    ]);
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await screen.findByRole('option', { name: /Zasilanie GPZ 15 kV \(B\)/ });
+    expect(screen.getByTestId('mvd-kreator-zrodlo-katalog-select')).toHaveValue('');
+  });
+
   it('nawigacja kroków: „Dalej” odsłania krok Źródło z auto-wybranym katalogiem (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
@@ -193,11 +257,23 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('zapisuje GPZ operacją domenową add_grid_source_sn z dowolnego kroku (klik natywny)', async () => {
+  it('zapis wskazuje sposób pracy punktu neutralnego (krok, fokus, jedno zdanie); po wyborze GPZ się zapisuje', async () => {
     const user = userEvent.setup();
-    render(<KreatorZrodloZasilania />);
-    // auto-wybór katalogu + aparatu następuje po montażu (efekty), niezależnie od kroku.
-    await waitFor(() => expect(navigateToSldMock).toHaveBeenCalledTimes(0));
+    await renderujKreator();
+    // Dobór jedynych pozycji katalogu (system, transformator, aparat) następuje po montażu;
+    // uziemienia kreator nie zgaduje (dawniej rezystor 12 Ω) — próba zapisu go wskazuje.
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-krok-rozdzielnia')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uziemienie')).toHaveFocus();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz sposób pracy punktu neutralnego — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-uziemienie'), 'resistor_grounded');
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uziemienie-ohm')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj rezystancję R_N rezystora/);
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-uziemienie-ohm'), '40');
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [caseId, op, payload] = executeDomainOperationMock.mock.calls[0];
@@ -205,7 +281,11 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(op).toBe('add_grid_source_sn');
     expect(payload).toMatchObject({
       source_name: 'GPZ Wschód',
+      voltage_kv: 15,
+      hv_voltage_kv: 110,
       catalog_binding: { catalog_namespace: 'ZRODLO_SN', catalog_item_id: 'GPZ-001' },
+      transformer_catalog_ref: 'TR-110-15-25',
+      grounding: { type: 'resistor_grounded', r_ohm: 40 },
     });
     await waitFor(() => expect(closeFormMock).toHaveBeenCalled());
     expect(navigateToSldMock).toHaveBeenCalled();
@@ -219,48 +299,35 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  /**
-   * R5 (karta FAB-K, wzorzec E2E-S95) — PRZYCZYNA nazwana w kodzie:
-   * `akcjaGlowna` (`KreatorZrodloZasilania.tsx`) NIE MIAŁO `zablokowana` w
-   * ogóle — przycisk „Zapisz GPZ" był klikalny bez aktywnego zakresu obliczeń,
-   * a błąd (`T.brakZakresu`) pokazywał się DOPIERO po kliknięciu, wewnątrz
-   * `zapisz()`. Naprawa: bez aktywnego zakresu przycisk jest zablokowany
-   * PRZED kliknięciem — `data-status="zablokowany"` i komunikat w stopce
-   * (`mvd-kreator-walidacja`), zero zapisu.
-   */
-  it('bez aktywnego zakresu obliczeń zapis jest zablokowany PRZED kliknięciem, z uczciwym komunikatem', async () => {
+  // Intencja dawnego testu R5 („bez zakresu zapis zablokowany PRZED kliknięciem”): zapis nie
+  // rusza bez aktywnego przypadku i projektant wie dlaczego. Nowy kanon (kontrakt prowadzenia):
+  // brak przypadku to BRAK_DO_OPERACJI — jedno zdanie przy próbie zapisu, nie wyszarzenie.
+  it('bez aktywnego przypadku: kompletny zapis wskazuje przypadek, operacja nie wychodzi', async () => {
     appState.activeCaseId = null;
-    render(<KreatorZrodloZasilania />);
-    // Domyka mikrotaski montażu (5 katalogów + auto-wybór) w `act`, bez
-    // zależności od konkretnego kroku formularza — asercja dotyczy WYŁĄCZNIE
-    // stanu przycisku zapisu, niezależnego od aktywnego kroku.
-    await act(async () => {});
-    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
-    // R5 (S9-5): sygnał gotowości (data-status) jest JEDNYM źródłem prawdy
-    // z `disabled` (KLASA NIE INSTANCJA, predykaty parami).
-    expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'zablokowany');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T_BRAK_ZAKRESU);
+    const user = userEvent.setup();
+    await renderujKreator();
+    await wybierzUziemienie(user);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeEnabled();
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toBe(T_BRAK_ZAKRESU);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
   /**
-   * R5 — PRZYCZYNA nazwana w kodzie: `akcjaGlowna.zablokowana`
-   * (`KreatorZrodloZasilania.tsx`) w OGÓLE nie sprawdzało, czy katalog
-   * systemów zasilających (`GET /api/catalog/source-system-types`, efekt
-   * montujący komponent) już doszedł — przycisk „Zapisz GPZ" był klikalny od
-   * pierwszego renderu, niezależnie od tego async zależności. Test poniżej
-   * pokrywa ILOCZYN CECH z karty: „katalog jeszcze się ładuje" (fetch
-   * świadomie nierozstrzygnięty) × „aktywny zakres obliczeń poprawny" →
-   * zapis MUSI być zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
+   * R5 — iloczyn cech „katalog jeszcze się ładuje × zakres poprawny”: zapis wyszarzony (jedyny
+   * dopuszczalny powód obok zapisu w toku) z jednym zdaniem w stopce ramy.
    */
-  it('iloczyn cech: katalog systemów zasilających jeszcze się ładuje × zakres obliczeń poprawny → zapis zablokowany z komunikatem', () => {
+  it('iloczyn cech: katalog systemów zasilających jeszcze się ładuje × zakres obliczeń poprawny → zapis wyszarzony z jednym zdaniem', async () => {
     fetchSourceSystemTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorZrodloZasilania />);
 
     expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/Wczytywanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    // Pozostałe katalogi (aparaty, rodziny, transformatory, przełączniki) dochodzą w mikrotaskach.
+    await act(async () => {});
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
   });
 
   /**
@@ -299,6 +366,24 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.queryByTestId('mvd-kreator-zrodlo-katalog-select')).toBeNull();
   });
 
+  // Ten sam predykat oferty rodziny co kreator stacji i pola SN (`aparatWOfercieRodziny`).
+  // Iloczyn: rodzina {niewybrana, wybrana} × producent aparatu {rodziny, inny}.
+  it('aparaty pól liniowych GPZ: po wyborze rodziny tylko oferta rodziny', async () => {
+    fetchMvApparatusTypesMock.mockReturnValueOnce(Promise.resolve([APARAT_ABB, APARAT_SIEMENS]));
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(krok('sekcje'));
+    const katalog = (await screen.findByTestId('mvd-kreator-zrodlo-aparat-katalog')) as HTMLSelectElement;
+    const opcje = () => [...katalog.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+    await waitFor(() => expect(opcje()).toContain('APP-SIEMENS'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-zrodlo-rodzina-select').querySelector('option[value="ABB__SAFERING"]')).not.toBeNull(),
+    );
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-rodzina-select'), 'ABB__SAFERING');
+    await waitFor(() => expect(opcje()).not.toContain('APP-SIEMENS'));
+    expect(opcje()).toEqual(['APP-001']);
+  });
+
   it('krok Sekcje i pola pozwala edytować per sekcję (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
@@ -308,18 +393,20 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-rodzaj')).toBeTruthy();
   });
 
-  it('krok Transformatory: wybór OLTC odsłania nastawy regulatora (klik natywny)', async () => {
+  it('krok Transformatory: wybór OLTC odsłania nastawy regulatora — puste, bez zgadniętych ±9 × 1,25 % i 15 kV', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
-    );
+    await user.click(krok('transformatory'));
     // Domyślnie brak regulacji → brak nastaw OLTC.
     expect(screen.queryByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeNull();
     await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
-    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeTruthy();
-    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-uzwojenie')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toHaveValue(null);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-krok')).toHaveValue(null);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-min')).toHaveValue(null);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-uzwojenie')).toHaveValue('');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-tryb')).toHaveValue('');
     expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-katalog')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('OLTC z kreatora trafia do operacji domenowej add_grid_source_sn (klik natywny)', async () => {
@@ -330,17 +417,31 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     await waitFor(() =>
       expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
     );
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
-    );
+    await wybierzUziemienie(user);
+    await user.click(krok('transformatory'));
     await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
-    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeTruthy();
+    // Nastawy zaczepów z karty przełącznika w katalogu; tryb sterowania to decyzja projektanta.
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-katalog'), 'tc_oltc_110sn_19_125');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-min')).toHaveValue(-9);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-tryb')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz tryb sterowania regulatora — /);
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-tryb'), 'AUTOMATIC');
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toHaveFocus();
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint'), '15.5');
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-oltc-deadband'), '0.2');
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [, , payload] = executeDomainOperationMock.mock.calls[0];
     expect(payload).toMatchObject({
       transformer_regulation_type: 'OLTC',
       transformer_control_mode: 'AUTOMATIC',
+      transformer_voltage_setpoint_kv: 15.5,
+      transformer_deadband_kv: 0.2,
+      transformer_tap_min_position: -9,
+      transformer_tap_max_position: 9,
+      transformer_regulated_winding: 'HV',
     });
   });
 });
@@ -404,10 +505,11 @@ describe('KreatorZrodloZasilania — scenariusz MIN (CV-4.3 K7)', () => {
     await user.type(sk3Min, '150');
     const rxMin = screen.getByTestId('mvd-kreator-zrodlo-rxmin') as HTMLInputElement;
     await user.type(rxMin, '0.2');
+    // Tryb ręczny nie ma pozycji katalogu, więc napięcie SN i uziemienie podaje projektant.
+    await wybierzNapiecieSn(user);
+    await wybierzUziemienie(user);
 
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
-    );
+    await user.click(krok('zapis'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
 
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
@@ -442,7 +544,7 @@ describe('KreatorZrodloZasilania — scenariusz MIN (CV-4.3 K7)', () => {
       },
     });
 
-    await renderujKreator();
+    await renderujZPodgladem();
 
     expect(screen.getByTestId('mvd-kreator-zrodlo-podsum-sk-min')).toHaveTextContent('150.0 MVA');
     expect(screen.getByTestId('mvd-kreator-zrodlo-podsum-ik3-min')).toHaveTextContent('5.78 kA');
@@ -462,7 +564,7 @@ describe('KreatorZrodloZasilania — scenariusz MIN (CV-4.3 K7)', () => {
   });
 
   it('podgląd backendu BEZ bloku scenariusz_min nie renderuje wierszy MIN (zero fabrykacji)', async () => {
-    await renderujKreator();
+    await renderujZPodgladem();
     expect(screen.queryByTestId('mvd-kreator-zrodlo-podsum-sk-min')).toBeNull();
     expect(screen.queryByTestId('mvd-kreator-zrodlo-podsum-ik3-min')).toBeNull();
   });
@@ -513,7 +615,10 @@ describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.
   });
 
   it('tryb katalogowy: pole napięcia zadanego jest ukryte (manual_equivalent tego trybu nie dotyczy)', async () => {
+    const user = userEvent.setup();
     await renderujKreator();
+    await user.click(krok('zrodlo'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-katalog-select')).toBeTruthy();
     expect(screen.queryByTestId('mvd-kreator-zrodlo-uset')).toBeNull();
   });
 
@@ -531,10 +636,10 @@ describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.
     await user.type(rx, '0.1');
     const uSet = screen.getByTestId('mvd-kreator-zrodlo-uset') as HTMLInputElement;
     await user.type(uSet, '1.06');
+    await wybierzNapiecieSn(user);
+    await wybierzUziemienie(user);
 
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
-    );
+    await user.click(krok('zapis'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
 
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
@@ -556,10 +661,10 @@ describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.
     const rx = screen.getByTestId('mvd-kreator-zrodlo-rx') as HTMLInputElement;
     await user.clear(rx);
     await user.type(rx, '0.1');
+    await wybierzNapiecieSn(user);
+    await wybierzUziemienie(user);
 
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
-    );
+    await user.click(krok('zapis'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
 
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
@@ -568,7 +673,7 @@ describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.
     expect('u_set_pu' in manual).toBe(false);
   });
 
-  it('wartość spoza pasma 0,8-1,2 blokuje zapis z komunikatem walidacji (klik natywny)', async () => {
+  it('wartość spoza pasma 0,8-1,2: konflikt od razu przy polu, zapis wraca do pola (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
@@ -582,13 +687,15 @@ describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.
     await user.type(rx, '0.1');
     const uSet = screen.getByTestId('mvd-kreator-zrodlo-uset') as HTMLInputElement;
     await user.type(uSet, '1.5');
+    // KONFLIKT_TECHNICZNY widoczny od razu przy polu — bez klikania „Zapisz”.
+    expect(screen.getByRole('alert').textContent).toMatch(/w paśmie 0.8–1.2 p.u./);
 
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
-    );
+    await user.click(krok('zapis'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T.walidacjaStopka));
+    expect(screen.getByTestId('mvd-kreator-krok-zrodlo')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uset')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/w paśmie 0.8–1.2 p.u./);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });
@@ -640,15 +747,16 @@ describe('KreatorZrodloZasilania — synchronizacja katalogu przy przełączeniu
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
 
     const select = screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement;
-    // Auto-wybór pierwszej pozycji (GPZ-001, R/X=0,12) po montażu.
-    await waitFor(() => expect(select.value).toBe('GPZ-001'));
+    // Dwie pozycje na 15 kV — kreator nie wybiera pierwszej; projektant wybiera GPZ-001 (R/X=0,12).
+    await screen.findByRole('option', { name: /Zasilanie GPZ 15 kV \(bez R\/X\)/ });
+    expect(select.value).toBe('');
+    await user.selectOptions(select, 'GPZ-001');
 
     await user.selectOptions(select, 'GPZ-002');
     await waitFor(() => expect(select.value).toBe('GPZ-002'));
+    await wybierzUziemienie(user);
 
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
-    );
+    await user.click(krok('zapis'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
 
     // PRZED naprawą: R/X pozostawałoby sierocą wartością 0,12 z GPZ-001 (bo
@@ -657,9 +765,8 @@ describe('KreatorZrodloZasilania — synchronizacja katalogu przy przełączeniu
     // niesie R/X. PO naprawie: przełączenie czyści R/X do `null`, walidacja
     // katalogowa („R/X musi pochodzić z wybranego katalogu systemowego")
     // blokuje zapis — obserwowalny dowód, że stara wartość NIE przecieka.
-    await waitFor(() =>
-      expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T.walidacjaStopka),
-    );
+    expect(screen.getByTestId('mvd-kreator-zrodlo-katalog-select')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/nie ma Sk″ albo R\/X/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -669,7 +776,8 @@ describe('KreatorZrodloZasilania — synchronizacja katalogu przy przełączeniu
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
 
     const select = screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement;
-    await waitFor(() => expect(select.value).toBe('GPZ-001'));
+    await screen.findByRole('option', { name: /Zasilanie GPZ 15 kV \(bez R\/X\)/ });
+    await user.selectOptions(select, 'GPZ-001');
 
     await user.selectOptions(select, 'GPZ-002');
     await waitFor(() => expect(select.value).toBe('GPZ-002'));

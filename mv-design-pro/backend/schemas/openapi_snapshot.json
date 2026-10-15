@@ -13486,10 +13486,6 @@
       "title": "Prad Obliczeniowy A",
       "type": "number"
      },
-     "prad_z_obciazalnosci": {
-      "title": "Prad Z Obciazalnosci",
-      "type": "boolean"
-     },
      "r_total_ohm": {
       "title": "R Total Ohm",
       "type": "number"
@@ -13501,7 +13497,6 @@
     },
     "required": [
      "prad_obliczeniowy_a",
-     "prad_z_obciazalnosci",
      "delta_u_v",
      "delta_u_pct",
      "r_total_ohm",
@@ -21226,7 +21221,7 @@
   },
   "/api/catalog/mv-apparatus-types": {
    "get": {
-    "description": "List all MV apparatus types from the canonical MV catalog.",
+    "description": "List all MV apparatus types from the canonical MV catalog.\n\nOdczyt pozycji uzupełniony o dwie projekcje słownikowe (bez zmiany rekordu\nkatalogu i jego odcisku): ``manufacturer_ref`` producenta rozdzielnicy\n(rejestr producentów) i ``family_apparatus_kind`` (słownik\n``SwitchgearFamily.allowed_apparatus_kinds``). Kreator stacji zawęża nimi ofertę\naparatów do producenta i rodzajów wybranej rodziny rozdzielnicy.",
     "operationId": "list_mv_apparatus_types_api_catalog_mv_apparatus_types_get",
     "responses": {
      "200": {

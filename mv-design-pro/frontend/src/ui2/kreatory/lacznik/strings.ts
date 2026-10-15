@@ -19,6 +19,7 @@ export const LACZNIK_STRINGS = {
   nazwa: 'Nazwa łącznika',
   nazwaPlaceholder: 'np. Ł-sekc. magistrala A',
   rodzaj: 'Rodzaj aparatu',
+  rodzajPlaceholder: '— wybierz rodzaj aparatu —',
   rodzajOpcje: [
     { id: 'ROZLACZNIK', etykieta: 'Rozłącznik' },
     { id: 'WYLACZNIK', etykieta: 'Wyłącznik' },
@@ -30,7 +31,10 @@ export const LACZNIK_STRINGS = {
     { id: 'open', etykieta: 'Otwarty (NOP)' },
   ],
   polozenie: 'Położenie na odcinku',
-  polozeniePomoc: 'Ułamek długości odcinka (0–1): 0,5 = w połowie. Dzieli odcinek na dwie sekcje.',
+  polozeniePomoc: 'Ułamek długości odcinka (0–1) — dzieli odcinek na dwie sekcje.',
+  konfliktNapiecia: (napiecie: string) =>
+    `Napięcie znamionowe aparatu jest niższe od napięcia odcinka (${napiecie}) — wybierz aparat na wyższe napięcie.`,
+  odcinekDoWskazania: 'Do wskazania na schemacie',
 
   paramNapiecie: 'Napięcie znamionowe',
   paramPrad: 'Prąd znamionowy',
@@ -57,12 +61,8 @@ export const LACZNIK_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz łącznik SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem łącznika.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać łącznik.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog aparatów SN ładuje się asynchronicznie; zapis bez niego byłby
-  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu aparatów SN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis łącznika unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać łącznika SN.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: łącznik sekcyjny i punkt podziału sieci',

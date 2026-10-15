@@ -221,26 +221,6 @@ export interface LoadCatalogType extends CatalogType {
 }
 
 /**
- * MV Apparatus Type (APARAT_SN).
- * Source: backend MVApparatusType dataclass.
- */
-export interface MVApparatusType extends CatalogType {
-  device_kind: string;
-  u_n_kv: number;
-  i_n_a: number;
-  breaking_capacity_ka?: number;
-  making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
-  i_th_ka?: number | null;
-  i_th_duration_s?: number | null;
-  i_th_pochodzenie?: string | null;
-  i_dyn_ka?: number | null;
-  i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
-  break_time_s?: number | null;
-}
-
-/**
  * LV Apparatus Type (APARAT_NN).
  * Source: backend LVApparatusType dataclass (network_model/catalog/types.py).
  *
@@ -248,7 +228,7 @@ export interface MVApparatusType extends CatalogType {
  * `i_cu_ka`/`conditional_sc_current_ka`/nastawialności wyzwalacza, mimo że
  * backend serwuje je od P0.2 (`to_dict()`); dobór aparatu nN (kreator „Aparat
  * nN", zdolność wyłączania) potrzebuje `i_cu_ka` — jego brak w typie był
- * dokładnie tym rozjazdem, przed którym ostrzega docstring `MVApparatusType`
+ * dokładnie tym rozjazdem, przed którym ostrzega docstring `MVApparatusCatalogType`
  * (KD-6) obok. Wszystkie pola Optional/None-default — zgodne z backendem 1:1.
  */
 export interface LVApparatusType extends CatalogType {
@@ -487,6 +467,15 @@ export interface MVApparatusCatalogType extends CatalogType {
   i_dyn_pochodzenie?: string | null;
   /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
   break_time_s?: number | null;
+  /**
+   * Rzuty końcówki katalogu (bez zmiany rekordu): producent rozdzielnicy z rejestru
+   * producentów (`null` = wytwórca spoza rejestru, np. wkładek bezpiecznikowych), rodzaj
+   * w słowniku rodzin rozdzielnic (`null` = aparat spoza celek, np. reklozer słupowy)
+   * i wymienność między rodzinami (wkładki bezpiecznikowe SN, IEC 60282-1).
+   */
+  manufacturer_ref?: string | null;
+  family_apparatus_kind?: string | null;
+  interchangeable_across_families?: boolean;
 }
 
 /**

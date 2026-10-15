@@ -1,5 +1,9 @@
 /**
  * Testy kreatora „Łącznik sekcyjny SN" — realna ścieżka użytkownika, Zero-Debt §5.
+ *
+ * Kanon prowadzenia projektanta (`KONTRAKT_PROWADZENIA_PROJEKTANTA.md`) — iloczyn cech
+ * {stan: świeży / w trakcie / próba zapisu z brakiem / konflikt / komplet} ×
+ * {źródło aparatu: jedyny zdatny (AUTO_PRZYJETE) / kilka (wybór projektanta)}.
  */
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -14,7 +18,23 @@ const navigateToSldMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = { segment_id: 'seg-1', segmentLabel: 'Odcinek A' };
-const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock };
+
+/** Migawka z odcinkiem 15 kV — źródło napięcia dla doboru aparatu (topologia). */
+function migawka(napiecieKv: number) {
+  return {
+    buses: [
+      { id: 'b1', ref_id: 'b1', voltage_kv: napiecieKv },
+      { id: 'b2', ref_id: 'b2', voltage_kv: napiecieKv },
+    ],
+    branches: [{ id: 'seg-1', ref_id: 'seg-1', from_bus_ref: 'b1', to_bus_ref: 'b2' }],
+  };
+}
+
+const snapshotState = {
+  error: null as string | null,
+  executeDomainOperation: executeDomainOperationMock,
+  snapshot: migawka(15) as unknown,
+};
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -36,14 +56,16 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
-// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
-// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const ROZLACZNIK = {
+  id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20,
+};
+const WYLACZNIK = {
+  id: 'app-2', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 24, i_n_a: 630, breaking_capacity_ka: 16,
+};
+
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test.
 const { fetchMvApparatusTypesMock } = vi.hoisted(() => ({
-  fetchMvApparatusTypesMock: vi.fn(() =>
-    Promise.resolve([
-      { id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
-    ]),
-  ),
+  fetchMvApparatusTypesMock: vi.fn(),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -51,30 +73,51 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
 }));
 
-async function pick() {
+async function czekajNaKatalog() {
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-lacznik-katalog')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-lacznik')).toHaveAttribute('data-status', 'gotowy');
   });
-  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-katalog'), 'app-1');
+}
+
+async function wybierzAparat(id: string) {
+  await czekajNaKatalog();
+  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-katalog'), id);
 }
 
 describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', segmentLabel: 'Odcinek A' };
+    context = { segment_id: 'seg-1', segmentLabel: 'Odcinek A', position_on_segment: 0.4 };
     snapshotState.error = null;
+    snapshotState.snapshot = migawka(15);
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
-    fetchMvApparatusTypesMock.mockClear();
+    fetchMvApparatusTypesMock.mockReset();
+    fetchMvApparatusTypesMock.mockImplementation(() => Promise.resolve([ROZLACZNIK, WYLACZNIK]));
   });
 
   afterEach(() => cleanup());
 
-  it('wstawia łącznik na odcinku (operacja domenowa, insert_at RATIO)', async () => {
+  it('świeży kreator: zero sygnałów pracy w toku (bez alertu, bez czerwieni, zapis klikalny)', async () => {
+    render(<KreatorLacznikaSekcyjnego />);
+    await czekajNaKatalog();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull();
+    const panel = screen.getByTestId('mvd-kreator-lacznik-gotowosc');
+    expect(panel.querySelector('[data-stan="konflikt"]')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).not.toBeDisabled();
+  });
+
+  it('wstawia łącznik na odcinku: położenie z kontekstu i rodzaj z pozycji katalogowej przyjęte automatycznie', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorLacznikaSekcyjnego />);
-    await pick();
+    await wybierzAparat('app-1');
+    // Wartości dobrane automatycznie stoją w polach jak zwykłe, edytowalne wartości.
+    expect(screen.getByTestId('mvd-kreator-lacznik-polozenie')).toHaveValue(0.4);
+    expect(screen.getByTestId('mvd-kreator-lacznik-rodzaj')).toHaveValue('ROZLACZNIK');
+    expect(screen.getByTestId('mvd-kreator-lacznik-rodzaj')).toBeEnabled();
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
 
@@ -84,7 +127,8 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
         'insert_section_switch_sn',
         expect.objectContaining({
           segment_id: 'seg-1',
-          insert_at: { mode: 'RATIO', value: 0.5 },
+          insert_at: { mode: 'RATIO', value: 0.4 },
+          switch_type: 'ROZLACZNIK',
           normal_state: 'closed',
           catalog_binding: expect.objectContaining({ catalog_namespace: 'APARAT_SN', catalog_item_id: 'app-1' }),
         }),
@@ -96,7 +140,7 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
   it('wpisana nazwa trafia do operacji kluczem kontraktu `switch_name`', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorLacznikaSekcyjnego />);
-    await pick();
+    await wybierzAparat('app-1');
     await userEvent.type(screen.getByTestId('mvd-kreator-lacznik-nazwa'), 'Wyłącznik odcinka 1');
     await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
     await waitFor(() => {
@@ -112,7 +156,7 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
   it('ustawia stan otwarty (NOP) i wysyła go w payloadzie', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorLacznikaSekcyjnego />);
-    await pick();
+    await wybierzAparat('app-1');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-stan'), 'open');
     await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
 
@@ -125,38 +169,90 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     });
   });
 
-  it('uczciwy stan zerowy: bez odcinka zapis zablokowany', async () => {
-    context = {};
+  it('próba zapisu bez aparatu (kilka zdatnych): fokus na katalogu i jedno wskazanie z celem', async () => {
     render(<KreatorLacznikaSekcyjnego />);
-    // Montaż pobiera katalog aparatów SN (mikrotaski) — czekamy na realny stan
-    // końcowy UI (opcja aparatu w selekcie katalogu), żeby aktualizacja stanu
-    // domknęła się w act.
-    await screen.findByRole('option', { name: /Rozłącznik SN/ });
-    expect(screen.getByTestId('mvd-kreator-lacznik-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
+    await czekajNaKatalog();
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-lacznik-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz aparat łącznika z katalogu SN — /);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('próba zapisu bez położenia (kontekst bez pozycji): wskazanie położenia, bez zgadywania połowy odcinka', async () => {
+    context = { segment_id: 'seg-1', segmentLabel: 'Odcinek A' };
+    render(<KreatorLacznikaSekcyjnego />);
+    await wybierzAparat('app-1');
+    expect((screen.getByTestId('mvd-kreator-lacznik-polozenie') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-lacznik-polozenie')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj położenie łącznika/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('jedyny aparat zdatny na napięcie odcinka stoi w polu; projektant może go zmienić', async () => {
+    snapshotState.snapshot = migawka(20);
+    render(<KreatorLacznikaSekcyjnego />);
+    // Na 20 kV zdatny jest wyłącznie aparat 24 kV.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-lacznik-katalog')).toHaveValue('app-2'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-katalog'), '');
+    // Decyzja projektanta (wyczyszczenie) nie jest nadpisywana automatem.
+    expect((screen.getByTestId('mvd-kreator-lacznik-katalog') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('konflikt widoczny od razu: rodzaj aparatu niezgodny z pozycją katalogową', async () => {
+    render(<KreatorLacznikaSekcyjnego />);
+    await wybierzAparat('app-1');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-rodzaj'), 'WYLACZNIK');
+    expect(screen.getByRole('alert').textContent).toMatch(/różni się od rodzaju wybranej pozycji/);
+    const panel = screen.getByTestId('mvd-kreator-lacznik-gotowosc');
+    expect(panel.textContent).toContain('Rozłącznik SN');
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-lacznik-rodzaj')).toHaveFocus();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('konflikt widoczny od razu: położenie spoza odcinka', async () => {
+    render(<KreatorLacznikaSekcyjnego />);
+    await wybierzAparat('app-1');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-lacznik-polozenie'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-lacznik-polozenie'), '1.5');
+    expect(screen.getByRole('alert').textContent).toMatch(/zakresie \(0, 1\)/);
+    expect(
+      screen.getByTestId('mvd-kreator-lacznik-gotowosc-Położenie').querySelector('[data-stan]'),
+    ).toHaveAttribute('data-stan', 'konflikt');
+  });
+
+  it('bez wskazanego odcinka: zapis klikalny, a próba zapisu nazywa brak jednym zdaniem', async () => {
+    context = {};
+    render(<KreatorLacznikaSekcyjnego />);
+    await czekajNaKatalog();
+    expect(screen.getByTestId('mvd-kreator-lacznik-brak')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/Zaznacz na schemacie odcinek SN/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek, operacja nie rusza', async () => {
     appState.activeCaseId = null;
     render(<KreatorLacznikaSekcyjnego />);
-    await pick();
-    expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
+    await wybierzAparat('app-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek obliczeniowy/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
   /**
-   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
-   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
-   * `zapisMozliwy` nie sprawdzał, czy katalog aparatów SN już doszedł.
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) — katalog w drodze
+   * to jedyny powód wyszarzenia zapisu w tym kreatorze (lista zamknięta ramy).
    */
-  it('iloczyn cech: katalog jeszcze się ładuje × odcinek dostępny → zapis zablokowany z komunikatem', async () => {
+  it('iloczyn cech: katalog jeszcze się ładuje × odcinek dostępny → zapis wyszarzony z powodem', async () => {
     fetchMvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorLacznikaSekcyjnego />);
 
     expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-lacznik')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

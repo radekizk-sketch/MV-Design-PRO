@@ -12,8 +12,7 @@ export const ODCINEK_NN_STRINGS = {
   brakStartuOpis: 'Wskaż szynę nN (w drzewie nN STUDIO albo na schemacie), z której ma wychodzić odcinek.',
 
   sekcjaTypTytul: 'Kabel',
-  typPomoc: 'Typ kabla z katalogu nN (KABEL_NN) — parametry R/X/Iz pochodzą z pozycji katalogowej '
-    + '(materializacja przy zapisie, zero parametrów wpisywanych ręcznie).',
+  typPomoc: 'Typ kabla nN z katalogu — R, X i Iz wchodzą do modelu z pozycji katalogowej.',
   kabel: 'Typ kabla',
   kabelPlaceholder: '— wybierz kabel z katalogu —',
   kabelBlad: 'Nie udało się pobrać katalogu kabli nN.',
@@ -24,17 +23,13 @@ export const ODCINEK_NN_STRINGS = {
   sekcjaParametryTytul: 'Parametry odcinka',
   dlugosc: 'Długość',
   nParallel: 'Liczba torów równoległych',
-  nParallelPomoc: 'Kable ułożone równolegle na tej samej trasie — n torów dzieli prąd obciążenia po równo (Iz′ całkowite = n × Iz′ jednego toru).',
+  nParallelPomoc: 'Liczba równoległych torów tego samego kabla — dzielą prąd po równo (Iz′ = n × Iz′ toru).',
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
-    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
-    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
+    'Sposób uziemienia ekranu — katalogowe R0/X0 dotyczą układu odniesienia typu kabla.',
 
   sekcjaUlozenieTytul: 'Warunki ułożenia (korekta obciążalności)',
-  ulozeniePomoc: 'Po co: koryguje obciążalność katalogową kabla do rzeczywistych warunków trasy '
-    + '(PN-HD 60364-5-52); z czego: środowisko, izolacja, temperatura otoczenia, liczba obwodów '
-    + 'w wiązce/wykopie; co daje: Iz′ (obciążalność skorygowaną) liczoną przez backend przy każdym odczycie.',
+  ulozeniePomoc: 'Warunki ułożenia trasy — z nich backend koryguje obciążalność katalogową do Iz′ (PN-HD 60364-5-52).',
   ulozenieKatalogowe: 'Warunki katalogowe (bez korekty)',
   ulozenieWlasne: 'Opisz warunki trasy',
   srodowisko: 'Środowisko ułożenia',
@@ -47,11 +42,16 @@ export const ODCINEK_NN_STRINGS = {
 
   sekcjaPodgladTytul: 'Podgląd spadku napięcia',
   ibPodgladu: 'Prąd obliczeniowy Ib (do podglądu ΔU)',
-  ibPodgladuPomoc: 'Wyłącznie do podglądu spadku napięcia w tym kreatorze — nie jest zapisywany w operacji '
-    + 'domenowej (Ib obwodu wyznacza się osobno przy doborze zabezpieczenia).',
+  ibPodgladuPomoc: 'Prąd tylko do podglądu spadku w tym kreatorze — nie zapisuje się w modelu.',
   podgladDeltaU: 'ΔU',
   podgladDeltaUpct: 'ΔU [%]',
-  podgladBrak: 'Podaj Ib i wybierz kabel, aby zobaczyć podgląd spadku napięcia.',
+  podgladBrak: 'Podgląd spadku napięcia pojawi się po wyborze kabelu, długości, Ib i cosφ.',
+  cosPhiPodgladu: 'cosφ obciążenia (do podglądu ΔU)',
+  cosPhiPodgladuPomoc: 'Wyłącznie do podglądu spadku napięcia — nie jest zapisywany w operacji.',
+  srodowiskoPlaceholder: '— wybierz środowisko —',
+  izolacjaPlaceholder: '— wybierz izolację —',
+  konfliktCosPhi: 'cosφ musi być w zakresie (0, 1].',
+  konfliktDlugosci: 'Długość odcinka musi być dodatnia.',
   podgladBlad: 'Podgląd spadku napięcia niedostępny — spróbuj ponownie.',
   izPrimaBrak: 'Podgląd obciążalności skorygowanej (Iz′) warunkami ułożenia nie jest jeszcze dostępny '
     + 'z tego kreatora — brakuje dedykowanego endpointu podglądu dla nN (solver `wspolczynniki_nn` liczy '
@@ -82,8 +82,14 @@ export const ODCINEK_NN_STRINGS = {
 
   zapisz: 'Zapisz odcinek',
   anuluj: 'Anuluj',
-  walidacjaStopka: 'Uzupełnij wymagane pola przed zapisem.',
-  brakZakresu: 'Brak aktywnego przypadku obliczeniowego.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis odcinka unieważnia jego wyniki.',
+  brakKablaWalid: 'Wybierz kabel nN z katalogu — R, X i obciążalność odcinka pochodzą z pozycji katalogowej.',
+  brakDlugosciWalid: 'Podaj długość odcinka — od niej zależą impedancja pętli zwarcia i spadek napięcia.',
+  brakSrodowiskaWalid: 'Wybierz środowisko ułożenia — od niego zależą współczynniki obciążalności Iz′.',
+  brakIzolacjiWalid: 'Wybierz izolację żyły — wyznacza dopuszczalną temperaturę i obciążalność.',
+  brakTemperaturyWalid: 'Podaj temperaturę otoczenia — koryguje obciążalność długotrwałą kabla.',
+  brakObwodowWalid: 'Podaj liczbę obwodów w wiązce/wykopie — koryguje obciążalność przez grupowanie.',
+  brakRezystywnosciWalid: 'Podaj rezystywność cieplną gruntu — wymagana dla ułożenia w gruncie.',
   bladDodania: 'Nie udało się dodać odcinka nN.',
 
   teoriaTytul: 'Dobór przekroju kabla nN',

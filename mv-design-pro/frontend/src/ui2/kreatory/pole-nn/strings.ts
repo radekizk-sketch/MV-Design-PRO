@@ -23,6 +23,15 @@ export function poleNnStrings(isSource: boolean) {
     nazwaPlaceholderFeeder: 'np. Odpływ nN #3',
     nazwaPlaceholderSource: 'np. Pole PV nN #1',
     rodzinaZrodla: 'Rodzina pola przyłączeniowego',
+    rodzinaZrodlaPlaceholder: '— wybierz rodzinę źródła —',
+    rodzinaZrodlaOpcje: [
+      { id: 'PV', etykieta: 'PV — fotowoltaika' },
+      { id: 'BESS', etykieta: 'BESS — magazyn energii' },
+      { id: 'FW', etykieta: 'FW — elektrownia wiatrowa' },
+      { id: 'AGREGAT', etykieta: 'Agregat prądotwórczy' },
+      { id: 'UPS', etykieta: 'UPS' },
+    ],
+    brakRodzinyWalid: 'Wybierz rodzinę źródła — od niej zależy model źródła przyłączanego do pola.',
 
     kontrolaTytul: 'Kontrola pola',
     wierszStacja: 'Stacja',
@@ -45,10 +54,9 @@ export function poleNnStrings(isSource: boolean) {
 
     zapisz: isSource ? 'Dodaj pole przyłączeniowe' : 'Dodaj pole nN',
     anuluj: 'Anuluj',
-    brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pola nN.',
-    brakStacjiWalid: 'Nie udało się ustalić stacji dla pola nN.',
-    brakSzynyWalid: 'Wybierz szynę nN, do której ma zostać dodane pole.',
-    walidacjaStopka: 'Wskaż szynę nN, aby zapisać pole.',
+    brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis pola unieważnia jego wyniki.',
+    brakStacjiWalid: 'Nie udało się ustalić stacji dla pola nN — zaznacz na schemacie szynę nN lub pole stacji.',
+    brakSzynyWalid: 'Wybierz szynę nN — do niej przyłączy się pole.',
     bladDodania: isSource ? 'Nie udało się dodać pola przyłączeniowego nN.' : 'Nie udało się dodać pola nN.',
 
     // Panel teorii

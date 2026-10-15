@@ -35,8 +35,14 @@ let context: Record<string, unknown> = {
   terminal_voltage_label: 'SN',
 };
 
+// Szyna startowa ciągu 15 kV — źródło AUTO_PRZYJETE napięcia ciągu (topologia, nie stała).
 const snapshotState = {
-  snapshot: { buses: [], branches: [], bays: [], branch_points: [] },
+  snapshot: {
+    buses: [{ id: 'bus-gpz-1', ref_id: 'bus-gpz-1', voltage_kv: 15 }],
+    branches: [],
+    bays: [],
+    branch_points: [],
+  },
   logicalViews: { terminals: [] },
   error: null as string | null,
   executeDomainOperation: executeDomainOperationMock,
@@ -148,6 +154,15 @@ async function pickCable() {
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-katalog'), 'kab-120');
 }
 
+/** Krok „Długość i podgląd”: projektant podaje długość i cosφ (napięcie przyjęte z szyny). */
+async function podajParametry(dlugosc = '500', cosPhi = '0.95') {
+  if (!screen.queryByTestId('mvd-kreator-magistrala-dlugosc')) {
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-parametry'));
+  }
+  await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-dlugosc'), dlugosc);
+  await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-cosphi'), cosPhi);
+}
+
 describe('KreatorMagistralaSn — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
@@ -178,6 +193,7 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue(successResponse);
     render(<KreatorMagistralaSn />);
     await pickCable();
+    await podajParametry();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
 
@@ -234,6 +250,7 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     await pickCable();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await podajParametry();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'zksn');
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
@@ -273,6 +290,7 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     await pickCable();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await podajParametry();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
@@ -287,7 +305,13 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     // Pojawia się akcja „Zakończ budowę".
     expect(screen.getByTestId('mvd-kreator-magistrala-zakoncz')).toBeInTheDocument();
 
-    // Drugi odcinek: kontynuacja z końca poprzedniego (from_terminal_id = koniec ciągu).
+    // Drugi odcinek: długość każdego odcinka jest jego własna — kreator NIE przenosi
+    // poprzedniej (próba zapisu wskazuje długość); cosφ i napięcie ciągu zostają.
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-magistrala-dlugosc')).toHaveFocus();
+    expect((screen.getByTestId('mvd-kreator-magistrala-cosphi') as HTMLInputElement).value).toBe('0.95');
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-dlugosc'), '300');
+    // Kontynuacja z końca poprzedniego (from_terminal_id = koniec ciągu).
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(2));
     const drugi = executeDomainOperationMock.mock.calls[1]?.[2] as Record<string, unknown>;
@@ -299,6 +323,7 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     render(<KreatorMagistralaSn />);
     await pickCable();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await podajParametry();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
@@ -309,30 +334,66 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     expect(navigateToSldMock).toHaveBeenCalled();
   });
 
-  it('uczciwy stan zerowy: bez startu ciągu zapis jest zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany”: bez startu i bez przypadku operacja nie
+  // rusza — w nowym kanonie przez jedno wskazanie przy próbie zapisu; `data-status`
+  // nadal jest jednym źródłem prawdy z `disabled` (rama wyprowadza oba z blokady).
+  it('bez startu ciągu: zapis klikalny, próba zapisu nazywa brak startu', async () => {
     context = {};
     render(<KreatorMagistralaSn />);
-    // Montaż pobiera katalogi (kable + linie) — czekamy na realny stan końcowy
-    // UI (opcja kabla w selekcie katalogu), żeby aktualizacje stanu domknęły
-    // się w act.
     await screen.findByRole('option', { name: /XRUHAKXS 1x120/ });
 
     expect(screen.getByTestId('mvd-kreator-magistrala-brak-startu')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
-    // S9-5: sygnał gotowości (data-status) jest JEDNYM źródłem prawdy z `disabled`
-    // (KLASA NIE INSTANCJA, predykaty parami) — musi zgadzać się z przyciskiem.
-    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
+    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'gotowy');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).toBeInTheDocument();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorMagistralaSn />);
     await pickCable();
-
-    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
+    await podajParametry();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: bez alertu; napięcie z szyny startowej w polu (edytowalne); długość i cosφ puste', async () => {
+    render(<KreatorMagistralaSn />);
+    await screen.findByRole('option', { name: /XRUHAKXS 1x120/ });
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-parametry'));
+    expect(screen.getByTestId('mvd-kreator-magistrala-napiecie')).toHaveValue(15);
+    expect(screen.getByTestId('mvd-kreator-magistrala-napiecie')).toBeEnabled();
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
+    expect((screen.getByTestId('mvd-kreator-magistrala-dlugosc') as HTMLInputElement).value).toBe('');
+    expect((screen.getByTestId('mvd-kreator-magistrala-cosphi') as HTMLInputElement).value).toBe('');
+    // Bez cosφ ocena spadku nie jest wołana (interfejs nie podstawia 0,95), a kreator milczy:
+    // żadnej ramy „ocena wymaga…” w trakcie pracy (kontrakt prowadzenia 2026-10-15).
+    expect(fetchOcenaMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('mvd-kreator-magistrala-ocena-karty')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-magistrala-ocena')).toBeNull();
+  });
+
+  it('jedyna pozycja katalogu dla rodzaju stoi w polu; próba zapisu wskazuje długość', async () => {
+    render(<KreatorMagistralaSn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-magistrala-katalog')).toHaveValue('kab-120'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-magistrala-dlugosc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj długość odcinka — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('konflikty widoczne od razu przy polu: cosφ > 1 i długość niedodatnia', async () => {
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-parametry'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-cosphi'), '1.2');
+    expect(screen.getByRole('alert').textContent).toMatch(/cosφ musi być w zakresie/);
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-dlugosc'), '0');
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toContain('Długość odcinka musi być dodatnia.');
   });
 
   /**
@@ -351,11 +412,10 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     fetchLineTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorMagistralaSn />);
 
-    // Pole „poprawne" od startu (wartość domyślna `DANE_DOMYSLNE.dlugosc_m`),
-    // katalog NIGDY nie rozstrzygnie się w tym teście (Promise zawieszony celowo).
+    // Katalog NIGDY nie rozstrzygnie się w tym teście (Promise zawieszony celowo).
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -367,21 +427,24 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
    * `toBeEnabled`. Regresja tej ścieżki na poziomie jednostkowym jest
    * milisekundowa — nie wymaga realnego backendu ani przeglądarki.
    */
-  it('przejście disabled→enabled: pusta długość blokuje zapis, poprawna długość (userEvent.type) odblokowuje', async () => {
+  // Intencja dawnego testu przejścia disabled→enabled w nowym kanonie: zapis jest klikalny
+  // przez cały czas (data-status „gotowy”), a pusta długość daje wskazanie, nie wyszarzenie;
+  // po wpisaniu długości (userEvent.type) ten sam klik zapisuje odcinek.
+  it('pusta długość: klik zapisu wskazuje pole; po wpisaniu długości ten sam klik zapisuje', async () => {
+    executeDomainOperationMock.mockResolvedValue(successResponse);
     render(<KreatorMagistralaSn />);
     await pickCable();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
 
-    const dlugosc = screen.getByTestId('mvd-kreator-magistrala-dlugosc');
-    await userEvent.clear(dlugosc);
-    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/dodatnią długość/);
-
-    await userEvent.type(dlugosc, '300');
-
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
     expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'gotowy');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-magistrala-dlugosc')).toHaveFocus();
+
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-dlugosc'), '300');
+    expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
   });
 });
 
@@ -408,8 +471,28 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
       render(<KreatorMagistralaSn />);
       await pickCable();
       await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+      await podajParametry();
 
-      const rekordy = [...scena.oceny_odcinka, scena.ocena_ciagu];
+      const wszystkie = [...scena.oceny_odcinka, scena.ocena_ciagu];
+      // Rekord NIE_OCENIONO (praca w toku) nie dostaje karty ani plakietki — cisza; reszta
+      // przepisana 1:1 z rekordu (status, etykieta, semantyka, wyjaśnienie).
+      const nieocenione = wszystkie.filter((r) => r.status_maszynowy === 'NIE_OCENIONO');
+      const rekordy = wszystkie.filter((r) => r.status_maszynowy !== 'NIE_OCENIONO');
+      if (rekordy.length > 0) {
+        await screen.findByTestId(`mvd-werdykt-${rekordy[0].kryterium_id}`);
+      } else {
+        await waitFor(() => expect(fetchOcenaMock).toHaveBeenCalled());
+      }
+      for (const rekord of nieocenione) {
+        expect(screen.queryByTestId(`mvd-werdykt-${rekord.kryterium_id}`)).toBeNull();
+        expect(screen.queryByTestId(`mvd-kreator-magistrala-ocena-${rekord.kryterium_id}`)).toBeNull();
+      }
+      expect(document.body.textContent).not.toMatch(/Ocena niewykonana|nieoceniono/i);
+      if (rekordy.length === 0) {
+        expect(screen.queryByTestId('mvd-kreator-magistrala-ocena-karty')).toBeNull();
+        expect(screen.queryByTestId('mvd-kreator-magistrala-ocena')).toBeNull();
+        return;
+      }
       for (const rekord of rekordy) {
         const karta = await screen.findByTestId(`mvd-werdykt-${rekord.kryterium_id}`);
         expect(karta).toHaveAttribute('data-semantyka', rekord.etykieta.semantyka);
@@ -434,6 +517,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     render(<KreatorMagistralaSn />);
     await pickCable();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await podajParametry();
     await waitFor(() => expect(fetchOcenaMock).toHaveBeenCalled());
     const bezPradu = at(fetchOcenaMock.mock.calls, -1)?.[0] as Record<string, unknown>;
     expect(bezPradu).toMatchObject({
@@ -454,6 +538,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     render(<KreatorMagistralaSn />);
     await pickCable();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await podajParametry();
     await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-prad'), '200');
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
@@ -474,6 +559,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     fetchOcenaMock.mockRejectedValue(new Error('Ocena doboru odcinka niedostępna — backend nie odpowiedział.'));
     render(<KreatorMagistralaSn />);
     await pickCable();
+    await podajParametry();
     await waitFor(() =>
       expect(screen.getByTestId('mvd-kreator-magistrala-ocena').textContent).toContain('niedostępna'),
     );

@@ -53,15 +53,20 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
 vi.mock('../../../../ui/catalog/api', () => ({
   fetchLvCableTypes: () =>
     Promise.resolve([
-      { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'Al' },
+      { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'Al', insulation_type: 'PVC' },
     ]),
   getCatalogErrorMessage: (e: unknown) => (e instanceof Error ? e.message : 'Błąd katalogu'),
 }));
 
+const { fetchCableVoltageDropMock } = vi.hoisted(() => ({ fetchCableVoltageDropMock: vi.fn() }));
+
 vi.mock('../../../../ui/network-build/forms/cableVoltageDropApi', () => ({
-  fetchCableVoltageDrop: () =>
-    Promise.resolve({ delta_u_v: 2.1, delta_u_pct: 0.9, r_total_ohm: 0.1, x_total_ohm: 0.01, delta_u_resistive_v: 2, delta_u_reactive_v: 0.1, formula_ref: 'EQ', assumptions: [] }),
+  fetchCableVoltageDrop: (...args: unknown[]) => fetchCableVoltageDropMock(...args),
 }));
+
+function odpowiedzPodgladu() {
+  return Promise.resolve({ delta_u_v: 2.1, delta_u_pct: 0.9, r_total_ohm: 0.1, x_total_ohm: 0.01, delta_u_resistive_v: 2, delta_u_reactive_v: 0.1, formula_ref: 'EQ', assumptions: [] });
+}
 
 describe('KreatorOdcinkaNn — realna ścieżka', () => {
   beforeEach(() => {
@@ -75,6 +80,8 @@ describe('KreatorOdcinkaNn — realna ścieżka', () => {
     centerSldOnElementMock.mockReset();
     resolveBusNnRefMock.mockReset();
     resolveBusNnRefMock.mockReturnValue('bus-nn-1');
+    fetchCableVoltageDropMock.mockReset();
+    fetchCableVoltageDropMock.mockImplementation(odpowiedzPodgladu);
   });
 
   afterEach(() => cleanup());
@@ -111,7 +118,20 @@ describe('KreatorOdcinkaNn — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odcinek-nn-kabel'), 'kabel-nn-1');
     await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-dlugosc'), '30');
     await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-tryb-ulozenia-wlasne'));
+    // Izolacja z pozycji katalogowej kabla stoi w polu; środowisko, temperatura
+    // i liczba obwodów — od projektanta (bez domyślnych powietrze / 25 °C / 1 obwód).
+    // Izolacja z karty kabla stoi w polu jak zwykła, edytowalna wartość.
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-izolacja')).toHaveValue('PVC');
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-izolacja')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-srodowisko')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz środowisko ułożenia — /);
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odcinek-nn-srodowisko'), 'powietrze');
     await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-temperatura'), '25');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-liczba-obwodow')).toHaveFocus();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-liczba-obwodow'), '2');
     await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
 
     await waitFor(() => {
@@ -119,10 +139,44 @@ describe('KreatorOdcinkaNn — realna ścieżka', () => {
         'case-1',
         'add_nn_cable_segment',
         expect.objectContaining({
-          cable_laying_conditions: expect.objectContaining({ environment: 'powietrze', insulation: 'PVC' }),
+          cable_laying_conditions: {
+            environment: 'powietrze',
+            insulation: 'PVC',
+            ambient_temperature_c: 25,
+            circuit_count: 2,
+          },
         }),
       );
     });
+  });
+
+  it('podgląd ΔU: bez cosφ nie jest wołany (dawniej ukryte 0,9); z cosφ idzie wartość projektanta', async () => {
+    render(<KreatorOdcinkaNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toBeDisabled());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odcinek-nn-kabel'), 'kabel-nn-1');
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-dlugosc'), '50');
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-ib'), '40');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(fetchCableVoltageDropMock).not.toHaveBeenCalled();
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-cosphi'), '0.85');
+    await waitFor(() => {
+      expect(fetchCableVoltageDropMock).toHaveBeenCalledWith(expect.objectContaining({ cos_phi: 0.85, current_a: 40 }));
+    });
+  });
+
+  it('świeży kreator: zero alertów; zapis wskazuje kabel, potem długość; konflikt długości od razu', async () => {
+    render(<KreatorOdcinkaNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toBeDisabled());
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).toHaveFocus();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odcinek-nn-kabel'), 'kabel-nn-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-dlugosc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj długość odcinka — /);
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-dlugosc'), '0');
+    expect(screen.getByRole('alert').textContent).toBe('Długość odcinka musi być dodatnia.');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
   it('builder zostaje otwarty po zapisie „Dodaj i kontynuuj" (bez nawigacji do #sld)', async () => {
@@ -143,19 +197,27 @@ describe('KreatorOdcinkaNn — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-odcinek-nn')).toBeInTheDocument();
   });
 
-  it('pokazuje uczciwy stan zerowy bez punktu startowego', async () => {
+  // Intencja dawnych „uczciwych stanów zerowych”: operacja nie rusza bez startu i bez
+  // przypadku — w nowym kanonie przez jedno wskazanie przy próbie zapisu.
+  it('bez punktu startowego: zapis nazywa brak startu', async () => {
     context = {};
     resolveBusNnRefMock.mockReturnValue(null);
     render(<KreatorOdcinkaNn />);
     expect(screen.getByTestId('mvd-kreator-odcinek-nn-brak-startu')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz')).toBeDisabled();
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toBeDisabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).toBeInTheDocument();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: zapis wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorOdcinkaNn />);
-    expect(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz')).toBeDisabled();
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toBeDisabled());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odcinek-nn-kabel'), 'kabel-nn-1');
+    await userEvent.type(screen.getByTestId('mvd-kreator-odcinek-nn-dlugosc'), '50');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odcinek-nn-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

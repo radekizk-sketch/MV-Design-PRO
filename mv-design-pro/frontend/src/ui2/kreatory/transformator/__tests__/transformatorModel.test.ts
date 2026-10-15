@@ -6,8 +6,10 @@ import {
   fmtA,
   fmtMva,
   parametryZKatalogu,
+  konfliktyFormularza,
   seedRegulacjiZKatalogu,
   walidujFormularz,
+  zaczepyZTabliczki,
   zbudujPayload,
   zbudujZapytaniePodgladu,
   type TransformatorFormData,
@@ -37,6 +39,11 @@ function dane(over: Partial<TransformatorFormData> = {}): TransformatorFormData 
     hv_bus_ref: 'bus-sn',
     lv_bus_ref: 'bus-nn',
     catalog_ref: 'energen-tonr-1000-15-04',
+    tap_min_position: -2,
+    tap_max_position: 2,
+    tap_neutral_position: 0,
+    tap_current_position: 0,
+    tap_step_percent: 2.5,
     ...over,
   };
 }
@@ -61,6 +68,34 @@ describe('transformatorModel — walidacja', () => {
         (e) => e.field === 'voltage_setpoint_kv',
       ),
     ).toBe(false);
+  });
+
+  it('stan startowy nie zgaduje zaczepów (jedno źródło: tabliczka)', () => {
+    expect(DANE_DOMYSLNE.tap_min_position).toBeNull();
+    expect(DANE_DOMYSLNE.tap_max_position).toBeNull();
+    expect(DANE_DOMYSLNE.tap_step_percent).toBeNull();
+    const braki = walidujFormularz({ ...dane(), regulation_type: 'DETC', tap_min_position: null, tap_step_percent: null });
+    expect(braki.map((e) => e.field)).toEqual(['tap_min_position', 'tap_step_percent']);
+  });
+
+  it('zaczepy z tabliczki: zakres i krok z pozycji, neutralny i bieżący = 0 gdy w zakresie', () => {
+    expect(zaczepyZTabliczki({ tap_min: -4, tap_max: 4, tap_step_percent: 1.25 })).toEqual({
+      tap_min_position: -4,
+      tap_max_position: 4,
+      tap_step_percent: 1.25,
+      tap_neutral_position: 0,
+      tap_current_position: 0,
+    });
+    expect(zaczepyZTabliczki({ tap_min: 1, tap_max: 5, tap_step_percent: 2.5 })?.tap_neutral_position).toBeNull();
+    expect(zaczepyZTabliczki({ tap_min: 0, tap_max: 0, tap_step_percent: 2.5 })).toBeNull();
+    expect(zaczepyZTabliczki(null)).toBeNull();
+  });
+
+  it('konflikt: tabliczka niezgodna napięciowo z szynami', () => {
+    const params = { rated_power_mva: 1, voltage_hv_kv: 20, voltage_lv_kv: 0.4, uk_percent: 6, vector_group: null, tap_min: -2, tap_max: 2, tap_step_percent: 2.5 };
+    expect(konfliktyFormularza(dane(), params, 15, 0.4).map((e) => e.field)).toEqual(['catalog_ref']);
+    expect(konfliktyFormularza(dane(), params, 20, 0.4)).toEqual([]);
+    expect(konfliktyFormularza(dane(), params, null, null)).toEqual([]);
   });
 
   it('waliduje zakres i krok zaczepów przy regulacji', () => {

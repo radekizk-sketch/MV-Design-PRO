@@ -24,18 +24,14 @@ export const MAGISTRALA_STRINGS = {
   typPomoc: 'Typ wnosi rezystancję, reaktancję i prąd znamionowy — wartości z katalogu, nie z ręki.',
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
-    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
-    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
+    'Sposób uziemienia ekranu — katalogowe R0/X0 dotyczą układu odniesienia typu kabla.',
 
   nazwa: 'Nazwa odcinka',
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',
   dlugosc: 'Długość odcinka',
   napiecie: 'Napięcie ciągu',
   prad: 'Prąd roboczy odcinka I_B',
-  pradPomoc:
-    'Prąd płynący przez odcinek (z odbiorami dalej w ciągu). Bez niego obciążalność nie zostanie '
-    + 'oceniona, a spadek napięcia backend policzy przy prądzie równym obciążalności typu.',
+  pradPomoc: 'Prąd projektowy odbiorów zasilanych przez odcinek — z niego ocena obciążalności i spadku.',
   cosPhi: 'Współczynnik mocy cosφ',
 
   // Parametry katalogu (odczyt).
@@ -56,15 +52,13 @@ export const MAGISTRALA_STRINGS = {
   // Podgląd (backend R1).
   podgladTytul: 'Podgląd doboru (backend)',
   podgladPrad: 'Prąd obliczeniowy',
-  podgladPradZObciazalnosci:
-    'Prąd roboczy nie podany — spadek policzony przy prądzie równym obciążalności typu (dana przyjęta).',
   podgladDeltaU: 'Spadek napięcia ΔU',
   podgladDeltaUpct: 'ΔU względne',
   podgladRtotal: 'R odcinka',
   podgladXtotal: 'X odcinka',
   podgladZrodlo: 'Źródło wyniku',
   podgladZrodloWartosc: 'Obliczenie ΔU po stronie serwera (solver spadku napięcia)',
-  podgladBrak: 'Uzupełnij typ i długość, aby zobaczyć podgląd ΔU.',
+  podgladBrak: 'Podgląd ΔU pojawi się po podaniu typu, długości, napięcia ciągu, cosφ i prądu roboczego.',
 
   // Kontrola / gotowość.
   kontrolaTytul: 'Kontrola odcinka',
@@ -104,11 +98,9 @@ export const MAGISTRALA_STRINGS = {
   // interfejs nie zna progu, nie porównuje i nie sumuje; etykiety niesie rekord.
   ocenaTytul: 'Ocena doboru przekroju',
   ocenaKartyTytul: 'Ocena doboru przekroju — kryteria, wyniki, limity i podstawy (backend)',
-  ocenaPusto: 'Ocena doboru pojawi się po odpowiedzi backendu (typ z katalogu, długość i prąd roboczy odcinka).',
   ocenaBlad: 'Nie udało się pobrać oceny doboru odcinka.',
   ocenaWskazowka: 'Pełne karty oceny (wynik, limit z podstawą, margines, zakres ważności): krok „Długość i podgląd".',
-  ocenaIthPomoc:
-    'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
+  ocenaIthPomoc: 'Wytrzymałość cieplną ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) sprawdza bieg zwarciowy po zapisie.',
 
   // Uczciwy stan zerowy: brak startu ciągu.
   brakStartuTytul: 'Brak miejsca startu ciągu',
@@ -124,17 +116,10 @@ export const MAGISTRALA_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz odcinek SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odcinka.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odcinek.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — katalog kabli/linii
-  // ładuje się asynchronicznie z backendu; bez typu z katalogu zapis nie ma
-  // z czego policzyć odcinka, więc zapis jest w tym oknie ŚWIADOMIE
-  // zablokowany, a nie milczący.
-  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
-  // S9-5: druga jawna przyczyna blokady zapisu — pole „Długość odcinka" bez
-  // dodatniej wartości (klasa: zapis musi ODZWIERCIEDLAĆ to, co realnie
-  // wpisano, nie być klikalny niezależnie od stanu pola).
-  dlugoscWymaganaStopka: 'Podaj dodatnią długość odcinka, aby odblokować zapis.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis odcinka unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać odcinka SN.',
+  startDoWskazania: 'Do wskazania na schemacie',
+  cosPhiPomoc: 'cosφ obciążenia odcinka — wejście oceny spadku napięcia (do modelu nie trafia).',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: magistrala SN — odcinek linii/kabla i spadek napięcia',

@@ -24,6 +24,8 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
+import { WARTOSCI_TESTOWE_GPZ, zapiszZPrzewodnikiem } from './prowadzenieKreatora';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 /**
  * Kryterium karty: 15 stacji wyłącznie z kanwy. Ten spec dowodzi CYKLU na
@@ -394,6 +396,8 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 
     // Krok „Źródło i strona WN" → tryb ręczny (ekspercki) → moc zwarciowa MAX
     // + scenariusz MIN, wpisane natywnie.
+    // Napięcie SN rozdzielni — dana projektowa (kreator nie przyjmuje 15 kV za projektanta).
+    await page.getByTestId('mvd-kreator-zrodlo-napiecie').selectOption('15');
     await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
     await page.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny').click();
     await expect(page.getByTestId('mvd-kreator-zrodlo-min')).toBeVisible({ timeout: 10000 });
@@ -402,6 +406,11 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await page.getByTestId('mvd-kreator-zrodlo-rx').fill('0.1');
     await page.getByTestId('mvd-kreator-zrodlo-sk3min').fill('150');
     await page.getByTestId('mvd-kreator-zrodlo-rxmin').fill('0.2');
+    // Czas trwania zwarcia t_k — wartość wpływająca na wynik, podawana jawnie (kreator jej
+    // nie przyjmuje za projektanta; bez niej podgląd IEC 60909 czeka).
+    await page.getByRole('button', { name: 'Parametry normowe', exact: false }).first().click();
+    await page.getByTestId('mvd-kreator-zrodlo-tk').fill('1');
+    await page.getByRole('button', { name: 'Źródło i strona WN', exact: false }).first().click();
 
     // Dowód wizualny (ZASADA NR 2): podgląd IEC 60909 backendu domyka
     // scenariusz MIN (blok `scenariusz_min`) obok wartości MAX.
@@ -412,15 +421,8 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
       await page.screenshot({ path: `${zrzutyDir}/k7-fe-kreator-manual-min.png`, fullPage: true });
     }
 
-    // Krok „Sekcje i pola": czeka na REALNĄ gotowość aparatu z katalogu
-    // (wzorzec `zapiszZrodlo` — ślepe ponawianie zapisu maskowałoby defekt).
-    await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
-    const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
-    await expect(aparat).toBeVisible({ timeout: 60000 });
-    await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
-
-    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
-    await expect(kreator).toBeHidden({ timeout: 60000 });
+    // Zapis ścieżką prowadzenia projektanta (wskazanie braku → pole → zapis).
+    await zapiszZrodlo(page);
 
     const enm = await pobierzEnm(request, caseId);
     const zrodlo = (enm.sources ?? [])[0];
@@ -456,6 +458,8 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 
     // Krok „Źródło i strona WN" → tryb ręczny (ekspercki) → moc zwarciowa MAX
     // + napięcie zadane szyny bilansującej, wpisane natywnie.
+    // Napięcie SN rozdzielni — dana projektowa (kreator nie przyjmuje 15 kV za projektanta).
+    await page.getByTestId('mvd-kreator-zrodlo-napiecie').selectOption('15');
     await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
     await page.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny').click();
     await expect(page.getByTestId('mvd-kreator-zrodlo-uset')).toBeVisible({ timeout: 10000 });
@@ -469,15 +473,8 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
       await page.screenshot({ path: `${zrzutyDir}/k7c-fe-kreator-u-set-pu.png`, fullPage: true });
     }
 
-    // Krok „Sekcje i pola": czeka na REALNĄ gotowość aparatu z katalogu
-    // (wzorzec `zapiszZrodlo` — ślepe ponawianie zapisu maskowałoby defekt).
-    await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
-    const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
-    await expect(aparat).toBeVisible({ timeout: 60000 });
-    await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
-
-    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
-    await expect(kreator).toBeHidden({ timeout: 60000 });
+    // Zapis ścieżką prowadzenia projektanta (wskazanie braku → pole → zapis).
+    await zapiszZrodlo(page);
 
     const enm = await pobierzEnm(request, caseId);
     const zrodlo = (enm.sources ?? [])[0];
@@ -497,11 +494,14 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 async function zapiszZrodlo(page: Page): Promise<void> {
   const kreator = page.getByTestId('mvd-kreator-zrodlo');
   await expect(kreator).toBeVisible({ timeout: 20000 });
-  await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
-  const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
-  await expect(aparat).toBeVisible({ timeout: 60000 });
-  await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
-  await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
+  // Kontrakt prowadzenia projektanta: zapis nie czeka na „gotowość” pól — klik przy braku
+  // wskazuje pole (aparat pól liniowych, pozycja katalogu, czas zwarcia, uziemienie),
+  // a test uzupełnia je natywnie, aż kreator się zamknie.
+  await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-zrodlo',
+    zapisz: 'mvd-kreator-zrodlo-zapisz',
+    wartosci: WARTOSCI_TESTOWE_GPZ,
+  });
   await expect(kreator).toBeHidden({ timeout: 60000 });
 }
 
@@ -644,13 +644,20 @@ async function zapiszStacje(page: Page, numer: number): Promise<void> {
     await dalej.click();
   }
 
-  const szybka = page.getByTestId('mvd-kreator-stacja-szybka-zapisz');
-  const zwykla = page.getByTestId('mvd-kreator-stacja-zapisz');
-  if (await szybka.isEnabled({ timeout: 10000 }).catch(() => false)) {
-    await szybka.click();
-  } else {
-    await expect(zwykla).toBeEnabled({ timeout: 20000 });
-    await zwykla.click();
-  }
+  // Zapis ścieżką prowadzenia projektanta (dawny skrót „gotowa stacja z katalogu” dobierał
+  // transformator i aparaty z pierwszej pozycji listy — usunięty). Braki, których kreator nie
+  // dobiera sam, wskazuje klik zapisu; test uzupełnia je natywnie.
+  await zapiszZPrzewodnikiem(page, {
+    kreator: 'mvd-kreator-stacja',
+    zapisz: 'mvd-kreator-stacja-zapisz',
+    // Miejsce podziału odcinka: prawy klik w odcinek nie niesie punktu na odcinku, więc
+    // kreator pyta o odległość od początku (dawniej cicho środek odcinka).
+    wartosci: {
+      'mvd-kreator-stacja-odplywy': '2',
+      'mvd-kreator-stacja-rezystancja-uziemienia': '10',
+      'mvd-kreator-stacja-insert-at': '100',
+    },
+    timeout: 90000,
+  });
   await expect(kreator).toBeHidden({ timeout: 90000 });
 }

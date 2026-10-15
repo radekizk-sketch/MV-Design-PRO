@@ -88,6 +88,7 @@ describe('KreatorPierscienia — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorPierscienia />);
     await pickCable();
+    await userEvent.type(screen.getByTestId('mvd-kreator-pierscien-dlugosc'), '450');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-domknij'));
 
@@ -98,13 +99,14 @@ describe('KreatorPierscienia — realna ścieżka', () => {
         expect.objectContaining({
           from_bus_ref: 'bus-a',
           to_bus_ref: 'bus-b',
-          segment: expect.objectContaining({ rodzaj: 'KABEL' }),
+          segment: expect.objectContaining({ rodzaj: 'KABEL', dlugosc_m: 450 }),
         }),
       );
     });
 
-    // Krok 2: wybór NOP i zapis.
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pierscien-nop-wybor'), 'sw-1');
+    // Krok 2: jedyny kandydat NOP dobrany automatycznie — stoi w polu, edytowalny — i zapis.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-pierscien-nop-wybor')).toHaveValue('sw-1'));
+    expect(screen.getByTestId('mvd-kreator-pierscien-nop-wybor')).toBeEnabled();
     await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-zapisz-nop'));
 
     await waitFor(() => {
@@ -117,24 +119,47 @@ describe('KreatorPierscienia — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('uczciwy stan zerowy: bez zacisków domknięcie zablokowane', async () => {
+  // Intencja dawnych testów „domknięcie zablokowane”: bez zacisków i bez przypadku operacja
+  // nie rusza — w nowym kanonie przez jedno wskazanie przy próbie domknięcia.
+  it('bez zacisków: próba domknięcia nazywa brak, operacja nie rusza', async () => {
     context = { nop_candidates: [] };
     render(<KreatorPierscienia />);
-    // Montaż pobiera katalogi (kable + linie) — czekamy na realny stan końcowy
-    // UI (opcja kabla w selekcie katalogu), żeby aktualizacje stanu domknęły
-    // się w act.
     await screen.findByRole('option', { name: /Kabel 3x120/ });
     expect(screen.getByTestId('mvd-kreator-pierscien-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-domknij'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).toBeInTheDocument();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje domknięcie bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba domknięcia wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorPierscienia />);
     await pickCable();
-    expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('mvd-kreator-pierscien-dlugosc'), '300');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-domknij'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('świeży kreator: bez alertu i bez zgadywanej długości; domknięcie wskazuje typ, potem długość', async () => {
+    render(<KreatorPierscienia />);
+    await screen.findByRole('option', { name: /Kabel 3x120/ });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByTestId('mvd-kreator-pierscien-dlugosc') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-domknij'));
+    expect(screen.getByTestId('mvd-kreator-pierscien-katalog')).toHaveFocus();
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pierscien-domknij'));
+    expect(screen.getByTestId('mvd-kreator-pierscien-dlugosc')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj długość odcinka domykającego — /);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('konflikt widoczny od razu: długość niedodatnia', async () => {
+    render(<KreatorPierscienia />);
+    await screen.findByRole('option', { name: /Kabel 3x120/ });
+    await userEvent.type(screen.getByTestId('mvd-kreator-pierscien-dlugosc'), '0');
+    expect(screen.getByRole('alert').textContent).toMatch(/dodatnia/);
   });
 
   /**
@@ -149,7 +174,7 @@ describe('KreatorPierscienia — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-pierscien')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

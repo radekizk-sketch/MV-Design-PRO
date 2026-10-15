@@ -11,10 +11,13 @@ import {
 } from '../zksnModel';
 
 function dane(over: Partial<ZksnFormData> = {}): ZksnFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'zk-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'zk-1', polozenie: 0.5, ...over };
 }
 
 describe('zksnModel — walidacja', () => {
+  it('stan startowy nie zgaduje położenia na odcinku', () => {
+    expect(DANE_DOMYSLNE.polozenie).toBeNull();
+  });
   it('wymaga wariantu z katalogu', () => {
     expect(walidujFormularz(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
     expect(walidujFormularz(dane()).length).toBe(0);

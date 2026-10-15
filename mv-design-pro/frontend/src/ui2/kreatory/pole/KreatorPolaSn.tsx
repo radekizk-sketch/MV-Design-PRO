@@ -13,10 +13,12 @@ import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTempla
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import {
   fetchCompleteBayTemplates,
+  fetchManufacturers,
   fetchMvApparatusTypes,
   fetchSwitchgearFamilies,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
+import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
 import { resolveBusSnRef, resolveStationRef, stationLabel } from '../../../ui/network-build/forms/enmResolvers';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
@@ -33,10 +35,22 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  fmtKvPl,
+  jedynaZgodna,
+  napiecieSzyny,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
+  nazwaKartyPola,
+  nazwaRodziny,
 } from '../rama';
+import { aparatyDlaPola } from '../stacja/stacjaModel';
+import { aparatWOfercieRodziny } from '../stacja/zgodnoscPola';
 import {
   APARAT_OPCJE,
   DANE_DOMYSLNE,
@@ -44,14 +58,15 @@ import {
   WYBOR_POMIARU_OPCJE,
   aparatLabel,
   bayKindZRoli,
+  czyRolaPola,
   maSzablonProducenta,
   maSzyne,
+  rodzajAparatuZKatalogu,
   rolaLabel,
   OPCJE_ROLI_UZIEMNIKA,
   walidujFormularz,
   wyborPomiaruLabel,
   zbudujPayload,
-  type BladPola,
   type KontekstPola,
   type PolaSnFormData,
   type RodzajAparatu,
@@ -70,6 +85,15 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'pole', tytul: T.krokPole },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  bay_role: { krok: 'pole', pole: 'mvd-kreator-pole-rola' },
+  catalog_ref: { krok: 'pole', pole: 'mvd-kreator-pole-katalog' },
+  apparatus_kind: { krok: 'pole', pole: 'mvd-kreator-pole-aparat' },
+};
+
+type PoleAuto = 'bay_role' | 'catalog_ref' | 'apparatus_kind' | 'wybor_pomiaru';
 
 // Kod backendu (value) → opcja PoleWyboru {id, etykieta polska}. Kontrakt danych
 // (kody roli/aparatu) mieszka w modelu; UI pokazuje wyłącznie polskie etykiety.
@@ -103,14 +127,18 @@ export function KreatorPolaSn() {
   }, [context, snapshot]);
   const hasSzyne = maSzyne(kontekst);
 
-  const [dane, setDane] = useState<PolaSnFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
+  const rolaZKontekstu = czyRolaPola(context?.bay_role) ? context?.bay_role : null;
+  const [dane, setDane] = useState<PolaSnFormData>(() => ({ ...DANE_DOMYSLNE, bay_role: rolaZKontekstu }));
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
+  const napiecieKv = useMemo(() => napiecieSzyny(snapshot, kontekst.bus_ref), [kontekst.bus_ref, snapshot]);
 
   const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  const [producenci, setProducenci] = useState<Manufacturer[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
   // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
   // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
@@ -121,16 +149,18 @@ export function KreatorPolaSn() {
     let cancelled = false;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
-    Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies()])
-      .then(([apar, fam]) => {
+    Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies(), fetchManufacturers()])
+      .then(([apar, fam, prod]) => {
         if (cancelled) return;
         setTypy(Array.isArray(apar) ? apar : []);
         setRodziny(Array.isArray(fam) ? fam : []);
+        setProducenci(Array.isArray(prod) ? prod : []);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setTypy([]);
         setRodziny([]);
+        setProducenci([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       })
       .finally(() => {
@@ -146,16 +176,46 @@ export function KreatorPolaSn() {
     [dane.catalog_ref, typy],
   );
 
-  const opcjeTypow = useMemo(
-    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A` })),
-    [typy],
+  /** Wybrana rodzina — źródło nagłówka, oferty aparatów i kart pola. */
+  const wybranaRodzina = useMemo(
+    () => rodziny.find((r) => r.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
+    [dane.switchgear_family_ref, rodziny],
   );
+
+  // Aparaty zdatne na napięcie szyny (U_n aparatu ≥ U_n szyny) z OFERTY WYBRANEJ RODZINY
+  // (rodzaje karty rodziny, producent rodziny albo komponent wymienny) — te same predykaty
+  // co dobór aparatu pola w kreatorze stacji; bez rodziny — pełny katalog zdatny napięciowo.
+  const zdatne = useMemo(
+    () =>
+      aparatyDlaPola(
+        wybranaRodzina ? typy.filter((a) => aparatWOfercieRodziny(a, wybranaRodzina)) : typy,
+        napiecieKv ?? 0,
+      ),
+    [napiecieKv, typy, wybranaRodzina],
+  );
+  const opcjeTypow = useMemo(
+    () => zdatne.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A` })),
+    [zdatne],
+  );
+
+  // AUTO_PRZYJETE: rola z kontekstu wywołania, jedyny aparat zdatny na napięcie szyny, rodzaj
+  // aparatu z pozycji katalogowej, wybór pomiaru wg reguły domyślnej kontraktu.
+  const jedynyAparat = useMemo(() => (napiecieKv !== null ? jedynaZgodna(zdatne) : null), [napiecieKv, zdatne]);
+  useEffect(() => {
+    if (!jedynyAparat || napiecieKv === null || dane.catalog_ref || decyzjaProjektanta('catalog_ref')) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyAparat.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyAparat, napiecieKv]);
+  const rodzajZKatalogu = rodzajAparatuZKatalogu(params?.device_kind);
+  useEffect(() => {
+    if (!rodzajZKatalogu || decyzjaProjektanta('apparatus_kind')) return;
+    setDane((p) => (p.apparatus_kind === rodzajZKatalogu ? p : { ...p, apparatus_kind: rodzajZKatalogu }));
+  }, [decyzjaProjektanta, rodzajZKatalogu]);
 
   // Szablony pola producenta dla wybranej rodziny (producent) + roli (BayKind).
   // Reużycie Reference Engine (fetchCompleteBayTemplates) — jak kreator GPZ (K5).
   useEffect(() => {
     let cancelled = false;
-    if (!dane.manufacturer_ref) {
+    if (!dane.manufacturer_ref || !dane.bay_role) {
       setSzablony([]);
       return undefined;
     }
@@ -175,7 +235,7 @@ export function KreatorPolaSn() {
     () =>
       rodziny.map((r) => ({
         id: r.switchgear_family_ref,
-        etykieta: `${r.family_name} · ${r.manufacturer_ref}`,
+        etykieta: nazwaRodziny(r),
       })),
     [rodziny],
   );
@@ -184,15 +244,11 @@ export function KreatorPolaSn() {
     () =>
       szablony
         .filter((t) => t.switchgear_family_ref === dane.switchgear_family_ref)
-        .map((t) => ({ id: t.template_ref, etykieta: t.notes_pl ?? `Szablon · ${t.manufacturer_ref}` })),
+        .map((t) => ({ id: t.template_ref, etykieta: nazwaKartyPola(t, T.kartaPolaZapas) })),
     [szablony, dane.switchgear_family_ref],
   );
 
-  /** Wybrana rodzina i wskazana karta katalogowa pola — źródło nagłówka i składu. */
-  const wybranaRodzina = useMemo(
-    () => rodziny.find((r) => r.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
-    [dane.switchgear_family_ref, rodziny],
-  );
+  /** Wskazana karta katalogowa pola — źródło składu. */
   const wybranySzablon = useMemo(
     () => szablony.find((t) => t.template_ref === dane.bay_template_ref) ?? null,
     [dane.bay_template_ref, szablony],
@@ -200,7 +256,10 @@ export function KreatorPolaSn() {
 
   const zmien = useCallback(<K extends keyof PolaSnFormData>(pole: K, wartosc: PolaSnFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
-  }, []);
+    if (pole === 'bay_role' || pole === 'catalog_ref' || pole === 'apparatus_kind' || pole === 'wybor_pomiaru') {
+      edytowane(pole as PoleAuto);
+    }
+  }, [edytowane]);
 
   const wybierzRodzine = useCallback(
     (familyRef: string) => {
@@ -215,25 +274,29 @@ export function KreatorPolaSn() {
     [rodziny],
   );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — napięcie znamionowe aparatu < napięcie szyny: od razu przy polu.
+  const konfliktNapiecia =
+    params && napiecieKv !== null && params.u_n_kv + 1e-6 < napiecieKv
+      ? T.konfliktNapiecia(fmtKvPl(napiecieKv))
+      : undefined;
 
   const onZapisz = useCallback(async () => {
-    if (!hasSzyne) {
-      setBladGlobalny(T.brakSzynyOpis);
+    const brak = pierwszyBrak([
+      !hasSzyne && { komunikat: T.brakSzynyOpis },
+      konfliktNapiecia ? { komunikat: konfliktNapiecia, ...MIEJSCA.catalog_ref } : null,
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'add_sn_bay', zbudujPayload(dane, kontekst));
+      const response = await executeDomainOperation(activeCaseId as string, 'add_sn_bay', zbudujPayload(dane, kontekst));
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -243,26 +306,30 @@ export function KreatorPolaSn() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'BaySN', name: dane.field_name.trim() || 'Pole SN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyne, kontekst, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyne, konfliktNapiecia, kontekst, prowadzenie, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszSzyna,
-      stan: hasSzyne ? 'kompletne' : 'brak',
-      wartosc: kontekst.station_label || (hasSzyne ? 'Wskazana' : 'Brak'),
+      stan: hasSzyne ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.station_label || (hasSzyne ? 'Wskazana' : T.szynaDoWskazania),
     },
-    { etykieta: T.wierszRola, stan: 'kompletne', wartosc: rolaLabel(dane.bay_role) },
+    {
+      etykieta: T.wierszRola,
+      stan: !dane.bay_role ? 'do_wyboru' : 'ustalone',
+      wartosc: rolaLabel(dane.bay_role),
+    },
     {
       etykieta: T.wierszSzablon,
-      stan: maSzablonProducenta(dane) ? 'kompletne' : 'ostrzezenie',
-      wartosc: maSzablonProducenta(dane) ? 'Powiązany' : 'Zalecany',
+      stan: maSzablonProducenta(dane) ? 'ustalone' : 'do_wyboru',
+      wartosc: maSzablonProducenta(dane) ? 'Powiązany' : T.szablonOpcjonalny,
     },
     {
       etykieta: T.wierszAparat,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: konfliktNapiecia ? 'konflikt' : !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: params?.name ?? '',
     },
   ];
 
@@ -285,16 +352,6 @@ export function KreatorPolaSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasSzyne || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -308,17 +365,13 @@ export function KreatorPolaSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasSzyne
-              ? T.brakSzynyOpis
-              : null
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-pole-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-pole-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pole-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -346,9 +399,9 @@ export function KreatorPolaSn() {
             <KreatorSiatka kolumny={2}>
               <PoleWyboru
                 etykieta={T.rola}
-                wartosc={dane.bay_role}
-                onZmiana={(v) => zmien('bay_role', v as RolaPola)}
-                opcje={OPCJE_ROL}
+                wartosc={dane.bay_role ?? ''}
+                onZmiana={(v) => zmien('bay_role', (v || null) as RolaPola | null)}
+                opcje={[{ id: '', etykieta: T.rolaPlaceholder }, ...OPCJE_ROL]}
                 testid="mvd-kreator-pole-rola"
               />
               <PoleTekstowe
@@ -408,7 +461,11 @@ export function KreatorPolaSn() {
             {wybranaRodzina ? (
               <KreatorSekcja tytul={ST.naglowekRodzinyTytul} testid="mvd-kreator-pole-naglowek-rodziny">
                 <dl className="mvd-kreator-naglowek-rodziny">
-                  {naglowekRodziny(wybranaRodzina, wybranaRodzina.manufacturer_ref).map((wiersz) => (
+                  {naglowekRodziny(
+                    wybranaRodzina,
+                    producenci.find((m) => m.manufacturer_ref === wybranaRodzina.manufacturer_ref)?.name
+                      ?? null,
+                  ).map((wiersz) => (
                     <Fragment key={wiersz.etykieta}>
                       <dt>{wiersz.etykieta}</dt>
                       <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>
@@ -452,9 +509,9 @@ export function KreatorPolaSn() {
             <KreatorInfo>{T.typPomoc}</KreatorInfo>
             <PoleWyboru
               etykieta={T.aparat}
-              wartosc={dane.apparatus_kind}
-              onZmiana={(v) => zmien('apparatus_kind', v as RodzajAparatu)}
-              opcje={OPCJE_APARAT}
+              wartosc={dane.apparatus_kind ?? ''}
+              onZmiana={(v) => zmien('apparatus_kind', (v || null) as RodzajAparatu | null)}
+              opcje={[{ id: '', etykieta: T.aparatPlaceholder }, ...OPCJE_APARAT]}
               testid="mvd-kreator-pole-aparat"
             />
             <PoleKatalogu
@@ -465,9 +522,9 @@ export function KreatorPolaSn() {
               status={bladKatalogu ? 'error' : 'ready'}
               placeholder={T.typKatalogPlaceholder}
               komunikatBledu={bladKatalogu ?? T.typBlad}
+              blad={konfliktNapiecia}
               testid="mvd-kreator-pole-katalog"
             />
-            {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
             {paramReadout}
           </KreatorSekcja>
         </>

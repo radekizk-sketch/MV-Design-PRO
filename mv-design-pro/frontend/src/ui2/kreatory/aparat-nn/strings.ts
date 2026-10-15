@@ -10,8 +10,7 @@ export const APARAT_NN_STRINGS = {
   odznaka: 'Nowy aparat',
 
   rodzajTytul: 'Rodzaj aparatu',
-  rodzajPomoc: 'Wyłącznik/rozłącznik (impedancja pomijalna) albo bezpiecznik (niesie prąd znamionowy '
-    + 'i napięcie znamionowe wkładki z katalogu).',
+  rodzajPomoc: 'Łącznik (impedancja pomijalna) albo bezpiecznik — wkładka z katalogu niesie prąd i napięcie znamionowe.',
   rodzajSwitch: 'Wyłącznik / rozłącznik',
   rodzajFuse: 'Bezpiecznik',
 
@@ -19,8 +18,7 @@ export const APARAT_NN_STRINGS = {
   szynaOd: 'Szyna od',
   szynaDo: 'Szyna do',
   szynaDoPlaceholder: '— wybierz szynę docelową —',
-  szynaDoPomoc: 'Obie szyny muszą już istnieć w modelu i mieć to samo napięcie znamionowe nN — '
-    + 'operacja nie tworzy nowej szyny (w przeciwieństwie do kreatora „Odcinek nN").',
+  szynaDoPomoc: 'Istniejąca szyna o tym samym napięciu nN — operacja łączy dwie szyny, nowej nie tworzy.',
   brakSzynDo: 'Brak innej szyny nN w modelu do wskazania jako koniec toru. Dodaj najpierw odcinek nN '
     + 'albo rozdzielnicę nN, żeby powstała druga szyna.',
 
@@ -47,8 +45,12 @@ export const APARAT_NN_STRINGS = {
 
   zapisz: 'Zapisz aparat',
   anuluj: 'Anuluj',
-  walidacjaStopka: 'Uzupełnij wymagane pola przed zapisem.',
-  brakZakresu: 'Brak aktywnego przypadku obliczeniowego.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis aparatu unieważnia jego wyniki.',
+  brakSzynyDoWalid: 'Wybierz szynę docelową — aparat łączy dwie istniejące szyny nN.',
+  brakTypuWalid: 'Wybierz typ aparatu z katalogu nN — prąd znamionowy i zdolność wyłączania wchodzą do oceny zabezpieczeń.',
+  brakRodzajuWalid: 'Wybierz rodzaj aparatu — od niego zależy model łącznika albo wkładki w torze.',
+  konfliktNapiec: 'Szyny mają różne napięcia znamionowe — aparat nN łączy szyny tego samego napięcia.',
+  konfliktRodzaju: 'Rodzaj aparatu różni się od rodzaju wybranej pozycji katalogowej — wybierz zgodny.',
   brakStartuTytul: 'Brak punktu startowego',
   brakStartuOpis: 'Wskaż szynę nN (w drzewie nN STUDIO albo na schemacie), od której ma zaczynać się tor aparatu.',
   bladDodania: 'Nie udało się dodać aparatu nN.',

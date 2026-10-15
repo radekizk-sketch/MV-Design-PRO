@@ -51,6 +51,11 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
+from network_model.catalog.switchgear.apparatus_vocabulary import (
+    FAMILY_APPARATUS_FOR_CATALOG_DEVICE_KIND,
+    FAMILY_APPARATUS_KINDS_INTERCHANGEABLE,
+)
+from network_model.catalog.switchgear.registry import manufacturer_ref_for_apparatus_vendor
 from network_model.catalog.types import normalize_ptpiree_key
 from network_model.core.uziemienie import (
     ROLE_UZIEMNIKA,
@@ -230,8 +235,28 @@ def list_switch_equipment_types() -> list[dict[str, Any]]:
 
 @router.get("/mv-apparatus-types")
 def list_mv_apparatus_types() -> list[dict[str, Any]]:
-    """List all MV apparatus types from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_mv_apparatus_types()]
+    """List all MV apparatus types from the canonical MV catalog.
+
+    Odczyt pozycji uzupełniony o trzy projekcje słownikowe (bez zmiany rekordu
+    katalogu i jego odcisku): ``manufacturer_ref`` producenta rozdzielnicy
+    (rejestr producentów), ``family_apparatus_kind`` (słownik
+    ``SwitchgearFamily.allowed_apparatus_kinds``) i ``interchangeable_across_families``
+    (rodzaj jest komponentem wymiennym między rodzinami — wkładki bezpiecznikowe SN).
+    Kreator stacji zawęża nimi ofertę aparatów do rodzajów wybranej rodziny i do jej
+    producenta, poza komponentami wymiennymi.
+    """
+    wynik: list[dict[str, Any]] = []
+    for item in get_default_mv_catalog().list_mv_apparatus_types():
+        rodzaj = FAMILY_APPARATUS_FOR_CATALOG_DEVICE_KIND.get(item.device_kind)
+        wynik.append(
+            {
+                **item.to_dict(),
+                "manufacturer_ref": manufacturer_ref_for_apparatus_vendor(item.manufacturer),
+                "family_apparatus_kind": rodzaj,
+                "interchangeable_across_families": rodzaj in FAMILY_APPARATUS_KINDS_INTERCHANGEABLE,
+            }
+        )
+    return wynik
 
 
 @router.get("/lv-apparatus-types")

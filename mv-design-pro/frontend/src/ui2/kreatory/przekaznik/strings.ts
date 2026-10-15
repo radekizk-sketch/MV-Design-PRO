@@ -17,8 +17,7 @@ export const PRZEKAZNIK_STRINGS = {
 
   // Pole SN
   poleTytul: 'Kontekst pola',
-  polePomoc: 'Zabezpieczenie działa w polu SN — po co: wykrywa zwarcia i przeciążenia; '
-    + 'z czego: prąd z przekładnika CT; co daje: sygnał wyłączenia do wyłącznika pola.',
+  polePomoc: 'Pole SN chronione przekaźnikiem — przekaźnik mierzy prąd z CT pola i wyłącza wyłącznik pola.',
   poleSn: 'Pole SN',
   poleSnPlaceholder: '— wybierz pole SN —',
   aparat: 'Wyłącznik wykonawczy',
@@ -26,6 +25,7 @@ export const PRZEKAZNIK_STRINGS = {
   aparatPomoc: 'Aparat, do którego przekaźnik wysyła sygnał wyłączenia. Gdy pominięty, '
     + 'system dobiera pierwszy wyłącznik pola.',
   rodzina: 'Rodzina ochrony',
+  rodzinaPlaceholder: '— wybierz rodzinę ochrony —',
   rodzinaOpcje: [
     { id: 'NADPRADOWY', etykieta: 'Nadprądowy (50/51)' },
     { id: 'ZIEMNOZWARCIOWY', etykieta: 'Ziemnozwarciowy (50N/51N)' },
@@ -40,8 +40,7 @@ export const PRZEKAZNIK_STRINGS = {
   katalog: 'Zabezpieczenie z katalogu',
   katalogPlaceholder: '— wybierz przekaźnik —',
   katalogBlad: 'Nie udało się pobrać katalogu zabezpieczeń.',
-  katalogPomoc: 'Typ przekaźnika (producent, zakresy nastaw, dostępne charakterystyki) — z katalogu. '
-    + 'Catalog Binding Rule: parametry aparatu pochodzą z niezmiennego typu, nie z ręcznego wpisu.',
+  katalogPomoc: 'Typ przekaźnika z katalogu — producent, zakresy nastaw i charakterystyki z karty.',
 
   nazwa: 'Nazwa zabezpieczenia',
   nazwaPlaceholder: 'np. Zabezp. pola liniowego A',
@@ -60,13 +59,12 @@ export const PRZEKAZNIK_STRINGS = {
   // Karta BIEG-ZABEZPIECZEN-Z-MODELU: zabezpieczenie wyłącznika liniowego (bez pola).
   wierszWylacznik: 'Wyłącznik liniowy',
   wylacznikBrak: 'wyłącznik nie występuje w modelu',
-  wylacznikPomoc: 'Zabezpieczenie wyłącznika liniowego wstawionego w odcinek SN — po co: '
-    + 'wyłącza zwarcia za wyłącznikiem; z czego: prąd z przekładnika CT przy wyłączniku; co '
-    + 'daje: stopień selektywności magistrali.',
+  wylacznikPomoc: 'Wyłącznik liniowy w odcinku SN chroniony przekaźnikiem — stopień selektywności magistrali.',
 
   // Ostrzeżenie o braku CT (dla nadprądowych)
-  brakCt: 'Ta rodzina wymaga przekładnika prądowego CT w tym samym polu. Dodaj CT przed zapisem '
-    + 'albo wybierz rodzinę bez pomiaru prądu.',
+  brakCt: 'Ta rodzina mierzy prąd — przekaźnik zadziała po dodaniu przekładnika prądowego CT w tym polu.',
+  ctDoDodania: 'CT do dodania',
+  brakRodzinyWalid: 'Wybierz rodzinę ochrony — od niej zależą funkcje i nastawy zabezpieczenia.',
 
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
@@ -83,10 +81,11 @@ export const PRZEKAZNIK_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz zabezpieczenie',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem zabezpieczenia.',
-  brakPolaWalid: 'Wybierz pole SN dla zabezpieczenia.',
-  brakKatalogu: 'Wybierz typ zabezpieczenia z katalogu.',
-  walidacjaStopka: 'Uzupełnij pole SN i typ katalogowy, aby zapisać zabezpieczenie.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis zabezpieczenia unieważnia jego wyniki.',
+  brakPolaWalid: 'Wybierz pole SN — zabezpieczenie chroni tor tego pola.',
+  brakWylacznikaWalid:
+    'Wskazanego wyłącznika liniowego nie ma w modelu — otwórz kreator ponownie z istniejącego wyłącznika.',
+  brakKatalogu: 'Wybierz typ zabezpieczenia z katalogu — zakresy nastaw i charakterystyki pochodzą z karty.',
   bladDodania: 'Nie udało się dodać zabezpieczenia.',
 
   // Panel teorii (V12K-066)

@@ -104,7 +104,7 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ): "jw. — drugi domyslny punkt krzywej Q(U)",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        "} else if (data.u_set_pu < 0.9 || data.u_set_pu > 1.1) {",
+        "if (data.u_set_pu !== null && (data.u_set_pu < 0.9 || data.u_set_pu > 1.1)) {",
     ): "walidacja pasma nastawy regulacji napiecia zrodla OZE (parametr sterowania DER), nie kryterium wyniku sieci",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
@@ -122,14 +122,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
         "quDeadbandHighPu: 1.05, // górna granica napięciowego pasma nieczułości Q(U)",
     ): "domyslna gorna granica pasma nieczulosci Q(U) zrodla OZE (parametr sterowania DER)",
-    (
-        "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        "+ '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',",
-    ): "opis pasma nieczulosci Q(U) NC RfG (parametr sterowania DER) w formularzu zrodla OZE",
-    (
-        "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        "+ 'Pasmo dopuszczalne: 0,9–1,1 pu.',",
-    ): "jw. — opis dopuszczalnego pasma nastawy regulacji napiecia",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
         "+ 'pasmo 0,95–1,05 pu, statyzm dobierany przez OSD. Reakcja tylko poza pasmem.',",

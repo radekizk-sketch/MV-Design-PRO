@@ -21,9 +21,7 @@ export const OZE_STRINGS = {
   technologia: 'Technologia',
   technologiaPomoc: 'PV/BESS/FW wyznacza katalog falowników, model zwarciowy i wymagania NC RfG.',
   wariant: 'Sposób przyłączenia',
-  wariantPomoc:
-    'Bezpośrednio do szyny nN (falownik nN) albo przez transformator blokowy SN/nN '
-    + '(gdy napięcie falownika ≠ napięcie rozdzielni).',
+  wariantPomoc: 'Falownik wprost na szynę nN albo przez transformator blokowy SN/nN.',
   transformator: 'Transformator blokowy',
   transformatorPlaceholder: '— wybierz transformator SN/nN —',
   transformatorBrak: 'Brak transformatora blokowego w stacji — dodaj transformator albo wybierz przyłączenie do szyny nN.',
@@ -62,7 +60,6 @@ export const OZE_STRINGS = {
   katalog: 'Układ PV/BESS/FW',
   katalogPlaceholder: '— wybierz układ z katalogu —',
   katalogBlad: 'Nie udało się pobrać katalogu układów PV/BESS/FW.',
-  katalogLadowanieStopka: 'Ładowanie katalogu przekształtników i aparatury nN — zapis chwilę poczeka.',
   katalogPomoc: 'Tabliczka wnosi napięcie, moc znamionową i zdolność Q — z katalogu (ZERO fizyki w UI).',
   liczba: 'Liczba jednostek',
   liczbaPomoc: 'Moc zagregowana = liczba × Pmax jednostki; agregacja po stronie backendu.',
@@ -80,57 +77,25 @@ export const OZE_STRINGS = {
   // Krok 3
   sekcjaRegulacja: 'Tryb regulacji mocy biernej i czynnej',
   regulacja: 'Tryb regulacji mocy biernej',
-  regulacjaPomoc:
-    'Po co: falownik OZE utrzymuje napięcie i współczynnik mocy w punkcie przyłączenia. '
-    + 'Tryb wyznacza, jak źródło oddaje/pobiera moc bierną Q. Wybór realnie wpływa na wynik '
-    + 'rozpływu mocy (kanoniczny model falownika). Stały cosφ — Q proporcjonalna do P wg '
-    + 'zadanego cosφ; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
-    + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
-    + 'regulacja napięcia (U = const) — falownik trzyma zadany moduł napięcia szyny, Q jest '
-    + 'WYNIKIEM rozpływu w granicach Q min/Q max (węzeł PV, nie PQ); '
-    + '„Bez regulacji" — źródło pasywne ($Q = 0$).',
+  regulacjaPomoc: 'Sposób oddawania mocy biernej przez falownik — zmienia wynik rozpływu (stały cosφ, Q(U), U = const, bez regulacji).',
   cosPhiCel: 'Docelowy współczynnik mocy cosφ',
-  cosPhiCelPomoc:
-    'Wartość rządząca trybem stałego cosφ. $\\cos\\varphi < 1$ → falownik oddaje/pobiera Q '
-    + '($Q/|P| = \\tan(\\arccos\\cos\\varphi)$). Sugerowane: 0,95 (NC RfG typ B/C zwykle wymaga zdolności '
-    + '±0,95, tj. $\\pm 0{,}3287 \\cdot P_n$). $\\cos\\varphi = 1$ → brak Q (tryb pasywny).',
+  cosPhiCelPomoc: 'Współczynnik mocy trybu stałego cosφ — $Q/|P| = \\tan(\\arccos\\cos\\varphi)$; puste pole liczy się jako 1 (bez Q).',
   quNachylenie: 'Nachylenie Q(U) (statyzm)',
-  quNachyleniePomoc:
-    'Wartość rządząca trybem Q(U) [pu Q na pu U]: o ile zmienia się Q na jednostkę zmiany '
-    + 'napięcia względem pasma nieczułości. Sugerowane: 2–5 (typ. 4). 0 → tryb pasywny.',
+  quNachyleniePomoc: 'Nachylenie Q(U) [pu Q na pu U] poza pasmem nieczułości; puste pole liczy się jako 0 (bez Q).',
   quPasmoDol: 'Pasmo Q(U) — napięcie dolne',
   quPasmoGora: 'Pasmo Q(U) — napięcie górne',
-  quPasmoPomoc:
-    'Napięciowe pasmo nieczułości charakterystyki Q(U) [pu U]: w zakresie dolne–górne źródło '
-    + 'nie oddaje/pobiera Q ($Q = 0$), reakcja włącza się dopiero poza pasmem. Sugerowane: '
-    + '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',
+  quPasmoPomoc: 'Pasmo nieczułości Q(U) [pu U] — wewnątrz $Q = 0$; puste — punkt 1,0/1,0 (reakcja przy każdej odchyłce).',
   uSetPu: 'Nastawa napięcia U',
-  uSetPuPomoc:
-    'Po co: wartość rządząca trybem regulacji napięcia — moduł napięcia [pu], który falownik '
-    + 'ma trzymać na swojej szynie (węzeł PV rozpływu). Solver oddaje Q wynikowe w granicach '
-    + 'Q min/Q max poniżej; przy nasyceniu granic falownik traci regulację i pracuje dalej jako '
-    + 'źródło o stałej mocy biernej (przełączenie na węzeł obciążeniowy, widoczne w wyniku). '
-    + 'Pasmo dopuszczalne: 0,9–1,1 pu.',
+  uSetPuPomoc: 'Napięcie [pu], które falownik trzyma na szynie — Q wynika z rozpływu w granicach Q min/Q max.',
   qMin: 'Q min (pobór, podwzbudzenie)',
   qMax: 'Q max (oddawanie, nadwzbudzenie)',
-  qPomoc:
-    'Zakres mocy biernej falownika [Mvar] — klamra dla trybu regulacji. Puste = zakres z '
-    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej $\\pm 0{,}3287 \\cdot P_n$ (cosφ 0,95).',
+  qPomoc: 'Zakres mocy biernej falownika [Mvar] dla regulacji; puste — zakres z tabliczki katalogowej.',
   mocRobocza: 'Moc robocza P (nastawa)',
-  mocRoboczaPomoc:
-    'Zadana moc czynna [MW] w punkcie pracy studium. Puste = moc znamionowa agregatu '
-    + '(liczba × Pmax). Dla magazynu: dodatnia = rozładowanie, ujemna = ładowanie.',
+  mocRoboczaPomoc: 'Moc czynna punktu pracy [MW]; puste — moc znamionowa agregatu; magazyn: + rozładowanie, − ładowanie.',
   statyzmPf: 'Statyzm P(f) / LFSM',
-  statyzmPfPomoc:
-    'Po co: ograniczanie mocy czynnej przy wzroście częstotliwości (LFSM-O), a dla magazynu '
-    + 'także jej podnoszenie przy spadku (LFSM-U). Statyzm [%Pn na %f]: mniejsza wartość = '
-    + 'ostrzejsza reakcja. Realnie zmienia moc czynną w rozpływie przy odchyłce częstotliwości '
-    + 'studium (przy 50 Hz brak wpływu). Sugerowane: 5% (typ. 2–12% wg operatora). '
-    + 'Puste = bez regulacji P(f).',
+  statyzmPfPomoc: 'Statyzm P(f) [% Pn na % f] — zmiana mocy czynnej przy odchyłce częstotliwości; puste — bez regulacji P(f).',
   pfDeadband: 'Pasmo nieczułości P(f)',
-  pfDeadbandPomoc:
-    'Zakres wokół 50 Hz bez reakcji [Hz]. Sugerowane: 0,2 Hz (LFSM-O aktywne od 50,2 Hz wg '
-    + 'NC RfG). Aktywne tylko, gdy podano statyzm P(f).',
+  pfDeadbandPomoc: 'Strefa nieczułości P(f) wokół 50 Hz [Hz] — działa tylko z podanym statyzmem.',
   frtTytul: 'Przejście przez zakłócenie (FRT)',
   frtOpis:
     'Deklaracja zdolności jednostki do przetrwania zaniku napięcia (LVRT) i przepięcia (HVRT) '
@@ -147,11 +112,9 @@ export const OZE_STRINGS = {
     + 'dla wybranego profilu jest nieznana. Wybór pozostaje bez zmian; przed uruchomieniem biegu '
     + 'sprawdzi go walidator modelu.',
   regulacjaNapieciaCofnieta: (operator: string) =>
-    `Profil operatora „${operator}” nie dopuszcza regulacji napięcia (U = const) — tryb `
+    `${operator ? `Profil operatora „${operator}”` : 'Wybrany profil operatora'} nie dopuszcza `
+    + 'regulacji napięcia (U = const) — tryb '
     + 'przywrócono na „Bez regulacji”.',
-  regulacjaPasywnaOstrzezenie:
-    'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
-    + 'Q(U)), inaczej źródło pracuje pasywnie ($Q = 0$) i wybór trybu nie wpływa na rozpływ.',
   sekcjaBess: 'Praca magazynu (BESS)',
   bessTryb: 'Tryb pracy magazynu',
   socMin: 'SOC min',
@@ -160,10 +123,7 @@ export const OZE_STRINGS = {
 
   // Krok APARATURA (K9-A O2/O3): wiązania aparaturowe wytwórcy.
   sekcjaAparatura: 'Aparatura pola wytwórcy',
-  aparaturaPomoc:
-    'Wiązania aparaturowe zapisują się do modelu razem ze źródłem i odblokowują osie '
-    + 'gotowości analiz: zabezpieczenia, selektywność, zwarcia niesymetryczne oraz badania '
-    + 'przejścia przez zakłócenie. Typy pochodzą z realnych katalogów.',
+  aparaturaPomoc: 'Aparatura źródła z katalogów — zapisuje się razem ze źródłem i zasila zabezpieczenia oraz zwarcia.',
   aparaturaCt: 'Przekładnik prądowy (CT)',
   aparaturaCtPomoc:
     'Klasa rdzenia z katalogu decyduje o gotowości osi zabezpieczeń (IEC 61869-2).',
@@ -179,9 +139,7 @@ export const OZE_STRINGS = {
   // pickerem jak CT/VT/zabezpieczenie powyżej, nie referencją wpisaną ręcznie. Dawne
   // dane zwarciowe (`fault_current_data_ref`) USUNIĘTE z kontraktu w tej samej karcie.
   aparaturaModelDynamiczny: 'Model dynamiczny urządzenia',
-  aparaturaModelDynamicznyPomoc:
-    'Opis zachowania przekształtnika w stanach przejściowych — wymagany do badań '
-    + 'przejścia przez zapad (LVRT) i wzrost napięcia (HVRT).',
+  aparaturaModelDynamicznyPomoc: 'Model dynamiczny przekształtnika — potrzebny do badań LVRT i HVRT.',
   teoriaAparaturaTytul: 'Teoria: aparatura pola wytwórcy',
   teoriaAparaturaOpis:
     'Pole wytwórcy wymaga toru pomiarowego (przekładnik prądowy i napięciowy) oraz '
@@ -197,15 +155,10 @@ export const OZE_STRINGS = {
 
   // Krok ZGODNOŚĆ (K9-A O4): profile zgodności przyłączeniowej NC RfG.
   sekcjaZgodnosc: 'Profile zgodności przyłączeniowej (NC RfG)',
-  zgodnoscPomoc:
-    'Profil operatora i krzywe graniczne zapisują się do modelu razem ze źródłem — zasilają '
-    + 'ocenę zgodności NC RfG, badania przejścia przez zakłócenie (LVRT/HVRT) i odpowiedź '
-    + 'częstotliwościową P(f).',
+  zgodnoscPomoc: 'Profil operatora i krzywe graniczne — zasilają ocenę zgodności NC RfG, LVRT/HVRT i P(f).',
   zgodnoscProfil: 'Profil wymagań operatora',
   zgodnoscProfilPlaceholder: '— wybierz profil operatora —',
-  zgodnoscProfilPomoc:
-    'Zestaw wymagań ogólnego stosowania operatora (moduły A–D). Wybór profilu zawęża '
-    + 'listę krzywych granicznych do wymagań tego operatora.',
+  zgodnoscProfilPomoc: 'Wymagania ogólnego stosowania operatora (moduły A–D) — zawężają listę krzywych granicznych.',
   zgodnoscLvrt: 'Krzywa graniczna LVRT (zanik napięcia)',
   zgodnoscHvrt: 'Krzywa graniczna HVRT (przepięcie)',
   // NIE „operatora" (karta K-Q): katalog nastaw P(f) przestał być listą wariantów
@@ -214,14 +167,9 @@ export const OZE_STRINGS = {
   // obiecująca wybór „operatora" opisywałaby listę, której już nie ma, i rozjeżdżała
   // się z tą samą wielkością na karcie wytwórcy („Charakterystyka P(f)").
   zgodnoscPf: 'Charakterystyka P(f)',
-  zgodnoscPfPomoc:
-    'Statyzm i strefa nieczułości odpowiedzi mocowo-częstotliwościowej. Zakres nastawy '
-    + 'wynika z rozporządzenia (UE) 2016/631 art. 13 ust. 2 (2–12%), więc lista NIE zawęża '
-    + 'się profilem operatora — inaczej niż obwiednie LVRT/HVRT.',
+  zgodnoscPfPomoc: 'Statyzm i strefa nieczułości P(f) — zakres z art. 13 ust. 2 rozporządzenia (UE) 2016/631 (2–12 %).',
   zgodnoscKrzywaPlaceholder: '— wybierz krzywą —',
-  zgodnoscKrzywePomoc:
-    'Obwiednie graniczne napięcie–czas oraz charakterystyka mocowo-częstotliwościowa '
-    + 'z wymagań operatora — porównanie z odpowiedzią jednostki wykonuje system.',
+  zgodnoscKrzywePomoc: 'Obwiednie napięcie–czas i charakterystyka P(f) operatora — porównanie z odpowiedzią jednostki liczy system.',
   teoriaZgodnoscTytul: 'Teoria: zgodność przyłączeniowa NC RfG',
   teoriaZgodnoscOpis:
     'Moduł wytwarzania energii podlega wymaganiom NC RfG stosownie do typu (A–D, wg mocy '
@@ -238,9 +186,7 @@ export const OZE_STRINGS = {
 
   // Tryb pracy źródła (K9-A O5) — słownik trybów punktu pracy źródła w modelu.
   trybPracy: 'Tryb pracy źródła',
-  trybPracyPomoc:
-    'Stan pracy źródła zapisywany w modelu — czytelny dla kart pól i odczytów rozdzielni. '
-    + 'Pozostaw „bez wskazania", aby nie zapisywać stanu (odczyt pola przyjmie gotowość).',
+  trybPracyPomoc: 'Stan pracy źródła w modelu; „bez wskazania” — stan nie jest zapisywany.',
   trybPracyBrak: '— bez wskazania —',
   trybPracyOpcje: [
     { id: 'praca_sieciowa', etykieta: 'Praca sieciowa (oddawanie mocy)' },
@@ -268,7 +214,6 @@ export const OZE_STRINGS = {
   wierszRegulacja: 'Regulacja',
   wierszTrybPracy: 'Tryb pracy',
   aparaturaCzesciowa: (n: number, z: number) => `Wybrano ${n} z ${z}`,
-  doKonfiguracji: 'Do konfiguracji',
   bezWskazania: 'Bez wskazania',
 
   brakStacjiTytul: 'Brak wskazania rozdzielni',
@@ -281,10 +226,12 @@ export const OZE_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz źródło OZE',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis źródła unieważnia jego wyniki.',
+  brakStacjiWalid: 'Otwórz kreator z rozdzielni (szyny nN) na schemacie — tam przyłączysz źródło OZE.',
+  brakFalownikaWalid: 'Wybierz układ z katalogu tej technologii — wskazanej pozycji nie ma w katalogu.',
+  bladZapisu: 'Nie udało się zapisać — spróbuj ponownie.',
   brakProjektu:
     'Wiązania aparaturowe i profile wymagają aktywnego projektu — wybierz projekt przed zapisem.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło OZE.',
 
   // Sekwencja zapisu (K9-A §0.4): każdy etap raportowany uczciwie — bez udawania
   // atomowości, której model nie zapewnia.
@@ -348,10 +295,7 @@ export const OZE_STRINGS = {
   // Krok DOBÓR toru SN (D2 — RECENZJA_DER_SN_DOBORY_2026-07)
   krokDobor: 'Dobór toru SN',
   sekcjaDobor: 'Dobór transformatora, kabla i aparatu pola',
-  doborPomoc:
-    'System proponuje z REALNYCH katalogów najmniejszy transformator blokowy, przekrój kabla SN '
-    + 'i aparat głównego pola SN dla podanych falowników. Propozycję możesz zastosować jednym '
-    + 'kliknięciem albo wybrać własne elementy — wynik liczbowy zawsze z backendu (zero fizyki w UI).',
+  doborPomoc: 'Propozycja z katalogów: najmniejszy transformator blokowy, przekrój kabla SN i aparat pola dla podanych falowników.',
   doborDlugoscKabla: 'Długość kabla SN',
   doborDlugoscKablaPomoc: 'Długość odcinka przyłączeniowego SN [km] — potrzebna do sprawdzenia spadku napięcia ΔU.',
   doborRezerwaTr: 'Rezerwa mocy TR',
@@ -360,35 +304,23 @@ export const OZE_STRINGS = {
   doborRezerwaKabelPomoc: 'Zapas obciążalności kabla ponad prąd TR [pu].',
   // K9-A O8/O9/O11: pełne parametry progu doboru (konsumowane przez końcówkę doboru).
   doborJednoczesnosc: 'Współczynnik jednoczesności',
-  doborJednoczesnoscPomoc:
-    'Współczynnik jednoczesności pracy falowników $k_j$ (0–1]. Obniża obciążenie efektywne: '
-    + '$S_{ef} = \\Sigma S \\cdot k_j$. Puste = 1,0 (pełna jednoczesność).',
+  doborJednoczesnoscPomoc: 'Jednoczesność pracy falowników $k_j$ (0–1] — $S_{ef} = \\Sigma S \\cdot k_j$; puste — 1,0.',
   doborObciazalnoscTr: 'Obciążalność TR',
-  doborObciazalnoscTrPomoc:
-    'Dopuszczalne obciążenie względne transformatora [pu Sn], np. 1,0 = praca do mocy '
-    + 'znamionowej. Próg doboru: $S_n \\cdot \\text{obciążalność} \\ge S_{wym}$.',
+  doborObciazalnoscTrPomoc: 'Dopuszczalne obciążenie transformatora [pu Sn] — próg doboru $S_n \\cdot \\text{obciążalność} \\ge S_{wym}$.',
   doborRezerwaPole: 'Rezerwa prądowa aparatu pola',
   doborRezerwaPolePomoc: 'Zapas prądu znamionowego aparatu pola SN ponad prąd TR [pu].',
   // uk% TR blokowego: WYŁĄCZNIE odczyt z propozycji — wartość rządzi katalog typu
   // (materializacja nadpisuje wartość z żądania), więc kontrolka edycji byłaby pozorna.
   doborUkTr: 'Napięcie zwarcia uk (z katalogu)',
   doborMaxDeltaU: 'Dopuszczalna zmiana napięcia',
-  doborMaxDeltaUPomoc:
-    'Dopuszczalna zmiana napięcia na odcinku kabla SN [%] — kryterium obejmuje MODUŁ zmiany, '
-    + 'czyli zarówno spadek, jak i wzrost napięcia (przy generacji wiążący jest wzrost).',
+  doborMaxDeltaUPomoc: 'Dopuszczalna zmiana napięcia na kablu SN [%] — moduł zmiany (przy generacji wiąże wzrost).',
   // V12K-203 — przypadek pracy toru DER sprawdzany w doborze.
   doborCosPhi: 'cos φ toru',
-  doborCosPhiPomoc:
-    'Współczynnik mocy falowników w sprawdzanym przypadku pracy. Wyznacza moc pozorną '
-    + '(S = ΣP / cos φ), czyli moc transformatora blokowego, oraz udział mocy biernej w zmianie '
-    + 'napięcia na kablu. cos φ = 1 oznacza pracę bez mocy biernej.',
+  doborCosPhiPomoc: 'cosφ falowników w sprawdzanym przypadku — wyznacza moc pozorną i udział Q w zmianie napięcia.',
   doborCharakterQ: 'Charakter mocy biernej falownika',
   doborCharakterQPobor: 'Pobór Q (indukcyjny — regulacja Q(U))',
   doborCharakterQOddawanie: 'Oddawanie Q (pojemnościowy)',
-  doborCharakterQPomoc:
-    'Kierunek mocy CZYNNEJ nie jest wyborem — tor oddaje moc do sieci, więc napięcie w punkcie '
-    + 'przyłączenia rośnie. Wyborem jest moc bierna: pobór Q (tak działa regulacja Q(U) falownika) '
-    + 'TŁUMI wzrost napięcia i pozwala zwykle na mniejszy przekrój; oddawanie Q wzrost powiększa.',
+  doborCharakterQPomoc: 'Pobór Q tłumi wzrost napięcia przy generacji, oddawanie Q go powiększa.',
   doborCharakterQBezZnaczenia:
     'Przy cos φ = 1 falownik nie wymienia mocy biernej (sin φ = 0), więc charakter Q nie wpływa '
     + 'na dobór. Ustaw cos φ < 1, aby sprawdzić wpływ regulacji Q(U).',
@@ -398,24 +330,20 @@ export const OZE_STRINGS = {
     + 'przyłączaniu OZE. Wartość poniżej jest modułem zmiany; kryterium |ΔU%| sprawdza backend.',
   // V12K-207 (karta F-K7) — warunki UŁOŻENIA kabla w doborze obciążalności.
   doborWarunkiUlozenia: 'Warunki ułożenia kabla',
-  doborWarunkiUlozeniaPomoc:
-    'Obciążalność z katalogu obowiązuje dla warunków ODNIESIENIA producenta. W ziemi, '
-    + 'w wiązce i w grupie kabel przenosi mniej, więc dobór bez korekty jest optymistyczny. '
-    + 'Zestawy i współczynniki pochodzą z backendu (podstawa dokumentowa przy każdym).',
+  doborWarunkiUlozeniaPomoc: 'Warunki ułożenia kabla — korygują obciążalność katalogową (współczynniki z backendu).',
   doborWarunkiUlozeniaNiedostepne:
     'Nie udało się pobrać listy warunków ułożenia — dobór policzy się dla warunków '
     + 'katalogowych i tak też zostanie opisany.',
   // W5-A: układ uziemienia ekranu kabla SN przyłączeniowego (deklaracja, nie przeliczenie).
   doborEkranUziemienie: 'Uziemienie ekranu kabla SN',
   doborEkranUziemieniePomoc:
-    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
-    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
+    'Sposób uziemienia ekranu — katalogowe R0/X0 dotyczą układu odniesienia typu kabla.',
   doborObciazalnoscKatalogowa: 'Obciążalność katalogowa Iz',
   doborObciazalnoscSkorygowana: 'Obciążalność po korekcie I′z',
   doborZalozenieObciazalnosci: 'Założenie obciążalności',
   doborNapiecieSn: 'Napięcie szyny SN',
   doborZaproponuj: 'Zaproponuj dobór',
+  doborBrakDlugosci: 'Podaj długość kabla SN — od niej zależą przekrój i zmiana napięcia.',
   doborZastosuj: 'Zastosuj propozycję',
   doborPobieranie: 'Dobieranie z katalogów…',
   doborBrakKontekstu: 'Wskaż szynę SN stacji, aby dobrać tor (napięcie szyny SN wyznacza dobór).',

@@ -31,11 +31,17 @@ import {
   PanelTeorii,
   PoleTekstowe,
   PoleWyboru,
-  RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
   type WierszGotowosci,
 } from '../rama';
 import { poleNnStrings } from './strings';
+
+/** Rodziny pola przyłączeniowego nN przyjmowane przez operację (`source_field_kind`). */
+const RODZINY_ZRODLA: readonly string[] = ['PV', 'BESS', 'FW', 'AGREGAT', 'UPS'];
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -52,19 +58,31 @@ export function KreatorPolaNn() {
 
   const isSource = context?.field_role === 'SOURCE';
   const T = useMemo(() => poleNnStrings(isSource), [isSource]);
-  const sourceFieldKind = useMemo(() => readString(context?.source_field_kind) || 'PV', [context]);
+  // Rodzina źródła WYŁĄCZNIE z kontekstu wywołania albo od projektanta (dawniej cicho „PV”).
+  const rodzinaZKontekstu = useMemo(() => {
+    const raw = readString(context?.source_field_kind).toUpperCase();
+    return RODZINY_ZRODLA.includes(raw) ? raw : '';
+  }, [context]);
+  const [sourceFieldKind, setSourceFieldKind] = useState(rodzinaZKontekstu);
+  useEffect(() => setSourceFieldKind(rodzinaZKontekstu), [rodzinaZKontekstu]);
 
   const stationRef = useMemo(() => resolveStationRef(context, snapshot), [context, snapshot]);
   const busOptions = useMemo(() => listNnBusOptions(snapshot, stationRef), [snapshot, stationRef]);
   const resolvedBusRef = useMemo(() => resolveBusNnRef(context, snapshot), [context, snapshot]);
+  // Szyna: wskazana w kontekście albo JEDYNA szyna nN stacji (dawniej pierwsza z listy).
+  const jedynaSzyna = useMemo(() => jedynaZgodna(busOptions), [busOptions]);
+  const szynaAuto = resolvedBusRef ?? jedynaSzyna?.ref_id ?? '';
 
-  const [busNnRef, setBusNnRef] = useState(resolvedBusRef ?? busOptions[0]?.ref_id ?? '');
+  const [busNnRef, setBusNnRef] = useState(szynaAuto);
   const [nazwa, setNazwa] = useState(isSource ? 'Pole przyłączeniowe nN' : 'Odpływ nN');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const prowadzenie = useProwadzenie();
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'szyna' | 'rodzina'>();
 
   useEffect(() => {
-    setBusNnRef(resolvedBusRef ?? busOptions[0]?.ref_id ?? '');
-  }, [resolvedBusRef, busOptions]);
+    if (decyzjaProjektanta('szyna')) return;
+    setBusNnRef(szynaAuto);
+  }, [decyzjaProjektanta, szynaAuto]);
 
   useEffect(() => {
     setNazwa(isSource ? 'Pole przyłączeniowe nN' : 'Odpływ nN');
@@ -77,21 +95,20 @@ export function KreatorPolaNn() {
 
   const brakStacji = !stationRef;
   const brakSzyn = Boolean(stationRef) && busOptions.length === 0;
-  const kompletne = Boolean(stationRef && busNnRef);
 
   const onZapisz = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    // BRAK_DO_OPERACJI — jedno wskazanie w kolejności pracy (kontrakt prowadzenia projektanta).
+    const brak = pierwszyBrak([
+      !stationRef && { komunikat: T.brakStacjiWalid },
+      !busNnRef && { komunikat: T.brakSzynyWalid, pole: 'mvd-kreator-pole-nn-szyna' },
+      isSource && !sourceFieldKind && { komunikat: T.brakRodzinyWalid, pole: 'mvd-kreator-pole-nn-rodzina' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId || !stationRef) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!stationRef) {
-      setBladGlobalny(T.brakStacjiWalid);
-      return;
-    }
-    if (!busNnRef) {
-      setBladGlobalny(T.brakSzynyWalid);
-      return;
-    }
+    prowadzenie.zgas();
     const payload = isSource
       ? {
           station_ref: stationRef,
@@ -125,12 +142,16 @@ export function KreatorPolaNn() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, busNnRef, closeForm, executeDomainOperation, isSource, nazwa, selekcjaPoOperacji, sourceFieldKind, stationRef, T]);
+  }, [activeCaseId, busNnRef, closeForm, executeDomainOperation, isSource, nazwa, prowadzenie, selekcjaPoOperacji, sourceFieldKind, stationRef, T]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszStacja, stan: stationRef ? 'kompletne' : 'brak', wartosc: stationLabel(snapshot, stationRef) },
-    { etykieta: T.wierszSzyna, stan: busNnRef ? 'kompletne' : 'brak', wartosc: selectedBus?.name || (busNnRef ? 'Wskazana' : 'Brak') },
-    { etykieta: T.wierszRola, stan: 'kompletne', wartosc: isSource ? T.rolaSource : T.rolaFeeder },
+    { etykieta: T.wierszStacja, stan: stationRef ? 'ustalone' : 'do_wyboru', wartosc: stationLabel(snapshot, stationRef) },
+    {
+      etykieta: T.wierszSzyna,
+      stan: !busNnRef ? 'do_wyboru' : 'ustalone',
+      wartosc: selectedBus?.name || (busNnRef ? 'Wskazana' : ''),
+    },
+    { etykieta: T.wierszRola, stan: 'ustalone', wartosc: isSource ? T.rolaSource : T.rolaFeeder },
   ];
 
   const aside = (
@@ -152,8 +173,8 @@ export function KreatorPolaNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-pole-nn-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, testid: 'mvd-kreator-pole-nn-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pole-nn-anuluj' }}
       testid="mvd-kreator-pole-nn"
     >
@@ -175,7 +196,10 @@ export function KreatorPolaNn() {
           <PoleWyboru
             etykieta={T.szyna}
             wartosc={busNnRef}
-            onZmiana={setBusNnRef}
+            onZmiana={(v) => {
+              setBusNnRef(v);
+              edytowane('szyna');
+            }}
             opcje={[
               { id: '', etykieta: T.szynaPlaceholder },
               ...busOptions.map((b) => ({ id: b.ref_id, etykieta: `${b.name} (${b.voltage_kv} kV)` })),
@@ -193,7 +217,16 @@ export function KreatorPolaNn() {
         </KreatorSiatka>
 
         {isSource ? (
-          <RzadWartosci etykieta={T.rodzinaZrodla} wartosc={sourceFieldKind} testid="mvd-kreator-pole-nn-rodzina" />
+          <PoleWyboru
+            etykieta={T.rodzinaZrodla}
+            wartosc={sourceFieldKind}
+            onZmiana={(v) => {
+              setSourceFieldKind(v);
+              edytowane('rodzina');
+            }}
+            opcje={[{ id: '', etykieta: T.rodzinaZrodlaPlaceholder }, ...T.rodzinaZrodlaOpcje]}
+            testid="mvd-kreator-pole-nn-rodzina"
+          />
         ) : null}
 
         <PanelTeorii

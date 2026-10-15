@@ -20,7 +20,8 @@ export const ZKSN_STRINGS = {
   nazwaPlaceholder: 'np. ZK-3 tor kablowy A',
   wariant: 'Wariant',
   polozenie: 'Położenie na odcinku',
-  polozeniePomoc: 'Ułamek długości odcinka (0–1): 0,5 = w połowie. Dzieli odcinek na dwie sekcje.',
+  polozeniePomoc: 'Ułamek długości odcinka (0–1) — dzieli odcinek na dwie sekcje.',
+  odcinekDoWskazania: 'Do wskazania na schemacie',
 
   paramLacznik: 'Aparat pola',
   paramPorty: 'Porty odgałęzienia',
@@ -46,12 +47,8 @@ export const ZKSN_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz ZKSN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem ZKSN.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać ZKSN.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog wariantów ZKSN ładuje się asynchronicznie; zapis bez niego byłby
-  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu wariantów ZKSN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis ZKSN unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać ZKSN.',
 
   // Panel teorii (V12K-066)
   teoriaTytul: 'Teoria: złącze kablowe SN i węzeł odgałęzienia',

@@ -17,9 +17,7 @@ export function pomiarStrings(isCt: boolean) {
     krokZapis: 'Podsumowanie i zapis',
 
     poleTytul: 'Kontekst pola',
-    polePomoc: `Przekładnik ${przekladnik} montuje się w polu SN — po co: transformuje wielkość `
-      + 'pierwotną na sygnał wtórny; z czego: prąd/napięcie szyny pola; co daje: wejście dla zabezpieczeń '
-      + 'i układu pomiarowego.',
+    polePomoc: `Pole SN, w którym stoi przekładnik ${przekladnik} — z jego toru przekładnik mierzy prąd lub napięcie.`,
     poleSn: 'Pole SN',
     poleSnPlaceholder: '— wybierz pole SN —',
 
@@ -27,8 +25,7 @@ export function pomiarStrings(isCt: boolean) {
     katalog: isCt ? 'Przekładnik prądowy z katalogu' : 'Przekładnik napięciowy z katalogu',
     katalogPlaceholder: '— wybierz przekładnik —',
     katalogBlad: 'Nie udało się pobrać katalogu przekładników.',
-    katalogPomoc: 'Typ przekładnika (przekładnia, klasa, moc obciążeniowa) — z katalogu. '
-      + 'Wybór wypełnia dane znamionowe; możesz je doprecyzować poniżej.',
+    katalogPomoc: 'Typ przekładnika z katalogu — przekładnia, klasa i moc obciążeniowa z karty.',
 
     znamionoweTytul: 'Dane znamionowe',
     przekladniaPierwotna: isCt ? 'Przekładnia pierwotna' : 'Napięcie pierwotne',
@@ -36,8 +33,7 @@ export function pomiarStrings(isCt: boolean) {
     jednostka,
     klasa: 'Klasa dokładności',
     klasaPlaceholder: 'np. 0.5, 5P20',
-    klasaPomoc: 'Klasa określa graniczny błąd przekładnika. Pomiar rozliczeniowy wymaga klasy dokładnej '
-      + '(0,2S/0,5S); zabezpieczenia — klasy ochronnej (np. 5P20).',
+    klasaPomoc: 'Klasa dokładności — pomiar rozliczeniowy 0,2S/0,5S, zabezpieczenia klasa ochronna (np. 5P20).',
     burden: 'Moc obciążeniowa',
     burdenJednostka: 'VA',
     burdenPomoc: 'Moc znamionowa obciążenia wtórnego. Przeciążenie toru pogarsza dokładność.',
@@ -50,10 +46,7 @@ export function pomiarStrings(isCt: boolean) {
     // Karta BIEG-ZABEZPIECZEN-Z-MODELU: przekładnik przy wyłączniku liniowym (bez pola).
     wierszWylacznik: 'Wyłącznik liniowy',
     wylacznikBrak: 'wyłącznik nie występuje w modelu',
-    wylacznikPomoc: `Przekładnik ${przekladnik} stoi przy wyłączniku liniowym wstawionym w odcinek `
-      + 'SN (wyłącznik sekcyjny z zabezpieczeniem) — po co: podaje prąd do przekaźnika tego '
-      + 'wyłącznika; z czego: przekładnia z katalogu; co daje: próg nastawy przeliczony na '
-      + 'stronę pierwotną.',
+    wylacznikPomoc: `Wyłącznik liniowy w odcinku SN, przy którym stoi przekładnik ${przekladnik} — zasila jego przekaźnik.`,
     wierszKatalog: 'Typ katalogowy',
     wierszPrzekladnia: 'Przekładnia',
     wierszKlasa: 'Klasa',
@@ -71,12 +64,16 @@ export function pomiarStrings(isCt: boolean) {
     licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
     zapisz: isCt ? 'Zapisz przekładnik CT' : 'Zapisz przekładnik VT',
     anuluj: 'Anuluj',
-    brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem przekładnika.',
-    brakPolaWalid: 'Wybierz pole SN dla przekładnika.',
-    brakKatalogu: 'Wybierz typ przekładnika z katalogu.',
-    blednaPrzekladnia: 'Podaj poprawne wartości przekładni pierwotnej i wtórnej (> 0).',
+    brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis przekładnika unieważnia jego wyniki.',
+    brakPolaWalid: 'Wybierz pole SN — przekładnik mierzy prąd albo napięcie w torze tego pola.',
+    brakWylacznikaWalid:
+      'Wskazanego wyłącznika liniowego nie ma w modelu — otwórz kreator ponownie z istniejącego wyłącznika.',
+    brakKatalogu: 'Wybierz typ przekładnika z katalogu — przekładnia i klasa dokładności pochodzą z karty.',
+    brakPierwotnej: 'Podaj wartość pierwotną przekładni — od niej zależą nastawy i kryteria zabezpieczeń.',
+    brakWtornej: 'Podaj wartość wtórną przekładni — wyznacza obciążenie obwodu wtórnego.',
+    blednaPrzekladnia: 'Wartości przekładni muszą być dodatnie.',
     blednaBurden: 'Moc obciążeniowa musi być liczbą nieujemną.',
-    walidacjaStopka: 'Uzupełnij pole, katalog i przekładnię, aby zapisać przekładnik.',
+    poleDoWyboru: 'Do wyboru',
     bladDodania: 'Nie udało się dodać przekładnika do pola.',
 
     // Panel teorii

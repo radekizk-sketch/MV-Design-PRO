@@ -69,26 +69,26 @@ vi.mock('../../../../ui/selection', () => ({
 
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const TONR_1000 = {
+  id: 'energen-tonr-1000-15-04',
+  name: 'TONR 1000',
+  rated_power_mva: 1.0,
+  voltage_hv_kv: 15,
+  voltage_lv_kv: 0.4,
+  uk_percent: 6,
+  pk_kw: 10,
+  i0_percent: 0.5,
+  p0_kw: 1.2,
+  vector_group: 'Dyn5',
+  tap_min: -2,
+  tap_max: 2,
+  tap_step_percent: 2.5,
+};
+const TONR_630 = { ...TONR_1000, id: 'tonr-630-15-04', name: 'TONR 630', rated_power_mva: 0.63, tap_min: -4, tap_max: 4, tap_step_percent: 1.25 };
+const TONR_20 = { ...TONR_1000, id: 'tonr-630-20-04', name: 'TONR 630 20 kV', voltage_hv_kv: 20 };
+
 const { fetchTransformerTypesMock } = vi.hoisted(() => ({
-  fetchTransformerTypesMock: vi.fn(() =>
-    Promise.resolve([
-      {
-        id: 'energen-tonr-1000-15-04',
-        name: 'TONR 1000',
-        rated_power_mva: 1.0,
-        voltage_hv_kv: 15,
-        voltage_lv_kv: 0.4,
-        uk_percent: 6,
-        pk_kw: 10,
-        i0_percent: 0.5,
-        p0_kw: 1.2,
-        vector_group: 'Dyn5',
-        tap_min: -2,
-        tap_max: 2,
-        tap_step_percent: 2.5,
-      },
-    ]),
-  ),
+  fetchTransformerTypesMock: vi.fn((): Promise<unknown[]> => Promise.resolve([])),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -128,7 +128,8 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerSldOnElementMock.mockReset();
-    fetchTransformerTypesMock.mockClear();
+    fetchTransformerTypesMock.mockReset();
+    fetchTransformerTypesMock.mockImplementation(() => Promise.resolve([TONR_1000, TONR_630, TONR_20]));
   });
 
   afterEach(() => cleanup());
@@ -201,9 +202,16 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
 
     await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-regtyp'), 'OLTC');
+    // Zaczepy z tabliczki wybranej pozycji (jedno źródło z kreatorem stacji) stoją w polach.
+    expect(screen.getByTestId('mvd-kreator-transformator-tapmin')).toHaveValue(-2);
+    expect(screen.getByTestId('mvd-kreator-transformator-tapstep')).toHaveValue(2.5);
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-control'), 'AUTOMATIC');
+    // Automatyka bez napięcia zadanego: próba zapisu wskazuje pole napięcia zadanego.
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-transformator-setpoint')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Podaj napięcie zadane regulatora — /);
     const setpoint = screen.getByTestId('mvd-kreator-transformator-setpoint');
-    await userEvent.clear(setpoint);
     await userEvent.type(setpoint, '15.5');
     await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
 
@@ -215,9 +223,80 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
           transformer_regulation_type: 'OLTC',
           transformer_control_mode: 'AUTOMATIC',
           transformer_voltage_setpoint_kv: 15.5,
+          transformer_tap_min_position: -2,
+          transformer_tap_max_position: 2,
+          transformer_tap_step_percent: 2.5,
+          transformer_tap_neutral_position: 0,
+          transformer_tap_current_position: 0,
         }),
       );
     });
+  });
+
+  it('zaczepy idą za pozycją katalogową: zmiana typu odświeża nieedytowane, edytowanych nie nadpisuje', async () => {
+    render(<KreatorTransformatoraSnNn />);
+    await pickType();
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-regtyp'), 'DETC');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-transformator-tapcurrent'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-transformator-tapcurrent'), '1');
+    expect(screen.getByTestId('mvd-kreator-transformator-tapcurrent')).toHaveValue(1);
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-wstecz'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), 'tonr-630-15-04');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
+    expect((screen.getByTestId('mvd-kreator-transformator-tapmin') as HTMLInputElement).value).toBe('-4');
+    expect((screen.getByTestId('mvd-kreator-transformator-tapstep') as HTMLInputElement).value).toBe('1.25');
+    expect((screen.getByTestId('mvd-kreator-transformator-tapcurrent') as HTMLInputElement).value).toBe('1');
+  });
+
+  it('regulacja bez wybranej pozycji katalogowej: zaczepy puste (bez domyślnych −9…9), zapis wskazuje transformator', async () => {
+    render(<KreatorTransformatoraSnNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'gotowy'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-regtyp'), 'DETC');
+    expect((screen.getByTestId('mvd-kreator-transformator-tapmin') as HTMLInputElement).value).toBe('');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-transformator-katalog')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toBe(
+      'Wybierz transformator z katalogu — bez tabliczki nie da się policzyć rozpływu ani zwarć.',
+    );
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('świeży kreator: szyny z kontekstu stacji stoją w polach, zero alertów i czerwieni', async () => {
+    render(<KreatorTransformatoraSnNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'gotowy'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-transformator-hv')).toHaveValue('bus-sn');
+    expect(screen.getByTestId('mvd-kreator-transformator-hv')).toBeEnabled();
+    expect(
+      screen.getByTestId('mvd-kreator-transformator-gotowosc').querySelector('[data-stan="konflikt"]'),
+    ).toBeNull();
+  });
+
+  it('konflikt widoczny od razu: tabliczka 20 kV na szynie 15 kV oraz zaczep min ≥ max', async () => {
+    render(<KreatorTransformatoraSnNn />);
+    await pickType();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), 'tonr-630-20-04');
+    expect(screen.getByRole('alert').textContent).toMatch(/nie pasuje do szyny SN/);
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), 'energen-tonr-1000-15-04');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-regtyp'), 'DETC');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-transformator-tapmin'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-transformator-tapmin'), '5');
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toContain(
+      'Zaczep minimalny musi być mniejszy od maksymalnego.',
+    );
+  });
+
+  it('jedyny transformator na napięcia szyn stoi w polu i daje się zmienić', async () => {
+    fetchTransformerTypesMock.mockImplementation(() => Promise.resolve([TONR_1000, TONR_20]));
+    render(<KreatorTransformatoraSnNn />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-transformator-katalog')).toHaveValue('energen-tonr-1000-15-04'),
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), '');
+    expect(screen.getByTestId('mvd-kreator-transformator-katalog')).toHaveValue('');
   });
 
   it('panel teorii kroku szyn renderuje wzór impedancji przez KaTeX (math-rendered)', async () => {
@@ -232,7 +311,9 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwa blokada dla kontekstu bez pary szyn (GPZ)', async () => {
+  // Intencja dawnej „uczciwej blokady”: w kontekście bez pary szyn (GPZ) operacja nie
+  // rusza — w nowym kanonie przez jedno wskazanie powodu przy próbie zapisu.
+  it('kontekst bez pary szyn (GPZ): próba zapisu podaje powód, operacja nie rusza', async () => {
     context = {
       station_ref: 'gpz-1',
       transformer_context_valid: false,
@@ -240,13 +321,11 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     };
     snapshotState.snapshot = { buses: [] };
     render(<KreatorTransformatoraSnNn />);
-    // Montaż pobiera katalog transformatorów (mikrotaski) — czekamy na realny
-    // stan końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja
-    // stanu domknęła się w act.
     await screen.findByRole('option', { name: /TONR 1000/ });
     expect(screen.getByTestId('mvd-kreator-transformator-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
-    expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'zablokowany');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/nie należy do układu GPZ/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
     // przywróć snapshot dla kolejnych testów
     snapshotState.snapshot = {
       buses: [
@@ -256,11 +335,12 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     };
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku: próba zapisu wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorTransformatoraSnNn />);
     await pickType();
-    expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -275,7 +355,12 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'ladowanie');
-    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(screen.getByTestId('mvd-kreator-blokada').textContent).toMatch(/katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    // Słownik grup połączeń dochodzi niezależnie od katalogu — czekamy na niego w act,
+    // żeby aktualizacja stanu nie spadła poza test (ostrzeżenie „not wrapped in act”).
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-transformator-grupa').querySelectorAll('option').length).toBeGreaterThan(1);
+    });
   });
 });

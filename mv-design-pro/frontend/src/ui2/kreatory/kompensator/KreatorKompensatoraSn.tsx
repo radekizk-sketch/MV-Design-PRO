@@ -19,6 +19,7 @@ import {
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -32,8 +33,15 @@ import {
   PanelTeorii,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  napiecieSzyny,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -46,10 +54,10 @@ import {
   maSzyne,
   napiecieNiezgodne,
   parametryZKatalogu,
+  typyZgodneZSzyna,
   walidujFormularz,
   zbudujPayload,
   zbudujZapytaniePodgladu,
-  type BladPola,
   type KompensatorFormData,
   type KontekstKompensatora,
   type StatusBaterii,
@@ -61,6 +69,11 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'typ', pole: 'mvd-kreator-kompensator-katalog' },
+};
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -88,22 +101,27 @@ export function KreatorKompensatoraSn() {
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
 
   const selectedBus = useMemo(() => {
     if (!selectedElement || selectedElement.type !== 'Bus') return null;
     return { id: selectedElement.id, name: selectedElement.name };
   }, [selectedElement]);
 
-  const kontekst = useMemo(
-    () => kontekstZOperacji(context, selectedBus),
-    [context, selectedBus],
-  );
+  // Napięcie szyny: z kontekstu operacji, a gdy go brak — z migawki modelu (topologia).
+  const kontekst = useMemo(() => {
+    const k = kontekstZOperacji(context, selectedBus);
+    return k.bus_voltage_kv !== undefined
+      ? k
+      : { ...k, bus_voltage_kv: napiecieSzyny(snapshot, k.bus_ref) ?? undefined };
+  }, [context, selectedBus, snapshot]);
   const hasSzyna = maSzyne(kontekst);
 
   const [dane, setDane] = useState<KompensatorFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('typ');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'catalog_ref'>();
 
   const [typy, setTypy] = useState<ShuntCapacitorCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -175,34 +193,49 @@ export function KreatorKompensatoraSn() {
     [typy],
   );
 
-  const zmien = useCallback(<K extends keyof KompensatorFormData>(pole: K, wartosc: KompensatorFormData[K]) => {
-    setDane((p) => ({ ...p, [pole]: wartosc }));
-  }, []);
+  // AUTO_PRZYJETE: jedyny typ baterii zgodny napięciem z szyną (źródło jednoznaczne).
+  const napiecieKv = kontekst.bus_voltage_kv ?? null;
+  const jedynyTyp = useMemo(
+    () => (napiecieKv !== null ? jedynaZgodna(typyZgodneZSzyna(typy, napiecieKv)) : null),
+    [napiecieKv, typy],
+  );
+  useEffect(() => {
+    if (!jedynyTyp || napiecieKv === null || decyzjaProjektanta('catalog_ref') || dane.catalog_ref) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp, napiecieKv]);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  const zmien = useCallback(
+    <K extends keyof KompensatorFormData>(pole: K, wartosc: KompensatorFormData[K]) => {
+      setDane((p) => ({ ...p, [pole]: wartosc }));
+      if (pole === 'catalog_ref') edytowane('catalog_ref');
+    },
+    [edytowane],
+  );
+
+  // KONFLIKT_TECHNICZNY — napięcie typu ≠ napięcie szyny: widoczny od razu przy polu typu.
   const napBlad = napiecieNiezgodne(params, kontekst);
 
   const onZapisz = useCallback(async () => {
-    if (!hasSzyna) {
-      setBladGlobalny(T.brakSzynyOpis);
+    const brak = pierwszyBrak([
+      !hasSzyna && { komunikat: T.brakSzynyOpis },
+      napBlad && { komunikat: T.ostrzezenieNapiecie, ...MIEJSCA.catalog_ref },
+      ...walidujFormularz(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
-        activeCaseId,
+        activeCaseId as string,
         'add_shunt_compensator_sn',
         zbudujPayload(dane, kontekst),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -212,30 +245,31 @@ export function KreatorKompensatoraSn() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'Load', name: dane.nazwa.trim() || 'Kompensator SN' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyna, kontekst, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyna, kontekst, napBlad, prowadzenie, selekcjaPoOperacji]);
 
+  const typWybrany = params ? typy.find((t) => t.id === dane.catalog_ref)?.name ?? '' : '';
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszTyp,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: napBlad ? 'konflikt' : !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: typWybrany,
     },
     {
       etykieta: T.wierszSzyna,
-      stan: hasSzyna ? 'kompletne' : 'brak',
-      wartosc: kontekst.bus_name || (hasSzyna ? 'Wskazana' : 'Brak'),
+      stan: hasSzyna ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekst.bus_name || (hasSzyna ? 'Wskazana' : T.szynaDoWskazania),
     },
     {
       etykieta: T.wierszMoc,
-      stan: params ? 'kompletne' : 'ostrzezenie',
-      wartosc: fmtMvar(params?.rated_mvar),
+      stan: params ? 'ustalone' : 'do_wyboru',
+      wartosc: params ? fmtMvar(params.rated_mvar) : '',
     },
     {
       etykieta: T.wierszNapiecie,
-      stan: napBlad ? 'ostrzezenie' : 'kompletne',
-      wartosc: napBlad ? 'Niezgodne' : fmtKv(params?.rated_kv),
+      stan: napBlad ? 'konflikt' : params ? 'ustalone' : 'do_wyboru',
+      wartosc: params ? fmtKv(params.rated_kv) : '',
     },
   ];
 
@@ -243,7 +277,7 @@ export function KreatorKompensatoraSn() {
     <>
       <KreatorPodsumowanie
         tytul={T.podgladTytul}
-        komunikat={napBlad ? T.ostrzezenieNapiecie : bladPodgladu}
+        komunikat={bladPodgladu}
         komunikatTon="warn"
         testid="mvd-kreator-kompensator-podsumowanie"
       >
@@ -272,16 +306,6 @@ export function KreatorKompensatoraSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasSzyna || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -295,20 +319,11 @@ export function KreatorKompensatoraSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasSzyna
-              ? T.brakSzynyOpis
-              : null
-      }
-      status={stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={{
         etykieta: T.zapisz,
         onClick: onZapisz,
-        zablokowana: zapisZablokowany,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
         testid: 'mvd-kreator-kompensator-zapisz',
       }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-kompensator-anuluj' }}
@@ -342,9 +357,9 @@ export function KreatorKompensatoraSn() {
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}
+            blad={napBlad ? T.ostrzezenieNapiecie : undefined}
             testid="mvd-kreator-kompensator-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           <KreatorSiatka kolumny={2}>
             <PoleTekstowe
               etykieta={T.nazwa}
@@ -381,7 +396,13 @@ export function KreatorKompensatoraSn() {
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-kompensator-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
-            <RzadWartosci etykieta={T.wierszSzyna} wartosc={kontekst.bus_name || kontekst.bus_ref || '—'} />
+            <RzadWartosci
+              etykieta={T.wierszSzyna}
+              wartosc={
+                kontekst.bus_name
+                || (kontekst.bus_ref ? nazwaObiektuZMigawki(snapshot, kontekst.bus_ref) : '—')
+              }
+            />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtMvar(params?.rated_mvar)} />
             <RzadWartosci etykieta={T.podgladIc} wartosc={fmtA(podglad?.rated_current_a)} />
             <RzadWartosci etykieta={T.wierszStan} wartosc={dane.status === 'open' ? 'Wyłączona' : 'Załączona'} />

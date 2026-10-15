@@ -27,9 +27,13 @@ export interface MagistralaFormData {
   nazwa: string;
   /** Prąd roboczy odcinka I_B [A]; pusty = niepodany (ocenę obciążalności backend nazwie brakiem). */
   prad_a: number | null;
-  cos_phi: number;
-  /** Napięcie międzyfazowe ciągu [kV] — z kontekstu GPZ, domyślnie 15. */
-  napiecie_kv: number;
+  /** cosφ obciążenia — wejście oceny spadku; pusty = ocena spadku nie jest wołana (bez domysłu). */
+  cos_phi: number | null;
+  /**
+   * Napięcie międzyfazowe ciągu [kV] — z kontekstu operacji albo szyny startowej
+   * (AUTO_PRZYJETE ze źródłem); pusty = nieznane (dawniej stałe 15 kV niezależnie od sieci).
+   */
+  napiecie_kv: number | null;
   /** Następny krok flow po zapisie (realna operacja domenowa). */
   next_step: TrunkNextStep;
 }
@@ -39,15 +43,21 @@ export interface BladPola {
   message: string;
 }
 
+/**
+ * Stan startowy. Zero zgadywania wartości wpływających na wyniki (kontrakt prowadzenia
+ * projektanta, reguła 4): długość (dawniej 500 m), cosφ (dawniej 0,95) i napięcie ciągu
+ * (dawniej 15 kV) startują puste. Rodzaj „kabel” to filtr listy katalogowej, następny krok
+ * „stacja” — wybór toku pracy po zapisie, nie wartość obliczeniowa.
+ */
 export const DANE_DOMYSLNE: MagistralaFormData = {
   rodzaj: 'KABEL',
   catalog_ref: null,
   screen_bonding: '',
-  dlugosc_m: 500,
+  dlugosc_m: null,
   nazwa: '',
   prad_a: null,
-  cos_phi: 0.95,
-  napiecie_kv: 15,
+  cos_phi: null,
+  napiecie_kv: null,
   next_step: 'station',
 };
 
@@ -77,16 +87,20 @@ export function nextStepDozwolony(step: TrunkNextStep, rodzaj: RodzajOdcinka): b
   return true;
 }
 
-export function walidujFormularz(data: MagistralaFormData): BladPola[] {
+/**
+ * KONFLIKT_TECHNICZNY / NARUSZENIE_OGRANICZENIA — widoczne od razu przy polu: długość
+ * niedodatnia, cosφ poza (0, 1], napięcie niedodatnie, następny krok niezgodny z torem.
+ */
+export function konfliktyFormularza(data: MagistralaFormData): BladPola[] {
   const errors: BladPola[] = [];
-  if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ odcinka z katalogu (kabel lub linia).' });
-  }
-  if (!isPositive(data.dlugosc_m)) {
+  if (data.dlugosc_m !== null && !isPositive(data.dlugosc_m)) {
     errors.push({ field: 'dlugosc_m', message: 'Długość odcinka musi być dodatnia.' });
   }
-  if (data.cos_phi <= 0 || data.cos_phi > 1) {
+  if (data.cos_phi !== null && (data.cos_phi <= 0 || data.cos_phi > 1)) {
     errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });
+  }
+  if (data.napiecie_kv !== null && !isPositive(data.napiecie_kv)) {
+    errors.push({ field: 'napiecie_kv', message: 'Napięcie ciągu musi być dodatnie.' });
   }
   if (!nextStepDozwolony(data.next_step, data.rodzaj)) {
     errors.push({
@@ -95,6 +109,32 @@ export function walidujFormularz(data: MagistralaFormData): BladPola[] {
     });
   }
   return errors;
+}
+
+/**
+ * BRAK_DO_OPERACJI zapisu odcinka — w kolejności pracy. cosφ i napięcie NIE są tu
+ * brakiem: nie trafiają do modelu (są wejściem oceny spadku), więc nie blokują zapisu.
+ */
+export function brakiFormularza(data: MagistralaFormData): BladPola[] {
+  const errors: BladPola[] = [];
+  if (!data.catalog_ref?.trim()) {
+    errors.push({
+      field: 'catalog_ref',
+      message: 'Wybierz typ odcinka z katalogu — R, X i obciążalność odcinka pochodzą z pozycji katalogowej.',
+    });
+  }
+  if (data.dlugosc_m === null) {
+    errors.push({
+      field: 'dlugosc_m',
+      message: 'Podaj długość odcinka — od niej zależą impedancja, spadek napięcia i prąd zwarciowy na końcu.',
+    });
+  }
+  return errors;
+}
+
+/** Komplet kontroli przed zapisem: konflikty (widoczne od razu), potem braki. */
+export function walidujFormularz(data: MagistralaFormData): BladPola[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data)];
 }
 
 /**
@@ -165,33 +205,38 @@ export function parametryZKatalogu(
   };
 }
 
-/** Odcinek formularza w żądaniu oceny — wartości wprost z pól, bez uzupełniania braków. */
-export function odcinekOceny(data: MagistralaFormData): OdcinekOcenyRequest {
+/**
+ * Odcinek formularza w żądaniu oceny — wartości wprost z pól, bez uzupełniania braków.
+ * `cosPhi` jest jawnym argumentem: kontrakt końcówki wymaga liczby, a formularz może jej
+ * nie mieć (wtedy żądanie nie powstaje — `zbudujZapytanieOceny`).
+ */
+export function odcinekOceny(data: MagistralaFormData, cosPhi: number): OdcinekOcenyRequest {
   return {
     rodzaj: data.rodzaj,
     catalog_ref: data.catalog_ref?.trim() ? data.catalog_ref.trim() : null,
     dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : null,
     prad_roboczy_a: isPositive(data.prad_a) ? data.prad_a : null,
-    cos_phi: data.cos_phi,
+    cos_phi: cosPhi,
     nazwa: data.nazwa.trim() ? data.nazwa.trim() : null,
   };
 }
 
 /**
  * Żądanie oceny doboru (karta MAGISTRALA-OCENA): odcinek bieżący + odcinki zapisane w tej
- * sesji. `null`, gdy formularz łamie dziedzinę żądania (cosφ poza (0, 1], napięcie
- * niedodatnie) — wtedy walidacja formularza nazywa błąd pola, a ocena nie jest wołana.
+ * sesji. `null`, gdy brak napięcia ciągu albo cosφ (kontrakt końcówki wymaga obu liczb,
+ * a interfejs ich NIE zgaduje) albo gdy łamią dziedzinę — wtedy ocena nie jest wołana.
  * Brak typu, długości czy prądu NIE blokuje żądania: backend nazywa te braki w rekordach.
  */
 export function zbudujZapytanieOceny(
   data: MagistralaFormData,
   zbudowane: readonly OdcinekBudowy[],
 ): OcenaDoboruMagistraliRequest | null {
-  if (!isPositive(data.napiecie_kv) || data.cos_phi <= 0 || data.cos_phi > 1) return null;
+  const cosPhi = data.cos_phi;
+  if (!isPositive(data.napiecie_kv) || cosPhi === null || cosPhi <= 0 || cosPhi > 1) return null;
   return {
     napiecie_kv: data.napiecie_kv,
-    odcinek: odcinekOceny(data),
-    odcinki_zbudowane: zbudowane.map((o) => o.zadanie),
+    odcinek: odcinekOceny(data, cosPhi),
+    odcinki_zbudowane: zadaniaZbudowanych(zbudowane),
   };
 }
 
@@ -289,7 +334,8 @@ export function zbudujPayload(
 /**
  * Odcinek dodany do magistrali w bieżącej sesji budowy. `zadanie` to dane odcinka w postaci
  * żądania oceny — backend liczy z nich spadek skumulowany ciągu i łączną długość (karta
- * MAGISTRALA-OCENA: interfejs nie sumuje spadków ani długości).
+ * MAGISTRALA-OCENA: interfejs nie sumuje spadków ani długości). `null`, gdy przy zapisie
+ * odcinka nie podano cosφ — odcinek jest w modelu, ale do oceny ciągu nie ma z czego go wziąć.
  */
 export interface OdcinekBudowy {
   rodzaj: RodzajOdcinka;
@@ -297,7 +343,7 @@ export interface OdcinekBudowy {
   cross_section_mm2: number | null;
   /** Długość do wiersza listy [m] (etykieta; sumę liczy backend). */
   dlugosc_m: number;
-  zadanie: OdcinekOcenyRequest;
+  zadanie: OdcinekOcenyRequest | null;
 }
 
 /** Podsumuj właśnie dodany odcinek na podstawie formularza i parametrów katalogowych. */
@@ -306,13 +352,19 @@ export function podsumujOdcinek(
   params: ParametryOdcinka | null,
   typLabel: string,
 ): OdcinekBudowy {
+  const cosPhi = data.cos_phi;
   return {
     rodzaj: data.rodzaj,
     typLabel,
     cross_section_mm2: params?.cross_section_mm2 ?? null,
     dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : 0,
-    zadanie: odcinekOceny(data),
+    zadanie: cosPhi !== null && cosPhi > 0 && cosPhi <= 1 ? odcinekOceny(data, cosPhi) : null,
   };
+}
+
+/** Żądania oceny odcinków zapisanych w sesji (odcinek bez cosφ nie wchodzi do oceny ciągu). */
+export function zadaniaZbudowanych(zbudowane: readonly OdcinekBudowy[]): OdcinekOcenyRequest[] {
+  return zbudowane.flatMap((o) => (o.zadanie ? [o.zadanie] : []));
 }
 
 /** Kontekst kontynuacji ciągu z końca właśnie dodanego odcinka (builder trzyma to w stanie). */

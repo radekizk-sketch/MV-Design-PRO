@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
+import { zapiszZPrzewodnikiem } from './prowadzenieKreatora';
+
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -217,6 +219,9 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       // powiązania z katalogiem"). Bez tego kroku kadr „podgląd skutków" pokazywał
       // komunikat odmowy zamiast skutków.
       await page.getByTestId('mvd-kreator-krok-transformator').click();
+      // Napięcie strony nN — wybór projektanta (katalog ma kilka napięć dolnych na 15 kV).
+      const nn = page.getByTestId('mvd-kreator-stacja-nn');
+      if ((await nn.inputValue()) === '') await nn.selectOption('0.4');
       const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
       await expect
         .poll(async () => katalogTrafo.locator('option').count(), { timeout: 30000 })
@@ -227,7 +232,15 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       // Kadr 3: krok podglądu skutków (readout z dry_run backendu).
       await page.getByTestId('mvd-kreator-krok-podglad').click();
       await expect(page.getByTestId('mvd-kreator-stacja-podglad-skutkow')).toBeVisible();
-      await page.getByTestId('mvd-kreator-stacja-podglad-przelicz').click();
+      // Podgląd na żądanie idzie ścieżką prowadzenia projektanta: braki (napięcie nN, aparaty
+      // pól, odpływy, uziemienie) wskazuje klik, kadr uzupełnia je natywnie do kompletu.
+      await zapiszZPrzewodnikiem(page, {
+        kreator: 'mvd-kreator-stacja',
+        zapisz: 'mvd-kreator-stacja-podglad-przelicz',
+        koniec: 'mvd-kreator-stacja-podglad-wynik',
+        przedAkcja: () => page.getByTestId('mvd-kreator-krok-podglad').click(),
+        wartosci: { 'mvd-kreator-stacja-odplywy': '2', 'mvd-kreator-stacja-rezystancja-uziemienia': '10' },
+      });
       await expect(page.getByTestId('mvd-kreator-stacja-podglad-ladowanie')).toHaveCount(0, {
         timeout: 60000,
       });
@@ -237,7 +250,7 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       // tak świeciłby na zielono. Bramkujemy więc oba nie-stany i sam READOUT.
       await expect(page.getByTestId('mvd-kreator-stacja-podglad-blad')).toHaveCount(0);
       await expect(page.getByTestId('mvd-kreator-stacja-podglad-pusty')).toHaveCount(0);
-      const readout = page.getByText('Identyfikator stacji (po zapisie)');
+      const readout = page.getByTestId('mvd-kreator-stacja-podglad-wynik');
       await expect(readout).toBeVisible();
       // Readout stoi pod sekcją zapisu szablonu — bez przewinięcia kadr
       // viewportowy urywa się nad nim.

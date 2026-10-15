@@ -18,8 +18,15 @@ export interface OpcjaWyboru {
   readonly wylaczona?: boolean;
 }
 
-/** Stan wiersza gotowości (kontrola kompletności danych kreatora). */
-export type StanGotowosci = 'kompletne' | 'ostrzezenie' | 'brak';
+/**
+ * Stan wiersza panelu kontroli kreatora (kontrakt prowadzenia projektanta). Panel pokazuje
+ * TOK PRACY neutralnie, nie listę braków:
+ *  - `ustalone`  — wartość w polu (wybrana przez projektanta albo dobrana z jednoznacznego
+ *    źródła — pochodzenia kreator nie pokazuje, to dana modelu w zapleczu),
+ *  - `do_wyboru` — decyzja jeszcze przed projektantem (KONFIGURACJA_W_TOKU — bez czerwieni),
+ *  - `konflikt`  — KONFLIKT_TECHNICZNY albo NARUSZENIE_OGRANICZENIA (jedyny stan czerwony).
+ */
+export type StanGotowosci = 'ustalone' | 'do_wyboru' | 'konflikt';
 
 /** Wiersz listy gotowości. */
 export interface WierszGotowosci {

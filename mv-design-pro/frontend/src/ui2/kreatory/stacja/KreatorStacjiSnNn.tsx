@@ -11,9 +11,12 @@
  * backendu; ZERO fabrykacji — każda kontrolka mapuje na realne pole operacji
  * domenowej; aparat pola jest WYMAGANY (B-12: operacja nie dobiera go sama).
  *
- * Dług nazwany B-3: CT/VT/przekaźnik dokładane są operacjami PO zapisie stacji
- * (backend nie przyjmuje ich dziś w operacji stacyjnej) — sekwencja nie jest
- * atomowa i kreator uczciwie raportuje krok, który zawiódł.
+ * Wyposażenie pól (CT/VT/zabezpieczenie) jedzie w TEJ SAMEJ operacji stacyjnej (atomowo).
+ *
+ * Prowadzenie projektanta (kontrakt `KONTRAKT_PROWADZENIA_PROJEKTANTA.md`): w trakcie pracy
+ * kreator milczy; wartości dobiera wyłącznie z jednoznacznego źródła (jedyna zgodna pozycja
+ * katalogu, szablon stacji, tabliczka transformatora); brak przy zapisie to jedno wskazanie
+ * z przejściem do pola; konflikt widać od razu przy polu.
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,6 +50,7 @@ import type {
 } from '../../../ui/catalog/types';
 import {
   fetchStationTemplate,
+  fetchStationTemplateCategories,
   fetchStationTemplates,
   previewStationTemplate,
   type StationTemplateFull,
@@ -63,7 +67,6 @@ import {
   contextString,
   deriveSnVoltageKv,
   resolveSegmentIdFromContext,
-  templateOptionLabel,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import {
@@ -86,14 +89,23 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useAktualnoscWskazania,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  type BrakDoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
 import {
+  APARATY_WYLACZAJACE,
   DANE_DOMYSLNE,
-  RODZAJE_ZABEZPIECZEN,
   aparatyDlaPola,
+  brakiFormularza,
+  brakiNnIUziemienia,
+  brakiPol,
   brakujacePolaToru,
   czyAparaturaKompletna,
   czyKoniecOdcinka,
@@ -111,20 +123,22 @@ import {
   fmtMva,
   fmtPct,
   fmtRatio,
+  konfliktyFormularza,
   kontekstKompletny,
   konwerterZKatalogu,
   mocZrodlaNnMva,
+  etykietaKartyPola,
   nazwaOperacji,
-  normalizujTypStacji,
   ogranicznikOdplywow,
   opcjeSzablonowRoli,
   parametryZKatalogu,
   producenciUzywalni,
   rodzajStacjiZKreatora,
+  rodzajZabezpieczeniaZKodow,
   rolePolaStacji,
   szablonyDlaWyboru,
-  szablonyPerRola,
-  walidujFormularz,
+  typStacjiStartowy,
+  uzwojenieVtZKlasy,
   wymaganeNapiecieNn,
   wyznaczTryb,
   zabezpieczenieZrodla,
@@ -159,6 +173,8 @@ import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
 import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
+import { zaczepyZTabliczki } from '../transformator/transformatorModel';
+import { aparatWOfercieRodziny, kartaZgodnaZAparatem } from './zgodnoscPola';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szablon', tytul: T.krokSzablon },
@@ -193,6 +209,51 @@ const ROLA_POLA_NA_BAY_ROLE: Record<SnFieldRole, string> = {
 /** Następny krok po zapisie stacji (łańcuchowanie operacji). */
 type NastepnyKrok = 'nic' | 'pierscien' | 'nop';
 
+
+/** Miejsce stałego pola formularza w kreatorze — cel wskazania braku (krok + kontrolka). */
+const MIEJSCA_STALE: Readonly<Record<string, { krok: string; pole?: string }>> = {
+  umiejscowienie: { krok: 'rodzaj' },
+  source_converter_ref: { krok: 'transformator', pole: 'mvd-kreator-stacja-falownik' },
+  nn_voltage_kv: { krok: 'transformator', pole: 'mvd-kreator-stacja-nn' },
+  catalog_ref: { krok: 'transformator', pole: 'mvd-kreator-stacja-katalog' },
+  transformer_regulated_winding: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-uzwojenie' },
+  transformer_tap_min_position: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-min' },
+  transformer_tap_max_position: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-max' },
+  transformer_tap_neutral_position: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-neutralna' },
+  transformer_tap_current_position: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-biezaca' },
+  transformer_tap_step_percent: { krok: 'transformator', pole: 'mvd-kreator-stacja-zaczepy-krok' },
+  manufacturer_ref: { krok: 'pola', pole: 'mvd-kreator-stacja-producent' },
+  switchgear_family_ref: { krok: 'pola', pole: 'mvd-kreator-stacja-rodzina' },
+  factory_configuration_ref: { krok: 'pola', pole: 'mvd-kreator-stacja-blok' },
+  pola_toru: { krok: 'pola' },
+  outgoing_feeders_nn_count: { krok: 'nn', pole: 'mvd-kreator-stacja-odplywy' },
+  station_auxiliary_kw: { krok: 'nn', pole: 'mvd-kreator-stacja-pw-moc' },
+  station_auxiliary_cosphi: { krok: 'nn', pole: 'mvd-kreator-stacja-pw-cosphi' },
+  uklad_sieci_nn: { krok: 'uziemienie', pole: 'mvd-kreator-stacja-uklad-nn' },
+  neutral_point: { krok: 'uziemienie', pole: 'mvd-kreator-stacja-punkt-neutralny' },
+  neutral_impedance_ohm: { krok: 'uziemienie', pole: 'mvd-kreator-stacja-rezystancja-uziemienia' },
+  insert_at_m: { krok: 'podglad', pole: 'mvd-kreator-stacja-insert-at' },
+};
+
+/** Decyzje projektanta chroniące pola przed automatem (klucz decyzji per pole formularza). */
+const KLUCZ_DECYZJI: Partial<Record<keyof StacjaFormData, string>> = {
+  source_converter_ref: 'falownik',
+  catalog_ref: 'transformator',
+  nn_voltage_kv: 'nn_voltage',
+  manufacturer_ref: 'producent',
+  switchgear_family_ref: 'rodzina',
+};
+
+/** Kontrolka pola rozdzielnicy (klucz `pole:<id>:<cecha>`) → krok i `data-testid`. */
+const MIEJSCA_POLA: Readonly<Record<string, { krok: string; prefiks: string }>> = {
+  szablon: { krok: 'pola', prefiks: 'mvd-kreator-stacja-pole-szablon' },
+  aparat: { krok: 'pola', prefiks: 'mvd-kreator-stacja-aparat' },
+  rodzaj_zabezpieczenia: { krok: 'pomiar', prefiks: 'mvd-kreator-stacja-rodzaj-zabezpieczenia' },
+  ct: { krok: 'pomiar', prefiks: 'mvd-kreator-stacja-ct' },
+  przekaznik: { krok: 'pomiar', prefiks: 'mvd-kreator-stacja-przekaznik' },
+  vt_uzwojenie: { krok: 'pomiar', prefiks: 'mvd-kreator-stacja-vt-uzwojenie' },
+};
+
 const OPERACJA_NASTEPNEGO_KROKU: Record<
   Exclude<NastepnyKrok, 'nic'>,
   'connect_secondary_ring_sn' | 'set_normal_open_point'
@@ -222,8 +283,10 @@ export function KreatorStacjiSnNn() {
       'from_bus_ref',
     ]);
     const runRef = contextString(context, ['run_ref', 'corridor_ref', 'trunk_id', 'trunkId']);
+    // Miejsce wskazane na schemacie (udział długości odcinka). Brak = brak (dawniej środek).
     const rawPos = context?.position_on_segment;
-    const positionOnSegment = typeof rawPos === 'number' && Number.isFinite(rawPos) ? rawPos : 0.5;
+    const positionOnSegment =
+      typeof rawPos === 'number' && Number.isFinite(rawPos) && rawPos > 0 && rawPos < 1 ? rawPos : null;
     const segmentId = resolveSegmentIdFromContext(context, snapshot);
     // Napięcie SN z rzeczywistej szyny: odcinka (insert) lub terminala (append).
     // 0 = nieznane → serializacja pomija sn_voltage_kv, backend ustala z szyny.
@@ -232,12 +295,9 @@ export function KreatorStacjiSnNn() {
     const rawStationType =
       (context?.station as Record<string, unknown> | undefined)?.station_type
       ?? context?.station_type;
-    // Dopięcie na końcu odcinka bez jawnego typu → stacja końcowa (WE+TR),
-    // nie odgałęźna (P1: dead-end nie dostaje nadmiarowych pól WY/ODG).
-    const stationKind =
-      rawStationType == null && tryb === 'ENDPOINT_APPEND'
-        ? 'terminal'
-        : normalizujTypStacji(rawStationType);
+    // Rodzaj startowy listy pól: deklaracja z kontekstu albo minimalny zbiór pól toru dla
+    // umiejscowienia (koniec odcinka → końcowa, podział → przelotowa); nigdy cicha „odgałęźna”.
+    const stationKind = typStacjiStartowy(rawStationType, tryb);
     return {
       tryb,
       endpointBusRef,
@@ -254,9 +314,11 @@ export function KreatorStacjiSnNn() {
     ...DANE_DOMYSLNE,
     station_type: kontekst.stationKind,
   }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('szablon');
+  const [zapisWToku, setZapisWToku] = useState(false);
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<string>();
 
   const [typy, setTypy] = useState<TransformerType[]>([]);
   const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
@@ -279,6 +341,8 @@ export function KreatorStacjiSnNn() {
 
   // Krok 0 — biblioteka szablonów stacji.
   const [kategoriaSzablonu, setKategoriaSzablonu] = useState<string>(KATEGORIE_SZABLONOW[0]);
+  // Nazwy kategorii biblioteki szablonów z backendu (w UI nazwa, nie identyfikator).
+  const [nazwyKategorii, setNazwyKategorii] = useState<Record<string, string>>({});
   const [szablonyStacji, setSzablonyStacji] = useState<StationTemplateSummary[]>([]);
   /**
    * Stan pobrania biblioteki szablonów DLA WYBRANEJ KATEGORII.
@@ -300,6 +364,12 @@ export function KreatorStacjiSnNn() {
   const [nazwaWlasnegoSzablonu, setNazwaWlasnegoSzablonu] = useState<string>('');
   const [komunikatZapisuSzablonu, setKomunikatZapisuSzablonu] = useState<string | null>(null);
   const [szablonZastosowany, setSzablonZastosowany] = useState<StationTemplateFull | null>(null);
+  // Propozycja wyposażenia z szablonu stacji (CT i zabezpieczenie z katalogu MV) — trafia
+  // WYŁĄCZNIE do pól z aparatem wyłączającym; VT nie trafia z automatu do żadnego pola.
+  const [propozycjaWyposazenia, setPropozycjaWyposazenia] = useState<{
+    ct: string | null;
+    przekaznik: string | null;
+  }>({ ct: null, przekaznik: null });
 
   // Krok 4 — katalogi pomiaru i zabezpieczeń.
   const [ctTypy, setCtTypy] = useState<CTCatalogType[]>([]);
@@ -348,7 +418,7 @@ export function KreatorStacjiSnNn() {
 
   const isZrodlo = czyZrodloNn(dane.nn_configuration);
   // Rezystancja uziemienia istotna tylko dla wariantów impedancyjnych (G-STK-1).
-  const punktImpedancyjny = PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(dane.neutral_point);
+  const punktImpedancyjny = dane.neutral_point !== null && PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(dane.neutral_point);
   const isCustomNn = dane.nn_configuration === 'CUSTOM_NN';
   const zrodloTeksty =
     dane.nn_configuration === 'PV_INVERTER'
@@ -377,16 +447,16 @@ export function KreatorStacjiSnNn() {
     [kontekst.snVoltageKv, mocZrodla, typy, wymNn],
   );
 
-  // Wariant źródłowy: gdy bieżąca referencja nie należy do listy dla rodzaju
-  // (PV/BESS/FW), wybierz pierwszy zdatny albo wyczyść — spójność payloadu przy
-  // zmianie rodzaju źródła (parytet legacy: falowniki zawężone do rodzaju).
+  // Wariant źródłowy: referencja spoza listy dla rodzaju (PV/BESS/FW) odpada; jedyny zdatny
+  // falownik wchodzi do pola (AUTO_PRZYJETE), kilka = wybór projektanta (dawniej pierwszy).
   useEffect(() => {
     if (!isZrodlo) return;
     if (dane.source_converter_ref && falowniki.some((c) => c.id === dane.source_converter_ref)) {
       return;
     }
-    setDane((p) => ({ ...p, source_converter_ref: falowniki[0]?.id ?? null }));
-  }, [dane.source_converter_ref, falowniki, isZrodlo]);
+    const jedyny = decyzjaProjektanta('falownik') ? null : jedynaZgodna(falowniki);
+    setDane((p) => ({ ...p, source_converter_ref: jedyny?.id ?? null }));
+  }, [dane.source_converter_ref, decyzjaProjektanta, falowniki, isZrodlo]);
 
   // Powrót do wariantu odbiorczego → wyczyść referencję falownika (spójność payloadu).
   useEffect(() => {
@@ -395,17 +465,64 @@ export function KreatorStacjiSnNn() {
     }
   }, [dane.source_converter_ref, isZrodlo]);
 
-  // Gdy wybrany typ wypada z doboru (zmiana napięcia nN) — wyczyść wybór.
+  // Gdy wybrany typ wypada z doboru (zmiana napięcia nN) — wyczyść wybór; jedyny zgodny typ
+  // wchodzi do pola (AUTO_PRZYJETE), kilka = wybór projektanta.
   useEffect(() => {
     if (dane.catalog_ref && !dobrane.some((t) => t.id === dane.catalog_ref)) {
       setDane((p) => ({ ...p, catalog_ref: null }));
+      return;
     }
-  }, [dane.catalog_ref, dobrane]);
+    if (dane.catalog_ref || decyzjaProjektanta('transformator')) return;
+    const jedyny = jedynaZgodna(dobrane);
+    if (jedyny) setDane((p) => ({ ...p, catalog_ref: jedyny.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, dobrane]);
+
+  // Napięcie nN (wariant odbiorczy): jedyne napięcie dolne transformatorów katalogu na
+  // napięcie SN szyny (AUTO_PRZYJETE) — kilka napięć = wybór projektanta (dawniej 0,4 kV).
+  const napiecieNnJedyne = useMemo(() => {
+    if (!(kontekst.snVoltageKv > 0)) return null;
+    const napiecia = [...new Set(
+      typy
+        .filter((t) => 0.01 >= Math.abs(t.voltage_hv_kv - kontekst.snVoltageKv))
+        .map((t) => t.voltage_lv_kv),
+    )];
+    return jedynaZgodna(napiecia);
+  }, [kontekst.snVoltageKv, typy]);
+  useEffect(() => {
+    if (isZrodlo || dane.nn_voltage_kv !== null || napiecieNnJedyne === null) return;
+    if (decyzjaProjektanta('nn_voltage')) return;
+    setDane((p) => ({ ...p, nn_voltage_kv: napiecieNnJedyne }));
+  }, [dane.nn_voltage_kv, decyzjaProjektanta, isZrodlo, napiecieNnJedyne]);
 
   const params = useMemo(
     () => parametryZKatalogu(dane.catalog_ref, typy),
     [dane.catalog_ref, typy],
   );
+
+  // Zaczepy z tabliczki wybranego transformatora (jedno źródło z kreatorem transformatora):
+  // przy włączonej regulacji pola nieedytowane przez projektanta idą za tabliczką.
+  useEffect(() => {
+    if (dane.transformer_regulation_type === 'NONE') return;
+    const zaczepy = zaczepyZTabliczki(params);
+    if (!zaczepy) return;
+    const mapa = {
+      transformer_tap_min_position: zaczepy.tap_min_position,
+      transformer_tap_max_position: zaczepy.tap_max_position,
+      transformer_tap_step_percent: zaczepy.tap_step_percent,
+      transformer_tap_neutral_position: zaczepy.tap_neutral_position,
+      transformer_tap_current_position: zaczepy.tap_current_position,
+    } as const;
+    setDane((p) => {
+      let zmiana = false;
+      const nastepne = { ...p };
+      for (const [pole, wartosc] of Object.entries(mapa) as [keyof typeof mapa, number | null][]) {
+        if (decyzjaProjektanta(pole) || nastepne[pole] === wartosc) continue;
+        nastepne[pole] = wartosc;
+        zmiana = true;
+      }
+      return zmiana ? nastepne : p;
+    });
+  }, [dane.transformer_regulation_type, decyzjaProjektanta, params]);
 
   // Katalog rozdzielnic SN: producenci + rodziny (raz).
   useEffect(() => {
@@ -467,22 +584,7 @@ export function KreatorStacjiSnNn() {
     };
   }, []);
 
-  /** Aparaty zdatne DLA ROLI pola — zawężenie z backendu + zgodność napięciowa. */
-  const aparatyDlaRoli = useCallback(
-    (rola: SnFieldRole) =>
-      aparatyDlaPola(
-        aparaty,
-        kontekst.snVoltageKv,
-        rodzajeAparatuRoli[ROLA_POLA_NA_BAY_ROLE[rola]] ?? [],
-      ),
-    [aparaty, kontekst.snVoltageKv, rodzajeAparatuRoli],
-  );
 
-  /** Lista bez zawężenia rolą — domyślny aparat i stan zerowy kroku. */
-  const aparatyZdatne = useMemo(
-    () => aparatyDlaPola(aparaty, kontekst.snVoltageKv),
-    [aparaty, kontekst.snVoltageKv],
-  );
 
   // Biblioteka szablonów stacji (krok 0) — lista dla wybranej kategorii.
   // Lista jest CZYSZCZONA na wejściu: dopóki nie wiadomo, jakie szablony ma
@@ -497,8 +599,11 @@ export function KreatorStacjiSnNn() {
     fetchStationTemplates(kategoriaSzablonu)
       .then((odp) => {
         if (cancelled) return;
-        setSzablonyStacji([...(odp.templates ?? [])]);
+        const lista = [...(odp.templates ?? [])];
+        setSzablonyStacji(lista);
         setSzablonyStan('gotowe');
+        const nazwa = lista[0]?.category_label_pl;
+        if (nazwa) setNazwyKategorii((p) => (p[kategoriaSzablonu] ? p : { ...p, [kategoriaSzablonu]: nazwa }));
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -523,6 +628,20 @@ export function KreatorStacjiSnNn() {
   useEffect(() => {
     odswiezSzablonyWlasne();
   }, [odswiezSzablonyWlasne]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStationTemplateCategories()
+      .then((odp) => {
+        if (cancelled) return;
+        setNazwyKategorii(Object.fromEntries((odp.categories ?? []).map((k) => [k.id, k.label_pl])));
+      })
+      // Bez listy nazw kategorie pokazują się nazwami z odpowiedzi biblioteki (niżej).
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Katalogi kroku „Pomiar i zabezpieczenia" + kanoniczne kody funkcji per rola.
   useEffect(() => {
@@ -594,36 +713,99 @@ export function KreatorStacjiSnNn() {
     };
   }, []);
 
-  // Domyślny producent = pierwszy używalny (parytet legacy), gdy brak wyboru.
+  // Producent: jedyny używalny w katalogu (AUTO_PRZYJETE) — kilku = wybór projektanta
+  // (dawniej pierwszy z listy). Szablon stacji wnosi producenta sam (`zastosujSzablon`).
   useEffect(() => {
-    if (producenciDobrani.length === 0) return;
-    if (producenciDobrani.some((m) => m.manufacturer_ref === dane.manufacturer_ref)) return;
-    setDane((p) => ({ ...p, manufacturer_ref: producenciDobrani[0].manufacturer_ref }));
-  }, [dane.manufacturer_ref, producenciDobrani]);
+    if (producenciDobrani.length === 0 || dane.manufacturer_ref) return;
+    if (decyzjaProjektanta('producent')) return;
+    const jedyny = jedynaZgodna(producenciDobrani);
+    if (jedyny) setDane((p) => ({ ...p, manufacturer_ref: jedyny.manufacturer_ref }));
+  }, [dane.manufacturer_ref, decyzjaProjektanta, producenciDobrani]);
 
-  // Rodzina spoza zawężonej listy → reset do standardowej (pierwszej dostępnej).
+  // Rodzina spoza oferty producenta odpada; jedyna wybieralna rodzina wchodzi do pola
+  // (AUTO_PRZYJETE), kilka = wybór projektanta.
   useEffect(() => {
-    if (!dane.switchgear_family_ref) return;
-    if (rodzinyDobrane.some((f) => f.switchgear_family_ref === dane.switchgear_family_ref)) return;
-    setDane((p) => ({ ...p, switchgear_family_ref: null }));
-  }, [dane.switchgear_family_ref, rodzinyDobrane]);
+    if (dane.switchgear_family_ref) {
+      if (rodzinyDobrane.some((f) => f.switchgear_family_ref === dane.switchgear_family_ref)) return;
+      setDane((p) => ({ ...p, switchgear_family_ref: null }));
+      return;
+    }
+    if (decyzjaProjektanta('rodzina')) return;
+    const jedyna = jedynaZgodna(rodzinyDobrane);
+    if (jedyna) setDane((p) => ({ ...p, switchgear_family_ref: jedyna.switchgear_family_ref }));
+  }, [dane.switchgear_family_ref, decyzjaProjektanta, rodzinyDobrane]);
 
   const szablonyWyboru = useMemo(
     () => szablonyDlaWyboru(szablony, dane.manufacturer_ref, dane.switchgear_family_ref),
     [dane.manufacturer_ref, dane.switchgear_family_ref, szablony],
   );
   const rolePol = useMemo(() => rolePolaStacji(dane.station_type), [dane.station_type]);
-  const szablonyRola = useMemo(
-    () => szablonyPerRola(szablonyWyboru, dane.station_type, dane.bay_template_refs),
-    [dane.bay_template_refs, dane.station_type, szablonyWyboru],
+  /**
+   * Karta katalogowa pola dla roli i aparatu: JEDYNA karta rodziny zgodna z rolą i z rodzajem
+   * wskazanego aparatu (pole z rozłącznikiem bezpiecznikowym nie dostaje karty z wyłącznikiem).
+   * Kilka zgodnych = wybór projektanta (dawniej pierwsza z listy).
+   */
+  const kartaJedyna = useCallback(
+    (rola: SnFieldRole, aparatRef: string | null): string | null => {
+      const rodzaj = aparatRef ? aparaty.find((a) => a.id === aparatRef)?.family_apparatus_kind ?? null : null;
+      return (
+        jedynaZgodna(
+          opcjeSzablonowRoli(szablonyWyboru, rola),
+          (t) => kartaZgodnaZAparatem(t, rodzaj),
+        )?.template_ref ?? null
+      );
+    },
+    [aparaty, szablonyWyboru],
   );
+  /** Karta dla roli bez wskazanego aparatu (start listy pól, blok fabryczny). */
+  const szablonyRola = useMemo(() => {
+    const mapa: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> = {};
+    for (const rola of ROLE_POL) {
+      const ref = kartaJedyna(rola, null);
+      const szablon = ref ? szablonyWyboru.find((t) => t.template_ref === ref) : undefined;
+      if (szablon) mapa[rola] = szablon;
+    }
+    return mapa;
+  }, [kartaJedyna, szablonyWyboru]);
   const selectedManufacturer = useMemo(
     () => producenciDobrani.find((m) => m.manufacturer_ref === dane.manufacturer_ref) ?? null,
     [dane.manufacturer_ref, producenciDobrani],
   );
-  const selectedFamily = useMemo(
+  const selectedFamily = useMemo<SwitchgearFamily | null>(
     () => rodzinyDobrane.find((f) => f.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
     [dane.switchgear_family_ref, rodzinyDobrane],
+  );
+
+  /**
+   * Aparaty oferty WYBRANEJ RODZINY: rodzaje dopuszczone kartą rodziny, a w nich aparaty
+   * producenta rodziny (`manufacturer_ref` pozycji katalogu) albo komponenty wymienne między
+   * rodzinami (`interchangeable_across_families` — wkładki bezpiecznikowe). Oba rzuty
+   * wystawia backend; ten sam predykat przypina test końcówki katalogu. Bez rodziny — pełny
+   * katalog zdatny napięciowo (lista pól i tak czeka na wskazanie rodziny).
+   */
+  const aparatyRodziny = useMemo(
+    () =>
+      selectedFamily === null
+        ? aparaty
+        : aparaty.filter((a) => aparatWOfercieRodziny(a, selectedFamily)),
+    [aparaty, selectedFamily],
+  );
+
+  /** Aparaty zdatne DLA ROLI pola — rodzina + zawężenie roli z backendu + napięcie. */
+  const aparatyDlaRoli = useCallback(
+    (rola: SnFieldRole) =>
+      aparatyDlaPola(
+        aparatyRodziny,
+        kontekst.snVoltageKv,
+        rodzajeAparatuRoli[ROLA_POLA_NA_BAY_ROLE[rola]] ?? [],
+      ),
+    [aparatyRodziny, kontekst.snVoltageKv, rodzajeAparatuRoli],
+  );
+
+  /** Lista bez zawężenia rolą — stan zerowy kroku. */
+  const aparatyZdatne = useMemo(
+    () => aparatyDlaPola(aparatyRodziny, kontekst.snVoltageKv),
+    [aparatyRodziny, kontekst.snVoltageKv],
   );
   /**
    * TOR KONFIGURACJI wybranej rodziny — czytany z katalogu, nie z formularza
@@ -673,8 +855,8 @@ export function KreatorStacjiSnNn() {
 
   /** Nagłówek rodziny — producent, klasy znamionowe, technologia, tor pracy. */
   const wierszeNaglowkaRodziny = useMemo(
-    () => naglowekRodziny(selectedFamily, selectedManufacturer?.name ?? dane.manufacturer_ref),
-    [dane.manufacturer_ref, selectedFamily, selectedManufacturer],
+    () => naglowekRodziny(selectedFamily, selectedManufacturer?.name ?? null),
+    [selectedFamily, selectedManufacturer],
   );
 
   /**
@@ -702,11 +884,13 @@ export function KreatorStacjiSnNn() {
     setDane((p) => ({ ...p, factory_configuration_ref: null, pola: [], wyposazenie: {} }));
   }, [blokiStan, bloki, dane.factory_configuration_ref, torKonfiguracji]);
 
-  const aparatDomyslny = aparatyZdatne[0]?.id ?? null;
-  /** Domyślny aparat DLA ROLI — pierwszy zdatny z listy zawężonej rolą pola. */
+  /**
+   * Aparat DLA ROLI — JEDYNY zdatny w ofercie rodziny dla roli pola (AUTO_PRZYJETE); kilka
+   * zdatnych = wybór projektanta (dawniej pierwszy z listy — np. reklozer w polu liniowym).
+   */
   const aparatDomyslnyRoli = useCallback(
-    (rola: SnFieldRole) => aparatyDlaRoli(rola)[0]?.id ?? aparatDomyslny,
-    [aparatDomyslny, aparatyDlaRoli],
+    (rola: SnFieldRole) => jedynaZgodna(aparatyDlaRoli(rola))?.id ?? null,
+    [aparatyDlaRoli],
   );
 
   /** Nazwy PL rozwiązań dopuszczalnych dla roli pola (wprost z kontraktu backendu). */
@@ -814,36 +998,45 @@ export function KreatorStacjiSnNn() {
   }, [aparatDomyslnyRoli, szablonDlaRoli, torKonfiguracji, wybranyBlok]);
 
   /**
-   * Uzupełnienie wskazań w istniejących wpisach: katalogowe pole z pakietu
-   * WYBRANEJ rodziny, aparat z listy zdatnej DLA ROLI — bez nadpisywania
-   * świadomych wyborów projektanta.
-   *
-   * ZBIÓR OFERTY I ZBIÓR ZACHOWANIA TO JEDEN ZBIÓR (`szablonyWyboru`). Wcześniej
-   * warunek brzmiał „zostaw, cokolwiek pole ma" (`pole.bay_template_ref ?? …`),
-   * więc pole zachowywało KARTĘ KATALOGOWĄ INNEGO WYROBU po zmianie producenta
-   * albo rodziny: picker jej już nie oferował, ale wpis ją trzymał. Skutek był
-   * cichy i dotkliwy — szablon spoza pakietu nie odnajdywał się przy budowie
-   * pól, więc pole szło do operacji ze statusem „wymaga katalogu", zapis
-   * zostawał zablokowany, a ekran nie mówił, dlaczego. Dwa niezależne warunki,
-   * które „dziś się zgadzają" (bo cały katalog testowy miał jedną rodzinę),
-   * czekały na dane brzegowe: drugą rodzinę w katalogu.
+   * Uzupełnienie wskazań w istniejących wpisach — WYŁĄCZNIE z jednoznacznego źródła, bez
+   * nadpisywania decyzji projektanta:
+   *  · aparat: wskazany zostaje, gdy należy do oferty rodziny dla roli; propozycja (szablon,
+   *    automat) spoza oferty odpada na rzecz jedynego zdatnego albo wyboru projektanta;
+   *    decyzja projektanta spoza oferty zostaje i jest KONFLIKTEM przy polu;
+   *  · karta pola: wskazana zostaje, gdy należy do pakietu rodziny; brak = jedyna karta
+   *    zgodna z rolą i rodzajem aparatu (bez rodziny pole zostaje bez karty).
+   * ZBIÓR OFERTY I ZBIÓR ZACHOWANIA TO JEDEN ZBIÓR (`aparatyDlaRoli`, `szablonyWyboru`).
    */
   useEffect(() => {
+    if (aparaty.length === 0) return;
     setDane((p) => {
       let zmiana = false;
       const pola = p.pola.map((pole) => {
-        const wskazanieAktualne =
-          pole.bay_template_ref !== null
-          && szablonyWyboru.some((t) => t.template_ref === pole.bay_template_ref);
-        // Kartę katalogową dobieramy WYŁĄCZNIE z pakietu wskazanej rodziny.
-        // Bez rodziny pole zostaje bez karty (krok jawnie niedomknięty) —
-        // dobór z pakietu producenta mieszałby karty różnych wyrobów.
-        const szablonRef = wskazanieAktualne
-          ? pole.bay_template_ref
-          : selectedFamily === null
-            ? null
-            : szablonyRola[pole.field_role]?.template_ref ?? null;
-        const aparatRef = pole.apparatus_catalog_ref ?? aparatDomyslnyRoli(pole.field_role);
+        const oferta = aparatyDlaRoli(pole.field_role);
+        const aparatWOfercie =
+          pole.apparatus_catalog_ref !== null && oferta.some((a) => a.id === pole.apparatus_catalog_ref);
+        const aparatRef =
+          aparatWOfercie || decyzjaProjektanta(`aparat:${pole.id}`)
+            ? pole.apparatus_catalog_ref
+            : jedynaZgodna(oferta)?.id ?? null;
+        // Karta przyjęta automatycznie zostaje, dopóki należy do pakietu rodziny I jest zgodna
+        // z bieżącym aparatem (ten sam predykat, którym `kartaJedyna` ją wybrała). Zmiana
+        // aparatu na niezgodny z kartą-automatem przelicza kartę; kartę wybraną przez
+        // projektanta zostawia (niezgodność pokazuje wtedy konflikt przy polu).
+        const rodzajAparatu = aparatRef
+          ? aparaty.find((a) => a.id === aparatRef)?.family_apparatus_kind ?? null
+          : null;
+        const kartaBiezaca = pole.bay_template_ref !== null
+          ? szablonyWyboru.find((t) => t.template_ref === pole.bay_template_ref) ?? null
+          : null;
+        const kartaWPakiecie =
+          kartaBiezaca !== null && kartaZgodnaZAparatem(kartaBiezaca, rodzajAparatu);
+        const szablonRef =
+          kartaWPakiecie || decyzjaProjektanta(`szablon:${pole.id}`)
+            ? pole.bay_template_ref
+            : selectedFamily === null
+              ? null
+              : kartaJedyna(pole.field_role, aparatRef);
         if (szablonRef === pole.bay_template_ref && aparatRef === pole.apparatus_catalog_ref) {
           return pole;
         }
@@ -852,7 +1045,50 @@ export function KreatorStacjiSnNn() {
       });
       return zmiana ? { ...p, pola } : p;
     });
-  }, [aparatDomyslnyRoli, selectedFamily, szablonyRola, szablonyWyboru]);
+    // `dane.pola` w zależnościach: zmiana aparatu pola przelicza kartę-automat (wyżej).
+    // Aktualizacja bez zmiany zwraca ten sam obiekt stanu, więc nie ma pętli renderów.
+  }, [aparaty, aparatyDlaRoli, dane.pola, decyzjaProjektanta, kartaJedyna, selectedFamily, szablonyWyboru]);
+
+  /**
+   * Wyposażenie pola idzie za APARATEM (item 4 przejścia scenariusza 630 kVA): propozycja
+   * szablonu stacji (CT + zabezpieczenie) trafia WYŁĄCZNIE do pól z aparatem wyłączającym
+   * (wyłącznik, reklozer). Pole z rozłącznikiem bezpiecznikowym nie ma przekaźnika ani CT
+   * zabezpieczeniowego; VT nie trafia z automatu do żadnego pola. Rodzaj zabezpieczenia
+   * z kanonicznych kodów funkcji roli (readout backendu). Pole, którego wyposażenie projektant
+   * zmienił, automat zostawia.
+   */
+  useEffect(() => {
+    if (!propozycjaWyposazenia.ct && !propozycjaWyposazenia.przekaznik) return;
+    setDane((p) => {
+      let zmiana = false;
+      const wyposazenie = { ...p.wyposazenie };
+      for (const pole of p.pola) {
+        if (decyzjaProjektanta(`wyposazenie:${pole.id}`)) continue;
+        const rodzaj = aparaty.find((a) => a.id === pole.apparatus_catalog_ref)?.device_kind ?? null;
+        const wylaczajacy = rodzaj !== null && APARATY_WYLACZAJACE.has(rodzaj);
+        const kody = kodyZabezpieczen[ROLA_POLA_NA_BAY_ROLE[pole.field_role]] ?? [];
+        const biezacy = wyposazenie[pole.id] ?? nowyWpisWyposazenia();
+        const ct = wylaczajacy ? propozycjaWyposazenia.ct : null;
+        const przekaznik = wylaczajacy ? propozycjaWyposazenia.przekaznik : null;
+        const rodzajZab = przekaznik ? rodzajZabezpieczeniaZKodow(kody) : '';
+        if (
+          biezacy.ct_catalog_ref === ct
+          && biezacy.relay_catalog_ref === przekaznik
+          && biezacy.relay_type === rodzajZab
+        ) {
+          continue;
+        }
+        wyposazenie[pole.id] = {
+          ...biezacy,
+          ct_catalog_ref: ct,
+          relay_catalog_ref: przekaznik,
+          relay_type: rodzajZab,
+        };
+        zmiana = true;
+      }
+      return zmiana ? { ...p, wyposazenie } : p;
+    });
+  }, [aparaty, dane.pola, decyzjaProjektanta, kodyZabezpieczen, propozycjaWyposazenia]);
 
   /**
    * Wyposażenie pól (krok 4) per WPIS pola — jedzie w TEJ SAMEJ operacji co
@@ -951,21 +1187,45 @@ export function KreatorStacjiSnNn() {
     }));
   }, []);
 
-  const zmienPole = useCallback((id: string, zmiana: Partial<PoleSnWpis>) => {
-    setDane((p) => ({
-      ...p,
-      pola: p.pola.map((pole) => (pole.id === id ? { ...pole, ...zmiana } : pole)),
-    }));
-  }, []);
+  const zmienPole = useCallback(
+    (id: string, zmiana: Partial<PoleSnWpis>) => {
+      if (zmiana.apparatus_catalog_ref !== undefined) edytowane(`aparat:${id}`);
+      if (zmiana.bay_template_ref !== undefined) edytowane(`szablon:${id}`);
+      setDane((p) => ({
+        ...p,
+        pola: p.pola.map((pole) => (pole.id === id ? { ...pole, ...zmiana } : pole)),
+      }));
+    },
+    [edytowane],
+  );
 
   const zmienWyposazenie = useCallback(
     (id: string, zmiana: Partial<StacjaFormData['wyposazenie'][string]>) => {
+      edytowane(`wyposazenie:${id}`);
+      if (zmiana.vt_uzwojenie !== undefined) edytowane(`vt_uzwojenie:${id}`);
+      if (zmiana.relay_type !== undefined) edytowane(`relay_type:${id}`);
       setDane((p) => {
         const biezace = p.wyposazenie[id] ?? nowyWpisWyposazenia();
-        return { ...p, wyposazenie: { ...p.wyposazenie, [id]: { ...biezace, ...zmiana } } };
+        const nastepne = { ...biezace, ...zmiana };
+        // Rodzaj zabezpieczenia z kodów funkcji roli pola (readout backendu), gdy wskazują
+        // jeden rodzaj i projektant rodzaju sam nie wybrał.
+        if (zmiana.relay_catalog_ref !== undefined && !decyzjaProjektanta(`relay_type:${id}`)) {
+          const rola = p.pola.find((pole) => pole.id === id)?.field_role;
+          nastepne.relay_type =
+            zmiana.relay_catalog_ref && rola
+              ? rodzajZabezpieczeniaZKodow(kodyZabezpieczen[ROLA_POLA_NA_BAY_ROLE[rola]] ?? [])
+              : '';
+        }
+        // Kategoria uzwojenia VT z klasy dokładności wybranej pozycji katalogowej
+        // (AUTO_PRZYJETE), dopóki projektant nie wskaże jej sam.
+        if (zmiana.vt_catalog_ref !== undefined && !decyzjaProjektanta(`vt_uzwojenie:${id}`)) {
+          const vt = vtTypy.find((t) => t.id === zmiana.vt_catalog_ref) ?? null;
+          nastepne.vt_uzwojenie = vt ? uzwojenieVtZKlasy(vt.accuracy_class) : null;
+        }
+        return { ...p, wyposazenie: { ...p.wyposazenie, [id]: nastepne } };
       });
     },
-    [],
+    [decyzjaProjektanta, edytowane, kodyZabezpieczen, vtTypy],
   );
 
   const opcjeTypow = useMemo(
@@ -979,13 +1239,66 @@ export function KreatorStacjiSnNn() {
 
   const zmien = useCallback(
     <K extends keyof StacjaFormData>(pole: K, wartosc: StacjaFormData[K]) => {
+      const klucz = KLUCZ_DECYZJI[pole] ?? (String(pole).startsWith('transformer_tap_') ? String(pole) : null);
+      if (klucz) edytowane(klucz);
       setDane((p) => ({ ...p, [pole]: wartosc }));
     },
-    [],
+    [edytowane],
   );
 
+  // KONFLIKT_TECHNICZNY — przy polu od razu (dane stacji + pola rozdzielnicy).
+  const konfliktyDanych = useMemo(() => konfliktyFormularza(dane), [dane]);
+  const konfliktyPol = useMemo<BladPola[]>(() => {
+    if (aparaty.length === 0) return [];
+    const wynik: BladPola[] = [];
+    dane.pola.forEach((pole, index) => {
+      const nr = index + 1;
+      const aparat = pole.apparatus_catalog_ref
+        ? aparaty.find((a) => a.id === pole.apparatus_catalog_ref) ?? null
+        : null;
+      if (aparat && !aparatyDlaRoli(pole.field_role).some((a) => a.id === aparat.id)) {
+        wynik.push({
+          field: `pole:${pole.id}:aparat`,
+          message: `Aparat ${aparat.name} nie pasuje do pola ${nr}: spoza oferty rodziny rozdzielnicy, roli pola albo napięcia sieci — wybierz aparat z listy.`,
+        });
+      }
+      const karta = pole.bay_template_ref
+        ? szablony.find((t) => t.template_ref === pole.bay_template_ref) ?? null
+        : null;
+      // Zabezpieczenie działa przez wyłącznik pola (backend: `relay.breaker_missing`) —
+      // pole z rozłącznikiem albo bezpiecznikiem nie ma czym wyłączyć prądu zwarciowego.
+      if (
+        aparat
+        && dane.wyposazenie[pole.id]?.relay_catalog_ref
+        && !APARATY_WYLACZAJACE.has(aparat.device_kind)
+      ) {
+        wynik.push({
+          field: `pole:${pole.id}:przekaznik`,
+          message: `Zabezpieczenie pola ${nr} wymaga wyłącznika — ${aparat.name} nie wyłącza prądu zwarciowego na sygnał przekaźnika.`,
+        });
+      }
+      if (karta && aparat && !kartaZgodnaZAparatem(karta, aparat.family_apparatus_kind)) {
+        const jestKartaZgodna = opcjeSzablonowRoli(szablonyWyboru, pole.field_role).some((t) =>
+          kartaZgodnaZAparatem(t, aparat.family_apparatus_kind),
+        );
+        wynik.push(
+          jestKartaZgodna
+            ? {
+                field: `pole:${pole.id}:szablon`,
+                message: `Karta pola ${nr} ma inny aparat główny niż wybrany (${etykietaRodzajuAparatu(aparat.device_kind)}) — wybierz kartę zgodną z aparatem.`,
+              }
+            : {
+                field: `pole:${pole.id}:aparat`,
+                message: `Rodzina nie ma karty pola ${nr} z aparatem: ${etykietaRodzajuAparatu(aparat.device_kind)} — wybierz aparat zgodny z kartą pola.`,
+              },
+        );
+      }
+    });
+    return wynik;
+  }, [aparaty, aparatyDlaRoli, dane.pola, dane.wyposazenie, szablony, szablonyWyboru]);
+  const konflikty = useMemo(() => [...konfliktyDanych, ...konfliktyPol], [konfliktyDanych, konfliktyPol]);
   const bladDlaPola = (pole: string): string | undefined =>
-    bledy.find((b) => b.field === pole)?.message;
+    konflikty.find((b) => b.field === pole)?.message;
 
   const kontekstOk = kontekstKompletny(kontekst);
   const brakFalownikowKomunikat =
@@ -1022,20 +1335,70 @@ export function KreatorStacjiSnNn() {
     [wyposazenieDoPayloadu],
   );
 
+  /** Wskazanie braku z klucza pola modelu (stałe pola formularza i pola rozdzielnicy). */
+  const wskazanieBraku = useCallback(
+    (blad: BladPola): BrakDoOperacji => {
+      const [rodzaj, id, cecha] = blad.field.split(':');
+      if (rodzaj === 'pole' && id && cecha) {
+        const index = dane.pola.findIndex((pole) => pole.id === id);
+        const miejsce = MIEJSCA_POLA[cecha];
+        if (miejsce && index >= 0) {
+          return { komunikat: blad.message, krok: miejsce.krok, pole: `${miejsce.prefiks}-${index + 1}` };
+        }
+      }
+      const stale = MIEJSCA_STALE[blad.field];
+      return { komunikat: blad.message, krok: stale?.krok, pole: stale?.pole };
+    },
+    [dane.pola],
+  );
+
+  /**
+   * Konflikty i braki stacji w kolejności kroków kreatora — JEDNA lista dla zapisu
+   * (pierwszy element = wskazanie) i dla werdyktu walidatora na kroku pól (sprawdzenie
+   * rusza dopiero przy pustej liście, więc w trakcie pracy nie ma czerwieni).
+   */
+  const konfliktyIBraki = useCallback(
+    (daneEff: StacjaFormData): BrakDoOperacji[] => {
+      const polaToru = brakujacePolaToru(daneEff.pola, kontekst.tryb);
+      const lista: Array<BrakDoOperacji | false> = [
+        ...konflikty.map(wskazanieBraku),
+        ...brakiFormularza(daneEff, kontekst).map(wskazanieBraku),
+        torKonfiguracji === 'BLOK_RMU' && !daneEff.factory_configuration_ref
+          && wskazanieBraku({ field: 'factory_configuration_ref', message: T.blokBrakWalid }),
+        polaToru.length > 0
+          && wskazanieBraku({
+            field: 'pola_toru',
+            message: T.polaToruBrakStopka(polaToru.map((rola) => fieldRoleLabelPl(rola)).join(', ')),
+          }),
+        ...brakiPol(daneEff.pola, daneEff.wyposazenie).map(wskazanieBraku),
+        ...brakiNnIUziemienia(daneEff, kontekst).map(wskazanieBraku),
+      ];
+      return lista.filter((b): b is BrakDoOperacji => b !== false);
+    },
+    [konflikty, kontekst, torKonfiguracji, wskazanieBraku],
+  );
+
+  // Wskazanie gaśnie, gdy jego brak zniknął (także brak bez kontrolki, np. pola toru).
+  // Brak przypadku obliczeniowego nie zależy od danych formularza — trzymany osobno.
+  const biezaceBraki = useMemo(
+    () => [...konfliktyIBraki(dane), ...(activeCaseId ? [] : [{ komunikat: T.brakZakresu }])],
+    [activeCaseId, dane, konfliktyIBraki],
+  );
+  useAktualnoscWskazania(prowadzenie, biezaceBraki);
+
   const zapiszStacje = useCallback(
     async (daneEff: StacjaFormData, konwerterEff: ConverterType | null) => {
-      const walid = walidujFormularz(daneEff, snFields, kontekst.tryb);
-      setBledy(walid);
-      if (walid.length > 0) return;
-      if (!kontekstOk) {
-        setBladGlobalny(T.umiejscowienieBrakOpis);
+      const brak = pierwszyBrak([
+        ...konfliktyIBraki(daneEff),
+        !activeCaseId && { komunikat: T.brakZakresu },
+      ]);
+      if (brak || !activeCaseId) {
+        if (brak) prowadzenie.wskaz(brak);
         return;
       }
-      if (!activeCaseId) {
-        setBladGlobalny(T.brakZakresu);
-        return;
-      }
+      prowadzenie.zgas();
       setBladGlobalny(null);
+      setZapisWToku(true);
       try {
         const response = await executeDomainOperation(
           activeCaseId,
@@ -1043,7 +1406,7 @@ export function KreatorStacjiSnNn() {
           zbudujPayload(daneEff, kontekst, rozdzielnica, konwerterEff),
         );
         if (!response) {
-          setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+          setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
           return;
         }
         if (response.error) {
@@ -1074,20 +1437,22 @@ export function KreatorStacjiSnNn() {
           });
         }
       } catch (e) {
-        setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+        setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
+      } finally {
+        setZapisWToku(false);
       }
     },
     [
       activeCaseId,
       closeForm,
       executeDomainOperation,
+      konfliktyIBraki,
       kontekst,
-      kontekstOk,
       nastepnyKrok,
       openOperationForm,
+      prowadzenie,
       rozdzielnica,
       selekcjaPoOperacji,
-      snFields,
     ],
   );
 
@@ -1116,6 +1481,20 @@ export function KreatorStacjiSnNn() {
   }, [activeCaseId, dane, kontekst, kontekstOk, konwerter, rozdzielnica]);
 
   /**
+   * Podgląd na żądanie projektanta: przy braku danych — to samo wskazanie co zapis (bez
+   * zapytania, które backend i tak by odrzucił), przy komplecie — podgląd `dry_run`.
+   */
+  const onPrzeliczPodglad = useCallback(() => {
+    const brak = pierwszyBrak([...konfliktyIBraki(dane), !activeCaseId && { komunikat: T.brakZakresu }]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
+      return;
+    }
+    prowadzenie.zgas();
+    void przeliczPodglad();
+  }, [activeCaseId, dane, konfliktyIBraki, przeliczPodglad, prowadzenie]);
+
+  /**
    * SLD-GEN-POLA — WERDYKT KONFIGURACJI ROZDZIELNICY w nagłówku kroku pól.
    *
    * Nie jest liczony w UI: to stan odczytu z walidatora backendu (`dry_run` tej
@@ -1124,8 +1503,10 @@ export function KreatorStacjiSnNn() {
    * jest 1:1 i BEZ trzeciej oceny: „niesprawdzona" i „sprawdzanie" to stany
    * odczytu, nie własna opinia UI o poprawności.
    */
-  const statusKonfiguracji: StatusKonfiguracji =
-    podgladStan === 'ready'
+  const konfiguracjaKompletna = konfliktyIBraki(dane).length === 0;
+  const statusKonfiguracji: StatusKonfiguracji = !konfiguracjaKompletna
+    ? 'NIESPRAWDZONA'
+    : podgladStan === 'ready'
       ? 'VALID'
       : podgladStan === 'error'
         ? 'INVALID'
@@ -1145,10 +1526,10 @@ export function KreatorStacjiSnNn() {
    */
   const payloadWerdyktu = useMemo(
     () =>
-      kontekstOk && activeCaseId
+      konfiguracjaKompletna && activeCaseId
         ? JSON.stringify(zbudujPayload(dane, kontekst, rozdzielnica, konwerter))
         : null,
-    [activeCaseId, dane, kontekst, kontekstOk, konwerter, rozdzielnica],
+    [activeCaseId, dane, kontekst, konfiguracjaKompletna, konwerter, rozdzielnica],
   );
   useEffect(() => {
     if (krok !== 'pola' || payloadWerdyktu === null) return undefined;
@@ -1164,8 +1545,7 @@ export function KreatorStacjiSnNn() {
   /** Krok 0 — wypełnienie formularza wybranym szablonem (wszystko edytowalne). */
   const zastosujSzablon = useCallback(async () => {
     if (!wybranySzablonId) {
-      setSzablonZastosowany(null);
-      setDane((p) => ({ ...p, template_id: null, template_name: '' }));
+      setBladSzablonow(T.szablonWybierzNajpierw);
       return;
     }
     setBladSzablonow(null);
@@ -1190,10 +1570,20 @@ export function KreatorStacjiSnNn() {
       ]);
       const wypelnienie = wypelnienieZSzablonu(szablon, podgladSzablonu);
       setSzablonZastosowany(szablon);
+      // Propozycje szablonu przyjmujemy TYLKO wtedy, gdy pozycja istnieje w katalogu, który
+      // waliduje operacja (add_ct/add_relay). Przypisanie do pól idzie za aparatem (efekt
+      // wyżej): pole bez aparatu wyłączającego nie dostaje ani CT, ani przekaźnika; VT nie
+      // trafia z automatu nigdzie.
+      const wKatalogu = (ref: string | null, lista: ReadonlyArray<{ id: string }>) =>
+        ref && lista.some((t) => t.id === ref) ? ref : null;
+      setPropozycjaWyposazenia({
+        ct: wKatalogu(wypelnienie.ctRef, ctTypy),
+        przekaznik: wKatalogu(wypelnienie.przekaznikRef, przekazniki),
+      });
       setDane((p) => {
         const stationType = wypelnienie.stationType ?? p.station_type;
-        // Aparat z szablonu, a przy jego braku — domyślny DLA ROLI pola
-        // (szablon stacji nie musi wskazywać aparatu każdego pola).
+        // Aparat z szablonu (propozycja — odpada, gdy nie należy do oferty wskazanej rodziny),
+        // a przy jego braku — jedyny zdatny DLA ROLI pola.
         const aparatRef = wypelnienie.aparatRef ?? null;
         const aparatDlaPola = (rola: SnFieldRole) => aparatRef ?? aparatDomyslnyRoli(rola);
         // Karta katalogowa pola pochodzi z pakietu WSKAZANEJ rodziny; szablon
@@ -1213,42 +1603,24 @@ export function KreatorStacjiSnNn() {
                 ),
               )
             : domyslneWpisyPol(stationType, szablonyRola, aparatDlaPola);
-        // Propozycje szablonu przyjmujemy TYLKO wtedy, gdy pozycja istnieje w
-        // katalogu, który waliduje odpowiednia operacja (add_ct/add_vt/add_relay).
-        // Szablony stacji wskazują zabezpieczenia z biblioteki ANALITYCZNEJ
-        // koordynacji (np. EM_E2TANGO_600), a operacja modelu waliduje katalog MV
-        // (przestrzeń ZABEZPIECZENIE). To NIE jest dług do scalenia katalogów:
-        // oba zbiory mają różne role i tak zostaje (K9-B). Karta KD-3 dołożyła
-        // brakujące ogniwo — JAWNE powiązanie pozycji kanonicznej z wpisem
-        // biblioteki (`analytical_library_ref`), czytane przez readout krzywych
-        // niżej. Pozycji spoza kanonu nadal nie wolno podstawiać: operacja by
-        // ją odrzuciła (fabrykacja wyboru).
-        const wKatalogu = (ref: string | null, lista: ReadonlyArray<{ id: string }>) =>
-          ref && lista.some((t) => t.id === ref) ? ref : null;
-        const wyposazenie = Object.fromEntries(
-          pola.map((pole) => [
-            pole.id,
-            nowyWpisWyposazenia({
-              ct_catalog_ref: wKatalogu(wypelnienie.ctRef, ctTypy),
-              vt_catalog_ref: wKatalogu(wypelnienie.vtRef, vtTypy),
-              relay_catalog_ref: wKatalogu(wypelnienie.przekaznikRef, przekazniki),
-              relay_type: 'NADPRADOWY',
-            }),
-          ]),
-        );
         return {
           ...p,
           template_id: wypelnienie.templateId,
           template_name: wypelnienie.templateName,
           station_type: stationType,
           catalog_ref: wypelnienie.transformerRef ?? p.catalog_ref,
+          // Napięcie nN z tabliczki transformatora szablonu (jedno źródło z doborem).
+          nn_voltage_kv:
+            typy.find((t) => t.id === wypelnienie.transformerRef)?.voltage_lv_kv ?? p.nn_voltage_kv,
           transformer_units: wypelnienie.transformerCount ?? p.transformer_units,
           outgoing_feeders_nn_count:
             wypelnienie.nnFeedersCount != null && wypelnienie.nnFeedersCount > 0
               ? wypelnienie.nnFeedersCount
               : p.outgoing_feeders_nn_count,
+          // Producent rozdzielnicy z szablonu (efektywna konfiguracja producenta).
+          manufacturer_ref: wypelnienie.producentRef ?? p.manufacturer_ref,
           pola,
-          wyposazenie,
+          wyposazenie: {},
         };
       });
     } catch (e) {
@@ -1258,9 +1630,10 @@ export function KreatorStacjiSnNn() {
     aparatDomyslnyRoli,
     ctTypy,
     przekazniki,
+    selectedFamily,
     szablonyRola,
     szablonyWlasne,
-    vtTypy,
+    typy,
     wybranySzablonId,
   ]);
 
@@ -1288,6 +1661,7 @@ export function KreatorStacjiSnNn() {
   const pracujOdZera = useCallback(() => {
     setWybranySzablonId('');
     setSzablonZastosowany(null);
+    setPropozycjaWyposazenia({ ct: null, przekaznik: null });
     setDane((p) => ({
       ...p,
       template_id: null,
@@ -1301,31 +1675,24 @@ export function KreatorStacjiSnNn() {
     void zapiszStacje(dane, konwerter);
   }, [dane, konwerter, zapiszStacje]);
 
-  // Szybka ścieżka „stacja rekomendowana" (parytet legacy): auto-dobór
-  // rekomendowanego transformatora i (dla źródła) pierwszego falownika, zapis skrótem.
-  const onZapiszRekomendowana = useCallback(() => {
-    const trafoRef = dane.catalog_ref ?? dobrane[0]?.id ?? null;
-    const konwerterEff = isZrodlo ? konwerter ?? falowniki[0] ?? null : null;
-    const daneEff: StacjaFormData = {
-      ...dane,
-      catalog_ref: trafoRef,
-      source_converter_ref: konwerterEff?.id ?? dane.source_converter_ref,
-    };
-    void zapiszStacje(daneEff, konwerterEff);
-  }, [dane, dobrane, falowniki, isZrodlo, konwerter, zapiszStacje]);
-
   const koniec = czyKoniecOdcinka(kontekst);
-  // Rodzaj, który powstanie ze składu pól i umiejscowienia (jedna reguła produktu) — obok
-  // deklaracji z kroku „Rodzaj"; rozjazd = ostrzeżenie W043 po zapisie, więc widać go od razu.
-  const rodzajWynikowy = rodzajStacjiZKreatora(dane.pola, kontekst.tryb);
-  const rodzajZgodny = rodzajWynikowy === dane.station_type;
-  const typLabel = rodzajZgodny
-    ? T.rodzajWynikowy(NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy])
-    : T.rodzajNiezgodny(
-      NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy],
-      NAZWA_RODZAJU_STACJI_PL[dane.station_type],
-    );
+  // Rodzaj, który powstanie ze składu pól i umiejscowienia (jedna reguła produktu) — to on
+  // jedzie do modelu; wybór w kroku „Rodzaj” ustawia tylko startową listę pól, więc nie ma
+  // czego porównywać ani przed czym ostrzegać.
+  // Przed złożeniem pól (rodzina jeszcze niewskazana) skład to startowa lista ról rodzaju
+  // z kroku „Rodzaj” — pusta lista dawała tu fałszywą „stację końcową”.
+  const rodzajWynikowy = rodzajStacjiZKreatora(
+    dane.pola.length > 0 ? dane.pola : rolePol.map((field_role) => ({ field_role })),
+    kontekst.tryb,
+  );
+  const typLabel = T.rodzajWynikowy(NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy]);
   const umiejscowienieLabel = koniec ? T.umiejscowienieKoniec : T.umiejscowieniePodzial;
+  // Nazwy elementów miejsca stacji (w UI nazwa, nie identyfikator modelu).
+  const nazwaSzynyKonca =
+    snapshot?.buses.find((b) => b.ref_id === kontekst.endpointBusRef || b.id === kontekst.endpointBusRef)?.name
+    ?? '—';
+  const nazwaOdcinka =
+    snapshot?.branches.find((b) => b.ref_id === kontekst.segmentId || b.id === kontekst.segmentId)?.name ?? '—';
   const konfiguracjaNnLabel =
     T.konfiguracjaNnOpcje.find((o) => o.id === dane.nn_configuration)?.etykieta ?? dane.nn_configuration;
   const nnVoltageLabel = isZrodlo
@@ -1333,44 +1700,57 @@ export function KreatorStacjiSnNn() {
       ? fmtKv(konwerter.un_kv)
       : T.wymNnOczekuje
     : fmtKv(dane.nn_voltage_kv);
+  const liczbaOdplywowLabel = ogranicznikOdplywow(dane.outgoing_feeders_nn_count) ?? '—';
   const nnBlokKompletny = !isZrodlo || Boolean(konwerter);
   const protekcja = zabezpieczenieZrodla(dane);
 
+  // Panel kontroli neutralny (kontrakt prowadzenia): „do wyboru” w trakcie pracy, czerwień
+  // wyłącznie dla konfliktu (te same `konflikty`, co błędy przy polach).
+  const konfliktZ = (test: (pole: string) => boolean) => konflikty.some((b) => test(b.field));
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszTyp, stan: rodzajZgodny ? 'kompletne' : 'ostrzezenie', wartosc: typLabel },
+    { etykieta: T.wierszTyp, stan: 'ustalone', wartosc: typLabel },
     {
       etykieta: T.wierszUmiejscowienie,
-      stan: kontekstOk ? 'kompletne' : 'brak',
-      wartosc: kontekstOk ? umiejscowienieLabel : 'Do wskazania',
+      stan: kontekstOk ? 'ustalone' : 'do_wyboru',
+      wartosc: kontekstOk ? umiejscowienieLabel : '',
     },
     {
       etykieta: T.wierszTransformator,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? fmtMva(params?.rated_power_mva) : 'Do doboru',
+      stan: konfliktZ((p) => p === 'nn_voltage_kv' || p.startsWith('transformer_'))
+        ? 'konflikt'
+        : dane.catalog_ref
+          ? 'ustalone'
+          : 'do_wyboru',
+      wartosc: dane.catalog_ref ? fmtMva(params?.rated_power_mva) : '',
     },
     {
       etykieta: T.wierszRozdzielnica,
-      stan: rozdzielnicaKompletna && aparaturaKompletna ? 'kompletne' : 'brak',
+      stan: konfliktZ((p) => p.startsWith('pole:'))
+        ? 'konflikt'
+        : rozdzielnicaKompletna && aparaturaKompletna
+          ? 'ustalone'
+          : 'do_wyboru',
       wartosc:
         rozdzielnicaKompletna && aparaturaKompletna
-          ? `${snFields.length} pól · ${selectedManufacturer?.name ?? dane.manufacturer_ref}`
-          : 'Do doboru',
+          ? `${snFields.length} pól · ${selectedManufacturer?.name ?? ''}`
+          : '',
     },
-    // KOMPLETNOSC-POLA-TR + POLA-W-TORZE: stan pola transformatorowego W PANELU
-    // KONTROLI, czyli widoczny z KAŻDEGO kroku — panel skutków w kroku pól zobaczy
-    // tylko ten, kto do tego kroku wróci. `brak`, bo transformator bez pola omijałby
-    // aparat, który ma go odłączać: zapis jest zablokowany.
+    // Pole transformatorowe w panelu kontroli — widoczne z KAŻDEGO kroku (POLA-W-TORZE).
     {
       etykieta: T.wierszPoleTr,
-      stan: brakPolaTransformatorowego ? 'brak' : 'kompletne',
+      stan: brakPolaTransformatorowego ? 'do_wyboru' : 'ustalone',
       wartosc: brakPolaTransformatorowego ? T.wierszPoleTrBrak : T.wierszPoleTrJest,
     },
     {
       etykieta: T.wierszNn,
-      stan: nnBlokKompletny ? 'kompletne' : 'brak',
+      stan: konfliktZ((p) => p === 'outgoing_feeders_nn_count' || p.startsWith('station_auxiliary'))
+        ? 'konflikt'
+        : nnBlokKompletny && dane.outgoing_feeders_nn_count !== null
+          ? 'ustalone'
+          : 'do_wyboru',
       wartosc: isZrodlo
         ? `${konfiguracjaNnLabel} · ${nnVoltageLabel}`
-        : `${nnVoltageLabel} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`,
+        : `${nnVoltageLabel} · ${liczbaOdplywowLabel} odpł.`,
     },
   ];
 
@@ -1382,56 +1762,10 @@ export function KreatorStacjiSnNn() {
   );
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  const rekomendowanyTrafoRef = dane.catalog_ref ?? dobrane[0]?.id ?? null;
-  const zapisZablokowany =
-    !kontekstOk
-    || !activeCaseId
-    || !rozdzielnicaKompletna
-    || !aparaturaKompletna
-    || polaToruBrak.length > 0
-    || !dane.catalog_ref
-    || (isZrodlo && !konwerter);
-  const szybkaZablokowana =
-    !kontekstOk
-    || !activeCaseId
-    || !rozdzielnicaKompletna
-    || !aparaturaKompletna
-    || polaToruBrak.length > 0
-    || !rekomendowanyTrafoRef
-    || (isZrodlo && falowniki.length === 0);
   const brakSzablonowKomunikat =
     !bladRozdzielnicy && Boolean(dane.manufacturer_ref) && szablonyWyboru.length === 0
       ? T.brakSzablonow
       : null;
-  /**
-   * STOPKA NAZYWA REALNY POWÓD, a nie pierwszy z brzegu.
-   *
-   * Defekt zastany (zmierzony na żywej aplikacji): przy niewskazanej rodzinie
-   * stopka mówiła „Brak kompletnych szablonów pól dla wybranego producenta/
-   * rodziny — wybierz inny pakiet katalogowy", choć katalog miał komplet
-   * szablonów, a brakowało WYŁĄCZNIE wskazania rodziny (karta S3: pole SN
-   * należy do konkretnego wyrobu, więc bez rodziny krok świadomie nie
-   * komponuje pól). Komunikat wysyłał projektanta do zmiany pakietu zamiast do
-   * jedynej akcji, która odblokowuje zapis — i tak samo mylił diagnozę specu
-   * e2e. Kolejność powodów: brak producenta → brak rodziny → brak szablonów
-   * w pakiecie wskazanej rodziny.
-   */
-  const rozdzielnicaBladStopka = !rozdzielnicaKompletna
-    ? bladRozdzielnicy
-      ?? (!dane.manufacturer_ref
-        ? T.brakProducenta
-        : selectedFamily === null
-          ? T.rodzinaNiewybrana
-          : T.brakSzablonow)
-    : !aparaturaKompletna
-      ? bladAparatow ?? T.brakAparatow
-      : polaToruBrak.length > 0
-        ? T.polaToruBrakStopka(polaToruBrak.map((rola) => fieldRoleLabelPl(rola)).join(', '))
-        : null;
-  const walidacjaStopka =
-    bledy.length > 0
-      ? T.walidacjaStopka
-      : brakFalownikowKomunikat ?? brakDoboruKomunikat ?? rozdzielnicaBladStopka;
 
   return (
     <KreatorRama
@@ -1445,8 +1779,15 @@ export function KreatorStacjiSnNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={walidacjaStopka}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-stacja-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        // Wyszarzenie WYŁĄCZNIE na czas trwającego zapisu (zamknięta lista ramy); brak danych
+        // wskazuje kreator przy kliknięciu.
+        blokada: zapisWToku ? 'zapis_w_toku' : null,
+        testid: 'mvd-kreator-stacja-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-stacja-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -1472,7 +1813,10 @@ export function KreatorStacjiSnNn() {
                 setKategoriaSzablonu(v);
                 setWybranySzablonId('');
               }}
-              opcje={KATEGORIE_SZABLONOW.map((id) => ({ id, etykieta: id.replace(/_/g, ' ') }))}
+              opcje={KATEGORIE_SZABLONOW.filter((id) => nazwyKategorii[id]).map((id) => ({
+                id,
+                etykieta: nazwyKategorii[id],
+              }))}
               pomoc={T.szablonKategoriaPomoc}
               testid="mvd-kreator-stacja-szablon-kategoria"
             />
@@ -1512,7 +1856,6 @@ export function KreatorStacjiSnNn() {
             <button
               type="button"
               className="mvd-kreator-btn mvd-kreator-btn--glowna"
-              disabled={!wybranySzablonId}
               onClick={() => void zastosujSzablon()}
               data-testid="mvd-kreator-stacja-szablon-zastosuj"
             >
@@ -1536,12 +1879,9 @@ export function KreatorStacjiSnNn() {
             <RzadWartosci etykieta={T.szablonLiczbaPol} wartosc={String(dane.pola.length)} />
             <RzadWartosci
               etykieta={T.szablonTransformator}
-              wartosc={dane.catalog_ref ?? '—'}
+              wartosc={typy.find((t) => t.id === dane.catalog_ref)?.name ?? '—'}
             />
-            <RzadWartosci
-              etykieta={T.szablonOdplywy}
-              wartosc={String(ogranicznikOdplywow(dane.outgoing_feeders_nn_count))}
-            />
+            <RzadWartosci etykieta={T.szablonOdplywy} wartosc={String(liczbaOdplywowLabel)} />
           </KreatorSiatka>
           {dane.template_id ? (
             <KreatorInfo testid="mvd-kreator-stacja-szablon-zastosowany">
@@ -1597,10 +1937,10 @@ export function KreatorStacjiSnNn() {
               <KreatorSiatka kolumny={2}>
                 <RzadWartosci etykieta={T.podsumUmiejscowienie} wartosc={umiejscowienieLabel} />
                 {koniec ? (
-                  <RzadWartosci etykieta={T.umiejscowienieTerminal} wartosc={kontekst.endpointBusRef || '—'} />
+                  <RzadWartosci etykieta={T.umiejscowienieTerminal} wartosc={nazwaSzynyKonca} />
                 ) : (
                   <>
-                    <RzadWartosci etykieta={T.umiejscowienieSegment} wartosc={kontekst.segmentId || '—'} />
+                    <RzadWartosci etykieta={T.umiejscowienieSegment} wartosc={nazwaOdcinka} />
                     <RzadWartosci etykieta={T.umiejscowieniePozycja} wartosc={fmtRatio(kontekst.positionOnSegment)} />
                   </>
                 )}
@@ -1639,9 +1979,10 @@ export function KreatorStacjiSnNn() {
             ) : (
               <PoleWyboru
                 etykieta={isCustomNn ? T.nnVoltageCustom : T.nnVoltage}
-                wartosc={String(dane.nn_voltage_kv)}
-                onZmiana={(v) => zmien('nn_voltage_kv', Number(v))}
-                opcje={isCustomNn ? T.nnVoltageCustomOpcje : T.nnVoltageOpcje}
+                wartosc={dane.nn_voltage_kv === null ? '' : String(dane.nn_voltage_kv)}
+                onZmiana={(v) => zmien('nn_voltage_kv', v === '' ? null : Number(v))}
+                opcje={[{ id: '', etykieta: T.wybierz }, ...(isCustomNn ? T.nnVoltageCustomOpcje : T.nnVoltageOpcje)]}
+                wymagane
                 pomoc={isCustomNn ? T.nnVoltageCustomPomoc : T.nnVoltagePomoc}
                 blad={bladDlaPola('nn_voltage_kv')}
                 testid="mvd-kreator-stacja-nn"
@@ -1681,7 +2022,7 @@ export function KreatorStacjiSnNn() {
             placeholder={T.typKatalogPlaceholder}
             pomoc={T.typKatalogPomoc}
             komunikatBledu={bladKatalogu ?? T.typBlad}
-            blad={bladDlaPola('catalog_ref')}
+            wymagane
             testid="mvd-kreator-stacja-katalog"
           />
           {brakDoboruKomunikat ? (
@@ -1725,14 +2066,15 @@ export function KreatorStacjiSnNn() {
               <>
                 <PoleWyboru
                   etykieta={T.zaczepyUzwojenie}
-                  wartosc={dane.transformer_regulated_winding}
+                  wartosc={dane.transformer_regulated_winding ?? ''}
                   onZmiana={(v) =>
                     zmien(
                       'transformer_regulated_winding',
-                      v as StacjaFormData['transformer_regulated_winding'],
+                      (v || null) as StacjaFormData['transformer_regulated_winding'],
                     )
                   }
-                  opcje={T.zaczepyUzwojenieOpcje}
+                  opcje={[{ id: '', etykieta: T.wybierz }, ...T.zaczepyUzwojenieOpcje]}
+                  wymagane
                   pomoc={T.zaczepyUzwojeniePomoc}
                   testid="mvd-kreator-stacja-zaczepy-uzwojenie"
                 />
@@ -1740,49 +2082,63 @@ export function KreatorStacjiSnNn() {
                   <PoleLiczbowe
                     etykieta={T.zaczepyPozycjaMin}
                     wartosc={dane.transformer_tap_min_position}
-                    onZmiana={(v) => zmien('transformer_tap_min_position', v ?? 0)}
+                    onZmiana={(v) => zmien('transformer_tap_min_position', v)}
                     krok={1}
+                    wymagane
+                    blad={bladDlaPola('transformer_tap_min_position')}
                     testid="mvd-kreator-stacja-zaczepy-min"
                   />
                   <PoleLiczbowe
                     etykieta={T.zaczepyPozycjaMax}
                     wartosc={dane.transformer_tap_max_position}
-                    onZmiana={(v) => zmien('transformer_tap_max_position', v ?? 0)}
+                    onZmiana={(v) => zmien('transformer_tap_max_position', v)}
                     krok={1}
+                    wymagane
+                    blad={bladDlaPola('transformer_tap_max_position')}
                     testid="mvd-kreator-stacja-zaczepy-max"
                   />
                   <PoleLiczbowe
                     etykieta={T.zaczepyPozycjaNeutralna}
                     wartosc={dane.transformer_tap_neutral_position}
-                    onZmiana={(v) => zmien('transformer_tap_neutral_position', v ?? 0)}
+                    onZmiana={(v) => zmien('transformer_tap_neutral_position', v)}
                     krok={1}
+                    wymagane
+                    blad={bladDlaPola('transformer_tap_neutral_position')}
                     testid="mvd-kreator-stacja-zaczepy-neutralna"
                   />
                   <PoleLiczbowe
                     etykieta={T.zaczepyPozycjaBiezaca}
                     wartosc={dane.transformer_tap_current_position}
-                    onZmiana={(v) => zmien('transformer_tap_current_position', v ?? 0)}
+                    onZmiana={(v) => zmien('transformer_tap_current_position', v)}
                     krok={1}
+                    wymagane
+                    blad={bladDlaPola('transformer_tap_current_position')}
                     testid="mvd-kreator-stacja-zaczepy-biezaca"
                   />
                 </KreatorSiatka>
                 <PoleLiczbowe
                   etykieta={T.zaczepyKrok}
                   wartosc={dane.transformer_tap_step_percent}
-                  onZmiana={(v) => zmien('transformer_tap_step_percent', v ?? 0)}
+                  onZmiana={(v) => zmien('transformer_tap_step_percent', v)}
                   krok={0.25}
                   min={0}
+                  wymagane
+                  blad={bladDlaPola('transformer_tap_step_percent')}
                   pomoc={T.zaczepyKrokPomoc}
                   testid="mvd-kreator-stacja-zaczepy-krok"
                 />
-                <RzadWartosci
-                  etykieta={T.zaczepyTytul}
-                  wartosc={T.zaczepyZakres(
-                    dane.transformer_tap_min_position,
-                    dane.transformer_tap_max_position,
-                    dane.transformer_tap_step_percent,
-                  )}
-                />
+                {dane.transformer_tap_min_position !== null
+                && dane.transformer_tap_max_position !== null
+                && dane.transformer_tap_step_percent !== null ? (
+                  <RzadWartosci
+                    etykieta={T.zaczepyTytul}
+                    wartosc={T.zaczepyZakres(
+                      dane.transformer_tap_min_position,
+                      dane.transformer_tap_max_position,
+                      dane.transformer_tap_step_percent,
+                    )}
+                  />
+                ) : null}
               </>
             ) : null}
           </KreatorSekcja>
@@ -1809,7 +2165,6 @@ export function KreatorStacjiSnNn() {
               placeholder={T.producentPlaceholder}
               pomoc={T.producentPomoc}
               komunikatBledu={bladRozdzielnicy ?? T.rozdzielnicaBlad}
-              blad={bladDlaPola('manufacturer_ref')}
               wymagane
               testid="mvd-kreator-stacja-producent"
             />
@@ -1829,6 +2184,7 @@ export function KreatorStacjiSnNn() {
               ]}
               pomoc={T.rodzinaPomoc}
               wylaczone={!dane.manufacturer_ref}
+              wymagane
               testid="mvd-kreator-stacja-rodzina"
             />
           </KreatorSiatka>
@@ -2057,8 +2413,10 @@ export function KreatorStacjiSnNn() {
                     onZmiana={(v) => zmienPole(pole.id, { bay_template_ref: v })}
                     opcje={opcjeSzablonowRoli(szablonyWyboru, pole.field_role).map((t) => ({
                       id: t.template_ref,
-                      etykieta: templateOptionLabel(t, pole.field_role),
+                      etykieta: etykietaKartyPola(t, pole.field_role),
                     }))}
+                    wymagane
+                    blad={bladDlaPola(`pole:${pole.id}:szablon`)}
                     status={bladRozdzielnicy ? 'error' : 'ready'}
                     placeholder={T.polePlaceholder}
                     pomoc={T.poleRoliPomoc}
@@ -2078,6 +2436,7 @@ export function KreatorStacjiSnNn() {
                     pomoc={`${T.aparatPolaPomoc} ${T.aparatPolaWarianty(wariantyAparatuRoli(pole.field_role))}`}
                     komunikatBledu={bladAparatow ?? T.aparatBlad}
                     wymagane
+                    blad={bladDlaPola(`pole:${pole.id}:aparat`)}
                     testid={`mvd-kreator-stacja-aparat-${index + 1}`}
                   />
                 </KreatorSiatka>
@@ -2151,7 +2510,7 @@ export function KreatorStacjiSnNn() {
               snVoltageKv={kontekst.snVoltageKv}
               szablonyPol={szablony}
               rodzina={selectedFamily}
-              producent={selectedManufacturer?.name ?? dane.manufacturer_ref}
+              producent={selectedManufacturer?.name ?? null}
               statusKonfiguracji={statusKonfiguracji}
               komunikatStatusu={bladPodgladu}
               testid="mvd-kreator-stacja-podglad"
@@ -2202,9 +2561,10 @@ export function KreatorStacjiSnNn() {
                         etykieta: `${t.name} · ${t.ratio_primary_a}/${t.ratio_secondary_a} A`,
                       }))}
                       status={bladPomiaru ? 'error' : 'ready'}
-                      placeholder={T.polePlaceholder}
+                      placeholder={T.wyposazenieBrak}
                       pomoc={T.pomiarCtPomoc}
                       komunikatBledu={bladPomiaru ?? T.pomiarKatalogBlad}
+                      blad={bladDlaPola(`pole:${pole.id}:ct`)}
                       testid={`mvd-kreator-stacja-ct-${index + 1}`}
                     />
                     <PoleKatalogu
@@ -2216,7 +2576,7 @@ export function KreatorStacjiSnNn() {
                         etykieta: `${t.name} · ${t.ratio_primary_v}/${t.ratio_secondary_v} V`,
                       }))}
                       status={bladPomiaru ? 'error' : 'ready'}
-                      placeholder={T.polePlaceholder}
+                      placeholder={T.wyposazenieBrak}
                       pomoc={T.pomiarVtPomoc}
                       komunikatBledu={bladPomiaru ?? T.pomiarKatalogBlad}
                       testid={`mvd-kreator-stacja-vt-${index + 1}`}
@@ -2234,16 +2594,17 @@ export function KreatorStacjiSnNn() {
                         };
                       })}
                       status={bladPomiaru ? 'error' : 'ready'}
-                      placeholder={T.polePlaceholder}
+                      placeholder={T.wyposazenieBrak}
                       pomoc={T.pomiarPrzekaznikPomoc}
                       komunikatBledu={bladPomiaru ?? T.pomiarKatalogBlad}
+                      blad={bladDlaPola(`pole:${pole.id}:przekaznik`)}
                       testid={`mvd-kreator-stacja-przekaznik-${index + 1}`}
                     />
                     <PoleWyboru
                       etykieta={T.pomiarRodzaj}
-                      wartosc={wpis?.relay_type ?? RODZAJE_ZABEZPIECZEN[0]}
+                      wartosc={wpis?.relay_type ?? ''}
                       onZmiana={(v) => zmienWyposazenie(pole.id, { relay_type: v })}
-                      opcje={T.pomiarRodzajOpcje}
+                      opcje={[{ id: '', etykieta: T.wybierz }, ...T.pomiarRodzajOpcje]}
                       testid={`mvd-kreator-stacja-rodzaj-zabezpieczenia-${index + 1}`}
                     />
                   </KreatorSiatka>
@@ -2356,23 +2717,28 @@ export function KreatorStacjiSnNn() {
                       </KreatorSiatka>
                       <PoleWyboru
                         etykieta={KRYTERIA_STRINGS.vtUzwojenie}
-                        wartosc={wpis.vt_uzwojenie}
+                        wartosc={wpis.vt_uzwojenie ?? ''}
                         onZmiana={(v) =>
                           zmienWyposazenie(pole.id, {
-                            vt_uzwojenie: v as 'POMIAROWE' | 'ZABEZPIECZENIOWE',
+                            vt_uzwojenie: (v || null) as 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null,
                           })
                         }
-                        opcje={KRYTERIA_STRINGS.vtUzwojenieOpcje.map((o) => ({
-                          id: o.id,
-                          etykieta: o.etykieta,
-                        }))}
+                        opcje={[
+                          { id: '', etykieta: T.wybierz },
+                          ...KRYTERIA_STRINGS.vtUzwojenieOpcje.map((o) => ({
+                            id: o.id,
+                            etykieta: o.etykieta,
+                          })),
+                        ]}
                         testid={`mvd-kreator-stacja-vt-uzwojenie-${index + 1}`}
                       />
                     </>
                   ) : null}
                   <SekcjaBilansuCtVt
                     ctRef={wpis?.ct_catalog_ref ?? null}
-                    vtRef={wpis?.vt_catalog_ref ?? null}
+                    // Kryterium VT tylko przy znanej kategorii uzwojenia (od niej zależy limit);
+                    // bez niej VT nie jest sprawdzany, a kategorii nie zgadujemy.
+                    vtRef={wpis?.vt_uzwojenie ? wpis.vt_catalog_ref ?? null : null}
                     obwodCt={{
                       dlugosc_m: wpis?.ct_dlugosc_m ?? null,
                       przekroj_mm2: wpis?.ct_przekroj_mm2 ?? null,
@@ -2385,7 +2751,7 @@ export function KreatorStacjiSnNn() {
                       moc_aparatow_va: wpis?.vt_moc_aparatow_va ?? null,
                       moc_stykow_va: wpis?.vt_moc_stykow_va ?? null,
                     }}
-                    uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE'}
+                    uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE' /* nieużywane bez vtRef */}
                     testidSufiks={String(index + 1)}
                   />
                   {/* KD-3 poz. 9: od dobranego przekaźnika wprost do jego krzywych —
@@ -2415,11 +2781,12 @@ export function KreatorStacjiSnNn() {
           <PoleLiczbowe
             etykieta={T.liczbaOdplywow}
             wartosc={dane.outgoing_feeders_nn_count}
-            onZmiana={(v) => zmien('outgoing_feeders_nn_count', v ?? 1)}
+            onZmiana={(v) => zmien('outgoing_feeders_nn_count', v)}
             krok={1}
             min={1}
             max={8}
             pomoc={T.liczbaOdplywowPomoc}
+            wymagane
             blad={bladDlaPola('outgoing_feeders_nn_count')}
             testid="mvd-kreator-stacja-odplywy"
           />
@@ -2433,14 +2800,15 @@ export function KreatorStacjiSnNn() {
                 onZmiana={(v) => zmien('station_auxiliary_kw', v)}
                 placeholder={T.potrzebyWlasneMocPlaceholder}
                 pomoc={T.potrzebyWlasneMocPomoc}
+                blad={bladDlaPola('station_auxiliary_kw')}
                 testid="mvd-kreator-stacja-pw-moc"
               />
               <PoleTekstowe
                 etykieta={T.potrzebyWlasneCosphi}
                 wartosc={dane.station_auxiliary_cosphi}
                 onZmiana={(v) => zmien('station_auxiliary_cosphi', v)}
-                placeholder="0,95"
                 pomoc={T.potrzebyWlasneCosphiPomoc}
+                blad={bladDlaPola('station_auxiliary_cosphi')}
                 testid="mvd-kreator-stacja-pw-cosphi"
               />
             </KreatorSiatka>
@@ -2489,17 +2857,19 @@ export function KreatorStacjiSnNn() {
           <KreatorInfo>{T.uziemienieOpis}</KreatorInfo>
           <PoleWyboru
             etykieta={T.uziemienieUklad}
-            wartosc={dane.uklad_sieci_nn}
-            opcje={T.uziemienieUkladOpcje}
-            onZmiana={(v) => zmien('uklad_sieci_nn', v as StacjaFormData['uklad_sieci_nn'])}
+            wartosc={dane.uklad_sieci_nn ?? ''}
+            opcje={[{ id: '', etykieta: T.wybierz }, ...T.uziemienieUkladOpcje]}
+            onZmiana={(v) => zmien('uklad_sieci_nn', (v || null) as StacjaFormData['uklad_sieci_nn'])}
+            wymagane
             pomoc={T.uziemienieUkladPomoc}
             testid="mvd-kreator-stacja-uklad-nn"
           />
           <PoleWyboru
             etykieta={T.uziemieniePunkt}
-            wartosc={dane.neutral_point}
-            opcje={T.uziemieniePunktOpcje}
-            onZmiana={(v) => zmien('neutral_point', v as StacjaFormData['neutral_point'])}
+            wartosc={dane.neutral_point ?? ''}
+            opcje={[{ id: '', etykieta: T.wybierz }, ...T.uziemieniePunktOpcje]}
+            onZmiana={(v) => zmien('neutral_point', (v || null) as StacjaFormData['neutral_point'])}
+            wymagane
             pomoc={T.uziemieniePunktPomoc}
             testid="mvd-kreator-stacja-punkt-neutralny"
           />
@@ -2535,6 +2905,7 @@ export function KreatorStacjiSnNn() {
               onZmiana={(v) => zmien('insert_at_m', v)}
               placeholder={T.insertAtPlaceholder}
               pomoc={T.insertAtPomoc}
+              blad={bladDlaPola('insert_at_m')}
               testid="mvd-kreator-stacja-insert-at"
             />
           ) : null}
@@ -2542,8 +2913,8 @@ export function KreatorStacjiSnNn() {
             <button
               type="button"
               className="mvd-kreator-btn mvd-kreator-btn--glowna"
-              disabled={!kontekstOk || !activeCaseId || podgladStan === 'loading'}
-              onClick={() => void przeliczPodglad()}
+              disabled={podgladStan === 'loading'}
+              onClick={onPrzeliczPodglad}
               data-testid="mvd-kreator-stacja-podglad-przelicz"
             >
               {T.podgladOdswiez}
@@ -2566,7 +2937,6 @@ export function KreatorStacjiSnNn() {
               <button
                 type="button"
                 className="mvd-kreator-btn"
-                disabled={!nazwaWlasnegoSzablonu.trim()}
                 onClick={() => void zapiszJakoSzablon()}
                 data-testid="mvd-kreator-stacja-szablon-zapisz"
               >
@@ -2593,8 +2963,8 @@ export function KreatorStacjiSnNn() {
           ) : null}
 
           {podglad ? (
+            <div data-testid="mvd-kreator-stacja-podglad-wynik">
             <KreatorSiatka kolumny={2}>
-              <RzadWartosci etykieta={T.podgladStacja} wartosc={podglad.stationRef ?? '—'} />
               <RzadWartosci
                 etykieta={T.podgladPodzial}
                 wartosc={
@@ -2634,6 +3004,7 @@ export function KreatorStacjiSnNn() {
                 }
               />
             </KreatorSiatka>
+            </div>
           ) : null}
         </KreatorSekcja>
       ) : null}
@@ -2643,20 +3014,20 @@ export function KreatorStacjiSnNn() {
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.podsumTyp} wartosc={typLabel} />
-            <RzadWartosci etykieta={T.podsumUmiejscowienie} wartosc={kontekstOk ? umiejscowienieLabel : 'Do wskazania'} />
+            <RzadWartosci etykieta={T.podsumUmiejscowienie} wartosc={kontekstOk ? umiejscowienieLabel : '—'} />
             <RzadWartosci etykieta={T.podsumTransformator} wartosc={fmtMva(params?.rated_power_mva)} />
             <RzadWartosci
               etykieta={T.podsumRozdzielnica}
               wartosc={
                 rozdzielnicaKompletna
-                  ? `${selectedManufacturer?.name ?? dane.manufacturer_ref} · ${snFields.length} pól`
-                  : 'Do doboru'
+                  ? `${selectedManufacturer?.name ?? ''} · ${snFields.length} pól`
+                  : '—'
               }
             />
             <RzadWartosci etykieta={T.podsumNnKonfiguracja} wartosc={konfiguracjaNnLabel} />
             <RzadWartosci
               etykieta={T.podsumNn}
-              wartosc={`${nnVoltageLabel} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`}
+              wartosc={`${nnVoltageLabel} · ${liczbaOdplywowLabel} odpł.`}
             />
             {isZrodlo && zrodloTeksty ? (
               <RzadWartosci
@@ -2693,21 +3064,6 @@ export function KreatorStacjiSnNn() {
             testid="mvd-kreator-stacja-nastepny-krok"
           />
 
-          <KreatorSekcja tytul={T.szybkaTytul} testid="mvd-kreator-stacja-szybka">
-            <KreatorInfo>{T.szybkaOpis}</KreatorInfo>
-            <button
-              type="button"
-              className="mvd-kreator-btn mvd-kreator-btn--glowna"
-              disabled={szybkaZablokowana}
-              onClick={onZapiszRekomendowana}
-              data-testid="mvd-kreator-stacja-szybka-zapisz"
-            >
-              {T.szybkaZapisz}
-            </button>
-            {szybkaZablokowana ? (
-              <KreatorInfo testid="mvd-kreator-stacja-szybka-niedostepna">{T.szybkaNiedostepna}</KreatorInfo>
-            ) : null}
-          </KreatorSekcja>
         </KreatorSekcja>
       ) : null}
     </KreatorRama>

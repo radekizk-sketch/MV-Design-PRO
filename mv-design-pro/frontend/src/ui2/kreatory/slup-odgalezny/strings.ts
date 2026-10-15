@@ -19,7 +19,8 @@ export const SLUP_STRINGS = {
   nazwa: 'Nazwa słupa',
   nazwaPlaceholder: 'np. Słup odg. linia A',
   polozenie: 'Położenie na odcinku',
-  polozeniePomoc: 'Ułamek długości odcinka (0–1): 0,5 = w połowie. Dzieli odcinek na dwie sekcje.',
+  polozeniePomoc: 'Ułamek długości odcinka (0–1) — dzieli odcinek na dwie sekcje.',
+  odcinekDoWskazania: 'Do wskazania na schemacie',
 
   paramLacznik: 'Łącznik odgałęzienia',
   paramPrad: 'Prąd znamionowy łącznika',
@@ -46,12 +47,8 @@ export const SLUP_STRINGS = {
   licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
   zapisz: 'Zapisz słup SN',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem słupa.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać słup rozgałęźny.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog słupów rozgałęźnych ładuje się asynchronicznie; zapis bez niego
-  // byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu słupów rozgałęźnych — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis słupa unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać słupa rozgałęźnego SN.',
 
   // Panel teorii (V12K-066)
   teoriaTytul: 'Teoria: słup rozgałęźny i odczep linii napowietrznej',

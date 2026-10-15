@@ -28,6 +28,8 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  pierwszyBrak,
+  useProwadzenie,
   useSelekcjaPoOperacji,
   type WierszGotowosci,
 } from '../rama';
@@ -107,6 +109,7 @@ export function KreatorEdycjiParametrow() {
   ]);
   const [powod, setPowod] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const prowadzenie = useProwadzenie();
   // Brak słownika z backendu = pole tekstowe (backend i tak waliduje E-W5-02).
   const grupySlownik = useGrupyPolaczen();
   const grupyPolaczen = useMemo<readonly OpcjaSlownika[] | null>(
@@ -154,7 +157,6 @@ export function KreatorEdycjiParametrow() {
   const liczbaZmianNcRfg = Object.keys(zmianyNcRfg).length;
 
   const brakElementu = !elementRef;
-  const kompletne = Boolean(elementRef && (wypelnione.length > 0 || liczbaZmianNcRfg > 0));
 
   const dodajWiersz = useCallback(() => {
     setWiersze((p) => [...p, { klucz: '', wartosc: '' }]);
@@ -167,22 +169,19 @@ export function KreatorEdycjiParametrow() {
   }, []);
 
   const onZapisz = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    // Konflikt danych modułu (widoczny od razu przy polach sekcji), potem braki w kolejności
+    // pracy — jedno wskazanie przy próbie zapisu (kontrakt prowadzenia projektanta).
+    const brak = pierwszyBrak([
+      !elementRef && { komunikat: T.brakElementuWalid },
+      wynikDanychModulu?.stan === 'blad' && { komunikat: T.bledneDaneModulu, pole: 'mvd-kreator-edycja-ncrfg' },
+      wypelnione.length === 0 && liczbaZmianNcRfg === 0 && { komunikat: T.brakParametrow, pole: 'mvd-kreator-edycja-klucz-0' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!elementRef) {
-      setBladGlobalny(T.brakElementuWalid);
-      return;
-    }
-    if (wynikDanychModulu?.stan === 'blad') {
-      setBladGlobalny(T.bledneDaneModulu);
-      return;
-    }
-    if (wypelnione.length === 0 && liczbaZmianNcRfg === 0) {
-      setBladGlobalny(T.brakParametrow);
-      return;
-    }
+    prowadzenie.zgas();
     const parameters = wypelnione.reduce<Record<string, unknown>>((acc, w) => {
       acc[w.klucz.trim()] = parsujWartosc(w.wartosc);
       return acc;
@@ -206,16 +205,18 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, prowadzenie, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
+    { etykieta: T.wierszElement, stan: elementRef ? 'ustalone' : 'do_wyboru', wartosc: nazwaElementu || '' },
     {
       etykieta: T.wierszParametry,
-      stan: wypelnione.length + liczbaZmianNcRfg > 0 ? 'kompletne' : 'brak',
-      wartosc: `${wypelnione.length + liczbaZmianNcRfg} do zapisu`,
+      stan: wynikDanychModulu?.stan === 'blad'
+        ? 'konflikt'
+        : wypelnione.length + liczbaZmianNcRfg > 0 ? 'ustalone' : 'do_wyboru',
+      wartosc: wypelnione.length + liczbaZmianNcRfg > 0 ? `${wypelnione.length + liczbaZmianNcRfg} do zapisu` : '',
     },
-    { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
+    { etykieta: T.wierszPowod, stan: powod.trim() ? 'ustalone' : 'do_wyboru', wartosc: powod.trim() ? 'Podane' : T.powodOpcjonalny },
   ];
 
   const aside = (
@@ -234,8 +235,8 @@ export function KreatorEdycjiParametrow() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-edycja-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, testid: 'mvd-kreator-edycja-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-edycja-anuluj' }}
       testid="mvd-kreator-edycja"
     >

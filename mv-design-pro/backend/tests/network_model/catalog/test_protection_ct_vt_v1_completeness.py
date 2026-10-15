@@ -108,6 +108,10 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "EM_ETANGO_1250_V0",
         "EM_ETANGO_1600_V0",
         "EM_ETANGO_2000_V0",
+        # Karta PROWADZENIE-KREATORY: pozycja kanoniczna przekaźnika z opcji szablonów stacji
+        # (rekord biblioteki `EM_E2TANGO_600`); bez niej operacja stacyjna nie miała czego
+        # związać i stacja powstawała bez przypisania zabezpieczenia.
+        "EM_E2TANGO_600",
     }
 
 

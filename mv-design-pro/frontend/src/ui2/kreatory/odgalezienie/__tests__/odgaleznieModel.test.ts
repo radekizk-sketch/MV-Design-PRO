@@ -23,10 +23,14 @@ function kontekst(over: Partial<KontekstOdgalezienia> = {}): KontekstOdgalezieni
 }
 
 function dane(over: Partial<OdgaleznieFormData> = {}): OdgaleznieFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'cab-1', ...over };
+  return { ...DANE_DOMYSLNE, catalog_ref: 'cab-1', dlugosc_km: 1, ...over };
 }
 
 describe('odgaleznieModel — walidacja', () => {
+  it('stan startowy nie zgaduje długości odgałęzienia', () => {
+    expect(DANE_DOMYSLNE.dlugosc_km).toBeNull();
+    expect(walidujFormularz({ ...DANE_DOMYSLNE }).map((e) => e.field)).toEqual(['dlugosc_km', 'catalog_ref']);
+  });
   it('wymaga długości > 0 i katalogu', () => {
     expect(walidujFormularz(dane({ dlugosc_km: 0 })).some((e) => e.field === 'dlugosc_km')).toBe(true);
     expect(walidujFormularz(dane({ dlugosc_km: null })).some((e) => e.field === 'dlugosc_km')).toBe(true);

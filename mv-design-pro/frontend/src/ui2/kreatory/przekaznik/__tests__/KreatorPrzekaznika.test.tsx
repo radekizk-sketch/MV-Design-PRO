@@ -124,6 +124,8 @@ describe('KreatorPrzekaznika — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: 'relay-x' } });
     render(<KreatorPrzekaznika />);
     await pickCatalog();
+    // Rodzina ochrony bez domyślnej wartości — projektant wybiera jawnie.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-przekaznik-rodzina'), 'NADPRADOWY');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
 
@@ -159,20 +161,39 @@ describe('KreatorPrzekaznika — realna ścieżka', () => {
     });
   });
 
-  it('uczciwy stan zerowy: bez typu katalogowego zapis zablokowany', async () => {
+  // Intencja dawnych testów „zapis zablokowany”: operacja nie rusza bez rodziny, typu i
+  // przypadku — w nowym kanonie przez jedno wskazanie przy próbie zapisu.
+  it('świeży kreator: bez rodziny domyślnej, zero alertów; zapis wskazuje rodzinę, potem typ', async () => {
     render(<KreatorPrzekaznika />);
     await waitFor(() => {
       expect(screen.getByTestId('mvd-kreator-przekaznik-katalog')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();
+    expect((screen.getByTestId('mvd-kreator-przekaznik-rodzina') as HTMLSelectElement).value).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-przekaznik-rodzina')).toHaveFocus();
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wybierz rodzinę ochrony — /);
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-przekaznik-rodzina'), 'ROZNICOWY');
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-przekaznik-katalog')).toHaveFocus();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('jedyne pole SN modelu stoi w polu wyboru i daje się zmienić', async () => {
+    render(<KreatorPrzekaznika />);
+    await pickCatalog();
+    expect(screen.getByTestId('mvd-kreator-przekaznik-bay')).toHaveValue('bay-1');
+    expect(screen.getByTestId('mvd-kreator-przekaznik-bay')).toBeEnabled();
+    expect(screen.queryByText(/przyjęto/)).toBeNull();
+  });
+
+  it('bez aktywnego przypadku: zapis wskazuje przypadek', async () => {
     appState.activeCaseId = null;
     render(<KreatorPrzekaznika />);
     await pickCatalog();
-    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-przekaznik-rodzina'), 'NADPRADOWY');
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/aktywny przypadek/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });
@@ -197,7 +218,7 @@ describe('KreatorPrzekaznika — kotwica wyłącznika liniowego', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     selectElementMock.mockReset();
-    activeForm = { op: 'add_relay', context: { kotwica: 'wylacznik', breaker_ref: 'q-1' } };
+    activeForm = { op: 'add_relay', context: { kotwica: 'wylacznik', breaker_ref: 'q-1', relay_type: 'NADPRADOWY' } };
   });
 
   afterEach(() => cleanup());
@@ -209,6 +230,9 @@ describe('KreatorPrzekaznika — kotwica wyłącznika liniowego', () => {
     expect(screen.getByTestId('mvd-kreator-przekaznik-pole')).toHaveTextContent('Wyłącznik odcinka 1');
     expect(screen.queryByTestId('mvd-kreator-przekaznik-bay')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-kreator-przekaznik-brak-ct')).not.toBeInTheDocument();
+    // Rodzina z kontekstu ekranu zabezpieczeń stoi w polu jak zwykła, edytowalna wartość.
+    expect(screen.getByTestId('mvd-kreator-przekaznik-rodzina')).toHaveValue('NADPRADOWY');
+    expect(screen.getByTestId('mvd-kreator-przekaznik-rodzina')).toBeEnabled();
     await pickCatalog();
     await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
@@ -222,19 +246,24 @@ describe('KreatorPrzekaznika — kotwica wyłącznika liniowego', () => {
   it.each([
     ['brak przekładnika', [] as ReturnType<typeof ct>[]],
     ['przekładnik innego wyłącznika', [ct('q-inny')]],
-  ])('%s — ostrzeżenie o braku CT (przypisanie dozwolone, brak nazwany)', async (_opis, pomiary) => {
+  ])('%s — informacja o CT do dodania (neutralnie, bez alertu; przypisanie dozwolone)', async (_opis, pomiary) => {
     snapshotState.snapshot = { branches: [WYLACZNIK], measurements: pomiary };
     render(<KreatorPrzekaznika />);
     expect(screen.getByTestId('mvd-kreator-przekaznik-brak-ct')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      screen.getByTestId('mvd-kreator-przekaznik-gotowosc').querySelector('[data-stan="konflikt"]'),
+    ).toBeNull();
     await pickCatalog();
     expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeEnabled();
   });
 
-  it('wyłącznika nie ma w modelu — zapis zablokowany, operacja nie wychodzi', async () => {
+  it('wyłącznika nie ma w modelu — próba zapisu nazywa brak kotwicy, operacja nie wychodzi', async () => {
     snapshotState.snapshot = { branches: [], measurements: [] };
     render(<KreatorPrzekaznika />);
     await pickCatalog();
-    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Wskazanego wyłącznika liniowego nie ma w modelu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

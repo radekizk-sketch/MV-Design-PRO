@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 # Karta NAPRAWA-A (§0.1): dane żyły powrotnej PE/PEN dla WSZYSTKICH 17 pozycji
 # kab_nn_* — brakowały od P0.2 (`return_conductor_r_ohm_per_km_20c`/
 # `return_conductor_x_ohm_per_km` oba `None` dla każdej pozycji), blokując
@@ -2105,6 +2107,86 @@ def get_all_protection_device_types() -> list[dict]:
                 ),
             },
         },
+        *_przekazniki_opcji_szablonow_stacji(_device_meta),
+    ]
+
+
+#: Przekaźniki wskazywane przez opcje zabezpieczeń szablonów stacji
+#: (``application/station_templates/_choices.py``). Przejście scenariusza „stacja 630 kVA”:
+#: szablon proponował przekaźnik, którego kanon nie znał, więc operacja ``add_relay``
+#: nie miała czego związać i stacja powstawała bez przypisań zabezpieczeń. Każda
+#: opcja szablonu ma tu pozycję kanoniczną (test przypina zamknięcie zbioru).
+#: Krotka: (id = wpis biblioteki analitycznej ``devices_v0.json``, nazwa, producent, seria,
+#: prąd znamionowy [A], źródło). Producent, seria, prąd znamionowy, źródło i status
+#: weryfikacji ODZWIERCIEDLAJĄ metadane rekordu biblioteki (test parytetu w
+#: ``tests/enm/test_przekazniki_szablonow_stacji.py``) — pozycja kanoniczna nie
+#: deklaruje niczego ponad to, co mówi rekord, z którego bierze funkcje i zakresy.
+_PRZEKAZNIKI_SZABLONOW: tuple[tuple[str, str, str, str, float, str], ...] = (
+    (
+        "EM_E2TANGO_600",
+        "Przekaźnik Elektrometal e2TANGO-600",
+        "ELEKTROMETAL",
+        "e2TANGO",
+        600.0,
+        "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
+    ),
+    (
+        "SIEMENS_7SJ82",
+        "Przekaźnik Siemens SIPROTEC 7SJ82",
+        "SIEMENS",
+        "SIPROTEC",
+        400.0,
+        "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
+    ),
+    (
+        "ABB_REF615",
+        "Przekaźnik ABB Relion REF615",
+        "ABB",
+        "Relion 615",
+        400.0,
+        "ABB Relion 615/620/630/650/670 series — technical manuals",
+    ),
+    (
+        "SCHNEIDER_P3M30",
+        "Przekaźnik Schneider Easergy P3M30",
+        "SCHNEIDER",
+        "Easergy P3",
+        500.0,
+        "Schneider Easergy P3 / P5 series — user manuals",
+    ),
+)
+
+
+def _przekazniki_opcji_szablonow_stacji(device_meta: Callable[..., dict]) -> list[dict]:
+    """Pozycje kanoniczne przekaźników z opcji szablonów stacji (rekordy producenta).
+
+    Status katalogu ``ANALITYCZNY_V1`` — jak pozostałe rekordy producenta w tej przestrzeni
+    (``REFERENCYJNY_V1`` jest tu zarezerwowany dla profili bez marki); status weryfikacji
+    ``CZESCIOWO_ZWERYFIKOWANY`` przepisany z rekordu biblioteki.
+    """
+    return [
+        {
+            "id": ident,
+            "name_pl": nazwa,
+            "params": {
+                "vendor": producent,
+                "series": seria,
+                "revision": "v1",
+                "analytical_library_ref": ident,
+                "rated_current_a": prad_a,
+                "notes_pl": "Funkcje i zakresy nastaw z rekordu biblioteki analitycznej.",
+                **device_meta(
+                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
+                    source_reference=zrodlo,
+                    catalog_status="ANALITYCZNY_V1",
+                    verification_note=(
+                        "Zakresy zgodne z dokumentacją techniczną producenta; "
+                        "weryfikacja częściowa (rekord biblioteki analitycznej)."
+                    ),
+                ),
+            },
+        }
+        for ident, nazwa, producent, seria, prad_a, zrodlo in _PRZEKAZNIKI_SZABLONOW
     ]
 
 

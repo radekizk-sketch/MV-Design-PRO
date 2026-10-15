@@ -28,9 +28,15 @@ export interface BladPola {
   message: string;
 }
 
+/**
+ * Stan startowy. Długość NIE ma wartości domyślnej (dawniej 1 km): wpływa na impedancję,
+ * spadek napięcia i prąd zwarciowy, więc pochodzi wyłącznie od projektanta (kontrakt
+ * prowadzenia projektanta, reguła 4). Rodzaj odcinka startowo „kabel” to filtr listy
+ * katalogowej (parametry fizyczne niesie wybrana pozycja katalogu), nie wartość obliczeniowa.
+ */
 export const DANE_DOMYSLNE: OdgaleznieFormData = {
   segment_type: 'cable',
-  dlugosc_km: 1,
+  dlugosc_km: null,
   catalog_ref: null,
   screen_bonding: '',
 };
@@ -52,15 +58,37 @@ export function maZrodlo(kontekst: KontekstOdgalezienia): boolean {
   return kontekst.from_ref.trim().length > 0;
 }
 
-export function walidujFormularz(data: OdgaleznieFormData): BladPola[] {
+/** KONFLIKT_TECHNICZNY — widoczny od razu przy polu: długość niedodatnia. */
+export function konfliktyFormularza(data: OdgaleznieFormData): BladPola[] {
+  if (data.dlugosc_km !== null && !(data.dlugosc_km > 0)) {
+    return [{ field: 'dlugosc_km', message: 'Długość odgałęzienia musi być większa od zera.' }];
+  }
+  return [];
+}
+
+/** BRAK_DO_OPERACJI — w kolejności pracy; pokazywany dopiero przy zapisie. */
+export function brakiFormularza(data: OdgaleznieFormData): BladPola[] {
   const errors: BladPola[] = [];
-  if (data.dlugosc_km === null || !(data.dlugosc_km > 0)) {
-    errors.push({ field: 'dlugosc_km', message: 'Długość odgałęzienia musi być większa od zera.' });
+  if (data.dlugosc_km === null) {
+    errors.push({
+      field: 'dlugosc_km',
+      message:
+        'Podaj długość odgałęzienia — od niej zależą impedancja, spadek napięcia i prąd zwarciowy na końcu.',
+    });
   }
   if (!data.catalog_ref?.trim()) {
-    errors.push({ field: 'catalog_ref', message: 'Wybierz typ odcinka odgałęzienia z katalogu.' });
+    errors.push({
+      field: 'catalog_ref',
+      message:
+        'Wybierz typ odcinka z katalogu — R, X i obciążalność odgałęzienia pochodzą z pozycji katalogowej.',
+    });
   }
   return errors;
+}
+
+/** Komplet kontroli przed zapisem: konflikty, potem braki. */
+export function walidujFormularz(data: OdgaleznieFormData): BladPola[] {
+  return [...konfliktyFormularza(data), ...brakiFormularza(data)];
 }
 
 /** Efektywny rodzaj odcinka — wymuszony przez typ źródła albo wybrany przez użytkownika. */

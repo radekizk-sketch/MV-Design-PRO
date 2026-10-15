@@ -27,7 +27,6 @@ export interface ZrodloDyspozycyjneFormData {
   new_field_voltage_nn_kv: number | null;
   new_field_name: string;
   // Parametry źródła
-  catalog_item_id: string | null;
   rated_power_kw: number | null;
   // Agregat
   rated_voltage_kv: number | null;
@@ -55,7 +54,6 @@ export const DANE_DOMYSLNE: ZrodloDyspozycyjneFormData = {
   new_field_switch_catalog_ref: null,
   new_field_voltage_nn_kv: null,
   new_field_name: '',
-  catalog_item_id: null,
   rated_power_kw: null,
   rated_voltage_kv: null,
   power_factor: null,
@@ -77,50 +75,99 @@ export function rodzajZOperacji(op: string | undefined): DispatchableKind {
   return op === 'add_ups_nn' ? 'UPS' : 'GENSET';
 }
 
-export function walidujFormularz(data: ZrodloDyspozycyjneFormData, kind: DispatchableKind): BladPola[] {
+/**
+ * KONFLIKT_TECHNICZNY — wartości podane, ale fizycznie niemożliwe. Widoczne od razu przy
+ * polu (kreator pokazuje je w trakcie pracy, nie dopiero przy zapisie).
+ */
+export function konfliktyFormularza(data: ZrodloDyspozycyjneFormData, kind: DispatchableKind): BladPola[] {
+  const errors: BladPola[] = [];
+  if (data.placement === 'NEW_FIELD' && data.new_field_voltage_nn_kv !== null && !(data.new_field_voltage_nn_kv > 0)) {
+    errors.push({ field: 'new_field_voltage_nn_kv', message: 'Napięcie nN pola musi być dodatnie.' });
+  }
+  if (data.rated_power_kw !== null && !(data.rated_power_kw > 0)) {
+    errors.push({ field: 'rated_power_kw', message: 'Moc znamionowa musi być dodatnia.' });
+  }
+  if (kind === 'GENSET') {
+    if (data.rated_voltage_kv !== null && !(data.rated_voltage_kv > 0)) {
+      errors.push({ field: 'rated_voltage_kv', message: 'Napięcie znamionowe musi być dodatnie.' });
+    }
+    if (data.power_factor !== null && !(0 < data.power_factor && data.power_factor <= 1)) {
+      errors.push({ field: 'power_factor', message: 'Współczynnik mocy musi leżeć w przedziale (0; 1].' });
+    }
+  } else if (data.backup_time_min !== null && !(data.backup_time_min > 0)) {
+    errors.push({ field: 'backup_time_min', message: 'Czas podtrzymania musi być dodatni.' });
+  }
+  return errors;
+}
+
+/**
+ * BRAK_DO_OPERACJI — parametry niepodane, w kolejności pracy projektanta w kreatorze.
+ * Komunikat „co — po co”; kreator pokazuje tylko pierwszy, dopiero przy próbie zapisu.
+ * Katalog źródła nie jest wymagany: kontrakt `GensetSpec`/`UPSSpec` ma `catalog_item_id`
+ * opcjonalny, a repozytorium nie ma katalogu agregatów ani UPS (dawny wybór pokazywał
+ * katalog zasilań systemowych GPZ — inna dziedzina).
+ */
+export function brakiFormularza(data: ZrodloDyspozycyjneFormData, kind: DispatchableKind): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.bus_nn_ref.trim()) {
-    errors.push({ field: 'bus_nn_ref', message: 'Wybierz szynę nN przyłączenia źródła.' });
+    errors.push({ field: 'bus_nn_ref', message: 'Wybierz szynę nN przyłączenia — do niej trafi źródło.' });
   }
   if (data.placement === 'EXISTING_FIELD' && !data.existing_field_ref) {
-    errors.push({ field: 'existing_field_ref', message: 'Wybór pola przyłączeniowego jest wymagany.' });
+    errors.push({
+      field: 'existing_field_ref',
+      message: 'Wybierz istniejące pole źródłowe — przez nie źródło zasili szynę nN.',
+    });
   }
   if (data.placement === 'NEW_FIELD') {
     if (!data.new_field_switch_kind) {
-      errors.push({ field: 'new_field_switch_kind', message: 'Rodzaj aparatu pola jest wymagany.' });
+      errors.push({
+        field: 'new_field_switch_kind',
+        message: 'Wybierz aparat pola przyłączeniowego — odłącza źródło od szyny nN.',
+      });
     }
     if (!data.new_field_switch_state) {
-      errors.push({ field: 'new_field_switch_state', message: 'Stan normalny aparatu jest wymagany.' });
+      errors.push({
+        field: 'new_field_switch_state',
+        message: 'Wybierz stan normalny aparatu pola — decyduje, czy źródło pracuje w układzie normalnym.',
+      });
     }
-    if (data.new_field_voltage_nn_kv === null || data.new_field_voltage_nn_kv <= 0) {
-      errors.push({ field: 'new_field_voltage_nn_kv', message: 'Napięcie nN (kV) musi być > 0.' });
+    if (data.new_field_voltage_nn_kv === null) {
+      errors.push({ field: 'new_field_voltage_nn_kv', message: 'Podaj napięcie nN pola — poziom napięcia przyłączenia.' });
     }
   }
-  if (!data.catalog_item_id) {
-    errors.push({ field: 'catalog_item_id', message: kind === 'UPS' ? 'Katalog UPS jest wymagany.' : 'Katalog agregatu jest wymagany.' });
-  }
-  if (data.rated_power_kw === null || data.rated_power_kw <= 0) {
-    errors.push({ field: 'rated_power_kw', message: 'Moc znamionowa (kW) musi być > 0.' });
+  if (data.rated_power_kw === null) {
+    errors.push({
+      field: 'rated_power_kw',
+      message: 'Podaj moc znamionową źródła — wchodzi do bilansu mocy i rozpływu.',
+    });
   }
   if (kind === 'GENSET') {
-    if (data.rated_voltage_kv === null || data.rated_voltage_kv <= 0) {
-      errors.push({ field: 'rated_voltage_kv', message: 'Napięcie znamionowe (kV) musi być > 0.' });
+    if (data.rated_voltage_kv === null) {
+      errors.push({ field: 'rated_voltage_kv', message: 'Podaj napięcie znamionowe agregatu — wyznacza jego tabliczkę zwarciową.' });
     }
-    if (data.power_factor === null || data.power_factor <= 0 || data.power_factor > 1) {
-      errors.push({ field: 'power_factor', message: 'Współczynnik mocy musi być w zakresie (0, 1].' });
+    if (data.power_factor === null) {
+      errors.push({
+        field: 'power_factor',
+        message: 'Podaj współczynnik mocy agregatu — z mocą czynną wyznacza moc pozorną maszyny.',
+      });
     }
     if (!data.genset_operation_mode) {
-      errors.push({ field: 'genset_operation_mode', message: 'Tryb pracy agregatu jest wymagany.' });
+      errors.push({ field: 'genset_operation_mode', message: 'Wybierz tryb pracy agregatu — określa jego udział w układzie.' });
     }
   } else {
-    if (data.backup_time_min === null || data.backup_time_min <= 0) {
-      errors.push({ field: 'backup_time_min', message: 'Czas podtrzymania (min) musi być > 0.' });
+    if (data.backup_time_min === null) {
+      errors.push({ field: 'backup_time_min', message: 'Podaj czas podtrzymania UPS — czas zasilania odbiorów z akumulatorów.' });
     }
     if (!data.ups_operation_mode) {
-      errors.push({ field: 'ups_operation_mode', message: 'Tryb pracy UPS jest wymagany.' });
+      errors.push({ field: 'ups_operation_mode', message: 'Wybierz tryb pracy UPS — określa sposób zasilania odbiorów.' });
     }
   }
   return errors;
+}
+
+/** Konflikty przed brakami: najpierw to, co podane źle, potem to, czego brak. */
+export function walidujFormularz(data: ZrodloDyspozycyjneFormData, kind: DispatchableKind): BladPola[] {
+  return [...konfliktyFormularza(data, kind), ...brakiFormularza(data, kind)];
 }
 
 /** Buduje specyfikację nowego pola źródłowego (tylko placement=NEW_FIELD). */
@@ -165,7 +212,6 @@ export function zbudujPayload(
     return {
       ...wspolne,
       genset_spec: {
-        catalog_item_id: data.catalog_item_id,
         rated_power_kw: data.rated_power_kw,
         rated_voltage_kv: data.rated_voltage_kv,
         power_factor: data.power_factor,
@@ -178,7 +224,6 @@ export function zbudujPayload(
   return {
     ...wspolne,
     ups_spec: {
-      catalog_item_id: data.catalog_item_id,
       rated_power_kw: data.rated_power_kw,
       backup_time_min: data.backup_time_min,
       operation_mode: data.ups_operation_mode,

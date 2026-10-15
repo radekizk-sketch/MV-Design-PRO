@@ -138,10 +138,15 @@ describe('KreatorPrzepieciaNaPole — realna ścieżka', () => {
     expect(closeFormMock).not.toHaveBeenCalled();
   });
 
-  it('bez elementu na szynie stacji zapis jest zablokowany', () => {
+  // Intencja dawnego „zapis zablokowany”: bez elementu na szynie stacji operacja nie rusza —
+  // w nowym kanonie przez jedno wskazanie przy próbie zapisu (bez wyszarzenia i bez alertu w toku).
+  it('bez elementu na szynie stacji: zero alertów, próba zapisu nazywa brak, operacja nie rusza', async () => {
     context = { element_ref: 'nieistniejacy' };
     render(<KreatorPrzepieciaNaPole />);
     expect(screen.getByTestId('mvd-kreator-przepiecie-brak')).toBeTruthy();
-    expect((screen.getByTestId('mvd-kreator-przepiecie-zapisz') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przepiecie-zapisz'));
+    expect(screen.getByTestId('mvd-kreator-wskazanie').textContent).toMatch(/^Zaznacz na schemacie element/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

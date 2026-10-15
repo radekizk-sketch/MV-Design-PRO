@@ -85,6 +85,32 @@ FAMILY_APPARATUS_FOR_TEMPLATE_KIND: dict[str, str] = {
     if apparatus not in APARATY_POZA_CELKA
 }
 
+#: Trzecia nomenklatura rodzajów w repo — ``MVApparatusType.device_kind`` pozycji
+#: katalogu APARAT_SN — rzutowana na TEN SAM słownik rodzin (wyjście jak wyżej).
+#: Kreator stacji zawęża nią ofertę aparatów wybranej rodziny rozdzielnicy (rodzaj
+#: aparatu musi należeć do ``SwitchgearFamily.allowed_apparatus_kinds``) i sprawdza
+#: zgodność karty pola z aparatem. ``None`` = rodzaj spoza słownika celek: reklozer
+#: to napowietrzny łącznik słupowy z automatyką SPZ, nie aparat celki rozdzielnicy,
+#: więc nie wchodzi do oferty żadnej rodziny. Klucze są ZAMKNIĘTE: każdy
+#: ``device_kind`` katalogu ma wpis (test przypina kompletność).
+FAMILY_APPARATUS_FOR_CATALOG_DEVICE_KIND: dict[str, str | None] = {
+    "WYLACZNIK": "circuit_breaker",
+    "ROZLACZNIK": "switch_disconnector",
+    "ODLACZNIK": "switch_disconnector",
+    "ROZLACZNIK_BEZPIECZNIKOWY": "fuse_set",
+    "UZIEMNIK": "earthing_switch",
+    "REKLOZER": None,
+    "APARAT_SN": None,
+}
+
+#: Rodzaje aparatów (słownik rodzin), które są KOMPONENTEM WYMIENNYM między rodzinami
+#: rozdzielnic. Wkładki bezpiecznikowe SN mają wymiary i charakterystyki znormalizowane
+#: (IEC 60282-1, wymiary wg DIN 43625), więc rozłącznik bezpiecznikowy celki dowolnego
+#: producenta przyjmuje wkładkę innego wytwórcy (np. ETI VV w ZPUE Rotoblok). Wyłącznik,
+#: rozłącznik i uziemnik są częścią wyrobu producenta rozdzielnicy i nie przechodzą
+#: między rodzinami — dla nich oferta rodziny wymaga zgodności producenta.
+FAMILY_APPARATUS_KINDS_INTERCHANGEABLE: frozenset[str] = frozenset({"fuse_set"})
+
 #: Strona elektryczna aparatu wynikająca z jego umiejscowienia w torze pola.
 #: Wyjątek ma pierwszeństwo i jest jawny: transformator pola stoi po stronie
 #: transformatorowej niezależnie od tego, że w szablonie jest DOWNSTREAM.

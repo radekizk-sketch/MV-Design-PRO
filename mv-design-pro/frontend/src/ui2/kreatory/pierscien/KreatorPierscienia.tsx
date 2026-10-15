@@ -25,19 +25,25 @@ import {
   PoleLiczbowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   fmtDlugosc,
+  konfliktyDomkniecia,
   maZaciski,
   walidujDomkniecie,
   walidujNop,
   zbudujPayloadDomkniecie,
   zbudujPayloadNop,
-  type BladPola,
   type KandydatNop,
   type KontekstPierscienia,
   type PierscienFormData,
@@ -50,6 +56,13 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'domkniecie', tytul: T.krokDomkniecie },
   { id: 'nop', tytul: T.krokNop },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  catalog_ref: { krok: 'domkniecie', pole: 'mvd-kreator-pierscien-katalog' },
+  dlugosc_m: { krok: 'domkniecie', pole: 'mvd-kreator-pierscien-dlugosc' },
+  nop_ref: { krok: 'nop', pole: 'mvd-kreator-pierscien-nop-wybor' },
+};
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -87,9 +100,12 @@ export function KreatorPierscienia() {
   const hasZaciski = maZaciski(kontekst);
 
   const [dane, setDane] = useState<PierscienFormData>(() => ({ ...DANE_DOMYSLNE }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('domkniecie');
+  // Pasek kroków tego kreatora jest torem operacji (domknięcie → NOP), nie nawigacją:
+  // wskazanie braku nie przełącza kroku (pole leży zawsze na kroku bieżącej operacji).
+  const prowadzenie = useProwadzenie();
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<'nop_ref'>();
 
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
@@ -140,31 +156,41 @@ export function KreatorPierscienia() {
 
   const zmien = useCallback(<K extends keyof PierscienFormData>(pole: K, wartosc: PierscienFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
-  }, []);
+    if (pole === 'nop_ref') edytowane('nop_ref');
+  }, [edytowane]);
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // AUTO_PRZYJETE: jedyny kandydat na punkt normalnie otwarty (źródło jednoznaczne).
+  const jedynyNop = useMemo(() => jedynaZgodna(kontekst.kandydaciNop), [kontekst.kandydaciNop]);
+  useEffect(() => {
+    if (!jedynyNop || decyzjaProjektanta('nop_ref') || dane.nop_ref) return;
+    setDane((p) => ({ ...p, nop_ref: jedynyNop.id }));
+  }, [dane.nop_ref, decyzjaProjektanta, jedynyNop]);
+
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu długości.
+  const konflikty = useMemo(() => konfliktyDomkniecia(dane), [dane]);
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
 
   const onDomknij = useCallback(async () => {
-    if (!hasZaciski) {
-      setBladGlobalny(T.brakZaciskowOpis);
+    const brak = pierwszyBrak([
+      !hasZaciski && { komunikat: T.brakZaciskowOpis },
+      ...walidujDomkniecie(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
-    const walid = walidujDomkniecie(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(
-        activeCaseId,
+        activeCaseId as string,
         'connect_secondary_ring_sn',
         zbudujPayloadDomkniecie(dane, kontekst),
       );
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -173,23 +199,25 @@ export function KreatorPierscienia() {
       }
       setKrok('nop');
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, dane, executeDomainOperation, hasZaciski, kontekst]);
+  }, [activeCaseId, dane, executeDomainOperation, hasZaciski, kontekst, prowadzenie]);
 
   const onZapiszNop = useCallback(async () => {
-    const walid = walidujNop(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    const brak = pierwszyBrak([
+      ...walidujNop(dane).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'set_normal_open_point', zbudujPayloadNop(dane));
+      const response = await executeDomainOperation(activeCaseId as string, 'set_normal_open_point', zbudujPayloadNop(dane));
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -199,9 +227,9 @@ export function KreatorPierscienia() {
       closeForm();
       selekcjaPoOperacji(response, { type: 'NOP', name: 'Punkt normalnie otwarty (NOP)' });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, prowadzenie, selekcjaPoOperacji]);
 
   const params = useMemo(
     () =>
@@ -214,19 +242,23 @@ export function KreatorPierscienia() {
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszZaciski,
-      stan: hasZaciski ? 'kompletne' : 'brak',
-      wartosc: hasZaciski ? `${kontekst.terminalA_label} ↔ ${kontekst.terminalB_label}` : 'Brak',
+      stan: hasZaciski ? 'ustalone' : 'do_wyboru',
+      wartosc: hasZaciski ? `${kontekst.terminalA_label} ↔ ${kontekst.terminalB_label}` : T.zaciskiDoWskazania,
     },
     {
       etykieta: T.wierszTyp,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: dane.catalog_ref ? 'ustalone' : 'do_wyboru',
+      wartosc: params?.name ?? '',
     },
-    { etykieta: T.wierszDlugosc, stan: dane.dlugosc_m ? 'kompletne' : 'brak', wartosc: fmtDlugosc(dane.dlugosc_m) },
+    {
+      etykieta: T.wierszDlugosc,
+      stan: konfliktDlaPola('dlugosc_m') ? 'konflikt' : dane.dlugosc_m === null ? 'do_wyboru' : 'ustalone',
+      wartosc: dane.dlugosc_m === null ? '' : fmtDlugosc(dane.dlugosc_m),
+    },
     {
       etykieta: T.wierszNop,
-      stan: dane.nop_ref ? 'kompletne' : 'ostrzezenie',
-      wartosc: dane.nop_ref ? 'Wskazany' : 'Do wskazania',
+      stan: !dane.nop_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: kontekst.kandydaciNop.find((c) => c.id === dane.nop_ref)?.label ?? '',
     },
   ];
 
@@ -239,18 +271,9 @@ export function KreatorPierscienia() {
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
   const naNop = krok === 'nop';
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled`/`data-status`, PER AKCJA (dwa alternatywne kroki zapisu
-  // tego kreatora mają różne zależności: „Domknij" potrzebuje katalogu,
-  // „Zapisz NOP" — nie).
-  const stanDomkniecia: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasZaciski || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const stanNop: 'zablokowany' | 'gotowy' = !activeCaseId ? 'zablokowany' : 'gotowy';
-  const stanGotowosci = naNop ? stanNop : stanDomkniecia;
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — blokada PER AKCJA: „Domknij”
+  // potrzebuje katalogu (lista typów), „Zapisz NOP” — nie. Brak danych nie wyszarza zapisu.
+  const blokadaDomkniecia = katalogLadowanie ? ('ladowanie' as const) : null;
 
   return (
     <KreatorRama
@@ -263,20 +286,11 @@ export function KreatorPierscienia() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        !naNop && stanDomkniecia === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : !hasZaciski
-              ? T.brakZaciskowOpis
-              : null
-      }
-      status={stanGotowosci}
+      {...prowadzenie.propsRamy}
       akcjaGlowna={
         naNop
-          ? { etykieta: T.zapiszNop, onClick: onZapiszNop, zablokowana: stanNop !== 'gotowy', testid: 'mvd-kreator-pierscien-zapisz-nop' }
-          : { etykieta: T.domknij, onClick: onDomknij, zablokowana: stanDomkniecia !== 'gotowy', testid: 'mvd-kreator-pierscien-domknij' }
+          ? { etykieta: T.zapiszNop, onClick: onZapiszNop, testid: 'mvd-kreator-pierscien-zapisz-nop' }
+          : { etykieta: T.domknij, onClick: onDomknij, blokada: blokadaDomkniecia, testid: 'mvd-kreator-pierscien-domknij' }
       }
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pierscien-anuluj' }}
       licznikKrokow={T.licznik(krokIndex + 1, KROKI.length)}
@@ -323,7 +337,7 @@ export function KreatorPierscienia() {
               krok={10}
               min={0}
               pomoc={T.dlugoscPomoc}
-              blad={bladDlaPola('dlugosc_m')}
+              blad={konfliktDlaPola('dlugosc_m')}
               testid="mvd-kreator-pierscien-dlugosc"
             />
           </KreatorSiatka>
@@ -337,7 +351,6 @@ export function KreatorPierscienia() {
             komunikatBledu={bladKatalogu ?? T.typBlad}
             testid="mvd-kreator-pierscien-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           {params ? (
             <KreatorSiatka kolumny={2}>
               <RzadWartosci etykieta="Obciążalność" wartosc={`${params.rated_current_a} A`} />
@@ -369,7 +382,6 @@ export function KreatorPierscienia() {
           ) : (
             <KreatorInfo>{T.nopBrakKandydatow}</KreatorInfo>
           )}
-          {bladDlaPola('nop_ref') ? <p className="mvd-pole-blad">{bladDlaPola('nop_ref')}</p> : null}
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}

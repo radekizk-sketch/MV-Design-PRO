@@ -5,13 +5,8 @@ import type { DispatchableKind } from './zrodloDyspozycyjneModel';
 export const ZRODLO_DYSP_STRINGS = {
   eyebrowGenset: 'MODEL SIECI · AGREGAT nN',
   eyebrowUps: 'MODEL SIECI · UPS nN',
-  celGenset:
-    'Dodaj agregat prądotwórczy (zespół prądotwórczy) do rozdzielni nN — źródło rezerwowe/dyspozycyjne, '
-    + 'które podaje moc i wnosi prąd zwarciowy maszyny synchronicznej. Parametry z katalogu; aparat pola '
-    + 'przyłączeniowego dobierasz tu samo.',
-  celUps:
-    'Dodaj zasilacz UPS do rozdzielni nN — źródło gwarantowane podtrzymujące odbiory krytyczne. Parametry '
-    + '(moc, czas podtrzymania, tryb) z katalogu; aparat pola przyłączeniowego dobierasz tu samo.',
+  celGenset: 'Dodaj agregat prądotwórczy do rozdzielni nN — źródło rezerwowe z wkładem zwarciowym maszyny synchronicznej.',
+  celUps: 'Dodaj zasilacz UPS do rozdzielni nN — źródło gwarantowane podtrzymujące odbiory krytyczne.',
   odznakaGenset: 'Nowy agregat nN',
   odznakaUps: 'Nowy UPS nN',
 
@@ -58,13 +53,7 @@ export const ZRODLO_DYSP_STRINGS = {
   nazwaPola: 'Nazwa pola',
   nazwaPolaPlaceholder: 'np. Pole agregatu',
 
-  // Parametry
-  katalogGenset: 'Katalog agregatu',
-  katalogUps: 'Katalog UPS',
-  katalogPlaceholder: '— wybierz z katalogu —',
-  katalogBladGenset: 'Nie udało się pobrać katalogu agregatów.',
-  katalogBladUps: 'Nie udało się pobrać katalogu UPS.',
-  katalogPomoc: 'Katalog wnosi parametry źródła i model zwarciowy — bez ręcznych impedancji.',
+  // Parametry (tabliczka źródła — repozytorium nie ma katalogu agregatów ani UPS)
   moc: 'Moc znamionowa',
   mocPomoc: 'Moc czynna znamionowa źródła [kW].',
   napiecie: 'Napięcie znamionowe',
@@ -117,7 +106,8 @@ export const ZRODLO_DYSP_STRINGS = {
   kontrolaTytul: 'Kontrola źródła',
   wierszSzyna: 'Szyna nN',
   wierszPole: 'Pole',
-  wierszKatalog: 'Katalog',
+  wierszPoleNowe: 'Nowe pole',
+  wierszPoleIstniejace: 'Istniejące pole',
   wierszMoc: 'Moc',
 
   wstecz: '← Wstecz',
@@ -126,12 +116,8 @@ export const ZRODLO_DYSP_STRINGS = {
   zapiszGenset: 'Zapisz agregat',
   zapiszUps: 'Zapisz UPS',
   anuluj: 'Anuluj',
-  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
-  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło.',
-  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog systemów źródła i aparatu nN ładuje się asynchronicznie; zapis
-  // bez niego byłby cichym no-op na pustym `catalog_item_id`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu agregatów/UPS i aparatu nN — zapis będzie dostępny po wczytaniu.',
+  brakZakresu: 'Wybierz aktywny przypadek obliczeniowy — zapis źródła unieważnia jego wyniki.',
+  bladZapisu: 'Nie udało się zapisać źródła — spróbuj ponownie.',
 
   // Panel teorii
   teoriaTytulGenset: 'Teoria: wkład zwarciowy maszyny synchronicznej (agregat)',
@@ -170,8 +156,6 @@ export function tekstyDla(kind: DispatchableKind) {
     eyebrow: genset ? T.eyebrowGenset : T.eyebrowUps,
     cel: genset ? T.celGenset : T.celUps,
     odznaka: genset ? T.odznakaGenset : T.odznakaUps,
-    katalog: genset ? T.katalogGenset : T.katalogUps,
-    katalogBlad: genset ? T.katalogBladGenset : T.katalogBladUps,
     zapisz: genset ? T.zapiszGenset : T.zapiszUps,
     downstreamOpis: genset ? T.downstreamOpisGenset : T.downstreamOpisUps,
     teoriaTytul: genset ? T.teoriaTytulGenset : T.teoriaTytulUps,

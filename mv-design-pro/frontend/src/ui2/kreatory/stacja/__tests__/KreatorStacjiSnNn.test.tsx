@@ -5,6 +5,11 @@
  * store'y i końcówki API; helpery topologii (segment/napięcie SN) działają
  * na realnym snapshotcie. Weryfikuje, że zapis woła właściwą operację domenową
  * z poprawnym payloadem i wiąże nowy element ze schematem (V12K-073).
+ *
+ * Kontrakt prowadzenia projektanta (karta PROWADZENIE-KREATORY, 2026-10-15): przycisk
+ * zapisu nie jest wyszarzany brakiem danych — klik przy braku daje JEDNO wskazanie
+ * „co — po co” z przejściem do pola. Testy, które pilnowały wyszarzenia, sprawdzają teraz
+ * tę samą intencję (zapis nie wychodzi do backendu) przez klik i wskazanie.
  */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -19,8 +24,21 @@ const navigateToSldMock = vi.fn();
 const selectElementMock = vi.fn();
 const centerSldOnElementMock = vi.fn();
 
+// Testy „realnej ścieżki” przechodzą natywnymi klikami cały tor projektanta (szablon →
+// rodzaj → transformator i nN → rodzina i aparaty pól → uziemienie → zapis), a od karty
+// PROWADZENIE-KREATORY także kroki, które dawniej wypełniał domysł (napięcie nN, aparaty,
+// odpływy, uziemienie). Pomiar 2026-10-15 przy obciążeniu maszyny ~24: 2,5–6,0 s na test,
+// więc domyślne 5 s nie mierzy produktu, tylko obciążenie. Limit pliku 20 s; produktowy
+// czas odpowiedzi kreatora nie jest tu przedmiotem asercji.
+vi.setConfig({ testTimeout: 20000 });
+
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
-let context: Record<string, unknown> = { segment_id: 'seg-1', position_on_segment: 0.5 };
+const KONTEKST_PODZIALU = {
+  segment_id: 'seg-1',
+  position_on_segment: 0.5,
+  station_type: 'branch',
+} as const;
+let context: Record<string, unknown> = { ...KONTEKST_PODZIALU };
 const snapshotState = {
   error: null as string | null,
   executeDomainOperation: executeDomainOperationMock,
@@ -29,7 +47,7 @@ const snapshotState = {
       { ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15 },
       { ref_id: 'bus-end', name: 'Terminal', voltage_kv: 15 },
     ],
-    branches: [{ ref_id: 'seg-1', from_bus_ref: 'bus-sn', to_bus_ref: 'bus-end' }],
+    branches: [{ ref_id: 'seg-1', name: 'Odcinek L-1', from_bus_ref: 'bus-sn', to_bus_ref: 'bus-end' }],
   },
 };
 
@@ -89,6 +107,7 @@ const aparat = (
 
 const szablon = (over: Record<string, unknown>) => ({
   template_ref: 'tpl',
+  base_template: { template_id: 'tpl', name: 'Pole katalogowe', bay_role: 'IN', devices: [] },
   manufacturer_ref: 'ZPUE_WLOSZCZOWA',
   switchgear_family_ref: 'ZPUE_ROTOBLOK',
   bay_kind: 'liniowe_doplywowe',
@@ -106,14 +125,16 @@ const SZABLONY = [
     template_ref: 'tpl-in',
     bay_kind: 'liniowe_doplywowe',
     bay_role: 'IN',
-    // Pole liniowe z pełnym składem katalogowym: aparat główny FABRYCZNY,
+    base_template: { template_id: 'tpl-in', name: 'Pole liniowe Rotoblok', bay_role: 'IN', devices: [] },
+    // Pole liniowe z pełnym składem katalogowym: wyłącznik i odłącznik FABRYCZNE,
     // przekładnik prądowy jako OPCJA (rodzaj z dostawcą w operacji stacyjnej —
     // `equipment.ct`), ogranicznik przepięć jako OPCJA BEZ dostawcy.
     device_instances: [
-      aparat('dev-in-q1', 'switch_disconnector', 'Q1', 1),
-      aparat('dev-in-q9', 'earthing_switch', 'Q9 (E)', 2),
-      aparat('dev-in-ct', 'current_transformer', 'T1', 3, 'OPCJA'),
-      aparat('dev-in-sa', 'surge_arrester', 'F1', 4, 'OPCJA'),
+      aparat('dev-in-q1', 'disconnector_busbar', 'Q1', 1),
+      aparat('dev-in-q0', 'circuit_breaker', 'Q0', 2),
+      aparat('dev-in-q9', 'earthing_switch', 'Q9 (E)', 3),
+      aparat('dev-in-ct', 'current_transformer', 'T1', 4, 'OPCJA'),
+      aparat('dev-in-sa', 'surge_arrester', 'F1', 5, 'OPCJA'),
     ],
   }),
   szablon({ template_ref: 'tpl-out', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT' }),
@@ -279,6 +300,14 @@ vi.mock('../../../../ui/catalog/api', () => ({
         insulation_type: 'air',
         construction_type: 'wnetrzowa',
         tor_konfiguracji: 'MODULARNY',
+        allowed_apparatus_kinds: [
+          'circuit_breaker',
+          'switch_disconnector',
+          'earthing_switch',
+          'fuse_set',
+          'current_transformer',
+          'voltage_transformer',
+        ],
         status: 'repo_verified',
         source_refs: ['kat'],
         notes_pl: null,
@@ -358,12 +387,16 @@ vi.mock('../../../../ui/catalog/api', () => ({
   // B-12: katalog aparatury SN — aparat pola wskazuje projektant, backend go nie dobiera.
   fetchMvApparatusTypes: () =>
     Promise.resolve([
+      // Pozycje oferty ZPUE (fikstura nazywa je jak w danych testowych; producent rozdzielnicy
+      // i rodzaj w słowniku rodzin przychodzą z końcówki katalogu).
       {
         id: 'sw-cb-abb-vd4-17kv-630a',
         name: 'ABB VD4 17,5 kV 630 A',
         device_kind: 'WYLACZNIK',
         u_n_kv: 17.5,
         i_n_a: 630,
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_apparatus_kind: 'circuit_breaker',
       },
       {
         id: 'sw-cb-abb-vd4-24kv-1250a',
@@ -371,16 +404,66 @@ vi.mock('../../../../ui/catalog/api', () => ({
         device_kind: 'WYLACZNIK',
         u_n_kv: 24,
         i_n_a: 1250,
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_apparatus_kind: 'circuit_breaker',
+      },
+      {
+        id: 'sw-ls-zpue-nal-17kv-630a',
+        name: 'ZPUE NAL 17,5 kV 630 A',
+        device_kind: 'ROZLACZNIK',
+        u_n_kv: 17.5,
+        i_n_a: 630,
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_apparatus_kind: 'switch_disconnector',
+      },
+      // Przejście scenariusza 630 kVA (pkt 3 i 5): aparat INNEGO producenta i reklozer
+      // (łącznik słupowy spoza celek) nie należą do oferty żadnej rodziny ZPUE.
+      {
+        id: 'sw-cb-siemens-3ah5-17kv-1250a',
+        name: 'Siemens 3AH5 17,5 kV 1250 A',
+        device_kind: 'WYLACZNIK',
+        u_n_kv: 17.5,
+        i_n_a: 1250,
+        manufacturer_ref: 'SIEMENS',
+        family_apparatus_kind: 'circuit_breaker',
+      },
+      {
+        id: 'sw-rec-abb-rec615-17kv-630a',
+        name: 'ABB REC615 17,5 kV 630 A',
+        device_kind: 'REKLOZER',
+        u_n_kv: 17.5,
+        i_n_a: 630,
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_apparatus_kind: null,
       },
       // KOMPLETNOSC-POLA-TR: rozłącznik bezpiecznikowy — realne rozwiązanie pola
       // transformatorowego RMU (i JEDYNY sposób, by sprawdzić, że picker zawęża
       // listę rolą, a nie pokazuje wszystkiego wszędzie).
+      // Kształt 1:1 z końcówką katalogu: wytwórca wkładek (ETI) nie jest producentem
+      // rozdzielnic (`manufacturer_ref: null`), a zestaw bezpiecznikowy jest komponentem
+      // wymiennym między rodzinami. Dawna fikstura nadawała mu producenta ZPUE i tym samym
+      // maskowała, że filtr „producent rodziny” wycinał bezpiecznik z każdej rodziny.
       {
         id: 'sw-fuse-eti-vv-17kv-63a',
         name: 'ETI VV 17,5 kV 63 A',
         device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY',
         u_n_kv: 17.5,
         i_n_a: 63,
+        manufacturer_ref: null,
+        family_apparatus_kind: 'fuse_set',
+        interchangeable_across_families: true,
+      },
+      // Aparat bez producenta rozdzielnic, ale NIEWYMIENNY (odłącznik słupowy) — poza
+      // ofertą każdej rodziny, choć jego rodzaj rodzina dopuszcza.
+      {
+        id: 'sw-ds-generic-slupowy-17kv-400a',
+        name: 'Odłącznik słupowy 17,5 kV 400 A',
+        device_kind: 'ODLACZNIK',
+        u_n_kv: 17.5,
+        i_n_a: 400,
+        manufacturer_ref: null,
+        family_apparatus_kind: 'switch_disconnector',
+        interchangeable_across_families: false,
       },
       {
         id: 'sw-ds-abb-ojs-17kv-630a',
@@ -388,6 +471,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
         device_kind: 'ODLACZNIK',
         u_n_kv: 17.5,
         i_n_a: 630,
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_apparatus_kind: 'switch_disconnector',
       },
     ]),
   // KOMPLETNOSC-POLA-TR: rodzaje aparatu głównego dopuszczalne per rola pola
@@ -481,6 +566,14 @@ const biblioteka = vi.hoisted(() => {
 });
 
 vi.mock('../../../../ui/network-build/station-templates/api', () => ({
+  fetchStationTemplateCategories: () =>
+    Promise.resolve({
+      categories: [
+        { id: 'typowa_sn_nn', label_pl: 'Typowe stacje SN/nN', icon: '', description_pl: '', template_count: 1, wchodzi_w_segment: true },
+        { id: 'farma_pv', label_pl: 'Farmy fotowoltaiczne', icon: '', description_pl: '', template_count: 1, wchodzi_w_segment: true },
+      ],
+      total_templates: 2,
+    }),
   fetchStationTemplates: async (kategoria: string) => {
     if (biblioteka.oczekujace) await biblioteka.oczekujace;
     const templates = biblioteka.wgKategorii[kategoria] ?? [];
@@ -538,7 +631,9 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
         sn_bay_roles: ['IN', 'MEASUREMENT'],
         sn_fields: [
           { field_role: 'LINIA_IN', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
-          { field_role: 'LINIA_ODG', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+          { field_role: 'LINIA_OUT', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+          // Propozycja szablonu spoza oferty rodziny (przejście 630 kVA: aparat ABB w celce ZPUE).
+          { field_role: 'TRANSFORMATOROWE', apparatus_catalog_ref: 'sw-cb-siemens-3ah5-17kv-1250a' },
         ],
         sn_manufacturer: 'ZPUE_WLOSZCZOWA',
         nn_feeders_count: 2,
@@ -565,7 +660,17 @@ async function przejdzDoTransformatora() {
   });
 }
 
+/** Wartość listy wyboru (natywny `<select>`) — pomocniczo do warunkowego wyboru. */
+function wartosc(testid: string): string {
+  return (screen.getByTestId(testid) as HTMLSelectElement).value;
+}
+
 async function wybierzTyp() {
+  // Napięcie strony nN — katalog ma transformatory 0,4 i 0,69 kV na 15 kV, więc to wybór
+  // projektanta (dawniej 0,4 kV z automatu).
+  if (screen.queryByTestId('mvd-kreator-stacja-nn') && wartosc('mvd-kreator-stacja-nn') === '') {
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-nn'), '0.4');
+  }
   await waitFor(() => {
     const select = screen.getByTestId('mvd-kreator-stacja-katalog') as HTMLSelectElement;
     expect(select.querySelector('option[value="trafo-630-15-04"]')).not.toBeNull();
@@ -587,15 +692,57 @@ async function przejdzIWybierzRozdzielnice() {
     expect(rodzina.querySelector('option[value="ZPUE_ROTOBLOK"]')).not.toBeNull();
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled();
-  });
+  await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-aparat-1')).toBeInTheDocument());
+  await wybierzAparatyPol();
+  await uzupelnijNnIUziemienie();
+}
+
+/**
+ * Aparat każdego pola bez wskazania — natywny wybór z listy pola. Oferta rodziny ma kilka
+ * zdatnych aparatów na rolę, więc kreator ich nie dobiera (dawniej pierwszy z listy).
+ */
+async function wybierzAparatyPol(preferowane: readonly string[] = ['sw-cb-abb-vd4-17kv-630a']) {
+  for (let n = 1; screen.queryByTestId(`mvd-kreator-stacja-aparat-${n}`); n += 1) {
+    const select = screen.getByTestId(`mvd-kreator-stacja-aparat-${n}`) as HTMLSelectElement;
+    if (select.value) continue;
+    const opcje = [...select.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+    const wybor = preferowane.find((ref) => opcje.includes(ref)) ?? opcje[0];
+    await userEvent.selectOptions(select, wybor);
+  }
+}
+
+/**
+ * Strona nN i uziemienie (kroki 6–7) — wartości wpływające na wyniki wskazuje projektant
+ * (dawniej 2 odpływy, TN-C-S i punkt bezpośrednio uziemiony z automatu). Wraca do kroku pól.
+ */
+async function uzupelnijNnIUziemienie() {
+  await przejdzDoKroku('Blok nN');
+  const odplywy = await screen.findByTestId('mvd-kreator-stacja-odplywy');
+  if (!(odplywy as HTMLInputElement).value) fireEvent.change(odplywy, { target: { value: '2' } });
+  await przejdzDoKroku('Uziemienie i punkt neutralny');
+  if (wartosc('mvd-kreator-stacja-uklad-nn') === '') {
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-uklad-nn'), 'TN-C-S');
+  }
+  if (wartosc('mvd-kreator-stacja-punkt-neutralny') === '') {
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-punkt-neutralny'),
+      'directly_grounded',
+    );
+  }
+  await przejdzDoKroku('Pola rozdzielnicy SN');
+}
+
+/** Klik „Zapisz” przy braku: zapis nie wychodzi, stopka niesie JEDNO wskazanie. */
+async function zapiszIOczekujWskazania(tekst: RegExp) {
+  await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+  expect(await screen.findByTestId('mvd-kreator-wskazanie')).toHaveTextContent(tekst);
+  expect(executeDomainOperationMock).not.toHaveBeenCalled();
 }
 
 describe('KreatorStacjiSnNn — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', position_on_segment: 0.5 };
+    context = { ...KONTEKST_PODZIALU };
     snapshotState.error = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
@@ -711,6 +858,16 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-ct-1'), 'ct-400-5');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-vt-1'), 'vt-15-100');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-przekaznik-1'), 'relay-1');
+    // Kody funkcji pola liniowego (51, 50, 51N) wskazują dwa rodzaje — rodzaj wybiera projektant.
+    expect(wartosc('mvd-kreator-stacja-rodzaj-zabezpieczenia-1')).toBe('');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-rodzaj-zabezpieczenia-1'),
+      'NADPRADOWY',
+    );
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-vt-uzwojenie-1'),
+      'POMIAROWE',
+    );
 
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
@@ -1040,22 +1197,26 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
-  it('uczciwy stan zerowy: brak miejsca osadzenia → blokada zapisu', async () => {
+  it('uczciwy stan zerowy: brak miejsca osadzenia → klik zapisu wskazuje umiejscowienie', async () => {
     context = {};
     render(<KreatorStacjiSnNn />);
     // Uczciwy stan zerowy pokazuje krok „Rodzaj i umiejscowienie" (kreator
     // startuje od kroku „Szablon").
     await przejdzDoKroku('Rodzaj i umiejscowienie');
     expect(screen.getByTestId('mvd-kreator-stacja-brak')).toBeInTheDocument();
-    // waitFor domyka efekty katalogu (producenci/rodziny/szablony) w act.
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
+    // Intencja (dawniej: przycisk wyszarzony): bez miejsca zapis nie wychodzi; klik
+    // wskazuje JEDEN brak — tam, gdzie stanie stacja.
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeEnabled();
+    await zapiszIOczekujWskazania(/Otwórz kreator z odcinka albo końca magistrali/);
   });
 
-  it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
+  it('bez aktywnego przypadku obliczeniowego klik zapisu wskazuje go (komplet danych)', async () => {
     appState.activeCaseId = null;
     render(<KreatorStacjiSnNn />);
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
-    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await zapiszIOczekujWskazania(/aktywny przypadek obliczeniowy/);
   });
 });
 
@@ -1139,11 +1300,17 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-laduje')).toBeNull();
   });
 
-  it('bez nazwy przycisk zapisu jest nieaktywny (uczciwy stan zerowy)', async () => {
+  it('bez nazwy klik zapisu szablonu mówi, czego brakuje (nic nie zapisuje)', async () => {
+    // Intencja (dawniej: przycisk wyszarzony): bez nazwy szablon nie powstaje — klik
+    // mówi wprost, czego brakuje.
+    zapisaneSzablony.length = 0;
     render(<KreatorStacjiSnNn />);
     await przejdzDoKroku('Podgląd skutków');
     const przycisk = await screen.findByTestId('mvd-kreator-stacja-szablon-zapisz');
-    expect(przycisk).toBeDisabled();
+    expect(przycisk).toBeEnabled();
+    await userEvent.click(przycisk);
+    expect(await screen.findByTestId('mvd-kreator-stacja-szablon-zapis-komunikat')).toHaveTextContent(/nazw/i);
+    expect(zapisaneSzablony).toHaveLength(0);
   });
 });
 
@@ -1159,7 +1326,7 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
 describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', position_on_segment: 0.5 };
+    context = { ...KONTEKST_PODZIALU };
     snapshotState.error = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
@@ -1252,9 +1419,7 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     expect(panel.textContent).toMatch(/odłącza transformator/);
     expect(panel.textContent).toMatch(/nie da się zapisać/);
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
-    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
-    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    await zapiszIOczekujWskazania(/wymaga pól toru: .*transformatorowe/i);
   });
 
   it.each([
@@ -1268,7 +1433,7 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     async (_opis, tryb, numer, rola, wToru) => {
       context =
         tryb === 'SPLIT'
-          ? { segment_id: 'seg-1', position_on_segment: 0.5 }
+          ? { ...KONTEKST_PODZIALU }
           : { placement_mode: 'ENDPOINT_APPEND', endpoint_bus_ref: 'bus-end', run_ref: 'run-1' };
       executeDomainOperationMock.mockResolvedValue({ error: null });
       render(<KreatorStacjiSnNn />);
@@ -1281,17 +1446,19 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
       if (!wToru) {
         // Pole spoza toru (odgałęźne) usuwa się bez skutku dla zapisu.
         expect(screen.queryByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeNull();
-        await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+        await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+        await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
         return;
       }
 
       const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pol-toru');
       expect(panel.textContent).toMatch(/nie da się zapisać/);
-      await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
+      await zapiszIOczekujWskazania(/wymaga pól toru/);
 
       await userEvent.click(screen.getByTestId(`mvd-kreator-stacja-dodaj-pole-toru-${rola}`));
       await waitFor(() => expect(screen.queryByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeNull());
-      await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+      // Przywrócone pole dostaje aparat od projektanta (oferta ma kilka zdatnych pozycji).
+      await wybierzAparatyPol();
       await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
       await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
@@ -1384,6 +1551,7 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     await waitFor(() => {
       expect(screen.queryByTestId('mvd-kreator-stacja-brak-pola-tr')).toBeNull();
     });
+    await wybierzAparatyPol();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
@@ -1412,7 +1580,7 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
 describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', position_on_segment: 0.5 };
+    context = { ...KONTEKST_PODZIALU };
     snapshotState.error = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
@@ -1466,26 +1634,21 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       /Wskaż rodzinę rozdzielnicy/i,
     );
     expect(screen.queryByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeNull();
-    // Bez pól nie ma czego zapisać — bramka zapisu trzyma.
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
-    // STOPKA NAZYWA REALNY POWÓD (naprawa 2026-08-14). Defekt zastany: mówiła
-    // „Brak kompletnych szablonów pól … wybierz inny pakiet katalogowy", choć
-    // katalog miał komplet szablonów, a brakowało WYŁĄCZNIE wskazania rodziny —
-    // komunikat wysyłał projektanta do zmiany pakietu zamiast do jedynej akcji,
-    // która odblokowuje zapis (i tak samo mylił diagnozę specu e2e).
-    expect(screen.getByTestId('mvd-kreator-walidacja')).toHaveTextContent(
-      /Wskaż rodzinę rozdzielnicy/i,
-    );
-    expect(screen.getByTestId('mvd-kreator-walidacja')).not.toHaveTextContent(
+    // WSKAZANIE NAZYWA REALNY POWÓD (naprawa 2026-08-14, przeniesiona na kontrakt
+    // prowadzenia 2026-10-15). Defekt zastany: stopka mówiła „Brak kompletnych szablonów
+    // pól … wybierz inny pakiet katalogowy", choć brakowało WYŁĄCZNIE wskazania rodziny.
+    await zapiszIOczekujWskazania(/Wybierz rodzinę rozdzielnicy SN/);
+    expect(screen.getByTestId('mvd-kreator-wskazanie')).not.toHaveTextContent(
       /Brak kompletnych szablonów pól/i,
     );
 
-    // Wskazanie rodziny domyka krok: pola rodzaju stacji wchodzą z jej pakietu.
+    // Wskazanie rodziny domyka krok: pola rodzaju stacji wchodzą z jej pakietu, a JEDYNA
+    // karta rodziny dla roli wchodzi do pola sama (przejście 630 kVA, pkt 1).
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
     await waitFor(() =>
       expect(screen.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeInTheDocument(),
     );
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in'));
   });
 
   /**
@@ -1516,7 +1679,10 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       'mvd-kreator-stacja-pole-szablon-1',
     ) as HTMLSelectElement;
     expect(szablonPola.value).toBe('');
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+    // Producent przyszedł z szablonu stacji (efektywna konfiguracja), rodziny brak — klik
+    // zapisu wskazuje rodzinę (dawniej: wyszarzony przycisk).
+    expect(wartosc('mvd-kreator-stacja-producent')).toBe('ZPUE_WLOSZCZOWA');
+    await zapiszIOczekujWskazania(/rodzinę rozdzielnicy/);
 
     // Wskazanie rodziny domyka krok: pola dostają karty JEJ pakietu.
     await userEvent.selectOptions(
@@ -1582,7 +1748,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     await waitFor(() =>
       expect(screen.queryByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeNull(),
     );
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
     // Nagłówek pokazuje brak danej, a nie wartość domyślną.
     const naglowek = screen.getByTestId('mvd-kreator-stacja-naglowek-rodziny');
     expect(naglowek).toHaveTextContent('brak w karcie katalogowej');
@@ -1595,8 +1762,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     await screen.findByTestId('mvd-kreator-stacja-tor-modularny');
     // Pole 1 (LINIA_IN) ma kartę `tpl-in` z pełnym składem.
     const karta = await screen.findByTestId('mvd-kreator-stacja-wyposazenie-1');
-    expect(karta).toHaveTextContent('Q1');
-    expect(karta).toHaveTextContent('rozłącznik');
+    expect(karta).toHaveTextContent('Q0');
+    expect(karta).toHaveTextContent('wyłącznik');
     expect(karta).toHaveTextContent('Q9 (E)');
     expect(karta).toHaveTextContent('uziemnik');
 
@@ -1625,7 +1792,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       ).toHaveTextContent('w konfiguracji'),
     );
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+    await wybierzAparatyPol();
+    await uzupelnijNnIUziemienie();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
 
@@ -1680,7 +1848,10 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     expect(screen.queryByTestId('mvd-kreator-stacja-pole-dodaj')).toBeNull();
     expect(screen.queryByTestId('mvd-kreator-stacja-pole-usun-1')).toBeNull();
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+    // Aparaty jednostek bloku: rozłączniki w jednostkach liniowych, rozłącznik
+    // bezpiecznikowy w jednostce transformatorowej (zgodnie z kartą jednostki).
+    await wybierzAparatyPol(['sw-ls-zpue-nal-17kv-630a', 'sw-fuse-eti-vv-17kv-63a']);
+    await uzupelnijNnIUziemienie();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
 
@@ -1735,7 +1906,7 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pola-tr');
     expect(panel.textContent).toMatch(/blok z jednostką transformatorową/);
     expect(screen.queryByTestId('mvd-kreator-stacja-przywroc-pole-tr')).toBeNull();
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -1770,7 +1941,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     );
     expect(screen.queryByTestId('mvd-kreator-stacja-tor-blok')).toBeNull();
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+    await wybierzAparatyPol();
+    await uzupelnijNnIUziemienie();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
 
@@ -1816,7 +1988,7 @@ describe('KreatorStacjiSnNn — werdykt walidatora backendu', () => {
 
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
-    context = { segment_id: 'seg-1', position_on_segment: 0.5 };
+    context = { ...KONTEKST_PODZIALU };
     snapshotState.error = null;
     executeDomainOperationMock.mockReset();
     executeDomainOperationMock.mockResolvedValue({ error: null });
@@ -1844,7 +2016,19 @@ describe('KreatorStacjiSnNn — werdykt walidatora backendu', () => {
       expect(rodzina.querySelector('option[value="ZPUE_ROTOBLOK"]')).not.toBeNull();
     });
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-aparat-1')).toBeInTheDocument());
   }
+
+  it('konfiguracja W TOKU: walidator milczy — bez zapytania i bez statusu w nagłówku', async () => {
+    // Kontrakt prowadzenia: w trakcie pracy kreator nie wysyła sygnałów. Dawniej sprawdzenie
+    // ruszało przy każdej zmianie i niekompletna konfiguracja świeciła „odrzucona”.
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoPolZRodzina();
+    await new Promise((r) => setTimeout(r, 600));
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('mvd-podglad-status')).toBeNull();
+  });
 
   it('konfiguracja PRZYJĘTA przez walidator → werdykt VALID w nagłówku rozdzielnicy', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -1856,6 +2040,8 @@ describe('KreatorStacjiSnNn — werdykt walidatora backendu', () => {
 
     render(<KreatorStacjiSnNn />);
     await przejdzDoPolZRodzina();
+    await wybierzAparatyPol();
+    await uzupelnijNnIUziemienie();
 
     await waitFor(
       () =>
@@ -1879,6 +2065,8 @@ describe('KreatorStacjiSnNn — werdykt walidatora backendu', () => {
 
     render(<KreatorStacjiSnNn />);
     await przejdzDoPolZRodzina();
+    await wybierzAparatyPol();
+    await uzupelnijNnIUziemienie();
 
     await waitFor(
       () =>
@@ -1887,5 +2075,291 @@ describe('KreatorStacjiSnNn — werdykt walidatora backendu', () => {
         ),
       { timeout: 4000 },
     );
+  });
+});
+
+/**
+ * PROWADZENIE PROJEKTANTA (karta PROWADZENIE-KREATORY) — iloczyn cech:
+ *   stan formularza {świeży, w toku, zapis z brakiem, konflikt, komplet}
+ * × źródło wartości {jedyna zgodna pozycja, kilka pozycji, propozycja szablonu spoza oferty}
+ * × wyposażenie pola {aparat wyłączający, rozłącznik bezpiecznikowy}.
+ * Wszystko natywnymi klikami i wyborem z list (Zero-Debt pkt 5).
+ */
+describe('KreatorStacjiSnNn — prowadzenie projektanta (iloczyn cech)', () => {
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    context = { ...KONTEKST_PODZIALU };
+    snapshotState.error = null;
+    closeFormMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+  });
+
+  afterEach(() => cleanup());
+
+  it('świeży formularz: cisza — bez wskazania, bez alertów, zapis aktywny', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeEnabled();
+    expect(document.body.textContent).not.toMatch(/Uzupełnij|wymagane pola|Do konfiguracji|Do doboru/);
+  });
+
+  it('zapis z brakiem: JEDNO wskazanie „co — po co”, przejście do kroku i fokus na polu', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    const wskazanie = await screen.findByTestId('mvd-kreator-wskazanie');
+    expect(wskazanie).toHaveTextContent('Wybierz napięcie strony nN — od niego zależy dobór transformatora.');
+    // Krok przestawiony na „Transformator i strona nN”, fokus na wskazanej kontrolce.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-nn')).toHaveFocus());
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    // Wybór wskazanego parametru gasi wskazanie (zdanie nie wisi nad wypełnionym polem).
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-nn'), '0.4');
+    await waitFor(() => expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull());
+  });
+
+  it('w toku: wybory częściowe nie wywołują żadnego sygnału', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('konflikt: wartość niedopuszczalna widoczna przy polu OD RAZU, bez klikania zapisu', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoKroku('Uziemienie i punkt neutralny');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-punkt-neutralny'),
+      'resistor_grounded',
+    );
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    await userEvent.type(screen.getByTestId('mvd-kreator-stacja-rezystancja-uziemienia'), '-5');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/liczbą dodatnią/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('komplet: jedyna karta rodziny wchodzi do pola sama, aparat (kilka zdatnych) wybiera projektant', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-producent')).toBe('ZPUE_WLOSZCZOWA'));
+    // Producent: jedyny używalny w katalogu → w polu, edytowalny.
+    expect(screen.getByTestId('mvd-kreator-stacja-producent')).toBeEnabled();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in'));
+    expect(wartosc('mvd-kreator-stacja-aparat-1')).toBe('');
+    // Brak etykiety pochodzenia przy wartości dobranej automatycznie (dyrektywa 2026-10-15).
+    expect(screen.queryByText(/przyjęto/i)).toBeNull();
+    await wybierzAparatyPol();
+    await uzupelnijNnIUziemienie();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+  });
+
+  /**
+   * Predykaty parami (karta × aparat): karta przyjęta automatycznie jako jedyna zgodna
+   * z aparatem zostaje tylko, dopóki jest z nim zgodna — po zmianie aparatu na niezgodny
+   * kreator ją przelicza (tu: rodzina nie ma karty pola liniowego z rozłącznikiem, więc
+   * karta pustoszeje, bez konfliktu). Kartę wskazaną świadomie zostawia; gdy żadna karta
+   * roli nie pasuje do aparatu, konflikt wskazuje APARAT (zmiana karty nic by nie dała).
+   * Iloczyn: karta {automat, decyzja projektanta} × aparat {zgodny, niezgodny}.
+   */
+  // Rodzaj wynikowy przed złożeniem pól (rodzina niewskazana) liczy się ze startowej listy
+  // ról — pusta lista dawała fałszywą „stację końcową”. Iloczyn: deklaracja rodzaju
+  // w kontekście {brak, odgałęźna} × umiejscowienie {podział odcinka}.
+  it.each([
+    [{ segment_id: 'seg-1', position_on_segment: 0.5 }, 'Stacja przelotowa'],
+    [{ ...KONTEKST_PODZIALU }, 'Stacja odgałęźna'],
+  ])('rodzaj w kontroli stacji przed wyborem rodziny: %o → %s', async (kontekstWywolania, rodzaj) => {
+    context = { ...kontekstWywolania };
+    render(<KreatorStacjiSnNn />);
+    const panel = await screen.findByTestId('mvd-kreator-stacja-gotowosc');
+    expect(panel).toHaveTextContent(rodzaj);
+    expect(panel).not.toHaveTextContent('Stacja końcowa');
+  });
+
+  it('karta-automat idzie za aparatem; brak zgodnej karty wskazuje aparat', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in'));
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-aparat-1'),
+      'sw-cb-abb-vd4-17kv-630a',
+    );
+    expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-aparat-1'),
+      'sw-ls-zpue-nal-17kv-630a',
+    );
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe(''));
+    expect(screen.queryByText(/inny aparat główny|Rodzina nie ma karty pola/)).toBeNull();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-pole-szablon-1'), 'tpl-in');
+    expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in');
+    expect(await screen.findByText(/Rodzina nie ma karty pola 1 z aparatem/)).toBeInTheDocument();
+  });
+
+  // Iloczyn: producent {rodziny, inny, brak} × wymienność {tak, nie} × rola pola.
+  it('oferta aparatów pola = producent i rodzaje rodziny (bez innych producentów i reklozera)', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    for (const n of [1, 2, 3, 4]) {
+      const select = screen.getByTestId(`mvd-kreator-stacja-aparat-${n}`) as HTMLSelectElement;
+      const opcje = [...select.querySelectorAll('option')].map((o) => o.value);
+      expect(opcje).not.toContain('sw-cb-siemens-3ah5-17kv-1250a');
+      expect(opcje).not.toContain('sw-rec-abb-rec615-17kv-630a');
+      expect(opcje).not.toContain('sw-ds-generic-slupowy-17kv-400a');
+    }
+    // Wkładki bezpiecznikowe (komponent wymienny, bez producenta rozdzielnic) zostają
+    // w ofercie pola transformatorowego rodziny ZPUE.
+    const tr = screen.getByTestId('mvd-kreator-stacja-aparat-4') as HTMLSelectElement;
+    expect([...tr.querySelectorAll('option')].map((o) => o.value)).toContain('sw-fuse-eti-vv-17kv-63a');
+  });
+
+  it('nazwy zamiast identyfikatorów: kategorie, karty pól, odcinek', async () => {
+    render(<KreatorStacjiSnNn />);
+    const kategoria = (await screen.findByTestId(
+      'mvd-kreator-stacja-szablon-kategoria',
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(kategoria.textContent).toContain('Typowe stacje SN/nN'));
+    expect(kategoria.textContent).not.toMatch(/typowa sn nn|typowa_sn_nn/);
+    await przejdzDoKroku('Rodzaj i umiejscowienie');
+    expect(screen.getByTestId('mvd-kreator-stacja-rodzaj')).toHaveTextContent('Odcinek L-1');
+    expect(screen.getByTestId('mvd-kreator-stacja-rodzaj')).not.toHaveTextContent('seg-1');
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    const karta = screen.getByTestId('mvd-kreator-stacja-pole-szablon-1') as HTMLSelectElement;
+    expect(karta.textContent).toContain('Pole liniowe Rotoblok');
+    expect(karta.textContent).not.toMatch(/tpl-in|Zweryfikowane|repo/);
+  });
+
+  it('nazwa stacji z kroku „Rodzaj” trafia do operacji w obu kluczach nazwy', async () => {
+    context = { placement_mode: 'ENDPOINT_APPEND', endpoint_bus_ref: 'bus-end', run_ref: 'run-1' };
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoKroku('Rodzaj i umiejscowienie');
+    await userEvent.type(screen.getByTestId('mvd-kreator-stacja-nazwa'), 'ST Kwiatowa');
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(payload.station).toMatchObject({ name: 'ST Kwiatowa', station_name: 'ST Kwiatowa' });
+  });
+
+  /**
+   * Szablon stacji × aparat pola (przejście 630 kVA, pkt 4 i 6): CT i zabezpieczenie
+   * z szablonu trafiają WYŁĄCZNIE do pól z aparatem wyłączającym; pole z rozłącznikiem
+   * bezpiecznikowym nie dostaje ani przekaźnika, ani CT; VT nie trafia nigdzie. Przekaźnik
+   * jedzie do operacji stacyjnej (przypisanie zabezpieczenia w modelu).
+   */
+  it('szablon: wyposażenie idzie za aparatem pola, VT nigdzie, przekaźnik jedzie do operacji', async () => {
+    render(<KreatorStacjiSnNn />);
+    const wybor = (await screen.findByTestId('mvd-kreator-stacja-szablon-wybor')) as HTMLSelectElement;
+    await waitFor(() => expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull());
+    await userEvent.selectOptions(wybor, 'tpl_typowa_400');
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zastosuj'));
+    await screen.findByTestId('mvd-kreator-stacja-szablon-zastosowany');
+
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-pole-szablon-1')).toBe('tpl-in'));
+    // Propozycja szablonu spoza oferty rodziny (Siemens w celce ZPUE) odpada — wybór projektanta.
+    expect(wartosc('mvd-kreator-stacja-aparat-1')).toBe('sw-cb-abb-vd4-17kv-630a');
+    expect(wartosc('mvd-kreator-stacja-aparat-3')).toBe('');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-aparat-3'), 'sw-fuse-eti-vv-17kv-63a');
+
+    await przejdzDoKroku('Pomiar i zabezpieczenia');
+    await waitFor(() => expect(wartosc('mvd-kreator-stacja-przekaznik-1')).toBe('relay-1'));
+    expect(wartosc('mvd-kreator-stacja-ct-1')).toBe('ct-400-5');
+    expect(wartosc('mvd-kreator-stacja-przekaznik-3')).toBe('');
+    expect(wartosc('mvd-kreator-stacja-ct-3')).toBe('');
+    for (const n of [1, 2, 3]) expect(wartosc(`mvd-kreator-stacja-vt-${n}`)).toBe('');
+
+    // Przekaźnik ręcznie w polu z bezpiecznikiem = konflikt od razu przy polu.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-przekaznik-3'), 'relay-1');
+    expect(await screen.findByText(/Zabezpieczenie pola 3 wymaga wyłącznika/)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-przekaznik-3'), '');
+
+    // Rodzaj zabezpieczenia: kody pola liniowego wskazują dwa rodzaje → wskazanie przy zapisie.
+    await uzupelnijNnIUziemienie();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    expect(await screen.findByTestId('mvd-kreator-wskazanie')).toHaveTextContent(
+      /Wybierz rodzaj zabezpieczenia pola 1/,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-stacja-rodzaj-zabezpieczenia-1')).toHaveFocus(),
+    );
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-rodzaj-zabezpieczenia-1'),
+      'NADPRADOWY',
+    );
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-rodzaj-zabezpieczenia-2'),
+      'NADPRADOWY',
+    );
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const pola = payload.sn_fields as Array<{
+      field_role: string;
+      equipment?: Record<string, Record<string, unknown>>;
+    }>;
+    expect(pola[0].equipment?.relay).toMatchObject({ catalog_ref: 'relay-1', relay_type: 'NADPRADOWY' });
+    expect(pola[0].equipment?.ct).toMatchObject({ catalog_ref: 'ct-400-5' });
+    expect(pola[0].equipment).not.toHaveProperty('vt');
+    const tr = pola.find((p) => p.field_role === 'TRANSFORMATOROWE');
+    expect(tr?.equipment).toBeUndefined();
+  });
+});
+
+describe('KreatorStacjiSnNn — podgląd na żądanie idzie ścieżką prowadzenia', () => {
+  const oryginalnyFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    context = { ...KONTEKST_PODZIALU };
+    executeDomainOperationMock.mockReset();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = oryginalnyFetch;
+    cleanup();
+  });
+
+  it('brak danych: klik „Przelicz podgląd” wskazuje brak i NIE wysyła operacji próbnej', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoKroku('Podgląd skutków');
+    await userEvent.click(await screen.findByTestId('mvd-kreator-stacja-podglad-przelicz'));
+    expect(await screen.findByTestId('mvd-kreator-wskazanie')).toHaveTextContent(
+      'Wybierz napięcie strony nN — od niego zależy dobór transformatora.',
+    );
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-nn')).toHaveFocus());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('wskazanie braku pól toru gaśnie, gdy projektant dołoży brakujące pole przyciskiem', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    expect(await screen.findByTestId('mvd-kreator-wskazanie')).toHaveTextContent(/wymaga pól toru/);
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-przywroc-pole-tr'));
+    await waitFor(() => expect(screen.queryByTestId('mvd-kreator-wskazanie')).toBeNull());
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,7 @@ import type { CatalogNamespace } from '../../../ui/catalog/types';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import type { ElementType } from '../../../ui/types';
 import {
   KreatorGotowosc,
@@ -25,6 +26,8 @@ import {
   PanelTeorii,
   PoleTekstowe,
   RzadWartosci,
+  pierwszyBrak,
+  useProwadzenie,
   useSelekcjaPoOperacji,
   type WierszGotowosci,
 } from '../rama';
@@ -38,6 +41,7 @@ export function KreatorPrzypisaniaKatalogu() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
 
@@ -48,23 +52,22 @@ export function KreatorPrzypisaniaKatalogu() {
   const [catalogItemId, setCatalogItemId] = useState(readString(context?.catalog_item_id));
   const [wersja, setWersja] = useState(readString(context?.catalog_item_version));
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const prowadzenie = useProwadzenie();
 
   const brakElementu = !elementRef;
-  const kompletne = Boolean(elementRef && catalogItemId.trim());
 
   const onZapisz = useCallback(async () => {
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    // BRAK_DO_OPERACJI — jedno wskazanie przy próbie zapisu (kontrakt prowadzenia projektanta).
+    const brak = pierwszyBrak([
+      !elementRef && { komunikat: T.elementWalid },
+      !catalogItemId.trim() && { komunikat: T.identyfikatorWalid, pole: 'mvd-kreator-przypisanie-id' },
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak || !activeCaseId) {
+      if (brak) prowadzenie.wskaz(brak);
       return;
     }
-    if (!elementRef) {
-      setBladGlobalny(T.brakElementuWalid);
-      return;
-    }
-    if (!catalogItemId.trim()) {
-      setBladGlobalny(T.brakIdentyfikatora);
-      return;
-    }
+    prowadzenie.zgas();
     // Katalog-first: buduj wiązanie z jawną przestrzenią, gdy znana. Gdy jej brak,
     // przekaż surowy identyfikator + wersję — backend wyznaczy przestrzeń z typu elementu.
     const binding = normalizeCatalogBinding(catalogItemId.trim(), catalogNamespace, catalogItemId.trim(), wersja.trim() || undefined);
@@ -94,12 +97,13 @@ export function KreatorPrzypisaniaKatalogu() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, catalogItemId, catalogNamespace, closeForm, elementRef, executeDomainOperation, fallbackType, selekcjaPoOperacji, wersja]);
+  }, [activeCaseId, catalogItemId, catalogNamespace, closeForm, elementRef, executeDomainOperation, fallbackType, prowadzenie, selekcjaPoOperacji, wersja]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: elementRef || 'Brak' },
-    { etykieta: T.wierszPrzestrzen, stan: catalogNamespace ? 'kompletne' : 'ostrzezenie', wartosc: catalogNamespace || T.przestrzenAuto },
-    { etykieta: T.wierszPozycja, stan: catalogItemId ? 'kompletne' : 'brak', wartosc: catalogItemId || 'Do wskazania' },
+    { etykieta: T.wierszElement, stan: elementRef ? 'ustalone' : 'do_wyboru', wartosc: elementRef || '' },
+    // Przestrzeń nieznana: backend wyznacza ją z typu elementu (reguła operacji) — stan przyjęty.
+    { etykieta: T.wierszPrzestrzen, stan: 'ustalone', wartosc: catalogNamespace || T.przestrzenAuto },
+    { etykieta: T.wierszPozycja, stan: catalogItemId ? 'ustalone' : 'do_wyboru', wartosc: catalogItemId || '' },
   ];
 
   const aside = (
@@ -118,8 +122,8 @@ export function KreatorPrzypisaniaKatalogu() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId, testid: 'mvd-kreator-przypisanie-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, testid: 'mvd-kreator-przypisanie-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-przypisanie-anuluj' }}
       testid="mvd-kreator-przypisanie"
     >
@@ -132,7 +136,10 @@ export function KreatorPrzypisaniaKatalogu() {
       <KreatorSekcja tytul={T.elementTytul} testid="mvd-kreator-przypisanie-element">
         <KreatorInfo>{T.elementPomoc}</KreatorInfo>
         <KreatorSiatka kolumny={2}>
-          <RzadWartosci etykieta={T.element} wartosc={elementRef || '—'} />
+          <RzadWartosci
+            etykieta={T.element}
+            wartosc={elementRef ? nazwaObiektuZMigawki(snapshot, elementRef) : '—'}
+          />
           <RzadWartosci etykieta={T.przestrzen} wartosc={catalogNamespace || T.przestrzenAuto} />
         </KreatorSiatka>
       </KreatorSekcja>

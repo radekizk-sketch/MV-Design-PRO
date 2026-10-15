@@ -32,8 +32,15 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  jedynaZgodna,
+  napiecieSzyny,
+  pierwszyBrak,
+  useDecyzjeProjektanta,
+  useProwadzenie,
   useSelekcjaPoOperacji,
+  wskazanieZBledu,
   type KrokKreatora,
+  type MiejscePola,
   type WierszGotowosci,
 } from '../rama';
 import {
@@ -42,18 +49,21 @@ import {
   fmtKv,
   fmtMva,
   fmtPct,
+  konfliktyFormularza,
   parametryZKatalogu,
   seedRegulacjiZKatalogu,
+  tabliczkaZgodnaZSzynami,
   walidujFormularz,
+  zaczepyZTabliczki,
   zbudujPayload,
   zbudujZapytaniePodgladu,
-  type BladPola,
   type ControlMode,
   type KontekstTransformatora,
   type RegulatedWinding,
   type RegulationType,
   type TransformatorFormData,
 } from './transformatorModel';
+import { wPasmieNn, wPasmieSn } from '../../model/pasmaNapieciowe';
 import { TRANSFORMATOR_STRINGS as T } from './strings';
 import { WykresAvr } from './WykresAvr';
 
@@ -62,6 +72,37 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'regulacja', tytul: T.krokRegulacja },
   { id: 'zapis', tytul: T.krokZapis },
 ];
+
+/** Pole formularza → krok i kontrolka (wskazanie BRAKU_DO_OPERACJI przy zapisie). */
+const MIEJSCA: Readonly<Record<string, MiejscePola>> = {
+  hv_bus_ref: { krok: 'szyny', pole: 'mvd-kreator-transformator-hv' },
+  lv_bus_ref: { krok: 'szyny', pole: 'mvd-kreator-transformator-lv' },
+  catalog_ref: { krok: 'szyny', pole: 'mvd-kreator-transformator-katalog' },
+  tap_min_position: { krok: 'regulacja', pole: 'mvd-kreator-transformator-tapmin' },
+  tap_max_position: { krok: 'regulacja', pole: 'mvd-kreator-transformator-tapmax' },
+  tap_neutral_position: { krok: 'regulacja', pole: 'mvd-kreator-transformator-tapneutral' },
+  tap_current_position: { krok: 'regulacja', pole: 'mvd-kreator-transformator-tapcurrent' },
+  tap_step_percent: { krok: 'regulacja', pole: 'mvd-kreator-transformator-tapstep' },
+  voltage_setpoint_kv: { krok: 'regulacja', pole: 'mvd-kreator-transformator-setpoint' },
+};
+
+type PoleAuto =
+  | 'hv_bus_ref'
+  | 'lv_bus_ref'
+  | 'catalog_ref'
+  | 'tap_min_position'
+  | 'tap_max_position'
+  | 'tap_neutral_position'
+  | 'tap_current_position'
+  | 'tap_step_percent';
+
+const POLA_ZACZEPOW = [
+  'tap_min_position',
+  'tap_max_position',
+  'tap_neutral_position',
+  'tap_current_position',
+  'tap_step_percent',
+] as const;
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -97,9 +138,10 @@ export function KreatorTransformatoraSnNn() {
     hv_bus_ref: kontekst.hv_bus_ref ?? '',
     lv_bus_ref: kontekst.lv_bus_ref ?? '',
   }));
-  const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('szyny');
+  const prowadzenie = useProwadzenie(setKrok);
+  const { edytowane, decyzjaProjektanta } = useDecyzjeProjektanta<PoleAuto>();
 
   const [typy, setTypy] = useState<TransformerType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -182,9 +224,63 @@ export function KreatorTransformatoraSnNn() {
   const zmien = useCallback(
     <K extends keyof TransformatorFormData>(pole: K, wartosc: TransformatorFormData[K]) => {
       setDane((p) => ({ ...p, [pole]: wartosc }));
+      if ((['hv_bus_ref', 'lv_bus_ref', 'catalog_ref', ...POLA_ZACZEPOW] as string[]).includes(pole)) {
+        edytowane(pole as PoleAuto);
+      }
     },
-    [],
+    [edytowane],
   );
+
+  const napiecieHv = useMemo(() => napiecieSzyny(snapshot, dane.hv_bus_ref), [dane.hv_bus_ref, snapshot]);
+  const napiecieLv = useMemo(() => napiecieSzyny(snapshot, dane.lv_bus_ref), [dane.lv_bus_ref, snapshot]);
+
+  // AUTO_PRZYJETE: szyny z kontekstu stacji, a bez niego — jedyna szyna SN / jedyna szyna nN
+  // modelu (topologia). Kilka szyn = wybór projektanta z listy.
+  // Pasma z jednego lustra predykatu backendu (`ui2/model/pasmaNapieciowe`).
+  const jedynaSzynaSn = useMemo(() => jedynaZgodna(busOptions, (b) => wPasmieSn(b.voltage_kv)), [busOptions]);
+  const jedynaSzynaNn = useMemo(() => jedynaZgodna(busOptions, (b) => wPasmieNn(b.voltage_kv)), [busOptions]);
+  useEffect(() => {
+    if (!dane.hv_bus_ref && jedynaSzynaSn && !decyzjaProjektanta('hv_bus_ref')) {
+      setDane((p) => ({ ...p, hv_bus_ref: jedynaSzynaSn.ref_id }));
+    }
+    if (!dane.lv_bus_ref && jedynaSzynaNn && !decyzjaProjektanta('lv_bus_ref')) {
+      setDane((p) => ({ ...p, lv_bus_ref: jedynaSzynaNn.ref_id }));
+    }
+  }, [dane.hv_bus_ref, dane.lv_bus_ref, decyzjaProjektanta, jedynaSzynaNn, jedynaSzynaSn]);
+
+  // AUTO_PRZYJETE: jedyny transformator katalogu o napięciach tych szyn (kilka = wybór).
+  const jedynyTyp = useMemo(
+    () =>
+      napiecieHv !== null && napiecieLv !== null
+        ? jedynaZgodna(typy, (t) => tabliczkaZgodnaZSzynami(t, napiecieHv, napiecieLv))
+        : null,
+    [napiecieHv, napiecieLv, typy],
+  );
+  useEffect(() => {
+    if (!jedynyTyp || dane.catalog_ref || decyzjaProjektanta('catalog_ref')) return;
+    setDane((p) => ({ ...p, catalog_ref: jedynyTyp.id }));
+  }, [dane.catalog_ref, decyzjaProjektanta, jedynyTyp]);
+
+  // AUTO_PRZYJETE: zaczepy z tabliczki wybranej pozycji katalogowej (jedno źródło, to samo
+  // co w kreatorze stacji). Zmiana pozycji katalogowej odświeża wartości nieedytowane.
+  const nazwaTypu = typy.find((t) => t.id === dane.catalog_ref)?.name ?? '';
+  useEffect(() => {
+    if (dane.regulation_type === 'NONE') return;
+    const zaczepy = zaczepyZTabliczki(params);
+    if (!zaczepy) return;
+    setDane((p) => {
+      let zmiana = false;
+      const nastepne = { ...p };
+      for (const pole of POLA_ZACZEPOW) {
+        if (decyzjaProjektanta(pole)) continue;
+        if (nastepne[pole] !== zaczepy[pole]) {
+          nastepne[pole] = zaczepy[pole];
+          zmiana = true;
+        }
+      }
+      return zmiana ? nastepne : p;
+    });
+  }, [dane.regulation_type, decyzjaProjektanta, params]);
 
   const zmienRegulacje = useCallback(
     (regulation_type: RegulationType) => {
@@ -196,23 +292,33 @@ export function KreatorTransformatoraSnNn() {
     [params],
   );
 
-  const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+  // KONFLIKT_TECHNICZNY — widoczny od razu przy polu (ta sama szyna, napięcia tabliczki ≠
+  // szyny, zaczep min ≥ max, krok niedodatni, pozycja poza zakresem).
+  const konflikty = useMemo(
+    () => konfliktyFormularza(dane, params, napiecieHv, napiecieLv),
+    [dane, napiecieHv, napiecieLv, params],
+  );
+  const konfliktDlaPola = (pole: string): string | undefined =>
+    konflikty.find((b) => b.field === pole)?.message;
   const hasKontekst = Boolean(kontekst.hv_bus_ref && kontekst.lv_bus_ref) || busOptions.length > 0;
   const blockReason = kontekst.block_reason ?? (busOptions.length === 0 ? T.brakKontekstuOpis : null);
 
   const onZapisz = useCallback(async () => {
-    const walid = walidujFormularz(dane);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
+    const brak = pierwszyBrak([
+      !hasKontekst && { komunikat: blockReason ?? T.brakKontekstuOpis },
+      ...walidujFormularz(dane, params, napiecieHv, napiecieLv).map((b) => wskazanieZBledu(b, MIEJSCA)),
+      !activeCaseId && { komunikat: T.brakZakresu },
+    ]);
+    if (brak) {
+      prowadzenie.wskaz(brak);
       return;
     }
+    prowadzenie.zgas();
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'add_transformer_sn_nn', zbudujPayload(dane, kontekst));
+      const response = await executeDomainOperation(activeCaseId as string, 'add_transformer_sn_nn', zbudujPayload(dane, kontekst));
       if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladZapisu);
         return;
       }
       if (response.error) {
@@ -225,9 +331,9 @@ export function KreatorTransformatoraSnNn() {
         name: dane.nazwa.trim() || 'Transformator',
       });
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setBladGlobalny(e instanceof Error ? e.message : T.bladZapisu);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst, selekcjaPoOperacji]);
+  }, [activeCaseId, blockReason, closeForm, dane, executeDomainOperation, hasKontekst, kontekst, napiecieHv, napiecieLv, params, prowadzenie, selekcjaPoOperacji]);
 
   const regulacjaLabel =
     dane.regulation_type === 'NONE'
@@ -236,19 +342,28 @@ export function KreatorTransformatoraSnNn() {
         ? 'DETC'
         : `OLTC ${dane.control_mode === 'AUTOMATIC' ? '(AVR)' : '(ręczny)'}`;
 
+  const nazwaSzyny = (ref: string): string => busOptions.find((b) => b.ref_id === ref)?.name ?? ref;
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszSzyny,
-      stan: dane.hv_bus_ref && dane.lv_bus_ref ? 'kompletne' : 'brak',
-      wartosc: dane.hv_bus_ref && dane.lv_bus_ref ? 'Kompletne' : 'Do wskazania',
+      stan: konfliktDlaPola('lv_bus_ref')
+        ? 'konflikt'
+        : !dane.hv_bus_ref || !dane.lv_bus_ref
+          ? 'do_wyboru'
+          : 'ustalone',
+      wartosc: dane.hv_bus_ref && dane.lv_bus_ref ? `${nazwaSzyny(dane.hv_bus_ref)} / ${nazwaSzyny(dane.lv_bus_ref)}` : T.szynyDoWskazania,
     },
     {
       etykieta: T.wierszTyp,
-      stan: dane.catalog_ref ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
+      stan: konfliktDlaPola('catalog_ref') ? 'konflikt' : !dane.catalog_ref ? 'do_wyboru' : 'ustalone',
+      wartosc: nazwaTypu,
     },
-    { etykieta: T.wierszMoc, stan: params ? 'kompletne' : 'ostrzezenie', wartosc: fmtMva(params?.rated_power_mva) },
-    { etykieta: T.wierszRegulacja, stan: 'kompletne', wartosc: regulacjaLabel },
+    { etykieta: T.wierszMoc, stan: params ? 'ustalone' : 'do_wyboru', wartosc: params ? fmtMva(params.rated_power_mva) : '' },
+    {
+      etykieta: T.wierszRegulacja,
+      stan: POLA_ZACZEPOW.some((pole) => konfliktDlaPola(pole)) ? 'konflikt' : 'ustalone',
+      wartosc: regulacjaLabel,
+    },
   ];
 
   const aside = (
@@ -285,16 +400,6 @@ export function KreatorTransformatoraSnNn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
-  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
-  // karta i ten sam mechanizm powtórzony w tym pliku).
-  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
-    !hasKontekst || !activeCaseId
-      ? 'zablokowany'
-      : katalogLadowanie
-        ? 'ladowanie'
-        : 'gotowy';
-  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -308,15 +413,13 @@ export function KreatorTransformatoraSnNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={
-        stanGotowosci === 'ladowanie'
-          ? T.katalogLadowanieStopka
-          : bledy.length > 0
-            ? T.walidacjaStopka
-            : blockReason
-      }
-      status={stanGotowosci}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-transformator-zapisz' }}
+      {...prowadzenie.propsRamy}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: onZapisz,
+        blokada: katalogLadowanie ? 'ladowanie' : null,
+        testid: 'mvd-kreator-transformator-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-transformator-anuluj' }}
       krokWstecz={
         krokIndex > 0
@@ -344,16 +447,16 @@ export function KreatorTransformatoraSnNn() {
               etykieta={T.hvBus}
               wartosc={dane.hv_bus_ref}
               onZmiana={(v) => zmien('hv_bus_ref', v)}
-              opcje={opcjeSzyn}
-              blad={bladDlaPola('hv_bus_ref')}
+              opcje={[{ id: '', etykieta: T.szynaPlaceholder }, ...opcjeSzyn]}
+              blad={konfliktDlaPola('hv_bus_ref')}
               testid="mvd-kreator-transformator-hv"
             />
             <PoleWyboru
               etykieta={T.lvBus}
               wartosc={dane.lv_bus_ref}
               onZmiana={(v) => zmien('lv_bus_ref', v)}
-              opcje={opcjeSzyn}
-              blad={bladDlaPola('lv_bus_ref')}
+              opcje={[{ id: '', etykieta: T.szynaPlaceholder }, ...opcjeSzyn]}
+              blad={konfliktDlaPola('lv_bus_ref')}
               testid="mvd-kreator-transformator-lv"
             />
           </KreatorSiatka>
@@ -366,9 +469,9 @@ export function KreatorTransformatoraSnNn() {
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}
+            blad={konfliktDlaPola('catalog_ref')}
             testid="mvd-kreator-transformator-katalog"
           />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
           <PoleTekstowe
             etykieta={T.nazwa}
             wartosc={dane.nazwa}
@@ -422,13 +525,13 @@ export function KreatorTransformatoraSnNn() {
           ) : (
             <>
               <KreatorSiatka kolumny={2}>
-                <PoleLiczbowe etykieta={T.tapMin} wartosc={dane.tap_min_position} onZmiana={(v) => zmien('tap_min_position', v ?? 0)} blad={bladDlaPola('tap_min_position')} testid="mvd-kreator-transformator-tapmin" />
-                <PoleLiczbowe etykieta={T.tapMax} wartosc={dane.tap_max_position} onZmiana={(v) => zmien('tap_max_position', v ?? 0)} testid="mvd-kreator-transformator-tapmax" />
-                <PoleLiczbowe etykieta={T.tapNeutral} wartosc={dane.tap_neutral_position} onZmiana={(v) => zmien('tap_neutral_position', v ?? 0)} testid="mvd-kreator-transformator-tapneutral" />
-                <PoleLiczbowe etykieta={T.tapCurrent} wartosc={dane.tap_current_position} onZmiana={(v) => zmien('tap_current_position', v ?? 0)} testid="mvd-kreator-transformator-tapcurrent" />
+                <PoleLiczbowe etykieta={T.tapMin} wartosc={dane.tap_min_position} onZmiana={(v) => zmien('tap_min_position', v)} blad={konfliktDlaPola('tap_min_position')} testid="mvd-kreator-transformator-tapmin" />
+                <PoleLiczbowe etykieta={T.tapMax} wartosc={dane.tap_max_position} onZmiana={(v) => zmien('tap_max_position', v)} testid="mvd-kreator-transformator-tapmax" />
+                <PoleLiczbowe etykieta={T.tapNeutral} wartosc={dane.tap_neutral_position} onZmiana={(v) => zmien('tap_neutral_position', v)} testid="mvd-kreator-transformator-tapneutral" />
+                <PoleLiczbowe etykieta={T.tapCurrent} wartosc={dane.tap_current_position} onZmiana={(v) => zmien('tap_current_position', v)} blad={konfliktDlaPola('tap_current_position')} testid="mvd-kreator-transformator-tapcurrent" />
               </KreatorSiatka>
               <KreatorSiatka kolumny={2}>
-                <PoleLiczbowe etykieta={T.tapStep} jednostka="%" wartosc={dane.tap_step_percent} onZmiana={(v) => zmien('tap_step_percent', v ?? 0)} krok={0.01} blad={bladDlaPola('tap_step_percent')} testid="mvd-kreator-transformator-tapstep" />
+                <PoleLiczbowe etykieta={T.tapStep} jednostka="%" wartosc={dane.tap_step_percent} onZmiana={(v) => zmien('tap_step_percent', v)} krok={0.01} blad={konfliktDlaPola('tap_step_percent')} testid="mvd-kreator-transformator-tapstep" />
                 {dane.regulation_type === 'OLTC' ? (
                   <PoleWyboru etykieta={T.controlMode} wartosc={dane.control_mode} onZmiana={(v) => zmien('control_mode', v as ControlMode)} opcje={T.controlModeOpcje} testid="mvd-kreator-transformator-control" />
                 ) : null}
@@ -437,7 +540,7 @@ export function KreatorTransformatoraSnNn() {
                 <>
                   <KreatorInfo>{T.regAvrPomoc}</KreatorInfo>
                   <KreatorSiatka kolumny={2}>
-                    <PoleLiczbowe etykieta={T.setpoint} jednostka="kV" wartosc={dane.voltage_setpoint_kv} onZmiana={(v) => zmien('voltage_setpoint_kv', v)} blad={bladDlaPola('voltage_setpoint_kv')} testid="mvd-kreator-transformator-setpoint" />
+                    <PoleLiczbowe etykieta={T.setpoint} jednostka="kV" wartosc={dane.voltage_setpoint_kv} onZmiana={(v) => zmien('voltage_setpoint_kv', v)} blad={konfliktDlaPola('voltage_setpoint_kv')} testid="mvd-kreator-transformator-setpoint" />
                     <PoleLiczbowe etykieta={T.deadband} jednostka="kV" wartosc={dane.deadband_kv} onZmiana={(v) => zmien('deadband_kv', v)} testid="mvd-kreator-transformator-deadband" />
                   </KreatorSiatka>
                 </>
@@ -451,7 +554,12 @@ export function KreatorTransformatoraSnNn() {
             podstawa={T.teoriaRegPodstawa}
             testid="mvd-kreator-transformator-teoria"
           >
-            {dane.regulation_type !== 'NONE' ? (
+            {dane.regulation_type !== 'NONE'
+            && dane.tap_min_position !== null
+            && dane.tap_max_position !== null
+            && dane.tap_neutral_position !== null
+            && dane.tap_step_percent !== null
+            && dane.tap_min_position < dane.tap_max_position ? (
               <figure className="mvd-wykres-fig">
                 <WykresAvr
                   tapMin={dane.tap_min_position}
@@ -479,7 +587,7 @@ export function KreatorTransformatoraSnNn() {
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-transformator-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
-            <RzadWartosci etykieta={T.wierszTyp} wartosc={dane.catalog_ref ?? '—'} />
+            <RzadWartosci etykieta={T.wierszTyp} wartosc={nazwaTypu || '—'} />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtMva(params?.rated_power_mva)} />
             <RzadWartosci etykieta={T.podgladI1} wartosc={fmtA(podglad?.primary_current_a)} />
             <RzadWartosci etykieta={T.podgladI2} wartosc={fmtA(podglad?.secondary_current_a)} />
