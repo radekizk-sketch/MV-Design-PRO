@@ -292,6 +292,9 @@
   border-collapse: collapse;
   font-size: 12px;
 }
+.mvd-koordynacja-ocena-dane td:last-child {
+  min-width: 150px;
+}
 
 .mvd-koordynacja-ocena-tabela th,
 .mvd-koordynacja-ocena-tabela td {
@@ -301,8 +304,13 @@
   vertical-align: top;
 }
 
+/* Nagłówki łamią się między słowami (najwyżej dwie linie przy tej szerokości); dawny
+ * `nowrap` poszerzał tabelę ponad kartę i ucinał kolumnę „Ocena”. Jednostka zostaje w
+ * nagłówku. Komórka statusu nie łamie etykiety werdyktu w pół słowa. */
 .mvd-koordynacja-ocena-tabela th {
-  white-space: nowrap;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
   font-weight: 600;
   color: var(--mvd-muted);
   font-size: 11px;

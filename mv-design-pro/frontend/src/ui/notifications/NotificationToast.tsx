@@ -29,8 +29,12 @@ export function NotificationToast() {
   if (notifications.length === 0) return null;
 
   return (
+    // Pod paskiem tytułu i paskiem zakresu obliczeń, nad panelem inspektora (oględziny
+    // 2026-10-15: przy `top-2` stos przykrywał przyciski paska tytułowego „Inspektor”,
+    // „Widok”, „Zapisz”, „Oblicz”; prawy dolny róg odpada — tam stoją akcje główne
+    // kreatorów, np. „Zapisz stację”).
     <div
-      className="fixed top-2 right-2 z-50 flex flex-col gap-2 max-w-sm"
+      className="fixed top-24 right-3 z-50 flex flex-col gap-2 max-w-sm"
       data-testid="notification-toast-container"
     >
       {notifications.map((n) => (
