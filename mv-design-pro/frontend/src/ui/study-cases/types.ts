@@ -351,11 +351,13 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
  */
 export const RUN_STATUS_COLORS: Record<RunStatus, string> = {
   PENDING: 'text-gray-500',
-  QUEUED: 'text-gray-500',
+  // Karta DYNAMIKA-W-TLE: każdy stan ma własny kolor (test „distinct colors") —
+  // w kolejce = oczekiwanie (bursztyn), anulowany = wygaszony (łupek), nie szary PENDING.
+  QUEUED: 'text-amber-600',
   RUNNING: 'text-blue-500',
   DONE: 'text-green-600',
   FAILED: 'text-red-600',
-  CANCELLED: 'text-gray-500',
+  CANCELLED: 'text-slate-400',
 };
 
 /**
