@@ -2861,7 +2861,7 @@ def _lokalizacje_zabezpieczen_koordynacji(
         szyna
         for stacja in model.substations
         if stacja.station_type != "gpz"
-        for szyna in szyny_stacji(stacja, model.branches)
+        for szyna in szyny_stacji(model, stacja)
     }
     return sorted(
         (galaz.ref_id, ZACISK_ZABEZPIECZEN_SCENY_KOORD)

@@ -64,6 +64,7 @@ from application.ncrfg_compliance import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.nazwy_elementow import opis_bez_nazwy
+from enm.tor_pola import szyna_raportowa
 from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -159,9 +160,11 @@ def _odcisk(payload: Any) -> str:
 
 
 def _sc_row_for_bus(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any] | None:
-    """Wiersz wyniku zwarciowego dla węzła przyłączenia (``element_id == bus_ref``)."""
+    """Wiersz wyniku zwarciowego dla węzła przyłączenia — zacisk pola (szyna pomocnicza bez
+    własnego wiersza) raportuje szyna pola tego samego węzła (`enm.tor_pola.szyna_raportowa`)."""
+    szukana = szyna_raportowa(sc_run.snapshot or {}, bus_ref)
     for row in build_short_circuit_results(sc_run).get("rows", []):
-        if row.get("element_id") == bus_ref:
+        if row.get("element_id") == szukana:
             wiersz: dict[str, Any] = row
             return wiersz
     return None

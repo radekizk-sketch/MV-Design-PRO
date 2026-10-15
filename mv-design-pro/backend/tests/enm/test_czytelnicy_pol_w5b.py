@@ -202,3 +202,19 @@ def test_wejscie_izolacji_v126_czyta_ograniczniki_typowane_pola() -> None:
     assert ograniczniki_bez_uziemienia_sieci(model) == ("sn",)
     bez = EnergyNetworkModel.model_validate(_model(bays=[_pole("sn-out", "sn")]))
     assert ograniczniki_bez_uziemienia_sieci(bez) == ()
+
+
+def test_szyny_stacji_w_starej_kolejnosci_argumentow_to_blad_a_nie_puste_zero() -> None:
+    """Karta W5-B zmieniła sygnaturę `szyny_stacji`/`szyna_glowna_stacji` na `(enm, stacja)`.
+    Wołanie w dawnej kolejności `(stacja, gałęzie)` zwracało po cichu pusty zbiór (zmierzone:
+    scena koordynacji harnessu bez ani jednego zabezpieczenia) — teraz to błąd programu."""
+    import pytest
+
+    from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
+
+    stacja = {"ref_id": "st", "bus_refs": ["sn"]}
+    with pytest.raises(TypeError):
+        szyny_stacji(stacja, [])  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        szyna_glowna_stacji(stacja, [], "sn")  # type: ignore[arg-type]
+    assert szyny_stacji({"substations": [stacja], "bays": []}, stacja) == frozenset({"sn"})

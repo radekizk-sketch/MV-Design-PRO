@@ -44,6 +44,7 @@ from typing import Any
 
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment, ProtectionSetting
+from enm.pola import punkt_przylaczenia_pola
 from werdykt import (
     ClaimKind,
     EvidenceTier,
@@ -564,7 +565,15 @@ def _generating_module_buses(enm: EnergyNetworkModel) -> dict[str, list[str]]:
 
 
 def _is_generating_field(bay: Bay, gen_buses: dict[str, list[str]]) -> bool:
-    return bay.bus_ref in gen_buses or bay.bay_role == "OZE"
+    """Pole przyłączeniowe modułu wytwórczego: moduł stoi w PUNKCIE PRZYŁĄCZENIA pola (własny
+    zacisk za aparatem pola, a bez zacisku — szyna pola; `enm.pola.punkt_przylaczenia_pola`,
+    ta sama reguła co zasada toru POLA-W-TORZE), albo pole ma rolę pola źródłowego.
+
+    Karta W5-B: dawniej moduł przypisywano polu po SZYNIE pola — od POLA-W-TORZE źródło stoi
+    na zacisku za aparatem, więc pole źródłowe gubiło swój moduł, a każde pole stojące na
+    szynie, na której wisiało nieprzepięte źródło (wejściowe, wyjściowe, transformatorowe),
+    przypisywało sobie cudzy moduł."""
+    return punkt_przylaczenia_pola(bay) in gen_buses or bay.bay_role == "OZE"
 
 
 def _lom_settings_by_type(
@@ -1132,11 +1141,13 @@ def build_ochrona_lom_view(enm: EnergyNetworkModel) -> dict[str, Any]:
     covered_buses: set[str] = set()
     for bay in generating_bays:
         assignment = protection_by_ref.get(bay.protection_ref) if bay.protection_ref else None
-        gen_refs = gen_buses.get(bay.bus_ref, [])
+        punkt = punkt_przylaczenia_pola(bay)
+        gen_refs = gen_buses.get(punkt, []) if punkt else []
         pole, skladowe_pola = _evaluate_field(bay, assignment, gen_refs)
         fields.append(pole)
         skladowe_sieci.extend(skladowe_pola)
-        covered_buses.add(bay.bus_ref)
+        if punkt:
+            covered_buses.add(punkt)
 
     # Moduły wytwórcze bez pola przyłączeniowego — rekord oceny niewykonanej każdego z nich.
     modules_without_field: list[str] = sorted(

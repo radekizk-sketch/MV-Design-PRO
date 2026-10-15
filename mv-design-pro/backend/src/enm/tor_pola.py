@@ -368,6 +368,21 @@ def _aparaty_pol_nn_stacji(
     return [g for g in _galezie(enm) if _atrybut(g, "ref_id") in aparaty_pol]
 
 
+def _wymagaj_modelu_i_stacji(enm: object, stacja: object) -> None:
+    """Pierwszy argument to MODEL (słownik migawki albo `EnergyNetworkModel`), drugi —
+    STACJA. Karta W5-B zmieniła sygnaturę z `(stacja, gałęzie)` na `(enm, stacja)`; wołanie
+    w starej kolejności zwracało po cichu pusty zbiór (zmierzone: eksporter fikstur harnessu
+    budował scenę koordynacji bez ani jednego zabezpieczenia). Zła kolejność = błąd programu."""
+    jest_modelem = isinstance(enm, EnergyNetworkModel) or (
+        isinstance(enm, Mapping) and "substations" in enm
+    )
+    if not jest_modelem or isinstance(stacja, list | tuple):
+        raise TypeError(
+            "szyny stacji: oczekiwano (model ENM, stacja) — "
+            f"otrzymano ({type(enm).__name__}, {type(stacja).__name__})"
+        )
+
+
 def szyny_stacji(enm: Mapping[str, Any] | EnergyNetworkModel, stacja: object) -> frozenset[str]:
     """Szyny NALEŻĄCE do stacji — JEDNO źródło dla każdego pytania „do której stacji należy
     ta szyna" (karta POLA-W-TORZE, inwentarz konsumentów).
@@ -378,6 +393,7 @@ def szyny_stacji(enm: Mapping[str, Any] | EnergyNetworkModel, stacja: object) ->
     (`Bay.equipment_refs` pól nN — zacisk wyłącznika głównego nN, szyny odpływów i pól
     źródeł). `enm` i `stacja` — słownik migawki albo model `EnergyNetworkModel`.
     """
+    _wymagaj_modelu_i_stacji(enm, stacja)
     station_ref = _atrybut(stacja, "ref_id")
     wynik = {s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)}
     for pola in _pola_z_zaciskiem_wg_szyny(enm, station_ref).values():
@@ -398,6 +414,7 @@ def szyna_glowna_stacji(
     aparatu pola nN, gdy `szyna_ref` leży za aparatem pola nN (np. strona dolna transformatora
     na zacisku wyłącznika głównego nN — szyną rozdzielnicy nN jest szyna po drugiej stronie
     wyłącznika). `None` — szyna nie należy do stacji."""
+    _wymagaj_modelu_i_stacji(enm, stacja)
     station_ref = _atrybut(stacja, "ref_id")
     glowne = [s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)]
     if szyna_ref in glowne:

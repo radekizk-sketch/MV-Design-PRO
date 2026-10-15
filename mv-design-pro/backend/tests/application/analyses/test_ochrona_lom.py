@@ -547,3 +547,42 @@ def test_wpis_bez_tozsamosci_pola_to_nazwana_odmowa_migracji(wpis: dict) -> None
     )
     assert view["fields"] == []
     assert view["modules_without_field"] == ["gen_pv"]
+
+
+@pytest.mark.parametrize("wytworca_na_zacisku", [True, False])
+@pytest.mark.parametrize("rola_pola_obok", ["IN", "OUT", "TR", "FEEDER"])
+def test_modul_nalezy_do_pola_w_punkcie_przylaczenia(
+    wytworca_na_zacisku: bool, rola_pola_obok: str
+) -> None:
+    """Karta W5-B (POLA-W-TORZE w ocenie LoM): moduł wytwórczy należy do pola, w którego
+    PUNKCIE PRZYŁĄCZENIA stoi — własny zacisk za aparatem pola, a bez zacisku szyna pola
+    (`enm.pola.punkt_przylaczenia_pola`). Iloczyn: {wytwórca na zacisku pola źródłowego, na
+    szynie} × {inne pole stojące na tej samej szynie stacji}. Pole obok (wejściowe, wyjściowe,
+    transformatorowe, odpływowe) nigdy nie przypisuje sobie cudzego modułu, a pole źródłowe
+    z zaciskiem nie gubi swojego."""
+    zacisk = "bus_oze_zacisk"
+    pole_zrodlowe = _bay(ref="bay_oze").model_copy(
+        update={"terminal_bus_ref": zacisk if wytworca_na_zacisku else None}
+    )
+    pole_obok = Bay(
+        ref_id="bay_obok",
+        name="Pole obok",
+        bay_role=rola_pola_obok,
+        substation_ref="stac_1",
+        bus_ref="bus_oze",
+        terminal_bus_ref="bus_obok_zacisk",
+    )
+    enm = _enm(
+        bays=[pole_zrodlowe, pole_obok],
+        generators=[_generator(bus=zacisk if wytworca_na_zacisku else "bus_oze")],
+        protection_assignments=[],
+        buses=[
+            Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15.0),
+            Bus(ref_id=zacisk, name="Zacisk pola OZE", voltage_kv=15.0),
+            Bus(ref_id="bus_obok_zacisk", name="Zacisk pola obok", voltage_kv=15.0),
+        ],
+    )
+    view = build_ochrona_lom_view(enm)
+    assert view["modules_without_field"] == []
+    moduly = {pole["bay_ref"]: pole["generating_module_refs"] for pole in view["fields"]}
+    assert moduly == {"bay_oze": ["gen_pv"]}

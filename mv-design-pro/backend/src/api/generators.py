@@ -44,7 +44,7 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
-from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
+from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.nazwy import jest_nazwa, nazwa_nadana
@@ -1198,10 +1198,13 @@ def _prady_zwarciowe_szyny(
         if run.analysis_type == "short_circuit_sn" and run.status == "FINISHED"
     ]
     for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
+        # Wytwórca na zacisku pola (szyna pomocnicza bez własnego wiersza) — wiersz węzła
+        # raportuje szyna pola (`enm.tor_pola.szyna_raportowa`, model TEGO biegu).
+        szukana = szyna_raportowa(run.snapshot or {}, bus_ref)
         for wiersz in build_short_circuit_results(run).get("rows", []):
             if wiersz.get("fault_type") not in (None, "3F", "three_phase"):
                 continue
-            if bus_ref in (wiersz.get("target_id"), wiersz.get("element_id")):
+            if szukana in (wiersz.get("target_id"), wiersz.get("element_id")):
                 return wiersz.get("ikss_ka"), wiersz.get("ip_ka"), str(run.id)
     return None, None, None
 
