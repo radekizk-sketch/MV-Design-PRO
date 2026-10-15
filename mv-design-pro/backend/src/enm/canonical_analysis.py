@@ -1370,60 +1370,6 @@ def execute_run(
         raise
 
 
-def run_short_circuit_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="short_circuit_sn",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
-def run_power_flow_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="PF",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
-def run_phase_state_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="phase_state_sn",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
 def _phase_value_from_options(
     options: dict[str, Any],
     key: str,

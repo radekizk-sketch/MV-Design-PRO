@@ -19,9 +19,9 @@ audit2_integration.py` (round-trip przez `execution/study-cases/.../runs` +
 `execution/runs/{id}/execute` z rzeczywistą konfiguracją audytu 2 w bazie —
 bieg bez poprawnie podanej fabryki zwróciłby FAILED albo config `None`, nie
 tylko `is`-identyczność obiektu), a dla zabezpieczeń przez test pierwszy poniżej.
-`run_short_circuit_now`/`run_power_flow_now` same w sobie zostają w
-`enm/canonical_analysis.py` — mają innych wołających bezpośrednich (silnik,
-`tests/e2e/test_nn_full_chain.py`) niezależnych od skasowanej trasy HTTP.
+`run_short_circuit_now`/`run_power_flow_now` (cienkie opakowania `create_run` +
+`execute_run`) żyją od karty DYNAMIKA-W-TLE w `tests/utils/biegi.py` — miały wyłącznie
+wołających testowych (`tests/e2e/test_nn_full_chain.py`, testy silnika), zero produkcyjnych.
 """
 
 from __future__ import annotations

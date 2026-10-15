@@ -17,11 +17,12 @@ from api.enm import get_enm_field_view
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.models import Project
 from domain.study_case import StudyCase
-from enm.canonical_analysis import reset_canonical_runs, run_short_circuit_now
+from enm.canonical_analysis import reset_canonical_runs
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm, reset_enm_store, set_enm
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import run_short_circuit_now
 
 
 def _nowy_przypadek(uow_factory) -> str:

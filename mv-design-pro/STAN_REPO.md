@@ -186,7 +186,8 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 | **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
-| **NOT STARTED (szkic §0 z O-57)** | DYNAMIKA-W-TLE, KATALOG-DYNAMIKI-BRAKI, AB-1c, O-52, CICHE-ZERO (szkice na końcu `KARTY_OTWARTE_2026-09.md`) |
+| **VERIFIED, niezintegrowane (2026-10-15)** | DYNAMIKA-W-TLE (gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-dynamika-w-tle`, meldunek `MELDUNEK_DYNAMIKA_W_TLE.md`): wykonawca biegów w procesie, 202 + odpytywanie, anulowanie, postęp, kasacja Celery/Redis/MongoDB, PERF-DYN-0 (42,1 s / 40,5 s ≤ 60 s) |
+| **NOT STARTED (szkic §0 z O-57)** | KATALOG-DYNAMIKI-BRAKI, AB-1c, O-52, CICHE-ZERO (szkice na końcu `KARTY_OTWARTE_2026-09.md`) |
 | **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-B, W5-C, W5-E, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
 
 ### C. Rejestr niedokończonych kart
@@ -215,7 +216,7 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | ENDPOINTY-BEZ-KONSUMENTA | P2 | nierozpoczęta | ODMOWA-DANYCH-422 | |
 | KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2 | P2 (klasy tekstu dla projektanta) | nierozpoczęte | — | |
 | CICHE-ZERO | P1 | szkic §0 | GOTOWOSC-DER-BACKEND | `?? 0` / `?? false` / `or 0.0` / `or False` zasilające decyzję (front 258 + 25, backend 57 + 11 + 3); `false_zero_guard` dziś tylko raportuje → tryb ścisły z budżetem 0 |
-| DYNAMIKA-W-TLE | P1 (warunek Pakietu E karty AB-1b.2, AB-1c i AB-6 — O-57 pkt 2) | szkic §0 | — | bieg `DYNAMIKA_RMS` synchronicznie w żądaniu HTTP (`api/execution_runs.py:236-253`); wykonawca w procesie, stan biegu utrwalony, 202 + odpytywanie, anulowanie; kasacja martwej konfiguracji Celery; PERF-DYN-0 |
+| DYNAMIKA-W-TLE | P1 (warunek Pakietu E karty AB-1b.2, AB-1c i AB-6 — O-57 pkt 2) | WYKONANA 2026-10-15 (gałąź wynikowa, do integracji) | — | wykonawca w procesie (`application/execution/wykonawca.py`), stany QUEUED/CANCELLED w rejestrze biegów i serii, 202 + odpytywanie, anulowanie w punktach przerwania, postęp; Celery/Redis/MongoDB skasowane z bramką wskrzeszenia; PERF-DYN-0: 42,1 s (1 wątek) / 40,5 s (domyślne) na sieci złotej 52 stacji, 10 s symulacji — budżet ≤ 60 s dotrzymany; meldunek `MELDUNEK_DYNAMIKA_W_TLE.md` |
 | KATALOG-DYNAMIKI-BRAKI | P1 (warunek AB-1c i AB-4a) | szkic §0 | dane OD-17 (magazyn) | brak przestrzeni katalogowej maszyny synchronicznej (warunek AB-1c, SPGM-B); BESS bez sprawności i okna SOC (warunek AB-4a; `soc_poczatkowy` → warunek początkowy punktu pracy); profile turbin typu 1/2 istnieją, ale rdzeń nie ma ich modelu (W6-J) → kasacja z bramką wskrzeszenia |
 | O-52 | P2 | szkic §0 | ODMOWA-DANYCH-422 (typ odmowy) | łagodne rzutowanie pydantic na granicach danych; strażnik AST `strict=True` |
 | AB-1c | P1 (ścieżka krytyczna A/B) | szkic §0 | AB-1b.2, AB-1d_min, KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE; odpowiedź właściciela o delegację B-01 dla kasacji `frt_hvrt` | profil wzorcowy testowy do odbioru logiki (O-57 pkt 10) |
@@ -377,7 +378,7 @@ przepisane do wierszy rejestru planu A/B §7):
    jednym wątku i load average 9–12, 6 130,7 ms w łańcuchu p5 (ten sam `backend/src`; obciążenia
    wtedy nie mierzono). Naprawa w backendzie e2e — `9cc212b9` (`playwright.config.ts`: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1` dla backendu e2e); biegi testów integratora i wykonawców —
    `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` (reguła biegów weryfikacyjnych, `KARTY_OTWARTE_2026-09.md`);
-   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE. Wyniki od liczby wątków
+   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE (wykonany 2026-09-30: 1 wątek 42,1 s, domyślne 40,5 s na sieci złotej 52 stacji, 10 s symulacji — różnica w szumie; obraz i compose: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`). Wyniki od liczby wątków
    i od jądra OpenBLAS nie zależą W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA,
    PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry wartości zależą od kolejności sumowania. Korekta 2026-09-30:
    dawne zdanie „wyniki od liczby wątków nie zależą” było za mocne — test obu liczb wątków biegł na

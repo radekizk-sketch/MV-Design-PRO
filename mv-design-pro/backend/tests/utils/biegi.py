@@ -134,6 +134,50 @@ def uruchom_v126(
     return zlecenie
 
 
+def run_short_circuit_now(
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
+    uow_factory: Any = None,
+) -> Any:
+    """Bieg zwarciowy wprost (`create_run` + `execute_run`, synchronicznie, bez HTTP) —
+    pomocnik TESTÓW silnika i łańcucha nN; do karty DYNAMIKA-W-TLE żył w
+    `enm/canonical_analysis.py` bez ani jednego konsumenta produkcyjnego."""
+    from enm.canonical_analysis import create_run, execute_run
+
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=klucz_twin,
+        analysis_type="short_circuit_sn",
+        project_id=project_id,
+        options=options,
+    )
+    return execute_run(run.id, uow_factory=uow_factory)
+
+
+def run_power_flow_now(
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
+    uow_factory: Any = None,
+) -> Any:
+    """Bieg rozpływu wprost (`create_run` + `execute_run`) — jak `run_short_circuit_now`."""
+    from enm.canonical_analysis import create_run, execute_run
+
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=klucz_twin,
+        analysis_type="PF",
+        project_id=project_id,
+        options=options,
+    )
+    return execute_run(run.id, uow_factory=uow_factory)
+
+
 def poczekaj_na_wykonawce(limit_s: float = LIMIT_OCZEKIWANIA_S) -> None:
     """Poczekaj, aż wykonawca w tle wyczerpie kolejkę (izolacja między testami)."""
     from application.execution import wykonawca_biegow
@@ -148,6 +192,8 @@ __all__ = [
     "STANY_KONCOWE_SERII",
     "poczekaj_na_stan_koncowy",
     "poczekaj_na_wykonawce",
+    "run_power_flow_now",
+    "run_short_circuit_now",
     "uruchom_v126",
     "wykonaj_bieg",
     "wykonaj_bieg_rozplywu",

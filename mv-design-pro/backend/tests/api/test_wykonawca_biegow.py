@@ -438,12 +438,18 @@ def test_blad_programu_w_tle_to_failed_z_nazwa_bledu_a_wykonawca_zyje_dalej(
         oryginal(run, graf, uow_factory, kontekst)
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", dyspozytor)
+    # Oba zlecone NARAZ: zdrowy czeka w kolejce, gdy wybuchający kończy wątek roboczy
+    # błędem programu — wątek zastępczy ma dokończyć kolejkę bez nowego zlecenia.
+    assert client.post(f"/api/execution/runs/{wybuchajacy}/execute").status_code == 202
+    assert client.post(f"/api/execution/runs/{zdrowy}/execute").status_code == 202
     zle = wykonaj_bieg(client, wybuchajacy).json()
     assert zle["status"] == "FAILED"
     assert zle["error_message"].startswith("Błąd wewnętrzny programu (KeyError)")
     assert "wstrzyknięty" not in zle["error_message"]
-    # Wątek roboczy przeżył błąd programu: następny bieg liczy się normalnie.
     assert wykonaj_bieg(client, zdrowy).json()["status"] == "DONE"
+    # Wykonawca przyjmuje też NOWE zlecenia po błędzie programu (wątek zastępczy żyje).
+    kolejny = _utworz(client, case_id, "LOAD_FLOW")
+    assert wykonaj_bieg(client, kolejny).json()["status"] == "DONE"
 
 
 # ---------------------------------------------------------------------------

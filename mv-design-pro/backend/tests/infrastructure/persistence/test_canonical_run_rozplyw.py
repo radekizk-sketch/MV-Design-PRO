@@ -24,7 +24,6 @@ from enm.canonical_analysis import (  # noqa: E402
     pobierz_rozplyw_biegu,
     pobierz_slad_rozplywu_biegu,
     reset_canonical_runs,
-    run_short_circuit_now,
     wiersze_swiezego_biegu_bez_rozplywu,
 )
 from enm.models import EnergyNetworkModel  # noqa: E402
@@ -39,6 +38,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (  
 from sqlalchemy import inspect, select, text  # noqa: E402
 
 from tests.catalog_test_helpers import gpz_source_record  # noqa: E402
+from tests.utils.biegi import run_short_circuit_now  # noqa: E402
 
 
 def _seed_enm(case_id: str) -> None:

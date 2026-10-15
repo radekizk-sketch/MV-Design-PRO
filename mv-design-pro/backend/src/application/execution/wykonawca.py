@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -61,7 +60,9 @@ POWOD_ANULOWANIA_PRZED_STARTEM = (
 #: bieg czasowy (po każdym kroku całkowania), zwarcie (między punktami zwarcia).
 #: Lista ZAMKNIĘTA — dopisanie rodzaju wymaga punktu przerwania w jego wykonawcy
 #: (przypięte testem: każdy rodzaj z listy przerywa bieg w toku, żaden spoza niej).
-RODZAJE_Z_PUNKTAMI_PRZERWANIA: frozenset[str] = frozenset({"dynamika_rms", "short_circuit_sn"})
+RODZAJE_Z_PUNKTAMI_PRZERWANIA: frozenset[str] = frozenset(
+    {"dynamika_rms", "short_circuit_sn"}
+)
 
 
 class BiegNieDoAnulowaniaError(OdmowaDanychError):
@@ -73,7 +74,7 @@ class _Zlecenie:
     """Jedno zlecenie kolejki: bieg albo seria; postęp i flaga anulowania w pamięci."""
 
     klucz: str
-    wykonaj: Callable[[KontekstWykonania], None]
+    wykonaj: Callable[[KontekstWykonania], object]
     anulowanie: threading.Event = field(default_factory=threading.Event)
     postep: PostepBiegu | None = None
     w_toku: bool = False
@@ -85,13 +86,16 @@ class WykonawcaBiegow:
     def __init__(self) -> None:
         self._zamek = threading.Lock()
         self._budzik = threading.Condition(self._zamek)
-        self._kolejka: deque[_Zlecenie] = deque()
+        # Zwykła lista jako kolejka FIFO: zlecenia liczy się w jednostkach, nie tysiącach.
+        self._kolejka: list[_Zlecenie] = []
         self._zlecenia: dict[str, _Zlecenie] = {}
         self._watek: threading.Thread | None = None
 
     # ------------------------------------------------------------------ biegi
 
-    def zlec_bieg(self, run_id: UUID, uow_factory: Callable[[], Any] | None) -> CanonicalRun:
+    def zlec_bieg(
+        self, run_id: UUID, uow_factory: Callable[[], Any] | None
+    ) -> CanonicalRun:
         """Przyjmij bieg do kolejki (CREATED → QUEUED atomowo) i wróć natychmiast.
 
         Przegrany wyścig o ten sam bieg (drugi `POST …/execute`) nie zleca nic i
@@ -132,7 +136,9 @@ class WykonawcaBiegow:
         if run.status in {"CREATED", "QUEUED"}:
             with canonical_run_repository_scope() as repository:
                 zdjety = repository.cancel_before_start(
-                    run_id, reason=POWOD_ANULOWANIA_PRZED_STARTEM, finished_at=datetime.now(UTC)
+                    run_id,
+                    reason=POWOD_ANULOWANIA_PRZED_STARTEM,
+                    finished_at=datetime.now(UTC),
                 )
             if zdjety:
                 self._usun_z_kolejki(_klucz_biegu(run_id))
@@ -155,7 +161,7 @@ class WykonawcaBiegow:
 
     # ------------------------------------------------------------------ serie
 
-    def zlec(self, klucz: str, wykonaj: Callable[[KontekstWykonania], None]) -> None:
+    def zlec(self, klucz: str, wykonaj: Callable[[KontekstWykonania], object]) -> None:
         """Przyjmij dowolne zlecenie (seria biegów) do tej samej kolejki FIFO.
 
         Wołający atomowo przestawia stan zlecanego bytu na QUEUED PRZED zleceniem —
@@ -217,10 +223,14 @@ class WykonawcaBiegow:
             self._budzik.notify_all()
             return True
 
-    def _uruchom_watek_pod_zamkiem(self) -> None:
-        if self._watek is not None and self._watek.is_alive():
+    def _uruchom_watek_pod_zamkiem(self, *, zastap: bool = False) -> None:
+        """Uruchom wątek roboczy, gdy go nie ma; `zastap=True` — także gdy bieżący wątek
+        właśnie kończy się błędem programu (jest jeszcze żywy w swoim `finally`)."""
+        if not zastap and self._watek is not None and self._watek.is_alive():
             return
-        self._watek = threading.Thread(target=self._petla, name="wykonawca-biegow", daemon=True)
+        self._watek = threading.Thread(
+            target=self._petla, name="wykonawca-biegow", daemon=True
+        )
         self._watek.start()
 
     def _petla(self) -> None:
@@ -228,21 +238,28 @@ class WykonawcaBiegow:
             with self._budzik:
                 while not self._kolejka:
                     self._budzik.wait()
-                zlecenie = self._kolejka.popleft()
+                zlecenie = self._kolejka.pop(0)
                 zlecenie.w_toku = True
+            blad_programu = True
             try:
                 zlecenie.wykonaj(self._kontekst(zlecenie))
+                blad_programu = False
             except Exception:
-                # `execute_run` zapisał już FAILED z nazwą błędu wewnętrznego i puścił
-                # wyjątek dalej (karta #151: 500 + pełny ślad) — tu nie ma żądania HTTP,
-                # więc ślad idzie do dziennika, a wątek roboczy żyje dalej.
+                # Błąd PROGRAMU (karta #151): `execute_run`/`execute_batch` zapisały już
+                # FAILED z nazwą błędu wewnętrznego i puściły wyjątek dalej. Tu nie ma
+                # żądania HTTP, które dostałoby 500 — ślad idzie do dziennika, a wyjątek
+                # leci dalej i KOŃCZY ten wątek (nie jest połykany); `finally` niżej
+                # stawia wątek zastępczy, żeby kolejka nie stanęła.
                 logger.exception(
                     "Zlecenie %s przerwane błędem wewnętrznym programu", zlecenie.klucz
                 )
+                raise
             finally:
                 with self._budzik:
                     self._zlecenia.pop(zlecenie.klucz, None)
                     self._budzik.notify_all()
+                    if blad_programu:
+                        self._uruchom_watek_pod_zamkiem(zastap=True)
 
     def _kontekst(self, zlecenie: _Zlecenie) -> KontekstWykonania:
         def zglos_postep(postep: PostepBiegu) -> None:
