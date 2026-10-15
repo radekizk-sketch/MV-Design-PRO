@@ -124,13 +124,27 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
 _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
 
+#: Karta W5-B: pola-LISTY rekordu pola dodane po zamrozeniu odciskow, ktorych wartosc
+#: domyslna to pusta lista (nie `None`). Pusta lista = dana nienadana — poza odciskiem
+#: (rekordy `bays` sprzed karty haszuja jak przed nia); lista niepusta jest trescia
+#: modelu. Osobny slownik, a nie rozszerzenie reguly `None`: pola z listy wyzej moga
+#: miec legalna pusta liste jako tresc zamrozona w odciskach sprzed karty.
+#: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
+    "bays": ("surge_arresters",),
+}
+
 
 def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
-    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    bez `id`, bez pol addytywnych o wartosci `None` (i pustej liście dla pol-list z
+    `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE`), ze skasowanymi polami jako `null`."""
     item.pop("id", None)
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
         if pole in item and item[pole] is None:
+            del item[pole]
+    for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE.get(key, ()):
+        if pole in item and item[pole] == []:
             del item[pole]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
