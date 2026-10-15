@@ -29,6 +29,7 @@ liczy żadnej wielkości.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -732,25 +733,67 @@ def _warunki_detekcji(
     ]
 
 
+def _liczba_dodatnia(wartosc: Any) -> bool:
+    return _liczba(wartosc) and math.isfinite(wartosc) and wartosc > 0
+
+
+def _warunek_liczby_dodatniej(parametry: dict[str, Any], klucz: str, opis_pl: str) -> Warunek:
+    """Parametr liczbowy projektanta, który rdzeń V12.6 (B-01) dzieli albo używa jako skali.
+
+    Sama OBECNOŚĆ (`_obecna`) przepuszczała do rdzenia zero, liczbę ujemną, napis i wartość
+    logiczną: `inrush_multiple_in = 0` i `trv_tau_s = 0` kończyły bieg błędem 500 (dzielenie
+    przez zero), napis — błędem konwersji, a wartość ujemna dawała liczby bez sensu fizycznego.
+    Warunek wymaga skończonej liczby dodatniej; brak wartości pozostaje brakiem.
+    """
+    wartosc = parametry.get(klucz)
+    poprawna = _liczba_dodatnia(wartosc)
+    return Warunek(
+        kod=f"parametr.{klucz}",
+        opis_pl=(
+            opis_pl
+            if poprawna or not _obecna(wartosc)
+            else f"{opis_pl} — wymagana skończona liczba dodatnia"
+        ),
+        spelniony=poprawna,
+        klucz_parametru=klucz,
+    )
+
+
 def _warunki_trv(
     model: V126AcademicInput, parametry: dict[str, Any], proponowane: dict[str, Proponowana]
 ) -> list[Warunek]:
+    # Krotność prądu załączania jest WYMAGANA od projektanta (charakterystyka producenta albo
+    # jawne założenie wariantowe — decyzja właściciela 2026-10-15, V12K-352): bez niej bieg
+    # dostaje 422, więc wartość domyślna 8,0 rdzenia FROZEN jest nieosiągalna w ścieżce API.
     warunki = [
-        _warunek_parametru(
+        _warunek_liczby_dodatniej(
             parametry,
             "trv_natural_frequency_hz",
             "Częstotliwość własna napięcia powrotnego obwodu",
-            proponowane=proponowane,
         ),
-        _warunek_parametru(
-            parametry, "trv_tau_s", "Stała czasowa napięcia powrotnego", proponowane=proponowane
-        ),
-        _warunek_parametru(
+        _warunek_liczby_dodatniej(parametry, "trv_tau_s", "Stała czasowa napięcia powrotnego"),
+        _warunek_liczby_dodatniej(
             parametry,
             "inrush_multiple_in",
-            "Krotność prądu załączania transformatora",
-            proponowane=proponowane,
+            "Krotność prądu załączania transformatora (założenie projektanta)",
         ),
+    ]
+    # Pole opcjonalne (puste = najwyższe Un szyny modelu, proponowane jawnie). Wartość, która
+    # trafi do biegu — projektanta albo propozycja modelu, ta sama kolejność co
+    # `uzupelnij_parametry_z_modelu` (predykaty parami: lista bez scalania == scalona) —
+    # musi być liczbą dodatnią.
+    napiecie = parametry.get("breaker_rated_voltage_kv")
+    if not _obecna(napiecie) and "breaker_rated_voltage_kv" in proponowane:
+        napiecie = proponowane["breaker_rated_voltage_kv"].wartosc
+    if _obecna(napiecie):
+        warunki.append(
+            _warunek_liczby_dodatniej(
+                {"breaker_rated_voltage_kv": napiecie},
+                "breaker_rated_voltage_kv",
+                "Napięcie znamionowe wyłącznika",
+            )
+        )
+    warunki += [
         _warunek_parametru(
             parametry,
             "neutral_grounding",

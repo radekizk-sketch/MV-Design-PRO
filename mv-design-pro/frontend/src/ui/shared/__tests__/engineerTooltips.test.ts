@@ -34,6 +34,32 @@ describe('ENGINEER_TOOLTIPS', () => {
   });
 });
 
+// Decyzja właściciela 2026-10-15 (V12K-352): podpowiedź nie podaje uniwersalnej liczby jako
+// faktu o urządzeniu, nastawie ani kryterium projektu — mówi, skąd wartość wziąć.
+describe('ENGINEER_TOOLTIPS — bez uniwersalnych liczb podanych jako fakt', () => {
+  it('żaden tekst nie przybliża wartości urządzenia/nastawy („~", „typowo", „zwykle")', () => {
+    for (const [klucz, tooltip] of Object.entries(ENGINEER_TOOLTIPS)) {
+      expect(tooltip.text, klucz).not.toMatch(/~|\btypowo\b|\bzwykle\b|\bok\.\s*\d/i);
+    }
+  });
+
+  it('prąd załączania: zależność od konstrukcji i warunków, wartość od producenta, bez krotności', () => {
+    const tekst = ENGINEER_TOOLTIPS.transformer_inrush.text;
+    expect(tekst).toMatch(/konstrukcji transformatora/);
+    expect(tekst).toMatch(/warunków załączenia/);
+    expect(tekst).toMatch(/producent/);
+    expect(tekst).toMatch(/nie ma wartości uniwersalnej/);
+    expect(tekst).not.toMatch(/\d\s*[×x]\s*I/);
+    expect(tekst).not.toMatch(/\d+\s*[-–]\s*\d+/);
+  });
+
+  it('każdy powołany dokument normatywny jest właściwy dziedzinie (bez norm nN dla kabli SN i normy OZE dla rozpływu)', () => {
+    expect(ENGINEER_TOOLTIPS.cable_length.norm).toBeUndefined();
+    expect(ENGINEER_TOOLTIPS.power_flow_tolerance.norm).toBeUndefined();
+    expect(ENGINEER_TOOLTIPS.voltage_wn.text).toMatch(/110 kV \(sieć dystrybucyjna/);
+  });
+});
+
 describe('getTooltip', () => {
   it('zwraca tooltip dla istniejącego klucza', () => {
     const t = getTooltip('voltage_sn');

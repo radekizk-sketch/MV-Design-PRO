@@ -275,8 +275,14 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       { klucz: 'trv_tau_s', etykieta: 'Stała czasowa napięcia powrotnego', rodzaj: 'liczba', jednostka: 's' },
       {
         klucz: 'inrush_multiple_in',
-        etykieta: 'Krotność prądu załączania transformatora',
+        etykieta: 'Krotność prądu załączania transformatora (założenie projektanta)',
         rodzaj: 'liczba',
+        jednostka: '× I_n',
+        // Decyzja właściciela 2026-10-15 (V12K-352): prąd załączania jest właściwością
+        // konkretnego transformatora i warunków załączenia — wyłącznie założenie wejściowe.
+        opis:
+          'Z charakterystyki producenta transformatora albo jawne założenie wariantowe — '
+          + 'nie jest podstawą zatwierdzenia nastaw zabezpieczeń.',
       },
       {
         klucz: 'neutral_grounding',

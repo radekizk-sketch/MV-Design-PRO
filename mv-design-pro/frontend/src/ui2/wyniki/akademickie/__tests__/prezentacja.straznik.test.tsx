@@ -372,4 +372,42 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     expect(pominiete).toHaveTextContent('Nastawy nie są prezentowane: solver nie ma dla nich udokumentowanej podstawy');
     expect(pominiete).toHaveTextContent('wymagane wymaganie OSD albo karta przekaźnika');
   });
+
+  // Karta V126-INRUSH-SEPARACJA (decyzja właściciela 2026-10-15, V12K-352): odpowiedź API
+  // (fixtura = odcisk realnej odpowiedzi) NADAL niesie blok `inrush` z udziałem 63/k
+  // i „zaleceniem blokady 87T” — kontrakt FROZEN. Ekran nie pokazuje żadnej z tych liczb
+  // ani w wielkościach wynikowych, ani w podstawie oceny z katalogu; krotność prądu
+  // załączania jest wyłącznie założeniem wejściowym formularza, z jednostką.
+  it('napięcie powrotne: udział 2. harmonicznej i blokada 87T NIE na ekranie, krotność tylko jako założenie', async () => {
+    const fixtura = ODPOWIEDZI.transient_trv as Record<string, unknown>;
+    const inrush = fixtura.inrush as Record<string, unknown> | undefined;
+    expect(inrush, 'fixtura bez bloku prądu załączania — test straciłby sens').toBeTruthy();
+    const udzial = Object.values(inrush ?? {}).find((w) => typeof w === 'number' && w !== 8);
+    expect(udzial, 'fixtura bez udziału 2. harmonicznej — test straciłby sens').toBeTypeOf('number');
+
+    const ekran = await uruchomRodzaj('transient_trv');
+    const wielkosci = screen.getByTestId('mvd-akad-wielkosci');
+    // Wiersze wielkości (podpis → wartość) — dokładnie trzy, żaden o prądzie załączania.
+    const podpisy = Array.from(wielkosci.querySelectorAll('.mvd-akad-wiersz-etyk')).map(
+      (element) => element.textContent ?? '',
+    );
+    expect(podpisy).toEqual([
+      'Najmniejszy margines napięcia powrotnego',
+      'Ryzyko ferrorezonansu',
+      'Zalecenie wobec ferrorezonansu',
+    ]);
+    // Liczba 63/k w żadnym zapisie (kropka i przecinek dziesiętny) na całym ekranie.
+    const tekst = ekran.textContent ?? '';
+    expect(tekst).not.toContain(String(udzial));
+    expect(tekst).not.toContain(String(udzial).replace('.', ','));
+    // Podstawa oceny z katalogu: wyłącznie margines napięcia powrotnego.
+    expect(screen.getByTestId('mvd-akad-werdykt')).not.toHaveTextContent(/87T|harmoniczn/);
+    // Nota pominięcia — powód wprost, w miejscu liczb.
+    const pominiete = screen.getByTestId('mvd-akad-wielkosci-pominiete');
+    expect(pominiete).toHaveTextContent('nie są pokazywane');
+    expect(pominiete).toHaveTextContent('analizy harmonicznych rzeczywistego przebiegu');
+    // Krotność: założenie projektanta w danych wejściowych, z jednostką.
+    expect(ekran).toHaveTextContent('Krotność prądu załączania transformatora (założenie projektanta)');
+    expect(ekran).toHaveTextContent('× I_n');
+  });
 });

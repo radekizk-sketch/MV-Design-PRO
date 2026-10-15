@@ -832,3 +832,71 @@ def test_lista_wszystkich_rodzajow_jest_zgodna_z_wynikiem_scalania_per_rodzaj(
     ]
     for a, b in zip(bez_scalania, ze_scalaniem, strict=True):
         assert a.to_dict() == b.to_dict(), a.kod
+
+
+# ---------------------------------------------------------------------------
+# Parametry liczbowe napięcia powrotnego (karta V126-INRUSH-SEPARACJA, V12K-352)
+# ---------------------------------------------------------------------------
+
+_TRV_KOMPLET: dict[str, object] = {
+    "trv_natural_frequency_hz": 12000.0,
+    "trv_tau_s": 0.00018,
+    "inrush_multiple_in": 6.5,
+    "neutral_grounding": "isolated",
+}
+
+#: Wartości, które sama OBECNOŚĆ przepuszczała do rdzenia FROZEN: zero i napis kończyły bieg
+#: błędem 500 (dzielenie przez zero, konwersja), reszta dawała liczby bez sensu fizycznego.
+_WARTOSCI_NIEPOPRAWNE: tuple[object, ...] = (0, 0.0, -2.0, "abc", "8", True, float("nan"))
+
+
+@pytest.mark.parametrize(
+    "klucz",
+    ["trv_natural_frequency_hz", "trv_tau_s", "inrush_multiple_in", "breaker_rated_voltage_kv"],
+)
+@pytest.mark.parametrize("wartosc", _WARTOSCI_NIEPOPRAWNE, ids=repr)
+def test_trv_parametr_liczbowy_wymaga_skonczonej_liczby_dodatniej(
+    klucz: str, wartosc: object
+) -> None:
+    """Iloczyn: 4 parametry liczbowe TRV × 7 wartości niepoprawnych → bieg odmówiony
+    (NIEPOTWIERDZONA) z kodem parametru i powodem; komplet poprawny → POTWIERDZONA."""
+    enm = build_golden_enm()
+    assert ocen_gotowosc_v126(enm, V126AnalysisType.TRANSIENT_TRV, _TRV_KOMPLET).potwierdzona
+    wynik = ocen_gotowosc_v126(
+        enm, V126AnalysisType.TRANSIENT_TRV, {**_TRV_KOMPLET, klucz: wartosc}
+    )
+    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
+    warunek = next(w for w in wynik.warunki if w.kod == f"parametr.{klucz}")
+    assert warunek.spelniony is False and warunek.blokujacy is True
+    assert warunek.opis_pl.endswith("wymagana skończona liczba dodatnia")
+
+
+def test_trv_bez_krotnosci_pradu_zalaczania_odmawia_domyslna_rdzenia_nieosiagalna() -> None:
+    """Rdzeń FROZEN ma `parameters.get("inrush_multiple_in", 8.0)`; gotowość wymaga jawnej
+    wartości projektanta, więc bieg bez niej nie dochodzi do rdzenia (8,0 nieosiągalne)."""
+    enm = build_golden_enm()
+    bez = {k: v for k, v in _TRV_KOMPLET.items() if k != "inrush_multiple_in"}
+    for parametry in (bez, {**bez, "inrush_multiple_in": None}, {**bez, "inrush_multiple_in": ""}):
+        scalone = uzupelnij_parametry_z_modelu(enm, V126AnalysisType.TRANSIENT_TRV, parametry)
+        assert scalone.get("inrush_multiple_in") in (None, "")
+        wynik = ocen_gotowosc_v126(enm, V126AnalysisType.TRANSIENT_TRV, scalone)
+        assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
+        assert "parametr.inrush_multiple_in" in wynik.komunikat_odmowy()
+
+
+def test_trv_napiecie_wylacznika_puste_ocenia_propozycje_modelu_tak_samo_przed_i_po_scaleniu() -> (
+    None
+):
+    """Predykaty parami: warunek napięcia wyłącznika ocenia wartość, która trafi do biegu
+    (projektanta albo propozycję modelu) — identycznie bez scalania i po scaleniu."""
+    enm = build_golden_enm()
+    scalone = uzupelnij_parametry_z_modelu(enm, V126AnalysisType.TRANSIENT_TRV, _TRV_KOMPLET)
+    for parametry in (_TRV_KOMPLET, scalone):
+        wynik = ocen_gotowosc_v126(enm, V126AnalysisType.TRANSIENT_TRV, parametry)
+        assert wynik.potwierdzona
+        warunek = next(w for w in wynik.warunki if w.kod == "parametr.breaker_rated_voltage_kv")
+        assert warunek.spelniony is True
+    # Model bez szyn nie proponuje napięcia — pole puste nie tworzy warunku.
+    pusty = EnergyNetworkModel(header=ENMHeader(name="pusty"))
+    wynik_pusty = ocen_gotowosc_v126(pusty, V126AnalysisType.TRANSIENT_TRV, _TRV_KOMPLET)
+    assert "parametr.breaker_rated_voltage_kv" not in {w.kod for w in wynik_pusty.warunki}

@@ -172,3 +172,53 @@ def test_get_nieznany_case_id_zwraca_404() -> None:
     with TestClient(app) as client:
         resp = client.get(_url(str(uuid4())))
     assert resp.status_code == 404, resp.text
+
+
+# ---------------------------------------------------------------------------
+# Napięcie powrotne: parametry liczbowe i krotność prądu załączania (V12K-352)
+# ---------------------------------------------------------------------------
+
+_TRV_KOMPLET = {
+    "trv_natural_frequency_hz": 12000,
+    "trv_tau_s": 0.00018,
+    "inrush_multiple_in": 6.5,
+    "neutral_grounding": "isolated",
+}
+
+
+def test_post_trv_niepoprawne_parametry_liczbowe_daja_422_nie_500() -> None:
+    """Przed kartą V126-INRUSH-SEPARACJA `inrush_multiple_in=0`, `trv_tau_s=0` i napis
+    przechodziły bramkę obecności i kończyły się 500 w rdzeniu FROZEN (dzielenie przez zero,
+    konwersja). Iloczyn: parametr × wartość niepoprawna, realna ścieżka POST."""
+    with TestClient(app, raise_server_exceptions=False) as client:
+        case_id = _seed_case(client, build_golden_enm())
+        url = f"/api/cases/{case_id}/runs/v126/transient_trv"
+        for klucz in ("inrush_multiple_in", "trv_tau_s", "trv_natural_frequency_hz"):
+            for wartosc in (0, -2, "abc", True):
+                resp = client.post(url, json={"parameters": {**_TRV_KOMPLET, klucz: wartosc}})
+                assert resp.status_code == 422, (klucz, wartosc, resp.status_code, resp.text)
+                assert f"parametr.{klucz}" in resp.json()["detail"], (klucz, wartosc)
+        resp = client.post(
+            url, json={"parameters": {**_TRV_KOMPLET, "breaker_rated_voltage_kv": 0}}
+        )
+        assert resp.status_code == 422, resp.text
+
+
+def test_post_trv_bez_krotnosci_422_a_z_krotnoscia_bieg_niesie_ja_jawnie() -> None:
+    """Wartość domyślna 8,0 rdzenia jest nieosiągalna: bez krotności bieg nie powstaje (422);
+    z krotnością projektanta wejście biegu niesie TĘ wartość, a surowy wynik solvera nadal
+    niesie blok `inrush` (kontrakt FROZEN bez zmian — separacja jest po stronie konsumentów)."""
+    bez = {k: v for k, v in _TRV_KOMPLET.items() if k != "inrush_multiple_in"}
+    with TestClient(app) as client:
+        case_id = _seed_case(client, build_golden_enm())
+        url = f"/api/cases/{case_id}/runs/v126/transient_trv"
+        odmowa = client.post(url, json={"parameters": bez})
+        assert odmowa.status_code == 422, odmowa.text
+        assert "parametr.inrush_multiple_in" in odmowa.json()["detail"]
+
+        bieg = client.post(url, json={"parameters": _TRV_KOMPLET})
+        assert bieg.status_code == 200, bieg.text
+        wynik = client.get(bieg.json()["result_url"])
+        assert wynik.status_code == 200, wynik.text
+        # Rdzeń policzył z wartości projektanta (6,5), nie z domyślnej 8,0.
+        assert wynik.json()["result"]["result"]["inrush"]["peak_multiple_in"] == 6.5

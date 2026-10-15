@@ -40,7 +40,7 @@ from application.analyses.v126_katalog import (
     TDD_IEEE519_PROCENT,
     THD_U_IEEE519_PROCENT,
     THD_U_PNEN50160_PROCENT,
-    UDZIAL_2H_BLOKADA_87T_PROCENT,
+    UWAGI_PRADU_ZALACZENIA_PL,
     WSKAZNIK_CIEPLNY_ROZRUCHU_MAX,
     ZAPAD_ROZRUCHU_MAX_PROCENT,
     grupy_do_dict,
@@ -192,12 +192,15 @@ def test_grupy_do_dict_zawiera_wylacznie_grupy_z_karta_prezentowana_raz() -> Non
 
 #: (nazwa stałej katalogu, oczekiwana wartość, fragment tekstu solvera FROZEN).
 #: Fragmenty ustalone RĘCZNIE odczytem `network_model/solvers/v126_academic.py`
-#: (karta B02-BE-TESTY §2) — solver zapisuje 5 z tych 10 progów jako BARE INT
-#: (bez „.0": `margin >= 20`, `du <= 15`, `thermal_ratio <= 1`, `min_margin >= 10`,
-#: `second_harmonic_percent >= 10`), więc test NIE porównuje `str(wartość)` z
-#: tekstem solvera wprost — to dałoby FAŁSZYWY rozjazd (wartość ta sama, zapis
-#: inny). Pozostałe 5 progów solver zapisuje jako float identyczny z katalogiem.
-#: ŻADEN z 10 literałów nie okazał się nieobecny w solverze (zweryfikowano
+#: (karta B02-BE-TESTY §2) — solver zapisuje 4 z tych 9 progów jako BARE INT
+#: (bez „.0": `margin >= 20`, `du <= 15`, `thermal_ratio <= 1`, `min_margin >= 10`),
+#: więc test NIE porównuje `str(wartość)` z tekstem solvera wprost — to dałoby
+#: FAŁSZYWY rozjazd (wartość ta sama, zapis inny). Pozostałe 5 progów solver
+#: zapisuje jako float identyczny z katalogiem. Dawny dziesiąty próg (udział
+#: 2. harmonicznej ≥ 10 % ⇒ blokada 87T) zszedł z katalogu decyzją właściciela
+#: 2026-10-15 (V12K-352): solver liczy udział jako 63/k bez podstawy fizycznej,
+#: więc katalog go nie cytuje (`test_katalog_nie_prezentuje_udzialu_2h_ani_blokady_87t`).
+#: ŻADEN z 9 literałów nie okazał się nieobecny w solverze (zweryfikowano
 #: ręcznym odczytem źródła przy pisaniu tej karty) — gdyby był, ten test by to
 #: wykrył i raport karty B02-BE-TESTY opisałby rozjazd (NIE wolno zmieniać
 #: solvera z tej karty — poprawiałby się katalog).
@@ -209,11 +212,6 @@ _PROGI_LITERALOW_SOLVERA: tuple[tuple[str, float, str], ...] = (
     ("ZAPAD_ROZRUCHU_MAX_PROCENT", ZAPAD_ROZRUCHU_MAX_PROCENT, "du <= 15"),
     ("WSKAZNIK_CIEPLNY_ROZRUCHU_MAX", WSKAZNIK_CIEPLNY_ROZRUCHU_MAX, "thermal_ratio <= 1"),
     ("MARGINES_TRV_MIN_PROCENT", MARGINES_TRV_MIN_PROCENT, "min_margin >= 10"),
-    (
-        "UDZIAL_2H_BLOKADA_87T_PROCENT",
-        UDZIAL_2H_BLOKADA_87T_PROCENT,
-        "second_harmonic_percent >= 10",
-    ),
     ("PRAD_RESZTKOWY_MAX_UDZIAL_IC", PRAD_RESZTKOWY_MAX_UDZIAL_IC, "i_res_detuned_a <= 0.1 * ic_a"),
     ("KROTNOSC_OCHRONY_DODATKOWEJ", KROTNOSC_OCHRONY_DODATKOWEJ, "u_touch <= 1.25 * u_touch_allow"),
 )
@@ -232,6 +230,40 @@ def test_literaly_progow_katalogu_sa_stosowane_przez_solver_frozen() -> None:
             f"{SOLVER_PY} — literał normy zniknął albo zmienił zapis (B-01: NIE "
             "zmieniaj solvera z tej karty, popraw KATALOG)"
         )
+
+
+def test_katalog_nie_prezentuje_udzialu_2h_ani_blokady_87t() -> None:
+    """V12K-352: żadna karta (iloczyn: 14 kart × wielkości główne × podstawa oceny × pytanie ×
+    zakres) nie podaje udziału 2. harmonicznej prądu załączania ani zalecenia blokady 87T
+    jako wielkości/kryterium. Wyjątek z treści, nie z karty: jakość energii (harmoniczne
+    napięcia — inna wielkość, inny solver) mówi o harmonicznych, ale nie o blokadzie ani 87T."""
+    for karta in KATALOG_ANALIZ_V126:
+        teksty_wynikowe = [
+            *(f"{w.symbol} {w.nazwa_pl} {w.symbol_latex}" for w in karta.wielkosci_glowne),
+            *(
+                f"{p.wielkosc_pl} {p.symbol} {p.warunek_pl} {p.symbol_latex} {p.warunek_latex}"
+                for p in karta.podstawa_oceny
+            ),
+            karta.pytanie_pl,
+            karta.zakres_pl,
+        ]
+        for tekst in teksty_wynikowe:
+            maly = tekst.lower()
+            assert "87t" not in maly and "blokad" not in maly, (karta.kod, tekst)
+            assert not ("harmoniczn" in maly and "załącz" in maly), (karta.kod, tekst)
+            assert "i_2h" not in maly and "i_{2h}" not in maly, (karta.kod, tekst)
+    trv = karta_analizy(V126AnalysisType.TRANSIENT_TRV.value)
+    assert [w.symbol for w in trv.wielkosci_glowne] == ["M_TRV", "ferro"]
+    assert [p.symbol for p in trv.podstawa_oceny] == ["M_TRV"]
+    # Powód niepokazania i status krotności jako założenia — jawnie na karcie (sekcja „Zakres").
+    assert trv.uwagi_metody_pl == UWAGI_PRADU_ZALACZENIA_PL
+    assert any("założeniem wejściowym" in u for u in trv.uwagi_metody_pl)
+    assert any("87T" in u and "nie są prezentowane" in u for u in trv.uwagi_metody_pl)
+    krotnosc = next(p for p in trv.od_uzytkownika if p.klucz == "inrush_multiple_in")
+    assert krotnosc.wymagane is True
+    assert krotnosc.jednostka == "× I_n"
+    assert "producenta" in krotnosc.opis_pl
+    assert not hasattr(v126_katalog, "UDZIAL_2H_BLOKADA_87T_PROCENT")
 
 
 # ---------------------------------------------------------------------------

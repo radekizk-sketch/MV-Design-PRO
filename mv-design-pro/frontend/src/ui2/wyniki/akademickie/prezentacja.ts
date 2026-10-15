@@ -212,7 +212,7 @@ export interface PrezentacjaRodzaju {
   readonly werdykt: WerdyktRodzaju;
   readonly wielkosciGlowne: readonly WielkoscGlowna[];
   /** Wielkości ŚWIADOMIE niepokazywane (karta W2 pkt 5) — puste dla rodzajów
-   *  bez takiego pominięcia (dziś: tylko `earth_fault_detection`). */
+   *  bez takiego pominięcia (dziś: `earth_fault_detection` i `transient_trv`). */
   readonly wielkosciPominiete?: readonly WielkoscPominieta[];
   readonly tabele: readonly TabelaObiektow[];
   /** Sekcja audytowa — tylko dla rodzajów z oceną niewykonaną i liczbami solvera. */
@@ -561,22 +561,25 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         etykieta: 'Najmniejszy margines napięcia powrotnego',
         jednostka: '%',
       },
-      {
-        sciezka: 'inrush.peak_multiple_in',
-        etykieta: 'Krotność prądu załączenia transformatora',
-        jednostka: '× I_n',
-      },
-      {
-        sciezka: 'inrush.second_harmonic_percent_of_peak',
-        etykieta: 'Udział 2. harmonicznej w prądzie załączenia',
-        jednostka: '%',
-      },
-      {
-        sciezka: 'inrush.blocking_87t_recommended',
-        etykieta: 'Zalecana blokada różnicowej od 2. harmonicznej',
-      },
       { sciezka: 'ferroresonance.risk', etykieta: 'Ryzyko ferrorezonansu' },
-      { sciezka: 'ferroresonance.recommendation', etykieta: 'Zalecenie wobec ferrorezonansu' },
+      { sciezka: 'ferroresonance.recommendation', etykieta: 'Zalecenie wobec ferrorezonansu' },    ],
+    // Decyzja właściciela 2026-10-15 (karta V126-INRUSH-SEPARACJA, V12K-352): rdzeń FROZEN
+    // zwraca w bloku `inrush` udział 2. harmonicznej liczony jako 63/k z PRZYJĘTEJ krotności
+    // k i „zalecenie blokady 87T” z tego udziału. Ta zależność nie ma podstawy fizycznej —
+    // żadnej z tych liczb ekran nie pokazuje jako wyniku. Krotność k jest założeniem
+    // wejściowym projektanta (formularz „Dane wejściowe”, z jednostką × I_n), nie wynikiem.
+    // Ścieżka to sam blok `inrush`: nazwy pól wyniku 63/k nie występują w kodzie frontu
+    // (strażnik `backend/tests/ci/test_v126_inrush_separacja.py`).
+    wielkosciPominiete: [
+      {
+        sciezki: ['inrush'],
+        powod:
+          'Udział 2. harmonicznej w prądzie załączania i zalecenie blokady zabezpieczenia '
+          + 'różnicowego nie są pokazywane: metoda wyznacza je z odwrotności przyjętej krotności '
+          + 'prądu załączania, co nie ma podstawy fizycznej. Blokadę różnicowej konfiguruj na '
+          + 'podstawie analizy harmonicznych rzeczywistego przebiegu prądu załączania według '
+          + 'dokumentacji producenta transformatora i przekaźnika.',
+      },
     ],
     tabele: [],
     nastepnyKrok:

@@ -8,6 +8,14 @@
  * - norm: odniesienie do normy (PN-EN, IEC, IRiESD)
  *
  * Konsumowane przez HelpTooltip komponent w formularzach.
+ *
+ * ZASADA (decyzja właściciela 2026-10-15, V12K-352): podpowiedź NIE podaje uniwersalnej
+ * liczby jako faktu o właściwości konkretnego urządzenia, nastawy albo kryterium projektu
+ * („~10-12× I_n", „typowo 5-100 Ω", „limit zwykle ≤5 %"). Taka wartość pochodzi z karty
+ * katalogowej / charakterystyki producenta, dokumentacji przekaźnika albo wymagań OSD —
+ * podpowiedź mówi, SKĄD ją wziąć. Wolno podać wartości normatywne (typoszereg napięć
+ * PN-EN 60038, oznaczenia klas przekładników IEC 61869). Pilnuje test
+ * `__tests__/engineerTooltips.test.ts`.
  */
 
 export interface EngineerTooltip {
@@ -18,15 +26,15 @@ export interface EngineerTooltip {
 export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
   // Wielowartościowe parametry sieci SN/WN
   voltage_sn: {
-    text: 'Napięcie znamionowe sieci średniego napięcia (zwykle 6/10/15/20/30 kV).',
+    text: 'Napięcie znamionowe sieci średniego napięcia — wartość z typoszeregu PN-EN 60038 (w Polsce 6, 10, 15, 20, 30 kV).',
     norm: 'PN-EN 60038',
   },
   voltage_nn: {
-    text: 'Napięcie niskie (zwykle 0.4 kV międzyprzewodowe / 0.23 kV fazowe).',
+    text: 'Napięcie niskie — wartość znormalizowana 400 V międzyprzewodowe / 230 V fazowe.',
     norm: 'PN-EN 60038',
   },
   voltage_wn: {
-    text: 'Napięcie wysokie (110/220/400 kV) — sieć przesyłowa PSE.',
+    text: 'Napięcie wysokie — 110 kV (sieć dystrybucyjna WN operatorów OSD) oraz 220 i 400 kV (sieć przesyłowa PSE).',
     norm: 'PN-EN 60038',
   },
 
@@ -40,22 +48,21 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'PN-EN 60076-1 § 6',
   },
   transformer_tap_changer: {
-    text: 'Przełącznik zaczepów — pozwala regulować napięcie wtórne (zwykle ±10% w 5 krokach).',
+    text: 'Przełącznik zaczepów — reguluje przekładnię transformatora; zakres regulacji i liczbę stopni podaje karta katalogowa transformatora.',
     norm: 'PN-EN 60214-1',
   },
   transformer_inrush: {
-    text: 'Prąd włączeniowy (inrush) — krótkotrwały skok prądu przy załączeniu (~10-12× I_n).',
-    norm: 'IEC 60076-5',
+    text: 'Prąd załączania (udar magnesujący) — krótkotrwały prąd przy załączeniu nieobciążonego transformatora. Jego wartość szczytowa i czas zaniku zależą od konstrukcji transformatora (rdzeń, indukcja, remanencja) i warunków załączenia (kąt napięcia, impedancja źródła); podaje je producent konkretnej jednostki, nie ma wartości uniwersalnej.',
+    norm: 'IEC 60076-1',
   },
 
   // Kabel
   cable_cross_section: {
-    text: 'Przekrój żyły kabla. Dla SN typowo 70-630 mm² Al/Cu.',
+    text: 'Przekrój żyły kabla — wartość z typoszeregu przekrojów znamionowych; dobór z obciążalności, spadku napięcia i wytrzymałości zwarciowej.',
     norm: 'PN-HD 605 S2',
   },
   cable_length: {
-    text: 'Długość trasy kabla. Dla SN typowo do 50 km, dla WN do 200 km.',
-    norm: 'PN-IEC 60364-5-52',
+    text: 'Długość trasy kabla — z projektu trasy; wpływa na impedancję, spadek napięcia i pojemność doziemną linii.',
   },
   cable_ampacity: {
     text: 'Obciążalność długotrwała w warunkach standardowych. Należy stosować deratingi (grupowanie, temperatura).',
@@ -76,12 +83,12 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'IEC 61869-2 § 5.5',
   },
   protection_tms: {
-    text: 'Time Multiplier Setting — mnożnik czasu charakterystyki IDMT (zwykle 0.05-1.0).',
+    text: 'Mnożnik czasowy charakterystyki zależnej (TMS) — zakres i krok nastawy podaje dokumentacja przekaźnika.',
     norm: 'IEC 60255-151',
   },
   protection_cti: {
-    text: 'Coordination Time Interval — odstęp czasu zadziałania między zabezpieczeniami w sekwencji (zwykle 0.2-0.4 s).',
-    norm: 'IEEE C37.112',
+    text: 'Stopień selektywności czasowej — odstęp czasów zadziałania kolejnych zabezpieczeń; wynika z czasu własnego wyłącznika, uchybów przekaźników i zapasu przyjętego w projekcie.',
+    norm: 'IEC 60255-151',
   },
 
   // OZE
@@ -90,7 +97,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'NC RfG Annex II, IRiESD',
   },
   oze_anti_islanding: {
-    text: 'Zabezpieczenie przed pracą wyspową — zwykle kombinacja 27/59/81U/81O/81R.',
+    text: 'Zabezpieczenie przed pracą wyspową — zestaw funkcji (27/59/81U/81O/81R) i ich nastawy określają wymagania OSD.',
     norm: 'IEC 62116, NC RfG',
   },
   oze_cos_phi: {
@@ -108,17 +115,17 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'PN-HD 60364-1 § 312',
   },
   earthing_petersen: {
-    text: 'Cewka Petersena — kompensacja prądu doziemnego w sieci SN. Stosowana 6-30 kV.',
+    text: 'Dławik gaszący (cewka Petersena) — kompensacja pojemnościowego prądu doziemnego w sieci SN.',
     norm: 'PN-EN 50522',
   },
   earthing_resistor: {
-    text: 'Uziemienie przez rezystor R_n — ogranicza prąd doziemny (typowo 5-100 Ω).',
+    text: 'Uziemienie przez rezystor R_n — ogranicza prąd doziemny; rezystancję dobiera się z docelowego prądu doziemienia i wymagań OSD.',
     norm: 'PN-EN 50522',
   },
 
   // Obliczenia
   short_circuit_current: {
-    text: 'Prąd zwarciowy I_k — wartość ustaloną prądu w miejscu zwarcia. I_k3 dla 3-fazowego, I_k1 dla 1-fazowego.',
+    text: 'Prąd zwarciowy I_k — wartość ustalona prądu w miejscu zwarcia. I_k3 dla 3-fazowego, I_k1 dla 1-fazowego.',
     norm: 'IEC 60909',
   },
   short_circuit_peak: {
@@ -126,12 +133,10 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'IEC 60909 § 4.3.1',
   },
   power_flow_tolerance: {
-    text: 'Tolerancja zbieżności solvera — typowo 1e-6 dla Newton-Raphson.',
-    norm: 'IEEE Std 1547',
+    text: 'Tolerancja zbieżności obliczeń rozpływu — największe dopuszczalne niezbilansowanie mocy w węzłach na zakończenie iteracji.',
   },
   voltage_drop: {
-    text: 'Spadek napięcia ΔU = √3 × I × L × (R·cosφ + X·sinφ). Limit zwykle ≤5% U_n.',
-    norm: 'PN-IEC 60364-5-52',
+    text: 'Spadek napięcia — liczony przez obliczenia rozpływu; dopuszczalną wartość określają wymagania OSD i założenia projektu.',
   },
 
   // Aparatura pola SN — rozróżnienie funkcjonalne

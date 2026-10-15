@@ -706,11 +706,19 @@
         },
         {
           "kod": "parametr.inrush_multiple_in",
-          "opis_pl": "Krotność prądu załączania transformatora",
+          "opis_pl": "Krotność prądu załączania transformatora (założenie projektanta)",
           "spelniony": false,
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": "inrush_multiple_in"
+        },
+        {
+          "kod": "parametr.breaker_rated_voltage_kv",
+          "opis_pl": "Napięcie znamionowe wyłącznika",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "breaker_rated_voltage_kv"
         },
         {
           "kod": "parametr.neutral_grounding",
@@ -740,7 +748,7 @@
         },
         {
           "kod": "parametr.inrush_multiple_in",
-          "opis_pl": "Krotność prądu załączania transformatora",
+          "opis_pl": "Krotność prądu załączania transformatora (założenie projektanta)",
           "spelniony": false,
           "elementy": [],
           "blokujacy": true,

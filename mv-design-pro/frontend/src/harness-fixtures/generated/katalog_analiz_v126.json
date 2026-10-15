@@ -704,19 +704,13 @@
         "nazwa_pl": "Aparatura i stany przejściowe"
       },
       "pytanie_pl": "Czy napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod obwiednią wytrzymałości wyłącznika?",
-      "zakres_pl": "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
+      "zakres_pl": "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
       "wielkosci_glowne": [
         {
           "symbol": "M_TRV",
           "nazwa_pl": "Najmniejszy margines napięcia powrotnego",
           "jednostka": "%",
           "symbol_latex": "M_{\\mathrm{TRV}}"
-        },
-        {
-          "symbol": "I_2h/I_szczyt",
-          "nazwa_pl": "Udział 2. harmonicznej w prądzie załączania",
-          "jednostka": "%",
-          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}"
         },
         {
           "symbol": "ferro",
@@ -735,18 +729,6 @@
           "zrodlo_pl": "IEC 62271-100 (obwiednia napięcia powrotnego)",
           "symbol_latex": "M_{\\mathrm{TRV}}",
           "warunek_latex": "M_{\\mathrm{TRV}} = \\dfrac{\\text{obwiednia} - u_{\\mathrm{TRV}}}{\\text{obwiednia}}\\cdot 100\\% \\geq 10\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Blokada różnicowej od 2. harmonicznej",
-          "symbol": "I_2h/I_szczyt",
-          "jednostka": "%",
-          "warunek_pl": "udział ≥ granica ⇒ blokada 87T zalecana",
-          "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "reguła solvera (praktyka zabezpieczeń różnicowych)",
-          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}",
-          "warunek_latex": "I_{2h}/I_{\\mathrm{szczyt}} \\geq 10\\%",
           "wzor_latex": "",
           "wzor_opis_pl": ""
         }
@@ -791,10 +773,10 @@
           },
           {
             "klucz": "inrush_multiple_in",
-            "nazwa_pl": "Krotność prądu załączania transformatora",
+            "nazwa_pl": "Krotność prądu załączania transformatora (założenie projektanta)",
             "jednostka": "× I_n",
             "wymagane": true,
-            "opis_pl": "Właściwość transformatora — model jej nie niesie."
+            "opis_pl": "Właściwość konkretnego transformatora i warunków załączenia — wartość z charakterystyki producenta albo jawne założenie wariantowe; model jej nie niesie."
           },
           {
             "klucz": "neutral_grounding",
@@ -809,7 +791,10 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": [],
+      "uwagi_metody_pl": [
+        "Krotność prądu załączania transformatora jest wyłącznie założeniem wejściowym projektanta: zależy od konstrukcji transformatora (rdzeń, indukcja nasycenia, remanencja) i warunków załączenia (kąt napięcia, impedancja źródła) i podaje ją producent konkretnej jednostki.",
+        "Udział 2. harmonicznej i zalecenie blokady zabezpieczenia różnicowego 87T nie są prezentowane: metoda wyznacza je z odwrotności przyjętej krotności, co nie ma podstawy fizycznej. Blokadę 87T konfiguruje się na podstawie analizy harmonicznych rzeczywistego przebiegu prądu załączania wg dokumentacji producenta przekaźnika; założenie wariantowe nie jest podstawą końcowego zatwierdzenia nastaw."
+      ],
       "zakres_oceny": "kryterium"
     },
     {

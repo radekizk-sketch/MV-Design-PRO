@@ -249,9 +249,26 @@ MARGINES_BIL_MIN_PROCENT = 20.0
 ZAPAD_ROZRUCHU_MAX_PROCENT = 15.0
 WSKAZNIK_CIEPLNY_ROZRUCHU_MAX = 1.0
 MARGINES_TRV_MIN_PROCENT = 10.0
-UDZIAL_2H_BLOKADA_87T_PROCENT = 10.0
 PRAD_RESZTKOWY_MAX_UDZIAL_IC = 0.10
 KROTNOSC_OCHRONY_DODATKOWEJ = 1.25
+
+#: Decyzja właściciela 2026-10-15 (karta V126-INRUSH-SEPARACJA, rejestr V12K-352): rdzeń
+#: V12.6 (B-01, bez zmian) liczy udział 2. harmonicznej jako 63/k z przyjętej krotności k
+#: prądu załączania i z niego „zalecenie blokady 87T”. Ta zależność nie wynika z fizyki prądu
+#: załączania — oba pola zostają w surowym wyniku solvera (kontrakt FROZEN), ale katalog,
+#: ekran, dowód i raport ich nie prezentują, a żaden moduł spoza rdzenia ich nie czyta
+#: (strażnik `tests/ci/test_v126_inrush_separacja.py`).
+UWAGI_PRADU_ZALACZENIA_PL: tuple[str, ...] = (
+    "Krotność prądu załączania transformatora jest wyłącznie założeniem wejściowym "
+    "projektanta: zależy od konstrukcji transformatora (rdzeń, indukcja nasycenia, "
+    "remanencja) i warunków załączenia (kąt napięcia, impedancja źródła) i podaje ją "
+    "producent konkretnej jednostki.",
+    "Udział 2. harmonicznej i zalecenie blokady zabezpieczenia różnicowego 87T nie są "
+    "prezentowane: metoda wyznacza je z odwrotności przyjętej krotności, co nie ma podstawy "
+    "fizycznej. Blokadę 87T konfiguruje się na podstawie analizy harmonicznych rzeczywistego "
+    "przebiegu prądu załączania wg dokumentacji producenta przekaźnika; założenie wariantowe "
+    "nie jest podstawą końcowego zatwierdzenia nastaw.",
+)
 
 _PARAMETRY_UZIOMU: tuple[ParametrUzytkownika, ...] = (
     ParametrUzytkownika("earthing.gpz_ref", "Oznaczenie stacji", "-", False),
@@ -782,18 +799,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         ),
         zakres_pl=(
             "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec "
-            "obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady "
-            "różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej."
+            "obwiedni wytrzymałości; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci "
+            "izolowanej."
         ),
         wielkosci_glowne=(
             WielkoscGlowna(
                 "M_TRV", "Najmniejszy margines napięcia powrotnego", "%", r"M_{\mathrm{TRV}}"
-            ),
-            WielkoscGlowna(
-                "I_2h/I_szczyt",
-                "Udział 2. harmonicznej w prądzie załączania",
-                "%",
-                r"I_{2h}/I_{\mathrm{szczyt}}",
             ),
             WielkoscGlowna("ferro", "Ryzyko ferrorezonansu", "-", r"\text{ferro}"),
         ),
@@ -810,16 +821,6 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                     r"M_{\mathrm{TRV}} = \dfrac{\text{obwiednia} - u_{\mathrm{TRV}}}"
                     r"{\text{obwiednia}}\cdot 100\% \geq 10\%"
                 ),
-            ),
-            PodstawaOceny(
-                "Blokada różnicowej od 2. harmonicznej",
-                "I_2h/I_szczyt",
-                "%",
-                "udział ≥ granica ⇒ blokada 87T zalecana",
-                UDZIAL_2H_BLOKADA_87T_PROCENT,
-                "reguła solvera (praktyka zabezpieczeń różnicowych)",
-                symbol_latex=r"I_{2h}/I_{\mathrm{szczyt}}",
-                warunek_latex=r"I_{2h}/I_{\mathrm{szczyt}} \geq 10\%",
             ),
         ),
         dane_z_modelu=(
@@ -850,10 +851,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
             ParametrUzytkownika(
                 "inrush_multiple_in",
-                "Krotność prądu załączania transformatora",
+                "Krotność prądu załączania transformatora (założenie projektanta)",
                 "× I_n",
                 True,
-                "Właściwość transformatora — model jej nie niesie.",
+                "Właściwość konkretnego transformatora i warunków załączenia — wartość "
+                "z charakterystyki producenta albo jawne założenie wariantowe; model jej "
+                "nie niesie.",
             ),
             ParametrUzytkownika(
                 "neutral_grounding",
@@ -863,6 +866,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego.",
             ),
         ),
+        uwagi_metody_pl=UWAGI_PRADU_ZALACZENIA_PL,
     ),
     KartaAnalizy(
         kod=V126AnalysisType.MOTOR_STARTING.value,
