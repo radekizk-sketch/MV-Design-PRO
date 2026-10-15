@@ -1316,1233 +1316,1233 @@
     },
     "src/harness-fixtures/generated/ciag_w_budowie_etapy.json": {
       "/etapy/1/snapshot": {
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/10/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/11/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/830a5244002ea20cf21e5e835e2f8a91/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/12/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/830a5244002ea20cf21e5e835e2f8a91/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2c48ead8d0aeab572c91ea2447245b/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/f6661810b1fd98f70fd09487cbe633a2/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/13/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/830a5244002ea20cf21e5e835e2f8a91/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/4491acd3fff8fa1eb41aa0d35d2e1893/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2ad608a4c73efb002173f9282b640e/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2c48ead8d0aeab572c91ea2447245b/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/f6661810b1fd98f70fd09487cbe633a2/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/14/snapshot": {
-        "sub/4d2dcec48b474af4d551b49508b7f517/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/830a5244002ea20cf21e5e835e2f8a91/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/4491acd3fff8fa1eb41aa0d35d2e1893/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/924e48562a3d6053b7b20b3c35fcff3c/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2ad608a4c73efb002173f9282b640e/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2c48ead8d0aeab572c91ea2447245b/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/f6661810b1fd98f70fd09487cbe633a2/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/15/snapshot": {
-        "sub/4d2dcec48b474af4d551b49508b7f517/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/830a5244002ea20cf21e5e835e2f8a91/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/4491acd3fff8fa1eb41aa0d35d2e1893/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/85e9d1d13aee95bd5b0481cbe6a894f8/substation": {
-          "deklaracja": null,
+        "sub/4b1d9dfb8345649346894380c5c3f2a4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2ad608a4c73efb002173f9282b640e/substation": {
-          "deklaracja": null,
+        "sub/924e48562a3d6053b7b20b3c35fcff3c/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/be2c48ead8d0aeab572c91ea2447245b/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/fff4d40e245415505887ec810bc60ac6/substation": {
-          "deklaracja": null,
+        "sub/f6661810b1fd98f70fd09487cbe633a2/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/2/snapshot": {
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/3/snapshot": {
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/4/snapshot": {
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/5/snapshot": {
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/6/snapshot": {
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/7/snapshot": {
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/8/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       },
       "/etapy/9/snapshot": {
-        "sub/71b24ce3e0b731669836b32cbb532ae7/substation": {
-          "deklaracja": null,
+        "sub/0c763386fd41f1b04b908f6aa9942157/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/7f16b486bd20316236f2b77120f3a543/substation": {
-          "deklaracja": null,
+        "sub/3001ef6e103b7f616cf913001186073d/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/839d00acf61ffb6b349a9c6be2423dce/substation": {
-          "deklaracja": null,
+        "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/866e56051966ebf6cf2f116a3e30bbac/substation": {
-          "deklaracja": null,
+        "sub/7dd04f11e06c9125345ff379be7db59b/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ac6f916a8b9f9a7bc1b981ca2be6f237/substation": {
-          "deklaracja": null,
+        "sub/87aa5de4a83ba5d1d202befb17353496/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/ae5c056493d3e972fe861898e20b1ed3/substation": {
-          "deklaracja": null,
+        "sub/98d4edad394b38ce1da666b9b3294dc4/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/beaba12ecb4babfec1c19cece66a6032/substation": {
-          "deklaracja": null,
+        "sub/b661364fd4da5fcecca248ad1e785b53/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/d90393fa7689d55cba35ea1ddaa3b558/substation": {
-          "deklaracja": null,
+        "sub/d01150d65d33c18ca656de9d793095c5/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         },
-        "sub/dc3725b76c77c0fcc5bfc0542ac90e04/substation": {
-          "deklaracja": null,
+        "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
+          "zgodny_z_deklaracja": false
         }
       }
     },
@@ -2644,8 +2644,8 @@
     },
     "src/harness-fixtures/generated/oze_analiz_scena_migawka.json": {
       "": {
-        "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation": {
-          "deklaracja": null,
+        "sub/406ec9c7de80233f6ff070bc72972037/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 1,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
@@ -3952,15 +3952,15 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/8f5e5d1ab872d3688159dc90e4246828/station": {
-          "deklaracja": "inline",
+        "stn/b90fe112224f1de151746da1e8b35949/station": {
+          "deklaracja": "branch",
           "pola_liniowe": 4,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 4 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": false
+          "zgodny_z_deklaracja": true
         },
         "stn/c16428a6c5b18ea62371d813e0a3d084/station": {
           "deklaracja": "inline",
@@ -3972,24 +3972,24 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "sub/a2dac1e21ec0f3b6c481c9f679d00a74/substation": {
-          "deklaracja": null,
-          "pola_liniowe": 1,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "sub/f4f8335d49dcfcf911fa6e3ee8b89735/substation": {
-          "deklaracja": null,
+        "sub/ac04375d68166f4e570661e425317f57/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
           "rodzaj": "terminal",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": true
+        },
+        "sub/ed9391b0cd05c80ed6631c0043c6b682/substation": {
+          "deklaracja": "terminal",
+          "pola_liniowe": 1,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         }
       }
