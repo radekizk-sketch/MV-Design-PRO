@@ -32,6 +32,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
 
 pytest.importorskip("fastapi")

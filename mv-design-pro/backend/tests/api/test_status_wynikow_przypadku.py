@@ -24,6 +24,7 @@ from enm.dziennik_zmian import wyczysc_dziennik
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from infrastructure.persistence.models import StudyCaseORM
+
 from tests.utils.biegi import wykonaj_bieg
 
 # Tabliczka transformatora WN/SN podana JAWNIE (`hv_voltage_kv` + `transformer_sn_mva`):

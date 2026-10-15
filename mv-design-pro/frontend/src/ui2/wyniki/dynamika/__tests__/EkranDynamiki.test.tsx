@@ -265,7 +265,8 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
   });
 
   it('warunki biegu nazwane; bieg z nazwanego scenariusza, odpytywanie stanu do końca', async () => {
-    atrapa.stanyBiegu = ['RUNNING'];
+    // Karta DYNAMIKA-W-TLE: odpytywanie `GET …/runs/{id}` — kolejka, bieg w toku, koniec.
+    atrapa.stanyBiegu = ['QUEUED', 'RUNNING', 'DONE'];
     render(<EkranDynamiki />);
     const uruchom = await screen.findByTestId('mvd-dynamika-uruchom');
     expect(uruchom).toBeDisabled();
@@ -309,7 +310,10 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
       fireEvent.click(uruchom);
     });
 
-    await waitFor(() => expect(screen.getByTestId('mvd-dynamika-stan-biegu')).toHaveAttribute('data-status', 'DONE'));
+    await waitFor(
+      () => expect(screen.getByTestId('mvd-dynamika-stan-biegu')).toHaveAttribute('data-status', 'DONE'),
+      { timeout: 10000 },
+    );
     const utworzenie = atrapa.zadania.find((z) => z.metoda === 'POST' && z.url.endsWith(`/study-cases/${CASE}/runs`));
     expect(utworzenie?.cialo).toEqual({
       analysis_type: 'DYNAMIKA_RMS',

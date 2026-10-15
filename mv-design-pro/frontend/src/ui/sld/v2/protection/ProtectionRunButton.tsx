@@ -23,8 +23,9 @@ import { useState } from 'react';
 
 import { ODSTEP_ODPYTYWANIA_BIEGU_MS } from '../../../study-cases/api';
 
-/** Stany koncowe biegu zabezpieczen (slownik domenowy `StanBiegu`). */
-const STANY_KONCOWE_ZABEZPIECZEN: ReadonlySet<string> = new Set(['FINISHED', 'FAILED', 'CANCELLED']);
+/** Stany biegu zabezpieczen W TOKU (slownik domenowy `StanBiegu`) — tylko one kaza odpytywac
+ * dalej; kazdy inny napis (w tym obcy slownik, np. `DONE`) konczy petle i jest oceniany nizej. */
+const STANY_W_TOKU_ZABEZPIECZEN: ReadonlySet<string> = new Set(['CREATED', 'QUEUED', 'RUNNING']);
 
 export type ProtectionRunStatus =
   | 'idle'
@@ -124,7 +125,7 @@ export function ProtectionRunButton({
       // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202, QUEUED) — stan
       // koncowy przychodzi z odpytywania `GET /api/protection-runs/{id}`.
       let execJson = (await execRes.json()) as { status: string; error_message?: string | null };
-      while (!STANY_KONCOWE_ZABEZPIECZEN.has(execJson.status)) {
+      while (STANY_W_TOKU_ZABEZPIECZEN.has(execJson.status)) {
         await new Promise((resolve) => window.setTimeout(resolve, ODSTEP_ODPYTYWANIA_BIEGU_MS));
         const stanRes = await fetch(`/api/protection-runs/${protectionRunId}`);
         if (!stanRes.ok) {

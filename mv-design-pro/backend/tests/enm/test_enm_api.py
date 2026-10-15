@@ -354,7 +354,7 @@ class TestRunDispatch:
             },
         )
         assert utworzony.status_code == 201, utworzony.text
-        wykonany = wykonaj_bieg(client, utworzony.json()['id'])
+        wykonany = wykonaj_bieg(client, utworzony.json()["id"])
         assert wykonany.status_code == 200, wykonany.text
 
         rows = _sc_rows(client, utworzony.json()["id"])

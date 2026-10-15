@@ -46,9 +46,9 @@ def poczekaj_na_stan_koncowy(
         assert odpowiedz.status_code == 200, odpowiedz.text
         if odpowiedz.json()["status"] in stany_koncowe:
             return odpowiedz
-        assert time.monotonic() < termin, (
-            f"bieg {adres} nie doszedł do stanu końcowego w {limit_s} s: {odpowiedz.json()}"
-        )
+        assert (
+            time.monotonic() < termin
+        ), f"bieg {adres} nie doszedł do stanu końcowego w {limit_s} s: {odpowiedz.json()}"
         time.sleep(ODSTEP_ODPYTYWANIA_S)
 
 
@@ -81,9 +81,7 @@ def wykonaj_bieg_zabezpieczen(
     )
 
 
-def wykonaj_bieg_rozplywu(
-    client: Any, run_id: str, *, limit_s: float = LIMIT_OCZEKIWANIA_S
-) -> Any:
+def wykonaj_bieg_rozplywu(client: Any, run_id: str, *, limit_s: float = LIMIT_OCZEKIWANIA_S) -> Any:
     """`POST /api/power-flow-runs/{id}/execute` (202) → odpytywanie do FINISHED/FAILED/CANCELLED."""
     zlecenie = client.post(f"/api/power-flow-runs/{run_id}/execute")
     if zlecenie.status_code != 202:

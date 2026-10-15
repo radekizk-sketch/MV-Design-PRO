@@ -56,15 +56,19 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.execution.wykonawca import klucz_serii, wykonawca_biegow
 from application.fault_scenario_service import (
     FaultScenarioNotFoundError,
     FaultScenarioService,
     solver_input_for_scenario,
 )
-from domain.execution import ExecutionAnalysisType
+from domain.execution import (
+    BiegAnulowanyError,
+    ExecutionAnalysisType,
+    KontekstWykonania,
+    PostepBiegu,
+)
 from domain.fault_scenario import FaultScenario, compute_scenario_content_hash
-from application.execution.wykonawca import klucz_serii, wykonawca_biegow
-from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from domain.run_batch import (
     ITEM_STATUS_CANCELLED,
     ITEM_STATUS_FAILED,

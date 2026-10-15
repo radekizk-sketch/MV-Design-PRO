@@ -27,9 +27,9 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
+from application.execution import wykonawca_biegow
 from application.result_freshness import StanBiezacyModelu, swiezosc_biegu_kanonicznego
 from domain.execution import StanBiegu
-from application.execution import wykonawca_biegow
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run

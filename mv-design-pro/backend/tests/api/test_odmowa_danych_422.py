@@ -39,6 +39,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from pydantic import BaseModel
+
 from tests.utils.biegi import wykonaj_bieg
 
 KOMUNIKAT = "Szyna „SN-1” nie istnieje w modelu — wskaż szynę z listy."

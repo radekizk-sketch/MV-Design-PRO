@@ -13,8 +13,8 @@ from application.analyses.v126_gotowosc import (
 )
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
-from domain.execution import StanBiegu, stan_biegu
 from application.execution import wykonawca_biegow
+from domain.execution import StanBiegu, stan_biegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run

@@ -12,6 +12,7 @@ Sprawdza:
 from __future__ import annotations
 
 import pytest
+
 from tests.utils.biegi import wykonaj_bieg
 
 pytest.importorskip("fastapi")

@@ -31,6 +31,7 @@ from application.v126_artifacts import (
     build_v126_report_artifact,
     wynik_v126_dla_powierzchni,
 )
+from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -57,7 +58,6 @@ from enm.assembler import (
 )
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
-from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (

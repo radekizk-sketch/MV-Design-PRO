@@ -220,9 +220,7 @@ class WykonawcaBiegow:
     def _uruchom_watek_pod_zamkiem(self) -> None:
         if self._watek is not None and self._watek.is_alive():
             return
-        self._watek = threading.Thread(
-            target=self._petla, name="wykonawca-biegow", daemon=True
-        )
+        self._watek = threading.Thread(target=self._petla, name="wykonawca-biegow", daemon=True)
         self._watek.start()
 
     def _petla(self) -> None:
@@ -238,7 +236,9 @@ class WykonawcaBiegow:
                 # `execute_run` zapisał już FAILED z nazwą błędu wewnętrznego i puścił
                 # wyjątek dalej (karta #151: 500 + pełny ślad) — tu nie ma żądania HTTP,
                 # więc ślad idzie do dziennika, a wątek roboczy żyje dalej.
-                logger.exception("Zlecenie %s przerwane błędem wewnętrznym programu", zlecenie.klucz)
+                logger.exception(
+                    "Zlecenie %s przerwane błędem wewnętrznym programu", zlecenie.klucz
+                )
             finally:
                 with self._budzik:
                     self._zlecenia.pop(zlecenie.klucz, None)

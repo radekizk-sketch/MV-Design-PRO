@@ -38,11 +38,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import (
-    OperatingScenario,
-    RodzajScenariusza,
-    ScenariuszDynamiczny,
     usun_wszystkie_scenariusze,
-    zapisz_scenariusz,
 )
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
@@ -221,7 +217,9 @@ def test_dwa_biegi_naraz_konczy_oba_a_w_trakcie_jeden_liczy_drugi_czeka(
     zamek = threading.Lock()
     w_oknie: list[str] = []
 
-    def parkujacy(run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None) -> None:
+    def parkujacy(
+        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
+    ) -> None:
         with zamek:
             w_oknie.append(str(run.id))
             pierwszy = len(w_oknie) == 1
@@ -257,7 +255,9 @@ def test_anulowanie_biegu_w_kolejce_jest_natychmiastowe_a_pierwszy_liczy_do_konc
     w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def parkujacy(run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None) -> None:
+    def parkujacy(
+        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
+    ) -> None:
         w_oknie.set()
         zwolnij.wait(timeout=LIMIT_S)
         oryginal(run, graf, uow_factory, kontekst)
@@ -311,7 +311,9 @@ def test_anulowanie_rozplywu_w_toku_odmawia_bo_rdzen_nie_ma_punktu_przerwania(
     w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def parkujacy(run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None) -> None:
+    def parkujacy(
+        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
+    ) -> None:
         w_oknie.set()
         zwolnij.wait(timeout=LIMIT_S)
         oryginal(run, graf, uow_factory, kontekst)
@@ -384,7 +386,10 @@ def test_bieg_dlugi_pokazuje_postep_i_daje_sie_anulowac_miedzy_krokami(
 def test_restart_procesu_zamyka_bieg_w_kolejce_i_w_toku_z_przyczyna() -> None:
     _reset()
     case_id = str(uuid.uuid4())
-    set_enm(case_id, EnergyNetworkModel.model_validate(build_dynamika_projektanta_enm(z_modelem_pv=True)))
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(build_dynamika_projektanta_enm(z_modelem_pv=True)),
+    )
     w_kolejce = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="PF")
     w_toku = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="PF")
     with canonical_run_repository_scope() as repo:
@@ -425,7 +430,9 @@ def test_blad_programu_w_tle_to_failed_z_nazwa_bledu_a_wykonawca_zyje_dalej(
     wybuchajacy, zdrowy = (_utworz(client, case_id, "LOAD_FLOW") for _ in range(2))
     oryginal = canonical_analysis._wykonaj_analize_biegu
 
-    def dyspozytor(run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None) -> None:
+    def dyspozytor(
+        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
+    ) -> None:
         if str(run.id) == wybuchajacy:
             raise KeyError("wstrzyknięty błąd programu")
         oryginal(run, graf, uow_factory, kontekst)
@@ -475,7 +482,11 @@ def _roznice(a: Any, b: Any, sciezka: str = "") -> list[str]:
     if isinstance(a, list) and isinstance(b, list):
         if len(a) != len(b):
             return [f"{sciezka} (długość {len(a)} != {len(b)})"]
-        return [r for i, (x, y) in enumerate(zip(a, b, strict=True)) for r in _roznice(x, y, f"{sciezka}[{i}]")]
+        return [
+            r
+            for i, (x, y) in enumerate(zip(a, b, strict=True))
+            for r in _roznice(x, y, f"{sciezka}[{i}]")
+        ]
     return [] if a == b else [f"{sciezka}: {a!r} != {b!r}"]
 
 
@@ -528,7 +539,10 @@ def test_rodzaje_z_punktami_przerwania_to_dokladnie_wykonawcy_czytajacy_kontekst
         rodzaj
         for rodzaj, fn in wykonawcy.items()
         if "kontekst" in inspect.signature(fn).parameters
-        and ("punkt_przerwania" in inspect.getsource(fn) or "_NadzorcaBieguDynamiki" in inspect.getsource(fn))
+        and (
+            "punkt_przerwania" in inspect.getsource(fn)
+            or "_NadzorcaBieguDynamiki" in inspect.getsource(fn)
+        )
     }
     assert z_kontekstem == set(RODZAJE_Z_PUNKTAMI_PRZERWANIA)
 

@@ -14,6 +14,7 @@ from solver_input.v126_contracts import (
     V126HarmonicSourceInput,
     V126TransformerInput,
 )
+
 from tests.utils.biegi import uruchom_v126
 
 

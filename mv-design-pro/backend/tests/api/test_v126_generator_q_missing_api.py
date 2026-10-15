@@ -50,6 +50,7 @@ from enm.klucz_twin import klucz_twin_projektu
 from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
+
 from tests.utils.biegi import uruchom_v126
 
 _SZYNA_A = "BUS_A"

@@ -6,6 +6,7 @@ from application.protection_analysis.catalog_lookup import (
     get_protection_device_type,
     get_protection_template,
 )
+
 from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
 
 pytest.importorskip("fastapi")

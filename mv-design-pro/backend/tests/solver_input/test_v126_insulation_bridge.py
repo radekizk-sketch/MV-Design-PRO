@@ -7,6 +7,7 @@ from solver_input.v126_contracts import (
     build_v126_insulation_from_enm,
     ograniczniki_bez_uziemienia_sieci,
 )
+
 from tests.utils.biegi import uruchom_v126
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"

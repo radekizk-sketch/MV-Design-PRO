@@ -35,6 +35,7 @@ from enm.canonical_analysis import create_run, execute_run
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
+
 from tests.utils.biegi import uruchom_v126
 
 _RODZAJE_WYCOFANE = (V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.OPF_LOSS_LCC)

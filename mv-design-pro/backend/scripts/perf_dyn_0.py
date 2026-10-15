@@ -46,7 +46,6 @@ os.environ.setdefault("DATABASE_URL", f"sqlite+pysqlite:///{_TMP}/biegi.db")
 os.environ.setdefault("ENM_STORE_DIR", f"{_TMP}/enm")
 
 import numpy as np  # noqa: E402
-
 from enm.canonical_analysis import (  # noqa: E402
     create_run,
     execute_run,
@@ -210,7 +209,9 @@ def _pomiar(nazwa: str, enm_dict: dict[str, Any], scenariusz: dict[str, Any]) ->
     )
     czas_biegu_s = time.perf_counter() - zegar
     if bieg.status != "FINISHED":
-        raise RuntimeError(f"{nazwa}: bieg dynamiki nie zakończył się wynikiem: {bieg.error_message}")
+        raise RuntimeError(
+            f"{nazwa}: bieg dynamiki nie zakończył się wynikiem: {bieg.error_message}"
+        )
     wlasnosci = (bieg.raw_result or {}).get("wlasnosci_biegu", {})
     return {
         "siec": nazwa,

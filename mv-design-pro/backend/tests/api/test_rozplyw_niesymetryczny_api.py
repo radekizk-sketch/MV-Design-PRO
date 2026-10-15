@@ -13,6 +13,7 @@ from enm.canonical_analysis import reset_canonical_runs
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source, Transformer
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
+
 from tests.utils.biegi import wykonaj_bieg
 
 TRASA = "/api/analysis-runs/{run_id}/results/rozplyw-niesymetryczny"
@@ -110,7 +111,7 @@ def _uruchom(client: TestClient, case_id: str) -> dict:
     )
     assert create.status_code == 201, create.text
     assert create.json()["analysis_type"] == "PF_UNBALANCED"
-    execute = wykonaj_bieg(client, create.json()['id'])
+    execute = wykonaj_bieg(client, create.json()["id"])
     assert execute.status_code == 200, execute.text
     return execute.json()
 
