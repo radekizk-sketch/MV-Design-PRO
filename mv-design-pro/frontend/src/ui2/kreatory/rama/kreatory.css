@@ -362,8 +362,8 @@
   padding: 8px 14px;
   border-bottom: 1px solid var(--mvd-line);
   background: var(--mvd-panel-2);
-  font: 600 11px/1.2 var(--mvd-font-mono);
-  letter-spacing: 0.1em;
+  font: 600 11px/1.2 var(--mvd-font-sans);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mvd-muted);
 }
@@ -376,19 +376,24 @@
   border-bottom: 1px solid var(--mvd-line);
 }
 .mvd-kreator-gotowosc-wiersz:last-child { border-bottom: none; }
-.mvd-kreator-gotowosc-etykieta { font-size: 12px; color: var(--mvd-ink); }
+.mvd-kreator-gotowosc-etykieta { flex: none; font-size: 12px; color: var(--mvd-muted); }
+/* Oględziny 2026-10-15 (C-8): wartość bywa zdaniem („Stacja odgałęźna (ze składu pól)”);
+ * dawniej czcionka o stałej szerokości 11 px w KOLORZE statusu, łamana w wąskiej kolumnie.
+ * Jak w polach właściwości narzędzi klasy PowerFactory: tekst w kolorze tekstu, zwykła
+ * czcionka; stan niesie kolorowa kropka (kolor nie jest jedynym nośnikiem — słowa zostają). */
 .mvd-kreator-gotowosc-stan {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: 600 11px/1 var(--mvd-font-mono);
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  text-align: right;
+  font: 500 12.5px/1.35 var(--mvd-font-sans);
+  color: var(--mvd-ink);
 }
+.mvd-kreator-gotowosc-stan .mvd-kreator-gotowosc-kropka { flex: none; transform: translateY(-1px); }
 .mvd-kreator-gotowosc-kropka { width: 8px; height: 8px; border-radius: 999px; background: var(--mvd-muted); }
-.mvd-kreator-gotowosc-stan[data-stan="kompletne"] { color: var(--mvd-ok); }
 .mvd-kreator-gotowosc-stan[data-stan="kompletne"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-ok); }
-.mvd-kreator-gotowosc-stan[data-stan="ostrzezenie"] { color: var(--mvd-warn); }
 .mvd-kreator-gotowosc-stan[data-stan="ostrzezenie"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-warn); }
-.mvd-kreator-gotowosc-stan[data-stan="brak"] { color: var(--mvd-err); }
 .mvd-kreator-gotowosc-stan[data-stan="brak"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-err); }
 
 /* ------------------------------------------------------ Następny krok (flow) */
