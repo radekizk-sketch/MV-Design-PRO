@@ -12,7 +12,7 @@ obciążenia (load average w logach biegów); pomiary przed i po w tych samych w
 | Pełny backend `-m "not pandapower and not andes"` | 5 015 s (1 proces, host A, 2026-09-30) · 5 873 s (1 proces, host B, 2026-10-15, drzewo `2000e4d5`) | `-n 4 --dist loadfile`: 1 645 s i 1 591 s (host B, `2000e4d5`) · 1 352 s (host A) | 3,57–3,69× (ten sam host) | TAK — 27 064 × passed w biegu sekwencyjnym i w obu równoległych, 0 różnic identyfikatorów i statusów (junit) |
 | Pełny vitest (887 plików) | 1 753,9 s (`--no-file-parallelism`, pula wątków, czyste drzewo bazy) | 682,5 s i 753,9 s (pula procesów `forks`) | 2,3–2,6× | TAK — per plik i per test identycznie (jedyna różnica: nowy plik `pulaTestow.test.ts`, 2 passed) |
 | `scripts/guardy_z_ci.py` | 854,8 s (runner bazy, sekwencyjnie) | 309,3 s i 318,7 s (4 procesy, samotesty `-n 4`) | 2,7× | samotesty: 3 332 → 3 352 passed (nowe samotesty karty) |
-| Pełne e2e (realny backend, `workers: 1`) | 1 925 s jeden bieg (511 przypadków) | 4 shardy LPT: 472,7 / 418,6 / 397,6 / 417,2 s | najwolniejszy shard 4,1× krótszy | TAK — suma shardów = bieg pełny: 511 przypadków, shardy rozłączne, 0 różnic statusu |
+| Pełne e2e (realny backend, `workers: 1`) | 1 925 s jeden bieg (511 przypadków) | 4 shardy LPT: 472,7 / 418,6 / 397,6 / 417,2 s (host A); po strażniku drzewa 576–595 s (host B, `2dc8215c`) | najwolniejszy shard 3,2–4,1× krótszy | TAK — suma shardów = bieg pełny: 511 przypadków, rozłączne, 0 różnic statusu; po `2dc8215c` drzewo czyste |
 
 `nproc` i `uptime` są w nagłówku i stopce każdego logu biegu. Uwaga pomiarowa: `nproc` pod
 `OMP_NUM_THREADS=1` zwraca 1 — liczba rdzeni zapisywana jest przez `nproc --all`.
@@ -34,7 +34,9 @@ Zajętość runnerów (trzy joby testowe razem): przed 79 + 27,7 + 25,8 ≈ 132,
 skraca ścieżkę krytyczną o ~15 min; backend i vitest oszczędzają ~45 runner-min.
 
 `Python tests` na `2000e4d5` — **zielony** (pytest, samotesty, lint, mutacje, ANDES, pandapower,
-PostgreSQL). Czerwone na gałęzi karty są wyłącznie joby czerwone także na CI bazy `615f3b24`
+PostgreSQL). Od `4cd7d6e7` naprawy czerwieni bazy są oddane PARTIA-6-BACKEND (§5 pkt 1), więc
+sam czubek tej gałęzi ma znów czerwień bazy w testach migracji nN, rejestru kodów i nazw
+(stan `615f3b24`); zielony jest po scaleniu z `65b00094` (sprawdzone na drzewie scalonym). Czerwone na gałęzi karty są wyłącznie joby czerwone także na CI bazy `615f3b24`
 (sprawdzone przez check-runs bazy), z identycznym zbiorem czerwieni — patrz §4.
 
 ## 2. Co zrobiono (commity kodu)
@@ -49,6 +51,7 @@ PostgreSQL). Czerwone na gałęzi karty są wyłącznie joby czerwone także na 
   (inaczej runner uruchamiałby narzędzie kroku jako strażnika z argumentami `${{ … }}`).
 - `fcf59e0b` — polecenia i liczby z pomiaru w CLAUDE.md, STAN_REPO §7 G, regule biegów
   `KARTY_OTWARTE_2026-09.md`, definicjach wykonawców `.claude/agents/worker*.md`.
+- `4cd7d6e7`, `2dc8215c`, `64971f48`, `65584f80` — rozstrzygnięcia z §5.
 - `2000e4d5` — poprawka mojego testu wątków BLAS po czerwieni CI: w workerze załadowane są DWIE
   biblioteki OpenBLAS (numpy i scipy), test sprawdza teraz każdą.
 
@@ -97,25 +100,35 @@ z liniami starego modułu); osobno 12 passed, w biegach końcowych zielony.
 - e2e: 8 przypadków (`sld-pa-powerflow-tor` N-2/N-3, `tr2w-bez-pola` ×3, scena „koordynacja”
   ×3) — identycznie w biegu pełnym, w shardach lokalnie i w shardach CI.
 
-## 5. Do decyzji integratora
+## 5. Rozstrzygnięcia architekta (2026-10-15)
 
-- Commity `0d8a80c5` (bez poprawki `main([])` w `backend/tests/ci/test_guardy_z_ci.py`, która
-  należy do tej karty) i `646aabf9` naprawiają czerwień bazy (test migracji nN karty #151, kod
-  `catalog.assign_failed`, predykat nazwy w `enm/validator.py`, budżet bramki typów 81 > 80),
-  którą wg uwagi integratora z 2026-10-01 naprawia karta PARTIA-6-BACKEND (`65b00094`) —
-  powstały przed tą uwagą. Przy integracji wybrać jedną wersję.
-- Commity `3725a08d` i `0d8a80c5` mają committera `radek.izk@gmail.com`; od następnych
-  committer to `noreply@anthropic.com`, autor wg karty. Historii nie przepisywałem (zakaz
-  amend/force push).
+1. **Naprawy czerwieni bazy oddane karcie PARTIA-6-BACKEND** (`65b00094`, właściciel obszaru,
+   naprawa szersza — cała klasa martwych zapasów kodu odmowy). Commit `4cd7d6e7` przywraca cztery
+   pliki do stanu `615f3b24`; zostaje tylko poprawka tej karty `main([])` w
+   `backend/tests/ci/test_guardy_z_ci.py`. Dowód: próbna fuzja z gałęzią PARTIA-6-BACKEND bez
+   konfliktów; na drzewie scalonym `tsconfig_gate_guard` 80/80 OK, testy celowane backendu
+   234 passed pod `-n 4`, `szynyStacjiKonsumenci.test.ts` 24 passed. Sama ta gałąź ma w tych
+   miejscach stan bazy (`guardy_z_ci.py`: jedyna czerwień `tsconfig_gate_guard` 81 > 80 z pliku
+   bazy, moje nowe pliki e2e dokładają 0 błędów typów).
+2. **Bieg e2e nie zmienia drzewa repozytorium** (`2dc8215c`): jedno źródło katalogu zrzutów
+   `e2e/katalogZrzutow.ts` wpięte we wszystkie 54 deklaracje; zrzuty do `docs/` wyłącznie przy
+   `ZRZUTY_DO_DOKUMENTACJI=1`; strażnik klasy w `globalTeardown` (`e2e/straznikDrzewa.ts`) oblewa
+   bieg, który zmienił drzewo jakąkolwiek drogą. Dowody: iniekcja — RC=1 z nazwanymi ścieżkami;
+   pełne e2e w 4 shardach na `2dc8215c` — 511 dotychczasowych przypadków z tym samym statusem,
+   8 nowych zielonych, zero zgłoszeń strażnika, `git status` po biegu pusty (wcześniej ~220
+   nadpisanych PNG).
+3. **Liczba procesów vitest zostaje domyślna** (`65584f80`): 4 procesy dały 702,6 s wobec
+   777,2 s, ale w biegu z konfiguracji dwa testy budżetu czasu procesora wyszły ponad próg
+   (30 675 / 30 654 ms przy 30 000 ms) — wynik zależny od obciążenia, wbrew karcie.
+4. **Joby ANDES, pandapower i mutacji zostają jednoprocesowe** — nie leżą na ścieżce krytycznej
+   (10–18 min wobec 45 min joba pytest); xdist w izolowanych venv bez dowodu równości byłby
+   ryzykiem bez zysku czasu workflowu.
+5. **Committer `radek.izk@gmail.com` w `3725a08d` i `0d8a80c5` zostaje** — zakaz przepisywania
+   historii ma pierwszeństwo.
 
-## 6. Czego nie zrobiono i dlaczego (uczciwie)
+## 6. Ograniczenia pomiarów (uczciwie)
 
-- Joby ANDES, pandapower i mutacji zostają jednoprocesowe: po zmianie nie leżą na ścieżce
-  krytycznej (10–18 min wobec 45 min joba pytest), a ANDES/pandapower biegną w izolowanych venv,
-  których pod xdist nie mogłem zweryfikować lokalnie — zmiana bez dowodu równości byłaby wbrew
-  karcie.
-- Liczba procesów vitest zostaje domyślna (rdzenie − 1); innej nie mierzyłem.
-- Znalezisko poza kartą: pełne e2e nadpisuje ~220 śledzonych PNG w `docs/` (specy zrzutowe
-  dokumentacji renderują je przy każdym biegu, bajty zależą od renderu). Różne specy piszą różne
-  pliki, więc nie koliduje to z podziałem na shardy; po biegach przywróciłem drzewo. Zmiana
-  wymaga decyzji o roli tych zrzutów w dokumentacji (artefakt biegu czy plik repo).
+- Pomiary 2026-09-30 i 2026-10-15 pochodzą z dwóch hostów 4 vCPU (kontener uruchamiany ponownie);
+  każde porównanie przed/po w tabelach jest z tego samego hosta i tego samego dnia.
+- CI: joby czekają w kolejce runnerów konta, więc czas całego przebiegu workflowu zależy od
+  kolejki; porównuję czasy kroków i jobów.
