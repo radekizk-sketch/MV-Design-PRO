@@ -42,7 +42,7 @@ export function WierszPrzebiegu({ przebieg, zaznaczony, onKlik }: WierszPrzebieg
       <td className="mvd-przebiegi-czas">{formatCzas(przebieg.poczatekISO)}</td>
       <td className="mvd-przebiegi-czas">{przebieg.czasTrwania}</td>
       <td
-        className={`mvd-przebiegi-czas mvd-num${przebieg.rewizjaModelu === null ? ' mvd-wkrotce-wartosc' : ''}`}
+        className={`mvd-przebiegi-czas mvd-num${przebieg.rewizjaModelu === null ? ' mvd-przebieg-brak-rewizji-wartosc' : ''}`}
         title={przebieg.rewizjaModelu === null ? T.pochodzenieBrakWRekordzie : undefined}
         data-testid={`mvd-przebieg-rewizja-${przebieg.id}`}
       >

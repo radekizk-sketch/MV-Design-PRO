@@ -1,0 +1,253 @@
+/*
+ * Prymitywy wizualne ui2 — JEDNO źródło definicji (karta KOLIZJE-KLAS-CSS).
+ *
+ * Arkusze `src/**\/*.css` są globalne: Vite składa je w jeden dokument, a remis
+ * specyficzności rozstrzyga kolejność załadowania. Dopóki każdy ekran trzymał
+ * „lokalną kopię" przycisku, liczby, znacznika czy dialogu, wygląd prymitywu na
+ * KAŻDYM ekranie wyznaczała kopia z arkusza załadowanego najpóźniej — a wariant
+ * (`.mvd-btn-primary`, `.mvd-btn-destrukcyjny`) przegrywał z późniejszą kopią klasy
+ * bazowej i wyglądał jak zwykły przycisk.
+ *
+ * Ten arkusz ładuje powłoka (`ui2/shell/AppShell.tsx`) i harness kreatorów zaraz po
+ * tokenach, więc stoi przed arkuszami ekranów. Wariant ekranu zapisuje się
+ * selektorem zawężonym do kontenera (`.mvd-ekran .mvd-btn`) albo własną klasą
+ * wariantu — nigdy redefinicją klasy z tego pliku. Pilnuje tego
+ * `scripts/css_jedno_zrodlo_klasy_guard.py` (lista dozwolona pusta).
+ *
+ * Wartości: deklaracje, które przed scaleniem faktycznie wygrywały w paczce
+ * produkcyjnej (pomiar kolejności arkuszy w `vite build`, meldunek karty), z
+ * dwiema świadomymi zmianami opisanymi przy regułach `.mvd-btn:hover` i wariantach.
+ * Wyłącznie tokeny --mvd-* (parytet motywów jasny/ciemny).
+ */
+
+/* ---- liczba (mono + cyfry tabelaryczne) ---- */
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- tekst tylko dla czytników ekranu ---- */
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- przycisk ---- */
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+/* Najechanie podkreśla wyłącznie obramowanie. Tło `--mvd-panel-2` z kopii arkuszy
+ * menedżera przypadków i przebiegów (specyficzność 0,2,0) przykrywało tło
+ * wariantów (`.mvd-btn-primary`, `.mvd-btn-destrukcyjny`) i dawało jasny przycisk
+ * z białym napisem — świadomie zdjęte. */
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Wariant główny stoi PO klasie bazowej w tym samym arkuszu, więc wygrywa z nią
+ * przy równej specyficzności niezależnie od kolejności arkuszy ekranów. */
+.mvd-btn-primary {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+  font-weight: 600;
+}
+
+/* ---- pole tekstowe ---- */
+.mvd-input {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+}
+
+/* ---- pole formularza: etykieta + kontrolka ---- */
+.mvd-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-pole-etykieta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px/1.3 var(--mvd-font-mono);
+  color: var(--mvd-muted);
+}
+
+/* ---- znacznik statusu ---- */
+.mvd-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+}
+.mvd-tag-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-tag-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-tag-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-tag-mut {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+
+/* ---- dialog modalny ---- */
+.mvd-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mvd-dialog {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  box-shadow: var(--mvd-shadow);
+  width: 92%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 20px;
+}
+.mvd-dialog-tytul {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mvd-dialog-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: 12px;
+}
+.mvd-dialog-akcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---- tabela listy (przypadki, szablony, pulpit projektu) ---- */
+.mvd-cases-scroll {
+  overflow-x: auto;
+}
+.mvd-cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-cases-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  white-space: nowrap;
+}
+.mvd-cases-table td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 7px 8px;
+  vertical-align: middle;
+}
+.mvd-cases-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-cases-row:hover {
+  background: var(--mvd-panel-2);
+}
+.mvd-cases-row.mvd-on {
+  background: var(--mvd-sel);
+}
+.mvd-cases-name {
+  font-weight: 600;
+}
+.mvd-cases-active {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-cases-time {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+.mvd-cases-empty {
+  padding: 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* ---- wiersz klucz–wartość kafla ---- */
+.mvd-kafel-kv-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-kafel-kv-label {
+  color: var(--mvd-muted);
+}
+.mvd-kafel-kv-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  text-align: right;
+}
+
+/* ---- tytuł wykresu ekranów wyników (rozpływ, zwarcia, OLTC) ---- */
+.mvd-wyn-wykres-tytul {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}

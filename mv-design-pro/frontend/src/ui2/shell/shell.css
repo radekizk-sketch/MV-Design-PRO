@@ -32,11 +32,6 @@
   font-weight: 600;
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* ---- pasek tytułowy ---- */
 .mvd-titlebar {
   display: flex;
@@ -70,29 +65,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 42ch;
-}
-
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  border-radius: 5px;
-  padding: 4px 12px;
-  cursor: pointer;
-  font: inherit;
-}
-.mvd-btn:hover {
-  border-color: var(--mvd-accent);
-}
-.mvd-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.mvd-btn-primary {
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-  border-color: var(--mvd-accent);
-  font-weight: 600;
 }
 
 .mvd-menu {

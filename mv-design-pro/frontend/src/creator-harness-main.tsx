@@ -27,6 +27,8 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './query-client';
 import './ui2/theme/tokens.css';
+// Prymitywy ui2 (jedno źródło) — ta sama kolejność co w AppShell: przed arkuszami ekranów.
+import './ui2/theme/prymitywy.css';
 // Warstwa `ui/**` (powierzchnie E-2x) stoi na Tailwindzie z `index.css`; bez tego
 // arkusza scena renderuje sie BEZ STYLOW i zrzut nie pokazuje tego, co widzi projektant.
 // Import jest globalny (Vite nie laduje CSS warunkowo), wiec sceny ui2 dostaja go tez —

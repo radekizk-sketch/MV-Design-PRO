@@ -80,13 +80,13 @@ const STAN_ETYKIETA: Record<WierszGotowosci['stan'], string> = {
 
 export function KreatorGotowosc({ tytul, wiersze, testid }: KreatorGotowoscProps) {
   return (
-    <section className="mvd-gotowosc" data-testid={testid}>
-      <div className="mvd-gotowosc-head">{tytul}</div>
+    <section className="mvd-kreator-gotowosc" data-testid={testid}>
+      <div className="mvd-kreator-gotowosc-head">{tytul}</div>
       {wiersze.map((w) => (
-        <div className="mvd-gotowosc-wiersz" key={w.etykieta} data-testid={`${testid ?? 'mvd-gotowosc'}-${w.etykieta}`}>
-          <span className="mvd-gotowosc-etykieta">{w.etykieta}</span>
-          <span className="mvd-gotowosc-stan" data-stan={w.stan}>
-            <span className="mvd-gotowosc-kropka" aria-hidden="true" />
+        <div className="mvd-kreator-gotowosc-wiersz" key={w.etykieta} data-testid={`${testid ?? 'mvd-gotowosc'}-${w.etykieta}`}>
+          <span className="mvd-kreator-gotowosc-etykieta">{w.etykieta}</span>
+          <span className="mvd-kreator-gotowosc-stan" data-stan={w.stan}>
+            <span className="mvd-kreator-gotowosc-kropka" aria-hidden="true" />
             {w.wartosc || STAN_ETYKIETA[w.stan]}
           </span>
         </div>

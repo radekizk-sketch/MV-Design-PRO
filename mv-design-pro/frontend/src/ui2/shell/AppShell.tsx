@@ -15,6 +15,9 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import '../theme/tokens.css';
+// Prymitywy (przycisk, liczba, znacznik, pole, dialog, tabela listy) — jedno źródło,
+// ładowane przed arkuszami ekranów (karta KOLIZJE-KLAS-CSS).
+import '../theme/prymitywy.css';
 import './shell.css';
 
 import { TitleBar } from './TitleBar';

@@ -230,14 +230,6 @@
 
 /* --------------------------------------------------------------- Pola */
 
-.mvd-pole { display: flex; flex-direction: column; gap: 5px; }
-.mvd-pole-etykieta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font: 600 11px/1.3 var(--mvd-font-mono);
-  color: var(--mvd-muted);
-}
 .mvd-pole-jednostka { color: var(--mvd-muted); font-weight: 500; }
 .mvd-pole-gwiazdka { color: var(--mvd-err); }
 .mvd-pole-pomoc {
@@ -365,8 +357,8 @@
 
 /* ------------------------------------------------------------- Gotowość */
 
-.mvd-gotowosc { border: 1px solid var(--mvd-line); border-radius: 10px; overflow: hidden; }
-.mvd-gotowosc-head {
+.mvd-kreator-gotowosc { border: 1px solid var(--mvd-line); border-radius: 10px; overflow: hidden; }
+.mvd-kreator-gotowosc-head {
   padding: 8px 14px;
   border-bottom: 1px solid var(--mvd-line);
   background: var(--mvd-panel-2);
@@ -375,7 +367,7 @@
   text-transform: uppercase;
   color: var(--mvd-muted);
 }
-.mvd-gotowosc-wiersz {
+.mvd-kreator-gotowosc-wiersz {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -383,21 +375,21 @@
   padding: 9px 14px;
   border-bottom: 1px solid var(--mvd-line);
 }
-.mvd-gotowosc-wiersz:last-child { border-bottom: none; }
-.mvd-gotowosc-etykieta { font-size: 12px; color: var(--mvd-ink); }
-.mvd-gotowosc-stan {
+.mvd-kreator-gotowosc-wiersz:last-child { border-bottom: none; }
+.mvd-kreator-gotowosc-etykieta { font-size: 12px; color: var(--mvd-ink); }
+.mvd-kreator-gotowosc-stan {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font: 600 11px/1 var(--mvd-font-mono);
 }
-.mvd-gotowosc-kropka { width: 8px; height: 8px; border-radius: 999px; background: var(--mvd-muted); }
-.mvd-gotowosc-stan[data-stan="kompletne"] { color: var(--mvd-ok); }
-.mvd-gotowosc-stan[data-stan="kompletne"] .mvd-gotowosc-kropka { background: var(--mvd-ok); }
-.mvd-gotowosc-stan[data-stan="ostrzezenie"] { color: var(--mvd-warn); }
-.mvd-gotowosc-stan[data-stan="ostrzezenie"] .mvd-gotowosc-kropka { background: var(--mvd-warn); }
-.mvd-gotowosc-stan[data-stan="brak"] { color: var(--mvd-err); }
-.mvd-gotowosc-stan[data-stan="brak"] .mvd-gotowosc-kropka { background: var(--mvd-err); }
+.mvd-kreator-gotowosc-kropka { width: 8px; height: 8px; border-radius: 999px; background: var(--mvd-muted); }
+.mvd-kreator-gotowosc-stan[data-stan="kompletne"] { color: var(--mvd-ok); }
+.mvd-kreator-gotowosc-stan[data-stan="kompletne"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-ok); }
+.mvd-kreator-gotowosc-stan[data-stan="ostrzezenie"] { color: var(--mvd-warn); }
+.mvd-kreator-gotowosc-stan[data-stan="ostrzezenie"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-warn); }
+.mvd-kreator-gotowosc-stan[data-stan="brak"] { color: var(--mvd-err); }
+.mvd-kreator-gotowosc-stan[data-stan="brak"] .mvd-kreator-gotowosc-kropka { background: var(--mvd-err); }
 
 /* ------------------------------------------------------ Następny krok (flow) */
 

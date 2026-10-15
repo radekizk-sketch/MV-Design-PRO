@@ -4,13 +4,6 @@
  * elementy wykresu i stan pusty konkretyzacji.
  */
 
-.mvd-wyn-wykres-tytul {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mvd-ink);
-}
-
 .mvd-wyn-wykres-dymek {
   background: var(--mvd-panel);
   border: 1px solid var(--mvd-line);

@@ -111,3 +111,12 @@ jobs:
       - name: Slad Proza Bez LaTeX Guard
         working-directory: mv-design-pro
         run: python scripts/slad_proza_bez_latex_guard.py
+      # Karta KOLIZJE-KLAS-CSS: arkusze `frontend/src/**/*.css` sa globalne, wiec klasa
+      # zdefiniowana w dwoch plikach wyglada tak, jak kaze arkusz zaladowany pozniej
+      # (`.mvd-menu` menedzera przypadkow przejmowalo menu „Widok" paska tytulowego).
+      # Kazda klasa i kazdy selektor zlozony z klasa ma JEDNO zrodlo; prymitywy w
+      # `ui2/theme/prymitywy.css`. Lista dozwolona pusta. Samotest:
+      # scripts/test_css_jedno_zrodlo_klasy_guard.py.
+      - name: CSS Jedno Zrodlo Klasy Guard
+        working-directory: mv-design-pro
+        run: python scripts/css_jedno_zrodlo_klasy_guard.py

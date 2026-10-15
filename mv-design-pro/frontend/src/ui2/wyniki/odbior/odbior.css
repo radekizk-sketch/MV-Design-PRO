@@ -481,7 +481,3 @@
   font-family: var(--mvd-font-mono);
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}

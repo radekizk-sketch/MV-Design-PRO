@@ -318,11 +318,11 @@ export function SzczegolyPrzebiegu({
             </tr>
             <tr
               data-testid="mvd-przebieg-rewizja"
-              className={przebieg.rewizjaModelu === null ? 'mvd-wkrotce' : undefined}
+              className={przebieg.rewizjaModelu === null ? 'mvd-przebieg-brak-rewizji' : undefined}
             >
               <td>{T.etykietaRewizjaModelu}</td>
               <td
-                className={`mvd-num${przebieg.rewizjaModelu === null ? ' mvd-wkrotce-wartosc' : ''}`}
+                className={`mvd-num${przebieg.rewizjaModelu === null ? ' mvd-przebieg-brak-rewizji-wartosc' : ''}`}
                 title={przebieg.rewizjaModelu === null ? T.pochodzenieBrakWRekordzie : undefined}
               >
                 {przebieg.rewizjaModelu ?? T.brakWartosci}

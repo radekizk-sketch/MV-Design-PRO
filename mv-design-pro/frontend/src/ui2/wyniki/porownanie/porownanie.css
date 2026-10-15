@@ -84,19 +84,6 @@
   border-color: var(--mvd-accent);
 }
 
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-}
-.mvd-btn:hover {
-  border-color: var(--mvd-accent);
-}
 .mvd-por-przycisk {
   align-self: flex-start;
   background: var(--mvd-accent);
