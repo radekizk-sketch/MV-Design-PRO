@@ -76,31 +76,68 @@ function zaciskiWgSzynyPola(stacja: StacjaDlaSzyn): ReadonlyMap<string, readonly
   return wynik;
 }
 
+/**
+ * Indeks gałęzi aparatów pól nN: `field_ref` pola nN (wartość `meta.nn_field_migrowany_z`)
+ * → indeksy gałęzi w kolejności tablicy `galezie`. Budowany RAZ na tablicę gałęzi, żeby
+ * pytanie o szyny wielu stacji nie przeglądało wszystkich gałęzi dla każdej stacji (koszt
+ * O(stacje × gałęzie) → O(stacje × pola + gałęzie)). Wołający, który pyta o wiele stacji
+ * tej samej migawki, buduje indeks raz i podaje go do `szynyStacji` / `szynaGlownaStacji`.
+ */
+export interface IndeksGaleziPolNn {
+  readonly galezie: readonly GalazDlaSzyn[];
+  readonly wgPola: ReadonlyMap<string, readonly number[]>;
+}
+
+export function indeksGaleziPolNn(galezie: readonly GalazDlaSzyn[]): IndeksGaleziPolNn {
+  const wgPola = new Map<string, number[]>();
+  galezie.forEach((galaz, indeks) => {
+    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
+    if (typeof pole !== 'string') return;
+    const lista = wgPola.get(pole);
+    if (lista) lista.push(indeks);
+    else wgPola.set(pole, [indeks]);
+  });
+  return { galezie, wgPola };
+}
+
 /** Aparaty pól nN stacji — lustro `enm.tor_pola._aparaty_pol_nn_stacji` (znacznik gałęzi
- *  `meta.nn_field_migrowany_z` wskazuje `field_ref` z `nn_field_specs` TEJ stacji). */
-function aparatyPolNn(stacja: StacjaDlaSzyn, galezie: readonly GalazDlaSzyn[]): readonly GalazDlaSzyn[] {
+ *  `meta.nn_field_migrowany_z` wskazuje `field_ref` z `nn_field_specs` TEJ stacji), w
+ *  KOLEJNOŚCI TABLICY `galezie` niezależnie od tego, czy indeks był podany. `indeks` musi
+ *  być zbudowany dla TEJ SAMEJ tablicy `galezie`; bez niego budowany tutaj. */
+function aparatyPolNn(
+  stacja: StacjaDlaSzyn,
+  galezie: readonly GalazDlaSzyn[],
+  indeks?: IndeksGaleziPolNn,
+): readonly GalazDlaSzyn[] {
   const polaNn = new Set<string>();
   for (const raw of lista(rekord(stacja.meta)?.nn_field_specs)) {
     const spec = rekord(raw);
     if (spec && napis(spec.field_ref)) polaNn.add(String(spec.field_ref));
   }
   if (polaNn.size === 0) return [];
-  return galezie.filter((galaz) => {
-    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
-    return typeof pole === 'string' && polaNn.has(pole);
-  });
+  if (indeks && indeks.galezie !== galezie) {
+    throw new Error('szynyStacji: indeks gałęzi pól nN zbudowany dla innej tablicy gałęzi');
+  }
+  const { wgPola } = indeks ?? indeksGaleziPolNn(galezie);
+  const indeksy = [...new Set([...polaNn].flatMap((pole) => wgPola.get(pole) ?? []))].sort(
+    (a, b) => a - b,
+  );
+  return indeksy.map((i) => galezie[i]);
 }
 
-/** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji` (opis reguły: nagłówek). */
+/** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji` (opis reguły: nagłówek).
+ *  `indeks` — indeks gałęzi pól nN TEJ SAMEJ tablicy `galezie` (wołający pytający o wiele
+ *  stacji buduje go raz); bez niego budowany tutaj. Wynik (także kolejność) identyczny. */
 export function szynyStacji(
   stacja: StacjaDlaSzyn,
   galezie: readonly GalazDlaSzyn[],
+  indeks?: IndeksGaleziPolNn,
 ): ReadonlySet<string> {
   const wynik = new Set<string>(szynyGlowne(stacja));
   for (const zaciski of zaciskiWgSzynyPola(stacja).values()) {
     for (const zacisk of zaciski) wynik.add(zacisk);
   }
-  for (const galaz of aparatyPolNn(stacja, galezie)) {
+  for (const galaz of aparatyPolNn(stacja, galezie, indeks)) {
     for (const koniec of [galaz.from_bus_ref, galaz.to_bus_ref]) {
       const szyna = napis(koniec);
       if (szyna) wynik.add(szyna);
@@ -121,13 +158,14 @@ export function szynaGlownaStacji(
   stacja: StacjaDlaSzyn,
   galezie: readonly GalazDlaSzyn[],
   szynaRef: string,
+  indeks?: IndeksGaleziPolNn,
 ): string | null {
   const glowne = szynyGlowne(stacja);
   if (glowne.includes(szynaRef)) return szynaRef;
   for (const [szynaPola, zaciski] of zaciskiWgSzynyPola(stacja)) {
     if (zaciski.includes(szynaRef)) return szynaPola;
   }
-  for (const aparat of aparatyPolNn(stacja, galezie)) {
+  for (const aparat of aparatyPolNn(stacja, galezie, indeks)) {
     const poczatek = aparat.from_bus_ref;
     if (aparat.to_bus_ref === szynaRef && typeof poczatek === 'string' && glowne.includes(poczatek)) {
       return poczatek;
@@ -136,35 +174,68 @@ export function szynaGlownaStacji(
   return null;
 }
 
+/** Model czytany przez regułę stacji pola (stacje z deklaracjami pól i rekordy `bays`). */
+export interface ModelStacjiPola {
+  readonly substations?: readonly StacjaDlaSzyn[] | null;
+  readonly bays?: readonly { readonly ref_id?: unknown; readonly substation_ref?: unknown }[] | null;
+}
+
 /**
- * Stacja pola (SZYNY-STACJI-LUSTRO, ta sama klasa co przynależność szyny) — z DANYCH, nigdy
- * z wzorca nazwy refu. Kanały w kolejności backendu `enm.domain_operations_v2._field_record`:
- * rekord `bays` o tym `ref_id` (jego `substation_ref`), potem PIERWSZA stacja modelu, której
- * `meta.field_specs` albo `meta.nn_field_specs` deklaruje `field_ref`. `null` — pola nie
- * deklaruje nikt.
+ * Indeks reguły `stacjaPola` dla CAŁEGO modelu: `field_ref` → stacja pola (`null` — rekord
+ * `bays` bez stacji). Ta sama kolejność kanałów i ta sama zasada „pierwszy wygrywa" co
+ * pojedyncze pytanie; wołający, który pyta o wiele pól tej samej migawki (adapter SLD — ciągi
+ * odgałęźne), buduje go RAZ zamiast przeglądać wszystkie `bays` i deklaracje pól wszystkich
+ * stacji dla każdego pytania (koszt O(pytania × model) → O(model + pytania)).
  */
-export function stacjaPola(
-  model: {
-    readonly substations?: readonly StacjaDlaSzyn[] | null;
-    readonly bays?: readonly { readonly ref_id?: unknown; readonly substation_ref?: unknown }[] | null;
-  },
-  fieldRef: string | null | undefined,
-): string | null {
-  const szukany = napis(fieldRef);
-  if (!szukany) return null;
+export interface IndeksStacjiPol {
+  readonly model: ModelStacjiPola;
+  readonly wgPola: ReadonlyMap<string, string | null>;
+}
+
+export function indeksStacjiPol(model: ModelStacjiPola): IndeksStacjiPol {
+  const wgPola = new Map<string, string | null>();
   for (const bay of model.bays ?? []) {
-    if (napis(bay.ref_id) === szukany) return napis(bay.substation_ref);
+    const ref = napis(bay.ref_id);
+    if (ref && !wgPola.has(ref)) wgPola.set(ref, napis(bay.substation_ref));
   }
+  const zDeklaracji = new Map<string, string>();
   for (const stacja of model.substations ?? []) {
     if (!napis(stacja.ref_id)) continue;
     const meta = rekord(stacja.meta);
     for (const klucz of ['field_specs', 'nn_field_specs'] as const) {
       for (const raw of lista(meta?.[klucz])) {
-        if (napis(rekord(raw)?.field_ref) === szukany) return stacja.ref_id as string;
+        const pole = napis(rekord(raw)?.field_ref);
+        if (pole && !zDeklaracji.has(pole)) zDeklaracji.set(pole, stacja.ref_id as string);
       }
     }
   }
-  return null;
+  for (const [pole, stacja] of zDeklaracji) {
+    if (!wgPola.has(pole)) wgPola.set(pole, stacja);
+  }
+  return { model, wgPola };
+}
+
+/**
+ * Stacja pola (SZYNY-STACJI-LUSTRO, ta sama klasa co przynależność szyny) — z DANYCH, nigdy
+ * z wzorca nazwy refu. Kanały w kolejności backendu `enm.domain_operations_v2._field_record`:
+ * rekord `bays` o tym `ref_id` (jego `substation_ref`), potem PIERWSZA stacja modelu, której
+ * `meta.field_specs` albo `meta.nn_field_specs` deklaruje `field_ref`. `null` — pola nie
+ * deklaruje nikt. `indeks` — `indeksStacjiPol` TEGO SAMEGO modelu (wołający pytający o wiele
+ * pól buduje go raz); bez niego budowany tutaj.
+ */
+export function stacjaPola(
+  model: ModelStacjiPola,
+  fieldRef: string | null | undefined,
+  indeks?: IndeksStacjiPol,
+): string | null {
+  const szukany = napis(fieldRef);
+  if (!szukany) return null;
+  if (indeks && indeks.model !== model) {
+    throw new Error('stacjaPola: indeks stacji pól zbudowany dla innego modelu');
+  }
+  // JEDNA implementacja reguły: pojedyncze pytanie buduje indeks (koszt O(model) — tyle samo,
+  // ile kosztował przegląd wprost), więc odpowiedź z indeksem i bez nie może się rozjechać.
+  return (indeks ?? indeksStacjiPol(model)).wgPola.get(szukany) ?? null;
 }
 
 /**
@@ -177,10 +248,11 @@ export function stacjaSzyn(
   galezie: readonly GalazDlaSzyn[],
 ): ReadonlyMap<string, string> {
   const wynik = new Map<string, string>();
+  const indeks = indeksGaleziPolNn(galezie);
   for (const stacja of stacje) {
     const ref = napis(stacja.ref_id);
     if (!ref) continue;
-    for (const szyna of szynyStacji(stacja, galezie)) {
+    for (const szyna of szynyStacji(stacja, galezie, indeks)) {
       if (!wynik.has(szyna)) wynik.set(szyna, stacja.ref_id as string);
     }
   }

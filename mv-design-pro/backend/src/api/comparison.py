@@ -134,6 +134,7 @@ class ProtectionEvaluationComparisonResponse(BaseModel):
     """Protection evaluation comparison response."""
 
     element_id: str
+    fault_target_id: str
     trip_state_a: str
     trip_state_b: str
     state_change: str
@@ -151,7 +152,7 @@ class ProtectionComparisonResponse(BaseModel):
     evaluations: list[ProtectionEvaluationComparisonResponse]
     trip_count_delta: NumericDeltaResponse | None = None
     no_trip_count_delta: NumericDeltaResponse | None = None
-    invalid_count_delta: NumericDeltaResponse | None = None
+    unreliable_count_delta: NumericDeltaResponse | None = None
 
 
 class RunProvenanceResponse(BaseModel):

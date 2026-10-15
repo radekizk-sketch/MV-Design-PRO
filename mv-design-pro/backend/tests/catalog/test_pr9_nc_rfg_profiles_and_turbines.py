@@ -1,4 +1,10 @@
-"""PR-9/11 — Testy 5 profili NC RfG + 12 turbin wiatrowych w katalogu."""
+"""PR-9/11 — Testy 5 profili NC RfG.
+
+Dawna klasa `TestWindTurbineCatalog` testowała równoległy model turbin
+(`network_model.catalog.wind_turbines`) bez konsumenta w ścieżce użytkownika — model
+skasowany kartą KATALOG-TURBINY-TOR-V112; turbina w produkcie to `ConverterType`
+rodzaju WIND (testy: `tests/network_model/catalog/test_tor_turbiny_v112.py`).
+"""
 
 from __future__ import annotations
 
@@ -8,10 +14,6 @@ from catalog.profiles.nc_rfg import (
     klasyfikuj_modul,
     list_available_operators,
     load_nc_rfg_profile,
-)
-from network_model.catalog.wind_turbines import (
-    WIND_TURBINE_CATALOG,
-    list_wind_turbines,
 )
 
 
@@ -97,50 +99,6 @@ class TestNcRfgProfileStructure:
         assert rp.q_range_pct_pn_min == -0.33
         assert rp.q_range_pct_pn_max == 0.33
         assert "q_of_u" in rp.voltage_control_modes
-
-
-class TestWindTurbineCatalog:
-    def test_reference_turbines_minimum_set(self) -> None:
-        # Co najmniej 12 producentów referencyjnych (PR-11 minimum) — katalog
-        # rozszerzany w kolejnych iteracjach o turbiny rynkowe.
-        assert len(WIND_TURBINE_CATALOG) >= 12
-
-    def test_list_wind_turbines_deterministic(self) -> None:
-        turbines = list_wind_turbines()
-        ids = [t.catalog_id for t in turbines]
-        assert ids == sorted(ids)  # deterministyczna kolejność
-
-    def test_core_manufacturers_represented(self) -> None:
-        # Pięciu głównych producentów PR-11 zawsze obecnych — kolejni
-        # producenci (Senvion, Goldwind, MingYang) doprowadzeni produkcyjnie.
-        manufacturers = {t.manufacturer for t in list_wind_turbines()}
-        for must_have in (
-            "Vestas",
-            "Siemens Gamesa",
-            "GE Renewable Energy",
-            "Nordex",
-            "Enercon",
-        ):
-            assert must_have in manufacturers
-
-    def test_converter_types_diverse(self) -> None:
-        types = {t.converter_type for t in list_wind_turbines()}
-        # Powinniśmy mieć DFIG i full_converter (główne typy w komercji)
-        assert "DFIG" in types
-        assert "full_converter" in types
-
-    def test_power_range_typical_for_modern_wind(self) -> None:
-        powers = [t.nominal_power_kw for t in list_wind_turbines()]
-        assert min(powers) >= 1500  # min 1.5 MW
-        assert max(powers) <= 10000  # max 10 MW
-        # Średnia w zakresie 3-6 MW
-        avg = sum(powers) / len(powers)
-        assert 3000 <= avg <= 6000
-
-    def test_voltage_control_capable_for_all(self) -> None:
-        for t in list_wind_turbines():
-            assert t.voltage_control_capable is True
-            assert t.p_f_droop_capable is True
 
 
 class TestNcRfgProfileMultipleOperators:

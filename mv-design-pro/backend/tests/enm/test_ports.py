@@ -460,35 +460,3 @@ def test_bay_template_line_in_canonical_devices() -> None:
     # ES jest na GROUND_BRANCH (boczny tor)
     es_device = [d for d in t.devices if d.kind == "ES"][0]
     assert es_device.placement == "GROUND_BRANCH"
-
-
-# ---------------------------------------------------------------------------
-# Test 12 — StationTemplate registry
-# ---------------------------------------------------------------------------
-
-
-def test_station_template_registry_has_9_templates() -> None:
-    from network_model.catalog.station_templates import (
-        STATION_TEMPLATE_REGISTRY,
-        list_station_templates,
-    )
-
-    assert len(STATION_TEMPLATE_REGISTRY) == 9
-    templates = list_station_templates()
-    assert {t.topological_type for t in templates} == {
-        "końcowa",
-        "przelotowa",
-        "odgałęźna",
-        "sekcyjna",
-    }
-
-
-def test_station_template_industrial_has_multi_voltage_nn() -> None:
-    from network_model.catalog.station_templates import get_station_template
-
-    t = get_station_template("station_template_industrial_custom_nn")
-    # Multi-voltage nN: 6 kV + 0.4 kV
-    assert {sw.nn_voltage_kv for sw in t.nn_switchgears} == {6.0, 0.4}
-    # 2 transformatory
-    assert len(t.transformers) == 2
-    assert {tr.lv_voltage_kv for tr in t.transformers} == {6.0, 0.4}

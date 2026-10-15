@@ -27,7 +27,7 @@ walidatora, topologii, mapowań solverów i SLD. Pasmo napięcia (`pasmo_napieci
 | LvMeasurementPoint | `Measurement` (istnieje) | nic |
 | LvPcc | **NIE WCHODZI DO MODELU** (BoundaryNode Prohibition Rule) — punkt rozliczeniowy = interpretacja w warstwie analizy | kanon |
 | LvNeutral / LvPeConductor / LvPenConductor | **atrybuty kabla** (funkcje żył w `LVCableType` + parametry żyły powrotnej), nie osobne gałęzie grafu | §2.2; pętla zwarcia czyta z katalogu |
-| LvEarthingPoint | `Transformer.lv_neutral` (GroundingConfig) + `meta.nn_earthing_system` (istnieją) | TT/IT: rezystancja uziemienia odbiorcy jako pole stacji (P1) |
+| LvEarthingPoint | `Transformer.lv_neutral` (GroundingConfig) + `meta.nn_earthing_system` (istnieją) | TT/IT: rezystancja uziemienia odbiorcy jako pole stacji (P1) **2026-09-30 (O-68, OD-25):** R_A = `earth_electrode_r_ohm` odbiorcy/stacji (KARTA_W5 §W5-E), `Transformer.lv_neutral.r_ohm` pełni rolę R_B; katalog RCD typowany bez wartości domyślnych; karta W5-E-TTIT |
 
 **Uzasadnienie (projektant/profesor):** przewód PE/PEN nie jest modelowany jako osobna gałąź
 grafu admitancyjnego — w rozpływie i zwarciach międzyfazowych nie uczestniczy, a w pętli

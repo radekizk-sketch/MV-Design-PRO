@@ -14,6 +14,10 @@ interface WierszProblemuProps {
   trybEkspercki: boolean;
   onKlikWiersza: (elementRef: string) => void;
   onNaprawa: (problem: ProblemGotowosci) => void;
+  /** Nazwa elementu z migawki modelu (to samo źródło co schemat). Karta
+   *  ETYKIETA-STACJI-PRZELOTOWEJ: wiersz pokazywał identyfikator maszynowy elementu
+   *  („Element: stn/…") w tekście dla projektanta. */
+  nazwaElementu: (elementRef: string) => string;
 }
 
 /** Tag wagi problemu — lokalny (bez zależności od innej przestrzeni ui2). */
@@ -28,6 +32,7 @@ export function WierszProblemu({
   trybEkspercki,
   onKlikWiersza,
   onNaprawa,
+  nazwaElementu,
 }: WierszProblemuProps) {
   const { elementRef, opisPl, waga, code, fixAction } = problem;
 
@@ -47,7 +52,7 @@ export function WierszProblemu({
         <span className="mvd-problem-desc">{opisPl}</span>
         {elementRef && (
           <span className="mvd-problem-element">
-            {GOTOWOSC_STRINGS.element}: <span className="mvd-num">{elementRef}</span>
+            {GOTOWOSC_STRINGS.element}: <span>{nazwaElementu(elementRef)}</span>
           </span>
         )}
       </button>

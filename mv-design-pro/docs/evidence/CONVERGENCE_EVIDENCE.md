@@ -26,7 +26,7 @@
 | # | Ustalenie audytu | Klasyfikacja | Dowód na HEAD |
 |---|---|---|---|
 | 1 | ENM powinien stać się rdzeniem Canonical Project Twin | **CONFIRMED** | ocena 13 kryteriów: `CANONICAL_TWIN_ARCHITECTURE.md` §A.1; każda luka addytywna |
-| 2 | Nie tworzyć drugiego trwałego `TwinModel` | **CONFIRMED** (i wpisane jako decyzja DT-1; ADR-012 skorygowany) | `DECISION_FREEZE_REGISTER.md` DT-1 |
+| 2 | Nie tworzyć drugiego trwałego `TwinModel` | **CONFIRMED** (i wpisane jako decyzja DT-1; ADR-012 skorygowany; **ADR-012 ACCEPTED 2026-09-30, O-63** — DT-1 EVIDENCE-GATED, FROZEN po CV-5) | `DECISION_FREEZE_REGISTER.md` DT-1; testy `tests/invariants/test_wlasnosc_modelu_projektu_adwersaryjne.py`, `enm_store_key_guard` |
 | 3 | `network_model` → pochodny niemutowalny Computational IR | **CONFIRMED + NEW ISSUE** | tor kanoniczny już buduje `NetworkGraph` z ENM (`enm/mapping.py`); NEW: 12 benchmarków + `oze_pv_bess` istnieją tylko w dialekcie słownikowym liczonym własnym NR (P9) — druga prawda o sieci (pomiar `tests/golden/test_registry.py`) |
 | 4 | Persystencja ENM per przypadek → per projekt | **CONFIRMED, PARTIALLY FIXED** | `enm/store.py:82` (`sha256(case_id)`); rdzeń CV-1 `9667235a`; wiring CV-1-W w toku |
 | 5 | `StudyCase` odwołuje się do rewizji, nie posiada sieci | **CONFIRMED** (kierunek) | `domain/study_case.py` trzyma tylko konfigurację (C1) — brak pola modelu; magazyn był kluczowany przypadkiem (pkt 4) |
@@ -888,6 +888,29 @@ Odpowiedź właściciela na raport audytu donorów (CP-8) i meldunek K6/PERF. OD
 | W-6 | **B-01-RI AKTYWNA**, rozstrzygnięcie merytoryczne: `120/(M−1)` to Long-Time Inverse — wartości bez zmian; preferowane w przyszłości przemianowanie obecnej `RI` → `LONG_TIME_INVERSE` bez zmiany liczb; prawdziwa RI (`1/(0,339 − 0,236/M)`) tylko wtedy, gdy produkt jej potrzebuje | wykonanie (edycja `protection_iec60255.py` w rdzeniu FROZEN + etykieta i LaTeX w dowodach + golden) wymaga osobnej zgody B-01 na edycję pliku; do tego czasu stan bez zmian, dług nazwany w `DONOR_IMPLEMENTATION_BACKLOG.md` B-01-RI |
 | W-7 | **D-11 (polityka haszowania kolekcji ENM) ODŁOŻONA**: „wykonujemy jako świadomą migrację danych, nie jako cleanup. Nie teraz” | karta D-11 pozostaje P2 z adnotacją „migracja danych”; hasz `enm/hash.py` bez zmian |
 | W-8 | **Kolejność docelowa programu:** (1) domknięcie CI na HEAD Opus → (2) fast-forward → (3) **K7 + D-2** → (4) **PERF-SC-50** → (5) zamknięcie CV-4.3 → (6) CV-4.4 legacy ORM → (7) ponowna ocena D-1 → (8) CV-5 → (9) CV-6 → (10) D-3 / ownership zabezpieczeń → (11) pełne SLD jako projekcja ENM/`TopologyView` → (12) DT-12. „Kończymy research i wracamy do budowy Digital Twin: K7 → performance → CV-4.3/4.4” | (1)–(2) wykonane 2026-09-09; (3) w toku (`fable-cv3`, równolegle odbiór K1/A1 w `fable-cv4`); `../architecture/CONVERGENCE_ROADMAP.md` §4 przepisany na tę kolejność |
+
+### I.3 Rozstrzygnięcia doradcy architektonicznego z delegacją właściciela O-59 (2026-09-30)
+
+Pełna treść: `../plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3 wiersze O-60…O-75; specyfikacje danych właściciela:
+`../plan/DANE_WLASCICIELA_O59_2026-09.md` (P-A…P-M). Skróty w tym rejestrze:
+
+| Pozycja | Rozstrzygnięcie | Dowód / miejsce |
+|---|---|---|
+| ADR-012 (DT-1) | ACCEPTED; bramka M0/M1 z docs/twin nie wiąże wycinków W | V12K-340; `docs/adr/ADR-012-*.md` |
+| OD-3 | wyrocznia ANALYTICAL przypięta testem; PUBLISHED wyłącznie po danych IEC 60909-3 (P-B); W8-OD3 po W8 i W5 | O-72; MAPA D1 |
+| OD-13 | MCP jako lokalna płaszczyzna sterowania; OD-27 zamknięta 2026-08-05 | ADR-029; V12K-346 |
+| OD-14 | Z_f addytywnie (`r_f_ohm`/`x_f_ohm`, X_f ≥ 0, blokada autorytetu SI-117+ dla i_p/I_th) | O-61/O-66; MAPA §7 OD-14 |
+| OD-15 | (a)(d)+OD-24 = V126-UCZCIWOSC natychmiast; (e) literał „LTI”; (g) `regulacja_q` z §12.2(f) | O-62, O-67, O-69 |
+| OD-16 | cennik wersjonowany `catalog/cenniki/cennik_RRRR-MM.yaml`, `BRAK_CENNIKA` | O-65/O-73; P-J |
+| OD-17 | pakiety P1/P2/P3 (P-K); odmowy `BRAK_PAKIETU_OSD:*` / `BRAK_KARTY_PRODUCENTA:*` / `BRAK_CERTYFIKATU_WIPWC:*` | O-65; karta OD-17a |
+| OD-18 | kasacja `protection_engine_v1` i martwych mapperów ResultSet v1 z sankcją | V12K-341; O-74 (2) |
+| OD-19 | tylko korekta rdzenia NR (kryterium spektralne J_R), A-1 odrzucona pomiarem 9 budowniczych > 36 kV | O-65; MAPA §7 OD-19 |
+| OD-21 | dostawy per dokument (WOS → PTPiREE → WiPWC → OSD → JAKOSC); jedyny kod OD-21-KOD (B-01) | O-60/O-61; P-D…P-H |
+| OD-22 | bez zmian (DEFAULT_FORBIDDEN); wzorzec blokady autorytetu rozszerzony na K2/OD-14 i konsumentów W4 | O-66 |
+| OD-24 | kasacja fallbacków v126 (V126-UCZCIWOSC); nie pozostałość świadoma | O-62 |
+| OD-25 / D-11 | jedno wejście `fault_loop_iec60364` → `petla_zwarcia_tt_it`; limity TT/IT = dane właściciela (P-C); DOCX 501 kasowane | O-68 |
+| OD-36 | pole wymagane `dokladnosc_kata_dop_rad`, `WERSJA_NASTAW_SOLVERA = 2`; warunek wejścia = §5 FINAL_DYNAMICS | O-70 |
+| K-05 / K-07 / K-12 / K-13…K-22 | patrz V12K-343, V12K-344, C-12 (NAWIGACJA-JEDEN-KANON), V12K-345, V12K-346, V12K-347, V12K-339 | REJESTR_KONFLIKTOW |
 
 ## J. Następny vertical slice
 **W1 — WYKONANA W1 (2026-09-09)** (dowody: §E wiersz „W1”, §F „W1 — dowody”, §G). Następny wycinek: integracja W2 (zero fabrykacji ekranów — karta §10 mapy, agent) → W3 (konwergencja duplikatów fizyki); reszta CV-4.3 (K2 kasacja `reference_networks/**` po przeniesieniu builderów ENM do `tests/golden/`, A5 `power-flow-runs/*` po OD-8) wchodzi przed W3.

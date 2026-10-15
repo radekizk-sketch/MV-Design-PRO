@@ -1,15 +1,15 @@
-"""
-Protection Analysis Domain Model — P15a FOUNDATION
+"""Wynik biegu oceny zabezpieczeń nadprądowych (``protection_sn``) — kontrakt zapisu.
 
-CANONICAL ALIGNMENT:
-- Protection Analysis = interpretation layer, NOT a solver
-- Consumes: SC results + ProtectionCase config + Protection Library
-- Produces: ProtectionResult + ProtectionTrace (deterministic, auditable)
+Bieg interpretuje wynik biegu zwarciowego na urządzeniach i nastawach Z MODELU (decyzja
+D-21, karta BIEG-ZABEZPIECZEN-Z-MODELU). Liczy go jedna ścieżka
+``application.analyses.protection.ocena_nadpradowa``; ten moduł niesie wyłącznie typy
+zapisu wyniku i śladu (zamrożone, deterministyczne).
 
-INVARIANTS:
-- Zero physics calculations (only interprets solver results)
-- Deterministic: same inputs → same outputs
-- Frozen/immutable data structures for auditability
+Zmiana względem P15a (usunięte na amen, bez warstwy zgodności): szablon przypadku
+(``template_ref``/``template_fingerprint``/``library_manifest_ref``/``overrides``) nie jest
+już źródłem urządzeń ani nastaw — pola zniknęły z wyniku i śladu. Urządzenie oceny to
+przypisanie zabezpieczenia modelu (``device_id`` = ``ref_id`` przypisania), element
+chroniony to jego wyłącznik (``protected_element_ref`` = ``breaker_ref``).
 """
 
 from __future__ import annotations
@@ -19,218 +19,131 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-# =============================================================================
-# ENUMS AND TYPES
-# =============================================================================
-
 
 class TripState(StrEnum):
-    """Protection device trip evaluation state."""
+    """Stan zadziałania urządzenia przy zwarciu w punkcie jego strefy."""
 
-    TRIPS = "TRIPS"  # Device will trip for given fault current
-    NO_TRIP = "NO_TRIP"  # Device will NOT trip (current below pickup)
-    INVALID = "INVALID"  # Evaluation could not complete (missing data, unsupported curve)
-
-
-# =============================================================================
-# EVALUATION RESULT TYPES
-# =============================================================================
+    TRIPS = "TRIPS"
+    NO_TRIP = "NO_TRIP"
 
 
 @dataclass(frozen=True)
 class ProtectionEvaluation:
-    """
-    Single protection device evaluation against a fault.
+    """Ocena JEDNEGO urządzenia modelu przy zwarciu w JEDNYM punkcie jego strefy.
 
-    This is the core output of the protection evaluation engine.
-    One evaluation per (device, fault_target) pair.
-
-    Attributes:
-        device_id: ID of protection device instance
-        device_type_ref: Reference to ProtectionDeviceType from library
-        protected_element_ref: ID of protected element (bus_id or branch_id)
-        fault_target_id: ID of the fault location (node/bus where fault occurred)
-        i_fault_a: Fault current magnitude [A] from SC result
-        i_pickup_a: Pickup current setting [A] (resolved from template+overrides)
-        t_trip_s: Calculated trip time [s] (None if NO_TRIP or INVALID)
-        trip_state: Evaluation result (TRIPS/NO_TRIP/INVALID)
-        curve_ref: Reference to ProtectionCurve used
-        curve_kind: Kind of curve (inverse, definite_time, etc.)
-        margin_percent: Safety margin as percentage (i_fault/i_pickup - 1) * 100
-        notes_pl: Deterministic Polish notes explaining the result
+    ``i_fault_a`` to prąd pierwotny płynący przez wyłącznik urządzenia (bilans klastra
+    zacisku z rozpływu biegu SC), NIE Ik'' szyny. ``i_pickup_a`` to prąd rozruchowy strony
+    pierwotnej stopnia odniesienia (decydującego albo najczulszego), wyprowadzony z nastawy
+    i przekładni przekładnika. ``margin_percent`` = (I/Is − 1)·100 — ``None``, gdy wynik jest
+    niewiarygodny (``wiarygodnosc == "NIEWIARYGODNY"``): liczby nie pokazuje się jako zapasu.
     """
 
     device_id: str
+    nazwa_urzadzenia_pl: str
     device_type_ref: str | None
     protected_element_ref: str
     fault_target_id: str
+    nazwa_punktu_pl: str
     i_fault_a: float
     i_pickup_a: float
     t_trip_s: float | None
     trip_state: TripState
-    curve_ref: str | None
+    stopien_decydujacy: str | None
     curve_kind: str | None
+    krotnosc_m: float
     margin_percent: float | None
+    wiarygodnosc: str
+    wiarygodnosc_powod_pl: str
     notes_pl: str
+    stopnie: tuple[dict[str, Any], ...] = ()
+    bilans_pradu: dict[str, Any] = field(default_factory=dict)
+    ocena: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
         return {
             "device_id": self.device_id,
+            "nazwa_urzadzenia_pl": self.nazwa_urzadzenia_pl,
             "device_type_ref": self.device_type_ref,
             "protected_element_ref": self.protected_element_ref,
             "fault_target_id": self.fault_target_id,
+            "nazwa_punktu_pl": self.nazwa_punktu_pl,
             "i_fault_a": self.i_fault_a,
             "i_pickup_a": self.i_pickup_a,
             "t_trip_s": self.t_trip_s,
             "trip_state": self.trip_state.value,
-            "curve_ref": self.curve_ref,
+            "stopien_decydujacy": self.stopien_decydujacy,
             "curve_kind": self.curve_kind,
+            "krotnosc_m": self.krotnosc_m,
             "margin_percent": self.margin_percent,
+            "wiarygodnosc": self.wiarygodnosc,
+            "wiarygodnosc_powod_pl": self.wiarygodnosc_powod_pl,
             "notes_pl": self.notes_pl,
+            "stopnie": list(self.stopnie),
+            "bilans_pradu": self.bilans_pradu,
+            "ocena": self.ocena,
         }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionEvaluation:
-        """Deserialize from dict."""
-        return cls(
-            device_id=str(data["device_id"]),
-            device_type_ref=data.get("device_type_ref"),
-            protected_element_ref=str(data["protected_element_ref"]),
-            fault_target_id=str(data["fault_target_id"]),
-            i_fault_a=float(data["i_fault_a"]),
-            i_pickup_a=float(data["i_pickup_a"]),
-            t_trip_s=float(data["t_trip_s"]) if data.get("t_trip_s") is not None else None,
-            trip_state=TripState(data["trip_state"]),
-            curve_ref=data.get("curve_ref"),
-            curve_kind=data.get("curve_kind"),
-            margin_percent=(
-                float(data["margin_percent"]) if data.get("margin_percent") is not None else None
-            ),
-            notes_pl=str(data.get("notes_pl", "")),
-        )
 
 
 @dataclass(frozen=True)
 class ProtectionResultSummary:
-    """
-    Summary statistics for protection analysis result.
-
-    Provides quick overview without iterating through all evaluations.
-    """
+    """Podsumowanie wyniku — liczności i skrajne czasy zadziałania."""
 
     total_evaluations: int
     trips_count: int
     no_trip_count: int
-    invalid_count: int
+    unreliable_count: int
+    refused_devices_count: int
+    skipped_devices_count: int
     min_trip_time_s: float | None
     max_trip_time_s: float | None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
         return {
             "total_evaluations": self.total_evaluations,
             "trips_count": self.trips_count,
             "no_trip_count": self.no_trip_count,
-            "invalid_count": self.invalid_count,
+            "unreliable_count": self.unreliable_count,
+            "refused_devices_count": self.refused_devices_count,
+            "skipped_devices_count": self.skipped_devices_count,
             "min_trip_time_s": self.min_trip_time_s,
             "max_trip_time_s": self.max_trip_time_s,
         }
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionResultSummary:
-        """Deserialize from dict."""
-        return cls(
-            total_evaluations=int(data["total_evaluations"]),
-            trips_count=int(data["trips_count"]),
-            no_trip_count=int(data["no_trip_count"]),
-            invalid_count=int(data["invalid_count"]),
-            min_trip_time_s=(
-                float(data["min_trip_time_s"]) if data.get("min_trip_time_s") is not None else None
-            ),
-            max_trip_time_s=(
-                float(data["max_trip_time_s"]) if data.get("max_trip_time_s") is not None else None
-            ),
-        )
-
 
 @dataclass(frozen=True)
 class ProtectionResult:
-    """
-    Complete protection analysis result.
-
-    This is the main output of the protection analysis run.
-    Contains all evaluations and summary statistics.
-
-    Attributes:
-        run_id: ID of the protection analysis run
-        sc_run_id: ID of the source short-circuit run
-        protection_case_id: ID of the protection case (StudyCase.id)
-        template_ref: Reference to ProtectionSettingTemplate used
-        template_fingerprint: Fingerprint of template at analysis time
-        library_manifest_ref: Reference to protection library manifest
-        evaluations: Tuple of all device evaluations
-        summary: Summary statistics
-        created_at: Timestamp when result was created
-    """
+    """Wynik biegu: oceny punktów, odmowy urządzeń (z brakami i akcjami naprawczymi),
+    pominięcia (z przyczyną), rozwiązane nastawy i strefy urządzeń."""
 
     run_id: str
     sc_run_id: str
     protection_case_id: str
-    template_ref: str | None
-    template_fingerprint: str | None
-    library_manifest_ref: dict[str, Any] | None
     evaluations: tuple[ProtectionEvaluation, ...]
+    odmowy: tuple[dict[str, Any], ...]
+    pominiete: tuple[dict[str, Any], ...]
+    nastawy: tuple[dict[str, Any], ...]
+    strefy: dict[str, dict[str, Any]]
     summary: ProtectionResultSummary
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
         return {
             "run_id": self.run_id,
             "sc_run_id": self.sc_run_id,
             "protection_case_id": self.protection_case_id,
-            "template_ref": self.template_ref,
-            "template_fingerprint": self.template_fingerprint,
-            "library_manifest_ref": self.library_manifest_ref,
             "evaluations": [e.to_dict() for e in self.evaluations],
+            "odmowy": list(self.odmowy),
+            "pominiete": list(self.pominiete),
+            "nastawy": list(self.nastawy),
+            "strefy": self.strefy,
             "summary": self.summary.to_dict(),
             "created_at": self.created_at.isoformat(),
         }
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionResult:
-        """Deserialize from dict."""
-        evaluations = tuple(ProtectionEvaluation.from_dict(e) for e in data.get("evaluations", []))
-        return cls(
-            run_id=str(data["run_id"]),
-            sc_run_id=str(data["sc_run_id"]),
-            protection_case_id=str(data["protection_case_id"]),
-            template_ref=data.get("template_ref"),
-            template_fingerprint=data.get("template_fingerprint"),
-            library_manifest_ref=data.get("library_manifest_ref"),
-            evaluations=evaluations,
-            summary=ProtectionResultSummary.from_dict(data["summary"]),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-        )
-
-
-# =============================================================================
-# TRACE TYPES (WHITE-BOX AUDIT)
-# =============================================================================
-
 
 @dataclass(frozen=True)
 class ProtectionTraceStep:
-    """
-    Single step in the protection evaluation trace.
-
-    Records intermediate values for audit purposes.
-    """
+    """Krok śladu White Box — wejścia, wyjścia, opis po polsku."""
 
     step: str
     description_pl: str
@@ -238,7 +151,6 @@ class ProtectionTraceStep:
     outputs: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
         return {
             "step": self.step,
             "description_pl": self.description_pl,
@@ -246,104 +158,46 @@ class ProtectionTraceStep:
             "outputs": self.outputs,
         }
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionTraceStep:
-        """Deserialize from dict."""
-        return cls(
-            step=str(data["step"]),
-            description_pl=str(data.get("description_pl", "")),
-            inputs=data.get("inputs", {}),
-            outputs=data.get("outputs", {}),
-        )
-
 
 @dataclass(frozen=True)
 class ProtectionTrace:
-    """
-    Complete audit trace for protection analysis.
-
-    Records all inputs, intermediate calculations, and final outputs.
-    Enables full reproducibility and audit.
-
-    Attributes:
-        run_id: ID of the protection analysis run
-        sc_run_id: Source short-circuit run ID
-        snapshot_id: Network snapshot ID at analysis time
-        template_ref: Template used for settings
-        overrides: Overrides applied to template
-        steps: Sequence of calculation steps
-        created_at: Timestamp when trace was created
-    """
+    """Ślad biegu: rozwiązanie nastaw, strefy, bilanse prądów i czasy z rdzenia."""
 
     run_id: str
     sc_run_id: str
     snapshot_id: str | None
-    template_ref: str | None
-    overrides: dict[str, Any]
     steps: tuple[ProtectionTraceStep, ...]
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
         return {
             "run_id": self.run_id,
             "sc_run_id": self.sc_run_id,
             "snapshot_id": self.snapshot_id,
-            "template_ref": self.template_ref,
-            "overrides": self.overrides,
             "steps": [s.to_dict() for s in self.steps],
             "created_at": self.created_at.isoformat(),
         }
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionTrace:
-        """Deserialize from dict."""
-        steps = tuple(ProtectionTraceStep.from_dict(s) for s in data.get("steps", []))
-        return cls(
-            run_id=str(data["run_id"]),
-            sc_run_id=str(data["sc_run_id"]),
-            snapshot_id=data.get("snapshot_id"),
-            template_ref=data.get("template_ref"),
-            overrides=data.get("overrides", {}),
-            steps=steps,
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-        )
-
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
 
 def compute_result_summary(
     evaluations: tuple[ProtectionEvaluation, ...],
+    *,
+    refused_devices_count: int,
+    skipped_devices_count: int,
 ) -> ProtectionResultSummary:
-    """
-    Compute summary statistics from evaluations.
-
-    Args:
-        evaluations: Tuple of protection evaluations
-
-    Returns:
-        ProtectionResultSummary with computed statistics
-    """
-    trips_count = sum(1 for e in evaluations if e.trip_state == TripState.TRIPS)
-    no_trip_count = sum(1 for e in evaluations if e.trip_state == TripState.NO_TRIP)
-    invalid_count = sum(1 for e in evaluations if e.trip_state == TripState.INVALID)
-
-    trip_times = [e.t_trip_s for e in evaluations if e.t_trip_s is not None]
-    min_trip_time = min(trip_times) if trip_times else None
-    max_trip_time = max(trip_times) if trip_times else None
-
+    """Podsumowanie z ocen — czasy skrajne wyłącznie z wyników wiarygodnych."""
+    trip_times = [
+        e.t_trip_s
+        for e in evaluations
+        if e.t_trip_s is not None and e.wiarygodnosc != "NIEWIARYGODNY"
+    ]
     return ProtectionResultSummary(
         total_evaluations=len(evaluations),
-        trips_count=trips_count,
-        no_trip_count=no_trip_count,
-        invalid_count=invalid_count,
-        min_trip_time_s=min_trip_time,
-        max_trip_time_s=max_trip_time,
+        trips_count=sum(1 for e in evaluations if e.trip_state == TripState.TRIPS),
+        no_trip_count=sum(1 for e in evaluations if e.trip_state == TripState.NO_TRIP),
+        unreliable_count=sum(1 for e in evaluations if e.wiarygodnosc == "NIEWIARYGODNY"),
+        refused_devices_count=refused_devices_count,
+        skipped_devices_count=skipped_devices_count,
+        min_trip_time_s=min(trip_times) if trip_times else None,
+        max_trip_time_s=max(trip_times) if trip_times else None,
     )

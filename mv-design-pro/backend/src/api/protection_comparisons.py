@@ -79,6 +79,12 @@ class ComparisonRowResponse(BaseModel):
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: str
+    nazwa_urzadzenia_pl: str
+    nazwa_punktu_pl: str
+    krotnosc_m_a: float | None
+    krotnosc_m_b: float | None
+    wiarygodnosc_a: str
+    wiarygodnosc_b: str
 
 
 class RankingIssueResponse(BaseModel):
@@ -152,8 +158,6 @@ class ProtectionComparisonTraceResponse(BaseModel):
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    library_fingerprint_a: str | None
-    library_fingerprint_b: str | None
     steps: list[TraceStepResponse]
     created_at: str
 

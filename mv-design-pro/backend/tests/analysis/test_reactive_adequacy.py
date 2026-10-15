@@ -457,10 +457,19 @@ class TestWhiteBoxAndSerialization:
 
 
 def _reactive_card():
-    """Karta przekształtnika z katalogu, ktora ma ustawione qmin_mvar/qmax_mvar."""
+    """Karta producenta (ZWERYFIKOWANY) z katalogu, ktora ma ustawione qmin_mvar/qmax_mvar.
+
+    Od karty KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15) rating rekordu bez karty producenta
+    jest ESTIMATED, wiec karta DATASHEET to wylacznie pozycja ze statusem ZWERYFIKOWANY.
+    """
     repo = get_default_mv_catalog()
     for c in repo.list_converter_types():
-        if c.qmin_mvar is not None and c.qmax_mvar is not None:
+        if (
+            c.qmin_mvar is not None
+            and c.qmax_mvar is not None
+            and str(getattr(c.verification_status, "value", c.verification_status))
+            == "ZWERYFIKOWANY"
+        ):
             return c
     raise AssertionError("brak karty z granicami Q w katalogu")
 

@@ -26,6 +26,7 @@ import {
   MINI_BLOCK_FOOTPRINT,
   deriveFootprintType,
 } from '../MiniBlockFootprints';
+import { rodzajZeSkladuPol } from '../../../../shared/rodzajStacji';
 
 describe('MINI_BLOCK_FOOTPRINT — 7 typów stacji', () => {
   it('Wszystkie 7 typów obecnych', () => {
@@ -68,69 +69,61 @@ describe('MINI_BLOCK_FOOTPRINT — 7 typów stacji', () => {
 });
 
 describe('deriveFootprintType — 7 typów stacji', () => {
-  it('terminal → mv_lv_terminal', () => {
-    expect(deriveFootprintType('terminal', [FIELD_ROLE.RMU_LINE, FIELD_ROLE.RMU_TRANSFORMER], false))
-      .toBe('mv_lv_terminal');
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: układ SN mini-bloku idzie za RODZAJEM stacji
+  // wyprowadzonym z pól (jedna reguła `ui/shared/rodzajStacji.ts` — tu ze składu pól),
+  // nie za deklaracją `station_type` ani za własnym liczeniem pól footprintu.
+  const zPol = (role: readonly string[]) => rodzajZeSkladuPol(role, 2);
+
+  it('1 pole liniowe → mv_lv_terminal', () => {
+    expect(deriveFootprintType('terminal', zPol(['IN', 'TR']), false)).toBe('mv_lv_terminal');
   });
 
-  it('inline + 2 line bays → mv_lv_inline', () => {
-    expect(
-      deriveFootprintType('inline', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.TRANSFORMER], false),
-    ).toBe('mv_lv_inline');
+  it('2 połączone pola liniowe → mv_lv_inline (deklaracja końcowa bez wpływu)', () => {
+    expect(deriveFootprintType('terminal', zPol(['IN', 'OUT', 'TR']), false)).toBe('mv_lv_inline');
   });
 
-  it('mv_lv + 2 line bays (default inline pattern) → mv_lv_inline', () => {
-    expect(
-      deriveFootprintType('mv_lv', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT], false),
-    ).toBe('mv_lv_inline');
+  it('mv_lv + 2 pola liniowe → mv_lv_inline', () => {
+    expect(deriveFootprintType('mv_lv', zPol(['IN', 'OUT']), false)).toBe('mv_lv_inline');
   });
 
-  it('branch → mv_lv_branch', () => {
-    expect(
-      deriveFootprintType('branch', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH], false),
-    ).toBe('mv_lv_branch');
+  it('3 pola liniowe → mv_lv_branch także przy deklaracji przelotowej', () => {
+    expect(deriveFootprintType('inline', zPol(['IN', 'OUT', 'FEEDER']), false)).toBe('mv_lv_branch');
   });
 
-  it('sectional → mv_lv_sectional', () => {
-    expect(deriveFootprintType('sectional', [FIELD_ROLE.LINE_IN, FIELD_ROLE.COUPLER], false))
-      .toBe('mv_lv_sectional');
+  it('sprzęgło → mv_lv_sectional', () => {
+    expect(deriveFootprintType('mv_lv', zPol(['IN', 'COUPLER']), false)).toBe('mv_lv_sectional');
   });
 
   it('customer → mv_lv_customer', () => {
-    expect(deriveFootprintType('customer', [FIELD_ROLE.LINE_IN, FIELD_ROLE.TRANSFORMER], false))
-      .toBe('mv_lv_customer');
+    expect(deriveFootprintType('customer', zPol(['IN', 'TR']), false)).toBe('mv_lv_customer');
   });
 
   it('switching → switching_station', () => {
-    expect(deriveFootprintType('switching', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT], false))
-      .toBe('switching_station');
+    expect(deriveFootprintType('switching', zPol(['IN', 'OUT']), false)).toBe('switching_station');
   });
 
-  it('hasDer=true → der_station (priorytet nad station_type)', () => {
-    expect(deriveFootprintType('mv_lv', [FIELD_ROLE.LINE_IN], true)).toBe('der_station');
+  it('hasDer=true → der_station (priorytet nad układem przelotowym/odgałęźnym/końcowym)', () => {
+    expect(deriveFootprintType('mv_lv', zPol(['IN']), true)).toBe('der_station');
   });
 });
 
 describe('deriveFootprintType — GPZ throw', () => {
   it('GPZ rzuca Error (osobny renderer GpzSwitchgearRenderer)', () => {
-    expect(() => deriveFootprintType('gpz', [], false)).toThrow(/GPZ does not have mini-block/);
+    expect(() => deriveFootprintType('gpz', 'terminal', false)).toThrow(/GPZ does not have mini-block/);
   });
 });
 
-describe('deriveFootprintType — fallback dla unknown', () => {
-  it('Niespecyficzny mv_lv + 1 line bay → mv_lv_terminal (fallback)', () => {
-    const result = deriveFootprintType('mv_lv', [FIELD_ROLE.RMU_LINE], false);
-    // Default fallback dla nieznanej kombinacji
-    expect(['mv_lv_terminal', 'mv_lv_inline', 'mv_lv_branch']).toContain(result);
+describe('deriveFootprintType — stacja SN/nN bez deklaracji rodzaju', () => {
+  it('mv_lv + rodzaj końcowy → mv_lv_terminal (bez domysłu z deklaracji)', () => {
+    expect(deriveFootprintType('mv_lv', 'terminal', false)).toBe('mv_lv_terminal');
   });
 });
 
 describe('Determinizm — same input → same output', () => {
   it('5 reruny deriveFootprintType → identyczny wynik', () => {
-    const ref = deriveFootprintType('inline', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.TRANSFORMER], false);
+    const ref = deriveFootprintType('inline', 'inline', false);
     for (let i = 0; i < 5; i++) {
-      expect(deriveFootprintType('inline', [FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.TRANSFORMER], false))
-        .toBe(ref);
+      expect(deriveFootprintType('inline', 'inline', false)).toBe(ref);
     }
   });
 });

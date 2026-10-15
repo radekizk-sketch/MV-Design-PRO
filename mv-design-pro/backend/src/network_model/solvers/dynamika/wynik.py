@@ -149,6 +149,58 @@ class Metryka:
 
 
 @dataclass(frozen=True)
+class WielkoscZalozenia:
+    """Wielkosc liczbowa zalozenia rdzenia z jednostka (np. chwila usuniecia zwarcia)."""
+
+    nazwa: str
+    wartosc: float
+    jednostka: str
+
+
+#: Kody zalozen rdzenia — zbior ZAMKNIETY (przypiety testem w obie strony: kazdy kod ma zdanie
+#: w warstwie aplikacji `application.dynamika.zalozenia`, kazde zdanie ma kod rdzenia).
+KODY_ZALOZEN_RDZENIA: tuple[str, ...] = (
+    "model_rms_skladowej_zgodnej",
+    "model_odbiorow",
+    "zwarcia_trojfazowe",
+    "rodziny_urzadzen",
+    "probki_obustronne",
+    "estymator_czestotliwosci_odbiorow",
+    "obszar_beznapieciowy",
+    "start_ponownego_zasilenia",
+    "reinicjalizacja_estymatora_odbioru",
+    "przypisanie_stanu",
+    "utrata_czesciowa_zrodla",
+    "tryb_stanowiska",
+    "zwarcie_usuniete_samoczynnie",
+)
+
+
+@dataclass(frozen=True)
+class ZalozenieRdzenia:
+    """Zalozenie modelu rdzenia jako REKORD STRUKTURALNY, nie zdanie.
+
+    Rdzen nie zna nazw elementow modelu sieci (zna identyfikatory), a zdanie dla projektanta
+    ma niesc NAZWY z modelu i polskie slowa. Dlatego rdzen oddaje kod zalozenia, wielkosci z
+    jednostka, odwolania do elementow (identyfikatory) i pozycje wyliczen (kody, np. rodzin
+    urzadzen), a zdanie po polsku sklada warstwa aplikacji z jednego zrodla nazw — dla ekranu
+    dynamiki, raportu i opisu wyniku API (`application.dynamika.zalozenia`).
+    """
+
+    kod: str
+    elementy: tuple[str, ...]
+    wielkosci: tuple[WielkoscZalozenia, ...]
+    pozycje: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.kod not in KODY_ZALOZEN_RDZENIA:
+            raise AssertionError(
+                f"Kod zalozenia {self.kod!r} spoza rejestru KODY_ZALOZEN_RDZENIA — dopisz go "
+                "razem ze zdaniem warstwy aplikacji."
+            )
+
+
+@dataclass(frozen=True)
 class WynikDynamiki:
     """Kompletny wynik biegu czasowego po stronie rdzenia."""
 
@@ -167,13 +219,30 @@ class WynikDynamiki:
     wlasnosci: WlasnosciBiegu
     tozsamosc: TozsamoscBiegu
     metryki: tuple[Metryka, ...]
-    zalozenia: tuple[str, ...]
+    zalozenia: tuple[ZalozenieRdzenia, ...]
     slad_white_box: dict[str, Any]
 
 
 def _kwantyzuj_lub_brak(wartosc: float | None) -> float | None:
     """`None` (wartosc niedostepna) przechodzi bez zmiany — kwantyzowana jest tylko liczba."""
     return None if wartosc is None else kwantyzuj(wartosc)
+
+
+def rekord_zalozenia(zalozenie: ZalozenieRdzenia) -> dict[str, Any]:
+    """Zalozenie w postaci ladunku kontraktu (liczby skwantyzowane na granicy kontraktu)."""
+    return {
+        "kod": zalozenie.kod,
+        "elementy": list(zalozenie.elementy),
+        "wielkosci": [
+            {
+                "nazwa": wielkosc.nazwa,
+                "wartosc": kwantyzuj(wielkosc.wartosc),
+                "jednostka": wielkosc.jednostka,
+            }
+            for wielkosc in zalozenie.wielkosci
+        ],
+        "pozycje": list(zalozenie.pozycje),
+    }
 
 
 def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str, Any]:
@@ -279,17 +348,24 @@ def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str,
             for metryka in wynik.metryki
         ],
         "stopien_dowodowy": [],
-        "zalozenia": list(wynik.zalozenia),
+        # Zdania dla projektanta (z nazwami elementow modelu) sklada warstwa aplikacji z
+        # rekordow `zalozenia_rdzenia` — rdzen nie zna nazw, wiec nie pisze zdan.
+        "zalozenia": [],
+        "zalozenia_rdzenia": [rekord_zalozenia(zalozenie) for zalozenie in wynik.zalozenia],
     }
 
 
 __all__ = [
+    "KODY_ZALOZEN_RDZENIA",
     "KanalWyniku",
     "Metryka",
     "Przekroczenie",
     "PrzypisanieWykonane",
     "WlasnosciBiegu",
+    "WielkoscZalozenia",
     "WynikDynamiki",
+    "ZalozenieRdzenia",
     "ZdarzenieWykonane",
     "ladunek_resultset_dynamic_v2",
+    "rekord_zalozenia",
 ]

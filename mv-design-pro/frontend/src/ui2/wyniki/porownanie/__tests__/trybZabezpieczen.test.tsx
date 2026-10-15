@@ -14,12 +14,46 @@ import {
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { runsFixture } from './fixtures';
-import {
-  porownanieZabezpieczenFixture,
-  przebiegiZabezpieczenFixture,
-  sladZabezpieczenFixture,
-  wierszZabezpieczenFixture,
-} from './zabezpieczeniaFixtures';
+import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
+import type {
+  ProtectionComparisonResult,
+  ProtectionComparisonTrace,
+  ProtectionRunItem,
+} from '../../../../ui/protection-comparison/types';
+import { fmtCzasZadzialania, rodzajProblemuZabezpieczenPL, wagaPL } from '../strings';
+import wynikSceny from '../../../../harness-fixtures/generated/porownanie_scena_wynik_zabezpieczen.json';
+import biegiSceny from '../../../../harness-fixtures/generated/porownanie_scena_biegi_zabezpieczen.json';
+import sladSceny from '../../../../harness-fixtures/generated/porownanie_scena_slad_zabezpieczen.json';
+
+/**
+ * PRAWDZIWE odpowiedzi backendu dla sieci złotej G08 (warianty A i B, urządzenia i nastawy
+ * z modelu) z generatora fikstur harnessu — nie ręcznie wpisany kształt. Warianty brzegowe
+ * (utrata zadziałania, pusty ranking) = zmiana pola realnego rekordu.
+ */
+const WYNIK = wynikSceny as unknown as ProtectionComparisonResult;
+const BIEGI = (biegiSceny as unknown as { runs: ProtectionRunItem[] }).runs;
+const SLAD = sladSceny as unknown as ProtectionComparisonTrace;
+const BIEG_A = WYNIK.run_a_id;
+const BIEG_B = WYNIK.run_b_id;
+
+/** Wynik z jednym wierszem zmienionym na utratę zadziałania w wariancie B. */
+function wynikZUtrataZadzialania(): ProtectionComparisonResult {
+  const [pierwszy, ...reszta] = WYNIK.rows;
+  return {
+    ...WYNIK,
+    rows: [
+      {
+        ...pierwszy,
+        trip_state_b: 'NO_TRIP',
+        t_trip_s_b: null,
+        delta_t_s: null,
+        state_change: 'TRIP_TO_NO_TRIP',
+      },
+      ...reszta,
+    ],
+    summary: { ...WYNIK.summary, trip_to_no_trip_count: 1, no_change_count: reszta.length },
+  };
+}
 
 // PF mockowane obronnie: `EkranPorownania` montuje domyślnie tryb rozpływu
 // (nieaktywny w tych testach, ale obecny w drzewie), analogicznie do
@@ -64,9 +98,9 @@ function props(over: Partial<Parameters<typeof EkranPorownania>[0]> = {}) {
 
 beforeEach(() => {
   mockPfRuns.mockResolvedValue(runsFixture());
-  mockRuns.mockResolvedValue(przebiegiZabezpieczenFixture());
-  mockCompare.mockResolvedValue(porownanieZabezpieczenFixture());
-  mockTrace.mockResolvedValue(sladZabezpieczenFixture());
+  mockRuns.mockResolvedValue(BIEGI);
+  mockCompare.mockResolvedValue(WYNIK);
+  mockTrace.mockResolvedValue(SLAD);
   useStudyCasesStore.setState({ cases: [] });
   useShellStore.setState({ wynikiTab: null, wynikiTabElement: null, activeSpace: 'wyniki' });
 });
@@ -85,8 +119,8 @@ async function przejdzDoZabezpieczen() {
 
 async function wykonajPorownanie() {
   const selA = await screen.findByTestId('mvd-porzab-select-a');
-  fireEvent.change(selA, { target: { value: 'run-zab-a' } });
-  fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: 'run-zab-b' } });
+  fireEvent.change(selA, { target: { value: BIEG_A } });
+  fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: BIEG_B } });
   fireEvent.click(screen.getByTestId('mvd-porzab-przycisk'));
   await screen.findByTestId('mvd-porzab-wynik');
 }
@@ -103,17 +137,19 @@ describe('Porównanie A/B — przełącznik trybu obejmuje zabezpieczenia (D1)',
 });
 
 describe('TrybZabezpieczen — lista przebiegów i uczciwy stan zerowy (D2)', () => {
-  it('brak przebiegów → uczciwy komunikat + akcja nawiguje do schematu (zero fabrykacji)', async () => {
+  it('brak przebiegów → uczciwy komunikat + akcja prowadzi do oceny zabezpieczeń (E-28)', async () => {
     mockRuns.mockResolvedValue([]);
+    const openRouteSurface = vi.fn();
+    useNetworkBuildStore.setState({ openRouteSurface } as never);
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     expect(await screen.findByTestId('mvd-porzab-brak-przebiegow')).toHaveTextContent(
       ZB.brakPrzebiegow,
     );
     const akcja = screen.getByTestId('mvd-porzab-brak-przebiegow-akcja');
-    expect(akcja).toHaveTextContent('Przejdź do schematu');
+    expect(akcja).toHaveTextContent('Przejdź do oceny zabezpieczeń');
     fireEvent.click(akcja);
-    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    expect(openRouteSurface).toHaveBeenCalledWith('E-28');
   });
 
   it('błąd wczytywania listy → komunikat błędu PL', async () => {
@@ -127,20 +163,25 @@ describe('TrybZabezpieczen — lista przebiegów i uczciwy stan zerowy (D2)', ()
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     const selA = await screen.findByTestId('mvd-porzab-select-a');
-    expect(
-      within(selA).getByRole('option', { name: /Ocena zabezpieczeń · rew\. 1 · 2026-07-10 08:15/ }),
-    ).toBeInTheDocument();
+    for (const bieg of BIEGI) {
+      expect(
+        within(selA).getByRole('option', {
+          name: new RegExp(`Ocena zabezpieczeń · rew\\. ${bieg.model_revision} ·`),
+        }),
+      ).toBeInTheDocument();
+    }
   });
 
   it('etykieta niesie nazwę przypadku ze store’u, gdy znana', async () => {
-    useStudyCasesStore.setState({ cases: [przypadek()] });
+    const biegA = BIEGI.find((b) => b.id === BIEG_A)!;
+    useStudyCasesStore.setState({ cases: [przypadek({ id: biegA.study_case_id })] });
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     const selA = await screen.findByTestId('mvd-porzab-select-a');
-    // Obie fikstury dzielą `study_case_id: 'case-1'` (jak `runsFixture` rozpływu) —
-    // dopasowanie po dacie (unikalnej per bieg) odróżnia opcję run-zab-a.
     expect(
-      within(selA).getByRole('option', { name: /2026-07-10 08:15 · Wariant letni/ }),
+      within(selA).getByRole('option', {
+        name: new RegExp(`rew\\. ${biegA.model_revision} · .* · Wariant letni`),
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -157,8 +198,8 @@ describe('TrybZabezpieczen — jawne uruchomienie porównania (zero automatyzmu)
   it('ten sam przebieg A i B → walidacja „muszą być różne"', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
-    fireEvent.change(screen.getByTestId('mvd-porzab-select-a'), { target: { value: 'run-zab-a' } });
-    fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: 'run-zab-a' } });
+    fireEvent.change(screen.getByTestId('mvd-porzab-select-a'), { target: { value: BIEG_A } });
+    fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: BIEG_A } });
     fireEvent.click(screen.getByTestId('mvd-porzab-przycisk'));
     expect(screen.getByTestId('mvd-porzab-blad')).toHaveTextContent(ZB.walidacjaTeSame);
     expect(mockCompare).not.toHaveBeenCalled();
@@ -168,15 +209,15 @@ describe('TrybZabezpieczen — jawne uruchomienie porównania (zero automatyzmu)
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
-    expect(mockCompare).toHaveBeenCalledWith('run-zab-a', 'run-zab-b');
+    expect(mockCompare).toHaveBeenCalledWith(BIEG_A, BIEG_B);
   });
 
   it('błąd backendu → uczciwy komunikat, brak wyniku', async () => {
     mockCompare.mockRejectedValue(new Error('runy niezgodne'));
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
-    fireEvent.change(screen.getByTestId('mvd-porzab-select-a'), { target: { value: 'run-zab-a' } });
-    fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: 'run-zab-b' } });
+    fireEvent.change(screen.getByTestId('mvd-porzab-select-a'), { target: { value: BIEG_A } });
+    fireEvent.change(screen.getByTestId('mvd-porzab-select-b'), { target: { value: BIEG_B } });
     fireEvent.click(screen.getByTestId('mvd-porzab-przycisk'));
     await waitFor(() =>
       expect(screen.getByTestId('mvd-porzab-blad')).toHaveTextContent('runy niezgodne'),
@@ -185,57 +226,49 @@ describe('TrybZabezpieczen — jawne uruchomienie porównania (zero automatyzmu)
   });
 });
 
-describe('TrybZabezpieczen — prezentacja wyniku na realnym kształcie ProtectionComparisonResult', () => {
+describe('TrybZabezpieczen — prezentacja wyniku (prawdziwy wynik sieci złotej)', () => {
   it('podsumowanie jako założenia: porównań łącznie, zmiany stanu, problemy', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
     const wiersze = screen.getAllByTestId('mvd-wyn-zalozenie');
     const porownan = wiersze.find((w) => w.textContent?.includes(ZB.podsumPorownanRazem));
-    expect(porownan).toHaveTextContent('2');
+    expect(porownan).toHaveTextContent(String(WYNIK.summary.total_rows));
+    const s = WYNIK.summary;
     const zmiany = wiersze.find((w) => w.textContent?.includes('Zmiany stanu'));
-    expect(zmiany).toHaveTextContent('1 · 0 · 0 · 0');
-  });
-
-  it('zakładka Zmiany stanu: wiersz per (element, punkt) z polami A/B/Δ', async () => {
-    render(<EkranPorownania {...props()} />);
-    await przejdzDoZabezpieczen();
-    await wykonajPorownanie();
-    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
-    expect(wiersze).toHaveLength(2);
-    const pierwszy = within(wiersze[0]);
-    expect(pierwszy.getByText('BRK-F01')).toBeInTheDocument();
-    expect(pierwszy.getByText('BUS-GPZ')).toBeInTheDocument();
-    expect(pierwszy.getByText('Zadziałanie')).toBeInTheDocument();
-    expect(pierwszy.getByText('Brak zadziałania')).toBeInTheDocument();
-    expect(pierwszy.getByText('Utrata zadziałania')).toBeInTheDocument();
-  });
-
-  it('pole nullowalne (t_trip_s_b brak) → kreska, bez dowodu (FAB-E)', async () => {
-    render(<EkranPorownania {...props()} />);
-    await przejdzDoZabezpieczen();
-    await wykonajPorownanie();
-    const wiersz = screen.getAllByTestId('mvd-wyn-wiersz')[0];
-    expect(within(wiersz).getAllByText('—').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('filtr „pokaż tylko zmiany" ukrywa wiersz NO_CHANGE', async () => {
-    render(<EkranPorownania {...props()} />);
-    await przejdzDoZabezpieczen();
-    await wykonajPorownanie();
-    expect(screen.getAllByTestId('mvd-wyn-wiersz')).toHaveLength(2);
-    fireEvent.click(screen.getByTestId('mvd-porzab-filtr-zmiany'));
-    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
-    expect(wiersze).toHaveLength(1);
-    expect(wiersze[0]).toHaveTextContent('BRK-F01');
-  });
-
-  it('wszystkie wiersze bez zmiany → uczciwy stan zerowy filtru', async () => {
-    mockCompare.mockResolvedValue(
-      porownanieZabezpieczenFixture({
-        rows: [wierszZabezpieczenFixture({ state_change: 'NO_CHANGE' })],
-      }),
+    expect(zmiany).toHaveTextContent(
+      `${s.trip_to_no_trip_count} · ${s.no_trip_to_trip_count} · ${s.invalid_change_count} · ${s.no_change_count}`,
     );
+  });
+
+  it('zakładka Zmiany stanu: wiersz per (urządzenie, punkt) z nazwami z modelu i wiarygodnością', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZabezpieczen();
+    await wykonajPorownanie();
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze).toHaveLength(WYNIK.rows.length);
+    WYNIK.rows.forEach((r, i) => {
+      const w = within(wiersze[i]);
+      expect(w.getByText(r.nazwa_urzadzenia_pl)).toBeInTheDocument();
+      expect(w.getByText(r.nazwa_punktu_pl)).toBeInTheDocument();
+      expect(w.getAllByText(fmtCzasZadzialania(r.t_trip_s_a!)).length).toBeGreaterThan(0);
+      expect(w.getAllByText('wiarygodny').length).toBe(2);
+      expect(wiersze[i]).not.toHaveTextContent(r.device_id_a);
+    });
+  });
+
+  it('utrata zadziałania: stan po polsku, pole bez wartości → kreska (FAB-E)', async () => {
+    mockCompare.mockResolvedValue(wynikZUtrataZadzialania());
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZabezpieczen();
+    await wykonajPorownanie();
+    const w = within(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+    expect(w.getByText('Brak zadziałania')).toBeInTheDocument();
+    expect(w.getByText('Utrata zadziałania')).toBeInTheDocument();
+    expect(w.getAllByText('—').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('filtr „pokaż tylko zmiany": realne porównanie bez zmian → uczciwy stan zerowy', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
@@ -243,32 +276,44 @@ describe('TrybZabezpieczen — prezentacja wyniku na realnym kształcie Protecti
     expect(screen.getByTestId('mvd-porzab-stany-puste')).toHaveTextContent(ZB.filtrPusto);
   });
 
-  it('zakładka Ranking: waga/rodzaj PL + punkt zwarcia (rozszerzenie vs rozpływ)', async () => {
+  it('filtr „pokaż tylko zmiany" zostawia wyłącznie wiersz ze zmianą stanu', async () => {
+    mockCompare.mockResolvedValue(wynikZUtrataZadzialania());
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZabezpieczen();
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-porzab-filtr-zmiany'));
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze).toHaveLength(1);
+    expect(wiersze[0]).toHaveTextContent(WYNIK.rows[0].nazwa_urzadzenia_pl);
+  });
+
+  it('zakładka Ranking: waga i rodzaj po polsku, opis z backendu', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
     fireEvent.click(screen.getByTestId('mvd-porzab-tab-ranking'));
-    const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
-    expect(tabela.getByText('Krytyczny')).toBeInTheDocument();
-    expect(tabela.getByText('Utrata zadziałania')).toBeInTheDocument();
-    expect(tabela.getByText('BUS-GPZ')).toBeInTheDocument();
+    const tabela = screen.getByTestId('mvd-wyn-tabela');
+    expect(WYNIK.ranking.length).toBeGreaterThan(0);
+    for (const issue of WYNIK.ranking) {
+      expect(tabela).toHaveTextContent(wagaPL(issue.severity));
+      expect(tabela).toHaveTextContent(rodzajProblemuZabezpieczenPL(issue.issue_code));
+      expect(tabela).not.toHaveTextContent(issue.issue_code);
+    }
   });
 
-  it('wybór wiersza rankingu → szczegół z punktem zwarcia (pole własne zabezpieczeń)', async () => {
+  it('wybór wiersza rankingu → szczegół z opisem z backendu', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
     fireEvent.click(screen.getByTestId('mvd-porzab-tab-ranking'));
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
-    const szczegol = within(screen.getByTestId('mvd-porzab-szczegol'));
-    expect(szczegol.getByText('BUS-GPZ')).toBeInTheDocument();
-    expect(
-      szczegol.getByText('Zabezpieczenie BRK-F01 traci zadziałanie na punkcie BUS-GPZ w wariancie B.'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-porzab-szczegol')).toHaveTextContent(
+      WYNIK.ranking[0].description_pl,
+    );
   });
 
   it('pusty ranking → uczciwy komunikat „bez problemów"', async () => {
-    mockCompare.mockResolvedValue(porownanieZabezpieczenFixture({ ranking: [] }));
+    mockCompare.mockResolvedValue({ ...WYNIK, ranking: [] });
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
@@ -276,19 +321,20 @@ describe('TrybZabezpieczen — prezentacja wyniku na realnym kształcie Protecti
     expect(screen.getByTestId('mvd-porzab-ranking-puste')).toHaveTextContent(ZB.brakRankingu);
   });
 
-  it('identyfikator porównania i proweniencja wyłącznie w „Informacjach audytowych" (D1, karta #145)', async () => {
+  it('identyfikator porównania i proweniencja wyłącznie w „Informacjach audytowych" (karta #145)', async () => {
     const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
     expect(screen.queryByTestId('mvd-porzab-informacje-audytowe')).not.toBeInTheDocument();
 
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-porzab-wynik')).not.toHaveTextContent('cmp-zab-001');
+    expect(screen.getByTestId('mvd-porzab-wynik')).not.toHaveTextContent(WYNIK.comparison_id);
     fireEvent.click(screen.getByTestId('mvd-porzab-informacje-audytowe-przelacz'));
     const lista = screen.getByTestId('mvd-porzab-informacje-audytowe-lista');
-    expect(lista).toHaveTextContent('cmp-zab-001');
-    expect(lista).toHaveTextContent('snap-zab-a');
-    expect(lista).toHaveTextContent('snap-zab-b');
+    expect(lista).toHaveTextContent(WYNIK.comparison_id);
+    // Odciski migawek skrócone do 12 znaków (metadana audytowa, nie treść pierwszoplanowa).
+    expect(lista).toHaveTextContent(WYNIK.provenance_a.snapshot_hash.slice(0, 12));
+    expect(lista).toHaveTextContent(WYNIK.provenance_b.snapshot_hash.slice(0, 12));
   });
 });
 
@@ -301,15 +347,19 @@ describe('TrybZabezpieczen — dowody kolumn A/B (R3-C)', () => {
     const przyciski = within(wiersz).getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
     fireEvent.doubleClick(przyciski[0]);
     expect(useShellStore.getState().wynikiTab).toBe('dowod');
-    expect(useShellStore.getState().wynikiTabElement).toBe('run-zab-a');
+    expect(useShellStore.getState().wynikiTabElement).toBe(BIEG_A);
   });
 
-  it('kolumny Δ bez akcji dowodu (różnica nie ma pojedynczego wywodu WHITE BOX)', async () => {
+  it('kolumny różnic bez akcji dowodu (różnica nie ma pojedynczego wywodu WHITE BOX)', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
-    // Wiersz drugi (BRK-F02) ma wszystkie pola liczbowe -> Δt/ΔI bez przycisku.
-    expect(screen.getByText('0,000').closest('button')).toBeNull();
+    const wiersz = screen.getAllByTestId('mvd-wyn-wiersz')[0];
+    const liczbaPrzyciskow = within(wiersz).getAllByRole('button', {
+      name: WZORZEC_STRINGS.pokazDowod,
+    }).length;
+    // Dowód mają: stan A/B, czas A/B, prąd A/B, zapas A/B — różnice (czas, prąd) nie.
+    expect(liczbaPrzyciskow).toBe(8);
   });
 });
 
@@ -323,10 +373,10 @@ describe('TrybZabezpieczen — ślad porównania (White Box, na żądanie)', () 
 
     fireEvent.click(screen.getByTestId('mvd-porzab-slad-btn'));
     await screen.findByTestId('mvd-porzab-slad');
-    expect(mockTrace).toHaveBeenCalledWith('cmp-zab-001');
+    expect(mockTrace).toHaveBeenCalledWith(WYNIK.comparison_id);
     expect(mockTrace).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mvd-porzab-slad')).toHaveTextContent(
-      'Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)',
+      SLAD.steps[0].description_pl,
     );
     // Karta #145: pola śladu nazwane po polsku, bez kluczy i kodów kroków na pierwszym planie.
     expect(screen.getByTestId('mvd-porzab-slad')).toHaveTextContent(
@@ -361,15 +411,13 @@ describe('TrybZabezpieczen — ślad porównania (White Box, na żądanie)', () 
     fireEvent.click(screen.getByTestId('mvd-porzab-slad-btn'));
     await screen.findByTestId('mvd-porzab-slad');
 
-    mockCompare.mockResolvedValue(
-      porownanieZabezpieczenFixture({ comparison_id: 'cmp-zab-002' }),
-    );
+    mockCompare.mockResolvedValue({ ...WYNIK, comparison_id: 'porownanie-2' });
     fireEvent.click(screen.getByTestId('mvd-porzab-przycisk'));
     await screen.findByTestId('mvd-porzab-wynik');
     expect(screen.queryByTestId('mvd-porzab-slad')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('mvd-porzab-slad-btn'));
     await screen.findByTestId('mvd-porzab-slad');
-    expect(mockTrace).toHaveBeenLastCalledWith('cmp-zab-002');
+    expect(mockTrace).toHaveBeenLastCalledWith('porownanie-2');
   });
 });

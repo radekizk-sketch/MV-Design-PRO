@@ -25,7 +25,6 @@ from enm.models import (
     BayShortCircuitSourceContribution,
     BaySourceEndpoint,
     BaySwitchState,
-    BayVerificationResult,
     Branch,
     EnergyNetworkModel,
     Generator,
@@ -38,6 +37,10 @@ from enm.models import (
     Source,
     SwitchBranch,
     Transformer,
+)
+from enm.nastawy_zabezpieczen import (
+    ETYKIETY_JEDNOSTEK_PROGU_PL,
+    JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
 from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
@@ -891,7 +894,13 @@ def _setting_to_function_state(
             ProtectionSettingValue(
                 key="prog",
                 value=threshold_value,
-                unit="A",
+                # Strona przekładnika zadeklarowana w nastawie (PZ-09) — „A" bez strony byłoby
+                # dwuznaczne (1,5 A wtórne ≠ 1,5 A pierwotne).
+                unit=(
+                    ETYKIETY_JEDNOSTEK_PROGU_PL[setting.threshold_unit]
+                    if setting.threshold_unit is not None
+                    else JEDNOSTKA_PROGU_NIEUSTALONA_PL
+                ),
                 quality="reczne",
             )
         )
@@ -1165,12 +1174,6 @@ def _build_project_results(
         main_power_flow_results_ref=latest_pf_run_id,
         source_contributions_sc=sc_contributions,
         source_contributions_pf=pf_contributions,
-        verification=BayVerificationResult(
-            ct_ok=True if measurement_chain and measurement_chain.ct_refs else None,
-            vt_ok=True if measurement_chain and measurement_chain.vt_refs else None,
-            cable_head_ok=None,
-            whole_power_path_ok=bool(bay.equipment_refs),
-        ),
         earth_fault_path=earth_fault_path,
         proof_binding=proof_binding,
     )

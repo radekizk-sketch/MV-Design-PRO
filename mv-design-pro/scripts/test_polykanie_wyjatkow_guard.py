@@ -135,28 +135,60 @@ def test_funkcja_przypisana_do_handlera_w_metodzie() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("klucz", sorted(WYJATKI_B01))
-def test_wyjatek_dotyczy_wylacznie_pliku_z_listy_b01(klucz: tuple[str, str]) -> None:
-    assert jest_rdzeniem_b01(klucz[0]), klucz
-    assert "B-01" in WYJATKI_B01[klucz][1]
+#: Wpis syntetyczny: lista właściciela jest pusta od decyzji B-01 z 2026-09-30, a
+#: mechanizm zapadki (wyłącznie rdzeń B-01, w obie strony) musi zostać przypięty.
+WPIS_SYNTETYCZNY = {
+    ("network_model/solvers/state_estimation_wls.py", "_funkcja_syntetyczna"): (
+        1,
+        "Decyzja właściciela B-01 (wpis syntetyczny samotestu).",
+    )
+}
+
+
+def test_wyjatek_dotyczy_wylacznie_pliku_z_listy_b01() -> None:
+    """Pętla, nie parametryzacja: pusta lista nie może zamienić testu w pominięty."""
+    for klucz, (_, odeslanie) in {**WYJATKI_B01, **WPIS_SYNTETYCZNY}.items():
+        assert jest_rdzeniem_b01(klucz[0]), klucz
+        assert "B-01" in odeslanie
+
+
+def test_lista_b01_pusta_po_decyzji_chi2() -> None:
+    """Pozycja (j) planu A/B §12.2: handler χ² w WLS zdjęty, wpis nie może wrócić."""
+    assert WYJATKI_B01 == {}
 
 
 def test_handler_poza_b01_w_tej_samej_funkcji_nazwy_jest_czerwony() -> None:
     """Wpis jest kluczem (plik, funkcja) — ta sama nazwa funkcji w innym pliku nie korzysta."""
-    (sciezka, funkcja), _ = next(iter(WYJATKI_B01.items()))
+    (sciezka, funkcja), _ = next(iter(WPIS_SYNTETYCZNY.items()))
     obcy = ("application/inny.py", 1, funkcja, "except Exception")
-    assert ocen([obcy])
+    wlasny = (sciezka, 1, funkcja, "except Exception")
+    assert ocen([obcy, wlasny], WPIS_SYNTETYCZNY)
+    assert ocen([wlasny], WPIS_SYNTETYCZNY) == []
 
 
 def test_wpis_b01_nadmiarowy_jest_czerwony() -> None:
     """Zapadka w dół: gdy właściciel zdejmie handler, wpis musi zniknąć."""
-    assert any("zapadka w dół" in blad for blad in ocen([]))
+    assert any("zapadka w dół" in blad for blad in ocen([], WPIS_SYNTETYCZNY))
 
 
 def test_wpis_b01_przekroczony_jest_czerwony() -> None:
-    (sciezka, funkcja), (liczba, _) = next(iter(WYJATKI_B01.items()))
+    (sciezka, funkcja), (liczba, _) = next(iter(WPIS_SYNTETYCZNY.items()))
     naruszenia = [(sciezka, i, funkcja, "except Exception") for i in range(liczba + 1)]
-    assert any("wpis B-01 obejmuje" in blad for blad in ocen(naruszenia))
+    assert any("wpis B-01 obejmuje" in blad for blad in ocen(naruszenia, WPIS_SYNTETYCZNY))
+
+
+def test_handler_chi2_przywrocony_w_wls_jest_czerwony() -> None:
+    """Nawrót cichej aproksymacji progu χ² w rdzeniu WLS czerwieni strażnika."""
+    kod = (
+        "def _chi_square_threshold(dof, alpha):\n    try:\n        return 1.0\n"
+        "    except Exception:\n        return 2.0\n"
+    )
+    naruszenia = [
+        ("network_model/solvers/state_estimation_wls.py", linia, funkcja, opis)
+        for linia, funkcja, opis in naruszenia_w_kodzie(kod)
+    ]
+    assert naruszenia
+    assert ocen(naruszenia)
 
 
 def test_drzewo_backend_src_jest_zielone() -> None:
@@ -164,7 +196,7 @@ def test_drzewo_backend_src_jest_zielone() -> None:
 
 
 def test_pusty_katalog_nie_jest_fikcyjna_zielenia(tmp_path: Path) -> None:
-    """Skan pustego drzewa widzi brak wpisu B-01 — nie melduje zieleni bez treści."""
+    """Skan pustego drzewa nie melduje zieleni bez treści."""
     assert ocen(zmierz(tmp_path))
 
 

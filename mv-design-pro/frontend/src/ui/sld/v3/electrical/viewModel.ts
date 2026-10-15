@@ -25,7 +25,12 @@
  * (`hvSectionId`/`lvSectionId`) i przypisania odpływów wskazują sekcję, nie węzeł.
  */
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { stacjaSzyn, szynaGlownaStacji } from '../../../shared/szynyStacji';
+import {
+  indeksGaleziPolNn,
+  stacjaSzyn,
+  szynaGlownaStacji,
+  type IndeksGaleziPolNn,
+} from '../../../shared/szynyStacji';
 import type { ConductingEdge, TerminalGraph, TerminalNode, TransformerEdge, VoltageLevelId } from './terminalGraph';
 
 /** Jedna sekcja szyny na widoku SLD — szyna główna (patrz nagłówek). */
@@ -73,10 +78,11 @@ function szynaSekcji(
   stacjaSzyny: ReadonlyMap<string, string>,
   stacje: ReadonlyMap<string, EnergyNetworkModel['substations'][number]>,
   galezie: EnergyNetworkModel['branches'],
+  indeksPolNn: IndeksGaleziPolNn,
 ): string {
   const stacjaRef = stacjaSzyny.get(busRef);
   const stacja = stacjaRef ? stacje.get(stacjaRef) : undefined;
-  return (stacja ? szynaGlownaStacji(stacja, galezie, busRef) : null) ?? busRef;
+  return (stacja ? szynaGlownaStacji(stacja, galezie, busRef, indeksPolNn) : null) ?? busRef;
 }
 
 /** Zbuduj SLD VIEW MODEL z grafu terminali i przynależności szyn do stacji. CZYSTA
@@ -85,11 +91,13 @@ export function buildSldViewModel(graph: TerminalGraph, model: ModelSekcji): Sld
   const galezie = model.branches ?? [];
   const stacjaSzyny = stacjaSzyn(model.substations ?? [], galezie);
   const stacje = new Map((model.substations ?? []).map((s) => [s.ref_id, s]));
+  // Indeks aparatów pól nN raz na migawkę — pytanie o szynę główną pada dla każdej szyny grafu.
+  const indeksPolNn = indeksGaleziPolNn(galezie);
   const sekcjaSzyny = new Map<string, string>();
   const sekcja = (busRef: string): string => {
     let wynik = sekcjaSzyny.get(busRef);
     if (wynik === undefined) {
-      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, galezie);
+      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, galezie, indeksPolNn);
       sekcjaSzyny.set(busRef, wynik);
     }
     return wynik;

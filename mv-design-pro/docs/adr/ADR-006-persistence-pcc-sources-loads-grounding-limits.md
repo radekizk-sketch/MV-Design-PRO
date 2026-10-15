@@ -1,7 +1,7 @@
 # ADR-006: Persistence of BoundaryNode, Sources, Loads, Grounding, Limits
 
 ## Status
-Accepted
+**SUPERSEDED by ADR-027** (2026-09-30, O-60/O-63, V12K-347): punkt przyłączenia jako obiekt umowny na terminalu; źródła, odbiory, uziemienie i limity żyją w ENM (`Source.neutral_grounding`, `GroundingConfig`, `ConnectionConditions`), nie w dedykowanych tabelach legacy. Treść poniżej historyczna.
 
 ## Context
 PR3 requires explicit persistence for BoundaryNode – węzeł przyłączenia, sources, loads,

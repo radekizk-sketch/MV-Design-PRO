@@ -1,6 +1,6 @@
 # ADR-015: Model fazowy (PhaseCode) i układy uziemienia jako encje
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; ACCEPTED-AS-IMPLEMENTED z korektą nazw do kodu: `Load.phases: PhaseSet` (`enm/models.py:512`), `Transformer.lv_earthing_system: UkladSieciNn`, `GroundingConfig` na `Transformer.hv/lv_neutral` i `Source.neutral_grounding`; dokończenie W5-C, W5-E (TT/IT wg OD-25/O-68: jedyne wejście `fault_loop_iec60364`), jedna fizyka Ik1 nN (karta IK1-NN-JEDNA-FIZYKA); ADR-021 poza tą decyzją)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §7, §16
 

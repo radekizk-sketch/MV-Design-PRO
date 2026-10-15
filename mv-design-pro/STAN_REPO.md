@@ -58,7 +58,8 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 - **Klasy jakości produktu** (plan §7): #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV,
   NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151 (połknięte wyjątki, budżet 0).
 - **Rdzenie FROZEN** (B-01): IEC 60909 (3F/2F/1F, MAX/MIN, wkłady), NR/GS/FD, protection IEC 60255, NC RfG/PTPiREE
-  (T01–T20), FRT/HVRT, `stability_rms`, WLS, phase state SN, V12.6 — zmiany wyłącznie decyzją właściciela.
+  (T01–T20), FRT/HVRT, WLS, phase state SN, V12.6 — zmiany wyłącznie decyzją właściciela (`stability_rms`
+  skasowany 2026-09-30, decyzja B-01 pozycja (i), karta B01-RUNDA-1).
   Wiążąca lista plików: `scripts/rdzenie_b01.py` (samotest `scripts/test_rdzenie_b01.py`); POZOSTAŁE pliki
   `network_model/solvers/**` NIE są rdzeniami B-01 (m.in. `dynamika/**`, `cable_ampacity_derating.py`,
   `fault_loop_builder.py`, `equipment_checks/**`) — edycja jak każdego solvera: WHITE BOX, testy, determinizm.
@@ -69,7 +70,7 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 
 | Dług | Gdzie zmierzono | Wycinek / karta |
 |---|---|---|
-| Dynamika bez werdyktu: FRT/HVRT i stabilność kątowa „nie ocenione” na E-32 (tryb sieci, poziom UNVALIDATED_MODEL); `stability_rms` i `frt_hvrt` jako rdzenie B-01 do kasacji; regulacja GFL z profilu typowego; bieg synchronicznie w żądaniu HTTP | plan §5, §7 (AB-P1), §12.2 | AB-1b.2 → AB-1d_min → AB-1c → AB-1d; DYNAMIKA-W-TLE; B-01 |
+| Dynamika bez werdyktu: FRT/HVRT i stabilność kątowa „nie ocenione” na E-32 (tryb sieci, poziom UNVALIDATED_MODEL); `frt_hvrt` jako rdzeń B-01 do kasacji w AB-1c (`stability_rms` skasowany 2026-09-30, pozycja (i)); regulacja GFL z profilu typowego; bieg synchronicznie w żądaniu HTTP | plan §5, §7 (AB-P1), §12.2 | AB-1b.2 → AB-1d_min → AB-1c → AB-1d; DYNAMIKA-W-TLE; B-01 |
 | BESS bez stanu energii i sprawności; brak profili maszyny synchronicznej i turbiny typu 2; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | KATALOG-DYNAMIKI-BRAKI, W6-3…W6-8, AB-2…AB-7 |
 | Zabezpieczenia poza modelem; brak 67/67N/21/87/25/50BF/grup/TRIP; ocena na syntetycznym urządzeniu | mapa dom. 4, synteza §1 p. 20; §7 I | BIEG-ZABEZPIECZEN-Z-MODELU (w toku), W4 |
 | Aparat pola poza torem prądowym (stacja przelotowa i końcowa, wyłącznik główny nN) | §7 I | POLA-W-TORZE (w toku) |
@@ -79,12 +80,18 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 | V12.6: N-1 bez rozpływu, stałe bez podstawy, kąt fazora zerowego | plan §12.2 (g), (h); §7 I | AB-H0b (prezentacja), B-01 |
 | Sieć kompensowana G01 end-to-end (NOT_BUILT) | mapa dom. 3/7 | W8 (CV-6) |
 | Dobór przekroju, BOM, pakiet do podpisu, rejestr założeń, koszty (OD-16), `NetworkVariation` | mapa §5 „wyjścia do Excela" | W10 |
+| Zwarcia: prąd wyłączeniowy `I_b` bez definicji normy (+28,07 % wobec symetrycznego na `iec60909_example`), `t_b` jako stała solvera; `c` nN tylko ±6 % i druga kopia stałych `c` w pętli zwarcia nN | plan A/B §12.2 (n), §14 (przegląd PR #477–#481) | SC-IB-ITH-ZRODLA (B-01 (n)), C-TOLERANCJA-NN, SC-WYROCZNIA-SN-TR-NN |
+| Ocena aparatury: jeden prąd z żądania dla wszystkich pól, czas wyłączenia bez czasu własnego aparatu; dwa sprzeczne werdykty nasycenia CT | plan A/B §14; §7 I | WYTRZYMALOSC-PRAD-POLA, CT-JEDEN-WERDYKT |
+| Szablony stacji: skład PV/BESS inny niż deklarowany (3 z 5 hybrydowych), dane fizyczne wymyślone w kodzie (`apply.py`) | plan A/B §14; §7 I | KSR-SKLAD-DER, SZABLONY-BEZ-DOMYSLOW, KSR-KRYTERIA-POMIAR |
 | Dane zewnętrzne (karty producentów, IRiESD/programy ramowe, BIL, degradacja baterii) | mapa §7 OD-17/OD-21; plan §12.1 | właściciel |
 
 ---
 
 ## 4. ZADANIE BIEŻĄCE
 
+Partia integracji 7 (2026-10-15, gałąź `…-karta-partia7`, meldunek `MELDUNEK_PARTIA7.md`): siedem kart scalonych na
+`861e4656` — PARTIA-6-BACKEND, B01-RUNDA-1, PF-OD19, ZAPIS-DECYZJI, AB-1b.3b-NA-PARTII-6, BIEG-ZABEZPIECZEN-NA-PARTII-6,
+ETYKIETA-STACJI-PRZELOTOWEJ — plus poprawki przeglądu PARTIA-6-BACKEND; do przewinięcia na gałąź programu. Wcześniej:
 Partia integracji 6 (POLE-ZAJĘTE, DOWOD-CIEPLNY i karty kończone przez wykonawców: ODMOWA-DANYCH-422, POLA-W-TORZE,
 SLD-SUBSTRAT faza 2, AB-1b.3b, BIEG-ZABEZPIECZEN-Z-MODELU) na czubku gałęzi po partii 5; scalenie PR #474 do `main` po zielonym
 CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.
@@ -113,6 +120,15 @@ CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.
 > (2) odbiór prac w toku z gałęzi zdalnych WIP (tabela A.3) albo ponowne uruchomienie ich kart; (3) kolejność
 > z części E. Każda liczba poniżej pochodzi z pomiaru z datą i drzewem; rozjazd z repo = defekt tego rejestru
 > (§6 pkt 3), naprawiany w tej samej kolejce.
+
+> **Decyzje O-60…O-75 (2026-09-30, karta ZAPIS-DECYZJI).** Ostateczne decyzje doradcy z delegacją właściciela O-59
+> (uzgodnienie trzech klastrów: solvery B-01, architektura, dane OD-21; pozycje TORY i współczynnik c) są zapisane
+> WYŁĄCZNIE w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3 (wiersze O-60…O-75); statusy ADR-012…029 w `docs/adr/`
+> i `docs/INDEX.md`; konflikty V12K-339…V12K-349 w `docs/v12xx/REJESTR_KONFLIKTOW.md`; specyfikacje danych właściciela
+> P-A…P-M w `docs/plan/DANE_WLASCICIELA_O59_2026-09.md`; fale kart 0–5 w wierszu O-73. Hierarchia dokumentów (K-20,
+> O-63): `CLAUDE.md` „Document Hierarchy” i `docs/INDEX.md` „Hierarchia kanonu” są JEDNĄ listą z poziomem 1b
+> (`docs/architecture/*` — prawo programu) i wierszem `docs/twin` (materiał wejściowy, nie kanon), pilnowaną przez
+> `scripts/docs_guard.py`. Meldunek karty: `MELDUNEK_ZAPIS_DECYZJI.md` (katalog główny repo).
 
 ### A. Stan Git
 
@@ -181,8 +197,8 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 |---|---|
 | **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E, PRZENOSNOSC-NIEPEWNOSCI (poprawka 1); partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
-| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6), POLA-W-TORZE (`71c27cbf`, `wip-pola-w-torze-gotowy`), SLD-SUBSTRAT faza 2 (`2eb83c40`, `wip-sld-substrat-gotowy`) — partia 6; AB-1b.3b (`f0cabe57`, `wip-ab-1b3b-gotowy`), BIEG-ZABEZPIECZEN-Z-MODELU (`1551dc49`, `wip-nastawy-gotowy`) — partia 7 |
-| **IN PROGRESS** | GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE (commity wykonawcy `4a7329ad`, `1ca6ca08` na gałęzi programu jako `f1c27d8a`, `ce138c51`; weryfikacja integratora na połączonym drzewie w toku), SZYNY-STACJI-LUSTRO (wykonawca, drzewo `szyny-stacji`), AB-1b.3b-NA-CZUBKU (wykonawca rdzenia, drzewo `odbior-ab1b3b-r`), partia 6 — pełna regresja (`odbior-p6b`), SZYBKIE-TESTY (tabela A.3) |
+| **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6), POLA-W-TORZE (`71c27cbf`, `wip-pola-w-torze-gotowy`), SLD-SUBSTRAT faza 2 (`2eb83c40`, `wip-sld-substrat-gotowy`) — partia 6; AB-1b.3b (`f0cabe57`, `wip-ab-1b3b-gotowy`; przeniesiona na czubek `0f38d197` kartą AB-1b.3b-NA-CZUBKU — `50a3aa02`, `wip-ab1b3b-gotowy-czubek`; na czubek partii 6 `615f3b24` kartą AB-1b.3b-NA-PARTII-6 — gałąź `karta-ab1b3b-p6`, weryfikacja wykonawcy w `MELDUNEK_AB1B3B_P6.md`), BIEG-ZABEZPIECZEN-Z-MODELU (`1551dc49`, `wip-nastawy-gotowy`) — partia 7 |
+| **IN PROGRESS** | GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE (commity wykonawcy `4a7329ad`, `1ca6ca08` na gałęzi programu jako `f1c27d8a`, `ce138c51`; weryfikacja integratora na połączonym drzewie w toku), SZYNY-STACJI-LUSTRO (wykonawca, drzewo `szyny-stacji`), partia 6 — pełna regresja (`odbior-p6b`), SZYBKIE-TESTY (tabela A.3) |
 | **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
@@ -203,11 +219,11 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | SIEC-ZLOTA-KATALOG | P0 (sieć złota deklaruje katalog, 7 odwołań nie istnieje) | nierozpoczęta | — | zasila sceny harnessu i zrzuty B-02 |
 | GOTOWOSC-DER-BACKEND | P0 (próg 87T z `?? 0` daje „niewymagane” przy braku mocy) | nierozpoczęta | — | nowy kod słownika gotowości |
 | AB-H0b | P0 (N-1 V12.6 bez etykiety „szacunek bez rozpływu”, stałe V12.6 bez podstawy) | lista pozycji | — | karta do napisania z `KARTY_OTWARTE` |
-| AB-1b.3b | P1 (ścieżka krytyczna A/B) | domknięta przez wykonawcę (`f0cabe57`), odbiór w partii 7 | AB-1b.3a | kolizja z determinizmem w `silnik.py`, mutacje M38–M51 |
+| AB-1b.3b | P1 (ścieżka krytyczna A/B) | domknięta przez wykonawcę (`f0cabe57`), przeniesiona na czubek `0f38d197` (karta AB-1b.3b-NA-CZUBKU, `50a3aa02`) i na czubek partii 6 `615f3b24` (karta AB-1b.3b-NA-PARTII-6, gałąź `karta-ab1b3b-p6`) — weryfikacja wykonawcy; odbiór integratora w partii 7 | AB-1b.3a | mutacje M38–M51 i M75–M80 |
 | AB-1b.2 + AB-1d_min | P1 (ścieżka krytyczna A/B) | nierozpoczęta | AB-1b.3b | mutacje M52–M66 |
 | GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE | P1 (bramki CI przepuszczają importy względne przekraczające granicę — `dynamika_granica_importow` o jeden poziom za głęboko: `from ..power_flow_newton import …` z rdzenia dynamiki do rdzenia B-01 przechodzi; `enm_store_key`, `scenario_copy`, `no_direct_fault_params`, `legacy_public_path` czytają samo `module`; autotest bramki dynamiki wstrzykuje pliki do prawdziwego pakietu produktu) | domknięta przez wykonawcę (`4a7329ad`, `1ca6ca08`; na gałęzi programu `f1c27d8a`, `ce138c51`), weryfikacja integratora w toku | — | jedno źródło rozwiązywania importów dla bramek; hak audytu w `scripts/conftest.py` odrzucający zapis autotestu do drzewa repo; wiersz rejestru planu §7 po odbiorze |
 | SZYNY-STACJI-LUSTRO | P1 (predykaty parami: przynależność szyny do stacji we froncie jako dwie połówki reguły backendu `enm.tor_pola.szyny_stacji` — `szynaNalezyDoStacji` bez szyn za aparatami pól nN, `stationLoadBusRefs` bez zacisków pól SN i zależny od kolejności gałęzi; spotkały się w partii 6) | w toku (wykonawca, drzewo `szyny-stacji` na `54495b73`) | partia 6 | jedno źródło (pole wyprowadzone albo jedno lustro) z testem parytetu z backendem na każdej stacji fikstur generowanych; inwentarz 135 użyć `bus_refs` we froncie |
-| AB-1b.3b-NA-CZUBKU | P1 (ścieżka krytyczna A/B: odbiory stanowe muszą spełniać niezmienniki poprawek chwili zero O-58 pkt 1–6 i SKONCZONOSC-CHWILI-ZERO) | w toku (wykonawca rdzenia, drzewo `odbior-ab1b3b-r` na `0f38d197`) | — | przeniesienie `f0cabe57`, tabela klasy rodzaj urządzenia × niezmiennik, mutacje od M75, przenośność sceny w czterech jądrach OpenBLAS; potem partia 7 |
+| AB-1b.3b-NA-CZUBKU | P1 (ścieżka krytyczna A/B: odbiory stanowe muszą spełniać niezmienniki poprawek chwili zero O-58 pkt 1–6 i SKONCZONOSC-CHWILI-ZERO) | domknięta przez wykonawcę (`50a3aa02`, `wip-ab1b3b-gotowy-czubek`); przeniesiona na czubek partii 6 kartą AB-1b.3b-NA-PARTII-6 (gałąź `karta-ab1b3b-p6`) | — | przeniesienie `f0cabe57`, tabela klasy rodzaj urządzenia × niezmiennik, mutacje od M75, przenośność sceny w czterech jądrach OpenBLAS; potem partia 7 |
 | BIEG-ZABEZPIECZEN-NA-PARTII-6 | P0 (przeniesienie `1551dc49` na partię 6: zacisk zabezpieczenia z toru pola, odmowy `OdmowaDanychError`, szyny stacji z jednego źródła) | karta gotowa, wykonawca po zwolnieniu procesora | partia 6 | konflikty w 10 plikach źródłowych i fiksturach koordynacji — scalenie semantyczne z inwentarzem klasy; potem partia 7 |
 | ODMOWA-DANYCH-422 | P1 (obcy `ValueError` jako błąd użytkownika) | domknięta przez wykonawcę (`1a235fa3`) | — | odbiór integratora w partii 6; do listy B-01: odmowy wejścia rdzeni jako typ odmowy danych (dziś tłumaczone na granicy warstwy aplikacji w 13 miejscach) |
 | SLD-SUBSTRAT faza 2 | P1 (fikstury SLD bez generatora; element modelu nierysowany) | w toku | — | reguła zapisu liczb w fiksturach (bajty niezależne od maszyny) |
@@ -354,6 +370,12 @@ przepisane do wierszy rejestru planu A/B §7):
 | SKONCZONOSC-CHWILI-ZERO + PRZENOSNOSC-NIEPEWNOSCI (poprawki 1 i 2) — pełny zestaw testów rdzenia dynamiki (59 plików testowych backendu wołających rdzeń dynamiki, punkt pracy albo bieg `DYNAMIKA_RMS`) | `0f38d197` | 2 331 passed, 3 deselected (66 min, jeden wątek BLAS; drzewo bitowo równe czubkowi kontynuacji) |
 | j.w. — `guardy_z_ci.py` | j.w. | komplet zielony — 105 strażników, black/ruff, `type-check`, `lint`, 2 920 samotestów (drzewo `int/kont1`) |
 | j.w. — e2e ekranów dynamiki na realnym backendzie | j.w. | 145 passed (22,5 min; `dowody-flow-ekspert-screenshot`, `dynamika-rms-flow`, `wszystkie-sceny-screenshot`, `wyniki-jezyk-inzyniera`) bez zmiany zatwierdzonych zrzutów; vitest `ui2/wyniki/dynamika`, `ui2/wyniki/wzorzec`, `ui2/spaces/wyniki` — 19 plików, 405 passed |
+| AB-1b.3b-NA-CZUBKU — testy backendu wołające rdzeń dynamiki (76 plików) | `0f38d197` + cherry-pick `f0cabe57` + rozszerzenie (drzewo `odbior-ab1b3b-r`) | 3 060 passed, 2 failed (odcisk fikstury po refaktorze, wzorzec M37) → naprawione, ponowny bieg 443 + 222 passed; rodziny urządzeń × odbiór czuły 48 passed |
+| AB-1b.3b-NA-CZUBKU — harness mutacji, `guardy_z_ci.py`, vitest, e2e | j.w. | 55/55 mutacji ważnych zabitych (M10–M51, M67–M80), M21 nieważna, 1 342 s CPU; guardy komplet zielony (105, 2 940 samotestów); vitest 55 + 652 passed; e2e ekranów dynamiki 150 passed, zrzuty bez zmiany |
+| AB-1b.3b-NA-CZUBKU — przenośność | j.w. | scena harnessu i SMIB z odbiorem czułym w 8 wariantach {jądro: domyślne, Haswell, Prescott, Zen} × {1, 2 wątki}: 0 różnic komparatora, rozrzut `u_f_est_hz` 6,9e-8, kanały odbioru bitowo identyczne |
+| AB-1b.3b-NA-PARTII-6 — testy rdzenia dynamiki (79 plików: grep po `solvers.dynamika`, `DYNAMIKA_RMS`, `dynamika_rms`, adapterze, `application.dynamika`, `load_dynamic`, `der_dynamic`, walidacja fizyczna, eksport fikstur) | `615f3b24` + cherry-pick `50a3aa02` (gałąź `karta-ab1b3b-p6`) | 3 277 passed; 7 pozycji z markerem `andes` (wyrocznia zewnętrzna, pakietu nie ma w środowisku) — w regresji wykluczone markerem |
+| AB-1b.3b-NA-PARTII-6 — harness mutacji, pełna regresja, `guardy_z_ci.py`, vitest, e2e | j.w. + poprawki zastanych defektów partii 6 | 55/55 mutacji ważnych zabitych, M21 nieważna, 0 przeżyło; pełna regresja 27 410 passed, 37 deselected, rc 0 (56 min, drzewo końcowe); guardy komplet zielony (114, 3 352 samotesty, mypy 223/34 bez zmiany); vitest dynamika/shared/gotowość/wzorzec 775 passed; e2e 4 speków 150 passed; zrzuty `e32-dynamika-{light,dark}.png` zmienione treścią (moc odciętego odbioru „0,00171 pu” → „0,001709 pu” z wyniku partii 6) — do werdyktu właściciela B-02 |
+| AB-1b.3b-NA-PARTII-6 — przenośność | j.w. | sześć fikstur scen dynamiki w 8 wariantach {jądro OpenBLAS: Cooperlake (domyślne), Haswell, Prescott, Zen} × {1, 2 wątki}: 0 rozjazdów komparatora |
 | CI GitHub (9 workflowów) | `82595588` (ostatni czubek wypchnięty przed tym pakietem) | 8/9 zielonych; pełny e2e — 9 czerwonych przypadków, naprawione w partii 5 (`7d3a0a41`, `3840e239`) |
 
 **H.2 Ograniczenia:**
@@ -393,17 +415,24 @@ przepisane do wierszy rejestru planu A/B §7):
 | 2 | P0 | Ocena zabezpieczeń na syntetycznym urządzeniu zamiast przypisań z modelu; nastawy bez jednostek z cichymi wartościami domyślnymi | margines 18 535 590,85 % w porównaniu zabezpieczeń sceny koordynacji harnessu | BIEG-ZABEZPIECZEN-Z-MODELU (w toku) |
 | 3 | P0 | Sieć złota `backend/tests/cgmes/golden_enm.py` deklaruje `parameter_source="CATALOG"` z 7 odwołaniami nieistniejącymi w katalogu; ta sama klasa w eksporterze fikstur, parytecie scenariuszy i w kodzie produkcyjnym `SnSegmentSurface.tsx` | ekrany wyników, dowody i zrzuty B-02 pokazują liczby „z katalogu”, którego nie ma | SIEC-ZLOTA-KATALOG |
 | 4 | P0 | Próg 87T `(der.nominal_power_kw ?? 0) >= 1600` w `frontend/src/ui/station-der/readiness.ts:183, :434`; gotowość i kryteria stacji/DER liczone we froncie | brak mocy daje „87T niewymagane” | GOTOWOSC-DER-BACKEND, potem CICHE-ZERO |
-| 5 | P0 | N-1 V12.6 `max_loading_percent` szacowane bez rozpływu (`network_model/solvers/v126_academic.py:1063-1101`, rdzeń B-01) prezentowane bez etykiety „szacunek bez rozpływu”; stałe awaryjności i MTTR V12.6 bez podstawy; granice Q w `reactive_adequacy` z domysłu | liczby wyglądające na wynik obliczeń | AB-H0b (prezentacja i proweniencja poza rdzeniem); naprawa rdzenia — B-01 (g) |
+| 5 | P0 | N-1 V12.6 `max_loading_percent` szacowane bez rozpływu (`network_model/solvers/v126_academic.py:1063-1101`, rdzeń B-01) — liczba nieprezentowana od karty W3-E (`application/v126_artifacts.py::bez_rankingu_n1`), rekord `ranking_n1` i ekran analiz akademickich niosą od karty B01-RUNDA-1 jawną metodę „szacunek bez rozpływu”; stałe awaryjności i MTTR V12.6 bez podstawy; granice Q w `reactive_adequacy` z domysłu | liczby wyglądające na wynik obliczeń | AB-H0b (prezentacja i proweniencja poza rdzeniem); naprawa rdzenia — B-01 (g) |
 | 6 | P1 | Globalny handler `ValueError` → HTTP 422 | błąd programu podany jako „błąd danych” | ODMOWA-DANYCH-422 (`1a235fa3`, partia 6) |
 | 7 | P1 | Trasy `PUT /enm`, `/enm/ops`, `/enm/ops/batch`, `/wizard/apply-step` zapisują model z pominięciem operacji domenowych; reguła mocy źródeł × transformator (O-53) sprawdzana per źródło, bez sumy na transformatorze | model sprzeczny z regułą mocy i z kontraktem operacji | O-53b |
 | 8 | P1 | Backend przyjmuje dwa kable z jednego pola liniowego stacji | model sprzeczny z kanonem pola | POLE-ZAJĘTE — zweryfikowane, partia 6 |
 | 9 | P1 | Element modelu nierysowany na kanwie SLD (ZKSN przed pierwszą stacją ciągu, stacja z pomiarem z szablonu 1000 kVA); fikstury SLD v3 i substrat 52 stacji bez generatora | schemat niekompletny, kontrakty SLD na nieaktualnych danych | SLD-SUBSTRAT faza 2 (w toku) |
 | 10 | P1 | `?? 0` / `?? false` / `or 0.0` zasilające decyzję (258 trafień w 114 plikach do klasyfikacji) | cichy brak danych jako zero | CICHE-ZERO |
-| 11 | P1 (B-01) | WLS `state_estimation_wls.py:493` — przy wyjątku z `scipy.stats.chi2` cicha aproksymacja Wilsona–Hilferty’ego progu χ² | ślad obliczeń nie pokazuje przybliżenia (WHITE BOX) | decyzja właściciela, plan §12.2 (j) |
+| 11 | P1 (B-01) | WLS `state_estimation_wls.py:493` — przy wyjątku z `scipy.stats.chi2` cicha aproksymacja Wilsona–Hilferty’ego progu χ² | ślad obliczeń nie pokazuje przybliżenia (WHITE BOX) | naprawione (karta B01-RUNDA-1, decyzja B-01 z 2026-09-30, pozycja (j)): jawny import `chi2`, kasacja ścieżki awaryjnej i `_normal_ppf`, wpis `WYJATKI_B01` zdjęty; progi i hashe wyniku WLS bez zmiany |
 | 12 | P1 (B-01) | `v126_academic.py:441-443, :482, :532` — kąt 0° fazora o module zero | faza nieokreślona publikowana jako liczba (widok audytowy E-40) | decyzja właściciela, plan §12.2 (h) |
 | 13 | P1 (CI) | Pełny e2e czerwony na `82595588` (generator pakietu dowodowego HTTP 500, 8 speków na surowych identyfikatorach) | — | naprawione w partii 5 (`d7fcc325`, `7d3a0a41`); potwierdzenie — CI na czubku (część H) |
 | 14 | P1 (CI) | `Python tests` czerwony na `9dd9e589` w obu przebiegach (3 z 26 634: fikstura sceny dynamiki i test scen przy 1 i 2 wątkach — `u_f_est_hz` próbki 0 z innego jądra OpenBLAS o 0,38–0,57 % poza tolerancją; ścieżka `scripts` dopisana do `sys.path` w teście); walidacja fizyczna — mutacje czerwona w przebiegu push (ten sam test scen). Przyczyny: próbka `t = 0` w punkcie pracy rozpływu z residuum 2,2e-9 przy tolerancji 1e-10, różnica skończona pochodnej w szumie; odsłonięta przy naprawie — stan `t = 0` po korekcie algebry poza równowagą urządzeń (`max \|f\|` 2,9e-5 1/s przy `eps_init` 1e-6) | liczby i kody jakości częstotliwości zależne od maszyny; w stanie ustalonym fałszywa ROZRÓŻNIALNA odchyłka częstotliwości | PRZENOSNOSC-NIEPEWNOSCI poprawka 1 (commit z tym wierszem; potwierdzenie — CI na czubku); poprawka 2 (estymata na progu części pewnej) — tabela C |
 | 15 | P1 (WHITE BOX, odmowa nazwana) | Bramka równowagi `silnik._bramka_rownowagi` porównywała normy residuów z `eps_init` warunkiem `norma > eps_init` — residuum algebry NaN (prąd urządzenia nieokreślony) przechodziło; liczby chwili 0 (napięcia i moce `PunktPracy`, stany z `stan_poczatkowy`) bez strażnika skończoności | zamiast nazwanej odmowy z adresem — „krok niezbieżny” albo „napięcie nieskończone” w pierwszym kroku, bez wskazania przyczyny | SKONCZONOSC-CHWILI-ZERO (`6e09d740`, `0f38d197`) |
+| 16 | P0 (B-01) | `short_circuit_core.py:202-203` — `I_b = I''k·√(1 + ((κ − 1)e^{−t_b/t_a})²)` zamiast definicji IEC 60909-0; ten sam wzór w śladzie, `EQ_SC3F_014` i kroku 6 dowodu SC3F; `t_b` = 0,1 s domyślne w sygnaturach | `iec60909_example` 33 kV: 5 844,684014 A zamiast 4 563,542872 A (symetryczny) — liczba bez definicji w wyniku, dowodzie i eksporcie | SC-IB-ITH-ZRODLA, zgoda B-01 (n) |
+| 17 | P0 | `c` nN wyłącznie ±6 % (`voltage_factor.py:43-46`), druga kopia stałych `C_MIN_LV`/`C_MAX_LV` w `fault_loop_iec60364.py:154-155` (dowód `lv_circuit_verification.py:96, :862`) | sieć nN ±10 %: `I_k,min` pętli 624,285714 A zamiast 591,428571 A (+5,56 %, strona niebezpieczna dla samoczynnego wyłączenia) | C-TOLERANCJA-NN (po WSPOLCZYNNIK-C-JEDEN-NOSNIK, O-75) |
+| 18 | P0 | Jedna liczba `ik_ka` z żądania dla czasu wyłączenia i wytrzymałości wszystkich pól (`api/enm.py:590-595, :614`; `czas_wylaczenia_pola.py:137`); `t_clearing` bez czasu własnego aparatu (`:210-221`), werdykt mimo braku czasu (`wytrzymalosc_aparatury_pol.py:143-153`) | NI 500 A / TMS 0,1: 1,002903 s przy 1 000 A wobec 0,297060 s przy 5 000 A — pole ocenione na cudzym prądzie; czas zaniżony | WYTRZYMALOSC-PRAD-POLA |
+| 19 | P0 | `wiarygodnosc_punktu` (`ocena_nadpradowa.py:1696-1724`) liczy granicę `ALF·I_1n` bez obciążenia wtórnego, sprzecznie z jądrem `ct_burden_saturation` | 200/5 A 5P10, 20 VA, 1 500 A: „WIARYGODNY” wobec FAIL jądra (granica 1 157,895 A) | CT-JEDEN-WERDYKT |
+| 20 | P0 | Skład źródeł szablonów hybrydowych przez `i % len(der_options)` (`apply.py:507, :1223`) | `tpl_hybrid_pv2_bess1` daje 3 PV + 2 BESS zamiast 4 + 1 (3 z 5 szablonów hybrydowych) | KSR-SKLAD-DER (kandydat: wynik karty PR-478) |
+| 21 | P0 | Dane fizyczne wymyślone w szablonach stacji (`apply.py:231` uziemienie, `:324`/`:948` `or 0.4`, `:482` cos φ 0,95, `:1235` `or 0.0` w sumie mocy TR, `:992` `or 1`) | liczby wyglądające na dane projektu zasilają rozpływ, zwarcia i regułę mocy | SZABLONY-BEZ-DOMYSLOW |
+| 22 | P1 | Trasa `/api/switchgear` (`api/switchgear_config.py:120, :196-231`) z magazynem w pamięci i modelem `domain/switchgear_config.py` bez konsumenta we froncie (jedyny klient: `tests/test_switchgear_config_api.py`) | martwa trasa i drugi model konfiguracji rozdzielnicy | ENDPOINTY-BEZ-KONSUMENTA (instancja dopisana) — kasacja |
 
 ### J. Dane zewnętrzne i decyzje właściciela
 
@@ -411,6 +440,9 @@ przepisane do wierszy rejestru planu A/B §7):
 pozycji (a)–(m) w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.2 (O-57 pkt 6 — ten pakiet i opis PR do niej
 odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy delegacja z 2026-09-22 (O-5) obejmuje
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
+Odpowiedź: decyzja ostateczna właściciela z 2026-09-30 (delegacja, O-59); pozycja (i) wykonana w karcie
+B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy); pozycja (j) — również (próg χ² WLS
+wyłącznie z `scipy.stats.chi2`, wiersz 11 części I).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

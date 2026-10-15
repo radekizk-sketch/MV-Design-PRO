@@ -25,9 +25,15 @@ obie tej samej KLASY — estymata niepewnosci niosla realizacje szumu zaokraglen
    roznic skonczonych (`obserwable.pochodna_napiec_z_niepewnoscia`; testy progu w
    `test_niepewnosc_na_granicy_zaokraglen.py`).
 
-ILOCZYN CECH: {siec: SMIB z odbiorem i zwarciem, galaz slepa za przekladnia zespolona} x
-{punkt pracy: dokladny (na dnie zaokraglen), zaburzony w granicy `eps_init`} x {harmonogram:
-bez zdarzenia w `t = 0` (probka C), ze zdarzeniem w `t = 0` (probki L i P)} dla probki zero;
+ILOCZYN CECH: {siec: SMIB z odbiorem stalej mocy, galaz slepa za przekladnia zespolona,
+SMIB z odbiorem CZULYM czestotliwosciowo (stan estymatora), ten sam SMIB z szyna odcieta
+w `t = 0` i odbiorem czulym w obszarze beznapieciowym} x {punkt pracy: dokladny (na dnie
+zaokraglen), zaburzony w granicy `eps_init`} x {harmonogram: bez zdarzenia w `t = 0`
+(probka C), ze zdarzeniem w `t = 0` (probki L i P)} dla probki zero — czyli {klasa elementu
+stanowego: urzadzenie o sprzezeniu pradowym, urzadzenie o sprzezeniu napieciowym, odbior bez
+stanu, odbior ze stanem przylaczony, odbior ze stanem odciety} x {niezmiennik chwili zero:
+algebra rdzenia, rownowaga stanu, jeden predykat reinicjalizacji, slad} (rozszerzenie
+niezmiennikow O-58 na odbiory stanowe — karta AB-1b.3b-NA-CZUBKU);
 {wywolania estymatora z RZECZYWISTEJ sciezki biegu} x {rezim residuum: na dnie (jedna roznica
 skonczona), z czescia pewna (dwie)} x {szum obliczenia pochodnej: +1 u, -1 u} dla kroku
 roznicy. Os jadra BLAS x liczby watkow na calej scenie harnessu —
@@ -44,9 +50,12 @@ from typing import Any
 import numpy as np
 import pytest
 from network_model.solvers.dynamika import (
+    GalazDynamiki,
     HarmonogramDynamiki,
+    OdbiorDynamiki,
     SilnikDynamiki,
     WejscieDynamiki,
+    WezelDynamiki,
     ZwarcieWezla,
     obserwable,
 )
@@ -64,7 +73,11 @@ from scipy.sparse import linalg as sparse_linalg
 
 from tests.ci.test_fixtury_harnessu import RTOL_FIXTUR
 from tests.network_model.dynamika.uklady import (
+    F_BAZOWA_HZ,
+    U_N_KV,
+    X_LINII_PU,
     X_ZWARCIA_PLYTKIEGO_OHM,
+    charakterystyka_czula,
     nastawy,
     zbuduj_smib_z_odbiorem,
 )
@@ -111,15 +124,62 @@ def _galaz_slepa(ze_zdarzeniem_w_zerze: bool) -> WejscieDynamiki:
     )
 
 
+#: Zaburzenie punktu pracy sieci z odbiorem CZULYM: przesuniecie fazy szyny odbioru rzedu
+#: 1e-7 rad sprawia, ze prad odbioru przy trzymanym stanie estymatora rozni sie od pradu na
+#: rozmaitosci rownowagi o `|dI/dtheta| * 1e-7 ~ 2,5e-9` pu (`k_pf/(w_n T_f) P0`), czyli
+#: dwa rzedy ponad tolerancja biegu (1e-11): algebra korekty liczona przy trzymanym stanie
+#: i stan `t = 0` bez `x := arg V0` sa rozroznialne od poprawnych (mutacje M75, M76).
+#: Residuum takiego punktu (~4e-7 pu) miesci sie w `eps_init` tych sieci (1e-4).
+ZABURZENIE_WZGLEDNE_PUNKTU_ODBIORU_CZULEGO = 1.0e-7
+EPS_INIT_ODBIORU_CZULEGO = 1.0e-4
+
+
+def _smib_odbior_czuly(ze_zdarzeniem_w_zerze: bool) -> WejscieDynamiki:
+    return zbuduj_smib_z_odbiorem(
+        q_odbioru_pu=0.05, charakterystyka=charakterystyka_czula()
+    ).wejscie(
+        _harmonogram(ze_zdarzeniem_w_zerze),
+        nastawy(horyzont_s=0.1, krok_wyjscia_s=0.02, eps_init=EPS_INIT_ODBIORU_CZULEGO),
+    )
+
+
+def _smib_odbior_czuly_i_szyna_odcieta(ze_zdarzeniem_w_zerze: bool) -> WejscieDynamiki:
+    """SMIB z odbiorem czulym + szyna `B` odcieta w `t = 0` (linia otwarta) z drugim odbiorem
+    czulym: odbior w obszarze beznapieciowym ma stan estymatora (`x = 0` przy `V = 0`),
+    ktorego korekta NIE moze ruszyc — napiecie jego wezla jest zerem z wiersza ograniczenia."""
+    wejscie = _smib_odbior_czuly(ze_zdarzeniem_w_zerze)
+    return dataclasses.replace(
+        wejscie,
+        wezly=(*wejscie.wezly, WezelDynamiki("B", U_N_KV)),
+        galezie=(
+            *wejscie.galezie,
+            GalazDynamiki(
+                "LB", "GEN", "B", 1.0 / complex(0.0, X_LINII_PU), 0.0, 1 + 0j, False, "linia"
+            ),
+        ),
+        odbiory=(
+            *wejscie.odbiory,
+            OdbiorDynamiki("ODB_B", "B", 0.1, 0.02, charakterystyka=charakterystyka_czula()),
+        ),
+    )
+
+
 SIECI_PROBKI_ZERO: dict[str, Callable[[bool], WejscieDynamiki]] = {
     "smib_z_odbiorem": _smib,
     "galaz_slepa_za_przekladnia_zespolona": _galaz_slepa,
+    "smib_z_odbiorem_czulym": _smib_odbior_czuly,
+    "smib_z_odbiorem_czulym_i_szyna_odcieta": _smib_odbior_czuly_i_szyna_odcieta,
 }
 
 
 def _zaburz_punkt_pracy(wejscie: WejscieDynamiki) -> WejscieDynamiki:
+    zaburzenie = (
+        ZABURZENIE_WZGLEDNE_PUNKTU_ODBIORU_CZULEGO
+        if any(odbior.charakterystyka.k_pf != 0.0 for odbior in wejscie.odbiory)
+        else ZABURZENIE_WZGLEDNE_PUNKTU
+    )
     napiecia = dict(wejscie.punkt_pracy.napiecia_pu)
-    napiecia["GEN"] = napiecia["GEN"] * (1.0 + ZABURZENIE_WZGLEDNE_PUNKTU)
+    napiecia["GEN"] = napiecia["GEN"] * (1.0 + zaburzenie)
     return dataclasses.replace(
         wejscie, punkt_pracy=dataclasses.replace(wejscie.punkt_pracy, napiecia_pu=napiecia)
     )
@@ -196,16 +256,26 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
     korekta = wynik.slad_white_box["inicjalizacja"]["korekta_algebry"]
     punkt = wejscie.punkt_pracy
     punkt_pracy = np.array(
-        [complex(punkt.napiecia_pu[ident]) for ident in probka.model.identy_wezlow],
+        [complex(punkt.napiecia_pu.get(ident, 0j)) for ident in probka.model.identy_wezlow],
         dtype=complex,
     )
-    # Stany PUNKTU PRACY (ten sam konstruktor, co inicjalizacja silnika) — probka niesie juz
-    # stany po reinicjalizacji w punkcie skorygowanym.
-    stany_punktu = tuple(
-        urzadzenie.stan_poczatkowy(
-            punkt.napiecia_pu[urzadzenie.wezel], punkt.moce_zrodel_pu[urzadzenie.ident]
-        )
-        for urzadzenie in probka.urzadzenia
+    liczba_odbiorow = len(probka.odbiory)
+    # Stany PUNKTU PRACY (te same konstruktory, co inicjalizacja silnika: `x(0) = arg V_pf`
+    # odbiorow ze stanem, `stan_poczatkowy(V, S)` urzadzen) — probka niesie juz stany po
+    # reinicjalizacji w punkcie skorygowanym. Krotka wyrownana z `(*odbiory, *urzadzenia)`.
+    stany_punktu = (
+        *(
+            odbior.stan_poczatkowy_odbioru(
+                complex(punkt_pracy[probka.model.indeks_wezla[odbior.wezel]])
+            )
+            for odbior in probka.odbiory
+        ),
+        *(
+            urzadzenie.stan_poczatkowy(
+                punkt.napiecia_pu[urzadzenie.wezel], punkt.moce_zrodel_pu[urzadzenie.ident]
+            )
+            for urzadzenie in probka.urzadzenia
+        ),
     )
     reszta_punktu = residuum_algebry(
         probka.model, probka.odbiory, probka.urzadzenia, stany_punktu, punkt_pracy
@@ -237,9 +307,10 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
         assert all(
             np.array_equal(stan, stan_punktu)
             for stan, stan_punktu in zip(probka.stany, stany_punktu, strict=True)
-        ), "stany urzadzen punktu na dnie zmienione — reinicjalizacja musi byc pusta"
+        ), "stany elementow punktu na dnie zmienione — reinicjalizacja musi byc pusta"
 
-    norma_rownowagi = _norma_rownowagi(probka.urzadzenia, probka.stany, probka.napiecia, probka)
+    elementy = (*probka.odbiory, *probka.urzadzenia)
+    norma_rownowagi = _norma_rownowagi(elementy, probka.stany, probka.napiecia, probka)
     bramka_f = wynik.slad_white_box["inicjalizacja"]["residuum_f"]
     assert norma_rownowagi <= 10.0 * max(bramka_f, JEDNOSTKA_ZAOKRAGLENIA), (
         f"stan t = 0 nie jest rownowaga: max |f| {norma_rownowagi:.3e} wobec {bramka_f:.3e} "
@@ -254,9 +325,7 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
     ), "slad korekty podaje inna norme algebry niz stan probki"
     assert korekta["residuum_g_po"] <= wejscie.nastawy.eps_init
     if zaburzony:
-        bez_reinicjalizacji = _norma_rownowagi(
-            probka.urzadzenia, stany_punktu, probka.napiecia, probka
-        )
+        bez_reinicjalizacji = _norma_rownowagi(elementy, stany_punktu, probka.napiecia, probka)
         assert bez_reinicjalizacji > 10.0 * max(bramka_f, JEDNOSTKA_ZAOKRAGLENIA), (
             "stany punktu pracy sa rownowaga takze w punkcie skorygowanym — przypadek nie "
             "rozroznia reinicjalizacji"
@@ -272,13 +341,14 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
             - complex(punkt_pracy[pozycja])
             * urzadzenie.prad_pu(stan, complex(punkt_pracy[pozycja])).conjugate()
         )
-        for urzadzenie, stan in zip(probka.urzadzenia, stany_punktu, strict=True)
+        for urzadzenie, stan in zip(probka.urzadzenia, stany_punktu[liczba_odbiorow:], strict=True)
         if urzadzenie.sprzezenie == "pradowe"
         for pozycja in (probka.model.indeks_wezla[urzadzenie.wezel],)
     ]
     assert korekta["max_zmiana_mocy_urzadzen_pu"] == pytest.approx(
         max(zmiany_mocy), rel=10.0 ** (1 - CYFRY_KWANTYZACJI), abs=0.0
     ), "slad korekty podaje inna zmiane mocy urzadzen niz przesuniecie punktu"
+    _sprawdz_odbiory_ze_stanem(wynik, korekta, probka, stany_punktu, punkt_pracy, zaburzony)
     if not ze_zdarzeniem_w_zerze:
         for klucz, szereg in wynik.probki.items():
             if klucz.startswith("jakosc_f@"):
@@ -287,18 +357,76 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
                 ), f"{klucz}: stan ustalony t = 0 z ROZROZNIALNA odchylka czestotliwosci"
 
 
+def _sprawdz_odbiory_ze_stanem(
+    wynik: Any,
+    korekta: dict[str, Any],
+    probka: _ProbkaZero,
+    stany_punktu: tuple[np.ndarray, ...],
+    punkt_pracy: np.ndarray,
+    zaburzony: bool,
+) -> None:
+    """Niezmienniki chwili zero dla ODBIOROW ZE STANEM (estymator czestotliwosci widzianej).
+
+    * odbior przylaczony: stan `t = 0` to `arg V0` PUNKTU SKORYGOWANEGO — dokladnie ten sam
+      konstruktor `stan_poczatkowy_odbioru`, co w `t = 0` z rozplywu (rownowaga `e = 0`),
+      a czestotliwosc widziana w probce zero jest czestotliwoscia znamionowa DOKLADNIE;
+    * odbior odciety (`V = 0` z wiersza ograniczenia): stan bez zmiany bitowo — jeden predykat
+      reinicjalizacji z urzadzeniami (napiecie wezla nie zostalo przesuniete);
+    * slad: `max_zmiana_kata_estymatorow_rad` = najwieksza zmiana stanu odbioru (klucz
+      wylacznie przy odbiorach ze stanem), dodatnia przy punkcie zaburzonym;
+    * prad odbioru w stanie `t = 0` jest pradem rozmaitosci rownowagi (`f_hat = f_n`), przy
+      ktorym algebra korekty zbiegla.
+    """
+    ze_stanem = [
+        (indeks, odbior) for indeks, odbior in enumerate(probka.odbiory) if odbior.nazwy_stanow
+    ]
+    if not ze_stanem:
+        assert "max_zmiana_kata_estymatorow_rad" not in korekta, (
+            "slad biegu bez odbiorow ze stanem zmieniony — klucz estymatorow tylko przy "
+            "odbiorach czulych"
+        )
+        return
+    zmiany: list[float] = []
+    for indeks, odbior in ze_stanem:
+        pozycja = probka.model.indeks_wezla[odbior.wezel]
+        napiecie = complex(probka.napiecia[pozycja])
+        stan = probka.stany[indeks]
+        zmiany.append(float(np.max(np.abs(stan - stany_punktu[indeks]))))
+        if not odbior.przylaczony:
+            assert napiecie == 0 and complex(punkt_pracy[pozycja]) == 0
+            assert np.array_equal(
+                stan, stany_punktu[indeks]
+            ), f"{odbior.ident}: stan odbioru odcietego ruszony przez korekte t = 0"
+            continue
+        assert np.array_equal(stan, odbior.stan_poczatkowy_odbioru(napiecie)), (
+            f"{odbior.ident}: stan estymatora t = 0 nie jest rownowaga punktu skorygowanego "
+            "(x != arg V0)"
+        )
+        assert odbior.czestotliwosc_widziana_hz(stan, napiecie) == F_BAZOWA_HZ
+        assert odbior.prad_pu(stan, napiecie) == pytest.approx(
+            odbior.w_rownowadze_estymatora().prad_pu(stan, napiecie), rel=1e-15, abs=1e-300
+        )
+        assert wynik.probki[f"f_odbioru_hz@{odbior.ident}"][0] == F_BAZOWA_HZ
+        assert wynik.probki[f"kat_pomiaru_rad@{odbior.ident}"][0] == float(stan[0])
+        if zaburzony:
+            assert zmiany[-1] > 0.0, f"{odbior.ident}: zaburzenie nie przesunelo fazy szyny"
+    assert korekta["max_zmiana_kata_estymatorow_rad"] == pytest.approx(
+        max(zmiany), rel=10.0 ** (1 - CYFRY_KWANTYZACJI), abs=0.0
+    ), "slad korekty podaje inna zmiane kata estymatorow niz stany probki"
+
+
 def _norma_rownowagi(
-    urzadzenia: tuple[Any, ...], stany: tuple[np.ndarray, ...], napiecia: np.ndarray, probka: Any
+    elementy: tuple[Any, ...], stany: tuple[np.ndarray, ...], napiecia: np.ndarray, probka: Any
 ) -> float:
     """`max |f|` stanow, ktore w rownowadze musza miec pochodna zerowa — wprost z protokolu
-    urzadzen, bez kodu bramki silnika."""
+    elementow stanowych (odbiory ze stanem i urzadzenia), bez kodu bramki silnika."""
     norma = 0.0
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
-        pochodne = urzadzenie.pochodne(
-            stan, complex(napiecia[probka.model.indeks_wezla[urzadzenie.wezel]])
+    for element, stan in zip(elementy, stany, strict=True):
+        pochodne = element.pochodne(
+            stan, complex(napiecia[probka.model.indeks_wezla[element.wezel]])
         )
-        bez_rownowagi = set(urzadzenie.stany_bez_rownowagi)
-        for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, pochodne, strict=True):
+        bez_rownowagi = set(element.stany_bez_rownowagi)
+        for nazwa, wartosc in zip(element.nazwy_stanow, pochodne, strict=True):
             if nazwa not in bez_rownowagi:
                 norma = max(norma, abs(float(wartosc)))
     return norma

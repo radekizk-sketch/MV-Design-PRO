@@ -64,7 +64,10 @@ export function zbudujPayload(
     switch_type: data.switch_type,
     normal_state: normalizeSwitchState(data.normal_state),
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'APARAT_SN'),
-    ...(data.nazwa.trim() ? { name: data.nazwa.trim() } : {}),
+    // Kontrakt operacji `insert_section_switch_sn`: nazwa łącznika to `switch_name` (backend
+    // `enm/domain_operations.py`). Dawny klucz `name` backend pomijał — wpisana nazwa znikała
+    // i łącznik dostawał nazwę domyślną (kontrolka-fantom).
+    ...(data.nazwa.trim() ? { switch_name: data.nazwa.trim() } : {}),
   };
 }
 

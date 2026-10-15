@@ -13,6 +13,7 @@
  */
 
 import type { ElementProtectionAssignment, ProtectionSettingsSummary } from './element-assignment';
+import type { NastawyUrzadzeniaWidok, SlownikNastaw } from './nastawyModelu';
 import type { ElementType } from '../types';
 
 // =============================================================================
@@ -41,6 +42,8 @@ export interface ProtectionViewAssignment {
   device_kind: ElementProtectionAssignment['device_kind'];
   status: ElementProtectionAssignment['status'];
   settings_summary?: ProtectionSettingsSummary;
+  /** Nastawy z modelu rozwiązane przez backend (karta BIEG-ZABEZPIECZEN-Z-MODELU). */
+  nastawy?: NastawyUrzadzeniaWidok;
 }
 
 /**
@@ -51,6 +54,18 @@ export interface ProtectionViewResponse {
   enm_revision: number;
   view_status: ProtectionViewStatus;
   assignments: ProtectionViewAssignment[];
+  /** Listy wyboru edytora nastaw z backendu (funkcje, charakterystyki, jednostki progu). */
+  slownik_nastaw?: SlownikNastaw;
+  /** Wyłączniki liniowe (bez pola) z przekładnikami i zabezpieczeniami przy nich. */
+  wylaczniki_liniowe?: WylacznikLiniowy[];
+}
+
+/** Wyłącznik liniowy modelu (backend `enm/wylaczniki_liniowe.py`). */
+export interface WylacznikLiniowy {
+  ref_id: string;
+  nazwa: string | null;
+  przekladniki: string[];
+  zabezpieczenia: string[];
 }
 
 export const EMPTY_PROTECTION_VIEW: ProtectionViewResponse = {
@@ -95,6 +110,7 @@ function toElementAssignment(entry: ProtectionViewAssignment): ElementProtection
     device_kind: entry.device_kind,
     status: entry.status,
     settings_summary: entry.settings_summary,
+    nastawy: entry.nastawy,
   };
 }
 
@@ -115,6 +131,24 @@ export function assignmentsForElement(
 // =============================================================================
 // Klient HTTP
 // =============================================================================
+
+/**
+ * Przypisania zabezpieczeń nadprądowych modelu z rozwiązanymi nastawami — po jednym na
+ * urządzenie (read model niesie wpis per element chroniony; urządzenie bywa przypisane do
+ * kilku elementów). Kolejność z backendu (deterministyczna).
+ */
+export function urzadzeniaZNastawami(
+  response: ProtectionViewResponse,
+): ProtectionViewAssignment[] {
+  const widziane = new Set<string>();
+  const wynik: ProtectionViewAssignment[] = [];
+  for (const wpis of response.assignments) {
+    if (!wpis.nastawy || widziane.has(wpis.device_id)) continue;
+    widziane.add(wpis.device_id);
+    wynik.push(wpis);
+  }
+  return wynik;
+}
 
 /**
  * Pobiera read model zabezpieczeń dla aktywnego case'u.

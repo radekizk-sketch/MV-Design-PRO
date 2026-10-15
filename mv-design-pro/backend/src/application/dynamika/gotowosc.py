@@ -10,7 +10,11 @@ Jedno złożenie z TRZECH źródeł prawdy, bez własnych warunków:
 * stan modelu dynamicznego każdego wytwórcy (`enm.dynamika_z_katalogu.
   stan_dynamiki_generatorow`) — wiązanie katalogowe, powód odmowy materializacji, lista
   profili zgodnych z rodzajem wytwórcy i akcja naprawcza kanonu `der.dynamika_missing`
-  (komunikat i nawigacja z `READINESS_CODES`, nie z tej warstwy).
+  (komunikat i nawigacja z `READINESS_CODES`, nie z tej warstwy);
+* stan modelu dynamicznego każdego odbioru (`enm.dynamika_z_katalogu.
+  stan_dynamiki_odbiorow`, karta modeli odbiorów) — wiązanie z profilem katalogu
+  `load_dynamic`, powód odmowy materializacji, lista profili z podstawą wartości i akcja
+  naprawcza kanonu `load.dynamika_missing` (ta sama sekcja ekranu co modele źródeł).
 
 Punkt pracy: zakończone biegi rozpływu przypadku liczone na TEJ SAMEJ migawce, na której
 powstanie bieg dynamiki (adapter odmawia punktu pracy z innej migawki kodem
@@ -25,18 +29,28 @@ from application.calculation_readiness.service import CalculationReadinessServic
 from application.dynamika.opis_wyniku import komunikat_z_nazwami
 from domain.canonical_operations import READINESS_CODES
 from enm.adapter_dynamiki import braki_modelu_dynamiki
-from enm.dynamika_z_katalogu import braki_kopii_dynamiki, stan_dynamiki_generatorow
+from enm.dynamika_z_katalogu import (
+    braki_kopii_dynamiki,
+    profile_odbiorow,
+    stan_dynamiki_generatorow,
+    stan_dynamiki_odbiorow,
+)
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 #: Kod kanonu, którego akcja naprawcza prowadzi do wiązania z katalogowym modelem.
 KOD_BRAKU_MODELU = "der.dynamika_missing"
+#: Kod kanonu braku modelu dynamicznego ODBIORU — wiązanie z profilem katalogu odbiorów.
+KOD_BRAKU_MODELU_ODBIORU = "load.dynamika_missing"
+
+#: Stany elementu, przy których ekran pokazuje akcję naprawczą (wiązanie z katalogiem).
+STANY_Z_AKCJA: tuple[str, ...] = ("brak", "odmowa", "nieaktualna")
 
 
-def _akcja_naprawcza() -> dict[str, Any]:
-    spec = READINESS_CODES[KOD_BRAKU_MODELU]
+def _akcja_naprawcza(kod: str) -> dict[str, Any]:
+    spec = READINESS_CODES[kod]
     if spec.fix_navigation is None:
-        raise RuntimeError(f"Kod kanonu {KOD_BRAKU_MODELU} bez akcji naprawczej w rejestrze.")
+        raise RuntimeError(f"Kod kanonu {kod} bez akcji naprawczej w rejestrze.")
     return {
         "kod": spec.code,
         "komunikat_pl": spec.message_pl,
@@ -54,12 +68,18 @@ def gotowosc_dynamiki(
     raport = CalculationReadinessService().evaluate_single(
         enm, "dynamika_rms", punkt_pracy_rozplywu=bool(biegi_rozplywu)
     )
-    akcja = _akcja_naprawcza()
+    akcja = _akcja_naprawcza(KOD_BRAKU_MODELU)
     zrodla = []
     for stan in stan_dynamiki_generatorow(migawka):
         wpis = stan.to_dict()
-        wpis["akcja_naprawcza"] = akcja if stan.stan in ("brak", "odmowa", "nieaktualna") else None
+        wpis["akcja_naprawcza"] = akcja if stan.stan in STANY_Z_AKCJA else None
         zrodla.append(wpis)
+    akcja_odbioru = _akcja_naprawcza(KOD_BRAKU_MODELU_ODBIORU)
+    odbiory = []
+    for stan_odbioru in stan_dynamiki_odbiorow(migawka):
+        wpis = stan_odbioru.to_dict()
+        wpis["akcja_naprawcza"] = akcja_odbioru if stan_odbioru.stan in STANY_Z_AKCJA else None
+        odbiory.append(wpis)
     return {
         "gotowosc": raport.model_dump(mode="json"),
         "braki_modelu": [
@@ -75,8 +95,10 @@ def gotowosc_dynamiki(
         ],
         "kopie_nieaktualne": list(braki_kopii_dynamiki(migawka)),
         "zrodla": zrodla,
+        "odbiory": odbiory,
+        "profile_odbiorow": profile_odbiorow(),
         "biegi_rozplywu": biegi_rozplywu,
     }
 
 
-__all__ = ["KOD_BRAKU_MODELU", "gotowosc_dynamiki"]
+__all__ = ["KOD_BRAKU_MODELU", "KOD_BRAKU_MODELU_ODBIORU", "STANY_Z_AKCJA", "gotowosc_dynamiki"]

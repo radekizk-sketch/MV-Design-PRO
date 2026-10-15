@@ -521,7 +521,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/protection_current_source.py",
     "domain/protection_device.py",
     "domain/protection_engine_v1.py",
-    "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",
@@ -587,18 +586,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
 #: albo TUTAJ. Nowy solver na nowym kontrakcie nie moze wiec po cichu wypasc poza
 #: zasieg reguly — musi dostac DECYZJE. Ten sam wzorzec, co
 #: „prezentowane + nieprezentowane = komplet kontraktu".
-MODEL_ROOTS_POZA_MAPA: dict[str, str] = {
-    "network_model/solvers/stability_rms/contracts.py": (
-        "Deklaruje pola `real` i `imag` (fazor jako model danych), a to sa NAZWY "
-        "ATRYBUTOW WBUDOWANEGO typu `complex`. Mapa pol jest plaskim zbiorem NAZW, "
-        "wiec wlaczenie tego korzenia zamienia kazdy odczyt `z.real` / `z.imag` "
-        "w warstwie solverow w trafienie: pomiar dal 8 falszywych alarmow "
-        "(`losses_total.real`, `loss_total.imag`, `voltage.imag`, `z.imag`), czyli "
-        "kolizje nazw, a nie odczyty danych modelu. Zamrozenie ich w budzecie "
-        "byloby dokladnie tym halasem, przed ktorym bronila runda 2. Pola tego "
-        "modulu nie sa danymi wejsciowymi fizyki — to postac wyniku."
-    ),
-}
+MODEL_ROOTS_POZA_MAPA: dict[str, str] = {}
+# Rejestr PUSTY od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i) planu A/B §12.2):
+# jedyny wpis, `network_model/solvers/stability_rms/contracts.py` (pola `real`/`imag` —
+# nazwy atrybutow wbudowanego `complex`, 8 falszywych alarmow przy wlaczeniu do mapy),
+# zdjety razem ze skasowanym solverem. Mechanizm zostaje: samotest cwiczy go na module
+# syntetycznym i pilnuje, ze `real`/`imag` nie wracaja do mapy z innego kontraktu.
 
 #: Wywolania, ktore na pewno daja liczbe — galaz zapasowa z nimi jest zastepnikiem.
 _NUMERIC_CALLS: frozenset[str] = frozenset(
@@ -692,22 +685,9 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     "api/power_flow_comparisons.py": {
         "F:dictget:summary.total_issues": 1,
     },
-    # Liczba URZADZEN i liczba SPRAWDZEN koordynacji zabezpieczen — bookkeeping
-    # raportu (ile pozycji zestawiono), nie nastawa/prad/czas zabezpieczenia
-    # (te zostaja fizyczne gdzie indziej). Ten sam wzorzec w API i w dwoch
-    # generatorach raportu DOCX/PDF.
-    "api/protection_coordination.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_docx.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_pdf.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
+    # Wpisy „liczba URZADZEN / SPRAWDZEN koordynacji" (API koordynacji i raporty DOCX/PDF)
+    # zdjete w karcie BIEG-ZABEZPIECZEN-Z-MODELU: podsumowanie koordynacji podaje najmniejsze
+    # wielkosci liczbowe (zakaz P-06), a API i raporty czytaja je bez wartosci zastepczych.
     "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
     # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
     # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
@@ -880,8 +860,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
     # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
-    # „plaski start" metody Newtona: wynik ZBIEZNY nie zalezy od punktu startowego,
-    # zmienia sie tylko droga do niego. Forma jest ta sama, co w defekcie, wiec
+    # „plaski start" metody Newtona: start plaski 1,0 pu lezy w basenie galezi roboczej
+    # (zmierzone na szynach obciazonych w pasmie startow testu). Korekta zakresu z
+    # diagnozy OD-19 (karta PF-OD19, partia integracji 7): twierdzenie „wynik zbiezny
+    # nie zalezy od startu" jest FALSZYWE dla szyny PQ o zerowej mocy i dla startu
+    # bliskiego zera szyny obciazonej (dwa rozwiazania zbiezne — przypiete w
+    # `test_od19_diagnoza_rozwiazania_zerowego.py`); wpis budzetu stoi na basenie startu
+    # plaskiego, nie na jednoznacznosci rozwiazania. Forma jest ta sama, co w defekcie, wiec
     # rozstrzyga merytoryka — i dlatego twierdzenie MA PRZYPIETY TEST (regula
     # „deklaracja bez testu = falszywa pewnosc"):
     # `backend/tests/network_model/solvers/test_punkt_startowy_nie_zmienia_wyniku.py`
@@ -1316,21 +1301,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # sprawdz_moc_generatora`, a liczbe jednostek bierze z modelu
         # (`enm/models.liczba_jednostek_zrodla`, ta sama regula co solver), nie
         # z surowego payloadu z jedynka zastepcza. Dlug USUNIETY, nie zmalal cicho.
-        # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
-        # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
-        # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
-        # dolozeniu `domain/protection_engine_v1.py` do CONTRACT_SOURCES (pole
-        # `time_dial` nie bylo wczesniej zadeklarowanym polem zadnej klasy w
-        # zasiegu). DLUG NAZWANY, NIE falszywy alarm: nastawa TMS (Time
-        # Multiplier/Dial Setting) przekaznika wchodzi WPROST do
-        # `_compute_tcc_point(ik/ipickup, tms, curve)`, czyli do czasu
-        # zadzialania krzywej TCC wg IEC 60255 — brakujaca nastawa powinna
-        # przerywac walidacje selektywnosci kodem bledu, nie liczyc sie z
-        # domyslnym mnoznikiem 1,0.
-        "F:dictget:ds_settings.time_dial": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,
         "F:dictget:payload.active_power_kw": 1,
-        "F:dictget:us_settings.time_dial": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,
     },
     "api/power_flow_comparisons.py": {
@@ -1390,7 +1362,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dotad mialo zaszyte `cos_phi=0.95` (liczba niewidoczna dla skanera — dlug ukryty,
     # teraz objety tym jednym wpisem). Funkcja przyjmuje nosnik z polem `cos_phi`, zeby
     # forma B pozostala widoczna dla skanera (parametr skalarny wypadlby ze wzorca).
-    "api/grid_source_preview.py": {
+    # Karta GPT-478 (2026-10-15): klucz pliku "api/grid_source_preview.py" ->
+    # "application/analyses/dobor_toru_der_sn.py" (budzet BEZ ZMIANY, 1). Kaskada doboru toru
+    # DER-SN (TR blokowy -> kabel -> pole) przeniesiona z modulu API do JEDNEJ orkiestracji
+    # aplikacyjnej `cos_phi_doboru_kabla`/`dobierz_tor_der_sn`, wolanej przez podglad kreatora,
+    # odstepstwa dokumentu DER-SN i szablony stacji — to samo jedno podstawienie.
+    "application/analyses/dobor_toru_der_sn.py": {
         "B:ifexp:zrodlo.cos_phi": 1,
     },
     "application/analyses/fault_loop/route.py": {
@@ -1511,9 +1488,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,
         "F:dictget:payload.total_steps": 1,
-    },
-    "application/protection_read_model.py": {
-        "A:or:setting.threshold_a": 2,
     },
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `F:dictget:kotwica.c_factor` (1) ZNIKA (jak wyżej).
     "application/protection_settings/batch_run.py": {
@@ -1730,7 +1704,7 @@ def contract_fields() -> set[str]:
     w `CONTRACT_SOURCES`. Dwa niezaleznie utrzymywane warunki, ktore „dzis sie
     zgadzaja", sa defektem czekajacym na dane brzegowe: gdy runda 4 dolozyla
     `network_model/solvers` jako calosc, wykluczony `stability_rms/contracts.py`
-    WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
+    (skasowany w karcie B01-RUNDA-1) WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
     Teraz wejscie i wyjscie ze zbioru pochodza z JEDNEGO zrodla prawdy.
     """
     fields: set[str] = set()

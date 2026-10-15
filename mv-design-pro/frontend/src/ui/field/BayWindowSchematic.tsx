@@ -1,30 +1,15 @@
 import type { FieldReadModelItem } from './useFieldReadModel';
-import type { BayPrimaryDevice, BayPrimaryDeviceKind } from '../../types/enm';
+import type { BayPrimaryDevice } from '../../types/enm';
+import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
+import { deviceKindLabel } from './fieldLabels';
 
 interface BayWindowSchematicProps {
   item: FieldReadModelItem;
 }
 
-const DEVICE_LABELS: Record<BayPrimaryDeviceKind, string> = {
-  CB: 'Wyłącznik',
-  LOAD_SWITCH: 'Rozłącznik',
-  DS: 'Odłącznik',
-  ES: 'Uziemnik',
-  CT: 'Przekładnik prądowy',
-  VT: 'Przekładnik napięciowy',
-  CABLE_HEAD: 'Głowica kablowa',
-  TRANSFORMER_DEVICE: 'Transformator',
-  FUSE: 'Bezpiecznik',
-  GENERATOR_PV: 'PV',
-  GENERATOR_BESS: 'BESS',
-  GENERATOR_FW: 'FW',
-  PCS: 'PCS',
-  BATTERY: 'Bateria',
-  SURGE_ARRESTER: 'Ogranicznik przepięć',
-};
-
+/** Nazwa aparatu — JEDNA tablica nazw rodzajów aparatów pola (`fieldLabels.deviceKindLabel`). */
 function deviceLabel(device: BayPrimaryDevice): string {
-  return DEVICE_LABELS[device.kind] ?? device.kind;
+  return deviceKindLabel(device.kind);
 }
 
 function deviceY(device: BayPrimaryDevice, index: number): number {
@@ -151,7 +136,7 @@ export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
           <p className="mt-1 text-xs text-slate-600">{item.bay_name}</p>
         </div>
         <span className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600">
-          {role}
+          {fieldRoleLabelPl(role)}
         </span>
       </div>
 

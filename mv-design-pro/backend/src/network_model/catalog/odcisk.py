@@ -11,7 +11,7 @@ w dwoch procesach daje ten sam odcisk (test miedzyprocesowy w
 `tests/network_model/test_odcisk_katalogu.py`).
 
 Czego odcisk NIE obejmuje (uczciwie): rodzin rozdzielnic (`catalog/switchgear`),
-szablonow stacji (`station_templates.py`, `bay_templates.py`) i biblioteki
+szablonow pol (`bay_templates.py`) i biblioteki
 zabezpieczen analitycznych (`application/analyses/protection/catalog`) — to osobne
 katalogi z wlasnymi manifestami; ich konwergencja do jednej biblioteki typow jest
 karta architektoniczna (P1-5 w CONVERGENCE_EVIDENCE.md). Odcisk obejmuje dokladnie
@@ -28,7 +28,7 @@ from functools import lru_cache
 from typing import Any
 
 from .repository import CatalogRepository, get_default_mv_catalog
-from .types import POLA_KARTY_PROJEKCJI
+from .types import POLA_KARTY_PROJEKCJI, POLA_TORU_MASZYNY
 
 #: Pola typów DODANE PO ZAMROŻENIU odcisków, które w zrzucie kanonicznym występują
 #: WYŁĄCZNIE, gdy niosą wartość (ten sam kontrakt „addytywnie, `exclude_none`", co
@@ -39,6 +39,9 @@ from .types import POLA_KARTY_PROJEKCJI
 _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "PVInverterType": POLA_KARTY_PROJEKCJI,
     "BESSInverterType": POLA_KARTY_PROJEKCJI,
+    # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny — pozycja bez niego ma odcisk
+    # sprzed karty.
+    "ConverterType": POLA_TORU_MASZYNY,
 }
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`

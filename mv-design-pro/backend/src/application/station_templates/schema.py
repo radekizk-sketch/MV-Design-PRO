@@ -15,15 +15,25 @@ Schema covers:
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from domain.generator_validation import moc_czynna_jednostki_mw, moc_pozorna_wymagana_mva
+from domain.generator_validation import (
+    moc_czynna_jednostki_mw,
+    moc_pozorna_wymagana_mva,
+    moc_pozorna_z_nastawy_mva,
+)
 from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
-from network_model.pochodne import mva_na_kva
+from network_model.pochodne import (
+    kw_na_mw,
+    moc_pozorna_z_czynnej_i_biernej_mva,
+    mva_na_kva,
+    mw_na_kw,
+)
 
 
 class TemplateCategory(StrEnum):
@@ -32,8 +42,8 @@ class TemplateCategory(StrEnum):
     TYPOWA_SN_NN = "typowa_sn_nn"  # Dystrybucyjne 100-2500 kVA
     SLUPOWA = "slupowa"  # Stacje słupowe ZSP
     ZKSN_WNETRZOWA = "zksn_wnetrzowa"  # ZKSN wnętrzowe
-    PROSUMENT_PV = "prosument_pv"  # μPV 5-250 kW
-    FARMA_PV = "farma_pv"  # Farmy PV SN 0.5-5 MW
+    PROSUMENT_PV = "prosument_pv"  # μPV 8-250 kW
+    FARMA_PV = "farma_pv"  # Farmy PV SN 0,66-4,95 MW
     BESS = "bess"  # Magazyny energii
     HYBRYDOWA = "hybrydowa"  # PV + BESS
     PRZEMYSLOWA = "przemyslowa"  # Odbiorcze przemysłowe
@@ -99,6 +109,19 @@ class TemplateParamFloat:
     label_pl: str = ""
 
 
+def obciazenie_odplywu_param(obciazenie_kw: float = 50.0) -> TemplateParamFloat:
+    """Parametr „Obciążenie per odpływ" szablonu z domyślną wartością `obciazenie_kw` —
+    szablon małej stacji ustawia ją tak, żeby domyślne odbiory mieściły się w obiecanym
+    transformatorze (`rozstrzygnij_transformator_stacji` odmawia przy niedoborze)."""
+    return TemplateParamFloat(
+        default=obciazenie_kw,
+        min_value=0.0,
+        max_value=2000.0,
+        unit="kW",
+        label_pl="Obciążenie per odpływ",
+    )
+
+
 @dataclass(frozen=True)
 class CatalogChoice:
     """Catalog option dla dropdown (np. typ TR 100/250/630 kVA)."""
@@ -139,6 +162,19 @@ class DerKindSpec:
     default_count: int = 1
     default_p_mw_each: float = 0.5
     connection_variant_options: tuple[str, ...] = ("nn_side", "block_transformer")
+
+
+def typ_modulu_nc_rfg_skladu(
+    der_options: tuple[DerKindSpec, ...], napiecie_przylaczenia_kv: float
+) -> str | None:
+    """Typ modułu NC RfG szablonu ze SKŁADU (Σ liczba · moc jednostki) — ta sama reguła
+    progów co walidacja generatora, solver PTPiREE i API (`klasyfikuj_modul`), a nie
+    wpisana ręcznie litera. Pomiar 2026-10-15: dawne ręczne „C" i „D" dla farm 3–5 MW
+    i hybryd przeczyły progom warstwy WOS (typ C od 10 MW)."""
+    from catalog.profiles.nc_rfg.loader import klasyfikuj_modul
+
+    moc_mw = sum(spec.default_count * spec.default_p_mw_each for spec in der_options)
+    return klasyfikuj_modul(mw_na_kw(moc_mw), napiecie_przylaczenia_kv)
 
 
 @dataclass(frozen=True)
@@ -195,15 +231,7 @@ class TemplateSchema:
         )
     )
     nn_feeder_cb_options: tuple[CatalogChoice, ...] = ()
-    nn_load_default_kw: TemplateParamFloat = field(
-        default_factory=lambda: TemplateParamFloat(
-            default=50.0,
-            min_value=0.0,
-            max_value=2000.0,
-            unit="kW",
-            label_pl="Obciążenie per odpływ",
-        )
-    )
+    nn_load_default_kw: TemplateParamFloat = field(default_factory=obciazenie_odplywu_param)
 
     # DER
     der_options: tuple[DerKindSpec, ...] = ()
@@ -308,76 +336,60 @@ def _domyslna_opcja_transformatora(schema: TemplateSchema) -> CatalogChoice | No
     return schema.transformer_options[0] if schema.transformer_options else None
 
 
-def _opcja_transformatora_wg_tokenu_id(
-    transformer_options: tuple[CatalogChoice, ...], template_id: str
-) -> CatalogChoice | None:
-    """Opcja transformatora, której moc [kVA] koduje TOKEN identyfikatora
-    szablonu (np. `tpl_sn_nn_630kva` → `-630kva-`). `None` gdy identyfikator
-    nie koduje mocy albo żadna opcja nie niesie pasującego tokenu.
+def moc_z_tokenu_identyfikatora_kva(template_id: str) -> int | None:
+    """Moc transformatora [kVA], którą obiecuje TOKEN identyfikatora szablonu: `_630kva`,
+    `_2x1000kva` (moc JEDNOSTKOWA przy liczbie transformatorów w szablonie), `_1mva_`,
+    `_2x16mva_` (MVA → kVA). `None`, gdy identyfikator nie koduje mocy transformatora
+    (`_1mw_` to moc źródła, `_0v6mvar_` — moc baterii, nie transformatora).
 
-    JEDNO źródło prawdy dla `resolve_template_default_transformer_choice`
-    (wyświetlanie — `structural_fields`) i `apply.py::
-    _resolve_transformer_ref_for_template` (materializacja) — promowane stąd
-    z apply.py (2026-09, przegląd V12T-016): PRZED tą kartą obie ścieżki
-    liczyły niezależnie „domyślną" opcję dwiema RÓŻNYMI regułami
-    (`_domyslna_opcja_transformatora` — flaga `default=True`/pierwsza, kontra
-    token ID) — dla 34 z 73 szablonów (zmierzone) dawały RÓŻNE wyniki, więc
-    kafel przeglądarki pokazywał moc, której `apply()` wcale by nie
-    zmaterializował (KLASA NIE INSTANCJA pkt 3: predykaty parami z jednego
-    źródła prawdy)."""
+    Historyczny token `_50kva` wskazuje typoszereg 63 kVA (50 kVA nie istnieje w katalogu)."""
     identyfikator = template_id.lower()
-    rating_match = re.search(r"_(\d+)kva(?:_|$)", identyfikator)
-    if rating_match is not None:
-        rating_kva = int(rating_match.group(1))
-        if rating_kva == 50:
-            # Historyczny typoszereg 50 kVA nie istnieje już w katalogu —
-            # najbliższy obecny typoszereg to 63 kVA (parytet z apply.py).
-            rating_kva = 63
-        token = f"-{rating_kva}kva-"
-        for opcja in transformer_options:
-            ref = opcja.catalog_ref
-            if isinstance(ref, str) and token in ref.lower():
-                return opcja
-        return None
-    # GPZ (110/SN, V12T-016): identyfikator koduje moc jednostkową w MVA, nie
-    # kVA (`tpl_gpz_110_15_2x16mva_h5` → 16 MVA, TRANSFORMER_WN_SN_110_15/_20
-    # ma typoszereg 10-63 MVA, poniżej progu jednego kVA). Ten sam token co
-    # katalog (`-{n}mva-`, `catalog_choice_rated_kva`), tylko wyprowadzony z
-    # identyfikatora szablonu zamiast referencji katalogowej.
-    mva_match = re.search(r"(\d+)mva(?:_|$)", identyfikator)
-    if mva_match is not None:
-        token_mva = f"-{int(mva_match.group(1))}mva-"
-        for opcja in transformer_options:
-            ref = opcja.catalog_ref
-            if isinstance(ref, str) and token_mva in ref.lower():
-                return opcja
+    kva = re.search(r"(?:_|x)(\d+)kva(?:_|$)", identyfikator)
+    if kva is not None:
+        moc = int(kva.group(1))
+        return 63 if moc == 50 else moc
+    mva = re.search(r"(?:_|x)(\d+)mva(?:_|$)", identyfikator)
+    if mva is not None:
+        return int(round(mva_na_kva(float(mva.group(1)))))
     return None
 
 
-def _opcja_transformatora_dla_wymaganej_mocy(
-    transformer_options: tuple[CatalogChoice, ...], required_kva: int
+def _opcja_transformatora_wg_tokenu_id(
+    transformer_options: tuple[CatalogChoice, ...], template_id: str
 ) -> CatalogChoice | None:
-    """Najmniejsza opcja transformatora o mocy >= `required_kva`; gdy żadna nie
-    wystarcza — największa dostępna (transformator NIE MOŻE wypaść z pakietu
-    szablonu, nawet gdy suma DER przekracza typoszereg). `None` gdy brak opcji
-    z mocą zakodowaną w `catalog_ref`.
+    """Opcja transformatora o mocy obiecanej tokenem identyfikatora szablonu
+    (`moc_z_tokenu_identyfikatora_kva`) — porównanie mocy KATALOGOWEJ opcji
+    (`catalog_choice_rated_kva`), nie podłańcucha referencji. `None` gdy identyfikator nie
+    koduje mocy albo żadna opcja jej nie ma.
 
-    Promowane z `apply.py::_resolve_transformer_ref_for_template` (2026-09,
-    przegląd V12T-016) — ten sam selektor, teraz współdzielony ze ścieżką
-    wyświetlania."""
-    rated_options = sorted(
+    JEDNO źródło prawdy dla wyświetlania (`structural_fields`) i materializacji
+    (`apply.py`) — przed promowaniem (2026-09) obie ścieżki liczyły „domyślną" opcję dwiema
+    różnymi regułami. Korekta 2026-10-15: dawny wzorzec `_(\\d+)kva` nie widział tokenów
+    `_2x1000kva` (szablon „2×1000 kVA" materializował opcję domyślną 630 kVA), a token
+    `_1mva_`/`_2mva_` szukał podłańcucha `-1mva-` w referencjach kodujących moc w kVA
+    (szablony „1 MVA" i „2 MVA" dostawały 630 i 1600 kVA)."""
+    moc_kva = moc_z_tokenu_identyfikatora_kva(template_id)
+    if moc_kva is None:
+        return None
+    for opcja in transformer_options:
+        if catalog_choice_rated_kva(opcja)[0] == moc_kva:
+            return opcja
+    return None
+
+
+def _opcje_transformatora_wg_mocy(
+    transformer_options: tuple[CatalogChoice, ...],
+) -> list[tuple[int, CatalogChoice]]:
+    """Opcje z mocą katalogową [kVA], rosnąco (deterministycznie: moc, potem referencja)."""
+    return sorted(
         (
             (rating, opcja)
             for opcja in transformer_options
             for rating, ref in [catalog_choice_rated_kva(opcja)]
             if rating is not None and ref is not None
         ),
-        key=lambda item: item[0],
+        key=lambda item: (item[0], item[1].catalog_ref),
     )
-    for rating, opcja in rated_options:
-        if rating >= required_kva:
-            return opcja
-    return rated_options[-1][1] if rated_options else None
 
 
 def _tabliczka_der(kind: str, catalog_ref: object) -> Mapping[str, Any] | None:
@@ -445,49 +457,560 @@ def _moc_wymagana_jednostki_der_mva(
     )
 
 
-def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
-    """Moc pozorna [kVA] wymagana przez DOMYŚLNY (bez nadpisań) mix DER
-    szablonu — `None` gdy szablon nie niesie DER-ów albo domyślna liczba
-    modułów wynosi 0. Odpowiednik `apply.py::_template_der_required_kva` z
-    PUSTYMI nadpisaniami (`overrides={}`) — dokładnie stan, który
-    `structural_fields()` ma pokazać (szablon BEZ ingerencji projektanta)."""
-    der_specs = template.schema.der_options
-    if not der_specs:
+class NieprawidlowyParametrSzablonuError(ValueError):
+    """Odmowa przyjęcia parametru szablonu podanego przez projektanta (liczba pól, odpływów,
+    transformatorów, obciążenie odpływu, długość odgałęzienia, skład DER) — komunikat po
+    polsku. JEDNA klasa odmów dla podglądu (`api/station_templates.py`, HTTP 422) i
+    zastosowania (`apply.py`, `TemplateApplyError` PRZED odczytem modelu); `kod` jest
+    kodem błędu odpowiedzi. Zastępuje dawne ciche `int(...)`/`float(...)` (obcięcie 2,7 → 2,
+    wyjątek 500 dla tekstu, wartość spoza zakresu szablonu bez sygnału)."""
+
+    kod = "template.param_invalid"
+
+
+class NieprawidlowySkladDerError(NieprawidlowyParametrSzablonuError):
+    """Odmowa rozstrzygnięcia składu DER szablonu (kod `template.der_mix_invalid`)."""
+
+    kod = "template.der_mix_invalid"
+
+
+class NiedoborTransformatoraStacjiError(NieprawidlowyParametrSzablonuError):
+    """Żaden transformator stacji dopuszczalny dla szablonu nie pokrywa mocy wymaganej przez
+    odbiory i źródła po stronie nN (kod `template.transformer_capacity_insufficient`).
+
+    Bezpiecznik WYŁĄCZNIE dla danych projektanta spoza szablonu (więcej odpływów, większe
+    obciążenie, wskazany mniejszy transformator) — żaden szablon z domyślnymi parametrami go
+    nie wyzwala (przypięte testem po wszystkich szablonach). Zastępuje dawny cichy wybór
+    NAJWIĘKSZEJ opcji, gdy żadna nie wystarczała."""
+
+    kod = "template.transformer_capacity_insufficient"
+
+
+@dataclass(frozen=True)
+class JednostkaDer:
+    """Jedna jednostka DER, którą szablon zmaterializuje: technologia (specyfikacja szablonu),
+    nastawa mocy czynnej jednostki [MW] i pozycja katalogu. Ten sam rekord czytają podgląd,
+    dobór transformatora i materializacja (`apply.py`), więc nie mogą się rozjechać."""
+
+    spec: DerKindSpec
+    p_mw_each: float
+    catalog_ref: str | None
+
+    @property
+    def kind(self) -> str:
+        return self.spec.kind
+
+
+def _first_default_choice(options: tuple[Any, ...] | list[Any]) -> str | None:
+    """`catalog_ref` opcji oznaczonej jako domyślna, a bez oznaczenia — pierwszej."""
+    if not options:
         return None
-    der_total = template.schema.der_total_count.default
-    if der_total <= 0:
+    for o in options:
+        if getattr(o, "default", False):
+            return getattr(o, "catalog_ref", None)
+    return getattr(options[0], "catalog_ref", None)
+
+
+def liczba_calkowita_parametru(
+    wartosc: object,
+    nazwa_pl: str,
+    *,
+    klasa_bledu: type[NieprawidlowyParametrSzablonuError] = NieprawidlowyParametrSzablonuError,
+) -> int:
+    """Liczba całkowita z nadpisania projektanta — bez cichego obcięcia (`int(2.7)` = 2)
+    i bez `bool` (w Pythonie `True` jest liczbą 1). Tekst cyfr jest przyjmowany (formularz),
+    każdy inny — odmowa `klasa_bledu`."""
+    if isinstance(wartosc, bool):
+        raise klasa_bledu(f"{nazwa_pl} musi być liczbą całkowitą.")
+    if isinstance(wartosc, int):
+        return wartosc
+    if isinstance(wartosc, float) and math.isfinite(wartosc) and wartosc.is_integer():
+        return int(wartosc)
+    if isinstance(wartosc, str) and re.fullmatch(r"\s*-?\d+\s*", wartosc):
+        return int(wartosc)
+    raise klasa_bledu(f"{nazwa_pl} musi być liczbą całkowitą (podano: {wartosc!r}).")
+
+
+def liczba_rzeczywista_parametru(wartosc: object, nazwa_pl: str, jednostka: str) -> float:
+    """Skończona liczba z nadpisania projektanta (tekst liczby przyjmowany, `bool`, NaN,
+    nieskończoność i tekst nieliczbowy — odmowa)."""
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float | str):
+        raise NieprawidlowyParametrSzablonuError(
+            f"{nazwa_pl} musi być liczbą w {jednostka} (podano: {wartosc!r})."
+        )
+    try:
+        liczba = float(wartosc)
+    except ValueError as exc:
+        raise NieprawidlowyParametrSzablonuError(
+            f"{nazwa_pl} musi być liczbą w {jednostka} (podano: {wartosc!r})."
+        ) from exc
+    if not math.isfinite(liczba):
+        raise NieprawidlowyParametrSzablonuError(
+            f"{nazwa_pl} musi być skończoną liczbą w {jednostka} (podano: {wartosc!r})."
+        )
+    return liczba
+
+
+#: Parametry całkowite szablonu, których projektant może nadpisać — klucz nadpisania =
+#: nazwa pola `TemplateSchema` (granice i etykieta z pola szablonu).
+PARAMETRY_CALKOWITE_SZABLONU = ("sn_bays_count", "nn_feeders_count", "transformer_count")
+
+
+def parametr_calkowity_szablonu(
+    template: StationTemplate, overrides: Mapping[str, Any] | None, klucz: str
+) -> int:
+    """Wartość parametru całkowitego szablonu (`sn_bays_count`, `nn_feeders_count`,
+    `transformer_count`): nadpisanie projektanta albo domyślna szablonu, sprawdzona co do
+    typu i ZAKRESU szablonu (`TemplateParamInt.min_value`–`max_value`). Jedna funkcja dla
+    podglądu i zastosowania — dawne `int(...)` w obu miejscach obcinało ułamek po cichu
+    i przepuszczało wartości spoza zakresu."""
+    granice: TemplateParamInt = getattr(template.schema, klucz)
+    nazwa_pl = granice.label_pl or klucz
+    surowa = (overrides or {}).get(klucz, granice.default)
+    wartosc = liczba_calkowita_parametru(surowa, nazwa_pl)
+    if not granice.min_value <= wartosc <= granice.max_value:
+        raise NieprawidlowyParametrSzablonuError(
+            f"{nazwa_pl} ({wartosc}) jest poza zakresem szablonu "
+            f"{granice.min_value}–{granice.max_value}."
+        )
+    return wartosc
+
+
+def obciazenie_odplywu_kw(template: StationTemplate, overrides: Mapping[str, Any] | None) -> float:
+    """Obciążenie jednego odpływu nN [kW] (`nn_load_default_kw`): nadpisanie albo domyślna,
+    skończona i w zakresie szablonu (`TemplateParamFloat`)."""
+    granice = template.schema.nn_load_default_kw
+    nazwa_pl = granice.label_pl or "Obciążenie odpływu nN"
+    surowa = (overrides or {}).get("nn_load_default_kw", granice.default)
+    wartosc = liczba_rzeczywista_parametru(surowa, nazwa_pl, "kW")
+    if not granice.min_value <= wartosc <= granice.max_value:
+        raise NieprawidlowyParametrSzablonuError(
+            f"{nazwa_pl} ({wartosc:g} kW) jest poza zakresem szablonu "
+            f"{granice.min_value:g}–{granice.max_value:g} kW."
+        )
+    return wartosc
+
+
+def _liczba_calkowita_skladu(wartosc: object, nazwa_pl: str) -> int:
+    """`liczba_calkowita_parametru` z odmową składu DER (`template.der_mix_invalid`)."""
+    return liczba_calkowita_parametru(wartosc, nazwa_pl, klasa_bledu=NieprawidlowySkladDerError)
+
+
+def _moc_jednostki_skladu(wartosc: object, kind: str) -> float:
+    """Nastawa mocy czynnej jednostki [MW] — skończona liczba dodatnia."""
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float | str):
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+        )
+    try:
+        moc = float(wartosc)
+    except ValueError as exc:
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+        ) from exc
+    if not math.isfinite(moc) or moc <= 0.0:
+        raise NieprawidlowySkladDerError(
+            f"Moc jednostki {kind} musi być dodatnia i skończona (podano: {wartosc!r} MW)."
+        )
+    return moc
+
+
+def _liczebnosci_der(
+    template: StationTemplate, params: Mapping[str, Any]
+) -> list[tuple[DerKindSpec, int]]:
+    """Liczba jednostek każdej technologii szablonu.
+
+    Szablon jednej technologii: liczba = `der_total_count` (opcjonalne `der_{kind}_count`
+    musi się z nią zgadzać). Szablon kilku technologii: liczebności `der_{kind}_count`
+    (domyślnie `default_count` specyfikacji) są JEDYNĄ prawdą — suma jest z nich
+    wyprowadzona, a podane `der_total_count` musi być jej równe (dawniej suma była dzielona
+    naprzemiennie między technologie i hybryda „PV 2 MW + BESS 1 MW” dostawała 3 PV + 2 BESS).
+    """
+    specs = template.schema.der_options
+    granice = template.schema.der_total_count
+    podana_suma = params.get("der_total_count")
+    if len(specs) == 1:
+        spec = specs[0]
+        suma = _liczba_calkowita_skladu(
+            podana_suma if podana_suma is not None else granice.default,
+            "Liczba modułów DER",
+        )
+        zadeklarowana = params.get(f"der_{spec.kind}_count")
+        if (
+            zadeklarowana is not None
+            and _liczba_calkowita_skladu(zadeklarowana, f"Liczba jednostek {spec.kind}") != suma
+        ):
+            raise NieprawidlowySkladDerError(
+                f"Liczba jednostek {spec.kind} nie zgadza się z łączną liczbą modułów DER ({suma})."
+            )
+        liczebnosci = [(spec, suma)]
+    else:
+        liczebnosci = [
+            (
+                spec,
+                _liczba_calkowita_skladu(
+                    params.get(f"der_{spec.kind}_count", spec.default_count),
+                    f"Liczba jednostek {spec.kind}",
+                ),
+            )
+            for spec in specs
+        ]
+        suma = sum(liczba for _, liczba in liczebnosci)
+        if podana_suma is not None:
+            podana = _liczba_calkowita_skladu(podana_suma, "Liczba modułów DER")
+            if podana != suma:
+                opis = " + ".join(f"{liczba} {spec.kind}" for spec, liczba in liczebnosci)
+                raise NieprawidlowySkladDerError(
+                    f"Łączna liczba modułów DER ({podana}) nie jest równa sumie liczb jednostek "
+                    f"poszczególnych technologii ({opis} = {suma}); określ liczby jawnie."
+                )
+    for spec, liczba in liczebnosci:
+        if liczba < 0:
+            raise NieprawidlowySkladDerError(f"Liczba jednostek {spec.kind} nie może być ujemna.")
+    if not granice.min_value <= suma <= granice.max_value:
+        raise NieprawidlowySkladDerError(
+            f"Łączna liczba modułów DER ({suma}) jest poza zakresem szablonu "
+            f"{granice.min_value}–{granice.max_value}."
+        )
+    return liczebnosci
+
+
+def rozstrzygnij_sklad_der(
+    template: StationTemplate,
+    overrides: Mapping[str, Any] | None = None,
+) -> tuple[JednostkaDer, ...]:
+    """JEDNO źródło prawdy o składzie DER szablonu: liczba jednostek każdej technologii,
+    nastawa mocy jednostki i pozycja katalogu — dla podglądu (`api/station_templates.py`),
+    doboru transformatora stacji (`wymagania_transformatora_stacji`), doboru toru jednostek SN i materializacji (`apply.py`).
+
+    Kolejność jednostek: technologie w kolejności `der_options`, w obrębie technologii
+    kolejne jednostki (deterministyczna — od niej zależą identyfikatory tworzonych źródeł).
+    Pozycja katalogu: wskazanie projektanta `der_{kind}_ref`, inaczej najmniejsza pozycja
+    wydająca nastawę (`_der_catalog_for_power`), inaczej opcja domyślna. Niespójne wejście
+    kończy się `NieprawidlowySkladDerError` — nigdy cichą zmianą składu.
+    """
+    if not template.schema.der_options:
+        return ()
+    params: Mapping[str, Any] = overrides or {}
+    jednostki: list[JednostkaDer] = []
+    for spec, liczba in _liczebnosci_der(template, params):
+        p_mw_each = _moc_jednostki_skladu(
+            params.get(f"der_{spec.kind}_p_mw_each", spec.default_p_mw_each), spec.kind
+        )
+        wskazana = params.get(f"der_{spec.kind}_ref")
+        if wskazana is not None and not (isinstance(wskazana, str) and wskazana.strip()):
+            raise NieprawidlowySkladDerError(
+                f"Pozycja katalogu {spec.kind} musi być identyfikatorem pozycji "
+                f"(podano: {wskazana!r})."
+            )
+        catalog_ref = (
+            wskazana.strip()
+            if isinstance(wskazana, str)
+            else _der_catalog_for_power(spec, p_mw_each)
+            or _first_default_choice(spec.catalog_options)
+        )
+        jednostki.extend(JednostkaDer(spec, p_mw_each, catalog_ref) for _ in range(liczba))
+    return tuple(jednostki)
+
+
+#: cosφ odbioru nN tworzonego przez szablon, gdy projektant nie poda ani cosφ
+#: (`nn_load_cos_phi`), ani mocy biernej (`nn_load_default_kvar`) — ta sama wartość trafia
+#: do operacji `add_nn_load` (`apply.py`) i do mocy wymaganej transformatora stacji.
+COS_PHI_ODBIORU_NN_SZABLONU = 0.95
+
+
+@dataclass(frozen=True)
+class WymaganiaTransformatoraStacji:
+    """Moc, którą musi pokryć transformator stacji szablonu [kVA] — WHITE BOX składników.
+
+    Transformator stacji zasila odbiory nN szablonu i przyjmuje moc źródeł przyłączonych po
+    stronie nN (`connection_variant` „nn_side"). Źródła przyłączone po stronie SN mają
+    WŁASNE transformatory blokowe (`dobor_toru_jednostki_der_sn`) — moc nie płynie przez
+    transformator stacji, więc nie wchodzi do tej sumy."""
+
+    moc_odbiorow_kva: float
+    liczba_odbiorow: int
+    moc_zrodel_nn_kva: float
+    liczba_zrodel_nn: int
+
+    @property
+    def wymagana_kva(self) -> float:
+        """Odbiory i źródła nN nie pracują przeciwko sobie w doborze: transformator musi
+        przenieść większą z dwóch mocy (pobór przy braku generacji, oddanie przy braku
+        poboru)."""
+        return max(self.moc_odbiorow_kva, self.moc_zrodel_nn_kva)
+
+
+def _moc_odbioru_nn_mva(overrides: Mapping[str, Any], moc_czynna_kw: float) -> float:
+    """Moc pozorna jednego odbioru nN szablonu [MVA] — ta sama dana, którą dostaje
+    `add_nn_load`: jawna moc bierna ma pierwszeństwo przed cosφ (reguła operacji)."""
+    moc_czynna_mw = kw_na_mw(moc_czynna_kw)
+    kvar = overrides.get("nn_load_default_kvar")
+    if kvar is not None:
+        moc_bierna_mvar = kw_na_mw(
+            liczba_rzeczywista_parametru(kvar, "Moc bierna odbioru nN", "kvar")
+        )
+        return moc_pozorna_z_czynnej_i_biernej_mva(moc_czynna_mw, moc_bierna_mvar)
+    cos_phi = liczba_rzeczywista_parametru(
+        overrides.get("nn_load_cos_phi", COS_PHI_ODBIORU_NN_SZABLONU), "cosφ odbioru nN", "p.u."
+    )
+    if not 0.0 < cos_phi <= 1.0:
+        raise NieprawidlowyParametrSzablonuError(
+            f"cosφ odbioru nN musi należeć do przedziału (0; 1] (podano: {cos_phi:g})."
+        )
+    return moc_pozorna_z_nastawy_mva(moc_czynna_mw, cos_phi)
+
+
+def wymagania_transformatora_stacji(
+    template: StationTemplate, overrides: Mapping[str, Any] | None = None
+) -> WymaganiaTransformatoraStacji:
+    """Moc wymagana transformatora stacji z odbiorów nN (liczba odpływów × obciążenie
+    odpływu, każdy odpływ dostaje jeden odbiór — `apply.py`) i źródeł nN (reguła O-53
+    `max(S_n,jedn, |P|/cosφ)` po jednostkach `rozstrzygnij_sklad_der`, n = 1)."""
+    params: Mapping[str, Any] = overrides or {}
+    liczba_odplywow = parametr_calkowity_szablonu(template, params, "nn_feeders_count")
+    obciazenie_kw = obciazenie_odplywu_kw(template, params)
+    liczba_odbiorow = liczba_odplywow if obciazenie_kw > 0 else 0
+    moc_odbiorow_mva = (
+        liczba_odbiorow * _moc_odbioru_nn_mva(params, obciazenie_kw) if liczba_odbiorow else 0.0
+    )
+    moc_zrodel_mva = 0.0
+    liczba_zrodel = 0
+    for jednostka in rozstrzygnij_sklad_der(template, params):
+        if jednostka.spec.connection_variant_options[0] != "nn_side":
+            continue
+        liczba_zrodel += 1
+        moc_zrodel_mva += (
+            _moc_wymagana_jednostki_der_mva(
+                jednostka.kind, jednostka.catalog_ref, jednostka.p_mw_each
+            )
+            or 0.0
+        )
+    return WymaganiaTransformatoraStacji(
+        moc_odbiorow_kva=mva_na_kva(moc_odbiorow_mva),
+        liczba_odbiorow=liczba_odbiorow,
+        moc_zrodel_nn_kva=mva_na_kva(moc_zrodel_mva),
+        liczba_zrodel_nn=liczba_zrodel,
+    )
+
+
+def _opis_wymagan(wymagania: WymaganiaTransformatoraStacji) -> str:
+    return (
+        f"odbiory nN {wymagania.moc_odbiorow_kva:.0f} kVA ({wymagania.liczba_odbiorow} odpływów), "
+        f"źródła po stronie nN {wymagania.moc_zrodel_nn_kva:.0f} kVA "
+        f"({wymagania.liczba_zrodel_nn} jednostek)"
+    )
+
+
+def sprawdz_transformator_stacji(
+    template: StationTemplate,
+    catalog_ref: str,
+    *,
+    liczba_transformatorow: int,
+    wymagania: WymaganiaTransformatoraStacji,
+) -> None:
+    """Odmowa `NiedoborTransformatoraStacjiError`, gdy wskazany transformator (× liczba
+    transformatorów szablonu) nie pokrywa mocy wymaganej. Pozycja bez mocy w katalogu —
+    odmowa (brak danej ≠ wystarcza)."""
+    moc_kva = _moc_katalogowa_transformatora_kva(catalog_ref)
+    if moc_kva is None:
+        raise NiedoborTransformatoraStacjiError(
+            f"Szablon „{template.name_pl}”: transformator {catalog_ref} nie ma mocy "
+            "znamionowej w katalogu — nie da się sprawdzić, czy pokrywa odbiory i źródła nN."
+        )
+    if moc_kva * liczba_transformatorow + 1e-6 < wymagania.wymagana_kva:
+        raise NiedoborTransformatoraStacjiError(
+            f"Szablon „{template.name_pl}”: transformator {catalog_ref} "
+            f"({liczba_transformatorow} × {moc_kva:.0f} kVA) nie pokrywa mocy wymaganej "
+            f"{wymagania.wymagana_kva:.0f} kVA ({_opis_wymagan(wymagania)}). Wskaż większy "
+            "transformator z katalogu albo zmniejsz obciążenie."
+        )
+
+
+def _moc_katalogowa_transformatora_kva(catalog_ref: str) -> float | None:
+    """Moc znamionowa [kVA] z REKORDU katalogu (nie z tokenu referencji)."""
+    from network_model.catalog import get_default_mv_catalog
+
+    item = get_default_mv_catalog().get_transformer_type(catalog_ref)
+    moc_mva = getattr(item, "rated_power_mva", None) if item is not None else None
+    if not isinstance(moc_mva, int | float) or moc_mva <= 0:
         return None
-    total_mva = 0.0
-    for i in range(der_total):
-        spec = der_specs[i % len(der_specs)]
-        p_mw_each = spec.default_p_mw_each
-        catalog_ref = _der_catalog_for_power(spec, p_mw_each)
-        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
-    if total_mva <= 0:
+    return mva_na_kva(float(moc_mva))
+
+
+def rozstrzygnij_transformator_stacji(
+    template: StationTemplate, overrides: Mapping[str, Any] | None = None
+) -> CatalogChoice | None:
+    """Opcja transformatora stacji, którą szablon zmaterializuje bez wskazania projektanta —
+    JEDNO źródło dla wyświetlania (`structural_fields`, `sn_voltage_kv`), podglądu
+    i zastosowania (`apply.py::_resolve_transformer_ref_for_template` po sprawdzeniu
+    wskazania jawnego i profilu producenta).
+
+    Kolejność: (1) moc obiecana tokenem identyfikatora (`_630kva`, `_2x1000kva`, `_1mva_`)
+    — tożsamość szablonu; (2) opcja domyślna szablonu, jeśli pokrywa moc wymaganą;
+    (3) najmniejsza opcja, która ją pokrywa. Moc opcji liczona × `transformer_count`.
+    Gdy wybrana opcja nie pokrywa mocy wymaganej (dane projektanta spoza szablonu) —
+    `NiedoborTransformatoraStacjiError`, nigdy cichy wybór największej opcji.
+    `None` — szablon bez transformatora."""
+    opcje = template.schema.transformer_options
+    if not opcje:
         return None
-    return int(round(mva_na_kva(total_mva)))
+    params: Mapping[str, Any] = overrides or {}
+    liczba = parametr_calkowity_szablonu(template, params, "transformer_count")
+    wymagania = wymagania_transformatora_stacji(template, params)
+    wg_tokenu = _opcja_transformatora_wg_tokenu_id(opcje, template.id)
+    if wg_tokenu is not None:
+        sprawdz_transformator_stacji(
+            template, wg_tokenu.catalog_ref, liczba_transformatorow=liczba, wymagania=wymagania
+        )
+        return wg_tokenu
+    domyslna = _domyslna_opcja_transformatora(template.schema)
+    wg_mocy = _opcje_transformatora_wg_mocy(opcje)
+    kandydaci = ([domyslna] if domyslna is not None else []) + [opcja for _, opcja in wg_mocy]
+    for opcja in kandydaci:
+        moc_kva = _moc_katalogowa_transformatora_kva(opcja.catalog_ref)
+        if moc_kva is not None and moc_kva * liczba + 1e-6 >= wymagania.wymagana_kva:
+            return opcja
+    najwieksza = wg_mocy[-1][1] if wg_mocy else opcje[0]
+    sprawdz_transformator_stacji(
+        template, najwieksza.catalog_ref, liczba_transformatorow=liczba, wymagania=wymagania
+    )
+    return najwieksza
 
 
 def resolve_template_default_transformer_choice(template: StationTemplate) -> CatalogChoice | None:
-    """Opcja transformatora, którą `apply()` zmaterializuje dla TEGO szablonu
-    bez żadnych nadpisań projektanta/kaskady producenta — JEDNO źródło prawdy
-    dla `structural_fields()` (wyświetlanie) i `apply.py::
-    _resolve_transformer_ref_for_template` (materializacja, ten sam porządek
-    reguł PO sprawdzeniu nadpisania/profilu, których strona wyświetlania nie
-    ma). `None` gdy szablon nie niesie `transformer_options` wcale."""
-    if not template.schema.transformer_options:
-        return None
-    wg_id = _opcja_transformatora_wg_tokenu_id(template.schema.transformer_options, template.id)
-    if wg_id is not None:
-        return wg_id
-    wymagana_kva = _wymagana_moc_der_domyslna_kva(template)
-    if wymagana_kva is not None:
-        wg_der = _opcja_transformatora_dla_wymaganej_mocy(
-            template.schema.transformer_options, wymagana_kva
+    """Opcja transformatora szablonu bez nadpisań projektanta (`rozstrzygnij_transformator_
+    stacji` z pustymi nadpisaniami). `None` gdy szablon nie niesie `transformer_options`."""
+    return rozstrzygnij_transformator_stacji(template)
+
+
+#: Wariant przyłączenia jednostki DER szablonu przez WŁASNY transformator blokowy nN/SN
+#: (tor DER-SN: szyna nN producenta → TR blokowy → kabel SN → pole źródłowe SN stacji).
+WARIANT_TORU_DER_SN = "block_transformer"
+
+
+class OdmowaDoboruToruDerSnError(NieprawidlowyParametrSzablonuError):
+    """Kaskada doboru toru jednostki DER-SN nie znalazła elementu w katalogu (kod kroku
+    silnika doboru, np. `converter.der_sn.dobor_tr_brak_kandydata`) albo pozycja jednostki
+    nie niesie napięcia. Bezpiecznik dla danych projektanta — żadna opcja żadnego szablonu
+    go nie wyzwala (przypięte testem po wszystkich szablonach i opcjach katalogu)."""
+
+    def __init__(self, kod: str, komunikat_pl: str) -> None:
+        super().__init__(komunikat_pl)
+        self.kod = kod
+
+
+@dataclass(frozen=True)
+class TorJednostkiDerSn:
+    """Elementy toru jednej jednostki DER-SN z kaskady doboru
+    (`application.analyses.dobor_toru_der_sn.dobierz_tor_der_sn`) — te same refy pokazuje
+    podgląd i materializuje `apply.py` (operacja `add_converter_source` z `der_topology`)."""
+
+    napiecie_falownika_kv: float
+    moc_wymagana_mva: float
+    transformator_ref: str
+    transformator_nazwa: str
+    transformator_sn_mva: float
+    kabel_ref: str
+    aparat_ref: str
+    rodzaj_aparatu: str
+    dlugosc_kabla_km: float
+
+    @property
+    def lacznik_pola(self) -> str:
+        """Łącznik pola źródłowego SN dla operacji domenowej (`switching_device`)."""
+        return "LBS" if self.rodzaj_aparatu == "LOAD_SWITCH" else "CB"
+
+
+def _odmowa_kroku_doboru(
+    jednostka: JednostkaDer, kod: str | None, komunikat: str | None
+) -> OdmowaDoboruToruDerSnError:
+    """Odmowa kroku kaskady doboru z KODEM silnika (`converter.der_sn.dobor_*`). Kontrakt
+    silnika: brak propozycji ⇔ kod i komunikat — ich brak to zerwany kontrakt (błąd
+    programu), a nie miejsce na zapasowy kod spoza rejestru."""
+    if kod is None or komunikat is None:
+        raise RuntimeError("Krok doboru toru DER-SN bez propozycji nie niesie kodu odmowy.")
+    return OdmowaDoboruToruDerSnError(
+        kod, f"Jednostka {jednostka.kind} {jednostka.p_mw_each:g} MW: {komunikat}"
+    )
+
+
+def dobor_toru_jednostki_der_sn(
+    jednostka: JednostkaDer, napiecie_sn_kv: float
+) -> TorJednostkiDerSn:
+    """Dobór toru jednostki przyłączonej po stronie SN: moc wymagana z reguły O-53 na
+    tabliczce pozycji (n = 1), napięcie falownika z tabliczki, kaskada TR blokowy → kabel
+    SN → aparat pola z katalogu (tolerancje napięć D1). Brak kandydata na którymkolwiek
+    kroku — `OdmowaDoboruToruDerSnError` z kodem kroku, nigdy domysł."""
+    from application.analyses.dobor_toru_der_sn import dobierz_tor_der_sn
+    from domain.generator_validation import JawneWejsciaKontroliMocy
+    from enm.domain_operations_v2 import DLUGOSC_KABLA_PRZYLACZENIOWEGO_DER_SN_KM
+
+    tabliczka = _tabliczka_der(jednostka.kind, jednostka.catalog_ref) or {}
+    napiecie_falownika = tabliczka.get("un_kv")
+    if not isinstance(napiecie_falownika, int | float) or napiecie_falownika <= 0:
+        raise OdmowaDoboruToruDerSnError(
+            "converter.un_kv_missing",
+            f"Pozycja {jednostka.catalog_ref} ({jednostka.kind}) nie niesie napięcia "
+            "znamionowego — nie da się dobrać transformatora blokowego.",
         )
-        if wg_der is not None:
-            return wg_der
-    return _domyslna_opcja_transformatora(template.schema)
+    moc_mva = _moc_wymagana_jednostki_der_mva(
+        jednostka.kind, jednostka.catalog_ref, jednostka.p_mw_each
+    )
+    if moc_mva is None or moc_mva <= 0:
+        raise OdmowaDoboruToruDerSnError(
+            "generator.power_missing",
+            f"Jednostka {jednostka.kind} ({jednostka.catalog_ref}) nie ma mocy wymaganej.",
+        )
+    wynik = dobierz_tor_der_sn(
+        moc_pozorna_mva=moc_mva,
+        napiecie_sn_kv=napiecie_sn_kv,
+        napiecie_falownika_kv=float(napiecie_falownika),
+        dlugosc_kabla_km=DLUGOSC_KABLA_PRZYLACZENIOWEGO_DER_SN_KM,
+        nosnik_cos_phi=JawneWejsciaKontroliMocy(),
+    )
+    tr = wynik.transformator
+    if tr.proposal is None:
+        raise _odmowa_kroku_doboru(jednostka, tr.error_code, tr.error_pl)
+    kabel, aparat = wynik.kabel, wynik.aparat_pola
+    if kabel is None or aparat is None:
+        # Kontrakt `dobierz_tor_der_sn`: przy propozycji transformatora kaskada kabla i pola
+        # zawsze się wykonuje — brak wyniku kroku to zerwany kontrakt, nie odmowa danych.
+        raise RuntimeError("Kaskada doboru toru DER-SN nie zwróciła kroku kabla lub pola SN.")
+    if kabel.proposal is None:
+        raise _odmowa_kroku_doboru(jednostka, kabel.error_code, kabel.error_pl)
+    if aparat.proposal is None:
+        raise _odmowa_kroku_doboru(jednostka, aparat.error_code, aparat.error_pl)
+    return TorJednostkiDerSn(
+        napiecie_falownika_kv=float(napiecie_falownika),
+        moc_wymagana_mva=moc_mva,
+        transformator_ref=tr.proposal.catalog_ref,
+        transformator_nazwa=tr.proposal.name,
+        transformator_sn_mva=tr.proposal.sn_mva,
+        kabel_ref=kabel.proposal.catalog_ref,
+        aparat_ref=aparat.proposal.catalog_ref,
+        rodzaj_aparatu=aparat.proposal.equipment_kind,
+        dlugosc_kabla_km=DLUGOSC_KABLA_PRZYLACZENIOWEGO_DER_SN_KM,
+    )
+
+
+def dobor_torow_der_sn(
+    sklad: tuple[JednostkaDer, ...], napiecie_sn_kv: float
+) -> tuple[TorJednostkiDerSn | None, ...]:
+    """Tor każdej jednostki składu (pozycyjnie): dobór dla jednostek wariantu SN
+    (`WARIANT_TORU_DER_SN`), `None` dla jednostek po stronie nN. Jednostki identyczne
+    (technologia, pozycja, nastawa) dzielą jeden wynik doboru (deterministyczny)."""
+    pamiec: dict[tuple[str, str | None, float], TorJednostkiDerSn] = {}
+    tory: list[TorJednostkiDerSn | None] = []
+    for jednostka in sklad:
+        if jednostka.spec.connection_variant_options[0] != WARIANT_TORU_DER_SN:
+            tory.append(None)
+            continue
+        klucz = (jednostka.kind, jednostka.catalog_ref, jednostka.p_mw_each)
+        if klucz not in pamiec:
+            pamiec[klucz] = dobor_toru_jednostki_der_sn(jednostka, napiecie_sn_kv)
+        tory.append(pamiec[klucz])
+    return tuple(tory)
 
 
 def resolve_template_default_shunt_choice(template: StationTemplate) -> CatalogChoice | None:
@@ -558,7 +1081,8 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     Pomiar rozkładu na 73 szablonach (2026-09-17): 15 kV — 64, 20 kV — 3
     (`tpl_gpz_110_20_2x16mva_h5`, `tpl_kompensacja_1v8mvar_20kv`,
     `tpl_abonencka_630kva_pomiar_20kv`), napięciowo obojętne — 6 (3 rozdzielnie
-    sieciowe + 3 warianty rezerwy zasilania).
+    sieciowe + 3 warianty rezerwy zasilania). Pomiar 2026-10-15 po wycofaniu 2 szablonów
+    wiatrowych 15 kV: 71 szablonów, 15 kV — 62 (pin: `test_napiecie_sn_szablonu`).
     """
     transformator = resolve_template_default_transformer_choice(template)
     if transformator is not None:
@@ -756,5 +1280,11 @@ def _der_spec_to_dict(d: DerKindSpec) -> dict:
         "catalog_options": [_choice_to_dict(c) for c in d.catalog_options],
         "default_count": d.default_count,
         "default_p_mw_each": d.default_p_mw_each,
+        # Pozycja katalogu, którą zastosowanie szablonu wybierze BEZ wskazania projektanta
+        # (dobór do mocy jednostki — ta sama reguła co `rozstrzygnij_sklad_der`). Kreator
+        # pokazuje ją jako bieżący wybór; dawniej pokazywał pierwszą opcję listy (np. BESS
+        # 0,5 MW), a model dostawał jednostkę 1 MW.
+        "default_catalog_ref": _der_catalog_for_power(d, d.default_p_mw_each)
+        or _first_default_choice(d.catalog_options),
         "connection_variant_options": list(d.connection_variant_options),
     }

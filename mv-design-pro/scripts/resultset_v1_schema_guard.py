@@ -15,6 +15,10 @@ import sys
 
 from guard_diff_base import zmienione_pliki
 
+#: V12K-341 (OD-18, O-74 (2), 2026-09-30): oba mappery sa MARTWE (0 importerow; zywy
+#: producent ResultSet v1 = canonical_run_to_resultset_v1.py) i maja sankcje kasacji
+#: w karcie W3-A-DOMKNIECIE — kontrakt FROZEN to schemat (domain/result_contract_v1.py,
+#: schemas/resultset_v1_schema.json), nie te adaptery. Lista znika razem z plikami.
 PROTECTED_FILES = [
     "backend/src/application/result_mapping/short_circuit_to_resultset_v1.py",
     "backend/src/application/result_mapping/protection_to_resultset_v1.py",

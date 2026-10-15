@@ -79,6 +79,10 @@ _LINE_REF = "line-base-al-120"  # overhead line 120 mm² Al
 _GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
+#: Stacje z konfiguracją mieszaną PV 0,5 MW + BESS 0,5 MW (Σ S_n 1,1 MVA): kontrola O-53
+#: sumuje źródła zasilane przez ten sam transformator (V12K-022, karta GPT-478), więc
+#: 630 kVA nie mieści obu jednostek — transformator stacji przepinany na 1250 kVA.
+_TRAFO_MIXED_DER = "tr-sn-nn-15-04-1250kva-dyn11"
 
 # Uklad sieci nN (E063, walidator ENM: `Transformer.lv_earthing_system`) — deklaracja
 # JAWNA fikstury referencyjnej, nie cichy domysl walidatora/modelu (SUB-52s
@@ -279,8 +283,15 @@ def _add_trunk_station(
     segment_ref: str,
     name: str,
     trafo_ref: str = _TRAFO_STANDARD,
+    trafo_n_parallel: int = 1,
 ) -> dict[str, Any]:
-    """Insert a type-C station with LINIA_ODG bay on a trunk segment."""
+    """Insert a type-C station with LINIA_ODG bay on a trunk segment.
+
+    ``trafo_n_parallel`` ≥ 2 — identyczne jednostki pola transformatorowego (``n_parallel``,
+    Σ S_n w kontroli O-53 i Z/n w solverze)."""
+    transformer: dict[str, Any] = {"create": True, "transformer_catalog_ref": trafo_ref}
+    if trafo_n_parallel >= 2:
+        transformer["n_parallel"] = trafo_n_parallel
     return _op(
         enm,
         "insert_station_on_segment_sn",
@@ -302,10 +313,7 @@ def _add_trunk_station(
                 {"field_role": "LINIA_ODG"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {
-                "create": True,
-                "transformer_catalog_ref": trafo_ref,
-            },
+            "transformer": transformer,
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
     )
@@ -614,6 +622,28 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         lateral_station_refs[-4:] if len(lateral_station_refs) >= 4 else lateral_station_refs
     )
     for i, stn_ref in enumerate(mixed_stns):
+        trafo_refs = next(
+            (s.get("transformer_refs") or [] for s in enm["substations"] if s["ref_id"] == stn_ref),
+            [],
+        )
+        if len(trafo_refs) != 1:
+            der_errors.append(f"{stn_ref}: oczekiwano jednego transformatora, jest {trafo_refs}")
+            continue
+        enm, err_tr = _try_op(
+            enm,
+            "assign_catalog_to_element",
+            {
+                "element_ref": trafo_refs[0],
+                "catalog_binding": {
+                    "catalog_namespace": "TRAFO_SN_NN",
+                    "catalog_item_id": _TRAFO_MIXED_DER,
+                    "catalog_item_version": "2024.1",
+                },
+            },
+        )
+        if err_tr:
+            der_errors.append(f"{stn_ref}/TR: {err_tr}")
+            continue
         attach(stn_ref, "PV", _PV_CATALOG_REF, _PV_NAMESPACE, 0.5, f"MIX_PV_{i+1}")
         attach(stn_ref, "BESS", _BESS_CATALOG_REF, _BESS_NAMESPACE, 0.5, f"MIX_BESS_{i+1}")
 

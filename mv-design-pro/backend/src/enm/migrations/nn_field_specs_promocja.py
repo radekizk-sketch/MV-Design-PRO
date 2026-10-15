@@ -273,11 +273,13 @@ def _przypisz_wiazania(
             dane, {"element_ref": aparat_ref, "catalog_binding": wiazanie}
         )
         if wynik.get("error"):
+            # Kod odmowy czytany WPROST: każda odmowa operacji domenowej powstaje w
+            # `_error_response`, które zawsze niesie `error_code` (przypięte testem
+            # `test_nn_field_specs_promocja_aparat.py`). Dawny zapas `"catalog.assign_failed"` był kodem spoza `READINESS_CODES`
+            # (goły kod bez opisu i akcji naprawczej) i nigdy się nie wykonywał.
             for galaz in dane["branches"]:
                 if galaz["ref_id"] == aparat_ref:
-                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(
-                        wynik.get("error_code") or "catalog.assign_failed"
-                    )
+                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(wynik["error_code"])
             continue
         dane = wynik["snapshot"]
     return EnergyNetworkModel.model_validate(dane)

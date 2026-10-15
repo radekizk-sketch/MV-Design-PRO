@@ -4,8 +4,12 @@ UKLAD. Rozwiazywany jest uklad rownan rozniczkowo-algebraicznych
 
     dx/dt = f(x, y),    0 = g(x, y),
 
-gdzie `x` to stany urzadzen (zlaczone w jeden wektor w kolejnosci urzadzen), a
-`y = [Re V; Im V]` to napiecia wezlowe.
+gdzie `x` to stany ELEMENTOW STANOWYCH (`kontrakty.ElementStanowy`) zlaczone w jeden
+wektor w kolejnosci kanonicznej: najpierw odbiory (stan estymatora czestotliwosci odbioru
+czulego czestotliwosciowo), potem urzadzenia — a `y = [Re V; Im V]` to napiecia wezlowe.
+Element bez stanow (odbior bez czulosci czestotliwosciowej) ma wymiar 0 i nie wnosi zadnej
+pozycji do wektora ani do jakobianu, wiec bieg bez odbiorow czulych ma DOKLADNIE ten sam
+uklad rownan, co przed wprowadzeniem stanow odbiorow.
 
 TRAPEZ NIEJAWNY rozwiazuje krok na ukladzie SPRZEZONYM (x, y) — jednym Newtonem
 po obu grupach niewiadomych naraz, z jakobianem analitycznym skladanym z blokow
@@ -54,8 +58,9 @@ from scipy.sparse import linalg as sparse_linalg
 
 from .kontrakty import (
     KOD_KROK_NIEZBIEZNY,
+    ElementStanowy,
+    ModelOdbioru,
     NastawySolvera,
-    OdbiorDynamiki,
     OdmowaDynamiki,
     Urzadzenie,
 )
@@ -73,23 +78,32 @@ from .skonczonosc import sprawdz_wektor
 
 @dataclass(frozen=True)
 class KontekstKroku:
-    """Wszystko, co krok calkowania potrzebuje poza `(x, y, t, dt)`."""
+    """Wszystko, co krok calkowania potrzebuje poza `(x, y, t, dt)`.
+
+    `odbiory` — KAZDY odbior wejscia jako model chwili (takze bez obwodu: jego stan
+    estymatora istnieje dalej); krotka stanow jest wyrownana z `elementy`.
+    """
 
     model: ModelSieci
-    odbiory: tuple[OdbiorDynamiki, ...]
+    odbiory: tuple[ModelOdbioru, ...]
     urzadzenia: tuple[Urzadzenie, ...]
     nastawy: NastawySolvera
 
     @property
+    def elementy(self) -> tuple[ElementStanowy, ...]:
+        """Elementy stanowe w kolejnosci kanonicznej: odbiory, potem urzadzenia."""
+        return (*self.odbiory, *self.urzadzenia)
+
+    @property
     def wymiary_stanow(self) -> tuple[int, ...]:
-        return tuple(len(urzadzenie.nazwy_stanow) for urzadzenie in self.urzadzenia)
+        return tuple(len(element.nazwy_stanow) for element in self.elementy)
 
     @property
     def adresy_stanow(self) -> tuple[str, ...]:
         return tuple(
-            f"{urzadzenie.ident}.{nazwa}"
-            for urzadzenie in self.urzadzenia
-            for nazwa in urzadzenie.nazwy_stanow
+            f"{element.ident}.{nazwa}"
+            for element in self.elementy
+            for nazwa in element.nazwy_stanow
         )
 
     @property
@@ -102,20 +116,20 @@ class KontekstKroku:
     def granice_stanow(self) -> tuple[np.ndarray, np.ndarray]:
         """Dolne i gorne granice ZLACZONEGO wektora stanow (`-inf`/`+inf` = wolny).
 
-        Zlozone z deklaracji urzadzen (`Urzadzenie.granice_stanow`), w tej samej
-        kolejnosci, co `spakuj_stany`. Urzadzenie, ktore poda liste o innej
+        Zlozone z deklaracji elementow (`ElementStanowy.granice_stanow`), w tej samej
+        kolejnosci, co `spakuj_stany`. Element, ktory poda liste o innej
         dlugosci niz jego uklad stanow, jest bledem programu — nie powodem do
         dopelnienia domyslkami.
         """
         dolne: list[float] = []
         gorne: list[float] = []
-        for urzadzenie in self.urzadzenia:
-            granice = urzadzenie.granice_stanow
-            if len(granice) != len(urzadzenie.nazwy_stanow):
+        for element in self.elementy:
+            granice = element.granice_stanow
+            if len(granice) != len(element.nazwy_stanow):
                 raise AssertionError(
-                    f"Urzadzenie {urzadzenie.ident!r} podalo {len(granice)} granic wobec "
-                    f"{len(urzadzenie.nazwy_stanow)} stanow — deklaracja granic musi byc "
-                    "kompletna"
+                    f"Element {element.ident} podał {len(granice)} granic wobec "
+                    f"{len(element.nazwy_stanow)} stanów — deklaracja granic musi być "
+                    "kompletna."
                 )
             for granica in granice:
                 if granica is None:
@@ -128,29 +142,29 @@ class KontekstKroku:
 
     @property
     def zakresy_waznosci(self) -> tuple[np.ndarray, np.ndarray]:
-        """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow (`zakresy_waznosci_urzadzen`)."""
-        return zakresy_waznosci_urzadzen(self.urzadzenia)
+        """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow (`zakresy_waznosci_elementow`)."""
+        return zakresy_waznosci_elementow(self.elementy)
 
 
-def zakresy_waznosci_urzadzen(
-    urzadzenia: tuple[Urzadzenie, ...],
+def zakresy_waznosci_elementow(
+    elementy: tuple[ElementStanowy, ...],
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow urzadzen.
+    """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow elementow.
 
-    Sklada sie tak samo, jak `granice_stanow` — z deklaracji urzadzen, w
+    Sklada sie tak samo, jak `granice_stanow` — z deklaracji elementow, w
     kolejnosci `spakuj_stany` — i z tego samego powodu wymaga deklaracji
     KOMPLETNEJ. Czym zakres waznosci rozni sie od ogranicznika, mowi
-    `kontrakty.Urzadzenie.zakresy_waznosci`; tu jest tylko zlozenie. Jedna funkcja dla
+    `kontrakty.ElementStanowy.zakresy_waznosci`; tu jest tylko zlozenie. Jedna funkcja dla
     kontroli po kazdym kroku i dla kontroli stanow po przypisaniu w chwili zdarzenia.
     """
     dolne: list[float] = []
     gorne: list[float] = []
-    for urzadzenie in urzadzenia:
-        zakresy = urzadzenie.zakresy_waznosci
-        if len(zakresy) != len(urzadzenie.nazwy_stanow):
+    for element in elementy:
+        zakresy = element.zakresy_waznosci
+        if len(zakresy) != len(element.nazwy_stanow):
             raise AssertionError(
-                f"Urządzenie {urzadzenie.ident!r} podalo {len(zakresy)} zakresów ważności "
-                f"wobec {len(urzadzenie.nazwy_stanow)} stanow — deklaracja musi być "
+                f"Element {element.ident!r} podal {len(zakresy)} zakresów ważności "
+                f"wobec {len(element.nazwy_stanow)} stanów — deklaracja musi być "
                 "kompletna"
             )
         for zakres in zakresy:
@@ -164,14 +178,14 @@ def zakresy_waznosci_urzadzen(
 
 
 def spakuj_stany(stany: tuple[np.ndarray, ...]) -> np.ndarray:
-    """Zlacz stany urzadzen w jeden wektor (kolejnosc = kolejnosc urzadzen)."""
+    """Zlacz stany elementow w jeden wektor (kolejnosc = kolejnosc elementow)."""
     if not stany:
         return np.zeros(0, dtype=float)
     return np.concatenate([np.asarray(stan, dtype=float) for stan in stany])
 
 
 def rozpakuj_stany(wektor: np.ndarray, wymiary: tuple[int, ...]) -> tuple[np.ndarray, ...]:
-    """Rozdziel wektor stanow na stany poszczegolnych urzadzen."""
+    """Rozdziel wektor stanow na stany poszczegolnych elementow."""
     czesci: list[np.ndarray] = []
     poczatek = 0
     for wymiar in wymiary:
@@ -179,7 +193,8 @@ def rozpakuj_stany(wektor: np.ndarray, wymiary: tuple[int, ...]) -> tuple[np.nda
         poczatek += wymiar
     if poczatek != wektor.shape[0]:
         raise AssertionError(
-            f"rozpakuj_stany: wektor ma {wektor.shape[0]} skladowych wobec sumy wymiarow {poczatek}"
+            f"Rozpakowanie stanów: wektor ma {wektor.shape[0]} składowych wobec sumy wymiarów "
+            f"{poczatek}."
         )
     return tuple(czesci)
 
@@ -192,9 +207,9 @@ def pochodne_ukladu(
 ) -> np.ndarray:
     """Zlaczony wektor `f(x, y)` z kontrola skonczonosci w chwili powstania."""
     czesci: list[np.ndarray] = []
-    for urzadzenie, stan in zip(kontekst.urzadzenia, stany, strict=True):
-        pozycja = kontekst.model.indeks_wezla[urzadzenie.wezel]
-        czesci.append(urzadzenie.pochodne(stan, complex(napiecia[pozycja])))
+    for element, stan in zip(kontekst.elementy, stany, strict=True):
+        pozycja = kontekst.model.indeks_wezla[element.wezel]
+        czesci.append(element.pochodne(stan, complex(napiecia[pozycja])))
     pochodne = spakuj_stany(tuple(czesci))
     sprawdz_wektor(pochodne, kontekst.adresy_stanow, "pochodne stanow", t_s)
     return pochodne
@@ -248,10 +263,49 @@ def _najwieksze_residua(
     for ident in kontekst.model.identy_wezlow:
         adresy.append(f"KCL.Im[{ident}]")
     if len(adresy) != wektor_residuum.shape[0]:
-        return (("(niezgodna dlugosc adresow)", float(np.max(np.abs(wektor_residuum)))),)
+        return (("(niezgodna długość adresów)", float(np.max(np.abs(wektor_residuum)))),)
     del liczba_wezlow
     kolejnosc = np.argsort(-np.abs(wektor_residuum))[:ile]
     return tuple((adresy[int(i)], float(wektor_residuum[int(i)])) for i in kolejnosc)
+
+
+def blok_algebry_po_stanie(
+    kontekst: KontekstKroku,
+    indeks: int,
+    stan: np.ndarray,
+    napiecie: complex,
+    ograniczone: set[int],
+) -> np.ndarray | None:
+    """Blok `B` (2 x n) elementu stanowego `indeks` (kolejnosc `kontekst.elementy`) taki, ze
+    `dg/dx` w wierszach jego wezla to `-B`; `None` — element nie wchodzi do zadnego wiersza.
+
+    JEDNO zrodlo reguly (karta AB-1b.3b-NA-CZUBKU, regula predykatow parami) dla jakobianu
+    sprzezonego kroku calkowania (`_jakobian_sprzezony`) i macierzy stanu analizy
+    malosygnalowej (`walidacja.malosygnalowa.macierz_stanu`) — dawniej analiza miala wlasna
+    petle, ktora stemplowala `dI/dx` KAZDEGO elementu, takze w wierszu ograniczenia i dla
+    urzadzenia o sprzezeniu napieciowym, czyli linearyzowala inny uklad niz ten, ktory
+    calkuje rdzen:
+
+    * odbior bez obwodu (prad zero) albo w wezle ograniczonym (jego prad nie wchodzi do
+      zadnego rownania) — `None`; odbior z obwodem — `dI/dx` (estymator czestotliwosci);
+    * urzadzenie o sprzezeniu napieciowym — wiersz `V - E(x) = 0`, blok `dE/dx`;
+    * urzadzenie pradowe w wezle ograniczonym — `None`; w pozostalych — `dI/dx`.
+
+    `ograniczone` — pozycje wezlow z wierszem ograniczenia (`siec.ograniczenia_napiecia`).
+    """
+    liczba_odbiorow = len(kontekst.odbiory)
+    pozycja = kontekst.model.indeks_wezla[kontekst.elementy[indeks].wezel]
+    if indeks < liczba_odbiorow:
+        odbior = kontekst.odbiory[indeks]
+        if pozycja in ograniczone or not odbior.przylaczony:
+            return None
+        return odbior.jakobian_prad_stan(stan, napiecie)
+    urzadzenie = kontekst.urzadzenia[indeks - liczba_odbiorow]
+    if urzadzenie.sprzezenie == "napieciowe":
+        return urzadzenie.jakobian_napiecia_bez_obciazenia(stan)
+    if pozycja in ograniczone:
+        return None
+    return urzadzenie.jakobian_prad_stan(stan, napiecie)
 
 
 def _jakobian_sprzezony(
@@ -292,18 +346,18 @@ def _jakobian_sprzezony(
     wartosci: list[float] = []
 
     przesuniecie = 0
-    for urzadzenie, stan, wymiar in zip(kontekst.urzadzenia, stany, wymiary, strict=True):
-        pozycja = kontekst.model.indeks_wezla[urzadzenie.wezel]
+    for indeks, (element, stan, wymiar) in enumerate(
+        zip(kontekst.elementy, stany, wymiary, strict=True)
+    ):
+        if wymiar == 0:
+            # Element bez stanow nie wnosi zadnej pozycji do blokow stanowych (warunek
+            # strukturalny — bieg bez odbiorow czulych ma bitowo ten sam jakobian).
+            continue
+        pozycja = kontekst.model.indeks_wezla[element.wezel]
         napiecie = complex(napiecia[pozycja])
-        blok_ff = urzadzenie.jakobian_stan_stan(stan, napiecie)
-        blok_fy = urzadzenie.jakobian_stan_napiecie(stan, napiecie)
-        if urzadzenie.sprzezenie == "napieciowe":
-            # Wiersz `V - E(x) = 0`: pochodna po stanie to `-dE/dx`.
-            blok_iy = urzadzenie.jakobian_napiecia_bez_obciazenia(stan)
-        elif pozycja in ograniczone:
-            blok_iy = None
-        else:
-            blok_iy = urzadzenie.jakobian_prad_stan(stan, napiecie)
+        blok_ff = element.jakobian_stan_stan(stan, napiecie)
+        blok_fy = element.jakobian_stan_napiecie(stan, napiecie)
+        blok_iy = blok_algebry_po_stanie(kontekst, indeks, stan, napiecie, ograniczone)
         for wiersz in range(wymiar):
             if maska[przesuniecie + wiersz]:
                 wiersze.append(przesuniecie + wiersz)
@@ -580,9 +634,9 @@ class TrapezNiejawny:
             if not przyjeto:
                 raise OdmowaDynamiki(
                     KOD_KROK_NIEZBIEZNY,
-                    f"Zaden nawrot nie obnizyl residuum kroku przy t={t_s} s "
-                    f"(dt={dt_s} s, iteracja {iteracja}, residuum {norma}); "
-                    f"najwieksze residua: {_najwieksze_residua(kontekst, wektor_residuum)}",
+                    f"Żaden nawrót nie obniżył residuum kroku przy t = {t_s} s "
+                    f"(dt = {dt_s} s, iteracja {iteracja}, residuum {norma}); "
+                    f"największe residua: {_najwieksze_residua(kontekst, wektor_residuum)}.",
                     t_s=t_s,
                     dt_s=dt_s,
                     iteracja=iteracja,
@@ -760,10 +814,11 @@ __all__ = [
     "TrapezNiejawny",
     "WynikKroku",
     "blad_lokalny",
+    "blok_algebry_po_stanie",
     "maska_nasycenia",
     "pochodne_ukladu",
     "rozpakuj_stany",
     "rzutuj_stany",
     "spakuj_stany",
-    "zakresy_waznosci_urzadzen",
+    "zakresy_waznosci_elementow",
 ]

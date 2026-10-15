@@ -863,7 +863,12 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # Różnica modelu wejściowego: połówki odcinków i strona górna transformatora stacji leżą
     # na zaciskach pól (aparat pola w torze), pole TR domknięte przy wstawieniu stacji.
     # Enumeracja kontyngencji, dotkliwości, odbiory bez zasilania i ranking identyczne.
-    "gn01_promieniowa": "f1cbcb3509f5315e0da61529238bfbfb41d7f8b062d98dc3125aa126c7ec38cd",
+    # 2026-09-30 (karta ETYKIETA-STACJI-PRZELOTOWEJ): gn01 f1cbcb35… → 5306b64d…. Pełne widoki
+    # z kodu startowego `615f3b24` i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacja
+    # wstawiona w odcinek nie niesie już cienia deklaracji `meta.station_type_sn` /
+    # `meta.station_type_semantic` (deklaracja ma jedno miejsce — `station_type`). gn03 bez zmian.
+    "gn01_promieniowa": "5306b64daa9a13505def71cb2958abdd12620391e8ecde5c73dc194b0a977110",
     "gn03_pierscien": "2cacc16c88dac3b7d044900dae16f6a950888c76a06dacda99863139a87407ef",
 }
 

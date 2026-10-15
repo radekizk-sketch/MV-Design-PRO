@@ -47,6 +47,13 @@ export function pomiarStrings(isCt: boolean) {
 
     kontrolaTytul: 'Kontrola przekładnika',
     wierszPole: 'Pole SN',
+    // Karta BIEG-ZABEZPIECZEN-Z-MODELU: przekładnik przy wyłączniku liniowym (bez pola).
+    wierszWylacznik: 'Wyłącznik liniowy',
+    wylacznikBrak: 'wyłącznik nie występuje w modelu',
+    wylacznikPomoc: `Przekładnik ${przekladnik} stoi przy wyłączniku liniowym wstawionym w odcinek `
+      + 'SN (wyłącznik sekcyjny z zabezpieczeniem) — po co: podaje prąd do przekaźnika tego '
+      + 'wyłącznika; z czego: przekładnia z katalogu; co daje: próg nastawy przeliczony na '
+      + 'stronę pierwotną.',
     wierszKatalog: 'Typ katalogowy',
     wierszPrzekladnia: 'Przekładnia',
     wierszKlasa: 'Klasa',

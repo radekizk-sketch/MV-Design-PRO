@@ -429,9 +429,13 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
+            # Transformator 1,25 MVA: PV i BESS z katalogu mają tabliczki 0,5 MW (S_n 550 kVA
+            # każda) i oba są zasilane przez TEN transformator, więc kontrola O-53 sumuje je
+            # (Σ 1100 kVA). Dawny 630 kVA przepuszczał to tylko dlatego, że O-53 liczyła
+            # każde źródło osobno, a budowniczy po zmianie reguły cicho gubił BESS.
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
             },
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
@@ -441,68 +445,72 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
 
     # Step 4: Add PV inverter (find nN bus)
     nn_buses = [b for b in enm.get("buses", []) if b.get("voltage_kv", 0) < 1.0]
-    if nn_buses:
-        nn_bus_ref = nn_buses[0]["ref_id"]
-        station_ref = next(
-            (
-                substation.get("ref_id")
-                for substation in enm.get("substations", [])
-                if nn_bus_ref in list(substation.get("bus_refs") or [])
-            ),
-            None,
-        )
+    if not nn_buses:
+        raise RuntimeError("GN_04: brak szyny nN po wstawieniu stacji")
+    nn_bus_ref = nn_buses[0]["ref_id"]
+    station_ref = next(
+        (
+            substation.get("ref_id")
+            for substation in enm.get("substations", [])
+            if nn_bus_ref in list(substation.get("bus_refs") or [])
+        ),
+        None,
+    )
 
-        if station_ref:
-            result = execute_domain_operation(
-                enm,
-                "add_converter_source",
-                {
-                    "source_technology": "PV",
-                    "connection_variant": "nn_side",
-                    "station_ref": station_ref,
-                    "bus_nn_ref": nn_bus_ref,
-                    "source_name": "PV_01",
-                    "control_mode": "STALY_COS_PHI",
-                    "power_setpoint_mw": 0.05,
-                    "catalog_binding": {
-                        "catalog_namespace": "ZRODLO_NN_PV",
-                        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
-                        "catalog_item_version": "2024.1",
-                    },
-                    "source_field": {
-                        "field_name": "Pole PV nN",
-                        "source_field_kind": "PV",
-                    },
-                },
-            )
-            if result.get("error") is None:
-                enm = result["snapshot"]
+    if station_ref is None:
+        raise RuntimeError("GN_04: szyna nN bez stacji")
+    result = execute_domain_operation(
+        enm,
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "nn_side",
+            "station_ref": station_ref,
+            "bus_nn_ref": nn_bus_ref,
+            "source_name": "PV_01",
+            "control_mode": "STALY_COS_PHI",
+            "power_setpoint_mw": 0.05,
+            "catalog_binding": {
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+                "catalog_item_version": "2024.1",
+            },
+            "source_field": {
+                "field_name": "Pole PV nN",
+                "source_field_kind": "PV",
+            },
+        },
+    )
+    if result.get("error") is not None:
+        raise RuntimeError(f"GN_04: PV_01 odrzucone: {result['error']}")
+    enm = result["snapshot"]
 
-            # Step 5: Add BESS
-            result = execute_domain_operation(
-                enm,
-                "add_converter_source",
-                {
-                    "source_technology": "BESS",
-                    "connection_variant": "nn_side",
-                    "station_ref": station_ref,
-                    "bus_nn_ref": nn_bus_ref,
-                    "source_name": "BESS_01",
-                    "bess_mode": "DWUKIERUNKOWY",
-                    "power_setpoint_mw": 0.03,
-                    "catalog_binding": {
-                        "catalog_namespace": "ZRODLO_NN_BESS",
-                        "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
-                        "catalog_item_version": "2024.1",
-                    },
-                    "source_field": {
-                        "field_name": "Pole BESS nN",
-                        "source_field_kind": "BESS",
-                    },
-                },
-            )
-            if result.get("error") is None:
-                enm = result["snapshot"]
+    # Step 5: Add BESS
+    result = execute_domain_operation(
+        enm,
+        "add_converter_source",
+        {
+            "source_technology": "BESS",
+            "connection_variant": "nn_side",
+            "station_ref": station_ref,
+            "bus_nn_ref": nn_bus_ref,
+            "source_name": "BESS_01",
+            "bess_mode": "DWUKIERUNKOWY",
+            "power_setpoint_mw": 0.03,
+            "catalog_binding": {
+                "catalog_namespace": "ZRODLO_NN_BESS",
+                "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
+                "catalog_item_version": "2024.1",
+            },
+            "source_field": {
+                "field_name": "Pole BESS nN",
+                "source_field_kind": "BESS",
+            },
+        },
+    )
+    if result.get("error") is not None:
+        raise RuntimeError(f"GN_04: BESS_01 odrzucone: {result['error']}")
+    enm = result["snapshot"]
 
     return {
         "name": "GN_04_SN_NN_OZE",
@@ -514,89 +522,42 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
 
 
 def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
-    """GN_05: SN+nN+OZE+ochrona (jak GN_04 + zabezpieczenia + analiza ochrony).
+    """GN_05: SN+nN+OZE+ochrona — GN_04 z REALNYM zabezpieczeniem nadprądowym w torze prądowym.
 
-    Extends GN_04 with CT + VT + Relay on transformer field.
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: dawna wersja dokładała CT/VT/przekaźnik do „pola TR"
+    przez ``add_ct``/``add_vt``/``add_relay`` z CICHYM pominięciem błędu (``if result.get(
+    "error") is None``), a GN_04 nie ma elementów ``bays`` — więc żadna z trzech operacji nie
+    wykonywała się, a sieć „z ochroną" była identyczna z GN_04 poza znacznikami w ``meta`` i
+    nagłówku (zmierzone: zero przypisań zabezpieczeń). Teraz: wyłącznik liniowy na początku
+    magistrali, przekładnik 600/5 A 5P20 i przekaźnik ``REF-OC-200`` z nastawami — te same
+    operacje domenowe co sieć złota G08 (``dodaj_zabezpieczenie_nadpradowe``); odmowa
+    operacji kończy budowę wyjątkiem.
     """
-    from enm.domain_operations import execute_domain_operation
+    from tests.golden.enm_builders.zabezpieczenia_magistrali import (
+        NASTAWY_Q1,
+        dodaj_zabezpieczenie_nadpradowe,
+    )
 
     gn04 = build_gn04_sn_nn_oze()
     enm = gn04["enm"]
-
-    # Find a bay (field) to attach protection devices
-    bays = enm.get("bays", [])
-    # Prefer a TR (transformer) bay
-    tr_bays = [bay for bay in bays if bay.get("bay_role") == "TR"]
-    target_bay = tr_bays[0] if tr_bays else (bays[0] if bays else None)
-
-    if target_bay:
-        bay_ref = target_bay["ref_id"]
-
-        # Step 6: Add CT
-        result = execute_domain_operation(
-            enm,
-            "add_ct",
-            {
-                "bay_ref": bay_ref,
-                "ratio_primary_a": 200.0,
-                "ratio_secondary_a": 5.0,
-                "accuracy_class": "5P20",
-                "burden_va": 10.0,
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Step 7: Add VT
-        result = execute_domain_operation(
-            enm,
-            "add_vt",
-            {
-                "bay_ref": bay_ref,
-                "ratio_primary_v": 15000.0,
-                "ratio_secondary_v": 100.0,
-                "accuracy_class": "0.5",
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Step 8: Add Relay
-        result = execute_domain_operation(
-            enm,
-            "add_relay",
-            {
-                "bay_ref": bay_ref,
-                "relay_type": "NADPRADOWY",
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Keep GN_05 structurally distinct from GN_04 even while protection
-        # write-paths are routed through a read-model transition.
-        for bay in enm.get("bays", []):
-            if bay.get("ref_id") == bay_ref:
-                meta = bay.setdefault("meta", {})
-                meta["protection_reference"] = {
-                    "ct": True,
-                    "vt": True,
-                    "relay_type": "NADPRADOWY",
-                }
-                break
-
-    header = enm.setdefault("header", {})
-    header["reference_extension"] = {
-        "protection_enabled": True,
-        "profile": "GN_05_PROTECTION_EXTENSION",
-    }
+    # Odcinek zasilający = pierwszy odcinek magistrali w kolejności korytarza (dana modelu),
+    # nie przyrostek identyfikatora.
+    (korytarz,) = enm["corridors"]
+    odcinek_zasilajacy = korytarz["ordered_segment_refs"][0]
+    enm, _wylacznik, _zabezpieczenie = dodaj_zabezpieczenie_nadpradowe(
+        enm,
+        odcinek_ref=odcinek_zasilajacy,
+        nazwa_wylacznika="Wyłącznik liniowy magistrali",
+        nazwa_zabezpieczenia="Zabezpieczenie magistrali",
+        nastawy=NASTAWY_Q1,
+    )
 
     return {
         "name": "GN_05_SN_NN_OZE_OCHRONA",
         "description": "SN+nN+OZE+ochrona (pełna sieć referencyjna)",
         "enm": enm,
         "snapshot_hash": _snapshot_hash(enm),
-        "operations_count": 8,
+        "operations_count": gn04["operations_count"] + 3,
     }
 
 
@@ -653,11 +614,14 @@ def build_gn06_pv_regulacja_napiecia() -> dict[str, Any]:
 
     Granice Q (±0,03 Mvar) — plauzybilny zakres dla falownika PV klasy ~50 kVA
     (S_n ≈ 1,1·P_n przy P_n = 50 kW z karty `build_gn04_sn_nn_oze`); nastawa
-    1,002 pu zmierzona jako OSIĄGALNA tymi granicami (dowód: test
-    `tests/reference_networks/test_pv_voltage_control.py`).
+    1,001 pu zmierzona jako OSIĄGALNA tymi granicami (dowód: test
+    `tests/enm/test_generator_voltage_control_e2e.py`). Pomiar 2026-10-15 po zmianie
+    transformatora GN_04 na 1,25 MVA (suma O-53 PV + BESS): 1,000 i 1,001 pu trzymane,
+    od 1,002 pu falownik nasyca się na granicy Q (|U| = 1,00213 pu) — mniejsza
+    impedancja transformatora obniża czułość napięcia szyny nN na moc bierną.
     """
     return _gn06_pv_regulacja_napiecia(
-        u_set_pu=1.002,
+        u_set_pu=1.001,
         q_min_mvar=-0.03,
         q_max_mvar=0.03,
         wariant_nazwa="OSIAGALNA",

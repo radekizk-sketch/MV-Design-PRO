@@ -11,7 +11,7 @@
 | G05 | nN ABCN / N / PEN / SWZ | PARTIAL | ENM | REGRESSION_ONLY | — | `tests.application.analyses.lv_domain.scenariusze_nn:SCENARIUSZE` | fault_loop, swz, projekcja nN |
 | G06 | PV w punkcie przyłączenia / RfG | PARTIAL | ENM | INDEPENDENTLY_VERIFIED | LF | `tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia`<br>`tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia_nasycenie` | ncrfg, solver |
 | G07 | BESS ładowanie / rozładowanie | PARTIAL | ENM | REGRESSION_ONLY | — | `tests.golden.enm_builders.oze_pv_bess:build_oze_pv_bess_enm` | solver |
-| G08 | koordynacja zabezpieczeń / TCC | PARTIAL | ENM | NORMATIVE | PROTECTION | `tests.reference_networks.builders:build_gn05_sn_nn_oze_ochrona` | protection_iec60255 |
+| G08 | koordynacja zabezpieczeń / TCC | SUPPORTED | ENM | NORMATIVE | PROTECTION | `tests.golden.enm_builders.zabezpieczenia_magistrali:build_zabezpieczenia_magistrali_enm`<br>`tests.reference_networks.builders:build_gn05_sn_nn_oze_ochrona` | protection_iec60255, bieg protection_sn, koordynacja E-28, scena harnessu koordynacja i porównanie zabezpieczeń |
 | G09 | CT/VT + zabezpieczenia kierunkowe | NOT_BUILT | ENM | REGRESSION_ONLY | — | — | — |
 | G10 | jakość energii / architektura harmonicznych | NOT_BUILT | ENM | REGRESSION_ONLY | — | — | — |
 | G11 | wariant strukturalny / rozbudowa sieci | NOT_BUILT | ENM | REGRESSION_ONLY | — | — | — |

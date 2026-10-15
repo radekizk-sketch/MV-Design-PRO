@@ -1,6 +1,6 @@
 # ADR-024: Projekcje SN i nN z jednego modelu (bez shadow modeli)
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; O-64/O-71: projekcje SN i nN z JEDNEJ migawki ENM i jednego grafu `TopologyView`; wariant zapasowy „przeniesienie grafu terminalowego z frontend/v3/electrical do backendu” nie istnieje w tym ADR i jest skasowany — graf frontu kasowany, nie przenoszony; ADR-005 (SLD jako projekcja ENM) SUPERSEDED; testy kontraktowe sceny ze `sld-determinism.yml` przepisywane atomowo z workflowem i listą w `CLAUDE.md`; werdykt wyglądu nowych scen = B-02 właściciela)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md` §2.1; `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §19
 

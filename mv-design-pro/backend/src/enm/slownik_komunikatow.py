@@ -223,6 +223,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "insert_station_on_segment_sn:nn_block": "Rozdzielnica nN stacji",
     "append_station_on_endpoint:station": "Dane stacji",
     "append_station_on_endpoint:transformer": "Transformator stacji",
+    "append_station_on_endpoint:sn_fields": "Pola SN stacji",
     "add_sn_bay:tags": "Znaczniki pola",
     "add_load_sn:active_power_kw": "Moc czynna P",
     "add_load_sn:p_mw": "Moc czynna P",

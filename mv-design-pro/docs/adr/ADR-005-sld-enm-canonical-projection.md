@@ -2,7 +2,7 @@
 
 ## Status
 
-**Zaakceptowane** — 2026-02-07
+**SUPERSEDED by ADR-024** (2026-09-30, O-63/O-64/O-71): projekcje SN i nN z JEDNEJ migawki ENM i jednego grafu `TopologyView` (`SnDomainProjectionV1`, `LvDomainProjection 3.0.0` → `SceneSemanticsV1`, osobne `LayoutDocument` per widok); gramatyka klienta (`buildScene.ts`, `compose/*`, `v3/electrical`) kasowana po parytecie. Pierwotny status: Zaakceptowane — 2026-02-07. Treść poniżej historyczna.
 
 ## Kontekst
 

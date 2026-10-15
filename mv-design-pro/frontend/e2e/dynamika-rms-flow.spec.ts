@@ -17,9 +17,11 @@
  * z kontraktu (zwarcie w kablu w x·L usunięte izolacją + wyłączenie kabla) → nastawy →
  * bieg → przebiegi na wspólnej osi czasu, oś zdarzeń z nazwami, rekordy „nie oceniono",
  * sprzężenie ze schematem w obie strony.
- * Para 2 — brak modelu PV: odmowa przed biegiem z nazwą wytwórcy i akcją naprawczą →
- * wiązanie z profilem katalogowym z ekranu → model w backendzie niesie kopię profilu →
- * rozpływ → bieg przechodzi.
+ * Para 2 — brak modelu PV i modelu odbioru: odmowa przed biegiem z nazwami wytwórcy i odbioru
+ * oraz akcjami naprawczymi → wiązanie PV z profilem katalogowym i ODBIORU z profilem katalogu
+ * profili odbiorów (karta modeli odbiorów: napięcie przejścia, stała pomiaru częstotliwości)
+ * z ekranu, natywnymi klikami → model w backendzie niesie kopie profili → rozpływ → bieg
+ * przechodzi, a dane przyjęte z profili typowych są nazwane w rekordzie oceny.
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
@@ -51,6 +53,17 @@ type Generator = {
   dynamika?: { rodzina?: string; proweniencja?: { zrodlo?: string } } | null;
 };
 
+type Odbior = {
+  ref_id: string;
+  name?: string;
+  materialized_params?: Record<string, unknown> | null;
+  dynamika?: {
+    u_min_pu?: number | null;
+    t_pomiaru_czestotliwosci_s?: number | null;
+    proweniencja?: { zrodlo?: string };
+  } | null;
+};
+
 type Migawka = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   buses?: Array<{ ref_id: string; voltage_kv: number; name?: string }>;
@@ -58,6 +71,7 @@ type Migawka = {
   substations?: Array<{ ref_id: string; station_type?: string }>;
   transformers?: Array<{ ref_id: string }>;
   generators?: Generator[];
+  loads?: Odbior[];
 };
 
 function wiazanie(przestrzen: string, pozycja: string) {
@@ -95,11 +109,19 @@ interface Siec {
   readonly caseId: string;
   readonly caseName: string;
   readonly pvRef: string;
+  /** Odbiór na końcu magistrali (model dynamiczny z katalogu profili odbiorów). */
+  readonly odbiorRef: string;
   /** Kabel „Odcinek 2" — miejsce zwarcia x·L (ref odcinka nie zmienia wstawienie stacji na odcinku 1). */
   readonly odcinek2Ref: string;
 }
 
-async function przypadekZSiecia(request: APIRequestContext, zModelemPv: boolean): Promise<Siec> {
+/** Profil katalogu modeli dynamicznych odbiorów (jedyny profil katalogu, jakość ESTIMATED). */
+const PROFIL_ODBIORU = 'load_dyn_zagregowany_sn';
+
+async function przypadekZSiecia(
+  request: APIRequestContext,
+  zModelami: boolean,
+): Promise<Siec> {
   licznik += 1;
   const projectName = `E2E dynamika RMS ${licznik}`;
   const caseName = `Przypadek dynamiki ${licznik}`;
@@ -173,14 +195,19 @@ async function przypadekZSiecia(request: APIRequestContext, zModelemPv: boolean)
   });
   const pvRef = (siec.generators ?? [])[0]!.ref_id;
   const koniec = (siec.buses ?? []).find((b) => b.name === 'Zacisk końcowy Odcinek 2')!;
-  await op(request, caseId, 'add_load_sn', { bus_ref: koniec.ref_id, p_mw: 0.5, q_mvar: 0.1 });
-  if (zModelemPv) {
+  siec = await op(request, caseId, 'add_load_sn', { bus_ref: koniec.ref_id, p_mw: 0.5, q_mvar: 0.1 });
+  const odbiorRef = (siec.loads ?? [])[0]!.ref_id;
+  if (zModelami) {
     await op(request, caseId, 'set_der_catalog_bindings', {
       generator_ref: pvRef,
       dynamic_model_ref: 'default_pv_gfl',
     });
+    await op(request, caseId, 'set_load_dynamic_binding', {
+      load_ref: odbiorRef,
+      dynamic_model_ref: PROFIL_ODBIORU,
+    });
   }
-  return { projectId, projectName, caseId, caseName, pvRef, odcinek2Ref: odcinki[1] };
+  return { projectId, projectName, caseId, caseName, pvRef, odbiorRef, odcinek2Ref: odcinki[1] };
 }
 
 async function otworzEkranDynamiki(
@@ -250,6 +277,8 @@ async function uruchomIPoczekaj(page: Page): Promise<void> {
 const NAZWA_PV = 'Blok PV';
 const NAZWA_ODCINKA = 'Odcinek 2';
 const NAZWA_SZYNY_PV = 'Szyna nN stacji';
+/** Nazwa odbioru nadana przez operację `add_load_sn` (kreator odbioru). */
+const NAZWA_ODBIORU = 'Odbiór';
 
 test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)', () => {
   test('model z katalogu → rozpływ → scenariusz z edytora → bieg → przebiegi, oś zdarzeń, schemat', async ({
@@ -260,8 +289,13 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
     const seed = await przypadekZSiecia(request, true);
     await otworzEkranDynamiki(page, seed);
 
-    // Model PV związany z profilem katalogowym — kopia zgodna z wiązaniem, bez braków.
+    // Model PV i model odbioru związane z profilami katalogowymi — kopie zgodne z wiązaniem,
+    // bez braków.
     await expect(page.getByTestId(`mvd-dynamika-zrodlo-${seed.pvRef}`)).toHaveAttribute(
+      'data-stan',
+      'z_katalogu',
+    );
+    await expect(page.getByTestId(`mvd-dynamika-odbior-${seed.odbiorRef}`)).toHaveAttribute(
       'data-stan',
       'z_katalogu',
     );
@@ -365,7 +399,7 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
     await expect(page.getByTestId(`mvd-dynamika-kanal-i_od_pu@${seed.odcinek2Ref}`)).toBeChecked();
   });
 
-  test('brak modelu PV → odmowa z akcją naprawczą → wiązanie z katalogu → bieg przechodzi', async ({
+  test('brak modeli PV i odbioru → odmowa z akcjami naprawczymi → wiązania z katalogu → bieg przechodzi', async ({
     page,
     request,
   }) => {
@@ -404,12 +438,17 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
 
     await otworzEkranDynamiki(page, seed);
 
-    // Odmowa PRZED biegiem: brak modelu nazwany NAZWĄ wytwórcy, uruchomienie zablokowane.
+    // Odmowa PRZED biegiem: brak modeli nazwany NAZWAMI wytwórcy i odbioru, uruchomienie
+    // zablokowane.
     const braki = page.getByTestId('mvd-dynamika-braki');
     await expect(braki).toContainText(NAZWA_PV);
+    await expect(braki).toContainText(NAZWA_ODBIORU);
     await expect(braki).not.toContainText(seed.pvRef);
+    await expect(braki).not.toContainText(seed.odbiorRef);
     const wiersz = page.getByTestId(`mvd-dynamika-zrodlo-${seed.pvRef}`);
     await expect(wiersz).toHaveAttribute('data-stan', 'brak');
+    const wierszOdbioru = page.getByTestId(`mvd-dynamika-odbior-${seed.odbiorRef}`);
+    await expect(wierszOdbioru).toHaveAttribute('data-stan', 'brak');
     await expect(page.getByTestId('mvd-dynamika-warunki')).toContainText('Usuń braki modelu');
     await expect(page.getByTestId('mvd-dynamika-uruchom')).toBeDisabled();
 
@@ -417,6 +456,18 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
     await page.getByTestId(`mvd-dynamika-zrodlo-${seed.pvRef}-profil`).selectOption('default_pv_gfl');
     await page.getByTestId(`mvd-dynamika-zrodlo-${seed.pvRef}-powiaz`).click();
     await expect(wiersz).toHaveAttribute('data-stan', 'z_katalogu', { timeout: 30000 });
+    // Po związaniu PV bieg nadal blokuje brak modelu ODBIORU (ten sam kod gotowości, akcja
+    // w tej samej sekcji ekranu).
+    await expect(braki).toContainText(NAZWA_ODBIORU);
+    await expect(page.getByTestId('mvd-dynamika-uruchom')).toBeDisabled();
+
+    // Akcja naprawcza odbioru: wiązanie z profilem katalogu profili odbiorów (natywny wybór
+    // i klik), podstawa wartości typowych widoczna przy wyborze.
+    await wierszOdbioru
+      .getByTestId(`mvd-dynamika-odbior-${seed.odbiorRef}-profil`)
+      .selectOption(PROFIL_ODBIORU);
+    await wierszOdbioru.getByTestId(`mvd-dynamika-odbior-${seed.odbiorRef}-powiaz`).click();
+    await expect(wierszOdbioru).toHaveAttribute('data-stan', 'z_katalogu', { timeout: 30000 });
     await expect(braki).toHaveCount(0);
 
     // Niezależna weryfikacja modelu: kopia profilu w `Generator.dynamika`.
@@ -428,13 +479,31 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
     expect(pv.materialized_params?.dynamic_model_ref).toBe('default_pv_gfl');
     expect(pv.dynamika?.rodzina).toBe('przeksztaltnikowa_gfl');
     expect(pv.dynamika?.proweniencja?.zrodlo).toBe('profil_typowy_normy');
+    // Kopia modelu dynamicznego odbioru: odbiór stałej mocy czyta napięcie przejścia, nie
+    // stałą pomiaru częstotliwości (pole, którego równania nie czytają, zostaje puste).
+    const odbior = ((await (
+      await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`, { timeout: 30000 })
+    ).json()) as { loads: Odbior[] }).loads.find((o) => o.ref_id === seed.odbiorRef)!;
+    expect(odbior.materialized_params?.dynamic_model_ref).toBe(PROFIL_ODBIORU);
+    expect(odbior.dynamika?.u_min_pu).toBe(0.7);
+    expect(odbior.dynamika?.t_pomiaru_czestotliwosci_s ?? null).toBeNull();
+    expect(odbior.dynamika?.proweniencja?.zrodlo).toBe('profil_typowy_normy');
 
     await rozplywIPunktPracy(page);
     await page.getByTestId('mvd-dynamika-scenariusz-wybor').selectOption(scenarioId);
     await wpiszNastawy(page, null);
     await uruchomIPoczekaj(page);
     await expect(page.getByTestId('mvd-dynamika-wykres-pu')).toBeVisible();
-    // Dane przyjęte z profilu TYPOWEGO nazwane w rekordzie oceny (nie „zwalidowane").
+    // Dane przyjęte z profili TYPOWYCH nazwane w rekordzie oceny (nie „zwalidowane") — także
+    // model dynamiczny odbioru.
     await expect(page.getByTestId('mvd-dynamika-oceny')).toContainText('profilu katalogowego');
+    await expect(page.getByTestId('mvd-dynamika-oceny')).toContainText(
+      `Parametry dynamiczne odbioru ${NAZWA_ODBIORU}`,
+    );
+    // Założenia modelu: zdania po polsku z nazwami (bez kluczy kodu i identyfikatorów).
+    const zalozenia = page.getByTestId('mvd-dynamika-zalozenia');
+    await expect(zalozenia).toContainText('przechodzą w stałą impedancję');
+    await expect(zalozenia).not.toContainText('model_odbiorow');
+    await expect(zalozenia).not.toContainText(seed.odbiorRef);
   });
 });

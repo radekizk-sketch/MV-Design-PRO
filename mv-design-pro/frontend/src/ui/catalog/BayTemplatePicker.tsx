@@ -209,6 +209,11 @@ const SOURCE_STATUS_BADGE: Record<BayTemplateSourceStatus, { class: string; labe
   },
 };
 
+/** Nazwa statusu źródła szablonu pola — ta sama, którą pokazuje plakietka pickera. */
+export function etykietaStatusuZrodlaSzablonuPl(status: BayTemplateSourceStatus): string {
+  return SOURCE_STATUS_BADGE[status]?.label ?? 'Nieznany status źródła';
+}
+
 /**
  * Rodzaj pola katalogu (`BayKind`) → rola kanoniczna pola + określenie rodzaju (karta #141).
  * Rodzaj z rolą kanonu bierze nazwę z kanonu słownictwa ról (`FIELD_ROLE_LABEL_PL`) — ten sam

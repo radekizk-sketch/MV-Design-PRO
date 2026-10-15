@@ -15,7 +15,7 @@
  */
 
 import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { BayWindowSchematic } from '../field/BayWindowSchematic';
 import {
@@ -30,6 +30,10 @@ import {
   switchStateLabel,
 } from '../field/fieldLabels';
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
+import { useKatalogPola, type KatalogPola } from '../field/useKatalogPola';
+import { bayKindLabelPl, etykietaStatusuZrodlaSzablonuPl } from '../catalog/BayTemplatePicker';
+import { CONSTRUCTION_LABELS_PL, powodBlokadyRodzinyPl } from '../catalog/SwitchgearFamilyPicker';
+import { PORT_KIND_LABELS_PL } from '../sld/v2/core/ports';
 import { fieldRoleLabelOrNullPl, fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
@@ -38,15 +42,11 @@ import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
+import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import {
-  formatStationSwitchgearLayoutLabelPl,
-  formatStationTypeLabelPl,
-} from '../shared/stationTypeLabels';
-import {
-  isGenericStationName,
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
-  stationOrdinalCode,
+  stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
 import {
   stationReadModelSnFields,
@@ -59,6 +59,7 @@ import type {
   Generator,
   Load,
   LogicalViewsV1,
+  Port,
   ProtectionAssignment,
   Transformer,
 } from '../../types/enm';
@@ -99,7 +100,7 @@ import {
 // Types
 // =============================================================================
 
-interface PropertyField {
+export interface PropertyField {
   key: string;
   label: string;
   value: string | number | boolean | null;
@@ -107,7 +108,7 @@ interface PropertyField {
   source?: 'instance' | 'catalog' | 'calculated';
 }
 
-interface PropertySection {
+export interface PropertySection {
   id: string;
   label: string;
   fields: PropertyField[];
@@ -128,13 +129,145 @@ function joinValues(values: string[] | undefined | null): string | null {
     .join(', ');
 }
 
-function buildBaySections(
+function joinNumbers(values: readonly number[] | undefined): string | null {
+  if (!values || values.length === 0) return null;
+  return values.map((value) => value.toLocaleString('pl-PL')).join(', ');
+}
+
+/**
+ * Sekcja „Katalog producenta" karty pola. Model pola niesie tylko referencje
+ * (`bay_template_ref`, `switchgear_family_ref`); treść pochodzi z katalogu (`useKatalogPola`).
+ * Każdy stan ma zdanie: brak powiązania, odczyt, błąd odczytu, referencja nieobecna w katalogu,
+ * rozbieżność rodziny pola i rodziny szablonu. Liczby (napięcia) wyłącznie z rekordu katalogu.
+ */
+function buildBayCatalogSection(
+  bayTemplateRef: string | null,
+  familyRefFromModel: string | null,
+  katalog: KatalogPola,
+): PropertySection {
+  const section = (fields: PropertyField[]): PropertySection => ({
+    id: 'catalog',
+    label: 'Katalog producenta',
+    fields,
+  });
+  if (katalog.stan === 'BEZ_POWIAZANIA' || (!bayTemplateRef && !familyRefFromModel)) {
+    return section([{
+      key: 'catalog_binding',
+      label: 'Powiązanie z katalogiem',
+      value: 'Pole złożone bez szablonu producenta — model nie wskazuje pozycji katalogu.',
+    }]);
+  }
+  if (katalog.stan === 'LADOWANIE') {
+    return section([{ key: 'catalog_state', label: 'Stan odczytu', value: 'Ładowanie katalogu producentów...' }]);
+  }
+  if (katalog.stan === 'BLAD') {
+    return section([{ key: 'catalog_state', label: 'Błąd odczytu katalogu', value: katalog.komunikat }]);
+  }
+  const { szablony, rodziny, producenci } = katalog.dane;
+  const fields: PropertyField[] = [];
+  const szablon = bayTemplateRef
+    ? szablony.find((entry) => entry.template_ref === bayTemplateRef) ?? null
+    : null;
+  if (bayTemplateRef && !szablon) {
+    fields.push({
+      key: 'template_missing',
+      label: 'Szablon pola producenta',
+      value: 'Szablon wskazany w modelu nie występuje w katalogu.',
+    });
+  } else if (szablon) {
+    const nazwa = [szablon.template_name_pl, szablon.template_code].filter(Boolean).join(' · ');
+    fields.push(
+      { key: 'template_name', label: 'Szablon pola producenta', value: nazwa || null, source: 'catalog' },
+      { key: 'template_kind', label: 'Rodzaj pola katalogowego', value: bayKindLabelPl(szablon.bay_kind), source: 'catalog' },
+      {
+        key: 'template_source_status',
+        label: 'Status źródła szablonu',
+        value: etykietaStatusuZrodlaSzablonuPl(szablon.source_status),
+        source: 'catalog',
+      },
+      { key: 'template_source_refs', label: 'Źródła szablonu', value: szablon.source_refs.length, source: 'catalog' },
+      { key: 'template_version', label: 'Wersja szablonu', value: szablon.version, source: 'catalog' },
+    );
+  }
+  const familyRef = familyRefFromModel ?? szablon?.switchgear_family_ref ?? null;
+  if (familyRefFromModel && szablon?.switchgear_family_ref && szablon.switchgear_family_ref !== familyRefFromModel) {
+    fields.push({
+      key: 'family_mismatch',
+      label: 'Niezgodność',
+      value: 'Rodzina rozdzielnicy pola różni się od rodziny szablonu pola.',
+    });
+  }
+  const rodzina = familyRef ? rodziny.find((entry) => entry.switchgear_family_ref === familyRef) ?? null : null;
+  if (familyRef && !rodzina) {
+    fields.push({
+      key: 'family_missing',
+      label: 'Rodzina rozdzielnicy',
+      value: 'Rodzina wskazana dla pola nie występuje w katalogu.',
+    });
+  } else if (rodzina) {
+    const producent = producenci.find((entry) => entry.manufacturer_ref === rodzina.manufacturer_ref);
+    const powod = powodBlokadyRodzinyPl(rodzina);
+    fields.push(
+      { key: 'family_name', label: 'Rodzina rozdzielnicy', value: rodzina.family_name, source: 'catalog' },
+      { key: 'manufacturer', label: 'Producent', value: producent?.name ?? rodzina.manufacturer_ref, source: 'catalog' },
+      {
+        key: 'construction',
+        label: 'Konstrukcja',
+        value: CONSTRUCTION_LABELS_PL[rodzina.construction_type] ?? null,
+        source: 'catalog',
+      },
+      {
+        key: 'network_voltages',
+        label: 'Napięcia sieci',
+        value: joinNumbers(rodzina.network_voltages_kv),
+        unit: 'kV',
+        source: 'catalog',
+      },
+      { key: 'um_classes', label: 'Klasy napięciowe Um', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
+      {
+        key: 'family_buildable',
+        label: 'Dopuszczona do budowania konfiguracji',
+        value: powod === null ? 'Tak — status potwierdzony źródłem katalogowym' : `Nie — ${powod}`,
+        source: 'catalog',
+      },
+    );
+  }
+  return section(fields);
+}
+
+/** Sekcja „Zaciski pola" — jawne porty `Bay.ports` modelu; brak portów to stan, nie pustka. */
+function buildBayPortsSection(ports: readonly Port[] | null): PropertySection {
+  if (!ports || ports.length === 0) {
+    return {
+      id: 'ports',
+      label: 'Zaciski pola',
+      fields: [{
+        key: 'no_ports',
+        label: 'Zaciski pola',
+        value: 'Model nie zawiera jawnych zacisków tego pola.',
+      }],
+    };
+  }
+  return {
+    id: 'ports',
+    label: 'Zaciski pola',
+    fields: ports.map((port, index) => ({
+      key: `port_${index}`,
+      label: `${PORT_KIND_LABELS_PL[port.kind] ?? port.kind} · ${port.nominal_voltage_kv.toLocaleString('pl-PL')} kV`,
+      value: port.occupied_by ? 'Przyłączony' : 'Wolny',
+    })),
+  };
+}
+
+export function buildBaySections(
   item: FieldReadModelItem | null,
   isLoading: boolean,
   error: string | null,
   readinessIssues: ReadinessIssue[],
   elementId: string,
   bayName: string,
+  katalog: KatalogPola,
+  ports: readonly Port[] | null,
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (!item) {
     return {
@@ -196,6 +329,11 @@ function buildBaySections(
           },
         ],
       },
+      buildBayCatalogSection(
+        baseModel.bay_template_ref ?? null,
+        baseModel.switchgear_family_ref ?? null,
+        katalog,
+      ),
       {
         id: 'runtime',
         label: 'Stan ruchowy pola',
@@ -292,6 +430,7 @@ function buildBaySections(
               },
             ],
       },
+      buildBayPortsSection(ports),
       {
         id: 'measurements',
         label: 'Tor pomiarowy',
@@ -378,11 +517,6 @@ function buildBaySections(
             value: projectResults?.earth_fault_path
               ? etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode)
               : null,
-          },
-          {
-            key: 'whole_path',
-            label: 'Tor pola spełnia wymagania',
-            value: projectResults?.verification.whole_power_path_ok ?? null,
           },
         ],
       },
@@ -909,18 +1043,6 @@ function semanticActionContext(
   };
 }
 
-function stationPublicName(
-  snapshot: EnergyNetworkModel,
-  station: NonNullable<EnergyNetworkModel['substations']>[number],
-): { code: string; typeLabel: string; displayName: string } {
-  const code = stationOrdinalCode(snapshot, station);
-  const typeLabel = formatStationTypeLabelPl(station.station_type);
-  const displayName = isGenericStationName(station.name)
-    ? `${code} · ${typeLabel}`
-    : publicTechnicalLabel(station.name, `${code} · ${typeLabel}`);
-  return { code, typeLabel, displayName };
-}
-
 function isSemanticMvSegment(selectedElement: SelectedElement): boolean {
   return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
     || selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
@@ -1021,13 +1143,8 @@ function stationDisplayNameForInternalRef(
   const station = (snapshot.substations ?? []).find((item) =>
     item.ref_id === stationRef || item.id === stationRef,
   );
-  if (!station) return 'Stacja SN/nN';
-  const stationCode = stationOrdinalCode(snapshot, station);
-  const stationTypeLabel = formatStationTypeLabelPl(station.station_type);
-  const fallback = [stationCode, stationTypeLabel].join(' · ');
-  return isGenericStationName(station.name)
-    ? fallback
-    : publicTechnicalLabel(station.name, fallback);
+  // Tożsamość stacji z JEDNEGO miejsca (`stationPublicIdentity`: kod · rodzaj z topologii).
+  return station ? stationPublicIdentity(snapshot, station).displayName : 'Stacja SN/nN';
 }
 
 function buildInternalStationElementSections(
@@ -1314,7 +1431,7 @@ function buildSemanticSegmentSections(
   }
   actions.push({
     id: 'insert_section_switch_sn',
-    label: 'Wstaw lacznik',
+    label: 'Wstaw łącznik',
     op: 'insert_section_switch_sn',
     context: semanticActionContext(selectedElement, { segmentRef: segmentRef, segmentLabel: segmentName }),
   });
@@ -2327,7 +2444,7 @@ function buildSectionsForElement(
     : snapshot.substations?.find((s) => s.id === elementId || s.ref_id === elementId);
   if (station) {
     elementType = 'substation';
-    const stationIdentity = stationPublicName(snapshot, station);
+    const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
     const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
     const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
@@ -2335,7 +2452,7 @@ function buildSectionsForElement(
       ? `${snFieldCount} pól SN`
       : stationFieldItems.length > 0
         ? `${stationFieldItems.length} pól SN`
-        : formatStationSwitchgearLayoutLabelPl(station.station_type);
+        : ukladRozdzielnicyStacjiPl(snapshot, station);
     // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
     const stationTransformers = selectStationDistributionTransformers(snapshot, station);
     // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
@@ -2547,6 +2664,11 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       ?? null;
   }, [elementId, itemsByBayId, itemsByBayRef, selectedBaySnapshot]);
   const isSelectedBay = selectedElement?.type === 'BaySN' || Boolean(selectedBayField);
+  const selectedBayKatalog = useKatalogPola(
+    selectedBayField?.canonical_model.base_model.bay_template_ref,
+    selectedBayField?.canonical_model.base_model.switchgear_family_ref,
+  );
+  const selectedBayPorts = selectedBaySnapshot?.ports ?? null;
   const selectedBayName = selectedBayField?.bay_name
     ?? selectedElement?.name
     ?? elementId
@@ -2589,6 +2711,8 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           readinessIssues,
           elementId ?? '',
           selectedBayName,
+          selectedBayKatalog,
+          selectedBayPorts,
         );
       }
       return buildSectionsForElement(
@@ -2615,7 +2739,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       dynamicProfiles,
       readinessIssues,
       selectedBayField,
+      selectedBayKatalog,
       selectedBayName,
+      selectedBayPorts,
       selectedElement,
       snapshot,
     ],
@@ -3082,7 +3208,7 @@ function buildCalculationProofCandidateRefs(
 // SectionBlock
 // =============================================================================
 
-function SectionBlock({
+export function SectionBlock({
   section,
   elementId,
   activeCaseId,
@@ -3141,6 +3267,13 @@ function EngineeringField({
   const formattedInitialValue = formatValue(field.value);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(formattedInitialValue);
+  // Wartość wyświetlana idzie za danymi: pole o tym samym kluczu dostaje nową wartość, gdy
+  // model odczytu się zmieni (ładowanie → wynik, nowa rewizja, odpowiedź katalogu). Bez tego
+  // `useState` trzymał wartość z PIERWSZEGO renderu i karta pokazywała nieaktualną treść
+  // (np. „Ładowanie…" po odpowiedzi). W trakcie edycji wpis użytkownika ma pierwszeństwo.
+  useEffect(() => {
+    if (!editing) setValue(formattedInitialValue);
+  }, [editing, formattedInitialValue]);
   const showUnit = Boolean(field.unit) && !isMissingFieldValue(value);
 
   const reset = useCallback(() => {

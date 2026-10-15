@@ -9,11 +9,13 @@ Co robi, po kolei, i dlaczego akurat w tej kolejnosci:
    Gdyby szedl dalej, wszystkie pozniejsze „zielone" byly by warte tyle, co nic.
 2. MANIFEST — sprawdzenie, ze kazde twierdzenie wskazuje istniejacy test i istniejaca
    mutacje. To jest bramka na fikcje w dokumencie, nie na fizyke.
-3. BRAMKI FIZYCZNE — komplet G1-G13 wobec wyroczni analitycznej oraz bramki zdarzen
-   rdzenia (karta AB-1b.1): bramka G14 (zdarzenia warunkowe), G15 (zrodlo testowe), G16
-   (zwarcie w linii x*L, fazory, parytet IEC 60909), G17 (obszar beznapieciowy), G18
-   (przypisanie stanu), G19 (predykat izolacji), G20 (probki obustronne), G21 (czesciowa
-   utrata zrodla).
+3. BRAMKI FIZYCZNE — komplet G1-G13 (bez skasowanej G8) wobec wyroczni analitycznej oraz
+   bramki zdarzen rdzenia (karta AB-1b.1): bramka G14 (zdarzenia warunkowe), G15 (zrodlo
+   testowe), G16 (zwarcie w linii x*L, fazory, parytet IEC 60909), G17 (obszar
+   beznapieciowy), G18 (przypisanie stanu), G19 (predykat izolacji), G20 (probki
+   obustronne), G21 (czesciowa utrata zrodla); bramki modelu odbioru (karta modeli
+   odbiorow): G22 (parytet t = 0 z rozplywem), G23 (przejscie PQ -> Z), G24 (estymator
+   czestotliwosci i samoregulacja wyspy), G25 (fail-closed modelu odbioru).
 4. POZOSTALE TESTY PAKIETU — obserwable, zdarzenia, odpornosc numeryczna, mutacje.
 5. PODSUMOWANIE — jeden werdykt i jeden kod wyjscia.
 
@@ -69,7 +71,7 @@ def main() -> int:
             [sys.executable, "-m", "pytest", "tests/walidacja_fizyczna/test_manifest.py", "-q"],
         ),
         _krok(
-            "bramki fizyczne G1-G13 i bramki G14-G21",
+            "bramki fizyczne G1-G13 (bez skasowanej G8) i bramki G14-G25",
             [sys.executable, "-m", "pytest", "tests/walidacja_fizyczna/test_bramki.py", "-q"],
         ),
         _krok(

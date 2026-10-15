@@ -958,7 +958,7 @@ def get_switch_catalog_statistics() -> dict[str, Any]:
 #
 # ZPUE Wloszczowa — rodzina Rotoblok (CB SF6) + lacznik NAL.
 # Elektrometal — rodzina E2 Alpha (CB vacuum, fuse-switch).
-# Wszystkie pozycje zgodne z PTPiREE WiPWC referencje.
+# Deklaracja zgodnosci z PTPiREE WiPWC bez dokumentu — pozycje NIEWERYFIKOWANE.
 
 
 def _polish_switch(
@@ -993,11 +993,22 @@ def _polish_switch(
             "medium": medium,
             "u_m_kv": un_kv,
             "i_cu_ka": i_cu_ka,
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": source,
+            # Karta KATALOG-KOMPLETNY-PROWENIENCJA (runda 3): zrodlo bez numeru dokumentu,
+            # strony i adresu, „PTPiREE WiPWC" bez numeru certyfikatu — deklaracja bez
+            # dokumentu => NIEWERYFIKOWANY; flaga `ptpire_certified` zdjeta (flaga wymaga
+            # zrodla z dokumentem certyfikatu).
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": (
+                f"Deklarowane: {source} — dokument nie jest dołączony do repozytorium "
+                "(niezweryfikowany)"
+            ),
+            "verification_note": (
+                "Pozycja deklarowana: brak karty katalogowej producenta (numer, strona, "
+                "adres) i brak dokumentu certyfikatu PTPiREE — status NIEWERYFIKOWANY, bez "
+                "flagi certyfikatu. Parametry do potwierdzenia kartą producenta."
+            ),
             "contract_version": "2.0",
-            "ptpire_certified": True,
         },
     }
 

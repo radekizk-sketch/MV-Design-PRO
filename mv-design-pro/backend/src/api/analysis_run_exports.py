@@ -49,6 +49,7 @@ ReportFocusTable = (
         "dynamika_zdarzenia",
         "dynamika_przekroczenia",
         "dynamika_metryki",
+        "dynamika_zalozenia",
         "trace",
     ]
     | None
@@ -60,6 +61,7 @@ TABELE_DYNAMIKI: tuple[str, ...] = (
     "dynamika_zdarzenia",
     "dynamika_przekroczenia",
     "dynamika_metryki",
+    "dynamika_zalozenia",
 )
 
 DEFAULT_REPORT_SECTIONS_BY_DETAIL: dict[ReportDetailLevel, tuple[ReportSection, ...]] = {
@@ -450,6 +452,10 @@ def _linie_dynamiki(dynamika: dict[str, Any], table_id: str, limit: int) -> list
                 f"{opis.get('kierunek_pl') or przekroczenie.get('kierunek')}"
             )
         return linie
+    if table_id == "dynamika_zalozenia":
+        # Zdania złożone przez warstwę aplikacji z rekordów rdzenia i nazw migawki biegu
+        # (`application.dynamika.zalozenia`) — te same, które pokazuje ekran dynamiki.
+        return [str(z) for z in (opis_wyniku.get("zalozenia_modelu") or [])[:limit]]
     opisy = {m["klucz"]: m.get("opis_pl") for m in opis_wyniku.get("metryki") or []}
     return [
         f"{opisy.get(metryka.get('klucz')) or metryka.get('klucz')}: "

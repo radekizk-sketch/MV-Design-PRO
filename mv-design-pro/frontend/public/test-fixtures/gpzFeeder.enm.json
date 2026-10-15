@@ -683,7 +683,7 @@
         "frequency_hz": null,
         "id": "1a599ea3-3d83-5b86-945b-b60913048463",
         "meta": {},
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/8dac76614b18fa3885ba3c3b51efa636/sn_bus",
@@ -819,7 +819,7 @@
         "frequency_hz": null,
         "id": "e98821d1-3328-5c19-9755-97e752dc9e69",
         "meta": {},
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/07997c7ce0ead873cd92305f1c9b8302/sn_bus",
@@ -975,7 +975,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "df2e4325495ccef23ed70da8eba0505d9aa55b734c78817abbfb6058f403e690",
+      "hash_sha256": "7e22ccc3956bd74f583233ebc11b70589321c44d076c92b47ed399f89db552bd",
       "name": "GPZ z magistralą i odgałęzieniem",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1023,6 +1023,7 @@
         "bus_ref": "nn/fb17b6a09eaf19fd343a37a30e125cec/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "46d27f09-31bb-50d4-bf92-053a9c12f019",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1050,7 +1051,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S01 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S01",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1065,6 +1066,7 @@
         "bus_ref": "nn/7654ee5b447008ca20301b33a0547cfc/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "25fe4e9d-14a0-5eee-8713-651434fb598e",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1092,7 +1094,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S02 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S02",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1367,11 +1369,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/8dac76614b18fa3885ba3c3b51efa636/station",
@@ -1502,11 +1502,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/07997c7ce0ead873cd92305f1c9b8302/station",

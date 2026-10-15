@@ -400,6 +400,10 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
     "enm/domain_operations_v2.py:brakujace_pola_agregatu": (
         "nazwy pól tabliczki agregatu z `pole()`"
     ),
+    "enm/domain_operations_v2.py:bledy": (
+        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
+        "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
+    ),
     "enm/slownik_komunikatow.py:opisy": (
         "opisy błędów walidacji złożone z nazw pól formularza i opisów rodzaju błędu"
     ),

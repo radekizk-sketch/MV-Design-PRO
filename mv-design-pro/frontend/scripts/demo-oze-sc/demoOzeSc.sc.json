@@ -1,7 +1,7 @@
 {
   "_meta": {
     "analysis_type": "short_circuit_3f",
-    "builder_snapshot_hash": "4780cf25125661d6adf6007aeaa07514611e7007d9317a32090cc8ab93c8f13c",
+    "builder_snapshot_hash": "5bc10b01f71799fa45c2a5648b64043b41a74440d313069177002fe77f123e35",
     "c_factor": 1.1,
     "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",
     "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",

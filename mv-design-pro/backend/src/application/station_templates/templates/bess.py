@@ -1,4 +1,8 @@
-"""BESS magazyny energii — 5 templates (0.5-5 MW / 1-10 MWh, różne usługi)."""
+"""BESS magazyny energii — 5 szablonów (0,5–5 MW / 1–10 MWh, różne usługi).
+
+Kontenery wskazują modele referencyjne — jawny wyjątek `_choices.WYJATKI_POZYCJI_BEZ_KARTY`
+(katalog nie ma pozycji BESS z kartą producenta dopuszczonej do doboru). Typ modułu NC RfG
+wynika ze składu (`schema.typ_modulu_nc_rfg_skladu`)."""
 
 from __future__ import annotations
 
@@ -10,7 +14,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
-    TR_BLOCK_BESS_OPTIONS,
+    TR_OPTIONS_POTRZEBY_WLASNE,
     VT_OPTIONS,
 )
 from application.station_templates.schema import (
@@ -19,6 +23,7 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    typ_modulu_nc_rfg_skladu,
 )
 
 
@@ -30,8 +35,11 @@ def _bess(
     bess_count: int,
     bess_p_mw_each: float,
     use_case: str,
-    nc_rfg_type: str = "B",
 ) -> StationTemplate:
+    der_options = (
+        replace(DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count),
+    )
+    nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 15.0)
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,
@@ -42,7 +50,7 @@ def _bess(
         icon="station-bess",
         tags=("BESS", "magazyn", "OZE", f"NC_RfG_{nc_rfg_type}"),
         schema=TemplateSchema(
-            transformer_options=TR_BLOCK_BESS_OPTIONS,
+            transformer_options=TR_OPTIONS_POTRZEBY_WLASNE,
             sn_bays_count=TemplateParamInt(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),
@@ -56,9 +64,7 @@ def _bess(
                 default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(
-                replace(DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count),
-            ),
+            der_options=(*der_options,),
             der_total_count=TemplateParamInt(
                 default=bess_count, min_value=1, max_value=10, label_pl="Liczba kontenerów BESS"
             ),
@@ -76,8 +82,12 @@ def _bess(
 # po 2,5 MW" nie miały pozycji katalogowej 2,5 MW — dobór brał jednostkę 2 MW z nastawą
 # 2,5 MW, czyli nastawę ponad moc znamionową falownika (dziś odmowa nazwana
 # `converter.setpoint_above_rating`), a jednostka 5 MW (S_n 5,5 MVA) przekracza TR blokowy
-# 2,5 MVA. Moc i energia szablonu bez zmian: FCR_N 5 × 1 MW / 2 MWh = 5 MW / 10 MWh,
-# aFRR 10 × 0,5 MW / 1 MWh = 5 MW / 5 MWh.
+# 2,5 MVA. Moc i energia szablonu: FCR_N 5 × 1 MW / 2 MWh = 5 MW / 10 MWh,
+# aFRR 10 × 0,5 MW / 1 MWh = 5 MW / 10 MWh. Korekta 2026-10-15: szablon aFRR obiecywał
+# „5 MW / 5 MWh (C-rate 1,0)", a materializował 10 kontenerów po 1 MWh, czyli 10 MWh
+# energii użytecznej w modelu (`usable_capacity_kwh` z pozycji katalogu) — katalog nie ma
+# kontenera o C-rate 1,0. Nazwa i opis mówią teraz to, co szablon tworzy; zgodność nazwy
+# ze składem przypina `test_der_mix_integrity` dla każdego szablonu z DER.
 BESS_TEMPLATES = (
     _bess(
         "tpl_bess_500kw_1mwh",
@@ -102,7 +112,6 @@ BESS_TEMPLATES = (
         bess_count=1,
         bess_p_mw_each=2.0,
         use_case="Voltage support, regulacja Q dla OSD.",
-        nc_rfg_type="C",
     ),
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",
@@ -112,16 +121,14 @@ BESS_TEMPLATES = (
         bess_count=5,
         bess_p_mw_each=1.0,
         use_case="FCR_N — automatyczna rezerwa pierwotna częstotliwości.",
-        nc_rfg_type="D",
     ),
     _bess(
-        "tpl_bess_5mw_5mwh_afrr",
-        "BESS 5 MW / 5 MWh (C-rate 1.0, aFRR services)",
-        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna) — 10 kontenerów po "
+        "tpl_bess_5mw_10mwh_afrr",
+        "BESS 5 MW / 10 MWh (C-rate 0.5, aFRR services)",
+        "Magazyn 5 MW/10 MWh do aFRR (rezerwa wtórna automatyczna) — 10 kontenerów po "
         "0,5 MW / 1 MWh.",
         bess_count=10,
         bess_p_mw_each=0.5,
         use_case="aFRR — automatyczna rezerwa wtórna częstotliwości (PSE).",
-        nc_rfg_type="D",
     ),
 )

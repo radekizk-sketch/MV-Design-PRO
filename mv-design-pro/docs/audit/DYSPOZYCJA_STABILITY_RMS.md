@@ -4,6 +4,10 @@
 production imports. Complete the forensic disposition first."* Dokument ustala, **czym ten pakiet
 jest**, co z niego warto zachować i czego kasacja by kosztowała.
 
+**Stan 2026-09-30:** pakiet SKASOWANY (decyzja ostateczna właściciela B-01 z 2026-09-30, pozycja (i) planu
+A/B §12.2, karta B01-RUNDA-1) razem z wpisem „Stabilność RMS” listy `scripts/rdzenie_b01.py`. Dokument
+poniżej jest zapisem dyspozycji sprzed kasacji.
+
 **Baza:** HEAD `cb2cb93e`. Rozmiar: 603 linie (`__init__.py` 33, `contracts.py` 179, `engine.py` 391).
 
 ---

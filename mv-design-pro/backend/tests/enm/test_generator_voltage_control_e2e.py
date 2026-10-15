@@ -75,7 +75,7 @@ class TestAssemblerPVSpec:
         assert node_id in pv_by_id
         spec = pv_by_id[node_id]
         assert isinstance(spec, PVSpec)
-        assert spec.u_pu == pytest.approx(1.002)
+        assert spec.u_pu == pytest.approx(1.001)
         assert spec.q_min_mvar == pytest.approx(-0.03)
         assert spec.q_max_mvar == pytest.approx(0.03)
         # Węzeł PV nigdy nie trafia do listy PQ (jedna reprezentacja na węzeł).
@@ -161,7 +161,7 @@ class TestCanonicalRunPV:
         rr = run.raw_result
         assert rr["quality_status"] == "accepted"
         u_pu = rr["node_voltage_kv"][node_id] / bus_kv
-        assert u_pu == pytest.approx(1.002, abs=1e-6)
+        assert u_pu == pytest.approx(1.001, abs=1e-6)
         assert rr["pv_to_pq_switches"] == []
         assert run.power_flow_trace["pv_bus_ids"] == [node_id]
 

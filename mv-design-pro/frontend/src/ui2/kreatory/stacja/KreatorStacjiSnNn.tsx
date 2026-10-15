@@ -120,6 +120,7 @@ import {
   opcjeSzablonowRoli,
   parametryZKatalogu,
   producenciUzywalni,
+  rodzajStacjiZKreatora,
   rolePolaStacji,
   szablonyDlaWyboru,
   szablonyPerRola,
@@ -157,6 +158,7 @@ import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
 import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
+import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szablon', tytul: T.krokSzablon },
@@ -1184,7 +1186,13 @@ export function KreatorStacjiSnNn() {
     try {
       const [szablon, podgladSzablonu] = await Promise.all([
         fetchStationTemplate(wybranySzablonId),
-        previewStationTemplate(wybranySzablonId, {}).catch(() => null),
+        // Odmowa podglądu (np. HTTP 422 z kodem odmowy szablonu) jest POKAZYWANA — dawne
+        // ciche `catch(() => null)` wypełniało formularz bez doboru transformatora i bez
+        // słowa wyjaśnienia (karta GPT-478 pkt 7.3: jedna, jawna funkcja odmowy).
+        previewStationTemplate(wybranySzablonId, {}).catch((e: unknown) => {
+          setBladSzablonow(T.szablonPodgladOdmowa + (e instanceof Error ? e.message : String(e)));
+          return null;
+        }),
       ]);
       const wypelnienie = wypelnienieZSzablonu(szablon, podgladSzablonu);
       setSzablonZastosowany(szablon);
@@ -1313,8 +1321,16 @@ export function KreatorStacjiSnNn() {
   }, [dane, dobrane, falowniki, isZrodlo, konwerter, zapiszStacje]);
 
   const koniec = czyKoniecOdcinka(kontekst);
-  const typLabel =
-    T.typStacjiOpcje.find((o) => o.id === dane.station_type)?.etykieta ?? dane.station_type;
+  // Rodzaj, który powstanie ze składu pól i umiejscowienia (jedna reguła produktu) — obok
+  // deklaracji z kroku „Rodzaj"; rozjazd = ostrzeżenie W043 po zapisie, więc widać go od razu.
+  const rodzajWynikowy = rodzajStacjiZKreatora(dane.pola, kontekst.tryb);
+  const rodzajZgodny = rodzajWynikowy === dane.station_type;
+  const typLabel = rodzajZgodny
+    ? T.rodzajWynikowy(NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy])
+    : T.rodzajNiezgodny(
+      NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy],
+      NAZWA_RODZAJU_STACJI_PL[dane.station_type],
+    );
   const umiejscowienieLabel = koniec ? T.umiejscowienieKoniec : T.umiejscowieniePodzial;
   const konfiguracjaNnLabel =
     T.konfiguracjaNnOpcje.find((o) => o.id === dane.nn_configuration)?.etykieta ?? dane.nn_configuration;
@@ -1327,7 +1343,7 @@ export function KreatorStacjiSnNn() {
   const protekcja = zabezpieczenieZrodla(dane);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszTyp, stan: 'kompletne', wartosc: typLabel },
+    { etykieta: T.wierszTyp, stan: rodzajZgodny ? 'kompletne' : 'ostrzezenie', wartosc: typLabel },
     {
       etykieta: T.wierszUmiejscowienie,
       stan: kontekstOk ? 'kompletne' : 'brak',

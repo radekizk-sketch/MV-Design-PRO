@@ -1159,9 +1159,7 @@
                 "nn_main_breaker"
               ]
             }
-          ],
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          ]
         },
         "name": "Stacja Lipowa",
         "nn_sections": [],

@@ -512,6 +512,12 @@ function TemplateDetails({ type }: { type: ProtectionSettingTemplate }) {
               <div key={idx} className="border-l-2 border-blue-300 pl-3 py-1 text-xs">
                 <div className="font-medium text-gray-700">{field.name}</div>
                 {field.unit && <div className="text-gray-500">Jednostka: {field.unit}</div>}
+                {field.jednostka_status === 'NIEUSTALONA' && (
+                  <div className="text-amber-700" data-testid="szablon-jednostka-nieustalona">
+                    Jednostka: nieustalona — brak podstawy (ampery wtórne, krotność In wejścia
+                    przekaźnika czy ampery pierwotne); zakres nie jest źródłem nastaw oceny
+                  </div>
+                )}
                 {field.min !== undefined && field.max !== undefined && (
                   <div className="text-gray-500">
                     Zakres: {field.min} – {field.max}

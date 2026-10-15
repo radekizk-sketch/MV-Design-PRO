@@ -38,8 +38,10 @@ from enm.assembler import (
 from enm.dynamika_z_katalogu import (
     KOD_KOPIA_NIEAKTUALNA,
     StanDynamikiGeneratora,
+    StanDynamikiOdbioru,
     braki_kopii_dynamiki,
     stan_dynamiki_generatorow,
+    stan_dynamiki_odbiorow,
 )
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
@@ -647,6 +649,14 @@ def _powod_braku_modelu(stan: StanDynamikiGeneratora) -> str:
     return "brak wiązania z katalogowym modelem dynamicznym"
 
 
+def _powod_braku_modelu_odbioru(stan: StanDynamikiOdbioru) -> str:
+    """Powód braku modelu dynamicznego odbioru — odmowa materializacji wiązania albo brak
+    wiązania (akcja naprawcza: wiązanie z katalogowym profilem odbioru na ekranie dynamiki)."""
+    if stan.odmowa_komunikat:
+        return stan.odmowa_komunikat
+    return "brak wiązania z katalogowym profilem modelu dynamicznego odbioru"
+
+
 def _check_dynamika_rms(
     enm: EnergyNetworkModel, *, punkt_pracy_rozplywu: bool | None = None
 ) -> ReadinessTypeReport:
@@ -669,13 +679,18 @@ def _check_dynamika_rms(
     Scenariusz dynamiczny i nastawy numeryczne są daną PER BIEG (opcje biegu) —
     ich kompletność sprawdza adapter nazwaną odmową przy wykonaniu; model ich
     nie niesie, więc bramka modelowa nie ma czego o nich orzec."""
-    if not enm.generators:
+    # O-49 pkt 7: bieg czasowy nie dotyczy WYŁĄCZNIE sieci bez wytwórców i bez odbiorów —
+    # odbiory mają model dynamiczny (napięcie przejścia, estymator częstotliwości), a bieg
+    # sieci z samymi odbiorami adapter wykonuje; `n_a` przy obecnych odbiorach byłoby
+    # rozjazdem gotowości z biegiem (dawny pin `test_pr12_readiness`).
+    if not enm.generators and not enm.loads:
         return ReadinessTypeReport(
             calculation_type="dynamika_rms",
             label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
             status="n_a",
             recommended_action_pl=(
-                "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW) w projekcie."
+                "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW) i odbiorów "
+                "w projekcie."
             ),
         )
     braki = braki_modelu_dynamiki(enm)
@@ -687,11 +702,21 @@ def _check_dynamika_rms(
         # funkcji stanu, którą czyta końcówka gotowości dynamiki w interfejsie.
         # Wytwórca jest nazwany NAZWĄ z modelu (nie identyfikatorem), jak w ekranie dynamiki.
         stany = stan_dynamiki_generatorow(migawka)
-        nazwy = {stan.ref_id: stan.nazwa for stan in stany}
+        stany_odbiorow = stan_dynamiki_odbiorow(migawka)
+        # Element z rodzajem i nazwą z modelu — kopia nieaktualna dotyczy wytwórcy albo odbioru.
+        nazwy = {
+            **{stan.ref_id: f"wytwórca „{stan.nazwa}”" for stan in stany},
+            **{stan.ref_id: f"odbiór „{stan.nazwa}”" for stan in stany_odbiorow},
+        }
         nazwy_modelu = zbuduj_indeks_nazw(migawka)
         powody = [
             f"wytwórca „{stan.nazwa}”: {_powod_braku_modelu(stan)} (kod 'der.dynamika_missing')"
             for stan in stany
+            if stan.stan in ("brak", "odmowa")
+        ] + [
+            f"odbiór „{stan.nazwa}”: {_powod_braku_modelu_odbioru(stan)} "
+            "(kod 'load.dynamika_missing')"
+            for stan in stany_odbiorow
             if stan.stan in ("brak", "odmowa")
         ]
         return ReadinessTypeReport(
@@ -706,8 +731,7 @@ def _check_dynamika_rms(
                 ),
                 *powody,
                 *(
-                    f"wytwórca „{nazwy[ref]}”: kopia modelu dynamicznego nieaktualna "
-                    "wobec wiązania "
+                    f"{nazwy[ref]}: kopia modelu dynamicznego nieaktualna wobec wiązania "
                     f"(kod '{KOD_KOPIA_NIEAKTUALNA}')"
                     for ref in nieaktualne
                 ),
@@ -718,9 +742,9 @@ def _check_dynamika_rms(
             ],
             recommended_action_pl=(
                 "Uzupełnij dane wejściowe biegu czasowego: model dynamiczny każdego wytwórcy "
-                "(wiązanie z katalogowym profilem dynamicznym albo blok z karty producenta), "
-                "rodzinę parametrów z modelem elektrycznym, odbiory o stałej mocy i osobną "
-                "szynę dla źródła sieciowego."
+                "(wiązanie z katalogowym profilem dynamicznym albo blok z karty producenta) "
+                "i każdego odbioru (wiązanie z katalogowym profilem odbioru), rodzinę "
+                "parametrów z modelem elektrycznym i osobną szynę dla źródła sieciowego."
             ),
         )
     pf = _check_power_flow(enm)
@@ -765,7 +789,8 @@ def _check_dynamika_rms(
         label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
         status="ready",
         recommended_action_pl=(
-            f"{len(enm.generators)} źródeł z blokiem dynamiki, punkt pracy z rozpływu dostępny. "
+            f"{len(enm.generators)} źródeł i {len(enm.loads)} odbiorów z modelem dynamicznym, "
+            "punkt pracy z rozpływu dostępny. "
             "Podaj scenariusz czasowy (horyzont, krok wyjścia, zdarzenia) i nastawy "
             "numeryczne solvera w opcjach biegu."
         ),

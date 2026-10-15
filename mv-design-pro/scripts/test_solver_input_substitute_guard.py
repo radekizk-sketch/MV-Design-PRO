@@ -1725,7 +1725,52 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta modeli odbiorow AB-1b.3b (2026-09-29): 4097 -> 4105 — POMIAR `contract_fields()` na
+    # `509c4776` i na drzewie karty, roznica zbiorow: -0, +8 (katalog profili modelu
+    # dynamicznego odbiorow `network_model/catalog/load_dynamic`: `podstawa_t_pomiaru_pl`,
+    # `podstawa_u_min_pl`, `t_pomiaru_czestotliwosci_s`; stan kopii odbioru
+    # `enm/dynamika_z_katalogu.py`: `czuly_czestotliwosciowo`; stan modelu odbioru w rdzeniu
+    # `dynamika/odbiory.py`: `estymator_wyzerowany`, `tryb_poza_obwodem`; `dynamika/silnik.py`:
+    # `reset_estymatorow`; kontrakt wyniku `resultset_dynamic_v2`: `zalozenia_rdzenia`). PASS
+    # bramki niezmieniony (zero podstawien).
+    # Przeniesienie AB-1b.3b na czubek partii 5 z poprawkami chwili zero (karta
+    # AB-1b.3b-NA-CZUBKU, 2026-09-30): 4104 + 8 = 4112 — zbiory zmian rozlaczne; POMIAR guardem.
+    # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6, 2026-09-30):
+    # 4116 + 8 = 4124 — zbiory zmian rozlaczne; POMIAR guardem na drzewie karty.
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 4104 -> 4105 — POMIAR guardem (roznica
+    # zbiorow `contract_fields()` baza `3840e239` vs drzewo karty): +63 (kontrakty jednej
+    # sciezki oceny `ocena_nadpradowa` — `stopnie`, `prog_pierwotny_a`, `prog_wtorny_a`,
+    # `przekladnia_a`, `jednostka_progu`, `threshold_unit`, `wiarygodnosc*`, `krotnosc_m*`,
+    # `bilans_pradu`, `klaster_zacisku`, `wezel_zacisku`, `strefy`, `oceny`; koordynacja z
+    # biegow — `ocena_max/min`, `pary`, `odmowy_par`, `prady_robocze`, `prady_punktow_max/min`,
+    # `bezpieczniki`, `required_ratio`, `ratio`, `najmniejszy_*`; porownanie —
+    # `unreliable_count(_delta)`, `nazwa_urzadzenia_pl`, `nazwa_punktu_pl`), -62 (skasowany
+    # model urzadzenia koordynacji `stage_50/51/50n/51n`, `curve_settings`, `fault_currents`,
+    # `operating_currents`, `location_*`, werdykty `overall_verdict*`, `*_pass/_fail/_margin_*`,
+    # szablon przypadku `template_fingerprint`, `library_*`, `invalid_count(_delta)`, rejestr
+    # krzywych producentow `vendor_curve_code`, `maps_to_iec`, `iec_variant`). PASS bez zmian.
+    # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (przeniesienie powyzszej na czubek partii 6): 4116 + 1
+    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; dalej +1
+    # `punkt_wyniku_ref` (`PunktZwarciaStrefy` w `ocena_nadpradowa.py` — punkt zwarcia na
+    # zacisku pola raportowany pod szyna pola) = 4118. POMIAR guardem na drzewie przeniesienia.
+    # Partia integracji 7 (AB-1b.3b-NA-PARTII-6 + BIEG-ZABEZPIECZEN-NA-PARTII-6 na partii 6):
+    # 4124 (z AB-1b.3b) + 2 = 4126 (pole `punkt_wyniku_ref` jest juz w `9d7e4968`, wiec
+    # `df8ac6dd` nie zmienia liczby) — POMIAR guardem na drzewie partii (zbiory zmian obu kart
+    # rozlaczne).
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 4116 -> 4122 — POMIAR `contract_fields()`
+    # na drzewie karty i na drzewie startowym `615f3b24`, roznica zbiorow: +6 (`deklaracja`,
+    # `pola_liniowe`, `pola_nierozpoznane`, `rola`, `sprzeglo`, `wyprowadzenia_polaczone` —
+    # `RodzajStacji`/`PoleNierozpoznane` w `enm/rodzaj_stacji.py`, jedna regula rodzaju stacji
+    # dla walidatora W043/W044), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 4126 + 6 = 4132 — POMIAR
+    # guardem na drzewie partii.
+    # dla walidatora W043/W044), -7 (`bay_template_id`, `construction_type_default`,
+    # `feeders_count`, `lv_voltage_kv`, `nn_switchgears`, `nominal_power_kva`,
+    # `topological_type` — skasowany osierocony `network_model/catalog/station_templates.py`,
+    # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
+    # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,7 +1948,33 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): 555 -> 558 (+1 `network_model/catalog/
+        # load_dynamic/__init__.py` — katalog profili modelu dynamicznego odbiorow, +2
+        # `application/dynamika/{zalozenia,odmowy}.py` — zdania zalozen z rekordow rdzenia
+        # i komunikaty odmow z nazwami); zero plikow skasowanych, zapadka dlugu i
+        # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Przeniesienie AB-1b.3b na czubek partii 5: 557 + 3 = 560. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): 561 + 3 = 564.
+        # POMIAR guardem na drzewie karty.
+        # Karta B01-RUNDA-1 (2026-09-30, decyzja B-01 pozycja (i)): 561 -> 558 (-3 skasowany
+        # solver `network_model/solvers/stability_rms/{__init__,contracts,engine}.py`).
+        # POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6 na partii 6): 561 - 3 + 3 =
+        # 561. POMIAR guardem na drzewie partii.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 557 -> 559 (+2 enm: `nastawy_zabezpieczen.py`,
+        # `wylaczniki_liniowe.py`; application +3/-3 — patrz pin per korzen). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: 561 + 2 (`enm/nastawy_zabezpieczen.py`,
+        # `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): 561 + 2 (`enm/nastawy_
+        # zabezpieczen.py`, `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie partii.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 561 -> 562 (+1 `enm/rodzaj_stacji.py` —
+        # jedna regula rodzaju stacji z topologii). POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 563 + 1 (`enm/rodzaj_
+        # stacji.py`) = 564. POMIAR guardem na drzewie partii.
+        # jedna regula rodzaju stacji z topologii), -1 (skasowany osierocony
+        # `network_model/catalog/station_templates.py`) = 561. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 564 - 1 = 563. POMIAR.
+        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1960,8 +2031,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zwarciowego i czasu wylaczenia w dowodzie wytrzymalosci) zdjety razem z petla — pakiet
     # sklada `application/proof_engine/packs/audit2_skladanie.py` z typowanej konfiguracji.
     # Partia integracji 5: oba wpisy zdjete — 54/244 -> 52/240. POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 52 plikow, suma 240." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zapadka 52/240 -> 51/236 — wpis
+    # `application/protection_read_model.py` ("A:or:setting.threshold_a": 2, ciche 0 A progu
+    # krzywej I-t) zdjety razem z zerem; `enm/domain_operations_v2.py` -2
+    # (`ds_settings/us_settings.time_dial` — mnoznik 1,0 za brak nastawy) zdjety razem ze
+    # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
+    # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
+    # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 236." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
         # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
@@ -2027,8 +2105,28 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
-        "wykluczenia=3 plikow/suma 6",
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): network_model 181 -> 182 (+1
+        # `catalog/load_dynamic/__init__.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 5: network_model 182 + 1 = 183. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): network_model
+        # 183 (z `odmowa_danych.py`) + 1 (`catalog/load_dynamic/__init__.py`) = 184 — literal 183
+        # obu stron scalil sie bez konfliktu, ale blednie. POMIAR guardem na drzewie karty.
+        # Karta B01-RUNDA-1 (decyzja B-01 pozycja (i)): network_model 183 -> 180 (-3 skasowany
+        # `stability_rms/**`); dlug i wykluczenia BEZ ZMIAN (pakiet nie mial wpisow). POMIAR.
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6): network_model 183 - 3 + 1 =
+        # 181. POMIAR guardem na drzewie partii.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wykluczenia 3/6 -> 1/2 (wpisy raportow DOCX/PDF
+        # koordynacji zdjete). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: 183 plikow (partia 6), wykluczenia 1/2 (karta).
+        # POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): network_model 181 (B01-RUNDA-1
+        # -3, AB-1b.3b +1), wykluczenia 1/2 (karta zabezpieczen). POMIAR guardem na drzewie partii.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ: network_model 183 -> 182 (-1 skasowany osierocony
+        # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
+        # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
+        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
+        "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
         # plik skasowany w karcie AB-1a Pakiet C — wpis nizej).
@@ -2071,7 +2169,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
         # BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: enm 56 -> 58 (+2 `enm/nastawy_zabezpieczen.py` —
+        # jedna regula zapisu nastaw, `enm/wylaczniki_liniowe.py` — kotwica wylacznika
+        # liniowego); dlug 7/69 -> 7/67 (`time_dial` w skasowanej `validate_selectivity`).
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: enm 58 (partia 6) + 2 (karta) = 60; dlug 7/67
+        # (karta). POMIAR guardem na drzewie przeniesienia.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): enm 58 -> 59 (+1 `enm/rodzaj_stacji.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
+        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2130,9 +2236,23 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): application 243 -> 245 (+2
+        # `application/dynamika/{zalozenia,odmowy}.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR.
+        # Przeniesienie AB-1b.3b na czubek partii 5: application 244 + 2 = 246. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): application
+        # 245 + 2 = 247. POMIAR guardem na drzewie karty.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: application 244 bez zmiany liczby (+3
+        # `analyses/protection/ocena_nadpradowa.py`, `coordination/z_biegow.py`,
+        # `catalog/zakresy.py`; -3 skasowany `application/protection_analysis/**`); dlug
+        # 30/91 -> 29/89 (wpis `protection_read_model.py` zdjety). api wykluczenia 6/15 ->
+        # 5/13 (wpis `api/protection_coordination.py` zdjety). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: application 245 (partia 6, liczba bez zmiany
+        # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
+        # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=247, dlug=29 plikow/suma 89, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
@@ -2262,7 +2382,8 @@ def test_wylaczenie_wygrywa_z_pokryciem_prefiksem() -> None:
     zbiory byly ROZLACZNE: wykluczony modul nie mogl byc objety zadnym wpisem
     `CONTRACT_SOURCES`. Bylo to prawda, dopoki wykluczenie dzialalo „przez
     nieobecnosc". Po dolozeniu `network_model/solvers` jako CALOSCI wykluczony
-    `stability_rms/contracts.py` LEZY pod pokrytym prefiksem — i tak ma byc:
+    `stability_rms/contracts.py` (skasowany w karcie B01-RUNDA-1) LEZAL pod pokrytym
+    prefiksem:
     wykluczenie stalo sie jawnym odjeciem stosowanym w `contract_fields()`.
     Rozlacznosc nazw przestala byc wiec wlasciwym niezmiennikiem; wlasciwym jest
     SKUTECZNOSC odjecia, ktora pilnuje `test_wylaczenie_korzenia_dziala_takze_na_mape_pol`.
@@ -2396,7 +2517,7 @@ def test_kazdy_skanowany_korzen_jest_zrodlem_pol() -> None:
     )
 
 
-def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
+def test_wylaczenie_korzenia_dziala_takze_na_mape_pol(tmp_path, monkeypatch) -> None:
     """PREDYKATY PARAMI (regula KLASA §3) — jedno zrodlo prawdy dla wejscia i wyjscia.
 
     Do rundy 4 `MODEL_ROOTS_POZA_MAPA` bylo czytane WYLACZNIE przez pin mapy,
@@ -2406,28 +2527,41 @@ def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
     `stability_rms/contracts.py` wrocil do mapy tylnymi drzwiami i przywrocil
     8 kolizji `real`/`imag`. Ten test pilnuje, ze wykluczenie znaczy to samo
     w obu miejscach.
+
+    Od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i)) solver `stability_rms`
+    jest skasowany, a rejestr wykluczen PUSTY — mechanizm cwiczony na module syntetycznym
+    pod pokrytym prefiksem, DWUSTRONNIE: bez wpisu pola wchodza do mapy, z wpisem nie.
     """
-    wykluczone = set(guard.MODEL_ROOTS_POZA_MAPA)
-    assert wykluczone, "Brak wykluczen — test bezprzedmiotowy, sprawdz konfiguracje."
-    pola = guard.contract_fields()
-    for rel in wykluczone:
-        sciezka = guard.BACKEND_SRC / rel
-        if not sciezka.is_file():
-            continue
-        wlasne = set()
-        drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
-        for node in ast.walk(drzewo):
-            if isinstance(node, ast.ClassDef):
-                for stmt in node.body:
-                    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                        wlasne.add(stmt.target.id)
-        # Pola WYLACZNIE tego modulu nie moga trafic do mapy przez zaden inny korzen.
-        tylko_tam = {"real", "imag"} & wlasne
-        assert tylko_tam, f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
-        assert not (tylko_tam & pola), (
-            f"{rel}: pola {sorted(tylko_tam & pola)} wrocily do mapy mimo wykluczenia — "
-            "warunek wejscia i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
-        )
+    root = tmp_path / "src"
+    katalog = root / "network_model" / "solvers" / "fazor"
+    katalog.mkdir(parents=True)
+    (katalog / "contracts.py").write_text(
+        "from pydantic import BaseModel\n\n\n"
+        "class Fazor(BaseModel):\n    real: float\n    imag: float\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("network_model/solvers",))
+
+    monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
+    assert {"real", "imag"} <= guard.contract_fields(), "Kontrola dwustronna: bez wpisu pola sa."
+
+    monkeypatch.setattr(
+        guard,
+        "MODEL_ROOTS_POZA_MAPA",
+        {"network_model/solvers/fazor/contracts.py": "powod syntetyczny samotestu " * 4},
+    )
+    assert not ({"real", "imag"} & guard.contract_fields()), (
+        "pola wykluczonego modulu wrocily do mapy mimo wykluczenia — warunek wejscia "
+        "i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
+    )
+
+
+def test_rejestr_wykluczen_pusty_po_kasacji_stability_rms() -> None:
+    """Pozycja (i) planu A/B §12.2: jedyny wpis (`stability_rms/contracts.py`) zdjety razem
+    z solverem, a kolizje `real`/`imag` nie wracaja z zadnego innego kontraktu."""
+    assert guard.MODEL_ROOTS_POZA_MAPA == {}
+    assert not ({"real", "imag"} & guard.contract_fields())
 
 
 def test_jawna_nie_liczba_nie_jest_podstawieniem() -> None:

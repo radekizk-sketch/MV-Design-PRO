@@ -25,7 +25,10 @@
  */
 import type { Bus, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
-import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+} from '../../../shared/transformatoryStacji';
 import type { ResultLabelKind } from './resultLabelTemplates';
 
 /** Sufiksy refów rysunkowych szyn stacji (`compose/station.ts`) — jedyne dwa
@@ -109,6 +112,8 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
   if (!snapshot) return EMPTY_BRIDGE;
   const buses = busIndex(snapshot);
   const bridge = new Map<string, ResultRefBinding>();
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const substation of snapshot.substations ?? []) {
     const stationRef = substation.ref_id;
     const snBusRef = stationFieldBusRef(substation);
@@ -127,7 +132,7 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
     }
     // SZYNY-STACJI-LUSTRO: transformatory pola TR = transformatory ROZDZIELCZE stacji z jednej
     // reguły (transformator blokowy źródła DER stoi w polu źródłowym, nie w polu TR).
-    const transformerRefs = selectStationDistributionTransformers(snapshot, substation).map((tr) => tr.ref_id);
+    const transformerRefs = selectStationDistributionTransformers(snapshot, substation, kontekstTransformatorow).map((tr) => tr.ref_id);
     if (transformerRefs.length === 1) {
       for (const spec of fieldSpecsOf(substation)) {
         if (!spec.field_ref || String(spec.bay_role ?? '').toUpperCase() !== 'TR') continue;

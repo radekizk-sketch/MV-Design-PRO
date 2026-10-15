@@ -15,7 +15,6 @@ import {
   type CompleteMvBayTemplateSummary,
 } from '../../catalog/BayTemplatePicker';
 import type { Manufacturer } from '../../catalog/manufacturer';
-import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import type { Substation } from '../../../types/enm';
 import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
@@ -113,14 +112,6 @@ export function isUsableManufacturer(manufacturer: Manufacturer): boolean {
   return (
     (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0)
     || manufacturer.status === 'user_defined'
-  );
-}
-
-export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
-  return (
-    ((family.status === 'verified' || family.status === 'repo_verified')
-      && family.source_refs.length > 0)
-    || family.status === 'user_defined'
   );
 }
 

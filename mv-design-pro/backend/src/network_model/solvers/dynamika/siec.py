@@ -35,6 +35,12 @@ zespolony, bo residuum odbioru w galezi charakterystyki zalezy od `conj(V)` i od
 istnieje. Wklad `Y*V`
 w postaci rzeczywistej to blok `[[G, -B], [B, G]]`, wklad kazdego urzadzenia i
 odbioru to blok 2x2 w wierszu/kolumnie jego wezla.
+
+ELEMENTY STANOWE. Funkcje algebry dostaja odbiory (`kontrakty.ModelOdbioru`, KAZDY odbior
+wejscia — odbior bez obwodu ma prad zero i nie jest sumowany) i urzadzenia, a krotka
+`stany` jest wyrownana z `(*odbiory, *urzadzenia)` (`kontrakty.rozdziel_stany`). Prady
+sumuja sie w wezle w kolejnosci: odbiory, potem urzadzenia — ta sama, w ktorej sumowaly
+sie przed wprowadzeniem stanow odbiorow (parytet bitowy biegow bez odbiorow czulych).
 """
 
 from __future__ import annotations
@@ -51,13 +57,13 @@ from .kontrakty import (
     KOD_SIEC_NIESPOJNA,
     KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE,
     GalazDynamiki,
-    OdbiorDynamiki,
+    ModelOdbioru,
     OdmowaDynamiki,
     OdsprzegDynamiki,
     Urzadzenie,
     WezelDynamiki,
+    rozdziel_stany,
 )
-from .odbiory import jakobian_pradu_pu, prad_wstrzykiwany_pu, wymaga_napiecia_niezerowego
 from .skonczonosc import sprawdz_napiecia
 from .wyspy import przydzial_wysp, sprawdz_zasilanie_wysp
 
@@ -256,7 +262,7 @@ def _indeksacja(wezly: tuple[WezelDynamiki, ...]) -> tuple[tuple[str, ...], dict
         powtorzone = sorted({ident for ident in identy if identy.count(ident) > 1})
         raise OdmowaDynamiki(
             KOD_SIEC_NIESPOJNA,
-            f"Powtorzone identyfikatory wezlow: {powtorzone}",
+            f"Powtórzone identyfikatory węzłów: {powtorzone}.",
             wezly=tuple(powtorzone),
         )
     return identy, {ident: pozycja for pozycja, ident in enumerate(identy)}
@@ -310,15 +316,15 @@ def zloz_model_sieci(
         if galaz_zwarta is None:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Zwarcie w galezi spoza modelu ({ident_galezi!r}, x = {polozenie})",
+                f"Zwarcie w gałęzi spoza modelu ({ident_galezi}, x = {polozenie}).",
                 galaz=ident_galezi,
             )
         if galaz_zwarta.rodzaj not in ("linia", "kabel") or galaz_zwarta.przekladnia != 1:
             raise OdmowaDynamiki(
                 KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE,
-                f"Zwarcie w miejscu x*L galezi {ident_galezi!r} (rodzaj "
-                f"{galaz_zwarta.rodzaj!r}, przekladnia {galaz_zwarta.przekladnia}) — dlugosc "
-                "elektryczna istnieje wylacznie dla linii i kabla",
+                f"Zwarcie w miejscu x·L gałęzi {ident_galezi} (rodzaj "
+                f"„{galaz_zwarta.rodzaj}”, przekładnia {galaz_zwarta.przekladnia}) — długość "
+                "elektryczna istnieje wyłącznie dla linii i kabla.",
                 galaz=ident_galezi,
                 rodzaj=galaz_zwarta.rodzaj,
             )
@@ -333,14 +339,14 @@ def zloz_model_sieci(
         if galaz.wezel_od not in indeks or galaz.wezel_do not in indeks:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Galaz {galaz.ident!r} laczy wezel spoza modelu "
-                f"({galaz.wezel_od!r} -> {galaz.wezel_do!r})",
+                f"Gałąź {galaz.ident} łączy węzeł spoza modelu "
+                f"({galaz.wezel_od} -> {galaz.wezel_do}).",
                 galaz=galaz.ident,
             )
         if galaz.przekladnia == 0:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Galaz {galaz.ident!r} ma zerowa przekladnie",
+                f"Gałąź {galaz.ident} ma zerową przekładnię.",
                 galaz=galaz.ident,
             )
         od = indeks[galaz.wezel_od]
@@ -374,7 +380,7 @@ def zloz_model_sieci(
         if odsprzeg.wezel not in indeks:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Odsprzeg {odsprzeg.ident!r} wskazuje wezel spoza modelu ({odsprzeg.wezel!r})",
+                f"Odsprzęg {odsprzeg.ident} wskazuje węzeł spoza modelu ({odsprzeg.wezel}).",
                 odsprzeg=odsprzeg.ident,
             )
         if odsprzeg.ident not in odsprzegi_czynne:
@@ -388,7 +394,7 @@ def zloz_model_sieci(
         if wezel_zwarcia not in indeks:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Zwarcie wskazuje wezel spoza modelu ({wezel_zwarcia!r})",
+                f"Zwarcie wskazuje węzeł spoza modelu ({wezel_zwarcia}).",
                 wezel=wezel_zwarcia,
             )
         pozycja = indeks[wezel_zwarcia]
@@ -408,7 +414,7 @@ def zloz_model_sieci(
         if wezel_ograniczony not in indeks:
             raise OdmowaDynamiki(
                 KOD_SIEC_NIESPOJNA,
-                f"Wiersz ograniczenia wskazuje wezel spoza modelu ({wezel_ograniczony!r})",
+                f"Wiersz ograniczenia wskazuje węzeł spoza modelu ({wezel_ograniczony}).",
                 wezel=wezel_ograniczony,
             )
     aktywne_zamrozone = frozenset(aktywne)
@@ -492,14 +498,14 @@ def ograniczenia_napiecia(
             poprzedni = wynik[pozycja]
             raise OdmowaDynamiki(
                 KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
-                f"Wezel {urzadzenie.wezel!r} ma dwa warunki narzucajace napiecie: urzadzenie "
-                f"{urzadzenie.ident!r} (sprzezenie napieciowe) oraz "
+                f"Węzeł {urzadzenie.wezel} ma dwa warunki narzucające napięcie: urządzenie "
+                f"{urzadzenie.ident} (sprzężenie napięciowe) oraz "
                 + (
-                    "zwarcie metaliczne albo obszar odciety (V = 0)"
+                    "zwarcie metaliczne albo obszar odcięty (V = 0)"
                     if poprzedni is None
-                    else f"urzadzenie {urzadzenia[poprzedni].ident!r}"
+                    else f"urządzenie {urzadzenia[poprzedni].ident}"
                 )
-                + " — pierwsze prawo Kirchhoffa zadaloby nieskonczonego pradu",
+                + " — pierwsze prawo Kirchhoffa żądałoby nieskończonego prądu.",
                 wezel=urzadzenie.wezel,
                 urzadzenie=urzadzenie.ident,
             )
@@ -525,38 +531,88 @@ def rzutuj_napiecia_zerowe(model: ModelSieci, napiecia: np.ndarray) -> np.ndarra
     return wynik
 
 
+def skladniki_wstrzykniec(
+    model: ModelSieci,
+    odbiory: tuple[ModelOdbioru, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> tuple[tuple[int, complex], ...]:
+    """Skladniki bilansu pradow wezlow `(pozycja wezla, prad wstrzykiwany)` — JEDNO zrodlo.
+
+    Zbior i kolejnosc skladnikow wiersza KCL: odbiory Z OBWODEM (model chwili z jego stanem
+    estymatora), potem urzadzenia o sprzezeniu pradowym; wezly z wierszem ograniczenia sa
+    POMIJANE (ich rownanie nie jest bilansem pradow), a urzadzenie o sprzezeniu napieciowym
+    nie ma lokalnego wzoru na prad — jego prad wyprowadza `prad_wezla_ograniczonego`.
+
+    Z tej funkcji licza sie DWIE wielkosci, ktore musza opisywac ten sam wiersz (regula
+    predykatow parami, karta AB-1b.3b-NA-CZUBKU): residuum (`wstrzykniecia` ->
+    `residuum_algebry`) i granica bledu, z jakim to residuum jest obliczalne
+    (`granica_zaokraglen_residuum`). Dwie petle z wlasnymi warunkami rozjechaly sie przy
+    wprowadzeniu stanow odbiorow: granica liczyla prad odbioru z charakterystyki bez
+    czestotliwosci widzianej i sumowala odbiory bez obwodu, ktorych w residuum nie ma.
+    """
+    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    skladniki: list[tuple[int, complex]] = []
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
+        pozycja = model.indeks_wezla[odbior.wezel]
+        if pozycja in ograniczone or not odbior.przylaczony:
+            continue
+        skladniki.append((pozycja, odbior.prad_pu(stan_odbioru, complex(napiecia[pozycja]))))
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
+        pozycja = model.indeks_wezla[urzadzenie.wezel]
+        if pozycja in ograniczone:
+            continue
+        skladniki.append((pozycja, urzadzenie.prad_pu(stan, complex(napiecia[pozycja]))))
+    return tuple(skladniki)
+
+
+def napiecia_narzucone(
+    model: ModelSieci,
+    odbiory: tuple[ModelOdbioru, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+) -> tuple[tuple[int, complex], ...]:
+    """Wiersze ograniczenia `(pozycja wezla, E_k)`: `E = 0` (zwarcie metaliczne, obszar
+    odciety) albo `E(x)` urzadzenia o sprzezeniu napieciowym — jedno zrodlo dla residuum
+    wiersza `V_k - E_k` i dla jego granicy zaokraglen `gamma_2 (|V_k| + |E_k|)`."""
+    _, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    return tuple(
+        (
+            pozycja,
+            (
+                0j
+                if indeks is None
+                else urzadzenia[indeks].napiecie_bez_obciazenia(stany_urzadzen[indeks])
+            ),
+        )
+        for pozycja, indeks in ograniczenia_napiecia(model, urzadzenia)
+    )
+
+
 def wstrzykniecia(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
 ) -> np.ndarray:
     """Wektor pradow wstrzykiwanych do wezlow (pu, konwencja generacji).
 
-    Wezly z wierszem ograniczenia sa POMIJANE (ich rownanie nie jest bilansem pradow),
-    a urzadzenie o sprzezeniu napieciowym nie ma lokalnego wzoru na prad — jego prad
-    wyprowadza `prad_wezla_ograniczonego`. Bez ograniczen petla jest dokladnie
-    dotychczasowa (parytet bitowy).
+    Suma skladnikow `skladniki_wstrzykniec` w ich kolejnosci (odbiory, potem urzadzenia —
+    ta sama, w ktorej sumowaly sie przed wprowadzeniem stanow odbiorow, parytet bitowy).
+    Odbior bez obwodu (odlaczony, odciety) nie wchodzi do bilansu.
     """
     prady = np.zeros(model.liczba_wezlow, dtype=complex)
-    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
-    for odbior in odbiory:
-        pozycja = model.indeks_wezla[odbior.wezel]
-        if pozycja in ograniczone:
-            continue
-        prady[pozycja] += prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja]))
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
-        pozycja = model.indeks_wezla[urzadzenie.wezel]
-        if pozycja in ograniczone:
-            continue
-        prady[pozycja] += urzadzenie.prad_pu(stan, complex(napiecia[pozycja]))
+    for pozycja, prad in skladniki_wstrzykniec(model, odbiory, urzadzenia, stany, napiecia):
+        prady[pozycja] += prad
     return prady
 
 
 def residuum_algebry(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -565,10 +621,7 @@ def residuum_algebry(
     niezbilansowanie = model.ybus @ napiecia - wstrzykniecia(
         model, odbiory, urzadzenia, stany, napiecia
     )
-    for pozycja, indeks in ograniczenia_napiecia(model, urzadzenia):
-        narzucone = (
-            0j if indeks is None else urzadzenia[indeks].napiecie_bez_obciazenia(stany[indeks])
-        )
+    for pozycja, narzucone in napiecia_narzucone(model, odbiory, urzadzenia, stany):
         niezbilansowanie[pozycja] = complex(napiecia[pozycja]) - narzucone
     return np.concatenate((niezbilansowanie.real, niezbilansowanie.imag))
 
@@ -584,7 +637,7 @@ def _gamma(liczba_dzialan: int) -> float:
 
 def granica_zaokraglen_residuum(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -615,18 +668,10 @@ def granica_zaokraglen_residuum(
     niezerowe = np.diff(modul_ybus.indptr)
     suma_wstrzykniec = np.zeros(liczba, dtype=float)
     liczba_wstrzykniec = np.zeros(liczba, dtype=int)
-    ograniczone = dict(ograniczenia_napiecia(model, urzadzenia))
-    for odbior in odbiory:
-        pozycja = model.indeks_wezla[odbior.wezel]
-        if pozycja in ograniczone:
-            continue
-        suma_wstrzykniec[pozycja] += abs(prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja])))
-        liczba_wstrzykniec[pozycja] += 1
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
-        pozycja = model.indeks_wezla[urzadzenie.wezel]
-        if pozycja in ograniczone:
-            continue
-        suma_wstrzykniec[pozycja] += abs(urzadzenie.prad_pu(stan, complex(napiecia[pozycja])))
+    # TE SAME skladniki, z ktorych `residuum_algebry` sklada wiersz (odbiory z obwodem przy
+    # swoim stanie estymatora, urzadzenia pradowe, bez wierszy ograniczenia) — jedno zrodlo.
+    for pozycja, prad in skladniki_wstrzykniec(model, odbiory, urzadzenia, stany, napiecia):
+        suma_wstrzykniec[pozycja] += abs(prad)
         liczba_wstrzykniec[pozycja] += 1
     granica = np.array(
         [
@@ -636,10 +681,7 @@ def granica_zaokraglen_residuum(
         ],
         dtype=float,
     )
-    for pozycja, indeks in ograniczone.items():
-        narzucone = (
-            0j if indeks is None else urzadzenia[indeks].napiecie_bez_obciazenia(stany[indeks])
-        )
+    for pozycja, narzucone in napiecia_narzucone(model, odbiory, urzadzenia, stany):
         granica[pozycja] = _gamma(2) * (abs(complex(napiecia[pozycja])) + abs(narzucone))
     return granica
 
@@ -679,7 +721,7 @@ def residuum_ponad_granica_zaokraglen(residuum: np.ndarray, granica: np.ndarray)
 
 def jakobian_algebry(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -710,12 +752,15 @@ def jakobian_algebry(
                 kolumny.append(pozycja + kolumna_lokalna * liczba)
                 wartosci.append(-float(blok[wiersz_lokalny, kolumna_lokalna]))
 
-    for odbior in odbiory:
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
         pozycja = model.indeks_wezla[odbior.wezel]
-        if pozycja in ograniczone:
+        if pozycja in ograniczone or not odbior.przylaczony:
             continue
-        dopisz_blok(pozycja, jakobian_pradu_pu(odbior, complex(napiecia[pozycja])))
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        dopisz_blok(
+            pozycja, odbior.jakobian_prad_napiecie(stan_odbioru, complex(napiecia[pozycja]))
+        )
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         if pozycja in ograniczone:
             continue
@@ -740,7 +785,7 @@ def jakobian_algebry(
 
 def prad_wezla_ograniczonego(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -759,58 +804,19 @@ def prad_wezla_ograniczonego(
     prad = complex((wiersz @ napiecia)[0])
     napiecie = complex(napiecia[pozycja])
     # W wezle o napieciu narzuconym ZEREM odbior nie pobiera pradu: w obszarze
-    # beznapieciowym jest odciety (silnik nie podaje go wcale), w wezle zwartym
-    # metalicznie odbior z zadeklarowanym `U_min` (i czysto impedancyjny) jest w galezi
-    # impedancyjnej, gdzie `I = -Y*0 = 0` dokladnie, a odbior bez `U_min` z moca niezerowa
-    # jest odmowa nazwana (`silnik._sprawdz_wezly_zerowe`). Pominiecie jest wiec DOKLADNE,
-    # a nie przyblizeniem (i nie dzieli 0/0 dla odbioru bez `U_min` o mocy zerowej).
+    # beznapieciowym jest odciety (bez obwodu), a w wezle zwartym metalicznie jest w galezi
+    # impedancyjnej (kazdy odbior z przejsciem ma zadeklarowane `U_min`, odbior czysto
+    # impedancyjny jest impedancja), gdzie `I = -Y*0 = 0` dokladnie. Pominiecie jest wiec
+    # DOKLADNE, a nie przyblizeniem.
     zerowy = pozycja in model.pozycje_zerowe
-    for odbior in odbiory:
-        if odbior.wezel == wezel and not zerowy:
-            prad -= prad_wstrzykiwany_pu(odbior, napiecie)
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
+        if odbior.wezel == wezel and not zerowy and odbior.przylaczony:
+            prad -= odbior.prad_pu(stan_odbioru, napiecie)
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
         if urzadzenie.wezel == wezel and urzadzenie.sprzezenie != "napieciowe":
             prad -= urzadzenie.prad_pu(stan, napiecie)
     return prad
-
-
-def _sprawdz_start_odbiorow(
-    model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
-    urzadzenia: tuple[Urzadzenie, ...],
-    napiecia: np.ndarray,
-    t_s: float,
-) -> None:
-    """Zerowy punkt startowy w wezle odbioru BEZ napiecia przejscia — odmowa NAZWANA, nie 0/0.
-
-    Prad odbioru w galezi charakterystyki `-conj(S)/conj(V)` nie istnieje przy `V = 0`, gdy
-    odbior nie ma zadeklarowanego `U_min` (`odbiory.wymaga_napiecia_niezerowego` — TEN SAM
-    predykat, co odmowa w wezle zwartym metalicznie). Odbior z `U_min` (albo czysto
-    impedancyjny) ma w `V = 0` prad zerowy i skonczony jakobian — startuje bez odmowy.
-    Silnik nie podaje takiego punktu (wezel ponownie zasilony startuje od sasiada albo od
-    SEM urzadzenia), ale warunek jest sprawdzany TU, na wejsciu jedynej funkcji, ktora
-    liczy prad odbioru w Newtonie — zeby kazda inna sciezka wywolania konczyla sie kodem,
-    a nie surowym `ZeroDivisionError` (pomiar: mutacja startu od zera).
-    """
-    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
-    zerowe = sorted(
-        {
-            odbior.wezel
-            for odbior in odbiory
-            if model.indeks_wezla[odbior.wezel] not in ograniczone
-            and complex(napiecia[model.indeks_wezla[odbior.wezel]]) == 0
-            and wymaga_napiecia_niezerowego(odbior)
-        }
-    )
-    if zerowe:
-        raise OdmowaDynamiki(
-            KOD_ALGEBRA_NIEZBIEZNA,
-            f"Punkt startowy algebry przy t={t_s} s ma napięcie zerowe w węzłach {tuple(zerowe)} "
-            "odbiorów bez zadeklarowanego napięcia przejścia U_min — prąd charakterystyki "
-            "-conj(S)/conj(V) nie istnieje przy V = 0, więc Newton nie ma od czego wystartować",
-            t_s=t_s,
-            wezly=tuple(zerowe),
-        )
 
 
 @dataclass(frozen=True)
@@ -825,7 +831,7 @@ class WynikAlgebry:
 
 def rozwiaz_algebre(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia_startowe: np.ndarray,
@@ -855,7 +861,6 @@ def rozwiaz_algebre(
     """
     napiecia = rzutuj_napiecia_zerowe(model, np.array(napiecia_startowe, dtype=complex))
     sprawdz_napiecia(napiecia, model.identy_wezlow, t_s)
-    _sprawdz_start_odbiorow(model, odbiory, urzadzenia, napiecia, t_s)
     sprawdz_zasilanie_wysp(
         model.identy_wezlow,
         model.indeks_wezla,
@@ -910,8 +915,8 @@ def rozwiaz_algebre(
         if not przyjeto:
             raise OdmowaDynamiki(
                 KOD_ALGEBRA_NIEZBIEZNA,
-                f"Zaden nawrot nie obnizyl residuum algebry przy t={t_s} s "
-                f"(iteracja {iteracja}, residuum {norma}, nawrotow {max_nawrotow})",
+                f"Żaden nawrót nie obniżył residuum algebry przy t = {t_s} s "
+                f"(iteracja {iteracja}, residuum {norma}, nawrotów {max_nawrotow}).",
                 t_s=t_s,
                 iteracja=iteracja,
                 residuum=norma,
@@ -934,7 +939,7 @@ def rozwiaz_algebre(
 
 def residuum_kcl_niezalezne(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -988,12 +993,13 @@ def residuum_kcl_niezalezne(
         bilans[pozycja] += admitancja * complex(napiecia[pozycja])
 
     ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
-    for odbior in odbiory:
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
         pozycja = model.indeks_wezla[odbior.wezel]
-        if pozycja in ograniczone:
+        if pozycja in ograniczone or not odbior.przylaczony:
             continue
-        bilans[pozycja] -= prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja]))
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        bilans[pozycja] -= odbior.prad_pu(stan_odbioru, complex(napiecia[pozycja]))
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         if pozycja in ograniczone:
             continue
@@ -1047,6 +1053,7 @@ __all__ = [
     "granica_zaokraglen_residuum",
     "jakobian_algebry",
     "miejsca_zwarcia_galezi",
+    "napiecia_narzucone",
     "ograniczenia_napiecia",
     "prad_wezla_ograniczonego",
     "przezloz",
@@ -1055,6 +1062,7 @@ __all__ = [
     "residuum_ponad_granica_zaokraglen",
     "rozwiaz_algebre",
     "rzutuj_napiecia_zerowe",
+    "skladniki_wstrzykniec",
     "stempel_czwornika_zwarcia",
     "wezly_ograniczone",
     "wstrzykniecia",

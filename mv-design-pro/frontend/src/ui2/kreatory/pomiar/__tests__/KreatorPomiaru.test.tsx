@@ -3,7 +3,7 @@
  * Katalog wypełnia przekładnię; payload weryfikowany 1:1 z operacją domenową.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +17,11 @@ const centerSldOnElementMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let activeForm: { op: string; context?: Record<string, unknown> } | null = { op: 'add_ct', context: {} };
-const snapshotState = { error: null as string | null, snapshot: null, executeDomainOperation: executeDomainOperationMock };
+const snapshotState = {
+  error: null as string | null,
+  snapshot: null as unknown,
+  executeDomainOperation: executeDomainOperationMock,
+};
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -78,6 +82,7 @@ describe('KreatorPomiaru — realna ścieżka', () => {
     appState.activeCaseId = 'case-1';
     activeForm = { op: 'add_ct', context: {} };
     snapshotState.error = null;
+    snapshotState.snapshot = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     selectElementMock.mockReset();
@@ -130,6 +135,58 @@ describe('KreatorPomiaru — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez katalogu zapis zablokowany', async () => {
     render(<KreatorPomiaru />);
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toBeInTheDocument());
+    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Kotwica „wyłącznik liniowy" (karta BIEG-ZABEZPIECZEN-Z-MODELU): przekładnik przy wyłączniku
+ * w torze odcinka, wejście z ekranu „Zabezpieczenia i automatyka". Iloczyn cech: {wyłącznik
+ * w modelu: jest, brak} × {katalog: wybrany, niewybrany}.
+ */
+describe('KreatorPomiaru — kotwica wyłącznika liniowego', () => {
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    snapshotState.error = null;
+    closeFormMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    activeForm = { op: 'add_ct', context: { kotwica: 'wylacznik', breaker_ref: 'q-1' } };
+  });
+
+  afterEach(() => cleanup());
+
+  async function wybierzKatalog() {
+    const katalog = screen.getByTestId('mvd-kreator-pomiar-katalog');
+    await waitFor(() => expect(within(katalog).getByRole('option', { name: /CT 300\/5/ })).toBeInTheDocument());
+    await userEvent.selectOptions(katalog, 'ct-1');
+  }
+
+  it('add_ct z breaker_ref (bez pola) i przekładnią z katalogu', async () => {
+    snapshotState.snapshot = { branches: [{ ref_id: 'q-1', name: 'Wyłącznik odcinka 1', type: 'breaker' }] };
+    executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: 'ct-q' } });
+    render(<KreatorPomiaru />);
+    expect(screen.getByTestId('mvd-kreator-pomiar-pole')).toHaveTextContent('Wyłącznik odcinka 1');
+    expect(screen.queryByTestId('mvd-kreator-pomiar-bay')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
+    await wybierzKatalog();
+    await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, operacja, ladunek] = executeDomainOperationMock.mock.calls[0];
+    expect(operacja).toBe('add_ct');
+    expect(ladunek).toMatchObject({
+      breaker_ref: 'q-1',
+      catalog_ref: 'ct-1',
+      ratio_primary_a: 300,
+      ratio_secondary_a: 5,
+    });
+    expect(ladunek).not.toHaveProperty('bay_ref');
+  });
+
+  it('wyłącznika nie ma w modelu — zapis zablokowany mimo wybranego katalogu', async () => {
+    snapshotState.snapshot = { branches: [] };
+    render(<KreatorPomiaru />);
+    await wybierzKatalog();
     expect(screen.getByTestId('mvd-kreator-pomiar-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });

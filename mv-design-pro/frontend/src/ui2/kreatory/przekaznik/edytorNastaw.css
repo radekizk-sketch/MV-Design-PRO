@@ -1,0 +1,111 @@
+/*
+ * Edytor nastaw zabezpieczenia nadprądowego — wyłącznie tokeny powłoki (--mvd-*), oba
+ * motywy z automatu. Promienie 10px sekcja / 8px karta; odstępy 4 / 8 / 12 / 16.
+ */
+
+.mvd-edytor-nastaw {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-edytor-nastaw-naglowek h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.mvd-edytor-nastaw-kontekst {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw-kontekst dt {
+  font: 600 10.5px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-kontekst dd {
+  margin: 0;
+}
+
+.mvd-edytor-nastaw-stopien {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0;
+}
+
+.mvd-edytor-nastaw-pola {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.mvd-edytor-nastaw-wynik {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-braki {
+  border: 1px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+.mvd-edytor-nastaw-braki p {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.mvd-edytor-nastaw-braki ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.mvd-edytor-nastaw-braki em {
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-gotowe {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-ok);
+}
+
+.mvd-edytor-nastaw-blad {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-err);
+}
+
+.mvd-edytor-nastaw-zapisz {
+  align-self: flex-start;
+  border: 1px solid var(--mvd-accent);
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mvd-edytor-nastaw-zapisz:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

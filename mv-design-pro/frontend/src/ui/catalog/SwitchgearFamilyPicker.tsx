@@ -137,12 +137,19 @@ export interface FactoryConfigurationWire {
  * pokrycia w backendzie jest zakazany, więc taka rodzina jest pokazana jako
  * NIEAKTYWNA z powodem, a nie ukryta i nie klikalna.
  */
-const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new Set([
+export const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new Set([
   'verified',
   'repo_verified',
-  'user_defined',
 ]);
 
+/**
+ * JEDYNY predykat frontu „czy na tej rodzinie wolno budować" — picker, kreator stacji i karta
+ * pola czytają go stąd. Zbiór jest lustrem `POTWIERDZONE_STATUSY_RODZINY`; parytet przypina
+ * `backend/tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`. Korekta 2026-10-15: trzy kopie
+ * tego zbioru we froncie dopuszczały też `user_defined`, którego backend NIE dopuszcza
+ * (`family_validation.wymagaj_rodziny_oferowanej`) — wybór oferowany w UI kończyłby się twardym
+ * błędem operacji.
+ */
 export function czyRodzinaDoBudowania(family: SwitchgearFamily): boolean {
   return STATUSY_DO_BUDOWANIA.has(family.status);
 }
@@ -151,6 +158,15 @@ const POWOD_BLOKADY_PL: Partial<Record<SwitchgearFamily['status'], string>> = {
   requires_catalog: 'Wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych.',
   deprecated: 'Rodzina wycofana z oferty producenta.',
 };
+
+/**
+ * Powód, dla którego na rodzinie NIE wolno budować (albo `null`, gdy wolno). Status bez
+ * własnego zdania dostaje zdanie domyślne backendu (`family_validation`), nigdy ciszę.
+ */
+export function powodBlokadyRodzinyPl(family: SwitchgearFamily): string | null {
+  if (czyRodzinaDoBudowania(family)) return null;
+  return POWOD_BLOKADY_PL[family.status] ?? 'Status rodziny nie dopuszcza budowania konfiguracji.';
+}
 
 export interface SwitchgearFamilyPickerProps {
   readonly families: readonly SwitchgearFamily[];
@@ -225,7 +241,7 @@ export function SwitchgearFamilyPicker({
       {families.map((family) => {
         const isSelected = family.switchgear_family_ref === selectedRef;
         const doWyboru = czyRodzinaDoBudowania(family);
-        const powodBlokady = doWyboru ? null : (POWOD_BLOKADY_PL[family.status] ?? null);
+        const powodBlokady = powodBlokadyRodzinyPl(family);
         return (
           <li key={family.switchgear_family_ref}>
             <button

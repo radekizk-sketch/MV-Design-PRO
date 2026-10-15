@@ -35,7 +35,7 @@ def test_wektor_skonczony_przechodzi_bez_wyjatku() -> None:
 
 def test_niezgodnosc_dlugosci_adresow_jest_bledem_programisty() -> None:
     """Adres bez pokrycia bylby zmysleniem — to `AssertionError`, nie odmowa dziedzinowa."""
-    with pytest.raises(AssertionError, match="adresow"):
+    with pytest.raises(AssertionError, match="adresów"):
         sprawdz_wektor(np.array([0.0, 1.0]), ("a_pu",), "krok", 0.0)
 
 
@@ -53,5 +53,5 @@ def test_niekonczone_napiecie_ma_ident_wezla(napiecie: complex) -> None:
 
 
 def test_niezgodnosc_dlugosci_napiec_jest_bledem_programisty() -> None:
-    with pytest.raises(AssertionError, match="wezlow"):
+    with pytest.raises(AssertionError, match="węzłów"):
         sprawdz_napiecia(np.array([complex(1.0, 0.0)], dtype=complex), ("GEN", "SYS"), 0.0)

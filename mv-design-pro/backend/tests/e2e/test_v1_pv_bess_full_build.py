@@ -190,9 +190,13 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             # (najmniejsza pozycja katalogowa to 2 MW / 2,2 MVA). Wcześniej test
             # obchodził kontrolę mocy tabliczką z payloadu pod wymyślonym refem —
             # po naprawie defektu G dobór musi być wykonalny naprawdę.
+            # Dwie równoległe jednostki (`n_parallel`): PV 0,5 MW (550 kVA) i turbina
+            # 2 MW (2200 kVA) są zasilane przez TEN SAM transformator, więc kontrola O-53
+            # sumuje je (Σ 2750 kVA > 2500 kVA jednej jednostki; 2 × 2500 kVA wystarcza).
             "transformer": {
                 "create": True,
                 "transformer_catalog_ref": "tr-sn-nn-15-04-2500kva-dyn11",
+                "n_parallel": 2,
             },
         },
     )

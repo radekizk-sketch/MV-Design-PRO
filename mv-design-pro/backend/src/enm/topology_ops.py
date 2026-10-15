@@ -40,6 +40,7 @@ from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_w
 from network_model.nazwy import jest_nazwa
 
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
+from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
@@ -1050,6 +1051,12 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
             )
         )
 
+    # Nastawy przez JEDNĄ regułę zapisu (karta BIEG-ZABEZPIECZEN-Z-MODELU): niekompletne
+    # przechodzą (brak gotowości nazywa ocena), sprzeczne są odrzucane.
+    ustawienia = data.get("settings", [])
+    for blad in bledy_nastaw(ustawienia):
+        issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
+
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "attach_protection", issues)
 
@@ -1061,7 +1068,7 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         "vt_ref": data.get("vt_ref"),
         "device_type": device_type,
         "catalog_ref": data.get("catalog_ref"),
-        "settings": data.get("settings", []),
+        "settings": normalizuj_nastawy(ustawienia),
         "is_enabled": data.get("is_enabled", True),
         "tags": data.get("tags", []),
         "meta": data.get("meta", {}),
@@ -1100,11 +1107,17 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
                 )
             )
 
+    if "settings" in data:
+        for blad in bledy_nastaw(data["settings"]):
+            issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
+
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "update_protection", issues)
 
     for key, val in data.items():
-        if key not in ("ref_id",):
+        if key == "settings":
+            enm["protection_assignments"][idx][key] = normalizuj_nastawy(val)
+        elif key not in ("ref_id",):
             enm["protection_assignments"][idx][key] = val
     return TopologyOpResult(True, enm, "update_protection", issues, ref_id)
 

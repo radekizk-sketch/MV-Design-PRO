@@ -1,10 +1,50 @@
 import type { EnergyNetworkModel, Substation } from '../../types/enm';
 import { extractTransformerDesignation } from '../sld/v2/canvas/enmToCanonicalGpzAdapter';
 import { szynaGlownaStacji } from '../shared/szynyStacji';
-import { refyTransformatorowBlokowych, selectStationDistributionTransformers } from '../shared/transformatoryStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  type KontekstTransformatorowStacji,
+} from '../shared/transformatoryStacji';
 
 function nonEmptyRef(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Dane wyboru jednostek transformatorowych stacji, które zależą WYŁĄCZNIE od migawki (nie od
+ * stacji): kontekst jedynej reguły transformatorów stacji (`ui/shared/transformatoryStacji.ts`
+ * — indeks gałęzi pól nN, transformatory blokowe DER) i napięcia szyn. Wołający, który wybiera
+ * transformatory dla wielu stacji tej samej migawki (adapter SLD), liczy go RAZ — bez tego każda
+ * stacja przeglądała wszystkie gałęzie, generatory i szyny (koszt O(stacje × migawka)). Wynik
+ * wyboru z kontekstem i bez jest identyczny.
+ */
+export interface KontekstWyboruTransformatorow {
+  readonly snapshot: EnergyNetworkModel;
+  readonly regula: KontekstTransformatorowStacji;
+  readonly voltageByBusRef: ReadonlyMap<string, number>;
+}
+
+export function kontekstWyboruTransformatorow(snapshot: EnergyNetworkModel): KontekstWyboruTransformatorow {
+  const voltageByBusRef = new Map<string, number>();
+  for (const bus of snapshot.buses ?? []) {
+    if (typeof bus.voltage_kv !== 'number') continue;
+    for (const ref of [bus.ref_id, bus.id]) {
+      if (nonEmptyRef(ref)) voltageByBusRef.set(ref, bus.voltage_kv);
+    }
+  }
+  return { snapshot, regula: kontekstTransformatorowStacji(snapshot), voltageByBusRef };
+}
+
+function kontekstDla(
+  snapshot: EnergyNetworkModel,
+  kontekst: KontekstWyboruTransformatorow | undefined,
+): KontekstWyboruTransformatorow {
+  if (!kontekst) return kontekstWyboruTransformatorow(snapshot);
+  if (kontekst.snapshot !== snapshot) {
+    throw new Error('Kontekst wyboru transformatorów zbudowany dla innej migawki');
+  }
+  return kontekst;
 }
 
 /**
@@ -82,16 +122,16 @@ export interface StationTransformerUnit {
 export function selectStationTransformerUnits(
   snapshot: EnergyNetworkModel | null | undefined,
   station: Substation | null | undefined,
+  kontekst?: KontekstWyboruTransformatorow,
 ): StationTransformerUnit[] {
-  const voltageByBusRef = new Map<string, number>();
-  for (const bus of snapshot?.buses ?? []) {
-    if (typeof bus.voltage_kv !== 'number') continue;
-    for (const ref of [bus.ref_id, bus.id]) {
-      if (nonEmptyRef(ref)) voltageByBusRef.set(ref, bus.voltage_kv);
-    }
-  }
+  const pelnyKontekst = snapshot ? kontekstDla(snapshot, kontekst) : null;
+  const voltageByBusRef: ReadonlyMap<string, number> = pelnyKontekst?.voltageByBusRef ?? new Map();
 
-  const distributionTransformers = selectStationDistributionTransformers(snapshot, station);
+  const distributionTransformers = selectStationDistributionTransformers(
+    snapshot,
+    station,
+    pelnyKontekst?.regula,
+  );
   const selected = distributionTransformers
     .map((transformer, idx): StationTransformerUnit | null => {
       const ref = transformer.ref_id ?? transformer.id;
@@ -101,7 +141,12 @@ export function selectStationTransformerUnits(
         ref,
         hvBusRef,
         hvSekcjaBusRef: hvBusRef !== null && station
-          ? szynaGlownaStacji(station, snapshot?.branches ?? [], hvBusRef) ?? hvBusRef
+          ? szynaGlownaStacji(
+              station,
+              snapshot?.branches ?? [],
+              hvBusRef,
+              pelnyKontekst?.regula.indeksPolNn,
+            ) ?? hvBusRef
           : hvBusRef,
         lvBusRef: nonEmptyRef(transformer.lv_bus_ref) ? transformer.lv_bus_ref : null,
         hvVoltageKv: (hvBusRef !== null ? voltageByBusRef.get(hvBusRef) : undefined) ?? null,
@@ -124,7 +169,7 @@ export function selectStationTransformerUnits(
   // niesie odpowiadających rekordów `Transformer` — refy bez terminali.
   // Rekordu brak, więc roli katalogowej nie ma skąd przeczytać — wyklucza wyłącznie
   // wskazanie źródła (ten sam filtr, pierwszy kanał).
-  const refyBlokowe = refyTransformatorowBlokowych(snapshot);
+  const refyBlokowe = pelnyKontekst?.regula.refyBlokowe ?? new Set<string>();
   return (station.transformer_refs ?? [])
     .filter(nonEmptyRef)
     .filter((ref) => !refyBlokowe.has(ref))

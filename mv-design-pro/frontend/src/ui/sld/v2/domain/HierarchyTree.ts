@@ -9,6 +9,7 @@
  */
 
 import type { PortKind } from '../core/ports';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { szynyStacji, type GalazDlaSzyn } from '../../../shared/szynyStacji';
 
 /* ---------------------------------------------------------------------------
@@ -101,8 +102,9 @@ export interface StationOnRun {
   readonly id: string;
   readonly name: string;
   readonly templateName: string | null;
-  /** Wnioskowany typ topologiczny z portów (PR-4 classifyStationTopology). */
-  readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`, §19.3); `null` —
+   *  stacji ciągu nie ma w modelu albo rodzaj jej nie dotyczy (GPZ, rozdzielnica nN). */
+  readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' | null;
   readonly nnVoltageLevels: readonly number[];
   readonly externalPortIds: readonly string[];
   readonly orderInRun: number;
@@ -294,16 +296,13 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
   for (const lr of sortedRuns) {
     const stations: StationOnRun[] = lr.stations.map((s) => {
       const sub = enm.substations.find((ss) => ss.ref_id === s.substation_ref);
-      const externalPortKinds = (sub?.external_ports ?? []).map((p) => p.kind);
-      // Wnioskowanie typu topologicznego z portów (PR-4)
-      const snInputs = externalPortKinds.filter((k) => k === 'sn_input').length;
-      const snOutputs = externalPortKinds.filter((k) => k === 'sn_output').length;
-      const snBranches = externalPortKinds.filter((k) => k === 'sn_branch').length;
-      const snCouplers = externalPortKinds.filter((k) => k === 'sn_coupler').length;
-      let topologicalType: StationOnRun['topologicalType'] = 'końcowa';
-      if (snInputs >= 2 && snCouplers >= 1) topologicalType = 'sekcyjna';
-      else if (snInputs >= 1 && snOutputs >= 1 && snBranches >= 1) topologicalType = 'odgałęźna';
-      else if (snInputs >= 1 && snOutputs >= 1) topologicalType = 'przelotowa';
+      // Rodzaj stacji z JEDNEJ reguły produktu (`ui/shared/rodzajStacji.ts`, §19.3) — dawna
+      // reguła z portów zewnętrznych (inne progi niż schemat) skasowana (karta
+      // ETYKIETA-STACJI-PRZELOTOWEJ). `null` — stacji brak w modelu albo rodzaj jej nie dotyczy.
+      const rodzaj = rodzajStacji(enm, s.substation_ref);
+      const topologicalType: StationOnRun['topologicalType'] = rodzaj
+        ? NAZWA_RODZAJU_STACJI_PL[rodzaj.rodzaj]
+        : null;
 
       return {
         id: s.substation_ref,

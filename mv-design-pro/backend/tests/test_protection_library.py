@@ -509,3 +509,26 @@ def test_protection_sort_deterministic() -> None:
     assert sorted_types[2]["name_pl"] == "B"
     assert sorted_types[3]["id"] == "id-4"
     assert sorted_types[3]["name_pl"] == "C"
+
+
+def test_szablony_katalogu_nie_deklaruja_jednostki_zakresu_pradowego_bez_podstawy() -> None:
+    """PZ-09 (karta BIEG-ZABEZPIECZEN-Z-MODELU): zakres prądowy szablonu referencyjnego nie ma
+    podstawy jednostki (ampery wtórne, krotność In wejścia przekaźnika czy ampery pierwotne),
+    więc katalog nie podaje „A” — pole niesie nazwany stan ``NIEUSTALONA``. Dawne „A” czytane
+    jako prąd pierwotny dawało marginesy rzędu 10⁷ %. Iloczyn: każdy szablon × każde pole
+    prądowe (I>, I>>, I0>, I0>>) oraz pola czasu, które zachowują jednostkę „s”."""
+    from network_model.catalog.mv_auxiliary_catalog import get_all_protection_setting_templates
+
+    szablony = get_all_protection_setting_templates()
+    assert len(szablony) == 8
+    pola_pradowe = 0
+    for szablon in szablony:
+        for pole in szablon["params"]["setting_fields"]:
+            if pole["name"].startswith("I"):
+                pola_pradowe += 1
+                assert pole["unit"] is None, (szablon["id"], pole)
+                assert pole["jednostka_status"] == "NIEUSTALONA", (szablon["id"], pole)
+            else:
+                assert pole["unit"] == "s", (szablon["id"], pole)
+                assert "jednostka_status" not in pole
+    assert pola_pradowe == 13

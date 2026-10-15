@@ -148,7 +148,17 @@ def _device(
         i_inst_50n_a_min=20.0,
         i_inst_50n_a_max=2500.0,
         meta={},
+        # Zakresy syntetyczne w amperach strony wtórnej; testy tej grupy używają przekładni
+        # 1:1, więc prąd wymagania (pierwotny) równa się wartości w jednostce zakresu.
+        jednostka_zakresow_pradowych="A_WTORNY",
+        podstawa_zakresow_pl="aparat syntetyczny testu",
     )
+
+
+#: Przekładnia 1:1 — prąd pierwotny wymagania równy wartości strony wtórnej zakresu.
+PRZEKLADNIA_1_1 = (1.0, 1.0)
+#: Przekładnik 600/5 A — ten sam co w sieci złotej G08.
+PRZEKLADNIA_600_5 = (600.0, 5.0)
 
 
 # ---------------------------------------------------------------------------
@@ -157,12 +167,15 @@ def _device(
 
 
 def test_device_mapping_accepts_supported_dt_device() -> None:
+    """Profil referencyjny z zakresami w ×In i przekładnik 600/5 A: I> 120 A → 1 A wtórny →
+    0,2 ×In (zakres 0,05–5), I>> 800 A → 6,67 A → 1,33 ×In (zakres 0,1–40) — zgodny."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-200", przekladnia_a=PRZEKLADNIA_600_5)
 
     assert wynik["compatible"] is True
     assert wynik["violations"] == ()
+    assert wynik["przekladnia_a"] == [600.0, 5.0]
 
 
 def test_device_mapping_rejects_device_without_dt_curve() -> None:
@@ -170,7 +183,9 @@ def test_device_mapping_rejects_device_without_dt_curve() -> None:
     kanon = curve, nie zgadywanie „to chyba jest to samo co IEC_NI"."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-100")
+    wynik = dopasuj_do_aparatu(
+        wymaganie, device_id="EM_ETANGO_400_V0", przekladnia_a=PRZEKLADNIA_600_5
+    )
 
     assert wynik["compatible"] is False
     assert "UNSUPPORTED_CURVE" in wynik["violations"]
@@ -179,16 +194,40 @@ def test_device_mapping_rejects_device_without_dt_curve() -> None:
 def test_device_mapping_is_deterministic() -> None:
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
-    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
+    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-200", przekladnia_a=PRZEKLADNIA_600_5)
+    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-200", przekladnia_a=PRZEKLADNIA_600_5)
 
     assert wynik1 == wynik2
+
+
+@pytest.mark.parametrize(
+    ("device_id", "przekladnia", "naruszenie"),
+    [
+        ("ABB_REF601", PRZEKLADNIA_600_5, "ZAKRES_PRADOWY_NIEUSTALONY"),
+        ("REF-OC-200", None, "ZAKRES_PRADOWY_BEZ_PRZEKLADNI"),
+        ("REF-OC-200", (10000.0, 5.0), "I51_OUT_OF_RANGE"),
+        ("REF-OC-200", (15.0, 5.0), "I50_OUT_OF_RANGE"),
+    ],
+)
+def test_zakres_pradowy_porownywany_po_stronie_wtornej(
+    device_id: str, przekladnia: tuple[float, float] | None, naruszenie: str
+) -> None:
+    """PZ-09: prąd PIERWOTNY wymagania nigdy nie jest porównywany wprost z zakresem strony
+    wtórnej. Iloczyn: jednostka zakresu {nieustalona, ×In} × przekładnia {brak, jest} ×
+    próg {w zakresie, poniżej (10000/5: 0,06 A = 0,012 ×In), powyżej (15/5: I>> 800 A → 266,7 A = 53 ×In)}.
+    """
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik = dopasuj_do_aparatu(wymaganie, device_id=device_id, przekladnia_a=przekladnia)
+
+    assert wynik["compatible"] is False
+    assert naruszenie in wynik["violations"]
 
 
 def test_device_not_found_is_named_not_silently_incompatible() -> None:
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id="NIE-ISTNIEJE")
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="NIE-ISTNIEJE", przekladnia_a=None)
 
     assert wynik["compatible"] is False
     assert wynik["violations"] == ("DEVICE_NOT_FOUND",)
@@ -226,7 +265,7 @@ def test_t51s_zakres_sprawdzany_tylko_gdy_krzywa_dt_i_zakres_zadeklarowany(
         t_51_s_max=(1.0 if t_51_s_range_declared else None),
     )
 
-    compatible, violations = validate_requirement(req, cap)
+    compatible, violations = validate_requirement(req, cap, przekladnia_a=PRZEKLADNIA_1_1)
 
     naruszenie_oczekiwane = curve == "DT" and t_51_s_range_declared
     assert ("T51S_OUT_OF_RANGE" in violations) is naruszenie_oczekiwane
@@ -238,7 +277,7 @@ def test_t51s_w_zakresie_nie_narusza_gdy_aparat_deklaruje_zakres() -> None:
     req = _requirement(curve="DT", tms_51=None, t_51_s=0.5)
     cap = _device(curves_supported=("DT",), t_51_s_min=0.1, t_51_s_max=1.0)
 
-    compatible, violations = validate_requirement(req, cap)
+    compatible, violations = validate_requirement(req, cap, przekladnia_a=PRZEKLADNIA_1_1)
 
     assert compatible is True
     assert "T51S_OUT_OF_RANGE" not in violations
@@ -253,8 +292,8 @@ def test_niewyznaczone_i_inst_50_a_nie_wywala_doboru_i_nie_staje_sie_zerem(
     req = _requirement(curve="DT", tms_51=None, t_51_s=0.6, i_inst_50_a=i_inst_50_a)
     cap = _device(curves_supported=("DT",))
 
-    compatible, violations = validate_requirement(req, cap)
-    mapping = map_requirement_to_device(req, cap)
+    compatible, violations = validate_requirement(req, cap, przekladnia_a=PRZEKLADNIA_1_1)
+    mapping = map_requirement_to_device(req, cap, przekladnia_a=PRZEKLADNIA_1_1)
 
     assert "I50_OUT_OF_RANGE" not in violations
     if i_inst_50_a is None:
@@ -274,7 +313,7 @@ def test_tms51_i_t51s_sa_wzajemnie_wykluczajace_w_mapowaniu() -> None:
     req = wymaganie_z_nastaw(_wynik_hoppela())
     cap = _device(curves_supported=("DT",))
 
-    mapping = map_requirement_to_device(req, cap)
+    mapping = map_requirement_to_device(req, cap, przekladnia_a=PRZEKLADNIA_1_1)
 
     assert "T51" in mapping.mapped_settings
     assert "TMS51" not in mapping.mapped_settings

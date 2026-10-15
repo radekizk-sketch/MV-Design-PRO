@@ -282,6 +282,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="zabezpieczenia.ocena_nadpradowa",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Ocena zadziałania zabezpieczeń nadprądowych z modelu: prąd przekaźnika z "
+                "bilansu wkładów gałęziowych biegu zwarciowego IEC 60909 (wkłady źródeł "
+                "sumowane netto wg kierunku jako moduły, bez fazorów), czas z charakterystyki "
+                "normowej rdzenia IEC 60255 (application/analyses/protection/"
+                "ocena_nadpradowa.py). Sumowanie modułów wkładów kilku źródeł jest "
+                "przybliżeniem, którego zgodności z rozpływem fazorowym nie wykazano na sieci "
+                "referencyjnej — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta BIEG-ZABEZPIECZEN-Z-MODELU (P0, 2026-09)",
+        ),
+        CapabilityEvidence(
             capability_id="dynamika_rms.przebieg_czasowy",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(
@@ -512,7 +527,10 @@ def build_provenance_summary(entries: list[ProvenanceEntry]) -> ProvenanceSummar
 
 
 # Inverter-card ("karta falownika") rating/identity fields. When present these
-# seed to DATASHEET (a published catalog rating is treated as datasheet-grade).
+# seed to DATASHEET ONLY for a record backed by a manufacturer datasheet
+# (`verification_status == ZWERYFIKOWANY`); otherwise ESTIMATED (karta
+# KATALOG-KOMPLETNY-PROWENIENCJA: a reference computational model or an
+# unverified declaration is not datasheet-grade, whatever its fields contain).
 _CARD_RATING_FIELDS: tuple[str, ...] = (
     "un_kv",
     "sn_mva",
@@ -526,19 +544,26 @@ _CARD_RATING_FIELDS: tuple[str, ...] = (
 )
 
 
+#: Status weryfikacji rekordu z karta producenta (literal `CatalogVerificationStatus.
+#: ZWERYFIKOWANY`; warstwa solver_input nie importuje katalogu przy ladowaniu — parytet
+#: literalu z enumem przypina test `test_katalog_proweniencja_kompletnosc.py`).
+_STATUS_KARTY_PRODUCENTA = "ZWERYFIKOWANY"
+
+
 def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
     """Derive the SEED data-quality map for an inverter card (ConverterType).
 
     This is only the seed; explicit per-card overrides come later (a separate
     step). Default rule, per field of the COMPLETE card schema:
 
-    - rating / manufacturer / model present (not None) => ``DATASHEET``
-      (a published catalog rating is treated as datasheet-grade);
+    - rating / manufacturer / model present (not None) => ``DATASHEET`` when the
+      record is backed by a manufacturer datasheet (``verification_status ==
+      ZWERYFIKOWANY``), otherwise ``ESTIMATED`` with a note naming the status;
     - controller-bandwidth (SSCI / Z_conv) fields => ``ESTIMATED`` by default
       (these are engineering estimates until a real datasheet value is attached —
       they MUST NOT be tagged DATASHEET just to make D-03 compute);
     - any other card field that is absent (None) => ``SYSTEM_DEFAULT``;
-    - SC-model / power-hierarchy fields present (not None) => ``DATASHEET``.
+    - SC-model / power-hierarchy fields present (not None) => as rating fields.
 
     A field MISSING from the schema is not allowed: the schema is complete, so
     every card field appears in this map; the quality (not the presence) says how
@@ -556,23 +581,29 @@ def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
 
     result: dict[str, CardFieldStatus] = {}
     source_ref = getattr(converter, "source_reference", None)
-
-    # Rating / identity block: DATASHEET when present, else SYSTEM_DEFAULT.
-    for name in _CARD_RATING_FIELDS:
-        present = getattr(converter, name, None) is not None
-        result[name] = CardFieldStatus(
-            field_name=name,
-            quality=FieldQuality.DATASHEET if present else FieldQuality.SYSTEM_DEFAULT,
-            source_ref=source_ref if present else None,
+    verification_status = getattr(converter, "verification_status", None)
+    # JEDNO zrodlo prawdy z doborem szablonow (`dopuszczona_do_doboru_szablonu`):
+    # wartosc obecna jest DATASHEET wylacznie w rekordzie z karta producenta.
+    z_karty = verification_status == _STATUS_KARTY_PRODUCENTA
+    jakosc_obecnej = FieldQuality.DATASHEET if z_karty else FieldQuality.ESTIMATED
+    nota_obecnej = (
+        None
+        if z_karty
+        else (
+            "wartość rekordu bez karty producenta (status weryfikacji: "
+            f"{verification_status or 'brak'}) — nie jest daną karty katalogowej"
         )
+    )
 
-    # SC-model and power-hierarchy blocks: DATASHEET when present, else SYSTEM_DEFAULT.
-    for name in _CARD_SC_MODEL_FIELDS + _CARD_POWER_HIERARCHY_FIELDS:
+    # Rating / identity, SC-model and power-hierarchy blocks: quality of a PRESENT
+    # value follows the record provenance; absent => SYSTEM_DEFAULT.
+    for name in _CARD_RATING_FIELDS + _CARD_SC_MODEL_FIELDS + _CARD_POWER_HIERARCHY_FIELDS:
         present = getattr(converter, name, None) is not None
         result[name] = CardFieldStatus(
             field_name=name,
-            quality=FieldQuality.DATASHEET if present else FieldQuality.SYSTEM_DEFAULT,
+            quality=jakosc_obecnej if present else FieldQuality.SYSTEM_DEFAULT,
             source_ref=source_ref if present else None,
+            note=nota_obecnej if present else None,
         )
 
     # Controller-bandwidth + converter-filter (SSCI / Z_conv) block: ESTIMATED by

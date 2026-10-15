@@ -463,6 +463,12 @@ FORBIDDEN_W3A_CLASS_NAMES = {
 FORBIDDEN_W3A_FUNCTION_NAMES = {
     # enm/domain_operations_v2.py — zaslepka bez fizyki (tcc.legacy_write_disabled)
     "calculate_tcc_curve",
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zaslepki z odmowa i selektywnosc z
+    # kolejnosci listy (prad 10 x nastawa) — nastawy pisze `update_protection_settings`,
+    # selektywnosc liczy koordynacja E-28 na jednej sciezce oceny.
+    "update_relay_settings",
+    "link_relay_to_field",
+    "validate_selectivity",
 }
 
 # Karta W3-C1 (2026-09-09) — bramka wskrzeszenia KASACJI V12K-189. Metodyka nastaw
@@ -1755,7 +1761,8 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # `_bez_komentarzy_ts` dla TS).
 #
 # POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
-# `stability_rms` (rdzen B-01, `scripts/rdzenie_b01.py`) i C47
+# `stability_rms` (skasowany w karcie B01-RUNDA-1 — bramka `check_abp1_dynamika_resurrection`,
+# `B01I_*`) i C47
 # `application/stability/voltage_trajectory.py` (C47 skasowany w karcie AB-P1 — bramka
 # `check_abp1_dynamika_resurrection`), B2 reguly
 # `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
@@ -2583,9 +2590,10 @@ def check_pakiet_l_resurrection() -> list[str]:
 #   rzuty profilu katalogowego na slowniki solverow poza rdzeniem
 #        (`to_stability_parameters`, `stability_model_kind`, `to_frt_parameters` — zero
 #        wolajacych produkcyjnych).
-# POZA bramka: T4 — solver `network_model/solvers/stability_rms/**` jest rdzeniem B-01 na
-# liscie `scripts/rdzenie_b01.py`; karta go NIE kasuje (zmiana listy B-01 wymaga decyzji
-# wlasciciela nazwanej w karcie zdejmujacej wpis — zgoda O-5(b)/O-54 czeka na ten krok).
+# T4 — solver `network_model/solvers/stability_rms/**` (zero konsumentow produkcyjnych):
+# SKASOWANY w karcie B01-RUNDA-1 (decyzja B-01 z 2026-09-30, delegacja wlasciciela O-59,
+# pozycja (i) planu A/B §12.2) razem z wpisem „Stabilnosc RMS" listy `scripts/rdzenie_b01.py`;
+# bramka pilnuje, ze sciezka i jej symbole publiczne nie wracaja (`B01I_*` nizej).
 # Pilnowane sa FAKTY: sciezki zrodel, DEFINICJE symboli (AST, dokstring/komentarz nie
 # jest naruszeniem), nazwa `DYNAMIC_STABILITY` jako identyfikator i napisy tras/kodow
 # w kodzie backendu (literaly napisowe poza dokstringami) oraz frontendu (bez komentarzy).
@@ -2651,6 +2659,19 @@ ABP1_NAPISY: tuple[str, ...] = (
 )
 #: Napisy wylacznie frontendowe (import skasowanych fikstur sceny).
 ABP1_NAPISY_FRONTEND: tuple[str, ...] = ("stabilnosc_scena_",)
+#: Pozycja (i) planu A/B §12.2 — skasowany solver RMS bez sprzezenia z siecia (T4).
+B01I_SCIEZKI_BACKEND: tuple[str, ...] = ("network_model/solvers/stability_rms",)
+#: Symbole publiczne skasowanego solvera (nazwy swoiste — definicja nie wraca NIGDZIE
+#: w `backend/src`; nazwy ogolne kontraktu, np. `DisturbanceEvent`, zostaja wolne dla
+#: rdzenia `dynamika`).
+B01I_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {
+        "run_stability_rms",
+        "StabilitySolverAdapter",
+        "StabilitySolverInput",
+        "StabilityResult",
+    }
+)
 
 
 def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
@@ -2681,10 +2702,20 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     komentarz nad `ABP1_SCIEZKI_BACKEND`."""
     violations: list[str] = []
     znak = "karta AB-P1 — jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    znak_b01i = (
+        "decyzja B-01 z 2026-09-30, pozycja (i) — solver stability_rms skasowany, "
+        "jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    )
     for sciezka in ABP1_SCIEZKI_BACKEND:
         if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
             violations.append(
                 f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    for sciezka in B01I_SCIEZKI_BACKEND:
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak_b01i}) — "
+                "nie odtwarzaj"
             )
     for sciezka in ABP1_SCIEZKI_FRONTEND:
         if zrodlo_istnieje(FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")):
@@ -2706,6 +2737,10 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                 if nazwa in ABP1_DEFINICJE_BACKEND or nazwa in plikowe:
                     violations.append(
                         f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+                if nazwa in B01I_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak_b01i})"
                     )
             for node in ast.walk(tree):
                 nazwa_id = (
@@ -2737,6 +2772,133 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     return violations
 
 
+# Karta AB-1b.3b (modele odbiorow, 2026-09-25, decyzja O-55): blok `Load.dynamika` (profil
+# katalogu z napieciem przejscia `U_min` i stala pomiaru czestotliwosci `T_f`) jest WYMAGANY
+# dla kazdego odbioru biegu `dynamika_rms`, a odbior czuly czestotliwosciowo ma estymator
+# katowy. Tym samym znikaja, bez powrotu:
+#   * odmowa `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu` (odbior bez `U_min` w wezle
+#     zwarcia metalicznego — brak `U_min` jest dzis brakiem danych PRZED biegiem);
+#   * bramka G8 (`g8_granica_odmowy`, `ZAPADY_G8_PU`, pomiar `G8_granica_odmowy_zlamana`) —
+#     opisywala granice odmowy odbioru bez przejscia, a takiego odbioru nie ma;
+#   * wariant `u_min_pu = None` odbioru nie-impedancyjnego (`charakterystyka_stalej_mocy`
+#     z `u_min_pu=None` albo z adnotacja dopuszczajaca `None`);
+#   * odmowa `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany` (w jej miejscu estymator).
+# Komentarz/dokstring nazywajacy kasacje NIE jest naruszeniem (AST; `_bez_komentarzy_ts`).
+AB1B3B_KODY: tuple[str, ...] = (
+    "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu",
+    "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany",
+)
+AB1B3B_IDENTYFIKATORY: frozenset[str] = frozenset(
+    {
+        "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
+        "KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO",
+        "g8_granica_odmowy",
+        "ZAPADY_G8_PU",
+    }
+)
+AB1B3B_NAPISY_BRAMKI: tuple[str, ...] = ("G8_granica_odmowy_zlamana",)
+#: Katalog testow backendu — bramka G8 zyla w `tests/walidacja_fizyczna`.
+BACKEND_TESTS_DIR = ROOT / "backend" / "tests"
+
+
+def _nazwy_wezla(node: ast.AST) -> list[str]:
+    """Nazwy, ktore wezel AST wprowadza albo czyta: zmienna, atrybut, definicja, import."""
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.Attribute):
+        return [node.attr]
+    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return [node.name]
+    if isinstance(node, ast.ImportFrom | ast.Import):
+        return [alias.asname or alias.name for alias in node.names]
+    return []
+
+
+def _wariant_u_min_none(node: ast.AST) -> bool:
+    """`charakterystyka_stalej_mocy(u_min_pu=None)` albo jej definicja dopuszczajaca `None`."""
+    if isinstance(node, ast.Call):
+        funkcja = node.func
+        nazwa = (
+            funkcja.id
+            if isinstance(funkcja, ast.Name)
+            else funkcja.attr if isinstance(funkcja, ast.Attribute) else None
+        )
+        return nazwa == "charakterystyka_stalej_mocy" and any(
+            slowo.arg == "u_min_pu"
+            and isinstance(slowo.value, ast.Constant)
+            and slowo.value.value is None
+            for slowo in node.keywords
+        )
+    if isinstance(node, ast.FunctionDef) and node.name == "charakterystyka_stalej_mocy":
+        argumenty = [*node.args.args, *node.args.kwonlyargs]
+        return any(
+            argument.arg == "u_min_pu"
+            and argument.annotation is not None
+            and any(slowo in ast.unparse(argument.annotation) for slowo in ("None", "Optional"))
+            for argument in argumenty
+        )
+    return False
+
+
+def check_ab1b3b_odbiory_resurrection() -> list[str]:
+    """Karta AB-1b.3b: kasacje z decyzji O-55 nie wracaja — patrz komentarz nad
+    `AB1B3B_KODY`."""
+    violations: list[str] = []
+    znak = "karta AB-1b.3b — model dynamiczny odbioru z katalogu, estymator czestotliwosci"
+    pliki = [
+        *(sorted(BACKEND_SRC_DIR.rglob("*.py")) if BACKEND_SRC_DIR.exists() else []),
+        *(sorted(BACKEND_TESTS_DIR.rglob("*.py")) if BACKEND_TESTS_DIR.exists() else []),
+    ]
+    # Filtr tekstowy PRZED drzewem skladniowym: plik bez zadnego z tokenow nie moze zawierac
+    # naruszenia (nazwy, napisy i wywolanie maja te tokeny doslownie), a parsowanie calego
+    # drzewa testow kosztowaloby sekundy przy kazdym biegu straznika.
+    tokeny = (
+        *AB1B3B_IDENTYFIKATORY,
+        *AB1B3B_KODY,
+        *AB1B3B_NAPISY_BRAMKI,
+        "charakterystyka_stalej_mocy",
+    )
+    for py_file in pliki:
+        tekst = read_text(py_file)
+        if not any(token in tekst for token in tokeny):
+            continue
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tree = ast.parse(tekst, filename=str(py_file))
+        for node in ast.walk(tree):
+            for nazwa in _nazwy_wezla(node):
+                if nazwa in AB1B3B_IDENTYFIKATORY:
+                    violations.append(
+                        f"[resurrected-name] {rel_path}:{node.lineno}: {nazwa} ({znak})"
+                    )
+            if _wariant_u_min_none(node):
+                violations.append(
+                    f"[resurrected-pattern] {rel_path}:{node.lineno}: odbior stalej mocy bez "
+                    f"napiecia przejscia (u_min_pu=None) ({znak})"
+                )
+        for napis, lineno in _napisy_kodu_py(tree):
+            for zakazany in AB1B3B_KODY + AB1B3B_NAPISY_BRAMKI:
+                if zakazany in napis:
+                    violations.append(
+                        f"[resurrected-string] {rel_path}:{lineno}: {zakazany!r} ({znak})"
+                    )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                surowy = read_text(ts_file)
+                if not any(zakazany in surowy for zakazany in AB1B3B_KODY):
+                    continue
+                tekst = _bez_komentarzy_ts(surowy)
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for zakazany in AB1B3B_KODY:
+                    if zakazany in tekst:
+                        violations.append(
+                            f"[resurrected-pattern] {rel_path}: {zakazany!r} ({znak})"
+                        )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2760,6 +2922,7 @@ def main() -> int:
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
         + check_abp1_dynamika_resurrection()
+        + check_ab1b3b_odbiory_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

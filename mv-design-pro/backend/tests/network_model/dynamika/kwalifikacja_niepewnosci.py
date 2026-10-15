@@ -59,9 +59,16 @@ from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.siec import rozwiaz_algebre, zloz_model_sieci
 from network_model.solvers.dynamika.urzadzenia.maszyna_klasyczna import MaszynaKlasyczna
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+from tests.walidacja_fizyczna.stanowisko import (
+    U_MIN_TESTOWE_PU,
+    modele_odbiorow,
+    stany_z_odbiorami,
+)
+
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 getcontext().prec = 60
 
@@ -170,14 +177,16 @@ def _uklad(przypadek: Przypadek):
             rodzaj="linia",
         ),
     )
-    odbiory = (
-        OdbiorDynamiki(
-            ident="O1",
-            wezel="B",
-            p_pu=przypadek.p_pu,
-            q_pu=przypadek.q_pu,
-            charakterystyka=STALA_MOC,
-        ),
+    odbiory = modele_odbiorow(
+        (
+            OdbiorDynamiki(
+                ident="O1",
+                wezel="B",
+                p_pu=przypadek.p_pu,
+                q_pu=przypadek.q_pu,
+                charakterystyka=STALA_MOC,
+            ),
+        )
     )
     maszyna = MaszynaKlasyczna(
         ident="G1",
@@ -188,7 +197,9 @@ def _uklad(przypadek: Przypadek):
         ra_pu=0.0,
         omega_bazowa_rad_s=OMEGA_BAZOWA,
     )
-    stany = (np.array([0.0, 1.002, przypadek.p_pu, przypadek.sem_pu], dtype=float),)
+    stany = stany_z_odbiorami(
+        odbiory, (np.array([0.0, 1.002, przypadek.p_pu, przypadek.sem_pu], dtype=float),)
+    )
     return zloz_model_sieci(wezly, galezie, ()), odbiory, (maszyna,), stany
 
 

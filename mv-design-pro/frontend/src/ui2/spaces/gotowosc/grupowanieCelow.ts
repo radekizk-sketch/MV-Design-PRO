@@ -102,12 +102,13 @@
  *
  * Pozostałe ograniczenia (bez zgadywania — poza zakresem testu parytetu, bo
  * poza kanonicznym rejestrem):
- * 1. Kody generyczne bez separatora kropkowego (`E001`..`E042`, `W001`..`W040`,
+ * 1. Kody generyczne bez separatora kropkowego (`E001`..`E042`, `W001`..`W062`,
  *    `I001`..`I005` z `enm/validator.py`) NIE MAJĄ przestrzeni nazw (prefiksu)
- *    wskazującej cel — trafiają do „Pozostałe". Ich znaczenie jest czytelne
- *    z `wizard_step_hint` (K2..K6) i treści `message_pl`, ale to inny sygnał
- *    niż „prefiks kodu" — GRANICA PRODUKTU (rozszerzenie mapowania o
- *    `wizard_step_hint` wymaga osobnej decyzji o drugim kluczu grupowania).
+ *    wskazującej cel. Gdy most `domain/readiness_bridge.py` odwzorowuje kod na
+ *    kanon (ten sam warunek), zgłoszenie niesie `canonical_code` i cel idzie za
+ *    nim (`naProblemGotowosci`; karta ETYKIETA-STACJI-PRZELOTOWEJ — dawniej W043
+ *    i każdy inny odwzorowany kod walidatora lądował w „Pozostałe"). Kod bez
+ *    odwzorowania kanonicznego trafia do „Pozostałe" (bez zgadywania).
  * 2. Kody z `network_model/validation/validator.py` i
  *    `network_model/catalog/readiness_checker.py` (np. `transformer.hv_invalid`,
  *    `transformer.polarity_reversed`) pochodzą z ODRĘBNEGO modułu walidacji
@@ -247,7 +248,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'import.catalog_mapping_required': 'wspolne',
   'catalog.binding_version_missing': 'wspolne',
   'catalog.binding_missing': 'wspolne',
-  'catalog.materialization_failed': 'wspolne',
   // Bramy katalogowe (karta W4, dług V12K-317). Do tej karty rejestr znał tylko
   // cztery kody przestrzeni `catalog.`, a bramy emitują ich siedemnaście więcej —
   // z `catalog.item_not_found` na czele, bo po ujednoliceniu parytetu torów
@@ -276,6 +276,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
   // blokuje wyłącznie rozpływ mocy (i wszystko, co z niego startuje).
   'load.zip_agregat_niereprezentowalny': 'rozplyw',
+  // Karta modeli odbiorów: odbiór bez modelu dynamicznego (bloker biegu czasowego; akcja —
+  // wiązanie z profilem katalogowym na ekranie dynamiki, jak `der.dynamika_missing`).
+  'load.dynamika_missing': 'rozplyw',
   'nn.cable_catalog_missing': 'wspolne',
   // STATIONS (:564-599, :610-618, :620-637, :822-847)
   'station.type_invalid': 'stacje',
@@ -442,7 +445,8 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   generator: 'rozplyw',
   // O-53 (AB-H0, 2026-09-24): jedna regula mocy zrodla emituje kody `converter.*` w obszarze
   // GENERATORS (`transformer_capacity_exceeded`, `setpoint_above_rating`,
-  // `power_check_input_invalid`) — ten sam cel co `generator.*`.
+  // `power_check_input_invalid`, a od punktu 1 karty O-53b `power_check_group_ambiguous`)
+  // — ten sam cel co `generator.*`.
   converter: 'rozplyw',
   oze: 'rozplyw',
   pv_bess: 'rozplyw',
@@ -498,7 +502,11 @@ export function naProblemGotowosci(issue: ReadinessIssue): ProblemGotowosci {
     waga: wagaZSeverity(issue.severity),
     elementRef: issue.element_ref ?? issue.element_refs[0] ?? null,
     opisPl: issue.message_pl,
-    cel: celDlaKodu(issue.code),
+    // Cel po kodzie KANONICZNYM, gdy backend go dołączył (most `readiness_bridge`: ten sam
+    // warunek w kanonie) — dawniej zgłoszenia walidatora (`W043`, `E009`, …) szły po
+    // surowym kodzie bez kropki do „Pozostałe", choć kanon zna ich obszar. Kod surowy
+    // zostaje w `code` (identyfikacja wiersza, filtry).
+    cel: celDlaKodu(issue.canonical_code ?? issue.code),
     fixAction: issue.fix_action,
     priorytetKanoniczny: issue.canonical_priority ?? null,
   };

@@ -47,7 +47,7 @@ import type {
   ProtectionRunItem,
   RankingIssue as ProtectionRankingIssue,
 } from '../../../ui/protection-comparison/types';
-import { STATE_CHANGE_LABELS } from '../../../ui/protection-comparison/types';
+import { STATE_CHANGE_LABELS, WIARYGODNOSC_PL } from '../../../ui/protection-comparison/types';
 import type {
   DefinicjaKolumny,
   NazwaObiektu,
@@ -545,7 +545,7 @@ export function etykietaPrzebiegu(
 // ---------------------------------------------------------------------------
 
 export const KOLUMNY_STANOW_ZABEZPIECZEN: DefinicjaKolumny[] = [
-  { klucz: 'element', etykieta: ZB.kolElementChroniony, wyrownanie: 'lewo' },
+  { klucz: 'element', etykieta: ZB.kolUrzadzenie, wyrownanie: 'lewo' },
   { klucz: 'punkt', etykieta: ZB.kolPunktZwarcia, wyrownanie: 'lewo' },
   { klucz: 'stanA', etykieta: ZB.kolStanA, wyrownanie: 'lewo' },
   { klucz: 'stanB', etykieta: ZB.kolStanB, wyrownanie: 'lewo' },
@@ -555,10 +555,14 @@ export const KOLUMNY_STANOW_ZABEZPIECZEN: DefinicjaKolumny[] = [
   { klucz: 'pradA', etykieta: ZB.kolPradA, jednostka: ZB.jednA, mono: true },
   { klucz: 'pradB', etykieta: ZB.kolPradB, jednostka: ZB.jednA, mono: true },
   { klucz: 'pradD', etykieta: ZB.kolPradD, jednostka: ZB.jednA, mono: true },
-  // Margines selektywności — A i B osobno, BEZ kolumny Δ (backend nie publikuje
-  // `delta_margin_percent` na wierszu — patrz `fmtMarginesProcent` w strings.ts).
+  // Zapas czułości — A i B osobno, BEZ kolumny różnicy (backend nie publikuje różnicy zapasu
+  // na wierszu — patrz `fmtMarginesProcent` w strings.ts).
   { klucz: 'marginesA', etykieta: ZB.kolMarginesA, jednostka: ZB.jednProcent, mono: true },
   { klucz: 'marginesB', etykieta: ZB.kolMarginesB, jednostka: ZB.jednProcent, mono: true },
+  // Wiarygodność wyniku każdego biegu (granica dokładności przekładnika) — czas i zapas
+  // wyniku niewiarygodnego nie są porównywane (backend nie publikuje ich różnicy).
+  { klucz: 'wiarygodnoscA', etykieta: ZB.kolWiarygodnoscA, wyrownanie: 'lewo' },
+  { klucz: 'wiarygodnoscB', etykieta: ZB.kolWiarygodnoscB, wyrownanie: 'lewo' },
   { klucz: 'zmiana', etykieta: ZB.kolZmianaStanu, wyrownanie: 'lewo' },
 ];
 
@@ -633,11 +637,14 @@ function komorkaDeltyZabezpieczen(
     : { wartosc: format(wartosc), sortKey: wartosc, ostrzezenie };
 }
 
-/** `ProtectionComparisonRow[]` → wiersze tabeli wzorca (A · B · Δ; kolejność źródłowa). */
+/**
+ * `ProtectionComparisonRow[]` → wiersze tabeli wzorca (A · B · różnica; kolejność źródłowa).
+ * Nazwy urządzenia i punktu pochodzą z wiersza backendu (model biegu), nie z mostu nazw
+ * bieżącej migawki — urządzenie usunięte po biegu nadal ma w porównaniu swoją nazwę.
+ */
 export function naWierszeStanowZabezpieczen(
   rows: ProtectionComparisonRow[],
   wagi: Map<string, number>,
-  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row, i) => {
     const flaga = pozaZabezpieczenia(wagi, row.protected_element_ref, row.fault_target_id);
@@ -646,8 +653,8 @@ export function naWierszeStanowZabezpieczen(
     const refB = refDowoduPorownania('B', parRef);
     return {
       [KLUCZ_PROBLEM]: { wartosc: String(i) },
-      element: { wartosc: nazwa(row.protected_element_ref) },
-      punkt: { wartosc: nazwa(row.fault_target_id) },
+      element: { wartosc: row.nazwa_urzadzenia_pl },
+      punkt: { wartosc: row.nazwa_punktu_pl },
       stanA: { wartosc: stanZadzialaniaPL(row.trip_state_a), dowodRef: refA },
       stanB: { wartosc: stanZadzialaniaPL(row.trip_state_b), dowodRef: refB },
       czasA: komorkaZabezpieczen(row.t_trip_s_a, fmtCzasZadzialania, refA),
@@ -658,6 +665,8 @@ export function naWierszeStanowZabezpieczen(
       pradD: komorkaDeltyZabezpieczen(row.delta_i_fault_a, fmtDeltaPradZwarciowy, flaga),
       marginesA: komorkaZabezpieczen(row.margin_percent_a, fmtMarginesProcent, refA),
       marginesB: komorkaZabezpieczen(row.margin_percent_b, fmtMarginesProcent, refB),
+      wiarygodnoscA: { wartosc: WIARYGODNOSC_PL[row.wiarygodnosc_a] },
+      wiarygodnoscB: { wartosc: WIARYGODNOSC_PL[row.wiarygodnosc_b] },
       zmiana: { wartosc: STATE_CHANGE_LABELS[row.state_change] },
     };
   });

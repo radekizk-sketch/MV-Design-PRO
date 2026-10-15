@@ -51,10 +51,13 @@ from network_model.solvers.dynamika.siec import rozwiaz_algebre
 from network_model.solvers.dynamika.tozsamosc import kwantyzuj, skrot_kanoniczny
 
 from tests.network_model.dynamika import uklady
+from tests.walidacja_fizyczna import stanowisko
+from tests.walidacja_fizyczna.stanowisko import U_MIN_TESTOWE_PU
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 
 def _indeks_probki_p(wynik, t_s: float) -> int:
@@ -238,7 +241,8 @@ def test_odlaczenie_odbioru_zdejmuje_go_z_bilansu_wezla(przebieg: tuple[bool, ..
         for u in wejscie.urzadzenia
     )
     model = zloz_model_sieci(wejscie.wezly, wejscie.galezie, wejscie.odsprzegi)
-    odbiory = wejscie.odbiory if przebieg[-1] else ()
+    odbiory = stanowisko.modele_odbiorow(wejscie.odbiory if przebieg[-1] else ())
+    stany = stanowisko.stany_z_odbiorami(odbiory, stany)
     start = np.array(
         [
             cmath.rect(

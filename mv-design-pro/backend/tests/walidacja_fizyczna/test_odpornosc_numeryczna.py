@@ -36,9 +36,10 @@ from network_model.solvers.dynamika.urzadzenia import zbuduj_maszyne_klasyczna
 
 from . import stanowisko
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=stanowisko.U_MIN_TESTOWE_PU)
 
 
 def _ocena_biegu(wywolanie) -> tuple[str, str]:
@@ -116,11 +117,14 @@ def _wyspa_bez_zrodla(tolerancja: float, max_iteracji: int):
     model = zloz_model_sieci(
         (WezelDynamiki("ODB", 15.0),), (), (), galezie_aktywne=frozenset(), admitancje_zwarc=()
     )
+    odbiory = stanowisko.modele_odbiorow(
+        (OdbiorDynamiki("L1", "ODB", 1.0, 0.2, charakterystyka=STALA_MOC),)
+    )
     return lambda: rozwiaz_algebre(
         model,
-        (OdbiorDynamiki("L1", "ODB", 1.0, 0.2, charakterystyka=STALA_MOC),),
+        odbiory,
         (),
-        (),
+        stanowisko.stany_z_odbiorami(odbiory, ()),
         np.array([1.0 + 0.0j]),
         tolerancja=tolerancja,
         max_iteracji=max_iteracji,

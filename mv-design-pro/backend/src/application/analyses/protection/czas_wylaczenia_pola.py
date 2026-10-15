@@ -12,11 +12,18 @@ członów, obu pochodzących z danych:
 
     t_wył = t_nastawy(charakterystyka, prąd zwarciowy) + t_własny(aparat)
 
-WARSTWA ANALIZ, NIE SOLVER: żaden wzór nie powstaje tutaj. Czas członu
-nastawczego liczy solver ``protection_iec60255.compute_curve_trip_time``
-(IEC 60255-151), wybór stopnia jest ten sam, co dla gałęzi
-(``czas_wylaczenia_galezi.nastawa_zwarciowa`` — jedna reguła, nie dwie), a czas
-własny to odczyt pozycji katalogu APARAT_SN. Sumowanie dwóch czasów NIE jest
+WARSTWA ANALIZ, NIE SOLVER: żaden wzór nie powstaje tutaj. Nastawy i czas członu
+nastawczego pochodzą z JEDNEJ ścieżki oceny nadprądowej
+(``protection/ocena_nadpradowa.py``: ``rozwiaz_nastawy`` — jednostka progu, przekładnia
+przekładnika, zakresy katalogu; ``czas_urzadzenia`` — rdzeń IEC 60255, najszybszy stopień,
+który ruszył), tak samo jak dla gałęzi — jedna reguła, nie dwie. Czas własny to odczyt
+pozycji katalogu APARAT_SN.
+
+STYK Z KARTĄ POLA-W-TORZE: prąd, przy którym sprawdzana jest charakterystyka, to prąd
+zwarciowy punktu podany przez wołającego (``ik_ka``). Dla pola odpływowego zwartego tuż za
+wyłącznikiem jest to prąd płynący przez aparat pola; prąd gałęzi aparatu pola z rozpływu
+wyznaczy predykat toru prądowego pól (karta POLA-W-TORZE) — ta sama ścieżka oceny przyjmie
+go bez zmian (``czas_urzadzenia`` bierze prąd pierwotny). Sumowanie dwóch czasów NIE jest
 fizyką — to definicja czasu trwania zwarcia (IEC 60909-0 § 4.7).
 
 ZERO HEURYSTYK I ZERO FABRYKACJI:
@@ -36,13 +43,9 @@ from __future__ import annotations
 from typing import Any
 
 from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
-from application.analyses.protection.czas_wylaczenia_galezi import (
-    ZRODLO_PONIZEJ_ROZRUCHU,
-    czas_z_nastawy,
-    nastawa_zwarciowa,
-)
+from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
 from application.field_read_model import collect_bays
-from enm.models import EnergyNetworkModel
+from enm.models import EnergyNetworkModel, ProtectionAssignment
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog import get_default_mv_catalog
 from network_model.pochodne import ka_na_a
@@ -80,7 +83,7 @@ def _bez_czasu(kod: str, powod_pl: str, **slad: Any) -> dict[str, Any]:
 
 def _przypisanie_pola(
     enm: EnergyNetworkModel, aparat_refy: set[str], protection_ref: str | None
-) -> dict[str, Any] | None:
+) -> ProtectionAssignment | None:
     """Czynne zabezpieczenie pola: po wyłączniku pola albo po ``protection_ref``.
 
     Kolejność deterministyczna (po ``ref_id``), żeby pole z dwoma przypisaniami
@@ -94,7 +97,7 @@ def _przypisanie_pola(
     ]
     if not kandydaci:
         return None
-    return kandydaci[0].model_dump()
+    return kandydaci[0]
 
 
 def _czas_wlasny_aparatu(catalog_refy: list[str]) -> tuple[float | None, str | None]:
@@ -154,60 +157,55 @@ def czasy_wylaczenia_pol_stacji(
             )
             continue
 
-        nastawa = nastawa_zwarciowa(wpis)
-        if nastawa is None:
+        nazwa_zabezpieczenia = nazwa_elementu(wpis, "protection_assignments")
+        nastawy = rozwiaz_nastawy(enm, wpis)
+        if not nastawy.gotowe:
             wynik[bay.ref_id] = _bez_czasu(
                 READINESS_BRAK_NASTAW,
-                f"Zabezpieczenie {nazwa_elementu(wpis, 'protection_assignments')} nie ma nastawy "
-                "funkcji nadprądowej zwarciowej (50/51) z progiem rozruchowym.",
-                urzadzenie_ref=wpis.get("ref_id"),
+                " ".join(b.komunikat_pl for b in nastawy.braki),
+                urzadzenie_ref=wpis.ref_id,
+                braki_nastaw=[b.to_dict() for b in nastawy.braki],
             )
             continue
 
-        prog = float(nastawa["threshold_a"])
-        funkcja = str(nastawa.get("function_type"))
+        najczulszy = min(nastawy.stopnie, key=lambda s: (s.prog_pierwotny_a, s.funkcja))
         if prad_a is None:
             wynik[bay.ref_id] = _bez_czasu(
                 READINESS_BRAK_PRADU,
                 "Wynik biegu nie niesie prądu zwarciowego początkowego, więc nie ma "
                 "przy jakim prądzie sprawdzić charakterystyki zabezpieczenia.",
-                urzadzenie_ref=wpis.get("ref_id"),
-                funkcja=funkcja,
-                prad_rozruchowy_a=prog,
+                urzadzenie_ref=wpis.ref_id,
+                funkcja=najczulszy.funkcja,
+                prad_rozruchowy_a=najczulszy.prog_pierwotny_a,
             )
             continue
 
-        czas_nastawy, powod_braku, krzywa_txt, stale = czas_z_nastawy(nastawa, prad_a)
+        slady_stopni, decydujacy = czas_urzadzenia(nastawy.stopnie, prad_a)
+        odniesienie = decydujacy if decydujacy is not None else None
         slad: dict[str, Any] = {
-            "urzadzenie_ref": wpis.get("ref_id"),
-            "urzadzenie_nazwa": wpis.get("name"),
-            "funkcja": funkcja,
-            "krzywa": krzywa_txt,
-            "prad_rozruchowy_a": prog,
+            "urzadzenie_ref": wpis.ref_id,
+            "urzadzenie_nazwa": wpis.name,
+            "funkcja": (odniesienie or {}).get("funkcja", najczulszy.funkcja),
+            "krzywa": (odniesienie or {}).get("krzywa", najczulszy.krzywa),
+            "prad_rozruchowy_a": (odniesienie or {}).get("Is_a", najczulszy.prog_pierwotny_a),
             "prad_zwarciowy_a": prad_a,
-            "tms": nastawa.get("time_multiplier"),
-            "stala_a": stale[0] if stale else None,
-            "stala_b": stale[1] if stale else None,
+            "tms": (odniesienie or {}).get("TMS", najczulszy.tms),
+            "stala_a": ((odniesienie or {}).get("stale") or {}).get("A"),
+            "stala_b": ((odniesienie or {}).get("stale") or {}).get("B"),
+            "stopnie": slady_stopni,
         }
 
-        if czas_nastawy is None:
-            ponizej = powod_braku == ZRODLO_PONIZEJ_ROZRUCHU
+        if decydujacy is None:
             wynik[bay.ref_id] = _bez_czasu(
-                READINESS_PONIZEJ_ROZRUCHU if ponizej else READINESS_BRAK_NASTAW,
-                (
-                    (
-                        f"Prąd zwarciowy {prad_a:.1f} A nie przekracza progu rozruchowego "
-                        f"{prog:g} A funkcji {funkcja}, więc to zabezpieczenie nie zadziała."
-                    )
-                    if ponizej
-                    else (
-                        f"Nastawa funkcji {funkcja} jest niekompletna (brak zwłoki albo "
-                        f"mnożnika czasowego dla charakterystyki {krzywa_txt})."
-                    )
-                ),
+                READINESS_PONIZEJ_ROZRUCHU,
+                f"Prąd zwarciowy {prad_a:.1f} A nie przekracza progu rozruchowego "
+                f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała.",
                 **slad,
             )
             continue
+        czas_nastawy = float(decydujacy["t_s"])
+        krzywa_txt = str(decydujacy["krzywa"])
 
         czas_wlasny, pozycja_ref = _czas_wlasny_aparatu([a.catalog_ref for a in aparaty_pola])
         zalozenia: list[str] = []
@@ -216,12 +214,15 @@ def czasy_wylaczenia_pol_stacji(
             zalozenia.append(_ZALOZENIE_BEZ_CZASU_WLASNEGO)
             kody.append(READINESS_BRAK_CZASU_WLASNEGO)
 
+        # Brak czasu własnego aparatu w katalogu: czas wyłączenia = czas członu nastawczego,
+        # z jawnym założeniem i kodem gotowości (nie dodawana liczba zastępcza).
+        t_wylaczenia = czas_nastawy if czas_wlasny is None else czas_nastawy + czas_wlasny
         wynik[bay.ref_id] = {
-            "t_clearing_s": round(czas_nastawy + (czas_wlasny or 0.0), 6),
+            "t_clearing_s": round(t_wylaczenia, 6),
             "zrodlo": ZRODLO_NASTAWY_POLA,
             "powod_pl": (
-                f"Czas z charakterystyki {krzywa_txt} zabezpieczenia "
-                f"{nazwa_elementu(wpis, 'protection_assignments')} przy prądzie {prad_a:.1f} A"
+                f"Czas stopnia {decydujacy['etykieta_pl']} ({krzywa_txt}) zabezpieczenia "
+                f"{nazwa_zabezpieczenia} przy prądzie {prad_a:.1f} A"
                 + (" powiększony o czas własny aparatu." if czas_wlasny is not None else ".")
             ),
             "czlon_nastawczy_s": czas_nastawy,

@@ -194,9 +194,13 @@ def test_card_field_quality_map_seed_rules() -> None:
     for name in ("un_kv", "sn_mva", "pmax_mw", "manufacturer", "model"):
         assert name in quality_map, name
 
-    # Ratings / manufacturer present -> DATASHEET.
-    assert quality_map["un_kv"].quality is FieldQuality.DATASHEET
-    assert quality_map["manufacturer"].quality is FieldQuality.DATASHEET
+    # Ratings / manufacturer present in a record WITHOUT a manufacturer datasheet
+    # (verification_status != ZWERYFIKOWANY) -> ESTIMATED with the status named
+    # (karta KATALOG-KOMPLETNY-PROWENIENCJA; dawniej DATASHEET bez względu na źródło).
+    assert c.verification_status != "ZWERYFIKOWANY"
+    assert quality_map["un_kv"].quality is FieldQuality.ESTIMATED
+    assert quality_map["manufacturer"].quality is FieldQuality.ESTIMATED
+    assert "bez karty producenta" in (quality_map["un_kv"].note or "")
 
     # Controller bandwidth present -> ESTIMATED (never DATASHEET without a source).
     assert quality_map["pll_bandwidth_hz"].quality is FieldQuality.ESTIMATED
@@ -205,6 +209,52 @@ def test_card_field_quality_map_seed_rules() -> None:
     # SC-model / power-hierarchy absent -> SYSTEM_DEFAULT.
     assert quality_map["sc_model"].quality is FieldQuality.SYSTEM_DEFAULT
     assert quality_map["p_installed_mw"].quality is FieldQuality.SYSTEM_DEFAULT
+
+
+@pytest.mark.parametrize(
+    ("verification_status", "oczekiwana"),
+    [
+        ("ZWERYFIKOWANY", FieldQuality.DATASHEET),
+        ("REFERENCYJNY", FieldQuality.ESTIMATED),
+        ("NIEWERYFIKOWANY", FieldQuality.ESTIMATED),
+        ("CZESCIOWO_ZWERYFIKOWANY", FieldQuality.ESTIMATED),
+    ],
+)
+@pytest.mark.parametrize(
+    "pole",
+    ["un_kv", "sn_mva", "pmax_mw", "manufacturer", "model", "p_installed_mw", "sc_model"],
+)
+def test_card_field_quality_seed_follows_record_verification_status(
+    verification_status: str, oczekiwana: FieldQuality, pole: str
+) -> None:
+    """Iloczyn cech: status weryfikacji rekordu × pole obecne (rating, tożsamość,
+    hierarchia mocy, model zwarciowy). DATASHEET wyłącznie dla rekordu z kartą
+    producenta; pole nieobecne — SYSTEM_DEFAULT niezależnie od statusu."""
+    c = _make_converter(
+        manufacturer="Producent testowy",
+        model="X1",
+        p_installed_mw=1.2,
+        pn_ac_mw=1.0,
+        sc_model="from_datasheet",
+        verification_status=verification_status,
+    )
+    quality_map = card_field_quality_map(c)
+    assert quality_map[pole].quality is oczekiwana, pole
+    assert quality_map["p_connection_mw"].quality is FieldQuality.SYSTEM_DEFAULT
+
+
+def test_card_field_quality_status_literal_matches_catalog_enum() -> None:
+    """Parytet literału warstwy solver_input z enumem katalogu (jedno źródło prawdy z
+    predykatem doboru szablonów)."""
+    from network_model.catalog.mv_converter_catalog import dopuszczona_do_doboru_szablonu
+    from network_model.catalog.types import CatalogVerificationStatus
+    from solver_input.provenance import _STATUS_KARTY_PRODUCENTA
+
+    assert _STATUS_KARTY_PRODUCENTA == CatalogVerificationStatus.ZWERYFIKOWANY.value
+    for status in CatalogVerificationStatus:
+        c = _make_converter(manufacturer="P", verification_status=status.value)
+        z_karty = card_field_quality_map(c)["un_kv"].quality is FieldQuality.DATASHEET
+        assert z_karty == dopuszczona_do_doboru_szablonu({"verification_status": status.value})
 
 
 def test_card_field_quality_map_never_emits_datasheet_for_estimated_bandwidth() -> None:
@@ -259,6 +309,8 @@ _REFERENCE_CARD_IDS_WITH_CARD_FIELDS = {
     "conv-pv-card-huawei-sun2000-215ktl",
     "conv-pv-card-sungrow-sg3150u-mv",
     "conv-bess-card-sungrow-sc2000ud-mv",
+    # Karta producenta Huawei podaje moc znamionową AC (P_n,AC = 300 kW) — pole karty.
+    "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
 }
 
 

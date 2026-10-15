@@ -3,8 +3,8 @@
  * (`backend/src/api/station_templates.py`). `KATEGORIE_FIXTURE` odwzorowuje
  * dokładnie 15 kategorii z `_CATEGORY_ICONS`/`_CATEGORY_DESCRIPTIONS`
  * (station_templates.py) wraz z realnymi licznikami z backendu
- * (`count_by_category` — 73 szablony łącznie, `service.py`; K30-16's 57 +
- * V12T-016's 16). Korekta 2026-09-17 (karta SZABLONY-ROLA-A): poprzednia
+ * (`count_by_category` — 71 szablonów łącznie, `service.py`; K30-16's 57 +
+ * V12T-016's 16, minus 2 szablony wiatrowe wycofane 2026-10-15). Korekta 2026-09-17 (karta SZABLONY-ROLA-A): poprzednia
  * wersja miała TRZY błędne liczniki K30-16 (zksn_wnetrzowa=6 zamiast 8,
  * farma_pv=6 zamiast 5, przemyslowa=6 zamiast 5 — błędy wzajemnie się
  * znosiły w sumie 57, więc test sumy przechodził mimo błędnych wartości per
@@ -25,12 +25,12 @@ export const KATEGORIE_FIXTURE: CategoryEntry[] = [
   { id: 'typowa_sn_nn', label_pl: 'Typowe stacje SN/nN', icon: 'station-distribution', description_pl: 'Standardowe stacje dystrybucyjne 100-2500 kVA', template_count: 10, wchodzi_w_segment: true },
   { id: 'slupowa', label_pl: 'Stacje słupowe ZSP', icon: 'station-pole', description_pl: 'Stacje słupowe ZSP (50-400 kVA, wieś)', template_count: 6, wchodzi_w_segment: true },
   { id: 'zksn_wnetrzowa', label_pl: 'Stacje ZKSN wnętrzowe', icon: 'station-indoor', description_pl: 'Stacje wnętrzowe z RMU (630-2500 kVA, miasto)', template_count: 8, wchodzi_w_segment: true },
-  { id: 'prosument_pv', label_pl: 'Mikroinstalacje PV prosument', icon: 'station-pv-prosument', description_pl: 'Mikroinstalacje PV 5-250 kW (NC RfG typ A-C)', template_count: 6, wchodzi_w_segment: true },
-  { id: 'farma_pv', label_pl: 'Farmy PV SN', icon: 'station-pv-farm', description_pl: 'Farmy PV SN 0.5-5 MW z block transformer', template_count: 5, wchodzi_w_segment: true },
+  { id: 'prosument_pv', label_pl: 'Mikroinstalacje PV prosument', icon: 'station-pv-prosument', description_pl: 'Mikroinstalacje PV 8-250 kW (NC RfG typ A-B)', template_count: 6, wchodzi_w_segment: true },
+  { id: 'farma_pv', label_pl: 'Farmy PV SN', icon: 'station-pv-farm', description_pl: 'Farmy PV SN 0,66-4,95 MW, falowniki z transformatorami blokowymi nN/SN', template_count: 5, wchodzi_w_segment: true },
   { id: 'bess', label_pl: 'Magazyny BESS', icon: 'station-bess', description_pl: 'Magazyny BESS 0.5-5 MW z usługami systemowymi', template_count: 5, wchodzi_w_segment: true },
   { id: 'hybrydowa', label_pl: 'Hybrydy PV + BESS', icon: 'station-hybrid', description_pl: 'Farmy hybrydowe PV + BESS', template_count: 5, wchodzi_w_segment: true },
   { id: 'przemyslowa', label_pl: 'Przemysłowe odbiorcze', icon: 'station-industrial', description_pl: 'Stacje przemysłowe odbiorcze (zakłady, silniki)', template_count: 5, wchodzi_w_segment: true },
-  { id: 'wiatrowa', label_pl: 'Stacje OZE wiatrowe', icon: 'station-wind', description_pl: 'Stacje OZE wiatrowe (Vestas V90/V112)', template_count: 4, wchodzi_w_segment: true },
+  { id: 'wiatrowa', label_pl: 'Stacje OZE wiatrowe', icon: 'station-wind', description_pl: 'Stacje OZE wiatrowe, turbiny z transformatorami blokowymi nN/SN', template_count: 2, wchodzi_w_segment: true },
   { id: 'sekcyjna', label_pl: 'Stacje sekcyjne / pętlowe', icon: 'station-sectional', description_pl: 'Stacje sekcyjne/pętlowe z NOP/SZR', template_count: 3, wchodzi_w_segment: true },
   // V12T-016 (rejestr długu, zamknięty kartą SZABLONY-ROLA-A, 2026-09-17):
   { id: 'gpz_110_sn', label_pl: 'GPZ 110/SN', icon: 'station-gpz', description_pl: 'GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem', template_count: 3, wchodzi_w_segment: false },
@@ -157,28 +157,36 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
 /** Szablon farmy PV (rola D) — pojedyncze DER, moc/napięcie wyłącznie w tekście. */
 export function szablonFarmaPv(over: SzablonPelnyOverrides = {}): StationTemplateFull {
   return szablonPelny({
-    id: 'tpl_farma_pv_1mw',
-    name_pl: 'Farma PV 1 MW, blok transformatorowy 1.25 MVA',
+    id: 'tpl_farma_pv_0p99mw',
+    name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
     category: 'farma_pv',
     category_label_pl: 'Farmy PV SN',
-    description_pl: 'Farma PV 1 MW z blokiem transformatorowym SN.',
+    description_pl:
+      'Farma 0,99 MW: 3 falowniki Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV), każdy z własnym transformatorem blokowym nN/SN.',
     use_case_pl: 'Przyłączenie farmy fotowoltaicznej do sieci SN.',
-    tags: ['farma', 'PV', 'OZE'],
+    tags: ['farma PV', 'OZE', 'block_transformer', 'NC_RfG_B'],
     icon: 'station-pv-farm',
-    rated_power_kva: 1250,
+    // Transformator STACJI farmy zasila potrzeby własne (63 kVA); moc falowników płynie
+    // przez ich własne transformatory blokowe nN/SN (karta GPT-478 pkt 7.1).
+    rated_power_kva: 63,
     bay_role_categories: ['IN', 'OUT', 'TR'],
     sn_bays_count_default: 2,
     der_options: [
       {
         kind: 'PV',
-        label_pl: 'Falownik PV SN przez block TR',
-        catalog_options: [opcja('conv-pv-1mw-15kv', 'PV 1 MW 15 kV', 'ZRODLO_NN_PV', { default: true })],
-        default_count: 2,
-        default_p_mw_each: 0.5,
+        label_pl: 'Falownik PV przez własny transformator blokowy nN/SN',
+        catalog_options: [
+          opcja('conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv', 'Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV)', 'ZRODLO_NN_PV', { default: true }),
+          opcja('conv-pv-nn-sma-sc2200-0p385kv', 'SMA Sunny Central 2200 (2,2 MVA, 0,385 kV)', 'ZRODLO_NN_PV'),
+          opcja('conv-pv-nn-sma-sc2475-0p434kv', 'SMA Sunny Central 2475 (2,475 MVA, 0,434 kV)', 'ZRODLO_NN_PV'),
+        ],
+        default_count: 3,
+        default_p_mw_each: 0.33,
+        default_catalog_ref: 'conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv',
         connection_variant_options: ['block_transformer'],
       },
     ],
-    der_total_count_default: 2,
+    der_total_count_default: 3,
     ...over,
   });
 }
@@ -186,15 +194,15 @@ export function szablonFarmaPv(over: SzablonPelnyOverrides = {}): StationTemplat
 /** Szablon hybrydowy (rola D) — dwa rodzaje DER (PV + BESS). */
 export function szablonHybrydowy(): StationTemplateFull {
   return szablonPelny({
-    id: 'tpl_hybrid_pv1_bess1',
-    name_pl: 'Hybryda PV 1 MW + BESS 1 MW/2 MWh',
+    id: 'tpl_hybrid_pv0p99_bess1',
+    name_pl: 'Hybryda PV 0,99 MW + BESS 1 MW/2 MWh',
     category: 'hybrydowa',
     category_label_pl: 'Hybrydy PV + BESS',
-    description_pl: 'Farma hybrydowa PV + BESS.',
+    description_pl: 'Hybryda: 3× Huawei SUN2000-330KTL-H1 (0,99 MW) + BESS 1 MW/2 MWh.',
     use_case_pl: 'Farma hybrydowa PV + BESS (firmness + arbitrage).',
-    tags: ['hybrydowa', 'PV+BESS', 'OZE'],
+    tags: ['hybrydowa', 'PV+BESS', 'OZE', 'NC_RfG_B'],
     icon: 'station-hybrid',
-    rated_power_kva: 2000,
+    rated_power_kva: 63,
     bay_role_categories: ['IN', 'MEASUREMENT', 'OUT'],
     sn_bays_count_default: 3,
     sn_bay_roles: [
@@ -205,22 +213,32 @@ export function szablonHybrydowy(): StationTemplateFull {
     der_options: [
       {
         kind: 'PV',
-        label_pl: 'Falownik PV SN przez block TR',
-        catalog_options: [opcja('conv-pv-1mw-15kv', 'PV 1 MW 15 kV', 'ZRODLO_NN_PV', { default: true })],
-        default_count: 2,
-        default_p_mw_each: 0.5,
+        label_pl: 'Falownik PV przez własny transformator blokowy nN/SN',
+        catalog_options: [
+          opcja('conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv', 'Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV)', 'ZRODLO_NN_PV', { default: true }),
+          opcja('conv-pv-nn-sma-sc2200-0p385kv', 'SMA Sunny Central 2200 (2,2 MVA, 0,385 kV)', 'ZRODLO_NN_PV'),
+          opcja('conv-pv-nn-sma-sc2475-0p434kv', 'SMA Sunny Central 2475 (2,475 MVA, 0,434 kV)', 'ZRODLO_NN_PV'),
+        ],
+        default_count: 3,
+        default_p_mw_each: 0.33,
+        default_catalog_ref: 'conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv',
         connection_variant_options: ['block_transformer'],
       },
       {
         kind: 'BESS',
-        label_pl: 'Magazyn BESS SN przez block TR',
-        catalog_options: [opcja('conv-bess-1mw-2mwh-15kv', 'BESS 1 MW / 2 MWh', 'ZRODLO_NN_BESS')],
+        label_pl: 'Magazyn BESS przez własny transformator blokowy nN/SN',
+        catalog_options: [
+          opcja('conv-bess-nn-0p5mw-0p69kv', 'BESS 0,5 MW / 1 MWh 0,69 kV', 'ZRODLO_NN_BESS'),
+          opcja('conv-bess-nn-1mw-0p69kv', 'BESS 1 MW / 2 MWh 0,69 kV', 'ZRODLO_NN_BESS'),
+          opcja('conv-bess-nn-2mw-0p69kv', 'BESS 2 MW / 4 MWh 0,69 kV', 'ZRODLO_NN_BESS'),
+        ],
         default_count: 1,
         default_p_mw_each: 1.0,
+        default_catalog_ref: 'conv-bess-nn-1mw-0p69kv',
         connection_variant_options: ['block_transformer'],
       },
     ],
-    der_total_count_default: 3,
+    der_total_count_default: 4,
   });
 }
 

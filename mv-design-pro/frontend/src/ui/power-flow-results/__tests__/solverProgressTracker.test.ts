@@ -5,7 +5,6 @@ import {
   recordIteration,
   cancelSolver,
   progressPercent,
-  elapsedMs,
   summarizeResult,
 } from '../solverProgressTracker';
 
