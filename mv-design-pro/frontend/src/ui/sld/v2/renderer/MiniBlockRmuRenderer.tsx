@@ -192,8 +192,8 @@ export interface MiniBlockBayDescriptor {
   readonly designation: string;
   readonly hasMissingRequiredDevice: boolean;
   /** TR2W-BEZ-POLA (§0.C.2 „kotwica topologiczna"): `Bus.ref_id` SEKCJI szyn,
-   *  do której to pole jest przyłączone (`field_specs[].bus_ref` / legacy
-   *  `Bay.bus_ref` — obie ścieżki adaptera niosą tę daną z ENM). To jedyna
+   *  do której to pole jest przyłączone (`Bay.bus_ref` rekordu pola — karta W5-B:
+   *  jedyny nośnik pól). To jedyna
    *  informacja, po której rysunek wie, KTÓRE pola stoją na TEJ SAMEJ sekcji
    *  co dany transformator (`Transformer.hv_bus_ref`), więc kolumna
    *  transformatora bez pola trafia w obręb WŁASNEJ sekcji, a nie za ostatnie
@@ -1797,7 +1797,7 @@ interface CompactDirectionalBayColumnProps {
   readonly busColor: string;
   readonly transformerVectorGroup?: string | null;
   readonly transformerRef?: string | null;
-  /** K30-128: liczba realnych odpływów nN (z ENM nn_field_specs FEEDER). TR bay
+  /** K30-128: liczba realnych odpływów nN (rekordy pól nN stacji roli FEEDER). TR bay
    *  rysuje N gałęzi na szynie nN zamiast gołego kikuta. 0 → brak odpływów. */
   readonly nnFeedersCount?: number;
   readonly onSymbolClick?: SymbolClickHandler;
@@ -2064,7 +2064,7 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         {(() => {
           // K30-128: realne odpływy nN jako N gałęzi na szynie nN (zamiast
           // gołego kikuta z napisem "nN"). Liczba = realny FEEDER count z ENM
-          // (nn_field_specs). Szyna rozszerza się tak, by N odpływów było
+          // (rekordy pól nN stacji). Szyna rozszerza się tak, by N odpływów było
           // czytelnie rozłożonych; każdy = kanon wyłącznik nN (IEC 60617) z
           // krótkim torem wyprowadzenia. BEZ fabrykowanych prądów/obciążeń —
           // tylko struktura odpływów obecna w modelu.

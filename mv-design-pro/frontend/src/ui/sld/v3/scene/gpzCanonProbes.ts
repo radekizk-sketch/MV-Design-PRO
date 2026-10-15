@@ -23,9 +23,9 @@
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
-import type { Branch, Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
+import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
 import { wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
-import { szynyStacji } from '../../../shared/szynyStacji';
+import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 
 /* =============================================================================
@@ -52,13 +52,12 @@ type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformer
  *  do reguły WN — zachowanie sprzed recenzji NO-GO 2026-07-17). */
 function gpzSourceOnHvBus(
   gpz: Substation,
-  sources: readonly Source[] | undefined,
-  buses: readonly Bus[] | undefined,
-  branches: readonly Branch[] | undefined,
+  snapshot: ModelSzyn & { readonly sources?: readonly Source[] | null; readonly buses?: readonly Bus[] | null },
 ): boolean | null {
+  const { sources, buses } = snapshot;
   if (!sources || !buses) return null;
   // SZYNY-STACJI-LUSTRO: ten sam zbiór szyn GPZ co adapter (`szynyStacji`).
-  const gpzBusRefs = szynyStacji(gpz, branches ?? []);
+  const gpzBusRefs = szynyStacji(snapshot, gpz);
   const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
   if (!source) return null;
   const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
@@ -165,7 +164,7 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
     // dotychczas.
     const gridSourcePresent = scene.symbols.some((s) => s.symbolId === 'gridSource');
     if (gridSourcePresent) {
-      const onHvBus = gpzSourceOnHvBus(gpz, snapshot.sources, snapshot.buses, snapshot.branches);
+      const onHvBus = gpzSourceOnHvBus(gpz, snapshot);
       const expectedExtensionRef = onHvBus === false
         ? `${gpz.ref_id}#source-bus-extension`
         : `${gpz.ref_id}#hv-bus-source-extension`;

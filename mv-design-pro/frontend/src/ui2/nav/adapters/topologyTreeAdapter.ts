@@ -290,7 +290,11 @@ function budujGrupowanieAdministracyjne(
   liczniki: Map<string, LicznikiWezla>,
 ): WezelDrzewa[] {
   const stacjaSzyny = new Map<string, string>();
-  for (const pole of struktura.bays) stacjaSzyny.set(pole.bus_ref, pole.substation_ref);
+  // Karta W5-B: `bays` niesie też pola rozdzielnic odgałęźnych ZKSN (właściciel
+  // `branch_point_ref`, bez stacji) — szyny punktu rozgałęzienia nie należą do żadnej stacji.
+  for (const pole of struktura.bays) {
+    if (pole.substation_ref) stacjaSzyny.set(pole.bus_ref, pole.substation_ref);
+  }
   const nazwaStacji = new Map<string, string>();
   for (const stacja of struktura.substations) nazwaStacji.set(stacja.ref_id, stacja.name || stacja.ref_id);
 

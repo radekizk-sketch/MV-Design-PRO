@@ -1,6 +1,7 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { szynyStacji } from '../../shared/szynyStacji';
+import { czyPoleNn, napieciaSzyn, pola } from '../../shared/polaStacji';
 import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
@@ -9,14 +10,6 @@ type LegacyBay = EnergyNetworkModel['bays'][number];
 type LegacyBus = EnergyNetworkModel['buses'][number];
 type LegacyStation = EnergyNetworkModel['substations'][number];
 type NnSourceFieldKind = 'PV' | 'BESS' | 'FW' | 'AGREGAT' | 'UPS';
-type FieldSpecRecord = {
-  field_ref?: unknown;
-  ref_id?: unknown;
-  name?: unknown;
-  bay_role?: unknown;
-  bus_ref?: unknown;
-  meta?: unknown;
-};
 
 export interface ResolvedBusOption {
   ref_id: string;
@@ -33,12 +26,6 @@ export interface ResolvedFieldOption {
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
 }
 
 function findStation(
@@ -131,7 +118,7 @@ function findStationRefByBus(
   // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`
   // (szyny główne, zaciski pól SN, końce aparatów pól nN); pierwsza stacja modelu wygrywa.
   return snapshot.substations.find((station) =>
-    [...acceptableRefs].some((ref) => szynyStacji(station, snapshot.branches).has(ref)),
+    [...acceptableRefs].some((ref) => szynyStacji(snapshot, station).has(ref)),
   )?.ref_id ?? null;
 }
 
@@ -144,13 +131,31 @@ function isMediumVoltageBus(bus: LegacyBus | null): bus is LegacyBus {
 }
 
 function readFeederRole(bay: LegacyBay): string {
-  const meta = (bay as { meta?: { feeder_role?: unknown } | null }).meta;
-  return readString(meta?.feeder_role).toUpperCase();
+  return readString(bay.meta?.feeder_role).toUpperCase();
 }
 
-function mapLegacySourceFieldKind(bay: LegacyBay): NnSourceFieldKind | null {
-  const feederRole = readFeederRole(bay);
-  switch (feederRole) {
+/** Technologia źródła z jawnego rodzaju pola źródłowego (`meta.source_field_kind`). */
+function sourceKindFromFieldKind(bay: LegacyBay): NnSourceFieldKind | null {
+  switch (readString(bay.meta?.source_field_kind).toUpperCase()) {
+    case 'PV':
+      return 'PV';
+    case 'BESS':
+      return 'BESS';
+    case 'FW':
+    case 'WIND':
+      return 'FW';
+    case 'AGREGAT':
+      return 'AGREGAT';
+    case 'UPS':
+      return 'UPS';
+    default:
+      return null;
+  }
+}
+
+/** Technologia źródła z roli odpływu nN (`meta.feeder_role` = `ZRODLO_NN_<technologia>`). */
+function sourceKindFromFeederRole(bay: LegacyBay): NnSourceFieldKind | null {
+  switch (readFeederRole(bay)) {
     case 'ZRODLO_NN_PV':
       return 'PV';
     case 'ZRODLO_NN_BESS':
@@ -162,87 +167,46 @@ function mapLegacySourceFieldKind(bay: LegacyBay): NnSourceFieldKind | null {
     case 'ZRODLO_NN_UPS':
       return 'UPS';
     default:
-      break;
+      return null;
   }
-
-  const bayRole = readString((bay as { bay_role?: unknown }).bay_role).toUpperCase();
-  if (bayRole === 'OZE') {
-    return 'PV';
-  }
-
-  return null;
 }
 
-function classifyLegacyNnField(
-  snapshot: EnergyNetworkModel | null,
+/**
+ * Rodzaj pola nN (karta W5-B: JEDEN klasyfikator rekordu `bays`; dawniej dwa — dla rekordów
+ * `bays` i dla listy pól nN w `meta` stacji — z różnym pierwszeństwem danych). Pole nN = szyna
+ * pola w paśmie nN (`czyPoleNn`). Odpływ: rola `FEEDER` albo `meta.feeder_role === 'ODPLYW_NN'`.
+ * Pole źródła: rola `OZE`, rola odpływu `ZRODLO_*` albo jawny `meta.source_field_kind`;
+ * technologia z `source_field_kind`, potem z roli odpływu, a pole roli `OZE` bez technologii
+ * jest polem PV (ta sama reguła co rysunek, `fieldRoleFromBayRole`: `OZE` → pole PV); rola
+ * `ZRODLO_*` bez znanej technologii — rodzaj ogólny `ZRODLO_NN`.
+ */
+function classifyNnField(
+  snapshot: EnergyNetworkModel,
   bay: LegacyBay,
+  napiecia: ReturnType<typeof napieciaSzyn>,
 ): Pick<ResolvedFieldOption, 'kind'> | null {
-  const bus = findBus(snapshot, bay.bus_ref);
-  if (!isLowVoltageBus(bus)) {
+  if (!czyPoleNn(snapshot, bay, napiecia)) {
     return null;
   }
 
   const feederRole = readFeederRole(bay);
-  const bayRole = readString((bay as { bay_role?: unknown }).bay_role).toUpperCase();
-  const sourceFieldKind = mapLegacySourceFieldKind(bay);
-
-  if (feederRole === 'ODPLYW_NN' || bayRole === 'FEEDER') {
+  if (feederRole === 'ODPLYW_NN' || bay.bay_role === 'FEEDER') {
     return { kind: 'ODPLYW_NN' };
   }
 
-  if (sourceFieldKind || feederRole.startsWith('ZRODLO_') || bayRole === 'SOURCE' || bayRole === 'OZE') {
-    return { kind: sourceFieldKind ?? 'ZRODLO_NN' };
+  const zadeklarowanyRodzaj = sourceKindFromFieldKind(bay);
+  if (zadeklarowanyRodzaj || feederRole.startsWith('ZRODLO_') || bay.bay_role === 'OZE') {
+    return {
+      kind: zadeklarowanyRodzaj
+        ?? sourceKindFromFeederRole(bay)
+        ?? (bay.bay_role === 'OZE' ? 'PV' : 'ZRODLO_NN'),
+    };
   }
 
   return null;
 }
 
-function listSubstationFieldSpecs(station: LegacyStation, metaKey: string): FieldSpecRecord[] {
-  const meta = asRecord((station as { meta?: unknown }).meta);
-  const rawSpecs = meta?.[metaKey];
-  if (!Array.isArray(rawSpecs)) return [];
-  return rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null);
-}
-
-function classifyCanonicalNnField(
-  snapshot: EnergyNetworkModel | null,
-  spec: FieldSpecRecord,
-): Pick<ResolvedFieldOption, 'kind'> | null {
-  const bus = findBus(snapshot, readString(spec.bus_ref));
-  if (!isLowVoltageBus(bus)) {
-    return null;
-  }
-
-  const meta = asRecord(spec.meta);
-  const bayRole = readString(spec.bay_role).toUpperCase();
-  const feederRole = readString(meta?.feeder_role).toUpperCase();
-  const sourceFieldKind = readString(meta?.source_field_kind).toUpperCase();
-
-  if (bayRole === 'FEEDER' || feederRole === 'ODPLYW_NN') {
-    return { kind: 'ODPLYW_NN' };
-  }
-
-  if (bayRole === 'OZE' || bayRole === 'SOURCE' || sourceFieldKind) {
-    switch (sourceFieldKind) {
-      case 'BESS':
-        return { kind: 'BESS' };
-      case 'FW':
-      case 'WIND':
-        return { kind: 'FW' };
-      case 'AGREGAT':
-        return { kind: 'AGREGAT' };
-      case 'UPS':
-        return { kind: 'UPS' };
-      case 'PV':
-      default:
-        return { kind: 'PV' };
-    }
-  }
-
-  return null;
-}
-
-function listLegacyNnFields(
+function listNnFields(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null | undefined,
   busNnRef: string | null | undefined,
@@ -252,60 +216,20 @@ function listLegacyNnFields(
     return [];
   }
 
-  const candidates = snapshot.bays.reduce<Array<ResolvedFieldOption & { station_ref: string | null }>>(
-    (result, bay) => {
-      const classified = classifyLegacyNnField(snapshot, bay);
-      if (!classified) {
-        return result;
-      }
-
-      const isFeeder = classified.kind === 'ODPLYW_NN';
-      if ((fieldType === 'FEEDER' && !isFeeder) || (fieldType === 'SOURCE' && isFeeder)) {
-        return result;
-      }
-
-      result.push({
-        ref_id: bay.ref_id,
-        name: bay.name,
-        kind: classified.kind,
-        bus_ref: bay.bus_ref ?? '',
-        station_ref: bay.substation_ref ?? null,
-      });
-
-      return result;
-    },
-    [],
-  );
-
-  const canonicalCandidates = snapshot.substations.flatMap((station) =>
-    listSubstationFieldSpecs(station, 'nn_field_specs')
-      .map<ResolvedFieldOption & { station_ref: string | null } | null>((spec) => {
-        const classified = classifyCanonicalNnField(snapshot, spec);
-        if (!classified) return null;
-
-        const isFeeder = classified.kind === 'ODPLYW_NN';
-        if ((fieldType === 'FEEDER' && !isFeeder) || (fieldType === 'SOURCE' && isFeeder)) {
-          return null;
-        }
-
-        const refId = readString(spec.field_ref) || readString(spec.ref_id);
-        const busRef = readString(spec.bus_ref);
-        if (!refId || !busRef) return null;
-
-        return {
-          ref_id: refId,
-          name: readString(spec.name) || (isFeeder ? 'Odpływ nN' : 'Pole źródłowe nN'),
-          kind: classified.kind,
-          bus_ref: busRef,
-          station_ref: station.ref_id ?? station.id ?? null,
-        };
-      })
-      .filter((record): record is ResolvedFieldOption & { station_ref: string | null } => record !== null),
-  );
-
+  const napiecia = napieciaSzyn(snapshot);
   const byRef = new Map<string, ResolvedFieldOption & { station_ref: string | null }>();
-  for (const record of [...candidates, ...canonicalCandidates]) {
-    byRef.set(record.ref_id, record);
+  for (const bay of pola(snapshot)) {
+    const classified = classifyNnField(snapshot, bay, napiecia);
+    if (!classified) continue;
+    const isFeeder = classified.kind === 'ODPLYW_NN';
+    if ((fieldType === 'FEEDER' && !isFeeder) || (fieldType === 'SOURCE' && isFeeder)) continue;
+    byRef.set(bay.ref_id, {
+      ref_id: bay.ref_id,
+      name: bay.name,
+      kind: classified.kind,
+      bus_ref: bay.bus_ref,
+      station_ref: bay.substation_ref ?? null,
+    });
   }
 
   return [...byRef.values()]
@@ -573,7 +497,7 @@ export function listNnFeederOptions(
   stationRef: string | null | undefined,
   busNnRef: string | null | undefined,
 ): ResolvedFieldOption[] {
-  return listLegacyNnFields(snapshot, stationRef, busNnRef, 'FEEDER');
+  return listNnFields(snapshot, stationRef, busNnRef, 'FEEDER');
 }
 
 export function listNnSourceFieldOptions(
@@ -581,5 +505,5 @@ export function listNnSourceFieldOptions(
   stationRef: string | null | undefined,
   busNnRef: string | null | undefined,
 ): ResolvedFieldOption[] {
-  return listLegacyNnFields(snapshot, stationRef, busNnRef, 'SOURCE');
+  return listNnFields(snapshot, stationRef, busNnRef, 'SOURCE');
 }

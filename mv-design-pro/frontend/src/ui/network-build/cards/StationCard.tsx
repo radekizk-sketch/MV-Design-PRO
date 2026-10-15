@@ -14,7 +14,7 @@ import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
-import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
+import { stationSnBays, stationSnFieldCount } from '../stationSnFields';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
@@ -62,12 +62,12 @@ export function StationCard({ elementId }: { elementId: string }) {
   );
 
   const stationBays = useMemo(
-    () => stationSnapshotBays(snapshot?.bays, station),
+    () => stationSnBays(snapshot, station),
     [snapshot, station],
   );
 
   const stationBayCount = useMemo(
-    () => stationSnFieldCount(station, snapshot?.bays, []),
+    () => stationSnFieldCount(snapshot, station),
     [snapshot, station],
   );
 

@@ -30,7 +30,7 @@ import {
 import {
   StationKind,
   type TopologyStationV1,
-  type TopologyFieldSpecV1,
+  type TopologyPoleV1,
 } from '../../ui/sld/core/topologyInputReader';
 import { buildTopologyTree, type TopologyTree } from './topologyTree';
 
@@ -56,7 +56,7 @@ const FIELD_W = APPARATUS_W + 2 * FIELD_PAD;
  * (kolumny rezerwowane pod najmniejszy rysunek). Zwraca 0 dla stacji bez pól.
  */
 function stationContentWidth(station: TopologyStationV1 | null): number {
-  const n = station?.fieldSpecs?.length ?? 0;
+  const n = station?.pola?.length ?? 0;
   if (n <= 0) return 0;
   return n * FIELD_W + Math.max(0, n - 1) * FIELD_GAP_X;
 }
@@ -284,7 +284,7 @@ function positionStations(
 // ---------------------------------------------------------------------------
 
 function buildFieldGeometry(
-  field: TopologyFieldSpecV1,
+  field: TopologyPoleV1,
   fieldX: number,
   fieldTopY: number,
   fieldW: number,
@@ -350,7 +350,7 @@ function buildFieldGeometry(
 
 function buildStationGeometry(rawStation: RawStation): NodeGeometry {
   const station = rawStation.station;
-  const fields = station?.fieldSpecs ?? [];
+  const fields = station?.pola ?? [];
 
   // L0 footprint = STAŁY (`L0_STATION_BLOCK`), wyśrodkowany na (cx, cy). To dokładnie
   // rozmiar rysowany przez renderer; odstępy na L0 liczone z tego samego rozmiaru.

@@ -61,7 +61,8 @@ export interface SldViewModel {
 }
 
 /** Model ENM czytany przy wyznaczaniu sekcji (stacje i gałęzie — aparaty pól nN). */
-export type ModelSekcji = Pick<EnergyNetworkModel, 'substations' | 'branches'>;
+export type ModelSekcji = Pick<EnergyNetworkModel, 'substations' | 'branches'>
+  & Partial<Pick<EnergyNetworkModel, 'bays' | 'buses'>>;
 
 function sectionIdForBus(busRef: string): string {
   return `${busRef}#section`;
@@ -72,24 +73,23 @@ function szynaSekcji(
   busRef: string,
   stacjaSzyny: ReadonlyMap<string, string>,
   stacje: ReadonlyMap<string, EnergyNetworkModel['substations'][number]>,
-  galezie: EnergyNetworkModel['branches'],
+  model: ModelSekcji,
 ): string {
   const stacjaRef = stacjaSzyny.get(busRef);
   const stacja = stacjaRef ? stacje.get(stacjaRef) : undefined;
-  return (stacja ? szynaGlownaStacji(stacja, galezie, busRef) : null) ?? busRef;
+  return (stacja ? szynaGlownaStacji(model, stacja, busRef) : null) ?? busRef;
 }
 
 /** Zbuduj SLD VIEW MODEL z grafu terminali i przynależności szyn do stacji. CZYSTA
  *  projekcja — zero konsumpcji przez `compose/*` w T0 (patrz nagłówek pliku). */
 export function buildSldViewModel(graph: TerminalGraph, model: ModelSekcji): SldViewModel {
-  const galezie = model.branches ?? [];
-  const stacjaSzyny = stacjaSzyn(model.substations ?? [], galezie);
+  const stacjaSzyny = stacjaSzyn(model);
   const stacje = new Map((model.substations ?? []).map((s) => [s.ref_id, s]));
   const sekcjaSzyny = new Map<string, string>();
   const sekcja = (busRef: string): string => {
     let wynik = sekcjaSzyny.get(busRef);
     if (wynik === undefined) {
-      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, galezie);
+      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, model);
       sekcjaSzyny.set(busRef, wynik);
     }
     return wynik;

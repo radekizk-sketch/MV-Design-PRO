@@ -155,7 +155,7 @@ export function buildSupplyPathHighlight(
   // napięciem to część stacji pod napięciem, także przy otwartym aparacie pola.
   const energizedSubstations = new Set<string>();
   for (const sub of enm.substations ?? []) {
-    for (const busRef of szynyStacji(sub, enm.branches ?? [])) {
+    for (const busRef of szynyStacji(enm, sub)) {
       if (energizedBuses.has(busRef)) {
         energizedSubstations.add(sub.ref_id);
         break;

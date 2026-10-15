@@ -161,7 +161,7 @@ export function snPointKindForBus(
     return branchPoint.branch_point_type === 'zksn' ? 'zksn' : 'branch_pole';
   }
   // SZYNY-STACJI-LUSTRO: szyna stacji (także zacisk pola) z jednego lustra `szynyStacji`.
-  if (stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []).has(busRef)) return 'station_bus';
+  if (stacjaSzyn(snapshot).has(busRef)) return 'station_bus';
 
   const branchByRef = new Map<string, Branch>(
     (snapshot.branches ?? []).map((branch) => [branch.ref_id, branch]),

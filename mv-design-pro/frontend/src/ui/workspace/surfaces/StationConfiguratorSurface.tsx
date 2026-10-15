@@ -39,7 +39,7 @@ import {
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
-import { stationSnFieldSpecs, stationSnapshotBays } from '../../network-build/stationSnFields';
+import { stationSnBays } from '../../network-build/stationSnFields';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
@@ -451,17 +451,18 @@ function isPortExpectedToBeBound(kind: PortKind): boolean {
  * (`logical_views.line_fields`). Dawniej port wejściowy i odgałęźny były „zajęte” z samej
  * roli pola — wolne pole odgałęźne wyglądało na zajęte. Zajęte pole pokazuje nazwę odcinka.
  */
-function occupiedLabelForLineFieldPort(
+function occupiedLabelForBayPort(
   kind: PortKind,
-  fieldRef: string | null,
+  bay: Bay,
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
 ): string | null {
-  if (kind !== 'sn_input' && kind !== 'sn_output' && kind !== 'sn_branch') {
-    return occupiedLabelForPort(kind);
-  }
-  const wiersz = wierszPolaLiniowego(logicalViews, fieldRef);
-  if (!wiersz?.occupied) return null;
+  const wiersz = kind === 'sn_input' || kind === 'sn_output' || kind === 'sn_branch'
+    ? wierszPolaLiniowego(logicalViews, bay.ref_id)
+    : null;
+  // Pole spoza modelu odczytu pól liniowych GPZ — zajętość z roli i danych rekordu.
+  if (!wiersz) return occupiedLabelForPort(kind, bay);
+  if (!wiersz.occupied) return null;
   const odcinek = (snapshot?.branches ?? []).find(
     (branch) => wiersz.segment_refs.includes(branch.ref_id),
   );
@@ -484,7 +485,7 @@ function deriveStationPortRows(
     return publicPortId(kind, next);
   };
 
-  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
+  const stationBays = stationSnBays(snapshot, station);
   const derPorts = stationDers
     .map((der): StationConfigPortRow => {
       const kind = derConnectionPortKind(der);
@@ -497,36 +498,19 @@ function deriveStationPortRows(
       };
     })
 
-  if (snapshotBays.length > 0) {
-    const bayPorts = snapshotBays.map((bay, index) => {
-      const kind = portKindFromBayRole(bay.bay_role);
-      return {
-        portId: nextPortId(kind),
-        kind,
-        nominalVoltageKv,
-        bayDesignation: bayDesignation(bay, index),
-        occupiedByLabelPl: occupiedLabelForPort(kind, bay),
-      };
-    });
-    return [...bayPorts, ...derPorts];
-  }
-
-  const stationFieldPorts = stationSnFieldSpecs(station).map((field, index) => {
-    const kind = portKindFromBayRole(field.bay_role);
+  // Karta W5-B: jeden zestaw portów z rekordów pól SN stacji. Zajętość pola liniowego GPZ —
+  // z modelu odczytu backendu (`line_fields`), pozostałych pól — z roli i danych rekordu.
+  const bayPorts = stationBays.map((bay, index) => {
+    const kind = portKindFromBayRole(bay.bay_role);
     return {
       portId: nextPortId(kind),
       kind,
       nominalVoltageKv,
-      bayDesignation: String(field.name ?? `Pole ${index + 1}`),
-      occupiedByLabelPl: occupiedLabelForLineFieldPort(
-        kind,
-        typeof field.field_ref === 'string' ? field.field_ref : null,
-        snapshot,
-        logicalViews,
-      ),
+      bayDesignation: bayDesignation(bay, index),
+      occupiedByLabelPl: occupiedLabelForBayPort(kind, bay, snapshot, logicalViews),
     };
   });
-  return [...stationFieldPorts, ...derPorts];
+  return [...bayPorts, ...derPorts];
 }
 
 function inferDerBusVoltage(
@@ -543,31 +527,25 @@ function deriveStationBayRows(
   station: Substation | null,
 ): StationConfigBayRow[] {
   if (!station) return [];
-  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
-  if (snapshotBays.length > 0) {
-    return snapshotBays.map((bay, index) => ({
-      bayId: bay.ref_id ?? bay.id ?? `bay-${index}`,
+  const pomiaryPol = new Set(
+    (snapshot?.measurements ?? []).map((pomiar) => pomiar.bay_ref).filter((ref): ref is string => Boolean(ref)),
+  );
+  return stationSnBays(snapshot, station).map((bay, index) => {
+    const hasEquipment = (bay.equipment_refs ?? []).length > 0;
+    return {
+      bayId: bay.ref_id,
       designation: bayDesignation(bay, index),
       bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
-      hasEquipment: (bay.equipment_refs ?? []).length > 0,
+      hasEquipment,
       hasProtection: Boolean(bay.protection_ref),
-      hasMeasurements: true,
-      statusPl: 'kompletne',
+      // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.
+      hasMeasurements: pomiaryPol.has(bay.ref_id),
+      // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
+      statusPl: hasEquipment ? 'kompletne' : 'częściowe',
       hvFuseCatalogRef: null,
-    }));
-  }
-
-  return stationSnFieldSpecs(station).map((field, index) => ({
-    bayId: String(field.ref_id ?? field.field_ref ?? field.id ?? `field-${index}`),
-    designation: String(field.name ?? `Pole ${index + 1}`),
-    bayRole: typeof field.bay_role === 'string' ? field.bay_role : null,
-    hasEquipment: true,
-    hasProtection: true,
-    hasMeasurements: true,
-    statusPl: 'kompletne',
-    hvFuseCatalogRef: null,
-  }));
+    };
+  });
 }
 
 function deriveStationTransformerRows(

@@ -134,7 +134,7 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
     if (!narysowane.has(stacja.ref_id)) continue;
     for (const ref of stacja.bus_refs ?? []) blokStacji.add(ref);
     for (const tr of transformatoryNalezaceDoStacji(snapshot, stacja)) blokStacji.add(tr.ref_id);
-    for (const ref of szynyStacji(stacja, snapshot.branches ?? [])) szynyOdbiorowStacji.add(ref);
+    for (const ref of szynyStacji(snapshot, stacja)) szynyOdbiorowStacji.add(ref);
   }
 
   const pozycje: PozycjaKompletnosci[] = [];

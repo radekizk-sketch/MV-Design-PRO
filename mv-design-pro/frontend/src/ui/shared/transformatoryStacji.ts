@@ -93,7 +93,7 @@ export function selectStationDistributionTransformers(
 ): Transformer[] {
   if (!snapshot || !station) return [];
   const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  const szyny = szynyStacji(station, snapshot.branches ?? []);
+  const szyny = szynyStacji(snapshot, station);
   const refyBlokowe = refyTransformatorowBlokowych(snapshot);
   // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA: transformator blokowy
   // źródła DER jest wykluczony TAKŻE wtedy, gdy stacja deklaruje go w `transformer_refs`
@@ -120,7 +120,7 @@ export function transformatoryNalezaceDoStacji(
 ): Transformer[] {
   if (!snapshot || !station) return [];
   const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  const szyny = szynyStacji(station, snapshot.branches ?? []);
+  const szyny = szynyStacji(snapshot, station);
   return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny));
 }
 
@@ -137,7 +137,7 @@ export function stationRefOfTransformer(
   if (!snapshot || !transformer) return null;
   for (const station of snapshot.substations ?? []) {
     const deklarowane = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-    if (transformatorStacji(transformer, deklarowane, szynyStacji(station, snapshot.branches ?? []))) {
+    if (transformatorStacji(transformer, deklarowane, szynyStacji(snapshot, station))) {
       return station.ref_id ?? null;
     }
   }

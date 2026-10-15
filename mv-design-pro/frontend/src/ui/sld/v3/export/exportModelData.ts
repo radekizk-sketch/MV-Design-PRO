@@ -76,7 +76,7 @@ export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: str
     // SZYNY-STACJI-LUSTRO: poziomy napięcia z szyn stacji z jednego lustra `szynyStacji`.
     const voltages = Array.from(
       new Set(
-        [...szynyStacji(substation, snapshot.branches)]
+        [...szynyStacji(snapshot, substation)]
           .map((ref) => busVoltage.get(ref))
           .filter((kv): kv is number => typeof kv === 'number'),
       ),
@@ -132,7 +132,7 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
     // SZYNY-STACJI-LUSTRO: kontener poziomu napięcia obejmuje KAŻDĄ szynę stacji z lustra
     // `szynyStacji` (pole na zacisku pola trafia do poziomu swojej stacji); szyna wspólna
     // dwóch stacji należy do pierwszej w kolejności modelu (jak `stacjaSzyn`).
-    const szyny = [...szynyStacji(substation, snapshot.branches)].sort();
+    const szyny = [...szynyStacji(snapshot, substation)].sort();
     const voltages = Array.from(
       new Set(
         szyny

@@ -507,7 +507,7 @@ function buildWorkspaceProofCandidateRefs(
   const station = snapshot.substations?.find((item) => proofElementMatches(item, elementId));
   appendObjectProofRefs(refs, station, ['id', 'ref_id', 'name']);
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
-  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+  for (const busRef of station ? [...szynyStacji(snapshot, station)].sort() : []) {
     appendUniqueProofRef(refs, busRef);
   }
   for (const transformer of transformatoryNalezaceDoStacji(snapshot, station)) appendUniqueProofRef(refs, transformer.ref_id);

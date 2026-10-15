@@ -30,14 +30,14 @@ const stacje = (enm.substations ?? []).filter((s) => s.station_type === 'inline'
 describe('model widoku — sekcja = szyna główna pola', () => {
   it('kontrola wejścia: stacje mają zaciski SN i szyny za aparatami nN spoza bus_refs', () => {
     for (const s of stacje) {
-      const poza = [...szynyStacji(s, enm.branches ?? [])].filter((r) => !(s.bus_refs ?? []).includes(r));
+      const poza = [...szynyStacji(enm, s)].filter((r) => !(s.bus_refs ?? []).includes(r));
       expect(poza.length).toBeGreaterThanOrEqual(4);
     }
   });
 
   it.each(stacje.map((s) => [s.ref_id, s] as const))('%s: żadna szyna stacji spoza bus_refs nie jest sekcją; szyny główne są', (_r, s) => {
-    for (const szyna of szynyStacji(s, enm.branches ?? [])) {
-      const glowna = szynaGlownaStacji(s, enm.branches ?? [], szyna);
+    for (const szyna of szynyStacji(enm, s)) {
+      const glowna = szynaGlownaStacji(enm, s, szyna);
       if (glowna !== null && glowna !== szyna) expect(sekcje.has(szyna)).toBe(false);
     }
     for (const glowna of s.bus_refs ?? []) expect(sekcje.has(glowna)).toBe(true);
@@ -71,7 +71,7 @@ describe('model widoku — sekcja = szyna główna pola', () => {
 
   it('szyna obca (koniec odcinka poza stacją) jest własną sekcją; liczba sekcji < liczba węzłów grafu', () => {
     const obce = [...graph.nodes.keys()].filter(
-      (r) => !(enm.substations ?? []).some((s) => szynyStacji(s, enm.branches ?? []).has(r)),
+      (r) => !(enm.substations ?? []).some((s) => szynyStacji(enm, s).has(r)),
     );
     expect(obce.length).toBeGreaterThan(0);
     for (const r of obce) expect(sekcje.has(r)).toBe(true);

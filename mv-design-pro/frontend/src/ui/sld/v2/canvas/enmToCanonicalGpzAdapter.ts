@@ -54,7 +54,8 @@ import {
   resolveBayVtMountings,
 } from './enmToSldAdapter';
 import { buildOltcAnnotation } from './oltcGlyph';
-import { szynyStacji } from '../../../shared/szynyStacji';
+import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
+import { polaStacji } from '../../../shared/polaStacji';
 import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 
 /* =============================================================================
@@ -115,10 +116,8 @@ export function buildCanonicalGpzProps(
     throw new Error(`Substation '${substationRef}' nie jest typu 'gpz' (jest ${substation.station_type}).`);
   }
 
-  const allBays = mergeBaysWithFieldSpecs(
-    substation,
-    (enm.bays ?? []).filter((b) => b.substation_ref === substationRef),
-  );
+  // Karta W5-B: pola GPZ = rekordy `bays` stacji (JEDEN nośnik pól; pole bez rekordu = brak pola).
+  const allBays = [...polaStacji(enm, substationRef)];
   // SZYNY-STACJI-LUSTRO: transformatory GPZ z JEDNEJ reguły „transformatory stacji”.
   const allTransformers = transformatoryNalezaceDoStacji(enm, substation);
 
@@ -169,7 +168,7 @@ export function buildCanonicalGpzProps(
     // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? [], enm.branches ?? [], enm.sources ?? []),
+    snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -177,7 +176,7 @@ export function buildCanonicalGpzProps(
     // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
     hvSystemSource:
       (substation.gpz_hv_sections ?? []).length === 0
-        ? deriveHvSystemSource(substation, enm.buses ?? [], enm.branches ?? [], allTransformers, enm.sources ?? [])
+        ? deriveHvSystemSource(enm, substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
         : null,
     // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ — patrz `gpzHvBusResultRef`
     // (odmowa przy niejednoznaczności, karta WN-WYNIK).
@@ -241,9 +240,9 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
  *      `Source.name`).
  */
 function deriveHvSystemSource(
+  enm: ModelSzyn,
   gpz: Substation,
   buses: readonly Bus[],
-  branches: readonly Branch[],
   gpzTransformers: readonly Transformer[],
   sources: readonly Source[],
 ): CanonicalGpzHvSystemSource | null {
@@ -257,7 +256,7 @@ function deriveHvSystemSource(
 
   // SZYNY-STACJI-LUSTRO: źródło należy do GPZ, gdy stoi na szynie GPZ z jednego lustra
   // `szynyStacji` (szyny główne, zaciski pól, końce aparatów pól nN).
-  const gpzBusRefs = szynyStacji(gpz, branches);
+  const gpzBusRefs = szynyStacji(enm, gpz);
   const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
   if (!source) return null;
 
@@ -289,8 +288,6 @@ function deriveHvSystemSource(
    Sub-builders
    ============================================================================= */
 
-type FieldSpecRecord = Record<string, unknown>;
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -299,76 +296,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : [];
-}
-
-function readFieldSpecs(station: Substation): FieldSpecRecord[] {
-  const meta = asRecord(station.meta);
-  const rawSpecs = meta?.field_specs;
-  return Array.isArray(rawSpecs)
-    ? rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null)
-    : [];
-}
-
-function normalizeBayRole(value: unknown): Bay['bay_role'] | null {
-  const role = readString(value)?.toUpperCase();
-  switch (role) {
-    case 'IN':
-    case 'OUT':
-    case 'TR':
-    case 'COUPLER':
-    case 'FEEDER':
-    case 'MEASUREMENT':
-    case 'OZE':
-      return role;
-    default:
-      return null;
-  }
-}
-
-function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay[] {
-  const byRef = new Map(bays.map((bay) => [bay.ref_id, bay]));
-  for (const spec of readFieldSpecs(station)) {
-    const refId = readString(spec.field_ref) ?? readString(spec.ref_id);
-    const busRef = readString(spec.bus_ref);
-    const bayRole = normalizeBayRole(spec.bay_role);
-    if (!refId || !busRef || !bayRole || byRef.has(refId)) continue;
-
-    byRef.set(refId, {
-      id: refId,
-      ref_id: refId,
-      name: readString(spec.name) ?? refId,
-      tags: readStringArray(spec.tags),
-      meta: {
-        ...(asRecord(spec.meta) ?? {}),
-        visual_source: 'substation_field_specs',
-      },
-      bay_role: bayRole,
-      substation_ref: station.ref_id,
-      bus_ref: busRef,
-      gpz_section_id: readString(spec.gpz_section_id),
-      equipment_refs: readStringArray(spec.equipment_refs),
-      protection_codes: readStringArray(spec.protection_codes),
-      // F11.1 (spec §17.2, rejestr device-ref w GPZ): `protection_ref` NIE
-      // był kopiowany na syntetyzowany `Bay` (znalezisko własne — pole
-      // ISTNIEJE na `field_spec` źródłowym, ale ginęło tu cicho), więc
-      // `resolveBayProtectionMarking` nigdy nie mogła rozwiązać
-      // `ProtectionAssignment` dla pól GPZ budowanych z `field_specs` — nawet
-      // gdy dane realnie niosły przypisanie. Naprawa u źródła (addytywna,
-      // zero zmiany zachowania na fixturze referencyjnej: `protection_ref`
-      // tam `null`).
-      protection_ref: readString(spec.protection_ref),
-      bay_number: readString(spec.bay_number),
-      feeder_short_name: readString(spec.feeder_short_name),
-      outgoing_destination_ref: readString(spec.outgoing_destination_ref),
-    } as Bay);
-  }
-  return [...byRef.values()];
 }
 
 /**
@@ -585,11 +512,9 @@ function buildBay(
     inManipulation: extractInManipulation(runtime),
     // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ —
     // parytet ze stacjami): TA SAMA projekcja co `buildExplicitStationMiniBays`
-    // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Na fixturze
-    // referencyjnej `sldSubstrate52s` GPZ niesie 0 `Bay`/`primary_devices`/
-    // `protection_assignments`/`measurements` (pola syntetyzowane z
-    // `field_specs`, patrz `mergeBaysWithFieldSpecs`) — te trzy pola są tam
-    // WSZĘDZIE `undefined`, dowód „brak danych = brak rysunku" (spec §17.2).
+    // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
+    // pierwotnych, przypisań zabezpieczeń i pomiarów w modelu daje tu `undefined` —
+    // „brak danych = brak rysunku" (spec §17.2).
     primaryDevices: projectBayPrimaryDevices(bay),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
@@ -835,13 +760,13 @@ function extractInManipulation(
  * się między konfiguracjami o rzędy wielkości.
  */
 function deriveSnNeutralEarthing(
+  enm: ModelSzyn,
   substation: Substation,
   buses: readonly Bus[],
-  branches: readonly Branch[],
   sources: readonly Source[],
 ): GpzCanonicalRendererProps['snNeutralEarthing'] {
   // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
-  const stationBusRefs = szynyStacji(substation, branches);
+  const stationBusRefs = szynyStacji(enm, substation);
   const source = sources.find(
     (s) =>
       Boolean(s.neutral_grounding)

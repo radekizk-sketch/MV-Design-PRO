@@ -6,7 +6,7 @@
  * Algorytm (deterministyczny, zero heurystyk pozycyjnych):
  *  1. Mapuj każdą szynę → stacja (`stationId` z czytnika: jedno lustro backendu
  *     `szynyStacji` — szyny główne, zaciski pól SN i końce aparatów pól nN; zacisk pola
- *     nie jest w `bus_refs`, ale należy do stacji z deklaracji `field_specs` — to wiąże
+ *     nie jest w `bus_refs`, ale należy do stacji z rekordu pola `bays` — to wiąże
  *     laterale z ich stacją macierzystą bez rozpoznawania po wzorcu nazwy).
  *  2. Zbuduj graf stacji z gałęzi CABLE/LINE. Szyny pośrednie (bus/...) bez stacji =
  *     węzły przelotowe; kontraktowane (deg-2) do krawędzi stacja→stacja.

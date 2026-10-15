@@ -223,7 +223,7 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
 
   it('jeden odcinek do stacji (koniec na zacisku pola stacji) ⇒ cel = ta stacja i dane TEGO odcinka', () => {
     const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02 (typ B)')!;
-    const szynyS02 = szynyStacji(s02, siec.branches ?? []);
+    const szynyS02 = szynyStacji(siec, s02);
     const bezS02 = {
       ...siec,
       branches: (siec.branches ?? []).filter((g) => !szynyS02.has(String(g.to_bus_ref)) || g.type !== 'cable'),

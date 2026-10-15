@@ -74,20 +74,20 @@ describe('szynyStacji — iloczyn cech (zbiory z backendu)', () => {
   });
 
   it('szyna bez stacji nie należy do żadnej stacji', () => {
-    for (const s of model.substations) expect(szynyStacji(s, model.branches).has('Z/wolna')).toBe(false);
-    expect(stacjaSzyn(model.substations, model.branches).has('Z/wolna')).toBe(false);
+    for (const s of model.substations) expect(szynyStacji(model, s).has('Z/wolna')).toBe(false);
+    expect(stacjaSzyn(model).has('Z/wolna')).toBe(false);
   });
 });
 
 describe('stacjaSzyn — szyna wspólna dwóch stacji (podrozdzielnica nN)', () => {
   it('szyna podrozdzielnicy za aparatem pola stacji należy do PIERWSZEJ stacji modelu (jak topologia backendu)', () => {
-    expect(stacjaSzyn(model.substations, model.branches).get('B/board')).toBe('A/stacja');
+    expect(stacjaSzyn(model).get('B/board')).toBe('A/stacja');
     expect(stacjaSzyn([...model.substations].reverse(), model.branches).get('B/board')).toBe('B/podrozdzielnica');
   });
 
   it('mapa = suma zbiorów lustra, każda szyna dokładnie raz', () => {
-    const mapa = stacjaSzyn(model.substations, model.branches);
-    const suma = new Set(model.substations.flatMap((s) => [...szynyStacji(s, model.branches)]));
+    const mapa = stacjaSzyn(model);
+    const suma = new Set(model.substations.flatMap((s) => [...szynyStacji(model, s)]));
     expect([...mapa.keys()].sort()).toEqual([...suma].sort());
     expect(mapa.get('B/odp-bus')).toBe('B/podrozdzielnica');
   });
@@ -106,11 +106,11 @@ describe('szynaGlownaStacji — {szyna główna, zacisk, szyna za aparatem nN, s
 
   it('zacisk → szyna pola, koniec aparatu z szyny głównej → ta szyna, łańcuch i szyna obca → null', () => {
     const a = stacja('A/stacja');
-    expect(szynaGlownaStacji(a, model.branches, 'A/sn')).toBe('A/sn');
-    expect(szynaGlownaStacji(a, model.branches, 'A/zacisk-tr')).toBe('A/sn');
-    expect(szynaGlownaStacji(a, model.branches, 'A/odp-1')).toBe('A/nn');
-    expect(szynaGlownaStacji(a, model.branches, 'A/odp-2')).toBeNull();
-    expect(szynaGlownaStacji(a, model.branches, 'Z/wolna')).toBeNull();
+    expect(szynaGlownaStacji(model, a, 'A/sn')).toBe('A/sn');
+    expect(szynaGlownaStacji(model, a, 'A/zacisk-tr')).toBe('A/sn');
+    expect(szynaGlownaStacji(model, a, 'A/odp-1')).toBe('A/nn');
+    expect(szynaGlownaStacji(model, a, 'A/odp-2')).toBeNull();
+    expect(szynaGlownaStacji(model, a, 'Z/wolna')).toBeNull();
   });
 });
 

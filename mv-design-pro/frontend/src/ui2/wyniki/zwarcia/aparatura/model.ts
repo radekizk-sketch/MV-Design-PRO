@@ -47,7 +47,7 @@ export function stacjeDlaPunktu(
   for (const stacja of snapshot.substations ?? []) {
     const ref = stacja.ref_id ?? stacja.id;
     if (!ref) continue;
-    const szyny = szynyStacji(stacja, snapshot.branches ?? []);
+    const szyny = szynyStacji(snapshot, stacja);
     if ([...refy].some((busRef) => szyny.has(busRef))) znalezione.add(ref);
   }
   return [...znalezione].sort((a, b) => a.localeCompare(b));

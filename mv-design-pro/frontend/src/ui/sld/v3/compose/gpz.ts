@@ -334,7 +334,7 @@ const VT: FieldApparatusSpec = { symbolId: 'voltageTransformer', parityKeys: [] 
 
 /** Pole liniowe/odgałęźne (spec §3 „pola liniowe"; grammar 1:1 z v2
  *  `getBayApparatusPolicy` LINE_*): DS_bus + CB + CT + DS_lin + ES + głowica. */
-function lineFieldSpec(): readonly FieldApparatusSpec[] {
+function lineFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, CB_MAIN, CT, DS_LIN, ES_SIDE, CABLE_HEAD];
 }
 
@@ -343,7 +343,7 @@ function lineFieldSpec(): readonly FieldApparatusSpec[] {
  *  obsługuje starsze dane ENM z `bay.fieldRole === 'TRANSFORMER'` wprost w
  *  `section.bays`) i pole TR dedykowane — TA SAMA gramatyka (spec §3: „pole
  *  TR: DS+CB+CT+ES"). */
-function transformerFieldSpec(): readonly FieldApparatusSpec[] {
+function transformerFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, CB_MAIN, CT, ES_SIDE];
 }
 
@@ -354,7 +354,7 @@ function couplerBaySpec(): readonly FieldApparatusSpec[] {
 }
 
 /** Pole pomiarowe — v2 `getBayApparatusPolicy` MEASUREMENT: DS+VT+ES. */
-function measurementFieldSpec(): readonly FieldApparatusSpec[] {
+function measurementFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, VT, ES_SIDE];
 }
 
@@ -364,13 +364,13 @@ function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatus
       case 'LINE_IN':
       case 'LINE_OUT':
       case 'LINE_BRANCH':
-        return lineFieldSpec();
+        return lineFieldTemplate();
       case 'TRANSFORMER':
-        return transformerFieldSpec();
+        return transformerFieldTemplate();
       case 'COUPLER':
         return couplerBaySpec();
       case 'MEASUREMENT':
-        return measurementFieldSpec();
+        return measurementFieldTemplate();
     }
   })();
   // esState='absent' (spec/v2: `apparatus.es && esState !== 'absent'`) — pole
@@ -381,14 +381,14 @@ function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatus
 
 /** Pole WN TR (spec §3 „pole WN TR: DS+CB+CT") — DS+CB+CT, BEZ ES (ziemia po
  *  stronie WN nie jest częścią gramatyki §3 dla tego pola). */
-function hvTrFieldSpec(): readonly FieldApparatusSpec[] {
+function hvTrFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, CB_MAIN, CT];
 }
 
 /** Pole TR dedykowane (spec §3 „pole TR: DS+CB+CT+ES") — TA SAMA gramatyka
- *  co `transformerFieldSpec` (pole TR w sekcji SN, gałąź fallback) — jedna
+ *  co `transformerFieldTemplate` (pole TR w sekcji SN, gałąź fallback) — jedna
  *  funkcja, dwa miejsca użycia. */
-const trFieldSpec = transformerFieldSpec;
+const dedicatedTrFieldTemplate = transformerFieldTemplate;
 
 /** Pole liniowe WN (`hvSections[].bays`) — spec §3 nie rozwija gramatyki pól
  *  WN poza polem TR; uproszczony stos CB+DS (kanon v2 `HvLineBay`: CB dalej
@@ -974,10 +974,10 @@ export function composeGpz(
   const sectionById = sectionLayoutById(sectionLayouts);
 
   // -- 3. Geometria pionowa: WN → pole WN TR → TR2W → pole TR → szyna SN. --
-  const hvFieldSpecTemplate = hvTrFieldSpec();
-  const hvFieldFootprint = stackFootprint(hvFieldSpecTemplate.map((s) => s.symbolId));
-  const trFieldSpecTemplate = trFieldSpec();
-  const trFieldFootprint = stackFootprint(trFieldSpecTemplate.map((s) => s.symbolId));
+  const hvFieldTemplate = hvTrFieldTemplate();
+  const hvFieldFootprint = stackFootprint(hvFieldTemplate.map((s) => s.symbolId));
+  const trFieldTemplate = dedicatedTrFieldTemplate();
+  const trFieldFootprint = stackFootprint(trFieldTemplate.map((s) => s.symbolId));
   const trHeight = SYMBOL_DEFS.transformer2W.height;
 
   const hvFieldTopY = hvBusY + GRID;
@@ -1518,7 +1518,7 @@ export function composeGpz(
 
     const hvBayTestIdBase = `gpz-canonical-hv-tr-bay-${transformer.transformerRef}`;
     const hvStack = buildFieldStack(
-      hvFieldSpecTemplate,
+      hvFieldTemplate,
       trCenterX,
       hvFieldTopY,
       (_i, id) => `${hvBayTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : 'ct'}`,
@@ -1530,7 +1530,7 @@ export function composeGpz(
     );
     symbols.push(...hvStack.instances);
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
-    // F10.1: odgałęzienia boczne (dziś brak w hvFieldSpec — defensywnie).
+    // F10.1: odgałęzienia boczne (dziś brak w hvFieldTemplate — defensywnie).
     hvStack.branchSegments.forEach((branch, bi) => {
       segments.push({
         ownerRef: `${transformer.transformerRef}#hv-lateral-${bi}`,
@@ -1574,7 +1574,7 @@ export function composeGpz(
 
     const trFieldTestIdBase = `gpz-canonical-tr-field-${transformer.transformerRef}`;
     const trFieldStack = buildFieldStack(
-      trFieldSpecTemplate,
+      trFieldTemplate,
       trCenterX,
       trFieldTopY,
       (_i, id) => `${trFieldTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : id === 'currentTransformer' ? 'ct' : 'es'}`,

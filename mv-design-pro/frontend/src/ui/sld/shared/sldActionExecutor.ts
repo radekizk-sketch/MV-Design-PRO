@@ -57,6 +57,7 @@ import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
+import { polaStacji } from '../../shared/polaStacji';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -405,7 +406,7 @@ export function stationRefOfBusOrSource(
   );
   const busRef = source?.bus_ref ?? elementId;
   // SZYNY-STACJI-LUSTRO: szyna (także zacisk pola) → stacja z jednego lustra `szynyStacji`.
-  return stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []).get(busRef) ?? null;
+  return stacjaSzyn(snapshot).get(busRef) ?? null;
 }
 
 /**
@@ -451,26 +452,18 @@ export function resolveGpzTrunkStartFieldRef(
   const station = (snapshot.substations ?? []).find(
     (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
   );
-  const meta = station?.meta && typeof station.meta === 'object'
-    ? (station.meta as Record<string, unknown>)
-    : null;
-  const specs = Array.isArray(meta?.field_specs) ? (meta!.field_specs as unknown[]) : [];
   const wolne: string[] = [];
-  for (const raw of specs) {
-    if (!raw || typeof raw !== 'object') continue;
-    const spec = raw as Record<string, unknown>;
-    const tags = Array.isArray(spec.tags) ? spec.tags : [];
-    const specMeta = spec.meta && typeof spec.meta === 'object' ? (spec.meta as Record<string, unknown>) : null;
+  // Karta W5-B: pola GPZ = rekordy `bays` stacji (jedyny nośnik pól).
+  for (const pole of polaStacji(snapshot, station?.ref_id)) {
     const jestPolemGpz =
-      tags.some((tag) => typeof tag === 'string' && tag.trim() === 'gpz_line_field')
-      || typeof specMeta?.gpz_line_field_index === 'number';
+      pole.tags.some((tag) => tag.trim() === 'gpz_line_field')
+      || typeof pole.meta?.gpz_line_field_index === 'number';
     if (!jestPolemGpz) continue;
-    if (!['OUT', 'FEEDER'].includes(String(spec.bay_role ?? '').toUpperCase())) continue;
-    const ref = typeof spec.field_ref === 'string' ? spec.field_ref.trim() : '';
+    if (pole.bay_role !== 'OUT' && pole.bay_role !== 'FEEDER') continue;
     // Karta POLE-ZAJĘTE: zajętość pola z modelu odczytu backendu (`line_fields`) — ta sama
     // funkcja bramkuje operację; dawniej front liczył ją sam po `origin_bay_ref`.
-    if (!ref || !poleLinioweWolne(logicalViews, ref)) continue;
-    wolne.push(ref);
+    if (!poleLinioweWolne(logicalViews, pole.ref_id)) continue;
+    wolne.push(pole.ref_id);
   }
   // Wybór deterministyczny: pierwsze wolne pole w porządku leksykalnym
   // (identyfikatory pól GPZ są numerowane, więc to porządek rozdzielni).
