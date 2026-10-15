@@ -102,6 +102,11 @@ export default defineConfig(({ mode }) => {
       // w puli wątków doliczałyby pracę plików wykonywanych obok — pomocnik odmawia pomiaru poza
       // wątkiem głównym procesu, a `src/test/__tests__/pulaTestow.test.ts` przypina ten warunek.
       pool: 'forks',
+      // Liczba procesów zostaje DOMYŚLNA (rdzenie − 1) — rozstrzygnięcie z pomiaru 2026-10-15 na
+      // 4 vCPU, to samo drzewo: 3 procesy 777,2 s; 4 procesy 702,6 s i 30,7 s czasu procesora
+      // w testach budżetu `buildScene.p1Recenzja`/`buildScene.schemat10s7p6` (budżet 30 s, przy
+      // 3 procesach zielone) — przy procesie na każdym rdzeniu rywalizacja o pamięć podręczną
+      // zawyża czas procesora, więc wynik zależałby od obciążenia. 10 % czasu nie jest tego warte.
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
       // 2026-07-17 (likwidacja długów): lista wykluczeń WYZEROWANA — 7 wpisów
