@@ -95,6 +95,12 @@ Kontekst docelowy: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:101` opisuj
 
 ## (e) TT/IT/RCD i pętla zwarcia nN
 
+> **Stan po W5-E-TTIT (2026-10-15):** TT/IT liczone — `solvers/petla_zwarcia_tt_it.py` przez jedyne wejście
+> `fault_loop_iec60364.compute_fault_loop` (wiersz `NotImplementedError` poniżej jest historyczny); serwis odmawia
+> NAZWANYM kodem braku danej (`nn.brak_r_a` / `nn.brak_r_b` / `nn.brak_rcd` / `nn.brak_pojemnosci_doziemnej`), nie „nie
+> dotyczy”; RCD = aparat w torze `APARAT_NN_RCD` (operacja `add_nn_rcd`, 56 rekordów katalogu); `POST /api/fault-loop/compute`
+> skasowany (ENDPOINTY-BEZ-KONSUMENTA). Tabela poniżej = pomiar z 2026-09-16 (archiwalny).
+
 | miejsce (plik:linia) | co niesie (pola) | pisze | czyta / importerzy (liczba) | uwaga |
 |---|---|---|---|---|
 | `backend/src/api/fault_loop.py:33-140` `POST /api/fault-loop/compute` | `fault_node_id, u_nom_v, phase_conductor{r,x}, return_conductor, transformer_impedance, upstream_impedance, network_type, protection_arrangement` — **ręczne R+X** | — | zarejestrowany: `api/main.py:23,177`; **0 konsumentów FE** (grep `fault-loop/compute` w `frontend/` = 0), **0 testów backendu** (grep w `backend/tests` = 0); dawny konsument `ui/sld/v2/fault-loop/FaultLoopResultPanel.tsx` **nie istnieje** | zgodne z mapą („0 testów, 0 FE"; K-F) |

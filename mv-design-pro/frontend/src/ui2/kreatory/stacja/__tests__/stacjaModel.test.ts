@@ -434,6 +434,32 @@ describe('stacjaModel — payload', () => {
     expect(zPw.station_auxiliary).toEqual({ active_power_kw: 5, cos_phi: 0.9 });
   });
 
+  it('uziom stacji R_B (W5-E-TTIT): punkt uziemiony bezpośrednio z rezystancją → lv_r_ohm; bez rezystancji → brak klucza', () => {
+    const z = zbudujPayload(
+      dane({ uklad_sieci_nn: 'TT', neutral_point: 'directly_grounded', neutral_impedance_ohm: '2' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect(z.nn_earthing).toEqual({ lv_system: 'TT', neutral_point: 'directly_grounded', lv_r_ohm: 2 });
+    const bez = zbudujPayload(
+      dane({ uklad_sieci_nn: 'TN-C-S', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect(bez.nn_earthing).toEqual({ lv_system: 'TN-C-S', neutral_point: 'directly_grounded' });
+  });
+
+  it('układ TT z punktem uziemionym bezpośrednio bez R_B = błąd walidacji przy polu; TN bez R_B nie blokuje', () => {
+    const bledyTt = walidujFormularz(
+      dane({ uklad_sieci_nn: 'TT', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+    ).map((b) => b.field);
+    expect(bledyTt).toContain('neutral_impedance_ohm');
+    const bledyTn = walidujFormularz(
+      dane({ uklad_sieci_nn: 'TN-C-S', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+    ).map((b) => b.field);
+    expect(bledyTn).not.toContain('neutral_impedance_ohm');
+  });
+
   it('impedancja uziemienia tylko dla wariantu impedancyjnego: rezystor → lv_r_ohm, cewka → lv_x_ohm', () => {
     // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
     const zRezystorem = zbudujPayload(
@@ -454,13 +480,15 @@ describe('stacjaModel — payload', () => {
     expect((zCewka.nn_earthing as Record<string, unknown>).lv_x_ohm).toBe(150);
     expect(zCewka.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
 
-    // Bezpośrednio uziemiony + wartość w polu → IGNOROWANA (nie dotyczy tego wariantu).
+    // Bezpośrednio uziemiony + wartość w polu → rezystancja uziomu stacji R_B (`lv_r_ohm`,
+    // karta W5-E-TTIT: pętla doziemna układu TT) — do W5-E wartość była ignorowana.
     const bezposredni = zbudujPayload(
       dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
-    expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+    expect((bezposredni.nn_earthing as Record<string, unknown>).lv_r_ohm).toBe(12.5);
+    expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_x_ohm');
   });
 
   it('walidacja: uziemienie impedancyjne bez składowej dominującej = błąd nazwany (ten sam predykat co backend)', () => {

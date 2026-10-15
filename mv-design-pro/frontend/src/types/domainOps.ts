@@ -60,6 +60,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_nn_switch_device',
   'add_nn_section_coupler',
   'set_nn_cable_laying_conditions',
+  // W5-E-TTIT: wyłącznik różnicowoprądowy (RCD) w torze instalacji odbiorczej nN —
+  // operacja ISTNIEJE w backendzie (enm/domain_operations_v2.py::add_nn_rcd).
+  'add_nn_rcd',
   // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
   // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
   // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
@@ -364,6 +367,15 @@ export interface AddNNSwitchDevicePayload {
   from_bus_ref: string;
   to_bus_ref: string;
   device_class?: NNSwitchDeviceClass;
+  catalog_binding?: CatalogBindingPayload | null;
+  catalog_ref?: string | null;
+  name?: string | null;
+}
+
+/** W5-E-TTIT: lustro `enm/domain_operations_v2.py::add_nn_rcd` — RCD wstawiany w tor
+ *  zasilania instalacji odbioru nN (`load_ref`), pozycja katalogu `APARAT_NN_RCD`. */
+export interface AddNNRcdPayload {
+  load_ref: string;
   catalog_binding?: CatalogBindingPayload | null;
   catalog_ref?: string | null;
   name?: string | null;

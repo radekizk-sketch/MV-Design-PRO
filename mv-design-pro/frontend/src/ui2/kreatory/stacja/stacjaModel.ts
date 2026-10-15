@@ -211,7 +211,11 @@ export interface StacjaFormData {
   uklad_sieci_nn: UkladSieciNn;
   /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
   neutral_point: PunktNeutralny;
-  /** Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika (tekst PL, przecinek). */
+  /**
+   * Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika; dla punktu
+   * uziemionego bezpośrednio: rezystancja uziomu stacji R_B (karta W5-E-TTIT — pętla doziemna
+   * układu TT domyka się przez R_B; `lv_r_ohm` → `Transformer.lv_neutral.r_ohm`). Tekst PL, przecinek.
+   */
   neutral_impedance_ohm: string;
   /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
@@ -422,6 +426,18 @@ export function walidujFormularz(
         data.neutral_point === 'petersen_coil'
           ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
           : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+    });
+  }
+  // W5-E-TTIT: układ TT bez rezystancji uziomu stacji R_B = pętla doziemna niepoliczalna
+  // (ten sam warunek co `tt_it.r_b_transformatora` i pre-kontrola ELIG_FLNN_MISSING_TRANSFORMER_R_B).
+  if (
+    data.uklad_sieci_nn === 'TT'
+    && data.neutral_point === 'directly_grounded'
+    && liczbaDodatniaPL(data.neutral_impedance_ohm) === null
+  ) {
+    errors.push({
+      field: 'neutral_impedance_ohm',
+      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji R_B [Ω] (punkt neutralny uziemiony bezpośrednio).',
     });
   }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
@@ -1052,6 +1068,11 @@ function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
     if (wartosc !== null) {
       blok[data.neutral_point === 'petersen_coil' ? 'lv_x_ohm' : 'lv_r_ohm'] = wartosc;
     }
+  } else if (data.neutral_point === 'directly_grounded') {
+    // Uziom stacji R_B (W5-E-TTIT): rezystancja uziomu punktu neutralnego uziemionego
+    // bezpośrednio — czyta ją pętla doziemna układu TT; podana = `lv_r_ohm`, pusta = brak klucza.
+    const r_b = liczbaDodatniaPL(data.neutral_impedance_ohm);
+    if (r_b !== null) blok.lv_r_ohm = r_b;
   }
   return blok;
 }

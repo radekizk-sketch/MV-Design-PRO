@@ -32,6 +32,7 @@ import s15 from './generated/15_many_feeders.json';
 import s16 from './generated/16_stale_result.json';
 import s17 from './generated/17_sc_results.json';
 import s18 from './generated/18_swz_overlay.json';
+import s19 from './generated/19_swz_tt.json';
 
 export const SLUGI_SCENARIUSZY = [
   '01_single_tr',
@@ -52,6 +53,7 @@ export const SLUGI_SCENARIUSZY = [
   '16_stale_result',
   '17_sc_results',
   '18_swz_overlay',
+  '19_swz_tt',
 ] as const;
 
 export type SlugScenariusza = (typeof SLUGI_SCENARIUSZY)[number];
@@ -82,6 +84,7 @@ export const SCENARIUSZE_NN: Readonly<Record<SlugScenariusza, LvDomainProjection
   '16_stale_result': jakoProjekcja(s16),
   '17_sc_results': jakoProjekcja(s17),
   '18_swz_overlay': jakoProjekcja(s18),
+  '19_swz_tt': jakoProjekcja(s19),
 };
 
 /** Tytuły kadrów (po polsku) — do nagłówka harnessu i raportu. */
@@ -104,6 +107,7 @@ export const TYTULY_SCENARIUSZY: Readonly<Record<SlugScenariusza, string>> = {
   '16_stale_result': 'Wynik nieaktualny',
   '17_sc_results': 'Wyniki zwarciowe',
   '18_swz_overlay': 'SWZ: werdykty mieszane',
+  '19_swz_tt': 'SWZ w układzie TT: werdykt wyjaśnialny',
 };
 
 export function scenariusz(slug: SlugScenariusza): LvDomainProjectionV1 {

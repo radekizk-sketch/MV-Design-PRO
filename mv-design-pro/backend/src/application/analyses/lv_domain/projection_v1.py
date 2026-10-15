@@ -228,6 +228,16 @@ def _swz_feeder_rows(
     for feeder in feeders:
         breaker_ref = str(feeder.get("feeder_root_branch_ref", ""))
         worst_bus_ref = feeder.get("worst_point_bus_ref")
+        if not worst_bus_ref:
+            # Odpływ bez policzalnego najgorszego punktu (każdy punkt odmówił — np. TT bez RCD,
+            # karta W5-E-TTIT): werdykt liczony dla punktu NAJDALSZEGO topologicznie, żeby
+            # odpowiedź niosła KOD odmowy nazwanej tego punktu, a nie ogólnik.
+            punkty = [p for p in feeder.get("points", []) if isinstance(p, dict)]
+            if punkty:
+                najdalszy = max(
+                    punkty, key=lambda p: (int(p.get("hop_count", 0)), str(p["bus_ref"]))
+                )
+                worst_bus_ref = najdalszy.get("bus_ref")
         if worst_bus_ref:
             swz = build_swz_view(
                 enm,

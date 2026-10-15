@@ -29,6 +29,7 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
   { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
   { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
+  { id: 'LV_RCD', label: 'Typy wyłączników różnicowoprądowych nN', icon: '⊜' },
   { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
   { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
   { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
@@ -225,6 +226,8 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
       return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+    case 'LV_RCD':
+      return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
     case 'LV_CABLE':
       return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':

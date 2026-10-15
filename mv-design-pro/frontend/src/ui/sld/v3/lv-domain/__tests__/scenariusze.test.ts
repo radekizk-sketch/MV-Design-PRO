@@ -13,10 +13,10 @@ import { LV_DOMAIN_PROJECTION_CONTRACT_VERSION } from '../types';
 
 const STANY = ['ENERGIZED', 'DEENERGIZED', 'UNKNOWN', 'CONFLICT', 'MULTISOURCE'] as const;
 
-describe('Scenariusze 01–18 — kształt kontraktu 4.0.0 z backendu', () => {
+describe('Scenariusze 01–19 — kształt kontraktu 4.0.0 z backendu', () => {
   it('kontrakt frontendu = 4.0.0; lista slugów jest kompletna i uporządkowana', () => {
     expect(LV_DOMAIN_PROJECTION_CONTRACT_VERSION).toBe('4.0.0');
-    expect(SLUGI_SCENARIUSZY).toHaveLength(18);
+    expect(SLUGI_SCENARIUSZY).toHaveLength(19);
     expect([...SLUGI_SCENARIUSZY]).toEqual([...SLUGI_SCENARIUSZY].sort());
     for (const slug of SLUGI_SCENARIUSZY) {
       expect(jestSlugiemScenariusza(slug)).toBe(true);

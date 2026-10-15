@@ -2505,6 +2505,18 @@ export function KreatorStacjiSnNn() {
               testid="mvd-kreator-stacja-rezystancja-uziemienia"
             />
           ) : null}
+          {dane.neutral_point === 'directly_grounded' ? (
+            <PoleTekstowe
+              etykieta={T.uziemienieRezystancjaUziomuStacji}
+              wartosc={dane.neutral_impedance_ohm}
+              onZmiana={(v) => zmien('neutral_impedance_ohm', v)}
+              placeholder={T.uziemienieRezystancjaPlaceholder}
+              pomoc={T.uziemienieRezystancjaUziomuStacjiPomoc}
+              wymagane={dane.uklad_sieci_nn === 'TT'}
+              blad={bladDlaPola('neutral_impedance_ohm')}
+              testid="mvd-kreator-stacja-rezystancja-uziomu-stacji"
+            />
+          ) : null}
           <PanelTeorii
             tytul={T.teoriaUziemienieTytul}
             opis={T.teoriaUziemienieOpis}

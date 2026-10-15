@@ -360,6 +360,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
     });
   }, [openOperationForm, elementId, nnBuses]);
 
+  // W5-E-TTIT: wyłącznik różnicowoprądowy w torze instalacji odbioru nN (układ TT) —
+  // ta sama karta, która oferuje dodanie odbioru, oferuje jego ochronę; odbiór wybiera
+  // kreator z listy odbiorów nN modelu (uczciwy stan zerowy, gdy żadnego nie ma).
+  const handleAddRcd = useCallback(() => {
+    openOperationForm('add_nn_rcd', { station_ref: elementId });
+  }, [openOperationForm, elementId]);
+
   const actions = useMemo((): CardAction[] => [
     {
       id: 'add_pv',
@@ -389,7 +396,14 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       onClick: handleAddLoad,
       disabled: nnBuses.length === 0,
     },
-  ], [handleAddPV, handleAddBESS, handleAddFW, handleAddLoad, nnBuses.length]);
+    {
+      id: 'add_nn_rcd',
+      label: 'Dodaj wyłącznik różnicowoprądowy',
+      variant: 'secondary',
+      onClick: handleAddRcd,
+      disabled: nnBuses.length === 0,
+    },
+  ], [handleAddPV, handleAddBESS, handleAddFW, handleAddLoad, handleAddRcd, nnBuses.length]);
 
   if (!station) return null;
 

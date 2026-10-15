@@ -114,6 +114,7 @@ function mapOperationToEntityTypeCode(op: NetworkBuildOperationName): EntityType
     case 'continue_trunk_segment_sn':
       return 'segment';
     case 'insert_station_on_segment_sn':
+    case 'append_station_on_endpoint':
     case 'add_transformer_sn_nn':
       return 'station';
     case 'insert_branch_pole_on_segment_sn':

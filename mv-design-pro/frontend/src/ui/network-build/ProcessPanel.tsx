@@ -608,6 +608,11 @@ function TransformersSection({
     openForm('add_nn_load', { station_ref: stationRefForNn });
   }, [openForm, stationRefForNn]);
 
+  // W5-E-TTIT: ochrona instalacji odbioru nN w układzie TT — kreator wybiera odbiór z listy.
+  const handleAddNnRcd = useCallback(() => {
+    openForm('add_nn_rcd', stationRefForNn ? { station_ref: stationRefForNn } : {});
+  }, [openForm, stationRefForNn]);
+
   return (
     <div className="px-3 py-2 space-y-2">
       {transformers.length === 0 ? (
@@ -677,6 +682,13 @@ function TransformersSection({
         testId="btn-add-nn-load"
         testIdScope={testIdScope}
         disabled={!stationForNn?.hasNnPart}
+      />
+      <ActionButton
+        label="+ Dodaj wyłącznik różnicowoprądowy nN"
+        onClick={handleAddNnRcd}
+        testId="btn-add-nn-rcd"
+        testIdScope={testIdScope}
+        disabled={loads.length === 0}
       />
     </div>
   );

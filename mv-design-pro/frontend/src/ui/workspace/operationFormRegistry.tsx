@@ -37,6 +37,7 @@ import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katal
 import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
 import { KreatorRozdzielnicyNn } from '../../ui2/kreatory/rozdzielnica-nn';
 import { KreatorAparatuNn } from '../../ui2/kreatory/aparat-nn';
+import { KreatorRcdNn } from '../../ui2/kreatory/rcd-nn';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -75,6 +76,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_nn_distribution_board: KreatorRozdzielnicyNn,
   add_nn_switch_device: KreatorAparatuNn,
   add_nn_section_coupler: KreatorRozdzielnicyNn,
+  // W5-E-TTIT: wyłącznik różnicowoprądowy w torze instalacji odbioru nN (układ TT).
+  add_nn_rcd: KreatorRcdNn,
   // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
   // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
   set_nn_cable_laying_conditions: null,

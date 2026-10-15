@@ -51,11 +51,12 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   listAllNnBusOptions: (...args: unknown[]) => listAllNnBusOptionsMock(...(args as [])),
 }));
 
+const KATALOG_APARATOW = [
+  { id: 'aparat-nn-1', name: 'Wyłącznik nN 63A', device_kind: 'WYLACZNIK_ODPLYWOWY', u_n_kv: 0.4, i_n_a: 63, i_cu_ka: 10 },
+];
+let katalogAparatow: unknown[] = KATALOG_APARATOW;
 vi.mock('../../../../ui/catalog/api', () => ({
-  fetchLvApparatusTypes: () =>
-    Promise.resolve([
-      { id: 'aparat-nn-1', name: 'Wyłącznik nN 63A', device_kind: 'WYLACZNIK_ODPLYWOWY', u_n_kv: 0.4, i_n_a: 63, i_cu_ka: 10 },
-    ]),
+  fetchLvApparatusTypes: () => Promise.resolve(katalogAparatow),
   getCatalogErrorMessage: (e: unknown) => (e instanceof Error ? e.message : 'Błąd katalogu'),
 }));
 
@@ -72,6 +73,14 @@ describe('KreatorAparatuNn — realna ścieżka', () => {
     resolveBusNnRefMock.mockReturnValue('bus-nn-1');
     listAllNnBusOptionsMock.mockReset();
     listAllNnBusOptionsMock.mockReturnValue([{ ref_id: 'bus-nn-2', name: 'Szyna nN II', voltage_kv: 0.4 }]);
+    katalogAparatow = KATALOG_APARATOW;
+  });
+
+  it('pusty katalog aparatów: pole gotowe (bez wiecznego „Ładowanie katalogu…”)', async () => {
+    katalogAparatow = [];
+    render(<KreatorAparatuNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-aparat-nn-katalog')).not.toBeDisabled());
+    expect(screen.getByTestId('mvd-kreator-aparat-nn-katalog')).not.toHaveTextContent('Ładowanie');
   });
 
   afterEach(() => cleanup());

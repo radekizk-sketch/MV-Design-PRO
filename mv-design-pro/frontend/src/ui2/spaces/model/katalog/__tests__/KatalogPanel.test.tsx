@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { KatalogPanel } from '../KatalogPanel';
@@ -17,6 +18,8 @@ describe('KatalogPanel', () => {
     expect(screen.getByRole('button', { name: 'Przekładniki napięciowe' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Kable nN' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Aparaty nN' })).toBeInTheDocument();
+    // W5-E-TTIT: wyłączniki różnicowoprądowe nN (GET /api/catalog/lv-rcd-types).
+    expect(screen.getByRole('button', { name: 'Wyłączniki różnicowoprądowe nN' })).toBeInTheDocument();
     // Poczekaj na zakończenie asynchronicznego ładowania listy (unik ostrzeżeń act()).
     await screen.findByRole('button', { name: /AFL-6 120/ });
   });
@@ -50,6 +53,22 @@ describe('KatalogPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Transformatory' }));
     fireEvent.click(await screen.findByRole('button', { name: /TOn 630/ }));
     await waitFor(() => expect(screen.getByText('Napięcie zwarcia')).toBeInTheDocument());
+  });
+
+  it('kategoria wyłączników różnicowoprądowych: karta pokazuje I_Δn, rodzaj i czasy wyłączenia z rekordu (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KatalogPanel zaladujTypy={stubLoader} />);
+    await screen.findByRole('button', { name: /AFL-6 120/ });
+    await user.click(screen.getByRole('button', { name: 'Wyłączniki różnicowoprądowe nN' }));
+    await user.click(await screen.findByRole('button', { name: /RCCB AC S 63 A \/ 500 mA/ }));
+    await waitFor(() =>
+      expect(screen.getByText('Prąd różnicowy znamionowy zadziałania')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('0,500 A')).toBeInTheDocument();
+    expect(screen.getByText('Rodzaj prądu różnicowego')).toBeInTheDocument();
+    expect(screen.getByText('Maksymalny czas wyłączenia przy IΔn')).toBeInTheDocument();
+    expect(screen.getByText('Minimalny czas niezadziałania')).toBeInTheDocument();
+    expect(screen.getByText('0,13 s')).toBeInTheDocument();
   });
 
   it('integruje „Gdzie użyty" ze snapshotu i nawiguje przez callback', async () => {

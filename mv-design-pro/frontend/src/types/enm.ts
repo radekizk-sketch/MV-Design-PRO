@@ -446,6 +446,12 @@ export interface Load extends ENMElement {
   q_mvar: number;
   model: 'pq' | 'zip';
   phases?: PhaseSet | null;
+  /**
+   * Rezystancja uziomu instalacji odbiorczej R_A [Ω] (karta W5-E-TTIT, `Load.earth_electrode_r_ohm`):
+   * pętla doziemna układu TT domyka się przez ten uziom; brak = analiza TT odmawia kodem
+   * `nn.brak_r_a` (nie podstawia wartości). Pole addytywne, poza hashem modelu, gdy puste.
+   */
+  earth_electrode_r_ohm?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   quantity?: number | null;

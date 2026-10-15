@@ -44,6 +44,14 @@ const KNOWN_FIX_ACTIONS = [
     modal_type: 'przepnij_element_na_pole',
     expected: 'przepnij_element_na_pole',
   },
+  // W5-E-TTIT: rejestr kanoniczny (`domain/canonical_operations.py`) wskazuje dla `nn.brak_rcd`
+  // nawigację `modal: add_nn_rcd` — nazwę operacji kanonicznej, więc ta sama droga co W041/W042.
+  {
+    code: 'nn.brak_rcd',
+    action_type: 'OPEN_MODAL',
+    modal_type: 'add_nn_rcd',
+    expected: 'add_nn_rcd',
+  },
 ] as const;
 
 describe('Fix action completeness', () => {

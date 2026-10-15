@@ -62,13 +62,18 @@ export function KreatorAparatuNn() {
   const [nazwa, setNazwa] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
 
+  // Pusty katalog to stan GOTOWY (bez pozycji), nie wieczne „Ładowanie katalogu…” — status
+  // pobrania jest osobnym znacznikiem, nie wnioskiem z długości listy.
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
+  const [aparatyZaladowane, setAparatyZaladowane] = useState(false);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   useEffect(() => {
     let anulowane = false;
     fetchLvApparatusTypes()
       .then((dane) => {
-        if (!anulowane) setAparaty(Array.isArray(dane) ? dane : []);
+        if (anulowane) return;
+        setAparaty(Array.isArray(dane) ? dane : []);
+        setAparatyZaladowane(true);
       })
       .catch((e: unknown) => {
         if (!anulowane) setBladKatalogu(getCatalogErrorMessage(e));
@@ -197,7 +202,7 @@ export function KreatorAparatuNn() {
           wartosc={catalogRef}
           onZmiana={setCatalogRef}
           opcje={aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · ${a.i_n_a} A` }))}
-          status={bladKatalogu ? 'error' : aparaty.length > 0 ? 'ready' : 'loading'}
+          status={bladKatalogu ? 'error' : aparatyZaladowane ? 'ready' : 'loading'}
           placeholder={T.typPlaceholder}
           komunikatBledu={bladKatalogu ?? T.typBlad}
           testid="mvd-kreator-aparat-nn-katalog"

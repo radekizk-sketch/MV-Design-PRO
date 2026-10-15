@@ -25,7 +25,8 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 
-import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
+import { buildSwzOverlayFromResponses, jestWerdyktemTtIt, statusNakladkiZRekordu, type SwzOverlayEntry } from '../canvas/overlay';
+import { KartaWerdyktu } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
@@ -704,7 +705,10 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
   const resultElement = resultOverlayPayload?.elements[feeder.feeder_root_branch_ref];
   const metrics = Object.values(resultElement?.metrics ?? {});
   const swz = feeder.swz.swz;
-  const statusTone = swz?.status === 'spełnia' ? paleta.tonOk : swz?.status === 'nie spełnia' ? paleta.tonBledu : paleta.tonOstrzegawczy;
+  // Karta W5-E-TTIT: werdykt TT/IT to rekord W werdyktu wyjaśnialnego (ton z jego statusu
+  // maszynowego), werdykt TN — werdykt 3-stanowy z dowodem liczbowym.
+  const statusNakladki = swz ? (jestWerdyktemTtIt(swz) ? statusNakladkiZRekordu(swz.wymaganie.status_maszynowy) : swz.status) : null;
+  const statusTone = statusNakladki === 'spełnia' ? paleta.tonOk : statusNakladki === 'nie spełnia' ? paleta.tonBledu : paleta.tonOstrzegawczy;
   const shortHash = (value: string): string => (value.length > 14 ? `${value.slice(0, 14)}…` : value);
   const segment = projection.graph.segments.find((s) => s.segment_id === feeder.feeder_root_branch_ref);
   const zabezpieczenia = projection.graph.protection_assignments.filter((p) => p.breaker_ref === feeder.feeder_root_branch_ref);
@@ -780,7 +784,23 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
           <div data-testid="lv-domain-feeder-supply-assumption" style={{ color: paleta.tonOstrzegawczy, marginTop: 4 }}>{feeder.supply_assumption_pl}</div>
         ) : null}
         <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>{`punkt najgorszy: ${feeder.worst_point_bus_ref ?? 'brak'} · punkty: ${feeder.points.length}`}</div>
-        {swz ? (
+        {swz && jestWerdyktemTtIt(swz) ? (
+          <div data-testid="lv-domain-feeder-werdykt-tt-it" data-uklad={swz.uklad} data-status-wymagania={swz.wymaganie.status_maszynowy} style={{ marginTop: 6 }}>
+            <div style={{ color: statusTone, fontWeight: 700 }}>{`SWZ w układzie ${swz.uklad}: ${statusNakladki}`}</div>
+            <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`I_d min = ${plFixed(swz.ik1_min_a, 2)} A`}</div>
+            {swz.t_wymagany_s != null ? (
+              <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`t wymagany = ${plFixed(swz.t_wymagany_s, 2)} s (pasmo U0 ${swz.pasmo_u0 ?? '—'}, obwód ${swz.rodzaj_obwodu}; tabela czasów repo, status referencyjny)`}</div>
+            ) : null}
+            {swz.kod_odmowy_limitu ? (
+              <div data-testid="lv-domain-feeder-werdykt-tt-it-limit" style={{ color: paleta.tonOstrzegawczy, marginTop: 3 }}>
+                {`Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy (kod: ${swz.kod_odmowy_limitu}).`}
+              </div>
+            ) : null}
+            <div style={{ marginTop: 8 }}>
+              <KartaWerdyktu rekord={swz.wymaganie} naglowek={`Werdykt wyjaśnialny — układ ${swz.uklad}`} />
+            </div>
+          </div>
+        ) : swz ? (
           <>
             <div style={{ color: statusTone, fontWeight: 700, marginTop: 6 }}>{`SWZ: ${swz.status}`}</div>
             <div style={{ fontFamily: 'monospace', marginTop: 3 }}>{`Ik₁ min = ${plFixed(swz.ik1_min_a, 0)} A`}</div>
@@ -788,7 +808,10 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
             <div style={{ color: paleta.kreskaWygaszona, marginTop: 6 }}>{swz.przyczyna_pl}</div>
           </>
         ) : (
-          <div style={{ color: paleta.tonOstrzegawczy, marginTop: 6 }}>{feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}</div>
+          <div data-testid="lv-domain-feeder-swz-odmowa" data-kod-odmowy={feeder.swz.kod_odmowy ?? undefined} style={{ color: paleta.tonOstrzegawczy, marginTop: 6 }}>
+            {feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}
+            {feeder.swz.kod_odmowy ? ` (kod odmowy: ${feeder.swz.kod_odmowy})` : ''}
+          </div>
         )}
       </section>
     </aside>

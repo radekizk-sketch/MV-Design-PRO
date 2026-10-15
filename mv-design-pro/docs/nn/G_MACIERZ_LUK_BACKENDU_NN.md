@@ -18,7 +18,7 @@ Priorytety: P0 = przed pierwszym użyciem modułu; P1/P2 wg faz H.
 | G-09 | I²t/k²S² dla gałęzi nN | przebieg tylko SN | przebieg nN w `wytrzymalosc_cieplna_przewodow` + Ith/Jth w KABEL_NN | P0 |
 | G-10 | Ib≤In≤Iz + I2≤1,45·Iz′ | brak | analiza doboru zabezpieczeń nN (E) + równania w registry | P0 |
 | G-11 | Selektywność/TCC z urządzeniami nN i prądami nN | koordynacja bez dopływu nN (A6 §5.4) | rozszerzenie `CoordinationInput` o urządzenia nN + prądy z biegów nN | P1 (fundament P0: krzywe) |
-| G-12 | Pętla TT/IT (D-11) | 501 | fizyka TT (RA, RCD IΔn) i IT (pierwsze zwarcie) — odrębne modele wejścia | P1 |
+| G-12 | Pętla TT/IT (D-11) | ZAMKNIĘTA (W5-E-TTIT, 2026-10-15) | `solvers/petla_zwarcia_tt_it.py` przez `compute_fault_loop` (TT: R_A/R_B/RCD I_Δn; IT: pierwsze zwarcie z pojemności, drugie L-PE-L); werdykt wyjaśnialny z `BRAK_PODSTAWY` limitu napięcia dotykowego do pakietu danych P-C | — |
 | G-13 | RCD (model+katalog+logika doboru) | tylko prozа | `RcdType` + reguły kontekstu (układ sieci, falowniki, EV) | P1 |
 | G-14 | Silniki nN (rozruch, ΔU rozruchu, DOL/soft/Y-D/VFD) | brak | moduł rozruchu (E, wiersz P1); wkłady SC z `machine_sc_iec60909` | P1 |
 | G-15 | Agregat/UPS/SZR (typy katalogowe + przypadki pracy) | brak typów | `GensetType`/`UpsType` + przypadki GENERATOR_ISLAND/UPS_* + SWZ w wyspie | P1 |

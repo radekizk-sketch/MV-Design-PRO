@@ -89,6 +89,30 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     expect(screen.queryByTestId('lv-domain-feeder-panel')).toBeNull();
   });
 
+  it('[19] układ TT: panel odpływu z RCD pokazuje werdykt wyjaśnialny (rekord W, kryteria, limit bez podstawy), bez RCD — odmowę nazwaną kodem', () => {
+    renderuj('19_swz_tt');
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-01'));
+    const werdykt = screen.getByTestId('lv-domain-feeder-werdykt-tt-it');
+    expect(werdykt).toHaveAttribute('data-uklad', 'TT');
+    expect(werdykt).toHaveAttribute('data-status-wymagania', 'BRAK_PODSTAWY');
+    expect(werdykt.textContent).toContain('SWZ w układzie TT: nierozstrzygalne');
+    expect(werdykt.textContent).toContain('I_d min = ');
+    expect(werdykt.textContent).toContain('tabela czasów repo, status referencyjny');
+    // Limit napięcia dotykowego spoza repozytorium — nazwany kod, nie liczba z pamięci.
+    expect(screen.getByTestId('lv-domain-feeder-werdykt-tt-it-limit').textContent).toContain('swz.limit_tt_it_brak_tekstu_normy');
+    // Rekord werdyktu wyjaśnialnego: kryteria składowe z podstawą (IEC 60364-4-41, Tab. 41.1).
+    expect(werdykt.textContent).toContain('IEC 60364-4-41');
+    expect(werdykt.textContent).toContain('Tab. 41.1');
+    expect(werdykt.textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+    fireEvent.click(within(screen.getByTestId('lv-domain-feeder-panel')).getByText('Zamknij'));
+
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-02'));
+    const odmowa = screen.getByTestId('lv-domain-feeder-swz-odmowa');
+    expect(odmowa).toHaveAttribute('data-kod-odmowy', 'nn.brak_rcd');
+    expect(odmowa.textContent).toContain('nn.brak_rcd');
+    expect(screen.queryByTestId('lv-domain-feeder-werdykt-tt-it')).toBeNull();
+  });
+
   it('[12] panel odpływu DER wypisuje przekaźnik ze znakami IEC, numerami ANSI, nazwami polskimi funkcji i przekładnikiem; symbol niesie pierwszy znak IEC + licznik; panel nazywa aparat po polsku', () => {
     renderuj('12_der_full_path');
     fireEvent.click(screen.getByTestId('lv-domain-node-QF-G1'));

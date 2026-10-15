@@ -687,6 +687,12 @@ export const STACJA_STRINGS = {
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
   uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
+  uziemienieRezystancjaUziomuStacji: 'Rezystancja uziomu stacji R_B [Ω]',
+  uziemienieRezystancjaUziomuStacjiPomoc:
+    'Uziom punktu neutralnego transformatora (uziemionego bezpośrednio). W układzie TT pętla '
+    + 'zwarcia doziemnego domyka się przez uziom stacji R_B i uziom instalacji odbiorczej R_A '
+    + '(IEC 60364-4-41 §411.5) — bez R_B analiza TT odmawia nazwanym kodem. W układach TN wartość '
+    + 'jest zapisywana w modelu, ale pętla L-PE/L-PEN jej nie czyta.',
   uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:

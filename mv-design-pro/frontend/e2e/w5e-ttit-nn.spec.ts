@@ -33,7 +33,7 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const APARAT_NN_ID = 'cb_nn_630a';
-const RCD_ID = 'rcd_nn_40a_30ma_a';
+const RCD_ID = 'rcd_nn_a_40a_30ma';
 const ODBIOR_ID = 'load_mieszk_15kw';
 const CATALOG_VERSION = '2024.1';
 /** Dane projektowe uziemień (wejście projektanta, nie fizyka). */
@@ -138,21 +138,30 @@ async function zbudujSiecTt(request: APIRequestContext) {
   const odbior = await executeDomainOp(request, caseId, 'add_nn_load', odbiorPayload);
 
   if (FAZA === 'po') {
-    // Wyłącznik różnicowoprądowy z katalogu w torze odpływu: między szyną pola a szyną odbioru.
-    const szyny = new Set((odbior.snapshot?.buses ?? []).filter((b) => b.voltage_kv < 1.0).map((b) => b.ref_id));
-    const galezie = (odbior.snapshot?.branches ?? []).filter((b) => szyny.has(b.from_bus_ref) && szyny.has(b.to_bus_ref));
-    const kabel = galezie.find((b) => b.catalog_namespace === 'KABEL_NN');
-    expect(kabel, 'kabel odpływu nN w modelu').toBeTruthy();
+    // Wyłącznik różnicowoprądowy z katalogu w torze zasilania instalacji odbioru.
     const odbiorRef = odbior.snapshot?.loads?.find((l) => l.earth_electrode_r_ohm === R_A_OHM)?.ref_id;
     expect(odbiorRef, 'odbiór nN niesie R_A').toBeTruthy();
+    // Operacja `add_nn_rcd` (W5-E-TTIT): RCD jako aparat w torze przed zaciskami instalacji
+    // odbioru — wskazuje się ODBIÓR, którego instalację chroni (nie odcinek).
     const rcd = await executeDomainOp(request, caseId, 'add_nn_rcd', {
-      segment_ref: kabel!.ref_id, name: 'RCD gospodarstwa',
+      load_ref: odbiorRef, name: 'RCD gospodarstwa',
       catalog_binding: buildCatalogBinding('APARAT_NN_RCD', RCD_ID),
     });
     expect(rcd.changes?.created_element_ids?.length ?? 0).toBeGreaterThan(0);
   }
 
-  return { projectId: project.id, projectName, caseId, caseName, stationRef: stacja!.ref_id, feederRef: String(feederRef) };
+  // Korzeń odpływu (aparat pola) wg KONTRAKTU projekcji nN — ten sam ref, którym kanwa
+  // znakuje węzeł (`lv-domain-node-<ref>`); `created_element_ids` pola to identyfikator
+  // specyfikacji pola, nie gałęzi aparatu.
+  const projekcja = await request.get(
+    `${BACKEND_BASE}/api/cases/${caseId}/enm/lv-domain/${encodeURIComponent(stacja!.ref_id)}/projection/v1`,
+  );
+  expect(projekcja.ok(), `projekcja nN: HTTP ${projekcja.status()}`).toBeTruthy();
+  const swzSnapshot = ((await projekcja.json()) as { swz_snapshot?: { transformers?: Array<{ feeders?: Array<{ feeder_root_branch_ref: string }> }> } }).swz_snapshot;
+  const feederRootRef = swzSnapshot?.transformers?.flatMap((t) => t.feeders ?? [])[0]?.feeder_root_branch_ref;
+  expect(feederRootRef, 'korzeń odpływu nN w projekcji').toBeTruthy();
+
+  return { projectId: project.id, projectName, caseId, caseName, stationRef: stacja!.ref_id, feederRef: String(feederRootRef) };
 }
 
 async function otworzSchemat(page: Page, seed: Awaited<ReturnType<typeof zbudujSiecTt>>, motyw: 'light' | 'dark'): Promise<void> {
@@ -216,19 +225,26 @@ for (const motyw of MOTYWY) {
     // Klik NATYWNY w aparat korzenia odpływu otwiera panel odpływu z werdyktem.
     const aparat = page.locator(`[data-testid="lv-domain-node-${seed.feederRef}"]`);
     await expect(aparat).toBeVisible();
-    const box = await aparat.boundingBox();
+    // Klik w ETYKIETĘ aparatu (namalowany tekst) — środek pudełka całej grupy SVG może
+    // wypaść w pustym polu między symbolem a etykietą, gdzie zdarzenie nie trafia w `<g>`.
+    const etykieta = aparat.locator('text').first();
+    await expect(etykieta).toBeVisible();
+    const box = await etykieta.boundingBox();
     expect(box).not.toBeNull();
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.click(box!.x + Math.min(10, box!.width / 2), box!.y + box!.height / 2);
     const panel = page.getByTestId('lv-domain-feeder-panel');
     await expect(panel).toBeVisible();
     const werdykt = panel.getByTestId('lv-domain-feeder-werdykt-tt-it');
     await expect(werdykt).toBeVisible();
     // Kontrakt werdyktu wyjaśnialnego: kryterium czasu wyłączenia RCD ma wynik, limit
     // z tabeli repo i stan źródła; kryterium napięcia dotykowego nie ma podstawy.
-    await expect(werdykt).toContainText('Brak podstawy');
+    await expect(werdykt).toContainText('Brak zweryfikowanej podstawy wymagania');
     await expect(werdykt).toContainText('Tab. 41.1');
     await expect(werdykt).toContainText('IEC 60364-4-41');
+    await expect(panel.getByTestId('lv-domain-feeder-werdykt-tt-it-limit')).toContainText('swz.limit_tt_it_brak_tekstu_normy');
     await bramkaTresciMatematycznej(page, '[data-testid="lv-domain-feeder-panel"]');
+    // Kadr do oceny właściciela (B-02): rekord werdyktu w polu widzenia panelu.
+    await werdykt.scrollIntoViewIfNeeded();
     await zrzut(page, '02_panel_odplywu_werdykt_tt', motyw);
   });
 }

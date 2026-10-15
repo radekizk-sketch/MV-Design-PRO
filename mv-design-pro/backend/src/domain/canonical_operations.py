@@ -2584,7 +2584,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji R_A — "
+            "Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — "
             "pętla doziemna i napięcie dotykowe nie są liczone"
         ),
         fix_navigation={
@@ -2600,7 +2600,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl=(
             "Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego "
-            "bezpośrednio z rezystancją uziomu R_B"
+            "bezpośrednio z rezystancją uziomu stacji"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
     ),
@@ -2621,7 +2621,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancja b_0 na km) — "
+            "Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — "
             "prąd pierwszego zwarcia doziemnego nie jest liczony"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b0_siemens_per_km"},

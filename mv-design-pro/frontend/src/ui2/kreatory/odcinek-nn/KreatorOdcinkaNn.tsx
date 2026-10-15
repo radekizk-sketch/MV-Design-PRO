@@ -94,13 +94,18 @@ export function KreatorOdcinkaNn() {
     [snapshot, fromBusRef],
   );
 
+  // Pusty katalog to stan GOTOWY (bez pozycji), nie wieczne „Ładowanie katalogu…” — status
+  // pobrania jest osobnym znacznikiem, nie wnioskiem z długości listy.
   const [kable, setKable] = useState<LVCableType[]>([]);
+  const [kableZaladowane, setKableZaladowane] = useState(false);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   useEffect(() => {
     let anulowane = false;
     fetchLvCableTypes()
       .then((dane) => {
-        if (!anulowane) setKable(Array.isArray(dane) ? dane : []);
+        if (anulowane) return;
+        setKable(Array.isArray(dane) ? dane : []);
+        setKableZaladowane(true);
       })
       .catch((e: unknown) => {
         if (!anulowane) setBladKatalogu(getCatalogErrorMessage(e));
@@ -325,7 +330,7 @@ export function KreatorOdcinkaNn() {
             id: k.id,
             etykieta: `${k.name} · ${k.cross_section_mm2} mm² · ${k.i_max_a} A`,
           }))}
-          status={bladKatalogu ? 'error' : kable.length > 0 ? 'ready' : 'loading'}
+          status={bladKatalogu ? 'error' : kableZaladowane ? 'ready' : 'loading'}
           placeholder={T.kabelPlaceholder}
           komunikatBledu={bladKatalogu ?? T.kabelBlad}
           testid="mvd-kreator-odcinek-nn-kabel"

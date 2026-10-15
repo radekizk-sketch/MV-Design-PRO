@@ -73,7 +73,7 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 | BESS bez stanu energii i sprawności; brak profili maszyny synchronicznej i turbiny typu 2; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | KATALOG-DYNAMIKI-BRAKI, W6-3…W6-8, AB-2…AB-7 |
 | Zabezpieczenia poza modelem; brak 67/67N/21/87/25/50BF/grup/TRIP; ocena na syntetycznym urządzeniu | mapa dom. 4, synteza §1 p. 20; §7 I | BIEG-ZABEZPIECZEN-Z-MODELU (w toku), W4 |
 | Aparat pola poza torem prądowym (stacja przelotowa i końcowa, wyłącznik główny nN) | §7 I | POLA-W-TORZE (w toku) |
-| Uziemienie ×6, `meta.field_specs`, TT/IT bez fizyki, rozpływ niesymetryczny bez konsumenta | mapa dom. 1/7 | W5 (W5-A, W5-D → W5-B/C/E/T) |
+| Uziemienie ×6, `meta.field_specs`, rozpływ niesymetryczny bez konsumenta (TT/IT bez fizyki — ZAMKNIĘTE kartą W5-E-TTIT 2026-10-15: pętla doziemna, werdykt wyjaśnialny, dowód, ekran nN; limit napięcia dotykowego czeka na pakiet danych właściciela P-C) | mapa dom. 1/7 | W5 (W5-A, W5-D, W5-E → W5-B/C/T) |
 | SLD: semantyka w kliencie, trzy magazyny nadpisań; elementy modelu nierysowane; fikstury bez generatora | mapa dom. 8; §7 I | SLD-SUBSTRAT (w toku), W7 |
 | Dane nieautorytatywne: sieć złota z nieistniejącymi pozycjami katalogu; gotowość DER we froncie z `?? 0`; ciche zera zasilające decyzję | §7 I | SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, CICHE-ZERO |
 | V12.6: N-1 bez rozpływu, stałe bez podstawy, kąt fazora zerowego | plan §12.2 (g), (h); §7 I | AB-H0b (prezentacja), B-01 |

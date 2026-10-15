@@ -16,6 +16,7 @@ const TAB_LABELS = [
   'Typy aparatury łączeniowej SN',
   'Typy aparatury SN',
   'Typy aparatury nN',
+  'Typy wyłączników różnicowoprądowych nN',
   'Typy kabli nN',
   'Typy obciążeń',
   'Typy przekładników prądowych',
@@ -140,6 +141,27 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       equipment_kind: 'LV_SWITCHBOARD',
       rated_current_a: 1600,
       voltage_rating_kv: 0.4,
+    },
+  ],
+  LV_RCD: [
+    {
+      id: 'rcd_nn_a_40a_30ma',
+      name: 'RCCB A 40 A / 30 mA',
+      in_a: 40,
+      i_delta_n_a: 0.03,
+      rcd_type: 'A',
+      selective: false,
+      t_a_s: 0.3,
+      t_a_2idn_s: 0.15,
+      t_a_5idn_s: 0.04,
+      t_nieczuly_min_s: null,
+      u_n_kv: 0.4,
+      poles: null,
+      manufacturer: null,
+      verification_status: 'REFERENCYJNY',
+      source_reference: 'IEC 61008-1 Tabela 1 (kl. 9.9.2)',
+      catalog_status: 'REFERENCYJNY_V1',
+      contract_version: '2.0',
     },
   ],
   LV_CABLE: [
@@ -293,7 +315,7 @@ describe('TypeLibraryBrowser', () => {
     });
 
     expect(screen.getByText('Biblioteka typów')).toBeInTheDocument();
-    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(16);
+    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(17);
     for (const label of TAB_LABELS) {
       expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument();
     }
@@ -309,6 +331,19 @@ describe('TypeLibraryBrowser', () => {
     expect(await screen.findByText('ACSR 240')).toBeInTheDocument();
     expect(screen.getAllByText('ABC Cables')).toHaveLength(2);
     expect(screen.getByRole('cell', { name: /R=0\.12 Ohm\/km .* In=645 A/ })).toBeInTheDocument();
+  });
+
+  it('zakładka wyłączników różnicowoprądowych nN pobiera kategorię LV_RCD i streszcza I_Δn, typ, In, t_a', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy wyłączników różnicowoprądowych nN/i }));
+
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('LV_RCD');
+    });
+    expect(await screen.findByText('RCCB A 40 A / 30 mA')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /IΔn=.* A · typ A · In=40 A · ta=.* s/ })).toBeInTheDocument();
   });
 
   it('switches to a generic category and renders generic details', async () => {
