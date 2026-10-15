@@ -108,18 +108,21 @@ treści, zgoda B-01 O-59).
 
 ## 7. Zmienione zrzuty (`docs/audit/visual/**`, commit `a3ae6061`) — werdykt B-02 u właściciela
 
-Render żywej aplikacji na drzewie scalonym (e2e). Prostokąt różnic zmierzony pikselowo; przyczyny
-wg treści kart (nie samocertyfikuję wyglądu):
+Render żywej aplikacji na drzewie scalonym (e2e). Każdy plik obejrzany w zestawieniu „przed / po”
+z prostokątem różnic zmierzonym pikselowo (oględziny 2026-10-15; korekta wcześniejszej wersji tej
+tabeli, która opisywała przyczyny z kart bez oglądania). Opis faktów — wyglądu nie oceniam.
 
-| Plik | Prostokąt różnic | Przyczyna |
+| Plik | Co się zmieniło na ekranie (z oględzin) | Źródło |
 |---|---|---|
-| `flow-ekspert/audF-gotowosc-{dark,light}`, `gotowosc-drzewo-{dark,light}` | panel gotowości | grupowanie po kodzie kanonicznym, W043/W044, nazwy zamiast identyfikatorów (etykieta) |
-| `flow-ekspert/cv33b2-porownanie-zabezpieczen-*`, `edytor-nastaw-zabezpieczenia-*`, `ocena-zabezpieczen-z-modelu-*`, `kd3-porownanie-zwarc-*` | obszar roboczy | ocena nadprądowa z modelu, nazwa urządzenia w porównaniu (zabezpieczenia) na topologii partii 7 |
-| `flow-ekspert/e32-dynamika-{dark,light}` | (116,6161)–(1089,6423) | tabela zdarzeń/odbiorów dynamiki (AB-1b.3b), nazwy stacji bez „(typ B)” |
-| `flow-ekspert/kd3-bilans-*`, `kd3-zaczepy-*`, `kd3-katalog-nn-*`, `kd6-ogniwo-model-*`, `most-wygaszony-dark`, `flow_kompensacja-*` | wąskie pasy (etykiety, nagłówki) | nazwy i rodzaj stacji z jednej reguły (etykieta), deklaracja `terminal` |
-| `dowody/fk1_czas_ocena-*` | jedna linia (y 575) | nazwa stacji/punktu |
-| `dowody/dowody_ncrfg_formularz_zrodla_dark` | 1 px × 55 px | drobny rozjazd renderu (do oceny właściciela) |
-| `kreatory/kreator_pole_light` | pas u dołu (y 1002–1038) | podgląd rodzaju wynikowego w kreatorze (etykieta) |
+| `flow-ekspert/audF-gotowosc-{dark,light}` | „przed” był NIEAKTUALNY (przebieg 2026-09-04: dawna płaska nawigacja zakładek, c = 1,10); „po” — obecna nawigacja grupowa, „c dobierany automatycznie per węzeł”, inne prądy zwarciowe (Ik″ szyny nN 22,854 → 22,719 kA), „Stacja S01” bez „(typ B)” | głównie zmiany sprzed partii 7, których ten zrzut nie odświeżał; z partii 7 — nazwa stacji |
+| `flow-ekspert/cv33b2-porownanie-zabezpieczen-*`, `edytor-nastaw-zabezpieczenia-*`, `ocena-zabezpieczen-z-modelu-*`, `kd3-porownanie-zwarc-*` | treść identyczna; zmienione: znaczniki czasu przebiegów i wersja modelu w stopce, „Gotowość: 3 → 4 ostrzeżenia”, „Stacja S01 (typ B)” → „Stacja S01” | etykieta (nazwa bez kodu rodzaju, nowe ostrzeżenie W043 niezgodności deklaracji z topologią) |
+| `flow-ekspert/e32-dynamika-{dark,light}` | legenda wykresu przebiegów: „Stacja S01 (typ B)” → „Stacja S01” (przesunięcie pozycji legendy), krzywe bez widocznej zmiany | etykieta |
+| `flow-ekspert/kd3-bilans-*` | karta „Kontrola stacji” w kreatorze stacji: „Rodzaj: Odgałęźna (wejście + wyjście + odgałęzienie)” → „Rodzaj: Stacja odgałęźna (ze składu pól)” | etykieta — rodzaj z jednej reguły |
+| `flow-ekspert/kd3-zaczepy-*` | ten sam kreator na kroku 3: „Rodzaj: Odgałęźna…” (zielony) → „Stacja końcowa ze składu pól — zadeklarowano: odgałęźna” (pomarańczowe ostrzeżenie) | etykieta — podgląd rodzaju wynikowego ze składu pól przed uzupełnieniem pól (krok 4); **do oceny właściciela**, czy ostrzeżenie na kroku 3 jest pożądane |
+| `dowody/fk1_czas_ocena-*` | 1 linia pikseli przy nagłówku tabeli; treść tabeli identyczna | szum renderu |
+| `flow-ekspert/kd6-ogniwo-model-*` | „Stacja S01 (typ B)” → „Stacja S01” | etykieta |
+| `flow-ekspert/kd3-katalog-nn-*`, `most-wygaszony-dark`, `flow_kompensacja-*`, `gotowosc-drzewo-*`, `dowody/dowody_ncrfg_formularz_zrodla_dark` | treść identyczna; różnice pojedynczych pikseli (kursor tekstowy w polu, wygładzanie ikon w pasku) | szum renderu |
+| `kreatory/kreator_pole_light` | zrzut „po” złapał stopkę „Ładowanie katalogu aparatów pola SN” z wyszarzonym zapisem — **defekt speca, nie produktu** | naprawione (commit „E2E: bramka przed zrzutem czeka na koniec ładowania…”): warunek „żaden kreator w stanie ładowania” w bramce wołanej przed każdym zrzutem; po ponownym biegu zrzut identyczny z wersją sprzed partii 7 |
 
 ## 8. Rejestry dokumentów
 
