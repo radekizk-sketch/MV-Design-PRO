@@ -363,10 +363,11 @@ describe('model ogniwa — czyste selektory', () => {
 
     const zZaciskiem = {
       ...snap,
-      substations: [{
-        ...snap.substations[0],
-        bus_refs: ['SZYNA-GLOWNA'],
-        meta: { field_specs: [{ field_ref: 'pole-1', bus_ref: 'SZYNA-GLOWNA', meta: { terminal_bus_ref: 'EL-GPZ' } }] },
+      substations: [{ ...snap.substations[0], bus_refs: ['SZYNA-GLOWNA'] }],
+      // Karta W5-B: pole stacji = rekord `bays`; własny zacisk = `terminal_bus_ref`.
+      bays: [{
+        id: 'pole-1', ref_id: 'pole-1', name: 'Pole 1', tags: [], meta: {}, bay_role: 'OUT',
+        substation_ref: STACJA, bus_ref: 'SZYNA-GLOWNA', terminal_bus_ref: 'EL-GPZ', equipment_refs: [],
       }],
     } as unknown as EnergyNetworkModel;
     expect(stacjeDlaPunktu(zZaciskiem, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);

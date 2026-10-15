@@ -68,7 +68,7 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
 
   // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
   // pierwsze patrząc od kierunku zasilania"): kolejność pól NA RYSUNKU podąża
-  // za kolejnością `field_specs` Z DANYCH. Fixtura deklaruje
+  // za kolejnością rekordów pól `bays` Z DANYCH. Fixtura deklaruje
   // [LINIA_IN, LINIA_OUT, MEASUREMENT, TRANSFORMATOROWE] — przekładnik pola
   // pomiarowego MUSI leżeć na lewo (bliżej zasilania) od pola TR. Dawny
   // ranking ról (liniowe→TR→…→POMIAROWE) spychał pomiar na koniec szyny —

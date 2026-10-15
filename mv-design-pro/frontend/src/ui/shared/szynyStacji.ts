@@ -9,8 +9,8 @@
  * Zbiór szyn stacji (identyczny z backendem, niezależny od kolejności gałęzi):
  *  1. szyny główne `Substation.bus_refs` (niepuste napisy, wartość bez przycinania — jak
  *     `_napis(s)` jako filtr w backendzie);
- *  2. WŁASNE zaciski pól SN — rekordy `bays` stacji na szynie SN (`polaStacji.ts`), których
- *     `terminal_bus_ref` jest różny od szyny pola;
+ *  2. WŁASNE zaciski pól SN — rekordy `bays` stacji z niepustym `ref_id` na szynie poza pasmem
+ *     nN (`polaStacji.ts`), których `terminal_bus_ref` jest różny od szyny pola;
  *  3. OBA końce aparatów pól nN — gałęzie wskazane przez `equipment_refs` rekordów pól nN
  *     TEJ stacji (karta W5-B: rekord pola jest jedynym źródłem przynależności aparatu).
  *
@@ -58,7 +58,8 @@ function zaciskiWgSzynyPola(model: ModelSzyn, stacja: StacjaDlaSzyn): ReadonlyMa
   const wynik = new Map<string, string[]>();
   const napiecia = napieciaSzyn(model);
   for (const rekord of polaStacji(model, stacja.ref_id)) {
-    if (czyPoleNn(model, rekord, napiecia)) continue;
+    // Rekord bez identyfikatora nie jest polem (jak backend: `_napis(ref_id)`).
+    if (!napis(rekord.ref_id) || czyPoleNn(model, rekord, napiecia)) continue;
     const szynaPola = napis(rekord.bus_ref);
     const zacisk = wlasnyZaciskPola(rekord);
     if (szynaPola && zacisk) wynik.set(szynaPola, [...(wynik.get(szynaPola) ?? []), zacisk]);

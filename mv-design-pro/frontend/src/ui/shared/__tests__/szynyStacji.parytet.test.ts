@@ -9,9 +9,11 @@
  *  - `szyny_glowne` — `szynaGlownaStacji` ↔ `enm.tor_pola.szyna_glowna_stacji`;
  *  - `transformatory` — `selectStationDistributionTransformers` ↔
  *    `enm.pole_transformatorowe.transformatory_stacji`;
- *  - `zaciski_pol` — `zaciskPola` ↔ `enm.zajetosc_pol.zacisk_pola`;
- *  - `punkty_przylaczenia_rekordow_pol` — `zaciskRekorduPola(bay) ?? bay.bus_ref` ↔
- *    `application.field_read_model.punkt_przylaczenia_pola`.
+ *  - `zaciski_pol` — `zaciskPola` ↔ `enm.pola.zacisk_pola` (rekordy `bays` stacji modelu);
+ *  - `punkty_przylaczenia_rekordow_pol` — `punktPrzylaczeniaPola` ↔
+ *    `enm.pola.punkt_przylaczenia_pola` (każdy rekord `bays`).
+ * Karta W5-B: pola czytane wyłącznie z rekordów `bays`; akcesory pól przypina osobno
+ * `polaStacji.parytet.test.ts` (sekcja `pola` tego samego pliku).
  * Iniekcje zmierzone w meldunku karty.
  */
 import { readFileSync } from 'node:fs';
@@ -23,7 +25,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Substation } from '../../../types/enm';
 import { szynaGlownaStacji, szynyStacji } from '../szynyStacji';
 import { selectStationDistributionTransformers } from '../transformatoryStacji';
-import { zaciskPola, zaciskRekorduPola } from '../zaciskPola';
+import { punktPrzylaczeniaPola, zaciskPola } from '../polaStacji';
 
 const FRONTEND = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
@@ -32,7 +34,7 @@ interface Oczekiwane {
   readonly szyny_glowne: Readonly<Record<string, Readonly<Record<string, string | null>>>>;
   readonly transformatory: Readonly<Record<string, readonly string[]>>;
   readonly zaciski_pol: Readonly<Record<string, string | null>>;
-  readonly punkty_przylaczenia_rekordow_pol: Readonly<Record<string, string>>;
+  readonly punkty_przylaczenia_rekordow_pol: Readonly<Record<string, string | null>>;
 }
 
 const parytet = JSON.parse(
@@ -59,32 +61,28 @@ const przypadki = Object.entries(parytet.pliki).flatMap(([plik, modele]) => {
 
 /** Wszystkie odpowiedzi klasy policzone lustrami frontu — w kształcie pliku backendu. */
 function odpowiedziFrontu(model: EnergyNetworkModel): Oczekiwane {
-  const galezie = model.branches ?? [];
   const stacje = (model.substations ?? []).filter((s): s is Substation => typeof s?.ref_id === 'string');
   const szyny: Record<string, string[]> = {};
   const glowne: Record<string, Record<string, string | null>> = {};
   const transformatory: Record<string, string[]> = {};
   for (const stacja of stacje) {
-    const nalezace = [...szynyStacji(stacja, galezie)].sort();
+    const nalezace = [...szynyStacji(model, stacja)].sort();
     szyny[stacja.ref_id] = nalezace;
-    glowne[stacja.ref_id] = Object.fromEntries(nalezace.map((s) => [s, szynaGlownaStacji(stacja, galezie, s)]));
+    glowne[stacja.ref_id] = Object.fromEntries(nalezace.map((s) => [s, szynaGlownaStacji(model, stacja, s)]));
     transformatory[stacja.ref_id] = selectStationDistributionTransformers(
       { ...model, transformers: model.transformers ?? [] },
       stacja,
     ).map((t) => String(t.ref_id)).sort();
   }
+  const refyStacji = new Set(stacje.map((s) => s.ref_id));
   const zaciski: Record<string, string | null> = {};
-  for (const stacja of stacje) {
-    const specs = (stacja.meta as { field_specs?: unknown } | undefined)?.field_specs;
-    for (const spec of Array.isArray(specs) ? specs : []) {
-      const ref = (spec as { field_ref?: unknown })?.field_ref;
-      if (typeof ref === 'string' && ref.trim()) zaciski[ref] = zaciskPola(spec as Record<string, unknown>);
-    }
-  }
-  const punkty: Record<string, string> = {};
+  const punkty: Record<string, string | null> = {};
   for (const bay of model.bays ?? []) {
     if (typeof bay?.ref_id !== 'string') continue;
-    punkty[bay.ref_id] = zaciskRekorduPola(bay as unknown as Record<string, unknown>) ?? String(bay.bus_ref);
+    punkty[bay.ref_id] = punktPrzylaczeniaPola(bay);
+    if (bay.ref_id.trim() && bay.substation_ref && refyStacji.has(bay.substation_ref)) {
+      zaciski[bay.ref_id] = zaciskPola(bay);
+    }
   }
   return {
     szyny,
@@ -121,9 +119,9 @@ describe('lustra klasy „stacja i jej szyny” — parytet z backendem na fikst
 
   it('niezależność od kolejności gałęzi: odwrócona lista gałęzi daje te same zbiory szyn', () => {
     for (const { model, oczekiwane } of przypadki) {
-      const odwrocone = [...(model.branches ?? [])].reverse();
+      const odwrocone = { ...model, branches: [...(model.branches ?? [])].reverse() };
       for (const stacja of model.substations ?? []) {
-        expect([...szynyStacji(stacja, odwrocone)].sort()).toEqual(oczekiwane.szyny[String(stacja.ref_id)]);
+        expect([...szynyStacji(odwrocone, stacja)].sort()).toEqual(oczekiwane.szyny[String(stacja.ref_id)]);
       }
     }
   });

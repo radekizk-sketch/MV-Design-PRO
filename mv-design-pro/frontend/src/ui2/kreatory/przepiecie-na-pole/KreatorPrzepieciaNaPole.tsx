@@ -6,7 +6,7 @@
  * Zapis = operacja domenowa `przepnij_element_na_pole`. Kreator NIE wybiera pola za model:
  * domyślnie wysyła sam element (pole wskazuje kontrola modelu), a jawny wybór pola projektanta
  * backend sprawdza (rola, zajętość) i odrzuca nazwaną odmową. Lista pól pochodzi z danych
- * stacji (`field_specs` z własnym zaciskiem na szynie elementu) — zero reguł i fizyki w UI.
+ * stacji (rekordy `bays` pól SN z własnym zaciskiem na szynie elementu) — zero reguł i fizyki w UI.
  */
 
 import { useCallback, useMemo, useState } from 'react';

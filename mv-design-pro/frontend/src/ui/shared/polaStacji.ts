@@ -56,43 +56,95 @@ function porownajNapisy(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
+/**
+ * Indeks rekordów pól jednej kolekcji `bays` (rekordy w kolejności zapisu, grupy po właścicielu
+ * i po identyfikatorze). Migawka modelu jest niemutowalna (każda zmiana modelu to nowy obiekt
+ * odpowiedzi), więc indeks żyje tyle, co tablica `bays`; dopisanie rekordu do tej samej tablicy
+ * (budowa modelu w teście) unieważnia go po zmianie długości. Bez indeksu każde pytanie „pola
+ * stacji X" przeglądało całą kolekcję — kwadratowo na sieci kilkuset stacji (rysunek pyta
+ * o szyny każdej stacji wielokrotnie).
+ */
+interface IndeksPol<B extends RekordPola> {
+  readonly dlugosc: number;
+  readonly rekordy: readonly B[];
+  readonly wgStacji: ReadonlyMap<string, readonly B[]>;
+  readonly wgPunktu: ReadonlyMap<string, readonly B[]>;
+  readonly wgRefu: ReadonlyMap<string, B>;
+}
+
+const INDEKSY_POL = new WeakMap<readonly unknown[], IndeksPol<RekordPola>>();
+const INDEKSY_NAPIEC = new WeakMap<readonly unknown[], { readonly dlugosc: number; readonly mapa: ReadonlyMap<string, number | null> }>();
+const PUSTE: readonly never[] = [];
+
+function dopisz<B>(mapa: Map<string, B[]>, klucz: unknown, rekord: B): void {
+  if (typeof klucz !== 'string') return;
+  const lista = mapa.get(klucz);
+  if (lista) lista.push(rekord);
+  else mapa.set(klucz, [rekord]);
+}
+
+function indeksPol<B extends RekordPola>(model: ModelPol<B> | null | undefined): IndeksPol<B> | null {
+  const lista = model?.bays;
+  if (!Array.isArray(lista)) return null;
+  const zapisany = INDEKSY_POL.get(lista) as IndeksPol<B> | undefined;
+  if (zapisany && zapisany.dlugosc === lista.length) return zapisany;
+  const rekordy = lista.filter(
+    (rekord): rekord is B => rekord !== null && typeof rekord === 'object' && !Array.isArray(rekord),
+  );
+  const wgStacji = new Map<string, B[]>();
+  const wgPunktu = new Map<string, B[]>();
+  const wgRefu = new Map<string, B>();
+  for (const rekord of rekordy) {
+    dopisz(wgStacji, rekord.substation_ref, rekord);
+    dopisz(wgPunktu, rekord.branch_point_ref, rekord);
+    // Pierwszy rekord o danym identyfikatorze wygrywa — jak `next(...)` w backendzie.
+    if (typeof rekord.ref_id === 'string' && !wgRefu.has(rekord.ref_id)) wgRefu.set(rekord.ref_id, rekord);
+  }
+  const indeks: IndeksPol<B> = { dlugosc: lista.length, rekordy, wgStacji, wgPunktu, wgRefu };
+  INDEKSY_POL.set(lista, indeks as unknown as IndeksPol<RekordPola>);
+  return indeks;
+}
+
 /** Wszystkie rekordy pól modelu w kolejności zapisu — lustro `enm.pola.pola`. */
 export function pola<B extends RekordPola>(model: ModelPol<B> | null | undefined): readonly B[] {
-  const lista = model?.bays;
-  if (!Array.isArray(lista)) return [];
-  return lista.filter((rekord): rekord is B => rekord !== null && typeof rekord === 'object' && !Array.isArray(rekord));
+  return indeksPol(model)?.rekordy ?? PUSTE;
 }
 
 /** Rekord pola o identyfikatorze `ref` (`null`, gdy nie ma) — lustro `enm.pola.pole`. */
 export function pole<B extends RekordPola>(model: ModelPol<B> | null | undefined, ref: unknown): B | null {
   const szukany = napis(ref);
   if (!szukany) return null;
-  return pola(model).find((rekord) => rekord.ref_id === szukany) ?? null;
+  return indeksPol(model)?.wgRefu.get(szukany) ?? null;
 }
 
 /** Pola stacji (SN i nN) w kolejności zapisu — lustro `enm.pola.pola_stacji`. */
 export function polaStacji<B extends RekordPola>(model: ModelPol<B> | null | undefined, stationRef: unknown): readonly B[] {
   const stacja = napis(stationRef);
-  if (!stacja) return [];
-  return pola(model).filter((rekord) => rekord.substation_ref === stacja);
+  if (!stacja) return PUSTE;
+  return indeksPol(model)?.wgStacji.get(stacja) ?? PUSTE;
 }
 
 /** Pola rozdzielnicy odgałęźnej ZKSN punktu rozgałęzienia — lustro `enm.pola.pola_zksn`. */
 export function polaZksn<B extends RekordPola>(model: ModelPol<B> | null | undefined, branchPointRef: unknown): readonly B[] {
   const punkt = napis(branchPointRef);
-  if (!punkt) return [];
-  return pola(model).filter((rekord) => rekord.branch_point_ref === punkt);
+  if (!punkt) return PUSTE;
+  return indeksPol(model)?.wgPunktu.get(punkt) ?? PUSTE;
 }
 
 /** `bus_ref` → napięcie znamionowe szyny [kV] (`null` = brak danej) — lustro `napiecia_szyn`. */
 export function napieciaSzyn(model: Pick<ModelPol<RekordPola>, 'buses'> | null | undefined): ReadonlyMap<string, number | null> {
+  const szyny = model?.buses;
+  if (!Array.isArray(szyny)) return new Map();
+  const zapisany = INDEKSY_NAPIEC.get(szyny);
+  if (zapisany && zapisany.dlugosc === szyny.length) return zapisany.mapa;
   const wynik = new Map<string, number | null>();
-  for (const szyna of model?.buses ?? []) {
+  for (const szyna of szyny) {
     const ref = napis(szyna?.ref_id);
     if (!ref) continue;
     const napiecie = szyna.voltage_kv;
     wynik.set(ref, typeof napiecie === 'number' ? napiecie : null);
   }
+  INDEKSY_NAPIEC.set(szyny, { dlugosc: szyny.length, mapa: wynik });
   return wynik;
 }
 

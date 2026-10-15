@@ -413,7 +413,7 @@ function buildLvSections(
 /**
  * Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji GPZ —
  * `Measurement{measurement_type:'VT', bus_ref: szyna sekcji}` BEZ `bay_ref`
- * (VT polowe żyją w `resolveBayVtArrangements`, osobny kanał). Zero danych
+ * (VT polowe pola niosą `Measurement.bay_ref`, osobny kanał). Zero danych
  * = pusta lista (kompozycja nie fabrykuje pomiaru).
  */
 function busVtMeasurementsOf(

@@ -4043,8 +4043,14 @@ function collectStationTransformerUnits(
  *  - rola z `field_role` (rola kanoniczna), a bez niej z `bay_role`;
  *  - oznaczenie: numer dyspozytorski (`bay_number`), krótka nazwa odpływu, skrót roli, nazwa;
  *  - stany łączników z telemetrii pola, a bez niej z aparatów `equipment_refs`;
- *  - tor pierwotny, konfiguracja pola i adnotacje (zabezpieczenia, miernik, CT, VT) z danych
- *    rekordu — brak danej = brak oznaczenia.
+ *  - tor pierwotny i konfiguracja pola z danych rekordu.
+ * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT) blok stacji NIE projektuje —
+ * dokładnie tak, jak rysowała je produkcyjna ścieżka pól stacji przed kartą W5-B (stacje
+ * budowane operacjami). Rzutowanie `protection_codes` rekordów pól stacji powiększa arkusz
+ * substratu 52 stacji z 8328×5771 do 11096×7467 (171 okręgów przekaźnika) — to zmiana wyglądu
+ * SLD wymagająca werdyktu właściciela (B-02), nie skutek zmiany nośnika danych; decyzja
+ * nazwana w meldunku karty W5-B/C. Blok GPZ rzutuje adnotacje jak dotąd
+ * (`enmToCanonicalGpzAdapter.ts`).
  * Pola nN stacji (szyna pola w paśmie nN, `czyPoleNn`) nie są polami bloku SN.
  */
 function buildExplicitStationMiniBays(
@@ -4075,17 +4081,6 @@ function buildExplicitStationMiniBays(
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
       // nieprzezroczysty — pin `enmToSldAdapter.configIdOpaque.test.ts`).
       configId: bay.config_id ?? undefined,
-      // F9.9 (SLD_CAD_SPEC_V3 §17.2): oznaczenie zabezpieczeń z `Bay.protection_codes`/
-      // `protection_ref` — brak kodów = brak oznaczenia.
-      protectionMarking: resolveBayProtectionMarking(bay, snapshot),
-      meteringMeasurementRef: resolveBayMeteringMeasurementRef(bay, snapshot),
-      meteringQuantity: resolveBayMeteringQuantity(bay, snapshot),
-      // F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacja przekładni CT.
-      ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, snapshot),
-      // F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT.
-      vtArrangements: resolveBayVtArrangements(bay, snapshot),
-      // CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2): montaż VT (oś odrębna od układu VT).
-      vtMountingAnnotations: resolveBayVtMountings(bay, snapshot),
     };
   });
 }
@@ -4473,62 +4468,10 @@ export function resolveBayProtectionMarking(
 }
 
 /**
- * F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): projekcja układu VT
- * (`Measurement.vt_arrangement`) WSZYSTKICH pomiarów VT tego pola —
- * `undefined` gdy ŻADEN VT pola nie niesie tej danej (67N degraduje do
- * dotychczasowego uproszczenia F10.5, patrz `protectionTopologyValidation.ts`).
- */
-function resolveBayVtArrangements(
-  bay: Bay,
-  snapshot: EnergyNetworkModel,
-): readonly ('open_delta' | 'star')[] | undefined {
-  const arrangements = new Set<'open_delta' | 'star'>();
-  for (const m of snapshot.measurements ?? []) {
-    if (m.measurement_type === 'VT' && m.bay_ref === bay.ref_id && m.vt_arrangement != null) {
-      arrangements.add(m.vt_arrangement);
-    }
-  }
-  if (arrangements.size === 0) return undefined;
-  return [...arrangements].sort();
-}
-
-/**
- * Projekcja kotwicy miernika (§17.2): `Measurement.purpose==='metering'`
- * powiązany z tym polem przez `bay_ref`. `undefined` gdy brak takiego
- * pomiaru (§17.2 „brak danych = brak oznaczenia").
- */
-function resolveBayMeteringMeasurementRef(
-  bay: Bay,
-  snapshot: EnergyNetworkModel,
-): string | undefined {
-  const measurement = (snapshot.measurements ?? []).find(
-    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
-  );
-  return measurement?.ref_id;
-}
-
-/**
- * Recenzja NO-GO 2026-07-17 pkt 11: mierzona wielkość miernika — z
- * `measurement_type` TEGO SAMEGO pomiaru co `resolveBayMeteringMeasurementRef`
- * (CT⇒„A", VT⇒„V"). Zero domysłu: brak pomiaru ⇒ `undefined`.
- */
-function resolveBayMeteringQuantity(
-  bay: Bay,
-  snapshot: EnergyNetworkModel,
-): 'A' | 'V' | undefined {
-  const measurement = (snapshot.measurements ?? []).find(
-    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
-  );
-  if (!measurement) return undefined;
-  return measurement.measurement_type === 'VT' ? 'V' : 'A';
-}
-
-/**
  * F10.4 (SLD_CAD_SPEC_V3 §18.3, CT opisany — część BEZ-DOMAIN): projekcja
  * adnotacji przekładni CT tego pola — WSZYSTKIE `Measurement{measurement_type:
  * 'CT', bay_ref}` pomiary tego pola, niezależnie od `purpose` (§18.3 dotyczy
- * KAŻDEGO CT toru głównego, nie tylko rozliczeniowego — w przeciwieństwie do
- * `resolveBayMeteringMeasurementRef` wyżej, który filtruje WYŁĄCZNIE
+ * KAŻDEGO CT toru głównego, nie tylko rozliczeniowego — nie tylko pomiaru
  * `purpose==='metering'` dla miernika „M"). Identyfikator = `Measurement.name`
  * (pole engineering-friendly — `ref_id` jest technicznym slugiem, wzorzec
  * §19.2 „numer/nazwa linii" = `.name`, NIE `.ref_id`). Przekładnia = surowe
@@ -4580,7 +4523,7 @@ export function resolveBayCtRatingAnnotations(
  * NARYSOWANEGO stosu (compose) — TA SAMA reguła co `resolveBayCtRatingAnnotations`
  * (identyfikator = `Measurement.name`, kotwica przez `linked_ref`). Domyka
  * konsumenta-render danej `vt_mounting` wprowadzonej w V12K-176. Oś odrębna od
- * `resolveBayVtArrangements` (open_delta/star = 3U0).
+ * układu VT (`Measurement.vt_arrangement`, open_delta/star = 3U0).
  */
 export function resolveBayVtMountings(
   bay: Bay,

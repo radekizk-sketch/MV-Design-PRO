@@ -236,10 +236,10 @@ export function insertUnitMidLateral(
  * wiersza miałby pion przez CAŁY dalszy rysunek — osobny defekt klasy
  * kanałów wielowierszowych (`computeRowChannelPlan` liczony per-wiersz, nie
  * globalnie), poza zakresem tej karty (lokalność PIONOWA, nie routing).
- * Kolejny numer pola tej stacji = max+1 spośród jej WŁASNYCH `field_specs`
+ * Kolejny numer pola tej stacji = max+1 spośród jej WŁASNYCH rekordów pól `bays`
  * (reguła ogólna, zero hardcode indeksu — stacja magistrali ma już pole
  * `LINIA_ODG` dla ISTNIEJĄCEGO odgałęzienia, więc NOWE dostaje kolejny wolny
- * numer, nie nadpisuje go). Kształt nowego pola (field_spec + zacisk
+ * numer, nie nadpisuje go). Kształt nowego pola (rekord `bays` + zacisk
  * techniczny + wyłącznik) NIE jest wymyślony — jest SKOPIOWANY z PIERWSZEGO
  * realnego pola `LINIA_ODG` znalezionego w modelu (jedno źródło prawdy: ten
  * sam kontrakt pola, którym już posługuje się `sldSubstrate52s` dla swoich
@@ -259,17 +259,12 @@ export function appendLateralBranch(
   const hostStationRef: string = (targetRun.branch_origin_station_ref as string).replace(/\/sn_field\/\d+$/, '');
   const hostBus = `${hostStationRef}/sn_bus`;
 
-  const templateHit = (out.substations as any[])
-    .flatMap((s) =>
-      (s.meta?.field_specs ?? []).map((field: any) => ({
-        stationRef: (s.ref_id as string).replace(/\/station$/, ''),
-        field,
-      })),
-    )
-    .find(({ field }) => field.meta?.field_role === 'LINIA_ODG');
-  if (!templateHit) throw new Error('appendLateralBranch: brak pola LINIA_ODG-wzorca w modelu');
-  const templateStationRef: string = templateHit.stationRef;
-  const templateIndex = Number(/(\d+)$/.exec(templateHit.field.field_ref)![1]);
+  const templateField = ((out.bays ?? []) as any[]).find(
+    (field) => field.substation_ref && field.field_role === 'LINIA_ODG',
+  );
+  if (!templateField) throw new Error('appendLateralBranch: brak pola LINIA_ODG-wzorca w modelu');
+  const templateStationRef: string = (templateField.substation_ref as string).replace(/\/station$/, '');
+  const templateIndex = Number(/(\d+)$/.exec(templateField.ref_id)![1]);
   const pad = (n: number): string => String(n).padStart(3, '0');
   const templateTerminalBus = (out.buses as any[]).find(
     (b) => b.ref_id === `${templateStationRef}/sn_field_terminal/${pad(templateIndex)}`,
@@ -282,21 +277,23 @@ export function appendLateralBranch(
   }
 
   const hostSubstation = (out.substations as any[]).find((s) => s.ref_id === `${hostStationRef}/station`);
-  const existingIndices = (hostSubstation.meta.field_specs ?? []).map(
-    (f: any) => Number(/(\d+)$/.exec(f.field_ref)![1]),
-  );
+  const existingIndices = ((out.bays ?? []) as any[])
+    .filter((f) => f.substation_ref === hostSubstation.ref_id && /\/sn_field\/\d+$/.test(f.ref_id))
+    .map((f) => Number(/(\d+)$/.exec(f.ref_id)![1]));
   const newIndex = Math.max(-1, ...existingIndices) + 1;
   const newFieldRef = `${hostStationRef}/sn_field/${pad(newIndex)}`;
   const newTerminalRef = `${hostStationRef}/sn_field_terminal/${pad(newIndex)}`;
   const newBreakerRef = `${hostStationRef}/sn_field_breaker/${pad(newIndex)}`;
 
-  const newFieldSpec = clone(templateHit.field);
-  newFieldSpec.field_ref = newFieldRef;
-  newFieldSpec.bus_ref = hostBus;
-  newFieldSpec.equipment_refs = [newBreakerRef];
-  newFieldSpec.meta.default_device_ref = newBreakerRef;
-  newFieldSpec.meta.terminal_bus_ref = newTerminalRef;
-  hostSubstation.meta.field_specs = [...(hostSubstation.meta.field_specs ?? []), newFieldSpec];
+  const newField = clone(templateField);
+  newField.id = newFieldRef;
+  newField.ref_id = newFieldRef;
+  newField.substation_ref = hostSubstation.ref_id;
+  newField.bus_ref = hostBus;
+  newField.equipment_refs = [newBreakerRef];
+  newField.meta = { ...(newField.meta ?? {}), default_device_ref: newBreakerRef };
+  newField.terminal_bus_ref = newTerminalRef;
+  out.bays = [...(out.bays ?? []), newField];
   hostSubstation.bus_refs = [...(hostSubstation.bus_refs ?? []), newTerminalRef];
 
   const newTerminalBus = clone(templateTerminalBus);

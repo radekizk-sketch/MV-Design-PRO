@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 
 import { buildTechCardSubject } from '../buildTechCardSubject';
 import type {
+  Bay,
   BranchPointSN,
   Branch,
   EnergyNetworkModel,
@@ -21,6 +22,7 @@ import type {
   Substation,
 } from '../../../types/enm';
 import type { SelectedElement } from '../../types';
+import { pole } from '../../../test/pola';
 
 function snapshotWith(overrides: Partial<EnergyNetworkModel>): EnergyNetworkModel {
   return {
@@ -195,31 +197,49 @@ describe('buildTechCardSubject', () => {
   });
 
   /**
-   * Karta S95-START (znalezisko uboczne): stacja zbudowana operacją domenową niesie pola
-   * WYŁĄCZNIE jako `meta.field_specs` (`bays` puste) — karta techniczna liczyła tylko
-   * `bays` i pokazywała zero pól każdej roli. Iloczyn źródeł: {specyfikacje, pola bays}.
+   * Karta S95-START + W5-B: liczność pól wg roli z rekordów `bays` stacji (jedyny nośnik pól).
+   * Iloczyn cech: {rola kanoniczna podana (`field_role`), tylko rola modelu (`bay_role`)} ×
+   * {pole odgałęźne jako FEEDER, jako OUT + LINIA_ODG} × {pola nN stacji obok (nie liczą się
+   * do rozdzielni SN)}.
    */
   it.each([
-    ['specyfikacje pól stacji (meta.field_specs)', 'specy'],
-    ['pola bays (bez specyfikacji)', 'bays'],
-  ])('liczność pól wg roli z %s', (_nazwa, zrodlo) => {
-    const role = ['IN', 'OUT', 'FEEDER', 'TR'];
+    ['rola kanoniczna podana, odgałęzienie FEEDER', true, 'FEEDER' as const],
+    ['tylko rola modelu, odgałęzienie FEEDER', false, 'FEEDER' as const],
+    ['rola kanoniczna podana, odgałęzienie OUT + LINIA_ODG', true, 'OUT' as const],
+  ])('liczność pól wg roli: %s', (_nazwa, zRolaKanoniczna, rolaOdgalezienia) => {
+    const role: { bay_role: Bay['bay_role']; field_role: string }[] = [
+      { bay_role: 'IN', field_role: 'LINIA_IN' },
+      { bay_role: 'OUT', field_role: 'LINIA_OUT' },
+      { bay_role: rolaOdgalezienia, field_role: 'LINIA_ODG' },
+      { bay_role: 'TR', field_role: 'TRANSFORMATOROWE' },
+    ];
     const station = {
       id: 'stn/2',
       ref_id: 'stn/2',
       name: 'Stacja na odcinku',
       station_type: 'mv_lv',
-      bus_refs: ['bus/sn2'],
+      bus_refs: ['bus/sn2', 'bus/nn2'],
       transformer_refs: [],
-      meta: zrodlo === 'specy'
-        ? { field_specs: role.map((rola, i) => ({ field_ref: `stn/2/sn_field/00${i}`, bay_role: rola, bus_ref: 'bus/sn2' })) }
-        : {},
+      meta: {},
     } as unknown as Substation;
     const snapshot = snapshotWith({
       substations: [station],
-      bays: zrodlo === 'bays'
-        ? role.map((rola, i) => ({ id: `bay/${i}`, ref_id: `bay/${i}`, bay_role: rola, substation_ref: 'stn/2', bus_ref: 'bus/sn2', equipment_refs: [] }) as never)
-        : [],
+      buses: [
+        { id: 'bus/sn2', ref_id: 'bus/sn2', name: 'SN', tags: [], meta: {}, voltage_kv: 15 },
+        { id: 'bus/nn2', ref_id: 'bus/nn2', name: 'nN', tags: [], meta: {}, voltage_kv: 0.4 },
+      ] as never,
+      bays: [
+        ...role.map((r, i) => pole({
+          ref_id: `stn/2/sn_field/00${i}`,
+          bay_role: r.bay_role,
+          field_role: zRolaKanoniczna || r.bay_role === 'OUT' && r.field_role === 'LINIA_ODG' ? r.field_role : null,
+          substation_ref: 'stn/2',
+          bus_ref: 'bus/sn2',
+        })),
+        // Pola nN tej stacji — nie są polami rozdzielni SN.
+        pole({ ref_id: 'stn/2/nn_field/000', bay_role: 'IN', substation_ref: 'stn/2', bus_ref: 'bus/nn2' }),
+        pole({ ref_id: 'stn/2/nn_field/001', bay_role: 'FEEDER', substation_ref: 'stn/2', bus_ref: 'bus/nn2' }),
+      ],
     });
     const fields = buildTechCardSubject(snapshot, selected(station.ref_id, 'Station'))!.sections.flatMap((s) => s.fields);
     expect(fields.find((field) => field.key === 'pole_we')?.value).toBe(1);

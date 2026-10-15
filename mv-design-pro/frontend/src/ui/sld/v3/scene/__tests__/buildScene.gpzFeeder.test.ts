@@ -121,14 +121,13 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     // scena nie ma prawa dorysować feederu z pola magistrali.
     const sabotaged = JSON.parse(JSON.stringify(feederEnm)) as typeof feederEnm & {
       corridors?: Array<{ meta?: Record<string, unknown> }>;
-      substations?: Array<{ ref_id?: string; meta?: { field_specs?: Array<{ field_ref?: string }> } }>;
     };
     for (const corridor of sabotaged.corridors ?? []) {
       if (corridor.meta) delete corridor.meta['gpz_field_ref'];
     }
     const gpz = (sabotaged.substations ?? []).find((s) => String(s.ref_id).startsWith('gpz/'))!;
-    gpz.meta!.field_specs = (gpz.meta!.field_specs ?? []).filter(
-      (f) => !String(f.field_ref).endsWith('/002'),
+    sabotaged.bays = (sabotaged.bays ?? []).filter(
+      (f) => !(f.substation_ref === gpz.ref_id && String(f.ref_id).endsWith('/002')),
     );
     const scene = buildSceneV3(sabotaged, 2);
     const feederRef = allCorridorSegmentRefs(feederEnm).find((r) => r.includes('branch_segment'))!;

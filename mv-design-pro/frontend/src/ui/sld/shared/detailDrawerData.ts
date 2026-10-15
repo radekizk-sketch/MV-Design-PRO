@@ -1026,7 +1026,7 @@ export function buildStationBranchDetailDrawerData(
   }
   if (drawerKind === 'apparatus' && poleTrafione) {
     // Nazwa pola z modelu; bez nazwy — uczciwy brak, nie surowy identyfikator pola.
-    parentBayLabel = poleTrafione.name;
+    parentBayLabel = poleTrafione.name?.trim() || null;
   }
 
   // Recenzja NO-GO 2026-07-17 pkt 9 (spec §12.5): identyfikator GLOBALNY

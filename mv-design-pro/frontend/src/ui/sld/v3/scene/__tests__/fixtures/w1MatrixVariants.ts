@@ -20,7 +20,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../../types/enm';
+import type { Bay, BayPrimaryDevice, EnergyNetworkModel } from '../../../../../../types/enm';
+import { polaSnStacji } from '../../../../../shared/polaStacji';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASE_FIXTURE = resolve(
@@ -226,19 +227,9 @@ export interface W1MatrixFixture {
   readonly targets: readonly W1InjectionTarget[];
 }
 
-interface RawFieldSpec {
-  field_ref?: string;
-  bay_role?: string;
-  meta?: { field_role?: string } & Record<string, unknown>;
-  primary_devices?: unknown;
-  protection_codes?: unknown;
-  [key: string]: unknown;
-}
-
 interface RawSubstation {
   ref_id: string;
   station_type?: string;
-  meta?: { field_specs?: RawFieldSpec[] } & Record<string, unknown>;
 }
 
 function loadBaseEnm(): EnergyNetworkModel {
@@ -264,24 +255,23 @@ export function buildW1MatrixFixture(): W1MatrixFixture {
   const usedStations = new Set<string>();
   const targets: W1InjectionTarget[] = [];
 
+  // Karta W5-B: pola stacji = rekordy `bays` (pola SN stacji, rola kanoniczna `field_role`).
+  const polaSn = (stationRef: string): Bay[] => [...polaSnStacji(enm, stationRef)];
   for (const variant of W1_VARIANTS) {
     const station = fieldStations.find((s) => {
       if (usedStations.has(s.ref_id)) return false;
-      const specs = s.meta?.field_specs ?? [];
-      return specs.some((spec) => (spec.meta?.field_role ?? spec.bay_role) === variant.targetRole);
+      return polaSn(s.ref_id).some((bay) => (bay.field_role ?? bay.bay_role) === variant.targetRole);
     });
     if (!station) {
       throw new Error(`W1 fixture: brak wolnej stacji z polem roli ${variant.targetRole}`);
     }
     usedStations.add(station.ref_id);
-    const spec = (station.meta?.field_specs ?? []).find(
-      (s) => (s.meta?.field_role ?? s.bay_role) === variant.targetRole,
-    )!;
-    spec.primary_devices = variant.devices.map((d) => ({ ...d }));
+    const bay = polaSn(station.ref_id).find((b) => (b.field_role ?? b.bay_role) === variant.targetRole)!;
+    bay.primary_devices = variant.devices.map((d) => ({ ...d })) as Bay['primary_devices'];
     if (variant.protectionCodes) {
-      spec.protection_codes = [...variant.protectionCodes];
+      bay.protection_codes = [...variant.protectionCodes];
     }
-    targets.push({ variant, stationRef: station.ref_id, fieldRef: spec.field_ref ?? '' });
+    targets.push({ variant, stationRef: station.ref_id, fieldRef: bay.ref_id });
   }
 
   return { enm, baseEnm, targets };

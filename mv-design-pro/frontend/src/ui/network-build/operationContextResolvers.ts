@@ -785,11 +785,15 @@ export function resolveBranchStartOperationContext(
     networkContext.busRef,
   ) ?? '';
   const display = resolveBranchSourceContext(snapshot, fromRef);
+  // Element jest POLEM (rekord `bays`), które nie jest punktem startu odgałęzienia (zajęte,
+  // bez zacisku, rola inna niż odgałęźna): szyna pola NIE jest zastępczym punktem startu —
+  // odcinek z pola przyłącza się w zacisku pola (POLA-W-TORZE), nie na szynie rozdzielnicy.
+  const poleBezStartu = !fromRef && findBay(snapshot, elementId) !== null;
 
   return {
     ...display,
     stationRef: networkContext.stationRef,
-    busRef: networkContext.busRef,
+    busRef: poleBezStartu ? null : networkContext.busRef,
   };
 }
 
