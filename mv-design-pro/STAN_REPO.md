@@ -187,7 +187,7 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
 | **NOT STARTED (szkic §0 z O-57)** | DYNAMIKA-W-TLE, KATALOG-DYNAMIKI-BRAKI, AB-1c, O-52, CICHE-ZERO (szkice na końcu `KARTY_OTWARTE_2026-09.md`) |
-| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-B, W5-C, W5-E, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
+| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-C, W5-E, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
 
 ### C. Rejestr niedokończonych kart
 
@@ -220,7 +220,8 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | O-52 | P2 | szkic §0 | ODMOWA-DANYCH-422 (typ odmowy) | łagodne rzutowanie pydantic na granicach danych; strażnik AST `strict=True` |
 | AB-1c | P1 (ścieżka krytyczna A/B) | szkic §0 | AB-1b.2, AB-1d_min, KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE; odpowiedź właściciela o delegację B-01 dla kasacji `frt_hvrt` | profil wzorcowy testowy do odbioru logiki (O-57 pkt 10) |
 | AB-H1 | P1 (tor równoległy) | bez karty (plan §5, §11) | AB-H0 ✓, AB-1a ✓ | nowe pakiety `solvers/harmoniczne/`, `core/stemplowanie_galezi.py`; zakaz `dynamika/**` i `v126_academic.py` |
-| W5-B → W5-C ∥ W5-E → W5-T → SZABLONY-NN | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-A ✓, W5-D ✓ | W5-B: `LEGACY_FIELD_COLLECTIONS`/`field_specs` → typowany `Bay`; W5-E bez solvera do OD-25 |
+| W5-B | P1 (korzeń ścieżki krytycznej W5) | domknięta przez wykonawcę (gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-w5b-typowany-bay`), odbiór integratora | W5-A ✓, W5-D ✓ | `meta.field_specs`/`nn_field_specs`/`switchgear_field_specs` → typowany `Bay` (`enm/pola.py`), migracja przy wczytaniu, strażnik wskrzeszenia w CI; meldunek `MELDUNEK_W5B.md`; werdykt B-02: zrzuty `docs/audit/visual/w5b/` |
+| W5-C ∥ W5-E → W5-T → SZABLONY-NN | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-B (odbiór) | W5-E bez solvera do OD-25; W4-2 odblokowane po odbiorze W5-B |
 | CV-6 G01 (W8), W4-2, W6-K, W6-8, W7, W9–W12, AB-6b | wg części D | nierozpoczęte | część D | |
 
 ### D. Graf zależności i ścieżka krytyczna (plan §5 i §11 po O-57)
