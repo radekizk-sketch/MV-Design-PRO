@@ -816,20 +816,54 @@ def test_szyna_raportowa_zacisku_pola_to_szyna_pola_tylko_przy_zamknietym_aparac
     assert szyna_raportowa(enm, szyna) == szyna
 
 
-def test_miejsce_urzadzenia_na_odcinku_do_stacji_ma_szyne_zwarcia_stacji() -> None:
-    """Koordynacja: zabezpieczenie przy zacisku `do` połówki dochodzącej do stacji — prąd
-    zwarciowy miejsca to prąd szyny stacji (zacisk pola za zamkniętym aparatem)."""
-    from application.protection_settings.zacisk_zabezpieczenia import (
-        opis_miejsca_urzadzenia,
-        szyny_zwarcia_lokalizacji,
+@pytest.mark.parametrize("rola", ["IN", "OUT"])
+def test_ocena_nadpradowa_ma_punkt_na_zacisku_pola_z_wierszem_szyny_stacji(rola: str) -> None:
+    """Ocena nadprądowa (jedna ścieżka ``ocena_nadpradowa``): zabezpieczenie przy wyłączniku
+    pola — zwarcie na ZACISKU pola za wyłącznikiem (głowica odcinka) jest punktem oceny, a jego
+    Ik'' i rozpływ pochodzą z wiersza SZYNY STACJI (zacisk za zamkniętym aparatem, ten sam
+    węzeł elektryczny — ``szyna_raportowa``). Pole WE: strefa leży w stronę GPZ tylko wtedy,
+    gdy zasilanie jest z drugiej strony — tu zasilanie jest od GPZ, więc strona zasilania
+    wyłącznika pola WE to zacisk, a strefą jest szyna stacji (punkt zacisku nie powstaje)."""
+    from application.analyses.protection.ocena_nadpradowa import (
+        punkty_zwarcia_strefy,
+        strefa_urzadzenia,
     )
+    from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
+    from enm.tor_pola import ZNACZNIK_SZYNY_POMOCNICZEJ
 
     enm = _wciecie("B", ["IN", "OUT"])
-    szyna = _stacja(enm, "Stacja Lipowa")["bus_refs"][0]
-    lewa = next(b["ref_id"] for b in enm["branches"] if b["ref_id"].endswith("segment_L"))
-    opis = opis_miejsca_urzadzenia(enm, lewa, "do")
-    assert opis["szyna_zwarcia_ref"] == szyna
-    assert szyny_zwarcia_lokalizacji(enm, [(lewa, "do")]) == ({lewa: szyna}, {})
+    stacja = _stacja(enm, "Stacja Lipowa")
+    pole = _pole_sn(stacja, rola)
+    aparat = _aparat_pola(enm, pole)
+    assert aparat["type"] == "breaker"  # aparat pola z katalogu `APARAT` (wyłącznik VD4)
+    zacisk = zacisk_pola(pole)
+    szyna = stacja["bus_refs"][0]
+    model = EnergyNetworkModel.model_validate(enm)
+    graf = map_enm_to_network_graph(model)
+    strefa, braki, _ = strefa_urzadzenia(
+        graf, ref_to_graph_id(aparat["ref_id"]), nazwa_aparatu="aparat pola"
+    )
+    assert braki == [] and strefa is not None
+    # Wiersze biegu SC: każda szyna poza pomocniczymi (reguła celu zwarcia `enm/assembler.py`).
+    wyniku = frozenset(
+        ref_to_graph_id(b["ref_id"])
+        for b in enm["buses"]
+        if ZNACZNIK_SZYNY_POMOCNICZEJ not in (b.get("tags") or [])
+    )
+    punkty, _inne = punkty_zwarcia_strefy(
+        enm=model, graph=graf, strefa=strefa, punkty_wyniku=wyniku
+    )
+    na_zacisku = [p for p in punkty if p.punkt_ref == ref_to_graph_id(zacisk)]
+    if rola == "OUT":
+        assert [p.punkt_wyniku_ref for p in na_zacisku] == [ref_to_graph_id(szyna)]
+        assert ref_to_graph_id(szyna) not in strefa.wezly
+    else:
+        assert na_zacisku == []
+        assert ref_to_graph_id(szyna) in {p.punkt_ref for p in punkty}
+    # Żaden punkt nie jest szyną pomocniczą raportowaną pod szyną TEJ SAMEJ strefy.
+    assert all(
+        p.punkt_ref == p.punkt_wyniku_ref or p.punkt_wyniku_ref not in strefa.wezly for p in punkty
+    )
 
 
 @pytest.mark.parametrize(

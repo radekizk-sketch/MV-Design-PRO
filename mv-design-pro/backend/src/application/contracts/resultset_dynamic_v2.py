@@ -83,8 +83,9 @@ def dziedzina_fizyki_dynamiki() -> tuple[DziedzinaFizyki, ...]:
     return dziedziny
 
 
-PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn", "obserwabla"]
+PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn", "obserwabla", "odbior"]
 """Przestrzeń kanału (W6-A): `siec` i `urzadzenie` to zmienne algebraiczne i stany,
+`odbior` to stan modelu odbioru (kąt estymatora częstotliwości widzianej przez odbiór),
 `obserwabla` to wielkość WYPROWADZONA z obu jawnym wzorem (częstotliwość węzła,
 wielkości zacisków gałęzi). Rozdział jest semantyczny — serializacja jest wspólna,
 ale znaczenie kanału nie może się zgubić w jednym słowniku."""
@@ -283,6 +284,32 @@ class StopienDowodowyV2(BaseModel):
         return cls(**ewidencja.to_dict())
 
 
+class WielkoscZalozeniaV2(BaseModel):
+    """Wielkość liczbowa założenia rdzenia z jednostką (np. chwila usunięcia zwarcia)."""
+
+    nazwa: str = Field(min_length=1)
+    wartosc: float
+    jednostka: str = Field(min_length=1)
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+
+class ZalozenieRdzeniaV2(BaseModel):
+    """Założenie modelu rdzenia jako REKORD: kod, odwołania do elementów, wielkości, pozycje.
+
+    Rdzeń nie zna nazw elementów modelu sieci, więc nie pisze zdań. Zdanie po polsku z
+    nazwami z modelu składa warstwa aplikacji (`application.dynamika.zalozenia`) i wkłada
+    je do pola `zalozenia` wyniku; rekord zostaje obok jako dana maszynowa.
+    """
+
+    kod: str = Field(min_length=1)
+    elementy: tuple[str, ...]
+    wielkosci: tuple[WielkoscZalozeniaV2, ...]
+    pozycje: tuple[str, ...]
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+
 class ResultSetDynamicV2(BaseModel):
     """Kanoniczny wynik czasowy — kontener najwyzszego poziomu (SS0 p.6).
 
@@ -318,7 +345,14 @@ class ResultSetDynamicV2(BaseModel):
     tozsamosc: TozsamoscBieguDynamicznegoV2
     metryki: tuple[MetrykaDynamicznaV2, ...] = ()
     stopien_dowodowy: tuple[StopienDowodowyV2, ...] = ()
-    zalozenia: tuple[str, ...] = ()
+    zalozenia: tuple[str, ...] = Field(
+        default=(),
+        description=(
+            "Założenia modelu po polsku, z nazwami elementów z modelu sieci — złożone przez "
+            "warstwę aplikacji z rekordów `zalozenia_rdzenia` oraz z założeń wejścia."
+        ),
+    )
+    zalozenia_rdzenia: tuple[ZalozenieRdzeniaV2, ...] = ()
 
     model_config = {"frozen": True, "extra": "forbid"}
 
@@ -377,6 +411,8 @@ __all__ = [
     "WlasnosciBieguV2",
     "StronaProbki",
     "TrybScenariusza",
+    "WielkoscZalozeniaV2",
+    "ZalozenieRdzeniaV2",
     "ZdarzenieWykonaneV2",
     "dziedzina_fizyki_dynamiki",
     "zbuduj_resultset_dynamiczny_v2",

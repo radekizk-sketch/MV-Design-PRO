@@ -7,6 +7,7 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
+import { rodzajStacji, type RodzajStacji } from '../shared/rodzajStacji';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -53,6 +54,11 @@ import {
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../shared/szynyStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+} from '../shared/transformatoryStacji';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -641,7 +647,9 @@ export interface RingCandidate {
 export interface StationSummary {
   id: string;
   name: string;
-  stationType: string;
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`); `null` — rodzaj
+   *  nie dotyczy (rozdzielnica nN). */
+  rodzaj: RodzajStacji | null;
   trunkRef: string | null;
   hasTransformer: boolean;
   hasNnPart: boolean;
@@ -996,6 +1004,8 @@ export function selectStationSummaries(
   blockerCountsByElement: Map<string, number> | null,
 ): StationSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.substations ?? [])
     .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
@@ -1004,7 +1014,7 @@ export function selectStationSummaries(
       const branchBays = stationBays.filter(
         (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER' || b.bay_role === 'OZE',
       );
-      const hasTransformer = s.transformer_refs.length > 0;
+      const hasTransformer = selectStationDistributionTransformers(snapshot, s, kontekstTransformatorow).length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
         (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
@@ -1014,7 +1024,7 @@ export function selectStationSummaries(
       return {
         id: s.id,
         name: identity.displayName,
-        stationType: s.station_type,
+        rodzaj: rodzajStacji(snapshot, s.ref_id)?.rodzaj ?? null,
         trunkRef: null,
         hasTransformer,
         hasNnPart: nnBuses.length > 0,
@@ -1028,12 +1038,14 @@ export function selectTransformerSummaries(
   snapshot: EnergyNetworkModel | null,
 ): TransformerSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po transformatorach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.transformers ?? [])
     .map((t) => {
-      const station = (snapshot.substations ?? []).find((s) =>
-        s.transformer_refs.includes(t.ref_id),
-      );
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      const stationRef = stationRefOfTransformer(snapshot, t.ref_id, kontekstTransformatorow);
+      const station = (snapshot.substations ?? []).find((s) => s.ref_id === stationRef);
 
       return {
         id: t.ref_id,

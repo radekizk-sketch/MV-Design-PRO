@@ -460,7 +460,7 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   zakladkaRanking: 'Ranking problemów',
 
   // Kolumny — zmiany stanu (ProtectionComparisonRow)
-  kolElementChroniony: 'Element chroniony',
+  kolUrzadzenie: 'Zabezpieczenie',
   kolPunktZwarcia: 'Punkt zwarcia',
   kolStanA: 'Stan A',
   kolStanB: 'Stan B',
@@ -470,8 +470,10 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   kolPradA: 'Prąd zwarciowy A',
   kolPradB: 'Prąd zwarciowy B',
   kolPradD: 'Δ prądu zwarciowego',
-  kolMarginesA: 'Margines A',
-  kolMarginesB: 'Margines B',
+  kolMarginesA: 'Zapas czułości A',
+  kolMarginesB: 'Zapas czułości B',
+  kolWiarygodnoscA: 'Wiarygodność A',
+  kolWiarygodnoscB: 'Wiarygodność B',
   kolZmianaStanu: 'Zmiana',
 
   // Kolumny — ranking (rozszerzenie o punkt zwarcia — problem zabezpieczeń
@@ -502,8 +504,6 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   sladWejscia: 'Wejścia',
   sladWyjscia: 'Wyjścia',
   sladBrakPol: 'brak pól',
-  sladOdciskBibliotekiA: 'Odcisk biblioteki zabezpieczeń biegu A',
-  sladOdciskBibliotekiB: 'Odcisk biblioteki zabezpieczeń biegu B',
   sladUtworzono: 'Data utworzenia śladu',
   sladKrok: 'Kod kroku śladu',
 
@@ -534,7 +534,7 @@ export const ETYKIETY_POL_SLADU_ZABEZPIECZEN: Readonly<
   no_trip_to_trip_count: 'Nowe zadziałanie',
   invalid_change_count: 'Zmiana nieoceniona (stan nieprawidłowy)',
   delay_threshold_s: 'Próg istotnej zmiany czasu zadziałania [s]',
-  margin_threshold_percent: 'Próg istotnej zmiany marginesu [%]',
+  margin_threshold_relative: 'Próg istotnej względnej zmiany krotności prądu przekaźnika (ułamek)',
   total_issues: 'Problemy łącznie',
   critical_issues: 'Problemy krytyczne',
   major_issues: 'Problemy poważne',
@@ -545,17 +545,16 @@ export const ETYKIETY_POL_SLADU_ZABEZPIECZEN: Readonly<
 
 /**
  * Stan zadziałania zabezpieczenia po polsku (backend: `trip_state_a/b` w
- * `ProtectionComparisonRow` — `TRIPS`/`NO_TRIP`/`INVALID`/`MISSING`, patrz
- * `domain/protection_comparison.py`). Token spoza słownika → uczciwe zdanie
- * (karta #145: kod nigdy surowo na ekranie).
+ * `ProtectionComparisonRow` — `TripState` oceny (`TRIPS`/`NO_TRIP`) albo `MISSING`, gdy
+ * urządzenie nie ma oceny w punkcie w jednym z biegów; `application/protection_comparison/
+ * service.py`). Token spoza słownika → uczciwe zdanie (karta #145: kod nigdy surowo).
  */
 /** Stany zadziałania zabezpieczenia w wierszu porównania (`trip_state_a/b`). */
-export type StanZadzialania = 'TRIPS' | 'NO_TRIP' | 'INVALID' | 'MISSING';
+export type StanZadzialania = 'TRIPS' | 'NO_TRIP' | 'MISSING';
 
 export const STAN_ZADZIALANIA_PL: Readonly<Record<StanZadzialania, string>> = {
   TRIPS: 'Zadziałanie',
   NO_TRIP: 'Brak zadziałania',
-  INVALID: 'Nieprawidłowy',
   MISSING: 'Brak oceny',
 };
 
@@ -595,11 +594,11 @@ export function fmtDeltaPradZwarciowy(n: number): string {
 }
 
 /**
- * Margines selektywności [%] — 2 miejsca po przecinku. BEZ wariantu delty:
- * `ProtectionComparisonRow` nie niesie pola `delta_margin_percent` (backend
- * liczy `MARGIN_DECREASED`/`MARGIN_INCREASED` wyłącznie do rankingu, nie
- * publikuje różnicy na wierszu) — prezentacja pokazuje A i B osobno, zero
- * odejmowania w UI (KD-1/KD-3/L-13: delty WYŁĄCZNIE z pola backendu).
+ * Zapas czułości [%] (prąd przekaźnika względem progu stopnia decydującego) — 2 miejsca po
+ * przecinku. BEZ wariantu różnicy: `ProtectionComparisonRow` nie niesie różnicy zapasu
+ * (backend liczy `MARGIN_DECREASED`/`MARGIN_INCREASED` wyłącznie do rankingu, nie publikuje
+ * różnicy na wierszu) — prezentacja pokazuje A i B osobno, zero odejmowania w UI
+ * (KD-1/KD-3/L-13: różnice WYŁĄCZNIE z pola backendu).
  */
 export function fmtMarginesProcent(n: number): string {
   return fmtLiczba(n, 2);

@@ -4,13 +4,22 @@ Tests for PR-18: Short-Circuit Solver Integration (Engine Binding)
 Test categories:
 1. Determinism — identical inputs produce identical hashes and signatures
 3. Contract shape — ResultSet v1 structure invariants
-5. Binding adapter — `execute_short_circuit` unit tests
 6. Result mapper — `map_short_circuit_to_resultset_v1` unit tests
 
 INVARIANTS UNDER TEST:
 - ZERO randomness: same graph + same config → same hash + same signature
 - ResultSet v1 contains expected keys and sorted elements
-- SC_3F, SC_1F, SC_2F all produce results via `execute_short_circuit`
+
+Karta TORY-TYLKO-W-TESTACH (2026-09-30): kategoria 5 (testy adaptera
+`execute_short_circuit`) skasowana razem z adapterem — tor bez konsumenta w produkcie.
+Fizyka, której dowodziła, jest dowodzona na biegu kanonicznym zwarć:
+3F/2F z dodatnimi prądami, Z0 wymagane dla 1F (jawna odmowa) —
+`tests/enm/test_short_circuit_migracja_e3_golden.py`; scenariusz MIN z c per pasmo
+i niższym Ik'', noty korekty R_θ, nieznany scenariusz i nieznany węzeł zwarcia jako
+jawna odmowa — `tests/enm/test_canonical_sc_c_per_pasmo.py`. Kategoria 6 (zamrożony
+mapper, decyzja właściciela B-01 w karcie CV-3.3-A2) dostaje wejście z
+`tests/utils/wynik_wiazania_zwarcia.py` — z tych samych ogniw, z których bieg
+kanoniczny składa wejście zwarciowe.
 
 Karta CV-3.3-A (2026-09-05): kategorie 2 (Gating) i 4 (Golden fixtures, przez
 `ExecutionEngineService.execute_run_sc`) skasowane razem z E3
@@ -35,22 +44,18 @@ from application.result_mapping.sc_binding_meta import (
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
-from application.solvers.short_circuit_binding import (
-    ShortCircuitBindingError,
-    ShortCircuitBindingResult,
-    execute_short_circuit,
-)
 from domain.execution import (
     ExecutionAnalysisType,
     ResultSet,
     compute_result_signature,
     compute_solver_input_hash,
 )
-from domain.study_case import StudyCaseConfig
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
+
+from tests.utils.wynik_wiazania_zwarcia import wynik_wiazania_zwarcia_3f
 
 # =============================================================================
 # Fixtures: Golden network (production-grade MV network)
@@ -189,16 +194,6 @@ def _create_golden_graph() -> NetworkGraph:
     return graph
 
 
-def _golden_config() -> StudyCaseConfig:
-    """Standard study case config for golden tests."""
-    return StudyCaseConfig(
-        c_factor_max=1.10,
-        c_factor_min=0.95,
-        thermal_time_seconds=1.0,
-        include_inverter_contribution=True,
-    )
-
-
 def _sample_solver_input() -> dict:
     """Realistic solver input dict for hash tests."""
     return {
@@ -274,167 +269,6 @@ class TestContractShape:
 
 
 # =============================================================================
-# 5. BINDING ADAPTER UNIT TESTS
-# =============================================================================
-
-
-class TestShortCircuitBinding:
-    """Unit tests for the short-circuit binding adapter."""
-
-    def test_binding_sc3f_returns_result(self):
-        """execute_short_circuit for SC_3F returns a valid result."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
-
-        assert isinstance(result, ShortCircuitBindingResult)
-        assert result.analysis_type == ExecutionAnalysisType.SC_3F
-        assert result.fault_node_id == "BUS_MV"
-        assert result.solver_result.ikss_a > 0
-
-    def test_binding_sc2f_returns_result(self):
-        """execute_short_circuit for SC_2F returns a valid result."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_2F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
-
-        assert isinstance(result, ShortCircuitBindingResult)
-        assert result.analysis_type == ExecutionAnalysisType.SC_2F
-        assert result.solver_result.ikss_a > 0
-
-    def test_binding_sc1f_requires_z0(self):
-        """execute_short_circuit for SC_1F without Z0 raises."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        with pytest.raises(ShortCircuitBindingError, match="Z₀"):
-            execute_short_circuit(
-                graph=graph,
-                analysis_type=ExecutionAnalysisType.SC_1F,
-                config=config,
-                fault_node_id="BUS_MV",
-            )
-
-    def test_binding_unsupported_type_raises(self):
-        """execute_short_circuit for LOAD_FLOW raises."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        with pytest.raises(ShortCircuitBindingError, match="Nieobsługiwany"):
-            execute_short_circuit(
-                graph=graph,
-                analysis_type=ExecutionAnalysisType.LOAD_FLOW,
-                config=config,
-                fault_node_id="BUS_MV",
-            )
-
-    def test_binding_invalid_fault_node_raises(self):
-        """execute_short_circuit with invalid fault node raises."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        with pytest.raises(ShortCircuitBindingError, match="Fault node"):
-            execute_short_circuit(
-                graph=graph,
-                analysis_type=ExecutionAnalysisType.SC_3F,
-                config=config,
-                fault_node_id="NONEXISTENT",
-            )
-
-    # -------------------------------------------------------------------
-    # Karta P0.3 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md): scenario MAX/MIN +
-    # per-node c. This golden graph is entirely SN (20/110 kV, no nN
-    # branches with a known theta_k), so it exercises the "no correction"
-    # White Box path deterministically — the MV+LV physics (per-band c,
-    # R_theta correction) has its own dedicated golden fixture:
-    # tests/network_model/solvers/test_sc_lv_min_max.py.
-    # -------------------------------------------------------------------
-
-    def test_binding_defaults_to_max_scenario(self):
-        """execute_short_circuit with no scenario kwarg behaves exactly as
-        before this karta (scenario="MAX", no behavior change)."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
-
-        assert result.scenario == "MAX"
-        assert result.temperature_correction_notes == ()
-
-    def test_binding_min_scenario_produces_lower_ikss(self):
-        """MIN scenario on a 20 kV bus uses c=1.00 (< MAX c=1.10) -> lower Ik''."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        result_max = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-            scenario="MAX",
-        )
-        result_min = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-            scenario="MIN",
-        )
-
-        assert result_min.solver_result.ikss_a < result_max.solver_result.ikss_a
-        assert result_max.solver_result.c_factor == pytest.approx(1.10)
-        assert result_min.solver_result.c_factor == pytest.approx(1.00)
-
-    def test_binding_min_scenario_notes_uncorrected_branches(self):
-        """C1/REF have no short_circuit_temperature_c -> explicit 'no
-        correction' White Box notes, never a silently fabricated theta_k."""
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-            scenario="MIN",
-        )
-
-        notes = {n["branch_id"]: n for n in result.temperature_correction_notes}
-        assert notes["C1"]["corrected"] is False
-        assert notes["C1"]["theta_k_c"] is None
-
-    def test_binding_unknown_scenario_raises(self):
-        graph = _create_golden_graph()
-        config = _golden_config()
-
-        with pytest.raises(ShortCircuitBindingError, match="MAX/MIN"):
-            execute_short_circuit(
-                graph=graph,
-                analysis_type=ExecutionAnalysisType.SC_3F,
-                config=config,
-                fault_node_id="BUS_MV",
-                scenario="NOMINAL",  # type: ignore[arg-type]
-            )
-
-
-# =============================================================================
 # 6. RESULT MAPPER UNIT TESTS
 # =============================================================================
 
@@ -445,15 +279,9 @@ class TestResultMapper:
     def test_mapper_produces_resultset(self):
         """Mapper transforms binding result to ResultSet."""
         graph = _create_golden_graph()
-        config = _golden_config()
         run_id = uuid4()
 
-        binding_result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
+        binding_result = wynik_wiazania_zwarcia_3f(graph, "BUS_MV")
 
         rs = map_short_circuit_to_resultset_v1(
             binding_result=binding_result,
@@ -472,32 +300,18 @@ class TestResultMapper:
     def test_mapper_global_results_complete(self):
         """Mapper produces complete global results."""
         graph = _create_golden_graph()
-        config = _golden_config()
         run_id = uuid4()
 
-        binding_result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
+        binding_result = wynik_wiazania_zwarcia_3f(graph, "BUS_MV")
 
         # Klucze P0.3 dokłada wrapper POZA zamrożonym mapperem — test ćwiczy
         # ten sam wzorzec kompozycji, jaki stosował dawny E3
         # (`application.execution_engine`, skasowany kartą CV-3.3-A, 2026-09-05).
-        # ZNALEZISKO (poza tą kartą): `map_short_circuit_to_resultset_v1` i
-        # `wzbogac_resultset_o_meta_bindingu` nie mają dziś ŻADNEGO konsumenta
-        # produkcyjnego (tylko ten test) — E3 był ich jedynym wołającym w `src/`.
-        # Część niegdysiejszego klastra już skasowana: `load_flow_to_resultset_v1.py`
-        # nie istnieje pod tą nazwą, `protection_to_overlay_v1.py` skasowany kartą
-        # CV-3.3-A2 (2026-09-05). `protection_to_resultset_v1.py` (razem z
-        # `domain/protection_engine_v1.py`) ZOSTAJE — B-01 STOP karty W3-A
-        # (2026-09): oba chronione jawnie (`resultset_v1_schema_guard.py`
-        # PROTECTED_FILES, `solver_boundary_guard.py` WATCHED_PATHS), kasacja
-        # wymaga sankcji właściciela, nie zmierzenia „zero importera". Pozostaje
-        # `sc_binding_meta.py` + ten plik (`short_circuit_to_resultset_v1.py`) —
-        # nadal osobna karta kasacji, jeśli architekt zdecyduje (`_build_element_
-        # results`/`_build_global_results` wciąż mają JEDYNEGO wołającego — ten test).
+        # `map_short_circuit_to_resultset_v1` i `wzbogac_resultset_o_meta_bindingu`
+        # nie mają konsumenta produkcyjnego (tylko ten test); zostają zamrożone
+        # decyzją właściciela (B-01, CV-3.3-A2, `resultset_v1_schema_guard.py`) —
+        # kasacja wymaga jego sankcji, nie zmierzenia „zero importera" (pozycja
+        # zatrzymana także w karcie TORY-TYLKO-W-TESTACH, 2026-09-30).
         rs = wzbogac_resultset_o_meta_bindingu(
             map_short_circuit_to_resultset_v1(
                 binding_result=binding_result,
@@ -533,16 +347,9 @@ class TestResultMapper:
 
     def test_mapper_global_results_min_scenario_carries_temperature_notes(self):
         graph = _create_golden_graph()
-        config = _golden_config()
         run_id = uuid4()
 
-        binding_result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-            scenario="MIN",
-        )
+        binding_result = wynik_wiazania_zwarcia_3f(graph, "BUS_MV", scenario="MIN")
 
         rs = wzbogac_resultset_o_meta_bindingu(
             map_short_circuit_to_resultset_v1(
@@ -564,15 +371,9 @@ class TestResultMapper:
     def test_mapper_deterministic(self):
         """Same binding result → same ResultSet signature."""
         graph = _create_golden_graph()
-        config = _golden_config()
         run_id = uuid4()
 
-        binding_result = execute_short_circuit(
-            graph=graph,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            config=config,
-            fault_node_id="BUS_MV",
-        )
+        binding_result = wynik_wiazania_zwarcia_3f(graph, "BUS_MV")
 
         rs1 = map_short_circuit_to_resultset_v1(
             binding_result=binding_result,

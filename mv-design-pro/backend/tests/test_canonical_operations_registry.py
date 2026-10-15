@@ -62,12 +62,19 @@ class TestCanonicalOperationsRegistry:
             "add_ct",
             "add_vt",
             "add_relay",
-            "update_relay_settings",
-            "link_relay_to_field",
-            "validate_selectivity",
+            "update_protection_settings",
         }
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
+
+    def test_zaslepki_zabezpieczen_skasowane(self):
+        """Karta BIEG-ZABEZPIECZEN-Z-MODELU: zaślepki z odmową (`update_relay_settings`,
+        `link_relay_to_field` — `relay.legacy_write_disabled`) i zepsuta
+        `validate_selectivity` (pary z kolejności listy, prąd 10×nastawa) skasowane razem
+        z rejestracją; pisarzem nastaw jest `update_protection_settings`."""
+        for op in ("update_relay_settings", "link_relay_to_field", "validate_selectivity"):
+            assert op not in CANONICAL_OP_NAMES
+            assert not is_canonical_operation(op)
 
     def test_calculate_tcc_curve_removed_w3a(self):
         """W3-A: zaslepka `calculate_tcc_curve` (`tcc.legacy_write_disabled`,

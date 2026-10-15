@@ -105,6 +105,7 @@ import { OZE_STRINGS as T, PODSUMOWANIE_STRINGS as P } from './strings';
 import { CharakterystykaNcRfg } from './WykresyNcRfg';
 import { useShellStore } from '../../shell/useShellStore';
 import type { RunStatus } from '../../../ui/study-cases/types';
+import { transformatoryNalezaceDoStacji } from '../../../ui/shared/transformatoryStacji';
 
 type FazaPodsumowania = 'formularz' | 'bieg' | 'dokumenty' | 'gotowe';
 
@@ -174,9 +175,10 @@ export function KreatorZrodlaOze() {
       (s) => s.ref_id === kontekst.station_ref || s.id === kontekst.station_ref,
     );
     if (!station) return [];
-    const refs = new Set(station.transformer_refs ?? []);
-    const list = (snapshot.transformers ?? [])
-      .filter((t) => refs.has(t.ref_id) && Boolean(t.lv_bus_ref))
+    // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (deklaracja, przy jej braku
+    // koniec na szynie stacji; blokowy też — to kandydaci na transformator blokowy źródła).
+    const list = transformatoryNalezaceDoStacji(snapshot, station)
+      .filter((t) => Boolean(t.lv_bus_ref))
       .map((t) => ({
         ref_id: t.ref_id,
         name: t.name,

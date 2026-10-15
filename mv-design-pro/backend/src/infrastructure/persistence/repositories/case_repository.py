@@ -23,7 +23,6 @@ from uuid import UUID
 from domain.models import OperatingCase
 from domain.project_design_mode import ProjectDesignMode
 from domain.study_case import (
-    ProtectionConfig,
     StudyCase,
     StudyCaseConfig,
 )
@@ -112,16 +111,12 @@ class CaseRepository:
         nie czyta i nie pisze — zostaja w bazie nietkniete dla archiwum projektu.
         """
         config = StudyCaseConfig.from_dict(row.study_jsonb)
-        protection_config = ProtectionConfig.from_dict(
-            (row.study_jsonb or {}).get("protection_config") or {}
-        )
         return StudyCase(
             id=row.id,
             project_id=row.project_id,
             name=row.name,
             description=row.description or "",
             config=config,
-            protection_config=protection_config,
             is_active=row.is_active or False,
             revision=row.revision or 1,
             created_at=row.created_at,
@@ -140,11 +135,6 @@ class CaseRepository:
             study_jsonb = case.config.to_dict()
         else:
             study_jsonb = getattr(case, "study_payload", {})
-        if hasattr(case, "protection_config") and case.protection_config is not None:
-            study_jsonb = {
-                **study_jsonb,
-                "protection_config": case.protection_config.to_dict(),
-            }
 
         # If this case is active, deactivate all other cases in the project
         if is_active:
@@ -179,11 +169,6 @@ class CaseRepository:
             study_jsonb = case.config.to_dict()
         else:
             study_jsonb = getattr(case, "study_payload", {})
-        if hasattr(case, "protection_config") and case.protection_config is not None:
-            study_jsonb = {
-                **study_jsonb,
-                "protection_config": case.protection_config.to_dict(),
-            }
 
         # If this case is becoming active, deactivate all other cases
         if is_active and not row.is_active:

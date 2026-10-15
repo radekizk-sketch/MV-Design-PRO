@@ -543,7 +543,7 @@ def _build_dynamika_run() -> CanonicalRun:
         created_at=datetime.now(UTC),
         snapshot_hash="snapshot-dyn",
         input_hash="hash-dyn",
-        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True),
+        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True, z_modelem_odbioru=True),
         validation={},
         readiness={},
         result_status="VALID",
@@ -571,6 +571,7 @@ def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -
         "dynamika_zdarzenia",
         "dynamika_przekroczenia",
         "dynamika_metryki",
+        "dynamika_zalozenia",
     ]
 
     docx = export_run_report_docx_response(
@@ -590,6 +591,11 @@ def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -
     assert "detektor „Zapad napięcia szyny PV” | Moduł napięcia | " in tekst
     assert "próg 0.8 pu | spadek poniżej progu" in tekst
     assert "u_pu@" not in tekst and "nn_bus" not in tekst
+    # Karta modeli odbiorów (§0 pkt 6): założenia modelu — zdania warstwy aplikacji z rekordów
+    # rdzenia (te same, co ekran dynamiki), po polsku i bez kluczy kodu rekordów.
+    assert "Model RMS składowej zgodnej" in tekst
+    assert "przechodzą w stałą impedancję" in tekst
+    assert "model_odbiorow" not in tekst and "probki_obustronne" not in tekst
 
     pdf = export_run_report_pdf_response(
         run, filename_stem="raport", report_options={"sections": ["results"]}

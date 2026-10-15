@@ -64,8 +64,10 @@ const mockTemplates = [
     name_pl: 'Szablon Sepam - Nadprądowy',
     device_type_ref: 'device-001',
     curve_ref: 'curve-001',
+    // Kształt katalogu po PZ-09: zakres prądowy bez podstawy jednostki niesie nazwany stan
+    // `NIEUSTALONA` (bez „A”), zwłoka ma jednostkę „s”.
     setting_fields: [
-      { name: 'I>', unit: 'A', min: 0.1, max: 10.0 },
+      { name: 'I>', jednostka_status: 'NIEUSTALONA' as const, min: 0.1, max: 10.0 },
       { name: 't>', unit: 's', min: 0.05, max: 5.0 },
     ],
   },
@@ -316,7 +318,9 @@ describe('ProtectionLibraryBrowser', () => {
     await waitFor(() => {
       expect(screen.getByText('Pola nastaw:')).toBeInTheDocument();
       expect(screen.getByText('I>')).toBeInTheDocument();
-      expect(screen.getByText('Jednostka: A')).toBeInTheDocument();
+      expect(screen.getByTestId('szablon-jednostka-nieustalona')).toHaveTextContent('nieustalona');
+      expect(screen.queryByText('Jednostka: A')).toBeNull();
+      expect(screen.getByText('Jednostka: s')).toBeInTheDocument();
       expect(screen.getByText(/Zakres: 0\.1.*10/)).toBeInTheDocument();
     });
   });

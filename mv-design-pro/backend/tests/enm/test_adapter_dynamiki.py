@@ -29,7 +29,9 @@ import pytest
 from enm.adapter_dynamiki import (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_NASTAWY_BRAK,
+    KOD_ODBIOR_BEZ_BLOKU,
     KOD_ODBIOR_NIEODWZOROWANY,
+    KOD_ODBIOR_PARAMETRY_NIESPOJNE,
     KOD_PODZIAL_MOCY_NIESPOJNY,
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIE_ROZPLYW,
@@ -52,6 +54,7 @@ from enm.adapter_dynamiki import (
 )
 from enm.assembler import czestotliwosc_studium_hz, zbuduj_graf, zloz_wejscie_rozplywu
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
+from enm.dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from network_model.solvers.dynamika import (
@@ -72,6 +75,7 @@ from network_model.solvers.power_flow_newton_internal import build_slack_island,
 from scipy.sparse import linalg as sparse_linalg
 
 from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
+from tests.golden.enm_builders.odbiory_dynamiki import PROFIL_ODBIOROW_SIECI_WZORCOWYCH
 from tests.golden.enm_builders.so1a_pv_magazyn import MAGAZYN_GFM_1000_KW
 
 #: Nastawy numeryczne używane w testach tego modułu — komplet pól kontraktu
@@ -637,13 +641,9 @@ class TestObszarBeznapieciowy:
                 assert wynik.probki["jakosc_f@b-sn-a"][i] != 2.0
             elif _po_zdarzeniu(wynik, i, 0.4):
                 assert wynik.probki["u_pu@b-odplyw"][i] > 0.8
-        from network_model.solvers.dynamika.silnik import (
-            ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,
-            ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,
-        )
-
-        assert ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO in wynik.zalozenia
-        assert ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA in wynik.zalozenia
+        # Założenia rdzenia to rekordy (zdania z nazwami składa warstwa aplikacji).
+        kody = {zalozenie.kod for zalozenie in wynik.zalozenia}
+        assert {"obszar_beznapieciowy", "start_ponownego_zasilenia"} <= kody
         assert wynik.wlasnosci.max_residuum_g < 1e-8
 
     def test_wezel_martwy_od_t0_zasilany_zamknieciem_lacznika(self) -> None:
@@ -728,7 +728,12 @@ class TestZwarcieWLinii:
                 assert prad[i] > 0.0
             else:
                 assert prad[i] == 0.0
-        assert any("kab-odplyw" in zdanie for zdanie in wynik.zalozenia)
+        assert any(
+            zalozenie.kod == "zwarcie_usuniete_samoczynnie"
+            and zalozenie.elementy == ("kab-odplyw",)
+            and zalozenie.pozycje == ("galaz",)
+            for zalozenie in wynik.zalozenia
+        )
 
     @pytest.mark.parametrize("element_ref", ["tr-gpz", "spr-szyn"])
     def test_zwarcie_w_transformatorze_albo_laczniku_odmawia_rdzen(
@@ -1088,9 +1093,9 @@ class TestKomendaIUtrataCzesciowa:
         (zdarzenie,) = wynik.zdarzenia_wykonane
         assert zdarzenie.rodzaj == "utrata_czesciowa_zrodla"
         assert zdarzenie.delta_x_nieprzypisane_max == 0.0
-        # Założenie silnika po PL-ZNAKI jest zapisane ze znakami (`silnik.py`); intencja bez
-        # zmian — bieg z częściową utratą niesie jej założenie.
-        assert any(zdanie.startswith("Częściowa utrata źródła") for zdanie in wynik.zalozenia)
+        # Intencja bez zmian — bieg z częściową utratą niesie jej założenie (rekord rdzenia;
+        # zdanie po polsku składa warstwa aplikacji, `application.dynamika.zalozenia`).
+        assert "utrata_czesciowa_zrodla" in {zalozenie.kod for zalozenie in wynik.zalozenia}
 
     def test_czesciowa_utrata_zrodla_sieciowego_to_odmowa_rdzenia(
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
@@ -1138,7 +1143,9 @@ class TestStanowiskoBadawcze:
         )
         wynik = SilnikDynamiki(wejscie=zloz(snapshot, opcje(dynamika=scenariusz), punkt)).uruchom()
         assert wynik.tryb_scenariusza == "stanowisko"
-        assert any(zdanie.startswith("Tryb stanowiska") for zdanie in wynik.zalozenia)
+        (tryb,) = (z for z in wynik.zalozenia if z.kod == "tryb_stanowiska")
+        assert tryb.elementy == ("zrodlo-110", "b-110")
+        assert tryb.pozycje == (("idealne",) if impedancja == "idealna" else ("za_impedancja",))
         i_p = _indeks(wynik, 0.1, "P")
         assert wynik.probki["sem_modul_pu@zrodlo-110"][i_p] == 0.95
         if impedancja == "idealna":
@@ -1620,31 +1627,93 @@ class TestBrakiModelu:
         assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
 
     @pytest.mark.parametrize(
-        ("parametry", "p_mw"),
+        ("parametry", "p_mw", "kod"),
         [
-            ({"a_p": 0.5, "b_p": 0.2, "c_p": 0.3, "k_pf": 1.5}, 3.0),
-            ({"k_qf": -1.0}, 3.0),
-            (None, -0.5),
-            ({"a_p": 0.6, "c_p": 0.4}, -0.5),
+            ({"a_p": 0.5, "b_p": 0.2, "c_p": 0.3, "k_pf": 1.5}, 3.0, None),
+            ({"k_qf": -1.0}, 3.0, None),
+            (None, -0.5, KOD_ODBIOR_NIEODWZOROWANY),
+            ({"a_p": 0.6, "c_p": 0.4}, -0.5, KOD_ODBIOR_NIEODWZOROWANY),
         ],
     )
     def test_odbior_nieodwzorowany_ten_sam_predykat_co_rdzen(
-        self, snapshot_g16: dict[str, Any], parametry: dict[str, float] | None, p_mw: float
+        self,
+        snapshot_g16: dict[str, Any],
+        parametry: dict[str, float] | None,
+        p_mw: float,
+        kod: str | None,
     ) -> None:
-        """Czułość częstotliwościowa i ujemna moc czynna bazowa: odmowa ADAPTERA niesie powód
-        z kontraktu RDZENIA (jeden predykat dla bramki gotowości i biegu)."""
+        """Ujemna moc czynna bazowa: odmowa ADAPTERA niesie powód z kontraktu RDZENIA (jeden
+        predykat dla bramki gotowości i biegu).
+
+        Przepisane z intencją (karta modeli odbiorów, kasacja odmowy
+        `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany`): odbiór czuły
+        częstotliwościowo (`k != 0`) po odświeżeniu wiązania (odpowiedź każdej operacji —
+        `synchronizuj_dynamike_z_wiazan`) ma w kopii stałą pomiaru częstotliwości i liczy się
+        z estymatorem — bez braku. Odmowa zostaje dla danych, których rdzeń nie przyjmuje.
+        """
         snapshot = copy.deepcopy(snapshot_g16)
-        snapshot["loads"][0]["materialized_params"] = parametry
+        snapshot["loads"][0]["materialized_params"] = {
+            **(parametry or {}),
+            "dynamic_model_ref": PROFIL_ODBIOROW_SIECI_WZORCOWYCH,
+        }
         snapshot["loads"][0]["p_mw"] = p_mw
+        snapshot = synchronizuj_dynamike_z_wiazan(snapshot)
         braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
-        assert [brak.kod for brak in braki] == [KOD_ODBIOR_NIEODWZOROWANY]
+        if kod is None:
+            assert braki == ()
+            czuly = snapshot["loads"][0]["dynamika"]
+            assert czuly["t_pomiaru_czestotliwosci_s"] is not None
+            return
+        assert [brak.kod for brak in braki] == [kod]
         assert braki[0].elementy == ("odb-odplyw",)
-        kod_rdzenia = (
-            "dynamika.parametry_odbioru_sprzeczne"
-            if p_mw < 0
-            else "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany"
-        )
-        assert kod_rdzenia in braki[0].komunikat_pl
+        assert "dynamika.parametry_odbioru_sprzeczne" in braki[0].komunikat_pl
+
+    @pytest.mark.parametrize(
+        ("u_min", "t_f", "czuly", "oczekiwane"),
+        [
+            (None, None, False, "napięcie przejścia do stałej impedancji — wymagane, a brak"),
+            (0.7, 0.1, False, "stała czasowa pomiaru częstotliwości — podane, a zbędne"),
+            (0.7, None, True, "stała czasowa pomiaru częstotliwości — wymagane, a brak"),
+            (None, 0.1, True, "napięcie przejścia do stałej impedancji — wymagane, a brak"),
+        ],
+    )
+    def test_blok_niespojny_z_ksztaltem_charakterystyki(
+        self,
+        snapshot_g16: dict[str, Any],
+        u_min: float | None,
+        t_f: float | None,
+        czuly: bool,
+        oczekiwane: str,
+    ) -> None:
+        """Blok `Load.dynamika` sprzeczny z kształtem charakterystyki (migawka zapisana bez
+        operacji domenowej): nazwana odmowa z polem i kierunkiem, ten sam predykat co kopia."""
+        snapshot = copy.deepcopy(snapshot_g16)
+        odbior = snapshot["loads"][0]
+        if czuly:
+            odbior["materialized_params"] = {**odbior["materialized_params"], "k_pf": 1.0}
+        odbior["dynamika"] = {
+            **odbior["dynamika"],
+            "u_min_pu": u_min,
+            "t_pomiaru_czestotliwosci_s": t_f,
+        }
+        braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
+        assert [brak.kod for brak in braki] == [KOD_ODBIOR_PARAMETRY_NIESPOJNE]
+        assert braki[0].elementy == ("odb-odplyw",)
+        assert oczekiwane in braki[0].komunikat_pl
+
+    def test_odbior_bez_modelu_dynamicznego_jest_brakiem(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        """O-49 pkt 2: blok wymagany dla KAŻDEGO odbioru — brak to odmowa przed biegiem."""
+        snapshot = copy.deepcopy(snapshot_g16)
+        snapshot["loads"][1]["dynamika"] = None
+        snapshot["loads"][1]["materialized_params"] = None
+        braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
+        assert [brak.kod for brak in braki] == [KOD_ODBIOR_BEZ_BLOKU]
+        assert braki[0].elementy == ("odb-potrzeby",)
+        with pytest.raises(OdmowaWejsciaDynamiki) as blad:
+            zloz(snapshot, opcje(), punkt_g16)
+        assert blad.value.kod == KOD_ODBIOR_BEZ_BLOKU
 
     def test_zrodlo_sieciowe_razem_z_wytworca_na_jednej_szynie_regula_reszty(
         self, snapshot_g16: dict[str, Any]
@@ -1800,9 +1869,18 @@ class TestBrakiModelu:
         bez_bloku["generators"][0]["dynamika"] = None
         uszkodzenia.append((KOD_ZRODLO_BEZ_DYNAMIKI, bez_bloku))
 
+        bez_modelu_odbioru = copy.deepcopy(snapshot_g16)
+        bez_modelu_odbioru["loads"][0]["dynamika"] = None
+        bez_modelu_odbioru["loads"][0]["materialized_params"] = None
+        uszkodzenia.append((KOD_ODBIOR_BEZ_BLOKU, bez_modelu_odbioru))
+
+        # Czułość częstotliwościowa dopisana z pominięciem operacji: kopia bez stałej pomiaru.
         czuly = copy.deepcopy(snapshot_g16)
-        czuly["loads"][0]["materialized_params"] = {"k_pf": 1.0}
-        uszkodzenia.append((KOD_ODBIOR_NIEODWZOROWANY, czuly))
+        czuly["loads"][0]["materialized_params"] = {
+            **czuly["loads"][0]["materialized_params"],
+            "k_pf": 1.0,
+        }
+        uszkodzenia.append((KOD_ODBIOR_PARAMETRY_NIESPOJNE, czuly))
 
         ujemny = copy.deepcopy(snapshot_g16)
         ujemny["loads"][1]["p_mw"] = -0.1
@@ -2057,18 +2135,27 @@ def test_b8_punkt_rozplywu_ponad_dnem_korygowany_krokiem_newtona_rdzenia(
         [complex(wejscie.punkt_pracy.napiecia_pu[ident]) for ident in model.identy_wezlow],
         dtype=complex,
     )
-    # Korekte liczy sie przy stanach PUNKTU PRACY (ten sam konstruktor, co inicjalizacja
-    # silnika) — probka niesie juz stany po reinicjalizacji w punkcie skorygowanym.
-    stany_punktu = tuple(
-        urzadzenie.stan_poczatkowy(
-            wejscie.punkt_pracy.napiecia_pu[urzadzenie.wezel],
-            wejscie.punkt_pracy.moce_zrodel_pu[urzadzenie.ident],
-        )
-        for urzadzenie in urzadzenia
+    # Korekte liczy sie przy stanach PUNKTU PRACY (te same konstruktory, co inicjalizacja
+    # silnika; krotka wyrownana z `(*odbiory, *urzadzenia)`) — probka niesie juz stany po
+    # reinicjalizacji w punkcie skorygowanym. Algebra korekty liczy odbiory na rozmaitosci
+    # rownowagi estymatora (`w_rownowadze_estymatora`; odbior bez stanu — ten sam obiekt).
+    stany_punktu = (
+        *(
+            odbior.stan_poczatkowy_odbioru(complex(punkt[model.indeks_wezla[odbior.wezel]]))
+            for odbior in odbiory
+        ),
+        *(
+            urzadzenie.stan_poczatkowy(
+                wejscie.punkt_pracy.napiecia_pu[urzadzenie.wezel],
+                wejscie.punkt_pracy.moce_zrodel_pu[urzadzenie.ident],
+            )
+            for urzadzenie in urzadzenia
+        ),
     )
-    reszta = residuum_algebry(model, odbiory, urzadzenia, stany_punktu, punkt)
+    odbiory_rownowagi = tuple(odbior.w_rownowadze_estymatora() for odbior in odbiory)
+    reszta = residuum_algebry(model, odbiory_rownowagi, urzadzenia, stany_punktu, punkt)
     krok = sparse_linalg.splu(
-        jakobian_algebry(model, odbiory, urzadzenia, stany_punktu, punkt)
+        jakobian_algebry(model, odbiory_rownowagi, urzadzenia, stany_punktu, punkt)
     ).solve(reszta)
     liczba = model.liczba_wezlow
     estymata_bledu_rozplywu = krok[:liczba] + 1j * krok[liczba:]
@@ -2194,6 +2281,17 @@ class TestModelOdbioruZip:
         assert jest_odbiorem_zip(parametry, 60.0) and not jest_odbiorem_zip({}, 60.0)
         snapshot = copy.deepcopy(snapshot_g16)
         snapshot["header"]["defaults"]["frequency_hz"] = 60.0
-        snapshot["loads"][0]["materialized_params"] = dict(parametry)
-        (brak,) = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
-        assert brak.kod == KOD_ODBIOR_NIEODWZOROWANY
+        snapshot["loads"][0]["materialized_params"] = {
+            **parametry,
+            "dynamic_model_ref": PROFIL_ODBIOROW_SIECI_WZORCOWYCH,
+        }
+        # Przepisane z intencją (kasacja odmowy odbioru czułego częstotliwościowo): odbiór
+        # z `k` liczy się z estymatorem, a jego odniesienie `f0` w rdzeniu to częstotliwość
+        # studium (60 Hz) — ten sam odczyt współczynników, co rozpływ.
+        snapshot = synchronizuj_dynamike_z_wiazan(snapshot)
+        enm = EnergyNetworkModel.model_validate(snapshot)
+        assert braki_modelu_dynamiki(enm) == ()
+        widok = zloz_widok_sieci(snapshot, zbuduj_graf(snapshot), base_mva=100.0)
+        (odbior,) = (o for o in widok.odbiory if o.ident == snapshot["loads"][0]["ref_id"])
+        assert odbior.charakterystyka.f0_hz == 60.0
+        assert odbior.charakterystyka.t_pomiaru_czestotliwosci_s == 0.1

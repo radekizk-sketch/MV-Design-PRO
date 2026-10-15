@@ -4,7 +4,6 @@ import {
   ALL_PORT_KINDS,
   BAY_ROLE_TO_PORT_KIND,
   canConnectPorts,
-  classifyStationTopology,
   isDerPort,
   isNnPort,
   isPortKindCompatibleWithBayRole,
@@ -160,56 +159,6 @@ describe('SLD v2 — validatePortVoltages', () => {
     const a = makePort('a', 'sn_output', 15.005);
     const b = makePort('b', 'sn_input', 15.0);
     expect(validatePortVoltages(a, b, 0.01).mismatch).toBe(false);
-  });
-});
-
-describe('SLD v2 — classifyStationTopology', () => {
-  function makePort(kind: PortKind): SldPort {
-    return {
-      id: `p_${kind}`,
-      kind,
-      nominalVoltageKv: 15.0,
-      bayRef: 'b1',
-      substationRef: 's1',
-      occupiedBy: null,
-      anchor: { x: 0, y: 0 },
-    };
-  }
-
-  it('1× sn_input → końcowa', () => {
-    expect(classifyStationTopology([makePort('sn_input')])).toBe('końcowa');
-  });
-
-  it('1× sn_input + 1× sn_output → przelotowa', () => {
-    expect(
-      classifyStationTopology([makePort('sn_input'), makePort('sn_output')]),
-    ).toBe('przelotowa');
-  });
-
-  it('1× sn_input + 1× sn_output + 1× sn_branch → odgałęźna', () => {
-    expect(
-      classifyStationTopology([
-        makePort('sn_input'),
-        makePort('sn_output'),
-        makePort('sn_branch'),
-      ]),
-    ).toBe('odgałęźna');
-  });
-
-  it('2× sn_input + 1× sn_coupler → sekcyjna', () => {
-    expect(
-      classifyStationTopology([
-        makePort('sn_input'),
-        makePort('sn_input'),
-        makePort('sn_coupler'),
-      ]),
-    ).toBe('sekcyjna');
-  });
-
-  it('Stacja z PV po SN: sn_input + sn_der_pv → końcowa (DER nie tworzy wyjścia ciągu)', () => {
-    expect(
-      classifyStationTopology([makePort('sn_input'), makePort('sn_der_pv')]),
-    ).toBe('końcowa');
   });
 });
 

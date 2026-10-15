@@ -19,7 +19,6 @@ w tej samej funkcji pojechała do materializacji.
 from __future__ import annotations
 
 import copy
-import json
 import math
 from dataclasses import dataclass
 from typing import Any, cast
@@ -56,7 +55,6 @@ from network_model.pochodne import (
 )
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
 from network_model.solvers import cable_ampacity_derating as cable_derating
-from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
@@ -66,6 +64,7 @@ from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
+    POLE_RODZAJU_POLA,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
@@ -86,6 +85,7 @@ from .domain_operations import (
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     blad_pomiaru_w_torze_tranzytu,
+    metadane_pochodzenia_pola,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
@@ -93,6 +93,8 @@ from .domain_operations import (
 from .dynamika_z_katalogu import (
     BladMaterializacjiDynamiki,
     materializuj_dynamike,
+    materializuj_dynamike_odbioru,
+    sprawdz_profil_odbioru,
     sprawdz_zgodnosc,
     wiazanie_dynamiki,
 )
@@ -111,6 +113,7 @@ from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .models import liczba_torow
+from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
     nazwa_nadana_pozycji_katalogu,
@@ -153,56 +156,7 @@ from .topology_ops import (
     delete_node,
 )
 from .tor_pola import szyny_stacji
-
-# ---------------------------------------------------------------------------
-# IEC 60255 — krzywe IDMT (TCC)
-# ---------------------------------------------------------------------------
-
-IEC_CURVES = {
-    "SI": {"K": 0.14, "alpha": 0.02},  # Standard Inverse
-    "VI": {"K": 13.5, "alpha": 1.0},  # Very Inverse
-    "EI": {"K": 80.0, "alpha": 2.0},  # Extremely Inverse
-    # "LTI" (Long Time Inverse) tutaj = "RI" w jadrze kanonicznym
-    # (network_model.solvers.protection_iec60255.IEC60255CurveType.RI) — te
-    # same stale K=120,0/alpha=1,0 (IEC 60255-151:2009 Tab.1), inna nazwa
-    # historyczna tego samego wariantu krzywej (alias udokumentowany W3-A).
-    "LTI": {"K": 120.0, "alpha": 1.0},  # Long Time Inverse
-}
-
-
-def _compute_tcc_point(i_ratio: float, tms: float, curve_type: str) -> float | None:
-    """Oblicz czas zadziałania dla danego I/Is wg IEC 60255.
-
-    t = TMS * K / ((I/Is)^alpha - 1)
-
-    W3-A (rodzina KLASA-NIE-INSTANCJA A, karta W3-A): petla obliczeniowa
-    deleguje do generycznego silnika IDMT `network_model.solvers.
-    protection_iec60255.compute_idmt_generic` — JEDYNA implementacja tego
-    wzoru w repozytorium. Ta funkcja dostaje juz gotowy STOSUNEK `i_ratio`
-    (nie prady bezwzgledne — wywolujaca `validate_selectivity` dzieli
-    `ik / ipickup` przed wywolaniem), wiec do jadra przekazywane jest
-    `i_fault_a=i_ratio, is_pickup_a=1.0` — M = i_ratio/1.0 = i_ratio, ten
-    sam ksztalt wzoru bez zmiany sygnatury tej funkcji (2 wywolania w
-    `validate_selectivity` zostaja bez zmian). ``denom_guard=1e-10``
-    ujednolica epsilon kolo M=1 z pozostalymi skonsolidowanymi konsumentami
-    tej samej fizyki (przed konsolidacja kazdy mial WLASNY, niespojny
-    epsilon — patrz raport inwentarza W3 rodzina A).
-    """
-    params = IEC_CURVES.get(curve_type)
-    if not params:
-        return None
-    if i_ratio <= 1.0:
-        return None  # poniżej progu — brak zadziałania
-
-    generic = compute_idmt_generic(
-        i_fault_a=i_ratio,
-        is_pickup_a=1.0,
-        time_multiplier=tms,
-        a=params["K"],
-        b=params["alpha"],
-        denom_guard=1e-10,
-    )
-    return generic.trip_time_s
+from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 
 
 def _field_ref_exists(enm: dict[str, Any], field_ref: str) -> bool:
@@ -358,6 +312,65 @@ def _first_measurement_ref(
             isinstance(measurement, dict)
             and measurement.get("bay_ref") == field_ref
             and measurement.get("measurement_type") == measurement_type
+        ):
+            ref_id = measurement.get("ref_id")
+            return ref_id if isinstance(ref_id, str) else None
+    return None
+
+
+def _wylacznik_liniowy(enm: dict[str, Any], breaker_ref: object) -> dict[str, Any] | None:
+    """Gałąź wyłącznika liniowego SN (``enm.wylaczniki_liniowe.odmowa_kotwicy_wylacznika`` bez
+    odmowy) albo ``None``."""
+    if odmowa_kotwicy_wylacznika(enm, breaker_ref) is not None:
+        return None
+    return next(g for g in enm.get("branches", []) if g.get("ref_id") == breaker_ref)
+
+
+#: Zdanie odmowy kotwicy wyłącznika — (przedmiot operacji, powód) → treść dla projektanta.
+_ODMOWY_KOTWICY_PL: dict[PowodOdmowyKotwicy, str] = {
+    "NIE_WYLACZNIK": (
+        "Wskazany aparat nie jest wyłącznikiem liniowym modelu sieci — {przedmiot} bez pola "
+        "stoi wyłącznie przy wyłączniku."
+    ),
+    "W_POLU": (
+        "Wskazany wyłącznik należy do pola rozdzielnicy — {przedmiot} pola dodaje się przez "
+        "wskazanie pola."
+    ),
+    "POZA_SIECIA_SN": (
+        "Wskazany wyłącznik nie leży w torze odcinka SN (co najmniej jedna jego szyna ma "
+        "napięcie spoza pasma SN albo bez napięcia znamionowego) — {przedmiot} przy "
+        "wyłączniku liniowym dotyczy sieci SN."
+    ),
+}
+_KODY_ODMOWY_KOTWICY: dict[PowodOdmowyKotwicy, str] = {
+    "NIE_WYLACZNIK": "breaker_not_found",
+    "W_POLU": "breaker_in_field",
+    "POZA_SIECIA_SN": "breaker_not_sn",
+}
+
+
+def _odmowa_kotwicy(
+    enm: dict[str, Any], breaker_ref: object, *, przedmiot: str, prefiks_kodu: str
+) -> dict[str, Any] | None:
+    """Odpowiedź błędu operacji dla kotwicy wyłącznika albo ``None`` — ta sama reguła co lista
+    wyłączników liniowych read modelu (``odmowa_kotwicy_wylacznika``)."""
+    powod = odmowa_kotwicy_wylacznika(enm, breaker_ref)
+    if powod is None:
+        return None
+    return _error_response(
+        _ODMOWY_KOTWICY_PL[powod].format(przedmiot=przedmiot),
+        f"{prefiks_kodu}.{_KODY_ODMOWY_KOTWICY[powod]}",
+    )
+
+
+def _przekladnik_wylacznika(enm: dict[str, Any], breaker_ref: str) -> str | None:
+    """Przekładnik prądowy postawiony przy wyłączniku liniowym (``meta.breaker_ref``)."""
+    for measurement in enm.get("measurements", []):
+        if (
+            isinstance(measurement, dict)
+            and measurement.get("measurement_type") == "CT"
+            and isinstance(measurement.get("meta"), dict)
+            and measurement["meta"].get("breaker_ref") == breaker_ref
         ):
             ref_id = measurement.get("ref_id")
             return ref_id if isinstance(ref_id, str) else None
@@ -630,55 +643,30 @@ def _relay_device_type(relay_type: str) -> str:
 
 
 def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
+    """Stopnie funkcji rodziny przekaźnika BEZ wartości — nazwany brak nastaw.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: przypisanie bez nastaw w ładunku dostaje stopnie
+    swojej rodziny z pustym progiem, jednostką, charakterystyką i zwłoką — ocena nazywa
+    każdy brak kodem gotowości z akcją naprawczą. Dawniej stopnie dostawały domyślną
+    charakterystykę (DT/IEC_SI), której nikt nie wybrał.
+    """
     device_type = _relay_device_type(relay_type)
-    if device_type == "earth_fault":
-        return [
-            {
-                "function_type": "earth_fault_50N",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "DT",
-            },
-            {
-                "function_type": "earth_fault_51N",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "IEC_SI",
-            },
-        ]
-    if device_type == "directional_overcurrent":
-        return [
-            {
-                "function_type": "directional_67",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "IEC_SI",
-                "is_directional": True,
-            },
-            {
-                "function_type": "directional_67N",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "IEC_SI",
-                "is_directional": True,
-            },
-        ]
-    if device_type == "overcurrent":
-        return [
-            {
-                "function_type": "overcurrent_50",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "DT",
-            },
-            {
-                "function_type": "overcurrent_51",
-                "threshold_a": None,
-                "time_delay_s": None,
-                "curve_type": "IEC_SI",
-            },
-        ]
-    return []
+    funkcje = {
+        "earth_fault": ("earth_fault_50N", "earth_fault_51N"),
+        "directional_overcurrent": ("directional_67", "directional_67N"),
+        "overcurrent": ("overcurrent_50", "overcurrent_51"),
+    }.get(device_type, ())
+    return [
+        {
+            "function_type": funkcja,
+            "threshold_a": None,
+            "threshold_unit": None,
+            "time_delay_s": None,
+            "curve_type": None,
+            "is_directional": device_type == "directional_overcurrent",
+        }
+        for funkcja in funkcje
+    ]
 
 
 def _substation_meta_specs(substation: dict[str, Any], key: str) -> list[dict[str, Any]]:
@@ -751,59 +739,72 @@ def _field_adapter_error(
     return response
 
 
-def _relay_adapter_error(
-    *,
-    relay_ref: str,
-    message: str,
-    code: str = "relay.legacy_write_disabled",
-    field_ref: str | None = None,
-) -> dict[str, Any]:
-    response = _error_response(message, code)
-    response["adapter_only"] = True
-    response["attach_field_view"] = True
-    response["attach_protection_view"] = True
-    response["selection_hint"] = {
-        "element_id": field_ref or relay_ref,
-        "element_type": "field" if field_ref else "protection",
-        "zoom_to": True,
-    }
-    return response
-
-
 # ---------------------------------------------------------------------------
 # 1. OCHRONA — add_ct
 # ---------------------------------------------------------------------------
 
 
 def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj przekładnik prądowy CT do pola stacji."""
+    """Dodaj przekładnik prądowy CT do pola stacji albo przy wyłączniku liniowym.
+
+    Kotwica przekładnika: pole rozdzielnicy (``bay_ref``) ALBO wyłącznik liniowy wstawiony w
+    odcinek SN (``breaker_ref`` bez pola — karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik
+    sekcyjny z zabezpieczeniem nadprądowym, np. reklozer w linii). Obie naraz to sprzeczność
+    wskazania.
+    """
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
-    if not field_ref:
+    breaker_anchor = payload.get("breaker_ref")
+    if field_ref and breaker_anchor:
         return _error_response(
-            f"Uzupełnij pole {pole('bay_ref')} — wskaż pole, w którym ma stanąć przekładnik.",
+            "Przekładnik wskazano jednocześnie w polu i przy wyłączniku liniowym — wybierz "
+            "jedno miejsce.",
+            "ct.anchor_ambiguous",
+        )
+    if not field_ref and not breaker_anchor:
+        return _error_response(
+            f"Uzupełnij pole {pole('bay_ref')} — wskaż pole albo wyłącznik liniowy, przy "
+            "którym ma stanąć przekładnik.",
             "ct.bay_missing",
         )
-    if not _field_ref_exists(enm, field_ref):
-        return _error_response(
-            "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "ct.field_not_found"
+    if field_ref:
+        if not _field_ref_exists(enm, field_ref):
+            return _error_response(
+                "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "ct.field_not_found"
+            )
+        bus_ref = _field_bus_ref(enm, field_ref)
+        if not bus_ref:
+            return _error_response(
+                f"{_opis_pola(enm, field_ref)} nie ma przypisanej szyny pomiarowej.",
+                "ct.bus_missing",
+            )
+        nazwa_miejsca = f"pola {_nazwa_pola(enm, field_ref)}"
+    else:
+        odmowa = _odmowa_kotwicy(
+            enm, breaker_anchor, przedmiot="przekładnik zabezpieczeniowy", prefiks_kodu="ct"
         )
-
-    bus_ref = _field_bus_ref(enm, field_ref)
-    if not bus_ref:
-        return _error_response(
-            f"{_opis_pola(enm, field_ref)} nie ma przypisanej szyny pomiarowej.",
-            "ct.bus_missing",
-        )
+        if odmowa is not None:
+            return odmowa
+        wylacznik = _wylacznik_liniowy(enm, breaker_anchor)
+        assert wylacznik is not None
+        bus_ref = wylacznik.get("from_bus_ref")
+        nazwa_miejsca = opis_elementu(enm, breaker_anchor, "wyłącznika")
 
     # JEDNA przestrzeń katalogu na całą operację: wybiera akcesor materializacji
     # i jest znacznikiem pochodzenia w migawce (V12K-316 dług 4).
     przestrzen_katalogu = "CT"
     binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Przekładnik prądowy CT wymaga wyboru pozycji katalogowej.",
-            catalog_error or "ct.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Przekładnik prądowy CT wymaga wyboru pozycji katalogowej.",
+            "ct.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -849,8 +850,17 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     measurement_ref = _make_id(
         "ct",
         _compute_seed(
+            # Ziarno przekładnika pola bez zmian (te same identyfikatory co przed kotwicą
+            # wyłącznika liniowego); kotwica wyłącznika zastępuje pole w ziarnie.
             {
                 "field_ref": field_ref,
+                "catalog_ref": catalog_ref,
+                "ratio_primary_a": primary,
+                "ratio_secondary_a": secondary,
+            }
+            if field_ref
+            else {
+                "breaker_ref": breaker_anchor,
                 "catalog_ref": catalog_ref,
                 "ratio_primary_a": primary,
                 "ratio_secondary_a": secondary,
@@ -870,10 +880,10 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": measurement_ref,
-            "name": nazwa_nadana(payload.get("name")) or f"CT pola {_nazwa_pola(enm, field_ref)}",
+            "name": nazwa_nadana(payload.get("name")) or f"CT {nazwa_miejsca}",
             "measurement_type": "CT",
             "bus_ref": bus_ref,
-            "bay_ref": field_ref,
+            "bay_ref": field_ref or None,
             "rating": {
                 "ratio_primary": float(primary),
                 "ratio_secondary": float(secondary),
@@ -882,8 +892,12 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             },
             "connection": payload.get("connection") or "star",
             "purpose": payload.get("purpose") or "protection",
-            "tags": ["field_ct", "catalog_bound"],
-            "meta": {"field_ref": field_ref, "catalog_binding": binding},
+            "tags": ["field_ct" if field_ref else "breaker_ct", "catalog_bound"],
+            "meta": (
+                {"field_ref": field_ref, "catalog_binding": binding}
+                if field_ref
+                else {"breaker_ref": breaker_anchor, "catalog_binding": binding}
+            ),
         },
     )
     if not result.success:
@@ -965,10 +979,17 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     przestrzen_katalogu = "VT"
     binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Przekładnik napięciowy VT wymaga wyboru pozycji katalogowej.",
-            catalog_error or "vt.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Przekładnik napięciowy VT wymaga wyboru pozycji katalogowej.",
+            "vt.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -1184,27 +1205,48 @@ def set_measurement_secondary_circuit(
 
 
 def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj zabezpieczenie do pola stacji."""
+    """Dodaj zabezpieczenie do pola stacji albo do wyłącznika liniowego.
+
+    Kotwica: pole rozdzielnicy (``bay_ref``, wyłącznik wykonawczy z pola albo wskazany) ALBO
+    wyłącznik liniowy bez pola (``breaker_ref`` bez ``bay_ref`` — wyłącznik sekcyjny wstawiony
+    w odcinek). Nastawy: ``settings`` z ładunku (reguła zapisu ``bledy_nastaw``) albo — gdy
+    klucza nie ma — stopnie rodziny BEZ wartości (nazwany brak nastaw, D-21).
+    """
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
     relay_type = payload.get("relay_type", "NADPRADOWY")
+    kotwica_wylacznika = payload.get("breaker_ref") if not field_ref else None
 
-    if not field_ref:
+    if not field_ref and not kotwica_wylacznika:
         return _error_response(
-            f"Uzupełnij pole {pole('bay_ref')} — wskaż pole, które ma chronić zabezpieczenie.",
+            f"Uzupełnij pole {pole('bay_ref')} — wskaż pole albo wyłącznik liniowy, który ma "
+            "chronić zabezpieczenie.",
             "relay.bay_missing",
         )
-    if not _field_ref_exists(enm, field_ref):
+    if field_ref and not _field_ref_exists(enm, field_ref):
         return _error_response(
             "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "relay.field_not_found"
         )
+    if kotwica_wylacznika:
+        odmowa = _odmowa_kotwicy(
+            enm, kotwica_wylacznika, przedmiot="zabezpieczenie", prefiks_kodu="relay"
+        )
+        if odmowa is not None:
+            return odmowa
 
     przestrzen_katalogu = "ZABEZPIECZENIE"
     binding = _relay_catalog_binding(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
-            catalog_error or "relay.catalog_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
+            "relay.catalog_required",
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
@@ -1217,7 +1259,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         return blad_katalogu
 
     breaker_ref = payload.get("breaker_ref")
-    if not isinstance(breaker_ref, str) or not breaker_ref.strip():
+    if field_ref and (not isinstance(breaker_ref, str) or not breaker_ref.strip()):
         breaker_ref = _first_field_breaker_ref(enm, field_ref)
     if not isinstance(breaker_ref, str) or not breaker_ref.strip():
         return _error_response(
@@ -1227,16 +1269,30 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     relay_type_text = str(relay_type)
     device_type = _relay_device_type(relay_type_text)
+    # JEDNA reguła zapisu nastaw i JEDEN kod odmowy dla obu pisarzy V2 (``add_relay``,
+    # ``update_protection_settings``) — sprzeczność nazwana w całości, zanim powstanie przypisanie.
+    if "settings" in payload:
+        bledy = bledy_nastaw(payload["settings"])
+        if bledy:
+            return _error_response(
+                "Nastawy nowego zabezpieczenia są sprzeczne: " + " ".join(bledy),
+                "relay.settings_invalid",
+            )
     ct_ref = payload.get("ct_ref")
     if not isinstance(ct_ref, str) or not ct_ref.strip():
-        ct_ref = _first_measurement_ref(enm, field_ref, "CT")
+        ct_ref = (
+            _first_measurement_ref(enm, field_ref, "CT")
+            if field_ref
+            else _przekladnik_wylacznika(enm, breaker_ref)
+        )
     vt_ref = payload.get("vt_ref")
-    if not isinstance(vt_ref, str) or not vt_ref.strip():
+    if field_ref and (not isinstance(vt_ref, str) or not vt_ref.strip()):
         vt_ref = _first_measurement_ref(enm, field_ref, "VT")
 
     if device_type in {"overcurrent", "earth_fault", "directional_overcurrent"} and not ct_ref:
         return _error_response(
-            "Dobór zabezpieczenia wymaga przekładnika prądowego CT w tym samym polu.",
+            "Dobór zabezpieczenia wymaga przekładnika prądowego CT w tym samym polu (albo "
+            "przy tym samym wyłączniku liniowym).",
             "relay.ct_missing",
         )
 
@@ -1261,20 +1317,36 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         {
             "ref_id": protection_ref,
             "name": nazwa_nadana(payload.get("name"))
-            or f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}",
+            or (
+                f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}"
+                if field_ref
+                else f"Zabezpieczenie {opis_elementu(enm, breaker_ref, 'wyłącznika')}"
+            ),
             "breaker_ref": breaker_ref,
             "ct_ref": ct_ref,
             "vt_ref": vt_ref,
             "device_type": device_type,
             "catalog_ref": catalog_ref,
-            "settings": payload.get("settings") or _default_relay_settings(relay_type_text),
+            "settings": (
+                payload["settings"]
+                if "settings" in payload
+                else _default_relay_settings(relay_type_text)
+            ),
             "is_enabled": True,
             "tags": ["field_protection", "catalog_bound"],
-            "meta": {
-                "field_ref": field_ref,
-                "relay_type": relay_type_text,
-                "catalog_binding": binding,
-            },
+            "meta": (
+                {
+                    "field_ref": field_ref,
+                    "relay_type": relay_type_text,
+                    "catalog_binding": binding,
+                }
+                if field_ref
+                else {
+                    "breaker_ref": breaker_ref,
+                    "relay_type": relay_type_text,
+                    "catalog_binding": binding,
+                }
+            ),
         },
     )
     if not result.success:
@@ -1308,12 +1380,13 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 }
             )
             break
-    _update_field_spec(new_enm, field_ref, {"protection_ref": protection_ref})
+    if field_ref:
+        _update_field_spec(new_enm, field_ref, {"protection_ref": protection_ref})
 
     return _response(
         new_enm,
         created=[protection_ref],
-        updated=[field_ref],
+        updated=[field_ref] if field_ref else [],
         selection_id=protection_ref,
         selection_type="protection",
         events=[
@@ -1328,138 +1401,63 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 4. OCHRONA — update_relay_settings
+# 4. OCHRONA — update_protection_settings (pisarz nastaw, D-21)
 # ---------------------------------------------------------------------------
 
 
-def update_relay_settings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuj nastawy przekaźnika ochronnego."""
-    relay_ref = payload.get("relay_ref")
-    settings = payload.get("settings", {})
+def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Zapisz nastawy zabezpieczenia w modelu — JEDYNY pisarz nastaw ścieżki projektanta.
 
-    if not relay_ref:
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU (decyzja D-21): nastawy bazowe żyją przy urządzeniu w
+    modelu, więc ocena zabezpieczeń czyta je stąd. Operacja zastępuje CAŁĄ listę stopni
+    przypisania (``settings``); stopnia wyłączonego nie ma na liście. Ta sama reguła zapisu
+    co przy tworzeniu (``enm.nastawy_zabezpieczen.bledy_nastaw``): niekompletne nastawy
+    przechodzą — brak gotowości nazywa ocena — sprzeczne są odrzucane kodem
+    ``relay.settings_invalid``. Następca skasowanej operacji ``update_relay_settings``
+    (zaślepka z odmową ``relay.legacy_write_disabled``, kanon V11).
+    """
+    protection_ref = payload.get("protection_ref")
+    settings = payload.get("settings")
+    if not isinstance(protection_ref, str) or not protection_ref.strip():
         return _error_response(
-            "Nie wskazano zabezpieczenia, którego nastawy mają zostać zmienione.",
+            "Nie wskazano zabezpieczenia, którego nastawy mają zostać zapisane.",
             "relay.ref_missing",
         )
-    if not settings:
-        return _error_response("Brak nastaw do aktualizacji.", "relay.settings_empty")
-
-    return _relay_adapter_error(
-        relay_ref=relay_ref,
-        message=(
-            f"Nastaw {opis_elementu(enm, relay_ref, 'zabezpieczenia')} nie zmienia się tą "
-            "operacją — nastawy zabezpieczeń pola edytuje się w widoku zabezpieczeń pola."
+    przypisanie = next(
+        (
+            wpis
+            for wpis in enm.get("protection_assignments", [])
+            if wpis.get("ref_id") == protection_ref
         ),
+        None,
     )
-
-
-# ---------------------------------------------------------------------------
-# 5. OCHRONA — link_relay_to_field
-# ---------------------------------------------------------------------------
-
-
-def link_relay_to_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Powiąż przekaźnik z polem i aparatem wykonawczym."""
-    relay_ref = payload.get("relay_ref")
-    field_ref = payload.get("field_ref")
-    payload.get("breaker_ref")
-
-    if not relay_ref:
+    if przypisanie is None:
         return _error_response(
-            "Nie wskazano zabezpieczenia, które ma zostać powiązane z polem.",
-            "relay.ref_missing",
+            "Wskazane zabezpieczenie nie istnieje w modelu sieci.", "relay.not_found"
         )
-    if not field_ref:
+    bledy = bledy_nastaw(settings)
+    if bledy:
         return _error_response(
-            f"Uzupełnij pole {pole('bay_ref')} — wskaż pole, z którym ma zostać powiązane "
-            "zabezpieczenie.",
-            "relay.field_missing",
+            f"Nastawy {opis_elementu(enm, protection_ref, 'zabezpieczenia')} są sprzeczne: "
+            + " ".join(bledy),
+            "relay.settings_invalid",
         )
-    if not _field_ref_exists(enm, field_ref):
-        return _error_response(
-            "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "relay.field_not_found"
-        )
-
-    return _relay_adapter_error(
-        relay_ref=relay_ref,
-        field_ref=field_ref,
-        message=(
-            f"Powiązania {opis_elementu(enm, relay_ref, 'zabezpieczenia')} z "
-            f"{_opis_pola(enm, field_ref, 'polem')} nie zmienia się tą operacją — "
-            "zabezpieczenie pola dodaje się i wiąże w kreatorze zabezpieczenia pola."
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# 6. OCHRONA — validate_selectivity
-# ---------------------------------------------------------------------------
-
-
-def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Waliduj selektywność ochrony wzdłuż trasy do źródła."""
-    delta_t_min_s = payload.get("delta_t_min_s", 0.3)
-    test_current_a = payload.get("test_current_a")
-
-    relays = enm.get("protection_assignments", [])
-    if len(relays) < 2:
-        return _response(
-            kopia_graniczna_enm(enm),
-            events=[{"event_seq": 1, "event_type": "SELECTIVITY_VALIDATED", "element_id": "all"}],
-        )
-
-    # Porównaj pary przekaźników: upstream vs downstream
-    selectivity_results = []
-    for i in range(len(relays) - 1):
-        downstream = relays[i]
-        upstream = relays[i + 1]
-
-        ds_settings = downstream.get("settings", {})
-        us_settings = upstream.get("settings", {})
-
-        ds_ipickup = ds_settings.get("Ipickup_a", 0)
-        us_ipickup = us_settings.get("Ipickup_a", 0)
-        ds_tms = ds_settings.get("time_dial", 1.0)
-        us_tms = us_settings.get("time_dial", 1.0)
-        ds_curve = ds_settings.get("curve_type", "SI")
-        us_curve = us_settings.get("curve_type", "SI")
-
-        ik = test_current_a or max(ds_ipickup * 10, us_ipickup * 10)
-        if ik <= 0:
-            continue
-
-        t_ds = _compute_tcc_point(ik / ds_ipickup, ds_tms, ds_curve) if ds_ipickup > 0 else None
-        t_us = _compute_tcc_point(ik / us_ipickup, us_tms, us_curve) if us_ipickup > 0 else None
-
-        if t_ds is not None and t_us is not None:
-            delta_t = t_us - t_ds
-            passed = delta_t >= delta_t_min_s
-            selectivity_results.append(
-                {
-                    "downstream_ref": downstream.get("ref_id"),
-                    "upstream_ref": upstream.get("ref_id"),
-                    "ik_a": round(ik, 2),
-                    "t_downstream_s": round(t_ds, 4),
-                    "t_upstream_s": round(t_us, 4),
-                    "delta_t_s": round(delta_t, 4),
-                    "passed": passed,
-                }
-            )
-
-    new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("meta", {})["selectivity_results"] = selectivity_results
-
-    all_passed = all(r["passed"] for r in selectivity_results) if selectivity_results else True
-
+    assert isinstance(settings, list)
+    roboczy = kopia_graniczna_enm(enm)
+    for wpis in roboczy.get("protection_assignments", []):
+        if wpis.get("ref_id") == protection_ref:
+            wpis["settings"] = normalizuj_nastawy(settings)
+            break
     return _response(
-        new_enm,
-        events=[{"event_seq": 1, "event_type": "SELECTIVITY_VALIDATED", "element_id": "all"}],
-        audit=[
+        roboczy,
+        updated=[protection_ref],
+        selection_id=protection_ref,
+        selection_type="protection",
+        events=[
             {
-                "step": 1,
-                "action": f"Selektywność: {'OK' if all_passed else 'NIESPEŁNIONA'}",
-                "detail": json.dumps(selectivity_results, ensure_ascii=False),
+                "event_seq": 1,
+                "event_type": "PROTECTION_SETTINGS_UPDATED",
+                "element_id": protection_ref,
             }
         ],
     )
@@ -1911,8 +1909,13 @@ def _materialize_nn_source_params(
     namespace: str,
     catalog_ref: str,
     required_fields: list[str],
-) -> tuple[dict[str, Any] | None, str | None]:
+) -> dict[str, Any] | str:
     """Tabliczka źródła nN WYŁĄCZNIE z katalogu (kanał payloadu nie istnieje).
+
+    Zwraca tabliczkę ALBO kod odmowy (napis) — jeden wynik, jeden predykat u wołającego
+    (`isinstance(wynik, str)`). Dawna para ``(tabliczka | None, kod | None)`` z warunkiem
+    ``blad or tabliczka is None`` i zapasem ``blad or "catalog.materialization_incomplete"``
+    miała dwa niezależne warunki i martwy kod zapasowy (przegląd karty PARTIA-6-BACKEND).
 
     Dawny parametr `explicit_params` był drugą, nieweryfikowaną drogą podania
     tabliczki — usunięty razem z wczesnym zwrotem w
@@ -1926,7 +1929,7 @@ def _materialize_nn_source_params(
     )
     result = materialize_catalog_binding(binding, katalog_biezacy())
     if not result.success:
-        return None, result.error_code or "catalog.materialization_incomplete"
+        return result.kod_odmowy
 
     if namespace == "ZRODLO_NN_PV":
         zmapowane = {
@@ -1974,12 +1977,12 @@ def _materialize_nn_source_params(
         # `get_wind_types()` był równoległą ścieżką z własnym kodem błędu.
         zmapowane = dict(result.solver_fields)
     else:
-        return None, "catalog.materialization_incomplete"
+        return "catalog.materialization_incomplete"
 
     _, brak = _validate_required_materialization(zmapowane, required_fields)
     if brak is not None:
-        return None, brak
-    return zmapowane, None
+        return brak
+    return zmapowane
 
 
 def _normalize_nn_field_role(payload: dict[str, Any]) -> str:
@@ -2252,6 +2255,12 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # wyrobu, z którego pochodzi (blok widać było wyłącznie w podglądzie trybu
     # próby, czyli w odpowiedzi, która niczego nie utrwala).
     wybor_bloku = wybor_bloku_fabrycznego(payload)
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj pola katalogowego (`bay_kind`) — ta sama droga
+    # odczytu metadanych pochodzenia, co w operacjach stacyjnych. Rola modelu nie odróżnia pola
+    # liniowego od pola potrzeb własnych czy rezerwowego (w katalogu wszystkie są `FEEDER`),
+    # a rodzaj stacji liczy wyłącznie pola liniowe (`enm.rodzaj_stacji`) — bez zapisu rodzaju
+    # dodanie pola potrzeb własnych robiło ze stacji przelotowej „odgałęźną".
+    pochodzenie_pola = metadane_pochodzenia_pola(payload)
     # Tylko podane refy (bez clobber istniejących wartości na None przy re-konfiguracji).
     producer_refs: dict[str, Any] = {
         key: value
@@ -2264,6 +2273,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if value
     }
     producer_refs.update(wybor_bloku)
+    producer_refs.update(pochodzenie_pola)
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
@@ -2518,6 +2528,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             switchgear_family_ref=switchgear_family_ref,
             manufacturer_ref=manufacturer_ref,
             wybor_bloku=wybor_bloku,
+            metadane_pochodzenia=pochodzenie_pola,
             primary_devices=primary_devices_spec or None,
             tags=list(payload.get("tags") or []),
             funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
@@ -2708,6 +2719,9 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         "bay_role": plan.bay_role,
         "bay_template_ref": plan.bay_template_ref,
         "switchgear_family_ref": plan.switchgear_family_ref,
+        # Rodzaj pola z KATALOGU (liniowe / potrzeb własnych / rezerwowe…) — przesądza, czy
+        # pole liczy się do rodzaju stacji (`enm.rodzaj_stacji`).
+        POLE_RODZAJU_POLA: plan.bay_kind,
     }
     if plan.manufacturer_ref:
         payload_pola["manufacturer_ref"] = plan.manufacturer_ref
@@ -4658,13 +4672,13 @@ def _build_converter_materialized_params(
         )
 
     if technology == "PV":
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=["un_kv", "rated_power_ac_kw", "max_power_kw", "control_mode"],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka: dict[str, Any] = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -4683,7 +4697,7 @@ def _build_converter_materialized_params(
             **pola_karty_obecne(z_katalogu),
         }
     elif technology == "BESS":
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=[
@@ -4694,8 +4708,8 @@ def _build_converter_materialized_params(
                 "s_n_kva",
             ],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -4717,13 +4731,13 @@ def _build_converter_materialized_params(
             **pola_karty_obecne(z_katalogu),
         }
     else:
-        z_katalogu, blad = _materialize_nn_source_params(
+        z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
             catalog_ref=catalog_ref,
             required_fields=["un_kv", "pmax_mw", "sn_mva"],
         )
-        if blad or z_katalogu is None:
-            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        if isinstance(z_katalogu, str):
+            return {}, _blad_materializacji(z_katalogu)
         tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
@@ -6137,10 +6151,17 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # K30-15: rozwiąż catalog_ref wcześniej — potrzebny dla block_transformer
     # voltage matching (MV-side BESS/FW vs LV-side PV decision).
     catalog_ref, catalog_error = _resolve_converter_catalog_ref(payload, technology)
-    if catalog_error or not catalog_ref:
+    # Dwie przyczyny, dwa kody: zły zapis wiązania (kod resolvera) albo brak wyboru
+    # pozycji — jawne gałęzie zamiast `kod or "…"` (przegląd PARTIA-6-BACKEND).
+    if catalog_error is not None:
         return _error_response(
             f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
-            catalog_error or "catalog.ref_required",
+            catalog_error,
+        )
+    if not catalog_ref:
+        return _error_response(
+            f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
+            "catalog.ref_required",
         )
 
     # JEDNA przestrzeń katalogu: wybiera pozycję do materializacji tabliczki i jest
@@ -7543,6 +7564,84 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
 
 
+def set_load_dynamic_binding(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Związanie odbioru z profilem modelu dynamicznego z katalogu (karta modeli odbiorów, O-56).
+
+    Payload: ``{"load_ref": ..., "dynamic_model_ref": <profil> | null}``. Profil trafia do
+    ``materialized_params.dynamic_model_ref`` odbioru, a kopię ``Load.dynamika`` buduje JEDNA
+    funkcja materializacji (``enm.dynamika_z_katalogu.materializuj_dynamike_odbioru``) z
+    profilu i KSZTAŁTU charakterystyki odbioru. ``null`` odwiązuje: klucz wiązania i kopia
+    znikają razem (odbiór nie ma bloku własnego — edytora pól ręcznych nie ma). To jest
+    akcja naprawcza kodu gotowości ``load.dynamika_missing`` (ekran dynamiki, sekcja modeli).
+
+    Odmowy nazwane (model bez zmian): brak odbioru w payloadzie albo w modelu, brak klucza
+    wiązania, profil spoza katalogu, współczynniki charakterystyki odbioru odrzucone przez
+    rozpływ (kopii nie da się zbudować — wiązanie bez kopii byłoby obietnicą bez treści).
+    """
+    load_ref = payload.get("load_ref")
+    if not load_ref:
+        return _error_response(
+            "Nie wskazano odbioru, którego model dynamiczny ma zostać związany z katalogiem.",
+            "load_bindings.load_missing",
+        )
+    if "dynamic_model_ref" not in payload:
+        return _error_response(
+            "Nie podano profilu modelu dynamicznego odbioru (albo jawnego odwiązania).",
+            "load_bindings.payload_empty",
+        )
+    profil = payload.get("dynamic_model_ref")
+    new_enm = kopia_graniczna_enm(enm)
+    odbior = next(
+        (
+            o
+            for o in new_enm.get("loads", [])
+            if o.get("ref_id") == load_ref or o.get("id") == load_ref
+        ),
+        None,
+    )
+    if odbior is None:
+        return _error_response(
+            "Wskazany odbiór nie istnieje w modelu sieci.", "load_bindings.load_not_found"
+        )
+    tabliczka = odbior.get("materialized_params")
+    if tabliczka is None:
+        tabliczka = {}
+        odbior["materialized_params"] = tabliczka
+    if not isinstance(tabliczka, dict):  # pragma: no cover - obrona kontraktu
+        return _error_response(
+            "Parametry zmaterializowane odbioru mają nieoczekiwaną postać.",
+            "load_bindings.materialized_params_invalid",
+        )
+    if profil is None:
+        tabliczka.pop("dynamic_model_ref", None)
+        if not tabliczka:
+            odbior["materialized_params"] = None
+        odbior.pop("dynamika", None)
+    else:
+        try:
+            sprawdz_profil_odbioru(str(profil), nazwa_elementu(odbior, "loads"))
+            kopia = materializuj_dynamike_odbioru(
+                str(profil), odbior, czestotliwosc_studium_hz(new_enm)
+            )
+        except BladMaterializacjiDynamiki as blad:
+            return _error_response(blad.komunikat, blad.kod)
+        tabliczka["dynamic_model_ref"] = str(profil)
+        odbior["dynamika"] = kopia
+    return _response(
+        new_enm,
+        updated=[str(load_ref)],
+        selection_id=str(load_ref),
+        selection_type="load",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "PARAMETERS_UPDATED",
+                "element_id": str(load_ref),
+            }
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # 24-25. UNIWERSALNE
 # ---------------------------------------------------------------------------
@@ -7886,9 +7985,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_vt",
         "set_measurement_secondary_circuit",
         "add_relay",
-        "update_relay_settings",
-        "link_relay_to_field",
-        "validate_selectivity",
+        "update_protection_settings",
         # nN
         "add_sn_bay",
         "add_sn_bay_from_catalog",
@@ -7904,6 +8001,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_source_operating_mode",
         "set_dynamic_profile",
         "set_der_catalog_bindings",
+        "set_load_dynamic_binding",
         "dodaj_karte_widmowa_projektu",
         # P0.1 nN — topologia obwodow nN
         "add_nn_cable_segment",
@@ -7927,9 +8025,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_vt": add_vt,
     "set_measurement_secondary_circuit": set_measurement_secondary_circuit,
     "add_relay": add_relay,
-    "update_relay_settings": update_relay_settings,
-    "link_relay_to_field": link_relay_to_field,
-    "validate_selectivity": validate_selectivity,
+    "update_protection_settings": update_protection_settings,
     "add_sn_bay": add_sn_bay,
     "add_sn_bay_from_catalog": add_sn_bay_from_catalog,
     "add_nn_outgoing_field": add_nn_outgoing_field,
@@ -7944,6 +8040,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "set_der_catalog_bindings": set_der_catalog_bindings,
+    "set_load_dynamic_binding": set_load_dynamic_binding,
     "dodaj_karte_widmowa_projektu": dodaj_karte_widmowa_projektu,
     "add_nn_cable_segment": add_nn_cable_segment,
     "add_nn_distribution_board": add_nn_distribution_board,

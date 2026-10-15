@@ -16,12 +16,7 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from domain.protection_analysis import (
-    ProtectionEvaluation,
-    ProtectionResult,
-    ProtectionResultSummary,
-    TripState,
-)
+from domain.protection_analysis import ProtectionEvaluation, TripState
 from domain.protection_comparison import (
     ISSUE_SEVERITY_MAP,
     IssueCode,
@@ -51,49 +46,26 @@ def make_evaluation(
     trip_state: TripState,
     margin_percent: float | None = None,
 ) -> ProtectionEvaluation:
-    """Factory for test evaluations."""
+    """Ocena w kształcie zapisanym przez bieg ``protection_sn`` (urządzenie modelu, punkt
+    zwarcia, krotność prądu wobec progu, wiarygodność) — nie dawny kształt z szablonem krzywej."""
     return ProtectionEvaluation(
         device_id=device_id,
+        nazwa_urzadzenia_pl="Zabezpieczenie testowe",
         device_type_ref="test_type",
         protected_element_ref=protected_element_ref,
         fault_target_id=fault_target_id,
+        nazwa_punktu_pl="Punkt testowy",
         i_fault_a=i_fault_a,
         i_pickup_a=i_pickup_a,
         t_trip_s=t_trip_s,
         trip_state=trip_state,
-        curve_ref="test_curve",
-        curve_kind="inverse",
+        stopien_decydujacy="overcurrent_51",
+        curve_kind="IEC_SI",
+        krotnosc_m=i_fault_a / i_pickup_a,
         margin_percent=margin_percent,
+        wiarygodnosc="WIARYGODNY",
+        wiarygodnosc_powod_pl="Prąd w granicy ALF przekładnika.",
         notes_pl="Test note",
-    )
-
-
-def make_result(
-    run_id: str,
-    evaluations: tuple[ProtectionEvaluation, ...],
-) -> ProtectionResult:
-    """Factory for test results."""
-    trips_count = sum(1 for e in evaluations if e.trip_state == TripState.TRIPS)
-    no_trip_count = sum(1 for e in evaluations if e.trip_state == TripState.NO_TRIP)
-    invalid_count = sum(1 for e in evaluations if e.trip_state == TripState.INVALID)
-    trip_times = [e.t_trip_s for e in evaluations if e.t_trip_s is not None]
-
-    return ProtectionResult(
-        run_id=run_id,
-        sc_run_id="test_sc_run",
-        protection_case_id="test_case",
-        template_ref="test_template",
-        template_fingerprint="test_fingerprint",
-        library_manifest_ref=None,
-        evaluations=evaluations,
-        summary=ProtectionResultSummary(
-            total_evaluations=len(evaluations),
-            trips_count=trips_count,
-            no_trip_count=no_trip_count,
-            invalid_count=invalid_count,
-            min_trip_time_s=min(trip_times) if trip_times else None,
-            max_trip_time_s=max(trip_times) if trip_times else None,
-        ),
     )
 
 
@@ -351,8 +323,6 @@ class TestProtectionComparisonTrace:
             comparison_id="test_comparison",
             run_a_id="run_a",
             run_b_id="run_b",
-            library_fingerprint_a="fp_a",
-            library_fingerprint_b="fp_b",
             steps=(
                 ProtectionComparisonTraceStep(
                     step="MATCH_EVALUATIONS",

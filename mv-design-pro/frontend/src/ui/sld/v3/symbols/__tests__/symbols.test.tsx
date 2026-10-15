@@ -12,7 +12,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { GRID, isOnGrid } from '../../core/grid';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS, makeBusbarDef, type SymbolId } from '../defs';
-import { SYMBOL_GLYPHS, SYMBOL_IDS, V3_STROKE_APPARATUS } from '../glyphs';
+import { SYMBOL_GLYPHS, SYMBOL_IDS } from '../glyphs';
 import {
   MINI_RMU,
   DER_MARKER_SHAPE,

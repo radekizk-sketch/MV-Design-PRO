@@ -28,9 +28,8 @@ brak punktu zwarcia w wyniku — każdy z tych stanów jest ODMOWĄ, nie przepus
 
 from __future__ import annotations
 
-import math
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -280,108 +279,42 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
 
 @dataclass(frozen=True)
 class WejscieKoordynacjiZBiegow:
-    """Prądy zwarciowe koordynacji wyprowadzone z dwóch ZAPISANYCH biegów.
+    """Dwa ZAPISANE biegi koordynacji (maksymalny i minimalny) po kontroli autorytetu.
 
-    Koordynacja potrzebuje DWÓCH scenariuszy: maksymalnego (selektywność,
-    wytrzymałość) i minimalnego (czułość). Kanoniczny bieg liczy JEDEN scenariusz,
-    więc miarodajna koordynacja wymaga dwóch biegów — i obu trzeba dowieść.
+    Koordynacja potrzebuje DWÓCH scenariuszy: maksymalnego (selektywność) i minimalnego
+    (czułość). Kanoniczny bieg liczy JEDEN scenariusz, więc miarodajna koordynacja wymaga
+    dwóch biegów — i obu trzeba dowieść. Prądy przekaźników liczy jedna ścieżka oceny
+    zabezpieczeń z rozpływu tych biegów (`ocena_nadpradowa`), nie ten moduł.
     """
 
     proweniencja: ProweniencjaWynikuZwarciowego
-    wiazanie_max: WiazanieWynikuZwarciowego
-    wiazanie_min: WiazanieWynikuZwarciowego
-    prady_max_a: dict[str, float]
-    prady_min_a: dict[str, float]
-    wartosci_odrzucone: tuple[str, ...] = ()
-    """Wiersze biegów, których prądu NIE wolno użyć — z podaniem przyczyny.
-
-    Puste znaczy „każdy wiersz obu biegów niósł liczbę nadającą się do
-    koordynacji". Niepuste MUSI zablokować wynik autorytatywny: wiersz z
-    ``NaN`` nie jest wierszem bez prądu, tylko wierszem, którego prąd nie jest
-    liczbą — a to inna informacja i inna decyzja."""
-    migawka: Mapping[str, Any] = field(default_factory=dict)
-    """Migawka modelu, na której stoją OBA biegi (ta sama — sprawdzone). Źródło
-    rozstrzygnięcia zacisku urządzenia na gałęzi albo łączniku (szyna, na której
-    leży prąd zwarciowy lokalizacji — decyzja O-51 pkt 7)."""
+    bieg_max: Any
+    bieg_min: Any
 
 
-def _identyfikatory_wiersza(wiersz: Mapping[str, Any], grafy: Mapping[str, Any]) -> tuple[str, ...]:
-    """Identyfikatory, po których wolno dopasować wiersz do lokalizacji urządzenia.
+def _scenariusz_biegu(bieg: Any, opis: str) -> str:
+    """``MAX`` albo ``MIN`` — z artefaktu biegu (``raw_result["scenario"]``), nie z domysłu.
 
-    Kolejność i zbiór są TE SAME co w widoku, który czyta ekran koordynacji
-    (`canonical_analysis.build_short_circuit_results`: ``target_id`` = węzeł
-    zwarcia, ``element_id`` = element modelu albo węzeł). Gdyby backend
-    dopasowywał inaczej niż ekran, ta sama lokalizacja trafiałaby na inny wiersz
-    po obu stronach — i porównanie „liczba z żądania wobec liczby biegu" byłoby
-    porównaniem dwóch różnych punktów sieci.
-    """
-    wezel = str(wiersz.get("fault_node_id") or "")
-    element = str((grafy.get(wezel) or {}).get("element_id") or "") or wezel
-    return tuple(dict.fromkeys(x for x in (wezel, element) if x))
-
-
-def _prad_koordynacji(wartosc: Any) -> float | None:
-    """Prąd nadający się do koordynacji albo ``None`` — JEDEN predykat.
-
-    Używany PRZY BUDOWIE mapy i PRZY PORÓWNANIU z żądaniem. Dwa niezależne
-    sprawdzenia tej samej własności rozjeżdżają się przy pierwszej wartości
-    brzegowej — a tutaj wartością brzegową jest ``NaN``, który przechodzi przez
-    KAŻDE porównanie jako fałsz.
-    """
-    try:
-        liczba = float(wartosc)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(liczba) or liczba <= 0.0:
-        return None
-    return liczba
-
-
-def _prady_zwarciowe_biegu(bieg: Any, opis_biegu: str) -> tuple[dict[str, float], tuple[str, ...]]:
-    """``identyfikator lokalizacji -> I''k [A]`` z artefaktu biegu + ODRZUCONE.
-
-    KAŻDY WIERSZ, NIE PIERWSZY: ``NaN``/wartość niepoprawna w KTÓRYMKOLWIEK
-    wierszu musi wejść do ``wartosci_odrzucone`` — kontrola nałożona tylko na
-    pierwszy wiersz nie jest kontrolą nałożoną na wiersze (reguła KLASA NIE
-    INSTANCJA, CLAUDE.md: iloczyn cech, nie przykład).
-    """
-    artefakt = bieg.raw_result or {}
-    grafy = (artefakt.get("graph") or {}).get("nodes") or {}
-    mapa: dict[str, float] = {}
-    odrzucone: list[str] = []
-    for numer, wiersz in enumerate(artefakt.get("results", []) or []):
-        if not isinstance(wiersz, Mapping):
-            continue
-        surowa = wiersz.get("ikss_a")
-        if surowa is None:
-            continue
-        liczba = _prad_koordynacji(surowa)
-        identyfikatory = _identyfikatory_wiersza(wiersz, grafy)
-        if liczba is None:
-            odrzucone.append(
-                f"bieg {opis_biegu}, wiersz {numer} "
-                f"({', '.join(identyfikatory) or 'bez identyfikatora'}): prąd "
-                f"zwarciowy {surowa!r} nie jest skończoną liczbą dodatnią, więc "
-                f"nie może potwierdzić żadnej wartości koordynacji"
-            )
-            continue
-        for ident in identyfikatory:
-            mapa.setdefault(ident, liczba)
-    return mapa, tuple(odrzucone)
-
-
-def _scenariusz_biegu(bieg: Any) -> str:
-    """``MAX`` albo ``MIN`` — z artefaktu biegu, nie z nazwy ani z domysłu."""
-    return str((bieg.raw_result or {}).get("scenario") or "MAX").upper()
+    Bieg bez zapisanego scenariusza nie może być wskazany jako maksymalny ani minimalny:
+    odmowa nazwana (dawna wartość zastępcza „MAX" czyniła z niego bieg maksymalny)."""
+    scenariusz = (bieg.raw_result or {}).get("scenario")
+    if not isinstance(scenariusz, str) or not scenariusz:
+        raise BiegNiemiarodajnyError(
+            "SCENARIUSZ_BIEGU_NIEUSTALONY",
+            f"Bieg wskazany jako {opis} nie ma zapisanego scenariusza zwarciowego (MAX albo "
+            "MIN) — przelicz bieg zwarciowy na bieżącym modelu.",
+        )
+    return scenariusz.upper()
 
 
 def wejscie_koordynacji_z_biegow(
     *, run_id_max: str | None, run_id_min: str | None
 ) -> WejscieKoordynacjiZBiegow:
-    """Prądy koordynacji z biegu MAKSYMALNEGO i MINIMALNEGO — obu wymaganych.
+    """Biegi koordynacji: MAKSYMALNY i MINIMALNY — obu wymaganych — z proweniencją obu.
 
     KONTROLE, KAŻDA Z WŁASNĄ PRZYCZYNĄ:
     - oba biegi istnieją, są zwarciowe i zakończone (`bieg_zwarciowy_miarodajny`),
+    - każdy bieg ma zapisany scenariusz (brak = odmowa, nigdy domyślne „MAX"),
     - bieg maksymalny niesie scenariusz MAX, minimalny — MIN; zamiana miejscami
       dałaby czułość liczoną z prądu maksymalnego, czyli werdykt zawyżony,
     - oba biegi mają TĘ SAMĄ migawkę modelu; prądy z dwóch różnych sieci opisują
@@ -394,7 +327,7 @@ def wejscie_koordynacji_z_biegow(
         (bieg_max, "MAX", "maksymalny"),
         (bieg_min, "MIN", "minimalny"),
     ):
-        rzeczywisty = _scenariusz_biegu(bieg)
+        rzeczywisty = _scenariusz_biegu(bieg, opis)
         if rzeczywisty != oczekiwany:
             raise BiegNiemiarodajnyError(
                 "SCENARIUSZ_BIEGU_NIEZGODNY",
@@ -411,20 +344,6 @@ def wejscie_koordynacji_z_biegow(
             "różnych sieci nie znaczą nic — przelicz oba scenariusze na tym samym modelu.",
         )
 
-    def wiazanie(bieg: Any) -> WiazanieWynikuZwarciowego:
-        wiersze = (bieg.raw_result or {}).get("results") or []
-        pierwszy = dict(wiersze[0]) if wiersze else {}
-        return WiazanieWynikuZwarciowego.z_biegu(
-            run_id=str(bieg.id),
-            snapshot_id=bieg.snapshot_hash,
-            punkt_zwarcia=str(pierwszy.get("fault_node_id") or "brak"),
-            migawka_wejscia=bieg.snapshot or {},
-            wynik=pierwszy,
-        )
-
-    prady_max, odrzucone_max = _prady_zwarciowe_biegu(bieg_max, "maksymalny")
-    prady_min, odrzucone_min = _prady_zwarciowe_biegu(bieg_min, "minimalny")
-
     # PROWENIENCJA Z OBU BIEGÓW, NIE Z MAKSYMALNEGO. Bieg MIN mógłby nieść
     # domyślkę systemową, podczas gdy MAX niesie samą deklarację — koordynacja
     # konsumuje OBA prądy, więc zastrzeżenie KTÓREGOKOLWIEK biegu jest
@@ -438,88 +357,5 @@ def wejscie_koordynacji_z_biegow(
     )
 
     return WejscieKoordynacjiZBiegow(
-        proweniencja=proweniencja_obu,
-        wiazanie_max=wiazanie(bieg_max),
-        wiazanie_min=wiazanie(bieg_min),
-        prady_max_a=prady_max,
-        prady_min_a=prady_min,
-        wartosci_odrzucone=odrzucone_max + odrzucone_min,
-        migawka=bieg_max.snapshot or {},
+        proweniencja=proweniencja_obu, bieg_max=bieg_max, bieg_min=bieg_min
     )
-
-
-#: Ile prąd podany w żądaniu może się różnić od prądu biegu, żeby uznać go za TEN
-#: SAM. Wartość wynika z drogi liczby: bieg → widok (A → kA, dzielenie przez 1000)
-#: → ekran → żądanie (kA → A, mnożenie przez 1000). Podwójne przeliczenie przez
-#: 1000 w double daje błąd względny rzędu 1e-16; próg 1e-9 jest o siedem rzędów
-#: luźniejszy, a nadal o dziewięć rzędów ostrzejszy niż jakakolwiek PODMIANA
-#: wartości inżynierskiej. NIE jest to tolerancja fizyczna — to margines
-#: przeliczenia jednostek.
-TOLERANCJA_WZGLEDNA_PRADU = 1.0e-9
-
-
-def niezgodnosci_pradow_koordynacji(
-    wejscie: WejscieKoordynacjiZBiegow,
-    prady_zadania: Iterable[Mapping[str, Any]],
-    *,
-    szyny_lokalizacji: Mapping[str, str] | None = None,
-    odmowy_lokalizacji: Mapping[str, str] | None = None,
-) -> tuple[str, ...]:
-    """Czym prądy z żądania różnią się od prądów biegów. Pusto = to te same liczby.
-
-    `szyny_lokalizacji` / `odmowy_lokalizacji` — wynik `szyny_zwarcia_lokalizacji`
-    (decyzja O-51 pkt 7): lokalizacja-gałąź albo łącznik ma prąd zwarciowy SZYNY swojego
-    zacisku, więc porównanie idzie z wierszem biegu tej szyny; lokalizacja z odmową
-    resolvera nie ma czym potwierdzić podanej wartości (niezgodność z powodem)."""
-    szyny = szyny_lokalizacji or {}
-    odmowy = odmowy_lokalizacji or {}
-    # WARTOŚCI ODRZUCONE IDĄ PIERWSZE. Wiersz, którego prąd nie jest liczbą, nie
-    # może zostać „potwierdzony" żadną wartością z żądania — a bez tej pozycji
-    # jego brak w mapie wyglądałby jak brak lokalizacji w biegu, czyli inna
-    # przyczyna i mylący komunikat.
-    roznice: list[str] = list(wejscie.wartosci_odrzucone)
-    for pozycja in prady_zadania:
-        lokalizacja = str(pozycja.get("location_id") or "")
-        if lokalizacja in odmowy:
-            roznice.append(f"{lokalizacja}: brak szyny zwarcia lokalizacji — {odmowy[lokalizacja]}")
-            continue
-        szyna = szyny.get(lokalizacja, lokalizacja)
-        opis_punktu = lokalizacja if szyna == lokalizacja else f"{lokalizacja} (szyna {szyna})"
-        for klucz, mapa, opis in (
-            ("ik_max_3f_a", wejscie.prady_max_a, "maksymalny"),
-            ("ik_min_3f_a", wejscie.prady_min_a, "minimalny"),
-        ):
-            podany = pozycja.get(klucz)
-            if podany is None:
-                continue
-            # WARTOŚĆ Z ŻĄDANIA TEŻ MUSI BYĆ LICZBĄ. `abs(NaN - x) > tolerancja`
-            # jest fałszem, więc bez tego sprawdzenia `NaN` w żądaniu przechodził
-            # jako zgodny z każdym prądem biegu — ta sama dziura, tylko z drugiej
-            # strony porównania.
-            if _prad_koordynacji(podany) is None:
-                roznice.append(
-                    f"{lokalizacja}.{klucz}: podana wartość {podany!r} nie jest "
-                    f"skończoną liczbą dodatnią"
-                )
-                continue
-            z_biegu = mapa.get(szyna)
-            if z_biegu is None:
-                roznice.append(
-                    f"{opis_punktu}: bieg {opis} nie zawiera prądu zwarciowego dla tej "
-                    "lokalizacji — nie ma czym potwierdzić podanej wartości"
-                )
-                continue
-            odchylka = abs(float(podany) - z_biegu)
-            if odchylka > TOLERANCJA_WZGLEDNA_PRADU * max(abs(z_biegu), 1.0):
-                roznice.append(
-                    f"{opis_punktu}.{klucz}: podano {float(podany):.6f} A, "
-                    f"bieg {opis} policzył {z_biegu:.6f} A"
-                )
-        for klucz in ("ik_max_2f_a", "ik_min_1f_a"):
-            if pozycja.get(klucz) is not None:
-                roznice.append(
-                    f"{lokalizacja}.{klucz}: wielkość niezwiązana z żadnym biegiem — "
-                    "kanoniczny bieg zwarciowy liczy zwarcie trójfazowe, więc prądu "
-                    "dwufazowego ani jednofazowego nie ma czym potwierdzić"
-                )
-    return tuple(roznice)

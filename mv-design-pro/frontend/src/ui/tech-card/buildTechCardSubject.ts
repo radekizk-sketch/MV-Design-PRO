@@ -25,7 +25,7 @@ import {
   segmentPublicIdentity,
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
-import { formatStationSwitchgearLayoutLabelPl } from '../shared/stationTypeLabels';
+import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
 import { stationSnFieldSpecs, stationSnapshotBays } from '../network-build/stationSnFields';
@@ -236,6 +236,17 @@ function buildSegmentSubject(
       onClick: () => undefined,
     });
   }
+  // Łącznik sekcyjny (także wyłącznik z zabezpieczeniem w torze odcinka) — ta sama operacja
+  // co pozycja „Wstaw łącznik sekcyjny" menu kanwy SLD. Karta techniczna zastępuje w
+  // inspektorze listę szybkich akcji, więc bez tej pozycji wstawienie aparatu w odcinek było
+  // nieosiągalne z karty odcinka (karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik liniowy jest
+  // kotwicą przekładnika i przekaźnika).
+  actions.push({
+    id: 'open_operation:insert_section_switch_sn',
+    label: 'Wstaw łącznik sekcyjny',
+    variant: 'secondary',
+    onClick: () => undefined,
+  });
 
   return {
     kind: 'line_segment',
@@ -262,7 +273,7 @@ function buildStationSubject(
   const isGpz = String(station.station_type ?? '').toLowerCase() === 'gpz';
   const kind: TechCardKind = isGpz ? 'gpz' : 'station';
   const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);
-  const switchgearLabel = formatStationSwitchgearLayoutLabelPl(station.station_type);
+  const switchgearLabel = ukladRozdzielnicyStacjiPl(snapshot, station);
 
   // Pola rozdzielni SN — TA SAMA kolejność źródeł co liczność pól na karcie stacji
   // (`stationSnFieldCount`): specyfikacje pól stacji (`meta.field_specs`, jedyna postać pól

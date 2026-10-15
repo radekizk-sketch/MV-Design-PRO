@@ -9,8 +9,8 @@ z warstwy API/analiz.
 
 Wykrywa (analiza składni, nie dopasowanie tekstu):
   A. Wywołanie funkcji/metody WARSTWY SOLVERA z argumentem kluczowym
-     `fault_node_id=`.  Adresat rozwiązywany po imporcie (`network_model.solvers`,
-     `analysis.machine_short_circuit`) ORAZ po drodze pośredniej (niżej), więc
+     `fault_node_id=`.  Adresat rozwiązywany po imporcie (`network_model.solvers`)
+     ORAZ po drodze pośredniej (niżej), więc
      odczyt `result.fault_node_id`, kolumna ORM, literał w słowniku, docstring
      i nazwa pola DTO nie są trafieniami Z KONSTRUKCJI REGUŁY — bez żadnej
      białej listy dla warstwy odczytu wyniku.  Budowa obiektu danych (klasa
@@ -78,9 +78,12 @@ Dozwolone lokalizacje: warstwa wiązania (WHITELISTED_PATHS), warstwa solvera
 (SOLVER_LAYER_PREFIXES), testy i skrypty.
 
 IMPORTY są rozwiązywane wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło
-prawdy bramek): `from ..solvers.short_circuit_iec60909 import …` w `network_model/core/**`
-i `from .machine_short_circuit import …` w `analysis/**` to te same wejścia w solver co
-formy bezwzględne (do 2026-09-30 bramka czytała samo `module`). Nazwa sprowadzona
+prawdy bramek): `from ..solvers.short_circuit_iec60909 import …` i
+`from ..solvers import machine_sc_iec60909` w `network_model/core/**` to te same wejścia
+w solver co formy bezwzględne (do 2026-09-30 bramka czytała samo `module`). Pakiet
+`analysis.machine_short_circuit` (dawniej drugi prefiks warstwy solvera) skasowany kartą
+TORY-TYLKO-W-TESTACH (2026-09-30) — interpretacja bez konsumenta w produkcie, a warstwa
+analizy nie woła solverów (`scripts/arch_guard.py`). Nazwa sprowadzona
 z pakietu (`from network_model import solvers`) liczy się jako moduł `pakiet.nazwa`.
 Import względny ponad korzeń drzewa importów (interpreter: `ImportError`) jest
 naruszeniem `K:` — bramka nie zgaduje jego celu (fail-closed).
@@ -125,11 +128,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Moduły warstwy solvera — callee zaimportowany stąd to wejście w fizykę.
-SOLVER_MODULE_PREFIXES = ("network_model.solvers", "analysis.machine_short_circuit")
+SOLVER_MODULE_PREFIXES = ("network_model.solvers",)
 
 #: Warstwa solvera po ścieżce pliku: `fault_node_id` jest tam nazwą parametru
 #: WŁASNEJ sygnatury i wewnętrznym wywołaniem fizyki, nie iniekcją z zewnątrz.
-SOLVER_LAYER_PREFIXES = ("network_model/solvers/", "analysis/machine_short_circuit/")
+SOLVER_LAYER_PREFIXES = ("network_model/solvers/",)
 
 #: Nazwy wywołań kanonicznego wiązania (naruszenie B).
 BINDING_CALL_NAMES = frozenset({"execute_short_circuit", "_execute_short_circuit"})
@@ -172,13 +175,10 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
         "C:compute_machine_contributions": 1,
     },
     "application/analyses/fault_loop/service.py": {},
-    "application/analysis_run/service.py": {
-        "A:compute_1ph_short_circuit": 1,
-        "A:compute_2ph_ground_short_circuit": 1,
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
-        "C:compute_machine_contributions": 1,
-    },
+    # `application/analysis_run/service.py` (5 wejść w solver) nie istnieje od kasacji
+    # dawnego toru biegów; jego budżet wisiał osierocony, bo zapadka nie sprawdzała
+    # istnienia kluczy — zdjęty kartą TORY-TYLKO-W-TESTACH (2026-09-30), a
+    # `check_legacy_callers_freshness` pilnuje odtąd, że każdy klucz wskazuje plik.
     # Wejscie `A:compute_3ph_short_circuit` ZDJETE 2026-08-07 (dlug
     # PACK-SC3F-WIAZANIE): mapowanie snapshotu i wywolanie solvera przeniesione do
     # warstwy wiazania (`zwarcie_3f_ze_snapshotu`), wiec pakiet dowodowy przestal
@@ -239,6 +239,27 @@ def check_whitelisted_paths_freshness() -> list[str]:
             violations.append(
                 f"[fault-params-wyjatek-osierocony] WHITELISTED_PATHS zawiera {path!r}, "
                 "ktorego juz nie ma w backend/src — usun ten wpis"
+            )
+    return violations
+
+
+def check_legacy_callers_freshness() -> list[str]:
+    """Zapadka świeżości kluczy LEGACY_DIRECT_SOLVER_CALLERS (karta TORY-TYLKO-W-TESTACH,
+    2026-09-30).
+
+    Budżet przypięty do nieistniejącego pliku jest MARTWYM WYJĄTKIEM: plik utworzony
+    kiedyś pod tą samą ścieżką względną dostałby z góry prawo do wejść w solver bez
+    żadnego sygnału (zmierzone: klucz `application/analysis_run/service.py` z budżetem
+    pięciu wywołań wisiał po kasacji pliku). Ścieżka składana TAK SAMO jak w
+    `relative_to_backend` i `check_whitelisted_paths_freshness` (`BACKEND_SRC / path`) —
+    predykaty parami z jednego źródła (KLASA-NIE-INSTANCJA §3).
+    """
+    violations: list[str] = []
+    for path in sorted(LEGACY_DIRECT_SOLVER_CALLERS):
+        if not (BACKEND_SRC / path).is_file():
+            violations.append(
+                f"[fault-params-zapadka-osierocona] LEGACY_DIRECT_SOLVER_CALLERS zawiera "
+                f"{path!r}, ktorego juz nie ma w backend/src — usun ten wpis"
             )
     return violations
 
@@ -665,6 +686,7 @@ def main() -> int:
         return 1
 
     violations.extend(check_whitelisted_paths_freshness())
+    violations.extend(check_legacy_callers_freshness())
 
     if violations:
         print("FAIL: Direct fault parameter usage detected outside whitelisted modules:")

@@ -1,937 +1,739 @@
-"""
-Overcurrent Protection Coordination Analyzer
+"""Koordynacja zabezpieczeń nadprądowych (ekran E-28) na urządzeniach i nastawach Z MODELU.
 
-CANONICAL ALIGNMENT:
-- SYSTEM_SPEC.md: Analysis layer (NOT-A-SOLVER)
-- ARCHITECTURE.md: Interpretation layer
+Karta BIEG-ZABEZPIECZEN-Z-MODELU (decyzja D-21). Urządzenia, nastawy, strefy i prądy
+przekaźników pochodzą z JEDNEJ ścieżki oceny (``application.analyses.protection.
+ocena_nadpradowa``) policzonej na biegu zwarciowym maksymalnym i minimalnym. Ten moduł
+wyłącznie INTERPRETUJE jej wynik — nie liczy żadnego czasu zadziałania sam:
 
-NOT-A-SOLVER RULE (BINDING):
-    This module is an ANALYSIS/INTERPRETATION layer component.
-    It does NOT perform any physics calculations.
-    All physics data (fault currents, operating currents) comes from:
-    - Power Flow solver (operating currents)
-    - Short Circuit IEC 60909 solver (fault currents)
-    This module ONLY interprets pre-computed results.
+* czułość: najmniejszy prąd przekaźnika w strefie urządzenia z biegu MINIMALNEGO wobec
+  progu najczulszego stopnia (``I_min/I_s``),
+* selektywność: dla KAŻDEJ pary (nadrzędne, podrzędne) i KAŻDEGO punktu zwarcia w strefie
+  podrzędnego — różnica czasów zadziałania obu urządzeń przy ich WŁASNYCH prądach
+  przekaźnika z biegu MAKSYMALNEGO (``Δt = t_nad − t_pod``); pary wynikają z topologii
+  (strefa podrzędnego zawiera się w strefie nadrzędnego) albo są wskazane jawnie i wtedy
+  sprawdzane wobec topologii — kolejność listy urządzeń nie znaczy nic,
+* przeciążalność: próg stopnia zwłocznego (albo najczulszego) wobec prądu roboczego
+  wyłącznika z biegu rozpływu (``I_s/I_rob``),
+* charakterystyka TCC urządzenia: czas urządzenia (najszybszy pobudzony stopień) w siatce
+  prądów — ten sam ``czas_urzadzenia`` co ocena punktu, ten sam rdzeń IEC 60255.
 
-WHITE BOX:
-    Full trace of all evaluation steps is recorded.
-    Every intermediate value is exposed for audit.
+Dawny analizator brał urządzenia z żądania klienta (szablony ekranu), pary z kolejności
+listy, prąd analizy z Ik'' szyny zamiast prądu przekaźnika, czas urządzenia wyłącznie ze
+stopnia 51 i wpisywał 999,999 s jako „czas" braku zadziałania — wszystko skasowane.
 
-DETERMINISM:
-    Same inputs → identical outputs.
-    No randomness, no timestamps in calculations.
+Zakaz P-06 (``docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md`` §3): koordynacja nie
+wydaje werdyktów — każde sprawdzenie niesie liczby (prądy, czasy, odstęp, iloraz) obok wartości
+wymaganej z kryteriów projektowych i zdanie z tymi liczbami; dawne pasma PASS/MARGINAL/FAIL
+i werdykt ogólny skasowane.
 
-LAYER BOUNDARY:
-    Input: PF results + SC results + device settings
-    Output: Coordination verdicts + TCC data
-    NO model mutation, NO solver calls
+NOT-A-SOLVER: zero fizyki poza rdzeniem ``network_model.solvers.protection_iec60255``
+(wołanym przez ``czas_urzadzenia``); arytmetyka tu to ilorazy i różnice wyników.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import math
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from application.analyses.protection.ocena_nadpradowa import (
+    ETYKIETY_KRZYWYCH_PL,
+    NIEWIARYGODNY,
+    NastawyUrzadzenia,
+    OcenaPunktu,
+    WynikOceny,
+    czas_urzadzenia,
+)
 from domain.protection_device import (
-    VERDICT_LABELS_PL,
-    CoordinationVerdict,
-    CurveStandard,
     OverloadCheck,
-    ProtectionCurveSettings,
-    ProtectionDeviceType,
     SelectivityCheck,
     SensitivityCheck,
-)
-from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
-from protection.curves.curve_calculator import (
-    CurveDefinition,
-    calculate_curve_points,
-    calculate_trip_time,
-)
-from protection.curves.curve_calculator import (
-    CurveStandard as CurveCurveStandard,
+    StanPary,
 )
 
 from .models import (
     CoordinationAnalysisResult,
     CoordinationConfig,
     CoordinationInput,
-    FaultCurrentData,
     FaultMarker,
-    OperatingCurrentData,
+    ParaSelektywnosci,
     TCCCurve,
     TCCPoint,
 )
 
-# =============================================================================
-# PODSTAWA KRZYWEJ CZASOWO-PRADOWEJ — JEDNO ZRODLO PRAWDY (karta N-D5-FUSE)
-# =============================================================================
-#
-# ZNALEZISKO (pomiar na zywej sciezce API, karta N-D5-FUSE): urzadzenie typu
-# FUSE dostawalo krzywa z formuly IDMT IEC 60255 — czyli FIZYKI PRZEKAZNIKA
-# NADPRADOWEGO — przez CICHY fallback `standard_map.get(..., IEC)` w DWOCH
-# miejscach naraz (`_calculate_device_trip_time` i `_generate_tcc_curves`).
-# Pomiar: bezpiecznik zgloszony jako `device_type=FUSE, standard=FUSE` dostawal
-# 100 punktow IDENTYCZNYCH CO DO OSTATNIEJ CYFRY z przekaznikiem IEC SI, ale
-# opisanych etykieta `FUSE_SI` — najgorsza postac fabrykacji, bo klamala
-# etykieta i szla dalej do wykresu TCC, raportu PDF i DOCX.
-#
-# FIZYKA: bezpiecznik topikowy SN nie ma charakterystyki IDMT ani mnoznika
-# czasowego TMS. Ma PASMO topikowe (krzywa przedlukowa i krzywa wylaczania)
-# odczytywane z karty katalogowej producenta wg IEC 60282-1 / PN-EN 60282-1.
-# Pasma nie da sie wyprowadzic ze wzoru — to dane pomiarowe producenta.
-#
-# ZASADA: warunek WEJSCIA (czy liczymy czas?) i warunek WYJSCIA (czy rysujemy
-# krzywa?) pochodza z TEJ SAMEJ funkcji `rozstrzygnij_podstawe_krzywej`.
-# Dwa niezalezne warunki, ktore „dzis sie zgadzaja", byly wlasnie tym defektem.
-
-#: Normy, ktorych krzywa jest WZOREM przekaznikowym (da sie policzyc).
-#: Mapa ZAMKNIETA — norma spoza niej NIE dostaje cichego zastepnika.
-#: Przypiete testem `test_zamknieta_mapa_norm_przekaznikowych`.
-_NORMY_PRZEKAZNIKOWE: dict[CurveStandard, CurveCurveStandard] = {
-    CurveStandard.IEC: CurveCurveStandard.IEC,
-    CurveStandard.IEEE: CurveCurveStandard.IEEE,
-}
-
 KOD_KRZYWA_PRZEKAZNIKOWA = "KRZYWA_PRZEKAZNIKOWA"
-#: Wartosc pola `curve_type` pozycji TCC bez podstawy — NIGDY `FUSE_<wariant>`,
-#: bo taka etykieta sugerowala krzywa bezpiecznika tam, gdzie byla krzywa
-#: przekaznika (pomiar karty N-D5-FUSE).
 KOD_BRAK_CHARAKTERYSTYKI = "BRAK_CHARAKTERYSTYKI"
 KOD_BRAK_PASMA_BEZPIECZNIKA = "BRAK_PASMA_BEZPIECZNIKA"
-KOD_NIEZNANA_NORMA_KRZYWEJ = "NIEZNANA_NORMA_KRZYWEJ"
-KOD_BRAK_NASTAW_KRZYWEJ = "BRAK_NASTAW_KRZYWEJ"
 
-_POWOD_BEZPIECZNIK_PL = (
-    "Bezpiecznik topikowy nie ma charakterystyki przekaźnikowej IDMT wg IEC 60255 "
-    "ani mnożnika czasowego TMS. Jego czas zadziałania wynika z pasma topikowego "
-    "(krzywa przedłukowa i krzywa wyłączania) odczytywanego z karty katalogowej "
-    "producenta wg IEC 60282-1. Pozycja katalogowa tego bezpiecznika nie niesie "
-    "punktów pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go "
-    "wzorem przekaźnika."
+POWOD_BEZPIECZNIK_PL = (
+    "Bezpiecznik topikowy nie ma charakterystyki przekaźnikowej IDMT wg IEC 60255 ani "
+    "mnożnika czasowego TMS. Jego czas zadziałania wynika z pasma topikowego (krzywa "
+    "przedłukowa i krzywa wyłączania) odczytywanego z karty katalogowej producenta wg "
+    "IEC 60282-1. Katalog nie niesie punktów pasma, więc czasu zadziałania nie wyznaczono — "
+    "nie zastąpiono go wzorem przekaźnika."
 )
 
-
-@dataclass(frozen=True)
-class PodstawaKrzywej:
-    """Rozstrzygniecie: czy urzadzenie ma podstawe do krzywej czasowo-pradowej.
-
-    `standard is None` znaczy: NIE MA podstawy — nie wolno ani policzyc czasu,
-    ani narysowac krzywej. `powod_pl` niesie uczciwe zdanie po polsku dla
-    uzytkownika (wykres TCC, raport, werdykt selektywnosci).
-
-    PARA PREDYKATOW: `standard` i `nastawy` sa ustawiane RAZEM albo wcale.
-    Nie da sie dostac normy bez nastaw, z ktorych ta norma zostala odczytana —
-    dzieki temu miejsce uzycia nie musi (i nie moze) sprawdzac tego drugi raz
-    wlasnym warunkiem. Dwa niezalezne warunki, ktore „dzis sie zgadzaja", byly
-    zrodlem tego defektu (karta N-D5-FUSE).
-    """
-
-    kod: str
-    standard: CurveCurveStandard | None
-    powod_pl: str | None
-    #: Nastawy, z ktorych odczytano norme — niepuste DOKLADNIE wtedy, gdy
-    #: `standard` jest niepuste. Przypiete testem `test_para_predykatow_*`.
-    nastawy: ProtectionCurveSettings | None = None
-
-    def __post_init__(self) -> None:
-        if (self.standard is None) != (self.nastawy is None):
-            raise ValueError(
-                "PodstawaKrzywej: norma i nastawy krzywej muszą być ustawione "
-                "razem albo wcale — inaczej miejsce użycia dostaje normę bez "
-                "danych, z których ma liczyć."
-            )
-
-
-def rozstrzygnij_podstawe_krzywej(device: Any) -> PodstawaKrzywej:
-    """JEDNO zrodlo prawdy dla obu sciezek: czasu zadzialania i krzywej TCC.
-
-    Bezpiecznik (`device_type == FUSE`) ORAZ zadeklarowana norma „FUSE" daja
-    ten sam skutek — brak podstawy przekaznikowej. Bezpiecznik zgloszony z
-    norma IEC to nadal bezpiecznik: krzywa IDMT bylaby fabrykacja fizyki, wiec
-    o braku podstawy decyduje TYP URZADZENIA, a nie tylko deklaracja normy.
-    """
-    if str(getattr(device, "device_type", "")) == ProtectionDeviceType.FUSE.value:
-        return PodstawaKrzywej(KOD_BRAK_PASMA_BEZPIECZNIKA, None, _POWOD_BEZPIECZNIK_PL)
-
-    stage_51 = device.settings.stage_51
-    curve_settings = stage_51.curve_settings
-    if curve_settings is None:
-        return PodstawaKrzywej(
-            KOD_BRAK_NASTAW_KRZYWEJ,
-            None,
-            f"Człon 51 urządzenia {device.name} nie ma nastaw charakterystyki, "
-            "więc krzywej czasowo-prądowej nie ma z czego wyznaczyć.",
-        )
-
-    if curve_settings.standard is CurveStandard.FUSE:
-        return PodstawaKrzywej(KOD_BRAK_PASMA_BEZPIECZNIKA, None, _POWOD_BEZPIECZNIK_PL)
-
-    standard = _NORMY_PRZEKAZNIKOWE.get(curve_settings.standard)
-    if standard is None:
-        return PodstawaKrzywej(
-            KOD_NIEZNANA_NORMA_KRZYWEJ,
-            None,
-            f"Norma charakterystyki „{curve_settings.standard}” urządzenia "
-            f"{device.name} nie ma zdefiniowanego wzoru czasowo-prądowego, "
-            "więc czasu nie wyznaczono.",
-        )
-    return PodstawaKrzywej(KOD_KRZYWA_PRZEKAZNIKOWA, standard, None, curve_settings)
-
-
-# Color palette for TCC curves
+#: Paleta krzywych TCC (kolejność urządzeń posortowana po nazwie — deterministyczna).
 CURVE_COLORS = [
-    "#2563eb",  # blue
-    "#dc2626",  # red
-    "#16a34a",  # green
-    "#9333ea",  # purple
-    "#ea580c",  # orange
-    "#0891b2",  # cyan
-    "#4f46e5",  # indigo
-    "#be123c",  # rose
+    "#2563eb",
+    "#dc2626",
+    "#16a34a",
+    "#9333ea",
+    "#ea580c",
+    "#0891b2",
+    "#4f46e5",
+    "#be123c",
 ]
+
+#: Siatka charakterystyki TCC: liczba punktów i zakres krotności progu najczulszego.
+PUNKTY_TCC = 60
+KROTNOSC_TCC_OD = 1.05
+KROTNOSC_TCC_DO = 30.0
+
+
+def _liczba(wartosc: float, miejsca: int = 3) -> str:
+    return f"{wartosc:.{miejsca}f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def _najczulszy_stopien(nastawy: NastawyUrzadzenia) -> Any:
+    return min(nastawy.stopnie, key=lambda s: (s.prog_pierwotny_a, s.funkcja))
+
+
+def _stopien_przeciazeniowy(nastawy: NastawyUrzadzenia) -> Any:
+    """Stopień, który ma NIE działać przy prądzie roboczym: zwłoczny I> (51), a gdy go nie
+    ma — najczulszy (każdy stopień pobudzony prądem roboczym to fałszywe zadziałanie)."""
+    zwloczne = [s for s in nastawy.stopnie if s.funkcja == "overcurrent_51"]
+    return zwloczne[0] if zwloczne else _najczulszy_stopien(nastawy)
+
+
+def pary_z_topologii(
+    strefy: Mapping[str, frozenset[str]],
+) -> tuple[tuple[ParaSelektywnosci, ...], tuple[dict[str, Any], ...]]:
+    """Pary (nadrzędne, podrzędne) z zawierania stref — bez żadnego domysłu kolejności.
+
+    Podrzędne B ma nadrzędne A, gdy strefa B jest WŁAŚCIWYM podzbiorem strefy A (wyłącznik B
+    leży w strefie A). Bezpośrednie nadrzędne to takie A o najmniejszej strefie. Dwa różne A
+    o tej samej, najmniejszej strefie (nieuporządkowane względem siebie) to niejednoznaczność —
+    nazwana odmowa pary z kandydatami, nie wybór jednego z nich.
+    """
+    pary: list[ParaSelektywnosci] = []
+    odmowy: list[dict[str, Any]] = []
+    for podrzedne in sorted(strefy):
+        nadrzedne = [
+            ref for ref in sorted(strefy) if ref != podrzedne and strefy[podrzedne] < strefy[ref]
+        ]
+        if not nadrzedne:
+            continue
+        najmniejsza = min(len(strefy[ref]) for ref in nadrzedne)
+        kandydaci = [ref for ref in nadrzedne if len(strefy[ref]) == najmniejsza]
+        if len(kandydaci) > 1:
+            odmowy.append(
+                {
+                    "podrzedne_ref": podrzedne,
+                    "kandydaci_nadrzedne": kandydaci,
+                    "kod": "para_niejednoznaczna",
+                    "powod_pl": (
+                        "Kilka zabezpieczeń o tej samej strefie obejmuje strefę zabezpieczenia "
+                        "podrzędnego — kolejność stopniowania nie wynika z topologii. Wskaż parę "
+                        "jawnie."
+                    ),
+                }
+            )
+            continue
+        pary.append(ParaSelektywnosci(nadrzedne_ref=kandydaci[0], podrzedne_ref=podrzedne))
+    return tuple(pary), tuple(odmowy)
+
+
+def pary_jawne(
+    wskazane: Sequence[tuple[str, str]],
+    strefy: Mapping[str, frozenset[str]],
+) -> tuple[tuple[ParaSelektywnosci, ...], tuple[dict[str, Any], ...]]:
+    """Pary wskazane przez projektanta — każda sprawdzona wobec topologii (tego samego
+    zawierania stref, które wyznacza pary z topologii: jeden predykat dla obu dróg)."""
+    pary: list[ParaSelektywnosci] = []
+    odmowy: list[dict[str, Any]] = []
+    for nadrzedne, podrzedne in sorted(set(wskazane)):
+        if nadrzedne not in strefy or podrzedne not in strefy:
+            odmowy.append(
+                {
+                    "podrzedne_ref": podrzedne,
+                    "kandydaci_nadrzedne": [nadrzedne],
+                    "kod": "para_bez_oceny",
+                    "powod_pl": (
+                        "Jedno z urządzeń wskazanej pary nie ma oceny (odmowa albo brak "
+                        "urządzenia w modelu) — pary nie da się sprawdzić."
+                    ),
+                }
+            )
+            continue
+        if not strefy[podrzedne] < strefy[nadrzedne]:
+            odmowy.append(
+                {
+                    "podrzedne_ref": podrzedne,
+                    "kandydaci_nadrzedne": [nadrzedne],
+                    "kod": "para_sprzeczna_z_topologia",
+                    "powod_pl": (
+                        "Strefa urządzenia wskazanego jako podrzędne nie zawiera się w strefie "
+                        "urządzenia nadrzędnego — para przeczy topologii modelu."
+                    ),
+                }
+            )
+            continue
+        pary.append(ParaSelektywnosci(nadrzedne_ref=nadrzedne, podrzedne_ref=podrzedne))
+    return tuple(pary), tuple(odmowy)
 
 
 @dataclass
 class OvercurrentCoordinationAnalyzer:
-    """
-    Analyzer for overcurrent protection coordination.
+    """Interpretacja wyniku jednej ścieżki oceny w kryteriach koordynacji (E-28)."""
 
-    Performs:
-    - Sensitivity checks (will device trip for min fault?)
-    - Selectivity checks (proper time grading between devices?)
-    - Overload checks (won't trip on normal current?)
-    - TCC curve generation for visualization
-    """
+    config: CoordinationConfig
 
-    config: CoordinationConfig = field(default_factory=CoordinationConfig)
-    #: Nazwy lokalizacji bieżącej analizy (z `CoordinationInput.nazwy_lokalizacji`).
-    _nazwy_lokalizacji: dict[str, str] = field(default_factory=dict, init=False, repr=False)
-
-    def _nazwa_lokalizacji(self, location_id: str | None) -> str:
-        """Nazwa lokalizacji z modelu biegu; nieznana = jawny brak, nigdy identyfikator."""
-        return self._nazwy_lokalizacji.get(str(location_id)) or ELEMENT_SPOZA_MODELU
-
-    def analyze(
-        self,
-        input_data: CoordinationInput,
-    ) -> CoordinationAnalysisResult:
-        """
-        Perform complete coordination analysis.
-
-        Args:
-            input_data: CoordinationInput with devices, fault/operating currents
-
-        Returns:
-            CoordinationAnalysisResult with all checks and TCC data
-        """
-        run_id = str(uuid4())
-        project_id = input_data.project_id or ""
-        trace_steps: list[dict[str, Any]] = []
-        self._nazwy_lokalizacji = dict(input_data.nazwy_lokalizacji)
-
-        # Step 1: Index currents by location
-        trace_steps.append(
+    def analyze(self, wejscie: CoordinationInput) -> CoordinationAnalysisResult:
+        slad: list[dict[str, Any]] = []
+        nastawy = {n.urzadzenie_ref: n for n in wejscie.ocena_max.nastawy if n.gotowe and n.stopnie}
+        odmowy = {o.urzadzenie_ref: o for o in wejscie.ocena_max.odmowy}
+        oceny_max = _indeks(wejscie.ocena_max)
+        oceny_min = _indeks(wejscie.ocena_min)
+        slad.append(
             {
-                "step": "index_currents",
-                "description_pl": "Indeksowanie prądów według lokalizacji",
-                "inputs": {
-                    "fault_locations": len(input_data.fault_currents),
-                    "operating_locations": len(input_data.operating_currents),
-                },
-                "outputs": {},
-            }
-        )
-
-        fault_by_location = {f.location_id: f for f in input_data.fault_currents}
-        operating_by_location = {o.location_id: o for o in input_data.operating_currents}
-
-        # Step 2: Perform sensitivity checks
-        sensitivity_checks = self._check_sensitivity(
-            devices=input_data.devices,
-            fault_currents=fault_by_location,
-            trace_steps=trace_steps,
-        )
-
-        # Step 3: Perform overload checks
-        overload_checks = self._check_overload(
-            devices=input_data.devices,
-            operating_currents=operating_by_location,
-            trace_steps=trace_steps,
-        )
-
-        # Step 4: Perform selectivity checks
-        selectivity_checks = self._check_selectivity(
-            devices=input_data.devices,
-            fault_currents=fault_by_location,
-            trace_steps=trace_steps,
-        )
-
-        # Step 5: Generate TCC curves
-        tcc_curves = self._generate_tcc_curves(
-            devices=input_data.devices,
-            trace_steps=trace_steps,
-        )
-
-        # Step 6: Generate fault markers
-        fault_markers = self._generate_fault_markers(
-            fault_currents=input_data.fault_currents,
-            trace_steps=trace_steps,
-        )
-
-        # Step 7: Calculate overall verdict
-        overall_verdict = self._calculate_overall_verdict(
-            sensitivity_checks=sensitivity_checks,
-            selectivity_checks=selectivity_checks,
-            overload_checks=overload_checks,
-        )
-
-        # Step 8: Build summary
-        summary = self._build_summary(
-            devices=input_data.devices,
-            sensitivity_checks=sensitivity_checks,
-            selectivity_checks=selectivity_checks,
-            overload_checks=overload_checks,
-            overall_verdict=overall_verdict,
-        )
-
-        trace_steps.append(
-            {
-                "step": "finalize",
-                "description_pl": "Finalizacja wyników analizy",
-                "inputs": {},
+                "step": "urzadzenia_z_modelu",
+                "description_pl": "Urządzenia i nastawy z modelu (jedna ścieżka oceny)",
+                "inputs": {"sc_run_id": wejscie.sc_run_id, "sc_run_id_min": wejscie.sc_run_id_min},
                 "outputs": {
-                    "overall_verdict": overall_verdict,
-                    "total_checks": len(sensitivity_checks)
-                    + len(selectivity_checks)
-                    + len(overload_checks),
+                    "urzadzenia": sorted(nastawy),
+                    "odmowy": sorted(odmowy),
+                    "pominiete": [p.to_dict() for p in wejscie.ocena_max.pominiete],
                 },
             }
         )
 
+        czulosc = self._czulosc(wejscie, nastawy, odmowy, oceny_min, slad)
+        przeciazalnosc = self._przeciazalnosc(wejscie, nastawy, slad)
+        selektywnosc = self._selektywnosc(wejscie, oceny_max, slad)
+        krzywe = self._krzywe_tcc(wejscie, nastawy, slad)
+        znaczniki = self._znaczniki(wejscie)
+        urzadzenia = tuple(
+            _wpis_urzadzenia(n, wejscie.ocena_max.strefy.get(n.urzadzenie_ref))
+            for n in sorted(wejscie.ocena_max.nastawy, key=lambda n: (n.nazwa_pl, n.urzadzenie_ref))
+        ) + tuple(wejscie.bezpieczniki)
+        podsumowanie = _podsumowanie(urzadzenia, czulosc, selektywnosc, przeciazalnosc)
+        podsumowanie["odmowy_par"] = len(wejscie.odmowy_par)
+        podsumowanie["odmowy_urzadzen"] = len(wejscie.ocena_max.odmowy)
+        # Kryteria (założenia projektowe) jawnie w wyniku — wartości wymagane przy liczbach.
+        podsumowanie["kryteria"] = self.config.to_dict()
         return CoordinationAnalysisResult(
-            run_id=run_id,
-            project_id=project_id,
-            devices=input_data.devices,
-            sensitivity_checks=tuple(sensitivity_checks),
-            selectivity_checks=tuple(selectivity_checks),
-            overload_checks=tuple(overload_checks),
-            tcc_curves=tuple(tcc_curves),
-            fault_markers=tuple(fault_markers),
-            overall_verdict=overall_verdict,
-            summary=summary,
-            trace_steps=tuple(trace_steps),
-            pf_run_id=input_data.pf_run_id,
-            sc_run_id=input_data.sc_run_id,
+            run_id=str(uuid4()),
+            project_id=wejscie.project_id,
+            devices=urzadzenia,
+            sensitivity_checks=tuple(czulosc),
+            selectivity_checks=tuple(selektywnosc),
+            overload_checks=tuple(przeciazalnosc),
+            tcc_curves=tuple(krzywe),
+            fault_markers=tuple(znaczniki),
+            summary=podsumowanie,
+            trace_steps=tuple(slad),
+            odmowy_urzadzen=tuple(o.to_dict() for o in wejscie.ocena_max.odmowy),
+            pominiete=tuple(p.to_dict() for p in wejscie.ocena_max.pominiete),
+            pary=tuple(p.to_dict() for p in wejscie.pary),
+            odmowy_par=tuple(wejscie.odmowy_par),
+            pf_run_id=wejscie.pf_run_id,
+            sc_run_id=wejscie.sc_run_id,
+            sc_run_id_min=wejscie.sc_run_id_min,
             created_at=datetime.now(UTC),
         )
 
-    def _check_sensitivity(
+    # ------------------------------------------------------------------ czułość
+
+    def _czulosc(
         self,
-        devices: tuple[Any, ...],
-        fault_currents: dict[str, FaultCurrentData],
-        trace_steps: list[dict[str, Any]],
+        wejscie: CoordinationInput,
+        nastawy: Mapping[str, NastawyUrzadzenia],
+        odmowy: Mapping[str, Any],
+        oceny_min: Mapping[tuple[str, str], OcenaPunktu],
+        slad: list[dict[str, Any]],
     ) -> list[SensitivityCheck]:
-        """
-        Check sensitivity for all devices.
-
-        Sensitivity = I_fault_min / I_pickup >= threshold
-        """
-        checks: list[SensitivityCheck] = []
-
-        trace_steps.append(
-            {
-                "step": "check_sensitivity_start",
-                "description_pl": "Rozpoczęcie sprawdzania czułości zabezpieczeń",
-                "inputs": {"device_count": len(devices)},
-                "outputs": {},
-            }
-        )
-
-        for device in devices:
-            device_id = str(device.id)
-            location_id = device.location_element_id
-
-            # Get fault current at device location
-            fault_data = fault_currents.get(location_id)
-            if fault_data is None:
-                checks.append(
+        wymagany = self.config.sensitivity_ratio_required
+        wyniki: list[SensitivityCheck] = []
+        for ref in sorted(set(nastawy) | set(odmowy)):
+            if ref not in nastawy or not any(k[0] == ref for k in oceny_min):
+                braki = odmowy[ref].braki if ref in odmowy else ()
+                wyniki.append(
                     SensitivityCheck(
-                        device_id=device_id,
-                        i_fault_min_a=0.0,
-                        i_pickup_a=device.settings.stage_51.pickup_current_a,
-                        margin_percent=0.0,
-                        verdict=CoordinationVerdict.ERROR,
+                        device_id=ref,
+                        i_fault_min_a=None,
+                        i_pickup_a=None,
+                        ratio=None,
+                        margin_percent=None,
+                        required_ratio=wymagany,
                         notes_pl=(
-                            "Brak danych o prądzie zwarciowym dla lokalizacji "
-                            f"{self._nazwa_lokalizacji(location_id)}"
+                            " ".join(b.komunikat_pl for b in braki)
+                            or "Bieg minimalny nie ma punktu zwarcia w strefie urządzenia."
                         ),
                     )
                 )
                 continue
-
-            # Get pickup current from stage 51 (I>)
-            i_pickup = device.settings.stage_51.pickup_current_a
-            i_fault_min = fault_data.ik_min_3f_a
-
-            # Calculate margin
-            if i_pickup > 0:
-                ratio = i_fault_min / i_pickup
-                margin_percent = (ratio - 1.0) * 100.0
-            else:
-                ratio = 0.0
-                margin_percent = -100.0
-
-            # Determine verdict
-            if ratio >= self.config.sensitivity_margin_pass:
-                verdict = CoordinationVerdict.PASS
-                notes_pl = f"Czułość wystarczająca: I_min/I_pickup = {ratio:.2f} >= {self.config.sensitivity_margin_pass}"
-            elif ratio >= self.config.sensitivity_margin_marginal:
-                verdict = CoordinationVerdict.MARGINAL
-                notes_pl = f"Czułość marginalna: I_min/I_pickup = {ratio:.2f}, zalecane >= {self.config.sensitivity_margin_pass}"
-            else:
-                verdict = CoordinationVerdict.FAIL
-                notes_pl = f"Niewystarczająca czułość: I_min/I_pickup = {ratio:.2f} < {self.config.sensitivity_margin_marginal}"
-
-            checks.append(
+            n = nastawy[ref]
+            stopien = _najczulszy_stopien(n)
+            punkty = [o for k, o in sorted(oceny_min.items()) if k[0] == ref]
+            wiarygodne = [o for o in punkty if o.wiarygodnosc != NIEWIARYGODNY]
+            if not wiarygodne:
+                wyniki.append(
+                    SensitivityCheck(
+                        device_id=ref,
+                        i_fault_min_a=None,
+                        i_pickup_a=stopien.prog_pierwotny_a,
+                        ratio=None,
+                        margin_percent=None,
+                        required_ratio=wymagany,
+                        notes_pl=(
+                            "Dane nastaw niewiarygodne: prąd przekaźnika we wszystkich punktach "
+                            "strefy przekracza zakres dokładności przekładnika — ilorazu czułości "
+                            "nie wyznaczono."
+                        ),
+                    )
+                )
+                continue
+            najmniejszy = min(wiarygodne, key=lambda o: (o.prad_przekaznika_a, o.punkt_ref))
+            iloraz = najmniejszy.prad_przekaznika_a / stopien.prog_pierwotny_a
+            wyniki.append(
                 SensitivityCheck(
-                    device_id=device_id,
-                    i_fault_min_a=i_fault_min,
-                    i_pickup_a=i_pickup,
-                    margin_percent=margin_percent,
-                    verdict=verdict,
-                    notes_pl=notes_pl,
+                    device_id=ref,
+                    i_fault_min_a=najmniejszy.prad_przekaznika_a,
+                    i_pickup_a=stopien.prog_pierwotny_a,
+                    ratio=round(iloraz, 6),
+                    margin_percent=round((iloraz - 1.0) * 100.0, 2),
+                    required_ratio=wymagany,
+                    notes_pl=(
+                        f"Najmniejszy prąd przekaźnika w strefie "
+                        f"{_liczba(najmniejszy.prad_przekaznika_a, 1)} A (zwarcie w punkcie "
+                        f"{najmniejszy.nazwa_punktu_pl}, bieg minimalny) wobec progu "
+                        f"{_liczba(stopien.prog_pierwotny_a, 1)} A ({stopien.etykieta_pl}) — "
+                        f"iloraz czułości {_liczba(iloraz, 2)}; wymagany co najmniej "
+                        f"{_liczba(wymagany, 2)}."
+                    ),
+                    punkt_ref=najmniejszy.punkt_ref,
+                    nazwa_punktu_pl=najmniejszy.nazwa_punktu_pl,
+                    stopien=stopien.funkcja,
                 )
             )
-
-            trace_steps.append(
+            slad.append(
                 {
-                    "step": f"sensitivity_{device_id[:8]}",
-                    "description_pl": f"Sprawdzenie czułości: {device.name}",
+                    "step": "czulosc",
+                    "description_pl": f"Czułość zabezpieczenia {n.nazwa_pl}",
                     "inputs": {
-                        "i_fault_min_a": i_fault_min,
-                        "i_pickup_a": i_pickup,
+                        "punkty": [
+                            {"punkt_ref": o.punkt_ref, "prad_przekaznika_a": o.prad_przekaznika_a}
+                            for o in punkty
+                        ],
+                        "prog_pierwotny_a": stopien.prog_pierwotny_a,
+                        "stopien": stopien.funkcja,
                     },
-                    "outputs": {
-                        "ratio": ratio,
-                        "margin_percent": margin_percent,
-                        "verdict": verdict.value,
-                    },
+                    "outputs": {"iloraz": iloraz, "wymagany_iloraz": wymagany},
                 }
             )
+        return wyniki
 
-        return checks
+    # --------------------------------------------------------- przeciążalność
 
-    def _check_overload(
+    def _przeciazalnosc(
         self,
-        devices: tuple[Any, ...],
-        operating_currents: dict[str, OperatingCurrentData],
-        trace_steps: list[dict[str, Any]],
+        wejscie: CoordinationInput,
+        nastawy: Mapping[str, NastawyUrzadzenia],
+        slad: list[dict[str, Any]],
     ) -> list[OverloadCheck]:
-        """
-        Check overload protection for all devices.
-
-        Overload margin = I_pickup / I_operating >= threshold
-        """
-        checks: list[OverloadCheck] = []
-
-        trace_steps.append(
-            {
-                "step": "check_overload_start",
-                "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
-                "inputs": {"device_count": len(devices)},
-                "outputs": {},
-            }
-        )
-
-        for device in devices:
-            device_id = str(device.id)
-            location_id = device.location_element_id
-
-            # Get operating current at device location
-            operating_data = operating_currents.get(location_id)
-            if operating_data is None:
-                checks.append(
+        wymagany = self.config.overload_ratio_required
+        wyniki: list[OverloadCheck] = []
+        for ref in sorted(nastawy):
+            n = nastawy[ref]
+            stopien = _stopien_przeciazeniowy(n)
+            robocze = wejscie.prady_robocze.get(ref)
+            if robocze is None or robocze.prad_a is None:
+                wyniki.append(
                     OverloadCheck(
-                        device_id=device_id,
-                        i_operating_a=0.0,
-                        i_pickup_a=device.settings.stage_51.pickup_current_a,
-                        margin_percent=0.0,
-                        verdict=CoordinationVerdict.ERROR,
+                        device_id=ref,
+                        i_operating_a=None,
+                        i_pickup_a=stopien.prog_pierwotny_a,
+                        ratio=None,
+                        margin_percent=None,
+                        required_ratio=wymagany,
                         notes_pl=(
-                            "Brak danych o prądzie roboczym dla lokalizacji "
-                            f"{self._nazwa_lokalizacji(location_id)}"
+                            robocze.powod_pl
+                            if robocze is not None and robocze.powod_pl
+                            else "Brak biegu rozpływu mocy — prądu roboczego wyłącznika nie "
+                            "wyznaczono."
                         ),
                     )
                 )
                 continue
-
-            # Get pickup current from stage 51 (I>)
-            i_pickup = device.settings.stage_51.pickup_current_a
-            i_operating = operating_data.i_operating_a
-
-            # Calculate margin
-            if i_operating > 0:
-                ratio = i_pickup / i_operating
-                margin_percent = (ratio - 1.0) * 100.0
-            else:
-                ratio = float("inf")
-                margin_percent = 100.0
-
-            # Determine verdict
-            if ratio >= self.config.overload_margin_pass:
-                verdict = CoordinationVerdict.PASS
-                notes_pl = f"Przeciążalność prawidłowa: I_pickup/I_rob = {ratio:.2f} >= {self.config.overload_margin_pass}"
-            elif ratio >= self.config.overload_margin_marginal:
-                verdict = CoordinationVerdict.MARGINAL
-                notes_pl = f"Przeciążalność marginalna: I_pickup/I_rob = {ratio:.2f}, zalecane >= {self.config.overload_margin_pass}"
-            else:
-                verdict = CoordinationVerdict.FAIL
-                notes_pl = f"Ryzyko fałszywego zadziałania: I_pickup/I_rob = {ratio:.2f} < {self.config.overload_margin_marginal}"
-
-            checks.append(
+            if robocze.prad_a <= 0.0:
+                wyniki.append(
+                    OverloadCheck(
+                        device_id=ref,
+                        i_operating_a=robocze.prad_a,
+                        i_pickup_a=stopien.prog_pierwotny_a,
+                        ratio=None,
+                        margin_percent=None,
+                        required_ratio=wymagany,
+                        notes_pl=(
+                            "Przez wyłącznik nie płynie prąd roboczy — ilorazu przeciążalności "
+                            "nie ma (dzielenie przez zero), prąd roboczy nie pobudza żadnego "
+                            "stopnia."
+                        ),
+                    )
+                )
+                continue
+            iloraz = stopien.prog_pierwotny_a / robocze.prad_a
+            wyniki.append(
                 OverloadCheck(
-                    device_id=device_id,
-                    i_operating_a=i_operating,
-                    i_pickup_a=i_pickup,
-                    margin_percent=margin_percent,
-                    verdict=verdict,
-                    notes_pl=notes_pl,
+                    device_id=ref,
+                    i_operating_a=robocze.prad_a,
+                    i_pickup_a=stopien.prog_pierwotny_a,
+                    ratio=round(iloraz, 6),
+                    margin_percent=round((iloraz - 1.0) * 100.0, 2),
+                    required_ratio=wymagany,
+                    notes_pl=(
+                        f"Próg {_liczba(stopien.prog_pierwotny_a, 1)} A ({stopien.etykieta_pl}) "
+                        f"wobec prądu roboczego wyłącznika {_liczba(robocze.prad_a, 1)} A — "
+                        f"iloraz przeciążalności {_liczba(iloraz, 2)}; wymagany co najmniej "
+                        f"{_liczba(wymagany, 2)}."
+                    ),
                 )
             )
-
-            trace_steps.append(
+            slad.append(
                 {
-                    "step": f"overload_{device_id[:8]}",
-                    "description_pl": f"Sprawdzenie przeciążalności: {device.name}",
+                    "step": "przeciazalnosc",
+                    "description_pl": f"Przeciążalność zabezpieczenia {n.nazwa_pl}",
                     "inputs": {
-                        "i_operating_a": i_operating,
-                        "i_pickup_a": i_pickup,
+                        "prad_roboczy_a": robocze.prad_a,
+                        "galaz_ref": robocze.galaz_ref,
+                        "prog_pierwotny_a": stopien.prog_pierwotny_a,
                     },
-                    "outputs": {
-                        "ratio": ratio if ratio != float("inf") else "inf",
-                        "margin_percent": margin_percent,
-                        "verdict": verdict.value,
-                    },
+                    "outputs": {"iloraz": iloraz, "wymagany_iloraz": wymagany},
                 }
             )
+        return wyniki
 
-        return checks
+    # ----------------------------------------------------------- selektywność
 
-    def _check_selectivity(
+    def _selektywnosc(
         self,
-        devices: tuple[Any, ...],
-        fault_currents: dict[str, FaultCurrentData],
-        trace_steps: list[dict[str, Any]],
+        wejscie: CoordinationInput,
+        oceny_max: Mapping[tuple[str, str], OcenaPunktu],
+        slad: list[dict[str, Any]],
     ) -> list[SelectivityCheck]:
-        """
-        Check selectivity (time grading) between device pairs.
-
-        For each adjacent pair (downstream, upstream), verify:
-        t_upstream - t_downstream >= CTI (Coordination Time Interval)
-        """
-        checks: list[SelectivityCheck] = []
-
-        if len(devices) < 2:
-            trace_steps.append(
-                {
-                    "step": "check_selectivity_skip",
-                    "description_pl": "Pominięto sprawdzenie selektywności (mniej niż 2 urządzenia)",
-                    "inputs": {"device_count": len(devices)},
-                    "outputs": {},
-                }
-            )
-            return checks
-
-        trace_steps.append(
-            {
-                "step": "check_selectivity_start",
-                "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
-                "inputs": {"device_count": len(devices)},
-                "outputs": {},
-            }
-        )
-
-        min_cti = self.config.get_minimum_grading_margin_s()
-
-        # Compare adjacent devices (assuming ordered downstream to upstream)
-        for i in range(len(devices) - 1):
-            downstream = devices[i]
-            upstream = devices[i + 1]
-
-            downstream_id = str(downstream.id)
-            upstream_id = str(upstream.id)
-
-            # Get fault current at downstream location (worst case)
-            downstream_location = downstream.location_element_id
-            fault_data = fault_currents.get(downstream_location)
-
-            if fault_data is None:
-                checks.append(
+        cti = self.config.get_minimum_grading_margin_s()
+        wyniki: list[SelectivityCheck] = []
+        for para in wejscie.pary:
+            punkty = sorted(k[1] for k in oceny_max if k[0] == para.podrzedne_ref)
+            porownania: list[SelectivityCheck] = []
+            pominiete: list[dict[str, Any]] = []
+            for punkt in punkty:
+                pod = oceny_max[(para.podrzedne_ref, punkt)]
+                nad = oceny_max.get((para.nadrzedne_ref, punkt))
+                if nad is None:
+                    pominiete.append(
+                        {
+                            "punkt_ref": punkt,
+                            "powod_pl": "Brak oceny urządzenia nadrzędnego w tym punkcie.",
+                        }
+                    )
+                    continue
+                if NIEWIARYGODNY in (pod.wiarygodnosc, nad.wiarygodnosc):
+                    pominiete.append(
+                        {
+                            "punkt_ref": punkt,
+                            "powod_pl": "Dane nastaw niewiarygodne (zakres dokładności przekładnika).",
+                        }
+                    )
+                    continue
+                porownania.append(_porownanie(para, pod, nad, cti))
+            if not porownania:
+                wyniki.append(
                     SelectivityCheck(
-                        upstream_device_id=upstream_id,
-                        downstream_device_id=downstream_id,
-                        analysis_current_a=0.0,
-                        t_upstream_s=0.0,
-                        t_downstream_s=0.0,
-                        margin_s=0.0,
-                        required_margin_s=min_cti,
-                        verdict=CoordinationVerdict.ERROR,
+                        upstream_device_id=para.nadrzedne_ref,
+                        downstream_device_id=para.podrzedne_ref,
+                        analysis_current_a=None,
+                        t_upstream_s=None,
+                        t_downstream_s=None,
+                        margin_s=None,
+                        required_margin_s=cti,
+                        stan=StanPary.BEZ_PUNKTOW,
                         notes_pl=(
-                            "Brak danych o prądzie zwarciowym dla lokalizacji "
-                            f"{self._nazwa_lokalizacji(downstream_location)}"
+                            " ".join(p["powod_pl"] for p in pominiete)
+                            or "Brak punktów zwarcia w strefie urządzenia podrzędnego."
                         ),
                     )
                 )
                 continue
-
-            # Use maximum fault current for selectivity analysis
-            analysis_current = fault_data.ik_max_3f_a
-
-            # Calculate trip times
-            t_downstream, powod_downstream = self._calculate_device_trip_time(
-                downstream, analysis_current
-            )
-            t_upstream, powod_upstream = self._calculate_device_trip_time(
-                upstream, analysis_current
-            )
-
-            # Calculate margin
-            if t_downstream == float("inf") or t_upstream == float("inf"):
-                margin_s = float("inf")
-                verdict = CoordinationVerdict.ERROR
-                # Uczciwy powod zamiast ogolnego „nie mozna obliczyc": czytelnik
-                # ma wiedziec, KTORE urzadzenie i DLACZEGO nie ma czasu.
-                powody = [
-                    f"{urzadzenie.name}: {powod}"
-                    for urzadzenie, czas, powod in (
-                        (downstream, t_downstream, powod_downstream),
-                        (upstream, t_upstream, powod_upstream),
-                    )
-                    if czas == float("inf") and powod
-                ]
-                notes_pl = (
-                    " ".join(powody)
-                    if powody
-                    else "Nie można obliczyć czasu zadziałania jednego z zabezpieczeń"
-                )
-            else:
-                margin_s = t_upstream - t_downstream
-
-                # Determine verdict
-                if margin_s >= min_cti * self.config.cti_margin_factor:
-                    verdict = CoordinationVerdict.PASS
-                    notes_pl = f"Selektywność prawidłowa: Δt = {margin_s:.3f}s >= {min_cti * self.config.cti_margin_factor:.3f}s"
-                elif margin_s >= min_cti:
-                    verdict = CoordinationVerdict.MARGINAL
-                    notes_pl = f"Selektywność marginalna: Δt = {margin_s:.3f}s, zalecane >= {min_cti * self.config.cti_margin_factor:.3f}s"
-                elif margin_s > 0:
-                    verdict = CoordinationVerdict.FAIL
-                    notes_pl = f"Niewystarczający margines: Δt = {margin_s:.3f}s < {min_cti:.3f}s"
-                else:
-                    verdict = CoordinationVerdict.FAIL
-                    notes_pl = f"Brak selektywności! Zabezpieczenie nadrzędne zadziała przed podrzędnym (Δt = {margin_s:.3f}s)"
-
-            checks.append(
-                SelectivityCheck(
-                    upstream_device_id=upstream_id,
-                    downstream_device_id=downstream_id,
-                    analysis_current_a=analysis_current,
-                    t_upstream_s=t_upstream if t_upstream != float("inf") else 999.999,
-                    t_downstream_s=(t_downstream if t_downstream != float("inf") else 999.999),
-                    margin_s=margin_s if margin_s != float("inf") else 999.999,
-                    required_margin_s=min_cti,
-                    verdict=verdict,
-                    notes_pl=notes_pl,
-                )
-            )
-
-            trace_steps.append(
+            wyniki.append(min(porownania, key=_klucz_najmniejszego_odstepu))
+            slad.append(
                 {
-                    "step": f"selectivity_{downstream_id[:8]}_{upstream_id[:8]}",
-                    "description_pl": f"Selektywność: {downstream.name} → {upstream.name}",
+                    "step": "selektywnosc",
+                    "description_pl": "Selektywność pary zabezpieczeń w punktach strefy podrzędnego",
                     "inputs": {
-                        "analysis_current_a": analysis_current,
-                        "min_cti_s": min_cti,
+                        "nadrzedne_ref": para.nadrzedne_ref,
+                        "podrzedne_ref": para.podrzedne_ref,
+                        "cti_s": cti,
                     },
                     "outputs": {
-                        "t_downstream_s": (t_downstream if t_downstream != float("inf") else "inf"),
-                        "t_upstream_s": (t_upstream if t_upstream != float("inf") else "inf"),
-                        "margin_s": margin_s if margin_s != float("inf") else "inf",
-                        "verdict": verdict.value,
+                        "punkty": [p.to_dict() for p in porownania],
+                        "pominiete": pominiete,
                     },
                 }
             )
+        return wyniki
 
-        return checks
+    # -------------------------------------------------------------------- TCC
 
-    def _calculate_device_trip_time(
+    def _krzywe_tcc(
         self,
-        device: Any,  # ProtectionDevice
-        fault_current_a: float,
-    ) -> tuple[float, str | None]:
-        """
-        Calculate trip time for a device at given fault current.
-
-        Uses stage 51 (I>) curve if enabled.
-
-        Zwraca `(czas_s, powod_pl)`. `float("inf")` znaczy: czasu NIE
-        wyznaczono, a `powod_pl` mowi po polsku dlaczego — nigdy nie zastepuje
-        sie brakujacej podstawy wzorem przekaznikowym (karta N-D5-FUSE).
-        """
-        stage_51 = device.settings.stage_51
-        if not stage_51.enabled:
-            return float("inf"), f"Człon 51 urządzenia {device.name} jest wyłączony."
-
-        # Bezpiecznik NIE ma czlonu nastawczego przekaznika — ani krzywej IDMT,
-        # ani zwloki niezaleznej. Rozstrzygniecie idzie PRZED odczytem `time_s`,
-        # zeby zadeklarowana „zwloka" bezpiecznika nie stala sie po cichu jego
-        # czasem zadzialania (ta sama klasa fabrykacji co krzywa IDMT).
-        podstawa = rozstrzygnij_podstawe_krzywej(device)
-        if podstawa.kod == KOD_BRAK_PASMA_BEZPIECZNIKA:
-            return float("inf"), podstawa.powod_pl
-
-        # Check if current is above pickup
-        if fault_current_a < stage_51.pickup_current_a:
-            return float("inf"), (
-                f"Prąd {fault_current_a:.1f} A nie przekracza progu rozruchowego "
-                f"{stage_51.pickup_current_a:g} A urządzenia {device.name}, "
-                "więc to zabezpieczenie nie zadziała."
-            )
-
-        # If definite time, use it directly
-        if stage_51.time_s is not None:
-            return stage_51.time_s, None
-
-        if podstawa.standard is None or podstawa.nastawy is None:
-            return float("inf"), podstawa.powod_pl
-
-        curve_settings = podstawa.nastawy
-
-        curve_def = CurveDefinition(
-            id=str(device.id),
-            name_pl=device.name,
-            standard=podstawa.standard,
-            curve_type=curve_settings.variant,
-            pickup_current_a=curve_settings.pickup_current_a,
-            time_multiplier=curve_settings.time_multiplier,
-            definite_time_s=curve_settings.definite_time_s,
-        )
-
-        return calculate_trip_time(curve_def, fault_current_a), None
-
-    def _generate_tcc_curves(
-        self,
-        devices: tuple[Any, ...],
-        trace_steps: list[dict[str, Any]],
+        wejscie: CoordinationInput,
+        nastawy: Mapping[str, NastawyUrzadzenia],
+        slad: list[dict[str, Any]],
     ) -> list[TCCCurve]:
-        """
-        Generate TCC curves for all devices.
-        """
-        curves: list[TCCCurve] = []
-
-        trace_steps.append(
-            {
-                "step": "generate_tcc_curves",
-                "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",
-                "inputs": {"device_count": len(devices)},
-                "outputs": {},
-            }
-        )
-
-        for idx, device in enumerate(devices):
-            stage_51 = device.settings.stage_51
-
-            # Rozstrzygniecie podstawy PRZED pominieciem urzadzenia: bezpiecznik
-            # nie moze ani dostac krzywej przekaznikowej, ani zniknac po cichu
-            # z wykresu — dostaje JAWNA pozycje bez punktow z powodem po polsku
-            # (karta N-D5-FUSE).
-            podstawa = rozstrzygnij_podstawe_krzywej(device)
-            if podstawa.kod == KOD_BRAK_PASMA_BEZPIECZNIKA:
-                curves.append(
-                    TCCCurve(
-                        device_id=str(device.id),
-                        device_name=device.name,
-                        curve_type=KOD_BRAK_CHARAKTERYSTYKI,
-                        pickup_current_a=stage_51.pickup_current_a,
-                        # Bezpiecznik NIE MA mnoznika czasowego — 0.0 to znacznik
-                        # „nie dotyczy", czytany razem z `podstawa_kod`, nie TMS.
-                        time_multiplier=0.0,
-                        points=(),
-                        color=CURVE_COLORS[idx % len(CURVE_COLORS)],
-                        podstawa_kod=podstawa.kod,
-                        powod_pl=podstawa.powod_pl,
+        krzywe: list[TCCCurve] = []
+        uporzadkowane = sorted(nastawy.values(), key=lambda n: (n.nazwa_pl, n.urzadzenie_ref))
+        for indeks, n in enumerate(uporzadkowane):
+            najczulszy = _najczulszy_stopien(n)
+            punkty: list[TCCPoint] = []
+            for k in range(PUNKTY_TCC):
+                krotnosc = KROTNOSC_TCC_OD * math.pow(
+                    KROTNOSC_TCC_DO / KROTNOSC_TCC_OD, k / (PUNKTY_TCC - 1)
+                )
+                prad = najczulszy.prog_pierwotny_a * krotnosc
+                _slady, decydujacy = czas_urzadzenia(n.stopnie, prad)
+                if decydujacy is None:
+                    continue
+                punkty.append(
+                    TCCPoint(
+                        current_a=round(prad, 6),
+                        current_multiple=round(krotnosc, 6),
+                        time_s=decydujacy["t_s"],
                     )
                 )
-                trace_steps.append(
-                    {
-                        "step": f"tcc_bez_podstawy_{str(device.id)[:8]}",
-                        "description_pl": f"Brak podstawy krzywej: {device.name}",
-                        "inputs": {"device_type": str(device.device_type)},
-                        "outputs": {
-                            "podstawa_kod": podstawa.kod,
-                            "powod_pl": podstawa.powod_pl,
-                        },
-                    }
-                )
-                continue
-
-            if not stage_51.enabled or podstawa.standard is None or podstawa.nastawy is None:
-                continue
-
-            curve_settings = podstawa.nastawy
-
-            # Create CurveDefinition
-            curve_def = CurveDefinition(
-                id=str(device.id),
-                name_pl=device.name,
-                standard=podstawa.standard,
-                curve_type=curve_settings.variant,
-                pickup_current_a=curve_settings.pickup_current_a,
-                time_multiplier=curve_settings.time_multiplier,
-                definite_time_s=curve_settings.definite_time_s,
-                color=CURVE_COLORS[idx % len(CURVE_COLORS)],
-            )
-
-            # Calculate points
-            points = calculate_curve_points(curve_def)
-
-            tcc_points = tuple(
-                TCCPoint(
-                    current_a=p.current_a,
-                    current_multiple=p.current_multiple,
-                    time_s=p.time_s,
-                )
-                for p in points
-            )
-
-            curves.append(
+            zwloczny = next((s for s in n.stopnie if s.funkcja == "overcurrent_51"), None)
+            odniesienie = zwloczny if zwloczny is not None else najczulszy
+            krzywe.append(
                 TCCCurve(
-                    device_id=str(device.id),
-                    device_name=device.name,
-                    curve_type=f"{curve_settings.standard.value}_{curve_settings.variant}",
-                    pickup_current_a=curve_settings.pickup_current_a,
-                    time_multiplier=curve_settings.time_multiplier,
-                    points=tcc_points,
-                    color=CURVE_COLORS[idx % len(CURVE_COLORS)],
+                    device_id=n.urzadzenie_ref,
+                    device_name=n.nazwa_pl,
+                    # Kod charakterystyki stopnia zwłocznego (albo najczulszego) — legenda;
+                    # pełny opis wszystkich stopni w `opis_pl`.
+                    curve_type=odniesienie.krzywa,
+                    pickup_current_a=najczulszy.prog_pierwotny_a,
+                    time_multiplier=zwloczny.tms if zwloczny is not None else None,
+                    points=tuple(punkty),
+                    color=CURVE_COLORS[indeks % len(CURVE_COLORS)],
+                    opis_pl="; ".join(
+                        _opis_stopnia(s)
+                        for s in sorted(n.stopnie, key=lambda s: s.funkcja, reverse=True)
+                    ),
                 )
             )
-
-        return curves
-
-    def _generate_fault_markers(
-        self,
-        fault_currents: tuple[FaultCurrentData, ...],
-        trace_steps: list[dict[str, Any]],
-    ) -> list[FaultMarker]:
-        """
-        Generate fault current markers for TCC chart.
-        """
-        markers: list[FaultMarker] = []
-
-        trace_steps.append(
+        for indeks, bezpiecznik in enumerate(wejscie.bezpieczniki, start=len(uporzadkowane)):
+            krzywe.append(
+                TCCCurve(
+                    device_id=str(bezpiecznik["id"]),
+                    device_name=str(bezpiecznik["name"]),
+                    curve_type=KOD_BRAK_CHARAKTERYSTYKI,
+                    pickup_current_a=None,
+                    time_multiplier=None,
+                    points=(),
+                    color=CURVE_COLORS[indeks % len(CURVE_COLORS)],
+                    podstawa_kod=KOD_BRAK_PASMA_BEZPIECZNIKA,
+                    powod_pl=POWOD_BEZPIECZNIK_PL,
+                )
+            )
+        slad.append(
             {
-                "step": "generate_fault_markers",
-                "description_pl": "Generowanie znaczników prądów zwarciowych",
-                "inputs": {"location_count": len(fault_currents)},
-                "outputs": {},
+                "step": "krzywe_tcc",
+                "description_pl": (
+                    "Charakterystyki czasowo-prądowe urządzeń — czas najszybszego pobudzonego "
+                    "stopnia w siatce prądów (rdzeń IEC 60255)"
+                ),
+                "inputs": {
+                    "punkty": PUNKTY_TCC,
+                    "krotnosc_od": KROTNOSC_TCC_OD,
+                    "krotnosc_do": KROTNOSC_TCC_DO,
+                },
+                "outputs": {"krzywe": len(krzywe)},
             }
         )
+        return krzywe
 
-        for fault_data in fault_currents:
-            # Maximum 3-phase fault
-            markers.append(
-                FaultMarker(
-                    id=f"{fault_data.location_id}_ik_max_3f",
-                    label_pl=f'Ik"max 3F ({self._nazwa_lokalizacji(fault_data.location_id)})',
-                    current_a=fault_data.ik_max_3f_a,
-                    fault_type="3F",
-                    location=fault_data.location_id,
-                )
-            )
-
-            # Minimum 3-phase fault
-            markers.append(
-                FaultMarker(
-                    id=f"{fault_data.location_id}_ik_min_3f",
-                    label_pl=f'Ik"min 3F ({self._nazwa_lokalizacji(fault_data.location_id)})',
-                    current_a=fault_data.ik_min_3f_a,
-                    fault_type="3F",
-                    location=fault_data.location_id,
-                )
-            )
-
-            # Minimum 1-phase fault if available
-            if fault_data.ik_min_1f_a:
-                markers.append(
+    def _znaczniki(self, wejscie: CoordinationInput) -> list[FaultMarker]:
+        """Ik'' punktów stref ocenionych urządzeń (bieg maksymalny i minimalny) — znaczniki
+        wykresu TCC wyłącznie tam, gdzie urządzenia modelu mają oceny."""
+        znaczniki: list[FaultMarker] = []
+        for etykieta, wiersze, rodzaj, ocena in (
+            ("max", wejscie.prady_punktow_max, wejscie.rodzaj_zwarcia_max, wejscie.ocena_max),
+            ("min", wejscie.prady_punktow_min, wejscie.rodzaj_zwarcia_min, wejscie.ocena_min),
+        ):
+            # Punkt oceny i wiersz wyniku, pod którym bieg go raportuje (zacisk pola za
+            # wyłącznikiem = szyna pola, ``ocena_nadpradowa.punkty_zwarcia_strefy``).
+            punkty_stref = {
+                o.punkt_ref: (str(o.bilans_pradu["punkt_wyniku_ref"]), o.nazwa_punktu_pl)
+                for o in ocena.oceny
+            }
+            for punkt in sorted(punkty_stref):
+                punkt_wyniku, nazwa = punkty_stref[punkt]
+                if punkt_wyniku not in wiersze:
+                    continue
+                prad, _nazwa_wiersza = wiersze[punkt_wyniku]
+                znaczniki.append(
                     FaultMarker(
-                        id=f"{fault_data.location_id}_ik_min_1f",
-                        label_pl=f'Ik"min 1F ({self._nazwa_lokalizacji(fault_data.location_id)})',
-                        current_a=fault_data.ik_min_1f_a,
-                        fault_type="1F",
-                        location=fault_data.location_id,
+                        id=f"{punkt}_ik_{etykieta}",
+                        label_pl=f"Ik'' {etykieta} {rodzaj} ({nazwa})",
+                        current_a=prad,
+                        fault_type=rodzaj,
+                        location=punkt,
                     )
                 )
+        return znaczniki
 
-        return markers
 
-    def _calculate_overall_verdict(
-        self,
-        sensitivity_checks: list[SensitivityCheck],
-        selectivity_checks: list[SelectivityCheck],
-        overload_checks: list[OverloadCheck],
-    ) -> str:
-        """
-        Calculate overall coordination verdict.
+def _opis_stopnia(stopien: Any) -> str:
+    """„I> (51): 240 A, IEC normalnie odwrotna (NI), TMS 0,3" — stopień w zdaniu legendy."""
+    czas = (
+        f"TMS {_liczba(stopien.tms)}"
+        if stopien.tms is not None
+        else f"zwłoka {_liczba(stopien.zwloka_s)} s"
+    )
+    return (
+        f"{stopien.etykieta_pl}: {_liczba(stopien.prog_pierwotny_a, 1)} A, "
+        f"{ETYKIETY_KRZYWYCH_PL[stopien.krzywa]}, {czas}"
+    )
 
-        FAIL if any check fails.
-        MARGINAL if any check is marginal and none fail.
-        PASS if all checks pass.
-        """
-        all_verdicts = (
-            [c.verdict for c in sensitivity_checks]
-            + [c.verdict for c in selectivity_checks]
-            + [c.verdict for c in overload_checks]
+
+def _indeks(wynik: WynikOceny) -> dict[tuple[str, str], OcenaPunktu]:
+    return {(o.urzadzenie_ref, o.punkt_ref): o for o in wynik.oceny}
+
+
+def _porownanie(
+    para: ParaSelektywnosci,
+    pod: OcenaPunktu,
+    nad: OcenaPunktu,
+    cti: float,
+) -> SelectivityCheck:
+    """Selektywność pary w jednym punkcie strefy podrzędnego: kto zadziała (``StanPary``),
+    odstęp czasowy i zdanie z liczbami (punkt, czasy i prądy obu przekaźników, odstęp,
+    wymagany odstęp) — bez werdyktu (P-06)."""
+    t_pod = pod.t_zadzialania_s
+    t_nad = nad.t_zadzialania_s
+    miejsce = f"Przy zwarciu w punkcie {pod.nazwa_punktu_pl}"
+
+    def sprawdzenie(margines: float | None, stan: StanPary, zdanie: str) -> SelectivityCheck:
+        return SelectivityCheck(
+            upstream_device_id=para.nadrzedne_ref,
+            downstream_device_id=para.podrzedne_ref,
+            analysis_current_a=pod.prad_przekaznika_a,
+            t_upstream_s=t_nad,
+            t_downstream_s=t_pod,
+            margin_s=margines,
+            required_margin_s=cti,
+            stan=stan,
+            notes_pl=zdanie,
+            punkt_ref=pod.punkt_ref,
+            nazwa_punktu_pl=pod.nazwa_punktu_pl,
+            i_upstream_a=nad.prad_przekaznika_a,
         )
 
-        if any(v == CoordinationVerdict.FAIL for v in all_verdicts):
-            return CoordinationVerdict.FAIL.value
-        if any(v == CoordinationVerdict.ERROR for v in all_verdicts):
-            return CoordinationVerdict.FAIL.value
-        if any(v == CoordinationVerdict.MARGINAL for v in all_verdicts):
-            return CoordinationVerdict.MARGINAL.value
-        return CoordinationVerdict.PASS.value
+    prady = (
+        f"prąd przekaźnika podrzędnego {_liczba(pod.prad_przekaznika_a, 1)} A, "
+        f"nadrzędnego {_liczba(nad.prad_przekaznika_a, 1)} A"
+    )
+    if t_pod is None and t_nad is None:
+        return sprawdzenie(
+            None,
+            StanPary.ZADNE_NIE_ZADZIALA,
+            f"{miejsce} żadne z dwóch zabezpieczeń nie zadziała ({prady} — poniżej progów); "
+            "odstępu czasowego nie ma.",
+        )
+    if t_pod is None:
+        assert t_nad is not None
+        return sprawdzenie(
+            None,
+            StanPary.PODRZEDNE_NIE_ZADZIALA,
+            f"{miejsce} zabezpieczenie podrzędne nie zadziała, a nadrzędne zadziała po "
+            f"{_liczba(t_nad)} s ({prady}); odstępu czasowego nie ma.",
+        )
+    if t_nad is None:
+        return sprawdzenie(
+            None,
+            StanPary.NADRZEDNE_NIE_POBUDZA,
+            f"{miejsce} zabezpieczenie nadrzędne się nie pobudza, podrzędne zadziała po "
+            f"{_liczba(t_pod)} s ({prady}); odstępu czasowego nie ma.",
+        )
+    margines = round(t_nad - t_pod, 6)
+    return sprawdzenie(
+        margines,
+        StanPary.ODSTEP,
+        f"{miejsce}: podrzędne {_liczba(t_pod)} s przy {_liczba(pod.prad_przekaznika_a, 1)} A, "
+        f"nadrzędne {_liczba(t_nad)} s przy {_liczba(nad.prad_przekaznika_a, 1)} A — odstęp "
+        f"czasowy {_liczba(margines)} s; wymagany co najmniej {_liczba(cti)} s.",
+    )
 
-    def _build_summary(
-        self,
-        devices: tuple[Any, ...],
-        sensitivity_checks: list[SensitivityCheck],
-        selectivity_checks: list[SelectivityCheck],
-        overload_checks: list[OverloadCheck],
-        overall_verdict: str,
-    ) -> dict[str, Any]:
-        """
-        Build summary statistics.
-        """
 
-        def count_verdicts(checks: list) -> dict[str, int]:
-            return {
-                "pass": sum(1 for c in checks if c.verdict == CoordinationVerdict.PASS),
-                "marginal": sum(1 for c in checks if c.verdict == CoordinationVerdict.MARGINAL),
-                "fail": sum(1 for c in checks if c.verdict == CoordinationVerdict.FAIL),
-                "error": sum(1 for c in checks if c.verdict == CoordinationVerdict.ERROR),
-            }
+def _klucz_najmniejszego_odstepu(p: SelectivityCheck) -> tuple[float, str]:
+    """Punkt pary pokazywany w tabeli: NAJMNIEJSZY odstęp czasowy, potem punkt (kolejność
+    deterministyczna). Punkt bez odstępu, w którym podrzędne nie zadziała (samo albo z
+    nadrzędnym), ma odstęp −∞ (zwarcie nie jest wyłączane przez podrzędne — mniejszego odstępu
+    nie ma); punkt, w którym nadrzędne się nie pobudza, ma +∞ (nadrzędne nie ogranicza pary)."""
+    if p.margin_s is not None:
+        odstep = p.margin_s
+    elif p.stan in (StanPary.PODRZEDNE_NIE_ZADZIALA, StanPary.ZADNE_NIE_ZADZIALA):
+        odstep = -math.inf
+    else:
+        odstep = math.inf
+    return (odstep, str(p.punkt_ref))
 
-        return {
-            "total_devices": len(devices),
-            "total_checks": len(sensitivity_checks)
-            + len(selectivity_checks)
-            + len(overload_checks),
-            "sensitivity": count_verdicts(sensitivity_checks),
-            "selectivity": count_verdicts(selectivity_checks),
-            "overload": count_verdicts(overload_checks),
-            "overall_verdict": overall_verdict,
-            "overall_verdict_pl": VERDICT_LABELS_PL.get(overall_verdict, overall_verdict),
-        }
+
+def _wpis_urzadzenia(
+    nastawy: NastawyUrzadzenia, strefa: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    return {
+        "id": nastawy.urzadzenie_ref,
+        "name": nastawy.nazwa_pl,
+        "device_type": "RELAY",
+        "breaker_ref": nastawy.breaker_ref,
+        "nastawy": nastawy.to_dict(),
+        "strefa": dict(strefa) if strefa is not None else None,
+    }
+
+
+def _najmniejsza(wartosci: Sequence[float | None]) -> float | None:
+    liczby = [w for w in wartosci if w is not None]
+    return min(liczby) if liczby else None
+
+
+def _podsumowanie(
+    urzadzenia: Sequence[dict[str, Any]],
+    czulosc: Sequence[SensitivityCheck],
+    selektywnosc: Sequence[SelectivityCheck],
+    przeciazalnosc: Sequence[OverloadCheck],
+) -> dict[str, Any]:
+    """Liczby zbiorcze — najmniejsze wartości sprawdzeń i liczby sprawdzeń bez wyznaczonej
+    wartości. Bez werdyktu ogólnego (P-06): agregat nie zastępuje sprawdzeń składowych."""
+    return {
+        "total_devices": len(urzadzenia),
+        "total_checks": len(czulosc) + len(selektywnosc) + len(przeciazalnosc),
+        "sensitivity": {
+            "sprawdzenia": len(czulosc),
+            "najmniejszy_iloraz": _najmniejsza([c.ratio for c in czulosc]),
+            "bez_wartosci": sum(1 for c in czulosc if c.ratio is None),
+        },
+        "selectivity": {
+            "sprawdzenia": len(selektywnosc),
+            "najmniejszy_odstep_s": _najmniejsza([c.margin_s for c in selektywnosc]),
+            "bez_odstepu": sum(1 for c in selektywnosc if c.margin_s is None),
+        },
+        "overload": {
+            "sprawdzenia": len(przeciazalnosc),
+            "najmniejszy_iloraz": _najmniejsza([c.ratio for c in przeciazalnosc]),
+            "bez_wartosci": sum(1 for c in przeciazalnosc if c.ratio is None),
+        },
+    }

@@ -55,6 +55,7 @@ import {
 } from './enmToSldAdapter';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { szynyStacji } from '../../../shared/szynyStacji';
+import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 
 /* =============================================================================
    Public API
@@ -118,9 +119,8 @@ export function buildCanonicalGpzProps(
     substation,
     (enm.bays ?? []).filter((b) => b.substation_ref === substationRef),
   );
-  const allTransformers = (enm.transformers ?? []).filter((t) =>
-    substation.transformer_refs?.includes(t.ref_id),
-  );
+  // SZYNY-STACJI-LUSTRO: transformatory GPZ z JEDNEJ reguły „transformatory stacji”.
+  const allTransformers = transformatoryNalezaceDoStacji(enm, substation);
 
   // F11.1: kontekst rejestru device-ref przekazywany DALEJ do `buildBay` —
   // WYŁĄCZNIE pola faktycznie czytane przez `resolveBayProtectionMarking`/

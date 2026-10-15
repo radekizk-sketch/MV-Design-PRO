@@ -141,17 +141,22 @@ class TestAttachProtection:
                 "breaker_ref": "brk_1",
                 "ct_ref": "ct_1",
                 "device_type": "overcurrent",
+                # Kontrakt zapisu (karta BIEG-ZABEZPIECZEN-Z-MODELU): próg z jawną stroną
+                # przekładnika, czas niezależny ze zwłoką dodatnią, charakterystyka zależna z
+                # mnożnikiem czasowym (bez zwłoki niezależnej) — sprzeczne nastawy są odrzucane.
                 "settings": [
                     {
                         "function_type": "overcurrent_50",
                         "threshold_a": 1000,
-                        "time_delay_s": 0.0,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "time_delay_s": 0.05,
                         "curve_type": "DT",
                     },
                     {
                         "function_type": "overcurrent_51",
                         "threshold_a": 200,
-                        "time_delay_s": 0.5,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "time_multiplier": 0.5,
                         "curve_type": "IEC_SI",
                     },
                 ],
@@ -244,6 +249,7 @@ class TestAttachProtection:
                     {
                         "function_type": "earth_fault_51N",
                         "threshold_a": 20,
+                        "threshold_unit": "A_PIERWOTNY",
                         "time_delay_s": 1.0,
                         "curve_type": "DT",
                     },
@@ -268,6 +274,7 @@ class TestAttachProtection:
                     {
                         "function_type": "directional_67",
                         "threshold_a": 150,
+                        "threshold_unit": "A_PIERWOTNY",
                         "time_delay_s": 0.3,
                         "is_directional": True,
                     },
@@ -363,11 +370,17 @@ class TestUpdateProtection:
             {
                 "ref_id": "pa_1",
                 "settings": [
-                    {"function_type": "overcurrent_50", "threshold_a": 1200, "time_delay_s": 0.0},
+                    {
+                        "function_type": "overcurrent_50",
+                        "threshold_a": 1200,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "time_delay_s": 0.05,
+                    },
                     {
                         "function_type": "overcurrent_51",
                         "threshold_a": 300,
-                        "time_delay_s": 0.8,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "time_multiplier": 0.8,
                         "curve_type": "IEC_VI",
                     },
                 ],

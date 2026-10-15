@@ -1,6 +1,6 @@
 # ADR-022: Domena zabezpieczeń w modelu — IED, funkcje, grupy nastaw, trip matrix; jedna fizyka; TCC jako projekcja
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela — uchyla blokadę V11 `relay.legacy_write_disabled`)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; wariant D-34 werdyktu właściciela: domena zabezpieczeń jako warstwa ASSET modelu ENM addytywnie, przypadek wybiera grupę nastaw albo nakłada override jako deltę scenariusza rozwiązywaną w `EffectiveNetworkSnapshot` — Core Rule #4 doprecyzowana, nie złamana; klasa blokad V11 `relay.*`/`field.*` zdjęta jedną kartą (V12K-342); `ProtectionCapabilityRegistry` pierwszym artefaktem (W4-0 po PROT-LTI albo na literale „LTI”, O-69); rozszerzenia solverów (67/67N, 87T, admitancyjne) PLANNED, poza v1)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md`
 

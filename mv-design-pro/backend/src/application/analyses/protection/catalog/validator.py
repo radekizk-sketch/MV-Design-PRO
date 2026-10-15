@@ -4,12 +4,47 @@ from application.analyses.protection.catalog.models import (
     DeviceCapability,
     ProtectionRequirementV0,
 )
+from application.analyses.protection.catalog.zakresy import (
+    w_zakresie,
+    wartosc_pierwotna_w_jednostce_zakresu,
+    zakres_pradowy,
+)
+
+#: Naruszenia zakresów prądowych niesprawdzalnych (karta BIEG-ZABEZPIECZEN-Z-MODELU, PZ-09):
+#: zakres pozycji bez ustalonej jednostki i wymaganie bez przekładni przekładnika. Aparatu nie
+#: da się wtedy potwierdzić — to nazwany brak, nie „zgodność" (dawniej prąd PIERWOTNY
+#: wymagania porównywano wprost z zakresem strony wtórnej).
+ZAKRES_PRADOWY_NIEUSTALONY = "ZAKRES_PRADOWY_NIEUSTALONY"
+ZAKRES_PRADOWY_BEZ_PRZEKLADNI = "ZAKRES_PRADOWY_BEZ_PRZEKLADNI"
 
 
 def validate_requirement(
-    req: ProtectionRequirementV0, cap: DeviceCapability
+    req: ProtectionRequirementV0,
+    cap: DeviceCapability,
+    *,
+    przekladnia_a: tuple[float, float] | None,
 ) -> tuple[bool, tuple[str, ...]]:
+    """Zgodność wymagania (prądy PIERWOTNE) z pozycją katalogu; ``przekladnia_a`` —
+    (I1n, I2n) przekładnika zabezpieczenia albo ``None`` (brak przekładnika w modelu)."""
     violations: list[str] = []
+
+    def prad_poza_zakresem(kod: str, prad_pierwotny_a: float | None) -> bool | None:
+        """``None`` — porównanie niewykonalne (brak jednostki albo przekładni)."""
+        if prad_pierwotny_a is None:
+            return False
+        if cap.jednostka_zakresow_pradowych is None:
+            if ZAKRES_PRADOWY_NIEUSTALONY not in violations:
+                violations.append(ZAKRES_PRADOWY_NIEUSTALONY)
+            return None
+        if przekladnia_a is None:
+            if ZAKRES_PRADOWY_BEZ_PRZEKLADNI not in violations:
+                violations.append(ZAKRES_PRADOWY_BEZ_PRZEKLADNI)
+            return None
+        wartosc, _jednostka = wartosc_pierwotna_w_jednostce_zakresu(
+            cap, prad_pierwotny_a, przekladnia_a
+        )
+        minimum, maksimum = zakres_pradowy(cap, kod)
+        return not w_zakresie(wartosc, minimum, maksimum)
 
     if req.curve not in cap.curves_supported:
         violations.append("UNSUPPORTED_CURVE")
@@ -19,8 +54,8 @@ def validate_requirement(
         if function_code in required_functions and function_code not in cap.functions_supported:
             violations.append(f"UNSUPPORTED_FUNCTION_{function_code}")
 
-    if _should_check_range("51", required_functions, cap) and not _in_range(
-        req.i_pickup_51_a, cap.i_pickup_51_a_min, cap.i_pickup_51_a_max
+    if _should_check_range("51", required_functions, cap) and prad_poza_zakresem(
+        "51", req.i_pickup_51_a
     ):
         violations.append("I51_OUT_OF_RANGE")
     # Karta W3-C1: mnoznik czasowy (TMS) i czas okreslony (DT) sa DWIE ROZNE
@@ -39,20 +74,20 @@ def validate_requirement(
         and not _in_range(req.t_51_s, cap.t_51_s_min, cap.t_51_s_max)
     ):
         violations.append("T51S_OUT_OF_RANGE")
-    if _should_check_range("50", required_functions, cap) and not _in_range(
-        req.i_inst_50_a, cap.i_inst_50_a_min, cap.i_inst_50_a_max
+    if _should_check_range("50", required_functions, cap) and prad_poza_zakresem(
+        "50", req.i_inst_50_a
     ):
         violations.append("I50_OUT_OF_RANGE")
-    if _should_check_range("51N", required_functions, cap) and not _in_range(
-        req.i_pickup_51n_a, cap.i_pickup_51n_a_min, cap.i_pickup_51n_a_max
+    if _should_check_range("51N", required_functions, cap) and prad_poza_zakresem(
+        "51N", req.i_pickup_51n_a
     ):
         violations.append("I51N_OUT_OF_RANGE")
     if _should_check_range("51N", required_functions, cap) and not _in_range(
         req.tms_51n, cap.tms_51n_min, cap.tms_51n_max
     ):
         violations.append("TMS51N_OUT_OF_RANGE")
-    if _should_check_range("50N", required_functions, cap) and not _in_range(
-        req.i_inst_50n_a, cap.i_inst_50n_a_min, cap.i_inst_50n_a_max
+    if _should_check_range("50N", required_functions, cap) and prad_poza_zakresem(
+        "50N", req.i_inst_50n_a
     ):
         violations.append("I50N_OUT_OF_RANGE")
 

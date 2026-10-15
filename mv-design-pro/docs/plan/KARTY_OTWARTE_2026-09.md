@@ -561,8 +561,10 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
    - IEEE liczone wzorem IEC;
    - DT bez zwłoki = 0 s.
 
-   Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. Jego kasacja wymaga
-   OD-18, więc wpisz go do meldunku z tą zależnością i nie ruszaj.
+   Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. OD-18 ROZSTRZYGNIĘTE
+   2026-09-30 (V12K-341, zgoda B-01 w ramach O-59): kasacja na amen w osobnej karcie W3-A-DOMKNIĘCIE
+   (sankcja `SANCTIONED_CHANGES` już wpisana) — w tej karcie nadal go nie ruszaj, wpisz do meldunku
+   odsyłacz do W3-A-DOMKNIĘCIE.
 4. **Zero wartości domyślnych i połkniętych błędów.**
    - `_extract_setting_value` i każde miejsce inwentarza z domyślnym prądem, TMS, zwłoką, krzywą,
      prądem testowym „10× nastawa” albo progiem 0 (`protection_read_model`) znika.
@@ -1242,7 +1244,7 @@ literałów w 105 plikach `backend/src`, ale zostawiła trzy obszary z uzasadnie
 nie broni:
 1. **35 plików `network_model/solvers/**`, 239 literałów** — „rdzenie FROZEN, B-01”. Granica B-01
    to od `525ec765` jedna lista `scripts/rdzenie_b01.py` (IEC 60909 ×3, NR/GS/FD ×4,
-   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, stability_rms/, state_estimation_wls,
+   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, state_estimation_wls,
    phase_state_sn, v126_academic, catalog/profiles/nc_rfg/). Pozostałe solvery (np.
    `cable_ampacity_derating.py`, `fault_loop_builder.py`, `cable_voltage_drop.py`) edytuje się
    jak każdy kod. Test `tests/ci/test_polskie_znaki.py` nadal traktuje cały
@@ -1384,6 +1386,10 @@ Zebrane z odbiorów 2026-09-23 (karta powstanie po scaleniu AB-H0 i Pakietu 0; b
    szyny `to` przy U_n bez rozpływu (pomiar wykonawcy AB-1b.1a, 2026-09-23). Rdzeń FROZEN → B-01: wiersz §12
    planu wpisuje AB-1b.1a; w AB-H0b: prezentacja tej liczby wyłącznie z etykietą „szacunek bez rozpływu" z
    rekordu backendu (proweniencja), naprawa właściwa = bieg PF per kontyngencja po zgodzie właściciela.
+   **Stan 2026-09-30 (karta B01-RUNDA-1, R0-g):** liczba nieprezentowana na żadnym ekranie ani w raporcie
+   (karta W3-E zdejmuje ranking); rekord `ranking_n1.metoda_pl` = „szacunek bez rozpływu” (stała
+   `RANKING_N1_METODA_V126`) i panel ekranu analiz akademickich pokazują metodę z rekordu. Kasacja szacunku i
+   N-1 z rozpływu — zmiana zakresu (g) wg decyzji B-01 z 2026-09-30.
 4. Import CSV/XLSX → Pakiet G (poza AB-H0b; tu tylko odsyłacz).
 5. Jakość energii — warstwa profili → AB-H1 (poza AB-H0b; odsyłacz).
 6. `enm_contract_parity` — SPRAWDZANE po scaleniu AB-H0 (wpis z karty integracji AB-H0).
@@ -1402,7 +1408,7 @@ doprecyzowane (O-57)”.
 
 **Stan 2026-09-30:** NIE ROZPOCZĘTA — szkic §0.
 
-Fakty: bieg synchroniczny w żądaniu (`api/execution_runs.py:236-253`), Celery bez zadań i bez wykonawcy (`api/celery_app.py`; `infrastructure/persistence/repositories/canonical_run_repository.py:482`: „`ExecutionBackend` z DT-12 nie jest wdrożony”), klient E-32 już odpytuje (`frontend/src/ui2/wyniki/dynamika/api.ts:140-175`), maszyna 4 CPU, narzędzie jednostanowiskowe (OD-13/OD-27), horyzont do 600 s, bieg kontrolny 3×. **Decyzja:** `ExecutionBackend` (DT-12) jako wykonawca w procesie: kolejka z jednym ciężkim biegiem naraz, stan biegu utrwalany (`PENDING → RUNNING → FINISHED/FAILED/CANCELLED`) w istniejącym rejestrze `canonical_runs`, `POST …/execute` zwraca natychmiast 202 ze stanem, klient odpytuje jak dziś, anulowanie jako zdarzenie sprawdzane między krokami całkowania (flaga w kontekście biegu — jedyny punkt styku z rdzeniem, addytywny), czas biegu i limit jawnie w wyniku (`czas_obliczen_s` już jest — `dynamika/wynik.py:134`). Martwa konfiguracja Celery (`api/celery_app.py`, usługa `celery` w `docker-compose.yml`) — kasacja z bramką wskrzeszenia (ZASADA NR 1; „co przestarzałe, usunąć”). Alternatywa (Celery jako wykonawca) odrzucona: zależność od Redis w testach i pracy lokalnej, brak wartości dla jednego użytkownika, prewencyjna abstrakcja. Zakres plików: `api/execution_runs.py`, nowy `application/execution/wykonawca.py`, `infrastructure/persistence/**` (status), `enm/canonical_analysis.py` — wyłącznie punkt wejścia `execute_run` (koordynacja z torem R), `frontend/src/ui2/wyniki/dynamika/api.ts`; test iloczynu: {rodzaj biegu: rozpływ, zwarcie, dynamika} × {krótki, długi, anulowany, błąd} × {odpytywanie: przed, w trakcie, po}; e2e: bieg > limitu czasu odpowiedzi kończy się bez zerwania żądania.
+Fakty: bieg synchroniczny w żądaniu (`api/execution_runs.py:236-253`), Celery bez zadań i bez wykonawcy (`api/celery_app.py`; `infrastructure/persistence/repositories/canonical_run_repository.py:482`: „`ExecutionBackend` z DT-12 nie jest wdrożony”), klient E-32 już odpytuje (`frontend/src/ui2/wyniki/dynamika/api.ts:140-175`), maszyna 4 CPU, narzędzie jednostanowiskowe (OD-13/OD-27), horyzont do 600 s, bieg kontrolny 3×. **Adnotacja 2026-09-30 (ADR-029, V12K-346):** przesłanka „narzędzie jednostanowiskowe (OD-13/OD-27)” potwierdzona — OD-27 zamknięta decyzją 2026-08-05, OD-13 rozstrzygnięta jako lokalna płaszczyzna MCP; przesłanka karty bez zmian. **Decyzja:** `ExecutionBackend` (DT-12) jako wykonawca w procesie: kolejka z jednym ciężkim biegiem naraz, stan biegu utrwalany (`PENDING → RUNNING → FINISHED/FAILED/CANCELLED`) w istniejącym rejestrze `canonical_runs`, `POST …/execute` zwraca natychmiast 202 ze stanem, klient odpytuje jak dziś, anulowanie jako zdarzenie sprawdzane między krokami całkowania (flaga w kontekście biegu — jedyny punkt styku z rdzeniem, addytywny), czas biegu i limit jawnie w wyniku (`czas_obliczen_s` już jest — `dynamika/wynik.py:134`). Martwa konfiguracja Celery (`api/celery_app.py`, usługa `celery` w `docker-compose.yml`) — kasacja z bramką wskrzeszenia (ZASADA NR 1; „co przestarzałe, usunąć”). Alternatywa (Celery jako wykonawca) odrzucona: zależność od Redis w testach i pracy lokalnej, brak wartości dla jednego użytkownika, prewencyjna abstrakcja. Zakres plików: `api/execution_runs.py`, nowy `application/execution/wykonawca.py`, `infrastructure/persistence/**` (status), `enm/canonical_analysis.py` — wyłącznie punkt wejścia `execute_run` (koordynacja z torem R), `frontend/src/ui2/wyniki/dynamika/api.ts`; test iloczynu: {rodzaj biegu: rozpływ, zwarcie, dynamika} × {krótki, długi, anulowany, błąd} × {odpytywanie: przed, w trakcie, po}; e2e: bieg > limitu czasu odpowiedzi kończy się bez zerwania żądania.
 
 **Koszt biegu jako kryterium (PERF-DYN-0).** Karta AB-1b.2 §5 R3 mierzy 3,6 s dla układu dwuwęzłowego przy 600 krokach; brak pomiaru dla sieci 50 stacji (PERF-DYN-0 z karty W6-2 §0 pkt 9 — budżet ≤ 60 s — nie ma wpisu w rejestrze). **Decyzja:** PERF-DYN-0 wykonać w DYNAMIKA-W-TLE (pomiar na scenie harnessu i sieci złotej, wartość do meldunku), a AB-1b.2 Pakiet E raportuje koszt przed/po biegu kontrolnym; przekroczenie budżetu bez wykonawcy w tle = STOP integracji Pakietu E. Pomiar PERF-DYN-0 obejmuje liczbę wątków BLAS (jeden i domyślna) na hoście bez obcego obciążenia: polityka wątków obrazu Dockera (dziś domyślna) wynika z tego pomiaru, nie z założenia — backend e2e ma jeden wątek od karty WATKI-BLAS-E2E (`playwright.config.ts`), bo bieg zwarciowy sieci 50 stacji przy obcym obciążeniu i wątkach domyślnych trwał 866 s zamiast 6 s.
 
@@ -1420,7 +1426,8 @@ KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE (plan §11).
 **Inwentarz kasacji toru `frt_hvrt` (pełniejszy niż O-44):** O-44 wymienia trzy miejsca. Pomiar: 5 plików backendu (`application/calculation_readiness/service.py:66, :90, :595-627, :884, :908`; `application/analyses/frt_trajektorie.py:30-35, :318, :408`; `application/analyses/frt_sekwencja.py:50`; `application/ncrfg_compliance/frt_input.py:14`; `solver_input/provenance.py:312`) i 7 plików frontu (`ui2/oze/api.ts`, `ui2/oze/macierz/MacierzNcRfg.tsx`, `ui/network-build/station-der/readiness.ts`, `ui/network-build/der-configurator/DerConfigurator.tsx`, `ui/workspace/surfaces/DerSurfaces.tsx`, `ui/sld/shared/sldActionExecutor.ts`, `ui/sld/v2/command/SldCommandService.ts`) plus ekran `ui2/oze/frt/` (EkranFrt.tsx, SekcjaSekwencjiZapadow.tsx, WykresTrajektoriiChart.tsx). Karta AB-1c (jeszcze nienapisana) ma nieść ten inwentarz jako klasę.
 
 **Rozstrzygnięcia wejściowe:** (1) kasacja `frt_hvrt/**` i `stability_rms/**` wymaga odpowiedzi właściciela
-o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — do tego czasu tor T3 zostaje z
+o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — stan 2026-09-30: `stability_rms/**`
+skasowany w karcie B01-RUNDA-1 (decyzja ostateczna, O-59); `frt_hvrt/**` zostaje do AB-1c — do tego czasu tor T3 zostaje z
 `NIE_OCENIONO`; (2) blok `Generator.dynamika` wyłącznie z materializacji katalogu, `p_dostepna_mw` jako
 wielkość warunków pracy z edytorem w scenariuszu i punkcie pracy (O-57 pkt 8); (3) S_k,min i X/R punktu
 przyłączenia jako dane warunków przyłączenia modułu w `Generator.deklaracje_modulu` z kodem gotowości

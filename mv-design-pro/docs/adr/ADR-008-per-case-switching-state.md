@@ -1,7 +1,7 @@
 # ADR-008: Per-case Switching State Model
 
 ## Status
-Accepted
+**SUPERSEDED by ADR-016/ADR-017** (2026-09-30, O-63): stan łączeń per przypadek = typowana delta `OperatingScenario` (`enm/scenariusze.py`) rozwiązywana w `EffectiveNetworkSnapshot`; tabela `network_switching_states` istnieje wyłącznie w legacy SQL (`migrations/003_network_wizard_assets.sql:43`, `migracja_legacy_db.py:38`) i odchodzi procedurą kasacji W1. Treść poniżej historyczna.
 
 ## Context
 Operating cases must represent switching states for breakers, disconnectors, couplers,

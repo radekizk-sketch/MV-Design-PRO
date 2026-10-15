@@ -26,7 +26,7 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (
 )
 from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
-from enm.models import Cable, ProtectionAssignment, ProtectionSetting
+from enm.models import Cable, Measurement, ProtectionAssignment, ProtectionSetting
 from enm.store import reset_enm_store, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
@@ -72,16 +72,31 @@ def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = 
     """
     model = build_golden_enm()
     if z_zabezpieczeniem:
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenie kompletne w modelu — przekładnik
+        # sprzęgła 200/5 A, pozycja katalogu z zakresami (REF-OC-200) i próg ze stroną
+        # przekładnika (100 A pierwotne = 0,5 ×In) — jedna ścieżka oceny nastaw.
+        model.measurements.append(
+            Measurement(
+                ref_id="ct_coupler",
+                name="Przekładnik sprzęgła",
+                measurement_type="CT",
+                bus_ref="bus_sn_main",
+                rating={"ratio_primary": 200.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
+            )
+        )
         model.protection_assignments.append(
             ProtectionAssignment(
                 ref_id="prot_coupler",
                 name="Zabezpieczenie sprzegla",
                 breaker_ref="sw_coupler",
+                ct_ref="ct_coupler",
+                catalog_ref="REF-OC-200",
                 device_type="overcurrent",
                 settings=[
                     ProtectionSetting(
                         function_type="overcurrent_51",
                         threshold_a=prog_a,
+                        threshold_unit="A_PIERWOTNY",
                         curve_type="IEC_SI",
                         time_multiplier=0.2,
                     )

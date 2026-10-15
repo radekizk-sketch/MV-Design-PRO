@@ -403,7 +403,24 @@ POMIJANE_KATALOGI = {
 #: kompozycji `base_template`); dwa bledy dopisane przez karte w nowych testach (rola
 #: `POMIAROWE` spoza `SnFieldRole`, rodzaj aparatu `load_break_switch` spoza slownika)
 #: naprawione u zrodla przed commitem. Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 80
+#: Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (2026-09-30, pomiar pelnej listy `_BLEDY_POZA_BRAMKA`
+#: na drzewie karty i na worktree czubka partii 6 `615f3b24`, listy porownane linia po linii):
+#: baza partii 6 miala 81 przy budzecie 80 (czerwien zastana — integracja partii przywrocila
+#: jeden blad), drzewo karty 81, zbiory identyczne. 81 -> 69: zdjete 12 zastanych TS6133
+#: (nieuzywane importy w testach: `vi` x2, `renderHook`, `LayerId`, `ResultLabelEntry`,
+#: `buildSceneV3`, `fieldFunctionalDesignation`, `V3_STROKE_APPARATUS`, `act`, `beforeEach`,
+#: `afterEach`, `JAKOSC_STRINGS`); zero nowych bledow.
+#: Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30, pomiar `zmierz_dlug()` na drzewie karty i na
+#: drzewie startowym `615f3b24`): start 81 (guard czerwony juz na starcie — lista bledow
+#: identyczna na obu drzewach, karta nie dopisala zadnego) -> 64. Zeszlo 17 zastanych TS6133
+#: (nieuzywane importy i zmienne w 16 plikach testow; `hasDashed` w `earthingSwitchIec`
+#: dublowal asercje `allLineStrokes`, `DEKLARACJE_SPRAWDZANE` w `wlasnoscEtykiet` byla spisem
+#: bez konsumenta — reguly (a)–(d) sprawdzaja petle ponizej). Zero nowych bledow.
+#: Partia integracji 7 (2026-10-15, pomiar `zmierz_dlug()` na drzewie scalonym po czesci 2
+#: ETYKIETY-STACJI): 62 — zbiory zdjetych TS6133 kart BIEG-ZABEZPIECZEN (12) i ETYKIETA-STACJI
+#: (17) czesciowo wspolne, B01-RUNDA-1 i PARTIA-6-BACKEND naprawily ten sam blad bazy. Zero
+#: nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 62
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

@@ -5421,7 +5421,7 @@
         "frequency_hz": null,
         "id": "a11ea5a7-ea75-5b3f-b69f-1e64adcba810",
         "meta": {},
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/18965adea95cb233a9796f5465227d50/sn_bus",
@@ -5559,7 +5559,7 @@
         "frequency_hz": null,
         "id": "d84a00c8-030e-5b9e-8fcd-1518efd9f5bd",
         "meta": {},
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/7e9a259156dd940d42910dc28bb666c6/sn_bus",
@@ -5697,7 +5697,7 @@
         "frequency_hz": null,
         "id": "dd65f329-c6b9-5695-b98f-57db41f02180",
         "meta": {},
-        "name": "Stacja S03 (typ B)",
+        "name": "Stacja S03",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/f6bc470053edf406c937101c5c903371/sn_bus",
@@ -5835,7 +5835,7 @@
         "frequency_hz": null,
         "id": "b4a13d62-bec4-5a42-b971-cf395abcff26",
         "meta": {},
-        "name": "Stacja S04 (typ B)",
+        "name": "Stacja S04",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/a839f5a7c4a7a21d48479fa66b46678c/sn_bus",
@@ -5973,7 +5973,7 @@
         "frequency_hz": null,
         "id": "683214b1-207d-5d19-82fe-6c777b5d62f2",
         "meta": {},
-        "name": "Stacja S05 (typ B)",
+        "name": "Stacja S05",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/7e598bf0b0e28396ea44fe9194dfe77f/sn_bus",
@@ -6111,7 +6111,7 @@
         "frequency_hz": null,
         "id": "2504bac6-a0ac-5944-a7dd-d44cf8e8fb98",
         "meta": {},
-        "name": "Stacja S06 (typ B)",
+        "name": "Stacja S06",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/abeea984669bb0e4c6d51f63d5db0b94/sn_bus",
@@ -6249,7 +6249,7 @@
         "frequency_hz": null,
         "id": "b495b20d-db96-5626-a168-e897b7a7daa2",
         "meta": {},
-        "name": "Stacja S07 (typ B)",
+        "name": "Stacja S07",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/a4370d70165abc83ed1d03689aa083d2/sn_bus",
@@ -6387,7 +6387,7 @@
         "frequency_hz": null,
         "id": "19095fc7-b163-5bba-a424-21565585a174",
         "meta": {},
-        "name": "Stacja S08 (typ B)",
+        "name": "Stacja S08",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/645cd165b00b1d1173cedb0c0f0c9c2f/sn_bus",
@@ -6525,7 +6525,7 @@
         "frequency_hz": null,
         "id": "fc169147-e7a3-5b22-9a46-94c9e9276da0",
         "meta": {},
-        "name": "Stacja S09 (typ B)",
+        "name": "Stacja S09",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/8d2f3e8c63cbb204610901b9ceee04d2/sn_bus",
@@ -6663,7 +6663,7 @@
         "frequency_hz": null,
         "id": "a0ec4a41-4c73-5d49-97bc-93f4ec881085",
         "meta": {},
-        "name": "Stacja S10 (typ B)",
+        "name": "Stacja S10",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/4267ab6dad43a07019dce9db8a2fc21f/sn_bus",
@@ -6801,7 +6801,7 @@
         "frequency_hz": null,
         "id": "9475d1fb-5eb1-5b76-9892-74512c987285",
         "meta": {},
-        "name": "Stacja S11 (typ B)",
+        "name": "Stacja S11",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/3e4078737a09aa8cdac011b31d74d8f8/sn_bus",
@@ -6939,7 +6939,7 @@
         "frequency_hz": null,
         "id": "f7462bc8-fcdf-5fdb-be7c-6d3e438cdf48",
         "meta": {},
-        "name": "Stacja S12 (typ B)",
+        "name": "Stacja S12",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/dde866b11ab830e7019014c70737f1a0/sn_bus",
@@ -7077,7 +7077,7 @@
         "frequency_hz": null,
         "id": "2624c0fe-647e-5a9c-8fb4-3ddbdb51930d",
         "meta": {},
-        "name": "Stacja S13 (typ B)",
+        "name": "Stacja S13",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/a7b8ad2e9c09967daaab3df40d249d09/sn_bus",
@@ -7270,7 +7270,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "26c87ba54624e2e56b79307fa135c8c21b011283a1b400efc56bfb675c6c7aed",
+      "hash_sha256": "b20736c52837e8f53c889ab19081d8bb0bdfad14a8cb262c5ee40c382e75ceaa",
       "name": "Sieć Duza — przed",
       "revision": 48,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -7377,6 +7377,7 @@
         "bus_ref": "nn/7ec42e9f354818cc2a0875972157e4ec/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "1698aa23-d512-53c3-b58b-5731e0466839",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7404,7 +7405,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S01 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S01",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7419,6 +7420,7 @@
         "bus_ref": "nn/da1bd65e973a08019315f38ca8d117bf/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "06ff4fd5-e316-5429-b5e5-cd858461b225",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7446,7 +7448,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S02 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S02",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7461,6 +7463,7 @@
         "bus_ref": "nn/5122a222248bed9fee7399a7a2a450e6/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "11d6817c-8da6-50df-bfc5-1df82baa3467",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7488,7 +7491,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S03 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S03",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7503,6 +7506,7 @@
         "bus_ref": "nn/a8146cc32531e55f640c22be8c4c6c48/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "caae0926-2217-5a71-a924-561040340fb8",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7530,7 +7534,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S04 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S04",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7545,6 +7549,7 @@
         "bus_ref": "nn/e76dd1d01a1a009b73dcdf960b221d60/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "eec547b7-b70a-5d41-999f-2d315eec38b1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7572,7 +7577,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S05 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S05",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7587,6 +7592,7 @@
         "bus_ref": "nn/d007796d17ccb0a709578394a2b4f656/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "9d63f361-9f24-55d6-b485-22e166ad57e4",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7614,7 +7620,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S06 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S06",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7629,6 +7635,7 @@
         "bus_ref": "nn/36db9e9b43ab2f88e27a4d7001817c72/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "6c61fba0-932a-5628-a580-f16fd9faffd9",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7656,7 +7663,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S07 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S07",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7671,6 +7678,7 @@
         "bus_ref": "nn/4472ef98d9438aa6c35e5aadcc15b328/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "ab38f841-ff70-506f-a09b-b40371818a3c",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7698,7 +7706,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S08 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S08",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7713,6 +7721,7 @@
         "bus_ref": "nn/b576dd2160732894f5e87f3301c85d02/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "545128d3-2358-50cc-af78-f5e5d4e0662f",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7740,7 +7749,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S09 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S09",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7755,6 +7764,7 @@
         "bus_ref": "nn/b641605743380d8e0982ed149276d7b7/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "000d7de6-180b-5d56-a55a-f3bd6cb8c4b5",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7782,7 +7792,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S10 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S10",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7797,6 +7807,7 @@
         "bus_ref": "nn/09cd1f5dab2f32f095f64a4f9927a023/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "59e86077-2c42-5135-ab34-3f66fcc910a1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7824,7 +7835,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S11 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S11",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7839,6 +7850,7 @@
         "bus_ref": "nn/8cb3d51f360c70d847d40e3d9c311f76/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "1be6d1f5-ef75-59d1-985f-b880f32a5557",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7866,7 +7878,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S12 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S12",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -7881,6 +7893,7 @@
         "bus_ref": "nn/e518875359962b9bed713f9b4325aca0/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "31309a90-3070-53b4-9f9c-3231213b5c6a",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7908,7 +7921,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S13 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S13",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -8188,11 +8201,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/18965adea95cb233a9796f5465227d50/station",
@@ -8350,11 +8361,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S02 (typ B)",
+        "name": "Stacja S02",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/7e9a259156dd940d42910dc28bb666c6/station",
@@ -8512,11 +8521,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S03 (typ B)",
+        "name": "Stacja S03",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/f6bc470053edf406c937101c5c903371/station",
@@ -8674,11 +8681,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S04 (typ B)",
+        "name": "Stacja S04",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/a839f5a7c4a7a21d48479fa66b46678c/station",
@@ -8836,11 +8841,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S05 (typ B)",
+        "name": "Stacja S05",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/7e598bf0b0e28396ea44fe9194dfe77f/station",
@@ -8998,11 +9001,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S06 (typ B)",
+        "name": "Stacja S06",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/abeea984669bb0e4c6d51f63d5db0b94/station",
@@ -9160,11 +9161,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S07 (typ B)",
+        "name": "Stacja S07",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/a4370d70165abc83ed1d03689aa083d2/station",
@@ -9322,11 +9321,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S08 (typ B)",
+        "name": "Stacja S08",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/645cd165b00b1d1173cedb0c0f0c9c2f/station",
@@ -9484,11 +9481,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S09 (typ B)",
+        "name": "Stacja S09",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/8d2f3e8c63cbb204610901b9ceee04d2/station",
@@ -9646,11 +9641,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S10 (typ B)",
+        "name": "Stacja S10",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/4267ab6dad43a07019dce9db8a2fc21f/station",
@@ -9808,11 +9801,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S11 (typ B)",
+        "name": "Stacja S11",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/3e4078737a09aa8cdac011b31d74d8f8/station",
@@ -9970,11 +9961,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S12 (typ B)",
+        "name": "Stacja S12",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/dde866b11ab830e7019014c70737f1a0/station",
@@ -10132,11 +10121,9 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S13 (typ B)",
+        "name": "Stacja S13",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/a7b8ad2e9c09967daaab3df40d249d09/station",

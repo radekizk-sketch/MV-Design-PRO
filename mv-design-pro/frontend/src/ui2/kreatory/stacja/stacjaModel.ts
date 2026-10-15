@@ -52,6 +52,7 @@ import type {
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
+import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
@@ -723,6 +724,24 @@ export const POLA_TORU_WG_TRYBU: Readonly<Record<TrybUmiejscowienia, readonly Sn
 };
 
 /** Pola toru wymagane dla trybu umiejscowienia, których lista pól nie zawiera (w kolejności toru). */
+/**
+ * Rodzaj stacji, który powstanie z tego SKŁADU pól i umiejscowienia — JEDNA reguła produktu
+ * (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, §19.3). Podział
+ * odcinka łączy oba końce stacji z siecią (dwa połączone wyprowadzenia), zakończenie odcinka —
+ * tylko pole wejściowe (jedno). Karta ETYKIETA-STACJI-PRZELOTOWEJ: kontrola i podsumowanie
+ * kreatora pokazywały DEKLARACJĘ z kroku „Rodzaj", choć edycja listy pól ją zmieniała —
+ * po zapisie drzewo i schemat pokazywały inny rodzaj niż kreator.
+ */
+export function rodzajStacjiZKreatora(
+  pola: readonly { field_role: SnFieldRole }[],
+  tryb: TrybUmiejscowienia,
+): RodzajStacji {
+  return rodzajZeSkladuPol(
+    pola.map((pole) => pole.field_role),
+    tryb === 'SPLIT' ? 2 : 1,
+  );
+}
+
 export function brakujacePolaToru(
   pola: readonly { field_role: SnFieldRole }[],
   tryb: TrybUmiejscowienia,

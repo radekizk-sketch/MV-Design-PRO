@@ -185,10 +185,10 @@ def test_predykat_izolacji_iloczyn_cech(miejsce: str, metaliczne: bool, usunieci
     assert all(prad[i] == 0.0 for i in przed)
     assert all(prad[i] > 0.0 for i in w_trakcie)
     if usuniecie == "samoczynne":
-        assert any("samoczynnie" in zdanie for zdanie in wynik.zalozenia)
+        assert "zwarcie_usuniete_samoczynnie" in {z.kod for z in wynik.zalozenia}
         assert all(prad[i] == 0.0 for i in po_otwarciu)
     else:
-        assert not any("samoczynnie" in zdanie for zdanie in wynik.zalozenia)
+        assert "zwarcie_usuniete_samoczynnie" not in {z.kod for z in wynik.zalozenia}
         # Po otwarciu miejsce zwarcia jest w obszarze odcietym: brak pradu zwarcia.
         assert all(prad[i] == 0.0 for i in po_otwarciu)
 

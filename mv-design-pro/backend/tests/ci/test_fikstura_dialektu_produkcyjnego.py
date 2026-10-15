@@ -222,3 +222,67 @@ def test_katalogi_sesji_testow_znikaja_przy_wyjsciu_procesu(tmp_path: Path) -> N
     )
     assert wynik.returncode == 0, wynik.stderr
     assert sorted(p.name for p in katalog_tymczasowy.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("robotnik_xdist", "znacznik_obcego_procesu", "oczekiwany_wlasny"),
+    [
+        (True, True, True),
+        (True, False, False),
+        (False, True, True),
+        (False, False, False),
+    ],
+    ids=["robotnik-katalog-sesji", "robotnik-katalog-z-zewnatrz", "sesja", "zewnatrz"],
+)
+def test_robotnik_xdist_dostaje_wlasny_magazyn_sesji(
+    tmp_path: Path, robotnik_xdist: bool, znacznik_obcego_procesu: bool, oczekiwany_wlasny: bool
+) -> None:
+    """Pomiar 2026-09-30 (karta AB-1b.3b-NA-CZUBKU): pod `pytest -n 3` robotnicy dziedziczyli
+    katalog `ENM_STORE_DIR` procesu nadzorczego i kasowali sobie nawzajem pliki robocze
+    magazynu (`FileNotFoundError` na `*.tmp`, inny zestaw przypadkow w kazdym biegu).
+
+    Intencja bez zmian, mechanizm jeden (scalenie 2026-10-15 z karta SZYBKIE-TESTY): katalog
+    UTWORZONY przez inny proces pytest niesie znacznik `ENM_STORE_DIR_PYTEST_PID` z obcym PID.
+    Iloczyn {robotnik xdist, proces bez xdist} x {katalog innego procesu pytest (znacznik),
+    katalog wskazany z zewnatrz}: WLASNY katalog dostaje kazdy proces, ktory odziedziczyl
+    katalog innego procesu pytest (robotnik xdist i zagniezdzona sesja); katalog wskazany
+    jawnie wygrywa zawsze. Proba prawdziwym importem `tests.conftest` w osobnym procesie."""
+    import subprocess
+    import sys
+
+    backend = Path(__file__).resolve().parents[2]
+    katalog_tymczasowy = tmp_path / "tymczasowy"
+    katalog_tymczasowy.mkdir()
+    zadany = tmp_path / "zadany_magazyn"
+    zadany.mkdir()
+    srodowisko = {
+        klucz: wartosc
+        for klucz, wartosc in os.environ.items()
+        if klucz
+        not in (
+            "ENM_STORE_DIR",
+            "ENM_STORE_DIR_PYTEST_PID",
+            "PYTEST_XDIST_WORKER",
+        )
+    }
+    srodowisko.update(
+        {"TMPDIR": str(katalog_tymczasowy), "PYTHONPATH": "src:.", "ENM_STORE_DIR": str(zadany)}
+    )
+    if robotnik_xdist:
+        srodowisko["PYTEST_XDIST_WORKER"] = "gw0"
+    if znacznik_obcego_procesu:
+        srodowisko["ENM_STORE_DIR_PYTEST_PID"] = str(os.getpid())
+    wynik = subprocess.run(
+        [sys.executable, "-c", "import os, tests.conftest; print(os.environ['ENM_STORE_DIR'])"],
+        cwd=backend,
+        env=srodowisko,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert wynik.returncode == 0, wynik.stderr
+    katalog = wynik.stdout.strip()
+    assert (katalog != str(zadany)) is oczekiwany_wlasny, katalog
+    if oczekiwany_wlasny:
+        assert Path(katalog).name.startswith("enm-store-pytest-")
+    assert sorted(p.name for p in katalog_tymczasowy.iterdir()) == []

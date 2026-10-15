@@ -534,7 +534,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "90518b7d7e8bb512c396c22bfaf17d240a872054880bbee1285e915a2dd11436",
+      "hash_sha256": "0c06e7fcf45dbda4652aa3997749e024dad52f3940caadb3b161a6808ea80636",
       "name": "Stacja z polem pomiarowym",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -811,9 +811,7 @@
               ]
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "S01",
         "nn_sections": [],

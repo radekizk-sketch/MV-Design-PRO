@@ -44,3 +44,18 @@ export function wlasnyZaciskPola(spec: Readonly<Record<string, unknown>>): strin
   const zacisk = zaciskPola(spec);
   return zacisk && zacisk !== napis(spec.bus_ref) ? zacisk : null;
 }
+
+/**
+ * Zacisk pola opisanego REKORDEM `bays` (stacja końca ciągu, pola dopisane operacją): najpierw
+ * własne `meta` rekordu, potem specyfikacja pola zapisana przez operację w
+ * `meta.sn_field_template` — obie przez TEN SAM czytnik `zaciskPola`. Lustro części zaciskowej
+ * backendu `application.field_read_model.punkt_przylaczenia_pola` (`zacisk_pola({"meta": meta})
+ * or zacisk_pola(szablon)`); szablon pisze `enm.domain_operations` (`"meta":
+ * {"sn_field_template": spec}` przy tworzeniu pól stacji). `null` — rekord nie niesie zacisku
+ * (backend przyłącza wtedy do `bay.bus_ref`).
+ */
+export function zaciskRekorduPola(bay: Readonly<Record<string, unknown>>): string | null {
+  const meta = rekord(bay.meta);
+  const szablon = rekord(meta?.sn_field_template);
+  return zaciskPola({ meta: meta ?? {} }) ?? (szablon ? zaciskPola(szablon) : null);
+}

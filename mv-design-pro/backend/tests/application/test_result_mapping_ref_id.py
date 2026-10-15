@@ -22,17 +22,14 @@ from uuid import UUID, uuid4
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
-from application.solvers.short_circuit_binding import (
-    ShortCircuitBindingResult,
-    execute_short_circuit,
-)
+from application.solvers.short_circuit_binding import ShortCircuitBindingResult
 from domain.execution import ElementResult, ResultSet
-from domain.execution import ExecutionAnalysisType as EAT
-from domain.study_case import StudyCaseConfig
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
+
+from tests.utils.wynik_wiazania_zwarcia import wynik_wiazania_zwarcia_3f
 
 # ---------------------------------------------------------------------------
 # Minimal network fixture
@@ -148,24 +145,10 @@ def _build_graph() -> NetworkGraph:
     return graph
 
 
-def _sc_config() -> StudyCaseConfig:
-    return StudyCaseConfig(
-        c_factor_max=1.10,
-        c_factor_min=0.95,
-        thermal_time_seconds=1.0,
-        include_inverter_contribution=True,
-    )
-
-
 def _binding_result() -> ShortCircuitBindingResult:
-    graph = _build_graph()
-    config = _sc_config()
-    return execute_short_circuit(
-        graph=graph,
-        fault_node_id="BUS_LOAD",
-        analysis_type=EAT.SC_3F,
-        config=config,
-    )
+    # Karta TORY-TYLKO-W-TESTACH (2026-09-30): wejście zamrożonego mappera składane z
+    # ogniw biegu kanonicznego (dawny `execute_short_circuit` skasowany — bez konsumenta).
+    return wynik_wiazania_zwarcia_3f(_build_graph(), "BUS_LOAD")
 
 
 def _run_id() -> UUID:

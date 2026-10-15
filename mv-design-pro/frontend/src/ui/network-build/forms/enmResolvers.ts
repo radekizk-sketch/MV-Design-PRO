@@ -1,6 +1,7 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
-import { szynyStacji } from '../../shared/szynyStacji';
+import { indeksGaleziPolNn, szynyStacji } from '../../shared/szynyStacji';
+import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 type Context = Record<string, unknown> | undefined;
@@ -129,9 +130,11 @@ function findStationRefByBus(
 
   // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`
   // (szyny główne, zaciski pól SN, końce aparatów pól nN); pierwsza stacja modelu wygrywa.
-  return snapshot.substations.find((station) =>
-    [...acceptableRefs].some((ref) => szynyStacji(station, snapshot.branches).has(ref)),
-  )?.ref_id ?? null;
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches);
+  return snapshot.substations.find((station) => {
+    const szyny = szynyStacji(station, snapshot.branches, indeksPolNn);
+    return [...acceptableRefs].some((ref) => szyny.has(ref));
+  })?.ref_id ?? null;
 }
 
 function isLowVoltageBus(bus: LegacyBus | null): bus is LegacyBus {
@@ -369,9 +372,8 @@ export function resolveStationRef(
       (transformer) => transformer.ref_id === elementRef || transformer.id === elementRef,
     )?.ref_id;
     if (transformerRef) {
-      return snapshot?.substations.find(
-        (station) => station.transformer_refs.includes(transformerRef),
-      )?.ref_id ?? null;
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      return stationRefOfTransformer(snapshot, transformerRef);
     }
 
     if (findBus(snapshot, elementRef)) {

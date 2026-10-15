@@ -2655,6 +2655,7 @@
             },
             "ranking_n1": {
               "ekran": "Wyniki › Kontyngencje",
+              "metoda_pl": "szacunek bez rozpływu",
               "powod_pl": "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve",
               "status": "NIEPREZENTOWANY",
               "trasa": "/api/insights/n-1-contingency"

@@ -30,15 +30,29 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 - Sesja główna: Claude Opus 5.5 (`claude-opus-5-5`), effort `high` — planuje, deleguje,
   a po powrocie wykonawców sama recenzuje i weryfikuje (bramki uruchamia niezależnie).
 - Wykonawcy — definicje w `.claude/agents/` (jedno źródło; Claude Code ładuje je jako typy
-  subagentów), Opus 5.5, effort `medium` domyślnie: `explorer` — czytanie kodu i pomiar klasy
-  defektu (bez edycji); `worker` — edycje + testy w swoim drzewie (commit bez push); `researcher`
-  — dokumentacja i normy; `worker-rdzen` — rola `worker` z effort `high` dla rdzenia solvera,
-  wyroczni i bramek poprawności. Effort wykonawcy podnosisz tylko, gdy zadanie tego wymaga.
+  subagentów), Opus 5.5: `explorer` (effort `low`) — czytanie kodu i pomiar klasy defektu (bez
+  edycji); `researcher` (effort `low`) — dokumentacja i normy; `worker` (effort `medium`) — edycje +
+  testy w swoim drzewie (commit bez push); `worker-rdzen` (effort `high`) — rola `worker` dla rdzenia
+  solvera, wyroczni i bramek poprawności. Effort podnosisz tylko, gdy zadanie tego wymaga.
+- Sesje w chmurze (karty roju) i wykonawcy decyzji: domyślnie Opus 5.5 (`medium`; `high` dla
+  rdzeni B-01). Decyzje architektoniczne z delegacji O-59 wydaje sesja główna Opus 5.5.
+- **Claude Fable 5.1 (`claude-fable-5-1`) — wyłącznie ostatecznie, dla zadań najtrudniejszych**
+  (dyrektywa właściciela 2026-10-15): po dwóch nieudanych podejściach Opus do tego samego problemu
+  albo dla decyzji, której Opus nie umie ugruntować w dowodach repo. Nie jest modelem głównym ani
+  domyślnym wykonawcą kart.
+- Oszczędność tokenów (wg dokumentacji Claude Code „Manage costs”): wąskie karty z plikiem:linią
+  zamiast szerokiego skanowania; gadatliwe wyjścia (testy, logi, listy sesji) do pliku, do kontekstu
+  tylko podsumowanie i kody wyjścia; jeden pełny bieg regresji na końcu karty, nie po każdym kroku;
+  bezczynna sesja z dużym kontekstem nie jest wybudzana po wygaśnięciu pamięci podręcznej promptu
+  (1 h) — kontynuację prowadzi nowa sesja z kartą i gałęzią jako stanem; check-iny planowane rzadko
+  (każdy niesie pełny kontekst); workflowy i przeglądy adwersarzowe tylko dla zmian rdzenia
+  i kart dużych; okno autokompakcji 400 tys. tokenów (`autoCompactWindow` w `.claude/settings.json`,
+  zamiast domyślnych ~967 tys.) — każde żądanie niesie mniejszy kontekst.
 - Metody użycia agentów (delegacja asynchroniczna, weryfikator ze świeżym kontekstem, meldunki
   ugruntowane w kodach wyjścia, granice nazwane w karcie, karta bez listy kroków, wznawianie
   wykonawców zamiast tworzenia nowych): `mv-design-pro/ORKIESTRACJA_AGENTOW.md` §3–§3a.
-- Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela; przejście
-  na Claude Fable 5.1 (`claude-fable-5-1`) to decyzja właściciela.
+- Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela albo przejście
+  na Fable 5.1 zgodnie z punktem wyżej.
 
 Kontrakt API modeli (Claude Fable 5.1, GPT-6 Astra: parametry, zakazy 400, caching, koszty,
 wywołanie Codex CLI) jest w `mv-design-pro/docs/prompts/KONTRAKT_API_MODELI.md` — czytaj go,
@@ -171,7 +185,7 @@ MV-Design-PRO/
 │   │   │   │   │   ├── power_flow_newton.py
 │   │   │   │   │   ├── power_flow_gauss_seidel.py
 │   │   │   │   │   └── power_flow_fast_decoupled.py
-│   │   │   │   ├── validation/   # NetworkValidator, rules, constraints
+│   │   │   │   ├── validation/   # legacy NetworkValidator — 0 production consumers (ADR-025, O-65): the single validator is enm/validator.py + CalculationReadiness; package removed by card GOTOWOSC-JEDEN-REJESTR
 │   │   │   │   └── whitebox/     # Calculation trace utilities
 │   │   │   ├── protection/       # Protection domain (NOT a solver)
 │   │   │   ├── solver_input/     # Solver input preparation, contracts, eligibility
@@ -300,20 +314,22 @@ MV-Design-PRO/
 
 ## Document Hierarchy (BINDING)
 
-Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K-001 (see `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`):
+Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K-001 (see `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`); row 1b and the `docs/twin` row added 2026-09-30 per decision K-20 (register row O-63 in `mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3, conflict V12K-339). The table below and the „Hierarchia kanonu" list in `mv-design-pro/docs/INDEX.md` are ONE list: `scripts/docs_guard.py` checks that both carry the same paths per priority and that every listed path exists.
 
 | Priority | Document | Purpose |
 |----------|----------|---------|
 | 1 | `mv-design-pro/docs/v12xx/KANON_V12_XX.md` + registries/matrices | **V12.xx canon — SOURCE OF TRUTH** (frozen 2026-04-24) |
+| 1b | `mv-design-pro/docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md` + `mv-design-pro/docs/architecture/CAPABILITY_ARCHITECTURE_MATRIX.md` + `mv-design-pro/docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md` + `mv-design-pro/docs/architecture/CONVERGENCE_ROADMAP.md` + `mv-design-pro/docs/architecture/DECISION_FREEZE_REGISTER.md` | **Law of the convergence programme** (owner constitution 2026-09-04). KANON_V12_XX is the law of the PRODUCT, the constitution is the law of the PROGRAMME; a contradiction goes to `REJESTR_KONFLIKTOW.md` and is settled by the later owner document (K-20, O-63) |
 | 2 | `mv-design-pro/docs/system/SPEC_*.md` (6 binding specs) | V12.5 binding system specs (catalog/model/operations/readiness/results/types) |
-| 3 | `mv-design-pro/docs/domain/*.md` + `docs/sld/SLD_CONTRACT_FLOW_V1.md` + `SLD_SEMANTIC_MODEL_CANONICAL_V1.md` | Active operational & semantic contracts |
+| 3 | `mv-design-pro/docs/domain/*.md` + `mv-design-pro/docs/sld/SLD_CONTRACT_FLOW_V1.md` + `mv-design-pro/docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md` | Active operational & semantic contracts |
 | 4 | `mv-design-pro/SYSTEM_SPEC.md` | Executive overview + navigation hub |
 | 5 | `mv-design-pro/ARCHITECTURE.md` | Technical architecture reference |
 | 6 | `mv-design-pro/AGENTS.md` | Agent governance rules |
 | 7 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING) |
-| 8 | `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md` | Active canon indexes |
+| 8 | `mv-design-pro/docs/INDEX.md` + `mv-design-pro/docs/INDEX_KANONICZNY.md` | Active canon indexes |
 | 9 | `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) | ARCHIVAL — V11 reference for spec-vs-code audit. All 28 files marked "Historical note (V12.5)". |
-| 10 | `mv-design-pro/docs/audit/archive/` + `historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
+| 10 | `mv-design-pro/docs/audit/archive/` + `mv-design-pro/docs/audit/historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
+| — | `mv-design-pro/docs/twin/` | **NOT canon** — input and evidence material of the Digital Twin package (K-20, O-63). The owner verdict „M1–M7: STOP do odbioru M0" (`docs/twin/OWNER_REVIEW_PACKAGE.md` §4a) binds only the `docs/twin` migration plan; the binding programme is the closing mission 2026-09-09 with slices W1–W12 (ADR-012, V12K-340). `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` does not exist and is not created; any reference to it is dead (package P-L in `mv-design-pro/docs/plan/DANE_WLASCICIELA_O59_2026-09.md`) |
 
 Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-21); PowerFactory/catalog compliance guidance now lives in `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` (priority 2 above).
 
@@ -395,10 +411,12 @@ All solvers **MUST**:
 - Case stores **ONLY** calculation parameters (configuration)
 - Multiple Cases reference one Model (read-only view)
 - Model change invalidates ALL case results
+- Protection settings (ADR-022 ACCEPTED 2026-09-30, decision O-63 / O-73 in `mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3): BASE settings (IED, functions, setting groups 1–4, trip matrix) are ASSET data of the ENM model; a Case only SELECTS a setting group or overlays an override as a scenario delta resolved in `EffectiveNetworkSnapshot` (ADR-017). Settings kept outside the model are a second truth and are forbidden.
 
 ### 5. BoundaryNode Prohibition Rule
 - **BoundaryNode is NOT in NetworkModel** (it's interpretation, not physics)
 - BoundaryNode belongs ONLY in the Analysis/Interpretation layer (BoundaryIdentifier)
+- The prohibition covers the PHYSICS model only: `network_model/core`, `network_model/solvers`, `solver_input`, NetworkGraph and NetworkSnapshot. The connection point exists as a CONTRACTUAL object `GridConnectionPoint` (ADR-027 ACCEPTED 2026-09-30, decision O-60 / G-15(a)) in the contract layer, pointing at a physics terminal through `terminal_ref`; it is never a node, a branch or a solver parameter. S_k,min and X/R of the connection point live in the existing `ConnectionConditions` (`backend/src/enm/models.py`), not in the profile and not in `Generator.deklaracje_modulu` (O-60). The presentation label „punkt przyłączenia" denotes this contractual object (K-19). `scripts/pcc_zero_guard.py` checks structurally that `GridConnectionPoint`/`BoundaryNode` never enter the physics model.
 
 ### 6. Frozen Result API Rule
 - ShortCircuitResult and PowerFlowResult APIs are **FROZEN**
@@ -756,8 +774,8 @@ The system is fully functional with:
   models, IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability,
   WLS state estimation, phase state SN, grid source preview, V12.6 academic)
 - 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
-- 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
-  Energy Validation — see inventory)
+- 18 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
+  Energy Validation — see inventory; `machine_short_circuit` skasowany 2026-09-30)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
 - 10 792 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-30,
   partia integracji 5 z DETERMINIZM-KATA-FAZORA); 12 716 frontend tests in 879 files (full
@@ -796,7 +814,7 @@ Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16
 1. Check `docs/v12xx/KANON_V12_XX.md`, `docs/system/SPEC_*.md` and `SYSTEM_SPEC.md` for allowed element types
 2. Add to `network_model/core/`
 3. Update ENM model if applicable (`src/enm/`)
-4. Update NetworkValidator
+4. Update the ENM validator (`src/enm/validator.py`) and the readiness codes of `CalculationReadinessService` (ADR-025, O-65)
 5. Add SLD symbol mapping
 6. Write tests
 
@@ -886,7 +904,7 @@ python scripts/vulture_guard.py
 2. **NEVER** add physics calculations to non-solver components
 3. **NEVER** modify frozen Result APIs without version bump
 4. **NEVER** create shadow/duplicate data models
-5. **NEVER** bypass NetworkValidator before solver execution
+5. **NEVER** bypass the ENM validator (`enm/validator.py`) + `CalculationReadiness` before a run (through `enm/canonical_analysis`) — ADR-025 ACCEPTED 2026-09-30, O-65; the former „NetworkValidator" rule was dead in code (`network_model/validation/validator.py` has 0 production consumers)
 6. **NEVER** use project codenames (P11, P14, etc.) in UI strings
 7. **NEVER** apply heuristics or undocumented corrections in load flow or protection solvers
 8. **NEVER** bypass catalog type binding (use catalog types, not direct parameter injection)

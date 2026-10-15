@@ -11,6 +11,8 @@ zachowania poprawnego — bez tego kryterium odbioru bylo by deklaracja.
 
 from __future__ import annotations
 
+import dataclasses
+
 import numpy as np
 import pytest
 from network_model.solvers.dynamika import OdmowaDynamiki, reinicjalizuj, zloz_model_sieci
@@ -18,6 +20,7 @@ from network_model.solvers.dynamika.kontrakty import KOD_REINICJALIZACJA_NIEZBIE
 from network_model.solvers.dynamika.siec import residuum_kcl_niezalezne, rozwiaz_algebre
 
 from tests.network_model.dynamika.uklady import nastawy, zbuduj_smib, zbuduj_smib_z_odbiorem
+from tests.walidacja_fizyczna import stanowisko
 
 
 def _punkt_startowy(uklad):
@@ -148,19 +151,25 @@ def test_niezbiezna_reinicjalizacja_konczy_sie_wlasnym_kodem() -> None:
     a przyczyna pierwotna zostaje w szczegolach — inaczej diagnoza gubi informacje,
     czy Newton padl na kroku, czy przy zdarzeniu.
     """
+    # Przepisane z intencją (karta modeli odbiorów): dawniej niezbieżność wywoływał odbiór
+    # stałej mocy bez napięcia przejścia przy zwarciu głębokim — dziś odbiór ma `U_min` i
+    # algebra MA rozwiązanie. Niezbieżność Newtona po zdarzeniu wymusza budżet iteracji
+    # (jedna iteracja bez nawrotów ze stanu sprzed zwarcia); intencja — kod
+    # `reinicjalizacja_niezbiezna` z przyczyną pierwotną w szczegółach — bez zmian.
     uklad = zbuduj_smib_z_odbiorem(p_odbioru_pu=0.5)
     model, urzadzenia, stany, napiecia = _punkt_startowy(uklad)
     model_zwarcie = zloz_model_sieci(
         uklad.wezly, uklad.galezie, (), admitancje_zwarc=(("GEN", complex(0.0, -1.0e4)),)
     )
+    odbiory = stanowisko.modele_odbiorow(uklad.odbiory)
     with pytest.raises(OdmowaDynamiki) as blad:
         reinicjalizuj(
             model_zwarcie,
-            uklad.odbiory,
+            odbiory,
             urzadzenia,
-            stany,
+            stanowisko.stany_z_odbiorami(odbiory, stany),
             napiecia,
-            nastawy=nastawy(),
+            nastawy=dataclasses.replace(nastawy(), max_iteracji_newtona=1, max_nawrotow=0),
             t_s=0.4,
         )
     assert blad.value.kod == KOD_REINICJALIZACJA_NIEZBIEZNA

@@ -45,6 +45,28 @@ export const DYNAMIKA_STRINGS = {
   brakProfili:
     'Katalog nie ma profili dynamicznych dla tego rodzaju wytwórcy — potrzebne dane producenta.',
   pokazNaSchemacie: 'Pokaż na schemacie',
+
+  // Modele dynamiczne odbiorów (ta sama sekcja — cel akcji naprawczej odbioru)
+  odbioryTytul: 'Modele dynamiczne odbiorów',
+  odbioryOpis:
+    'Każdy odbiór w biegu potrzebuje modelu dynamicznego: napięcia, poniżej którego odbiór '
+    + 'staje się stałą impedancją (przy głębokim zapadzie prąd maleje do zera), a dla odbioru '
+    + 'zależnego od częstotliwości — stałej czasowej pomiaru częstotliwości. Charakterystyka '
+    + 'napięciowa i częstotliwościowa pochodzi z typu odbioru (ta sama co w rozpływie); '
+    + 'wiązanie z profilem katalogowym kopiuje wyłącznie parametry modelu dynamicznego.',
+  odbioryBrak: 'Model nie ma odbiorów.',
+  kolOdbior: 'Odbiór',
+  kolParametryOdbioru: 'Parametry modelu',
+  napieciePrzejscia: 'napięcie przejścia do stałej impedancji',
+  stalaPomiaru: 'stała czasowa pomiaru częstotliwości',
+  bezCzulosci: 'odbiór niezależny od częstotliwości',
+  czystaImpedancja: 'odbiór czysto impedancyjny — bez napięcia przejścia',
+  stanOdbioruBrak: 'brak modelu',
+  wybierzProfilOdbioru: 'Wybierz profil katalogowy odbioru…',
+  podstawaWartosci: 'Podstawa wartości profilu',
+  jakoscSzacowana: 'wartości szacowane (typowe), nie pomiar odbioru',
+  jednPu: 'pu',
+  wiazanieOdbioruBlad: 'Nie udało się zapisać wiązania modelu dynamicznego odbioru.',
   zrodloProweniencji: {
     karta_producenta: 'karta producenta',
     certyfikat_jednostki: 'certyfikat jednostki',
@@ -121,7 +143,6 @@ export const DYNAMIKA_STRINGS = {
   poziomDowodowy: 'Poziom dowodowy wyniku',
   niedopuszczalnyRegulacyjnie: 'nie jest dowodem regulacyjnym',
   zalozeniaTytul: 'Założenia modelu',
-  zalozeniaRdzeniaPodpis: 'założenia rdzenia obliczeń dynamiki',
   zdarzeniaWykonaneTytul: 'Oś zdarzeń',
   kolChwila: 'Chwila',
   kolZdarzenie: 'Zdarzenie',
@@ -174,6 +195,7 @@ export const DYNAMIKA_STRINGS = {
   grupaGalaz: 'Gałęzie',
   grupaMiejsce: 'Miejsca zwarcia',
   grupaUrzadzenie: 'Urządzenia',
+  grupaOdbior: 'Odbiory',
 
   // Teksty kanałów (etykiety z opisu wyniku)
   brakNazwy: 'element bez nazwy w modelu',

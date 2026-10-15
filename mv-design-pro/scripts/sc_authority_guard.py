@@ -18,7 +18,7 @@ funkcji przechodziłby regex, nic by nie chronił):
 1. Pliki z ZAMKNIĘTEJ listy `PLIKI_Z_BRAMKA_AUTORYTETU` MUSZĄ faktycznie
    WYWOŁYWAĆ `wymagaj_autorytetu` (`ast.Call`, nie tylko import) zaimportowaną
    z `network_model.core.autorytet_wyniku_zwarciowego`.
-2. Pliki z ZAMKNIĘTEJ listy `PLIKI_TRASY_HTTP` MUSZĄ WYWOŁYWAĆ most
+2. Pliki z ZAMKNIĘTEJ listy `PLIKI_Z_MOSTEM_BIEGU` MUSZĄ WYWOŁYWAĆ most
    `wejscie_zwarciowe_z_biegu` albo `wejscie_koordynacji_z_biegow`
    zaimportowany z `application.autorytet_biegu_zwarciowego` — dowód, że
    wielkości zwarciowe wchodzące do żądania są czytane z ZAPISANEGO BIEGU,
@@ -62,24 +62,30 @@ BACKEND_SRC = REPO_ROOT / "backend" / "src"
 #: Zamknięta lista: pliki, które MUSZĄ wywoływać `wymagaj_autorytetu`
 #: (network_model.core.autorytet_wyniku_zwarciowego) — jedyny wykonywalny
 #: punkt autoryzacji wyniku zwarciowego dla zdolności zależnych.
+#: Koordynacja zabezpieczeń (karta BIEG-ZABEZPIECZEN-Z-MODELU): wejście koordynacji buduje
+#: JEDEN moduł aplikacyjny z dwóch zapisanych biegów i bieżącego modelu — trasa HTTP
+#: (`api/protection_coordination.py`) woła wyłącznie `koordynacja_z_biegow`, więc bramka i
+#: most żyją tam, gdzie powstaje `CoordinationInput`, nie w trasie.
+KOORDYNACJA_Z_BIEGOW = "application/analyses/protection/coordination/z_biegow.py"
+
 PLIKI_Z_BRAMKA_AUTORYTETU: tuple[str, ...] = (
     "application/equipment_proof/proof_pack.py",
-    "api/protection_coordination.py",
+    KOORDYNACJA_Z_BIEGOW,
 )
 
-#: Zamknięta lista: trasy HTTP, które MUSZĄ czytać wielkości zwarciowe z
-#: ZAPISANEGO BIEGU (`application.autorytet_biegu_zwarciowego`), nigdy z
-#: żądania wprost.
-PLIKI_TRASY_HTTP: tuple[str, ...] = (
+#: Zamknięta lista: pliki budujące wejście zdolności zależnej (trasa HTTP albo jej jedyny
+#: moduł aplikacyjny), które MUSZĄ czytać wielkości zwarciowe z ZAPISANEGO BIEGU
+#: (`application.autorytet_biegu_zwarciowego`), nigdy z żądania wprost.
+PLIKI_Z_MOSTEM_BIEGU: tuple[str, ...] = (
     "api/equipment_proof_pack.py",
-    "api/protection_coordination.py",
+    KOORDYNACJA_Z_BIEGOW,
 )
 
 #: Zamknięta lista: JEDYNE pliki wolne konstruować `EquipmentProofInput`/
 #: `CoordinationInput` (typy niosące wejście zdolności zależnych od wkładu
-#: zwarciowego falownika). Dokładnie ten sam zbiór co `PLIKI_TRASY_HTTP` —
+#: zwarciowego falownika). Dokładnie ten sam zbiór co `PLIKI_Z_MOSTEM_BIEGU` —
 #: to są trasy, które te typy budują z mostu autorytetu.
-KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ: frozenset[str] = frozenset(PLIKI_TRASY_HTTP)
+KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ: frozenset[str] = frozenset(PLIKI_Z_MOSTEM_BIEGU)
 
 #: Nazwy konstruktorów (klas) niosących wejście zdolności zależnej od wkładu
 #: zwarciowego falownika. Lista ZAMKNIĘTA — nowy typ wejścia dopisywany tu
@@ -200,8 +206,8 @@ def main() -> int:
                 "sprawdzenia proweniencji"
             )
 
-    # Kontrola 2: trasy HTTP czytają wielkości zwarciowe z ZAPISANEGO BIEGU.
-    for wzgledna in PLIKI_TRASY_HTTP:
+    # Kontrola 2: budowniczowie wejścia czytają wielkości zwarciowe z ZAPISANEGO BIEGU.
+    for wzgledna in PLIKI_Z_MOSTEM_BIEGU:
         sciezka = BACKEND_SRC / wzgledna
         if not sciezka.is_file():
             naruszenia.append(f"{wzgledna}: plik z zamkniętej listy nie istnieje")

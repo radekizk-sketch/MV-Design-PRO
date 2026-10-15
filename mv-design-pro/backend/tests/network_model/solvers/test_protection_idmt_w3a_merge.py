@@ -1,27 +1,18 @@
-"""W3-A — konwergencja rodziny A (IDMT) do jądra `compute_idmt_generic`.
+"""W3-A — konwergencja rodziny A (IDMT) do rdzenia IEC 60255, stan po karcie
+BIEG-ZABEZPIECZEN-Z-MODELU.
 
-`network_model.solvers.protection_iec60255` jest JEDYNĄ fizyką krzywych IDMT
-(silnik `compute_idmt_generic`); karta P0.7 (`f4a822bb`) już scaliła
-`protection.curves.{iec,ieee}_curves` (patrz `test_protection_curves_nd4_merge.py`).
-Ten plik dowodzi TEGO SAMEGO dla dwóch POZOSTAŁYCH żywych konsumentów
-skonsolidowanych kartą W3-A:
+`network_model.solvers.protection_iec60255` jest JEDYNĄ fizyką krzywych IDMT. Dwa dawne
+adaptery z tego pliku zniknęły razem ze swoimi torami: `application.protection_analysis.
+engine.compute_iec_inverse_time` (bieg `protection_sn` na syntetycznym urządzeniu z szablonu
+przypadku) i `enm.domain_operations_v2._compute_tcc_point` (zepsuta operacja
+`validate_selectivity` — pary z kolejności listy, prąd 10 × nastawa). Ocena zabezpieczeń
+ma JEDNĄ ścieżkę: `application.analyses.protection.ocena_nadpradowa.czas_stopnia`.
 
-  - `application.protection_analysis.engine.compute_iec_inverse_time`
-    (tor kanoniczny `protection_sn` — jedyny realny tor biegu ochrony)
-  - `enm.domain_operations_v2._compute_tcc_point`
-    (operacja domenowa `validate_selectivity`; alias lokalny "LTI" = "RI"
-    jądra — te same stałe K=120,0/alpha=1,0, inna nazwa historyczna)
-
-Trzy rzeczy razem, dla OBU adapterów:
-
-  1. Wartości liczbowe punktów krzywych IDMT są ZGODNE z formułą normy
-     (podstawienie ręczne — `t = TMS*A/(M^B-1)`, IEC 60255-151:2009 Tabela 1 —
-     nie porównanie dwóch implementacji ze sobą).
-  2. Adaptery FAKTYCZNIE delegują do generycznego silnika (dowód przez
-     monitorowanie wywołań, jak `test_protection_curves_nd4_merge.py`).
-  3. Iloczyn cech (KLASA NIE INSTANCJA, CLAUDE.md): krzywa (NI/VI/EI/RI) ×
-     M <= 1 (brak wyzwolenia) × M -> 1+ (epsilon graniczny mianownika) × TMS
-     skrajne (0,01 .. 10,0) — nie tylko przykład z karty.
+Ten plik dowodzi dla tej ścieżki tego samego, czego dowodził dla adapterów:
+  1. czas jest ZGODNY z formułą normy (podstawienie ręczne `t = TMS·A/(M^B − 1)`),
+  2. ścieżka FAKTYCZNIE deleguje do rdzenia (monitorowanie wywołań),
+  3. iloczyn cech: krzywa (NI/VI/EI/LTI) × M ≤ 1 (brak zadziałania) × M → 1+ ×
+     TMS skrajne (0,01 … 10,0).
 """
 
 from __future__ import annotations
@@ -30,247 +21,80 @@ import math
 from unittest.mock import patch
 
 import pytest
-from application.protection_analysis import engine as pa_engine  # noqa: E402
-from application.protection_analysis.engine import compute_iec_inverse_time  # noqa: E402
-from enm import domain_operations_v2  # noqa: E402
-from network_model.solvers import protection_iec60255 as core  # noqa: E402
+from application.analyses.protection import ocena_nadpradowa
+from application.analyses.protection.ocena_nadpradowa import StopienNastaw, czas_stopnia
+from network_model.solvers import protection_iec60255 as core
 
-# (A, B) per IEC 60255-151:2009 Tabela 1 — NI/VI/EI, i RI (alias lokalny "LTI"
-# w domain_operations_v2.IEC_CURVES).
+#: (krzywa modelu, A, B) wg IEC 60255-151:2009 tab. 1 — IEC_LI ma stałe „RI" rdzenia.
 NORM_CURVES = [
-    ("NI", 0.14, 0.02),
-    ("VI", 13.5, 1.0),
-    ("EI", 80.0, 2.0),
-    ("RI", 120.0, 1.0),
+    ("IEC_SI", 0.14, 0.02),
+    ("IEC_VI", 13.5, 1.0),
+    ("IEC_EI", 80.0, 2.0),
+    ("IEC_LI", 120.0, 1.0),
 ]
-# Klucze lokalne odpowiadające NORM_CURVES w enm.domain_operations_v2.IEC_CURVES
-# (alias "LTI" = "RI" jądra — udokumentowany w komentarzu przy IEC_CURVES).
-TCC_CURVE_KEYS = ["SI", "VI", "EI", "LTI"]
-
-TMS_VALUES = [0.01, 0.05, 0.3, 1.0, 1.5, 10.0]  # skrajne wlaczone (0.01, 10.0)
+TMS_VALUES = [0.01, 0.05, 0.3, 1.0, 1.5, 10.0]
 M_VALUES = [1.5, 2.0, 5.0, 10.0, 20.0]
+IS_A = 100.0
+
+
+def _stopien(krzywa: str, tms: float) -> StopienNastaw:
+    return StopienNastaw(
+        funkcja="overcurrent_51",
+        krzywa=krzywa,
+        wartosc_progu=IS_A,
+        jednostka_progu="A_PIERWOTNY",
+        prog_wtorny_a=1.0,
+        prog_pierwotny_a=IS_A,
+        tms=tms,
+        zwloka_s=None,
+        slad={},
+    )
 
 
 def _norm_formula(tms: float, a: float, b: float, m: float) -> float:
-    """t = TMS * A / (M^B - 1) — wzor WPROST z IEC 60255-151:2009 Tabela 1,
-    podstawiony recznie (nie przez wywolanie zadnej implementacji z repo)."""
+    """t = TMS·A/(M^B − 1) — wzór WPROST z IEC 60255-151:2009 tab. 1."""
     return tms * a / (math.pow(m, b) - 1.0)
 
 
-# =============================================================================
-# 1. WARTOŚCI LICZBOWE — wzór wprost z normy, nie z implementacji
-# =============================================================================
-
-
-@pytest.mark.parametrize(("_name", "a", "b"), NORM_CURVES)
+@pytest.mark.parametrize(("krzywa", "a", "b"), NORM_CURVES)
 @pytest.mark.parametrize("tms", TMS_VALUES)
 @pytest.mark.parametrize("m", M_VALUES)
-def test_compute_iec_inverse_time_matches_norm_formula(
-    _name: str, a: float, b: float, tms: float, m: float
+def test_czas_stopnia_zgodny_z_formula_normy(
+    krzywa: str, a: float, b: float, tms: float, m: float
 ) -> None:
-    """`protection_analysis.engine.compute_iec_inverse_time` (tor kanoniczny
-    protection_sn) — podstawienie do wzoru normy."""
-    pickup = 100.0
-    i_fault = pickup * m
-    expected = round(_norm_formula(tms, a, b, m), 6)  # funkcja zaokragla do 6 mc (determinizm)
-
-    result = compute_iec_inverse_time(i_fault_a=i_fault, i_pickup_a=pickup, tms=tms, a=a, b=b)
-
-    assert result == pytest.approx(expected, rel=1e-9)
+    slad = czas_stopnia(_stopien(krzywa, tms), m * IS_A)
+    # Rdzeń zaokrągla czas do 6 miejsc (determinizm).
+    assert slad["t_s"] == pytest.approx(_norm_formula(tms, a, b, m), abs=1e-6)
 
 
-@pytest.mark.parametrize("curve_key, norm", zip(TCC_CURVE_KEYS, NORM_CURVES, strict=True))
-@pytest.mark.parametrize("tms", TMS_VALUES)
-@pytest.mark.parametrize("m", M_VALUES)
-def test_compute_tcc_point_matches_norm_formula(curve_key, norm, tms: float, m: float) -> None:
-    """`domain_operations_v2._compute_tcc_point` (operacja validate_selectivity)
-    — podstawienie do wzoru normy. Funkcja NIE zaokragla wyniku (w
-    odroznieniu od compute_iec_inverse_time) — zachowanie sprzed W3-A."""
-    _name, a, b = norm
-    expected = _norm_formula(tms, a, b, m)
-
-    result = domain_operations_v2._compute_tcc_point(m, tms, curve_key)
-
-    assert result == pytest.approx(expected, rel=1e-9)
-
-
-# =============================================================================
-# 2. DOWÓD DELEGACJI — adaptery WOŁAJĄ generyczny silnik, nie liczą lokalnie
-# =============================================================================
-
-
-def test_compute_iec_inverse_time_delegates_to_generic_engine() -> None:
-    with patch.object(pa_engine, "compute_idmt_generic", wraps=core.compute_idmt_generic) as spy:
-        compute_iec_inverse_time(i_fault_a=500.0, i_pickup_a=100.0, tms=1.0, a=13.5, b=1.0)
-    spy.assert_called_once()
-    _, kwargs = spy.call_args
-    assert kwargs["a"] == 13.5
-    assert kwargs["b"] == 1.0
-    assert kwargs["is_pickup_a"] == 100.0
-    assert kwargs["i_fault_a"] == 500.0
-    assert kwargs["denom_guard"] == 1e-10
-
-
-def test_compute_tcc_point_delegates_to_generic_engine() -> None:
+def test_czas_stopnia_deleguje_do_rdzenia() -> None:
     with patch.object(
-        domain_operations_v2, "compute_idmt_generic", wraps=core.compute_idmt_generic
-    ) as spy:
-        domain_operations_v2._compute_tcc_point(5.0, 1.0, "VI")
-    spy.assert_called_once()
-    _, kwargs = spy.call_args
-    assert kwargs["a"] == 13.5
-    assert kwargs["b"] == 1.0
-    # `_compute_tcc_point` dostaje juz GOTOWY stosunek `i_ratio` (nie prady
-    # bezwzgledne) — do jadra przekazywane jest is_pickup_a=1.0, wiec
-    # M = i_fault_a/1.0 = i_ratio bez zmiany fizyki.
-    assert kwargs["is_pickup_a"] == 1.0
-    assert kwargs["i_fault_a"] == 5.0
-    assert kwargs["denom_guard"] == 1e-10
-
-
-def test_validate_selectivity_operation_uses_compute_tcc_point() -> None:
-    """`validate_selectivity` (operacja domenowa, jedyny wołający
-    `_compute_tcc_point` w produkcji) faktycznie ćwiczy skonsolidowaną ścieżkę
-    — nie tylko funkcja pomocnicza w izolacji."""
-    enm: dict = {
-        "protection_assignments": [
-            {
-                "ref_id": "REL-DOWN",
-                "settings": {"Ipickup_a": 100.0, "time_dial": 0.3, "curve_type": "SI"},
-            },
-            {
-                "ref_id": "REL-UP",
-                "settings": {"Ipickup_a": 100.0, "time_dial": 0.6, "curve_type": "SI"},
-            },
-        ]
-    }
+        ocena_nadpradowa, "compute_curve_trip_time", wraps=core.compute_curve_trip_time
+    ) as spy_iec:
+        czas_stopnia(_stopien("IEC_VI", 1.0), 5.0 * IS_A)
+    assert spy_iec.call_count == 1
     with patch.object(
-        domain_operations_v2, "compute_idmt_generic", wraps=core.compute_idmt_generic
-    ) as spy:
-        result = domain_operations_v2.validate_selectivity(enm, {"test_current_a": 1000.0})
-    assert spy.call_count == 2  # downstream + upstream
-    # Karta #151 — stan zmierzony, NIE naprawiony tutaj: operacja czyta `settings` jako
-    # słownik (`Ipickup_a`/`time_dial`), a kontrakt ENM ma `settings: list[ProtectionSetting]`
-    # (dług A4-04 `docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md`, plan P8 „DELETE" w
-    # `docs/twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md`). Fikstura tego testu nie jest
-    # więc modelem, który system może zawierać, i wynik operacji jest teraz NAZWANĄ odmową
-    # kontraktu (`_response`) zamiast migawki przepuszczonej dzięki połkniętej walidacji.
-    # Na modelu poprawnym operacja rzuca `AttributeError` (lista nie ma `.get`) — 500 z
-    # pełnym śladem, a nie dawne „błąd wewnętrzny systemu" w odpowiedzi 200.
-    assert result["error_code"] == "operation.model_contract_violated"
-    assert result["snapshot"] is None
+        ocena_nadpradowa,
+        "compute_ieee_c37112_generic",
+        wraps=core.compute_ieee_c37112_generic,
+    ) as spy_ieee:
+        czas_stopnia(_stopien("IEEE_VI", 1.0), 5.0 * IS_A)
+    assert spy_ieee.call_count == 1
 
 
-# =============================================================================
-# 3. ILOCZYN CECH — krzywa × M<=1 (brak wyzwolenia) × M->1+ (epsilon) × TMS
-# =============================================================================
-
-
-@pytest.mark.parametrize(("_name", "a", "b"), NORM_CURVES)
-@pytest.mark.parametrize("m", [0.1, 0.5, 1.0])
-def test_compute_iec_inverse_time_no_trip_at_or_below_pickup(
-    _name: str, a: float, b: float, m: float
+@pytest.mark.parametrize(("krzywa", "_a", "_b"), NORM_CURVES)
+@pytest.mark.parametrize("m", [0.5, 1.0])
+def test_brak_zadzialania_przy_m_nie_wiekszym_od_jedynki(
+    krzywa: str, _a: float, _b: float, m: float
 ) -> None:
-    pickup = 100.0
-    result = compute_iec_inverse_time(i_fault_a=pickup * m, i_pickup_a=pickup, tms=1.0, a=a, b=b)
-    assert result is None
+    slad = czas_stopnia(_stopien(krzywa, 1.0), m * IS_A)
+    assert slad["zadziala"] is False
+    assert slad["t_s"] is None
 
 
-@pytest.mark.parametrize("curve_key", TCC_CURVE_KEYS)
-@pytest.mark.parametrize("m", [0.1, 0.5, 1.0])
-def test_compute_tcc_point_no_trip_at_or_below_pickup(curve_key: str, m: float) -> None:
-    assert domain_operations_v2._compute_tcc_point(m, 1.0, curve_key) is None
-
-
-@pytest.mark.parametrize(("_name", "a", "b"), NORM_CURVES)
-def test_compute_iec_inverse_time_m_to_one_plus_epsilon_floors_not_none(
-    _name: str, a: float, b: float
-) -> None:
-    """M tuz nad progiem (1 + 1e-12, ponizej denom_guard=1e-10) — PO W3-A
-    zwraca skonczona, dluga wartosc (floor), NIE None. PRZED W3-A ten
-    adapter mial WLASNY test `denominator <= 0: return None` (bez floora) —
-    to jest UDOKUMENTOWANA zmiana zachowania w tej wąskiej, fizycznie
-    nierealnej szczelinie (patrz komentarz w compute_iec_inverse_time i
-    meldunek karty), zamierzona bo ujednolica epsilon ze wszystkimi innymi
-    konsumentami tej samej fizyki."""
-    pickup = 100.0
-    epsilon_m = 1.0 + 1e-12
-    result = compute_iec_inverse_time(
-        i_fault_a=pickup * epsilon_m, i_pickup_a=pickup, tms=1.0, a=a, b=b
-    )
-    assert result is not None
-    assert math.isfinite(result)
-    assert result == pytest.approx(round(a / 1e-10, 6), rel=1e-6)
-
-
-@pytest.mark.parametrize("curve_key, norm", zip(TCC_CURVE_KEYS, NORM_CURVES, strict=True))
-def test_compute_tcc_point_m_to_one_plus_epsilon_floors_not_none(curve_key, norm) -> None:
-    """Jak wyżej, dla `_compute_tcc_point` — PRZED W3-A miała TEN SAM brak
-    floora (`denominator <= 0: return None`)."""
-    _name, a, _b = norm
-    epsilon_m = 1.0 + 1e-12
-    result = domain_operations_v2._compute_tcc_point(epsilon_m, 1.0, curve_key)
-    assert result is not None
-    assert math.isfinite(result)
-    assert result == pytest.approx(a / 1e-10, rel=1e-6)
-
-
-@pytest.mark.parametrize("curve_key, norm", zip(TCC_CURVE_KEYS, NORM_CURVES, strict=True))
-def test_engine_and_tcc_point_agree_at_epsilon_boundary_after_consolidation(
-    curve_key, norm
-) -> None:
-    """Dowod ZBIEŻNOŚCI: PRZED kartą W3-A `protection_analysis/engine.py` i
-    `domain_operations_v2._compute_tcc_point` miały każdy WŁASNY, ale ZA TO
-    ZGODNY MIĘDZY SOBĄ epsilon (`denominator <= 0: return None`, bez floora)
-    — RÓŻNY od kanonu/`iec_curves.py` (floor=1e-10). Rodzina A dawała więc
-    DWA różne progi „brak wyzwolenia" na 4 konsumentów (patrz raport
-    inwentarza). PO W3-A oba dzielą floor=1e-10 z kanonem — WSZYSTKIE żywe
-    tory zgadzają się na TYM SAMYM progu."""
-    _name, a, b = norm
-    pickup = 100.0
-    epsilon_m = 1.0 + 1e-12
-
-    t_engine = compute_iec_inverse_time(
-        i_fault_a=pickup * epsilon_m, i_pickup_a=pickup, tms=1.0, a=a, b=b
-    )
-    t_tcc = domain_operations_v2._compute_tcc_point(epsilon_m, 1.0, curve_key)
-
-    assert t_engine is not None and t_tcc is not None
-    assert t_engine == pytest.approx(t_tcc, rel=1e-6)
-
-
-@pytest.mark.parametrize("tms_extreme", [0.01, 10.0])
-def test_compute_iec_inverse_time_extreme_tms_matches_norm(tms_extreme: float) -> None:
-    pickup = 100.0
-    m = 5.0
-    a, b = 0.14, 0.02
-    expected = round(_norm_formula(tms_extreme, a, b, m), 6)
-    result = compute_iec_inverse_time(
-        i_fault_a=pickup * m, i_pickup_a=pickup, tms=tms_extreme, a=a, b=b
-    )
-    assert result == pytest.approx(expected, rel=1e-9)
-
-
-@pytest.mark.parametrize("tms_extreme", [0.01, 10.0])
-def test_compute_tcc_point_extreme_tms_matches_norm(tms_extreme: float) -> None:
-    m = 5.0
-    a, b = 0.14, 0.02
-    expected = _norm_formula(tms_extreme, a, b, m)
-    result = domain_operations_v2._compute_tcc_point(m, tms_extreme, "SI")
-    assert result == pytest.approx(expected, rel=1e-9)
-
-
-# =============================================================================
-# 4. ALIAS "LTI" (lokalny) = "RI" (jądro) — te same stałe, inna nazwa
-# =============================================================================
-
-
-def test_lti_alias_matches_ri_constants_in_canonical_table() -> None:
-    """`enm.domain_operations_v2.IEC_CURVES["LTI"]` (K=120,0, alpha=1,0) musi
-    zgadzać się LICZBOWO z `IEC60255_CURVE_PARAMS[RI]` w jądrze — to JEDNA
-    fizyka pod dwiema nazwami, nie dwie niezależne stałe, które „dziś się
-    zgadzają" (reguła KLASA NIE INSTANCJA, predykaty parami)."""
-    lti = domain_operations_v2.IEC_CURVES["LTI"]
-    ri_a, ri_b = core.IEC60255_CURVE_PARAMS[core.IEC60255CurveType.RI]
-    assert lti["K"] == ri_a
-    assert lti["alpha"] == ri_b
+@pytest.mark.parametrize(("krzywa", "_a", "_b"), NORM_CURVES)
+def test_m_tuz_powyzej_jedynki_daje_czas_skonczony(krzywa: str, _a: float, _b: float) -> None:
+    """M → 1+: mianownik rdzenia ma podłogę — czas skończony, nie wyjątek ani brak."""
+    slad = czas_stopnia(_stopien(krzywa, 1.0), (1.0 + 1e-12) * IS_A)
+    assert slad["zadziala"] is True
+    assert slad["t_s"] is not None and math.isfinite(slad["t_s"])

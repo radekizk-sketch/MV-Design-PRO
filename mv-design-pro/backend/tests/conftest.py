@@ -66,6 +66,12 @@ sys.path.insert(0, str(backend_src))
 # znacznik obcego PID, tworzy własny komplet; wartość bez znacznika pochodzi spoza pytest
 # i jest honorowana bez zmian.
 #
+# Jeden mechanizm (scalenie z gałęzią integracji 2026-10-15): karta AB-1b.3b-NA-CZUBKU naprawiła
+# równolegle tę samą klasę drugim znacznikiem (`MV_TESTY_KATALOGI_SESJI`, tylko dwa katalogi
+# magazynów i tylko w robotniku xdist). Dwie ścieżki tej samej izolacji to dług — została ta,
+# która obejmuje wszystkie cztery wartości; jej pomiar (pod `-n 3`, 3 ze 110 przypadków
+# `test_fixtury_harnessu.py` czerwone przez `FileNotFoundError` na `*.tmp`) jest tą samą klasą.
+#
 # Ta sama klasa (plik w stałej ścieżce współdzielony przez procesy), dwa kolejne miejsca:
 # * `DATABASE_URL` — domyślny adres `sqlite+pysqlite:///./mv_design_pro.db` w
 #   `api/main.py::lifespan` i `canonical_run_repository`. Fikstura `_izolowana_baza_przebiegow`

@@ -216,17 +216,22 @@ def _enm_with_protection() -> dict:
                 "meta": {},
                 "breaker_ref": "cb_in_1",
                 "ct_ref": "ct_in_1",
+                # Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenie kompletne — pozycja katalogu
+                # z zakresami (×In) i progi ze ZADEKLAROWANĄ stroną przekładnika (PZ-09).
+                # Stopień zależny nie ma zwłoki niezależnej (sprzeczność odrzucana przy zapisie).
+                "catalog_ref": "REF-OC-200",
                 "device_type": "overcurrent",
                 "settings": [
                     {
                         "function_type": "overcurrent_51",
                         "threshold_a": 240.0,
-                        "time_delay_s": 0.5,
+                        "threshold_unit": "A_PIERWOTNY",
                         "curve_type": "IEC_SI",
                     },
                     {
                         "function_type": "overcurrent_50",
                         "threshold_a": 800.0,
+                        "threshold_unit": "A_PIERWOTNY",
                         "time_delay_s": 0.05,
                         "curve_type": "DT",
                     },
@@ -346,38 +351,51 @@ def test_protection_view_serializes_it_curve_from_iec60255_solver(client):
     assert time_fn["it_curve_missing_data"] == ["time_multiplier"]
 
 
-def test_protection_view_instant_without_delay_is_not_missing_data(client):
-    """Bezzwłoczna (50 I>>) BEZ zwłoki → krzywa przy t≈0, NIE „brak danych" (S-1).
+#: Kody braku krzywej I-t emitowane przez ``protection_read_model`` — para z tłumaczeniem
+#: w interfejsie (``frontend/src/ui/protection-curves/itCurveAdapter.ts``,
+#: ``IT_CURVE_MISSING_REASON_PL``; pin w ``ItCurvePanel.test.tsx``).
+KODY_BRAKU_KRZYWEJ_IT = {
+    "time_multiplier",
+    "definite_time",
+    "curve_type",
+    "threshold_unit",
+    "ct_ratio",
+    "it_curve_points",
+}
 
-    Funkcja bezzwłoczna z natury nie ma zwłoki zamierzonej. Read model używa
-    podłogi czasowej solvera zamiast fałszywie raportować brak ``definite_time``
-    i zamiast generować nieprzedstawialne t_s=0 na osi log-log.
-    """
+
+@pytest.mark.parametrize(
+    ("zmiana", "brak"),
+    [
+        ({"time_delay_s": None}, "definite_time"),
+        ({"curve_type": None}, "curve_type"),
+        ({"threshold_unit": None}, "threshold_unit"),
+    ],
+    ids=["bez_zwloki", "bez_charakterystyki", "prog_bez_strony_przekladnika"],
+)
+def test_protection_view_brak_danych_stopnia_bezzwlocznego_nazwany(client, zmiana, brak):
+    """Stopień bezzwłoczny (50 I>>, DT) bez zwłoki, bez charakterystyki albo z progiem bez
+    strony przekładnika → krzywa I-t NIE jest rysowana, brak jest nazwany kodem z pary
+    backend↔interfejs. Czerwony na bazie: bez zwłoki read model podstawiał podłogę czasową
+    solvera 0,001 s (cichy zapas „DT bez zwłoki = 0 s"), sprzeczny z jedną ścieżką oceny,
+    która takiej nastawy nie ocenia."""
     import copy
 
     payload = copy.deepcopy(_enm_with_protection())
     device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
     inst_setting = next(s for s in device["settings"] if s["function_type"] == "overcurrent_50")
-    del inst_setting["time_delay_s"]  # bezzwłoczna bez skonfigurowanej zwłoki
+    inst_setting.update(zmiana)
     case_id = _nowy_przypadek(client)
     _seed_enm(client, case_id, payload)
 
-    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
-    assert response.status_code == 200
-    data = response.json()
-
+    data = client.get(f"/api/cases/{case_id}/enm/protection-view").json()
     assignment = next(item for item in data["assignments"] if item["device_id"] == "prot_oc_1")
-    functions = assignment["settings_summary"]["functions"]
-    inst = next(fn for fn in functions if fn["code"] == "OVERCURRENT_INST")
-
-    assert "it_curve_missing_data" not in inst, "Bezzwłoczna nie może być 'brak danych'"
-    it_curve = inst["it_curve"]
-    assert it_curve is not None
-    assert it_curve["curve_kind"] == "DEFINITE"
-    assert len(it_curve["points"]) >= 2
-    # Podłoga czasowa solvera (0,001 s) — dodatnia, nie literalne t_s=0.
-    assert all(point["t_s"] == pytest.approx(0.001) for point in it_curve["points"])
-    assert all(point["t_s"] > 0.0 for point in it_curve["points"])
+    inst = next(
+        fn for fn in assignment["settings_summary"]["functions"] if fn["code"] == "OVERCURRENT_INST"
+    )
+    assert inst["it_curve"] is None
+    assert inst["it_curve_missing_data"] == [brak]
+    assert set(inst["it_curve_missing_data"]) <= KODY_BRAKU_KRZYWEJ_IT
 
 
 def test_protection_view_inverse_it_curve_with_tms_from_solver(client):

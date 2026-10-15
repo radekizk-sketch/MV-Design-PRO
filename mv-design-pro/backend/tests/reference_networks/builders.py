@@ -514,89 +514,42 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
 
 
 def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
-    """GN_05: SN+nN+OZE+ochrona (jak GN_04 + zabezpieczenia + analiza ochrony).
+    """GN_05: SN+nN+OZE+ochrona — GN_04 z REALNYM zabezpieczeniem nadprądowym w torze prądowym.
 
-    Extends GN_04 with CT + VT + Relay on transformer field.
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: dawna wersja dokładała CT/VT/przekaźnik do „pola TR"
+    przez ``add_ct``/``add_vt``/``add_relay`` z CICHYM pominięciem błędu (``if result.get(
+    "error") is None``), a GN_04 nie ma elementów ``bays`` — więc żadna z trzech operacji nie
+    wykonywała się, a sieć „z ochroną" była identyczna z GN_04 poza znacznikami w ``meta`` i
+    nagłówku (zmierzone: zero przypisań zabezpieczeń). Teraz: wyłącznik liniowy na początku
+    magistrali, przekładnik 600/5 A 5P20 i przekaźnik ``REF-OC-200`` z nastawami — te same
+    operacje domenowe co sieć złota G08 (``dodaj_zabezpieczenie_nadpradowe``); odmowa
+    operacji kończy budowę wyjątkiem.
     """
-    from enm.domain_operations import execute_domain_operation
+    from tests.golden.enm_builders.zabezpieczenia_magistrali import (
+        NASTAWY_Q1,
+        dodaj_zabezpieczenie_nadpradowe,
+    )
 
     gn04 = build_gn04_sn_nn_oze()
     enm = gn04["enm"]
-
-    # Find a bay (field) to attach protection devices
-    bays = enm.get("bays", [])
-    # Prefer a TR (transformer) bay
-    tr_bays = [bay for bay in bays if bay.get("bay_role") == "TR"]
-    target_bay = tr_bays[0] if tr_bays else (bays[0] if bays else None)
-
-    if target_bay:
-        bay_ref = target_bay["ref_id"]
-
-        # Step 6: Add CT
-        result = execute_domain_operation(
-            enm,
-            "add_ct",
-            {
-                "bay_ref": bay_ref,
-                "ratio_primary_a": 200.0,
-                "ratio_secondary_a": 5.0,
-                "accuracy_class": "5P20",
-                "burden_va": 10.0,
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Step 7: Add VT
-        result = execute_domain_operation(
-            enm,
-            "add_vt",
-            {
-                "bay_ref": bay_ref,
-                "ratio_primary_v": 15000.0,
-                "ratio_secondary_v": 100.0,
-                "accuracy_class": "0.5",
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Step 8: Add Relay
-        result = execute_domain_operation(
-            enm,
-            "add_relay",
-            {
-                "bay_ref": bay_ref,
-                "relay_type": "NADPRADOWY",
-            },
-        )
-        if result.get("error") is None:
-            enm = result["snapshot"]
-
-        # Keep GN_05 structurally distinct from GN_04 even while protection
-        # write-paths are routed through a read-model transition.
-        for bay in enm.get("bays", []):
-            if bay.get("ref_id") == bay_ref:
-                meta = bay.setdefault("meta", {})
-                meta["protection_reference"] = {
-                    "ct": True,
-                    "vt": True,
-                    "relay_type": "NADPRADOWY",
-                }
-                break
-
-    header = enm.setdefault("header", {})
-    header["reference_extension"] = {
-        "protection_enabled": True,
-        "profile": "GN_05_PROTECTION_EXTENSION",
-    }
+    # Odcinek zasilający = pierwszy odcinek magistrali w kolejności korytarza (dana modelu),
+    # nie przyrostek identyfikatora.
+    (korytarz,) = enm["corridors"]
+    odcinek_zasilajacy = korytarz["ordered_segment_refs"][0]
+    enm, _wylacznik, _zabezpieczenie = dodaj_zabezpieczenie_nadpradowe(
+        enm,
+        odcinek_ref=odcinek_zasilajacy,
+        nazwa_wylacznika="Wyłącznik liniowy magistrali",
+        nazwa_zabezpieczenia="Zabezpieczenie magistrali",
+        nastawy=NASTAWY_Q1,
+    )
 
     return {
         "name": "GN_05_SN_NN_OZE_OCHRONA",
         "description": "SN+nN+OZE+ochrona (pełna sieć referencyjna)",
         "enm": enm,
         "snapshot_hash": _snapshot_hash(enm),
-        "operations_count": 8,
+        "operations_count": gn04["operations_count"] + 3,
     }
 
 

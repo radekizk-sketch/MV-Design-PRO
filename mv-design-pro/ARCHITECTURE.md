@@ -146,11 +146,11 @@ Transparent source tracking via `ParameterSource` enum.
 ## 4. Validation Layer
 
 ```
-NetworkModel ──> NetworkValidator.validate() ──> VALID → Solver allowed
-                                              ──> INVALID → Solver BLOCKED
+ENM ──> enm/validator.py (walidator ENM) ──> CalculationReadinessService ──> READY → bieg dozwolony
+                                                                            ──> kod gotowości z akcją naprawczą → bieg zablokowany
 ```
 
-Implementation: `network_model/validation/validator.py`
+Implementation: `enm/validator.py` + `application/readiness` (`CalculationReadinessService`), wywoływane przez `enm/canonical_analysis` (ADR-025 ACCEPTED 2026-09-30, O-65). Legacy `network_model/validation/validator.py` (`NetworkValidator`) has 0 production consumers (the only import outside the package is `enm/domain_operations.py:11959` `validate_semantic_as_dicts`) and is removed by card GOTOWOSC-JEDEN-REJESTR after a rule-code identity test; the rules listed below migrate to the ENM validator with identical codes.
 
 13 industrial-grade rules with suggested_fix diagnostics:
 1. Empty network check
@@ -191,6 +191,10 @@ class StudyCase:
 ### 5.2 StudyCaseService
 
 Manages CRUD, clone, activate/deactivate, compare (read-only), invalidation.
+
+### 5.3 Protection settings and the Case (ADR-022 ACCEPTED 2026-09-30, O-73)
+
+Base protection settings (IED/`ProtectionDevice`, `ProtectionFunction`, `SettingGroup` 1–4, `TripMatrix`, `CtCore`) are ASSET data of the ENM model, added additively. A Case does not own settings: it SELECTS a setting group or overlays an override as a scenario delta (`OperatingScenario`, ADR-016) resolved in `EffectiveNetworkSnapshot` (ADR-017). Consumers (coordination, TCC, report, SLD drawer) read only `EffectiveNetworkSnapshot`; the V11 write blocks `relay.*`/`field.*` are lifted by one card (V12K-342). Core Rule #4 of `CLAUDE.md` is clarified, not broken.
 
 Implementation: `application/study_case/`, `application/active_case/`
 
@@ -409,8 +413,8 @@ User edit (Wizard or SLD)
 
 ```
 User triggers "Calculate"
-    → NetworkValidator.validate()
-    → [VALID] Create NetworkSnapshot (frozen)
+    → enm/validator.py + CalculationReadinessService (ADR-025, O-65)
+    → [READY] Create NetworkSnapshot (frozen)
     → Solver.solve(snapshot) → Result + WhiteBoxTrace
     → Store result, mark Case FRESH
     → [Optional] ProofEngine generates ProofDocument
@@ -437,7 +441,7 @@ backend/src/
 │   ├── core/           Bus, Branch, Switch, Source, Load, Graph, Snapshot
 │   ├── catalog/        Types (Line, Cable, Trafo), Resolver, Governance
 │   ├── solvers/        IEC60909 SC, NR/GS/FD Power Flow, Y-bus
-│   ├── validation/     NetworkValidator
+│   ├── validation/     legacy NetworkValidator (0 production consumers; removed by GOTOWOSC-JEDEN-REJESTR — ADR-025, O-65)
 │   └── whitebox/       WhiteBoxTrace
 ├── analysis/
 │   ├── boundary/       BoundaryIdentifier (BoundaryNode)

@@ -967,8 +967,8 @@ def zloz_wejscie_zwarcia(
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
     # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
-    # z korektą temperaturową R_θ na KOPII grafu. Reuse P0.3 1:1 — te same
-    # moduły co ścieżka execution engine (application/solvers/short_circuit_binding.py):
+    # z korektą temperaturową R_θ na KOPII grafu. Reuse P0.3 1:1 (dawna ścieżka execution
+    # engine skasowana — CV-3.3-A i TORY-TYLKO-W-TESTACH): moduły
     # ``network_model.core.voltage_factor.c_for_node`` i
     # ``application.solvers.lv_temperature_correction.build_min_scenario_graph``.
     # Zero duplikacji wzorów, solver FROZEN nietknięty.

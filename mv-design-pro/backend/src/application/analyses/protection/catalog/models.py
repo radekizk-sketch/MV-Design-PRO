@@ -20,6 +20,20 @@ WEJSCIA_NAPIECIOWE_IEC_60255: tuple[float, ...] = (100.0, 110.0)
 ZRODLO_WEJSC_KARTA = "karta_producenta"
 ZRODLO_WEJSC_NORMA = "szereg_preferowany_IEC_60255_1"
 
+#: Jednostka zakresów nastaw PRADOWYCH urządzenia (decyzja właściciela PZ-09 w D-34).
+#: Zakres nastawy przekaźnika jest cechą PRZEKAŹNIKA, więc podaje się go po stronie wtórnej:
+#: w amperach wtórnych albo w krotności prądu znamionowego wejścia (In = 1 A albo 5 A,
+#: ``rated_current_inputs_a``). Prąd rozruchowy po stronie pierwotnej jest wielkością
+#: wyprowadzoną z przekładni przekładnika pola — nigdy zakresem katalogu.
+#: ``None`` = jednostka NIEUSTALONA: pozycja nie ma podstawy (karty producenta ani profilu
+#: referencyjnego), więc jej zakresy prądowe nie są używane do oceny ani doboru.
+JEDNOSTKA_ZAKRESU_KROTNOSC_IN = "KROTNOSC_IN"
+JEDNOSTKA_ZAKRESU_A_WTORNY = "A_WTORNY"
+JEDNOSTKI_ZAKRESOW_PRADOWYCH: tuple[str, ...] = (
+    JEDNOSTKA_ZAKRESU_KROTNOSC_IN,
+    JEDNOSTKA_ZAKRESU_A_WTORNY,
+)
+
 
 @dataclass(frozen=True)
 class DeviceCapability:
@@ -58,6 +72,12 @@ class DeviceCapability:
     #: — ten zakres dotyczy WYLACZNIE aparatow, ktore DT juz deklaruja.
     t_51_s_min: float | None = None
     t_51_s_max: float | None = None
+    #: Jednostka WSZYSTKICH zakresów prądowych tej pozycji (``i_pickup_*``, ``i_inst_*``):
+    #: jedna z ``JEDNOSTKI_ZAKRESOW_PRADOWYCH`` albo ``None`` (nieustalona — patrz stała).
+    jednostka_zakresow_pradowych: str | None = None
+    #: Podstawa zakresów (karta producenta z wydaniem albo profil referencyjny bez marki wg
+    #: D-33). ``None`` idzie w parze z jednostką nieustaloną.
+    podstawa_zakresow_pl: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -83,6 +103,8 @@ class DeviceCapability:
             "tms_51n_max": self.tms_51n_max,
             "i_inst_50n_a_min": self.i_inst_50n_a_min,
             "i_inst_50n_a_max": self.i_inst_50n_a_max,
+            "jednostka_zakresow_pradowych": self.jednostka_zakresow_pradowych,
+            "podstawa_zakresow_pl": self.podstawa_zakresow_pl,
             "meta": self.meta,
         }
         return canonicalize_json(payload)

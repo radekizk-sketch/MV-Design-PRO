@@ -1195,7 +1195,7 @@ def map_enm_to_network_graph(
                 # Konsumenci grafu juz umieja czytac 0.0 jako „wielkosc nieznana,
                 # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
                 # (pozycja NOT_COMPUTED z powodem `POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL`),
-                # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
+                # `application/sld/overlay_builder.py`
                 # i `backend/tests/reference_networks/station_archetype_substrate.py`
                 # (przeniesiony z `application/reference_networks/` karta K2,
                 # 2026-09-09) bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona

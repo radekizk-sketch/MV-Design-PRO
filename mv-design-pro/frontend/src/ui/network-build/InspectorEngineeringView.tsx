@@ -38,15 +38,11 @@ import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
+import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import {
-  formatStationSwitchgearLayoutLabelPl,
-  formatStationTypeLabelPl,
-} from '../shared/stationTypeLabels';
-import {
-  isGenericStationName,
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
-  stationOrdinalCode,
+  stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
 import {
   stationReadModelSnFields,
@@ -89,6 +85,11 @@ import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
+import {
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+  transformatoryNalezaceDoStacji,
+} from '../shared/transformatoryStacji';
 
 // =============================================================================
 // Types
@@ -904,18 +905,6 @@ function semanticActionContext(
   };
 }
 
-function stationPublicName(
-  snapshot: EnergyNetworkModel,
-  station: NonNullable<EnergyNetworkModel['substations']>[number],
-): { code: string; typeLabel: string; displayName: string } {
-  const code = stationOrdinalCode(snapshot, station);
-  const typeLabel = formatStationTypeLabelPl(station.station_type);
-  const displayName = isGenericStationName(station.name)
-    ? `${code} · ${typeLabel}`
-    : publicTechnicalLabel(station.name, `${code} · ${typeLabel}`);
-  return { code, typeLabel, displayName };
-}
-
 function isSemanticMvSegment(selectedElement: SelectedElement): boolean {
   return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
     || selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
@@ -1016,13 +1005,8 @@ function stationDisplayNameForInternalRef(
   const station = (snapshot.substations ?? []).find((item) =>
     item.ref_id === stationRef || item.id === stationRef,
   );
-  if (!station) return 'Stacja SN/nN';
-  const stationCode = stationOrdinalCode(snapshot, station);
-  const stationTypeLabel = formatStationTypeLabelPl(station.station_type);
-  const fallback = [stationCode, stationTypeLabel].join(' · ');
-  return isGenericStationName(station.name)
-    ? fallback
-    : publicTechnicalLabel(station.name, fallback);
+  // Tożsamość stacji z JEDNEGO miejsca (`stationPublicIdentity`: kod · rodzaj z topologii).
+  return station ? stationPublicIdentity(snapshot, station).displayName : 'Stacja SN/nN';
 }
 
 function buildInternalStationElementSections(
@@ -1309,7 +1293,7 @@ function buildSemanticSegmentSections(
   }
   actions.push({
     id: 'insert_section_switch_sn',
-    label: 'Wstaw lacznik',
+    label: 'Wstaw łącznik',
     op: 'insert_section_switch_sn',
     context: semanticActionContext(selectedElement, { segmentRef: segmentRef, segmentLabel: segmentName }),
   });
@@ -1955,10 +1939,9 @@ function findParentStation(
   elementId: string,
   snapshot: EnergyNetworkModel,
 ): string | null {
-  // Check transformer_refs
-  const trStation = snapshot.substations?.find((s) =>
-    s.transformer_refs?.includes(elementId),
-  );
+  // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+  const trStationRef = stationRefOfTransformer(snapshot, elementId);
+  const trStation = trStationRef ? snapshot.substations?.find((s) => s.ref_id === trStationRef) : undefined;
   if (trStation) return trStation.name;
   // Check generator station_ref
   const gen = snapshot.generators?.find((g) => g.ref_id === elementId);
@@ -2323,7 +2306,7 @@ function buildSectionsForElement(
     : snapshot.substations?.find((s) => s.id === elementId || s.ref_id === elementId);
   if (station) {
     elementType = 'substation';
-    const stationIdentity = stationPublicName(snapshot, station);
+    const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
     const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
     const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
@@ -2331,10 +2314,9 @@ function buildSectionsForElement(
       ? `${snFieldCount} pól SN`
       : stationFieldItems.length > 0
         ? `${stationFieldItems.length} pól SN`
-        : formatStationSwitchgearLayoutLabelPl(station.station_type);
-    const stationTransformers = (snapshot.transformers ?? []).filter((t) =>
-      station.transformer_refs.includes(t.ref_id),
-    );
+        : ukladRozdzielnicyStacjiPl(snapshot, station);
+    // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
+    const stationTransformers = selectStationDistributionTransformers(snapshot, station);
     // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
     // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
     const stationBusRefs = szynyStacji(station, snapshot.branches ?? []);
@@ -3062,7 +3044,7 @@ function buildCalculationProofCandidateRefs(
   for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
     pushUniqueRef(refs, busRef);
   }
-  for (const transformerRef of station?.transformer_refs ?? []) pushUniqueRef(refs, transformerRef);
+  for (const transformer of transformatoryNalezaceDoStacji(snapshot, station)) pushUniqueRef(refs, transformer.ref_id);
 
   if (bus) {
     for (const item of snapshot.branches ?? []) {

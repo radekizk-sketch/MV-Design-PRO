@@ -38,7 +38,6 @@ describe('SLD V2 build gate — public API surface', () => {
     expect(Array.isArray(Ports.ALL_PORT_KINDS)).toBe(true);
     expect(Ports.ALL_PORT_KINDS.length).toBe(15);
     expect(typeof Ports.canConnectPorts).toBe('function');
-    expect(typeof Ports.classifyStationTopology).toBe('function');
     expect(typeof Ports.validatePortVoltages).toBe('function');
   });
 

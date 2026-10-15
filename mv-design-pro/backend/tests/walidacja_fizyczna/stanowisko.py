@@ -28,15 +28,45 @@ from network_model.solvers.dynamika import (
     WejscieDynamiki,
     WezelDynamiki,
 )
-from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
+from network_model.solvers.dynamika.odbiory import (
+    OdbiorCharakterystyczny,
+    charakterystyka_stalej_mocy,
+    model_odbioru,
+)
 from network_model.solvers.dynamika.urzadzenia import (
     zbuduj_maszyne_klasyczna,
     zbuduj_szyne_sztywna,
 )
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Napiecie przejscia odbiorow stalej mocy wzorcow walidacji — DANA TESTU, nie wartosc
+#: produktowa: lezy PONIZEJ minimum modulu napiecia wezla odbioru we WSZYSTKICH iteratach
+#: Newtona biegow wzorcow (pomiar licznikiem wejsc w galaz impedancyjna, skrypt karty modeli
+#: odbiorow: zero wejsc), wiec wzorce licza DOKLADNIE dotychczasowa charakterystyke stalej
+#: mocy (parytet bitowy). Kazdy odbior ze skladowa mocowa musi deklarowac `U_min` (kontrakt).
+U_MIN_TESTOWE_PU = 0.25
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
+
+
+def modele_odbiorow(
+    odbiory: tuple[OdbiorDynamiki, ...], f_bazowa_hz: float = 50.0
+) -> tuple[OdbiorCharakterystyczny, ...]:
+    """Modele odbiorow PRZYLACZONYCH (z obwodem) dla wywolan funkcji algebry wprost."""
+    return tuple(
+        model_odbioru(odbior, f_bazowa_hz, tryb_poza_obwodem=None, estymator_wyzerowany=False)
+        for odbior in odbiory
+    )
+
+
+def stany_z_odbiorami(
+    odbiory: tuple[OdbiorCharakterystyczny, ...], stany_urzadzen: tuple[np.ndarray, ...]
+) -> tuple[np.ndarray, ...]:
+    """Krotka stanow wyrownana z `(*odbiory, *urzadzenia)` — odbiory bez czulosci maja stan
+    pusty, odbior czuly — kat estymatora rowny fazie napiecia 1,0 pu (`e = 0`)."""
+    return (
+        *(odbior.stan_poczatkowy_odbioru(1.0 + 0.0j) for odbior in odbiory),
+        *stany_urzadzen,
+    )
+
 
 S_BAZOWA_MVA = 100.0
 F_BAZOWA_HZ = 50.0

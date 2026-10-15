@@ -22,7 +22,7 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSelectionStore } from '../../selection/store';
 import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import { segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
-import { szynyStacji } from '../../shared/szynyStacji';
+import { indeksGaleziPolNn, szynyStacji } from '../../shared/szynyStacji';
 import type { Branch, Bus, EnergyNetworkModel, Substation } from '../../../types/enm';
 
 type SegmentCardId = 'identification' | 'catalog' | 'route' | 'rating';
@@ -103,10 +103,11 @@ function findStationOnBus(
   if (!snapshot || !busRef) return null;
   // SZYNY-STACJI-LUSTRO: koniec odcinka leży na zacisku pola stacji (zasada toru), więc
   // przynależność szyny do stacji z jednego lustra `szynyStacji`, nie z `bus_refs`.
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches ?? []);
   return (snapshot.substations ?? []).find(
     (station) =>
       station.station_type !== 'gpz'
-      && szynyStacji(station, snapshot.branches ?? []).has(busRef),
+      && szynyStacji(station, snapshot.branches ?? [], indeksPolNn).has(busRef),
   ) ?? null;
 }
 

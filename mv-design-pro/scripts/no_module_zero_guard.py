@@ -12,8 +12,10 @@ wystąpić (patrz `_ALLOWLIST` — prefiksy ścieżek, nie linie: to wystarczaj�
 granulacja dla literału stanu, którego jedyna dozwolona rola to FROZEN
 kontrakt solvera albo jawny punkt tłumaczenia na granicy aplikacyjnej):
 
-1. **Kontrakty solverów FROZEN** (B-01, lista `scripts/rdzenie_b01.py`, NIE DOTKNIĘTE):
-   `network_model/solvers/stability_rms/**`, `network_model/solvers/frt_hvrt/**`.
+1. **Kontrakt solvera FROZEN** (B-01, lista `scripts/rdzenie_b01.py`, NIE DOTKNIĘTY):
+   `network_model/solvers/frt_hvrt/**`. Drugi wpis tej grupy,
+   `network_model/solvers/stability_rms/**`, SKASOWANY razem z solverem (decyzja B-01
+   z 2026-09-30, pozycja (i) planu A/B §12.2) — nie wraca na listę.
 2. **Drugi silnik NC RfG SKASOWANY (karta S-3, 2026-09-16)**:
    `application/ncrfg_compliance/checker.py` (werdykt `no_module` w
    `ComplianceVerdict`), pole `no_module_count` trasy
@@ -61,7 +63,6 @@ _TOKEN = re.compile(r"no_module")
 #: albo `frontend/src`, gdzie literał `no_module` wolno wystąpić. Rozszerzenie
 #: wymaga uzasadnienia merytorycznego w commicie, nigdy „żeby przeszło".
 _ALLOWLIST_BACKEND: tuple[str, ...] = (
-    "network_model/solvers/stability_rms/",
     "network_model/solvers/frt_hvrt/",
     "application/analyses/frt_trajektorie.py",
     "application/analyses/frt_sekwencja.py",

@@ -61,16 +61,21 @@ const CATEGORY_PRIORITY = [
  * ich pobrania wiersz nie ma profilu (`null` — backend przyjmuje brak profilu).
  */
 
-function stationRoleFromCategory(category: string, index: number): string {
+/**
+ * FUNKCJA stacji z kategorii szablonu. Karta ETYKIETA-STACJI-PRZELOTOWEJ: do tej karty
+ * funkcja kończyła się RODZAJEM stacji wymyślonym z numeru wiersza (`index % 10 === 0` ⇒
+ * „stacja końcowa", `index % 6 === 0` ⇒ „stacja odgałęźna", reszta „przelotowa") —
+ * fabrykacja. Rodzaj stacji jest wyprowadzany z topologii po osadzeniu stacji w modelu
+ * (`ui/shared/rodzajStacji.ts`); planer pokazuje wyłącznie funkcję wynikającą z szablonu.
+ */
+function stationRoleFromCategory(category: string): string {
   if (category.includes('pv') || category === 'farma_pv' || category === 'prosument_pv') return 'stacja z PV';
   if (category.includes('bess')) return 'stacja z BESS';
   if (category.includes('wiatr')) return 'stacja z FW';
   if (category.includes('sekcyj')) return 'stacja sekcyjna';
   if (category.includes('zksn')) return 'ZKSN / punkt rozgałęźny';
   if (category.includes('slup')) return 'stacja słupowa';
-  if (index % 10 === 0) return 'stacja końcowa';
-  if (index % 6 === 0) return 'stacja odgałęźna';
-  return 'stacja przelotowa';
+  return 'stacja SN/nN';
 }
 
 function selectTemplatesForBatch(
@@ -181,7 +186,7 @@ export function buildStationBatchPlan(
       templateId: template?.id ?? null,
       templateName: template?.name_pl ?? 'brak szablonu',
       category: template?.category ?? 'brak',
-      stationRole: stationRoleFromCategory(template?.category ?? '', rowIndex),
+      stationRole: stationRoleFromCategory(template?.category ?? ''),
       targetSegmentRef,
       medium,
       lengthM,

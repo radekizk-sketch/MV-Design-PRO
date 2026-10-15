@@ -19,6 +19,7 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
+from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
 from enm.tor_pola import szyny_stacji
 from network_model.catalog.switchgear import (
@@ -402,7 +403,10 @@ def _family_checks_for_bay(
 # ---------------------------------------------------------------------------
 
 # Typy stacji SN/nN objęte standardem stacyjnym OSD.
-_OSD_STATION_TYPES = frozenset({"mv_lv", "customer"})
+# Stacja SN/nN (deklaracja funkcji `mv_lv` albo rodzaj topologiczny — `TYPY_STACJI_SN_NN`)
+# i stacja odbiorcza. Dawniej sam `mv_lv`: stacje wstawione w odcinek (zapis rodzaju) wypadały
+# z kontroli standardu stacyjnego OSD.
+_OSD_STATION_TYPES = frozenset({*TYPY_STACJI_SN_NN, "customer"})
 _OSD_PREFERRED_CONSTRUCTION = frozenset({"kontenerowa", "prefabrykowana"})
 # Granice mocy transformatora per typ konstrukcji (Zeszyt 1: do 630 kVA;
 # Zeszyt 3 §4.1: słupowa do 400 kVA). Wariant „uproszczony" 400 kVA (Zeszyt 2)

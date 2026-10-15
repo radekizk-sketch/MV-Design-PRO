@@ -614,7 +614,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "9bd62abae394a4ec0d2a21baec63badc25479adbf99126bfd3d24b7fdbbb6baa",
+      "hash_sha256": "1fc78a2288b3cba4f1daf6526478168a2383dc16c979279a0489794df66a9b12",
       "name": "Łańcuch odcinków magistrali",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -649,6 +649,7 @@
         "bus_ref": "nn/2ae4e218041bfaac7a0452c233c69aef/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "df14d522-5ba1-537d-89ad-04b55cccd3d3",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -929,9 +930,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja B",
         "nn_sections": [],

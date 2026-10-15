@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import pytest
 from application.analyses.protection.czas_wylaczenia_galezi import (
-    _KRZYWE,
     ZRODLO_BRAK_APARATU,
     ZRODLO_BRAK_NASTAW,
     ZRODLO_BRAK_PRADU,
@@ -23,20 +22,19 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     ZRODLO_PONIZEJ_ROZRUCHU,
     ZRODLO_ZALOZENIE_PRZYPADKU,
     mapa_tk_s_z_nastaw,
+    nastawy_aparatow_modelu,
     podsumowanie_czasow,
     slad_czasu,
     wyznacz_czasy_wylaczenia,
     znajdz_aparat_chroniacy,
 )
+from enm.mapping import ref_to_graph_id
+from enm.models import EnergyNetworkModel, ENMHeader, Measurement, ProtectionAssignment
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.solvers.protection_iec60255 import (
-    IEC60255_CURVE_PARAMS,
-    IEC60255CurveType,
-)
 from network_model.solvers.short_circuit_contributions import (
     ShortCircuitBranchContribution,
 )
@@ -69,7 +67,7 @@ def _graf(*, stan_cb1: SwitchState = SwitchState.CLOSED) -> NetworkGraph:
         )
     graph.add_switch(
         Switch(
-            id="CB1",
+            id=ref_to_graph_id("CB1"),
             name="Wylacznik pola liniowego",
             switch_type=SwitchType.BREAKER,
             from_node_id="BUS1",
@@ -133,7 +131,7 @@ def _graf_kaskada() -> NetworkGraph:
     ):
         graph.add_switch(
             Switch(
-                id=ident,
+                id=ref_to_graph_id(ident),
                 name=nazwa,
                 switch_type=SwitchType.BREAKER,
                 from_node_id=a,
@@ -212,23 +210,46 @@ def _zabezpieczenie(
     time_delay_s: float | None = None,
     function_type: str = "overcurrent_51",
     is_enabled: bool = True,
-) -> dict:
-    return {
-        "ref_id": f"prot-{breaker_ref}",
-        "name": f"Zabezpieczenie {breaker_ref}",
-        "breaker_ref": breaker_ref,
-        "device_type": "overcurrent",
-        "is_enabled": is_enabled,
-        "settings": [
+) -> ProtectionAssignment:
+    """Zabezpieczenie z modelu: próg po stronie PIERWOTNEJ (jednostka jawna, PZ-09),
+    przekładnik 600/5 5P20, przekaźnik z katalogu z zakresami w ×In (REF-OC-200)."""
+    return ProtectionAssignment(
+        ref_id=f"prot-{breaker_ref}",
+        name=f"Zabezpieczenie {breaker_ref}",
+        breaker_ref=breaker_ref,
+        ct_ref="ct",
+        device_type="overcurrent",
+        catalog_ref="REF-OC-200",
+        is_enabled=is_enabled,
+        settings=[
             {
                 "function_type": function_type,
                 "threshold_a": threshold_a,
+                "threshold_unit": "A_PIERWOTNY",
                 "curve_type": curve_type,
                 "time_multiplier": time_multiplier,
                 "time_delay_s": time_delay_s,
             }
         ],
-    }
+    )
+
+
+def _nastawy(*przypisania: ProtectionAssignment) -> dict:
+    """Nastawy wyłączników rozwiązane JEDNĄ ścieżką (`nastawy_aparatow_modelu`)."""
+    model = EnergyNetworkModel(
+        header=ENMHeader(name="Czas wyłączenia gałęzi — test"),
+        measurements=[
+            Measurement(
+                ref_id="ct",
+                name="Przekładnik 600/5",
+                measurement_type="CT",
+                bus_ref="BUS1",
+                rating={"ratio_primary": 600.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
+            )
+        ],
+        protection_assignments=list(przypisania),
+    )
+    return nastawy_aparatow_modelu(model)
 
 
 # ---------------------------------------------------------------------------
@@ -245,13 +266,13 @@ def test_czas_z_charakterystyki_odwrotnej_zgadza_sie_z_rachunkiem_recznym() -> N
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie()],
+        nastawy_aparatow=_nastawy(_zabezpieczenie()),
     )
     pozycja = czasy["kabel_A"]
     assert pozycja.zrodlo == ZRODLO_NASTAWA
     assert pozycja.z_nastawy is True
     assert pozycja.tk_s == pytest.approx(0.594119, abs=1e-5)
-    assert pozycja.urzadzenie_ref == "CB1"
+    assert pozycja.urzadzenie_ref == ref_to_graph_id("CB1")
     assert pozycja.funkcja == "overcurrent_51"
     assert pozycja.prad_galezi_a == pytest.approx(6000.0)
     assert pozycja.prad_rozruchowy_a == pytest.approx(600.0)
@@ -263,30 +284,12 @@ def test_charakterystyka_niezalezna_daje_wprost_nastawiona_zwloke() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[
+        nastawy_aparatow=_nastawy(
             _zabezpieczenie(curve_type="DT", time_multiplier=None, time_delay_s=0.3)
-        ],
+        ),
     )
     assert czasy["kabel_A"].tk_s == pytest.approx(0.3)
     assert czasy["kabel_A"].krzywa == "DT"
-
-
-def test_odwzorowanie_krzywych_idzie_po_stalych_a_nie_po_nazwie() -> None:
-    """Nazwy krzywych w modelu ENM i w solverze sie ROZJEZDZAJA.
-
-    Dopasowanie „po podobnej nazwie" podstawiloby inna charakterystyke, czyli inny
-    czas wylaczenia. Test przypina odwzorowanie do PAR STALYCH (A, B) z IEC 60255-151.
-    """
-    oczekiwane = {
-        "IEC_SI": (0.14, 0.02),
-        "IEC_VI": (13.5, 1.0),
-        "IEC_EI": (80.0, 2.0),
-        "IEC_LI": (120.0, 1.0),
-    }
-    for nazwa_enm, stale in oczekiwane.items():
-        typ = _KRZYWE[nazwa_enm]
-        assert IEC60255_CURVE_PARAMS[typ] == stale, nazwa_enm
-    assert _KRZYWE["DT"] is IEC60255CurveType.DT
 
 
 # ---------------------------------------------------------------------------
@@ -296,8 +299,8 @@ def test_odwzorowanie_krzywych_idzie_po_stalych_a_nie_po_nazwie() -> None:
 
 def test_aparat_chroniacy_to_wylacznik_od_strony_zasilania() -> None:
     graph = _graf()
-    assert znajdz_aparat_chroniacy(graph, "kabel_A") == "CB1"
-    assert znajdz_aparat_chroniacy(graph, "kabel_B") == "CB1"
+    assert znajdz_aparat_chroniacy(graph, "kabel_A") == ref_to_graph_id("CB1")
+    assert znajdz_aparat_chroniacy(graph, "kabel_B") == ref_to_graph_id("CB1")
 
 
 def test_galaz_za_drugim_wylacznikiem_ma_czas_z_tego_blizszego_aparatu() -> None:
@@ -307,22 +310,22 @@ def test_galaz_za_drugim_wylacznikiem_ma_czas_z_tego_blizszego_aparatu() -> None
     modul bral pierwszy napotkany aparat, kabel B dostalby czas CB1.
     """
     graph = _graf_kaskada()
-    assert znajdz_aparat_chroniacy(graph, "kabel_A") == "CB1"
-    assert znajdz_aparat_chroniacy(graph, "kabel_B") == "CB2"
+    assert znajdz_aparat_chroniacy(graph, "kabel_A") == ref_to_graph_id("CB1")
+    assert znajdz_aparat_chroniacy(graph, "kabel_B") == ref_to_graph_id("CB2")
 
     czasy = wyznacz_czasy_wylaczenia(
         graph=graph,
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[
+        nastawy_aparatow=_nastawy(
             _zabezpieczenie(),
             _zabezpieczenie(
                 breaker_ref="CB2", curve_type="DT", time_multiplier=None, time_delay_s=0.15
             ),
-        ],
+        ),
     )
-    assert czasy["kabel_A"].urzadzenie_ref == "CB1"
+    assert czasy["kabel_A"].urzadzenie_ref == ref_to_graph_id("CB1")
     assert czasy["kabel_A"].tk_s == pytest.approx(0.594119, abs=1e-5)
-    assert czasy["kabel_B"].urzadzenie_ref == "CB2"
+    assert czasy["kabel_B"].urzadzenie_ref == ref_to_graph_id("CB2")
     assert czasy["kabel_B"].tk_s == pytest.approx(0.15)
 
 
@@ -338,7 +341,7 @@ def test_otwarty_wylacznik_nie_tworzy_drogi_zwarcia() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=graph,
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie()],
+        nastawy_aparatow=_nastawy(_zabezpieczenie()),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_APARATU
@@ -360,7 +363,7 @@ def test_brak_rozbicia_pradu_na_galezie_daje_jawny_brak_czasu() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=None),
-        protection_assignments=[_zabezpieczenie()],
+        nastawy_aparatow=_nastawy(_zabezpieczenie()),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_PRADU
@@ -369,18 +372,18 @@ def test_brak_rozbicia_pradu_na_galezie_daje_jawny_brak_czasu() -> None:
 
 def test_aparat_bez_zabezpieczenia_daje_jawny_brak_czasu() -> None:
     czasy = wyznacz_czasy_wylaczenia(
-        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), protection_assignments=[]
+        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), nastawy_aparatow=_nastawy()
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
-    assert czasy["kabel_A"].urzadzenie_ref == "CB1"
+    assert czasy["kabel_A"].urzadzenie_ref == ref_to_graph_id("CB1")
 
 
 def test_zabezpieczenie_wylaczone_z_ruchu_nie_wyznacza_czasu() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie(is_enabled=False)],
+        nastawy_aparatow=_nastawy(_zabezpieczenie(is_enabled=False)),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
@@ -391,11 +394,12 @@ def test_funkcja_ziemnozwarciowa_nie_wyznacza_czasu_zwarcia_miedzyfazowego() -> 
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie(function_type="earth_fault_51N")],
+        nastawy_aparatow=_nastawy(_zabezpieczenie(function_type="earth_fault_51N")),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
-    assert "50/51" in czasy["kabel_A"].powod_pl
+    # Jedna ścieżka: urządzenie nadprądowe bez stopni 50/51 ma nazwany brak stopni.
+    assert "I> (51)" in czasy["kabel_A"].powod_pl
 
 
 def test_prad_ponizej_rozruchu_jest_nazwany_wprost() -> None:
@@ -403,7 +407,7 @@ def test_prad_ponizej_rozruchu_jest_nazwany_wprost() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=400.0),
-        protection_assignments=[_zabezpieczenie()],
+        nastawy_aparatow=_nastawy(_zabezpieczenie()),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_PONIZEJ_ROZRUCHU
@@ -415,7 +419,7 @@ def test_niekompletna_nastawa_krzywej_odwrotnej_daje_jawny_brak() -> None:
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie(time_multiplier=None)],
+        nastawy_aparatow=_nastawy(_zabezpieczenie(time_multiplier=None)),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
@@ -435,14 +439,14 @@ def test_mape_nadpisan_tworza_WYLACZNIE_czasy_z_nastaw() -> None:
     udawaloby nastawe. Dlatego takiej galezi w mapie po prostu NIE MA.
     """
     czasy = wyznacz_czasy_wylaczenia(
-        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), protection_assignments=[]
+        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), nastawy_aparatow=_nastawy()
     )
     assert mapa_tk_s_z_nastaw(czasy) == {}
 
     z_nastawa = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        protection_assignments=[_zabezpieczenie()],
+        nastawy_aparatow=_nastawy(_zabezpieczenie()),
     )
     mapa = mapa_tk_s_z_nastaw(z_nastawa)
     assert set(mapa) == {"kabel_A", "kabel_B"}
@@ -459,7 +463,7 @@ def test_slad_czasu_nazywa_zrodlo_dla_KAZDEJ_galezi() -> None:
     karta usuwa.
     """
     czasy = wyznacz_czasy_wylaczenia(
-        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), protection_assignments=[]
+        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), nastawy_aparatow=_nastawy()
     )
     slad = slad_czasu(czasy, tk_s_zalozony=1.0)
     assert set(slad) == {"kabel_A", "kabel_B"}
@@ -473,7 +477,7 @@ def test_slad_czasu_nazywa_zrodlo_dla_KAZDEJ_galezi() -> None:
         wyznacz_czasy_wylaczenia(
             graph=_graf(),
             sc_result=_sc_result(prad_a=6000.0),
-            protection_assignments=[_zabezpieczenie()],
+            nastawy_aparatow=_nastawy(_zabezpieczenie()),
         ),
         tk_s_zalozony=1.0,
     )
@@ -485,7 +489,7 @@ def test_wynik_jest_deterministyczny() -> None:
     argumenty = {
         "graph": _graf(),
         "sc_result": _sc_result(prad_a=6000.0),
-        "protection_assignments": [_zabezpieczenie()],
+        "nastawy_aparatow": _nastawy(_zabezpieczenie()),
     }
     pierwszy = wyznacz_czasy_wylaczenia(**argumenty)
     drugi = wyznacz_czasy_wylaczenia(**argumenty)

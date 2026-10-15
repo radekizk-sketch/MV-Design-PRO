@@ -15,4 +15,10 @@ describe('generatorTypeLabels', () => {
     expect(formatGeneratorTypeShortLabelPl('fw_dfig')).toBe('DFIG');
     expect(formatGeneratorTypeShortLabelPl('fw_scig')).toBe('SCIG');
   });
+
+  it('nazywa źródła przekształtnikowe po polsku z pełnymi znakami (etykieta pierwszego planu, m.in. ekran dynamiki)', () => {
+    expect(formatGeneratorTypeLabelPl('pv_inverter')).toBe('Źródło przekształtnikowe PV');
+    expect(formatGeneratorTypeLabelPl('bess')).toBe('Źródło przekształtnikowe BESS');
+    expect(formatGeneratorTypeLabelPl('wind_inverter')).toBe('Źródło przekształtnikowe FW');
+  });
 });

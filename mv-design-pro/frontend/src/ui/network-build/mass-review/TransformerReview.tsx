@@ -12,6 +12,7 @@ import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useSelectionStore } from '../../selection';
+import { kontekstTransformatorowStacji, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 
 // =============================================================================
 // Component
@@ -37,11 +38,13 @@ export function TransformerReview({ className }: TransformerReviewProps) {
 
   const rows = useMemo(() => {
     if (!snapshot) return [];
+    // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po transformatorach).
+    const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
     return (snapshot.transformers ?? []).map((t) => {
-      const station = (snapshot.substations ?? []).find((s) =>
-        s.transformer_refs.includes(t.ref_id),
-      );
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      const stationRef = stationRefOfTransformer(snapshot, t.ref_id, kontekstTransformatorow);
+      const station = (snapshot.substations ?? []).find((s) => s.ref_id === stationRef);
       return {
         id: t.ref_id,
         name: t.name,

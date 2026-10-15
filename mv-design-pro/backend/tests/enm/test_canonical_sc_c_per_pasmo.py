@@ -2,8 +2,9 @@
 
 docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3 (kontynuacja P0.3, ścieżka
 ``enm/canonical_analysis.py::_execute_short_circuit`` — droga użytkownika przez
-ENM, osobna od ``application/solvers/short_circuit_binding.py`` użytego przez
-execution engine, gdzie P0.3 to samo wdrożenie już zrobił).
+ENM; dawna równoległa ścieżka ``application/solvers/short_circuit_binding.py::
+execute_short_circuit`` skasowana kartą TORY-TYLKO-W-TESTACH 2026-09-30 — jej dowody
+z ``tests/network_model/solvers/test_sc_lv_min_max.py`` przeniesione tu, sekcja 9).
 
 REUSE 1:1, zero duplikacji wzorów:
     - ``network_model.core.voltage_factor.c_for_node`` (Tabela 1 IEC 60909:
@@ -685,3 +686,105 @@ def test_location_absent_keeps_all_nodes_parity():
     assert result.status == "FINISHED", result.error_message
     rows = _rows_by_node(result)
     assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in (N0, N1, N2, N3)}
+
+
+# =============================================================================
+# 9. Rachunek ręczny IEC 60909 i korekta R_θ na biegu kanonicznym
+# =============================================================================
+#
+# Karta TORY-TYLKO-W-TESTACH (2026-09-30): te dowody żyły dotąd w
+# `tests/network_model/solvers/test_sc_lv_min_max.py` na adapterze
+# `application.solvers.short_circuit_binding.execute_short_circuit` — torze bez
+# konsumenta w produkcie (skasowany). Przeniesione tutaj na bieg kanoniczny, na tę samą
+# sieć SN+nN (parametry identyczne), z intencją każdej asercji bez zmian.
+#
+# Rachunek ręczny (metoda sumowania impedancji szeregowych — dla sieci promieniowej z
+# jednym źródłem dokładnie to, co liczy solver Z-bus, więc tolerancja 1 % ma duży zapas):
+#
+#   Źródło:      |Z_Q| = c_max(SN)·Un²/Sk'' = 1,10·15²/250 = 0,9900 Ω
+#                X_Q = |Z_Q|/√(1+0,1²) = 0,9850868183 Ω, R_Q = 0,1·X_Q = 0,0985086818 Ω
+#   Kabel SN:    R = 0,253·2 = 0,506 Ω, X = 0,100·2 = 0,200 Ω (MAX, bez korekty)
+#   TR 630 kVA:  z = 0,06, r = (pk/1000)/Sr = 0,0126984127, x = √(z²−r²) = 0,0586408588
+#                K_T = 0,95·c_max(nN=1,05)/(1+0,6·x) = 0,9635963302
+#                Z_T = K_T·(r+jx)·(0,4²/0,63) = 0,0031075921 + j0,0143507597 Ω
+#   Z_N1 (15 kV) = Z_Q + Z_kabelSN = 0,6045086818 + j1,1850868183 Ω
+#   Z_N2 (0,4 kV) = Z_N1·(0,4/15)² + Z_T = 0,0035374649 + j0,0151934881 Ω,
+#                   |Z_N2| = 0,0155998634 Ω
+#   Ik''max(N2) = 1,05·400/(√3·|Z_N2|) = 15 544,18 A;  Ik''max(N1) = 7 160,67 A.
+
+_OCZEKIWANE_IKSS_N2_MAX_A = 15544.18
+_OCZEKIWANE_IKSS_N1_MAX_A = 7160.67
+_TOLERANCJA_RACHUNKU = 0.01  # 1 %
+
+
+def _bieg_zwarciowy(case_id: str, enm: EnergyNetworkModel, options: dict | None = None):
+    set_enm(case_id, enm)
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        **({"options": options} if options is not None else {}),
+    )
+    wynik = execute_run(run.id)
+    assert wynik.status == "FINISHED", wynik.error_message
+    assert wynik.raw_result is not None
+    return wynik
+
+
+def test_ikss_max_na_szynie_nn_i_sn_zgodny_z_rachunkiem_recznym():
+    """Ik''max na szynie nN (c=1,05) i SN (c=1,10) = rachunek ręczny w granicy 1 %."""
+    wynik = _bieg_zwarciowy("tory-reczny-max", _build_mv_lv_enm("Siec MV+LV — rachunek"))
+    wiersze = _rows_by_node(wynik)
+
+    wiersz_n2 = wiersze[ref_to_graph_id(N2)]
+    assert wiersz_n2["ikss_a"] == pytest.approx(_OCZEKIWANE_IKSS_N2_MAX_A, rel=_TOLERANCJA_RACHUNKU)
+    assert wiersz_n2["c_factor"] == pytest.approx(1.05)
+
+    wiersz_n1 = wiersze[ref_to_graph_id(N1)]
+    assert wiersz_n1["ikss_a"] == pytest.approx(_OCZEKIWANE_IKSS_N1_MAX_A, rel=_TOLERANCJA_RACHUNKU)
+    assert wiersz_n1["c_factor"] == pytest.approx(1.10)
+
+
+def test_korekta_r_theta_obniza_ikss_min_na_koncu_kabla_nn():
+    """Korekta R_θ w scenariuszu MIN nie jest pusta: Ik''min na końcu kabla nN z korektą
+    jest ściśle mniejszy niż Ik''min liczony tym samym c_min na grafie MIN BEZ korekty
+    (odniesienie izoluje wyłącznie wkład R_θ)."""
+    enm = _build_mv_lv_enm("Siec MV+LV — R_theta")
+    wynik_min = _bieg_zwarciowy("tory-r-theta", enm, {"scenario": "min"})
+    n3 = ref_to_graph_id(N3)
+
+    odniesienie_bez_korekty = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=map_enm_to_network_graph(enm, scenario="MIN"),
+        fault_node_id=n3,
+        c_factor=0.95,
+        tk_s=1.0,
+    )
+    assert _rows_by_node(wynik_min)[n3]["ikss_a"] < odniesienie_bez_korekty.ikss_a
+
+    # Oba kable (SN θk=250 °C, nN θk=160 °C) skorygowane — jawnie w nocie White Box.
+    noty = {
+        nota["branch_id"]: nota for nota in wynik_min.raw_result["temperature_correction_notes"]
+    }
+    assert noty[ref_to_graph_id("C_SN")]["corrected"] is True
+    nota_nn = noty[ref_to_graph_id("C_NN")]
+    assert nota_nn["corrected"] is True
+    assert nota_nn["theta_k_c"] == pytest.approx(_THETA_LV_C)
+    assert nota_nn["r_theta_ohm_per_km"] > nota_nn["r20_ohm_per_km"]
+
+
+def test_kabel_bez_theta_k_bez_korekty_z_jawna_nota():
+    """Zero fabrykacji: kabel bez znanej temperatury zwarciowej zostaje w scenariuszu MIN
+    bez korekty, a nota White Box mówi o braku wprost (nie zgadujemy θk)."""
+    enm = _build_mv_lv_enm("Siec MV+LV — kabel bez theta_k")
+    kabel_nn = next(galaz for galaz in enm.branches if galaz.ref_id == "C_NN")
+    kabel_nn.short_circuit_temperature_c = None
+
+    wynik_min = _bieg_zwarciowy("tory-bez-theta", enm, {"scenario": "min"})
+
+    noty = {
+        nota["branch_id"]: nota for nota in wynik_min.raw_result["temperature_correction_notes"]
+    }
+    nota_nn = noty[ref_to_graph_id("C_NN")]
+    assert nota_nn["corrected"] is False
+    assert nota_nn["theta_k_c"] is None
+    assert "brak" in nota_nn["reason"].lower()

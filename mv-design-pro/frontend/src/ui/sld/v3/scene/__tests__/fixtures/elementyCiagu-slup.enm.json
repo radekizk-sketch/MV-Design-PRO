@@ -3077,7 +3077,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "47558fdc736a38aeede170b78d51bb390321391fac6a01fad80e979e01675ec0",
+      "hash_sha256": "7d61f775ffb7d66b1cb50707a40da150d5a14a5a3c63ce9a61b09c081fec68de",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -3187,6 +3187,7 @@
         "bus_ref": "nn/643a4c4cd59c8dc82147e051a8a2eda0/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "871a9e12-08f0-5c58-9367-6bf78f98400a",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -3229,6 +3230,7 @@
         "bus_ref": "nn/2ac016ec94a8d80eec7af001a742178d/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "2982e1e1-d9cc-5ed9-8738-19b6b8462b7d",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -3271,6 +3273,7 @@
         "bus_ref": "nn/6139c703696e3101feeb1a00d93a8335/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "3a60846e-a896-53aa-ab70-06a38d43980b",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -3313,6 +3316,7 @@
         "bus_ref": "nn/c1f6aa4c9fa3f15e78b3cc47d19c4c1a/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "60433c06-18be-5575-8c55-1d813defd99d",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -3355,6 +3359,7 @@
         "bus_ref": "nn/c6fbabd977ce73e35e47220b16ec14f7/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "36d8c1f1-6024-57b9-8bf7-900334c1fa1f",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -3635,9 +3640,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za GPZ",
         "nn_sections": [],
@@ -3770,9 +3773,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta między stacjami",
         "nn_sections": [],
@@ -3905,9 +3906,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja klienta za ostatnią stacją",
         "nn_sections": [],
@@ -4040,9 +4039,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -4175,9 +4172,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

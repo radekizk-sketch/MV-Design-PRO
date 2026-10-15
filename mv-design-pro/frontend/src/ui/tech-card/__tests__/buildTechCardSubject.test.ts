@@ -84,6 +84,9 @@ describe('buildTechCardSubject', () => {
     expect(insertZksn).toBeTruthy();
     const insertPole = subject!.actions?.find((action) => action.id.endsWith('insert_branch_pole_on_segment_sn'));
     expect(insertPole).toBeUndefined();
+    // Wstawienie łącznika (także wyłącznika z zabezpieczeniem w torze) dostępne z karty odcinka.
+    const lacznik = subject!.actions?.find((action) => action.id === 'open_operation:insert_section_switch_sn');
+    expect(lacznik?.label).toBe('Wstaw łącznik sekcyjny');
   });
 
   it('na odcinku napowietrznym blokuje akcję wstawienia ZKSN', () => {
@@ -105,6 +108,8 @@ describe('buildTechCardSubject', () => {
     expect(insertZksn).toBeUndefined();
     const insertPole = subject!.actions?.find((action) => action.id.endsWith('insert_branch_pole_on_segment_sn'));
     expect(insertPole).toBeTruthy();
+    const lacznik = subject!.actions?.find((action) => action.id === 'open_operation:insert_section_switch_sn');
+    expect(lacznik?.label).toBe('Wstaw łącznik sekcyjny');
   });
 
   it('buduje subject dla ZKSN bez transformatora i prezentuje porty', () => {
@@ -186,8 +191,11 @@ describe('buildTechCardSubject', () => {
 
     const subject = buildTechCardSubject(snapshot, selected(station.ref_id, 'Station'));
     expect(subject?.kind).toBe('station');
-    expect(subject?.typeLabelPl).toBe('Stacja SN/nN');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z topologii — pola WE i WY bez odcinków do
+    // innych stacji ⇒ końcowa (dawniej funkcja „Stacja SN/nN" z deklaracji `mv_lv`).
+    expect(subject?.typeLabelPl).toBe('Stacja końcowa');
     const fields = subject!.sections.flatMap((section) => section.fields);
+    expect(fields.find((field) => field.key === 'uklad')?.value).toBe('Układ końcowy SN');
     expect(fields.find((field) => field.key === 'pole_we')?.value).toBe(1);
     expect(fields.find((field) => field.key === 'pole_wy')?.value).toBe(1);
     expect(fields.find((field) => field.key === 'pole_tr')?.value).toBe(1);

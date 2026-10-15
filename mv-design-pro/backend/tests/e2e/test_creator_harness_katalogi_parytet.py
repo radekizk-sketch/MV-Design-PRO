@@ -174,6 +174,57 @@ def _wartosci_klucza_z_fikstur(klucz: str) -> set[str]:
     return znalezione
 
 
+def _referencje_modeli_dynamicznych_z_fikstur() -> tuple[set[str], set[str]]:
+    """(referencje modeli dynamicznych WYTWORCOW, referencje profili modeli ODBIOROW).
+
+    Klucz `dynamic_model_ref` ma od karty modeli odbiorow (O-56) DWIE przestrzenie: przy
+    wytworcy wskazuje profil katalogu `der_dynamic` (walidator `set_der_catalog_bindings`),
+    przy odbiorze — profil katalogu `load_dynamic` (walidator `set_load_dynamic_binding`).
+    Przestrzen wyznacza WLASCICIEL pola (element listy `loads` migawki), nie sama nazwa klucza;
+    odbiory sa wiec zbierane z elementow `loads`, a reszta danych scen — jak dotad — w calosci.
+    Ta sama przestrzen profili odbiorow wystepuje w odpowiedzi gotowosci dynamiki (`odbiory[].
+    wiazanie`, `profile_odbiorow[].profile_id`) — tez jest tu zbierana.
+    """
+    wytworcy: set[str] = set()
+    odbiory: set[str] = set()
+
+    def przejdz(wezel: Any) -> None:
+        if isinstance(wezel, dict):
+            for klucz, podwezel in wezel.items():
+                if klucz == "loads" and isinstance(podwezel, list):
+                    for odbior in podwezel:
+                        tabliczka = (
+                            odbior.get("materialized_params") if isinstance(odbior, dict) else None
+                        )
+                        ref = (tabliczka or {}).get("dynamic_model_ref")
+                        if isinstance(ref, str) and ref:
+                            odbiory.add(ref)
+                    continue
+                if klucz == "odbiory" and isinstance(podwezel, list):
+                    for odbior in podwezel:
+                        ref = odbior.get("wiazanie") if isinstance(odbior, dict) else None
+                        if isinstance(ref, str) and ref:
+                            odbiory.add(ref)
+                    continue
+                if klucz == "profile_odbiorow" and isinstance(podwezel, list):
+                    odbiory.update(
+                        str(profil["profile_id"])
+                        for profil in podwezel
+                        if isinstance(profil, dict) and profil.get("profile_id")
+                    )
+                    continue
+                if klucz == "dynamic_model_ref" and isinstance(podwezel, str) and podwezel:
+                    wytworcy.add(podwezel)
+                przejdz(podwezel)
+        elif isinstance(wezel, list):
+            for podwezel in wezel:
+                przejdz(podwezel)
+
+    for _, dane in _fikstury_scen():
+        przejdz(dane)
+    return wytworcy, odbiory
+
+
 def _wiazania_katalogowe_z_fikstur() -> dict[tuple[str, str], tuple[str | None, set[str]]]:
     """(catalog_namespace, identyfikator) -> (wersja katalogu, fikstury, w ktorych wystepuje).
 
@@ -361,6 +412,7 @@ class TestHarnessDaneScen:
         (KLASA NIE INSTANCJA #3).
         """
         from enm.domain_operations_v2 import _nieznane_referencje_katalogowe
+        from enm.dynamika_z_katalogu import sprawdz_profil_odbioru
 
         source = _tekst(_HARNESS_TS)
         protection_refy = _wartosci_klucza_z_fikstur("protection_catalog_ref") | _wartosci_pola(
@@ -369,10 +421,9 @@ class TestHarnessDaneScen:
         ct_refy = _wartosci_klucza_z_fikstur("ct_catalog_ref") | _wartosci_pola(
             source, "ct_catalog_ref"
         )
-        dynamic_refy = _wartosci_klucza_z_fikstur("dynamic_model_ref") | _wartosci_pola(
-            source, "dynamic_model_ref"
-        )
-        assert protection_refy and ct_refy and dynamic_refy, (
+        refy_wytworcow, refy_odbiorow = _referencje_modeli_dynamicznych_z_fikstur()
+        dynamic_refy = refy_wytworcow | _wartosci_pola(source, "dynamic_model_ref")
+        assert protection_refy and ct_refy and dynamic_refy and refy_odbiorow, (
             "Brak protection_catalog_ref/ct_catalog_ref/dynamic_model_ref w danych "
             "scen — scena 'wiazania'/'oze'/'macierz' zniknela albo zmienila ksztalt."
         )
@@ -390,6 +441,10 @@ class TestHarnessDaneScen:
             assert (
                 not nieznane
             ), f"dynamic_model_ref='{ref}' nieznany walidatorowi domeny: {nieznane}"
+        # Profile modeli dynamicznych ODBIOROW (karta modeli odbiorow): ten sam walidator,
+        # ktory woła operacja `set_load_dynamic_binding` (odmowa nazwana profilu spoza katalogu).
+        for ref in refy_odbiorow:
+            sprawdz_profil_odbioru(ref, "odbior sceny")
 
     def test_ptpiree_certificate_ref_istnieje_w_katalogu_pv_i_jest_powiazany(self) -> None:
         from api.catalog import list_pv_inverter_types

@@ -1,6 +1,6 @@
 # ADR-017: Rozwiązywanie stanu efektywnego (11 warstw, jedna funkcja)
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; z korektą: jeden resolver = istniejące `apply_scenario -> EffectiveNetworkSnapshot` z precedencją SCENARIO > NORMAL > DESIGN dla warstw z nośnikiem, proweniencją per atrybut i stanem UNKNOWN z kodem gotowości; „assembler dostaje EffectiveState”, nie solvery; golden test koperty v2 jako warunek WEJŚCIA karty W5-C; koperta v3 wyłącznie z podniesieniem wersji głównej, regeneracją fikstur narzędziami repo i wpisem w REJESTR)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §3, §10
 
