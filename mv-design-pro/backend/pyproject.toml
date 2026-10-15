@@ -72,6 +72,7 @@ vulture = "^2.16"
 # `pyyaml` jest w zaleznosciach glownych). Doinstalowanie stubow to naprawa u zrodla,
 # w odroznieniu od wyciszenia importu.
 types-PyYAML = "^6.0"
+pytest-xdist = "^3.6.1"
 
 [build-system]
 requires = ["poetry-core"]

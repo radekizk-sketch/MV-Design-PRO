@@ -451,8 +451,11 @@ cd mv-design-pro/backend
 # Install dependencies
 poetry install --with dev
 
-# Run tests
-poetry run pytest -q
+# Run tests (full suite: 4 processes via pytest-xdist, as CI — `-n auto` there; a file
+# stays on one process, `--dist loadfile`; each worker gets its own ENM store, session DB and
+# one BLAS thread — tests/conftest.py). Single process: drop `-n`/`--dist`.
+# Measured 2026-09-30 on 4 vCPU: 27 043 tests — 1 process 5 015 s, `-n 4 --dist loadfile` ~1 350 s.
+poetry run pytest -q -n 4 --dist loadfile
 
 # Run specific test file
 poetry run pytest tests/test_short_circuit_iec60909.py -v
@@ -477,9 +480,10 @@ cd mv-design-pro/frontend
 npm ci            # preferred (deterministic)
 npm install       # alternative
 
-# Run tests (--no-file-parallelism is required)
+# Run tests: two steps — files in parallel in the `forks` pool, then CPU-time budget tests
+# (every test file importing src/test/czasProcesora.ts) one file at a time; vite.config.ts
 npm test
-# Equivalent: vitest run --no-file-parallelism
+# Equivalent: vitest run && vitest run --mode budzety (budget step alone: npm run test:budzety)
 
 # Run tests for CI
 npm run test:ci
@@ -492,6 +496,16 @@ npm run test:coverage
 
 # Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
 npm run test:e2e
+# One shard of the full suite — files assigned by measured spec times (LPT,
+# `scripts/e2e_shardy.py`, times in `e2e/czasy_specow.json`); CI runs 4 shards on 4 runners.
+# Locally give each concurrent shard its own PLAYWRIGHT_BACKEND_URL/PLAYWRIGHT_FRONTEND_URL ports.
+npm run test:e2e -- $(python ../scripts/e2e_shardy.py --shard 1/4)
+# Refresh the spec times after a full run with `--reporter=json` (PLAYWRIGHT_JSON_OUTPUT_NAME):
+python ../scripts/e2e_shardy.py --aktualizuj raport.json --zrodlo "<opis pomiaru>"
+# An e2e run never changes the repository tree (globalTeardown `e2e/straznikDrzewa.ts` fails the run
+# otherwise). Screenshot specs write to test-results/zrzuty-dokumentacji/<path> by default
+# (`e2e/katalogZrzutow.ts`); refreshing the committed documentation screenshots is explicit:
+ZRZUTY_DO_DOKUMENTACJI=1 npm run test:e2e -- e2e/<spec zrzutowy>.spec.ts
 
 # Run e2e against real backend (critical path)
 npm run test:e2e:real
@@ -691,7 +705,12 @@ python scripts/smoke_local.sh                     # Local smoke test
 - Unit tests with Vitest in `src/**/__tests__/`
 - E2E tests with Playwright in `e2e/`
 - Component tests use @testing-library/react
-- Tests run with `--no-file-parallelism` (required for determinism)
+- Test files run in parallel in the `forks` pool, one file per process at a time (karta
+  SZYBKIE-TESTY 2026-09-30; it supersedes the archival INV-TST-06 of `--no-file-parallelism`).
+  CPU-time budget tests (`src/test/czasProcesora.ts`) run in a separate sequential step
+  (`vitest run --mode budzety`, set derived by `plikiBudzetuCzasu` in vite.config.ts) — neighbouring
+  processes inflate CPU time; the helper refuses to measure outside that mode and outside the
+  process main thread (`src/test/__tests__/{pulaTestow,plikiBudzetuCzasu}.test.ts` pin both)
 - Test environment: jsdom with globals enabled
 - Critical contract tests (run in SLD Determinism CI) — **spisane z
   `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:
@@ -1074,7 +1093,7 @@ bramki bezpieczeństwa) albo gdy hierarchia nie rozstrzyga — wtedy pytasz wła
 
 | Action | Command |
 |--------|---------|
-| Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q` |
+| Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q -n 4 --dist loadfile` |
 | Run frontend tests | `cd mv-design-pro/frontend && npm test` |
 | Run frontend tests (CI) | `cd mv-design-pro/frontend && npm run test:ci` |
 | Run e2e tests | `cd mv-design-pro/frontend && npm run test:e2e` |

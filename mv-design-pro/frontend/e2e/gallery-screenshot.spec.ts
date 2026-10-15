@@ -12,9 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('gallery-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual'));
 
 test.describe('sld:gallery:screenshot', () => {
   test.beforeAll(() => {

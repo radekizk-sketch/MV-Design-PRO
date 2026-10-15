@@ -14,10 +14,23 @@ import subprocess
 import sys
 import tempfile
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
+
+# JEDEN WATEK BLAS NA PROCES ROBOCZY pytest-xdist (karta SZYBKIE-TESTY, 2026-09-30).
+# OpenBLAS startuje w KAZDYM procesie numpy tyle watkow, ile rdzeni: cztery workery na
+# czterech rdzeniach to 16 watkow liczacych, ktore czekaja na siebie nawzajem (pomiar karty
+# WATKI-BLAS-E2E: odwrocenie macierzy 800x800 x6 pod obcym obciazeniem — watki domyslne
+# 17,6 s, jeden watek 3,9 s), a testy budzetu czasu i biegi wrazliwe na kolejnosc sumowania
+# dostaja wynik zalezny od obciazenia maszyny. Zmienne musza byc ustawione PRZED pierwszym
+# importem numpy w procesie — ten modul importuje go dopiero posrednio, nizej. Wartosc
+# wskazana z zewnatrz wygrywa (`setdefault`). Rzeczywista liczbe watkow biblioteki w
+# procesie przypina `tests/ci/test_izolacja_procesow_testowych.py`.
+if "PYTEST_XDIST_WORKER" in os.environ:
+    for _zmienna_watkow in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS"):
+        os.environ.setdefault(_zmienna_watkow, "1")
 
 # Add backend/src to path for imports
 backend_src = Path(__file__).parents[1] / "src"
@@ -41,15 +54,49 @@ sys.path.insert(0, str(backend_src))
 # katalogu wskazanego z zewnatrz nie ruszamy.
 
 
-# ROBOTNICY pytest-xdist (`PYTEST_XDIST_WORKER`) dziedzicza srodowisko procesu nadzorczego,
-# ktory zaimportowal ten plik pierwszy — bez rozroznienia wszyscy robotnicy dzielili JEDEN
-# magazyn plikowy sesji i kasowali sobie nawzajem pliki robocze (pomiar 2026-09-30, karta
-# AB-1b.3b-NA-CZUBKU: `pytest -n 3 tests/ci/test_fixtury_harnessu.py` — 3 ze 110 przypadkow
-# czerwone przez `FileNotFoundError: …/enm-store-pytest-*/….rev/2.json.gz.*.tmp`, inny zestaw
-# w kazdym biegu; bieg szeregowy zielony). Katalog UTWORZONY przez sesje pytest jest
-# oznaczony w `_ZNACZNIK_KATALOGOW_SESJI`, wiec robotnik tworzy wlasny, a katalog wskazany
-# jawnie z zewnatrz (bez znacznika) nadal wygrywa — takze pod xdist.
-_ZNACZNIK_KATALOGOW_SESJI = "MV_TESTY_KATALOGI_SESJI"
+#
+# JEDEN PROCES = JEDEN KOMPLET MAGAZYNOW (karta SZYBKIE-TESTY, 2026-09-30). Pod pytest-xdist
+# ten moduł wykonuje się najpierw w procesie KONTROLERA, który eksportuje zmienne, a workery
+# dziedziczą jego środowisko. Dawny warunek „zmienna już ustawiona = wskazana z zewnątrz”
+# brał więc katalog kontrolera za zewnętrzny i WSZYSTKIE workery pisały do jednego magazynu:
+# pomiar 2026-09-30 (`-n 4 --dist loadfile`) — 22 czerwone testy, w logu
+# `No such file or directory: '/tmp/enm-store-pytest-…/<klucz>.json'`, bo `reset_enm_store()`
+# jednego workera kasował model zapisany chwilę wcześniej przez drugi. Zmienna-znacznik
+# `<ZMIENNA>_PYTEST_PID` mówi, KTÓRY proces pytest utworzył wartość: proces, który widzi
+# znacznik obcego PID, tworzy własny komplet; wartość bez znacznika pochodzi spoza pytest
+# i jest honorowana bez zmian.
+#
+# Jeden mechanizm (scalenie z gałęzią integracji 2026-10-15): karta AB-1b.3b-NA-CZUBKU naprawiła
+# równolegle tę samą klasę drugim znacznikiem (`MV_TESTY_KATALOGI_SESJI`, tylko dwa katalogi
+# magazynów i tylko w robotniku xdist). Dwie ścieżki tej samej izolacji to dług — została ta,
+# która obejmuje wszystkie cztery wartości; jej pomiar (pod `-n 3`, 3 ze 110 przypadków
+# `test_fixtury_harnessu.py` czerwone przez `FileNotFoundError` na `*.tmp`) jest tą samą klasą.
+#
+# Ta sama klasa (plik w stałej ścieżce współdzielony przez procesy), dwa kolejne miejsca:
+# * `DATABASE_URL` — domyślny adres `sqlite+pysqlite:///./mv_design_pro.db` w
+#   `api/main.py::lifespan` i `canonical_run_repository`. Fikstura `_izolowana_baza_przebiegow`
+#   ustawia bazę per test, ale fikstury MODUŁOWE (TestClient z lifespanem w
+#   `test_fault_scenarios_api.py`, `test_fault_scenarios_run_integration.py`,
+#   `test_batch_execution.py`, `enm/test_brak_katalogu_aparatu_nn_os_analiz.py`,
+#   `e2e/test_nn_full_chain.py`) startują PRZED nią i trafiały w plik
+#   `backend/mv_design_pro.db` W DRZEWIE repozytorium — wspólny dla workerów i trwały między
+#   biegami (pomiar 2026-09-30: plik obecny po biegu; hak audytu go nie widział, bo SQLite
+#   otwiera plik z biblioteki C). Sesja dostaje bazę w swoim katalogu; per test wygrywa
+#   nadal `_izolowana_baza_przebiegow`.
+# * `CLOUD_BACKUP_BUCKET` — domyślnie `/tmp/mv-design-pro-backups` (`api/cloud_backup.py`),
+#   wspólny dla wszystkich procesów i biegów na maszynie.
+ZNACZNIK_PROCESU = "_PYTEST_PID"
+
+
+def _wlasna_wartosc_procesu(zmienna: str, wartosc: Callable[[], str]) -> None:
+    """Ustaw `zmienna` dla TEGO procesu, chyba że wskazano ją spoza pytest."""
+    znacznik = zmienna + ZNACZNIK_PROCESU
+    if zmienna in os.environ and znacznik not in os.environ:
+        return
+    if os.environ.get(znacznik) == str(os.getpid()):
+        return
+    os.environ[zmienna] = wartosc()
+    os.environ[znacznik] = str(os.getpid())
 
 
 def _katalog_sesji(prefiks: str) -> str:
@@ -58,21 +105,25 @@ def _katalog_sesji(prefiks: str) -> str:
     return katalog
 
 
-def _ustaw_katalog_sesji(zmienna: str, prefiks: str) -> None:
-    utworzone_przez_sesje = set(os.environ.get(_ZNACZNIK_KATALOGOW_SESJI, "").split(os.pathsep))
-    odziedziczony_przez_robotnika = (
-        "PYTEST_XDIST_WORKER" in os.environ and zmienna in utworzone_przez_sesje
+_wlasna_wartosc_procesu("ENM_STORE_DIR", lambda: _katalog_sesji("enm-store-pytest-"))
+_wlasna_wartosc_procesu("STATION_USER_TEMPLATES_DIR", lambda: _katalog_sesji("szablony-pytest-"))
+_wlasna_wartosc_procesu(
+    "DATABASE_URL",
+    lambda: "sqlite+pysqlite:///"
+    + os.path.join(_katalog_sesji("baza-sesji-pytest-"), "mv_design_pro.db"),
+)
+_wlasna_wartosc_procesu("CLOUD_BACKUP_BUCKET", lambda: _katalog_sesji("kopie-pytest-"))
+#: Wartości sesji po rozstrzygnięciu (przed nadpisaniami per test) — przypięte w
+#: `tests/ci/test_izolacja_procesow_testowych.py`.
+WARTOSCI_SESJI: dict[str, str] = {
+    zmienna: os.environ[zmienna]
+    for zmienna in (
+        "ENM_STORE_DIR",
+        "STATION_USER_TEMPLATES_DIR",
+        "DATABASE_URL",
+        "CLOUD_BACKUP_BUCKET",
     )
-    if zmienna in os.environ and not odziedziczony_przez_robotnika:
-        return
-    os.environ[zmienna] = _katalog_sesji(prefiks)
-    utworzone_przez_sesje.discard("")
-    utworzone_przez_sesje.add(zmienna)
-    os.environ[_ZNACZNIK_KATALOGOW_SESJI] = os.pathsep.join(sorted(utworzone_przez_sesje))
-
-
-_ustaw_katalog_sesji("ENM_STORE_DIR", "enm-store-pytest-")
-_ustaw_katalog_sesji("STATION_USER_TEMPLATES_DIR", "szablony-pytest-")
+}
 
 # Korzen backendu na sciezce — WYMAGANY przez tryb importu `importlib`
 # (pyproject: `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`;

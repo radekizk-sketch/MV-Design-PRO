@@ -23,10 +23,11 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const OUTPUT_DIR = path.resolve(
+import { katalogZrzutow } from './katalogZrzutow';
+const OUTPUT_DIR = katalogZrzutow(path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../docs/audit/visual/dowody',
-);
+));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';

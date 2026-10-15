@@ -18,8 +18,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = path.resolve(_dirname, '../../docs/sld/audyt-2026-08');
+const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/sld/audyt-2026-08'));
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
 type Seed = { projectId: string; projectName: string; caseId: string; caseName: string };

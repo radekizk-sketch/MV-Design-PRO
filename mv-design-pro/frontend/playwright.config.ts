@@ -132,6 +132,10 @@ export default defineConfig({
   // Rozgrzewka aplikacji po starcie serwerów (koszt zimnego startu Vite poza testami).
   globalSetup: './e2e/global-setup.ts',
 
+  // Bieg nie zmienia drzewa repozytorium — stan sprzed biegu (globalSetup) wobec stanu po
+  // biegu; zrzuty dokumentacji tylko przy ZRZUTY_DO_DOKUMENTACJI=1 (`e2e/straznikDrzewa.ts`).
+  globalTeardown: './e2e/global-teardown.ts',
+
   // Run tests sequentially for determinism
   fullyParallel: false,
 

@@ -28,9 +28,10 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sld_audyt');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/sld_audyt'));
 
 const POZIOMY = [0, 1, 2] as const;
 const MOTYWY = ['light', 'dark'] as const;
