@@ -17,6 +17,7 @@ którejkolwiek z tych reguł jest naruszeniem karty (strażnik wskrzeszenia
 `scripts/meta_field_specs_resurrection_guard.py`).
 
 Moduł-LIŚĆ warstwy ENM: importuje wyłącznie `enm.models`, `enm.rola_pola_sn`,
+`enm.migrations.klucze_meta_pola` (dawne klucze `meta` pola — wspólne z migracją),
 `network_model.nazwy` i `network_model.pochodne.pasma_napieciowe` (pasmo nN/SN — JEDNA
 granica w backendzie). Nie importuje operacji domenowych ani magazynu.
 """
@@ -30,30 +31,14 @@ from typing import Any
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
+from .migrations.klucze_meta_pola import KLUCZE_META_ZAKAZANE
 from .models import Bay, EnergyNetworkModel
 from .rola_pola_sn import kanoniczna_rola_pola_sn, nazwa_roli_pola_nn, nazwa_roli_pola_sn
 
 #: Kolejność ról przy grupowaniu pól po szynie — pola liniowe wyjściowe przed odgałęźnymi,
 #: te przed wejściowymi (kolejność wyboru wolnego pola startu ciągu; ta sama, którą miała
-#: dawna funkcja `_field_specs_by_bus` operacji domenowych).
+#: dawna funkcja grupująca wpisy pól po szynie w operacjach domenowych).
 _RANGA_ROLI_NA_SZYNIE: dict[str, int] = {"OUT": 0, "FEEDER": 1, "IN": 2}
-
-#: Klucze `Bay.meta`, które MAJĄ typowany odpowiednik na rekordzie pola albo są martwe —
-#: nie wolno ich pisać do `meta` (pisarz odmawia; migracja przenosi). Lista ZAMKNIĘTA,
-#: przypięta testem `tests/enm/test_pola.py`.
-KLUCZE_META_ZAKAZANE: frozenset[str] = frozenset(
-    {
-        "field_role",
-        "terminal_bus_ref",
-        "field_terminal_bus_ref",
-        "gpz_section_id",
-        "bay_ref",
-        "catalog_bindings",
-        "apparatus_catalog_ref",
-        "sn_field_template",
-        "field_ref",
-    }
-)
 
 
 class BladPola(ValueError):

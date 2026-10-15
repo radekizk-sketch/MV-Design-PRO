@@ -37,7 +37,9 @@ meta\[["'](nn_)?field_specs["']\]
 \b_zksn_switchgear_field_specs\b
 \b_zksn_field_specs\b
 \bnazwa_pola_ze_specyfikacji\b
-\bcollect_bays\b
+# Skasowana funkcja read-modelu pola: definicja i wywołanie (tożsamość w pinie innej karty
+# — `test_nazwa_bez_identyfikatora_guard.py` — nie jest użyciem).
+\bcollect_bays\s*\(
 \bKLUCZE_BEZWARUNKOWE_POLA
 \bsn_field_template\b
 \bfield_terminal_bus_ref\b

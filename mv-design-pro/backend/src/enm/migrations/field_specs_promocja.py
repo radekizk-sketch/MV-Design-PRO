@@ -36,9 +36,13 @@ import copy
 from collections.abc import Mapping
 from typing import Any
 
+from enm.migrations.klucze_meta_pola import (
+    KLUCZE_META_MARTWE,
+    KLUCZE_META_NA_POLE,
+    KLUCZE_META_ZAKAZANE,
+)
 from enm.models import EnergyNetworkModel
 from enm.pola import (
-    KLUCZE_META_ZAKAZANE,
     czy_pole_nn,
     napiecia_szyn,
     pola_zksn_z_portow,
@@ -89,18 +93,6 @@ KLUCZE_WPISU: dict[str, str] = {
     "field_terminal_bus_ref": "pole",
     "station_ref": "martwy",
 }
-
-#: Klucze `meta` wpisu przenoszone na pole typowane (`meta.<klucz>` → `Bay.<pole>`).
-KLUCZE_META_NA_POLE: dict[str, str] = {
-    "field_role": "field_role",
-    "terminal_bus_ref": "terminal_bus_ref",
-    "field_terminal_bus_ref": "terminal_bus_ref",
-    "gpz_section_id": "gpz_section_id",
-    "catalog_bindings": "catalog_bindings",
-    "apparatus_catalog_ref": "apparatus_catalog_ref",
-}
-#: Klucze `meta` wpisu kasowane jako martwe (dubel `ref_id`/`bay_ref`, dawny rekord).
-KLUCZE_META_MARTWE: frozenset[str] = frozenset({"bay_ref", "field_ref", "sn_field_template"})
 
 #: KOMPLET odwołań elementów modelu do pola (inwentarz klasy, karta W5-B): przekładnik
 #: wskazuje pole typowanym `Measurement.bay_ref`; aparat pola — `meta.bay_ref` albo
@@ -290,7 +282,7 @@ def _oczysc_meta_rekordu(rekord: dict[str, Any]) -> dict[str, Any]:
     odpowiednikiem przechodzą na pole typowane, martwe znikają; potem walidacja kontraktem."""
     surowe_meta = rekord.get("meta")
     meta: dict[str, Any] = surowe_meta if isinstance(surowe_meta, dict) else {}
-    if not (set(meta) & (KLUCZE_META_ZAKAZANE)):
+    if not (set(meta) & KLUCZE_META_ZAKAZANE):
         return waliduj_rekord_pola(rekord)
     nowe_meta: dict[str, Any] = {}
     for klucz, wartosc in meta.items():

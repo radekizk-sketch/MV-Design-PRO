@@ -20,6 +20,11 @@ from typing import Any
 
 import pytest
 from enm.migrations.field_specs_promocja import BladMigracjiPol, migruj, wymaga_migracji
+from enm.migrations.klucze_meta_pola import (
+    KLUCZE_META_MARTWE,
+    KLUCZE_META_NA_POLE,
+    KLUCZE_META_ZAKAZANE,
+)
 from enm.models import EnergyNetworkModel
 from enm.pola import czy_pole_nn, pola_nn, zacisk_pola
 from enm.store import LegacyFieldSpecsError, przygotuj_model_po_odczycie, reset_enm_store, set_enm
@@ -202,6 +207,22 @@ def test_iloczyn_migracji_wpisu_stacji(klucz: str, nazwa: str, scalenie: str, me
     assert dane["substations"][0]["meta"] == {"inny_klucz": 1}
     # Idempotencja: drugi przebieg zwraca TEN SAM obiekt.
     assert migruj(po) == (po, False)
+
+
+def test_dawne_klucze_meta_pola_lista_zamknieta() -> None:
+    """Deklaracja „lista ZAMKNIĘTA" przypięta dosłownie: klucze `meta` wpisu z typowanym
+    odpowiednikiem na rekordzie `Bay` (przenoszone) i martwe (dawny identyfikator, dawna kopia
+    szablonu pola). Ten sam zbiór odmawia pisarz `enm.pola` (test parami w `test_pola.py`)."""
+    assert KLUCZE_META_NA_POLE == {
+        "field_role": "field_role",
+        "terminal_bus_ref": "terminal_bus_ref",
+        "field_terminal_bus_ref": "terminal_bus_ref",
+        "gpz_section_id": "gpz_section_id",
+        "catalog_bindings": "catalog_bindings",
+        "apparatus_catalog_ref": "apparatus_catalog_ref",
+    }
+    assert frozenset({"bay_ref", "field_ref", "sn_field_template"}) == KLUCZE_META_MARTWE
+    assert len(KLUCZE_META_ZAKAZANE) == 9
 
 
 @pytest.mark.parametrize("klucz", POZIOMY)

@@ -25,6 +25,7 @@ from enm.domain_operations import append_station_on_endpoint, execute_domain_ope
 from enm.migrations.field_specs_promocja import (
     KLUCZ_FIELD_SPECS as KLUCZ_SN,
 )
+from enm.migrations.klucze_meta_pola import KLUCZE_META_ZAKAZANE
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji, pola_stacji
 
@@ -448,7 +449,7 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
     assert {bay["bay_role"] for bay in station_bays} >= {"IN", "OUT", "TR"}
     assert all(bay.get("equipment_refs") for bay in station_bays)
     out_bay = next(bay for bay in station_bays if bay["bay_role"] == "OUT")
-    # Szablon pola jest polem rekordu (dawniej kopia wpisu w `meta.sn_field_template`).
+    # Szablon pola jest polem rekordu (dawniej kopia wpisu w `meta` stacji).
     assert out_bay["bay_template_ref"] == "tpl-line-out"
 
 
@@ -556,8 +557,8 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
     field_terminal_ref = out_field["terminal_bus_ref"]
     assert main_bus_ref == endpoint
     assert field_terminal_ref != main_bus_ref
-    assert "terminal_bus_ref" not in out_field["meta"]
-    assert "field_terminal_bus_ref" not in out_field["meta"]
+    # Żaden dawny klucz `meta` z typowanym odpowiednikiem (zacisk, rola, wiązania) nie wraca.
+    assert not set(out_field["meta"]) & KLUCZE_META_ZAKAZANE
 
     response_continue = execute_domain_operation(
         appended,

@@ -8,7 +8,7 @@ odtąd JEDEN graf (LV-INV-12), a rekord pola niesie swój aparat (`equipment_ref
 idempotentna (per pole, nie per stacja — patrz docstring modułu) i podnosi rewizję modelu
 DOKŁADNIE RAZ.
 
-Dawny test `tests/enm/migrations/test_nn_field_specs_promocja_aparat.py` (8 przypadków
+Dawny test promocji aparatu pola nN z dawnego słownika `meta` stacji (8 przypadków
 wołających nieistniejącą funkcję `_materializuj_aparat`) skasowany w karcie W5-B; jego
 intencja — {odmowa danych pozycji spoza katalogu bez wyjątku, brak wiązania = brak
 materializacji, błąd programu wybucha} — jest przypięta testami niżej, na realnej ścieżce
@@ -548,7 +548,7 @@ def test_w061_nazywa_pole_i_stacje_a_akcja_wskazuje_aparat_i_pole() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Intencja skasowanego `test_nn_field_specs_promocja_aparat.py` (karta #151) na realnej
+# Intencja skasowanego dawnego testu promocji aparatu nN (karta #151) na realnej
 # ścieżce wiązania: {odmowa danych, brak wiązania, błąd programu} — iloczyn z nośnikiem.
 # ---------------------------------------------------------------------------
 

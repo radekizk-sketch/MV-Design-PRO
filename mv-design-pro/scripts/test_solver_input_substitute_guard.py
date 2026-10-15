@@ -1725,7 +1725,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta W5-B (2026-10-15): 4116 -> 4122 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym (`f3c435b66`, `git archive`), roznica zbiorow: +7
+    # (`branch_point_port_id`, `branch_point_ref`, `config_id`, `metadane_pochodzenia`,
+    # `surge_arresters`, `terminal_bus_ref`, `wybor_bloku` — typowany rekord pola `Bay` w
+    # `enm/models.py` jako jedyny nosnik pol SN/nN/ZKSN), -1 (`field_spec` — slownik wpisu pola
+    # w `application/analyses/der_sn_track.py` zastapiony rekordem `bays`). PASS niezmieniony
+    # (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4122." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,7 +1910,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-B (2026-10-15): 561 -> 564 (+3 `enm/pola.py` — jeden akcesor/builder/pisarz
+        # pola, `enm/migrations/field_specs_promocja.py` — migracja dawnych slownikow pol przy
+        # wczytaniu, `enm/migrations/klucze_meta_pola.py` — dawne klucze `meta` pola, jedno
+        # zrodlo pisarza i migracji; zmiana nazwy promocji aparatow nN bez zmiany liczby).
+        # POMIAR guardem na drzewie karty.
+        "Przeskanowano 564 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2071,7 +2083,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
         # BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta W5-B (2026-10-15): enm 58 -> 61 (+3: `pola.py`, `migrations/field_specs_promocja.py`,
+        # `migrations/klucze_meta_pola.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem.
+        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

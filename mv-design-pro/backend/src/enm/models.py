@@ -1197,7 +1197,7 @@ class Bay(ENMElement):
     # rozróżnia np. pole odgałęźne (OUT + LINIA_ODG) od wyjściowego ciągu (OUT + LINIA_OUT).
     field_role: str | None = None
     # Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE). JEDYNY nośnik zacisku
-    # (dawne `meta.terminal_bus_ref`/`meta.field_terminal_bus_ref` wpisu).
+    # (dawne klucze zacisku w `meta` wpisu — przenosi je migracja przy wczytaniu).
     terminal_bus_ref: str | None = None
     # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5): układ energii vs pomiar
     # napięcia szyn; rodzaj układu pomiarowego energii.

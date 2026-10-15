@@ -21,7 +21,8 @@ from typing import Any
 
 import pytest
 from enm import pola as akcesor
-from enm.models import EnergyNetworkModel
+from enm.migrations import klucze_meta_pola
+from enm.models import Bay, EnergyNetworkModel
 from enm.topology_ops import _all_refs_set
 
 POZIOMY = ("SN", "nN", "ZKSN")
@@ -143,22 +144,17 @@ def test_pola_wg_szyny_kolejnosc_rol_i_identyfikatorow() -> None:
     assert _refy(akcesor.pola_wg_szyny(enm)["sn"]) == ["a", "b1", "b2", "c", "d"]
 
 
-def test_klucze_meta_zakazane_lista_zamknieta() -> None:
-    """Deklaracja „lista ZAMKNIĘTA" przypięta: każdy klucz ma typowany odpowiednik na
-    rekordzie `Bay` albo jest martwy (dawny identyfikator, dawny rekord szablonu)."""
-    assert akcesor.KLUCZE_META_ZAKAZANE == frozenset(
-        {
-            "field_role",
-            "terminal_bus_ref",
-            "field_terminal_bus_ref",
-            "gpz_section_id",
-            "bay_ref",
-            "catalog_bindings",
-            "apparatus_catalog_ref",
-            "sn_field_template",
-            "field_ref",
-        }
+def test_klucze_meta_zakazane_z_jednego_zrodla_z_migracja() -> None:
+    """Predykaty parami: pisarz odmawia DOKŁADNIE tych kluczy `meta`, które migracja przy
+    wczytaniu przenosi na pola typowane albo kasuje jako martwe — jeden obiekt z jednego
+    modułu, nie dwie listy, które „dziś się zgadzają". Dosłowną listę (dawne nazwy kluczy)
+    przypina test migracji `tests/enm/migrations/test_field_specs_promocja.py`."""
+    assert akcesor.KLUCZE_META_ZAKAZANE is klucze_meta_pola.KLUCZE_META_ZAKAZANE
+    assert akcesor.KLUCZE_META_ZAKAZANE == (
+        frozenset(klucze_meta_pola.KLUCZE_META_NA_POLE) | klucze_meta_pola.KLUCZE_META_MARTWE
     )
+    # Każdy klucz przenoszony trafia na ISTNIEJĄCE pole typowane rekordu `Bay`.
+    assert set(klucze_meta_pola.KLUCZE_META_NA_POLE.values()) <= set(Bay.model_fields)
 
 
 @pytest.mark.parametrize("klucz", sorted(akcesor.KLUCZE_META_ZAKAZANE))

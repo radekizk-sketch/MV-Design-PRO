@@ -8,6 +8,9 @@ scripts/grep_zero_guard.py
 scripts/test_grep_zero_guard.py
 # W5-B: JEDYNE miejsca znające dawne klucze pól — migracja przy wczytaniu i jej test.
 backend/src/enm/migrations/field_specs_promocja.py
+backend/src/enm/migrations/klucze_meta_pola.py
 backend/tests/enm/migrations/test_field_specs_promocja.py
 scripts/meta_field_specs_resurrection_guard.py
 scripts/test_meta_field_specs_resurrection_guard.py
+# Guard ścieżek skasowanych niesie nazwę skasowanego modułu migracji (wpis rejestru kasacji).
+scripts/legacy_public_path_guard.py
