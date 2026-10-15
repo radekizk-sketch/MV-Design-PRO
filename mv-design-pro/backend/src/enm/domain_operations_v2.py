@@ -5114,7 +5114,7 @@ def _dodaj_pole_zrodla_sn(
     nazwa = nazwa_nadana(source_field_payload.get("field_name")) or _nazwa_z_klasa_szyny(
         new_enm, szyna_sn_ref, "Pole", technology, "{klasa}"
     )
-    tor = _utworz_tor_pola_zrodlowego_sn(
+    model_z_torem, blad_toru = _utworz_tor_pola_zrodlowego_sn(
         new_enm,
         field_ref=field_ref,
         terminal_bus_ref=terminal_bus_ref,
@@ -5129,7 +5129,6 @@ def _dodaj_pole_zrodla_sn(
         tagi_aparatu=["gpz_field_device", "source_field_device"],
         kod_bledu="converter",
     )
-    tor, blad_toru = tor
     if blad_toru is not None:
         # Zacisk/aparat o identyfikatorze z ziarna pola już istnieje — błąd programu (ziarno
         # liczy kolejne pole źródłowe szyny), nie odmowa danych (karta #151).
@@ -5137,7 +5136,7 @@ def _dodaj_pole_zrodla_sn(
             str(blad_toru.get("error_code")), str(blad_toru.get("error")), [field_ref]
         )
     dodaj_pole(
-        tor,
+        model_z_torem,
         zbuduj_pole(
             ref_id=field_ref,
             name=nazwa,

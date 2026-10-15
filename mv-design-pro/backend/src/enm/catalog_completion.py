@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from hashlib import sha256
-from typing import Any
+from typing import Any, Literal
 
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import (
@@ -38,7 +38,7 @@ DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
 #: parytet modułu z katalogiem, nie odwrotnie.
 DEFAULT_LOAD_KW = 30.0
 DEFAULT_LOAD_COS_PHI = 0.92
-DEFAULT_ZKSN_SWITCH_STATE = "closed"
+DEFAULT_ZKSN_SWITCH_STATE: Literal["open", "closed"] = "closed"
 CATALOG_VERSION_DEFAULT = "2026.01"
 
 
