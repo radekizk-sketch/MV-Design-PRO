@@ -155,10 +155,14 @@ def test_certyfikat_zgodnosci_daje_certification_nie_sekcje_fizyczne(
         for przestrzen, typ_id, oceny in _wszystkie(katalog)
         if dowod_certyfikatu_ptpiree(dane_typu(katalog, przestrzen, typ_id).pola) is not None
     ]
-    # Pomiar 2026-09-23: jeden typ z pozycją wykazu PTPiREE (CONVERTER i jego projekcja PV).
+    # Pomiar 2026-10-15: dwa typy z pozycją wykazu PTPiREE (CONVERTER i projekcja PV) —
+    # karta referencyjna i karta producenta SUN2000-330KTL-H1 (karta
+    # KATALOG-KOMPLETNY-PROWENIENCJA).
     assert sorted((p, t) for p, t, _ in powiazane) == [
         ("CONVERTER", TYP_REFERENCYJNY),
+        ("CONVERTER", "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv"),
         ("ZRODLO_NN_PV", TYP_REFERENCYJNY),
+        ("ZRODLO_NN_PV", "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv"),
     ]
     for _, _, oceny in powiazane:
         statusy = _statusy(oceny)

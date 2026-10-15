@@ -1,12 +1,15 @@
-"""Katalog 12 referencyjnych turbin wiatrowych (PR-11).
+"""Katalog referencyjnych turbin wiatrowych — 19 pozycji.
 
-Każda turbina ma:
-- producenta i model
-- typ konwertera (DFIG / full_converter / SCIG)
-- moc znamionową
-- napięcie generatora
-- parametry zwarciowe
-- krzywe FRT/HVRT (placeholder do PR-16 RMS solver)
+Kazda pozycja ma producenta i model (etykieta), typ przeksztaltnika (DFIG /
+full_converter / SCIG / hydraulic / WRIG), moc znamionowa, napiecie generatora,
+geometrie wirnika, predkosci wiatru i parametry zwarciowe (I_k'' i wklad pod FRT w p.u.).
+
+PROWENIENCJA (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15): zadna pozycja nie ma
+dolaczonej karty producenta — wszystkie sa REFERENCYJNYM modelem obliczeniowym
+(`source_reference`, `verification_status`; pola wymagane). Turbina ok. 1 MW
+(EWT DW52/54/61 900 kW, Enercon E-44 900 kW) ZABLOKOWANA danymi: dostepne zrodla
+producentow nie podaja napiecia generatora ani parametrow zwarciowych, ktorych ta
+pozycja wymaga.
 """
 
 from __future__ import annotations
@@ -14,7 +17,13 @@ from __future__ import annotations
 from typing import Literal
 
 from network_model.brak_zasobu import BrakZasobuError
+from network_model.catalog.mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+from network_model.catalog.types import CatalogVerificationStatus
 from pydantic import BaseModel
+
+#: Wszystkie pozycje: liczby elektryczne (napiecie generatora, I_k'', wklad pod FRT)
+#: nie maja dolaczonego dokumentu producenta — model obliczeniowy z etykieta modelu.
+_STATUS_REFERENCYJNY = CatalogVerificationStatus.REFERENCYJNY.value
 
 
 class WindTurbineCatalogEntry(BaseModel):
@@ -31,11 +40,15 @@ class WindTurbineCatalogEntry(BaseModel):
     cut_in_wind_speed_m_s: float
     cut_out_wind_speed_m_s: float
     rated_wind_speed_m_s: float
-    # Parametry elektryczne (uproszczone — pełne w PR-16)
+    # Parametry elektryczne zwarciowe [p.u. mocy znamionowej]
     short_circuit_current_pu: float  # I_k" w p.u. mocy znamionowej
     fault_current_contribution_pu: float  # I_short pod FRT
     voltage_control_capable: bool
     p_f_droop_capable: bool
+    # Proweniencja (karta KATALOG-KOMPLETNY-PROWENIENCJA) — pola WYMAGANE: pozycja bez
+    # zrodla nie powstanie. Te same nazwy i znaczenie co w pozostalych katalogach.
+    source_reference: str
+    verification_status: str
     # Profil dynamiczny IEC 61400-27 (default per converter_type, override możliwy)
     dynamic_profile_id: str | None = None
     """Referencja do profilu w `der_dynamic` (default mapowany z converter_type).
@@ -45,7 +58,7 @@ class WindTurbineCatalogEntry(BaseModel):
     """
 
 
-# 12 referencyjnych turbin (per brief 2 §12 Karta 1):
+# Pozycje referencyjne (model obliczeniowy z etykieta producenta i modelu):
 
 WIND_TURBINES: list[WindTurbineCatalogEntry] = [
     # === Vestas (Dania) ===
@@ -65,6 +78,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.2,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="vestas_v112_3_45mw",
@@ -82,6 +97,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="vestas_v150_4_2mw",
@@ -99,6 +116,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Siemens Gamesa (Hiszpania/Niemcy) ===
     WindTurbineCatalogEntry(
@@ -117,6 +136,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="siemens_sg_5_0_155",
@@ -134,6 +155,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="siemens_sg_6_6_170",
@@ -151,6 +174,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === GE (USA) ===
     WindTurbineCatalogEntry(
@@ -169,6 +194,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.2,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="ge_5_0_158",
@@ -186,6 +213,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Nordex (Niemcy) ===
     WindTurbineCatalogEntry(
@@ -204,6 +233,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.2,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="nordex_n149_5_7mw",
@@ -221,6 +252,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Enercon (Niemcy) ===
     WindTurbineCatalogEntry(
@@ -239,6 +272,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.0,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="enercon_e138_4_2mw",
@@ -256,6 +291,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.0,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Vestas EnVentus (2024+) ===
     WindTurbineCatalogEntry(
@@ -274,6 +311,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Siemens Gamesa SG 5.X-145 / SG 6.6-170 ===
     WindTurbineCatalogEntry(
@@ -292,6 +331,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     WindTurbineCatalogEntry(
         catalog_id="siemens_gamesa_sg_6p6_170_6p6mw",
@@ -309,6 +350,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === GE Cypress / Vernova Sierra (2024+) ===
     WindTurbineCatalogEntry(
@@ -327,6 +370,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Goldwind (Chiny) — full converter PMSM, popularne globalnie ===
     WindTurbineCatalogEntry(
@@ -345,6 +390,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === MingYang (offshore-class, full converter SCADA-grade) ===
     WindTurbineCatalogEntry(
@@ -363,6 +410,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.1,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
     # === Senvion (legacy DFIG) — używana w Polsce ===
     WindTurbineCatalogEntry(
@@ -381,6 +430,8 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         fault_current_contribution_pu=1.2,
         voltage_control_capable=True,
         p_f_droop_capable=True,
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+        verification_status=_STATUS_REFERENCYJNY,
     ),
 ]
 

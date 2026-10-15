@@ -38,7 +38,23 @@ from tests.dziedziny import fabryki as f
 #: `unit`: "A" → null i 13 nowych kluczy `jednostka_status`: "NIEUSTALONA" w 8 szablonach;
 #: żadna liczba ani identyfikator. Poprzednia wartość:
 #: ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455.
-ODCISK_SPRZED_KARTY = "a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6"
+#: Karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15): odcisk przeliczony po nadaniu każdej
+#: pozycji źródła i statusu z jego rodzaju oraz po zastąpieniu szacunku transformatorów
+#: blokowych pułapami Tier 2. Dowód liść po liściu (zrzut kanoniczny z wyciętymi polami karty
+#: projekcji, baza `c136c6bbd` vs drzewo karty):
+#: transformer_types +85 / −70 identyfikatorów (−70: 4,0/5,0 MVA i strona dolna 3,15/6/6,3 kV
+#: dawnego szacunku; +85: 48 pozycji Tier 2 0,4 kV, 36 blokowych 0,385/0,434 kV, karta GEAFOL
+#: Neo), 122 zmienione: liczby WYŁĄCZNIE w 72 zachowanych pozycjach blokowych
+#: (0,5/0,69/0,8/1,0 kV × 500–3150 kVA × 15/20 kV: p0_kw, pk_kw, i0_percent po 72,
+#: uk_percent 24), teksty source_reference 122, verification_note 122, name 72,
+#: manufacturer 72, cooling_class 75, statusy 50+50 (jednostki istniejące i polskie);
+#: converter_types +7 / −1 (karty SMA/Huawei; bess_pcs_sma_2200), 175 zmienionych wyłącznie
+#: tekstowo (source_reference 175, verification_note 37, verification_status 3,
+#: card_field_status quality/source_ref/note po 33, nowy klucz e_kwh 1);
+#: pv_inverter_types +7, 66 zmienionych tekstowo; bess_inverter_types −1, 63 zmienione
+#: tekstowo. Poprzednia wartość:
+#: a5337e4acef0664f0d68b262ae3d62f5169e994c084fc7c08091d96443111dd6.
+ODCISK_SPRZED_KARTY = "af5870bada5cec0c5e006883de568982ba1c2874335a50200426444791a563f0"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -62,6 +78,13 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-bess-card-sungrow-sc2000ud-mv",
         "conv-pv-card-huawei-sun2000-215ktl",
         "conv-pv-card-sungrow-sg3150u-mv",
+        "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+        "conv-pv-nn-sma-sc2200-0p385kv",
+        "conv-pv-nn-sma-sc2475-0p434kv",
+        "conv-pv-nn-sma-sc4000up-0p6kv",
+        "conv-pv-nn-sma-sc4200up-0p63kv",
+        "conv-pv-nn-sma-sc4400up-0p66kv",
+        "conv-pv-nn-sma-sc4600up-0p69kv",
     ]
     assert _odcisk_zrzutu(zrzut) == ODCISK_SPRZED_KARTY
 
@@ -69,7 +92,7 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
 def test_pole_skasowane_zostaje_w_zrzucie_jako_null() -> None:
     zrzut = zrzut_kanoniczny(get_default_mv_catalog())
     przeksztaltniki = zrzut["converter_types"]
-    assert len(przeksztaltniki) == 176
+    assert len(przeksztaltniki) == 182
     assert all(p["harmonic_spectrum_percent"] is None for p in przeksztaltniki.values())
 
 

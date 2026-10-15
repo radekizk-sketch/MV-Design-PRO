@@ -153,6 +153,7 @@
       "czego_brakuje": [],
       "zastrzezenia": [
         "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+        "Dana przyjęta bez walidacji: moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania = 2 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
         "Zakres ważności: punkty krzywej zdolności P–Q producenta z karty katalogowej typu wobec prostokątnego wymagania zakresu mocy biernej profilu operatora — wynik nie obejmuje: obszar między punktami krzywej producenta (porównanie wyłącznie w punktach krzywej); zależność zdolności mocy biernej od napięcia sieci (krzywa producenta bez parametru napięcia)."
       ]
     },
@@ -162,8 +163,18 @@
       "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
       "status_modelu": "NIE_DOTYCZY",
       "status_danych": {
-        "stan": "ZWALIDOWANE",
-        "dane_przyjete": []
+        "stan": "UNVALIDATED_INPUT",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania",
+            "wartosc": {
+              "wartosc": 2.0,
+              "jednostka": "MW"
+            },
+            "powod_pl": "jakość danej karty katalogowej: oszacowane",
+            "jakosc": "ESTIMATED"
+          }
+        ]
       },
       "odniesienie": "karta katalogowa typu conv-bess-card-sungrow-sc2000ud-mv (krzywa zdolności P–Q producenta)",
       "w_domenie_walidacji": null,

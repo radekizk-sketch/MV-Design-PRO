@@ -109,9 +109,16 @@ def test_list_block_transformers(app_client):
     assert "PV" in der_kinds
     assert "BESS" in der_kinds
     assert "FW" in der_kinds
-    # Co najmniej 1 SN/SN dla turbinowni FW
-    mv_to_mv = [b for b in body if b["is_mv_to_mv"]]
-    assert len(mv_to_mv) > 0
+    # Każda pozycja niesie proweniencję katalogu transformatorów i jawną flagę SN/SN.
+    for item in body:
+        assert isinstance(item["is_mv_to_mv"], bool)
+        assert item["source_reference"].strip()
+        assert item["verification_status"] in {"REFERENCYJNY", "ZWERYFIKOWANY"}
+    # Karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15): dawna pozycja SN/SN 15/6,3 kV
+    # 10 MVA miała parametry szacowane bez źródła — usunięta. Pozycja SN/SN jest
+    # ZABLOKOWANA danymi (brak źródła u_k i strat dla strony dolnej > 1,1 kV); pin
+    # nieobecności zmienia się świadomie, gdy dojdzie karta producenta.
+    assert [b for b in body if b["is_mv_to_mv"]] == []
 
 
 def test_list_mv_neutral_groundings(app_client):

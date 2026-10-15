@@ -128,16 +128,18 @@ def test_zadna_rodzina_zywego_katalogu_nie_jest_pusta() -> None:
 
 
 def test_pomiar_kart_widmowych_zywego_katalogu() -> None:
-    """Pomiar 2026-09-23: 0 kart, 0 ze 176 typów przekształtników z kartą."""
+    """Pomiar 2026-10-15: 0 kart, 0 ze 182 typów przekształtników z kartą (176 z
+    2026-09-23 − SCS 2200 bez karty + 7 kart producentów, karta
+    KATALOG-KOMPLETNY-PROWENIENCJA)."""
     pomiar = zmierz_karty_widmowe()
     assert pomiar.to_dict() == {
         "liczba_kart": 0,
-        "liczba_typow": 176,
+        "liczba_typow": 182,
         "typy_z_karta": 0,
         "karty_wg_statusu": [],
     }
     blok = renderuj_blok_generowany(zmierz_katalog(), pomiar)
-    assert "Typów przekształtników z co najmniej jedną kartą widmową: 0 z 176" in blok
+    assert "Typów przekształtników z co najmniej jedną kartą widmową: 0 z 182" in blok
 
 
 def test_pomiar_kart_widmowych_liczy_typy_i_statusy() -> None:

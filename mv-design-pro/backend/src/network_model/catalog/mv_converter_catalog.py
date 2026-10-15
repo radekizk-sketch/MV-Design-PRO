@@ -21,31 +21,62 @@ from network_model.pochodne import mwh_na_kwh
 from .mv_ptpiree_catalog import annotate_with_ptpiree_status
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
+#: Proweniencja rekordow BEZ karty producenta (karta KATALOG-KOMPLETNY-PROWENIENCJA,
+#: 2026-10-15). Rodziny „MV-DESIGN-PRO reference" i rekordy z marka, ale z liczbami
+#: wyliczonymi regula (S_n = 1,1·P, |Q| = 0,36·P, cos φ 0,9) — to modele obliczeniowe,
+#: nie produkty. Status REFERENCYJNY wyklucza je z doboru szablonow
+#: (`dopuszczona_do_doboru_szablonu`).
+ZRODLO_MODELU_REFERENCYJNEGO = (
+    "Referencyjny model obliczeniowy MV-DESIGN-PRO — nie produkt: wartości są założeniami "
+    "obliczeniowymi, nie danymi karty katalogowej; producent i model, jeśli podane, są "
+    "wyłącznie etykietą"
+)
+_NOTA_MODELU_REFERENCYJNEGO = (
+    "Referencyjny model obliczeniowy — nie egzemplarz producenta; wykluczony z doboru "
+    "szablonów stacji. Parametry urządzenia potwierdza karta producenta przy doborze "
+    "wykonawczym."
+)
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.REFERENCYJNY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.REFERENCYJNY_V1.value
 
 
-def _quality(note: str) -> dict[str, Any]:
+def dopuszczona_do_doboru_szablonu(params: dict[str, Any]) -> bool:
+    """Jedno zrodlo prawdy: czy pozycja przeksztaltnika moze zostac dobrana przez
+    szablon stacji. Dopuszczona jest WYLACZNIE pozycja z karta producenta
+    (`verification_status == ZWERYFIKOWANY`); model referencyjny, deklaracja bez
+    dokumentu i pozycja czesciowo zweryfikowana — nie."""
+    return params.get("verification_status") == CatalogVerificationStatus.ZWERYFIKOWANY.value
+
+
+def _quality(
+    note: str,
+    *,
+    source_reference: str,
+    verification_status: str = _DEFAULT_VERIFICATION_STATUS,
+    catalog_status: str = _DEFAULT_CATALOG_STATUS,
+) -> dict[str, Any]:
     return {
-        "verification_status": _DEFAULT_VERIFICATION_STATUS,
-        "source_reference": _DEFAULT_SOURCE_REFERENCE,
-        "catalog_status": _DEFAULT_CATALOG_STATUS,
+        "verification_status": verification_status,
+        "source_reference": source_reference,
+        "catalog_status": catalog_status,
         "contract_version": CATALOG_CONTRACT_VERSION,
         "verification_note": note,
     }
 
 
 def _apply_quality_defaults(record: dict[str, Any]) -> None:
+    """Uzupelnia statusy domyslne; ZRODLA nie uzupelnia — rekord bez `source_reference`
+    jest bledem katalogu (nie ma „zrodla domyslnego")."""
     params = record.setdefault("params", {})
+    if not params.get("source_reference"):
+        raise ValueError(
+            f"catalog.source_missing: pozycja '{record.get('id')}' nie ma źródła danych "
+            "(source_reference)"
+        )
     params.setdefault("verification_status", _DEFAULT_VERIFICATION_STATUS)
-    params.setdefault("source_reference", _DEFAULT_SOURCE_REFERENCE)
     params.setdefault("catalog_status", _DEFAULT_CATALOG_STATUS)
     params.setdefault("contract_version", CATALOG_CONTRACT_VERSION)
-    params.setdefault(
-        "verification_note",
-        "Referencyjny profil przemysłowy V1 z jawnym statusem i źródłem.",
-    )
+    params.setdefault("verification_note", _NOTA_MODELU_REFERENCYJNEGO)
 
 
 def _converter_record(
@@ -62,11 +93,14 @@ def _converter_record(
     cosphi_max: float,
     manufacturer: str,
     model: str,
+    source_reference: str,
+    verification_status: str = _DEFAULT_VERIFICATION_STATUS,
+    catalog_status: str = _DEFAULT_CATALOG_STATUS,
     e_kwh: float | None = None,
     control_mode: str | None = None,
     grid_code: str | None = None,
     dynamic_profile_id: str | None = None,
-    note: str = "Referencyjny profil przemysłowy V1 z jawnym statusem i źródłem.",
+    note: str = _NOTA_MODELU_REFERENCYJNEGO,
     # Inverter datasheet-card ("karta falownika") optional fields. All keyword,
     # all default to absent so existing records stay byte-identical.
     p_installed_mw: float | None = None,
@@ -98,7 +132,12 @@ def _converter_record(
         "cosphi_max": cosphi_max,
         "manufacturer": manufacturer,
         "model": model,
-        **_quality(note),
+        **_quality(
+            note,
+            source_reference=source_reference,
+            verification_status=verification_status,
+            catalog_status=catalog_status,
+        ),
     }
     if e_kwh is not None:
         params["e_kwh"] = e_kwh
@@ -157,6 +196,13 @@ _FLICKER_LITERATURE_REF = (
 )
 
 
+def _zrodlo_deklarowane(dokument: str) -> str:
+    return (
+        f"Deklarowane: {dokument} — dokument nie jest dołączony do repozytorium "
+        "(niezweryfikowany)"
+    )
+
+
 def _reference_card_field_status(
     *,
     datasheet_ref: str,
@@ -164,11 +210,15 @@ def _reference_card_field_status(
     power_hierarchy_fields: tuple[str, ...] = (),
     bandwidth_fields: tuple[str, ...] = (),
     flicker_fields: tuple[str, ...] = (),
+    assumption_fields: dict[str, str] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Build a per-card data-quality override declaring explicit provenance.
 
-    Ratings / power-hierarchy taken from the named datasheet => DATASHEET (with
-    ``source_ref`` = the datasheet). Controller bandwidths => ESTIMATED with a
+    Ratings / power-hierarchy from a DECLARED datasheet that is not attached to the
+    repository => ESTIMATED (``source_ref`` names the declared document as such; karta
+    KATALOG-KOMPLETNY-PROWENIENCJA: a declaration without the document is not
+    datasheet-grade). Fields that are assumptions of the record (DC oversizing,
+    storage capacity) => ESTIMATED with the assumption named. Controller bandwidths => ESTIMATED with a
     literature citation (never DATASHEET — anti-fabrication). Flicker coefficient
     => ESTIMATED (typical-class analytical value, methodology citation). The
     returned map is the serialized {field_name -> CardFieldStatus.to_dict()} form
@@ -178,9 +228,13 @@ def _reference_card_field_status(
     for name in rating_fields + power_hierarchy_fields:
         status[name] = {
             "field_name": name,
-            "quality": "DATASHEET",
-            "source_ref": datasheet_ref,
+            "quality": "ESTIMATED",
+            "source_ref": _zrodlo_deklarowane(datasheet_ref),
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, "
+            "niezweryfikowany",
         }
+    for name, nota in (assumption_fields or {}).items():
+        status[name] = {"field_name": name, "quality": "ESTIMATED", "note": nota}
     for name in bandwidth_fields:
         status[name] = {
             "field_name": name,
@@ -211,9 +265,10 @@ _REFERENCE_RATING_FIELDS: tuple[str, ...] = (
     "model",
 )
 # Power-hierarchy fields populated on the reference cards (=> DATASHEET).
-_REFERENCE_POWER_HIERARCHY_FIELDS: tuple[str, ...] = (
-    "p_installed_mw",
-    "pn_ac_mw",
+_REFERENCE_POWER_HIERARCHY_FIELDS: tuple[str, ...] = ("pn_ac_mw",)
+#: Moc zainstalowana DC: nadwymiarowanie DC/AC to zalozenie rekordu, nie dana karty AC.
+_NOTA_P_INSTALLED = (
+    "moc zainstalowana DC — założenie nadwymiarowania DC/AC przyjęte w rekordzie, " "nie dana karty"
 )
 # Controller-bandwidth + converter-filter fields carried as typical-class
 # estimates (=> ESTIMATED). The filter L/R join this block because, like the
@@ -266,6 +321,7 @@ def _build_nn_converter_family(
         records.append(
             _converter_record(
                 item_id=f"conv-{kind.lower()}-nn-{power_token}mw-{voltage_token}kv",
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
                 name=f"{name_prefix} {power_mw:g} MW / {voltage_kv:g} kV nN",
                 kind=kind,
                 un_kv=voltage_kv,
@@ -306,6 +362,7 @@ CONVERTER_PV_NN.extend(
     [
         _converter_record(
             item_id="pv_inv_catalog_50",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="Pakiet katalogowy PV 50 50 kW / 0.4 kV",
             kind="PV",
             un_kv=0.4,
@@ -322,6 +379,7 @@ CONVERTER_PV_NN.extend(
         ),
         _converter_record(
             item_id="pv_inv_sma_2500",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="SMA Sunny Central 2500-EV 2.5 MW / 0.69 kV",
             kind="PV",
             un_kv=0.69,
@@ -338,6 +396,7 @@ CONVERTER_PV_NN.extend(
         ),
         _converter_record(
             item_id="pv_inv_huawei_185",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="Huawei SUN2000-185KTL 185 kW / 0.4 kV",
             kind="PV",
             un_kv=0.4,
@@ -354,6 +413,7 @@ CONVERTER_PV_NN.extend(
         ),
         _converter_record(
             item_id="pv_inv_system_1000",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="Pakiet katalogowy PV 1000 1 MW / 0.69 kV",
             kind="PV",
             un_kv=0.69,
@@ -370,6 +430,7 @@ CONVERTER_PV_NN.extend(
         ),
         _converter_record(
             item_id="pv_inv_fimer_3000",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="FIMER PVS-3000-CSE 3 MW / 0.69 kV",
             kind="PV",
             un_kv=0.69,
@@ -388,6 +449,193 @@ CONVERTER_PV_NN.extend(
 )
 
 
+# =============================================================================
+# KARTY PRODUCENTOW — FALOWNIKI PV PO STRONIE nN (karta KATALOG-KOMPLETNY-PROWENIENCJA)
+# =============================================================================
+#
+# Kazda wartosc z karty katalogowej producenta (cytat z adresem i data dostepu w
+# `source_reference`, per pole w `card_field_status`). Moc bierna: karty podaja zakres
+# cos φ 0,8 przewzbudzenie – 0,8 niedowzbudzenie PRZY MOCY ZNAMIONOWEJ S_n (SMA: „Nominal AC
+# power at cos φ = 0,8" = 0,8·S_n), wiec |Q| = 0,6·S_n — wartosc wpisana liczbowo.
+# Tryb regulacji (`control_mode`) to nastawa projektu, nie dana karty — oznaczony
+# SYSTEM_DEFAULT. Pola, ktorych karty nie podaja (k_sc, kod sieciowy, pasma regulatorow),
+# pozostaja puste.
+
+_ZRODLO_SMA_SC2200 = (
+    "SMA Solar Technology AG, karta „Sunny Central 2200 / 2475” SC2200-2475-DS-en-60, "
+    "tabela „Technical data”; https://files.sma.de/downloads/SC2200-2475-DS-en-60.pdf "
+    "(dostęp 2026-10-15)"
+)
+_ZRODLO_SMA_SC_UP = (
+    "SMA Solar Technology AG, karta „SC 4000 UP / SC 4200 UP / SC 4400 UP / SC 4600 UP” "
+    "SC4xxxUP-DS-en-33, tabela „Technical data” (str. 2–3); "
+    "https://files.sma.de/downloads/SC4xxxUP-DS-en-33.pdf (dostęp 2026-10-15)"
+)
+_ZRODLO_HUAWEI_330KTL = (
+    "Huawei Digital Power, „SUN2000-330KTL-H1/H2 Technical Specification”, kolumna "
+    "SUN2000-330KTL-H1; https://solar.huawei.com/en/products/SUN2000-330KTL-H1-H2/specs "
+    "(dostęp 2026-10-15)"
+)
+
+_POLA_KARTY_PV: tuple[str, ...] = (
+    "un_kv",
+    "sn_mva",
+    "pmax_mw",
+    "qmin_mvar",
+    "qmax_mvar",
+    "cosphi_min",
+    "cosphi_max",
+    "manufacturer",
+    "model",
+)
+
+
+def _status_pol_karty(
+    zrodlo: str, *, pola: tuple[str, ...], nota_q: str
+) -> dict[str, dict[str, Any]]:
+    status: dict[str, dict[str, Any]] = {
+        name: {"field_name": name, "quality": "DATASHEET", "source_ref": zrodlo} for name in pola
+    }
+    for name in ("qmin_mvar", "qmax_mvar"):
+        status[name]["note"] = nota_q
+    status["control_mode"] = {
+        "field_name": "control_mode",
+        "quality": "SYSTEM_DEFAULT",
+        "note": "tryb regulacji mocy biernej jest nastawą projektu; karta podaje zdolność "
+        "(regulowany cos φ), nie tryb",
+    }
+    return status
+
+
+def _karta_pv(
+    *,
+    item_id: str,
+    name: str,
+    model: str,
+    manufacturer: str,
+    un_kv: float,
+    sn_mva: float,
+    pmax_mw: float,
+    q_mvar: float,
+    zrodlo: str,
+    nota: str,
+    nota_q: str,
+    pn_ac_mw: float | None = None,
+) -> dict[str, Any]:
+    pola = _POLA_KARTY_PV + (("pn_ac_mw",) if pn_ac_mw is not None else ())
+    return _converter_record(
+        item_id=item_id,
+        name=name,
+        kind="PV",
+        un_kv=un_kv,
+        sn_mva=sn_mva,
+        pmax_mw=pmax_mw,
+        qmin_mvar=-q_mvar,
+        qmax_mvar=q_mvar,
+        cosphi_min=0.8,
+        cosphi_max=1.0,
+        manufacturer=manufacturer,
+        model=model,
+        source_reference=zrodlo,
+        verification_status=CatalogVerificationStatus.ZWERYFIKOWANY.value,
+        catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
+        control_mode="STALY_COS_PHI",
+        note=nota,
+        pn_ac_mw=pn_ac_mw,
+        card_field_status=_status_pol_karty(zrodlo, pola=pola, nota_q=nota_q),
+    )
+
+
+_NOTA_Q_SMA = (
+    "|Q| = 0,6·S_n: karta podaje moc czynną przy cos φ = 0,8 równą 0,8·S_n "
+    "(„Nominal AC power at cos φ = 0.8”)"
+)
+
+CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
+    _karta_pv(
+        item_id="conv-pv-nn-sma-sc2200-0p385kv",
+        name="SMA Sunny Central 2200 2,2 MVA / 0,385 kV",
+        model="Sunny Central 2200 (SC-2200-10)",
+        manufacturer="SMA",
+        un_kv=0.385,
+        sn_mva=2.2,
+        pmax_mw=2.2,
+        q_mvar=1.32,
+        zrodlo=_ZRODLO_SMA_SC2200,
+        nota=(
+            "Karta: S_n = 2200 kVA przy cos φ = 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy "
+            "cos φ = 0,8, U_n = 385 V (308–462 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
+        ),
+        nota_q=_NOTA_Q_SMA,
+    ),
+    _karta_pv(
+        item_id="conv-pv-nn-sma-sc2475-0p434kv",
+        name="SMA Sunny Central 2475 2,475 MVA / 0,434 kV",
+        model="Sunny Central 2475 (SC-2475-10)",
+        manufacturer="SMA",
+        un_kv=0.434,
+        sn_mva=2.475,
+        pmax_mw=2.475,
+        q_mvar=1.485,
+        zrodlo=_ZRODLO_SMA_SC2200,
+        nota=(
+            "Karta: S_n = 2475 kVA przy cos φ = 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy "
+            "cos φ = 0,8, U_n = 434 V (347–521 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
+        ),
+        nota_q=_NOTA_Q_SMA,
+    ),
+    *[
+        _karta_pv(
+            item_id=f"conv-pv-nn-sma-sc{kva}up-{napiecie_token}kv",
+            name=f"SMA Sunny Central {kva} UP {sn_mva:g} MVA / {un_kv:g} kV",
+            model=f"Sunny Central {kva} UP",
+            manufacturer="SMA",
+            un_kv=un_kv,
+            sn_mva=sn_mva,
+            pmax_mw=sn_mva,
+            q_mvar=q_mvar,
+            zrodlo=_ZRODLO_SMA_SC_UP,
+            nota=(
+                f"Karta: S_n = {kva} kVA przy cos φ = 1 (35 °C), {p08_kw} kW przy cos φ = 0,8, "
+                f"U_n = {un_v} V, I_AC,nom = 3850 A (35 °C), cos φ regulowany 0,8 "
+                "przewzbudzenie – 0,8 niedowzbudzenie. Moc > 3150 kVA: transformator blokowy "
+                "wymaga pozycji powyżej typoszeregu normatywnego (zablokowany danymi)."
+            ),
+            nota_q=_NOTA_Q_SMA,
+        )
+        for kva, sn_mva, un_v, un_kv, napiecie_token, p08_kw, q_mvar in (
+            (4000, 4.0, 600, 0.6, "0p6", 3200, 2.4),
+            (4200, 4.2, 630, 0.63, "0p63", 3360, 2.52),
+            (4400, 4.4, 660, 0.66, "0p66", 3520, 2.64),
+            (4600, 4.6, 690, 0.69, "0p69", 3680, 2.76),
+        )
+    ],
+    _karta_pv(
+        item_id="conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+        name="Huawei SUN2000-330KTL-H1 330 kVA / 0,8 kV",
+        model="SUN2000-330KTL-H1",
+        manufacturer="HUAWEI",
+        un_kv=0.8,
+        sn_mva=0.33,
+        pmax_mw=0.33,
+        q_mvar=0.198,
+        pn_ac_mw=0.3,
+        zrodlo=_ZRODLO_HUAWEI_330KTL,
+        nota=(
+            "Karta: P_n,AC = 300 kW, S_max = 330 kVA, P_max (cos φ = 1) = 330 kW, U_n = 800 V "
+            "(3W + PE), I_n = 216,6 A, I_max = 238,2 A, cos φ regulowany 0,8 LG – 0,8 LD."
+        ),
+        nota_q=(
+            "|Q| = 0,6·S_max: zakres cos φ 0,8 LG – 0,8 LD przy mocy pozornej maksymalnej "
+            "(interpretacja — karta nie podaje Q wprost)"
+        ),
+    ),
+]
+CONVERTER_PV_NN.extend(CONVERTER_PV_NN_KARTY_PRODUCENTOW)
+
+
 CONVERTER_BESS_NN: list[dict[str, Any]] = [
     record
     for _voltage in _NN_INVERTER_VOLTAGES_KV
@@ -402,27 +650,19 @@ CONVERTER_BESS_NN: list[dict[str, Any]] = [
     )
 ]
 
+# Rekord `bess_pcs_sma_2200` (SMA Sunny Central Storage 2200) USUNIETY (karta
+# KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15): napiecie 0,69 kV, cos φ 0,9 i pojemnosc
+# 4400 kWh nie pochodzily z karty (karta SCS1900-2900-DS-en-20: 385 V, Q <= 60 % S,
+# praca czterokwadrantowa, pojemnosci magazynu nie podaje). Poprawny rekord PCS jest
+# ZABLOKOWANY danymi: wyprowadzenie typu BESS (`repository._derive_bess_records`)
+# wymaga `e_kwh` w rekordzie przeksztaltnika, a karta PCS go nie podaje — pojemnosc
+# nalezy do osobnego pakietu baterii (katalog BATERIA_BESS). Wpisanie liczby
+# byloby fabrykacja.
 CONVERTER_BESS_NN.extend(
     [
         _converter_record(
-            item_id="bess_pcs_sma_2200",
-            name="SMA Sunny Central Storage 2200 2.2 MW / 0.69 kV",
-            kind="BESS",
-            un_kv=0.69,
-            sn_mva=_sn_mva_for_power(2.2),
-            pmax_mw=2.2,
-            qmin_mvar=-_reactive_limit(2.2),
-            qmax_mvar=_reactive_limit(2.2),
-            cosphi_min=0.9,
-            cosphi_max=1.0,
-            manufacturer="SMA",
-            model="Sunny Central Storage 2200",
-            e_kwh=4400.0,
-            control_mode="Q_U_DROOP",
-            grid_code="NC_RfG_typ_C",
-        ),
-        _converter_record(
             item_id="bess_pcs_abb_500",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="ABB PCS100 ESS 500 kW / 0.4 kV",
             kind="BESS",
             un_kv=0.4,
@@ -474,6 +714,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
             "cosphi_min": 0.9,
             "cosphi_max": 1.0,
             "manufacturer": "FIMER",
+            "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
             "model": "FIMER utility PV 0.5 MW / 15 kV",
             "control_mode": "STALY_COS_PHI",
             "grid_code": "NC_RfG",
@@ -492,6 +733,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
             "cosphi_min": 0.9,
             "cosphi_max": 1.0,
             "manufacturer": "SMA",
+            "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
             "model": "SMA utility PV 1 MW / 15 kV",
             "control_mode": "STALY_COS_PHI",
             "grid_code": "NC_RfG",
@@ -510,6 +752,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
             "cosphi_min": 0.9,
             "cosphi_max": 1.0,
             "manufacturer": "SUNGROW",
+            "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
             "model": "Sungrow utility PV 2 MW / 15 kV",
             "control_mode": "STALY_COS_PHI",
             "grid_code": "NC_RfG",
@@ -528,6 +771,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
             "cosphi_min": 0.9,
             "cosphi_max": 1.0,
             "manufacturer": "HUAWEI",
+            "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
             "model": "Huawei utility PV 5 MW / 15 kV",
             "control_mode": "STALY_COS_PHI",
             "grid_code": "NC_RfG",
@@ -535,6 +779,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     },
     _converter_record(
         item_id="conv-pv-sma-1p5mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 1.5 MW / 15 kV / SMA",
         kind="PV",
         un_kv=15.0,
@@ -551,6 +796,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-sungrow-3mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 3 MW / 15 kV / Sungrow",
         kind="PV",
         un_kv=15.0,
@@ -567,6 +813,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-sungrow-5mw-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 5 MW / 20 kV / Sungrow",
         kind="PV",
         un_kv=20.0,
@@ -583,6 +830,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-huawei-1p5mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 1.5 MW / 15 kV / Huawei",
         kind="PV",
         un_kv=15.0,
@@ -599,6 +847,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-huawei-3mw-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 3 MW / 20 kV / Huawei",
         kind="PV",
         un_kv=20.0,
@@ -615,6 +864,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-abb-2mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 2 MW / 15 kV / ABB",
         kind="PV",
         un_kv=15.0,
@@ -631,6 +881,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-abb-4mw-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 4 MW / 20 kV / ABB",
         kind="PV",
         un_kv=20.0,
@@ -647,6 +898,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-fronius-1mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 1 MW / 15 kV / Fronius",
         kind="PV",
         un_kv=15.0,
@@ -664,6 +916,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     # === Produkcyjne 1500 V DC + grid-forming (nowoczesne instalacje 2024+) ===
     _converter_record(
         item_id="conv-pv-string-330kw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 330 kW string / 15 kV / SMA",
         kind="PV",
         un_kv=15.0,
@@ -681,6 +934,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-central-2p5mw-1500vdc-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 2.5 MW central 1500 V DC / 15 kV / SMA",
         kind="PV",
         un_kv=15.0,
@@ -698,6 +952,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-power-electronics-3p5mw-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 3.5 MW central / 20 kV / Power Electronics",
         kind="PV",
         un_kv=20.0,
@@ -714,6 +969,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-gfm-2mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 2 MW grid-forming / 15 kV",
         kind="PV",
         un_kv=15.0,
@@ -732,6 +988,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-huawei-7mw-30kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 7 MW / 30 kV / Huawei (utility scale)",
         kind="PV",
         un_kv=30.0,
@@ -748,6 +1005,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-sungrow-8p8mw-30kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Farma PV 8.8 MW / 30 kV / Sungrow (utility scale)",
         kind="PV",
         un_kv=30.0,
@@ -764,6 +1022,7 @@ CONVERTER_PV: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-pv-residential-50kw-04kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="Mikroinstalacja PV 50 kW / 0.4 kV (typ A NC RfG)",
         kind="PV",
         un_kv=0.4,
@@ -801,7 +1060,10 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Vestas",
             "model": "V90-2.0",
-            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     {
@@ -818,7 +1080,10 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Vestas",
             "model": "V112-3.0",
-            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     {
@@ -835,7 +1100,10 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Siemens Gamesa",
             "model": "SG 4.5-145",
-            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
 ]
@@ -844,6 +1112,7 @@ CONVERTER_WIND.extend(
     [
         _converter_record(
             item_id="wt_vestas_v117_3450",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="Vestas V117-3.45 MW / 15 kV",
             kind="WIND",
             un_kv=15.0,
@@ -860,6 +1129,7 @@ CONVERTER_WIND.extend(
         ),
         _converter_record(
             item_id="wt_siemens_swt_2300_113",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="Siemens SWT-2.3-113 2.3 MW / 15 kV",
             kind="WIND",
             un_kv=15.0,
@@ -876,6 +1146,7 @@ CONVERTER_WIND.extend(
         ),
         _converter_record(
             item_id="wt_ge_158_5500",
+            source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
             name="GE Cypress 5.5-158 5.5 MW / 15 kV",
             kind="WIND",
             un_kv=15.0,
@@ -914,7 +1185,10 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 1000.0,
             "manufacturer": "SUNGROW",
             "model": "Sungrow utility BESS 0.5 MW / 1 MWh / 15 kV",
-            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     {
@@ -932,7 +1206,10 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 2000.0,
             "manufacturer": "BYD",
             "model": "BYD utility BESS 1 MW / 2 MWh / 15 kV",
-            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     {
@@ -950,7 +1227,10 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 4000.0,
             "manufacturer": "TESLA",
             "model": "Tesla utility BESS 2 MW / 4 MWh / 15 kV",
-            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     {
@@ -968,11 +1248,15 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 10000.0,
             "manufacturer": "FLUENCE",
             "model": "Fluence utility BESS 5 MW / 10 MWh / 15 kV",
-            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
+            **_quality(
+                _NOTA_MODELU_REFERENCYJNEGO,
+                source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
+            ),
         },
     },
     _converter_record(
         item_id="conv-bess-tesla-25mw-5mwh-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS 2.5 MW / 5 MWh / 15 kV / Tesla",
         kind="BESS",
         un_kv=15.0,
@@ -988,6 +1272,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-nidec-3mw-6mwh-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS 3 MW / 6 MWh / 15 kV / Nidec",
         kind="BESS",
         un_kv=15.0,
@@ -1003,6 +1288,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-byd-5mw-10mwh-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS 5 MW / 10 MWh / 20 kV / BYD",
         kind="BESS",
         un_kv=20.0,
@@ -1018,6 +1304,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-fluence-10mw-20kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS 10 MW / 20 MWh / 20 kV / Fluence",
         kind="BESS",
         un_kv=20.0,
@@ -1034,6 +1321,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     # === Tesla Megapack-class + grid-forming + utility scale ===
     _converter_record(
         item_id="conv-bess-tesla-megapack-3p9mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS Tesla Megapack 2 XL 3.9 MW / 15.6 MWh / 15 kV",
         kind="BESS",
         un_kv=15.0,
@@ -1053,6 +1341,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-wartsila-gridforming-50mw-30kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS Wartsila Quantum GFM 50 MW / 100 MWh / 30 kV",
         kind="BESS",
         un_kv=30.0,
@@ -1072,6 +1361,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-ge-reservoir-15mw-30kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS GE Vernova Reservoir 15 MW / 60 MWh / 30 kV",
         kind="BESS",
         un_kv=30.0,
@@ -1089,6 +1379,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-sungrow-powertitan-3p7mw-15kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS Sungrow PowerTitan 2.0 3.7 MW / 7.7 MWh / 15 kV",
         kind="BESS",
         un_kv=15.0,
@@ -1106,6 +1397,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
     _converter_record(
         item_id="conv-bess-residential-100kw-04kv",
+        source_reference=ZRODLO_MODELU_REFERENCYJNEGO,
         name="BESS przemysłowy 100 kW / 215 kWh / 0.4 kV",
         kind="BESS",
         un_kv=0.4,
@@ -1125,11 +1417,13 @@ CONVERTER_BESS: list[dict[str, Any]] = [
 ]
 
 # =============================================================================
-# KARTY REFERENCYJNE FALOWNIKOW (pelna "karta falownika" — dane z kart technicznych
-# producentow + jawna proweniencja per pole). Ratingi/hierarchia mocy = DATASHEET
-# (z karty), pasma regulatorow = ESTIMATED (wartosc typowa dla klasy z literatury,
-# nigdy DATASHEET). Co najmniej jedna karta na klase: string PV, central PV, PCS BESS.
-# Dodatki sa addytywne — istniejace wpisy katalogu pozostaja bajt-identyczne.
+# KARTY REFERENCYJNE FALOWNIKOW (pelna "karta falownika" z jawna proweniencja per pole).
+# Karty techniczne sa DEKLAROWANE — dokumentow nie dolaczono do repozytorium, wiec
+# rekord ma status NIEWERYFIKOWANY (wykluczony z doboru szablonow), a ratingi sa
+# ESTIMATED ze zrodlem „Deklarowane: …" (karta KATALOG-KOMPLETNY-PROWENIENCJA).
+# Zalozenia rekordu (moc DC, pojemnosc magazynu) — ESTIMATED z nazwanym zalozeniem;
+# pasma regulatorow = ESTIMATED (wartosc typowa dla klasy z literatury).
+# Co najmniej jedna karta na klase: string PV, central PV, PCS BESS.
 # =============================================================================
 
 # String PV — Huawei SUN2000-215KTL-H3 (karta techniczna: 215 kW / 215 kVA,
@@ -1137,6 +1431,10 @@ CONVERTER_BESS: list[dict[str, Any]] = [
 # ~ 1.5x AC dla nowoczesnych string. Pasma regulatorow: oszacowanie typowe.
 _REFERENCE_PV_STRING = _converter_record(
     item_id="conv-pv-card-huawei-sun2000-215ktl",
+    source_reference=_zrodlo_deklarowane(
+        "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+    ),
+    verification_status=CatalogVerificationStatus.NIEWERYFIKOWANY.value,
     name="Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV",
     kind="PV",
     un_kv=0.8,
@@ -1177,6 +1475,7 @@ _REFERENCE_PV_STRING = _converter_record(
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
         flicker_fields=("flicker_c",),
+        assumption_fields={"p_installed_mw": _NOTA_P_INSTALLED},
     ),
 )
 
@@ -1184,6 +1483,8 @@ _REFERENCE_PV_STRING = _converter_record(
 # Un 0.69 kV strona LV trafo, cosphi 0.8 ind...0.8 poj, 1500 V DC).
 _REFERENCE_PV_CENTRAL = _converter_record(
     item_id="conv-pv-card-sungrow-sg3150u-mv",
+    source_reference=_zrodlo_deklarowane("Karta techniczna Sungrow SG3150U-MV (sungrowpower.com)"),
+    verification_status=CatalogVerificationStatus.NIEWERYFIKOWANY.value,
     name="Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV",
     kind="PV",
     un_kv=0.69,
@@ -1224,6 +1525,7 @@ _REFERENCE_PV_CENTRAL = _converter_record(
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
         flicker_fields=("flicker_c",),
+        assumption_fields={"p_installed_mw": _NOTA_P_INSTALLED},
     ),
 )
 
@@ -1231,6 +1533,10 @@ _REFERENCE_PV_CENTRAL = _converter_record(
 # Un 0.69 kV, cosphi 0.8 ind...0.8 poj; e_kwh dla bloku 2 h).
 _REFERENCE_BESS_PCS = _converter_record(
     item_id="conv-bess-card-sungrow-sc2000ud-mv",
+    source_reference=_zrodlo_deklarowane(
+        "Karta techniczna Sungrow SC2000UD-MV PCS (sungrowpower.com)"
+    ),
+    verification_status=CatalogVerificationStatus.NIEWERYFIKOWANY.value,
     name="Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV",
     kind="BESS",
     un_kv=0.69,
@@ -1272,6 +1578,10 @@ _REFERENCE_BESS_PCS = _converter_record(
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
         flicker_fields=("flicker_c",),
+        assumption_fields={
+            "p_installed_mw": _NOTA_P_INSTALLED,
+            "e_kwh": "pojemność magazynu — założenie bloku 2 h; karta PCS nie podaje pojemności",
+        },
     ),
 )
 

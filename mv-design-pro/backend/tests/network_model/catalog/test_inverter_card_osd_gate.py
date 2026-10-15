@@ -23,6 +23,7 @@ from network_model.catalog.mv_converter_catalog import (
     _REFERENCE_BANDWIDTH_FIELDS,
     _REFERENCE_POWER_HIERARCHY_FIELDS,
     _REFERENCE_RATING_FIELDS,
+    CONVERTER_PV_NN_KARTY_PRODUCENTOW,
     CONVERTER_REFERENCE_CARDS,
 )
 from network_model.catalog.repository import get_default_mv_catalog
@@ -144,14 +145,41 @@ def test_reference_card_builds_and_validates_power_hierarchy(card_id: str) -> No
 
 
 @pytest.mark.parametrize("card_id", _REFERENCE_CARD_IDS)
-def test_reference_card_ratings_are_datasheet(card_id: str) -> None:
+def test_reference_card_ratings_are_declared_not_datasheet(card_id: str) -> None:
+    """Karta KATALOG-KOMPLETNY-PROWENIENCJA: karta techniczna referencyjnych pozycji jest
+    DEKLAROWANA (dokument niedołączony), więc ratingi NIE są DATASHEET — są ESTIMATED ze
+    źródłem nazwanym jako deklaracja. Intencja dawnego testu (rating cytuje kartę
+    techniczną producenta) zostaje: cytat jest, ale z prawdziwym statusem."""
     card = _reference_cards_from_catalog()[card_id]
+    assert card.verification_status == "NIEWERYFIKOWANY"
+    assert card.source_reference.startswith("Deklarowane: Karta techniczna")
     quality_map = resolve_card_field_quality_map(card)
     for name in _REFERENCE_RATING_FIELDS + _REFERENCE_POWER_HIERARCHY_FIELDS:
-        assert quality_map[name].quality is FieldQuality.DATASHEET, name
-        # DATASHEET fields cite the manufacturer datasheet.
+        assert quality_map[name].quality is FieldQuality.ESTIMATED, name
         assert quality_map[name].source_ref
+        assert quality_map[name].source_ref.startswith("Deklarowane: ")
         assert "karta techniczna" in quality_map[name].source_ref.lower()
+    # Założenie rekordu (nadwymiarowanie DC) — ESTIMATED z nazwanym założeniem.
+    p_inst = quality_map["p_installed_mw"]
+    assert p_inst.quality is FieldQuality.ESTIMATED
+    assert p_inst.note and "założenie" in p_inst.note
+
+
+def test_manufacturer_card_ratings_are_datasheet_with_cited_document() -> None:
+    """Pozycje z kartą producenta (ZWERYFIKOWANY): każde pole ratingu DATASHEET ze źródłem
+    z adresem dokumentu; tryb regulacji = nastawa projektu (SYSTEM_DEFAULT)."""
+    repo = get_default_mv_catalog()
+    ids = [rec["id"] for rec in CONVERTER_PV_NN_KARTY_PRODUCENTOW]
+    assert len(ids) == 7
+    for cid in ids:
+        card = repo.converter_types[cid]
+        assert card.verification_status == "ZWERYFIKOWANY", cid
+        assert "https://" in card.source_reference, cid
+        quality_map = resolve_card_field_quality_map(card)
+        for name in _REFERENCE_RATING_FIELDS:
+            assert quality_map[name].quality is FieldQuality.DATASHEET, (cid, name)
+            assert quality_map[name].source_ref == card.source_reference, (cid, name)
+        assert quality_map["control_mode"].quality is FieldQuality.SYSTEM_DEFAULT, cid
 
 
 @pytest.mark.parametrize("card_id", _REFERENCE_CARD_IDS)
@@ -175,7 +203,10 @@ def test_reference_card_bandwidths_are_estimated_never_datasheet(card_id: str) -
 
 def test_published_non_reference_converters_have_no_card_field_status() -> None:
     repo = get_default_mv_catalog()
-    reference_ids = set(_REFERENCE_CARD_IDS)
+    # Karty referencyjne i karty producentów deklarują proweniencję per pole.
+    reference_ids = set(_REFERENCE_CARD_IDS) | {
+        rec["id"] for rec in CONVERTER_PV_NN_KARTY_PRODUCENTOW
+    }
     for c in repo.list_converter_types():
         if c.id in reference_ids:
             continue

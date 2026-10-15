@@ -494,7 +494,10 @@ def test_kazdy_rekord_katalogu_przetwornic_ma_status_ptpiree() -> None:
 #: wykazu WiPWC 1.2). Pozostale 175 rekordow to karty referencyjne MV/utility i
 #: turbiny wiatrowe, ktorych wykaz PTPiREE (urzadzenia typu A/B, glownie nN) nie
 #: obejmuje — ich NIEPOWIAZANY jest prawdziwy, a nie wynikajacy z braku danych.
-POMIAR_POWIAZANYCH_PO_KARCIE = 1
+#: Karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15, 182 rekordy): dochodzi pozycja z karty
+#: producenta `conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv` — HUAWEI SUN2000-330KTL-H1
+#: figuruje w wykazie, wiec POWIAZANY rosnie do 2 z pomiaru, nie z deklaracji.
+POMIAR_POWIAZANYCH_PO_KARCIE = 2
 
 
 def test_pomiar_liczby_rekordow_powiazanych_z_wykazem() -> None:
@@ -502,6 +505,9 @@ def test_pomiar_liczby_rekordow_powiazanych_z_wykazem() -> None:
     powiazane = [r for r in records if r["params"]["ptpiree_status"] == "POWIAZANY"]
 
     assert len(powiazane) == POMIAR_POWIAZANYCH_PO_KARCIE
-    assert {r["id"] for r in powiazane} == {"conv-pv-card-huawei-sun2000-215ktl"}
+    assert {r["id"] for r in powiazane} == {
+        "conv-pv-card-huawei-sun2000-215ktl",
+        "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+    }
     # Pomiar bez licznosci calego zbioru przeszedlby na pustym katalogu.
-    assert len(records) == 176
+    assert len(records) == 182

@@ -135,6 +135,13 @@ def test_materializacja_kopiuje_pola_karty_wylacznie_obecne(katalog: CatalogRepo
         "conv-pv-card-huawei-sun2000-215ktl",
         "conv-pv-card-sungrow-sg3150u-mv",
         "conv-pv-gfm-2mw-15kv",
+        "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+        "conv-pv-nn-sma-sc2200-0p385kv",
+        "conv-pv-nn-sma-sc2475-0p434kv",
+        "conv-pv-nn-sma-sc4000up-0p6kv",
+        "conv-pv-nn-sma-sc4200up-0p63kv",
+        "conv-pv-nn-sma-sc4400up-0p66kv",
+        "conv-pv-nn-sma-sc4600up-0p69kv",
     ]
 
 
