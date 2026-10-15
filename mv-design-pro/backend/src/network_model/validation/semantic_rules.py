@@ -148,7 +148,10 @@ ROLE_POLA_ZRODLA: frozenset[str] = frozenset({"OZE", "FEEDER"})
 def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
     """
     Generator musi stać w polu, które przyjmuje źródło (`ROLE_POLA_ZRODLA`).
-    Sprawdzane przez `Generator.bay_ref` → rekord `bays` → `Bay.bay_role`.
+    Sprawdzane przez relację wytwórcy z polem `Generator.meta.field_ref` → rekord `bays` →
+    `Bay.bay_role`. To ta sama relacja, którą zapisują operacje budowy źródła i którą czyta
+    promocja aparatów nN (`enm/migrations/promocja_aparatow_nn.py`); model `Generator` nie ma
+    pola `bay_ref` — do karty W5-B reguła czytała nieistniejący klucz i była martwa.
 
     Karta W5-B (defekt zmierzony przy przepięciu czytelników na rekord `bays`): reguła
     porównywała rolę pola ze słownikiem spoza kontraktu `Bay` (`der`, `feeder`, `customer`
@@ -159,7 +162,8 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     bays_by_id = {b.get("ref_id"): b for b in _bays(enm)}
     for gen in _generators(enm):
-        bay_ref = gen.get("bay_ref")
+        meta = gen.get("meta")
+        bay_ref = meta.get("field_ref") if isinstance(meta, dict) else None
         if not bay_ref:
             continue
         bay = bays_by_id.get(bay_ref)
@@ -179,7 +183,7 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
                     ),
                     severity=Severity.ERROR,
                     element_id=gen.get("ref_id"),
-                    field="bay_ref",
+                    field="meta.field_ref",
                     suggested_fix=(
                         "Przenieś generator do pola źródłowego albo odpływowego zgodnego "
                         "z rodzajem źródła lub zmień rolę pola."

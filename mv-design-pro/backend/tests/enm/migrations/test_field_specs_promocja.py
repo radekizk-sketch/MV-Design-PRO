@@ -81,7 +81,23 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
         ],
         "bays": bays,
         "generators": [
-            {"ref_id": "g", "name": "G", "bus_ref": szyna, "p_mw": 0.1, "bay_ref": "bay/st/out"}
+            {
+                "ref_id": "g",
+                "name": "G",
+                "bus_ref": szyna,
+                "p_mw": 0.1,
+                "meta": {"field_ref": "bay/st/out"},
+            }
+        ],
+        "loads": [
+            {
+                "ref_id": "o",
+                "name": "O",
+                "bus_ref": szyna,
+                "p_mw": 0.01,
+                "q_mvar": 0.0,
+                "meta": {"feeder_ref": "bay/st/out"},
+            }
         ],
         "measurements": [
             {
@@ -99,7 +115,6 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
                 "name": "Z",
                 "breaker_ref": "aparat-wpisu",
                 "device_type": "overcurrent",
-                "bay_ref": "bay/st/out",
             }
         ],
         "branches": [
@@ -109,10 +124,21 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
                 "type": "breaker",
                 "from_bus_ref": szyna,
                 "to_bus_ref": "zacisk",
-                "meta": {"bay_ref": "bay/st/out"},
+                "meta": {"bay_ref": "bay/st/out", "field_ref": "bay/st/out"},
             }
         ],
     }
+
+
+def _napisy(obiekt: object) -> set[str]:
+    """Wszystkie napisy migawki (odwołanie do dawnego identyfikatora nie może przetrwać)."""
+    if isinstance(obiekt, str):
+        return {obiekt}
+    if isinstance(obiekt, dict):
+        return set().union(*(_napisy(v) for v in obiekt.values())) if obiekt else set()
+    if isinstance(obiekt, list):
+        return set().union(*(_napisy(v) for v in obiekt)) if obiekt else set()
+    return set()
 
 
 @pytest.mark.parametrize("meta", KLUCZE_META)
@@ -152,15 +178,19 @@ def test_iloczyn_migracji_wpisu_stacji(klucz: str, nazwa: str, scalenie: str, me
         assert pole["equipment_refs"] == ["aparat-wpisu", "aparat-rekordu"]
         assert pole["protection_codes"] == ["51"]
         assert pole["meta"]["created_by"] == "op"
-        # Odwołania do dawnego `bay/…` przepisane w nośnikach, które kontrakt modelu ma:
-        # `Measurement.bay_ref` i `branches[].meta.bay_ref` (`Generator` i
-        # `ProtectionAssignment` nie mają pola `bay_ref` — pydantic go nie przenosi).
+        # KOMPLET odwołań do dawnego `bay/…` przepisany (`_ODWOLANIA_DO_POLA`): przekładnik
+        # (`Measurement.bay_ref`), aparat (`meta.bay_ref`/`meta.field_ref` gałęzi), wytwórca
+        # (`Generator.meta.field_ref`), odbiór odpływu (`Load.meta.feeder_ref`).
+        stare = {"bay/st/out"}
         assert dane["measurements"][0]["bay_ref"] == "field/st/1"
         assert dane["branches"][0]["meta"]["bay_ref"] == "field/st/1"
-        assert "bay_ref" not in dane["generators"][0]
-        assert "bay_ref" not in dane["protection_assignments"][0]
+        assert dane["branches"][0]["meta"]["field_ref"] == "field/st/1"
+        assert dane["generators"][0]["meta"]["field_ref"] == "field/st/1"
+        assert dane["loads"][0]["meta"]["feeder_ref"] == "field/st/1"
+        assert stare.isdisjoint(_napisy(dane))
     else:
         assert dane["measurements"][0]["bay_ref"] == "bay/st/out"
+        assert dane["generators"][0]["meta"]["field_ref"] == "bay/st/out"
     # Dawne klucze znikają z meta stacji; inne klucze zostają.
     assert dane["substations"][0]["meta"] == {"inny_klucz": 1}
     # Idempotencja: drugi przebieg zwraca TEN SAM obiekt.

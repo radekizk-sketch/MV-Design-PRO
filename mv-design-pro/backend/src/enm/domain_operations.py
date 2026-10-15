@@ -10427,6 +10427,39 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     if blad_mocy is not None:
         return blad_mocy
 
+    # Karta W5-B (kaskada KLASY odwołań, nie instancji): przekładnik stoi na szynie i wskazuje
+    # pole (`Measurement.bus_ref`/`bay_ref`), zabezpieczenie działa na wyłącznik
+    # (`ProtectionAssignment.breaker_ref`) — usunięcie szyny, pola albo wyłącznika usuwa
+    # elementy, które bez nich nie istnieją fizycznie. Dawniej zostawały z odwołaniem do
+    # elementu, którego nie ma (przekładnik „w polu" usuniętej stacji).
+    if deleted_set:
+        usuniete_pola = deleted_set & {str(b.get("ref_id")) for b in enm.get("bays", [])}
+        przekladniki = [
+            m
+            for m in new_enm.get("measurements", [])
+            if m.get("bus_ref") in deleted_bus_refs or m.get("bay_ref") in usuniete_pola
+        ]
+        refy_przekladnikow = {str(m.get("ref_id")) for m in przekladniki}
+        if refy_przekladnikow:
+            new_enm["measurements"] = [
+                m
+                for m in new_enm.get("measurements", [])
+                if str(m.get("ref_id")) not in refy_przekladnikow
+            ]
+            deleted_set.update(refy_przekladnikow)
+        zabezpieczenia = {
+            str(pa.get("ref_id"))
+            for pa in new_enm.get("protection_assignments", [])
+            if pa.get("breaker_ref") in deleted_branch_refs
+        }
+        if zabezpieczenia:
+            new_enm["protection_assignments"] = [
+                pa
+                for pa in new_enm.get("protection_assignments", [])
+                if str(pa.get("ref_id")) not in zabezpieczenia
+            ]
+            deleted_set.update(zabezpieczenia)
+
     deleted_ids = sorted(deleted_set)
     for event_seq, ref in enumerate(deleted_ids, start=1):
         events.append({"event_seq": event_seq, "event_type": "ELEMENT_DELETED", "element_id": ref})

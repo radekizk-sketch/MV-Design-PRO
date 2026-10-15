@@ -44,8 +44,9 @@ def _make_bay(ref_id: str, role: str) -> dict:
     return {"ref_id": ref_id, "bay_role": role}
 
 
-def _make_generator(ref_id: str, gen_type: str, bay_ref: str) -> dict:
-    return {"ref_id": ref_id, "gen_type": gen_type, "bay_ref": bay_ref}
+def _make_generator(ref_id: str, gen_type: str, field_ref: str) -> dict:
+    # Relacja wytwórcy z polem: `Generator.meta.field_ref` (model nie ma pola `bay_ref`).
+    return {"ref_id": ref_id, "gen_type": gen_type, "meta": {"field_ref": field_ref}}
 
 
 class TestCableCannotStartFromPole:

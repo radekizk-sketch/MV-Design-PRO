@@ -1517,6 +1517,10 @@ class ENMValidator:
         Predykat: JEDNO źródło `enm.tor_pola.naruszenia_zasady_toru`.
         """
         widok = {
+            # Karta W5-B: zasada toru czyta zaciski pól z rekordów `bays`, a poziom pola
+            # (SN/nN) z napięcia szyny — widok niesie obie kolekcje.
+            "bays": [b.model_dump(mode="json") for b in enm.bays],
+            "buses": [{"ref_id": b.ref_id, "voltage_kv": b.voltage_kv} for b in enm.buses],
             "substations": [
                 {"ref_id": s.ref_id, "name": s.name, "bus_refs": list(s.bus_refs), "meta": s.meta}
                 for s in enm.substations

@@ -41,6 +41,9 @@ from enm.zajetosc_pol import KOD_POLE_ZAJETE
 
 from tests.enm.test_branch_point_sn import _seed_with_cable_segment
 from tests.enm.test_station_field_equipment_atomic import (
+    CT_REF,
+    RELAY_REF,
+    VT_REF,
     _build_trunk_with_segment,
     _insert_payload,
     _op,
@@ -686,3 +689,35 @@ def test_odejscie_z_pola_gpz_04kv_i_odmowa_drugiego_kabla_z_tego_samego_pola() -
     assert pierwsze.get("error") is None, pierwsze.get("error")
     drugie = _odejscie(pierwsze["snapshot"], linia["ref_id"], "BUS-LV-02")
     assert drugie.get("error_code") == KOD_POLE_ZAJETE, drugie
+
+
+@pytest.mark.parametrize("usuwany", ["stacja", "aparat_pola"])
+def test_kaskada_usuniecia_zabiera_przekladniki_i_zabezpieczenia_pola(usuwany: str) -> None:
+    """Przekładnik stoi na szynie i wskazuje pole, zabezpieczenie działa na wyłącznik pola —
+    usunięcie stacji (szyny i pola) albo aparatu pola nie zostawia odwołań do elementów, których
+    nie ma (KLASA odwołań: `Measurement.bus_ref`/`bay_ref`, `ProtectionAssignment.breaker_ref`)."""
+    snap = _wstawiona_stacja()
+    stacja = _stacja(snap)
+    rekord = _pole_sn(snap, "LINIA_ODG")
+    for op, ladunek in (
+        ("add_ct", {"catalog_ref": CT_REF, "ratio_primary_a": 400.0, "ratio_secondary_a": 5.0}),
+        ("add_vt", {"catalog_ref": VT_REF, "ratio_primary_v": 15000.0, "ratio_secondary_v": 100.0}),
+        ("add_relay", {"catalog_ref": RELAY_REF, "relay_type": "NADPRADOWY"}),
+    ):
+        snap = _op(snap, op, {"bay_ref": rekord["ref_id"], **ladunek})
+    assert snap["measurements"] and snap["protection_assignments"]
+    cel = stacja["ref_id"] if usuwany == "stacja" else rekord["equipment_refs"][0]
+    wynik = execute_domain_operation(snap, "delete_element", {"element_ref": cel})
+    assert not wynik.get("error"), wynik.get("error")
+    po = wynik["snapshot"]
+    szyny = {b["ref_id"] for b in po["buses"]}
+    galezie = {b["ref_id"] for b in po["branches"]}
+    pola_po = {b["ref_id"] for b in po["bays"]}
+    for m in po.get("measurements", []):
+        assert m["bus_ref"] in szyny, m
+        assert m.get("bay_ref") is None or m["bay_ref"] in pola_po, m
+    for pa in po.get("protection_assignments", []):
+        assert pa["breaker_ref"] in galezie, pa
+    if usuwany == "aparat_pola":
+        assert po["protection_assignments"] == []
+    EnergyNetworkModel.model_validate(po)

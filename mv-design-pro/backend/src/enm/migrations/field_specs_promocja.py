@@ -24,8 +24,7 @@ WŁASNOŚCI:
   ignorowałby go po cichu);
 - **scala dubel stacji końca ciągu** — wpis z `bay_ref` wskazującym istniejący rekord `bays`
   staje się JEDNYM rekordem o `ref_id = field_ref` wpisu; odwołania do dawnego `bay/…`
-  (`generators[].bay_ref`, `measurements[].bay_ref`, `protection_assignments[].bay_ref`,
-  `branches[].meta.bay_ref`) są przepisywane na nowy identyfikator.
+  (komplet: `_ODWOLANIA_DO_POLA`) są przepisywane na nowy identyfikator.
 
 Nazwa wpisu bez nazwy: reguła `enm.pola.nazwa_domyslna_pola` (ta sama, którą stosuje
 builder) — dawniej nazwę roli podstawiał każdy czytelnik osobno.
@@ -103,8 +102,19 @@ KLUCZE_META_NA_POLE: dict[str, str] = {
 #: Klucze `meta` wpisu kasowane jako martwe (dubel `ref_id`/`bay_ref`, dawny rekord).
 KLUCZE_META_MARTWE: frozenset[str] = frozenset({"bay_ref", "field_ref", "sn_field_template"})
 
-#: Kolekcje, w których element wskazuje pole przez `bay_ref` (przepisanie po scaleniu).
-_KOLEKCJE_Z_BAY_REF: tuple[str, ...] = ("generators", "measurements", "protection_assignments")
+#: KOMPLET odwołań elementów modelu do pola (inwentarz klasy, karta W5-B): przekładnik
+#: wskazuje pole typowanym `Measurement.bay_ref`; aparat pola — `meta.bay_ref` albo
+#: `meta.field_ref` gałęzi (`application/analyses/aparaty_pol.py`); wytwórca — relacją
+#: `Generator.meta.field_ref`; odbiór odpływu nN — `Load.meta.feeder_ref`. `Generator` i
+#: `ProtectionAssignment` NIE mają pola `bay_ref` (zabezpieczenie wskazuje wyłącznik
+#: `breaker_ref`, nie pole). Przepisanie po scaleniu dawnego rekordu `bay/…` z wpisem pola.
+_ODWOLANIA_DO_POLA: tuple[tuple[str, str | None, str], ...] = (
+    ("measurements", None, "bay_ref"),
+    ("branches", "meta", "bay_ref"),
+    ("branches", "meta", "field_ref"),
+    ("generators", "meta", "field_ref"),
+    ("loads", "meta", "feeder_ref"),
+)
 
 
 class BladMigracjiPol(ValueError):
@@ -261,14 +271,14 @@ def _liczba_odgalezien_zksn(punkt: Mapping[str, Any], dawne_pola: list[Any] | No
 
 
 def _przepisz_bay_ref(dane: dict[str, Any], stary: str, nowy: str) -> None:
-    for klucz in _KOLEKCJE_Z_BAY_REF:
-        for element in dane.get(klucz) or []:
-            if isinstance(element, dict) and element.get("bay_ref") == stary:
-                element["bay_ref"] = nowy
-    for galaz in dane.get("branches") or []:
-        meta = galaz.get("meta") if isinstance(galaz, dict) else None
-        if isinstance(meta, dict) and meta.get("bay_ref") == stary:
-            meta["bay_ref"] = nowy
+    """Każde odwołanie do dawnego identyfikatora pola `stary` → `nowy` (`_ODWOLANIA_DO_POLA`)."""
+    for kolekcja, zagniezdzenie, klucz in _ODWOLANIA_DO_POLA:
+        for element in dane.get(kolekcja) or []:
+            if not isinstance(element, dict):
+                continue
+            nosnik = element.get(zagniezdzenie) if zagniezdzenie else element
+            if isinstance(nosnik, dict) and nosnik.get(klucz) == stary:
+                nosnik[klucz] = nowy
 
 
 def _oczysc_meta_rekordu(rekord: dict[str, Any]) -> dict[str, Any]:
