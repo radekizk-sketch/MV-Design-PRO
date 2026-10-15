@@ -229,6 +229,9 @@ def _with_parameter_payloads(
 
 @router.post(
     "/cases/{case_id}/runs/v126/{analysis_type}",
+    # Karta DYNAMIKA-W-TLE: zlecenie biegu wykonawcy w tle — 202 + odpytywanie
+    # `GET /api/execution/runs/{run_id}`, jak każdy `POST …/execute`.
+    status_code=status.HTTP_202_ACCEPTED,
     response_model=V126RunResponse,
     responses={
         410: {

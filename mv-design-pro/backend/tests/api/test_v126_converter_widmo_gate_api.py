@@ -183,7 +183,7 @@ def test_power_quality_harmonics_czesciowe_dane_przechodzi_z_pominietymi_zrodlam
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     assert wynik.status_code == 200
     payload = wynik.json()
@@ -209,7 +209,7 @@ def test_power_quality_harmonics_wszystkie_zrodla_maja_widmo_brak_pominietych_w_
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     payload = wynik.json()
     assert "pominiete_zrodla" not in payload
@@ -233,7 +233,7 @@ def test_widmo_reczne_w_zadaniu_daje_proweniencje_reczne_w_odpowiedzi() -> None:
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-1": {"5": 6.0}}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     payload = wynik.json()
     assert "pominiete_zrodla" not in payload
