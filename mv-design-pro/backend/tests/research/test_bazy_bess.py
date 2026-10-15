@@ -25,7 +25,7 @@ from dynamic_lab.bazy_bess import (
     waga_sprawnosci,
 )
 from dynamic_lab.siec import Galaz, TopologiaSieci
-from dynamic_lab.silnik import ModelDynamiczny, SilnikRMS
+from dynamic_lab.silnik import ModelDynamiczny, NiezgodnaBazaMocyError, SilnikRMS
 from dynamic_lab.urzadzenia_oze import MagazynEnergiiBESS
 from dynamic_lab.wynik import PrzestrzenSygnalu
 
@@ -523,3 +523,92 @@ def test_zmiana_przelicznika_rusza_OBA_konsumentow() -> None:
     assert float(duzy.pochodne(x_duzy, napiecie)[2]) == pytest.approx(
         float(maly.pochodne(x_maly, napiecie)[2]) / 10.0, rel=1e-9
     )
+
+
+# ---------------------------------------------------------------------------
+# P1-B55-02 (przegląd cienia) — wspólna baza mocy EGZEKWOWANA przez model
+# ---------------------------------------------------------------------------
+
+
+def _topologia_ab() -> TopologiaSieci:
+    return TopologiaSieci(
+        szyny=("A", "B"),
+        galezie=[Galaz("A", "B", 0.01, 0.1)],
+        szyny_sztywne={"A": complex(1.0, 0.0)},
+    )
+
+
+def test_model_ODMAWIA_urzadzenia_o_innej_bazie_mocy() -> None:
+    """ODTWORZENIE DEFEKTU: model przyjmował magazyn o niezgodnej bazie.
+
+    `MagazynEnergiiBESS` deklarował wymóg wspólnej bazy, ale `ModelDynamiczny`
+    go nie sprawdzał. ZMIERZONE przed naprawą: model 100 MVA przyjmował BESS
+    50 MVA, a sygnał `p = 0,5 p.u.` znaczył 50 MW po stronie SIECI i 25 MW po
+    stronie ZASOBU — błąd skali 2:1, niemalejący przy `dt -> 0`, bo jest błędem
+    jednostek, nie całkowania.
+    """
+    bess = MagazynEnergiiBESS(ref="BESS", szyna="B", s_bazowa_mva=50.0, e_pojemnosc_mwh=25.0)
+    with pytest.raises(NiezgodnaBazaMocyError, match="błąd skali 2:1"):
+        ModelDynamiczny(topologia=_topologia_ab(), urzadzenia=[bess], s_bazowa_mva=100.0)
+
+
+def test_model_PRZYJMUJE_urzadzenie_o_zgodnej_bazie() -> None:
+    """Kierunek przeciwny — kontrola nie może odrzucać konfiguracji poprawnych."""
+    bess = MagazynEnergiiBESS(ref="BESS", szyna="B", s_bazowa_mva=100.0, e_pojemnosc_mwh=25.0)
+    model = ModelDynamiczny(topologia=_topologia_ab(), urzadzenia=[bess], s_bazowa_mva=100.0)
+    assert model.s_bazowa_mva == 100.0
+
+
+@pytest.mark.parametrize("baza_modelu", [10.0, 50.0, 100.0, 250.0])
+def test_zgodnosc_baz_trzyma_dla_KAZDEJ_bazy_modelu(baza_modelu: float) -> None:
+    """ILOCZYN CECH: kontrola to równość, nie dopasowanie do jednej liczby.
+
+    Naprawa sprawdzająca „czy baza == 100" przeszłaby test z jedną wartością
+    i przepuściła wszystkie pozostałe.
+    """
+    zgodny = MagazynEnergiiBESS(
+        ref="BESS", szyna="B", s_bazowa_mva=baza_modelu, e_pojemnosc_mwh=25.0
+    )
+    assert (
+        ModelDynamiczny(
+            topologia=_topologia_ab(), urzadzenia=[zgodny], s_bazowa_mva=baza_modelu
+        ).s_bazowa_mva
+        == baza_modelu
+    )
+    niezgodny = MagazynEnergiiBESS(
+        ref="BESS", szyna="B", s_bazowa_mva=baza_modelu * 2.0, e_pojemnosc_mwh=25.0
+    )
+    with pytest.raises(NiezgodnaBazaMocyError):
+        ModelDynamiczny(
+            topologia=_topologia_ab(), urzadzenia=[niezgodny], s_bazowa_mva=baza_modelu
+        )
+
+
+def test_kontrola_dotyczy_KLASY_a_nie_jednego_typu_urzadzenia() -> None:
+    """Kontrola pyta, czy urządzenie DEKLARUJE bazę — nie o jego klasę.
+
+    Gdyby pytała `isinstance(MagazynEnergiiBESS)`, każde urządzenie dołożone
+    później z własną bazą byłoby poza nią — czyli naprawiono by INSTANCJĘ
+    defektu, a nie jego KLASĘ.
+    """
+    import dataclasses
+
+    from dynamic_lab.urzadzenia import MaszynaSynchroniczna4Rzedu
+
+    @dataclasses.dataclass
+    class UrzadzenieZWlasnaBaza(MaszynaSynchroniczna4Rzedu):
+        s_bazowa_mva: float = 25.0
+
+    nowe = UrzadzenieZWlasnaBaza(ref="G9", szyna="B", h_s=4.0, d_tlumienie=0.0, ra_pu=0.005)
+    with pytest.raises(NiezgodnaBazaMocyError, match="G9"):
+        ModelDynamiczny(topologia=_topologia_ab(), urzadzenia=[nowe], s_bazowa_mva=100.0)
+
+
+def test_urzadzenie_BEZ_wlasnej_bazy_przechodzi_bez_zmian() -> None:
+    """Większość urządzeń bazy nie deklaruje — kontrola nie może ich blokować."""
+    from dynamic_lab.urzadzenia import MaszynaSynchroniczna4Rzedu
+
+    maszyna = MaszynaSynchroniczna4Rzedu(ref="G1", szyna="B", h_s=4.0, d_tlumienie=0.0, ra_pu=0.005)
+    assert not hasattr(maszyna, "s_bazowa_mva")
+    model = ModelDynamiczny(topologia=_topologia_ab(), urzadzenia=[maszyna], s_bazowa_mva=100.0)
+    assert model.s_bazowa_mva == 100.0

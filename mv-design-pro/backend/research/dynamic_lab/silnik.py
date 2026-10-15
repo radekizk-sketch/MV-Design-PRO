@@ -81,6 +81,10 @@ class RownowagaNieosiagnietaError(RuntimeError):
     """
 
 
+class NiezgodnaBazaMocyError(ValueError):
+    """Urządzenie deklaruje inną bazę mocy niż model, w którym ma pracować."""
+
+
 @dataclass
 class ModelDynamiczny:
     """Kompletny model: topologia + urządzenia + baza mocy."""
@@ -97,6 +101,44 @@ class ModelDynamiczny:
         refy = [u.ref for u in self.urzadzenia]
         if len(set(refy)) != len(refy):
             raise ValueError("Powtórzone identyfikatory urządzeń")
+        self._wymagaj_wspolnej_bazy_mocy()
+
+    def _wymagaj_wspolnej_bazy_mocy(self) -> None:
+        """FAIL-CLOSED na niezgodną bazę mocy urządzenia (P1-B55-02).
+
+        ZARZUT I POMIAR. `MagazynEnergiiBESS` deklaruje wymóg
+        ``s_bazowa_mva == ModelDynamiczny.s_bazowa_mva``, ale konstruktor modelu
+        tej równości NIE sprawdzał. Model o bazie 100 MVA przyjmował magazyn
+        o bazie 50 MVA i ten sam sygnał ``p = 0,5 p.u.`` znaczył wtedy 50 MW po
+        stronie SIECI i 25 MW po stronie ZASOBU — **błąd skali 2:1**, który nie
+        maleje przy ``dt -> 0``, bo jest błędem jednostek, nie całkowania.
+
+        DLACZEGO ODMOWA, A NIE CICHE PRZELICZENIE. Przegląd cienia dopuszczał
+        dwie drogi: fail-closed albo jedno jawne, audytowalne przeskalowanie na
+        granicy. Wybrano odmowę, bo baza urządzenia jest częścią JEGO TOŻSAMOŚCI
+        (wchodzi do odcisku modelu): niejawne przeliczenie byłoby drugą prawdą
+        o tej samej wartości p.u. i zmieniałoby znaczenie sygnału, nie ruszając
+        żadnego odcisku. Wołający, który chce innej bazy, ma ją podać wprost —
+        wtedy zmiana jest widoczna w tożsamości biegu.
+
+        KLASA, NIE INSTANCJA. Kontrola nie pyta o `isinstance(MagazynEnergiiBESS)`,
+        tylko o to, czy urządzenie W OGÓLE deklaruje własną bazę. Dziś robi to
+        jedno urządzenie; każde dołożone później jest objęte bez dopisywania
+        czegokolwiek tutaj. Precedens tej samej postaci stoi już w
+        `wzorzec_genrou.py` (baza urządzenia != baza systemu wzorca -> błąd).
+        """
+        for u in self.urzadzenia:
+            baza = getattr(u, "s_bazowa_mva", None)
+            if baza is None:
+                continue
+            if float(baza) != float(self.s_bazowa_mva):
+                raise NiezgodnaBazaMocyError(
+                    f"Urządzenie {u.ref} deklaruje bazę mocy {float(baza):g} MVA, a model "
+                    f"{float(self.s_bazowa_mva):g} MVA. Ten sam sygnał w p.u. znaczyłby wtedy "
+                    f"inną moc po stronie sieci i po stronie zasobu (błąd skali "
+                    f"{float(self.s_bazowa_mva) / float(baza):g}:1). Podaj bazę wprost — "
+                    "niejawne przeliczenie byłoby drugą prawdą o tej samej wartości p.u."
+                )
 
 
 @dataclass
