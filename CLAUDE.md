@@ -16,7 +16,7 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 
 **PEŁNA IMPLEMENTACJA.** Luka wykryta = solver napisany wg właściwej normy + kontrakt + White Box + testy + sanity-bounds + wpięcie we WSZYSTKIE miejsca (nie część). Wymaganie nie pasujące do bieżącego miejsca wpinasz tam, gdzie pasuje — nie odkładasz.
 
-**JEDYNE DOZWOLONE ZATRZYMANIA** (to NIE są odroczenia): (1) edycja zamrożonego rdzenia bez zgody właściciela — B-01; (2) werdykt wizualny SLD — B-02; (3) bramki bezpieczeństwa, np. reduce-to-NR przy zmianie rdzenia. Poza tym: działaj do końca, autonomicznie, bez odkładania.
+**JEDYNE DOZWOLONE ZATRZYMANIA** (to NIE są odroczenia): (1) edycja zamrożonego rdzenia bez zgody właściciela — B-01 (dyrektywa właściciela 2026-10-15: decyzję B-01 o przyjęciu kart rdzenia podejmuje architekt — sesja główna — po niezależnej weryfikacji: pełna regresja, sonda liczbowa zmienionych wartości z podstawą normową, determinizm/hash, iniekcje; kontrakt FROZEN zmienia się wyłącznie z podniesieniem wersji; kolejność i plan end-to-end ustala architekt, właściciela się o nie nie pyta); (2) werdykt wizualny SLD — B-02; (3) bramki bezpieczeństwa, np. reduce-to-NR przy zmianie rdzenia. Poza tym: działaj do końca, autonomicznie, bez odkładania.
 
 **UCZCIWOŚĆ.** Raportuj stan zgodnie z prawdą — co domknięte z dowodem, co częściowe, czego nie zrobiono i dlaczego. Korekta w obie strony. Nigdy nie zawyżaj. „Renderuje się / testy zielone / wygląda gotowo" ≠ dowód ukończenia.
 
