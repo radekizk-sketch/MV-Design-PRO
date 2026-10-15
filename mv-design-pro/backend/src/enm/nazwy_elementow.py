@@ -10,8 +10,9 @@ jego fragmentem. Identyfikator zostaje w polach rekordu (`ref_id`, `element_ref`
 `element_id`), z których interfejs wiąże wybór i nawigację.
 
 WARSTWA: interpretacja migawki ENM (słownik albo model pydantic). Zero fizyki, zero mutacji;
-importuje wyłącznie liście (`network_model/nazwy.py`, `enm/rola_pola_sn.py`) — siostra
-`enm/element_kind.py` (indeks rodzajów).
+importuje wyłącznie liść `network_model/nazwy.py` — siostra `enm/element_kind.py` (indeks
+rodzajów). Nazwa pola rozdzielnicy jest na rekordzie `Bay.name` (nadaje ją builder
+`enm.pola.zbuduj_pole` albo migracja wpisów historycznych, karta W5-B).
 
 JEDEN PREDYKAT (karta NAZWY-JEDNO-ZRODLO). Na pytanie „czy ta wartość jest nazwą nadaną przez
 projektanta" odpowiada wyłącznie `jest_nazwa`/`nazwa_nadana` z liścia `network_model/nazwy.py`
@@ -33,8 +34,6 @@ from collections.abc import Iterator, Mapping
 from typing import Any
 
 from network_model.nazwy import nazwa_nadana
-
-from .rola_pola_sn import nazwa_roli_pola_sn
 
 #: Gałąź bez nazwy — opis rodzaju wg typu gałęzi ENM (`Branch.type`).
 NAZWA_GALEZI_BEZ_NAZWY: dict[str, str] = {
@@ -243,21 +242,3 @@ def nazwa_po_identyfikatorze(
     if element_ref is None:
         return spoza_modelu
     return mapa.get(str(element_ref), spoza_modelu)
-
-
-def nazwa_pola_ze_specyfikacji(
-    spec: Mapping[str, Any], nazwy_elementow_pol: Mapping[object, object]
-) -> str:
-    """Nazwa pola SN opisanego specyfikacją stacji (`meta.field_specs`) — JEDNA reguła dla
-    operacji (nazwy przekładników, zabezpieczeń, komunikaty), read-modelu pola i oceny LoM.
-
-    Kolejność źródeł: nazwa specyfikacji; nazwa elementu pola, który specyfikacja opisuje
-    (`bay_ref` — operacje stacji nadają nazwę elementowi, a specyfikacja jej nie powiela);
-    polska nazwa roli z kanonu ról pól SN (`enm.rola_pola_sn`, karta #141). Nigdy
-    identyfikator pola (karta #144). `nazwy_elementow_pol`: `Bay.ref_id → Bay.name`.
-    """
-    return (
-        nazwa_nadana(spec.get("name"))
-        or nazwa_nadana(nazwy_elementow_pol.get(spec.get("bay_ref")))
-        or nazwa_roli_pola_sn(spec.get("field_role") or spec.get("bay_role"))
-    )
