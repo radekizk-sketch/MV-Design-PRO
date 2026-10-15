@@ -106,7 +106,7 @@ function findStationOnBus(
   return (snapshot.substations ?? []).find(
     (station) =>
       station.station_type !== 'gpz'
-      && szynyStacji(station, snapshot.branches ?? []).has(busRef),
+      && szynyStacji(snapshot, station).has(busRef),
   ) ?? null;
 }
 

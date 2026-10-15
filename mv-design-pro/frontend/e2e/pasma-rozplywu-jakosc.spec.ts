@@ -49,15 +49,13 @@ type DomainOpResponse = {
     buses?: Array<{ ref_id: string }>;
     branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
-    substations?: Array<{
+    substations?: Array<{ ref_id: string }>;
+    // Karta W5-B: pola stacji to rekordy `bays`.
+    bays?: Array<{
       ref_id: string;
-      meta?: {
-        field_specs?: Array<{
-          field_ref?: string;
-          field_role?: string | null;
-          bay_role?: string | null;
-        }>;
-      };
+      substation_ref?: string | null;
+      field_role?: string | null;
+      bay_role?: string | null;
     }>;
   };
 };
@@ -242,14 +240,15 @@ async function zbudujGotowaSiec(request: APIRequestContext, caseId: string): Pro
   });
 
   const station = (op.snapshot?.substations ?? []).find((item) => item.ref_id.includes('/station'));
-  const branchField = station?.meta?.field_specs?.find((field) => (
-    String(field.field_role ?? field.bay_role ?? '').toUpperCase().includes('ODG')
-    || String(field.bay_role ?? '').toUpperCase() === 'FEEDER'
+  const branchField = (op.snapshot?.bays ?? []).find((field) => (
+    field.substation_ref === station?.ref_id
+    && (String(field.field_role ?? field.bay_role ?? '').toUpperCase().includes('ODG')
+      || String(field.bay_role ?? '').toUpperCase() === 'FEEDER')
   ));
-  expect(branchField?.field_ref).toBeTruthy();
+  expect(branchField?.ref_id).toBeTruthy();
 
   op = await executeDomainOp(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${branchField!.field_ref}.BRANCH`,
+    from_ref: `${branchField!.ref_id}.BRANCH`,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,

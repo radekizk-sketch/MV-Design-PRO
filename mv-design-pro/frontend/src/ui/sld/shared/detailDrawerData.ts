@@ -65,7 +65,6 @@
 import type {
   Bay,
   BayDeviceState,
-  BayPrimaryDevice,
   BaySwitchState,
   Branch,
   Cable,
@@ -80,7 +79,8 @@ import { selectStationDistributionTransformers, stationRefOfTransformer } from '
 import { stationSideBusRefs } from './stationBusResolution';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
-import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
+import { projectBayPrimaryDevices } from '../v2/canvas/enmToSldAdapter';
+import { czyPoleNn, pola, polaNnStacji, polaSnStacji } from '../../shared/polaStacji';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { SldDetailDrawerData } from '../v2/canvas/SldDetailDrawer';
@@ -97,12 +97,14 @@ export function findSubstationByRef(
   );
 }
 
+/** Pola SN stacji (rekordy `bays` na szynie SN, kolejność zapisu — karta W5-B: jedyny nośnik
+ *  pól; zakładka „Pola SN" szuflady). */
 export function selectStationBays(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
 ): Bay[] {
   if (!snapshot || !station) return [];
-  return (snapshot.bays ?? []).filter((bay) => bay.substation_ref === station.ref_id);
+  return [...polaSnStacji(snapshot, station.ref_id)];
 }
 
 /**
@@ -263,8 +265,8 @@ export function buildStationDetailDrawerData(
   const szynyOdbiorowNn = new Set<string>(
     lvBusRef && snapshot && substation
       ? stationSideBusRefs(
+          snapshot,
           substation,
-          snapshot.branches ?? [],
           new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus])),
           'nn',
         )
@@ -768,68 +770,15 @@ export function buildDerDropDetailDrawerData(
  * PRZENIESIONYM Z ORYGINAŁU 1:1 (ta sama martwota istniała w oryginalnym
  * `SldWorkspaceContainer.tsx`, nie jest wprowadzona tym refaktorem).
  */
-/** Pole modelu czytane przez szufladę — wspólny kształt OBU nośników pola w ENM. */
-interface PoleModeluSzuflady {
-  readonly ref_id: string;
-  readonly name: string | null;
-  readonly substation_ref: string | null;
-  readonly bay_number: string | null;
-  readonly equipment_refs: readonly string[];
-  readonly primary_devices: readonly BayPrimaryDevice[] | null;
-}
-
 /**
- * Pola modelu z OBU nośników ENM, w kolejności rysunku (karta #135, integracja 2026-09-24).
- * Stacja ze specyfikacjami pól (`meta.field_specs` — pola stacji wstawionej operacją NIE mają
- * elementu `bays`) daje pola w kolejności specyfikacji, tym samym parserem co rysunek
- * (`readStationFieldSpecs`); elementy `bays` dochodzą, gdy ich identyfikatora nie ma wśród
- * specyfikacji. Czytanie wyłącznie `snapshot.bays` gubiło pole każdej stacji wstawionej
- * w magistralę (szuflada bez stacji, bez pola i bez identyfikatora globalnego).
- */
-function polaModeluWKolejnosciRysunku(snapshot: EnergyNetworkModel | null): PoleModeluSzuflady[] {
-  const wynik: PoleModeluSzuflady[] = [];
-  const znane = new Set<string>();
-  for (const stacja of snapshot?.substations ?? []) {
-    for (const spec of readStationFieldSpecs(stacja)) {
-      if (!spec.field_ref || znane.has(spec.field_ref)) continue;
-      znane.add(spec.field_ref);
-      wynik.push({
-        ref_id: spec.field_ref,
-        name: spec.name ?? null,
-        substation_ref: stacja.ref_id,
-        bay_number: null,
-        equipment_refs: spec.equipment_refs,
-        primary_devices: spec.primary_devices ?? null,
-      });
-    }
-  }
-  for (const bay of snapshot?.bays ?? []) {
-    if (znane.has(bay.ref_id)) continue;
-    znane.add(bay.ref_id);
-    wynik.push({
-      ref_id: bay.ref_id,
-      name: bay.name ?? null,
-      substation_ref: bay.substation_ref ?? null,
-      bay_number: bay.bay_number ?? null,
-      equipment_refs: bay.equipment_refs ?? [],
-      primary_devices: bay.primary_devices ?? null,
-    });
-  }
-  return wynik;
-}
-
-/**
- * Nazwa elementu z modelu dla identyfikatora (każda kolekcja ENM z `ref_id` i `name` oraz
- * specyfikacje pól stacji) — tytuł szuflady nie spada na człon surowego identyfikatora
+ * Nazwa elementu z modelu dla identyfikatora (każda kolekcja ENM z `ref_id` i `name`, w tym
+ * rekordy pól `bays`) — tytuł szuflady nie spada na człon surowego identyfikatora
  * (np. „000" z `…/sn_field_breaker/000`), gdy model zna nazwę elementu.
  */
 function nazwaElementuZModelu(
   snapshot: EnergyNetworkModel | null,
   id: string,
-  polaModelu: readonly PoleModeluSzuflady[],
 ): string | null {
-  const pole = polaModelu.find((p) => p.ref_id === id);
-  if (pole?.name) return pole.name;
   for (const kolekcja of Object.values(snapshot ?? {})) {
     if (!Array.isArray(kolekcja)) continue;
     for (const element of kolekcja as unknown[]) {
@@ -1046,13 +995,12 @@ export function buildStationBranchDetailDrawerData(
       }
     }
   }
-  // Karta #135 (e)1: identyfikacja pola i aparatu z MODELU, z OBU nośników pola ENM
-  // (`polaModeluWKolejnosciRysunku`): pole stacji wstawionej operacją żyje wyłącznie
-  // w `meta.field_specs` stacji, pole dodane elementem — w `snapshot.bays`. Pole trafione:
+  // Karta #135 (e)1: identyfikacja pola i aparatu z MODELU — rekordy `bays` (karta W5-B: jedyny
+  // nośnik pól SN, nN i ZKSN; kolejność zapisu). Pole trafione:
   // szuflada pola → identyfikator pola; aparat → pole, którego `primary_devices` albo
   // `equipment_refs` zawiera identyfikator, albo samo pole, gdy kanwa niesie identyfikator pola
   // (symbol aparatu z konwencji dla pola bez aparatów pierwotnych w modelu — zrzut e2e #135).
-  const polaModelu = polaModeluWKolejnosciRysunku(snapshot);
+  const polaModelu = pola(snapshot);
   const poleTrafione =
     drawerKind === 'bay'
       ? polaModelu.find((b) => b.ref_id === id) ?? null
@@ -1078,7 +1026,7 @@ export function buildStationBranchDetailDrawerData(
   }
   if (drawerKind === 'apparatus' && poleTrafione) {
     // Nazwa pola z modelu; bez nazwy — uczciwy brak, nie surowy identyfikator pola.
-    parentBayLabel = poleTrafione.name;
+    parentBayLabel = poleTrafione.name?.trim() || null;
   }
 
   // Recenzja NO-GO 2026-07-17 pkt 9 (spec §12.5): identyfikator GLOBALNY
@@ -1092,8 +1040,11 @@ export function buildStationBranchDetailDrawerData(
   let globalId: string | null = null;
   const kodStacji = stacjaPola?.stationCode ?? null;
   if (poleTrafione && kodStacji) {
-    const polaStacji = polaModelu.filter((b) => b.substation_ref === poleTrafione.substation_ref);
-    const pozycjaPola = polaStacji.findIndex((b) => b.ref_id === poleTrafione.ref_id);
+    // Pozycja wśród pól TEJ SAMEJ stacji i TEGO SAMEGO poziomu (SN/nN — `czyPoleNn`): blok SN
+    // stacji rysuje wyłącznie pola SN, więc numeracja F⟨nn⟩ pola SN liczy się wśród nich.
+    const poziomNn = czyPoleNn(snapshot, poleTrafione);
+    const polaPoziomu = (poziomNn ? polaNnStacji : polaSnStacji)(snapshot, poleTrafione.substation_ref);
+    const pozycjaPola = polaPoziomu.findIndex((b) => b.ref_id === poleTrafione.ref_id);
     const fieldPart =
       (poleTrafione.bay_number ?? '').trim() ||
       (pozycjaPola >= 0 ? `F${String(pozycjaPola + 1).padStart(2, '0')}` : null);
@@ -1126,7 +1077,7 @@ export function buildStationBranchDetailDrawerData(
             ? stationForDrawer?.name ?? stationForDrawer?.stationCode
             : stationForDrawer?.stationCode ?? stationForDrawer?.name)
           ?? internalElementDescription?.name
-          ?? nazwaElementuZModelu(snapshot, id, polaModelu)
+          ?? nazwaElementuZModelu(snapshot, id)
           ?? id.split('/').pop()
           ?? id,
         voltageKv: transformerSpec?.uhvKv

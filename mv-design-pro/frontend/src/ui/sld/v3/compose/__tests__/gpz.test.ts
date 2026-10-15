@@ -949,7 +949,7 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia pomiarowa + adnotacja CT)', () => {
-  // Sekwencja DOKŁADNIE odpowiadająca `lineFieldSpec()` (gpz.ts):
+  // Sekwencja DOKŁADNIE odpowiadająca `lineFieldTemplate()` (gpz.ts):
   // DS_BUS → CB_MAIN → CT → DS_LIN → ES_SIDE → CABLE_HEAD (esState!=='absent',
   // domyślne `lineBay` niesie 'open' — ES obecny w szablonie).
   const alignedLineDevices: readonly BayPrimaryDeviceView[] = [

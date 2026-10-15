@@ -21,6 +21,13 @@ stacji) i ``punkty_przylaczenia_rekordow_pol`` (``enm.pola.punkt_przylaczenia_po
 rekordu ``bays``). Karta W5-B: pola czytane WYŁĄCZNIE z rekordów ``bays`` (SN i nN; poziom
 z napięcia szyny pola) — dawne wpisy ``meta`` stacji nie istnieją.
 
+Sekcja ``pola`` (karta W5-B/C — lustro frontu ``frontend/src/ui/shared/polaStacji.ts``,
+test ``polaStacji.parytet.test.ts``): akcesory ``enm.pola`` na każdym modelu —
+``stacje`` (``pola_sn_stacji``/``pola_nn_stacji``: ``ref_id`` pól w kolejności zapisu),
+``czy_pole_nn`` (każdy rekord), ``stacja_pola`` (każdy rekord), ``zksn``
+(``pola_zksn`` każdego punktu rozgałęzienia) i ``wg_szyny`` (``pola_wg_szyny``: kolejność
+OUT < FEEDER < IN < pozostałe, potem ``ref_id``).
+
 Determinizm: sortowane pliki, klucze i szyny; żadnej liczby zmiennoprzecinkowej (wynik nie
 zależy od numeryki ani liczby wątków BLAS). Zapis przez ``tests/golden/zapis_fikstur``.
 
@@ -36,7 +43,18 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from enm.pola import punkt_przylaczenia_pola, zacisk_pola
+from enm.pola import (
+    czy_pole_nn,
+    napiecia_szyn,
+    pola,
+    pola_nn_stacji,
+    pola_sn_stacji,
+    pola_wg_szyny,
+    pola_zksn,
+    punkt_przylaczenia_pola,
+    stacja_pola,
+    zacisk_pola,
+)
 from enm.pole_transformatorowe import transformatory_stacji
 from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 
@@ -220,6 +238,135 @@ MODEL_ILOCZYNU: dict[str, Any] = {
 }
 
 
+def _iloczyn_pol() -> dict[str, Any]:
+    """Model ILOCZYNU CECH sekcji ``pola`` (karta W5-B/C, reguła KLASA §2): {pole stacji SN,
+    pole stacji nN, pole ZKSN} × {z własnym zaciskiem, bez zacisku, zacisk = szyna pola} ×
+    {rola IN / OUT / OUT+LINIA_ODG / FEEDER+LINIA_ODG / TR / COUPLER / MEASUREMENT / OZE /
+    rezerwa (pole bez aparatu)}, plus pole na szynie bez napięcia (poziom nieznany = SN), pole
+    stacji spoza modelu (stacja pola = brak) i identyfikatory podane NIE w porządku
+    leksykalnym (kolejność ``wg_szyny`` z rangi roli, potem ``ref_id``)."""
+    role: list[tuple[str, str, str | None]] = [
+        ("in", "IN", "LINIA_IN"),
+        ("out", "OUT", "LINIA_OUT"),
+        ("odg-out", "OUT", "LINIA_ODG"),
+        ("odg", "FEEDER", "LINIA_ODG"),
+        ("tr", "TR", "TRANSFORMATOROWE"),
+        ("spr", "COUPLER", "SPRZEGLO"),
+        ("pom", "MEASUREMENT", "POMIAROWE"),
+        ("oze", "OZE", None),
+        ("rez", "OUT", None),
+    ]
+    zaciski: list[tuple[str, str | None]] = [
+        ("zacisk", "wlasny"),
+        ("bez", None),
+        ("rowny", "szyna"),
+    ]
+    bays: list[dict[str, Any]] = []
+    # Kolejność zapisu odwrócona względem leksykalnej — ranking ról musi ją przestawić.
+    for poziom, szyna in (("sn", "S/sn"), ("nn", "S/nn")):
+        for nazwa, bay_role, field_role in reversed(role):
+            for wariant, zacisk in zaciski:
+                ref = f"S/{poziom}/{nazwa}/{wariant}"
+                rekord: dict[str, Any] = {
+                    "ref_id": ref,
+                    "substation_ref": "S/stacja",
+                    "bus_ref": szyna,
+                    "bay_role": bay_role,
+                    "equipment_refs": [] if nazwa == "rez" else [f"{ref}/aparat"],
+                }
+                if field_role is not None:
+                    rekord["field_role"] = field_role
+                if zacisk == "wlasny":
+                    rekord["terminal_bus_ref"] = f"{ref}/zacisk"
+                elif zacisk == "szyna":
+                    rekord["terminal_bus_ref"] = szyna
+                bays.append(rekord)
+    for port, bay_role, field_role in (
+        ("MAIN_IN", "IN", "LINIA_IN"),
+        ("MAIN_OUT", "OUT", "LINIA_OUT"),
+        ("BRANCH_2", "OUT", "LINIA_ODG"),
+        ("BRANCH_1", "OUT", "LINIA_ODG"),
+    ):
+        rekord = {
+            "ref_id": f"P/zksn/pole/{port}",
+            "branch_point_ref": "P/zksn",
+            "branch_point_port_id": port,
+            "bus_ref": "P/szyna",
+            "bay_role": bay_role,
+            "field_role": field_role,
+        }
+        if port == "BRANCH_1":
+            rekord["terminal_bus_ref"] = "P/zacisk-odg-1"
+        bays.append(rekord)
+    bays.append(
+        {
+            "ref_id": "S/sn/bez-napiecia",
+            "substation_ref": "S/stacja",
+            "bus_ref": "S/bez-napiecia",
+            "bay_role": "OUT",
+            "terminal_bus_ref": "S/zacisk-bez-napiecia",
+        }
+    )
+    bays.append(
+        {"ref_id": "Q/pole-obcej", "substation_ref": "Q/brak", "bus_ref": "S/sn", "bay_role": "IN"}
+    )
+    return {
+        "buses": [
+            {"ref_id": "S/sn", "voltage_kv": 15.0},
+            {"ref_id": "S/nn", "voltage_kv": 0.4},
+            {"ref_id": "S/bez-napiecia", "voltage_kv": None},
+            {"ref_id": "P/szyna", "voltage_kv": 15.0},
+        ],
+        "substations": [
+            {"ref_id": "S/stacja", "station_type": "mv_lv", "bus_refs": ["S/sn", "S/nn"]},
+            {"ref_id": "S/pusta", "station_type": "mv_lv", "bus_refs": []},
+        ],
+        "branch_points": [{"ref_id": "P/zksn", "branch_point_type": "zksn", "bus_ref": "P/szyna"}],
+        "bays": bays,
+        "branches": [],
+    }
+
+
+#: Model iloczynu cech sekcji ``pola`` (osobny od modelu szyn stacji — inne cechy).
+MODEL_ILOCZYNU_POL: dict[str, Any] = _iloczyn_pol()
+
+
+def _pola_modelu(model: dict[str, Any], stacje: list[dict[str, Any]]) -> dict[str, Any]:
+    """Odpowiedzi akcesorów ``enm.pola`` dla jednego modelu (sekcja ``pola``, karta W5-B/C).
+
+    Rekordy z pustym albo nienapisowym ``ref_id`` pomijamy w mapach po identyfikatorze (klucz
+    mapy nie byłby jednoznaczny); w listach ``stacje``/``zksn``/``wg_szyny`` występują tak,
+    jak zwraca je backend."""
+    napiecia = napiecia_szyn(model)
+    rekordy = [r for r in pola(model) if isinstance(r.get("ref_id"), str) and r["ref_id"].strip()]
+    punkty = sorted(
+        str(p["ref_id"])
+        for p in model.get("branch_points") or []
+        if isinstance(p, dict) and isinstance(p.get("ref_id"), str)
+    )
+
+    def _stacja_pola(ref: str) -> str | None:
+        stacja = stacja_pola(model, ref)
+        return str(stacja["ref_id"]) if stacja is not None else None
+
+    return {
+        "czy_pole_nn": {str(r["ref_id"]): czy_pole_nn(model, r, napiecia) for r in rekordy},
+        "stacja_pola": {str(r["ref_id"]): _stacja_pola(str(r["ref_id"])) for r in rekordy},
+        "stacje": {
+            str(s["ref_id"]): {
+                "nn": [str(r.get("ref_id")) for r in pola_nn_stacji(model, s["ref_id"])],
+                "sn": [str(r.get("ref_id")) for r in pola_sn_stacji(model, s["ref_id"])],
+            }
+            for s in stacje
+        },
+        "wg_szyny": {
+            szyna: [str(r.get("ref_id")) for r in lista]
+            for szyna, lista in sorted(pola_wg_szyny(model).items())
+        },
+        "zksn": {ref: [str(r.get("ref_id")) for r in pola_zksn(model, ref)] for ref in punkty},
+    }
+
+
 def _oczekiwane_modelu(model: dict[str, Any], *, szyny_obce: bool = False) -> dict[str, Any] | None:
     """Wszystkie odpowiedzi backendu z klasy „stacja i jej szyny” dla jednego modelu ENM."""
     galezie = model.get("branches") or []
@@ -269,6 +416,7 @@ def _oczekiwane_modelu(model: dict[str, Any], *, szyny_obce: bool = False) -> di
         if isinstance(bay, dict) and isinstance(bay.get("ref_id"), str)
     }
     return {
+        "pola": _pola_modelu(model, stacje),
         "punkty_przylaczenia_rekordow_pol": rekordy_pol,
         "szyny": szyny,
         "szyny_glowne": glowne,
@@ -294,6 +442,10 @@ def oczekiwane_szyny_stacji() -> dict[str, Any]:
         "iloczyn": {
             "model": MODEL_ILOCZYNU,
             **(_oczekiwane_modelu(MODEL_ILOCZYNU, szyny_obce=True) or {}),
+        },
+        "iloczyn_pol": {
+            "model": MODEL_ILOCZYNU_POL,
+            **(_oczekiwane_modelu(MODEL_ILOCZYNU_POL) or {}),
         },
         "pliki": pliki,
     }

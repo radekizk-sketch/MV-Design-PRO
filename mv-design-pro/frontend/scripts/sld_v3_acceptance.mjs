@@ -2626,15 +2626,11 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
   const indexModelu = buildCanvasModelIndex(enm);
   /** Refy modelu — druga, NIEZALEŻNA strona kontraktu „ref istnieje". */
   const refyModelu = new Set();
-  for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers]) {
+  // Karta W5-B: pola są rekordami `bays` (jedyny nośnik) — kolekcja jak każda inna.
+  for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers, enm.bays]) {
     for (const el of kolekcja ?? []) {
       if (el.ref_id) refyModelu.add(el.ref_id);
       if (el.id) refyModelu.add(el.id);
-    }
-  }
-  for (const stacja of enm.substations ?? []) {
-    for (const spec of stacja.meta?.field_specs ?? []) {
-      if (spec?.field_ref) refyModelu.add(spec.field_ref);
     }
   }
 

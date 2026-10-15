@@ -6,14 +6,14 @@
  * Zapis = operacja domenowa `przepnij_element_na_pole`. Kreator NIE wybiera pola za model:
  * domyślnie wysyła sam element (pole wskazuje kontrola modelu), a jawny wybór pola projektanta
  * backend sprawdza (rola, zajętość) i odrzuca nazwaną odmową. Lista pól pochodzi z danych
- * stacji (`field_specs` z własnym zaciskiem na szynie elementu) — zero reguł i fizyki w UI.
+ * stacji (rekordy `bays` pól SN z własnym zaciskiem na szynie elementu) — zero reguł i fizyki w UI.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
-import { wlasnyZaciskPola } from '../../../ui/shared/zaciskPola';
+import { polaSnStacji, wlasnyZaciskPola } from '../../../ui/shared/polaStacji';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import {
@@ -34,12 +34,6 @@ import { PRZEPIECIE_NA_POLE_STRINGS as T } from './strings';
 
 function napis(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function rekord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 interface ElementNaSzynie {
@@ -67,16 +61,10 @@ export function elementNaSzynieStacji(
   for (const stacja of snapshot.substations ?? []) {
     const szyna = konce.find((k) => (stacja.bus_refs ?? []).includes(k));
     if (!szyna) continue;
-    const specs = rekord(stacja.meta)?.field_specs;
-    const pola: OpcjaWyboru[] = (Array.isArray(specs) ? specs : [])
-      .map((raw) => rekord(raw))
-      .filter((spec): spec is Record<string, unknown> => spec !== null)
-      .filter((spec) => napis(spec.bus_ref) === szyna && wlasnyZaciskPola(spec) !== null)
-      .map((spec) => ({
-        id: napis(spec.field_ref),
-        etykieta: napis(spec.name) || napis(spec.field_ref),
-      }))
-      .filter((opcja) => opcja.id !== '');
+    // Karta W5-B: pola SN stacji z rekordów `bays` na szynie elementu, z własnym zaciskiem.
+    const pola: OpcjaWyboru[] = polaSnStacji(snapshot, stacja.ref_id)
+      .filter((pole) => pole.bus_ref === szyna && wlasnyZaciskPola(pole) !== null)
+      .map((pole) => ({ id: pole.ref_id, etykieta: napis(pole.name) || pole.ref_id }));
     const szynaModel = (snapshot.buses ?? []).find((b) => b.ref_id === szyna);
     return {
       nazwa: napis((galaz ?? transformator)?.name) || T.nieznany,

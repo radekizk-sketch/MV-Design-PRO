@@ -223,26 +223,24 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-01/station',
               name: 'Stacja S01 przelotowa',
               tags: [],
-              meta: {
-                field_specs: [
-                  {
-                    field_ref: 'field/station-01/out',
-                    bay_role: 'OUT',
-                    bus_ref: 'stn/station-01/sn_bus',
-                    meta: {
-                      field_terminal_bus_ref: 'stn/station-01/field-out-terminal',
-                      terminal_bus_ref: 'stn/station-01/sn_bus',
-                    },
-                  },
-                ],
-              },
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: ['stn/station-01/sn_bus'],
               transformer_refs: [],
             },
           ],
           generators: [],
-          bays: [],
+          bays: [
+            {
+                    ref_id: 'field/station-01/out',
+                    bay_role: 'OUT',
+                    bus_ref: 'stn/station-01/sn_bus',
+                    terminal_bus_ref: 'stn/station-01/field-out-terminal', meta: {},
+                    substation_ref: 'stn/station-01/station',
+                    equipment_refs: [],
+                    tags: [],
+                  },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -308,17 +306,16 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     });
 
     // Karta #141: układ szyn (sprzęgło → dwie sekcje) i nazwy pól wynikają z ROLI pola, nigdy
-    // z tekstu etykiety. Iloczyn cech: {sprzęgło jest, nie ma} × {źródło pól: specyfikacje pól
-    // w meta stacji, elementy `bays` migawki}.
+    // z tekstu etykiety. Iloczyn cech: {sprzęgło jest, nie ma} × {pola nN stacji obok: brak, są}.
+    // Karta W5-B: jedynym nośnikiem pól są rekordy `bays` (dawny wymiar „źródło pól” zniknął).
     it.each([
-      { sprzeglo: true, zrodlo: 'field_specs' },
-      { sprzeglo: false, zrodlo: 'field_specs' },
-      { sprzeglo: true, zrodlo: 'bays' },
-      { sprzeglo: false, zrodlo: 'bays' },
-    ] as const)('układ szyn i nazwy pól z roli pola: sprzęgło=$sprzeglo, źródło=$zrodlo', ({ sprzeglo, zrodlo }) => {
+      { sprzeglo: true, zPolamiNn: false },
+      { sprzeglo: false, zPolamiNn: false },
+      { sprzeglo: true, zPolamiNn: true },
+      { sprzeglo: false, zPolamiNn: true },
+    ] as const)('układ szyn i nazwy pól z roli pola: sprzęgło=$sprzeglo, pola nN=$zPolamiNn', ({ sprzeglo, zPolamiNn }) => {
       const role = sprzeglo ? ['IN', 'COUPLER', 'TR', 'OZE'] : ['IN', 'OUT', 'TR', 'OZE'];
       // Nazwy własne pól celowo NIE zawierają słów roli — rola musi przyjść z `bay_role`.
-      const specyfikacje = role.map((rola, i) => ({ field_ref: `f-${i}`, name: `Q${i + 1}`, bay_role: rola }));
       const bays = role.map((rola, i) => ({
         id: `bay-${i}`,
         ref_id: `bay-${i}`,
@@ -338,11 +335,12 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
             created_at: '2026-05-28T00:00:00Z',
             updated_at: '2026-05-28T00:00:00Z',
             revision: 1,
-            hash_sha256: `snapshot-role-${sprzeglo}-${zrodlo}`,
+            hash_sha256: `snapshot-role-${sprzeglo}-${zPolamiNn}`,
             defaults: { frequency_hz: 50, unit_system: 'SI' },
           },
           buses: [
             { id: 'sn-bus', ref_id: 'stn/s1/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+            { id: 'nn-bus', ref_id: 'stn/s1/nn_bus', name: 'Szyna nN', voltage_kv: 0.4, tags: [], meta: {} },
           ],
           branches: [],
           transformers: [],
@@ -354,14 +352,17 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/s1/station',
               name: 'Stacja S1',
               tags: [],
-              meta: zrodlo === 'field_specs' ? { field_specs: specyfikacje } : {},
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: ['stn/s1/sn_bus'],
               transformer_refs: [],
             },
           ],
           generators: [],
-          bays: zrodlo === 'bays' ? bays : [],
+          // Pola nN stacji (szyna 0,4 kV) nie należą do rozdzielni SN — układ i liczność bez zmian.
+          bays: zPolamiNn
+            ? [...bays, { ...bays[0], id: 'nn-0', ref_id: 'nn-0', name: 'Odpływ nN', bay_role: 'FEEDER', bus_ref: 'stn/s1/nn_bus' }]
+            : bays,
           junctions: [],
           corridors: [],
           measurements: [],
@@ -421,19 +422,17 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-missing-tr/station',
               name: 'Stacja bez TR',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
-                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: ['stn/station-missing-tr/sn_bus'],
               transformer_refs: [],
             },
           ],
           generators: [],
-          bays: [],
+          bays: [
+            { ref_id: 'field-in', name: 'Pole WE', bay_role: 'IN', substation_ref: 'stn/station-missing-tr/station', bus_ref: 'stn/station-missing-tr/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-tr', name: 'Pole TR', bay_role: 'TR', substation_ref: 'stn/station-missing-tr/station', bus_ref: 'stn/station-missing-tr/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -503,19 +502,17 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-no-free/station',
               name: 'Stacja S02 końcowa',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
-                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: ['stn/station-no-free/sn_bus'],
               transformer_refs: [],
             },
           ],
           generators: [],
-          bays: [],
+          bays: [
+            { ref_id: 'field-in', name: 'Pole WE', bay_role: 'IN', substation_ref: 'stn/station-no-free/station', bus_ref: 'stn/station-no-free/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-tr', name: 'Pole TR', bay_role: 'TR', substation_ref: 'stn/station-no-free/station', bus_ref: 'stn/station-no-free/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -599,21 +596,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-branch/station',
               name: 'Stacja S31 odgałęźna',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
-                  { field_ref: 'field-out', name: 'Pole WY', bay_role: 'OUT' },
-                  {
-                    field_ref: 'field-odg',
-                    name: 'Pole ODG',
-                    bay_role: 'FEEDER',
-                    meta: {
-                      field_terminal_bus_ref: 'stn/station-branch/field-odg-terminal',
-                    },
-                  },
-                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'branch',
               bus_refs: ['stn/station-branch/sn_bus', 'stn/station-branch/field-odg-terminal'],
               transformer_refs: [],
@@ -621,22 +604,26 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           ],
           generators: [],
           bays: [
+            { ref_id: 'field-in', name: 'Pole WE', bay_role: 'IN', substation_ref: 'stn/station-branch/station', bus_ref: 'stn/station-branch/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-out', name: 'Pole WY', bay_role: 'OUT', substation_ref: 'stn/station-branch/station', bus_ref: 'stn/station-branch/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            {
+                    ref_id: 'field-odg',
+                    name: 'Pole ODG',
+                    bay_role: 'FEEDER',
+                    terminal_bus_ref: 'stn/station-branch/field-odg-terminal', meta: {},
+                    substation_ref: 'stn/station-branch/station',
+                    bus_ref: 'stn/station-branch/sn_bus',
+                    equipment_refs: [],
+                    tags: [],
+                  },
+            { ref_id: 'field-tr', name: 'Pole TR', bay_role: 'TR', substation_ref: 'stn/station-branch/station', bus_ref: 'stn/station-branch/sn_bus', equipment_refs: [], tags: [], meta: {} },
             {
               id: 'bay-station-01-out',
               ref_id: 'bay/station-01/out',
               name: 'Pole OUT - Stacja S01',
               tags: [],
-              meta: {
-                sn_field_template: {
-                  field_ref: 'field/station-01/out',
-                  bay_role: 'OUT',
-                  bus_ref: 'stn/station-01/sn_bus',
-                  meta: {
-                    field_terminal_bus_ref: 'stn/station-01/field-out-terminal',
-                    terminal_bus_ref: 'stn/station-01/sn_bus',
-                  },
-                },
-              },
+              meta: {},
+              terminal_bus_ref: 'stn/station-01/field-out-terminal',
               bay_role: 'OUT',
               substation_ref: 'stn/station-01/station',
               bus_ref: 'stn/station-01/sn_bus',
@@ -736,20 +723,18 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-02/station',
               name: 'Stacja S02 przelotowa',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'internal-field-in', name: 'Pole wejściowe', bay_role: 'IN' },
-                  { field_ref: 'internal-field-out', name: 'Pole wyjściowe', bay_role: 'OUT' },
-                  { field_ref: 'internal-field-tr', name: 'Pole transformatora', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'inline',
               bus_refs: ['stn/station-02/sn_bus'],
               transformer_refs: [],
             },
           ],
           generators: [],
-          bays: [],
+          bays: [
+            { ref_id: 'internal-field-in', name: 'Pole wejściowe', bay_role: 'IN', substation_ref: 'stn/station-02/station', bus_ref: 'stn/station-02/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'internal-field-out', name: 'Pole wyjściowe', bay_role: 'OUT', substation_ref: 'stn/station-02/station', bus_ref: 'stn/station-02/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'internal-field-tr', name: 'Pole transformatora', bay_role: 'TR', substation_ref: 'stn/station-02/station', bus_ref: 'stn/station-02/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -849,12 +834,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-pv/station',
               name: 'Stacja PV',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole wejściowe', bay_role: 'IN' },
-                  { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: ['stn/station-pv/sn_bus', 'stn/station-pv/der/pv/bus-0.69kv'],
               transformer_refs: ['stn/station-pv/der/pv/tr-block'],
@@ -878,7 +858,10 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               station_ref: 'stn/station-pv/station',
             },
           ],
-          bays: [],
+          bays: [
+            { ref_id: 'field-in', name: 'Pole wejściowe', bay_role: 'IN', substation_ref: 'stn/station-pv/station', bus_ref: 'stn/station-pv/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-tr', name: 'Pole transformatora', bay_role: 'TR', substation_ref: 'stn/station-pv/station', bus_ref: 'stn/station-pv/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -961,12 +944,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-pv/station',
               name: 'Stacja PV',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole wejściowe', bay_role: 'IN' },
-                  { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'mv_lv',
               bus_refs: [
                 'stn/station-pv/sn_bus',
@@ -997,7 +975,10 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               station_ref: 'stn/station-pv/station',
             },
           ],
-          bays: [],
+          bays: [
+            { ref_id: 'field-in', name: 'Pole wejściowe', bay_role: 'IN', substation_ref: 'stn/station-pv/station', bus_ref: 'stn/station-pv/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-tr', name: 'Pole transformatora', bay_role: 'TR', substation_ref: 'stn/station-pv/station', bus_ref: 'stn/station-pv/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],
@@ -1067,13 +1048,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'stn/station-15/station',
               name: 'Stacja SN/nN 15',
               tags: [],
-              meta: {
-                field_specs: [
-                  { field_ref: 'field-in', name: 'Pole IN', bay_role: 'IN' },
-                  { field_ref: 'field-out', name: 'Pole OUT', bay_role: 'OUT' },
-                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
-                ],
-              },
+              meta: {},
               station_type: 'inline',
               bus_refs: ['stn/station-15/sn_bus', 'stn/station-15/nn_bus'],
               transformer_refs: ['stn/station-15/tr-250'],
@@ -1097,7 +1072,11 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               station_ref: 'stn/station-15/station',
             },
           ],
-          bays: [],
+          bays: [
+            { ref_id: 'field-in', name: 'Pole IN', bay_role: 'IN', substation_ref: 'stn/station-15/station', bus_ref: 'stn/station-15/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-out', name: 'Pole OUT', bay_role: 'OUT', substation_ref: 'stn/station-15/station', bus_ref: 'stn/station-15/sn_bus', equipment_refs: [], tags: [], meta: {} },
+            { ref_id: 'field-tr', name: 'Pole TR', bay_role: 'TR', substation_ref: 'stn/station-15/station', bus_ref: 'stn/station-15/sn_bus', equipment_refs: [], tags: [], meta: {} },
+          ],
           junctions: [],
           corridors: [],
           measurements: [],

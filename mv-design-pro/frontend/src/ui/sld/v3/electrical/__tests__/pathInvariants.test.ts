@@ -17,7 +17,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';
-import { wlasnyZaciskPola } from '../../../../shared/zaciskPola';
+import { polaSnStacji, wlasnyZaciskPola } from '../../../../shared/polaStacji';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
 const enmBazowy = buildStacjaBFixture();
@@ -103,8 +103,8 @@ describe('viewModel.ts — szkielet SLD VIEW MODEL buduje się na Stacji B (T1 s
     // „sekcja = każdy węzeł grafu” liczyło zaciski pól jako szyny.
     const zaciskiPol = new Set(
       (enmBazowy.substations ?? []).flatMap((s) =>
-        ((s.meta as { field_specs?: Record<string, unknown>[] } | undefined)?.field_specs ?? [])
-          .map((spec) => wlasnyZaciskPola(spec))
+        polaSnStacji(enmBazowy, s.ref_id)
+          .map((pole) => wlasnyZaciskPola(pole))
           .filter((ref): ref is string => ref !== null),
       ),
     );

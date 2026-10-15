@@ -15,6 +15,9 @@
  * e2e/ux-feedback-loop.spec.ts (`__mvdpOpenOperationForm`).
  */
 import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
+import type { Bay } from '../src/types/enm';
+import { polaSnStacji } from '../src/ui/shared/polaStacji';
+
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -68,11 +71,14 @@ type Substation = {
   designation?: string | null;
   construction_type?: string | null;
   transformer_refs?: string[];
-  meta?: { field_specs?: Array<Record<string, unknown>> } | null;
+  meta?: Record<string, unknown> | null;
 };
 
 type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
+  // Karta W5-B: pola stacji to rekordy `bays`; poziom pola z napięcia szyny `bus_ref`.
+  buses?: Array<{ ref_id: string; voltage_kv?: number | null }>;
+  bays?: Bay[];
   branches?: Array<{ ref_id: string; catalog_ref?: string | null; tags?: string[]; meta?: Record<string, unknown> }>;
   substations?: Substation[];
   measurements?: Array<{
@@ -507,7 +513,7 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // B-5: typ konstrukcji zapisany.
   expect(stacja?.construction_type).toBe('kontenerowa');
 
-  const polaStacji = (stacja?.meta?.field_specs ?? []) as Array<Record<string, unknown>>;
+  const polaStacji = polaSnStacji(enm, stacja?.ref_id);
   expect(polaStacji.length).toBeGreaterThan(0);
 
   // W5-A: układ sieci nN i punkt neutralny nN NA TRANSFORMATORZE stacji (jedyne nośniki);

@@ -20,6 +20,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../../types/enm';
+import { pole } from '../../../../../../test/pola';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Baza: MAŁA, renderowalna sieć (GPZ + 2 stacje inline z TR odbiorczym, BEZ
@@ -36,7 +37,7 @@ function loadBase(): EnergyNetworkModel {
 
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
 
-/** Aparat pierwotny pola źródłowego SN (lustro `_build_field_spec` backendu). */
+/** Aparat pierwotny pola źródłowego SN (lustro buildera pola `enm.pola.zbuduj_pole` backendu). */
 function device(
   ref: string,
   kind: BayPrimaryDevice['kind'],
@@ -211,24 +212,19 @@ export function injectDerSnChain(
     } as unknown as EnergyNetworkModel['branches'][number]);
   }
 
-  // Pole źródłowe SN (bay_role OZE) — DOPISANE do istniejących field_specs
-  // stacji (append, nie replace: stacja zachowuje pola liniowe + TR).
-  const st = (enm.substations ?? []).find((s) => s.ref_id === stationRef)!;
-  const meta = (st.meta ??= {}) as Record<string, unknown>;
-  const fieldSpecs = (Array.isArray(meta.field_specs) ? meta.field_specs : []) as unknown[];
-  fieldSpecs.push({
-    field_ref: ozeFieldRef,
+  // Pole źródłowe SN (bay_role OZE) — rekord `bays` DOPISANY do pól stacji (karta W5-B;
+  // append, nie replace: stacja zachowuje pola liniowe + TR).
+  (enm.bays ??= []).push(pole({
+    ref_id: ozeFieldRef,
     name: `Pole źródłowe ${tech}`,
     bay_role: 'OZE',
+    substation_ref: stationRef,
     bus_ref: snBusRef,
     equipment_refs: [`${ozeFieldRef}/cb`],
     protection_ref: null,
-    tags: [],
-    meta: {},
-    primary_devices: ozePrimaryDevices(ozeFieldRef, opts.withVt ?? true, opts.withSa ?? true),
+    primary_devices: [...ozePrimaryDevices(ozeFieldRef, opts.withVt ?? true, opts.withSa ?? true)],
     protection_codes: ['anti-islanding'],
-  });
-  meta.field_specs = fieldSpecs;
+  }));
 
   (enm.generators ??= []).push({
     id: sourceId,

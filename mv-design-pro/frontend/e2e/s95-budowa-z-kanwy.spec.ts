@@ -41,9 +41,9 @@ type Snapshot = {
   substations?: Array<{
     ref_id: string;
     station_type?: string | null;
-    // Karta POLA-W-TORZE: zaciski pól stacji (`field_specs[].meta.terminal_bus_ref`).
-    meta?: { field_specs?: Array<{ meta?: { terminal_bus_ref?: string } }> };
   }>;
+  // Karta POLA-W-TORZE + W5-B: zaciski pól stacji (`bays[].terminal_bus_ref`).
+  bays?: Array<{ ref_id: string; substation_ref?: string | null; terminal_bus_ref?: string | null }>;
   branches?: Array<{ ref_id: string; type?: string; from_bus_ref?: string; to_bus_ref?: string }>;
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   // CV-4.3 K7 (karta K7-FE): źródła sieciowe niosą dane scenariusza MIN.
@@ -325,8 +325,9 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 
     // Dalsza połówka odcinka: wychodzi z ZACISKU pola wyjściowego stacji (aparat pola w torze).
     const zaciskiStacji = new Set(
-      (stacja!.meta?.field_specs ?? [])
-        .map((spec) => spec.meta?.terminal_bus_ref)
+      (enmPoStacji.bays ?? [])
+        .filter((pole) => pole.substation_ref === stacja!.ref_id)
+        .map((pole) => pole.terminal_bus_ref)
         .filter((ref): ref is string => typeof ref === 'string'),
     );
     const dalszaPolowka = (enmPoStacji.branches ?? []).find(

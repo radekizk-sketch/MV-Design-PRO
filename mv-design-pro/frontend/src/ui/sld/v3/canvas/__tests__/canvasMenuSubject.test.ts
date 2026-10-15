@@ -36,7 +36,6 @@ function model(): EnergyNetworkModel {
         id: 'stn/A/station',
         name: 'Stacja A',
         bus_refs: ['bus/A/sn', 'bus/A/nn'],
-        meta: { field_specs: [{ field_ref: 'stn/A/sn_field/000' }] },
       },
       {
         ref_id: 'stn/B/station',
@@ -58,6 +57,17 @@ function model(): EnergyNetworkModel {
     generators: [{ ref_id: 'gen/PV1', id: 'gen/PV1' }],
     sources: [{ ref_id: 'src/GPZ', id: 'src/GPZ' }],
     transformers: [{ ref_id: 'trf/A/sn_nn', id: 'trf/A/sn_nn' }],
+    // Karta W5-B: pole stacji = rekord `bays` (SN — szyna pola w paśmie SN).
+    bays: [
+      {
+        ref_id: 'stn/A/sn_field/000',
+        id: 'stn/A/sn_field/000',
+        bay_role: 'OUT',
+        substation_ref: 'stn/A/station',
+        bus_ref: 'bus/A/sn',
+        equipment_refs: [],
+      },
+    ],
   } as unknown as EnergyNetworkModel;
 }
 

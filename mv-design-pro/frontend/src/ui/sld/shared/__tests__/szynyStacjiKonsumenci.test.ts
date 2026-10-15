@@ -25,6 +25,7 @@ import { selectLoadSummaries } from '../../../network-build/networkBuildStore';
 import { snPointKindForBus } from '../../../network-build/station-der/zModelu';
 import { stacjeDlaPunktu } from '../../../../ui2/wyniki/zwarcia/aparatura/model';
 import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
+import { polaNnStacji, polaStacji } from '../../../shared/polaStacji';
 import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import { resultPointsInStationNnBoard } from '../../v3/canvas/resultRefBridge';
 import { buildSceneV3 } from '../../v3/scene/buildScene';
@@ -45,11 +46,9 @@ const napiecie = new Map((enm.buses ?? []).map((b) => [b.ref_id, b.voltage_kv]))
 
 function rodzajeSzyn(stacja: Substation) {
   const glowne = stacja.bus_refs ?? [];
-  const polaNn = ((stacja.meta as { nn_field_specs?: { field_ref: string }[] }).nn_field_specs ?? []).map((p) => p.field_ref);
-  const aparaty = galezie.filter((g) => {
-    const pole = (g.meta as { nn_field_migrowany_z?: unknown } | undefined)?.nn_field_migrowany_z;
-    return typeof pole === 'string' && polaNn.includes(pole);
-  });
+  // Karta W5-B: aparaty pól nN = gałęzie wskazane przez `equipment_refs` rekordów pól nN stacji.
+  const aparatyPol = new Set(polaNnStacji(enm, stacja.ref_id).flatMap((p) => p.equipment_refs));
+  const aparaty = galezie.filter((g) => aparatyPol.has(g.ref_id));
   // Strona dolna transformatora stacji leży na zacisku wyłącznika głównego nN (koniec
   // aparatu pola nN spoza `bus_refs`), a nie na szynie nN rozdzielnicy.
   const transformator = (enm.transformers ?? []).find((t) => (stacja.transformer_refs ?? []).includes(t.ref_id))!;
@@ -57,7 +56,7 @@ function rodzajeSzyn(stacja: Substation) {
   return {
     snGlowna: glowne.find((r) => (napiecie.get(r) ?? 0) > 1)!,
     nnGlowna: glowne.find((r) => (napiecie.get(r) ?? 99) <= 1)!,
-    zaciskSn: [...szynyStacji(stacja, [])].find((r) => !glowne.includes(r))!,
+    zaciskSn: [...szynyStacji({ ...enm, branches: [] }, stacja)].find((r) => !glowne.includes(r))!,
     zaciskWylacznikaNn,
     odplywNn: String(aparaty.map((g) => g.to_bus_ref).find((r) => r !== zaciskWylacznikaNn)),
   };
@@ -79,7 +78,7 @@ describe('kontrola wejścia — model z API niesie oba rodzaje szyn spoza bus_re
 });
 
 describe('przypisanie szyny do stacji — każdy konsument × każdy rodzaj szyny', () => {
-  const mapa = stacjaSzyn(enm.substations ?? [], galezie);
+  const mapa = stacjaSzyn(enm);
 
   it.each(stacje.flatMap((s) => Object.entries(rodzajeSzyn(s)).map(([rodzaj, szyna]) => [s.ref_id, rodzaj, szyna] as const)))(
     '%s · %s',
@@ -96,15 +95,15 @@ describe('przypisanie szyny do stacji — każdy konsument × każdy rodzaj szyn
   );
 
   it('szyna odpływu INNEJ stacji i szyna obca nie należą do S01', () => {
-    expect(szynyStacji(s01, galezie).has(rodzajeSzyn(s02).odplywNn)).toBe(false);
+    expect(szynyStacji(enm, s01).has(rodzajeSzyn(s02).odplywNn)).toBe(false);
     expect(stationRefOfBusOrSource(enm, 'szyna/obca')).toBeNull();
     expect(stacjeDlaPunktu(enm, { target_id: 'szyna/obca', element_id: 'szyna/obca' })).toEqual([]);
   });
 
-  it('aparat z deklaracją pola TEJ stacji dopisuje OBA końce, także z obcej szyny (deklaracja rozstrzyga — jak backend)', () => {
+  it('aparat wskazany przez pole TEJ stacji dopisuje OBA końce, także z obcej szyny (rekord pola rozstrzyga — jak backend)', () => {
     const aparat = galezie.find((g) => String(g.to_bus_ref) === rodzajeSzyn(s01).odplywNn)!;
     const zObcej = { ...aparat, from_bus_ref: rodzajeSzyn(s02).nnGlowna };
-    const szyny = szynyStacji(s01, [zObcej]);
+    const szyny = szynyStacji({ ...enm, branches: [zObcej] }, s01);
     expect(szyny.has(String(aparat.to_bus_ref))).toBe(true);
     expect(szyny.has(rodzajeSzyn(s02).nnGlowna)).toBe(true);
   });
@@ -116,7 +115,7 @@ describe('rysunek — tabliczka, szuflada, kompletność i pokrycie wyników na 
   it('szuflada S01 wymienia odbiory strony nN stacji (szyny odpływów), a nie odbiory S02', () => {
     const dane = buildStationDetailDrawerData(enm, sldData, null, s01.ref_id);
     const odbiory = dane?.nnSpec?.loads?.map((l) => l.id) ?? [];
-    const szynyS01 = szynyStacji(s01, galezie);
+    const szynyS01 = szynyStacji(enm, s01);
     const oczekiwane = (enm.loads ?? []).filter((l) => szynyS01.has(l.bus_ref)).map((l) => l.ref_id);
     expect(oczekiwane.length).toBeGreaterThan(0);
     expect([...odbiory].sort()).toEqual([...oczekiwane].sort());
@@ -174,11 +173,8 @@ describe('łańcuch aparatów pól nN podrozdzielnicy (`nnBoardDemo`, osobna `Su
     }
   ).enm;
   const podrozdzielnica = (demo.substations ?? []).find((s) => s.station_type === 'rozdzielnica_nn')!;
-  const aparaty = (demo.branches ?? []).filter((g) => {
-    const pole = (g.meta as { nn_field_migrowany_z?: unknown } | undefined)?.nn_field_migrowany_z;
-    const pola = ((podrozdzielnica.meta as { nn_field_specs?: { field_ref: string }[] }).nn_field_specs ?? []).map((p) => p.field_ref);
-    return typeof pole === 'string' && pola.includes(pole);
-  });
+  const aparatyPol = new Set(polaNnStacji(demo, podrozdzielnica.ref_id).flatMap((p) => p.equipment_refs));
+  const aparaty = (demo.branches ?? []).filter((g) => aparatyPol.has(g.ref_id));
   const zaSekcja = aparaty.filter((g) => !(podrozdzielnica.bus_refs ?? []).includes(String(g.from_bus_ref)));
 
   it('kontrola wejścia: odpływy za szyną sekcji (koniec from spoza bus_refs) istnieją', () => {
@@ -188,7 +184,7 @@ describe('łańcuch aparatów pól nN podrozdzielnicy (`nnBoardDemo`, osobna `Su
   it('szyny za sekcją należą do podrozdzielnicy w KAŻDEJ kolejności gałęzi i trafiają do rozdzielnicy nN wyników', () => {
     const nnBoard = resultPointsInStationNnBoard(demo);
     for (const galezieKolejnosc of [demo.branches ?? [], [...(demo.branches ?? [])].reverse()]) {
-      const mapa = stacjaSzyn(demo.substations ?? [], galezieKolejnosc);
+      const mapa = stacjaSzyn({ ...demo, branches: galezieKolejnosc });
       for (const g of zaSekcja) {
         expect(mapa.get(String(g.from_bus_ref))).toBe(podrozdzielnica.ref_id);
         expect(mapa.get(String(g.to_bus_ref))).toBe(podrozdzielnica.ref_id);
@@ -212,18 +208,23 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
   ).enm;
   const polaLiniowe = (model: EnergyNetworkModel) =>
     buildSldDataFromSnapshot(model, model.logical_views ?? null, null)
-      .gpzs[0].sections.flatMap((s) => s.bays)
+      .gpzs.slice(0, 1).flatMap((gpz) => (gpz.sections ?? []).flatMap((s) => s.bays))
       .filter((b) => b.fieldRole === 'LINE_OUT');
 
   it('dwa odcinki z tej samej szyny sekcji do DWÓCH stacji ⇒ żadne pole nie dostaje celu', () => {
     const pola = polaLiniowe(siec);
-    expect(pola).toHaveLength(2);
+    // Karta W5-B: pola liniowe GPZ = rekordy `bays` GPZ roli OUT/FEEDER (jeden nośnik — dawniej
+    // ścieżka v2 widziała tylko część pól GPZ, kanoniczna — wszystkie).
+    const gpzRef = (siec.substations ?? []).find((s) => s.station_type === 'gpz')!.ref_id;
+    const oczekiwane = polaStacji(siec, gpzRef).filter((b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER');
+    expect(oczekiwane.length).toBeGreaterThanOrEqual(2);
+    expect(pola).toHaveLength(oczekiwane.length);
     for (const pole of pola) expect(pole.outgoingFeeder).toBeUndefined();
   });
 
   it('jeden odcinek do stacji (koniec na zacisku pola stacji) ⇒ cel = ta stacja i dane TEGO odcinka', () => {
     const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02 (typ B)')!;
-    const szynyS02 = szynyStacji(s02, siec.branches ?? []);
+    const szynyS02 = szynyStacji(siec, s02);
     const bezS02 = {
       ...siec,
       branches: (siec.branches ?? []).filter((g) => !szynyS02.has(String(g.to_bus_ref)) || g.type !== 'cable'),

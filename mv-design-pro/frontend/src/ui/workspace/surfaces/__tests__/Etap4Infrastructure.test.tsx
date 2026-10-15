@@ -317,12 +317,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         branch_occupied: {},
         switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-            { code: 'ODG2', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -402,11 +396,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         branch_occupied: {},
         switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -464,10 +453,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         branch_occupied: {},
         switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -523,11 +508,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         branch_occupied: { BRANCH: 'seg-zksn-branch' },
         switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -587,11 +567,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         branch_occupied: {},
         switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',

@@ -132,7 +132,7 @@ export const FIELD_SOURCE_LABEL_PL = 'Pole źródłowe SN';
 export const FIELD_GENERIC_LABEL_PL = 'Pole SN';
 
 /**
- * Model field role (`Bay.bay_role`, `field_specs[].bay_role`) → canonical role. Mirror of the
+ * Model field role (`Bay.bay_role`) → canonical role. Mirror of the
  * backend alias map `ROLA_POLA_SN_Z_ALIASU` (parity pinned by the same backend test). The model
  * source role `OZE` has NO canonical role: its technology is known only from the generator.
  */

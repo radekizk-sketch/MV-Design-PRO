@@ -18,7 +18,7 @@
  *
  * ATRYBUCJA LICZB (karta SLD-SUBSTRAT, regeneracja z API zamiast zrzutu ręcznego):
  *   * zwarcie 3 → 9 punktów: +6 szyn odpływów nN — automigracja promocji pól nN
- *     (backend `enm/migrations/nn_field_specs_promocja.py`) wprowadziła do modelu
+ *     (backend `enm/migrations/promocja_aparatow_nn.py`) wprowadziła do modelu
  *     aparat i szynę każdego odpływu nN stacji (5 odpływów + wyłącznik główny
  *     szablonu 1250 kVA), a solver liczy zwarcie w każdym węźle;
  *   * rozpływ 16 → 23 punkty: te same +6 szyn odpływów oraz +1 zacisk pola SN

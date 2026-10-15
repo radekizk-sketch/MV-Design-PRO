@@ -10,11 +10,10 @@
  *
  * Iloczyn cech: {stacja pierwsza, druga, nieobecna na rysunku} × {aparat w `primary_devices`
  * z oznaczeniem / bez, aparat tylko w `equipment_refs`} × {numer pola z danych, pozycja} ×
- * {identyfikator mylący dawną heurystykę} × {nośnik pola: element `bays`, specyfikacja stacji
- * `meta.field_specs`}. Nośnik dopisany przy integracji (2026-09-24): pola stacji wstawionej
- * operacją `insert_station_on_segment_sn` żyją WYŁĄCZNIE w specyfikacji stacji — szuflada
- * czytająca tylko `snapshot.bays` gubiła stację, pole i identyfikator (zrzut e2e: brak „S01"),
- * a tytuł aparatu spadał na człon identyfikatora „000" zamiast nazwy z modelu.
+ * {identyfikator mylący dawną heurystykę} × {pole stacji wstawionej operacją (rekord `bays`
+ * stacji bez elementu rysunku), pole dodane elementem}. Karta W5-B: rekord `bays` jest JEDYNYM
+ * nośnikiem pól — dawny drugi nośnik (lista pól w `meta` stacji) skasowany; przypadki stacji
+ * wstawionej operacją (zrzut e2e #135: brak „S01", tytuł „000") ćwiczą teraz rekordy `bays`.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -108,13 +107,13 @@ describe('szuflada SLD — identyfikacja pola i aparatu z modelu (karta #135 (e)
     expect(dane?.parentBayLabel).toBe('Pole bay-x1');
   });
 
-  describe('nośnik pola: specyfikacja stacji `meta.field_specs` (pole bez elementu `bays`)', () => {
-    function modelZeSpecyfikacja(stacja: string, specyfikacje: Array<Record<string, unknown>>): EnergyNetworkModel {
+  describe('pole stacji wstawionej operacją: rekordy `bays` stacji w kolejności zapisu', () => {
+    function modelZeSpecyfikacja(stacja: string, specyfikacje: Array<Partial<Bay> & { ref_id: string }>): EnergyNetworkModel {
       const snapshot = makeCalculationReadySnapshot();
-      snapshot.bays = [];
+      snapshot.bays = specyfikacje.map((dane) => pole(dane.ref_id, stacja, dane));
       snapshot.substations = [
         ...(snapshot.substations ?? []),
-        { id: stacja, ref_id: stacja, name: `Stacja ${stacja}`, tags: [], meta: { field_specs: specyfikacje } } as unknown as EnergyNetworkModel['substations'][number],
+        { id: stacja, ref_id: stacja, name: `Stacja ${stacja}`, tags: [], meta: {} } as unknown as EnergyNetworkModel['substations'][number],
       ];
       snapshot.branches = [
         ...snapshot.branches,
@@ -126,23 +125,23 @@ describe('szuflada SLD — identyfikacja pola i aparatu z modelu (karta #135 (e)
     it.each([
       ['druga stacja rysunku', 'st-2', 'S02'],
       ['pierwsza stacja rysunku', 'st-1', 'S01'],
-    ])('%s: stacja i pole ze specyfikacji, tytuł aparatu z nazwy w modelu (nie „000")', (_opis, stacja, kod) => {
+    ])('%s: stacja i pole z rekordu `bays`, tytuł aparatu z nazwy w modelu (nie „000")', (_opis, stacja, kod) => {
       const snapshot = modelZeSpecyfikacja(stacja, [
-        { field_ref: `${stacja}/sn_field/000`, name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
+        { ref_id: `${stacja}/sn_field/000`, name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
       ]);
       const dane = buildStationBranchDetailDrawerData(snapshot, rysunek(snapshot, DWIE_STACJE), null, 'apparatus', 'cb-spec-1');
       expect(dane?.parentStationLabel).toBe(kod);
       expect(dane?.parentBayLabel).toBe('Pole liniowe wejściowe 1');
       expect(dane?.label).toBe('Wyłącznik pola SN 1');
-      // Specyfikacja bez aparatów pierwotnych — identyfikator aparatu: uczciwy brak.
+      // Pole bez aparatów pierwotnych — identyfikator aparatu: uczciwy brak.
       expect(dane?.globalId).toBeNull();
     });
 
-    it('aparat pierwotny w specyfikacji: identyfikator globalny wg pozycji pola w kolejności specyfikacji', () => {
+    it('aparat pierwotny w rekordzie pola: identyfikator globalny wg pozycji pola w kolejności zapisu', () => {
       const snapshot = modelZeSpecyfikacja('st-2', [
-        { field_ref: 'st-2/sn_field/000', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-inny'] },
+        { ref_id: 'st-2/sn_field/000', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-inny'] },
         {
-          field_ref: 'st-2/sn_field/001',
+          ref_id: 'st-2/sn_field/001',
           name: 'Pole liniowe wyjściowe 2',
           bay_role: 'OUT',
           bus_ref: 'bus-source',
@@ -157,7 +156,7 @@ describe('szuflada SLD — identyfikacja pola i aparatu z modelu (karta #135 (e)
 
     it('symbol aparatu z konwencji niesie identyfikator POLA: stacja i pole zidentyfikowane, aparat bez identyfikatora', () => {
       const snapshot = modelZeSpecyfikacja('st-2', [
-        { field_ref: 'st-2/sn_field/000', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
+        { ref_id: 'st-2/sn_field/000', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
       ]);
       const dane = buildStationBranchDetailDrawerData(snapshot, rysunek(snapshot, DWIE_STACJE), null, 'apparatus', 'st-2/sn_field/000');
       expect(dane?.parentStationLabel).toBe('S02');
@@ -168,7 +167,7 @@ describe('szuflada SLD — identyfikacja pola i aparatu z modelu (karta #135 (e)
 
     it('pole bez nazwy w modelu: okruszek pola to uczciwy brak, nie surowy identyfikator pola', () => {
       const snapshot = modelZeSpecyfikacja('st-2', [
-        { field_ref: 'st-2/sn_field/000', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
+        { ref_id: 'st-2/sn_field/000', name: '  ', bay_role: 'IN', bus_ref: 'bus-source', equipment_refs: ['cb-spec-1'] },
       ]);
       const dane = buildStationBranchDetailDrawerData(snapshot, rysunek(snapshot, DWIE_STACJE), null, 'apparatus', 'cb-spec-1');
       expect(dane?.parentBayLabel).toBeNull();

@@ -123,7 +123,7 @@ import {
   KLASY_UCHWYTU,
   type CanvasMenuSubject,
 } from './canvasMenuSubject';
-import { stacjaPola } from '../../../shared/szynyStacji';
+import { stacjaPola } from '../../../shared/polaStacji';
 import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
@@ -453,8 +453,8 @@ function elementKindForDrawer(kind: PreviewElementKind | undefined): string | un
  * `stn/⟨id⟩`, bez pól GPZ — breadcrumb aparatu GPZ spadał na `sldData.stations[0]`).
  */
 function stationRefForBayOwner(snapshot: EnergyNetworkModel | null, bayRef: string): string | null {
-  // SZYNY-STACJI-LUSTRO (commit 2): stacja pola z DANYCH (`stacjaPola`: rekord `bays`, potem
-  // `field_specs`/`nn_field_specs` stacji — także GPZ), nie z gramatyki refu `stn/⟨id⟩`.
+  // SZYNY-STACJI-LUSTRO (commit 2): stacja pola z DANYCH (`stacjaPola`: `substation_ref`
+  // rekordu `bays` — także GPZ; karta W5-B), nie z gramatyki refu `stn/⟨id⟩`.
   return snapshot ? stacjaPola(snapshot, bayRef) : null;
 }
 
@@ -507,8 +507,7 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
  * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
  * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu stacji i GPZ, stacja pola
- * z danych (`stationRefForBayOwner` → `stacjaPola`: rekord `bays` albo `field_specs`
- * stacji). Pole nieznane w danych ⇒ brak korekty (drawer się otwiera, `label` poprawny).
+ * z danych (`stationRefForBayOwner` → `stacjaPola`: rekord `bays`). Pole nieznane w danych ⇒ brak korekty (drawer się otwiera, `label` poprawny).
  */
 function buildDetailDrawerDataForElementKind(
   snapshot: EnergyNetworkModel | null,

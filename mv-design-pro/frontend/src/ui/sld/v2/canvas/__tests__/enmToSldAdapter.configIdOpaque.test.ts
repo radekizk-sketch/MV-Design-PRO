@@ -27,6 +27,7 @@ import { describe, it, expect } from 'vitest';
 
 import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { pole } from '../../../../../test/pola';
 
 const HEADER = {
   enm_version: '1.0' as const,
@@ -79,23 +80,23 @@ function buildSnapshotZPolami(configIds: readonly (string | undefined)[]): Energ
         ref_id: 'ST-CFG',
         name: 'Stacja z polami katalogowymi',
         tags: [],
-        meta: {
-          field_specs: configIds.map((configId, index) => ({
-            field_ref: `field-${index}`,
-            name: `Pole ${index}`,
-            bay_role: 'OUT',
-            bus_ref: 'bus-sn',
-            equipment_refs: [`sw-${index}`],
-            meta: { field_role: 'LINIA_OUT' },
-            ...(configId === undefined ? {} : { config_id: configId }),
-          })),
-        },
+        meta: {},
         station_type: 'inline',
         bus_refs: ['bus-sn'],
         transformer_refs: [],
       },
     ],
-    bays: [],
+    // Karta W5-B: pola stacji = rekordy `bays`.
+    bays: configIds.map((configId, index) => pole({
+      ref_id: `field-${index}`,
+      name: `Pole ${index}`,
+      bay_role: 'OUT',
+      field_role: 'LINIA_OUT',
+      substation_ref: 'ST-CFG',
+      bus_ref: 'bus-sn',
+      equipment_refs: [`sw-${index}`],
+      config_id: configId ?? null,
+    })),
     measurements: [],
     protection_devices: [],
     protection_assignments: [],

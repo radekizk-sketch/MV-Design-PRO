@@ -128,18 +128,22 @@ export interface EnmInputForHierarchy {
     name: string;
     station_type: string;
     bus_refs: readonly string[];
-    /** Metadane stacji (`field_specs`, `nn_field_specs`) — dla lustra `szynyStacji`. */
     meta?: unknown;
     gpz_sections?: readonly EnmGpzSection[];
     nn_voltage_levels?: readonly number[];
     external_ports?: readonly EnmPort[];
   }>;
+  /** Rekordy pól (karta W5-B: jedyny nośnik pól SN, nN i ZKSN) — sekcje GPZ i lustro
+   *  `szynyStacji` (zaciski pól SN, aparaty pól nN z `equipment_refs`). */
   readonly bays: ReadonlyArray<{
     ref_id: string;
     name: string;
     bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
-    substation_ref: string;
+    substation_ref?: string | null;
+    branch_point_ref?: string | null;
     bus_ref: string;
+    terminal_bus_ref?: string | null;
+    equipment_refs?: readonly string[];
     bay_template_ref?: string | null;
     ports?: readonly EnmPort[];
   }>;
@@ -273,7 +277,7 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
 
     // SC param z source przyłączonego do GPZ (jeżeli istnieje)
     // SZYNY-STACJI-LUSTRO: źródło na szynie GPZ z jednego lustra `szynyStacji`.
-    const szynyGpz = szynyStacji(gpzSub, enm.branches ?? []);
+    const szynyGpz = szynyStacji(enm, gpzSub);
     const gpzSource = enm.sources.find((s) => s.bus_ref && szynyGpz.has(s.bus_ref));
 
     gpz.push({

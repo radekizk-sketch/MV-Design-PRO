@@ -87,7 +87,7 @@ function stationOf(enm: EnergyNetworkModel): Record<string, any> {
 }
 
 /**
- * Usuwa JAWNE pole roli TR ze specyfikacji pól stacji — dokładnie ten kształt
+ * Usuwa JAWNE pole roli TR z rekordów pól stacji (`bays`) — dokładnie ten kształt
  * danych, który produkuje `insert_station_on_segment_sn` z
  * `sn_fields:['IN','OUT','FEEDER']` + `transformer:{create:true}`: rekord
  * `Transformer` zostaje (model liczy), pola transformatorowego nie ma.
@@ -96,15 +96,13 @@ function stationOf(enm: EnergyNetworkModel): Record<string, any> {
 function bezPolaTr(enm: EnergyNetworkModel): EnergyNetworkModel {
   const out = clone(enm);
   const station = stationOf(out);
-  const specs: Record<string, any>[] = station.meta.field_specs;
-  const trSpec = specs.find((s) => s.bay_role === 'TR');
+  const trSpec = (out.bays ?? []).find((b) => b.substation_ref === station.ref_id && b.bay_role === 'TR');
   if (!trSpec) throw new Error('fixtura wejściowa nie ma pola roli TR');
   const usunieteAparaty = new Set<string>(
-    (trSpec.equipment_refs as string[]).filter((ref) => !ref.endsWith('/transformer')),
+    trSpec.equipment_refs.filter((ref) => !ref.endsWith('/transformer')),
   );
-  station.meta.field_specs = specs.filter((s) => s.bay_role !== 'TR');
   (out as any).branches = (out.branches ?? []).filter((b) => !usunieteAparaty.has(b.ref_id));
-  (out as any).bays = (out.bays ?? []).filter((b) => !usunieteAparaty.has(b.ref_id));
+  (out as any).bays = (out.bays ?? []).filter((b) => b.ref_id !== trSpec.ref_id && !usunieteAparaty.has(b.ref_id));
   return out;
 }
 
@@ -280,8 +278,8 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
   const enm = bezPolaTr(enmZPolem);
 
   it('dane wejściowe naprawdę nie mają pola roli TR (zapadka na fikstury)', () => {
-    const specs = stationOf(enm).meta.field_specs as Record<string, any>[];
-    expect(specs.some((s) => s.bay_role === 'TR')).toBe(false);
+    const stacja = stationOf(enm);
+    expect((enm.bays ?? []).some((b) => b.substation_ref === stacja.ref_id && b.bay_role === 'TR')).toBe(false);
     // …a transformator w modelu JEST (inaczej test nie ćwiczyłby niczego).
     expect((enm.transformers ?? []).some((t) => t.ref_id.includes('/transformer'))).toBe(true);
   });

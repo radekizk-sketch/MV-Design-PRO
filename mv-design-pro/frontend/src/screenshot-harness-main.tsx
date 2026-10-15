@@ -192,7 +192,7 @@ function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkM
   const deEnergizedBuses = new Set(companion.de_energized_bus_refs);
   for (const station of enm.substations ?? []) {
     // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji`.
-    const busRefs = [...szynyStacji(station, enm.branches ?? [])];
+    const busRefs = [...szynyStacji(enm, station)];
     if (busRefs.length === 0) continue;
     if (busRefs.every((ref) => deEnergizedBuses.has(ref))) {
       energizedByOwnerRef[station.ref_id] = false;

@@ -20,16 +20,9 @@ type DomainOpResponse = {
     branches?: Array<{ ref_id: string; from_bus_ref?: string; to_bus_ref?: string }>;
     buses?: Array<{ ref_id: string }>;
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    substations?: Array<{
-      ref_id: string;
-      meta?: {
-        field_specs?: Array<{
-          field_ref?: string;
-          bay_role?: string;
-          bus_ref?: string;
-        }>;
-      };
-    }>;
+    substations?: Array<{ ref_id: string }>;
+    // Karta W5-B: pola stacji to rekordy `bays`.
+    bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string; bus_ref?: string }>;
     transformers?: Array<{ ref_id: string; name?: string }>;
   };
   readiness?: { ready: boolean; status?: string; blockers?: Array<{ code: string; element_ref?: string | null }> };
@@ -221,10 +214,10 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
 function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): string | null {
   const branchRoles = new Set(['OUT', 'FEEDER', 'LINE_OUT']);
   for (const substation of snapshot?.substations ?? []) {
-    for (const spec of substation.meta?.field_specs ?? []) {
-      const bayRole = String(spec.bay_role ?? '').toUpperCase();
-      if (spec.field_ref && branchRoles.has(bayRole)) {
-        return `${spec.field_ref}.BRANCH`;
+    for (const pole of (snapshot?.bays ?? []).filter((b) => b.substation_ref === substation.ref_id)) {
+      const bayRole = String(pole.bay_role ?? '').toUpperCase();
+      if (branchRoles.has(bayRole)) {
+        return `${pole.ref_id}.BRANCH`;
       }
     }
   }

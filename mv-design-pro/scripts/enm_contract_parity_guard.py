@@ -134,7 +134,10 @@ SPRAWDZANE: dict[str, str] = {
     "Load": "Load",
     "Measurement": "Measurement",
     "MeasurementRating": "MeasurementRating",
+    # Karta W5-B: struktury typowane rekordu pola `Bay` (dawne klucze wpisu `meta.field_specs`).
+    "MetadanePochodzeniaPola": "MetadanePochodzeniaPola",
     "ModeleWidmoweElementu": "ModeleWidmoweElementu",
+    "OgranicznikPrzepiecPola": "OgranicznikPrzepiecPola",
     "OverheadLine": "OverheadLine",
     "ParameterOverride": "ParameterOverride",
     "Port": "Port",
@@ -152,6 +155,7 @@ SPRAWDZANE: dict[str, str] = {
     "TapChanger": "TapChanger",
     "Transformer": "Transformer",
     "TrendState": "TrendState",
+    "WyborBlokuPola": "WyborBlokuPola",
 }
 
 # Interfejsy TS, z ktorych encje dziedzicza pola. `ENMElement` obowiazuje

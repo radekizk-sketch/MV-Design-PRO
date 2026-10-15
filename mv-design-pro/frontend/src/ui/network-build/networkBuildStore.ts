@@ -7,7 +7,6 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
-import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -16,9 +15,11 @@ import {
   canonicalOperationInput,
 } from '../../types/domainOps';
 import type {
+  Bay,
   EnergyNetworkModel,
   LogicalViewsV1,
   ReadinessInfo,
+  Substation,
   TerminalRef,
 } from '../../types/enm';
 import type {
@@ -53,6 +54,7 @@ import {
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../shared/szynyStacji';
+import { czyPoleNn, napieciaSzyn, pola, polaSnStacji } from '../shared/polaStacji';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../shared/transformatoryStacji';
 
 export type BuildPhase =
@@ -940,11 +942,15 @@ export function selectAvailableBranchPorts(
   }
 
   const result: AvailableBranchPort[] = [];
-  for (const bay of snapshot.bays ?? []) {
+  // Karta W5-B: kolekcja `bays` niesie pola SN, nN i ZKSN — port odgałęzienia SN daje pole SN
+  // stacji (szyna pola poza pasmem nN), nie odpływ nN ani pole rozdzielnicy ZKSN.
+  const napiecia = napieciaSzyn(snapshot);
+  for (const bay of pola(snapshot)) {
     if (bay.bay_role !== 'OUT' && bay.bay_role !== 'FEEDER' && bay.bay_role !== 'OZE') continue;
+    if (czyPoleNn(snapshot, bay, napiecia)) continue;
     if (usedBusRefs.has(bay.bus_ref)) continue;
 
-    const station = snapshot.substations?.find((s) => s.id === bay.substation_ref);
+    const station = snapshot.substations?.find((s) => s.ref_id === bay.substation_ref);
     if (!station) continue;
 
     result.push({
@@ -1001,7 +1007,7 @@ export function selectStationSummaries(
   return (snapshot.substations ?? [])
     .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
     .map((s) => {
-      const stationBays = (snapshot.bays ?? []).filter((b) => b.substation_ref === s.id);
+      const stationBays = polaSnStacji(snapshot, s.ref_id);
       const branchBays = stationBays.filter(
         (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER' || b.bay_role === 'OZE',
       );
@@ -1056,7 +1062,7 @@ export function selectLoadSummaries(
 
   // SZYNY-STACJI-LUSTRO: stacja odbioru = stacja jego szyny z jednego lustra `szynyStacji`
   // (odbiór stoi zwykle na szynie odpływu nN za aparatem pola, spoza `bus_refs`).
-  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  const stacjaSzyny = stacjaSzyn(snapshot);
   return (snapshot.loads ?? [])
     .map((load) => {
       const stationRef = stacjaSzyny.get(load.bus_ref);
@@ -1111,46 +1117,17 @@ export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null):
   return gpzStation?.ref_id ?? snapshot.substations[0]?.ref_id ?? null;
 }
 
+/** Liczba pól SN stacji w modelu — rekordy `bays` stacji na szynie SN (`polaSnStacji`; karta
+ *  W5-B: jedyny nośnik pól, bez pól nN i pól rozdzielnic odgałęźnych ZKSN). */
 export function selectSnFieldCount(snapshot: EnergyNetworkModel | null): number {
   if (!snapshot) return 0;
-
-  const knownRefs = new Set(
-    (snapshot.bays ?? [])
-      .map((bay) => bay.ref_id || bay.id)
-      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+  return (snapshot.substations ?? []).reduce(
+    (suma, stacja) => suma + polaSnStacji(snapshot, stacja.ref_id).length,
+    0,
   );
-  let anonymousFieldSpecs = 0;
-
-  for (const substation of snapshot.substations ?? []) {
-    const meta = substation.meta as { field_specs?: unknown } | undefined;
-    const rawSpecs = meta?.field_specs;
-    if (!Array.isArray(rawSpecs)) {
-      continue;
-    }
-    for (const rawSpec of rawSpecs) {
-      if (!rawSpec || typeof rawSpec !== 'object') {
-        continue;
-      }
-      const spec = rawSpec as { field_ref?: unknown; ref_id?: unknown };
-      const ref = typeof spec.field_ref === 'string'
-        ? spec.field_ref
-        : typeof spec.ref_id === 'string'
-          ? spec.ref_id
-          : null;
-      if (ref && knownRefs.has(ref)) {
-        continue;
-      }
-      if (ref) {
-        knownRefs.add(ref);
-      } else {
-        anonymousFieldSpecs += 1;
-      }
-    }
-  }
-
-  return knownRefs.size + anonymousFieldSpecs;
 }
 
+/** Pole liniowe SN stacji źródła zasilania (GPZ) — projekcja rekordu `bays`. */
 export interface ConfiguredGridSourceSnField {
   ref_id: string;
   name: string;
@@ -1158,166 +1135,76 @@ export interface ConfiguredGridSourceSnField {
   substation_ref: string;
   bay_role: 'OUT' | 'FEEDER';
   gpz_section_id?: string | null;
-  source: 'legacy_bay' | 'field_spec';
 }
 
 export interface GridSourceSnFieldCandidate extends ConfiguredGridSourceSnField {
   configured: boolean;
 }
 
-type FieldSpecRecord = {
-  field_ref?: unknown;
-  ref_id?: unknown;
-  name?: unknown;
-  bay_role?: unknown;
-  bus_ref?: unknown;
-  equipment_refs?: unknown;
-  gpz_section_id?: unknown;
-  tags?: unknown;
-  meta?: unknown;
-};
-
-function readNonEmptyString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+/** Pole ma aparat pola albo jawne wiązanie/rodzaj aparatu (`meta.catalog_binding`,
+ *  `meta.apparatus_kind`) — pole skonfigurowane, gotowe do przyłączenia źródła. */
+function poleSkonfigurowane(bay: Bay): boolean {
+  if ((bay.equipment_refs ?? []).some((ref) => ref.trim())) return true;
+  const meta = bay.meta ?? {};
+  const wiazanie = meta.catalog_binding;
+  if (wiazanie !== null && typeof wiazanie === 'object' && !Array.isArray(wiazanie)) return true;
+  return typeof meta.apparatus_kind === 'string' && meta.apparatus_kind.trim().length > 0;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
+/** Pola liniowe (OUT/FEEDER) SN stacji źródła zasilania na szynie powyżej pasma nN, w
+ *  kolejności zapisu — JEDNO źródło dla wyboru pola startu i kandydatów pól źródła. */
+function polaLinioweStacjiZrodla(snapshot: EnergyNetworkModel): { stacja: Substation; pola: readonly Bay[] } | null {
+  const stationRef = selectGridSourceStationRef(snapshot);
+  if (!stationRef) return null;
+  const stacja = (snapshot.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  if (!stacja) return null;
+  const szynySn = new Set(
+    (snapshot.buses ?? [])
+      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
+      .map((bus) => bus.ref_id),
+  );
+  return {
+    stacja,
+    pola: polaSnStacji(snapshot, stacja.ref_id).filter(
+      (bay) => (bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER') && szynySn.has(bay.bus_ref),
+    ),
+  };
 }
 
-/** Nazwa pola bez własnej nazwy w modelu — nazwa roli z kanonu słownictwa ról pól (karta #141). */
-function defaultConfiguredFieldName(role: 'OUT' | 'FEEDER'): string {
-  return fieldRoleLabelPl(role);
-}
-
-function listCanonicalFieldSpecs(station: EnergyNetworkModel['substations'][number]): FieldSpecRecord[] {
-  const meta = asRecord((station as { meta?: unknown }).meta);
-  const rawSpecs = meta?.field_specs;
-  if (!Array.isArray(rawSpecs)) return [];
-  return rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null);
-}
-
-function hasConfiguredFieldSpec(spec: FieldSpecRecord): boolean {
-  const equipmentRefs = Array.isArray(spec.equipment_refs) ? spec.equipment_refs : [];
-  if (equipmentRefs.some((ref) => typeof ref === 'string' && ref.trim())) return true;
-
-  const meta = asRecord(spec.meta);
-  if (asRecord(meta?.catalog_binding) !== null) return true;
-  return readNonEmptyString(meta?.apparatus_kind) !== null;
+function poleZrodla(bay: Bay, stacja: Substation): ConfiguredGridSourceSnField {
+  return {
+    ref_id: bay.ref_id,
+    name: bay.name,
+    bus_ref: bay.bus_ref,
+    substation_ref: stacja.ref_id,
+    bay_role: bay.bay_role as 'OUT' | 'FEEDER',
+    gpz_section_id: bay.gpz_section_id ?? null,
+  };
 }
 
 export function selectConfiguredGridSourceSnFields(
   snapshot: EnergyNetworkModel | null,
 ): ConfiguredGridSourceSnField[] {
   if (!snapshot) return [];
-
-  const stationRef = selectGridSourceStationRef(snapshot);
-  if (!stationRef) return [];
-
-  const station = (snapshot.substations ?? []).find(
-    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
-  );
-  const stationRefs = new Set([stationRef, station?.ref_id, station?.id].filter(Boolean) as string[]);
-  const mediumVoltageBusRefs = new Set(
-    (snapshot.buses ?? [])
-      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
-
-  const legacyFields: ConfiguredGridSourceSnField[] = (snapshot.bays ?? [])
-    .filter((bay) => stationRefs.has(bay.substation_ref))
-    .filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER')
-    .filter((bay) => mediumVoltageBusRefs.has(bay.bus_ref))
-    .filter((bay) => (bay.equipment_refs?.length ?? 0) > 0)
-    .map((bay) => ({
-      ref_id: bay.ref_id,
-      name: bay.name,
-      bus_ref: bay.bus_ref,
-      substation_ref: bay.substation_ref,
-      bay_role: bay.bay_role as 'OUT' | 'FEEDER',
-      gpz_section_id: bay.gpz_section_id ?? null,
-      source: 'legacy_bay' as const,
-    }));
-
-  const canonicalFields: ConfiguredGridSourceSnField[] = station
-    ? listCanonicalFieldSpecs(station)
-      .map<ConfiguredGridSourceSnField | null>((spec) => {
-        const refId = readNonEmptyString(spec.field_ref) ?? readNonEmptyString(spec.ref_id);
-        const busRef = readNonEmptyString(spec.bus_ref);
-        const bayRole = readNonEmptyString(spec.bay_role)?.toUpperCase();
-        if (!refId || !busRef) return null;
-        if (bayRole !== 'OUT' && bayRole !== 'FEEDER') return null;
-        if (!mediumVoltageBusRefs.has(busRef)) return null;
-        if (!hasConfiguredFieldSpec(spec)) return null;
-        const role = bayRole as 'OUT' | 'FEEDER';
-        const name = readNonEmptyString(spec.name);
-
-        return {
-          ref_id: refId,
-          name: name && name !== refId ? name : defaultConfiguredFieldName(role),
-          bus_ref: busRef,
-          substation_ref: station.ref_id,
-          bay_role: role,
-          gpz_section_id: readNonEmptyString(spec.gpz_section_id) ?? null,
-          source: 'field_spec' as const,
-        };
-      })
-      .filter((field): field is ConfiguredGridSourceSnField => field !== null)
-    : [];
-
-  const byRef = new Map<string, ConfiguredGridSourceSnField>();
-  for (const field of [...legacyFields, ...canonicalFields]) {
-    byRef.set(field.ref_id, field);
-  }
-  return [...byRef.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const zrodlo = polaLinioweStacjiZrodla(snapshot);
+  if (!zrodlo) return [];
+  return zrodlo.pola
+    .filter(poleSkonfigurowane)
+    .map((bay) => poleZrodla(bay, zrodlo.stacja))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function selectGridSourceSnFieldCandidates(
   snapshot: EnergyNetworkModel | null,
 ): GridSourceSnFieldCandidate[] {
   if (!snapshot) return [];
-
-  const stationRef = selectGridSourceStationRef(snapshot);
-  if (!stationRef) return [];
-
-  const station = snapshot.substations.find(
-    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
-  );
-  if (!station) return [];
-
-  const mediumVoltageBusRefs = new Set(
-    snapshot.buses
-      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
-
-  return listCanonicalFieldSpecs(station)
-    .map<GridSourceSnFieldCandidate | null>((spec) => {
-      const refId = readNonEmptyString(spec.field_ref) ?? readNonEmptyString(spec.ref_id);
-      const busRef = readNonEmptyString(spec.bus_ref);
-      const bayRole = readNonEmptyString(spec.bay_role)?.toUpperCase();
-      if (!refId || !busRef) return null;
-      if (bayRole !== 'OUT' && bayRole !== 'FEEDER') return null;
-      if (!mediumVoltageBusRefs.has(busRef)) return null;
-      const tags = Array.isArray(spec.tags) ? spec.tags : [];
-      if (!tags.some((tag) => tag === 'gpz_line_field')) return null;
-      const role = bayRole as 'OUT' | 'FEEDER';
-      const name = readNonEmptyString(spec.name);
-
-      return {
-        ref_id: refId,
-        name: name && name !== refId ? name : defaultConfiguredFieldName(role),
-        bus_ref: busRef,
-        substation_ref: station.ref_id,
-        bay_role: role,
-        gpz_section_id: readNonEmptyString(spec.gpz_section_id) ?? null,
-        source: 'field_spec',
-        configured: hasConfiguredFieldSpec(spec),
-      };
-    })
-    .filter((field): field is GridSourceSnFieldCandidate => field !== null)
+  const zrodlo = polaLinioweStacjiZrodla(snapshot);
+  if (!zrodlo) return [];
+  return zrodlo.pola
+    .filter((bay) => (bay.tags ?? []).includes('gpz_line_field'))
+    .map((bay) => ({ ...poleZrodla(bay, zrodlo.stacja), configured: poleSkonfigurowane(bay) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
