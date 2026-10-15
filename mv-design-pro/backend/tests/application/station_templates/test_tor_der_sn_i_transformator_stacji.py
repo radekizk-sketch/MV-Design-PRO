@@ -16,7 +16,7 @@ POWÓD (karta GPT-478, rozstrzygnięcie architekta 2026-10-15, pomiar przed napr
 * `int(...)` w podglądzie i zastosowaniu obcinał 2,7 → 2, a tekst dawał błąd 500.
 
 ILOCZYN CECH (KLASA NIE INSTANCJA):
-* {każdy z 73 szablonów} × {parametry domyślne} → brak odmowy, transformator stacji
+* {każdy z 71 szablonów} × {parametry domyślne} → brak odmowy, transformator stacji
   pokrywa odbiory i źródła nN × liczba transformatorów, każdy tor DER-SN ma TR blokowy
   o mocy ≥ moc wymagana jednostki (bezpiecznik nie wyzwala się dla żadnego szablonu);
 * {każdy szablon z DER-SN} × {każda technologia} × {każda pozycja katalogu opcji} → tor
@@ -61,8 +61,10 @@ _Z_TOREM_SN = tuple(
 
 
 def test_iloczyn_nie_jest_pusty() -> None:
-    # Pomiar 2026-10-15: 73 szablony, 18 z jednostkami po stronie SN.
-    assert len(_WSZYSTKIE) >= 73
+    # Pomiar 2026-10-15 po przeprojektowaniu składów: 71 szablonów (2 wiatrowe wycofane,
+    # `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`), 17 z jednostkami po stronie SN.
+    assert len(_WSZYSTKIE) == 71
+    assert len(_Z_TOREM_SN) == 17
     assert len(_Z_TOREM_SN) >= 1
 
 
@@ -122,7 +124,7 @@ def test_pozycja_15kv_wskazana_przez_projektanta_to_odmowa_doboru_tr() -> None:
     # Bezpiecznik danych projektanta: pozycja „15 kV" nie ma transformatora blokowego
     # (strona nN = 15 kV) — odmowa nazwana kodem kroku doboru, nie ciche przyłączenie
     # do szyny SN stacji.
-    template = get_template("tpl_hybrid_pv1_bess1")
+    template = get_template("tpl_hybrid_pv0p99_bess1")
     assert template is not None
     with pytest.raises(TemplateApplyError) as exc:
         rozstrzygnij_parametry_szablonu(template, {"der_BESS_ref": "conv-bess-2mw-4mwh-15kv"}, None)
@@ -140,7 +142,9 @@ def test_pozycja_15kv_wskazana_przez_projektanta_to_odmowa_doboru_tr() -> None:
         ("tpl_gpz_110_15_2x16mva_h5", 16000),
         ("tpl_slupowa_50kva", 63),
         ("tpl_kompensacja_0v6mvar_15kv", None),
-        ("tpl_wiatr_1mw_pojedyncza", None),
+        # Token mocy DER (MW) w identyfikatorze nie jest mocą transformatora stacji.
+        ("tpl_wiatr_2mw", None),
+        ("tpl_farma_pv_2p2mw", None),
         ("tpl_bess_5mw_10mwh_fcr_n", None),
     ],
 )

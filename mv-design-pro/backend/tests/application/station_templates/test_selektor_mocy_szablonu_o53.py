@@ -68,7 +68,7 @@ def _moce_pozycji(spec) -> list[tuple[float, str]]:
 
 
 def test_iloczyn_obejmuje_wszystkie_szablony_z_der() -> None:
-    # Pomiar 2026-09-24: 26 szablonów z DER (73 w katalogu szablonów). Liczba nie jest
+    # Pomiar 2026-10-15: 24 szablony z DER (71 w katalogu szablonów). Liczba nie jest
     # pinem zakresu, tylko strażnikiem, że parametryzacja nie jest pusta.
     assert len(_SZABLONY_Z_DER) >= 1
     assert len(_RODZAJE) >= len(_SZABLONY_Z_DER)
@@ -119,22 +119,28 @@ def test_moc_wymagana_jednostki_selektora_to_regula_domenowa(szablon, spec) -> N
 
 def test_pozycje_nn_bez_tokenu_mocy_w_nazwie_sa_dobierane_po_tabliczce() -> None:
     # Regresja: dawny parser tokenu `-(\\d+)mw` nie widział `-0p5mw-` ani `-50kw-` — dla
-    # KAŻDEJ mocy zwracał `None` i szablon brał pozycję domyślną 50 kW.
+    # KAŻDEJ mocy zwracał `None` i szablon brał pozycję domyślną. Od 2026-10-15 prosument
+    # oferuje wyłącznie pozycje z kartą producenta (SMA STP 8.0 / 10.0, token mocy
+    # `stp8p0`/`stp10p0` też nie pasuje do parsera) — dobór idzie po P_max z tabliczki.
     szablon = next(t for t in _SZABLONY_Z_DER if t.id == "tpl_pv_prosument_100kw")
     spec = szablon.schema.der_options[0]
-    assert _der_catalog_for_power(spec, 0.05) == "conv-pv-residential-50kw-04kv"
-    assert _der_catalog_for_power(spec, 0.5) == "conv-pv-nn-0p5mw-0p4kv"
-    assert _der_catalog_for_power(spec, 0.2) == "conv-pv-nn-0p5mw-0p4kv"
+    assert _der_catalog_for_power(spec, 0.004) == "conv-pv-nn-sma-stp8p0-3av-40-0p4kv"
+    assert _der_catalog_for_power(spec, 0.008) == "conv-pv-nn-sma-stp8p0-3av-40-0p4kv"
+    assert _der_catalog_for_power(spec, 0.009) == "conv-pv-nn-sma-stp10p0-3av-40-0p4kv"
+    assert _der_catalog_for_power(spec, 0.01) == "conv-pv-nn-sma-stp10p0-3av-40-0p4kv"
 
 
 @pytest.mark.parametrize(
     ("template_id", "oczekiwana_zrodel_kva", "oczekiwany_tr"),
     [
-        # 2 × falownik 50 kW, S_n,jedn = 55 kVA z karty → 110 kVA > 100 kVA: dawny dobór
-        # po mocy czynnej (100 kW → 100 kVA) dawał transformator poniżej mocy falowników.
-        ("tpl_pv_prosument_100kw", 110, "tr-sn-nn-15-04-160kva-dyn11"),
-        # 5 × 55 kVA = 275 kVA > 250 kVA — ta sama klasa.
-        ("tpl_pv_prosument_250kw", 275, "tr-sn-nn-15-04-400kva-dyn11"),
+        # Skład z kartą producenta (2026-10-15): 10 × SMA STP 10.0, S_n,jedn = 10 kVA
+        # z karty → 100 kVA źródeł; odbiory nN 105 kVA przeważają → 160 kVA. Dawny dobór
+        # po mocy czynnej i bez odbiorów dawał 100 kVA.
+        ("tpl_pv_prosument_100kw", 100, "tr-sn-nn-15-04-160kva-dyn11"),
+        # 25 × 10 kVA = 250 kVA (suma zmiennoprzecinkowa 250,00000000000006) — granica
+        # równości: transformator 250 kVA wystarcza, tolerancja doboru 1e-6 kVA nie może
+        # odrzucić go szumem sumowania ani przeskoczyć na 400 kVA.
+        ("tpl_pv_prosument_250kw", 250, "tr-sn-nn-15-04-250kva-dyn11"),
     ],
 )
 def test_transformator_prosumenta_dobrany_do_mocy_pozornej_falownikow(
@@ -152,7 +158,7 @@ def test_transformator_prosumenta_pokrywa_tez_odbiory_nn() -> None:
     # Korekta 2026-10-15: transformator stacji zasila także odbiory nN szablonu (2 × 50 kW
     # przy cosφ 0,95 = 105 kVA). Dawny dobór patrzył wyłącznie na moc źródeł i dla
     # mikroinstalacji 5 kW dawał 63 kVA przy 105 kVA odbiorów.
-    szablon = next(t for t in _SZABLONY_Z_DER if t.id == "tpl_pv_prosument_5kw")
+    szablon = next(t for t in _SZABLONY_Z_DER if t.id == "tpl_pv_prosument_8kw")
     wymagania = wymagania_transformatora_stacji(szablon)
     odbiory_kva = 2 * 50.0 / COS_PHI_ODBIORU_NN_SZABLONU
     assert wymagania.moc_odbiorow_kva == pytest.approx(odbiory_kva)

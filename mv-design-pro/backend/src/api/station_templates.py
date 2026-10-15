@@ -1,7 +1,7 @@
-"""Station Templates API — K30-16/V12T-016, 73+ templates across 15 categories.
+"""Station Templates API — K30-16/V12T-016, 71 templates across 15 categories.
 
 REST endpoints:
-- GET /api/station-templates — list all 73+ templates
+- GET /api/station-templates — list all 71 templates
 - GET /api/station-templates?category=<cat> — filter by category
 - GET /api/station-templates/{template_id} — full schema + editable params
 - GET /api/station-templates/categories — list 15 categories with counts
@@ -438,8 +438,8 @@ _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
     TemplateCategory.TYPOWA_SN_NN: "Standardowe stacje dystrybucyjne 100-2500 kVA",
     TemplateCategory.SLUPOWA: "Stacje słupowe ZSP (50-400 kVA, wieś)",
     TemplateCategory.ZKSN_WNETRZOWA: "Stacje wnętrzowe z RMU (630-2500 kVA, miasto)",
-    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV 5-250 kW (NC RfG typ A-C)",
-    TemplateCategory.FARMA_PV: "Farmy PV SN 0,5-5 MW, falowniki z transformatorami blokowymi nN/SN",
+    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV 8-250 kW (NC RfG typ A-B)",
+    TemplateCategory.FARMA_PV: "Farmy PV SN 0,66-4,95 MW, falowniki z transformatorami blokowymi nN/SN",
     TemplateCategory.BESS: "Magazyny BESS 0.5-5 MW z usługami systemowymi",
     TemplateCategory.HYBRYDOWA: "Farmy hybrydowe PV + BESS",
     TemplateCategory.PRZEMYSLOWA: "Stacje przemysłowe odbiorcze (zakłady, silniki)",

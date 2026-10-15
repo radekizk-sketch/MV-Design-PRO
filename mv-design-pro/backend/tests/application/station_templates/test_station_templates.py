@@ -1,4 +1,4 @@
-"""Tests for K30-16/V12T-016 station templates library — 73+ templates across
+"""Tests for K30-16/V12T-016 station templates library — 71 templates across
 15 categories (57 K30-16 + 16 V12T-016 delta: role A GPZ_110_SN/
 ROZDZIELNIA_SIECIOWA, role C STACJA_ABONENCKA, role E KOMPENSACJA/
 REZERWA_ZASILANIA)."""
@@ -19,9 +19,11 @@ from application.station_templates.service import count_by_category
 
 
 def test_total_template_count_matches_plan() -> None:
-    """K30-16 + V12T-016 plan: 73 templates total across 15 categories."""
+    """K30-16 + V12T-016 plan: 73 szablony, minus 2 wiatrowe wycofane 2026-10-15
+    (2 szablony wiatrowe wycofane 2026-10-15, `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`) = 71 w 15 kategoriach. Liczba dokładna: wycofanie albo
+    przywrócenie szablonu musi zmienić ten pin jawnie."""
     templates = list_templates()
-    assert len(templates) >= 73, f"Expected 73+ templates, got {len(templates)}"
+    assert len(templates) == 71, f"Expected 71 templates, got {len(templates)}"
 
 
 def test_all_15_categories_present() -> None:
@@ -47,7 +49,8 @@ def test_category_breakdown_per_plan() -> None:
     assert counts[TemplateCategory.BESS.value] == 5
     assert counts[TemplateCategory.HYBRYDOWA.value] == 5
     assert counts[TemplateCategory.PRZEMYSLOWA.value] == 5
-    assert counts[TemplateCategory.WIATROWA.value] == 4
+    # 4 z planu minus 2 wycofane (`wiatrowe.SZABLONY_WIATROWE_WYCOFANE`, 2026-10-15).
+    assert counts[TemplateCategory.WIATROWA.value] == 2
     assert counts[TemplateCategory.SEKCYJNA.value] == 3
     assert counts[TemplateCategory.GPZ_110_SN.value] == 3
     assert counts[TemplateCategory.ROZDZIELNIA_SIECIOWA.value] == 3
@@ -151,7 +154,7 @@ def test_get_template_returns_none_for_unknown() -> None:
 
 def test_template_dict_serialization() -> None:
     """to_dict() must produce JSON-serializable structure."""
-    t = get_template("tpl_farma_pv_2mw")
+    t = get_template("tpl_farma_pv_2p2mw")
     assert t is not None
     d = t.to_dict()
     # Must be JSON-serializable
@@ -164,7 +167,7 @@ def test_template_dict_serialization() -> None:
 
 def test_structural_fields_present_for_every_template() -> None:
     """TODO-UI2 §1 p. 12: pola strukturalne (moc/napięcie/zastosowanie/role)
-    z KATALOGU, nie z parsowania `name_pl` — iloczyn cech: WSZYSTKIE 73+
+    z KATALOGU, nie z parsowania `name_pl` — iloczyn cech: WSZYSTKIE 71
     szablony × wszystkie pola. `rated_power_kva`/`voltage_hv_kv`/
     `voltage_lv_kv` mogą być `None` gdy katalog niedostępny w środowisku (nie
     ten test — patrz test_apply_odgalezienie.py, który już dowodzi dostępności
@@ -173,7 +176,7 @@ def test_structural_fields_present_for_every_template() -> None:
     rola A „rozdzielnia sieciowa"/E „kompensacja"/„rezerwa zasilania" —
     zmierzone niżej: dokładnie te 3 kategorie, 9 szablonów)."""
     templates = list_templates()
-    assert len(templates) >= 73
+    assert len(templates) == 71
     bez_tr_kategorie = {
         TemplateCategory.ROZDZIELNIA_SIECIOWA,
         TemplateCategory.KOMPENSACJA,
@@ -472,4 +475,5 @@ def test_structural_power_zgadza_sie_z_transformatorem_ktory_zmaterializuje_appl
         )
         moc_kafla, _ = catalog_choice_rated_kva(wyswietlana_opcja)
         assert moc_kafla is not None and moc_kafla > 0, t.id
-    assert zbadane == 64, f"Oczekiwano 64 szablonów z TR (73 - 9 bez TR), zmierzono {zbadane}"
+    # 71 szablonów (2 wiatrowe wycofane 2026-10-15) - 9 bez TR = 62.
+    assert zbadane == 62, f"Oczekiwano 62 szablonów z TR (71 - 9 bez TR), zmierzono {zbadane}"

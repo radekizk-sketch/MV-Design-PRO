@@ -48,48 +48,49 @@ _SKLAD_Z_NAZWY: dict[str, tuple[str, dict[str, tuple[int, float, float | None]]]
     "tpl_bess_1mw_2mwh": ("BESS 1 MW / 2 MWh", {"BESS": (1, 1.0, 2.0)}),
     "tpl_bess_2mw_4mwh": ("BESS 2 MW / 4 MWh", {"BESS": (1, 2.0, 4.0)}),
     "tpl_bess_5mw_10mwh_fcr_n": ("BESS 5 MW / 10 MWh", {"BESS": (5, 1.0, 10.0)}),
-    "tpl_bess_5mw_5mwh_afrr": ("BESS 5 MW / 10 MWh", {"BESS": (10, 0.5, 10.0)}),
-    "tpl_farma_pv_500kw": ("Farma PV 500 kW", {"PV": (1, 0.5, None)}),
-    "tpl_farma_pv_1mw": ("Farma PV 1 MW, 2× falownik", {"PV": (2, 0.5, None)}),
-    "tpl_farma_pv_2mw": ("Farma PV 2 MW, 4× falownik 500 kW", {"PV": (4, 0.5, None)}),
-    "tpl_farma_pv_3mw": ("Farma PV 3 MW", {"PV": (6, 0.5, None)}),
-    "tpl_farma_pv_5mw": ("Farma PV 5 MW", {"PV": (10, 0.5, None)}),
-    "tpl_hybrid_pv05_bess05": (
-        "PV 0.5 MW + BESS 0.5 MW/1 MWh",
-        {"PV": (1, 0.5, None), "BESS": (1, 0.5, 1.0)},
+    "tpl_bess_5mw_10mwh_afrr": ("BESS 5 MW / 10 MWh", {"BESS": (10, 0.5, 10.0)}),
+    "tpl_farma_pv_0p66mw": ("Farma PV 0,66 MW, 2× Huawei", {"PV": (2, 0.33, None)}),
+    "tpl_farma_pv_0p99mw": ("Farma PV 0,99 MW, 3× Huawei", {"PV": (3, 0.33, None)}),
+    "tpl_farma_pv_2p2mw": ("Farma PV 2,2 MW, SMA Sunny Central 2200", {"PV": (1, 2.2, None)}),
+    "tpl_farma_pv_4p4mw": ("Farma PV 4,4 MW, 2× SMA Sunny Central 2200", {"PV": (2, 2.2, None)}),
+    "tpl_farma_pv_4p95mw": (
+        "Farma PV 4,95 MW, 2× SMA Sunny Central 2475",
+        {"PV": (2, 2.475, None)},
     ),
-    "tpl_hybrid_pv1_bess1": (
-        "PV 1 MW + BESS 1 MW/2 MWh",
-        {"PV": (2, 0.5, None), "BESS": (1, 1.0, 2.0)},
+    "tpl_hybrid_pv0p66_bess0p5": (
+        "PV 0,66 MW + BESS 0,5 MW/1 MWh",
+        {"PV": (2, 0.33, None), "BESS": (1, 0.5, 1.0)},
     ),
-    "tpl_hybrid_pv2_bess1": (
-        "PV 2 MW + BESS 1 MW/2 MWh",
-        {"PV": (4, 0.5, None), "BESS": (1, 1.0, 2.0)},
+    "tpl_hybrid_pv0p99_bess1": (
+        "PV 0,99 MW + BESS 1 MW/2 MWh",
+        {"PV": (3, 0.33, None), "BESS": (1, 1.0, 2.0)},
     ),
-    "tpl_hybrid_pv3_bess2": (
-        "PV 3 MW + BESS 2 MW/4 MWh",
-        {"PV": (6, 0.5, None), "BESS": (2, 1.0, 4.0)},
+    "tpl_hybrid_pv2p2_bess1": (
+        "PV 2,2 MW + BESS 1 MW/2 MWh",
+        {"PV": (1, 2.2, None), "BESS": (1, 1.0, 2.0)},
     ),
-    "tpl_hybrid_pv5_bess3": (
-        "PV 5 MW + BESS 3 MW/6 MWh",
-        {"PV": (10, 0.5, None), "BESS": (3, 1.0, 6.0)},
+    "tpl_hybrid_pv4p4_bess2": (
+        "PV 4,4 MW + BESS 2 MW/4 MWh",
+        {"PV": (2, 2.2, None), "BESS": (2, 1.0, 4.0)},
     ),
-    "tpl_pv_prosument_5kw": ("PV 5 kW", {"PV": (1, 0.005, None)}),
+    "tpl_hybrid_pv4p95_bess3": (
+        "PV 4,95 MW + BESS 3 MW/6 MWh",
+        {"PV": (2, 2.475, None), "BESS": (3, 1.0, 6.0)},
+    ),
+    "tpl_pv_prosument_8kw": ("PV 8 kW", {"PV": (1, 0.008, None)}),
     "tpl_pv_prosument_10kw": ("PV 10 kW", {"PV": (1, 0.01, None)}),
-    "tpl_pv_prosument_30kw": ("PV 30 kW", {"PV": (1, 0.03, None)}),
-    "tpl_pv_prosument_50kw": ("PV 50 kW", {"PV": (1, 0.05, None)}),
-    "tpl_pv_prosument_100kw": ("PV 100 kW", {"PV": (2, 0.05, None)}),
-    "tpl_pv_prosument_250kw": ("PV 250 kW", {"PV": (5, 0.05, None)}),
-    "tpl_slupowa_400kva_prosument": ("PV prosument 50 kW", {"PV": (1, 0.05, None)}),
-    "tpl_wiatr_1mw_pojedyncza": ("Turbina wiatrowa 1 MW", {"FW": (1, 1.0, None)}),
+    "tpl_pv_prosument_30kw": ("PV 30 kW, 3×", {"PV": (3, 0.01, None)}),
+    "tpl_pv_prosument_50kw": ("PV 50 kW, 5×", {"PV": (5, 0.01, None)}),
+    "tpl_pv_prosument_100kw": ("PV 100 kW, 10×", {"PV": (10, 0.01, None)}),
+    "tpl_pv_prosument_250kw": ("PV 250 kW, 25×", {"PV": (25, 0.01, None)}),
+    "tpl_slupowa_400kva_prosument": ("PV prosument 50 kW", {"PV": (5, 0.01, None)}),
     "tpl_wiatr_2mw": ("Turbina wiatrowa 2 MW", {"FW": (1, 2.0, None)}),
-    "tpl_wiatr_3mw": ("Turbina wiatrowa 3 MW", {"FW": (1, 3.0, None)}),
     "tpl_wiatr_farma_5x2mw": ("Farma wiatrowa 5× 2 MW", {"FW": (5, 2.0, None)}),
 }
 
 
 def _hybryda():
-    template = get_template("tpl_hybrid_pv2_bess1")
+    template = get_template("tpl_hybrid_pv2p2_bess1")
     assert template is not None
     return template
 
@@ -195,7 +196,7 @@ def test_niespojne_liczebnosci_hybrydy_sa_odmowa_a_nie_zmiana_skladu(overrides, 
 
 
 def test_szablon_jednej_technologii_bierze_sume_i_sprawdza_deklaracje() -> None:
-    template = get_template("tpl_farma_pv_2mw")
+    template = get_template("tpl_farma_pv_2p2mw")
     assert template is not None
     assert _sklad(template, {"der_total_count": "3"})["PV"][0] == 3
     assert _sklad(template, {"der_total_count": 5, "der_PV_count": 5})["PV"][0] == 5
@@ -218,7 +219,7 @@ def test_moc_jednostki_wybiera_pozycje_a_wskazanie_projektanta_ma_pierwszenstwo(
     assert wskazana["BESS"][1] == {1.0}
     assert wskazana["BESS"][2] == {"conv-bess-nn-2mw-0p69kv"}
     # Technologia bez nadpisań zostaje przy swoim składzie domyślnym.
-    assert sklad["PV"] == (4, {0.5}, {"conv-pv-nn-0p5mw-0p69kv"})
+    assert sklad["PV"] == (1, {2.2}, {"conv-pv-nn-sma-sc2200-0p385kv"})
 
 
 @pytest.mark.parametrize(
@@ -255,6 +256,7 @@ def test_niezgodny_sklad_odrzucony_przed_odczytem_modelu() -> None:
             template=_hybryda(),
             klucz_twin="test-der-mix-bez-modelu",
             target_segment_id="odcinek-nieistniejacy",
-            params_override={"der_total_count": 2},
+            # Skład domyślny hybrydy to 1 PV + 1 BESS = 2, więc suma 3 jest niezgodna.
+            params_override={"der_total_count": 3},
         )
     assert exc.value.code == "template.der_mix_invalid"

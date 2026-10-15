@@ -21,11 +21,13 @@ import { test, expect } from '@playwright/test';
 const API_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
 test.describe('critical engineer flow — station templates end-to-end', () => {
-  test('GET /api/station-templates returns 73+ templates across 15 categories', async ({ request }) => {
+  test('GET /api/station-templates returns 71 templates across 15 categories', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates`);
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    expect(data.total).toBeGreaterThanOrEqual(73);
+    // 73 z planu minus 2 szablony wiatrowe wycofane 2026-10-15 (backend
+    // `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`) — liczba dokładna, jak w testach backendu.
+    expect(data.total).toBe(71);
     expect(data.templates.length).toBe(data.total);
     // Verify all 15 categories represented (K30-16's 10 + V12T-016's 5: rola
     // A GPZ_110_SN/ROZDZIELNIA_SIECIOWA, rola C STACJA_ABONENCKA, rola E
@@ -44,7 +46,7 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     expect(response.ok()).toBe(true);
     const data = await response.json();
     expect(data.categories.length).toBe(15);
-    expect(data.total_templates).toBeGreaterThanOrEqual(73);
+    expect(data.total_templates).toBe(71);
 
     // Verify icons present per category
     for (const cat of data.categories) {

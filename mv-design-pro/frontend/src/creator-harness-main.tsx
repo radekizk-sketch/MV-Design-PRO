@@ -1059,7 +1059,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
     // biblioteki szablonów (`ui2/spaces/model/szablony`) — w odróżnieniu od
     // kreatora stacji (mock pustej listy wyżej) ta scena istnieje WPROST po
-    // to, żeby pokazać rzeczywistą, pełną bibliotekę (73 szablony, 15
+    // to, żeby pokazać rzeczywistą, pełną bibliotekę (71 szablonów, 15
     // kategorii, rola A „Zasilanie sieci" już niepusta) — atrapa
     // przeczyłaby własnemu celowi sceny. Przechodzi do PRAWDZIWEGO
     // backendu (ten sam wzorzec co scena „stacja" — `zasiejSceneStacji`

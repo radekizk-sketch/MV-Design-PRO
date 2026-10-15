@@ -458,7 +458,7 @@ const biblioteka = vi.hoisted(() => {
   });
   const wgKategorii: Record<string, ReturnType<typeof szablon>[]> = {
     typowa_sn_nn: [szablon('tpl_typowa_400', 'Typowa 400 kVA', 'typowa_sn_nn')],
-    farma_pv: [szablon('tpl_farma_pv_1mw', 'Farma PV 1 MW', 'farma_pv')],
+    farma_pv: [szablon('tpl_farma_pv_0p99mw', 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1', 'farma_pv')],
   };
   /** Gdy ustawione — odpowiedź czeka na ręczne zwolnienie (`zwolnij`). */
   let wstrzymaj: (() => void) | null = null;
@@ -491,7 +491,7 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
   fetchStationTemplate: (id: string) =>
     Promise.resolve({
       id,
-      name_pl: 'Farma PV 1 MW',
+      name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       description_pl: 'Szablon testowy',
       use_case_pl: '',
@@ -529,8 +529,8 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
     biblioteka.odmowaPodgladu !== null
       ? Promise.reject(new Error(biblioteka.odmowaPodgladu))
       : Promise.resolve({
-      template_id: 'tpl_farma_pv_1mw',
-      template_name_pl: 'Farma PV 1 MW',
+      template_id: 'tpl_farma_pv_0p99mw',
+      template_name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       nc_rfg_type: 'B',
       station_type: 'inline',
@@ -1131,14 +1131,14 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
       expect(screen.getByTestId('mvd-kreator-stacja-szablon-laduje')).toBeInTheDocument();
     });
     expect(wybor.querySelector('option[value="tpl_typowa_400"]')).toBeNull();
-    expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).toBeNull();
+    expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).toBeNull();
     // Ładowanie ≠ pustka: komunikat „ta kategoria nie zawiera szablonów" nie
     // może paść, zanim odpowiedź przyjdzie.
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-pusty')).toBeNull();
 
     biblioteka.zwolnij();
     await waitFor(() => {
-      expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).not.toBeNull();
+      expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).not.toBeNull();
     });
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-laduje')).toBeNull();
   });

@@ -28,7 +28,12 @@ from domain.generator_validation import (
     moc_pozorna_z_nastawy_mva,
 )
 from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
-from network_model.pochodne import kw_na_mw, moc_pozorna_z_czynnej_i_biernej_mva, mva_na_kva
+from network_model.pochodne import (
+    kw_na_mw,
+    moc_pozorna_z_czynnej_i_biernej_mva,
+    mva_na_kva,
+    mw_na_kw,
+)
 
 
 class TemplateCategory(StrEnum):
@@ -37,8 +42,8 @@ class TemplateCategory(StrEnum):
     TYPOWA_SN_NN = "typowa_sn_nn"  # Dystrybucyjne 100-2500 kVA
     SLUPOWA = "slupowa"  # Stacje słupowe ZSP
     ZKSN_WNETRZOWA = "zksn_wnetrzowa"  # ZKSN wnętrzowe
-    PROSUMENT_PV = "prosument_pv"  # μPV 5-250 kW
-    FARMA_PV = "farma_pv"  # Farmy PV SN 0.5-5 MW
+    PROSUMENT_PV = "prosument_pv"  # μPV 8-250 kW
+    FARMA_PV = "farma_pv"  # Farmy PV SN 0,66-4,95 MW
     BESS = "bess"  # Magazyny energii
     HYBRYDOWA = "hybrydowa"  # PV + BESS
     PRZEMYSLOWA = "przemyslowa"  # Odbiorcze przemysłowe
@@ -157,6 +162,19 @@ class DerKindSpec:
     default_count: int = 1
     default_p_mw_each: float = 0.5
     connection_variant_options: tuple[str, ...] = ("nn_side", "block_transformer")
+
+
+def typ_modulu_nc_rfg_skladu(
+    der_options: tuple[DerKindSpec, ...], napiecie_przylaczenia_kv: float
+) -> str | None:
+    """Typ modułu NC RfG szablonu ze SKŁADU (Σ liczba · moc jednostki) — ta sama reguła
+    progów co walidacja generatora, solver PTPiREE i API (`klasyfikuj_modul`), a nie
+    wpisana ręcznie litera. Pomiar 2026-10-15: dawne ręczne „C" i „D" dla farm 3–5 MW
+    i hybryd przeczyły progom warstwy WOS (typ C od 10 MW)."""
+    from catalog.profiles.nc_rfg.loader import klasyfikuj_modul
+
+    moc_mw = sum(spec.default_count * spec.default_p_mw_each for spec in der_options)
+    return klasyfikuj_modul(mw_na_kw(moc_mw), napiecie_przylaczenia_kv)
 
 
 @dataclass(frozen=True)
@@ -1063,7 +1081,8 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     Pomiar rozkładu na 73 szablonach (2026-09-17): 15 kV — 64, 20 kV — 3
     (`tpl_gpz_110_20_2x16mva_h5`, `tpl_kompensacja_1v8mvar_20kv`,
     `tpl_abonencka_630kva_pomiar_20kv`), napięciowo obojętne — 6 (3 rozdzielnie
-    sieciowe + 3 warianty rezerwy zasilania).
+    sieciowe + 3 warianty rezerwy zasilania). Pomiar 2026-10-15 po wycofaniu 2 szablonów
+    wiatrowych 15 kV: 71 szablonów, 15 kV — 62 (pin: `test_napiecie_sn_szablonu`).
     """
     transformator = resolve_template_default_transformer_choice(template)
     if transformator is not None:

@@ -141,7 +141,7 @@ describe('filtrujSzablony — kompozycja filtrów (funkcja czysta, iloczyn cech)
 
   it('filtruje po frazie', () => {
     const wynik = filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, fraza: 'farma' });
-    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_1mw']);
+    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_0p99mw']);
   });
 
   it('filtruje po zakresie liczby pól', () => {
@@ -151,7 +151,7 @@ describe('filtrujSzablony — kompozycja filtrów (funkcja czysta, iloczyn cech)
 
   it('filtruje po zakresie mocy transformatora stacji (rated_power_kva: 630 vs 63)', () => {
     const wynik = filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, mocMaxKva: 100 });
-    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_1mw']);
+    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_0p99mw']);
     expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, mocMinKva: 600 }).map((s) => s.id)).toEqual(['a']);
   });
 
@@ -162,7 +162,7 @@ describe('filtrujSzablony — kompozycja filtrów (funkcja czysta, iloczyn cech)
 
   it('filtruje po zastosowaniu (kategorii)', () => {
     const wynik = filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, kategoria: 'farma_pv' });
-    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_1mw']);
+    expect(wynik.map((s) => s.id)).toEqual(['tpl_farma_pv_0p99mw']);
   });
 
   it('kompozycja mocy × zastosowania (iloczyn cech): zawężenie do zera, gdy się wykluczają', () => {

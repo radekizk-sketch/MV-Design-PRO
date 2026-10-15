@@ -346,9 +346,9 @@ def _zastosuj_szablon_pod_blokada(
         #
         # Strona nN PODĄŻA za katalogową stroną dolną WYBRANEGO
         # transformatora (nie stała 0.4): blok falownikowy turbiny pracuje
-        # na napięciu generatora (np. 0.69 kV) — sztywne 0.4 wywalało
+        # na napięciu strony sieciowej przekształtnika (np. 0.69 kV) — sztywne 0.4 wywalało
         # `station.insert.transformer_voltage_mismatch` dla poprawnie
-        # dobranego TR 3.15 MVA (tpl_wiatr_3mw).
+        # dobranego transformatora 0,69 kV.
         "nn_voltage_kv": nn_voltage_kv,
     }
     # Układ sieci nN i uziemienie punktu neutralnego — DANA PROJEKTANTA (`params_override`

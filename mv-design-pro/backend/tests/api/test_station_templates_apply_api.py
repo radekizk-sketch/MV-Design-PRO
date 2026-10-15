@@ -184,10 +184,10 @@ _SZABLONY_WIELOTRANSFORMATOROWE = tuple(
         {
             "tpl_sn_nn_630kva",
             "tpl_slupowa_100kva",
-            "tpl_farma_pv_1mw",
-            "tpl_hybrid_pv05_bess05",
+            "tpl_farma_pv_0p99mw",
+            "tpl_hybrid_pv0p66_bess0p5",
             "tpl_bess_5mw_10mwh_fcr_n",
-            "tpl_wiatr_3mw",
+            "tpl_wiatr_2mw",
             *_SZABLONY_Z_OZE,
             *_SZABLONY_WIELOTRANSFORMATOROWE,
         }
@@ -415,22 +415,22 @@ def test_podglad_szablonu_z_pomiarem_ponizej_minimum_pol_zwraca_422(app_client) 
     ("template_id", "overrides", "oczekiwany_sklad"),
     [
         (
-            "tpl_hybrid_pv2_bess1",
+            "tpl_hybrid_pv2p2_bess1",
             {"der_PV_count": 3, "der_BESS_count": 2, "der_total_count": 5},
             {"PV": 3, "BESS": 2},
         ),
         (
-            "tpl_hybrid_pv3_bess2",
+            "tpl_hybrid_pv4p4_bess2",
             {"der_PV_count": 2, "der_BESS_count": 2, "der_BESS_p_mw_each": 2.0},
             {"PV": 2, "BESS": 2},
         ),
         (
-            "tpl_hybrid_pv1_bess1",
+            "tpl_hybrid_pv0p99_bess1",
             {"der_BESS_ref": "conv-bess-nn-2mw-0p69kv"},
-            {"PV": 2, "BESS": 1},
+            {"PV": 3, "BESS": 1},
         ),
-        ("tpl_hybrid_pv1_bess1", {"der_PV_count": 2, "der_BESS_count": 0}, {"PV": 2}),
-        ("tpl_farma_pv_2mw", {"der_total_count": 3}, {"PV": 3}),
+        ("tpl_hybrid_pv0p99_bess1", {"der_PV_count": 2, "der_BESS_count": 0}, {"PV": 2}),
+        ("tpl_farma_pv_2p2mw", {"der_total_count": 3}, {"PV": 3}),
         ("tpl_bess_1mw_2mwh", {"der_total_count": 2, "der_BESS_p_mw_each": 0.5}, {"BESS": 2}),
     ],
 )
@@ -476,13 +476,13 @@ def test_niespojny_sklad_der_odmowa_422_bez_sladu_w_modelu(app_client, overrides
     case_id, segment_ref = _przypadek_z_odcinkiem(app_client)
     przed = app_client.get(f"/api/cases/{case_id}/enm").json()
     podglad = app_client.post(
-        "/api/station-templates/tpl_hybrid_pv2_bess1/preview",
+        "/api/station-templates/tpl_hybrid_pv2p2_bess1/preview",
         json={"params_override": overrides, "catalog_profile": None},
     )
     assert podglad.status_code == 422, podglad.text
     assert podglad.json()["detail"]["code"] == "template.der_mix_invalid"
     response = app_client.post(
-        "/api/station-templates/tpl_hybrid_pv2_bess1/apply",
+        "/api/station-templates/tpl_hybrid_pv2p2_bess1/apply",
         json={
             "case_id": case_id,
             "target_segment_id": segment_ref,
@@ -517,7 +517,7 @@ def test_niespojny_sklad_der_odmowa_422_bez_sladu_w_modelu(app_client, overrides
             "template.transformer_capacity_insufficient",
         ),
         (
-            "tpl_hybrid_pv1_bess1",
+            "tpl_hybrid_pv0p99_bess1",
             {"der_BESS_ref": "conv-bess-2mw-4mwh-15kv"},
             "converter.der_sn.dobor_tr_brak_kandydata",
         ),
@@ -557,21 +557,22 @@ def test_odmowa_parametrow_jedna_w_podgladzie_i_zastosowaniu_bez_sladu(
 
 def test_hybrydowy_podglad_api_zachowuje_jawny_sklad_pv_bess(app_client) -> None:
     response = app_client.post(
-        "/api/station-templates/tpl_hybrid_pv2_bess1/preview",
+        "/api/station-templates/tpl_hybrid_pv4p95_bess3/preview",
         json={"params_override": {}},
     )
     assert response.status_code == 200, response.text
     cfg = response.json()["effective_config"]
+    # Skład z nazwy: 2 × SMA SC 2475 + 3 × BESS 1 MW.
     assert cfg["der_total_count"] == 5
     assert {item["kind"]: item["expected_count_per_kind"] for item in cfg["der_mix"]} == {
-        "PV": 4,
-        "BESS": 1,
+        "PV": 2,
+        "BESS": 3,
     }
 
 
 def test_podglad_api_odrzuca_niejawny_podzial_modulow(app_client) -> None:
     response = app_client.post(
-        "/api/station-templates/tpl_hybrid_pv2_bess1/preview",
+        "/api/station-templates/tpl_hybrid_pv2p2_bess1/preview",
         json={"params_override": {"der_total_count": 3}},
     )
     assert response.status_code == 422

@@ -132,30 +132,53 @@ NN_CB_OPTIONS = (
 # DER catalog options
 # =============================================================================
 
-# Falowniki PV po stronie nN 0,4 kV (prosument, stacja słupowa) — pozycja dobierana do mocy
-# jednostki (`schema._der_catalog_for_power`: dokładna P_max, inaczej najmniejsza wydająca).
-# Pozycje 5/10/30 kW nadaje karta katalogu z proweniencją (POTRZEBY.md, sekcja F); do jej
-# scalenia selektor pomija pozycje bez tabliczki.
+# Pozycje przekształtników dobierane przez szablony (decyzja właściciela 2026-10-15):
+# WYŁĄCZNIE pozycje z kartą producenta (`mv_converter_catalog.dopuszczona_do_doboru_szablonu`,
+# status ZWERYFIKOWANY). Rodzaje, dla których katalog nie ma ŻADNEJ takiej pozycji, są jawnym
+# wyjątkiem z powodem (`WYJATKI_POZYCJI_BEZ_KARTY`) — przypina to test
+# `test_sklad_der_szablonow_ze_zrodlem`.
+
+# Falowniki PV po stronie nN 0,4 kV (prosument, stacja słupowa): SMA Sunny Tripower 8.0 i 10.0
+# (karta producenta). Dawne pozycje 5/10/30 kW nie istniały w katalogu (karta katalogu: brak
+# karty falownika 5 kW i 30 kW), a 50 kW i 0,5 MW przy 0,4 kV są modelami referencyjnymi.
 PV_NN_OPTIONS = (
-    CatalogChoice("conv-pv-nn-5kw-0p4kv", "PV 5 kW 0,4 kV", "ZRODLO_NN_PV"),
-    CatalogChoice("conv-pv-nn-10kw-0p4kv", "PV 10 kW 0,4 kV", "ZRODLO_NN_PV"),
-    CatalogChoice("conv-pv-nn-30kw-0p4kv", "PV 30 kW 0,4 kV", "ZRODLO_NN_PV"),
-    CatalogChoice("conv-pv-residential-50kw-04kv", "PV 50 kW (μPV typ A NC RfG)", "ZRODLO_NN_PV"),
-    CatalogChoice("conv-pv-nn-0p5mw-0p4kv", "PV 500 kW 0.4 kV", "ZRODLO_NN_PV"),
+    CatalogChoice(
+        "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
+        "SMA Sunny Tripower 8.0 (8 kVA, 0,4 kV)",
+        "ZRODLO_NN_PV",
+    ),
+    CatalogChoice(
+        "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
+        "SMA Sunny Tripower 10.0 (10 kVA, 0,4 kV)",
+        "ZRODLO_NN_PV",
+        default=True,
+    ),
 )
 
 # Jednostki przyłączane po stronie SN przez WŁASNY transformator blokowy: pozycje po stronie
-# nN 0,69 kV (falownik/PCS/generator turbiny), nie „15 kV". Dawne pozycje `conv-*-15kv`
-# ukrywały transformator blokowy w pozycji przekształtnika, a operacja stawiała je na szynie
-# SN stacji (strona górna transformatora stacji). Lista zawiera WYŁĄCZNIE moce, dla których
-# katalog ma transformator blokowy (przypięte testem: każda opcja każdego szablonu ma
-# kompletny tor DER-SN).
+# nN (falownik/PCS/generator turbiny), nie „15 kV". Dawne pozycje `conv-*-15kv` ukrywały
+# transformator blokowy w pozycji przekształtnika, a operacja stawiała je na szynie SN stacji.
+# Lista zawiera WYŁĄCZNIE pozycje, dla których katalog ma transformator blokowy (przypięte
+# testem: każda opcja każdego szablonu ma kompletny tor DER-SN). SMA SC 4000–4600 UP
+# (4,0–4,6 MVA) mają kartę, ale katalog nie ma transformatora blokowego powyżej 3150 kVA
+# (rozporządzenie 548/2014 podaje dla nich tylko PEI) — nie są opcją szablonu.
 PV_SN_OPTIONS = (
     CatalogChoice(
-        "conv-pv-nn-0p5mw-0p69kv", "Falownik PV 0,5 MW 0,69 kV", "ZRODLO_NN_PV", default=True
+        "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+        "Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV)",
+        "ZRODLO_NN_PV",
+        default=True,
     ),
-    CatalogChoice("conv-pv-nn-1mw-0p69kv", "Falownik PV 1 MW 0,69 kV", "ZRODLO_NN_PV"),
-    CatalogChoice("conv-pv-nn-2mw-0p69kv", "Falownik PV 2 MW 0,69 kV", "ZRODLO_NN_PV"),
+    CatalogChoice(
+        "conv-pv-nn-sma-sc2200-0p385kv",
+        "SMA Sunny Central 2200 (2,2 MVA, 0,385 kV)",
+        "ZRODLO_NN_PV",
+    ),
+    CatalogChoice(
+        "conv-pv-nn-sma-sc2475-0p434kv",
+        "SMA Sunny Central 2475 (2,475 MVA, 0,434 kV)",
+        "ZRODLO_NN_PV",
+    ),
 )
 
 BESS_SN_OPTIONS = (
@@ -164,12 +187,31 @@ BESS_SN_OPTIONS = (
     CatalogChoice("conv-bess-nn-2mw-0p69kv", "BESS 2 MW / 4 MWh 0,69 kV", "ZRODLO_NN_BESS"),
 )
 
-# Turbina 1 MW: pozycja nadawana przez kartę katalogu z proweniencją (POTRZEBY.md, sekcja F).
+# Turbina 2 MW (strona sieciowa przekształtnika 0,69 kV; napięcie uzwojenia nN transformatora
+# blokowego idzie z `un_kv` tabliczki pozycji, nie ze stałej szablonu) — jedyna pozycja wiatrowa, dla której katalog ma
+# transformator blokowy: turbina 3 MW (S_n 3,3 MVA) wymaga jednostki powyżej 3150 kVA,
+# a pozycji 1 MW katalog nie ma (brak karty z tabliczką).
 FW_OPTIONS = (
-    CatalogChoice("conv-wind-nn-1mw-0p69kv", "Turbina wiatrowa 1 MW 0,69 kV", "CONVERTER"),
     CatalogChoice("conv-wind-nn-2mw-0p69kv", "Turbina wiatrowa 2 MW 0,69 kV", "CONVERTER"),
-    CatalogChoice("conv-wind-nn-3mw-0p69kv", "Turbina wiatrowa 3 MW 0,69 kV", "CONVERTER"),
 )
+
+#: Rodzaje DER, dla których katalog NIE MA żadnej pozycji z kartą producenta dopuszczonej do
+#: doboru szablonu — szablony tych rodzajów wskazują modele referencyjne. Powód jest częścią
+#: kontraktu (test przypina zbiór i treść), żeby dopisanie karty do katalogu zmieniło pin.
+WYJATKI_POZYCJI_BEZ_KARTY: dict[str, str] = {
+    "BESS": (
+        "Żadna pozycja BESS katalogu nie ma statusu ZWERYFIKOWANY (karty producenta): "
+        "Tesla Megapack 2 XL jest wyłącznie kopią karty na serwerze strony trzeciej "
+        "(CZESCIOWO_ZWERYFIKOWANY), karta PCS Sungrow SC2000UD-MV jest deklarowana bez "
+        "dokumentu w repozytorium (NIEWERYFIKOWANY), pozostałe pozycje to modele referencyjne."
+    ),
+    "FW": (
+        "Żadna pozycja turbiny wiatrowej katalogu nie ma statusu ZWERYFIKOWANY (karty "
+        "producenta): turbiny z nazwą producenta (Vestas V117, Siemens SWT-2.3, GE 158) są "
+        "modelami referencyjnymi po stronie 15 kV, bez napięcia strony sieciowej przekształtnika z karty, którego "
+        "wymaga tor przez własny transformator blokowy nN/SN."
+    ),
+}
 
 
 # =============================================================================
@@ -379,7 +421,7 @@ DER_PV_NN = DerKindSpec(
     label_pl="Falownik PV nN (LV-side)",
     catalog_options=PV_NN_OPTIONS,
     default_count=1,
-    default_p_mw_each=0.05,
+    default_p_mw_each=0.01,
     connection_variant_options=("nn_side",),
 )
 
@@ -388,7 +430,7 @@ DER_PV_SN = DerKindSpec(
     label_pl="Falownik PV przez własny transformator blokowy nN/SN",
     catalog_options=PV_SN_OPTIONS,
     default_count=2,
-    default_p_mw_each=0.5,
+    default_p_mw_each=0.33,
     connection_variant_options=("block_transformer",),
 )
 
