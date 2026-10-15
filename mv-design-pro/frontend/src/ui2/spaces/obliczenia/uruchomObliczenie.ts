@@ -40,6 +40,8 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
+import { czyStanKoncowyBiegu } from '../../../ui/study-cases/types';
+import { ODSTEP_ODPYTYWANIA_BIEGU_MS, cancelRun } from '../../../ui/study-cases/api';
 import { notify } from '../../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
 
@@ -71,7 +73,7 @@ export function isFailedAnalysisRun(
 }
 
 export function isTerminalExecutionRun(run: ExecutionRun): boolean {
-  return run.status === 'DONE' || run.status === 'FAILED';
+  return czyStanKoncowyBiegu(run.status);
 }
 
 export async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRunHealth | null> {
@@ -110,16 +112,26 @@ export function analysisRunFailureMessage(): string {
 export const KOMUNIKAT_BIEG_WYNIKI_CZEKAJA =
   'Obliczenie zakończone. Wyniki czekają w przestrzeni „Wyniki i dowody".';
 
+/** Komunikat biegu anulowanego przez użytkownika (stan CANCELLED, bez wyniku). */
+export const KOMUNIKAT_BIEG_ANULOWANY = 'Obliczenie anulowane — bieg nie ma wyniku.';
+
+/**
+ * Odpytuj stan biegu do stanu końcowego (DONE/FAILED/CANCELLED) — bez limitu prób
+ * (karta DYNAMIKA-W-TLE): `POST …/execute` wraca z 202 od razu, a bieg liczy się w
+ * tle tak długo, jak trwa (zwarcie sieci 50 stacji — dziesiątki sekund); dawny limit
+ * 24 × 750 ms przerywał odpytywanie po 18 s i zostawiał projektanta z komunikatem
+ * „nadal wykonywane" bez wyniku. Stan końcowy jest gwarantowany przez wykonawcę
+ * (zakończenie, odmowa, anulowanie, zamknięcie biegu osieroconego po restarcie).
+ */
 export async function waitForExecutionRunTerminalState(
   initialRun: ExecutionRun,
   pollRunStatus: (runId: string) => Promise<ExecutionRun>,
+  czekaj: (ms: number) => Promise<void> = (ms) =>
+    new Promise((resolve) => window.setTimeout(resolve, ms)),
 ): Promise<ExecutionRun> {
   let current = initialRun;
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    if (isTerminalExecutionRun(current)) {
-      return current;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
+  while (!isTerminalExecutionRun(current)) {
+    await czekaj(ODSTEP_ODPYTYWANIA_BIEGU_MS);
     current = await pollRunStatus(current.id);
   }
   return current;
@@ -137,6 +149,7 @@ export async function waitForExecutionRunTerminalState(
 export async function uruchomObliczenie(
   analysisType: ExecutionAnalysisType,
   solverInput?: Record<string, unknown>,
+  onBieg?: (bieg: ExecutionRun) => void,
 ): Promise<boolean> {
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
@@ -174,6 +187,9 @@ export async function uruchomObliczenie(
       analysis_type: analysisType,
       ...(solverInput !== undefined ? { solver_input: solverInput } : {}),
     });
+    // Karta DYNAMIKA-W-TLE: bieg zlecony (202, QUEUED) — wołający zna jego identyfikator,
+    // żeby móc go anulować w trakcie odpytywania.
+    onBieg?.(createdRun);
     const run = await waitForExecutionRunTerminalState(
       createdRun,
       useExecutionRunsStore.getState().pollRunStatus,
@@ -188,11 +204,10 @@ export async function uruchomObliczenie(
     }
 
     if (run.status !== 'DONE') {
+      // Jedyny stan końcowy poza DONE/FAILED to CANCELLED (anulowanie przez
+      // użytkownika — decyzja, nie awaria).
       useAppStateStore.getState().setActiveCaseResultStatus('NONE');
-      notify(
-        'Obliczenia są nadal wykonywane. Wyniki zostaną pokazane po zakończeniu solvera.',
-        'info',
-      );
+      notify(KOMUNIKAT_BIEG_ANULOWANY, 'info');
       return false;
     }
 
@@ -228,15 +243,32 @@ export async function uruchomObliczenie(
  */
 export function useUruchomObliczenie(): {
   uruchom: (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => void;
+  /** Anuluj bieg w toku (karta DYNAMIKA-W-TLE): z kolejki od razu, w toku — w punkcie przerwania. */
+  anuluj: () => void;
   wToku: boolean;
+  /** Identyfikator biegu zleconego w tym uruchomieniu (do anulowania); `null` poza biegiem. */
+  biegId: string | null;
 } {
   const [wToku, setWToku] = useState(false);
+  const [biegId, setBiegId] = useState<string | null>(null);
   const uruchom = useCallback(
     (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => {
       setWToku(true);
-      void uruchomObliczenie(analysisType, solverInput).finally(() => setWToku(false));
+      setBiegId(null);
+      void uruchomObliczenie(analysisType, solverInput, (bieg) => setBiegId(bieg.id)).finally(
+        () => {
+          setWToku(false);
+          setBiegId(null);
+        },
+      );
     },
     [],
   );
-  return { uruchom, wToku };
+  const anuluj = useCallback(() => {
+    if (biegId === null) return;
+    void cancelRun(biegId).catch((error: unknown) => {
+      notify(error instanceof Error ? error.message : 'Nie udało się anulować obliczenia', 'error');
+    });
+  }, [biegId]);
+  return { uruchom, anuluj, wToku, biegId };
 }

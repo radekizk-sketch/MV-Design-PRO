@@ -54,6 +54,8 @@ export const SERIE_STRINGS = {
   seriaZakonczona: 'Seria zakończona — wyniki przebiegów są dostępne poniżej.',
   seriaCzesciowa: 'Seria zakończona częściowo — część przebiegów się nie powiodła (treść błędów przy serii).',
   seriaNieudana: 'Seria zakończona błędem — treść błędu przy serii.',
+  seriaAnulowana: 'Seria anulowana — pozycje policzone zachowują wyniki, niewykonane mają wyjaśnienie.',
+  anulujSerie: 'Anuluj serię',
 } as const;
 
 export function etykietaStatusuSerii(status: BatchStatus): string {

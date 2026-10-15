@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
+from domain.execution import STANY_KONCOWE_BIEGU, STANY_W_TOKU_BIEGU
 from infrastructure.persistence.db import (
     create_engine_from_url,
     create_session_factory,
@@ -196,11 +197,16 @@ def get_canonical_run_session_factory() -> sessionmaker[Session]:
         return _cached_session_factory
 
 
-# Stany, z ktorych biegu NIE wolno przejac do wykonania: RUNNING = ktos juz liczy,
-# FINISHED/FAILED = policzone. Wspoldzielone przez `claim_for_execution` i
-# `enm.canonical_analysis.execute_run`, zeby warunek wejscia i wyjscia mial jedno
-# zrodlo prawdy.
-_STANY_NIEPRZEJMOWALNE: tuple[str, ...] = ("RUNNING", "FINISHED", "FAILED")
+# Stany, z ktorych biegu NIE wolno przejac: QUEUED = czeka w kolejce wykonawcy, RUNNING =
+# ktos juz liczy, FINISHED/FAILED/CANCELLED = zakonczone. Wspoldzielone przez
+# `claim_for_queue`, `claim_for_execution` i `enm.canonical_analysis.execute_run`, zeby
+# warunek wejscia i wyjscia mial jedno zrodlo prawdy (`domain.execution`).
+_STANY_NIEPRZEJMOWALNE: tuple[str, ...] = tuple(sorted(STANY_W_TOKU_BIEGU | STANY_KONCOWE_BIEGU))
+# Przejecie do WYKONANIA (RUNNING) jest dozwolone takze z kolejki: bieg zlecony wykonawcy
+# (QUEUED) startuje tym samym atomowym UPDATE, co bieg wolany wprost z CREATED.
+_STANY_NIEPRZEJMOWALNE_DO_WYKONANIA: tuple[str, ...] = tuple(
+    sorted((STANY_W_TOKU_BIEGU - {"QUEUED"}) | STANY_KONCOWE_BIEGU)
+)
 
 
 @contextmanager
@@ -442,7 +448,7 @@ class CanonicalRunRepository:
             update(CanonicalRunORM)
             .where(
                 CanonicalRunORM.id == run_id,
-                CanonicalRunORM.status.not_in(_STANY_NIEPRZEJMOWALNE),
+                CanonicalRunORM.status.not_in(_STANY_NIEPRZEJMOWALNE_DO_WYKONANIA),
             )
             .values(status="RUNNING", started_at=started_at, error_message=None)
         )
@@ -457,8 +463,48 @@ class CanonicalRunRepository:
         wynik = cast(CursorResult[Any], self._session.execute(stmt))
         return wynik.rowcount == 1
 
+    def claim_for_queue(self, run_id: UUID) -> bool:
+        """Atomowo przyjmij bieg do KOLEJKI wykonawcy: CREATED -> QUEUED (karta DYNAMIKA-W-TLE).
+
+        Ten sam wzorzec, co `claim_for_execution` (warunek i zapis w jednym UPDATE):
+        dwa rownolegle `POST …/execute` na tym samym biegu daja DOKLADNIE jedno
+        zlecenie w kolejce — przegrany dostaje stan biezacy (QUEUED/RUNNING/koncowy)
+        i odpytuje dalej. Zwraca ``True``, gdy TEN wolajacy wstawil bieg do kolejki.
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(
+                CanonicalRunORM.id == run_id,
+                CanonicalRunORM.status.not_in(_STANY_NIEPRZEJMOWALNE),
+            )
+            .values(status="QUEUED", error_message=None)
+        )
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
+        return wynik.rowcount == 1
+
+    def cancel_before_start(self, run_id: UUID, *, reason: str, finished_at: datetime) -> bool:
+        """Atomowo anuluj bieg PRZED startem: CREATED/QUEUED -> CANCELLED z wyjasnieniem.
+
+        Bieg juz liczony (RUNNING) nie jest tu anulowany — wykonawca przerywa go w
+        najblizszym punkcie przerwania, a `execute_run` zapisuje CANCELLED. Zwraca
+        ``True``, gdy TEN wolajacy anulowal bieg (przegrany wyscig z przejeciem do
+        wykonania dostaje ``False`` i widzi RUNNING).
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(CanonicalRunORM.id == run_id, CanonicalRunORM.status.in_(("CREATED", "QUEUED")))
+            .values(status="CANCELLED", error_message=reason, finished_at=finished_at)
+        )
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
+        return wynik.rowcount == 1
+
     def fail_orphaned_running(self, *, reason: str, finished_at: datetime) -> int:
-        """TRANSITIONAL SINGLE-EXECUTOR RECOVERY: zamknij biegi osierocone w RUNNING.
+        """TRANSITIONAL SINGLE-EXECUTOR RECOVERY: zamknij biegi osierocone w QUEUED/RUNNING.
+
+        Karta DYNAMIKA-W-TLE: wykonawca w tle zyje W PROCESIE API (jeden watek roboczy,
+        `application/execution/wykonawca.py`), wiec bieg czekajacy w kolejce (QUEUED) jest
+        po restarcie tak samo osierocony jak bieg liczony (RUNNING) — oba dostaja FAILED
+        z powodem `POWOD_OSIEROCENIA`; kolejka nie jest trwala i nie udaje, ze jest.
 
         NAZWA JEST CZESCIA KONTRAKTU. To rozwiazanie PRZEJSCIOWE, nie architektura
         docelowa: globalny `UPDATE ... WHERE status='RUNNING'` bez filtra po
@@ -478,10 +524,10 @@ class CanonicalRunRepository:
         Przypadkowe odzyskiwanie zastapione jawnym.
 
         DLACZEGO TO JEST POPRAWNE DZIS. Wykonanie biegu zyje W PROCESIE API
-        (`execute_run` to zwykle `def` odkladane przez FastAPI do puli watkow;
-        `ExecutionBackend` z DT-12 nie jest wdrozony, a `api/celery_app.py` nie ma
-        importerow). Skoro proces wlasnie wstal, ZADEN bieg nie moze byc w toku:
-        kazdy wiersz RUNNING jest osierocony z definicji.
+        (wykonawca w tle to JEDEN watek roboczy procesu API — DT-12 zrealizowany
+        jako wykonawca w procesie, karta DYNAMIKA-W-TLE; martwa konfiguracja Celery
+        skasowana). Skoro proces wlasnie wstal, ZADEN bieg nie moze byc w toku:
+        kazdy wiersz QUEUED/RUNNING jest osierocony z definicji.
 
         GRANICE ZALOZENIA (pinowane testem
         `tests/enm/test_przejecie_biegu_atomowe.py::test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api`,
@@ -495,7 +541,7 @@ class CanonicalRunRepository:
         """
         stmt = (
             update(CanonicalRunORM)
-            .where(CanonicalRunORM.status == "RUNNING")
+            .where(CanonicalRunORM.status.in_(tuple(sorted(STANY_W_TOKU_BIEGU))))
             .values(status="FAILED", error_message=reason, finished_at=finished_at)
         )
         wynik = cast(CursorResult[Any], self._session.execute(stmt))

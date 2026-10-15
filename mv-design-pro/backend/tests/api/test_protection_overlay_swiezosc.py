@@ -39,6 +39,7 @@ from application.result_freshness import (  # noqa: E402
 )
 
 from tests.test_execution_api import _seed_valid_enm  # noqa: E402
+from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
 
 SZABLON_NASTAW = "template_ref_oc_100"
 
@@ -87,7 +88,7 @@ def _bieg_zwarciowy(app_client, case_id: str) -> str:
     assert utworzenie.status_code == 201, utworzenie.text
     run_id = utworzenie.json()["id"]
 
-    wykonanie = app_client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     assert wykonanie.json()["status"] == "DONE"
     return str(run_id)
@@ -103,7 +104,7 @@ def _bieg_zabezpieczen(app_client, project_id: str, case_id: str, sc_run_id: str
 
 
 def _wykonaj_bieg_zabezpieczen(app_client, run_id: str) -> dict[str, Any]:
-    wykonanie = app_client.post(f"/api/protection-runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg_zabezpieczen(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     payload = wykonanie.json()
     assert payload["status"] == "FINISHED", payload

@@ -30,6 +30,9 @@ export const PRZYPADKI_STRINGS = {
   // w przestrzeni „Obliczenia" (dotąd tylko przycisk „Oblicz" paska tytułowego).
   uruchom: 'Uruchom obliczenie',
   uruchomWToku: 'Obliczenie w toku…',
+  uruchomAnuluj: 'Anuluj',
+  uruchomAnulujOpis:
+    'Anuluj bieg: z kolejki od razu, w toku — w najbliższym punkcie przerwania (zwarcie: między punktami zwarcia; rozpływ nie ma punktów przerwania i zakończy się sam).',
   uruchomRodzaj: 'Rodzaj analizy',
   uruchomOpis:
     'Uruchamia przebieg wybranego rodzaju dla aktywnego zakresu obliczeń i otwiera wyniki.',

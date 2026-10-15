@@ -48,6 +48,7 @@ from tests.test_canonical_analysis_api import (
     _reset_backend_state,
     _seed_power_flow_enm,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _sha256(data: bytes) -> str:
@@ -202,7 +203,7 @@ def test_power_flow_run_export_docx_endpoint_is_byte_deterministic(
     )
     assert created_response.status_code == 201, created_response.text
     run_id = created_response.json()["id"]
-    executed_response = canonical_client.post(f"/api/execution/runs/{run_id}/execute")
+    executed_response = wykonaj_bieg(canonical_client, run_id)
     assert executed_response.status_code == 200, executed_response.text
 
     first = canonical_client.get(f"/api/power-flow-runs/{run_id}/export/docx")

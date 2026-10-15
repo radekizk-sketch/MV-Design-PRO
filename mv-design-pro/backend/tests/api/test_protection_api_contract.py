@@ -6,6 +6,7 @@ from application.protection_analysis.catalog_lookup import (
     get_protection_device_type,
     get_protection_template,
 )
+from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
 
 pytest.importorskip("fastapi")
 
@@ -87,7 +88,7 @@ def test_protection_run_list_endpoint_reads_r1_with_snapshot_hash(app_client) ->
     )
     assert utworzenie_sc.status_code == 201, utworzenie_sc.text
     sc_run_id = utworzenie_sc.json()["id"]
-    wykonanie_sc = app_client.post(f"/api/execution/runs/{sc_run_id}/execute")
+    wykonanie_sc = wykonaj_bieg(app_client, sc_run_id)
     assert wykonanie_sc.status_code == 200, wykonanie_sc.text
 
     utworzenie = app_client.post(
@@ -96,7 +97,7 @@ def test_protection_run_list_endpoint_reads_r1_with_snapshot_hash(app_client) ->
     )
     assert utworzenie.status_code == 201, utworzenie.text
     run_id = utworzenie.json()["id"]
-    wykonanie = app_client.post(f"/api/protection-runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg_zabezpieczen(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     assert wykonanie.json()["status"] == "FINISHED"
 

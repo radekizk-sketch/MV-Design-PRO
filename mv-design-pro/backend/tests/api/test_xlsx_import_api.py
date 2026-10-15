@@ -16,6 +16,7 @@ from tests.utils.arkusz_xlsx import (
     wiersz_linii_tabliczka,
     zbuduj_skoroszyt,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 openpyxl = pytest.importorskip("openpyxl")
 
@@ -157,7 +158,7 @@ class TestBiegNaZaimportowanymModelu:
             )
             assert utworzony.status_code in (200, 201), utworzony.text
             run_id = utworzony.json()["id"]
-            wykonany = app_client.post(f"/api/execution/runs/{run_id}/execute")
+            wykonany = wykonaj_bieg(app_client, run_id)
             assert wykonany.status_code == 200, wykonany.text
             assert wykonany.json()["status"] == "DONE", wykonany.text
             wyniki = app_client.get(f"/api/execution/runs/{run_id}/results")

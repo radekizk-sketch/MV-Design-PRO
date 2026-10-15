@@ -56,6 +56,7 @@ from tests.reference_networks.budowa_przez_api import (
     segmenty_korytarza,
     wiazanie,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
 SCENA = "src/ui/sld/v3/scene/__tests__/fixtures"
@@ -592,7 +593,7 @@ def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, 
             f"/api/execution/study-cases/{b.case_id}/runs",
             json={"analysis_type": rodzaj, "solver_input": {}},
         ).json()
-        klient.post(f"/api/execution/runs/{bieg['id']}/execute")
+        wykonaj_bieg(klient, bieg['id'])
         wynik = klient.get(f"/api/execution/runs/{bieg['id']}/results/v1").json()
         # Kształt nakładki = DOKŁADNIE ten, który kanwa dostaje od orkiestratora
         # (`frontend/src/ui2/legacy/useLegacyOrchestrator.ts`: `rawPayload` z `overlay_payload`

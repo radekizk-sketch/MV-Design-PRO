@@ -29,9 +29,9 @@ from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
 from application.result_freshness import StanBiezacyModelu, swiezosc_biegu_kanonicznego
 from domain.execution import StanBiegu
+from application.execution import wykonawca_biegow
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
-from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
@@ -262,6 +262,7 @@ def create_protection_run(
 @router.post(
     "/protection-runs/{run_id}/execute",
     response_model=ProtectionRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 def execute_protection_run(
     run_id: UUID,
@@ -270,12 +271,14 @@ def execute_protection_run(
     """
     Execute a protection analysis run.
 
-    The run must be in CREATED status. This endpoint:
-    1. Runs the protection evaluation engine (interpretation, zero physics)
-    2. Stores the result on the CanonicalRun (R1)
+    The run must be in CREATED status. Karta DYNAMIKA-W-TLE: this endpoint queues the
+    run on the in-process executor (202, status QUEUED) — the protection evaluation
+    engine (interpretation, zero physics) runs in the background and stores the
+    result on the CanonicalRun (R1); poll `GET /protection-runs/{run_id}` until
+    FINISHED, FAILED or CANCELLED.
 
     Returns:
-    - Updated run metadata with status FINISHED or FAILED
+    - Run metadata with the current status (QUEUED right after acceptance)
 
     `uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B):
     wykonanie biegu zabezpieczeń czyta `StudyCase.protection_config` przez
@@ -285,7 +288,7 @@ def execute_protection_run(
     `app.state.uow_factory` nie pochodzi z tego env var (każdy test).
     """
     _require_protection_run(run_id)
-    run = execute_canonical_run(run_id, uow_factory=uow_factory)
+    run = wykonawca_biegow.zlec_bieg(run_id, uow_factory=uow_factory)
     return _run_to_response(run)
 
 

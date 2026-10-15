@@ -15,6 +15,7 @@
  * Wzorzec seedu i biegów: e2e/deep-link-wyniki.spec.ts.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegZabezpieczenDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { nazwaElementuZBackendu } from './nazwyModelu';
 import fs from 'node:fs';
@@ -433,12 +434,7 @@ async function uruchomBiegZabezpieczen(
   expect(utworzenie.ok(), await utworzenie.text()).toBeTruthy();
   const run = (await utworzenie.json()) as { id: string };
 
-  const wykonanie = await request.post(
-    `${BACKEND_BASE}/api/protection-runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(wykonanie.ok(), await wykonanie.text()).toBeTruthy();
-  const wynikWykonania = (await wykonanie.json()) as { status: string; error_message?: string | null };
+  const wynikWykonania = await wykonajBiegZabezpieczenDoKonca(request, BACKEND_BASE, run.id);
   expect(wynikWykonania.status, wynikWykonania.error_message ?? '').toBe('FINISHED');
   return run.id;
 }

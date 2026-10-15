@@ -15,6 +15,7 @@
  * budowana przez API domain-ops; interakcje NATYWNE — zero dispatchEvent).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { czekajNaKoniecBiegu } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 
@@ -344,6 +345,8 @@ async function uruchomBiegPrzezApi(
     { timeout: 90000 },
   );
   expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
+  // Karta DYNAMIKA-W-TLE: bieg liczy się w tle — powłoka ma zobaczyć stan końcowy.
+  await czekajNaKoniecBiegu(request, BACKEND_BASE, run.id);
   return run.id;
 }
 

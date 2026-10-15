@@ -168,14 +168,18 @@ def _izolowana_baza_przebiegow(tmp_path, monkeypatch):
 
     monkeypatch.setenv(
         "DATABASE_URL",
-        # Baza W PAMIĘCI ze wspólnym cache: izolacja bez kosztu tworzenia schematu
-        # na dysku (pomiar: 29 s wobec 80 s dla pliku tymczasowego, przy tym samym
-        # zestawie 531 testów). Nazwa bierze się z katalogu tymczasowego pytest,
-        # który jest unikalny per test — NIE z `id()` obiektu, bo identyfikatory
-        # bywają ponownie użyte po zwolnieniu pamięci i dwa testy mogłyby trafić
-        # na tę samą bazę. Baza znika, gdy zamknie się ostatnie połączenie
-        # (robi to `wyczysc_cache` w teardownie).
-        f"sqlite+pysqlite:///file:przebiegi-{tmp_path.name}" "?mode=memory&cache=shared&uri=true",
+        # Baza PLIKOWA w katalogu tymczasowym testu (WAL + busy_timeout z
+        # `infrastructure/persistence/db.py` — ten sam kształt, co tor dev/e2e i
+        # produkcyjny). Do karty DYNAMIKA-W-TLE była tu baza W PAMIĘCI ze wspólnym
+        # cache (`mode=memory&cache=shared`; pomiar: 29 s wobec 80 s dla pliku przy
+        # 531 testach). Wspólny cache ma blokady na poziomie TABELI między
+        # połączeniami (`SQLITE_LOCKED: database table is locked`), których
+        # `busy_timeout` nie obejmuje — a od tej karty bieg liczy WĄTEK wykonawcy w
+        # tle, gdy wątek żądania odpytuje ten sam rejestr: każdy test API z biegiem
+        # czerwieniał losowo na blokadzie tabeli, nie na defekcie produktu. Baza
+        # plikowa z WAL pozwala czytelnikowi i pisarzowi pracować równocześnie.
+        # Katalog tymczasowy pytest jest unikalny per test, więc izolacja zostaje.
+        f"sqlite+pysqlite:///{tmp_path / 'przebiegi.db'}",
     )
 
     from infrastructure.persistence.repositories import canonical_run_repository as repo

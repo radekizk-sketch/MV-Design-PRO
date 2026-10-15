@@ -37,6 +37,7 @@ from tests.api.test_protection_overlay_swiezosc import (  # noqa: E402
     _bieg_zwarciowy,
     _projekt_i_przypadek,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 
 def test_koncowka_ogolna_wykonuje_bieg_zabezpieczen_fabryka_zadania(app_client) -> None:
@@ -51,7 +52,7 @@ def test_koncowka_ogolna_wykonuje_bieg_zabezpieczen_fabryka_zadania(app_client) 
     sc_run_id = _bieg_zwarciowy(app_client, case_id)
     run_id = _bieg_zabezpieczen(app_client, project_id, case_id, sc_run_id)
 
-    wykonanie = app_client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg(app_client, run_id)
 
     assert wykonanie.status_code == 200, wykonanie.text
     assert wykonanie.json()["status"] == "DONE", wykonanie.json()

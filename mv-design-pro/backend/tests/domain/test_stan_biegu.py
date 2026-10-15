@@ -16,9 +16,11 @@ import pytest
 from analysis.comparison_diffs.diffs import RunProvenance
 from domain.execution import RunStatus, StanBiegu, stan_biegu
 from domain.run_batch import (
+    ITEM_STATUS_CANCELLED,
     ITEM_STATUS_CREATED,
     ITEM_STATUS_FAILED,
     ITEM_STATUS_FINISHED,
+    ITEM_STATUS_QUEUED,
     ITEM_STATUS_RUNNING,
     ITEM_STATUSES_TERMINALNE,
     RunBatchItem,
@@ -57,9 +59,16 @@ def test_status_serii_to_stan_biegu_plus_czesciowy() -> None:
 
 
 def test_stale_pozycji_serii_naleza_do_stanu_biegu() -> None:
-    stale = {ITEM_STATUS_CREATED, ITEM_STATUS_RUNNING, ITEM_STATUS_FINISHED, ITEM_STATUS_FAILED}
+    stale = {
+        ITEM_STATUS_CREATED,
+        ITEM_STATUS_QUEUED,
+        ITEM_STATUS_RUNNING,
+        ITEM_STATUS_FINISHED,
+        ITEM_STATUS_FAILED,
+        ITEM_STATUS_CANCELLED,
+    }
     assert stale == set(STANY)
-    assert set(ITEM_STATUSES_TERMINALNE) == {"FINISHED", "FAILED"}
+    assert set(ITEM_STATUSES_TERMINALNE) == {"FINISHED", "FAILED", "CANCELLED"}
     assert set(ITEM_STATUSES_TERMINALNE) <= set(STANY)
 
 

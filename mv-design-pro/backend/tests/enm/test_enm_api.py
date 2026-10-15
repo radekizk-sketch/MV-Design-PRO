@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
@@ -285,7 +286,7 @@ def _create_and_execute(
     if utworzony.status_code != 201:
         return utworzony, None
     run_id = utworzony.json()["id"]
-    wykonany = client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonany = wykonaj_bieg(client, run_id)
     return utworzony, wykonany
 
 
@@ -353,7 +354,7 @@ class TestRunDispatch:
             },
         )
         assert utworzony.status_code == 201, utworzony.text
-        wykonany = client.post(f"/api/execution/runs/{utworzony.json()['id']}/execute")
+        wykonany = wykonaj_bieg(client, utworzony.json()['id'])
         assert wykonany.status_code == 200, wykonany.text
 
         rows = _sc_rows(client, utworzony.json()["id"])

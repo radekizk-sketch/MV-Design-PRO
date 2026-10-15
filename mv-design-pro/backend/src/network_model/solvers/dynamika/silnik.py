@@ -118,6 +118,7 @@ from .odbiory import (
     tryb_odbioru,
     wymaga_napiecia_niezerowego,
 )
+from .przerwanie import NadzorcaBiegu
 from .reinicjalizacja import reinicjalizuj
 from .siec import (
     ModelSieci,
@@ -211,9 +212,17 @@ PRZEDMIOT_STANU_T0 = "Stan t = 0 po spojnej inicjalizacji"
 
 @dataclass(frozen=True)
 class SilnikDynamiki:
-    """Rdzen biegu RMS — jeden obiekt na jeden bieg, bez stanu miedzy biegami."""
+    """Rdzen biegu RMS — jeden obiekt na jeden bieg, bez stanu miedzy biegami.
+
+    `nadzorca` (karta DYNAMIKA-W-TLE, `przerwanie.py`): obserwator wolany po kazdym
+    przyjetym kroku calkowania z chwila, horyzontem i liczba krokow — postep biegu w tle
+    i punkt przerwania na zadanie uzytkownika (`BiegPrzerwany`). Nie dostaje stanow ani
+    napiec, wiec nie ma jak wplynac na wynik: bieg z nadzorca, ktory nie przerywa, jest
+    bit w bit rowny biegowi bez nadzorcy (przypiete testem parytetu).
+    """
 
     wejscie: WejscieDynamiki
+    nadzorca: NadzorcaBiegu | None = None
 
     def uruchom(self) -> WynikDynamiki:
         """Wykonaj bieg i zbuduj wynik czasowy."""
@@ -471,6 +480,8 @@ class SilnikDynamiki:
                     t_s,
                 )
                 kroki += 1
+                if self.nadzorca is not None:
+                    self.nadzorca.po_kroku(t_s, nastawy.horyzont_s, kroki)
                 iteracje_max = max(iteracje_max, wynik_kroku.iteracje)
                 max_residuum_f = max(max_residuum_f, wynik_kroku.residuum_stanow)
                 max_residuum_g = max(max_residuum_g, wynik_kroku.residuum_algebry)

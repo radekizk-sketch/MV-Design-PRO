@@ -25,10 +25,10 @@ from api.canonical_run_views import (
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
 from application.analysis_run.read_model import canonicalize_json
+from application.execution import wykonawca_biegow
 from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
-from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -395,15 +395,17 @@ def create_power_flow_run(
     )
 
 
-@router.post("/power-flow-runs/{run_id}/execute")
+@router.post("/power-flow-runs/{run_id}/execute", status_code=status.HTTP_202_ACCEPTED)
 def execute_power_flow_run(
     run_id: UUID,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     _require_canonical_run(run_id)
+    # Karta DYNAMIKA-W-TLE: bieg trafia do kolejki wykonawcy w tle (202, stan QUEUED);
+    # klient odpytuje `GET /power-flow-runs/{run_id}` do stanu końcowego.
     # CV-4.2b: fabryka `UnitOfWork` żądania idzie do wykonawcy — rozpływ z
     # konfiguracją audytu 2 stacji czyta ją tą samą bazą, którą ją zapisano.
-    run = execute_canonical_run(run_id, uow_factory=uow_factory)
+    run = wykonawca_biegow.zlec_bieg(run_id, uow_factory=uow_factory)
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {

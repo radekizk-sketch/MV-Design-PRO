@@ -17,6 +17,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -144,9 +145,7 @@ test('klasa A: arkusz operatora → model projektu → bieg rozpływu → wyniki
   );
   expect(createRunResponse.ok()).toBeTruthy();
   const { id: runId } = (await createRunResponse.json()) as { id: string };
-  const executeResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
-  expect(executeResponse.ok()).toBeTruthy();
-  const bieg = (await executeResponse.json()) as { status: string };
+  const bieg = await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
   expect(bieg.status).toBe('DONE');
   await waitForAnalysisRunIndex(request, runId);
 

@@ -21,6 +21,11 @@
 
 import { useState } from 'react';
 
+import { ODSTEP_ODPYTYWANIA_BIEGU_MS } from '../../../study-cases/api';
+
+/** Stany koncowe biegu zabezpieczen (slownik domenowy `StanBiegu`). */
+const STANY_KONCOWE_ZABEZPIECZEN: ReadonlySet<string> = new Set(['FINISHED', 'FAILED', 'CANCELLED']);
+
 export type ProtectionRunStatus =
   | 'idle'
   | 'creating'
@@ -111,12 +116,22 @@ export function ProtectionRunButton({
       }
       // Slownik statusu MUSI byc slownikiem backendu. Koncowka
       // `POST /api/protection-runs/{id}/execute` oddaje `ProtectionRunStatus`
-      // (CREATED/RUNNING/FINISHED/FAILED) — porownanie z 'DONE' (slownik biegow
+      // (CREATED/QUEUED/RUNNING/FINISHED/FAILED/CANCELLED) — porownanie z 'DONE' (slownik biegow
       // wykonawczych, inna koncowka) NIGDY nie bylo prawdziwe, wiec kazde UDANE
       // obliczenie konczylo sie tu komunikatem bledu. Defekt byl niewidoczny,
       // bo test mockowal `status: 'DONE'`, czyli odpowiedz, ktorej ten backend
       // nie wysyla (test maskujacy defekt produktu = dwa defekty).
-      const execJson = await execRes.json();
+      // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202, QUEUED) — stan
+      // koncowy przychodzi z odpytywania `GET /api/protection-runs/{id}`.
+      let execJson = (await execRes.json()) as { status: string; error_message?: string | null };
+      while (!STANY_KONCOWE_ZABEZPIECZEN.has(execJson.status)) {
+        await new Promise((resolve) => window.setTimeout(resolve, ODSTEP_ODPYTYWANIA_BIEGU_MS));
+        const stanRes = await fetch(`/api/protection-runs/${protectionRunId}`);
+        if (!stanRes.ok) {
+          throw new Error(`Błąd odczytu stanu biegu: HTTP ${stanRes.status}`);
+        }
+        execJson = (await stanRes.json()) as { status: string; error_message?: string | null };
+      }
       if (execJson.status !== 'FINISHED') {
         throw new Error(
           execJson.error_message ?? `Status: ${execJson.status}`,

@@ -107,11 +107,20 @@ export const DYNAMIKA_STRINGS = {
   warunekGotowosc: 'Usuń braki modelu powyżej (bieg odmówi z tym modelem).',
   stanBiegu: {
     PENDING: 'Bieg utworzony — oczekuje na wykonanie.',
+    QUEUED: 'Bieg w kolejce — czeka, aż wykonawca zakończy poprzednie obliczenie.',
     RUNNING: 'Bieg w toku…',
     DONE: 'Bieg zakończony.',
     FAILED: 'Bieg zakończony odmową.',
+    CANCELLED: 'Bieg anulowany — bez wyniku.',
   } as Record<string, string>,
   bladBiegu: 'Bieg zakończony odmową:',
+  anulujBieg: 'Anuluj bieg',
+  anulowanieZlecone: 'Anulowanie zlecone — bieg zatrzyma się po bieżącym kroku całkowania.',
+  postepBiegu: 'Postęp biegu',
+  postepOpis: (wykonane: string, razem: string, jednostka: string) =>
+    `${wykonane} z ${razem} ${jednostka}`,
+  postepBezPomiaru: 'Bieg w toku — postęp pojawi się po pierwszym kroku całkowania.',
+  bladAnulowania: 'Nie udało się anulować biegu:',
   poprzednieBiegi: 'Wynik biegu',
 
   // Wynik

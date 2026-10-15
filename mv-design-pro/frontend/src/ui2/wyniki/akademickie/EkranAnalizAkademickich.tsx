@@ -1991,7 +1991,7 @@ export function EkranAnalizAkademickich({
                   trybEkspercki={trybEkspercki}
                   testid="mvd-akad-informacje-audytowe"
                   wiersze={[
-                    { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash },
+                    { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash ?? '' },
                     { etykieta: S.runId, wartosc: stan.dane.przebieg.run_id },
                     { etykieta: S.wersjaSolwera, wartosc: String(stan.dane.wynik.result.solver_version ?? '') },
                     { etykieta: S.odciskWejscia, wartosc: String(stan.dane.wynik.result.input_hash ?? '') },

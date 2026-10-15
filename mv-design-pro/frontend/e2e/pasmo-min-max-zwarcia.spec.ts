@@ -18,6 +18,7 @@
  * segment_sn` → `insert_station_on_segment_sn`, pętla gotowości katalogowej).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -272,9 +273,7 @@ async function utworzIWykonajBiegSc3f(
   expect(createResponse.ok()).toBeTruthy();
   const created = (await createResponse.json()) as { id: string };
 
-  const execResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${created.id}/execute`);
-  expect(execResponse.ok()).toBeTruthy();
-  const executed = (await execResponse.json()) as { id: string; status: string };
+  const executed = await wykonajBiegDoKonca(request, BACKEND_BASE, created.id);
   expect(executed.status).toBe('DONE');
   return executed;
 }

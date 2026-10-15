@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 from solver_input.v126_contracts import V126AnalysisType
 
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.biegi import uruchom_v126
 
 GOTOWOSC_URL = "{case_id}/v126/gotowosc"
 
@@ -128,12 +129,10 @@ def test_parytet_get_gotowosc_i_post_run_na_wszystkich_14_rodzajach() -> None:
         analizy = get_resp.json()["analizy"]
         assert len(analizy) == 14
 
-        oczekiwany_status = {"POTWIERDZONA": 200, "NIEPOTWIERDZONA": 422, "WYCOFANA": 410}
+        oczekiwany_status = {"POTWIERDZONA": 202, "NIEPOTWIERDZONA": 422, "WYCOFANA": 410}
         for pozycja in analizy:
             rodzaj = pozycja["kod"]
-            post_resp = client.post(
-                f"/api/cases/{case_id}/runs/v126/{rodzaj}", json={"parameters": {}}
-            )
+            post_resp = uruchom_v126(client, case_id, rodzaj, {})
             assert post_resp.status_code == oczekiwany_status[pozycja["gotowosc"]], (
                 f"{rodzaj}: GET={pozycja['gotowosc']} ale POST={post_resp.status_code} "
                 f"({post_resp.text})"

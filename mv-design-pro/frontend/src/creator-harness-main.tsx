@@ -1443,6 +1443,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
     // HARNESS-RESZTA-2: kontrakt przebiegu po wykonaniu — REALNY bieg backendu.
+    // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); harness oddaje od razu
+    // stan koncowy tego samego realnego biegu, a odpytywanie `GET …/runs/{id}` nizej
+    // widzi DONE przy pierwszym odczycie.
+    return jsonOK(oltcScenyPrzebieg);
+  }
+  if (/\/api\/execution\/runs\/[^/]+$/.test(url)) {
     return jsonOK(oltcScenyPrzebieg);
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {

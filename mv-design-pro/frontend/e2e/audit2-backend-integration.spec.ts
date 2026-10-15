@@ -29,6 +29,7 @@
  */
 
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
@@ -554,9 +555,7 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(createRunRes.ok()).toBeTruthy();
     const runId = (await createRunRes.json()).id;
 
-    const executeRes = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
-    expect(executeRes.ok()).toBeTruthy();
-    const executed = await executeRes.json();
+    const executed = await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
     expect(executed.status).toBe('DONE');
 
     const resultsRes = await request.get(`${BACKEND_BASE}/api/execution/runs/${runId}/results`);
@@ -687,9 +686,7 @@ async function uruchomRozplyw(
   );
   expect(createRunRes.ok()).toBeTruthy();
   const runId = (await createRunRes.json()).id as string;
-  const executeRes = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
-  expect(executeRes.ok()).toBeTruthy();
-  expect((await executeRes.json()).status).toBe('DONE');
+  await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
   return runId;
 }
 

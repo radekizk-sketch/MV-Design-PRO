@@ -32,6 +32,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
 
 pytest.importorskip("fastapi")
 
@@ -71,7 +72,7 @@ def _utworz_bieg(
 
 
 def _wykonaj(app_client, run_id: str) -> dict[str, Any]:
-    wykonanie = app_client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     payload = wykonanie.json()
     assert payload["status"] == "DONE", payload
@@ -123,7 +124,7 @@ def _bieg_zabezpieczen(app_client, project_id: str, case_id: str, sc_run_id: str
     assert utworzenie.status_code == 201, utworzenie.text
     run_id = str(utworzenie.json()["id"])
 
-    wykonanie = app_client.post(f"/api/protection-runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg_zabezpieczen(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     assert wykonanie.json()["status"] == "FINISHED", wykonanie.json()
     return run_id

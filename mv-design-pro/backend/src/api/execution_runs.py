@@ -11,16 +11,15 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
 from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
+    CanonicalRun,
     build_execution_result_set,
 )
 from enm.canonical_analysis import (
     create_run as create_canonical_run,
-)
-from enm.canonical_analysis import (
-    execute_run as execute_canonical_run,
 )
 from enm.canonical_analysis import (
     get_run as get_canonical_run,
@@ -71,6 +70,19 @@ class RunResponse(BaseModel):
     model_revision: int | None = None
     created_at: str | None = None
     snapshot_hash: str | None = None
+    # Karta DYNAMIKA-W-TLE: postęp biegu w toku (pomiar wykonawcy w tle; `None` — bieg
+    # nie jest liczony w tym procesie albo jego wykonawca nie mierzy postępu).
+    postep: PostepResponse | None = None
+
+
+class PostepResponse(BaseModel):
+    """Postęp biegu w toku: co policzono z czego (jednostka nazwana), ułamek 0–1."""
+
+    wykonane: float
+    razem: float
+    jednostka: str
+    krok: int
+    ulamek: float
 
 
 class RunListResponse(BaseModel):
@@ -234,11 +246,22 @@ def list_runs(case_id: str) -> dict[str, Any]:
     }
 
 
+def _stan_biegu_z_postepem(run: CanonicalRun) -> dict[str, Any]:
+    """Kontrakt HTTP biegu + postęp z wykonawcy w tle (karta DYNAMIKA-W-TLE)."""
+    postep = wykonawca_biegow.postep_biegu(run.id)
+    return {**run.to_execution_dict(), "postep": None if postep is None else postep.to_dict()}
+
+
 @router.post(
     "/api/execution/runs/{run_id}/execute",
     response_model=RunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
+    # Karta DYNAMIKA-W-TLE: bieg NIE wykonuje się w żądaniu — trafia do kolejki
+    # wykonawcy w tle (jeden ciężki bieg naraz), odpowiedź 202 niesie stan QUEUED
+    # (albo stan bieżący, gdy bieg był już zlecony/zakończony), a klient odpytuje
+    # `GET /api/execution/runs/{run_id}` do stanu końcowego (DONE/FAILED/CANCELLED).
     # CV-4.2b: bieg wykonuje się TĄ SAMĄ fabryką `UnitOfWork`, którą widzi reszta
     # żądania — bieg zabezpieczeń (konfiguracja przypadku) i rozpływ/zwarcie z
     # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
@@ -247,7 +270,7 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
     parsed_run_id = _parse_uuid(run_id, "run_id")
 
     try:
-        run = execute_canonical_run(
+        run = wykonawca_biegow.zlec_bieg(
             parsed_run_id,
             uow_factory=getattr(http_request.app.state, "uow_factory", None),
         )
@@ -260,7 +283,28 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
     # CV-2-W: po biegu NIE przestawiamy zadnego stanu na przypadku. Status wynikow
     # jest wyprowadzany z biegow przypadku i koperty rewizji, wiec zakonczony bieg
     # sam w sobie zmienia werdykt — nie ma czego zapisywac (i nie ma jak zapomniec).
-    return run.to_execution_dict()
+    return _stan_biegu_z_postepem(run)
+
+
+@router.post(
+    "/api/execution/runs/{run_id}/cancel",
+    response_model=RunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def cancel_run(run_id: str) -> dict[str, Any]:
+    # Karta DYNAMIKA-W-TLE: bieg w kolejce jest anulowany od razu (CANCELLED z
+    # wyjaśnieniem); bieg w toku dostaje żądanie przerwania sprawdzane w punktach
+    # przerwania wykonawcy (bieg czasowy: po każdym kroku całkowania; zwarcie: między
+    # punktami zwarcia) — odpowiedź niesie stan bieżący, klient odpytuje do CANCELLED.
+    # Bieg zakończony albo w toku bez punktów przerwania → 409 z nazwanym powodem.
+    parsed_run_id = _parse_uuid(run_id, "run_id")
+    try:
+        run = wykonawca_biegow.anuluj_bieg(parsed_run_id)
+    except BiegNieDoAnulowaniaError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OdmowaDanychError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _stan_biegu_z_postepem(run)
 
 
 @router.get(
@@ -275,7 +319,7 @@ def get_run(run_id: str) -> dict[str, Any]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Nie znaleziono obliczenia {run_id}",
         )
-    return run.to_execution_dict()
+    return _stan_biegu_z_postepem(run)
 
 
 @router.get(

@@ -51,6 +51,7 @@ from .kontrakty import (
 )
 from .reinicjalizacja import RaportReinicjalizacji, reinicjalizuj
 from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre, zloz_model_sieci
+from .przerwanie import BiegPrzerwany, NadzorcaBiegu
 from .silnik import SilnikDynamiki
 from .tozsamosc import WERSJA_SOLVERA, TozsamoscBiegu, zbuduj_tozsamosc
 from .wynik import (
@@ -66,6 +67,7 @@ __all__ = [
     "INTEGRATORY",
     "KODY_ODMOW",
     "WERSJA_SOLVERA",
+    "BiegPrzerwany",
     "CharakterystykaOdbioru",
     "GalazDynamiki",
     "HarmonogramDynamiki",
@@ -74,6 +76,7 @@ __all__ = [
     "KomendaRegulacji",
     "KontekstKroku",
     "Metryka",
+    "NadzorcaBiegu",
     "ModelSieci",
     "NastawySolvera",
     "OdbiorDynamiki",

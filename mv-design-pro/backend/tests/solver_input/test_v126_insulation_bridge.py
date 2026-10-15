@@ -7,6 +7,7 @@ from solver_input.v126_contracts import (
     build_v126_insulation_from_enm,
     ograniczniki_bez_uziemienia_sieci,
 )
+from tests.utils.biegi import uruchom_v126
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
 
@@ -212,11 +213,8 @@ def test_insulation_coordination_run_reads_arresters_from_model() -> None:
         # nie buduje wiersza (nie podstawia „isolated"), a gotowość blokuje.
         set_enm(klucz, _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
 
-        created = client.post(
-            f"/api/cases/{case_id}/runs/v126/insulation_coordination",
-            json={"parameters": {}},
-        )
-        assert created.status_code == 200, created.text
+        created = uruchom_v126(client, case_id, "insulation_coordination", {})
+        assert created.status_code == 202, created.text
         result = client.get(created.json()["result_url"])
         assert result.status_code == 200
         arresters = result.json()["result"]["result"]["arresters"]

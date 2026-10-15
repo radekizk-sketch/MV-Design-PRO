@@ -39,6 +39,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from pydantic import BaseModel
+from tests.utils.biegi import wykonaj_bieg
 
 KOMUNIKAT = "Szyna „SN-1” nie istnieje w modelu — wskaż szynę z listy."
 
@@ -232,20 +233,22 @@ def _czyste_biegi() -> Any:
 
 
 @pytest.mark.parametrize(
-    ("fabryka", "kod", "status_biegu"),
+    ("fabryka", "komunikat_biegu"),
     [
-        (lambda: OdmowaDanychError(KOMUNIKAT), 200, "FAILED"),
+        (lambda: OdmowaDanychError(KOMUNIKAT), KOMUNIKAT),
         # Decyzja karty: bieg łapie `ValueError` (rdzenie B-01 zgłaszają nim odmowy) —
         # status FAILED z komunikatem, nie 422 i nie 500.
-        (lambda: ValueError(KOMUNIKAT), 200, "FAILED"),
-        (lambda: KeyError("brak-klucza"), 500, "FAILED"),
+        (lambda: ValueError(KOMUNIKAT), KOMUNIKAT),
+        # Błąd programu: bieg FAILED z NAZWĄ błędu wewnętrznego (bez treści wyjątku);
+        # karta DYNAMIKA-W-TLE — bieg liczy się w tle, więc nie ma żądania HTTP, które
+        # mogłoby dostać 500: ślad idzie do dziennika wykonawcy, stan do rejestru.
+        (lambda: KeyError("brak-klucza"), "Błąd wewnętrzny programu (KeyError)"),
     ],
     ids=["odmowa_danych", "obcy_valueerror", "key_error"],
 )
 def test_bieg_analizy_przez_trase(
     fabryka: Any,
-    kod: int,
-    status_biegu: str,
+    komunikat_biegu: str,
     monkeypatch: pytest.MonkeyPatch,
     _czyste_biegi: Any,
 ) -> None:
@@ -263,18 +266,18 @@ def test_bieg_analizy_przez_trase(
         raise fabryka()
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", _wykonaj)
-    odpowiedz = _surowy_klient().post(f"/api/execution/runs/{run.id}/execute")
-    assert odpowiedz.status_code == kod, odpowiedz.text
+    odpowiedz = wykonaj_bieg(_surowy_klient(), run.id)
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    assert odpowiedz.json()["status"] == "FAILED"
     zapisany = get_run(run.id)
-    assert zapisany is not None and zapisany.status == status_biegu
-    if kod == 200:
-        assert odpowiedz.json()["status"] == "FAILED"
-        assert zapisany.error_message == KOMUNIKAT
+    assert zapisany is not None and zapisany.status == "FAILED"
+    assert zapisany.error_message is not None
+    assert zapisany.error_message.startswith(komunikat_biegu)
 
 
 def test_bieg_nieistniejacy_to_404_z_komunikatem_odmowy(_czyste_biegi: Any) -> None:
     identyfikator = uuid.uuid4()
-    odpowiedz = _surowy_klient().post(f"/api/execution/runs/{identyfikator}/execute")
+    odpowiedz = wykonaj_bieg(_surowy_klient(), identyfikator)
     assert odpowiedz.status_code == 404
     assert odpowiedz.json()["detail"] == f"Run {identyfikator} not found"
 

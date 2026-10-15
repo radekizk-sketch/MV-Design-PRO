@@ -14,6 +14,7 @@ from solver_input.v126_contracts import (
     V126HarmonicSourceInput,
     V126TransformerInput,
 )
+from tests.utils.biegi import uruchom_v126
 
 
 def _academic_input() -> V126AcademicInput:
@@ -224,11 +225,8 @@ def test_v126_api_run_result_and_trace() -> None:
                 }
             ),
         )
-        response = client.post(
-            f"/api/cases/{case_id}/runs/v126/voltage_stability",
-            json={"parameters": {}},
-        )
-        assert response.status_code == 200
+        response = uruchom_v126(client, case_id, "voltage_stability", {})
+        assert response.status_code == 202
         run_id = response.json()["run_id"]
 
         result = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability")

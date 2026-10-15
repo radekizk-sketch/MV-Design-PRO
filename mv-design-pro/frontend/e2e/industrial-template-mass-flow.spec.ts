@@ -1,4 +1,5 @@
 ﻿import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { czekajNaKoniecBiegu } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -593,6 +594,8 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     { timeout: 60000 },
   );
   expect(powerFlowExecuteResponse.ok(), await powerFlowExecuteResponse.text()).toBeTruthy();
+  // Karta DYNAMIKA-W-TLE: bieg liczy się w tle — wynik po dojściu stanu do DONE.
+  await czekajNaKoniecBiegu(request, BACKEND_BASE, powerFlowRun.id, 120000);
   const powerFlowResultsResponse = await request.get(
     `${BACKEND_BASE}/api/power-flow-runs/${powerFlowRun.id}/results`,
     { timeout: 60000 },

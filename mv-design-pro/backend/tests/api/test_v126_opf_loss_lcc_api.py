@@ -35,6 +35,7 @@ from enm.canonical_analysis import create_run, execute_run
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
+from tests.utils.biegi import uruchom_v126
 
 _RODZAJE_WYCOFANE = (V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.OPF_LOSS_LCC)
 
@@ -121,10 +122,7 @@ def test_post_rodzaju_wycofanego_zwraca_410_z_zamiennikiem(rodzaj: V126AnalysisT
     ENM czy parametry przypadku."""
     with TestClient(app) as client:
         case_id = _seed_case_bez_enm(client)
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/{rodzaj.value}",
-            json={"parameters": {}},
-        )
+        resp = uruchom_v126(client, case_id, rodzaj.value, {})
     assert resp.status_code == 410, resp.text
     body = resp.json()
     assert body["code"] == "v126.analysis_withdrawn"
@@ -141,14 +139,8 @@ def test_post_rodzaju_wycofanego_nie_wymaga_committed_enm() -> None:
     rodzaj V12.6 dostałby tu 422, nie 410 — patrz kontrola dwustronna niżej)."""
     with TestClient(app) as client:
         case_id = _seed_case_bez_enm(client)
-        resp_wycofany = client.post(
-            f"/api/cases/{case_id}/runs/v126/hosting_capacity",
-            json={"parameters": {}},
-        )
-        resp_aktywny = client.post(
-            f"/api/cases/{case_id}/runs/v126/insulation_coordination",
-            json={"parameters": {}},
-        )
+        resp_wycofany = uruchom_v126(client, case_id, "hosting_capacity", {})
+        resp_aktywny = uruchom_v126(client, case_id, "insulation_coordination", {})
     assert resp_wycofany.status_code == 410, resp_wycofany.text
     assert resp_aktywny.status_code == 422, resp_aktywny.text
     assert "committed ENM" in resp_aktywny.text

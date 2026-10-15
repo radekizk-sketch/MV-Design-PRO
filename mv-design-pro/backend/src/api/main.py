@@ -55,6 +55,7 @@ from api.switchgear_config import router as switchgear_config_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
 from api.zwarcia_porownania import router as zwarcia_porownania_router
+from application.batch_execution_service import zamknij_osierocone_serie
 from enm.canonical_analysis import zamknij_osierocone_biegi
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,7 +89,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # podwojnego wykonania) slusznie blokuje ponowne uruchomienie takiego biegu.
     osierocone = zamknij_osierocone_biegi()
     if osierocone:
-        logger.warning("Zamknięto %d bieg(ów) osieroconych w RUNNING po restarcie", osierocone)
+        logger.warning(
+            "Zamknięto %d bieg(ów) osieroconych w QUEUED/RUNNING po restarcie", osierocone
+        )
+    osierocone_serie = zamknij_osierocone_serie()
+    if osierocone_serie:
+        logger.warning(
+            "Zamknięto %d serii osieroconych w QUEUED/RUNNING po restarcie", osierocone_serie
+        )
     logger.info("MV-DESIGN PRO API started, DB initialized")
     yield
     logger.info("MV-DESIGN PRO API shutting down")
