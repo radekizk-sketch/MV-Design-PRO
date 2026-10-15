@@ -933,7 +933,7 @@
       "ip_ka": 23.7571696168,
       "ith_ka": 9.78423781021,
       "sk_mva": 249.972843593,
-      "rk_ohm": 0.0985300873273,
+      "rk_ohm": 0.0985300873274,
       "xk_ohm": 0.985192765171,
       "zk_ohm": 0.990107551054,
       "rx_ratio": 0.100010973294,
@@ -949,11 +949,11 @@
       "ik_inverters_ka": 0.0,
       "i2t_ka2s": 95.7313095267,
       "z1_ohm": {
-        "re": 0.0985300873273,
+        "re": 0.0985300873274,
         "im": 0.985192765171
       },
       "z2_ohm": {
-        "re": 0.0985300873273,
+        "re": 0.0985300873274,
         "im": 0.985192765171
       },
       "z0_ohm": null,
@@ -1389,7 +1389,7 @@
       "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "3d00d6f5a7191f6c63ff40591584d629ec70fd2148052113252bde0246b7c28b",
+      "catalog_fingerprint": "bbb4438ea62f47b128d033de2de588855d26a1b8f8538f0109844f3bd6b013de",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

@@ -304,7 +304,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
   },
   "nop_station": "S46",
   "schema": "sld_network_model_v1",
-  "source_hash": "f4ae778c52b4ac24affd188d5ad3763a73fab2d405882cffb3e173f50e41ea4c",
+  "source_hash": "88f133f1b2d740da36d60b6df1a9be93f174902a327164a422ca9f8db07f3a4a",
   "stations": [
     {
       "depth": 3,
@@ -795,7 +795,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "nop_downstream": false,
       "parent": "S35",
       "sn_kv": 15.0,
-      "trafo_mva": 0.63
+      "trafo_mva": 1.25
     },
     {
       "depth": 49,
@@ -824,7 +824,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "nop_downstream": false,
       "parent": "S39",
       "sn_kv": 15.0,
-      "trafo_mva": 0.63
+      "trafo_mva": 1.25
     },
     {
       "depth": 52,
@@ -863,7 +863,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "nop_downstream": false,
       "parent": "S41",
       "sn_kv": 15.0,
-      "trafo_mva": 0.63
+      "trafo_mva": 1.25
     },
     {
       "depth": 55,
@@ -916,7 +916,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "nop_downstream": false,
       "parent": "S44",
       "sn_kv": 15.0,
-      "trafo_mva": 0.63
+      "trafo_mva": 1.25
     },
     {
       "depth": 59,

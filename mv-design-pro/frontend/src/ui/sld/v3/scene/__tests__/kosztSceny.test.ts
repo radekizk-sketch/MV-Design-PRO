@@ -407,6 +407,17 @@ interface OdciskiLod {
  *  · 12 notatek STOP `station.type.terminal`/niezgodności deklaracji znika ze sceny L1/L2
  *    (13 → 1, w podwojonej 26 → 2) — niezgodność deklaracji z topologią melduje odtąd
  *    walidator (ostrzeżenie W043 z akcją naprawy), a nie notatka rysunku z identyfikatorem.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPT-478, 2026-10-15) — przeliczone odciski; z 54 wpisów tablicy
+ * 18 bez zmian (L0: scena, declutter i 7 z 7 planów w obu sieciach). Przyczyna WYŁĄCZNIE
+ * w DANYCH (kod SLD nietknięty): kontrola O-53 sumuje źródła zasilane przez ten sam
+ * transformator (V12K-022), więc konfiguracja mieszana PV 0,5 MW + BESS 0,5 MW (Σ S_n
+ * 1,1 MVA) na czterech stacjach odgałęzień substratu nie mieści się w 630 kVA — budowniczy
+ * (`sld_substrate_52s.py` krok 5(d)) przepina ich transformator na 1250 kVA, a fikstura
+ * regenerowana narzędziem repo. Jedyna różnica wejścia (diff fikstury): parametry tych
+ * czterech transformatorów (pozycja, S_n, u_k, straty) i wynik rozpływu substratu — zmienia
+ * to scenę i etykiety L1/L2; L0 bez zmian.
+ * Dawniej budowniczy dokładał magazyn mimo przekroczenia mocy transformatora.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -424,29 +435,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '4e052dd0d67284217d1618d599c27c2c',
-      declutter: 'f48dfe20e91897f0a5717ab9ae6bd1c0',
+      scena: 'a8696d92c937c1d547c597d8eebdb059',
+      declutter: 'de32421abfe56d2498bb3b88cf30a786',
       plany: [
-        '8f80e57136181da2127b9c72e8aa2b06',
-        '56449ce8c710829c3d7ddb669f22cdaf',
-        '35c350faf45897e9929c280d71994263',
-        'e4d603168373a51723763705b9073b31',
-        '22c611049c9b5df45a39ff1054bef6ce',
-        '9f75d3a18e0d6ce9e78cb3ce2424fe1a',
-        '9f75d3a18e0d6ce9e78cb3ce2424fe1a',
+        'f57e9e8ca945efcc488705983df7d2d1',
+        '4b483d0146f0f9b872601ff9d8aeeafb',
+        'b31c6fee256b9287e5275778739a4aaa',
+        '229116bf9fc98b146a690e52328de0c5',
+        '987e2c255387528f4cdb973142439a9a',
+        'f7506f785ea58af34c3b24802cc68366',
+        'f7506f785ea58af34c3b24802cc68366',
       ],
     },
     {
-      scena: '2aa8339579264286f1e3b60c7fd46c36',
-      declutter: 'b83c00e10ceba23754e835af166753fb',
+      scena: 'c09afdae41dbaf72f184ff0b6ad80b30',
+      declutter: '8032ff0a9dd3688eeb0b3e0b76e094c8',
       plany: [
-        'c3db386fe394e5bb9058816c9989f682',
-        '07daff0d6a17f6f5f373ce30fe9eb395',
-        '8e928fc8bd84a15e16d9dd900a94fb34',
-        '64b86dc1ee590be5f03bfe76851fff86',
-        'f9e54979605e079f6f884b37f943736f',
-        'e22bddeba183c8b6838123748dd061fc',
-        'e22bddeba183c8b6838123748dd061fc',
+        '1b22b96d963d9765391b05963553d043',
+        'e2f437ab7267999592214294b9ce8a56',
+        'c772b7e3936f9f4c331b76674d43f327',
+        '45f98039c3d0394de39c67c1735acdfb',
+        '46bccad935fca1bc18e7b724e30a8a1a',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
       ],
     },
   ],
@@ -465,29 +476,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '0a5e6459fedfabe14aecf7bef8501e98',
-      declutter: 'def48db6fe9659a5d9e3aaf0ecca4d34',
+      scena: '7c63f839d89579c47111b4d07616b886',
+      declutter: 'b2ccb3ef57c6b6e7b0575297b0770e53',
       plany: [
-        '3bd0c6d7d4cf2ec9b8b709ff53ef0f7c',
-        'cd716999254f8e91dfc91b0480c72f91',
-        '6253a882b3b2b176749b73c889d717c8',
-        '19514173c867981517fe4f4fa3326ff4',
-        'a9c343605aaef9aa12d3dd8d7967e973',
-        '6d7390f59567a3c61ae6c93ea455b0b9',
-        '6d7390f59567a3c61ae6c93ea455b0b9',
+        'e791a2f4fed507b51ed9572ec838b435',
+        '0a8d9a2a41c93eacb09808d21c057340',
+        'cf746819d46976764e97a7d45273cff1',
+        'b1104d367bda5c9e70095d6235d9a504',
+        '3d72f0dc3304f288cffc206a8c781aee',
+        '5532accf58fcd34c16619d9a80d27ca0',
+        '5532accf58fcd34c16619d9a80d27ca0',
       ],
     },
     {
-      scena: '01e8a7a2fd03011fd531fab9422392ce',
-      declutter: 'd136c75a1ed826706ba2124176d820f3',
+      scena: '95a7fdd8d2d49e0ccd3a96f7d0c5505f',
+      declutter: 'ffa61e5df7ad3f6b47efbcc195a31a3a',
       plany: [
-        '176793a910a92f32e2c21213409bf393',
-        '7cfe13a1d891afcad1e5504cff1b2ca8',
-        'b7b006d74ce79aae2fd2149f9befe1d1',
-        'cb601dbcb30b249ed182146ede97d61d',
-        'd25207c05feba61da70bbbb3ff5befc5',
-        '4f980af713ec4908c8fdc10dfa9c7d2b',
-        '4f980af713ec4908c8fdc10dfa9c7d2b',
+        '91cd1c0d8ea2e0ffd92c39524b6332a7',
+        '9a76d195b471e0b591e7c7a99eaa1f14',
+        '5077fad1fada2faebff555feca0d63ee',
+        'b0d391decbacd1b16230500c45dfd4b2',
+        '6e14e5153ce1a90049e24efca892e815',
+        '4b322b94556377c0a5cd125234dafbba',
+        '4b322b94556377c0a5cd125234dafbba',
       ],
     },
   ],

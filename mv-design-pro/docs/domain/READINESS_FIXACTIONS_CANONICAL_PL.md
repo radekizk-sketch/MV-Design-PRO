@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **146** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -148,6 +148,7 @@ Wszystkie **146** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `oze.transformer_required` | GENERATORS | 1 | BLOCKER | Źródło OZE wymaga transformatora w ścieżce zasilania | panel: `inspector`, tab: `transformator` |
 | `bess.energy_module_missing` | GENERATORS | 2 | BLOCKER | Falownik BESS nie ma przypisanego modułu magazynu energii | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `bess.soc_limits_invalid` | GENERATORS | 2 | BLOCKER | Ograniczenia SOC magazynu BESS są nieprawidłowe (min >= max albo poza zakresem 0-100%) | panel: `inspector`, tab: `parametry`, focus: `soc_min_percent` |
+| `converter.power_check_group_ambiguous` | GENERATORS | 2 | BLOCKER | Źródła zasilane przez ten sam transformator mają różne jawne wartości współczynnika jednoczesności albo przeciążalności transformatora — grupa ma jeden współczynnik | panel: `inspector`, tab: `parametry` |
 | `converter.power_check_input_invalid` | GENERATORS | 2 | BLOCKER | Jawne wejście kontroli mocy źródła poza zakresem: cosφ i współczynnik jednoczesności z przedziału (0; 1], przeciążalność transformatora dodatnia | panel: `inspector`, tab: `parametry` |
 | `converter.setpoint_above_rating` | GENERATORS | 2 | BLOCKER | Moc zadana źródła przekształtnikowego przekracza moc znamionową instalacji (moc czynna jednostki z karty · liczba jednostek) | panel: `inspector`, tab: `parametry`, focus: `p_mw` |
 | `converter.transformer_capacity_exceeded` | GENERATORS | 2 | BLOCKER | Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora zasilającego · przeciążalność | panel: `inspector`, tab: `katalog` |
@@ -207,10 +208,10 @@ Wszystkie **146** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 92 |
+| BLOCKER | 93 |
 | WARNING | 53 |
 | INFO | 1 |
-| **Razem** | **146** |
+| **Razem** | **147** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -218,10 +219,10 @@ Wszystkie **146** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | TOPOLOGY | 6 |
 | CATALOGS | 47 |
 | STATIONS | 17 |
-| GENERATORS | 25 |
+| GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 22 |
-| **Razem** | **146** |
+| **Razem** | **147** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

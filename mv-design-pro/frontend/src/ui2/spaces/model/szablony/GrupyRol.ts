@@ -19,7 +19,7 @@
  * (`backend/src/application/station_templates/schema.py`): 10 wartości, zero
  * do A. Karta dodała 5 kategorii (GPZ_110_SN/ROZDZIELNIA_SIECIOWA — rola A;
  * STACJA_ABONENCKA — rola C; KOMPENSACJA/REZERWA_ZASILANIA — rola E), 16
- * nowych szablonów (73 łącznie), pełen łańcuch backend → apply → ENM
+ * nowych szablonów (73 łącznie; 71 od 2026-10-15 po wycofaniu 2 wiatrowych), pełen łańcuch backend → apply → ENM
  * walidujący się bez blokad. `rolaDlaKategorii` zachowuje jawny fallback do B
  * dla kategorii spoza mapy, żeby żaden PRZYSZŁY szablon nie zniknął z
  * przeglądarki, gdy backend doda kategorię przed aktualizacją tej mapy.

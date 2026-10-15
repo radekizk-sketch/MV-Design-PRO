@@ -1186,7 +1186,13 @@ export function KreatorStacjiSnNn() {
     try {
       const [szablon, podgladSzablonu] = await Promise.all([
         fetchStationTemplate(wybranySzablonId),
-        previewStationTemplate(wybranySzablonId, {}).catch(() => null),
+        // Odmowa podglądu (np. HTTP 422 z kodem odmowy szablonu) jest POKAZYWANA — dawne
+        // ciche `catch(() => null)` wypełniało formularz bez doboru transformatora i bez
+        // słowa wyjaśnienia (karta GPT-478 pkt 7.3: jedna, jawna funkcja odmowy).
+        previewStationTemplate(wybranySzablonId, {}).catch((e: unknown) => {
+          setBladSzablonow(T.szablonPodgladOdmowa + (e instanceof Error ? e.message : String(e)));
+          return null;
+        }),
       ]);
       const wypelnienie = wypelnienieZSzablonu(szablon, podgladSzablonu);
       setSzablonZastosowany(szablon);

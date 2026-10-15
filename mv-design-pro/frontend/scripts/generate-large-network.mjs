@@ -60,7 +60,7 @@ async function build() {
   }
 
   const PV_ID = 'conv-pv-sma-1p5mw-15kv';
-  const BESS_ID = 'bess_pcs_sma_2200';
+  const BESS_ID = 'bess_pcs_abb_500';
   const newestStation = (o) => {
     const subs = (o.snapshot?.substations ?? []).filter((s) => s.ref_id.includes('/station'));
     return subs[subs.length - 1];

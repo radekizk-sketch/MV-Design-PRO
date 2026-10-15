@@ -155,11 +155,27 @@ def test_certyfikat_zgodnosci_daje_certification_nie_sekcje_fizyczne(
         for przestrzen, typ_id, oceny in _wszystkie(katalog)
         if dowod_certyfikatu_ptpiree(dane_typu(katalog, przestrzen, typ_id).pola) is not None
     ]
-    # Pomiar 2026-09-23: jeden typ z pozycją wykazu PTPiREE (CONVERTER i jego projekcja PV).
-    assert sorted((p, t) for p, t, _ in powiazane) == [
-        ("CONVERTER", TYP_REFERENCYJNY),
-        ("ZRODLO_NN_PV", TYP_REFERENCYJNY),
-    ]
+    # Pomiar 2026-10-15: jedenaście typów z pozycją wykazu PTPiREE (CONVERTER i projekcja
+    # PV) — karta referencyjna, karty producentów SUN2000-330KTL-H1, SC 2200-10, SC 2475-10,
+    # SC 4000/4200/4400/4600 UP, STP8.0/10.0-3AV-40 i kopia karty Fronius Symo 10.0-3-M (karta
+    # KATALOG-KOMPLETNY-PROWENIENCJA; pole `model` niesie oznaczenie typu z dokumentu).
+    assert sorted((p, t) for p, t, _ in powiazane) == sorted(
+        (przestrzen, typ_id)
+        for przestrzen in ("CONVERTER", "ZRODLO_NN_PV")
+        for typ_id in (
+            TYP_REFERENCYJNY,
+            "conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
+            "conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv",
+            "conv-pv-nn-sma-sc2200-0p385kv",
+            "conv-pv-nn-sma-sc2475-0p434kv",
+            "conv-pv-nn-sma-sc4000up-0p6kv",
+            "conv-pv-nn-sma-sc4200up-0p63kv",
+            "conv-pv-nn-sma-sc4400up-0p66kv",
+            "conv-pv-nn-sma-sc4600up-0p69kv",
+            "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
+            "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
+        )
+    )
     for _, _, oceny in powiazane:
         statusy = _statusy(oceny)
         assert statusy["certification"] == "CERTIFIED"

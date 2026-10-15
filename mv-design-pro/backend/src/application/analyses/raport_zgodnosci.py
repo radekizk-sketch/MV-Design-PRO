@@ -29,7 +29,7 @@ from enm.der_sn_validation import (
     validate_inverter_lv_voltage,
     validate_sn_voltage,
 )
-from enm.models import liczba_torow
+from enm.domain_operations_v2 import moc_transformatorow_mva
 
 # Kanoniczny komunikat błędu krytycznego (RECENZJA_DER_SN_DOBORY_2026-07, wymaganie 13).
 KOMUNIKAT_KRYTYCZNY = "Nie można wygenerować projektu."
@@ -103,11 +103,13 @@ def _d1_items(track: DerSnTrack) -> list[dict[str, Any]]:
     # 3. Moc TR blokowego (wymaganie 5 = decyzja O-53): TA SAMA kontrola co operacje
     # zapisu, z jawnymi wejściami zapisanymi przez tor tworzenia (`meta.kontrola_mocy_zrodla`).
     if tr is not None:
-        sn_tr = _as_float(tr.get("sn_mva"))
+        # Suma po grupie transformatorów zasilających (punkt 1 karty O-53b) — ta sama grupa
+        # i ta sama moc transformatorów, które sprawdza operacja zapisu.
         odmowa = sprawdz_moc_generatora(
             track.generator,
-            moc_transformatorow_mva=None if sn_tr is None else sn_tr * liczba_torow(tr),
+            moc_transformatorow_mva=moc_transformatorow_mva(track.transformatory_grupy),
             sprawdz_nastawe=False,
+            pozostale_zrodla=track.pozostale_zrodla_grupy,
         )
         items.append(
             _fail("moc_transformatora", odmowa.kod, odmowa.komunikat_pl)

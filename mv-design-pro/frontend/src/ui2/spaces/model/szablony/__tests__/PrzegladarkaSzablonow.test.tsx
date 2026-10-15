@@ -35,7 +35,7 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
   beforeEach(() => {
     vi.mocked(pobierzKategorieSzablonow).mockResolvedValue({
       categories: KATEGORIE_FIXTURE,
-      total_templates: 73,
+      total_templates: 71,
     });
     vi.mocked(pobierzSzablony).mockResolvedValue({ templates: [], total: 0 });
     vi.mocked(pobierzSzablon).mockRejectedValue(new Error('nieoczekiwane wywołanie w tym teście'));
@@ -57,7 +57,7 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
     await screen.findByTestId('mvd-szablony-blad');
     expect(screen.getByText('Backend niedostępny')).toBeInTheDocument();
 
-    vi.mocked(pobierzKategorieSzablonow).mockResolvedValueOnce({ categories: KATEGORIE_FIXTURE, total_templates: 73 });
+    vi.mocked(pobierzKategorieSzablonow).mockResolvedValueOnce({ categories: KATEGORIE_FIXTURE, total_templates: 71 });
     fireEvent.click(screen.getByText(SZABLONY_STRINGS.sprobujPonownie));
     await screen.findByTestId('mvd-szablony-drzewko');
   });

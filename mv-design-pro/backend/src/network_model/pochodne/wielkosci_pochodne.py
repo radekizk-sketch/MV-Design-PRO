@@ -280,6 +280,13 @@ def moc_pozorna_z_czynnej_mva(moc_czynna_mw: float, cos_phi: float) -> float:
     return moc_czynna_mw / cos_phi
 
 
+def moc_pozorna_z_czynnej_i_biernej_mva(moc_czynna_mw: float, moc_bierna_mvar: float) -> float:
+    """Moc pozorna z czynnej i biernej: S = √(P² + Q²) (odbiór z jawną mocą bierną —
+    moc wymagana transformatora stacji szablonu, gdy projektant podał Q zamiast cosφ).
+    """
+    return math.hypot(moc_czynna_mw, moc_bierna_mvar)
+
+
 def tan_phi_z_cos_phi(cos_phi: float) -> float:
     """tanφ z cosφ: tanφ = tan(acos(cosφ)) — nastawa mocy biernej z zadanego
     współczynnika mocy (polecenie OSD, tabliczka znamionowa katalogu).

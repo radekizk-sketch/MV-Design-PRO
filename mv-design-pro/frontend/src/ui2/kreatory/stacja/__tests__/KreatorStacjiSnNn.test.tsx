@@ -458,7 +458,7 @@ const biblioteka = vi.hoisted(() => {
   });
   const wgKategorii: Record<string, ReturnType<typeof szablon>[]> = {
     typowa_sn_nn: [szablon('tpl_typowa_400', 'Typowa 400 kVA', 'typowa_sn_nn')],
-    farma_pv: [szablon('tpl_farma_pv_1mw', 'Farma PV 1 MW', 'farma_pv')],
+    farma_pv: [szablon('tpl_farma_pv_0p99mw', 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1', 'farma_pv')],
   };
   /** Gdy ustawione — odpowiedź czeka na ręczne zwolnienie (`zwolnij`). */
   let wstrzymaj: (() => void) | null = null;
@@ -472,6 +472,8 @@ const biblioteka = vi.hoisted(() => {
       });
     },
     oczekujace: null as Promise<void> | null,
+    /** Gdy ustawione — podgląd szablonu odpowiada odmową (np. HTTP 422 z kodem odmowy). */
+    odmowaPodgladu: null as string | null,
     zwolnij(): void {
       wstrzymaj?.();
       wstrzymaj = null;
@@ -489,7 +491,7 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
   fetchStationTemplate: (id: string) =>
     Promise.resolve({
       id,
-      name_pl: 'Farma PV 1 MW',
+      name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       description_pl: 'Szablon testowy',
       use_case_pl: '',
@@ -524,9 +526,11 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
       },
     }),
   previewStationTemplate: () =>
-    Promise.resolve({
-      template_id: 'tpl_farma_pv_1mw',
-      template_name_pl: 'Farma PV 1 MW',
+    biblioteka.odmowaPodgladu !== null
+      ? Promise.reject(new Error(biblioteka.odmowaPodgladu))
+      : Promise.resolve({
+      template_id: 'tpl_farma_pv_0p99mw',
+      template_name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       nc_rfg_type: 'B',
       station_type: 'inline',
@@ -1127,14 +1131,14 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
       expect(screen.getByTestId('mvd-kreator-stacja-szablon-laduje')).toBeInTheDocument();
     });
     expect(wybor.querySelector('option[value="tpl_typowa_400"]')).toBeNull();
-    expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).toBeNull();
+    expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).toBeNull();
     // Ładowanie ≠ pustka: komunikat „ta kategoria nie zawiera szablonów" nie
     // może paść, zanim odpowiedź przyjdzie.
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-pusty')).toBeNull();
 
     biblioteka.zwolnij();
     await waitFor(() => {
-      expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).not.toBeNull();
+      expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).not.toBeNull();
     });
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-laduje')).toBeNull();
   });
@@ -1529,6 +1533,32 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
         (screen.getByTestId('mvd-kreator-stacja-pole-szablon-1') as HTMLSelectElement).value,
       ).not.toBe('');
     });
+  });
+
+  /**
+   * Karta GPT-478 pkt 7.3 — odmowa podglądu szablonu (np. niedobór transformatora stacji)
+   * dochodzi do projektanta. Dawniej `catch(() => null)` wypełniało formularz bez doboru
+   * transformatora i bez słowa wyjaśnienia.
+   */
+  it('odmowa podglądu szablonu jest pokazana, a nie połknięta', async () => {
+    biblioteka.odmowaPodgladu =
+      'Transformator stacji 100 kVA nie pokrywa mocy wymaganej 105 kVA.';
+    try {
+      render(<KreatorStacjiSnNn />);
+      const wybor = (await screen.findByTestId(
+        'mvd-kreator-stacja-szablon-wybor',
+      )) as HTMLSelectElement;
+      await waitFor(() => {
+        expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull();
+      });
+      await userEvent.selectOptions(wybor, 'tpl_typowa_400');
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zastosuj'));
+      const blad = await screen.findByTestId('mvd-kreator-stacja-szablon-blad');
+      expect(blad.textContent).toContain('Podgląd szablonu odrzucony');
+      expect(blad.textContent).toContain('nie pokrywa mocy wymaganej 105 kVA');
+    } finally {
+      biblioteka.odmowaPodgladu = null;
+    }
   });
 
   it('rodziny NIEDOSTĘPNE są WIDOCZNE i wyłączone — z jawnym powodem', async () => {

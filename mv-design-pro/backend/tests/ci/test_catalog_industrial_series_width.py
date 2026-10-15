@@ -4,6 +4,10 @@ import pytest
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogStatus, CatalogVerificationStatus
 
+from tests.network_model.catalog.test_katalog_proweniencja_kompletnosc import (
+    oczekiwana_proweniencja,
+)
+
 
 @pytest.fixture(scope="module")
 def catalog():
@@ -50,8 +54,11 @@ def test_source_and_converter_records_expose_quality_metadata(catalog):
 
     for item in catalog.list_converter_types():
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        # Status wynika z rodzaju źródła (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15):
+        # model referencyjny, deklarowane albo karta producenta — nie stała REFERENCYJNY.
+        assert (data["verification_status"], data["catalog_status"]) == (
+            oczekiwana_proweniencja(data["source_reference"])
+        ), data["id"]
         assert data["source_reference"]
         assert data["contract_version"]
 
@@ -79,14 +86,20 @@ def test_lv_apparatus_catalog_has_industrial_series_width(catalog):
 def test_pv_and_bess_derived_namespaces_preserve_metadata(catalog):
     for item in catalog.list_pv_inverter_types():
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        # Status wynika z rodzaju źródła (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15):
+        # model referencyjny, deklarowane albo karta producenta — nie stała REFERENCYJNY.
+        assert (data["verification_status"], data["catalog_status"]) == (
+            oczekiwana_proweniencja(data["source_reference"])
+        ), data["id"]
         assert data["source_reference"]
         assert data["contract_version"]
 
     for item in catalog.list_bess_inverter_types():
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        # Status wynika z rodzaju źródła (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15):
+        # model referencyjny, deklarowane albo karta producenta — nie stała REFERENCYJNY.
+        assert (data["verification_status"], data["catalog_status"]) == (
+            oczekiwana_proweniencja(data["source_reference"])
+        ), data["id"]
         assert data["source_reference"]
         assert data["contract_version"]

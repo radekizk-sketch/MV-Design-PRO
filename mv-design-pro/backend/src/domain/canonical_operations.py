@@ -1372,6 +1372,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry"},
     ),
+    # Punkt 1 karty O-53b (rozstrzygnięcie architekta 2026-10-15): kontrola mocy PER
+    # TRANSFORMATOR sumą po grupie źródeł; grupa ma jeden współczynnik jednoczesności
+    # i jedną przeciążalność transformatora — różne jawne wartości w źródłach grupy to
+    # niejednoznaczność nazwana, nie wybór jednej z nich.
+    "converter.power_check_group_ambiguous": ReadinessCodeSpec(
+        code="converter.power_check_group_ambiguous",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Źródła zasilane przez ten sam transformator mają różne jawne wartości "
+            "współczynnika jednoczesności albo przeciążalności transformatora — grupa ma "
+            "jeden współczynnik"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",

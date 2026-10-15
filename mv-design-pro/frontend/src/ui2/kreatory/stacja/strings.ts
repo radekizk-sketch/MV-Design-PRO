@@ -39,6 +39,8 @@ export const STACJA_STRINGS = {
   szablonWybrany: 'Szablon użyty do wypełnienia',
   szablonBrakWyboru: 'Bez szablonu (praca od zera)',
   szablonBlad: 'Nie udało się pobrać biblioteki szablonów stacji.',
+  szablonPodgladOdmowa:
+    'Podgląd szablonu odrzucony — transformator, pola i zabezpieczenie nie zostały przejęte z doboru szablonu: ',
   szablonPusty: 'Ta kategoria nie zawiera szablonów.',
   /** Stan ładowania listy — oddzielony od pustego, żeby „nie ma" nie padało przed odpowiedzią. */
   szablonLaduje: 'Pobieranie szablonów wybranej kategorii…',

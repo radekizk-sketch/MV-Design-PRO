@@ -119,15 +119,16 @@ def test_pole_jest_w_kontrakcie_strukturalnym() -> None:
     ],
 )
 def test_pomiar_rozkladu_napiec_jest_przypiety(template_id: str, oczekiwane_kv: float) -> None:
-    """Pomiar z 2026-09-17: 73 szablony = 64 × 15 kV + 3 × 20 kV + 6 obojętnych."""
+    """Pomiar z 2026-10-15: 71 szablonów = 62 × 15 kV + 3 × 20 kV + 6 obojętnych
+    (2 szablony wiatrowe 15 kV wycofane, `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`)."""
     szablon = next(t for t in list_templates() if t.id == template_id)
     assert sn_voltage_kv(szablon) == oczekiwane_kv
 
 
 def test_rozklad_napiec_zgadza_sie_z_pomiarem_w_docstringu() -> None:
     napiecia = [sn_voltage_kv(t) for t in list_templates()]
-    assert len(napiecia) == 73
-    assert napiecia.count(15.0) == 64
+    assert len(napiecia) == 71
+    assert napiecia.count(15.0) == 62
     assert napiecia.count(20.0) == 3
     assert napiecia.count(None) == 6
 
@@ -148,7 +149,7 @@ def test_rola_szablonu_w_modelu_jest_czescia_kontraktu_oferty() -> None:
 
 def test_korzenie_modelu_to_dokladnie_szablony_gpz() -> None:
     """Pomiar 2026-09-17 przypięty: korzeniem modelu jest dziś WYŁĄCZNIE kategoria
-    GPZ 110/SN — 3 szablony z 73. Dołożenie kategorii korzenia bez aktualizacji
+    GPZ 110/SN — 3 szablony z 71. Dołożenie kategorii korzenia bez aktualizacji
     `KATEGORIE_KORZENIA_MODELU` zapali ten test, zamiast po cichu wpuścić szablon
     do kreatora wcięcia w magistralę."""
     korzenie = sorted(t.id for t in list_templates() if not template_wchodzi_w_segment(t))

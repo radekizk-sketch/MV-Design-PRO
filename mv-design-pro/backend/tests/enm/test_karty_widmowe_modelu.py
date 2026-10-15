@@ -644,15 +644,36 @@ def test_hash_migawki_nie_modyfikuje_sekcji_katalogu_projektu() -> None:
 # ---------------------------------------------------------------------------
 
 
+#: Transformator blokowy turbiny 2 MW (S_n 2,2 MVA) w torze DER-SN modelu zbiorczego.
+TRAFO_BLOKOWY_FW = "tr-sn-nn-15-04-2500kva-dyn11"
+
+
+def _payload_turbiny_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Turbina 2 MW przez WŁASNY transformator blokowy (tor DER-SN). Dawniej model zbiorczy
+    stawiał ją obok magazynu 2 MW na szynie nN stacji 2,5 MVA — 4,4 MVA źródeł na jednym
+    transformatorze, czego suma kontroli O-53 (karta GPT-478) słusznie nie przyjmuje."""
+    payload = h._payload_konwerter_der_sn(snapshot)
+    payload.update(
+        catalog_ref=h.REF_FW,
+        source_technology="FW",
+        source_name="Źródło FW",
+        power_setpoint_mw=h.FW_PMAX_MW,
+    )
+    blokowy = payload["der_topology"]["block_transformer"]
+    blokowy.update(
+        rated_power_mva=2.5,
+        catalog_ref=TRAFO_BLOKOWY_FW,
+        catalog_binding={**blokowy["catalog_binding"], "catalog_item_id": TRAFO_BLOKOWY_FW},
+    )
+    return payload
+
+
 def _model_z_wszystkimi_elementami() -> dict[str, Any]:
     snapshot = h._siec_ze_stacja()
     kroki: tuple[tuple[str, Callable[[dict[str, Any]], dict[str, Any]]], ...] = (
         ("add_nn_load", h._payload_nn_load),
         ("add_converter_source", h._payload_konwerter),
-        (
-            "add_converter_source",
-            lambda s: h._payload_zrodla(s, catalog_ref=h.REF_FW, technologia="FW"),
-        ),
+        ("add_converter_source", _payload_turbiny_der_sn),
         ("add_converter_source", h._payload_konwerter_der_sn),
         ("add_shunt_compensator_sn", h._payload_kompensator),
         ("add_load_sn", h._payload_odbior_sn),

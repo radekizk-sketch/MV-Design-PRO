@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "686c0250af4cfd69684e43ce4c57123ce850c3eafbdf69ff5d7f4628e0f2a6c3",
+    "builder_snapshot_hash": "5bc10b01f71799fa45c2a5648b64043b41a74440d313069177002fe77f123e35",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -103,7 +103,7 @@
         "sn_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
         "station_name": "Stacja S4",
         "station_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/station",
-        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+        "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11"
       },
       {
         "config_key": "PV_NN_1",
@@ -9280,7 +9280,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "686c0250af4cfd69684e43ce4c57123ce850c3eafbdf69ff5d7f4628e0f2a6c3",
+      "hash_sha256": "5bc10b01f71799fa45c2a5648b64043b41a74440d313069177002fe77f123e35",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"
@@ -13621,22 +13621,22 @@
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
         "hv_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field_terminal/003",
         "hv_neutral": null,
-        "i0_percent": 1.5,
+        "i0_percent": 1.0,
         "id": "acd817c9-9aae-573c-bba8-be150cdbb90c",
         "lv_bus_ref": "nn/e82bc07829e9bd6b54e0017c2038aa34/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
         "materialized_params": {
-          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "legacy",
-          "i0_percent": 1.5,
-          "p0_kw": 1.3,
-          "pk_kw": 8.0,
-          "rated_power_mva": 0.63,
-          "uk_percent": 5.0,
+          "i0_percent": 1.0,
+          "p0_kw": 2.1,
+          "pk_kw": 13.5,
+          "rated_power_mva": 1.25,
+          "uk_percent": 6.0,
           "vector_group": "Dyn11",
           "voltage_hv_kv": 15.0,
           "voltage_lv_kv": 0.4
@@ -13647,11 +13647,11 @@
         "n_parallel": null,
         "name": "Transformator SN/nN",
         "overrides": [],
-        "p0_kw": 1.3,
+        "p0_kw": 2.1,
         "parameter_source": "CATALOG",
-        "pk_kw": 8.0,
+        "pk_kw": 13.5,
         "ref_id": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/transformer",
-        "sn_mva": 0.63,
+        "sn_mva": 1.25,
         "source_mode": "KATALOG",
         "tags": [],
         "tap_changer": null,
@@ -13660,7 +13660,7 @@
         "tap_position": null,
         "tap_step_percent": null,
         "uhv_kv": 15.0,
-        "uk_percent": 5.0,
+        "uk_percent": 6.0,
         "ulv_kv": 0.4,
         "vector_group": "Dyn11"
       },
@@ -13869,7 +13869,7 @@
         "meta": {
           "catalog_item_version": "legacy"
         },
-        "n_parallel": null,
+        "n_parallel": 2,
         "name": "Transformator SN/nN",
         "overrides": [],
         "p0_kw": 3.7,
@@ -13959,7 +13959,7 @@
         "meta": {
           "catalog_item_version": "legacy"
         },
-        "n_parallel": null,
+        "n_parallel": 2,
         "name": "Transformator SN/nN",
         "overrides": [],
         "p0_kw": 3.7,
