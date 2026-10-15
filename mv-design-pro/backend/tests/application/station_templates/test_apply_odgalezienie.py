@@ -32,7 +32,7 @@ from application.station_templates.apply import (
     _klasa_przylaczenia,
     _ref_wyboru,
     _resolve_sn_bay_roles,
-    _resolve_sn_field_specs,
+    _resolve_sn_fields,
     _resolve_station_type,
     _resolve_transformer_ref_for_template,
     _szyna_nn_stacji,
@@ -124,7 +124,7 @@ def _zastosuj_szablon(
     assert template is not None, template_id
     liczba_pol = int(overrides.get("sn_bays_count", template.schema.sn_bays_count.default))
     role = _resolve_sn_bay_roles(template, liczba_pol)
-    specyfikacje = _resolve_sn_field_specs(
+    specyfikacje = _resolve_sn_fields(
         template, bay_roles=role, overrides=overrides, catalog_profile=None
     )
     transformator = _resolve_transformer_ref_for_template(
@@ -149,7 +149,7 @@ def _zastosuj_szablon(
             overrides=overrides,
             station_spec=station_spec,
             transformer_spec=transformer_spec,
-            sn_field_specs=specyfikacje,
+            sn_fields=specyfikacje,
             nn_block_spec=nn_block,
             operations_log=dziennik,
             wspolny_aparat_pol=wspolny_aparat_pol,
@@ -665,9 +665,7 @@ def test_realny_zestaw_pol_szablonu_abonenckiego_jest_odrzucany_przez_wciecie() 
     template = get_template(SZABLON_KLASY_B)
     assert template is not None
     role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
-    specyfikacje = _resolve_sn_field_specs(
-        template, bay_roles=role, overrides={}, catalog_profile=None
-    )
+    specyfikacje = _resolve_sn_fields(template, bay_roles=role, overrides={}, catalog_profile=None)
     assert [spec["field_role"] for spec in specyfikacje] == [
         "LINIA_IN",
         "POMIAROWE",
@@ -712,7 +710,7 @@ def test_kazdy_szablon_z_pomiarem_deklaruje_uklad_podstawowy_jawnie() -> None:
     zbadane = 0
     for template in list_templates():
         role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
-        specyfikacje = _resolve_sn_field_specs(
+        specyfikacje = _resolve_sn_fields(
             template, bay_roles=role, overrides={}, catalog_profile=None
         )
         for spec in specyfikacje:

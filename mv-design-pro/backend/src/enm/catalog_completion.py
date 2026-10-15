@@ -5,7 +5,16 @@ from hashlib import sha256
 from typing import Any
 
 from enm.katalog_projektu import katalog_dla_modelu
-from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
+from enm.models import (
+    Bay,
+    BranchPointSN,
+    BranchRating,
+    Cable,
+    EnergyNetworkModel,
+    Load,
+    OverheadLine,
+)
+from enm.pola import pola_nn_stacji, pola_zksn, pola_zksn_z_portow
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
@@ -111,36 +120,6 @@ def _branch_point_route_ports(
     return route_ports
 
 
-def _zksn_switchgear_field_specs(branch_ports_count: int) -> list[dict[str, Any]]:
-    fields: list[dict[str, Any]] = [
-        {
-            "field_ref": "FIELD_IN",
-            "designation": "WE",
-            "bay_role": "IN",
-            "field_type": "pole_liniowe",
-            "port_id": "MAIN_IN",
-        },
-        {
-            "field_ref": "FIELD_OUT",
-            "designation": "WY",
-            "bay_role": "OUT",
-            "field_type": "pole_liniowe",
-            "port_id": "MAIN_OUT",
-        },
-    ]
-    for idx in range(1, branch_ports_count + 1):
-        fields.append(
-            {
-                "field_ref": f"FIELD_BRANCH_{idx}",
-                "designation": f"ODG {idx}",
-                "bay_role": "BRANCH",
-                "field_type": "pole_odgalezne",
-                "port_id": f"BRANCH_{idx}" if branch_ports_count > 1 else "BRANCH",
-            }
-        )
-    return fields
-
-
 def _materialized_branch_point_params(
     *,
     branch_point_type: str,
@@ -161,7 +140,6 @@ def _materialized_branch_point_params(
     if branch_point_type == "zksn":
         materialized["object_role"] = "MV_SWITCHGEAR_BRANCH_NODE"
         materialized["switchgear_kind"] = "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
-        materialized["switchgear_field_specs"] = _zksn_switchgear_field_specs(branch_ports_count)
     else:
         switch_device_kind = str(materialized.get("switch_device_kind") or "ROZLACZNIK")
         # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 630.0".
@@ -190,17 +168,25 @@ def _materialized_branch_point_params(
 
 
 def _branch_point_needs_materialization(
-    branch_point_type: str,
-    materialized: dict[str, Any],
+    enm: EnergyNetworkModel, branch_point: BranchPointSN
 ) -> bool:
+    """Czy punkt rozgałęzienia wymaga uzupełnienia rozwiązania katalogowego — JEDEN predykat
+    dla wyboru kandydatów i dla pętli uzupełniającej (predykaty parami). ZKSN jest kompletny,
+    gdy ma pola rozdzielnicy (rekordy `bays` z `branch_point_ref`, `enm.pola.pola_zksn`);
+    słup rozgałęźny — gdy ma specyfikację aparatu odgałęźnego."""
+    materialized = (
+        branch_point.materialized_params
+        if isinstance(branch_point.materialized_params, dict)
+        else {}
+    )
     if not materialized:
         return True
     if materialized.get("has_transformer") is not False:
         return True
     if not isinstance(materialized.get("route_ports"), list):
         return True
-    if branch_point_type == "zksn":
-        return not isinstance(materialized.get("switchgear_field_specs"), list)
+    if branch_point.branch_point_type == "zksn":
+        return not pola_zksn(enm, branch_point.ref_id)
     return not isinstance(materialized.get("apparatus_specs"), list)
 
 
@@ -217,11 +203,7 @@ def complete_branch_point_catalog_materialization(
     candidates = [
         bp
         for bp in enm.branch_points
-        if bp.catalog_ref
-        and _branch_point_needs_materialization(
-            bp.branch_point_type,
-            bp.materialized_params if isinstance(bp.materialized_params, dict) else {},
-        )
+        if bp.catalog_ref and _branch_point_needs_materialization(enm, bp)
     ]
     if not candidates:
         return enm, False
@@ -237,7 +219,7 @@ def complete_branch_point_catalog_materialization(
             if isinstance(branch_point.materialized_params, dict)
             else {}
         )
-        if not _branch_point_needs_materialization(branch_point.branch_point_type, existing):
+        if not _branch_point_needs_materialization(completed, branch_point):
             continue
         catalog_params = _branch_point_catalog_params(branch_point.catalog_ref)
         branch_ports_count = _branch_point_port_count(
@@ -272,11 +254,23 @@ def complete_branch_point_catalog_materialization(
             **runtime_inputs,
             "branch_ports_count": branch_ports_count,
             "route_ports": materialized.get("route_ports"),
-            "switchgear_field_specs": materialized.get("switchgear_field_specs"),
             "apparatus_specs": materialized.get("apparatus_specs"),
             "has_transformer": False,
             "completion_source": "branch_point_catalog_materialization",
         }
+        # Pola rozdzielnicy odgałęźnej ZKSN — rekordy `bays` z JEDNEGO źródła
+        # (`enm.pola.pola_zksn_z_portow`), ta sama liczba portów co porty trasy wyżej.
+        if branch_point.branch_point_type == "zksn" and not pola_zksn(
+            completed, branch_point.ref_id
+        ):
+            completed.bays.extend(
+                Bay.model_validate(rekord)
+                for rekord in pola_zksn_z_portow(
+                    branch_point_ref=branch_point.ref_id,
+                    bus_ref=branch_point.bus_ref,
+                    branch_ports_count=branch_ports_count,
+                )
+            )
         changed = True
 
     return completed, changed
@@ -517,9 +511,8 @@ def complete_station_loads_from_nn_feeders(
     czysto ODCZYTOWĄ pętlą — biegnie na KAŻDYM `enm.store.get_enm`/`set_enm`
     (`complete_catalog_defaults`), a nie tylko raz przy tworzeniu stacji z
     LEGACY szablonu. Kreator „Pole odpływowe nN" (P0.1, `add_nn_outgoing_field`)
-    zapisuje SPECYFIKACJĘ odpływu do TEGO SAMEGO worka meta
-    (`Substation.meta.nn_field_specs`), co LEGACY builder szablonu
-    (`domain_operations._build_nn_field_specs`) — bez rozróżnienia pochodzenia
+    zapisuje pole odpływu jako TAKI SAM rekord `bays` na szynie nN, co builder
+    szablonu stacji (`domain_operations._zbuduj_pola_nn`) — bez rozróżnienia pochodzenia
     sekwencja kreatora `add_nn_outgoing_field` → [odczyt modelu, np. odświeżenie
     UI] → `add_nn_load` widziała po pierwszym żądaniu odpływ BEZ odbioru i
     materializowała fantom 30 kW na TYM SAMYM `field_ref`, zanim drugie żądanie
@@ -548,10 +541,10 @@ def complete_station_loads_from_nn_feeders(
     for substation in enm.substations:
         if substation.station_type == "gpz":
             continue
-        feeder_specs = _nn_feeder_specs(substation.meta)
+        feeder_specs = _nn_feeder_specs(enm, substation.ref_id)
         for index, spec in enumerate(feeder_specs, start=1):
-            feeder_ref = spec.get("field_ref")
-            bus_ref = spec.get("bus_ref")
+            feeder_ref = spec.ref_id
+            bus_ref = spec.bus_ref
             if not isinstance(feeder_ref, str) or not feeder_ref.strip():
                 continue
             if feeder_ref in existing_feeder_refs:
@@ -649,15 +642,15 @@ def _load_feeder_ref(load: Load) -> str | None:
 #: Znacznik `meta.nn_field_origin` zapisywany WYŁĄCZNIE przez operację domenową
 #: `add_nn_outgoing_field` (`enm.domain_operations_v2._add_nn_outgoing_field_internal`,
 #: `_append_nn_source_meta_field`) — JEDNO źródło prawdy dzielone z tą migracją
-#: (karta NAPRAWA-B, znalezisko #3, reguła PREDYKATY PARAMI). LEGACY builder
-#: szablonu stacji (`domain_operations._build_nn_field_specs`) tego znacznika
-#: NIGDY nie zapisuje — jego wpisy zostają migrowalne, zachowując zachowanie
+#: (karta NAPRAWA-B, znalezisko #3, reguła PREDYKATY PARAMI). Builder pól nN
+#: szablonu stacji (`domain_operations._zbuduj_pola_nn`) tego znacznika
+#: NIGDY nie zapisuje — jego pola zostają migrowalne, zachowując zachowanie
 #: sprzed tej naprawy.
 NN_FIELD_ORIGIN_OPERACJA_DOMENOWA = "operacja_add_nn_outgoing_field"
 
 
-def _pochodzi_z_operacji_domenowej(spec: dict[str, Any]) -> bool:
-    """Czy wpis `nn_field_specs` powstał operacją `add_nn_outgoing_field` (P0.1).
+def _pochodzi_z_operacji_domenowej(pole_nn: Bay) -> bool:
+    """Czy pole nN powstało operacją `add_nn_outgoing_field` (P0.1).
 
     Takie wpisy NIE są kandydatem migracji — projektant dopiero co utworzył
     odpływ świadomą, pojedynczą operacją i albo zaraz doda do niego prawdziwy
@@ -665,24 +658,20 @@ def _pochodzi_z_operacji_domenowej(spec: dict[str, Any]) -> bool:
     poprawnym stanem końcowym; dopisanie fantomu w międzyczasie (przy odczycie
     modelu między dwoma żądaniami kreatora) byłoby zgadywaniem za projektanta.
     """
-    meta = spec.get("meta")
+    meta = pole_nn.meta
     return (
         isinstance(meta, dict) and meta.get("nn_field_origin") == NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
     )
 
 
-def _nn_feeder_specs(meta: dict[str, Any]) -> list[dict[str, Any]]:
-    """Wpisy `nn_field_specs` — WYŁĄCZNIE kandydaci migracji LEGACY (patrz wyżej)."""
-    raw_specs = meta.get("nn_field_specs") if isinstance(meta, dict) else None
-    if not isinstance(raw_specs, list):
-        return []
+def _nn_feeder_specs(enm: EnergyNetworkModel, substation_ref: str) -> list[Bay]:
+    """Pola odpływowe nN stacji (rekordy `bays`, poziom z JEDNEGO predykatu
+    `enm.pola.czy_pole_nn` przez `pola_nn_stacji`) — WYŁĄCZNIE kandydaci migracji
+    (patrz wyżej): bez pól utworzonych operacją domenową."""
     return [
-        spec
-        for spec in raw_specs
-        if isinstance(spec, dict)
-        and spec.get("bay_role") == "FEEDER"
-        and isinstance(spec.get("field_ref"), str)
-        and not _pochodzi_z_operacji_domenowej(spec)
+        pole_nn
+        for pole_nn in pola_nn_stacji(enm, substation_ref)
+        if pole_nn.bay_role == "FEEDER" and not _pochodzi_z_operacji_domenowej(pole_nn)
     ]
 
 

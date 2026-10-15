@@ -295,7 +295,14 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
         model = Bay.model_validate(dict(rekord))
     except ValueError as blad:
         raise BladPola(f"pole {rekord.get('ref_id')!r}: {blad}") from blad
-    return model.model_dump(mode="json")
+    # DETERMINIZM: `ENMElement.id` ma fabrykę `uuid4` — rekord zbudowany operacją (bez `id`)
+    # dostałby LOSOWY identyfikator techniczny, a ta sama operacja na tym samym wejściu dawałaby
+    # różne migawki. Rekord bez `id` zostaje bez `id` (jak każdy element dopisywany operacjami
+    # topologii); rekord z `id` (odczyt z magazynu) zachowuje go bez zmian.
+    wynik = model.model_dump(mode="json")
+    if "id" not in rekord:
+        wynik.pop("id", None)
+    return wynik
 
 
 def zbuduj_pole(

@@ -17,25 +17,15 @@ DEFAULT_CATALOG_VERSION = "2024.1"
 
 # Operations that require catalog binding in their payload
 #
-# `add_nn_outgoing_field` NIE JEST tu wpisana (karta NAPRAWA-B, znalezisko #2 —
-# rozjazd kontraktu catalog_ref). Zmierzone: `enm.domain_operations_v2.
-# _add_nn_outgoing_field_internal` i `_append_nn_source_meta_field` NIE czytają
-# `payload["catalog_ref"]`/`payload["catalog_binding"]` w ŻADNEJ gałęzi — ani
-# FEEDER, ani SOURCE. Domenowy inwentarz bramy katalogowej
-# (`enm.domain_operations_v2.V2_CATALOG_GATE_INVENTORY`) tej operacji też nie
-# zna, z tego samego powodu. Realny kreator „Pole odpływowe nN"
-# (`ui2/kreatory/pole-nn/KreatorPolaNn.tsx`) świadomie NIE pokazuje pickera
-# katalogu (własny docstring: „backend go dla tej operacji nie honoruje") —
-# przed tą naprawą KAŻDE żądanie tego kreatora przez produkcyjny endpoint
-# (`POST .../enm/domain-ops`) dostawało `422 catalog.ref_required`, bo brama
-# API była SUROWSZA od operacji i od formularza jednocześnie: trzy niezależne
-# przekonania o tym samym kontrakcie, z których żadne dwa się nie zgadzały.
-# Naprawa PREDYKATY PARAMI: wymóg bramy wynika teraz z tego samego pomiaru co
-# konsumpcja operacji — brak konsumpcji ⇒ brak wymogu. Referencję katalogową
-# aparatu odpływowego materializuje `enm.migrations.nn_field_specs_promocja`
-# PRZY PROMOCJI wpisu (`meta.catalog_binding`/`meta.catalog_bindings`, gdy są),
-# nie ta operacja — to inny etap łańcucha, z własnym kontraktem (fail-open:
-# brak wiązania przy promocji legacy daje W061, nie blokadę).
+# `add_nn_outgoing_field` NIE JEST tu wpisana: wiązanie aparatu pola nN jest OPCJONALNE
+# (realny kreator „Pole odpływowe nN", `ui2/kreatory/pole-nn/KreatorPolaNn.tsx`, pickera
+# aparatu nie ma, a szablon stacji wskazuje `catalog_ref` odpływu). Wskazana pozycja jest
+# jednak CZYTANA przez operację (`enm.domain_operations_v2._wiazanie_aparatu_pola_nn`:
+# brama istnienia w `APARAT_NN`, wiązanie na polu w `meta.catalog_binding`, skąd bierze je
+# promocja aparatów nN `enm.migrations.promocja_aparatow_nn`), więc brama API sprawdza jej
+# ISTNIENIE jako referencję inwentarza (`_referencje_dodatkowe`), nie wymóg obecności.
+# Historia (karta NAPRAWA-B, znalezisko #2): dawna brama wymagała referencji, której
+# operacja nie czytała — kreator dostawał `422 catalog.ref_required` na każde żądanie.
 CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
     {
         "add_grid_source_sn",
@@ -658,18 +648,11 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_sn_bay", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_sn_bay_from_catalog", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
-    # `add_nn_outgoing_field` NIE MA tu pozycji (karta NAPRAWA-B, znalezisko #2 —
-    # naprawiony rozjazd kontraktu). Poprzedni wpis twierdził „brama SUROWSZA od
-    # operacji, fail-closed z rozmysłem" — pomiar tej karty pokazał, że to
-    # nieprawda: operacja (`_add_nn_outgoing_field_internal`,
-    # `_append_nn_source_meta_field`) nie czyta `catalog_ref`/`catalog_binding` w
-    # ŻADNEJ gałęzi, więc dawny wpis bramkował referencję, której materializacja
-    # i tak nigdzie nie trafiała — realny kreator (`ui2/kreatory/pole-nn/
-    # KreatorPolaNn.tsx`) nigdy jej nie wysyłał i dostawał `422
-    # catalog.ref_required` na KAŻDE żądanie. Inwentarz tej bramy dokumentuje
-    # WYŁĄCZNIE referencje faktycznie czytane z payloadu (nagłówek modułu) — ta
-    # operacja żadnej nie czyta, więc nie ma tu czego wpisać (nie „niebramkowana
-    # pozycja z uzasadnieniem", bo nie ma pozycji).
+    # Aparat pola nN (odpływ albo pole źródłowe) — wskazanie OPCJONALNE, ale czytane przez
+    # operację (`_wiazanie_aparatu_pola_nn`: wiązanie na polu dla promocji aparatów nN),
+    # więc brama sprawdza ISTNIENIE wskazanej pozycji (`_referencje_dodatkowe`).
+    PozycjaBramyApi("add_nn_outgoing_field", "catalog_ref", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_outgoing_field", "catalog_binding", "APARAT_NN", True),
     # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
     PozycjaBramyApi("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
@@ -1008,6 +991,19 @@ def _referencje_dodatkowe(
                     None,
                     pole_sn.get("apparatus_catalog_binding"),
                 )
+
+    if operation == "add_nn_outgoing_field":
+        # LUSTRO `enm.domain_operations_v2._wiazanie_aparatu_pola_nn` (wiązanie ma
+        # pierwszeństwo, potem `catalog_item_id`/`catalog_ref` na wierzchu ładunku).
+        # Przestrzeń wynika z RODZAJU elementu (`APARAT_NN`), nie z wiązania ładunku —
+        # operacja sprowadza wiązanie do tej przestrzeni, brama pyta w tej samej.
+        _dodaj(
+            "Aparat pola nN",
+            "APARAT_NN",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+        )
 
     if operation == "add_shunt_compensator_sn":
         _dodaj(
