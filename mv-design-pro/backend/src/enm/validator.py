@@ -2089,8 +2089,8 @@ class ENMValidator:
                             f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe podpięte do różnych szyn SN ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'szyna') for ref in mv_buses_used))}"
-                            "). Ciągłość SN między polem wejściowym a wyjściowym stacji wymaga "
-                            "wspólnej magistrali SN."
+                            "). Ciągłość SN między polem liniowym wejściowym a polem liniowym "
+                            "wyjściowym stacji wymaga wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
