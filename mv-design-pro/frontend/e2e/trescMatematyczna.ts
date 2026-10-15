@@ -72,6 +72,15 @@ export async function naruszeniaTresciMatematycznej(
 
 /** Bramka przed zrzutem: pierwszy plan bez wzorów niewyrenderowanych i bez surowego LaTeX-u. */
 export async function bramkaTresciMatematycznej(page: Page, selektorKorzenia = 'body'): Promise<void> {
+  // Bramka jest JEDYNYM miejscem wołanym przed każdym zrzutem (39 speków), więc niesie też
+  // warunek stanu ekranu: żaden kreator nie jest w stanie „ładowanie” katalogu. Partia
+  // integracji 7: `kreator_pole_light.png` złapał stopkę „Ładowanie katalogu aparatów pola SN”
+  // z wyszarzonym zapisem — spec czekał tylko na gotowość harnessu + 400 ms, a stopkę
+  // ładowania ma dziesięć kreatorów (`KreatorRama`, `data-status="ladowanie"`).
+  await expect(
+    page.locator(`${selektorKorzenia} [data-status="ladowanie"]`),
+    'kreator w stanie ładowania katalogu w chwili zrzutu',
+  ).toHaveCount(0, { timeout: 15000 });
   const naruszenia = await naruszeniaTresciMatematycznej(page, selektorKorzenia);
   expect(naruszenia, 'treść matematyczna pierwszego planu (wzór przez KaTeX, nie jako kod)').toEqual(
     [],
