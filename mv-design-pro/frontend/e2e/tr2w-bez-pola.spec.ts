@@ -3,25 +3,30 @@
  * roli TR (karta TR2W-BEZ-POLA; `docs/v12xx/REJESTR_KONFLIKTOW.md`, wiersz
  * BUGI-PRODUKTU-E2E).
  *
- * DŁUG, KTÓRY TEN SPEC PRZYPINA. Backend
- * (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy nowy
- * transformator wprost `sn_bus → nn_bus`, ale wiąże go z polem SN wyłącznie
- * wtedy, gdy `sn_fields` niesie wpis `bay_role:'TR'`. Front rysował
- * `transformer2W` WYŁĄCZNIE jako element stosu aparatów pola roli TR — więc
- * sieć zbudowana sekwencją `['IN','OUT','FEEDER']` (wzorzec 29 plików e2e, w
- * tym `critical-run-flow.spec.ts`) miała transformator POPRAWNIE policzony w
- * modelu, widoczny w KPI stacji, i NIEOBECNY na schemacie.
+ * SKĄD DZIŚ BIERZE SIĘ TEN STAN („klasa B"). Od kanonu toru pola operacje
+ * domenowe go nie wytwarzają: `insert_station_on_segment_sn` z transformatorem
+ * sama dokłada pole roli TR (zacisk pola = strona górna transformatora), a
+ * `add_transformer_sn_nn` na szynie z polami odmawia (`tor.field_missing`).
+ * Transformator przyłączony wprost do szyny SN, bez pola TR, żyje WYŁĄCZNIE w
+ * modelach zapisanych przed tą regułą — magazyn nie dokłada pola przy wczytaniu,
+ * a rysunek (marker braku pola) i bramka gotowości (W041) nadal je obsługują.
+ * Taki model trafia do aplikacji jedną realną drogą: importem archiwum projektu.
  *
- * TU JEST DOWÓD KOŃCA TEGO DŁUGU, i to na ŻYWYM łańcuchu: realne operacje
- * domenowe → realny backend → realny adapter → realna kanwa v3 → DOM. Sieć
- * budowana JAWNIE BEZ `'TR'` (żadnego obejścia — ten sam kształt danych, który
- * produkują pozostałe specyfikacje).
+ * FIKSTURA `fixtures/projekt-tr-bez-pola.mvdp.zip` powstaje narzędziem repo
+ * `backend/tests/reference_networks/archiwum_tr_bez_pola.py`: te same operacje
+ * domenowe co dawniej ten spec (`sn_fields: ['IN','OUT','FEEDER']`), zapadka
+ * „operacje dokładają pole TR", przekształcenie do zapisu sprzed reguły toru
+ * (bez rekordu pola TR, jego zacisku i wyłącznika; transformator na szynie SN
+ * stacji) i pakowanie jedynym pakującym produktu (eksport archiwum z odciskami
+ * integralności). Świeżość pilnuje
+ * `backend/tests/application/project_archive/test_archiwum_tr_bez_pola.py`.
  *
- * Bramki:
+ * Łańcuch ŻYWY: import archiwum → realny backend → realny adapter → realna
+ * kanwa v3 → DOM. Bramki:
  *  (a) kanwa niesie symbol transformatora stacji, kluczowany REALNYM refem
  *      ENM (klik ma w co trafić),
  *  (b) transformator jest oznaczony jako stan NIEKOMPLETNY — marker przy
- *      stronie WN + zdanie w bloku stacji („Brak skonfigurowanego pola
+ *      stronie WN + zdanie w podpowiedzi („Brak skonfigurowanego pola
  *      transformatorowego SN"),
  *  (c) ZERO fabrykacji: przy transformatorze nie pojawia się aparatura pola,
  *      której dane nie niosą,
@@ -33,222 +38,159 @@
  *     e2e/tr2w-bez-pola.spec.ts
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
-const CABLE_ID = 'cable-tfk-yakxs-3x120';
-const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
-const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
-const CATALOG_VERSION = '2024.1';
+const ARCHIWUM = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'fixtures',
+  'projekt-tr-bez-pola.mvdp.zip',
+);
 const TEKST_BRAKU_POLA = 'Brak skonfigurowanego pola transformatorowego SN';
-let opCounter = 0;
 let entityCounter = 0;
 
-function nextEntitySuffix(): string {
+function nazwaProjektu(): string {
   entityCounter += 1;
-  return String(entityCounter).padStart(4, '0');
+  return `E2E TR bez pola ${Date.now().toString(36)}-${String(entityCounter).padStart(4, '0')}`;
 }
 
-function buildCatalogBinding(catalogNamespace: string, catalogItemId: string) {
-  return {
-    catalog_namespace: catalogNamespace,
-    catalog_item_id: catalogItemId,
-    catalog_item_version: CATALOG_VERSION,
-  };
-}
+type Kontekst = { projectId: string; caseId: string };
 
-type DomainOpResponse = {
-  error?: string | null;
-  snapshot?: {
-    corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    transformers?: Array<{ ref_id?: string; hv_bus_ref?: string; lv_bus_ref?: string }>;
-    substations?: Array<{
-      ref_id: string;
-      transformer_refs?: string[];
-    }>;
-    // Karta W5-B: pola stacji to rekordy `bays`.
-    bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
-  };
+type Migawka = {
+  transformers?: Array<{ ref_id?: string; hv_bus_ref?: string }>;
+  substations?: Array<{ ref_id: string; bus_refs?: string[]; transformer_refs?: string[] }>;
+  // Karta W5-B: pola stacji to rekordy `bays`.
+  bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
 };
 
-async function executeDomainOp(
-  request: APIRequestContext,
-  caseId: string,
-  name: string,
-  payload: Record<string, unknown>,
-): Promise<DomainOpResponse> {
-  const response = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
-    data: {
-      project_id: '',
-      snapshot_base_hash: '',
-      operation: {
-        name,
-        idempotency_key: `e2e-tr2w-${name}-${String(++opCounter).padStart(4, '0')}`,
-        payload,
-      },
-    },
-    // Timeout hojny (nie domyślne 10 s) — maszyna współdzielona, a
-    // `insert_station_on_segment_sn` (transformator + rozwiązanie katalogu)
-    // jest najcięższą z tych operacji.
-    timeout: 30000,
-  });
-  expect(response.ok()).toBeTruthy();
-  const body = (await response.json()) as DomainOpResponse;
-  expect(body.error ?? null).toBeNull();
-  return body;
-}
-
-async function createProjectAndCase(
-  request: APIRequestContext,
-): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
-  const suffix = nextEntitySuffix();
-  const projectName = `E2E TR bez pola ${suffix}`;
-  const caseName = `Przypadek TR bez pola ${suffix}`;
-
-  const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
-    data: {
-      name: projectName,
-      description: 'Transformator SN/nN rysowany bez pola roli TR',
-      mode: 'TO-BE',
-      voltage_level_kv: 15.0,
-      frequency_hz: 50.0,
-    },
-    timeout: 30000,
-  });
-  expect(projectResponse.ok()).toBeTruthy();
-  const project = (await projectResponse.json()) as { id: string };
-
-  const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
-    data: {
-      project_id: project.id,
-      name: caseName,
-      description: '',
-      config: {},
-      set_active: true,
-    },
-    timeout: 30000,
-  });
-  expect(caseResponse.ok()).toBeTruthy();
-  const studyCase = (await caseResponse.json()) as { id: string };
-
-  return { projectId: project.id, projectName, caseId: studyCase.id, caseName };
+/** Aktywny przypadek zaimportowanego projektu — ten sam odczyt co ekran archiwum. */
+async function aktywnyPrzypadek(request: APIRequestContext, projectId: string): Promise<string> {
+  const odpowiedz = await request.get(`${BACKEND_BASE}/api/study-cases/project/${projectId}/active`);
+  expect(odpowiedz.ok(), 'aktywny przypadek zaimportowanego projektu').toBeTruthy();
+  return ((await odpowiedz.json()) as { id: string }).id;
 }
 
 /**
- * Źródło SN → magistrala → stacja SN/nN z transformatorem, pola
- * `['IN','OUT','FEEDER']` — BEZ `'TR'`. To NIE jest uproszczenie testu, tylko
- * dokładnie ten kształt danych, który produkuje 29 istniejących specyfikacji
- * e2e i który przez lata nie miał transformatora na rysunku.
- *
- * Zwraca ref transformatora Z MIGAWKI — asercje kanwy sprawdzają, że rysunek
- * kluczuje symbol TYM refem, a nie identyfikatorem wymyślonym przez renderer.
+ * Import archiwum przez KOŃCÓWKĘ importu (`POST /api/projects/import`, multipart,
+ * weryfikacja integralności domyślna) — dla testu bramki gotowości, który nie
+ * otwiera strony: to ta sama końcówka, którą woła ekran archiwum (testy kanwy i
+ * legendy importują przez ekran, `importujPrzezEkranArchiwum`).
  */
-async function buildStationNetworkBezPolaTr(
-  request: APIRequestContext,
-  caseId: string,
-): Promise<{ transformerRef: string }> {
-  await executeDomainOp(request, caseId, 'add_grid_source_sn', {
-    voltage_kv: 15.0,
-    sk3_mva: 250.0,
-    rx_ratio: 0.1,
-    catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
-  });
-
-  const trunk = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
-    segment: {
-      rodzaj: 'KABEL',
-      dlugosc_m: 250,
-      name: 'Odcinek 1',
-      catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
+async function importujPrzezApi(request: APIRequestContext): Promise<Kontekst> {
+  const odpowiedz = await request.post(`${BACKEND_BASE}/api/projects/import`, {
+    multipart: {
+      file: {
+        name: 'projekt-tr-bez-pola.mvdp.zip',
+        mimeType: 'application/zip',
+        buffer: fs.readFileSync(ARCHIWUM),
+      },
+      new_name: nazwaProjektu(),
     },
+    timeout: 30000,
   });
-  const segmentRefs = trunk.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
-  expect(segmentRefs.length).toBeGreaterThan(0);
-
-  const op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
-    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
-    segment_id: segmentRefs[segmentRefs.length - 1],
-    station_type: 'B',
-    insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    // KOMPLETNOSC-POLA-TR (klasa B — CELOWY model niekompletny): TU pola roli
-    // 'TR' NIE MA i mieć nie może. Ten spec jest jedynym miejscem, w ktorym
-    // sprawdzamy uczciwy stan niekompletny: rysunek pokazuje transformator z
-    // markerem braku pola, a bramka gotowosci zglasza ostrzezenie
-    // `transformer.bay_missing`. Dopisanie 'TR' skasowaloby dowod tego zachowania.
-    sn_fields: ['IN', 'OUT', 'FEEDER'],
-    transformer: {
-      create: true,
-      catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
-    },
-  });
-
-  // ZAPADKA NA FIKSTURĘ: bez tych dwóch asercji test mógłby przejść na sieci,
-  // która wcale nie ćwiczy defektu (np. gdyby backend zaczął dorzucać pole TR
-  // sam z siebie, albo przestał tworzyć transformator).
-  const station = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
-  expect(station, 'stacja SN/nN w migawce').toBeTruthy();
-  const role = (op.snapshot?.bays ?? [])
-    .filter((f) => f.substation_ref === station!.ref_id)
-    .map((f) => String(f.bay_role ?? '').toUpperCase());
-  expect(role, 'pola stacji NIE mogą zawierać roli TR — inaczej spec nie ćwiczy defektu').not.toContain('TR');
-
-  // Transformator STACJI, nie GPZ: sieć ma DWA transformatory (GPZ WN/SN +
-  // stacyjny SN/nN), więc wybór idzie po `Substation.transformer_refs` tej
-  // stacji, a nie po dopasowaniu podciągu do refu (pierwsza wersja tego specu
-  // łapała transformator GPZ i mierzyła nie ten obiekt).
-  const stacyjneRefy = new Set(station!.transformer_refs ?? []);
-  expect(stacyjneRefy.size, 'stacja deklaruje transformator').toBeGreaterThan(0);
-  const transformator = (op.snapshot?.transformers ?? []).find((t) =>
-    stacyjneRefy.has(String(t.ref_id ?? '')),
-  );
-  expect(transformator?.ref_id, 'transformator stacji w migawce').toBeTruthy();
-  // Terminal WN transformatora — kotwica topologiczna kolumny na rysunku.
-  expect(transformator?.hv_bus_ref, 'terminal WN transformatora').toBeTruthy();
-
-  return { transformerRef: transformator!.ref_id! };
+  expect(odpowiedz.ok()).toBeTruthy();
+  const wynik = (await odpowiedz.json()) as { status: string; project_id: string | null; errors: string[] };
+  expect(wynik.errors).toEqual([]);
+  expect(wynik.status).toBe('SUCCESS');
+  const projectId = wynik.project_id!;
+  return { projectId, caseId: await aktywnyPrzypadek(request, projectId) };
 }
 
-async function openSldWithActiveCase(
-  page: Page,
-  seed: { projectId: string; projectName: string; caseId: string; caseName: string },
-): Promise<void> {
-  await page.addInitScript((s) => {
-    localStorage.setItem(
-      'mv-design-app-state',
-      JSON.stringify({
-        state: {
-          activeProjectId: s.projectId,
-          activeProjectName: s.projectName,
-          activeCaseId: s.caseId,
-          activeCaseName: s.caseName,
-          activeCaseKind: 'ShortCircuitCase',
-          activeCaseResultStatus: 'NONE',
-          activeSnapshotId: null,
-          activeMode: 'MODEL_EDIT',
-          activeRunId: null,
-          activeAnalysisType: 'SHORT_CIRCUIT',
-          caseManagerOpen: false,
-          issuePanelOpen: false,
-        },
-        version: 1,
-      }),
-    );
-  }, seed);
-
+/**
+ * Import archiwum DROGĄ UŻYTKOWNIKA: ekran „Nowy / otwórz projekt" → „Archiwum
+ * projektu (ZIP)" → wybór pliku → nazwa → „Importuj" → raport → „Otwórz
+ * zaimportowany projekt" (ustawia aktywny projekt i przypadek w kontekście
+ * aplikacji — natywne kliki, bez wstrzykiwania stanu), potem schemat.
+ */
+async function importujPrzezEkranArchiwum(page: Page): Promise<Kontekst> {
   // Rozmiar viewportu WPŁYWA na dobór poziomu szczegółu (ta sama, jedna
   // przyczyna co w `legenda-na-zadanie.spec.ts`): przy 1280×720 mała sieć
   // referencyjna mieści się w kadrze na poziomie „Przegląd sieci" (stacja jako
   // symbol ZBIORCZY — zero aparatury pola i zero transformatora W KAŻDYM
   // wariancie danych). 1600×900 daje pełny szczegół bloku stacji.
   await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/', { waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 60000 });
+  await page.getByTestId('mvd-projekty-droga-archiwum').click();
+  await expect(page.getByTestId('mvd-archiwum-projektu')).toBeVisible({ timeout: 15000 });
+
+  await page.getByTestId('mvd-arch-plik').setInputFiles(ARCHIWUM);
+  await page.getByTestId('mvd-arch-nazwa').fill(nazwaProjektu());
+  const [odpowiedzImportu] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().endsWith('/api/projects/import') && r.request().method() === 'POST',
+      { timeout: 30000 },
+    ),
+    page.getByTestId('mvd-arch-import').click(),
+  ]);
+  expect(odpowiedzImportu.status()).toBe(200);
+  const wynik = (await odpowiedzImportu.json()) as { status: string; project_id: string | null };
+  expect(wynik.status).toBe('SUCCESS');
+  const projectId = wynik.project_id!;
+  await expect(page.getByTestId('mvd-arch-raport')).toHaveAttribute('data-wariant', 'ok');
+
+  await page.getByTestId('mvd-arch-otworz').click();
+  await expect(page.getByTestId('mvd-archiwum-projektu')).toHaveCount(0);
+  const caseId = await aktywnyPrzypadek(page.request, projectId);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const surowy = localStorage.getItem('mv-design-app-state');
+        if (!surowy) return null;
+        const stan = (
+          JSON.parse(surowy) as { state?: { activeProjectId?: string | null; activeCaseId?: string | null } }
+        ).state;
+        return stan?.activeProjectId && stan?.activeCaseId ? `${stan.activeProjectId}|${stan.activeCaseId}` : null;
+      }),
+    )
+    .toBe(`${projectId}|${caseId}`);
 
   await page.goto('/#sld', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 60000 });
   await expect(page.getByTestId('sld-canvas-v3')).toBeVisible({ timeout: 30000 });
+  return { projectId, caseId };
+}
+
+/**
+ * ZAPADKA NA FIKSTURĘ (po imporcie, na modelu, który czyta cała aplikacja):
+ * stacja MA transformator i NIE MA pola roli TR. Bez niej spec mógłby przejść
+ * na archiwum, które wcale nie niesie klasy B (np. po regeneracji bez
+ * przekształcenia albo gdyby wczytanie modelu zaczęło dokładać pole TR).
+ *
+ * Zwraca ref transformatora Z MODELU — asercje kanwy sprawdzają, że rysunek
+ * kluczuje symbol TYM refem, a nie identyfikatorem wymyślonym przez renderer.
+ */
+async function zapadkaKlasyB(request: APIRequestContext, caseId: string): Promise<{ transformerRef: string }> {
+  const odpowiedz = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm`);
+  expect(odpowiedz.ok(), 'model zaimportowanego projektu').toBeTruthy();
+  const enm = (await odpowiedz.json()) as Migawka;
+
+  const station = (enm.substations ?? []).find((s) => s.ref_id.includes('/station'));
+  expect(station, 'stacja SN/nN w modelu').toBeTruthy();
+  const role = (enm.bays ?? [])
+    .filter((f) => f.substation_ref === station!.ref_id)
+    .map((f) => String(f.bay_role ?? '').toUpperCase());
+  expect(role.length, 'stacja ma pola SN').toBeGreaterThan(0);
+  expect(role, 'pola stacji NIE mogą zawierać roli TR — inaczej spec nie ćwiczy klasy B').not.toContain('TR');
+
+  // Transformator STACJI, nie GPZ: sieć ma DWA transformatory (GPZ WN/SN +
+  // stacyjny SN/nN), więc wybór idzie po `Substation.transformer_refs` tej
+  // stacji, a nie po dopasowaniu podciągu do refu.
+  const stacyjneRefy = new Set(station!.transformer_refs ?? []);
+  expect(stacyjneRefy.size, 'stacja deklaruje transformator').toBeGreaterThan(0);
+  const transformator = (enm.transformers ?? []).find((t) => stacyjneRefy.has(String(t.ref_id ?? '')));
+  expect(transformator?.ref_id, 'transformator stacji w modelu').toBeTruthy();
+  // Strona WN wprost na szynie SN stacji (kształt zapisu sprzed reguły toru) —
+  // kotwica topologiczna kolumny na rysunku.
+  expect(station!.bus_refs ?? [], 'strona WN transformatora na szynie stacji').toContain(
+    transformator!.hv_bus_ref,
+  );
+
+  return { transformerRef: transformator!.ref_id! };
 }
 
 test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
@@ -262,11 +204,11 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     // tego specu dowodzi, ze RYSUNEK pokazuje brak; ten test dowodzi, ze
     // GOTOWOSC go zglasza — parytet marker<->ostrzezenie na ZYWYM backendzie,
     // nie tylko w tablicy decyzyjnej testow jednostkowych.
-    const seed = await createProjectAndCase(request);
-    const { transformerRef } = await buildStationNetworkBezPolaTr(request, seed.caseId);
+    const { caseId } = await importujPrzezApi(request);
+    const { transformerRef } = await zapadkaKlasyB(request, caseId);
 
     const odpowiedz = await request.get(
-      `${BACKEND_BASE}/api/cases/${seed.caseId}/engineering-readiness`,
+      `${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`,
     );
     expect(odpowiedz.ok(), 'endpoint gotowosci inzynierskiej').toBeTruthy();
     const dane = (await odpowiedz.json()) as {
@@ -299,9 +241,8 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     page,
     request,
   }) => {
-    const seed = await createProjectAndCase(request);
-    const { transformerRef } = await buildStationNetworkBezPolaTr(request, seed.caseId);
-    await openSldWithActiveCase(page, seed);
+    const { caseId } = await importujPrzezEkranArchiwum(page);
+    const { transformerRef } = await zapadkaKlasyB(request, caseId);
 
     const canvas = page.getByTestId('sld-canvas-v3');
 
@@ -374,9 +315,8 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     page,
     request,
   }) => {
-    const seed = await createProjectAndCase(request);
-    await buildStationNetworkBezPolaTr(request, seed.caseId);
-    await openSldWithActiveCase(page, seed);
+    const { caseId } = await importujPrzezEkranArchiwum(page);
+    await zapadkaKlasyB(request, caseId);
 
     // Klik NATYWNY (Zero-Debt pkt 5: test interakcji zaczyna od ścieżki
     // natywnej, nie od syntetycznego zdarzenia).
