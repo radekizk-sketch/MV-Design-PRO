@@ -24,6 +24,7 @@ from network_model.pochodne import (
     impedancja_z_napiecia_i_pradu_ohm,
     kv_na_v,
     prad_znamionowy_a,
+    reaktancja_z_jednostek_wzglednych_ohm,
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
@@ -84,7 +85,9 @@ class SynchronousMachineSource:
     @property
     def x_subtransient_ohm(self) -> float:
         """X″d in ohms: x″d · U²rG / S_rG."""
-        return self.xd_subtransient_pu * (self.ur_kv**2) / self.sr_mva
+        return reaktancja_z_jednostek_wzglednych_ohm(
+            self.xd_subtransient_pu, self.ur_kv, self.sr_mva
+        )
 
     @property
     def r_over_x_ratio(self) -> float:

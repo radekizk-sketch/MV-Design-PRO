@@ -113,6 +113,12 @@ ALLOWLIST: dict[str, str] = {}
 #: `overcurrent/calculator.py` (jedyny wpis rodziny E), W3-C2 skasowala oba pliki
 #: `line_overcurrent_setting/` (wpisy J) — pomiar `--pomiar` na drzewie scalonym:
 #: 1 plik / 2 wzorce, wylacznie trwaly wyjatek ResultSet v1 ponizej.
+#: Karty C3/C4 (2026-09-30): rodzina G poszerzona o kwadrat NAPIĘCIA jako czynnik iloczynu
+#: w liczniku albo mianowniku (luka, przez którą przeszły `Z = uk·U²/S` i `B = Q/U²`
+#: eksportera CGMES). Pomiar poszerzonej reguły ujawnił 4 zastane trafienia
+#: (`lf_sensitivity` ΔU·U²/U'², pakiet dowodowy VDROP Z·S/U²·100 ×2, X″d·U²/S maszyny) —
+#: karta C4 przeniosła je do `pochodne/wielkosci_pochodne.py` bit w bit; rodzina G ma
+#: w zapadce 0.
 #: Karta RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59): „trwały wyjątek"
 #: okazał się martwym mapperem (0 importerów w `src`) — plik skasowany razem z
 #: siostrzanym `protection_to_resultset_v1.py`; `resultset_v1_schema_guard.py` chroni
@@ -331,11 +337,45 @@ def _is_temp_corr_shape(node: ast.expr) -> bool:
     return False
 
 
+#: Marker NAPIĘCIA w identyfikatorze podstawy kwadratu (rodzina G, karta C3) — token
+#: całego segmentu nazwy: `u_kv`, `uhv_v`, `ur_kv`, `rated_kv`, `kv_to_v(...)`, `voltage`.
+_NAPIECIE_RE = re.compile(r"(^|_)(u|v|un|ur|uhv|ulv|kv|voltage|napiecie)(_|$)", re.IGNORECASE)
+
+
+def _czynniki_iloczynu(node: ast.expr) -> list[ast.expr]:
+    """Płaska lista czynników łańcucha mnożeń (`a * b * c` -> [a, b, c])."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+        return _czynniki_iloczynu(node.left) + _czynniki_iloczynu(node.right)
+    return [node]
+
+
+def _is_kwadrat_napiecia(node: ast.expr) -> bool:
+    return (
+        _is_pow2(node)
+        and isinstance(node, ast.BinOp)
+        and any(_NAPIECIE_RE.search(nazwa) for nazwa in _idents(node.left))
+    )
+
+
 def _is_z_u2_s_shape(node: ast.expr) -> bool:
-    """`u ** 2 / s` — impedancja/moc bazowa (Z=U²/S), kwadrat WPROST w liczniku
-    dzielenia (nie ukryty w mnożeniu — te przypadki są formułami wieloczłonowymi
-    IEC 60909 poza zakresem karty, patrz meldunek)."""
-    return isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and _is_pow2(node.left)
+    """Rodzina Z = U²/S i jej odwrotność Y = S/U² w dzieleniu.
+
+    (1) `u ** 2 / s` — kwadrat WPROST licznikiem (dowolna nazwa, kształt pierwotny).
+    (2) Karta C3 — luka zmierzona na eksporterze CGMES: kwadrat NAPIĘCIA (marker
+        `_NAPIECIE_RE` w nazwie podstawy) jako CZYNNIK iloczynu w liczniku
+        (`uk / 100 * u_hv ** 2 / s_n`, `x_pu * u ** 2 / s`) albo w mianowniku
+        (`q / u_kv ** 2` — susceptancja baterii, `p / u ** 2`). Dawna wersja widziała
+        tylko (1), więc `B = Q/U²` i `Z = uk·U²/S` w `infrastructure/cgmes` przeszły.
+        Marker nazwy odcina kwadraty nienapięciowe (odległość w arc-flash, prąd).
+    """
+    if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+        return False
+    if _is_pow2(node.left):
+        return True
+    return any(
+        _is_kwadrat_napiecia(czynnik)
+        for czynnik in _czynniki_iloczynu(node.left) + _czynniki_iloczynu(node.right)
+    )
 
 
 def _is_pow_any_exponent(node: ast.expr) -> bool:

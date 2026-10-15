@@ -100,6 +100,7 @@ from network_model.pochodne import (
     calka_joule_ka2s,
     czlon_wykladniczy_kappa,
     prad_z_mocy_pozornej_ka,
+    skladowa_spadku_napiecia_procent,
     v_na_kv,
 )
 from network_model.solvers.machine_sc_iec60909 import (
@@ -2205,8 +2206,8 @@ class ProofGenerator:
             segment = entry
             r_ohm = segment.r_ohm_per_km * segment.length_km
             x_ohm = segment.x_ohm_per_km * segment.length_km
-            delta_u_r = (r_ohm * segment.p_mw) / (segment.u_n_kv**2) * 100
-            delta_u_x = (x_ohm * segment.q_mvar) / (segment.u_n_kv**2) * 100
+            delta_u_r = skladowa_spadku_napiecia_procent(r_ohm, segment.p_mw, segment.u_n_kv)
+            delta_u_x = skladowa_spadku_napiecia_procent(x_ohm, segment.q_mvar, segment.u_n_kv)
             delta_u = delta_u_r + delta_u_x
 
             step_number += 1

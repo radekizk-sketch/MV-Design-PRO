@@ -8,6 +8,7 @@ Jedyna ścieżka eksportu modelu sieci po kasacji klientowych eksporterów SCL/C
 * determinizm: dwa biegi na sieci złotej → identyczny SHA-256;
 * wejście tylko do odczytu: rewizja i odcisk modelu po eksporcie bez zmian;
 * model niekompletny → 422 z NAZWANYMI brakami po polsku (nie 500, nie pusty plik);
+* odmowa danych przy budowie drzew (generator bez rodzaju) → 422 z treścią;
 * przypadek spoza projektu → 404 (wspólne tłumaczenie `case_id`, `klucz_twin_dep`).
 """
 
@@ -19,7 +20,7 @@ import zipfile
 from uuid import uuid4
 
 from application.cgmes.service import export_cgmes, verify_cgmes_integrity
-from enm.models import EnergyNetworkModel, ENMHeader
+from enm.models import EnergyNetworkModel, ENMHeader, Generator
 from enm.store import get_enm, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
@@ -124,6 +125,36 @@ def test_zacisk_do_szyny_spoza_modelu_to_nazwana_odmowa_422(app_client) -> None:
     detail = odpowiedz.json()["detail"]
     assert "Odbiór „Odbiór C”" in detail
     assert "load_c" not in detail
+
+
+def test_generator_bez_rodzaju_to_nazwana_odmowa_422(app_client) -> None:
+    """Odmowa danych w budowie drzew EQ/TP (generator bez rodzaju — klasy CIM nie da się
+    wybrać) przechodzi przez PRAWDZIWĄ trasę eksportu jako 422 z treścią, nie 500.
+    Przeniesione z sondy testowej karty OLTC-U-DOCELOWE (C3), napisanej, gdy trasy
+    eksportu jeszcze nie było."""
+    case_id = _nowy_przypadek(app_client)
+    enm = build_golden_enm()
+    bez_rodzaju = Generator(
+        ref_id="gen_bez_rodzaju",
+        name="PV Łąka",
+        bus_ref="bus_sn_main",
+        p_mw=1.0,
+        q_mvar=0.0,
+        gen_type=None,
+        materialized_params={"sn_mva": 1.25, "un_kv": 0.69},
+    )
+    set_enm(
+        _klucz(app_client, case_id),
+        enm.model_copy(update={"generators": [*enm.generators, bez_rodzaju]}),
+    )
+
+    odpowiedz = app_client.get(_adres(case_id))
+
+    assert odpowiedz.status_code == 422, odpowiedz.text
+    assert odpowiedz.json()["detail"] == (
+        "Generator „PV Łąka” nie ma określonego rodzaju — uzupełnij rodzaj generatora "
+        "przed eksportem CGMES."
+    )
 
 
 def test_przypadek_spoza_projektu_to_404(app_client) -> None:
