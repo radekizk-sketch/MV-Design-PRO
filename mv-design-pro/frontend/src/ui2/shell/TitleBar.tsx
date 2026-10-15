@@ -8,7 +8,7 @@ import { useId, useState } from 'react';
 import { ModeSwitch } from './ModeSwitch';
 import type { AdvancementMode } from './modeModel';
 import { SHELL_STRINGS } from './strings';
-import { themeLabel, type ThemeMode } from '../theme/themeMode';
+import { themeLabel, themeShortLabel, type ThemeMode } from '../theme/themeMode';
 
 interface TitleBarProps {
   projectName: string | null;
@@ -60,32 +60,34 @@ export function TitleBar({
         type="button"
         className="mvd-btn"
         onClick={onThemeToggle}
-        title={SHELL_STRINGS.themeToggleHint}
+        title={`${SHELL_STRINGS.themeGroup}: ${themeLabel(themeMode)}. ${SHELL_STRINGS.themeToggleHint}`}
+        aria-label={`${SHELL_STRINGS.themeGroup}: ${themeLabel(themeMode)}`}
         aria-pressed={themeMode === 'dark_scada'}
         data-testid="mvd-theme-toggle"
       >
-        {SHELL_STRINGS.themeGroup}: {themeLabel(themeMode)}
+        {SHELL_STRINGS.themeGroup}: {themeShortLabel(themeMode)}
       </button>
 
       <button
         type="button"
-        className="mvd-btn"
+        className="mvd-btn mvd-btn-panel"
         aria-pressed={!leftCollapsed}
         title={`${SHELL_STRINGS.toggleLeft} (Ctrl+B)`}
         onClick={onToggleLeft}
         data-testid="mvd-toggle-left"
       >
-        ⟨ {SHELL_STRINGS.toggleLeft}
+        {SHELL_STRINGS.toggleLeft}
       </button>
       <button
         type="button"
-        className="mvd-btn"
+        className="mvd-btn mvd-btn-panel"
         aria-pressed={!rightCollapsed}
         title={`${SHELL_STRINGS.toggleRight} (Ctrl+I)`}
+        aria-label={SHELL_STRINGS.toggleRight}
         onClick={onToggleRight}
         data-testid="mvd-toggle-right"
       >
-        {SHELL_STRINGS.toggleRight} ⟩
+        {SHELL_STRINGS.toggleRightShort}
       </button>
 
       <div className="mvd-menu">

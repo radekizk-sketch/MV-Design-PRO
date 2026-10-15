@@ -14,20 +14,52 @@
  * ZERO fizyki: żadna wartość nie jest tu liczona ani przeliczana.
  */
 
-import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { fmtLiczba, symbolJednostki, type WierszWykresu } from './model';
 import { DYNAMIKA_STRINGS as T } from './strings';
 
-const KOLORY = [
-  'var(--mvd-accent)',
-  'var(--mvd-ok)',
-  'var(--mvd-ink)',
-  'var(--mvd-warn)',
-  'var(--mvd-sel)',
-  'var(--mvd-muted)',
-] as const;
-const KRESKI = ['', '6 3', '2 3'] as const;
+/** Paleta kategoryczna serii (tokeny `--mvd-seria-1…8`, zwalidowane dla obu motywów).
+ *  Kolor idzie za POZYCJĄ serii w stałej kolejności; od 9. serii ten sam odcień wraca
+ *  z innym wzorem kreski (kodowanie złożone — nigdy wygenerowany nowy odcień). Dawna
+ *  paleta (6 kolorów, w tym `--mvd-sel` i `--mvd-muted`) rysowała część serii prawie
+ *  niewidocznie na tle panelu (oględziny 2026-10-15). */
+const KOLORY = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `var(--mvd-seria-${n})`);
+const KRESKI = ['', '7 3', '2 3'] as const;
+
+function kolorSerii(i: number): string {
+  return KOLORY[i % KOLORY.length];
+}
+
+function kreskaSerii(i: number): string {
+  return KRESKI[Math.floor(i / KOLORY.length) % KRESKI.length];
+}
+
+/** Legenda POD polem wykresu (HTML): pełna wysokość dla przebiegów, tekst w kolorze
+ *  tekstu, tożsamość serii niesie próbka linii z jej kolorem i kreską — jak w oknach
+ *  wykresów narzędzi klasy PowerFactory/ETAP (legenda poza obszarem rysowania). */
+function LegendaSerii({ serie }: { readonly serie: readonly SeriaWykresu[] }) {
+  return (
+    <ul className="mvd-dynamika-legenda" data-testid="mvd-dynamika-legenda">
+      {serie.map((seria, i) => (
+        <li key={seria.klucz} className="mvd-dynamika-legenda-pozycja">
+          <svg width="26" height="10" aria-hidden="true" className="mvd-dynamika-legenda-probka">
+            <line
+              x1="1"
+              y1="5"
+              x2="25"
+              y2="5"
+              stroke={kolorSerii(i)}
+              strokeWidth={2}
+              strokeDasharray={kreskaSerii(i) || undefined}
+            />
+          </svg>
+          <span>{seria.etykieta}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export interface SeriaWykresu {
   readonly klucz: string;
@@ -159,16 +191,15 @@ export function WykresPrzebiegow({
           />
         ))}
         <Tooltip content={<Dymek jednostka={jednostka} />} isAnimationActive={false} />
-        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         {serie.map((seria, i) => (
           <Line
             key={seria.klucz}
             type="linear"
             dataKey={seria.klucz}
             name={seria.etykieta}
-            stroke={KOLORY[i % KOLORY.length]}
-            strokeDasharray={KRESKI[Math.floor(i / KOLORY.length) % KRESKI.length]}
-            strokeWidth={1.6}
+            stroke={kolorSerii(i)}
+            strokeDasharray={kreskaSerii(i)}
+            strokeWidth={2}
             dot={<KropkaZdarzenia />}
             activeDot={{ r: 3 }}
             connectNulls={false}
@@ -176,6 +207,7 @@ export function WykresPrzebiegow({
           />
         ))}
       </LineChart>
+      <LegendaSerii serie={serie} />
     </div>
   );
 }

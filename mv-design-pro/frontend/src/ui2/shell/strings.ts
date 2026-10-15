@@ -37,6 +37,9 @@ export const SHELL_STRINGS = {
 
   toggleLeft: 'Nawigacja',
   toggleRight: 'Zwiń lub rozwiń panel inspektora',
+  /** Etykieta przycisku panelu inspektora w pasku tytułowym (jedna linia); pełny opis —
+   *  w podpowiedzi i `aria-label` (`toggleRight`). */
+  toggleRightShort: 'Inspektor',
   themeGroup: 'Motyw',
   themeToggleHint: 'Przełącz motyw ekranu: ciemny (dyspozytorski) / jasny (techniczny)',
 

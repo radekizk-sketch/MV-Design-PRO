@@ -290,21 +290,24 @@ export function WorkflowContextStrip({
       data-testid="workflow-context-strip"
       className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-scada-bg px-3"
     >
-      <div className="flex min-w-0 flex-1 items-center">
+      {/* Oględziny 2026-10-15: bez `overflow-hidden` liczniki wypływały POD ikony akcji
+          („TR”, „Odbiory nN” przykryte przez „Szukaj”, „Katalog”), a etykiety łamały się
+          w dwie linie. Grupa przycina się teraz na swojej granicy, etykiety są jednoliniowe. */}
+      <div className="flex min-w-0 flex-1 items-center overflow-hidden">
         <div
-          className="flex h-8 items-center gap-2 border-r border-scada-border pr-4"
+          className="flex h-8 shrink-0 items-center gap-2 border-r border-scada-border pr-4"
           data-testid="workflow-build-phase"
           title={phaseTitle}
         >
-          <span className="text-[11px] text-scada-muted">Faza projektu:</span>
-          <span className={clsx('rounded-sm border px-2 py-1 text-[10px] font-bold uppercase', chipClass)}>
+          <span className="whitespace-nowrap text-[11px] text-scada-muted">Faza projektu:</span>
+          <span className={clsx('whitespace-nowrap rounded-sm border px-2 py-1 text-[10px] font-bold uppercase', chipClass)}>
             <span className={clsx('mr-1.5 inline-block h-1.5 w-1.5 rounded-full', dotClass)} />
             {phaseLabel}
           </span>
         </div>
 
         <div
-          className="flex h-8 items-center gap-2 border-r border-scada-border px-4"
+          className="flex h-8 shrink-0 items-center gap-2 border-r border-scada-border px-4"
           data-testid={display.blockers > 0 ? 'workflow-blockers' : 'workflow-no-blockers'}
           title={hasModel
             ? hasTopologyElements
@@ -312,7 +315,7 @@ export function WorkflowContextStrip({
               : 'Pierwszy układ sieci: wybór wariantu GPZ'
             : 'Rozpocznij projekt'}
         >
-          <span className="text-[11px] text-scada-muted">{hasTopologyElements ? 'Kontrola:' : 'Układ:'}</span>
+          <span className="whitespace-nowrap text-[11px] text-scada-muted">{hasTopologyElements ? 'Kontrola:' : 'Układ:'}</span>
           <span className={clsx(
             'grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[11px] font-bold',
             !hasModel
@@ -327,9 +330,9 @@ export function WorkflowContextStrip({
           </span>
         </div>
 
-        <div className="flex h-8 items-center gap-2 border-r border-scada-border px-4" data-testid="wcs-model-readiness">
-          <span className="text-[11px] text-scada-muted">{calculationControlCaption}</span>
-          <span className={clsx('font-mono text-[11px] font-semibold', isModelReady ? 'text-sygnal-ok' : 'text-sygnal-uwaga')}>
+        <div className="flex h-8 shrink-0 items-center gap-2 border-r border-scada-border px-4" data-testid="wcs-model-readiness">
+          <span className="whitespace-nowrap text-[11px] text-scada-muted">{calculationControlCaption}</span>
+          <span className={clsx('whitespace-nowrap font-mono text-[11px] font-semibold', isModelReady ? 'text-sygnal-ok' : 'text-sygnal-uwaga')}>
             {calculationControlLabel}
           </span>
         </div>
@@ -357,7 +360,7 @@ export function WorkflowContextStrip({
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex h-8 items-center gap-1.5 border-r border-scada-border px-3">
+    <div className="flex h-8 shrink-0 items-center gap-1.5 border-r border-scada-border px-3">
       <span className="whitespace-nowrap text-[11px] text-scada-muted">{label}:</span>
       <span className="whitespace-nowrap font-mono text-[11px] font-semibold text-scada-text">{value}</span>
     </div>
@@ -373,12 +376,12 @@ function WorkflowActions({
   blockerBadge,
 }: WorkflowContextStripProps & { blockerBadge?: number }) {
   return (
-    <div className="flex h-full shrink-0 items-center gap-7 border-l border-scada-border pl-5 pr-1">
+    <div className="flex h-full shrink-0 items-center gap-4 border-l border-scada-border pl-4 pr-1">
       <WorkflowAction testId="wcs-search" label="Szukaj" title="Szukaj elementu (Ctrl+K)" onClick={onOpenGlobalSearch} icon={<IconSearch />} />
       <WorkflowAction testId="wcs-catalog" label="Katalog" title="Katalog techniczny" onClick={onOpenCatalogBrowser} icon={<IconCatalog />} />
       <WorkflowAction testId="wcs-mass-review" label="Kontrola" title="Kontrola techniczna układu" onClick={onOpenMassReview} icon={<IconReview />} badge={blockerBadge} />
       <WorkflowAction testId="wcs-project-metadata" label="Metadane" title="Metadane projektu" onClick={onOpenProjectMetadata} icon={<IconMetadata />} />
-    <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji układu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
+      <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji układu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
     </div>
   );
 }

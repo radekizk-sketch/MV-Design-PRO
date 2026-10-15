@@ -53,6 +53,17 @@
 .mvd-logo-accent {
   color: var(--mvd-accent);
 }
+/* Przyciski paska tytułowego zawsze w jednej linii (oględziny 2026-10-15: „Motyw: jasny
+ * (techniczny)”, „Zwiń lub rozwiń panel inspektora” łamały się w dwie linie i podnosiły pasek
+ * do 53 px). Stan paneli bocznych czytelny jak w paskach narzędzi narzędzi klasy
+ * PowerFactory/ETAP — przycisk wciśnięty = panel widoczny. */
+.mvd-titlebar .mvd-btn {
+  white-space: nowrap;
+}
+.mvd-titlebar .mvd-btn-panel[aria-pressed="true"] {
+  background: var(--mvd-sel);
+  border-color: var(--mvd-accent);
+}
 .mvd-crumb {
   color: var(--mvd-muted);
   white-space: nowrap;

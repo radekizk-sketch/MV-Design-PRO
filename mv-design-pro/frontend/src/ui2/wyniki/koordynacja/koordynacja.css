@@ -301,8 +301,30 @@
   vertical-align: top;
 }
 
-.mvd-koordynacja-ocena-zdanie {
+.mvd-koordynacja-ocena-tabela th {
+  white-space: nowrap;
+  font-weight: 600;
   color: var(--mvd-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* Wiersz danych bez dolnej linii — linia zamyka dopiero wiersz uzasadnienia (grupa = ocena). */
+.mvd-koordynacja-ocena-dane td {
+  border-bottom: 0;
+  padding-top: 8px;
+}
+
+.mvd-koordynacja-ocena-uzasadnienie td {
+  padding: 2px 6px 10px 18px;
+}
+
+.mvd-koordynacja-ocena-zdanie {
+  color: var(--mvd-ink);
+  font-size: 12px;
+  line-height: 1.55;
+  max-width: 120ch;
+  display: block;
 }
 
 .mvd-koordynacja-ocena-tabela td.mvd-mono {

@@ -179,12 +179,18 @@ export function SekcjaOcenyZabezpieczen({
                   <th>{T.ocenaKolOcena}</th>
                 </tr>
               </thead>
-              <tbody>
-                {wynik.evaluations.map((o) => (
-                  <tr
-                    key={`${o.device_id}::${o.fault_target_id}`}
-                    data-testid={`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`}
-                  >
+              {/* Każda ocena = jedna grupa wierszy: dane (krótki status werdyktu) i pod nimi
+                  uzasadnienie na całą szerokość tabeli. Dawniej zdanie stało w ostatniej, wąskiej
+                  kolumnie i dawało ~20 linii na wiersz (oględziny 2026-10-15). Uzasadnienie
+                  zostaje WIDOCZNE — status nie jest samodzielnym komunikatem (kontrakt werdyktu
+                  wyjaśnialnego); tak pokazują wynik siatki PowerFactory/ETAP: wiersz + opis. */}
+              {wynik.evaluations.map((o) => (
+                <tbody
+                  key={`${o.device_id}::${o.fault_target_id}`}
+                  className="mvd-koordynacja-ocena-grupa"
+                  data-testid={`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`}
+                >
+                  <tr className="mvd-koordynacja-ocena-dane">
                     <td>{o.nazwa_urzadzenia_pl}</td>
                     <td>{o.nazwa_punktu_pl}</td>
                     <td className="mvd-mono">{liczba(o.i_fault_a, 1)}</td>
@@ -192,14 +198,18 @@ export function SekcjaOcenyZabezpieczen({
                     <td className="mvd-mono">{liczba(o.t_trip_s, 3)}</td>
                     <td title={o.wiarygodnosc_powod_pl}>{WIARYGODNOSC_PL[o.wiarygodnosc]}</td>
                     <td>
-                      <EtykietaWerdyktu etykieta={o.ocena.etykieta} status={o.ocena.status_maszynowy} />{' '}
+                      <EtykietaWerdyktu etykieta={o.ocena.etykieta} status={o.ocena.status_maszynowy} />
+                    </td>
+                  </tr>
+                  <tr className="mvd-koordynacja-ocena-uzasadnienie">
+                    <td colSpan={7}>
                       <span className="mvd-koordynacja-ocena-zdanie">
                         {o.ocena.wyjasnienie.zdanie_pl}
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                </tbody>
+              ))}
             </table>
           ) : null}
           {wynik.odmowy.length > 0 ? (

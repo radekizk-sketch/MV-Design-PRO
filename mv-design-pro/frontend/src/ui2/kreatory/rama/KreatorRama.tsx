@@ -88,7 +88,9 @@ export function KreatorRama({
       <header className="mvd-kreator-head">
         <div className="mvd-kreator-head-gora">
           <div>
-            <span className="mvd-kreator-eyebrow">{eyebrow}</span>
+            {/* Nadtytuł tylko, gdy niesie inną treść niż tytuł — 13 kreatorów podawało ten
+                sam napis dwa razy z rzędu (oględziny 2026-10-15). */}
+            {eyebrow !== tytul ? <span className="mvd-kreator-eyebrow">{eyebrow}</span> : null}
             <h2 className="mvd-kreator-tytul">{tytul}</h2>
           </div>
           {odznaka ? <span className="mvd-kreator-odznaka">{odznaka}</span> : null}

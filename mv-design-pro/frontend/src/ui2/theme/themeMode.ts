@@ -27,6 +27,16 @@ export function themeLabel(mode: ThemeMode): string {
   return THEME_LABELS[mode];
 }
 
+const THEME_SHORT_LABELS: Record<ThemeMode, string> = {
+  dark_scada: 'ciemny',
+  light_technical: 'jasny',
+};
+
+/** Krótka etykieta motywu do paska tytułowego (jedna linia); pełna — w podpowiedzi. */
+export function themeShortLabel(mode: ThemeMode): string {
+  return THEME_SHORT_LABELS[mode];
+}
+
 /**
  * Rozstrzyga tryb na podstawie preferencji systemowej.
  * Gdy `matchMedia` jest niedostępne (np. środowisko testowe), zwraca
