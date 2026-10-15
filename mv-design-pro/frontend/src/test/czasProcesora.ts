@@ -1,5 +1,8 @@
 import { isMainThread } from 'node:worker_threads';
 
+/** Tryb kroku budżetów — para z `TRYB_BUDZETOW` w `vite.config.ts` (przypięta testem). */
+export const TRYB_BUDZETOW = 'budzety';
+
 /**
  * Czas procesora (użytkownik + system) wykonania funkcji, w milisekundach.
  *
@@ -18,6 +21,15 @@ import { isMainThread } from 'node:worker_threads';
  * doliczałby ich pracę — dlatego poza wątkiem głównym procesu pomiar jest odmawiany.
  */
 export function zmierzCzasProcesora<T>(fn: () => T): { wynik: T; ms: number } {
+  // Pomiar wyłącznie w kroku sekwencyjnym budżetów (`vitest run --mode budzety`): w puli
+  // równoległej sąsiednie procesy zawyżają czas procesora (`plikiBudzetuCzasu` w `vite.config.ts`).
+  // Plik mierzący czas drogą pośrednią, nierozpoznany przez skaner, pada tu głośno.
+  if (import.meta.env.MODE !== TRYB_BUDZETOW) {
+    throw new Error(
+      `Pomiar czasu procesora tylko w kroku budżetów (vitest --mode ${TRYB_BUDZETOW}, jeden plik ` +
+        'naraz); plik testów musi importować `czasProcesora` wprost, żeby skaner go rozpoznał.',
+    );
+  }
   if (!isMainThread) {
     throw new Error(
       'Pomiar czasu procesora wymaga osobnego procesu na plik testów (vitest `pool: \'forks\'`): ' +

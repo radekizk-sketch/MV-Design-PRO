@@ -462,9 +462,10 @@ cd mv-design-pro/frontend
 npm ci            # preferred (deterministic)
 npm install       # alternative
 
-# Run tests (files in parallel in the `forks` pool — one file per process; vite.config.ts)
+# Run tests: two steps — files in parallel in the `forks` pool, then CPU-time budget tests
+# (every test file importing src/test/czasProcesora.ts) one file at a time; vite.config.ts
 npm test
-# Equivalent: vitest run
+# Equivalent: vitest run && vitest run --mode budzety (budget step alone: npm run test:budzety)
 
 # Run tests for CI
 npm run test:ci
@@ -688,9 +689,10 @@ python scripts/smoke_local.sh                     # Local smoke test
 - Component tests use @testing-library/react
 - Test files run in parallel in the `forks` pool, one file per process at a time (karta
   SZYBKIE-TESTY 2026-09-30; it supersedes the archival INV-TST-06 of `--no-file-parallelism`).
-  CPU-time budget tests (`src/test/czasProcesora.ts`) measure the whole process, so they need
-  exactly that: the helper refuses to measure outside the process main thread and
-  `src/test/__tests__/pulaTestow.test.ts` pins the pool
+  CPU-time budget tests (`src/test/czasProcesora.ts`) run in a separate sequential step
+  (`vitest run --mode budzety`, set derived by `plikiBudzetuCzasu` in vite.config.ts) — neighbouring
+  processes inflate CPU time; the helper refuses to measure outside that mode and outside the
+  process main thread (`src/test/__tests__/{pulaTestow,plikiBudzetuCzasu}.test.ts` pin both)
 - Test environment: jsdom with globals enabled
 - Critical contract tests (run in SLD Determinism CI) — **spisane z
   `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:

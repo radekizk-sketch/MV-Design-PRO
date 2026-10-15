@@ -68,7 +68,7 @@ wprost tego żąda (np. zmiana rdzenia solvera z parytetem całej suity).
 
 Raz na partię, na drzewie scalonym, jeden bieg naraz: pełna regresja backendu
 `-n 4 --dist loadfile -m "not pandapower and not andes"` z prywatnym `--basetemp`, `guardy_z_ci.py`, generatory
-fikstur, type-check, lint, pełny vitest (`npm test` — pula procesów), speki e2e partii na realnym
+fikstur, type-check, lint, pełny vitest (`npm test` — pula procesów + krok budżetów czasu), speki e2e partii na realnym
 backendzie. Kody wyjścia łapane bezpośrednio do pliku stanu łańcucha.
 
 ---

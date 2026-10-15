@@ -311,7 +311,7 @@ PYTHONPATH=src:. python -m pytest -q -p no:cacheprovider --basetemp="$BT/reg" \
 PYTHONPATH=src:. "$PP_VENV/bin/python" -m pytest -q -m pandapower tests         # wyrocznia pandapower (venv: pandapower 3.5.4, scipy<1.17)
 PYTHONPATH=src:. python -m tests.walidacja_fizyczna.mutacje M30 M32 …           # harness mutacji (wybrane albo komplet)
 cd ../frontend
-npx vitest run                                                                   # pełny vitest (pula procesów)
+npx vitest run && npx vitest run --mode budzety                                  # pełny vitest: pula procesów + krok budżetów czasu
 PLAYWRIGHT_REAL_BACKEND=1 PLAYWRIGHT_BACKEND_URL=http://127.0.0.1:18793 \
 PLAYWRIGHT_FRONTEND_URL=http://127.0.0.1:5213 VITE_API_URL_DEV=http://127.0.0.1:18793 \
 PLAYWRIGHT_BACKEND_PYTHON="$(cd ../backend && poetry env info -p)/bin/python" \

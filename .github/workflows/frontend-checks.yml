@@ -33,6 +33,15 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npx vitest run
+      # Karta SZYBKIE-TESTY (2026-10-15): testy budzetu czasu procesora (kazdy plik importujacy
+      # `src/test/czasProcesora.ts`, zbior wyznacza `plikiBudzetuCzasu` w vite.config.ts) biegna
+      # OSOBNO, jeden plik naraz — w puli rownoleglej sasiednie procesy zawyzaly ich czas
+      # procesora (pomiar: 31,6 s przy 3 procesach wobec zielonego biegu samego pliku).
+      - name: Run CPU-time budget tests (sequential)
+        working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npx vitest run --mode budzety
       - name: Run audit2 frontend integration tests (Phase 8-30)
         working-directory: mv-design-pro/frontend
         env:
