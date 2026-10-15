@@ -29,6 +29,7 @@ from network_model.catalog.mv_converter_catalog import (
     CONVERTER_PV_NN_KARTY_PRODUCENTOW,
     CONVERTER_PV_NN_KOPIE_KART,
     CONVERTER_REFERENCE_CARDS,
+    CONVERTER_WIND_NN_VESTAS_V112,
     PREFIKS_KOPII_KARTY,
 )
 from network_model.catalog.repository import get_default_mv_catalog
@@ -194,6 +195,13 @@ _KOPIE_KART = [
         for rec in CONVERTER_PV_NN_KOPIE_KART
     ],
     *[(rec["id"], _POLA_KARTY_MEGAPACK) for rec in CONVERTER_BESS_NN_KOPIE_KART],
+    # Karta KATALOG-TURBINY-TOR-V112: kopie dokumentów Vestas (V112-3.0, V112-3.3 × 2
+    # warianty generatora) — każde pole niesione z dokumentu ESTIMATED z adresem kopii.
+    *[
+        (rec["id"], tuple(sorted(rec["params"]["card_field_status"])))
+        for rec in CONVERTER_WIND_NN_VESTAS_V112
+        if rec["params"]["source_reference"].startswith(PREFIKS_KOPII_KARTY)
+    ],
 ]
 
 
@@ -244,6 +252,8 @@ def test_published_non_reference_converters_have_no_card_field_status() -> None:
         set(_REFERENCE_CARD_IDS)
         | {rec["id"] for rec in CONVERTER_PV_NN_KARTY_PRODUCENTOW}
         | {card_id for card_id, _ in _KOPIE_KART}
+        # V112-3.45: deklaracja DNV nieodczytana — pola karty ESTIMATED z nazwą deklaracji.
+        | {"vestas_v112_3_45mw"}
     )
     for c in repo.list_converter_types():
         if c.id in reference_ids:

@@ -2,7 +2,8 @@
 
 Iloczyn cech (reguła KLASA, NIE INSTANCJA):
 
-* każda pozycja (transformator × przekształtnik × turbina) × ma źródło, a RODZAJ źródła
+* każda pozycja (transformator × przekształtnik, w tym turbina wiatrowa rodzaju WIND) × ma
+  źródło, a RODZAJ źródła
   wyznacza status weryfikacji w obie strony (karta producenta z adresem ⇔ ZWERYFIKOWANY);
   przyszła pozycja bez źródła jest odrzucana już przy budowie rekordu;
 * transformator × zgodność z Tier 2 rozporządzenia (UE) 548/2014 w brzmieniu 2019/1783
@@ -36,11 +37,6 @@ from network_model.catalog.mv_ptpiree_catalog import (
 )
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogStatus, CatalogVerificationStatus
-from network_model.catalog.wind_turbines.catalog import (
-    WindTurbineCatalogEntry,
-    list_wind_turbines,
-)
-from pydantic import ValidationError
 
 ZWERYFIKOWANY = CatalogVerificationStatus.ZWERYFIKOWANY.value
 NIEWERYFIKOWANY = CatalogVerificationStatus.NIEWERYFIKOWANY.value
@@ -114,16 +110,8 @@ def test_kazda_pozycja_ma_zrodlo_a_status_wynika_z_rodzaju_zrodla(
     assert params.get("verification_note", "").strip(), (klasa, rekord_id)
 
 
-def test_kazda_turbina_ma_zrodlo_i_status_modelu_referencyjnego() -> None:
-    turbiny = list_wind_turbines()
-    assert len(turbiny) == 19
-    for turbina in turbiny:
-        assert _rodzaj_zrodla(turbina.source_reference) == "MODEL_REFERENCYJNY"
-        assert turbina.verification_status == REFERENCYJNY
-
-
 def test_przyszla_pozycja_bez_zrodla_jest_odrzucana_w_kazdym_katalogu() -> None:
-    """Pozycja dopisana bez źródła NIE dostaje źródła domyślnego — trzy wejścia klasy."""
+    """Pozycja dopisana bez źródła NIE dostaje źródła domyślnego — każde wejście klasy."""
     # przekształtnik: konstruktor rekordu wymaga źródła
     with pytest.raises(TypeError, match="source_reference"):
         konw._converter_record(  # type: ignore[call-arg]
@@ -143,14 +131,11 @@ def test_przyszla_pozycja_bez_zrodla_jest_odrzucana_w_kazdym_katalogu() -> None:
     # przekształtnik: rekord literalny bez źródła
     with pytest.raises(ValueError, match="catalog.source_missing"):
         konw._apply_quality_defaults({"id": "x", "params": {"kind": "PV"}})
-    # turbina: pola proweniencji wymagane
-    pola = WindTurbineCatalogEntry.model_fields
-    assert pola["source_reference"].is_required()
-    assert pola["verification_status"].is_required()
-    dane = list_wind_turbines()[0].model_dump()
-    dane.pop("source_reference")
-    with pytest.raises(ValidationError):
-        WindTurbineCatalogEntry(**dane)
+    # turbina wiatrowa jest pozycją przekształtnika (rodzaj WIND) — te same dwa wejścia;
+    # równoległy model turbin (`wind_turbines.catalog`) skasowany kartą
+    # KATALOG-TURBINY-TOR-V112, więc trzeciego wejścia klasy już nie ma.
+    with pytest.raises(ValueError, match="catalog.source_missing"):
+        konw._apply_quality_defaults({"id": "x", "params": {"kind": "WIND"}})
 
 
 def test_dobor_szablonu_dopuszcza_wylacznie_karte_producenta() -> None:
@@ -220,12 +205,12 @@ def test_znacznik_przekroczenia_wtedy_i_tylko_wtedy_gdy_niezgodny_z_tier2(
 
 def test_pomiar_przekroczen_tier2() -> None:
     """Pomiar 2026-10-15: 50 pozycji przekracza Tier 2 (10 WN/SN + 24 SN/nN jednostek
-    istniejących + 16 polskich deklaracji); 175 jest zgodnych (174 normatywne — po rundzie 3
-    także 18 blokowych 0,48 kV — + karta Siemens GEAFOL Neo, której straty gwarantowane są
-    równe pułapowi)."""
+    istniejących + 16 polskich deklaracji); 193 są zgodne (192 normatywne — po rundzie 3
+    także 18 blokowych 0,48 kV, po karcie KATALOG-TURBINY-TOR-V112 także 18 blokowych
+    0,65 kV — + karta Siemens GEAFOL Neo, której straty gwarantowane są równe pułapowi)."""
     wszystkie = tr.get_all_transformer_types()
     niezgodne = [r["id"] for r in wszystkie if _niezgodny_z_tier2(r["params"])]
-    assert len(wszystkie) == 225
+    assert len(wszystkie) == 243
     assert len(niezgodne) == 50
 
 
@@ -464,9 +449,11 @@ def _surowe_rekordy_wszystkich_katalogow() -> list[tuple[str, dict[str, Any]]]:
 def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     """Źródło domyślne typu (`_catalog_metadata_kwargs(default_source_reference=…)`) nie
     może zastępować źródła pozycji: każdy rekord danych niesie `source_reference` jawnie
-    (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy")."""
+    (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy").
+    Pomiar 2026-10-15: 7851 = 7829 + 18 transformatorów blokowych 0,65 kV + 4 warianty
+    Vestas V112 (karta KATALOG-TURBINY-TOR-V112)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7829
+    assert len(rekordy) == 7851
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 
@@ -600,15 +587,6 @@ def test_pozycje_rundy_3_z_dokumentu_producenta(
         assert rekord_id in {t.id for t in repo.list_bess_inverter_types()}
 
 
-def test_v112_napiecie_niepotwierdzone_jest_jawne_a_liczba_bez_zmiany() -> None:
-    turbina = {t.catalog_id: t for t in list_wind_turbines()}["vestas_v112_3_45mw"]
-    assert turbina.nominal_voltage_kv == 0.69
-    assert turbina.verification_note is not None
-    assert "NIEPOTWIERDZONE" in turbina.verification_note
-    assert "750 V" in turbina.verification_note
-    assert turbina.verification_status == REFERENCYJNY
-
-
 def test_zablokowane_danymi_po_rundzie_3() -> None:
     """Pin nieobecności: magazyn Sungrow ST2752UX (karta wstępna, brak napięcia DC
     znamionowego i C-rate), transformatory > 3150 kVA."""
@@ -640,8 +618,9 @@ def test_pozycja_z_dokumentu_producenta_obecna_w_wykazie_ptpiree_jest_powiazana(
     wykaz = get_all_ptpiree_generator_certificates()
     rekordy = _rekordy_z_dokumentu_producenta()
     # Pomiar 2026-10-15: 9 kart producentów PV (SMA SC, SMA STP, Huawei) + 4 kopie kart
-    # (Fronius Symo, 3 × Tesla Megapack 2 XL).
-    assert len(rekordy) == 13
+    # (Fronius Symo, 3 × Tesla Megapack 2 XL) + 3 kopie dokumentów Vestas V112 (karta
+    # KATALOG-TURBINY-TOR-V112; żadna turbina V112 nie figuruje w wykazie PTPiREE).
+    assert len(rekordy) == 16
     for rekord in rekordy:
         params = rekord["params"]
         model = normalize_ptpiree_key(params["model"])

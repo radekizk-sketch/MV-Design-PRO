@@ -100,7 +100,7 @@
     {
       "rodzina": "transformatory",
       "etykieta_pl": "Transformatory",
-      "liczba_pozycji": 225,
+      "liczba_pozycji": 243,
       "sprawdzone_reguly": [
         "KAT-W-002",
         "KAT-W-006"
@@ -108,13 +108,13 @@
       "pokrycie": [
         {
           "kod": "KAT-W-002",
-          "policzone": 225,
+          "policzone": 243,
           "pominiete": 0,
           "powod_pominiecia": "pozycja nie niesie strat jałowych (P0) albo obciążeniowych (Pk)"
         },
         {
           "kod": "KAT-W-006",
-          "policzone": 200,
+          "policzone": 218,
           "pominiete": 25,
           "powod_pominiecia": "transformator nie niesie prądu biegu jałowego (i0 %)"
         }

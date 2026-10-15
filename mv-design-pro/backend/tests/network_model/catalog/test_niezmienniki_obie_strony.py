@@ -466,6 +466,35 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _karty_statyczne(z_wyciagiem=False),
         lambda: _karty_statyczne(z_wyciagiem=True),
     ),
+    # --- tor maszyny turbiny wiatrowej (karta KATALOG-TURBINY-TOR-V112) --------
+    "KAT-T-042": (
+        # Napięcie stojana przy falowniku PV — maszyny brak.
+        lambda: _konwerter(generator_stator_voltage_kv=0.71),
+        # Turbina z napięciem stojana RÓWNYM stronie sieci (np. 690/690 V) — legalna.
+        lambda: _konwerter(kind=ConverterKind.WIND, un_kv=0.69, generator_stator_voltage_kv=0.69),
+    ),
+    "KAT-T-043": (
+        lambda: _konwerter(kind=ConverterKind.WIND, generator_stator_frequency_max_hz=0.0),
+        # Częstotliwość stojana wyższa od sieci (V112-3.0: 145 Hz) — legalna.
+        lambda: _konwerter(kind=ConverterKind.WIND, generator_stator_frequency_max_hz=145.0),
+    ),
+    "KAT-T-044": (
+        lambda: _konwerter(
+            kind=ConverterKind.WIND,
+            generator_machine_type="SCIG",
+            converter_topology="DFIG_ROTOR_CONVERTER",
+        ),
+        # Generator klatkowy za przekształtnikiem pełnej mocy (V112-3.3 wariant 2) i sam
+        # rodzaj maszyny bez zadeklarowanej topologii — oba legalne.
+        lambda: (
+            _konwerter(
+                kind=ConverterKind.WIND,
+                generator_machine_type="SCIG",
+                converter_topology="FULL_CONVERTER",
+            ),
+            _konwerter(kind=ConverterKind.WIND, generator_machine_type="DFIG"),
+        ),
+    ),
 }
 
 

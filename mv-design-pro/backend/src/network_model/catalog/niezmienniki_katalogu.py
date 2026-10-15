@@ -698,6 +698,46 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "wiąże rekord z konkretnym wyciągiem, więc podmiana dokumentu jest wykrywalna."
         ),
     ),
+    RegulaKatalogu(
+        kod="KAT-T-042",
+        nazwa="Tor maszyny wyłącznie dla turbiny wiatrowej",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Karta KATALOG-TURBINY-TOR-V112: pola toru maszyny opisują generator za "
+            "przekształtnikiem turbiny (`ConverterType.kind == WIND`)"
+        ),
+        uzasadnienie=(
+            "Falownik PV i PCS magazynu nie mają maszyny wirującej — generator i napięcie "
+            "stojana przy takiej pozycji byłyby daną bez fizycznego odpowiednika."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-043",
+        nazwa="Wielkości toru maszyny dodatnie i skończone",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja mocy, napięcia i częstotliwości znamionowej maszyny",
+        uzasadnienie=(
+            "Moc, napięcie stojana, częstotliwość stojana i napięcie przekształtnika po "
+            "stronie maszyny równe zeru, ujemne albo nieskończone opisują maszynę, która "
+            "nie istnieje."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-044",
+        nazwa="Rodzaj maszyny zgodny z topologią przekształtnika",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Budowa turbin typu 3 i 4 wg IEC 61400-27-1 (DFIG — przekształtnik w obwodzie "
+            "wirnika; PMSG i generator klatkowy z przekształtnikiem — przekształtnik pełnej "
+            "mocy); jedna mapa `TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY`"
+        ),
+        uzasadnienie=(
+            "Generator klatkowy albo synchroniczny z magnesami trwałymi za przekształtnikiem "
+            "w obwodzie wirnika nie istnieje (nie ma uzwojenia wirnika do zasilenia), a "
+            "maszyna dwustronnie zasilana za przekształtnikiem pełnej mocy przestaje być "
+            "maszyną dwustronnie zasilaną — para sprzeczna opisuje urządzenie niemożliwe."
+        ),
+    ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa
     # -----------------------------------------------------------------------

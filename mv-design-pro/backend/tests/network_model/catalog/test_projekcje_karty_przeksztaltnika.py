@@ -29,10 +29,12 @@ from network_model.catalog.types import (
     MATERIALIZATION_CONTRACTS,
     POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
     POLA_KARTY_PROJEKCJI,
+    POLA_TORU_MASZYNY,
     BESSInverterType,
     CatalogBinding,
     PVInverterType,
     pola_karty_obecne,
+    pola_toru_maszyny_obecne,
 )
 
 PROJEKCJE: dict[str, tuple[type[Any], str]] = {
@@ -118,11 +120,17 @@ def test_materializacja_kopiuje_pola_karty_wylacznie_obecne(katalog: CatalogRepo
         ("ZRODLO_NN_BESS", "bess_inverter_types"),
     ):
         kontrakt = MATERIALIZATION_CONTRACTS[przestrzen]
-        assert set(kontrakt.pola_opcjonalne) <= set(POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE)
+        # Tor maszyny turbiny (karta KATALOG-TURBINY-TOR-V112) — wyłącznie przestrzeń
+        # CONVERTER (projekcje PV/BESS nie mają maszyny wirującej, KAT-T-042).
+        tor_maszyny = set(POLA_TORU_MASZYNY) if przestrzen == "CONVERTER" else set()
+        assert set(kontrakt.pola_opcjonalne) <= set(POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE) | (
+            tor_maszyny
+        )
+        assert tor_maszyny <= set(kontrakt.pola_opcjonalne)
         for typ_id, typ in sorted(getattr(katalog, pole_repozytorium).items()):
             wynik = materialize_catalog_binding(CatalogBinding(przestrzen, typ_id, "1"), katalog)
             assert wynik.success, (przestrzen, typ_id, wynik.error_message_pl)
-            obecne = pola_karty_obecne(typ)
+            obecne = {**pola_karty_obecne(typ), **pola_toru_maszyny_obecne(typ)}
             for nazwa in kontrakt.pola_opcjonalne:
                 # Predykat parami: klucz w migawce ⇔ wartość obecna w typie.
                 assert (nazwa in wynik.solver_fields) == (nazwa in obecne), (typ_id, nazwa)
@@ -148,6 +156,10 @@ def test_materializacja_kopiuje_pola_karty_wylacznie_obecne(katalog: CatalogRepo
         "conv-pv-nn-sma-sc4600up-0p69kv",
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
+        "vestas_v112_3_0mw_pmsg",
+        "vestas_v112_3_3mw_pmsg",
+        "vestas_v112_3_3mw_scig",
+        "vestas_v112_3_45mw",
     ]
 
 

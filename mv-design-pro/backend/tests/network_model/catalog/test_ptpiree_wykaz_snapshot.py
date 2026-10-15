@@ -504,6 +504,8 @@ def test_kazdy_rekord_katalogu_przetwornic_ma_status_ptpiree() -> None:
 #: SC 2200-10, SC 2475-10 i SC 4000/4200/4400/4600 UP dostawaly falszywy NIEPOWIAZANY.
 #: Po korekcie POWIAZANY = 11 (pomiar): 2 Huawei, 6 SMA Sunny Central, 2 SMA Sunny Tripower
 #: 3AV-40, Fronius Symo 10.0-3-M (kopia karty). Tesla Megapack w wykazie nie figuruje.
+#: Karta KATALOG-TURBINY-TOR-V112 (2026-10-15, 192 rekordy): 4 warianty Vestas V112 —
+#: turbina nie figuruje w wykazie, POWIAZANY bez zmian (pomiar).
 POMIAR_POWIAZANYCH_PO_KARCIE = 11
 
 
@@ -526,4 +528,4 @@ def test_pomiar_liczby_rekordow_powiazanych_z_wykazem() -> None:
         "conv-pv-nn-fronius-symo-10p0-3-m-0p4kv",
     }
     # Pomiar bez licznosci calego zbioru przeszedlby na pustym katalogu.
-    assert len(records) == 188
+    assert len(records) == 192

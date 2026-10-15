@@ -378,11 +378,18 @@ def test_pola_skladnikow_elementu_generatora_sa_polami_tabliczki_albo_karty() ->
         KLASA_ELEMENTU_PRZEKSZTALTNIKOWEGO,
         POLE_MODELU_DYNAMICZNEGO_ELEMENTU,
     )
-    from network_model.catalog.types import POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE
+    from network_model.catalog.types import (
+        POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
+        POLA_TORU_MASZYNY,
+    )
 
     tabliczka = {"un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "control_mode", "k_sc"}
     dozwolone = (
-        tabliczka | set(POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE) | {POLE_MODELU_DYNAMICZNEGO_ELEMENTU}
+        tabliczka
+        | set(POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE)
+        # Tor maszyny turbiny — materializowany w gałęzi FW, gdy obecny w typie.
+        | set(POLA_TORU_MASZYNY)
+        | {POLE_MODELU_DYNAMICZNEGO_ELEMENTU}
     )
     definicje = SKLADNIKI_SEKCJI[KLASA_ELEMENTU_PRZEKSZTALTNIKOWEGO]
     pola = {p for skladniki in definicje.values() for d in skladniki for p in d.pola}
