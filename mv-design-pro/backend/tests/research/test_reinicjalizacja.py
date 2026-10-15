@@ -536,3 +536,132 @@ def test_residuum_kcl_w_diagnostyce_jest_LICZONE_a_nie_przepisane_z_solvera() ->
     assert KryteriumReinicjalizacji().naruszenia(
         wynik.diagnostyka
     ), "kryterium musi odrzucić bieg, w którym niezależne KCL nie domyka się"
+
+
+# ---------------------------------------------------------------------------
+# §1 i §2 audytu niezależnego (P1-B55-01 przeglądu cienia)
+# ---------------------------------------------------------------------------
+
+
+def test_delta_y_mierzy_roznice_wobec_stanu_SPRZED_zdarzenia() -> None:
+    """ODTWORZENIE DEFEKTU: diagnostyka meldowała zero dla dowolnie dużej zmiany.
+
+    `reinicjalizuj` woła `zatwierdz_punkt_pracy(v_po)` PRZED policzeniem
+    diagnostyki, a `_napiecia_odniesienia` czytało wtedy już nadpisane
+    `_v_zatwierdzone` — czyli porównywało `v_po` z `v_po`. Im większy skok
+    napięcia, tym mocniej diagnostyka „dowodziła" ciągłości algebry.
+
+    ZMIERZONE przed naprawą (SMIB, zwarcie metaliczne na GEN): faktyczne
+    |v_po − v_przed| = 1,012071499245066, raportowane delta_y_max = 0,0,
+    per szyna (GEN 0,0), (SYS 0,0).
+
+    Wyrocznia testu jest NIEZALEŻNA od diagnostyki: różnica liczona tu, z kopii
+    napięć zrobionej przed zdarzeniem.
+    """
+    silnik, x0, _ = _silnik_i_punkt()
+    v_przed = np.asarray(silnik.rozwiaz_siec(x0)).copy()
+    silnik.zatwierdz_punkt_pracy(v_przed)
+
+    wynik = reinicjalizuj(
+        silnik, topologia_docelowa=_topologia_zwarciowa(silnik), x_przed=x0
+    )
+    oczekiwane = float(np.max(np.abs(np.asarray(wynik.v) - v_przed)))
+
+    assert oczekiwane > 0.5, "scenariusz nie wywołuje realnej zmiany — nie bada niczego"
+    assert wynik.diagnostyka.delta_y_max == pytest.approx(oczekiwane, rel=1e-12)
+    assert wynik.diagnostyka.delta_y_per_szyna is not None
+    per = dict(wynik.diagnostyka.delta_y_per_szyna)
+    assert per["GEN"] == pytest.approx(oczekiwane, rel=1e-12)
+
+
+def test_brak_punktu_odniesienia_daje_NONE_a_nie_ZERO() -> None:
+    """„Nie ma z czym porównać" musi być odróżnialne od „nic się nie zmieniło".
+
+    Zerowy wektor w tym miejscu był fałszywym dowodem ciągłości: wyglądał
+    dokładnie tak, jak udana re-inicjalizacja bez skoku napięcia.
+    """
+    # Stan różniczkowy TRZYMANY, silnik ŚWIEŻY — droga realna, nie poke w pole
+    # prywatne: `inicjalizuj` sam zatwierdza punkt pracy, więc silnik, który jej
+    # nie przeszedł, jest jedynym miejscem, gdzie odniesienia naprawdę nie ma.
+    dawca, x0, _ = _silnik_i_punkt()
+    model, _moce = smib()
+    silnik = SilnikRMS(model, integrator="rk4", krok_s=KROK_S)
+    assert silnik._v_zatwierdzone is None, (
+        "silnik przed `inicjalizuj` nie ma zatwierdzonego punktu pracy — "
+        "gdyby miał, ten test badałby co innego"
+    )
+    wynik = reinicjalizuj(
+        silnik, topologia_docelowa=_topologia_zwarciowa(dawca), x_przed=x0
+    )
+    assert wynik.diagnostyka.delta_y_max is None
+    assert wynik.diagnostyka.delta_y_per_szyna is None
+    assert wynik.diagnostyka.jako_slownik()["delta_y_per_szyna"] is None
+
+
+def test_zmiana_zbioru_szyn_tez_daje_NONE() -> None:
+    """Druga rozłączna droga do braku odniesienia — Δy nie jest różnicą wektorów."""
+    silnik, x0, _ = _silnik_i_punkt()
+    v_przed = np.asarray(silnik.rozwiaz_siec(x0)).copy()
+    silnik.zatwierdz_punkt_pracy(v_przed)
+    topo = silnik.model.topologia
+    szersza = TopologiaSieci(
+        szyny=(*topo.szyny, "NOWA"),
+        galezie=[*topo.galezie, Galaz("SYS", "NOWA", 0.02, 0.08)],
+        szyny_sztywne=dict(topo.szyny_sztywne),
+    )
+    wynik = reinicjalizuj(silnik, topologia_docelowa=szersza, x_przed=x0)
+    assert wynik.diagnostyka.delta_y_max is None
+
+
+def test_nieudana_reinicjalizacja_nie_zostawia_ZADNEGO_skutku() -> None:
+    """Pin deklaracji z `finally`: „operacja meldująca błąd nie zostawia skutku".
+
+    ODTWORZENIE DEFEKTU: wycofywana była WYŁĄCZNIE topologia. `zatwierdz_punkt_pracy`
+    leży przed końcem bloku, więc wyjątek rzucony PO nim (np. niepoliczalna
+    pochodna urządzenia w stanie po zdarzeniu) zostawiał silnik z punktem
+    startowym algebry policzonym na sieci, której NIE przyjął.
+
+    ZMIERZONE przed naprawą: topologia wycofana poprawnie, a `_v_zatwierdzone`
+    różniło się od stanu sprzed próby o 1,012071499245066.
+
+    Wyjątek jest wstrzykiwany w `norma_pochodnej` — nie po to, by udawać defekt,
+    tylko żeby dotrzeć do gałęzi `finally` PO zatwierdzeniu punktu pracy. Sama
+    niepoliczalna pochodna jest realną przyczyną tej ścieżki.
+    """
+
+    class Wybuch(RuntimeError):
+        pass
+
+    silnik, x0, _ = _silnik_i_punkt()
+    v_przed = np.asarray(silnik.rozwiaz_siec(x0)).copy()
+    silnik.zatwierdz_punkt_pracy(v_przed)
+    zatwierdzone_przed = np.asarray(silnik._v_zatwierdzone).copy()
+    topo_przed = silnik.model.topologia
+
+    def wybuchowa(_x):
+        raise Wybuch("pochodna niefinitywna po zdarzeniu")
+
+    silnik.norma_pochodnej = wybuchowa  # type: ignore[method-assign]
+
+    with pytest.raises(Wybuch):
+        reinicjalizuj(
+            silnik, topologia_docelowa=_topologia_zwarciowa(silnik), x_przed=x0
+        )
+
+    assert silnik.model.topologia is topo_przed
+    assert silnik.solver_sieci.topologia is topo_przed
+    assert np.array_equal(np.asarray(silnik._v_zatwierdzone), zatwierdzone_przed), (
+        "zatwierdzony punkt pracy TEŻ jest skutkiem — jego pozostawienie znaczy, "
+        "że silnik startuje algebrę z rozwiązania sieci, której nie przyjął"
+    )
+
+
+def test_po_UDANEJ_reinicjalizacji_punkt_pracy_JEST_zatwierdzony() -> None:
+    """Kierunek przeciwny — wycofanie nie może kasować skutku operacji UDANEJ."""
+    silnik, x0, _ = _silnik_i_punkt()
+    v_przed = np.asarray(silnik.rozwiaz_siec(x0)).copy()
+    silnik.zatwierdz_punkt_pracy(v_przed)
+    wynik = reinicjalizuj(
+        silnik, topologia_docelowa=_topologia_zwarciowa(silnik), x_przed=x0
+    )
+    assert np.allclose(np.asarray(silnik._v_zatwierdzone), np.asarray(wynik.v))

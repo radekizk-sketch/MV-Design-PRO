@@ -109,8 +109,13 @@ class DiagnostykaReinicjalizacji:
     #: Per stan, posortowane malejąco — żeby było widać, KTÓRY stan się ruszył.
     delta_x_per_stan: tuple[tuple[str, float], ...]
     #: ``max |V_po - V_przed|`` po szynach (moduł liczby zespolonej).
-    delta_y_max: float
-    delta_y_per_szyna: tuple[tuple[str, float], ...]
+    delta_y_max: float | None
+    """Największa zmiana modułu napięcia wobec punktu SPRZED zdarzenia.
+
+    ``None`` znaczy „nie ma punktu odniesienia", a NIE „nic się nie zmieniło" —
+    patrz `_napiecia_odniesienia`. Zero w tym polu jest twierdzeniem o ciągłości
+    algebry i musi być zmierzone, nie wynikać z braku danych."""
+    delta_y_per_szyna: tuple[tuple[str, float], ...] | None
     #: ``||f(x0, y0)||_inf`` — stany elektromechaniczne (zasobowe osobno, jak w silniku).
     norma_f: float
     #: ``||f_zasobowe(x0, y0)||_inf`` — dryf zapasu energii, raportowany OSOBNO.
@@ -131,7 +136,11 @@ class DiagnostykaReinicjalizacji:
             "delta_x_max": self.delta_x_max,
             "delta_x_per_stan": [list(p) for p in self.delta_x_per_stan],
             "delta_y_max": self.delta_y_max,
-            "delta_y_per_szyna": [list(p) for p in self.delta_y_per_szyna],
+            "delta_y_per_szyna": (
+                None
+                if self.delta_y_per_szyna is None
+                else [list(p) for p in self.delta_y_per_szyna]
+            ),
             "norma_f": self.norma_f,
             "norma_f_zasobowa": self.norma_f_zasobowa,
             "norma_g": self.norma_g,
@@ -279,6 +288,24 @@ def reinicjalizuj(
     etykiety = silnik._etykiety_stanow()
     poprzednia_topologia = silnik.model.topologia
 
+    # MIGAWKA PRZED JAKĄKOLWIEK MUTACJĄ — i to jest sedno, nie ostrożność.
+    # `delta_y` ma mierzyć różnicę wobec punktu SPRZED zdarzenia. Poprzednia
+    # wersja czytała `_v_zatwierdzone` DOPIERO przy liczeniu diagnostyki, czyli
+    # po `zatwierdz_punkt_pracy(v_po)` — porównywała więc v_po z v_po i meldowała
+    # zero dla dowolnie dużej zmiany. ZMIERZONE na SMIB ze zwarciem na GEN:
+    # faktyczne |v_po - v_przed| = 1.012071499245066, raportowane delta_y = 0.0
+    # (per szyna: GEN 0.0, SYS 0.0). Diagnostyka „dowodziła" ciągłości algebry
+    # tym mocniej, im większy był skok.
+    #
+    # Migawka jest też jedynym stanem, z którego da się WYCOFAĆ zatwierdzenie
+    # punktu pracy — patrz `finally` niżej.
+    v_zatwierdzone_przed = getattr(silnik, "_v_zatwierdzone", None)
+    if v_zatwierdzone_przed is not None:
+        v_zatwierdzone_przed = np.asarray(v_zatwierdzone_przed).copy()
+    v_odniesienia = _napiecia_odniesienia(
+        v_zatwierdzone_przed, poprzednia_topologia, topologia_docelowa
+    )
+
     # Krok 3 — uzgodnienie WYŁĄCZNIE wobec ograniczników zadeklarowanych przez
     # modele. Ograniczniki zbieramy na topologii docelowej, bo urządzenie może
     # deklarować granicę zależną od swojej konfiguracji; zbiór stanów i ich
@@ -324,15 +351,34 @@ def reinicjalizuj(
         if not udane:
             silnik.model.topologia = poprzednia_topologia
             silnik.solver_sieci.ustaw_topologie(poprzednia_topologia)
+            # ZATWIERDZONY PUNKT PRACY TEŻ JEST SKUTKIEM. Poprzednia wersja
+            # wycofywała wyłącznie topologię, a `zatwierdz_punkt_pracy(v_po)`
+            # leży PRZED końcem bloku — wyjątek rzucony po nim zostawiał silnik
+            # z punktem startowym algebry policzonym na sieci, której właśnie
+            # NIE przyjął. ZMIERZONE: po wyjątku `_v_zatwierdzone` różniło się
+            # od stanu sprzed próby o 1.012071499245066, przy poprawnie
+            # wycofanej topologii. Zdanie „operacja meldująca błąd nie zostawia
+            # żadnego skutku" było wtedy obietnicą, nie mechanizmem.
+            silnik._v_zatwierdzone = v_zatwierdzone_przed
 
     delta_x = np.abs(x_po - x_przed)
-    delta_v = np.abs(v_po - _napiecia_odniesienia(silnik, poprzednia_topologia, topologia_docelowa))
+    # BRAK PUNKTU ODNIESIENIA TO NIE JEST ZEROWA ZMIANA. Poprzednia wersja
+    # zwracała wektor zerowy, gdy odniesienia nie było — a wtedy „nie ma z czym
+    # porównać" i „nic się nie zmieniło" stawały się nieodróżnialne, i to
+    # akurat w tę stronę, która wygląda na dowód ciągłości.
+    if v_odniesienia is None:
+        delta_y_max: float | None = None
+        delta_y_per_szyna: tuple[tuple[str, float], ...] | None = None
+    else:
+        delta_v = np.abs(v_po - v_odniesienia)
+        delta_y_max = float(np.max(delta_v)) if delta_v.size else 0.0
+        delta_y_per_szyna = _posortowane(topologia_docelowa.szyny, delta_v)
 
     diagnostyka = DiagnostykaReinicjalizacji(
         delta_x_max=float(np.max(delta_x)) if delta_x.size else 0.0,
         delta_x_per_stan=_posortowane(etykiety, delta_x),
-        delta_y_max=float(np.max(delta_v)) if delta_v.size else 0.0,
-        delta_y_per_szyna=_posortowane(topologia_docelowa.szyny, delta_v),
+        delta_y_max=delta_y_max,
+        delta_y_per_szyna=delta_y_per_szyna,
         norma_f=norma_f,
         norma_f_zasobowa=norma_f_zasobowa,
         norma_g=float(rozwiazanie.residuum),
@@ -347,21 +393,27 @@ def reinicjalizuj(
 
 
 def _napiecia_odniesienia(
-    silnik: SilnikRMS,
+    zatwierdzone_przed: NDArray[np.complex128] | None,
     poprzednia: TopologiaSieci,
     docelowa: TopologiaSieci,
-) -> NDArray[np.complex128]:
-    """Napięcia sprzed zdarzenia do policzenia ``Δy`` — albo jawny brak.
+) -> NDArray[np.complex128] | None:
+    """Napięcia sprzed zdarzenia do policzenia ``Δy`` — albo JAWNY brak.
 
-    Gdy zbiór szyn się zmienił, ``Δy`` nie ma sensu jako różnica wektorów i
-    zwracamy wektor zerowy o rozmiarze docelowym; sama diagnostyka nadal niesie
-    residua, które od porównania z przeszłością nie zależą. Zgadywanie
-    odpowiedniości szyn byłoby wymyślaniem danych.
+    FUNKCJA CZYSTA, I TO JEST WARUNEK JEJ SENSU. Poprzednia wersja przyjmowała
+    `silnik` i sama sięgała po `_v_zatwierdzone`, więc jej wynik zależał od
+    tego, czy wołający zdążył już zatwierdzić nowy punkt pracy. Diagnostyka
+    czytająca stan zmutowany wcześniej w tej samej funkcji nie mierzy niczego —
+    tutaj migawka jest ARGUMENTEM, więc kolejność wywołań nie może jej zepsuć.
+
+    ``None`` znaczy „nie ma z czym porównać" i wraca w DWÓCH rozłącznych
+    przypadkach: nie było zatwierdzonego punktu pracy, albo zmienił się zbiór
+    szyn (wtedy ``Δy`` nie jest różnicą wektorów, a zgadywanie odpowiedniości
+    szyn byłoby wymyślaniem danych). W obu diagnostyka nadal niesie residua,
+    które od porównania z przeszłością nie zależą.
     """
-    poprzednie = getattr(silnik, "_v_zatwierdzone", None)
-    if poprzednie is None or poprzednia.szyny != docelowa.szyny:
-        return np.zeros(len(docelowa.szyny), dtype=np.complex128)
-    return np.asarray(poprzednie, dtype=np.complex128)
+    if zatwierdzone_przed is None or poprzednia.szyny != docelowa.szyny:
+        return None
+    return np.asarray(zatwierdzone_przed, dtype=np.complex128)
 
 
 def _posortowane(
