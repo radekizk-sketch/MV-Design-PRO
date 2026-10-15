@@ -23,6 +23,7 @@ from typing import Any
 
 from enm.domain_operations import append_station_on_endpoint, execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji, pola_sn_stacji, pola_stacji
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -95,11 +96,10 @@ def _build_gpz_with_endpoint() -> tuple[dict[str, Any], str]:
 def _first_gpz_line_field(snap: dict[str, Any]) -> dict[str, Any]:
     gpz = next(s for s in snap["substations"] if s.get("station_type") == "gpz")
     fallback = None
-    for spec in gpz.get("meta", {}).get("field_specs", []):
+    for spec in pola_stacji(snap, gpz["ref_id"]):
         if str(spec.get("bay_role") or "").upper() in {"OUT", "FEEDER"}:
             fallback = spec
-            meta = spec.get("meta")
-            if isinstance(meta, dict) and meta.get("terminal_bus_ref"):
+            if spec.get("terminal_bus_ref"):
                 return spec
     if fallback is not None:
         return fallback
@@ -423,25 +423,30 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
     }
     assert field_apparatus_refs
     sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja Przelotowa")
-    field_specs = sub.get("meta", {}).get("field_specs") or []
-    assert {spec["field_role"] for spec in field_specs} == {
+    # Intencja (W5-B): JEDEN rekord `bays` na pole — dawniej wpis `meta.field_specs` + rekord
+    # `bays` tego samego pola pod `bay/{seed}/…` (pole liczone dwa razy).
+    pola_sn = pola_sn_stacji(new_snap, sub["ref_id"])
+    assert "field_specs" not in sub.get("meta", {})
+    assert all(spec["ref_id"].startswith("field/") for spec in pola_sn)
+    assert not any(str(b.get("ref_id")).startswith("bay/") for b in new_snap.get("bays", []))
+    assert {spec["field_role"] for spec in pola_sn} == {
         "LINIA_IN",
         "LINIA_OUT",
         "TRANSFORMATOROWE",
     }
-    assert all(spec.get("bus_ref") == endpoint for spec in field_specs)
-    assert all(spec.get("equipment_refs") for spec in field_specs)
+    assert len(pola_sn) == 3
+    assert all(spec.get("bus_ref") == endpoint for spec in pola_sn)
+    assert all(spec.get("equipment_refs") for spec in pola_sn)
     # PS-4: append materializuje protection_codes wspólnym resolverem (parytet z insert).
-    by_role = {spec["field_role"]: spec for spec in field_specs}
+    by_role = {spec["field_role"]: spec for spec in pola_sn}
     assert by_role["LINIA_IN"].get("protection_codes") == ["51", "50", "51N"]
     assert "87T" in (by_role["TRANSFORMATOROWE"].get("protection_codes") or [])
-    station_bays = [
-        bay for bay in new_snap.get("bays", []) if bay.get("substation_ref") == sub["ref_id"]
-    ]
+    station_bays = pola_stacji(new_snap, sub["ref_id"])
     assert {bay["bay_role"] for bay in station_bays} >= {"IN", "OUT", "TR"}
     assert all(bay.get("equipment_refs") for bay in station_bays)
     out_bay = next(bay for bay in station_bays if bay["bay_role"] == "OUT")
-    assert out_bay["meta"]["sn_field_template"]["bay_template_ref"] == "tpl-line-out"
+    # Szablon pola jest polem rekordu (dawniej kopia wpisu w `meta.sn_field_template`).
+    assert out_bay["bay_template_ref"] == "tpl-line-out"
 
 
 def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() -> None:
@@ -449,8 +454,8 @@ def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() 
     snap = _empty_enm()
     snap = op(snap, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
     field = _first_gpz_line_field(snap)
-    field_ref = field["field_ref"]
-    terminal_bus_ref = field["meta"]["terminal_bus_ref"]
+    field_ref = field["ref_id"]
+    terminal_bus_ref = field["terminal_bus_ref"]
 
     response = execute_domain_operation(
         snap,
@@ -538,23 +543,24 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
     sub = next(s for s in appended["substations"] if s["name"] == "Stacja Przelotowa 2")
     out_field = next(
         spec
-        for spec in sub.get("meta", {}).get("field_specs", [])
+        for spec in pola_sn_stacji(appended, sub["ref_id"])
         if spec.get("field_role") == "LINIA_OUT"
     )
     # POLA-W-TORZE: szyna pola (`bus_ref`) to szyna główna stacji (dawny koniec ciągu), a zacisk
-    # pola (`field_terminal_bus_ref` i `terminal_bus_ref` — jedna wartość, jak we wcięciu
-    # stacji w odcinek) leży ZA aparatem pola.
+    # pola (`terminal_bus_ref` — jedyny nośnik zacisku, jak we wcięciu stacji w odcinek) leży
+    # ZA aparatem pola.
     main_bus_ref = out_field["bus_ref"]
-    field_terminal_ref = out_field["meta"]["field_terminal_bus_ref"]
+    field_terminal_ref = out_field["terminal_bus_ref"]
     assert main_bus_ref == endpoint
     assert field_terminal_ref != main_bus_ref
-    assert out_field["meta"]["terminal_bus_ref"] == field_terminal_ref
+    assert "terminal_bus_ref" not in out_field["meta"]
+    assert "field_terminal_bus_ref" not in out_field["meta"]
 
     response_continue = execute_domain_operation(
         appended,
         "continue_trunk_segment_sn",
         {
-            "field_ref": out_field["field_ref"],
+            "field_ref": out_field["ref_id"],
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 250.0,
@@ -573,7 +579,7 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
     branch = next(branch for branch in continued["branches"] if branch["ref_id"] == branch_ref)
     assert branch["from_bus_ref"] == field_terminal_ref
     assert branch["from_bus_ref"] != endpoint
-    assert branch["meta"]["origin_bay_ref"] == out_field["field_ref"]
+    assert branch["meta"]["origin_bay_ref"] == out_field["ref_id"]
 
 
 def test_endpoint_append_updates_existing_line_run_with_station() -> None:
@@ -809,10 +815,10 @@ def test_endpoint_append_pv_nn_block_materializes_source_and_nn_fields() -> None
     assert len(protections) == 1
     assert protections[0].get("meta", {}).get("protected_object_ref") == gen["ref_id"]
 
-    # (d) Wyłącznik główny nN + 2 odpływy nN (parytet z insert.nn_field_specs).
-    nn_field_specs = sub.get("meta", {}).get("nn_field_specs", [])
-    main_breakers = [f for f in nn_field_specs if "nn_main_breaker" in (f.get("tags") or [])]
-    feeders = [f for f in nn_field_specs if f.get("bay_role") == "FEEDER"]
+    # (d) Wyłącznik główny nN + 2 odpływy nN (parytet z wcięciem stacji w odcinek).
+    pola_nn = pola_nn_stacji(new_snap, sub["ref_id"])
+    main_breakers = [f for f in pola_nn if "nn_main_breaker" in (f.get("tags") or [])]
+    feeders = [f for f in pola_nn if f.get("bay_role") == "FEEDER"]
     assert len(main_breakers) == 1, "Brak wyłącznika głównego nN"
     assert len(feeders) == 2, "Zgubione odpływy nN"
 
@@ -1000,9 +1006,9 @@ def test_endpoint_append_load_nn_block_creates_fields_without_generator() -> Non
     # Brak generatora (nn_block bez konfiguracji źródłowej).
     assert not new_snap.get("generators"), "Nie wolno tworzyć generatora dla wariantu LOAD"
 
-    nn_field_specs = sub.get("meta", {}).get("nn_field_specs", [])
-    main_breakers = [f for f in nn_field_specs if "nn_main_breaker" in (f.get("tags") or [])]
-    feeders = [f for f in nn_field_specs if f.get("bay_role") == "FEEDER"]
+    pola_nn = pola_nn_stacji(new_snap, sub["ref_id"])
+    main_breakers = [f for f in pola_nn if "nn_main_breaker" in (f.get("tags") or [])]
+    feeders = [f for f in pola_nn if f.get("bay_role") == "FEEDER"]
     assert len(main_breakers) == 1
     assert len(feeders) == 3
 
