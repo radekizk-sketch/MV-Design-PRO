@@ -23,6 +23,7 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation
+from enm.kompilator_grafu import pusty_enm
 from enm.models import EnergyNetworkModel
 from enm.pola import (
     czy_pole_nn,
@@ -36,6 +37,7 @@ from enm.pola import (
     zbuduj_pole,
 )
 from enm.store import przygotuj_model_po_odczycie
+from enm.zajetosc_pol import KOD_POLE_ZAJETE
 
 from tests.enm.test_branch_point_sn import _seed_with_cable_segment
 from tests.enm.test_station_field_equipment_atomic import (
@@ -618,3 +620,69 @@ def test_wyposazenie_pola_wskazuje_rekord_pola() -> None:
     rekord = _pole_sn(snap, "LINIA_OUT")
     assert all(m["bay_ref"] == rekord["ref_id"] for m in snap["measurements"])
     assert rekord["protection_ref"] in {p["ref_id"] for p in snap["protection_assignments"]}
+
+
+# ---------------------------------------------------------------------------
+# GPZ w paśmie nN (sieć CIGRE LV 0,4 kV) × odejście magistrali × zajętość pola
+# ---------------------------------------------------------------------------
+
+
+def _gpz_04kv() -> dict[str, Any]:
+    """GPZ ekwiwalentu ręcznego 0,4 kV — tak samo jak bliźniak CIGRE LV (`kompilator_grafu`)."""
+    snap = pusty_enm(name="GPZ 0,4 kV", sn_nominal_kv=0.4)
+    return _op(
+        snap,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 0.4,
+            "manual_equivalent": {
+                "sn_voltage_kv": 0.4,
+                "sk3_mva": 5.0,
+                "rx_ratio": 0.1,
+                "skip_hv_transformer": True,
+            },
+            "line_fields_count": 2,
+            "source_name": "LV MAIN",
+        },
+    )
+
+
+def _odejscie(snap: dict[str, Any], field_ref: str, nazwa: str) -> dict[str, Any]:
+    return execute_domain_operation(
+        enm_dict=snap,
+        op_name="continue_trunk_segment_sn",
+        payload={
+            "field_ref": field_ref,
+            "segment": {
+                "rodzaj": "LINIA",
+                "dlugosc_m": 35.0,
+                "name": nazwa,
+                "catalog_ref": "bench_cigrelv_l-main-01",
+                "bus_name": nazwa,
+            },
+        },
+    )
+
+
+def test_pola_gpz_w_pasmie_nn_sa_polami_magistrali_nie_nn() -> None:
+    """Dawna kolekcja `nn_field_specs` nigdy nie zawierała pól GPZ; predykat poziomu musi
+    zachować tę równoważność także dla GPZ 0,4 kV — inaczej odejście magistrali, zajętość pól,
+    walidator i scena traktowałyby pola GPZ jako odpływy nN."""
+    snap = _gpz_04kv()
+    gpz = next(s for s in snap["substations"] if s.get("station_type") == "gpz")
+    pola_gpz = pola_stacji(snap, gpz["ref_id"])
+    assert pola_gpz, "GPZ musi mieć pola"
+    szyny_nn = {b["ref_id"] for b in snap["buses"] if 0 < float(b["voltage_kv"]) <= 1.0}
+    assert {p["bus_ref"] for p in pola_gpz} <= szyny_nn, "warunek iloczynu: szyna w paśmie nN"
+    assert not any(czy_pole_nn(snap, p) for p in pola_gpz)
+    assert pola_sn_stacji(snap, gpz["ref_id"]) == pola_gpz
+    assert pola_nn_stacji(snap, gpz["ref_id"]) == []
+
+
+def test_odejscie_z_pola_gpz_04kv_i_odmowa_drugiego_kabla_z_tego_samego_pola() -> None:
+    snap = _gpz_04kv()
+    linia = next(p for p in pola(snap) if "gpz_line_field" in (p.get("tags") or []))
+    pierwsze = _odejscie(snap, linia["ref_id"], "BUS-LV-01")
+    assert pierwsze.get("error") is None, pierwsze.get("error")
+    drugie = _odejscie(pierwsze["snapshot"], linia["ref_id"], "BUS-LV-02")
+    assert drugie.get("error_code") == KOD_POLE_ZAJETE, drugie

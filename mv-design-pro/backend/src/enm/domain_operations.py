@@ -1195,9 +1195,9 @@ def _czy_pole_liniowe_sn(enm: dict[str, Any], field_ref: str | None) -> bool:
 
 
 def _czy_pole_gpz(enm: dict[str, Any], field_ref: str | None) -> bool:
-    """Czy pole należy do stacji GPZ (identyfikator stacji `gpz/…`)."""
+    """Czy pole należy do stacji GPZ (typowane `Substation.station_type == "gpz"`)."""
     stacja = stacja_pola(enm, field_ref)
-    return isinstance(stacja, dict) and str(stacja.get("ref_id") or "").startswith("gpz/")
+    return isinstance(stacja, dict) and stacja.get("station_type") == "gpz"
 
 
 def _pole_liniowe_zajete(enm: dict[str, Any], rekord: dict[str, Any]) -> bool:
