@@ -31,6 +31,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import _nazwa_z_klasa_szyny
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 from tests.enm.test_der_sn_topology_domain_ops import _der_sn_payload, _sn_station_enm
@@ -82,12 +83,7 @@ def test_wstawienie_stacji_klasa_transformatora_i_szyny_z_napiec(
 
 
 def _nazwy_pol_strony_dolnej(migawka: dict[str, Any], szyna: str) -> list[str]:
-    return [
-        pole["name"]
-        for stacja in migawka["substations"]
-        for pole in (stacja.get("meta") or {}).get("nn_field_specs", [])
-        if pole.get("bus_ref") == szyna
-    ]
+    return [pole["name"] for pole in pola_nn(migawka) if pole.get("bus_ref") == szyna]
 
 
 def _stacja_wstawiona(napiecie_dolne: float, katalog: str) -> tuple[dict[str, Any], str, str]:

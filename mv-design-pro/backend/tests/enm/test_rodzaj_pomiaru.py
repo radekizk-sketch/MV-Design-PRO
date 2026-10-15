@@ -30,6 +30,7 @@ Walidacja normatywna 5 MW (V12K-336 pkt 2) —
 
 from __future__ import annotations
 
+from enm.pola import pola_sn_stacji
 import copy
 import json
 from typing import Any
@@ -139,8 +140,9 @@ def _stacja_z_wyboru(wynik: dict[str, Any]) -> dict[str, Any]:
     return stacja
 
 
-def _specyfikacje_pol(stacja: dict[str, Any]) -> list[dict[str, Any]]:
-    return list((stacja.get("meta") or {}).get("field_specs") or [])
+def _specyfikacje_pol(snapshot: dict[str, Any], stacja: dict[str, Any]) -> list[dict[str, Any]]:
+    """Rekordy pól SN stacji (`bays`, kolejność zapisu) — jedyny nośnik pól od W5-B."""
+    return pola_sn_stacji(snapshot, stacja["ref_id"])
 
 
 def _szyna_sn(stacja: dict[str, Any], snapshot: dict[str, Any]) -> str:
@@ -367,16 +369,18 @@ def test_wciecie_przyjmuje_pomiar_napiecia_szyn_w_stacji_przelotowej() -> None:
     )
     stacja = _stacja_z_wyboru(wynik)
     pomiar = next(
-        spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
+        spec
+        for spec in _specyfikacje_pol(wynik["snapshot"], stacja)
+        if spec.get("bay_role") == "MEASUREMENT"
     )
     assert pomiar["funkcja_pomiaru"] == "NAPIECIA_SZYN"
-    assert "rodzaj_pomiaru" not in pomiar
+    assert pomiar["rodzaj_pomiaru"] is None
     # Pola pozostałych ról NIE niosą atrybutów (addytywność — bajtowa zgodność
     # istniejących migawek bez pomiaru).
-    for spec in _specyfikacje_pol(stacja):
+    for spec in _specyfikacje_pol(wynik["snapshot"], stacja):
         if spec.get("bay_role") != "MEASUREMENT":
-            assert "funkcja_pomiaru" not in spec
-            assert "rodzaj_pomiaru" not in spec
+            assert spec["funkcja_pomiaru"] is None
+            assert spec["rodzaj_pomiaru"] is None
 
 
 @pytest.mark.parametrize("rodzaj", RODZAJE)
@@ -400,7 +404,9 @@ def test_wciecie_przyjmuje_uklad_energii_za_czysta_petla_osd(rodzaj: str) -> Non
     )
     stacja = _stacja_z_wyboru(wynik)
     pomiar = next(
-        spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
+        spec
+        for spec in _specyfikacje_pol(wynik["snapshot"], stacja)
+        if spec.get("bay_role") == "MEASUREMENT"
     )
     assert pomiar["funkcja_pomiaru"] == "UKLAD_ENERGII"
     assert pomiar["rodzaj_pomiaru"] == rodzaj
@@ -544,10 +550,10 @@ def test_add_sn_bay_przyjmuje_pomiar_napiecia_szyn_na_stacji_przelotowej() -> No
     )
     assert not wynik.get("error"), wynik.get("error")
     stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == station_ref)
-    pomiar = _specyfikacje_pol(stacja)[-1]
+    pomiar = _specyfikacje_pol(wynik["snapshot"], stacja)[-1]
     assert pomiar["bay_role"] == "MEASUREMENT"
     assert pomiar["funkcja_pomiaru"] == "NAPIECIA_SZYN"
-    assert "rodzaj_pomiaru" not in pomiar
+    assert pomiar["rodzaj_pomiaru"] is None
 
 
 def test_add_sn_bay_bez_deklaracji_jest_pomiarem_napiecia_szyn() -> None:
@@ -560,9 +566,9 @@ def test_add_sn_bay_bez_deklaracji_jest_pomiarem_napiecia_szyn() -> None:
     wynik = _dodaj_pole_pomiarowe(enm, bus_ref=szyna_sn, station_ref=station_ref)
     assert not wynik.get("error"), wynik.get("error")
     stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == station_ref)
-    spec = _specyfikacje_pol(stacja)[-1]
+    spec = _specyfikacje_pol(wynik["snapshot"], stacja)[-1]
     assert spec["funkcja_pomiaru"] == "NAPIECIA_SZYN"
-    assert "rodzaj_pomiaru" not in spec
+    assert spec["rodzaj_pomiaru"] is None
 
 
 def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
@@ -593,7 +599,7 @@ def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
     stacja = next(
         s for s in wynik["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
     )
-    assert _specyfikacje_pol(stacja)[-1]["funkcja_pomiaru"] == "NAPIECIA_SZYN"
+    assert _specyfikacje_pol(wynik["snapshot"], stacja)[-1]["funkcja_pomiaru"] == "NAPIECIA_SZYN"
     # Jawny układ energii (podstawowy) — wolny na GPZ (brak pary tranzytowej).
     wynik = _dodaj_pole_pomiarowe(
         copy.deepcopy(gpz_snapshot),
@@ -605,7 +611,7 @@ def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
     stacja = next(
         s for s in wynik["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
     )
-    spec = _specyfikacje_pol(stacja)[-1]
+    spec = _specyfikacje_pol(wynik["snapshot"], stacja)[-1]
     assert spec["funkcja_pomiaru"] == "UKLAD_ENERGII"
     assert spec["rodzaj_pomiaru"] == "PODSTAWOWY"
 
@@ -661,7 +667,7 @@ def test_add_sn_bay_przyjmuje_uklad_energii_za_czysta_petla_osd() -> None:
     )
     assert not wynik.get("error"), wynik.get("error")
     stacja_po = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == stacja["ref_id"])
-    spec = _specyfikacje_pol(stacja_po)[-1]
+    spec = _specyfikacje_pol(wynik["snapshot"], stacja_po)[-1]
     assert spec["funkcja_pomiaru"] == "UKLAD_ENERGII"
     assert spec["rodzaj_pomiaru"] == "PODSTAWOWY"
 
@@ -716,7 +722,7 @@ def test_add_sn_bay_rekonfiguracja_pola_na_uklad_energii_podlega_bramie() -> Non
         },
     )
     stacja = next(s for s in wynik_pola["snapshot"]["substations"] if s["ref_id"] == station_ref)
-    field_ref = _specyfikacje_pol(stacja)[-1]["field_ref"]
+    field_ref = _specyfikacje_pol(wynik_pola["snapshot"], stacja)[-1]["ref_id"]
     wynik = execute_domain_operation(
         enm_dict=wynik_pola["snapshot"],
         op_name="add_sn_bay",
@@ -761,14 +767,14 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_atrybuty() -> None
     stacja = next(
         s for s in wynik_pomiaru["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
     )
-    spec_pomiaru = _specyfikacje_pol(stacja)[-1]
+    spec_pomiaru = _specyfikacje_pol(wynik_pomiaru["snapshot"], stacja)[-1]
     assert spec_pomiaru["funkcja_pomiaru"] == "UKLAD_ENERGII"
     assert spec_pomiaru["rodzaj_pomiaru"] == "PODSTAWOWY"
     wynik = _wykonaj(
         wynik_pomiaru["snapshot"],
         "add_sn_bay",
         {
-            "existing_field_ref": spec_pomiaru["field_ref"],
+            "existing_field_ref": spec_pomiaru["ref_id"],
             "bus_ref": substation["bus_refs"][0],
             "station_ref": substation["ref_id"],
             "bay_role": "FEEDER",
@@ -780,12 +786,12 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_atrybuty() -> None
     )
     spec_po = next(
         spec
-        for spec in _specyfikacje_pol(stacja_po)
-        if spec.get("field_ref") == spec_pomiaru["field_ref"]
+        for spec in _specyfikacje_pol(wynik["snapshot"], stacja_po)
+        if spec.get("ref_id") == spec_pomiaru["ref_id"]
     )
     assert spec_po["bay_role"] == "FEEDER"
-    assert "funkcja_pomiaru" not in spec_po
-    assert "rodzaj_pomiaru" not in spec_po
+    assert spec_po["funkcja_pomiaru"] is None
+    assert spec_po["rodzaj_pomiaru"] is None
 
 
 def test_add_sn_bay_odmawia_bledow_deklaracji() -> None:
@@ -860,7 +866,9 @@ def test_stacja_koncowa_bez_deklaracji_utrwala_uklad_podstawowy() -> None:
     )
     stacja = _stacja_z_wyboru(wynik)
     pomiar = next(
-        spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
+        spec
+        for spec in _specyfikacje_pol(wynik["snapshot"], stacja)
+        if spec.get("bay_role") == "MEASUREMENT"
     )
     assert pomiar["funkcja_pomiaru"] == "UKLAD_ENERGII"
     assert pomiar["rodzaj_pomiaru"] == "PODSTAWOWY"
