@@ -1,0 +1,42 @@
+name: Rada ekspercka — walidacja
+
+on:
+  push:
+    branches:
+      - 'claude/rada-ekspercka-*'
+    paths:
+      - 'mv-design-pro/docs/eksperci/**'
+      - 'mv-design-pro/scripts/rada_ekspercka.py'
+      - 'mv-design-pro/scripts/test_rada_ekspercka.py'
+      - '.claude/skills/rada-ekspercka/**'
+      - '.claude/agents/recenzent-elektroenergetyczny.md'
+      - '.github/workflows/rada-ekspercka.yml'
+  pull_request:
+    paths:
+      - 'mv-design-pro/docs/eksperci/**'
+      - 'mv-design-pro/scripts/rada_ekspercka.py'
+      - 'mv-design-pro/scripts/test_rada_ekspercka.py'
+      - '.claude/skills/rada-ekspercka/**'
+      - '.claude/agents/recenzent-elektroenergetyczny.md'
+      - '.github/workflows/rada-ekspercka.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-expertise-registry:
+    name: Rejestr / dobór / regresja
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Pobierz repozytorium
+        uses: actions/checkout@v4
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Sprawdź 240 kompetencji
+        run: python mv-design-pro/scripts/rada_ekspercka.py --check
+      - name: Uruchom testy kwalifikatora
+        run: python -m unittest discover -s mv-design-pro/scripts -p 'test_rada_ekspercka.py' -v
