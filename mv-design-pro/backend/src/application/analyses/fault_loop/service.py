@@ -41,7 +41,7 @@ from typing import Any
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
-from enm.slownik_komunikatow import opis_obiektu
+from enm.slownik_komunikatow import etykieta_parametru, opis_obiektu
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
@@ -89,6 +89,10 @@ from .tt_it import DanePunktuTtIt, dane_sieci_it, dane_tt_it_dla_punktu
 #: Klucz `missing_data` przy braku układu sieci nN na transformatorze (W5-A §1 p. 2:
 #: brak = odmowa nazwana, NIGDY domyślka — skasowana domyślka ``"TN-C-S"``).
 BRAK_UKLADU_NN = "lv_earthing_system"
+
+#: Kod listy braków: grupa połączeń bez lokalnie uziemionego punktu gwiazdowego strony nN
+#: (składowa zerowa transformatora nie domyka pętli L-PE/L-PEN po stronie nN).
+KOD_BRAK_LOKALNEGO_UZIEMIENIA_NN = "transformer_zero_sequence_lv_local_ground"
 
 # Połączenia sekwencji zerowej dające LOKALNĄ drogę uziemienia po stronie nN
 # (punkt gwiazdowy uzwojenia nN jest bezpośrednio/dostępnie uziemiony) — jedyne
@@ -391,9 +395,7 @@ def _transformer_loop_impedance(
 
     zero_seq = build_transformer_zero_seq_model(trafo)
     if zero_seq.connection not in _LV_LOCAL_GROUND_CONNECTIONS or zero_seq.z0_pu is None:
-        return None, [
-            "transformer_zero_sequence_lv_local_ground",
-        ]
+        return None, [KOD_BRAK_LOKALNEGO_UZIEMIENIA_NN]
 
     z_tr = zero_sequence_transformer_loop_impedance_ohm(
         z0_pu=zero_seq.z0_pu,
@@ -405,6 +407,33 @@ def _transformer_loop_impedance(
 
 #: Kod listy braków: straty obciążeniowe P_k sprzeczne z napięciem zwarcia u_k (r > |z|).
 KOD_PK_SPRZECZNE_Z_UK = "pk_kw_sprzeczne_z_uk_percent"
+
+#: Pola modelu transformatora, których brak zgłaszają czytniki impedancji pętli
+#: (`_transformer_loop_impedance`, `impedancja_transformatora_dla_ukladu`). Nazwę dla
+#: projektanta daje słownik pól (`etykieta_parametru`) — bez drugiej kopii nazw.
+POLA_BRAKOW_TRANSFORMATORA = ("sn_mva", "uk_percent", "ulv_kv", "vector_group")
+
+#: Braki będące wynikiem predykatu (nie pustym polem modelu) → opis dla projektanta.
+OPISY_BRAKOW_PREDYKATU_PL: dict[str, str] = {
+    KOD_BRAK_LOKALNEGO_UZIEMIENIA_NN: (
+        "„Grupa połączeń” bez lokalnie uziemionego punktu gwiazdowego strony nN — pętla "
+        "L-PE/L-PEN nie ma drogi powrotnej przez transformator (np. Dyn ją daje)"
+    ),
+    KOD_PK_SPRZECZNE_Z_UK: (
+        "„Straty obciążeniowe Pk” sprzeczne z „Napięciem zwarcia uk” (Pk/Sn większe niż uk)"
+    ),
+}
+
+
+def opis_braku_transformatora(kod: str) -> str:
+    """Opis pozycji listy braków transformatora dla projektanta — nigdy klucz maszynowy.
+
+    Jedno źródło kodów: `POLA_BRAKOW_TRANSFORMATORA` (pola modelu) i
+    `OPISY_BRAKOW_PREDYKATU_PL` (predykaty). Kompletność wobec kodów emitowanych przez
+    czytniki pilnuje test iloczynu gałęzi czytnika.
+    """
+    opis = OPISY_BRAKOW_PREDYKATU_PL.get(kod)
+    return opis if opis is not None else etykieta_parametru(kod)
 
 
 def impedancja_transformatora_dla_ukladu(

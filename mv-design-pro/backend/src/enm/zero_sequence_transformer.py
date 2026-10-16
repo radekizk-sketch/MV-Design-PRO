@@ -60,6 +60,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO
 from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
@@ -71,6 +72,7 @@ from network_model.pochodne import (
 from .grupa_polaczen import parsuj_grupe_polaczen
 from .models import GroundingConfig, Transformer
 from .nazwy_elementow import nazwa_elementu
+from .slownik_komunikatow import opis_obiektu
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 
 
@@ -111,11 +113,15 @@ class TransformerZeroSeqModel:
     trace: list[dict]
 
 
+#: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
+_STRONA_PL = {"HV": "górne", "LV": "dolne"}
+
+
 def _neutral_grounded_and_zn(
     grounding: GroundingConfig | None,
     neutral_letter_present: bool,
     *,
-    trafo_ref: str,
+    opis_trafo: str,
     side: str,
 ) -> tuple[bool, complex]:
     """Zwraca (uziemiony?, Z_N [Ω]) na podstawie GroundingConfig / litery neutralnej.
@@ -140,16 +146,18 @@ def _neutral_grounded_and_zn(
         return False, 0j
     if uziemienie_grounded(grounding.type) and not neutral_letter_present:
         raise OdmowaDanychError(
-            f"Transformator {trafo_ref}: uzwojenie {side} nie ma wyprowadzonego punktu "
+            f"{opis_trafo}: uzwojenie {_STRONA_PL[side]} nie ma wyprowadzonego punktu "
             f"neutralnego (litera grupy połączeń bez {'N' if side == 'HV' else 'n'}), "
-            f"a konfiguracja deklaruje uziemienie '{grounding.type}'. Fizyka nie uziemia "
-            "uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
-            "konfigurację (E-W5-03)."
+            "a konfiguracja deklaruje punkt neutralny "
+            f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(grounding.type, 'uziemiony')}. Fizyka nie "
+            "uziemia uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
+            "konfigurację."
         )
     blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
     if blad is not None:
         raise OdmowaDanychError(
-            f"Transformator {trafo_ref}: uziemienie punktu neutralnego ({side}) — {blad}."
+            f"{opis_trafo}: uziemienie punktu neutralnego (uzwojenie {_STRONA_PL[side]}) — "
+            f"{blad}."
         )
     if grounding.type == "directly_grounded":
         return True, 0j
@@ -232,10 +240,10 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         grupa.dn_punkt_neutralny,
     )
     hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(
-        trafo.hv_neutral, hv_n_letter, trafo_ref=trafo.ref_id, side="HV"
+        trafo.hv_neutral, hv_n_letter, opis_trafo=opis_obiektu(trafo, "Transformator"), side="HV"
     )
     lv_grounded, zn_lv_ohm = _neutral_grounded_and_zn(
-        trafo.lv_neutral, lv_n_letter, trafo_ref=trafo.ref_id, side="LV"
+        trafo.lv_neutral, lv_n_letter, opis_trafo=opis_obiektu(trafo, "Transformator"), side="LV"
     )
     hv_winding = _classify_winding(hv_type, hv_grounded)
     lv_winding = _classify_winding(lv_type, lv_grounded)
