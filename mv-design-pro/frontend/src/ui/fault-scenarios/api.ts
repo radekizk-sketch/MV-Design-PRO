@@ -11,6 +11,7 @@ import type {
   ScenarioEligibilityResult,
   ScenarioSldOverlay,
 } from './types';
+import { komunikatBleduApi } from './wspolczynnikC';
 
 const BASE_URL = '/api/execution';
 
@@ -37,7 +38,7 @@ export async function createScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Błąd tworzenia scenariusza: ${res.status}`);
+    throw new Error(komunikatBleduApi(err.detail, `Błąd tworzenia scenariusza: ${res.status}`));
   }
   return res.json();
 }
@@ -53,7 +54,7 @@ export async function updateScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Błąd aktualizacji scenariusza: ${res.status}`);
+    throw new Error(komunikatBleduApi(err.detail, `Błąd aktualizacji scenariusza: ${res.status}`));
   }
   return res.json();
 }
@@ -64,7 +65,7 @@ export async function deleteScenario(scenarioId: string): Promise<void> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Błąd usuwania scenariusza: ${res.status}`);
+    throw new Error(komunikatBleduApi(err.detail, `Błąd usuwania scenariusza: ${res.status}`));
   }
 }
 
@@ -94,7 +95,7 @@ export async function createRunFromScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Błąd tworzenia przebiegu: ${res.status}`);
+    throw new Error(komunikatBleduApi(err.detail, `Błąd tworzenia przebiegu: ${res.status}`));
   }
   return res.json();
 }

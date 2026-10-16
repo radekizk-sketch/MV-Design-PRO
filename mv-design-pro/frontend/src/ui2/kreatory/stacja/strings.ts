@@ -683,6 +683,11 @@ export const STACJA_STRINGS = {
   uziemienieUkladPomoc:
     'TN-C-S to typowy układ dystrybucyjny nN. IT stosuje się tam, gdzie wymagana jest ciągłość '
     + 'zasilania przy pierwszym doziemieniu (z kontrolą stanu izolacji).',
+  uziemienieTolerancja: 'Tolerancja napięcia sieci nN',
+  uziemienieTolerancjaPomoc:
+    'Wybiera wiersz nN tabeli 1 IEC 60909-0, z którego obliczenie dobiera współczynnik '
+    + 'napięciowy c węzłów nN (scenariusz MAX i MIN). +10 % to typowa sieć 230/400 V '
+    + '(IEC 60038, PN-EN 50160); +6 % — gdy operator deklaruje węższą tolerancję.',
   uziemieniePunkt: 'Punkt neutralny transformatora (nN)',
   uziemieniePunktOpcje: [
     { id: 'directly_grounded', etykieta: 'Bezpośrednio uziemiony' },

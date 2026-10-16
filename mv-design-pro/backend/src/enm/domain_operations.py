@@ -34,6 +34,7 @@ from network_model.core.uziemienie import (
     TYPY_PUNKTU_NEUTRALNEGO,
     UZIEMIENIA_EKRANU_KABLA,
 )
+from network_model.core.voltage_factor import TOLERANCJE_NAPIECIA_NN
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
     PROWENIENCJA_WYPROWADZONE,
@@ -4697,11 +4698,28 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "sn_voltage_kv",
         "voltage_hv_kv",
         "sk3_hv_mva",
-        "c_max",
-        "c_min",
     ):
         if materialized_params.get(key) is not None:
             source_data[key] = materialized_params[key]
+
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło przyłączone WPROST do szyny nN (ekwiwalent
+    # ręczny `skip_hv_transformer` na napięciu nN — sieć nN bez transformatora w modelu) jest
+    # drugim nośnikiem tolerancji napięcia sieci nN (+6 % / +10 %, wiersz nN tabeli 1
+    # IEC 60909-0). Ten sam predykat zapisu co edycja parametrów źródła; brak = brak
+    # deklaracji (odmowa zwarcia nN z akcją naprawczą, nigdy wiersz tabeli po cichu).
+    tolerancja_zrodla = payload.get("lv_voltage_tolerance")
+    if tolerancja_zrodla is not None:
+        napiecie_szyny_zrodla = (
+            voltage_kv
+            if source_bus_ref in gpz_section_bus_refs
+            else materialized_params.get("voltage_hv_kv")
+        )
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            tolerancja_zrodla, napiecie_szyny_zrodla, element_pl="źródło"
+        )
+        if powod_tolerancji is not None:
+            return _error_response(powod_tolerancji, "source.invalid_lv_voltage_tolerance")
+        source_data["lv_voltage_tolerance"] = tolerancja_zrodla
 
     result = create_device(new_enm, source_data)
     if not result.success:
@@ -5452,6 +5470,39 @@ def _build_neutral_grounding(
     return config, None
 
 
+def _powod_odmowy_tolerancji_nn(
+    tolerancja: Any, napiecie_kv: Any, *, element_pl: str
+) -> str | None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN przy ZAPISIE — jeden
+    predykat dla każdego nośnika (transformator: strona dolna, źródło: szyna przyłączenia).
+
+    Wartość spoza słownika tabeli 1 IEC 60909-0 albo deklaracja na elemencie, który nie
+    zasila sieci nN (napięcie strony/szyny spoza pasma nN — ``enm.tolerancja_nn`` takiej
+    deklaracji nie czyta), to odmowa nazwana: kontrolka, którą obliczenie zignorowałoby,
+    nie może zapisać danej. ``None`` zdejmuje deklarację. Zwraca zdanie powodu odmowy albo
+    ``None``; kod błędu podaje wołający LITERAŁEM w ``_error_response`` (kody kanału błędu
+    operacji są wyprowadzane skanem AST z wywołań ``_error_response``).
+    """
+    if tolerancja is None:
+        return None
+    if tolerancja not in TOLERANCJE_NAPIECIA_NN:
+        return (
+            f"Tolerancja napięcia sieci nN '{tolerancja}' spoza słownika tabeli 1 IEC 60909-0 "
+            "(+6 % albo +10 %)."
+        )
+    if napiecie_kv is not None and (
+        isinstance(napiecie_kv, bool)
+        or not isinstance(napiecie_kv, int | float)
+        or not w_pasmie_nn(float(napiecie_kv))
+    ):
+        return (
+            f"Tolerancję napięcia sieci nN deklaruje {element_pl} zasilający sieć nN "
+            f"({OPIS_PASMA_NN}) — napięcie {napiecie_kv!r} kV nie leży w paśmie nN, więc "
+            "deklaracja nie wybierałaby żadnego wiersza tabeli 1 IEC 60909-0."
+        )
+    return None
+
+
 def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any] | None:
     """W5-A: pola słownikowe transformatora sprawdzane PRZY ZAPISIE — ten sam predykat,
     który czyta walidator (E-W5-02 grupa połączeń IEC 60076-1, E063 układ nN, spójność
@@ -5470,6 +5521,11 @@ def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any]
             f"Układ sieci nN '{uklad}' spoza słownika ({', '.join(UKLADY_SIECI_NN)}).",
             "transformer.invalid_lv_earthing_system",
         )
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        parameters.get("lv_voltage_tolerance"), None, element_pl="transformator"
+    )
+    if powod_tolerancji is not None:
+        return _error_response(powod_tolerancji, "transformer.invalid_lv_voltage_tolerance")
     for klucz, strona in (("hv_neutral", "górnej"), ("lv_neutral", "dolnej")):
         config = parameters.get(klucz)
         if config is None:
@@ -5529,6 +5585,16 @@ def _apply_station_neutral_grounding(
                 "station.invalid_nn_earthing_system",
             )
         tr_data["lv_earthing_system"] = system
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN stacji (+6 % / +10 %,
+    # wiersz nN tabeli 1 IEC 60909-0) — ten sam blok i ten sam nośnik co układ sieci nN.
+    tolerancja = earthing.get("lv_voltage_tolerance")
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        tolerancja, tr_data.get("ulv_kv"), element_pl="transformator stacji"
+    )
+    if powod_tolerancji is not None:
+        return _error_response(powod_tolerancji, "station.invalid_lv_voltage_tolerance")
+    if tolerancja is not None:
+        tr_data["lv_voltage_tolerance"] = tolerancja
     return None
 
 
@@ -9695,6 +9761,22 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         if blad_grupy is not None:
             return blad_grupy
         tr_data["vector_group"] = str(grupa_payload).strip()
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN zasilanej z tego
+    # transformatora (+6 % / +10 %, wiersz nN tabeli 1 IEC 60909-0) — ten sam słownik co
+    # `_blad_slownikow_transformatora` (aktualizacja parametrów) i ten sam warunek pasma strony
+    # dolnej co zapis stanu końcowego; brak klucza = brak deklaracji (odmowa zwarcia nN
+    # z akcją naprawczą, nigdy wiersz tabeli po cichu).
+    tolerancja_payload = payload.get("lv_voltage_tolerance")
+    if tolerancja_payload is not None:
+        blad_slownika = _blad_slownikow_transformatora({"lv_voltage_tolerance": tolerancja_payload})
+        if blad_slownika is not None:
+            return blad_slownika
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            tolerancja_payload, tr_data.get("ulv_kv"), element_pl="transformator"
+        )
+        if powod_tolerancji is not None:
+            return _error_response(powod_tolerancji, "transformer.invalid_lv_voltage_tolerance")
+        tr_data["lv_voltage_tolerance"] = tolerancja_payload
 
     # OLTC/DETC (V12K-048, G-TRF): materializuj kanoniczny TapChanger, gdy operator
     # zażądał regulacji. Reużycie proven helpera GPZ — każde pole mapuje na realne
@@ -10176,6 +10258,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "hv_neutral",
                 "lv_neutral",
                 "lv_earthing_system",
+                "lv_voltage_tolerance",
                 "n_parallel",
                 "tap_position",
                 "tap_min",
@@ -10331,6 +10414,35 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_slownika = _blad_slownikow_transformatora(parameters)
         if blad_slownika is not None:
             return blad_slownika
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN na STANIE KOŃCOWYM nośnika —
+    # strona dolna transformatora albo szyna przyłączenia źródła sieciowego w paśmie nN.
+    if coll in ("transformers", "sources") and "lv_voltage_tolerance" in parameters:
+        if coll == "transformers":
+            napiecie_nosnika = parameters.get("ulv_kv", current_element.get("ulv_kv"))
+        else:
+            szyna_ref = parameters.get("bus_ref", current_element.get("bus_ref"))
+            napiecie_nosnika = next(
+                (
+                    bus.get("voltage_kv")
+                    for bus in enm.get("buses", [])
+                    if isinstance(bus, dict) and bus.get("ref_id") == szyna_ref
+                ),
+                None,
+            )
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            parameters["lv_voltage_tolerance"],
+            napiecie_nosnika,
+            element_pl="transformator" if coll == "transformers" else "źródło",
+        )
+        if powod_tolerancji is not None:
+            return _error_response(
+                powod_tolerancji,
+                (
+                    "transformer.invalid_lv_voltage_tolerance"
+                    if coll == "transformers"
+                    else "source.invalid_lv_voltage_tolerance"
+                ),
+            )
     if coll == "branches" and "screen_bonding" in parameters:
         proba = {"type": current_element.get("type")}
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})

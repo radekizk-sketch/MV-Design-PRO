@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
@@ -53,6 +54,13 @@ class FaultLoopComputeRequest(BaseModel):
     upstream_impedance: FaultLoopComponentModel | None = None
     network_type: str = Field("TN-S", description="TN-S | TN-C-S | TN-C | TT | IT")
     protection_arrangement: str = Field("PE", description="PE | PEN | NONE")
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja napięcia sieci nN punktu
+    # zwarcia — wiersz nN tabeli 1 IEC 60909-0 (PLUS_6: c 1,05/0,95; PLUS_10: c 1,10/0,90).
+    # Żądanie bez modelu nie ma skąd jej wziąć, więc niesie ją wołający; brak = odmowa 400
+    # z kodem `fault.c_tolerancja_nn_brak`, nigdy wiersz domyślny.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = Field(
+        None, description="Tolerancja napięcia sieci nN: PLUS_6 | PLUS_10"
+    )
 
 
 class FaultLoopComputeResponse(BaseModel):
@@ -66,6 +74,11 @@ class FaultLoopComputeResponse(BaseModel):
     z_loop_ohm: dict[str, float]
     ik_min_a: float
     ik_max_a: float
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): c użyte w I_k,min/I_k,max i ich podstawa.
+    c_min: float
+    c_max: float
+    c_zrodlo_min: str
+    c_zrodlo_max: str
     white_box_trace: list[dict[str, Any]]
 
 
@@ -85,9 +98,11 @@ def compute_fault_loop_endpoint(
         Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream opcjonalne)
         I_k = c * U_n / |Z_loop|
 
-    gdzie c = 0.95 (min) / 1.05 (max) per IEC 60909-0 § 5.3.2.
+    gdzie c_min/c_max z tabeli 1 IEC 60909-0 dla sieci nN o tolerancji z żądania
+    (``lv_voltage_tolerance``; jedyne źródło wartości: ``network_model.core.voltage_factor``).
 
-    MVP scope: TN-S, TN-C-S, TN-C. TT/IT rzucają NotImplementedError.
+    Zakres końcówki: TN-S, TN-C-S, TN-C. Układ TT/IT wymaga danych pętli doziemnej (R_A, R_B,
+    I_Δn; pojemności doziemne), których żądanie nie niesie — odmowa nazwana solvera (400).
     """
     try:
         # Mapuj string enums na typy domenowe
@@ -132,6 +147,7 @@ def compute_fault_loop_endpoint(
                 if request.upstream_impedance
                 else FaultLoopBuildRequest.upstream_label
             ),
+            tolerancja_nn=request.lv_voltage_tolerance,
         )
         fault_loop_input = build_fault_loop_input(build_req)
         result = compute_fault_loop(fault_loop_input)

@@ -444,6 +444,31 @@
     },
     {
       "area": "ANALYSIS",
+      "code": "fault.c_nadpisanie_bez_uzasadnienia",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.c_nadpisanie_wartosc_niepoprawna",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "fault.c_tolerancja_nn_brak",
+      "fix_navigation": {
+        "focus": "lv_voltage_tolerance",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "ANALYSIS",
       "code": "fault.location_on_branch_requires_assembler",
       "fix_navigation": {
         "panel": "analizy",
@@ -1304,7 +1329,7 @@
       }
     }
   ],
-  "count": 153,
+  "count": 156,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

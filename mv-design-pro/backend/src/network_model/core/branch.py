@@ -26,17 +26,18 @@ from network_model.catalog import (
     resolve_transformer_params,
 )
 from network_model.catalog.types import TransformerType
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import (
+    OdmowaToleranciiNnError,
+    TolerancjaNapieciaNn,
+    c_for_node,
+)
 from network_model.ir_fields import wymagany_float
-from network_model.nazwy import jest_nazwa
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
-    a_na_ka,
     impedancja_z_napiecia_i_mocy_ohm,
-    kv_na_v,
     kw_na_mw,
     mikrosimens_na_simens_ybus,
-    napiecie_fazowe_v,
 )
 
 
@@ -774,6 +775,12 @@ class TransformerBranch(Branch):
     # V12K-045: canonical tap-changer state (single source of truth). None keeps
     # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
     tap_changer: TapChanger | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN po stronie dolnej
+    # ("PLUS_6"/"PLUS_10") — kopia `enm.Transformer.lv_voltage_tolerance` (jedyny nośnik).
+    # c_max strony dolnej we wzorze K_T (IEC 60909-0 eq. 12a) czyta ją przez `c_for_node`;
+    # None przy stronie dolnej nN = odmowa nazwana (nigdy wiersz +6 % po cichu). Nie
+    # serializowane — ścieżka kanoniczna odbudowuje graf z ENM.
+    tolerancja_nn_dolna: TolerancjaNapieciaNn | None = None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
@@ -965,72 +972,27 @@ class TransformerBranch(Branch):
 
     def get_voltage_factor_c_max(self) -> float:
         """
-        Get IEC 60909 maximum voltage factor c for LV side.
+        Get IEC 60909 maximum voltage factor c for LV side (K_T, eq. 12a).
 
         Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
         source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
+        ``network_model.core.voltage_factor.c_for_node``) with the declared tolerance
+        of the nN system on the LV side (``tolerancja_nn_dolna``; karta
+        WSPOLCZYNNIK-C-JEDEN-NOSNIK — an nN LV side without it is refused).
 
         Returns:
             Maximum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MAX")
-
-    def get_voltage_factor_c_min(self) -> float:
-        """
-        Get IEC 60909 minimum voltage factor c for LV side.
-
-        Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
-        source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
-
-        Returns:
-            Minimum voltage factor c.
-        """
-        self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MIN")
-
-    def get_ikss_lv_ka(self, c: float) -> float:
-        """
-        Calculate IEC 60909 initial symmetrical short-circuit current on LV side.
-
-        Args:
-            c: Voltage factor.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-
-        Raises:
-            ValueError: If c <= 0.
-            ZeroDivisionError: If short-circuit impedance is zero.
-        """
-        if c <= 0:
-            raise ValueError("c must be > 0")
-        z_th_lv = self.get_short_circuit_impedance_ohm_lv()
-        if z_th_lv == 0 or abs(z_th_lv) == 0:
-            raise ZeroDivisionError("Short-circuit impedance is zero")
-        u_th = napiecie_fazowe_v(c * kv_na_v(self.voltage_lv_kv))
-        ikss = u_th / abs(z_th_lv)
-        return a_na_ka(ikss)
-
-    def get_ikss_lv_cmax_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using maximum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_max())
-
-    def get_ikss_lv_cmin_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using minimum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
+        try:
+            return c_for_node(
+                self.voltage_lv_kv,
+                "MAX",
+                tolerancja_nn=self.tolerancja_nn_dolna,
+            )
+        except OdmowaToleranciiNnError as odmowa:
+            # Partia integracji 11: odmowa K_T nazywa transformator (nazwa z mapowania ENM).
+            raise odmowa.dotyczy(nazwa_nadana(self.name) or "Transformator bez nazwy") from odmowa
 
     def get_relative_reactance_xt(self) -> float:
         """

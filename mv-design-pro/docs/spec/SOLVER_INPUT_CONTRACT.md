@@ -145,8 +145,10 @@ ShortCircuitPayload:
   transformers: list[TransformerPayload]
   inverter_sources: list[InverterSourcePayload]
   switches: list[SwitchPayload]
-  c_factor: float               # Default: 1.10 (IEC 60909 MV max)
-  thermal_time_seconds: float   # Default: 1.0
+  # v2.0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): płaskie `c_factor` i
+  # `thermal_time_seconds` usunięte — c jest per szyna (BusPayload.c_factor_iec60909,
+  # tabela 1 IEC 60909-0 z backend/src/network_model/core/voltage_factor.py),
+  # t_k niesie scenariusz zwarciowy.
   include_inverter_contribution: bool  # Default: true
 ```
 
@@ -235,7 +237,8 @@ the ENM supports it. In v1.0, each element is a single entry.)
 
 ## 10. Versioning
 
-- Contract version is `SOLVER_INPUT_CONTRACT_VERSION = "1.0"`
+- Contract version is `SOLVER_INPUT_CONTRACT_VERSION = "2.0"` (1.1: karta FAB-D2;
+  2.0: karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — usunięcie płaskich `c_factor`/`thermal_time_seconds`)
 - Schema changes require an explicit version bump
 - Schema lock tests (`test_solver_input_schema_lock.py`) enforce stability
 - Breaking changes create a new major version (2.0)

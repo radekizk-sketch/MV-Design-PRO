@@ -451,7 +451,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             # musi deklarować układ sieci nN. TN-C-S — dominujący układ dla stacji
             # SN/nN w Polsce (patrz komentarz `_LV_LOCAL_GROUND_CONNECTIONS` w
             # `application/analyses/fault_loop/service.py`).
-            "nn_earthing": {"lv_system": "TN-C-S"},
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
         },
     )
 

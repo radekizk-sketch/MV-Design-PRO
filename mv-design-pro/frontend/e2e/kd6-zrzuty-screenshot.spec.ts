@@ -141,6 +141,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   // Stacja z aparatem pola z katalogu APARAT_SN ORAZ z wyposażeniem pola
   // (CT + przekaźnik z NASTAWAMI) — czas wyłączenia ma się wziąć z nastaw.
   op = await domainOp(request, studyCase.id, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: APARAT_POLA_ID,
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',

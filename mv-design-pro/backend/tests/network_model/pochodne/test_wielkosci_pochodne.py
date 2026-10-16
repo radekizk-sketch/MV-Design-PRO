@@ -114,7 +114,8 @@ def test_napiecie_fazowe_v_ze_skalowaniem_kv_do_v_tozsamosc(u_ll_kv: float) -> N
 @pytest.mark.parametrize("c", [0.95, 1.0, 1.05, 1.1])
 @pytest.mark.parametrize("u_lv_kv", NAPIECIA_BRZEGOWE_KV)
 def test_napiecie_fazowe_v_z_c_factor_tozsamosc(u_lv_kv: float, c: float) -> None:
-    """network_model/core/branch.py::get_ikss_lv_ka — ``c*(voltage_lv_kv*1e3)/sqrt(3)``."""
+    """Napięcie źródła zastępczego ``c·U_n/√3`` (dawne ``branch.py::get_ikss_lv_ka``, skasowane
+    kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK jako tor bez konsumenta) — tożsamość algebry pochodnej."""
     oczekiwane = c * (u_lv_kv * 1e3) / math.sqrt(3)
     assert wp.napiecie_fazowe_v(c * (u_lv_kv * 1e3)) == oczekiwane
 

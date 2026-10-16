@@ -243,13 +243,17 @@ def _bieg_pf(enm: EnergyNetworkModel, *, siec: str) -> CanonicalRun:
     )
 
 
-def _kotwica_3f_cmax(enm: EnergyNetworkModel, *, siec: str, c_factor: float = 1.10) -> CanonicalRun:
+def _kotwica_3f_cmax(enm: EnergyNetworkModel, *, siec: str) -> CanonicalRun:
     """Kotwica D6: zwarcie trójfazowe (gałąź MAKSYMALNA) FINISHED, solver WYKONANY.
 
     W przeciwieństwie do ``_bieg_pf`` powyżej, D6 (``zbuduj_wejscie_nastaw``)
     CZYTA ``kotwica.raw_result`` wprost (prądy c_max) — solver musi więc być
     już wykonany na TEJ instancji, dokładnie jak wzorzec ``_kotwica`` w
     ``test_protection_settings_batch_run.py``.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c gałęzi maksymalnej wynika ze scenariusza ``max``
+    (tabela 1 IEC 60909-0 per węzeł; sieci D6 są czysto SN, więc c_max = 1,10 — ta sama
+    liczba, którą harness podawał wcześniej płaską opcją ``c_factor``, dziś odmową).
     """
     run = CanonicalRun(
         id=_ID_BIEGU,
@@ -263,7 +267,7 @@ def _kotwica_3f_cmax(enm: EnergyNetworkModel, *, siec: str, c_factor: float = 1.
         snapshot=enm.model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": "3F", "c_factor": c_factor, "thermal_time_seconds": 1.0},
+        options={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0},
     )
     run.finished_at = run.created_at
     _execute_short_circuit(run)
@@ -737,16 +741,21 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
     # Decyzja O-51 (wariant (b)): sieci harnessu nie przypinają zabezpieczeń do wyłączników
     # (model milczy), więc zacisk zabezpieczenia jest JAWNYM wskazaniem — `od`, czyli
     # orientacja, którą pakiet przyjmował przed decyzją (prądy wyniku bez zmian).
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: argument `c_min` wejścia nastaw usunięto — c gałęzi
+    # minimalnej daje scenariusz MIN per węzeł (tabela 1 IEC 60909-0; sieci D6 są SN, więc
+    # 1,00). Trzy dawne klucze `…_cmin1_0` mają po zmianie nazwy ten sam hash widoku bit w bit
+    # (sprawdzone zrzutem widoków sprzed karty, 860b45f2^, z c_min=1,0); przypadek
+    # niestandardowy (dawniej c_min=0,9 — wartość spoza tabeli 1 dla SN) ćwiczy dalej
+    # niestandardowe Δt/k_b/k_bth, z c_min z tabeli, stąd jedyny nowy hash.
     kotwica_promieniowa = _kotwica_3f_cmax(_siec_promieniowa(), siec="promieniowa")
     kotwica_rozgalezienie = _kotwica_3f_cmax(_siec_rozgalezienie(), siec="rozgalezienie")
 
     _zapisz(
-        "nastawy/promieniowa/ln1_bb_cmin1_0",
+        "nastawy/promieniowa/ln1_bb",
         zbuduj_wejscie_nastaw(
             kotwica_promieniowa,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         ),
         siec="promieniowa",
@@ -754,17 +763,15 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
         kwargs={
             "line_id": "ln1",
             "next_bus_id": "b_b",
-            "c_min": 1.0,
             "zacisk_zabezpieczenia": "od",
         },
     )
     _zapisz(
-        "nastawy/promieniowa/ln1_bb_cmin0_9_niestandardowe",
+        "nastawy/promieniowa/ln1_bb_niestandardowe",
         zbuduj_wejscie_nastaw(
             kotwica_promieniowa,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=0.9,
             zacisk_zabezpieczenia="od",
             delta_t_s=0.45,
             k_b=1.35,
@@ -775,7 +782,6 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
         kwargs={
             "line_id": "ln1",
             "next_bus_id": "b_b",
-            "c_min": 0.9,
             "zacisk_zabezpieczenia": "od",
             "delta_t_s": 0.45,
             "k_b": 1.35,
@@ -783,12 +789,11 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
         },
     )
     _zapisz(
-        "nastawy/rozgalezienie/ln1_bb_cmin1_0",
+        "nastawy/rozgalezienie/ln1_bb",
         zbuduj_wejscie_nastaw(
             kotwica_rozgalezienie,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         ),
         siec="rozgalezienie",
@@ -796,17 +801,15 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
         kwargs={
             "line_id": "ln1",
             "next_bus_id": "b_b",
-            "c_min": 1.0,
             "zacisk_zabezpieczenia": "od",
         },
     )
     _zapisz(
-        "nastawy/rozgalezienie/ln1_bc_cmin1_0",
+        "nastawy/rozgalezienie/ln1_bc",
         zbuduj_wejscie_nastaw(
             kotwica_rozgalezienie,
             line_id="ln1",
             next_bus_id="b_c",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         ),
         siec="rozgalezienie",
@@ -814,7 +817,6 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
         kwargs={
             "line_id": "ln1",
             "next_bus_id": "b_c",
-            "c_min": 1.0,
             "zacisk_zabezpieczenia": "od",
         },
     )

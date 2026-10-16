@@ -158,6 +158,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.4},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-1"},
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
@@ -185,6 +187,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-2"},
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
             # Transformator 2,5 MVA: stacja #2 przyjmuje turbinę wiatrową nN
             # (najmniejsza pozycja katalogowa to 2 MW / 2,2 MVA). Wcześniej test

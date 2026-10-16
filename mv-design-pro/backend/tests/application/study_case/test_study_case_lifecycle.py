@@ -83,8 +83,9 @@ class TestStudyCaseModel:
             name="Test Case",
         )
         config = case.config
-        assert config.c_factor_max == 1.10
-        assert config.c_factor_min == 0.95
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: przypadek NIE niesie c ani t_k (nośnik:
+        # scenariusz zwarciowy) — pola skasowane, nie ukryte.
+        assert not hasattr(config, "c_factor_max") and not hasattr(config, "thermal_time_seconds")
         assert config.base_mva == 100.0
         assert config.include_motor_contribution is True
         assert config.include_inverter_contribution is True
@@ -92,8 +93,8 @@ class TestStudyCaseModel:
     def test_study_case_custom_config(self):
         """Can create case with custom configuration."""
         custom_config = StudyCaseConfig(
-            c_factor_max=1.05,
-            c_factor_min=1.00,
+            max_iterations=30,
+            tolerance=1e-8,
             base_mva=50.0,
         )
         case = new_study_case(
@@ -101,8 +102,8 @@ class TestStudyCaseModel:
             name="Custom Case",
             config=custom_config,
         )
-        assert case.config.c_factor_max == 1.05
-        assert case.config.c_factor_min == 1.00
+        assert case.config.max_iterations == 30
+        assert case.config.tolerance == 1e-8
         assert case.config.base_mva == 50.0
 
 
@@ -116,14 +117,14 @@ class TestStudyCaseEdycja:
         zrodlo prawdy o swiezosci obok rewizji modelu i odcisku katalogu.
         """
         case = new_study_case(uuid4(), "Test")
-        updated = case.with_updated_config(StudyCaseConfig(c_factor_max=1.05))
+        updated = case.with_updated_config(StudyCaseConfig(base_mva=50.0))
 
-        assert updated.config.c_factor_max == 1.05
+        assert updated.config.base_mva == 50.0
         assert updated.revision == case.revision + 1
         assert not hasattr(updated, "result_status")
 
     def test_zmiana_nazwy_zachowuje_konfiguracje(self):
-        case = new_study_case(uuid4(), "Test", config=StudyCaseConfig(c_factor_max=1.05))
+        case = new_study_case(uuid4(), "Test", config=StudyCaseConfig(base_mva=50.0))
         renamed = case.with_name("New Name")
 
         assert renamed.name == "New Name"
@@ -139,11 +140,11 @@ class TestStudyCaseClone:
         original = new_study_case(
             uuid4(),
             "Original",
-            config=StudyCaseConfig(c_factor_max=1.05),
+            config=StudyCaseConfig(base_mva=50.0),
         )
         cloned = original.clone()
 
-        assert cloned.config.c_factor_max == original.config.c_factor_max
+        assert cloned.config.base_mva == original.config.base_mva
 
     def test_clone_nie_dziedziczy_wynikow(self):
         """Klon nie przejmuje zadnych wynikow.
@@ -270,25 +271,25 @@ class TestStudyCaseCompare:
 
         assert len(comparison.config_differences) == 0
 
-    def test_compare_different_c_factor(self):
-        """Comparing different c_factor shows difference."""
+    def test_compare_different_base_mva(self):
+        """Comparing different base_mva shows difference."""
         project_id = uuid4()
         case_a = new_study_case(
             project_id,
             "Case A",
-            config=StudyCaseConfig(c_factor_max=1.10),
+            config=StudyCaseConfig(base_mva=100.0),
         )
         case_b = new_study_case(
             project_id,
             "Case B",
-            config=StudyCaseConfig(c_factor_max=1.05),
+            config=StudyCaseConfig(base_mva=50.0),
         )
 
         comparison = compare_study_cases(case_a, case_b)
 
-        # Should have one difference: c_factor_max
+        # Should have one difference: base_mva
         diff_fields = [d[0] for d in comparison.config_differences]
-        assert "c_factor_max" in diff_fields
+        assert "base_mva" in diff_fields
 
     def test_compare_nie_orzeka_o_statusie_wynikow(self):
         """Porownanie domenowe nie niesie statusow — dokleja je warstwa API z
@@ -349,33 +350,30 @@ class TestStudyCaseConfig:
         config = StudyCaseConfig()
         data = config.to_dict()
 
-        assert "c_factor_max" in data
-        assert "c_factor_min" in data
         assert "base_mva" in data
-        assert data["c_factor_max"] == 1.10
+        assert data["base_mva"] == 100.0
+        for skasowane in ("c_factor_max", "c_factor_min", "thermal_time_seconds"):
+            assert skasowane not in data
 
     def test_config_from_dict(self):
         """Config can be deserialized from dict."""
         data = {
-            "c_factor_max": 1.05,
-            "c_factor_min": 0.90,
+            "max_iterations": 30,
             "base_mva": 50.0,
         }
         config = StudyCaseConfig.from_dict(data)
 
-        assert config.c_factor_max == 1.05
-        assert config.c_factor_min == 0.90
+        assert config.max_iterations == 30
         assert config.base_mva == 50.0
 
     def test_config_from_dict_with_defaults(self):
         """Missing fields in dict get default values."""
-        data = {"c_factor_max": 1.05}
+        data = {"base_mva": 50.0}
         config = StudyCaseConfig.from_dict(data)
 
-        assert config.c_factor_max == 1.05
+        assert config.base_mva == 50.0
         # Defaults for missing fields
-        assert config.c_factor_min == 0.95
-        assert config.base_mva == 100.0
+        assert config.max_iterations == 50
 
 
 class TestStudyCaseSerialization:

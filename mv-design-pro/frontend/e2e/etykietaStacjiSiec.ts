@@ -108,6 +108,8 @@ export async function zbudujSiecEtykietyStacji(
   expect(odcinki).toHaveLength(3);
   const wstaw = async (odcinek: string, nazwa: string, pola: readonly string[]): Promise<OdpowiedzOperacji> =>
     operacja(request, caseId, 'insert_station_on_segment_sn', {
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+      nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
       field_apparatus_catalog_ref: FIELD_APPARATUS_ID,
       segment_id: odcinek,
       station_type: 'B',

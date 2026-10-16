@@ -33,6 +33,7 @@ export const SKLADOWE_STRINGS = {
   zalMetoda: 'Metoda obliczeń',
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
+  zalWspolczynnikCPerWezel: 'różny dla węzłów — zob. kolumny „c" i „Podstawa c" w tabeli punktów',
   zalCzasTrwania: 'Czas trwania zwarcia tk',
   zalLiczbaPunktow: 'Liczba punktów zwarcia',
 
@@ -48,6 +49,8 @@ export const SKLADOWE_STRINGS = {
   kolXR: 'X/R',
   kolKappa: 'Współczynnik udaru κ',
   kolIkss: 'Prąd zwarciowy początkowy Ik"',
+  kolC: 'c',
+  kolCZrodlo: 'Podstawa c',
   kolWerdykt: 'Werdykt raportowalności',
   kolIdentyfikator: 'Identyfikator punktu',
 

@@ -175,6 +175,8 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',

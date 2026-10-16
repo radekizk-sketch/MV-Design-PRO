@@ -1252,7 +1252,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "ee49c6145085b37a7c3b9d7cbd7fafff75c18f089d5adea267776a9056230306",
+      "hash_sha256": "df9aa57a1019d5b84db121d7d626d69b9cc4be620783055e3c4685c15e9c2d57",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1390,14 +1390,13 @@
     "sources": [
       {
         "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
         "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "2024.1",
@@ -1782,6 +1781,7 @@
         "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -1834,6 +1834,7 @@
         "lv_bus_ref": "nn/ede84bb5afa01939ee184e2bda9cfe6d/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -1879,6 +1880,7 @@
         "lv_bus_ref": "nn/958202df0f5c8812937a16d055416169/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",

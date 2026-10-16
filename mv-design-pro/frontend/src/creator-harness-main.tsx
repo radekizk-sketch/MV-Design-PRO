@@ -54,6 +54,10 @@ import { KreatorPomiaru } from './ui2/kreatory/pomiar';
 import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
 import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
 import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
+import './ui2/spaces/obliczenia/przypadki.css';
+import { KartaPrzypadku } from './ui2/spaces/obliczenia/KartaPrzypadku';
+import { PanelScenariuszy } from './ui2/spaces/obliczenia/scenariusze/PanelScenariuszy';
+import type { StudyCase } from './ui/study-cases/types';
 import {
   SekcjaArcFlash,
   SekcjaMigotania,
@@ -78,6 +82,7 @@ import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_pr
 // wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
 // identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
 // miejsce z atrapą testów jednostkowych.
+import przypadekScenaKarta from './harness-fixtures/generated/przypadek_scena_karta.json';
 import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
 import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
 import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
@@ -577,6 +582,76 @@ function odpowiedzDokumentuSceny(
   });
 }
 
+
+/** Scenariusze zwarciowe sceny „panel-scenariuszy": MAX, MIN i nadpisanie c z uzasadnieniem. */
+const SCENARIUSZE_ZWARCIOWE_SCENY = (() => {
+  const baza = {
+    study_case_id: 'case-demo',
+    analysis_type: 'SHORT_CIRCUIT',
+    fault_type: 'SC_3F',
+    location: { element_ref: 'Szyna SN stacji', location_type: 'BUS', position: null },
+    fault_impedance_type: 'METALLIC',
+    fault_mode: 'METALLIC',
+    fault_impedance: null,
+    arc_params: null,
+    z0_bus_data: null,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+  const scenariusze = [
+    {
+      ...baza,
+      scenario_id: 'scen-max',
+      name: 'Zwarcie 3F — dobór aparatury',
+      config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-max',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-min',
+      name: 'Zwarcie 3F — czułość zabezpieczeń',
+      config: { scenariusz: 'MIN', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-min',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-nadpisanie',
+      name: 'Zwarcie 3F — uzgodnienie z operatorem',
+      config: {
+        scenariusz: 'MAX',
+        nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'uzgodnienie z operatorem sieci' },
+        thermal_time_seconds: 1,
+        include_branch_contributions: true,
+      },
+      content_hash: 'h-nadpisanie',
+    },
+  ];
+  return { scenarios: scenariusze, count: scenariusze.length };
+})();
+
+/** Przypadek sceny „karta-przypadku" — `StudyCase.to_dict()` z fabryki domeny backendu
+ * (fixtura `przypadek_scena_karta`, `eksport_fixtur_harnessu.py`); harness dokleja tylko
+ * status wyników, jak warstwa API (`api/study_cases.py`, przypadek bez biegów → NONE). */
+const PRZYPADEK_KARTY_SCENY: StudyCase = {
+  ...(przypadekScenaKarta as Omit<
+    StudyCase,
+    | 'result_status'
+    | 'results_valid'
+    | 'result_status_reason'
+    | 'result_status_reason_pl'
+    | 'rewizja_biegu'
+    | 'rewizja_biezaca'
+    | 'zmiany_od_biegu'
+  >),
+  result_status: 'NONE',
+  results_valid: false,
+  result_status_reason: 'brak_wyniku',
+  result_status_reason_pl: 'Brak wyniku — przypadek nie był jeszcze obliczany.',
+  rewizja_biegu: null,
+  rewizja_biezaca: przypadekScenaKarta.revision,
+  zmiany_od_biegu: [],
+};
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -592,6 +667,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // nie recznie wpisane liczby — parytet pilnuje tests/ci/test_fixtury_harnessu.py.
   if (creator === 'przeglad-wiarygodnosci' && url.includes('/api/catalog/przeglad-wiarygodnosci')) {
     return jsonOK(przegladWiarygodnosciKatalogu);
+  }
+
+  // Scena „panel-scenariuszy" (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): lista scenariuszy
+  // zwarciowych przypadku w kształcie 1:1 z `FaultScenarioListResponse` backendu
+  // (`config` = `ShortCircuitConfigRequest`: scenariusz MAX/MIN + opcjonalne nadpisanie c
+  // z uzasadnieniem; liczby c harness nie wymyśla — to zapis wejścia inżyniera).
+  if (
+    creator === 'panel-scenariuszy' &&
+    url.endsWith('/api/execution/study-cases/case-demo/fault-scenarios')
+  ) {
+    return jsonOK(SCENARIUSZE_ZWARCIOWE_SCENY);
   }
 
   if (creator === 'wyniki-skladowe') {
@@ -652,7 +738,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
-    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // scenariusz MAX, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
     // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
     // kandydata.
     if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
@@ -1785,7 +1871,7 @@ if (creator === 'arcflash') {
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna (koordynacja
+        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
         // odmawia bez biegu minimalnego).
         id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',
@@ -1914,6 +2000,14 @@ if (creator === 'arcflash') {
     parameter_source: 'KATALOG',
     field: 'r_pct',
     value: '0.55',
+  });
+} else if (creator === 'edycja-tolerancja-nn') {
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: formularz edycji parametrów otwarty z AKCJI
+  // NAPRAWCZEJ bramki ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING — kontekst niesie wyłącznie
+  // element i `required` z `payload_hint` (klucz parametru wybiera formularz sam).
+  useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
+    element_ref: 'TR-1',
+    required: 'lv_voltage_tolerance',
   });
 } else if (creator === 'cieplna') {
   // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
@@ -2157,6 +2251,9 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'edycja-tolerancja-nn') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'panel-scenariuszy') node = <PanelScenariuszy />;
+  else if (creator === 'karta-przypadku') node = <KartaPrzypadku przypadek={PRZYPADEK_KARTY_SCENY} ladowanie={false} blad={null} />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else if (creator === 'szablony')
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka

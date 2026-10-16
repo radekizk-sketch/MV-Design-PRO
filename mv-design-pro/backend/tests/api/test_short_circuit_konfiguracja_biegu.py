@@ -8,8 +8,8 @@ przypadek może się zmienić po zapisaniu biegu). Odpowiedź dostaje addytywnie
 `konfiguracja_biegu` z ZAPISANYCH opcji TEGO biegu (`run.options` —
 `enm/assembler.zloz_wejscie_zwarcia`), nie z aktywnego przypadku.
 
-ILOCZYN CECH (KLASA, NIE INSTANCJA §2): {c_factor jawny w opcjach biegu /
-c_factor nieobecny -> auto-per-węzeł} × {thermal_time_seconds jawny /
+ILOCZYN CECH (KLASA, NIE INSTANCJA §2): {nadpisanie_c z uzasadnieniem w opcjach
+biegu / brak nadpisania -> auto-per-węzeł} × {thermal_time_seconds jawny /
 nieobecny -> wartość domyślna assemblera 1.0 s, OZNACZONA jako domyślna, nie
 ukryta}. Router realny (`TestClient`) — ten sam wzorzec fixture co
 `test_short_circuit_band.py` (`_zapisz_bieg`/`_siec`/`client`).
@@ -102,19 +102,23 @@ def _wynik(client: TestClient, run_id: UUID) -> dict:
     return response.json()
 
 
-def test_c_factor_jawny_w_opcjach_biegu_zwracany_wprost(client: TestClient) -> None:
+def test_nadpisanie_c_w_opcjach_biegu_zwracane_z_uzasadnieniem(client: TestClient) -> None:
     run_id = uuid4()
     _zapisz_bieg(
         run_id,
         opcje={
             "fault_type": "3F",
             "scenario": "max",
-            "c_factor": 1.05,
+            "nadpisanie_c": {"wartosc": 1.05, "uzasadnienie": "Uzgodnienie z OSD"},
             "thermal_time_seconds": 1.0,
         },
     )
     konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
-    assert konfiguracja["c_factor"] == {"tryb": "jawny", "wartosc": 1.05}
+    assert konfiguracja["c_factor"] == {
+        "tryb": "nadpisanie",
+        "wartosc": 1.05,
+        "uzasadnienie": "Uzgodnienie z OSD",
+    }
 
 
 def test_c_factor_nieobecny_w_opcjach_biegu_auto_per_wezel(client: TestClient) -> None:
@@ -125,14 +129,18 @@ def test_c_factor_nieobecny_w_opcjach_biegu_auto_per_wezel(client: TestClient) -
     run_id = uuid4()
     _zapisz_bieg(run_id, opcje={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0})
     konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
-    assert konfiguracja["c_factor"] == {"tryb": "auto_per_wezel", "wartosc": None}
+    assert konfiguracja["c_factor"] == {
+        "tryb": "auto_per_wezel",
+        "wartosc": None,
+        "uzasadnienie": None,
+    }
 
 
 def test_thermal_time_seconds_jawny_w_opcjach_biegu(client: TestClient) -> None:
     run_id = uuid4()
     _zapisz_bieg(
         run_id,
-        opcje={"fault_type": "3F", "scenario": "max", "c_factor": 1.1, "thermal_time_seconds": 3.0},
+        opcje={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 3.0},
     )
     konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
     assert konfiguracja["thermal_time_seconds"] == {"wartosc": 3.0, "pochodzenie": "opcje_biegu"}
@@ -143,7 +151,7 @@ def test_thermal_time_seconds_nieobecny_domyslna_assemblera_nazwana(client: Test
     assembler FAKTYCZNIE zastosował (1.0 s — `zloz_wejscie_zwarcia`), ale
     NAZWANA jako domyślna assemblera, nie ukryta jako gdyby pochodziła z opcji."""
     run_id = uuid4()
-    _zapisz_bieg(run_id, opcje={"fault_type": "3F", "scenario": "max", "c_factor": 1.1})
+    _zapisz_bieg(run_id, opcje={"fault_type": "3F", "scenario": "max"})
     konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
     assert konfiguracja["thermal_time_seconds"] == {
         "wartosc": 1.0,

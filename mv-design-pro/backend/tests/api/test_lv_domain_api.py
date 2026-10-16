@@ -93,6 +93,7 @@ def _seed_enm(client, case_id: str) -> None:
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         ],
         substations=[

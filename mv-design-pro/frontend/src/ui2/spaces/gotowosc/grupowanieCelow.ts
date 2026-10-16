@@ -366,6 +366,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (+6 %/+10 %)
+  // deklarowana na transformatorze stacji — wzorzec `lv_earthing_system` (obszar STATIONS).
+  'fault.c_tolerancja_nn_brak': 'stacje',
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',
@@ -396,6 +399,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.secondary_circuit_missing': 'zabezpieczenia',
   // ANALYSIS (wspolne)
   'fault.location_on_branch_requires_assembler': 'wspolne',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: odmowy nadpisania c scenariusza (obszar ANALYSIS).
+  'fault.c_nadpisanie_bez_uzasadnienia': 'wspolne',
+  'fault.c_nadpisanie_wartosc_niepoprawna': 'wspolne',
   'oltc.deadband_missing': 'wspolne',
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',

@@ -93,7 +93,7 @@ from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
 )
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
-from network_model.solvers.fault_loop_iec60364 import C_MIN_LV, FaultLoopResult
+from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
 
 # =============================================================================
@@ -470,12 +470,12 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
             title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
             equation=eq9,
             input_values=(
-                _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                _pv("c_{min}", fl.c_min, "—", "c_min"),
                 _pv("U_0", fl.u_nom_v, "V", "u0_v"),
                 _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
             ),
             substitution_latex=(
-                f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+                f"$$I_{{k1,min}} = \\frac{{{fl.c_min:g} \\cdot {fl.u_nom_v:.2f}}}"
                 f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
             ),
             result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
@@ -483,6 +483,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
             source_keys={
                 "trasa": ";".join(c.label for c in fl.components),
                 "network_type": fl.network_type.value,
+                "c_zrodlo_min": fl.c_zrodlo_min,
             },
         )
     )
@@ -584,14 +585,14 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                 title_pl="Prąd zwarcia doziemnego z pętli TT (scenariusz MIN)",
                 equation=eq9,
                 input_values=(
-                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                    _pv("c_{min}", fl.c_min, "—", "c_min"),
                     _pv("U_0", fl.u_nom_v, "V", "u0_v"),
                     _pv("R_A", _wartosc_lub_brak(tt.r_a_ohm), "Ω", "r_a_ohm"),
                     _pv("R_B", _wartosc_lub_brak(tt.r_b_ohm), "Ω", "r_b_ohm"),
                     _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
                 substitution_latex=(
-                    f"$$I_d = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+                    f"$$I_d = \\frac{{{fl.c_min:g} \\cdot {fl.u_nom_v:.2f}}}"
                     f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_d", fl.ik_min_a, "A", "ik1_min_a"),
@@ -600,6 +601,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     "trasa": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
                     "rodzaj_pradu": tt.rodzaj_pradu_pl,
+                    "c_zrodlo_min": fl.c_zrodlo_min,
                 },
             )
         )
@@ -642,7 +644,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     _pv("C_e", c_e, "F", "c_e_f"),
                     _pv("f", f_hz, "Hz", "czestotliwosc_hz"),
                     _pv("U_0", fl.u_nom_v, "V", "u0_v"),
-                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                    _pv("c_{min}", fl.c_min, "—", "c_min"),
                     _pv("U_{LL}", u_ll_v, "V", "u_ll_v"),
                     _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
@@ -650,7 +652,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     f"$$I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
                     f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}}$$"
                     "$$I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
-                    f"\\frac{{{C_MIN_LV:g} \\cdot {u_ll_v:.2f}}}"
+                    f"\\frac{{{fl.c_min:g} \\cdot {u_ll_v:.2f}}}"
                     f"{{2 \\cdot {fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}"
                     "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})$$"
                 ),
@@ -660,6 +662,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     "trasa_drugiego_zwarcia": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
                     "rownanie_drugiego_zwarcia": "EQ_LVCV_011",
+                    "c_zrodlo_min": fl.c_zrodlo_min,
                     "i_d2_min_a": f"{fl.ik_min_a:.4f}",
                     "odcinki_pojemnosci": ";".join(
                         str(o.get("branch_ref", "")) for o in tt.pojemnosci

@@ -306,7 +306,7 @@ def _add_trunk_station(
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM, "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
@@ -559,7 +559,10 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                         "sn_voltage_kv": 15.0,
                         "nn_voltage_kv": 0.4,
                     },
-                    "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+                    "nn_earthing": {
+                        "lv_system": _NN_EARTHING_SYSTEM,
+                        "lv_voltage_tolerance": "PLUS_6",
+                    },
                     "sn_fields": [
                         {"field_role": "LINIA_IN"},
                         {"field_role": "LINIA_OUT"},

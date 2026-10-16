@@ -82,6 +82,7 @@ class TestFaultLoopGN04Scenarios:
         """compute_fault_loop runs on representative GN04 stacja bez błędu."""
         c = _make_typical_400kva_components()
         request = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_nN_gn04",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,
@@ -105,6 +106,7 @@ class TestFaultLoopGN04Scenarios:
         """Ik dla typowej stacji 400 kVA powinno być w zakresie 1-10 kA."""
         c = _make_typical_400kva_components()
         request = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_nN_gn04",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,
@@ -127,6 +129,7 @@ class TestFaultLoopGN04Scenarios:
         """Dodanie Z upstream SN (250 MVA sk3 per GN04 source) zmniejsza Ik."""
         c = _make_typical_400kva_components()
         base_kwargs = {
+            "tolerancja_nn": "PLUS_6",
             "fault_node_id": "bus_nN_gn04",
             "u_nom_v": 230.0,
             "network_type": NetworkType.TN_S,
@@ -170,6 +173,7 @@ class TestFaultLoopGN05Scenarios:
         """TN-C-S (PEN łączony do split) — wciąż obsługiwane przez MVP solver."""
         c = _make_typical_400kva_components()
         request = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_nN_gn05",
             u_nom_v=230.0,
             network_type=NetworkType.TN_C_S,
@@ -192,6 +196,7 @@ class TestFaultLoopGN05Scenarios:
 
         def make_request(node_id: str, c: dict[str, float]) -> FaultLoopBuildRequest:
             return FaultLoopBuildRequest(
+                tolerancja_nn="PLUS_6",
                 fault_node_id=node_id,
                 u_nom_v=230.0,
                 network_type=NetworkType.TN_S,
@@ -220,6 +225,7 @@ class TestSolverInvariantsAcrossNetworks:
         """Same kontekst → identyczny result (per CLAUDE.md §7 Determinism)."""
         c = _make_typical_400kva_components()
         request = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_nN_gn04",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,
@@ -244,6 +250,7 @@ class TestSolverInvariantsAcrossNetworks:
             (NetworkType.TN_C, ProtectionArrangement.PEN),
         ]:
             request = FaultLoopBuildRequest(
+                tolerancja_nn="PLUS_6",
                 fault_node_id="bus_nN_test",
                 u_nom_v=230.0,
                 network_type=network_type,

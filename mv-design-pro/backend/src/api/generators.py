@@ -47,6 +47,7 @@ from enm.store import set_enm as _set_enm
 from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
@@ -96,6 +97,11 @@ class DerGeneratorCreateRequest(BaseModel):
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
     block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja napięcia sieci nN strony
+    # wtórnej NOWEGO transformatora dedykowanego (wiersz nN tabeli 1 IEC 60909-0: PLUS_6 →
+    # c 1,05/0,95; PLUS_10 → c 1,10/0,90) → `Transformer.lv_voltage_tolerance`. Brak = brak
+    # deklaracji (zwarcia odmawiają `fault.c_tolerancja_nn_brak`), nigdy domyślka.
+    block_transformer_lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu (szyna SN stacji,
     # BranchPointSN.bus_ref, albo szyna Junction/T-node), wymagana gdy `block_transformer`
     # materializuje NOWY transformator dedykowany z `block_transformer_catalog_ref`
@@ -391,6 +397,19 @@ def _ensure_catalog_block_transformer(
             },
         )
 
+    tolerancja_nn = req.block_transformer_lv_voltage_tolerance
+    if tolerancja_nn is not None and not w_pasmie_nn(float(block_transformer.lv_kv)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.invalid_lv_voltage_tolerance",
+                "message_pl": (
+                    "Tolerancję napięcia sieci nN deklaruje transformator zasilający sieć nN — "
+                    f"strona wtórna {float(block_transformer.lv_kv):g} kV nie leży w paśmie nN."
+                ),
+            },
+        )
+
     hv_bus_ref = _resolve_sn_connection_bus(enm, req, float(block_transformer.hv_kv))
 
     station_ref = str(station.get("ref_id") or station.get("id") or req.station_ref)
@@ -445,6 +464,7 @@ def _ensure_catalog_block_transformer(
                     "catalog_item_version": block_transformer.catalog_version,
                     "station_ref": station_ref,
                 },
+                **({"lv_voltage_tolerance": tolerancja_nn} if tolerancja_nn is not None else {}),
             }
         )
 

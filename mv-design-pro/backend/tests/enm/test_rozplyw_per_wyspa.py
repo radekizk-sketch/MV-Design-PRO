@@ -359,5 +359,6 @@ _KLUCZE_WYKONAWCY = frozenset(
         "z0_source",
         "scenario",
         "c_factor_override",
+        "c_zrodlo",
     }
 )

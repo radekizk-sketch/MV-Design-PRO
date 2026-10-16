@@ -12,13 +12,14 @@ import networkx as nx
 from network_model.odmowa_danych import OdmowaDanychError
 
 from .branch import Branch
-from .grid_source import GridShortCircuitSource
+from .grid_source import GridShortCircuitSource, OdmowaImpedancjiZrodla
 from .inverter import InverterSource
 from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
 from .station import Station
 from .switch import Switch
 from .topologia import skladowe_spojne
+from .voltage_factor import OdmowaToleranciiNnError
 
 
 class NetworkGraph:
@@ -64,6 +65,9 @@ class NetworkGraph:
         # Y-bus jako bocznik Y_Q = 1/Z_Q (jak maszyny wirujące i jak stamp
         # źródła w sieci składowej zerowej).
         self.grid_sc_sources: dict[str, GridShortCircuitSource] = {}
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródła sieciowe bez Z_Q (c węzła nN bez tolerancji
+        # sieci nN) — odmowa odroczona do konsumenta impedancji (`get_grid_sc_sources`).
+        self.odmowy_impedancji_zrodel: dict[str, OdmowaImpedancjiZrodla] = {}
         self.switches: dict[str, Switch] = {}
         self.stations: dict[str, Station] = {}
         # Karta FAB-H: ślad WHITE BOX zarejestrowanych założeń k_sc (udziału
@@ -323,11 +327,37 @@ class NetworkGraph:
             raise OdmowaDanychError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.grid_sc_sources[source.id] = source
 
+    def add_odmowa_impedancji_zrodla(self, odmowa: OdmowaImpedancjiZrodla) -> None:
+        """Rejestruje źródło sieciowe bez Z_Q (odmowa odroczona do konsumenta impedancji)."""
+        if odmowa.id in self.grid_sc_sources or odmowa.id in self.odmowy_impedancji_zrodel:
+            raise OdmowaDanychError(f"Źródło sieciowe o ID '{odmowa.id}' już istnieje w grafie.")
+        if odmowa.node_id not in self.nodes:
+            raise OdmowaDanychError(f"Węzeł '{odmowa.node_id}' nie istnieje w grafie.")
+        self.odmowy_impedancji_zrodel[odmowa.id] = odmowa
+
     def get_grid_sc_sources(self) -> list[GridShortCircuitSource]:
-        """Czynne źródła sieciowe, deterministycznie posortowane po id."""
+        """Czynne źródła sieciowe (z Z_Q), deterministycznie posortowane po id.
+
+        Konsument impedancji Z_Q. Graf ze źródłem bez Z_Q (``odmowy_impedancji_zrodel``) to
+        odmowa ``fault.c_tolerancja_nn_brak`` — pominięcie źródła oddałoby szynę bez
+        zasilania albo szynę nieskończoną, czyli liczbę zależną od braku danej.
+        """
+        if self.odmowy_impedancji_zrodel:
+            odmowa = self.odmowy_impedancji_zrodel[min(self.odmowy_impedancji_zrodel)]
+            raise OdmowaToleranciiNnError(odmowa.komunikat_pl)
         sources = [s for s in self.grid_sc_sources.values() if s.in_service]
         sources.sort(key=lambda s: s.id)
         return sources
+
+    def wezly_zrodel_sieciowych(self) -> list[str]:
+        """Węzły przyłączenia czynnych źródeł sieciowych (także tych bez Z_Q) — topologia.
+
+        Dla odczytów, które pytają WYŁĄCZNIE, gdzie sieć zasilająca wchodzi do grafu (wyspy z
+        odniesieniem, kierunek zasilania), nie o jej impedancję; posortowane, bez powtórzeń.
+        """
+        wezly = {s.node_id for s in self.grid_sc_sources.values() if s.in_service}
+        wezly.update(o.node_id for o in self.odmowy_impedancji_zrodel.values())
+        return sorted(wezly)
 
     def remove_node(self, node_id: str) -> None:
         """
@@ -688,6 +718,9 @@ class NetworkGraph:
         for grid_source in self.grid_sc_sources.values():
             if grid_source.node_id in zbior:
                 podgraf.add_grid_sc_source(grid_source)
+        for odmowa in self.odmowy_impedancji_zrodel.values():
+            if odmowa.node_id in zbior:
+                podgraf.add_odmowa_impedancji_zrodla(odmowa)
         podgraf.k_sc_assumptions_trace = list(self.k_sc_assumptions_trace)
         return podgraf
 

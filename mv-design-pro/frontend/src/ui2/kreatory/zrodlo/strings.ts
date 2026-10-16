@@ -80,8 +80,12 @@ export const ZRODLO_STRINGS = {
   normyTytul: 'Parametry normowe',
   norma: 'Norma obliczeniowa',
   czestotliwosc: 'Częstotliwość',
-  cMax: 'Współczynnik napięcia c (maks.)',
-  cMin: 'Współczynnik napięcia c (min.)',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c nie jest parametrem źródła — jedynym nośnikiem jest
+  // tabela 1 IEC 60909-0 per węzeł (pasmo napięcia, tolerancja nN) i scenariusz MAX/MIN
+  // przypadku obliczeniowego. Dawna stała „1,10 / 1,00" była fałszywa dla sieci nN.
+  wspolczynnikC: 'Współczynnik napięcia c',
+  wspolczynnikCPodstawa:
+    'IEC 60909-0 tab. 1 per węzeł — wg pasma napięcia i scenariusza MAX/MIN przypadku obliczeniowego',
 
   // Sekcje (advanced).
   sekcjeTytul: 'Sekcje szyn GPZ',

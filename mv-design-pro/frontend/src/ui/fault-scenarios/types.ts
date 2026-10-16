@@ -55,8 +55,32 @@ export interface FaultLocation {
   position: number | null;
 }
 
+/**
+ * Scenariusz współczynnika napięciowego c (IEC 60909-0 tab. 1): MAX → kolumna c_max,
+ * MIN → kolumna c_min. Wartość c dobiera backend PER WĘZEŁ z pasma jego napięcia
+ * (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59) — UI nie zna liczby c.
+ */
+export type ScenariuszC = 'MAX' | 'MIN';
+
+export const SCENARIUSZ_C_LABELS: Readonly<Record<ScenariuszC, string>> = {
+  MAX: 'MAX — największe prądy zwarciowe (dobór aparatury, wytrzymałość)',
+  MIN: 'MIN — najmniejsze prądy zwarciowe (czułość zabezpieczeń)',
+} as const;
+
+/** Ręczne nadpisanie c — wartość RAZEM z uzasadnieniem inżyniera (bez niego backend odmawia). */
+export interface NadpisanieC {
+  wartosc: number;
+  uzasadnienie: string;
+}
+
+/**
+ * Konfiguracja obliczeń zwarciowych scenariusza — 1:1 z backendowym
+ * `ShortCircuitConfigRequest` (extra=forbid; klucz `c_factor` = odmowa 422).
+ * Scenariusz zwarciowy jest JEDYNYM nośnikiem c i t_k.
+ */
 export interface ShortCircuitConfig {
-  c_factor: number;
+  scenariusz: ScenariuszC;
+  nadpisanie_c: NadpisanieC | null;
   thermal_time_seconds: number;
   include_branch_contributions: boolean;
 }
@@ -91,7 +115,8 @@ export interface CreateFaultScenarioRequest {
   name: string;
   fault_type: FaultTypeValue;
   location: FaultLocation;
-  config?: ShortCircuitConfig;
+  /** Wymagana przez backend — bez scenariusza MAX/MIN scenariusz nie powstaje. */
+  config: ShortCircuitConfig;
   /** v2 (PR-25) */
   fault_mode?: FaultModeValue;
   /** v2 (PR-25) */

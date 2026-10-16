@@ -1837,7 +1837,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7e9683019866c44a5dbe9203bcb6139d6fa08c0484df7762943bcfa056689bfe",
+    "hash_sha256": "6e54fd68add5fc99a21df15006ce367f7a7259cb2916eb13c45947575a9198b7",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -2379,14 +2379,13 @@
   "sources": [
     {
       "bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001",
       "id": "1fca1e09-2220-5a0d-af60-9d6f7e2cf7cf",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -3037,6 +3036,7 @@
       "lv_bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -3089,6 +3089,7 @@
       "lv_bus_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
         "catalog_item_version": "legacy",
@@ -3134,6 +3135,7 @@
       "lv_bus_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
         "catalog_item_version": "legacy",
@@ -3179,6 +3181,7 @@
       "lv_bus_ref": "nn/232b582a211a5daffb4f3ca60a1db8cc/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
         "catalog_item_version": "legacy",
@@ -3224,6 +3227,7 @@
       "lv_bus_ref": "nn/25d675e08ebfb33a65af9eefae15af31/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
         "catalog_item_version": "legacy",

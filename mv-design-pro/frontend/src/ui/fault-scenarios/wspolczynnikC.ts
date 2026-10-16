@@ -1,0 +1,150 @@
+/**
+ * Współczynnik napięciowy c scenariusza zwarciowego — model formularza (bez fizyki).
+ *
+ * Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (decyzja O-59): scenariusz zwarciowy jest JEDYNYM
+ * nośnikiem c. Inżynier wybiera scenariusz MAX albo MIN (kolumna tabeli 1 IEC 60909-0);
+ * liczbę c dobiera backend PER WĘZEŁ z pasma napięcia węzła. Ręczne nadpisanie jest
+ * dopuszczalne wyłącznie z uzasadnieniem — tę samą odmowę podnosi backend
+ * (`fault.c_nadpisanie_bez_uzasadnienia`), formularz blokuje ją wcześniej, żeby
+ * inżynier nie dostał 422 za brak tekstu.
+ *
+ * Ten moduł NICZEGO nie liczy: składa pola formularza w kontrakt
+ * `ShortCircuitConfig` i tłumaczy kody odmów backendu na zdanie po polsku.
+ */
+
+import type { NadpisanieC, ScenariuszC, ShortCircuitConfig } from './types';
+
+/** Pola formularza sekcji „Współczynnik napięciowy c" (wartości tekstowe z kontrolek). */
+export interface PolaWspolczynnikaC {
+  scenariusz: ScenariuszC;
+  nadpisz: boolean;
+  wartoscC: string;
+  uzasadnienie: string;
+}
+
+export const DOMYSLNE_POLA_C: PolaWspolczynnikaC = {
+  scenariusz: 'MAX',
+  nadpisz: false,
+  wartoscC: '',
+  uzasadnienie: '',
+};
+
+/** Kody odmów backendu (`network_model/core/voltage_factor.py`, rejestr gotowości). */
+export const KOD_NADPISANIE_BEZ_UZASADNIENIA = 'fault.c_nadpisanie_bez_uzasadnienia';
+export const KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA = 'fault.c_nadpisanie_wartosc_niepoprawna';
+export const KOD_TOLERANCJA_NN_BRAK = 'fault.c_tolerancja_nn_brak';
+
+/** Zdanie PL dla kodu odmowy — to samo brzmienie, które formularz pokazuje przed wysłaniem. */
+export const KOMUNIKAT_KODU_C: Readonly<Record<string, string>> = {
+  [KOD_NADPISANIE_BEZ_UZASADNIENIA]:
+    'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia — IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu (np. uzgodnienie z operatorem, ograniczenie c·Un ≤ Um).',
+  [KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA]:
+    'Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią.',
+  [KOD_TOLERANCJA_NN_BRAK]:
+    'Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — współczynnika c dla węzłów nN nie da się dobrać. Uzupełnij „Tolerancja napięcia sieci nN" w parametrach transformatora zasilającego.',
+};
+
+export type WynikNadpisaniaC =
+  | { ok: true; nadpisanie_c: NadpisanieC | null }
+  | { ok: false; kod: string; blad: string };
+
+/**
+ * Nadpisanie c z pól formularza. Brak zaznaczenia = `null` (c z tabeli 1 per węzeł).
+ * Zaznaczone nadpisanie bez uzasadnienia albo z wartością niebędącą dodatnią liczbą
+ * skończoną = odmowa z tym samym kodem, którym odmówiłby backend.
+ */
+export function nadpisanieCZPol(pola: PolaWspolczynnikaC): WynikNadpisaniaC {
+  if (!pola.nadpisz) return { ok: true, nadpisanie_c: null };
+  const tekst = pola.wartoscC.trim().replace(',', '.');
+  const wartosc = tekst === '' ? Number.NaN : Number(tekst);
+  if (!Number.isFinite(wartosc) || wartosc <= 0) {
+    return {
+      ok: false,
+      kod: KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA,
+      blad: KOMUNIKAT_KODU_C[KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA],
+    };
+  }
+  const uzasadnienie = pola.uzasadnienie.trim();
+  if (!uzasadnienie) {
+    return {
+      ok: false,
+      kod: KOD_NADPISANIE_BEZ_UZASADNIENIA,
+      blad: KOMUNIKAT_KODU_C[KOD_NADPISANIE_BEZ_UZASADNIENIA],
+    };
+  }
+  return { ok: true, nadpisanie_c: { wartosc, uzasadnienie } };
+}
+
+export type WynikKonfiguracjiZwarcia =
+  | { ok: true; config: ShortCircuitConfig }
+  | { ok: false; kod: string; blad: string };
+
+/** Pełna konfiguracja scenariusza (kontrakt `ShortCircuitConfigRequest`, extra=forbid). */
+export function konfiguracjaZwarciaZPol(
+  pola: PolaWspolczynnikaC,
+  thermalTimeSeconds: number,
+  includeBranchContributions: boolean,
+): WynikKonfiguracjiZwarcia {
+  const nadpisanie = nadpisanieCZPol(pola);
+  if (!nadpisanie.ok) return nadpisanie;
+  return {
+    ok: true,
+    config: {
+      scenariusz: pola.scenariusz,
+      nadpisanie_c: nadpisanie.nadpisanie_c,
+      thermal_time_seconds: thermalTimeSeconds,
+      include_branch_contributions: includeBranchContributions,
+    },
+  };
+}
+
+/** Pola formularza z zapisanej konfiguracji (edycja istniejącego scenariusza). */
+export function polaCZKonfiguracji(config: ShortCircuitConfig | null | undefined): PolaWspolczynnikaC {
+  if (!config) return { ...DOMYSLNE_POLA_C };
+  return {
+    scenariusz: config.scenariusz,
+    nadpisz: config.nadpisanie_c != null,
+    wartoscC: config.nadpisanie_c != null ? String(config.nadpisanie_c.wartosc) : '',
+    uzasadnienie: config.nadpisanie_c?.uzasadnienie ?? '',
+  };
+}
+
+/** Opis c scenariusza na liście (bez liczby c — ta zależy od węzła). */
+export function opisCScenariusza(config: ShortCircuitConfig | null | undefined): string {
+  if (!config) return '—';
+  if (config.nadpisanie_c) {
+    return `nadpisanie c = ${String(config.nadpisanie_c.wartosc).replace('.', ',')} — ${config.nadpisanie_c.uzasadnienie}`;
+  }
+  return `${config.scenariusz} — IEC 60909-0 tab. 1 per węzeł`;
+}
+
+/**
+ * Komunikat błędu odpowiedzi backendu po polsku. `detail` bywa:
+ *  - napisem „<kod>: <komunikat PL>" (odmowa domeny `OdmowaDanychError`, 422),
+ *  - listą błędów walidacji schematu (pydantic, 422: `[{loc, msg, type}]`),
+ *  - zwykłym napisem PL.
+ * Znany kod c → brzmienie z `KOMUNIKAT_KODU_C`; reszta → komunikat bez kodu maszynowego.
+ */
+export function komunikatBleduApi(detail: unknown, zapasowy: string): string {
+  if (typeof detail === 'string' && detail.trim()) {
+    const dopasowanie = /^([a-z_]+\.[a-z0-9_.]+):\s*(.+)$/s.exec(detail.trim());
+    if (dopasowanie) {
+      const [, kod, tresc] = dopasowanie;
+      return KOMUNIKAT_KODU_C[kod] ?? tresc;
+    }
+    return detail;
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    const opisy = detail.map((wpis) => {
+      if (wpis && typeof wpis === 'object') {
+        const { loc, msg } = wpis as { loc?: unknown; msg?: unknown };
+        const pole = Array.isArray(loc) ? loc.filter((x) => x !== 'body').join('.') : '';
+        const tresc = typeof msg === 'string' ? msg : JSON.stringify(wpis);
+        return pole ? `${pole}: ${tresc}` : tresc;
+      }
+      return String(wpis);
+    });
+    return `Backend odrzucił dane — ${opisy.join('; ')}`;
+  }
+  return zapasowy;
+}

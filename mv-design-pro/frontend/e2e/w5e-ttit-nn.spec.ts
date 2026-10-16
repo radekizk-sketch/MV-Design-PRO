@@ -37,6 +37,12 @@ const APARAT_NN_ID = 'cb_nn_630a';
 const RCD_ID = 'rcd_nn_a_40a_30ma';
 const ODBIOR_ID = 'load_mieszk_15kw';
 const CATALOG_VERSION = '2024.1';
+/**
+ * Tolerancja napięcia sieci nN stacji (PN-EN 60038: +10 %, domyślna kreatora stacji). Wiersz nN
+ * tabeli 1 IEC 60909-0 dobiera z niej c_min/c_max pętli zwarcia TT — sieć bez deklaracji dostaje
+ * odmowę nazwaną, nie ciche +6 %.
+ */
+const TOLERANCJA_NN = 'PLUS_10';
 /** Dane projektowe uziemień (wejście projektanta, nie fizyka). */
 const R_B_OHM = 2.0;
 const R_A_OHM = 25.0;
@@ -48,7 +54,7 @@ type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   buses?: Array<{ ref_id: string; voltage_kv: number }>;
   substations?: Array<{ ref_id: string; station_type?: string; bus_refs?: string[] }>;
-  transformers?: Array<{ ref_id: string; lv_earthing_system?: string | null; lv_neutral?: { type: string; r_ohm?: number | null } | null }>;
+  transformers?: Array<{ ref_id: string; lv_earthing_system?: string | null; lv_voltage_tolerance?: string | null; lv_neutral?: { type: string; r_ohm?: number | null } | null }>;
   loads?: Array<{ ref_id: string; earth_electrode_r_ohm?: number | null }>;
   branches?: Array<{ ref_id: string; catalog_namespace?: string | null }>;
 };
@@ -113,7 +119,10 @@ async function zbudujSiecTt(request: APIRequestContext) {
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: { create: true, catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID) },
-    nn_earthing: { lv_system: 'TT', neutral_point: 'directly_grounded', lv_r_ohm: R_B_OHM },
+    nn_earthing: {
+      lv_system: 'TT', neutral_point: 'directly_grounded', lv_r_ohm: R_B_OHM,
+      lv_voltage_tolerance: TOLERANCJA_NN,
+    },
   });
   const napiecia = new Map((op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv]));
   const stacja = (op.snapshot?.substations ?? []).find(
@@ -123,6 +132,7 @@ async function zbudujSiecTt(request: APIRequestContext) {
   const szynaNn = (stacja?.bus_refs ?? []).find((ref) => (napiecia.get(ref) ?? Infinity) < 1.0)!;
   const trafo = (op.snapshot?.transformers ?? []).find((t) => t.lv_earthing_system === 'TT');
   expect(trafo, 'transformator stacji deklaruje układ TT').toBeTruthy();
+  expect(trafo?.lv_voltage_tolerance, 'transformator stacji deklaruje tolerancję sieci nN').toBe(TOLERANCJA_NN);
 
   const pole = await executeDomainOp(request, caseId, 'add_nn_outgoing_field', {
     station_ref: stacja?.ref_id, bus_nn_ref: szynaNn, field_name: 'Odpływ nN 1',

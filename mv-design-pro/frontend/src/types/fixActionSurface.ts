@@ -104,8 +104,13 @@ function resolveOperationFromModalType(
       // C-12: OPEN_MODAL walidatora dotyczy ISTNIEJĄCEGO źródła (W002 — brak Z0,
       // `sources.*` — dane zwarciowe, nastawa U) — naprawą jest edycja jego
       // parametrów. Dodanie źródła (`add_grid_source_sn`) wyłącznie dla braku źródła.
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: brak tolerancji napięcia sieci nN na ISTNIEJĄCYM
+      // źródle (szyna nN) też naprawia się edycją parametru, nigdy dodaniem nowego źródła.
       if (input.action_type === 'SELECT_CATALOG') {
         return 'assign_catalog_to_element';
+      }
+      if (required === 'lv_voltage_tolerance') {
+        return 'update_element_parameters';
       }
       return input.action_type === 'ADD_MISSING_DEVICE' ? 'add_grid_source_sn' : 'update_element_parameters';
     case 'NodeModal':

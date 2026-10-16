@@ -215,11 +215,15 @@ export function naWierszeZwarc(
 }
 
 /** Wiersz „Współczynnik napięciowy c" — z KONFIGURACJI TEGO BIEGU (nie z
- * aktywnego przypadku obliczeniowego, karta UI2 p.7). Tryb `jawny` →
- * liczba; `auto_per_wezel` → uczciwy opis (solver dobiera c per węzeł, nie ma
- * jednej wspólnej wartości biegu); brak konfiguracji (starszy zapis) → „—".
+ * aktywnego przypadku obliczeniowego, karta UI2 p.7). Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+ * `auto_per_wezel` → opis doboru z tabeli 1 IEC 60909-0 ze scenariuszem biegu (nie ma
+ * jednej liczby — podstawa każdego węzła w bilansie punktu, `c_zrodlo`); `nadpisanie` →
+ * wartość RAZEM z uzasadnieniem inżyniera; brak konfiguracji (starszy zapis) → „—".
  */
-function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefined): WierszZalozenia {
+function wierszWspolczynnikaC(
+  c: KonfiguracjaBieguZwarcia['c_factor'] | undefined,
+  scenariusz: KonfiguracjaBieguZwarcia['scenariusz'],
+): WierszZalozenia {
   if (c === undefined) {
     return {
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
@@ -227,14 +231,23 @@ function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefine
       uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
     };
   }
-  if (c.tryb === 'auto_per_wezel' || c.wartosc === null) {
+  if (c.tryb === 'nadpisanie' && c.wartosc !== null) {
+    // Uzasadnienie W TREŚCI wiersza, nie tylko w dymku — nadpisanie bez widocznego
+    // powodu byłoby liczbą bez podstawy (werdykt wyjaśnialny).
     return {
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
-      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanie(
+        fmtWspolczynnik(c.wartosc),
+        c.uzasadnienie ?? ZWARCIA_STRINGS.kreska,
+      ),
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanieUwaga(c.uzasadnienie ?? ZWARCIA_STRINGS.kreska),
     };
   }
-  return { etykieta: ZWARCIA_STRINGS.zalWspolczynnikC, wartosc: fmtWspolczynnik(c.wartosc) };
+  return {
+    etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+    wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto(scenariusz ?? null),
+    uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+  };
 }
 
 /** Wiersz „Czas cieplny" — z KONFIGURACJI TEGO BIEGU; `pochodzenie:
@@ -280,7 +293,7 @@ export function naZalozeniaZwarc(
 ): WierszZalozenia[] {
   const bazowe: WierszZalozenia[] = [
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
-    wierszWspolczynnikaC(konfiguracja?.c_factor),
+    wierszWspolczynnikaC(konfiguracja?.c_factor, konfiguracja?.scenariusz),
     wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({

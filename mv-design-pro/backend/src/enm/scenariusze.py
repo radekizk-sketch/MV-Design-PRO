@@ -1238,7 +1238,8 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
     """Projekcja scenariusza (zwarciowego i dynamicznego) na opcje biegu — JEDNO zrodlo prawdy.
 
     Wykonawca kanoniczny (`enm/canonical_analysis._execute_short_circuit`) czyta
-    `fault_type`, `c_factor`, `thermal_time_seconds` i `location` Z WIERZCHU opcji;
+    `fault_type`, `scenario` (MAX/MIN), `nadpisanie_c`, `thermal_time_seconds` i `location`
+    Z WIERZCHU opcji;
     klucz `config` zostaje jako pochodzenie (WHITE BOX).
 
     Karta W6-3B: harmonogram dynamiczny (`ScenariuszDynamiczny`) idzie ta sama
@@ -1266,7 +1267,15 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         "fault_type": spec.fault_type.value,
         "location": spec.location.to_dict(),
         "config": spec.config.to_dict(),
-        "c_factor": spec.config.c_factor,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): scenariusz niesie PRZEŁĄCZNIK MAX/MIN,
+        # nie liczbę c — assembler dobiera c per węzeł z tabeli 1 IEC 60909-0
+        # (`voltage_factor.dobierz_c`). Nadpisanie wyłącznie z uzasadnieniem i tylko gdy jest.
+        "scenario": spec.config.scenariusz.lower(),
+        **(
+            {"nadpisanie_c": spec.config.nadpisanie_c.to_dict()}
+            if spec.config.nadpisanie_c is not None
+            else {}
+        ),
         "thermal_time_seconds": spec.config.thermal_time_seconds,
         # PERF-SC-50: `include_branch_contributions` scenariusza staje się realnym
         # sterowaniem biegu (do tej karty zapisywane w `config`, nieczytane przez

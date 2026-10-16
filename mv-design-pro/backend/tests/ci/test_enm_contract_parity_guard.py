@@ -92,15 +92,21 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     Literal["A_WTORNY", "A_PIERWOTNY"] | None` (strona przekładnika, po której podano próg
     prądowy nastawy — PZ-09) z lustrem `'A_WTORNY' | 'A_PIERWOTNY' | null` w `types/enm.ts`;
     rozszerzenie `curve_type` o IEEE MI/VI/EI to ten sam wpis (zbiór wartości w parytecie) —
-    licznik 121 -> 122."""
+    licznik 121 -> 122.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16) dodaje DWA pola Literal z lustrem
+    `TolerancjaNapieciaNn` (`'PLUS_6' | 'PLUS_10'`, `types/uziemienie.ts`) w `types/enm.ts`:
+    `Transformer.lv_voltage_tolerance` i `Source.lv_voltage_tolerance` (tolerancja napiecia
+    sieci nN — wiersz nN tabeli 1 IEC 60909-0); usuniete `Source.c_max`/`c_min` byly liczbami,
+    nie polami Literal — licznik 122 -> 124 (pomiar guardem na drzewie z lustrem frontu)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 122, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 122 — "
+    assert int(dopasowanie.group(1)) == 124, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 124 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

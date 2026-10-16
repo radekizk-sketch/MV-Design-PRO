@@ -387,7 +387,9 @@ def _zrodlo_po_torze_obcym(enm: EnergyNetworkModel) -> Source:
 
 
 def _z_q(source: Source, scenariusz: str) -> complex:
-    wynik = impedancja_zrodla_sieciowego(source, _U_SZYNY_KV, scenariusz)  # type: ignore[arg-type]
+    wynik = impedancja_zrodla_sieciowego(
+        source, _U_SZYNY_KV, scenariusz, tolerancja_nn=None  # type: ignore[arg-type]
+    )
     assert wynik is not None, "źródło niepoliczalne po torze obcym"
     return wynik[0]
 

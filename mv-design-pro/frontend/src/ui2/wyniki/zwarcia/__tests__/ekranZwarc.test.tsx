@@ -60,6 +60,9 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     expect(within(bilans).getByText('1,728')).toBeInTheDocument(); // kappa
     expect(within(bilans).getByText('9,416')).toBeInTheDocument(); // X/R
     expect(within(bilans).getByText('1,100')).toBeInTheDocument(); // c
+    // Podstawa c TEGO węzła (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tekst backendu.
+    expect(within(bilans).getByText(ZWARCIA_STRINGS.bilansCZrodlo)).toBeInTheDocument();
+    expect(within(bilans).getByText('IEC 60909-0 tab. 1, pasmo SN, MAX')).toBeInTheDocument();
     expect(within(bilans).getByText('15,0 kV')).toBeInTheDocument(); // Un
     expect(within(bilans).getByText('156,250 kA²·s')).toBeInTheDocument(); // I2t
   });
@@ -74,7 +77,7 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     const kreski = within(bilans)
       .getAllByRole('definition')
       .filter((el) => el.textContent === ZWARCIA_STRINGS.kreska);
-    expect(kreski.length).toBe(16);
+    expect(kreski.length).toBe(17);
   });
 
   it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {
@@ -160,7 +163,7 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         konfiguracja_biegu: konfiguracjaBieguFixture({
-          c_factor: { tryb: 'jawny', wartosc: 1.1 },
+          c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
           thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
         }),
       }),
@@ -171,21 +174,26 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalMetoda)).toBeInTheDocument();
     expect(within(zalozenia).getByText('IEC 60909')).toBeInTheDocument();
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikC)).toBeInTheDocument();
-    expect(within(zalozenia).getByText('1,10')).toBeInTheDocument();
+    expect(
+      within(zalozenia).getByText('1,05 — nadpisanie ręczne: Uzgodnienie z OSD'),
+    ).toBeInTheDocument();
   });
 
   it('założenia: c auto-per-węzeł (bez jawnego override) pokazuje uczciwy opis, nie liczbę', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         konfiguracja_biegu: konfiguracjaBieguFixture({
-          c_factor: { tryb: 'auto_per_wezel', wartosc: null },
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+          scenariusz: 'MIN',
         }),
       }),
       selectedRunId: 'sc-run-1',
     });
     await renderEkranZwarc(<EkranZwarc {...props()} />);
     const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
-    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto)).toBeInTheDocument();
+    expect(
+      within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto('MIN')),
+    ).toBeInTheDocument();
   });
 
   it('założenia: brak konfiguracji biegu (starszy zapis) → kreska uczciwa, nie zgadnięta liczba', async () => {

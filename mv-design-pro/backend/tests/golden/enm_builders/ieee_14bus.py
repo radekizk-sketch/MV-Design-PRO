@@ -134,6 +134,7 @@ def build_ieee_14bus_enm() -> BenchmarkEnm:
         hv_bus_ref=bus_map["B3"],
         catalog_ref="bench_ieee14bus_br16",
         lv_voltage_kv=0.208,
+        lv_voltage_tolerance="PLUS_6",  # sieć nN 0,208 kV: wiersz nN tabeli 1 IEC 60909-0
         off_nominal_ratio=0.969,
     )
     bus_map["B8"] = bus_b8
@@ -142,6 +143,7 @@ def build_ieee_14bus_enm() -> BenchmarkEnm:
         hv_bus_ref=bus_map["B4"],
         catalog_ref="bench_ieee14bus_br17",
         lv_voltage_kv=0.208,
+        lv_voltage_tolerance="PLUS_6",  # sieć nN 0,208 kV: wiersz nN tabeli 1 IEC 60909-0
         off_nominal_ratio=0.932,
     )
     bus_map["B5"] = bus_b5
@@ -159,6 +161,9 @@ def build_ieee_14bus_enm() -> BenchmarkEnm:
         hv_bus_ref=bus_map["B6"],
         catalog_ref="bench_ieee14bus_br19",
         lv_bus_ref=bus_map["B8"],
+        # Drugi transformator zasilający tę samą sieć nN deklaruje TĘ SAMĄ tolerancję — wyspa
+        # z elementem bez deklaracji albo ze sprzecznymi deklaracjami to odmowa zwarcia.
+        lv_voltage_tolerance="PLUS_6",
     )
 
     # 0,208 kV: oczko z DWOMA korzeniami (B5, B8) — ręcznie, bez zbuduj_topologie.

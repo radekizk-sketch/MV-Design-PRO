@@ -23,6 +23,7 @@ from domain.fault_scenario import (
     FaultScenario,
     FaultScenarioValidationError,
     FaultType,
+    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
 )
@@ -53,6 +54,7 @@ def _make_v2_scenario(
         fault_mode=fault_mode,
         fault_impedance=fault_impedance,
         arc_params=arc_params,
+        config=ShortCircuitConfig(scenariusz="MAX"),
     )
 
 
@@ -345,6 +347,7 @@ class TestV2BackwardCompat:
             name="Legacy BUS",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert s.fault_mode == FaultMode.METALLIC
         assert s.fault_impedance is None
@@ -357,6 +360,7 @@ class TestV2BackwardCompat:
             name="Legacy BRANCH",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="branch-1", location_type="BRANCH", position=0.5),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert s.location.location_type == "BRANCH"
         assert s.location.position == 0.5
@@ -370,7 +374,7 @@ class TestV2BackwardCompat:
             "fault_type": "SC_3F",
             "location": {"element_ref": "bus-1", "location_type": "BUS", "position": None},
             "config": {
-                "c_factor": 1.10,
+                "scenariusz": "MAX",
                 "thermal_time_seconds": 1.0,
                 "include_branch_contributions": False,
             },

@@ -1,7 +1,7 @@
 {
   "_meta": {
     "branch_count": 89,
-    "builder_snapshot_hash": "88f133f1b2d740da36d60b6df1a9be93f174902a327164a422ca9f8db07f3a4a",
+    "builder_snapshot_hash": "fe349833ce9e934d3d5b4a6c8d8bf90d6a21f7a26d8b3ce1f150b396b756aa38",
     "der_count": 20,
     "der_types": [
       "bess",
@@ -27633,7 +27633,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "88f133f1b2d740da36d60b6df1a9be93f174902a327164a422ca9f8db07f3a4a",
+      "hash_sha256": "fe349833ce9e934d3d5b4a6c8d8bf90d6a21f7a26d8b3ce1f150b396b756aa38",
       "name": "SLD Substrate 52 stacji",
       "revision": 0,
       "updated_at": "2026-05-29T00:00:00Z"
@@ -33159,14 +33159,13 @@
     "sources": [
       {
         "bus_ref": "gpz/1021aa18ea28ab398f1166359a58215a/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/1021aa18ea28ab398f1166359a58215a/section/001",
         "id": "47797a02-2d0f-5605-b3cc-1c506d1f3f76",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "legacy",
@@ -41810,6 +41809,7 @@
         "lv_bus_ref": "gpz/1021aa18ea28ab398f1166359a58215a/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -41862,6 +41862,7 @@
         "lv_bus_ref": "nn/a03bb7aea5b66d3e912af1f686ceb50a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -41907,6 +41908,7 @@
         "lv_bus_ref": "nn/5eca1030e2dbb352d6a052716d2364eb/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -41952,6 +41954,7 @@
         "lv_bus_ref": "nn/124fa6a1035eadd0cd0c29097b85dbd0/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-2500kva-dyn11",
           "catalog_item_version": "legacy",
@@ -41997,6 +42000,7 @@
         "lv_bus_ref": "nn/52ee1d100b94d49496563ccebc676c00/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42042,6 +42046,7 @@
         "lv_bus_ref": "nn/dd2b5b61d64139f13d3b083b1f239936/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42087,6 +42092,7 @@
         "lv_bus_ref": "nn/9db5dd57afecda3d22af2600b0dc52cf/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-2500kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42132,6 +42138,7 @@
         "lv_bus_ref": "nn/0ecf0385490c44af92be6dec4e2973a5/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42177,6 +42184,7 @@
         "lv_bus_ref": "nn/178b6cf0ed2a4c74c3e6a325b088c958/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42222,6 +42230,7 @@
         "lv_bus_ref": "nn/f7af9798c279057f499b7f891b19f2fb/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-2500kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42267,6 +42276,7 @@
         "lv_bus_ref": "nn/7cf20e0d8249d95036b24ad1b00b2e00/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42312,6 +42322,7 @@
         "lv_bus_ref": "nn/a1bd868dc03b5c6d6d91425984fa6097/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42357,6 +42368,7 @@
         "lv_bus_ref": "nn/c6f00b4e02ef4b3b54c12e475a6cd93c/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-2500kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42402,6 +42414,7 @@
         "lv_bus_ref": "nn/7afce11d438aec1713cdc4038163cfc2/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42447,6 +42460,7 @@
         "lv_bus_ref": "nn/f89345eed80eeaccae0136b93592369f/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42492,6 +42506,7 @@
         "lv_bus_ref": "nn/53489d767525cd2528c0ba49b935251a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42537,6 +42552,7 @@
         "lv_bus_ref": "nn/3b694928479bead402046166551951ba/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42582,6 +42598,7 @@
         "lv_bus_ref": "nn/88d55f1e73cb1e518ac551b674285f1b/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42627,6 +42644,7 @@
         "lv_bus_ref": "nn/6b4011c9cc098f05e8c9450ff80c98cc/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42672,6 +42690,7 @@
         "lv_bus_ref": "nn/dcaaed834f8bb4362b6d40382561c98a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42717,6 +42736,7 @@
         "lv_bus_ref": "nn/2324233a80e94ed5b9ec6c9ad74ecdde/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42762,6 +42782,7 @@
         "lv_bus_ref": "nn/205a0b45f0bf82dcb7b007b8544629f8/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42807,6 +42828,7 @@
         "lv_bus_ref": "nn/70e68e11b89de9da7affe5f2dafc934b/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42852,6 +42874,7 @@
         "lv_bus_ref": "nn/9b05e17bad2ae57febe99d9504f58d8a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42897,6 +42920,7 @@
         "lv_bus_ref": "nn/01f6b02a6eb1b0c83215ec452841bdae/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42942,6 +42966,7 @@
         "lv_bus_ref": "nn/1d4db7f44819ed9c275ea7cb5ee30ac8/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -42987,6 +43012,7 @@
         "lv_bus_ref": "nn/40a1fec7f70c59e68914276b25d94d23/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43032,6 +43058,7 @@
         "lv_bus_ref": "nn/e23d8eff2e0bd173ac577d8bd75549d9/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43077,6 +43104,7 @@
         "lv_bus_ref": "nn/5dd54007ee41e07ea3d5181e7512723c/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43122,6 +43150,7 @@
         "lv_bus_ref": "nn/ef0c69fb2a232addfb75bcf8936481b8/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43167,6 +43196,7 @@
         "lv_bus_ref": "nn/7a5e175dfac9db05bf121ec89c6e8aec/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43212,6 +43242,7 @@
         "lv_bus_ref": "nn/9e3245b0aad2b7e5a9b4bdbe04727b20/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43257,6 +43288,7 @@
         "lv_bus_ref": "nn/3bf1981c4a40247c1fe56aac664dde18/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43302,6 +43334,7 @@
         "lv_bus_ref": "nn/096b28cc3a80b6f3ab69107ede3f1343/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43347,6 +43380,7 @@
         "lv_bus_ref": "nn/29e663b39bc219ff05423f5be61bddef/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43392,6 +43426,7 @@
         "lv_bus_ref": "nn/9d97310f03b83a67ae12a2cf20603f51/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43437,6 +43472,7 @@
         "lv_bus_ref": "nn/e683a2e77d92cdc706a9fcb8fd9bd75e/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43482,6 +43518,7 @@
         "lv_bus_ref": "nn/18a8817039f46e1165fc52289d50cd6c/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43527,6 +43564,7 @@
         "lv_bus_ref": "nn/c37f5c4ad777c8b81c29b46b17d2ebc9/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43572,6 +43610,7 @@
         "lv_bus_ref": "nn/e66da79b40d2d7878b8dcb28869825e4/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43617,6 +43656,7 @@
         "lv_bus_ref": "nn/d4809a0f6bd7a8604afce3a814efe691/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43662,6 +43702,7 @@
         "lv_bus_ref": "nn/1b2298150bac4e77afee429a14070cfb/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43707,6 +43748,7 @@
         "lv_bus_ref": "nn/8ad9dc2cafd9af9ccf27db2be2e073c9/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43752,6 +43794,7 @@
         "lv_bus_ref": "nn/07fb88adace16153206e2555cbaf7308/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43797,6 +43840,7 @@
         "lv_bus_ref": "nn/a00f34718cf0fa7e9c3b001f9ebb4926/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43842,6 +43886,7 @@
         "lv_bus_ref": "nn/e948b86f1126d35982d1fb9471708ecd/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43887,6 +43932,7 @@
         "lv_bus_ref": "nn/327d0d1a7d3d723054833f56358f8dbf/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43932,6 +43978,7 @@
         "lv_bus_ref": "nn/226fa6157ac63eb057914c520e3ebedd/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -43977,6 +44024,7 @@
         "lv_bus_ref": "nn/70cd09583dcc768c327e6c720d32793a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -44022,6 +44070,7 @@
         "lv_bus_ref": "nn/20247dd757cdd38752f5b81ab5397ac4/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -44067,6 +44116,7 @@
         "lv_bus_ref": "nn/ec26dfca954acd7735a8e47a4e1d3b2f/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "2024.1",
@@ -44112,6 +44162,7 @@
         "lv_bus_ref": "nn/e95c65a63cd9fb8d0694105334451423/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "2024.1",
@@ -44157,6 +44208,7 @@
         "lv_bus_ref": "nn/61123d07565ef51fdca325f5541d7c33/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "2024.1",
@@ -44202,6 +44254,7 @@
         "lv_bus_ref": "nn/5ef21f173c0aa289c6a04e38e87d832a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "2024.1",

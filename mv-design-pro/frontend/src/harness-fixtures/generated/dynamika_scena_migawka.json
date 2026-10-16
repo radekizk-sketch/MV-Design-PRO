@@ -911,7 +911,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "301e763b048d4364d7ddc0997685d78a1ac25f72249ee1b04f35725da1303169",
+    "hash_sha256": "784f860fe95f4458b5345826dc200abc9b95473dad803133a106dc286f68ccb8",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -985,14 +985,13 @@
   "sources": [
     {
       "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
       "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "2024.1",
@@ -1271,6 +1270,7 @@
       "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1323,6 +1323,7 @@
       "lv_bus_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus",
       "lv_earthing_system": "TN-C",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-1mva-dyn11-inverter",
         "catalog_item_version": "2024.1",

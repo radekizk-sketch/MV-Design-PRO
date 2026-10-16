@@ -127,6 +127,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E007": "Kanon nie ma kodu dla niespójności stron HV/LV transformatora.",
     "E010": "Kanon nie ma kodu dla nadpisań (overrides) bez podstawy katalogowej.",
     "E020": "Kanon nie ma kodu dla gałęzi łączącej różne pasma napięciowe.",
+    "E023": (
+        "Kanon nie ma kodu dla napięcia znamionowego strony transformatora w innym paśmie "
+        "napięć niż szyna, do której ta strona jest przyłączona."
+    ),
     "E028": "Kanon nie ma kodu dla braku danych DER wymaganych przez walidację D1.",
     "E029": "Kanon nie ma kodu dla niespójności parametrów falownika.",
     "E030": "Kanon nie ma kodu dla braku wskazanego portu połączenia.",

@@ -23,6 +23,7 @@ from network_model.core.inverter import ConverterKind, InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.station import Station, StationType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 
 # =============================================================================
 # PARAMETRY SIECI (STALE)
@@ -113,7 +114,11 @@ def _mk_trafo(
     uk_pct: float,
     pk_kw: float,
     vg: str = "Yd11",
+    tolerancja_nn_dolna: TolerancjaNapieciaNn | None = None,
 ) -> TransformerBranch:
+    """Transformator grafu; ``tolerancja_nn_dolna`` deklaruje tolerancję sieci nN strony
+    dolnej (+6 % — wiersz nN tabeli 1 IEC 60909-0, c_max = 1,05 we wzorze K_T, karta
+    WSPOLCZYNNIK-C-JEDEN-NOSNIK); transformatory WN/SN jej nie niosą."""
     return TransformerBranch(
         id=tid,
         name=name,
@@ -131,6 +136,7 @@ def _mk_trafo(
         vector_group=vg,
         tap_position=0,
         tap_step_percent=2.5,
+        tolerancja_nn_dolna=tolerancja_nn_dolna,
     )
 
 
@@ -781,6 +787,7 @@ def _add_station(
             uk_pct=uk,
             pk_kw=pk,
             vg=vector_group,
+            tolerancja_nn_dolna="PLUS_6",
         )
     )
 

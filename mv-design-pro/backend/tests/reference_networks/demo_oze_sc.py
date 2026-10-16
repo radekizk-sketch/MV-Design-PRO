@@ -117,6 +117,9 @@ def _add_der_sn_block(
                 "rated_power_mva": 1.0,
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": 0.4,
+                # Tolerancja napięcia sieci nN po stronie przekształtnika (wiersz nN tabeli 1
+                # IEC 60909-0) — K_T bloku i c węzła nN z tej samej deklaracji.
+                "lv_voltage_tolerance": "PLUS_6",
                 "catalog_ref": _TR_BLOCK,
                 "catalog_binding": {
                     "catalog_namespace": _TR_BLOCK_NS,

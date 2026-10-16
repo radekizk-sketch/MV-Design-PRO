@@ -50,6 +50,7 @@ export const ZWARCIA_STRINGS = {
   bilansXk: 'Reaktancja zastępcza Xk',
   bilansZk: 'Impedancja zastępcza (Thevenin) |Zk|',
   bilansC: 'Współczynnik napięciowy c',
+  bilansCZrodlo: 'Podstawa współczynnika c',
   bilansUn: 'Napięcie znamionowe przed zwarciem Un',
   bilansTk: 'Czas trwania zwarcia tk',
   bilansTb: 'Czas wyłączenia tb',
@@ -61,8 +62,18 @@ export const ZWARCIA_STRINGS = {
   zalCzasCieplny: 'Czas cieplny',
   // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
   // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
-  zalWspolczynnikCAuto: 'dobierany automatycznie per węzeł',
-  zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tryb `auto_per_wezel` albo `nadpisanie`
+  // z uzasadnieniem; podstawa c każdego węzła — w bilansie punktu (`c_zrodlo`).
+  zalWspolczynnikCAuto: (scenariusz: string | null) =>
+    scenariusz
+      ? `IEC 60909-0 tab. 1 per węzeł, scenariusz ${scenariusz}`
+      : 'IEC 60909-0 tab. 1 per węzeł',
+  zalWspolczynnikCAutoUwaga:
+    'Wartość c dobrana z tabeli 1 IEC 60909-0 dla pasma napięciowego każdego węzła (nN z zadeklarowaną tolerancją sieci, SN, WN) — podstawę c punktu pokazuje bilans IEC 60909 wybranego punktu.',
+  zalWspolczynnikCNadpisanie: (wartosc: string, uzasadnienie: string) =>
+    `${wartosc} — nadpisanie ręczne: ${uzasadnienie}`,
+  zalWspolczynnikCNadpisanieUwaga: (uzasadnienie: string) =>
+    `Nadpisanie ręczne dla wszystkich węzłów biegu — uzasadnienie: ${uzasadnienie}`,
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
 

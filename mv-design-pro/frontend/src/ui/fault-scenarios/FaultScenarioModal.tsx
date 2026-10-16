@@ -18,6 +18,13 @@ import {
   type CreateFaultScenarioRequest,
   type UpdateFaultScenarioRequest,
 } from './types';
+import { SekcjaWspolczynnikaC } from './SekcjaWspolczynnikaC';
+import {
+  DOMYSLNE_POLA_C,
+  konfiguracjaZwarciaZPol,
+  polaCZKonfiguracji,
+  type PolaWspolczynnikaC,
+} from './wspolczynnikC';
 
 const FAULT_TYPES: FaultTypeValue[] = ['SC_3F', 'SC_2F', 'SC_1F'];
 const FAULT_MODES: FaultModeValue[] = ['METALLIC', 'IMPEDANCE'];
@@ -41,6 +48,10 @@ export function FaultScenarioModal() {
   const [faultMode, setFaultMode] = useState<FaultModeValue>('METALLIC');
   const [rOhm, setROhm] = useState('');
   const [xOhm, setXOhm] = useState('');
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: scenariusz jest jedynym nośnikiem c i t_k —
+  // bez `config.scenariusz` backend odmawia utworzenia scenariusza (422).
+  const [polaC, setPolaC] = useState<PolaWspolczynnikaC>(DOMYSLNE_POLA_C);
+  const [czasTk, setCzasTk] = useState('1');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,6 +64,8 @@ export function FaultScenarioModal() {
       setFaultMode(editingScenario.fault_mode ?? 'METALLIC');
       setROhm(editingScenario.fault_impedance?.r_ohm != null ? String(editingScenario.fault_impedance.r_ohm) : '');
       setXOhm(editingScenario.fault_impedance?.x_ohm != null ? String(editingScenario.fault_impedance.x_ohm) : '');
+      setPolaC(polaCZKonfiguracji(editingScenario.config));
+      setCzasTk(String(editingScenario.config?.thermal_time_seconds ?? 1));
     } else {
       setName('');
       setFaultType('SC_3F');
@@ -62,6 +75,8 @@ export function FaultScenarioModal() {
       setFaultMode('METALLIC');
       setROhm('');
       setXOhm('');
+      setPolaC(DOMYSLNE_POLA_C);
+      setCzasTk('1');
     }
     setValidationError(null);
   }, [editingScenario, isModalOpen]);
@@ -87,6 +102,21 @@ export function FaultScenarioModal() {
       }
     }
 
+    const czas = Number(czasTk.replace(',', '.'));
+    if (!Number.isFinite(czas) || czas <= 0) {
+      setValidationError('Czas trwania zwarcia t_k musi być liczbą dodatnią [s]');
+      return;
+    }
+    const konfiguracja = konfiguracjaZwarciaZPol(
+      polaC,
+      czas,
+      editingScenario?.config?.include_branch_contributions ?? false,
+    );
+    if (!konfiguracja.ok) {
+      setValidationError(konfiguracja.blad);
+      return;
+    }
+
     setValidationError(null);
 
     const position = locationType === 'BRANCH_POINT' ? parseFloat(alpha) : null;
@@ -100,6 +130,7 @@ export function FaultScenarioModal() {
           name: name.trim(),
           fault_type: faultType,
           location: { element_ref: elementRef.trim(), location_type: locationType, position },
+          config: konfiguracja.config,
           fault_mode: faultMode,
           fault_impedance: faultImpedance ?? null,
         };
@@ -109,6 +140,7 @@ export function FaultScenarioModal() {
           name: name.trim(),
           fault_type: faultType,
           location: { element_ref: elementRef.trim(), location_type: locationType, position },
+          config: konfiguracja.config,
           fault_mode: faultMode,
           fault_impedance: faultImpedance,
         };
@@ -117,7 +149,7 @@ export function FaultScenarioModal() {
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Wystąpił błąd podczas zapisu scenariusza');
     }
-  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, editingScenarioId, studyCaseId, createScenario, updateScenario]);
+  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, polaC, czasTk, editingScenario, editingScenarioId, studyCaseId, createScenario, updateScenario]);
 
   if (!isModalOpen) return null;
 
@@ -239,6 +271,25 @@ export function FaultScenarioModal() {
               </p>
             </div>
           )}
+
+          {/* Współczynnik napięciowy c i czas t_k — nośnik: scenariusz zwarciowy */}
+          <SekcjaWspolczynnikaC
+            pola={polaC}
+            onZmiana={setPolaC}
+            testIdPrefix="fault-scenario"
+            klasaPola="block text-xs text-slate-600 mb-1"
+          />
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Czas trwania zwarcia t_k [s]
+            </label>
+            <input
+              type="number" step="0.1" min="0" value={czasTk}
+              onChange={(e) => setCzasTk(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              data-testid="fault-scenario-tk-input"
+            />
+          </div>
 
           {/* Errors */}
           {validationError && (

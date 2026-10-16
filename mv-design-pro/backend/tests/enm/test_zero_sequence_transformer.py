@@ -16,6 +16,7 @@ from __future__ import annotations
 import math
 
 import pytest
+from enm.assembler import zloz_wejscie_zwarcia
 from enm.mapping import (
     build_zero_sequence_trace,
     build_zero_sequence_zbus,
@@ -388,6 +389,29 @@ def _build_isolated_cable_network(b0_siemens_per_km: float):
     graph = map_enm_to_network_graph(enm)
     b2_node = next(n.id for n in graph.nodes.values() if n.name == "B2")
     return enm, graph, b2_node, ulv_kv, r0_per_km, x0_per_km, length_km
+
+
+class TestPustaSiecZ0:
+    """Partia integracji 11: graf bez węzłów dawał surowy ``ValueError`` numpy
+    (``matrix_rank`` na tablicy 0x0) — koperta wejścia zwarcia 1F pustego przypadku kończyła
+    się 500. Iloczyn cech: {scenariusz MAX, MIN} × {macierz pusta, ślad pusty} — pusta sieć
+    to macierz 0x0, nie wyjątek i nie fabrykacja."""
+
+    @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+    def test_pusta_siec_daje_macierz_zerowego_rozmiaru(self, scenariusz):
+        enm = EnergyNetworkModel(header=ENMHeader(name="Pusta", revision=1))
+        graph = map_enm_to_network_graph(enm)
+        z0 = build_zero_sequence_zbus(enm, graph, scenario=scenariusz)
+        assert z0.shape == (0, 0)
+        assert z0.dtype == complex
+
+    def test_pusta_siec_koperta_zwarcia_1f_bez_wyjatku(self):
+        enm = EnergyNetworkModel(header=ENMHeader(name="Pusta", revision=1))
+        for scenariusz in ("max", "min"):
+            wejscie = zloz_wejscie_zwarcia(
+                enm.model_dump(mode="json"), {"fault_type": "1F", "scenario": scenariusz}
+            )
+            assert len(wejscie.graph.nodes) == 0
 
 
 class TestLineShuntCapacitanceZ0:

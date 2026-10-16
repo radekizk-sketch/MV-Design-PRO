@@ -8,16 +8,23 @@ piętnaście identyfikatorów) — identyfikator wędruje teraz wyłącznie w `e
 i akcji naprawczej, treść niesie „Rodzaj „nazwa”" albo „Rodzaj bez nazwy"
 (`enm/slownik_komunikatow.opis_obiektu`).
 
-Iloczyn cech: miejsce blokady (kod × rodzaj elementu, czternaście) × element {z nazwą,
-bez nazwy}; dla listy braków transformatora: gałąź czytnika impedancji pętli {pole modelu
+Iloczyn cech: miejsce blokady (kod × rodzaj elementu) × element {z nazwą, bez nazwy}; dla listy braków transformatora: gałąź czytnika impedancji pętli {pole modelu
 puste, brak grupy połączeń, grupa bez lokalnego uziemienia nN, Pk sprzeczne z uk} ×
 układ {TN-S, TT, IT}. Strażnik AST pilnuje, że żaden `message_pl` modułów emitujących kody
 ELIG nie czyta identyfikatora elementu.
+
+Partia integracji 11 (scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK): blokada
+`ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING` weszła z treścią „Transformator 'tr-…'" i listą
+identyfikatorów szyn — strażnik AST jej nie widział, bo treść szła do `message_pl` przez
+parametr funkcji pomocniczej (pozycyjnie), a lista szyn kończyła się na `_refs`. Blokada
+nazywa teraz elementy nazwą z modelu (trzy powody braku tolerancji × {z nazwą, bez nazwy}),
+a strażnik czyta KAŻDY f-napis modułu blokad (identyfikator: `ref_id`, `*_ref`, `*_refs`).
 """
 
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -58,6 +65,8 @@ REF_TRAFO = "id-trafo-7q"
 REF_KABEL = "id-kabel-7q"
 REF_APARAT = "id-aparat-7q"
 REF_STACJA = "id-stacja-7q"
+REF_ZRODLO_NN = "id-zrodlo-nn-7q"
+REF_SZYNA_NN_OSOBNA = "id-szyna-nn-osobna-7q"
 WSZYSTKIE_REFY = (
     REF_SZYNA_SN,
     REF_SZYNA_NN,
@@ -68,6 +77,8 @@ WSZYSTKIE_REFY = (
     REF_KABEL,
     REF_APARAT,
     REF_STACJA,
+    REF_ZRODLO_NN,
+    REF_SZYNA_NN_OSOBNA,
 )
 
 
@@ -107,6 +118,7 @@ def _enm() -> EnergyNetworkModel:
                 pk_kw=6.5,
                 vector_group="Dyn11",
                 lv_earthing_system="TN-C-S",
+                lv_voltage_tolerance="PLUS_10",
                 catalog_ref="TR_CAT",
             )
         ],
@@ -149,6 +161,22 @@ def _enm() -> EnergyNetworkModel:
 def _zmien(enm: EnergyNetworkModel, kolekcja: str, ref: str, **pola: object) -> EnergyNetworkModel:
     elementy = [e.model_copy(update=pola) if e.ref_id == ref else e for e in getattr(enm, kolekcja)]
     return enm.model_copy(update={kolekcja: elementy})
+
+
+def _ze_zrodlem_nn(enm: EnergyNetworkModel, tolerancja: str | None) -> EnergyNetworkModel:
+    """Druga sieć zasilająca przyłączona wprost do szyny nN (nośnik tolerancji sieci nN)."""
+    zrodlo = Source(
+        ref_id=REF_ZRODLO_NN,
+        name="Przyłącze nN z sieci sąsiedniej",
+        bus_ref=REF_SZYNA_NN,
+        model="thevenin",
+        sk3_mva=10.0,
+        r_ohm=0.001,
+        x_ohm=0.005,
+        catalog_ref="SRC_CAT",
+        lv_voltage_tolerance=tolerancja,
+    )
+    return enm.model_copy(update={"sources": [*enm.sources, zrodlo]})
 
 
 def _blokady(enm: EnergyNetworkModel, rodzaj_analizy: AnalysisType):
@@ -266,6 +294,38 @@ MIEJSCA: dict[str, tuple[str, AnalysisType, Uszkodzenie, tuple[str, str, str], o
         None,
         REF_KABEL,
     ),
+    "transformator_bez_tolerancji_nn": (
+        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+        AnalysisType.SC_3F,
+        lambda m: _zmien(m, "transformers", REF_TRAFO, lv_voltage_tolerance=None),
+        ("transformers", REF_TRAFO, "Transformator"),
+        None,
+        REF_TRAFO,
+    ),
+    "zrodlo_nn_bez_tolerancji_nn": (
+        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+        AnalysisType.SC_3F,
+        lambda m: _ze_zrodlem_nn(m, None),
+        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
+        None,
+        REF_ZRODLO_NN,
+    ),
+    "tolerancje_sprzeczne_transformator": (
+        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+        AnalysisType.SC_3F,
+        lambda m: _ze_zrodlem_nn(m, "PLUS_6"),
+        ("transformers", REF_TRAFO, "Transformator"),
+        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
+        REF_TRAFO,
+    ),
+    "tolerancje_sprzeczne_zrodlo": (
+        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+        AnalysisType.SC_3F,
+        lambda m: _ze_zrodlem_nn(m, "PLUS_6"),
+        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
+        ("transformers", REF_TRAFO, "Transformator"),
+        REF_ZRODLO_NN,
+    ),
     "odcinek_nn_bez_zyly_powrotnej": (
         "ELIG_FLNN_MISSING_RETURN_CONDUCTOR",
         AnalysisType.FAULT_LOOP_NN,
@@ -315,6 +375,43 @@ def test_blokada_nazywa_element_nazwa_z_modelu_nigdy_identyfikatorem(
     assert "_" not in tresc and "<=" not in tresc, tresc
     assert blokady[0].fix_action is not None
     assert blokady[0].fix_action.element_ref == element_ref
+
+
+@pytest.mark.parametrize("nazwane", [True, False], ids=["z_nazwa", "bez_nazwy"])
+def test_blokada_wyspy_nn_bez_zasilajacego_nazywa_szyne(nazwane: bool) -> None:
+    """Trzeci powód braku tolerancji (wyspa nN bez transformatora i źródła): treść nazywa
+    szynę wyspy nazwą z modelu; akcji naprawczej brak (nie ma elementu, na którym zapisać
+    deklarację), identyfikator tylko w `element_ref`."""
+    szyna = Bus(
+        ref_id=REF_SZYNA_NN_OSOBNA,
+        name="Rozdzielnia nN wydzielona" if nazwane else "",
+        voltage_kv=0.4,
+    )
+    enm = _enm().model_copy(update={"buses": [*_enm().buses, szyna]})
+    blokady = [
+        b
+        for b in _blokady(enm, AnalysisType.SC_3F)
+        if b.code == "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING"
+    ]
+    assert len(blokady) == 1, [(b.code, b.element_ref) for b in blokady]
+    tresc = blokady[0].message_pl
+    assert blokady[0].element_ref == REF_SZYNA_NN_OSOBNA
+    assert blokady[0].fix_action is None
+    oczekiwany = "szyna „Rozdzielnia nN wydzielona”" if nazwane else "szyna bez nazwy"
+    assert oczekiwany in tresc, tresc
+    assert not [ref for ref in WSZYSTKIE_REFY if ref in tresc], tresc
+    assert "_" not in tresc, tresc
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
+def test_tolerancja_zadeklarowana_zgodnie_bez_blokady(tolerancja: str) -> None:
+    """Predykat parami: zgodne deklaracje transformatora i źródła nN — brak blokady."""
+    enm = _ze_zrodlem_nn(
+        _zmien(_enm(), "transformers", REF_TRAFO, lv_voltage_tolerance=tolerancja), tolerancja
+    )
+    assert "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING" not in [
+        b.code for b in _blokady(enm, AnalysisType.SC_3F)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -411,17 +508,32 @@ MODULY_ELIG = (
 )
 
 
+#: Moduł, w którym KAŻDY f-napis jest treścią blokady albo jej częścią (treść bywa składana
+#: w funkcji pomocniczej i przekazywana pozycyjnie — sam `message_pl=` tego nie widzi).
+MODUL_TRESCI_BLOKAD = "application/eligibility_service.py"
+
+
+def _czyta_identyfikator(nazwa: object) -> bool:
+    return isinstance(nazwa, str) and (
+        nazwa == "ref_id" or nazwa.endswith("_ref") or nazwa.endswith("_refs")
+    )
+
+
 def _odczyty_identyfikatora(modul: str) -> list[str]:
     drzewo = ast.parse((_SRC / modul).read_text(encoding="utf-8"))
     wynik: list[str] = []
     for wezel in ast.walk(drzewo):
-        if not isinstance(wezel, ast.keyword) or wezel.arg != "message_pl":
+        if isinstance(wezel, ast.keyword) and wezel.arg == "message_pl":
+            korzen: ast.AST = wezel.value
+        elif modul == MODUL_TRESCI_BLOKAD and isinstance(wezel, ast.FormattedValue):
+            korzen = wezel.value
+        else:
             continue
-        for w in ast.walk(wezel.value):
+        for w in ast.walk(korzen):
             nazwa = w.attr if isinstance(w, ast.Attribute) else getattr(w, "id", None)
-            if isinstance(nazwa, str) and (nazwa == "ref_id" or nazwa.endswith("_ref")):
+            if _czyta_identyfikator(nazwa):
                 wynik.append(f"{modul}:{w.lineno}: {nazwa}")
-    return wynik
+    return sorted(set(wynik))
 
 
 def test_moduly_kodow_elig_istnieja_i_emituja_kody() -> None:
@@ -432,6 +544,26 @@ def test_moduly_kodow_elig_istnieja_i_emituja_kody() -> None:
 @pytest.mark.parametrize("modul", MODULY_ELIG)
 def test_tresc_blokady_nie_czyta_identyfikatora_elementu(modul: str) -> None:
     assert _odczyty_identyfikatora(modul) == []
+
+
+def test_straznik_widzi_tresc_skladana_w_funkcji_pomocniczej(tmp_path, monkeypatch) -> None:
+    """Samotest strażnika: wzorzec, który przeszedł niezauważony (treść z identyfikatorem
+    w f-napisie przekazanym pozycyjnie do pomocnika, lista szyn `*_refs`), jest czerwony."""
+    katalog = tmp_path / "application"
+    katalog.mkdir()
+    (katalog / "eligibility_service.py").write_text(
+        "def zgloszenie(ref, tresc):\n"
+        "    return dict(message_pl=tresc, element_ref=ref)\n"
+        "def blokady(z, wyspa):\n"
+        "    zgloszenie(z.ref_id, f\"Transformator '{z.ref_id}'\")\n"
+        "    zgloszenie(z.ref_id, f\"szyny: {', '.join(wyspa.bus_refs)}\")\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys.modules[__name__], "_SRC", tmp_path)
+    assert _odczyty_identyfikatora(MODUL_TRESCI_BLOKAD) == [
+        f"{MODUL_TRESCI_BLOKAD}:4: ref_id",
+        f"{MODUL_TRESCI_BLOKAD}:5: bus_refs",
+    ]
 
 
 #: Konfiguracja uziemienia sprzeczna z grupą połączeń albo niekompletna: (strona, grupa,

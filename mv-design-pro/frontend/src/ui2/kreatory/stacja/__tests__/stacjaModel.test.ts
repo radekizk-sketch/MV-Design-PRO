@@ -406,9 +406,26 @@ describe('stacjaModel — payload', () => {
     const earthing = payload.nn_earthing as Record<string, unknown>;
     expect(earthing.lv_system).toBe('IT');
     expect(earthing.neutral_point).toBe('isolated');
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: domyślna, widoczna w kroku tolerancja sieci nN.
+    expect(earthing.lv_voltage_tolerance).toBe('PLUS_10');
     // Izolowany → brak rezystancji (nie dotyczy).
     expect(earthing).not.toHaveProperty('lv_r_ohm');
   });
+
+  it.each(['PLUS_6', 'PLUS_10'] as const)(
+    'tolerancja napięcia sieci nN %s → nn_earthing.lv_voltage_tolerance (jedyny nośnik: transformator)',
+    (tolerancja) => {
+      const payload = zbudujPayload(
+        dane({ tolerancja_napiecia_nn: tolerancja }),
+        kontekst(),
+        rozdzielnica('branch'),
+      );
+      expect((payload.nn_earthing as Record<string, unknown>).lv_voltage_tolerance).toBe(tolerancja);
+      // Nie ma drugiej kopii poza blokiem uziemienia (np. w `transformer` czy `station`).
+      expect(payload.transformer as Record<string, unknown>).not.toHaveProperty('lv_voltage_tolerance');
+      expect(payload.station as Record<string, unknown>).not.toHaveProperty('lv_voltage_tolerance');
+    },
+  );
 
   it('liczba równoległych transformatorów → transformer.n_parallel tylko dla ≥2 (G-STK-6)', () => {
     // Pojedynczy (domyślnie 1) → brak n_parallel w payloadzie.

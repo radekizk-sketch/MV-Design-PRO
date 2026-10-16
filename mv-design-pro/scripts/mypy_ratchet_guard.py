@@ -219,8 +219,23 @@ BACKEND = ROOT / "backend"
 # w sumie B*l zawezony w parze (b, l) i P0 transformatora — brak P0 to odmowa z rekordem,
 # nie `None + float`; 1x union-attr: referencje benchmarku zawezone `isinstance`). Zero
 # nowych (roznica zbiorow `mypy src` drzewo partii przed/po = dokladnie te wiersze).
-BASELINE_ERRORS = 198
-BASELINE_FILES = 31
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16, baza `bd3a87f4` = 224/35, bo commit 3/n
+# tej karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`): 224/35 -> 199/26.
+# Naprawione w plikach dotkniętych kartą: `upstream_equivalent.py` (brak `tolerancja_nn`),
+# `czas_wylaczenia_galezi.py` (3: zmienna pętli o trzech typach źródeł, typ stanów
+# przeglądu wszerz), `lv_temperature_correction.py` (6: zmienna pętli o czterech typach
+# źródeł), `typ_sieci_solvera` przyjmuje `str` i sam odmawia wartości spoza słownika
+# (6 wołań w `fault_loop/service.py`, `swz/service.py`, `nn_device_selection.py`,
+# `lv_circuit_verification_binding.py`), `nn_device_selection.py` (5: zmienna `gate` o
+# trzech typach wyniku), `assembler.py` (nastawa PV `float | None` z odmową nazwaną),
+# `ocena_nadpradowa.py` (2: granice zakresu zawężone jawnie, typ wpływów źródeł).
+# Partia integracji 11 (2026-10-16): scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK na czubek po
+# partii 9: 198/31 -> 174/23. POMIAR `mypy src` (mypy 1.19.1) na bazie `9d5168ea3` (198/31),
+# na czubku karty (199/26) i na drzewie scalonym (174/23); roznica zbiorow (plik, komunikat)
+# drzewo scalone minus baza = 0 i drzewo scalone minus karta = 0 — zero nowych, 24 zdjete
+# (bledy naprawione w karcie w plikach, ktore partia 9 zostawila bez zmian).
+BASELINE_ERRORS = 174
+BASELINE_FILES = 23
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

@@ -50,6 +50,7 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 
 
@@ -142,6 +143,7 @@ def dodaj_zrodlo_slack(
     line_fields_count: int,
     source_name: str = "GPZ",
     u_set_pu: float | None = None,
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
     napięciu (`skip_hv_transformer=True` — CV-4.3 K1: sieć referencyjna z
@@ -161,6 +163,10 @@ def dodaj_zrodlo_slack(
     czyta (slack jest idealny); zwarcia liczone na bliźniakach PF są wynikiem
     tego założenia (parytet asemblera pilnuje ich determinizmu, NIE zgodności z
     literaturą — literatura nie podaje wyniku).
+
+    ``lv_voltage_tolerance`` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tolerancja sieci nN, gdy
+    szyna bilansująca leży w paśmie nN (sieć nN bez transformatora w modelu, np. CIGRE LV):
+    źródło jest wtedy nośnikiem wiersza nN tabeli 1 IEC 60909-0; ``None`` = brak deklaracji.
     """
     enm = wykonaj(
         enm,
@@ -176,6 +182,11 @@ def dodaj_zrodlo_slack(
             },
             "line_fields_count": max(line_fields_count, 1),
             "source_name": source_name,
+            **(
+                {"lv_voltage_tolerance": lv_voltage_tolerance}
+                if lv_voltage_tolerance is not None
+                else {}
+            ),
         },
     )
     bus_ref = _gpz_substation(enm)["bus_refs"][0]
@@ -419,6 +430,7 @@ def dodaj_transformator(
     lv_bus_ref: str | None = None,
     hv_voltage_kv: float | None = None,
     off_nominal_ratio: float | None = None,
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Transformator SN/nN — tworzy NOWĄ szynę LV, gdy `lv_bus_ref` nie podano
     (CV-4.3 K1, rozszerzenie `add_transformer_sn_nn` — zob. jego docstring), albo
@@ -437,8 +449,14 @@ def dodaj_transformator(
     literaturową bez opisanej regulacji), jeden krok o rozmiarze dokładnie
     `(off_nominal_ratio - 1) * 100 %` od neutralnej pozycji 0 do 1, po stronie
     HV — `tau = 1 + (1-0)*step_percent/100 = off_nominal_ratio`.
+
+    `lv_voltage_tolerance` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tolerancja sieci nN strony
+    dolnej (wiersz nN tabeli 1 IEC 60909-0), podawana operacji `add_transformer_sn_nn`
+    (ten sam predykat zapisu); `None` = brak deklaracji.
     """
     payload: dict[str, Any] = {"transformer_catalog_ref": catalog_ref}
+    if lv_voltage_tolerance is not None:
+        payload["lv_voltage_tolerance"] = lv_voltage_tolerance
     if hv_bus_ref is not None:
         payload["hv_bus_ref"] = hv_bus_ref
     elif hv_voltage_kv is not None and lv_bus_ref is not None:
@@ -706,6 +724,10 @@ class TransformatorSpec:
     lv_lit: str
     catalog_ref: str
     name: str | None = None
+    #: Tolerancja napięcia sieci nN zasilanej z transformatora (PLUS_6 / PLUS_10) — podawana
+    #: operacji `add_transformer_sn_nn` przy tworzeniu (ten sam predykat zapisu co kreator);
+    #: ``None`` = brak deklaracji.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 @dataclass(frozen=True)
@@ -722,6 +744,9 @@ class ZrodloSpec:
     ik3_min_ka: float | None = None
     rx_ratio_min: float | None = None
     u_set_pu: float | None = None
+    #: Tolerancja napięcia sieci nN, gdy źródło leży na szynie nN (PLUS_6 / PLUS_10) —
+    #: podawana operacji `add_grid_source_sn`; ``None`` = brak deklaracji.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 @dataclass(frozen=True)
@@ -909,6 +934,11 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         "line_fields_count": max(odcinki_przy_szynie.get(zrodlo.lit, 0), 1),
                     }
                 ],
+                **(
+                    {"lv_voltage_tolerance": zrodlo.lv_voltage_tolerance}
+                    if zrodlo.lv_voltage_tolerance is not None
+                    else {}
+                ),
             },
         )
         nowe_zrodlo = next(s for s in enm["sources"] if s["ref_id"] not in przed)
@@ -993,6 +1023,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     hv_bus_ref=ref_biezacej,
                     catalog_ref=trafo.catalog_ref,
                     lv_voltage_kv=szyny[lit_nowej].voltage_kv,
+                    lv_voltage_tolerance=trafo.lv_voltage_tolerance,
                 )
             else:
                 enm, ref_nowej = dodaj_transformator(
@@ -1000,6 +1031,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     lv_bus_ref=ref_biezacej,
                     hv_voltage_kv=szyny[lit_nowej].voltage_kv,
                     catalog_ref=trafo.catalog_ref,
+                    lv_voltage_tolerance=trafo.lv_voltage_tolerance,
                 )
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo
@@ -1045,6 +1077,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                 hv_bus_ref=wynik.bus_map[trafo.hv_lit],
                 lv_bus_ref=wynik.bus_map[trafo.lv_lit],
                 catalog_ref=trafo.catalog_ref,
+                lv_voltage_tolerance=trafo.lv_voltage_tolerance,
             )
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo

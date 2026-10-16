@@ -30,10 +30,11 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from network_model.core.branch import odmowa_gdy_pk_sprzeczne_z_uk
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
@@ -84,6 +85,11 @@ class FaultLoopBuildRequest:
     # (wołający z warstwy aplikacji buduje DTO, nie woła solvera z parametrami — guard
     # `no_direct_fault_params_guard`).
     dane_tt_it: DaneTtIt | None = None
+    # Tolerancja napięcia sieci nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z nośnika
+    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`) przez
+    # `enm.tolerancja_nn`. Pole WYMAGANE (bez domyślnej): wołający podaje ją jawnie,
+    # `None` = brak deklaracji → odmowa solvera `fault.c_tolerancja_nn_brak`.
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -138,6 +144,7 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         network_type=request.network_type,
         protection_arrangement=request.protection_arrangement,
         dane_tt_it=request.dane_tt_it,
+        tolerancja_nn=request.tolerancja_nn,
     )
 
 

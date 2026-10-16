@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
@@ -168,7 +169,6 @@ def get_solver_input(
     audit2_payload: dict[str, Any] | None = None
     rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
-        from uuid import UUID
 
         from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 

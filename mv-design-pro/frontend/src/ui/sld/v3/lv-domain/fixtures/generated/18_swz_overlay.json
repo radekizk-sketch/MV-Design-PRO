@@ -727,14 +727,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-18_swz_overlay",
-    "model_hash": "f4a9d15018e49816afd091f99c9a3a1af270046ea6eef6c97b53daa51836af12",
+    "model_hash": "f86e36af84f007d38d6b891e0524502cbfdce0c7989898b6d31e08f1cb42c337",
     "operating_state_id": "29ba6f6cd599d656a53c095378c0eb7d76c80df557c57b35f928ac749df15eeb",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stSWZ"
   },
-  "projection_hash": "f47c5443d4f6c90edb810eaf9d73634387678b6617e53df75f1332d25bc5f892",
+  "projection_hash": "4ad1fa9b2d115ec4a753cba5ab2b2494f0666bf6b896d4c5839128c9ce8f8834",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -766,6 +766,10 @@
               {
                 "bus_ref": "FU-03_koniec",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -833,6 +837,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 498.38435,
                       "ik_min_a": 450.919174,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -856,6 +862,10 @@
               {
                 "bus_ref": "FU-03_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -923,6 +933,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -950,6 +962,10 @@
               "breaker_ref": "FU-03",
               "bus_ref": "FU-03_koniec",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1017,6 +1033,8 @@
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 321.384512,
                     "ik_min_a": 290.776463,
                     "method": "I_k = c * U_n / |Z_loop|",
@@ -1098,6 +1116,10 @@
               {
                 "bus_ref": "QF-01_koniec",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1165,6 +1187,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4046.25531,
                       "ik_min_a": 3660.89766,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -1188,6 +1212,10 @@
               {
                 "bus_ref": "QF-01_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1255,6 +1283,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -1282,6 +1312,10 @@
               "breaker_ref": "QF-01",
               "bus_ref": "QF-01_koniec",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1349,6 +1383,8 @@
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2759.04436,
                     "ik_min_a": 2496.27823,
                     "method": "I_k = c * U_n / |Z_loop|",
@@ -1414,6 +1450,10 @@
               {
                 "bus_ref": "QF-02_koniec",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1481,6 +1521,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 105.479075,
                       "ik_min_a": 95.433449,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -1504,6 +1546,10 @@
               {
                 "bus_ref": "QF-02_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1571,6 +1617,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
                       "method": "I_k = c * U_n / |Z_loop|",
@@ -1598,6 +1646,10 @@
               "breaker_ref": "QF-02",
               "bus_ref": "QF-02_koniec",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1665,6 +1717,8 @@
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 67.7062746,
                     "ik_min_a": 61.2580579,
                     "method": "I_k = c * U_n / |Z_loop|",
@@ -1737,12 +1791,13 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "c613169f-acf0-59b0-b869-d91dab6229e9",
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+      "calculation_run_id": "3726b2d9-7ce7-5dcb-8974-340cc44a369c",
       "case_id": "fixture-18_swz_overlay",
-      "equivalent_id": "a5dd56e2-5a9a-5c0b-97c7-e73748531a5f",
+      "equivalent_id": "1428dceb-c03f-53ca-b168-b40c3a89b7c2",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "f4a9d15018e49816afd091f99c9a3a1af270046ea6eef6c97b53daa51836af12",
+      "model_hash": "f86e36af84f007d38d6b891e0524502cbfdce0c7989898b6d31e08f1cb42c337",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "29ba6f6cd599d656a53c095378c0eb7d76c80df557c57b35f928ac749df15eeb",

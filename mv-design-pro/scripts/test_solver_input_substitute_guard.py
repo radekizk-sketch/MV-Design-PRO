@@ -1847,7 +1847,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `kod`, `rodzaj`, `ref` juz byly w zbiorze), -0. PASS niezmieniony (zero podstawien).
     # Partia integracji 9 (+ B01-RUNDA-3): 4199 + 2 (`odwolania`, `tresc` rekordu odmowy) = 4201.
     # POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4201." in wyjscie, wyjscie
+    # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK, 2026-10-16): 4201 -> 4209 — POMIAR
+    # `contract_fields()` na drzewie partii i na bazie `9d5168ea3`, roznica zbiorow: +12
+    # (`block_transformer_lv_voltage_tolerance`, `c_zrodlo`, `c_zrodlo_max`, `c_zrodlo_min`,
+    # `dobor_c`, `lv_voltage_tolerance`, `nadpisanie_c`, `rozszerzenia_audit2`, `tolerancja_nn`,
+    # `tolerancja_nn_dolna`, `voltage_factor_zrodlo`, `zasilajacy` — jeden nosnik c i tolerancji
+    # nN), -4 (`c_factor_explicit`, `c_factor_max`, `c_factor_min`, `c_factor_override` — plaskie
+    # pola c skasowane z kontraktu wejscia 2.0). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4209." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2080,7 +2087,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta B01-RUNDA-3 (2026-09-30, O-59): 558 -> 559 (+1 `enm/zdania_odmow_rdzenia.py` —
         # zdanie odmowy rdzenia z nazwami z modelu, zero wpisow). POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ B01-RUNDA-3): 573 + 1 (`enm/zdania_odmow_rdzenia.py`) = 574. POMIAR.
-        "Przeskanowano 574 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): 574 + 1 (`enm/tolerancja_nn.py` —
+        # predykat tolerancji napiecia sieci nN per wyspa galwaniczna) = 575. POMIAR.
+        "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2144,7 +2153,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
     # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
     # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 236." in wyjscie, wyjscie
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): 51/236 -> 50/233 — wpisy
+    # `F:dictget:run.c_factor` (`application/proof_engine/pakiet_biegu.py`,
+    # `application/proof_engine/pakiet_nastaw.py` — plik wypada z zapadki) i
+    # `F:dictget:kotwica.c_factor` (`application/protection_settings/batch_run.py`) zdjete
+    # razem z opcja biegu `c_factor` (c dobiera `voltage_factor.dobierz_c`). Budzet zmalal
+    # juz w commitach 1–3/n karty, pin nie zostal wtedy utrwalony (czerwien na bazie
+    # `bd3a87f4`). POMIAR guardem na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 50 plikow, suma 233." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2302,7 +2318,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta B01-RUNDA-3 (2026-09-30): enm 58 -> 59 (+1 `enm/zdania_odmow_rdzenia.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ B01-RUNDA-3): enm 63 + 1 = 64. POMIAR guardem na drzewie partii.
-        "  enm: pliki_skanowane=64, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
+        # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
+        "  enm: pliki_skanowane=65, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2397,7 +2415,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `analyses/swz/werdykt_tt_it.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 9 (+ W5-E-TTIT): application 251 + 2 = 253; dlug 30/90 (gałąź
         # integracji). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=253, dlug=30 plikow/suma 90, "
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): dlug 30/90 -> 29/87 (zdjete wpisy
+        # `run.c_factor` w `pakiet_biegu.py` i `pakiet_nastaw.py` oraz `kotwica.c_factor`
+        # w `batch_run.py` — c z jednego nosnika). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=253, dlug=29 plikow/suma 87, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]

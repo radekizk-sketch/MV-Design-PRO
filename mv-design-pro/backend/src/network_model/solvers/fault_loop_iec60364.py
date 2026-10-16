@@ -41,6 +41,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
+from network_model.core.voltage_factor import (
+    TolerancjaNapieciaNn,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 
 if TYPE_CHECKING:
@@ -109,8 +114,14 @@ class FaultLoopResult:
 
     # Wyniki obliczeń
     z_loop_ohm: complex  # R + jX całkowite [Ω]
-    ik_min_a: float  # min current per c_factor 0.95 (cold-system case)
-    ik_max_a: float  # max current per c_factor 1.05 (hot-system case)
+    ik_min_a: float  # I_k,min = c_min·U_0/|Z_s| (c_min z tabeli 1 dla tolerancji sieci nN)
+    ik_max_a: float  # I_k,max = c_max·U_0/|Z_s|
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c użyte w wyniku i ich podstawa (White Box) —
+    # tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci (+6 %: 1,05/0,95; +10 %: 1,10/0,90).
+    c_min: float
+    c_max: float
+    c_zrodlo_min: str
+    c_zrodlo_max: str
 
     # Determinizm + audyt
     white_box_trace: tuple[dict[str, Any], ...] = field(default_factory=tuple)
@@ -145,6 +156,10 @@ class FaultLoopResult:
             },
             "ik_min_a": self.ik_min_a,
             "ik_max_a": self.ik_max_a,
+            "c_min": self.c_min,
+            "c_max": self.c_max,
+            "c_zrodlo_min": self.c_zrodlo_min,
+            "c_zrodlo_max": self.c_zrodlo_max,
             "white_box_trace": list(self.white_box_trace),
         }
         if self.tt_it is not None:
@@ -157,9 +172,9 @@ class FaultLoopResult:
 # ---------------------------------------------------------------------------
 
 
-# c_factor per IEC 60909-0 § 5.3.2 — Table 1, low-voltage (≤ 1 kV) systems.
-C_MIN_LV = 0.95
-C_MAX_LV = 1.05
+# c per IEC 60909-0 Table 1, low-voltage (≤ 1 kV) systems — read from the ONE place of the
+# table (`network_model.core.voltage_factor.c_for_node`) with the declared tolerance of the nN
+# system (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); no c value lives in this module.
 
 
 @dataclass(frozen=True)
@@ -179,6 +194,11 @@ class FaultLoopInput:
     # Karta W5-E-TTIT: dane pętli doziemnej TT/IT (R_A, R_B, I_Δn, pojemności, f) — wymagane
     # wyłącznie dla `network_type` TT/IT; dla TN ignorowane (musi być None).
     dane_tt_it: DaneTtIt | None = None
+    # Tolerancja napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0) z nośnika
+    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`, `enm.tolerancja_nn`).
+    # Pole WYMAGANE (bez domyślnej) — `None` = brak deklaracji → odmowa nazwana
+    # `fault.c_tolerancja_nn_brak`, nigdy wiersz +6 % po cichu.
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
 
 
 def _validate_input(data: FaultLoopInput) -> None:
@@ -274,13 +294,42 @@ def zsumuj_skladowe_petli(
 Z_MIN_OHM = 1e-6
 
 
+@dataclass(frozen=True)
+class WspolczynnikiCPetli:
+    """c_min i c_max pętli nN z podstawą (White Box) — jedna para dla TN, TT i IT."""
+
+    c_min: float
+    c_max: float
+    zrodlo_min: str
+    zrodlo_max: str
+
+
+def wspolczynniki_c_petli(data: FaultLoopInput) -> WspolczynnikiCPetli:
+    """Jedyny dobór c pętli nN: tabela 1 IEC 60909-0 (``voltage_factor``), wiersz nN wg
+    zadeklarowanej tolerancji sieci (``data.tolerancja_nn``) — dla KAŻDEGO układu (TN, TT, IT).
+
+    Pasmo czytane z napięcia fazowego U_0 sieci (U_0 i U_n sieci 230/400 V leżą w tym samym
+    paśmie nN), NIE z napięcia napędowego pętli (dla drugiego zwarcia IT jest nim U_LL/2).
+    Brak tolerancji = odmowa nazwana ``fault.c_tolerancja_nn_brak`` (bez cichego +6 %).
+    """
+    u_kv = data.u_nom_v / 1000.0
+    tol = data.tolerancja_nn
+    return WspolczynnikiCPetli(
+        c_min=c_for_node(u_kv, "MIN", tolerancja_nn=tol),
+        c_max=c_for_node(u_kv, "MAX", tolerancja_nn=tol),
+        zrodlo_min=zrodlo_c_z_tabeli(u_kv, "MIN", tolerancja_nn=tol),
+        zrodlo_max=zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=tol),
+    )
+
+
 def prad_z_petli(
-    *, u_v: float, z_magnitude: float, fault_node_id: str
+    *, u_v: float, z_magnitude: float, fault_node_id: str, c: WspolczynnikiCPetli
 ) -> tuple[float, float, dict[str, Any]]:
     """Jądro pętli, krok 2: I = c · U / |Z| dla c_min i c_max (IEC 60909-0 § 5.3.2, nN).
 
     ``u_v`` — napięcie napędowe pętli [V] (U_0 dla TN i TT; U_LL/2 dla drugiego zwarcia IT —
-    wołający dokumentuje wybór w swoim śladzie). Odmowa dla |Z| poniżej ``Z_MIN_OHM``.
+    wołający dokumentuje wybór w swoim śladzie). ``c`` — z ``wspolczynniki_c_petli`` (jedyne
+    źródło c pętli). Odmowa dla |Z| poniżej ``Z_MIN_OHM``.
     """
     if z_magnitude < Z_MIN_OHM:
         logger.warning(
@@ -296,13 +345,15 @@ def prad_z_petli(
             "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
             "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
-    ik_min = (C_MIN_LV * u_v) / z_magnitude
-    ik_max = (C_MAX_LV * u_v) / z_magnitude
+    ik_min = (c.c_min * u_v) / z_magnitude
+    ik_max = (c.c_max * u_v) / z_magnitude
     krok = {
         "step": "compute_ik",
         "method": "I_k = c * U_n / |Z_loop|",
-        "c_min": C_MIN_LV,
-        "c_max": C_MAX_LV,
+        "c_min": c.c_min,
+        "c_max": c.c_max,
+        "c_zrodlo_min": c.zrodlo_min,
+        "c_zrodlo_max": c.zrodlo_max,
         "u_nom_v": u_v,
         "z_magnitude_ohm": z_magnitude,
         "ik_min_a": ik_min,
@@ -322,7 +373,8 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         I_k = c * U_n / |Z_loop|
 
     gdzie:
-        c — factor napięciowy IEC 60909-0 § 5.3.2 (LV: c_min=0.95, c_max=1.05)
+        c — współczynnik napięciowy IEC 60909-0 tab. 1 dla sieci nN o zadeklarowanej
+            tolerancji (+6 %: c_min 0,95, c_max 1,05; +10 %: c_min 0,90, c_max 1,10)
         U_n — napięcie fazowe [V] (typowo 230 V dla 400/230 sieci 3F4W)
 
     Układ TT/IT: dyspozycja po ``network_type`` do ``petla_zwarcia_tt_it`` (jedno wejście
@@ -348,9 +400,10 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     z_loop_complex, krok_sumy = zsumuj_skladowe_petli(components)
     trace.append(krok_sumy)
 
-    # Krok 2: oblicz Ik z c_factor MIN/MAX
+    # Krok 2: oblicz Ik z c MIN/MAX (tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci).
+    c = wspolczynniki_c_petli(data)
     ik_min, ik_max, krok_pradu = prad_z_petli(
-        u_v=data.u_nom_v, z_magnitude=abs(z_loop_complex), fault_node_id=data.fault_node_id
+        u_v=data.u_nom_v, z_magnitude=abs(z_loop_complex), fault_node_id=data.fault_node_id, c=c
     )
     trace.append(krok_pradu)
 
@@ -363,5 +416,9 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         z_loop_ohm=z_loop_complex,
         ik_min_a=ik_min,
         ik_max_a=ik_max,
+        c_min=c.c_min,
+        c_max=c.c_max,
+        c_zrodlo_min=c.zrodlo_min,
+        c_zrodlo_max=c.zrodlo_max,
         white_box_trace=tuple(trace),
     )

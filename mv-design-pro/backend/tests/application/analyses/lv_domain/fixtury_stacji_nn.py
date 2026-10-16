@@ -34,6 +34,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 
 REF_STACJA = "stn"
 
@@ -45,6 +46,7 @@ def _transformator(
     sn_mva: float = 0.63,
     uklad: str | None = "TN-C-S",
     r_b_ohm: float | None = None,
+    tolerancja: TolerancjaNapieciaNn | None = "PLUS_6",
 ) -> Transformer:
     return Transformer(
         ref_id=ref_id,
@@ -66,6 +68,9 @@ def _transformator(
             if r_b_ohm is not None
             else None
         ),
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napiecia sieci nN (wiersz nN tabeli 1
+        # IEC 60909-0) niesie ten sam transformator; brak = odmowa `fault.c_tolerancja_nn_brak`.
+        lv_voltage_tolerance=tolerancja,
     )
 
 

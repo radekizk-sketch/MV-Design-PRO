@@ -394,7 +394,6 @@ def _machine_result_for_proof():
             ur_kv=15.0,
             xd_subtransient_pu=0.15,
             cos_phi_r=0.8,
-            c_max=1.1,
         )
     )
     g.add_asynchronous_machine_source(

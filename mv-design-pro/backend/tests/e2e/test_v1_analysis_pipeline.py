@@ -152,6 +152,8 @@ def _build_v1_network() -> dict:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte), więc
             # odgałęzienie z tej stacji wychodzi z WOLNEGO pola odgałęźnego.
             "sn_fields": ["IN", "OUT", "FEEDER"],

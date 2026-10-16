@@ -55,7 +55,7 @@ function scenariusz(id: string, nazwa: string): FaultScenario {
     analysis_type: 'SHORT_CIRCUIT',
     fault_type: 'SC_3F',
     location: { element_ref: 'bus-7', location_type: 'BUS', position: null },
-    config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: false },
+    config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: false },
     fault_impedance_type: 'METALLIC',
     fault_mode: 'METALLIC',
     fault_impedance: null,

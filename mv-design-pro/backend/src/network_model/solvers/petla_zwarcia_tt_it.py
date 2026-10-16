@@ -38,13 +38,12 @@ from typing import Any
 
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
-    C_MAX_LV,
-    C_MIN_LV,
     FaultLoopInput,
     FaultLoopResult,
     LoopImpedanceComponent,
     NetworkType,
     prad_z_petli,
+    wspolczynniki_c_petli,
     zsumuj_skladowe_petli,
 )
 
@@ -221,8 +220,10 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
 
     z_loop, krok_sumy = zsumuj_skladowe_petli(components)
     trace.append(krok_sumy)
+    # c z jedynego źródła (tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci) — jak TN.
+    c = wspolczynniki_c_petli(data)
     ik_min, ik_max, krok_pradu = prad_z_petli(
-        u_v=data.u_nom_v, z_magnitude=abs(z_loop), fault_node_id=data.fault_node_id
+        u_v=data.u_nom_v, z_magnitude=abs(z_loop), fault_node_id=data.fault_node_id, c=c
     )
     krok_pradu = {**krok_pradu, "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)"}
     trace.append(krok_pradu)
@@ -252,6 +253,10 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
         z_loop_ohm=z_loop,
         ik_min_a=ik_min,
         ik_max_a=ik_max,
+        c_min=c.c_min,
+        c_max=c.c_max,
+        c_zrodlo_min=c.zrodlo_min,
+        c_zrodlo_max=c.zrodlo_max,
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.TT,
@@ -355,8 +360,10 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
     z_magnitude = abs(z_loop)
     u_ll = math.sqrt(3.0) * data.u_nom_v
     u_napedowe = u_ll / 2.0
+    # c z jedynego źródła; pasmo z U_0 sieci, nie z napięcia napędowego U_LL/2.
+    c = wspolczynniki_c_petli(data)
     i_d2_min, i_d2_max, krok_pradu = prad_z_petli(
-        u_v=u_napedowe, z_magnitude=z_magnitude, fault_node_id=data.fault_node_id
+        u_v=u_napedowe, z_magnitude=z_magnitude, fault_node_id=data.fault_node_id, c=c
     )
     trace.append(
         {
@@ -380,6 +387,10 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         z_loop_ohm=z_loop,
         ik_min_a=i_d2_min,
         ik_max_a=i_d2_max,
+        c_min=c.c_min,
+        c_max=c.c_max,
+        c_zrodlo_min=c.zrodlo_min,
+        c_zrodlo_max=c.zrodlo_max,
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.IT,
@@ -405,8 +416,6 @@ OBLICZ_WG_UKLADU = {
 }
 
 __all__ = [
-    "C_MAX_LV",
-    "C_MIN_LV",
     "DaneTtIt",
     "ETYKIETA_R_A",
     "ETYKIETA_R_B",

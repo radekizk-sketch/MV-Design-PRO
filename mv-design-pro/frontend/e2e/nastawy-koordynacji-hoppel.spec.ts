@@ -208,6 +208,8 @@ async function zbudujSiecGotowaDoObliczen(
   // Stacja 1: dzieli odcinek źródłowy na `segment_L` (GPZ -> Stacja 1) i
   // `segment_R` (Stacja 1 -> stary kikut magistrali).
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     ...stacja,
     segment_id: segmentZrodlowy,
   });
@@ -224,6 +226,8 @@ async function zbudujSiecGotowaDoObliczen(
   // strefy selektywności chronionego odcinka) i `segment_R_R` (Stacja 2 ->
   // stary kikut magistrali, poza zakresem tego testu).
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     ...stacja,
     segment_id: segmentR,
   });

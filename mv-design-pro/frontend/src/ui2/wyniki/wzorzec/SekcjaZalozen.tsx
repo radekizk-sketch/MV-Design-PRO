@@ -60,7 +60,13 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                   data-testid="mvd-wyn-zalozenie"
                 >
                   <span className="mvd-wyn-zalozenie-etykieta">{z.etykieta}</span>
-                  <span className="mvd-wyn-zalozenie-wartosc mvd-num">
+                  <span
+                    className={
+                      typeof z.wartosc === 'string'
+                        ? 'mvd-wyn-zalozenie-wartosc mvd-wyn-zalozenie-wartosc--tekst mvd-num'
+                        : 'mvd-wyn-zalozenie-wartosc mvd-num'
+                    }
+                  >
                     {/* Wartość liczbowa bez zmian; tekst może nieść wzory `$...$`. */}
                     {typeof z.wartosc === 'string' ? (
                       <TekstZWzorami tekst={z.wartosc} />

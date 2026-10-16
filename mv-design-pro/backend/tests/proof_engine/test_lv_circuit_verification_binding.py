@@ -84,6 +84,7 @@ def _enm(
                 pk_kw=6.5,
                 vector_group="Dyn11",
                 lv_earthing_system=earthing_system,
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         ],
         branches=branches,

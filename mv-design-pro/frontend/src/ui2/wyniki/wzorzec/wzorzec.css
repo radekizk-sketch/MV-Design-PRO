@@ -125,6 +125,16 @@
 .mvd-wyn-zalozenie-wartosc {
   white-space: nowrap;
 }
+/* Wartość tekstowa (np. zarejestrowane założenie z backendu, opis podstawy c) łamie się
+   w granicach wiersza — z `nowrap` długi komunikat wychodził poza sekcję i nachodził na
+   sąsiedni wiersz (zrzut „po” ekranu zwarć, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK). Liczby
+   zostają w jednej linii. */
+.mvd-wyn-zalozenie-wartosc--tekst {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+  max-width: 75%;
+}
 /* Założenie-zdanie (karta #145): tekst czytany jak zdanie — do lewej, zwykła czcionka. */
 .mvd-wyn-zalozenie--zdanie {
   display: block;

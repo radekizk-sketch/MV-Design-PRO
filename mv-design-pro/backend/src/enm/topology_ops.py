@@ -605,6 +605,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "hv_neutral",
             "lv_neutral",
             "lv_earthing_system",
+            "lv_voltage_tolerance",
             "n_parallel",
             "tap_position",
             "tap_min",
@@ -782,9 +783,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "r0_ohm",
             "x0_ohm",
             "z0_z1_ratio",
-            "c_max",
-            "c_min",
             "neutral_grounding",
+            "lv_voltage_tolerance",
         ):
             if opt in data:
                 src_data[opt] = data[opt]

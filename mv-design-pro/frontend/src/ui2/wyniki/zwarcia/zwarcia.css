@@ -230,6 +230,16 @@
   font-size: 12px;
   white-space: nowrap;
 }
+/* Pozycja opisowa (podstawa współczynnika c — tekst backendu): pełny wiersz siatki, tekst
+   łamany, bez kroju liczbowego — długi opis nie wychodzi poza komórkę na sąsiednią pozycję. */
+.mvd-zwarcia-bilans-poz--tekst {
+  grid-column: 1 / -1;
+}
+.mvd-zwarcia-bilans-poz--tekst dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
 
 /* ---- sekcja pasma MIN/MAX (karta W3-G3, aneks D7) ---- */
 .mvd-zwarcia-pasmo {

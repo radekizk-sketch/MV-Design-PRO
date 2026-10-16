@@ -105,6 +105,8 @@ async function siecKadrow(request: APIRequestContext) {
   };
   const odcinek1 = kable(enm).find((b) => b.name === 'Odcinek 1');
   enm = await operacja(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     ...wspolne,
     segment_ref: odcinek1?.ref_id,
     station_type: 'B',
@@ -113,6 +115,8 @@ async function siecKadrow(request: APIRequestContext) {
   });
   const odcinek3 = kable(enm).find((b) => b.name === 'Odcinek 3');
   enm = await operacja(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     ...wspolne,
     segment_ref: odcinek3?.ref_id,
     station_type: 'D',

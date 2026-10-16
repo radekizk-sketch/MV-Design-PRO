@@ -649,14 +649,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-19_swz_tt",
-    "model_hash": "30cdaab5fc3479ac28fb4ee2231a3044a5e0e0b1174c91b5267c08cb36c565db",
+    "model_hash": "ec60738810b660389348eecb6b4c842a90c11b9b2469bea2b88de64103a7e3dc",
     "operating_state_id": "0a0556fb4b088d7ba8b0d2439b937e997035e87322890788afd0a2d97c95c5ca",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "541c4fd6d221932ad53f85b3f2a6baa9883d8f9a298493ecad34e6e6775e9ace",
+  "projection_hash": "dda414347917d2723980dff8a6144239729ade5817af9c349d59eb55de73ebc4",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -688,6 +688,10 @@
               {
                 "bus_ref": "QF-01_instalacja",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -790,6 +794,8 @@
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 8.95657588,
                       "ik_min_a": 8.10356865,
                       "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)",
@@ -866,6 +872,10 @@
               "breaker_ref": "QF-01",
               "bus_ref": "QF-01_instalacja",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -968,6 +978,8 @@
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 8.94372983,
                     "ik_min_a": 8.09194604,
                     "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)",
@@ -1601,12 +1613,13 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "7387ea46-b894-5e92-bba0-9e8aace4db29",
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+      "calculation_run_id": "652deb14-21ca-54af-b9a2-6e02b5008468",
       "case_id": "fixture-19_swz_tt",
-      "equivalent_id": "f747fb41-7d65-5e00-8d15-72f0f96c07fb",
+      "equivalent_id": "23a5f7a9-5be8-524b-ba80-1941dd613c2a",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "30cdaab5fc3479ac28fb4ee2231a3044a5e0e0b1174c91b5267c08cb36c565db",
+      "model_hash": "ec60738810b660389348eecb6b4c842a90c11b9b2469bea2b88de64103a7e3dc",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "0a0556fb4b088d7ba8b0d2439b937e997035e87322890788afd0a2d97c95c5ca",

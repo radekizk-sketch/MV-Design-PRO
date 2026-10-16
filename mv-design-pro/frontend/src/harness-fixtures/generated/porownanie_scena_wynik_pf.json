@@ -204,16 +204,16 @@
     "envelope": {
       "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 1,
-      "options_hash": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
+      "options_hash": "3db72fb9717086b35b9122f8e0dce7249ff29ee73ea9abbaf1cdefe8ca523f8b",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "77d65307067e680ffe209d8af7dd246229012acae8bf77af8d8a375f023b31e1",
-      "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "semantic_fingerprint": "9a98afc098836dd75d59b6c68b8c89437b324837a39029c585218f85bca2f258",
+      "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "wersja": 1
     },
     "finished_at": "2026-09-10T08:00:00+00:00",
-    "input_hash": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
+    "input_hash": "3db72fb9717086b35b9122f8e0dce7249ff29ee73ea9abbaf1cdefe8ca523f8b",
     "run_id": "run-lf-scena-porownanie-a",
-    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
     "status": "FINISHED"
   },
   "provenance_b": {
@@ -221,16 +221,16 @@
     "envelope": {
       "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 2,
-      "options_hash": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
+      "options_hash": "28249a8f9514bfa39805f0a0d3af9d24d8b2e44f43f530250776aa849207319d",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "e229ca74a9c8f40254a6b0c6e4bb8824be70f6cb6cc8e19fb714f4746a03cabe",
-      "snapshot_hash": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
+      "semantic_fingerprint": "ccc087094568bc31430a2e4b4cd905f86412426f938899b46fc02d0cdc20f6c1",
+      "snapshot_hash": "bcc26473defd28816348d25bc96f6f8c606b6e32216cf3d878bbd8e6aac1d88d",
       "wersja": 1
     },
     "finished_at": "2026-09-10T08:00:00+00:00",
-    "input_hash": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
+    "input_hash": "28249a8f9514bfa39805f0a0d3af9d24d8b2e44f43f530250776aa849207319d",
     "run_id": "run-lf-scena-porownanie-b",
-    "snapshot_hash": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
+    "snapshot_hash": "bcc26473defd28816348d25bc96f6f8c606b6e32216cf3d878bbd8e6aac1d88d",
     "status": "FINISHED"
   },
   "ranking": [

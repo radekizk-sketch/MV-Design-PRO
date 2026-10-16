@@ -36,8 +36,6 @@ const WARIANT_STATUSU: Record<StudyCase['result_status'], string> = {
 };
 
 const POLA_ZWARCIA: Array<keyof StudyCaseConfig> = [
-  'c_factor_max',
-  'c_factor_min',
   'sc_input_mode',
   'sc_simplified_sk_mva',
   'sc_simplified_r_x_ratio',
@@ -46,7 +44,6 @@ const POLA_ROZPLYW: Array<keyof StudyCaseConfig> = ['base_mva', 'max_iterations'
 const POLA_OPCJE: Array<keyof StudyCaseConfig> = [
   'include_motor_contribution',
   'include_inverter_contribution',
-  'thermal_time_seconds',
 ];
 const POLA_OPERATOR: Array<keyof StudyCaseConfig> = ['operator_profile_id'];
 
@@ -128,27 +125,9 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
 
       <section className="mvd-karta-sekcja mvd-karta-zalozenia" aria-label={T.sekcjaZalozenia}>
         <h4 className="mvd-karta-sekcja-tytul">{T.sekcjaZalozenia}</h4>
-        <table className="mvd-karta-tabela">
-          <thead>
-            <tr>
-              <th>{T.kolParametr}</th>
-              <th>{T.kolWartosc}</th>
-              <th>{T.kolPochodzenie}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{T.zalozenieCMax}</td>
-              <td className="mvd-num">{formatWartoscKonfiguracji('c_factor_max', config.c_factor_max)}</td>
-              <td className="mvd-karta-pochodzenie">{T.pochodzenieKonfiguracja}</td>
-            </tr>
-            <tr>
-              <td>{T.zalozenieCMin}</td>
-              <td className="mvd-num">{formatWartoscKonfiguracji('c_factor_min', config.c_factor_min)}</td>
-              <td className="mvd-karta-pochodzenie">{T.pochodzenieKonfiguracja}</td>
-            </tr>
-          </tbody>
-        </table>
+        <p className="mvd-karta-opis" data-testid="mvd-karta-zalozenie-c-nosnik">
+          {T.zalozenieCNosnik}
+        </p>
       </section>
 
       <SekcjaKonfiguracji tytul={T.sekcjaZwarcia} pola={POLA_ZWARCIA} config={config} />

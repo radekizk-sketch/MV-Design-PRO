@@ -99,6 +99,9 @@ def _enm(
                 pk_kw=6.5,
                 vector_group="Dyn11",
                 lv_earthing_system="TN-C-S",
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN +6 % (c 1,05/0,95) — liczby
+                # przypięte w testach pętli liczono dla tego wiersza tabeli 1 IEC 60909-0.
+                lv_voltage_tolerance="PLUS_6",
             )
         ],
         branches=[

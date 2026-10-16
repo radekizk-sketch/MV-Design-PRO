@@ -203,6 +203,12 @@ export interface ShortCircuitRow {
   xr_ratio?: number | null;
   kappa?: number | null;
   c_factor?: number | null;
+  /**
+   * Podstawa współczynnika c TEGO węzła (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, White Box):
+   * „IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 %, MAX" albo „nadpisanie ręczne: <powód>".
+   * Tekst backendu — UI go nie składa i nie tłumaczy.
+   */
+  c_zrodlo?: string | null;
   un_kv?: number | null;
   tk_s?: number | null;
   tb_s?: number | null;
@@ -317,15 +323,18 @@ export interface ZalozenieBieguSlad {
 }
 
 /**
- * Współczynnik napięciowy c ZAPISANY na biegu (karta UI2 p.7,
- * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — jawny override
- * (`tryb: 'jawny'`, `wartosc` liczbą) albo dobór automatyczny per węzeł z jego
- * pasma napięciowego (`tryb: 'auto_per_wezel'`, `wartosc: null` — nie ma
- * jednej liczby, więc pole NIE jest fabrykowane).
+ * Tryb współczynnika napięciowego c ZAPISANY na biegu (`voltage_factor.opis_c_biegu`,
+ * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — JEDEN kształt dla wyników
+ * zwarć i proweniencji nastaw (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59):
+ *  - `auto_per_wezel`: c z tabeli 1 IEC 60909-0 dla pasma KAŻDEGO węzła (`wartosc` i
+ *    `uzasadnienie` = `null` — nie ma jednej liczby; podstawa w wierszu: `c_zrodlo`),
+ *  - `nadpisanie`: wartość ręczna RAZEM z uzasadnieniem inżyniera.
+ * Dawny tryb „jawny" (płaska liczba bez uzasadnienia) nie istnieje.
  */
 export interface CFactorBiegu {
-  tryb: 'jawny' | 'auto_per_wezel';
+  tryb: 'auto_per_wezel' | 'nadpisanie';
   wartosc: number | null;
+  uzasadnienie: string | null;
 }
 
 /**
@@ -547,6 +556,7 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   u_kv: 'Napięcie',
   u_pu: 'Napięcie (j.w.)',
   c_factor: 'Współczynnik napięciowy c',
+  c_zrodlo: 'Podstawa współczynnika c',
   // Power
   sk_mva: 'Moc zwarciowa Sk"',
   p_mw: 'Moc czynna',

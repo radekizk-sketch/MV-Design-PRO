@@ -1,20 +1,24 @@
 {
   "dostepnosc_pakietu": true,
   "wejscie": {
-    "c_max": null,
-    "c_min": 1.0,
+    "c_kotwicy": {
+      "tryb": "auto_per_wezel",
+      "uzasadnienie": null,
+      "wartosc": null
+    },
+    "c_wariantu_min": "IEC 60909-0 tab. 1, scenariusz MIN (per węzeł)",
     "case_name": "Wariant zimowy",
     "engine_input": {
       "conductor_material": "AL",
       "cross_section_mm2": 120.0,
       "delta_t_s": 0.3,
-      "i_load_max_a": 23.0161199362,
+      "i_load_max_a": 23.0161199801,
       "i_nominal_a": 230.0,
-      "ik2_min_end_a": 6788.32406987,
+      "ik2_min_end_a": 6743.49997906,
       "ik3_max_beginning_a": 8767.00521135,
       "ik3_max_end_a": 8622.32960399,
-      "ik3_min_beginning_a": 7970.00473759,
-      "ik3_min_end_a": 7838.48145817,
+      "ik3_min_beginning_a": 7970.00473762,
+      "ik3_min_end_a": 7786.72305638,
       "ik_max_next_bus_a": 8550.20741464,
       "k_b": 1.2,
       "k_bth": 1.1,
@@ -26,23 +30,24 @@
     "next_bus_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/000",
     "project_name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "scenariusz_kotwicy": "MAX",
     "solver_version": "IEC_60909;load-flow-newton-raphson-v1",
     "zacisk_zabezpieczenia": "od",
     "zrodlo_zacisku": "wskazanie"
   },
   "wynik": {
     "delayed": {
-      "i_load_max_a": 23.0161199362,
+      "i_load_max_a": 23.0161199801,
       "i_setting_a": 27.6,
       "is_valid": true,
       "k_b": 1.2,
-      "sensitivity_ratio": 245.78,
+      "sensitivity_ratio": 244.16,
       "t_setting_s": 0.3,
       "trace": [
         {
           "formula": "I_{>} = k_b \\cdot I_{obc,max}",
           "inputs": {
-            "I_obc_max_A": 23.0161199362,
+            "I_obc_max_A": 23.0161199801,
             "k_b": 1.2
           },
           "result": {
@@ -66,16 +71,16 @@
         {
           "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
           "inputs": {
-            "I_k2_min_end_A": 6788.32406987,
+            "I_k2_min_end_A": 6743.49997906,
             "I_setting_A": 27.6
           },
           "passed": true,
           "requirement": "k_cz >= 1.5",
           "result": {
-            "sensitivity_ratio": 245.78
+            "sensitivity_ratio": 244.16
           },
           "step": "Sprawdzenie czułości I>",
-          "substitution": "6788.3 / 27.6"
+          "substitution": "6743.5 / 27.6"
         }
       ],
       "validation_notes": []
@@ -141,7 +146,7 @@
         {
           "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
           "inputs": {
-            "I_k_min_bus_A": 7970.00473759,
+            "I_k_min_bus_A": 7970.00473762,
             "k_b": 1.2
           },
           "result": {

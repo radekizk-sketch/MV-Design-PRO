@@ -86,7 +86,6 @@ def _sync(node_id: str = "B") -> SynchronousMachineSource:
         ur_kv=15.0,
         xd_subtransient_pu=0.15,
         cos_phi_r=0.8,
-        c_max=1.1,
     )
 
 
@@ -228,8 +227,8 @@ def test_dfig_partial_identical_to_squirrel_cage():
     g1, g2 = _slack_line_bus(), _slack_line_bus()
     g1.add_asynchronous_machine_source(_async())
     g2.add_asynchronous_machine_source(_dfig())
-    c1 = compute_machine_contributions(g1, "B").contributions[0]
-    c2 = compute_machine_contributions(g2, "B").contributions[0]
+    c1 = compute_machine_contributions(g1, "B", c_factor=1.1).contributions[0]
+    c2 = compute_machine_contributions(g2, "B", c_factor=1.1).contributions[0]
     assert c2.ikss_partial_a == c1.ikss_partial_a
     assert c2.ib_a == c1.ib_a
     assert c1.machine_type == "ASYNCHRONOUS"
@@ -302,8 +301,8 @@ def test_module_deterministic():
     g.add_synchronous_machine_source(_sync())
     g.add_asynchronous_machine_source(_async())
     assert (
-        compute_machine_contributions(g, "B").to_dict()
-        == compute_machine_contributions(g, "B").to_dict()
+        compute_machine_contributions(g, "B", c_factor=1.1).to_dict()
+        == compute_machine_contributions(g, "B", c_factor=1.1).to_dict()
     )
 
 

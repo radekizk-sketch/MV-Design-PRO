@@ -60,19 +60,19 @@ describe('rozniceKonfiguracji — tabela różnic', () => {
       studyCaseFixture('K1', 'A'),
       studyCaseFixture('K2', 'B'),
     ]);
-    expect(wiersze.length).toBeGreaterThanOrEqual(12);
+    expect(wiersze.length).toBeGreaterThanOrEqual(9);
     expect(wiersze.every((w) => !w.rozne)).toBe(true);
   });
 
-  it('różnica w c_factor_max → tylko ten wiersz różny', () => {
+  it('różnica w base_mva → tylko ten wiersz różny', () => {
     const wiersze = rozniceKonfiguracji([
-      studyCaseFixture('K1', 'A', { config: { c_factor_max: 1.1 } }),
-      studyCaseFixture('K2', 'B', { config: { c_factor_max: 1.05 } }),
+      studyCaseFixture('K1', 'A', { config: { base_mva: 100 } }),
+      studyCaseFixture('K2', 'B', { config: { base_mva: 75 } }),
     ]);
     const rozne = wiersze.filter((w) => w.rozne);
     expect(rozne).toHaveLength(1);
-    expect(rozne[0].pole).toBe('c_factor_max');
-    expect(rozne[0].wartosci).toEqual(['1.1', '1.05']);
+    expect(rozne[0].pole).toBe('base_mva');
+    expect(rozne[0].wartosci).toEqual(['100', '75']);
   });
 });
 

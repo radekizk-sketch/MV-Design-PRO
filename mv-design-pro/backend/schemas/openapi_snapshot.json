@@ -2924,15 +2924,8 @@
       "title": "Arc Params"
      },
      "config": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ShortCircuitConfigRequest"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Konfiguracja obliczeń (opcjonalna)"
+      "$ref": "#/components/schemas/ShortCircuitConfigRequest",
+      "description": "Konfiguracja obliczeń (scenariusz MAX/MIN wymagany)"
      },
      "fault_impedance": {
       "anyOf": [
@@ -2988,7 +2981,8 @@
     "required": [
      "name",
      "fault_type",
-     "location"
+     "location",
+     "config"
     ],
     "title": "CreateFaultScenarioRequest",
     "type": "object"
@@ -3995,6 +3989,21 @@
        }
       ],
       "title": "Block Transformer Catalog Ref"
+     },
+     "block_transformer_lv_voltage_tolerance": {
+      "anyOf": [
+       {
+        "enum": [
+         "PLUS_6",
+         "PLUS_10"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Block Transformer Lv Voltage Tolerance"
      },
      "blocking_transformer_ref": {
       "anyOf": [
@@ -5118,6 +5127,22 @@
       "title": "Fault Node Id",
       "type": "string"
      },
+     "lv_voltage_tolerance": {
+      "anyOf": [
+       {
+        "enum": [
+         "PLUS_6",
+         "PLUS_10"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Tolerancja napięcia sieci nN: PLUS_6 | PLUS_10",
+      "title": "Lv Voltage Tolerance"
+     },
      "network_type": {
       "default": "TN-S",
       "description": "TN-S | TN-C-S | TN-C | TT | IT",
@@ -5169,6 +5194,22 @@
    "FaultLoopComputeResponse": {
     "description": "Response z FaultLoopResult.to_dict() + envelope wrapping ready.",
     "properties": {
+     "c_max": {
+      "title": "C Max",
+      "type": "number"
+     },
+     "c_min": {
+      "title": "C Min",
+      "type": "number"
+     },
+     "c_zrodlo_max": {
+      "title": "C Zrodlo Max",
+      "type": "string"
+     },
+     "c_zrodlo_min": {
+      "title": "C Zrodlo Min",
+      "type": "string"
+     },
      "components": {
       "items": {
        "additionalProperties": true,
@@ -5226,6 +5267,10 @@
      "z_loop_ohm",
      "ik_min_a",
      "ik_max_a",
+     "c_min",
+     "c_max",
+     "c_zrodlo_min",
+     "c_zrodlo_max",
      "white_box_trace"
     ],
     "title": "FaultLoopComputeResponse",
@@ -5842,6 +5887,21 @@
        }
       ],
       "title": "Ik3 Min Ka"
+     },
+     "lv_voltage_tolerance": {
+      "anyOf": [
+       {
+        "enum": [
+         "PLUS_6",
+         "PLUS_10"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lv Voltage Tolerance"
      },
      "r0_ohm": {
       "anyOf": [
@@ -7315,6 +7375,48 @@
      "wersja"
     ],
     "title": "ModelZrodlaWidmowego",
+    "type": "object"
+   },
+   "NadpisanieCRequest": {
+    "additionalProperties": false,
+    "description": "Ręczne nadpisanie współczynnika c — wyłącznie z uzasadnieniem (decyzja O-59).\n\nPustego uzasadnienia nie odrzuca tu schemat, tylko domena\n(`network_model.core.voltage_factor.NadpisanieC`) — jedno miejsce walidacji i jeden\nkod odmowy (`fault.c_nadpisanie_bez_uzasadnienia`) dla API, opcji biegu i magazynu.",
+    "properties": {
+     "uzasadnienie": {
+      "description": "Uzasadnienie inżyniera (wymagane)",
+      "title": "Uzasadnienie",
+      "type": "string"
+     },
+     "wartosc": {
+      "description": "Wartość współczynnika napięciowego c",
+      "title": "Wartosc",
+      "type": "number"
+     }
+    },
+    "required": [
+     "wartosc",
+     "uzasadnienie"
+    ],
+    "title": "NadpisanieCRequest",
+    "type": "object"
+   },
+   "NadpisanieCZadanie": {
+    "additionalProperties": false,
+    "description": "Ręczne nadpisanie c z uzasadnieniem — walidacja w `voltage_factor.NadpisanieC`.",
+    "properties": {
+     "uzasadnienie": {
+      "title": "Uzasadnienie",
+      "type": "string"
+     },
+     "wartosc": {
+      "title": "Wartosc",
+      "type": "number"
+     }
+    },
+    "required": [
+     "wartosc",
+     "uzasadnienie"
+    ],
+    "title": "NadpisanieCZadanie",
     "type": "object"
    },
    "NakladkaRoznicResponse": {
@@ -13000,12 +13102,8 @@
     "type": "string"
    },
    "SC3FPackRequest": {
+    "additionalProperties": false,
     "properties": {
-     "c_factor": {
-      "default": 1.1,
-      "title": "C Factor",
-      "type": "number"
-     },
      "case_id": {
       "title": "Case Id",
       "type": "string"
@@ -13017,6 +13115,16 @@
      "fault_node_id": {
       "title": "Fault Node Id",
       "type": "string"
+     },
+     "nadpisanie_c": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NadpisanieCZadanie"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "project_id": {
       "title": "Project Id",
@@ -13033,6 +13141,14 @@
      "run_timestamp": {
       "format": "date-time",
       "title": "Run Timestamp",
+      "type": "string"
+     },
+     "scenariusz": {
+      "enum": [
+       "MAX",
+       "MIN"
+      ],
+      "title": "Scenariusz",
       "type": "string"
      },
      "snapshot": {
@@ -13050,6 +13166,7 @@
      },
      "tk_s": {
       "default": 1.0,
+      "description": "Czas trwania zwarcia t_k [s]",
       "title": "Tk S",
       "type": "number"
      }
@@ -13064,12 +13181,14 @@
      "fault_node_id",
      "run_timestamp",
      "solver_version",
-     "snapshot"
+     "snapshot",
+     "scenariusz"
     ],
     "title": "SC3FPackRequest",
     "type": "object"
    },
    "SCAsymmetricalPackRequest": {
+    "additionalProperties": false,
     "properties": {
      "a_im": {
       "title": "A Im",
@@ -13077,10 +13196,6 @@
      },
      "a_re": {
       "title": "A Re",
-      "type": "number"
-     },
-     "c_factor": {
-      "title": "C Factor",
       "type": "number"
      },
      "case_id": {
@@ -13095,6 +13210,21 @@
       "title": "Fault Node Id",
       "type": "string"
      },
+     "lv_voltage_tolerance": {
+      "anyOf": [
+       {
+        "enum": [
+         "PLUS_6",
+         "PLUS_10"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lv Voltage Tolerance"
+     },
      "m_factor": {
       "default": 1.0,
       "title": "M Factor",
@@ -13104,6 +13234,16 @@
       "default": 0.0,
       "title": "N Factor",
       "type": "number"
+     },
+     "nadpisanie_c": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NadpisanieCZadanie"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "project_id": {
       "title": "Project Id",
@@ -13120,6 +13260,14 @@
      "run_timestamp": {
       "format": "date-time",
       "title": "Run Timestamp",
+      "type": "string"
+     },
+     "scenariusz": {
+      "enum": [
+       "MAX",
+       "MIN"
+      ],
+      "title": "Scenariusz",
       "type": "string"
      },
      "snapshot_id": {
@@ -13179,7 +13327,7 @@
      "run_timestamp",
      "solver_version",
      "u_n_kv",
-     "c_factor",
+     "scenariusz",
      "u_prefault_kv",
      "z1_re_ohm",
      "z1_im_ohm",
@@ -13194,15 +13342,29 @@
     "type": "object"
    },
    "SCContributionsRequest": {
+    "additionalProperties": false,
     "description": "Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).\n\nKanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe\nmu/q/i_b, IEC 60909-0:2016 §6.6) liczona po stronie serwera przez ten sam\nsolver co pakiet dowodowy SC3F (`compute_machine_contributions`).\nZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.",
     "properties": {
-     "c_factor": {
-      "default": 1.1,
-      "title": "C Factor",
-      "type": "number"
-     },
      "fault_node_id": {
       "title": "Fault Node Id",
+      "type": "string"
+     },
+     "nadpisanie_c": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NadpisanieCZadanie"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "scenariusz": {
+      "enum": [
+       "MAX",
+       "MIN"
+      ],
+      "title": "Scenariusz",
       "type": "string"
      },
      "snapshot": {
@@ -13218,7 +13380,8 @@
     },
     "required": [
      "snapshot",
-     "fault_node_id"
+     "fault_node_id",
+     "scenariusz"
     ],
     "title": "SCContributionsRequest",
     "type": "object"
@@ -13533,27 +13696,45 @@
     "type": "object"
    },
    "ShortCircuitConfigRequest": {
-    "description": "Short-circuit calculation configuration.",
+    "additionalProperties": false,
+    "description": "Konfiguracja obliczeń zwarciowych scenariusza — jedyny nośnik c i t_k.\n\n`scenariusz` (MAX/MIN) wybiera kolumnę tabeli 1 IEC 60909-0; wartość c dobiera\nbackend PER WĘZEŁ z pasma jego napięcia. Klucz `c_factor` nie istnieje (extra=forbid).",
     "properties": {
-     "c_factor": {
-      "default": 1.1,
-      "description": "Współczynnik napięciowy c (IEC 60909)",
-      "title": "C Factor",
-      "type": "number"
-     },
      "include_branch_contributions": {
       "default": false,
       "description": "Dołącz wkłady gałęziowe",
       "title": "Include Branch Contributions",
       "type": "boolean"
      },
+     "nadpisanie_c": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NadpisanieCRequest"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Ręczne nadpisanie c z uzasadnieniem (opcjonalne)"
+     },
+     "scenariusz": {
+      "description": "Scenariusz zwarciowy: MAX (Ik''max) albo MIN (Ik''min)",
+      "enum": [
+       "MAX",
+       "MIN"
+      ],
+      "title": "Scenariusz",
+      "type": "string"
+     },
      "thermal_time_seconds": {
       "default": 1.0,
-      "description": "Czas cieplny [s]",
+      "description": "Czas trwania zwarcia t_k [s]",
       "title": "Thermal Time Seconds",
       "type": "number"
      }
     },
+    "required": [
+     "scenariusz"
+    ],
     "title": "ShortCircuitConfigRequest",
     "type": "object"
    },
@@ -17235,7 +17416,7 @@
   },
   "/api/analysis-runs/{run_id}/nastawy": {
    "get": {
-    "description": "Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy\nZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,\na przycisk „Pobierz pakiet dowodowy\" woła ZIP z tym samym zapytaniem.\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\nwybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
+    "description": "Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy\nZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,\na przycisk „Pobierz pakiet dowodowy\" woła ZIP z tym samym zapytaniem.\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\nscenariusza MIN (c_min per węzeł z tabeli 1 IEC 60909-0) oraz wariant rozpływu na\nmigawce kotwicy (``run_id`` = zakończony bieg zwarcia trójfazowego scenariusza MAX)\n— klient podaje wyłącznie tożsamość kotwicy i wybory inżynierskie: chroniony\nodcinek, kolejną szynę i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
     "operationId": "get_nastawy_api_analysis_runs__run_id__nastawy_get",
     "parameters": [
      {
@@ -17286,16 +17467,6 @@
        ],
        "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
        "title": "Zacisk Zabezpieczenia"
-      }
-     },
-     {
-      "in": "query",
-      "name": "c_min",
-      "required": false,
-      "schema": {
-       "default": 1.0,
-       "title": "C Min",
-       "type": "number"
       }
      },
      {
@@ -17422,16 +17593,6 @@
      },
      {
       "in": "query",
-      "name": "c_min",
-      "required": false,
-      "schema": {
-       "default": 1.0,
-       "title": "C Min",
-       "type": "number"
-      }
-     },
-     {
-      "in": "query",
       "name": "delta_t_s",
       "required": false,
       "schema": {
@@ -17545,7 +17706,7 @@
   },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy-nastaw": {
    "get": {
-    "description": "Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\nwybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
+    "description": "Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\nscenariusza MIN (c_min per węzeł z tabeli 1 IEC 60909-0) oraz wariant rozpływu na\nmigawce kotwicy (``run_id`` = zakończony bieg zwarcia trójfazowego scenariusza MAX)\n— klient podaje wyłącznie tożsamość kotwicy i wybory inżynierskie: chroniony\nodcinek, kolejną szynę i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
     "operationId": "get_pakiet_dowodowy_nastaw_api_analysis_runs__run_id__pakiet_dowodowy_nastaw_get",
     "parameters": [
      {
@@ -17596,16 +17757,6 @@
        ],
        "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
        "title": "Zacisk Zabezpieczenia"
-      }
-     },
-     {
-      "in": "query",
-      "name": "c_min",
-      "required": false,
-      "schema": {
-       "default": 1.0,
-       "title": "C Min",
-       "type": "number"
       }
      },
      {
@@ -17664,7 +17815,7 @@
   },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc": {
    "get": {
-    "description": "Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.\n\nZwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,\nprąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk\nzabezpieczenia z modelu, zaciski dozwolone z etykietami szyn, rekord odmowy bez\nwskazania i listy szyn kandydujących na „kolejną strefę\" (warunek selektywności)\nosobno dla każdego zacisku (decyzja O-51). Wybór odcinka, zacisku (gdy model\nmilczy) i szyny należy do inżyniera; kod niczego nie zgaduje.",
+    "description": "Czy TEN przebieg (zwarcie trójfazowe scenariusza MAX) może być kotwicą pakietu nastaw.\n\nZwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,\nprąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk\nzabezpieczenia z modelu, zaciski dozwolone z etykietami szyn, rekord odmowy bez\nwskazania i listy szyn kandydujących na „kolejną strefę\" (warunek selektywności)\nosobno dla każdego zacisku (decyzja O-51). Wybór odcinka, zacisku (gdy model\nmilczy) i szyny należy do inżyniera; kod niczego nie zgaduje.",
     "operationId": "get_pakiet_dowodowy_nastaw_dostepnosc_api_analysis_runs__run_id__pakiet_dowodowy_nastaw_dostepnosc_get",
     "parameters": [
      {
@@ -24077,7 +24228,7 @@
   },
   "/api/fault-loop/compute": {
    "post": {
-    "description": "Oblicz impedancję pętli zwarcia po stronie nN.\n\nPer IEC 60364-4-41:\n    Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream opcjonalne)\n    I_k = c * U_n / |Z_loop|\n\ngdzie c = 0.95 (min) / 1.05 (max) per IEC 60909-0 § 5.3.2.\n\nMVP scope: TN-S, TN-C-S, TN-C. TT/IT rzucają NotImplementedError.",
+    "description": "Oblicz impedancję pętli zwarcia po stronie nN.\n\nPer IEC 60364-4-41:\n    Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream opcjonalne)\n    I_k = c * U_n / |Z_loop|\n\ngdzie c_min/c_max z tabeli 1 IEC 60909-0 dla sieci nN o tolerancji z żądania\n(``lv_voltage_tolerance``; jedyne źródło wartości: ``network_model.core.voltage_factor``).\n\nZakres końcówki: TN-S, TN-C-S, TN-C. Układ TT/IT wymaga danych pętli doziemnej (R_A, R_B,\nI_Δn; pojemności doziemne), których żądanie nie niesie — odmowa nazwana solvera (400).",
     "operationId": "compute_fault_loop_endpoint_api_fault_loop_compute_post",
     "requestBody": {
      "content": {

@@ -82,7 +82,8 @@ def _pack_input(enm: EnergyNetworkModel, fault_node_id: str) -> SC3FPackInput:
         fault_node_id=fault_node_id,
         run_timestamp=datetime(2026, 1, 1, 0, 0, 0),
         solver_version="test",
-        c_factor=1.10,
+        scenariusz="MAX",
+        nadpisanie_c=None,
         tk_s=1.0,
     )
 

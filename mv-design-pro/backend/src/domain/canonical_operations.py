@@ -2042,6 +2042,47 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
+    # Współczynnik napięciowy c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59):
+    # jedynym nośnikiem c jest scenariusz zwarciowy (MAX/MIN → tabela 1 IEC 60909-0
+    # per węzeł); ręczne nadpisanie wyłącznie z uzasadnieniem. Odmowy podnosi
+    # `network_model.core.voltage_factor.NadpisanieC` — jedno miejsce walidacji.
+    "fault.c_nadpisanie_bez_uzasadnienia": ReadinessCodeSpec(
+        code="fault.c_nadpisanie_bez_uzasadnienia",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nadpisanie współczynnika napięciowego c wymaga uzasadnienia (IEC 60909-0 "
+            "dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu)"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    "fault.c_nadpisanie_wartosc_niepoprawna": ReadinessCodeSpec(
+        code="fault.c_nadpisanie_wartosc_niepoprawna",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): wiersz nN tabeli 1 IEC 60909-0
+    # zależy od tolerancji napięcia sieci nN (+6 % / +10 %), zadeklarowanej na transformatorze
+    # zasilającym (`Transformer.lv_voltage_tolerance`). Odmowę podnosi
+    # `network_model.core.voltage_factor.c_for_node`; bramkę zwarć — `eligibility_service`
+    # (ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING) z tego samego predykatu `enm.tolerancja_nn`.
+    "fault.c_tolerancja_nn_brak": ReadinessCodeSpec(
+        code="fault.c_tolerancja_nn_brak",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — "
+            "współczynnika napięciowego c (IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
+    ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
     # („niesprawdzone") musi nieść PRZYCZYNĘ, inaczej jest nie do odróżnienia od
     # spełnienia kryterium.

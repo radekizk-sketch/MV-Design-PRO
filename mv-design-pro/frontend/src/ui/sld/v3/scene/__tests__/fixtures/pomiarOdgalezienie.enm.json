@@ -4433,7 +4433,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "a16c731c4b32a4f6f30f763f582f14e6299f535e2cd7809c2a55f3ecfa8dd683",
+   "hash_sha256": "ee56b176f3e834caca89e87e483a1c337bfd5a25d6eb4d0621c08b3ec768cb4d",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"
@@ -5370,14 +5370,13 @@
   "sources": [
    {
     "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-    "c_max": null,
-    "c_min": null,
     "catalog_namespace": "ZRODLO_SN",
     "catalog_ref": "src-gpz-15kv-250mva-rx010",
     "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
     "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
     "ik3_ka": 9.62,
     "ik3_min_ka": null,
+    "lv_voltage_tolerance": null,
     "materialized_params": {
      "catalog_item_id": "src-gpz-15kv-250mva-rx010",
      "catalog_item_version": "2024.1",
@@ -6598,6 +6597,7 @@
     "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": null,
     "materialized_params": {
      "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
      "catalog_item_version": "legacy",
@@ -6650,6 +6650,7 @@
     "lv_bus_ref": "nn/acd9aba0688c3cdbd5706cd43bf2b009/feeder_bus",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": "PLUS_6",
     "materialized_params": {
      "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
      "catalog_item_version": "legacy",
@@ -6695,6 +6696,7 @@
     "lv_bus_ref": "nn/cc8aad9ddf2a378ff040fe76e02b5071/feeder_bus",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": "PLUS_6",
     "materialized_params": {
      "catalog_item_id": "tr-sn-nn-15-04-400kva-dyn11",
      "catalog_item_version": "legacy",
@@ -6740,6 +6742,7 @@
     "lv_bus_ref": "nn/defbf3bc7b286215911e56a7136c29bc/feeder_bus",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": "PLUS_6",
     "materialized_params": {
      "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
      "catalog_item_version": "legacy",
@@ -6785,6 +6788,7 @@
     "lv_bus_ref": "nn/fcdcc57e04bd1a45c838df03292250a4/feeder_bus",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": "PLUS_6",
     "materialized_params": {
      "catalog_item_id": "tr-sn-nn-15-04-1000kva-dyn11",
      "catalog_item_version": "legacy",
@@ -6830,6 +6834,7 @@
     "lv_bus_ref": "nn/bfd8284915cb067cd8a4313db99dded4/feeder_bus",
     "lv_earthing_system": null,
     "lv_neutral": null,
+    "lv_voltage_tolerance": "PLUS_6",
     "materialized_params": {
      "catalog_item_id": "tr-sn-nn-15-04-1000kva-dyn11",
      "catalog_item_version": "legacy",

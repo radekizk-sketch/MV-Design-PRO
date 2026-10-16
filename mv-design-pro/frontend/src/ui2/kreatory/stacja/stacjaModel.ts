@@ -15,6 +15,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import {
   PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  type TolerancjaNapieciaNn,
   type TypPunktuNeutralnego,
   type UkladSieciNn,
 } from '../../../types/uziemienie';
@@ -210,6 +211,12 @@ export interface StacjaFormData {
   nn_configuration: NnConfiguration;
   /** Układ sieci nN (uziemienie) — G-STK-1. */
   uklad_sieci_nn: UkladSieciNn;
+  /**
+   * Tolerancja napięcia sieci nN (`nn_earthing.lv_voltage_tolerance` →
+   * `Transformer.lv_voltage_tolerance`) — wiersz nN tabeli 1 IEC 60909-0, z którego backend
+   * dobiera c węzłów nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+   */
+  tolerancja_napiecia_nn: TolerancjaNapieciaNn;
   /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
   neutral_point: PunktNeutralny;
   /**
@@ -284,6 +291,11 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
   // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
   uklad_sieci_nn: 'TN-C-S',
+  // Domyślnie +10 % — sieć 230/400 V z dopuszczalnym odchyleniem napięcia +10 %
+  // (IEC 60038, PN-EN 50160). Wartość widoczna w kroku „Uziemienie"; projektant zmienia
+  // świadomie na +6 %, gdy operator deklaruje węższą tolerancję. Bez deklaracji (model
+  // sprzed karty) backend blokuje zwarcia nN kodem `fault.c_tolerancja_nn_brak`.
+  tolerancja_napiecia_nn: 'PLUS_10',
   neutral_point: 'directly_grounded',
   neutral_impedance_ohm: '',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
@@ -1070,7 +1082,8 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 }
 
 /**
- * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
+ * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + tolerancja napięcia sieci nN
+ * (`lv_voltage_tolerance`, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) + typ pracy punktu
  * neutralnego + impedancja uziemienia dla wariantów impedancyjnych. Mapuje 1:1
  * na kontrakt operacji (`GroundingConfig.type` + `lv_system`); składowa
  * DOMINUJĄCA spływa pod właściwym kluczem: rezystor → `lv_r_ohm`, cewka
@@ -1080,6 +1093,7 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
   const blok: Record<string, unknown> = {
     lv_system: data.uklad_sieci_nn,
+    lv_voltage_tolerance: data.tolerancja_napiecia_nn,
     neutral_point: data.neutral_point,
   };
   if (PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)) {

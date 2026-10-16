@@ -5,7 +5,7 @@ Defines the versioned, deterministic envelope and payload schemas
 for all supported analysis types. These schemas constitute a LOCKED
 contract — changes require an explicit version bump.
 
-Contract version: 1.0
+Contract version: 2.0 (historia: komentarz przy SOLVER_INPUT_CONTRACT_VERSION)
 """
 
 from __future__ import annotations
@@ -23,7 +23,13 @@ from pydantic import BaseModel, Field
 #: stają się Optional — brak danej w katalogu/instancji nie jest już
 #: fabrykowany jako 0.0/"Dyn11". Zmiana addytywna (typ pola, nie kształt
 #: kontraktu) — istniejące payloady z jawną wartością serializują się identycznie.
-SOLVER_INPUT_CONTRACT_VERSION = "1.1"
+#: 2.0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): zmiana łamiąca — ShortCircuitPayload
+#: traci płaskie pola `c_factor` (domyślnie 1.10) i `thermal_time_seconds`
+#: (domyślnie 1.0): c jest per szyna z jednego źródła (`network_model/core/
+#: voltage_factor.py`, tabela 1 IEC 60909-0, nN +6 %/+10 % z tolerancji wyspy nN),
+#: a nośnikiem t_k biegu jest scenariusz zwarciowy; BusPayload.c_factor_iec60909
+#: jest None w payloadzie rozpływu (c nie jest wielkością rozpływu).
+SOLVER_INPUT_CONTRACT_VERSION = "2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -120,11 +126,13 @@ class BusPayload(BaseModel):
     voltage_angle_rad: float | None = None
     active_power_mw: float | None = None
     reactive_power_mvar: float | None = None
-    # Karta P0.3: c PER PASMO (IEC 60909-0 Table 1) for THIS bus's own voltage
-    # band, for the payload's scenario — <=1 kV -> 1.05/0.95, >1 kV -> 1.10/1.00
-    # (network_model.core.voltage_factor.c_for_node). Informational only: this
-    # preview payload is not tied to one fault node, so every bus carries the
-    # c that WOULD apply if a fault were placed here.
+    # Karta P0.3 + WSPOLCZYNNIK-C-JEDEN-NOSNIK: c PER PASMO (IEC 60909-0 Table 1) for
+    # THIS bus's own voltage band (and, for an nN bus, the declared tolerance of its nN
+    # system), for the payload's scenario — values exclusively from
+    # network_model.core.voltage_factor.c_for_node. Informational only: this preview
+    # payload is not tied to one fault node, so every bus carries the c that WOULD apply
+    # if a fault were placed here. Short-circuit payloads only; ``None`` in load-flow
+    # payloads (the load flow does not read c).
     c_factor_iec60909: float | None = None
 
     model_config = {"frozen": True}
@@ -250,8 +258,6 @@ class ShortCircuitPayload(BaseModel):
     transformers: list[TransformerPayload] = Field(default_factory=list)
     inverter_sources: list[InverterSourcePayload] = Field(default_factory=list)
     switches: list[SwitchPayload] = Field(default_factory=list)
-    c_factor: float = 1.10
-    thermal_time_seconds: float = 1.0
     include_inverter_contribution: bool = True
     # P0.9 V12K: simplified grid source (used when sc_input_mode == 'simplified').
     # Optional — None means solver uses full 110 kV + TR model from buses/branches.

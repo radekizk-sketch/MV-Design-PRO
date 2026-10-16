@@ -12,10 +12,9 @@ Verifies:
 import math
 
 import pytest
+from network_model.core.voltage_factor import OdmowaToleranciiNnError, c_for_node
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
-    C_MAX_LV,
-    C_MIN_LV,
     FaultLoopInput,
     FaultLoopResult,
     LoopImpedanceComponent,
@@ -36,6 +35,7 @@ def _make_typical_tn_s_input() -> FaultLoopInput:
     - U_n = 230 V (fazowe)
     """
     return FaultLoopInput(
+        tolerancja_nn="PLUS_6",
         fault_node_id="bus_LV_outgoing",
         u_nom_v=230.0,
         phase_conductor=LoopImpedanceComponent(
@@ -109,9 +109,27 @@ class TestComputeFaultLoopTNS:
         assert result.z_loop_ohm.imag == pytest.approx(expected_x)
 
     def test_c_factors_match_iec_60909_lv(self) -> None:
-        """Per IEC 60909-0 § 5.3.2: c_min=0.95, c_max=1.05 dla LV."""
-        assert C_MIN_LV == 0.95
-        assert C_MAX_LV == 1.05
+        """IEC 60909-0 tab. 1, sieć nN +6 %: c_min = 0,95, c_max = 1,05 — wynik pętli niesie
+        c z jedynego źródła tabeli (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) i jego podstawę."""
+        result = compute_fault_loop(_make_typical_tn_s_input())
+        assert result.c_min == c_for_node(0.23, "MIN", tolerancja_nn="PLUS_6") == 0.95
+        assert result.c_max == c_for_node(0.23, "MAX", tolerancja_nn="PLUS_6") == 1.05
+        assert result.c_zrodlo_min == "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN"
+        assert result.c_zrodlo_max == "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX"
+
+    def test_brak_tolerancji_sieci_nn_odmowa(self) -> None:
+        """Brak tolerancji sieci nN = odmowa nazwana, nigdy wiersz +6 % po cichu."""
+        dane = _make_typical_tn_s_input()
+        bez_tolerancji = FaultLoopInput(
+            tolerancja_nn=None,
+            fault_node_id=dane.fault_node_id,
+            u_nom_v=dane.u_nom_v,
+            phase_conductor=dane.phase_conductor,
+            return_conductor=dane.return_conductor,
+            transformer_impedance=dane.transformer_impedance,
+        )
+        with pytest.raises(OdmowaToleranciiNnError, match="fault.c_tolerancja_nn_brak"):
+            compute_fault_loop(bez_tolerancji)
 
     def test_ik_max_greater_than_ik_min(self) -> None:
         result = compute_fault_loop(_make_typical_tn_s_input())
@@ -121,6 +139,7 @@ class TestComputeFaultLoopTNS:
         """Dodanie Z upstream (SN side) zwiększa Z_loop i zmniejsza Ik."""
         base = _make_typical_tn_s_input()
         with_upstream = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id=base.fault_node_id,
             u_nom_v=base.u_nom_v,
             phase_conductor=base.phase_conductor,
@@ -170,6 +189,7 @@ class TestWhiteBoxTrace:
 class TestValidation:
     def test_zero_voltage_rejected(self) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=0.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
@@ -181,6 +201,7 @@ class TestValidation:
 
     def test_negative_impedance_rejected(self) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=-0.01, x_ohm=0.001),
@@ -194,6 +215,7 @@ class TestValidation:
         """W5-E-TTIT: układ TT bez R_A/R_B/I_Δn = odmowa nazwana (nigdy NotImplementedError,
         nigdy wartość zastępcza)."""
         data = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
@@ -207,6 +229,7 @@ class TestValidation:
 
     def test_it_bez_danych_sieci_it_odmawia_nazwanie(self) -> None:
         data = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
@@ -224,6 +247,7 @@ class TestValidation:
         from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt
 
         data = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.01, x_ohm=0.001),
@@ -237,6 +261,7 @@ class TestValidation:
 
     def test_zero_loop_impedance_rejected(self) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.0, x_ohm=0.0),
@@ -253,6 +278,7 @@ class TestValidation:
         niemożliwe dla LV) i overflow serializacji JSON.
         """
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=1e-15, x_ohm=1e-15),
@@ -272,6 +298,7 @@ class TestErrorLogging:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_LV_42",
             u_nom_v=0.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.1, x_ohm=0.05),
@@ -291,6 +318,7 @@ class TestErrorLogging:
         from network_model.solvers.fault_loop_iec60364 import NetworkType
 
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_TT_1",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.1, x_ohm=0.05),
@@ -307,6 +335,7 @@ class TestErrorLogging:
 
     def test_tiny_z_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_x",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=1e-15, x_ohm=0),
@@ -324,6 +353,7 @@ class TestErrorLogging:
 
     def test_negative_impedance_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         bad = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_y",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="L", r_ohm=-0.1, x_ohm=0.05),

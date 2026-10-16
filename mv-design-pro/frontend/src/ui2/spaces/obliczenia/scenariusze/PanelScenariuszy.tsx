@@ -27,10 +27,21 @@ import {
   type FaultTypeValue,
   type LocationType,
 } from '../../../../ui/fault-scenarios/types';
+import { SekcjaWspolczynnikaC } from '../../../../ui/fault-scenarios/SekcjaWspolczynnikaC';
+import {
+  DOMYSLNE_POLA_C,
+  konfiguracjaZwarciaZPol,
+  opisCScenariusza,
+  type PolaWspolczynnikaC,
+} from '../../../../ui/fault-scenarios/wspolczynnikC';
 import { SCENARIUSZE_STRINGS as T } from './strings';
 
-/** Domyślne wartości konfiguracji zwarcia — 1:1 z kontraktem `ShortCircuitConfig`. */
-const DOMYSLNY_C = 1.1;
+/**
+ * Domyślny czas zwarcia t_k [s] — ta sama wartość, którą przyjmuje backend
+ * (`ShortCircuitConfigRequest.thermal_time_seconds`). Współczynnika c NIE ma tu jako
+ * liczby: scenariusz MAX/MIN wybiera kolumnę tabeli 1 IEC 60909-0, c dobiera backend
+ * per węzeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+ */
 const DOMYSLNY_CZAS_S = 1;
 
 interface FormularzScenariusza {
@@ -42,7 +53,7 @@ interface FormularzScenariusza {
   tryb: FaultModeValue;
   rOhm: string;
   xOhm: string;
-  wspolczynnikC: string;
+  c: PolaWspolczynnikaC;
   czasCieplnyS: string;
   wklady: boolean;
 }
@@ -56,7 +67,7 @@ const PUSTY_FORMULARZ: FormularzScenariusza = {
   tryb: 'METALLIC',
   rOhm: '0',
   xOhm: '0',
-  wspolczynnikC: String(DOMYSLNY_C),
+  c: DOMYSLNE_POLA_C,
   czasCieplnyS: String(DOMYSLNY_CZAS_S),
   wklady: true,
 };
@@ -87,6 +98,15 @@ export function PanelScenariuszy() {
       setBladFormularza(T.bladFormularza);
       return;
     }
+    const konfiguracja = konfiguracjaZwarciaZPol(
+      formularz.c,
+      Number(formularz.czasCieplnyS),
+      formularz.wklady,
+    );
+    if (!konfiguracja.ok) {
+      setBladFormularza(konfiguracja.blad);
+      return;
+    }
     setBladFormularza(null);
     const pozycja = formularz.pozycja.trim() === '' ? null : Number(formularz.pozycja);
     try {
@@ -98,11 +118,7 @@ export function PanelScenariuszy() {
           location_type: formularz.rodzajMiejsca,
           position: Number.isFinite(pozycja as number) ? pozycja : null,
         },
-        config: {
-          c_factor: Number(formularz.wspolczynnikC),
-          thermal_time_seconds: Number(formularz.czasCieplnyS),
-          include_branch_contributions: formularz.wklady,
-        },
+        config: konfiguracja.config,
         fault_mode: formularz.tryb,
         ...(formularz.tryb === 'IMPEDANCE'
           ? { fault_impedance: { r_ohm: Number(formularz.rOhm), x_ohm: Number(formularz.xOhm) } }
@@ -261,16 +277,12 @@ export function PanelScenariuszy() {
               </label>
             </>
           )}
-          <label className="mvd-scen-pole">
-            <span>{T.polaWspolczynnikC}</span>
-            <input
-              type="number"
-              step="0.01"
-              data-testid="mvd-scenariusze-c"
-              value={formularz.wspolczynnikC}
-              onChange={(e) => setFormularz({ ...formularz, wspolczynnikC: e.target.value })}
-            />
-          </label>
+          <SekcjaWspolczynnikaC
+            pola={formularz.c}
+            onZmiana={(c) => setFormularz({ ...formularz, c })}
+            testIdPrefix="mvd-scenariusze"
+            klasaPola="mvd-scen-pole"
+          />
           <label className="mvd-scen-pole">
             <span>{T.polaCzasCieplny}</span>
             <input
@@ -333,6 +345,7 @@ export function PanelScenariuszy() {
               <th scope="col">{T.kolNazwa}</th>
               <th scope="col">{T.kolRodzaj}</th>
               <th scope="col">{T.kolMiejsce}</th>
+              <th scope="col">{T.kolWspolczynnikC}</th>
               <th scope="col">{T.kolAkcje}</th>
             </tr>
           </thead>
@@ -344,6 +357,7 @@ export function PanelScenariuszy() {
                 <td className="mvd-num">
                   {`${LOCATION_TYPE_LABELS[s.location.location_type] ?? s.location.location_type}: ${s.location.element_ref}`}
                 </td>
+                <td data-testid={`mvd-scenariusze-c-${s.scenario_id}`}>{opisCScenariusza(s.config)}</td>
                 <td className="mvd-scen-akcje-kom">
                   <button
                     type="button"

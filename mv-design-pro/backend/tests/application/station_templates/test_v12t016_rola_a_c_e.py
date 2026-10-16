@@ -183,6 +183,35 @@ def test_szablon_przenosi_uklad_sieci_nn_projektanta_na_transformator(
         assert uklady == {oczekiwany}, (tpl_id, uklady)
 
 
+@pytest.mark.parametrize(
+    "tpl_id,voltage_kv", [t for t in _ROLA_A_C_E_TEMPLATES if "pomiar" in t[0]]
+)
+def test_szablon_przenosi_tolerancje_sieci_nn_projektanta_na_transformator(
+    tpl_id: str, voltage_kv: float
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `params_override.nn_earthing.lv_voltage_tolerance`
+    (ten sam blok kreatora stacji) trafia na `Transformer.lv_voltage_tolerance` stacji szablonu;
+    bez niego szablon niczego nie zgaduje, a wartość spoza słownika jest odmową nazwaną."""
+    for tolerancja in ("PLUS_6", "PLUS_10", None):
+        blok: dict[str, Any] = {"lv_system": "TN-C-S"}
+        if tolerancja is not None:
+            blok["lv_voltage_tolerance"] = tolerancja
+        result, klucz = _zastosuj(
+            tpl_id,
+            voltage_kv,
+            klucz_suffix=f":tolerancja-{tolerancja}",
+            params_override={"nn_earthing": blok},
+        )
+        model = get_enm(klucz)
+        stacja = next(s for s in model.substations if s.ref_id == result["station_ref"])
+        tolerancje = {
+            t.lv_voltage_tolerance
+            for t in model.transformers
+            if t.ref_id in stacja.transformer_refs
+        }
+        assert tolerancje == {tolerancja}, (tpl_id, tolerancje)
+
+
 @pytest.mark.parametrize("tpl_id,voltage_kv", _ROLA_A_C_E_TEMPLATES)
 def test_kazdy_szablon_rola_a_c_e_aplikuje_sie_do_gotowosci_bez_blokad(
     tpl_id: str, voltage_kv: float

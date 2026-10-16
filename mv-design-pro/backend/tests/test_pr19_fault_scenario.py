@@ -46,6 +46,7 @@ from domain.fault_scenario import (
     compute_scenario_content_hash,
     new_fault_scenario,
 )
+from network_model.core.voltage_factor import NadpisanieC, OdmowaNadpisaniaCError
 
 # =============================================================================
 # Fixtures
@@ -121,16 +122,20 @@ class TestFaultScenarioDomain:
 
     def test_short_circuit_config_defaults(self):
         """Default ShortCircuitConfig values."""
-        cfg = ShortCircuitConfig()
-        assert cfg.c_factor == 1.10
+        cfg = ShortCircuitConfig(scenariusz="MAX")
+        assert cfg.nadpisanie_c is None  # c z tabeli 1 per węzeł — scenariusz nie niesie liczby
         assert cfg.thermal_time_seconds == 1.0
         assert cfg.include_branch_contributions is False
 
     def test_short_circuit_config_roundtrip(self):
         """ShortCircuitConfig to_dict/from_dict roundtrip."""
-        cfg = ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=2.0)
+        cfg = ShortCircuitConfig(
+            scenariusz="MIN",
+            nadpisanie_c=NadpisanieC(wartosc=1.02, uzasadnienie="uzgodnienie z OSD"),
+            thermal_time_seconds=2.0,
+        )
         restored = ShortCircuitConfig.from_dict(cfg.to_dict())
-        assert restored.c_factor == cfg.c_factor
+        assert restored == cfg
         assert restored.thermal_time_seconds == cfg.thermal_time_seconds
 
     def test_fault_scenario_is_frozen(self):
@@ -140,6 +145,7 @@ class TestFaultScenarioDomain:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         with pytest.raises(AttributeError):
             scenario.fault_type = FaultType.SC_2F  # type: ignore[misc]
@@ -151,6 +157,7 @@ class TestFaultScenarioDomain:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert scenario.analysis_type == ExecutionAnalysisType.SC_3F
 
@@ -161,7 +168,7 @@ class TestFaultScenarioDomain:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-            config=ShortCircuitConfig(c_factor=1.05),
+            config=ShortCircuitConfig(scenariusz="MIN"),
         )
         d = scenario.to_dict()
         restored = FaultScenario.from_dict(d)
@@ -182,7 +189,7 @@ class TestContentHashDeterminism:
     def test_same_scenario_same_hash(self):
         """Identical parameters produce identical content_hash."""
         loc = FaultLocation(element_ref="BUS_1", location_type="BUS")
-        cfg = ShortCircuitConfig(c_factor=1.10)
+        cfg = ShortCircuitConfig(scenariusz="MAX")
 
         s1 = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
@@ -208,12 +215,14 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_2F,
             location=loc,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert s1.content_hash != s2.content_hash
 
@@ -224,12 +233,14 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_2", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert s1.content_hash != s2.content_hash
 
@@ -241,14 +252,14 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
-            config=ShortCircuitConfig(c_factor=1.10),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
-            config=ShortCircuitConfig(c_factor=1.05),
+            config=ShortCircuitConfig(scenariusz="MIN"),
         )
         assert s1.content_hash != s2.content_hash
 
@@ -259,6 +270,7 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert len(scenario.content_hash) == 64
         assert all(c in "0123456789abcdef" for c in scenario.content_hash)
@@ -270,6 +282,7 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(scenario) == scenario.content_hash
 
@@ -281,12 +294,14 @@ class TestContentHashDeterminism:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=uuid4(),
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert s1.content_hash == s2.content_hash
 
@@ -307,6 +322,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_1F,
                 location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_sc_1f_with_z0_passes(self):
@@ -317,6 +333,7 @@ class TestValidation:
             fault_type=FaultType.SC_1F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
             z0_bus_data={"z0_11": 1.0},
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert scenario.fault_type == FaultType.SC_1F
         assert scenario.z0_bus_data is not None
@@ -329,6 +346,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS", position=0.5),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_branch_without_position_raises(self):
@@ -339,6 +357,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_branch_position_out_of_range_raises(self):
@@ -349,6 +368,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH", position=0.0),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_branch_position_at_1_raises(self):
@@ -359,6 +379,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH", position=1.0),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_branch_valid_position_passes(self):
@@ -368,18 +389,22 @@ class TestValidation:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="C1", location_type="BRANCH", position=0.5),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert scenario.location.position == 0.5
 
     def test_negative_c_factor_raises(self):
-        """Negative c_factor raises."""
-        with pytest.raises(FaultScenarioValidationError, match="c_factor"):
+        """Ujemne nadpisanie c — odmowa z kodem (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK)."""
+        with pytest.raises(OdmowaNadpisaniaCError, match="fault.c_nadpisanie_wartosc_niepoprawna"):
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS"),
-                config=ShortCircuitConfig(c_factor=-1.0),
+                config=ShortCircuitConfig(
+                    scenariusz="MAX",
+                    nadpisanie_c=NadpisanieC(wartosc=-1.0, uzasadnienie="test"),
+                ),
             )
 
     def test_zero_thermal_time_raises(self):
@@ -390,7 +415,7 @@ class TestValidation:
                 name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS"),
-                config=ShortCircuitConfig(thermal_time_seconds=0.0),
+                config=ShortCircuitConfig(scenariusz="MAX", thermal_time_seconds=0.0),
             )
 
     def test_sc_3f_no_z0_passes(self):
@@ -400,6 +425,7 @@ class TestValidation:
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert scenario.z0_bus_data is None
 
@@ -428,6 +454,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         assert scenario.fault_type == FaultType.SC_3F
         assert scenario.content_hash != ""
@@ -445,6 +472,7 @@ class TestFaultScenarioService:
             name="Scenariusz B",
             fault_type="SC_2F",
             location={"element_ref": "BUS_B", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         service.create_scenario(
             klucz=klucz,
@@ -452,6 +480,7 @@ class TestFaultScenarioService:
             name="Scenariusz A",
             fault_type="SC_3F",
             location={"element_ref": "BUS_A", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         service.create_scenario(
             klucz=klucz,
@@ -459,6 +488,7 @@ class TestFaultScenarioService:
             name="Scenariusz C",
             fault_type="SC_2F",
             location={"element_ref": "BUS_A", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
 
         scenarios = service.list_scenarios(klucz, MOCK_CASE_ID)
@@ -475,6 +505,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         service.delete_scenario(klucz, scenario.scenario_id)
 
@@ -497,6 +528,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         with pytest.raises(FaultScenarioDuplicateError):
             service.create_scenario(
@@ -505,6 +537,7 @@ class TestFaultScenarioService:
                 name=DEFAULT_NAME,
                 fault_type="SC_3F",
                 location={"element_ref": "BUS_MV", "location_type": "BUS"},
+                config={"scenariusz": "MAX"},
             )
 
     def test_validate_scenario(self):
@@ -517,6 +550,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         # Should not raise
         service.validate_scenario(klucz, scenario.scenario_id)
@@ -531,6 +565,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         assert service.compute_hash(klucz, scenario.scenario_id) == scenario.content_hash
 
@@ -548,9 +583,9 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
-            config={"c_factor": 0.95, "thermal_time_seconds": 2.0},
+            config={"scenariusz": "MIN", "thermal_time_seconds": 2.0},
         )
-        assert scenario.config.c_factor == 0.95
+        assert scenario.config.scenariusz == "MIN"
         assert scenario.config.thermal_time_seconds == 2.0
 
     # -------------------------------------------------------------------
@@ -569,6 +604,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
 
         drugi = FaultScenarioService()  # symuluje restart procesu backendu
@@ -589,6 +625,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         assert stan_scenariusza(klucz, str(scenario.scenario_id)).rewizja == 1
 
@@ -622,6 +659,7 @@ class TestFaultScenarioService:
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "bus_sn_main", "location_type": "BUS"},
+            config={"scenariusz": "MAX"},
         )
         assert service.has_associated_runs(MOCK_CASE_ID, scenario.scenario_id) is False
 
@@ -713,6 +751,7 @@ class TestFaultScenarioApi:
                     "element_ref": "BUS_MV",
                     "location_type": "BUS",
                 },
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 201
@@ -732,6 +771,7 @@ class TestFaultScenarioApi:
             json={
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "B1", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 422
@@ -745,6 +785,7 @@ class TestFaultScenarioApi:
                 "name": "",
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "B1", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 422
@@ -759,6 +800,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "INVALID",
                 "location": {"element_ref": "B1", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 400
@@ -772,6 +814,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_1F",
                 "location": {"element_ref": "B1", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 422
@@ -786,6 +829,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "C1", "location_type": "BRANCH"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 422
@@ -808,6 +852,7 @@ class TestFaultScenarioApi:
                 "name": "Scenariusz A",
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "BUS_A", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         client.post(
@@ -816,6 +861,7 @@ class TestFaultScenarioApi:
                 "name": "Scenariusz B",
                 "fault_type": "SC_2F",
                 "location": {"element_ref": "BUS_B", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
 
@@ -833,6 +879,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "BUS_A", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         scenario_id = create_resp.json()["scenario_id"]
@@ -858,6 +905,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "BUS_A", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         response = client.post(
@@ -866,6 +914,7 @@ class TestFaultScenarioApi:
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "BUS_A", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert response.status_code == 409

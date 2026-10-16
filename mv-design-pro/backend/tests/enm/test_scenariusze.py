@@ -191,7 +191,7 @@ def test_scenariusz_zwarciowy_nie_zmienia_migawki_a_daje_opcje_biegu() -> None:
         name="Zwarcie na A",
         fault_type=FaultType.SC_3F,
         location=FaultLocation(element_ref="b_a", location_type="BUS"),
-        config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.5),
+        config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.5),
     )
     scenariusz = _scenariusz(kind=RodzajScenariusza.FAULT_STUDY, fault_spec=spec)
     efektywna = apply_scenario(enm, scenariusz)
@@ -203,7 +203,7 @@ def test_scenariusz_zwarciowy_nie_zmienia_migawki_a_daje_opcje_biegu() -> None:
         "fault_type": "SC_3F",
         "location": {"element_ref": "b_a", "location_type": "BUS", "position": None},
         "config": spec.config.to_dict(),
-        "c_factor": 1.05,
+        "scenario": "min",
         "thermal_time_seconds": 0.5,
     }
     assert opcje_biegu_ze_scenariusza(SCENARIUSZ_NORMALNY) == {}

@@ -261,7 +261,7 @@ def _petla_zwarcia_min(
 
     # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo)
+    odmowa = odmowa_analizy_nn({}, trafo, enm=enm)
     if odmowa is not None:
         return (
             None,
@@ -305,6 +305,7 @@ def _petla_zwarcia_min(
         )
 
     loop_result = oblicz_petle_na_trasie(
+        enm=enm,
         trafo=trafo,
         fault_node_id=bus_ref,
         u_phase_v=u_phase_v,

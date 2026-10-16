@@ -99,8 +99,14 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # B-01 (`power_flow_newton_internal.py` 19, `short_circuit_iec60909.py` 1) ⇒ 203/32.
     # Decyzja B-01 partii integracji 9 (delegacja O-59): 5 błędów rdzenia `v126_academic.py`
     # usuniętych u źródła ⇒ 198/31.
-    assert modul.BASELINE_ERRORS == 198
-    assert modul.BASELINE_FILES == 31
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): baza `bd3a87f4` 224/35 (commit 3/n
+    # karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`) → 199/26 — błędy
+    # w plikach dotkniętych kartą naprawione u źródła (lista przy `BASELINE_*` w guardzie;
+    # różnica zbiorów `mypy src` baza/drzewo karty = 25 zdjętych, zero nowych).
+    # Partia integracji 11: scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK na czubek po partii 9 —
+    # 198/31 → 174/23 (pomiar `mypy src` na drzewie scalonym; zero nowych względem bazy i karty).
+    assert modul.BASELINE_ERRORS == 174
+    assert modul.BASELINE_FILES == 23
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

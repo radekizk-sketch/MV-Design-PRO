@@ -25,13 +25,13 @@ def _normalize_schema(schema: dict) -> str:
 
 
 class TestSchemaLock:
-    """Schema snapshot tests for solver-input contract v1.0."""
+    """Schema snapshot tests for solver-input contract v2.0."""
 
-    def test_contract_version_is_1_1(self):
-        """Contract version is 1.1 (karta FAB-D2, D2: TransformerPayload
-        i0_percent/p0_kw/vector_group stają się Optional — brak danej
-        materializowany jako None, nie 0.0/"Dyn11")."""
-        assert SOLVER_INPUT_CONTRACT_VERSION == "1.1"
+    def test_contract_version_is_2_0(self):
+        """Contract version is 2.0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: usunięcie
+        płaskich `c_factor`/`thermal_time_seconds` z ShortCircuitPayload to zmiana
+        łamiąca, więc wersja główna; poprzednio 1.1 z karty FAB-D2)."""
+        assert SOLVER_INPUT_CONTRACT_VERSION == "2.0"
 
     def test_envelope_schema_has_required_fields(self):
         """SolverInputEnvelope schema has all required top-level fields."""
@@ -62,8 +62,6 @@ class TestSchemaLock:
             "transformers",
             "inverter_sources",
             "switches",
-            "c_factor",
-            "thermal_time_seconds",
             "include_inverter_contribution",
         ]
         for field in required_fields:
@@ -122,8 +120,6 @@ class TestSchemaLock:
             "transformers",
             "inverter_sources",
             "switches",
-            "c_factor",
-            "thermal_time_seconds",
             "include_inverter_contribution",
             # K3 wizard "Uproszczony" mode (P0.9 V12K K3 toggle): Sk_SN + R/X
             # zamiast pelnego 110 kV + TR + GPZ modelu. Optional field.
@@ -183,10 +179,12 @@ class TestSchemaLock:
             json_str = json.dumps(schema, sort_keys=True)
             assert len(json_str) > 0
 
-    def test_default_c_factor(self):
-        """Default c_factor in ShortCircuitPayload is 1.10 (IEC 60909 MV max)."""
-        payload = ShortCircuitPayload()
-        assert payload.c_factor == 1.10
+    def test_payload_nie_niesie_plaskiego_c_ani_t_k(self):
+        """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: payload nie ma płaskiej liczby c ani t_k
+        przypadku — c jest per szyna (`BusPayload.c_factor_iec60909`), nośnikiem c/t_k
+        biegu jest scenariusz zwarciowy."""
+        props = ShortCircuitPayload.model_json_schema().get("properties", {})
+        assert "c_factor" not in props and "thermal_time_seconds" not in props
 
     def test_default_base_mva(self):
         """Default base_mva in LoadFlowPayload is 100.0."""

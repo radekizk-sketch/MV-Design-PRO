@@ -22,6 +22,7 @@ def test_grid_source_preview_uses_iec60909_core_values() -> None:
         GridSourcePreviewInput(
             voltage_kv=15.0,
             short_circuit_mode="SHORT_CIRCUIT_POWER",
+            scenariusz="MAX",
             sk3_mva=310.0,
             rx_ratio=0.12,
             zero_sequence_enabled=True,

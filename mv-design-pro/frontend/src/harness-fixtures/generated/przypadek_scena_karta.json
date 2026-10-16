@@ -1,0 +1,21 @@
+{
+  "id": "case-demo",
+  "project_id": "proj-demo",
+  "name": "Stan normalny",
+  "description": "Przypadek obliczeniowy sieci SN/nN — założenia biegu zwarciowego i rozpływu.",
+  "config": {
+    "base_mva": 100.0,
+    "max_iterations": 50,
+    "tolerance": 1e-06,
+    "include_motor_contribution": true,
+    "include_inverter_contribution": true,
+    "operator_profile_id": "enea",
+    "sc_input_mode": "simplified",
+    "sc_simplified_sk_mva": null,
+    "sc_simplified_r_x_ratio": 0.1
+  },
+  "is_active": true,
+  "revision": 1,
+  "created_at": "2026-10-01T10:00:00+00:00",
+  "updated_at": "2026-10-01T10:00:00+00:00"
+}

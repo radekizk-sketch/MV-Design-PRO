@@ -261,6 +261,10 @@ def test_wklady_zwarciowe_odmowa_422_a_keyerror_programu_500(
     monkeypatch.setattr(maszyny, "compute_machine_contributions", _zepsuty)
     odpowiedz = _surowy_klient().post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": _enm_z_maszyna().model_dump(mode="json"), "fault_node_id": "bus_oze"},
+        json={
+            "snapshot": _enm_z_maszyna().model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": "MAX",
+        },
     )
     assert odpowiedz.status_code == kod_http, odpowiedz.text

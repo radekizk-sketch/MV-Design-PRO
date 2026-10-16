@@ -4,6 +4,11 @@ Cechy: {TT, IT} × {R_A, R_B, I_Δn, pojemności, f: obecne / brak → odmowa na
 {trasa zerowa / niezerowa} × {sieć zasilająca obecna / brak}; do tego: jedno wejście fizyki
 (``compute_fault_loop`` dyspozycją), jądro wspólne z TN (identyczna suma składowych), sanity
 U_dotyk ≥ 0, determinizm, kontrakt ``to_dict`` (klucz ``tt_it`` tylko dla TT/IT).
+
+Partia integracji 11 (scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK): c pętli TT/IT pochodzi z
+JEDYNEGO źródła (``voltage_factor.c_for_node`` przez ``wspolczynniki_c_petli``) — iloczyn cech
+{TT, IT} × {tolerancja sieci nN +6 %, +10 %, brak → odmowa ``fault.c_tolerancja_nn_brak``}.
+Oczekiwane c czytane z tabeli, nie zaszyte w teście.
 """
 
 from __future__ import annotations
@@ -13,10 +18,15 @@ import json
 import math
 
 import pytest
+from network_model.core.voltage_factor import (
+    KOD_TOLERANCJA_NN_BRAK,
+    TOLERANCJE_NAPIECIA_NN,
+    OdmowaToleranciiNnError,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
-    C_MAX_LV,
-    C_MIN_LV,
     FaultLoopInput,
     LoopImpedanceComponent,
     NetworkType,
@@ -43,6 +53,11 @@ _ZERO = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
 _TR = LoopImpedanceComponent(label="Transformator", r_ohm=0.0043, x_ohm=0.0155)
 _UP = LoopImpedanceComponent(label="Sieć SN (upstream)", r_ohm=0.0006, x_ohm=0.0032)
 _U0 = 230.0
+_U0_KV = _U0 / 1000.0
+
+
+def _c(scenariusz: str, tolerancja: str) -> float:
+    return c_for_node(_U0_KV, scenariusz, tolerancja_nn=tolerancja)  # type: ignore[arg-type]
 
 
 def _dane_tt(**zmiany) -> DaneTtIt:
@@ -73,6 +88,7 @@ def _wejscie(
     faza: LoopImpedanceComponent = _FAZA,
     powrot: LoopImpedanceComponent | None = None,
     upstream: LoopImpedanceComponent | None = _UP,
+    tolerancja: str | None = "PLUS_6",
 ) -> FaultLoopInput:
     if powrot is None:
         powrot = _ZERO if uklad is NetworkType.TT else _PE
@@ -86,6 +102,7 @@ def _wejscie(
         network_type=uklad,
         protection_arrangement=ProtectionArrangement.NONE,
         dane_tt_it=dane,
+        tolerancja_nn=tolerancja,  # type: ignore[arg-type]
     )
 
 
@@ -95,11 +112,14 @@ def _wejscie(
 
 
 class TestPetlaTT:
+    @pytest.mark.parametrize("tolerancja", TOLERANCJE_NAPIECIA_NN)
     @pytest.mark.parametrize("upstream", [_UP, None], ids=["z siecią zasilającą", "bez"])
     @pytest.mark.parametrize("faza", [_FAZA, _ZERO], ids=["trasa", "u źródła"])
-    def test_petla_tt_z_uziomami_jadro_jak_tn(self, upstream, faza) -> None:
+    def test_petla_tt_z_uziomami_jadro_jak_tn(self, upstream, faza, tolerancja) -> None:
         wynik = compute_fault_loop(
-            _wejscie(NetworkType.TT, _dane_tt(), faza=faza, upstream=upstream)
+            _wejscie(
+                NetworkType.TT, _dane_tt(), faza=faza, upstream=upstream, tolerancja=tolerancja
+            )
         )
         assert wynik.network_type is NetworkType.TT
         etykiety = [c.label for c in wynik.components]
@@ -116,8 +136,13 @@ class TestPetlaTT:
         )
         z_oczekiwane, _ = zsumuj_skladowe_petli(skladowe)
         assert wynik.z_loop_ohm == z_oczekiwane
-        assert wynik.ik_min_a == C_MIN_LV * _U0 / abs(z_oczekiwane)
-        assert wynik.ik_max_a == C_MAX_LV * _U0 / abs(z_oczekiwane)
+        assert wynik.ik_min_a == _c("MIN", tolerancja) * _U0 / abs(z_oczekiwane)
+        assert wynik.ik_max_a == _c("MAX", tolerancja) * _U0 / abs(z_oczekiwane)
+        assert (wynik.c_min, wynik.c_max) == (_c("MIN", tolerancja), _c("MAX", tolerancja))
+        assert wynik.c_zrodlo_min == zrodlo_c_z_tabeli(_U0_KV, "MIN", tolerancja_nn=tolerancja)
+        assert wynik.to_dict()["c_zrodlo_max"] == zrodlo_c_z_tabeli(
+            _U0_KV, "MAX", tolerancja_nn=tolerancja
+        )
         assert wynik.tt_it is not None
         assert wynik.tt_it.u_dotyk_v == 25.0 * 0.03
         assert wynik.tt_it.rodzaj_pradu_pl == RODZAJ_PRADU_TT_PL
@@ -163,9 +188,12 @@ class TestPetlaTT:
 
 
 class TestPetlaIT:
+    @pytest.mark.parametrize("tolerancja", TOLERANCJE_NAPIECIA_NN)
     @pytest.mark.parametrize("upstream", [_UP, None], ids=["z siecią zasilającą", "bez"])
-    def test_pierwsze_i_drugie_zwarcie(self, upstream) -> None:
-        wynik = compute_fault_loop(_wejscie(NetworkType.IT, _dane_it(), upstream=upstream))
+    def test_pierwsze_i_drugie_zwarcie(self, upstream, tolerancja) -> None:
+        wynik = compute_fault_loop(
+            _wejscie(NetworkType.IT, _dane_it(), upstream=upstream, tolerancja=tolerancja)
+        )
         assert wynik.network_type is NetworkType.IT
         tt_it = wynik.tt_it
         assert isinstance(tt_it, WynikTtIt)
@@ -181,8 +209,10 @@ class TestPetlaIT:
         assert wynik.z_loop_ohm == z_s
         u_ll = math.sqrt(3.0) * _U0
         assert tt_it.u_ll_v == pytest.approx(u_ll)
-        assert wynik.ik_min_a == pytest.approx(C_MIN_LV * (u_ll / 2.0) / abs(z_s))
-        assert wynik.ik_max_a == pytest.approx(C_MAX_LV * (u_ll / 2.0) / abs(z_s))
+        # c z pasma U_0 sieci (nN), nie z napięcia napędowego U_LL/2.
+        assert wynik.ik_min_a == pytest.approx(_c("MIN", tolerancja) * (u_ll / 2.0) / abs(z_s))
+        assert wynik.ik_max_a == pytest.approx(_c("MAX", tolerancja) * (u_ll / 2.0) / abs(z_s))
+        assert (wynik.c_min, wynik.c_max) == (_c("MIN", tolerancja), _c("MAX", tolerancja))
         assert tt_it.i_d2_min_a == wynik.ik_min_a
         assert tt_it.rodzaj_pradu_pl == RODZAJ_PRADU_IT_PL
         # Prąd pierwszego zwarcia (pojemnościowy) jest o rzędy mniejszy niż drugiego.
@@ -247,6 +277,50 @@ class TestPetlaIT:
 
 
 # ---------------------------------------------------------------------------
+# Współczynnik c: jedno źródło dla TN, TT i IT (partia integracji 11)
+# ---------------------------------------------------------------------------
+
+
+class TestWspolczynnikCTtIt:
+    @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
+    def test_brak_tolerancji_sieci_nn_odmowa_nazwana(self, uklad) -> None:
+        dane = _dane_tt() if uklad is NetworkType.TT else _dane_it()
+        with pytest.raises(OdmowaToleranciiNnError) as blad:
+            compute_fault_loop(_wejscie(uklad, dane, tolerancja=None))
+        assert blad.value.kod == KOD_TOLERANCJA_NN_BRAK
+
+    @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
+    def test_tolerancja_plus_10_zmniejsza_ik_min_i_zwieksza_ik_max(self, uklad) -> None:
+        dane = _dane_tt() if uklad is NetworkType.TT else _dane_it()
+        plus6 = compute_fault_loop(_wejscie(uklad, dane, tolerancja="PLUS_6"))
+        plus10 = compute_fault_loop(_wejscie(uklad, dane, tolerancja="PLUS_10"))
+        # Ta sama impedancja pętli, inny wiersz tabeli 1 — stosunek prądów = stosunek c.
+        assert plus6.z_loop_ohm == plus10.z_loop_ohm
+        assert plus10.ik_min_a / plus6.ik_min_a == pytest.approx(
+            _c("MIN", "PLUS_10") / _c("MIN", "PLUS_6")
+        )
+        assert plus10.ik_max_a / plus6.ik_max_a == pytest.approx(
+            _c("MAX", "PLUS_10") / _c("MAX", "PLUS_6")
+        )
+        assert plus10.ik_min_a < plus6.ik_min_a < plus6.ik_max_a < plus10.ik_max_a
+
+    @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
+    @pytest.mark.parametrize("tolerancja", TOLERANCJE_NAPIECIA_NN)
+    def test_slad_white_box_niesie_c_i_podstawe(self, uklad, tolerancja) -> None:
+        dane = _dane_tt() if uklad is NetworkType.TT else _dane_it()
+        wynik = compute_fault_loop(_wejscie(uklad, dane, tolerancja=tolerancja))
+        krok = next(
+            k
+            for k in wynik.white_box_trace
+            if k["step"] in ("compute_ik", "prad_drugiego_zwarcia_it")
+        )
+        assert krok["c_min"] == _c("MIN", tolerancja)
+        assert krok["c_max"] == _c("MAX", tolerancja)
+        assert krok["c_zrodlo_min"] == wynik.c_zrodlo_min
+        assert krok["c_zrodlo_max"] == wynik.c_zrodlo_max
+
+
+# ---------------------------------------------------------------------------
 # Jedno wejście fizyki, determinizm, kontrakt
 # ---------------------------------------------------------------------------
 
@@ -286,6 +360,7 @@ class TestJednoWejscie:
                 return_conductor=_PE,
                 transformer_impedance=_TR,
                 network_type=NetworkType.TN_S,
+                tolerancja_nn="PLUS_6",
             )
         )
         assert tn.tt_it is None

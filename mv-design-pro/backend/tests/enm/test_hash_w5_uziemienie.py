@@ -98,6 +98,15 @@ def _postac_sprzed_karty(model: EnergyNetworkModel) -> dict:
         for element in dane.get(klucz, []):
             element.pop("id", None)
     dane.pop("katalog_projektu", None)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (późniejsza niż W5-A): przed nią źródło niosło pola
+    # `c_max`/`c_min` (zawsze `null` w zapisanych migawkach — fantom bez konsumenta), a pole
+    # `lv_voltage_tolerance` nie istniało. Postać sprzed W5-A ma więc te pola w tamtym kształcie.
+    for zrodlo in dane["sources"]:
+        zrodlo.pop("lv_voltage_tolerance", None)
+        zrodlo["c_max"] = None
+        zrodlo["c_min"] = None
+    for transformator in dane["transformers"]:
+        transformator.pop("lv_voltage_tolerance", None)
     return dane
 
 

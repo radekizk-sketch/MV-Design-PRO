@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **153** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **156** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -128,6 +128,7 @@ Wszystkie **153** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
 | `nn.voltage_missing` | STATIONS | 1 | BLOCKER | Napięcie szyny nN nie jest określone | panel: `inspector`, tab: `parametry`, focus: `voltage_nn_kv` |
+| `fault.c_tolerancja_nn_brak` | STATIONS | 2 | BLOCKER | Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — współczynnika napięciowego c (IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.brak_pojemnosci_doziemnej` | STATIONS | 2 | BLOCKER | Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — prąd pierwszego zwarcia doziemnego nie jest liczony | panel: `inspector`, tab: `parametry`, focus: `b0_siemens_per_km` |
 | `nn.brak_r_a` | STATIONS | 2 | BLOCKER | Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — pętla doziemna i napięcie dotykowe nie są liczone | panel: `inspector`, tab: `parametry`, focus: `earth_electrode_r_ohm` |
 | `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu stacji | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
@@ -191,6 +192,8 @@ Wszystkie **153** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
 | `power_flow.unbalanced_requires_radial` | ANALYSIS | 1 | BLOCKER | Rozpływ niesymetryczny wymaga sieci promieniowej w scenariuszu — wyspa zasilona ma oczko (pierścień zamknięty albo gałęzie równoległe); otwórz punkt podziału albo łącznik | panel: `sld` |
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
+| `fault.c_nadpisanie_bez_uzasadnienia` | ANALYSIS | 2 | BLOCKER | Nadpisanie współczynnika napięciowego c wymaga uzasadnienia (IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu) | panel: `analizy`, tab: `zwarciowa` |
+| `fault.c_nadpisanie_wartosc_niepoprawna` | ANALYSIS | 2 | BLOCKER | Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią | panel: `analizy`, tab: `zwarciowa` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
 | `load.dynamika_missing` | ANALYSIS | 2 | BLOCKER | Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; zwiąż odbiór z profilem z katalogu | panel: `analizy`, tab: `dynamika`, focus: `dynamic_model_ref` |
 | `load.zip_agregat_niereprezentowalny` | ANALYSIS | 2 | BLOCKER | Odbiorów ZIP tej szyny nie da się odwzorować w rozpływie dokładnie (różne charakterystyki na jednej szynie albo szyna regulacji napięcia) — rozdziel odbiory na osobne szyny albo ujednolić ich charakterystyki | panel: `inspector`, tab: `parametry` |
@@ -216,21 +219,21 @@ Wszystkie **153** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 97 |
+| BLOCKER | 100 |
 | WARNING | 54 |
 | INFO | 2 |
-| **Razem** | **153** |
+| **Razem** | **156** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
 | CATALOGS | 47 |
-| STATIONS | 22 |
+| STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
-| ANALYSIS | 23 |
-| **Razem** | **153** |
+| ANALYSIS | 25 |
+| **Razem** | **156** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

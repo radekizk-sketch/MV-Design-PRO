@@ -110,6 +110,9 @@ def _mk_trafo(
         vector_group=vg,
         tap_position=0,
         tap_step_percent=2.5,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: strona dolna 0,4 kV zasila sieć nN o tolerancji
+        # +6 % (wiersz nN tabeli 1 IEC 60909-0, c_max = 1,05 we wzorze K_T).
+        tolerancja_nn_dolna="PLUS_6",
     )
 
 

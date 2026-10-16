@@ -130,7 +130,7 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "u_n_kv": 15.0,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "u_prefault_kv": 9.526279,
         "z1_re_ohm": 0.5,
         "z1_im_ohm": 1.2,
@@ -232,7 +232,7 @@ def test_sc3f_pack_api_returns_zip(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "snapshot": enm.model_dump(mode="json"),
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "tk_s": 1.0,
     }
     response = client.post("/api/proof/sc3f/pack", json=payload)
@@ -308,7 +308,7 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     payload = {
         "snapshot": enm.model_dump(mode="json"),
         "fault_node_id": fault_node_id,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "t_min_s": 0.10,
     }
     response = client.post("/api/proof/sc3f/contributions", json=payload)
@@ -360,7 +360,11 @@ def test_sc3f_contributions_empty_without_machines(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": fault_node_id,
+            "scenariusz": "MAX",
+        },
     )
     assert response.status_code == 200
     assert response.json()["contributions"] == []
@@ -372,7 +376,11 @@ def test_sc3f_contributions_accepts_enm_bus_ref(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": "bus_oze"},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": "MAX",
+        },
     )
     assert response.status_code == 200
     assert len(response.json()["contributions"]) == 1
@@ -382,7 +390,11 @@ def _dane_wkladow(tmp_path):
     """Wspolna odpowiedz contributions dla testow ZWARCIA-PRO F3 (pkt 8-10)."""
     enm = _enm_z_maszyna()
     client, _ = _prepare_api_client(tmp_path)
-    payload = {"snapshot": enm.model_dump(mode="json"), "fault_node_id": "bus_oze"}
+    payload = {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": "bus_oze",
+        "scenariusz": "MAX",
+    }
     response = client.post("/api/proof/sc3f/contributions", json=payload)
     assert response.status_code == 200
     return client, payload, response.json()
@@ -507,7 +519,11 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": fault_node_id,
+            "scenariusz": "MAX",
+        },
     )
     dane = response.json()
     tytuly = [s["tytul"] for s in dane["wywod_sekcje"]]
@@ -533,7 +549,7 @@ def _payload_sc3f_pack(data, snapshot: dict) -> dict:
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "snapshot": snapshot["snapshot"],
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "tk_s": 1.0,
     }
 
@@ -544,7 +560,11 @@ def _snapshot_sc3f() -> dict:
     enm = _enm_z_maszyna()
     graph = map_enm_to_network_graph(enm)
     fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
-    return {"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id}
+    return {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": fault_node_id,
+        "scenariusz": "MAX",
+    }
 
 
 def test_sc3f_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
@@ -581,7 +601,7 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "u_n_kv": 15.0,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "u_prefault_kv": 9.526279,
         "z1_re_ohm": 0.5,
         "z1_im_ohm": 1.2,
@@ -901,3 +921,33 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu():
     icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
     assert u_m_value["value"] == 99.0
     assert icu_value["value"] == 77.0
+
+
+@pytest.mark.parametrize(("scenariusz", "c"), [("MAX", 1.10), ("MIN", 1.00)])
+def test_sc3f_contributions_c_z_tabeli_dla_scenariusza_ogladanego_biegu(
+    tmp_path, scenariusz: str, c: float
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: wkłady liczone c z tabeli 1 IEC 60909-0 dla pasma
+    węzła i scenariusza oglądanego biegu (dawniej zawsze 1,10) — odpowiedź niesie c i podstawę."""
+    client, _ = _prepare_api_client(tmp_path)
+    enm = _enm_z_maszyna()
+    odpowiedz = client.post(
+        "/api/proof/sc3f/contributions",
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": scenariusz,
+        },
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    assert odpowiedz.json()["c_factor"] == pytest.approx(c)
+    assert odpowiedz.json()["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo SN, {scenariusz}"
+
+
+def test_sc3f_contributions_bez_scenariusza_i_z_c_factor_to_422(tmp_path) -> None:
+    client, _ = _prepare_api_client(tmp_path)
+    snapshot = _enm_z_maszyna().model_dump(mode="json")
+    brak = {"snapshot": snapshot, "fault_node_id": "bus_oze"}
+    assert client.post("/api/proof/sc3f/contributions", json=brak).status_code == 422
+    stary = {**brak, "scenariusz": "MAX", "c_factor": 1.1}
+    assert client.post("/api/proof/sc3f/contributions", json=stary).status_code == 422

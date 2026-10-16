@@ -61,7 +61,16 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
     # + W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (jedyny
     # nośnik po kasacji `Bus.grounding`; migawki bez opisu haszują jak przed kartą).
-    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
+    # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN źródła przyłączonego
+    # wprost do szyny nN (wiersz nN tabeli 1 IEC 60909-0) — podana zmienia c i Z_Q.
+    "sources": (
+        "sk3_min_mva",
+        "ik3_min_ka",
+        "rx_ratio_min",
+        "u_set_pu",
+        "neutral_grounding",
+        "lv_voltage_tolerance",
+    ),
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
     # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
@@ -74,7 +83,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
-    "transformers": ("lv_earthing_system",),
+    # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
+    # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
+    "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
     "branches": ("screen_bonding",),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
@@ -110,16 +121,29 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
 _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
 
+#: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
+#: semantyczna — tam ich nigdy nie bylo) zachowuje jako `null`, wedlug tej samej zasady co
+#: `_POLA_SKASOWANE_W_ODCISKU`. Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `Source.c_max`/`c_min`
+#: (fantom — zapisywane, nigdy nieczytane; c dobiera wyłącznie `voltage_factor`) — kazda
+#: migawka ze zrodlem niosla `"c_max": null, "c_min": null`. Zrodlo, ktore MIALO wartosc,
+#: zmienia odcisk (wartosc nie wchodzila do zadnego obliczenia). Przypiete testem
+#: `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`.
+_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_max", "c_min")}
 
-def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
+
+def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
-    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`
+    (pola skasowane spoza projekcji semantycznej — wylacznie w postaci pelnej)."""
     item.pop("id", None)
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
         if pole in item and item[pole] is None:
             del item[pole]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
+    if pelna:
+        for pole in _POLA_SKASOWANE_W_ODCISKU_PELNYM.get(key, ()):
+            item.setdefault(pole, None)
 
 
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
@@ -252,7 +276,7 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
     (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
     `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
     wynik = {k: item[k] for k in include if k in item}
-    _postac_kanoniczna_elementu(wynik, key)
+    _postac_kanoniczna_elementu(wynik, key, pelna=False)
     return wynik
 
 

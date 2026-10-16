@@ -33,9 +33,6 @@ from network_model.whitebox.tracer import WhiteBoxTracer
 if TYPE_CHECKING:
     from network_model.core.ybus import AdmittanceMatrixBuilder
 
-C_MIN: float = 0.95
-C_MAX: float = 1.10
-
 # Identyfikator źródła zastępczego (Thevenin / sieć nadrzędna) w wkładach.
 # LUSTRO konwencji `_build_source_contributions` (source_id="THEVENIN_GRID").
 THEVENIN_GRID_SOURCE_ID: str = "THEVENIN_GRID"
@@ -110,7 +107,8 @@ class ShortCircuitResult:
     Canonical API fields (jednostki SI / branżowe):
         short_circuit_type: ShortCircuitType - typ zwarcia (3F/2F/1F/2F+G)
         fault_node_id: str - identyfikator węzła zwarcia
-        c_factor: float - współczynnik napięciowy c (0.95–1.10)
+        c_factor: float - współczynnik napięciowy c węzła zwarcia (IEC 60909-0 tab. 1,
+            dobór wyłącznie `network_model.core.voltage_factor`; wiersz nN wg tolerancji sieci)
         un_v: float - napięcie znamionowe w punkcie zwarcia [V]
         zkk_ohm: complex - impedancja zastępcza w punkcie zwarcia Zk [Ω]
         rx_ratio: float - stosunek R/X impedancji zastępczej [-]
@@ -1234,22 +1232,6 @@ class ShortCircuitIEC60909Solver:
             c_factor=c_factor,
             tk_s=1.0,
             include_branch_contributions=include_branch_contributions,
-        )
-
-    @staticmethod
-    def compute_ikss_3ph_min(
-        graph: NetworkGraph, fault_node_id: str, include_branch_contributions: bool = False
-    ) -> ShortCircuitResult:
-        return ShortCircuitIEC60909Solver.compute_ikss_3ph(
-            graph, fault_node_id, C_MIN, include_branch_contributions
-        )
-
-    @staticmethod
-    def compute_ikss_3ph_max(
-        graph: NetworkGraph, fault_node_id: str, include_branch_contributions: bool = False
-    ) -> ShortCircuitResult:
-        return ShortCircuitIEC60909Solver.compute_ikss_3ph(
-            graph, fault_node_id, C_MAX, include_branch_contributions
         )
 
     @staticmethod

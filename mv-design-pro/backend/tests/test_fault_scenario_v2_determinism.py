@@ -21,6 +21,7 @@ from domain.fault_scenario import (
     FaultMode,
     FaultScenario,
     FaultType,
+    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
 )
@@ -49,6 +50,7 @@ class TestDeterminismProofIdenticalHash:
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-42", location_type="NODE"),
                 fault_mode=FaultMode.METALLIC,
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
             hashes.add(compute_scenario_content_hash(s))
         assert len(hashes) == 1, f"Non-deterministic: {hashes}"
@@ -64,6 +66,7 @@ class TestDeterminismProofIdenticalHash:
                 location=FaultLocation(element_ref="bus-42", location_type="NODE"),
                 fault_mode=FaultMode.IMPEDANCE,
                 fault_impedance=FaultImpedance(r_ohm=1.5, x_ohm=3.0),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
             hashes.add(compute_scenario_content_hash(s))
         assert len(hashes) == 1, f"Non-deterministic: {hashes}"
@@ -81,6 +84,7 @@ class TestDeterminismProofIdenticalHash:
                     location_type="BRANCH_POINT",
                     position=0.65,
                 ),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
             hashes.add(compute_scenario_content_hash(s))
         assert len(hashes) == 1, f"Non-deterministic: {hashes}"
@@ -92,6 +96,7 @@ class TestDeterminismProofIdenticalHash:
             name="SHA test",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         h = compute_scenario_content_hash(s)
         assert len(h) == 64
@@ -117,6 +122,7 @@ class TestDeterminismProofSortedKeys:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.METALLIC,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         # Manually build the canonical content dict (same as in compute_scenario_content_hash)
         content = {
@@ -150,6 +156,7 @@ class TestDeterminismProofSortedKeys:
             ),
             fault_mode=FaultMode.IMPEDANCE,
             fault_impedance=FaultImpedance(r_ohm=2.0, x_ohm=4.0),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         data = s.to_dict()
         restored = FaultScenario.from_dict(data)
@@ -174,6 +181,7 @@ class TestV2FieldsInHash:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.METALLIC,
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s_impedance = new_fault_scenario(
             study_case_id=FIXED_CASE_ID,
@@ -182,6 +190,7 @@ class TestV2FieldsInHash:
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
             fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s_metallic) != compute_scenario_content_hash(
             s_impedance
@@ -195,6 +204,7 @@ class TestV2FieldsInHash:
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
             fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=FIXED_CASE_ID,
@@ -203,6 +213,7 @@ class TestV2FieldsInHash:
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
             fault_impedance=FaultImpedance(r_ohm=1.1, x_ohm=2.0),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
 
@@ -212,12 +223,14 @@ class TestV2FieldsInHash:
             name="Loc test",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="el-1", location_type="NODE"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s_bp = new_fault_scenario(
             study_case_id=FIXED_CASE_ID,
             name="Loc test",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="el-1", location_type="BRANCH_POINT", position=0.5),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s_node) != compute_scenario_content_hash(s_bp)
 
@@ -229,6 +242,7 @@ class TestV2FieldsInHash:
             location=FaultLocation(
                 element_ref="line-1", location_type="BRANCH_POINT", position=0.3
             ),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
             study_case_id=FIXED_CASE_ID,
@@ -237,6 +251,7 @@ class TestV2FieldsInHash:
             location=FaultLocation(
                 element_ref="line-1", location_type="BRANCH_POINT", position=0.7
             ),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
 

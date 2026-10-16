@@ -1004,14 +1004,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-12_der_full_path",
-    "model_hash": "620af09f6ddb75fb90d5e21c96f2176384c9930c936c0bf897fa1b6f712c61dd",
+    "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
     "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "ab717bbc3694747aa7130460898b0fcca8ba2c479f0cd70d554a918b70fd923e",
+  "projection_hash": "cb63508e77ed5cca70bd2c97a699e0b98880ea606edcd9815578c4cf6079a230",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1043,6 +1043,10 @@
               {
                 "bus_ref": "FU-BES_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1064,14 +1068,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "FU-BES_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1095,33 +1099,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
@@ -1133,6 +1139,10 @@
               {
                 "bus_ref": "FU-BES_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1154,14 +1164,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "FU-BES_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1185,33 +1195,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
@@ -1227,6 +1239,10 @@
               "breaker_ref": "FU-BES",
               "bus_ref": "FU-BES_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1248,14 +1264,14 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "FU-BES_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
@@ -1279,33 +1295,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -1315,7 +1333,7 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": null,
-                "ik1_min_a": 2601.65408,
+                "ik1_min_a": 2601.65424,
                 "margines": null,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=2601.7 A > Inf=125.0 A (wkładka gG 100 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy t_wymagany=5 s SWZ (rozdzielczy, pasmo U0 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki Inf/If (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (7200 s), NIE w t_wymagany SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe).",
@@ -1335,7 +1353,7 @@
                   {
                     "solver_trace": {
                       "gwarancja": "wyzwolenie_gwarantowane",
-                      "i_query_a": 2601.65408,
+                      "i_query_a": 2601.65424,
                       "if_a": 160.0,
                       "in_a": 100.0,
                       "inf_a": 125.0,
@@ -1357,7 +1375,7 @@
                   {
                     "bramka_t_wymagany_a": null,
                     "if_a": 160.0,
-                    "ik1_min_a": 2601.65408,
+                    "ik1_min_a": 2601.65424,
                     "inf_a": 125.0,
                     "result": "nierozstrzygalne",
                     "step": "werdykt_gg_nierozstrzygalne",
@@ -1375,6 +1393,10 @@
               {
                 "bus_ref": "QF-01_koniec",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1396,14 +1418,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-01_koniec",
-                  "ik_max_a": 2655.5429,
-                  "ik_min_a": 2402.63405,
+                  "ik_max_a": 2655.54305,
+                  "ik_min_a": 2402.63419,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1427,33 +1449,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.091313574,
-                        "r_total_ohm": 0.0894873141,
-                        "x_total_ohm": 0.0181711148
+                        "magnitude_ohm": 0.0913135687,
+                        "r_total_ohm": 0.0894873132,
+                        "x_total_ohm": 0.0181710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 2655.5429,
-                      "ik_min_a": 2402.63405,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 2655.54305,
+                      "ik_min_a": 2402.63419,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.091313574
+                      "z_magnitude_ohm": 0.0913135687
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0181711148,
-                    "magnitude": 0.091313574,
-                    "re": 0.0894873141
+                    "im": 0.0181710928,
+                    "magnitude": 0.0913135687,
+                    "re": 0.0894873132
                   }
                 },
                 "hop_count": 3,
@@ -1465,6 +1489,10 @@
               {
                 "bus_ref": "QF-01_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1486,14 +1514,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-01_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1517,33 +1545,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
@@ -1559,6 +1589,10 @@
               "breaker_ref": "QF-01",
               "bus_ref": "QF-01_koniec",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1580,14 +1614,14 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-01_koniec",
-                "ik_max_a": 1740.93334,
-                "ik_min_a": 1575.13017,
+                "ik_max_a": 1740.93339,
+                "ik_min_a": 1575.13021,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
@@ -1611,33 +1645,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.139285696,
-                      "r_total_ohm": 0.138095314,
-                      "x_total_ohm": 0.0181711148
+                      "magnitude_ohm": 0.139285692,
+                      "r_total_ohm": 0.138095313,
+                      "x_total_ohm": 0.0181710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 1740.93334,
-                    "ik_min_a": 1575.13017,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 1740.93339,
+                    "ik_min_a": 1575.13021,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.139285696
+                    "z_magnitude_ohm": 0.139285692
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0181711148,
-                  "magnitude": 0.139285696,
-                  "re": 0.138095314
+                  "im": 0.0181710928,
+                  "magnitude": 0.139285692,
+                  "re": 0.138095313
                 }
               },
               "missing_data": [],
@@ -1647,8 +1683,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 630.0,
-                "ik1_min_a": 1575.13017,
-                "margines": 2.50020662,
+                "ik1_min_a": 1575.13021,
+                "margines": 2.50020669,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=1575.1 A ≥ Ia=630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "odbiorczy",
@@ -1673,8 +1709,8 @@
                   },
                   {
                     "ia_a": 630.0,
-                    "ik1_min_a": 1575.13017,
-                    "margines": 2.50020662,
+                    "ik1_min_a": 1575.13021,
+                    "margines": 2.50020669,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -1691,6 +1727,10 @@
               {
                 "bus_ref": "QF-G1_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1712,14 +1752,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-G1_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1743,33 +1783,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
@@ -1781,6 +1823,10 @@
               {
                 "bus_ref": "QF-G1_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1802,14 +1848,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-G1_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -1833,33 +1879,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
@@ -1875,6 +1923,10 @@
               "breaker_ref": "QF-G1",
               "bus_ref": "QF-G1_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1896,14 +1948,14 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-G1_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
@@ -1927,33 +1979,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -1963,8 +2017,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 1000.0,
-                "ik1_min_a": 2601.65408,
-                "margines": 2.60165408,
+                "ik1_min_a": 2601.65424,
+                "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "rozdzielczy",
@@ -1989,8 +2043,8 @@
                   },
                   {
                     "ia_a": 1000.0,
-                    "ik1_min_a": 2601.65408,
-                    "margines": 2.60165408,
+                    "ik1_min_a": 2601.65424,
+                    "margines": 2.60165424,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -2007,6 +2061,10 @@
               {
                 "bus_ref": "QF-PV1_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -2028,14 +2086,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-PV1_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -2059,33 +2117,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
@@ -2097,6 +2157,10 @@
               {
                 "bus_ref": "QF-PV1_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -2118,14 +2182,14 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-PV1_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
@@ -2149,33 +2213,35 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
@@ -2191,6 +2257,10 @@
               "breaker_ref": "QF-PV1",
               "bus_ref": "QF-PV1_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -2212,14 +2282,14 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-PV1_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
@@ -2243,33 +2313,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -2279,8 +2351,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 1000.0,
-                "ik1_min_a": 2601.65408,
-                "margines": 2.60165408,
+                "ik1_min_a": 2601.65424,
+                "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "rozdzielczy",
@@ -2305,8 +2377,8 @@
                   },
                   {
                     "ia_a": 1000.0,
-                    "ik1_min_a": 2601.65408,
-                    "margines": 2.60165408,
+                    "ik1_min_a": 2601.65424,
+                    "margines": 2.60165424,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -2330,18 +2402,19 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "7a76fe2c-ddad-56d5-887f-a190c6efc9be",
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+      "calculation_run_id": "7b820578-32f5-5a00-9a35-1a74d5efc2e4",
       "case_id": "fixture-12_der_full_path",
-      "equivalent_id": "edf34320-bbb9-55e5-a4f2-ed3265236abb",
-      "ikss_ka": 18.7082951,
+      "equivalent_id": "a40fbd1a-82ae-5df7-8306-9878f3502bc8",
+      "ikss_ka": 18.7094198,
       "missing_data": [],
-      "model_hash": "620af09f6ddb75fb90d5e21c96f2176384c9930c936c0bf897fa1b6f712c61dd",
+      "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
-      "rx_ratio": 0.20007221,
+      "rx_ratio": 0.200081897,
       "scenario_id": "MAX",
-      "sk_mva": 486.055765,
+      "sk_mva": 486.084985,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
       "station_name": "Stacja OZE",
       "station_ref": "stDER",
@@ -2364,8 +2437,8 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.0998971673,
-        "x": 0.499305562
+        "r": 0.099895812,
+        "x": 0.499274616
       }
     }
   ],

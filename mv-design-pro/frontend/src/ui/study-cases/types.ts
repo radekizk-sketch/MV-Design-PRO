@@ -44,9 +44,10 @@ export const OPERATOR_PROFILES: Array<{
 export type ScInputMode = 'simplified' | 'advanced';
 
 export interface StudyCaseConfig {
-  // Short-circuit parameters
-  c_factor_max: number;
-  c_factor_min: number;
+  // Współczynnik napięciowy c i czas t_k NIE są parametrami przypadku (karta
+  // WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59): jedynym ich nośnikiem jest scenariusz
+  // zwarciowy (`ui/fault-scenarios/types.ts` ShortCircuitConfig). Backend nie ma tych
+  // pól w `StudyCaseConfig` — ich pokazywanie tutaj było fantomem.
 
   // Power flow parameters
   base_mva: number;
@@ -56,7 +57,6 @@ export interface StudyCaseConfig {
   // Analysis options
   include_motor_contribution: boolean;
   include_inverter_contribution: boolean;
-  thermal_time_seconds: number;
 
   // Operator profile (NC RfG / IRiESD per OSD)
   // Default: 'enea' per /goal V12K (ENEA Operator first in priority)
@@ -172,14 +172,11 @@ export interface UpdateStudyCaseRequest {
  * Default configuration values.
  */
 export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
-  c_factor_max: 1.10,
-  c_factor_min: 0.95,
   base_mva: 100.0,
   max_iterations: 50,
   tolerance: 1e-6,
   include_motor_contribution: true,
   include_inverter_contribution: true,
-  thermal_time_seconds: 1.0,
   operator_profile_id: 'enea',
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
@@ -208,14 +205,11 @@ export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
  * Polish labels for configuration fields.
  */
 export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
-  c_factor_max: 'Współczynnik napięciowy (max)',
-  c_factor_min: 'Współczynnik napięciowy (min)',
   base_mva: 'Moc bazowa [MVA]',
   max_iterations: 'Maksymalna liczba iteracji',
   tolerance: 'Tolerancja zbieżności',
   include_motor_contribution: 'Wkład silników',
   include_inverter_contribution: 'Wkład inwerterów',
-  thermal_time_seconds: 'Czas cieplny [s]',
   operator_profile_id: 'Operator (OSD)',
   sc_input_mode: 'Parametry zwarciowe (tryb)',
   sc_simplified_sk_mva: 'Moc zwarciowa S″k po stronie SN [MVA]',
