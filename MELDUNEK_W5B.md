@@ -24,14 +24,20 @@ Bramki uruchomione na czubku gałęzi (kody wyjścia łapane bezpośrednio, wyj�
 | Pełny vitest | `npm test` | RC=0; 884 pliki testów zaliczone (1 pominięty), **13 319 testów passed** (1 skipped, 14 todo — stan sprzed karty) |
 | Type-check frontendu | `npm run type-check` | RC=0 (powtórzony po ostatniej zmianie spec e2e) |
 | Lint frontendu | `npm run lint` (`--max-warnings 0`) | RC=0 |
-| Guardy CI | `python scripts/guardy_z_ci.py` | patrz §1a (bieg końcowy) |
+| Guardy CI | `python scripts/guardy_z_ci.py` | RC=0, „KOMPLET ZIELONY”, testy własne guardów 3448 passed (bieg końcowy, §1a) |
 | Zapadka mypy | `python scripts/mypy_ratchet_guard.py` | RC=0; 221 błędów w 33 plikach (próg 221/33 — dług typów nie urósł) |
 | E2e ekranów pól (realny backend) | `npm run test:e2e -- e2e/tr2w-bez-pola.spec.ts e2e/kreator-stacji-max.spec.ts e2e/etykieta-stacji-rodzaj.spec.ts e2e/stan-ruchowy-pola-brak-telemetrii.spec.ts e2e/s95-budowa-z-kanwy.spec.ts e2e/wyspy-menu-sld.spec.ts e2e/sld-editor-real-backend-flex.spec.ts e2e/critical-run-flow.spec.ts e2e/industrial-template-mass-flow.spec.ts e2e/restart-po-biegu.spec.ts e2e/pasma-rozplywu-jakosc.spec.ts` | RC=0; **18 passed** (6,7 min) |
 | Specy zrzutów pól | `E2E_KATALOG_ZRZUTOW=…/docs/audit/visual/w5b/po npm run test:e2e -- e2e/pola-w-torze-zrzuty-screenshot.spec.ts e2e/kreator-stacji-pole-tr-screenshot.spec.ts e2e/etykieta-stacji-zrzuty.spec.ts` oraz `… e2e/kreator-stacji-zrzuty.spec.ts` | RC=0 (5 passed) i RC=0 (3 passed) |
 
 ### 1a. Guardy CI — bieg końcowy
 
-Wynik wpisany po zakończeniu biegu na czubku gałęzi (patrz §6).
+Pierwszy bieg po poprawce wydajności (czubek `3e59282c2`) dał RC=1: test
+`scripts/test_solver_input_substitute_guard.py::test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen`
+przypinał 4145 nazw pól kontraktów, a poprawka dodała w `enm/` cztery nowe nazwy adnotacji
+(`PoziomPol.stacje_gpz`, `_KontekstTerminali.odcinki_na_szynie`, `.korytarze_pierscieni`,
+`.zajete_zaciski_pol`). Pin zmierzony `contract_fields()` = 4149 i przypięty z komentarzem
+źródła (commit 22/n). Bieg końcowy na czubku z 22/n: `python scripts/guardy_z_ci.py` RC=0,
+„KOMPLET ZIELONY”, testy własne guardów 3448 passed.
 
 ## 2. Regresja wydajności wykryta przez e2e i usunięta u źródła
 
@@ -87,6 +93,8 @@ Pomiar: `git grep -l -E "field_specs|nn_field_specs|switchgear_field_specs"` na 
 - `3e59282c2` (20/n) — regresja wydajności (§2).
 - 21/n — zrzuty „po” na drzewie scalonym, `kreator-stacji-zrzuty.spec.ts` z tą samą zmienną
   katalogu, ten meldunek.
+- 22/n — pin pól kontraktów wejściowych 4145 → 4149 (§1a).
+- 23/n — wynik końcowego biegu guardów w meldunku.
 
 ## 5. Zrzuty „po” do werdyktu B-02
 
