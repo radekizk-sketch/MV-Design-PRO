@@ -13,6 +13,7 @@ import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -39,7 +40,7 @@ const WIAZANIA_KRYTERIUM_PRZEKLADNI = WIAZANIA_PRZEKLADNIKI.przekladnik_pradowy.
   (kryterium) => kryterium.kod === 'ct.przekladnia',
 )!;
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/kreatory'));
 
 const CREATORS = ['pole', 'oze', 'arcflash'] as const;
 const THEMES = ['light', 'dark'] as const;

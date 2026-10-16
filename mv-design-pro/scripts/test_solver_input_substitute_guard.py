@@ -1815,7 +1815,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Partia integracji 8 (+ DYNAMIKA-W-TLE po CENNIK-ODMOWY-PAKIETOW): 4158 + 10 = 4168 — pola
     # karty (PostepBiegu, KontekstWykonania, rekord zlecenia wykonawcy, `nadzorca` silnika)
     # rozlaczne ze zbiorem partii. POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4168." in wyjscie, wyjscie
+    # Partia integracji 8 (+ czubek integracji 91d769420, karta KATALOG-TURBINY-TOR-V112):
+    # 4168 - 4 = 4164 — POMIAR `contract_fields()` na drzewie partii przed i po scaleniu,
+    # roznica zbiorow: -10 (skasowany katalog turbin `network_model/catalog/wind_turbines/**`
+    # i pola przeniesione na typ przeksztaltnika: `converter_type`, `cut_in_wind_speed_m_s`,
+    # `cut_out_wind_speed_m_s`, `fault_current_contribution_pu`, `hub_height_m`,
+    # `p_f_droop_capable`, `rated_wind_speed_m_s`, `rotor_diameter_m`,
+    # `short_circuit_current_pu`, `voltage_control_capable`), +6 (tor generator →
+    # przeksztaltnik na typie przeksztaltnika: `converter_machine_side_voltage_kv`,
+    # `converter_topology`, `generator_machine_type`, `generator_rated_power_mw`,
+    # `generator_stator_frequency_max_hz`, `generator_stator_voltage_kv`). Gałąź bramki
+    # scalenia (SZYBKIE-TESTY, pin 4143 z PR-478) nie wnosi pól — jej historia pinu jest
+    # już ujęta wyżej. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4164." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2039,7 +2051,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 8 (+ DYNAMIKA-W-TLE): 569 + 2 = 571 (network_model +1
         # `solvers/dynamika/przerwanie.py`; application +2 wykonawca biegow `application/execution/**`;
         # api -1 skasowany `api/celery_app.py`). POMIAR guardem na drzewie partii.
-        "Przeskanowano 571 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 571 - 2 = 569 (skasowane
+        # `network_model/catalog/wind_turbines/__init__.py` i `catalog.py`). POMIAR guardem.
+        "Przeskanowano 569 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2196,7 +2210,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Partia integracji 8 (+ DYNAMIKA-W-TLE): network_model 183 + 1 = 184; wykluczenia 1/2
         # (stan gałęzi integracji — wykluczenia 3/6 karty pochodziły z jej starszej bazy). POMIAR.
-        "  network_model: pliki_skanowane=184, dlug=11 plikow/suma 69, "
+        # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 184 - 2 = 182 (katalog turbin
+        # skasowany). POMIAR guardem na drzewie partii.
+        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

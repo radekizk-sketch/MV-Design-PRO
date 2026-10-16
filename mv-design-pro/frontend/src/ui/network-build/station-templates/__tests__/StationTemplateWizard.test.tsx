@@ -597,7 +597,12 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
       '3× TR 15/0.8 kV 500 kVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
     );
 
-    const override = previewBodies.at(-1)?.params_override as Record<string, unknown>;
+    // Ostatnie ciało podglądu przez indeks, nie `Array.prototype.at` — `lib` projektu to ES2020
+    // (bramka typów `tsconfig_gate_guard`: TS2550 poza bramką podniósł dług z 62 do 63).
+    const override = previewBodies[previewBodies.length - 1]?.params_override as Record<
+      string,
+      unknown
+    >;
     expect(override.der_BESS_count).toBe(2);
     expect(override.der_BESS_p_mw_each).toBe(1.5);
     expect(override.der_total_count).toBe(5);

@@ -39,6 +39,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 
@@ -570,7 +571,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
         expect(dimmedStations, 'normal tor has zero de-energized stations (SUB-52s)').toBe(0);
       }
 
-      const outDir = path.resolve(_dirname, '../../docs/audit/visual');
+      const outDir = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual'));
       fs.mkdirSync(outDir, { recursive: true });
       const outPath = path.join(outDir, `sld_substrate_53_PA_tor_${powerFlowCase.pngSuffix}.png`);
       await page.screenshot({ path: outPath, fullPage: false });

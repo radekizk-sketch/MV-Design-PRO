@@ -12,9 +12,13 @@
  */
 import { chromium, type FullConfig } from '@playwright/test';
 
+import { zapiszStanPrzedBiegiem } from './straznikDrzewa';
+
 const WARMUP_TIMEOUT_MS = 180_000;
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
+  // Stan drzewa repozytorium PRZED biegiem — porównuje go globalTeardown (`straznikDrzewa.ts`).
+  zapiszStanPrzedBiegiem();
   if (process.env.PLAYWRIGHT_DISABLE_WEBSERVER) {
     return;
   }

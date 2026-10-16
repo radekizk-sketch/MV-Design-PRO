@@ -152,12 +152,30 @@ Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
     drzew) z wysiłkiem dobranym do zadania, a po odblokowaniu WZNAWIA tych samych wykonawców
     (`SendMessage` — kontekst i cache zostają) od miejsca przerwania, z opisem stanu z logów. Zakaz
     tworzenia nowych wykonawców do dokończenia cudzej, na wpół naniesionej pracy, gdy da się wznowić.
-16. **Wykonawca weryfikuje celowo, integrator w pełni (2026-09-25).** Wykonawca uruchamia testy
-    celowane warstw dotkniętych (testy modułów zmienionych i testy, które te moduły importują —
-    zbiór wyznaczony grepem i podany w meldunku), `scripts/guardy_z_ci.py`, samotesty zmienionych
-    strażników, type-check, lint, vitest modułów dotkniętych, speki e2e ekranów dotkniętych oraz
-    generatory fikstur, które karta może zmienić. Pełną regresję backendu, pełny vitest i pełne e2e
-    uruchamia integrator raz na partię, na drzewie scalonym, jeden bieg naraz. Powód (pomiar
+16. **Wykonawca weryfikuje celowo, integrator w pełni (2026-09-25; bramka scalenia 2026-10-15).**
+    Wykonawca uruchamia bramkę scalenia `scripts/bramka_scalenia.py --baza <baza karty>` (z
+    `backend/`, interpreterem venv backendu) — jedno polecenie, jeden kod wyjścia, wypisany wybór
+    z uzasadnieniem „który zmieniony plik pociągnął który test”: (a) testy backendu wybrane grafem
+    importów z drzewa składni (nadzbiór w sensie importów: importy bezwzględne, względne, leniwe,
+    `importlib`, ładowanie po ścieżce, `conftest.py`; reguły plików danych; `pyproject.toml`
+    i `poetry.lock` wybierają komplet), (b) rdzeń niezmienników uruchamiany zawsze (katalogi
+    `tests/golden`, `tests/invariants`, marker `determinism`, pliki determinizmu, golden, odcisków
+    i zamrożonych kontraktów ResultSet/OpenAPI), (c) vitest wybrany grafem modułów samego vitest
+    (`vitest related`) w obu krokach — głównym i budżetów czasu, (d) `scripts/guardy_z_ci.py`;
+    testy backendu biegną pod pytest-xdist. Do tego speki e2e ekranów dotkniętych i generatory
+    fikstur, które karta może zmienić. Bramka UZUPEŁNIA pełny bieg, nie zastępuje go: pełna
+    regresja backendu, pełny vitest i pełne e2e zostają w CI po każdym push i przed scaleniem do
+    `main`, bez zmiany zakresu. Integrator przed scaleniem partii uruchamia bramkę na drzewie
+    scalonym względem bazy partii (`--baza <baza> --glowa <czubek karty>` ocenia zmianę jednej
+    karty na drzewie scalonym); pełną regresję backendu (`pytest -n 4 --dist loadfile`), pełny
+    vitest i pełne e2e uruchamia raz na partię, jeden bieg naraz. Zysk zależy od miejsca zmiany
+    w grafie (pomiar 2026-10-15, 4 vCPU): zmiana modułu `application/symphony/prompt.py` wybrała
+    9 z 817 plików testów backendu (+ 42 pliki rdzenia), 1 plik vitest; bramka 452–515 s, z czego
+    pytest 135–141 s, a `guardy_z_ci.py` 288–344 s. Zmiana korzenia grafu (`enm/models.py`,
+    `network_model/pochodne`) wybiera komplet backendu — scalenie PR-478 z katalogiem
+    (`c136c6bb..9d4b1afe`): 817 z 817 plików, 117 z 877 plików vitest i 1 z 8 budżetów; bramka
+    3 211 s (pytest pod xdist 2 393 s, vitest 299 + 12 s, strażniki 456 s) — wtedy bramka kosztuje
+    tyle, co pełny bieg pod xdist plus strażniki. Powód (pomiar
     2026-09-25): cztery równoległe pełne regresje na maszynie z 4 CPU zajęły wszystkie rdzenie,
     każda trwała kilka razy dłużej niż sama, wykonawcy wyglądali na zawieszonych przez wiele godzin,
     a osierocone serwery e2e trzymały porty; pełna regresja w drzewie karty i tak nie jest dowodem

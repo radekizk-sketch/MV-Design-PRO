@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 
+import { katalogZrzutow } from './katalogZrzutow';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -46,7 +47,7 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-08');
+const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-08'));
 
 let opCounter = 0;
 

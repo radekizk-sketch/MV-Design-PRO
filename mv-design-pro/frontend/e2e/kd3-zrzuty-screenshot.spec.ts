@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 /** Odpowiedź bilansu wtórnego dla obwodu KOMPLETNEGO (przekrój + moc aparatów). */
 function bilansZKompletem(
   sciezka: string,
@@ -42,7 +43,7 @@ function bilansZKompletem(
 }
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
-const OUTPUT_DIR = path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert'));
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';

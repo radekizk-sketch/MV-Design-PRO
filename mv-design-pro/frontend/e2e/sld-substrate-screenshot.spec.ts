@@ -16,13 +16,14 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
-const OUTPUT_DIR = path.resolve(
+const OUTPUT_DIR = katalogZrzutow(path.resolve(
   _dirname,
   '../../docs/audit/visual',
-);
+));
 
 test.describe('sld:substrate:screenshot', () => {
   test.beforeAll(() => {
