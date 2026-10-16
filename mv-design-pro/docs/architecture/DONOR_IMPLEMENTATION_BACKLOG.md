@@ -31,8 +31,8 @@ Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celo
 > TOP-3 obowiązuje w reinterpretacji: **D-1** = konsolidacja (nie adopcja), **nie wcześniej niż po CV-4.4**;
 > **D-2** = utwardzenie wyroczni pandapower jako część Definition of Done **K7** (pierwszy pełny przypadek);
 > **D-3** = reużycie istniejącej topologii (`znajdz_aparat_chroniacy`), Sandia wyłącznie jako przypadki testowe.
-> **B-01-RI** aktywna: `120/(M−1)` = Long-Time Inverse, liczby bez zmian, przemianowanie `RI` → `LONG_TIME_INVERSE`
-> później, prawdziwa RI tylko na potrzebę produktu. **D-11** odłożona jako świadoma migracja danych („nie teraz”).
+> **B-01-RI** zamknięta 2026-09-30 (karta PROT-LTI): `120/(M−1)` = Long-Time Inverse, liczby bez zmian, przemianowanie `RI` → `LONG_TIME_INVERSE`
+> wykonane, prawdziwa RI tylko na potrzebę produktu. **D-11** odłożona jako świadoma migracja danych („nie teraz”).
 > Po K7 priorytet P0 ma **PERF-SC-50** (nie jest kartą donorową). Kolejność programu: `CONVERGENCE_ROADMAP.md` §4.
 
 ### TOP 3 — ADOPTUJEMY
@@ -260,6 +260,7 @@ i **żadna nie jest przez to zablokowana** — clean-room daje pełną wartość
 zobowiązania i ryzyka, **nie opinia prawna**.
 
 ### B-01-RI · Krzywa `RI` to w rzeczywistości Long-Time Inverse
+**WYKONANE 2026-09-30 (karta PROT-LTI, O-59 OD-15(e)):** wariant A — jądro `IEC60255CurveType.LONG_TIME_INVERSE = "LTI"`, etykieta „Odwrotna długoczasowa (LTI, 120)", model ENM `IEC_LTI` (było `IEC_LI`); liczby, LaTeX i ślad WHITE BOX bit w bit (`backend/tests/network_model/solvers/test_protection_lti_tozsamosc.py`). Migracja danych niepotrzebna — zmierzone: wartość `"RI"` jądra nie trafiała do modelu, przypadków ani zapisów biegów (jedyny konsument jądra, `czas_wylaczenia_galezi`, zapisuje literał modelu, nie nazwę jądra); snapshot OpenAPI i golden bez `"RI"`. Wariant B (prawdziwa RI ASEA/ABB) — nie wdrożony, produkt go nie potrzebuje. Poniżej zapis historyczny.
 **Rozstrzygnięcie właściciela (2026-09-09, W-6): bramka AKTYWNA.** `120/(M−1)` to Long-Time Inverse — liczby bez zmian; preferowane w przyszłości przemianowanie `RI` → `LONG_TIME_INVERSE` bez zmiany wartości (wariant A); prawdziwa RI tylko wtedy, gdy produkt jej potrzebuje. Edycja rdzenia FROZEN i treści dowodów nadal wymaga osobnej zgody na plik.
 `protection_iec60255.py`: `IEC60255CurveType.RI = (120.0, 1.0)`, etykieta „Odwrotna RI (120)",
 LaTeX `t = TMS·120/(M−1)`. To są stałe **Long-Time Inverse** wg IEC 60255-151 — i własny

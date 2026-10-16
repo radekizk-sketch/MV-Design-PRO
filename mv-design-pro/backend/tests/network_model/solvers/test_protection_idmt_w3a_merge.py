@@ -25,12 +25,12 @@ from application.analyses.protection import ocena_nadpradowa
 from application.analyses.protection.ocena_nadpradowa import StopienNastaw, czas_stopnia
 from network_model.solvers import protection_iec60255 as core
 
-#: (krzywa modelu, A, B) wg IEC 60255-151:2009 tab. 1 — IEC_LI ma stałe „RI" rdzenia.
+#: (krzywa modelu, A, B) wg IEC 60255-151:2009 tab. 1 — IEC_LTI = LONG_TIME_INVERSE rdzenia.
 NORM_CURVES = [
     ("IEC_SI", 0.14, 0.02),
     ("IEC_VI", 13.5, 1.0),
     ("IEC_EI", 80.0, 2.0),
-    ("IEC_LI", 120.0, 1.0),
+    ("IEC_LTI", 120.0, 1.0),
 ]
 TMS_VALUES = [0.01, 0.05, 0.3, 1.0, 1.5, 10.0]
 M_VALUES = [1.5, 2.0, 5.0, 10.0, 20.0]
@@ -93,7 +93,9 @@ def test_brak_zadzialania_przy_m_nie_wiekszym_od_jedynki(
 
 
 @pytest.mark.parametrize(("krzywa", "_a", "_b"), NORM_CURVES)
-def test_m_tuz_powyzej_jedynki_daje_czas_skonczony(krzywa: str, _a: float, _b: float) -> None:
+def test_m_tuz_powyzej_jedynki_daje_czas_skonczony(
+    krzywa: str, _a: float, _b: float
+) -> None:
     """M → 1+: mianownik rdzenia ma podłogę — czas skończony, nie wyjątek ani brak."""
     slad = czas_stopnia(_stopien(krzywa, 1.0), (1.0 + 1e-12) * IS_A)
     assert slad["zadziala"] is True

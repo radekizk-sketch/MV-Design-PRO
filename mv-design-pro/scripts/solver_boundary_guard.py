@@ -42,6 +42,8 @@ WATCHED_PATHS = [
     # składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN").
     "backend/src/network_model/solvers/fault_loop_iec60364.py",
     "backend/src/network_model/solvers/petla_zwarcia_tt_it.py",
+    # Rdzeń IEC 60255 (lista B-01, `rdzenie_b01.py`) — dopisany kartą PROT-LTI.
+    "backend/src/network_model/solvers/protection_iec60255.py",
 ]
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
@@ -128,12 +130,21 @@ SANCTIONED_CHANGES = {
         "L-PE-L z Z1 transformatora), WHITE BOX; limity normy NIE sa w kodzie (BRAK_PODSTAWY "
         "w werdykcie). Wpis do usuniecia po scaleniu do main."
     ),
+    "backend/src/network_model/solvers/protection_iec60255.py": (
+        "O-59 OD-15(e) (karta PROT-LTI, 2026-09-30): krzywa 120/(M-1) nazywala sie "
+        "w jadrze RI (myla sie z charakterystyka RI ASEA/ABB, inny wzor) - przemianowana "
+        "na LONG_TIME_INVERSE o wartosci LTI, etykieta Odwrotna dlugoczasowa (LTI, 120). "
+        "Zero zmian liczb: stale, wzor LaTeX i wszystkie wielkosci WHITE BOX bit w bit "
+        "(tests/network_model/solvers/test_protection_lti_tozsamosc.py na migawce z "
+        "f3c435b6). Wpis do usuniecia po scaleniu do main."
+    ),
 }
 
 
 def sprawdz_granice_dynamiki(katalog: Path = KATALOG_PAKIETU_DYNAMIKI) -> int:
     """Granica importów rdzenia dynamiki (karta W6-2 §0 p.1) — 0 = zielono. Katalog skanu
-    parametrem, żeby test mógł sprawdzić wpięcie na kopii pakietu (nigdy w żywym drzewie)."""
+    parametrem, żeby test mógł sprawdzić wpięcie na kopii pakietu (nigdy w żywym drzewie).
+    """
     liczba_plikow, naruszenia = raport_granicy_dynamiki(katalog)
     if liczba_plikow == 0:
         print(
@@ -182,7 +193,9 @@ def main() -> int:
         for v in sorted(set(violations)):
             print(f"  - {v}")
         print()
-        print("Load Flow PR NIE MOŻE modyfikować solverów zwarciowych ani zabezpieczeń.")
+        print(
+            "Load Flow PR NIE MOŻE modyfikować solverów zwarciowych ani zabezpieczeń."
+        )
         return 1
 
     print("OK [SolverBoundaryGuard]: Brak zmian w chronionych plikach solverów.")

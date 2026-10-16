@@ -14,7 +14,7 @@ Supported curve types:
     NI  — Normal Inverse:      t = TMS * 0.14 / ((I/Is)^0.02 - 1)
     VI  — Very Inverse:        t = TMS * 13.5 / ((I/Is) - 1)
     EI  — Extremely Inverse:   t = TMS * 80 / ((I/Is)^2 - 1)
-    RI  — RI/Definite Inverse: t = TMS * 120 / ((I/Is) - 1)
+    LTI — Long-Time Inverse:   t = TMS * 120 / ((I/Is) - 1)
     DT  — Definite Time:       t = TMS (constant)
 
 Reference: IEC 60255-151:2009, Table 1 — Standard IDMT characteristics
@@ -38,7 +38,7 @@ class IEC60255CurveType(StrEnum):
     NI = "NI"  # Normal Inverse (Normalna odwrotna)
     VI = "VI"  # Very Inverse (Bardzo odwrotna)
     EI = "EI"  # Extremely Inverse (Ekstremalnie odwrotna)
-    RI = "RI"  # RI / Definite Inverse (Odwrotna RI / 120)
+    LONG_TIME_INVERSE = "LTI"  # Long-Time Inverse (Odwrotna dlugoczasowa, K = 120)
     DT = "DT"  # Definite Time (Czas niezalezny)
 
 
@@ -52,7 +52,7 @@ IEC60255_CURVE_PARAMS: dict[IEC60255CurveType, tuple[float, float]] = {
     IEC60255CurveType.NI: (0.14, 0.02),
     IEC60255CurveType.VI: (13.5, 1.0),
     IEC60255CurveType.EI: (80.0, 2.0),
-    IEC60255CurveType.RI: (120.0, 1.0),
+    IEC60255CurveType.LONG_TIME_INVERSE: (120.0, 1.0),
     # DT has no A/B — trip time = TMS directly
 }
 
@@ -60,7 +60,7 @@ IEC60255_CURVE_FORMULAS_LATEX: dict[IEC60255CurveType, str] = {
     IEC60255CurveType.NI: r"t = \mathrm{TMS} \cdot \frac{0.14}{(I/I_s)^{0.02} - 1}",
     IEC60255CurveType.VI: r"t = \mathrm{TMS} \cdot \frac{13.5}{(I/I_s) - 1}",
     IEC60255CurveType.EI: r"t = \mathrm{TMS} \cdot \frac{80}{(I/I_s)^{2} - 1}",
-    IEC60255CurveType.RI: r"t = \mathrm{TMS} \cdot \frac{120}{(I/I_s) - 1}",
+    IEC60255CurveType.LONG_TIME_INVERSE: r"t = \mathrm{TMS} \cdot \frac{120}{(I/I_s) - 1}",
     IEC60255CurveType.DT: r"t = \mathrm{TMS}",
 }
 
@@ -68,7 +68,7 @@ IEC60255_CURVE_LABELS_PL: dict[IEC60255CurveType, str] = {
     IEC60255CurveType.NI: "Normalna odwrotna (NI)",
     IEC60255CurveType.VI: "Bardzo odwrotna (VI)",
     IEC60255CurveType.EI: "Ekstremalnie odwrotna (EI)",
-    IEC60255CurveType.RI: "Odwrotna RI (120)",
+    IEC60255CurveType.LONG_TIME_INVERSE: "Odwrotna długoczasowa (LTI, 120)",
     IEC60255CurveType.DT: "Czas niezalezny (DT)",
 }
 
@@ -384,7 +384,7 @@ def compute_curve_trip_time(
             white_box_trace=trace,
         )
 
-    # --- Inverse-time curves (NI, VI, EI, RI) ---
+    # --- Inverse-time curves (NI, VI, EI, LTI) ---
     A, B = IEC60255_CURVE_PARAMS[curve_type]
 
     if not will_trip:

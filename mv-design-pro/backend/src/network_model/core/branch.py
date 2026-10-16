@@ -67,7 +67,9 @@ def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> s
         return str(data[preferred_key])
     if legacy_key in data:
         return str(data[legacy_key])
-    raise ValueError(f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')")
+    raise ValueError(
+        f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')"
+    )
 
 
 @dataclass
@@ -122,7 +124,8 @@ class Branch:
             except ValueError:
                 valid_types = [bt.value for bt in BranchType]
                 raise ValueError(
-                    f"Unknown branch_type: '{raw_type}'. " f"Valid types are: {valid_types}"
+                    f"Unknown branch_type: '{raw_type}'. "
+                    f"Valid types are: {valid_types}"
                 )
         else:
             raise ValueError(
@@ -211,9 +214,15 @@ class LineImpedanceOverride:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LineImpedanceOverride":
         return cls(
-            r_total_ohm=wymagany_float(data, "r_total_ohm", context="LineImpedanceOverride"),
-            x_total_ohm=wymagany_float(data, "x_total_ohm", context="LineImpedanceOverride"),
-            b_total_us=wymagany_float(data, "b_total_us", context="LineImpedanceOverride"),
+            r_total_ohm=wymagany_float(
+                data, "r_total_ohm", context="LineImpedanceOverride"
+            ),
+            x_total_ohm=wymagany_float(
+                data, "x_total_ohm", context="LineImpedanceOverride"
+            ),
+            b_total_us=wymagany_float(
+                data, "b_total_us", context="LineImpedanceOverride"
+            ),
         )
 
 
@@ -322,7 +331,9 @@ class LineBranch(Branch):
             # inżynierskim (brak modelowania pojemności), nie fabrykacją.
             b_us_per_km=float(data.get("b_us_per_km", 0.0)),
             length_km=wymagany_float(data, "length_km", context="LineBranch"),
-            rated_current_a=wymagany_float(data, "rated_current_a", context="LineBranch"),
+            rated_current_a=wymagany_float(
+                data, "rated_current_a", context="LineBranch"
+            ),
             type_ref=_parse_type_ref(data),
             impedance_override=_parse_impedance_override(data),
             # F-K1 faza 3: brak klucza => None (dana nieznana), nigdy 0.0 — zero
@@ -466,7 +477,9 @@ class LineBranch(Branch):
         """
         z = self.get_total_impedance()
         if z == 0:
-            raise ZeroDivisionError("Cannot compute series admittance: impedance is zero")
+            raise ZeroDivisionError(
+                "Cannot compute series admittance: impedance is zero"
+            )
         return 1.0 / z
 
     def get_shunt_admittance(self) -> complex:
@@ -546,7 +559,9 @@ class LineBranch(Branch):
     def with_resolved_params(
         self, catalog: CatalogRepository | None = None, *, czestotliwosc_hz: float
     ) -> "LineBranch":
-        resolved = self.resolve_electrical_params(catalog, czestotliwosc_hz=czestotliwosc_hz)
+        resolved = self.resolve_electrical_params(
+            catalog, czestotliwosc_hz=czestotliwosc_hz
+        )
         return replace(
             self,
             r_ohm_per_km=resolved.r_ohm_per_km,
@@ -691,9 +706,15 @@ class TapChanger:
                 else None
             ),
             line_drop_compensation=(
-                LineDropCompensation.from_dict(ldc_raw) if isinstance(ldc_raw, dict) else None
+                LineDropCompensation.from_dict(ldc_raw)
+                if isinstance(ldc_raw, dict)
+                else None
             ),
-            catalog_ref=(str(data["catalog_ref"]) if data.get("catalog_ref") is not None else None),
+            catalog_ref=(
+                str(data["catalog_ref"])
+                if data.get("catalog_ref") is not None
+                else None
+            ),
         )
 
 
@@ -808,10 +829,16 @@ class TransformerBranch(Branch):
             pk_kw=float(data.get("pk_kw", 0.0)),
             # i0_percent/p0_kw/vector_group: `None` gdy brak (D2) — nigdy
             # 0.0/"Dyn11" podstawione za nieznana dana.
-            i0_percent=(float(data["i0_percent"]) if data.get("i0_percent") is not None else None),
+            i0_percent=(
+                float(data["i0_percent"])
+                if data.get("i0_percent") is not None
+                else None
+            ),
             p0_kw=(float(data["p0_kw"]) if data.get("p0_kw") is not None else None),
             vector_group=(
-                str(data["vector_group"]) if data.get("vector_group") is not None else None
+                str(data["vector_group"])
+                if data.get("vector_group") is not None
+                else None
             ),
             tap_position=int(data.get("tap_position", 0)),
             tap_step_percent=float(data.get("tap_step_percent", 2.5)),
@@ -882,11 +909,14 @@ class TransformerBranch(Branch):
         if self.p0_kw is not None and self.p0_kw < 0:
             return False
 
-        # Validate discriminant for reactance calculation
-        z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
-        if discriminant < 0:
+        # Predykat sprzecznosci P_k/u_k z jednego zrodla (ten sam co w liczeniu impedancji).
+        try:
+            reaktancja_zwarciowa_transformatora_pu(
+                rated_power_mva=self.rated_power_mva,
+                uk_percent=self.uk_percent,
+                pk_kw=self.pk_kw,
+            )
+        except OdmowaDanychError:
             return False
 
         return True
@@ -917,9 +947,11 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in per unit (Rk_pu + jXk_pu).
         """
         self._validate_short_circuit_inputs()
-        z_pu = self.uk_percent / 100.0
-        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+        r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
         return complex(r_pu, x_pu)
 
     def get_short_circuit_resistance_pu(self) -> float:
@@ -940,9 +972,12 @@ class TransformerBranch(Branch):
             Short-circuit reactance in per unit.
         """
         self._validate_short_circuit_inputs()
-        z_pu = self.uk_percent / 100.0
-        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        return math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+        _r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
+        return x_pu
 
     def get_short_circuit_impedance_ohm_lv(self) -> complex:
         """
@@ -952,7 +987,9 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in ohms on LV side.
         """
         self._validate_short_circuit_inputs()
-        z_base_lv = impedancja_z_napiecia_i_mocy_ohm(self.voltage_lv_kv, self.rated_power_mva)
+        z_base_lv = impedancja_z_napiecia_i_mocy_ohm(
+            self.voltage_lv_kv, self.rated_power_mva
+        )
         return self.get_short_circuit_impedance_pu() * z_base_lv
 
     def get_voltage_factor_c_max(self) -> float:
@@ -1130,19 +1167,14 @@ class TransformerBranch(Branch):
             Complex per-unit impedance Z_pu = R_pu + jX_pu.
 
         Raises:
-            ValueError: If discriminant is negative (pk too large for uk).
+            OdmowaDanychError: sprzeczne dane P_k/u_k (predykat
+                ``reaktancja_zwarciowa_transformatora_pu``).
         """
-        z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
-
-        discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
-        if discriminant < 0:
-            raise ValueError(
-                f"Invalid transformer parameters: discriminant < 0. "
-                f"pk_kw={self.pk_kw} is too large for uk_percent={self.uk_percent}"
-            )
-
-        x_pu_sn = math.sqrt(discriminant)
+        r_pu_sn, x_pu_sn = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
 
         scale_factor = base_mva / self.rated_power_mva
         r_pu_base = r_pu_sn * scale_factor
@@ -1195,7 +1227,9 @@ class TransformerBranch(Branch):
         """
         return self.get_turns_ratio() * self.get_tap_ratio()
 
-    def resolve_nameplate(self, catalog: CatalogRepository | None = None) -> TransformerType:
+    def resolve_nameplate(
+        self, catalog: CatalogRepository | None = None
+    ) -> TransformerType:
         """
         Resolve transformer nameplate parameters using canonical precedence rules.
 
@@ -1233,7 +1267,9 @@ class TransformerBranch(Branch):
             vector_group=resolved.vector_group,
         )
 
-    def computed_equivalent_pu(self, catalog: CatalogRepository | None = None) -> complex:
+    def computed_equivalent_pu(
+        self, catalog: CatalogRepository | None = None
+    ) -> complex:
         nameplate = self.resolve_nameplate(catalog)
         return _compute_transformer_impedance_pu(
             rated_power_mva=nameplate.rated_power_mva,
@@ -1302,10 +1338,49 @@ def _parse_impedance_override(data: dict[str, Any]) -> LineImpedanceOverride | N
     return None
 
 
+def odmowa_gdy_pk_sprzeczne_z_uk(
+    *, r_pu: float, z_pu: float, pk_kw: float, rated_power_mva: float, uk_percent: float
+) -> None:
+    """JEDYNY predykat „rezystancja z P_k nie przekracza impedancji z u_k" (r_pu ≤ z_pu).
+
+    Wspólny dla wszystkich miejsc liczących impedancję zwarciową transformatora: gałąź
+    rozpływu i zwarć (``reaktancja_zwarciowa_transformatora_pu``, ``get_impedance_pu``),
+    walidacja gałęzi (``validate``) i pętla zwarcia nN (``fault_loop_builder``). Dane
+    sprzeczne (P_k/S_n > u_k) są ODMOWĄ nazwaną, nie cichym obcięciem x do zera ani r do |z|.
+    """
+    if r_pu > z_pu:
+        raise OdmowaDanychError(
+            f"Sprzeczne dane transformatora: straty obciążeniowe P_k = {pk_kw} kW przy "
+            f"S_n = {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
+            f"impedancja zwarciowa z napięcia zwarcia u_k = {uk_percent} % "
+            f"({z_pu:.6g} p.u.). Popraw P_k albo u_k w karcie katalogowej transformatora."
+        )
+
+
+def reaktancja_zwarciowa_transformatora_pu(
+    *, rated_power_mva: float, uk_percent: float, pk_kw: float
+) -> tuple[float, float]:
+    """(r_pu, x_pu) transformatora na bazie S_n: z = uk%/100, r = P_k/S_n, x = √(z² − r²).
+
+    Dane sprzeczne — odmowa z ``odmowa_gdy_pk_sprzeczne_z_uk``. ``pk_kw = 0`` daje r = 0 —
+    konwencja całego modelu (pole ENM ``pk_kw`` wymagane, zero jawnie wpisane), nie domysł.
+    """
+    z_pu = uk_percent / 100.0
+    r_pu = kw_na_mw(pk_kw) / rated_power_mva
+    odmowa_gdy_pk_sprzeczne_z_uk(
+        r_pu=r_pu,
+        z_pu=z_pu,
+        pk_kw=pk_kw,
+        rated_power_mva=rated_power_mva,
+        uk_percent=uk_percent,
+    )
+    return r_pu, math.sqrt(z_pu * z_pu - r_pu * r_pu)
+
+
 def _compute_transformer_impedance_pu(
     *, rated_power_mva: float, uk_percent: float, pk_kw: float
 ) -> complex:
-    z_pu = uk_percent / 100.0
-    r_pu = kw_na_mw(pk_kw) / rated_power_mva
-    x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+    r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+        rated_power_mva=rated_power_mva, uk_percent=uk_percent, pk_kw=pk_kw
+    )
     return complex(r_pu, x_pu)

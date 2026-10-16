@@ -457,6 +457,10 @@ wyłącznie z `scipy.stats.chi2`, wiersz 11 części I). Pozycje (d), (k), (l) d
 223/34 → 203/32, odmowy wejścia rdzeni zwarć i rozpływu jako rekordy strukturalne (`network_model/odmowa_danych.py`
 `RekordOdmowy`) ze zdaniem z nazwami z modelu (`enm/zdania_odmow_rdzenia.py`), tytuły kroków śladu zwarciowego
 z nazwą gałęzi.
+Nowa pozycja do tej samej listy (karta PROT-LTI, 2026-09-30): krzywa IEC 60255 0,14/0,02 ma dwie nazwy —
+„NI” w jądrze `protection_iec60255.py` i w katalogu analitycznym (`devices_v0.json`: `IEC_NI`) oraz „SI” w modelu
+ENM (`IEC_SI`), adapterze `iec_curves.py` i froncie. Ujednolicenie wymaga wyboru nazwy
+i zgody B-01 na jądro (para „RI”/„LTI” domknięta w PROT-LTI, OD-15(e)).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

@@ -5,7 +5,7 @@ Verifies:
 - NI (Normal Inverse) curve accuracy against known values
 - VI (Very Inverse) curve accuracy
 - EI (Extremely Inverse) curve accuracy
-- RI (RI/Definite Inverse) curve accuracy
+- LTI (Long-Time Inverse) curve accuracy
 - DT (Definite Time) curve behaviour
 - WhiteBox trace completeness
 - Edge cases (M <= 1, validation errors)
@@ -21,7 +21,7 @@ Reference values computed from IEC 60255-151:2009:
     NI: t = TMS * 0.14 / ((I/Is)^0.02 - 1)
     VI: t = TMS * 13.5 / ((I/Is) - 1)
     EI: t = TMS * 80 / ((I/Is)^2 - 1)
-    RI: t = TMS * 120 / ((I/Is) - 1)
+    LTI: t = TMS * 120 / ((I/Is) - 1)
     DT: t = TMS
 """
 
@@ -58,8 +58,8 @@ def _expected_ei(i: float, is_: float, tms: float) -> float:
     return tms * 80.0 / (math.pow(M, 2.0) - 1.0)
 
 
-def _expected_ri(i: float, is_: float, tms: float) -> float:
-    """Reference RI calculation: t = TMS * 120 / ((I/Is) - 1)."""
+def _expected_lti(i: float, is_: float, tms: float) -> float:
+    """Reference LTI calculation: t = TMS * 120 / ((I/Is) - 1)."""
     M = i / is_
     return tms * 120.0 / (M - 1.0)
 
@@ -298,58 +298,58 @@ class TestEICurveAccuracy:
 
 
 # =============================================================================
-# TEST: RI CURVE ACCURACY
+# TEST: LTI CURVE ACCURACY
 # =============================================================================
 
 
-class TestRICurveAccuracy:
-    """Verify RI (RI/Definite Inverse) curve against known reference values."""
+class TestLTICurveAccuracy:
+    """Verify LTI (Long-Time Inverse) curve against known reference values."""
 
-    def test_ri_at_2x_pickup(self) -> None:
-        """RI at M=2, TMS=1 -> t = 120 / (2 - 1) = 120 s."""
+    def test_lti_at_2x_pickup(self) -> None:
+        """LTI at M=2, TMS=1 -> t = 120 / (2 - 1) = 120 s."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.RI,
+            curve_type=IEC60255CurveType.LONG_TIME_INVERSE,
             i_fault_a=200.0,
             is_pickup_a=100.0,
             tms=1.0,
         )
-        expected = _expected_ri(200.0, 100.0, 1.0)
+        expected = _expected_lti(200.0, 100.0, 1.0)
         assert result.will_trip is True
         assert result.calculated_time_s is not None
         assert abs(result.calculated_time_s - 120.0) < 0.001
         assert abs(result.calculated_time_s - expected) < 0.001
 
-    def test_ri_at_5x_pickup(self) -> None:
-        """RI at M=5, TMS=1 -> t = 120 / (5 - 1) = 30 s."""
+    def test_lti_at_5x_pickup(self) -> None:
+        """LTI at M=5, TMS=1 -> t = 120 / (5 - 1) = 30 s."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.RI,
+            curve_type=IEC60255CurveType.LONG_TIME_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=1.0,
         )
-        expected = _expected_ri(500.0, 100.0, 1.0)
+        expected = _expected_lti(500.0, 100.0, 1.0)
         assert result.will_trip is True
         assert result.calculated_time_s is not None
         assert abs(result.calculated_time_s - 30.0) < 0.001
         assert abs(result.calculated_time_s - expected) < 0.001
 
-    def test_ri_at_10x_pickup_tms_02(self) -> None:
-        """RI at M=10, TMS=0.2 -> t = 0.2 * 120 / (10 - 1) = 2.667 s."""
+    def test_lti_at_10x_pickup_tms_02(self) -> None:
+        """LTI at M=10, TMS=0.2 -> t = 0.2 * 120 / (10 - 1) = 2.667 s."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.RI,
+            curve_type=IEC60255CurveType.LONG_TIME_INVERSE,
             i_fault_a=1000.0,
             is_pickup_a=100.0,
             tms=0.2,
         )
-        expected = _expected_ri(1000.0, 100.0, 0.2)
+        expected = _expected_lti(1000.0, 100.0, 0.2)
         assert result.will_trip is True
         assert result.calculated_time_s is not None
         assert abs(result.calculated_time_s - expected) < 0.01
 
-    def test_ri_no_trip_below_pickup(self) -> None:
-        """RI should not trip below pickup."""
+    def test_lti_no_trip_below_pickup(self) -> None:
+        """LTI should not trip below pickup."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.RI,
+            curve_type=IEC60255CurveType.LONG_TIME_INVERSE,
             i_fault_a=50.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -473,10 +473,10 @@ class TestWhiteBoxTraceCompleteness:
         missing = self.REQUIRED_IDMT_KEYS - set(trace.keys())
         assert not missing, f"Missing trace keys: {missing}"
 
-    def test_ri_trace_completeness(self) -> None:
-        """RI trace should have all required IDMT fields."""
+    def test_lti_trace_completeness(self) -> None:
+        """LTI trace should have all required IDMT fields."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.RI,
+            curve_type=IEC60255CurveType.LONG_TIME_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,

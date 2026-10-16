@@ -13,6 +13,9 @@ PROTECTED PATHS:
   backend/src/network_model/solvers/power_flow_gauss_seidel.py
   backend/src/network_model/solvers/power_flow_fast_decoupled.py
   backend/src/network_model/solvers/power_flow_newton_internal.py
+  backend/src/network_model/solvers/protection_iec60255.py
+    (odcisk od karty PROT-LTI 2026-09-30, sankcja O-59 OD-15(e): nazwa krzywej
+    RI -> LONG_TIME_INVERSE/"LTI", liczby bit w bit bez zmian)
 
 ALGORITHM:
   1. Compute SHA-256 of each protected file
@@ -44,6 +47,7 @@ PROTECTED_FILES = [
     "network_model/solvers/power_flow_gauss_seidel.py",
     "network_model/solvers/power_flow_fast_decoupled.py",
     "network_model/solvers/power_flow_newton_internal.py",
+    "network_model/solvers/protection_iec60255.py",
 ]
 
 

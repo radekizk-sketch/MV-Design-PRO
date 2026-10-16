@@ -110,12 +110,12 @@ class MeasurementRating(BaseModel):
 #: (``application/analyses/protection/ocena_nadpradowa.py``), nigdy domyślną.
 JednostkaProguPradowego = Literal["A_WTORNY", "A_PIERWOTNY"]
 
-#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LI) i czas niezależny
+#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LTI) i czas niezależny
 #: (DT) liczy rdzeń ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI)
 #: — ``protection_iec60255.compute_ieee_c37112_generic`` ze stałymi normy
 #: (``protection.curves.ieee_curves.IEEECurveParams``).
 KrzywaNastawy = Literal[
-    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
+    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
 ]
 
 
@@ -896,7 +896,9 @@ class Measurement(ENMElement):
         `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
         przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
-            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+            raise ValueError(
+                f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'."
+            )
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
@@ -1075,7 +1077,9 @@ class LineRun(BaseModel):
     starting_port_ref: str  # konkretny port pola wyjściowego
     segments: list[LineRunSegmentRef] = []
     stations: list[LineRunStationRef] = []
-    nop_station_ref: str | None = None  # stacja z punktem normalnie otwartym (dla pierścieni)
+    nop_station_ref: str | None = (
+        None  # stacja z punktem normalnie otwartym (dla pierścieni)
+    )
     parent_run_ref: str | None = None  # dla odgałęzień: ref do ciągu macierzystego
     branch_origin_station_ref: str | None = None  # punkt startu odgałęzienia
 
@@ -1243,7 +1247,9 @@ class BaySwitchState(BaseModel):
     # Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
     # TELEMETRIĄ — wartość wyłącznie ze źródła runtime (`BayRuntimeState.primary_device_states`
     # albo rekord aparatu na migawce); `None` = brak telemetrii, nigdy wartość domyślna.
-    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None = None
+    control_mode: (
+        Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None
+    ) = None
     armed_for_close: bool | None = None
     armed_for_open: bool | None = None
     communication_ok: bool | None = None
@@ -1285,7 +1291,9 @@ class BayPrimaryDevice(BaseModel):
         # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
         "SURGE_ARRESTER",
     ]
-    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
+    placement: Literal[
+        "UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"
+    ]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
     is_controllable: bool = False
     render_variant: str | None = None
@@ -1325,7 +1333,9 @@ class BayMeasurements(BaseModel):
 
 
 class BayMeasurementSet(BaseModel):
-    side: Literal["pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"]
+    side: Literal[
+        "pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"
+    ]
     values: BayMeasurements = Field(default_factory=BayMeasurements)
 
 
@@ -1450,7 +1460,9 @@ class BayProtectionControlUnit(BaseModel):
     spz: SpzState | None = None
     alarms: list[AlarmEntry] = []
     events: list[EventEntry] = []
-    disturbance_recorder: DisturbanceRecorderState = Field(default_factory=DisturbanceRecorderState)
+    disturbance_recorder: DisturbanceRecorderState = Field(
+        default_factory=DisturbanceRecorderState
+    )
     trends: TrendState = Field(default_factory=TrendState)
     settings_mode: Literal["automatyczne", "reczne"] = "reczne"
     settings_ref: str | None = None
@@ -1497,8 +1509,12 @@ class BayEnergizationSafetyState(BaseModel):
 class BayRuntimeState(BaseModel):
     secondary_communication_status: Literal["ok", "degraded", "offline"] = "offline"
     last_good_update_at: datetime | None = None
-    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = "niedostepne"
-    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = "niedostepne"
+    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = (
+        "niedostepne"
+    )
+    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = (
+        "niedostepne"
+    )
     primary_device_states: dict[str, BaySwitchState] = {}
     active_alarms: list[AlarmEntry] = []
     pending_command: BayCommandExecutionState | None = None
@@ -1649,7 +1665,9 @@ class BayProjectResults(BaseModel):
 class BayCanonicalModel(BaseModel):
     schema_version: Literal["v10.bay.1"] = "v10.bay.1"
     created_from: Literal["szablon", "recznie", "migracja", "przebudowa"] = "migracja"
-    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = "po_migracji"
+    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = (
+        "po_migracji"
+    )
     audit_trail_ref: str | None = None
     base_model: BayBaseModel
     runtime_state: BayRuntimeState | None = None
@@ -1725,7 +1743,9 @@ class BranchPointSN(ENMElement):
     branch_occupied: dict[str, str] = {}
     switch_state: Literal["open", "closed"] | None = None
     materialized_params: dict | None = None
-    completeness_status: Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None = None
+    completeness_status: (
+        Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None
+    ) = None
     runtime_inputs: dict | None = None
 
 
@@ -1764,11 +1784,18 @@ class KatalogProjektu(BaseModel):
     @model_validator(mode="after")
     def _unikalne_i_posortowane(self) -> KatalogProjektu:
         widziane: set[str] = set()
-        for rodzaj in ("line_types", "cable_types", "transformer_types", "karty_widmowe"):
+        for rodzaj in (
+            "line_types",
+            "cable_types",
+            "transformer_types",
+            "karty_widmowe",
+        ):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():
-                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
+                    raise ValueError(
+                        f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji"
+                    )
                 if rekord.id in widziane:
                     raise ValueError(
                         f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
@@ -1904,7 +1931,11 @@ def liczba_jednostek_zrodla(element: Generator | Mapping[str, Any]) -> int:
         ilosc = element.get("quantity")
     else:
         ilosc = element.quantity
-    liczba = ilosc if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc else None
+    liczba = (
+        ilosc
+        if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc
+        else None
+    )
     if liczba is None:
         liczba = liczba_torow(element)
     if liczba < 1:
