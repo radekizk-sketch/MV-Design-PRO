@@ -431,18 +431,24 @@ def test_zwarcie_galaz_bez_nazwy_poza_eksploatacja_nie_blokuje() -> None:
     assert wynik.ikss_a > 0
 
 
+# Partia integracji 11: wejście wiązania po karcie WSPOLCZYNNIK-C-JEDEN-NOSNIK niesie
+# scenariusz MAX/MIN i opcjonalne nadpisanie c (koniec płaskiego `c_factor`) — c węzła
+# dobiera assembler z tabeli 1 IEC 60909-0; odmowa węzła spoza grafu w obu kolumnach.
 WIAZANIA_ZWARCIA_ZE_SNAPSHOTU = {
-    "1F": lambda migawka, wezel: wynik_zwarcia_1f_ze_snapshotu(
-        snapshot=migawka, fault_node_id=wezel, c_factor=1.1, tk_s=1.0
+    "1F": lambda migawka, wezel, scenariusz: wynik_zwarcia_1f_ze_snapshotu(
+        snapshot=migawka, fault_node_id=wezel, scenariusz=scenariusz, nadpisanie_c=None, tk_s=1.0
     ),
-    "3F": lambda migawka, wezel: zwarcie_3f_ze_snapshotu(
-        snapshot=migawka, fault_node_id=wezel, c_factor=1.1, tk_s=1.0
+    "3F": lambda migawka, wezel, scenariusz: zwarcie_3f_ze_snapshotu(
+        snapshot=migawka, fault_node_id=wezel, scenariusz=scenariusz, nadpisanie_c=None, tk_s=1.0
     ).wynik,
 }
 
 
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
 @pytest.mark.parametrize("wiazanie", sorted(WIAZANIA_ZWARCIA_ZE_SNAPSHOTU))
-def test_wiazanie_zwarcia_ze_snapshotu_odmowa_rekordem_bez_identyfikatora(wiazanie: str) -> None:
+def test_wiazanie_zwarcia_ze_snapshotu_odmowa_rekordem_bez_identyfikatora(
+    wiazanie: str, scenariusz: str
+) -> None:
     """Droga warstwy wiązania (jedyne wywołania rdzenia zwarć poza biegiem kanonicznym:
     pakiety dowodowe SC3F i zwarć niesymetrycznych) — odmowa rdzenia dochodzi jako rekord
     z kodem i odwołaniem, treść bez identyfikatora.
@@ -458,7 +464,7 @@ def test_wiazanie_zwarcia_ze_snapshotu_odmowa_rekordem_bez_identyfikatora(wiazan
 
     migawka = _enm(with_machine=False).model_dump()
     with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
-        WIAZANIA_ZWARCIA_ZE_SNAPSHOTU[wiazanie](migawka, "brak/7f3a9cff")
+        WIAZANIA_ZWARCIA_ZE_SNAPSHOTU[wiazanie](migawka, "brak/7f3a9cff", scenariusz)
     (rekord,) = odmowa.value.rekordy
     assert rekord.kod == KOD_WEZEL_ZWARCIA_SPOZA_GRAFU
     assert rekord.odwolania == (OdwolanieElementu(RODZAJ_WEZEL, "brak/7f3a9cff"),)

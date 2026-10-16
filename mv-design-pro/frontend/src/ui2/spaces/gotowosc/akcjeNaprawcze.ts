@@ -79,12 +79,16 @@ const POWOD_BIEG_WERDYKTU =
 const POWOD_ZACISK_ZABEZPIECZENIA =
   'Miejsce zabezpieczenia na gałęzi (zacisk początkowy albo końcowy) wskazuje się w nastawach ' +
   'zabezpieczeń na ekranie koordynacji.';
+const POWOD_NADPISANIE_C =
+  'Nadpisanie współczynnika napięciowego c ustawia się w przypadku obliczeń albo w scenariuszu ' +
+  'zwarciowym — wpisz wartość dodatnią z uzasadnieniem albo usuń nadpisanie, wtedy c wynika ' +
+  'z tabeli 1 IEC 60909-0.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (153 kody, stan rejestru partii integracji 9). Brak wpisu dla
+ * KOMPLETNA tabela kodów kanonu (156 kodów, stan rejestru partii integracji 11). Brak wpisu dla
  * kodu z rejestru jest błędem wykrywanym testem klasy `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -290,6 +294,13 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'obliczenia',
     'Zwarcie w punkcie na gałęzi ustawia się w scenariuszu zwarciowym przypadku obliczeń.',
   ),
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (partia integracji 11): tolerancję napięcia sieci nN
+  // deklaruje transformator albo źródło zasilające sieć nN (pole `lv_voltage_tolerance`,
+  // emiter ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING otwiera formularz parametrów tego elementu);
+  // nadpisanie c jest parametrem przypadku albo scenariusza zwarciowego, nie elementu modelu.
+  'fault.c_tolerancja_nn_brak': EDYCJA,
+  'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
+  'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   // --- Przypadek, analizy i werdykt ----------------------------------------------------
   'study_case.missing_base_snapshot': przestrzen(
     'obliczenia',

@@ -457,13 +457,25 @@ describe('stacjaModel — payload', () => {
       kontekst(),
       rozdzielnica('branch'),
     );
-    expect(z.nn_earthing).toEqual({ lv_system: 'TT', neutral_point: 'directly_grounded', lv_r_ohm: 2 });
+    // Partia integracji 11: krok uziemienia niesie też tolerancję sieci nN (karta
+    // WSPOLCZYNNIK-C-JEDEN-NOSNIK, domyślna widoczna PLUS_10) — intencja testu (klucz R_B
+    // tylko przy rezystancji) bez zmian.
+    expect(z.nn_earthing).toEqual({
+      lv_system: 'TT',
+      neutral_point: 'directly_grounded',
+      lv_r_ohm: 2,
+      lv_voltage_tolerance: 'PLUS_10',
+    });
     const bez = zbudujPayload(
       dane({ uklad_sieci_nn: 'TN-C-S', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
       kontekst(),
       rozdzielnica('branch'),
     );
-    expect(bez.nn_earthing).toEqual({ lv_system: 'TN-C-S', neutral_point: 'directly_grounded' });
+    expect(bez.nn_earthing).toEqual({
+      lv_system: 'TN-C-S',
+      neutral_point: 'directly_grounded',
+      lv_voltage_tolerance: 'PLUS_10',
+    });
   });
 
   it('układ TT z punktem uziemionym bezpośrednio bez R_B = błąd walidacji przy polu; TN bez R_B nie blokuje', () => {

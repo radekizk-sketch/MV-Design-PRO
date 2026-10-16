@@ -809,11 +809,22 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
       });
       await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-uklad-nn'), uklad);
       await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-tolerancja-nn'), tolerancja);
+      // Partia integracji 11: układ TT z punktem uziemionym bezpośrednio wymaga rezystancji
+      // uziomu stacji R_B (W5-E-TTIT, błąd walidacji przy polu) — bez niej zapis jest
+      // zablokowany, więc scenariusz TT podaje R_B natywnie i sprawdza, że trafia do payloadu.
+      if (uklad === 'TT') {
+        await userEvent.type(screen.getByTestId('mvd-kreator-stacja-rezystancja-uziomu-stacji'), '2');
+      }
       await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
       await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
       const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
       expect(payload.nn_earthing).toMatchObject({ lv_system: uklad, lv_voltage_tolerance: tolerancja });
+      if (uklad === 'TT') {
+        expect(payload.nn_earthing).toMatchObject({ lv_r_ohm: 2 });
+      } else {
+        expect(payload.nn_earthing).not.toHaveProperty('lv_r_ohm');
+      }
     },
   );
 
