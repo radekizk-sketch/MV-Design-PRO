@@ -12,7 +12,7 @@
  *     twardej palety Tailwinda — komunikaty mają iść ze skali `sygnal-*`,
  *     bo tylko ona ma wartość per motyw;
  *  2. każda para skali (tusz na własnym tle) ma ≥ 4,5:1 w OBU motywach —
- *     to samo mierzy `scadaTokens.test.ts`, tu w kontekście komunikatu.
+ *     to samo mierzy `ui2/shell/__tests__/tokens.test.ts`, tu w kontekście komunikatu.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';

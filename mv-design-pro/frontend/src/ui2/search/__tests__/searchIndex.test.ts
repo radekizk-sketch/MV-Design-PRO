@@ -14,6 +14,8 @@ function akcjeSzpiegi(): Record<keyof AkcjeIndeksu, ReturnType<typeof vi.fn>> {
     otworzProjekt: vi.fn(),
     przywrocUklad: vi.fn(),
     polaczPonownie: vi.fn(),
+    przelaczSzczegolyAudytowe: vi.fn(),
+    przelaczMotyw: vi.fn(),
   };
 }
 
@@ -117,13 +119,41 @@ describe('zbudujIndeksWyszukiwania — obiekty przez provider', () => {
       akcje: akcjeSzpiegi(),
       obiekty: () => [
         { id: 't1', nazwa: 'Transformator T1' },
-        { id: 'sz2', nazwa: 'Szyna SN-2', trybMin: 'expert' },
+        { id: 'sz2', nazwa: 'Szyna SN-2', kategoria: 'Szyny', slowaKluczowe: 'szyna zbiorcza' },
       ],
     });
     const obiekty = indeks.filter((p) => p.grupa === 'obiekty');
     expect(obiekty).toHaveLength(2);
     expect(obiekty[0]).toMatchObject({ id: 'obiekt:t1', etykietaPL: 'Transformator T1' });
-    expect(obiekty[1]).toMatchObject({ id: 'obiekt:sz2', etykietaPL: 'Szyna SN-2', trybMin: 'expert' });
+    expect(obiekty[1]).toMatchObject({ id: 'obiekt:sz2', etykietaPL: 'Szyna SN-2 · Szyny' });
+    expect(obiekty[1].slowaKluczowe).toContain('szyna zbiorcza');
+    expect(obiekty[1].slowaKluczowe).toContain('sz2');
+  });
+
+  it('akcja obiektu przekazuje dostawcy CAŁY obiekt (identyfikator do zaznaczenia na schemacie)', () => {
+    const akcje = akcjeSzpiegi();
+    const obiekt = { id: 'tr/1', nazwa: 'T1', kategoria: 'Transformatory' };
+    const indeks = zbudujIndeksWyszukiwania({ akcje, obiekty: () => [obiekt] });
+    indeks.find((p) => p.id === 'obiekt:tr/1')?.akcja();
+    expect(akcje.wybierzObiekt).toHaveBeenCalledWith(obiekt);
+  });
+});
+
+/**
+ * Karta K1 POWLOKA: przełącznik „Szczegóły audytowe" i motyw ekranu żyją w menu
+ * „Widok" — paleta niesie te same polecenia (klawiatura-first).
+ */
+describe('zbudujIndeksWyszukiwania — polecenia menu „Widok"', () => {
+  it.each([
+    ['polecenie:szczegoly-audytowe', 'przelaczSzczegolyAudytowe', 'audytowe'],
+    ['polecenie:motyw', 'przelaczMotyw', 'jasny'],
+  ] as const)('%s woła %s i jest wyszukiwalne', (id, dostawca, slowo) => {
+    const akcje = akcjeSzpiegi();
+    const pozycja = zbudujIndeksWyszukiwania({ akcje }).find((p) => p.id === id);
+    expect(pozycja).toBeDefined();
+    pozycja?.akcja();
+    expect(akcje[dostawca]).toHaveBeenCalledTimes(1);
+    expect(`${pozycja?.etykietaPL} ${pozycja?.slowaKluczowe ?? ''}`.toLowerCase()).toContain(slowo);
   });
 });
 

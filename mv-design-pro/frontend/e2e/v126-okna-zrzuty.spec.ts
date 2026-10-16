@@ -19,7 +19,7 @@
  *      POTWIERDZONY, preferowana propagacja niepewności), a nie założony.
  *
  * Uczciwość zrzutu (metoda z audytu §1): motyw przełączany REALNYM przyciskiem
- * powłoki (`mvd-theme-toggle`) z asercją na `data-theme` — zasiew `localStorage`
+ * powłoki (menu „Widok" → `mvd-theme-toggle`) z asercją na `data-theme` — zasiew `localStorage`
  * nie przechodzi rehydracji `persist`, więc dawałby fikcyjne „oba motywy".
  * Sieć tła budowana operacjami domenowymi API (committed ENM), bo V12.6 odmawia
  * liczenia z draftu UI — zrzut ma pokazywać WYNIK, a nie stan „brak węzłów".
@@ -35,6 +35,7 @@ import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { otworzAnalize, uruchomAnalize, wypelnijUziomIPotwierdz } from './formularzV126';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw, wlaczSzczegolyAudytowe } from './powloka';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -173,7 +174,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect
@@ -200,15 +201,10 @@ async function ustawPrzelacznik(page: Page, testid: string, otwarty: boolean): P
 async function otworzOknoSpecjalistyczne(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
-  // Obszar „Analizy specjalistyczne" istnieje wyłącznie w trybie EKSPERCKIM
-  // (`MIN_TRYB_ZAKLADKI.akademickie = 'expert'`, `ui2/spaces/wyniki/obszary.ts`) —
-  // tryb przełączany REALNYM przyciskiem powłoki (grupa „Tryb"), bez zasiewu stanu.
-  const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
-  await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
-  if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
-    await przyciskEkspercki.click();
-    await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
-  }
+  // Obszar „Analizy specjalistyczne" istnieje wyłącznie przy włączonych
+  // „Szczegółach audytowych" (jeden przełącznik powłoki, karta K1 POWLOKA) —
+  // przełączany REALNYM klikiem w menu „Widok", bez zasiewu stanu.
+  await wlaczSzczegolyAudytowe(page);
   await otworzZakladkeWynikow(page, 'akademickie');
   await expect(page.getByTestId('mvd-akad-ekran')).toBeVisible({ timeout: 30000 });
 }

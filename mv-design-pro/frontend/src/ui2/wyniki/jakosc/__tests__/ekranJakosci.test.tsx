@@ -43,7 +43,7 @@ const mockedCieplna = vi.mocked(fetchWytrzymaloscCieplna);
 const mockedPasma = vi.mocked(fetchPasmaRozplywu);
 
 function props(over = {}) {
-  return { trybZaawansowania: 'basic' as const, onOtworzDowod: vi.fn(), ...over };
+  return { szczegolyAudytowe: false as const, onOtworzDowod: vi.fn(), ...over };
 }
 
 beforeEach(() => {

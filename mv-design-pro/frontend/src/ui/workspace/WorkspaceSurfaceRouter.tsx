@@ -939,7 +939,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   // Karta AB-1a Pakiet D2 §7: zakładka „ncrfg-tests" renderuje JEDYNY ekran zdolności —
   // macierz NC RfG ui2 (kontrakt V2); dawna zakładka V1 skasowana.
-  const trybZaawansowania = useShellStore((state) => state.advancementMode);
+  const szczegolyAudytowe = useShellStore((state) => state.szczegolyAudytowe);
   // P-1: zdolności E-33 (wkłady źródeł) i E-34 (weryfikacja cieplna/dynamiczna)
   // mają realnego dostawcę w warsztacie Wyników — zakładka zwarć (sekcja
   // „Wkłady do zwarcia" + panel „Bilans IEC 60909"). Deep-link zakładki
@@ -1081,7 +1081,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
         ) : activeAnalysisTab === 'ncrfg-tests' ? (
-          <MacierzNcRfg trybZaawansowania={trybZaawansowania} />
+          <MacierzNcRfg szczegolyAudytowe={szczegolyAudytowe} />
         ) : activeAnalysisTab === 'trace' ? (
           <div className="space-y-4">
             <ElementCalculationProofPanel
@@ -1863,11 +1863,11 @@ function ComplianceSurface() {
   // krzywych bez modelu dynamicznego (nieukończona zaślepka). Tryb
   // zaawansowania ze wspólnego store'a powłoki (Zustand globalny; identycznie
   // jak zakładka `frt` warsztatu wyników).
-  const trybZaawansowania = useShellStore((state) => state.advancementMode);
+  const szczegolyAudytowe = useShellStore((state) => state.szczegolyAudytowe);
   return (
     <div data-testid="compliance-surface" className="space-y-4">
       <EkranFrt
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={(ref) => navigateToProof({ selectionId: ref })}
       />
     </div>
@@ -2836,8 +2836,8 @@ const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescripto
  * jedno z dwóch wejść nie jest bramą). Wzorzec z `ComplianceSurface`.
  */
 function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajPrezentowany }) {
-  const trybZaawansowania = useShellStore((state) => state.advancementMode);
-  return <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} rodzajPoczatkowy={rodzaj} />;
+  const szczegolyAudytowe = useShellStore((state) => state.szczegolyAudytowe);
+  return <EkranAnalizAkademickich szczegolyAudytowe={szczegolyAudytowe} rodzajPoczatkowy={rodzaj} />;
 }
 
 /*

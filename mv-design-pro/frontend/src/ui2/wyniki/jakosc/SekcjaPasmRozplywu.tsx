@@ -210,7 +210,7 @@ function BlokStrat({ straty }: { straty: StratyPasmoWerdykt }) {
 
 export function SekcjaPasmRozplywu({
   przebieg,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
 }: SekcjaProps) {
@@ -285,7 +285,7 @@ export function SekcjaPasmRozplywu({
         wiersze={napieciaItems.map((item) => mapujWierszNapiecia(item, nazwaObiektu))}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_NAPIECIA_WEZEL}
         onWybierzWiersz={setWybranaSzyna}
         wybranyWiersz={wybranaSzyna}
@@ -314,7 +314,7 @@ export function SekcjaPasmRozplywu({
         wiersze={obciazeniaItems.map((item) => mapujWierszObciazenia(item, nazwaObiektu))}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_OBCIAZENIA_GALAZ}
         onWybierzWiersz={setWybranaGalaz}
         wybranyWiersz={wybranaGalaz}

@@ -12,7 +12,7 @@
   border: 1px solid var(--mvd-line);
   border-left: 3px solid var(--mvd-warn, var(--mvd-line));
   border-radius: 4px;
-  background: var(--mvd-surface-2, transparent);
+  background: var(--mvd-panel-2);
   color: var(--mvd-ink);
   font-family: var(--mvd-font-sans);
   font-size: 13px;
@@ -27,7 +27,7 @@
 
 .mvd-zmiany-podsumowanie {
   margin: 0;
-  color: var(--mvd-ink-muted, var(--mvd-ink));
+  color: var(--mvd-muted);
 }
 
 .mvd-zmiany-lista {
@@ -51,7 +51,7 @@
 .mvd-zmiany-meta {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-ink-muted, var(--mvd-ink));
+  color: var(--mvd-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -76,7 +76,7 @@
 }
 
 .mvd-zmiany-element[data-nieklikalny='true'] {
-  color: var(--mvd-ink-muted, var(--mvd-ink));
+  color: var(--mvd-muted);
   cursor: default;
 }
 
@@ -93,11 +93,11 @@
 .mvd-zmiany-stan {
   margin: 0;
   padding: 8px 12px;
-  color: var(--mvd-ink-muted, var(--mvd-ink));
+  color: var(--mvd-muted);
   font-family: var(--mvd-font-sans);
   font-size: 13px;
 }
 
 .mvd-zmiany-stan[data-tone='bad'] {
-  color: var(--mvd-bad, var(--mvd-ink));
+  color: var(--mvd-err);
 }

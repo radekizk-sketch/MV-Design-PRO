@@ -1,3 +1,22 @@
+/**
+ * Alias klasy Tailwinda na token `--mvd-*` (jedyny zestaw tokenów — karta K1).
+ * Bez modyfikatora przezroczystości klasa daje czyste `var(--mvd-…)` (wartość
+ * wyliczona w przeglądarce pozostaje `rgb(…)`); modyfikator `/95` daje
+ * `color-mix(in srgb, var(--mvd-…) 95%, transparent)`. Narzędzia `bg-opacity-*`
+ * nie działają na aliasach (zero użyć w `src` — zmierzone przy karcie K1).
+ */
+function tokenMvd(nazwa) {
+  const zmienna = `var(--mvd-${nazwa})`;
+  return ({ opacityValue } = {}) => {
+    if (opacityValue === undefined) return zmienna;
+    const tekst = String(opacityValue).trim();
+    if (tekst.startsWith('var(')) return zmienna;
+    const procent = tekst.endsWith('%') ? tekst : `${Number(tekst) * 100}%`;
+    if (procent === '100%') return zmienna;
+    return `color-mix(in srgb, ${zmienna} ${procent}, transparent)`;
+  };
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -66,62 +85,58 @@ export default {
           'hover': '#60a5fa',
         },
 
-        /* === Paleta powierzchni aplikacji — STEROWANA MOTYWEM (KD-8 poz. 1) ===
+        /* === Paleta powierzchni aplikacji — ALIASY tokenów `--mvd-*` ===
          *
-         * Wartości NIE są już literałami ciemnymi: każdy token czyta zmienną
-         * CSS `--scada-*` deklarowaną per motyw w `src/index.css`
-         * (`[data-theme="dark_scada"]` / `[data-theme="light_technical"]`).
-         * Dzięki temu JEDNO źródło (tokeny motywu) steruje KAŻDĄ powierzchnią
-         * powłoki — dawniej `bg-scada-panel`/`text-scada-text` zostawały ciemne
-         * także przy motywie jasnym (ocena właściciela 2/10 ekranu jasnego:
-         * pasek metryk, karta konfiguratora i doki kanwy pozostawały ciemne).
-         *
-         * Zapis `rgb(var(--token) / <alpha-value>)` (Tailwind 3) zachowuje
-         * modyfikatory przezroczystości używane w kodzie (`bg-scada-panel/95`,
-         * `bg-scada-energized/15`) — dlatego zmienne niosą TRÓJKĘ RGB, nie hex.
+         * Karta K1 POWLOKA (kontrakt UIUX przemysłowy §8): aplikacja ma JEDEN
+         * zestaw tokenów — `src/ui2/theme/tokens.css`. Dawny zestaw `--scada-*`
+         * (trójki RGB w `src/index.css`) niósł dla tych samych ról INNE wartości
+         * niż `--mvd-*`, więc jeden ekran miał dwie prawdy koloru; jest skasowany.
+         * Nazwy klas `scada-*`/`sygnal-*` zostają jako aliasy (setki konsumentów
+         * w `ui/**`), ale każda wskazuje token `--mvd-*` (funkcja `tokenMvd`).
+         * Modyfikatory przezroczystości (`bg-scada-panel/95`) dają `color-mix`.
          */
         'scada': {
-          'bg':           'rgb(var(--scada-bg) / <alpha-value>)',           /* główne tło aplikacji */
-          'bg-hover':     'rgb(var(--scada-bg-hover) / <alpha-value>)',     /* hover na tle */
-          'surface':      'rgb(var(--scada-surface) / <alpha-value>)',      /* powierzchnia paneli */
-          'panel':        'rgb(var(--scada-panel) / <alpha-value>)',        /* panel kontekstu */
-          'panel-raised': 'rgb(var(--scada-panel-raised) / <alpha-value>)', /* panel wyniesiony */
-          'border':       'rgb(var(--scada-border) / <alpha-value>)',       /* granica paneli */
-          'border-strong':'rgb(var(--scada-border-strong) / <alpha-value>)',/* granica kontrolek */
-          'grid':         'rgb(var(--scada-grid) / <alpha-value>)',         /* siatka SLD */
-          'sn':           'rgb(var(--scada-sn) / <alpha-value>)',           /* magistrala SN 15-30 kV */
-          'nn':           'rgb(var(--scada-nn) / <alpha-value>)',           /* magistrala nN 0.4 kV */
-          'wn':           'rgb(var(--scada-wn) / <alpha-value>)',           /* magistrala WN 110+ kV */
-          'energized':    'rgb(var(--scada-energized) / <alpha-value>)',    /* pod napięciem */
-          'success':      'rgb(var(--scada-energized) / <alpha-value>)',    /* alias stanu „gotowe” */
-          'dead':         'rgb(var(--scada-dead) / <alpha-value>)',         /* bez napięcia */
-          'grounded':     'rgb(var(--scada-grounded) / <alpha-value>)',     /* uziemione */
-          'alarm':        'rgb(var(--scada-alarm) / <alpha-value>)',        /* alarm */
-          'earth':        'rgb(var(--scada-earth) / <alpha-value>)',        /* ziemia/metal */
-          'text':         'rgb(var(--scada-text) / <alpha-value>)',         /* tekst główny */
-          'muted':        'rgb(var(--scada-muted) / <alpha-value>)',        /* tekst pomocniczy */
-          'active':       'rgb(var(--scada-active) / <alpha-value>)',       /* aktywna pozycja nawigacji */
-          'hover-nav':    'rgb(var(--scada-hover-nav) / <alpha-value>)',    /* hover w nawigacji */
+          'bg':           tokenMvd('bg'),           /* główne tło aplikacji */
+          'bg-hover':     tokenMvd('bg-hover'),     /* hover na tle */
+          'surface':      tokenMvd('surface'),      /* powierzchnia paneli */
+          'panel':        tokenMvd('panel'),        /* panel kontekstu */
+          'panel-raised': tokenMvd('panel-raised'), /* panel wyniesiony */
+          'border':       tokenMvd('line'),         /* granica paneli */
+          'border-strong':tokenMvd('line-strong'),  /* granica kontrolek */
+          'grid':         tokenMvd('grid'),         /* siatka */
+          'sn':           tokenMvd('sn'),           /* klasa napięcia SN 15-30 kV */
+          'nn':           tokenMvd('nn'),           /* klasa napięcia nN 0.4 kV */
+          'wn':           tokenMvd('wn'),           /* klasa napięcia WN 110+ kV */
+          'energized':    tokenMvd('energized'),    /* pod napięciem */
+          'success':      tokenMvd('energized'),    /* alias stanu „gotowe" */
+          'dead':         tokenMvd('dead'),         /* bez napięcia */
+          'grounded':     tokenMvd('grounded'),     /* uziemione */
+          'alarm':        tokenMvd('alarm'),        /* alarm */
+          'earth':        tokenMvd('earth'),        /* ziemia/metal */
+          'text':         tokenMvd('ink'),          /* tekst główny */
+          'muted':        tokenMvd('muted'),        /* tekst pomocniczy */
+          'active':       tokenMvd('active'),       /* aktywna pozycja nawigacji */
+          'hover-nav':    tokenMvd('hover-nav'),    /* hover w nawigacji */
         },
 
         /* Skala komunikatów (KD-8 poz. 3) — jedna hierarchia dla obu motywów:
          * blokada (err) > ostrzeżenie (warn) > informacja (info); `ok` to
          * potwierdzenie. Każdy poziom ma akcent, tło i TUSZ o kontraście
          * ≥ 4,5:1 na własnym tle w OBU motywach (pomiar:
-         * `ui/__tests__/statusTokens.contrast.test.ts`). */
+         * `src/ui2/shell/__tests__/tokens.test.ts`). */
         'sygnal': {
-          'blokada':      'rgb(var(--scada-status-err) / <alpha-value>)',
-          'blokada-tlo':  'rgb(var(--scada-status-err-bg) / <alpha-value>)',
-          'blokada-tusz': 'rgb(var(--scada-status-err-ink) / <alpha-value>)',
-          'uwaga':        'rgb(var(--scada-status-warn) / <alpha-value>)',
-          'uwaga-tlo':    'rgb(var(--scada-status-warn-bg) / <alpha-value>)',
-          'uwaga-tusz':   'rgb(var(--scada-status-warn-ink) / <alpha-value>)',
-          'ok':           'rgb(var(--scada-status-ok) / <alpha-value>)',
-          'ok-tlo':       'rgb(var(--scada-status-ok-bg) / <alpha-value>)',
-          'ok-tusz':      'rgb(var(--scada-status-ok-ink) / <alpha-value>)',
-          'info':         'rgb(var(--scada-status-info) / <alpha-value>)',
-          'info-tlo':     'rgb(var(--scada-status-info-bg) / <alpha-value>)',
-          'info-tusz':    'rgb(var(--scada-status-info-ink) / <alpha-value>)',
+          'blokada':      tokenMvd('err'),
+          'blokada-tlo':  tokenMvd('err-bg'),
+          'blokada-tusz': tokenMvd('err-ink'),
+          'uwaga':        tokenMvd('warn'),
+          'uwaga-tlo':    tokenMvd('warn-bg'),
+          'uwaga-tusz':   tokenMvd('warn-ink'),
+          'ok':           tokenMvd('ok'),
+          'ok-tlo':       tokenMvd('ok-bg'),
+          'ok-tusz':      tokenMvd('ok-ink'),
+          'info':         tokenMvd('info'),
+          'info-tlo':     tokenMvd('info-bg'),
+          'info-tusz':    tokenMvd('info-ink'),
         },
       },
 

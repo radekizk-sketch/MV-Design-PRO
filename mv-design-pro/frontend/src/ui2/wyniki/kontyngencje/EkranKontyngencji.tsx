@@ -25,7 +25,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './kontyngencje.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
@@ -224,10 +223,10 @@ function PanelBazowy({ bazowy }: { bazowy: PrzypadekBazowy }) {
 /** Szczegóły wskazanej kontyngencji: co przeciążone, co bez zasilania, ślad. */
 function PanelSzczegolow({
   kontyngencja,
-  trybZaawansowania,
+  szczegolyAudytowe,
 }: {
   kontyngencja: Kontyngencja;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }) {
   const slad = kontyngencja.slad;
   return (
@@ -321,7 +320,7 @@ function PanelSzczegolow({
                 <dt>{T.sladWyspa}</dt>
                 <dd>{slad.wyspa_zasilana.szyny_zasilane}</dd>
               </div>
-              {trybZaawansowania === 'expert' && (
+              {szczegolyAudytowe && (
                 <div>
                   <dt>{T.sladWezelBilansujacy}</dt>
                   <dd>{slad.wyspa_zasilana.wezel_bilansujacy_ref ?? T.kreska}</dd>
@@ -336,7 +335,7 @@ function PanelSzczegolow({
 }
 
 export interface EkranKontyngencjiProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (wzorzec siostrzanych
    * ekranów, np. `EkranJakosci`). Wiersze rankingu N-1 dziś nie niosą `dowodRef` —
    * prop jest realnym dostawcą (nie zaślepką), gotowym na dowolną przyszłą kolumnę
@@ -344,7 +343,7 @@ export interface EkranKontyngencjiProps {
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranKontyngencji({ trybZaawansowania, onOtworzDowod }: EkranKontyngencjiProps) {
+export function EkranKontyngencji({ szczegolyAudytowe, onOtworzDowod }: EkranKontyngencjiProps) {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const runs = useExecutionRunsStore((s) => s.runs);
   const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -639,7 +638,7 @@ export function EkranKontyngencji({ trybZaawansowania, onOtworzDowod }: EkranKon
                 kolumny={KOLUMNY_RANKINGU}
                 wiersze={naWierszeRankingu(daneMacierzy.ranking)}
                 onOtworzDowod={onOtworzDowod}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 kluczWiersza={KLUCZ_WIERSZA_RANKINGU}
                 onWybierzWiersz={setWybranaKontyngencja}
                 wybranyWiersz={wybranaKontyngencja}
@@ -662,7 +661,7 @@ export function EkranKontyngencji({ trybZaawansowania, onOtworzDowod }: EkranKon
           {kontyngencjaSzczegolow ? (
             <PanelSzczegolow
               kontyngencja={kontyngencjaSzczegolow}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
             />
           ) : (
             daneMacierzy.ranking.length > 0 && (

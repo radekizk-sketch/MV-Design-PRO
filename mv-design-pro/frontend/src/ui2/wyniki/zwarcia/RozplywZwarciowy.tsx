@@ -16,7 +16,6 @@
  */
 
 import type { ShortCircuitBranchFlow } from '../../../ui/results-inspector/types';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import { KLUCZ_ROZPLYW, KOLUMNY_ROZPLYWU, naWierszeRozplywu } from './zwarciaModel';
@@ -26,14 +25,14 @@ export interface RozplywZwarciowyProps {
   punktNazwa: string;
   /** Wpisy rozpływu z wiersza kanonicznego; `null` = starszy wynik bez pola. */
   flows: ShortCircuitBranchFlow[] | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
 export function RozplywZwarciowy({
   punktNazwa,
   flows,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: RozplywZwarciowyProps) {
   const nazwaObiektu = useNazwaObiektu();
@@ -65,7 +64,7 @@ export function RozplywZwarciowy({
             kolumny={KOLUMNY_ROZPLYWU}
             wiersze={naWierszeRozplywu(flows, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             kluczWiersza={KLUCZ_ROZPLYW}
           />
         </>

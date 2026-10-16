@@ -3,20 +3,14 @@ import { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CommandPalette, resetHistoriiWyszukiwania } from '../CommandPalette';
-import { SEARCH_STRINGS, brakWynikowLabel, potwierdzTrybLabel } from '../strings';
+import { SEARCH_STRINGS, brakWynikowLabel } from '../strings';
 import type { PozycjaWyszukiwania } from '../searchModel';
 
 function pozycje(): PozycjaWyszukiwania[] {
   return [
     { id: 'a', etykietaPL: 'Model sieci', grupa: 'przestrzenie', akcja: vi.fn() },
     { id: 'b', etykietaPL: 'Zapisz', grupa: 'polecenia', akcja: vi.fn() },
-    {
-      id: 'c',
-      etykietaPL: 'Eksportuj dowód do PDF',
-      grupa: 'polecenia',
-      trybMin: 'expert',
-      akcja: vi.fn(),
-    },
+    { id: 'c', etykietaPL: 'Eksportuj dowód do PDF', grupa: 'polecenia', akcja: vi.fn() },
     { id: 'd', etykietaPL: 'Transformator T1', grupa: 'obiekty', akcja: vi.fn() },
     { id: 'e', etykietaPL: 'Przykład: GPZ', grupa: 'przyklady', akcja: vi.fn() },
     { id: 'f', etykietaPL: 'Skróty klawiszowe', grupa: 'pomoc', akcja: vi.fn() },
@@ -38,9 +32,7 @@ describe('CommandPalette — otwarcie/zamknięcie', () => {
         otwarta={false}
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     expect(screen.queryByTestId('mvd-cmdk-dialog')).not.toBeInTheDocument();
@@ -52,9 +44,7 @@ describe('CommandPalette — otwarcie/zamknięcie', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     const dialog = screen.getByRole('dialog', { name: SEARCH_STRINGS.polePlaceholder });
@@ -69,9 +59,7 @@ describe('CommandPalette — otwarcie/zamknięcie', () => {
         otwarta
         onZamknij={onZamknij}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.click(screen.getByTestId('mvd-cmdk-scrim'));
@@ -86,9 +74,7 @@ describe('CommandPalette — otwarcie/zamknięcie', () => {
         otwarta
         onZamknij={onZamknij}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={onWykonaj}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.keyDown(screen.getByTestId('mvd-cmdk-input'), { key: 'Escape' });
@@ -106,9 +92,7 @@ describe('CommandPalette — stany', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     expect(screen.getByTestId('mvd-cmdk-hint')).toHaveTextContent(SEARCH_STRINGS.podpowiedzPusta);
@@ -120,9 +104,7 @@ describe('CommandPalette — stany', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.change(screen.getByTestId('mvd-cmdk-input'), { target: { value: 'qqqqqqqqq' } });
@@ -139,9 +121,7 @@ describe('CommandPalette — filtracja i grupowanie', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.change(screen.getByTestId('mvd-cmdk-input'), { target: { value: 'zapisz' } });
@@ -156,9 +136,7 @@ describe('CommandPalette — filtracja i grupowanie', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.change(screen.getByTestId('mvd-cmdk-input'), { target: { value: 'zapisz' } });
@@ -176,9 +154,7 @@ describe('CommandPalette — nawigacja klawiaturą i wykonanie', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />,
     );
     const input = screen.getByTestId('mvd-cmdk-input');
@@ -200,9 +176,7 @@ describe('CommandPalette — nawigacja klawiaturą i wykonanie', () => {
         otwarta
         onZamknij={onZamknij}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={onWykonaj}
-        onPrzelaczTryb={noop}
       />,
     );
     const input = screen.getByTestId('mvd-cmdk-input');
@@ -220,9 +194,7 @@ describe('CommandPalette — nawigacja klawiaturą i wykonanie', () => {
         otwarta
         onZamknij={noop}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={onWykonaj}
-        onPrzelaczTryb={noop}
       />,
     );
     fireEvent.change(screen.getByTestId('mvd-cmdk-input'), { target: { value: 'zapisz' } });
@@ -231,100 +203,46 @@ describe('CommandPalette — nawigacja klawiaturą i wykonanie', () => {
   });
 });
 
-describe('CommandPalette — przepływ trybu zaawansowania', () => {
+// Karta K1 POWLOKA: trzy tryby zaawansowania skasowane — paleta nie ma już
+// wiersza „przełącz tryb i otwórz". Pozycja, która dawniej wymagała trybu
+// eksperckiego (eksport dowodu), wykonuje się od razu — test pilnuje, żeby
+// bramka trybu nie wróciła tylnymi drzwiami.
+describe('CommandPalette — brak bramki trybu', () => {
   beforeEach(resetHistoriiWyszukiwania);
 
-  it('Enter na pozycji o wyższym trybMin pokazuje wiersz potwierdzenia zamiast wykonania', () => {
+  it('Enter na pozycji dawniej eksperckiej wykonuje ją od razu i zamyka dialog', () => {
     const onWykonaj = vi.fn();
-    render(
-      <CommandPalette
-        otwarta
-        onZamknij={noop}
-        pozycje={pozycje()}
-        trybAktualny="basic"
-        onWykonaj={onWykonaj}
-        onPrzelaczTryb={noop}
-      />,
-    );
-    const input = screen.getByTestId('mvd-cmdk-input');
-    fireEvent.change(input, { target: { value: 'eksportuj' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onWykonaj).not.toHaveBeenCalled();
-    expect(screen.getByTestId('mvd-cmdk-potwierdzenie')).toHaveTextContent(potwierdzTrybLabel('expert'));
-  });
-
-  it('[Przełącz i otwórz] woła onPrzelaczTryb i onWykonaj, potem zamyka dialog', () => {
-    const onWykonaj = vi.fn();
-    const onPrzelaczTryb = vi.fn();
     const onZamknij = vi.fn();
-    render(
-      <CommandPalette
-        otwarta
-        onZamknij={onZamknij}
-        pozycje={pozycje()}
-        trybAktualny="basic"
-        onWykonaj={onWykonaj}
-        onPrzelaczTryb={onPrzelaczTryb}
-      />,
-    );
+    render(<CommandPalette otwarta onZamknij={onZamknij} pozycje={pozycje()} onWykonaj={onWykonaj} />);
     const input = screen.getByTestId('mvd-cmdk-input');
     fireEvent.change(input, { target: { value: 'eksportuj' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    fireEvent.click(screen.getByTestId('mvd-cmdk-przelacz'));
-    expect(onPrzelaczTryb).toHaveBeenCalledWith('expert');
     expect(onWykonaj).toHaveBeenCalledTimes(1);
     expect(onWykonaj.mock.calls[0][0]).toMatchObject({ id: 'c' });
     expect(onZamknij).toHaveBeenCalledTimes(1);
-  });
-
-  it('[Anuluj] chowa potwierdzenie bez wywołania onWykonaj/onPrzelaczTryb', () => {
-    const onWykonaj = vi.fn();
-    const onPrzelaczTryb = vi.fn();
-    const onZamknij = vi.fn();
-    render(
-      <CommandPalette
-        otwarta
-        onZamknij={onZamknij}
-        pozycje={pozycje()}
-        trybAktualny="basic"
-        onWykonaj={onWykonaj}
-        onPrzelaczTryb={onPrzelaczTryb}
-      />,
-    );
-    const input = screen.getByTestId('mvd-cmdk-input');
-    fireEvent.change(input, { target: { value: 'eksportuj' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    fireEvent.click(screen.getByTestId('mvd-cmdk-anuluj'));
     expect(screen.queryByTestId('mvd-cmdk-potwierdzenie')).not.toBeInTheDocument();
-    expect(onWykonaj).not.toHaveBeenCalled();
-    expect(onPrzelaczTryb).not.toHaveBeenCalled();
-    expect(onZamknij).not.toHaveBeenCalled();
   });
 });
 
 describe('CommandPalette — focus trap', () => {
   beforeEach(resetHistoriiWyszukiwania);
 
-  it('Tab z ostatniego fokusowalnego elementu wraca na pierwszy (cykl w dialogu)', async () => {
+  it('Tab z jedynego fokusowalnego elementu (pole) nie wypuszcza fokusu z dialogu', async () => {
     const user = userEvent.setup();
     render(
-      <CommandPalette
-        otwarta
-        onZamknij={noop}
-        pozycje={pozycje()}
-        trybAktualny="basic"
-        onWykonaj={noop}
-        onPrzelaczTryb={noop}
-      />,
+      <>
+        <button type="button" data-testid="poza-dialogiem">
+          poza
+        </button>
+        <CommandPalette otwarta onZamknij={noop} pozycje={pozycje()} onWykonaj={noop} />
+      </>,
     );
     const input = screen.getByTestId('mvd-cmdk-input');
-    fireEvent.change(input, { target: { value: 'eksportuj' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    const anuluj = screen.getByTestId('mvd-cmdk-anuluj');
-    anuluj.focus();
-    expect(anuluj).toHaveFocus();
+    await user.type(input, 'eksportuj');
+    expect(input).toHaveFocus();
     await user.tab();
+    expect(input).toHaveFocus();
+    await user.tab({ shift: true });
     expect(input).toHaveFocus();
   });
 });
@@ -340,9 +258,7 @@ function Harness() {
         otwarta={otwarta}
         onZamknij={() => setOtwarta(false)}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />
     </div>
   );
@@ -374,9 +290,7 @@ function HistoriaHarness() {
         otwarta={otwarta}
         onZamknij={() => setOtwarta(false)}
         pozycje={pozycje()}
-        trybAktualny="basic"
         onWykonaj={noop}
-        onPrzelaczTryb={noop}
       />
     </div>
   );

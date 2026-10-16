@@ -15,7 +15,7 @@ import { powerFlowResultFixture, runHeaderFixture } from './fixtures';
 
 function props(over: Partial<Parameters<typeof EkranRozplywu>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };

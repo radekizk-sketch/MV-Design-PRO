@@ -125,7 +125,7 @@ describe('EkranWrazliwosci — stany', () => {
     const spy = vi.fn();
     vi.stubGlobal('fetch', spy);
     useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-wrazliwosc-brak-przebiegu')).toHaveTextContent(
       WRAZLIWOSC_STRINGS.brakPrzebiegu,
     );
@@ -141,7 +141,7 @@ describe('EkranWrazliwosci — stany', () => {
       vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal' } as Response),
     );
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(await screen.findByTestId('mvd-wrazliwosc-blad')).toHaveTextContent(
       WRAZLIWOSC_STRINGS.blad,
     );
@@ -153,7 +153,7 @@ describe('EkranWrazliwosci — stany', () => {
       runs: [przebieg('pf-1', 'LOAD_FLOW', 'RUNNING')],
       activeRunId: null,
     });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-wrazliwosc-brak-przebiegu')).toBeTruthy();
   });
 });
@@ -162,7 +162,7 @@ describe('EkranWrazliwosci — wynik', () => {
   it('renderuje obie sekcje z danymi backendu (LF + ogólna)', async () => {
     const spy = mockFetchTrasowany(ODPOWIEDZ);
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     await waitFor(() => {
       expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy();
       expect(screen.getByTestId('mvd-wrazliwosc-ogolna')).toBeTruthy();
@@ -189,7 +189,7 @@ describe('EkranWrazliwosci — wynik', () => {
   it('tryb podstawowy ukrywa kolumny identyfikatorów (tylkoEkspercki)', async () => {
     mockFetchTrasowany(ODPOWIEDZ);
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="basic" />);
+    render(<EkranWrazliwosci szczegolyAudytowe={false} />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryByText('wezel-a')).toBeNull();
   });
@@ -197,7 +197,7 @@ describe('EkranWrazliwosci — wynik', () => {
   it('identyfikator węzła nie jest kolumną tabeli w żadnym trybie (karta #145)', async () => {
     mockFetchTrasowany(ODPOWIEDZ);
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryAllByText('wezel-a')).toHaveLength(0);
   });

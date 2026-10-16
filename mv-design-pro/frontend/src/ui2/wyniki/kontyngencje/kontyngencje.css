@@ -19,20 +19,20 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-opis,
 .mvd-n1-blok-opis {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 /* Stany zerowe / błędy ---------------------------------------------------- */
 
 .mvd-n1-stan {
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 6px;
   padding: 12px;
   background: var(--mvd-surface);
@@ -46,13 +46,13 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-stan-desc {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 /* Bloki ------------------------------------------------------------------- */
@@ -61,7 +61,7 @@
 .mvd-n1-bazowy,
 .mvd-n1-szczegoly,
 .mvd-n1-nierozstrzygniete {
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 6px;
   padding: 12px;
   background: var(--mvd-surface);
@@ -75,20 +75,20 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-sekcja-tytul {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-sekcja-opis {
   margin: 0;
   font-size: 11px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 .mvd-n1-sekcja {
@@ -100,7 +100,7 @@
 
 .mvd-n1-licznik {
   font-variant-numeric: tabular-nums;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
   font-weight: 500;
 }
 
@@ -118,7 +118,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
   cursor: pointer;
   min-width: 0;
 }
@@ -143,7 +143,7 @@
 .mvd-n1-liczniki dt,
 .mvd-n1-slad dt {
   font-size: 11px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 .mvd-n1-koszt dd,
@@ -152,19 +152,19 @@
   font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-slad dd {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-uwaga {
   margin: 0;
   font-size: 11px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 .mvd-n1-wybor {
@@ -189,7 +189,7 @@
   gap: 2px;
   max-height: 240px;
   overflow: auto;
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 4px;
   padding: 6px;
 }
@@ -202,15 +202,15 @@
 .mvd-n1-element-rodzaj,
 .mvd-n1-lista-kryterium {
   font-size: 11px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 .mvd-n1-element-wykluczony {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--mvd-text-muted);
-  border: 1px solid var(--mvd-border);
+  color: var(--mvd-muted);
+  border: 1px solid var(--mvd-line);
   border-radius: 3px;
   padding: 0 4px;
 }
@@ -223,13 +223,13 @@
 }
 
 .mvd-n1-przycisk {
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 4px;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--mvd-text);
-  background: var(--mvd-surface-alt, var(--mvd-surface));
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
   cursor: pointer;
 }
 
@@ -260,7 +260,7 @@
   align-items: baseline;
   gap: 8px;
   font-size: 12px;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
   min-width: 0;
 }
 
@@ -280,20 +280,20 @@
 
 .mvd-n1-lista-powod {
   font-size: 11px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
   overflow-wrap: anywhere;
 }
 
 .mvd-n1-pusty {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-text-muted);
+  color: var(--mvd-muted);
 }
 
 .mvd-n1-bazowy-status {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-text);
+  color: var(--mvd-ink);
 }
 
 .mvd-n1-liczniki {

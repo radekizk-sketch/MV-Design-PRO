@@ -44,6 +44,7 @@ import { czyStanKoncowyBiegu } from '../../../ui/study-cases/types';
 import { ODSTEP_ODPYTYWANIA_BIEGU_MS, cancelRun } from '../../../ui/study-cases/api';
 import { notify } from '../../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
+import type { ReadinessInfo } from '../../../types/enm';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -137,6 +138,48 @@ export async function waitForExecutionRunTerminalState(
   return current;
 }
 
+/** Przyczyna, dla której obliczenia nie mogą wystartować (rodzaj + zdanie dla projektanta). */
+export interface BlokadaObliczen {
+  rodzaj: 'BRAK_ZAKRESU' | 'BLOKADA_GOTOWOSCI';
+  komunikat: string;
+}
+
+/**
+ * JEDYNY predykat dostępności obliczeń (karta K1 POWLOKA, zasada „predykaty
+ * parami"): przycisk „Oblicz" paska projektu pokazuje tę przyczynę jako powód
+ * niedostępności, a `uruchomObliczenie` odmawia startu DOKŁADNIE z tego samego
+ * powodu i tym samym zdaniem. Dwa niezależne warunki mogłyby się rozjechać —
+ * przycisk aktywny, a bieg odmówiony (albo odwrotnie).
+ *
+ * `readiness === null` (gotowość jeszcze nie odczytana) NIE blokuje — tak jak
+ * dotąd w torze wykonania: bramkę stawia dopiero ODCZYTANA blokada.
+ */
+export function przyczynaBlokadyObliczen(
+  activeCaseId: string | null,
+  readiness: ReadinessInfo | null,
+): BlokadaObliczen | null {
+  if (!activeCaseId) {
+    return { rodzaj: 'BRAK_ZAKRESU', komunikat: 'Wybierz aktywny zakres obliczeń.' };
+  }
+  if (readiness && !readiness.ready) {
+    const pierwszaBlokada = readiness.blockers?.[0];
+    return {
+      rodzaj: 'BLOKADA_GOTOWOSCI',
+      komunikat: pierwszaBlokada
+        ? sanitizePublicReadinessMessage(pierwszaBlokada.message_pl)
+        : 'Dokończ konfigurację układu przed analizą.',
+    };
+  }
+  return null;
+}
+
+/** Hook przycisku „Oblicz": ta sama przyczyna co w `uruchomObliczenie` (stan bieżący). */
+export function usePrzyczynaBlokadyObliczen(): BlokadaObliczen | null {
+  const activeCaseId = useAppStateStore((stan) => stan.activeCaseId);
+  const readiness = useSnapshotStore((stan) => stan.readiness);
+  return przyczynaBlokadyObliczen(activeCaseId, readiness);
+}
+
 /**
  * Uruchamia obliczenie WSKAZANEGO rodzaju dla aktywnego zakresu obliczeń.
  * `solverInput` (opcjonalny) — jawne opcje biegu (np. metoda rozpływu);
@@ -154,19 +197,11 @@ export async function uruchomObliczenie(
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
 
-  if (!activeCaseId) {
-    notify('Wybierz aktywny zakres obliczeń.', 'error');
-    return false;
-  }
-
-  const readiness = useSnapshotStore.getState().readiness;
-  if (readiness && !readiness.ready) {
-    const firstBlocker = readiness.blockers?.[0];
+  const blokada = przyczynaBlokadyObliczen(activeCaseId, useSnapshotStore.getState().readiness);
+  if (blokada || !activeCaseId) {
     notify(
-      firstBlocker
-        ? sanitizePublicReadinessMessage(firstBlocker.message_pl)
-        : 'Dokończ konfigurację układu przed analizą.',
-      'warning',
+      blokada?.komunikat ?? 'Wybierz aktywny zakres obliczeń.',
+      blokada?.rodzaj === 'BLOKADA_GOTOWOSCI' ? 'warning' : 'error',
     );
     return false;
   }

@@ -113,7 +113,7 @@ function wynikZwarciowyFixture(): ShortCircuitResults {
 
 function props(over: Partial<Parameters<typeof WynikiWarsztat>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     pozostale: <div data-testid="most-pozostale">powierzchnia analiz</div>,
     onOtworzDokumentacje: vi.fn(),
     ...over,
@@ -138,7 +138,7 @@ function otworzZakladke(id: string): HTMLElement {
 
 describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
   it('renderuje komplet obszarów z etykietami PL; bez przebiegu startuje na „Ocena techniczna wyników"', () => {
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: true })} />);
     for (const obszar of OBSZARY) {
       expect(screen.getByTestId(`mvd-wyniki-obszar-${obszar.id}`)).toHaveTextContent(obszar.etykieta);
     }
@@ -165,7 +165,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     expect(new Set(wszystkie).size).toBe(wszystkie.length);
     expect([...wszystkie].sort()).toEqual(ZAKLADKI.map((z) => z.id).sort());
     // Atrybut `data-zakladki` (adres dla e2e) niesie dokładnie zakładki obszaru.
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: true })} />);
     for (const obszar of OBSZARY) {
       expect(screen.getByTestId(`mvd-wyniki-obszar-${obszar.id}`).getAttribute('data-zakladki')).toBe(
         obszar.zakladki.join(' '),
@@ -568,18 +568,18 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
  */
 describe('WynikiWarsztat — brama trybu dla analiz specjalistycznych (V126-JEZYK)', () => {
   it('tor podstawowy: obszaru „Analizy specjalistyczne" NIE ma', () => {
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyniki-obszar-specjalistyczne')).toBeNull();
     expect(screen.queryByTestId('mvd-wyniki-zakladka-akademickie')).toBeNull();
   });
 
   it('tor rozszerzony: obszaru NIE ma', () => {
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'extended' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyniki-obszar-specjalistyczne')).toBeNull();
   });
 
   it('tryb ekspercki: obszar jest i prowadzi do okna (kontrola dodatnia bramy)', () => {
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByTestId('mvd-wyniki-obszar-specjalistyczne')).toHaveTextContent(T.obszarSpecjalistyczne);
     const zakladka = otworzZakladke('akademickie');
     expect(zakladka).toHaveTextContent(T.zakladkaAkademickie);
@@ -587,7 +587,7 @@ describe('WynikiWarsztat — brama trybu dla analiz specjalistycznych (V126-JEZY
   });
 
   it('deep-link nie obchodzi bramy: żądanie „akademickie" w trybie podstawowym nie przełącza zakładki', async () => {
-    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    render(<WynikiWarsztat {...props({ szczegolyAudytowe: false })} />);
     act(() => {
       useShellStore.getState().setWynikiTab('akademickie');
     });
@@ -603,10 +603,10 @@ describe('WynikiWarsztat — brama trybu dla analiz specjalistycznych (V126-JEZY
   });
 
   it('obniżenie trybu przy otwartej zakładce zamyka ją i wraca na ocenę (nie zostaje sierota)', () => {
-    const { rerender } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const { rerender } = render(<WynikiWarsztat {...props({ szczegolyAudytowe: true })} />);
     otworzZakladke('akademickie');
     expect(screen.getByTestId('mvd-akad-ekran')).toBeTruthy();
-    rerender(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    rerender(<WynikiWarsztat {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-akad-ekran')).toBeNull();
     expect(screen.getByTestId('mvd-wyniki-zakladka-ocena')).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByTestId('mvd-wyniki-obszar-specjalistyczne')).toBeNull();
@@ -724,7 +724,7 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
 // każda jego zakładka renderuje niepusty panel — uczciwy stan zerowy TEŻ jest treścią.
 describe('WynikiWarsztat — KLASA: każdy obszar i każda zakładka ma dostawcę treści', () => {
   it('klik w każdy obszar i każdą jego zakładkę (tryb expert = komplet) renderuje niepusty panel', async () => {
-    const { container } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const { container } = render(<WynikiWarsztat {...props({ szczegolyAudytowe: true })} />);
     const obszary = screen.getAllByTestId(/^mvd-wyniki-obszar-/);
     expect(obszary).toHaveLength(OBSZARY.length);
     let policzone = 0;

@@ -2711,7 +2711,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     ),
     uklady: (
       <div className="flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg">
-        <span style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+        <span style={{ fontSize: 9, color: 'var(--mvd-muted)', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
           UKŁADY PV/BESS/FW:
         </span>
         {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
@@ -2724,13 +2724,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           />
         ))}
         {derDrag.state && (
-          <span style={{ fontSize: 9, color: 'rgb(var(--scada-text))', marginLeft: 4 }}>
+          <span style={{ fontSize: 9, color: 'var(--mvd-ink)', marginLeft: 4 }}>
             ▸ Wskaż stację dla {derDrag.state.kind}
             <button
               type="button"
               data-testid="sld-v3-der-cancel"
               onClick={derDrag.cancel}
-              style={{ marginLeft: 6, color: 'rgb(var(--scada-status-err))', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ marginLeft: 6, color: 'var(--mvd-err)', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               Anuluj
             </button>

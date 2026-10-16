@@ -20,6 +20,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { wlaczSzczegolyAudytowe } from './powloka';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -358,16 +359,11 @@ test.describe('Pasmo MIN/MAX zwarcia — karta W3-G3', () => {
     await expect(blokMin).toContainText('Bieg zapisany');
     await expect(blokMin).not.toContainText('Policzone na żądanie');
     // Karta #145: identyfikator biegu nie stoi w pierwszym planie — tylko w „Informacjach
-    // audytowych” strony pasma, widocznych w trybie eksperckim (przełącznik powłoki,
-    // realny klik). Intencja bez zmian: strona MIN to WŁASNY zapisany bieg MIN
+    // audytowych” strony pasma, widocznych przy „Szczegółach audytowych" (menu „Widok"
+    // powłoki, realny klik). Intencja bez zmian: strona MIN to WŁASNY zapisany bieg MIN
     // (`biegMin.id`), inny niż bieg kotwicy po stronie MAX.
     await expect(blokMin).not.toContainText(biegMin.id);
-    const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
-    await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
-    if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
-      await przyciskEkspercki.click();
-      await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
-    }
+    await wlaczSzczegolyAudytowe(page);
     await blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-przelacz').click();
     const audytMin = blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-lista');
     await expect(audytMin).toContainText(biegMin.id);

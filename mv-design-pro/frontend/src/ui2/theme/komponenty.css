@@ -1,0 +1,237 @@
+/*
+ * Klasy wspólne aplikacji — JEDYNY właściciel (karta K1 POWLOKA, kontrakt UIUX
+ * przemysłowy §8).
+ *
+ * Arkusze są globalne: ta sama klasa zdefiniowana w kilku plikach przestrzeni
+ * dawała wynik zależny od kolejności ładowania (przycisk `.mvd-btn` miał trzy
+ * różne promienie i dwa rozmiary pisma zależnie od tego, która przestrzeń
+ * została otwarta jako ostatnia; `.mvd-menu` menedżera przypadków przestawiał
+ * menu „Widok" powłoki na `position: fixed`). Tu żyje jedna definicja każdej
+ * klasy wspólnej, a `scripts/css_kolizje_klas_guard.py` pilnuje, żeby żaden
+ * arkusz nie zdefiniował jej ponownie.
+ *
+ * Typografia (§8): tekst roboczy 13 px, bez wersalików i rozstrzelenia,
+ * liczby w kolumnach `tabular-nums`.
+ */
+
+/* ---- liczby i dostępność ---- */
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- przyciski ---- */
+.mvd-btn {
+  border: 1px solid var(--mvd-line-strong);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-btn:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--mvd-accent);
+}
+.mvd-btn:disabled,
+.mvd-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.mvd-btn-primary {
+  background: var(--mvd-accent);
+  border-color: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-btn-primary:hover:not(:disabled):not([aria-disabled='true']) {
+  filter: brightness(1.08);
+}
+
+/* ---- pola formularzy ---- */
+.mvd-input {
+  border: 1px solid var(--mvd-line-strong);
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-pole-etykieta {
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
+/* ---- znaczniki stanu ---- */
+.mvd-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  white-space: nowrap;
+}
+.mvd-tag-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-tag-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-tag-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-tag-mut {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+
+/* ---- wartość, która jeszcze nie istnieje (uczciwy stan zerowy) ---- */
+.mvd-wkrotce {
+  font-style: italic;
+}
+.mvd-wkrotce-wartosc {
+  color: var(--mvd-muted);
+}
+
+/* ---- pary etykieta–wartość kafli ---- */
+.mvd-kafel-kv-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-kafel-kv-label {
+  color: var(--mvd-muted);
+}
+.mvd-kafel-kv-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  text-align: right;
+}
+
+/* ---- tabela list (przypadki, przebiegi pulpitu, szablony) ---- */
+.mvd-cases-scroll {
+  overflow-x: auto;
+}
+.mvd-cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-cases-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+.mvd-cases-table td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.mvd-cases-row {
+  cursor: pointer;
+}
+.mvd-cases-row:hover {
+  background: var(--mvd-bg-hover);
+}
+.mvd-cases-row.mvd-on {
+  background: var(--mvd-sel);
+}
+.mvd-cases-name {
+  font-weight: 600;
+}
+.mvd-cases-active {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-cases-time {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+.mvd-cases-empty {
+  padding: 12px 8px;
+  color: var(--mvd-muted);
+  font-size: var(--mvd-font-size-data);
+}
+
+/* ---- okno dialogowe ---- */
+.mvd-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mvd-dialog {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  box-shadow: var(--mvd-shadow-panel);
+  width: 92%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 20px;
+}
+.mvd-dialog-tytul {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mvd-dialog-form .mvd-input {
+  width: 100%;
+}
+.mvd-dialog-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-dialog-akcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

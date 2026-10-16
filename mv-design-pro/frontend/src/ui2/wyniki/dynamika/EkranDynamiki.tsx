@@ -34,7 +34,6 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { PanelCoSieZmienilo, useSwiezoscNaglowka, type SwiezoscNaglowka } from '../../freshness';
 import { FreshnessBadge } from '../../inspector';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
@@ -80,12 +79,12 @@ function komunikat(blad: unknown): string {
 }
 
 export interface EkranDynamikiProps {
-  readonly trybZaawansowania?: AdvancementMode;
+  readonly szczegolyAudytowe?: boolean;
   /** Wytwórca wskazany deep-linkiem akcji naprawczej (`setWynikiTab('dynamika', ref)`). */
   readonly wskazanyElement?: string | null;
 }
 
-export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = null }: EkranDynamikiProps) {
+export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = null }: EkranDynamikiProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const projektId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -355,7 +354,6 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   // uruchomienie; punkt pracy jest osobnym, jawnym warunkiem (wybór rozpływu).
   const modelOdmawia = brakiModelu.length > 0 || (dane?.kopie_nieaktualne.length ?? 0) > 0;
   if (modelOdmawia) warunki.push(T.warunekGotowosc);
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const zaznaczonyRef = zaznaczone[0]?.id ?? null;
   const zaznaczonyWWyniku =
     wynik?.stan === 'gotowe' && zaznaczonyRef && wynik.dane.opis_wyniku.elementy[zaznaczonyRef]
@@ -576,7 +574,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
         <Wynik
           wynik={wynik.dane}
           swiezosc={swiezosc}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           zaznaczonyRef={zaznaczonyWWyniku}
           onPokazNaSchemacie={(ref) => pokazNaSchemacie(ref)}
         />
@@ -598,13 +596,13 @@ function Naglowek() {
 function Wynik({
   wynik,
   swiezosc,
-  trybEkspercki,
+  szczegolyAudytowe,
   zaznaczonyRef,
   onPokazNaSchemacie,
 }: {
   wynik: WynikDynamiki;
   swiezosc: SwiezoscNaglowka;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   zaznaczonyRef: string | null;
   onPokazNaSchemacie: (ref: string) => void;
 }) {
@@ -657,7 +655,7 @@ function Wynik({
         onPokazNaSchemacie={onPokazNaSchemacie}
       />
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-dynamika-audyt"
         wiersze={[
           { etykieta: T.audytRun, wartosc: wynik.run_id },

@@ -5,7 +5,7 @@
  * Zrzuty trafiają do `docs/sld/audyt-2026-08/s9-5-<klasa>-<motyw>.png`.
  *
  * Uczciwość zrzutu (metoda z audytu §1): motyw przełączany REALNYM przyciskiem
- * powłoki (`mvd-theme-toggle`) z asercją na `data-theme` — zasiew `localStorage`
+ * powłoki (menu „Widok" → `mvd-theme-toggle`) z asercją na `data-theme` — zasiew `localStorage`
  * nie przechodzi rehydracji `persist`, więc dawałby fikcyjne „oba motywy".
  * Menu otwierane NATYWNYM prawym klikiem w uchwyt trafienia (warstwa S9-4).
  *
@@ -19,6 +19,7 @@ import { dirname, resolve } from 'node:path';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -126,7 +127,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect

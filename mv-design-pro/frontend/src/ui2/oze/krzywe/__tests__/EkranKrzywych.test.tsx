@@ -84,8 +84,8 @@ function ustawKatalogGotowy() {
   });
 }
 
-async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
-  render(<EkranKrzywych trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+async function wczytajISkonfiguruj(tryb = false) {
+  render(<EkranKrzywych szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
   await screen.findByTestId('mvd-krzywe-dobor');
   await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-typ'), TYP_Z_KRZYWA);
   await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-operator'), 'pse');
@@ -100,13 +100,13 @@ afterEach(() => {
 describe('EkranKrzywych — wczytanie katalogu', () => {
   it('błąd katalogu → jawny stan błędu, bez formularza doboru', async () => {
     pobierzKonwertery.mockRejectedValue(new Error('500 katalog'));
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-katalog-blad')).toHaveTextContent('500 katalog');
     expect(screen.queryByTestId('mvd-krzywe-dobor')).not.toBeInTheDocument();
   });
 
   it('po wczytaniu pokazuje dobór typu i operatora oraz stan „uruchom"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-dobor')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-krzywe-idle')).toBeInTheDocument();
     expect(pobierzPokrycie).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   it('wybór typu bez krzywej → bieg dozwolony; odpowiedź = rekord „nie oceniono" z nazwanym brakiem', async () => {
     const widok = widokBezKrzywejFixture();
     pobierzPokrycie.mockResolvedValue(widok);
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-typ'), TYP_BEZ_KRZYWEJ);
     await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-operator'), 'pse');
@@ -133,7 +133,7 @@ describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   });
 
   it('lista typów oznacza typ bez krzywej adnotacją „brak krzywej producenta"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     expect(screen.getByTestId('mvd-krzywe-typ')).toHaveTextContent('brak krzywej producenta');
   });
@@ -224,14 +224,14 @@ describe('EkranKrzywych — tryb ekspercki (identyfikatory)', () => {
   beforeEach(() => pobierzPokrycie.mockResolvedValue(widokPokryciaFixture()));
 
   it('tryb podstawowy ukrywa identyfikatory typu i operatora', async () => {
-    await wczytajISkonfiguruj('basic');
+    await wczytajISkonfiguruj(false);
     await userEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
     await screen.findByTestId('mvd-krzywe-wynik');
     expect(screen.queryByTestId('mvd-krzywe-eksp')).not.toBeInTheDocument();
   });
 
   it('tryb ekspercki odsłania catalog_item_id i operator_id w sekcji audytowej', async () => {
-    await wczytajISkonfiguruj('expert');
+    await wczytajISkonfiguruj(true);
     await userEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
     await screen.findByTestId('mvd-krzywe-wynik');
     await userEvent.click(screen.getByTestId('mvd-krzywe-eksp-przelacz'));

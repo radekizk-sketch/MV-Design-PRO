@@ -154,7 +154,7 @@ function odpowiedz(items: readonly PozycjaCieplna[]): WytrzymaloscCieplnaRespons
 function props(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };

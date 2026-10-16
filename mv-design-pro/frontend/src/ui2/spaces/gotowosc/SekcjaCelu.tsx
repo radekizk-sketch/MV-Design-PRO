@@ -14,7 +14,7 @@ interface SekcjaCeluProps {
   problemyWidoczne: ProblemGotowosci[];
   rozwinieta: boolean;
   onPrzelacz: () => void;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   onKlikWiersza: (elementRef: string) => void;
   onNaprawa: (problem: ProblemGotowosci) => void;
   nazwaElementu: (elementRef: string) => string;
@@ -25,7 +25,7 @@ export function SekcjaCelu({
   problemyWidoczne,
   rozwinieta,
   onPrzelacz,
-  trybEkspercki,
+  szczegolyAudytowe,
   onKlikWiersza,
   onNaprawa,
   nazwaElementu,
@@ -73,7 +73,7 @@ export function SekcjaCelu({
               <WierszProblemu
                 key={`${problem.code}-${problem.elementRef ?? 'brak'}`}
                 problem={problem}
-                trybEkspercki={trybEkspercki}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onKlikWiersza={onKlikWiersza}
                 onNaprawa={onNaprawa}
                 nazwaElementu={nazwaElementu}

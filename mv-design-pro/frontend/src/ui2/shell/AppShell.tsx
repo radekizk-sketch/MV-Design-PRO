@@ -1,38 +1,49 @@
 /*
- * Powłoka aplikacji MV-DESIGN-PRO — okno W-110 (clean-room, moduł ui2 na czas U1).
+ * Powłoka aplikacji MV-DESIGN-PRO — okno W-110.
  *
- * Składa pasek tytułowy, pasek aktywnego przypadku, kontener trzech paneli
- * (nawigacja / warsztat / inspektor), opcjonalny panel dolny i pasek stanu.
- * Konsumuje istniejące store'y wyłącznie do odczytu (bez shadow-state); stan
- * prezentacji (układ, tryb zaawansowania, aktywna przestrzeń) trzyma useShellStore.
- *
- * ui2 NIE jest importowane z produkcyjnego wejścia aplikacji (App.tsx/main.tsx) —
- * przełączenie i usunięcie starej powłoki to karta E1.7.
+ * TRZY PASY zamiast pięciu (karta K1 POWLOKA, kontrakt UIUX przemysłowy UI-01):
+ * pasek projektu (`PasekProjektu`), pasek narzędzi bieżącej przestrzeni
+ * (`PasekNarzedzi`) i pasek stanu (`StatusBar`); między nimi kontener trzech
+ * paneli (nawigacja / warsztat / inspektor) i regulowany panel dolny z
+ * rejestrem zakładek (`panelDolny/`). Konsumuje istniejące store'y wyłącznie do
+ * odczytu (bez shadow-state); stan prezentacji (układ, „Szczegóły audytowe",
+ * aktywna przestrzeń, panel dolny) trzyma useShellStore.
  *
  * DEKLARACJA POWIĄZAŃ (SPEC_POWIAZANIA §5, karta §9): patrz SHELL_EVENT_CONTRACT.
  * Determinizm: brak Date.now()/Math.random() w renderze.
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import '../theme/tokens.css';
+import '../theme/komponenty.css';
 import './shell.css';
 
-import { TitleBar } from './TitleBar';
-import { CaseBar } from './CaseBar';
+import { PasekProjektu } from './PasekProjektu';
+import { PasekNarzedzi } from './PasekNarzedzi';
 import { PanelLayout } from './PanelLayout';
 import { StatusBar } from './StatusBar';
 import { SpaceNav } from './SpaceNav';
-import { DEFAULT_LAYOUT, useShellStore, type BottomPanelTab } from './useShellStore';
+import { PanelDolny } from './panelDolny/PanelDolny';
+import { ZAKLADKI_PANELU_DOLNEGO, type ZakladkaPaneluDolnego } from './panelDolny/rejestrZakladek';
+import { clampLeftWidth, clampRightWidth, DEFAULT_LAYOUT, useShellStore } from './useShellStore';
 import { useThemeModeStore, applyThemeMode } from '../theme/themeMode';
-import { useShellCaseInfo, useShellStatusInfo, type BackendStatus } from './shellStatus';
+import {
+  useShellCaseInfo,
+  useShellStatusInfo,
+  useStanBiegu,
+  type BackendStatus,
+} from './shellStatus';
+import { policzLicznikiModelu } from './licznikiModelu';
 import { SPACES, type SpaceId } from './spaces';
-import { useAppStateStore } from '../../ui/app-state';
 import { SHELL_STRINGS } from './strings';
+import { emituj } from '../events';
+import { useSnapshotStore } from '../../ui/topology/snapshotStore';
+import { usePodsumowanieGotowosci } from '../spaces/gotowosc/adapters/gotowoscAdapter';
+import { usePrzyczynaBlokadyObliczen } from '../spaces/obliczenia/uruchomObliczenie';
 
 /**
- * Kontrakt zdarzeń powłoki (deklaracja wymagana kartą §9). Magistrala zdarzeń to
- * karta E15.1 — do jej wpięcia emisja realizowana jest przez callbacki propsów,
- * a subskrypcja przez adapter read-only (shellStatus).
+ * Kontrakt zdarzeń powłoki (deklaracja wymagana kartą §9). Emisja przez
+ * callbacki propsów i szynę zdarzeń, subskrypcja przez adapter read-only.
  */
 export const SHELL_EVENT_CONTRACT = {
   subscribes: [
@@ -41,8 +52,11 @@ export const SHELL_EVENT_CONTRACT = {
     'model-zmieniony(rev)',
     'wyniki-nieaktualne/gotowe',
   ],
-  emits: ['przestrzeń-aktywna', 'żądanie-otwarcia-panelu-dolnego'],
+  emits: ['przestrzeń-aktywna', 'żądanie-otwarcia-panelu-dolnego', 'selekcja'],
 } as const;
+
+/** Źródło selekcji emitowanej przez panel dolny, gdy wołający nie podał własnej akcji. */
+const ZRODLO_PANEL_DOLNY = 'panel-dolny';
 
 export interface AppShellProps {
   /** Zawartość warsztatu (panel środkowy). */
@@ -51,12 +65,11 @@ export interface AppShellProps {
   inspector?: ReactNode;
   /** Drzewo kontekstowe przestrzeni (dolna część lewego panelu; ukryte przy listwie ikon). */
   contextPanel?: ReactNode;
-  /** Pełny dialog wyszukiwarki (E1.5) — zastępuje wbudowany szkielet, gdy podany. */
+  /** Jedyna wyszukiwarka (paleta poleceń, Ctrl+K). Brak = brak polecenia „Szukaj". */
   renderSearchDialog?: (otwarta: boolean, zamknij: () => void) => ReactNode;
   /** Stan ładowania — renderuje szkielet powłoki. */
   loading?: boolean;
-  /** Status połączenia z serwerem (klient health: `AppRoot.tsx` woła `useBackendHealth`
-   *  z `./backendHealth.ts` i przekazuje wynik tym propsem — wpięte w E1.4). */
+  /** Status połączenia z serwerem (`useBackendHealth` w `AppRoot.tsx`). */
   backendStatus?: BackendStatus;
   /** Etykieta ostatniego zakończonego przebiegu (K6/H-6 R3 — z rejestru przebiegów). */
   lastRunLabel?: string | null;
@@ -65,13 +78,26 @@ export interface AppShellProps {
   /** Rewizja modelu (nadpisuje wartość z gotowości, gdy podana). */
   modelRevision?: number | null;
   onReconnect?: () => void;
-  onSave?: () => void;
   onCalculate?: () => void;
   onOpenProject?: () => void;
-  /** Otwiera stan wariantów/przebiegów aktywnego zakresu (chip paska przypadku). */
+  onOpenProjectMetadata?: () => void;
+  /** Otwiera stan wariantów/przebiegów aktywnego zakresu (zakres w pasku projektu). */
   onOpenVariants?: () => void;
   onActiveSpaceChange?: (space: SpaceId) => void;
   onOpenSearch?: () => void;
+  /** Pasek narzędzi: tryb pracy kanwy (tylko przestrzeń z kanwą schematu). */
+  przelacznikPodgladu?: ReactNode;
+  onKatalog?: () => void;
+  onPrzegladZbiorczy?: () => void;
+  onHistoria?: () => void;
+  /** Akcja pustego modelu w panelu liczników (przejście do budowy sieci). */
+  onZacznijBudowe?: () => void;
+  /** Rejestr zakładek panelu dolnego (domyślnie: Problemy, Przebiegi, Dziennik). */
+  zakladkiPaneluDolnego?: readonly ZakladkaPaneluDolnego[];
+  /** Zaznaczenie elementu z panelu dolnego (domyślnie: zdarzenie `selekcja`). */
+  onWybierzElement?: (ref: string) => void;
+  /** Wejście w wyniki zakończonego biegu z zakładki „Przebiegi". */
+  onPokazWynikiBiegu?: (runId: string) => void;
 }
 
 export function AppShell({
@@ -85,17 +111,25 @@ export function AppShell({
   wersjaModelu,
   modelRevision,
   onReconnect,
-  onSave,
   onCalculate,
   onOpenProject,
+  onOpenProjectMetadata,
   onOpenVariants,
   onActiveSpaceChange,
   onOpenSearch,
+  przelacznikPodgladu,
+  onKatalog,
+  onPrzegladZbiorczy,
+  onHistoria,
+  onZacznijBudowe,
+  zakladkiPaneluDolnego = ZAKLADKI_PANELU_DOLNEGO,
+  onWybierzElement,
+  onPokazWynikiBiegu,
 }: AppShellProps) {
   const activeSpace = useShellStore((s) => s.activeSpace);
-  const advancementMode = useShellStore((s) => s.advancementMode);
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
+  const toggleSzczegolyAudytowe = useShellStore((s) => s.toggleSzczegolyAudytowe);
   const layout = useShellStore((s) => s.layoutBySpace[activeSpace] ?? undefined);
   const setLeftWidth = useShellStore((s) => s.setLeftWidth);
   const setRightWidth = useShellStore((s) => s.setRightWidth);
@@ -104,14 +138,21 @@ export function AppShell({
   const resetLayout = useShellStore((s) => s.resetLayout);
   const bottomPanelOpen = useShellStore((s) => s.bottomPanelOpen);
   const bottomPanelTab = useShellStore((s) => s.bottomPanelTab);
+  const bottomPanelHeight = useShellStore((s) => s.bottomPanelHeight);
   const openBottomPanel = useShellStore((s) => s.openBottomPanel);
   const closeBottomPanel = useShellStore((s) => s.closeBottomPanel);
+  const toggleBottomPanel = useShellStore((s) => s.toggleBottomPanel);
+  const setBottomPanelHeight = useShellStore((s) => s.setBottomPanelHeight);
 
   const themeMode = useThemeModeStore((s) => s.mode);
   const toggleTheme = useThemeModeStore((s) => s.toggle);
 
-  const projectName = useAppStateStore((s) => s.activeProjectName);
   const caseInfo = useShellCaseInfo();
+  const gotowosc = usePodsumowanieGotowosci();
+  const bieg = useStanBiegu();
+  const blokadaObliczen = usePrzyczynaBlokadyObliczen();
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const liczniki = useMemo(() => policzLicznikiModelu(snapshot), [snapshot]);
   const statusInfo = useShellStatusInfo({
     backend: backendStatus,
     lastRunLabel,
@@ -121,9 +162,10 @@ export function AppShell({
 
   // K11-A: JEDNA prawda wartości domyślnych układu (DEFAULT_LAYOUT) — lokalne
   // fallbacki rozjeżdżały się z magazynem (inspektor „otwarty" mimo domyślnego
-  // zwinięcia, bo brak wpisu przestrzeni omijał domyślne store'a).
-  const leftWidth = layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth;
-  const rightWidth = layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth;
+  // zwinięcia, bo brak wpisu przestrzeni omijał domyślne store'a). Karta K1:
+  // szerokości zapisane przy dawnych granicach są przycinane do bieżących.
+  const leftWidth = clampLeftWidth(layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth);
+  const rightWidth = clampRightWidth(layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth);
   const leftCollapsed = layout?.leftCollapsed ?? DEFAULT_LAYOUT.leftCollapsed;
   const rightCollapsed = layout?.rightCollapsed ?? DEFAULT_LAYOUT.rightCollapsed;
 
@@ -141,10 +183,23 @@ export function AppShell({
     [setActiveSpace, onActiveSpaceChange],
   );
 
+  const wyszukiwarkaDostepna = renderSearchDialog != null;
   const openSearch = useCallback(() => {
+    if (!wyszukiwarkaDostepna) return;
     setSearchOpen(true);
     onOpenSearch?.();
-  }, [onOpenSearch]);
+  }, [onOpenSearch, wyszukiwarkaDostepna]);
+
+  const wybierzElement = useCallback(
+    (ref: string) => {
+      if (onWybierzElement) {
+        onWybierzElement(ref);
+        return;
+      }
+      emituj({ typ: 'selekcja', obiektId: ref, zrodlo: ZRODLO_PANEL_DOLNY });
+    },
+    [onWybierzElement],
+  );
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -209,40 +264,42 @@ export function AppShell({
     );
   }
 
-  const bottomTabs: BottomPanelTab[] = ['problemy', 'przebiegi', 'dziennik'];
-  const bottomTabLabels: Record<BottomPanelTab, string> = {
-    problemy: SHELL_STRINGS.bottomProblemy,
-    przebiegi: SHELL_STRINGS.bottomPrzebiegi,
-    dziennik: SHELL_STRINGS.bottomDziennik,
-  };
-
   return (
     <div className="mvd-app" data-testid="mvd-app-shell">
-      <TitleBar
-        projectName={projectName}
-        advancementMode={advancementMode}
-        onAdvancementModeChange={setAdvancementMode}
+      <PasekProjektu
+        info={caseInfo}
         themeMode={themeMode}
         onThemeToggle={toggleTheme}
+        szczegolyAudytowe={szczegolyAudytowe}
+        onToggleSzczegolyAudytowe={toggleSzczegolyAudytowe}
         leftCollapsed={leftCollapsed}
         rightCollapsed={rightCollapsed}
+        bottomOpen={bottomPanelOpen}
         onToggleLeft={() => toggleLeftCollapsed(activeSpace)}
         onToggleRight={() => toggleRightCollapsed(activeSpace)}
+        onToggleBottom={toggleBottomPanel}
         onResetLayout={() => resetLayout(activeSpace)}
-        onSave={onSave}
+        onOpenProject={onOpenProject}
+        onOpenProjectMetadata={onOpenProjectMetadata}
+        onOpenVariants={onOpenVariants}
+        onOtworzWyniki={() => selectSpace('wyniki')}
+        onPrzejdzDoObliczen={() => selectSpace('obliczenia')}
         onCalculate={onCalculate}
+        blokadaObliczen={blokadaObliczen}
+        biegTrwa={bieg.trwa}
+        opisBiegu={bieg.stan}
       />
 
-      {/* Kontrakt e2e (E1.7b): pasek aktywnego przypadku nosi testid starej powłoki. */}
-      <div data-testid="active-case-bar">
-        <CaseBar
-          info={caseInfo}
-          onOpenProject={onOpenProject}
-          onOpenVariants={onOpenVariants}
-          /* Znacznik „wyniki nieaktualne" prowadzi do przestrzeni „Obliczenia" (K4/D1). */
-          onPrzejdzDoObliczen={() => selectSpace('obliczenia')}
-        />
-      </div>
+      <PasekNarzedzi
+        przelacznikPodgladu={przelacznikPodgladu}
+        onSzukaj={wyszukiwarkaDostepna ? openSearch : undefined}
+        onKatalog={onKatalog}
+        onPrzegladZbiorczy={onPrzegladZbiorczy}
+        onHistoria={onHistoria}
+        liczniki={liczniki}
+        projektOtwarty={caseInfo.projectPresent}
+        onZacznijBudowe={onZacznijBudowe}
+      />
 
       <div className="mvd-main-region">
         <div className="mvd-main-fill">
@@ -260,13 +317,13 @@ export function AppShell({
             center={
               /* Kontrakt e2e (E1.7b): środkowy panel = main-content (jak w starej powłoce). */
               <div className="mvd-workspace-host" data-testid="main-content">
-                {children ?? <p className="mvd-inspector-empty">{SHELL_STRINGS.workspaceHint}</p>}
+                {children}
               </div>
             }
             right={
               inspector ?? (
                 <div>
-                  <h2 style={{ margin: '0 0 6px', fontSize: '13px' }}>{SHELL_STRINGS.inspectorHeading}</h2>
+                  <h2 className="mvd-inspector-naglowek">{SHELL_STRINGS.inspectorHeading}</h2>
                   <p className="mvd-inspector-empty">{SHELL_STRINGS.inspectorEmpty}</p>
                 </div>
               )
@@ -283,68 +340,30 @@ export function AppShell({
         </div>
 
         {bottomPanelOpen && (
-          <section className="mvd-bottom" aria-label={bottomTabLabels[bottomPanelTab]} data-testid="mvd-bottom-panel">
-            <div className="mvd-bottom-tabs" role="tablist">
-              {bottomTabs.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === bottomPanelTab}
-                  className={tab === bottomPanelTab ? 'mvd-btn mvd-btn-primary' : 'mvd-btn'}
-                  onClick={() => openBottomPanel(tab)}
-                >
-                  {bottomTabLabels[tab]}
-                </button>
-              ))}
-              <span className="mvd-grow" />
-              <button
-                type="button"
-                className="mvd-btn"
-                aria-label={SHELL_STRINGS.closeBottom}
-                onClick={closeBottomPanel}
-                data-testid="mvd-bottom-close"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="mvd-inspector-empty">{SHELL_STRINGS.bottomHint}</p>
-          </section>
+          <PanelDolny
+            zakladki={zakladkiPaneluDolnego}
+            aktywna={bottomPanelTab}
+            wysokosc={bottomPanelHeight}
+            onWybierzZakladke={openBottomPanel}
+            onZmienWysokosc={setBottomPanelHeight}
+            onZamknij={closeBottomPanel}
+            onWybierzElement={wybierzElement}
+            onPokazWynikiBiegu={onPokazWynikiBiegu}
+          />
         )}
       </div>
 
       <StatusBar
         status={statusInfo}
+        gotowosc={gotowosc}
+        projektOtwarty={caseInfo.projectPresent}
+        bieg={bieg}
         onReconnect={onReconnect}
         onOpenBottomPanel={(tab) => openBottomPanel(tab)}
+        onOtworzGotowosc={() => selectSpace('gotowosc')}
       />
 
       {renderSearchDialog != null && renderSearchDialog(searchOpen, () => setSearchOpen(false))}
-      {renderSearchDialog == null && searchOpen && (
-        <div
-          className="mvd-search-scrim"
-          data-testid="mvd-search-scrim"
-          onClick={() => setSearchOpen(false)}
-        >
-          <div
-            className="mvd-search-box"
-            role="dialog"
-            aria-modal="true"
-            aria-label={SHELL_STRINGS.searchPlaceholder}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <input
-              className="mvd-search-input"
-              type="text"
-              placeholder={SHELL_STRINGS.searchPlaceholder}
-              aria-label={SHELL_STRINGS.searchPlaceholder}
-              autoFocus
-              data-testid="mvd-search-input"
-            />
-            <p className="mvd-search-hint">{SHELL_STRINGS.searchHint}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

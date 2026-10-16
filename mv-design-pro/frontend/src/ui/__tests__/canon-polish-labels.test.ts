@@ -8,89 +8,83 @@ const UI_DIR = path.join(__dirname, '..');
 function fileContains(
   relPath: string,
   expected: string[],
-): { missing: string[]; fileExists: boolean } {
+): { missing: string[] } {
   const fullPath = path.join(UI_DIR, relPath);
-  if (!fs.existsSync(fullPath)) {
-    return { missing: expected, fileExists: false };
-  }
+  // Brak pliku = CZERWONO. Dawniej `if (fileExists)` w każdym teście czyniło go pustym,
+  // gdy plik przeniesiono (pasek aktywnego przypadku i `case-manager` zniknęły dawno,
+  // a testy dalej „przechodziły") — deklaracja bez testu (karta K1 POWLOKA).
+  expect(fs.existsSync(fullPath), `Brak pliku sprawdzanego przez kanon etykiet: ${relPath}`).toBe(true);
   const content = fs.readFileSync(fullPath, 'utf-8');
   const missing = expected.filter((label) => !content.includes(label));
-  return { missing, fileExists: true };
+  return { missing };
 }
 
 describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
   it('ma polskie etykiety zakladek w kontrakcie wynikow', () => {
-    const { missing, fileExists } = fileContains('results-inspector/types.ts', [
+    const { missing } = fileContains('results-inspector/types.ts', [
       'Szyny',
       'Gałęzie',
       'Zwarcia',
       'Ślad obliczeń',
     ]);
-    if (fileExists) {
-      expect(
-        missing,
-        `Missing Polish labels in results-inspector/types.ts: ${missing.join(', ')}`,
-      ).toHaveLength(0);
-    }
+    expect(
+      missing,
+      `Missing Polish labels in results-inspector/types.ts: ${missing.join(', ')}`,
+    ).toHaveLength(0);
   });
 
-  it('ma polskie etykiety w pasku aktywnego przypadku', () => {
-    const { missing, fileExists } = fileContains('active-case-bar/ActiveCaseBar.tsx', [
-      'Przełącz zestaw',
-      'Parametry analizy',
+  it('ma polskie etykiety w pasku projektu powłoki', () => {
+    // Dawny pasek aktywnego przypadku zastąpił pasek projektu (karta K1 POWLOKA);
+    // jego teksty żyją w jednym module tekstów powłoki.
+    const { missing } = fileContains('../ui2/shell/strings.ts', [
+      'Zakres',
       'Oblicz',
-      'Podgląd wyników',
+      'Obliczanie…',
+      'Wyniki: aktualne',
+      'Wyniki: nieaktualne',
+      'Szczegóły audytowe',
     ]);
-    if (fileExists) {
-      expect(
-        missing,
-        `Missing Polish labels in ActiveCaseBar: ${missing.join(', ')}`,
-      ).toHaveLength(0);
-    }
+    expect(
+      missing,
+      `Missing Polish labels in pasku projektu: ${missing.join(', ')}`,
+    ).toHaveLength(0);
   });
 
   it('ma polskie etykiety w bibliotece katalogowej', () => {
-    const { missing, fileExists } = fileContains('catalog/TypeLibraryBrowser.tsx', [
+    const { missing } = fileContains('catalog/TypeLibraryBrowser.tsx', [
       'Typy linii',
       'Typy kabli',
       'Typy transformatorów',
       'Typy aparatury łączeniowej',
     ]);
-    if (fileExists) {
-      expect(
-        missing,
-        `Missing Polish labels in TypeLibraryBrowser: ${missing.join(', ')}`,
-      ).toHaveLength(0);
-    }
+    expect(
+      missing,
+      `Missing Polish labels in TypeLibraryBrowser: ${missing.join(', ')}`,
+    ).toHaveLength(0);
   });
 
   it('ma polskie komunikaty blokad w warstwie mode gate', () => {
-    const { missing, fileExists } = fileContains('mode-gate/ModeGate.tsx', [
+    const { missing } = fileContains('mode-gate/ModeGate.tsx', [
       'Edycja modelu zablokowana',
       'Akcja niedostepna w analizie i wynikach',
     ]);
-    if (fileExists) {
-      expect(
-        missing,
-        `Missing Polish labels in ModeGate: ${missing.join(', ')}`,
-      ).toHaveLength(0);
-    }
+    expect(
+      missing,
+      `Missing Polish labels in ModeGate: ${missing.join(', ')}`,
+    ).toHaveLength(0);
   });
 
   it('ma polskie komunikaty blokad w zarzadzaniu przypadkami', () => {
-    const { missing, fileExists } = fileContains('case-manager/useModeGating.ts', [
+    const { missing } = fileContains('study-cases/modeGating.ts', [
       'Tworzenie przypadkow',
       'Zmiana nazwy przypadku',
       'Usuwanie przypadkow',
       'Klonowanie przypadkow',
-      'Uruchomienie obliczen',
     ]);
-    if (fileExists) {
-      expect(
-        missing,
-        `Missing Polish labels in useModeGating: ${missing.join(', ')}`,
-      ).toHaveLength(0);
-    }
+    expect(
+      missing,
+      `Missing Polish labels in useModeGating: ${missing.join(', ')}`,
+    ).toHaveLength(0);
   });
 
   it('nie dopuszcza prostych angielskich etykiet przyciskow w aktywnych plikach UI', () => {

@@ -40,11 +40,11 @@ import {
   jestPlikiemArchiwum,
   nazwaPlikuArchiwum,
 } from './strings';
-import { RaportImportu, Wiersz, useTrybEkspercki, wierszeAudytowe, zapiszBlob } from './wspolne';
+import { RaportImportu, Wiersz, useSzczegolyAudytowe, wierszeAudytowe, zapiszBlob } from './wspolne';
 
 /** Podgląd zawartości paczki (odpowiedź końcówki podglądu, bez importu). */
 function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
-  const trybEkspercki = useTrybEkspercki();
+  const szczegolyAudytowe = useSzczegolyAudytowe();
   if (!podglad.valid) {
     return (
       <div className="mvd-arch-blad" role="alert" data-testid="mvd-arch-podglad-blad">
@@ -79,7 +79,7 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
           [T.podgladWersja, podglad.schema_version],
           [T.podgladOdcisk, podglad.archive_hash],
         ])}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-arch-podglad-audyt"
       />
     </div>

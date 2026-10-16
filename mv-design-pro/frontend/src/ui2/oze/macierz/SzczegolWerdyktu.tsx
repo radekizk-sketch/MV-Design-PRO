@@ -42,7 +42,7 @@ export interface SzczegolWerdyktuProps {
    * język inżynierski) tylko wtedy. Ten sam predykat co w wierszu macierzy (`MacierzNcRfg`
    * liczy go raz i podaje oba miejsca).
    */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
 }
 
 export function SzczegolWerdyktu({
@@ -50,7 +50,7 @@ export function SzczegolWerdyktu({
   definicja,
   nazwaModulu,
   slad,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: SzczegolWerdyktuProps): JSX.Element {
   const pokazElement = usePoprawWModelu();
   const akcjaInspekcji = akcjaNaprawcza('inspekcja-elementu');
@@ -124,7 +124,7 @@ export function SzczegolWerdyktu({
               </div>
               {/* Karta #145: identyfikator zdolności dowodowej — metadana audytowa. */}
               <InformacjeAudytowe
-                trybEkspercki={trybEkspercki}
+                szczegolyAudytowe={szczegolyAudytowe}
                 testid="mvd-oze-szczegol-zdolnosc"
                 wiersze={[{ etykieta: MACIERZ_STRINGS.zdolnosc, wartosc: definicja.zdolnosc_id }]}
               />

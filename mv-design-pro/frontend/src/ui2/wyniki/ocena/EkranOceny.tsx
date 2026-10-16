@@ -59,13 +59,12 @@ import {
 import { MathInline } from '../../../ui/proof';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { TekstZWzorami } from '../../kreatory/rama';
 import './ocena.css';
 
 export interface EkranOcenyProps {
   /** Tryb zaawansowania — identyfikatory modelu i przebiegów tylko w trybie eksperckim. */
-  readonly trybZaawansowania?: AdvancementMode;
+  readonly szczegolyAudytowe?: boolean;
   /** Otwarcie dowodu obliczeń wskazanego przebiegu dla elementu (zakładka „Dowód obliczeń"). */
   readonly onOtworzDowod?: (elementRef: string, runId: string) => void;
 }
@@ -79,7 +78,7 @@ function WierszPodstawy({ etykieta, children, testid }: { etykieta: string; chil
   );
 }
 
-function PodstawaOceny({ dane, trybEkspercki }: { dane: OdpowiedzOceny; trybEkspercki: boolean }) {
+function PodstawaOceny({ dane, szczegolyAudytowe }: { dane: OdpowiedzOceny; szczegolyAudytowe: boolean }) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
   const rewizja = useSnapshotStore((s) => s.snapshot?.header.revision ?? null);
@@ -100,7 +99,7 @@ function PodstawaOceny({ dane, trybEkspercki }: { dane: OdpowiedzOceny; trybEksp
         </WierszPodstawy>
       </div>
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-ocena-informacje-audytowe"
         wiersze={[
           { etykieta: T.podstawaOdcisk, wartosc: dane.model_hash },
@@ -174,12 +173,12 @@ function Podsumowanie({ dane }: { dane: OdpowiedzOceny }) {
 function WierszElementu({
   element,
   pozycja,
-  trybEkspercki,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   element: OcenaElementu;
   pozycja: PozycjaOceny;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   onOtworzDowod?: (elementRef: string, runId: string) => void;
 }) {
   const poprawWModelu = usePoprawWModelu();
@@ -275,7 +274,7 @@ function WierszElementu({
         {/* Karta #145: identyfikator w modelu — powiązanie dla eksperta, wyłącznie w
             „Informacjach audytowych" wiersza (zwinięte), nigdy pod nazwą elementu. */}
         <InformacjeAudytowe
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           testid="mvd-ocena-element-informacje-audytowe"
           wiersze={
             element.element_id !== null && element.element_id !== 'network'
@@ -290,11 +289,11 @@ function WierszElementu({
 
 function TabelaPozycji({
   pozycja,
-  trybEkspercki,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   pozycja: PozycjaOceny;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   onOtworzDowod?: (elementRef: string, runId: string) => void;
 }) {
   return (
@@ -330,7 +329,7 @@ function TabelaPozycji({
                 key={`${element.element_id ?? 'agregat'}:${indeks}`}
                 element={element}
                 pozycja={pozycja}
-                trybEkspercki={trybEkspercki}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onOtworzDowod={onOtworzDowod}
               />
             ))}
@@ -341,9 +340,8 @@ function TabelaPozycji({
   );
 }
 
-export function EkranOceny({ trybZaawansowania = 'basic', onOtworzDowod }: EkranOcenyProps) {
+export function EkranOceny({ szczegolyAudytowe = false, onOtworzDowod }: EkranOcenyProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const [dane, setDane] = useState<OdpowiedzOceny | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
@@ -414,7 +412,7 @@ export function EkranOceny({ trybZaawansowania = 'basic', onOtworzDowod }: Ekran
           <div className="mvd-ocena-blokada" data-testid="mvd-ocena-brak-wynikow">
             <strong className="mvd-ocena-blokada-tytul">{T.brakWynikowTytul}</strong>
             <p className="mvd-ocena-blokada-opis">{T.brakWynikowOpis}</p>
-            <PodstawaOceny dane={dane} trybEkspercki={trybEkspercki} />
+            <PodstawaOceny dane={dane} szczegolyAudytowe={szczegolyAudytowe} />
             <PrzyciskAkcjiStanu akcja={akcjaObliczenia} testid="mvd-ocena-brak-wynikow" />
           </div>
           <ZakresPozaAutomatem dane={dane} />
@@ -423,7 +421,7 @@ export function EkranOceny({ trybZaawansowania = 'basic', onOtworzDowod }: Ekran
 
       {dane && !czyBrakWynikow(dane) && (
         <>
-          <PodstawaOceny dane={dane} trybEkspercki={trybEkspercki} />
+          <PodstawaOceny dane={dane} szczegolyAudytowe={szczegolyAudytowe} />
           <Podsumowanie dane={dane} />
 
           {grupyZWynikami(dane).map((grupa) => (
@@ -433,7 +431,7 @@ export function EkranOceny({ trybZaawansowania = 'basic', onOtworzDowod }: Ekran
                 <TabelaPozycji
                   key={pozycja.kryterium_id}
                   pozycja={pozycja}
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   onOtworzDowod={onOtworzDowod}
                 />
               ))}

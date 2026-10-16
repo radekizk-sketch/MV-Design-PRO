@@ -73,7 +73,7 @@ describe.each([
   it('pierwszy plan: rekord oceny z backendu, zero werdyktu i akcji decyzyjnej', async () => {
     const widok = fixture();
     ustawFetch(widok);
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
     const wynik = await screen.findByTestId('mvd-ssci-wynik');
 
@@ -95,7 +95,7 @@ describe.each([
   it('wskaźnik strefy ujemnej rezystancji przekształtnika zostaje informacją na pierwszym planie', async () => {
     const widok = fixture();
     ustawFetch(widok);
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
     await screen.findByTestId('mvd-ssci-wynik');
     const rezystancja = screen.getByTestId('mvd-ssci-rezystancja-ujemna');
@@ -112,7 +112,7 @@ describe.each([
 describe('EkranSsci — sekcja audytowa metryk', () => {
   it('metryki L(f) dostępne wyłącznie po rozwinięciu sekcji audytowej', async () => {
     ustawFetch(widokZMetrykamiFixture());
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
     await screen.findByTestId('mvd-ssci-wynik');
     const audyt = screen.getByTestId('mvd-ssci-audyt');

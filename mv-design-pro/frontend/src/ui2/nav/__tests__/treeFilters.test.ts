@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filtrujProblemy, filtrujTryb, zastosujFiltry } from '../treeFilters';
+import { filtrujProblemy, zastosujFiltry } from '../treeFilters';
 import type { WezelDrzewa } from '../treeModel';
 
 function wezel(overrides: Partial<WezelDrzewa> & { id: string; etykietaPL: string }): WezelDrzewa {
@@ -7,7 +7,6 @@ function wezel(overrides: Partial<WezelDrzewa> & { id: string; etykietaPL: strin
     ikona: 'stacja',
     liczniki: { blokady: 0, ostrzezenia: 0 },
     dzieci: [],
-    trybMin: 'basic',
     ...overrides,
   };
 }
@@ -80,38 +79,18 @@ describe('filtrujProblemy', () => {
   });
 });
 
-describe('filtrujTryb', () => {
-  it('usuwa węzły o trybMin wyższym niż tryb aktualny (i całe ich poddrzewo)', () => {
-    const drzewo: WezelDrzewa[] = [
-      wezel({ id: 'a', etykietaPL: 'A', trybMin: 'basic' }),
-      wezel({
-        id: 'b',
-        etykietaPL: 'B',
-        trybMin: 'expert',
-        dzieci: [wezel({ id: 'b1', etykietaPL: 'B1', trybMin: 'basic' })],
-      }),
-    ];
-    expect(filtrujTryb(drzewo, 'basic').map((w) => w.id)).toEqual(['a']);
-  });
-
-  it('tryb ekspercki pokazuje wszystko', () => {
-    const drzewo: WezelDrzewa[] = [
-      wezel({ id: 'a', etykietaPL: 'A', trybMin: 'expert' }),
-      wezel({ id: 'b', etykietaPL: 'B', trybMin: 'extended' }),
-    ];
-    expect(filtrujTryb(drzewo, 'expert').map((w) => w.id)).toEqual(['a', 'b']);
-  });
-});
-
 describe('zastosujFiltry', () => {
-  it('łączy filtr trybu i filtr problemów', () => {
+  // Karta K1 POWLOKA: filtr „trybu zaawansowania" skasowany razem z trzema
+  // trybami (jeden przełącznik „Szczegóły audytowe" nie ukrywa węzłów drzewa —
+  // żaden węzeł nie miał innego progu niż podstawowy). Zostaje filtr problemów.
+  it('stosuje filtr problemów do całego drzewa', () => {
     const drzewo: WezelDrzewa[] = [
-      wezel({ id: 'a', etykietaPL: 'A', trybMin: 'expert', liczniki: { blokady: 1, ostrzezenia: 0 } }),
-      wezel({ id: 'b', etykietaPL: 'B', trybMin: 'basic', liczniki: { blokady: 1, ostrzezenia: 0 } }),
-      wezel({ id: 'c', etykietaPL: 'C', trybMin: 'basic' }),
+      wezel({ id: 'a', etykietaPL: 'A', liczniki: { blokady: 1, ostrzezenia: 0 } }),
+      wezel({ id: 'b', etykietaPL: 'B', liczniki: { blokady: 0, ostrzezenia: 2 } }),
+      wezel({ id: 'c', etykietaPL: 'C' }),
     ];
-    const wynik = zastosujFiltry(drzewo, { filtrProblemy: true, trybAktualny: 'basic' });
-    expect(wynik.map((w) => w.id)).toEqual(['b']);
+    const wynik = zastosujFiltry(drzewo, { filtrProblemy: true });
+    expect(wynik.map((w) => w.id)).toEqual(['a', 'b']);
   });
 
   it('bez żadnego filtra zwraca drzewo bez zmian', () => {

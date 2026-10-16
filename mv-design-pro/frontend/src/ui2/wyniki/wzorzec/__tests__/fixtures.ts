@@ -47,7 +47,7 @@ export function propsFixture(over: Partial<EkranAnalizyProps> = {}): EkranAnaliz
     kolumny: kolumnyFixture,
     wiersze: wierszeFixture,
     onOtworzDowod: () => undefined,
-    trybZaawansowania: 'basic',
+    szczegolyAudytowe: false,
     ...over,
   };
 }

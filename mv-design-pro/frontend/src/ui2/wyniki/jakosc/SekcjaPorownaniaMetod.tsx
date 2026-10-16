@@ -26,7 +26,6 @@ import './jakosc.css';
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { fetchPowerFlowTrace } from '../../../ui/power-flow-results/api';
 import { createPowerFlowComparison } from '../../../ui/power-flow-comparison/api';
@@ -89,11 +88,11 @@ function StanMetod({
 }
 
 export interface SekcjaPorownaniaMetodProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
-export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: SekcjaPorownaniaMetodProps) {
+export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: SekcjaPorownaniaMetodProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const kandydaci = useMemo(() => kandydaciRozplywuOdNajnowszego(runs), [runs]);
   const kluczKandydatow = kandydaci.map((r) => r.id).join(',');
@@ -229,7 +228,7 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
             kolumny={KOLUMNY_DELTA_SZYN}
             wiersze={naWierszeDeltaSzyn(stan.porownanie.bus_diffs, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             kluczWiersza="szyna"
           />
         </>

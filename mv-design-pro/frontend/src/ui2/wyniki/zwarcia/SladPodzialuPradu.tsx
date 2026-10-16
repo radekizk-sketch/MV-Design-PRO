@@ -31,7 +31,6 @@
 import '../dowod/dowod.css';
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { KrokDowodu, mapujKroki } from '../dowod';
 import { ZWARCIA_STRINGS } from './strings';
 
@@ -42,14 +41,14 @@ export interface SladPodzialuPraduProps {
   trace: TraceStep[] | null;
   /** Błąd pobrania (HTTP/sieć) z dostawcy, rozpoznany osobno od „brak danych". */
   blad: boolean;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 export function SladPodzialuPradu({
   punktNazwa,
   trace,
   blad,
-  trybZaawansowania,
+  szczegolyAudytowe,
 }: SladPodzialuPraduProps) {
   const kroki = trace ? mapujKroki(trace) : [];
 
@@ -87,7 +86,7 @@ export function SladPodzialuPradu({
             data-testid="mvd-zwarcia-slad-rozplywu-lista"
           >
             {kroki.map((krok) => (
-              <KrokDowodu key={krok.numer} krok={krok} trybZaawansowania={trybZaawansowania} />
+              <KrokDowodu key={krok.numer} krok={krok} szczegolyAudytowe={szczegolyAudytowe} />
             ))}
           </div>
         </>

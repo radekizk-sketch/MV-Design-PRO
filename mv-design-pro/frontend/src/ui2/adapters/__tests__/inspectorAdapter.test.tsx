@@ -435,7 +435,7 @@ describe('InspectorPanel + otworzDowodInspektora — wpięcie realne (test natyw
         onOtworzDowod={otworzDowodInspektora}
         onNawiguj={() => {}}
         onPrzelicz={() => {}}
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
       />,
     );
 
@@ -488,7 +488,7 @@ describe('InspectorPanel + otworzDowodInspektora — wpięcie realne (test natyw
         onOtworzDowod={otworzDowodInspektora}
         onNawiguj={() => {}}
         onPrzelicz={() => {}}
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
       />,
     );
     fireEvent.click(screen.getByRole('tab', { name: INSPECTOR_STRINGS.tabDowod }));

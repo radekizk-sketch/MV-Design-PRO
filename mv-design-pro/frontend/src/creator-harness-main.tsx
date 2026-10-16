@@ -33,7 +33,9 @@ import './ui2/theme/tokens.css';
 // maja wlasne tokeny i klasy, wiec kolizji nie ma, ale to jest powod, dla ktorego
 // arkusz jest tu wymieniony jawnie zamiast „przy okazji".
 import './index.css';
-// Scena „swiezosc" renderuje CaseBar poza AppShell — style paska ładuje shell.css.
+// Scena „swiezosc" renderuje pasek projektu poza AppShell — style paska ładuje shell.css
+// (klasy wspólne: komponenty.css).
+import './ui2/theme/komponenty.css';
 import './ui2/shell/shell.css';
 
 import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
@@ -276,7 +278,7 @@ import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
 import { PrzegladarkaSzablonow } from './ui2/spaces/model/szablony';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
 import { PozycjeDoPrzegladu } from './ui/catalog/PozycjeDoPrzegladu';
-import { CaseBar } from './ui2/shell/CaseBar';
+import { PasekProjektu } from './ui2/shell/PasekProjektu';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
@@ -1733,7 +1735,7 @@ if (creator === 'arcflash') {
 } else if (creator === 'wyniki-skladowe') {
   // Scena E-29 (karta Z-1): przebieg zwarcia NIESYMETRYCZNEGO (SC_1F) → ekran
   // wybiera go automatycznie; dane spływają z podmienionych końcówek wyników.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useExecutionRunsStore.setState({
     runs: [
       {
@@ -1750,7 +1752,7 @@ if (creator === 'arcflash') {
   // Scena E-30 (karta Z-1): zakończony rozpływ (LOAD_FLOW) + snapshot z
   // transformatorem OLTC (założenia zaczepów modelu) — HARNESS-RESZTA-2:
   // migawka i przebieg pochodzą z TEGO SAMEGO realnego biegu backendu.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useSnapshotStore.setState({
     snapshot: zbieznoscScenyMigawka,
@@ -1771,7 +1773,7 @@ if (creator === 'arcflash') {
   // Scena E-28: ekran koordynacji WYMAGA zakonczonych biegow zwarciowych (MAX i MIN,
   // scenariusz zapisany na biegu) i rozplywu — bez nich pokazuje uczciwy stan zerowy.
   // Urzadzenia i nastawy niesie model sceny; ocene i koordynacje uruchamia NATYWNY klik.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useAppStateStore.getState().setActiveCase('case-demo', 'Wariant zimowy', null, 'FRESH');
   useExecutionRunsStore.setState({
@@ -1805,7 +1807,7 @@ if (creator === 'arcflash') {
 } else if (creator === 'wyniki-stan-fazowy') {
   // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN)
   // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useExecutionRunsStore.setState({
     runs: [
@@ -1825,7 +1827,7 @@ if (creator === 'arcflash') {
 ) {
   // Scena E-32 (karta AB-P1): model sceny (migawka po wiązaniu PV) i — w wariancie
   // z wynikiem — zakończony bieg `DYNAMIKA_RMS` z fixtury REALNEGO biegu backendu.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useSnapshotStore.setState({ snapshot: dynamikaScenyMigawka } as never);
   useExecutionRunsStore.setState({ runs: biegiSceny(creator) } as never);
 } else if (creator === 'zrodlo-dyspozycyjne') {
@@ -1973,10 +1975,33 @@ if (migawkaModeluSceny !== undefined && useSnapshotStore.getState().snapshot ===
   useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
 }
 
-/** Pasek przypadku ze znacznikiem świeżości (K4) — info z realnego hooka powłoki. */
+/**
+ * Pasek projektu ze znacznikiem świeżości wyników (K4; od karty K1 POWLOKA pasek
+ * projektu zastępuje dawny pasek przypadku) — info z realnego hooka powłoki.
+ * Scena pokazuje wyłącznie układ paska: akcje nawigacyjne nie mają tu celu.
+ */
 function SwiezoscScena() {
   const info = useShellCaseInfo();
-  return <CaseBar info={info} onPrzejdzDoObliczen={() => undefined} />;
+  const bezCelu = () => undefined;
+  return (
+    <PasekProjektu
+      info={info}
+      themeMode={theme}
+      onThemeToggle={bezCelu}
+      szczegolyAudytowe={false}
+      onToggleSzczegolyAudytowe={bezCelu}
+      leftCollapsed={false}
+      rightCollapsed={true}
+      bottomOpen={false}
+      onToggleLeft={bezCelu}
+      onToggleRight={bezCelu}
+      onToggleBottom={bezCelu}
+      onResetLayout={bezCelu}
+      onPrzejdzDoObliczen={bezCelu}
+      blokadaObliczen={null}
+      biegTrwa={false}
+    />
+  );
 }
 
 function Harness() {
@@ -2005,20 +2030,20 @@ function Harness() {
         przebieg={{
           id: walidacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
   else if (creator === 'rozplyw')
-    node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranRozplywu szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
-    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
     // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
-    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'porownanie')
-    node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
+    node = <EkranPorownania projektId="proj-demo" szczegolyAudytowe />;
   else if (creator === 'kompensacja')
     // R2-B: preselekcja wezla z deep-linku — bus_sn_b, jedyny wezel zasiewu
     // (linie ok. 2320 nizej) dajacy realny dobor kandydata katalogowego
@@ -2026,14 +2051,14 @@ function Harness() {
     // zasiewie po konwersji sceny na realny bieg backendu).
     node = (
       <EkranKompensacji
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         preselekcjaWezla="bus_sn_b"
         onPreselekcjaSkonsumowana={() => undefined}
         onOtworzDowod={() => undefined}
       />
     );
   else if (creator === 'lom')
-    node = <EkranLom trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranLom szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'wiazania')
     node = (
       <PvSourceSurface
@@ -2060,14 +2085,14 @@ function Harness() {
       />
     );
   else if (creator === 'frt')
-    node = <EkranFrt trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranFrt szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz' || creator === 'certyfikat')
-    node = <MacierzNcRfg trybZaawansowania="expert" />;
+    node = <MacierzNcRfg szczegolyAudytowe />;
   else if (creator === 'wniosek' || creator === 'wniosek-braki')
-    node = <EkranWniosku trybZaawansowania="expert" />;
+    node = <EkranWniosku szczegolyAudytowe />;
   else if (creator === 'pulpit-oze')
-    node = <PulpitOze trybZaawansowania="expert" onNawiguj={() => undefined} />;
+    node = <PulpitOze szczegolyAudytowe onNawiguj={() => undefined} />;
   else if (creator === 'koordynacja') node = <EkranKoordynacji />;
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
@@ -2077,20 +2102,20 @@ function Harness() {
     creator === 'wyniki-dynamika-brak' ||
     creator === 'wyniki-dynamika-odbior-brak'
   )
-    node = <EkranDynamiki trybZaawansowania="expert" />;
+    node = <EkranDynamiki szczegolyAudytowe />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
-    node = <EkranKompensacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
-  else if (creator === 'sila-sieci') node = <SekcjaSilySieci trybEkspercki />;
+    node = <EkranKompensacji szczegolyAudytowe onOtworzDowod={() => undefined} />;
+  else if (creator === 'sila-sieci') node = <SekcjaSilySieci szczegolyAudytowe />;
   else if (creator === 'odbior-zgodnosc')
-    node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranOdbioru szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'estymacja')
-    node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
-  else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
+    node = <EkranEstymacji szczegolyAudytowe onOtworzDowod={() => undefined} />;
+  else if (creator === 'ssci') node = <EkranSsci szczegolyAudytowe />;
   else if (creator === 'wyniki-warsztat')
     node = (
       <WynikiWarsztat
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         pozostale={<div />}
         onOtworzDokumentacje={() => undefined}
       />
@@ -2100,19 +2125,19 @@ function Harness() {
     const rodzajZAdresu = new URLSearchParams(location.search).get('rodzaj');
     node = (
       <EkranAnalizAkademickich
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         rodzajPoczatkowy={(rodzajZAdresu ?? undefined) as never}
       />
     );
   } else if (creator === 'ocena' || creator === 'ocena-przekroczenia')
-    node = <EkranOceny trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranOceny szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
         przebieg={{
           id: migotanieScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
@@ -2132,7 +2157,7 @@ function Harness() {
         przebieg={{
           id: cieplnaScenyWynik.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
@@ -2142,7 +2167,7 @@ function Harness() {
         przebieg={{
           id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );

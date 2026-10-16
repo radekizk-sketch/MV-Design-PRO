@@ -13,7 +13,6 @@
 import { useMemo, useState } from 'react';
 import './dowod.css';
 import type { TraceStep } from '../../../ui/results-inspector/types';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { KrokDowodu } from './KrokDowodu';
 import { SpisKrokow } from './SpisKrokow';
 import { DOWOD_STRINGS } from './strings';
@@ -48,7 +47,7 @@ export interface PrzegladDowoduProps {
   wskazanyElement?: WskazanyElementDowodu | null;
   /** Odcisk danych wejściowych — pokazywany WYŁĄCZNIE w trybie eksperckim. */
   inputHash?: string;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Ślad w trakcie ładowania (sterowane propsami). */
   ladowanie?: boolean;
   /**
@@ -63,7 +62,7 @@ export function PrzegladDowodu({
   kroki,
   wskazanyElement,
   inputHash,
-  trybZaawansowania,
+  szczegolyAudytowe,
   ladowanie,
   akcjaPusty,
 }: PrzegladDowoduProps) {
@@ -72,7 +71,6 @@ export function PrzegladDowodu({
   const elementMaKroki = (wskazanyElement?.kroki.length ?? 0) > 0;
   const [zakresElementu, setZakresElementu] = useState(elementMaKroki);
   const [wybrany, setWybrany] = useState(0);
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   // Wskazanie innego elementu (albo jego zniknięcie) przestawia zakres —
   // inaczej okno pokazywałoby wywód poprzedniego wskazania.
@@ -119,7 +117,7 @@ export function PrzegladDowodu({
 
       {/* Karta #145: odcisk wejścia wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-dowod-informacje-audytowe"
         wiersze={inputHash ? [{ etykieta: DOWOD_STRINGS.odciskWejscia, wartosc: inputHash }] : []}
       />
@@ -167,7 +165,7 @@ export function PrzegladDowodu({
         </nav>
 
         <div className="mvd-dowod-krok-kol">
-          <KrokDowodu krok={model[indeks]} trybZaawansowania={trybZaawansowania} />
+          <KrokDowodu krok={model[indeks]} szczegolyAudytowe={szczegolyAudytowe} />
         </div>
       </div>
     </div>

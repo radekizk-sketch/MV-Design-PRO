@@ -24,7 +24,7 @@ export interface PodgladCertyfikatuProps {
   readonly blad: string | null;
   readonly ladowanie: boolean;
   readonly plikLadowanie: FormatDokumentu | null;
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   readonly onPobierz: (format: FormatDokumentu) => void;
   readonly onZamknij: () => void;
 }
@@ -35,7 +35,7 @@ export function PodgladCertyfikatu({
   blad,
   ladowanie,
   plikLadowanie,
-  trybEkspercki,
+  szczegolyAudytowe,
   onPobierz,
   onZamknij,
 }: PodgladCertyfikatuProps): JSX.Element {
@@ -125,7 +125,7 @@ export function PodgladCertyfikatu({
           </div>
 
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-cert-audyt"
             wiersze={[
               { etykieta: MACIERZ_STRINGS.odciskWejscia, wartosc: widok.odcisk_wejscia_sha256 },

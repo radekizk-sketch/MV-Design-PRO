@@ -48,9 +48,9 @@ async function waitForAppReady(page: Page): Promise<void> {
  * NAPRAWA (karta TESTY-DRYF-E2E poz. 1, 2026-08-12): `/#sld` bez ŻADNEGO
  * aktywnego projektu/case'a pokazuje dziś bramkę „Start projektu: zakres
  * obliczeń i GPZ" zamiast montować workspace (świadoma zmiana kanonu —
- * karty K2-hydratacja i K5 wprowadziły bramkowanie aktywnym case'em na
- * poziomie `WorkflowContextStrip`: `!hasModel` zastępuje CAŁY warsztat
- * bramką, workspace SLD nigdy się nie montuje). Test przepisany do
+ * karty K2-hydratacja i K5 wprowadziły bramkowanie warsztatu aktywnym
+ * case'em: bez modelu CAŁY warsztat zastępuje bramka, workspace SLD nigdy
+ * się nie montuje). Test przepisany do
  * obecnego kanonu Z ZACHOWANIEM INTENCJI (widoczność toru zasilania /
  * pustego stanu na kanwie v3): case zakłada się i aktywuje realną ścieżką
  * (POST /api/projects + /api/study-cases, seed `mv-design-app-state" —

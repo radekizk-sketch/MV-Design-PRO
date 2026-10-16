@@ -164,7 +164,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
   it('brak jakiegokolwiek biegu rozpływu: stan zerowy bez zapytania o ślad', () => {
     useExecutionRunsStore.setState({ runs: [] } as never);
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     expect(T('mvd-jakosc-metody-brak')).toBeInTheDocument();
     expect(mockedTrace).not.toHaveBeenCalled();
@@ -176,7 +176,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     } as never);
     mockedTrace.mockResolvedValue(slad('newton-raphson'));
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(T('mvd-jakosc-metody-brak-fd')).toBeInTheDocument());
     expect(mockedComparison).not.toHaveBeenCalled();
@@ -196,7 +196,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     } as never);
     mockedTrace.mockResolvedValue(slad('fast-decoupled'));
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(T('mvd-jakosc-metody-brak-nr')).toBeInTheDocument());
 
@@ -218,7 +218,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     );
     mockedComparison.mockResolvedValue(porownanie());
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(mockedComparison).toHaveBeenCalledWith('nr-1', 'fd-1'));
     expect(screen.getByTestId('mvd-wyn-tabela')).toBeInTheDocument();
@@ -241,7 +241,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     );
     mockedComparison.mockResolvedValue(porownanie());
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(mockedComparison).toHaveBeenCalledTimes(1));
     expect(mockedTrace).not.toHaveBeenCalledWith('stary-nr');
@@ -256,7 +256,7 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     );
     mockedComparison.mockRejectedValue(new Error('backend down'));
 
-    render(<SekcjaPorownaniaMetod trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(T('mvd-jakosc-metody-blad')).toBeInTheDocument());
   });

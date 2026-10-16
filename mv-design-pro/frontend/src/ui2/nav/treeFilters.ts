@@ -4,7 +4,7 @@
  * inaczej problem głęboko w drzewie byłby niewidoczny po zwinięciu ścieżki.
  */
 
-import { widocznyWTrybie, type TrybMin, type WezelDrzewa } from './treeModel';
+import type { WezelDrzewa } from './treeModel';
 
 function maProblem(wezel: WezelDrzewa): boolean {
   return wezel.liczniki.blokady > 0 || wezel.liczniki.ostrzezenia > 0;
@@ -26,27 +26,10 @@ export function filtrujProblemy(wezly: WezelDrzewa[]): WezelDrzewa[] {
   return wynik;
 }
 
-/**
- * Usuwa węzły (i całe poddrzewa) wymagające trybu zaawansowania wyższego niż
- * `trybAktualny` — ukrycie zgodne z progresywnym odsłanianiem (SPEC_UKLAD_PANELI §2).
- */
-export function filtrujTryb(wezly: WezelDrzewa[], trybAktualny: TrybMin): WezelDrzewa[] {
-  const wynik: WezelDrzewa[] = [];
-  for (const wezel of wezly) {
-    if (!widocznyWTrybie(wezel.trybMin, trybAktualny)) continue;
-    wynik.push({ ...wezel, dzieci: filtrujTryb(wezel.dzieci, trybAktualny) });
-  }
-  return wynik;
-}
-
-/** Zastosowanie obu filtrów w kolejności: tryb (widoczność), potem problemy. */
+/** Zastosowanie filtrów drzewa (dziś: „tylko z problemami"). */
 export function zastosujFiltry(
   wezly: WezelDrzewa[],
-  opcje: { filtrProblemy: boolean; trybAktualny?: TrybMin },
+  opcje: { filtrProblemy: boolean },
 ): WezelDrzewa[] {
-  let efekt = opcje.trybAktualny ? filtrujTryb(wezly, opcje.trybAktualny) : wezly;
-  if (opcje.filtrProblemy) {
-    efekt = filtrujProblemy(efekt);
-  }
-  return efekt;
+  return opcje.filtrProblemy ? filtrujProblemy(wezly) : wezly;
 }

@@ -124,7 +124,7 @@ afterEach(() => {
 /** Otwiera analizę (wejście trasowe) i uruchamia ją — gotowość potwierdzona jawną deklaracją atrapy. */
 async function uruchomRodzaj(rodzaj: string): Promise<HTMLElement> {
   ustawFetchV126({ potwierdzone: [rodzaj], wynikZFixtury: true });
-  render(<EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy={rodzaj as never} />);
+  render(<EkranAnalizAkademickich szczegolyAudytowe rodzajPoczatkowy={rodzaj as never} />);
   await waitFor(() => expect(screen.getByTestId('mvd-akad-uruchom')).toBeEnabled());
   fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
   await screen.findByTestId('mvd-akad-wyniki');
@@ -196,7 +196,7 @@ describe('strażnik prezentacji — kontrola dodatnia reguł', () => {
 describe('strażnik prezentacji — katalog kart na realnym katalogu i gotowości backendu', () => {
   it('katalog kart: żadna widoczna etykieta karty ani stan danych nie jest kodem produkcyjnym', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await screen.findByTestId('mvd-akad-katalog-kart');
     await waitFor(() => expect(screen.getByTestId('mvd-akad-karta-uncertainty_sensitivity')).toHaveTextContent(S.stanDanychPotwierdzona));
     expect(naruszenia(screen.getByTestId('mvd-akad-ekran'))).toEqual([]);
@@ -218,7 +218,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   RODZAJE.forEach((rodzaj) => {
     it(`«${rodzaj}» — widok analizy A–G (przedmiot, dane, gotowość, kryteria) bez kodu produkcyjnego`, async () => {
       ustawFetchV126();
-      render(<EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy={rodzaj as never} />);
+      render(<EkranAnalizAkademickich szczegolyAudytowe rodzajPoczatkowy={rodzaj as never} />);
       await screen.findByTestId('mvd-akad-uruchomienie');
       await waitFor(() => expect(screen.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', expect.stringMatching(/POTWIERDZONA|NIEPOTWIERDZONA/)));
       await waitFor(() => expect(screen.getByTestId('mvd-akad-przedmiot')).toHaveTextContent('CGMES Golden Net'));
@@ -329,7 +329,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
 
   it('świeżość mówi „brak wyników” DOPÓKI przebiegu nie ma (kontrola dodatnia pary)', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await screen.findByTestId('mvd-akad-katalog-kart');
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });

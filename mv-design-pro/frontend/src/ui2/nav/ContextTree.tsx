@@ -25,7 +25,6 @@ import {
   TRYBY_DRZEWA_TOPOLOGII,
   type AkcjaPusty,
   type TrybDrzewaTopologii,
-  type TrybMin,
   type WezelDrzewa,
   type ZrodloZaznaczenia,
 } from './treeModel';
@@ -44,8 +43,6 @@ export interface ContextTreeProps {
   tryb?: TrybDrzewaTopologii;
   onZmienTryb?: (tryb: TrybDrzewaTopologii) => void;
   onMenuKontekstowe?: (id: string, pozycja: { x: number; y: number }) => void;
-  /** Tryb zaawansowania bieżący — węzły o wyższym `trybMin` są ukrywane (§4). */
-  trybAktualny?: TrybMin;
   /** Stan „ładowanie" (szkielet) — sterowany przez wołającego (karta §4). */
   ladowanie?: boolean;
   /** Akcja w stanie „pusty" — etykieta i callback zależą od przestrzeni wołającej. */
@@ -72,14 +69,13 @@ export function ContextTree({
   tryb,
   onZmienTryb,
   onMenuKontekstowe,
-  trybAktualny,
   ladowanie = false,
   akcjaPusty,
   etykietaDrzewa = 'Drzewo kontekstowe',
 }: ContextTreeProps) {
   const wezlyPrzefiltrowane = useMemo(
-    () => zastosujFiltry(wezly, { filtrProblemy, trybAktualny }),
-    [wezly, filtrProblemy, trybAktualny],
+    () => zastosujFiltry(wezly, { filtrProblemy }),
+    [wezly, filtrProblemy],
   );
 
   const [rozwiniete, setRozwiniete] = useState<Set<string>>(() => {
@@ -122,7 +118,7 @@ export function ContextTree({
     rowRefs.current.get(focusedId)?.focus();
   }, [focusedId, widoczneWiersze]);
 
-  const filtrAktywny = filtrProblemy || trybAktualny != null;
+  const filtrAktywny = filtrProblemy;
   const brakZFiltra = wezly.length > 0 && filtrAktywny && widoczneWiersze.length === 0;
   const zupelniePusto = wezly.length === 0;
 

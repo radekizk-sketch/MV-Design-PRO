@@ -16,6 +16,7 @@
 
 import { create } from 'zustand';
 import type {
+  ExecutionAnalysisType,
   ExecutionRun,
   ExecutionResultSet,
   RunStatus,
@@ -41,6 +42,13 @@ interface ExecutionRunsState {
 
   // Cached result sets (run_id → ResultSet)
   runResultsCache: Record<string, ExecutionResultSet>;
+
+  /**
+   * Rodzaj analizy biegu W TOKU (od zlecenia do stanu końcowego) — pasek stanu
+   * powłoki pokazuje, CO się liczy (karta K1 POWLOKA, §9: stan obliczeń widoczny
+   * globalnie). Gaśnie razem z `isExecutingRun`.
+   */
+  trwajacaAnaliza: ExecutionAnalysisType | null;
 
   // Loading states
   isCreatingRun: boolean;
@@ -68,6 +76,7 @@ const initialState = {
   runStatus: null,
   runs: [],
   runResultsCache: {},
+  trwajacaAnaliza: null,
   isCreatingRun: false,
   isExecutingRun: false,
   isLoadingRuns: false,
@@ -108,7 +117,12 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
    * 3. Update local state
    */
   createAndExecuteRun: async (caseId, request) => {
-    set({ isCreatingRun: true, isExecutingRun: true, runError: null });
+    set({
+      isCreatingRun: true,
+      isExecutingRun: true,
+      trwajacaAnaliza: request.analysis_type,
+      runError: null,
+    });
     try {
       // Step 1: Create run
       const run = await api.createRun(caseId, request);
@@ -125,6 +139,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
       set({
         runStatus: executedRun.status as RunStatus,
         isExecutingRun: false,
+        trwajacaAnaliza: null,
       });
 
       // Reload runs list
@@ -138,6 +153,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
         runError: message,
         isCreatingRun: false,
         isExecutingRun: false,
+        trwajacaAnaliza: null,
       });
       throw err;
     }

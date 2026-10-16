@@ -215,6 +215,13 @@ jobs:
       - name: UI — progi napieciowe (jedno zrodlo kryteriow)
         run: $GUARD_PY scripts/ui_progi_napiecia_guard.py
 
+      # Karta K1 POWLOKA: arkusze CSS sa globalne — klasa zdefiniowana w dwoch
+      # arkuszach (dawne `.mvd-menu` powloki i menedzera przypadkow) daje wyglad
+      # zalezny od kolejnosci ladowania; odwolanie do niezdefiniowanego tokenu
+      # `--mvd-*` po cichu bierze wartosc zapasowa. Zapadka w obie strony.
+      - name: UI — kolizje klas CSS i tokeny bez definicji
+        run: $GUARD_PY scripts/css_kolizje_klas_guard.py
+
       # Karta CERTYFIKAT-Z-KATALOGU (2026-09-16): status certyfikatu PTPiREE
       # wylacznie z pola backendu (der.catalogs.ptpiree_status /
       # ptpiree_certificate_ref) — zakaz zgadywania z nazwy referencji

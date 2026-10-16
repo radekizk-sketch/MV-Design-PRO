@@ -21,7 +21,6 @@
 
 import { useEffect, useState } from 'react';
 import './rozplyw.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import { fetchWalidacjaEnergetyczna } from '../jakosc/api';
 import { rodzajPrzekroczeniaWalidacji, typElementuWalidacji } from '../jakosc/jakoscModel';
@@ -70,7 +69,7 @@ export function useWalidacjaObciazen(
 }
 
 export interface TabelaGaleziProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
   /** Preselekcja wiersza (karta D-2, deep-link SLD „Pokaż wyniki"): `branch_id`
@@ -81,7 +80,7 @@ export interface TabelaGaleziProps {
 }
 
 export function TabelaGalezi({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
   wybranyWiersz,
@@ -117,7 +116,7 @@ export function TabelaGalezi({
         wiersze={naWierszeGalezi(wynik.branch_results, nazwaObiektu, obciazenia)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_ID_GALEZI}
         nazwaElementuWiersza={(ref) => nazwaObiektu(ref)}
         wybranyWiersz={wybranyWiersz}

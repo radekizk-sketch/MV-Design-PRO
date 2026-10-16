@@ -32,7 +32,7 @@ export function EkranAnalizy({
   onEksport,
   onPrzelicz,
   onPokazElement,
-  trybZaawansowania,
+  szczegolyAudytowe,
   informacjeAudytowe = [],
   kluczWiersza,
   onWybierzWiersz,
@@ -52,7 +52,6 @@ export function EkranAnalizy({
   // nie powód do zgadywania.
   const pokazPrzyczyny =
     maSwiezosc && caseId !== undefined && rewizjaDanych! < rewizjaModelu!;
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   return (
     <div className="mvd-wyn" data-testid="mvd-wyn-ekran">
@@ -82,7 +81,7 @@ export function EkranAnalizy({
       {/* Karta #145: identyfikator przebiegu i pozostałe metadane produkcyjne wyłącznie
           tutaj — zwinięte, w trybie eksperckim — nigdy w nagłówku ani w tabeli. */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-wyn-informacje-audytowe"
         wiersze={[
           ...(runId ? [{ etykieta: WZORZEC_STRINGS.identyfikatorPrzebiegu, wartosc: runId }] : []),
@@ -104,7 +103,7 @@ export function EkranAnalizy({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={kluczWiersza}
         onWybierzWiersz={onWybierzWiersz}
         wybranyWiersz={wybranyWiersz}

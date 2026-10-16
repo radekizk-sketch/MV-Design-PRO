@@ -31,7 +31,6 @@
  */
 
 import { useState } from 'react';
-import type { AdvancementMode } from '../../../shell/modeModel';
 import {
   useOdswiezaniePrzebiegow,
   useStanPrzebiegow,
@@ -45,12 +44,12 @@ import './przebiegi.css';
 
 export interface PrzebiegiPanelProps {
   /** Tryb zaawansowania powłoki — koduje widoczność identyfikatorów (§2.7). */
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Akcja „Pokaż wyniki" — integrator aktywuje przebieg i otwiera Wyniki. */
   onPokazWyniki: (runId: string) => void;
 }
 
-export function PrzebiegiPanel({ trybZaawansowania, onPokazWyniki }: PrzebiegiPanelProps) {
+export function PrzebiegiPanel({ szczegolyAudytowe, onPokazWyniki }: PrzebiegiPanelProps) {
   const stan = useStanPrzebiegow();
   const wiersze = useWierszePrzebiegow();
   const ogloszenie = useOdswiezaniePrzebiegow();
@@ -134,7 +133,7 @@ export function PrzebiegiPanel({ trybZaawansowania, onPokazWyniki }: PrzebiegiPa
         <section className="mvd-przebiegi-szczegoly" aria-label={T.sekcjaParametry}>
           <SzczegolyPrzebiegu
             przebieg={zaznaczony}
-            trybEkspercki={trybZaawansowania === 'expert'}
+            szczegolyAudytowe={szczegolyAudytowe}
             onPokazWyniki={onPokazWyniki}
           />
         </section>

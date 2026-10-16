@@ -154,7 +154,7 @@ afterEach(() => {
 });
 
 const PROPS = {
-  trybZaawansowania: 'basic' as const,
+  szczegolyAudytowe: false as const,
   onPokazWyniki: () => {},
   onPrzejdzDoScenariuszy: () => {},
 };

@@ -77,7 +77,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
     useAppStateStore.setState({ activeCaseId: null });
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-akad-brak-przypadku')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 
   it('katalog kart pochodzi z backendu: komplet prezentowanych, w grupach i kolejności kontraktu', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await screen.findByTestId('mvd-akad-katalog-kart');
     const prezentowane = KATALOG.filter((k) => k.prezentowany && rodzajPrezentowany(k.kod));
     expect(prezentowane.length).toBeGreaterThan(5);
@@ -112,7 +112,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 
   it('karta niesie PODSTAWĘ OCENY tylko wtedy, gdy solver ją stosuje; inaczej „Brak podstawy normatywnej" z powodem', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     const zPodstawa = KATALOG.find((k) => k.prezentowany && k.podstawa_oceny.length > 0)!;
     const bezPodstawy = KATALOG.find((k) => k.prezentowany && k.podstawa_oceny.length === 0)!;
     const kartaZ = await screen.findByTestId(`mvd-akad-karta-${zPodstawa.kod}`);
@@ -126,7 +126,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 
   it('STAN DANYCH każdej karty pochodzi z gotowości backendu (potwierdzona / liczba braków)', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     const potwierdzona = GOTOWOSC.analizy.find((a) => a.gotowosc === 'POTWIERDZONA' && rodzajPrezentowany(a.kod))!;
     const zBrakami = GOTOWOSC.analizy.find((a) => a.gotowosc === 'NIEPOTWIERDZONA' && a.braki.length > 1)!;
     await waitFor(() =>
@@ -137,7 +137,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 
   it('katalog niedostępny → uczciwy błąd z ponowieniem (klik natywny odpytuje ponownie), ZERO listy zastępczej', async () => {
     const mock = ustawFetchV126({ katalog: 'blad' });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     const blad = await screen.findByTestId('mvd-akad-katalog-blad');
     expect(blad).toHaveTextContent(S.katalogBlad);
     expect(screen.queryByTestId('mvd-akad-karta-otworz-earthing_safety')).not.toBeInTheDocument();
@@ -150,14 +150,14 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 
   it('katalog pusty → uczciwy stan zerowy, bez możliwości uruchomienia', async () => {
     ustawFetchV126({ katalog: [] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     expect(await screen.findByTestId('mvd-akad-katalog-pusty')).toHaveTextContent(S.katalogBrak);
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
   });
 
   it('gotowość kart niedostępna → karty NADAL widoczne ze stanem „nieustalony" (nie zgadujemy za backend)', async () => {
     ustawFetchV126({ gotowosc: 'blad' });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await waitFor(() =>
       expect(screen.getByTestId('mvd-akad-karta-earthing_safety')).toHaveTextContent(S.stanDanychNieustalony),
     );
@@ -167,7 +167,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
 describe('EkranAnalizAkademickich — widok analizy A–G', () => {
   it('otwarcie karty (klik natywny): nagłówek z nazwą i grupą, sekcje A–G, powrót do katalogu', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('transient_trv');
     const k = karta('transient_trv');
     expect(screen.getByRole('heading', { level: 2, name: k.nazwa_pl })).toBeInTheDocument();
@@ -191,7 +191,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('C. DANE WEJŚCIOWE z rozdziałem źródeł: z modelu (wartości z gotowości), od użytkownika (wymagane/opcjonalne), domyślne solvera, brakujące', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('transient_trv');
     const k = karta('transient_trv');
     const g = gotowosc('transient_trv');
@@ -223,7 +223,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('D. GOTOWOŚĆ NIEPOTWIERDZONA: lista braków, sprawdzone warunki, uruchomienie zablokowane z powodem', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     const g = gotowosc('reliability_contingency');
     expect(g.gotowosc).toBe('NIEPOTWIERDZONA');
@@ -254,7 +254,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('D. GOTOWOŚĆ POTWIERDZONA z fixtury (bez danych od użytkownika): brak sekcji braków, uruchomienie dostępne', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('uncertainty_sensitivity');
     expect(gotowosc('uncertainty_sensitivity').gotowosc).toBe('POTWIERDZONA');
     await waitFor(() => expect(screen.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', 'POTWIERDZONA'));
@@ -268,7 +268,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('gotowość sprawdzana DOKŁADNIE dla parametrów formularza (predykaty parami z uruchomieniem)', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['transient_trv'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('transient_trv');
     await waitFor(() => expect(zapytaniaGotowosci(mock).some((z) => z.rodzaj === 'transient_trv')).toBe(true));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-breaker_rated_voltage_kv'), { target: { value: '15,75' } });
@@ -283,7 +283,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('błąd sprawdzenia gotowości → uczciwy komunikat, ponowienie (klik natywny), uruchomienie niedostępne', async () => {
     const mock = ustawFetchV126({ gotowosc: 'blad' });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('uncertainty_sensitivity');
     const blad = await screen.findByTestId('mvd-akad-gotowosc-blad');
     expect(blad).toHaveTextContent(S.gotowoscBlad);
@@ -296,7 +296,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 
   it('E. KRYTERIA: tabela z wielkością, symbolem, warunkiem, granicą, jednostką i podstawą; bez podstawy — BRAK PODSTAW DO OCENY', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     const k = karta('motor_starting');
     const tabela = screen.getByTestId('mvd-akad-kryteria-tabela');
@@ -318,7 +318,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
 describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 §0.1/§0.11)', () => {
   it('E. KRYTERIA: symbol i warunek każdego kryterium renderują się przez KaTeX (.katex w DOM)', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     const tabela = screen.getByTestId('mvd-akad-kryteria-tabela');
     const k = karta('motor_starting');
@@ -331,7 +331,7 @@ describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 
 
   it('ślad i dowód: wzór i podstawienie renderują się przez KaTeX, gdy backend niesie *_latex', async () => {
     ustawFetchV126({ potwierdzone: ['motor_starting'], krokowSladu: 2 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     await uruchom();
     const slad = screen.getByTestId('mvd-akad-slad');
@@ -346,7 +346,7 @@ describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 
 
   it('cały widok analizy: zero surowego ASCII ("<=" / ">=" / "sqrt(") w tekście widocznym dla projektanta', async () => {
     ustawFetchV126({ potwierdzone: ['motor_starting'], krokowSladu: 2 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     await uruchom();
     // Ślad i dowód są domyślnie zwinięte — rozwiń, żeby sprawdzić TEŻ ich treść.
@@ -361,7 +361,7 @@ describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 
 describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   it('klik „Uruchom analizę" → wynik, ślad, dowód i raport z czterech końcówek', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 4 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     // Karta #145: pełny zapis odpowiedzi solvera stoi w „Informacjach audytowych".
@@ -379,7 +379,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 
   it('rodzaj bez parametrów wysyła PUSTY ładunek — zero fabrykacji danych wejściowych', async () => {
     const mock = ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('uncertainty_sensitivity');
     await uruchom();
     expect(zadaniaPost(mock)).toHaveLength(1);
@@ -388,7 +388,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 
   it('gotowość NIEPOTWIERDZONA = brak uruchomienia: przycisk nieaktywny, ZERO żądań POST', async () => {
     const mock = ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     await waitFor(() => expect(screen.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', 'NIEPOTWIERDZONA'));
     expect(screen.getByTestId('mvd-akad-uruchom')).toBeDisabled();
@@ -398,7 +398,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 
   it('błąd biegu → uczciwy komunikat backendu (pole detail), bez wyniku', async () => {
     ustawFetchV126({ bladBiegu: 'Przypadek nie ma zatwierdzonego modelu sieci z węzłami.' });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('uncertainty_sensitivity');
     await waitFor(() => expect(screen.getByTestId('mvd-akad-uruchom')).toBeEnabled());
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
@@ -424,7 +424,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
         },
       },
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
@@ -439,7 +439,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
 
   it('payload BEZ ranking_n1 (inny rodzaj) nie renderuje sekcji — uczciwy brak, nie pusty stan', async () => {
     ustawFetchV126({ potwierdzone: ['earth_fault_detection'], wynik: { neutral_grounding: 'petersen_tuned', recommended_method: 'wattmetric' } });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('earth_fault_detection');
     await uruchom();
     expect(screen.queryByTestId('mvd-akad-ranking-n1')).not.toBeInTheDocument();
@@ -458,7 +458,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
         },
       },
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
@@ -469,7 +469,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
 describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów', () => {
   it('ślad dłuższy niż 8 kroków renderuje się w CAŁOŚCI (limit powierzchni zastanej)', async () => {
     ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 25 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     fireEvent.click(screen.getByTestId('mvd-akad-slad-przelacz'));
@@ -480,7 +480,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 
   it('dowód dłuższy niż 8 kroków renderuje się w CAŁOŚCI', async () => {
     ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 17 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     fireEvent.click(screen.getByTestId('mvd-akad-dowod-przelacz'));
@@ -492,7 +492,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
   // KAŻDA metryka obu sekcji trafia do „Informacji audytowych", nic nie jest ucinane.
   it('raport: wszystkie metryki tożsamości dowodu i audytu w informacjach audytowych (bez limitu)', async () => {
     ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 7 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     expect(screen.getByTestId('mvd-akad-raport-opis')).toHaveTextContent('7');
@@ -507,7 +507,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     const wynik: Record<string, unknown> = {};
     for (let i = 0; i < 30; i += 1) wynik[`pole_${i}`] = i;
     ustawFetchV126({ potwierdzone: ['reliability_contingency'], wynik });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
     // Karta #145: pełny zapis odpowiedzi solvera — każde pole — w „Informacjach audytowych".
@@ -521,7 +521,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji „Dane wejściowe")', () => {
   it('wypełnione pole trafia do żądania; pola puste NIE tworzą kluczy', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['transient_trv'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('transient_trv');
     expect(screen.getByTestId('mvd-akad-parametry')).toBeInTheDocument();
     fireEvent.change(screen.getByTestId('mvd-akad-pole-breaker_rated_voltage_kv'), { target: { value: '15,75' } });
@@ -531,7 +531,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
 
   it('lista silników: dodanie wiersza, wybór szyny z modelu (nie wpis dowolny) i dane trafiają do ładunku', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['motor_starting'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-ref'), { target: { value: 'M-1' } });
@@ -546,7 +546,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
 
   it('liczba odbiorców (niezawodność, karta B-02): wiersze szyna → liczba trafiają jako mapa `customer_counts`', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
     expect(screen.getByTestId('mvd-akad-lista')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
@@ -563,7 +563,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
 
   it('zmiana analizy czyści parametry — wpisy nie wyciekają do innej analizy', async () => {
     const mock = ustawFetchV126({ potwierdzone: ['neutral_earthing_design', 'earth_fault_detection'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('neutral_earthing_design');
     fireEvent.change(screen.getByTestId('mvd-akad-pole-petersen_detuning'), { target: { value: '500' } });
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
@@ -574,7 +574,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
 
   it('analiza licząca wprost z modelu nie ma formularza; jakość energii ma tabelę wierszy widma', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('insulation_coordination');
     expect(screen.queryByTestId('mvd-akad-parametry')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
@@ -588,7 +588,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
 
   it('formularz bez duplikacji kontraktu (karta V12.7 §0.4): plakietki WYMAGANE/OPCJONALNE, podsumowanie n/m z gotowości backendu (nie z DOM), pełna tabela zwinięta domyślnie', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('transient_trv');
     const k = karta('transient_trv');
     const g = gotowosc('transient_trv');
@@ -643,7 +643,7 @@ describe('EkranAnalizAkademickich — stan danych karty, odmiana liczebnika PL (
 describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweniencja (karta W2-C)', () => {
   it('wynik bez pominiętych i bez proweniencji nie renderuje sekcji', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('power_quality_harmonics');
     await uruchom();
     expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
@@ -655,7 +655,7 @@ describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweni
       pominieteZrodla: [{ ref: 'PV-BRAK', kod: 'generator.harmonic_spectrum_missing', powod: 'Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych.' }],
       zrodlaWidma: [{ ref: 'PV-OK', proweniencja: 'KATALOG' }],
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('power_quality_harmonics');
     await uruchom();
     expect(screen.getByTestId('mvd-akad-zrodla-harmoniczne')).toBeInTheDocument();
@@ -672,7 +672,7 @@ describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweni
       potwierdzone: ['earthing_safety'],
       pominieteZrodla: [{ ref: 'PV-1', kod: 'generator.converter_card_missing', powod: 'brak karty' }],
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('earthing_safety');
     await uruchom();
     expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
@@ -682,7 +682,7 @@ describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweni
 describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', () => {
   it('analiza z katalogiem odniesienia pobiera go dopiero po rozwinięciu (sekcja F)', async () => {
     const mock = ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('power_quality_harmonics');
     expect(karta('power_quality_harmonics').katalog_odniesienia).toBeTruthy();
     expect(mock.mock.calls.filter((w) => String(w[0]).includes('/api/catalog/v126/harmonic-limits'))).toHaveLength(0);
@@ -694,14 +694,14 @@ describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', ()
 
   it('analiza bez katalogu odniesienia nie pokazuje sekcji danych odniesienia', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
     expect(screen.queryByTestId('mvd-akad-katalog')).not.toBeInTheDocument();
   });
 
   it('analiza SSCI kieruje do okna stabilności SSCI zamiast duplikować werdykt', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('ssci_impedance');
     fireEvent.click(screen.getByTestId('mvd-akad-przejdz-ssci'));
     expect(useShellStore.getState().wynikiTab).toBe('ssci');
@@ -711,14 +711,14 @@ describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', ()
 describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście trasowe', () => {
   it('świeżość pochodzi ze wspólnego kontraktu — bez wyników stan „brak wyników"', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await screen.findByTestId('mvd-akad-katalog-kart');
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
   it('identyfikatory techniczne przebiegu są w oknie eksperckim po biegu, w sekcji „Informacje audytowe" (karta V12.7 §0.3 — poza pierwszym planem, nie usunięte)', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('uncertainty_sensitivity');
     await uruchom();
     // Zwinięta domyślnie — poza pierwszym planem, ale klik natywny ją ujawnia.
@@ -729,7 +729,7 @@ describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście tra
 
   it('analiza wybrana z góry (wejście z ekranu trasowego) startuje w widoku analizy z powrotem do katalogu', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy="earthing_safety" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe rodzajPoczatkowy="earthing_safety" />);
     await screen.findByTestId('mvd-akad-uruchomienie');
     expect(screen.getByRole('heading', { level: 2, name: karta('earthing_safety').nazwa_pl })).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-uziom')).toBeInTheDocument();
@@ -747,7 +747,7 @@ describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście tra
 describe('EkranAnalizAkademickich — brama opracowania (V126-JEZYK)', () => {
   it('tor podstawowy: brama zamiast treści, ZERO wołań do backendu', () => {
     const fetchMock = ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-akad-brama-opracowania')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-katalog-kart')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
@@ -756,13 +756,13 @@ describe('EkranAnalizAkademickich — brama opracowania (V126-JEZYK)', () => {
 
   it('tor rozszerzony: brama nadal zamknięta', () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="extended" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-akad-brama-opracowania')).toBeInTheDocument();
   });
 
   it('tryb ekspercki: brama otwarta, okno pyta katalog kart i gotowość (kontrola dodatnia)', async () => {
     const fetchMock = ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await screen.findByTestId('mvd-akad-katalog-kart');
     expect(screen.queryByTestId('mvd-akad-brama-opracowania')).not.toBeInTheDocument();
     const adresy = fetchMock.mock.calls.map((w) => String(w[0]));

@@ -12,7 +12,8 @@ async function waitForAppReady(page: Page): Promise<void> {
     state: 'attached',
     timeout: 15000,
   });
-  await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
+  // Pasek projektu (karta K1 POWLOKA: zastąpił pasek tytułowy i pasek przypadku).
+  await expect(page.locator('[data-testid="active-case-bar"]')).toBeVisible();
 }
 
 /**
@@ -99,15 +100,15 @@ test.describe('UI Integration E2E Happy Path', () => {
     await waitForAppReady(page);
   });
 
-  test('renders canonical active case bar and mode indicator', async ({ page }) => {
-    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
-    await expect(page.locator('[data-testid="mvd-casebar-project"]')).toContainText('Projekt Testowy');
-    await expect(page.locator('[data-testid="mvd-casebar-chip"]')).toContainText('Zakres Testowy 3F');
+  test('renders canonical project bar (project, scope, calculate)', async ({ page }) => {
+    await expect(page.locator('[data-testid="active-case-bar"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-projekt-nazwa"]')).toContainText('Projekt Testowy');
+    await expect(page.locator('[data-testid="mvd-projekt-przypadek"]')).toContainText('Zakres Testowy 3F');
     await expect(page.locator('[data-testid="mvd-calculate"]')).toBeVisible();
   });
 
-  test('opens canonical variants helper surface z active case bar', async ({ page }) => {
-    await page.locator('[data-testid="mvd-casebar-chip"]').click();
+  test('opens canonical variants helper surface z paska projektu', async ({ page }) => {
+    await page.locator('[data-testid="mvd-projekt-przypadek"]').click();
 
     await expect(page).toHaveURL(/#variants(\?|$)/);
     // NAPRAWA (karta TESTY-DRYF-E2E poz. 7, 2026-08-12; przepisanie testu wg
@@ -119,7 +120,7 @@ test.describe('UI Integration E2E Happy Path', () => {
     // (`ui2/AppRoot.tsx`: `wykonajAkcjeMenu('variants')` ->
     // `navigateToVariants`), ktora renderuje `MenedzerPrzypadkow` wewnatrz
     // `workspace-surface-main` (`LegacyWarsztat.tsx` space==='obliczenia').
-    // INTENCJA BEZ ZMIAN: klik w casebar-chip ma otworzyc kanoniczny widok
+    // INTENCJA BEZ ZMIAN: klik w chip zakresu (dawniej casebar-chip) ma otworzyc kanoniczny widok
     // wariantow/przebiegow zakresu obliczen — sprawdzamy dokladnie to, tylko
     // pod obecnymi testidami/naglowkiem ("Przypadki obliczeniowe").
     const surface = page.locator('[data-testid="workspace-surface-main"]');
@@ -129,20 +130,24 @@ test.describe('UI Integration E2E Happy Path', () => {
     await expect(menedzerPrzypadkow.getByRole('heading', { name: 'Przypadki obliczeniowe' })).toBeVisible();
   });
 
-  test('switches shell mode on canonical analytical routes', async ({ page }) => {
+  test('toolbar on every route; canvas mode switch only on the schematic canvas', async ({ page }) => {
+    // Karta K1 POWLOKA: dawny pasek metryk (`workflow-context-strip`) skasowano —
+    // jego polecenia przeszły do paska narzędzi (obecny na każdej trasie), a
+    // przełącznik Edycja/Podgląd pokazuje się wyłącznie nad kanwą schematu.
     await page.goto('/#analysis');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
-    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="mvd-pasek-narzedzi"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-schemat-tryb"]')).toHaveCount(0);
 
     await page.goto('/#proof');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
-    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="mvd-pasek-narzedzi"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-schemat-tryb"]')).toHaveCount(0);
 
-    await page.goto('/');
+    await page.goto('/#sld');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="workflow-context-strip"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-schemat-tryb"]')).toBeVisible();
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
   });
 
   test('persists seeded UI state in localStorage', async ({ page }) => {
@@ -173,11 +178,12 @@ test.describe('Context Bar Synchronization', () => {
 
     await page.goto('/#analysis');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="mvd-schemat-tryb"]')).toHaveCount(0);
+    await expect(calculateButton).toBeVisible();
 
     await page.goto('/#sld');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="workflow-context-strip"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-schemat-tryb"]')).toBeVisible();
     await expect(calculateButton).toBeVisible();
   });
 });

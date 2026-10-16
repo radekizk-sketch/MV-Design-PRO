@@ -28,7 +28,7 @@ afterEach(() => {
 
 describe('SekcjaSilySieci — brak przebiegu (kryterium 4)', () => {
   it('bez zakończonego zwarcia pokazuje instrukcję zamiast pustki', () => {
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-oze-sila-brak-przebiegu')).toHaveTextContent(
       'Przeprowadź analizę zwarciową',
     );
@@ -46,7 +46,7 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
 
   it('renderuje WSCR, werdykt i SCR per węzeł z backendu', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-sila-wynik')).toBeInTheDocument();
     expect(pobierzSileSieci).toHaveBeenCalledWith('sc-run');
     expect(screen.getByTestId('mvd-oze-sila-wscr')).toHaveTextContent('4,5');
@@ -59,7 +59,7 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
       snapshot: { buses: [{ ref_id: 'bus-pcc-3', id: 'b3', name: 'Szyna PCC farmy 3', voltage_kv: 15 }] },
     } as never);
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     const wezel = await screen.findByTestId('mvd-oze-sila-wezel-bus-pcc-3');
     expect(wezel).toHaveTextContent('Szyna PCC farmy 3');
     expect(wezel).toHaveTextContent(BRAKI_DANYCH_SILY.s_sc_mva);
@@ -70,7 +70,7 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
 
   it('rozwija ślad WHITE BOX węzła inline (wzór ASCII)', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.queryByTestId('mvd-oze-slad-kroki')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-oze-sila-slad-otworz-bus-pcc-1'));
@@ -79,7 +79,7 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
 
   it('błąd końcówki → jawny stan błędu', async () => {
     pobierzSileSieci.mockRejectedValue(new Error('422 brak zwarcia'));
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-sila-blad')).toHaveTextContent('422 brak zwarcia');
   });
 });
@@ -94,7 +94,7 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
 
   it('wyróżniony moduł podświetla wiersz swojego węzła (i tylko jego)', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} wyroznionyModul="src-2" />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} wyroznionyModul="src-2" />);
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.getByTestId('mvd-oze-sila-wezel-bus-pcc-2')).toHaveAttribute(
       'data-wyrozniony',
@@ -108,7 +108,7 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
 
   it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} wyroznionyModul="modul-obcy" />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} wyroznionyModul="modul-obcy" />);
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.getByTestId('mvd-oze-sila-wyroznienie-brak')).toHaveTextContent(
       'nieodnaleziony',
@@ -120,7 +120,7 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
 
   it('bez wyróżnionego modułu nie pokazuje adnotacji ani podświetlenia', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
-    render(<SekcjaSilySieci trybEkspercki={false} />);
+    render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-wezel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-brak')).not.toBeInTheDocument();

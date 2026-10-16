@@ -139,7 +139,7 @@ export function TracePanel({
   maxHeight = 600,
 }: TracePanelProps) {
   const labels = LABELS.trace;
-  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
 
   // Track expanded steps
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -208,7 +208,7 @@ export function TracePanel({
           )}
           {/* Karta #145: identyfikator obliczeń wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="trace-panel-informacje-audytowe"
             wiersze={runId ? [{ etykieta: labels.identyfikatorObliczen, wartosc: runId }] : []}
           />

@@ -16,7 +16,6 @@
 import { TRACE_FIELD_LABELS } from '../../../ui/results-inspector/types';
 import { MathBlock } from '../../../ui/proof';
 import { emituj } from '../../events';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe, useNazwaObiektu } from '../wzorzec';
 import type { WierszInformacjiAudytowych } from '../wzorzec';
 import { DOWOD_STRINGS } from './strings';
@@ -25,7 +24,7 @@ import type { KrokDowoduModel, WartoscDowodu } from './dowodModel';
 
 export interface KrokDowoduProps {
   krok: KrokDowoduModel;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /**
@@ -100,8 +99,7 @@ function wierszeAudytuKroku(krok: KrokDowoduModel): WierszInformacjiAudytowych[]
   );
 }
 
-export function KrokDowodu({ krok, trybZaawansowania }: KrokDowoduProps) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
   const nazwaObiektu = useNazwaObiektu();
   const dane = wielkosciPierwszegoPlanu(krok.dane);
   const wynik = wielkosciPierwszegoPlanu(krok.wynik);
@@ -187,7 +185,7 @@ export function KrokDowodu({ krok, trybZaawansowania }: KrokDowoduProps) {
 
       <InformacjeAudytowe
         wiersze={wierszeAudytuKroku(krok)}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-dowod-krok-informacje-audytowe"
       />
     </article>

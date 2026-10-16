@@ -15,7 +15,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './zdolnosc.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
@@ -172,10 +171,10 @@ function WierszWezla({
 
 function WynikZdolnosci({
   dane,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dane: WidokZdolnosci;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const slupki = useMemo(() => slupkiZdolnosci(dane.nodes), [dane.nodes]);
   const liczbaKolumn = 8;
@@ -222,7 +221,7 @@ function WynikZdolnosci({
 
       {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-zdol-informacje-audytowe"
         wiersze={[
           { etykieta: ZDOLNOSC_STRINGS.ekspPrzebieg, wartosc: dane.context.run_id },
@@ -238,11 +237,10 @@ function WynikZdolnosci({
 // ---------------------------------------------------------------------------
 
 export interface EkranZdolnosciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function EkranZdolnosci({ trybZaawansowania }: EkranZdolnosciProps) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+export function EkranZdolnosci({ szczegolyAudytowe }: EkranZdolnosciProps) {
 
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
@@ -402,7 +400,7 @@ export function EkranZdolnosci({ trybZaawansowania }: EkranZdolnosciProps) {
               testid="mvd-zdol-blad"
             />
           ) : (
-            <WynikZdolnosci dane={stan.dane} trybEkspercki={trybEkspercki} />
+            <WynikZdolnosci dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} />
           )}
         </>
       )}

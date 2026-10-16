@@ -127,7 +127,7 @@ export interface EkranAnalizyProps {
    * funkcji lista przyczyn pozostaje czytelna, ale nieklikalna.
    */
   onPokazElement?: (elementRef: string) => void;
-  trybZaawansowania: import('../../shell/modeModel').AdvancementMode;
+  szczegolyAudytowe: boolean;
   /**
    * Metadane produkcyjne TEGO wyniku (odciski danych wejściowych i modelu, wersje,
    * identyfikatory) — trafiają do JEDYNEGO miejsca na metadane, „Informacji

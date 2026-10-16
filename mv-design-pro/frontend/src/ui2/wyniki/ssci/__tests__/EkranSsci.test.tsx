@@ -75,7 +75,7 @@ describe('EkranSsci — stany wejściowe', () => {
   it('bez aktywnego przypadku → uczciwa instrukcja, bez wołań API', () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-ssci-brak-przypadku')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-ssci-uruchom')).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe('EkranSsci — ścieżka natywna (ocena niewykonana)', () => {
   it('klik „Uruchom" → utworzenie przebiegu, rekord oceny i metryki w sekcji audytowej', async () => {
     ustawFetch(widokZMetrykamiFixture());
     aktywujPrzypadek();
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
 
     // Realna ścieżka natywna: kliknięcie przycisku uruchomienia.
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
@@ -111,7 +111,7 @@ describe('EkranSsci — ścieżka natywna (ocena niewykonana)', () => {
   it('brak danych karty (brak przekształtnika/DER) → uczciwy stan, bez metryk', async () => {
     ustawFetch(widokBrakDanychFixture());
     aktywujPrzypadek();
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
 
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
 
@@ -126,7 +126,7 @@ describe('EkranSsci — ślad WHITE BOX (tryb ekspercki)', () => {
   it('tryb podstawowy: brak śladu', async () => {
     ustawFetch(widokZMetrykamiFixture());
     aktywujPrzypadek();
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
     await screen.findByTestId('mvd-ssci-ocena');
     expect(screen.queryByTestId('mvd-ssci-slad-blok')).not.toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('EkranSsci — ślad WHITE BOX (tryb ekspercki)', () => {
   it('tryb ekspercki: ślad dostępny i rozwijany natywnym klikiem', async () => {
     ustawFetch(widokZMetrykamiFixture());
     aktywujPrzypadek();
-    render(<EkranSsci trybZaawansowania="expert" />);
+    render(<EkranSsci szczegolyAudytowe />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
     await screen.findByTestId('mvd-ssci-ocena');
 
@@ -158,7 +158,7 @@ describe('EkranSsci — pętla decyzji bez werdyktu (F-K4 odwrócona)', () => {
     aktywujPrzypadek();
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
-    render(<EkranSsci trybZaawansowania="basic" />);
+    render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
 
     await screen.findByTestId('mvd-ssci-ocena');

@@ -533,7 +533,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
   });
 
   it('założenia: jedna lista zdań z nazwami (bez zapisu technicznego rdzenia i identyfikatorów)', async () => {
-    render(<EkranDynamiki trybZaawansowania="expert" />);
+    render(<EkranDynamiki szczegolyAudytowe />);
     const sekcja = await screen.findByTestId('mvd-dynamika-zalozenia');
     const zdania = (wynik as { opis_wyniku: { zalozenia_modelu: string[] } }).opis_wyniku.zalozenia_modelu;
     expect(zdania.length).toBeGreaterThan(5);
@@ -547,7 +547,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
   });
 
   it('oceny „nie oceniono" z backendu, poziom dowodowy nazwany, zero werdyktu', async () => {
-    render(<EkranDynamiki trybZaawansowania="expert" />);
+    render(<EkranDynamiki szczegolyAudytowe />);
     const oceny = await screen.findByTestId('mvd-dynamika-oceny');
     const rekordy = within(oceny).getAllByTestId(/^mvd-dynamika-ocena-/);
     expect(rekordy).toHaveLength(2);
@@ -576,7 +576,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
         isLoading: false,
         error: null,
       }));
-      render(<EkranDynamiki trybZaawansowania="expert" />);
+      render(<EkranDynamiki szczegolyAudytowe />);
       await screen.findByTestId('mvd-dynamika-oceny');
       expect(kontraktMock).toHaveBeenCalledWith(RUN);
       const obszar = screen.queryByTestId('mvd-dynamika-swiezosc');

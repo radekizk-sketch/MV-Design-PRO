@@ -27,7 +27,7 @@ const mockedWalidacja = vi.mocked(fetchWalidacjaEnergetyczna);
 
 function props(over: Partial<Parameters<typeof TabelaGalezi>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -115,9 +115,9 @@ describe('TabelaGalezi — konkretyzacja wzorca na realnym kształcie danych', (
   });
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
-    const { rerender } = render(<TabelaGalezi {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<TabelaGalezi {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
-    rerender(<TabelaGalezi {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<TabelaGalezi {...props({ szczegolyAudytowe: true })} />);
     // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
     fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
     expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');

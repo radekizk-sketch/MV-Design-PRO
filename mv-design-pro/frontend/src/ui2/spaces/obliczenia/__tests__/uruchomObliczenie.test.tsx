@@ -8,7 +8,7 @@
  * klik) i to, że akcja woła ISTNIEJĄCY tor `createAndExecuteRun` z właściwym
  * rodzajem analizy (bez fabrykowania nowych endpointów).
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -38,7 +38,7 @@ function runFixture(over: Partial<ExecutionRun> = {}): ExecutionRun {
   };
 }
 
-let createAndExecuteRun: ReturnType<typeof vi.fn>;
+let createAndExecuteRun: Mock<[string, { analysis_type: string }], Promise<ExecutionRun>>;
 
 beforeEach(() => {
   createAndExecuteRun = vi.fn(async (_caseId: string, request: { analysis_type: string }) =>
@@ -185,7 +185,7 @@ describe('UruchomObliczenie — jawny start przebiegu w przestrzeni „Obliczeni
 
 describe('Stany zerowe ekranów wyników — akcja zamiast ślepego zaułka', () => {
   it('pusty ekran zwarć: akcja uruchamia bieg ZWARCIOWY', async () => {
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
 
     expect(screen.getByTestId('mvd-zwarcia-ekran-pusty')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('mvd-zwarcia-pusty-akcja'));

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// E1.7c: aktywna powłoka = ui2 (AppShell/CaseBar/strings) + aktywne
+// E1.7c: aktywna powłoka = ui2 (AppShell/pasek projektu/strings) + aktywne
 // powierzchnie legacy; stara rama (AppShellV12/TopBar/NavigationRail)
 // została skasowana.
 const ACTIVE_SHELL_FILES = [
@@ -10,7 +10,9 @@ const ACTIVE_SHELL_FILES = [
   ['workspace', 'types.ts'],
   ['navigation', 'routes.ts'],
   ['../ui2/shell', 'AppShell.tsx'],
-  ['../ui2/shell', 'CaseBar.tsx'],
+  ['../ui2/shell', 'PasekProjektu.tsx'],
+  ['../ui2/shell', 'PasekNarzedzi.tsx'],
+  ['../ui2/shell', 'StatusBar.tsx'],
   ['../ui2/shell', 'strings.ts'],
 ] as const;
 
@@ -19,7 +21,8 @@ const ACTIVE_SHELL_FILES = [
 // wskrzeszania okienkowego menu starego typu (Plik/Narzędzia/Pomoc).
 const ACTIVE_TOP_MENU_FILES = [
   ['../ui2/shell', 'AppShell.tsx'],
-  ['../ui2/shell', 'TitleBar.tsx'],
+  ['../ui2/shell', 'PasekProjektu.tsx'],
+  ['../ui2/shell', 'MenuPowloki.tsx'],
   ['../ui2/shell', 'SpaceNav.tsx'],
 ] as const;
 

@@ -21,7 +21,7 @@ vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -78,12 +78,12 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
   });
 
   it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {
-    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByTestId('mvd-wyn-th-zk')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-wyn-th-kappa')).toBeInTheDocument();
     unmount();
     ustawWynik();
-    await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-th-zk')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-th-kappa')).not.toBeInTheDocument();
   });
@@ -242,10 +242,10 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
   });
 
   it('identyfikatory punktu i przebiegu nie stoją na pierwszym planie w żadnym trybie (karta #145)', async () => {
-    const { rerender } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = await renderEkranZwarc(<EkranZwarc {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
-    rerender(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<EkranZwarc {...props({ szczegolyAudytowe: true })} />);
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
     // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
     fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
@@ -334,7 +334,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Zakres TABELI wkładów — nazwę źródła niesie także wykres udziałów (W-A F2).
     const tabela = within(await within(sekcja).findByTestId('mvd-wyn-tabela'));
@@ -383,7 +383,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Domyslnie zwiniety (bez przeladowania ekranu) — dostepny na klik.
     expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
@@ -435,7 +435,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Slad na zadanie: zwiniety przed klikiem.
     expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
@@ -478,7 +478,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     fireEvent.click(await within(sekcja).findByTestId('mvd-zwarcia-wklady-slad-btn'));
     // Plaska lista krokow (kompatybilnosc), zero przyciskow sekcji.
@@ -521,7 +521,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Natywny klik komórki wiersza wkladu rozwija szczegol maszyny (zakres tabeli —
     // nazwa źródła występuje też na wykresie udziałów).
@@ -542,7 +542,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
 
   it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
-    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
@@ -559,7 +559,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     // bramką naprawiony u źródła, nie wyciszony).
     await renderEkranZwarc(
       <EkranZwarc
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
         onOtworzDowod={() => undefined}
         wklady={{ 'BUS-GPZ': wkladyFixture() }}
       />,

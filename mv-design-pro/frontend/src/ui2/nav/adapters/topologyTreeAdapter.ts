@@ -123,15 +123,15 @@ function znajdzSasiadaMagistrali(adjacency: AdjacencyEntry[], lat: string, spine
 }
 
 function grupa(id: string, etykietaPL: string, dzieci: WezelDrzewa[]): WezelDrzewa {
-  return { id, etykietaPL, ikona: 'folder', liczniki: LICZNIKI_ZERO, dzieci, trybMin: 'basic' };
+  return { id, etykietaPL, ikona: 'folder', liczniki: LICZNIKI_ZERO, dzieci };
 }
 
 function odgalezienieLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrzewa {
-  return { id: ref, etykietaPL: ref, ikona: 'odgalezienie', liczniki: liczOrDefault(liczniki, ref), dzieci: [], trybMin: 'basic' };
+  return { id: ref, etykietaPL: ref, ikona: 'odgalezienie', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
 }
 
 function szynaLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrzewa {
-  return { id: ref, etykietaPL: ref, ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [], trybMin: 'basic' };
+  return { id: ref, etykietaPL: ref, ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
 }
 
 /** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` w TopologyTreeView). */
@@ -181,7 +181,6 @@ function budujPoddrzewoSpine(ref: string, deps: DrzewoSpineDeps): WezelDrzewa | 
     ikona: spine?.is_source ? 'zrodlo' : 'szyna',
     liczniki: liczOrDefault(deps.liczniki, ref),
     dzieci: [...dzieciSpine, ...dzieciLateral],
-    trybMin: 'basic',
   };
 }
 
@@ -227,7 +226,7 @@ function grupyIzolowaneISieroty(
       grupa(
         'izolowane',
         'Węzły izolowane',
-        izolowane.map((r) => ({ id: r, etykietaPL: r, ikona: 'izolowany', liczniki: liczOrDefault(liczniki, r), dzieci: [], trybMin: 'basic' as const })),
+        izolowane.map((r) => ({ id: r, etykietaPL: r, ikona: 'izolowany', liczniki: liczOrDefault(liczniki, r), dzieci: [] })),
       ),
     );
   }

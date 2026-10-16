@@ -30,6 +30,7 @@ import { dirname, resolve } from 'node:path';
 
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -264,7 +265,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect

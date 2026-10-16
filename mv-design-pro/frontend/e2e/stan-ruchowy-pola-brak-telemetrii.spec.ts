@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const OUTPUT_DIR = katalogZrzutow(path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../docs/audit/visual/dowody',
@@ -157,7 +158,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect

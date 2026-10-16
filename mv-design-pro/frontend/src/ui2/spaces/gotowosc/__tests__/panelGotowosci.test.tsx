@@ -38,7 +38,7 @@ function ustawZBlokadami() {
 
 function props(over: Partial<Parameters<typeof PanelGotowosci>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false,
     onSelekcja: vi.fn(),
     onAkcjaNaprawcza: vi.fn(),
     ...over,
@@ -126,14 +126,14 @@ describe('PanelGotowosci — kod gotowości tylko w dymku / trybie eksperckim (�
   beforeEach(ustawZBlokadami);
 
   it('tryb podstawowy: kod NIE jest widocznym tekstem, jest w atrybucie title (dymek)', () => {
-    render(<PanelGotowosci {...props({ trybZaawansowania: 'basic' })} />);
+    render(<PanelGotowosci {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-problem-kod-source.grid_supply_missing')).not.toBeInTheDocument();
     const wiersz = screen.getByTestId('mvd-problem-source.grid_supply_missing-GPZ-1');
     expect(wiersz).toHaveAttribute('title', 'source.grid_supply_missing');
   });
 
   it('tryb ekspercki: kod widoczny jako tekst techniczny', () => {
-    render(<PanelGotowosci {...props({ trybZaawansowania: 'expert' })} />);
+    render(<PanelGotowosci {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByTestId('mvd-problem-kod-source.grid_supply_missing')).toHaveTextContent(
       'source.grid_supply_missing',
     );

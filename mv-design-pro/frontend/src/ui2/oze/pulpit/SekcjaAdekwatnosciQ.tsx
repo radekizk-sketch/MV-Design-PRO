@@ -25,7 +25,7 @@ import {
 
 export interface SekcjaAdekwatnosciQProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   /** Referencja wyróżnionego modułu (klik w pulpicie); `null` → brak wyróżnienia. */
   readonly wyroznionyModul?: string | null;
 }
@@ -107,7 +107,7 @@ function WpisZrodla({
 }
 
 export function SekcjaAdekwatnosciQ({
-  trybEkspercki,
+  szczegolyAudytowe,
   wyroznionyModul = null,
 }: SekcjaAdekwatnosciQProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
@@ -247,7 +247,7 @@ export function SekcjaAdekwatnosciQ({
 
           {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-adekw-analiza-id"
             wiersze={[{ etykieta: PULPIT_STRINGS.identyfikatorAnalizy, wartosc: stan.dane.analysis_id }]}
           />

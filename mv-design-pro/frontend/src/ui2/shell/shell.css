@@ -1,17 +1,24 @@
 /*
- * Style powłoki W-110. Wszystkie kolory wyłącznie przez tokeny --mvd-*
- * (karta E1.1 §7.4). Bez literałów hex — paleta pochodzi z theme/tokens.css.
+ * Style powłoki W-110 (karta K1 POWLOKA: trzy pasy, panele, panel dolny).
+ * Kolory wyłącznie przez tokeny --mvd-* (`ui2/theme/tokens.css`), klasy wspólne
+ * (przycisk, liczba, znacznik, okno) w `ui2/theme/komponenty.css`. Ten arkusz
+ * definiuje WYŁĄCZNIE klasy powłoki — `scripts/css_kolizje_klas_guard.py`
+ * pilnuje, żeby żadna z nich nie miała definicji w innym arkuszu.
+ *
+ * Typografia (§8): tekst ≥ 13 px, bez wersalików i rozstrzelenia liter,
+ * liczby `tabular-nums`. Układ (§5): 1366×768 bez nakładania się elementów,
+ * 1440×900 z pełnymi etykietami — pilnuje `e2e/powloka-uklad.spec.ts`.
  */
 
 .mvd-app {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
   background: var(--mvd-bg);
   color: var(--mvd-ink);
   font-family: var(--mvd-font-sans);
-  font-size: 13px;
+  font-size: var(--mvd-font-size-data);
   line-height: 1.5;
 }
 
@@ -25,122 +32,87 @@
 }
 
 .mvd-lbl {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: var(--mvd-font-size-data);
   color: var(--mvd-muted);
   font-weight: 600;
-}
-
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---- pasek tytułowy ---- */
-.mvd-titlebar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--mvd-line);
-  background: var(--mvd-panel-2);
-}
-.mvd-logo {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.mvd-logo-accent {
-  color: var(--mvd-accent);
-}
-.mvd-crumb {
-  color: var(--mvd-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 42ch;
-}
-
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  border-radius: 5px;
-  padding: 4px 12px;
-  cursor: pointer;
-  font: inherit;
-}
-.mvd-btn:hover {
-  border-color: var(--mvd-accent);
-}
-.mvd-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.mvd-btn-primary {
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-  border-color: var(--mvd-accent);
-  font-weight: 600;
-}
-
-.mvd-menu {
-  position: relative;
-}
-.mvd-menu-list {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 40;
-  min-width: 220px;
-  background: var(--mvd-panel);
-  border: 1px solid var(--mvd-line);
-  border-radius: 6px;
-  box-shadow: var(--mvd-shadow);
-  padding: 4px;
-}
-.mvd-menu-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: none;
-  color: var(--mvd-ink);
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font: inherit;
-}
-.mvd-menu-item:hover {
-  background: var(--mvd-sel);
 }
 
 /*
  * Akcja stanu zerowego (K6 / H-5) — przycisk „następnego kroku" w panelach
- * stanu ekranów wyników i strumienia OZE. Klasa dołożona do globalnego
- * `.mvd-btn .mvd-btn-primary` (jedna prawda wyglądu przycisków powłoki);
- * tu wyłącznie odstęp od treści panelu.
+ * stanu ekranów wyników i strumienia OZE. Klasa dołożona do wspólnego
+ * `.mvd-btn .mvd-btn-primary`; tu wyłącznie odstęp od treści panelu.
  */
 .mvd-stan-akcja {
   margin-top: 10px;
   align-self: flex-start;
 }
 
-/* ---- pasek aktywnego przypadku ---- */
-.mvd-casebar {
+/* ================= pas 1: pasek projektu ================= */
+.mvd-pasek-projektu {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
   padding: 6px 14px;
   border-bottom: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
+  background: var(--mvd-panel-2);
+}
+.mvd-logo {
+  flex-shrink: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mvd-logo-accent {
+  color: var(--mvd-accent);
+}
+/* Nazwa projektu: nigdy nie przykryta — kurczy się jako ostatnia, a pełne
+   brzmienie niesie podpowiedź i nazwa dostępna przycisku. */
+.mvd-projekt-nazwa {
+  display: inline-flex;
+  align-items: center;
+  max-width: 48ch;
+  min-width: 12ch;
+  padding: 3px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--mvd-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-projekt-nazwa:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-projekt-nazwa-tekst {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mvd-projekt-brak {
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+.mvd-projekt-zakres {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mvd-projekt-etykieta {
+  color: var(--mvd-muted);
+  white-space: nowrap;
 }
 .mvd-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   background: var(--mvd-chip);
   border: 1px solid var(--mvd-line);
   border-radius: 20px;
   padding: 2px 11px;
-  font-size: 12px;
+  font-size: var(--mvd-font-size-data);
+  color: var(--mvd-ink);
   white-space: nowrap;
 }
 .mvd-chip-case {
@@ -148,8 +120,16 @@
   color: var(--mvd-accent);
   font-weight: 600;
 }
+.mvd-chip-klik {
+  font: inherit;
+  cursor: pointer;
+}
+.mvd-chip-klik:hover {
+  background: var(--mvd-bg-hover);
+}
 .mvd-dot {
   display: inline-block;
+  flex-shrink: 0;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -167,18 +147,144 @@
 .mvd-dot-none {
   background: var(--mvd-muted);
 }
-/* Klikalny znacznik świeżości wyników (K4/D1) — chip-przycisk, kolory tokenami. */
-.mvd-chip-klik {
-  font: inherit;
-  font-size: 12px;
-  color: inherit;
-  cursor: pointer;
+.mvd-oblicz {
+  flex-shrink: 0;
+  min-width: 112px;
 }
-.mvd-chip-klik:hover {
-  background: var(--mvd-sel);
+.mvd-oblicz[data-stan='trwa'] {
+  cursor: progress;
 }
 
-/* ---- korpus: lewy / środkowy / prawy ---- */
+/* menu rozwijane powłoki (projekt, „Widok") */
+.mvd-menu-powloki {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.mvd-menu-powloki-lista {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--mvd-panel-raised);
+  border: 1px solid var(--mvd-line-strong);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow-panel);
+  padding: 4px;
+}
+.mvd-menu-powloki-prawa {
+  left: auto;
+  right: 0;
+}
+.mvd-menu-powloki-pozycja {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--mvd-ink);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.mvd-menu-powloki-pozycja:hover,
+.mvd-menu-powloki-pozycja:focus-visible {
+  background: var(--mvd-bg-hover);
+}
+.mvd-menu-powloki-znacznik {
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--mvd-accent);
+}
+.mvd-menu-powloki-etykieta {
+  flex: 1;
+}
+.mvd-menu-powloki-wartosc {
+  color: var(--mvd-muted);
+}
+.mvd-menu-powloki-skrot {
+  font-family: var(--mvd-font-mono);
+  color: var(--mvd-muted);
+}
+
+/* ================= pas 2: pasek narzędzi ================= */
+.mvd-pasek-narzedzi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+.mvd-narzedzie {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--mvd-ink);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mvd-narzedzie:hover {
+  border-color: var(--mvd-line-strong);
+  background: var(--mvd-bg-hover);
+}
+.mvd-narzedzie[aria-expanded='true'] {
+  border-color: var(--mvd-accent);
+}
+.mvd-liczniki {
+  position: relative;
+  flex-shrink: 0;
+}
+.mvd-liczniki-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  width: 300px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--mvd-panel-raised);
+  border: 1px solid var(--mvd-line-strong);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow-panel);
+}
+.mvd-liczniki-lista {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-liczniki-wiersz {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mvd-liczniki-wiersz dt {
+  color: var(--mvd-muted);
+}
+.mvd-liczniki-wiersz dd {
+  margin: 0;
+}
+.mvd-liczniki-stan {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+
+/* ================= korpus: lewy / środkowy / prawy ================= */
 .mvd-body {
   display: grid;
   min-height: 0;
@@ -214,16 +320,17 @@
   border: 0;
   background: none;
   color: var(--mvd-ink);
-  padding: 9px 14px;
+  padding: 8px 14px;
   cursor: pointer;
   font: inherit;
   border-left: 3px solid transparent;
+  white-space: nowrap;
 }
 .mvd-nav-btn:hover {
-  background: var(--mvd-sel);
+  background: var(--mvd-hover-nav);
 }
 .mvd-nav-btn.mvd-on {
-  background: var(--mvd-sel);
+  background: var(--mvd-active);
   border-left-color: var(--mvd-accent);
   font-weight: 600;
 }
@@ -231,7 +338,6 @@
   margin-left: auto;
   color: var(--mvd-muted);
   font-family: var(--mvd-font-mono);
-  font-size: 10px;
 }
 
 /* listwa ikon 48 px */
@@ -258,10 +364,10 @@
   border-radius: 0;
 }
 .mvd-rail-btn:hover {
-  background: var(--mvd-sel);
+  background: var(--mvd-hover-nav);
 }
 .mvd-rail-btn.mvd-on {
-  background: var(--mvd-sel);
+  background: var(--mvd-active);
   border-left-color: var(--mvd-accent);
 }
 
@@ -276,15 +382,10 @@
 
 .mvd-center {
   min-width: 0;
-  /* K11-B (naprawa długu zastanego u źródła — Zero-Debt): element siatki ma
-     domyślnie `min-height: auto`, więc mimo `overflow: auto` NIE kurczył się
-     poniżej rozmiaru swojej treści — zamiast przewijać się w środku, rozpychał
-     całą powłokę w dół (zmierzone: dokument 1124 px w oknie 900 px, doki dolne
-     kanwy SLD i 179 px rysunku poza oknem, bez możliwości przewinięcia, bo
-     `body { overflow: hidden }`). `min-height: 0` przywraca kontrakt kolumny
-     przewijalnej: region mieści się w torze siatki, a nadmiar treści przewija
-     się WEWNĄTRZ niego. Bliźniacza połowa naprawy: definitywna wysokość
-     korzenia motywu (`App.tsx`, `h-screen`). */
+  /* K11-B: element siatki ma domyślnie `min-height: auto` i bez `min-height: 0`
+     rozpychał powłokę w dół zamiast przewijać się w środku (zmierzone: dokument
+     1124 px w oknie 900 px). `min-height: 0` przywraca kontrakt kolumny
+     przewijalnej: nadmiar treści przewija się WEWNĄTRZ regionu. */
   min-height: 0;
   overflow: auto;
   background: var(--mvd-bg);
@@ -297,9 +398,14 @@
   padding: 12px 14px;
   min-width: 0;
 }
+.mvd-inspector-naglowek {
+  margin: 0 0 6px;
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+}
 .mvd-inspector-empty {
   color: var(--mvd-muted);
-  font-size: 12px;
+  font-size: var(--mvd-font-size-data);
 }
 
 /* uchwyty zmiany szerokości */
@@ -316,15 +422,133 @@
   background: var(--mvd-accent);
 }
 
-/* ---- pasek stanu ---- */
+/* ================= panel dolny ================= */
+.mvd-bottom {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+  border-top: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+.mvd-bottom-uchwyt {
+  flex: 0 0 6px;
+  cursor: row-resize;
+  background: transparent;
+}
+.mvd-bottom-uchwyt:hover,
+.mvd-bottom-uchwyt:focus-visible {
+  background: var(--mvd-accent);
+}
+.mvd-bottom-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-bottom-tab {
+  padding: 4px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--mvd-muted);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mvd-bottom-tab:hover {
+  color: var(--mvd-ink);
+}
+.mvd-bottom-tab.mvd-on {
+  color: var(--mvd-ink);
+  border-bottom-color: var(--mvd-accent);
+  font-weight: 600;
+}
+.mvd-bottom-tresc {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 14px 10px;
+}
+.mvd-dolny-stan {
+  margin: 6px 0;
+  color: var(--mvd-muted);
+}
+.mvd-dolny-blad {
+  color: var(--mvd-err);
+}
+.mvd-dolny-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mvd-dolny-wiersz {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--mvd-line);
+  background: none;
+  color: var(--mvd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mvd-dolny-wiersz:hover {
+  background: var(--mvd-bg-hover);
+}
+.mvd-dolny-wiersz-statyczny {
+  cursor: default;
+}
+.mvd-dolny-wiersz-statyczny:hover {
+  background: none;
+}
+.mvd-dolny-waga {
+  flex: 0 0 auto;
+  min-width: 11ch;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+.mvd-dolny-waga-blocker {
+  color: var(--mvd-err);
+  font-weight: 600;
+}
+.mvd-dolny-waga-important {
+  color: var(--mvd-warn);
+  font-weight: 600;
+}
+.mvd-dolny-waga-info {
+  color: var(--mvd-info);
+}
+.mvd-dolny-opis {
+  flex: 1;
+  min-width: 0;
+}
+.mvd-dolny-rewizja,
+.mvd-dolny-czas,
+.mvd-dolny-licznik {
+  flex: 0 0 auto;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+.mvd-dolny-akcja {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+}
+
+/* ================= pas 3: pasek stanu ================= */
 .mvd-statusbar {
   display: flex;
   gap: 18px;
   align-items: center;
+  min-width: 0;
   border-top: 1px solid var(--mvd-line);
   background: var(--mvd-panel-2);
-  padding: 5px 14px;
-  font-size: 11.5px;
+  padding: 4px 14px;
+  font-size: var(--mvd-font-size-data);
   color: var(--mvd-muted);
 }
 .mvd-status-item {
@@ -337,63 +561,44 @@
   font: inherit;
   cursor: pointer;
   padding: 0;
+  white-space: nowrap;
+}
+.mvd-status-item:hover:not(.mvd-status-static) {
+  color: var(--mvd-ink);
 }
 .mvd-status-static {
   cursor: default;
 }
-.mvd-status-ok {
-  color: var(--mvd-ok);
-}
 .mvd-status-err {
   color: var(--mvd-err);
 }
-
-/* ---- panel dolny ---- */
-.mvd-bottom {
-  border-top: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  padding: 8px 14px;
-  max-height: 200px;
-  overflow: auto;
-}
-.mvd-bottom-tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-/* ---- wyszukiwarka (szkielet W-105) ---- */
-.mvd-search-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(8, 12, 18, 0.45);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 12vh;
-}
-.mvd-search-box {
-  width: min(560px, 90vw);
-  background: var(--mvd-panel);
-  border: 1px solid var(--mvd-line);
-  border-radius: 8px;
-  box-shadow: var(--mvd-shadow);
-  padding: 12px;
-}
-.mvd-search-input {
-  width: 100%;
-  border: 1px solid var(--mvd-line);
-  border-radius: 6px;
-  background: var(--mvd-panel-2);
+.mvd-status-trwa {
   color: var(--mvd-ink);
-  padding: 8px 10px;
-  font: inherit;
 }
-.mvd-search-hint {
-  color: var(--mvd-muted);
-  font-size: 11.5px;
-  margin: 8px 2px 0;
+.mvd-statusbar .mvd-btn {
+  padding: 1px 10px;
+}
+.mvd-wskaznik-biegu {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mvd-accent);
+  animation: mvd-puls-biegu 1.2s ease-in-out infinite;
+}
+@keyframes mvd-puls-biegu {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mvd-wskaznik-biegu {
+    animation: none;
+  }
 }
 
 /* ---- szkielet ładowania ---- */

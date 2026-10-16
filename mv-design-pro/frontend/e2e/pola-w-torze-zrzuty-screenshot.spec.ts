@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const WERSJA_KATALOGU = '2024.1';
 const APARAT = 'sw-cb-abb-vd4-17kv-630a';
@@ -206,7 +207,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect

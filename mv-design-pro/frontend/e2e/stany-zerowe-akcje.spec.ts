@@ -25,6 +25,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Zrzuty do oceny właściciela (dyrektywa #8) — ŻYWA aplikacja, oba motywy. */
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
@@ -316,9 +317,9 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   fs.mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 /**
@@ -376,16 +377,16 @@ test('chrom pokazuje stan zgodny z serwerem: gotowość i znacznik wyników (H-6
   const blokadyPrzed = gotowoscPrzed.by_severity?.BLOCKER ?? 0;
   expect(blokadyPrzed).toBeGreaterThan(0);
 
-  // ŹRÓDŁO 2 (chrom powłoki) — MUSI mówić to samo: model w budowie, nie „zwalidowany".
+  // ŹRÓDŁO 2 (chrom powłoki — pasek stanu, jedyne miejsce gotowości po karcie
+  // K1 POWLOKA) — MUSI mówić to samo: blokady serwera, nie „brak uwag".
   await przeladujPowloke(page);
-  await expect(page.getByTestId('mvd-casebar-model')).toHaveText('Model: w budowie');
-  await expect(page.getByTestId('mvd-casebar-readiness')).toHaveText(
+  await expect(page.getByTestId('mvd-status-gotowosc')).toHaveText(
     oczekiwanaEtykietaGotowosci(gotowoscPrzed),
   );
   // Znacznik wyników bez biegu = „brak" (serwer: result_status NONE).
   const przypadekPrzed = await pobierzAktywnyPrzypadek(request, seed.projectId);
   expect(przypadekPrzed?.result_status).toBe('NONE');
-  await expect(page.getByTestId('mvd-casebar-results')).toHaveText('Wyniki: brak');
+  await expect(page.getByTestId('mvd-projekt-wyniki')).toHaveText('Wyniki: brak');
 
   // Budowa sieci do stanu gotowego + bieg REALNYM klikiem „Oblicz".
   await zbudujSiecGotowaDoObliczen(request, seed.caseId);
@@ -393,11 +394,10 @@ test('chrom pokazuje stan zgodny z serwerem: gotowość i znacznik wyników (H-6
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
   expect(gotowoscPo.ready).toBe(true);
-  await expect(page.getByTestId('mvd-casebar-model')).toHaveText('Model: zwalidowany');
   // Uwaga inżynierska: `ready: true` NIE znaczy „brak uwag" — model gotowy do
   // obliczeń może nieść ostrzeżenia. Chip ma pokazywać liczby SERWERA, nie
   // wygodną stałą (dawne, martwe źródło zawsze mówiło „brak uwag").
-  await expect(page.getByTestId('mvd-casebar-readiness')).toHaveText(
+  await expect(page.getByTestId('mvd-status-gotowosc')).toHaveText(
     oczekiwanaEtykietaGotowosci(gotowoscPo),
   );
 
@@ -411,7 +411,7 @@ test('chrom pokazuje stan zgodny z serwerem: gotowość i znacznik wyników (H-6
   expect(przypadekPo?.result_status).toBe('FRESH');
   // …ŹRÓDŁO 2 (chrom) musi to odzwierciedlić BEZ przeładowania strony
   // (odświeżenie przypadku po zdarzeniu „wyniki-gotowe" — H-6 R2).
-  await expect(page.getByTestId('mvd-casebar-results')).toHaveText('Wyniki: aktualne', { timeout: 30000 });
+  await expect(page.getByTestId('mvd-projekt-wyniki')).toHaveText('Wyniki: aktualne', { timeout: 30000 });
 
   // Pasek stanu: etykieta ostatniego przebiegu (H-6 R3) i wersja modelu (R4)
   // mają realnych dostawców — nie „—".

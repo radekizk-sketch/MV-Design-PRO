@@ -117,7 +117,7 @@ function fixActionBay(): EnmFixAction {
 
 function props(over: Partial<Parameters<typeof PanelGotowosci>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onSelekcja: vi.fn(),
     onAkcjaNaprawcza: vi.fn(),
     ...over,

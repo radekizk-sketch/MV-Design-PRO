@@ -17,7 +17,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './obszar.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import type { GenLimits } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
@@ -99,16 +98,15 @@ function StanPanel({
 
 function WynikObszaru({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   krzywaProducenta,
   onOtworzDowod,
 }: {
   dane: WidokObszaruPQ;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   krzywaProducenta?: readonly (readonly [number, number, number])[];
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
 
   const punkty = useMemo(() => punktyObszaru(dane.vertices, krzywaProducenta), [dane, krzywaProducenta]);
@@ -172,7 +170,7 @@ function WynikObszaru({
 
       {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-obszar-informacje-audytowe"
         wiersze={[
           { etykieta: OBSZAR_STRINGS.zalPrzebieg, wartosc: dane.context.run_id },
@@ -188,7 +186,7 @@ function WynikObszaru({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <div className="mvd-obszar-slad-blok">
@@ -383,13 +381,13 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
 // ---------------------------------------------------------------------------
 
 export interface EkranObszaruPQProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszaruPQProps) {
+export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszaruPQProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -625,7 +623,7 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
             <>
               <WynikObszaru
                 dane={stan.dane}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 krzywaProducenta={krzywaProducenta}
                 onOtworzDowod={onOtworzDowod}
               />

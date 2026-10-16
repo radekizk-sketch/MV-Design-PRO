@@ -29,6 +29,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -259,9 +260,9 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   fs.mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO modelu (bramka AUD-F)', async ({
@@ -299,14 +300,15 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
     // Okno wyników żyje (migawka przebiegu wczytana) …
     await expect(strona.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
 
-    // … a gotowość opisuje BIEŻĄCY model: chip nie deklaruje zwalidowanego
-    // modelu i liczy blokady tak samo jak serwer.
-    await expect(strona.getByTestId('mvd-casebar-readiness')).toContainText(
+    // … a gotowość opisuje BIEŻĄCY model: pasek stanu (jedyne miejsce gotowości
+    // w chromie po karcie K1 POWLOKA) liczy blokady tak samo jak serwer i nie
+    // deklaruje modelu bez uwag.
+    await expect(strona.getByTestId('mvd-status-gotowosc')).toContainText(
       String(blokadySerwera(gotowosc)),
       { timeout: 30000 },
     );
-    await expect(strona.getByTestId('mvd-casebar-model')).toContainText('Model: w budowie');
-    await expect(strona.getByTestId('mvd-casebar-model')).not.toContainText('Model: zwalidowany');
+    await expect(strona.getByTestId('mvd-status-gotowosc')).toHaveAttribute('data-ustalona', 'true');
+    await expect(strona.getByTestId('mvd-status-gotowosc')).not.toContainText('brak uwag');
 
     // Zrzut po pełnej hydratacji okna wyników (zakładka wg rodzaju przebiegu +
     // wczytana tabela zwarć) — dowód, że uczciwa gotowość współistnieje z ŻYWYM

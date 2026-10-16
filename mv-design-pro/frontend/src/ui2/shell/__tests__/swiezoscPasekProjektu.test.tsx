@@ -1,6 +1,7 @@
 /*
- * Znacznik świeżości wyników w pasku aktywnego przypadku — ŚCIEŻKA REALNA
- * (karta K4/D1, dług V12K-309 poz. 2 domknięty w CV-2-W).
+ * Znacznik świeżości wyników w pasku projektu — ŚCIEŻKA REALNA
+ * (karta K4/D1, dług V12K-309 poz. 2 domknięty w CV-2-W; po karcie K1 POWLOKA
+ * znacznik żyje w pasku projektu, który zastąpił pasek aktywnego przypadku).
  *
  * DEFEKT (pomiar audytu 2026-08-01): po edycji modelu następującej PO biegu chip
  * trwał na „Wyniki: aktualne" — model rew. 9, wynik z rew. 8. Serwerowy
@@ -20,10 +21,11 @@
  * kształcie backendu, chip jest produkcyjny, a klik — natywny.
  */
 
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { CaseBar } from '../CaseBar';
+import { PasekProjektu } from '../PasekProjektu';
 import { SHELL_STRINGS } from '../strings';
 import { useShellCaseInfo } from '../shellStatus';
 import { useShellStore } from '../useShellStore';
@@ -244,9 +246,22 @@ function Probe() {
   useHydratacjaPowloki('connected');
   const info = useShellCaseInfo();
   return (
-    <CaseBar
+    <PasekProjektu
       info={info}
+      themeMode="dark_scada"
+      onThemeToggle={() => undefined}
+      szczegolyAudytowe={false}
+      onToggleSzczegolyAudytowe={() => undefined}
+      leftCollapsed={false}
+      rightCollapsed={false}
+      bottomOpen={false}
+      onToggleLeft={() => undefined}
+      onToggleRight={() => undefined}
+      onToggleBottom={() => undefined}
+      onResetLayout={() => undefined}
       onPrzejdzDoObliczen={() => useShellStore.getState().setActiveSpace('obliczenia')}
+      blokadaObliczen={null}
+      biegTrwa={false}
     />
   );
 }
@@ -293,7 +308,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV-2-W)', () => {
+describe('Znacznik świeżości wyników w pasku projektu (K4/D1 + CV-2-W)', () => {
   it('POMIAR AUDYTU: model rew. 9, wynik z rew. 8 → „Wyniki: nieaktualne" i natywny klik prowadzi do obliczeń', async () => {
     stubFetch(WERDYKT_MODEL_ZMIENIONY, 9);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
@@ -302,13 +317,13 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV
     await poczekajNaZnacznik('OUTDATED');
 
     const chip = await screen.findByText(SHELL_STRINGS.resultsOutdated);
-    const przycisk = screen.getByTestId('mvd-casebar-results');
+    const przycisk = screen.getByTestId('mvd-projekt-wyniki');
     expect(przycisk).toContainElement(chip);
     expect(przycisk.tagName).toBe('BUTTON');
     // Podpowiedź niesie PRZYCZYNĘ z serwera — chrom niczego nie tłumaczy sam.
     expect(przycisk.getAttribute('title')).toContain(PRZYCZYNA_MODEL);
 
-    fireEvent.click(przycisk);
+    await userEvent.click(przycisk);
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
   });
 
@@ -322,11 +337,11 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV
     await poczekajNaZnacznik('OUTDATED');
 
     await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+      expect(screen.getByTestId('mvd-projekt-wyniki')).toHaveTextContent(
         SHELL_STRINGS.resultsOutdated,
       );
     });
-    const chip = screen.getByTestId('mvd-casebar-results');
+    const chip = screen.getByTestId('mvd-projekt-wyniki');
     expect(chip.getAttribute('title')).toContain('Biblioteka typów katalogowych');
     expect(chip).not.toHaveTextContent(SHELL_STRINGS.resultsFresh);
   });
@@ -339,18 +354,18 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV
     await poczekajNaZnacznik('FRESH');
 
     await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+      expect(screen.getByTestId('mvd-projekt-wyniki')).toHaveTextContent(
         SHELL_STRINGS.resultsFresh,
       );
     });
-    const chip = screen.getByTestId('mvd-casebar-results');
+    const chip = screen.getByTestId('mvd-projekt-wyniki');
     expect(chip.tagName).toBe('SPAN');
     expect(chip.getAttribute('title')).toBe(PRZYCZYNA_SWIEZY);
 
     // Znacznik AKTUALNY jest statyczny — klik NIE nawiguje. Porównujemy PRZED/PO,
     // bo trasa `#sld` ląduje w „Schemacie" i literał mówiłby o czymś innym.
     const przestrzenPrzedKlikiem = useShellStore.getState().activeSpace;
-    fireEvent.click(chip);
+    await userEvent.click(chip);
     expect(useShellStore.getState().activeSpace).toBe(przestrzenPrzedKlikiem);
   });
 
@@ -366,7 +381,7 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV
     render(<Probe />);
     await poczekajNaZnacznik('FRESH');
     await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+      expect(screen.getByTestId('mvd-projekt-wyniki')).toHaveTextContent(
         SHELL_STRINGS.resultsFresh,
       );
     });
@@ -386,11 +401,11 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+      expect(screen.getByTestId('mvd-projekt-wyniki')).toHaveTextContent(
         SHELL_STRINGS.resultsFresh,
       );
     });
-    expect(screen.getByTestId('mvd-casebar-results')).not.toHaveTextContent(
+    expect(screen.getByTestId('mvd-projekt-wyniki')).not.toHaveTextContent(
       SHELL_STRINGS.resultsOutdated,
     );
   });

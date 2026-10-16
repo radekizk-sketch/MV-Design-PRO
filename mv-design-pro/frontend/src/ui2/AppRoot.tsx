@@ -19,13 +19,22 @@
  * skróty, nakładki) i eksponuje testidy kontraktu e2e (`canonical-layout`,
  * `app-ready`, `active-case-bar`, `main-content`, `workspace-surface-main`).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
 import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
+import { zaznaczElementModelu } from './shell/zaznaczElementModelu';
+import { useThemeModeStore } from './theme/themeMode';
+import { obiektyModeluDoIndeksu } from './search/obiektyModelu';
+import { PrzelacznikPodgladu } from './spaces/schemat';
+import { MassReviewPanel } from '../ui/network-build/mass-review';
+import { ProjectMetadataModal, type ProjectMetadata } from '../ui/network-build/ProjectMetadataModal';
+import { navigateToCatalog } from '../ui/navigation/routes';
+import { updateProject } from '../ui/projects/api';
+import { notify } from '../ui/notifications/store';
 import { useSynchronizacjaDerZModelu } from '../ui/network-build/station-der';
 import {
   ContextTree,
@@ -65,7 +74,7 @@ import { PanelDiagnozy } from './spaces/obliczenia/diagnoza';
 import { WynikiWarsztat } from './spaces/wyniki';
 import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
-import { LegacyWarsztat } from './legacy/LegacyWarsztat';
+import { LegacyWarsztat, useWidokKanwySchematu } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
 import { useLegacyOrchestrator } from './legacy/useLegacyOrchestrator';
@@ -157,7 +166,7 @@ export function AppRoot() {
   // pokazany mimo otwartego projektu (wejście „Otwórz projekt" z powłoki).
   const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
-  const advancementMode = useShellStore((s) => s.advancementMode);
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const panelSchematu = useShellStore((s) => s.panelSchematu);
   // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
   // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
@@ -251,11 +260,13 @@ export function AppRoot() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
   const akcjeWyszukiwarki = useMemo(
     (): AkcjeIndeksu => ({
       przejdzDoPrzestrzeni,
-      wybierzObiekt: (id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'wyszukiwarka' }),
+      // K1 POWLOKA: wybór obiektu zaznacza go na schemacie (store selekcji +
+      // centrowanie kanwy) i emituje `selekcja` — zdolność skasowanej drugiej
+      // wyszukiwarki („Szukaj" paska metryk) przeszła tutaj w całości.
+      wybierzObiekt: (obiekt) => zaznaczElementModelu(obiekt.id, 'wyszukiwarka'),
       // Zdolność przeniesiona ze skasowanej palety `ui/network-build`:
       // otwarcie okna E-XX tym samym routerem powierzchni co dotąd.
       otworzEkran: (kod, tytulPl) =>
@@ -264,6 +275,8 @@ export function AppRoot() {
       otworzProjekt: () => otworzPulpitProjektow(),
       przywrocUklad: () => useShellStore.getState().resetLayout(useShellStore.getState().activeSpace),
       polaczPonownie: () => reconnect(),
+      przelaczSzczegolyAudytowe: () => useShellStore.getState().toggleSzczegolyAudytowe(),
+      przelaczMotyw: () => useThemeModeStore.getState().toggle(),
     }),
     [handleCalculate, openRouteSurface, reconnect],
   );
@@ -271,11 +284,7 @@ export function AppRoot() {
     () =>
       zbudujIndeksWyszukiwania({
         akcje: akcjeWyszukiwarki,
-        obiekty: () =>
-          (snapshot?.buses ?? []).map((szyna) => ({
-            id: szyna.ref_id || szyna.id,
-            nazwa: szyna.name || szyna.ref_id,
-          })),
+        obiekty: () => obiektyModeluDoIndeksu(snapshot),
       }),
     [akcjeWyszukiwarki, snapshot],
   );
@@ -324,6 +333,48 @@ export function AppRoot() {
     pozycja.akcja();
   };
 
+  // Pasek narzędzi powłoki (K1 POWLOKA) — polecenia przeniesione ze
+  // skasowanego paska metryk (`LegacyPasekNarzedzi`): te same cele, te same
+  // okna. Przełącznik trybu pracy kanwy tylko wtedy, gdy warsztat pokazuje kanwę.
+  const widokKanwy = useWidokKanwySchematu(route, activeSpace);
+  const activeProjectName = useAppStateStore((s) => s.activeProjectName);
+  const setActiveProject = useAppStateStore((s) => s.setActiveProject);
+  const [przegladOtwarty, setPrzegladOtwarty] = useState(false);
+  const [metadaneOtwarte, setMetadaneOtwarte] = useState(false);
+  const zapiszMetadaneProjektu = useCallback(
+    async (metadata: ProjectMetadata) => {
+      if (!activeProjectId) {
+        const message = 'Wybierz projekt przed zapisem metadanych.';
+        notify(message, 'warning');
+        throw new Error(message);
+      }
+      try {
+        const updated = await updateProject(activeProjectId, {
+          name: metadata.projectName.trim(),
+          description: metadata.description.trim() || null,
+        });
+        setActiveProject(updated.id, updated.name);
+        notify(`Zapisano metadane projektu "${updated.name}".`, 'success');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Nie udało się zapisać metadanych projektu.';
+        notify(message, 'error');
+        throw error;
+      }
+    },
+    [activeProjectId, setActiveProject],
+  );
+  const otworzHistorie = () =>
+    openRouteSurface('E-09', {
+      titlePl: 'Historia i audyt',
+      entityRef: null,
+      subjectKind: 'analysis_run',
+      subjectRef: null,
+    });
+  const zacznijBudowe = () => {
+    useShellStore.getState().setPanelSchematu('model');
+    przejdzDoPrzestrzeni('schemat');
+  };
+
   return (
     <div data-testid="canonical-layout" data-ready={aplikacjaGotowa} className="mvd-app-obszar">
       {aplikacjaGotowa && <div data-testid="app-ready" style={{ display: 'none' }} />}
@@ -334,6 +385,14 @@ export function AppRoot() {
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
       lastRunLabel={etykietaPrzebiegu}
       onOpenProject={otworzPulpitProjektow}
+      onOpenProjectMetadata={activeProjectId ? () => setMetadaneOtwarte(true) : undefined}
+      przelacznikPodgladu={widokKanwy ? <PrzelacznikPodgladu /> : undefined}
+      onKatalog={navigateToCatalog}
+      onPrzegladZbiorczy={() => setPrzegladOtwarty(true)}
+      onHistoria={otworzHistorie}
+      onZacznijBudowe={zacznijBudowe}
+      onWybierzElement={(ref) => zaznaczElementModelu(ref, 'panel-dolny')}
+      onPokazWynikiBiegu={pokazWynikiBiegu}
       onOpenVariants={() => wykonajAkcjeMenu('variants')}
       onActiveSpaceChange={mostTrasyPrzestrzeni}
       onCalculate={handleCalculate}
@@ -352,7 +411,7 @@ export function AppRoot() {
               {/* Karta BATCH-ROUTER: seria przebiegów nad scenariuszami —
                   wejście w wyniki pojedynczego biegu tym samym lądowiskiem K3. */}
               <SeriePanel
-                trybZaawansowania={advancementMode}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onPokazWyniki={pokazWynikiBiegu}
                 onPrzejdzDoScenariuszy={() => {
                   document
@@ -361,7 +420,7 @@ export function AppRoot() {
                 }}
               />
               <PrzebiegiPanel
-                trybZaawansowania={advancementMode}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onPokazWyniki={pokazWynikiBiegu}
               />
               {/* D7 (karta DIAGNOZA-PRZEBIEGU): odpowiedź na „dlaczego nie
@@ -379,7 +438,7 @@ export function AppRoot() {
           }
           gotowosc={
             <PanelGotowosci
-              trybZaawansowania={advancementMode}
+              szczegolyAudytowe={szczegolyAudytowe}
               onSelekcja={(elementRef) =>
                 emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: 'panel-gotowosci' })
               }
@@ -388,7 +447,7 @@ export function AppRoot() {
           }
           wyniki={
             <WynikiWarsztat
-              trybZaawansowania={advancementMode}
+              szczegolyAudytowe={szczegolyAudytowe}
               pozostale={<LegacySurface space="wyniki" />}
               onOtworzDokumentacje={() => wybierzPrzestrzen('dokumentacja')}
             />
@@ -451,12 +510,10 @@ export function AppRoot() {
           otwarta={otwarta}
           onZamknij={zamknij}
           pozycje={[...pozycjeWyszukiwania, ...pozycjeMenuLegacy]}
-          trybAktualny={advancementMode}
           onWykonaj={(pozycja) => {
             wykonajPozycje(pozycja);
             zamknij();
           }}
-          onPrzelaczTryb={setAdvancementMode}
         />
       )}
       inspector={
@@ -465,7 +522,7 @@ export function AppRoot() {
             <InspectorPanel
               obiekt={obiekt}
               rewizjaModelu={rewizjaModelu}
-              trybZaawansowania={advancementMode}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={otworzDowodInspektora}
               onNawiguj={(cel) => emituj({ typ: 'selekcja', obiektId: cel.id, zrodlo: 'inspektor' })}
               onPrzelicz={() => void handleCalculate()}
@@ -473,6 +530,17 @@ export function AppRoot() {
           }
         />
       }
+      />
+      <MassReviewPanel
+        isOpen={przegladOtwarty}
+        onClose={() => setPrzegladOtwarty(false)}
+        initialTab="readiness"
+      />
+      <ProjectMetadataModal
+        isOpen={metadaneOtwarte}
+        onClose={() => setMetadaneOtwarte(false)}
+        metadata={{ projectName: activeProjectName?.trim() ? activeProjectName : '' }}
+        onSave={zapiszMetadaneProjektu}
       />
     </div>
   );

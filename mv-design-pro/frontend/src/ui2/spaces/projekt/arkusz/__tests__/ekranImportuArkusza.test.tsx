@@ -273,14 +273,13 @@ describe('EkranImportuArkusza — import do modelu', () => {
   });
 
   it.each([
-    ['basic', false],
-    ['extended', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)(
     'odcisk modelu w informacjach audytowych — tryb %s → widoczne: %s',
     async (tryb, widoczne) => {
-      const poprzedni = useShellStore.getState().advancementMode;
-      useShellStore.setState({ advancementMode: tryb });
+      const poprzedni = useShellStore.getState().szczegolyAudytowe;
+      useShellStore.setState({ szczegolyAudytowe: tryb });
       try {
         const user = userEvent.setup();
         vi.stubGlobal('fetch', vi.fn(async () => odpowiedz(IMPORT_OK)));
@@ -300,7 +299,7 @@ describe('EkranImportuArkusza — import do modelu', () => {
         // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
         // re-renderuje zamontowany ekran poza act().
         cleanup();
-        useShellStore.setState({ advancementMode: poprzedni });
+        useShellStore.setState({ szczegolyAudytowe: poprzedni });
       }
     },
   );

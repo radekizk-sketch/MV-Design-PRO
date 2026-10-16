@@ -19,7 +19,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './lom.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useActiveCase } from '../../../ui/study-cases/store';
 import { EkranAnalizy, SladWywodu, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
@@ -211,11 +210,11 @@ function SzczegolPola({
 
 function WynikLom({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokOchronyLom;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
   const nazwaObiektu = useNazwaObiektu();
@@ -247,7 +246,7 @@ function WynikLom({
         kolumny={KOLUMNY_LOM}
         wiersze={naWierszeLom(dane.fields, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         informacjeAudytowe={[
           { etykieta: LOM_STRINGS.audytOdciskWejscia, wartosc: dane.input_hash },
           ...(dane.context.enm_hash
@@ -306,13 +305,13 @@ function WynikLom({
 // ---------------------------------------------------------------------------
 
 export interface EkranLomProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranLom({ trybZaawansowania, onOtworzDowod }: EkranLomProps) {
+export function EkranLom({ szczegolyAudytowe, onOtworzDowod }: EkranLomProps) {
   const aktywnyPrzypadek = useActiveCase();
   const caseId = aktywnyPrzypadek?.id ?? null;
   // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
@@ -372,7 +371,7 @@ export function EkranLom({ trybZaawansowania, onOtworzDowod }: EkranLomProps) {
           testid="mvd-lom-blad"
         />
       ) : (
-        <WynikLom dane={dane} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
+        <WynikLom dane={dane} szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={onOtworzDowod} />
       )}
     </div>
   );

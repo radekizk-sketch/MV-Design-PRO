@@ -23,7 +23,7 @@ function resetShell() {
   localStorage.clear();
   useShellStore.setState({
     activeSpace: 'projekt',
-    advancementMode: 'basic',
+    szczegolyAudytowe: false,
     bottomPanelOpen: false,
     bottomPanelTab: 'problemy',
     layoutBySpace: {},
@@ -44,7 +44,7 @@ describe('Powłoka — landmarki ARIA', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('mvd-toggle-right'));
+    fireEvent.keyDown(window, { key: 'i', ctrlKey: true });
     expect(screen.getByRole('complementary', { name: SHELL_STRINGS.inspectorHeading })).toBeInTheDocument();
   });
 });
@@ -69,11 +69,14 @@ describe('Powłoka — ścieżka klawiatury', () => {
       .map((el) => el.getAttribute('data-testid'))
       .filter((id): id is string => id != null);
 
-    // Elementy z paska tytułowego, nawigacji i paska stanu są osiągalne z klawiatury.
-    expect(testIds).toContain('mvd-calculate');
-    expect(testIds).toContain('mvd-theme-toggle');
+    // Elementy trzech pasów (projektu, narzędzi, stanu) i nawigacji są osiągalne
+    // z klawiatury. Pozycje menu „Widok" (motyw, szczegóły audytowe) są osiągalne
+    // przez przycisk menu i strzałki (wzorzec ARIA menu button).
+    expect(testIds).toContain('mvd-view-menu');
     expect(testIds).toContain('mvd-reconnect');
     expect(testIds).toContain('mvd-status-model');
+    expect(testIds).toContain('mvd-status-gotowosc');
+    expect(testIds).toContain('mvd-status-run');
 
     const navReached = [...reached].some(
       (el) => el.tagName === 'BUTTON' && el.textContent?.includes('Projekt'),
@@ -83,9 +86,32 @@ describe('Powłoka — ścieżka klawiatury', () => {
 
   it('kluczowe przyciski są fokusowalne (brak tabindex=-1)', () => {
     render(<AppShell backendStatus="error" />);
-    for (const id of ['mvd-calculate', 'mvd-save', 'mvd-theme-toggle', 'mvd-reconnect']) {
+    for (const id of ['mvd-view-menu', 'mvd-reconnect', 'mvd-status-gotowosc', 'mvd-status-run']) {
       expect(screen.getByTestId(id).getAttribute('tabindex')).not.toBe('-1');
     }
+  });
+
+  it('menu Widok: Enter otwiera, strzałki przenoszą fokus, Escape zamyka i oddaje fokus', async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    const przycisk = screen.getByTestId('mvd-view-menu');
+    przycisk.focus();
+    await user.keyboard('{Enter}');
+    expect(przycisk).toHaveAttribute('aria-expanded', 'true');
+    expect(document.activeElement).toBe(screen.getByTestId('mvd-theme-toggle'));
+    await user.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(screen.getByTestId('mvd-szczegoly-audytowe'));
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(document.activeElement).toBe(screen.getByTestId('mvd-reset-layout'));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(przycisk);
+  });
+
+  it('„Zapisz" nie istnieje (model zapisują operacje domenowe — brak martwego kliku)', () => {
+    render(<AppShell onCalculate={() => undefined} />);
+    expect(screen.queryByTestId('mvd-save')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Zapisz' })).not.toBeInTheDocument();
   });
 });
 
@@ -111,7 +137,8 @@ describe('Powłoka — przełącznik motywu (jeden sterownik)', () => {
     expect(container.querySelector('.mv-dark-scada')).not.toBeNull();
     expect(container.querySelector('.mv-light-technical')).toBeNull();
 
-    // Realna ścieżka użytkownika: natywny klik w przycisk paska tytułowego.
+    // Realna ścieżka użytkownika: natywny klik w menu „Widok", potem w pozycję motywu.
+    await user.click(screen.getByTestId('mvd-view-menu'));
     await user.click(screen.getByTestId('mvd-theme-toggle'));
 
     // Po przełączeniu OBA sterowniki idą razem (brak mieszanki motywów).

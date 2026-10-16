@@ -82,7 +82,7 @@ afterEach(() => {
 describe('L-11 — wywód zawężony do wskazanego elementu', () => {
   it('wskazanie elementu otwiera wywód TEGO elementu i pozwala wrócić na cały przebieg', async () => {
     const user = userEvent.setup();
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyElementRef="EL-GPZ" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} wskazanyElementRef="EL-GPZ" />);
 
     // Startujemy zawężeni: dwa kroki szyny GPZ z trzech w śladzie.
     const przelacznik = await screen.findByTestId('mvd-dowod-zakres-element');
@@ -98,9 +98,9 @@ describe('L-11 — wywód zawężony do wskazanego elementu', () => {
 
   it('SELEKCJA na schemacie działa jak wskazanie (przejście z selekcji)', async () => {
     useSelectionStore.setState({
-      selectedElement: { id: 'EL-KABEL', type: 'Branch', name: 'Odcinek 1' },
+      selectedElement: { id: 'EL-KABEL', type: 'LineBranch', name: 'Odcinek 1' },
     });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
 
     const przelacznik = await screen.findByTestId('mvd-dowod-zakres-element');
     expect(przelacznik.textContent).toContain('Odcinek 1');
@@ -111,7 +111,7 @@ describe('L-11 — wywód zawężony do wskazanego elementu', () => {
   });
 
   it('ELEMENT BEZ KROKÓW: uczciwy komunikat, wywód całego przebiegu zostaje', async () => {
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyElementRef="EL-NIEZNANY" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} wskazanyElementRef="EL-NIEZNANY" />);
 
     expect(await screen.findByTestId('mvd-dowod-zakres-brak')).toBeTruthy();
     expect(screen.getByTestId('mvd-dowod-zakres-element')).toBeDisabled();
@@ -121,7 +121,7 @@ describe('L-11 — wywód zawężony do wskazanego elementu', () => {
   });
 
   it('BEZ WSKAZANIA I BEZ SELEKCJI: okno zachowuje się 1:1 jak dotąd', () => {
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.queryByTestId('mvd-dowod-zakres')).toBeNull();
     expect(screen.getByText('Impedancja odcinka kablowego')).toBeTruthy();
   });
@@ -132,7 +132,7 @@ describe('L-11 — wywód zawężony do wskazanego elementu', () => {
     useSelectionStore.setState({
       selectedElement: { id: 'EL-SPOZA-SLADU', type: 'Bus', name: 'Szyna obca' },
     });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.queryByTestId('mvd-dowod-zakres')).toBeNull();
     expect(screen.getByText('Impedancja odcinka kablowego')).toBeTruthy();
   });
@@ -150,7 +150,7 @@ describe('L-10 — źródło LaTeX wywodu', () => {
       }),
     );
 
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     await user.click(screen.getByTestId('mvd-dowod-latex-pokaz'));
 
     await waitFor(() => {
@@ -163,7 +163,7 @@ describe('L-10 — źródło LaTeX wywodu', () => {
   });
 
   it('kopiowanie i pobranie są zablokowane, dopóki źródła nie ma (zero pustych plików)', () => {
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-dowod-latex-kopiuj')).toBeDisabled();
     expect(screen.getByTestId('mvd-dowod-latex-pobierz')).toBeDisabled();
   });
@@ -172,7 +172,7 @@ describe('L-10 — źródło LaTeX wywodu', () => {
     const user = userEvent.setup();
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nie ma', { status: 404 })));
 
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     await user.click(screen.getByTestId('mvd-dowod-latex-pokaz'));
 
     expect(await screen.findByTestId('mvd-dowod-latex-blad')).toBeTruthy();
@@ -180,7 +180,7 @@ describe('L-10 — źródło LaTeX wywodu', () => {
 
   it('BEZ ŚLADU nie ma sekcji źródła (nie ma czego pobierać)', () => {
     useResultsInspectorStore.setState({ extendedTrace: null });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.queryByTestId('mvd-dowod-latex')).toBeNull();
   });
 });

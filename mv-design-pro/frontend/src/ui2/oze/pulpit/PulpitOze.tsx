@@ -22,7 +22,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec/PrzyciskAkcjiStanu';
@@ -76,12 +75,12 @@ function DowodPozycji({ pozycja }: { readonly pozycja: PozycjaModulu }): JSX.Ele
 
 export interface PulpitOzeProps {
   /** Tryb zaawansowania — odsłania identyfikatory katalogowe i odcisk. */
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
   readonly onNawiguj: (cel: 'dokumentacja') => void;
 }
 
-export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX.Element {
+export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX.Element {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisy = useMemo(() => opisyModulow(ders), [ders]);
   const derPoId = useMemo(() => new Map(ders.map((d) => [d.id, d])), [ders]);
@@ -162,7 +161,6 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
             ? PULPIT_STRINGS.wTrakcie
             : null;
 
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
   return (
     <div className="mvd-oze" data-testid="mvd-oze-pulpit">
@@ -203,7 +201,7 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
           </button>
           {bieg ? (
             <InformacjeAudytowe
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
               testid="mvd-oze-pulpit-odcisk"
               wiersze={[
                 { etykieta: PULPIT_STRINGS.odcisk, wartosc: bieg.deterministic_hash },
@@ -297,7 +295,7 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
                 der={derWybrany}
                 pozycja={pozycjaWybrana}
                 ocenaWczytana={ocenaWczytana}
-                trybEkspercki={trybEkspercki}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onNawiguj={onNawiguj}
                 wyroznionyModul={wyroznionyModul}
               />

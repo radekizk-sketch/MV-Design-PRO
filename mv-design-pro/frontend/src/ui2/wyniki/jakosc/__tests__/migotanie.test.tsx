@@ -29,7 +29,7 @@ const mockedMigotanie = vi.mocked(fetchMigotanie);
 function propsMigotanie(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -114,7 +114,7 @@ describe('SekcjaMigotania — stany', () => {
     unmount();
 
     mockedMigotanie.mockResolvedValue(MIGOTANIE_FIXTURE);
-    render(<SekcjaMigotania {...propsMigotanie({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaMigotania {...propsMigotanie({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     fireEvent.click(screen.getByText('Szyna OZE 1').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-mig-slad-otworz'));

@@ -18,7 +18,6 @@
  */
 
 import { useState } from 'react';
-import type { AdvancementMode } from '../../shell/modeModel';
 import {
   SladSekcyjny,
   SladWywodu,
@@ -58,7 +57,7 @@ export interface WkladyZwarcioweProps {
   wywodSekcje?: readonly SekcjaWywodu[];
   /** Checklista walidacji metody IEC (pkt 10) — sekcja na końcu wywodu sekcyjnego. */
   walidacjaIec?: readonly PozycjaWalidacji[];
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
@@ -109,7 +108,7 @@ export function WkladyZwarciowe({
   wywod = [],
   wywodSekcje = [],
   walidacjaIec = [],
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
   const [filtr, setFiltr] = useState('');
@@ -169,7 +168,7 @@ export function WkladyZwarciowe({
               kolumny={KOLUMNY_WKLADOW}
               wiersze={wiersze}
               onOtworzDowod={onOtworzDowod}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WKLAD}
               onWybierzWiersz={przelaczWklad}
               wybranyWiersz={wybranyWklad}

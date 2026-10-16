@@ -129,7 +129,7 @@ describe('EkranOceny — realna ścieżka danych', () => {
 describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi sieci złotej', () => {
   it('PODSTAWA OCENY: projekt, przypadek, wariant, rewizja, przebiegi ZAKOŃCZONE i aktualne, pakiet wyników; odcisk modelu poza pierwszym planem, w „Informacje audytowe" (karta V12.7 §0.3)', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
-    render(<EkranOceny trybZaawansowania="expert" />);
+    render(<EkranOceny szczegolyAudytowe />);
     const podstawa = await screen.findByTestId('mvd-ocena-podstawa');
     expect(podstawa).toHaveTextContent('Przyłączenie farmy PV 8 MW');
     expect(podstawa).toHaveTextContent('Stan normalny');
@@ -307,7 +307,7 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
   it('język formalny (prompt §6): żadnego PASS/WARN/FAIL ani żargonu interfejsu w widocznym tekście', async () => {
     for (const fixtura of [FIXTURA_OCENA, FIXTURA_PRZEKROCZENIA]) {
       fetchMock.mockResolvedValue(odpowiedzOk(fixtura));
-      const { unmount } = render(<EkranOceny trybZaawansowania="expert" />);
+      const { unmount } = render(<EkranOceny szczegolyAudytowe />);
       await screen.findByTestId('mvd-ocena-podsumowanie');
       const tekst = tekstEkranu();
       expect(tekst).not.toMatch(/\b(PASS|WARN|FAIL)\b/);
@@ -387,7 +387,7 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
 
   it('matematyka wyłącznie KaTeX (karta V12.7 §0.1/§0.11): symbol i warunek w .katex, zero ASCII "<=" / "sqrt(" w tekście', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
-    render(<EkranOceny trybZaawansowania="expert" />);
+    render(<EkranOceny szczegolyAudytowe />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
     const napiecie = FIXTURA_OCENA.pozycje.find((p) => p.kryterium_id === 'napiecie.odchylenie')!;
     const wiersz = screen.getByTestId(`mvd-ocena-element-${napiecie.kryterium_id}-${napiecie.elementy[0].element_id}`);
@@ -512,7 +512,7 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
       .flatMap((p) => p.elementy)
       .map((e) => e.element_id)
       .find((id): id is string => id !== null && id !== 'network')!;
-    const { unmount } = render(<EkranOceny trybZaawansowania="expert" />);
+    const { unmount } = render(<EkranOceny szczegolyAudytowe />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
     expect(tekstEkranu()).not.toContain(runId);
     expect(tekstEkranu()).not.toContain(elementId);
@@ -521,7 +521,7 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
     await userEvent.click(screen.getAllByTestId('mvd-ocena-element-informacje-audytowe-przelacz')[0]);
     expect(screen.getAllByTestId('mvd-ocena-element-informacje-audytowe-lista')[0].textContent).not.toBe('');
     unmount();
-    render(<EkranOceny trybZaawansowania="basic" />);
+    render(<EkranOceny szczegolyAudytowe={false} />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
     expect(tekstEkranu()).not.toContain(runId);
     expect(screen.queryAllByTestId('mvd-ocena-element-informacje-audytowe')).toHaveLength(0);

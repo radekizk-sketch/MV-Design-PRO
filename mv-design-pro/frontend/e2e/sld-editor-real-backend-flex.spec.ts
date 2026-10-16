@@ -415,16 +415,17 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   // pełne przejęcie = karty U2"). Panel nie pojawiłby się także BEZ reloadu.
   // INTENCJA BEZ ZMIAN: po delete+continue+reloadzie powłoka pokazuje
   // strukturę układu odzwierciedlającą realny model (nie stan zerowy).
-  // Bieżący nośnik: pasek kontekstu przepływu pracy nad kanwą
-  // (`WorkflowContextStrip` — faza budowy + metryki Szyny/Odcinki SN/Stacje).
-  const strip = page.getByTestId('workflow-context-strip');
-  await expect(strip).toBeVisible();
-  await expect(page.getByTestId('workflow-build-phase')).toBeVisible();
-  // 'Kontrola:' renderuje się TYLKO przy niepustej topologii (hasTopologyElements)
-  // — dowodzi, że po reloadzie model został odtworzony z backendu.
-  await expect(strip).toContainText('Kontrola:');
-  await expect(strip).toContainText('Odcinki SN');
-  await expect(strip).toContainText('Stacje');
+  // Bieżący nośnik (karta K1 POWLOKA): liczniki modelu na żądanie w pasku
+  // narzędzi — dawny stały pasek metryk nad kanwą skasowano. Natywny klik
+  // otwiera panel; liczby NIEZEROWE dowodzą, że po reloadzie model został
+  // odtworzony z backendu (stan pusty miałby zera i akcję budowy GPZ).
+  await page.getByTestId('mvd-narzedzie-model').click();
+  const liczniki = page.getByTestId('mvd-liczniki-modelu');
+  await expect(liczniki).toBeVisible();
+  await expect(page.getByTestId('mvd-licznik-odcinki')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('mvd-licznik-odcinki')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.getByTestId('mvd-licznik-szyny')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.getByTestId('mvd-liczniki-zacznij')).toHaveCount(0);
 });
 
 test('real backend supports flexible operation order combinations', async ({ page, request }) => {

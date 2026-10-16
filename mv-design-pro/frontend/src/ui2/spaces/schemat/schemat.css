@@ -1,73 +1,31 @@
-/* Przestrzeń „Schemat (SLD)" — dodatki ui2 (karta K4-E2).
-   Tokeny --mvd-* jak w gotowosc.css (wzorzec sekcji „Następny krok" F-E3);
-   wariant pasekowy (nad kanwą): niższy, z dolną krawędzią zamiast ramki. */
+/* Przestrzeń „Schemat (SLD)" — dodatki ui2.
+   Karta K1 POWLOKA: przełącznik trybu pracy kanwy żyje w pasku narzędzi
+   powłoki (segment dwóch przycisków); tekst ≥ 13 px, bez wersalików. */
 
-.mvd-schemat-nastepny {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--mvd-border);
-  background: var(--mvd-panel);
-}
-.mvd-schemat-nastepny-tresc {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.mvd-schemat-nastepny-lbl {
-  font: 600 10.5px/1 var(--mvd-font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--mvd-accent);
-}
-.mvd-schemat-nastepny-opis {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--mvd-ink);
-}
-.mvd-schemat-nastepny-akcja {
-  flex-shrink: 0;
-  background: var(--mvd-accent);
-  border: 1px solid var(--mvd-accent);
-  border-radius: 6px;
-  padding: 6px 16px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mvd-accent-ink);
-  cursor: pointer;
-}
-.mvd-schemat-nastepny-akcja:hover {
-  filter: brightness(1.08);
-}
-
-/* ---- tryb pracy kanwy: edycja vs podgląd (KD-4, L-1) ---- */
 .mvd-schemat-tryb {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--mvd-panel);
-  border-bottom: 1px solid var(--mvd-line);
+  gap: 6px;
+  min-width: 0;
 }
 .mvd-schemat-tryb-etyk {
-  font: 600 10.5px/1 var(--mvd-font-mono);
-  letter-spacing: 0.14em;
-  color: var(--mvd-accent);
+  font-size: var(--mvd-font-size-data);
+  color: var(--mvd-muted);
+  white-space: nowrap;
 }
 .mvd-schemat-tryb-btn {
   padding: 3px 12px;
-  font-size: 12.5px;
+  font: inherit;
+  font-size: var(--mvd-font-size-data);
   color: var(--mvd-ink);
   background: transparent;
-  border: 1px solid var(--mvd-line);
-  border-radius: 999px;
+  border: 1px solid var(--mvd-line-strong);
+  border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
+}
+.mvd-schemat-tryb-btn:hover {
+  background: var(--mvd-bg-hover);
 }
 .mvd-schemat-tryb-btn[aria-pressed='true'] {
   color: var(--mvd-accent-ink);
@@ -75,6 +33,10 @@
   border-color: var(--mvd-accent);
 }
 .mvd-schemat-tryb-uwaga {
-  font-size: 11.5px;
-  color: var(--mvd-muted);
+  font-size: var(--mvd-font-size-data);
+  color: var(--mvd-warn);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }

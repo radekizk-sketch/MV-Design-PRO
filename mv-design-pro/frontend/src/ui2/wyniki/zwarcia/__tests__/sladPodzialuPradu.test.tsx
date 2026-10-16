@@ -21,7 +21,7 @@ import { branchFlowTraceFixture, shortCircuitResultsFixture, shortCircuitRowFixt
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
-    trybZaawansowania: 'expert' as const,
+    szczegolyAudytowe: true as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -49,7 +49,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={trace}
         blad={false}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -99,7 +99,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={realnyTrace()}
         blad={false}
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -118,7 +118,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
         blad={false}
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -133,7 +133,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
 
   it('trace === [] (policzono, brak wkładu Thevenina) → stan uczciwy ODRĘBNY od null', () => {
     render(
-      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} trybZaawansowania="basic" />,
+      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} szczegolyAudytowe={false} />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
     expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-pusty')).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
         blad
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');

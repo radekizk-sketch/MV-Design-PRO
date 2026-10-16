@@ -63,14 +63,14 @@ describe('PasmoMinMax — stany kontenera (runId / wczytywanie / błąd)', () =>
   it('runId = null: sekcja się NIE montuje (żaden fetch, żadna treść)', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    render(<PasmoMinMax runId={null} trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId={null} szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     expect(screen.queryByTestId('mvd-zwarcia-pasmo')).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('błąd pobrania (HTTP 500) → komunikat błędu, nie cisza', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('awaria', { status: 500 })));
-    render(<PasmoMinMax runId="run-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     expect(await screen.findByTestId('mvd-zwarcia-pasmo-blad')).toBeInTheDocument();
     expect(screen.getByText(ZWARCIA_STRINGS.pasmoBladPobrania)).toBeInTheDocument();
   });
@@ -78,7 +78,7 @@ describe('PasmoMinMax — stany kontenera (runId / wczytywanie / błąd)', () =>
   it('poprawne wywołanie trafia w endpoint pasma DLA PODANEGO run_id', async () => {
     const fetchMock = vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture()));
     vi.stubGlobal('fetch', fetchMock);
-    render(<PasmoMinMax runId="run-kotwica-9" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-kotwica-9" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-zwarcia-pasmo-strony');
     expect(fetchMock).toHaveBeenCalledWith('/api/analysis-runs/run-kotwica-9/results/short-circuit/pasmo');
   });
@@ -87,7 +87,7 @@ describe('PasmoMinMax — stany kontenera (runId / wczytywanie / błąd)', () =>
 describe('PasmoMinMax — obie strony dostępne', () => {
   it('tryb ekspercki: identyfikator biegu zapisanego i biegu kotwicy strony policzonej w „Informacjach audytowych"', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture())));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="expert" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-zwarcia-pasmo-strony');
     // Strona zapisana — jej własny identyfikator biegu.
     fireEvent.click(screen.getByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe-przelacz'));
@@ -103,7 +103,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
 
   it('tabela pokazuje wartości MAX i MIN obok siebie dla tego samego punktu, z proweniencją obu stron', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture())));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-zwarcia-pasmo-strony');
 
     // Wartości MAX i MIN tego samego punktu jednocześnie w DOM (aneks D7: "obok siebie").
@@ -171,7 +171,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
       }),
     });
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(dane)));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-zwarcia-pasmo-strony');
     const blokMax = screen.getByTestId('mvd-zwarcia-pasmo-max');
     const blokMin = screen.getByTestId('mvd-zwarcia-pasmo-min');
@@ -183,7 +183,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
 
   it('ta sama rewizja obu stron: BEZ ostrzeżenia świeżości', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture())));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-zwarcia-pasmo-strony');
     expect(screen.queryByTestId('mvd-zwarcia-pasmo-swiezosc')).not.toBeInTheDocument();
   });
@@ -198,7 +198,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
       }),
     });
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(dane)));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     const swiezosc = await screen.findByTestId('mvd-zwarcia-pasmo-swiezosc');
     expect(within(swiezosc).getByText(ZWARCIA_STRINGS.pasmoRozbieznoscRewizji)).toBeInTheDocument();
     expect(within(swiezosc).getByTestId('mvd-zwarcia-pasmo-swiezosc-znacznik')).toHaveAttribute(
@@ -218,7 +218,7 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
       min: null,
     });
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(dane)));
-    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-max-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await waitFor(() => expect(screen.getByTestId('mvd-zwarcia-pasmo-brak-min')).toBeInTheDocument());
 
     const blokBrak = screen.getByTestId('mvd-zwarcia-pasmo-brak-min');
@@ -245,7 +245,7 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
       min: stronaFixture({ run_id: 'run-min-1', bieg_bazowy_id: 'run-min-1' }),
     });
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(dane)));
-    render(<PasmoMinMax runId="run-min-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<PasmoMinMax runId="run-min-1" szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await waitFor(() => expect(screen.getByTestId('mvd-zwarcia-pasmo-brak-max')).toBeInTheDocument());
     const akcja = within(screen.getByTestId('mvd-zwarcia-pasmo-brak-max')).getByTestId(
       'mvd-zwarcia-pasmo-max-akcja',

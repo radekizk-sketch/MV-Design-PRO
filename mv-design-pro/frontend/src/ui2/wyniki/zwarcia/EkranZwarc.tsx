@@ -14,7 +14,6 @@
 
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
@@ -39,7 +38,7 @@ import {
 } from './zwarciaModel';
 
 export interface EkranZwarcProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
   /**
@@ -52,7 +51,7 @@ export interface EkranZwarcProps {
 }
 
 export function EkranZwarc({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
   wklady,
@@ -125,7 +124,7 @@ export function EkranZwarc({
         wykres={<WykresZwarc rows={rows} />}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_PUNKT}
         onWybierzWiersz={setWybranyPunkt}
         wybranyWiersz={aktywnyPunkt}
@@ -157,14 +156,14 @@ export function EkranZwarc({
           renderuje się wyżej, obok tabeli głównej, przed sekcjami per-punkt. */}
       <SladZrodelSieciowych
         zrodlaSieciowe={wynik.zrodla_sieciowe}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
 
       {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak
           ślad Z_Q wyżej), oba scenariusze c_max/c_min JEDNEGO przypadku obok
           siebie, z proweniencją każdej strony. */}
-      <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
+      <PasmoMinMax runId={runId} szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={onOtworzDowod} />
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 
@@ -179,7 +178,7 @@ export function EkranZwarc({
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
 
@@ -189,7 +188,7 @@ export function EkranZwarc({
         punktNazwa={nazwaAktywnego}
         trace={rozplyw.trace}
         blad={rozplyw.blad}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <WkladyZwarciowe
@@ -198,7 +197,7 @@ export function EkranZwarc({
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
     </div>

@@ -20,7 +20,7 @@ const mockedWalidacja = vi.mocked(fetchWalidacjaEnergetyczna);
 function propsWiarygodnosc(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -28,7 +28,7 @@ function propsWiarygodnosc(over = {}) {
 function propsWalidacja(over = {}) {
   return {
     przebieg: przebiegTestowy('pf-1', 'LOAD_FLOW'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -95,7 +95,7 @@ describe('SekcjaWiarygodnosci — stany', () => {
 
   it('identyfikator węzła nie stoi na pierwszym planie także w trybie eksperckim (karta #145)', async () => {
     mockedWiarygodnosc.mockResolvedValue(WIARYGODNOSC_FIXTURE);
-    render(<SekcjaWiarygodnosci {...propsWiarygodnosc({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaWiarygodnosci {...propsWiarygodnosc({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-wiarygodnosc')).toBeTruthy());
     expect(screen.queryAllByText('bus-A')).toHaveLength(0);
   });
@@ -161,7 +161,7 @@ describe('SekcjaWalidacji — stany', () => {
 describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () => {
   it('tryb ekspercki: wybór pozycji z wywodem → przycisk śladu → pełny wywód', async () => {
     mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
-    render(<SekcjaWalidacji {...propsWalidacja({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaWalidacji {...propsWalidacja({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
     fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-wal-slad-otworz'));

@@ -1124,7 +1124,7 @@ function KartaWerdyktuRekordu({
       </SekcjaRozwijana>
       <InformacjeAudytowe
         wiersze={wierszeAudytoweRekordu(rekord)}
-        trybEkspercki
+        szczegolyAudytowe
         testid={`${testId}-audyt`}
       />
       {wymaganie && (

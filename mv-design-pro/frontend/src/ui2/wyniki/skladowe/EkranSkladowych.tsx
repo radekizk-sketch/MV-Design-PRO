@@ -95,7 +95,7 @@ function WartoscSkladowej({
 }
 
 export function EkranSkladowych() {
-  const trybZaawansowania = useShellStore((s) => s.advancementMode);
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
@@ -174,7 +174,7 @@ export function EkranSkladowych() {
               kolumny={KOLUMNY_SKLADOWYCH}
               wiersze={naWierszeSkladowych(rows)}
               onOtworzDowod={otworzDowod}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_PUNKT}
               onWybierzWiersz={setWybranyPunkt}
               wybranyWiersz={aktywnyPunkt}

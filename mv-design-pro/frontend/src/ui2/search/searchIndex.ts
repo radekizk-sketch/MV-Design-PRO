@@ -24,13 +24,19 @@ import {
   type CanonicalScreenCode,
 } from '../../ui/workspace/screenCanonRegistry';
 import { SPACES, type SpaceDefinition, type SpaceId } from '../shell/spaces';
-import type { PozycjaWyszukiwania, TrybZaawansowania } from './searchModel';
+import type { PozycjaWyszukiwania } from './searchModel';
 
-/** Kształt obiektu modelu dostarczanego przez provider (nazwa + opcjonalny tryb minimalny). */
+/**
+ * Kształt obiektu modelu dostarczanego przez provider. `kategoria` (np. „Stacje")
+ * i `slowaKluczowe` (identyfikator, rodzaj) pozwalają odnaleźć obiekt także po
+ * tym, czego nie widać w nazwie — parytet ze skasowaną drugą wyszukiwarką
+ * modelu (`ui/network-build/GlobalSearch`, karta K1 POWLOKA: JEDNA wyszukiwarka).
+ */
 export interface ObiektDoIndeksu {
   id: string;
   nazwa: string;
-  trybMin?: TrybZaawansowania;
+  kategoria?: string;
+  slowaKluczowe?: string;
 }
 
 /** Provider obiektów modelu — źródłem jest migawka modelu po stronie powłoki. */
@@ -44,7 +50,7 @@ export interface AkcjeIndeksu {
   /** Przejście do przestrzeni kanonicznej (grupa „Przestrzenie"). */
   przejdzDoPrzestrzeni: (przestrzen: SpaceId) => void;
   /** Zaznaczenie obiektu modelu (grupa „Obiekty"). */
-  wybierzObiekt: (id: string) => void;
+  wybierzObiekt: (obiekt: ObiektDoIndeksu) => void;
   /** Otwarcie okna E-XX przez router powierzchni (grupa „Ekrany"). */
   otworzEkran: (kod: CanonicalScreenCode, tytulPl: string) => void;
   /** Uruchomienie obliczeń aktywnego zakresu. */
@@ -55,6 +61,10 @@ export interface AkcjeIndeksu {
   przywrocUklad: () => void;
   /** Ponowna próba połączenia z backendem (pasek stanu). */
   polaczPonownie: () => void;
+  /** Włączenie/wyłączenie „Szczegółów audytowych" (menu „Widok"). */
+  przelaczSzczegolyAudytowe: () => void;
+  /** Przełączenie motywu ekranu (menu „Widok"). */
+  przelaczMotyw: () => void;
 }
 
 function pozycjaZPrzestrzeni(
@@ -122,6 +132,20 @@ function pozycjePolecen(akcje: AkcjeIndeksu): PozycjaWyszukiwania[] {
       grupa: 'polecenia',
       akcja: akcje.polaczPonownie,
     },
+    {
+      id: 'polecenie:szczegoly-audytowe',
+      etykietaPL: 'Szczegóły audytowe: pokaż lub ukryj',
+      grupa: 'polecenia',
+      slowaKluczowe: 'ekspercki diagnostyka analizy akademickie identyfikatory odciski',
+      akcja: akcje.przelaczSzczegolyAudytowe,
+    },
+    {
+      id: 'polecenie:motyw',
+      etykietaPL: 'Przełącz motyw ekranu',
+      grupa: 'polecenia',
+      slowaKluczowe: 'ciemny jasny',
+      akcja: akcje.przelaczMotyw,
+    },
   ];
 }
 
@@ -138,10 +162,10 @@ export function zbudujIndeksWyszukiwania(opcje: BudowaIndeksuOpcje): PozycjaWysz
   const przestrzenie = SPACES.map((przestrzen) => pozycjaZPrzestrzeni(przestrzen, akcje));
   const obiekty: PozycjaWyszukiwania[] = (opcje.obiekty?.() ?? []).map((obiekt) => ({
     id: `obiekt:${obiekt.id}`,
-    etykietaPL: obiekt.nazwa,
+    etykietaPL: obiekt.kategoria ? `${obiekt.nazwa} · ${obiekt.kategoria}` : obiekt.nazwa,
     grupa: 'obiekty',
-    trybMin: obiekt.trybMin,
-    akcja: () => akcje.wybierzObiekt(obiekt.id),
+    slowaKluczowe: [obiekt.id, obiekt.slowaKluczowe].filter(Boolean).join(' '),
+    akcja: () => akcje.wybierzObiekt(obiekt),
   }));
   return [...przestrzenie, ...pozycjeEkranow(akcje), ...pozycjePolecen(akcje), ...obiekty];
 }

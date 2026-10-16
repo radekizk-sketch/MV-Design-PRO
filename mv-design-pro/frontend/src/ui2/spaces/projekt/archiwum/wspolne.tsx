@@ -8,7 +8,6 @@
 
 import type { ReactNode } from 'react';
 
-import { isModeAtLeast } from '../../../shell/modeModel';
 import { useShellStore } from '../../../shell/useShellStore';
 import { InformacjeAudytowe, type WierszInformacjiAudytowych } from '../../../wyniki/wzorzec';
 import '../../../wyniki/wzorzec/wzorzec.css';
@@ -63,11 +62,8 @@ export function ListaKomunikatow({
 }
 
 /** Tryb ekspercki powłoki — jedyny warunek widoczności informacji audytowych (V12.7 §0.3). */
-export function useTrybEkspercki(): boolean {
-  return isModeAtLeast(
-    useShellStore((s) => s.advancementMode),
-    'expert',
-  );
+export function useSzczegolyAudytowe(): boolean {
+  return useShellStore((s) => s.szczegolyAudytowe);
 }
 
 /** Wiersze informacji audytowych z par (etykieta, wartość) — brak wartości = brak wiersza. */
@@ -108,7 +104,7 @@ export function RaportImportu({
   children?: ReactNode;
 }) {
   const werdykt = werdyktImportu(wynik);
-  const trybEkspercki = useTrybEkspercki();
+  const szczegolyAudytowe = useSzczegolyAudytowe();
   return (
     <div className="mvd-arch-raport" data-wariant={werdykt.wariant} data-testid={`${prefiks}-raport`}>
       <span className="mvd-arch-meta-k">{T.raportTytul}</span>
@@ -153,7 +149,7 @@ export function RaportImportu({
       {/* Wersja zapisu źródłowego to metadana — zdanie o migracji jest w ostrzeżeniach backendu. */}
       <InformacjeAudytowe
         wiersze={wierszeAudytowe([[T.raportMigracja, wynik.migrated_from_version]])}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid={`${prefiks}-audyt`}
       />
     </div>

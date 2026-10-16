@@ -4,7 +4,7 @@
  * DEFEKT: `restoreAnalysisRunSnapshot` pakował migawkę przebiegu w kopertę
  * operacji domenowej z ZASZYTYM polem `readiness: {ready:true, blockers:[],
  * warnings:[]}` i `fix_actions: []`. Koperta szła do `useSnapshotStore`, który
- * po karcie KD-1 jest JEDYNĄ prawdą gotowości (chipy paska przypadku, panel
+ * po karcie KD-1 jest JEDYNĄ prawdą gotowości (pasek stanu powłoki, panel
  * „Gotowość", liczniki blokad w drzewie, paski budowy sieci). Skutek: po każdym
  * zakończonym biegu i po każdym wejściu na głęboki link przebiegu chrom
  * deklarował „Model: zwalidowany" i „Gotowość: brak uwag" na modelu, którego
@@ -17,7 +17,10 @@
  * zostawia stan nieustalony `null`, czyli istniejący uczciwy stan zerowy).
  *
  * ŚCIEŻKA REALNA (wymóg karty): montujemy PRODUKCYJNY hook wraz z produkcyjnym
- * chipem `CaseBar` i prowadzimy go hashem oraz odpowiedziami backendu w
+ * paskiem stanu `StatusBar` (po karcie K1 POWLOKA jedyne miejsce gotowości w
+ * chromie; dawny chip „Model: …" paska przypadku skasowano jako powtórzenie
+ * gotowości — jego intencję „nie deklaruj zwalidowanego modelu" niesie teraz
+ * pozycja gotowości: brak „brak uwag" i czerwona kropka) i prowadzimy go hashem oraz odpowiedziami backendu w
  * kształcie zgodnym z `api/analysis_runs.py` i `_build_readiness`. Bez
  * wymuszania stanu store'ów `setState` i bez opakowywania ładowania w `act(...)`
  * — to właśnie ten wzorzec ukrył defekt przed poprzednimi testami.
@@ -27,10 +30,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegacyOrchestrator } from '../useLegacyOrchestrator';
-import { CaseBar } from '../../shell/CaseBar';
-import { useShellCaseInfo } from '../../shell/shellStatus';
+import { StatusBar } from '../../shell/StatusBar';
 import {
   podsumujGotowosc,
+  usePodsumowanieGotowosci,
   polaczGotowosc,
 } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { useShellStore } from '../../shell/useShellStore';
@@ -181,8 +184,23 @@ function stubFetch(readiness: Gotowosc) {
 
 function Probe() {
   useLegacyOrchestrator();
-  const info = useShellCaseInfo();
-  return <CaseBar info={info} />;
+  const gotowosc = usePodsumowanieGotowosci();
+  return (
+    <StatusBar
+      status={{ backend: 'connected', modelRevision: null, lastRunLabel: null, wersjaModelu: null }}
+      gotowosc={gotowosc}
+      projektOtwarty
+      bieg={{ trwa: false, analiza: null, stan: null }}
+    />
+  );
+}
+
+/** Pasek stanu przy modelu z blokadą: ustalona, czerwona kropka, NIGDY „brak uwag". */
+function expectGotowoscZBlokada() {
+  const pozycja = screen.getByTestId('mvd-status-gotowosc');
+  expect(pozycja.getAttribute('data-ustalona')).toBe('true');
+  expect(pozycja.textContent).not.toContain('brak uwag');
+  expect(pozycja.querySelector('.mvd-dot-err')).not.toBeNull();
 }
 
 function gotowoscZeStoru() {
@@ -239,7 +257,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
       expect(gotowoscZeStoru()).toEqual({ ready: true, ustalona: true, blokady: 0, ostrzezenia: 2 });
     });
     expect(kodyGotowosci()).toEqual(['W002', 'W003']);
-    expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
+    expect(screen.getByTestId('mvd-status-gotowosc').textContent).toContain(
       'Gotowość: 2 ostrzeżenia',
     );
 
@@ -256,12 +274,12 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
     expect(useSnapshotStore.getState().snapshot?.header.hash_sha256).toBe(MODEL_HASH);
     expect(gotowoscZeStoru()).toEqual({ ready: true, ustalona: true, blokady: 0, ostrzezenia: 2 });
     expect(kodyGotowosci()).toEqual(['W002', 'W003']);
-    expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
+    expect(screen.getByTestId('mvd-status-gotowosc').textContent).toContain(
       'Gotowość: 2 ostrzeżenia',
     );
   });
 
-  it('model z blokadą: po wejściu na wynik biegu chip NIE mówi „Model: zwalidowany"', async () => {
+  it('model z blokadą: po wejściu na wynik biegu pasek stanu NIE mówi „brak uwag"', async () => {
     stubFetch(GOTOWOSC_BLOKADA);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
 
@@ -270,7 +288,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
     await waitFor(() => {
       expect(gotowoscZeStoru()).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
     });
-    expect(screen.getByTestId('mvd-casebar-model').textContent).toContain('Model: w budowie');
+    expectGotowoscZBlokada();
 
     window.location.hash = `#analysis?case=${CASE_ID}&run=${RUN_ID}`;
 
@@ -280,11 +298,8 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
 
     expect(gotowoscZeStoru()).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
     expect(kodyGotowosci()).toEqual(['E005', 'W002', 'W003']);
-    expect(screen.getByTestId('mvd-casebar-model').textContent).toContain('Model: w budowie');
-    expect(screen.getByTestId('mvd-casebar-model').textContent).not.toContain(
-      'Model: zwalidowany',
-    );
-    expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
+    expectGotowoscZBlokada();
+    expect(screen.getByTestId('mvd-status-gotowosc').textContent).toContain(
       'Gotowość: 1 blokada',
     );
   });
@@ -307,8 +322,8 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
     // Liczby pochodzą z odpowiedzi backendu, nie z koperty migawki.
     expect(domainOpCalls).toBeGreaterThan(0);
     expect(kodyGotowosci()).toEqual(['E005', 'W002', 'W003']);
-    expect(screen.getByTestId('mvd-casebar-model').textContent).toContain('Model: w budowie');
-    expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
+    expectGotowoscZBlokada();
+    expect(screen.getByTestId('mvd-status-gotowosc').textContent).toContain(
       'Gotowość: 1 blokada',
     );
   });

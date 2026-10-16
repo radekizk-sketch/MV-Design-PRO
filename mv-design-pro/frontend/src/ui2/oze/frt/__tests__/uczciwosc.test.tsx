@@ -77,7 +77,7 @@ async function wczytajISkonfiguruj() {
     connection_side: 'nN',
     catalogs: { device_catalog_ref: 'conv-pv-1mw-15kv' },
   });
-  render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+  render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
   await screen.findByTestId('mvd-frt-dobor');
   fireEvent.change(screen.getByTestId('mvd-frt-modul'), { target: { value: 'der-1' } });
   fireEvent.change(screen.getByTestId('mvd-frt-operator'), { target: { value: 'pse' } });

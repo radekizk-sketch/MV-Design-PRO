@@ -287,7 +287,7 @@ test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (
       state: 'attached',
       timeout: 90000,
     });
-    await expect(strona.getByTestId('mvd-casebar-results')).toContainText('Wyniki: aktualne', {
+    await expect(strona.getByTestId('mvd-projekt-wyniki')).toContainText('Wyniki: aktualne', {
       timeout: 30000,
     });
   } finally {
@@ -318,7 +318,7 @@ test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (
       timeout: 90000,
     });
 
-    const chip = strona.getByTestId('mvd-casebar-results');
+    const chip = strona.getByTestId('mvd-projekt-wyniki');
     await expect(chip).toContainText('Wyniki: nieaktualne', { timeout: 30000 });
     // Nieaktualność ma wyjście: znacznik jest przyciskiem do przestrzeni obliczeń.
     await expect(chip).toHaveAttribute('title', /Obliczenia/);
@@ -357,7 +357,7 @@ test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (
     });
     await expect(strona.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
 
-    const chip = strona.getByTestId('mvd-casebar-results');
+    const chip = strona.getByTestId('mvd-projekt-wyniki');
     await expect(chip).toContainText('Wyniki: nieaktualne', { timeout: 30000 });
     await expect(chip).not.toHaveText('Wyniki: aktualne');
   } finally {

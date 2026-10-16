@@ -16,7 +16,7 @@ function props(over: Partial<InspectorPanelProps> = {}): InspectorPanelProps {
     onOtworzDowod: vi.fn(),
     onNawiguj: vi.fn(),
     onPrzelicz: vi.fn(),
-    trybZaawansowania: 'basic',
+    szczegolyAudytowe: false,
     ...over,
   };
 }
@@ -151,13 +151,13 @@ describe('InspectorPanel — tryb ekspercki', () => {
   beforeEach(resetPinStore);
 
   it('tryb podstawowy: „Szczegóły techniczne" i identyfikatory ukryte', () => {
-    render(<InspectorPanel {...props({ trybZaawansowania: 'basic' })} />);
+    render(<InspectorPanel {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByText(INSPECTOR_STRINGS.szczegolyTechniczne)).not.toBeInTheDocument();
     expect(screen.queryByText('BUS-7')).not.toBeInTheDocument();
   });
 
   it('tryb ekspercki: „Szczegóły techniczne" z identyfikatorem technicznym', () => {
-    render(<InspectorPanel {...props({ trybZaawansowania: 'expert' })} />);
+    render(<InspectorPanel {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByText(INSPECTOR_STRINGS.szczegolyTechniczne)).toBeInTheDocument();
     expect(screen.getByText('BUS-7')).toBeInTheDocument();
   });

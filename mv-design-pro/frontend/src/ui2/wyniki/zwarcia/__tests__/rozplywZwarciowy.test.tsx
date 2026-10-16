@@ -39,7 +39,7 @@ vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     // Wkłady przez props → hook dostawcy wkładów nie pobiera (bez fetch w teście).
     wklady: { 'BUS-GPZ': wkladyFixture() },
@@ -172,14 +172,14 @@ describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => 
 
   it('kolumny eksperckie (źródło, identyfikator gałęzi) tylko w trybie eksperckim', async () => {
     ustawWynikZRozplywem();
-    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ szczegolyAudytowe: true })} />);
     const sekcja = within(screen.getByTestId('mvd-zwarcia-rozplyw'));
     expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeInTheDocument();
     // Oba wpisy fixture niosą to samo źródło — kolumna ekspercka widoczna per wiersz.
     expect(sekcja.getAllByText('GEN-PV')).toHaveLength(2);
     unmount();
     ustawWynikZRozplywem();
-    await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ szczegolyAudytowe: false })} />);
     const sekcjaBasic = within(screen.getByTestId('mvd-zwarcia-rozplyw'));
     expect(sekcjaBasic.queryByTestId('mvd-wyn-th-zrodlo')).not.toBeInTheDocument();
   });

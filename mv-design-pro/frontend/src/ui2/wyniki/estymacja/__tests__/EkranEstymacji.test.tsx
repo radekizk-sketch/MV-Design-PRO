@@ -60,7 +60,7 @@ afterEach(() => {
 
 describe('EkranEstymacji — stany wejściowe', () => {
   it('bez przebiegu rozpływu → uczciwa instrukcja, bez wołań API', () => {
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     expect(screen.getByTestId('mvd-est-brak-przebiegu')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-est-estymuj')).not.toBeInTheDocument();
     expect(wym).not.toHaveBeenCalled();
@@ -69,7 +69,7 @@ describe('EkranEstymacji — stany wejściowe', () => {
 
   it('przebieg rozpływu → wczytuje wymagane wejścia (mapa węzeł→indeks)', async () => {
     ustawPrzebieg();
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     expect(wym).toHaveBeenCalledWith('run-lf-1');
     expect(screen.getByTestId('mvd-est-min-pomiarow')).toHaveTextContent('5');
@@ -81,7 +81,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
   it('wpis pomiaru → „Estymuj" → serializuje żądanie i wywołuje POST', async () => {
     ustawPrzebieg();
     post.mockReturnValue(new Promise(() => {})); // bieg trwa — asercja tylko na wywołaniu
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -98,7 +98,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
   it('render widoku: chip χ², tabela |V| węzłów i flaga podejrzenia (LNR)', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokEstymacjiFixture());
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -124,7 +124,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
   it('walidacja SYNTETYCZNA → baner ostrzegawczy widoczny także w trybie podstawowym (WLS-S3)', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokEstymacjiFixture());
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -139,7 +139,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokEstymacjiFixture());
     const { container, unmount } = render(
-      <EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />,
+      <EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />,
     );
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
@@ -148,7 +148,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
     const pierwszy = container.querySelector('[data-testid="mvd-est-wynik"]')?.innerHTML;
     unmount();
 
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -162,7 +162,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
   it('ślad WHITE BOX i metadane widoczne wyłącznie w trybie eksperckim', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokEstymacjiFixture());
-    render(<EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -184,7 +184,7 @@ describe('EkranEstymacji — estymacja i wynik', () => {
 describe('EkranEstymacji — uczciwe stany i edytor', () => {
   it('brak pomiarów → błąd walidacji PL, bez POST', async () => {
     ustawPrzebieg();
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
     expect(screen.getByTestId('mvd-est-bledy')).toHaveTextContent('wymaga pomiarów telemetrycznych');
@@ -196,7 +196,7 @@ describe('EkranEstymacji — uczciwe stany i edytor', () => {
     post.mockRejectedValue(
       new Error('Układ nieobserwowalny: liczba pomiarów mniejsza niż liczba stanów (niedookreślony).'),
     );
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -206,7 +206,7 @@ describe('EkranEstymacji — uczciwe stany i edytor', () => {
 
   it('dodaje i usuwa wiersze pomiarów', async () => {
     ustawPrzebieg();
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     expect(screen.getAllByTestId('mvd-est-wiersz')).toHaveLength(1);
     fireEvent.click(screen.getByTestId('mvd-est-dodaj'));
@@ -217,7 +217,7 @@ describe('EkranEstymacji — uczciwe stany i edytor', () => {
 
   it('pomiar przepływu (P_FLOW) odblokowuje węzeł „do" gałęzi', async () => {
     ustawPrzebieg();
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     const wezelJ = screen.getByTestId('mvd-est-wezelj-0') as HTMLSelectElement;
     expect(wezelJ.disabled).toBe(true);
@@ -235,7 +235,7 @@ describe('EkranEstymacji — pętla decyzji (F-K4, znalezisko Z4)', () => {
     post.mockResolvedValue(widokEstymacjiFixture());
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
@@ -259,7 +259,7 @@ describe('EkranEstymacji — pętla decyzji (F-K4, znalezisko Z4)', () => {
       ...widok,
       bad_data: { ...widok.bad_data, lnr_flag: false, chi_square_flag: false },
     });
-    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();
     fireEvent.click(screen.getByTestId('mvd-est-estymuj'));

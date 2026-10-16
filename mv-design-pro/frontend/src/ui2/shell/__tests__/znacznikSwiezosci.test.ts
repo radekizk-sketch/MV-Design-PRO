@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { znacznikSwiezosci } from '../znacznikSwiezosci';
+import { celZnacznikaWynikow, znacznikSwiezosci } from '../znacznikSwiezosci';
 import { SHELL_STRINGS } from '../strings';
 import { STATUS_WYNIKOW_LABEL } from '../../spaces/projekt/strings';
 import { studyCaseFixture } from '../../spaces/obliczenia/__tests__/fixtures';
@@ -65,13 +65,18 @@ describe('znacznikSwiezosci — mapowanie werdyktu serwera na model znacznika', 
     expect(model.status).toBe('NONE');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsNone);
     expect(model.klikalny).toBe(false);
+    expect(model.cel).toBeNull();
   });
 
-  it('FRESH → „Wyniki: aktualne", bez akcji, z przyczyną z backendu', () => {
+  // Karta K1 POWLOKA: „aktualne" prowadzi do wyników — zastępuje skasowany baner
+  // „następnego kroku" schematu z przyciskiem „Otwórz wyniki" (intencja: wyniki
+  // aktualne są osiągalne jednym klikiem z chromu).
+  it('FRESH → „Wyniki: aktualne", klikalny do wyników, z przyczyną z backendu', () => {
     const model = znacznikSwiezosci(przypadek('FRESH'));
     expect(model.status).toBe('FRESH');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsFresh);
-    expect(model.klikalny).toBe(false);
+    expect(model.klikalny).toBe(true);
+    expect(model.cel).toBe('wyniki');
     expect(model.przyczynaPl).toBe('Model nie zmienił się od chwili obliczenia.');
     expect(model.zmiany).toEqual([]);
   });
@@ -81,6 +86,7 @@ describe('znacznikSwiezosci — mapowanie werdyktu serwera na model znacznika', 
     expect(model.status).toBe('OUTDATED');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsOutdated);
     expect(model.klikalny).toBe(true);
+    expect(model.cel).toBe('obliczenia');
     expect(model.przyczynaPl).toContain('Model zmienił się');
     // „Która zmiana unieważniła wynik" — prosto z werdyktu, bez drugiego zapytania.
     expect(model.zmiany).toEqual([ZMIANA]);
@@ -103,7 +109,7 @@ describe('znacznikSwiezosci — mapowanie werdyktu serwera na model znacznika', 
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsFresh);
   });
 
-  it('ILOCZYN CECH: etykieta i klikalność zależą WYŁĄCZNIE od statusu', () => {
+  it('ILOCZYN CECH: etykieta, cel i klikalność zależą WYŁĄCZNIE od statusu', () => {
     const statusy: StudyCaseResultStatus[] = ['NONE', 'FRESH', 'OUTDATED'];
     const pary: Array<[number | null, number | null]> = [
       [8, 9],
@@ -117,7 +123,10 @@ describe('znacznikSwiezosci — mapowanie werdyktu serwera na model znacznika', 
           przypadek(status, { rewizja_biegu: biegu, rewizja_biezaca: biezaca }),
         );
         expect(model.status).toBe(status);
-        expect(model.klikalny).toBe(status === 'OUTDATED');
+        expect(model.cel).toBe(celZnacznikaWynikow(status));
+        // Predykaty parami: przycisk ⇔ cel — jedno źródło prawdy.
+        expect(model.klikalny).toBe(model.cel !== null);
+        expect(model.klikalny).toBe(status !== 'NONE');
       }
     }
   });

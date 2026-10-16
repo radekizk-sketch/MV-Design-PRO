@@ -27,7 +27,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './kompensacja.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
@@ -119,14 +118,13 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
 
 function WynikKompensacji({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokDoboruKompensacji;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const nazwaObiektu = useNazwaObiektu();
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
@@ -187,7 +185,7 @@ function WynikKompensacji({
       </dl>
 
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-komp-informacje-audytowe"
         wiersze={[
           { etykieta: T.zalPrzebieg, wartosc: dane.context.run_id },
@@ -235,7 +233,7 @@ function WynikKompensacji({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {dane.dobor !== null ? (
@@ -329,7 +327,7 @@ function WynikKompensacji({
 // ---------------------------------------------------------------------------
 
 export interface EkranKompensacjiProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /**
    * Pre-selekcja węzła z deep-linku akcji naprawczej (R2-B): ref węzła
    * przekroczenia bilansu mocy biernej. Stosowana WYŁĄCZNIE, gdy ref istnieje
@@ -345,7 +343,7 @@ export interface EkranKompensacjiProps {
 }
 
 export function EkranKompensacji({
-  trybZaawansowania,
+  szczegolyAudytowe,
   preselekcjaWezla = null,
   onPreselekcjaSkonsumowana,
   onOtworzDowod,
@@ -533,7 +531,7 @@ export function EkranKompensacji({
           ) : (
             <WynikKompensacji
               dane={stan.dane}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={onOtworzDowod}
             />
           )}

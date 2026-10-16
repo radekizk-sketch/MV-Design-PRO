@@ -23,7 +23,6 @@
 
 import { useMemo, useRef, useEffect, useState, type KeyboardEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useGlobalSelectionSync } from '../../../ui/selection';
 import type {
   DefinicjaKolumny,
@@ -64,7 +63,7 @@ interface TabelaWynikowProps {
   kolumny: DefinicjaKolumny[];
   wiersze: WierszTabeli[];
   onOtworzDowod?: (ref: string) => void;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Klucz kolumny identyfikującej wiersz (domyślnie klucz pierwszej kolumny). */
   kluczWiersza?: string;
   /** Natywny wybór wiersza (klik/Enter) — delta API E8.2. */
@@ -146,7 +145,7 @@ export function TabelaWynikow({
   kolumny,
   wiersze,
   onOtworzDowod,
-  trybZaawansowania,
+  szczegolyAudytowe,
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
@@ -169,8 +168,8 @@ export function TabelaWynikow({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const kolumnyWidoczne = useMemo(
-    () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
-    [kolumny, trybZaawansowania],
+    () => kolumny.filter((k) => !k.tylkoEkspercki || szczegolyAudytowe),
+    [kolumny, szczegolyAudytowe],
   );
   // F-E6.1: kolumna decyzji dokłada się WYŁĄCZNIE gdy wołający ją obsłuży.
   const kolumnaDecyzji = onPoprawWModelu != null;

@@ -41,7 +41,7 @@ const mockFetch = vi.mocked(fetchPowerFlowRuns);
 const mockCompare = vi.mocked(createPowerFlowComparison);
 
 function props(over: Partial<Parameters<typeof EkranPorownania>[0]> = {}) {
-  return { projektId: 'proj-1', trybZaawansowania: 'basic' as const, ...over };
+  return { projektId: 'proj-1', szczegolyAudytowe: false as const, ...over };
 }
 
 beforeEach(() => {
@@ -110,10 +110,10 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
   });
 
   it('etykieta przebiegu nie ujawnia identyfikatorów ani odcisku w żadnym trybie (karta #145)', async () => {
-    const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<EkranPorownania {...props({ szczegolyAudytowe: false })} />);
     let selA = await screen.findByTestId('mvd-por-select-a');
     expect(within(selA).queryByRole('option', { name: /run-a|case-1|snap-a/ })).not.toBeInTheDocument();
-    rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<EkranPorownania {...props({ szczegolyAudytowe: true })} />);
     selA = await screen.findByTestId('mvd-por-select-a');
     expect(within(selA).queryByRole('option', { name: /run-a|case-1|snap-a/ })).not.toBeInTheDocument();
   });
@@ -247,12 +247,12 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
   // rewizja, odciski) to metadane produkcyjne — WYŁĄCZNIE w „Informacjach audytowych"
   // (tryb ekspercki, zwinięte), nigdy w nagłówku ani w panelu pierwszego planu.
   it('identyfikator porównania i proweniencja A/B wyłącznie w „Informacjach audytowych"', async () => {
-    const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<EkranPorownania {...props({ szczegolyAudytowe: false })} />);
     await wykonajPorownanie();
     expect(screen.queryByTestId('mvd-por-informacje-audytowe')).not.toBeInTheDocument();
     expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('cmp-001');
 
-    rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<EkranPorownania {...props({ szczegolyAudytowe: true })} />);
     // Zwinięte domyślnie: pierwszy plan nadal bez identyfikatora i odcisków.
     expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('cmp-001');
     expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('snap-a');

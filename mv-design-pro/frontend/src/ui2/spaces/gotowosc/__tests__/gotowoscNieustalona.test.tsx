@@ -152,7 +152,7 @@ async function poczekajNaCisze(): Promise<void> {
 function Probe() {
   useLegacyOrchestrator();
   return (
-    <PanelGotowosci trybZaawansowania="basic" onSelekcja={vi.fn()} onAkcjaNaprawcza={vi.fn()} />
+    <PanelGotowosci szczegolyAudytowe={false} onSelekcja={vi.fn()} onAkcjaNaprawcza={vi.fn()} />
   );
 }
 

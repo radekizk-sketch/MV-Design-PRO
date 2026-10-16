@@ -65,10 +65,10 @@ function zbierzUzycia(snapshot: unknown): readonly ElementUzycia[] {
 
 export function ModelWarsztat() {
   const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
-  const trybEkspercki = useShellStore((s) => s.advancementMode === 'expert');
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const zakladki = useMemo(
-    () => ZAKLADKI.filter((z) => !z.tylkoEkspercki || trybEkspercki),
-    [trybEkspercki],
+    () => ZAKLADKI.filter((z) => !z.tylkoEkspercki || szczegolyAudytowe),
+    [szczegolyAudytowe],
   );
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const uzycia = useMemo(() => zbierzUzycia(snapshot), [snapshot]);
@@ -105,8 +105,8 @@ export function ModelWarsztat() {
       <div role="tabpanel" className="mvd-model-tresc">
         {/* Wyjście z trybu eksperckiego przy otwartej diagnostyce nie może
             zostawić pustego panelu — wracamy na widok domyślny. */}
-        {zakladka === 'diagnostyka' && !trybEkspercki && <SldCanvasV3Workspace />}
-        {zakladka === 'diagnostyka' && trybEkspercki && <EnmInspectorPage />}
+        {zakladka === 'diagnostyka' && !szczegolyAudytowe && <SldCanvasV3Workspace />}
+        {zakladka === 'diagnostyka' && szczegolyAudytowe && <EnmInspectorPage />}
         {zakladka === 'schemat' && <SldCanvasV3Workspace />}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (

@@ -100,7 +100,7 @@ afterEach(() => {
 describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w audycie', () => {
   it('panel oceny: rekord z backendu, bez chipu „kryterium spełnione dla N z M węzłów"', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     const ocena = screen.getByTestId('mvd-akad-ocena');
     expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
@@ -117,7 +117,7 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
 
   it('ŻADNA liczba E-40 (THD, TDD, K, U_h, „rezonanse") poza sekcją audytową', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     expect(screen.queryByTestId('mvd-akad-obiekty-nodes')).not.toBeInTheDocument();
     const pierwszyPlan = tekstPozaAudytem();
@@ -130,7 +130,7 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
 
   it('sekcja audytowa: nagłówek z backendu, zwinięta; po rozwinięciu tabela węzłów i powody', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     const audyt = screen.getByTestId('mvd-akad-audyt');
     expect(audyt).toHaveTextContent(NAGLOWEK_AUDYTU);
@@ -155,7 +155,7 @@ describe('SSCI na oknie analiz specjalistycznych — ocena niewykonana', () => {
         ocena: OCENA_SSCI,
       },
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('ssci_impedance');
     expect(
       screen.getByTestId(`mvd-werdykt-${OCENA_SSCI.kryterium_id}-zdanie`),

@@ -25,7 +25,7 @@ import {
 
 export interface SekcjaSilySieciProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   /** Referencja wyróżnionego modułu (klik w pulpicie); `null` → brak wyróżnienia. */
   readonly wyroznionyModul?: string | null;
 }
@@ -97,7 +97,7 @@ function WpisWezla({
 }
 
 export function SekcjaSilySieci({
-  trybEkspercki,
+  szczegolyAudytowe,
   wyroznionyModul = null,
 }: SekcjaSilySieciProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
@@ -225,7 +225,7 @@ export function SekcjaSilySieci({
 
           {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-sila-analiza-id"
             wiersze={[{ etykieta: PULPIT_STRINGS.identyfikatorAnalizy, wartosc: stan.dane.analysis_id }]}
           />

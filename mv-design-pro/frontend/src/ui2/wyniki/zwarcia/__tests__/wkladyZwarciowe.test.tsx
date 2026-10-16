@@ -9,7 +9,7 @@ function renderuj(wklady = wkladyFixture()) {
     <WkladyZwarciowe
       punktNazwa="Szyna GPZ 15 kV"
       wklady={wklady}
-      trybZaawansowania="basic"
+      szczegolyAudytowe={false}
       onOtworzDowod={vi.fn()}
     />,
   );
@@ -119,7 +119,7 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
       <WkladyZwarciowe
         punktNazwa="Szyna GPZ 15 kV"
         wklady={null}
-        trybZaawansowania="basic"
+        szczegolyAudytowe={false}
         onOtworzDowod={vi.fn()}
       />,
     );

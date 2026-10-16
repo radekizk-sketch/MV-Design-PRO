@@ -17,7 +17,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './krzywe.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from '../pulpit';
@@ -107,14 +106,13 @@ function StanPanel({
 
 function WynikPokrycia({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokPokryciaPQ;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
 
   const punkty = useMemo(() => punktyWykresuPQ(dane), [dane]);
@@ -183,7 +181,7 @@ function WynikPokrycia({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <div className="mvd-krzywe-slad-blok">
@@ -205,7 +203,7 @@ function WynikPokrycia({
       </div>
 
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-krzywe-eksp"
         wiersze={[
           { etykieta: KRZYWE_STRINGS.ekspTypId, wartosc: dane.typ_katalogowy.id },
@@ -418,13 +416,13 @@ function SekcjaWiazanKrzywych() {
 // ---------------------------------------------------------------------------
 
 export interface EkranKrzywychProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywychProps) {
+export function EkranKrzywych({ szczegolyAudytowe, onOtworzDowod }: EkranKrzywychProps) {
   const [katalog, setKatalog] = useState<StanZasobu<KatalogPQ>>({ rodzaj: 'idle' });
   const [wybranyTyp, setWybranyTyp] = useState('');
   const [wybranyOperator, setWybranyOperator] = useState('');
@@ -598,7 +596,7 @@ export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywyc
             <>
               <WynikPokrycia
                 dane={stan.dane}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onOtworzDowod={onOtworzDowod}
               />
               {/* Akcja wyjściowa PO biegu — dopiero zweryfikowana krzywa ma

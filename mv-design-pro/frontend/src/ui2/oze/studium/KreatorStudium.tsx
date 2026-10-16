@@ -13,7 +13,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './studium.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
@@ -237,10 +236,10 @@ function PostepWariantu({
 
 function SzczegolWariantu({
   wariant,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   wariant: WynikWariantuStudium;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const widokZdolnosci = wariant.zdolnosc.dane;
   const widokObszaru = wariant.obszar.dane;
@@ -264,7 +263,7 @@ function SzczegolWariantu({
         <h3 className="mvd-studium-szczegol-tytul">{STUDIUM_STRINGS.szczegolTytul}</h3>
         {/* Karta #145: identyfikator węzła wariantu wyłącznie w „Informacjach audytowych". */}
         <InformacjeAudytowe
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           testid="mvd-studium-szczegol-audyt"
           wiersze={[{ etykieta: STUDIUM_STRINGS.ekspIdentyfikatorWezla, wartosc: wariant.busRef }]}
         />
@@ -311,14 +310,13 @@ function SzczegolWariantu({
 // ---------------------------------------------------------------------------
 
 export interface KreatorStudiumProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStudiumProps) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStudiumProps) {
 
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
@@ -761,7 +759,7 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
             <PrzegladStudium
               stan={stan}
               kontekst={kontekstWierszy}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               wybranyWariant={wybranyWariant}
               ustawWariant={setWybranyWariant}
               onOtworzDowod={onOtworzDowod}
@@ -832,7 +830,7 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
                   pdfLadowanie={pdfLadowanie}
                   onPobierzDocx={() => void pobierzDocx()}
                   onPobierzPdf={() => void pobierzPdf()}
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                 />
               ) : null}
             </section>
@@ -871,21 +869,20 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
 function PrzegladStudium({
   stan,
   kontekst,
-  trybZaawansowania,
+  szczegolyAudytowe,
   wybranyWariant,
   ustawWariant,
   onOtworzDowod,
 }: {
   stan: StanStudium;
   kontekst: KontekstWierszaStudium;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   wybranyWariant: string | null;
   ustawWariant: (busRef: string | null) => void;
   onOtworzDowod: (ref: string) => void;
 }) {
   const kolumny = useMemo(() => kolumnyStudium(), []);
   const wiersze = useMemo(() => wierszeStudium(stan, kontekst), [stan, kontekst]);
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   const wariant = wybranyWariant !== null ? stan.get(wybranyWariant) ?? null : null;
   const ktorykolwiekWToku = [...stan.values()].some(wariantWToku);
@@ -896,7 +893,7 @@ function PrzegladStudium({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_WIERSZA_STUDIUM}
         onWybierzWiersz={ustawWariant}
         wybranyWiersz={wybranyWariant}
@@ -909,7 +906,7 @@ function PrzegladStudium({
       )}
 
       {wariant !== null ? (
-        <SzczegolWariantu wariant={wariant} trybEkspercki={trybEkspercki} />
+        <SzczegolWariantu wariant={wariant} szczegolyAudytowe={szczegolyAudytowe} />
       ) : (
         <StanPanel
           komunikat={STUDIUM_STRINGS.szczegolBrakWyboru}
@@ -936,10 +933,10 @@ function SekcjaPodgladuDokumentu({
   pdfLadowanie,
   onPobierzDocx,
   onPobierzPdf,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dokument: WidokDokumentuStudium;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   docxLadowanie: boolean;
   pdfLadowanie: boolean;
   onPobierzDocx: () => void;
@@ -987,7 +984,7 @@ function SekcjaPodgladuDokumentu({
 
       {/* Karta #145: przebieg bazowy studium to metadana — „Informacje audytowe". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-studium-dok-audyt"
         wiersze={[
           { etykieta: STUDIUM_STRINGS.dokPrzebieg, wartosc: dokument.zalozenia.przebieg_bazowy.run_id },

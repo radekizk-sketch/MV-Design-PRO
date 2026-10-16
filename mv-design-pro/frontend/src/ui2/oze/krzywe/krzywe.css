@@ -210,11 +210,6 @@
   font-size: 13px;
 }
 
-/* Liczby */
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
 
 /* K5-B (H-3 pkt 2): sekcja przypisania krzywych zgodności do modułu DER */
 .mvd-krzywe-wiazania {

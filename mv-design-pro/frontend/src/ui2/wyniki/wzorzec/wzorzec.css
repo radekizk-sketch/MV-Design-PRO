@@ -301,7 +301,7 @@
 .mvd-wyn-wiersz-wybieralny { cursor: pointer; }
 .mvd-wyn-wiersz-wybieralny:hover { background: var(--mvd-panel-2); }
 .mvd-wyn-wiersz-wybieralny:focus-visible { outline: 2px solid var(--mvd-accent); outline-offset: -2px; }
-.mvd-wyn-wiersz-wybieralny.mvd-on { background: var(--mvd-accent-soft, var(--mvd-panel-2)); box-shadow: inset 3px 0 0 var(--mvd-accent); }
+.mvd-wyn-wiersz-wybieralny.mvd-on { background: var(--mvd-sel); box-shadow: inset 3px 0 0 var(--mvd-accent); }
 
 /* --- Ślad obliczeń na żądanie (SladWywodu — zasada KaTeX, 2026-07-22) --- */
 .mvd-wyn-slad-blok {

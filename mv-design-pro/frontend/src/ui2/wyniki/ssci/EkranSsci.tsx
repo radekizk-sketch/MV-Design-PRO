@@ -19,7 +19,6 @@
 
 import { useState } from 'react';
 import './ssci.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import {
   fetchStabilnoscSsci,
@@ -232,10 +231,10 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
 
 function WynikSsci({
   dane,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dane: WidokStabilnosciSsci;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const w = dane.verdict;
   return (
@@ -254,11 +253,11 @@ function WynikSsci({
 
       <PanelProweniencji dane={dane} />
 
-      {trybEkspercki && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
+      {szczegolyAudytowe && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
 
       {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych"; próg
           wzmocnienia (wielkość inżynierska) zostaje na pierwszym planie trybu eksperckiego. */}
-      {trybEkspercki && (
+      {szczegolyAudytowe && (
         <dl className="mvd-ssci-eksp" data-testid="mvd-ssci-eksp">
           <div className="mvd-ssci-eksp-para">
             <dt>{S.ekspProgGain}</dt>
@@ -267,7 +266,7 @@ function WynikSsci({
         </dl>
       )}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-ssci-informacje-audytowe"
         wiersze={[{ etykieta: S.ekspAnalizaId, wartosc: dane.analysis_id }]}
       />
@@ -290,14 +289,13 @@ type StanWerdyktu =
 // ---------------------------------------------------------------------------
 
 export interface EkranSsciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
+export function EkranSsci({ szczegolyAudytowe }: EkranSsciProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   const [stan, setStan] = useState<StanWerdyktu>({ rodzaj: 'idle' });
   const [runId, setRunId] = useState<string | null>(null);
@@ -348,7 +346,7 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
 
       {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-ssci-przebieg-informacje-audytowe"
         wiersze={runId ? [{ etykieta: S.runId, wartosc: runId }] : []}
       />
@@ -374,7 +372,7 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
       {stan.rodzaj === 'blad' && (
         <StanPanel komunikat={S.blad} opis={stan.komunikat} wariant="blad" testid="mvd-ssci-blad" />
       )}
-      {stan.rodzaj === 'gotowe' && <WynikSsci dane={stan.dane} trybEkspercki={trybEkspercki} />}
+      {stan.rodzaj === 'gotowe' && <WynikSsci dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} />}
     </div>
   );
 }

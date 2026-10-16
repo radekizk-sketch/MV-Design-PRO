@@ -13,7 +13,6 @@ export {
   useActiveCase,
   useHasActiveCase,
   useActiveCaseResultStatus,
-  useCasesCount,
   useIsLoading,
   useActiveCaseStatusLabel,
   useSortedCases,

@@ -12,7 +12,6 @@
  * Czyste dane nawigacji: zero fizyki, zero pobrań, zero React.
  */
 
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 
 export const ZAKLADKI = [
@@ -117,31 +116,32 @@ export const OBSZARY: readonly ObszarWynikow[] = [
 ];
 
 /**
- * Zakładki bramkowane trybem zaawansowania (V126-JEZYK, ocena właściciela 0/10):
- * „Analizy specjalistyczne" należą do trybu eksperckiego — projektant na torze
- * podstawowym nie ogląda powierzchni, której gotowość i kryteria wymagają
- * parametryzacji eksperckiej. Brama jest PARĄ z bramą w samym oknie
- * (`EkranAnalizAkademickich` → `BramaOpracowania`), żeby wejście trasowe
- * E-40…E-50 podlegało tej samej regule (KLASA, nie instancja).
+ * Zakładki widoczne wyłącznie przy włączonych „Szczegółach audytowych"
+ * (V126-JEZYK, ocena właściciela 0/10; karta K1 POWLOKA: jeden przełącznik
+ * zamiast trzech trybów zaawansowania). „Analizy specjalistyczne" należą do
+ * szczegółów audytowych — projektant na torze podstawowym nie ogląda
+ * powierzchni, której gotowość i kryteria wymagają parametryzacji eksperckiej.
+ * Brama jest PARĄ z bramą w samym oknie (`EkranAnalizAkademickich` →
+ * `BramaOpracowania`), żeby wejście trasowe E-40…E-50 podlegało tej samej
+ * regule (KLASA, nie instancja).
  */
-export const MIN_TRYB_ZAKLADKI: Partial<Record<ZakladkaId, AdvancementMode>> = {
-  akademickie: 'expert',
-};
+export const ZAKLADKI_SZCZEGOLOW_AUDYTOWYCH: ReadonlySet<ZakladkaId> = new Set<ZakladkaId>([
+  'akademickie',
+]);
 
-/** Czy zakładka jest dostępna w danym trybie zaawansowania. */
-export function zakladkaDostepna(id: ZakladkaId, tryb: AdvancementMode): boolean {
-  const min = MIN_TRYB_ZAKLADKI[id];
-  return min === undefined || isModeAtLeast(tryb, min);
+/** Czy zakładka jest dostępna przy danym stanie „Szczegółów audytowych". */
+export function zakladkaDostepna(id: ZakladkaId, szczegolyAudytowe: boolean): boolean {
+  return szczegolyAudytowe || !ZAKLADKI_SZCZEGOLOW_AUDYTOWYCH.has(id);
 }
 
-/** Zakładki obszaru dostępne w trybie (kolejność wizualna i klawiaturowa). */
-export function zakladkiObszaru(obszar: ObszarWynikow, tryb: AdvancementMode): ZakladkaId[] {
-  return obszar.zakladki.filter((id) => zakladkaDostepna(id, tryb));
+/** Zakładki obszaru dostępne przy danym stanie (kolejność wizualna i klawiaturowa). */
+export function zakladkiObszaru(obszar: ObszarWynikow, szczegolyAudytowe: boolean): ZakladkaId[] {
+  return obszar.zakladki.filter((id) => zakladkaDostepna(id, szczegolyAudytowe));
 }
 
-/** Obszary z co najmniej jedną zakładką dostępną w trybie (pasek obszarów). */
-export function obszaryDostepne(tryb: AdvancementMode): ObszarWynikow[] {
-  return OBSZARY.filter((obszar) => zakladkiObszaru(obszar, tryb).length > 0);
+/** Obszary z co najmniej jedną zakładką dostępną przy danym stanie (pasek obszarów). */
+export function obszaryDostepne(szczegolyAudytowe: boolean): ObszarWynikow[] {
+  return OBSZARY.filter((obszar) => zakladkiObszaru(obszar, szczegolyAudytowe).length > 0);
 }
 
 /** Obszar, do którego należy zakładka (każda należy do dokładnie jednego). */

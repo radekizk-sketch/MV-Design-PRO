@@ -116,7 +116,7 @@ describe('dostępność generacji — bramka kompletności', () => {
   it('bez aktywnego przypadku: przycisk nieaktywny z tytułem o przypadku (zgodność z modelu)', async () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu(), null);
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     const przycisk = screen.getByTestId('mvd-wniosek-generuj');
     expect(przycisk).toBeDisabled();
     expect(przycisk).toHaveAttribute('title', T.blokadaBrakPrzypadku);
@@ -125,13 +125,13 @@ describe('dostępność generacji — bramka kompletności', () => {
   it('operator z modelu pokazany jako fakt; różne profile → wymagany wybór bez wartości domyślnej', async () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
-    const { unmount } = render(<EkranWniosku trybZaawansowania="basic" />);
+    const { unmount } = render(<EkranWniosku szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-wniosek-operator')).toHaveAttribute('data-zrodlo', 'model');
     unmount();
     const [bess, pv] = deryMacierzy();
     zasiej([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: 'pse' } }], przebiegiMacierzy());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     const wybor = screen.getByTestId('mvd-wniosek-operator-wybor') as HTMLSelectElement;
     expect(wybor.value).toBe('');
     await uzytkownik.selectOptions(screen.getByTestId('mvd-wniosek-wezel'), SZYNA_TESTOWA);
@@ -144,7 +144,7 @@ describe('dostępność generacji — bramka kompletności', () => {
   it('szyna przyłączenia wybierana z listy po nazwie — referencja jest wartością, nie tekstem opcji', () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
-    render(<EkranWniosku trybZaawansowania="expert" />);
+    render(<EkranWniosku szczegolyAudytowe />);
     const opcje = within(screen.getByTestId('mvd-wniosek-wezel')).getAllByRole('option');
     const teksty = opcje.map((o) => o.textContent ?? '');
     expect(teksty).toContain('Szyna 1');
@@ -160,7 +160,7 @@ describe('dostępność generacji — bramka kompletności', () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await uzytkownik.selectOptions(screen.getByTestId('mvd-wniosek-wezel'), SZYNA_TESTOWA);
     await uzytkownik.clear(screen.getByTestId('mvd-wniosek-projekt'));
     expect(screen.getByTestId('mvd-wniosek-generuj')).toHaveAttribute('title', T.blokadaBrakProjektu);
@@ -174,7 +174,7 @@ describe('generacja — żądanie V2 i widok', () => {
     const wywolania = trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     await screen.findByTestId('mvd-wniosek-wynik');
     const [zadanie] = posty(wywolania, '/api/oze-analysis/osd-application');
@@ -186,7 +186,7 @@ describe('generacja — żądanie V2 i widok', () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     const widok = widokWnioskuFixture();
     const bilans = await screen.findByTestId('mvd-wniosek-bilans');
@@ -209,7 +209,7 @@ describe('generacja — żądanie V2 i widok', () => {
     const wywolania = trasy('braki');
     zasiej(deryMacierzy(), przebiegiMacierzy());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await zbuduj(uzytkownik, zadanieMacierzy().bus_ref);
     const braki = await screen.findByTestId('mvd-wniosek-braki');
     const fixtura = brakiWnioskuFixture();
@@ -230,7 +230,7 @@ describe('generacja — żądanie V2 i widok', () => {
     trasy('blad');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     expect(await screen.findByTestId('mvd-wniosek-blad')).toHaveTextContent('Brak przebiegu o wskazanym identyfikatorze.');
   });
@@ -241,7 +241,7 @@ describe('generacja — żądanie V2 i widok', () => {
     const utworz = vi.fn(() => 'blob:wniosek');
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: utworz, revokeObjectURL: vi.fn() }));
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania="basic" />);
+    render(<EkranWniosku szczegolyAudytowe={false} />);
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     await uzytkownik.click(await screen.findByTestId(`mvd-wniosek-pobierz-${format}`));
     await waitFor(() => expect(utworz).toHaveBeenCalledTimes(1));
@@ -251,13 +251,13 @@ describe('generacja — żądanie V2 i widok', () => {
   });
 
   it.each([
-    ['basic', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)('tryb %s → odciski w informacjach audytowych: %s', async (tryb, widoczne) => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
-    render(<EkranWniosku trybZaawansowania={tryb} />);
+    render(<EkranWniosku szczegolyAudytowe={tryb} />);
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     await screen.findByTestId('mvd-wniosek-wynik');
     expect(screen.queryByTestId('mvd-wniosek-odciski') !== null).toBe(widoczne);

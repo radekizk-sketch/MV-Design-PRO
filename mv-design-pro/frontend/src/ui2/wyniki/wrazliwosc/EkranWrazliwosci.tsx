@@ -19,7 +19,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './wrazliwosc.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
@@ -82,13 +81,13 @@ function StanPanel({
 // ---------------------------------------------------------------------------
 
 export interface EkranWrazliwosciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /** Brak dowodu przebiegu dla wartości builderów on-demand — celowy no-op. */
 const BEZ_DOWODU = () => {};
 
-export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
+export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const runs = useExecutionRunsStore((s) => s.runs);
   const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -166,7 +165,7 @@ export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
               kolumny={KOLUMNY_LF}
               wiersze={naWierszeLf(stan.dane.lf.top_drivers, stan.dane.wezly)}
               onOtworzDowod={BEZ_DOWODU}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WIERSZA_LF}
             />
           </section>
@@ -181,7 +180,7 @@ export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
               kolumny={KOLUMNY_OGOLNE}
               wiersze={naWierszeOgolne(stan.dane.ogolna.entries, stan.dane.wezly)}
               onOtworzDowod={BEZ_DOWODU}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WIERSZA_OGOLNEGO}
             />
           </section>

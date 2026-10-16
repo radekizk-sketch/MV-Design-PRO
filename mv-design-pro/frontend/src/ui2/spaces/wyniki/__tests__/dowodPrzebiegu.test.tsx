@@ -46,7 +46,7 @@ beforeEach(() => {
 
 describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
   it('bez aktywnego przebiegu: stan pusty E9.1, zero wołań', () => {
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
     expect(selectRun).not.toHaveBeenCalled();
     expect(loadExtendedTrace).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
     useAppStateStore.setState({ activeRunId: 'run-sc-1' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-sc-1'));
     await waitFor(() => expect(loadExtendedTrace).toHaveBeenCalledTimes(1));
   });
@@ -68,7 +68,7 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     });
     useAppStateStore.setState({ activeRunId: 'run-sc-1' });
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     // Tytuł kroku widoczny w spisie i w nagłówku widoku kroku.
     expect(
       screen.getAllByText('Impedancja zastępcza w punkcie zwarcia').length,
@@ -84,7 +84,7 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     });
     useAppStateStore.setState({ activeRunId: 'run-sc-1' });
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByText('Zwarcie trójfazowe (3F)')).toBeInTheDocument();
   });
 
@@ -94,7 +94,7 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     });
     useAppStateStore.setState({ activeRunId: 'run-sc-2' });
     useResultsInspectorStore.setState({ selectedRunId: 'run-inny', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
   });
 });
@@ -108,7 +108,7 @@ describe('DowodPrzebiegu — wskazany przebieg (R3-C, dowód kolumny A/B porówn
       ],
     });
     useAppStateStore.setState({ activeRunId: 'run-aktywny' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-b" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} wskazanyRunId="run-b" />);
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-b'));
     expect(selectRun).not.toHaveBeenCalledWith('run-aktywny');
   });
@@ -119,7 +119,7 @@ describe('DowodPrzebiegu — wskazany przebieg (R3-C, dowód kolumny A/B porówn
     });
     useAppStateStore.setState({ activeRunId: 'run-inny-aktywny' });
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-sc-1" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} wskazanyRunId="run-sc-1" />);
     expect(
       screen.getAllByText('Impedancja zastępcza w punkcie zwarcia').length,
     ).toBeGreaterThan(0);
@@ -132,7 +132,7 @@ describe('DowodPrzebiegu — wskazany przebieg (R3-C, dowód kolumny A/B porówn
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
     useAppStateStore.setState({ activeRunId: 'run-sc-1' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId={null} />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} wskazanyRunId={null} />);
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-sc-1'));
   });
 });

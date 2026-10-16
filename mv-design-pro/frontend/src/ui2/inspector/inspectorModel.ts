@@ -10,7 +10,6 @@
  * techniczne pojawiają się WYŁĄCZNIE w sekcji „Szczegóły techniczne" (tryb Ekspercki).
  */
 
-import type { AdvancementMode } from '../shell/modeModel';
 
 /** Stała identyfikacja zakładek inspektora (kolejność zamrożona). */
 export type ZakladkaInspektora = 'wlasciwosci' | 'wyniki' | 'dowod' | 'powiazania';
@@ -120,7 +119,7 @@ export interface InspectorPanelProps {
   onOtworzDowod: (ref: string) => void;
   onNawiguj: (cel: CelNawigacji) => void;
   onPrzelicz: () => void;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /** Dana pochodna jest nieaktualna, gdy jej rewizja jest starsza niż rewizja modelu. */

@@ -31,7 +31,7 @@ describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
     ['brak operatora', 'case-demo', null, 'mvd-oze-zgodnosc-przekrojowa-brak-operatora'],
   ] as const)('%s → komunikat, zero zapytań, odświeżenie nieaktywne', (_opis, caseId, operatorId, testid) => {
     const wywolania = trasa(() => odpowiedzJson(200, zgodnoscFixture()));
-    render(<SekcjaZgodnosciPrzekrojowej caseId={caseId} operatorId={operatorId} nazwyModulow={{}} trybEkspercki={false} />);
+    render(<SekcjaZgodnosciPrzekrojowej caseId={caseId} operatorId={operatorId} nazwyModulow={{}} szczegolyAudytowe={false} />);
     expect(screen.getByTestId(testid)).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-zgodnosc-przekrojowa-odswiez')).toBeDisabled();
     expect(wywolania).toHaveLength(0);
@@ -41,7 +41,7 @@ describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
     trasa(() =>
       odpowiedzJson(200, { case_id: 'c', operator_id: 'enea', der_count: 0, pominiete: [], certyfikaty_odrzucone: [], bieg: null }),
     );
-    render(<SekcjaZgodnosciPrzekrojowej caseId="c" operatorId="enea" nazwyModulow={{}} trybEkspercki={false} />);
+    render(<SekcjaZgodnosciPrzekrojowej caseId="c" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-brak-der')).toHaveTextContent(
       MACIERZ_STRINGS.zgodnoscPrzekrojowaBrakDer,
     );
@@ -49,7 +49,7 @@ describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
 
   it('błąd backendu → komunikat z treścią detail', async () => {
     trasa(() => odpowiedzJson(404, { detail: 'Przypadek case-x nie ma dokumentu ENM.' }));
-    render(<SekcjaZgodnosciPrzekrojowej caseId="case-x" operatorId="enea" nazwyModulow={{}} trybEkspercki={false} />);
+    render(<SekcjaZgodnosciPrzekrojowej caseId="case-x" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-blad')).toHaveTextContent('nie ma dokumentu ENM');
   });
 });
@@ -57,7 +57,7 @@ describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
 describe('dane — moduły modelu z dowodem albo jawnym brakiem i rekordami W', () => {
   it('per moduł: nagłówek (zatwierdzony model), dowód PV z wykazu, brak dowodu magazynu, rekordy W', async () => {
     trasa(() => odpowiedzJson(200, zgodnoscFixture()));
-    render(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} trybEkspercki={false} />);
+    render(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />);
     const bieg = zgodnoscFixture().bieg!;
     for (const [indeks, modul] of bieg.modules.entries()) {
       const naglowek = await screen.findByTestId(`mvd-oze-zgodnosc-przekrojowa-naglowek-${modul.der_ref}`);
@@ -81,7 +81,7 @@ describe('dane — moduły modelu z dowodem albo jawnym brakiem i rekordami W', 
     };
     trasa(() => odpowiedzJson(200, odpowiedz));
     render(
-      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{ 'fw-1': 'Farma wiatrowa' }} trybEkspercki={false} />,
+      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{ 'fw-1': 'Farma wiatrowa' }} szczegolyAudytowe={false} />,
     );
     expect(await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-pominiety-fw-1')).toHaveTextContent(
       'Farma wiatrowa: szyna bez napięcia znamionowego',
@@ -91,11 +91,11 @@ describe('dane — moduły modelu z dowodem albo jawnym brakiem i rekordami W', 
   it('odciski biegu wyłącznie w trybie eksperckim (informacje audytowe)', async () => {
     trasa(() => odpowiedzJson(200, zgodnoscFixture()));
     const { rerender } = render(
-      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} trybEkspercki={false} />,
+      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />,
     );
     await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-moduly');
     expect(screen.queryByTestId('mvd-oze-zgodnosc-przekrojowa-audyt')).toBeNull();
-    rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} trybEkspercki />);
+    rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-oze-zgodnosc-przekrojowa-audyt')).toBeInTheDocument();
   });
 });
@@ -105,12 +105,12 @@ describe('interakcje natywne', () => {
     const wywolania = trasa(() => odpowiedzJson(200, zgodnoscFixture()));
     const uzytkownik = userEvent.setup();
     const { rerender } = render(
-      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} trybEkspercki={false} />,
+      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />,
     );
     await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-moduly');
     await uzytkownik.click(screen.getByTestId('mvd-oze-zgodnosc-przekrojowa-odswiez'));
     await waitFor(() => expect(wywolania).toHaveLength(2));
-    rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="pse" nazwyModulow={{}} trybEkspercki={false} />);
+    rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="pse" nazwyModulow={{}} szczegolyAudytowe={false} />);
     await waitFor(() => expect(wywolania).toHaveLength(3));
     expect(wywolania.map((w) => w.zapytanie.get('operator_id'))).toEqual(['enea', 'enea', 'pse']);
   });
@@ -125,7 +125,7 @@ describe('interakcje natywne', () => {
         caseId="case-demo"
         operatorId="enea"
         nazwyModulow={{ [znany.der_ref]: 'Magazyn' }}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onWybierzModul={onWybierzModul}
       />,
     );

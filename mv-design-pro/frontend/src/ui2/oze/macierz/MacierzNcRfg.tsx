@@ -18,7 +18,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec/PrzyciskAkcjiStanu';
@@ -80,7 +79,7 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 
 export interface MacierzNcRfgProps {
   /** Tryb zaawansowania — odciski i identyfikatory w trybie eksperckim. */
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
   /**
    * Pre-selekcja modułu z deep-linku (akcja SLD „Pokaż zgodność przyłączeniową" niesie
    * kontekst DER). Dopasowanie po `derRef` ALBO po nazwie modułu. Nieznana wartość = brak
@@ -99,7 +98,7 @@ type StanWejscModelu =
   | { readonly stan: 'blad'; readonly komunikat: string };
 
 export function MacierzNcRfg({
-  trybZaawansowania,
+  szczegolyAudytowe,
   preselekcjaModulu = null,
   onPreselekcjaSkonsumowana,
 }: MacierzNcRfgProps): JSX.Element {
@@ -348,7 +347,6 @@ export function MacierzNcRfg({
   const nazwaModuluSzczegolu =
     opisy.find((o) => o.derRef === wybranaKomorka?.derRef)?.nazwa ?? null;
 
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const wynikWybranego = opisWybrany ? wynikModulu(wynik, opisWybrany.derRef) : null;
   const ocenaWybranego = opisWybrany ? ocenaWymaganModulu(wynik, opisWybrany.derRef) : null;
 
@@ -405,7 +403,7 @@ export function MacierzNcRfg({
           </button>
           {wynik ? (
             <InformacjeAudytowe
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
               testid="mvd-oze-odcisk"
               wiersze={[
                 { etykieta: MACIERZ_STRINGS.odciskBiegu, wartosc: wynik.deterministic_hash },
@@ -446,7 +444,7 @@ export function MacierzNcRfg({
         caseId={aktywnyPrzypadek}
         operatorId={operatorId}
         nazwyModulow={nazwyModulow}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         onWybierzModul={(derRef) => {
           setWybranyModul(derRef);
           setWybranaKomorka(null);
@@ -460,7 +458,7 @@ export function MacierzNcRfg({
           blad={certBlad}
           ladowanie={certLadowanie}
           plikLadowanie={plikLadowanie}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           onPobierz={(format) => void pobierzPlik(format)}
           onZamknij={zamknijCertyfikat}
         />
@@ -640,7 +638,7 @@ export function MacierzNcRfg({
               definicja={definicjaSzczegolu}
               nazwaModulu={nazwaModuluSzczegolu}
               slad={wynik?.white_box_trace ?? []}
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
             />
             {opisWybrany ? (
               <>

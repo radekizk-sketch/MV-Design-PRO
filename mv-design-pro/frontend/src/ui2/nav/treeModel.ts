@@ -9,14 +9,6 @@
 /** Źródło zdarzenia zaznaczenia (MODEL_INTERAKCJI §2 — gramatyka interakcji). */
 export type ZrodloZaznaczenia = 'klik' | 'klawiatura' | 'typeahead';
 
-/**
- * Minimalny tryb zaawansowania wymagany do pokazania węzła (SPEC_UKLAD_PANELI §2,
- * progresywne odsłanianie). Wartości zamrożone jako `ui2/shell/modeModel.ts`
- * (AdvancementMode) — nav NIE importuje z ui2/shell (granica kart równoległych),
- * więc typ jest zduplikowany strukturalnie i pozostaje przypisywalny 1:1.
- */
-export type TrybMin = 'basic' | 'extended' | 'expert';
-
 /** Ikona węzła — zestaw pokrywający topologię, przypadki i przebiegi. */
 export type IkonaWezla =
   | 'projekt'
@@ -40,14 +32,17 @@ export interface LicznikiWezla {
 
 export const LICZNIKI_ZERO: LicznikiWezla = { blokady: 0, ostrzezenia: 0 };
 
-/** Węzeł drzewa kontekstowego (karta §2: id, etykietaPL, ikona, liczniki, dzieci, trybMin). */
+/**
+ * Węzeł drzewa kontekstowego (karta §2: id, etykietaPL, ikona, liczniki, dzieci).
+ * Karta K1 POWLOKA: pole progu trybu zaawansowania skasowane — trzy tryby
+ * ukrywały wyłącznie kontrolki, a każdy węzeł miał próg najniższy.
+ */
 export interface WezelDrzewa {
   id: string;
   etykietaPL: string;
   ikona: IkonaWezla;
   liczniki: LicznikiWezla;
   dzieci: WezelDrzewa[];
-  trybMin: TrybMin;
 }
 
 /** Tryby drzewa topologii (audyt W-208): zasilania (od GPZ) / administracyjny / obwodowy. */
@@ -63,14 +58,6 @@ export const TRYBY_DRZEWA_TOPOLOGII: readonly TrybDrzewaTopologii[] = [
 export interface AkcjaPusty {
   etykieta: string;
   onKlik: () => void;
-}
-
-/** Porządek trybów — do porównań `trybMin` względem trybu aktualnego. */
-const KOLEJNOSC_TRYBOW: Record<TrybMin, number> = { basic: 0, extended: 1, expert: 2 };
-
-/** Czy węzeł o `trybMin` jest widoczny w trybie `trybAktualny`. */
-export function widocznyWTrybie(trybMin: TrybMin, trybAktualny: TrybMin): boolean {
-  return KOLEJNOSC_TRYBOW[trybAktualny] >= KOLEJNOSC_TRYBOW[trybMin];
 }
 
 /** Suma liczników własnych węzła i wszystkich potomków (do filtra „tylko z problemami"). */

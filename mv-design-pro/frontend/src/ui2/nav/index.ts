@@ -11,18 +11,16 @@ export {
   TRYBY_DRZEWA_TOPOLOGII,
   licznikiLaczne,
   splaszczWidoczne,
-  widocznyWTrybie,
   type AkcjaPusty,
   type IkonaWezla,
   type LicznikiWezla,
   type TrybDrzewaTopologii,
-  type TrybMin,
   type WezelDrzewa,
   type WidocznyWiersz,
   type ZrodloZaznaczenia,
 } from './treeModel';
 
-export { filtrujProblemy, filtrujTryb, zastosujFiltry } from './treeFilters';
+export { filtrujProblemy, zastosujFiltry } from './treeFilters';
 
 export { NAV_STRINGS, licznikTitle, trybDrzewaLabel } from './strings';
 

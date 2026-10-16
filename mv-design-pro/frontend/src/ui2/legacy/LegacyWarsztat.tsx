@@ -12,6 +12,11 @@
  *    (LegacySurface / pulpit projektu nowej powłoki).
  *
  * Ponadto: baner problemów semantycznych nad warsztatem (dawny AppShellV12).
+ *
+ * Karta K1 POWLOKA: dawne pasy nad kanwą (pasek metryk, „Tryb pracy",
+ * „Następny krok") są skasowane — polecenia przeszły do paska narzędzi powłoki
+ * (`ui2/shell/PasekNarzedzi`), a przełącznik trybu pracy kanwy pokazuje się tam
+ * pod tym samym warunkiem co dawniej (`useWidokKanwySchematu`).
  */
 
 import type { ReactNode } from 'react';
@@ -29,10 +34,8 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
-import { NastepnyKrokSchematu, PrzelacznikPodgladu } from '../spaces/schemat';
 import { useShellStore } from '../shell/useShellStore';
 import { LegacySurface } from './LegacySurface';
-import { LegacyPasekNarzedzi } from './LegacyPasekNarzedzi';
 
 /** Strona nieznanej trasy — PRZENIESIONA z App.tsx (kasacja ramy E1.7c). */
 function UnknownRoutePage({ route }: { route: string }) {
@@ -168,31 +171,35 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   return <LegacySurface space={space} />;
 }
 
-export function LegacyWarsztat(props: LegacyWarsztatProps) {
+/**
+ * Scalenie U3 #1: w przestrzeni „Wyniki" (i „Dokumentacja") powierzchnia
+ * rozwinięta renderuje się WEWNĄTRZ warsztatu przestrzeni (slot), więc nie
+ * wypełnia warsztatu. JEDNO źródło tego warunku dla warsztatu i dla paska
+ * narzędzi powłoki.
+ */
+function useRozwinietaPowierzchnia(space: SpaceId): boolean {
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
+  return activeSurface?.openMode === 'expand_workspace' && space !== 'wyniki' && space !== 'dokumentacja';
+}
+
+/**
+ * Czy warsztat pokazuje kanwę schematu (przestrzeń „Schemat", trasa '' lub
+ * '#sld', bez rozwiniętej powierzchni). Pod tym warunkiem pasek narzędzi
+ * powłoki pokazuje przełącznik trybu pracy kanwy (Edycja/Podgląd); trasy
+ * dedykowane (scenariusze, pulpit itd.) mają własny tor pracy.
+ */
+export function useWidokKanwySchematu(route: string, space: SpaceId): boolean {
+  const rozwinieta = useRozwinietaPowierzchnia(space);
+  return space === 'schemat' && !rozwinieta && (route === '' || route === ROUTES.SLD.hash);
+}
+
+export function LegacyWarsztat(props: LegacyWarsztatProps) {
   const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
-  // Scalenie U3 #1: w przestrzeni „Wyniki" powierzchnia rozwinięta (trasa
-  // #analysis/#proof) renderuje się WEWNĄTRZ zakładki „Pozostałe analizy"
-  // warsztatu wyników (slot `wyniki`), aby zakładka „Rozpływ mocy" (nowe okno
-  // E8.1) pozostała osiągalna. Pozostałe przestrzenie: zachowanie bez zmian.
-  const mainSurfaceExpanded =
-    activeSurface?.openMode === 'expand_workspace'
-    && props.space !== 'wyniki'
-    && props.space !== 'dokumentacja';
-
-  // K4-E2: jawne przejście E2→E3 — pasek „następnego kroku" nad kanwą schematu.
-  // Wyłącznie w przestrzeni „Schemat" z zawartością kanwy (trasa '' lub '#sld');
-  // trasy dedykowane (kreator stacji, scenariusze itd.) mają własny tor pracy.
-  const pokazNastepnyKrokSchematu =
-    props.space === 'schemat'
-    && !mainSurfaceExpanded
-    && (props.route === '' || props.route === ROUTES.SLD.hash);
+  const mainSurfaceExpanded = useRozwinietaPowierzchnia(props.space);
 
   return (
     <div className="mvd-legacy-host">
-      {/* Pasek przepływu pracy + modale funkcji globalnych (dawny AppShellV12). */}
-      <LegacyPasekNarzedzi />
       {/* Walidacja semantyczna — globalny baner nad warsztatem (dawny AppShellV12). */}
       {(semanticIssues?.length ?? 0) > 0 && (
         <SemanticIssuesBanner
@@ -200,9 +207,6 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
           onSelectElement={(ref) => centerSldOnElement(ref)}
         />
       )}
-      {/* KD-4 (L-1): tryb pracy kanwy — przełącznik nad schematem. */}
-      {pokazNastepnyKrokSchematu && <PrzelacznikPodgladu />}
-      {pokazNastepnyKrokSchematu && <NastepnyKrokSchematu />}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}
       </div>

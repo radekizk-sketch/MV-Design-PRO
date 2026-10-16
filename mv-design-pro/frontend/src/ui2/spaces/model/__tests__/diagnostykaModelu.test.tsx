@@ -30,7 +30,7 @@ import { useShellStore } from '../../../shell/useShellStore';
 import { ModelWarsztat } from '../ModelWarsztat';
 
 beforeEach(() => {
-  useShellStore.setState({ advancementMode: 'basic' });
+  useShellStore.setState({ szczegolyAudytowe: false });
 });
 
 afterEach(() => cleanup());
@@ -43,7 +43,7 @@ describe('L-8 — diagnostyka modelu jako zakładka trybu eksperckiego', () => {
 
   it('TRYB EKSPERCKI: zakładka jest i otwiera inspektor modelu (bez flagi środowiskowej)', async () => {
     const user = userEvent.setup();
-    useShellStore.setState({ advancementMode: 'expert' });
+    useShellStore.setState({ szczegolyAudytowe: true });
     render(<ModelWarsztat />);
 
     await user.click(screen.getByTestId('mvd-model-zakladka-diagnostyka'));
@@ -52,11 +52,11 @@ describe('L-8 — diagnostyka modelu jako zakładka trybu eksperckiego', () => {
 
   it('WYJŚCIE Z TRYBU przy otwartej diagnostyce nie zostawia pustego panelu', async () => {
     const user = userEvent.setup();
-    useShellStore.setState({ advancementMode: 'expert' });
+    useShellStore.setState({ szczegolyAudytowe: true });
     const { rerender } = render(<ModelWarsztat />);
     await user.click(screen.getByTestId('mvd-model-zakladka-diagnostyka'));
 
-    act(() => useShellStore.setState({ advancementMode: 'basic' }));
+    act(() => useShellStore.setState({ szczegolyAudytowe: false }));
     rerender(<ModelWarsztat />);
 
     expect(screen.queryByTestId('atrapa-inspektor-enm')).toBeNull();

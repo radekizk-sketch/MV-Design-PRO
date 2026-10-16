@@ -85,8 +85,8 @@ export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
         // tam niesie tożsamość, a nie czytelność. Tusz na aktywnym (jasnym)
         // wypełnieniu jest ŚWIADOMIE stały w obu motywach: wypełnienie jest
         // jasne niezależnie od motywu, więc tusz musi być ciemny zawsze.
-        background: active ? color : disabled ? 'rgb(var(--scada-surface))' : 'rgb(var(--scada-panel))',
-        color: active ? '#0B1014' : 'rgb(var(--scada-text))',
+        background: active ? color : disabled ? 'var(--mvd-surface)' : 'var(--mvd-panel)',
+        color: active ? '#0B1014' : 'var(--mvd-ink)',
         border: `1.5px solid ${color}`,
         padding: '6px 10px',
         borderRadius: 3,

@@ -28,7 +28,6 @@ import { selectAllDers, useStationDerStore } from '../../../ui/network-build/sta
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { etykietaPrzebieguWyniku } from '../../wyniki/wzorzec/strings';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
@@ -76,10 +75,10 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 
 export interface EkranWnioskuProps {
   /** Tryb zaawansowania — odciski sekcji widoczne w trybie eksperckim. */
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
 }
 
-export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Element {
+export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const rozplywy = useMemo(() => przebiegiRozplywu(runs), [runs]);
@@ -208,7 +207,6 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     }
   };
 
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
   return (
     <div className="mvd-wniosek" data-testid="mvd-wniosek-ekran">
@@ -411,7 +409,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
       {widok ? (
         <WynikWniosku
           widok={widok}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           onPobierz={(format) => void pobierzPlik(format)}
           plikLadowanie={plikLadowanie}
         />
@@ -422,14 +420,14 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
 
 interface WynikWnioskuProps {
   readonly widok: WidokWniosku;
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   readonly onPobierz: (format: FormatDokumentu) => void;
   readonly plikLadowanie: FormatDokumentu | null;
 }
 
 function WynikWniosku({
   widok,
-  trybEkspercki,
+  szczegolyAudytowe,
   onPobierz,
   plikLadowanie,
 }: WynikWnioskuProps): JSX.Element {
@@ -589,7 +587,7 @@ function WynikWniosku({
       </div>
 
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-wniosek-odciski"
         wiersze={[
           { etykieta: T.odciskWejscia, wartosc: widok.input_hash },

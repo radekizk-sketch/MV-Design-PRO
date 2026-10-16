@@ -23,7 +23,7 @@ import {
 
 function props() {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     wklady: { 'BUS-GPZ': wkladyFixture() },
   };

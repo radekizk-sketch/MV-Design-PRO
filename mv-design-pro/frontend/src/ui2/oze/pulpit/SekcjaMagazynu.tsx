@@ -22,7 +22,7 @@ import {
 export interface SekcjaMagazynuProps {
   readonly der: StationDerConnection;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
 }
 
 type StanKatalogu =
@@ -36,7 +36,7 @@ function formatCosphi(min: number | null, max: number | null): string {
   return `${f(min)} … ${f(max)}`;
 }
 
-export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX.Element | null {
+export function SekcjaMagazynu({ der, szczegolyAudytowe }: SekcjaMagazynuProps): JSX.Element | null {
   const [stan, setStan] = useState<StanKatalogu>({ rodzaj: 'ladowanie' });
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
           </div>
           {/* Karta #145: identyfikator rekordu katalogu wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-magazyn-ekspert"
             wiersze={[
               { etykieta: PULPIT_STRINGS.magazynModel, wartosc: dopasowanie.rekord.id },
@@ -132,7 +132,7 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
             {PULPIT_STRINGS.magazynNieodnalezionaOpis}
           </p>
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-magazyn-bateria-audyt"
             wiersze={
               praca?.bateriaRef

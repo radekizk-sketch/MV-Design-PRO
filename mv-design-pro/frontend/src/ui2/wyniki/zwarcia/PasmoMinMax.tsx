@@ -19,7 +19,6 @@
  * rewizji (`pasmoModel.ts`) to prezentacja, nie obliczenie.
  */
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { FreshnessBadge } from '../../inspector';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import {
@@ -45,7 +44,7 @@ import { ZWARCIA_STRINGS } from './strings';
 export interface PasmoMinMaxProps {
   /** Identyfikator biegu KOTWICY (dowolny scenariusz) — `null` = sekcja się nie montuje. */
   runId: string | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
@@ -56,7 +55,7 @@ function BlokStronyPasma({
   brakujacyScenariusz,
   powodNiedostepnosciPl,
   akcjaUruchom,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   scenariusz: 'MAX' | 'MIN';
@@ -66,7 +65,7 @@ function BlokStronyPasma({
   brakujacyScenariusz: 'MAX' | 'MIN' | null;
   powodNiedostepnosciPl: string | null;
   akcjaUruchom: AkcjaStanuZerowego | undefined;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
   const etykietaScenariusza = scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)';
@@ -103,7 +102,7 @@ function BlokStronyPasma({
       </p>
       {/* Karta #145: identyfikatory biegów wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybZaawansowania === 'expert'}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-informacje-audytowe`}
         wiersze={
           strona.zrodlo === 'biegu_zapisanego'
@@ -123,7 +122,7 @@ function BlokStronyPasma({
       />
       <SladZrodelSieciowych
         zrodlaSieciowe={strona.wynik.zrodla_sieciowe}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
     </div>
@@ -132,11 +131,11 @@ function BlokStronyPasma({
 
 function TrescGotowa({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: PasmoZwarciaOdpowiedz;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
   const { uruchom, wToku } = useUruchomObliczenie();
@@ -183,7 +182,7 @@ function TrescGotowa({
           kolumny={KOLUMNY_PASMO}
           wiersze={naWierszePasma(pary)}
           onOtworzDowod={onOtworzDowod}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           kluczWiersza={KLUCZ_PASMO}
         />
       )}
@@ -195,7 +194,7 @@ function TrescGotowa({
           brakujacyScenariusz={brakujacy}
           powodNiedostepnosciPl={dane.powod_niedostepnosci_pl}
           akcjaUruchom={akcjaUruchomBrakujacy}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
         />
         <BlokStronyPasma
@@ -204,7 +203,7 @@ function TrescGotowa({
           brakujacyScenariusz={brakujacy}
           powodNiedostepnosciPl={dane.powod_niedostepnosci_pl}
           akcjaUruchom={akcjaUruchomBrakujacy}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
         />
       </div>
@@ -212,7 +211,7 @@ function TrescGotowa({
   );
 }
 
-export function PasmoMinMax({ runId, trybZaawansowania, onOtworzDowod }: PasmoMinMaxProps) {
+export function PasmoMinMax({ runId, szczegolyAudytowe, onOtworzDowod }: PasmoMinMaxProps) {
   const stan = usePasmoZwarcia(runId);
   if (stan.rodzaj === 'brak-biegu') return null;
 
@@ -238,7 +237,7 @@ export function PasmoMinMax({ runId, trybZaawansowania, onOtworzDowod }: PasmoMi
       )}
 
       {stan.rodzaj === 'gotowe' && (
-        <TrescGotowa dane={stan.dane} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
+        <TrescGotowa dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={onOtworzDowod} />
       )}
     </section>
   );

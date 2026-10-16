@@ -81,36 +81,3 @@
   color: var(--mvd-accent);
 }
 
-.mvd-cmdk-potwierdzenie {
-  margin-top: 8px;
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--mvd-warn-bg);
-  border: 1px solid var(--mvd-warn);
-}
-
-.mvd-cmdk-potwierdzenie-tekst {
-  margin: 0 0 8px;
-  color: var(--mvd-ink);
-}
-
-.mvd-cmdk-potwierdzenie-akcje {
-  display: flex;
-  gap: 8px;
-}
-
-.mvd-cmdk-potwierdzenie-akcje button {
-  border: 1px solid var(--mvd-line);
-  border-radius: 6px;
-  background: var(--mvd-panel-2);
-  color: var(--mvd-ink);
-  padding: 6px 12px;
-  cursor: pointer;
-  font: inherit;
-}
-
-.mvd-cmdk-potwierdzenie-akcje button:first-child {
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-  border-color: var(--mvd-accent);
-}

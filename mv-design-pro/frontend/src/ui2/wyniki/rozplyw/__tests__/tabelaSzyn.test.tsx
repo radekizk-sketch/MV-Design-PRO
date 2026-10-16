@@ -19,7 +19,7 @@ vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
 
 function props(over: Partial<Parameters<typeof TabelaSzyn>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -88,9 +88,9 @@ describe('TabelaSzyn — konkretyzacja wzorca na realnym kształcie danych', () 
   });
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
-    const { rerender } = render(<TabelaSzyn {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<TabelaSzyn {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
-    rerender(<TabelaSzyn {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<TabelaSzyn {...props({ szczegolyAudytowe: true })} />);
     // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
     fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
     expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');

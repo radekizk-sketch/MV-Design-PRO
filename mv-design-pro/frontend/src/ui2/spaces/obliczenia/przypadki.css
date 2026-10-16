@@ -65,123 +65,10 @@
   margin-bottom: 12px;
 }
 
-/* ---- tabela listy (wzorzec pulpit.css) ---- */
-.mvd-cases-scroll {
-  overflow-x: auto;
-}
-.mvd-cases-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.mvd-cases-table th {
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--mvd-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--mvd-line);
-}
-.mvd-cases-row {
-  cursor: pointer;
-  border-bottom: 1px solid var(--mvd-line);
-}
-.mvd-cases-row:hover {
-  background: var(--mvd-panel-2);
-}
-.mvd-cases-row.mvd-on {
-  background: var(--mvd-sel);
-}
-.mvd-cases-table td {
-  padding: 7px 8px;
-  vertical-align: middle;
-}
+/* ---- tabela listy (klasy wspólne: ui2/theme/komponenty.css) ---- */
 .mvd-cases-check {
   width: 28px;
   text-align: center;
-}
-.mvd-cases-name {
-  font-weight: 600;
-}
-.mvd-cases-active {
-  margin-left: 8px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-}
-.mvd-cases-time {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--mvd-muted);
-}
-.mvd-cases-empty {
-  padding: 16px;
-  color: var(--mvd-muted);
-  font-size: 13px;
-}
-
-/* ---- prymitywy współdzielone ---- */
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.mvd-tag {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--mvd-chip);
-  color: var(--mvd-ink);
-}
-.mvd-tag-ok {
-  background: var(--mvd-ok-bg);
-  color: var(--mvd-ok);
-}
-.mvd-tag-warn {
-  background: var(--mvd-warn-bg);
-  color: var(--mvd-warn);
-}
-.mvd-tag-mut {
-  background: var(--mvd-chip);
-  color: var(--mvd-muted);
-}
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 6px 12px;
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.mvd-btn:hover {
-  background: var(--mvd-panel-2);
-}
-.mvd-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.mvd-btn-primary {
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-  border-color: var(--mvd-accent);
-}
-.mvd-input {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 6px 8px;
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-  width: 100%;
 }
 
 /* ---- karta przypadku ---- */
@@ -281,12 +168,6 @@
   color: var(--mvd-muted);
   font-size: 12px;
 }
-.mvd-wkrotce {
-  font-style: italic;
-}
-.mvd-wkrotce-wartosc {
-  color: var(--mvd-muted);
-}
 
 /* ---- porównanie konfiguracji ---- */
 .mvd-porownanie {
@@ -346,12 +227,12 @@
 }
 
 /* ---- menu kontekstowe ---- */
-.mvd-menu-scrim {
+.mvd-przypadki-menu-scrim {
   position: fixed;
   inset: 0;
   z-index: 70;
 }
-.mvd-menu {
+.mvd-przypadki-menu {
   position: fixed;
   z-index: 71;
   min-width: 160px;
@@ -363,7 +244,7 @@
   border-radius: 6px;
   box-shadow: var(--mvd-shadow);
 }
-.mvd-menu-item {
+.mvd-przypadki-menu-item {
   display: block;
   width: 100%;
   text-align: left;
@@ -376,51 +257,12 @@
   font-size: 13px;
   cursor: pointer;
 }
-.mvd-menu-item:hover {
+.mvd-przypadki-menu-item:hover {
   background: var(--mvd-panel-2);
 }
 
 /* ---- dialog „Nowy przypadek" ---- */
-.mvd-dialog-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mvd-dialog {
-  background: var(--mvd-panel);
-  border: 1px solid var(--mvd-line);
-  border-radius: 8px;
-  box-shadow: var(--mvd-shadow);
-  width: 92%;
-  max-width: 480px;
-  max-height: 88vh;
-  overflow: auto;
-  padding: 20px;
-}
-.mvd-dialog-tytul {
-  margin: 0 0 16px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.mvd-dialog-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.mvd-pole {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mvd-pole-etykieta {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--mvd-muted);
-}
+
 .mvd-pole-tryb {
   border: 1px solid var(--mvd-line);
   border-radius: 6px;
@@ -433,14 +275,4 @@
   gap: 6px;
   font-size: 13px;
 }
-.mvd-dialog-blad {
-  margin: 0;
-  color: var(--mvd-err);
-  font-size: 12px;
-}
-.mvd-dialog-akcje {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
-}
+

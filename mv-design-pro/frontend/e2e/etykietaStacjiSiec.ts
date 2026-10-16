@@ -147,12 +147,14 @@ export function stanAplikacji(siec: SiecEtykietyStacji, motyw: 'light' | 'dark')
       },
       version: 1,
     }),
-    // Panel „Schemat i topologia" w maksymalnej szerokości powłoki (`LEFT_MAX`), żeby drzewo
-    // pokazało nazwę stacji i jej rodzaj bez obcięcia.
+    // Panel „Schemat i topologia" w maksymalnej szerokości powłoki (`LEFT_MAX` = 260 px,
+    // karta K1 POWLOKA), żeby drzewo pokazało nazwę stacji i jej rodzaj bez obcięcia;
+    // inspektor w szerokości domyślnej (`RIGHT_DEFAULT` = 360 px). Wartości spoza granic
+    // powłoka i tak przycina przy odczycie — zasiew podaje je wprost, bez polegania na tym.
     'mvd-shell-ui-local': JSON.stringify({
       state: {
         layoutBySpace: {
-          schemat: { leftWidth: 320, rightWidth: 320, leftCollapsed: false, rightCollapsed: true },
+          schemat: { leftWidth: 260, rightWidth: 360, leftCollapsed: false, rightCollapsed: true },
         },
       },
       version: 0,

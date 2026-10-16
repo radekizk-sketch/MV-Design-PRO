@@ -13,7 +13,6 @@
  * porządkuje je na ekranie i formatuje.
  */
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { PrzegladDowodu } from '../dowod';
 import { useNazwaObiektu } from '../wzorzec';
 import type {
@@ -29,7 +28,7 @@ export interface PanelDowoduCieplnegoProps {
   pozycja: PozycjaCieplna;
   dowod: DowodCieplnyResponse | null;
   normy: readonly NormaCieplna[];
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   ladowanie: boolean;
   /** Prowadzi do gałęzi na schemacie (pętla decyzji wynik → model). */
   onPokazNaSchemacie: () => void;
@@ -55,7 +54,7 @@ export function PanelDowoduCieplnego({
   pozycja,
   dowod,
   normy,
-  trybZaawansowania,
+  szczegolyAudytowe,
   ladowanie,
   onPokazNaSchemacie,
 }: PanelDowoduCieplnegoProps) {
@@ -329,7 +328,7 @@ export function PanelDowoduCieplnego({
       <PrzegladDowodu
         analizaPL={JAKOSC_STRINGS.sciezkaObliczeniowa}
         kroki={dowod ? [...dowod.kroki] : []}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         ladowanie={ladowanie}
       />
     </section>

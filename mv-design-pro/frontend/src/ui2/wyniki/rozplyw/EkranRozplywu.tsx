@@ -23,7 +23,6 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { RegulacjaOze } from './RegulacjaOze';
 import { TabelaGalezi } from './TabelaGalezi';
 import { TabelaSzyn } from './TabelaSzyn';
@@ -43,7 +42,7 @@ const PODZAKLADKI = [
 type PodzakladkaId = (typeof PODZAKLADKI)[number]['id'];
 
 export interface EkranRozplywuProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
   /**
@@ -58,7 +57,7 @@ export interface EkranRozplywuProps {
 }
 
 export function EkranRozplywu({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
   preselekcjaElementu = null,
@@ -136,7 +135,7 @@ export function EkranRozplywu({
       <div role="tabpanel" className="mvd-rozplyw-podzakladki-tresc">
         {podzakladka === 'szyny' && (
           <TabelaSzyn
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             onOtworzDowod={onOtworzDowod}
             onEksport={onEksport}
             wybranyWiersz={wybranaSzyna}
@@ -145,7 +144,7 @@ export function EkranRozplywu({
         )}
         {podzakladka === 'galezie' && (
           <TabelaGalezi
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             onOtworzDowod={onOtworzDowod}
             onEksport={onEksport}
             wybranyWiersz={wybranaGalaz}

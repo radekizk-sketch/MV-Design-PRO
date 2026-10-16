@@ -8,8 +8,8 @@
  * `**\/api/**` przez `page.route` nie miało handlera dla tego wywołania —
  * catch-all `{}` nie ma kształtu `DomainOpResponseV1` (brak `snapshot`), więc
  * `useSnapshotStore` nigdy nie ustawia snapshotu, `hasModel` zostaje `false`
- * na zawsze, a `WorkflowContextStrip` (`wcs-model-loading`) i kanwa SLD
- * (`sld-empty-state`) utykają w nieskończonym stanie „Ładowanie układu sieci".
+ * na zawsze, a liczniki modelu paska narzędzi (`mvd-liczniki-wczytywanie`) i kanwa
+ * SLD (`sld-empty-state`) utykają w nieskończonym stanie wczytywania modelu.
  *
  * Kształt zweryfikowany na ŻYWYM backendzie (`POST /api/cases/{id}/enm/domain-ops`
  * z `operation.name = "refresh_snapshot"` na świeżo utworzonym, pustym case).

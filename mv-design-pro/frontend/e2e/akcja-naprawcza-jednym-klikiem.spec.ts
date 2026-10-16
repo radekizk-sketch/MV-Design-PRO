@@ -23,6 +23,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { przelaczMotyw } from './powloka';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = path.resolve(_dirname, '../../docs/audit/visual/C-12');
@@ -135,9 +136,9 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   const plik = (motyw: string) =>
     path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-${nazwa}-${motyw}.png`);
   await page.screenshot({ path: plik('dark') });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: plik('light') });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem na brakującym polu', async ({
@@ -215,9 +216,9 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   // Zbliżenie: sekcja parametrów formularza z polem wskazanym przez akcję naprawczą.
   const sekcja = page.getByTestId('mvd-kreator-edycja-parametry');
   await sekcja.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-formularz-pole-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await sekcja.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-formularz-pole-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   const zapis = page.waitForResponse(
     (r) =>
       r.url().includes('/enm/domain-ops')

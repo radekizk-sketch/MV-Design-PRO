@@ -55,7 +55,7 @@ function ContextSelector() {
   const caseName = useAppStateStore((state) => state.activeCaseName);
   const labels = LABELS.context;
   const rewizja = useSnapshotStore((stan) => stan.snapshot?.header?.revision ?? null);
-  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
   const stanModelu = snapshotId
     ? rewizja !== null
       ? labels.rewizjaModelu(rewizja)
@@ -89,7 +89,7 @@ function ContextSelector() {
         </div>
       </div>
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="koordynacja-kontekst-informacje-audytowe"
         wiersze={audyt}
       />

@@ -23,6 +23,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Zrzuty do oceny właściciela (dyrektywa #8) — ŻYWA aplikacja, oba motywy. */
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
@@ -187,9 +188,9 @@ async function przeladujPowloke(page: Page): Promise<void> {
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   fs.mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 /** Liczba blokad wg SERWERA (źródło 1). */
@@ -292,7 +293,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   await expect(badge.locator('.mvd-tree-badge-blokady')).toHaveText('1');
 
   // ŹRÓDŁO 3 (chrom powłoki) — ta sama liczba blokad co u serwera.
-  await expect(page.getByTestId('mvd-casebar-readiness')).toContainText(
+  await expect(page.getByTestId('mvd-status-gotowosc')).toContainText(
     String(blokadySerwera(gotowoscPrzed)),
   );
 
@@ -324,5 +325,5 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   await expect(page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`)).toHaveCount(0, {
     timeout: 20000,
   });
-  await expect(page.getByTestId('mvd-casebar-readiness')).not.toContainText('blokad');
+  await expect(page.getByTestId('mvd-status-gotowosc')).not.toContainText('blokad');
 });

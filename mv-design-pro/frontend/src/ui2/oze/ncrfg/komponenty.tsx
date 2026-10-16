@@ -127,7 +127,7 @@ export function DowodCertyfikatuOpis({
   readonly zrodloDanych: ZrodloDanych;
   readonly testid: string;
 }): JSX.Element {
-  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
   if (dowod !== null) {
     return (
       <div className="mvd-ncrfg-dowod" data-testid={testid} data-stan="dowod">
@@ -149,7 +149,7 @@ export function DowodCertyfikatuOpis({
           <OpisPodstawy podstawa={dowod.podstawa} />
         </div>
         <InformacjeAudytowe
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           testid={`${testid}-informacje-audytowe`}
           wiersze={[{ etykieta: T.dowodIdentyfikatorRekordu, wartosc: dowod.rekord_id }]}
         />
@@ -237,7 +237,7 @@ export function ZapisDokumentu({
 }): JSX.Element {
   const [otwarty, setOtwarty] = useState(false);
   const idTresci = useId();
-  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
   // Karta #145: pozycje audytowe (odniesienie do dowodu, bieg śladu) niosą identyfikatory
   // i odciski — poza pierwszym planem, w informacjach audytowych (tryb ekspercki).
   const merytoryczne = blok.filter((p) => !POZYCJE_AUDYTOWE_BLOKU.includes(p.etykieta_pl));
@@ -266,7 +266,7 @@ export function ZapisDokumentu({
           </dl>
           <InformacjeAudytowe
             wiersze={audytowe.map((p) => ({ etykieta: p.etykieta_pl, wartosc: p.tresc_pl }))}
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid={`${testid}-informacje-audytowe`}
           />
         </div>

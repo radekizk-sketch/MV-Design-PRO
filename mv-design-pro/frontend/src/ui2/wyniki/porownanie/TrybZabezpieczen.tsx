@@ -42,7 +42,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './porownanie.css';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import {
   InformacjeAudytowe,
@@ -101,7 +100,7 @@ const ZAKLADKI: readonly { id: Zakladka; etykieta: string }[] = [
 export interface TrybZabezpieczenProps {
   /** Identyfikator projektu — źródło listy przebiegów zabezpieczeń (klient API). */
   projektId: string;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /** Wartość pola śladu (`inputs`/`outputs` — liczby) → napis, bez arytmetyki. */
@@ -116,8 +115,7 @@ function polaSladu(
   return Object.entries(pola) as [PoleSladuPorownaniaZabezpieczen, number | undefined][];
 }
 
-export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpieczenProps) {
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+export function TrybZabezpieczen({ projektId, szczegolyAudytowe }: TrybZabezpieczenProps) {
 
   const [przebiegi, setPrzebiegi] = useState<ProtectionRunItem[]>([]);
   const [stanListy, setStanListy] = useState<StanListy>('ladowanie');
@@ -341,7 +339,7 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
           {/* Proweniencja obu biegów R1 — TE SAME „Informacje audytowe" co rozpływ (D1);
               karta #145: identyfikator porównania i odciski wyłącznie tutaj. */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-porzab-informacje-audytowe"
             wiersze={naWierszeAudytuPorownania(
               wynik.comparison_id,
@@ -389,7 +387,7 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                 kolumny={KOLUMNY_STANOW_ZABEZPIECZEN}
                 wiersze={wierszeStanow}
                 onOtworzDowod={otworzDowodPrzebiegu}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 kluczWiersza={KLUCZ_PROBLEM}
               />
             ))}
@@ -405,7 +403,7 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                   kolumny={KOLUMNY_RANKINGU_ZABEZPIECZEN}
                   wiersze={wierszeRankingu}
                   onOtworzDowod={BEZ_DOWODU}
-                  trybZaawansowania={trybZaawansowania}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   kluczWiersza={KLUCZ_PROBLEM}
                   onWybierzWiersz={setWybranyProblem}
                   wybranyWiersz={wybranyProblem}
@@ -473,7 +471,7 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                 {/* Karta #145: data i kody kroków śladu to metadane —
                     wyłącznie w „Informacjach audytowych" śladu. */}
                 <InformacjeAudytowe
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   testid="mvd-porzab-slad-informacje-audytowe"
                   wiersze={[
                     { etykieta: ZB.sladUtworzono, wartosc: slad.created_at },

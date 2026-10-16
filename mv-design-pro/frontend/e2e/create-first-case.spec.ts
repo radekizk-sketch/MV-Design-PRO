@@ -159,7 +159,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
     // refresh_snapshot (store.ts: refreshFromBackend na mount) zanim
     // operator zdąży cokolwiek zrobić. Catch-all '{}' nie ma kształtu
     // DomainOpResponseV1 (brak `snapshot`), więc `hasModel` nigdy nie staje
-    // się `true` i pasek utyka na „Ładowanie układu sieci" (WorkflowContextStrip.tsx)
+    // się `true` i powłoka utyka na wczytywaniu modelu (liczniki paska narzędzi)
     // — kanwa SLD i `sld-empty-state` nigdy się nie montują. Kształt
     // odpowiedzi zweryfikowany na żywym backendzie (pusty case, operacja
     // refresh_snapshot).
@@ -213,8 +213,8 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
   await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
   // Intencja bez zmian: pasek komunikuje, że świeżo utworzony zakres nie ma
-  // jeszcze wyników. Dawny pasek pisał „do obliczenia"; dzisiejszy CaseBar ui2
-  // (shell/strings.ts: resultsNone) niesie ten sam sens chipem „Wyniki: brak".
+  // jeszcze wyników. Dawny pasek pisał „do obliczenia"; dzisiejszy pasek projektu
+  // (shell/strings.ts: resultsNone) niesie ten sam sens znacznikiem „Wyniki: brak".
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wyniki: brak');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 

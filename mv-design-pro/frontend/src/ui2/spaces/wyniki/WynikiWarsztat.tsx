@@ -27,7 +27,6 @@
  */
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { hydratujPowloke } from '../../shell/useHydratacjaPowloki';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
@@ -81,7 +80,7 @@ import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 import './wynikiWarsztat.css';
 
 export interface WynikiWarsztatProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Zawartość zakładki „Widoki klasyczne" (most — LegacySurface). */
   pozostale: ReactNode;
   /** Nawigacja do przestrzeni „Dokumentacja" (pulpit OZE — decyzja AppRoot). */
@@ -89,7 +88,7 @@ export interface WynikiWarsztatProps {
 }
 
 /** Porównanie A/B (E12.1) dla aktywnego projektu — bez projektu uczciwy stan pusty. */
-function PorownanieAktywnegoProjektu({ trybZaawansowania }: { trybZaawansowania: AdvancementMode }) {
+function PorownanieAktywnegoProjektu({ szczegolyAudytowe }: { szczegolyAudytowe: boolean }) {
   const projektId = useAppStateStore((s) => s.activeProjectId);
   if (!projektId) {
     return (
@@ -98,7 +97,7 @@ function PorownanieAktywnegoProjektu({ trybZaawansowania }: { trybZaawansowania:
       </p>
     );
   }
-  return <EkranPorownania projektId={projektId} trybZaawansowania={trybZaawansowania} />;
+  return <EkranPorownania projektId={projektId} szczegolyAudytowe={szczegolyAudytowe} />;
 }
 
 /** Krok strzałek w liście (w prawo +1, w lewo −1 z zawinięciem). */
@@ -110,7 +109,7 @@ function sasiad<Id extends string>(kolejnosc: readonly Id[], biezacy: Id, klawis
 }
 
 export function WynikiWarsztat({
-  trybZaawansowania,
+  szczegolyAudytowe,
   pozostale,
   onOtworzDokumentacje,
 }: WynikiWarsztatProps) {
@@ -162,7 +161,7 @@ export function WynikiWarsztat({
     // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki
     // niedostępnej w bieżącym trybie jest konsumowane bez przełączenia
     // (inaczej brama byłaby dekoracją, a nie regułą).
-    if (jestZakladka(wynikiTab) && zakladkaDostepna(wynikiTab, trybZaawansowania)) {
+    if (jestZakladka(wynikiTab) && zakladkaDostepna(wynikiTab, szczegolyAudytowe)) {
       // K3-A4: deep-link = jawny wybór celu — hydratacja K2 nie może go nadpisać.
       setZakladkaWybrana(wynikiTab);
       if (wynikiTab === 'kompensacja' && wynikiTabElement) {
@@ -192,7 +191,7 @@ export function WynikiWarsztat({
       }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
-  }, [wynikiTab, wynikiTabElement, setWynikiTab, trybZaawansowania]);
+  }, [wynikiTab, wynikiTabElement, setWynikiTab, szczegolyAudytowe]);
 
   // Powierzchnia trasowa mostu spoza dawnego huba (klasa C: E-27/E-28 i taby
   // compare/trace/ncrfg-tests; klasa B: panel prawy) ma router WYŁĄCZNIE w
@@ -209,8 +208,8 @@ export function WynikiWarsztat({
   // V126-JEZYK: obniżenie trybu w trakcie pracy nie może zostawić otwartej
   // zakładki spoza toru — wracamy na ocenę (pierwsza zakładka warsztatu).
   useEffect(() => {
-    if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladkaWybrana('ocena');
-  }, [zakladka, trybZaawansowania]);
+    if (!zakladkaDostepna(zakladka, szczegolyAudytowe)) setZakladkaWybrana('ocena');
+  }, [zakladka, szczegolyAudytowe]);
 
   // Nawigacja ręczna (klik/klawiatura/2×klik w ekranach jednego przebiegu):
   // wejście na „Dowód obliczeń" bez deep-linku wraca do aktywnego przebiegu —
@@ -226,13 +225,13 @@ export function WynikiWarsztat({
 
   // Obszar = pochodna zakładki (jeden stan). Wejście w obszar otwiera jego
   // pierwszą zakładkę dostępną w trybie.
-  const obszary = obszaryDostepne(trybZaawansowania);
+  const obszary = obszaryDostepne(szczegolyAudytowe);
   const obszarAktywny = obszarZakladki(zakladka);
-  const zakladkiAktywnegoObszaru = zakladkiObszaru(obszarAktywny, trybZaawansowania);
+  const zakladkiAktywnegoObszaru = zakladkiObszaru(obszarAktywny, szczegolyAudytowe);
   const przejdzDoObszaru = (id: ObszarId) => {
     const obszar = obszary.find((o) => o.id === id);
     if (!obszar || obszar.id === obszarAktywny.id) return;
-    przejdzDoZakladki(zakladkiObszaru(obszar, trybZaawansowania)[0]);
+    przejdzDoZakladki(zakladkiObszaru(obszar, szczegolyAudytowe)[0]);
   };
   const klawiszeObszarow = (e: KeyboardEvent<HTMLButtonElement>) => {
     const cel = sasiad(
@@ -305,7 +304,7 @@ export function WynikiWarsztat({
                 tabIndex={aktywny ? 0 : -1}
                 className={aktywny ? 'mvd-wyniki-obszar mvd-on' : 'mvd-wyniki-obszar'}
                 data-testid={`mvd-wyniki-obszar-${obszar.id}`}
-                data-zakladki={zakladkiObszaru(obszar, trybZaawansowania).join(' ')}
+                data-zakladki={zakladkiObszaru(obszar, szczegolyAudytowe).join(' ')}
                 onClick={() => przejdzDoObszaru(obszar.id)}
                 onKeyDown={klawiszeObszarow}
               >
@@ -336,12 +335,12 @@ export function WynikiWarsztat({
         {/* B-02 / W3-E: ocena techniczna wyników (następca werdyktu projektowego
             i huba „Analizy techniczne") — dowód otwierany dla KONKRETNEGO biegu. */}
         {zakladka === 'ocena' && (
-          <EkranOceny trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranOceny szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'co-wymaga-uwagi' && <EkranCoWymagaUwagi />}
         {zakladka === 'rozplyw' && (
           <EkranRozplywu
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             onOtworzDowod={otworzDowod}
             preselekcjaElementu={elementRozplywu}
             onPreselekcjaSkonsumowana={() => setElementRozplywu(null)}
@@ -354,17 +353,17 @@ export function WynikiWarsztat({
         {/* EKRAN-N1 (D8): powierzchnia zdolności enumeracji kontyngencji N-1 —
             zakres wybiera inżynier, bieg startuje jawnym przyciskiem. */}
         {zakladka === 'kontyngencje' && (
-          <EkranKontyngencji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranKontyngencji szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'skladowe' && <EkranSkladowych />}
         {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
         {/* Karta AB-P1: bieg kanoniczny dynamiki czasowej RMS (tryb sieci, bez werdyktu);
             kontekst deep-linku = wytwórca wskazany akcją naprawczą `der.dynamika_missing`. */}
         {zakladka === 'dynamika' && (
-          <EkranDynamiki trybZaawansowania={trybZaawansowania} wskazanyElement={elementDynamiki} />
+          <EkranDynamiki szczegolyAudytowe={szczegolyAudytowe} wskazanyElement={elementDynamiki} />
         )}
         {zakladka === 'zwarcia' && (
-          <EkranZwarc trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranZwarc szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {/* K8: dostawca zakładkowy dla wygaszonej trasy mostu #protection-results
             (dawniej: generyczna tabela analityczna powierzchni E-35 bez treści
@@ -372,71 +371,71 @@ export function WynikiWarsztat({
         {zakladka === 'koordynacja' && <EkranKoordynacji />}
         {zakladka === 'dowod' && (
           <DowodPrzebiegu
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             wskazanyRunId={przebiegDowodu}
             wskazanyElementRef={elementDowodu}
           />
         )}
         {zakladka === 'jakosc' && (
-          <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranJakosci szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {/* ROUTERY-4A: dostawca zdolności A6/A17 (wrażliwość LF + ogólna) —
             ekran ui2 czyta rejestr przebiegów sam (uczciwy stan zerowy z akcją). */}
-        {zakladka === 'wrazliwosc' && <EkranWrazliwosci trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'wrazliwosc' && <EkranWrazliwosci szczegolyAudytowe={szczegolyAudytowe} />}
+        {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu szczegolyAudytowe={szczegolyAudytowe} />}
         {zakladka === 'odbior' && (
-          <EkranOdbioru trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranOdbioru szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'estymacja' && (
-          <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranEstymacji szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
-        {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'ssci' && <EkranSsci szczegolyAudytowe={szczegolyAudytowe} />}
         {/* B-02: „Analizy specjalistyczne" — katalog kart z backendu i widok analizy
             (przedmiot → dane → gotowość → kryteria → uruchomienie).
             V126-JEZYK: treść renderuje się WYŁĄCZNIE za bramą trybu — ten sam
             predykat co pasek zakładek (jedno źródło prawdy, zero rozjazdu). */}
-        {zakladka === 'akademickie' && zakladkaDostepna('akademickie', trybZaawansowania) && (
-          <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} />
+        {zakladka === 'akademickie' && zakladkaDostepna('akademickie', szczegolyAudytowe) && (
+          <EkranAnalizAkademickich szczegolyAudytowe={szczegolyAudytowe} />
         )}
         {zakladka === 'ncrfg' && (
           <MacierzNcRfg
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             preselekcjaModulu={modulNcRfg}
             onPreselekcjaSkonsumowana={() => setModulNcRfg(null)}
           />
         )}
-        {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'zdolnosc' && <EkranZdolnosci szczegolyAudytowe={szczegolyAudytowe} />}
+        {zakladka === 'ranking' && <EkranRankingu szczegolyAudytowe={szczegolyAudytowe} />}
         {zakladka === 'krzywe' && (
-          <EkranKrzywych trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranKrzywych szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'obszar' && (
-          <EkranObszaruPQ trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranObszaruPQ szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'studium' && (
-          <KreatorStudium trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <KreatorStudium szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'frt' && (
-          <EkranFrt trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranFrt szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'osd' && (
-          <EkranOsd trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranOsd szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'kompensacja' && (
           <EkranKompensacji
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             preselekcjaWezla={elementKompensacji}
             onPreselekcjaSkonsumowana={() => setElementKompensacji(null)}
             onOtworzDowod={otworzDowod}
           />
         )}
-        {zakladka === 'wniosek' && <EkranWniosku trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'wniosek' && <EkranWniosku szczegolyAudytowe={szczegolyAudytowe} />}
         {zakladka === 'lom' && (
-          <EkranLom trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranLom szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             onNawiguj={() => onOtworzDokumentacje()}
           />
         )}

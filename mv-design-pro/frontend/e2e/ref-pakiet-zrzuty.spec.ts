@@ -19,6 +19,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/sld/audyt-2026-08'));
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -101,11 +102,11 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   await page.getByTestId('mvd-ref-sekcja').scrollIntoViewIfNeeded();
   const pierwszy = await nazwaMotywu(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-${pierwszy}.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   const drugi = await nazwaMotywu(page);
   expect(drugi).not.toBe(pierwszy);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-${drugi}.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 test('zakres oceny zgodności referencyjnej jest widoczny i zmienialny (zrzuty obu motywów)', async ({

@@ -30,7 +30,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './akademickie.css';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -410,12 +409,12 @@ function SekcjaPrzedmiot({
   przedmiot,
   modelHash,
   nazwaObiektu,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   przedmiot: PrzedmiotAnalizy | null;
   modelHash: string | null;
   nazwaObiektu: (ref: string) => string;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
@@ -496,7 +495,7 @@ function SekcjaPrzedmiot({
       </div>
       {/* Karta V12.7 §0.3: odcisk modelu — poza pierwszym planem. */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-akad-przedmiot-informacje-audytowe"
         wiersze={modelHash ? [{ etykieta: S.przedmiotOdcisk, wartosc: modelHash }] : []}
       />
@@ -1458,10 +1457,10 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
  */
 function PanelRaportu({
   raport,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   raport: RaportAnalizy;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   return (
     <section className="mvd-akad-sekcja" data-testid="mvd-akad-raport">
@@ -1474,7 +1473,7 @@ function PanelRaportu({
       </p>
       <InformacjeAudytowe
         wiersze={wierszeAudytoweRaportu(raport)}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-akad-raport-informacje-audytowe"
       />
     </section>
@@ -1578,7 +1577,7 @@ const OPOZNIENIE_GOTOWOSCI_MS = 250;
 // ---------------------------------------------------------------------------
 
 export interface EkranAnalizAkademickichProps {
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
   /**
    * Analiza otwarta z góry (wejście z ekranu trasowego E-40…E-50) — okno startuje
    * w widoku tej analizy; przycisk „Katalog analiz" wraca do kart. Typ zawężony do
@@ -1588,13 +1587,12 @@ export interface EkranAnalizAkademickichProps {
 }
 
 export function EkranAnalizAkademickich({
-  trybZaawansowania,
+  szczegolyAudytowe,
   rodzajPoczatkowy,
 }: EkranAnalizAkademickichProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu ?? 0);
   const nazwaObiektu = useNazwaObiektu();
 
@@ -1643,10 +1641,10 @@ export function EkranAnalizAkademickich({
 
   // Bez aktywnego przypadku i poza bramą trybu okno NIE pyta backendu.
   useEffect(() => {
-    if (activeCaseId === null || !trybEkspercki) return;
+    if (activeCaseId === null || !szczegolyAudytowe) return;
     wczytajKatalog();
     wczytajGotowoscKart(activeCaseId);
-  }, [activeCaseId, trybEkspercki, wczytajKatalog, wczytajGotowoscKart]);
+  }, [activeCaseId, szczegolyAudytowe, wczytajKatalog, wczytajGotowoscKart]);
 
   // Parametry biegu = to, co pójdzie do POST; gotowość sprawdzana DOKŁADNIE dla nich.
   const parametry = useMemo(
@@ -1656,7 +1654,7 @@ export function EkranAnalizAkademickich({
   const parametryJson = JSON.stringify(parametry);
 
   useEffect(() => {
-    if (activeCaseId === null || !trybEkspercki || wybrany === '') return;
+    if (activeCaseId === null || !szczegolyAudytowe || wybrany === '') return;
     let aktualne = true;
     setGotowoscWybranej((poprzedni) => ({ rodzaj: 'ladowanie', dane: poprzedni.dane }));
     const uchwyt = window.setTimeout(() => {
@@ -1689,7 +1687,7 @@ export function EkranAnalizAkademickich({
       aktualne = false;
       window.clearTimeout(uchwyt);
     };
-  }, [activeCaseId, trybEkspercki, wybrany, parametryJson, licznikSprawdzen]);
+  }, [activeCaseId, szczegolyAudytowe, wybrany, parametryJson, licznikSprawdzen]);
 
   // Zmiana analizy zeruje wynik i formularz — parametry jednej analizy nie mogą
   // wyciec do żądania innej (klucze są rozłączne wg kontraktu solvera).
@@ -1728,7 +1726,7 @@ export function EkranAnalizAkademickich({
 
   // Brama opracowania (V126-JEZYK): poza trybem eksperckim okno NIE renderuje
   // treści i NIE pyta backendu — wejść do zdolności są dwa (zakładka i trasa).
-  if (!trybEkspercki) {
+  if (!szczegolyAudytowe) {
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
         <header className="mvd-akad-naglowek">
@@ -1878,7 +1876,7 @@ export function EkranAnalizAkademickich({
             przedmiot={przedmiot}
             modelHash={modelHash}
             nazwaObiektu={nazwaObiektu}
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
           />
           <SekcjaPytanie karta={karta} />
           {wybrany === 'ssci_impedance' && (
@@ -1996,7 +1994,7 @@ export function EkranAnalizAkademickich({
                     audytowe" (tryb ekspercki, zwinięte). Karta #145: tu także pełny
                     zapis techniczny odpowiedzi solvera (ścieżki pól kontraktu). */}
                 <InformacjeAudytowe
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   testid="mvd-akad-informacje-audytowe"
                   wiersze={[
                     { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash ?? '' },
@@ -2038,7 +2036,7 @@ export function EkranAnalizAkademickich({
                   <>
                     <PanelSladu slad={stan.dane.slad} />
                     <PanelDowodu dowod={stan.dane.dowod} />
-                    <PanelRaportu raport={stan.dane.raport} trybEkspercki={trybEkspercki} />
+                    <PanelRaportu raport={stan.dane.raport} szczegolyAudytowe={szczegolyAudytowe} />
                   </>
                 );
                 const sekcjaAudytowa = PREZENTACJA[wybrany as RodzajPrezentowany]?.sekcjaAudytowa;

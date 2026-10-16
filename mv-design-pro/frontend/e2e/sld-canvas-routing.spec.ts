@@ -39,7 +39,7 @@ async function waitForAppReady(page: Page): Promise<void> {
  * — `sld-supply-path-visibility.spec.ts`): `/#sld` bez ŻADNEGO aktywnego
  * projektu/case'a pokazuje dziś bramkę „Start projektu" zamiast montować
  * workspace (świadoma zmiana kanonu, karty K2-hydratacja/K5 — bramkowanie
- * `WorkflowContextStrip` aktywnym case'em). Case zakłada się i aktywuje
+ * warsztatu aktywnym case'em). Case zakłada się i aktywuje
  * realną ścieżką, BEZ żadnej operacji domenowej — model pozostaje realnie
  * pusty, więc kontrakt v3 F12-C jest dalej dokładnie tym, co te testy
  * sprawdzały przed zmianą bramki.

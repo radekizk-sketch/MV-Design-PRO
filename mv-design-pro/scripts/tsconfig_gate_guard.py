@@ -433,7 +433,15 @@ POMIJANE_KATALOGI = {
 #: zastapiony typowanymi rekordami `bays`). Zero nowych bledow. Scalenie z integracja PR477-481 (2026-10-16): POMIAR na drzewie scalonym 61.
 #: Scalenie W5-B z partia integracji 8 (2026-10-16, karta UIUX-PRZEMYSLOWY): POMIAR na drzewie
 #: scalonym 61 -> 59 — partia 8 i karta W5-B zdjely rozlaczne bledy (TS2532/TS2339/TS7006 karty).
-BUDZET_BLEDOW_POZA_BRAMKA = 59
+#: Karta K1 POWLOKA (2026-10-16, pomiar `tsc` zbioru pomiarowego guarda na drzewie karty):
+#: 59 -> 55. Zeszly TS2322 w `ui2/spaces/obliczenia/__tests__/uruchomObliczenie.test.tsx`
+#: (typ `Mock` toru biegu) i TS2322 w `ui2/spaces/wyniki/__tests__/dowodElementIZrodlo.test.tsx`
+#: (`'Branch'` spoza `ElementType` -> `'LineBranch'`) oraz dwa bledy znikly z kasacja testow
+#: skasowanych komponentow powloki (pasek tytulowy, pasek przypadku, przelacznik trybow,
+#: baner nastepnego kroku, pasek metryk). Zero nowych bledow (bledy nowych testow karty
+#: naprawione przed commitem). Zostaja dwa zastane TS2339 w `ui2/spaces/gotowosc/__tests__`
+#: (obszar poza granica karty K1).
+BUDZET_BLEDOW_POZA_BRAMKA = 55
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

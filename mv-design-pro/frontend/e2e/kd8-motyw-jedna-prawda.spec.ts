@@ -9,13 +9,14 @@
  *
  * Scena jest REALNA (projekt + przypadek + GPZ + magistrala ze stacją przez
  * operacje domenowe backendu — ta sama droga danych co specy KD-5/KD-7),
- * przełączenie motywu idzie NATYWNYM klikiem w przełącznik powłoki.
+ * przełączenie motywu idzie NATYWNYM klikiem w menu „Widok" powłoki.
  *
  * Trzecia asercja: eksport SVG wychodzi w palecie DOKUMENTOWEJ przy OBU
  * motywach ekranu — arkusz do dokumentacji nie może zależeć od tego, na czym
  * pracował projektant.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { przelaczMotyw } from './powloka';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -206,7 +207,10 @@ async function tlaPowierzchni(page: Page): Promise<Record<string, string>> {
       // Kanwa niesie tło stylem inline (paleta rysunku), nie klasą.
       kanwa: odczyt(document.querySelector('svg[data-testid="sld-canvas-v3"]')),
       nawigacja: odczyt(document.querySelector('nav.mvd-nav') ?? document.querySelector('nav.mvd-rail')),
-      pasekMetryk: odczyt(document.querySelector('[data-testid="workflow-context-strip"]')),
+      // Dawny pasek metryk nad kanwą skasowała karta K1 POWLOKA — jego miejsce
+      // (pas nad kanwą) zajmuje pasek narzędzi przestrzeni; intencja oceny właściciela
+      // („pas nad kanwą nie może zostać ciemny") bez zmian.
+      pasekNarzedzi: odczyt(document.querySelector('[data-testid="mvd-pasek-narzedzi"]')),
       panelSchematu: odczyt(document.querySelector('[data-testid="schemat-context-panel"]')),
       powloka: odczyt(document.querySelector('[data-ui-theme]')),
     };
@@ -295,7 +299,7 @@ test.describe('kd8:motyw', () => {
     expect(svgZCiemnego).not.toContain(EKRAN_SN_CIEMNY);
 
     // (3) NATYWNY klik w przełącznik motywu ⇒ jasny (techniczny).
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(600);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light_technical');
 
@@ -314,7 +318,7 @@ test.describe('kd8:motyw', () => {
     expect(svgZJasnego).toContain(DOKUMENT_TLO);
 
     // (5) Powrót klikiem ⇒ ciemny; powierzchnie znowu ciemne (brak dryfu).
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(600);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark_scada');
     const znowuCiemne = await tlaPowierzchni(page);

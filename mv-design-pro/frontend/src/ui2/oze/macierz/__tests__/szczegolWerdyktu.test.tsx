@@ -31,13 +31,13 @@ function komorka(indeksWiersza: number, derRef: string): KomorkaMacierzy {
 
 describe('SzczegolWerdyktu', () => {
   it('bez wybranej komórki → podpowiedź wyboru', () => {
-    render(<SzczegolWerdyktu komorka={null} definicja={null} nazwaModulu={null} slad={[]} trybEkspercki={false} />);
+    render(<SzczegolWerdyktu komorka={null} definicja={null} nazwaModulu={null} slad={[]} szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-oze-szczegol-pusty')).toHaveTextContent(MACIERZ_STRINGS.szczegolWybierz);
   });
 
   it('komórka modułu bez danych → jawny powód', () => {
     render(
-      <SzczegolWerdyktu komorka={komorka(0, 'zz-bez-napiecia')} definicja={null} nazwaModulu="x" slad={[]} trybEkspercki={false} />,
+      <SzczegolWerdyktu komorka={komorka(0, 'zz-bez-napiecia')} definicja={null} nazwaModulu="x" slad={[]} szczegolyAudytowe={false} />,
     );
     expect(screen.getByTestId('mvd-oze-szczegol-blokada')).toHaveTextContent('napięcie przyłączenia');
   });
@@ -46,7 +46,7 @@ describe('SzczegolWerdyktu', () => {
     const pv = BIEG.modules[1];
     const k = komorka(0, pv.der_ref);
     const definicja = BIEG.test_catalog[0];
-    render(<SzczegolWerdyktu komorka={k} definicja={definicja} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} trybEkspercki={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={definicja} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} szczegolyAudytowe={false} />);
     if (k.stan !== 'wynik') throw new Error('oczekiwano rekordu');
     expect(screen.getByTestId(`mvd-werdykt-${k.wynik.ocena.kryterium_id}`)).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-szczegol-definicja')).toHaveTextContent(definicja.procedure_basis_pl);
@@ -62,7 +62,7 @@ describe('SzczegolWerdyktu', () => {
     [true, true],
   ] as const)(
     'identyfikator zdolności dowodowej (metadana audytowa, nie język inżynierski) — tryb ekspercki %s → widoczny %s',
-    (trybEkspercki, widoczny) => {
+    (szczegolyAudytowe, widoczny) => {
       const pv = BIEG.modules[1];
       const definicja = BIEG.test_catalog[0];
       render(
@@ -71,7 +71,7 @@ describe('SzczegolWerdyktu', () => {
           definicja={definicja}
           nazwaModulu={pv.der_name}
           slad={[]}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
         />,
       );
       expect(screen.queryByTestId('mvd-oze-szczegol-zdolnosc') !== null).toBe(widoczny);
@@ -91,7 +91,7 @@ describe('SzczegolWerdyktu', () => {
     const k = komorka(indeks, pv.der_ref);
     if (k.stan !== 'wynik') throw new Error('oczekiwano rekordu');
     const uzytkownik = userEvent.setup();
-    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} trybEkspercki={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} szczegolyAudytowe={false} />);
     await uzytkownik.click(screen.getByTestId('mvd-oze-szczegol-pokaz-element'));
     expect(useSelectionStore.getState().selectedElement?.id).toBe(k.wynik.ocena.przedmiot.element_ref);
   });
@@ -101,7 +101,7 @@ describe('SzczegolWerdyktu', () => {
     const indeks = BIEG.test_catalog.findIndex((d) => (pv.tests.find((t) => t.test_id === d.test_id)?.trace_refs.length ?? 0) > 0);
     const k = komorka(indeks, pv.der_ref);
     const uzytkownik = userEvent.setup();
-    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} trybEkspercki={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} szczegolyAudytowe={false} />);
     await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
     expect(screen.getByTestId('mvd-oze-slad-przelacz')).toHaveAttribute('aria-expanded', 'true');
     const kroki = BIEG.white_box_trace.filter((krok) => krok.test_id === k.testId);

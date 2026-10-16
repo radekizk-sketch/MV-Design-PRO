@@ -17,7 +17,7 @@ function props(over: Partial<Parameters<typeof TabelaWynikow>[0]> = {}) {
     kolumny: kolumnyFixture,
     wiersze: wierszeFixture,
     onOtworzDowod: vi.fn(),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     ...over,
   };
 }
@@ -200,13 +200,13 @@ describe('TabelaWynikow — dowód (2× klik), próg → tag, tryb ekspercki', (
   });
 
   it('kolumna „tylkoEkspercki" ukryta w trybie podstawowym', () => {
-    render(<TabelaWynikow {...props({ trybZaawansowania: 'basic' })} />);
+    render(<TabelaWynikow {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-th-id')).not.toBeInTheDocument();
     expect(screen.queryByText('X-1')).not.toBeInTheDocument();
   });
 
   it('kolumna „tylkoEkspercki" widoczna w trybie eksperckim', () => {
-    render(<TabelaWynikow {...props({ trybZaawansowania: 'expert' })} />);
+    render(<TabelaWynikow {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByTestId('mvd-wyn-th-id')).toBeInTheDocument();
     expect(screen.getByText('X-1')).toBeInTheDocument();
   });
@@ -232,7 +232,7 @@ function propsDuze(n: number, over: Record<string, unknown> = {}) {
     kolumny: duzeKolumny,
     wiersze: duzeWiersze(n),
     onOtworzDowod: vi.fn(),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     ...over,
   };
 }
@@ -256,7 +256,7 @@ describe('TabelaWynikow — wirtualizacja okienkowa (>500 wierszy)', () => {
   });
 
   it('poniżej progu (mały fixture) → zachowanie 1:1 (wrap bez przewijania pionowego)', () => {
-    render(<TabelaWynikow kolumny={kolumnyFixture} wiersze={wierszeFixture} onOtworzDowod={vi.fn()} trybZaawansowania="basic" />);
+    render(<TabelaWynikow kolumny={kolumnyFixture} wiersze={wierszeFixture} onOtworzDowod={vi.fn()} szczegolyAudytowe={false} />);
     expect(screen.getAllByTestId('mvd-wyn-wiersz')).toHaveLength(3);
     const wrap = screen.getByTestId('mvd-wyn-tabela-wrap');
     expect(wrap.style.overflowY).toBe('');

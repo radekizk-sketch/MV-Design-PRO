@@ -9,9 +9,11 @@
  *    są martwe. Dokąd dalej: pulpit projektu (KafelPrzylaczenia), a z niego
  *    przestrzeń „Schemat" z CTA „Wstaw GPZ" (dalszą budowę sieci pokrywa
  *    critical-run-flow — tu jej NIE dublujemy).
- * 2. Przy modelu z GPZ przestrzeń „Schemat" pokazuje jawne przejście E2→E3
- *    „Sprawdź gotowość obliczeniową" — jeden klik prowadzi do przestrzeni
- *    „Gotowość" (PanelGotowosci; werdykt należy do panelu, nie do CTA).
+ * 2. Przy modelu z GPZ przejście E2→E3 jest w chromie: pozycja „Gotowość"
+ *    paska stanu (jedyne miejsce gotowości w chromie po karcie K1 POWLOKA,
+ *    która skasowała baner „Następny krok" nad kanwą jako powtórzenie
+ *    gotowości) — jeden klik prowadzi do przestrzeni „Gotowość"
+ *    (PanelGotowosci; werdykt należy do panelu, nie do chromu).
  *
  * Wzorzec seedu GPZ: e2e/sld-gpz-rendered.spec.ts (realne API domain-ops).
  */
@@ -140,7 +142,7 @@ async function createProjectCaseWithGpz(
   return { projectId: project.id, projectName, caseId: studyCase.id, caseName };
 }
 
-test('model z GPZ: Schemat pokazuje „Sprawdź gotowość obliczeniową" → klik → Gotowość (K4-E2)', async ({ page, request }) => {
+test('model z GPZ: Schemat → pozycja „Gotowość" paska stanu → klik → Gotowość (K4-E2)', async ({ page, request }) => {
   test.setTimeout(180_000);
 
   const seed = await createProjectCaseWithGpz(request);
@@ -178,13 +180,15 @@ test('model z GPZ: Schemat pokazuje „Sprawdź gotowość obliczeniową" → kl
   // wyczyścić trasę nadrzędną, aby PanelGotowosci mógł się wyrenderować).
   await page.getByRole('button', { name: /^Schemat \(SLD\) \d$/ }).click();
 
-  // Model NIEPUSTY (GPZ w migawce) ⇒ trwały „następny krok" nad kanwą
-  // (widoczny dopiero po załadowaniu migawki — czekamy na niego NAJPIERW,
-  // potem uczciwie sprawdzamy brak stanu pustego kanwy).
-  await expect(page.getByTestId('mvd-schemat-nastepny')).toBeVisible({ timeout: 30_000 });
+  // Model NIEPUSTY (GPZ w migawce) ⇒ gotowość ODCZYTANA z serwera w pasku stanu
+  // (czekamy na nią NAJPIERW, potem uczciwie sprawdzamy brak stanu pustego kanwy).
+  const gotowosc = page.getByTestId('mvd-status-gotowosc');
+  await expect(gotowosc).toHaveAttribute('data-ustalona', 'true', { timeout: 30_000 });
   await expect(page.getByTestId('sld-empty-state')).toHaveCount(0);
+  // Baner „Następny krok" nad kanwą nie istnieje (powtórzenie gotowości).
+  await expect(page.getByTestId('mvd-schemat-nastepny')).toHaveCount(0);
 
   // Jeden klik → przestrzeń „Gotowość" (werdykt należy do PanelGotowosci).
-  await page.getByTestId('mvd-schemat-nastepny-akcja').click();
+  await gotowosc.click();
   await expect(page.getByTestId('mvd-gotowosc-panel')).toBeVisible({ timeout: 30_000 });
 });

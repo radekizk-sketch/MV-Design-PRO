@@ -34,7 +34,7 @@ import { formatCzas, formatOdcisk, PRZEBIEGI_STRINGS as T } from './strings';
 interface SzczegolyPrzebieguProps {
   przebieg: PrzebiegWiersz | null;
   /** Tryb ekspercki powłoki — odsłania sekcję „Szczegóły techniczne" (§2.7). */
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   /** Akcja „Pokaż wyniki" — integrator aktywuje przebieg i przechodzi do Wyników. */
   onPokazWyniki: (runId: string) => void;
 }
@@ -100,13 +100,13 @@ function GrupaKontraktu({
  */
 function SekcjaKontraktAnalizy({
   runId,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   runId: string;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const { data, isLoading, error } = useAnalysisRunContract(runId);
-  const [rozwinieta, setRozwinieta] = useState(trybEkspercki);
+  const [rozwinieta, setRozwinieta] = useState(szczegolyAudytowe);
 
   const kontekst = data?.analysisCaseContext ?? null;
   const zalozenia = kontekst?.assumptions ?? {};
@@ -264,7 +264,7 @@ function zdanieNastepnyKrok(rodzaj: PrzebiegWiersz['rodzaj']): string {
 
 export function SzczegolyPrzebiegu({
   przebieg,
-  trybEkspercki,
+  szczegolyAudytowe,
   onPokazWyniki,
 }: SzczegolyPrzebieguProps) {
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
@@ -332,9 +332,9 @@ export function SzczegolyPrzebiegu({
         </table>
       </section>
 
-      <SekcjaKontraktAnalizy runId={przebieg.id} trybEkspercki={trybEkspercki} />
+      <SekcjaKontraktAnalizy runId={przebieg.id} szczegolyAudytowe={szczegolyAudytowe} />
 
-      {trybEkspercki && (
+      {szczegolyAudytowe && (
         <section
           className="mvd-przebieg-sekcja"
           aria-label={T.sekcjaTechniczna}

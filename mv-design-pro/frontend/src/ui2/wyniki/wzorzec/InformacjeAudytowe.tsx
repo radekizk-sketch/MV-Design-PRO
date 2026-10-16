@@ -27,23 +27,23 @@ export interface InformacjeAudytoweProps {
   /** Wiersze metadanych (etykieta → wartość) — puste = komponent się nie renderuje. */
   readonly wiersze: readonly WierszInformacjiAudytowych[];
   /** Widoczność WYŁĄCZNIE w trybie eksperckim (karta V12.7 §0.3) — poza nim `null`. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   readonly testid?: string;
 }
 
 /**
  * Sekcja zwijana z metadanymi produkcyjnymi — zwinięta domyślnie, widoczna
- * TYLKO w trybie eksperckim (`trybEkspercki`). Brak wierszy albo tryb
+ * TYLKO w trybie eksperckim (`szczegolyAudytowe`). Brak wierszy albo tryb
  * podstawowy/rozszerzony → komponent nie renderuje nic (uczciwy brak, nie
  * pusta ramka).
  */
 export function InformacjeAudytowe({
   wiersze,
-  trybEkspercki,
+  szczegolyAudytowe,
   testid = 'mvd-informacje-audytowe',
 }: InformacjeAudytoweProps) {
   const [otwarte, setOtwarte] = useState(false);
-  if (!trybEkspercki || wiersze.length === 0) return null;
+  if (!szczegolyAudytowe || wiersze.length === 0) return null;
   return (
     <section className="mvd-audyt" data-testid={testid}>
       <button

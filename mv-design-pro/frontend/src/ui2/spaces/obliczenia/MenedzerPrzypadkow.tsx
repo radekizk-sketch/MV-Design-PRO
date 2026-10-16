@@ -228,7 +228,7 @@ export function MenedzerPrzypadkow() {
       {menu && (
         <>
           <div
-            className="mvd-menu-scrim"
+            className="mvd-przypadki-menu-scrim"
             data-testid="mvd-menu-scrim"
             onClick={() => setMenu(null)}
             onContextMenu={(e) => {
@@ -239,7 +239,7 @@ export function MenedzerPrzypadkow() {
           <ul
             role="menu"
             aria-label={T.menuTytul}
-            className="mvd-menu"
+            className="mvd-przypadki-menu"
             style={{ left: menu.x, top: menu.y }}
             data-testid="mvd-menu"
           >
@@ -247,7 +247,7 @@ export function MenedzerPrzypadkow() {
               <button
                 type="button"
                 role="menuitem"
-                className="mvd-menu-item"
+                className="mvd-przypadki-menu-item"
                 onClick={() => {
                   aktywuj(menu.wiersz);
                   setMenu(null);
@@ -261,7 +261,7 @@ export function MenedzerPrzypadkow() {
               <button
                 type="button"
                 role="menuitem"
-                className="mvd-menu-item"
+                className="mvd-przypadki-menu-item"
                 onClick={() => otworzNowy(menu.wiersz.id)}
                 data-testid="mvd-menu-klonuj"
               >
@@ -272,7 +272,7 @@ export function MenedzerPrzypadkow() {
               <button
                 type="button"
                 role="menuitem"
-                className="mvd-menu-item"
+                className="mvd-przypadki-menu-item"
                 onClick={() => {
                   przelaczPorownanie(menu.wiersz.id);
                   setMenu(null);

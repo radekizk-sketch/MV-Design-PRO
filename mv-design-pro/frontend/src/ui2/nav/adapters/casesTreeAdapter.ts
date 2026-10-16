@@ -30,7 +30,6 @@ export function mapowaniePrzypadkowDoDrzewa(cases: StudyCaseListItem[]): WezelDr
     ikona: 'przypadek',
     liczniki: LICZNIKI_ZERO,
     dzieci: [],
-    trybMin: 'basic',
   }));
 }
 

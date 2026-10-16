@@ -22,7 +22,6 @@
  */
 import { useEffect, useMemo } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { PakietDowodowy, PrzegladDowodu, ZrodloLatex } from '../../wyniki/dowod';
 import { useAkcjaUruchomObliczenie } from '../../wyniki/wzorzec';
 import { useAppStateStore } from '../../../ui/app-state';
@@ -34,7 +33,7 @@ import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 
 export interface DowodPrzebieguProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /**
    * Konkretny przebieg do wywodu (R3-C — dowód kolumny A/B porównania).
    * `null`/pominięty = aktywny przebieg (dotychczasowe zachowanie 1:1).
@@ -49,7 +48,7 @@ export interface DowodPrzebieguProps {
 }
 
 export function DowodPrzebiegu({
-  trybZaawansowania,
+  szczegolyAudytowe,
   wskazanyRunId = null,
   wskazanyElementRef = null,
 }: DowodPrzebieguProps) {
@@ -112,7 +111,7 @@ export function DowodPrzebiegu({
         kroki={kroki}
         wskazanyElement={wskazanyElement}
         inputHash={selectedRunId === runId ? slad?.input_hash : undefined}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         ladowanie={ladowanie}
         akcjaPusty={akcjaPusty}
       />

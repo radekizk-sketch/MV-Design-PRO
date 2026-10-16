@@ -29,7 +29,6 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useFaultScenariosStore } from '../../../../ui/fault-scenarios/store';
 import { useBatchRunsStore } from '../../../../ui/study-cases/batchStore';
 import type { RunStatus } from '../../../../ui/study-cases/types';
-import type { AdvancementMode } from '../../../shell/modeModel';
 import type { SeriaWiersz } from './adapters/serieAdapter';
 import {
   useScenariuszeDoSerii,
@@ -80,7 +79,7 @@ function ogloszeniePoWykonaniu(status: SeriaWiersz['status']): string {
 
 export interface SeriePanelProps {
   /** Tryb zaawansowania powłoki — odsłania odcisk serii (§2.7). */
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Akcja „Pokaż wyniki" biegu — integrator aktywuje bieg i otwiera Wyniki (K3). */
   onPokazWyniki: (runId: string) => void;
   /** Akcja stanu zerowego „Przejdź do scenariuszy" — integrator przewija do panelu scenariuszy. */
@@ -88,7 +87,7 @@ export interface SeriePanelProps {
 }
 
 export function SeriePanel({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onPokazWyniki,
   onPrzejdzDoScenariuszy,
 }: SeriePanelProps) {
@@ -322,7 +321,7 @@ export function SeriePanel({
                 <span className="mvd-serie-karta-meta">
                   {T.kolScenariusze}: <span className="mvd-num">{seria.liczbaScenariuszy}</span>
                 </span>
-                {trybZaawansowania === 'expert' && (
+                {szczegolyAudytowe && (
                   <span className="mvd-serie-karta-meta" data-testid={`mvd-serie-odcisk-${seria.id}`}>
                     {T.etykietaOdcisk}: <span className="mvd-num">{seria.odcisk}</span>
                   </span>

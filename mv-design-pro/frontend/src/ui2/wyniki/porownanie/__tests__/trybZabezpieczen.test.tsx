@@ -93,7 +93,7 @@ function przypadek(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
 }
 
 function props(over: Partial<Parameters<typeof EkranPorownania>[0]> = {}) {
-  return { projektId: 'proj-1', trybZaawansowania: 'basic' as const, ...over };
+  return { projektId: 'proj-1', szczegolyAudytowe: false as const, ...over };
 }
 
 beforeEach(() => {
@@ -322,12 +322,12 @@ describe('TrybZabezpieczen — prezentacja wyniku (prawdziwy wynik sieci złotej
   });
 
   it('identyfikator porównania i proweniencja wyłącznie w „Informacjach audytowych" (karta #145)', async () => {
-    const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<EkranPorownania {...props({ szczegolyAudytowe: false })} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
     expect(screen.queryByTestId('mvd-porzab-informacje-audytowe')).not.toBeInTheDocument();
 
-    rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<EkranPorownania {...props({ szczegolyAudytowe: true })} />);
     expect(screen.getByTestId('mvd-porzab-wynik')).not.toHaveTextContent(WYNIK.comparison_id);
     fireEvent.click(screen.getByTestId('mvd-porzab-informacje-audytowe-przelacz'));
     const lista = screen.getByTestId('mvd-porzab-informacje-audytowe-lista');

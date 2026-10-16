@@ -52,8 +52,28 @@ export interface ZnacznikSwiezosci {
   rewizjaModelu: number | null;
   /** Które zmiany unieważniły wynik — z backendu, puste dla FRESH i NONE. */
   zmiany: readonly ZmianaOdBiegu[];
-  /** Tylko „nieaktualne" prowadzi do akcji (przejście do przestrzeni „Obliczenia"). */
+  /**
+   * Dokąd prowadzi klik znacznika (karta K1 POWLOKA): „aktualne" → wyniki,
+   * „nieaktualne" → obliczenia (przeliczenie), „brak" → nigdzie. Zastępuje
+   * dawny baner „następnego kroku" schematu z przyciskiem „Otwórz wyniki".
+   */
+  cel: CelZnacznikaWynikow;
+  /** Znacznik jest przyciskiem wtedy i tylko wtedy, gdy ma cel (`cel !== null`). */
   klikalny: boolean;
+}
+
+export type CelZnacznikaWynikow = 'wyniki' | 'obliczenia' | null;
+
+/** Cel kliku znacznika — jedna reguła dla paska projektu i jego testów. */
+export function celZnacznikaWynikow(status: StatusZnacznikaWynikow): CelZnacznikaWynikow {
+  switch (status) {
+    case 'FRESH':
+      return 'wyniki';
+    case 'OUTDATED':
+      return 'obliczenia';
+    case 'NONE':
+      return null;
+  }
 }
 
 const ETYKIETA: Record<StatusZnacznikaWynikow, string> = {
@@ -73,10 +93,12 @@ export function znacznikSwiezosci(przypadek: StudyCase | null): ZnacznikSwiezosc
       rewizjaBiegu: null,
       rewizjaModelu: null,
       zmiany: [],
+      cel: null,
       klikalny: false,
     };
   }
   const status = przypadek.result_status;
+  const cel = celZnacznikaWynikow(status);
   return {
     status,
     etykieta: ETYKIETA[status],
@@ -84,6 +106,7 @@ export function znacznikSwiezosci(przypadek: StudyCase | null): ZnacznikSwiezosc
     rewizjaBiegu: przypadek.rewizja_biegu,
     rewizjaModelu: przypadek.rewizja_biezaca,
     zmiany: przypadek.zmiany_od_biegu,
-    klikalny: status === 'OUTDATED',
+    cel,
+    klikalny: cel !== null,
   };
 }

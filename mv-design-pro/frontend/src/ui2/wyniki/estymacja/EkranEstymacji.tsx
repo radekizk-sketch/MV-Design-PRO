@@ -20,7 +20,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './estymacja.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import {
   akcjaNaprawcza,
@@ -135,10 +134,10 @@ function StanPanel({
 
 function PanelWymagan({
   wym,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   wym: WymaganiaEstymacji;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const nazwaObiektu = useNazwaObiektu();
   return (
@@ -177,7 +176,7 @@ function PanelWymagan({
           <thead>
             <tr>
               <th>{S.wymKolWezel}</th>
-              {trybEkspercki && <th>{S.wymKolIndeks}</th>}
+              {szczegolyAudytowe && <th>{S.wymKolIndeks}</th>}
               <th className="mvd-est-th-prawo">{S.wymKolNapiecie}</th>
               <th>{S.wymKolRola}</th>
             </tr>
@@ -186,7 +185,7 @@ function PanelWymagan({
             {wym.buses.map((b) => (
               <tr key={b.bus_ref}>
                 <td>{nazwaObiektu(b.bus_ref, b.name)}</td>
-                {trybEkspercki && <td className="mvd-num">{b.index}</td>}
+                {szczegolyAudytowe && <td className="mvd-num">{b.index}</td>}
                 <td className="mvd-num mvd-est-td-prawo">
                   {b.voltage_kv !== null ? `${fmtKV(b.voltage_kv)} ${S.jednKV}` : S.kreska}
                 </td>
@@ -530,16 +529,15 @@ function WynikEstymacji({
   dane,
   runId,
   typy,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokEstymacji;
   runId: string;
   typy: readonly MetaTypuPomiaru[];
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
@@ -587,7 +585,7 @@ function WynikEstymacji({
         kolumny={KOLUMNY_WEZLY}
         wiersze={naWierszeWezlow(dane.buses, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_WIERSZA_WEZLY}
       />
 
@@ -600,7 +598,7 @@ function WynikEstymacji({
           kolumny={KOLUMNY_POMIARY}
           wiersze={naWierszePomiarow(dane.measurements, typy, nazwaObiektu)}
           onOtworzDowod={onOtworzDowod}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           kluczWiersza={KLUCZ_WIERSZA_POMIARY}
         />
       </section>
@@ -615,12 +613,12 @@ function WynikEstymacji({
         </section>
       )}
 
-      {trybEkspercki && dane.white_box && <SladWls kroki={dane.white_box} />}
+      {szczegolyAudytowe && dane.white_box && <SladWls kroki={dane.white_box} />}
 
       {/* Karta #145: identyfikator estymaty, wersja solvera i kod walidacji wyłącznie w
           „Informacjach audytowych" (tryb ekspercki, zwinięte). */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-est-informacje-audytowe"
         wiersze={[
           { etykieta: S.ekspEstymateId, wartosc: dane.estimate_id },
@@ -652,11 +650,11 @@ type StanEstymacji =
 // ---------------------------------------------------------------------------
 
 export interface EkranEstymacjiProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstymacjiProps) {
+export function EkranEstymacji({ szczegolyAudytowe, onOtworzDowod }: EkranEstymacjiProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   // Wybór przebiegu rozpływu (źródło Y-bus) — wspólny helper `model.ts`, nie
@@ -667,7 +665,6 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
     [runs, activeRunId],
   );
   const runId = przebieg?.id ?? null;
-  const trybEkspercki = trybZaawansowania === 'expert';
   // K6 / H-5: estymacja stanu potrzebuje Y-bus z przebiegu rozpływu —
   // stan zerowy uruchamia brakujący przebieg zamiast prowadzić w zaułek.
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
@@ -737,7 +734,7 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
       alfa,
       progLnr,
       typy: wymGotowe.measurement_types,
-      includeTrace: trybEkspercki,
+      includeTrace: szczegolyAudytowe,
     });
     if (!wynik.ok) {
       setBledy(wynik.bledy);
@@ -776,7 +773,7 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
 
       {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-est-przebieg-informacje-audytowe"
         wiersze={[{ etykieta: S.runId, wartosc: przebieg.id }]}
       />
@@ -799,7 +796,7 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
 
       {wymGotowe && (
         <>
-          <PanelWymagan wym={wymGotowe} trybEkspercki={trybEkspercki} />
+          <PanelWymagan wym={wymGotowe} szczegolyAudytowe={szczegolyAudytowe} />
 
           <Edytor
             wiersze={wiersze}
@@ -859,7 +856,7 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
               dane={stanEst.dane}
               runId={przebieg.id}
               typy={wymGotowe.measurement_types}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={onOtworzDowod}
             />
           )}
