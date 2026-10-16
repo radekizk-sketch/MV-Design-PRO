@@ -203,6 +203,9 @@ test.describe('Układ powłoki: motyw × szerokość × inspektor', () => {
                 const pas = document.querySelector(`[data-testid="${id}"]`);
                 for (const el of Array.from(pas?.querySelectorAll<HTMLElement>('button, span, a') ?? [])) {
                   if (el.offsetParent === null) continue;
+                  // Tekst wyłącznie dla czytników ekranu (.mvd-sr-only) jest celowo przycięty do 1 px —
+                  // nie jest etykietą widoczną, więc nie podlega temu sprawdzeniu.
+                  if (el.closest('.mvd-sr-only')) continue;
                   if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible') {
                     wynik.push(`${id}: ${el.getAttribute('data-testid') ?? el.textContent?.trim()}`);
                   }
