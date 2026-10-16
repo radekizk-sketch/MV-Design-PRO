@@ -107,10 +107,12 @@ def test_station_fault_loop_computed_from_model_tn_system() -> None:
     assert view["upstream_impedance_ohm"]["x"] > 0.0
 
 
-def test_station_fault_loop_it_system_not_applicable() -> None:
-    """Układ IT → metoda pętli TN nie dotyczy (uczciwie, bez liczenia)."""
+def test_station_fault_loop_it_system_odmawia_kodem_bez_pojemnosci() -> None:
+    """Karta W5-E-TTIT: układ IT jest liczony pętlą doziemną; bez pojemności doziemnych
+    odcinków (b_0) widok odmawia NAZWANYM kodem, nie „nie dotyczy" i nie fabrykacją."""
     view = build_station_fault_loop_view(_enm("IT"), "stn")
-    assert view["status"] == "nie dotyczy"
+    assert view["status"] == "brak danych"
+    assert view["kod_odmowy"] == "nn.brak_pojemnosci_doziemnej"
     assert "fault_loop" not in view
     assert "IT" in view["reason_pl"]
 

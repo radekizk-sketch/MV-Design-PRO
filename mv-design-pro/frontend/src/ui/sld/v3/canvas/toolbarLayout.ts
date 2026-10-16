@@ -100,11 +100,22 @@ export const SLD_CANVAS_DOCK_INSETS: {
   left: 0,
 };
 
-/** S9-8: maksymalna szerokość panelu bocznego „wnętrze stacji" [px] — TA SAMA
- *  liczba, którą niesie klasa panelu (`max-w-[min(760px,calc(100%-1.5rem))]`,
- *  `canvas/SldCanvasV3Workspace.tsx`). Stała mieszka tu, obok pozostałej
- *  geometrii doków, żeby kadr i panel czytały jedną wartość. */
-export const STATION_INTERNAL_PANEL_MAX_WIDTH_PX = 760;
+/** S9-8: maksymalna szerokość panelu bocznego „wnętrze stacji" (szuflada domeny nN)
+ *  [px] — JEDNA wartość dla kadru SN (wcięcie), szuflady (`SldCanvasV3Workspace.tsx`,
+ *  styl `maxWidth`) i portalu (`lv-domain/LvDomainPortal.tsx`). Werdykt B-02 właściciela
+ *  (2026-10-15): przy 760 px karta obwodu przykrywała połowę rysunku nN — szuflada mieści
+ *  teraz rysunek i kartę obwodu (360 px) obok siebie, gdy kanwa na to pozwala. */
+export const STATION_INTERNAL_PANEL_MAX_WIDTH_PX = 1200;
+
+/** Najmniejszy pas schematu SN pozostawiany obok szuflady nN [px] — kontekst miejsca
+ *  stacji w sieci nie znika całkiem, a kadr SN ma gdzie się dopasować (S9-8). */
+export const SN_CONTEXT_MIN_WIDTH_PX = 440;
+
+/** Szerokość szuflady domeny nN dla danej szerokości kanwy — JEDNA formuła dla szuflady
+ *  i wcięcia kadru SN (`SldCanvasV3Workspace.tsx`). */
+export function stationInternalPanelWidthPx(canvasWidthPx: number): number {
+  return Math.min(STATION_INTERNAL_PANEL_MAX_WIDTH_PX, Math.max(0, canvasWidthPx - SN_CONTEXT_MIN_WIDTH_PX));
+}
 
 /**
  * Szerokość, przy której WSZYSTKIE grupy mieszczą się rozwinięte. Liczona z

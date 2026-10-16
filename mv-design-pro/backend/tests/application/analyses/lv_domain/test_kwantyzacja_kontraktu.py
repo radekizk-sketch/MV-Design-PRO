@@ -25,6 +25,8 @@ from application.analyses.kontrakt_liczb import (
 )
 from application.analyses.lv_domain.projection_v1 import _canonical_hash
 
+from tests.application.analyses.lv_domain.scenariusze_nn import SCENARIUSZE
+
 FIXTURY = sorted(
     (
         Path(__file__).resolve().parents[5]
@@ -66,7 +68,9 @@ def _liczby(obiekt: Any) -> int:
 
 
 def test_fixtury_istnieja() -> None:
-    assert len(FIXTURY) == 18, [p.name for p in FIXTURY]
+    # Jedno źródło prawdy: każdy scenariusz rejestru ma dokładnie jedną fixturę
+    # (nowy scenariusz bez wyeksportowanej fixtury albo fixtura-sierota = czerwień).
+    assert [p.stem for p in FIXTURY] == sorted(s.slug for s in SCENARIUSZE)
 
 
 @pytest.mark.parametrize("sciezka", FIXTURY, ids=lambda p: p.stem)

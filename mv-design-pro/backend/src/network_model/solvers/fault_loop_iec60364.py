@@ -1,7 +1,7 @@
 """
 Fault Loop Impedance Solver for LV networks (IEC 60364-4-41).
 
-P0.5 / V12K — MVP solver dla pętli zwarciowej po stronie nN.
+Pętla zwarcia jednofazowego po stronie nN — JEDYNE wejście fizyki Ik1 nN (ADR-015).
 
 Reference:
 - IEC 60364-4-41:2017 — Protection against electric shock
@@ -9,23 +9,21 @@ Reference:
 - docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md § 2.5 (Fault-loop NN gap)
 - docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md § 3.3
 
-STATUS: MVP (single station, TN-S, TN-C-S)
-WHITE BOX: pełen trace dla każdej decyzji (audytowalne).
-
-Scope MVP (krok 2 audytu):
-- Wyłącznie TN-S, TN-C-S, TN-C (TT/IT deferred)
-- Pojedyncza stacja SN→nN z jednym transformatorem
-- Pojedynczy punkt zwarcia (jeden bus LV)
-- Caller dostarcza LoopImpedanceComponent (R+X) explicit per kabel + transformator;
-  Future P0.5b: auto-extract komponentów z NetworkGraph + catalog LV cable types
+Zakres:
+- TN-S, TN-C-S, TN-C — pętla L-PE/L-PEN liczona TUTAJ (jądro: ``zsumuj_skladowe_petli`` +
+  ``prad_z_petli``).
+- TT, IT — dyspozycja po ``network_type`` do ``network_model.solvers.petla_zwarcia_tt_it``
+  (karta W5-E-TTIT, decyzje OD-25 + D-11 + O-68): pętla doziemna przez uziomy R_A/R_B (TT),
+  pierwsze zwarcie pojemnościowe i drugie zwarcie L-PE-L (IT). Tamten moduł używa TEGO
+  SAMEGO jądra sumowania i prądu — jedna fizyka pętli, bez drugiej kopii.
+- Pojedynczy punkt zwarcia (jeden bus LV); wołający dostarcza składowe (R+X) z trasy,
+  transformatora i sieci zasilającej (``fault_loop_builder``, ``application/analyses/fault_loop``).
 
 Co solver NIE robi:
-- TT (oddzielne uziemienie) — deferred
-- IT (izolowany neutral) — deferred
-- Multi-transformer parallel — deferred
+- Multi-transformer parallel — wołający liczy od transformatora własnej sekcji
+  (``application/analyses/fault_loop/service.py``).
 - Dynamic device behavior (RCD, MZO time-current curves) — read-only consumption
-  (kiedy device data available, solver only oblicza Z_loop, NIE decyduje czy
-  protection clear w czasie)
+  (solver liczy wielkości pętli; werdykt czasu wyłączenia jest w warstwie interpretacji).
 
 INVARIANTS:
 - No heuristics (per V12.xx canon — patrz scripts/load_flow_no_heuristics_guard.py)
@@ -41,9 +39,12 @@ import logging
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from network_model.odmowa_danych import OdmowaDanychError
+
+if TYPE_CHECKING:
+    from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt, WynikTtIt
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,9 @@ class FaultLoopResult:
 
     # Determinizm + audyt
     white_box_trace: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    # Karta W5-E-TTIT: wielkości pętli TT/IT (addytywne — `None` dla TN, to_dict bez klucza,
+    # więc słowniki i odciski wyników TN są bit w bit takie jak przed kartą).
+    tt_it: WynikTtIt | None = None
 
     @property
     def z_loop_magnitude_ohm(self) -> float:
@@ -120,7 +124,7 @@ class FaultLoopResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize per V12.xx canonical pattern (complex → re/im)."""
-        return {
+        wynik: dict[str, Any] = {
             "fault_node_id": self.fault_node_id,
             "network_type": self.network_type.value,
             "protection_arrangement": self.protection_arrangement.value,
@@ -143,6 +147,9 @@ class FaultLoopResult:
             "ik_max_a": self.ik_max_a,
             "white_box_trace": list(self.white_box_trace),
         }
+        if self.tt_it is not None:
+            wynik["tt_it"] = self.tt_it.to_dict()
+        return wynik
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +176,9 @@ class FaultLoopInput:
     upstream_impedance: LoopImpedanceComponent | None = None  # opcjonalna SN side
     network_type: NetworkType = NetworkType.TN_S
     protection_arrangement: ProtectionArrangement = ProtectionArrangement.PE
+    # Karta W5-E-TTIT: dane pętli doziemnej TT/IT (R_A, R_B, I_Δn, pojemności, f) — wymagane
+    # wyłącznie dla `network_type` TT/IT; dla TN ignorowane (musi być None).
+    dane_tt_it: DaneTtIt | None = None
 
 
 def _validate_input(data: FaultLoopInput) -> None:
@@ -189,16 +199,23 @@ def _validate_input(data: FaultLoopInput) -> None:
             "Sprawdź wejście — brak nominal voltage z NetworkGraph."
         )
     if data.network_type in (NetworkType.TT, NetworkType.IT):
-        logger.warning(
-            "fault_loop reject: unsupported network type",
-            extra={
-                "fault_node_id": data.fault_node_id,
-                "network_type": data.network_type.value,
-            },
-        )
-        raise NotImplementedError(
-            f"Typ sieci {data.network_type.value} nie jest objęty MVP "
-            "(deferred do P0.5b). MVP obsługuje TN-S, TN-C-S, TN-C."
+        if data.dane_tt_it is None:
+            logger.warning(
+                "fault_loop reject: brak danych pętli TT/IT",
+                extra={
+                    "fault_node_id": data.fault_node_id,
+                    "network_type": data.network_type.value,
+                },
+            )
+            raise OdmowaDanychError(
+                f"Układ {data.network_type.value}: pętla zwarcia doziemnego wymaga danych "
+                "TT/IT (uziomy R_A/R_B i I_Δn dla TT; pojemności doziemne i częstotliwość dla "
+                "IT) — brak danej nie jest zastępowany wartością."
+            )
+    elif data.dane_tt_it is not None:
+        raise OdmowaDanychError(
+            f"Układ {data.network_type.value}: dane pętli TT/IT nie mają zastosowania do pętli "
+            "L-PE/L-PEN układu TN — usuń je z wejścia albo popraw układ sieci."
         )
     for label, comp in (
         ("phase_conductor", data.phase_conductor),
@@ -222,21 +239,101 @@ def _validate_input(data: FaultLoopInput) -> None:
             )
 
 
+def zsumuj_skladowe_petli(
+    components: list[LoopImpedanceComponent],
+) -> tuple[complex, dict[str, Any]]:
+    """Jądro pętli, krok 1: Z_loop = Σ(R_i + jX_i) — wspólne dla TN i TT/IT (jedna fizyka).
+
+    Zwraca impedancję zespoloną i krok śladu WHITE BOX. Kolejność działań identyczna z
+    dotychczasowym ``compute_fault_loop`` (suma zespolona od ``complex(0, 0)``), więc wyniki
+    TN są bit w bit takie same jak przed wydzieleniem (test tożsamości
+    ``tests/test_petla_tn_tozsamosc_w5e_ttit.py``).
+    """
+    z_loop_complex = sum(
+        (c.as_complex for c in components),
+        start=complex(0, 0),
+    )
+    krok = {
+        "step": "sum_components",
+        "method": "Z_loop = Σ(R_i + jX_i)",
+        "components": [{"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components],
+        "result": {
+            "r_total_ohm": z_loop_complex.real,
+            "x_total_ohm": z_loop_complex.imag,
+            "magnitude_ohm": abs(z_loop_complex),
+        },
+    }
+    return z_loop_complex, krok
+
+
+# CR-FIX (code-review KRYTYCZNE #2): guard przeciw bardzo małemu Z.
+# Z_loop < 1 µΩ jest fizycznie niemożliwe dla realnej sieci nN
+# (PowerSCC dowolnego rozdzielacza ogranicza Ik do max ~100 kA).
+# Bez tego guard'a ekstremalnie małe Z dawały Ik daleko poza zakresem
+# IEEE 754 i nadawały overflow JSON.
+Z_MIN_OHM = 1e-6
+
+
+def prad_z_petli(
+    *, u_v: float, z_magnitude: float, fault_node_id: str
+) -> tuple[float, float, dict[str, Any]]:
+    """Jądro pętli, krok 2: I = c · U / |Z| dla c_min i c_max (IEC 60909-0 § 5.3.2, nN).
+
+    ``u_v`` — napięcie napędowe pętli [V] (U_0 dla TN i TT; U_LL/2 dla drugiego zwarcia IT —
+    wołający dokumentuje wybór w swoim śladzie). Odmowa dla |Z| poniżej ``Z_MIN_OHM``.
+    """
+    if z_magnitude < Z_MIN_OHM:
+        logger.warning(
+            "fault_loop reject: Z_loop below minimum threshold",
+            extra={
+                "fault_node_id": fault_node_id,
+                "z_magnitude_ohm": z_magnitude,
+                "z_min_ohm": Z_MIN_OHM,
+            },
+        )
+        raise OdmowaDanychError(
+            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
+            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
+            "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
+        )
+    ik_min = (C_MIN_LV * u_v) / z_magnitude
+    ik_max = (C_MAX_LV * u_v) / z_magnitude
+    krok = {
+        "step": "compute_ik",
+        "method": "I_k = c * U_n / |Z_loop|",
+        "c_min": C_MIN_LV,
+        "c_max": C_MAX_LV,
+        "u_nom_v": u_v,
+        "z_magnitude_ohm": z_magnitude,
+        "ik_min_a": ik_min,
+        "ik_max_a": ik_max,
+    }
+    return ik_min, ik_max, krok
+
+
 def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     """
     Oblicz impedancję pętli zwarcia + Ik per IEC 60364-4-41.
 
     WHITE BOX: każdy krok obliczeniowy zapisany w white_box_trace.
 
-    Equation (IEC 60364-4-41 § 411.4.4):
+    Equation (IEC 60364-4-41 § 411.4.4), układ TN:
         Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream optional)
         I_k = c * U_n / |Z_loop|
 
     gdzie:
         c — factor napięciowy IEC 60909-0 § 5.3.2 (LV: c_min=0.95, c_max=1.05)
         U_n — napięcie fazowe [V] (typowo 230 V dla 400/230 sieci 3F4W)
+
+    Układ TT/IT: dyspozycja po ``network_type`` do ``petla_zwarcia_tt_it`` (jedno wejście
+    fizyki Ik1 nN; import lokalny, bo tamten moduł importuje jądro stąd).
     """
     _validate_input(data)
+    if data.network_type in (NetworkType.TT, NetworkType.IT):
+        from network_model.solvers.petla_zwarcia_tt_it import OBLICZ_WG_UKLADU
+
+        return OBLICZ_WG_UKLADU[data.network_type](data)
+
     trace: list[dict[str, Any]] = []
 
     # Krok 1: zsumuj komponenty pętli (R i X osobno)
@@ -248,64 +345,14 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     if data.upstream_impedance is not None:
         components.append(data.upstream_impedance)
 
-    z_loop_complex = sum(
-        (c.as_complex for c in components),
-        start=complex(0, 0),
-    )
-
-    trace.append(
-        {
-            "step": "sum_components",
-            "method": "Z_loop = Σ(R_i + jX_i)",
-            "components": [
-                {"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components
-            ],
-            "result": {
-                "r_total_ohm": z_loop_complex.real,
-                "x_total_ohm": z_loop_complex.imag,
-                "magnitude_ohm": abs(z_loop_complex),
-            },
-        }
-    )
-
-    z_magnitude = abs(z_loop_complex)
-    # CR-FIX (code-review KRYTYCZNE #2): guard przeciw bardzo małemu Z.
-    # Z_loop < 1 µΩ jest fizycznie niemożliwe dla realnej sieci nN
-    # (PowerSCC dowolnego rozdzielacza ogranicza Ik do max ~100 kA).
-    # Bez tego guard'a ekstremalnie małe Z dawały Ik daleko poza zakresem
-    # IEEE 754 i nadawały overflow JSON.
-    Z_MIN_OHM = 1e-6
-    if z_magnitude < Z_MIN_OHM:
-        logger.warning(
-            "fault_loop reject: Z_loop below minimum threshold",
-            extra={
-                "fault_node_id": data.fault_node_id,
-                "z_magnitude_ohm": z_magnitude,
-                "z_min_ohm": Z_MIN_OHM,
-            },
-        )
-        raise OdmowaDanychError(
-            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
-            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
-            "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
-        )
+    z_loop_complex, krok_sumy = zsumuj_skladowe_petli(components)
+    trace.append(krok_sumy)
 
     # Krok 2: oblicz Ik z c_factor MIN/MAX
-    ik_min = (C_MIN_LV * data.u_nom_v) / z_magnitude
-    ik_max = (C_MAX_LV * data.u_nom_v) / z_magnitude
-
-    trace.append(
-        {
-            "step": "compute_ik",
-            "method": "I_k = c * U_n / |Z_loop|",
-            "c_min": C_MIN_LV,
-            "c_max": C_MAX_LV,
-            "u_nom_v": data.u_nom_v,
-            "z_magnitude_ohm": z_magnitude,
-            "ik_min_a": ik_min,
-            "ik_max_a": ik_max,
-        }
+    ik_min, ik_max, krok_pradu = prad_z_petli(
+        u_v=data.u_nom_v, z_magnitude=abs(z_loop_complex), fault_node_id=data.fault_node_id
     )
+    trace.append(krok_pradu)
 
     return FaultLoopResult(
         fault_node_id=data.fault_node_id,

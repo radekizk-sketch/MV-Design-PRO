@@ -57,23 +57,30 @@ from application.analyses.fault_loop.route import (
 )
 from application.analyses.fault_loop.service import (
     _find_station,
-    _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    impedancja_transformatora_dla_ukladu,
     oblicz_petle_na_trasie,
     odmowa_analizy_nn,
     resolve_transformer_for_bus,
+    skladowe_punktu,
     uklad_nn_transformatora,
 )
+from application.analyses.swz.service import przedmiot_obwodu_nn
 from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
+from application.analyses.swz.werdykt_tt_it import SwzTtItWynik, ocen_swz_tt_it
 from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
+    STATUS_NIE_DOTYCZY,
+    STATUS_NIE_SPELNIA,
+    STATUS_NIEROZSTRZYGALNE,
+    STATUS_SPELNIA,
     LVCircuitVerificationInput,
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
-from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
@@ -233,6 +240,8 @@ class Ik1MinPetla:
     fault_loop: Any  # FaultLoopResult — Any, żeby uniknąć cyklu importu w adnotacji
     u0_v: float
     system: str
+    #: Dane punktu TT/IT (``fault_loop.tt_it.DanePunktuTtIt``) — ``None`` dla TN.
+    dane_punktu: Any | None = None
 
 
 def _petla_zwarcia_min(
@@ -262,7 +271,8 @@ def _petla_zwarcia_min(
         )
     assert system is not None
 
-    z_tr, missing = _transformer_loop_impedance(trafo)
+    # Impedancja transformatora WŁAŚCIWA dla układu (TN/TT: z0 grupy połączeń; IT: Z1).
+    z_tr, missing = impedancja_transformatora_dla_ukladu(trafo, system)
     if z_tr is None:
         return None, missing, None, None
 
@@ -280,6 +290,20 @@ def _petla_zwarcia_min(
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
+    # Karta W5-E-TTIT: składowe WEDŁUG UKŁADU (TT: powrót przez uziomy R_A/R_B + RCD z trasy;
+    # IT: pojemności sieci) — ten sam czytnik co widoki pętli i SWZ; brak danej = odmowa
+    # nazwana kodem (`nn.brak_r_a` / `nn.brak_r_b` / `nn.brak_rcd` / `nn.brak_pojemnosci_doziemnej`).
+    skladowe = skladowe_punktu(
+        enm, trafo, system, path, bus_ref, phase_component, return_component, {}
+    )
+    if isinstance(skladowe, dict):
+        return (
+            None,
+            list(skladowe.get("missing_data", [])),
+            skladowe.get("reason_pl"),
+            skladowe.get("kod_odmowy"),
+        )
+
     loop_result = oblicz_petle_na_trasie(
         trafo=trafo,
         fault_node_id=bus_ref,
@@ -288,10 +312,68 @@ def _petla_zwarcia_min(
         protection=protection,
         z_tr=z_tr,
         upstream=upstream,
-        phase_component=phase_component,
-        return_component=return_component,
+        phase_component=skladowe.phase_component,
+        return_component=skladowe.return_component,
+        dane_tt_it=skladowe.dane_tt_it,
     )
-    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None, None
+    return (
+        Ik1MinPetla(
+            fault_loop=loop_result,
+            u0_v=u_phase_v,
+            system=system,
+            dane_punktu=skladowe.dane_punktu,
+        ),
+        [],
+        None,
+        None,
+    )
+
+
+#: Status rekordu W (`werdykt.StatusWerdyktu`) → słownik statusów agregatu pakietu dowodowego
+#: obwodu nN. BRAK_PODSTAWY / NIE_OCENIONO / NIEJEDNOZNACZNY / BRAK_DOWODU są
+#: NIEROZSTRZYGALNE (pytanie ma sens, brak podstawy lub danych) — nigdy ciche PASS.
+_STATUS_PAKIETU_Z_WERDYKTU = {
+    "SPELNIA": STATUS_SPELNIA,
+    "NIE_SPELNIA": STATUS_NIE_SPELNIA,
+    "NIE_DOTYCZY": STATUS_NIE_DOTYCZY,
+}
+
+
+def pola_swz_z_werdyktu_tt_it(werdykt: SwzTtItWynik) -> dict[str, Any]:
+    """Pola ``swz_*`` wejścia pakietu z rekordu werdyktu wyjaśnialnego TT/IT.
+
+    ``swz_ia_wymagane_a`` w układzie TT = prąd różnicowy znamionowy RCD (prąd zapewniający
+    zadziałanie), w IT — brak (pierwsze zwarcie nie wymaga wyłączenia); ``swz_margines`` —
+    brak (marginesy niosą rekordy K w ``swz_tt_it``).
+    """
+    wymaganie = werdykt.wymaganie
+    status = str(wymaganie.status_maszynowy)
+    wyjasnienie = wymaganie.wyjasnienie
+    przyczyna = wyjasnienie.zdanie_pl
+    if wyjasnienie.przyczyna_pl:
+        przyczyna = f"{przyczyna} {wyjasnienie.przyczyna_pl}"
+    rcd = werdykt_rcd(werdykt)
+    return {
+        "swz_status": _STATUS_PAKIETU_Z_WERDYKTU.get(status, STATUS_NIEROZSTRZYGALNE),
+        "swz_przyczyna_pl": przyczyna,
+        "swz_ia_wymagane_a": rcd,
+        "swz_t_wymagany_s": werdykt.t_wymagany_s,
+        "swz_pasmo_u0": werdykt.pasmo_u0 or "—",
+        "swz_rodzaj_obwodu": werdykt.rodzaj_obwodu,
+        "swz_margines": None,
+        "swz_tt_it": werdykt.to_dict(),
+    }
+
+
+def werdykt_rcd(werdykt: SwzTtItWynik) -> float | None:
+    """I_Δn RCD z kryterium `swz.tt.prad_rcd` (limit kryterium) — ``None`` poza TT."""
+    for ocena in werdykt.kryteria:
+        if ocena.kryterium_id != "swz.tt.prad_rcd" or ocena.limit is None:
+            continue
+        # Limit bez wartości (BRAK_PODSTAWY) nie niesie I_Δn — szukamy dalej, nie zgadujemy.
+        if ocena.limit.wartosc is not None:
+            return float(ocena.limit.wartosc.wartosc)
+    return None
 
 
 def zbuduj_wejscie_dowodu_obwodu_nn(
@@ -346,8 +428,11 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
 
     petla, missing, reason_pl, kod_odmowy = _petla_zwarcia_min(enm, station_ref, bus_ref)
     if kod_odmowy is not None:
+        # Kod odmowy nazwanej: pasmo nN („nie dotyczy" — obwód nie jest obwodem nN) albo
+        # brak danej TT/IT (karta W5-E-TTIT: „brak danych" z kodem `nn.brak_*` — pytanie ma
+        # sens, brakuje R_A / R_B / RCD / pojemności doziemnych).
         return {
-            "status": "nie dotyczy",
+            "status": "brak danych" if kod_odmowy.startswith("nn.brak_") else "nie dotyczy",
             "kod_odmowy": kod_odmowy,
             "missing_data": missing,
             "reason_pl": reason_pl,
@@ -355,21 +440,43 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     if petla is None:
         return {"status": "brak danych", "missing_data": missing, "reason_pl": reason_pl}
 
-    aparat_swz = AparatZabezpieczajacy(
-        typ=(
-            "MCB"
-            if urzadzenie.kind == KIND_MCB
-            else ("WKLADKA_GG" if urzadzenie.kind == KIND_FUSE_SWITCH else urzadzenie.kind)
-        ),
-        in_a=urzadzenie.in_a,
-        klasa_mcb=urzadzenie.klasa_mcb,
-        # Karta D2 (nN, „runda 8", 2026-08-14): bez tego SWZ dla typ="MCCB"
-        # (urzadzenie.kind == KIND_MCCB, string "MCCB" — zbieżne z ocen_swz)
-        # dostawał zawsze `ii_a=None` → NIEROZSTRZYGALNE mimo rozwiązanej
-        # nastawy w `urzadzenie.ii_a` (patrz `resolve_urzadzenie_ochronne`).
-        ii_a=urzadzenie.ii_a if urzadzenie.kind == KIND_MCCB else None,
-    )
-    swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
+    if petla.dane_punktu is not None:
+        # Karta W5-E-TTIT: układ TT/IT — werdykt wyjaśnialny (pakiet `werdykt`), ten sam
+        # oceniający co `swz.service.build_swz_view`; aparat nadprądowy daje rodzaj obwodu.
+        werdykt_tt_it = ocen_swz_tt_it(
+            wynik_petli=petla.fault_loop,
+            dane_punktu=petla.dane_punktu,
+            u0_v=petla.u0_v,
+            przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
+            nazwa_punktu_pl=nazwa_po_identyfikatorze(bus_ref, enm),
+            aparat_in_a=urzadzenie.in_a,
+        )
+        pola_swz = pola_swz_z_werdyktu_tt_it(werdykt_tt_it)
+    else:
+        aparat_swz = AparatZabezpieczajacy(
+            typ=(
+                "MCB"
+                if urzadzenie.kind == KIND_MCB
+                else ("WKLADKA_GG" if urzadzenie.kind == KIND_FUSE_SWITCH else urzadzenie.kind)
+            ),
+            in_a=urzadzenie.in_a,
+            klasa_mcb=urzadzenie.klasa_mcb,
+            # Karta D2 (nN, „runda 8", 2026-08-14): bez tego SWZ dla typ="MCCB"
+            # (urzadzenie.kind == KIND_MCCB, string "MCCB" — zbieżne z ocen_swz)
+            # dostawał zawsze `ii_a=None` → NIEROZSTRZYGALNE mimo rozwiązanej
+            # nastawy w `urzadzenie.ii_a` (patrz `resolve_urzadzenie_ochronne`).
+            ii_a=urzadzenie.ii_a if urzadzenie.kind == KIND_MCCB else None,
+        )
+        swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
+        pola_swz = {
+            "swz_status": swz.status.value,
+            "swz_przyczyna_pl": swz.przyczyna_pl,
+            "swz_ia_wymagane_a": swz.ia_wymagane_a,
+            "swz_t_wymagany_s": swz.t_wymagany_s,
+            "swz_pasmo_u0": swz.pasmo_u0,
+            "swz_rodzaj_obwodu": swz.rodzaj_obwodu,
+            "swz_margines": swz.margines,
+        }
 
     odcinek = _find_branch(enm, segment_ref)
     wejscie = LVCircuitVerificationInput(
@@ -398,12 +505,6 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         vdrop_delta_u_total_kv=vdrop_delta_u_total_kv,
         vdrop_delta_u_total_percent=vdrop_delta_u_total_percent,
         fault_loop=petla.fault_loop,
-        swz_status=swz.status.value,
-        swz_przyczyna_pl=swz.przyczyna_pl,
-        swz_ia_wymagane_a=swz.ia_wymagane_a,
-        swz_t_wymagany_s=swz.t_wymagany_s,
-        swz_pasmo_u0=swz.pasmo_u0,
-        swz_rodzaj_obwodu=swz.rodzaj_obwodu,
-        swz_margines=swz.margines,
+        **pola_swz,
     )
     return {"status": "OK", "wejscie": wejscie}

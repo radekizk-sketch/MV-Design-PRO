@@ -295,6 +295,13 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
+  // Karta W5-E-TTIT: odmowy nazwane pętli doziemnej TT/IT (dane stacji/odbioru/odcinka)
+  // oraz pasmo nN transformatora — obszar STATIONS rejestru.
+  'nn.brak_r_a': 'stacje',
+  'nn.brak_r_b': 'stacje',
+  'nn.brak_rcd': 'stacje',
+  'nn.brak_pojemnosci_doziemnej': 'stacje',
+  'nn.transformer_lv_not_nn_band': 'stacje',
   'apparatus.sn_catalog_missing': 'stacje',
   'apparatus.nn_catalog_missing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
@@ -309,6 +316,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
+  // Karta W5-E-TTIT: limit napięcia dotykowego TT/IT spoza repozytorium (BRAK_PODSTAWY) —
+  // kryterium SWZ ocenia pętlę zwarcia nN, więc cel „zwarcia".
+  'swz.limit_tt_it_brak_tekstu_normy': 'zwarcia',
 
   // KARTA-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
   // ujawnił 76 kodów kanonu dodanych do rejestru PO napisaniu tabeli powyżej —

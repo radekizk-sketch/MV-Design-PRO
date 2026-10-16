@@ -48,6 +48,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   add_nn_cable_segment: 'Dodano odcinek kablowy nN',
   add_nn_switch_device: 'Dodano aparat łączeniowy nN',
   add_nn_section_coupler: 'Dodano sprzęgło sekcyjne nN',
+  add_nn_rcd: 'Dodano wyłącznik różnicowoprądowy nN',
   split_nn_segment: 'Podzielono odcinek nN',
   merge_nn_segments: 'Scalono odcinki nN',
   remove_nn_element: 'Usunięto element nN',

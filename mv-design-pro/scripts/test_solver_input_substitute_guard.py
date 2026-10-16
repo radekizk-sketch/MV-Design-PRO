@@ -1827,7 +1827,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `generator_stator_frequency_max_hz`, `generator_stator_voltage_kv`). Gałąź bramki
     # scalenia (SZYBKIE-TESTY, pin 4143 z PR-478) nie wnosi pól — jej historia pinu jest
     # już ujęta wyżej. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4164." in wyjscie, wyjscie
+    # Karta W5-E-TTIT (2026-10-15): 4116 -> 4151 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym `f3c435b6`, roznica zbiorow: +35 (petla doziemna TT/IT i jej wejscie:
+    # `DaneTtIt`/`WynikTtIt`/`PojemnoscDoziemnaOdcinka` w `solvers/petla_zwarcia_tt_it.py` —
+    # `r_a_ohm`, `r_b_ohm`, `rcd`, `i_delta_n_a`, `u_dotyk_v`, `i_d_pierwsze_zwarcie_a`,
+    # `u_dotyk_pierwsze_zwarcie_v`, `i_d2_min_a`, `i_d2_max_a`, `u_ll_v`, `b_e_s`, `c_e_f`,
+    # `rodzaj_pradu_pl`, `odcinki_pojemnosci`, `pojemnosci`, `uziom`, `tt_it`, `dane_tt_it`;
+    # katalog RCD `LVRcdType` — `rcd_type`, `selective`, `t_a_s`, `t_a_2idn_s`, `t_a_5idn_s`,
+    # `t_nieczuly_min_s`, oraz `lv_rcd_types` repozytorium katalogu; `Load.earth_electrode_r_ohm`;
+    # `pominiete_load_refs` uziomu instalacji (`fault_loop/tt_it.py`); `load_ref` operacji
+    # `add_nn_rcd`; wejscie dowodu i werdyktu — `swz_tt_it`, `wymaganie`, `kod_odmowy`,
+    # `kod_odmowy_limitu`, `dane_punktu`, `phase_component`, `return_component`), -0. PASS
+    # niezmieniony (zero podstawien).
+    # Partia integracji 9 (+ W5-E-TTIT): 4164 + 35 = 4199 — zbiór pól karty rozłączny ze zbiorem
+    # partii 8. POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4199." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2053,7 +2067,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # api -1 skasowany `api/celery_app.py`). POMIAR guardem na drzewie partii.
         # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 571 - 2 = 569 (skasowane
         # `network_model/catalog/wind_turbines/__init__.py` i `catalog.py`). POMIAR guardem.
-        "Przeskanowano 569 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-E-TTIT (2026-10-15): 561 -> 565 (+4: `network_model/solvers/
+        # petla_zwarcia_tt_it.py`, `enm/uziom_instalacji.py`, `application/analyses/fault_loop/
+        # tt_it.py`, `application/analyses/swz/werdykt_tt_it.py`). POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): 569 + 4 = 573. POMIAR guardem na drzewie partii.
+        "Przeskanowano 573 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2212,7 +2230,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (stan gałęzi integracji — wykluczenia 3/6 karty pochodziły z jej starszej bazy). POMIAR.
         # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 184 - 2 = 182 (katalog turbin
         # skasowany). POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
+        # Karta W5-E-TTIT: network_model 183 -> 184 (+1 `solvers/petla_zwarcia_tt_it.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): network_model 182 + 1 = 183; wykluczenia 1/2
+        # (stan gałęzi integracji — 3/6 karty pochodziły z jej starszej bazy). POMIAR.
+        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2265,7 +2287,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
         # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): enm 61 + 1 = 62. POMIAR.
-        "  enm: pliki_skanowane=62, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta W5-E-TTIT: enm 58 -> 59 (+1 `enm/uziom_instalacji.py`); dlug/wykluczenia BEZ
+        # ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): enm 62 + 1 = 63; dlug 7/67 (gałąź integracji). POMIAR.
+        "  enm: pliki_skanowane=63, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2356,7 +2381,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 8 (+ DYNAMIKA-W-TLE): application 249 + 2 = 251, dlug 30/90; api 64 - 1
         # = 63 (skasowany `api/celery_app.py`), dlug 1/2 i wykluczenia 5/13 gałęzi integracji (dlug 2/3
         # i wykluczenia 6/15 karty pochodziły z jej starszej bazy). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=251, dlug=30 plikow/suma 90, "
+        # Karta W5-E-TTIT: application 245 -> 247 (+2 `analyses/fault_loop/tt_it.py`,
+        # `analyses/swz/werdykt_tt_it.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 9 (+ W5-E-TTIT): application 251 + 2 = 253; dlug 30/90 (gałąź
+        # integracji). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=253, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]

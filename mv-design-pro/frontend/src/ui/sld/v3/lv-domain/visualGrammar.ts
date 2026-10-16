@@ -438,6 +438,7 @@ export type ElementKanwyNn =
   | 'parametrZrodlaDer'
   | 'parametrOdbioru'
   | 'parametrKabla'
+  | 'tabliczkaAparatu'
   | 'napiecieSekcji'
   | 'napiecieGranicy'
   | 'nazwaZaciskuModelu'
@@ -494,6 +495,7 @@ export const REJESTR_ELEMENTOW_KANWY: Readonly<Record<ElementKanwyNn, WpisRejest
   parametrZrodlaDer: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc źródła i zdolność pracy wyspowej — parametr.' },
   parametrOdbioru: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc odbioru — parametr.' },
   parametrKabla: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Typ/przekrój kabla z katalogu — parametr.' },
+  tabliczkaAparatu: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Tabliczka aparatu z katalogu (RCD: IΔn, typ, In) — parametr.' },
   napiecieSekcji: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Napięcie szyny — parametr; poziom napięcia domeny jest w nagłówku.' },
   napiecieGranicy: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Napięcie zacisku granicznego — parametr.' },
   nazwaZaciskuModelu: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Nazwa zacisku modelu (tryb audytu topologii) — opis modelu.' },

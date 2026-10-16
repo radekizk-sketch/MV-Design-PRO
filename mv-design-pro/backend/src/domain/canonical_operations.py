@@ -648,6 +648,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("device_class", "catalog_ref", "catalog_binding", "name"),
         creates_elements=True,
     ),
+    "add_nn_rcd": OperationSpec(
+        canonical_name="add_nn_rcd",
+        category=OperationCategory.NN_NETWORK,
+        description_pl=(
+            "Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji odbioru "
+            "(ochrona przez samoczynne wyłączenie w układzie TT/IT)"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref",),
+        optional_fields=("catalog_ref", "catalog_binding", "name"),
+        creates_elements=True,
+    ),
     "add_nn_section_coupler": OperationSpec(
         canonical_name="add_nn_section_coupler",
         category=OperationCategory.NN_NETWORK,
@@ -2618,6 +2630,80 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "katalog",
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
+    ),
+    # Karta W5-E-TTIT (2026-09-30): odmowy NAZWANE pętli doziemnej TT/IT, werdyktu SWZ TT/IT,
+    # dowodu i arkusza obwodów nN (`application/analyses/fault_loop/tt_it.py`,
+    # `swz/werdykt_tt_it.py`) — brak danej modelu = kod z nawigacją do pola, nigdy domysł.
+    "nn.brak_r_a": ReadinessCodeSpec(
+        code="nn.brak_r_a",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — "
+            "pętla doziemna i napięcie dotykowe nie są liczone"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "earth_electrode_r_ohm",
+        },
+    ),
+    "nn.brak_r_b": ReadinessCodeSpec(
+        code="nn.brak_r_b",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego "
+            "bezpośrednio z rezystancją uziomu stacji"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
+    ),
+    "nn.brak_rcd": ReadinessCodeSpec(
+        code="nn.brak_rcd",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego "
+            "z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "nn", "modal": "add_nn_rcd"},
+    ),
+    "nn.brak_pojemnosci_doziemnej": ReadinessCodeSpec(
+        code="nn.brak_pojemnosci_doziemnej",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — "
+            "prąd pierwszego zwarcia doziemnego nie jest liczony"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b0_siemens_per_km"},
+    ),
+    "nn.transformer_lv_not_nn_band": ReadinessCodeSpec(
+        code="nn.transformer_lv_not_nn_band",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór "
+            "aparatów nN nie dotyczą tej stacji"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "ulv_kv"},
+    ),
+    "swz.limit_tt_it_brak_tekstu_normy": ReadinessCodeSpec(
+        code="swz.limit_tt_it_brak_tekstu_normy",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w "
+            "repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium "
+            "pozostaje bez podstawy"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     "nn.measurement.required_missing": ReadinessCodeSpec(
         code="nn.measurement.required_missing",

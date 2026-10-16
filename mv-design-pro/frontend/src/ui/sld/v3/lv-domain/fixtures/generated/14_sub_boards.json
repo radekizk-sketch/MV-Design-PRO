@@ -1297,7 +1297,7 @@
     "scenario_id": "MAX",
     "station_ref": "stSUB"
   },
-  "projection_hash": "3f37c19f1df11f2adfec09aac76139904e2263743c6cf5b8943f1ef1549bd4c7",
+  "projection_hash": "dd5a0bb84384d74eadd626e89cd908f40fd58c232e43bb2a807839875930365e",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1315,6 +1315,7 @@
   "station_ref": "stSUB",
   "status": "OK",
   "swz_snapshot": {
+    "kod_odmowy": null,
     "missing_data": [],
     "network_system": "TN-C-S",
     "reason_pl": null,
@@ -1410,8 +1411,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-01_zacisk",
@@ -1498,8 +1501,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1722,8 +1727,10 @@
                   }
                 },
                 "hop_count": 5,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "FU-21_zacisk",
@@ -1810,8 +1817,10 @@
                   }
                 },
                 "hop_count": 4,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "FU-22_zacisk",
@@ -1898,8 +1907,10 @@
                   }
                 },
                 "hop_count": 4,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-02_zacisk",
@@ -1986,8 +1997,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-31_koniec",
@@ -2074,8 +2087,10 @@
                   }
                 },
                 "hop_count": 7,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-31_zacisk",
@@ -2162,8 +2177,10 @@
                   }
                 },
                 "hop_count": 6,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-32_koniec",
@@ -2250,8 +2267,10 @@
                   }
                 },
                 "hop_count": 7,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-32_zacisk",
@@ -2338,8 +2357,10 @@
                   }
                 },
                 "hop_count": 6,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "RGN-2_szyna",
@@ -2426,8 +2447,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "RGN-3_szyna",
@@ -2514,8 +2537,10 @@
                   }
                 },
                 "hop_count": 5,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2651,8 +2676,10 @@
             "worst_point_bus_ref": "QF-31_koniec"
           }
         ],
+        "kod_odmowy": null,
         "missing_data": [],
         "nn_bus_ref": "T1_zacisk",
+        "reason_pl": null,
         "status": "OK",
         "transformer_ref": "T1"
       }

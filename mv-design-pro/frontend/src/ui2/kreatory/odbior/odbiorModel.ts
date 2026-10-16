@@ -84,6 +84,12 @@ export interface OdbiorFormData {
   load_kind: LoadKind;
   /** Fazy przyłączenia (`Load.phases`); `null` = nie wskazano (trójfazowy symetryczny). */
   phases: PhaseSet | null;
+  /**
+   * Rezystancja uziomu instalacji odbiorczej R_A [Ω] (`Load.earth_electrode_r_ohm`, karta
+   * W5-E-TTIT): pętla doziemna układu TT domyka się przez ten uziom, napięcie dotykowe to
+   * R_A·I_Δn. `null` = nie podano — analiza TT odmawia kodem `nn.brak_r_a` (zero podstawiania).
+   */
+  earth_electrode_r_ohm: number | null;
   /** Model obciążenia (ZIP) — czytany przez rozpływ mocy, ustawiany przez projektanta. */
   zip: ModelZip;
 }
@@ -102,6 +108,7 @@ export const DANE_DOMYSLNE: OdbiorFormData = {
   reactive_power_kvar: null,
   load_kind: 'SKUPIONY',
   phases: null,
+  earth_electrode_r_ohm: null,
   zip: { ...ZIP_DOMYSLNY },
 };
 
@@ -166,6 +173,14 @@ export function walidujFormularz(data: OdbiorFormData): BladPola[] {
     errors.push({
       field: 'catalog_ref',
       message: 'Wybierz typ odbioru z katalogu albo przełącz na tryb ręczny (ekspercki).',
+    });
+  }
+  // R_A jest opcjonalne (układ TN nie czyta uziomu instalacji), ale podane musi być dodatnie —
+  // ten sam warunek co `enm/uziom_instalacji.py::waliduj_r_a` (jedno źródło reguły).
+  if (data.earth_electrode_r_ohm !== null && !isPositive(data.earth_electrode_r_ohm)) {
+    errors.push({
+      field: 'earth_electrode_r_ohm',
+      message: 'Rezystancja uziomu instalacji R_A musi być dodatnia [Ω] albo pozostać pusta.',
     });
   }
   errors.push(...walidujZip(data.zip));
@@ -244,6 +259,9 @@ export function zbudujPayload(
     ...(data.phases !== null ? { phases: data.phases } : {}),
     ...(data.nazwa.trim() ? { load_name: data.nazwa.trim() } : {}),
     ...(isPositive(data.reactive_power_kvar) ? { reactive_power_kvar: data.reactive_power_kvar } : {}),
+    // Uziom instalacji R_A jedzie w payloadzie TYLKO gdy podany (pole addytywne modelu,
+    // poza hashem gdy puste — odbiór bez R_A wysyła dokładnie dotychczasowy payload).
+    ...(isPositive(data.earth_electrode_r_ohm) ? { earth_electrode_r_ohm: data.earth_electrode_r_ohm } : {}),
     ...(!data.manual_mode && data.catalog_ref?.trim()
       ? { catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'OBCIAZENIE') }
       : {}),

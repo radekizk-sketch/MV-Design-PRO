@@ -174,7 +174,7 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-044` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-047` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
 
 Karta KATALOG-TURBINY-TOR-V112: `KAT-T-042` pola toru maszyny wylacznie dla
@@ -184,6 +184,11 @@ i skonczone, `044` rodzaj maszyny zgodny z topologia przeksztaltnika (jedna mapa
 `un_kv` (wiaze sie z uzwojeniem nN transformatora blokowego); napiecie stojana
 generatora jest osobnym polem `generator_stator_voltage_kv` i nie wchodzi do
 solwerow.
+
+Karta W5-E-TTIT (scalona w partii integracji 9; numery nadane przy scaleniu, bo karta
+wziela `042`…`044` rownolegle z karta toru V112): `KAT-T-045` rodzaj pradu roznicowego RCD ze
+slownika AC / A / F / B, `046` prad znamionowy, prad roznicowy znamionowy i czas wylaczenia RCD
+dodatnie, `047` RCD selektywny (typ S) z minimalnym czasem niezadzialania.
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
 `ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)

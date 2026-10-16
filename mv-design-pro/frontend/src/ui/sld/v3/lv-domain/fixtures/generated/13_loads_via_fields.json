@@ -1085,7 +1085,7 @@
     "scenario_id": "MAX",
     "station_ref": "stODB"
   },
-  "projection_hash": "8ef1afe752ff430ab4e855720abb5cbd70f2ed263acbc724eafe4b341763ea38",
+  "projection_hash": "8eaa05981744e1a88fd33cc3a880316559ebcc380b97a7f2cc1cf0787d32bebd",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1103,6 +1103,7 @@
   "station_ref": "stODB",
   "status": "OK",
   "swz_snapshot": {
+    "kod_odmowy": null,
     "missing_data": [],
     "network_system": "TN-C-S",
     "reason_pl": null,
@@ -1198,8 +1199,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "FU-04_zacisk",
@@ -1286,8 +1289,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1526,8 +1531,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-01_zacisk",
@@ -1614,8 +1621,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1838,8 +1847,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QS-02_zacisk",
@@ -1926,8 +1937,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2034,8 +2047,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QS-03_zacisk",
@@ -2122,8 +2137,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2230,8 +2247,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QS-05_zacisk",
@@ -2318,8 +2337,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2339,8 +2360,10 @@
             "worst_point_bus_ref": "QS-05_koniec"
           }
         ],
+        "kod_odmowy": null,
         "missing_data": [],
         "nn_bus_ref": "T1_zacisk",
+        "reason_pl": null,
         "status": "OK",
         "transformer_ref": "T1"
       }

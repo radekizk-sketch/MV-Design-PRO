@@ -258,6 +258,12 @@ def list_lv_fuse_link_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_lv_fuse_link_types()]
 
 
+@router.get("/lv-rcd-types")
+def list_lv_rcd_types() -> list[dict[str, Any]]:
+    """List all LV residual current device (RCCB IEC 61008-1 / RCBO IEC 61009-1) types."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_lv_rcd_types()]
+
+
 @router.get("/load-types")
 def list_load_types() -> list[dict[str, Any]]:
     """List all load types from the canonical MV catalog."""

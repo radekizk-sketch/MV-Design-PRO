@@ -21,7 +21,8 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
-from application.analyses.fault_loop.service import _transformer_loop_impedance
+from application.analyses.fault_loop.service import impedancja_transformatora_dla_ukladu
+from application.analyses.fault_loop.tt_it import r_b_transformatora
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
@@ -46,16 +47,15 @@ from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
-from solver_input.uklad_sieci_nn import uklad_tn
 
-# Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
-# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) z
-# `fault_loop.service` i `uklad_tn` z `solver_input` zamiast duplikować tę samą logikę
-# strukturalną pod inną nazwą — DOKŁADNIE ten sam wzorzec reużycia, jaki
-# `swz.service` już stosuje wobec `fault_loop.service` (zob. docstring tamtego
-# modułu, reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera —
-# `_transformer_loop_impedance` jest czystą kontrolą kompletności pól
-# wejściowych, nie wywołaniem fizyki.
+# Karta G-22 / W5-E-TTIT: FAULT_LOOP_NN/SWZ_NN reużywają
+# `impedancja_transformatora_dla_ukladu` (kompletność danych transformatora dla
+# impedancji pętli L-PE/L-PEN w TN/TT i L-PE-L w IT) oraz `r_b_transformatora`
+# (uziom punktu neutralnego R_B dla TT) z `fault_loop.service`/`fault_loop.tt_it`
+# zamiast duplikować tę samą logikę strukturalną pod inną nazwą — DOKŁADNIE ten
+# sam wzorzec reużycia, jaki `swz.service` już stosuje wobec `fault_loop.service`
+# (reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera — oba czytniki
+# są czystą kontrolą kompletności pól wejściowych, nie wywołaniem fizyki.
 
 
 class EligibilityService:
@@ -797,7 +797,7 @@ class EligibilityService:
     ) -> None:
         """Warunek P0.6: stacja SN/nN musi deklarować układ uziemienia sieci
         nN i mieć transformator z kompletem danych do impedancji pętli
-        L-PE/L-PEN (reuse `fault_loop.service._transformer_loop_impedance` —
+        L-PE/L-PEN (reuse `fault_loop.service.impedancja_transformatora_dla_ukladu` —
         JEDNA ścieżka fizyki, ta sama, której używa sam solver pętli
         zwarcia; ta kontrola NIE liczy Z-bus, tylko sprawdza kompletność
         danych WEJŚCIOWYCH tej funkcji, dla KAŻDEJ stacji SN/nN w modelu —
@@ -911,12 +911,31 @@ class EligibilityService:
                 continue
 
             uklad = trafo.lv_earthing_system
-            if uklad is not None and not uklad_tn(uklad):
-                # TT/IT: solver pętli TN uczciwie zwraca "nie dotyczy" — dla
-                # TEJ stacji dalsze dane transformatora nie są wymagane.
-                continue
+            if uklad == "TT":
+                # Karta W5-E-TTIT: pętla doziemna TT domyka się przez uziom punktu
+                # neutralnego R_B (`Transformer.lv_neutral`, uziemiony bezpośrednio)
+                # — ten sam czytnik, którego używa analiza (`tt_it.r_b_transformatora`).
+                r_b, powod_r_b = r_b_transformatora(trafo)
+                if r_b is None:
+                    blockers.append(
+                        AnalysisEligibilityIssue(
+                            code="ELIG_FLNN_MISSING_TRANSFORMER_R_B",
+                            severity=IssueSeverity.BLOCKER,
+                            message_pl=powod_r_b or "",
+                            element_ref=trafo.ref_id,
+                            element_type="transformer",
+                            fix_action=FixAction(
+                                action_type="OPEN_MODAL",
+                                element_ref=trafo.ref_id,
+                                modal_type="TransformerModal",
+                                payload_hint={"required": "lv_neutral"},
+                            ),
+                        )
+                    )
 
-            _, missing = _transformer_loop_impedance(trafo)
+            # Impedancja transformatora WŁAŚCIWA dla układu (TN/TT: z0 grupy połączeń,
+            # IT: Z1 dla drugiego zwarcia L-PE-L) — ten sam czytnik co analiza pętli.
+            _, missing = impedancja_transformatora_dla_ukladu(trafo, uklad or "TN-S")
             if missing:
                 blockers.append(
                     AnalysisEligibilityIssue(
@@ -1034,8 +1053,9 @@ class EligibilityService:
         """Warunek P0.6 (G-06): SWZ ocenia Ik_min względem parametrów aparatu
         zabezpieczającego odpływu (`swz.service._aparat_from_branch` —
         namespace ``APARAT_NN_MCB``/``WKLADKA_NN`` + ``materialized_params``,
-        Catalog Binding Rule) — bez wiązania katalogowego werdykt SWZ nie ma
-        z czego liczyć progu wyłączenia.
+        Catalog Binding Rule; w układzie TT/IT także ``APARAT_NN_RCD`` —
+        wyłącznik różnicowoprądowy z I_Δn, karta W5-E-TTIT) — bez wiązania
+        katalogowego werdykt SWZ nie ma z czego liczyć progu wyłączenia.
         """
         apparatus_with_data = [
             b
@@ -1043,7 +1063,7 @@ class EligibilityService:
             if isinstance(b, SwitchBranch | FuseBranch)
             and isinstance(b.materialized_params, dict)
             and b.materialized_params
-            and b.catalog_namespace in {"APARAT_NN_MCB", "WKLADKA_NN"}
+            and b.catalog_namespace in {"APARAT_NN_MCB", "WKLADKA_NN", "APARAT_NN_RCD"}
         ]
         if not apparatus_with_data:
             blockers.append(

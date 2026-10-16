@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { composeLvDomainScene, type LvDomainScene } from '../composeLvDomainScene';
+import { composeLvDomainScene, WIERSZ_ETYKIETY_APARATU_POLOWA, type LvDomainScene } from '../composeLvDomainScene';
 import { scenariusz, SCENARIUSZE_NN, SLUGI_SCENARIUSZY } from '../fixtures/scenariusze';
 import { RASTER, TOKENY_GEOMETRII } from '../visualGrammar';
 import type { LvDomainProjectionV1 } from '../types';
@@ -269,5 +269,54 @@ describe('Determinizm i zakaz BFS po stronie klienta (§1/§46)', () => {
         expect(n.meta?.islandRef, `${slug}/${bus.ref_id}`).toBe(bus.island_ref);
       }
     }
+  });
+});
+
+describe('Wolny pas oznaczenia aparatu (arkusz CAD: oznaczenie zajmuje realne miejsce, nie stały odstęp pola)', () => {
+  const H = WIERSZ_ETYKIETY_APARATU_POLOWA;
+
+  it('iloczyn cech: KAŻDY scenariusz × każdy aparat pionowy — w pasie [x, x + wolny) wiersza etykiety nie ma kreski pionowej ani symbolu; aparat sprzęgła w osi szyny nie ma pasu', () => {
+    for (const slug of SLUGI_SCENARIUSZY) {
+      const s = scena(scenariusz(slug));
+      for (const n of s.nodes.filter((x) => x.kind === 'apparatus')) {
+        if (n.orientation === 'pozioma') {
+          expect(n.wolnyPasPrawy, `${slug}/${n.ref}`).toBeUndefined();
+          continue;
+        }
+        const wolny = n.wolnyPasPrawy;
+        expect(wolny, `${slug}/${n.ref}`).toBeGreaterThan(0);
+        const granica = n.x + (wolny as number);
+        expect(granica, `${slug}/${n.ref}`).toBeLessThanOrEqual(s.width);
+        for (const e of s.edges) {
+          if (e.x1 !== e.x2 || e.x1 <= n.x + 1) continue;
+          if (Math.max(e.y1, e.y2) < n.y - H || Math.min(e.y1, e.y2) > n.y + H) continue;
+          expect(e.x1, `${slug}/${n.ref} × ${e.ref}`).toBeGreaterThanOrEqual(granica);
+        }
+        for (const m of s.nodes) {
+          if (m === n || m.kind === 'bus' || m.kind === 'anchorBar' || m.x <= n.x + 1 || Math.abs(m.y - n.y) > H) continue;
+          expect(m.x, `${slug}/${n.ref} × ${m.ref}`).toBeGreaterThanOrEqual(granica);
+        }
+      }
+    }
+  });
+
+  it('[15] kolumna środkowa kończy pas na kresce sąsiada; ostatnia kolumna sięga krawędzi arkusza z rezerwą etykiet', () => {
+    const s = scena(scenariusz('15_many_feeders'));
+    const pola = s.nodes
+      .filter((n) => n.kind === 'apparatus' && /^QF-\d+$/.test(n.ref))
+      .sort((a, b) => a.x - b.x);
+    expect(pola.length).toBeGreaterThan(2);
+    for (let i = 0; i < pola.length - 1; i += 1) {
+      expect(pola[i].wolnyPasPrawy, pola[i].ref).toBe(pola[i + 1].x - pola[i].x);
+    }
+    const ostatni = pola[pola.length - 1];
+    expect(ostatni.wolnyPasPrawy).toBe(s.width - ostatni.x);
+    expect(ostatni.wolnyPasPrawy as number).toBeGreaterThan(TOKENY_GEOMETRII.feederGap);
+  });
+
+  it('determinizm: dwa składania tej samej projekcji dają identyczne pasy', () => {
+    const a = scena(scenariusz('19_swz_tt')).nodes.map((n) => [n.ref, n.wolnyPasPrawy]);
+    const b = scena(scenariusz('19_swz_tt')).nodes.map((n) => [n.ref, n.wolnyPasPrawy]);
+    expect(a).toEqual(b);
   });
 });

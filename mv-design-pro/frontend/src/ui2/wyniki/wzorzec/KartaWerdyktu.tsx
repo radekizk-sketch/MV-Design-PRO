@@ -151,7 +151,7 @@ const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
 };
 
 /** Stan źródła podstawy — lustro `werdykt.wyjasnienie.NAZWA_STANU_ZRODLA_PL`. */
-const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
+export const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
   ZWERYFIKOWANE: 'zweryfikowane',
   WSKAZANE: 'wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)',
   NIEUSTALONE: 'nieustalone',
@@ -360,7 +360,12 @@ function liczbaZeZnakiem(wartosc: number): string {
   });
 }
 
-/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie). */
+/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie).
+ *  Eksportowana (`wielkoscPl`) dla tabelki karty obwodu nN — jeden zapis liczb rekordu. */
+export function wielkoscPl(w: Wielkosc, zeZnakiem = false): string {
+  return wielkosc(w, zeZnakiem);
+}
+
 function wielkosc(w: Wielkosc, zeZnakiem = false): string {
   const tekst = zeZnakiem ? liczbaZeZnakiem(w.wartosc) : liczba(w.wartosc);
   return w.jednostka === '1' ? tekst : `${tekst} ${w.jednostka}`;
@@ -1176,6 +1181,8 @@ export interface EtykietaWerdyktuProps {
   /** Status maszynowy rekordu — wyłącznie atrybut `data-status` (filtry, testy), nigdy tekst. */
   readonly status?: StatusWerdyktu | null;
   readonly testid?: string;
+  /** Wariant zwarty (prostokątny, mniejsze pismo) do tabel arkusza — ta sama etykieta i kolor. */
+  readonly zwarta?: boolean;
 }
 
 /**
@@ -1184,11 +1191,11 @@ export interface EtykietaWerdyktuProps {
  * Szczegół rekordu pokazuje `KartaWerdyktu`; plakietka nie zastępuje karty (§9: etykieta bez
  * wyjaśnienia nie jest odpowiedzią inżynierską — konsument zawsze prowadzi do karty).
  */
-export function EtykietaWerdyktu({ etykieta, status = null, testid }: EtykietaWerdyktuProps) {
+export function EtykietaWerdyktu({ etykieta, status = null, testid, zwarta = false }: EtykietaWerdyktuProps) {
   const styl: StylKarty = { '--mvd-werdykt-kolor': SEMANTYKA_KOLOR[etykieta.semantyka] };
   return (
     <span
-      className="mvd-werdykt-plakietka"
+      className={zwarta ? 'mvd-werdykt-plakietka mvd-werdykt-plakietka--zwarta' : 'mvd-werdykt-plakietka'}
       style={styl}
       data-testid={testid}
       data-semantyka={etykieta.semantyka}

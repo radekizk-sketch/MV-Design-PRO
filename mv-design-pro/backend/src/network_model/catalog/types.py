@@ -64,6 +64,11 @@ class CatalogNamespace(Enum):
     # wyzwolenia/krzywa topikowa zamiast breaking_capacity_ka ogólnego aparatu).
     APARAT_NN_MCB = "APARAT_NN_MCB"
     WKLADKA_NN = "WKLADKA_NN"
+    # Karta W5-E-TTIT: wyłącznik różnicowoprądowy nN (IEC 61008-1 / IEC 61009-1) —
+    # osobny kontrakt materializacji (I_Δn, rodzaj prądu różnicowego, czasy wyłączenia
+    # i niezadziałania), bo ocena SWZ w układzie TT porównuje czas wyłączenia RCD z
+    # tabelą czasów, a nie prąd zadziałania z prądem pętli.
+    APARAT_NN_RCD = "APARAT_NN_RCD"
     CT = "CT"
     VT = "VT"
     OGRANICZNIK_SN = "OGRANICZNIK_SN"
@@ -117,6 +122,7 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "APARAT_NN": "Typy aparatury nN",
     "APARAT_NN_MCB": "Typy wyłączników instalacyjnych nN",
     "WKLADKA_NN": "Typy wkładek topikowych nN",
+    "APARAT_NN_RCD": "Typy wyłączników różnicowoprądowych nN",
     "KABEL_NN": "Typy kabli nN",
     "CT": "Typy przekładników prądowych",
     "VT": "Typy przekładników napięciowych",
@@ -538,7 +544,8 @@ def _pola_karty_projekcji_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
     """Walidacja pól karty wspólnych dla `ConverterType` i projekcji PV/BESS — JEDNO
     ciało reguł (krzywa P-Q KAT-T-004…008, `flicker_c` KAT-T-011, statyzmy KAT-T-012/013,
-    `k_sc` KAT-T-003): projekcja niosąca pole karty waliduje je tak samo jak typ źródłowy."""
+    `k_sc` KAT-T-003): projekcja niosąca pole karty waliduje je tak samo jak typ źródłowy.
+    """
     if obiekt.pq_curve is not None:
         _validate_pq_curve(obiekt.pq_curve)
     if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
@@ -3421,6 +3428,147 @@ class LVFuseLinkType:
 
 
 # =============================================================================
+# LV RCD TYPE (APARAT_NN_RCD) — wyłącznik różnicowoprądowy nN (RCCB IEC 61008-1,
+# RCBO IEC 61009-1). Karta W5-E-TTIT (docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md
+# p. 8, decyzje OD-25 + D-11 + O-68).
+# =============================================================================
+
+#: Rodzaje prądu różnicowego wykrywanego przez RCD (IEC 61008-1: AC, A; IEC 62423: F, B).
+RODZAJE_PRADU_ROZNICOWEGO_RCD: tuple[str, ...] = ("AC", "A", "F", "B")
+
+
+@dataclass(frozen=True)
+class LVRcdType:
+    """Immutable LV residual current device (RCD) type — RCCB (IEC 61008-1) / RCBO (IEC 61009-1).
+
+    Namespace ODDZIELONY od APARAT_NN_MCB/WKLADKA_NN: ochrona przeciwporażeniowa w układzie
+    TT (IEC 60364-4-41 §411.5) opiera się na prądzie różnicowym znamionowym I_Δn i CZASIE
+    wyłączenia RCD, nie na prądzie zadziałania aparatu nadprądowego. Werdykt SWZ TT/IT
+    (``application/analyses/swz/werdykt_tt_it.py``) czyta ``i_delta_n_a`` (napięcie
+    dotykowe U_dotyk = R_A·I_Δn liczy solver ``petla_zwarcia_tt_it``) i ``t_a_s`` (czas
+    wyłączenia przy I_Δn, porównywany z tabelą czasów Tab. 41.1 repo).
+
+    ZERO FABRYKACJI: czasy pochodzą z Tabeli 1 IEC 61008-1 (kl. 9.9.2), odczytanej w DWÓCH
+    niezależnych źródłach publicznych (patrz ``mv_auxiliary_catalog.get_all_lv_rcd_types``);
+    pełny tekst normy nie był dostępny — status REFERENCYJNY, flip-to-verified przy dostępie
+    do kopii normy (wzorzec G-D1).
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "RCCB A 40 A / 30 mA").
+        in_a: Rated current In [A].
+        i_delta_n_a: Rated residual operating current I_Δn [A].
+        rcd_type: Rodzaj prądu różnicowego — "AC" | "A" | "F" | "B".
+        selective: ``True`` = typ S (selektywny, zwłoczny), ``False`` = ogólny (bezzwłoczny).
+        t_a_s: Maksymalny czas wyłączenia przy I_Δn [s] (Tabela 1 IEC 61008-1).
+        t_a_2idn_s: Maksymalny czas wyłączenia przy 2·I_Δn [s].
+        t_a_5idn_s: Maksymalny czas wyłączenia przy 5·I_Δn (albo 0,25 A dla I_Δn ≤ 0,03 A) [s].
+        t_nieczuly_min_s: Minimalny czas niezadziałania [s] (tylko typ S; ``None`` dla ogólnego).
+        u_n_kv: Rated voltage [kV] (typically 0.4).
+        poles: Number of poles (optional).
+        manufacturer: Manufacturer (optional).
+    """
+
+    id: str
+    name: str
+    in_a: float
+    i_delta_n_a: float
+    rcd_type: str
+    selective: bool
+    t_a_s: float
+    t_a_2idn_s: float | None = None
+    t_a_5idn_s: float | None = None
+    t_nieczuly_min_s: float | None = None
+    u_n_kv: float = 0.4
+    poles: int | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "IEC 61008-1 Tabela 1 (czasy wyłączenia, wartości normatywne)"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.rcd_type not in RODZAJE_PRADU_ROZNICOWEGO_RCD:
+            odmowa_twarda(
+                "KAT-T-045",
+                f"RCD '{self.id}': rodzaj prądu różnicowego {self.rcd_type!r} spoza słownika "
+                f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
+            )
+        for nazwa, wartosc in (
+            ("in_a", self.in_a),
+            ("i_delta_n_a", self.i_delta_n_a),
+            ("t_a_s", self.t_a_s),
+        ):
+            if wartosc <= 0:
+                odmowa_twarda(
+                    "KAT-T-046",
+                    f"RCD '{self.id}': pole {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
+                    "bez niego werdykt SWZ TT nie ma z czego liczyć.",
+                )
+        if self.selective and self.t_nieczuly_min_s is None:
+            odmowa_twarda(
+                "KAT-T-047",
+                f"RCD '{self.id}' typu S bez minimalnego czasu niezadziałania — Tabela 1 "
+                "IEC 61008-1 definiuje go dla każdego RCD selektywnego.",
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "in_a": self.in_a,
+            "i_delta_n_a": self.i_delta_n_a,
+            "rcd_type": self.rcd_type,
+            "selective": self.selective,
+            "t_a_s": self.t_a_s,
+            "t_a_2idn_s": self.t_a_2idn_s,
+            "t_a_5idn_s": self.t_a_5idn_s,
+            "t_nieczuly_min_s": self.t_nieczuly_min_s,
+            "u_n_kv": self.u_n_kv,
+            "poles": self.poles,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LVRcdType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            in_a=wymagany_float(data, "in_a", context="LVRcdType"),
+            i_delta_n_a=wymagany_float(data, "i_delta_n_a", context="LVRcdType"),
+            rcd_type=wymagany_str(data, "rcd_type", context="LVRcdType"),
+            selective=bool(data.get("selective", False)),
+            t_a_s=wymagany_float(data, "t_a_s", context="LVRcdType"),
+            t_a_2idn_s=(float(data["t_a_2idn_s"]) if data.get("t_a_2idn_s") is not None else None),
+            t_a_5idn_s=(float(data["t_a_5idn_s"]) if data.get("t_a_5idn_s") is not None else None),
+            t_nieczuly_min_s=(
+                float(data["t_nieczuly_min_s"])
+                if data.get("t_nieczuly_min_s") is not None
+                else None
+            ),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVRcdType"),
+            poles=(int(data["poles"]) if data.get("poles") is not None else None),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference=(
+                    "IEC 61008-1 Tabela 1 (czasy wyłączenia, wartości normatywne)"
+                ),
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
 # CT TYPE (Przekładnik prądowy)
 # =============================================================================
 
@@ -4438,6 +4586,28 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("in_a", "In [A]", "A"),
             ("fuse_class", "Klasa", ""),
             ("size", "Wielkość", ""),
+        ),
+    ),
+    # Karta W5-E-TTIT: RCD — I_Δn i czasy wyłączenia czyta werdykt SWZ TT/IT
+    # (`application/analyses/swz/werdykt_tt_it.py`) z `materialized_params` gałęzi.
+    CatalogNamespace.APARAT_NN_RCD.value: MaterializationContract(
+        namespace=CatalogNamespace.APARAT_NN_RCD.value,
+        solver_fields=(
+            "u_n_kv",
+            "in_a",
+            "i_delta_n_a",
+            "rcd_type",
+            "selective",
+            "t_a_s",
+            "t_a_2idn_s",
+            "t_a_5idn_s",
+            "t_nieczuly_min_s",
+        ),
+        ui_fields=(
+            ("in_a", "In [A]", "A"),
+            ("i_delta_n_a", "IΔn [A]", "A"),
+            ("rcd_type", "Rodzaj", ""),
+            ("t_a_s", "t przy IΔn [s]", "s"),
         ),
     ),
     CatalogNamespace.CT.value: MaterializationContract(

@@ -200,6 +200,7 @@ import {
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
   SLD_CANVAS_DOCK_INSETS,
+  stationInternalPanelWidthPx,
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
@@ -2451,10 +2452,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
   const closeLvDomainPortal = useCallback(() => setLvDomainStationRef(null), []);
   const lvDomainPortalOpen = lvDomainStationRef !== null && activeCaseId !== null;
-  const lvDomainPortalWidth = Math.min(
-    LV_DOMAIN_PORTAL_MAX_WIDTH_PX,
-    Math.max(0, size.width - 24),
-  );
+  const lvDomainPortalWidth = stationInternalPanelWidthPx(size.width);
   const lvDomainPortalHeight = Math.max(240, size.height - 24);
   const effectiveCanvasInsets = useMemo(
     () =>
@@ -3160,7 +3158,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         <div
           data-testid="lv-domain-portal-drawer"
           data-view-mode="side-drawer"
-          className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex max-w-[min(760px,calc(100%-1.5rem))] items-start justify-end"
+          className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex items-start justify-end"
+          style={{ maxWidth: `min(${LV_DOMAIN_PORTAL_MAX_WIDTH_PX}px, calc(100% - 1.5rem))` }}
         >
           <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
             <LvDomainPortal

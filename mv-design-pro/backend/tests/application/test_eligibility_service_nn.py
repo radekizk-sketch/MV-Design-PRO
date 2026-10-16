@@ -22,12 +22,16 @@ from enm.models import (
     EnergyNetworkModel,
     ENMDefaults,
     ENMHeader,
+    GroundingConfig,
     Source,
     Substation,
     SwitchBranch,
     Transformer,
 )
 from enm.validator import ENMValidator, ReadinessResult
+
+#: Uziom punktu neutralnego nN stacji (R_B) — dane testowe, nie wartość normatywna.
+_UZIOM_R_B = GroundingConfig(type="directly_grounded", r_ohm=2.0)
 
 
 def _ready_nn_enm() -> EnergyNetworkModel:
@@ -214,23 +218,109 @@ class TestFaultLoopNnEligibilityMissingTransformerData:
         assert "ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA" in codes
 
 
-class TestFaultLoopNnEligibilityTtItSystemsSkipTransformerCheck:
-    """Układ TT/IT: solver pętli TN uczciwie zwraca "nie dotyczy" dla TEJ
-    stacji — brak vector_group na transformatorze NIE blokuje eligibility
-    (żaden kod z pętli TN nie ma tu zastosowania)."""
+class TestFaultLoopNnEligibilityTtItTransformerData:
+    """Układ TT/IT (karta W5-E-TTIT): pre-kontrola wymaga danych transformatora
+    WŁAŚCIWYCH dla pętli danego układu — tym samym czytnikiem, którego używa
+    analiza pętli (`fault_loop.service.impedancja_transformatora_dla_ukladu`):
+    TT jak TN (z0 z grupy połączeń) + uziom punktu neutralnego R_B
+    (`tt_it.r_b_transformatora`); IT — składowa zgodna Z1 (bez grupy połączeń),
+    bez R_B (punkt neutralny izolowany). Iloczyn cech: {TT, IT} × {grupa połączeń
+    obecna/brak} × {R_B obecny/brak}."""
 
     @staticmethod
-    def _enm_tt_no_vector_group() -> EnergyNetworkModel:
+    def _enm(uklad: str, *, vector_group: str | None, lv_neutral) -> EnergyNetworkModel:
         enm = _ready_nn_enm()
         trafo = enm.transformers[0].model_copy(
-            update={"vector_group": None, "lv_earthing_system": "TT"}
+            update={
+                "vector_group": vector_group,
+                "lv_earthing_system": uklad,
+                "lv_neutral": lv_neutral,
+            }
         )
         return enm.model_copy(update={"transformers": [trafo]})
 
-    def test_no_transformer_loop_data_blocker_for_tt(self):
-        row = _row(self._enm_tt_no_vector_group(), AnalysisType.FAULT_LOOP_NN)
-        codes = [b.code for b in row.blockers]
+    @staticmethod
+    def _codes(enm: EnergyNetworkModel) -> list[str]:
+        return [b.code for b in _row(enm, AnalysisType.FAULT_LOOP_NN).blockers]
+
+    def test_tt_bez_grupy_polaczen_blokuje_dane_petli(self):
+        codes = self._codes(self._enm("TT", vector_group=None, lv_neutral=_UZIOM_R_B))
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA" in codes
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_R_B" not in codes
+
+    def test_tt_bez_r_b_blokuje_nazwanym_kodem_z_akcja(self):
+        row = _row(
+            self._enm("TT", vector_group="Dyn11", lv_neutral=None), AnalysisType.FAULT_LOOP_NN
+        )
+        blocker = next(b for b in row.blockers if b.code == "ELIG_FLNN_MISSING_TRANSFORMER_R_B")
+        assert row.status == EligibilityStatus.INELIGIBLE
+        assert "R_B" in blocker.message_pl
+        assert blocker.element_ref == "tr"
+        assert blocker.fix_action is not None
+        assert blocker.fix_action.modal_type == "TransformerModal"
+        assert blocker.fix_action.payload_hint == {"required": "lv_neutral"}
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA" not in [b.code for b in row.blockers]
+
+    def test_tt_z_punktem_neutralnym_bez_rezystancji_blokuje(self):
+        codes = self._codes(
+            self._enm(
+                "TT",
+                vector_group="Dyn11",
+                lv_neutral=GroundingConfig(type="directly_grounded", r_ohm=None),
+            )
+        )
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_R_B" in codes
+
+    def test_tt_z_punktem_izolowanym_blokuje(self):
+        codes = self._codes(
+            self._enm("TT", vector_group="Dyn11", lv_neutral=GroundingConfig(type="isolated"))
+        )
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_R_B" in codes
+
+    def test_tt_komplet_danych_jest_gotowy(self):
+        row = _row(
+            self._enm("TT", vector_group="Dyn11", lv_neutral=_UZIOM_R_B), AnalysisType.FAULT_LOOP_NN
+        )
+        assert row.status == EligibilityStatus.ELIGIBLE
+        assert row.blockers == ()
+
+    def test_it_bez_grupy_polaczen_nie_blokuje(self):
+        codes = self._codes(self._enm("IT", vector_group=None, lv_neutral=None))
         assert "ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA" not in codes
+        assert "ELIG_FLNN_MISSING_TRANSFORMER_R_B" not in codes
+
+    def test_it_komplet_danych_bez_grupy_polaczen_jest_gotowy(self):
+        # IT: Z1 z uk%, Sn, Ulv (pola obowiązkowe modelu, E006 pilnuje uk% > 0) —
+        # grupa połączeń i R_B nie są warunkiem gotowości tej stacji.
+        row = _row(self._enm("IT", vector_group=None, lv_neutral=None), AnalysisType.FAULT_LOOP_NN)
+        assert row.status == EligibilityStatus.ELIGIBLE
+        assert row.blockers == ()
+
+
+class TestSwzNnEligibilityRcdApparatus:
+    """SWZ_NN w układzie TT: RCD (`APARAT_NN_RCD`, I_Δn zmaterializowane) jest aparatem
+    zabezpieczającym w rozumieniu bramki `ELIG_SWZNN_MISSING_APPARATUS` — tak samo jak
+    MCB/wkładka (karta W5-E-TTIT, reguła KLASA NIE INSTANCJA)."""
+
+    def test_rcd_zamiast_mcb_spelnia_bramke_aparatu(self):
+        enm = _ready_nn_enm()
+        trafo = enm.transformers[0].model_copy(
+            update={"lv_earthing_system": "TT", "lv_neutral": _UZIOM_R_B}
+        )
+        rcd = SwitchBranch(
+            ref_id="rcd1",
+            name="RCD1",
+            type="switch",
+            from_bus_ref="b1",
+            to_bus_ref="b2",
+            catalog_ref="rcd_nn_a_40a_30ma",
+            catalog_namespace="APARAT_NN_RCD",
+            materialized_params={"in_a": 40.0, "i_delta_n_a": 0.03, "t_a_s": 0.3},
+        )
+        branches = [b for b in enm.branches if b.ref_id != "ap1"] + [rcd]
+        enm = enm.model_copy(update={"transformers": [trafo], "branches": branches})
+        row = _row(enm, AnalysisType.SWZ_NN)
+        assert "ELIG_SWZNN_MISSING_APPARATUS" not in [b.code for b in row.blockers]
 
 
 class TestFaultLoopNnEligibilityMissingRoute:

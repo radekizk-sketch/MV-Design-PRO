@@ -1868,7 +1868,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "e9265a1a7be5d82dbb4bb46dd7fd1f4fa4dbc1273c5b2b9bd331c5988d2e5eb5",
+  "projection_hash": "f6abfa63685a6fcaa72eb868e8a1f72a6ec538acab32817ec3fa93343777c17b",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1886,6 +1886,7 @@
   "station_ref": "stAB",
   "status": "OK",
   "swz_snapshot": {
+    "kod_odmowy": null,
     "missing_data": [],
     "network_system": "TN-C-S",
     "reason_pl": null,
@@ -1981,8 +1982,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-A1_zacisk",
@@ -2069,8 +2072,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2293,8 +2298,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-A2_zacisk",
@@ -2381,8 +2388,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2489,8 +2498,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-A3_zacisk",
@@ -2577,8 +2588,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2714,8 +2727,10 @@
             "worst_point_bus_ref": "QF-A3_pcc"
           }
         ],
+        "kod_odmowy": null,
         "missing_data": [],
         "nn_bus_ref": "TA_zacisk",
+        "reason_pl": null,
         "status": "OK",
         "transformer_ref": "TA"
       },
@@ -2809,8 +2824,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "FU-B2_zacisk",
@@ -2897,8 +2914,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -3137,8 +3156,10 @@
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-B1_zacisk",
@@ -3225,8 +3246,10 @@
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -3362,8 +3385,10 @@
             "worst_point_bus_ref": "QF-B1_koniec"
           }
         ],
+        "kod_odmowy": null,
         "missing_data": [],
         "nn_bus_ref": "TB_zacisk",
+        "reason_pl": null,
         "status": "OK",
         "transformer_ref": "TB"
       }

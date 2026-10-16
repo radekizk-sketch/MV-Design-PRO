@@ -252,3 +252,12 @@
   line-height: 1.4;
   white-space: normal;
 }
+
+/* Wariant zwarty do tabel arkusza (karta obwodu nN): prostokąt jak opis na rysunku. */
+.mvd-werdykt-plakietka--zwarta {
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+}

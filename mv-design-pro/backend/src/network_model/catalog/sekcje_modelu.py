@@ -360,6 +360,9 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         "APARAT_NN": "aparatura łączeniowa nN — jak APARAT_SN",
         "APARAT_NN_MCB": "wyłącznik instalacyjny nN — charakterystyka zadziałania, nie model obwodu",
         "WKLADKA_NN": "wkładka topikowa nN — charakterystyka zadziałania, nie model obwodu",
+        "APARAT_NN_RCD": (
+            "wyłącznik różnicowoprądowy nN — prąd różnicowy i czas wyłączenia, nie model obwodu"
+        ),
         "CT": "przekładnik prądowy — tor pomiarowy zabezpieczeń, nie element obwodu mocy",
         "VT": "przekładnik napięciowy — tor pomiarowy zabezpieczeń, nie element obwodu mocy",
         "OGRANICZNIK_SN": (
@@ -667,7 +670,8 @@ class DaneUrzadzenia:
 
 def jakosc_pol(klasa: str, pola: Mapping[str, Any]) -> dict[str, FieldQuality]:
     """Jakość pól urządzenia — JEDNA reguła (``resolve_card_field_quality_map``) dla typu
-    i elementu; dla klas bez karty przekształtnika — pusta mapa (jakość niezadeklarowana)."""
+    i elementu; dla klas bez karty przekształtnika — pusta mapa (jakość niezadeklarowana).
+    """
     if klasa not in _KLASY_KARTY_PRZEKSZTALTNIKA:
         return {}
     widok: dict[str, Any] = {nazwa: None for nazwa in _POLA_WIDOKU_KARTY}

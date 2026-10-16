@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 
+import { STATION_INTERNAL_PANEL_MAX_WIDTH_PX } from '../canvas/toolbarLayout';
 import { LvDomainView } from './LvDomainView';
 import { fetchLvDomainProjectionV1 } from './projectionApi';
 import type { LvDomainProjectionV1 } from './types';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 
-export const LV_DOMAIN_PORTAL_MAX_WIDTH_PX = 760;
+/** Szerokość portalu = szerokość szuflady „wnętrze stacji” (jedna stała, `toolbarLayout`). */
+export const LV_DOMAIN_PORTAL_MAX_WIDTH_PX = STATION_INTERNAL_PANEL_MAX_WIDTH_PX;
 
 export interface LvDomainPortalProps {
   readonly caseId: string;

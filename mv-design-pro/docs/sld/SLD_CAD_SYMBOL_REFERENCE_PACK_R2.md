@@ -26,7 +26,7 @@ Harness: `frontend/sld-symbol-pack-harness.html` (`?tryb=pakiet|rozpoznanie`, `?
 
 | Plik | Treść |
 |---|---|
-| `pakiet_dark.png` | tablica 19 symboli: obecny → proponowany (ZAMKNIĘTY / OTWARTY / NIEZNANY), motyw ciemny |
+| `pakiet_dark.png` | tablica 20 symboli: obecny → proponowany (ZAMKNIĘTY / OTWARTY / NIEZNANY), motyw ciemny |
 | `pakiet_light.png` | jw., motyw jasny techniczny |
 | `pakiet_mono.png` | jw., jeden tusz na białym (§23) |
 | `rozpoznanie_mono.png` | tablica rozpoznawalności bez etykiet, 26 pozycji (§22) |
@@ -65,7 +65,7 @@ HIGHLIGHT 6,0 px. Zero wypełnienia jako nośnika stanu; zero tekstu w symbolu p
 normatywnymi (G, „~", „3" przy „~" przekształtnika) i znakami funkcji IEC w prostokącie
 zabezpieczenia.
 
-## 4. Tablica pakietu — 19 symboli
+## 4. Tablica pakietu — 20 symboli
 
 | Lp | Symbol CAD | OBECNY (odrzucony) | PROPONOWANY (R2.1) | Typ domenowy | IEC | Nazwa polska | Status |
 |---|---|---|---|---|---|---|---|
@@ -88,6 +88,7 @@ zabezpieczenia.
 | 17 | `cad.zabezpieczenie` | okrąg z kodami wewnątrz (plakietka) | prostokąt urządzenia + znaki IEC (I>, I0>) | protection_assignment | konwencja | ZABEZPIECZENIE | DRAFT |
 | 18 | `cad.zacisk` | kropka pełna z widoku | okrąg pusty | bus stopnia ≠ 2 / granica | S00017 | ZACISK | ENGINEERING_REVIEWED |
 | 19 | `cad.wezel` | kropka pełna | kropka pełna (∅ ≈ 7× kreski) | bus stopnia ≥ 3 | S00020/S00021 | WĘZEŁ | ENGINEERING_REVIEWED |
+| 20 | `cad.wylacznikRoznicowopradowy` | symbol rozłącznika (04) — RCD nierozpoznany | „×" na styku stałym + nóż jak 01 + rdzeń sumacyjny (elipsa) na przewodzie pod przegubem + sprzężenie kreskowe do napędu (W5-E-TTIT, 2026-10-15) | branch.switch (APARAT_NN_RCD) | S00227+S00219 + rdzeń sumacyjny + S00144 | WYŁĄCZNIK RÓŻNICOWOPRĄDOWY | ENGINEERING_REVIEWED |
 
 ## 5. Przegląd wielosoczewkowy (dyrektywa właściciela nr 5)
 

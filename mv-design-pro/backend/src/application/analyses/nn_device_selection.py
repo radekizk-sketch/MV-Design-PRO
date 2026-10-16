@@ -92,7 +92,9 @@ from network_model.solvers.protection_lv_curves import (
     compute_mcb_thermal_point,
     compute_mccb_point,
 )
-from solver_input.uklad_sieci_nn import typ_sieci_solvera
+from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
+
+from .swz.werdykt_tt_it import KOD_LIMIT_BRAK_TEKSTU_NORMY
 
 # =============================================================================
 # STAN KRYTERIUM (trzeci stan obowiązkowy)
@@ -466,6 +468,21 @@ def _kryterium_swz(*, kandydat: KandydatAparatuNn, ik1_min_a: float, u0_v: float
 # =============================================================================
 
 
+def oceniaj_przeciazenie_kandydata(
+    *, kandydat: KandydatAparatuNn, ib_a: float, iz_prime_a: float
+) -> tuple[KryteriumWynik, KryteriumWynik]:
+    """Kryteria przeciążeniowe (i) Ib≤In≤Iz′ i (ii) I2≤1,45·Iz′ — niezależne od układu sieci nN.
+
+    Karta W5-E-TTIT: w układzie TT/IT dobór wg SWZ przy Ik_min jest odmową nazwaną, ale ochrona
+    przeciążeniowa przewodu obowiązuje tak samo — arkusz obwodów nN ocenia te dwa kryteria tym
+    samym kodem, którym ocenia je dobór w TN (jedno źródło, zero drugiej kopii).
+    """
+    return (
+        _kryterium_ib_in_iz(ib_a=ib_a, iz_prime_a=iz_prime_a, in_a=kandydat.in_a),
+        _kryterium_i2(kandydat=kandydat, iz_prime_a=iz_prime_a),
+    )
+
+
 def oceniaj_kandydata(
     *,
     kandydat: KandydatAparatuNn,
@@ -477,8 +494,7 @@ def oceniaj_kandydata(
 ) -> WynikKandydataNn:
     """Oceń JEDNEGO kandydata przeciw wszystkim czterem kryteriom (§0.5)."""
     kryteria = (
-        _kryterium_ib_in_iz(ib_a=ib_a, iz_prime_a=iz_prime_a, in_a=kandydat.in_a),
-        _kryterium_i2(kandydat=kandydat, iz_prime_a=iz_prime_a),
+        *oceniaj_przeciazenie_kandydata(kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a),
         _kryterium_zdolnosc_wylaczania(kandydat=kandydat, ik_max_ka=ik_max_ka),
         _kryterium_swz(kandydat=kandydat, ik1_min_a=ik1_min_a, u0_v=u0_v),
     )
@@ -669,6 +685,27 @@ def zbierz_kandydatow_z_katalogu(
 # =============================================================================
 
 
+def odmowa_doboru_nadpradowego_tt_it(system: str) -> tuple[str, str]:
+    """Odmowa NAZWANA doboru aparatu nadprądowego wg SWZ przy Ik_min w układzie TT/IT.
+
+    Karta W5-E-TTIT: kryterium samoczynnego wyłączenia przy Ik1_min dotyczy pętli L-PE/L-PEN
+    układu TN. W układzie TT/IT ochronę przeciwporażeniową ocenia werdykt SWZ TT/IT (RCD,
+    napięcie dotykowe, pojemności sieci — `swz/werdykt_tt_it.py`), a warunki dopuszczające
+    aparat nadprądowy w tych układach są tekstem normy spoza repozytorium — kod limitu, nie
+    werdykt „nie spełnia" bez podstawy. Jedno źródło tekstu dla doboru i arkusza obwodów nN.
+    """
+    return (
+        (
+            f"Układ {system}: dobór aparatu nadprądowego wg kryterium samoczynnego wyłączenia "
+            "przy Ik1_min dotyczy pętli L-PE/L-PEN układu TN. Ochronę przeciwporażeniową "
+            "w tym układzie ocenia werdykt SWZ TT/IT (wyłącznik różnicowoprądowy, napięcie "
+            "dotykowe, pojemności sieci); warunki dopuszczające aparat nadprądowy w układzie "
+            f"{system} czekają na tekst normy IEC 60364-4-41 od właściciela."
+        ),
+        KOD_LIMIT_BRAK_TEKSTU_NORMY,
+    )
+
+
 def _ik1_min_i_u0(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str
 ) -> tuple[float | None, float | None, list[str], str | None, str | None]:
@@ -700,6 +737,9 @@ def _ik1_min_i_u0(
             odmowa.get("kod_odmowy"),
         )
     assert system is not None
+    if not uklad_tn(system):
+        reason_pl, kod = odmowa_doboru_nadpradowego_tt_it(system)
+        return None, None, [], reason_pl, kod
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:

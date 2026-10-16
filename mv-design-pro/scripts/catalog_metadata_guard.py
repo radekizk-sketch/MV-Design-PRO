@@ -37,6 +37,7 @@ INDUSTRIAL_MIN_WIDTH = {
     "OBCIAZENIE": 3,
     "APARAT_NN_MCB": 30,
     "WKLADKA_NN": 30,
+    "APARAT_NN_RCD": 56,
 }
 
 
@@ -62,6 +63,7 @@ def _groups() -> dict[str, list[object]]:
         "OBCIAZENIE": repo.list_load_types(),
         "APARAT_NN_MCB": repo.list_lv_breaker_mcb_types(),
         "WKLADKA_NN": repo.list_lv_fuse_link_types(),
+        "APARAT_NN_RCD": repo.list_lv_rcd_types(),
         # Karta AB-H0 §0.7.2: karty widmowe katalogu statycznego — te same metadane
         # rekordu co każda grupa. BEZ wpisu w INDUSTRIAL_MIN_WIDTH: 0 kart (pomiar
         # 2026-09-23) to brak danych producenta, nie defekt szerokości katalogu.

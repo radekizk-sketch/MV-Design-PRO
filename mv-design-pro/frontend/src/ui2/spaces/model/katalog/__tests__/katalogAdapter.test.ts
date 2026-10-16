@@ -11,7 +11,7 @@ import { definicjaParametru } from '../parametryDefinicje';
 import { FIXTURE_FALOWNIKI, FIXTURE_LINIE } from './fixtures';
 
 describe('katalogAdapter — metadane kategorii', () => {
-  it('udostępnia 9 kategorii katalogu (SN + przekładniki + osprzęt nN)', () => {
+  it('udostępnia 10 kategorii katalogu (SN + przekładniki + osprzęt nN + RCD)', () => {
     // L-16 (karta KD-3): cztery przestrzenie były w API katalogu i w moście
     // `CatalogBrowser`, a nie było ich w adapterze ui2 — projektant nie widział
     // w warsztacie modelu przekładników ani osprzętu nN.
@@ -25,6 +25,7 @@ describe('katalogAdapter — metadane kategorii', () => {
       'VT',
       'KABEL_NN',
       'APARAT_NN',
+      'APARAT_NN_RCD',
     ]);
   });
 

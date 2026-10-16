@@ -50,11 +50,12 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   resolveBusNnRef: (...args: unknown[]) => resolveBusNnRefMock(...(args as [])),
 }));
 
+const KATALOG_KABLI = [
+  { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'Al' },
+];
+let katalogKabli: unknown[] = KATALOG_KABLI;
 vi.mock('../../../../ui/catalog/api', () => ({
-  fetchLvCableTypes: () =>
-    Promise.resolve([
-      { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'Al' },
-    ]),
+  fetchLvCableTypes: () => Promise.resolve(katalogKabli),
   getCatalogErrorMessage: (e: unknown) => (e instanceof Error ? e.message : 'Błąd katalogu'),
 }));
 
@@ -64,7 +65,15 @@ vi.mock('../../../../ui/network-build/forms/cableVoltageDropApi', () => ({
 }));
 
 describe('KreatorOdcinkaNn — realna ścieżka', () => {
+  it('pusty katalog kabli: pole gotowe (bez wiecznego „Ładowanie katalogu…”)', async () => {
+    katalogKabli = [];
+    render(<KreatorOdcinkaNn />);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toBeDisabled());
+    expect(screen.getByTestId('mvd-kreator-odcinek-nn-kabel')).not.toHaveTextContent('Ładowanie');
+  });
+
   beforeEach(() => {
+    katalogKabli = KATALOG_KABLI;
     appState.activeCaseId = 'case-1';
     context = { bus_nn_ref: 'bus-nn-1' };
     snapshotState.error = null;

@@ -125,8 +125,11 @@ from application.analyses.nn_device_selection import (
     KIND_MCCB,
     KandydatAparatuNn,
     oceniaj_kandydata,
+    oceniaj_przeciazenie_kandydata,
+    odmowa_doboru_nadpradowego_tt_it,
     wybierz_aparat_dla_obwodu_nn,
 )
+from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
@@ -194,6 +197,32 @@ def _brak(reason_pl: str) -> dict[str, Any]:
 
 def _nie_dotyczy(reason_pl: str) -> dict[str, Any]:
     return {"status": "nie dotyczy", "wartosc": None, "zrodlo_pl": None, "reason_pl": reason_pl}
+
+
+def _ik_min_tt_it(widok: dict[str, Any], system: str) -> dict[str, Any]:
+    """Sekcja `ik_min` z widoku SWZ TT/IT: prąd doziemny minimalny albo odmowa nazwana kodem."""
+    if widok.get("status") == "OK":
+        return _wartosc(
+            widok["fault_loop_min_scenario"]["ik_min_a"],
+            f"pętla doziemna IEC 60364-4-41 układ {system} (I_d min, scenariusz MIN)",
+        )
+    return {
+        **_brak(widok.get("reason_pl") or f"Pętla doziemna układu {system} niedostępna."),
+        "kod_odmowy": widok.get("kod_odmowy"),
+    }
+
+
+def _swz_tt_it(widok: dict[str, Any], system: str) -> dict[str, Any]:
+    """Sekcja `swz` z widoku SWZ TT/IT: rekord werdyktu wyjaśnialnego albo odmowa nazwana."""
+    if widok.get("status") == "OK":
+        return _wartosc(
+            widok["swz"],
+            f"werdykt wyjaśnialny SWZ układu {system} (kontrakt {widok['swz']['kontrakt']})",
+        )
+    return {
+        **_brak(widok.get("reason_pl") or f"Werdykt SWZ układu {system} niedostępny."),
+        "kod_odmowy": widok.get("kod_odmowy"),
+    }
 
 
 def _nierozstrzygalne(reason_pl: str) -> dict[str, Any]:
@@ -702,6 +731,8 @@ def _build_row(
 
     # --- Dobór aparatu (Ik1_min/U0/status z wybierz_aparat_dla_obwodu_nn) --
     dobor_wejscie = None
+    dobor_kod: str | None = None
+    widok_tt_it: dict[str, Any] | None = None
     if ib_a is None:
         dobor_status = "brak danych"
         dobor_reason: str | None = f"Ib nieustalone — {ib_odmowa_pl}"
@@ -712,11 +743,12 @@ def _build_row(
             "SWZ/pętla TN nie jest liczona (brak danej nie jest zastępowany układem domyślnym)."
         )
     elif not uklad_tn(system):
+        # Karta W5-E-TTIT: dobór aparatu nadprądowego wg SWZ przy Ik_min nie dotyczy układu
+        # TT/IT (kod limitu); pętlę doziemną i werdykt SWZ TT/IT liczy `build_swz_view`
+        # (niżej, sekcje `ik_min` i `swz`), kryteria przeciążeniowe (i)/(ii) — jak w TN.
         dobor_status = "nie dotyczy"
-        dobor_reason = (
-            f"Układ {system}: SWZ/pętla TN (IEC 60364-4-41) nie dotyczy — inny mechanizm "
-            "ochrony przeciwporażeniowej."
-        )
+        dobor_reason, dobor_kod = odmowa_doboru_nadpradowego_tt_it(system)
+        widok_tt_it = build_swz_view(enm, station.ref_id, worst_bus_ref, root_branch_ref)
     elif iz_prime_a is None:
         dobor_status = "brak danych"
         dobor_reason = "Iz′ niedostępne — dobór/kryteria wymagają obciążalności skorygowanej."
@@ -746,17 +778,16 @@ def _build_row(
         if ikss_ka is not None
         else _brak("Brak biegu zwarciowego IEC 60909 (parametr short_circuit_run_id) dla punktu.")
     )
-    ik_min_sekcja = (
-        _wartosc(
+    if dobor_wejscie is not None:
+        ik_min_sekcja = _wartosc(
             dobor_wejscie["ik1_min_a"], "pętla zwarcia IEC 60364-4-41 (Ik1_min, scenariusz MIN)"
         )
-        if dobor_wejscie is not None
-        else (
-            _nie_dotyczy(dobor_reason or "")
-            if dobor_status == "nie dotyczy"
-            else _brak(dobor_reason or "Ik1_min niedostępne.")
-        )
-    )
+    elif widok_tt_it is not None:
+        ik_min_sekcja = _ik_min_tt_it(widok_tt_it, system or "")
+    elif dobor_status == "nie dotyczy":
+        ik_min_sekcja = _nie_dotyczy(dobor_reason or "")
+    else:
+        ik_min_sekcja = _brak(dobor_reason or "Ik1_min niedostępne.")
 
     # --- Aparat / nastawy / kryteria (i)-(iv) — REUSE oceniaj_kandydata ---
     if aparat_korzenia is None:
@@ -818,19 +849,63 @@ def _build_row(
                 kryterium_ii_sekcja = zle
                 swz_sekcja = zle
                 status_doboru_sekcja = zle
+            elif widok_tt_it is not None and ib_a is not None and iz_prime_a is not None:
+                # Układ TT/IT (karta W5-E-TTIT): kryteria przeciążeniowe (i)/(ii) jak w TN
+                # (ten sam kod), SWZ = werdykt wyjaśnialny pętli doziemnej, dobór wg SWZ
+                # przy Ik_min = odmowa nazwana kodem limitu (status „nie dotyczy").
+                kr_i, kr_ii = oceniaj_przeciazenie_kandydata(
+                    kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a
+                )
+                kryterium_i_sekcja = _wartosc(
+                    {"status": kr_i.status.value, "wartosci": kr_i.wartosci}, kr_i.uzasadnienie_pl
+                )
+                kryterium_ii_sekcja = (
+                    _wartosc(
+                        {"status": kr_ii.status.value, "wartosci": kr_ii.wartosci},
+                        kr_ii.uzasadnienie_pl,
+                    )
+                    if kr_ii.status.value != "nierozstrzygalne"
+                    else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
+                )
+                k2 = _k2_dla_rodzaju(urzadzenie.kind)
+                i2_a = kr_ii.wartosci.get("i2_a")
+                k2_i2_sekcja = (
+                    _wartosc(
+                        {"k2": k2, "i2_a": i2_a},
+                        kr_ii.wartosci.get("zrodlo") or "IEC 60898-1/60269-1/60947-2",
+                    )
+                    if i2_a is not None
+                    else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
+                )
+                swz_sekcja = _swz_tt_it(widok_tt_it, system or "")
+                status_doboru_sekcja = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
             # `ib_a is None` => `dobor_wejscie is None` (dobór liczony wyłącznie przy
             # ustalonym Ib, gałąź wyżej) — warunek jawny, żeby gałąź oceny miała Ib.
             elif dobor_wejscie is None or ib_a is None:
-                brak_wej = (
-                    _brak(dobor_reason or "Ik1_min/U0 niedostępne dla tego obwodu.")
-                    if dobor_status == "brak danych"
-                    else _nie_dotyczy(dobor_reason or "")
-                )
+                if widok_tt_it is not None:
+                    # TT/IT bez Ib albo Iz′: kryteria przeciążeniowe są NIEDOSTĘPNE (brak danych
+                    # wejściowych), nie „nie dotyczy" — to inny stan niż dobór wg SWZ.
+                    brak_wej = _brak(
+                        f"Ib nieustalone — {ib_odmowa_pl}"
+                        if ib_a is None
+                        else "Iz′ niedostępne — kryteria przeciążeniowe wymagają obciążalności "
+                        "skorygowanej."
+                    )
+                elif dobor_status == "brak danych":
+                    brak_wej = _brak(dobor_reason or "Ik1_min/U0 niedostępne dla tego obwodu.")
+                else:
+                    brak_wej = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
                 k2_i2_sekcja = brak_wej
                 kryterium_i_sekcja = brak_wej
                 kryterium_ii_sekcja = brak_wej
-                swz_sekcja = brak_wej
-                status_doboru_sekcja = brak_wej
+                swz_sekcja = (
+                    _swz_tt_it(widok_tt_it, system or "") if widok_tt_it is not None else brak_wej
+                )
+                status_doboru_sekcja = (
+                    {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
+                    if widok_tt_it is not None
+                    else brak_wej
+                )
             else:
                 ocena = oceniaj_kandydata(
                     kandydat=kandydat,

@@ -66,6 +66,7 @@ export type CadSwitchState = 'closed' | 'open' | 'unknown';
 export type CadFunctionalClass =
   | 'wylacznik'
   | 'wylacznik_instalacyjny'
+  | 'wylacznik_roznicowopradowy'
   | 'odlacznik'
   | 'rozlacznik'
   | 'lacznik_ogolny'
@@ -125,6 +126,7 @@ export interface CadSymbolDef {
 export type CadSymbolId =
   | 'cad.wylacznik'
   | 'cad.wylacznikInstalacyjny'
+  | 'cad.wylacznikRoznicowopradowy'
   | 'cad.odlacznik'
   | 'cad.rozlacznik'
   | 'cad.lacznik'
@@ -220,6 +222,26 @@ const WYZWALACZE_MCB: readonly CadPrimitive[] = [
   { k: 'path', d: `M ${OS - 1.5} 11.25 V 9.75 H ${OS - 3} V 11.25`, fill: 'none' },
   { k: 'line', x1: OS - 3, y1: 11.25, x2: OS - 5, y2: 11.25 },
   { k: 'path', d: `M ${OS - 4.4} 10.4 L ${OS - 5.8} 11.25 L ${OS - 4.4} 12.1 Z`, fill: 'ink' },
+];
+
+/** Rdzeń sumacyjny wyłącznika różnicowoprądowego (IEC 60617: przekładnik
+ *  pierścieniowy obejmujący przewody toru) — elipsa na przewodzie POD przegubem,
+ *  nieruchoma (nie obraca się z nożem). */
+const RDZEN_RCD_Y = 21;
+const RDZEN_RCD: readonly CadPrimitive[] = [
+  { k: 'path', d: `M ${OS - 3.4} ${RDZEN_RCD_Y} a 3.4 1.5 0 1 0 6.8 0 a 3.4 1.5 0 1 0 -6.8 0 Z`, fill: 'none' },
+];
+
+/** Sprzężenie mechaniczne (IEC 60617 S00144 — linia kreskowa) od rdzenia do napędu
+ *  styku: kreski rysowane jawnie (prymityw linii nie ma stylu przerywanego), nieruchome —
+ *  w stanie otwartym końcówka zostaje przy osi napędu, jak na rysunku wykonawczym. */
+const SPRZEZENIE_RCD: readonly CadPrimitive[] = [
+  { k: 'line', x1: OS + 3.4, y1: RDZEN_RCD_Y, x2: OS + 4.6, y2: RDZEN_RCD_Y },
+  { k: 'line', x1: OS + 4.6, y1: 19.6, x2: OS + 4.6, y2: 18.4 },
+  { k: 'line', x1: OS + 4.6, y1: 17.2, x2: OS + 4.6, y2: 16 },
+  { k: 'line', x1: OS + 4.6, y1: 14.8, x2: OS + 4.6, y2: 13.6 },
+  { k: 'line', x1: OS + 4.6, y1: 12.4, x2: OS + 3.4, y2: 12.4 },
+  { k: 'line', x1: OS + 2.2, y1: 12.4, x2: OS + 1, y2: 12.4 },
 ];
 
 function stanyLacznika(
@@ -346,6 +368,23 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     minimumSizePx: 28,
     lodPolicy: 'zawsze',
     notes: 'Bez krzyżyka — funkcję wyłączania niosą wyzwalacze przy nożu (pierwowzór rysuje tak KAŻDY aparat modułowy B/C). Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_MCB).',
+  },
+  'cad.wylacznikRoznicowopradowy': {
+    symbolId: 'cad.wylacznikRoznicowopradowy',
+    domainType: 'branch.switch z katalogu APARAT_NN_RCD (wyłącznik różnicowoprądowy, operacja add_nn_rcd)',
+    functionalClass: 'wylacznik_roznicowopradowy',
+    polishName: 'Wyłącznik różnicowoprądowy',
+    standardReference: 'IEC 60617: S00227 styk zwierny + S00219 funkcja wyłącznika (krzyżyk) + rdzeń sumacyjny (przekładnik pierścieniowy) na przewodzie toru + S00144 sprzężenie mechaniczne do napędu styku; zwyczaj rysunkowy RCD/RCCB (IEC 61008-1)',
+    verificationStatus: 'ENGINEERING_REVIEWED',
+    nominalWidth: 16,
+    nominalHeight: 24,
+    terminals: ZACISKI_16x24,
+    anchors: KOTWICE_16x24,
+    body: [przewodGorny(), przewodDolny(), ...RDZEN_RCD, ...SPRZEZENIE_RCD],
+    states: stanyLacznika(KRZYZYK_WYLACZNIKA, (deg) => noz(deg)),
+    minimumSizePx: 28,
+    lodPolicy: 'zawsze',
+    notes: 'Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_RCD), nie z typu gałęzi (RCD jest gałęzią switch). Parametry I_Δn / typ / In opisuje etykieta aparatu z tabliczki katalogowej, nie symbol.',
   },
   'cad.odlacznik': {
     symbolId: 'cad.odlacznik',

@@ -219,6 +219,7 @@ export const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
   'start-branch': 'Rozpocznij odgałęzienie',
   'add-source': 'Dodaj PV/BESS/FW',
   'add-load': 'Dodaj odbiór nN',
+  'add-rcd': 'Dodaj wyłącznik różnicowoprądowy nN',
   // K5-A (H-4): nowe wejścia kreatorów z menu/drawera kanwy.
   'add-compensator': 'Dodaj kompensator',
   'add-arrester': 'Dodaj ogranicznik przepięć',
@@ -348,6 +349,8 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
       return 'Otwieram formularz dodania pola SN.';
     case 'add_nn_load':
       return 'Otwieram formularz dodania obciążenia nN.';
+    case 'add_nn_rcd':
+      return 'Otwieram formularz wyłącznika różnicowoprądowego nN.';
     case 'set_normal_open_point':
       return 'Otwieram formularz punktu normalnie otwartego.';
     // K5-A (H-4): komunikaty nowych wejść menu kanwy.
@@ -520,6 +523,7 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   'insert-pole': 'insert_branch_pole_on_segment_sn',
   'insert-sectional': 'insert_section_switch_sn',
   'add-load': 'add_nn_load',
+  'add-rcd': 'add_nn_rcd',
   'set-switch-state': 'set_normal_open_point',
   // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
   // realne operacje domenowe (operationFormRegistry + operationContext już

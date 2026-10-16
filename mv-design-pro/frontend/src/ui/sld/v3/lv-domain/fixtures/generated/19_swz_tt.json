@@ -1,0 +1,1644 @@
+{
+  "case_id": "fixture-19_swz_tt",
+  "completeness": "COMPLETE",
+  "contract": "LvDomainProjectionV1",
+  "contract_version": "4.0.0",
+  "graph": {
+    "boundary_links": [],
+    "branches": [
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c40",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QF-01",
+        "ref_id": "QF-01",
+        "status": "closed",
+        "to_bus_ref": "QF-01_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
+        "from_bus_ref": "QF-01_zacisk",
+        "name": "Kabel QF-01",
+        "ref_id": "QF-01_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-01_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c25",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QF-02",
+        "ref_id": "QF-02",
+        "status": "closed",
+        "to_bus_ref": "QF-02_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
+        "from_bus_ref": "QF-02_zacisk",
+        "name": "Kabel QF-02",
+        "ref_id": "QF-02_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-02_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-600a",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "from_bus_ref": "T1_zacisk",
+        "name": "QF-T1",
+        "ref_id": "QF-T1",
+        "status": "closed",
+        "to_bus_ref": "RGnN-1",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_RCD",
+        "catalog_ref": "rcd_nn_a_40a_30ma",
+        "device_kind": null,
+        "from_bus_ref": "QF-01_koniec",
+        "name": "RCD-01",
+        "ref_id": "RCD-01",
+        "status": "closed",
+        "to_bus_ref": "QF-01_instalacja",
+        "type": "switch"
+      }
+    ],
+    "buses": [
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 3,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zaciski instalacji: Odbiór z RCD",
+        "ref_id": "QF-01_instalacja",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór z RCD",
+        "ref_id": "QF-01_koniec",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-01 zacisk wyjściowy",
+        "ref_id": "QF-01_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór bez RCD",
+        "ref_id": "QF-02_koniec",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-02 zacisk wyjściowy",
+        "ref_id": "QF-02_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "RGnN-1",
+        "ref_id": "RGnN-1",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "T1 zacisk nN",
+        "ref_id": "T1_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "devices": [
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-01_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QF-01",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QF-01_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-01_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-01_zacisk",
+        "ref_id": "QF-01_kabel",
+        "terminal_a": "QF-01_zacisk",
+        "terminal_b": "QF-01_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-02_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QF-02",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QF-02_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-02_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-02_zacisk",
+        "ref_id": "QF-02_kabel",
+        "terminal_a": "QF-02_zacisk",
+        "terminal_b": "QF-02_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "RGnN-1",
+        "designation_class": "QF",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "device_role": "incomer",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": null,
+        "parent_bus_ref": "T1_zacisk",
+        "ref_id": "QF-T1",
+        "terminal_a": "T1_zacisk",
+        "terminal_b": "RGnN-1",
+        "transformer_ref": "T1"
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "APARAT_NN_RCD",
+        "child_bus_ref": "QF-01_instalacja",
+        "designation_class": "F",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "switch",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-01_koniec",
+        "rcd": {
+          "i_delta_n_a": 0.03,
+          "in_a": 40.0,
+          "rcd_type": "A",
+          "selective": false
+        },
+        "ref_id": "RCD-01",
+        "terminal_a": "QF-01_koniec",
+        "terminal_b": "QF-01_instalacja",
+        "transformer_ref": null
+      }
+    ],
+    "earthing_system": "TT",
+    "energization_basis_pl": "Stany zasilania są topologiczne (wg aktualnych stanów łączników); model nie niesie pomiarów obecności napięcia.",
+    "generators": [],
+    "islands": [
+      {
+        "bus_refs": [
+          "QF-01_instalacja",
+          "QF-01_koniec",
+          "QF-01_zacisk",
+          "QF-02_koniec",
+          "QF-02_zacisk",
+          "RGnN-1",
+          "T1_zacisk"
+        ],
+        "der_refs": [],
+        "energization_state": "ENERGIZED",
+        "energizing_source_ids": [
+          "T1"
+        ],
+        "frequency_reference_source_id": "src",
+        "grid_source_refs": [
+          "src"
+        ],
+        "has_grid_forming_source": false,
+        "is_energized": true,
+        "is_islanded": false,
+        "island_operation_allowed": null,
+        "island_ref": "island-1",
+        "neutral_reference": {
+          "source_ref": "T1",
+          "status": "ustalone",
+          "status_pl": "Układ TT; punkt neutralny: T1.",
+          "swz_evaluable": true,
+          "system": "TT"
+        },
+        "power_balance": {
+          "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
+          "p_generation_mw": 0,
+          "p_load_mw": 0.025,
+          "state": "z_sieci"
+        },
+        "transformer_refs": [
+          "T1"
+        ],
+        "upstream_system_ids": [
+          "sn"
+        ],
+        "validation_messages": [],
+        "voltage_reference_source_id": "src"
+      }
+    ],
+    "loads": [
+      {
+        "bus_ref": "QF-01_instalacja",
+        "name": "Odbiór z RCD",
+        "p_mw": 0.015,
+        "q_mvar": 0.003,
+        "ref_id": "QF-01_odbior"
+      },
+      {
+        "bus_ref": "QF-02_koniec",
+        "name": "Odbiór bez RCD",
+        "p_mw": 0.01,
+        "q_mvar": 0.002,
+        "ref_id": "QF-02_odbior"
+      }
+    ],
+    "measured_voltage_states": {},
+    "measurements": [],
+    "missing_data": [],
+    "protection_assignments": [],
+    "root_bus_refs": [
+      "RGnN-1",
+      "T1_zacisk"
+    ],
+    "sections": [
+      {
+        "bus_ref": "RGnN-1",
+        "coupler_refs": [],
+        "incomer_refs": [
+          "QF-T1"
+        ],
+        "order": 1,
+        "section_id": "RGnN-1",
+        "station_ref": "stTT",
+        "tier": "main",
+        "transformer_refs": [
+          "T1"
+        ]
+      }
+    ],
+    "segments": [
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-01",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-01_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-01_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-01_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-01_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-02",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-02_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-02_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-02_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-02_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "T1_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-T1",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "RGnN-1",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-01_koniec",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "RCD-01",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-01_instalacja",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "station_name": "Stacja TT",
+    "station_ref": "stTT",
+    "status": "OK",
+    "sub_switchboards": [],
+    "supply_paths": [
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-01",
+          "QF-01_kabel",
+          "RCD-01"
+        ],
+        "bus_ref": "QF-01_instalacja",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-01",
+          "QF-01_kabel"
+        ],
+        "bus_ref": "QF-01_koniec",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-01"
+        ],
+        "bus_ref": "QF-01_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02",
+          "QF-02_kabel"
+        ],
+        "bus_ref": "QF-02_koniec",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02"
+        ],
+        "bus_ref": "QF-02_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1"
+        ],
+        "bus_ref": "RGnN-1",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [],
+        "bus_ref": "T1_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      }
+    ],
+    "transformers": [
+      {
+        "hv_bus_ref": "sn",
+        "lv_bus_ref": "T1_zacisk",
+        "lv_neutral": {
+          "r_ohm": 2.0,
+          "type": "directly_grounded",
+          "x_ohm": null
+        },
+        "name": "T1",
+        "ref_id": "T1",
+        "sn_mva": 0.4,
+        "uhv_kv": 15.0,
+        "uk_percent": 4.0,
+        "ulv_kv": 0.4,
+        "upstream_system_id": "sn",
+        "vector_group": "Dyn5"
+      }
+    ]
+  },
+  "missing_data": [],
+  "model_snapshot": {
+    "case_id": "fixture-19_swz_tt",
+    "model_hash": "30cdaab5fc3479ac28fb4ee2231a3044a5e0e0b1174c91b5267c08cb36c565db",
+    "operating_state_id": "0a0556fb4b088d7ba8b0d2439b937e997035e87322890788afd0a2d97c95c5ca",
+    "revision": 1,
+    "run_snapshot_hash": null,
+    "scenario_id": "MAX",
+    "station_ref": "stTT"
+  },
+  "projection_hash": "541c4fd6d221932ad53f85b3f2a6baa9883d8f9a298493ecad34e6e6775e9ace",
+  "result_snapshot": {
+    "analysis_type": null,
+    "overlay_payload": null,
+    "reason": "brak-wyniku",
+    "reason_pl": "Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.",
+    "result_contract_version": null,
+    "result_signature": null,
+    "run_finished_at": null,
+    "run_id": null,
+    "run_model_hash": null,
+    "status": "NONE",
+    "voltage_profile": null
+  },
+  "scenario_id": "MAX",
+  "station_ref": "stTT",
+  "status": "OK",
+  "swz_snapshot": {
+    "kod_odmowy": null,
+    "missing_data": [],
+    "network_system": "TT",
+    "reason_pl": null,
+    "status": "OK",
+    "transformers": [
+      {
+        "feeders": [
+          {
+            "feeder_root_branch_ref": "QF-01",
+            "points": [
+              {
+                "bus_ref": "QF-01_instalacja",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0697343072,
+                      "r_ohm": 0.06944,
+                      "x_ohm": 0.0064
+                    },
+                    {
+                      "label": "T1",
+                      "magnitude_ohm": 0.016,
+                      "r_ohm": 0.00412,
+                      "x_ohm": 0.0154604528
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
+                    },
+                    {
+                      "label": "Uziom punktu neutralnego transformatora R_B",
+                      "magnitude_ohm": 2.0,
+                      "r_ohm": 2.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Uziom instalacji odbiorczej R_A",
+                      "magnitude_ohm": 25.0,
+                      "r_ohm": 25.0,
+                      "x_ohm": 0.0
+                    }
+                  ],
+                  "fault_node_id": "QF-01_instalacja",
+                  "ik_max_a": 8.95657588,
+                  "ik_min_a": 8.10356865,
+                  "network_type": "TT",
+                  "protection_arrangement": "NONE",
+                  "tt_it": {
+                    "b_e_s": null,
+                    "c_e_f": null,
+                    "czestotliwosc_hz": null,
+                    "i_d2_max_a": null,
+                    "i_d2_min_a": null,
+                    "i_d_pierwsze_zwarcie_a": null,
+                    "i_delta_n_a": 0.03,
+                    "pojemnosci": [],
+                    "r_a_ohm": 25.0,
+                    "r_b_ohm": 2.0,
+                    "rodzaj_pradu_pl": "prąd zwarcia doziemnego przez uziomy R_A i R_B (pętla TT)",
+                    "u_dotyk_pierwsze_zwarcie_v": null,
+                    "u_dotyk_v": 0.75,
+                    "u_ll_v": null,
+                    "uklad": "TT"
+                  },
+                  "u_nom_v": 230.940108,
+                  "white_box_trace": [
+                    {
+                      "method": "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji R_A i uziom punktu neutralnego R_B; przewód ochronny kabla zasilającego nie należy do pętli",
+                      "r_a_ohm": 25.0,
+                      "r_b_ohm": 2.0,
+                      "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)",
+                      "step": "uklad_tt_droga_powrotu"
+                    },
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.06944,
+                          "x_ohm": 0.0064
+                        },
+                        {
+                          "label": "T1",
+                          "r_ohm": 0.00412,
+                          "x_ohm": 0.0154604528
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
+                        },
+                        {
+                          "label": "Uziom punktu neutralnego transformatora R_B",
+                          "r_ohm": 2.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Uziom instalacji odbiorczej R_A",
+                          "r_ohm": 25.0,
+                          "x_ohm": 0.0
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 27.0736402,
+                        "r_total_ohm": 27.0736311,
+                        "x_total_ohm": 0.0222160083
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 8.95657588,
+                      "ik_min_a": 8.10356865,
+                      "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 27.0736402
+                    },
+                    {
+                      "i_delta_n_a": 0.03,
+                      "method": "U_dotyk = R_A · I_Δn (napięcie na uziomie instalacji przy prądzie różnicowym znamionowym RCD)",
+                      "r_a_ohm": 25.0,
+                      "step": "napiecie_dotykowe_rcd",
+                      "u_dotyk_v": 0.75
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.0222160083,
+                    "magnitude": 27.0736402,
+                    "re": 27.0736311
+                  }
+                },
+                "hop_count": 4,
+                "kod_odmowy": null,
+                "reason_pl": null,
+                "status": "OK",
+                "tt_it": {
+                  "czestotliwosc_hz": null,
+                  "odcinki_pojemnosci": [],
+                  "r_a": {
+                    "load_ref": "QF-01_odbior",
+                    "nazwa": "Odbiór z RCD",
+                    "pominiete_load_refs": [],
+                    "r_a_ohm": 25.0
+                  },
+                  "r_b_ohm": 2.0,
+                  "rcd": {
+                    "branch_ref": "RCD-01",
+                    "catalog_ref": "rcd_nn_a_40a_30ma",
+                    "i_delta_n_a": 0.03,
+                    "in_a": 40.0,
+                    "nazwa": "RCD-01",
+                    "rcd_type": "A",
+                    "selective": false,
+                    "source_reference": null,
+                    "t_a_2idn_s": 0.15,
+                    "t_a_5idn_s": 0.04,
+                    "t_a_s": 0.3,
+                    "verification_status": "REFERENCYJNY"
+                  }
+                }
+              },
+              {
+                "bus_ref": "QF-01_koniec",
+                "fault_loop": null,
+                "hop_count": 3,
+                "kod_odmowy": "nn.brak_r_a",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „Zacisk Odbiór z RCD” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "status": "brak danych",
+                "tt_it": null
+              },
+              {
+                "bus_ref": "QF-01_zacisk",
+                "fault_loop": null,
+                "hop_count": 2,
+                "kod_odmowy": "nn.brak_r_a",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-01 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "status": "brak danych",
+                "tt_it": null
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QF-01",
+              "bus_ref": "QF-01_instalacja",
+              "fault_loop_min_scenario": {
+                "components": [
+                  {
+                    "label": "Przewód fazowy L (trasa)",
+                    "magnitude_ohm": 0.108515294,
+                    "r_ohm": 0.1083264,
+                    "x_ohm": 0.0064
+                  },
+                  {
+                    "label": "T1",
+                    "magnitude_ohm": 0.016,
+                    "r_ohm": 0.00412,
+                    "x_ohm": 0.0154604528
+                  },
+                  {
+                    "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                    "magnitude_ohm": 0.000362596943,
+                    "r_ohm": 7.11111111e-05,
+                    "x_ohm": 0.000355555556
+                  },
+                  {
+                    "label": "Uziom punktu neutralnego transformatora R_B",
+                    "magnitude_ohm": 2.0,
+                    "r_ohm": 2.0,
+                    "x_ohm": 0.0
+                  },
+                  {
+                    "label": "Uziom instalacji odbiorczej R_A",
+                    "magnitude_ohm": 25.0,
+                    "r_ohm": 25.0,
+                    "x_ohm": 0.0
+                  }
+                ],
+                "fault_node_id": "QF-01_instalacja",
+                "ik_max_a": 8.94372983,
+                "ik_min_a": 8.09194604,
+                "network_type": "TT",
+                "protection_arrangement": "NONE",
+                "tt_it": {
+                  "b_e_s": null,
+                  "c_e_f": null,
+                  "czestotliwosc_hz": null,
+                  "i_d2_max_a": null,
+                  "i_d2_min_a": null,
+                  "i_d_pierwsze_zwarcie_a": null,
+                  "i_delta_n_a": 0.03,
+                  "pojemnosci": [],
+                  "r_a_ohm": 25.0,
+                  "r_b_ohm": 2.0,
+                  "rodzaj_pradu_pl": "prąd zwarcia doziemnego przez uziomy R_A i R_B (pętla TT)",
+                  "u_dotyk_pierwsze_zwarcie_v": null,
+                  "u_dotyk_v": 0.75,
+                  "u_ll_v": null,
+                  "uklad": "TT"
+                },
+                "u_nom_v": 230.940108,
+                "white_box_trace": [
+                  {
+                    "method": "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji R_A i uziom punktu neutralnego R_B; przewód ochronny kabla zasilającego nie należy do pętli",
+                    "r_a_ohm": 25.0,
+                    "r_b_ohm": 2.0,
+                    "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)",
+                    "step": "uklad_tt_droga_powrotu"
+                  },
+                  {
+                    "components": [
+                      {
+                        "label": "Przewód fazowy L (trasa)",
+                        "r_ohm": 0.1083264,
+                        "x_ohm": 0.0064
+                      },
+                      {
+                        "label": "T1",
+                        "r_ohm": 0.00412,
+                        "x_ohm": 0.0154604528
+                      },
+                      {
+                        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                        "r_ohm": 7.11111111e-05,
+                        "x_ohm": 0.000355555556
+                      },
+                      {
+                        "label": "Uziom punktu neutralnego transformatora R_B",
+                        "r_ohm": 2.0,
+                        "x_ohm": 0.0
+                      },
+                      {
+                        "label": "Uziom instalacji odbiorczej R_A",
+                        "r_ohm": 25.0,
+                        "x_ohm": 0.0
+                      }
+                    ],
+                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "result": {
+                      "magnitude_ohm": 27.1125266,
+                      "r_total_ohm": 27.1125175,
+                      "x_total_ohm": 0.0222160083
+                    },
+                    "step": "sum_components"
+                  },
+                  {
+                    "c_max": 1.05,
+                    "c_min": 0.95,
+                    "ik_max_a": 8.94372983,
+                    "ik_min_a": 8.09194604,
+                    "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)",
+                    "step": "compute_ik",
+                    "u_nom_v": 230.940108,
+                    "z_magnitude_ohm": 27.1125266
+                  },
+                  {
+                    "i_delta_n_a": 0.03,
+                    "method": "U_dotyk = R_A · I_Δn (napięcie na uziomie instalacji przy prądzie różnicowym znamionowym RCD)",
+                    "r_a_ohm": 25.0,
+                    "step": "napiecie_dotykowe_rcd",
+                    "u_dotyk_v": 0.75
+                  }
+                ],
+                "z_loop_ohm": {
+                  "im": 0.0222160083,
+                  "magnitude": 27.1125266,
+                  "re": 27.1125175
+                }
+              },
+              "missing_data": [],
+              "network_system": "TT",
+              "station_name": "Stacja TT",
+              "station_ref": "stTT",
+              "status": "OK",
+              "swz": {
+                "ik1_min_a": 8.09194604,
+                "kod_odmowy_limitu": "swz.limit_tt_it_brak_tekstu_normy",
+                "kontrakt": "werdykt_wyjasnialny_tt_it",
+                "pasmo_u0": "120<U0<=230",
+                "rodzaj_obwodu": "odbiorczy",
+                "t_wymagany_s": 0.2,
+                "uklad": "TT",
+                "wymaganie": {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "pętla doziemna TT w punkcie „Zaciski instalacji: Odbiór z RCD”",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryteria_naruszone": [],
+                  "kryterium_najblizej_granicy": null,
+                  "nazwa_pl": "Ochrona przez samoczynne wyłączenie zasilania w układzie TT",
+                  "oceny_skladowe": [
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "OBLICZENIE",
+                        "odniesienie": "pętla doziemna TT w punkcie „Zaciski instalacji: Odbiór z RCD”",
+                        "poziom": "UNVALIDATED_MODEL",
+                        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                        "status_danych": {
+                          "dane_przyjete": [],
+                          "stan": "ZWALIDOWANE"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+                        "semantyka": "ostrzegawcza"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego",
+                        "relacja": "NIE_MNIEJ",
+                        "warunek_latex": "I_{d,min} \\ge I_{\\Delta n}",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tt.prad_rcd",
+                      "limit": {
+                        "jednostka_obwiedni": null,
+                        "obwiednia": null,
+                        "pasmo": null,
+                        "podstawa": {
+                          "dokument": "rekord katalogowy wyłącznika różnicowoprądowego",
+                          "jednostka_redakcyjna": null,
+                          "rodzaj": "KATALOG_PRODUCENTA",
+                          "status": "NIEUSTALONE",
+                          "uwagi_pl": "rekord katalogowy „RCD-01” ma status weryfikacji „referencyjny” — prąd różnicowy znamionowy I_Δn nie jest przeniesiony ze zweryfikowanej karty producenta",
+                          "wydanie": null
+                        },
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 0.03
+                        },
+                        "wersja_profilu": null,
+                        "zakres_stosowalnosci_pl": "wyłącznik różnicowoprądowy „RCD-01” najbliższy punktowi"
+                      },
+                      "margines": {
+                        "definicja_latex": "m = x - x_{\\lim}",
+                        "niedefiniowalny": false,
+                        "powod_pl": null,
+                        "punkt_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
+                        "skala": {
+                          "jednostka": "A",
+                          "wartosc": 0.03
+                        },
+                        "skala_rodzaj": "LIMIT",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 8.06194604
+                        },
+                        "wzgledny": 268.731535
+                      },
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "wielkości pętli doziemnej liczone algebraicznie z impedancji modelu (bez dyskretyzacji) — niepewność numeryczna nie dotyczy",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.5 (układ TT) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy z modułu tabeli czasów (status referencyjny), limit napięcia dotykowego oczekuje na tekst od właściciela",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                        "Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "QF-01_instalacja",
+                        "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "petla-tt-it:QF-01_instalacja:compute_ik",
+                          "opis_pl": "I_d,min = 8,092 A z |Z_s| = 27,11 Ω",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "BRAK_PODSTAWY",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "układ TT: wyłącznik różnicowoprądowy zadziała dopiero, gdy prąd doziemny osiągnie I_Δn",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [
+                          "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: rekord katalogowy „RCD-01” ma status weryfikacji „referencyjny” — prąd różnicowy znamionowy I_Δn nie jest przeniesiony ze zweryfikowanej karty producenta)."
+                        ],
+                        "przyczyna_pl": "podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”",
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta): stan źródła „nieustalone” — pochodzenie wartości nieustalone (rekord katalogowy „RCD-01” ma status weryfikacji „referencyjny” — prąd różnicowy znamionowy I_Δn nie jest przeniesiony ze zweryfikowanej karty producenta).",
+                          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                          "Zakres ważności: Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
+                        ],
+                        "zdanie_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B): 8,092 A wobec wymaganych ≥ 0,03 A wg „rekord katalogowy wyłącznika różnicowoprądowego” (margines +8,062 A, punkt: punkt „Zaciski instalacji: Odbiór z RCD”, względnie +26870 % wartości granicznej)."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "OBLICZENIE",
+                        "punkt_krytyczny_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
+                        "symbol_latex": "I_{d,min}",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 8.09194604
+                        },
+                        "wielkosc_pl": "prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B)"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "RCD inny niż najbliższy punktowi na trasie"
+                        ]
+                      }
+                    },
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "DEKLARACJA",
+                        "odniesienie": "rekord katalogowy RCD „rcd_nn_a_40a_30ma”",
+                        "poziom": "DECLARATION",
+                        "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+                        "status_danych": {
+                          "dane_przyjete": [
+                            {
+                              "jakosc": "DATASHEET",
+                              "nazwa_pl": "czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn",
+                              "powod_pl": "rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta",
+                              "wartosc": {
+                                "jednostka": "s",
+                                "wartosc": 0.04
+                              }
+                            }
+                          ],
+                          "stan": "UNVALIDATED_INPUT"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                        "semantyka": "ostrzegawcza"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT",
+                        "relacja": "NIE_WIECEJ",
+                        "warunek_latex": "t_a \\le t_{wym}",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tt.czas_wylaczenia",
+                      "limit": {
+                        "jednostka_obwiedni": null,
+                        "obwiednia": null,
+                        "pasmo": null,
+                        "podstawa": {
+                          "dokument": "IEC 60364-4-41",
+                          "jednostka_redakcyjna": "Tab. 41.1 (układ TT, obwody odbiorcze)",
+                          "rodzaj": "NORMA",
+                          "status": "WSKAZANE",
+                          "uwagi_pl": "IEC 60364-4-41 Tab. 41.1, układ TT, obwody odbiorcze, wg pasma U0. Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” — cytuje 0,2 s (TT, 230 V) wprost; (2) rcddisconnectiontime.co.uk, „BS 7671:2018+A4:2026 Table 41.1” — tabela pełna TT AC: 50–120V:0,3s / 120–230V:0,2s / 230–400V:0,07s / >400V:0,04s. Status REFERENCYJNY (jak wyżej).",
+                          "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                        },
+                        "wartosc": {
+                          "jednostka": "s",
+                          "wartosc": 0.2
+                        },
+                        "wersja_profilu": null,
+                        "zakres_stosowalnosci_pl": "obwód odbiorczy, pasmo U0 120<U0<=230"
+                      },
+                      "margines": {
+                        "definicja_latex": "m = x_{\\lim} - x",
+                        "niedefiniowalny": false,
+                        "powod_pl": null,
+                        "punkt_pl": "prąd doziemny minimalny 8,092 A = 269,7 × I_Δn",
+                        "skala": {
+                          "jednostka": "s",
+                          "wartosc": 0.2
+                        },
+                        "skala_rodzaj": "LIMIT",
+                        "wartosc": {
+                          "jednostka": "s",
+                          "wartosc": 0.16
+                        },
+                        "wzgledny": 0.8
+                      },
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "czas wyłączenia z rekordu katalogowego aparatu — niepewność numeryczna nie dotyczy",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.5 (układ TT) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy z modułu tabeli czasów (status referencyjny), limit napięcia dotykowego oczekuje na tekst od właściciela",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "QF-01_instalacja",
+                        "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
+                          "opis_pl": "RCD „RCD-01”: I_Δn = 0,03 A, t_a = 0,3 s",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "SPELNIA",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "obwód odbiorczy w układzie TT, pasmo napięcia względem ziemi 120<U0<=230",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [],
+                        "przyczyna_pl": null,
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                          "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
+                        ],
+                        "zdanie_pl": "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium spełnione. Maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna 5·I_Δn rekordu katalogowego): 0,04 s wobec wymaganych ≤ 0,2 s wg Tab. 41.1 (układ TT, obwody odbiorcze) „IEC 60364-4-41” (margines +0,16 s, punkt: prąd doziemny minimalny 8,092 A = 269,7 × I_Δn, względnie +80 % wartości granicznej)."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "DEKLARACJA",
+                        "punkt_krytyczny_pl": "prąd doziemny minimalny 8,092 A = 269,7 × I_Δn",
+                        "symbol_latex": "t_a",
+                        "wartosc": {
+                          "jednostka": "s",
+                          "wartosc": 0.04
+                        },
+                        "wielkosc_pl": "maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna 5·I_Δn rekordu katalogowego)"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "RCD inny niż najbliższy punktowi na trasie"
+                        ]
+                      }
+                    },
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "OBLICZENIE",
+                        "odniesienie": "U_dotyk = R_A · I_Δn w punkcie „Zaciski instalacji: Odbiór z RCD”",
+                        "poziom": "UNVALIDATED_MODEL",
+                        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                        "status_danych": {
+                          "dane_przyjete": [],
+                          "stan": "ZWALIDOWANE"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+                        "semantyka": "ostrzegawcza"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego",
+                        "relacja": "NIE_WIECEJ",
+                        "warunek_latex": "R_A \\cdot I_{\\Delta n} \\le U_L",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tt.napiecie_dotykowe",
+                      "limit": null,
+                      "margines": null,
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "wielkości pętli doziemnej liczone algebraicznie z impedancji modelu (bez dyskretyzacji) — niepewność numeryczna nie dotyczy",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.5 (układ TT) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy z modułu tabeli czasów (status referencyjny), limit napięcia dotykowego oczekuje na tekst od właściciela",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "QF-01_instalacja",
+                        "nazwa_pl": "Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD",
+                        "opis_pl": "Obwód nN — stacja „Stacja TT” — od aparatu „QF-01” do punktu „Zaciski instalacji: Odbiór z RCD” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
+                          "opis_pl": "U_dotyk = 25 Ω · 0,03 A = 0,75 V",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "BRAK_PODSTAWY",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "układ TT: napięcie dotykowe zależy od uziomu instalacji i prądu różnicowego RCD",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [
+                          "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+                          "Dopuszczalne napięcie dotykowe układu TT z tekstu IEC 60364-4-41 (wydanie, punkt, cytat z jednostką) — pakiet danych właściciela; wartość nie jest przyjmowana z pamięci"
+                        ],
+                        "przyczyna_pl": "kryterium nie ma limitu z podstawą",
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                          "Zakres ważności: Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
+                        ],
+                        "zdanie_pl": "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie na uziomie instalacji przy prądzie różnicowym znamionowym: 0,75 V."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "OBLICZENIE",
+                        "punkt_krytyczny_pl": null,
+                        "symbol_latex": "U_{dotyk}",
+                        "wartosc": {
+                          "jednostka": "V",
+                          "wartosc": 0.75
+                        },
+                        "wielkosc_pl": "napięcie na uziomie instalacji przy prądzie różnicowym znamionowym"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "RCD inny niż najbliższy punktowi na trasie"
+                        ]
+                      }
+                    }
+                  ],
+                  "podstawa": {
+                    "dokument": "IEC 60364-4-41",
+                    "jednostka_redakcyjna": "§411.5 (układ TT) i Tab. 41.1",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy z modułu tabeli czasów (status referencyjny), limit napięcia dotykowego oczekuje na tekst od właściciela",
+                    "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                  },
+                  "podstawa_sposobu_wykazania": null,
+                  "pokrycie_programu": "NIE_DOTYCZY",
+                  "pokrycie_programu_pl": "ocena obwodu nN — program badań modułu wytwórczego nie dotyczy",
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+                    "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                    "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "slad": [
+                    {
+                      "krok": "petla-tt-it:QF-01_instalacja:compute_ik",
+                      "opis_pl": "I_d,min = 8,092 A z |Z_s| = 27,11 Ω",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    },
+                    {
+                      "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
+                      "opis_pl": "RCD „RCD-01”: I_Δn = 0,03 A, t_a = 0,3 s",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    },
+                    {
+                      "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
+                      "opis_pl": "U_dotyk = 25 Ω · 0,03 A = 0,75 V",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "sposob_wykazania": "OBLICZENIE",
+                  "status_maszynowy": "BRAK_PODSTAWY",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "transformator zasilający deklaruje układ sieci nN TT",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: rekord katalogowy „RCD-01” ma status weryfikacji „referencyjny” — prąd różnicowy znamionowy I_Δn nie jest przeniesiony ze zweryfikowanej karty producenta).",
+                      "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+                      "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dopuszczalne napięcie dotykowe układu TT z tekstu IEC 60364-4-41 (wydanie, punkt, cytat z jednostką) — pakiet danych właściciela; wartość nie jest przyjmowana z pamięci",
+                      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                      "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                      "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+                      "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                    ],
+                    "przyczyna_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”; Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium nie ma limitu z podstawą",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta): stan źródła „nieustalone” — pochodzenie wartości nieustalone (rekord katalogowy „RCD-01” ma status weryfikacji „referencyjny” — prąd różnicowy znamionowy I_Δn nie jest przeniesiony ze zweryfikowanej karty producenta).",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
+                      "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
+                      "Zakres ważności: Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
+                      "Zakres ważności: Ochrona przeciwporażeniowa obwodu nN w układzie TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
+                    ],
+                    "zdanie_pl": "Ochrona przez samoczynne wyłączenie zasilania w układzie TT (§411.5 (układ TT) i Tab. 41.1 „IEC 60364-4-41”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”; Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium nie ma limitu z podstawą."
+                  },
+                  "wymaganie_id": "swz.tt",
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Ochrona przeciwporażeniowa obwodu nN w układzie TT",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                      "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                      "RCD inny niż najbliższy punktowi na trasie"
+                    ]
+                  }
+                }
+              },
+              "transformer_ref": "T1",
+              "tt_it": {
+                "czestotliwosc_hz": null,
+                "odcinki_pojemnosci": [],
+                "r_a": {
+                  "load_ref": "QF-01_odbior",
+                  "nazwa": "Odbiór z RCD",
+                  "pominiete_load_refs": [],
+                  "r_a_ohm": 25.0
+                },
+                "r_b_ohm": 2.0,
+                "rcd": {
+                  "branch_ref": "RCD-01",
+                  "catalog_ref": "rcd_nn_a_40a_30ma",
+                  "i_delta_n_a": 0.03,
+                  "in_a": 40.0,
+                  "nazwa": "RCD-01",
+                  "rcd_type": "A",
+                  "selective": false,
+                  "source_reference": null,
+                  "t_a_2idn_s": 0.15,
+                  "t_a_5idn_s": 0.04,
+                  "t_a_s": 0.3,
+                  "verification_status": "REFERENCYJNY"
+                }
+              }
+            },
+            "worst_point_bus_ref": "QF-01_instalacja"
+          },
+          {
+            "feeder_root_branch_ref": "QF-02",
+            "points": [
+              {
+                "bus_ref": "QF-02_koniec",
+                "fault_loop": null,
+                "hop_count": 3,
+                "kod_odmowy": "nn.brak_rcd",
+                "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+                "status": "brak danych",
+                "tt_it": null
+              },
+              {
+                "bus_ref": "QF-02_zacisk",
+                "fault_loop": null,
+                "hop_count": 2,
+                "kod_odmowy": "nn.brak_r_a",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-02 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "status": "brak danych",
+                "tt_it": null
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QF-02",
+              "bus_ref": "QF-02_koniec",
+              "kod_odmowy": "nn.brak_rcd",
+              "missing_data": [
+                "rcd"
+              ],
+              "network_system": "TT",
+              "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+              "station_name": "Stacja TT",
+              "station_ref": "stTT",
+              "status": "brak danych"
+            },
+            "worst_point_bus_ref": "QF-02_koniec"
+          }
+        ],
+        "kod_odmowy": null,
+        "missing_data": [],
+        "nn_bus_ref": "T1_zacisk",
+        "reason_pl": null,
+        "status": "OK",
+        "transformer_ref": "T1"
+      }
+    ]
+  },
+  "upstream_equivalents": [
+    {
+      "c_factor": 1.1,
+      "calculation_run_id": "7387ea46-b894-5e92-bba0-9e8aace4db29",
+      "case_id": "fixture-19_swz_tt",
+      "equivalent_id": "f747fb41-7d65-5e00-8d15-72f0f96c07fb",
+      "ikss_ka": 18.6825711,
+      "missing_data": [],
+      "model_hash": "30cdaab5fc3479ac28fb4ee2231a3044a5e0e0b1174c91b5267c08cb36c565db",
+      "model_revision": 1,
+      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "operating_state_id": "0a0556fb4b088d7ba8b0d2439b937e997035e87322890788afd0a2d97c95c5ca",
+      "rx_ratio": 0.2,
+      "scenario_id": "MAX",
+      "sk_mva": 485.387434,
+      "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
+      "station_name": "Stacja TT",
+      "station_ref": "stTT",
+      "status": "OK",
+      "transformer_ref": "T1",
+      "upstream_node_id": "sn",
+      "upstream_source_ids": [
+        "src"
+      ],
+      "upstream_source_names": [
+        "GPZ"
+      ],
+      "upstream_system_id": "sn",
+      "uth_kv": 16.5,
+      "voltage_kv": 15.0,
+      "voltage_level_id": "kv:15",
+      "z0_missing_reason_pl": null,
+      "z0_ohm": {
+        "r": 2.25e-06,
+        "x": 0.0
+      },
+      "z1_ohm": {
+        "r": 0.1,
+        "x": 0.5
+      }
+    }
+  ],
+  "validation_messages": []
+}

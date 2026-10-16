@@ -125,6 +125,7 @@ from .tor_pola import (
     wolne_pole_szyny,
 )
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
@@ -10317,6 +10318,12 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         _, blad_faz = waliduj_fazy_odbioru(parameters["phases"])
         if blad_faz is not None:
             return _error_response(blad_faz, KOD_BLEDU_FAZ)
+    # Karta W5-E-TTIT: korekta uziomu instalacji odbiorczej przez TEN SAM walidator co
+    # kreator odbioru (`enm/uziom_instalacji.py`); `None` zdejmuje deklarację (dana nieobecna).
+    if coll == "loads" and "earth_electrode_r_ohm" in parameters:
+        _, blad_r_a = waliduj_r_a(parameters["earth_electrode_r_ohm"])
+        if blad_r_a is not None:
+            return _error_response(blad_r_a, KOD_BLEDU_R_A)
     # W5-A: pola słownikowe (grupa połączeń, układ nN, punkt neutralny, ekran kabla)
     # sprawdzane tym samym predykatem co kreatory — korekta ekspercka nie ma
     # osobnej, luźniejszej drogi zapisu.

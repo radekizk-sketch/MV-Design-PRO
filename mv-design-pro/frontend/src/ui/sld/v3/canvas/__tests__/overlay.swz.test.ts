@@ -38,6 +38,7 @@ describe('P0.8 nN — buildSwzOverlayFromResponses (przepisanie werdyktu 3-stano
       ownerRef: 'brc/mcb1',
       status: 'spełnia',
       przyczynaPl: 'Ik1_min ≥ Ia wymagane',
+      oznaczeniePradu: 'Ik₁min',
       ik1MinA: 250,
       iaWymaganeA: 160,
       tWymaganyS: 0.4,

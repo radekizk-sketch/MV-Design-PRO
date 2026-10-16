@@ -287,6 +287,46 @@ export interface LVApparatusType extends CatalogType {
   tsd_range?: [number, number] | null;
 }
 
+/** Rodzaj prądu różnicowego RCD — słownik `RODZAJE_PRADU_ROZNICOWEGO_RCD` backendu. */
+export type RodzajPraduRoznicowegoRcd = 'AC' | 'A' | 'F' | 'B';
+
+/**
+ * LV RCD Type (APARAT_NN_RCD) — wyłącznik różnicowoprądowy nN (RCCB IEC 61008-1 / RCBO
+ * IEC 61009-1). Lustro 1:1 `LVRcdType.to_dict()` (network_model/catalog/types.py, karta
+ * W5-E-TTIT), łącznie z metadanymi wiarygodności pozycji. Interfejs samodzielny (nie
+ * `extends CatalogType`), bo backend serwuje `manufacturer: null`, czego `CatalogType`
+ * (`manufacturer?: string`) nie wyraża.
+ */
+export interface LVRcdType {
+  id: string;
+  name: string;
+  /** Prąd znamionowy In [A]. */
+  in_a: number;
+  /** Prąd różnicowy znamionowy zadziałania I_Δn [A]. */
+  i_delta_n_a: number;
+  rcd_type: RodzajPraduRoznicowegoRcd;
+  /** `true` = typ S (selektywny, zwłoczny). */
+  selective: boolean;
+  /** Maksymalny czas wyłączenia przy I_Δn [s]. */
+  t_a_s: number;
+  /** Maksymalny czas wyłączenia przy 2·I_Δn [s]. */
+  t_a_2idn_s: number | null;
+  /** Maksymalny czas wyłączenia przy 5·I_Δn [s]. */
+  t_a_5idn_s: number | null;
+  /** Minimalny czas niezadziałania [s] (tylko typ S). */
+  t_nieczuly_min_s: number | null;
+  /** Napięcie znamionowe Un [kV]. */
+  u_n_kv: number;
+  poles: number | null;
+  manufacturer: string | null;
+  verification_status: string;
+  source_reference: string;
+  catalog_status: string;
+  contract_version: string;
+  /** Obecne wyłącznie, gdy backend niesie notę weryfikacji. */
+  verification_note?: string;
+}
+
 /**
  * CT Type (Przekładnik prądowy).
  * Source: backend CTType dataclass.
@@ -527,6 +567,7 @@ export type CatalogNamespace =
   | 'TRAFO_SN_NN'
   | 'APARAT_SN'
   | 'APARAT_NN'
+  | 'APARAT_NN_RCD'
   | 'KABEL_NN'
   | 'CT'
   | 'VT'
@@ -546,7 +587,7 @@ export type CatalogNamespace =
  */
 export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
-  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
+  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 

@@ -123,6 +123,7 @@
  * wewnętrzne szyny/sekcje bez nakładki, znana luka adaptera (f6-1/f6-3,
  * rozszerzenie sectionId→busRef to zmiana adaptera poza zakresem F8b-1).
  */
+import type { StatusWerdyktu, WynikWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import {
@@ -307,6 +308,9 @@ export interface SwzOverlayEntry {
   readonly ownerRef: string;
   readonly status: SwzVerdictStatus;
   readonly przyczynaPl: string;
+  /** Oznaczenie prądu na plakietce: „Ik₁min" (TN, pętla L-PE/L-PEN), „Id min" (TT, pętla
+   *  przez uziomy), „Id2 min" (IT, drugie zwarcie L-PE-L) — karta W5-E-TTIT. */
+  readonly oznaczeniePradu: string;
   readonly ik1MinA: number;
   readonly iaWymaganeA: number | null;
   readonly tWymaganyS: number | null;
@@ -320,17 +324,55 @@ export interface SwzOverlayEntry {
  * `missing_data`/`reason_pl`, nieużywane tutaj — warstwa prezentacji SLD
  * potrzebuje wyłącznie gotowego werdyktu, nie śladu solvera pętli zwarcia).
  */
+export interface SwzTnVerdict {
+  readonly status: SwzVerdictStatus;
+  readonly przyczyna_pl: string;
+  readonly ik1_min_a: number;
+  readonly ia_wymagane_a: number | null;
+  readonly t_wymagany_s: number | null;
+  readonly margines: number | null;
+}
+
+/** Znacznik kontraktu werdyktu SWZ układu TT/IT (`swz.werdykt_tt_it.KONTRAKT_WERDYKTU_TT_IT`). */
+export const KONTRAKT_WERDYKTU_TT_IT = 'werdykt_wyjasnialny_tt_it' as const;
+
+/**
+ * Werdykt SWZ układu TT/IT (karta W5-E-TTIT, `SwzTtItWynik.to_dict()`): rekord W
+ * werdyktu wyjaśnialnego (kryteria składowe: prąd RCD, czas wyłączenia z tabeli czasów
+ * repo, napięcie dotykowe wobec limitu normy — BRAK_PODSTAWY, gdy tekstu normy nie ma
+ * w repozytorium) + kontekst tabeli czasów. UI czyta rekord, niczego nie dolicza.
+ */
+export interface SwzTtItVerdict {
+  readonly kontrakt: typeof KONTRAKT_WERDYKTU_TT_IT;
+  readonly uklad: 'TT' | 'IT';
+  readonly wymaganie: WynikWymagania;
+  readonly kod_odmowy_limitu: string | null;
+  readonly t_wymagany_s: number | null;
+  readonly pasmo_u0: string | null;
+  readonly rodzaj_obwodu: string;
+  readonly ik1_min_a: number;
+}
+
 export interface SwzApiResponse {
   readonly status: 'OK' | 'brak danych' | 'nie dotyczy';
   readonly breaker_ref: string;
-  readonly swz?: {
-    readonly status: SwzVerdictStatus;
-    readonly przyczyna_pl: string;
-    readonly ik1_min_a: number;
-    readonly ia_wymagane_a: number | null;
-    readonly t_wymagany_s: number | null;
-    readonly margines: number | null;
-  };
+  readonly swz?: SwzTnVerdict | SwzTtItVerdict;
+}
+
+/** Rozróżnienie po KSZTAŁCIE odpowiedzi (znacznik kontraktu), nie po statusie. */
+export function jestWerdyktemTtIt(swz: SwzTnVerdict | SwzTtItVerdict): swz is SwzTtItVerdict {
+  return 'kontrakt' in swz && swz.kontrakt === KONTRAKT_WERDYKTU_TT_IT;
+}
+
+/**
+ * Status nakładki ze statusu maszynowego rekordu W (`werdykt.StatusWerdyktu`): SPELNIA /
+ * NIE_SPELNIA wprost; każdy inny (BRAK_PODSTAWY, NIE_OCENIONO, NIEJEDNOZNACZNY, BRAK_DOWODU,
+ * NIE_DOTYCZY) = nierozstrzygalne — nigdy „spełnia" bez podstawy i dowodu.
+ */
+export function statusNakladkiZRekordu(status: StatusWerdyktu): SwzVerdictStatus {
+  if (status === 'SPELNIA') return 'spełnia';
+  if (status === 'NIE_SPELNIA') return 'nie spełnia';
+  return 'nierozstrzygalne';
 }
 
 /**
@@ -347,10 +389,26 @@ export function buildSwzOverlayFromResponses(
   const out: Record<string, SwzOverlayEntry> = {};
   for (const r of responses) {
     if (r.status !== 'OK' || !r.swz) continue;
+    if (jestWerdyktemTtIt(r.swz)) {
+      // TT/IT (karta W5-E-TTIT): status i zdanie z rekordu werdyktu wyjaśnialnego; prąd
+      // zapewniający zadziałanie (I_Δn) i margines niosą rekordy K — nakładka ich nie dolicza.
+      out[r.breaker_ref] = {
+        ownerRef: r.breaker_ref,
+        status: statusNakladkiZRekordu(r.swz.wymaganie.status_maszynowy),
+        przyczynaPl: r.swz.wymaganie.wyjasnienie.zdanie_pl,
+        oznaczeniePradu: r.swz.uklad === 'IT' ? 'Id2 min' : 'Id min',
+        ik1MinA: r.swz.ik1_min_a,
+        iaWymaganeA: null,
+        tWymaganyS: r.swz.t_wymagany_s,
+        margines: null,
+      };
+      continue;
+    }
     out[r.breaker_ref] = {
       ownerRef: r.breaker_ref,
       status: r.swz.status,
       przyczynaPl: r.swz.przyczyna_pl,
+      oznaczeniePradu: 'Ik₁min',
       ik1MinA: r.swz.ik1_min_a,
       iaWymaganeA: r.swz.ia_wymagane_a,
       tWymaganyS: r.swz.t_wymagany_s,

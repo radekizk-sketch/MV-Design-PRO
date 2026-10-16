@@ -446,10 +446,13 @@ def test_orkiestracja_nieznany_breaker_jest_uczciwa() -> None:
     assert "breaker" in wynik["missing_data"]
 
 
-def test_orkiestracja_it_system_nie_dotyczy_jest_uczciwa() -> None:
+def test_orkiestracja_it_system_bez_pojemnosci_odmawia_kodem() -> None:
+    # Karta W5-E-TTIT: IT jest liczony; bez pojemności doziemnych odcinków (b0_siemens_per_km)
+    # dowód odmawia NAZWANYM kodem, nie „nie dotyczy".
     enm = _enm(branches_extra=[_mcb_branch()], earthing_system="IT")
     wynik = _wywolaj(enm)
     assert wynik["status"] == "brak danych"
+    assert wynik["kod_odmowy"] == "nn.brak_pojemnosci_doziemnej"
     assert wynik["reason_pl"] is not None
     assert "IT" in wynik["reason_pl"]
 

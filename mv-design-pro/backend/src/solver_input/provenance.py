@@ -268,6 +268,23 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="nn.petla_zwarcia_tt_it",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Pętla zwarcia doziemnego nN w układach TT i IT: prąd doziemny z sumy "
+                "impedancji trasy, transformatora, sieci zasilającej i uziomów, napięcie "
+                "dotykowe z iloczynu rezystancji uziomu i prądu różnicowego, prąd pierwszego "
+                "zwarcia sieci IT z pojemności doziemnych odcinków, prąd drugiego zwarcia z "
+                "pętli dwóch faz (network_model/solvers/petla_zwarcia_tt_it.py) — obliczenie "
+                "jest wykonywane jawnie, ale nie ma wyroczni odniesienia (pomiar pętli, "
+                "przykład normy z kopią tekstu), więc wynik nie jest dowodem regulacyjnym; "
+                "limity napięcia dotykowego i warunki układu IT czekają na tekst normy od "
+                "właściciela."
+            ),
+            audit_ref="karta W5-E-TTIT (decyzje OD-25, D-11, O-68)",
+        ),
+        CapabilityEvidence(
             capability_id="magistrala_sn.spadek_napiecia",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,
