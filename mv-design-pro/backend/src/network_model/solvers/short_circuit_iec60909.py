@@ -9,7 +9,6 @@ from network_model.core.inverter import InverterSource
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import (
     RODZAJ_GALAZ,
-    RODZAJ_WEZEL,
     OdmowaWejsciaRdzenia,
     OdwolanieElementu,
     RekordOdmowy,
@@ -26,6 +25,7 @@ from network_model.solvers.short_circuit_core import (
     compute_equivalent_impedance,
     compute_ikss,
     compute_post_fault_quantities,
+    odmowa_wezla_zwarcia_spoza_grafu,
     voltage_factor_for_fault,
 )
 from network_model.whitebox.tracer import WhiteBoxTracer
@@ -42,7 +42,7 @@ THEVENIN_GRID_SOURCE_ID: str = "THEVENIN_GRID"
 
 # Kody odmów wejścia (rekord strukturalny `RekordOdmowy`, decyzja O-59, plan A/B §12.2 (k)(m)):
 # identyfikator elementu stoi w odwołaniu rekordu, nie w treści komunikatu.
-KOD_WEZEL_ZWARCIA_SPOZA_GRAFU: str = "zwarcie.wezel_zwarcia_spoza_grafu"
+# `KOD_WEZEL_ZWARCIA_SPOZA_GRAFU` — w `short_circuit_core` (jedno źródło z jądrem impedancji).
 KOD_GALAZ_BEZ_NAZWY: str = "zwarcie.galaz_bez_nazwy"
 
 
@@ -304,15 +304,7 @@ class ShortCircuitIEC60909Solver:
         grafów budowanych poza modelem (np. z migawki bez pola nazwy).
         """
         if fault_node_id not in graph.nodes:
-            raise OdmowaWejsciaRdzenia(
-                [
-                    RekordOdmowy(
-                        KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
-                        "Wskazany węzeł zwarcia nie istnieje w grafie sieci.",
-                        (OdwolanieElementu(RODZAJ_WEZEL, fault_node_id),),
-                    )
-                ]
-            )
+            raise odmowa_wezla_zwarcia_spoza_grafu(fault_node_id)
         bez_nazwy = sorted(
             branch_id
             for branch_id, branch in graph.branches.items()

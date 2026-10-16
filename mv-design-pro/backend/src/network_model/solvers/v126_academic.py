@@ -9,9 +9,18 @@ from itertools import combinations
 from typing import Any
 
 import numpy as np
+from network_model.odmowa_danych import (
+    RODZAJ_GALAZ,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 JsonDict = dict[str, Any]
+
+#: Kod odmowy wejścia (rekord strukturalny `RekordOdmowy`): bilans strat bez P0 transformatora.
+KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH = "v126.transformator_bez_strat_jalowych"
 
 # 1.1 (V126-JEZYK, 2026-08-07): ślad WHITE BOX niesie DODATKOWO polską postać
 # wyniku kroku z jednostką (`result_pl`), a teksty podstawień i sprawdzeń jednostek
@@ -1810,14 +1819,17 @@ class V126AcademicSolver:
         # prostu nic o pojemności nie mówi. Rozróżnienie ma skutek: gdy żaden
         # element nie niesie B, suma wychodzi 0 i przed kartą MOST-WEJSCIA-V126
         # ocena meldowała „brak ryzyka" wyłącznie z braku danych.
-        galezie_z_susceptancja = [
-            branch for branch in model.branches if branch.b_siemens_per_km is not None
+        # Pary (B, ℓ) wyłącznie gałęzi z daną o susceptancji — ta sama kolejność i te same
+        # mnożenia co przed decyzją B-01 partii integracji 9 (zawężenie typu `float | None`
+        # wprost w parze, nie w drugim przebiegu po liście).
+        b_i_dlugosc = [
+            (b, branch.length_km)
+            for branch in model.branches
+            if (b := branch.b_siemens_per_km) is not None
         ]
-        suma_b_l = sum(
-            branch.b_siemens_per_km * branch.length_km for branch in galezie_z_susceptancja
-        )
+        suma_b_l = sum(b * length_km for b, length_km in b_i_dlugosc)
         siec_izolowana = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
-        ferro_ocenialne = bool(galezie_z_susceptancja) or not siec_izolowana
+        ferro_ocenialne = bool(b_i_dlugosc) or not siec_izolowana
         ferro_risk = siec_izolowana and suma_b_l > 1e-5
         trace.add(
             "trv_inrush_ferro",
@@ -2124,8 +2136,25 @@ class V126AcademicSolver:
                     "current_a": _round(current, 3),
                 }
             )
+        # Straty jałowe P0 nieznane (`p0_kw is None`, legalny brak w modelu) to brak danych,
+        # nie zero strat: bilans strat i LCC odmawia z rekordem strukturalnym (decyzja B-01
+        # partii integracji 9; wcześniej `None + float` kończył bieg błędem programu).
+        bez_p0 = sorted(t.ref for t in model.transformers if t.p0_kw is None)
+        if bez_p0:
+            raise OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH,
+                        "Bilans strat i koszt cyklu życia wymagają strat jałowych P0 z karty "
+                        f"katalogowej transformatora; transformatorów bez P0: {len(bez_p0)}.",
+                        tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_p0),
+                    )
+                ]
+            )
         transformer_kw = sum(
-            transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers
+            p0_kw + transformer.pk_kw * 0.45**2
+            for transformer in model.transformers
+            if (p0_kw := transformer.p0_kw) is not None
         )
         total_kw += transformer_kw
         energy_price = float(model.parameters.get("energy_price_pln_per_kwh", 0.65))
@@ -2180,8 +2209,7 @@ class V126AcademicSolver:
 
     def _benchmark_validation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         references = model.parameters.get("benchmark_references")
-        references_provided = isinstance(references, list) and len(references) > 0
-        if not references_provided:
+        if not isinstance(references, list) or not references:
             # D-14 / K-09: NIE fabrykujemy zaliczających literałów (calc≈ref) — to
             # był cichy fałsz (zawsze PASS niezależnie od solvera). Bez realnych
             # referencji (IEEE 9/14/39, CIGRE MV) z wartościami policzonymi przez

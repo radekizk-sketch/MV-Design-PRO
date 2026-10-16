@@ -97,8 +97,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
     # Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (d)): 20 błędów w rdzeniach
     # B-01 (`power_flow_newton_internal.py` 19, `short_circuit_iec60909.py` 1) ⇒ 203/32.
-    assert modul.BASELINE_ERRORS == 203
-    assert modul.BASELINE_FILES == 32
+    # Decyzja B-01 partii integracji 9 (delegacja O-59): 5 błędów rdzenia `v126_academic.py`
+    # usuniętych u źródła ⇒ 198/31.
+    assert modul.BASELINE_ERRORS == 198
+    assert modul.BASELINE_FILES == 31
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

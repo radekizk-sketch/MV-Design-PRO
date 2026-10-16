@@ -214,8 +214,13 @@ BACKEND = ROOT / "backend"
 # `builder: object | None` — adnotacje `AdmittanceMatrixBuilder | None` / `np.ndarray | None`,
 # zdjete trzy `type: ignore`). Zero nowych (roznica zbiorow `mypy src` baza vs drzewo karty =
 # dokladnie te wiersze; nowy `enm/zdania_odmow_rdzenia.py` bez bledow).
-BASELINE_ERRORS = 203
-BASELINE_FILES = 32
+# Decyzja B-01 partii integracji 9 (2026-10-16, delegacja O-59): 203/32 -> 198/31. Zniklo
+# dokladnie 5 bledow w rdzeniu `v126_academic.py` (2x operator + 2x misc: `float | None`
+# w sumie B*l zawezony w parze (b, l) i P0 transformatora — brak P0 to odmowa z rekordem,
+# nie `None + float`; 1x union-attr: referencje benchmarku zawezone `isinstance`). Zero
+# nowych (roznica zbiorow `mypy src` drzewo partii przed/po = dokladnie te wiersze).
+BASELINE_ERRORS = 198
+BASELINE_FILES = 31
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

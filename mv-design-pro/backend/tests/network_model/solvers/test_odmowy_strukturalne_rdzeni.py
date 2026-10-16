@@ -56,13 +56,17 @@ from network_model.solvers.power_flow_types import (
     SlackSpec,
     TransformerTapSpec,
 )
+from network_model.solvers.short_circuit_core import (
+    KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
+    ShortCircuitType,
+    compute_equivalent_impedance,
+)
 from network_model.solvers.short_circuit_iec60909 import (
     KOD_GALAZ_BEZ_NAZWY,
-    KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
     ShortCircuitIEC60909Solver,
 )
 from network_model.solvers.v126_academic import V126AcademicSolver
-from solver_input.v126_contracts import V126AnalysisType
+from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 from tests.test_v126_ssci_impedance import _model_with_grid, _reference_card
 
@@ -549,3 +553,91 @@ def test_odmowa_wymaga_rekordu_i_nieznany_rodzaj_to_blad_programu() -> None:
         OdmowaWejsciaRdzenia([])
     with pytest.raises(AssertionError):
         zdanie_odmowy(RekordOdmowy("k", "T.", (OdwolanieElementu("szafa", "x"),)), _graf())
+
+
+# ---------------------------------------------------------------------------
+# Decyzja B-01 partii integracji 9 (delegacja O-59): ta sama klasa (k) w jądrze impedancji
+# zastępczej `short_circuit_core.compute_equivalent_impedance` (był goły `ValueError`
+# z identyfikatorem węzła w treści) oraz brak P0 transformatora w bilansie strat V12.6 (był
+# błąd programu `None + float`). Iloczyn cech: rodzaj zwarcia × wejście jądra wprost.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("rodzaj", list(ShortCircuitType), ids=lambda r: r.value)
+def test_jadro_impedancji_zastepczej_wezel_spoza_grafu_rekord(rodzaj: ShortCircuitType) -> None:
+    graf = _graf()
+    with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
+        compute_equivalent_impedance(
+            graph=graf, fault_node_id="brak/7f3a9cff", short_circuit_type=rodzaj
+        )
+    (rekord,) = odmowa.value.rekordy
+    assert rekord.kod == KOD_WEZEL_ZWARCIA_SPOZA_GRAFU
+    assert rekord.odwolania == (OdwolanieElementu(RODZAJ_WEZEL, "brak/7f3a9cff"),)
+    _bez_identyfikatorow(str(odmowa.value))
+
+
+def _model_strat_v126(p0_kw: tuple[float | None, float | None]) -> V126AcademicInput:
+    return V126AcademicInput.model_validate(
+        {
+            "buses": [
+                {"ref": "B1", "name": "Szyna 1", "nominal_kv": 15.0, "customer_count": 10},
+                {"ref": "B2", "name": "Szyna 2", "nominal_kv": 15.0, "customer_count": 5},
+            ],
+            "branches": [
+                {
+                    "ref": "L1",
+                    "from_bus_ref": "B1",
+                    "to_bus_ref": "B2",
+                    "kind": "cable",
+                    "length_km": 1.5,
+                    "ampacity_a": 245.0,
+                }
+            ],
+            "transformers": [
+                {
+                    "ref": ref,
+                    "hv_bus_ref": "B1",
+                    "lv_bus_ref": "B2",
+                    "sn_mva": 16.0,
+                    "uhv_kv": 110.0,
+                    "ulv_kv": 15.0,
+                    "uk_percent": 10.5,
+                    "pk_kw": pk,
+                    "p0_kw": p0,
+                }
+                for ref, pk, p0 in (("tr/b2", 90.0, p0_kw[0]), ("tr/a1", 70.0, p0_kw[1]))
+            ],
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("p0_kw", "bez_p0"),
+    [
+        ((None, 9.5), ("tr/b2",)),
+        ((12.5, None), ("tr/a1",)),
+        ((None, None), ("tr/a1", "tr/b2")),
+    ],
+)
+def test_v126_bilans_strat_bez_p0_to_odmowa_z_rekordem(
+    p0_kw: tuple[float | None, float | None], bez_p0: tuple[str, ...]
+) -> None:
+    from network_model.odmowa_danych import RODZAJ_GALAZ
+    from network_model.solvers.v126_academic import KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH
+
+    with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
+        V126AcademicSolver().run(V126AnalysisType.OPF_LOSS_LCC, _model_strat_v126(p0_kw))
+    (rekord,) = odmowa.value.rekordy
+    assert rekord.kod == KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH
+    assert rekord.odwolania == tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_p0)
+    tekst = str(odmowa.value)
+    assert f"transformatorów bez P0: {len(bez_p0)}" in tekst
+    assert not any(ref in tekst for ref in ("tr/a1", "tr/b2", "v126."))
+
+
+def test_v126_bilans_strat_z_p0_liczy_jak_wzor() -> None:
+    koperta = V126AcademicSolver().run(
+        V126AnalysisType.OPF_LOSS_LCC, _model_strat_v126((12.5, 9.5))
+    )
+    oczekiwane = (12.5 + 90.0 * 0.45**2) + (9.5 + 70.0 * 0.45**2)
+    assert koperta["result"]["transformer_losses_kw"] == round(oczekiwane, 5)

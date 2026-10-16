@@ -7,8 +7,35 @@ from enum import Enum
 import numpy as np
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.odmowa_danych import (
+    RODZAJ_WEZEL,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 
 OMEGA_50HZ = 2.0 * math.pi * 50.0
+
+#: Kod odmowy wejścia (rekord strukturalny `RekordOdmowy`, decyzja O-59, plan A/B §12.2 (k)):
+#: węzeł zwarcia spoza grafu. JEDNO źródło kodu dla walidacji wejścia solvera IEC 60909
+#: (`ShortCircuitIEC60909Solver._sprawdz_wejscie`) i dla jądra impedancji zastępczej poniżej
+#: (decyzja B-01 partii integracji 9 — wcześniej jądro rzucało goły `ValueError`
+#: z identyfikatorem węzła w treści).
+KOD_WEZEL_ZWARCIA_SPOZA_GRAFU: str = "zwarcie.wezel_zwarcia_spoza_grafu"
+
+
+def odmowa_wezla_zwarcia_spoza_grafu(fault_node_id: str) -> OdmowaWejsciaRdzenia:
+    """Odmowa „węzeł zwarcia nie istnieje w grafie": treść bez identyfikatora, węzeł
+    w odwołaniu rekordu (zdanie z nazwą składa `enm/zdania_odmow_rdzenia.py`)."""
+    return OdmowaWejsciaRdzenia(
+        [
+            RekordOdmowy(
+                KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
+                "Wskazany węzeł zwarcia nie istnieje w grafie sieci.",
+                (OdwolanieElementu(RODZAJ_WEZEL, fault_node_id),),
+            )
+        ]
+    )
 
 
 class ShortCircuitType(Enum):
@@ -73,7 +100,7 @@ def compute_equivalent_impedance(
     z2_bus: np.ndarray | None = None,
 ) -> ShortCircuitCoreResult:
     if fault_node_id not in graph.nodes:
-        raise ValueError(f"Fault node '{fault_node_id}' does not exist in graph")
+        raise odmowa_wezla_zwarcia_spoza_grafu(fault_node_id)
 
     builder, z1_bus_pu = build_zbus(graph)
     node_index = builder.node_id_to_index[fault_node_id]

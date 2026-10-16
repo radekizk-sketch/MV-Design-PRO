@@ -84,7 +84,18 @@ SANCTIONED_CHANGES = {
         "(mypy), odmowa wejscia jako rekord strukturalny (kod + odwolanie do wezla/"
         "galezi, tresc PL bez identyfikatora), wymog niepustej nazwy galezi w "
         "eksploatacji przed biegiem (nazwana odmowa), tytuly krokow sladu z nazwa "
-        "galezi z modelu (klucze krokow bez zmian). Wpis do usuniecia po scaleniu do main."
+        "galezi z modelu (klucze krokow bez zmian). "
+        "Decyzja B-01 partii integracji 9 (O-59): odmowa wezla zwarcia spoza grafu skladana "
+        "jedna funkcja z `short_circuit_core` (jeden kod, zero zmian liczb). "
+        "Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/short_circuit_core.py": (
+        "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "
+        "impedancji zastepczej odmawia wezla zwarcia spoza grafu rekordem strukturalnym "
+        "(`OdmowaWejsciaRdzenia`, kod `zwarcie.wezel_zwarcia_spoza_grafu`, wezel w odwolaniu, "
+        "tresc PL bez identyfikatora) zamiast golego ValueError z identyfikatorem w tresci; "
+        "kod i funkcja odmowy - jedno zrodlo dla walidacji wejscia solvera IEC 60909. Zero "
+        "zmian liczb. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "

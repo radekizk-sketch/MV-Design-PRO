@@ -10,10 +10,10 @@ from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.odmowa_danych import RODZAJ_WEZEL, OdmowaWejsciaRdzenia, OdwolanieElementu
+from network_model.solvers.short_circuit_core import KOD_WEZEL_ZWARCIA_SPOZA_GRAFU
 from network_model.solvers.short_circuit_iec60909 import (
     C_MAX,
     C_MIN,
-    KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
     ShortCircuitIEC60909Solver,
     ShortCircuitType,
 )
