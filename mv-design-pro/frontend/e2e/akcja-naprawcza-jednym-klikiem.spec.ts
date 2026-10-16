@@ -39,7 +39,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    sources?: Array<{ ref_id: string }>;
+    sources?: Array<{ ref_id: string; name: string }>;
   };
   readiness?: {
     blockers?: Array<{ code: string; element_ref?: string | null; canonical_code?: string }>;
@@ -169,7 +169,9 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
     });
   }
   const zrodlo = op?.snapshot?.sources?.[0]?.ref_id;
+  const nazwaZrodla = op?.snapshot?.sources?.[0]?.name;
   expect(zrodlo).toBeTruthy();
+  expect(nazwaZrodla).toBeTruthy();
 
   // Błąd danych: S''kQmin (400 MVA) większa od S''kQmax (250 MVA).
   const poBledzie = await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
@@ -203,7 +205,11 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   // Formularz operacji domenowej dla TEGO elementu, z fokusem na brakującym polu.
   const formularz = page.getByTestId('mvd-kreator-edycja');
   await expect(formularz).toBeVisible({ timeout: 20000 });
-  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).toContainText(zrodlo as string);
+  // Element nazwany nazwą z modelu, nigdy identyfikatorem (karta #144, `nazwy_elementow`):
+  // asercja na identyfikatorze była czerwona od scalenia C-12 z regułą nazw (partia 8).
+  const sekcjaElementu = formularz.getByTestId('mvd-kreator-edycja-element');
+  await expect(sekcjaElementu).toContainText(nazwaZrodla as string);
+  await expect(sekcjaElementu).not.toContainText(zrodlo as string);
   await expect(page.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('sk3_min_mva');
   await expect(page.getByTestId('mvd-kreator-edycja-wartosc-0')).toBeFocused();
 
