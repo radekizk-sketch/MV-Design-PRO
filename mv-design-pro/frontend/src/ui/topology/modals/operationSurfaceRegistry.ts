@@ -72,18 +72,6 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     true,
     'typ-topologiczny',
   ),
-  // Parytet z `insert_station_on_segment_sn` (ten sam kreator stacji, wariant „na końcu odcinka").
-  entry(
-    'append_station_on_endpoint',
-    'KreatorStacjiSnNn',
-    'Dodaj stację na końcu odcinka SN',
-    'E-13',
-    'B',
-    'manual',
-    'expand_workspace',
-    true,
-    'typ-topologiczny',
-  ),
   entry(
     'start_branch_segment_sn',
     'KreatorOdgalezienia',
@@ -163,60 +151,13 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   // W5-E-TTIT: akcja naprawcza `nn.brak_rcd` (modal `add_nn_rcd`) otwiera ten kreator —
   // bez wpisu tutaj wykonawca akcji naprawczej meldował „brak aktywnej karty", a każde
-  // otwarcie formularza dostawało tytuł z surowego identyfikatora operacji (patrz niżej).
+  // otwarcie formularza dostawało tytuł z surowego identyfikatora operacji. Pozostałe
+  // kreatory nN mają wpisy z karty C-12 na końcu rejestru (jeden wpis na operację —
+  // `modalRegistryCompleteness.test.ts`).
   entry(
     'add_nn_rcd',
     'KreatorRcdNn',
     'Dodaj wyłącznik różnicowoprądowy nN',
-    'E-19',
-    'C',
-    'manual',
-    'expand_workspace',
-    false,
-    null,
-  ),
-  // Ta sama klasa (formularz w OPERATION_FORM_REGISTRY bez wpisu powierzchni): opis
-  // powierzchni (`networkBuildStore.buildOperationSurfaceDescriptor`) brał wtedy tytuł
-  // okna i okruszków z `canonicalOp` — projektant widział „add_nn_switch_device" zamiast
-  // nazwy kreatora — a ekran domyślny E-10. Kompletność przypina test
-  // `modalRegistryCompleteness.test.ts` (każdy formularz ma wpis powierzchni).
-  entry(
-    'add_nn_cable_segment',
-    'KreatorOdcinkaNn',
-    'Dodaj odcinek kablowy nN',
-    'E-19',
-    'C',
-    'manual',
-    'expand_workspace',
-    false,
-    null,
-  ),
-  entry(
-    'add_nn_distribution_board',
-    'KreatorRozdzielnicyNn',
-    'Dodaj rozdzielnicę nN',
-    'E-19',
-    'C',
-    'manual',
-    'expand_workspace',
-    false,
-    null,
-  ),
-  entry(
-    'add_nn_switch_device',
-    'KreatorAparatuNn',
-    'Dodaj aparat nN w torze',
-    'E-19',
-    'C',
-    'manual',
-    'expand_workspace',
-    false,
-    null,
-  ),
-  entry(
-    'add_nn_section_coupler',
-    'KreatorRozdzielnicyNn',
-    'Dodaj sekcję i sprzęgło nN',
     'E-19',
     'C',
     'manual',
