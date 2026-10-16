@@ -2,7 +2,7 @@
 name: researcher
 description: Looks up external documentation and standards for MV-DESIGN-PRO work — IEC 60909/60255/60076/61000, NC RfG and Polish PTPiREE/WOS documents, library and API documentation — and reports cited findings with exact references. No repository edits.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
-model: claude-opus-5-5
+model: claude-sonnet-5-5
 effort: low
 ---
 
