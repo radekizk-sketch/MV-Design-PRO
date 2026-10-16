@@ -12,8 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from api.dependencies import get_uow_factory
-from api.klucz_twin_dep import KluczTwin
-from domain.study_case import StudyCaseConfig
+from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
 from enm.assembler import zbuduj_graf, zloz_wejscie_rozplywu, zloz_wejscie_zwarcia
 from enm.store import get_enm
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -75,24 +74,6 @@ def _graph_for_analysis(
             snapshot, sc_options, rozszerzenia_audit2=rozszerzenia_audit2
         ).graph
     return zbuduj_graf(snapshot)
-
-
-def _konfiguracja_przypadku(case_id: str, uow_factory: Callable[[], UnitOfWork]) -> StudyCaseConfig:
-    """Konfiguracja obliczeń PRZYPADKU z bazy (``StudyCase.config``).
-
-    Karta OD-17a (znalezisko uboczne): do tej karty funkcja była zaślepką zwracającą
-    ``StudyCaseConfig()`` — koperta wejścia solvera niosła konfigurację domyślną zamiast
-    konfiguracji przypadku (współczynniki c, operator, tryb wejścia zwarciowego). Zależność
-    ``KluczTwin`` trasy już potwierdziła, że przypadek istnieje; jego brak tutaj byłby
-    niespójnością magazynu (błąd programu → 500).
-    """
-    from uuid import UUID
-
-    with uow_factory() as uow:
-        przypadek = uow.cases.get_study_case(UUID(case_id))
-    if przypadek is None:
-        raise RuntimeError(f"Przypadek {case_id} zniknął z bazy po rozwiązaniu klucza modelu.")
-    return przypadek.config
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +205,9 @@ def get_solver_input(
         )
     except OdmowaDanychError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    config = _konfiguracja_przypadku(case_id, uow_factory)
+    # Karta OD-17a (znalezisko uboczne): do tej karty koperta wejścia solvera niosła
+    # `StudyCaseConfig()` (zaślepka) zamiast konfiguracji przypadku z bazy.
+    config = przypadek_z_bazy(case_id, uow_factory).config
     catalog = get_default_mv_catalog()
 
     envelope = build_solver_input(

@@ -27,10 +27,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Annotated, Any
+from uuid import UUID
 
 from application.twin_key import klucz_twin_dla_przypadku
+from domain.study_case import StudyCase
 from enm.klucz_twin import PrzypadekBezProjektuError
 from fastapi import Depends, HTTPException, Request
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 
 def klucz_twin_z_uow(case_id: str, uow_factory: Callable[[], Any] | None) -> str:
@@ -59,6 +62,24 @@ def klucz_twin_z_sciezki(case_id: str, request: Request) -> str:
     """
     uow_factory = getattr(request.app.state, "uow_factory", None)
     return klucz_twin_z_uow(case_id, uow_factory)
+
+
+def przypadek_z_bazy(case_id: str, uow_factory: Callable[[], UnitOfWork]) -> StudyCase:
+    """Rekord przypadku z bazy żądania — JEDNO miejsce odczytu dla tras z `KluczTwin`.
+
+    Zależność `KluczTwin` trasy już potwierdziła, że przypadek istnieje w bazie, więc jego
+    brak tutaj (albo jednostka pracy bez repozytorium przypadków) jest niespójnością
+    magazynu — błąd programu (500), nie odmowa danych. Konsumenci: koperta wejścia solvera
+    (`api/solver_input.py`, konfiguracja przypadku) i raport zgodności referencyjnej
+    (`api/reference_engine.py`, operator i nazwa przypadku).
+    """
+    with uow_factory() as uow:
+        if uow.cases is None:
+            raise RuntimeError("Jednostka pracy bez repozytorium przypadków.")
+        przypadek = uow.cases.get_study_case(UUID(case_id))
+    if przypadek is None:
+        raise RuntimeError(f"Przypadek {case_id} zniknął z bazy po rozwiązaniu klucza modelu.")
+    return przypadek
 
 
 #: Adnotacja do uzycia w podpisach handlerow: `klucz: KluczTwin`. Dziala dla

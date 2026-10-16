@@ -10,9 +10,8 @@ REFERENCE_ENGINE_SPEC_V1.md §9 (V12K-060):
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
-from api.klucz_twin_dep import KluczTwin
+from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
 from enm.store import get_enm as _get_enm
 from fastapi import APIRouter, HTTPException, Query, Request
 from network_model.brak_zasobu import BrakZasobuError
@@ -49,20 +48,6 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
     return pack.model_dump(mode="json")
 
 
-def _operator_i_nazwa_przypadku(case_id: str, request: Request) -> tuple[str, str]:
-    """Operator (``StudyCaseConfig.operator_profile_id``) i nazwa przypadku z bazy.
-
-    Zależność ``KluczTwin`` już potwierdziła, że przypadek istnieje w bazie; brak rekordu
-    tutaj byłby niespójnością magazynu (błąd programu → 500, nie odmowa danych).
-    """
-    uow_factory = request.app.state.uow_factory
-    with uow_factory() as uow:
-        przypadek = uow.cases.get_study_case(UUID(case_id))
-    if przypadek is None:
-        raise RuntimeError(f"Przypadek {case_id} zniknął z bazy po rozwiązaniu klucza modelu.")
-    return przypadek.config.operator_profile_id, przypadek.name
-
-
 @router.get("/cases/{case_id}/reference/compliance")
 def get_reference_compliance(
     case_id: str,
@@ -81,7 +66,10 @@ def get_reference_compliance(
     (nazwana odmowa ``BRAK_PAKIETU_OSD:<operator>``); nieznany identyfikator → 404.
     """
     enm = _get_enm(klucz)
-    operator, nazwa_przypadku = _operator_i_nazwa_przypadku(case_id, request)
+    # Operator (`StudyCaseConfig.operator_profile_id`) i nazwa przypadku z bazy żądania.
+    przypadek = przypadek_z_bazy(case_id, request.app.state.uow_factory)
+    operator = przypadek.config.operator_profile_id
+    nazwa_przypadku = przypadek.name
     pack_ids: list[str] | None = None
     if packs:
         pack_ids = [p.strip() for p in packs.split(",") if p.strip()]

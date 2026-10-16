@@ -420,7 +420,12 @@ POMIJANE_KATALOGI = {
 #: ETYKIETY-STACJI): 62 — zbiory zdjetych TS6133 kart BIEG-ZABEZPIECZEN (12) i ETYKIETA-STACJI
 #: (17) czesciowo wspolne, B01-RUNDA-1 i PARTIA-6-BACKEND naprawily ten sam blad bazy. Zero
 #: nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 62
+#: Partia integracji 8 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
+#: bazie partii `53551167b`): baza 63 -> 61, roznica list wylacznie ubytkowa: zeszly TS2550
+#: w `StationTemplateWizard.test.tsx` (karta SZYBKIE-TESTY) i TS2345 w
+#: `downloadSldExport.test.ts` (karta KASACJA-SCL-I-CIM-KLIENT, test eksportu przepisany).
+#: Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 61
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

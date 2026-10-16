@@ -20,7 +20,7 @@ export function BrakiPakietowDanych({ braki, klasa }: BrakiPakietowDanychProps) 
   return (
     <ul className={klasa ?? 'mvd-ref-braki-pakietow'} role="note" data-testid="mvd-braki-pakietow">
       {braki.map((brak) => (
-        <li key={brak.kod} data-testid={`mvd-brak-pakietu-${brak.pakiet}`}>
+        <li key={brak.kod} data-testid={`mvd-brak-pakietu-${brak.rodzaj}`}>
           {brak.komunikat_pl}
         </li>
       ))}

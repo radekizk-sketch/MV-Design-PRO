@@ -160,8 +160,13 @@ export interface ReferencePackComplianceReport {
  */
 export interface RekordBrakuPakietu {
   kod: string;
+  /**
+   * Rodzaj braku wyznacza pakiet właściciela 1:1 (backend `PAKIET_RODZAJU`). Pole backendu
+   * `pakiet` niesie roboczy identyfikator pakietu (oznaczenie z numerem) — front go nie
+   * przenosi: nie jest treścią dla projektanta, a oznaczenia robocze nie wchodzą do warstwy
+   * prezentacji ani do artefaktów testów (zasada nazw kodowych, `no_codenames_guard`).
+   */
   rodzaj: 'BRAK_CERTYFIKATU_WIPWC' | 'BRAK_KARTY_PRODUCENTA' | 'BRAK_PAKIETU_OSD';
-  pakiet: 'P1' | 'P2' | 'P3';
   identyfikator: string;
   nazwa_elementu: string;
   status_maszynowy: 'NIE_OCENIONO' | 'BRAK_PODSTAWY' | 'BRAK_DOWODU';

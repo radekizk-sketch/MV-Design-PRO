@@ -56,9 +56,7 @@ def main() -> int:
     try:
         naruszenia = zmierz()
     except ModuleNotFoundError as exc:
-        print(
-            f"cennik_guard: brak zależności backendu ({exc}) — uruchom w venv backendu."
-        )
+        print(f"cennik_guard: brak zależności backendu ({exc}) — uruchom w venv backendu.")
         return 2
     if naruszenia:
         print("cennik_guard: CZERWONY")

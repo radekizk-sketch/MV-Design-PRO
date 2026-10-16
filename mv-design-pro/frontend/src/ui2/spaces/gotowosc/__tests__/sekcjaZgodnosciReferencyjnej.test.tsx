@@ -277,7 +277,6 @@ describe('SekcjaZgodnosciReferencyjnej — brak pakietu operatora przypadku (kar
         {
           kod: 'BRAK_PAKIETU_OSD:energa',
           rodzaj: 'BRAK_PAKIETU_OSD',
-          pakiet: 'P3',
           identyfikator: 'energa',
           nazwa_elementu: 'Wariant A',
           status_maszynowy: 'BRAK_PODSTAWY',
@@ -297,7 +296,7 @@ describe('SekcjaZgodnosciReferencyjnej — brak pakietu operatora przypadku (kar
     mockFetchOk(raportZBrakiem([pack()]));
     render(<SekcjaZgodnosciReferencyjnej />);
     const braki = await screen.findByTestId('mvd-braki-pakietow');
-    expect(within(braki).getByTestId('mvd-brak-pakietu-P3')).toHaveTextContent(KOMUNIKAT);
+    expect(within(braki).getByTestId('mvd-brak-pakietu-BRAK_PAKIETU_OSD')).toHaveTextContent(KOMUNIKAT);
     expect(braki.textContent).not.toContain('BRAK_PAKIETU_OSD');
     expect(screen.getByTestId('mvd-ref-tabela')).toBeInTheDocument();
   });
@@ -305,7 +304,7 @@ describe('SekcjaZgodnosciReferencyjnej — brak pakietu operatora przypadku (kar
   it('odmowa widoczna także, gdy raport nie ma żadnego pakietu (brak danych ≠ brak pakietów)', async () => {
     mockFetchOk(raportZBrakiem([]));
     render(<SekcjaZgodnosciReferencyjnej />);
-    expect(await screen.findByTestId('mvd-brak-pakietu-P3')).toHaveTextContent(KOMUNIKAT);
+    expect(await screen.findByTestId('mvd-brak-pakietu-BRAK_PAKIETU_OSD')).toHaveTextContent(KOMUNIKAT);
     expect(screen.getByTestId('mvd-ref-brak-pakietow')).toBeInTheDocument();
   });
 

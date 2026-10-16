@@ -51,11 +51,7 @@ def _plik(
     type_id: str | None = None,
     jednostka: str = "szt.",
 ) -> None:
-    pozycje = (
-        "  []"
-        if type_id is None
-        else _POZYCJA.format(type_id=type_id, jednostka=jednostka)
-    )
+    pozycje = "  []" if type_id is None else _POZYCJA.format(type_id=type_id, jednostka=jednostka)
     tresc = _WZOR.format(wersja=wersja, waluta=waluta, data=data, pozycje=pozycje)
     if type_id is None:
         tresc = tresc.replace("pozycje:\n  []", "pozycje: []")
