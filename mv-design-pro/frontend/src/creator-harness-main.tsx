@@ -82,6 +82,7 @@ import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_pr
 // wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
 // identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
 // miejsce z atrapą testów jednostkowych.
+import przypadekScenaKarta from './harness-fixtures/generated/przypadek_scena_karta.json';
 import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
 import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
 import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
@@ -628,33 +629,26 @@ const SCENARIUSZE_ZWARCIOWE_SCENY = (() => {
   return { scenarios: scenariusze, count: scenariusze.length };
 })();
 
-/** Przypadek obliczeniowy sceny „karta-przypadku" — kształt 1:1 z `StudyCase` (bez pól c). */
+/** Przypadek sceny „karta-przypadku" — `StudyCase.to_dict()` z fabryki domeny backendu
+ * (fixtura `przypadek_scena_karta`, `eksport_fixtur_harnessu.py`); harness dokleja tylko
+ * status wyników, jak warstwa API (`api/study_cases.py`, przypadek bez biegów → NONE). */
 const PRZYPADEK_KARTY_SCENY: StudyCase = {
-  id: 'case-demo',
-  project_id: 'proj-demo',
-  name: 'Stan normalny',
-  description: 'Przypadek obliczeniowy sieci SN/nN — założenia biegu zwarciowego i rozpływu.',
-  config: {
-    base_mva: 100,
-    max_iterations: 30,
-    tolerance: 1e-6,
-    include_motor_contribution: true,
-    include_inverter_contribution: true,
-    operator_profile_id: 'enea',
-    sc_input_mode: 'simplified',
-    sc_simplified_sk_mva: 250,
-    sc_simplified_r_x_ratio: 0.1,
-  },
-  is_active: true,
-  revision: 3,
-  created_at: '2026-10-01T10:00:00Z',
-  updated_at: '2026-10-01T10:00:00Z',
+  ...(przypadekScenaKarta as Omit<
+    StudyCase,
+    | 'result_status'
+    | 'results_valid'
+    | 'result_status_reason'
+    | 'result_status_reason_pl'
+    | 'rewizja_biegu'
+    | 'rewizja_biezaca'
+    | 'zmiany_od_biegu'
+  >),
   result_status: 'NONE',
   results_valid: false,
   result_status_reason: 'brak_wyniku',
   result_status_reason_pl: 'Brak wyniku — przypadek nie był jeszcze obliczany.',
   rewizja_biegu: null,
-  rewizja_biezaca: 3,
+  rewizja_biezaca: przypadekScenaKarta.revision,
   zmiany_od_biegu: [],
 };
 

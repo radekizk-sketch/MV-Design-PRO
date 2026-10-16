@@ -172,7 +172,7 @@ from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
-from domain.study_case import StudyCase  # noqa: E402
+from domain.study_case import StudyCase, new_study_case  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -4786,6 +4786,38 @@ def _fabryka_widokow_fikstury(nazwa: str) -> Any:
     return lambda: _widoki_logiczne_fikstury_frontu(nazwa)
 
 
+# ---------------------------------------------------------------------------
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — scena „karta-przypadku”. Przypadek obliczeniowy
+# z fabryki domeny (`new_study_case`, konfiguracja domyślna backendu) w kształcie
+# `StudyCase.to_dict()` — konfiguracja bez pól c i t_k (nośnikiem c jest scenariusz
+# zwarciowy), liczby z domeny, nie wpisane ręcznie w harnessie. Identyfikatory i znaczniki
+# czasu ustabilizowane (determinizm fixtury); status wyników dokleja harness jak warstwa API.
+# ---------------------------------------------------------------------------
+
+#: Identyfikatory przypadku i projektu sceny — te same, którymi harness adresuje końcówki
+#: przypadku (`/study-cases/case-demo/...`); UUID projektu tylko dla fabryki domeny.
+ID_PRZYPADKU_SCENY_KARTA = "case-demo"
+ID_PROJEKTU_SCENY_KARTA = "proj-demo"
+_UUID_PROJEKTU_SCENY_KARTA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:proj-demo")
+_CZAS_SCENY_KARTA = datetime(2026, 10, 1, 10, 0, tzinfo=UTC)
+
+
+def przypadek_scena_karta() -> dict[str, Any]:
+    """Przypadek sceny „karta-przypadku” (`StudyCase.to_dict()` z fabryki domeny)."""
+    przypadek = new_study_case(
+        project_id=_UUID_PROJEKTU_SCENY_KARTA,
+        name="Stan normalny",
+        description="Przypadek obliczeniowy sieci SN/nN — założenia biegu zwarciowego i rozpływu.",
+        is_active=True,
+    )
+    widok = przypadek.to_dict()
+    widok["id"] = ID_PRZYPADKU_SCENY_KARTA
+    widok["project_id"] = ID_PROJEKTU_SCENY_KARTA
+    widok["created_at"] = _CZAS_SCENY_KARTA.isoformat()
+    widok["updated_at"] = _CZAS_SCENY_KARTA.isoformat()
+    return widok
+
+
 FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     **{
         f"punkt_startu_{rodzaj}_{stan}": _fabryka_sceny_punktu_startu(rodzaj, stan)
@@ -4908,6 +4940,7 @@ FIXTURY: dict[str, Any] = {
     "diagnoza_scena_preflight": diagnoza_scena_preflight,
     "diagnoza_scena_przebieg": diagnoza_scena_przebieg,
     "diagnoza_scena_bieg": diagnoza_scena_bieg,
+    "przypadek_scena_karta": przypadek_scena_karta,
     **FIXTURY_PUNKTU_STARTU,
 }
 
