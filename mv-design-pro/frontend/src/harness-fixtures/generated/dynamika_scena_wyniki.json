@@ -1356,7 +1356,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.631560491,
-      "residuum_kcl_max": 2.49793936e-12,
+      "residuum_kcl_max": 3.53271785e-12,
       "obszary_odciete": [],
       "odbiory_odciete": [],
       "obszary_zasilone_ponownie": [],
@@ -1375,7 +1375,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545775171,
-      "residuum_kcl_max": 6.05098118e-12,
+      "residuum_kcl_max": 4.16593761e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1402,7 +1402,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545775171,
-      "residuum_kcl_max": 6.05098118e-12,
+      "residuum_kcl_max": 4.16593761e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1438,8 +1438,8 @@
     "zbiegl": true,
     "kroki": 150,
     "kroki_odrzucone": 0,
-    "max_residuum_f": 3.37149614e-11,
-    "max_residuum_g": 1.58529678e-09,
+    "max_residuum_f": 3.37142987e-11,
+    "max_residuum_g": 1.58529795e-09,
     "czas_obliczen_s": 0.0,
     "integrator": "trapez_niejawny",
     "dt_s": 0.002,
@@ -1447,10 +1447,10 @@
   },
   "tozsamosc": {
     "odcisk_migawki": "9db6d5ae3abcfbf7e3003184590bfae41434a679deee495017f48e07ce3cb656",
-    "odcisk_punktu_pracy": "f547d3c147327455de97cc31857a6a0957c10ea8418c59d08b5a1810e14118e8",
+    "odcisk_punktu_pracy": "77b7d6c81dcb8fc3ea910c45a0b2c619328d6485b8ebf80815ab21e8fa41ddf9",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "28215e2ec2e35fd67ee505a763d7352dff6d6b11561fd2a5bafa6ce3f940f40e",
+    "odcisk_implementacji": "d7f788bb66c7e42c4ee1876b3d80607eb0c4fa93ea77690cb271f4c5022c1efe",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -4054,7 +4054,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "bfae804948fca084e157927256878d9916b80d4c72aeb7aaf8f6b9ed3565686b",
-      "result_hash": "ff1955fd3b4c3aaf1e1ba67ad1d1b72470fc7cda50833f19608de25b3041e265",
+      "result_hash": "2abaa841566de6e11dbc278a938982af89e1953231a1fe164b0632d779f627f3",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
