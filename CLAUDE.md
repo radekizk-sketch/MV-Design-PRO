@@ -457,6 +457,12 @@ poetry install --with dev
 # Measured 2026-09-30 on 4 vCPU: 27 043 tests — 1 process 5 015 s, `-n 4 --dist loadfile` ~1 350 s.
 poetry run pytest -q -n 4 --dist loadfile
 
+# Merge gate: backend tests selected through the AST import graph of the change + invariant
+# core (golden, invariants, determinism, frozen ResultSet/OpenAPI contracts) under xdist,
+# vitest related (main and budget steps), scripts/guardy_z_ci.py; prints why each test was
+# selected. Complements the full run (CI keeps it on every push and before merging to main).
+poetry run python ../scripts/bramka_scalenia.py --baza <ref>      # --glowa <ref>: commit range
+
 # Run specific test file
 poetry run pytest tests/test_short_circuit_iec60909.py -v
 
@@ -1094,6 +1100,7 @@ bramki bezpieczeństwa) albo gdy hierarchia nie rozstrzyga — wtedy pytasz wła
 | Action | Command |
 |--------|---------|
 | Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q -n 4 --dist loadfile` |
+| Merge gate (tests selected by the change + invariant core + vitest related + `guardy_z_ci.py`; complements, does NOT replace the full run in CI — `ORKIESTRACJA_AGENTOW.md` §3a pkt 16) | `cd mv-design-pro/backend && poetry run python ../scripts/bramka_scalenia.py --baza <ref>` |
 | Run frontend tests | `cd mv-design-pro/frontend && npm test` |
 | Run frontend tests (CI) | `cd mv-design-pro/frontend && npm run test:ci` |
 | Run e2e tests | `cd mv-design-pro/frontend && npm run test:e2e` |
