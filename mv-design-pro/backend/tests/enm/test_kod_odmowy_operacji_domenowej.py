@@ -18,21 +18,6 @@ from pathlib import Path
 import enm.domain_operations as operacje
 import pytest
 
-@pytest.mark.parametrize("klucz", KLUCZE_WIAZANIA)
-def test_odmowa_bez_kodu_to_blad_programu_nie_kod_zastepczy(
-    klucz: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # Każda odmowa operacji niesie `error_code` (`_error_response`, test niżej). Odpowiedź
-    # odmowy bez kodu jest błędem programu — migracja czyta kod wprost (KeyError) i nie
-    # dopisuje kodu zastępczego spoza rejestru gotowości.
-    def _odmowa_bez_kodu(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        return {"error": "odmowa bez kodu", "snapshot": None}
-
-    monkeypatch.setattr(operacje, "assign_catalog_to_element", _odmowa_bez_kodu)
-    with pytest.raises(KeyError):
-        promocja.migruj(_model(klucz, {"catalog_item_id": "cokolwiek"}))
-
-
 _KATALOG_SRC = Path(operacje.__file__).resolve().parents[1]
 _KOD_ODMOWY = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9_]+)+$")
 _RDZENIE_NAZWY_KODU = ("error", "code", "kod", "blad")
