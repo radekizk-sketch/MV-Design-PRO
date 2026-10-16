@@ -154,3 +154,47 @@ def test_kontrakt_odrzuca_niespojnosc(zmiany: dict[str, Any]) -> None:
 def test_dziedzina_fizyki_wyprowadzona_z_mapy_produktu() -> None:
     assert dziedzina_fizyki_dynamiki() == MAPA_DZIEDZIN[RODZAJ_ANALIZY_DYNAMIKI]
     assert dziedzina_fizyki_dynamiki() == ("RMS_DYNAMICS",)
+
+
+#: SHA-256 kanonicznego JSON ładunku `_ladunek()` zbudowanego modułem kontraktu SPRZED karty
+#: AB-1b.3b (`615f3b24`) — pomiar partii integracji 9: stary i obecny moduł dają te same bajty.
+ODCISK_LADUNKU_SPRZED_KARTY_AB = {
+    False: "489cf4948f1f997ca3330e4aca6d289502110b444a6f1ad8d0f490b28773ed4a",
+    True: "c3e9fd40c0f180b38964e09a2a81308819df3edd460c7a04cb38756eee7da695",
+}
+
+ZALOZENIE_RDZENIA = {
+    "kod": "dynamika.zwarcie_usuniete",
+    "elementy": ["b1"],
+    "wielkosci": [{"nazwa": "t_usuniecia", "wartosc": 0.1, "jednostka": "s"}],
+    "pozycje": [],
+}
+
+
+def _odcisk(ladunek: dict[str, Any]) -> str:
+    import hashlib
+
+    tekst = json.dumps(ladunek, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.parametrize("z_probkami", [False, True])
+@pytest.mark.parametrize("z_zalozeniami", [False, True])
+def test_zalozenia_rdzenia_pole_addytywne_bez_zmiany_bajtow_istniejacych_ladunkow(
+    z_probkami: bool, z_zalozeniami: bool
+) -> None:
+    """Kontrakt FROZEN (decyzja B-01 partii 9): bieg bez założeń rdzenia ma bajty sprzed
+    karty AB-1b.3b (odcisk przypięty), bieg z założeniami niesie pole i wraca nim do modelu.
+    Iloczyn: tryb serializacji (wiersz biegu / szereg czasowy) × założenia puste/niepuste."""
+    zmiany = {"zalozenia_rdzenia": [ZALOZENIE_RDZENIA]} if z_zalozeniami else {}
+    wynik = ResultSetDynamicV2.model_validate(_ladunek(**zmiany))
+    zserializowany = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=z_probkami)
+    if z_zalozeniami:
+        assert zserializowany["zalozenia_rdzenia"] == [ZALOZENIE_RDZENIA]
+    else:
+        assert "zalozenia_rdzenia" not in zserializowany
+        assert _odcisk(zserializowany) == ODCISK_LADUNKU_SPRZED_KARTY_AB[z_probkami]
+    # Odczyt zapisanego ładunku: brak klucza = wartość domyślna, a model jest ten sam.
+    assert ResultSetDynamicV2.model_validate(zserializowany).zalozenia_rdzenia == (
+        wynik.zalozenia_rdzenia
+    )
