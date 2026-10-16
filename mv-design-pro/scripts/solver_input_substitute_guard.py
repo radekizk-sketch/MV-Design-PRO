@@ -530,7 +530,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "infrastructure/cgmes/refmap.py",
     "infrastructure/cloud_backup.py",
     "infrastructure/persistence/repositories/document_store_repository.py",
-    "protection/curves/curve_calculator.py",
     "protection/curves/iec_curves.py",
     "protection/curves/ieee_curves.py",
     # Karta AB-H0 (2026-09-23) — pin mapy zazadal decyzji dla pieciu korzeni po
