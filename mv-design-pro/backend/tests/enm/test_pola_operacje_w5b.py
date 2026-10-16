@@ -509,8 +509,15 @@ def test_kaskada_punktu_rozgalezienia_zabiera_pola_zksn() -> None:
 
 def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
     """Rozstrzygnięcie integratora W5-B: falownik SN za transformatorem blokowym dostaje pole SN
-    z zaciskiem i aparatem (ta sama droga co pole źródłowe DER-SN), źródło stoi na zacisku."""
-    snap = _wstawiona_stacja()
+    z zaciskiem i aparatem (ta sama droga co pole źródłowe DER-SN), źródło stoi na zacisku.
+
+    Transformator stacji 1250 kVA: kontrola mocy źródeł za wspólnym transformatorem
+    (integracja PR477-481) liczy dwa źródła po 550 kVA = 1100 kVA — przy 630 kVA drugie
+    źródło jest słusznie odmówione, a test ćwiczy numerację drugiego, DOPUSZCZALNEGO źródła."""
+    baza, segment_ref, _ = _build_trunk_with_segment()
+    ladunek = _insert_payload(segment_ref, SKLAD_POL)
+    ladunek["transformer"]["transformer_catalog_ref"] = "tr-sn-nn-15-04-1250kva-dyn11"
+    snap = _op(baza, "insert_station_on_segment_sn", ladunek)
     stacja = _stacja(snap)
     transformator = next(
         t for t in snap["transformers"] if t["ref_id"] in stacja["transformer_refs"]

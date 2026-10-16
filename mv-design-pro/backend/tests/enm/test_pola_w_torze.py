@@ -854,7 +854,7 @@ def test_ocena_nadpradowa_ma_punkt_na_zacisku_pola_z_wierszem_szyny_stacji(rola:
 
     enm = _wciecie("B", ["IN", "OUT"])
     stacja = _stacja(enm, "Stacja Lipowa")
-    pole = _pole_sn(stacja, rola)
+    pole = _pole_sn(enm, stacja, rola)
     aparat = _aparat_pola(enm, pole)
     assert aparat["type"] == "breaker"  # aparat pola z katalogu `APARAT` (wyłącznik VD4)
     zacisk = zacisk_pola(pole)
