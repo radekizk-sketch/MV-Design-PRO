@@ -34,4 +34,25 @@ describe('SekcjaZalozen — założenia są częścią wyniku (W-602)', () => {
     expect(screen.getByText(WZORZEC_STRINGS.brakZalozen)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-zalozenia-lista')).not.toBeInTheDocument();
   });
+
+  it('wartość tekstowa łamie się w wierszu, liczba zostaje w jednej linii', () => {
+    // Zrzut „po” ekranu zwarć: długi komunikat założenia z backendu w `nowrap` wychodził poza
+    // sekcję i nachodził na sąsiedni wiersz. Tekst dostaje modyfikator łamania, liczba nie.
+    render(
+      <SekcjaZalozen
+        zalozenia={[
+          { etykieta: 'Czas cieplny', wartosc: 1, jednostka: 's' },
+          { etykieta: 'Źródło', wartosc: 'ZAREJESTROWANE ZAŁOŻENIE: długi opis z backendu' },
+        ]}
+      />,
+    );
+    const tekst = screen.getByText('ZAREJESTROWANE ZAŁOŻENIE: długi opis z backendu');
+    expect(tekst.closest('.mvd-wyn-zalozenie-wartosc')).toHaveClass(
+      'mvd-wyn-zalozenie-wartosc--tekst',
+    );
+    const liczba = screen.getByText('Czas cieplny').parentElement?.querySelector(
+      '.mvd-wyn-zalozenie-wartosc',
+    );
+    expect(liczba).not.toHaveClass('mvd-wyn-zalozenie-wartosc--tekst');
+  });
 });

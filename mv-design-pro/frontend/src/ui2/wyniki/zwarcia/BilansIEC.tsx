@@ -17,6 +17,8 @@ interface PozycjaBilansu {
   readonly etykieta: string;
   readonly wartosc: string;
   readonly jednostka: string | null;
+  /** Wartość opisowa (tekst backendu, nie liczba): pełny wiersz siatki, tekst łamany. */
+  readonly tekst?: boolean;
 }
 
 function poz(
@@ -55,6 +57,7 @@ export function naBilansIEC(row: ShortCircuitRow): PozycjaBilansu[] {
       etykieta: S.bilansCZrodlo,
       wartosc: row.c_zrodlo?.trim() ? row.c_zrodlo : S.kreska,
       jednostka: null,
+      tekst: true,
     },
     poz(S.bilansUn, row.un_kv, fmtKV, S.jednKV),
     poz(S.bilansTk, row.tk_s, fmtCzas, S.jednS),
@@ -77,9 +80,14 @@ export function BilansIEC({ row, punktNazwa }: { row: ShortCircuitRow; punktNazw
       <p className="mvd-zwarcia-bilans-opis">{ZWARCIA_STRINGS.bilansOpis}</p>
       <dl className="mvd-zwarcia-bilans-siatka">
         {naBilansIEC(row).map((p) => (
-          <div key={p.etykieta} className="mvd-zwarcia-bilans-poz">
+          <div
+            key={p.etykieta}
+            className={
+              p.tekst ? 'mvd-zwarcia-bilans-poz mvd-zwarcia-bilans-poz--tekst' : 'mvd-zwarcia-bilans-poz'
+            }
+          >
             <dt>{p.etykieta}</dt>
-            <dd className="mvd-num">
+            <dd className={p.tekst ? undefined : 'mvd-num'}>
               {p.wartosc}
               {p.jednostka && p.wartosc !== ZWARCIA_STRINGS.kreska ? ` ${p.jednostka}` : ''}
             </dd>

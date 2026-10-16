@@ -40,11 +40,18 @@ describe('BilansIEC — podstawa współczynnika c punktu', () => {
       etykieta: ZWARCIA_STRINGS.bilansCZrodlo,
       wartosc: zrodlo,
       jednostka: null,
+      tekst: true,
     });
 
     render(<BilansIEC row={row} punktNazwa="Szyna testowa" />);
     const bilans = screen.getByTestId('mvd-zwarcia-bilans');
-    expect(within(bilans).getByText(zrodlo)).toBeInTheDocument();
+    const wartosc = within(bilans).getByText(zrodlo);
+    expect(wartosc).toBeInTheDocument();
+    // Opis podstawy c jest tekstem, nie liczbą: pozycja na pełny wiersz siatki i bez kroju
+    // liczbowego `mvd-num` (nowrap) — inaczej długi opis wychodził na sąsiednią pozycję
+    // (defekt widoczny w zrzucie „po” ekranu zwarć).
+    expect(wartosc).not.toHaveClass('mvd-num');
+    expect(wartosc.closest('div')).toHaveClass('mvd-zwarcia-bilans-poz--tekst');
   });
 
   it.each([null, undefined, '   '])('wiersz bez podstawy c (%s) → uczciwa kreska, nie domysł', (zrodlo) => {
