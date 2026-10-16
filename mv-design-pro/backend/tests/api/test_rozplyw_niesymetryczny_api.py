@@ -14,6 +14,8 @@ from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source, 
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
 
+from tests.utils.biegi import wykonaj_bieg
+
 TRASA = "/api/analysis-runs/{run_id}/results/rozplyw-niesymetryczny"
 
 
@@ -109,7 +111,7 @@ def _uruchom(client: TestClient, case_id: str) -> dict:
     )
     assert create.status_code == 201, create.text
     assert create.json()["analysis_type"] == "PF_UNBALANCED"
-    execute = client.post(f"/api/execution/runs/{create.json()['id']}/execute")
+    execute = wykonaj_bieg(client, create.json()["id"])
     assert execute.status_code == 200, execute.text
     return execute.json()
 
@@ -170,7 +172,7 @@ def test_bieg_innego_rodzaju_daje_puste_wiersze_na_koncowce(app_client: TestClie
         f"/api/execution/study-cases/{case_id}/runs", json={"analysis_type": "LOAD_FLOW"}
     )
     run_id = create.json()["id"]
-    app_client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonaj_bieg(app_client, run_id)
     wynik = app_client.get(TRASA.format(run_id=run_id))
     assert wynik.status_code == 200
     assert wynik.json()["buses"] == [] and wynik.json()["summary"] is None

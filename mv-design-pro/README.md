@@ -53,8 +53,6 @@ Serwisy:
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 - PostgreSQL: localhost:5432
-- MongoDB: localhost:27017
-- Redis: localhost:6379
 
 ### Lokalne uruchomienie
 
@@ -187,7 +185,7 @@ mv-design-pro/
 │       ├── analysis/            # Interpretacja wynikow (Protection, Voltage, ...)
 │       ├── application/         # Wizard, SLD, Cases, Proof Engine, ...
 │       ├── api/                 # FastAPI endpoints
-│       └── infrastructure/      # Persistence (PostgreSQL, MongoDB)
+│       └── infrastructure/      # Persistence (PostgreSQL / SQLite)
 ├── frontend/
 │   └── src/
 │       ├── ui/                  # Komponenty React (SLD, Results, Cases, ...)
@@ -229,13 +227,13 @@ mv-design-pro/
 ## Technologie
 
 ### Backend
-- FastAPI, NumPy/SciPy, NetworkX, Pydantic, SQLAlchemy, Motor (MongoDB)
+- FastAPI, NumPy/SciPy, NetworkX, Pydantic, SQLAlchemy
 
 ### Frontend
 - React 18, TypeScript 5, Zustand, TanStack Query, Tailwind CSS, KaTeX
 
 ### Infrastructure
-- PostgreSQL, MongoDB, Redis, Celery
+- PostgreSQL (SQLite w torze dev/e2e); biegi liczy wykonawca w procesie API (karta DYNAMIKA-W-TLE)
 
 ---
 

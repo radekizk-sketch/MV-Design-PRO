@@ -13,10 +13,10 @@ from application.analyses.v126_gotowosc import (
 )
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
-from domain.execution import StanBiegu
+from application.execution import wykonawca_biegow
+from domain.execution import StanBiegu, stan_biegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
-from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.nazwy_elementow import zbuduj_indeks_nazw
 from enm.store import get_enm
@@ -48,7 +48,10 @@ class V126RunResponse(BaseModel):
     trace_url: str
     proof_url: str
     report_url: str
-    deterministic_hash: str
+    #: Odcisk wyniku — dopiero po FINISHED (karta DYNAMIKA-W-TLE: odpowiedź zlecenia
+    #: niesie stan QUEUED, odcisk czyta się z `result_url` po zakończeniu).
+    deterministic_hash: str | None = None
+    error_message: str | None = None
 
 
 class V126ZamiennikTrasy(BaseModel):
@@ -227,6 +230,9 @@ def _with_parameter_payloads(
 
 @router.post(
     "/cases/{case_id}/runs/v126/{analysis_type}",
+    # Karta DYNAMIKA-W-TLE: zlecenie biegu wykonawcy w tle — 202 + odpytywanie
+    # `GET /api/execution/runs/{run_id}`, jak każdy `POST …/execute`.
+    status_code=status.HTTP_202_ACCEPTED,
     response_model=V126RunResponse,
     responses={
         410: {
@@ -319,23 +325,29 @@ def run_v126_analysis(
             **({"braki_pakietow": braki_pakietow} if braki_pakietow else {}),
         },
     )
-    run = _execute_canonical_run(run.id)
-    if run.status == "FAILED" or run.raw_result is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=run.error_message or "Bieg V12.6 nie powiódł się.",
-        )
-    result = run.raw_result["result"]
+    # Karta DYNAMIKA-W-TLE: bieg trafia do kolejki wykonawcy w tle (202, stan QUEUED) —
+    # klient odpytuje `GET /api/execution/runs/{run_id}` do stanu końcowego, a wynik
+    # (z odciskiem deterministycznym) czyta `result_url` po FINISHED. Adresy wyniku są
+    # funkcją identyfikatora biegu, więc są znane od chwili zlecenia.
+    run = wykonawca_biegow.zlec_bieg(run.id, uow_factory=None)
+    return _odpowiedz_biegu_v126(run, case_id, analysis_type)
+
+
+def _odpowiedz_biegu_v126(
+    run: CanonicalRun, case_id: UUID, analysis_type: V126AnalysisType
+) -> V126RunResponse:
+    wynik = (run.raw_result or {}).get("result") if run.status == "FINISHED" else None
     return V126RunResponse(
         run_id=str(run.id),
         case_id=str(case_id),
         analysis_type=analysis_type,
-        status="FINISHED",
+        status=stan_biegu(run.status),
         result_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}",
         trace_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/trace",
         proof_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/proof",
         report_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/report",
-        deterministic_hash=result["deterministic_hash"],
+        deterministic_hash=None if wynik is None else wynik["deterministic_hash"],
+        error_message=run.error_message,
     )
 
 

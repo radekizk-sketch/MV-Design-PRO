@@ -191,7 +191,7 @@ from application.analyses.fault_loop.service import (
 )
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
 from application.analyses.swz.service import build_swz_view
-from enm.canonical_analysis import CanonicalRun, run_power_flow_now, run_short_circuit_now
+from enm.canonical_analysis import CanonicalRun
 from enm.hash import compute_enm_hash
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
@@ -208,6 +208,8 @@ from network_model.solvers.power_flow_types import (
     PQSpec,
     SlackSpec,
 )
+
+from tests.utils.biegi import run_power_flow_now, run_short_circuit_now
 
 # ---------------------------------------------------------------------------
 # Pozycje katalogowe (§0.1: katalog-first, żadna wymyślona)

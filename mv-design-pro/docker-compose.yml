@@ -10,10 +10,11 @@ services:
       - "18000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg://mvdesign:mvdesign_secret@postgres:5432/mvdesign_db
-      - MONGODB_URL=mongodb://mongodb:27017/mvdesign_db
-      - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=your-secret-key-change-in-production
       - DEBUG=true
+      # Polityka wątków BLAS z pomiaru PERF-DYN-0 (uzasadnienie: backend/Dockerfile).
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
       interval: 10s
@@ -21,10 +22,6 @@ services:
       retries: 5
     depends_on:
       postgres:
-        condition: service_healthy
-      mongodb:
-        condition: service_started
-      redis:
         condition: service_healthy
     volumes:
       - ./backend:/app
@@ -71,58 +68,8 @@ services:
       retries: 5
     restart: unless-stopped
 
-  mongodb:
-    image: mongo:7.0
-    container_name: mv-design-pro-mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=mvdesign_db
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - mv-design-network
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: mv-design-pro-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - mv-design-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  celery-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: mv-design-pro-celery-worker
-    command: celery -A src.api.celery_app worker --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql+psycopg://mvdesign:mvdesign_secret@postgres:5432/mvdesign_db
-      - MONGODB_URL=mongodb://mongodb:27017/mvdesign_db
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - backend
-      - redis
-    volumes:
-      - ./backend:/app
-    networks:
-      - mv-design-network
-    restart: unless-stopped
-
 volumes:
   postgres_data:
-  mongodb_data:
-  redis_data:
 
 networks:
   mv-design-network:

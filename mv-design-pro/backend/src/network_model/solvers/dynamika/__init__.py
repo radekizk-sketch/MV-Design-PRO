@@ -55,6 +55,7 @@ from .kontrakty import (
     wymagane_parametry_odbioru,
 )
 from .odbiory import OdbiorCharakterystyczny
+from .przerwanie import BiegPrzerwany, NadzorcaBiegu
 from .reinicjalizacja import RaportReinicjalizacji, reinicjalizuj
 from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre, zloz_model_sieci
 from .silnik import SilnikDynamiki
@@ -76,6 +77,7 @@ __all__ = [
     "KODY_ODMOW",
     "KODY_ZALOZEN_RDZENIA",
     "WERSJA_SOLVERA",
+    "BiegPrzerwany",
     "CharakterystykaOdbioru",
     "ElementStanowy",
     "GalazDynamiki",
@@ -86,6 +88,7 @@ __all__ = [
     "KontekstKroku",
     "Metryka",
     "ModelOdbioru",
+    "NadzorcaBiegu",
     "ModelSieci",
     "NastawySolvera",
     "OdbiorCharakterystyczny",

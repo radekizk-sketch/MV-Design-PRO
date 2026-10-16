@@ -8,7 +8,7 @@
  * - Manages run lifecycle (create → execute → poll → results)
  *
  * INVARIANTS:
- * - Run is created in PENDING, transitioned to RUNNING, then DONE or FAILED
+ * - Run is created in PENDING, queued (QUEUED), RUNNING, then DONE, FAILED or CANCELLED
  * - ResultSet available ONLY for DONE runs
  * - activeRunId tracks the most recent run for UI display
  * - runResultsCache stores fetched result sets to avoid re-fetching
@@ -101,7 +101,10 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
    *
    * Steps:
    * 1. Create run (POST /api/study-cases/{caseId}/runs)
-   * 2. Execute run (POST /api/runs/{runId}/execute)
+   * 2. Zleć bieg (POST /api/runs/{runId}/execute → 202 QUEUED) i odpytuj stan do
+   *    DONE/FAILED/CANCELLED jedną ścieżką `api.executeRunAndWait` — odpowiedź 202
+   *    nie jest wynikiem; `runStatus` śledzi każdy odczyt stanu (QUEUED → RUNNING →
+   *    stan końcowy), a `isExecutingRun` gaśnie dopiero na stanie końcowym.
    * 3. Update local state
    */
   createAndExecuteRun: async (caseId, request) => {
@@ -116,7 +119,9 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
       });
 
       // Step 2: Execute
-      const executedRun = await api.executeRun(run.id);
+      const executedRun = await api.executeRunAndWait(run.id, {
+        onStan: (bieg) => set({ runStatus: bieg.status as RunStatus }),
+      });
       set({
         runStatus: executedRun.status as RunStatus,
         isExecutingRun: false,

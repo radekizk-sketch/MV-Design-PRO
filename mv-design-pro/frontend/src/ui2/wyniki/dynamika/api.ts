@@ -6,13 +6,20 @@
  *    biegi rozpływu tej samej migawki,
  *  - `GET/POST /api/dynamika/study-cases/{case}/scenariusze` — scenariusze nazwane,
  *  - `POST /api/execution/study-cases/{case}/runs` (`DYNAMIKA_RMS`, `scenario_id`) +
- *    `POST /api/execution/runs/{id}/execute` + odpytywanie `GET /api/execution/runs/{id}`,
+ *    `POST /api/execution/runs/{id}/execute` (202 — bieg liczy się w tle, karta
+ *    DYNAMIKA-W-TLE) + odpytywanie `GET /api/execution/runs/{id}` (stan i postęp) +
+ *    `POST /api/execution/runs/{id}/cancel` (anulowanie między krokami całkowania),
  *  - `GET  /api/analysis-runs/{id}/results/dynamika[/time-series?kanaly=…]`.
  * Wiązanie modelu dynamicznego źródła idzie operacją domenową `set_der_catalog_bindings`
  * przez magazyn migawki (`useSnapshotStore.executeDomainOperation`) — nie przez ten plik.
  */
 
-import { createRun, executeRun, getRun } from '../../../ui/study-cases/api';
+import {
+  ODSTEP_ODPYTYWANIA_BIEGU_MS,
+  cancelRun,
+  createRun,
+  executeRunAndWait,
+} from '../../../ui/study-cases/api';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type {
   BladPolaScenariusza,
@@ -107,8 +114,8 @@ export async function fetchPrzebiegiDynamiki(
   );
 }
 
-/** Odstęp odpytywania stanu biegu [ms] (bieg liczy się kilka–kilkadziesiąt sekund). */
-export const ODSTEP_ODPYTYWANIA_MS = 1000;
+/** Odstęp odpytywania stanu biegu [ms] — wspólny dla całego frontu. */
+export const ODSTEP_ODPYTYWANIA_MS = ODSTEP_ODPYTYWANIA_BIEGU_MS;
 
 export interface ZadanieBiegu {
   readonly caseId: string;
@@ -118,15 +125,17 @@ export interface ZadanieBiegu {
 }
 
 /**
- * Bieg `DYNAMIKA_RMS` istniejącą ścieżką wykonania: utworzenie (scenariusz nazwany +
- * punkt pracy + nastawy), wykonanie (żądanie trwa tyle, ile bieg) i ODPYTYWANIE stanu
- * `GET /api/execution/runs/{id}` do `DONE`/`FAILED` — stan „w toku" jest widoczny
- * od chwili, gdy backend ustawi `RUNNING`, a nie dopiero po zakończeniu żądania.
+ * Bieg `DYNAMIKA_RMS` istniejącą ścieżką wykonania (karta DYNAMIKA-W-TLE): utworzenie
+ * (scenariusz nazwany + punkt pracy + nastawy), zlecenie wykonawcy w tle (202, stan
+ * QUEUED — żądanie wraca natychmiast) i ODPYTYWANIE stanu `GET /api/execution/runs/{id}`
+ * do DONE/FAILED/CANCELLED. Każdy odczyt stanu (kolejka, bieg w toku z postępem w
+ * czasie symulacji, koniec) trafia do `poZmianieStanu`, więc ekran pokazuje pasek
+ * postępu i może anulować bieg (`anulujBiegDynamiki`) między krokami całkowania.
  */
 export async function uruchomBiegDynamiki(
   zadanie: ZadanieBiegu,
   poZmianieStanu: (bieg: ExecutionRun) => void,
-  czekaj: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  czekaj?: (ms: number) => Promise<void>,
 ): Promise<ExecutionRun> {
   const utworzony = await createRun(zadanie.caseId, {
     analysis_type: 'DYNAMIKA_RMS',
@@ -134,33 +143,18 @@ export async function uruchomBiegDynamiki(
     scenario_id: zadanie.scenarioId,
   });
   poZmianieStanu(utworzony);
-  const wykonanie: { bieg: ExecutionRun | null; blad: unknown; skonczone: boolean } = {
-    bieg: null,
-    blad: null,
-    skonczone: false,
-  };
-  const zadanieWykonania = executeRun(utworzony.id).then(
-    (bieg) => {
-      wykonanie.bieg = bieg;
-      wykonanie.skonczone = true;
-    },
-    (blad: unknown) => {
-      wykonanie.blad = blad;
-      wykonanie.skonczone = true;
-    },
-  );
-  for (;;) {
-    if (wykonanie.skonczone) {
-      if (wykonanie.bieg === null) throw wykonanie.blad;
-      poZmianieStanu(wykonanie.bieg);
-      return wykonanie.bieg;
-    }
-    const stan = await getRun(utworzony.id);
-    poZmianieStanu(stan);
-    if (stan.status === 'DONE' || stan.status === 'FAILED') {
-      await zadanieWykonania;
-      return stan;
-    }
-    await Promise.race([czekaj(ODSTEP_ODPYTYWANIA_MS), zadanieWykonania]);
+  return executeRunAndWait(utworzony.id, { onStan: poZmianieStanu, czekaj });
+}
+
+/**
+ * Anuluj bieg dynamiki: w kolejce — od razu CANCELLED; w toku — wykonawca przerywa go
+ * po bieżącym kroku całkowania (odpowiedź niesie stan bieżący, odpytywanie trwające w
+ * `uruchomBiegDynamiki` dojdzie do CANCELLED). Bieg zakończony → odmowa 409 z powodem.
+ */
+export async function anulujBiegDynamiki(runId: string): Promise<ExecutionRun> {
+  try {
+    return await cancelRun(runId);
+  } catch (blad) {
+    throw new BladApiDynamiki(blad instanceof Error ? blad.message : String(blad), 409);
   }
 }

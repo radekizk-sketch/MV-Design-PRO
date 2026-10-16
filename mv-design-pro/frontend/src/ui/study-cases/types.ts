@@ -244,9 +244,36 @@ export type ExecutionAnalysisType =
   | 'PROTECTION';
 
 /**
- * Run lifecycle status.
+ * Run lifecycle status (kontrakt HTTP wykonania, `domain.execution.RunStatus`).
+ * Karta DYNAMIKA-W-TLE: `QUEUED` — bieg przyjęty do kolejki wykonawcy w tle
+ * (jeden ciężki bieg naraz), `CANCELLED` — anulowany przez użytkownika (bez wyniku
+ * częściowego, z wyjaśnieniem w `error_message`).
  */
-export type RunStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+export type RunStatus = 'PENDING' | 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELLED';
+
+/** Stany końcowe biegu — po nich nic już się w biegu nie zmieni. */
+export const STANY_KONCOWE_BIEGU: ReadonlySet<RunStatus> = new Set<RunStatus>([
+  'DONE',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export function czyStanKoncowyBiegu(status: RunStatus): boolean {
+  return STANY_KONCOWE_BIEGU.has(status);
+}
+
+/**
+ * Postęp biegu w toku (pomiar wykonawcy w tle — `domain.execution.PostepBiegu`):
+ * co policzono z czego w nazwanej jednostce (czas symulacji, punkty zwarcia,
+ * pozycje serii) i ułamek 0–1. `null` gdy wykonawca biegu nie mierzy postępu.
+ */
+export interface PostepBiegu {
+  wykonane: number;
+  razem: number;
+  jednostka: string;
+  krok: number;
+  ulamek: number;
+}
 
 /**
  * Execution run record.
@@ -271,6 +298,8 @@ export interface ExecutionRun {
   created_at?: string | null;
   /** Odcisk migawki modelu, z której bieg policzono (pochodzenie). */
   snapshot_hash?: string | null;
+  /** Postęp biegu w toku (karta DYNAMIKA-W-TLE); `null`/brak = nie mierzony. */
+  postep?: PostepBiegu | null;
 }
 
 /**
@@ -315,9 +344,11 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
  */
 export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   PENDING: 'Oczekuje',
+  QUEUED: 'W kolejce',
   RUNNING: 'W trakcie',
   DONE: 'Zakończony',
   FAILED: 'Błąd',
+  CANCELLED: 'Anulowany',
 };
 
 /**
@@ -325,9 +356,13 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
  */
 export const RUN_STATUS_COLORS: Record<RunStatus, string> = {
   PENDING: 'text-gray-500',
+  // Karta DYNAMIKA-W-TLE: każdy stan ma własny kolor (test „distinct colors") —
+  // w kolejce = oczekiwanie (bursztyn), anulowany = wygaszony (łupek), nie szary PENDING.
+  QUEUED: 'text-amber-600',
   RUNNING: 'text-blue-500',
   DONE: 'text-green-600',
   FAILED: 'text-red-600',
+  CANCELLED: 'text-slate-400',
 };
 
 /**
@@ -356,11 +391,32 @@ export interface CreateRunRequest {
  * stan niemożliwy dla pojedynczego biegu (część pozycji FAILED, reszta
  * FINISHED — seria NIGDY nie melduje cicho FINISHED).
  */
-export type BatchStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED' | 'PARTIAL';
+export type BatchStatus =
+  | 'CREATED'
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'FINISHED'
+  | 'FAILED'
+  | 'PARTIAL'
+  | 'CANCELLED';
+
+/** Stany końcowe serii (karta DYNAMIKA-W-TLE: seria liczy się w tle, klient odpytuje). */
+export const STANY_KONCOWE_SERII: ReadonlySet<BatchStatus> = new Set<BatchStatus>([
+  'FINISHED',
+  'FAILED',
+  'PARTIAL',
+  'CANCELLED',
+]);
 
 /** Status WYKONANIA jednej pozycji serii — TEN SAM słownik co bieg kanoniczny
  * (bez PARTIAL — to stan wyłącznie serii, agregat pozycji). */
-export type BatchItemStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED';
+export type BatchItemStatus =
+  | 'CREATED'
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'FINISHED'
+  | 'FAILED'
+  | 'CANCELLED';
 
 /**
  * Jedna pozycja serii (kontrakt `items[]`, karta CV-3.3-C). ZERO własnego
@@ -418,8 +474,10 @@ export interface CreateBatchRequest {
  */
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
   CREATED: 'Utworzona',
+  QUEUED: 'W kolejce',
   RUNNING: 'W trakcie',
   FINISHED: 'Zakończona',
   FAILED: 'Błąd',
   PARTIAL: 'Częściowa',
+  CANCELLED: 'Anulowana',
 };

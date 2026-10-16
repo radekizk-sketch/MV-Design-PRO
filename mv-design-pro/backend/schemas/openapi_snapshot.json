@@ -500,9 +500,11 @@
      "status": {
       "enum": [
        "CREATED",
+       "QUEUED",
        "RUNNING",
        "FINISHED",
-       "FAILED"
+       "FAILED",
+       "CANCELLED"
       ],
       "title": "Status",
       "type": "string"
@@ -10125,6 +10127,40 @@
     "title": "PomiarWejscie",
     "type": "object"
    },
+   "PostepResponse": {
+    "description": "Postęp biegu w toku: co policzono z czego (jednostka nazwana), ułamek 0–1.",
+    "properties": {
+     "jednostka": {
+      "title": "Jednostka",
+      "type": "string"
+     },
+     "krok": {
+      "title": "Krok",
+      "type": "integer"
+     },
+     "razem": {
+      "title": "Razem",
+      "type": "number"
+     },
+     "ulamek": {
+      "title": "Ulamek",
+      "type": "number"
+     },
+     "wykonane": {
+      "title": "Wykonane",
+      "type": "number"
+     }
+    },
+    "required": [
+     "wykonane",
+     "razem",
+     "jednostka",
+     "krok",
+     "ulamek"
+    ],
+    "title": "PostepResponse",
+    "type": "object"
+   },
    "PowerFlowComparisonMetadataResponse": {
     "description": "Comparison metadata (without full results).",
     "properties": {
@@ -11328,9 +11364,11 @@
      "status": {
       "enum": [
        "CREATED",
+       "QUEUED",
        "RUNNING",
        "FINISHED",
-       "FAILED"
+       "FAILED",
+       "CANCELLED"
       ],
       "title": "Status",
       "type": "string"
@@ -11441,9 +11479,11 @@
      "status": {
       "enum": [
        "CREATED",
+       "QUEUED",
        "RUNNING",
        "FINISHED",
-       "FAILED"
+       "FAILED",
+       "CANCELLED"
       ],
       "title": "Status",
       "type": "string"
@@ -12600,12 +12640,14 @@
     "type": "object"
    },
    "RunBatchStatus": {
-    "description": "Cykl zycia serii — slownik `CanonicalRun.status` + PARTIAL (karta §0 C1).",
+    "description": "Cykl zycia serii — slownik `CanonicalRun.status` + PARTIAL (karta §0 C1).\n\nKarta DYNAMIKA-W-TLE: seria wykonuje sie w tle TYM SAMYM wykonawca co pojedynczy\nbieg — `QUEUED` = przyjeta do kolejki (jeden ciezki bieg naraz), `CANCELLED` =\nanulowana przez uzytkownika (z kolejki albo miedzy pozycjami; pozycje juz\npoliczone zachowuja wyniki, niewykonane dostaja CANCELLED z wyjasnieniem).",
     "enum": [
      "CREATED",
+     "QUEUED",
      "RUNNING",
      "FINISHED",
      "FAILED",
+     "CANCELLED",
      "PARTIAL"
     ],
     "title": "RunBatchStatus",
@@ -12814,9 +12856,11 @@
      "status": {
       "enum": [
        "CREATED",
+       "QUEUED",
        "RUNNING",
        "FINISHED",
-       "FAILED"
+       "FAILED",
+       "CANCELLED"
       ],
       "title": "Status",
       "type": "string"
@@ -12888,6 +12932,16 @@
       ],
       "title": "Model Revision"
      },
+     "postep": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PostepResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "snapshot_hash": {
       "anyOf": [
        {
@@ -12933,12 +12987,14 @@
     "type": "object"
    },
    "RunStatus": {
-    "description": "Run lifecycle status.",
+    "description": "Run lifecycle status (kontrakt HTTP wykonania).\n\nKarta DYNAMIKA-W-TLE: bieg wykonuje się poza żądaniem HTTP — `QUEUED` to bieg\nprzyjęty do kolejki wykonawcy (jeden ciężki bieg naraz), `CANCELLED` to bieg\nanulowany przez użytkownika przed startem albo między krokami obliczeń (bez\nwyniku częściowego, z wyjaśnieniem w `error_message`).",
     "enum": [
      "PENDING",
+     "QUEUED",
      "RUNNING",
      "DONE",
-     "FAILED"
+     "FAILED",
+     "CANCELLED"
     ],
     "title": "RunStatus",
     "type": "string"
@@ -15000,8 +15056,26 @@
       "type": "string"
      },
      "deterministic_hash": {
-      "title": "Deterministic Hash",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Deterministic Hash"
+     },
+     "error_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Message"
      },
      "proof_url": {
       "title": "Proof Url",
@@ -15022,9 +15096,11 @@
      "status": {
       "enum": [
        "CREATED",
+       "QUEUED",
        "RUNNING",
        "FINISHED",
-       "FAILED"
+       "FAILED",
+       "CANCELLED"
       ],
       "title": "Status",
       "type": "string"
@@ -15042,8 +15118,7 @@
      "result_url",
      "trace_url",
      "proof_url",
-     "report_url",
-     "deterministic_hash"
+     "report_url"
     ],
     "title": "V126RunResponse",
     "type": "object"
@@ -20473,7 +20548,7 @@
      "required": true
     },
     "responses": {
-     "200": {
+     "202": {
       "content": {
        "application/json": {
         "schema": {
@@ -23071,10 +23146,10 @@
     ]
    }
   },
-  "/api/execution/batches/{batch_id}/execute": {
+  "/api/execution/batches/{batch_id}/cancel": {
    "post": {
-    "description": "Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).\n\nKAŻDA pozycja jest próbowana, niezależnie od wyniku poprzednich (karta §0\nC2 — zero zatrzymania na pierwszej awarii): status końcowy to FINISHED\n(wszystkie pozycje FINISHED), FAILED (wszystkie FAILED) albo PARTIAL\n(mieszanka).\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż CREATED,\n404 gdy przypadek serii nie należy do żadnego projektu (klucz magazynu ENM\ntłumaczony TU, bo `BatchExecutionService` nie ma dostępu do bazy danych —\npatrz `application/batch_execution_service.py`).",
-    "operationId": "execute_batch_api_execution_batches__batch_id__execute_post",
+    "description": "Anuluj serię (karta DYNAMIKA-W-TLE): z kolejki natychmiast (CANCELLED),\nw toku — po bieżącej pozycji (odpowiedź niesie stan bieżący, klient odpytuje do\nCANCELLED). Pozycje policzone zachowują wyniki. 404 dla nieznanej serii, 409 dla\nserii zakończonej (nazwany stan).",
+    "operationId": "cancel_batch_api_execution_batches__batch_id__cancel_post",
     "parameters": [
      {
       "in": "path",
@@ -23087,7 +23162,7 @@
      }
     ],
     "responses": {
-     "200": {
+     "202": {
       "content": {
        "application/json": {
         "schema": {
@@ -23108,7 +23183,50 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Wykonaj serię przebiegów",
+    "summary": "Anuluj serię przebiegów",
+    "tags": [
+     "batch-execution"
+    ]
+   }
+  },
+  "/api/execution/batches/{batch_id}/execute": {
+   "post": {
+    "description": "Zleć serię wykonawcy w tle (karta DYNAMIKA-W-TLE): 202 ze stanem QUEUED.\n\nSeria wykonuje się sekwencyjnie torem kanonicznym (realny solver) TYM SAMYM\nwykonawcą, co pojedynczy bieg (jeden ciężki bieg naraz); klient odpytuje\n`GET …/batches/{batch_id}` do stanu końcowego. KAŻDA pozycja jest próbowana,\nniezależnie od wyniku poprzednich (karta §0 C2 — zero zatrzymania na pierwszej\nawarii): status końcowy to FINISHED (wszystkie pozycje FINISHED), FAILED\n(wszystkie FAILED), PARTIAL (mieszanka) albo CANCELLED (anulowana przez\nużytkownika — pozycje niewykonane z wyjaśnieniem).\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż CREATED,\n404 gdy przypadek serii nie należy do żadnego projektu (klucz magazynu ENM\ntłumaczony TU, bo `BatchExecutionService` nie ma dostępu do bazy danych —\npatrz `application/batch_execution_service.py`).",
+    "operationId": "execute_batch_api_execution_batches__batch_id__execute_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "batch_id",
+      "required": true,
+      "schema": {
+       "title": "Batch Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BatchResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Zleć serię przebiegów wykonawcy w tle",
     "tags": [
      "batch-execution"
     ]
@@ -23434,6 +23552,48 @@
     ]
    }
   },
+  "/api/execution/runs/{run_id}/cancel": {
+   "post": {
+    "operationId": "cancel_run_api_execution_runs__run_id__cancel_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Cancel Run",
+    "tags": [
+     "execution-runs"
+    ]
+   }
+  },
   "/api/execution/runs/{run_id}/diagnostics": {
    "get": {
     "description": "Diagnoza pojedynczego biegu — dlaczego solver nie zbiegł (D7).\n\nInterpretacja ISTNIEJĄCYCH artefaktów biegu (wynik FROZEN + ślad WHITE BOX).\nZero fizyki, zero ponownego liczenia — zbieżność publikuje solver.\n\nReturns:\n    Kontrakt diagnozy przebiegu (kod diagnozy + dowód liczbowy).",
@@ -23495,7 +23655,7 @@
      }
     ],
     "responses": {
-     "200": {
+     "202": {
       "content": {
        "application/json": {
         "schema": {
@@ -26275,7 +26435,7 @@
      }
     ],
     "responses": {
-     "200": {
+     "202": {
       "content": {
        "application/json": {
         "schema": {
@@ -27696,9 +27856,11 @@
         {
          "enum": [
           "CREATED",
+          "QUEUED",
           "RUNNING",
           "FINISHED",
-          "FAILED"
+          "FAILED",
+          "CANCELLED"
          ],
          "type": "string"
         },
@@ -27819,9 +27981,11 @@
         {
          "enum": [
           "CREATED",
+          "QUEUED",
           "RUNNING",
           "FINISHED",
-          "FAILED"
+          "FAILED",
+          "CANCELLED"
          ],
          "type": "string"
         },
@@ -28496,7 +28660,7 @@
   },
   "/api/protection-runs/{run_id}/execute": {
    "post": {
-    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. This endpoint:\n1. Runs the protection evaluation engine (interpretation, zero physics)\n2. Stores the result on the CanonicalRun (R1)\n\nReturns:\n- Updated run metadata with status FINISHED or FAILED\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ\nzwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji\nprzez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.",
+    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. Karta DYNAMIKA-W-TLE: this endpoint queues the\nrun on the in-process executor (202, status QUEUED) — the protection evaluation\nengine (interpretation, zero physics) runs in the background and stores the\nresult on the CanonicalRun (R1); poll `GET /protection-runs/{run_id}` until\nFINISHED, FAILED or CANCELLED.\n\nReturns:\n- Run metadata with the current status (QUEUED right after acceptance)\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ\nzwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji\nprzez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.",
     "operationId": "execute_protection_run_api_protection_runs__run_id__execute_post",
     "parameters": [
      {
@@ -28511,7 +28675,7 @@
      }
     ],
     "responses": {
-     "200": {
+     "202": {
       "content": {
        "application/json": {
         "schema": {

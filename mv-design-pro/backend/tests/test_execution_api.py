@@ -9,6 +9,7 @@ from api.main import app
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _reset_backend_state() -> None:
@@ -367,13 +368,13 @@ class TestExecuteRunEndpoint:
         )
         run_id = create_resp.json()["id"]
 
-        response = client.post(f"/api/execution/runs/{run_id}/execute")
+        response = wykonaj_bieg(client, run_id)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "DONE"
 
     def test_execute_run_not_found(self, client):
-        response = client.post(f"/api/execution/runs/{uuid4()}/execute")
+        response = wykonaj_bieg(client, uuid4())
         assert response.status_code == 404
 
 
@@ -419,7 +420,7 @@ class TestGetRunResultsEndpoint:
         )
         run_id = create_resp.json()["id"]
 
-        execute_resp = client.post(f"/api/execution/runs/{run_id}/execute")
+        execute_resp = wykonaj_bieg(client, run_id)
         assert execute_resp.status_code == 200
         assert execute_resp.json()["status"] == "DONE"
 

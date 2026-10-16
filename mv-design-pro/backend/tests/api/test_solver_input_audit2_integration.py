@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.utils.biegi import wykonaj_bieg
+
 pytest.importorskip("fastapi")
 
 
@@ -138,7 +140,7 @@ def _create_and_execute_load_flow_run(client, case_id: str, solver_input: dict) 
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     return execute.json()
 
@@ -489,7 +491,7 @@ def _create_and_execute_run(client, case_id: str, analysis_type: str, solver_inp
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     return execute.json()
 

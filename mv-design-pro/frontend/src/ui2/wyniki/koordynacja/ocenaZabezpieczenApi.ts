@@ -8,6 +8,7 @@
  * ZERO fizyki: klient przenosi dane, nic nie liczy.
  */
 
+import { ODSTEP_ODPYTYWANIA_BIEGU_MS } from '../../../ui/study-cases/api';
 import type { OcenaKryterium } from '../wzorzec/werdykt';
 import type {
   OdmowaUrzadzenia,
@@ -71,11 +72,20 @@ export interface WynikOcenyZabezpieczen {
   result_status_reason_pl: string;
 }
 
+/** Słownik domenowy stanu biegu zabezpieczeń (`domain.execution.StanBiegu`). */
+type StanBieguZabezpieczen = 'CREATED' | 'QUEUED' | 'RUNNING' | 'FINISHED' | 'FAILED' | 'CANCELLED';
+
 interface OdpowiedzBiegu {
   id: string;
-  status: 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED';
+  status: StanBieguZabezpieczen;
   error_message: string | null;
 }
+
+/** Stany W TOKU — tylko one każą odpytywać dalej (karta DYNAMIKA-W-TLE: `execute` = 202). */
+const STANY_W_TOKU: ReadonlySet<StanBieguZabezpieczen> = new Set(['CREATED', 'QUEUED', 'RUNNING']);
+
+const czekajDomyslnie = (ms: number): Promise<void> =>
+  new Promise((resolve) => window.setTimeout(resolve, ms));
 
 async function tekstBledu(odpowiedz: Response, prefiks: string): Promise<string> {
   const tresc = (await odpowiedz.json().catch(() => null)) as { detail?: unknown } | null;
@@ -86,12 +96,16 @@ async function tekstBledu(odpowiedz: Response, prefiks: string): Promise<string>
 
 /**
  * Utwórz i wykonaj bieg oceny zabezpieczeń na wskazanym biegu zwarciowym. Zwraca
- * identyfikator zakończonego biegu; bieg nieudany → błąd z komunikatem backendu.
+ * identyfikator zakończonego biegu; bieg nieudany albo anulowany → błąd z komunikatem
+ * backendu. `execute` zleca bieg wykonawcy w tle (202, QUEUED — karta DYNAMIKA-W-TLE);
+ * stan końcowy przychodzi z odpytywania `GET /api/protection-runs/{id}` (`czekaj`
+ * wstrzykiwalne dla testów bez zegara rzeczywistego).
  */
 export async function uruchomOceneZabezpieczen(
   projectId: string,
   caseId: string,
   scRunId: string,
+  czekaj: (ms: number) => Promise<void> = czekajDomyslnie,
 ): Promise<string> {
   const utworzony = await fetch(`/api/projects/${encodeURIComponent(projectId)}/protection-runs`, {
     method: 'POST',
@@ -108,8 +122,16 @@ export async function uruchomOceneZabezpieczen(
   if (!wykonany.ok) {
     throw new Error(await tekstBledu(wykonany, 'Nie udało się wykonać biegu oceny'));
   }
-  const wynik = (await wykonany.json()) as OdpowiedzBiegu;
-  // Słownik statusu biegu kanonicznego (CREATED/RUNNING/FINISHED/FAILED).
+  let wynik = (await wykonany.json()) as OdpowiedzBiegu;
+  while (STANY_W_TOKU.has(wynik.status)) {
+    await czekaj(ODSTEP_ODPYTYWANIA_BIEGU_MS);
+    const stan = await fetch(`/api/protection-runs/${encodeURIComponent(bieg.id)}`);
+    if (!stan.ok) {
+      throw new Error(await tekstBledu(stan, 'Nie udało się odczytać stanu biegu oceny'));
+    }
+    wynik = (await stan.json()) as OdpowiedzBiegu;
+  }
+  // Stan końcowy: FINISHED albo FAILED/CANCELLED z komunikatem backendu.
   if (wynik.status !== 'FINISHED') {
     throw new Error(wynik.error_message ?? `Bieg oceny zakończył się statusem ${wynik.status}.`);
   }

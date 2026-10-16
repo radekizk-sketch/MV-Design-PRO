@@ -27,6 +27,7 @@
  */
 
 import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
+import { getRun, waitForRunTerminalState } from '../../../ui/study-cases/api';
 
 // ---------------------------------------------------------------------------
 // Wspólny kontekst przebiegu (pochodzenie wyniku) — pola opcjonalne.
@@ -150,7 +151,9 @@ export interface WidokStabilnosciSsci {
 export interface PrzebiegSsci {
   readonly run_id: string;
   readonly status: string;
-  readonly deterministic_hash: string;
+  /** Odcisk wyniku — `null` dopóki bieg nie zakończy się wynikiem (bieg w tle). */
+  readonly deterministic_hash: string | null;
+  readonly error_message?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,11 +206,17 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
  * Parametry puste — przekształtniki i pola karty falownika pochodzą z ENM
  * (bez fabrykacji). Zwraca `run_id`, którym pobiera się widok stabilności.
  */
-export function utworzPrzebiegSsci(caseId: string): Promise<PrzebiegSsci> {
-  return postJsonZDetalem<PrzebiegSsci>(
+export async function utworzPrzebiegSsci(caseId: string): Promise<PrzebiegSsci> {
+  // Karta DYNAMIKA-W-TLE: zlecenie (202, QUEUED) + odpytywanie stanu biegu do końca.
+  const zlecony = await postJsonZDetalem<PrzebiegSsci>(
     `/api/cases/${encodeURIComponent(caseId)}/runs/v126/${ANALIZA_SSCI}`,
     { parameters: {} },
   );
+  const koniec = await waitForRunTerminalState(await getRun(zlecony.run_id));
+  if (koniec.status !== 'DONE') {
+    throw new Error(koniec.error_message ?? `Bieg SSCI zakończył się stanem ${koniec.status}.`);
+  }
+  return { ...zlecony, status: 'FINISHED' };
 }
 
 /** Pobiera widok stabilności SSCI (ocena + metryki audytowe) dla przebiegu `ssci_impedance`. */

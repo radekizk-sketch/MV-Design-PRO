@@ -204,7 +204,7 @@ describe('ANALYSIS_TYPE_LABELS', () => {
 // ---------------------------------------------------------------------------
 
 describe('RUN_STATUS_LABELS', () => {
-  const ALL_STATUSES: RunStatus[] = ['PENDING', 'RUNNING', 'DONE', 'FAILED'];
+  const ALL_STATUSES: RunStatus[] = ['PENDING', 'QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELLED'];
 
   it('should have labels for all run statuses', () => {
     for (const status of ALL_STATUSES) {
@@ -220,7 +220,7 @@ describe('RUN_STATUS_LABELS', () => {
 // ---------------------------------------------------------------------------
 
 describe('RUN_STATUS_COLORS', () => {
-  const ALL_STATUSES: RunStatus[] = ['PENDING', 'RUNNING', 'DONE', 'FAILED'];
+  const ALL_STATUSES: RunStatus[] = ['PENDING', 'QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELLED'];
 
   it('should have CSS color classes for all run statuses', () => {
     for (const status of ALL_STATUSES) {

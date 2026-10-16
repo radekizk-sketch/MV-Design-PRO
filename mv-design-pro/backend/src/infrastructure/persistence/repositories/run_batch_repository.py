@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 from infrastructure.persistence.db import session_scope
@@ -22,7 +23,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     get_canonical_run_session_factory,
 )
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import select
+from sqlalchemy import CursorResult, select, update
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
@@ -62,6 +63,48 @@ class RunBatchRepository:
     def get(self, batch_id: UUID) -> RunBatch | None:
         row = self._session.get(RunBatchORM, batch_id)
         return self._to_domain(row) if row is not None else None
+
+    def claim(self, batch_id: UUID, *, z: tuple[str, ...], na: str) -> bool:
+        """Atomowo przestaw serie ze stanu w `z` na `na` (jeden UPDATE z warunkiem).
+
+        Ten sam wzorzec, co `CanonicalRunRepository.claim_for_execution`: warunek
+        i zapis w jednym zdaniu, wiec dwa rownolegle `POST …/batches/{id}/execute`
+        daja dokladnie jedno zlecenie (dawny odczyt statusu + osobny zapis RUNNING
+        w `BatchExecutionService.execute_batch` byl TOCTOU tej samej klasy, ktora
+        naprawiono dla biegow). Zwraca ``True``, gdy TEN wolajacy przestawil stan.
+        """
+        stmt = (
+            update(RunBatchORM)
+            .where(RunBatchORM.id == batch_id, RunBatchORM.status.in_(z))
+            .values(status=na)
+        )
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
+        return wynik.rowcount == 1
+
+    def fail_orphaned(self, *, reason: str, finished_at: datetime) -> int:
+        """Zamknij serie osierocone w QUEUED/RUNNING po restarcie procesu API.
+
+        Ta sama zasada, co `CanonicalRunRepository.fail_orphaned_running` (wykonawca
+        zyje w procesie — po starcie zadna seria nie jest w toku): seria dostaje
+        FAILED, kazda pozycja niezakonczona FAILED z ta sama przyczyna; pozycje
+        zakonczone zachowuja wynik. Zwraca liczbe zamknietych serii.
+        """
+        from domain.run_batch import ITEM_STATUS_FAILED, RunBatchStatus
+
+        stmt = select(RunBatchORM).where(
+            RunBatchORM.status.in_((RunBatchStatus.QUEUED.value, RunBatchStatus.RUNNING.value))
+        )
+        zamkniete = 0
+        for row in self._session.execute(stmt).scalars().all():
+            batch = self._to_domain(row)
+            batch = batch.with_unfinished_items(ITEM_STATUS_FAILED, reason).with_status(
+                RunBatchStatus.FAILED
+            )
+            row.status = batch.status.value
+            row.finished_at = ensure_utc(finished_at)
+            row.items_json = [pozycja.to_dict() for pozycja in batch.sorted_items()]
+            zamkniete += 1
+        return zamkniete
 
     def list_by_case(self, case_id: str) -> list[RunBatch]:
         stmt = (

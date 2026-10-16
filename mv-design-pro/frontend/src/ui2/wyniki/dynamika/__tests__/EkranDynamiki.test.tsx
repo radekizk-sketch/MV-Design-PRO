@@ -145,12 +145,12 @@ function ustawFetch(): void {
         return odpowiedz({ runs: atrapa.biegi, count: atrapa.biegi.length });
       }
       if (adres.endsWith('/api/execution/runs/run-nowy/execute')) {
-        // Wykonanie trwa (żądanie wisi) — interfejs odpytuje stan w tym czasie.
-        await new Promise((r) => setTimeout(r, 30));
-        return odpowiedz({ id: 'run-nowy', status: 'DONE', analysis_type: 'DYNAMIKA_RMS' });
+        // Karta DYNAMIKA-W-TLE: zlecenie wraca natychmiast z 202 i stanem QUEUED —
+        // interfejs odpytuje stan do końca (`stanyBiegu`, ostatni stan = końcowy).
+        return odpowiedz({ id: 'run-nowy', status: 'QUEUED', analysis_type: 'DYNAMIKA_RMS' }, 202);
       }
       if (adres.endsWith('/api/execution/runs/run-nowy')) {
-        const status = atrapa.stanyBiegu.shift() ?? 'RUNNING';
+        const status = atrapa.stanyBiegu.length > 1 ? atrapa.stanyBiegu.shift() : (atrapa.stanyBiegu[0] ?? 'DONE');
         return odpowiedz({ id: 'run-nowy', status, analysis_type: 'DYNAMIKA_RMS' });
       }
       if (adres.includes('/results/dynamika/time-series')) {
@@ -384,7 +384,8 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
   });
 
   it('warunki biegu nazwane; bieg z nazwanego scenariusza, odpytywanie stanu do końca', async () => {
-    atrapa.stanyBiegu = ['RUNNING'];
+    // Karta DYNAMIKA-W-TLE: odpytywanie `GET …/runs/{id}` — kolejka, bieg w toku, koniec.
+    atrapa.stanyBiegu = ['QUEUED', 'RUNNING', 'DONE'];
     render(<EkranDynamiki />);
     const uruchom = await screen.findByTestId('mvd-dynamika-uruchom');
     expect(uruchom).toBeDisabled();
@@ -428,7 +429,10 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
       fireEvent.click(uruchom);
     });
 
-    await waitFor(() => expect(screen.getByTestId('mvd-dynamika-stan-biegu')).toHaveAttribute('data-status', 'DONE'));
+    await waitFor(
+      () => expect(screen.getByTestId('mvd-dynamika-stan-biegu')).toHaveAttribute('data-status', 'DONE'),
+      { timeout: 10000 },
+    );
     const utworzenie = atrapa.zadania.find((z) => z.metoda === 'POST' && z.url.endsWith(`/study-cases/${CASE}/runs`));
     expect(utworzenie?.cialo).toEqual({
       analysis_type: 'DYNAMIKA_RMS',

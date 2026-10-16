@@ -1806,7 +1806,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # kontrakty cennika, wyceny/LCC i odmowy braku pakietu danych (`capex`, `lcc`,
     # `stopa_dyskontowa`, `straty_roczne_mwh`, `braki_pakietow`, `certyfikaty_brakujace`,
     # `odmowa_widma` i pozostałe); zbiory porównane, -0. POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4158." in wyjscie, wyjscie
+    # Karta DYNAMIKA-W-TLE (2026-10-15): 4116 -> 4126 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`f3c435b6`), roznica zbiorow: +10 (`wykonane`, `razem`,
+    # `ulamek` — `PostepBiegu`; `czy_anulowano`, `zglos_postep` — `KontekstWykonania`
+    # w `domain/execution.py`; `anulowanie`, `w_toku`, `wykonaj`, `postep` — rekord zlecenia
+    # wykonawcy w `application/execution/wykonawca.py`; `nadzorca` — pole `SilnikDynamiki`,
+    # punkt przerwania po kroku calkowania), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 8 (+ DYNAMIKA-W-TLE po CENNIK-ODMOWY-PAKIETOW): 4158 + 10 = 4168 — pola
+    # karty (PostepBiegu, KontekstWykonania, rekord zlecenia wykonawcy, `nadzorca` silnika)
+    # rozlaczne ze zbiorem partii. POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4168." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2024,7 +2033,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `odmowa_pakietu.py`, `catalog/indeks_typow.py`, `pochodne/koszty.py`; enm +1
         # `odmowy_pakietow_danych.py`; application +3 `koszty/**`); dlug bez zmian (podstawienie
         # `else 0.0` w `koszty/wycena.py` naprawione u źródła). POMIAR guardem na drzewie partii.
-        "Przeskanowano 569 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta DYNAMIKA-W-TLE (2026-10-15): 561 -> 563 (+1 `network_model/solvers/dynamika/
+        # przerwanie.py`, +2 `application/execution/{__init__,wykonawca}.py`, -1 `api/celery_app.py`
+        # — martwa konfiguracja Celery skasowana z bramka wskrzeszenia). POMIAR guardem.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): 569 + 2 = 571 (network_model +1
+        # `solvers/dynamika/przerwanie.py`; application +2 wykonawca biegow `application/execution/**`;
+        # api -1 skasowany `api/celery_app.py`). POMIAR guardem na drzewie partii.
+        "Przeskanowano 571 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2176,7 +2191,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
         # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
         # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): network_model 180 + 3 = 183. POMIAR.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta DYNAMIKA-W-TLE (2026-10-15): network_model 183 -> 184 (+1 `solvers/dynamika/
+        # przerwanie.py` — protokol nadzorcy biegu i wyjatek przerwania); dlug i wykluczenia
+        # BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): network_model 183 + 1 = 184; wykluczenia 1/2
+        # (stan gałęzi integracji — wykluczenia 3/6 karty pochodziły z jej starszej bazy). POMIAR.
+        "  network_model: pliki_skanowane=184, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2311,11 +2331,18 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
         # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
         # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): application 246 + 3 = 249. POMIAR.
-        "  application: pliki_skanowane=249, dlug=30 plikow/suma 90, "
-        "wykluczenia=4 plikow/suma 10",
         # Partia integracji 8: api dlug 2/3 -> 1/2 — POMIAR guardem na drzewie bazy integracji
         # (53551167b, przed scaleniami partii); pin 2/3 był nieaktualny na bazie.
-        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta DYNAMIKA-W-TLE (2026-10-15): application 245 -> 247 (+2 `application/execution/
+        # {__init__,wykonawca}.py` — wykonawca biegow w procesie); dlug i wykluczenia BEZ ZMIAN.
+        # Karta DYNAMIKA-W-TLE (2026-10-15): api 64 -> 63 (-1 `api/celery_app.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): application 249 + 2 = 251, dlug 30/90; api 64 - 1
+        # = 63 (skasowany `api/celery_app.py`), dlug 1/2 i wykluczenia 5/13 gałęzi integracji (dlug 2/3
+        # i wykluczenia 6/15 karty pochodziły z jej starszej bazy). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=251, dlug=30 plikow/suma 90, "
+        "wykluczenia=4 plikow/suma 10",
+        "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

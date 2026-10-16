@@ -18,6 +18,7 @@
  * DANYCH backendu (tor P20c).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -214,8 +215,7 @@ async function createAndExecuteLoadFlowRun(
   });
   expect(createResponse.ok()).toBeTruthy();
   const { id: runId } = (await createResponse.json()) as { id: string };
-  const executeResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
-  expect(executeResponse.ok()).toBeTruthy();
+  await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
   return runId;
 }
 

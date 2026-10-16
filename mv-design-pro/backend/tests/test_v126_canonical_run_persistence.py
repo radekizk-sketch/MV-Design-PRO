@@ -14,13 +14,12 @@ jest odczytywalny przez CAŁKOWICIE ODDZIELNY proces systemu operacyjnego
 plikiem bazy SQLite wskazanym `DATABASE_URL`) — dokładnie tak, jak POST i GET
 tej samej analizy trafiłyby dziś do dwóch różnych workerów uvicorn.
 
-Baza W PLIKU (nie w pamięci): domyślna izolacja testów (`tests/conftest.py::
-_izolowana_baza_przebiegow`) daje każdemu testowi bazę W PAMIĘCI procesu
-(`sqlite+pysqlite:///file:...?mode=memory&cache=shared`) — SQLite trzyma taką
-bazę WEWNĄTRZ jednego procesu biblioteki, więc subprocess nie mógłby jej
-zobaczyć niezależnie od poprawności kodu produkcyjnego (ograniczenie SQLite,
-nie test). Ten test nadpisuje `DATABASE_URL` własnym `monkeypatch` (fixture
-autouse jawnie dopuszcza to nadpisanie) na plik w `tmp_path` — jedyny sposób,
+Baza W PLIKU: domyślna izolacja testów (`tests/conftest.py::
+_izolowana_baza_przebiegow`) od karty DYNAMIKA-W-TLE także daje bazę plikową
+(dawniej W PAMIĘCI procesu, `mode=memory&cache=shared`, której subprocess nie
+mógłby zobaczyć — ograniczenie SQLite, nie test). Ten test nadal nadpisuje
+`DATABASE_URL` własnym `monkeypatch` (fixture autouse jawnie dopuszcza to
+nadpisanie) na JAWNIE nazwany plik w `tmp_path` przekazywany subprocesowi — jedyny sposób,
 żeby "inny proces" znaczyło naprawdę inny proces, nie inny obiekt Pythona w
 tym samym procesie.
 """

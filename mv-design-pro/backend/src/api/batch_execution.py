@@ -253,19 +253,23 @@ def create_batch(
 @router.post(
     "/api/execution/batches/{batch_id}/execute",
     response_model=BatchResponse,
-    summary="Wykonaj serię przebiegów",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Zleć serię przebiegów wykonawcy w tle",
 )
 def execute_batch(
     batch_id: str,
     http_request: Request,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
-    """Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).
+    """Zleć serię wykonawcy w tle (karta DYNAMIKA-W-TLE): 202 ze stanem QUEUED.
 
-    KAŻDA pozycja jest próbowana, niezależnie od wyniku poprzednich (karta §0
-    C2 — zero zatrzymania na pierwszej awarii): status końcowy to FINISHED
-    (wszystkie pozycje FINISHED), FAILED (wszystkie FAILED) albo PARTIAL
-    (mieszanka).
+    Seria wykonuje się sekwencyjnie torem kanonicznym (realny solver) TYM SAMYM
+    wykonawcą, co pojedynczy bieg (jeden ciężki bieg naraz); klient odpytuje
+    `GET …/batches/{batch_id}` do stanu końcowego. KAŻDA pozycja jest próbowana,
+    niezależnie od wyniku poprzednich (karta §0 C2 — zero zatrzymania na pierwszej
+    awarii): status końcowy to FINISHED (wszystkie pozycje FINISHED), FAILED
+    (wszystkie FAILED), PARTIAL (mieszanka) albo CANCELLED (anulowana przez
+    użytkownika — pozycje niewykonane z wyjaśnieniem).
 
     Zwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż CREATED,
     404 gdy przypadek serii nie należy do żadnego projektu (klucz magazynu ENM
@@ -286,7 +290,7 @@ def execute_batch(
     klucz = klucz_twin_z_sciezki(str(batch_przed.case_id), http_request)
 
     try:
-        batch = service.execute_batch(parsed_batch_id, klucz_twin=klucz, uow_factory=uow_factory)
+        batch = service.zlec_serie(parsed_batch_id, klucz_twin=klucz, uow_factory=uow_factory)
         return _do_odpowiedzi(batch, uow_factory)
     except BatchNotFoundError as exc:
         raise HTTPException(
@@ -298,6 +302,31 @@ def execute_batch(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+
+
+@router.post(
+    "/api/execution/batches/{batch_id}/cancel",
+    response_model=BatchResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Anuluj serię przebiegów",
+)
+def cancel_batch(
+    batch_id: str,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Anuluj serię (karta DYNAMIKA-W-TLE): z kolejki natychmiast (CANCELLED),
+    w toku — po bieżącej pozycji (odpowiedź niesie stan bieżący, klient odpytuje do
+    CANCELLED). Pozycje policzone zachowują wyniki. 404 dla nieznanej serii, 409 dla
+    serii zakończonej (nazwany stan)."""
+    parsed_batch_id = _parse_uuid(batch_id, "batch_id")
+    service = get_batch_service()
+    try:
+        batch = service.anuluj_serie(parsed_batch_id)
+        return _do_odpowiedzi(batch, uow_factory)
+    except BatchNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except BatchNotPendingError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get(

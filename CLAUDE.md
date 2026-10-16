@@ -91,8 +91,8 @@ The system is architecturally aligned with **DIgSILENT PowerFactory** principles
 - **Framework**: FastAPI
 - **Package Manager**: Poetry
 - **Core Dependencies**: numpy, scipy, networkx, pydantic, pandas
-- **Databases**: PostgreSQL (asyncpg/psycopg), MongoDB (motor), Redis
-- **Task Queue**: Celery
+- **Databases**: PostgreSQL (asyncpg/psycopg); SQLite (tor dev/e2e/testy)
+- **Wykonanie biegów**: wykonawca w procesie API (`application/execution/wykonawca.py`, karta DYNAMIKA-W-TLE) — jeden ciężki bieg naraz, `POST …/execute` → 202 + odpytywanie; Celery/Redis/MongoDB skasowane (0 konsumentów) z bramką wskrzeszenia
 - **HTTP Client**: httpx
 - **Export**: reportlab (PDF), python-docx (DOCX)
 - **Testing**: pytest, pytest-asyncio, pytest-cov
@@ -136,7 +136,7 @@ MV-Design-PRO/
 │   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.3)
 │   ├── ARCHITECTURE.md           # Technical architecture reference (BINDING, v4.0)
 │   ├── PLANS.md                  # Operational status & next steps (LIVING, v5.1)
-│   ├── docker-compose.yml        # 6 services: backend, frontend, postgres, mongodb, redis, celery
+│   ├── docker-compose.yml        # 3 services: backend, frontend, postgres
 │   ├── backend/
 │   │   ├── pyproject.toml        # Poetry configuration
 │   │   ├── Dockerfile
@@ -524,11 +524,11 @@ npm run dev
 npm run guard:codenames
 ```
 
-### Docker (6 services)
+### Docker (3 services)
 ```bash
 cd mv-design-pro
 
-# Start all services (backend:18000, frontend:3000, postgres:5432, mongodb:27017, redis:6379, celery)
+# Start all services (backend:18000, frontend:3000, postgres:5432)
 docker-compose up -d
 
 # View logs

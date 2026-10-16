@@ -96,6 +96,7 @@ from api.main import app
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 #: Liczba rownoleglych zadan w miarze „done" (§3 planu 10x).
 K_ROWNOLEGLYCH = 10
@@ -384,8 +385,12 @@ def _stworz_bieg(client: TestClient, case_id: str, sciezka: str) -> str:
 
 
 def _wykonaj_bieg(client: TestClient, run_id: str):
-    """Wykonaj bieg — TO JEST okno pomiaru (jedyne miejsce, gdzie solver liczy)."""
-    return client.post(f"/api/execution/runs/{run_id}/execute")
+    """Wykonaj bieg — TO JEST okno pomiaru (jedyne miejsce, gdzie solver liczy).
+
+    Karta DYNAMIKA-W-TLE: `POST …/execute` zleca bieg wykonawcy w tle (202) — okno
+    pomiaru obejmuje odpytywanie do stanu koncowego (`tests.utils.biegi.wykonaj_bieg`).
+    """
+    return wykonaj_bieg(client, run_id)
 
 
 def _wyniki_biegu(client: TestClient, run_id: str, sciezka: str) -> dict:
@@ -522,62 +527,41 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
 
 @pytest.mark.parametrize("liczba_biegow", (1, K_ROWNOLEGLYCH), ids=("K=1", f"K={K_ROWNOLEGLYCH}"))
 @pytest.mark.parametrize(("rodzaj", "sciezka"), RODZAJE_BIEGOW)
-def test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera(
+def test_lekkie_zadanie_obsluzone_gdy_bieg_stoi_w_oknie_solvera_a_reszta_czeka_w_kolejce(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     rodzaj: str,
     sciezka: str,
     liczba_biegow: int,
 ) -> None:
-    """Lekkie zadanie jest obslugiwane, gdy K biegow STOI w oknie solvera.
+    """Lekkie zadanie jest obslugiwane, gdy bieg STOI w oknie solvera, a K-1 biegow
+    czeka w kolejce wykonawcy z JAWNYM stanem QUEUED (karta DYNAMIKA-W-TLE).
 
-    MIARA „DONE" OSI WSPOLBIEZNOSCI (§3 planu 10x) BEZ ZEGARA. Projektant w
-    jednej sesji odpala kilka analiz i czyta model — UI ma zyc. Blokada petli
-    zdarzen (koncowka `async def` z blokujacym wnetrzem: solver CPU, sync
-    SQLAlchemy, IO pliku modelu) sprawia, ze KAZDE inne zadanie czeka do konca
-    biegu. Test odtwarza dokladnie te sytuacje deterministycznie:
+    MIARA „DONE" OSI WSPOLBIEZNOSCI (§3 planu 10x) BEZ ZEGARA. Projektant w jednej
+    sesji odpala kilka analiz i czyta model — UI ma zyc. Od karty DYNAMIKA-W-TLE bieg
+    NIE liczy sie w zadnym zadaniu HTTP: `POST …/execute` przyjmuje bieg do kolejki
+    wykonawcy w tle (202, QUEUED) i wraca natychmiast, a wykonawca liczy JEDEN ciezki
+    bieg naraz (O-57 pkt 2). Test odtwarza te sytuacje deterministycznie:
 
-      1. K biegow (create POZA oknem pomiaru — bez solvera) rusza rownolegle
-         przez REALNA koncowke `POST /api/execution/runs/{id}/execute`.
-      2. W JEDYNYM dyspozytorze fizyki (`_wykonaj_analize_biegu`) kazdy bieg
-         melduje wejscie i PARKUJE na zdarzeniu `zwolnij` — jest „w locie" w
-         tym samym watku i w tym samym miejscu, w ktorym normalnie liczy
-         solver, tylko nie zuzywa procesora.
-      3. Gdy wszystkie K biegow stoja w oknie, test wysyla `GET /api/health` z
-         osobnego watku i czeka na odpowiedz najwyzej `CZAS_NA_SONDE_S`.
-      4. Zwalnia biegi. Biegi licza NAPRAWDE (200, wynik z solvera).
+      1. K biegow (create POZA oknem pomiaru — bez solvera) jest zlecanych ROWNOLEGLE
+         przez REALNA koncowke `POST /api/execution/runs/{id}/execute` — kazde zlecenie
+         wraca z 202 od razu (zero czekania na solver).
+      2. W JEDYNYM dyspozytorze fizyki (`_wykonaj_analize_biegu`) PIERWSZY bieg melduje
+         wejscie i PARKUJE na zdarzeniu `zwolnij` — jest „w locie" w watku wykonawcy,
+         w tym samym miejscu, w ktorym normalnie liczy solver, tylko nie zuzywa CPU.
+      3. Gdy bieg stoi w oknie, test wysyla `GET /api/health` z osobnego watku i czeka
+         najwyzej `CZAS_NA_SONDE_S`; rownoczesnie czyta stan KAZDEGO biegu: dokladnie
+         jeden RUNNING, pozostale QUEUED (kolejka, nie wyscig).
+      4. Zwalnia biegi. Biegi licza NAPRAWDE, SZEREGOWO (dyspozytor nigdy nie jest w
+         srodku dwa razy naraz), kazdy konczy sie DONE z wynikiem solvera.
 
-    WERDYKT: sonda musi wrocic PRZED zwolnieniem biegow. Petla zdarzen wolna
-    (bieg w puli watkow — FastAPI odklada tam kazda koncowke `def`) obsluguje
-    sonde w milisekundach niezaleznie od maszyny, bo nic nie liczy. Petla
-    zablokowana biegiem nie obsluzy sondy, dopoki bieg nie wyjdzie z okna —
-    czyli dopiero po zwolnieniu: werdykt czerwony bez progu czasowego. Przy
-    K > 1 blokada ujawnia sie jeszcze wczesniej: drugi bieg nie wejdzie w okno,
-    dopoki pierwszy z niego nie wyjdzie, wiec „wszystkie K w oknie" nie
-    nastapi (asercja wejscia z nazwana liczba biegow w oknie).
-
-    DLACZEGO K=1 I K=10 OSOBNO: K=1 to najostrzejsza postac celu (pojedynczy
-    bieg nie moze zamrozic odczytu), K=10 dodaje wymaganie pojemnosci (K biegow
-    w locie NARAZ; limit puli watkow FastAPI/anyio to 40). DLACZEGO PER RODZAJ:
-    koncowka jest jedna, ale wykonawcy sa rozni (`_execute_power_flow`,
-    `_execute_short_circuit`) — regresja w jednym z nich nie moze schowac sie
-    za drugim (regula KLASA, NIE INSTANCJA zastosowana do testu).
-
-    ZMIERZONA MOC DETEKCYJNA (2026-09-16, iniekcja: `execute_run` w
-    `api/execution_runs.py` przestawiona na `async def` — dokladnie ta
-    regresja, ktora offload ma wykluczac): 4 z 4 parametryzacji CZERWONE,
-    kazda z nazwana przyczyna — K=1: sonda nie wrocila przez 10 s i wrocila po
-    zwolnieniu (10,5-10,9 s na test); K=10: w okno weszl 1 z 10 biegow w 30 s
-    (32-35 s na test). Bez iniekcji: 6 kolejnych biegow 4 parametryzacji
-    zielone (12,7-18,1 s na komplet; K=10 zwarcie 1-10 s, reszta ponizej 1,2 s),
-    caly modul 5 passed. Werdykt nie zalezy od zadnego progu czasowego, wiec
-    liczby czasow sa informacja o koszcie, nie o marginesie.
-
-    CO TEN TEST ZASTAPIL (karta CI-WSPOLBIEZNOSC, 2026-09-16):
-    `test_lekkie_zadanie_przechodzi_w_trakcie_biegow` (licznik sond w locie,
-    prog 5 — chwiejny na CI) i `test_odczyt_nie_czeka_na_bieg_analizy` (porzadek
-    zakonczen z czestosci przy K=1 — stochastyczny). Historia i pomiary trzech
-    pokolen miar czasowych: docstring modulu.
+    WERDYKT: sonda musi wrocic PRZED zwolnieniem biegow, stany w kolejce musza byc
+    jawne, a wykonanie szeregowe. Dawna wersja tego testu (2026-09-16) wymagala, zeby
+    WSZYSTKIE K biegow stanelo w oknie solvera NARAZ (offload do puli watkow FastAPI);
+    od DYNAMIKA-W-TLE rownolegle liczenie K biegow na 4 rdzeniach z nadsubskrypcja
+    watkow BLAS jest defektem (pomiar WATKI-BLAS-E2E: 866 s zamiast 6 s), wiec
+    intencja testu — „UI zyje, gdy bieg liczy" — zostaje, a ksztalt kolejki jest nowym
+    kontraktem, ktory ten test przypina.
     """
     from enm import canonical_analysis
 
@@ -594,54 +578,53 @@ def test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera(
     oryginalny_dyspozytor = canonical_analysis._wykonaj_analize_biegu
     zamek = threading.Lock()
     w_oknie: list[str] = []
-    wszystkie_w_oknie = threading.Event()
+    w_srodku = 0
+    max_w_srodku = 0
+    pierwszy_w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def dyspozytor_ze_spotkaniem(run: Any, graf: Any = None, uow_factory: Any = None) -> None:
-        """Ten sam dyspozytor, zatrzymany na progu okna solvera do zwolnienia."""
+    def dyspozytor_ze_spotkaniem(
+        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
+    ) -> None:
+        """Ten sam dyspozytor: pierwszy bieg parkuje na progu okna solvera do
+        zwolnienia; kazdy bieg liczy liczbe rownoczesnych wejsc (musi byc 1)."""
+        nonlocal w_srodku, max_w_srodku
         with zamek:
+            w_srodku += 1
+            max_w_srodku = max(max_w_srodku, w_srodku)
             w_oknie.append(str(run.id))
-            if len(w_oknie) == liczba_biegow:
-                wszystkie_w_oknie.set()
-        zwolnij.wait(timeout=ZAWOR_SPOTKANIA_S)
-        oryginalny_dyspozytor(run, graf, uow_factory)
+            pierwszy = len(w_oknie) == 1
+        if pierwszy:
+            pierwszy_w_oknie.set()
+            zwolnij.wait(timeout=ZAWOR_SPOTKANIA_S)
+        try:
+            oryginalny_dyspozytor(run, graf, uow_factory, kontekst)
+        finally:
+            with zamek:
+                w_srodku -= 1
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", dyspozytor_ze_spotkaniem)
 
-    konce_biegow: dict[str, float] = {}
-
-    def wykonaj_bieg(run_id: str) -> int:
-        odp = _wykonaj_bieg(client, run_id)
-        with zamek:
-            konce_biegow[run_id] = time.perf_counter()
-        return odp.status_code
+    def zlec_bieg(run_id: str) -> int:
+        return client.post(f"/api/execution/runs/{run_id}/execute").status_code
 
     obsluzona_przed_zwolnieniem = False
     with ThreadPoolExecutor(max_workers=liczba_biegow + 1) as pula:
-        przyszle_biegi = [pula.submit(wykonaj_bieg, run_id) for run_id in biegi]
+        zlecenia = [pula.submit(zlec_bieg, run_id) for run_id in biegi]
         try:
-            # Czekamy, az WSZYSTKIE biegi stana w oknie solvera. Bieg zakonczony
-            # PRZED wejsciem w okno (np. 404) konczy oczekiwanie od razu — jego
-            # kod trafia do meldunku zamiast 30-sekundowej ciszy.
-            termin = time.monotonic() + CZAS_NA_WEJSCIE_BIEGOW_S
-            while not wszystkie_w_oknie.wait(timeout=0.05):
-                if any(p.done() for p in przyszle_biegi) or time.monotonic() >= termin:
-                    break
-            with zamek:
-                liczba_w_oknie = len(w_oknie)
-            zakonczone_przed_oknem = [p.result() for p in przyszle_biegi if p.done()]
-            assert wszystkie_w_oknie.is_set(), (
-                f"W okno solvera weszlo {liczba_w_oknie} z {liczba_biegow} biegow "
-                f"'{rodzaj}' (limit {CZAS_NA_WEJSCIE_BIEGOW_S:.0f} s; biegi zakonczone "
-                f"przed wejsciem w okno, kody HTTP: {zakonczone_przed_oknem}) — biegi "
-                "wykonuja sie SZEREGOWO: pierwszy blokuje petle zdarzen (albo pule "
-                "watkow), wiec kolejne nie moga wystartowac, dopoki nie skonczy."
+            kody_zlecen = [z.result(timeout=CZAS_NA_WEJSCIE_BIEGOW_S) for z in zlecenia]
+            assert kody_zlecen == [202] * liczba_biegow, kody_zlecen
+            assert pierwszy_w_oknie.wait(timeout=CZAS_NA_WEJSCIE_BIEGOW_S), (
+                f"Zaden bieg '{rodzaj}' nie wszedl w okno solvera w "
+                f"{CZAS_NA_WEJSCIE_BIEGOW_S:.0f} s — wykonawca w tle nie wystartowal."
             )
-
+            stany = {
+                run_id: client.get(f"/api/execution/runs/{run_id}").json()["status"]
+                for run_id in biegi
+            }
             sonda = pula.submit(client.get, "/api/health")
             try:
                 odp_sondy = sonda.result(timeout=CZAS_NA_SONDE_S)
-                koniec_sondy = time.perf_counter()
                 obsluzona_przed_zwolnieniem = True
             except TimeoutError:
                 obsluzona_przed_zwolnieniem = False
@@ -649,18 +632,22 @@ def test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera(
             zwolnij.set()
         if not obsluzona_przed_zwolnieniem:
             odp_sondy = sonda.result(timeout=ZAWOR_SPOTKANIA_S)
-            koniec_sondy = time.perf_counter()
-        kody = [p.result(timeout=ZAWOR_SPOTKANIA_S) for p in przyszle_biegi]
 
     assert odp_sondy.status_code == 200, odp_sondy.text
     assert obsluzona_przed_zwolnieniem, (
-        f"Sonda `GET /api/health` nie wrocila przez {CZAS_NA_SONDE_S:.0f} s, gdy "
-        f"{liczba_biegow} bieg(ow) '{rodzaj}' stalo w oknie solvera bez liczenia, a "
-        "wrocila dopiero po ich zwolnieniu — bieg blokuje petle zdarzen: kazde "
-        "inne zadanie (odczyt modelu, UI) czeka do konca biegu."
+        f"Sonda `GET /api/health` nie wrocila przez {CZAS_NA_SONDE_S:.0f} s, gdy bieg "
+        f"'{rodzaj}' stal w oknie solvera bez liczenia, a wrocila dopiero po jego "
+        "zwolnieniu — bieg blokuje petle zdarzen: kazde inne zadanie czeka do konca biegu."
     )
-    assert kody == [200] * liczba_biegow, kody
-    assert koniec_sondy < min(konce_biegow.values()), (
-        "Sonda zakonczyla sie po pierwszym zakonczonym biegu, mimo ze biegi byly "
-        "zwolnione dopiero po jej powrocie — niespojny zapis znacznikow czasu."
+    # Kolejka z JAWNYM stanem: dokladnie jeden bieg RUNNING, reszta QUEUED.
+    assert sorted(stany.values()) == sorted(["RUNNING"] + ["QUEUED"] * (liczba_biegow - 1)), stany
+    # Po zwolnieniu kazdy bieg konczy sie wynikiem — szeregowo (jeden ciezki bieg naraz).
+    for run_id in biegi:
+        koncowy = wykonaj_bieg(client, run_id)
+        assert koncowy.status_code == 200, koncowy.text
+        assert koncowy.json()["status"] == "DONE", koncowy.json()
+    assert len(w_oknie) == liczba_biegow, w_oknie
+    assert max_w_srodku == 1, (
+        f"Dyspozytor fizyki byl w srodku {max_w_srodku} razy naraz — wykonawca w tle "
+        "ma liczyc jeden ciezki bieg naraz (O-57 pkt 2)."
     )

@@ -635,6 +635,14 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       biegiOcenySceny = [
         { id: koordynacjaScenyOcena.run_id, status: 'FINISHED', created_at: koordynacjaScenyOcena.created_at },
       ];
+      // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle — 202 i stan QUEUED, jak backend;
+      // stan końcowy klient odczytuje odpytywaniem `GET /protection-runs/{id}`.
+      return new Response(
+        JSON.stringify({ id: koordynacjaScenyOcena.run_id, status: 'QUEUED', error_message: null }),
+        { status: 202, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.endsWith(`/protection-runs/${koordynacjaScenyOcena.run_id}`)) {
       return jsonOK({ id: koordynacjaScenyOcena.run_id, status: 'FINISHED', error_message: null });
     }
     if (url.endsWith(`/protection-runs/${koordynacjaScenyOcena.run_id}/results`)) {
@@ -1268,6 +1276,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
     // HARNESS-RESZTA-2: kontrakt przebiegu po wykonaniu — REALNY bieg backendu.
+    // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); harness oddaje od razu
+    // stan koncowy tego samego realnego biegu, a odpytywanie `GET …/runs/{id}` nizej
+    // widzi DONE przy pierwszym odczycie.
+    return jsonOK(oltcScenyPrzebieg);
+  }
+  if (/\/api\/execution\/runs\/[^/]+$/.test(url)) {
     return jsonOK(oltcScenyPrzebieg);
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {

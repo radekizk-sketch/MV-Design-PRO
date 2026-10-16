@@ -33,6 +33,7 @@ from application.v126_artifacts import (
     build_v126_report_artifact,
     wynik_v126_dla_powierzchni,
 )
+from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -112,6 +113,7 @@ from network_model.pochodne import (
 )
 from network_model.solvers.dynamika import (
     WERSJA_SOLVERA,
+    BiegPrzerwany,
     OdmowaDynamiki,
     SilnikDynamiki,
     ladunek_resultset_dynamic_v2,
@@ -578,9 +580,11 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
 #: „JEDNO zrodlo prawdy" — deklaracja bez pokrycia (regula KLASA, NIE INSTANCJA pkt 4).
 STATUS_WYKONAWCZY: dict[str, str] = {
     "CREATED": "PENDING",
+    "QUEUED": "QUEUED",
     "RUNNING": "RUNNING",
     "FINISHED": "DONE",
     "FAILED": "FAILED",
+    "CANCELLED": "CANCELLED",
 }
 
 
@@ -1079,8 +1083,17 @@ def _wykonaj_analize_biegu(
     run: CanonicalRun,
     graf: NetworkGraph | None = None,
     uow_factory: Callable[[], Any] | None = None,
+    kontekst: KontekstWykonania | None = None,
 ) -> None:
     """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
+
+    `kontekst` (karta DYNAMIKA-W-TLE) — zdolnosci wykonawcy w tle: predykat
+    anulowania i ujscie postepu, sprawdzane w PUNKTACH PRZERWANIA wykonawcow, ktore
+    je maja (bieg czasowy: miedzy krokami calkowania; zwarcie: miedzy punktami
+    zwarcia). Wykonawca bez punktow przerwania (rozplyw — iteracje NR w rdzeniu
+    FROZEN; stan fazowy; zabezpieczenia; V12.6) kontekstu nie dostaje i nie udaje,
+    ze da sie go przerwac: anulowanie takiego biegu jest mozliwe wylacznie PRZED
+    startem (z kolejki). Bieg bez kontekstu liczy dokladnie to samo.
 
     Wspolny dla `execute_run` (biegi persystowane) i `wykonaj_bieg_w_pamieci`
     (warianty migawki bez persystencji). Wywolanie `_execute_short_circuit`
@@ -1119,11 +1132,11 @@ def _wykonaj_analize_biegu(
     elif run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
         _execute_power_flow_unbalanced(run)
     elif run.analysis_type == "short_circuit_sn":
-        _execute_short_circuit(run, uow_factory=uow_factory)
+        _execute_short_circuit(run, uow_factory=uow_factory, kontekst=kontekst)
     elif run.analysis_type == "phase_state_sn":
         _execute_phase_state_sn(run)
     elif run.analysis_type == "dynamika_rms":
-        _execute_dynamika_rms(run)
+        _execute_dynamika_rms(run, kontekst=kontekst)
     elif run.analysis_type == "protection_sn":
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
@@ -1304,8 +1317,23 @@ def odtworz_bieg_z_archiwum(
     )
 
 
-def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> CanonicalRun:
+#: Wyjasnienie stanu CANCELLED biegu przerwanego w punkcie przerwania (karta
+#: DYNAMIKA-W-TLE) — reszte (chwila, krok) dopisuje punkt przerwania wykonawcy.
+POWOD_ANULOWANIA_W_TOKU = "Bieg anulowany przez użytkownika w trakcie obliczeń"
+
+
+def execute_run(
+    run_id: UUID,
+    uow_factory: Callable[[], Any] | None = None,
+    kontekst: KontekstWykonania | None = None,
+) -> CanonicalRun:
     """Wykonaj bieg persystowany (dyspozycja fizyki: `_wykonaj_analize_biegu`).
+
+    `kontekst` (karta DYNAMIKA-W-TLE): zdolnosci wykonawcy w tle (anulowanie, postep)
+    podawane dyspozytorowi; przerwanie w punkcie przerwania konczy bieg stanem
+    CANCELLED z wyjasnieniem i BEZ wyniku czesciowego (`raw_result` zostaje puste,
+    szeregi czasowe nie sa zapisywane, bo rdzen przerywa PRZED zbudowaniem wyniku).
+    Wywolanie bez kontekstu (skrypty, pozycje serii, testy) liczy dokladnie to samo.
 
     `uow_factory`: fabryka `UnitOfWork` WOŁAJĄCEGO (routera API), przekazywana
     w dół dyspozytorowi (`_wykonaj_analize_biegu`) — potrzebna każdemu biegowi,
@@ -1340,8 +1368,19 @@ def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> C
     run.error_message = None
 
     try:
-        _wykonaj_analize_biegu(run, uow_factory=uow_factory)
+        _wykonaj_analize_biegu(run, uow_factory=uow_factory, kontekst=kontekst)
         run.status = "FINISHED"
+        run.finished_at = datetime.now(UTC)
+        _save_run(run)
+        return run
+    except (BiegAnulowanyError, BiegPrzerwany) as exc:
+        # Anulowanie = decyzja uzytkownika, nie odmowa i nie blad: stan CANCELLED z
+        # wyjasnieniem, zero wyniku czesciowego (nic nie zostalo zbudowane).
+        run.status = "CANCELLED"
+        run.error_message = str(exc)
+        run.raw_result = None
+        run.white_box_trace = []
+        run.power_flow_trace = None
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         return run
@@ -1365,60 +1404,6 @@ def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> C
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         raise
-
-
-def run_short_circuit_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="short_circuit_sn",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
-def run_power_flow_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="PF",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
-def run_phase_state_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="phase_state_sn",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def _phase_value_from_options(
@@ -1670,7 +1655,28 @@ def _bieg_rozplywu_punktu_pracy(run: CanonicalRun) -> PunktPracyRozplywu:
     )
 
 
-def _execute_dynamika_rms(run: CanonicalRun) -> None:
+class _NadzorcaBieguDynamiki:
+    """Most miedzy rdzeniem dynamiki a kontekstem wykonawcy (karta DYNAMIKA-W-TLE).
+
+    Rdzen wola `po_kroku(t_s, horyzont_s, kroki)` po kazdym przyjetym kroku; most
+    zglasza postep w czasie symulacji i przerywa bieg `BiegAnulowanyError`, gdy
+    uzytkownik anulowal. Nie widzi stanow ani napiec — nie ma jak zmienic wyniku.
+    """
+
+    def __init__(self, kontekst: KontekstWykonania) -> None:
+        self._kontekst = kontekst
+
+    def po_kroku(self, t_s: float, horyzont_s: float, kroki: int) -> None:
+        self._kontekst.punkt_przerwania(
+            PostepBiegu(wykonane=t_s, razem=horyzont_s, jednostka="s symulacji", krok=kroki),
+            wyjasnienie=(
+                f"{POWOD_ANULOWANIA_W_TOKU} — przerwano w chwili t = {t_s:.6g} s po {kroki} "
+                f"krokach całkowania (horyzont {horyzont_s:.6g} s); wynik częściowy odrzucony."
+            ),
+        )
+
+
+def _execute_dynamika_rms(run: CanonicalRun, kontekst: KontekstWykonania | None = None) -> None:
     """Wykonawca `dynamika_rms` (karta W6-3B) — adapter do rdzenia DAE, zero fizyki.
 
     Łańcuch biegu: migawka efektywna + punkt pracy z rozpływu → `WejscieDynamiki`
@@ -1711,7 +1717,10 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
             graph=zbuduj_graf(snapshot),
             f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
         )
-        wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+        wynik = SilnikDynamiki(
+            wejscie=wejscie,
+            nadzorca=None if kontekst is None else _NadzorcaBieguDynamiki(kontekst),
+        ).uruchom()
     except OdmowaDynamiki as odmowa:
         # Karta modeli odbiorów (§0 pkt 6): komunikat odmowy rdzenia czyta projektant —
         # identyfikatory i adresy stanów zamienione na nazwy z migawki biegu; kod i pola
@@ -2278,7 +2287,11 @@ def _rozplyw_punktu(
     return None, None
 
 
-def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
+def _execute_short_circuit(
+    run: CanonicalRun,
+    uow_factory: Callable[[], Any] | None = None,
+    kontekst: KontekstWykonania | None = None,
+) -> None:
     wejscie = zloz_wejscie_zwarcia(
         run.snapshot or {},
         run.options,
@@ -2300,7 +2313,23 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     # TOPOLOGII przez assembler (funkcja wejścia, nie liczb solvera); ich wyspy
     # NIE są w ``solve_graph`` — wiersz powstaje bez solvera (jawny brak, nie szum).
     wezly_bez_odniesienia = wejscie.wezly_bez_odniesienia
-    for node_id in reportable_fault_node_ids:
+    liczba_punktow = len(reportable_fault_node_ids)
+    for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
+        if kontekst is not None:
+            # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
+            # punktach zwarcia; anulowanie kończy bieg bez wyniku częściowego.
+            kontekst.punkt_przerwania(
+                PostepBiegu(
+                    wykonane=numer_punktu,
+                    razem=liczba_punktow,
+                    jednostka="punkty zwarcia",
+                    krok=numer_punktu,
+                ),
+                wyjasnienie=(
+                    f"{POWOD_ANULOWANIA_W_TOKU} — przerwano po {numer_punktu} z "
+                    f"{liczba_punktow} punktów zwarcia; wynik częściowy odrzucony."
+                ),
+            )
         # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
         # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
         c_factor = _c_factor_punktu(wejscie, node_id)

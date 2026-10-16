@@ -252,7 +252,17 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
       if (url === '/api/projects/project-1/protection-runs' && init?.method === 'POST') {
         return { ok: true, status: 201, json: async () => ({ id: 'ocena-1', status: 'CREATED' }) } as Response;
       }
+      // Kształt backendu po karcie DYNAMIKA-W-TLE: `execute` = 202 i QUEUED (bieg w tle),
+      // stan końcowy z `GET /api/protection-runs/{id}`. Atrapa oddająca FINISHED wprost
+      // z `execute` maskowała klienta, który nie odpytywał (ocena kończyła się błędem).
       if (url === '/api/protection-runs/ocena-1/execute') {
+        return {
+          ok: true,
+          status: 202,
+          json: async () => ({ id: 'ocena-1', status: 'QUEUED', error_message: null }),
+        } as Response;
+      }
+      if (url === '/api/protection-runs/ocena-1') {
         return {
           ok: true,
           status: 200,

@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -69,30 +70,6 @@ async function executeDomainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
-}
-
-async function waitForAnalysisRunIndex(
-  request: APIRequestContext,
-  runId: string,
-  timeoutMs = 15000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastStatus = 0;
-  let lastBody = '';
-
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) {
-      return;
-    }
-    lastBody = await response.text();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  throw new Error(
-    `Publiczny results/index nie jest gotowy dla runu ${runId}. status=${lastStatus} body=${lastBody}`,
-  );
 }
 
 async function createProjectAndCase(
@@ -337,11 +314,9 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   const createRunPayload = (await createRunResponse.json()) as { id: string };
   const runId = createRunPayload.id;
 
-  const executeRunResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${createRunPayload.id}/execute`,
-  );
-  expect(executeRunResponse.ok()).toBeTruthy();
-  await waitForAnalysisRunIndex(request, runId);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); gotowość = stan DONE
+  // biegu (`biegi.ts`), nie 200 z `results/index` (ten jest 200 także w toku).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });

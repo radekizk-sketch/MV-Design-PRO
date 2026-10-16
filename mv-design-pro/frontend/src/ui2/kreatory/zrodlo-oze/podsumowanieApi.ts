@@ -9,7 +9,7 @@
 
 import {
   createRun,
-  executeRun,
+  executeRunAndWait,
 } from '../../../ui/study-cases/api';
 import type { ExecutionAnalysisType, RunStatus } from '../../../ui/study-cases/types';
 
@@ -170,6 +170,7 @@ export const AUTO_BIEG_RODZAJE: readonly ExecutionAnalysisType[] = ['LOAD_FLOW',
 export function polaczStatusBiegu(statusy: readonly RunStatus[]): RunStatus | null {
   if (statusy.length === 0) return null;
   if (statusy.some((s) => s === 'FAILED')) return 'FAILED';
+  if (statusy.some((s) => s === 'CANCELLED')) return 'CANCELLED';
   if (statusy.every((s) => s === 'DONE')) return 'DONE';
   return 'RUNNING';
 }
@@ -185,7 +186,8 @@ export async function uruchomAutoBieg(caseId: string): Promise<RunStatus | null>
   for (const analysisType of AUTO_BIEG_RODZAJE) {
     try {
       const run = await createRun(caseId, { analysis_type: analysisType });
-      const executed = await executeRun(run.id);
+      // Karta DYNAMIKA-W-TLE: zlecenie (202) + odpytywanie do stanu końcowego.
+      const executed = await executeRunAndWait(run.id);
       statusy.push(executed.status);
     } catch {
       statusy.push('FAILED');

@@ -24,9 +24,9 @@ produkcyjnych (jedyny byl e2e nazywajacy je wprost "legacy" we wlasnym kodzie).
 Tor kanoniczny: `POST /api/execution/study-cases/{case_id}/runs` (`analysis_type=
 SC_3F/SC_1F/SC_2F/SC_2F_G/LOAD_FLOW`) -> `POST /api/execution/runs/{id}/execute`
 -> `GET /api/analysis-runs/{run_id}/results/...` (`api/execution_runs.py`,
-`api/analysis_runs.py`). `run_short_circuit_now`/`run_power_flow_now`
-(`enm/canonical_analysis.py`) zostaja — maja innych wolajacych bezposrednich
-(testy silnika, `tests/e2e/test_nn_full_chain.py`) niezaleznych od tej trasy.
+`api/analysis_runs.py`). Dawne `run_short_circuit_now`/`run_power_flow_now` z
+`enm/canonical_analysis.py` mialy wylacznie wolajacych testowych i od karty
+DYNAMIKA-W-TLE zyja w `tests/utils/biegi.py`.
 """
 
 from __future__ import annotations

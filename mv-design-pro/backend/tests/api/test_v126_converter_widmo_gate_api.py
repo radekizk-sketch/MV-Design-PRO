@@ -37,6 +37,8 @@ from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
 
+from tests.utils.biegi import uruchom_v126
+
 _SZYNA_A = "BUS_A"
 _SZYNA_B = "BUS_B"
 
@@ -98,10 +100,8 @@ def _seed_case(client: TestClient, model: EnergyNetworkModel) -> str:
 
 
 def _uruchom(client: TestClient, case_id: str, rodzaj: str, parametry: dict | None = None):
-    return client.post(
-        f"/api/cases/{case_id}/runs/v126/{rodzaj}",
-        json={"parameters": parametry or {}},
-    )
+    """Zlecenie biegu V12.6 i odpytywanie do końca (karta DYNAMIKA-W-TLE: 202 + polling)."""
+    return uruchom_v126(client, case_id, rodzaj, parametry)
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ def test_power_quality_harmonics_czesciowe_dane_przechodzi_z_pominietymi_zrodlam
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     assert wynik.status_code == 200
     payload = wynik.json()
@@ -209,7 +209,7 @@ def test_power_quality_harmonics_wszystkie_zrodla_maja_widmo_brak_pominietych_w_
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     payload = wynik.json()
     assert "pominiete_zrodla" not in payload
@@ -233,7 +233,7 @@ def test_widmo_reczne_w_zadaniu_daje_proweniencje_reczne_w_odpowiedzi() -> None:
             "power_quality_harmonics",
             {"harmonic_spectra": {"PV-1": {"5": 6.0}}},
         )
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 202, resp.text
         wynik = client.get(resp.json()["result_url"])
     payload = wynik.json()
     assert "pominiete_zrodla" not in payload
@@ -254,4 +254,4 @@ def test_inna_analiza_v126_nie_jest_blokowana_brakiem_widma() -> None:
             client, _model(generators=[_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)])
         )
         resp = _uruchom(client, case_id, "uncertainty_sensitivity")
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 202, resp.text

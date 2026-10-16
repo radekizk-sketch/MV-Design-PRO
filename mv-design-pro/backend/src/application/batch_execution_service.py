@@ -51,18 +51,26 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.execution.wykonawca import klucz_serii, wykonawca_biegow
 from application.fault_scenario_service import (
     FaultScenarioNotFoundError,
     FaultScenarioService,
     solver_input_for_scenario,
 )
-from domain.execution import ExecutionAnalysisType
+from domain.execution import (
+    BiegAnulowanyError,
+    ExecutionAnalysisType,
+    KontekstWykonania,
+    PostepBiegu,
+)
 from domain.fault_scenario import FaultScenario, compute_scenario_content_hash
 from domain.run_batch import (
+    ITEM_STATUS_CANCELLED,
     ITEM_STATUS_FAILED,
     ITEM_STATUS_FINISHED,
     RunBatch,
@@ -128,6 +136,26 @@ ExecuteRunFn = Callable[..., CanonicalRun]
 #: analizy kanonicznej). Ta sama stała, co pojedynczy bieg ze scenariusza
 #: (`api/fault_scenarios.py`).
 _RODZAJ_ANALIZY_KANONICZNEJ = "short_circuit_sn"
+
+
+#: Wyjaśnienie pozycji serii anulowanej PRZED startem (z kolejki albo z CREATED).
+POWOD_ANULOWANIA_SERII_PRZED_STARTEM = (
+    "Seria anulowana przez użytkownika przed rozpoczęciem obliczeń — pozycja niewykonana."
+)
+
+#: Przyczyna zamknięcia serii osieroconej po restarcie procesu (ta sama zasada, co
+#: `enm.canonical_analysis.POWOD_OSIEROCENIA` dla biegów).
+POWOD_OSIEROCENIA_SERII = (
+    "Seria przerwana przed zakończeniem (restart procesu API). "
+    "Wykonanie żyje w procesie API, więc po jego starcie żadna seria nie jest w toku. "
+    "Uruchom serię ponownie."
+)
+
+
+def zamknij_osierocone_serie() -> int:
+    """Zamknij serie zostawione w QUEUED/RUNNING przez przerwany proces (start API)."""
+    with run_batch_repository_scope() as repo:
+        return repo.fail_orphaned(reason=POWOD_OSIEROCENIA_SERII, finished_at=datetime.now(UTC))
 
 
 def reset_run_batches() -> None:
@@ -280,14 +308,82 @@ class BatchExecutionService:
     # Wykonanie serii
     # ------------------------------------------------------------------
 
-    def execute_batch(
+    def zlec_serie(
         self,
         batch_id: UUID,
         *,
         klucz_twin: str,
         uow_factory: Callable[[], Any] | None = None,
     ) -> RunBatch:
+        """Przyjmij serię do kolejki wykonawcy w tle (CREATED → QUEUED atomowo) i wróć.
+
+        Karta DYNAMIKA-W-TLE: seria to N × bieg zwarciowy — wykonuje się TYM SAMYM
+        wykonawcą (jeden ciężki bieg naraz), co pojedynczy bieg; klient odpytuje
+        `GET …/batches/{id}` do stanu końcowego. Przegrany wyścig (drugi `POST
+        …/execute`) nie zleca nic i dostaje stan bieżący; seria w stanie innym niż
+        CREATED → `BatchNotPendingError` (409).
+        """
+        batch = self._get_batch(batch_id)
+        with run_batch_repository_scope() as repo:
+            przyjeta = repo.claim(
+                batch_id,
+                z=(RunBatchStatus.CREATED.value,),
+                na=RunBatchStatus.QUEUED.value,
+            )
+        if not przyjeta:
+            if batch.status in (RunBatchStatus.QUEUED, RunBatchStatus.RUNNING):
+                return self._get_batch(batch_id)
+            raise BatchNotPendingError(str(batch_id), batch.status.value)
+        wykonawca_biegow.zlec(
+            klucz_serii(batch_id),
+            lambda kontekst: self.execute_batch(
+                batch_id, klucz_twin=klucz_twin, uow_factory=uow_factory, kontekst=kontekst
+            ),
+        )
+        return self._get_batch(batch_id)
+
+    def anuluj_serie(self, batch_id: UUID) -> RunBatch:
+        """Anuluj serię: z kolejki natychmiast, w toku — po bieżącej pozycji.
+
+        Pozycje już policzone zachowują wyniki; niewykonane dostają CANCELLED z
+        wyjaśnieniem. Seria zakończona → `BatchNotPendingError` (409, nazwany stan).
+        """
+        batch = self._get_batch(batch_id)
+        if batch.status in (RunBatchStatus.CREATED, RunBatchStatus.QUEUED):
+            wykonawca_biegow.zdejmij_z_kolejki(klucz_serii(batch_id))
+            with run_batch_repository_scope() as repo:
+                zdjeta = repo.claim(
+                    batch_id,
+                    z=(RunBatchStatus.CREATED.value, RunBatchStatus.QUEUED.value),
+                    na=RunBatchStatus.CANCELLED.value,
+                )
+            if zdjeta:
+                batch = self._get_batch(batch_id).with_unfinished_items(
+                    ITEM_STATUS_CANCELLED, POWOD_ANULOWANIA_SERII_PRZED_STARTEM
+                )
+                batch = replace(batch, finished_at=datetime.now(UTC))
+                self._zapisz(batch)
+                return batch
+            batch = self._get_batch(batch_id)
+        if batch.status == RunBatchStatus.RUNNING:
+            if not wykonawca_biegow.zazadaj_przerwania(klucz_serii(batch_id)):
+                raise BatchNotPendingError(str(batch_id), batch.status.value)
+            return batch
+        raise BatchNotPendingError(str(batch_id), batch.status.value)
+
+    def execute_batch(
+        self,
+        batch_id: UUID,
+        *,
+        klucz_twin: str,
+        uow_factory: Callable[[], Any] | None = None,
+        kontekst: KontekstWykonania | None = None,
+    ) -> RunBatch:
         """Wykonaj serię sekwencyjnie torem kanonicznym.
+
+        `kontekst` (karta DYNAMIKA-W-TLE): punkt przerwania MIĘDZY pozycjami —
+        postęp w pozycjach serii; anulowanie kończy serię stanem CANCELLED, pozycje
+        niewykonane dostają CANCELLED z wyjaśnieniem, policzone zachowują wynik.
 
         Dla KAŻDEJ pozycji (w porządku `position`), NIEZALEŻNIE od wyniku
         poprzednich:
@@ -318,13 +414,39 @@ class BatchExecutionService:
         buduje własnego połączenia.
         """
         batch = self._get_batch(batch_id)
-        if batch.status != RunBatchStatus.CREATED:
+        # Przejęcie ATOMOWE (CREATED/QUEUED → RUNNING w jednym UPDATE) — dawny odczyt
+        # statusu i osobny zapis RUNNING były oknem na podwójne wykonanie serii.
+        with run_batch_repository_scope() as repo:
+            przejeta = repo.claim(
+                batch_id,
+                z=(RunBatchStatus.CREATED.value, RunBatchStatus.QUEUED.value),
+                na=RunBatchStatus.RUNNING.value,
+            )
+        if not przejeta:
             raise BatchNotPendingError(str(batch_id), batch.status.value)
-
         batch = batch.mark_running()
-        self._zapisz(batch)
 
-        for pozycja in batch.sorted_items():
+        pozycje = batch.sorted_items()
+        for numer, pozycja in enumerate(pozycje):
+            if kontekst is not None:
+                try:
+                    kontekst.punkt_przerwania(
+                        PostepBiegu(
+                            wykonane=numer,
+                            razem=len(pozycje),
+                            jednostka="pozycje serii",
+                            krok=numer,
+                        ),
+                        wyjasnienie=(
+                            f"Seria anulowana przez użytkownika po {numer} z {len(pozycje)} "
+                            "pozycji — pozycja niewykonana."
+                        ),
+                    )
+                except BiegAnulowanyError as exc:
+                    batch = batch.with_unfinished_items(ITEM_STATUS_CANCELLED, exc.wyjasnienie)
+                    batch = batch.finalize(finished_at=datetime.now(UTC))
+                    self._zapisz(batch)
+                    return batch
             try:
                 zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
             except Exception as exc:

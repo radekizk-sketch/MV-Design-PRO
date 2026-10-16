@@ -74,6 +74,7 @@ from tests.test_dynamika_rms_run import (  # noqa: E402
     _reset_backend_state,
     _uruchom_rozplyw,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 #: Sieć toku pracy dynamiki (operacje domenowe z katalogu) i jej identyfikatory — z NAZW.
 _SIEC = build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False)
@@ -145,7 +146,7 @@ def _bieg(
     )
     assert utworzony.status_code == 201, utworzony.text
     run_id = utworzony.json()["id"]
-    wykonany = client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonany = wykonaj_bieg(client, run_id)
     assert wykonany.status_code == 200, wykonany.text
     return {"run_id": run_id, **wykonany.json()}
 

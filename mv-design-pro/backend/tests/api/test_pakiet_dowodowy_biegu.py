@@ -35,6 +35,7 @@ from api.main import app
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _reset_backend_state() -> None:
@@ -178,7 +179,7 @@ def _wykonaj_bieg(
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     assert execute.json()["status"] == "DONE"
     return str(run_id)

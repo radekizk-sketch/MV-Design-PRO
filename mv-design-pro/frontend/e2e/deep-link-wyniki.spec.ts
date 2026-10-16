@@ -17,6 +17,7 @@
  * „Oblicz" REALNIE i otwiera wyniki jednym jawnym klikiem.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -267,22 +268,11 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
 
-  const executeResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-
-  // Publiczny indeks wyników gotowy = frontend ma skąd czytać tabelę zwarć.
-  const deadline = Date.now() + 15000;
-  let lastStatus = 0;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) return run.id;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla runu ${run.id} (status=${lastStatus})`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 test('zimny deep-link #analysis?run= ląduje w warsztacie ui2, nie w moście legacy (bramka K3-A1)', async ({ browser, request }) => {

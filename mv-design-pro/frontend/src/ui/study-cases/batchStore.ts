@@ -45,6 +45,8 @@ interface BatchRunsState {
   utworzIWykonajSerie: (caseId: string, scenarioIds: string[], nazwa?: string) => Promise<BatchJob>;
   /** Wykonaj istniejącą serię PENDING. */
   wykonajSerie: (batchId: string) => Promise<BatchJob>;
+  /** Anuluj serię w kolejce albo w toku (karta DYNAMIKA-W-TLE); w toku — po bieżącej pozycji. */
+  anulujSerie: (batchId: string) => Promise<BatchJob>;
   clearError: () => void;
   reset: () => void;
 }
@@ -59,6 +61,13 @@ const initialState = {
 };
 
 /** Po wykonaniu serii biegi kanoniczne są nowe — odśwież JEDNO źródło biegów. */
+function zastapSerie(serie: BatchJob[], nowa: BatchJob): BatchJob[] {
+  const bez = serie.filter((s) => s.batch_id !== nowa.batch_id);
+  return serie.some((s) => s.batch_id === nowa.batch_id)
+    ? serie.map((s) => (s.batch_id === nowa.batch_id ? nowa : s))
+    : [nowa, ...bez];
+}
+
 async function odswiezBiegiPrzypadku(caseId: string): Promise<void> {
   const runsStore = useExecutionRunsStore.getState();
   if (runsStore.activeStudyCaseId === caseId) {
@@ -102,7 +111,11 @@ export const useBatchRunsStore = create<BatchRunsState>((set, get) => ({
         caseId,
         nazwa ? { scenario_ids: scenarioIds, name: nazwa } : { scenario_ids: scenarioIds },
       );
-      const executed = await api.executeBatch(created.batch_id);
+      // Karta DYNAMIKA-W-TLE: zlecenie (202, QUEUED) + odpytywanie do stanu końcowego;
+      // każda zmiana stanu odświeża listę, żeby panel pokazywał kolejkę i postęp pozycji.
+      const executed = await api.executeBatchAndWait(created.batch_id, {
+        onStan: (seria) => set((s) => ({ batches: zastapSerie(s.batches, seria) })),
+      });
       set({ isExecuting: false });
       await get().loadBatches(caseId);
       await odswiezBiegiPrzypadku(caseId);
@@ -117,10 +130,27 @@ export const useBatchRunsStore = create<BatchRunsState>((set, get) => ({
     }
   },
 
+  anulujSerie: async (batchId) => {
+    set({ actionError: null });
+    try {
+      const seria = await api.cancelBatch(batchId);
+      set((s) => ({ batches: zastapSerie(s.batches, seria) }));
+      return seria;
+    } catch (error) {
+      set({
+        actionError:
+          error instanceof Error ? error.message : 'Nie udało się anulować serii przebiegów',
+      });
+      throw error;
+    }
+  },
+
   wykonajSerie: async (batchId) => {
     set({ isExecuting: true, actionError: null });
     try {
-      const executed = await api.executeBatch(batchId);
+      const executed = await api.executeBatchAndWait(batchId, {
+        onStan: (seria) => set((s) => ({ batches: zastapSerie(s.batches, seria) })),
+      });
       set({ isExecuting: false });
       const caseId = get().activeStudyCaseId;
       if (caseId) {

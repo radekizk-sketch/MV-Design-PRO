@@ -506,4 +506,112 @@ test.describe('dynamika czasowa RMS — tok pracy projektanta (realny backend)',
     await expect(zalozenia).not.toContainText('model_odbiorow');
     await expect(zalozenia).not.toContainText(seed.odbiorRef);
   });
+
+  // Karta DYNAMIKA-W-TLE: bieg liczy się poza żądaniem HTTP — ekran pokazuje kolejkę,
+  // postęp w czasie symulacji i pozwala anulować bieg między krokami całkowania.
+  // Horyzont 3 s (≈ 1 500 kroków) — dość długi, żeby pasek był widoczny i rósł.
+  const HORYZONT_DLUGI_S = 3.0;
+
+  async function scenariuszDlugiPrzezApi(request: APIRequestContext, seed: Siec): Promise<string> {
+    const scenariusz = await request.post(
+      `${BACKEND_BASE}/api/dynamika/study-cases/${seed.caseId}/scenariusze`,
+      {
+        data: {
+          name: 'Zwarcie w odcinku 2 — bieg długi',
+          dynamika: {
+            detektory: [],
+            horyzont_s: HORYZONT_DLUGI_S,
+            krok_wyjscia_s: 0.02,
+            zdarzenia: [
+              {
+                rodzaj: 'zwarcie',
+                t_s: 0.05,
+                element_ref: seed.odcinek2Ref,
+                polozenie_wzgledne: 0.5,
+                typ: '3F',
+                r_f_ohm: 0.0,
+                x_f_ohm: 1.0,
+                t_usuniecia_s: 0.15,
+                sposob_usuniecia: 'izolacja',
+              },
+              { rodzaj: 'wylaczenie_galezi', t_s: 0.15, element_ref: seed.odcinek2Ref },
+            ],
+          },
+        },
+        timeout: 30000,
+      },
+    );
+    expect(scenariusz.ok(), await scenariusz.text()).toBeTruthy();
+    return ((await scenariusz.json()) as { scenario_id: string }).scenario_id;
+  }
+
+  async function ulamekPostepu(page: Page): Promise<number> {
+    const surowy = await page.getByTestId('mvd-dynamika-postep-pasek').getAttribute('data-ulamek');
+    return surowy ? Number(surowy) : -1;
+  }
+
+  test('bieg w tle: pasek postępu rośnie w czasie symulacji, potem wynik', async ({ page, request }) => {
+    test.setTimeout(420000);
+    const seed = await przypadekZSiecia(request, true);
+    const scenarioId = await scenariuszDlugiPrzezApi(request, seed);
+    await otworzEkranDynamiki(page, seed);
+    await rozplywIPunktPracy(page);
+    await page.getByTestId('mvd-dynamika-scenariusz-wybor').selectOption(scenarioId);
+    await wpiszNastawy(page, null);
+
+    const uruchom = page.getByTestId('mvd-dynamika-uruchom');
+    await expect(uruchom).toBeEnabled();
+    await uruchom.click();
+    const stan = page.getByTestId('mvd-dynamika-stan-biegu');
+    await expect(stan).toHaveAttribute('data-status', 'RUNNING', { timeout: 60000 });
+    const pasek = page.getByTestId('mvd-dynamika-postep-pasek');
+    await expect(pasek).toBeVisible();
+    await expect(pasek).toHaveAttribute('role', 'progressbar');
+    await expect.poll(() => ulamekPostepu(page), { timeout: 60000 }).toBeGreaterThan(0);
+    const pierwszy = await ulamekPostepu(page);
+    await expect.poll(() => ulamekPostepu(page), { timeout: 60000 }).toBeGreaterThan(pierwszy);
+    await expect(page.getByTestId('mvd-dynamika-postep-opis')).toContainText('s symulacji');
+    // Bieg w toku ma przycisk „Anuluj bieg" (natywny klik — drugi scenariusz).
+    await expect(page.getByTestId('mvd-dynamika-anuluj')).toBeVisible();
+
+    await expect(stan).toHaveAttribute('data-status', 'DONE', { timeout: 180000 });
+    await expect(page.getByTestId('mvd-dynamika-postep')).toHaveCount(0);
+    await expect(page.getByTestId('mvd-dynamika-wynik')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByTestId('mvd-dynamika-wykres-pu')).toBeVisible();
+  });
+
+  test('bieg w tle: „Anuluj bieg" między krokami całkowania → stan anulowany z wyjaśnieniem, bez wyniku', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(420000);
+    const seed = await przypadekZSiecia(request, true);
+    const scenarioId = await scenariuszDlugiPrzezApi(request, seed);
+    await otworzEkranDynamiki(page, seed);
+    await rozplywIPunktPracy(page);
+    await page.getByTestId('mvd-dynamika-scenariusz-wybor').selectOption(scenarioId);
+    await wpiszNastawy(page, null);
+
+    await page.getByTestId('mvd-dynamika-uruchom').click();
+    const stan = page.getByTestId('mvd-dynamika-stan-biegu');
+    await expect(stan).toHaveAttribute('data-status', 'RUNNING', { timeout: 60000 });
+    await expect.poll(() => ulamekPostepu(page), { timeout: 60000 }).toBeGreaterThan(0);
+
+    await page.getByTestId('mvd-dynamika-anuluj').click();
+    await expect(page.getByTestId('mvd-dynamika-postep-opis')).toContainText('Anulowanie zlecone', {
+      timeout: 30000,
+    });
+    await expect(stan).toHaveAttribute('data-status', 'CANCELLED', { timeout: 120000 });
+    await expect(stan).toContainText('Bieg anulowany');
+    await expect(stan).toContainText('przerwano w chwili t =');
+    await expect(page.getByTestId('mvd-dynamika-anuluj')).toHaveCount(0);
+    await expect(page.getByTestId('mvd-dynamika-bieg-blad')).toHaveCount(0);
+    await expect(page.getByTestId('mvd-dynamika-uruchom')).toBeEnabled();
+    // Anulowany bieg nie ma wyniku — rejestr biegów nie oferuje go jako wyniku.
+    const biegi = await request.get(`${BACKEND_BASE}/api/execution/study-cases/${seed.caseId}/runs`);
+    const lista = (await biegi.json()) as { runs: Array<{ analysis_type: string; status: string }> };
+    const dynamiki = lista.runs.filter((r) => r.analysis_type === 'DYNAMIKA_RMS');
+    expect(dynamiki).toHaveLength(1);
+    expect(dynamiki[0].status).toBe('CANCELLED');
+  });
 });

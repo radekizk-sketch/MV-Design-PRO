@@ -21,7 +21,7 @@ import type { ExecutionRun, ExecutionResultSet } from '../types';
 // Mock the API module
 vi.mock('../api', () => ({
   createRun: vi.fn(),
-  executeRun: vi.fn(),
+  executeRunAndWait: vi.fn(),
   listRuns: vi.fn(),
   getRunResults: vi.fn(),
   getRun: vi.fn(),
@@ -395,10 +395,10 @@ describe('useExecutionRunsStore', () => {
   describe('createAndExecuteRun', () => {
     it('should create and execute a run through API', async () => {
       const createdRun: ExecutionRun = { ...MOCK_RUN, status: 'PENDING' };
-      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'RUNNING' };
+      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'DONE' };
 
       vi.mocked(api.createRun).mockResolvedValue(createdRun);
-      vi.mocked(api.executeRun).mockResolvedValue(executedRun);
+      vi.mocked(api.executeRunAndWait).mockResolvedValue(executedRun);
       vi.mocked(api.listRuns).mockResolvedValue({ runs: [executedRun], count: 1 });
 
       const result = await useExecutionRunsStore.getState().createAndExecuteRun(
@@ -406,17 +406,20 @@ describe('useExecutionRunsStore', () => {
         { analysis_type: 'SC_3F' },
       );
 
-      expect(result.status).toBe('RUNNING');
+      expect(result.status).toBe('DONE');
       expect(api.createRun).toHaveBeenCalledWith('case-001', { analysis_type: 'SC_3F' });
-      expect(api.executeRun).toHaveBeenCalledWith('run-001');
+      expect(api.executeRunAndWait).toHaveBeenCalledWith(
+        'run-001',
+        expect.objectContaining({ onStan: expect.any(Function) }),
+      );
     });
 
     it('should set active run ID after creation', async () => {
       const createdRun: ExecutionRun = { ...MOCK_RUN, status: 'PENDING' };
-      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'RUNNING' };
+      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'DONE' };
 
       vi.mocked(api.createRun).mockResolvedValue(createdRun);
-      vi.mocked(api.executeRun).mockResolvedValue(executedRun);
+      vi.mocked(api.executeRunAndWait).mockResolvedValue(executedRun);
       vi.mocked(api.listRuns).mockResolvedValue({ runs: [executedRun], count: 1 });
 
       await useExecutionRunsStore.getState().createAndExecuteRun(
@@ -447,10 +450,10 @@ describe('useExecutionRunsStore', () => {
 
     it('should clear loading flags after successful execution', async () => {
       const createdRun: ExecutionRun = { ...MOCK_RUN, status: 'PENDING' };
-      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'RUNNING' };
+      const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'DONE' };
 
       vi.mocked(api.createRun).mockResolvedValue(createdRun);
-      vi.mocked(api.executeRun).mockResolvedValue(executedRun);
+      vi.mocked(api.executeRunAndWait).mockResolvedValue(executedRun);
       vi.mocked(api.listRuns).mockResolvedValue({ runs: [executedRun], count: 1 });
 
       await useExecutionRunsStore.getState().createAndExecuteRun(
@@ -461,6 +464,36 @@ describe('useExecutionRunsStore', () => {
       const state = useExecutionRunsStore.getState();
       expect(state.isCreatingRun).toBe(false);
       expect(state.isExecutingRun).toBe(false);
+    });
+    it('runStatus śledzi każdy odczyt stanu biegu w tle, flaga wykonania gaśnie na stanie końcowym', async () => {
+      // Karta DYNAMIKA-W-TLE: execute zwraca 202 QUEUED; store nie może uznać 202 za
+      // wynik. Atrapa executeRunAndWait woła onStan dla QUEUED i RUNNING (stan w toku:
+      // flaga wykonania nadal zapalona), potem zwraca DONE.
+      const createdRun: ExecutionRun = { ...MOCK_RUN, status: 'PENDING' };
+      const widziane: Array<{ status: string | null; wykonuje: boolean }> = [];
+      vi.mocked(api.createRun).mockResolvedValue(createdRun);
+      vi.mocked(api.executeRunAndWait).mockImplementation(async (_id, opcje) => {
+        for (const status of ['QUEUED', 'RUNNING'] as const) {
+          opcje?.onStan?.({ ...MOCK_RUN, status });
+          const stan = useExecutionRunsStore.getState();
+          widziane.push({ status: stan.runStatus, wykonuje: stan.isExecutingRun });
+        }
+        return { ...MOCK_RUN, status: 'DONE' };
+      });
+      vi.mocked(api.listRuns).mockResolvedValue({ runs: [], count: 0 });
+
+      const wynik = await useExecutionRunsStore.getState().createAndExecuteRun(
+        'case-001',
+        { analysis_type: 'SC_3F' },
+      );
+
+      expect(widziane).toEqual([
+        { status: 'QUEUED', wykonuje: true },
+        { status: 'RUNNING', wykonuje: true },
+      ]);
+      expect(wynik.status).toBe('DONE');
+      expect(useExecutionRunsStore.getState().runStatus).toBe('DONE');
+      expect(useExecutionRunsStore.getState().isExecutingRun).toBe(false);
     });
   });
 });

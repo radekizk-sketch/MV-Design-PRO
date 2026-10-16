@@ -11,6 +11,7 @@ from api.main import app
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _reset_backend_state() -> None:
@@ -169,7 +170,7 @@ def _run_power_flow(client: TestClient, case_id: str) -> str:
     )
     assert created.status_code == 201, created.text
     run_id = created.json()["id"]
-    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    executed = wykonaj_bieg(client, run_id)
     assert executed.status_code == 200, executed.text
     return run_id
 
@@ -205,7 +206,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     run_id = run_payload["id"]
     input_hash = run_payload["solver_input_hash"]
 
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute_run = wykonaj_bieg(client, run_id)
     assert execute_run.status_code == 200
     assert execute_run.json()["status"] == "DONE"
 
@@ -558,7 +559,7 @@ def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) 
     )
     assert create_run.status_code == 201
     run_id = create_run.json()["id"]
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute_run = wykonaj_bieg(client, run_id)
     assert execute_run.status_code == 200
     assert execute_run.json()["status"] == "DONE"
 
@@ -1016,7 +1017,7 @@ def test_phase_state_sn_run_exposes_canonical_results_and_trace(client: TestClie
     assert create_run.status_code == 201
     run_id = create_run.json()["id"]
 
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute_run = wykonaj_bieg(client, run_id)
     assert execute_run.status_code == 200
     assert execute_run.json()["analysis_type"] == "PHASE_STATE_SN"
 

@@ -27,6 +27,8 @@
  * Klient błędów: wariant z odczytem pola `detail` (wzór `ui2/wyniki/ssci/api.ts`).
  */
 
+import { getRun, waitForRunTerminalState } from '../../../ui/study-cases/api';
+
 // ---------------------------------------------------------------------------
 // Rodzaj analizy — kody kontraktu backendu (`V126AnalysisType`)
 // ---------------------------------------------------------------------------
@@ -67,7 +69,9 @@ export interface PrzebiegAkademicki {
   readonly trace_url: string;
   readonly proof_url: string;
   readonly report_url: string;
-  readonly deterministic_hash: string;
+  /** Odcisk wyniku — `null` dopóki bieg nie zakończy się wynikiem (bieg w tle). */
+  readonly deterministic_hash: string | null;
+  readonly error_message?: string | null;
 }
 
 /** Koperta wyniku solvera (`AcademicAnalysisResultV1`). */
@@ -295,15 +299,29 @@ function adresWyniku(runId: string, rodzaj: RodzajAnalizy, sufiks = ''): string 
  * `parametry` trafiają 1:1 do `V126RunRequest.parameters` — pole nieprzekazane
  * oznacza udokumentowaną wartość domyślną solvera (UI niczego nie podstawia).
  */
-export function utworzPrzebieg(
+export async function utworzPrzebieg(
   caseId: string,
   rodzaj: RodzajAnalizy,
   parametry: Record<string, unknown>,
 ): Promise<PrzebiegAkademicki> {
-  return postJsonZDetalem<PrzebiegAkademicki>(
+  // Karta DYNAMIKA-W-TLE: zlecenie (202, QUEUED) + odpytywanie stanu biegu do końca;
+  // odcisk wyniku czyta się z `result_url` dopiero po DONE (bieg w tle nie ma go od razu).
+  const zlecony = await postJsonZDetalem<PrzebiegAkademicki>(
     `/api/cases/${encodeURIComponent(caseId)}/runs/v126/${rodzaj}`,
     { parameters: parametry },
   );
+  const koniec = await waitForRunTerminalState(await getRun(zlecony.run_id));
+  if (koniec.status !== 'DONE') {
+    throw new Error(koniec.error_message ?? `Bieg V12.6 zakończył się stanem ${koniec.status}.`);
+  }
+  const wynik = await getJsonZDetalem<{ result?: { deterministic_hash?: string } }>(
+    zlecony.result_url,
+  );
+  return {
+    ...zlecony,
+    status: 'FINISHED',
+    deterministic_hash: wynik.result?.deterministic_hash ?? null,
+  };
 }
 
 /** Pobiera wynik przebiegu (koperta solvera). */

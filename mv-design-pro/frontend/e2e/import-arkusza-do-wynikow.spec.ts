@@ -16,31 +16,12 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIKSTURA = path.join(_dirname, 'fixtures', 'arkusz-siec-sn.xlsx');
-
-async function waitForAnalysisRunIndex(
-  request: APIRequestContext,
-  runId: string,
-  timeoutMs = 15000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastStatus = 0;
-  let lastBody = '';
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) return;
-    lastBody = await response.text();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(
-    `Publiczny results/index nie jest gotowy dla runu ${runId}. status=${lastStatus} body=${lastBody}`,
-  );
-}
 
 test('klasa A: arkusz operatora → model projektu → bieg rozpływu → wyniki (realny backend)', async ({
   page,
@@ -144,11 +125,8 @@ test('klasa A: arkusz operatora → model projektu → bieg rozpływu → wyniki
   );
   expect(createRunResponse.ok()).toBeTruthy();
   const { id: runId } = (await createRunResponse.json()) as { id: string };
-  const executeResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
-  expect(executeResponse.ok()).toBeTruthy();
-  const bieg = (await executeResponse.json()) as { status: string };
+  const bieg = await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
   expect(bieg.status).toBe('DONE');
-  await waitForAnalysisRunIndex(request, runId);
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
