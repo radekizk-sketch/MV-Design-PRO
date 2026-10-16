@@ -57,6 +57,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_nn_rcd: 'Dodanie wyłącznika różnicowoprądowego nN',
   set_source_operating_mode: 'Ustawienie trybu pracy źródła',
   set_dynamic_profile: 'Przypisanie profilu dynamicznego',
+  set_load_dynamic_binding: 'Wiązanie modelu dynamicznego odbioru',
   set_connection_conditions: 'Zapis warunków przyłączenia OSD',
   add_gpz_section: 'Dodanie sekcji GPZ',
   update_gpz_section: 'Aktualizacja sekcji GPZ',
@@ -64,6 +65,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_ct: 'Dodanie przekładnika CT',
   add_vt: 'Dodanie przekładnika VT',
   add_relay: 'Dodanie zabezpieczenia',
+  update_protection_settings: 'Zapis nastaw zabezpieczenia',
   delete_element: 'Usunięcie elementu',
   refresh_snapshot: 'Odświeżenie snapshotu',
 };

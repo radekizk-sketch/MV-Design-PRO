@@ -425,7 +425,13 @@ POMIJANE_KATALOGI = {
 #: w `StationTemplateWizard.test.tsx` (karta SZYBKIE-TESTY) i TS2345 w
 #: `downloadSldExport.test.ts` (karta KASACJA-SCL-I-CIM-KLIENT, test eksportu przepisany).
 #: Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 61
+#: Partia integracji 9 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
+#: bazie partii `0aa21b4c7`, listy porownane linia po linii): baza 61 -> 59, roznica wylacznie
+#: ubytkowa: zeszly TS2345 w `protection-curves/__tests__/types.test.ts` (karta PROT-LTI)
+#: i TS2739 w `ui2/spaces/model/katalog/__tests__/fixtures.ts` (karta W5-E-TTIT, kategorie
+#: katalogu nN). Zero nowych bledow; jedyny blad W BRAMCE iloczynu kart (etykiety historii
+#: operacji bez `update_protection_settings` i `set_load_dynamic_binding`) naprawiony u zrodla.
+BUDZET_BLEDOW_POZA_BRAMKA = 59
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
