@@ -152,7 +152,7 @@ def validate_registry(data: dict) -> list[str]:
     if expert_ids != [f"E{i:03d}" for i in range(1, 241)]:
         errors.append("Nieciągła lub powtórzona numeracja ekspertów")
     for group in groups:
-        for attr in ("name", "triggers", "checks", "evidence"):
+        for attr in ("name", "triggers", "checks", "evidence", "reference_documents"):
             if not group.get(attr):
                 errors.append(f"{group.get('id')}: brak {attr}")
     counts = {identifier: 0 for identifier in group_ids}
@@ -163,7 +163,7 @@ def validate_registry(data: dict) -> list[str]:
         else:
             counts[group_id] += 1
         for attr in ("name", "responsibility", "activation_terms", "checks",
-                     "evidence", "sources"):
+                     "evidence", "sources", "reference_documents"):
             if not item.get(attr):
                 errors.append(f"{item.get('id')}: brak {attr}")
         for related in item.get("related_groups", []):
