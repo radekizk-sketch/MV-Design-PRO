@@ -3,7 +3,8 @@
 oraz granica importów nowego rdzenia dynamiki.
 
 CZĘŚĆ 1 (delta): sprawdza git diff i failuje, jeśli dotknięte są chronione pliki
-solverów SC/Protection.
+rdzeni — cała lista B-01 (`scripts/rdzenie_b01.py`, jedno źródło z odciskiem
+`solver_diff_guard`) i `DODATKOWE_CHRONIONE` — bez sankcji.
 
 SANKCJE (2026-07-22): zmiana chronionego pliku jest dopuszczalna WYŁĄCZNIE
 z jawną sankcją w SANCTIONED_CHANGES (ścieżka -> wpis rejestru V12K-*
@@ -25,15 +26,16 @@ from pathlib import Path
 from dynamika_granica_importow import KATALOG_PAKIETU as KATALOG_PAKIETU_DYNAMIKI
 from dynamika_granica_importow import raport as raport_granicy_dynamiki
 from guard_diff_base import zmienione_pliki
+from rdzenie_b01 import sciezki_b01
 
-WATCHED_PATHS = [
-    "backend/src/network_model/solvers/short_circuit_iec60909.py",
+#: Pliki chronione SPOZA listy B-01 (`rdzenie_b01.py`), pilnowane tą samą sankcją: jądra
+#: wspólne z rdzeniem zwarć albo jedyne wejścia fizyki, których zmiana jest zmianą liczb
+#: rdzenia, choć same nie są na liście właściciela.
+DODATKOWE_CHRONIONE: tuple[str, ...] = (
     # Wpis-widmo `short_circuit_iec60909_internal.py` (plik NIGDY nie istnial w
     # historii repo — zmierzone `git log --all`; karta ALLOWLIST-WIDMA 2026-08-12)
     # zastapiony REALNYMI plikami wewnetrznymi solvera SC:
-    "backend/src/network_model/solvers/short_circuit_core.py",
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
-    "backend/src/network_model/solvers/short_circuit_contributions.py",
     # `backend/src/domain/protection_engine_v1.py` zdjęty: plik skasowany w karcie
     # RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59) — drugi silnik
     # zabezpieczeń bez konsumenta; bramka wskrzeszenia w `resultset_v1_schema_guard.py`.
@@ -42,9 +44,15 @@ WATCHED_PATHS = [
     # składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN").
     "backend/src/network_model/solvers/fault_loop_iec60364.py",
     "backend/src/network_model/solvers/petla_zwarcia_tt_it.py",
-    # Rdzeń IEC 60255 (lista B-01, `rdzenie_b01.py`) — dopisany kartą PROT-LTI.
-    "backend/src/network_model/solvers/protection_iec60255.py",
-]
+)
+
+#: Ścieżki chronione: CAŁA lista B-01 (jedno źródło `rdzenie_b01.py`, wpis-katalog z `/`
+#: obejmuje każdy plik w nim, także nowy) + `DODATKOWE_CHRONIONE`. Partia integracji 10:
+#: dawna ręczna lista pomijała rozpływ NR/GS/FD, NC RfG z profilami, FRT/HVRT, WLS, stan
+#: fazowy SN i V12.6 — zmiana tych rdzeni przechodziła bez sankcji.
+WATCHED_PATHS: list[str] = [f"backend/src/{sciezka}" for sciezka in sciezki_b01()] + list(
+    DODATKOWE_CHRONIONE
+)
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
 # (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.
@@ -119,6 +127,21 @@ SANCTIONED_CHANGES = {
         "przekladni <= 0 jako rekordy strukturalne (kod + odwolanie, tresc PL bez "
         "identyfikatora; te same predykaty w tej samej kolejnosci). Wpis do usuniecia "
         "po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/state_estimation_wls.py": (
+        "B-01 (j) (O-59, plan A/B par. 12.2): prog chi^2 testu J(x) wylacznie z "
+        "scipy.stats.chi2.ppf, bez cichej aproksymacji Wilsona-Hilferty'ego; brak scipy = "
+        "odmowa nazwana. Pomiar przy partii integracji 10 (rozszerzenie WATCHED_PATHS na "
+        "cala liste B-01): jedyna zmiana pliku wobec main. Wpis do usuniecia po scaleniu "
+        "do main."
+    ),
+    "backend/src/network_model/solvers/v126_academic.py": (
+        "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3 i decyzja B-01 partii 9): "
+        "typy i teksty, zero zmian liczbowych; odmowa bilansu strat bez P0 transformatora "
+        "jako rekord strukturalny. Decyzja B-01 partii integracji 10: brak pol karty "
+        "falownika dla Z_conv(f) jako odmowa strukturalna (kod + odwolanie do "
+        "przeksztaltnika, tresc PL z nazwami wielkosci, jedno zrodlo listy brakow) zamiast "
+        "golego ValueError z kluczami pol. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
@@ -204,12 +227,15 @@ def main() -> int:
         print(f"  {powod}")
 
     if violations:
-        print("BŁĄD [SolverBoundaryGuard]: PR modyfikuje pliki solvera SC/Protection.")
+        print("BŁĄD [SolverBoundaryGuard]: zmiana chronionych rdzeni bez sankcji.")
         print("Zmienione pliki chronione:")
         for v in sorted(set(violations)):
             print(f"  - {v}")
         print()
-        print("Load Flow PR NIE MOŻE modyfikować solverów zwarciowych ani zabezpieczeń.")
+        print(
+            "Rdzeń z listy B-01 (`scripts/rdzenie_b01.py`) zmienia się wyłącznie z decyzją "
+            "właściciela nazwaną w SANCTIONED_CHANGES."
+        )
         return 1
 
     print("OK [SolverBoundaryGuard]: Brak zmian w chronionych plikach solverów.")
