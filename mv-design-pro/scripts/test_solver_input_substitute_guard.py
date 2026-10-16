@@ -1781,7 +1781,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # scalonym = 4145; drzewo integracji (`git archive` rodzica 2) = 4139 (jego przypiete 4125
     # bylo nieaktualne), roznica zbiorow scalone − integracja = dokladnie delta karty W5-B
     # (+7 pol rekordu `Bay` wyzej, −1 `field_spec`). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4145." in wyjscie, wyjscie
+    # W5-B 20/n (2026-10-16, poprawka wydajnosci akcesorow pol): 4145 -> 4149 — POMIAR
+    # `contract_fields()`: +4 nowe nazwy adnotacji w `enm/` (`PoziomPol.stacje_gpz` w
+    # `enm/pola.py`; `_KontekstTerminali.odcinki_na_szynie`, `.korytarze_pierscieni`,
+    # `.zajete_zaciski_pol` w `enm/domain_operations.py`); `PoziomPol.napiecia` juz byla w
+    # zbiorze. To kontenery jednego przebiegu, nie dane wejsciowe solvera. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4149." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
