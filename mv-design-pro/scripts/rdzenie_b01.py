@@ -12,9 +12,11 @@ w 35 plikach) z uzasadnieniem „B-01", którego lista właściciela nie daje.
 Kontrakty wyników (reguła 6 CLAUDE.md: `ShortCircuitResult`, `PowerFlowResult`) obowiązują
 niezależnie od tej listy: zmiana wyłącznie addytywna albo z podbiciem wersji.
 
-Podzbiór pilnowany odciskiem SHA-256: `solver_diff_guard.PROTECTED_FILES`. Samotest
-`test_rdzenie_b01.py` przypina, że jest on podzbiorem tej listy, że każdy wpis wskazuje
-istniejący plik albo katalog i że dokumenty wskazujące granicę B-01 odsyłają do tego pliku.
+Odcisk SHA-256 (`solver_diff_guard.PROTECTED_FILES`) obejmuje CAŁĄ listę — od decyzji B-01
+partii integracji 9 jest jej rozwinięciem (wpis-katalog = każdy plik w nim), nie ręcznym
+podzbiorem. Samotest `test_rdzenie_b01.py` przypina, że odcisk nie wychodzi poza listę, że
+każdy wpis wskazuje istniejący plik albo katalog i że dokumenty wskazujące granicę B-01
+odsyłają do tego pliku; `test_solver_diff_guard.py` — że odcisk jest rozwinięciem listy.
 """
 
 from __future__ import annotations
