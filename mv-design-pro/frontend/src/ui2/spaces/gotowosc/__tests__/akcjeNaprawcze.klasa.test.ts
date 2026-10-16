@@ -10,7 +10,7 @@
  * zapala ten test na czerwono.
  *
  * Iloczyn cech, w którym defekt mógłby się schować:
- *   kod rejestru (147) × rodzaj odpowiedzi (formularz / przestrzeń / odmowa)
+ *   kod rejestru (153) × rodzaj odpowiedzi (formularz / przestrzeń / odmowa)
  *   × element wskazany albo nie × akcja emitera dołączona albo nie;
  *   emiter (typ akcji × typ okna × panel) × kod spoza kanonu;
  *   pole fokusu × element z tą własnością albo bez niej.

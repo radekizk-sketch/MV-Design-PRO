@@ -572,6 +572,42 @@
     },
     {
       "area": "STATIONS",
+      "code": "nn.brak_pojemnosci_doziemnej",
+      "fix_navigation": {
+        "focus": "b0_siemens_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_a",
+      "fix_navigation": {
+        "focus": "earth_electrode_r_ohm",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_b",
+      "fix_navigation": {
+        "focus": "lv_neutral",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_rcd",
+      "fix_navigation": {
+        "modal": "add_nn_rcd",
+        "panel": "inspector",
+        "tab": "nn"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "nn.bus_missing",
       "fix_navigation": {
         "panel": "inspector",
@@ -647,6 +683,15 @@
         "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.transformer_lv_not_nn_band",
+      "fix_navigation": {
+        "focus": "ulv_kv",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1058,6 +1103,14 @@
       }
     },
     {
+      "area": "ANALYSIS",
+      "code": "swz.limit_tt_it_brak_tekstu_normy",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
       "area": "STATIONS",
       "code": "transformer.bay_missing",
       "fix_navigation": {
@@ -1251,7 +1304,7 @@
       }
     }
   ],
-  "count": 147,
+  "count": 153,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

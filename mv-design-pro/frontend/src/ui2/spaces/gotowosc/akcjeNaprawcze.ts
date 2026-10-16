@@ -84,7 +84,7 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (147 kodów, stan rejestru partii integracji 8). Brak wpisu dla
+ * KOMPLETNA tabela kodów kanonu (153 kody, stan rejestru partii integracji 9). Brak wpisu dla
  * kodu z rejestru jest błędem wykrywanym testem klasy `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -156,6 +156,22 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'nn.source.catalog_missing': KATALOG,
   'nn.source.parameters_missing': EDYCJA,
   'nn.measurement.required_missing': formularz('add_ct'),
+  // Ochrona przez samoczynne wyłączenie w układach TT/IT (karta W5-E-TTIT): każde pole jest
+  // edytowalne operacją `update_element_parameters` (R_A odbioru tym samym walidatorem co
+  // kreator odbioru, punkt neutralny nN transformatora, susceptancja zerowa odcinka nN,
+  // napięcie strony dolnej), brak wyłącznika różnicowoprądowego naprawia jego kreator.
+  'nn.brak_r_a': EDYCJA,
+  'nn.brak_r_b': EDYCJA,
+  'nn.brak_rcd': formularz('add_nn_rcd'),
+  'nn.brak_pojemnosci_doziemnej': EDYCJA,
+  'nn.transformer_lv_not_nn_band': EDYCJA,
+  'swz.limit_tt_it_brak_tekstu_normy': {
+    rodzaj: 'odmowa',
+    powodPl:
+      'Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układów TT i IT wymagają tekstu ' +
+      'normy IEC 60364-4-41, którego nie ma w programie — kryterium pozostaje bez podstawy do czasu ' +
+      'dostarczenia tekstu normy; w modelu nie ma czego poprawić.',
+  },
   'apparatus.sn_catalog_missing': KATALOG,
   'apparatus.nn_catalog_missing': KATALOG,
   'load.catalog_missing': KATALOG,
