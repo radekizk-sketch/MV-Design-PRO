@@ -41,7 +41,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from .pola import pola_sn_stacji
+from .pola import pola_sn_stacji, poziom_pol
 from .slownik_komunikatow import NAZWY_RODZAJOW_STACJI_PL
 from .tor_pola import szyny_stacji
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
@@ -287,8 +287,9 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
     """Rodzaj KAŻDEJ stacji modelu, której rodzaj dotyczy (klucz: `ref_id`), deterministycznie."""
     stacje = [s for s in enm.get("substations") or [] if isinstance(s, Mapping)]
     galezie = [g for g in enm.get("branches") or [] if isinstance(g, Mapping)]
+    poziom = poziom_pol(enm)
     szyny: dict[str, frozenset[str]] = {
-        str(_napis(s.get("ref_id"))): szyny_stacji(enm, s)
+        str(_napis(s.get("ref_id"))): szyny_stacji(enm, s, poziom)
         for s in stacje
         if _napis(s.get("ref_id"))
     }
@@ -300,7 +301,7 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
         liniowe = 0
         sprzeglo = False
         nierozpoznane: list[PoleNierozpoznane] = []
-        for pole in pola_sn_stacji(enm, ref):
+        for pole in pola_sn_stacji(enm, ref, poziom):
             kategoria = kategoria_pola(pole)
             if kategoria is None:
                 nierozpoznane.append(

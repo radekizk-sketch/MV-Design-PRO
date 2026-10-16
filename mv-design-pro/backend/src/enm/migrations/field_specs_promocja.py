@@ -44,8 +44,8 @@ from enm.migrations.klucze_meta_pola import (
 from enm.models import EnergyNetworkModel
 from enm.pola import (
     czy_pole_nn,
-    napiecia_szyn,
     pola_zksn_z_portow,
+    poziom_pol,
     waliduj_rekord_pola,
     zbuduj_pole,
 )
@@ -308,7 +308,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
         return enm, False
 
     dane = enm.model_dump(mode="json")
-    napiecia = napiecia_szyn(dane)
+    poziom = poziom_pol(dane)
     istniejace: dict[str, dict[str, Any]] = {}
     for rekord in dane.get("bays") or []:
         if isinstance(rekord, dict) and isinstance(rekord.get("ref_id"), str):
@@ -332,7 +332,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
                 rekord = rekord_z_wpisu(
                     wpis,
                     substation_ref=str(stacja.get("ref_id")),
-                    poziom_nn=(klucz == KLUCZ_NN_FIELD_SPECS) or czy_pole_nn(dane, wpis, napiecia),
+                    poziom_nn=(klucz == KLUCZ_NN_FIELD_SPECS) or czy_pole_nn(dane, wpis, poziom),
                     rekord_scalany=scalany,
                 )
                 if scalany is not None and bay_ref is not None:

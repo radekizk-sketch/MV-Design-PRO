@@ -45,12 +45,12 @@ from typing import Any
 
 from enm.pola import (
     czy_pole_nn,
-    napiecia_szyn,
     pola,
     pola_nn_stacji,
     pola_sn_stacji,
     pola_wg_szyny,
     pola_zksn,
+    poziom_pol,
     punkt_przylaczenia_pola,
     stacja_pola,
     zacisk_pola,
@@ -337,7 +337,7 @@ def _pola_modelu(model: dict[str, Any], stacje: list[dict[str, Any]]) -> dict[st
     Rekordy z pustym albo nienapisowym ``ref_id`` pomijamy w mapach po identyfikatorze (klucz
     mapy nie byłby jednoznaczny); w listach ``stacje``/``zksn``/``wg_szyny`` występują tak,
     jak zwraca je backend."""
-    napiecia = napiecia_szyn(model)
+    poziom = poziom_pol(model)
     rekordy = [r for r in pola(model) if isinstance(r.get("ref_id"), str) and r["ref_id"].strip()]
     punkty = sorted(
         str(p["ref_id"])
@@ -350,7 +350,7 @@ def _pola_modelu(model: dict[str, Any], stacje: list[dict[str, Any]]) -> dict[st
         return str(stacja["ref_id"]) if stacja is not None else None
 
     return {
-        "czy_pole_nn": {str(r["ref_id"]): czy_pole_nn(model, r, napiecia) for r in rekordy},
+        "czy_pole_nn": {str(r["ref_id"]): czy_pole_nn(model, r, poziom) for r in rekordy},
         "stacja_pola": {str(r["ref_id"]): _stacja_pola(str(r["ref_id"])) for r in rekordy},
         "stacje": {
             str(s["ref_id"]): {

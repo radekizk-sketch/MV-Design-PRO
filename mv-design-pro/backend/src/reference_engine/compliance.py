@@ -19,7 +19,7 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
-from enm.pola import czy_pole_nn, napiecia_szyn, pola_sn_stacji
+from enm.pola import czy_pole_nn, pola_sn_stacji, poziom_pol
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
 from enm.tor_pola import szyny_stacji
@@ -112,10 +112,8 @@ def _sorted_bays(enm: EnergyNetworkModel) -> list[Bay]:
     pól IEC 62271, rodziny rozdzielnic SN producentów, symbole pól, standard OSD rozdzielnicy
     SN) dotyczą rozdzielnic SN — pola nN (predykat poziomu `enm.pola.czy_pole_nn`, napięcie
     szyny pola) nie są przez nie oceniane."""
-    napiecia = napiecia_szyn(enm)
-    return sorted(
-        (b for b in enm.bays if not czy_pole_nn(enm, b, napiecia)), key=lambda b: b.ref_id
-    )
+    poziom = poziom_pol(enm)
+    return sorted((b for b in enm.bays if not czy_pole_nn(enm, b, poziom)), key=lambda b: b.ref_id)
 
 
 def _station_type_of(bay: Bay, substations_by_ref: dict[str, Substation]) -> str | None:

@@ -58,7 +58,7 @@ import json
 from typing import Any
 
 from enm.models import Bay, Bus, EnergyNetworkModel, Substation, SwitchBranch
-from enm.pola import czy_pole_nn, napiecia_szyn
+from enm.pola import czy_pole_nn, poziom_pol
 from network_model.nazwy import nazwa_nadana
 
 MIGRATION_VERSION = "promocja_aparatow_nn_002"
@@ -105,11 +105,11 @@ def _compute_seed(parts: dict[str, Any]) -> str:
 def _pola_nn_stacji(enm: EnergyNetworkModel, substation: Substation) -> list[Bay]:
     """Pola nN stacji w kolejności zapisu (deterministycznie) — rekordy `bays` stacji na
     szynie w paśmie nN."""
-    napiecia = napiecia_szyn(enm)
+    poziom = poziom_pol(enm)
     return [
         bay
         for bay in enm.bays
-        if bay.substation_ref == substation.ref_id and czy_pole_nn(enm, bay, napiecia)
+        if bay.substation_ref == substation.ref_id and czy_pole_nn(enm, bay, poziom)
     ]
 
 

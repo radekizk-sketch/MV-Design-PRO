@@ -39,7 +39,7 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
-from .pola import czy_pole_nn, napiecia_szyn, pola_stacji, pole_aparatu, stacja_pola
+from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .rodzaj_stacji import (
@@ -2012,12 +2012,12 @@ class ENMValidator:
         # wyłącznik główny nN roli IN); pole z jawną rolą liniową SN (`field_role`
         # LINIA_IN/LINIA_OUT) na szynie nN jest naruszeniem, które ta reguła zgłasza.
         # Pole ZKSN nie należy do stacji.
-        napiecia = napiecia_szyn(enm)
+        poziom = poziom_pol(enm)
         bays_by_station: dict[str, list] = {}
         for bay in enm.bays:
             if bay.substation_ref is None:
                 continue
-            if czy_pole_nn(enm, bay, napiecia) and bay.field_role not in _ROLE_LINIOWE_SN:
+            if czy_pole_nn(enm, bay, poziom) and bay.field_role not in _ROLE_LINIOWE_SN:
                 continue
             bays_by_station.setdefault(bay.substation_ref, []).append(bay)
 

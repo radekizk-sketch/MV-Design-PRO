@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 
-from enm.pola import czy_pole_nn, napiecia_szyn
+from enm.pola import czy_pole_nn, poziom_pol
 from enm.tor_pola import szyny_stacji
 
 from tests.reference_networks.szyny_stacji_parytet import (
@@ -58,11 +58,11 @@ def test_parytet_zawiera_wszystkie_trzy_skladniki_zbioru() -> None:
                 model = model[int(czesc)] if isinstance(model, list) else model[czesc]
             # Karta W5-B: pola nN to rekordy `bays` na szynie nN — model bez aparatów pól nN
             # = rekordy pól nN bez `equipment_refs`.
-            napiecia = napiecia_szyn(model)
+            poziom = poziom_pol(model)
             bez_aparatow_nn = {
                 **model,
                 "bays": [
-                    {**p, "equipment_refs": []} if czy_pole_nn(model, p, napiecia) else p
+                    {**p, "equipment_refs": []} if czy_pole_nn(model, p, poziom) else p
                     for p in model.get("bays") or []
                 ],
             }

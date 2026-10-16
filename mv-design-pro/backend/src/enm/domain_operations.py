@@ -16,7 +16,8 @@ import json
 import logging
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from domain.readiness_bridge import opis_kanoniczny
@@ -80,11 +81,11 @@ from .pola import (
     BladPola,
     czy_pole_nn,
     dodaj_pole,
-    napiecia_szyn,
     pola,
     pola_stacji,
     pola_wg_szyny,
     pola_zksn_z_portow,
+    poziom_pol,
     punkt_przylaczenia_pola,
     stacja_pola,
     usun_pole,
@@ -146,8 +147,10 @@ from .validator import ENMValidator
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
+    pola_wg_wlasnego_zacisku,
     pole_dla_zacisku,
     widok_pol_liniowych,
+    zajetosc_pol,
     zajetosc_pola,
 )
 from .zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
@@ -1170,10 +1173,10 @@ def _pola_sn_wg_szyny(enm: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """Pola SN stacji pogrupowane po szynie (`enm.pola.pola_wg_szyny` bez pól nN — pola liniowe,
     start ciągu i zajętość dotyczą rozdzielnicy SN; poziom pola z JEDNEGO predykatu
     `enm.pola.czy_pole_nn`)."""
-    napiecia = napiecia_szyn(enm)
+    poziom = poziom_pol(enm)
     wynik: dict[str, list[dict[str, Any]]] = {}
     for szyna, rekordy in pola_wg_szyny(enm).items():
-        sn = [r for r in rekordy if not czy_pole_nn(enm, r, napiecia)]
+        sn = [r for r in rekordy if not czy_pole_nn(enm, r, poziom)]
         if sn:
             wynik[szyna] = sn
     return wynik
@@ -2249,6 +2252,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
 
     branch_points = {bp.get("bus_ref"): bp for bp in enm.get("branch_points", [])}
     pola_sn_wg_szyny = _pola_sn_wg_szyny(enm)
+    kontekst_terminali = _kontekst_terminali(enm)
     source_bus_refs = sorted(
         {
             bus_ref
@@ -2271,7 +2275,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
             if first_seg:
                 start_bus = first_seg.get("from_bus_ref", "")
                 # Check if start bus has other connections (ZAJETY) or is open
-                start_status = _terminal_status(enm, start_bus, c.get("ref_id"))
+                start_status = _terminal_status(kontekst_terminali, start_bus, c.get("ref_id"))
                 terminals.append(
                     {
                         "element_id": start_bus,
@@ -2286,7 +2290,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
             last_seg = branch_idx.get(segments[-1])
             if last_seg:
                 end_bus = last_seg.get("to_bus_ref", "")
-                end_status = _terminal_status(enm, end_bus, c.get("ref_id"))
+                end_status = _terminal_status(kontekst_terminali, end_bus, c.get("ref_id"))
                 terminals.append(
                     {
                         "element_id": end_bus,
@@ -2398,7 +2402,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                             "port_id": "branch_end",
                             "trunk_id": None,
                             "branch_id": ref,
-                            "status": _terminal_status(enm, to_ref, None),
+                            "status": _terminal_status(kontekst_terminali, to_ref, None),
                         }
                     ],
                 }
@@ -2422,33 +2426,54 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _terminal_status(enm: dict[str, Any], bus_ref: str, corridor_ref: str | None) -> str:
+@dataclass(frozen=True)
+class _KontekstTerminali:
+    """Dane statusu terminali zebrane RAZ na widoki logiczne migawki: liczba odcinków
+    terenowych na szynie, korytarze pierścieni i zaciski pól zajętych. Status liczony
+    osobno dla każdego terminala przeglądał gałęzie, korytarze i całą zajętość pól od nowa —
+    koszt kwadratowy w rozmiarze sieci przy każdej operacji domenowej."""
+
+    odcinki_na_szynie: Mapping[str, int]
+    korytarze_pierscieni: frozenset[str]
+    zajete_zaciski_pol: frozenset[str]
+
+
+def _kontekst_terminali(enm: dict[str, Any]) -> _KontekstTerminali:
+    odcinki_na_szynie: dict[str, int] = {}
+    for b in enm.get("branches", []):
+        if b.get("type", "") in ("cable", "line_overhead"):
+            for szyna in {b.get("from_bus_ref"), b.get("to_bus_ref")}:
+                if isinstance(szyna, str):
+                    odcinki_na_szynie[szyna] = odcinki_na_szynie.get(szyna, 0) + 1
+    pierscienie = frozenset(
+        str(c.get("ref_id"))
+        for c in enm.get("corridors", [])
+        if c.get("corridor_type") == "ring" and c.get("ref_id")
+    )
+    zajete = frozenset(
+        zacisk
+        for zacisk, stan in pola_wg_wlasnego_zacisku(zajetosc_pol(enm)).items()
+        if stan.zajete
+    )
+    return _KontekstTerminali(odcinki_na_szynie, pierscienie, zajete)
+
+
+def _terminal_status(kontekst: _KontekstTerminali, bus_ref: str, corridor_ref: str | None) -> str:
     """Określ status terminala na podstawie topologii.
 
     OTWARTY — bus ma wolne porty (< 2 połączenia kablowe).
     ZAJETY — bus ma >= 2 połączenia kablowe w magistrali.
     ZAREZERWOWANY_DLA_RINGU — bus jest oznaczony jako kandydat do pierścienia.
     """
-    cable_count = 0
-    for b in enm.get("branches", []):
-        btype = b.get("type", "")
-        if btype in ("cable", "line_overhead"):
-            if b.get("from_bus_ref") == bus_ref or b.get("to_bus_ref") == bus_ref:
-                cable_count += 1
-
     # Ring corridor — end terminal is reserved
-    if corridor_ref:
-        for c in enm.get("corridors", []):
-            if c.get("ref_id") == corridor_ref and c.get("corridor_type") == "ring":
-                return "ZAREZERWOWANY_DLA_RINGU"
+    if corridor_ref and corridor_ref in kontekst.korytarze_pierscieni:
+        return "ZAREZERWOWANY_DLA_RINGU"
 
-    if cable_count >= 2:
+    if kontekst.odcinki_na_szynie.get(bus_ref, 0) >= 2:
         return "ZAJETY"
     # POLA-W-TORZE: koniec ciągu na ZACISKU pola stacji nie jest wolnym końcem — odcinek jest
     # przyłączony do pola (stan pola rozstrzyga jedno źródło zajętości `enm.zajetosc_pol`).
-    pole_konca = pole_dla_zacisku(enm, bus_ref)
-    zajetosc_konca = zajetosc_pola(enm, pole_konca)
-    if zajetosc_konca is not None and zajetosc_konca.zajete:
+    if bus_ref in kontekst.zajete_zaciski_pol:
         return "ZAJETY"
     return "OTWARTY"
 

@@ -58,7 +58,7 @@ from typing import TypeAlias
 from network_model.pochodne.pasma_napieciowe import szyna_poza_pasmem_sn
 
 from .models import EnergyNetworkModel
-from .pola import czy_pole_nn, napiecia_szyn, pola_stacji
+from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
 
@@ -190,7 +190,9 @@ def transformator_blokowy_der(transformator: ElementEnm, refy_blokowe: set[str])
 
 
 def transformatory_stacji(
-    enm: Mapping[str, object] | EnergyNetworkModel, stacja: ElementEnm
+    enm: Mapping[str, object] | EnergyNetworkModel,
+    stacja: ElementEnm,
+    poziom: PoziomPol | None = None,
 ) -> list[ElementEnm]:
     """Transformatory ROZDZIELCZE stacji — JEDNA reguła, lustrzana wobec rysunku
     (`frontend/src/ui/shared/transformatoryStacji.ts::selectStationDistributionTransformers`,
@@ -210,7 +212,7 @@ def transformatory_stacji(
     """
     refy_blokowe = _refy_transformatorow_blokowych(_lista(enm, "generators"))
     zadeklarowane = set(_teksty(_lista(stacja, "transformer_refs")))
-    szyny = szyny_stacji(enm, stacja)
+    szyny = szyny_stacji(enm, stacja, poziom)
     wynik: list[ElementEnm] = []
     for transformator in _lista(enm, "transformers"):
         if transformator_blokowy_der(transformator, refy_blokowe):
@@ -228,13 +230,16 @@ def transformatory_stacji(
 
 
 def stacja_ma_pole_transformatorowe(
-    enm: Mapping[str, object] | EnergyNetworkModel, stacja: ElementEnm
+    enm: Mapping[str, object] | EnergyNetworkModel,
+    stacja: ElementEnm,
+    poziom: PoziomPol | None = None,
 ) -> bool:
     """Czy stacja ma pole SN roli ``TR`` — rekord `bays` z `substation_ref` tej stacji
-    (JEDYNY nośnik pól od karty W5-B; pole na szynie nN nie jest polem rozdzielni SN)."""
-    napiecia = napiecia_szyn(enm)
+    (JEDYNY nośnik pól od karty W5-B; pole na szynie nN nie jest polem rozdzielni SN).
+    `poziom` — dane predykatu poziomu pola zebrane raz przez wołającego wielu stacji."""
+    poziom = poziom if poziom is not None else poziom_pol(enm)
     return any(
-        _tekst(bay, "bay_role").upper() == "TR" and not czy_pole_nn(enm, bay, napiecia)
+        _tekst(bay, "bay_role").upper() == "TR" and not czy_pole_nn(enm, bay, poziom)
         for bay in pola_stacji(enm, _ref(stacja))
     )
 
@@ -253,18 +258,21 @@ def transformatory_bez_pola_sn(
     szyna_wg_refu = {ref: bus for bus in buses for ref in _refy(bus)}
 
     znaleziska: list[TransformatorBezPolaSN] = []
+    poziom = poziom_pol(enm)
 
     for stacja in substations:
         # SZYNY-STACJI-LUSTRO: szyny stacji z JEDNEJ reguły (`enm.tor_pola.szyny_stacji`) —
         # dawny drugi kanał `Bus.substation_ref` był martwy (model `Bus` nie ma tego pola).
         szyny = {
-            ref: szyna_wg_refu[ref] for ref in szyny_stacji(enm, stacja) if ref in szyna_wg_refu
+            ref: szyna_wg_refu[ref]
+            for ref in szyny_stacji(enm, stacja, poziom)
+            if ref in szyna_wg_refu
         }
         if not szyny:
             continue
-        if stacja_ma_pole_transformatorowe(enm, stacja):
+        if stacja_ma_pole_transformatorowe(enm, stacja, poziom):
             continue
-        for transformator in transformatory_stacji(enm, stacja):
+        for transformator in transformatory_stacji(enm, stacja, poziom):
             hv = _tekst(transformator, "hv_bus_ref")
             if not hv or hv not in szyny:
                 continue

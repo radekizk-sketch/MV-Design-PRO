@@ -36,7 +36,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .pola import czy_pole_nn, napiecia_szyn, pola_stacji, zacisk_pola
+from .pola import czy_pole_nn, pola_wg_stacji, poziom_pol, zacisk_pola
 
 #: Rodzaje gałęzi, które są odcinkiem terenowym SN (kabel, linia napowietrzna).
 TYPY_ODCINKA_TERENOWEGO: frozenset[str] = frozenset({"cable", "line_overhead"})
@@ -84,14 +84,20 @@ def _napis(value: object) -> str | None:
 
 def _pola_sn_stacji(enm: Mapping[str, Any]) -> Iterable[tuple[str, Mapping[str, Any]]]:
     """Pola SN stacji modelu (rekordy `bays`, predykat poziomu `enm.pola.czy_pole_nn`) w
-    kolejności stacji i zapisu pól. Pola nN i pola ZKSN nie są polami liniowymi stacji SN."""
-    napiecia = napiecia_szyn(enm)
+    kolejności stacji i zapisu pól. Pola nN i pola ZKSN nie są polami liniowymi stacji SN.
+
+    Jedno przejście po polach (`pola_wg_stacji`) i jeden zbiór danych predykatu poziomu
+    (`poziom_pol`) na wywołanie: zajętość liczona jest przy każdej operacji przyłączenia
+    i w widokach logicznych, więc filtrowanie całej kolekcji pól dla każdej stacji i
+    przeglądanie stacji dla każdego pola dawało koszt kwadratowy w rozmiarze sieci."""
+    poziom = poziom_pol(enm)
+    wg_stacji = pola_wg_stacji(enm)
     for stacja in enm.get("substations") or []:
         if not isinstance(stacja, Mapping):
             continue
         station_ref = _napis(stacja.get("ref_id")) or ""
-        for rekord in pola_stacji(enm, station_ref):
-            if _napis(rekord.get("ref_id")) and not czy_pole_nn(enm, rekord, napiecia):
+        for rekord in wg_stacji.get(station_ref, []):
+            if _napis(rekord.get("ref_id")) and not czy_pole_nn(enm, rekord, poziom):
                 yield station_ref, rekord
 
 
@@ -190,14 +196,24 @@ def zajetosc_pola(enm: Mapping[str, Any], field_ref: str | None) -> ZajetoscPola
     return zajetosc_pol(enm).get(field_ref)
 
 
+def pola_wg_wlasnego_zacisku(zajetosc: Mapping[str, ZajetoscPola]) -> dict[str, ZajetoscPola]:
+    """Zajętość pól z WŁASNYM zaciskiem, kluczem jest zacisk; przy dwóch polach na jednym
+    zacisku wygrywa pierwsze w kolejności `zajetosc_pol` (ta sama reguła co
+    `pole_dla_zacisku`). Wołający, który pyta o wiele zacisków jednego modelu, liczy
+    `zajetosc_pol` raz i czyta ten słownik."""
+    wynik: dict[str, ZajetoscPola] = {}
+    for stan in zajetosc.values():
+        if stan.wlasny_zacisk and stan.punkt_przylaczenia:
+            wynik.setdefault(stan.punkt_przylaczenia, stan)
+    return wynik
+
+
 def pole_dla_zacisku(enm: Mapping[str, Any], bus_ref: str | None) -> str | None:
     """Pole, którego WŁASNYM zaciskiem jest wskazana szyna (None, gdy żadne)."""
     if not bus_ref:
         return None
-    for field_ref, zajetosc in zajetosc_pol(enm).items():
-        if zajetosc.wlasny_zacisk and zajetosc.punkt_przylaczenia == bus_ref:
-            return field_ref
-    return None
+    stan = pola_wg_wlasnego_zacisku(zajetosc_pol(enm)).get(bus_ref)
+    return stan.field_ref if stan is not None else None
 
 
 def widok_pol_liniowych(enm: Mapping[str, Any]) -> list[dict[str, Any]]:

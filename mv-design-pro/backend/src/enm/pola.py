@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from network_model.nazwy import nazwa_nadana
@@ -156,10 +157,40 @@ def napiecia_szyn(enm: Mapping[str, Any] | EnergyNetworkModel) -> dict[str, floa
     return wynik
 
 
+@dataclass(frozen=True)
+class PoziomPol:
+    """Dane predykatu poziomu pola zebrane RAZ z modelu: napięcia szyn i stacje GPZ.
+
+    Predykat `czy_pole_nn` czyta dwie kolekcje modelu (szyny i stacje). Liczony osobno dla
+    każdego pola przeglądałby je od nowa, co w pętli po polach całej sieci daje koszt
+    kwadratowy w liczbie stacji (zmierzone: wstawienie stacji z szablonu na sieci 22 stacji
+    — 11 s zamiast 2,6 s). Wołający, który ocenia wiele pól jednego modelu, buduje ten
+    obiekt raz (`poziom_pol`) i podaje go każdemu wywołaniu; obiekt jest migawką — po zmianie
+    szyn albo stacji buduje się go od nowa."""
+
+    napiecia: Mapping[str, float | None]
+    stacje_gpz: frozenset[str]
+
+
+def stacje_gpz(enm: Mapping[str, Any] | EnergyNetworkModel) -> frozenset[str]:
+    """Identyfikatory stacji typu GPZ (typowane `Substation.station_type == "gpz"`)."""
+    return frozenset(
+        ref
+        for stacja in _kolekcja(enm, "substations")
+        if _pole_rekordu(stacja, "station_type") == "gpz"
+        and (ref := _napis(_pole_rekordu(stacja, "ref_id"))) is not None
+    )
+
+
+def poziom_pol(enm: Mapping[str, Any] | EnergyNetworkModel) -> PoziomPol:
+    """Dane predykatu poziomu pola dla całego modelu — jedno przejście po szynach i stacjach."""
+    return PoziomPol(napiecia=napiecia_szyn(enm), stacje_gpz=stacje_gpz(enm))
+
+
 def czy_pole_nn(
     enm: Mapping[str, Any] | EnergyNetworkModel,
     rekord: object,
-    napiecia: Mapping[str, float | None] | None = None,
+    poziom: PoziomPol | None = None,
 ) -> bool:
     """Czy pole leży na szynie nN — JEDYNY predykat poziomu pola (dawna przynależność wpisu do
     kolekcji dawny słownik pól nN). Rozstrzyga pasmo napięcia szyny `bus_ref`
@@ -169,46 +200,57 @@ def czy_pole_nn(
     sieci, jego pola są polami liniowymi magistrali niezależnie od pasma napięcia ekwiwalentu
     (sieć benchmarkowa CIGRE LV ma GPZ 0,4 kV). Dawna kolekcja dawny słownik pól nN nigdy nie
     zawierała pól GPZ — bez tego wyjątku równoważność „predykat = dawna kolekcja" pękałaby
-    dokładnie na GPZ w paśmie nN (odejście magistrali, zajętość pól, walidator, scena)."""
-    if _czy_pole_gpz(enm, rekord):
+    dokładnie na GPZ w paśmie nN (odejście magistrali, zajętość pól, walidator, scena).
+
+    `poziom` — dane predykatu zebrane raz (`poziom_pol`) przez wołającego, który ocenia wiele
+    pól; bez niego predykat zbiera je sam (jedno pole)."""
+    dane = poziom if poziom is not None else poziom_pol(enm)
+    wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
+    if wlasciciel is not None and wlasciciel in dane.stacje_gpz:
         return False
-    mapa = napiecia if napiecia is not None else napiecia_szyn(enm)
     szyna = _napis(_pole_rekordu(rekord, "bus_ref"))
     if szyna is None:
         return False
-    return w_pasmie_nn(mapa.get(szyna))
+    return w_pasmie_nn(dane.napiecia.get(szyna))
 
 
-def _czy_pole_gpz(enm: Mapping[str, Any] | EnergyNetworkModel, rekord: object) -> bool:
-    """Czy pole należy do stacji typu GPZ (typowane `Substation.station_type`)."""
-    wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
-    if wlasciciel is None:
-        return False
-    return any(
-        _pole_rekordu(stacja, "ref_id") == wlasciciel
-        and _pole_rekordu(stacja, "station_type") == "gpz"
-        for stacja in _kolekcja(enm, "substations")
-    )
+def pola_wg_stacji(enm: Mapping[str, Any] | EnergyNetworkModel) -> dict[str, list[Any]]:
+    """Pola stacji (SN i nN) pogrupowane po `substation_ref`, w kolejności zapisu — jedno
+    przejście po kolekcji (wołający, który czyta pola wielu stacji, nie filtruje jej od nowa
+    dla każdej stacji). Pola ZKSN (bez stacji) nie wchodzą."""
+    wynik: dict[str, list[Any]] = {}
+    for rekord in pola(enm):
+        stacja = _napis(_pole_rekordu(rekord, "substation_ref"))
+        if stacja is not None:
+            wynik.setdefault(stacja, []).append(rekord)
+    return wynik
 
 
 def pola_sn_stacji(
-    enm: Mapping[str, Any] | EnergyNetworkModel, substation_ref: object
+    enm: Mapping[str, Any] | EnergyNetworkModel,
+    substation_ref: object,
+    poziom: PoziomPol | None = None,
 ) -> list[Any]:
-    napiecia = napiecia_szyn(enm)
-    return [r for r in pola_stacji(enm, substation_ref) if not czy_pole_nn(enm, r, napiecia)]
+    """Pola SN stacji (kolejność zapisu); `poziom` — dane predykatu zebrane raz przez
+    wołającego, który pyta o wiele stacji jednego modelu."""
+    poziom = poziom if poziom is not None else poziom_pol(enm)
+    return [r for r in pola_stacji(enm, substation_ref) if not czy_pole_nn(enm, r, poziom)]
 
 
 def pola_nn_stacji(
-    enm: Mapping[str, Any] | EnergyNetworkModel, substation_ref: object
+    enm: Mapping[str, Any] | EnergyNetworkModel,
+    substation_ref: object,
+    poziom: PoziomPol | None = None,
 ) -> list[Any]:
-    napiecia = napiecia_szyn(enm)
-    return [r for r in pola_stacji(enm, substation_ref) if czy_pole_nn(enm, r, napiecia)]
+    """Pola nN stacji (kolejność zapisu); `poziom` jak w `pola_sn_stacji`."""
+    poziom = poziom if poziom is not None else poziom_pol(enm)
+    return [r for r in pola_stacji(enm, substation_ref) if czy_pole_nn(enm, r, poziom)]
 
 
 def pola_nn(enm: Mapping[str, Any] | EnergyNetworkModel) -> list[Any]:
     """Wszystkie pola nN modelu (kolejność zapisu)."""
-    napiecia = napiecia_szyn(enm)
-    return [r for r in pola(enm) if czy_pole_nn(enm, r, napiecia)]
+    poziom = poziom_pol(enm)
+    return [r for r in pola(enm) if czy_pole_nn(enm, r, poziom)]
 
 
 def pola_wg_szyny(

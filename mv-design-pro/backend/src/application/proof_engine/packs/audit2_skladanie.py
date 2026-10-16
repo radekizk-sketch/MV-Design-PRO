@@ -31,6 +31,7 @@ from typing import Any
 
 from enm.models import EnergyNetworkModel, Generator, Substation, Transformer
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
+from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
@@ -236,13 +237,14 @@ def moce_odbiorow_stacji_kw(model: EnergyNetworkModel | None) -> dict[str, float
         return {}
     stacja_szyny: dict[str, str] = {}
     moce: dict[str, float] = {}
+    poziom = poziom_pol(model)
     for stacja in model.substations:
         if not stacja.bus_refs:
             continue
         moce[stacja.ref_id] = 0.0
         # POLA-W-TORZE: odbiór nN leży za aparatem pola nN (szyna odpływu) — przynależność
         # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-        for bus_ref in sorted(szyny_stacji(model, stacja)):
+        for bus_ref in sorted(szyny_stacji(model, stacja, poziom)):
             stacja_szyny.setdefault(bus_ref, stacja.ref_id)
     for odbior in model.loads:
         stacja_ref = stacja_szyny.get(odbior.bus_ref)
