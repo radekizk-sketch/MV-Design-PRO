@@ -59,12 +59,22 @@ class TestTransformerCatalog:
             assert p["voltage_lv_kv"] in (15.0, 20.0)
 
     def test_sn_nn_voltage_levels(self):
-        """Transformatory SN/nN maja poprawne napiecia."""
-        allowed_lv_levels = {0.4, 0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3}
+        """Transformatory SN/nN maja poprawne napiecia.
+
+        Intencja bez zmian: strona dolna kazdej pozycji SN/nN lezy na znanym poziomie nN.
+        Zbior przepisany do obecnego kanonu katalogu (karta katalogu z proweniencja,
+        `b1f5aad6`): 0,4 kV — transformatory dystrybucyjne; 0,385 / 0,434 / 0,48 / 0,69 /
+        0,8 kV — napiecia wyjsciowe falownikow z kart producentow (transformatory blokowe,
+        komentarz `_NAPIECIA_NN_BLOKOWYCH_KV` w `mv_transformer_catalog.py`); 0,5 i 1,0 kV —
+        modele referencyjne. Dawne strony dolne SN (3,15 / 6,0 / 6,3 kV) zdjete z katalogu
+        jako pozycje bez zrodla u_k i i0 — wpis w zbiorze bylby martwy. Kazdy poziom <= 1,1 kV
+        (tab. I.2 rozporzadzenia bez korekty I.3 — podstawa pulapow strat tych pozycji)."""
+        allowed_lv_levels = {0.385, 0.4, 0.434, 0.48, 0.5, 0.69, 0.8, 1.0}
         for t in get_sn_nn_transformer_types():
             p = t["params"]
             assert p["voltage_hv_kv"] in (15.0, 20.0)
             assert p["voltage_lv_kv"] in allowed_lv_levels
+            assert p["voltage_lv_kv"] <= 1.1
 
     def test_transformer_uk_positive(self):
         """Wszystkie transformatory maja uk% > 0."""

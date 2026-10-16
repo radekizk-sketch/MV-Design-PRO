@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -38,9 +38,11 @@ class FakeRunner:
     results: list[AgentRunResult]
     runs: list[RunAttempt]
     stopped: list[str]
+    prompts: list[str] = field(default_factory=list)
 
     def run_attempt(self, attempt: RunAttempt, prompt: str) -> AgentRunResult:
         self.runs.append(attempt)
+        self.prompts.append(prompt)
         if self.results:
             return self.results.pop(0)
         return AgentRunResult(status="success")
@@ -133,6 +135,36 @@ def test_orchestrator_schedules_retry_with_exponential_backoff(tmp_path: Path) -
     )
     orch._release_due_retries()
     assert issue.id not in orch.state.pending_retries
+
+
+def test_orchestrator_prompt_carries_attempt_number_of_retry(tmp_path: Path) -> None:
+    """Prompt pierwszego biegu niesie `initial`, prompt ponowienia — numer proby z kolejki
+    ponowien (ten sam co `RunAttempt.attempt`). Przypiete po iniekcji bramki scalenia
+    2026-10-15: przesuniecie numeru proby w `render_prompt` (`attempt + 1`) przechodzilo przez
+    komplet testow modulu, bo zaden nie czytal tresci promptu."""
+    issue = _issue("1", "ABC-1", priority=1, created_offset=0)
+    tracker = FakeTracker([issue])
+    runner = FakeRunner(results=[AgentRunResult(status="error", error="boom")], runs=[], stopped=[])
+    orch = SymphonyOrchestrator(
+        _cfg(tmp_path),
+        "Issue {issue_identifier} attempt {attempt}",
+        tracker,
+        runner,
+        WorkspaceManager(_cfg(tmp_path)),
+    )
+    orch.tick()
+    retry = orch.state.pending_retries[issue.id]
+    orch.state.pending_retries[issue.id] = type(retry)(
+        issue_id=retry.issue_id,
+        identifier=retry.identifier,
+        attempt=retry.attempt,
+        due_at_ms=int(time.monotonic() * 1000) - 1,
+        error=retry.error,
+    )
+    orch.tick()
+
+    assert runner.prompts == ["Issue ABC-1 attempt initial", f"Issue ABC-1 attempt {retry.attempt}"]
+    assert [run.attempt for run in runner.runs] == [None, retry.attempt]
 
 
 def test_orchestrator_skips_blocked_issues(tmp_path: Path) -> None:

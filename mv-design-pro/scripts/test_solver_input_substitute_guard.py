@@ -1770,7 +1770,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
     # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
     # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
+    # Scalenie PR-478 z katalogiem z proweniencja (`9d4b1afe`, pin nieprzeniesiony — czerwien
+    # wykryta bramka scalenia 2026-10-15): 4125 -> 4143 — POMIAR `contract_fields()` na
+    # `c136c6bb` i na drzewie bramki, roznica zbiorow: +28 (sklad DER szablonow i jawny tor SN
+    # transformatora blokowego: `aparat_pola`, `dlugosc_kabla_km`, `dlugosc_odgalezienia_m`,
+    # `kabel`, `kabel_ref`, `liczba_odbiorow`, `liczba_zrodel_nn`, `moc_odbiorow_kva`,
+    # `moc_pozorna_mva`, `moc_wymagana_mva`, `moc_zrodel_nn_kva`, `napiecie_falownika_kv`,
+    # `obciazenie_odplywu_kw`, `p_mw_each`, `pozostale_zrodla`, `pozostale_zrodla_grupy`,
+    # `prad_transformatora_a`, `rodzaj_aparatu`, `s_wymagana_mva`, `sklad_der`, `spec`,
+    # `tory_der_sn`, `transformator`, `transformator_nazwa`, `transformator_ref`,
+    # `transformator_sn_mva`, `transformatory_grupy`, `wejscia`), -10 (`cable_head_ok`,
+    # `continuous_current_ok`, `ct_ok`, `dynamic_withstand_ok`, `main_switch_ok`,
+    # `prefer_ptpire_certified`, `thermal_withstand_ok`, `verification`, `vt_ok`,
+    # `whole_power_path_ok`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4143." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1974,7 +1987,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # jedna regula rodzaju stacji z topologii), -1 (skasowany osierocony
         # `network_model/catalog/station_templates.py`) = 561. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 564 - 1 = 563. POMIAR.
-        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie PR-478 (`9d4b1afe`): 563 + 1 (`application/analyses/dobor_toru_der_sn.py`,
+        # dobor toru DER SN szablonow; zero plikow skasowanych w zakresie) = 564. POMIAR guardem.
+        "Przeskanowano 564 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2250,9 +2265,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
         # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=247, dlug=29 plikow/suma 89, "
+        # Scalenie PR-478 (`9d4b1afe`): application 247 + 1 = 248 (`analyses/dobor_toru_der_sn.py`);
+        # wpis zapadki `B:ifexp:zrodlo.cos_phi` przeniesiony z `api/grid_source_preview.py` do
+        # `application/analyses/dobor_toru_der_sn.py` (suma dlugu 236 bez zmiany): application
+        # dlug 29/89 -> 30/90, api dlug 2/3 -> 1/2. POMIAR guardem na drzewie bramki scalenia.
+        "  application: pliki_skanowane=248, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
