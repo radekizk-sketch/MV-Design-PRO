@@ -539,11 +539,12 @@ def test_w061_nazywa_pole_i_stacje_a_akcja_wskazuje_aparat_i_pole() -> None:
     }
 
 
-# Iloczyn {nazwa pola: nadana, same spacje, brak} × {nazwa stacji: nadana, same spacje}.
+# Iloczyn {nazwa pola: nadana, pusty napis, same spacje, brak} × {nazwa stacji: nadana,
+# pusty napis, same spacje}.
 # Walidator pyta o nazwę moduł nazw (`network_model.nazwy`, zapadka NAZWY-JEDNO-ZRODLO):
 # napis z samych spacji nie jest nazwą, więc W061 nie opisuje pola cudzysłowem wokół pustki.
-@pytest.mark.parametrize("nazwa_pola", ["Odpływ 1", "   ", None])
-@pytest.mark.parametrize("nazwa_stacji", ["ST-1", "   "])
+@pytest.mark.parametrize("nazwa_pola", ["Odpływ 1", "", "   ", None])
+@pytest.mark.parametrize("nazwa_stacji", ["ST-1", "", "   "])
 def test_w061_opisuje_pole_tylko_gdy_pole_i_stacja_maja_nazwe(
     nazwa_pola: str | None, nazwa_stacji: str
 ) -> None:
@@ -555,6 +556,6 @@ def test_w061_opisuje_pole_tylko_gdy_pole_i_stacja_maja_nazwe(
     assert len(w061) == 1
     opisuje = nazwa_pola == "Odpływ 1" and nazwa_stacji == "ST-1"
     assert (" — pole „" in w061[0].message_pl) is opisuje
-    assert "„   ”" not in w061[0].message_pl
+    assert "„   ”" not in w061[0].message_pl and "„”" not in w061[0].message_pl
     if opisuje:
         assert "„Odpływ 1”" in w061[0].message_pl and "„ST-1”" in w061[0].message_pl

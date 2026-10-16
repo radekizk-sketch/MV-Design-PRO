@@ -7,9 +7,11 @@ parametrów aparatu. Karta SLD-SUBSTRAT zastąpiła własną materializację mig
 (`_wiazanie_z_wpisu` + `_przypisz_wiazania`); trzy twierdzenia karty #151 obowiązują
 dalej i są tu sprawdzane na ścieżce `migruj`, którą model przechodzi przy każdym odczycie.
 
-Iloczyn cech: {odmowa danych (pozycji nie ma), brak wiązania (cztery kształty), obcy
-wyjątek materializacji (trzy typy)} × klucz wiązania we wpisie {`catalog_binding`,
-`catalog_bindings`}.
+Iloczyn cech: klucz wiązania we wpisie {`catalog_binding`, `catalog_bindings`} × stan
+wiązania {pozycja spoza katalogu, brak klucza, None, napis, pusty słownik, identyfikator
+z samych spacji} × zachowanie operacji {odmowa danych, wyjątek materializacji
+{AttributeError, KeyError, TypeError}, odpowiedź odmowy bez kodu} × ścieżka {`migruj`,
+magazyn `enm.store` (zapis → odczyt z migracją)}.
 """
 
 from __future__ import annotations
@@ -31,12 +33,28 @@ from enm.models import (
     Substation,
     SwitchBranch,
 )
+from enm.store import get_enm, reset_enm_store, set_enm
 
 KLUCZE_WIAZANIA = ("catalog_binding", "catalog_bindings")
 
+#: Wpis bez klucza wiązania (inny kształt braku niż wartość `None` pod kluczem).
+_BRAK_KLUCZA = object()
+
+
+@pytest.fixture(autouse=True)
+def _magazyn_prywatny(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
+    monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path / "enm_store"))
+    reset_enm_store()
+    yield
+    reset_enm_store()
+
 
 def _model(klucz: str, wiazanie: Any) -> EnergyNetworkModel:
-    """Stacja z jednym niepromowanym odpływem nN niosącym `wiazanie` pod `klucz`."""
+    """Stacja z jednym niepromowanym odpływem nN niosącym `wiazanie` pod `klucz`
+    (`_BRAK_KLUCZA` — wpis bez klucza wiązania)."""
+    meta: dict[str, Any] = {"feeder_role": "ODPLYW_NN"}
+    if wiazanie is not _BRAK_KLUCZA:
+        meta[klucz] = wiazanie
     return EnergyNetworkModel(
         header=ENMHeader(name="promocja-aparat", defaults=ENMDefaults()),
         buses=[Bus(ref_id="bus-nn", name="Szyna nN", voltage_kv=0.4)],
@@ -53,7 +71,7 @@ def _model(klucz: str, wiazanie: Any) -> EnergyNetworkModel:
                             "name": "Odpływ 1",
                             "bay_role": "FEEDER",
                             "bus_ref": "bus-nn",
-                            "meta": {"feeder_role": "ODPLYW_NN", klucz: wiazanie},
+                            "meta": meta,
                         }
                     ]
                 },
@@ -74,6 +92,13 @@ def _aparat(model: EnergyNetworkModel) -> SwitchBranch:
     return aparat
 
 
+def _asercje_braku_wiazania(aparat: SwitchBranch) -> None:
+    assert aparat.catalog_ref is None
+    assert aparat.materialized_params is None
+    assert aparat.parameter_source is None
+    assert aparat.meta[promocja.META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+
+
 @pytest.mark.parametrize("klucz", KLUCZE_WIAZANIA)
 def test_pozycja_spoza_katalogu_to_odmowa_danych_bez_wyjatku(klucz: str) -> None:
     # Twierdzenie #151 (1): pozycji nie ma w katalogu = odmowa DANYCH, nie wyjątek.
@@ -85,13 +110,22 @@ def test_pozycja_spoza_katalogu_to_odmowa_danych_bez_wyjatku(klucz: str) -> None
     )
     assert zmieniono is True
     aparat = _aparat(zmigrowany)
-    assert aparat.catalog_ref is None
-    assert aparat.meta[promocja.META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    _asercje_braku_wiazania(aparat)
     assert aparat.meta[promocja.META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] == "catalog.item_not_found"
 
 
 @pytest.mark.parametrize("klucz", KLUCZE_WIAZANIA)
-@pytest.mark.parametrize("wiazanie", [None, "napis", {}, {"catalog_item_id": "  "}])
+def test_odmowa_danych_na_sciezce_magazynu(klucz: str) -> None:
+    # Realna ścieżka: model zapisany i odczytany z magazynu (migracja przy odczycie,
+    # `enm.store.get_enm` → `przygotuj_model_po_odczycie`).
+    set_enm("przypadek-odmowy", _model(klucz, {"catalog_item_id": "aparat-ktorego-nie-ma"}))
+    aparat = _aparat(get_enm("przypadek-odmowy"))
+    _asercje_braku_wiazania(aparat)
+    assert aparat.meta[promocja.META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] == "catalog.item_not_found"
+
+
+@pytest.mark.parametrize("klucz", KLUCZE_WIAZANIA)
+@pytest.mark.parametrize("wiazanie", [_BRAK_KLUCZA, None, "napis", {}, {"catalog_item_id": "  "}])
 def test_brak_wiazania_to_brak_materializacji(
     klucz: str, wiazanie: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -107,10 +141,10 @@ def test_brak_wiazania_to_brak_materializacji(
     spec = model.substations[0].meta["nn_field_specs"][0]
     assert promocja._wiazanie_z_wpisu(spec) is None
 
-    zmigrowany, _ = promocja.migruj(model)
+    zmigrowany, zmieniono = promocja.migruj(model)
+    assert zmieniono is True
     aparat = _aparat(zmigrowany)
-    assert aparat.catalog_ref is None
-    assert aparat.meta[promocja.META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    _asercje_braku_wiazania(aparat)
     assert promocja.META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA not in aparat.meta
 
 
@@ -135,6 +169,21 @@ def test_blad_programu_materializacji_wybucha(
         promocja.migruj(_model(klucz, {"catalog_item_id": "cokolwiek"}))
     assert type(zlapany.value) is typ
     assert zlapany.value is wstrzykniety
+
+
+@pytest.mark.parametrize("klucz", KLUCZE_WIAZANIA)
+def test_odmowa_bez_kodu_to_blad_programu_nie_kod_zastepczy(
+    klucz: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Każda odmowa operacji niesie `error_code` (`_error_response`, test niżej). Odpowiedź
+    # odmowy bez kodu jest błędem programu — migracja czyta kod wprost (KeyError) i nie
+    # dopisuje kodu zastępczego spoza rejestru gotowości.
+    def _odmowa_bez_kodu(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {"error": "odmowa bez kodu", "snapshot": None}
+
+    monkeypatch.setattr(operacje, "assign_catalog_to_element", _odmowa_bez_kodu)
+    with pytest.raises(KeyError):
+        promocja.migruj(_model(klucz, {"catalog_item_id": "cokolwiek"}))
 
 
 _KATALOG_SRC = Path(operacje.__file__).resolve().parents[1]

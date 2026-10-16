@@ -104,8 +104,9 @@ def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str |
         meta = stacja.meta if isinstance(stacja.meta, dict) else {}
         for spec in meta.get("nn_field_specs") or []:
             if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                # Jedna reguła nazwy (`network_model.nazwy`): napis z samych spacji nie
-                # jest nazwą pola ani stacji — komunikat W061 pomija wtedy opis pola.
+                # Jedna reguła nazwy (`network_model.nazwy`): pusty napis i same spacje
+                # to brak nazwy — także dla nazwy stacji, bo zdanie pozycji gotowości
+                # opisuje pole tylko wtedy, gdy obie nazwy są nadane.
                 return nazwa_nadana(spec.get("name")), nazwa_nadana(stacja.name)
     return None, None
 
