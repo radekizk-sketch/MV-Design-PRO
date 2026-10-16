@@ -26,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.graph import NetworkGraph
 from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_iec60909 import (
@@ -72,9 +73,11 @@ def wynik_zwarcia_1f_ze_snapshotu(
     enm = EnergyNetworkModel.model_validate(snapshot)
     graph = map_enm_to_network_graph(enm)
     z0_bus = build_zero_sequence_zbus(enm, graph)
-    # Solver IEC 60909 jest rdzeniem B-01: odmowa wejścia (węzeł zwarcia spoza grafu) to
-    # goły `ValueError` — granica tłumaczy ją na odmowę danych (karta ODMOWA-DANYCH-422).
-    with odmowa_rdzenia_b01():
+    # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
+    # bez nazwy) podnosi rekordem strukturalnym (decyzja O-59) — pierwsza granica składa zdanie
+    # z nazwami z grafu, druga tłumaczy inne `ValueError` rdzenia na odmowę danych (karta
+    # ODMOWA-DANYCH-422).
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
         return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=graph,
             fault_node_id=fault_node_id,
@@ -120,7 +123,8 @@ def zwarcie_3f_ze_snapshotu(
     from enm.models import EnergyNetworkModel
 
     graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
-    with odmowa_rdzenia_b01():  # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
+    # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
         wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id=fault_node_id,

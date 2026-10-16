@@ -85,13 +85,6 @@ NAZWY_PROGRAMOWE = frozenset(
 #: wpis"). Wyłącznie rdzenie zamrożone B-01 (`scripts/rdzenie_b01.py`) — ich edycja wymaga
 #: decyzji właściciela; zapasy nie odpalają w torze kanonicznym (uzasadnienia przy wpisach).
 DOZWOLONE: dict[str, tuple[int, str]] = {
-    "network_model/solvers/short_circuit_iec60909.py:"
-    "ShortCircuitIEC60909Solver._append_transformer_kt_trace:or": (
-        1,
-        "Rdzeń B-01 (IEC 60909). Zapas `branch.name or branch_id` nie odpala: mapowanie "
-        "ENM → graf (`enm/mapping.py`) nadaje każdej gałęzi grafu nazwę przez "
-        "`nazwa_elementu` (nazwa z modelu albo opis rodzaju, nigdy pusta).",
-    ),
     "network_model/solvers/ncrfg_ptpiree/engine.py:NcRfgPtpireeSolver._run_module:or": (
         1,
         "Rdzeń B-01 (NC RfG/PTPiREE). Moduł DER budowany przez most modelu "

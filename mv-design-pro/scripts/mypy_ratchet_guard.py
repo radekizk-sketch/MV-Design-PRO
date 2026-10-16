@@ -207,8 +207,15 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
-BASELINE_ERRORS = 223
-BASELINE_FILES = 34
+# Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B par. 12.2 (d)): 223/34 -> 203/32.
+# Zniknelo dokladnie 20 bledow w dwoch rdzeniach B-01: `power_flow_newton_internal.py` 19
+# (14 attr-defined + 5 assignment — jedna zmienna petli `spec` dla PVSpec/PQSpec/limitow;
+# rozdzielone nazwami zmiennych petli) i `short_circuit_iec60909.py` 1 (union-attr na
+# `builder: object | None` — adnotacje `AdmittanceMatrixBuilder | None` / `np.ndarray | None`,
+# zdjete trzy `type: ignore`). Zero nowych (roznica zbiorow `mypy src` baza vs drzewo karty =
+# dokladnie te wiersze; nowy `enm/zdania_odmow_rdzenia.py` bez bledow).
+BASELINE_ERRORS = 203
+BASELINE_FILES = 32
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików
