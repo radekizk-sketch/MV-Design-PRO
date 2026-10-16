@@ -805,7 +805,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "5917a1e9608d69bb2dc0934da3a23b1807fe2c25c77434a7b015681af7882b13",
+      "hash_sha256": "96245678fb7d71e7ac70ecb7d1bb6068871d951765efe7ce67b2b7d0065f2990",
       "name": "Stacja z polem pomiarowym",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -943,9 +943,7 @@
         "gpz_sections": [],
         "id": "78660ac3-6950-5106-a86e-012a6f8911b3",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "S01",
         "nn_sections": [],

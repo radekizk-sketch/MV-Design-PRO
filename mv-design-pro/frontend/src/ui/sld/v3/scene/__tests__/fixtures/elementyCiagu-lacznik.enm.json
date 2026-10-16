@@ -2170,7 +2170,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "1920f0918538e97ac153367391c55347e10df9c5520ed2c994e8bd685efaa751",
+      "hash_sha256": "f3ec25342c7dd41954e74bb41e32924dc58783883ea08383057e287cd6abdb2b",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2217,6 +2217,7 @@
         "bus_ref": "nn/06d4035a15b91ce7500a95e26946cf32/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "8dc5692f-8d2e-5ae0-ab06-b9651fcce073",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -2259,6 +2260,7 @@
         "bus_ref": "nn/a1d82a90e79ae4c2c584a79a573aa966/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "bf82114a-247e-594f-9f01-1eaf311f072f",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -2409,9 +2411,7 @@
         "gpz_sections": [],
         "id": "bf3a2e2d-8577-56bd-b191-969f8111f38b",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -2436,9 +2436,7 @@
         "gpz_sections": [],
         "id": "1de46702-80c9-5fbc-8e0d-caf1d7720c14",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

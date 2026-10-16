@@ -304,8 +304,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
   },
   "nop_station": "S46",
   "schema": "sld_network_model_v1",
-  "source_hash": "ee8b274e7ca577cf084c80746188dc959382e2f625f8c032675d1447678994d8",
-// SCALENIE-W5B-INTEGRACJA-REGEN
+  "source_hash": "b71cd0d68fd409563e4d90ab266b39bd4120989c994e519782e479f7fc636aa6",
   "stations": [
     {
       "depth": 3,

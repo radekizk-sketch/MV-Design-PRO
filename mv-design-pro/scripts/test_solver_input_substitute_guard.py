@@ -1777,8 +1777,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `enm/models.py` jako jedyny nosnik pol SN/nN/ZKSN), -1 (`field_spec` — slownik wpisu pola
     # w `application/analyses/der_sn_track.py` zastapiony rekordem `bays`). PASS niezmieniony
     # (zero podstawien).
-    # SCALENIE-W5B-INTEGRACJA
-    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
+    # Scalenie W5-B z integracja PR477-481 (2026-10-16): POMIAR `contract_fields()` na drzewie
+    # scalonym = 4145; drzewo integracji (`git archive` rodzica 2) = 4139 (jego przypiete 4125
+    # bylo nieaktualne), roznica zbiorow scalone − integracja = dokladnie delta karty W5-B
+    # (+7 pol rekordu `Bay` wyzej, −1 `field_spec`). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4145." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1987,8 +1990,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wczytaniu, `enm/migrations/klucze_meta_pola.py` — dawne klucze `meta` pola, jedno
         # zrodlo pisarza i migracji; zmiana nazwy promocji aparatow nN bez zmiany liczby).
         # POMIAR guardem na drzewie karty.
-        # SCALENIE-W5B-INTEGRACJA
-        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): drzewo integracji 562 (POMIAR
+        # `git archive` rodzica 2; przypiete tam 563 bylo nieaktualne) + 3 pliki karty W5-B = 565.
+        # POMIAR guardem na drzewie scalonym.
+        "Przeskanowano 565 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2139,7 +2144,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
         # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): network_model 178 — POMIAR guardem
+        # na drzewie scalonym i na drzewie integracji (rodzic 2, ta sama wartosc; przypiete
+        # tam 180 bylo nieaktualne — test byl czerwony na samej integracji, naprawiony tu).
+        "  network_model: pliki_skanowane=178, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2193,8 +2201,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
         # Karta W5-B (2026-10-15): enm 58 -> 61 (+3: `pola.py`, `migrations/field_specs_promocja.py`,
         # `migrations/klucze_meta_pola.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem.
-        # SCALENIE-W5B-INTEGRACJA
-        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): enm 61 (integracja) + 3 (karta) = 64;
+        # dlug 7/67 (integracja: `time_dial` skasowany). POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=64, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2267,9 +2276,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
         # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=247, dlug=29 plikow/suma 89, "
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
+        # dlug 1/2 — POMIAR guardem na drzewie scalonym, identyczny z drzewem integracji
+        # (rodzic 2; przypiete tam 247 / 29/89 / api 2/3 bylo nieaktualne wobec rejestru
+        # `ZASTANE_ZASTEPNIKI` tej galezi: wpis `application/analyses/dobor_toru_der_sn.py` (1),
+        # bez `api/grid_source_preview.py`). Rejestr zapadki scalenia = rejestr integracji.
+        "  application: pliki_skanowane=248, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

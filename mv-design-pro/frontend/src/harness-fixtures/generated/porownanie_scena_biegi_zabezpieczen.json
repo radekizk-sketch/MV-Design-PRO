@@ -8,9 +8,9 @@
       "status": "FINISHED",
       "created_at": "2026-09-16T09:00:00+00:00",
       "finished_at": "2026-09-16T09:00:00+00:00",
-      "input_hash": "98a53572d840684d459da82f845493f6d576ee98c4af64b6667dd73dcfd10902",
-      "snapshot_hash": "ee07ac3d2aa3cf3a794a326f67648908ecfa66726703b4f88064cd1882c245a7",
-      "model_revision": 2,
+      "input_hash": "ffa22b24e644c38990e0a3d476a37c509f3f69c594f9d11a077340c43863dbfe",
+      "snapshot_hash": "d707847e4be6336ab38c7460e44f7419b1812c221d07a94506325be45ec84df3",
+      "model_revision": 4,
       "scenario_ref": null
     },
     {
@@ -21,8 +21,8 @@
       "status": "FINISHED",
       "created_at": "2026-09-16T09:00:00+00:00",
       "finished_at": "2026-09-16T09:00:00+00:00",
-      "input_hash": "d70071744944ebfeadf947b8b56f888ca073ffd3cc9d8a5b07579428e24c0096",
-      "snapshot_hash": "b03d6d60c79a91caa738f20a117717da0cba70030a83fde01a3f85304da1640c",
+      "input_hash": "08a158a041a06376ea00fadcb7a4ee775ee2e943f6121e64c511692ad390d5e3",
+      "snapshot_hash": "68ef15bab6442fcc5e1f95b0fe6a7da05a3f9f0ca3851a70d810a6f534c46c6b",
       "model_revision": 2,
       "scenario_ref": null
     }

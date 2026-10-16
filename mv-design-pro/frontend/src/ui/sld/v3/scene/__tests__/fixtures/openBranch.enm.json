@@ -941,7 +941,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "974793c2b6e296f67339ee63eba5951a27e11a3de95ca34e2059aedf1aa5213d",
+      "hash_sha256": "87562cdb59612facd831f286e233d5a22088040c84be9d89ab03c90d9ad353af",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -989,6 +989,7 @@
         "bus_ref": "nn/05d1b6868c2d06ce6090ab562783f197/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "91fc9620-bcd4-5597-b985-d8b704fb3cda",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1139,9 +1140,7 @@
         "gpz_sections": [],
         "id": "064b7977-03b3-5d3e-8700-cdb850a7703d",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja B",
         "nn_sections": [],

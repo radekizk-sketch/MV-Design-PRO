@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "a464804ef30934e7e63f6ddd7de35ad0bf6ca7d9c2383631abab74dc75b28ed4",
+    "builder_snapshot_hash": "d45c0317a8593b86732cf8da4a5c4a8355e4e639fa9ce4e12404924d5f3769df",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -103,7 +103,7 @@
         "sn_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
         "station_name": "Stacja S4",
         "station_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/station",
-        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+        "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11"
       },
       {
         "config_key": "PV_NN_1",
@@ -14425,7 +14425,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "a464804ef30934e7e63f6ddd7de35ad0bf6ca7d9c2383631abab74dc75b28ed4",
+      "hash_sha256": "d45c0317a8593b86732cf8da4a5c4a8355e4e639fa9ce4e12404924d5f3769df",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"
@@ -14504,6 +14504,7 @@
         "bus_ref": "nn/a0a17ccb48c2cf7fc4ef2dbd0e68a411/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "a78714a7-48dc-5645-9d17-187862d3bc56",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14546,6 +14547,7 @@
         "bus_ref": "nn/82acabb54c4c96631b915cb67d89d05c/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "c1a24bf2-3f23-5c97-96f7-5ac73281af7b",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14588,6 +14590,7 @@
         "bus_ref": "nn/7b4b21141cda6879ac861af8b9c34216/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "281fc8dd-1ccf-521b-9409-5b0964af2328",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14630,6 +14633,7 @@
         "bus_ref": "nn/d442b4fc34e39d51546e30ade341d1b8/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "fbf32e7e-cbb7-581c-b08b-c5f278ad05d0",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14672,6 +14676,7 @@
         "bus_ref": "nn/68e635d7ba4c41763c40220c9fb2ccb5/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "aeec0597-05f2-5614-adab-f84cc65039de",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14714,6 +14719,7 @@
         "bus_ref": "nn/8a44af236a13d2fc63ae88d42c6291a4/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "f5529da2-486c-57c9-84bc-553acdce6229",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14756,6 +14762,7 @@
         "bus_ref": "nn/b6ab4ffcc12b127f95ddfa904c728dce/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "65711c1e-dc4f-5946-8b0b-dd9736c60bcd",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14798,6 +14805,7 @@
         "bus_ref": "nn/8c584078574b506794fbc37f37ca6233/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "48697aec-7281-5ad9-beda-22d6c3161edc",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14840,6 +14848,7 @@
         "bus_ref": "nn/786811a0f9bb701351d120b8efd60420/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "27690b9a-fa4a-5791-af1b-417212f192c8",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14882,6 +14891,7 @@
         "bus_ref": "nn/b4a7fa97659a752a26c1fe54fa848d43/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "463cbd68-98ca-5435-b400-4e197380c6ad",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14924,6 +14934,7 @@
         "bus_ref": "nn/e0bf4d0d08dba47c6f8590a1c0a2d01b/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "a3fdba71-910f-56ef-a65b-e3fa1917e828",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -14966,6 +14977,7 @@
         "bus_ref": "nn/33876c702984206a63deb301d08a6fc0/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "60cacf23-c343-584a-9fd7-22071504abeb",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15008,6 +15020,7 @@
         "bus_ref": "nn/01f5700d142b86aee77d74de88384c42/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "34bacdcb-af15-5903-87bd-1e4f60dd6fbb",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15050,6 +15063,7 @@
         "bus_ref": "nn/51d7ffa94ffd6c93c2229a34b79d6e49/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "a582ac6d-9569-588d-a772-6f2fd173e0dd",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15092,6 +15106,7 @@
         "bus_ref": "nn/628fbabfa1a5cae5a6db0f2e0ab0ade7/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "c512b539-e3d2-5732-8388-582f8ac56a3b",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15134,6 +15149,7 @@
         "bus_ref": "nn/f17eb0e191ba8402a84d2af21b49c2c9/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "b6388ace-dd3f-5de0-a199-e540302f341d",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15176,6 +15192,7 @@
         "bus_ref": "nn/ab5ff6ce1f4239fdab2dd14dd9dfc5e0/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "1f35d4b0-48c3-5c5d-9d48-5cf0859201f8",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15218,6 +15235,7 @@
         "bus_ref": "nn/21a5f2c5fa2733205e922a5323d12719/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "b992e5b5-6b9a-5317-a680-6192568ea565",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15260,6 +15278,7 @@
         "bus_ref": "nn/8eb2726c6f2bf240c1be965c70ec1cca/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "76b948ed-623b-5e4e-aacf-a071eff3ab64",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15302,6 +15321,7 @@
         "bus_ref": "nn/b5eb5acbab182a1af318b3fb6855a1f5/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "52ca3733-aaf5-51c7-8a15-87a411a61845",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15344,6 +15364,7 @@
         "bus_ref": "nn/9c901750d611ee566d4a9204f943605e/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "4722a514-ef21-58c5-a0ac-4abe8e53dab2",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15386,6 +15407,7 @@
         "bus_ref": "nn/d214863f11ae7f2a78246afeb24f71b9/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "3cb86699-d726-5061-aded-240a345d3360",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15428,6 +15450,7 @@
         "bus_ref": "nn/6cdbd149b3b0ce82408c22eeddd6c330/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "ce720782-ee43-5814-ae88-c59da2f910ce",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15470,6 +15493,7 @@
         "bus_ref": "nn/dd11e39d45700a3ce5cfa61e43bf0116/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "12d105f1-52af-5261-97ed-1488e1b6654e",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -15512,6 +15536,7 @@
         "bus_ref": "nn/0208f5d92a3588247e8ef2994db732e3/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "9d5760cb-28a3-5085-ad36-afee28256a8b",
         "materialized_params": null,
         "meta": {
@@ -15537,6 +15562,7 @@
         "bus_ref": "nn/3b1282f88eebab4922f34af58ece95c2/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "d8e32868-19c2-51b0-9174-99bc0483a937",
         "materialized_params": null,
         "meta": {
@@ -15562,6 +15588,7 @@
         "bus_ref": "nn/9b0b2334fcf4374960c98be371700d24/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "25787d16-e9f2-527b-af5b-73d26f29be80",
         "materialized_params": null,
         "meta": {
@@ -15587,6 +15614,7 @@
         "bus_ref": "nn/3ca382707816cc8bb1b2cc5993bd6450/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "6fc0b497-abf9-5204-b46b-49dac63c60e3",
         "materialized_params": null,
         "meta": {
@@ -15612,6 +15640,7 @@
         "bus_ref": "nn/2455be079c9869f33ae401f06ac31348/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "71071a8a-ebb5-5d56-b940-7419b3efaa13",
         "materialized_params": null,
         "meta": {
@@ -15637,6 +15666,7 @@
         "bus_ref": "nn/e96588cc4f1599cc935decba4adaa632/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "f04b7ca2-759f-5df2-97bc-2e1a93c73786",
         "materialized_params": null,
         "meta": {
@@ -15662,6 +15692,7 @@
         "bus_ref": "nn/58b8921d117c6fd481b37f3fbd32a0dc/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "60201b4e-07a4-526c-9649-e66295a36f75",
         "materialized_params": null,
         "meta": {
@@ -15687,6 +15718,7 @@
         "bus_ref": "nn/404d4ff7075442c3ba7e52f8d166fc2a/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "0c4932f2-bf90-5925-99fd-e73544077b9a",
         "materialized_params": null,
         "meta": {
@@ -15712,6 +15744,7 @@
         "bus_ref": "nn/443d83bc22238d8d34c5e299d9bf0625/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "c62fea8e-0da9-5926-b0aa-213f60984eef",
         "materialized_params": null,
         "meta": {
@@ -15737,6 +15770,7 @@
         "bus_ref": "nn/d131e019d46e31e2b17ad281531baf3c/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "a335ecf4-ef64-5eb0-8ff8-67f14f48f290",
         "materialized_params": null,
         "meta": {
@@ -15762,6 +15796,7 @@
         "bus_ref": "nn/61f4344a41ab929266b3969eb390c646/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "d7d24c05-700c-5e00-8021-9b23abfad06e",
         "materialized_params": null,
         "meta": {
@@ -15787,6 +15822,7 @@
         "bus_ref": "nn/e9b0e6d952b9da35d8b30224f318ddfd/feeder_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
+        "dynamika": null,
         "id": "c8f590aa-aee8-5881-9126-b4dd84a28853",
         "materialized_params": null,
         "meta": {
@@ -15920,9 +15956,7 @@
         "gpz_sections": [],
         "id": "f6589a27-f52b-5f82-ab61-a1819ef033b3",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S1",
         "nn_sections": [],
@@ -15947,9 +15981,7 @@
         "gpz_sections": [],
         "id": "0cba7ba2-ffd4-525b-b84c-6e4676b2ac52",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S2",
         "nn_sections": [],
@@ -15974,9 +16006,7 @@
         "gpz_sections": [],
         "id": "5fd509a0-125f-5f98-9691-b56b083a5f89",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S3",
         "nn_sections": [],
@@ -16001,9 +16031,7 @@
         "gpz_sections": [],
         "id": "32f82eec-57be-5c18-9083-8f3d41f23601",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S4",
         "nn_sections": [],
@@ -16028,9 +16056,7 @@
         "gpz_sections": [],
         "id": "c4c60027-1725-5e82-97c2-321ff39c72e8",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S5",
         "nn_sections": [],
@@ -16055,9 +16081,7 @@
         "gpz_sections": [],
         "id": "60a9215f-6024-5413-b0fc-def1429d6401",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S6",
         "nn_sections": [],
@@ -16082,9 +16106,7 @@
         "gpz_sections": [],
         "id": "78565eea-30ba-5e2e-bc8f-4fb992461ce8",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S7",
         "nn_sections": [],
@@ -16109,9 +16131,7 @@
         "gpz_sections": [],
         "id": "67ee51bf-c7e6-5914-afd1-01498ba07d2c",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S8",
         "nn_sections": [],
@@ -16136,9 +16156,7 @@
         "gpz_sections": [],
         "id": "97311fb6-ccfb-5e1d-8d35-0dd2875b37a7",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S9",
         "nn_sections": [],
@@ -16163,9 +16181,7 @@
         "gpz_sections": [],
         "id": "623a1d83-d0f7-50f2-a256-6fb106be6f75",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S10",
         "nn_sections": [],
@@ -16190,9 +16206,7 @@
         "gpz_sections": [],
         "id": "360427f3-ec6d-5eee-a12b-aba93c61876d",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S11",
         "nn_sections": [],
@@ -16217,9 +16231,7 @@
         "gpz_sections": [],
         "id": "161e5dea-12c4-5ff1-b353-b9e335d69074",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S12",
         "nn_sections": [],
@@ -16422,22 +16434,22 @@
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
         "hv_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field_terminal/003",
         "hv_neutral": null,
-        "i0_percent": 1.5,
+        "i0_percent": 1.0,
         "id": "acd817c9-9aae-573c-bba8-be150cdbb90c",
         "lv_bus_ref": "nn/e82bc07829e9bd6b54e0017c2038aa34/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
         "materialized_params": {
-          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
           "catalog_item_version": "legacy",
-          "i0_percent": 1.5,
-          "p0_kw": 1.3,
-          "pk_kw": 8.0,
-          "rated_power_mva": 0.63,
-          "uk_percent": 5.0,
+          "i0_percent": 1.0,
+          "p0_kw": 2.1,
+          "pk_kw": 13.5,
+          "rated_power_mva": 1.25,
+          "uk_percent": 6.0,
           "vector_group": "Dyn11",
           "voltage_hv_kv": 15.0,
           "voltage_lv_kv": 0.4
@@ -16448,11 +16460,11 @@
         "n_parallel": null,
         "name": "Transformator SN/nN",
         "overrides": [],
-        "p0_kw": 1.3,
+        "p0_kw": 2.1,
         "parameter_source": "CATALOG",
-        "pk_kw": 8.0,
+        "pk_kw": 13.5,
         "ref_id": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/transformer",
-        "sn_mva": 0.63,
+        "sn_mva": 1.25,
         "source_mode": "KATALOG",
         "tags": [],
         "tap_changer": null,
@@ -16461,7 +16473,7 @@
         "tap_position": null,
         "tap_step_percent": null,
         "uhv_kv": 15.0,
-        "uk_percent": 5.0,
+        "uk_percent": 6.0,
         "ulv_kv": 0.4,
         "vector_group": "Dyn11"
       },
@@ -16670,7 +16682,7 @@
         "meta": {
           "catalog_item_version": "legacy"
         },
-        "n_parallel": null,
+        "n_parallel": 2,
         "name": "Transformator SN/nN",
         "overrides": [],
         "p0_kw": 3.7,
@@ -16760,7 +16772,7 @@
         "meta": {
           "catalog_item_version": "legacy"
         },
-        "n_parallel": null,
+        "n_parallel": 2,
         "name": "Transformator SN/nN",
         "overrides": [],
         "p0_kw": 3.7,

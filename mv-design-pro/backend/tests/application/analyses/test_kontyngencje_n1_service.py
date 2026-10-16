@@ -868,9 +868,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacja
     # wstawiona w odcinek nie niesie już cienia deklaracji `meta.station_type_sn` /
     # `meta.station_type_semantic` (deklaracja ma jedno miejsce — `station_type`). gn03 bez zmian.
-    "gn01_promieniowa": "5306b64daa9a13505def71cb2958abdd12620391e8ecde5c73dc194b0a977110",
-    "gn03_pierscien": "2cacc16c88dac3b7d044900dae16f6a950888c76a06dacda99863139a87407ef",
-    # SCALENIE-W5B-INTEGRACJA
+    # 2026-10-16 (scalenie karty W5-B z integracją PR477-481): gn01 → 1d65e0b8…, gn03 = pin
+    # karty W5-B (5c5ded2b…). Pełne widoki z kodu obu rodziców scalenia i po scaleniu
+    # porównane liść po liściu: względem rodzica W5-B różnią się WYŁĄCZNIE gn01
+    # `context.snapshot_hash` i `input_hash`, względem rodzica integracji WYŁĄCZNIE te dwa
+    # liście w gn01 i gn03. Różnica modelu wejściowego: pola rozdzielnic w kolekcji `bays`
+    # (W5-B) złożone z usunięciem cienia deklaracji rodzaju stacji z `meta` (integracja).
+    # Wynik kontyngencji identyczny.
+    "gn01_promieniowa": "1d65e0b8fe7765283f5cb7d969cc718977ad100771447dc50a824898c59dcea3",
+    "gn03_pierscien": "5c5ded2b83b0ef3e509d14f88abe1bfa647abc0299e2b245ae818610514f1637",
 }
 
 

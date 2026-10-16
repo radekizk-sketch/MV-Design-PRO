@@ -4,21 +4,261 @@
       "bays": [
         {
           "bay_role": "IN",
+          "bus_ref": "P1/sn",
+          "field_role": "LINIA_IN",
+          "ref_id": "P1/in",
+          "substation_ref": "P1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "P1/sn",
+          "field_role": "line_out",
+          "ref_id": "P1/out",
+          "substation_ref": "P1"
+        },
+        {
+          "bay_role": "TR",
+          "bus_ref": "P1/sn",
+          "field_role": " TRANSFORMER ",
+          "ref_id": "P1/tr",
+          "substation_ref": "P1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "P2/sn",
+          "ref_id": "P2/in",
+          "substation_ref": "P2"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "P2/sn",
+          "ref_id": "P2/out",
+          "substation_ref": "P2"
+        },
+        {
+          "bay_role": "TR",
+          "bus_ref": "P2/sn",
+          "ref_id": "P2/tr",
+          "substation_ref": "P2"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "O1/sn",
+          "ref_id": "O1/in",
+          "substation_ref": "O1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "O1/sn",
+          "ref_id": "O1/out",
+          "substation_ref": "O1"
+        },
+        {
+          "bay_role": "FEEDER",
+          "bus_ref": "O1/sn",
+          "field_role": "LINIA_ODG",
+          "ref_id": "O1/odg",
+          "substation_ref": "O1"
+        },
+        {
+          "bay_role": "TR",
+          "bus_ref": "O1/sn",
+          "ref_id": "O1/tr",
+          "substation_ref": "O1"
+        },
+        {
+          "bus_ref": "O2/sn",
+          "field_role": "IN",
+          "ref_id": "O2/in",
+          "substation_ref": "O2"
+        },
+        {
+          "bus_ref": "O2/sn",
+          "field_role": "OUT",
+          "ref_id": "O2/out",
+          "substation_ref": "O2"
+        },
+        {
+          "bus_ref": "O2/sn",
+          "field_role": "LINE_BRANCH",
+          "ref_id": "O2/odg1",
+          "substation_ref": "O2"
+        },
+        {
+          "bay_role": "feeder",
+          "bus_ref": "O2/sn",
+          "ref_id": "O2/odg2",
+          "substation_ref": "O2"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "S1/sn",
+          "ref_id": "S1/in",
+          "substation_ref": "S1"
+        },
+        {
+          "bay_role": "COUPLER",
+          "bus_ref": "S1/sn",
+          "field_role": "SPRZEGLO",
+          "ref_id": "S1/sp",
+          "substation_ref": "S1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "S1/sn",
+          "ref_id": "S1/out",
+          "substation_ref": "S1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "S2/sn",
+          "ref_id": "S2/in",
+          "substation_ref": "S2"
+        },
+        {
+          "bus_ref": "S2/sn",
+          "field_role": "COUPLER",
+          "ref_id": "S2/sp",
+          "substation_ref": "S2"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "K1/sn",
+          "ref_id": "K1/in",
+          "substation_ref": "K1"
+        },
+        {
+          "bay_role": "OZE",
+          "bus_ref": "K1/sn",
+          "field_role": "PV_SN",
+          "ref_id": "K1/pv",
+          "substation_ref": "K1"
+        },
+        {
+          "bus_ref": "K1/sn",
+          "field_role": "POMIAROWE",
+          "ref_id": "K1/pomiar",
+          "substation_ref": "K1"
+        },
+        {
+          "bus_ref": "K1/sn",
+          "field_role": "bess",
+          "ref_id": "K1/bess",
+          "substation_ref": "K1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "N1/sn",
+          "field_role": "COS_INNEGO",
+          "ref_id": "N1/in",
+          "substation_ref": "N1"
+        },
+        {
+          "bay_role": "XYZ",
+          "bus_ref": "N1/sn",
+          "field_role": "XYZ",
+          "ref_id": "N1/x",
+          "substation_ref": "N1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "N1/sn",
+          "ref_id": "N1/out",
+          "substation_ref": "N1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "A1/sn",
+          "ref_id": "A1/in",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "A1/sn",
+          "ref_id": "A1/out",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "FEEDER",
+          "bus_ref": "A1/sn",
+          "metadane_pochodzenia": {
+            "bay_kind": "potrzeb_wlasnych"
+          },
+          "ref_id": "A1/pw",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "FEEDER",
+          "bus_ref": "A1/sn",
+          "metadane_pochodzenia": {
+            "bay_kind": "Rezerwowe"
+          },
+          "ref_id": "A1/rez",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "FEEDER",
+          "bus_ref": "A1/sn",
+          "metadane_pochodzenia": {
+            "bay_kind": "odgromnikowe"
+          },
+          "ref_id": "A1/odgr",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "FEEDER",
+          "bus_ref": "A1/sn",
+          "metadane_pochodzenia": {
+            "bay_kind": "liniowe_odplywowe"
+          },
+          "ref_id": "A1/odg",
+          "substation_ref": "A1"
+        },
+        {
+          "bay_role": "TR",
+          "bus_ref": "C1/sn",
+          "ref_id": "C1/tr",
+          "substation_ref": "C1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "W1/sn",
+          "ref_id": "W1/in",
+          "substation_ref": "W1"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "W1/sn",
+          "ref_id": "W1/out",
+          "substation_ref": "W1"
+        },
+        {
+          "bay_role": "IN",
+          "bus_ref": "L1/sn",
           "ref_id": "L1/b-in",
           "substation_ref": "L1"
         },
         {
           "bay_role": "OUT",
+          "bus_ref": "L1/sn",
           "ref_id": "L1/b-out",
           "substation_ref": "L1-id"
         },
         {
           "bay_role": "FEEDER",
+          "bus_ref": "L1/sn",
           "ref_id": "L1/b-odg",
           "substation_ref": "L1"
         },
         {
+          "bay_role": "FEEDER",
+          "bus_ref": "L1/sn",
+          "ref_id": "L1/b-odg2",
+          "substation_ref": "L1"
+        },
+        {
           "bay_role": "IN",
+          "bus_ref": "X/sn",
           "ref_id": "X/b",
           "substation_ref": "X"
         }
@@ -129,34 +369,7 @@
           "bus_refs": [
             "P1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "P1/sn",
-                "field_ref": "P1/in",
-                "meta": {
-                  "field_role": "LINIA_IN"
-                }
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "P1/sn",
-                "field_ref": "P1/out",
-                "meta": {
-                  "field_role": "line_out"
-                }
-              },
-              {
-                "bay_role": "TR",
-                "bus_ref": "P1/sn",
-                "field_ref": "P1/tr",
-                "meta": {
-                  "field_role": " TRANSFORMER "
-                }
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja P1",
           "ref_id": "P1",
           "station_type": "inline"
@@ -165,25 +378,7 @@
           "bus_refs": [
             "P2/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "P2/sn",
-                "field_ref": "P2/in"
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "P2/sn",
-                "field_ref": "P2/out"
-              },
-              {
-                "bay_role": "TR",
-                "bus_ref": "P2/sn",
-                "field_ref": "P2/tr"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja P2",
           "ref_id": "P2",
           "station_type": "inline"
@@ -192,33 +387,7 @@
           "bus_refs": [
             "O1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "O1/sn",
-                "field_ref": "O1/in"
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "O1/sn",
-                "field_ref": "O1/out"
-              },
-              {
-                "bay_role": "FEEDER",
-                "bus_ref": "O1/sn",
-                "field_ref": "O1/odg",
-                "meta": {
-                  "field_role": "LINIA_ODG"
-                }
-              },
-              {
-                "bay_role": "TR",
-                "bus_ref": "O1/sn",
-                "field_ref": "O1/tr"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja O1",
           "ref_id": "O1",
           "station_type": "inline"
@@ -227,36 +396,7 @@
           "bus_refs": [
             "O2/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bus_ref": "O2/sn",
-                "field_ref": "O2/in",
-                "meta": {
-                  "field_role": "IN"
-                }
-              },
-              {
-                "bus_ref": "O2/sn",
-                "field_ref": "O2/out",
-                "meta": {
-                  "field_role": "OUT"
-                }
-              },
-              {
-                "bus_ref": "O2/sn",
-                "field_ref": "O2/odg1",
-                "meta": {
-                  "field_role": "LINE_BRANCH"
-                }
-              },
-              {
-                "bay_role": "feeder",
-                "bus_ref": "O2/sn",
-                "field_ref": "O2/odg2"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja O2",
           "ref_id": "O2",
           "station_type": "branch"
@@ -265,28 +405,7 @@
           "bus_refs": [
             "S1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "S1/sn",
-                "field_ref": "S1/in"
-              },
-              {
-                "bay_role": "COUPLER",
-                "bus_ref": "S1/sn",
-                "field_ref": "S1/sp",
-                "meta": {
-                  "field_role": "SPRZEGLO"
-                }
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "S1/sn",
-                "field_ref": "S1/out"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja S1",
           "ref_id": "S1",
           "station_type": "sectional"
@@ -295,22 +414,7 @@
           "bus_refs": [
             "S2/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "S2/sn",
-                "field_ref": "S2/in"
-              },
-              {
-                "bus_ref": "S2/sn",
-                "field_ref": "S2/sp",
-                "meta": {
-                  "field_role": "COUPLER"
-                }
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja S2",
           "ref_id": "S2",
           "station_type": "terminal"
@@ -319,37 +423,7 @@
           "bus_refs": [
             "K1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "K1/sn",
-                "field_ref": "K1/in"
-              },
-              {
-                "bay_role": "OZE",
-                "bus_ref": "K1/sn",
-                "field_ref": "K1/pv",
-                "meta": {
-                  "field_role": "PV_SN"
-                }
-              },
-              {
-                "bus_ref": "K1/sn",
-                "field_ref": "K1/pomiar",
-                "meta": {
-                  "field_role": "POMIAROWE"
-                }
-              },
-              {
-                "bus_ref": "K1/sn",
-                "field_ref": "K1/bess",
-                "meta": {
-                  "field_role": "bess"
-                }
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja K1",
           "ref_id": "K1",
           "station_type": "terminal"
@@ -358,31 +432,7 @@
           "bus_refs": [
             "N1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "N1/sn",
-                "field_ref": "N1/in",
-                "meta": {
-                  "field_role": "COS_INNEGO"
-                }
-              },
-              {
-                "bay_role": "XYZ",
-                "bus_ref": "N1/sn",
-                "field_ref": "N1/x",
-                "meta": {
-                  "field_role": "XYZ"
-                }
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "N1/sn",
-                "field_ref": "N1/out"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja N1",
           "ref_id": "N1",
           "station_type": "mv_lv"
@@ -391,46 +441,7 @@
           "bus_refs": [
             "A1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/in"
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/out"
-              },
-              {
-                "bay_kind": "potrzeb_wlasnych",
-                "bay_role": "FEEDER",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/pw"
-              },
-              {
-                "bay_role": "FEEDER",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/rez",
-                "meta": {
-                  "bay_kind": "Rezerwowe"
-                }
-              },
-              {
-                "bay_kind": "odgromnikowe",
-                "bay_role": "FEEDER",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/odgr"
-              },
-              {
-                "bay_kind": "liniowe_odplywowe",
-                "bay_role": "FEEDER",
-                "bus_ref": "A1/sn",
-                "field_ref": "A1/odg"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja A1",
           "ref_id": "A1",
           "station_type": "inline"
@@ -439,15 +450,7 @@
           "bus_refs": [
             "C1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "TR",
-                "bus_ref": "C1/sn",
-                "field_ref": "C1/tr"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja C1",
           "ref_id": "C1",
           "station_type": "customer"
@@ -464,20 +467,7 @@
           "bus_refs": [
             "W1/sn"
           ],
-          "meta": {
-            "field_specs": [
-              {
-                "bay_role": "IN",
-                "bus_ref": "W1/sn",
-                "field_ref": "W1/in"
-              },
-              {
-                "bay_role": "OUT",
-                "bus_ref": "W1/sn",
-                "field_ref": "W1/out"
-              }
-            ]
-          },
+          "meta": {},
           "name": "Stacja W1",
           "ref_id": "W1",
           "station_type": "inline"

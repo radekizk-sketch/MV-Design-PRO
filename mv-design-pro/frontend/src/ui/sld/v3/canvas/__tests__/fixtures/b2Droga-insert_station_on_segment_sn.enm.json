@@ -923,7 +923,7 @@
         "frequency_hz": null,
         "id": "1cac454f-15c9-5ccd-b4e2-fda648f6efef",
         "meta": {},
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_bus",
@@ -1087,7 +1087,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7b22d66e33ec9d9d5b7fdeec043cadb87cab07102fc842425be688f517a2d51f",
+      "hash_sha256": "60ad3fb6f2de2caf8575910bd44cbaab86c9d9478da97d0940fc28584dec75e5",
       "name": "Drogi operacji budowy",
       "revision": 7,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1126,6 +1126,7 @@
         "bus_ref": "nn/9ca28006199f4918242983b719c9f9d8/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "12e368df-90ea-50aa-83db-c7c8ddcb6c72",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1153,7 +1154,7 @@
           "q_source": "KATALOG_COS_PHI"
         },
         "model": "pq",
-        "name": "Odbiór nN 1 - Stacja S01 (typ B)",
+        "name": "Odbiór nN 1 - Stacja S01",
         "overrides": [],
         "p_mw": 0.03,
         "parameter_source": "CATALOG",
@@ -1276,11 +1277,9 @@
         "gpz_sections": [],
         "id": "0b4ee794-7089-5b4a-ad0a-d20e6b445498",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
-        "name": "Stacja S01 (typ B)",
+        "name": "Stacja S01",
         "nn_sections": [],
         "nn_voltage_levels": [],
         "ref_id": "stn/c566217cd62b515686c7a6a4ab6ec4a9/station",

@@ -1335,10 +1335,7 @@
         "gpz_hv_sections": [],
         "gpz_sections": [],
         "id": "67dc0ff6-00fc-5d9a-bcac-988f5af45b4c",
-        "meta": {
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
-        },
+        "meta": {},
         "name": "Stacja Lipowa",
         "nn_sections": [],
         "nn_voltage_levels": [],

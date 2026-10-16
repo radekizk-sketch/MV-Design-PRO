@@ -1744,7 +1744,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "413cb8325a51bf81f1a49efb2a6343af4a2994850e8dec8bcbdbc329cb80eefe",
+      "hash_sha256": "1dd4b81402ef11732087dc096899fbc51fd31950ea2fbc02bcfe1cfa03ddaecf",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1791,6 +1791,7 @@
         "bus_ref": "nn/87bfe93df15217886b25625e32e860d5/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "d3781a0a-8c7b-522e-bd39-23f585343cb1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1833,6 +1834,7 @@
         "bus_ref": "nn/9bde910b2862f21886150f456f98261b/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
+        "dynamika": null,
         "id": "0e682ec9-1464-5a5d-935d-7ce6ef1f2387",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1983,9 +1985,7 @@
         "gpz_sections": [],
         "id": "846cfc8d-ad74-570f-adbc-fe257dbc78f7",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S01",
         "nn_sections": [],
@@ -2010,9 +2010,7 @@
         "gpz_sections": [],
         "id": "3745d8d2-0b25-5231-ac7d-f0d666fbfd86",
         "meta": {
-          "nn_fields_promoted": true,
-          "station_type_semantic": "B",
-          "station_type_sn": "B"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S02",
         "nn_sections": [],

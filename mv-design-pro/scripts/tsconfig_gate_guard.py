@@ -425,8 +425,8 @@ POMIJANE_KATALOGI = {
 #: `ui/sld/shared/__tests__/szynyStacjiKonsumenci.test.ts` (czerwien bazy 81 > 80 — `gpzs[0]`
 #: zastapione `gpzs.slice(0, 1)` z jawna obsluga braku sekcji) oraz TS2339 + TS7006 w
 #: `ui/sld/v3/scene/__tests__/buildScene.gpzFeeder.test.ts` (rzutowany ksztalt dawny słownik pól SN w `meta` stacji
-#: zastapiony typowanymi rekordami `bays`). Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 62  # SCALENIE-W5B-INTEGRACJA
+#: zastapiony typowanymi rekordami `bays`). Zero nowych bledow. Scalenie z integracja PR477-481 (2026-10-16): POMIAR na drzewie scalonym 61.
+BUDZET_BLEDOW_POZA_BRAMKA = 61
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

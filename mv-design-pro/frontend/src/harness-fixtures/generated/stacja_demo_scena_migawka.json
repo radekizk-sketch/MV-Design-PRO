@@ -783,7 +783,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "c3d44b0adc4b149e18f9839d42e492748e02a9aae5caa074e9ecd5b390415d19",
+    "hash_sha256": "2f51e959606d1c360458e799d172c93bf4bf6e4df553e84bdcec1b10e4ae4dc0",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -814,6 +814,7 @@
       "bus_ref": "nn/5820057e3af41f320969fd379542962e/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "b18a1b1a-ae66-5fc7-964e-e31ca12c6219",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -964,9 +965,7 @@
       "gpz_sections": [],
       "id": "e941876f-52c1-5a7a-8eaf-016b09feefb4",
       "meta": {
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Rozdzielnia GPZ-01",
       "nn_sections": [],
