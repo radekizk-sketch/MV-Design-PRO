@@ -32,7 +32,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 // `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
-// karty W5-B w `docs/audit/visual/w5b-pola`) bez nadpisywania materiału tej karty.
+// karty W5-B w `docs/audit/visual/w5b/po`) bez nadpisywania materiału tej karty.
 const OUTPUT_DIR = process.env.E2E_KATALOG_ZRZUTOW
   ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
   : path.resolve(_dirname, '../../docs/audit/visual/kreatory');

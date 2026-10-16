@@ -15,7 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+// `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
+// karty W5-B w `docs/audit/visual/w5b/po`) bez nadpisywania materiału tej karty.
+const OUTPUT_DIR = process.env.E2E_KATALOG_ZRZUTOW
+  ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
+  : path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
