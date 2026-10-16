@@ -2,7 +2,7 @@
 Tests for IEC 60255 Protection Curve Solver.
 
 Verifies:
-- NI (Normal Inverse) curve accuracy against known values
+- SI (Standard Inverse) curve accuracy against known values
 - VI (Very Inverse) curve accuracy
 - EI (Extremely Inverse) curve accuracy
 - LTI (Long-Time Inverse) curve accuracy
@@ -18,7 +18,7 @@ I^2t i pelnej koordynacji zeszly RAZEM z kasowanym kodem (`SelectivityVerdict`,
 „zaden nie wyzwala -> PASS"). Silnik IDMT (ten plik) zostaje.
 
 Reference values computed from IEC 60255-151:2009:
-    NI: t = TMS * 0.14 / ((I/Is)^0.02 - 1)
+    SI: t = TMS * 0.14 / ((I/Is)^0.02 - 1)
     VI: t = TMS * 13.5 / ((I/Is) - 1)
     EI: t = TMS * 80 / ((I/Is)^2 - 1)
     LTI: t = TMS * 120 / ((I/Is) - 1)
@@ -41,7 +41,7 @@ from network_model.solvers.protection_iec60255 import (
 
 
 def _expected_ni(i: float, is_: float, tms: float) -> float:
-    """Reference NI calculation: t = TMS * 0.14 / ((I/Is)^0.02 - 1)."""
+    """Reference SI calculation: t = TMS * 0.14 / ((I/Is)^0.02 - 1)."""
     M = i / is_
     return tms * 0.14 / (math.pow(M, 0.02) - 1.0)
 
@@ -65,17 +65,17 @@ def _expected_lti(i: float, is_: float, tms: float) -> float:
 
 
 # =============================================================================
-# TEST: NI CURVE ACCURACY
+# TEST: SI CURVE ACCURACY
 # =============================================================================
 
 
 class TestNICurveAccuracy:
-    """Verify NI (Normal Inverse) curve against known reference values."""
+    """Verify SI (Standard Inverse) curve against known reference values."""
 
     def test_ni_at_2x_pickup(self) -> None:
-        """NI at M=2, TMS=1 -> t = 0.14 / (2^0.02 - 1) ~ 10.023 s."""
+        """SI at M=2, TMS=1 -> t = 0.14 / (2^0.02 - 1) ~ 10.023 s."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=200.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -86,9 +86,9 @@ class TestNICurveAccuracy:
         assert abs(result.calculated_time_s - expected) < 0.01
 
     def test_ni_at_5x_pickup(self) -> None:
-        """NI at M=5, TMS=1."""
+        """SI at M=5, TMS=1."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -99,9 +99,9 @@ class TestNICurveAccuracy:
         assert abs(result.calculated_time_s - expected) < 0.01
 
     def test_ni_at_10x_pickup(self) -> None:
-        """NI at M=10, TMS=1."""
+        """SI at M=10, TMS=1."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=1000.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -112,9 +112,9 @@ class TestNICurveAccuracy:
         assert abs(result.calculated_time_s - expected) < 0.01
 
     def test_ni_at_20x_pickup_tms_05(self) -> None:
-        """NI at M=20, TMS=0.5 — scales linearly with TMS."""
+        """SI at M=20, TMS=0.5 — scales linearly with TMS."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=2000.0,
             is_pickup_a=100.0,
             tms=0.5,
@@ -125,15 +125,15 @@ class TestNICurveAccuracy:
         assert abs(result.calculated_time_s - expected) < 0.01
 
     def test_ni_tms_scaling(self) -> None:
-        """NI trip time scales linearly with TMS."""
+        """SI trip time scales linearly with TMS."""
         r1 = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=1.0,
         )
         r2 = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,
@@ -143,9 +143,9 @@ class TestNICurveAccuracy:
         assert abs(r1.calculated_time_s / r2.calculated_time_s - 2.0) < 0.001
 
     def test_ni_no_trip_below_pickup(self) -> None:
-        """NI should not trip when I < Is."""
+        """SI should not trip when I < Is."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=80.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -156,12 +156,12 @@ class TestNICurveAccuracy:
     def test_ni_curve_type_in_result(self) -> None:
         """Verify curve type is correctly stored."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=200.0,
             is_pickup_a=100.0,
             tms=1.0,
         )
-        assert result.curve_type == IEC60255CurveType.NI
+        assert result.curve_type == IEC60255CurveType.STANDARD_INVERSE
         assert result.A == 0.14
         assert result.B == 0.02
 
@@ -438,9 +438,9 @@ class TestWhiteBoxTraceCompleteness:
     }
 
     def test_ni_trace_completeness(self) -> None:
-        """NI trace should have all required IDMT fields."""
+        """SI trace should have all required IDMT fields."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,
@@ -500,7 +500,7 @@ class TestWhiteBoxTraceCompleteness:
     def test_no_trip_trace_completeness(self) -> None:
         """No-trip result should still have a complete trace."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=50.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -527,7 +527,7 @@ class TestWhiteBoxTraceCompleteness:
     def test_trace_contains_standard_reference(self) -> None:
         """All traces must reference IEC 60255-151:2009."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,
@@ -537,13 +537,13 @@ class TestWhiteBoxTraceCompleteness:
     def test_result_to_dict_roundtrip(self) -> None:
         """to_dict should produce a complete, serializable dictionary."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,
         )
         d = result.to_dict()
-        assert d["curve_type"] == "NI"
+        assert d["curve_type"] == "SI"
         assert d["i_fault_a"] == 500.0
         assert d["is_pickup_a"] == 100.0
         assert d["tms"] == 0.5
@@ -564,7 +564,7 @@ class TestEdgeCases:
         """Zero pickup current should raise ValueError."""
         with pytest.raises(ValueError, match="positive"):
             compute_curve_trip_time(
-                curve_type=IEC60255CurveType.NI,
+                curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
                 is_pickup_a=0.0,
                 tms=1.0,
@@ -574,7 +574,7 @@ class TestEdgeCases:
         """Negative pickup current should raise ValueError."""
         with pytest.raises(ValueError, match="positive"):
             compute_curve_trip_time(
-                curve_type=IEC60255CurveType.NI,
+                curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
                 is_pickup_a=-50.0,
                 tms=1.0,
@@ -584,7 +584,7 @@ class TestEdgeCases:
         """Zero TMS should raise ValueError."""
         with pytest.raises(ValueError, match="positive"):
             compute_curve_trip_time(
-                curve_type=IEC60255CurveType.NI,
+                curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
                 is_pickup_a=50.0,
                 tms=0.0,
@@ -594,7 +594,7 @@ class TestEdgeCases:
         """Negative fault current should raise ValueError."""
         with pytest.raises(ValueError, match="negative"):
             compute_curve_trip_time(
-                curve_type=IEC60255CurveType.NI,
+                curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=-100.0,
                 is_pickup_a=50.0,
                 tms=1.0,
@@ -603,7 +603,7 @@ class TestEdgeCases:
     def test_very_close_to_pickup(self) -> None:
         """Current just barely above pickup should produce large trip time."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=100.01,
             is_pickup_a=100.0,
             tms=1.0,
@@ -616,7 +616,7 @@ class TestEdgeCases:
     def test_zero_fault_current_no_trip(self) -> None:
         """Zero fault current should not cause a trip."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=0.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -654,7 +654,7 @@ class TestFrozenImmutability:
     def test_curve_trip_time_result_frozen(self) -> None:
         """CurveTripTimeResult should be immutable."""
         result = compute_curve_trip_time(
-            curve_type=IEC60255CurveType.NI,
+            curve_type=IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=0.5,

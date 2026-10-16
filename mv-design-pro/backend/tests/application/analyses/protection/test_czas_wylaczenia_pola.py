@@ -141,7 +141,7 @@ def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box() -> None:
 
 
 def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale() -> None:
-    """SI (NI): t = TMS·0,14/((I/Is)^0,02−1) — stałe A/B w odpowiedzi, nie sama nazwa."""
+    """SI: t = TMS·0,14/((I/Is)^0,02−1) — stałe A/B w odpowiedzi, nie sama nazwa."""
     czas = _czas(
         enm=_enm(
             nastawy=[

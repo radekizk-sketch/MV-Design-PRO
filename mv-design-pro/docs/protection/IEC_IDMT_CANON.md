@@ -47,9 +47,9 @@ $$
 
 | Curve Kind | Name | A | B | Source |
 |------------|------|------|------|--------|
-| `inverse` | Standard Inverse (SI) | 0.14 | 0.02 | IEC 60255-151 Table 1 |
-| `very_inverse` | Very Inverse (VI) | 13.5 | 1.0 | IEC 60255-151 Table 1 |
-| `extremely_inverse` | Extremely Inverse (EI) | 80.0 | 2.0 | IEC 60255-151 Table 1 |
+| `inverse` | Standard Inverse (SI) | 0.14 | 0.02 | IEC 60255-151 Annex A, Table A.1 |
+| `very_inverse` | Very Inverse (VI) | 13.5 | 1.0 | IEC 60255-151 Annex A, Table A.1 |
+| `extremely_inverse` | Extremely Inverse (EI) | 80.0 | 2.0 | IEC 60255-151 Annex A, Table A.1 |
 
 **Note:** These constants are from IEC 60255-151:2009, which supersedes IEC 60255-3.
 

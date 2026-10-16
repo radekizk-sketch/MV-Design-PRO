@@ -132,4 +132,4 @@ def test_raport_pdf_i_docx_pokazuja_ten_sam_brak(wynik: dict[str, Any], tmp_path
     ) + "\n".join(p.text for p in dokument.paragraphs)
     assert "Bezpiecznik — brak pasma topikowego" in tresc
     assert "FUSE_" not in tresc
-    assert "IEC normalnie odwrotna (NI)" in tresc
+    assert "IEC normalnie odwrotna (SI)" in tresc

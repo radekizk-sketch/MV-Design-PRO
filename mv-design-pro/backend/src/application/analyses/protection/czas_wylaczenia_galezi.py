@@ -91,7 +91,7 @@ class CzasWylaczeniaGalezi:
     prad_rozruchowy_a: float | None = None
     krzywa: str | None = None
     tms: float | None = None
-    # Stale charakterystyki (A, B) z IEC 60255-151 tab. 1 UZYTE w rachunku — bez
+    # Stale charakterystyki (A, B) z IEC 60255-151 zal. A tab. A.1 UZYTE w rachunku — bez
     # nich dowod pokazywalby nazwe krzywej zamiast podstawienia liczbowego.
     # ``None`` dla charakterystyki niezaleznej (DT nie ma tych stalych).
     stala_a: float | None = None

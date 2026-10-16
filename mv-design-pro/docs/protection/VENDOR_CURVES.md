@@ -126,9 +126,9 @@ All vendor curves MUST conform to this specification.
 
 | Curve Code | Display Name | IEC Variant | Source |
 |------------|--------------|-------------|--------|
-| `IEC_SI` | IEC Standard Inverse | SI | IEC 60255-151:2009 Table 1 |
-| `IEC_VI` | IEC Very Inverse | VI | IEC 60255-151:2009 Table 1 |
-| `IEC_EI` | IEC Extremely Inverse | EI | IEC 60255-151:2009 Table 1 |
+| `IEC_SI` | IEC Standard Inverse | SI | IEC 60255-151:2009 Annex A, Table A.1 |
+| `IEC_VI` | IEC Very Inverse | VI | IEC 60255-151:2009 Annex A, Table A.1 |
+| `IEC_EI` | IEC Extremely Inverse | EI | IEC 60255-151:2009 Annex A, Table A.1 |
 | `IEC_LTI` | IEC Long-Time Inverse | LTI | ABB 1MRS756887 rev. Q, Tab. 1001 (praktyka BS 142 / IEC 255; nie IEEE C37.112) |
 
 ---

@@ -179,24 +179,13 @@ ETYKIETY_FUNKCJI_PL: dict[str, str] = {
     "overcurrent_50": "I>> (50)",
 }
 
-#: Krzywa modelu → kod krzywej w katalogu IED (``curves_supported``).
-KRZYWA_W_KATALOGU: dict[str, str] = {
-    "DT": "DT",
-    "IEC_SI": "IEC_NI",
-    "IEC_VI": "IEC_VI",
-    "IEC_EI": "IEC_EI",
-    "IEC_LTI": "IEC_LTI",
-    "IEEE_MI": "IEEE_MI",
-    "IEEE_VI": "IEEE_VI",
-    "IEEE_EI": "IEEE_EI",
-}
-
-#: Krzywa modelu → typ rdzenia IEC 60255 (dopasowanie po WZORZE — parze stałych A, B z
-#: IEC 60255-151 tab. 1 — a nie po nazwie; IEC_SI ma stałe (0,14; 0,02), które rdzeń nazywa „NI";
-#: IEC_LTI ma stałe (120; 1) i tę samą nazwę „LTI” w rdzeniu — ``LONG_TIME_INVERSE``).
+#: Krzywa modelu → typ rdzenia IEC 60255. Literał modelu (``KrzywaNastawy``) JEST kodem krzywej
+#: w katalogu IED (``curves_supported``) — jedna nazwa krzywej w produkcie, bez mapy nazw
+#: modelu na nazwy katalogu (decyzja B-01 partii integracji 9: para NI/SI ujednolicona do „SI”
+#: tak jak „LTI” w karcie PROT-LTI; rdzeń: ``STANDARD_INVERSE``/``LONG_TIME_INVERSE``).
 KRZYWE_IEC: dict[str, IEC60255CurveType] = {
     "DT": IEC60255CurveType.DT,
-    "IEC_SI": IEC60255CurveType.NI,
+    "IEC_SI": IEC60255CurveType.STANDARD_INVERSE,
     "IEC_VI": IEC60255CurveType.VI,
     "IEC_EI": IEC60255CurveType.EI,
     "IEC_LTI": IEC60255CurveType.LONG_TIME_INVERSE,
@@ -211,7 +200,7 @@ KRZYWE_IEEE: dict[str, IEEECurveType] = {
 
 ETYKIETY_KRZYWYCH_PL: dict[str, str] = {
     "DT": "czas niezależny (DT)",
-    "IEC_SI": "IEC normalnie odwrotna (NI)",
+    "IEC_SI": "IEC normalnie odwrotna (SI)",
     "IEC_VI": "IEC bardzo odwrotna (VI)",
     "IEC_EI": "IEC skrajnie odwrotna (EI)",
     "IEC_LTI": "IEC odwrotna długoczasowa (LTI, 120)",
@@ -665,8 +654,7 @@ def _rozwiaz_stopien(
             f"Przekaźnik „{zdolnosc.model}” nie ma funkcji {kod} według katalogu.",
             f"Usuń stopień {etykieta} albo wybierz przekaźnik z funkcją {kod}.",
         )
-    krzywa_katalogu = KRZYWA_W_KATALOGU[nastawa.curve_type]
-    if krzywa_katalogu not in zdolnosc.curves_supported:
+    if nastawa.curve_type not in zdolnosc.curves_supported:
         brak(
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
             f"Przekaźnik „{zdolnosc.model}” nie ma charakterystyki "
@@ -905,12 +893,12 @@ def _zakresy_katalogu(zdolnosc: DeviceCapability) -> dict[str, Any]:
         "wejscia_pradowe_a": list(zdolnosc.rated_current_inputs_a),
         "funkcje": list(zdolnosc.functions_supported),
         "krzywe": list(zdolnosc.curves_supported),
-        # Charakterystyki MODELU dostępne w tej pozycji (odwzorowanie nazw modelu na kody
-        # katalogu — jedno miejsce, `KRZYWA_W_KATALOGU`); edytor nastaw nie mapuje nazw sam.
+        # Charakterystyki MODELU dostępne w tej pozycji (literał modelu = kod katalogu, jedna
+        # nazwa krzywej); edytor nastaw nie mapuje nazw sam.
         "charakterystyki": [
-            {"kod": kod, "etykieta_pl": ETYKIETY_KRZYWYCH_PL[kod]}
-            for kod, kod_katalogu in KRZYWA_W_KATALOGU.items()
-            if kod_katalogu in zdolnosc.curves_supported
+            {"kod": kod, "etykieta_pl": etykieta}
+            for kod, etykieta in ETYKIETY_KRZYWYCH_PL.items()
+            if kod in zdolnosc.curves_supported
         ],
         "overcurrent_51": {
             "prog": [zdolnosc.i_pickup_51_a_min, zdolnosc.i_pickup_51_a_max],

@@ -136,7 +136,12 @@ SANCTIONED_CHANGES = {
         "na LONG_TIME_INVERSE o wartosci LTI, etykieta Odwrotna dlugoczasowa (LTI, 120). "
         "Zero zmian liczb: stale, wzor LaTeX i wszystkie wielkosci WHITE BOX bit w bit "
         "(tests/network_model/solvers/test_protection_lti_tozsamosc.py na migawce z "
-        "f3c435b6). Wpis do usuniecia po scaleniu do main."
+        "f3c435b6). "
+        "Decyzja B-01 partii integracji 9 (delegacja O-59): para nazw NI/SI tej samej krzywej "
+        "0,14/0,02 ujednolicona do STANDARD_INVERSE o wartosci SI (literal modelu IEC_SI = kod "
+        "katalogu IED = adapter iec_curves); etykieta DT z polskimi znakami; cytat stalych "
+        "poprawiony na IEC 60255-151:2009 zal. A tab. A.1. Liczby bit w bit (ta sama migawka). "
+        "Wpis do usuniecia po scaleniu do main."
     ),
 }
 

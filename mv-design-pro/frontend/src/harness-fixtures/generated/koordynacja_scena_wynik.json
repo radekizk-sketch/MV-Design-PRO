@@ -26,7 +26,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 180.0,
             "prog_wtorny_a": 1.5,
             "slad": {
@@ -118,7 +118,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -132,7 +132,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -298,7 +298,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 240.0,
             "prog_wtorny_a": 2.0,
             "slad": {
@@ -390,7 +390,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -404,7 +404,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -749,7 +749,7 @@
       "curve_type": "IEC_SI",
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "device_name": "Zabezpieczenie odejścia S01",
-      "opis_pl": "I> (51): 180 A, IEC normalnie odwrotna (NI), TMS 0,1; I>> (50): 1800 A, czas niezależny (DT), zwłoka 0,1 s",
+      "opis_pl": "I> (51): 180 A, IEC normalnie odwrotna (SI), TMS 0,1; I>> (50): 1800 A, czas niezależny (DT), zwłoka 0,1 s",
       "pickup_current_a": 180.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
@@ -1062,7 +1062,7 @@
       "curve_type": "IEC_SI",
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_name": "Zabezpieczenie pola liniowego GPZ",
-      "opis_pl": "I> (51): 240 A, IEC normalnie odwrotna (NI), TMS 0,3; I>> (50): 2400 A, czas niezależny (DT), zwłoka 0,4 s",
+      "opis_pl": "I> (51): 240 A, IEC normalnie odwrotna (SI), TMS 0,3; I>> (50): 2400 A, czas niezależny (DT), zwłoka 0,4 s",
       "pickup_current_a": 240.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [

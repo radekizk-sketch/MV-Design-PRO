@@ -11,7 +11,7 @@ ma JEDNĄ ścieżkę: `application.analyses.protection.ocena_nadpradowa.czas_sto
 Ten plik dowodzi dla tej ścieżki tego samego, czego dowodził dla adapterów:
   1. czas jest ZGODNY z formułą normy (podstawienie ręczne `t = TMS·A/(M^B − 1)`),
   2. ścieżka FAKTYCZNIE deleguje do rdzenia (monitorowanie wywołań),
-  3. iloczyn cech: krzywa (NI/VI/EI/LTI) × M ≤ 1 (brak zadziałania) × M → 1+ ×
+  3. iloczyn cech: krzywa (SI/VI/EI/LTI) × M ≤ 1 (brak zadziałania) × M → 1+ ×
      TMS skrajne (0,01 … 10,0).
 """
 
@@ -25,7 +25,7 @@ from application.analyses.protection import ocena_nadpradowa
 from application.analyses.protection.ocena_nadpradowa import StopienNastaw, czas_stopnia
 from network_model.solvers import protection_iec60255 as core
 
-#: (krzywa modelu, A, B) wg IEC 60255-151:2009 tab. 1 — IEC_LTI = LONG_TIME_INVERSE rdzenia.
+#: (krzywa modelu, A, B) wg IEC 60255-151:2009 zał. A tab. A.1 (LTI: ABB 1MRS756887 tab. 1001) — IEC_LTI = LONG_TIME_INVERSE rdzenia.
 NORM_CURVES = [
     ("IEC_SI", 0.14, 0.02),
     ("IEC_VI", 13.5, 1.0),
@@ -52,7 +52,7 @@ def _stopien(krzywa: str, tms: float) -> StopienNastaw:
 
 
 def _norm_formula(tms: float, a: float, b: float, m: float) -> float:
-    """t = TMS·A/(M^B − 1) — wzór WPROST z IEC 60255-151:2009 tab. 1."""
+    """t = TMS·A/(M^B − 1) — wzór WPROST z IEC 60255-151:2009 (stałe: zał. A tab. A.1)."""
     return tms * a / (math.pow(m, b) - 1.0)
 
 

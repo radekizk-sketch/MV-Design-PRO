@@ -26,6 +26,7 @@ import pytest
 from application.analyses.protection.ocena_nadpradowa import StopienNastaw, czas_stopnia
 from network_model.solvers.protection_iec60255 import (
     IEC60255_CURVE_FORMULAS_LATEX,
+    IEC60255_CURVE_LABELS_PL,
     IEC60255_CURVE_PARAMS,
     IEC60255CurveType,
     compute_curve_trip_time,
@@ -40,7 +41,8 @@ _MIGAWKA = (
 _DANE = json.loads(_MIGAWKA.read_text(encoding="utf-8"))
 
 #: Literał krzywej w modelu ENM → klucz migawki (stałe A/B jądra). Odwzorowanie po
-#: stałych jest jedynym uczciwym kluczem (SI modelu = NI jądra, inne nazwy tej samej krzywej).
+#: stałych jest jedynym uczciwym kluczem — migawka powstała, gdy krzywa 0,14/0,02 miała w jądrze
+#: inną nazwę („NI") niż w modelu („SI"); od partii integracji 9 nazwa jest jedna („SI").
 _ENM_NA_KLUCZ = {
     "IEC_SI": "0.14/0.02",
     "IEC_VI": "13.5/1.0",
@@ -130,7 +132,6 @@ def test_jeden_zbior_nazw_krzywych_modelu_i_jego_konsumentow() -> None:
 
     from application.analyses.protection.ocena_nadpradowa import (
         ETYKIETY_KRZYWYCH_PL,
-        KRZYWA_W_KATALOGU,
         KRZYWE_IEC,
         KRZYWE_IEEE,
     )
@@ -140,10 +141,9 @@ def test_jeden_zbior_nazw_krzywych_modelu_i_jego_konsumentow() -> None:
     literaly = set(get_args(KrzywaNastawy))
     assert not set(KRZYWE_IEC) & set(KRZYWE_IEEE)
     assert literaly == set(KRZYWE_IEC) | set(KRZYWE_IEEE)
-    assert literaly == set(CURVE_TYPE_MAP) == set(KRZYWA_W_KATALOGU) == set(ETYKIETY_KRZYWYCH_PL)
+    assert literaly == set(CURVE_TYPE_MAP) == set(ETYKIETY_KRZYWYCH_PL)
     assert "IEC_LTI" in literaly and "IEC_LI" not in literaly
     assert KRZYWE_IEC["IEC_LTI"] is IEC60255CurveType.LONG_TIME_INVERSE
-    assert KRZYWA_W_KATALOGU["IEC_LTI"] == "IEC_LTI"
     assert CURVE_TYPE_MAP["IEC_LTI"] == (
         "IEC_60255",
         IEC60255CurveType.LONG_TIME_INVERSE.value,
@@ -184,3 +184,110 @@ def test_stan_katalogu_modelu_zaden_przekaznik_nie_oferuje_lti() -> None:
         if (z := load_device_capability(ref)) is not None and "IEC_LTI" in z.curves_supported
     ]
     assert z_lti == []
+
+
+# =============================================================================
+# Para NI/SI (decyzja B-01 partii integracji 9, delegacja O-59): krzywa 0,14/0,02 miała w
+# jądrze nazwę „NI", a w modelu ENM, adapterze `iec_curves` i dokumencie kanonicznym — „SI";
+# katalog IED niósł „IEC_NI", więc ocena tłumaczyła nazwy mapą `KRZYWA_W_KATALOGU`. Od partii
+# 9 nazwa jest jedna („SI"), mapa nazw zniknęła: literał modelu JEST kodem katalogu.
+# Iloczyn cech: każda krzywa IEC modelu × {jądro, mapa odczytu, adapter (enum, stałe,
+# etykieta), katalog IED} — porównanie zbiorów, nie przykładu.
+# =============================================================================
+
+#: Kody krzywych katalogu IED, których model ENM nie zna (charakterystyki producenta bez
+#: literału `KrzywaNastawy`). Zbiór ZAMKNIĘTY: nowy alias krzywej modelu w katalogu (np. „IEC_NI"
+#: obok „IEC_SI") albo nowa charakterystyka bez decyzji o jej nazwie zmienia kolor testu.
+_KODY_KATALOGU_SPOZA_MODELU = frozenset({"IEC_STI", "RXIDG", "IAC51", "I2T", "USER_DEFINED", "US1"})
+
+
+def _krzywe_iec_modelu() -> dict[str, IEC60255CurveType]:
+    from application.analyses.protection.ocena_nadpradowa import KRZYWE_IEC
+
+    return dict(KRZYWE_IEC)
+
+
+@pytest.mark.parametrize("literal", sorted(_krzywe_iec_modelu()))
+def test_krzywa_iec_modelu_ma_jedna_nazwe_w_jadrze_odczycie_i_adapterze(literal: str) -> None:
+    """Literał modelu „IEC_<X>" (albo „DT") ↔ wartość jądra „<X>" ↔ kod mapy odczytu ↔ enum,
+    stałe i etykieta adaptera `iec_curves` — jedna nazwa i jedno źródło stałych."""
+    from application.protection_read_model import CURVE_TYPE_MAP
+    from protection.curves.iec_curves import IEC_CURVE_LABELS_PL, IECCurveParams, IECCurveType
+
+    typ = _krzywe_iec_modelu()[literal]
+    assert literal == (typ.value if typ is IEC60255CurveType.DT else f"IEC_{typ.value}")
+    assert CURVE_TYPE_MAP[literal] == ("IEC_60255", typ.value)
+    adapter = IECCurveType(typ.value)
+    assert IEC_CURVE_LABELS_PL[adapter.value] == IEC60255_CURVE_LABELS_PL[typ]
+    stale = IECCurveParams.get_standard_params(adapter)
+    if typ in IEC60255_CURVE_PARAMS:
+        assert (stale.a, stale.b, stale.c) == (*IEC60255_CURVE_PARAMS[typ], 0.0)
+    else:
+        assert (stale.a, stale.b, stale.c) == (0.0, 0.0, 0.0)
+
+
+def test_enum_adaptera_i_jadra_to_ten_sam_zbior_nazw() -> None:
+    from protection.curves.iec_curves import IEC_CURVE_LABELS_PL, IECCurveType
+
+    assert {t.value for t in IECCurveType} == {t.value for t in IEC60255CurveType}
+    assert set(IEC_CURVE_LABELS_PL) == {t.value for t in IEC60255CurveType}
+    assert "NI" not in {t.value for t in IEC60255CurveType}
+
+
+def test_kody_krzywych_katalogu_ied_to_literaly_modelu_albo_jawne_kody_producenta() -> None:
+    """Predykat parami: ocena (`curve_type in curves_supported`) i edytor nastaw (lista
+    charakterystyk pozycji katalogu) pytają katalog LITERAŁEM modelu, więc każdy kod krzywej
+    katalogu jest literałem modelu albo pozycją zamkniętego zbioru kodów producenta — trzeciej
+    drogi (alias tej samej krzywej) nie ma."""
+    from typing import get_args
+
+    from application.analyses.protection.catalog.catalog_store import load_device_capability
+    from enm.models import KrzywaNastawy
+
+    dane = json.loads(
+        (
+            Path(__file__).resolve().parents[3]
+            / "src/application/analyses/protection/catalog/data/devices_v0.json"
+        ).read_text(encoding="utf-8")
+    )
+    kody = {k for urzadzenie in dane["devices"] for k in urzadzenie.get("curves_supported", [])}
+    literaly = set(get_args(KrzywaNastawy))
+    assert kody - literaly == _KODY_KATALOGU_SPOZA_MODELU
+    assert literaly <= kody, "literał modelu bez żadnego przekaźnika w katalogu"
+    zdolnosc = load_device_capability(dane["devices"][0]["device_id"])
+    assert zdolnosc is not None and set(zdolnosc.curves_supported) <= kody
+
+
+def test_lista_edytora_nastaw_niesie_si_pod_jedna_nazwa() -> None:
+    """Edytor nastaw dostaje dla przekaźnika z krzywą 0,14/0,02 pozycję o kodzie modelu
+    „IEC_SI" z etykietą „(SI)" — dawny kod katalogu „IEC_NI" nie przechodzi żadną ścieżką."""
+    from application.analyses.protection.catalog.catalog_store import load_device_capability
+    from application.analyses.protection.ocena_nadpradowa import _zakresy_katalogu
+
+    zdolnosc = load_device_capability("ABB_REF615")
+    assert zdolnosc is not None and "IEC_SI" in zdolnosc.curves_supported
+    pozycje = {p["kod"]: p["etykieta_pl"] for p in _zakresy_katalogu(zdolnosc)["charakterystyki"]}
+    assert pozycje["IEC_SI"] == "IEC normalnie odwrotna (SI)"
+    assert "IEC_NI" not in zdolnosc.curves_supported
+
+
+def test_stale_krzywych_cytowane_z_tabeli_a1_a_nie_z_tabeli_1_normy() -> None:
+    """Cytat stałych (decyzja B-01 partii integracji 9): IEC 60255-151:2009 ma stałe krzywych
+    w zał. A, tab. A.1; jej tab. 1 to mnożnik błędu czasu zadziałania (spis treści podglądu
+    wydawcy). Żaden plik kodu, testu ani dokumentu zabezpieczeń nie cytuje „tab. 1" tej normy
+    jako źródła stałych. Surowy raport subagenta (`docs/architecture/donor-raw/`) jest
+    zachowanym, jawnie niezweryfikowanym materiałem dowodowym i nie jest przepisywany."""
+    repo = Path(__file__).resolve().parents[4]
+    wzorzec = re.compile(r"60255-151[^|\n]{0,30}(?:Table|Tabela|tab\.)\s*" + "1" + r"\b", re.I)
+    korzenie = [repo / "backend" / "src", repo / "backend" / "tests", repo / "docs"]
+    trafienia = [
+        f"{plik.relative_to(repo)}:{nr}"
+        for korzen in korzenie
+        for plik in sorted(korzen.rglob("*"))
+        if plik.suffix in {".py", ".md"}
+        and "donor-raw" not in plik.parts
+        and plik.resolve() != Path(__file__).resolve()
+        for nr, linia in enumerate(plik.read_text(encoding="utf-8").splitlines(), start=1)
+        if wzorzec.search(linia)
+    ]
+    assert trafienia == []

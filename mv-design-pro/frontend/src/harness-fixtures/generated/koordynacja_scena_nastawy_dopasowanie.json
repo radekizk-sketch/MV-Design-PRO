@@ -4,7 +4,7 @@
   ],
   "capability": {
     "curves_supported": [
-      "IEC_NI",
+      "IEC_SI",
       "IEC_VI",
       "IEC_EI",
       "DT"

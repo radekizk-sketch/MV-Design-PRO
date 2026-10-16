@@ -76,7 +76,7 @@ from network_model.solvers.protection_iec60255 import (
 )
 
 #: Pozycja katalogu ZABEZPIECZENIE z zakresami w ×In i podstawą (profil referencyjny D-33):
-#: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_NI/IEC_VI/DT.
+#: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_SI/IEC_VI/DT.
 REL_REF = "REF-OC-200"
 #: Pozycja producenta z zakresami BEZ ustalonej jednostki (brak karty producenta w repo).
 REL_BEZ_JEDNOSTKI = "EM_ETANGO_400_V0"
@@ -334,7 +334,7 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
             None,
             KOD_MNOZNIK_POZA_ZAKRESEM,
         ),
-        # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_NI, IEC_VI, DT)
+        # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_SI, IEC_VI, DT)
         (
             _przypisanie(Q1, [_stopien_51(curve_type="IEC_EI")]),
             None,
@@ -400,7 +400,7 @@ def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyn
 # 2. Krzywe — czas z rdzenia wobec NIEZALEŻNEGO rachunku wg normy
 # ---------------------------------------------------------------------------
 
-#: IEC 60255-151:2009 tab. 1 (A, B): t = TMS·A/(M^B − 1).
+#: IEC 60255-151:2009 zał. A tab. A.1 (A, B; LTI: ABB 1MRS756887 tab. 1001): t = TMS·A/(M^B − 1).
 _IEC = {
     "IEC_SI": (0.14, 0.02),
     "IEC_VI": (13.5, 1.0),
@@ -476,7 +476,7 @@ def test_rachunek_reczny_si_i_ieee_vi() -> None:
 
 
 def test_odwzorowanie_krzywych_iec_idzie_po_stalych_a_nie_po_nazwie() -> None:
-    """IEC_SI → NI (0,14; 0,02), IEC_LTI → LONG_TIME_INVERSE (120; 1) — po wzorze, nie nazwie."""
+    """IEC_SI → STANDARD_INVERSE (0,14; 0,02), IEC_LTI → LONG_TIME_INVERSE (120; 1) — po wzorze, nie nazwie."""
     for nazwa, stale in _IEC.items():
         assert IEC60255_CURVE_PARAMS[KRZYWE_IEC[nazwa]] == stale, nazwa
     assert KRZYWE_IEC["DT"] is IEC60255CurveType.DT

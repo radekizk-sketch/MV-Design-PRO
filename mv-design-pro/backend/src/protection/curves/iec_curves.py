@@ -33,7 +33,12 @@ from enum import StrEnum
 from typing import Any
 
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.solvers.protection_iec60255 import compute_idmt_generic
+from network_model.solvers.protection_iec60255 import (
+    IEC60255_CURVE_LABELS_PL,
+    IEC60255_CURVE_PARAMS,
+    IEC60255CurveType,
+    compute_idmt_generic,
+)
 
 # Numeric guard for inverse-time results, NOT a protection setting.
 # The IEC 60255 inverse curves diverge as M -> 1 (e.g. LTI at M=1.1, TMS=1 gives
@@ -59,13 +64,10 @@ class IECCurveType(StrEnum):
     DEFINITE_TIME = "DT"  # Czas niezależny
 
 
-# Polish labels for UI display (no codenames)
+# Polskie etykiety — JEDNO źródło: rdzeń IEC 60255 (od partii integracji 9 nazwy krzywych
+# adaptera i rdzenia są te same, więc odwzorowanie idzie po wartości, bez mapy nazw).
 IEC_CURVE_LABELS_PL: dict[str, str] = {
-    "SI": "Normalna odwrotna (SI)",
-    "VI": "Bardzo odwrotna (VI)",
-    "EI": "Ekstremalnie odwrotna (EI)",
-    "LTI": "Odwrotna długoczasowa (LTI, 120)",
-    "DT": "Czas niezależny (DT)",
+    typ.value: IEC60255_CURVE_LABELS_PL[typ] for typ in IEC60255CurveType
 }
 
 
@@ -97,17 +99,15 @@ class IECCurveParams:
         Returns:
             IECCurveParams with standard A, B, C values
         """
-        # IEC 60255-151:2009 standard parameters
-        STANDARD_PARAMS: dict[IECCurveType, tuple[float, float, float]] = {
-            IECCurveType.STANDARD_INVERSE: (0.14, 0.02, 0.0),
-            IECCurveType.VERY_INVERSE: (13.5, 1.0, 0.0),
-            IECCurveType.EXTREMELY_INVERSE: (80.0, 2.0, 0.0),
-            IECCurveType.LONG_TIME_INVERSE: (120.0, 1.0, 0.0),
-            IECCurveType.DEFINITE_TIME: (0.0, 0.0, 0.0),  # Fixed time curve
-        }
-
-        a, b, c = STANDARD_PARAMS.get(curve_type, (0.14, 0.02, 0.0))  # Default to SI
-        return cls(curve_type=curve_type, a=a, b=b, c=c)
+        # Stałe (A, B) — JEDNO źródło: tabela rdzenia `IEC60255_CURVE_PARAMS` (nazwy krzywych
+        # adaptera i rdzenia są te same od partii integracji 9). C = 0 dla krzywych normy;
+        # DT nie ma stałych (czas zadziałania = zwłoka nastawy). Bez cichego zapasu na SI:
+        # typ spoza enumu nie przechodzi przez `IECCurveType` u wołającego.
+        typ_rdzenia = IEC60255CurveType(curve_type.value)
+        if typ_rdzenia not in IEC60255_CURVE_PARAMS:
+            return cls(curve_type=curve_type, a=0.0, b=0.0, c=0.0)
+        a, b = IEC60255_CURVE_PARAMS[typ_rdzenia]
+        return cls(curve_type=curve_type, a=a, b=b, c=0.0)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for JSON export."""
@@ -201,7 +201,10 @@ def calculate_iec_tripping_time(
 
     # Definite time curve
     if curve_params.curve_type == IECCurveType.DEFINITE_TIME:
-        dt = definite_time_s if definite_time_s is not None else 0.1
+        # Zwłoka DT jest nastawą — jej brak to odmowa danych, nie domyślne 0,1 s.
+        if definite_time_s is None:
+            raise OdmowaDanychError("Charakterystyka czasu niezależnego (DT) wymaga zwłoki nastawy")
+        dt = definite_time_s
         trip_time = dt if will_trip else float("inf")
         return IECTrippingResult(
             tripping_time_s=trip_time,

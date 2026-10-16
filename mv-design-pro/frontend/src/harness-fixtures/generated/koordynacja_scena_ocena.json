@@ -1563,7 +1563,7 @@
           "funkcja": "overcurrent_51",
           "jednostka_progu": "A_WTORNY",
           "krzywa": "IEC_SI",
-          "krzywa_pl": "IEC normalnie odwrotna (NI)",
+          "krzywa_pl": "IEC normalnie odwrotna (SI)",
           "prog_pierwotny_a": 240.0,
           "prog_wtorny_a": 2.0,
           "slad": {
@@ -1655,7 +1655,7 @@
             "kod": "DT"
           },
           {
-            "etykieta_pl": "IEC normalnie odwrotna (NI)",
+            "etykieta_pl": "IEC normalnie odwrotna (SI)",
             "kod": "IEC_SI"
           },
           {
@@ -1669,7 +1669,7 @@
         ],
         "jednostka_zakresow_pradowych": "KROTNOSC_IN",
         "krzywe": [
-          "IEC_NI",
+          "IEC_SI",
           "IEC_VI",
           "DT"
         ],
@@ -1726,7 +1726,7 @@
           "funkcja": "overcurrent_51",
           "jednostka_progu": "A_WTORNY",
           "krzywa": "IEC_SI",
-          "krzywa_pl": "IEC normalnie odwrotna (NI)",
+          "krzywa_pl": "IEC normalnie odwrotna (SI)",
           "prog_pierwotny_a": 180.0,
           "prog_wtorny_a": 1.5,
           "slad": {
@@ -1818,7 +1818,7 @@
             "kod": "DT"
           },
           {
-            "etykieta_pl": "IEC normalnie odwrotna (NI)",
+            "etykieta_pl": "IEC normalnie odwrotna (SI)",
             "kod": "IEC_SI"
           },
           {
@@ -1832,7 +1832,7 @@
         ],
         "jednostka_zakresow_pradowych": "KROTNOSC_IN",
         "krzywe": [
-          "IEC_NI",
+          "IEC_SI",
           "IEC_VI",
           "DT"
         ],

@@ -597,7 +597,7 @@ class OvercurrentCoordinationAnalyzer:
 
 
 def _opis_stopnia(stopien: Any) -> str:
-    """„I> (51): 240 A, IEC normalnie odwrotna (NI), TMS 0,3" — stopień w zdaniu legendy."""
+    """„I> (51): 240 A, IEC normalnie odwrotna (SI), TMS 0,3" — stopień w zdaniu legendy."""
     czas = (
         f"TMS {_liczba(stopien.tms)}"
         if stopien.tms is not None
