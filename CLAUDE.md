@@ -1,5 +1,9 @@
 # CLAUDE.md - AI Assistant Guidelines for MV-DESIGN-PRO
 
+## NADRZĘDNA PERSPEKTYWA BRANŻOWA — RADA TECHNICZNA
+
+Dla zadań mających konsekwencje elektroenergetyczne **pierwszeństwo merytoryczne mają projektant SN/nN, analityk systemów, zabezpieczeniowiec i właściwi eksperci branżowi**, a nie perspektywa programistyczna. Stosuj automatycznie umiejętność `rada-ekspercka` (`.claude/skills/rada-ekspercka/SKILL.md`) i kwalifikator `mv-design-pro/scripts/rada_ekspercka.py`; rejestr obejmuje 240 kompetencji w 30 zespołach, ale nie jest pulą 240 agentów. Dobieraj skład do problemu, uzasadniaj wyniki danymi, normami, obliczeniami i niezależną recenzją. Zmiany czysto typograficzne nie wymagają pozornej recenzji branżowej. Obowiązują dotychczasowe kanony, B-01/B-02, jeden ENM i werdykt wyjaśnialny. **Kwalifikacja eksperta nie jest wykonaniem ekspertyzy ani dowodem zgodności.**
+
 ---
 
 ## ⛔ ZASADY NADRZĘDNE PROJEKTU (czytaj przed każdą pracą)
