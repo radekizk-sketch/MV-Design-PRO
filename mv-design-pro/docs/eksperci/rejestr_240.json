@@ -25,6 +25,12 @@
       "related_groups": [
         "G12",
         "G30"
+      ],
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
       ]
     },
     {
@@ -49,6 +55,12 @@
       "related_groups": [
         "G03",
         "G28"
+      ],
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
       ]
     },
     {
@@ -76,6 +88,12 @@
         "G04",
         "G08",
         "G12"
+      ],
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
       ]
     },
     {
@@ -102,6 +120,12 @@
         "G06",
         "G07",
         "G10"
+      ],
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
       ]
     },
     {
@@ -126,6 +150,12 @@
       "related_groups": [
         "G03",
         "G12"
+      ],
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
       ]
     },
     {
@@ -153,6 +183,12 @@
       "related_groups": [
         "G04",
         "G10"
+      ],
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
       ]
     },
     {
@@ -180,6 +216,11 @@
       "related_groups": [
         "G10",
         "G12"
+      ],
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
       ]
     },
     {
@@ -210,6 +251,12 @@
         "G03",
         "G12",
         "G20"
+      ],
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
       ]
     },
     {
@@ -237,6 +284,12 @@
       "related_groups": [
         "G03",
         "G29"
+      ],
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
       ]
     },
     {
@@ -268,6 +321,12 @@
       "related_groups": [
         "G11",
         "G12"
+      ],
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
       ]
     },
     {
@@ -294,6 +353,11 @@
       "related_groups": [
         "G10",
         "G21"
+      ],
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
       ]
     },
     {
@@ -324,6 +388,11 @@
         "G03",
         "G10",
         "G30"
+      ],
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
       ]
     },
     {
@@ -352,6 +421,11 @@
         "G15",
         "G16",
         "G17"
+      ],
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
       ]
     },
     {
@@ -380,6 +454,12 @@
       "related_groups": [
         "G15",
         "G21"
+      ],
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
       ]
     },
     {
@@ -410,6 +490,12 @@
         "G16",
         "G17",
         "G24"
+      ],
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
       ]
     },
     {
@@ -441,6 +527,12 @@
         "G13",
         "G15",
         "G26"
+      ],
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
       ]
     },
     {
@@ -470,6 +562,12 @@
         "G13",
         "G15",
         "G16"
+      ],
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
       ]
     },
     {
@@ -496,6 +594,11 @@
       "related_groups": [
         "G13",
         "G19"
+      ],
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
       ]
     },
     {
@@ -524,6 +627,12 @@
       "related_groups": [
         "G13",
         "G17"
+      ],
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
       ]
     },
     {
@@ -549,6 +658,12 @@
         "G08",
         "G10",
         "G21"
+      ],
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
       ]
     },
     {
@@ -578,6 +693,12 @@
         "G10",
         "G11",
         "G30"
+      ],
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
       ]
     },
     {
@@ -605,6 +726,11 @@
         "G03",
         "G04",
         "G25"
+      ],
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
       ]
     },
     {
@@ -631,6 +757,12 @@
         "G10",
         "G12",
         "G20"
+      ],
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
       ]
     },
     {
@@ -657,6 +789,12 @@
       "related_groups": [
         "G20",
         "G23"
+      ],
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
       ]
     },
     {
@@ -686,6 +824,12 @@
         "G04",
         "G10",
         "G22"
+      ],
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
       ]
     },
     {
@@ -712,6 +856,11 @@
       "related_groups": [
         "G13",
         "G16"
+      ],
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
       ]
     },
     {
@@ -738,6 +887,11 @@
         "G02",
         "G17",
         "G28"
+      ],
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
       ]
     },
     {
@@ -765,6 +919,12 @@
       "related_groups": [
         "G02",
         "G24"
+      ],
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
       ]
     },
     {
@@ -792,6 +952,12 @@
         "G08",
         "G09",
         "G20"
+      ],
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
       ]
     },
     {
@@ -821,6 +987,12 @@
       "related_groups": [
         "G01",
         "G12"
+      ],
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
       ]
     }
   ],
@@ -851,7 +1023,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E002",
@@ -881,7 +1059,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E003",
@@ -908,7 +1092,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E004",
@@ -937,7 +1127,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E005",
@@ -964,7 +1160,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E006",
@@ -991,7 +1193,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E007",
@@ -1019,7 +1227,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E008",
@@ -1049,7 +1263,13 @@
         "G12",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60255",
+        "PN-EN 50160",
+        "dokumentacja modelu i wymagania operatora"
+      ]
     },
     {
       "id": "E009",
@@ -1079,7 +1299,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E010",
@@ -1109,7 +1335,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E011",
@@ -1138,7 +1370,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E012",
@@ -1168,7 +1406,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E013",
@@ -1197,7 +1441,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E014",
@@ -1225,7 +1475,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E015",
@@ -1254,7 +1510,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E016",
@@ -1283,7 +1545,13 @@
         "G03",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IRiESD właściwego OSD",
+        "PN-EN 50160",
+        "wytyczne planowania operatora",
+        "standardy niezawodności"
+      ]
     },
     {
       "id": "E017",
@@ -1313,7 +1581,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E018",
@@ -1343,7 +1617,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E019",
@@ -1374,7 +1654,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E020",
@@ -1405,7 +1691,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E021",
@@ -1438,7 +1730,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E022",
@@ -1471,7 +1769,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E023",
@@ -1504,7 +1808,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E024",
@@ -1535,7 +1845,13 @@
         "G08",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60287",
+        "PN-HD 60364",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E025",
@@ -1565,7 +1881,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E026",
@@ -1595,7 +1917,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E027",
@@ -1626,7 +1954,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E028",
@@ -1658,7 +1992,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E029",
@@ -1688,7 +2028,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E030",
@@ -1719,7 +2065,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E031",
@@ -1750,7 +2102,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E032",
@@ -1782,7 +2140,13 @@
         "G07",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271",
+        "IEC 60076",
+        "PN-EN 50522",
+        "dokumentacja konstrukcyjna producenta"
+      ]
     },
     {
       "id": "E033",
@@ -1810,7 +2174,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E034",
@@ -1839,7 +2209,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E035",
@@ -1867,7 +2243,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E036",
@@ -1896,7 +2278,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E037",
@@ -1925,7 +2313,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E038",
@@ -1956,7 +2350,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E039",
@@ -1985,7 +2385,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E040",
@@ -2013,7 +2419,13 @@
         "G03",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909",
+        "IEC 60076",
+        "IRiESD/IRiESP",
+        "warunki przyłączenia"
+      ]
     },
     {
       "id": "E041",
@@ -2045,7 +2457,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E042",
@@ -2079,7 +2497,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E043",
@@ -2112,7 +2536,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E044",
@@ -2143,7 +2573,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E045",
@@ -2177,7 +2613,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E046",
@@ -2208,7 +2650,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E047",
@@ -2241,7 +2689,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E048",
@@ -2274,7 +2728,13 @@
         "G04",
         "G10"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62271-100",
+        "IEC 62271-102",
+        "IEC 62271-200",
+        "dokumentacja producenta"
+      ]
     },
     {
       "id": "E049",
@@ -2305,7 +2765,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E050",
@@ -2336,7 +2801,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E051",
@@ -2369,7 +2839,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E052",
@@ -2401,7 +2876,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E053",
@@ -2434,7 +2914,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E054",
@@ -2466,7 +2951,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E055",
@@ -2499,7 +2989,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E056",
@@ -2532,7 +3027,12 @@
         "G10",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60076",
+        "IEC 60909",
+        "dane fabryczne i próby transformatora"
+      ]
     },
     {
       "id": "E057",
@@ -2566,7 +3066,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E058",
@@ -2600,7 +3106,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E059",
@@ -2636,7 +3148,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E060",
@@ -2671,7 +3189,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E061",
@@ -2707,7 +3231,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E062",
@@ -2743,7 +3273,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E063",
@@ -2780,7 +3316,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E064",
@@ -2816,7 +3358,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60287",
+        "IEC 60502-2",
+        "IEC 60949",
+        "instrukcja układania kabli"
+      ]
     },
     {
       "id": "E065",
@@ -2848,7 +3396,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E066",
@@ -2880,7 +3434,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E067",
@@ -2913,7 +3473,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E068",
@@ -2946,7 +3512,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E069",
@@ -2980,7 +3552,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E070",
@@ -3012,7 +3590,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E071",
@@ -3044,7 +3628,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E072",
@@ -3078,7 +3668,13 @@
         "G03",
         "G29"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50341",
+        "PN-EN 50423",
+        "Eurokody konstrukcyjne",
+        "warunki techniczne OSD"
+      ]
     },
     {
       "id": "E073",
@@ -3112,7 +3708,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E074",
@@ -3148,7 +3750,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E075",
@@ -3184,7 +3792,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E076",
@@ -3221,7 +3835,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E077",
@@ -3257,7 +3877,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E078",
@@ -3294,7 +3920,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E079",
@@ -3330,7 +3962,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E080",
@@ -3365,7 +4003,13 @@
         "G11",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60255",
+        "IEC 60909",
+        "instrukcje EAZ OSD",
+        "dokumentacja przekaźnika"
+      ]
     },
     {
       "id": "E081",
@@ -3397,7 +4041,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E082",
@@ -3429,7 +4078,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E083",
@@ -3459,7 +4113,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E084",
@@ -3489,7 +4148,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E085",
@@ -3521,7 +4185,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E086",
@@ -3553,7 +4222,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E087",
@@ -3586,7 +4260,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E088",
@@ -3618,7 +4297,12 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61869",
+        "IEC 60255",
+        "schematy wtórne i instrukcje przekaźników"
+      ]
     },
     {
       "id": "E089",
@@ -3654,7 +4338,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E090",
@@ -3689,7 +4378,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E091",
@@ -3725,7 +4419,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E092",
@@ -3761,7 +4460,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E093",
@@ -3796,7 +4500,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E094",
@@ -3833,7 +4542,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E095",
@@ -3870,7 +4584,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E096",
@@ -3906,7 +4625,12 @@
         "G10",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60909-0",
+        "IEC TR 60909-4",
+        "wzorcowe przypadki testowe i modele walidacyjne"
+      ]
     },
     {
       "id": "E097",
@@ -3938,7 +4662,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E098",
@@ -3970,7 +4699,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E099",
@@ -4003,7 +4737,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E100",
@@ -4036,7 +4775,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E101",
@@ -4069,7 +4813,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E102",
@@ -4102,7 +4851,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E103",
@@ -4136,7 +4890,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E104",
@@ -4170,7 +4929,12 @@
         "G16",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400-27-1",
+        "dokumentacja regulatorów",
+        "wymagania operatora dla modeli dynamicznych"
+      ]
     },
     {
       "id": "E105",
@@ -4204,7 +4968,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E106",
@@ -4237,7 +5007,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E107",
@@ -4269,7 +5045,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E108",
@@ -4304,7 +5086,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E109",
@@ -4338,7 +5126,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E110",
@@ -4373,7 +5167,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E111",
@@ -4407,7 +5207,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E112",
@@ -4441,7 +5247,13 @@
         "G15",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50160",
+        "IEC 61000-4-30",
+        "IEC 61000-4-7",
+        "IEC 61000-4-15"
+      ]
     },
     {
       "id": "E113",
@@ -4476,7 +5288,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E114",
@@ -4510,7 +5328,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E115",
@@ -4545,7 +5369,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E116",
@@ -4579,7 +5409,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E117",
@@ -4614,7 +5450,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E118",
@@ -4649,7 +5491,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E119",
@@ -4683,7 +5531,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E120",
@@ -4717,7 +5571,13 @@
         "G17",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61400",
+        "IEC 61724",
+        "NC RfG",
+        "dokumentacja producentów źródeł"
+      ]
     },
     {
       "id": "E121",
@@ -4751,7 +5611,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E122",
@@ -4788,7 +5654,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E123",
@@ -4824,7 +5696,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E124",
@@ -4860,7 +5738,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E125",
@@ -4897,7 +5781,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E126",
@@ -4931,7 +5821,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E127",
@@ -4967,7 +5863,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E128",
@@ -5002,7 +5904,13 @@
         "G15",
         "G26"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Rozporządzenie (UE) 2016/631",
+        "aktualne WOS",
+        "procedury PTPiREE",
+        "IRiESD właściwego OSD"
+      ]
     },
     {
       "id": "E129",
@@ -5035,7 +5943,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E130",
@@ -5069,7 +5983,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E131",
@@ -5103,7 +6023,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E132",
@@ -5136,7 +6062,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E133",
@@ -5169,7 +6101,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E134",
@@ -5203,7 +6141,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E135",
@@ -5237,7 +6181,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E136",
@@ -5270,7 +6220,13 @@
         "G15",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 62477-1",
+        "dokumentacja BMS i PCS",
+        "wymagania operatora"
+      ]
     },
     {
       "id": "E137",
@@ -5301,7 +6257,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E138",
@@ -5332,7 +6293,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E139",
@@ -5363,7 +6329,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E140",
@@ -5394,7 +6365,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E141",
@@ -5425,7 +6401,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E142",
@@ -5456,7 +6437,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E143",
@@ -5488,7 +6474,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E144",
@@ -5521,7 +6512,12 @@
         "G13",
         "G19"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "IEC 61800",
+        "dokumentacja generatorów i silników"
+      ]
     },
     {
       "id": "E145",
@@ -5553,7 +6549,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E146",
@@ -5585,7 +6587,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E147",
@@ -5618,7 +6626,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E148",
@@ -5651,7 +6665,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E149",
@@ -5682,7 +6702,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E150",
@@ -5714,7 +6740,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E151",
@@ -5747,7 +6779,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E152",
@@ -5779,7 +6817,13 @@
         "G13",
         "G17"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61800",
+        "IEC 62477",
+        "IEC 61000",
+        "dane półprzewodników mocy"
+      ]
     },
     {
       "id": "E153",
@@ -5808,7 +6852,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E154",
@@ -5839,7 +6889,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E155",
@@ -5869,7 +6925,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E156",
@@ -5899,7 +6961,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E157",
@@ -5928,7 +6996,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E158",
@@ -5958,7 +7032,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E159",
@@ -5989,7 +7069,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E160",
@@ -6019,7 +7105,13 @@
         "G10",
         "G21"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50522",
+        "PN-HD 60364",
+        "IEC 62305",
+        "dokumentacja urządzeń ochronnych"
+      ]
     },
     {
       "id": "E161",
@@ -6053,7 +7145,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E162",
@@ -6087,7 +7185,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E163",
@@ -6122,7 +7226,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E164",
@@ -6156,7 +7266,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E165",
@@ -6190,7 +7306,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E166",
@@ -6224,7 +7346,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E167",
@@ -6257,7 +7385,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E168",
@@ -6290,7 +7424,13 @@
         "G11",
         "G30"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61557",
+        "IEC 61869",
+        "IEC 60255",
+        "procedury badań i wzorcowania"
+      ]
     },
     {
       "id": "E169",
@@ -6321,7 +7461,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E170",
@@ -6353,7 +7498,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E171",
@@ -6385,7 +7535,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E172",
@@ -6417,7 +7572,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E173",
@@ -6448,7 +7608,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E174",
@@ -6478,7 +7643,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E175",
@@ -6510,7 +7680,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E176",
@@ -6542,7 +7717,12 @@
         "G04",
         "G25"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 50110-1",
+        "IRiESD właściwego OSD",
+        "instrukcje eksploatacji i łączeń"
+      ]
     },
     {
       "id": "E177",
@@ -6572,7 +7752,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E178",
@@ -6602,7 +7788,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E179",
@@ -6634,7 +7826,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E180",
@@ -6665,7 +7863,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E181",
@@ -6695,7 +7899,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E182",
@@ -6726,7 +7936,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E183",
@@ -6757,7 +7973,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E184",
@@ -6788,7 +8010,13 @@
         "G12",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-HD 60364",
+        "IEC 61439",
+        "IEC 60909",
+        "dokumentacja instalacji"
+      ]
     },
     {
       "id": "E185",
@@ -6819,7 +8047,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E186",
@@ -6850,7 +8084,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E187",
@@ -6881,7 +8121,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E188",
@@ -6912,7 +8158,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E189",
@@ -6943,7 +8195,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E190",
@@ -6975,7 +8233,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E191",
@@ -7005,7 +8269,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E192",
@@ -7035,7 +8305,13 @@
         "G20",
         "G23"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61851",
+        "PN-EN 50122",
+        "PN-EN 50121",
+        "normy branżowe właściwego obiektu"
+      ]
     },
     {
       "id": "E193",
@@ -7069,7 +8345,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E194",
@@ -7102,7 +8384,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E195",
@@ -7135,7 +8423,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E196",
@@ -7168,7 +8462,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E197",
@@ -7202,7 +8502,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E198",
@@ -7234,7 +8540,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E199",
@@ -7267,7 +8579,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E200",
@@ -7301,7 +8619,13 @@
         "G10",
         "G22"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 61850",
+        "IEC 60870-5-104",
+        "IEC 62443",
+        "profile interoperacyjności"
+      ]
     },
     {
       "id": "E201",
@@ -7332,7 +8656,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E202",
@@ -7363,7 +8692,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E203",
@@ -7394,7 +8728,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E204",
@@ -7424,7 +8763,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E205",
@@ -7456,7 +8800,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E206",
@@ -7487,7 +8836,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E207",
@@ -7519,7 +8873,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E208",
@@ -7550,7 +8909,12 @@
         "G13",
         "G16"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 60034",
+        "NC RfG",
+        "instrukcje regulatorów i synchronizacji"
+      ]
     },
     {
       "id": "E209",
@@ -7581,7 +8945,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E210",
@@ -7612,7 +8981,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E211",
@@ -7642,7 +9016,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E212",
@@ -7672,7 +9051,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E213",
@@ -7703,7 +9087,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E214",
@@ -7734,7 +9123,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E215",
@@ -7765,7 +9159,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E216",
@@ -7797,7 +9196,12 @@
         "G17",
         "G28"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "IEC 62933",
+        "IEC 61000",
+        "dokumentacja układów elastyczności i bilansowania"
+      ]
     },
     {
       "id": "E217",
@@ -7829,7 +9233,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E218",
@@ -7859,7 +9269,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E219",
@@ -7891,7 +9307,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E220",
@@ -7923,7 +9345,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E221",
@@ -7955,7 +9383,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E222",
@@ -7986,7 +9420,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E223",
@@ -8018,7 +9458,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E224",
@@ -8051,7 +9497,13 @@
         "G02",
         "G24"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Prawo energetyczne",
+        "rozporządzenia taryfowe",
+        "IRiESD",
+        "decyzje URE i dokumenty rynku"
+      ]
     },
     {
       "id": "E225",
@@ -8083,7 +9535,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E226",
@@ -8116,7 +9574,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E227",
@@ -8148,7 +9612,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E228",
@@ -8181,7 +9651,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E229",
@@ -8214,7 +9690,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E230",
@@ -8246,7 +9728,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E231",
@@ -8278,7 +9766,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E232",
@@ -8311,7 +9805,13 @@
         "G09",
         "G20"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "Eurokody",
+        "IEC 60071",
+        "dokumentacja materiałów",
+        "decyzje środowiskowe"
+      ]
     },
     {
       "id": "E233",
@@ -8344,7 +9844,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E234",
@@ -8378,7 +9884,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E235",
@@ -8413,7 +9925,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E236",
@@ -8448,7 +9966,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E237",
@@ -8482,7 +10006,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E238",
@@ -8517,7 +10047,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E239",
@@ -8550,7 +10086,13 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     },
     {
       "id": "E240",
@@ -8585,7 +10127,14 @@
         "G01",
         "G12"
       ],
-      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści."
+      "sources": "Ustal wydanie i właściwy punkt aktualnej normy, instrukcji OSD/OSP, katalogu lub procedury; nie przypisuj dokumentowi niezweryfikowanej treści.",
+      "reference_documents": [
+        "PN-EN 60617",
+        "IEC 60909",
+        "IEC 60255",
+        "kanony MV-DESIGN PRO i przypadki referencyjne"
+      ]
     }
-  ]
+  ],
+  "source_warning": "Nazwy dokumentów stanowią indeks źródeł do weryfikacji. Wybór właściwego wydania, zakresu zastosowania i punktu jest osobnym zadaniem eksperta; wykaz nie jest potwierdzeniem zgodności."
 }
