@@ -593,7 +593,12 @@ def test_mapa_sygnatur_czyta_pozycje_z_kodu_solvera() -> None:
     assert signatures, "warstwa solvera nie oddala zadnej sygnatury z fault_node_id"
     assert signatures["compute_3ph_short_circuit"] == 1
     assert signatures["compute_machine_contributions"] == 1
-    assert set(signatures.values()) == {1}
+    # Odmowa strukturalna węzła spoza grafu (rdzeń zwarciowy, decyzja B-01 partii 9) bierze
+    # identyfikator jako PIERWSZY parametr — mapa musi ją znać, żeby reguła C łapała
+    # przekazanie pozycyjne także do niej. Pozycje 0 i 1 to cały zbiór zmierzony w repo;
+    # pozycja 2+ oznaczałaby nieobcięte `self`/`cls` (błąd mapy).
+    assert signatures["odmowa_wezla_zwarcia_spoza_grafu"] == 0
+    assert set(signatures.values()) == {0, 1}
 
 
 def test_pusta_mapa_sygnatur_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
