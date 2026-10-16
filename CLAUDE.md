@@ -30,10 +30,16 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 - Sesja główna: Claude Opus 5.5 (`claude-opus-5-5`), effort `high` — planuje, deleguje,
   a po powrocie wykonawców sama recenzuje i weryfikuje (bramki uruchamia niezależnie).
 - Wykonawcy — definicje w `.claude/agents/` (jedno źródło; Claude Code ładuje je jako typy
-  subagentów), Opus 5.5: `explorer` (effort `low`) — czytanie kodu i pomiar klasy defektu (bez
-  edycji); `researcher` (effort `low`) — dokumentacja i normy; `worker` (effort `medium`) — edycje +
-  testy w swoim drzewie (commit bez push); `worker-rdzen` (effort `high`) — rola `worker` dla rdzenia
-  solvera, wyroczni i bramek poprawności. Effort podnosisz tylko, gdy zadanie tego wymaga.
+  subagentów): `explorer` (Sonnet 5.5 `claude-sonnet-5-5`, effort `low`) — czytanie kodu i pomiar
+  klasy defektu (bez edycji); `researcher` (Sonnet 5.5, effort `low`) — dokumentacja i normy;
+  `worker` (Opus 5.5, effort `medium`) — edycje + testy w swoim drzewie (commit bez push);
+  `worker-rdzen` (Opus 5.5, effort `high`) — rola `worker` dla rdzenia solvera, wyroczni i bramek
+  poprawności. Effort podnosisz tylko, gdy zadanie tego wymaga.
+- **Sonnet 5.5 tam, gdzie taniej bez uszczerbku na jakości** (dyrektywa właściciela 2026-10-16):
+  role tylko do odczytu oraz karty mechaniczne `worker` (zrzuty, regeneracja fikstur narzędziem,
+  testy wg gotowej specyfikacji, dokumenty, poprawki lint/typów) uruchamiasz z `model: sonnet`;
+  rdzeń solvera, geometria SLD, decyzje projektowe i weryfikacja zostają na Opus 5.5. Podczas pracy
+  testy wybiera bramka wpływu zmiany (`scripts/bramka_scalenia.py`); pełna regresja raz na partię.
 - Sesje w chmurze (karty roju) i wykonawcy decyzji: domyślnie Opus 5.5 (`medium`; `high` dla
   rdzeni B-01). Decyzje architektoniczne z delegacji O-59 wydaje sesja główna Opus 5.5.
 - **Claude Fable 5.1 (`claude-fable-5-1`) — wyłącznie ostatecznie, dla zadań najtrudniejszych**
