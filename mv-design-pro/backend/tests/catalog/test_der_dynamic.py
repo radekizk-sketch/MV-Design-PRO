@@ -333,26 +333,28 @@ class TestPokrycieKatalogu:
             assert r.profile is not None
 
     def test_pomiar_pokrycia_wiatr(self) -> None:
-        """Pomiar 2026-09-16: 0 wpisow katalogu turbin ma jawne dynamic_profile_id
-        (pole istnieje w kontrakcie, zaden wpis go nie uzupelnia) — zapisane
-        jawnie jako znany brak (nie ta karta go domyka: wypelnienie kazdego
-        wpisu wymaga osobnej decyzji inzynierskiej ktory profil pasuje do
-        ktorej turbiny, poza zakresem kontraktow tej karty)."""
-        from network_model.catalog.wind_turbines.catalog import list_wind_turbines
-
-        turbines = list_wind_turbines()
-        assert turbines, "Katalog turbin wiatrowych pusty"
-        z_wyborem = [t for t in turbines if t.dynamic_profile_id]
-        assert len(z_wyborem) == 0, (
-            "Pokrycie katalogu wiatru zmienilo sie od pomiaru 2026-09-16 "
-            f"({len(z_wyborem)}/{len(turbines)}) — zaktualizuj komentarz testu "
-            "albo (jesli to Twoja karta) dopisz test miarodajnosci nowych wpisow."
+        """Pomiar 2026-10-15 (karta KATALOG-TURBINY-TOR-V112): 0 z 50 turbin wiatrowych
+        katalogu (`ConverterType` rodzaju WIND — jedyny typ turbiny w ścieżce użytkownika
+        po skasowaniu równoległego `wind_turbines.catalog`) ma jawne `dynamic_profile_id`.
+        Dokumenty producenta (Vestas V112) nie podają modelu dynamicznego, więc brak jest
+        uczciwy: resolver zwraca `brak`, nigdy profil typowy. Pomiar 2026-09-16 dotyczył
+        skasowanego modelu równoległego (0 z 19)."""
+        catalog = get_default_mv_catalog()
+        turbiny = sorted(
+            (t for t in catalog.converter_types.values() if t.kind.value == "WIND"),
+            key=lambda t: t.id,
         )
-        for t in turbines:
+        assert len(turbiny) == 50, "Liczba turbin katalogu zmieniła się od pomiaru"
+        z_wyborem = [t for t in turbiny if t.dynamic_profile_id]
+        assert len(z_wyborem) == 0, (
+            "Pokrycie katalogu wiatru zmieniło się od pomiaru 2026-10-15 "
+            f"({len(z_wyborem)}/{len(turbiny)}) — zaktualizuj komentarz testu "
+            "albo (jeśli to Twoja karta) dopisz test miarodajności nowych wpisów."
+        )
+        for t in turbiny:
             r = resolve_der_dynamic_profile(
                 der_kind="FW",
                 catalog_dynamic_profile_id=t.dynamic_profile_id,
-                converter_type=t.converter_type,
             )
             assert r.source == "brak"
             assert r.profile is None

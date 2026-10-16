@@ -174,8 +174,16 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-041` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-044` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
+
+Karta KATALOG-TURBINY-TOR-V112: `KAT-T-042` pola toru maszyny wylacznie dla
+turbiny wiatrowej (`kind == WIND`), `043` wielkosci toru maszyny dodatnie
+i skonczone, `044` rodzaj maszyny zgodny z topologia przeksztaltnika (jedna mapa
+`TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY`). Strona sieci przeksztaltnika turbiny to
+`un_kv` (wiaze sie z uzwojeniem nN transformatora blokowego); napiecie stojana
+generatora jest osobnym polem `generator_stator_voltage_kv` i nie wchodzi do
+solwerow.
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
 `ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)
@@ -282,7 +290,7 @@ decyzje podejmuje czlowiek.
 | `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
 | `bess-inverter` | 66 | 0 | 43 | 9,9 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `cable` | 63 | 54 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
-| `converter` | 188 | 9 | 50 | 21,5 | 188 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `converter` | 192 | 9 | 56 | 19,2 | 192 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
@@ -302,15 +310,15 @@ decyzje podejmuje czlowiek.
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
 | `switch-equipment` | 48 | 33 | 4 | 85,4 | 48 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
-| `transformer` | 245 | 1 | 5 | 80,5 | 245 | brak | brak |
+| `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 25. Pozycji łącznie: 8019, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8019.
+Rodzin objętych pomiarem: 25. Pozycji łącznie: 8041, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8041.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 
 Rodziny z duplikatami identyfikatorów: brak.
 
-Karty widmowe: 0. Typów przekształtników z co najmniej jedną kartą widmową: 0 z 188. Karty wg statusu weryfikacji: brak kart.
+Karty widmowe: 0. Typów przekształtników z co najmniej jedną kartą widmową: 0 z 192. Karty wg statusu weryfikacji: brak kart.
 
 <!-- GENEROWANE: gotowosc katalogow — koniec -->

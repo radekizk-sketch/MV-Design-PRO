@@ -49,6 +49,7 @@ from dziedziny.widmo import ModelZrodlaWidmowego
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.repository import CatalogRepository
+from network_model.catalog.types import POLA_TORU_MASZYNY
 from pydantic import BaseModel, ConfigDict
 from solver_input.provenance import resolve_card_field_quality_map
 from werdykt.kontrakt import PodstawaWymagania
@@ -167,6 +168,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "cosphi_min",
                 "cosphi_max",
                 "e_kwh",
+                *POLA_TORU_MASZYNY,
             ),
             _FLAGI_REGULACJI,
         ),
@@ -462,6 +464,7 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("magazyn", False, "e_kwh"),
                 _s("regulacja", False, *_REGULACJA, *_FLAGI_REGULACJI),
                 *_FUNDAMENTAL_OPCJONALNE,
+                _s("tor_maszyny", False, *POLA_TORU_MASZYNY),
             ),
             **_SEKCJE_PRZEKSZTALTNIKA_WSPOLNE,
         },
@@ -494,6 +497,8 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("zdolnosc_bierna", False, "qmin_mvar", "qmax_mvar"),
                 _s("regulacja", False, *_REGULACJA),
                 *_FUNDAMENTAL_OPCJONALNE,
+                # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny zmaterializowany z typu.
+                _s("tor_maszyny", False, *POLA_TORU_MASZYNY),
             ),
             **_SEKCJE_PRZEKSZTALTNIKA_WSPOLNE,
             "dynamic": (

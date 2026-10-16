@@ -8,9 +8,10 @@ operatora → default per kind": brak jawnego wyboru jest brakiem danej
 (`source="brak"`), nigdy cichym podstawieniem.
 
 Integracja:
-- `PVInverterType.dynamic_model_id` / `BESSInverterType.dynamic_model_id` /
-  `WindTurbineCatalogEntry.dynamic_model_id` — opcjonalna referencja
-  do profilu w tym katalogu.
+- `ConverterType.dynamic_profile_id` (także turbiny wiatrowe — rodzaj WIND, jedyny
+  typ turbiny w ścieżce użytkownika) / `PVInverterType.dynamic_profile_id` /
+  `BESSInverterType.dynamic_profile_id` — opcjonalna referencja do profilu w tym
+  katalogu.
 - `enm.dynamika_z_katalogu` — JEDYNA materializacja profilu do kopii
   `Generator.dynamika` (`profile.to_parametry_dynamiczne(s_n_mva=...)`), wołana przez
   operację domenową wiązania `set_der_catalog_bindings` (karta AB-P1).

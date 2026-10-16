@@ -28,7 +28,7 @@ from functools import lru_cache
 from typing import Any
 
 from .repository import CatalogRepository, get_default_mv_catalog
-from .types import POLA_KARTY_PROJEKCJI
+from .types import POLA_KARTY_PROJEKCJI, POLA_TORU_MASZYNY
 
 #: Pola typów DODANE PO ZAMROŻENIU odcisków, które w zrzucie kanonicznym występują
 #: WYŁĄCZNIE, gdy niosą wartość (ten sam kontrakt „addytywnie, `exclude_none`", co
@@ -39,6 +39,9 @@ from .types import POLA_KARTY_PROJEKCJI
 _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "PVInverterType": POLA_KARTY_PROJEKCJI,
     "BESSInverterType": POLA_KARTY_PROJEKCJI,
+    # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny — pozycja bez niego ma odcisk
+    # sprzed karty.
+    "ConverterType": POLA_TORU_MASZYNY,
 }
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`
