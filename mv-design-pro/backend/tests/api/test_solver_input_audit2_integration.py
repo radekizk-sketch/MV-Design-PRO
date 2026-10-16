@@ -111,7 +111,7 @@ def _build_minimal_network(client, case_id: str) -> None:
                         "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.95},
                         # Uklad uziemienia sieci nN — wymagany przez bramke gotowosci
                         # rozplywu mocy dla stacji zasilajacej odbiory nN.
-                        "nn_earthing": {"lv_system": "TN-S"},
+                        "nn_earthing": {"lv_system": "TN-S", "lv_voltage_tolerance": "PLUS_6"},
                     },
                     "sn_fields": ["IN", "OUT", "FEEDER", "TR"],
                     "transformer": {

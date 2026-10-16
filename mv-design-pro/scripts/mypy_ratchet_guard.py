@@ -207,8 +207,20 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
-BASELINE_ERRORS = 223
-BASELINE_FILES = 34
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16, baza `bd3a87f4` = 224/35, bo commit 3/n
+# tej karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`): 224/35 -> 199/26.
+# Naprawione w plikach dotkniętych kartą: `upstream_equivalent.py` (brak `tolerancja_nn`),
+# `czas_wylaczenia_galezi.py` (3: zmienna pętli o trzech typach źródeł, typ stanów
+# przeglądu wszerz), `lv_temperature_correction.py` (6: zmienna pętli o czterech typach
+# źródeł), `typ_sieci_solvera` przyjmuje `str` i sam odmawia wartości spoza słownika
+# (6 wołań w `fault_loop/service.py`, `swz/service.py`, `nn_device_selection.py`,
+# `lv_circuit_verification_binding.py`), `nn_device_selection.py` (5: zmienna `gate` o
+# trzech typach wyniku), `assembler.py` (nastawa PV `float | None` z odmową nazwaną),
+# `ocena_nadpradowa.py` (2: granice zakresu zawężone jawnie, typ wpływów źródeł).
+# Zostaje `short_circuit_iec60909.py:644` (`builder: object`) — rdzeń FROZEN, zgoda B-01
+# karty obejmuje tylko kasację martwego kodu, nie typowanie parametrów.
+BASELINE_ERRORS = 199
+BASELINE_FILES = 26
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

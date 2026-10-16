@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+import pytest
 from enm.domain_operations import append_station_on_endpoint, execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -853,6 +854,39 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
     assert "nn_earthing_system" not in (sub.get("meta") or {})
 
 
+@pytest.mark.parametrize(
+    ("tolerancja", "kod"),
+    [("PLUS_6", None), ("PLUS_10", None), ("PLUS_8", "station.invalid_lv_voltage_tolerance")],
+)
+def test_endpoint_append_nn_earthing_niesie_tolerancje_sieci_nn(
+    tolerancja: str, kod: str | None
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `nn_earthing.lv_voltage_tolerance` (parytet z
+    `insert_station_on_segment_sn`) zapisuje wiersz nN tabeli 1 IEC 60909-0 na
+    transformatorze stacji; wartość spoza słownika = odmowa nazwana bez skutku."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja tolerancja", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": tolerancja},
+        },
+    )
+    if kod is not None:
+        assert response.get("error_code") == kod, response
+        assert response.get("snapshot") is None
+        return
+    assert response.get("error") is None, response
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja tolerancja")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    assert tr["lv_voltage_tolerance"] == tolerancja
+
+
 def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
     """station_auxiliary → odbiór nN „potrzeby własne" z Q z cosφ (G-STK-3).
 
@@ -1103,6 +1137,9 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
                 "pk_kw": 6.5,
             },
             "nn_voltage_kv": 0.4,
+            # Sieć nN +6 % (wiersz c 1,05/0,95 tabeli 1 IEC 60909-0): K_T transformatora
+            # czyta c_max strony dolnej z tej deklaracji; pin liczony dla tego wiersza.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
         },
     )
     assert response.get("error") is None

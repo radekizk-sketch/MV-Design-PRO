@@ -134,6 +134,7 @@ def _build_golden_enm(name: str) -> EnergyNetworkModel:
                 uk_percent=_TR_UK_PERCENT,
                 pk_kw=_TR_PK_KW,
                 vector_group="Dyn11",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 catalog_ref="tr-15-04-630kva-dyn11",
                 catalog_namespace="mv_transformers",
                 parameter_source="CATALOG",

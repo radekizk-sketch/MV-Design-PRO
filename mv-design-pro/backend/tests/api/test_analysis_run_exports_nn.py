@@ -45,6 +45,7 @@ def _enm() -> EnergyNetworkModel:
                 pk_kw=6.5,
                 vector_group="Dyn11",
                 lv_earthing_system="TN-C-S",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         ],
         branches=[

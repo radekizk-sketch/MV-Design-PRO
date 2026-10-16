@@ -262,7 +262,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "eab2c9e78bc24c383c108288382abfb4625ac3cef22ac5b74b66b5ba5b4fc5b7",
+    "hash_sha256": "b9a4e660138b377262e5b22b551df04991f81eb7c34d03cbd25a0487ba0a503a",
     "name": "CGMES Golden Net",
     "revision": 1,
     "updated_at": "2026-09-16T09:00:00Z"
@@ -318,14 +318,13 @@
   "sources": [
     {
       "bus_ref": "bus_hv",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-110kv-2500mva",
       "gpz_section_id": null,
       "id": "0e754775-0862-5cbe-938a-19936a494bcd",
       "ik3_ka": null,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": null,
       "meta": {},
       "model": "short_circuit_power",
@@ -412,6 +411,7 @@
       "lv_bus_ref": "bus_sn_main",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": null,
       "meta": {},
       "n_parallel": null,
@@ -463,6 +463,7 @@
         "type": "directly_grounded",
         "x_ohm": null
       },
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": null,
       "meta": {},
       "n_parallel": null,

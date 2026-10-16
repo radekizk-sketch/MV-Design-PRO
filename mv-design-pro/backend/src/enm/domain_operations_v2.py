@@ -85,6 +85,7 @@ from .domain_operations import (
     _materialize_catalog_payload,
     _odmowa_typu_ladunku,
     _opt_float_any,
+    _powod_odmowy_tolerancji_nn,
     _require_catalog_ref,
     _require_transformer_fields,
     _response,
@@ -5351,6 +5352,18 @@ def _materialize_der_block_transformer(
     tr_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(tr_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: strona wtórna TR blokowego (wyjście falownika,
+    # pasmo nN) to sieć nN — jej tolerancja napięcia (+6 % / +10 %, wiersz nN tabeli 1
+    # IEC 60909-0) wybiera c węzłów tej sieci i c_max we wzorze K_T TEGO transformatora.
+    # Ten sam predykat zapisu co stacja i edycja parametrów; brak = brak deklaracji.
+    tolerancja_nn = spec.get("lv_voltage_tolerance")
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        tolerancja_nn, tr_data.get("ulv_kv"), element_pl="transformator blokowy źródła"
+    )
+    if powod_tolerancji is not None:
+        return None, _error_response(powod_tolerancji, "der.invalid_lv_voltage_tolerance")
+    if tolerancja_nn is not None:
+        tr_data["lv_voltage_tolerance"] = tolerancja_nn
     brak_pol_tr_der = _require_transformer_fields(tr_data)
     if brak_pol_tr_der is not None:
         return None, brak_pol_tr_der

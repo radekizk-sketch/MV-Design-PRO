@@ -286,14 +286,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -456,6 +455,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -1418,14 +1418,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -1731,6 +1730,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -1783,6 +1783,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -3354,14 +3355,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -3810,6 +3810,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -3862,6 +3863,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -3907,6 +3909,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -6094,14 +6097,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -6693,6 +6695,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -6745,6 +6748,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -6790,6 +6794,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -6835,6 +6840,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -9638,14 +9644,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -10380,6 +10385,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -10432,6 +10438,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -10477,6 +10484,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -10522,6 +10530,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -10567,6 +10576,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -13986,14 +13996,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -14871,6 +14880,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -14923,6 +14933,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -14968,6 +14979,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -15013,6 +15025,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -15058,6 +15071,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -15103,6 +15117,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -19138,14 +19153,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -20166,6 +20180,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -20218,6 +20233,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -20263,6 +20279,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -20308,6 +20325,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -20353,6 +20371,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -20398,6 +20417,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -20443,6 +20463,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -25094,14 +25115,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -26265,6 +26285,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -26317,6 +26338,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26362,6 +26384,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26407,6 +26430,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26452,6 +26476,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26497,6 +26522,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26542,6 +26568,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -26587,6 +26614,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -31854,14 +31882,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -33168,6 +33195,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -33220,6 +33248,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33265,6 +33294,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33310,6 +33340,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33355,6 +33386,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33400,6 +33432,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33445,6 +33478,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33490,6 +33524,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -33535,6 +33570,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -39418,14 +39454,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -40875,6 +40910,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -40927,6 +40963,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -40972,6 +41009,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41017,6 +41055,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41062,6 +41101,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41107,6 +41147,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41152,6 +41193,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41197,6 +41239,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41242,6 +41285,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -41287,6 +41331,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -47786,14 +47831,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -49386,6 +49430,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -49438,6 +49483,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49483,6 +49529,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49528,6 +49575,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49573,6 +49621,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49618,6 +49667,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49663,6 +49713,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49708,6 +49759,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49753,6 +49805,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49798,6 +49851,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -49843,6 +49897,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -56958,14 +57013,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -58701,6 +58755,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -58753,6 +58808,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -58798,6 +58854,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -58843,6 +58900,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -58888,6 +58946,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -58933,6 +58992,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -58978,6 +59038,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -59023,6 +59084,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -59068,6 +59130,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -59113,6 +59176,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -59158,6 +59222,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -59203,6 +59268,7 @@
             "lv_bus_ref": "bus/4dfd768e5d513ad5e6bfb11d5cedcfb6/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -66934,14 +67000,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -68820,6 +68885,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -68872,6 +68938,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -68917,6 +68984,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -68962,6 +69030,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69007,6 +69076,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69052,6 +69122,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69097,6 +69168,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69142,6 +69214,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69187,6 +69260,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69232,6 +69306,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69277,6 +69352,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69322,6 +69398,7 @@
             "lv_bus_ref": "bus/4dfd768e5d513ad5e6bfb11d5cedcfb6/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -69367,6 +69444,7 @@
             "lv_bus_ref": "bus/f6661810b1fd98f70fd09487cbe633a2/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -77714,14 +77792,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -79743,6 +79820,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -79795,6 +79873,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -79840,6 +79919,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -79885,6 +79965,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -79930,6 +80011,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -79975,6 +80057,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80020,6 +80103,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80065,6 +80149,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80110,6 +80195,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80155,6 +80241,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80200,6 +80287,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80245,6 +80333,7 @@
             "lv_bus_ref": "bus/4dfd768e5d513ad5e6bfb11d5cedcfb6/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80290,6 +80379,7 @@
             "lv_bus_ref": "bus/f6661810b1fd98f70fd09487cbe633a2/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -80335,6 +80425,7 @@
             "lv_bus_ref": "bus/4491acd3fff8fa1eb41aa0d35d2e1893/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -89298,14 +89389,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -91470,6 +91560,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -91522,6 +91613,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91567,6 +91659,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91612,6 +91705,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91657,6 +91751,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91702,6 +91797,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91747,6 +91843,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91792,6 +91889,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91837,6 +91935,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91882,6 +91981,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91927,6 +92027,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -91972,6 +92073,7 @@
             "lv_bus_ref": "bus/4dfd768e5d513ad5e6bfb11d5cedcfb6/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -92017,6 +92119,7 @@
             "lv_bus_ref": "bus/f6661810b1fd98f70fd09487cbe633a2/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -92062,6 +92165,7 @@
             "lv_bus_ref": "bus/4491acd3fff8fa1eb41aa0d35d2e1893/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -92107,6 +92211,7 @@
             "lv_bus_ref": "bus/924e48562a3d6053b7b20b3c35fcff3c/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -101686,14 +101791,13 @@
         "sources": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-            "c_max": null,
-            "c_min": null,
             "catalog_namespace": "ZRODLO_SN",
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
             "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
             "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
             "ik3_ka": 9.62,
             "ik3_min_ka": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "src-gpz-15kv-250mva-rx010",
               "catalog_item_version": "legacy",
@@ -104001,6 +104105,7 @@
             "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
               "catalog_item_version": "legacy",
@@ -104053,6 +104158,7 @@
             "lv_bus_ref": "bus/98d4edad394b38ce1da666b9b3294dc4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104098,6 +104204,7 @@
             "lv_bus_ref": "bus/d966b8bd7fe3ffc5813f6bc64f60bd96/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104143,6 +104250,7 @@
             "lv_bus_ref": "bus/b661364fd4da5fcecca248ad1e785b53/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104188,6 +104296,7 @@
             "lv_bus_ref": "bus/d01150d65d33c18ca656de9d793095c5/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104233,6 +104342,7 @@
             "lv_bus_ref": "bus/87aa5de4a83ba5d1d202befb17353496/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104278,6 +104388,7 @@
             "lv_bus_ref": "bus/3001ef6e103b7f616cf913001186073d/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104323,6 +104434,7 @@
             "lv_bus_ref": "bus/3cbe69dd32e91d7f29264ae9da4967c8/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104368,6 +104480,7 @@
             "lv_bus_ref": "bus/7dd04f11e06c9125345ff379be7db59b/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104413,6 +104526,7 @@
             "lv_bus_ref": "bus/0c763386fd41f1b04b908f6aa9942157/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104458,6 +104572,7 @@
             "lv_bus_ref": "bus/3bfb3e2dc89e69e3e43e759d4524aed9/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104503,6 +104618,7 @@
             "lv_bus_ref": "bus/4dfd768e5d513ad5e6bfb11d5cedcfb6/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104548,6 +104664,7 @@
             "lv_bus_ref": "bus/f6661810b1fd98f70fd09487cbe633a2/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104593,6 +104710,7 @@
             "lv_bus_ref": "bus/4491acd3fff8fa1eb41aa0d35d2e1893/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104638,6 +104756,7 @@
             "lv_bus_ref": "bus/924e48562a3d6053b7b20b3c35fcff3c/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",
@@ -104683,6 +104802,7 @@
             "lv_bus_ref": "bus/4b1d9dfb8345649346894380c5c3f2a4/nn",
             "lv_earthing_system": null,
             "lv_neutral": null,
+            "lv_voltage_tolerance": null,
             "materialized_params": {
               "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
               "catalog_item_version": "legacy",

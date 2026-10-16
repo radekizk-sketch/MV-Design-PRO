@@ -1175,7 +1175,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "60904998658818308c5f65d5d66720a605cf906f910dc580247d3c81a05ad227",
+      "hash_sha256": "3d4f95b878941e316a43beb2ab68603917002a81ad6f728ebaec84b10d654a8e",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1447,14 +1447,13 @@
     "sources": [
       {
         "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
         "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "2024.1",
@@ -1861,6 +1860,7 @@
         "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -1913,6 +1913,7 @@
         "lv_bus_ref": "nn/607377d2652b13644a669759b61aeb9b/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -1958,6 +1959,7 @@
         "lv_bus_ref": "nn/cdbe409baca46daff81f94962a2a700a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",

@@ -95,8 +95,12 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `CatalogRepository(uow.session)`, które zawsze kończyło się połkniętym `TypeError`
     # (3 błędy `call-arg`) ⇒ 226/35 → 223/34; pomiar na scalonym drzewie partii 5 (AB-P1,
     # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
-    assert modul.BASELINE_ERRORS == 223
-    assert modul.BASELINE_FILES == 34
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): baza `bd3a87f4` 224/35 (commit 3/n
+    # karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`) → 199/26 — błędy
+    # w plikach dotkniętych kartą naprawione u źródła (lista przy `BASELINE_*` w guardzie;
+    # różnica zbiorów `mypy src` baza/drzewo karty = 25 zdjętych, zero nowych).
+    assert modul.BASELINE_ERRORS == 199
+    assert modul.BASELINE_FILES == 26
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

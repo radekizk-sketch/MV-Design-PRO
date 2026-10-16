@@ -47,6 +47,7 @@ def _base_enm(*, extra_transformer: bool = False) -> EnergyNetworkModel:
             uk_percent=4.0,
             pk_kw=6.5,
             vector_group="Dyn11",
+            lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
         )
     ]
     branches = []
@@ -65,6 +66,7 @@ def _base_enm(*, extra_transformer: bool = False) -> EnergyNetworkModel:
                 uk_percent=4.0,
                 pk_kw=4.5,
                 vector_group="Dyn11",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         )
         branches.append(
@@ -220,6 +222,7 @@ class TestMultiTransformerDisambiguation:
                 uk_percent=4.0,
                 pk_kw=1.0,
                 vector_group="Dyn11",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         )
         snap = build_upstream_equivalent_snapshot(

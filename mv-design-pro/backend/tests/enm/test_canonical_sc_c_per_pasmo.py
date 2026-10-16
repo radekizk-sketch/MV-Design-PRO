@@ -32,6 +32,7 @@ from enm.models import (
     Transformer,
 )
 from enm.store import reset_enm_store, set_enm
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.catalog_test_helpers import gpz_source_record
@@ -72,10 +73,16 @@ N2 = "N2_SZYNA_NN"
 N3 = "N3_KONIEC_NN"
 
 
-def _build_mv_lv_enm(name: str) -> EnergyNetworkModel:
+def _build_mv_lv_enm(
+    name: str, *, tolerancja: TolerancjaNapieciaNn | None = "PLUS_6"
+) -> EnergyNetworkModel:
     """Sieć SN+nN: GPZ -> kabel SN -> szyna SN -> TR 630 kVA -> szyna nN ->
     kabel nN -> koniec obwodu. Wszystkie gałęzie/TR/źródło mają catalog_ref
-    (E009 CATALOG-FIRST jest BLOKEREM w ENMValidator)."""
+    (E009 CATALOG-FIRST jest BLOKEREM w ENMValidator).
+
+    ``tolerancja`` — deklarowana tolerancja sieci nN na transformatorze (nośnik wiersza nN
+    tabeli 1 IEC 60909-0). Domyślnie +6 % (1,05/0,95) — wartości przypięte w tym pliku
+    liczono dla tego wiersza; ``None`` buduje sieć bez deklaracji (odmowa zwarć)."""
     return EnergyNetworkModel(
         header=ENMHeader(name=name),
         buses=[
@@ -128,6 +135,7 @@ def _build_mv_lv_enm(name: str) -> EnergyNetworkModel:
                 uk_percent=_TR_UK_PERCENT,
                 pk_kw=_TR_PK_KW,
                 vector_group="Dyn11",
+                lv_voltage_tolerance=tolerancja,
                 catalog_ref="tr-15-04-630kva-dyn11",
                 catalog_namespace="mv_transformers",
                 parameter_source="CATALOG",

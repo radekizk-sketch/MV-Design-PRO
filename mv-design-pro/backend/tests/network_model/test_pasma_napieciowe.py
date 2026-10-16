@@ -171,8 +171,10 @@ def test_walidator_e029_falownik_na_szynie_powyzej_pasma_nn(napiecie: float, odm
 def test_wspolczynnik_c_iec60909_z_granicy_pasma(
     napiecie: float, c_max: float, c_min: float
 ) -> None:
-    assert c_for_node(napiecie, "MAX") == c_max
-    assert c_for_node(napiecie, "MIN") == c_min
+    # Wiersz nN tabeli 1 z tolerancją +6 % (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); dla SN
+    # tolerancja sieci nN nie ma znaczenia — granica pasma decyduje o wierszu.
+    assert c_for_node(napiecie, "MAX", tolerancja_nn="PLUS_6") == c_max
+    assert c_for_node(napiecie, "MIN", tolerancja_nn="PLUS_6") == c_min
 
 
 @pytest.mark.parametrize(("napiecie", "nn"), [(1.0, True), (1.001, False)])
@@ -188,8 +190,8 @@ _NAPIECIA_NIEFIZYCZNE = [0.0, -0.4, float("nan"), float("inf"), float("-inf")]
 @pytest.mark.parametrize(
     "dobor",
     [
-        pytest.param(lambda u: c_for_node(u, "MAX"), id="c_max"),
-        pytest.param(lambda u: c_for_node(u, "MIN"), id="c_min"),
+        pytest.param(lambda u: c_for_node(u, "MAX", tolerancja_nn="PLUS_6"), id="c_max"),
+        pytest.param(lambda u: c_for_node(u, "MIN", tolerancja_nn="PLUS_6"), id="c_min"),
         pytest.param(lambda u: _synchronous_r_over_x(u, 10.0), id="rx_synchroniczna"),
         pytest.param(lambda u: _asynchronous_r_over_x(u, 0.5), id="rx_asynchroniczna"),
     ],

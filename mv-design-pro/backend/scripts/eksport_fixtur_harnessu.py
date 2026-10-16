@@ -395,6 +395,9 @@ def _dodaj_modul_oze_sn(
                 "catalog_binding": _wiazanie_katalogowe(
                     "TRANSFORMATOR_SN_NN", modul["transformator_blokowy"]
                 ),
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN wyjścia falownika +6 % (wiersz
+                # c 1,05/0,95 tabeli 1 IEC 60909-0) — dana kreatora OZE, nie domyślka.
+                "lv_voltage_tolerance": "PLUS_6",
             },
             "has_dedicated_mv_field": True,
             "mv_bus_ref": szyna_sn,
@@ -1372,9 +1375,10 @@ def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     """Mapa `target_id → odpowiedź` `POST /api/proof/sc3f/contributions` dla
     WSZYSTKICH punktów zwarcia biegu kotwicy — TĄ SAMĄ funkcją, którą woła
     końcówka (`sc3f_contributions`, `api/proof_pack.py`), z DOKŁADNIE
-    domyślnymi parametrami klienta (`c_factor=1.10`, `t_min_s=0.10` —
-    `frontend/src/ui2/wyniki/zwarcia/api.ts::fetchWkladyZwarciowe` ich nie
-    nadpisuje).
+    parametrami klienta: scenariusz oglądanego biegu (`MAX`) i `t_min_s=0.10`
+    (`frontend/src/ui2/wyniki/zwarcia/api.ts::fetchWkladyZwarciowe` go nie nadpisuje);
+    c z tabeli 1 IEC 60909-0 dla pasma i tolerancji sieci węzła (karta
+    WSPOLCZYNNIK-C-JEDEN-NOSNIK — dawna liczba `c_factor` z żądania skasowana).
 
     Sieć złota niesie JEDNĄ maszynę konwencjonalną (`gen_sync`, synchroniczna)
     — `compute_machine_contributions` rozbija WYŁĄCZNIE maszyny wirujące z
@@ -1389,7 +1393,11 @@ def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     rows = build_short_circuit_results(run)["rows"]
     return {
         row["target_id"]: sc3f_contributions(
-            SCContributionsRequest(snapshot=snapshot, fault_node_id=row["target_id"])
+            # Scenariusz OGLĄDANEGO biegu kotwicy (`options={}` → MAX) — kontrakt karty
+            # WSPOLCZYNNIK-C-JEDEN-NOSNIK: c z tabeli 1 dla pasma węzła, nie liczba z żądania.
+            SCContributionsRequest(
+                snapshot=snapshot, fault_node_id=row["target_id"], scenariusz="MAX"
+            )
         )
         for row in rows
     }
@@ -1518,6 +1526,10 @@ def _gpz_feeder_enm_z_falownikiem() -> EnergyNetworkModel:
     for transformator in enm.transformers:
         if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
             transformator.lv_earthing_system = "TN-C-S"
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: ta sama zasada dla tolerancji napięcia sieci nN
+        # (wiersz nN tabeli 1 IEC 60909-0) — scena deklaruje +6 % jawnie.
+        if transformator.ulv_kv < 1.0 and transformator.lv_voltage_tolerance is None:
+            transformator.lv_voltage_tolerance = "PLUS_6"
     enm.generators = [
         *enm.generators,
         Generator(
@@ -2007,6 +2019,9 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
             "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
             "nn_block": {"outgoing_feeders_nn_count": 1},
+            # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
+            # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
         },
     )
     stacja = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
@@ -2703,7 +2718,6 @@ def koordynacja_scena_nastawy() -> dict[str, Any]:
             bieg_max,
             line_id=pozycja["line_id"],
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
-            c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
             nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
@@ -2723,7 +2737,6 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
             device_id=_APARAT_DOPASOWANIA_KOORD,
             line_id=pozycja["line_id"],
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
-            c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
             nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
@@ -3635,6 +3648,9 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             ],
             "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_LOM},
             "nn_block": {"outgoing_feeders_nn_count": 1},
+            # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
+            # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "station": {
                 "station_type": "B",
                 "station_name": "Stacja wytwórcy",
@@ -3802,6 +3818,8 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
                     "catalog_binding": _wiazanie_katalogowe_sceny(
                         "TRAFO_SN_NN", _TRANSFORMATOR_BLOKOWY_SCENY_V126
                     ),
+                    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN wyjścia falownika +6 %.
+                    "lv_voltage_tolerance": "PLUS_6",
                 },
                 "has_dedicated_mv_field": True,
                 "mv_bus_ref": "bus_sn_b",
@@ -4291,6 +4309,10 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
     for transformator in model.transformers:
         if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
             transformator.lv_earthing_system = "TN-C-S"
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: ta sama zasada dla tolerancji napięcia sieci nN
+        # (wiersz nN tabeli 1 IEC 60909-0) — scena deklaruje +6 % jawnie.
+        if transformator.ulv_kv < 1.0 and transformator.lv_voltage_tolerance is None:
+            transformator.lv_voltage_tolerance = "PLUS_6"
     # Model SERWOWANY przez magazyn (`_model_serwowany`, który sam przypina identyfikatory
     # i zegar) — ten, który zwraca `GET …/enm` projektu zbudowanego tymi operacjami.
     return canonicalize_json(_model_serwowany(model).model_dump(mode="json"))

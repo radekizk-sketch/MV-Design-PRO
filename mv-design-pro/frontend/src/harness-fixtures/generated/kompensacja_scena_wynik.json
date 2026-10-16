@@ -2,7 +2,7 @@
   "analysis": "compensation_sizing",
   "context": {
     "run_id": "run-lf-scena-kompensacja",
-    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
     "case_id": "case-demo"
   },
   "parameters": {
@@ -12,7 +12,7 @@
     "cos_phi_min": 0.95,
     "uwzglednij_noc": false
   },
-  "input_hash": "9bbad02ad760a8ea31a478dbfffa0796b994288903c570b7df494910e4ce85c6",
+  "input_hash": "0d111443e8969362a20939f40323102fde215ce1acf4e09c269a96dd18cada7e",
   "baseline": {
     "cosfi_przekroju_dzien": 0.996592,
     "cosfi_przekroju_noc": null,

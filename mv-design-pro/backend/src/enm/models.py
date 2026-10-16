@@ -520,8 +520,14 @@ class Source(ENMElement):
     r0_ohm: float | None = None
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None
-    c_max: float | None = None
-    c_min: float | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN zasilanej z tego źródła
+    # wprost na szynie nN (bez transformatora w modelu) — ten sam nośnik wiersza nN tabeli 1
+    # IEC 60909-0 co `Transformer.lv_voltage_tolerance` (+6 % → c 1,05/0,95; +10 % → c
+    # 1,10/0,90), rozwiązywany per wyspa nN przez `enm.tolerancja_nn`. Czytana wyłącznie, gdy
+    # szyna źródła leży w paśmie nN; brak przy takim źródle = odmowa nazwana
+    # (`fault.c_tolerancja_nn_brak`), nigdy domyślka. Dawne pola `c_max`/`c_min` źródła
+    # (fantom: zapisywane, nigdy nieczytane — c dobiera wyłącznie `voltage_factor`) skasowane.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 # ---------------------------------------------------------------------------

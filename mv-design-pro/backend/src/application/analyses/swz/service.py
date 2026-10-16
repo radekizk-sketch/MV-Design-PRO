@@ -173,7 +173,7 @@ def build_swz_view(
     # W5-A: układ sieci nN z transformatora ZASILAJĄCEGO; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_analizy_nn(context, trafo)
+    odmowa = odmowa_analizy_nn(context, trafo, enm=enm)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -215,6 +215,7 @@ def build_swz_view(
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     loop_result = oblicz_petle_na_trasie(
+        enm=enm,
         trafo=trafo,
         fault_node_id=bus_ref,
         u_phase_v=u_phase_v,

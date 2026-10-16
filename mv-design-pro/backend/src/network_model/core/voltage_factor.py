@@ -12,8 +12,9 @@ selected PER FAULT-NODE VOLTAGE BAND, never per study/globally:
 IEC 60909-0:2016 Table 1, footnotes: c_max 1.05 "for low-voltage systems with a tolerance of
 +6 %, for example systems renamed from 380 V to 400 V"; c_max 1.10 "for low-voltage systems
 with a tolerance of +10 %"; c_min 0.95 / 0.90 respectively. The tolerance is a DATUM of the
-nN system (declared on the transformer that feeds it, ``Transformer.lv_voltage_tolerance``,
-resolved per nN node by ``enm.tolerancja_nn``), never a guess: an nN node without a declared
+nN system (declared on every element that feeds it — ``Transformer.lv_voltage_tolerance`` of
+an SN/nN transformer, ``Source.lv_voltage_tolerance`` of a grid source connected directly to an
+nN bus — resolved per nN node by ``enm.tolerancja_nn``), never a guess: an nN node without a declared
 tolerance is REFUSED with ``KOD_TOLERANCJA_NN_BRAK`` (before this card the +6 % row was taken
 silently, which under-states I_k,max and over-states I_k,min of a +10 % system — the unsafe
 side for both breaking capacity and automatic disconnection).
@@ -29,9 +30,10 @@ decides which c a fault node gets: the fault scenario (MAX/MIN switch) is the on
 the column, the nN tolerance the only carrier of the nN row; a manual override exists only with
 a written justification (``NadpisanieC``) and every choice carries its White Box basis
 (``DoborC.zrodlo``: "IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 %, MAX" or "nadpisanie
-ręczne: <why>"). ``TransformerBranch.get_voltage_factor_c_max``/``_c_min`` (K_T, eq. 12a) and
-the fault-loop solver (IEC 60364) read c from here; no other module may hold a c value
-(pinned by ``tests/network_model/test_wspolczynnik_c_inwentarz.py``).
+ręczne: <why>"). ``TransformerBranch.get_voltage_factor_c_max`` (K_T, eq. 12a),
+``SynchronousMachineSource.k_g`` (K_G, eq. 18), the grid feeder impedance Z_Q (eq. 6,
+``enm.mapping``) and the fault-loop solver (IEC 60364) read c from here; no other module may
+hold a c value (pinned by ``tests/network_model/test_wspolczynnik_c_inwentarz.py``).
 
 NOT a solver: pure lookup, no physics computation, no network state.
 """
@@ -113,7 +115,7 @@ def c_for_node(
                 f"Węzeł nN ({voltage_kv:g} kV) nie ma zadeklarowanej tolerancji napięcia sieci "
                 f"nN (otrzymano {tolerancja_nn!r}) — tabela 1 IEC 60909-0 rozróżnia sieci "
                 "+6 % (c 1,05/0,95) i +10 % (c 1,10/0,90); zadeklaruj tolerancję na "
-                "transformatorze zasilającym sieć nN."
+                "transformatorze albo źródle zasilającym sieć nN."
             )
         c_max, c_min = _TABELA_1_NN[tolerancja_nn]  # type: ignore[index]
     else:
@@ -189,7 +191,7 @@ def nadpisanie_c_z_danych(dane: Any) -> NadpisanieC | None:
     if not isinstance(dane, dict) or set(dane) != {"wartosc", "uzasadnienie"}:
         raise OdmowaNadpisaniaCError(
             KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA,
-            "Nadpisanie współczynnika c musi być obiektem {wartosc, uzasadnienie}; "
+            "Nadpisanie współczynnika c musi być obiektem `{wartosc, uzasadnienie}`; "
             f"otrzymano {dane!r}.",
         )
     return NadpisanieC(wartosc=dane["wartosc"], uzasadnienie=dane["uzasadnienie"])

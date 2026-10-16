@@ -9,6 +9,7 @@ import pytest
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
+from network_model.core.voltage_factor import OdmowaToleranciiNnError
 from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
 
 
@@ -228,7 +229,27 @@ def test_transformer_impedance_ohm_lv():
     assert transformer.get_short_circuit_impedance_ohm_lv() == z_expected
 
 
-def test_voltage_factor_c_lv():
+@pytest.mark.parametrize(("tolerancja", "c_max"), [("PLUS_6", 1.05), ("PLUS_10", 1.10)])
+def test_voltage_factor_c_lv(tolerancja, c_max):
+    """K_T (IEC 60909-0 eq. 12a): c_max strony dolnej nN z tolerancji sieci nN deklarowanej na
+    transformatorze (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK; dawne c_min/I''k strony dolnej bez
+    konsumenta w produkcie — skasowane)."""
+    transformer = create_transformer_branch(
+        "T1",
+        "A",
+        "B",
+        rated_power_mva=25.0,
+        voltage_hv_kv=110.0,
+        voltage_lv_kv=0.4,
+        uk_percent=10.0,
+        pk_kw=120.0,
+    )
+    transformer.tolerancja_nn_dolna = tolerancja
+
+    assert transformer.get_voltage_factor_c_max() == c_max
+
+
+def test_voltage_factor_c_lv_bez_tolerancji_odmowa():
     transformer = create_transformer_branch(
         "T1",
         "A",
@@ -240,8 +261,10 @@ def test_voltage_factor_c_lv():
         pk_kw=120.0,
     )
 
-    assert transformer.get_voltage_factor_c_max() == 1.05
-    assert transformer.get_voltage_factor_c_min() == 0.95
+    with pytest.raises(OdmowaToleranciiNnError, match="fault.c_tolerancja_nn_brak"):
+        transformer.get_voltage_factor_c_max()
+    with pytest.raises(OdmowaToleranciiNnError):
+        transformer.get_kt_correction_factor()
 
 
 def test_voltage_factor_c_mv():
@@ -257,46 +280,6 @@ def test_voltage_factor_c_mv():
     )
 
     assert transformer.get_voltage_factor_c_max() == 1.10
-    assert transformer.get_voltage_factor_c_min() == 1.00
-
-
-def test_ikss_lv_scales_with_c():
-    transformer = create_transformer_branch(
-        "T1",
-        "A",
-        "B",
-        rated_power_mva=20.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=20.0,
-        uk_percent=8.0,
-        pk_kw=60.0,
-    )
-
-    ik_c1 = transformer.get_ikss_lv_ka(c=1.0)
-    ik_cmax = transformer.get_ikss_lv_cmax_ka()
-    ik_cmin = transformer.get_ikss_lv_cmin_ka()
-
-    assert np.isclose(ik_cmax / ik_c1, 1.10)
-    assert np.isclose(ik_cmin / ik_c1, 1.00)
-    assert ik_cmax > ik_cmin
-
-
-def test_ikss_lv_rejects_nonpositive_c():
-    transformer = create_transformer_branch(
-        "T1",
-        "A",
-        "B",
-        rated_power_mva=20.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=20.0,
-        uk_percent=8.0,
-        pk_kw=60.0,
-    )
-
-    with pytest.raises(ValueError):
-        transformer.get_ikss_lv_ka(c=0.0)
-    with pytest.raises(ValueError):
-        transformer.get_ikss_lv_ka(c=-0.1)
 
 
 def _node_at(node_id: str, voltage_kv: float) -> Node:

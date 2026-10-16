@@ -63,6 +63,7 @@ def _enm(
                 pk_kw=pk if pk is not None else 0.0,
                 vector_group=vector_group,
                 lv_earthing_system=system,
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
             )
         ],
         substations=[

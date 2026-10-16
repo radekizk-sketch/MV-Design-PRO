@@ -142,6 +142,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
     "add_transformer_sn_nn:lv_bus_ref": "Szyna nN (dolne napięcie)",  # transformator/strings.ts lvBus
     "lv_earthing_system": "Układ sieci nN",  # stacja/strings.ts uziemienieUklad
+    "lv_voltage_tolerance": "Tolerancja napięcia sieci nN",  # tabela 1 IEC 60909-0 (+6 % / +10 %)
     "lvrt_curve_ref": "Charakterystyka LVRT (zanik napięcia)",  # zrodlo-oze/strings.ts frtLvrt
     "moc_przylaczeniowa_mw": "Moc przyłączeniowa (OSD)",  # ui2/spaces/projekt/strings.ts osdLimit
     "modul_istniejacy": "Moduł istniejący (art. 4 ust. 1 rozporządzenia 2016/631)",  # ui2/oze/ncrfg/strings.ts art4

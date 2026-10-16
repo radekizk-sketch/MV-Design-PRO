@@ -749,7 +749,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "b1c67356acbecceb530be1e362a5b4e1af0b37d6e58f2ede9b87fc2b9607eeaf",
+    "hash_sha256": "7bb64b59af93039a2dd60691cf2b9051a4c25bbd54c3564c7e6b14e266d61526",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -826,14 +826,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -1087,6 +1086,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1139,6 +1139,7 @@
       "lv_bus_ref": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
         "catalog_item_version": "legacy",

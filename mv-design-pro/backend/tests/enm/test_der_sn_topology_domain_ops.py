@@ -158,6 +158,9 @@ def _der_sn_payload(
             "rated_power_mva": 1.0,
             "primary_voltage_kv": 15.0,
             "secondary_voltage_kv": 0.4,
+            # Strona wtórna 0,4 kV to sieć nN falownika: tolerancja +6 % (wiersz nN tabeli 1
+            # IEC 60909-0) wybiera c węzłów tej sieci i c_max we wzorze K_T bloku.
+            "lv_voltage_tolerance": "PLUS_6",
             "catalog_ref": tr_bloku,
             "catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",

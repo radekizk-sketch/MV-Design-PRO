@@ -231,6 +231,7 @@ class TestFaultLoopFingerprintStability:
 
     def test_fault_loop_result_fingerprint_stable(self) -> None:
         data = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_lv",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="Kabel L", r_ohm=0.0157, x_ohm=0.0023),
@@ -252,6 +253,7 @@ class TestFaultLoopFingerprintStability:
     def test_fault_loop_different_inputs_different_hashes(self) -> None:
         """Defensive: różne komponenty → różne hashe (sanity check)."""
         base_kwargs = {
+            "tolerancja_nn": "PLUS_6",
             "fault_node_id": "bus_lv",
             "u_nom_v": 230.0,
             "return_conductor": LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
@@ -296,7 +298,11 @@ class TestE2EFingerprintStability:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
                 fault_node_id="load_bus",
-                c_factor=c_for_node(graph.nodes["load_bus"].voltage_level, "MAX"),
+                c_factor=c_for_node(
+                    graph.nodes["load_bus"].voltage_level,
+                    "MAX",
+                    tolerancja_nn=graph.nodes["load_bus"].tolerancja_nn,
+                ),
                 tk_s=1.0,
                 tb_s=0.1,
                 include_branch_contributions=False,

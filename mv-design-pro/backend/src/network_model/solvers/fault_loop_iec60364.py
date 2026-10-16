@@ -185,8 +185,10 @@ class FaultLoopInput:
     network_type: NetworkType = NetworkType.TN_S
     protection_arrangement: ProtectionArrangement = ProtectionArrangement.PE
     # Tolerancja napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0) z nośnika
-    # `Transformer.lv_voltage_tolerance` — brak = odmowa nazwana `fault.c_tolerancja_nn_brak`.
-    tolerancja_nn: TolerancjaNapieciaNn | None = None
+    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`, `enm.tolerancja_nn`).
+    # Pole WYMAGANE (bez domyślnej) — `None` = brak deklaracji → odmowa nazwana
+    # `fault.c_tolerancja_nn_brak`, nigdy wiersz +6 % po cichu.
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
 
 
 def _validate_input(data: FaultLoopInput) -> None:

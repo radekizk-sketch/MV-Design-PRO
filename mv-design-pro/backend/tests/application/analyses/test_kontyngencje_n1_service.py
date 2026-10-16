@@ -868,8 +868,18 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacja
     # wstawiona w odcinek nie niesie już cienia deklaracji `meta.station_type_sn` /
     # `meta.station_type_semantic` (deklaracja ma jedno miejsce — `station_type`). gn03 bez zmian.
-    "gn01_promieniowa": "5306b64daa9a13505def71cb2958abdd12620391e8ecde5c73dc194b0a977110",
-    "gn03_pierscien": "2cacc16c88dac3b7d044900dae16f6a950888c76a06dacda99863139a87407ef",
+    # 2026-10-16 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): gn01 5306b64d… → 99081f49…, gn03
+    # 2cacc16c… → e77ef288…. Pełne widoki z kodu bazy `bd3a87f4` (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacje
+    # sieci referencyjnych deklarują tolerancję napięcia sieci nN
+    # (`Transformer.lv_voltage_tolerance` = PLUS_6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne. Następnie gn01 99081f49… → 881afd52…: stacja „Stacja B1
+    # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
+    # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
+    # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    "gn01_promieniowa": "881afd52ad08cd7eabc795f92d626904d6190733bd54386b4b278f68302ddb59",
+    "gn03_pierscien": "e77ef28818fde4ce270dfdc3045eff8d431bab8e5ebed0ea5371d19c7dd616d4",
 }
 
 

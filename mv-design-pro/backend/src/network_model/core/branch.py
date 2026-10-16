@@ -31,12 +31,9 @@ from network_model.ir_fields import wymagany_float
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
-    a_na_ka,
     impedancja_z_napiecia_i_mocy_ohm,
-    kv_na_v,
     kw_na_mw,
     mikrosimens_na_simens_ybus,
-    napiecie_fazowe_v,
 )
 
 
@@ -963,11 +960,13 @@ class TransformerBranch(Branch):
 
     def get_voltage_factor_c_max(self) -> float:
         """
-        Get IEC 60909 maximum voltage factor c for LV side.
+        Get IEC 60909 maximum voltage factor c for LV side (K_T, eq. 12a).
 
         Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
         source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
+        ``network_model.core.voltage_factor.c_for_node``) with the declared tolerance
+        of the nN system on the LV side (``tolerancja_nn_dolna``; karta
+        WSPOLCZYNNIK-C-JEDEN-NOSNIK — an nN LV side without it is refused).
 
         Returns:
             Maximum voltage factor c.
@@ -978,65 +977,6 @@ class TransformerBranch(Branch):
             "MAX",
             tolerancja_nn=self.tolerancja_nn_dolna,
         )
-
-    def get_voltage_factor_c_min(self) -> float:
-        """
-        Get IEC 60909 minimum voltage factor c for LV side.
-
-        Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
-        source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
-
-        Returns:
-            Minimum voltage factor c.
-        """
-        self._validate_short_circuit_inputs()
-        return c_for_node(
-            self.voltage_lv_kv,
-            "MIN",
-            tolerancja_nn=self.tolerancja_nn_dolna,
-        )
-
-    def get_ikss_lv_ka(self, c: float) -> float:
-        """
-        Calculate IEC 60909 initial symmetrical short-circuit current on LV side.
-
-        Args:
-            c: Voltage factor.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-
-        Raises:
-            ValueError: If c <= 0.
-            ZeroDivisionError: If short-circuit impedance is zero.
-        """
-        if c <= 0:
-            raise ValueError("c must be > 0")
-        z_th_lv = self.get_short_circuit_impedance_ohm_lv()
-        if z_th_lv == 0 or abs(z_th_lv) == 0:
-            raise ZeroDivisionError("Short-circuit impedance is zero")
-        u_th = napiecie_fazowe_v(c * kv_na_v(self.voltage_lv_kv))
-        ikss = u_th / abs(z_th_lv)
-        return a_na_ka(ikss)
-
-    def get_ikss_lv_cmax_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using maximum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_max())
-
-    def get_ikss_lv_cmin_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using minimum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
 
     def get_relative_reactance_xt(self) -> float:
         """

@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
@@ -77,8 +77,10 @@ class FaultLoopBuildRequest:
     transformer_label: str = "Transformator"
     upstream_label: str = "Sieć zasilająca (upstream Thevenin)"
     # Tolerancja napięcia sieci nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z nośnika
-    # `Transformer.lv_voltage_tolerance` przez `enm.tolerancja_nn`; brak = odmowa solvera.
-    tolerancja_nn: TolerancjaNapieciaNn | None = None
+    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`) przez
+    # `enm.tolerancja_nn`. Pole WYMAGANE (bez domyślnej): wołający podaje ją jawnie,
+    # `None` = brak deklaracji → odmowa solvera `fault.c_tolerancja_nn_brak`.
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:

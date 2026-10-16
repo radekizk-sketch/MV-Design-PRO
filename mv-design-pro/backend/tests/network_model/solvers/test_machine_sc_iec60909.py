@@ -86,7 +86,6 @@ def _sync(node_id: str = "B") -> SynchronousMachineSource:
         ur_kv=15.0,
         xd_subtransient_pu=0.15,
         cos_phi_r=0.8,
-        c_max=1.1,
     )
 
 

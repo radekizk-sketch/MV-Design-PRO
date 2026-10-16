@@ -20,6 +20,7 @@ import math
 import uuid
 from dataclasses import dataclass, field
 
+from network_model.core.voltage_factor import TolerancjaNapieciaNn, c_for_node, zrodlo_c_z_tabeli
 from network_model.pochodne import (
     impedancja_z_napiecia_i_pradu_ohm,
     kv_na_v,
@@ -77,7 +78,13 @@ class SynchronousMachineSource:
     xd_subtransient_pu: float = field(default=0.15)  # x″d [pu], saturated subtransient
     cos_phi_r: float = field(default=0.8)  # rated power factor cos φ_rG
     un_kv: float | None = field(default=None)  # system nominal voltage U_n [kV]; default U_rG
-    c_max: float = field(default=1.1)  # voltage factor c_max (for K_G)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G to c_max tabeli 1 IEC 60909-0 dla
+    # U_n sieci, do której przyłączona jest maszyna — czytany z JEDYNEGO źródła tabeli
+    # (`voltage_factor.c_for_node`) z tolerancją sieci nN szyny maszyny (`enm.tolerancja_nn`,
+    # wpina mapper). Dawna domyślka c_max = 1,1 była wierszem SN także dla maszyny nN (+6 %:
+    # c_max 1,05) — K_G zawyżony o 4,8 %. Brak tolerancji przy maszynie nN = odmowa
+    # `fault.c_tolerancja_nn_brak` przy odczycie K_G (rozpływ mocy K_G nie czyta).
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(default=None)
     r_over_x: float | None = field(default=None)  # R_G/X″d override; else IEC default
     in_service: bool = field(default=True)
 
@@ -100,9 +107,23 @@ class SynchronousMachineSource:
         return self.r_over_x_ratio * self.x_subtransient_ohm
 
     @property
+    def _un_sieci_kv(self) -> float:
+        return self.un_kv if self.un_kv is not None else self.ur_kv
+
+    @property
+    def c_max(self) -> float:
+        """c_max tabeli 1 IEC 60909-0 dla U_n sieci maszyny (K_G, §6.6.1 eq. 18)."""
+        return c_for_node(self._un_sieci_kv, "MAX", tolerancja_nn=self.tolerancja_nn)
+
+    @property
+    def c_max_zrodlo(self) -> str:
+        """Podstawa c_max we wzorze K_G — brzmienie tabeli 1 (White Box)."""
+        return zrodlo_c_z_tabeli(self._un_sieci_kv, "MAX", tolerancja_nn=self.tolerancja_nn)
+
+    @property
     def k_g(self) -> float:
         """Impedance correction factor K_G (IEC 60909-0:2016 §6.3.3)."""
-        un = self.un_kv if self.un_kv is not None else self.ur_kv
+        un = self._un_sieci_kv
         sin_phi = math.sqrt(max(0.0, 1.0 - self.cos_phi_r**2))
         return (un / self.ur_kv) * (self.c_max / (1.0 + self.xd_subtransient_pu * sin_phi))
 
@@ -127,6 +148,8 @@ class SynchronousMachineSource:
             "x_subtransient_ohm": self.x_subtransient_ohm,
             "r_over_x": self.r_over_x_ratio,
             "r_ohm": self.r_ohm,
+            "c_max": self.c_max,
+            "c_max_zrodlo": self.c_max_zrodlo,
             "k_g": self.k_g,
             "z_internal_ohm": z,
             "z_abs_ohm": abs(z),

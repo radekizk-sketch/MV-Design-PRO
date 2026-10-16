@@ -569,9 +569,10 @@ def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
     po niej jest deterministyczna i przenośna (CI-PARYTET-5); od CV-4.3 K3b te
     węzły są ponadto USUWANE z grafu solvera (``WejscieZwarcia.solve_graph``).
     """
-    wezly_odniesienia: set[str] = set()
+    # Źródło sieciowe bez Z_Q (odmowa odroczona, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) nadal jest
+    # odniesieniem topologii — jego brak danej odmawia konsument impedancji, nie ta kwalifikacja.
+    wezly_odniesienia: set[str] = set(graph.wezly_zrodel_sieciowych())
     for zrodla in (
-        graph.grid_sc_sources,
         graph.synchronous_machine_sources,
         graph.asynchronous_machine_sources,
     ):
@@ -822,11 +823,19 @@ def zloz_wejscie_rozplywu(
                 f"Węzeł PV '{node_id}' nie ma granic mocy biernej w migawce — graf "
                 "podany assemblerowi nie odpowiada migawce ENM (niespójne wejście)."
             )
+        nastawa_u_pu = node.voltage_magnitude
+        if nastawa_u_pu is None:
+            # `Node.__post_init__` odmawia węzła PV bez nastawy, więc ta gałąź oznacza graf
+            # zbudowany z pominięciem konstruktora — odmowa nazwana, nie `float(None)`.
+            raise ValueError(
+                f"Węzeł PV '{node_id}' nie ma nastawy napięcia (voltage_magnitude) w grafie "
+                "podanym assemblerowi — niespójne wejście."
+            )
         pv_specs.append(
             PVSpec(
                 node_id=node_id,
                 p_mw=-float(node.active_power or 0.0),
-                u_pu=float(node.voltage_magnitude),
+                u_pu=float(nastawa_u_pu),
                 q_min_mvar=bounds[0],
                 q_max_mvar=bounds[1],
             )
@@ -986,9 +995,9 @@ def zloz_wejscie_zwarcia(
     # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
     if "c_factor" in options:
         raise OdmowaDanychError(
-            "Opcja biegu c_factor została usunięta — współczynnik napięciowy c wynika ze "
-            "scenariusza (scenario: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-            "z uzasadnieniem (nadpisanie_c: {wartosc, uzasadnienie})."
+            "Opcja biegu `c_factor` została usunięta — współczynnik napięciowy c wynika ze "
+            "scenariusza (`scenario`: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
+            "z uzasadnieniem (`nadpisanie_c`: `{wartosc, uzasadnienie}`)."
         )
     nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 

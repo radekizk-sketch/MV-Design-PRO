@@ -166,13 +166,16 @@ def arkusz_siec_sn(
     *,
     typ_katalogowy_linii: str | None = None,
     typ_katalogowy_trafo: str | None = None,
+    tolerancja_nn: str | None = "PLUS_6",
     znacznik_czasu: datetime | None = None,
 ) -> bytes:
     """GPZ 15 kV (B1) → L1 5 km → Stacja 1 (B2) → T1 15/0,4 kV → Stacja 1 nN (B3)
     z dwoma odbiorami; źródło systemowe Sk'' = 500 MVA, R/X = 0,1 na B1.
 
     Bez argumentów odcinek i transformator niosą PEŁNE tabliczki (typy projektu);
-    `typ_katalogowy_*` wiąże element z typem katalogu statycznego.
+    `typ_katalogowy_*` wiąże element z typem katalogu statycznego. `tolerancja_nn` wypełnia
+    kolumnę `tolerancja_nN` transformatora (tolerancja napięcia sieci nN, wiersz nN tabeli 1
+    IEC 60909-0); ``None`` = arkusz bez tej kolumny (sieć nN bez deklaracji).
     """
     if typ_katalogowy_linii is None:
         linie = [NAGLOWEK_LINII_TABLICZKA, wiersz_linii_tabliczka("L1", "B1", "B2", 5.0)]
@@ -182,6 +185,8 @@ def arkusz_siec_sn(
         trafo = [NAGLOWEK_TRAFO_TABLICZKA, wiersz_trafo_tabliczka("T1", "B2", "B3")]
     else:
         trafo = [NAGLOWEK_TRAFO_KATALOG, ["T1", "B2", "B3", typ_katalogowy_trafo]]
+    if tolerancja_nn is not None:
+        trafo = [[*trafo[0], "tolerancja_nN"], [*trafo[1], tolerancja_nn]]
     return zbuduj_skoroszyt(
         [
             (

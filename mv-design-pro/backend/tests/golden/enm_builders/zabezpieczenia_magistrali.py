@@ -211,6 +211,13 @@ def siec_magistrali(
             and transformator.get("lv_earthing_system") is None
         ):
             transformator["lv_earthing_system"] = "TN-C-S"
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN +6 % (c 1,05/0,95 tabeli 1 IEC 60909-0) —
+        # wiersz, dla którego liczono przypięte prądy zwarciowe tego wzorca.
+        if (
+            transformator.get("ulv_kv", 1.0) < 1.0
+            and transformator.get("lv_voltage_tolerance") is None
+        ):
+            transformator["lv_voltage_tolerance"] = "PLUS_6"
     return enm, f"{segment}_L", f"{segment}_R_L"
 
 
