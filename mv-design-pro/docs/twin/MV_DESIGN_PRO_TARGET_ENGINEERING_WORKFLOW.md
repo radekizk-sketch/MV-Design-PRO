@@ -86,7 +86,7 @@ Jedna przestrzeń/pasek z pięcioma czasownikami: **Sprawdź** (gotowość + blo
 - tor DER-SN (dobór z kandydatami/odrzuconymi + auto-bieg + raport + BOM) jako **wzorzec** każdego doboru;
 - unieważnienie serwerowe + znacznik świeżości + „Co się zmieniło" (`PanelCoSieZmienilo.tsx`);
 - diagnoza biegu (`kodyDiagnozy.ts`), generator raportu z bramą PW;
-- legacy executor akcji naprawczych (`ui/shared/fixActionSurfaceExecutor.ts`) — wraca do użycia jako executor `OPEN_FORM(focus)` (EF-046).
+- executor akcji naprawczych — od karty C-12 (2026-09-30) w `ui2/spaces/gotowosc/fixActionSurfaceExecutor.ts`, wołany wyłącznie przez `wykonajAkcjeNaprawcza` jako `OPEN_FORM(focus)` (EF-046 zamknięte).
 
 ---
 
@@ -375,7 +375,7 @@ Jeden scenariusz e2e na sieci wzorcowej rejestru (`MV_DESIGN_PRO_MIGRATION_PLAN.
 | `ui2/proces/nastepnaAkcja.ts` (R1–R6) | KEEP + rozszerz | semantyka w backendzie `NextBestActionService`, UI = render |
 | pięć silników „następnego kroku" (A8-04) | DELETE (4 z 5) | jeden NBA |
 | siedem inspektorów (A8-05) | REPLACE | jeden inspektor z read-modeli |
-| akcja naprawcza = nawigacja (`AppRoot.tsx:306-311`) | REPLACE | executor `OPEN_FORM(focus)` (reuse `fixActionSurfaceExecutor.ts`), `APPLY_FIX` |
+| akcja naprawcza = nawigacja (`AppRoot.tsx:306-311`) | REPLACE — `OPEN_FORM(focus)` WYKONANE kartą C-12 (`ui2/spaces/gotowosc/akcjeNaprawcze.ts`); `APPLY_FIX` bez zmian | executor `OPEN_FORM(focus)` (reuse `fixActionSurfaceExecutor.ts`), `APPLY_FIX` |
 | `UruchomObliczenie.tsx` (2 rodzaje) | REPLACE | `RUN_PLAN` z `AnalysisPlan` |
 | 23 kreatory (2–9 kroków) | KEEP (kontrakty) + odchudź | tryb „z założeń" (auto-wypełnienie), kandydaci w każdym doborze |
 | kreator stacji 2 646 LOC | KEEP + `ImpactPreview` + `SizingRequest` | — |

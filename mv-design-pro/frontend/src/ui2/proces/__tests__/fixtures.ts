@@ -15,6 +15,8 @@ export function problem(over: Partial<ProblemGotowosci> = {}): ProblemGotowosci 
     cel: 'zwarcia',
     fixAction: null,
     priorytetKanoniczny: 1,
+    kodKanoniczny: null,
+    nawigacjaKanoniczna: null,
     ...over,
   };
 }

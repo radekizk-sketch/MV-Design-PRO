@@ -4,8 +4,20 @@ import {
   getOperationSurfaceByOp,
   getUnimplementedOperationSurfaces,
 } from '../operationSurfaceRegistry';
+import { OPERATION_FORM_REGISTRY } from '../../../workspace/operationFormRegistry';
 
 describe('Operation surface registry', () => {
+  it('C-12: każda operacja z formularzem ma wpis powierzchni i odwrotnie (parytet rejestrów)', () => {
+    // Operacja z formularzem bez wpisu powierzchni dostawała tytuł panelu z surowej
+    // nazwy operacji, a wykonawca akcji naprawczej gotowości jej odmawiał.
+    const zFormularzem = Object.entries(OPERATION_FORM_REGISTRY)
+      .filter(([, komponent]) => komponent !== null)
+      .map(([op]) => op)
+      .sort();
+    const zPowierzchnia = OPERATION_SURFACE_REGISTRY.map((entry) => entry.canonicalOp).sort();
+    expect(zPowierzchnia).toEqual(zFormularzem);
+  });
+
   it('has only implemented entries', () => {
     expect(getUnimplementedOperationSurfaces()).toEqual([]);
   });

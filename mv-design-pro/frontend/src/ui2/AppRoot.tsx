@@ -56,7 +56,7 @@ import {
   EkranImportuArkusza,
 } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
-import type { ProblemGotowosci } from './spaces/gotowosc/grupowanieCelow';
+import { wykonajAkcjeNaprawcza } from './spaces/gotowosc/akcjeNaprawcze';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
@@ -75,9 +75,6 @@ import { mostTrasyPrzestrzeni, przejdzDoPrzestrzeni } from './shell/przejsciaPrz
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
-import { notify } from '../ui/notifications/store';
-import { useSelectionStore } from '../ui/selection';
-import { executeFixActionSurface } from '../ui/shared/fixActionSurfaceExecutor';
 import { useAppStateStore } from '../ui/app-state';
 import { AreaContextPanel } from '../ui/shell/context-panels';
 import { obszarDlaTrasy } from './legacy/mostObszarow';
@@ -303,9 +300,9 @@ export function AppRoot() {
     setZmianaProjektu(true);
   };
   // Most tras (E1.7c) wyniesiony do `shell/przejsciaPrzestrzeni.ts` (K4-E2):
-  // ta sama prawda nawigacji dla jawnego wyboru przestrzeni w AppShell i dla
-  // przejść „następnego kroku" (np. Schemat → Gotowość). `przejdzDoPrzestrzeni`
-  // = setActiveSpace + most (identyczna para wywołań jak dotychczas).
+  // ta sama prawda nawigacji dla jawnego wyboru przestrzeni w AppShell, dla
+  // przejść „następnego kroku" (np. Schemat → Gotowość) i dla akcji naprawczej
+  // gotowości (C-12). `przejdzDoPrzestrzeni` = setActiveSpace + most.
   const wybierzPrzestrzen = przejdzDoPrzestrzeni;
   // Lądowisko K3 dla biegu: aktywacja przebiegu + jawne przejście do „Wyników".
   // JEDNA funkcja dla obu paneli historii (przebiegi i serie) — parytet mostu.
@@ -313,36 +310,11 @@ export function AppRoot() {
     useAppStateStore.getState().setActiveRun(runId);
     wybierzPrzestrzen('wyniki');
   };
-  /**
-   * Wykonanie akcji naprawczej zgłoszenia gotowości — JEDNA implementacja dla
-   * WSZYSTKICH miejsc, które taką akcję oferują (panel gotowości i pulpit
-   * projektu przez następną najlepszą akcję). Formularze operacji domenowych
-   * żyją na kanwie schematu, więc akcja = selekcja elementu + przejście do
-   * przestrzeni „Schemat" — TĄ SAMĄ ścieżką nawigacji co reszta powłoki
-   * (`przejdzDoPrzestrzeni`, kanon D1), bez drugiej logiki przejścia.
-   */
-  // „Napraw…" na liście gotowości wykonuje akcję naprawczą POZYCJI (kontrakt
-  // `fix_action` backendu) tym samym wykonawcą co pasek gotowości
-  // (`executeFixActionSurface`): OPEN_MODAL otwiera kartę operacji z podpowiedzią
-  // ładunku (np. W043 → edycja deklaracji rodzaju stacji), NAVIGATE_TO_ELEMENT
-  // zaznacza i centruje element. Dawniej przycisk tylko zaznaczał element
-  // i przełączał na schemat — każda akcja OPEN_MODAL była martwym kliknięciem.
-  const wykonajAkcjeNaprawcza = (problem: ProblemGotowosci) => {
-    if (problem.elementRef) {
-      emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
-    }
-    wybierzPrzestrzen('schemat');
-    if (problem.fixAction) {
-      const wybor = useSelectionStore.getState();
-      executeFixActionSurface(problem.fixAction, {
-        snapshot: useSnapshotStore.getState().snapshot,
-        openOperationForm: useNetworkBuildStore.getState().openOperationForm,
-        selectElement: wybor.selectElement,
-        centerSldOnElement: wybor.centerSldOnElement,
-        notify,
-      });
-    }
-  };
+  // C-12 (decyzja K-12, opcja A): akcja naprawcza gotowości jest WYKONAWCĄ — jedna
+  // nawigacja powłoki (`przejdzDoPrzestrzeni`, D1) → selekcja elementu → formularz
+  // operacji z fokusem na brakującym polu. JEDNA funkcja `wykonajAkcjeNaprawcza`
+  // (`spaces/gotowosc/akcjeNaprawcze.ts`) dla panelu gotowości i następnej najlepszej
+  // akcji pulpitu; AppRoot nie ma własnej logiki naprawy.
   // D4: JEDNA ścieżka wykonania — pozycja sama niesie swoją akcję. Dawny
   // rozdzielacz po przedrostku identyfikatora obsługiwał cztery przypadki, a
   // wszystko poza nimi wpadało w `pozycja.akcja()`, czyli w pustą funkcję

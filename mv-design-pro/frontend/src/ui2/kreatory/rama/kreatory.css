@@ -12,9 +12,10 @@
 
 .mvd-kreator {
   /* Układ kreatora zależy od SZEROKOŚCI KREATORA, nie okna (zapytania kontenerowe niżej).
-     Kreator renderuje się w panelu inspektora (~320 px) i na planszy pełnej szerokości;
-     dawne `@media (min-width: …)` włączały układ dwukolumnowy w wąskim panelu przy
-     szerokim oknie — kolumna główna dostawała 0 px, a treść kroku była nieosiągalna. */
+     Kreator renderuje się w panelu inspektora (~320 px), w wąskim prawym panelu (formularz
+     akcji naprawczej gotowości, C-12) i na planszy pełnej szerokości; dawne
+     `@media (min-width: …)` włączały układ dwukolumnowy w wąskim panelu przy szerokim
+     oknie — kolumna główna dostawała 0 px, a treść kroku była nieosiągalna (W10-2a, C-12). */
   container: kreator / inline-size;
   display: flex;
   flex-direction: column;
@@ -245,6 +246,7 @@
   grid-template-columns: 1fr;
   gap: 12px;
 }
+/* Ta sama zasada co układ „pełny": kolumny wg szerokości kreatora, nie okna. */
 @container kreator (min-width: 560px) {
   .mvd-kreator-siatka.mvd-kol-2 { grid-template-columns: 1fr 1fr; }
 }

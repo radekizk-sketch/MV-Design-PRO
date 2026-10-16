@@ -101,7 +101,13 @@ function resolveOperationFromModalType(
 
   switch (fallbackModalType) {
     case 'SourceModal':
-      return input.action_type === 'SELECT_CATALOG' ? 'assign_catalog_to_element' : 'add_grid_source_sn';
+      // C-12: OPEN_MODAL walidatora dotyczy ISTNIEJĄCEGO źródła (W002 — brak Z0,
+      // `sources.*` — dane zwarciowe, nastawa U) — naprawą jest edycja jego
+      // parametrów. Dodanie źródła (`add_grid_source_sn`) wyłącznie dla braku źródła.
+      if (input.action_type === 'SELECT_CATALOG') {
+        return 'assign_catalog_to_element';
+      }
+      return input.action_type === 'ADD_MISSING_DEVICE' ? 'add_grid_source_sn' : 'update_element_parameters';
     case 'NodeModal':
       return 'update_element_parameters';
     case 'BranchModal':
@@ -129,6 +135,13 @@ function resolveOperationFromModalType(
     case 'CatalogPicker':
     case 'BranchPointCatalogPicker':
       return 'assign_catalog_to_element';
+    // C-12: okna walidatora ENM dla ISTNIEJĄCYCH elementów — kondensator (E040–E042),
+    // stacja (W062), przypisanie zabezpieczenia (E064), pole (blokada uziemnika,
+    // zgodność z profilem referencyjnym) — naprawą jest edycja parametrów elementu.
+    case 'ShuntCapacitorModal':
+    case 'SubstationModal':
+    case 'ProtectionModal':
+    case 'BayModal':
     case 'FieldDeviceModal':
     case 'BranchPointSwitchStateModal':
     case 'BranchPointPortsModal':
