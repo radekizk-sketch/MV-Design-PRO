@@ -287,9 +287,7 @@ class _Wiazania:
         for st in instrukcje:
             if isinstance(st, ast.Import):
                 for alias in st.names:
-                    self._dodaj(
-                        alias.asname or alias.name.split(".")[0], "import", alias
-                    )
+                    self._dodaj(alias.asname or alias.name.split(".")[0], "import", alias)
             elif isinstance(st, ast.ImportFrom):
                 for alias in st.names:
                     if alias.name == "*":
@@ -388,9 +386,7 @@ class _Rozwiazywacz:
                 wynik.append(f"{modul}.{dziecko.name}")
         return wynik
 
-    def _z_pamiecia(
-        self, klucz: tuple[str, ...], licz: Callable[[], str | None]
-    ) -> str | None:
+    def _z_pamiecia(self, klucz: tuple[str, ...], licz: Callable[[], str | None]) -> str | None:
         if klucz in self._pamiec:
             return self._pamiec[klucz]
         self._pamiec[klucz] = None  # cykl → dowiedziony na tym poziomie
@@ -443,9 +439,7 @@ class _Rozwiazywacz:
             baza = self._baza(modul, wezel)
         except ImportPonadKorzen as blad:
             return str(blad)
-        if pod_prefiksem(baza, self.polityka.chronione) or pod_prefiksem(
-            baza, _MASZYNERIA_IMPORTU
-        ):
+        if pod_prefiksem(baza, self.polityka.chronione) or pod_prefiksem(baza, _MASZYNERIA_IMPORTU):
             return f"`from {baza} import *`"
         return self.narusza_modul(baza)
 
@@ -474,9 +468,7 @@ class _Rozwiazywacz:
             if pod_prefiksem(modul, self.polityka.chronione):
                 return f"{modul}.{nazwa} (pakiet solverow fizycznych)"
             return None
-        return self._z_pamiecia(
-            ("symbol", modul, nazwa), lambda: self._symbol(modul, nazwa)
-        )
+        return self._z_pamiecia(("symbol", modul, nazwa), lambda: self._symbol(modul, nazwa))
 
     def _symbol(self, modul: str, nazwa: str) -> str | None:
         wiazania = self.wiazania(modul)
@@ -513,9 +505,7 @@ class _Rozwiazywacz:
             return False
         return nazwa in wiazania.nazwy or self.plik(f"{modul}.{nazwa}") is not None
 
-    def _wiazanie(
-        self, modul: str, nazwa: str, rodzaj: str, wezel: ast.AST
-    ) -> str | None:
+    def _wiazanie(self, modul: str, nazwa: str, rodzaj: str, wezel: ast.AST) -> str | None:
         solverowy = pod_prefiksem(modul, self.polityka.chronione)
         if rodzaj == "import":
             assert isinstance(wezel, ast.alias)
@@ -527,9 +517,7 @@ class _Rozwiazywacz:
                 baza = self._baza(modul, wezel)
             except ImportPonadKorzen as blad:
                 return str(blad)
-            oryginal = next(
-                a.name for a in wezel.names if (a.asname or a.name) == nazwa
-            )
+            oryginal = next(a.name for a in wezel.names if (a.asname or a.name) == nazwa)
             return self.narusza_symbol(baza, oryginal)
         if solverowy:
             # Symbol ZDEFINIOWANY w module solvera: decyduje lista zamknięta.
@@ -591,9 +579,7 @@ def _rozwiazywacz(src: Path, polityka: PolitykaDostepu) -> _Rozwiazywacz:
 # ---------------------------------------------------------------------------
 
 
-def _import_z_chronionego(
-    baza: str, node: ast.ImportFrom, polityka: PolitykaDostepu
-) -> str | None:
+def _import_z_chronionego(baza: str, node: ast.ImportFrom, polityka: PolitykaDostepu) -> str | None:
     """Import bezpośrednio z modułu chronionego — lista zamknięta."""
     dozwolone = polityka.dozwolone.get(baza)
     if dozwolone is None:
@@ -624,9 +610,7 @@ def _kropkowo(wezel: ast.AST) -> str | None:
 class _RegulaDostepu:
     """Sprawdzenie jednego pliku wobec polityki dostępu (patrz nagłówek modułu)."""
 
-    def __init__(
-        self, drzewo: ast.Module, pakiet: str, modul: str, rozw: _Rozwiazywacz
-    ):
+    def __init__(self, drzewo: ast.Module, pakiet: str, modul: str, rozw: _Rozwiazywacz):
         self.drzewo = drzewo
         self.pakiet = pakiet
         self.modul = modul
@@ -681,9 +665,7 @@ class _RegulaDostepu:
                 cel = nazwa if alias.asname else nazwa.split(".")[0]
                 powod = self.rozw.narusza_modul(cel)
                 if powod is not None:
-                    return (
-                        f"{self.warstwa} must not bind {alias.asname or cel}: {powod}"
-                    )
+                    return f"{self.warstwa} must not bind {alias.asname or cel}: {powod}"
             return None
         baza = _bez_src(modul_bazowy(self.pakiet, n))
         if baza == "src":
@@ -729,7 +711,9 @@ class _RegulaDostepu:
         rodzic = self.rodzic.get(id(n))
         if isinstance(n, ast.Attribute):
             if n.attr in REFLEKSJA_ATRYBUTY_ZAKAZANE:
-                return f"{self.warstwa} must not use .{n.attr} (refleksja siega network_model.solvers)"
+                return (
+                    f"{self.warstwa} must not use .{n.attr} (refleksja siega network_model.solvers)"
+                )
             kropkowo = _kropkowo(n)
             if kropkowo is not None and pod_prefiksem(
                 _bez_src(kropkowo), self.rozw.polityka.chronione
@@ -761,11 +745,7 @@ class _RegulaDostepu:
                 "(maszyneria importu — nie dowiedziono celu wobec network_model.solvers)"
             )
         if n.id in self.moduly_sys:
-            if (
-                isinstance(rodzic, ast.Attribute)
-                and rodzic.value is n
-                and rodzic.attr != "modules"
-            ):
+            if isinstance(rodzic, ast.Attribute) and rodzic.value is n and rodzic.attr != "modules":
                 return None
             return f"{self.warstwa} must not use {n.id}.modules ani obiektu {n.id} (dostep do network_model.solvers)"
         return None
@@ -808,9 +788,7 @@ class _RegulaDostepu:
         ):
             return niestala
         nazwy_argumentow = (
-            ("name", "globals", "locals", "fromlist", "level")
-            if dunder
-            else ("name", "package")
+            ("name", "globals", "locals", "fromlist", "level") if dunder else ("name", "package")
         )
         argumenty: dict[str, ast.AST] = {}
         for i, arg in enumerate(wywolanie.args):
@@ -828,10 +806,7 @@ class _RegulaDostepu:
                 poziom_w = argumenty.get("level")
                 poziom = 0
                 if poziom_w is not None:
-                    if not (
-                        isinstance(poziom_w, ast.Constant)
-                        and isinstance(poziom_w.value, int)
-                    ):
+                    if not (isinstance(poziom_w, ast.Constant) and isinstance(poziom_w.value, int)):
                         return niestala
                     poziom = poziom_w.value
                 if poziom > 0:
@@ -869,7 +844,9 @@ class _RegulaDostepu:
                 ladowane = [cel]
                 zwracany = cel
         except (ImportError, ValueError) as blad:
-            return f"{self.warstwa}: import dynamiczny ponad korzen ({blad}) — network_model.solvers"
+            return (
+                f"{self.warstwa}: import dynamiczny ponad korzen ({blad}) — network_model.solvers"
+            )
         for modul in ladowane:
             if pod_prefiksem(modul, self.rozw.polityka.chronione):
                 return f"{self.warstwa} must not import {modul} (dynamiczny import solvera)"
@@ -883,15 +860,11 @@ class _RegulaDostepu:
         return None
 
 
-def _solver_w_analizie(
-    tree: ast.Module, path: Path, pakiet: str, backend_root: Path
-) -> str | None:
+def _solver_w_analizie(tree: ast.Module, path: Path, pakiet: str, backend_root: Path) -> str | None:
     """Naruszenie reguły solverów fizycznych w pliku warstwy analizy albo `None`.
 
     Rzuca `ImportPonadKorzen`."""
-    return naruszenie_dostepu(
-        tree, path, backend_root / "src", POLITYKA_ANALIZY, pakiet
-    )
+    return naruszenie_dostepu(tree, path, backend_root / "src", POLITYKA_ANALIZY, pakiet)
 
 
 def naruszenie_dostepu(

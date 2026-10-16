@@ -162,9 +162,7 @@ def test_skasowany_adapter_rozplywu_bylby_czerwony(tmp_path: Path) -> None:
     (import `PowerFlowNewtonSolver` i `.solve()` w warstwie interpretacji)."""
     backend = _drzewo(tmp_path, "src/analysis/power_flow/solver.py", WYWOLANIE_NR)
 
-    naruszenie = arch_guard._scan_file(
-        backend / "src/analysis/power_flow/solver.py", backend
-    )
+    naruszenie = arch_guard._scan_file(backend / "src/analysis/power_flow/solver.py", backend)
 
     assert naruszenie is not None
     assert "network_model.solvers.power_flow_newton" in naruszenie[1]
@@ -179,12 +177,8 @@ def _importy_solverow_w_analizie() -> dict[str, set[str]]:
         for wezel in ast.walk(ast.parse(plik.read_text(encoding="utf-8"))):
             if isinstance(wezel, ast.ImportFrom):
                 baza = modul_bazowy(pakiet, wezel)
-                if baza == "network_model.solvers" or baza.startswith(
-                    "network_model.solvers."
-                ):
-                    zmierzone.setdefault(baza, set()).update(
-                        a.name for a in wezel.names
-                    )
+                if baza == "network_model.solvers" or baza.startswith("network_model.solvers."):
+                    zmierzone.setdefault(baza, set()).update(a.name for a in wezel.names)
     return zmierzone
 
 
@@ -196,8 +190,7 @@ def test_lista_dozwolona_bez_martwych_wpisow() -> None:
     zmierzone = _importy_solverow_w_analizie()
 
     assert zmierzone == {
-        modul: set(nazwy)
-        for modul, nazwy in arch_guard.ANALIZA_DOZWOLONE_Z_SOLVEROW.items()
+        modul: set(nazwy) for modul, nazwy in arch_guard.ANALIZA_DOZWOLONE_Z_SOLVEROW.items()
     }
 
 
@@ -281,9 +274,7 @@ DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
     ("import-core-bez-aliasu", {INIEKCJA: "import network_model.core.graph\n"}),
     (
         "lancuch-atrybutow-bez-importu",
-        {
-            INIEKCJA: "def f(network_model):\n    return network_model.solvers.power_flow_newton\n"
-        },
+        {INIEKCJA: "def f(network_model):\n    return network_model.solvers.power_flow_newton\n"},
     ),
     # --- punkt 2(b): reeksport ---
     (
@@ -406,9 +397,7 @@ DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
     ),
     (
         "dynamiczny-funkcja-jako-argument",
-        {
-            INIEKCJA: "import importlib\n\nm = list(map(importlib.import_module, ['a']))\n"
-        },
+        {INIEKCJA: "import importlib\n\nm = list(map(importlib.import_module, ['a']))\n"},
     ),
     (
         "dynamiczny-from-importlib-z-aliasem",
@@ -426,9 +415,7 @@ DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
     ),
     (
         "dynamiczny-dunder-fromlist-modul",
-        {
-            INIEKCJA: "m = __import__('network_model.solvers', fromlist=['power_flow_newton'])\n"
-        },
+        {INIEKCJA: "m = __import__('network_model.solvers', fromlist=['power_flow_newton'])\n"},
     ),
     (
         "dynamiczny-dunder-fromlist-pakiet",
@@ -465,21 +452,15 @@ DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
     ),
     (
         "dynamiczny-nazwa-zmienna",
-        {
-            INIEKCJA: "import importlib\n\n\ndef f(n):\n    return importlib.import_module(n)\n"
-        },
+        {INIEKCJA: "import importlib\n\n\ndef f(n):\n    return importlib.import_module(n)\n"},
     ),
     (
         "dynamiczny-kwargs",
-        {
-            INIEKCJA: "import importlib\n\n\ndef f(**k):\n    return importlib.import_module(**k)\n"
-        },
+        {INIEKCJA: "import importlib\n\n\ndef f(**k):\n    return importlib.import_module(**k)\n"},
     ),
     (
         "dynamiczny-modul-reeksportujacy",
-        {
-            INIEKCJA: "import importlib\n\nm = importlib.import_module('enm.canonical_analysis')\n"
-        },
+        {INIEKCJA: "import importlib\n\nm = importlib.import_module('enm.canonical_analysis')\n"},
     ),
     (
         "dynamiczny-importlib-util",
@@ -491,9 +472,7 @@ DOSTEP_CZERWONE: list[tuple[str, dict[str, str]]] = [
     # --- refleksja ---
     (
         "sys-modules",
-        {
-            INIEKCJA: "import sys\n\nm = sys.modules['network_model.solvers.power_flow_newton']\n"
-        },
+        {INIEKCJA: "import sys\n\nm = sys.modules['network_model.solvers.power_flow_newton']\n"},
     ),
     ("from-sys-modules", {INIEKCJA: "from sys import modules\n"}),
     ("inspect", {INIEKCJA: "import inspect\n"}),
@@ -531,9 +510,7 @@ DOSTEP_ZIELONE: list[tuple[str, dict[str, str]]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("nazwa", "pliki"), DOSTEP_CZERWONE, ids=[s[0] for s in DOSTEP_CZERWONE]
-)
+@pytest.mark.parametrize(("nazwa", "pliki"), DOSTEP_CZERWONE, ids=[s[0] for s in DOSTEP_CZERWONE])
 def test_dostep_do_solvera_czerwony_przez_main(
     kopia_drzewa: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -549,9 +526,7 @@ def test_dostep_do_solvera_czerwony_przez_main(
     assert "network_model" in wyjscie, wyjscie
 
 
-@pytest.mark.parametrize(
-    ("nazwa", "pliki"), DOSTEP_ZIELONE, ids=[s[0] for s in DOSTEP_ZIELONE]
-)
+@pytest.mark.parametrize(("nazwa", "pliki"), DOSTEP_ZIELONE, ids=[s[0] for s in DOSTEP_ZIELONE])
 def test_dostep_do_solvera_para_zielona_przez_main(
     kopia_drzewa: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -573,8 +548,7 @@ def test_solver_w_tescie_analizy_na_realnym_drzewie(
     test = kopia_drzewa / "backend" / "tests" / "analysis" / "test_iniekcja.py"
     test.parent.mkdir(parents=True, exist_ok=True)
     test.write_text(
-        "from enm.canonical_analysis import solve_with_oltc\n"
-        "import network_model.core.graph\n",
+        "from enm.canonical_analysis import solve_with_oltc\n" "import network_model.core.graph\n",
         encoding="utf-8",
     )
     try:

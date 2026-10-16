@@ -90,13 +90,8 @@ def read_run(run_id: str):
 
     violations = guard.check_legacy_public_paths()
 
-    assert any(
-        "[legacy-public-import]" in v and "execution_engine" in v for v in violations
-    )
-    assert any(
-        "[legacy-public-name]" in v and "ExecutionEngineService" in v
-        for v in violations
-    )
+    assert any("[legacy-public-import]" in v and "execution_engine" in v for v in violations)
+    assert any("[legacy-public-name]" in v and "ExecutionEngineService" in v for v in violations)
 
 
 def test_guard_rejects_public_router_importing_deleted_unified_runs_and_r2(
@@ -197,9 +192,7 @@ def read_run(run_id: str):
 # ---------------------------------------------------------------------------
 
 
-def test_guard_rejects_resurrected_study_case_engine_module(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_study_case_engine_module(tmp_path, monkeypatch) -> None:
     engine_dir = tmp_path / "backend" / "src" / "domain"
     engine_dir.mkdir(parents=True)
     engine_path = engine_dir / "study_case_engine.py"
@@ -211,22 +204,16 @@ def test_guard_rejects_resurrected_study_case_engine_module(
     violations = guard.check_study_case_engine_resurrection()
 
     assert any("[resurrected-module]" in v for v in violations)
-    assert any(
-        "[resurrected-class]" in v and "StudyCaseEngine" in v for v in violations
-    )
+    assert any("[resurrected-class]" in v and "StudyCaseEngine" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_engine_class_in_unrelated_file(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_engine_class_in_unrelated_file(tmp_path, monkeypatch) -> None:
     """Klasa moze wrocic pod INNA nazwa pliku — guard skanuje CALY `src`,
     nie tylko `domain/study_case_engine.py`."""
     src_dir = tmp_path / "backend" / "src" / "domain"
     src_dir.mkdir(parents=True)
     other = src_dir / "somewhere_else.py"
-    other.write_text(
-        "class SolverProtocol:\n    def solve(self) -> None: ...\n", encoding="utf-8"
-    )
+    other.write_text("class SolverProtocol:\n    def solve(self) -> None: ...\n", encoding="utf-8")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(
         guard,
@@ -243,9 +230,7 @@ def test_guard_rejects_resurrected_engine_class_in_unrelated_file(
 def test_guard_accepts_clean_tree_without_engine(tmp_path, monkeypatch) -> None:
     src_dir = tmp_path / "backend" / "src" / "domain"
     src_dir.mkdir(parents=True)
-    (src_dir / "study_case.py").write_text(
-        "class StudyCase:\n    pass\n", encoding="utf-8"
-    )
+    (src_dir / "study_case.py").write_text("class StudyCase:\n    pass\n", encoding="utf-8")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(
         guard,
@@ -257,9 +242,7 @@ def test_guard_accepts_clean_tree_without_engine(tmp_path, monkeypatch) -> None:
     assert guard.check_study_case_engine_resurrection() == []
 
 
-def test_guard_does_not_fire_on_engine_name_in_comment_text(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_engine_name_in_comment_text(tmp_path, monkeypatch) -> None:
     """Wzmianka tekstowa (komentarz/dokstring) NIE jest definicja klasy —
     tylko `ast.ClassDef` liczy sie jako wskrzeszenie."""
     src_dir = tmp_path / "backend" / "src" / "domain"
@@ -304,10 +287,7 @@ def test_guard_rejects_resurrected_c3_op_in_canonical_operations_registry(
 
     violations = guard.check_domain_op_registry_resurrection()
 
-    assert any(
-        "[resurrected-registry-entry]" in v and "create_study_case" in v
-        for v in violations
-    )
+    assert any("[resurrected-registry-entry]" in v and "create_study_case" in v for v in violations)
 
 
 def test_guard_rejects_resurrected_c3_op_in_v2_handlers(tmp_path, monkeypatch) -> None:
@@ -321,23 +301,18 @@ def test_guard_rejects_resurrected_c3_op_in_v2_handlers(tmp_path, monkeypatch) -
         encoding="utf-8",
     )
     monkeypatch.setattr(guard, "ROOT", tmp_path)
-    monkeypatch.setattr(
-        guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py"
-    )
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py")
     monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", handlers)
     monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", tmp_path / "missing_domainOps.ts")
 
     violations = guard.check_domain_op_registry_resurrection()
 
     assert any(
-        "[resurrected-handler-entry]" in v and "compare_study_cases" in v
-        for v in violations
+        "[resurrected-handler-entry]" in v and "compare_study_cases" in v for v in violations
     )
 
 
-def test_guard_rejects_resurrected_c3_op_in_frontend_whitelist(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_c3_op_in_frontend_whitelist(tmp_path, monkeypatch) -> None:
     frontend = tmp_path / "domainOps.ts"
     frontend.write_text(
         "export const CANONICAL_OPERATION_NAMES = [\n"
@@ -346,9 +321,7 @@ def test_guard_rejects_resurrected_c3_op_in_frontend_whitelist(
         encoding="utf-8",
     )
     monkeypatch.setattr(guard, "ROOT", tmp_path)
-    monkeypatch.setattr(
-        guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py"
-    )
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py")
     monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", tmp_path / "missing_v2.py")
     monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", frontend)
 
@@ -360,9 +333,7 @@ def test_guard_rejects_resurrected_c3_op_in_frontend_whitelist(
     )
 
 
-def test_guard_does_not_fire_on_name_collisions_outside_registry(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_name_collisions_outside_registry(tmp_path, monkeypatch) -> None:
     """Kolizje nazw (C1 `api/study_cases.py`/`domain/study_case.py`, E2
     `api/enm.py`) NIE sa rejestrem — guard sprawdza WYLACZNIE 3 wskazane
     pliki rejestru/whitelisty, wiec zywy kod pod ta sama nazwa gdziekolwiek
@@ -443,9 +414,7 @@ def _patch_c4_dirs(
     monkeypatch.setattr(guard, "FORBIDDEN_C4_DIRECTORIES", dirs)
 
 
-def test_guard_rejects_resurrected_study_scenario_directory(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_study_scenario_directory(tmp_path, monkeypatch) -> None:
     resurrected = tmp_path / "backend" / "src" / "application" / "study_scenario"
     resurrected.mkdir(parents=True)
     (resurrected / "models.py").write_text("class Study:\n    pass\n", encoding="utf-8")
@@ -456,14 +425,11 @@ def test_guard_rejects_resurrected_study_scenario_directory(
     violations = guard.check_c4_and_p24_plus_resurrection()
 
     assert any(
-        "[resurrected-module]" in v and "application/study_scenario" in v
-        for v in violations
+        "[resurrected-module]" in v and "application/study_scenario" in v for v in violations
     )
 
 
-def test_guard_rejects_resurrected_scenario_comparison_directory(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_scenario_comparison_directory(tmp_path, monkeypatch) -> None:
     resurrected = tmp_path / "backend" / "src" / "analysis" / "scenario_comparison"
     resurrected.mkdir(parents=True)
     (resurrected / "builder.py").write_text(
@@ -476,13 +442,9 @@ def test_guard_rejects_resurrected_scenario_comparison_directory(
     violations = guard.check_c4_and_p24_plus_resurrection()
 
     assert any(
-        "[resurrected-module]" in v and "analysis/scenario_comparison" in v
-        for v in violations
+        "[resurrected-module]" in v and "analysis/scenario_comparison" in v for v in violations
     )
-    assert any(
-        "[resurrected-class]" in v and "ScenarioComparisonBuilder" in v
-        for v in violations
-    )
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
 
 
 def test_guard_rejects_resurrected_p24_plus_directory(tmp_path, monkeypatch) -> None:
@@ -497,13 +459,9 @@ def test_guard_rejects_resurrected_p24_plus_directory(tmp_path, monkeypatch) -> 
 
     violations = guard.check_c4_and_p24_plus_resurrection()
 
+    assert any("[resurrected-module]" in v and "analysis/reporting/pdf" in v for v in violations)
     assert any(
-        "[resurrected-module]" in v and "analysis/reporting/pdf" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v
-        for v in violations
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
     )
 
 
@@ -525,19 +483,13 @@ def test_guard_rejects_resurrected_class_or_function_under_other_path(
 
     violations = guard.check_c4_and_p24_plus_resurrection()
 
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
     assert any(
-        "[resurrected-class]" in v and "ScenarioComparisonBuilder" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v
-        for v in violations
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
     )
 
 
-def test_guard_does_not_fire_on_orphaned_pycache_directory(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_orphaned_pycache_directory(tmp_path, monkeypatch) -> None:
     """Katalog istnieje na dysku (osierocony __pycache__ z sesji SPRZED
     kasacji), ale nie zawiera ANI JEDNEGO .py — to NIE jest wskrzeszenie."""
     stale = tmp_path / "backend" / "src" / "application" / "study_scenario"
@@ -586,16 +538,10 @@ def _patch_cv42_files(monkeypatch, tmp_path, **files) -> None:
     monkeypatch.setattr(guard, "FORBIDDEN_CV42_FILES", mapping)
 
 
-def test_guard_rejects_resurrected_power_flow_input_builder_module(
-    tmp_path, monkeypatch
-) -> None:
-    resurrected = (
-        tmp_path / "backend" / "src" / "application" / "power_flow_input_builder.py"
-    )
+def test_guard_rejects_resurrected_power_flow_input_builder_module(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "application" / "power_flow_input_builder.py"
     resurrected.parent.mkdir(parents=True)
-    resurrected.write_text(
-        "def build_power_flow_input():\n    pass\n", encoding="utf-8"
-    )
+    resurrected.write_text("def build_power_flow_input():\n    pass\n", encoding="utf-8")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
     _patch_cv42_files(monkeypatch, tmp_path, power_flow_input_builder=resurrected)
@@ -606,15 +552,10 @@ def test_guard_rejects_resurrected_power_flow_input_builder_module(
         "[resurrected-module]" in v and "application/power_flow_input_builder.py" in v
         for v in violations
     )
-    assert any(
-        "[resurrected-function]" in v and "build_power_flow_input" in v
-        for v in violations
-    )
+    assert any("[resurrected-function]" in v and "build_power_flow_input" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_load_flow_input_module(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_load_flow_input_module(tmp_path, monkeypatch) -> None:
     resurrected = tmp_path / "backend" / "src" / "domain" / "load_flow_input.py"
     resurrected.parent.mkdir(parents=True)
     resurrected.write_text("class LoadFlowRunInput:\n    pass\n", encoding="utf-8")
@@ -624,13 +565,8 @@ def test_guard_rejects_resurrected_load_flow_input_module(
 
     violations = guard.check_cv42_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "domain/load_flow_input.py" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-class]" in v and "LoadFlowRunInput" in v for v in violations
-    )
+    assert any("[resurrected-module]" in v and "domain/load_flow_input.py" in v for v in violations)
+    assert any("[resurrected-class]" in v and "LoadFlowRunInput" in v for v in violations)
 
 
 def test_guard_rejects_resurrected_cv42_class_or_function_under_other_path(
@@ -653,26 +589,17 @@ def test_guard_rejects_resurrected_cv42_class_or_function_under_other_path(
 
     violations = guard.check_cv42_resurrection()
 
+    assert any("[resurrected-class]" in v and "ShortCircuitInput" in v for v in violations)
     assert any(
-        "[resurrected-class]" in v and "ShortCircuitInput" in v for v in violations
+        "[resurrected-function]" in v and "build_short_circuit_input" in v for v in violations
     )
+    assert any("[resurrected-function]" in v and "merge_bus_components" in v for v in violations)
     assert any(
-        "[resurrected-function]" in v and "build_short_circuit_input" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-function]" in v and "merge_bus_components" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-function]" in v and "validate_load_flow_input" in v
-        for v in violations
+        "[resurrected-function]" in v and "validate_load_flow_input" in v for v in violations
     )
 
 
-def test_guard_accepts_clean_tree_without_cv42_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_cv42_resurrection(tmp_path, monkeypatch) -> None:
     src_dir = tmp_path / "backend" / "src" / "application" / "network_wizard"
     src_dir.mkdir(parents=True)
     (src_dir / "service.py").write_text(
@@ -692,9 +619,7 @@ def test_guard_accepts_current_repo_state_cv42() -> None:
     assert guard.check_cv42_resurrection() == []
 
 
-def test_guard_rejects_resurrected_own_db_engine_helpers_cv42b(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_own_db_engine_helpers_cv42b(tmp_path, monkeypatch) -> None:
     """CV-4.2b: `_uow_factory_biezacy`/`_maybe_load_audit2_extensions` (wlasny silnik
     z DATABASE_URL w torze biegow) nie moga wrocic pod ZADNYM plikiem `src`."""
     src_dir = tmp_path / "backend" / "src" / "enm"
@@ -715,14 +640,11 @@ def test_guard_rejects_resurrected_own_db_engine_helpers_cv42b(
         for v in violations
     )
     assert any(
-        "[resurrected-function]" in v and "_maybe_load_audit2_extensions" in v
-        for v in violations
+        "[resurrected-function]" in v and "_maybe_load_audit2_extensions" in v for v in violations
     )
 
 
-def test_guard_does_not_fire_on_cv42b_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_cv42b_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     """Nazwa w komentarzu/dokstringu (np. opis kasacji) to nie definicja."""
     src_dir = tmp_path / "backend" / "src" / "enm"
     src_dir.mkdir(parents=True)
@@ -759,9 +681,7 @@ def _patch_data_manager_dirs(monkeypatch, tmp_path, *, data_manager_dir=None) ->
     )
 
 
-def test_guard_rejects_resurrected_data_manager_directory(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_data_manager_directory(tmp_path, monkeypatch) -> None:
     dm_dir = tmp_path / "frontend" / "src" / "ui" / "data-manager"
     dm_dir.mkdir(parents=True)
     (dm_dir / "DataManager.tsx").write_text(
@@ -772,19 +692,13 @@ def test_guard_rejects_resurrected_data_manager_directory(
     violations = guard.check_data_manager_resurrection()
 
     assert any(
-        "[resurrected-module]" in v
-        and "ui/data-manager" in v
-        and "DataManager.tsx" in v
+        "[resurrected-module]" in v and "ui/data-manager" in v and "DataManager.tsx" in v
         for v in violations
     )
-    assert any(
-        "[resurrected-component]" in v and "DataManager.tsx" in v for v in violations
-    )
+    assert any("[resurrected-component]" in v and "DataManager.tsx" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_component_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_component_under_other_path(tmp_path, monkeypatch) -> None:
     """Komponent moze wrocic pod INNYM plikiem/katalogiem — guard skanuje CALY
     `frontend/src`, nie tylko stary katalog `ui/data-manager`."""
     sneaky_dir = tmp_path / "frontend" / "src" / "ui" / "elsewhere"
@@ -816,9 +730,7 @@ def test_guard_rejects_resurrected_data_manager_row_type_under_other_path(
     assert any("[resurrected-type]" in v and "types.ts" in v for v in violations)
 
 
-def test_guard_does_not_fire_on_data_manager_name_in_comment_text(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_data_manager_name_in_comment_text(tmp_path, monkeypatch) -> None:
     """Naglowek testu cytujacy nazwe kasacji (jak `ui/__tests__/project-tree.test.ts`
     po karcie KASACJA-DATA-MANAGER) to komentarz, nie definicja — guard milczy."""
     ui_dir = tmp_path / "frontend" / "src" / "ui" / "__tests__"
@@ -862,9 +774,7 @@ def test_guard_accepts_current_repo_state_data_manager() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _patch_cv43_a4_modules(
-    monkeypatch, tmp_path, *, enm_src: str | None, v126_src: str | None
-):
+def _patch_cv43_a4_modules(monkeypatch, tmp_path, *, enm_src: str | None, v126_src: str | None):
     api_dir = tmp_path / "backend" / "src" / "api"
     api_dir.mkdir(parents=True, exist_ok=True)
     enm_module = api_dir / "enm.py"
@@ -897,18 +807,12 @@ def test_guard_rejects_resurrected_e2_route_functions(tmp_path, monkeypatch) -> 
 
     violations = guard.check_cv43_a4_resurrection()
 
-    assert [
-        v for v in violations if "[resurrected-route]" in v and "run_short_circuit" in v
-    ]
-    assert [
-        v for v in violations if "[resurrected-route]" in v and "run_power_flow" in v
-    ]
+    assert [v for v in violations if "[resurrected-route]" in v and "run_short_circuit" in v]
+    assert [v for v in violations if "[resurrected-route]" in v and "run_power_flow" in v]
     assert len(violations) == 2
 
 
-def test_guard_rejects_resurrected_v126_inmemory_registry(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_v126_inmemory_registry(tmp_path, monkeypatch) -> None:
     _patch_cv43_a4_modules(
         monkeypatch,
         tmp_path,
@@ -923,9 +827,7 @@ def test_guard_rejects_resurrected_v126_inmemory_registry(
     assert "_runs" in violations[0] and "v126_academic.py:2" in violations[0]
 
 
-def test_guard_ignores_local_variable_named_like_registry(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_local_variable_named_like_registry(tmp_path, monkeypatch) -> None:
     """Zmienna lokalna `_runs` w funkcji pomocniczej nie jest rejestrem w pamięci
     procesu — guard patrzy wyłącznie na przypisania najwyższego poziomu."""
     _patch_cv43_a4_modules(
@@ -933,9 +835,7 @@ def test_guard_ignores_local_variable_named_like_registry(
         tmp_path,
         enm_src="def zdrowy_endpoint():\n    return {}\n",
         v126_src=(
-            "def _zbierz(biegi):\n"
-            "    _runs = {b.id: b for b in biegi}\n"
-            "    return _runs\n"
+            "def _zbierz(biegi):\n" "    _runs = {b.id: b for b in biegi}\n" "    return _runs\n"
         ),
     )
 
@@ -967,17 +867,13 @@ def _patch_w1_tree(monkeypatch, tmp_path) -> Path:
 
 
 def _models_z_tabelami(nazwy: list[str]) -> str:
-    return "".join(
-        f'class T{i}(Base):\n    __tablename__ = "{n}"\n\n' for i, n in enumerate(nazwy)
-    )
+    return "".join(f'class T{i}(Base):\n    __tablename__ = "{n}"\n\n' for i, n in enumerate(nazwy))
 
 
 def test_guard_rejects_resurrected_w1_legacy_module(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "network_model").mkdir()
-    (src / "network_model" / "sld_projection.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
+    (src / "network_model" / "sld_projection.py").write_text("x = 1\n", encoding="utf-8")
     # Wskrzeszony PAKIET = zrodlo w srodku (goly katalog to nie modul — patrz
     # `zrodlo_istnieje` i test osieroconego `__pycache__` nizej).
     (src / "application" / "sld").mkdir(parents=True)
@@ -985,12 +881,8 @@ def test_guard_rejects_resurrected_w1_legacy_module(tmp_path, monkeypatch) -> No
 
     violations = guard.check_w1_legacy_persistence_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "sld_projection.py" in v for v in violations
-    )
-    assert any(
-        "[resurrected-module]" in v and "application/sld" in v for v in violations
-    )
+    assert any("[resurrected-module]" in v and "sld_projection.py" in v for v in violations)
+    assert any("[resurrected-module]" in v and "application/sld" in v for v in violations)
 
 
 def test_guard_ignores_orphaned_pycache_only_directories(tmp_path, monkeypatch) -> None:
@@ -1021,18 +913,16 @@ def test_guard_ignores_orphaned_pycache_only_directories(tmp_path, monkeypatch) 
     assert guard.check_c4_and_p24_plus_resurrection() == []
 
     # Zrodlo w podpakiecie — nadal wskrzeszenie (rekurencja, nie plytki glob).
-    (
-        src / "application" / "reference_networks" / "builders" / "__init__.py"
-    ).write_text("", encoding="utf-8")
+    (src / "application" / "reference_networks" / "builders" / "__init__.py").write_text(
+        "", encoding="utf-8"
+    )
     (c4_dir / "glebiej").mkdir()
     (c4_dir / "glebiej" / "__init__.py").write_text("", encoding="utf-8")
     assert any(
         "application/reference_networks" in v
         for v in guard.check_k2_reference_networks_resurrection()
     )
-    assert any(
-        "study_scenario" in v for v in guard.check_c4_and_p24_plus_resurrection()
-    )
+    assert any("study_scenario" in v for v in guard.check_c4_and_p24_plus_resurrection())
 
 
 def test_guard_rejects_resurrected_w1_orm_class_and_table_under_other_path(
@@ -1051,15 +941,9 @@ def test_guard_rejects_resurrected_w1_orm_class_and_table_under_other_path(
 
     violations = guard.check_w1_legacy_persistence_resurrection()
 
-    assert any(
-        "[resurrected-class]" in v and "NetworkSnapshotORM" in v for v in violations
-    )
-    assert any(
-        "[resurrected-class]" in v and "NetworkWizardService" in v for v in violations
-    )
-    assert any(
-        "[resurrected-table]" in v and "network_snapshots" in v for v in violations
-    )
+    assert any("[resurrected-class]" in v and "NetworkSnapshotORM" in v for v in violations)
+    assert any("[resurrected-class]" in v and "NetworkWizardService" in v for v in violations)
+    assert any("[resurrected-table]" in v and "network_snapshots" in v for v in violations)
     assert any("[resurrected-table]" in v and "sld_diagrams" in v for v in violations)
 
 
@@ -1074,14 +958,10 @@ def test_guard_pins_tablename_count_in_models(tmp_path, monkeypatch) -> None:
 
     models.write_text(_models_z_tabelami([*nazwy, "tabela_nowa"]), encoding="utf-8")
     violations = guard.check_w1_legacy_persistence_resurrection()
-    assert any(
-        "[tablename-pin]" in v and str(guard.W1_TABLENAME_PIN) in v for v in violations
-    )
+    assert any("[tablename-pin]" in v and str(guard.W1_TABLENAME_PIN) in v for v in violations)
 
 
-def test_guard_does_not_fire_on_w1_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "enm").mkdir()
     (src / "enm" / "notatka.py").write_text(
@@ -1092,9 +972,7 @@ def test_guard_does_not_fire_on_w1_names_in_comments_or_strings(
     assert guard.check_w1_legacy_persistence_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_w1_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w1_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w1_tree(monkeypatch, tmp_path)
     assert guard.check_w1_legacy_persistence_resurrection() == []
 
@@ -1124,29 +1002,19 @@ def _patch_k2_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
     return src, fe
 
 
-def test_guard_rejects_resurrected_k2_backend_package_and_api_module(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_k2_backend_package_and_api_module(tmp_path, monkeypatch) -> None:
     src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
     (src / "application" / "reference_networks").mkdir(parents=True)
-    (src / "application" / "reference_networks" / "__init__.py").write_text(
-        "", encoding="utf-8"
-    )
+    (src / "application" / "reference_networks" / "__init__.py").write_text("", encoding="utf-8")
     (src / "api").mkdir()
-    (src / "api" / "reference_networks.py").write_text(
-        "router = None\n", encoding="utf-8"
-    )
+    (src / "api" / "reference_networks.py").write_text("router = None\n", encoding="utf-8")
 
     violations = guard.check_k2_reference_networks_resurrection()
 
     assert any(
-        "[resurrected-module]" in v and "application/reference_networks" in v
-        for v in violations
+        "[resurrected-module]" in v and "application/reference_networks" in v for v in violations
     )
-    assert any(
-        "[resurrected-module]" in v and "api/reference_networks.py" in v
-        for v in violations
-    )
+    assert any("[resurrected-module]" in v and "api/reference_networks.py" in v for v in violations)
 
 
 def test_guard_rejects_k2_import_prefix_and_class_name_under_other_path(
@@ -1162,12 +1030,8 @@ def test_guard_rejects_k2_import_prefix_and_class_name_under_other_path(
 
     violations = guard.check_k2_reference_networks_resurrection()
 
-    assert any(
-        "[legacy-public-import]" in v and "inny_modul.py" in v for v in violations
-    )
-    assert any(
-        "[resurrected-class]" in v and "class ReferenceNetwork" in v for v in violations
-    )
+    assert any("[legacy-public-import]" in v and "inny_modul.py" in v for v in violations)
+    assert any("[resurrected-class]" in v and "class ReferenceNetwork" in v for v in violations)
 
 
 def test_guard_does_not_fire_on_k2_names_in_strings_or_unrelated_prefix(
@@ -1184,9 +1048,7 @@ def test_guard_does_not_fire_on_k2_names_in_strings_or_unrelated_prefix(
     assert guard.check_k2_reference_networks_resurrection() == []
 
 
-def test_guard_rejects_k2_frontend_dir_and_surface_component(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_k2_frontend_dir_and_surface_component(tmp_path, monkeypatch) -> None:
     _src, fe = _patch_k2_tree(monkeypatch, tmp_path)
     (fe / "ui" / "reference-networks").mkdir(parents=True)
     (fe / "ui" / "reference-networks" / "api.ts").write_text(
@@ -1201,15 +1063,11 @@ def test_guard_rejects_k2_frontend_dir_and_surface_component(
 
     violations = guard.check_k2_reference_networks_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "ui/reference-networks" in v for v in violations
-    )
+    assert any("[resurrected-module]" in v and "ui/reference-networks" in v for v in violations)
     assert sum("[resurrected-component]" in v for v in violations) == 1
 
 
-def test_guard_accepts_clean_tree_without_k2_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_k2_resurrection(tmp_path, monkeypatch) -> None:
     _patch_k2_tree(monkeypatch, tmp_path)
     assert guard.check_k2_reference_networks_resurrection() == []
 
@@ -1218,9 +1076,7 @@ def test_real_repo_has_no_k2_resurrection() -> None:
     assert guard.check_k2_reference_networks_resurrection() == []
 
 
-def test_guard_rejects_resurrected_w3d_source_compliance_module(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3d_source_compliance_module(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "application" / "compliance").mkdir(parents=True)
     (src / "application" / "compliance" / "source_compliance.py").write_text(
@@ -1229,15 +1085,10 @@ def test_guard_rejects_resurrected_w3d_source_compliance_module(
 
     violations = guard.check_w3d_source_compliance_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "application/compliance" in v
-        for v in violations
-    )
+    assert any("[resurrected-module]" in v and "application/compliance" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3d_def_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3d_def_under_other_path(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "application" / "oze").mkdir(parents=True)
     (src / "application" / "oze" / "cokolwiek.py").write_text(
@@ -1248,18 +1099,11 @@ def test_guard_rejects_resurrected_w3d_def_under_other_path(
 
     violations = guard.check_w3d_source_compliance_resurrection()
 
-    assert any(
-        "[resurrected-def]" in v and "evaluate_source_compliance" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-def]" in v and "SourceComplianceResult" in v for v in violations
-    )
+    assert any("[resurrected-def]" in v and "evaluate_source_compliance" in v for v in violations)
+    assert any("[resurrected-def]" in v and "SourceComplianceResult" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir(parents=True)
     (src / "domain" / "execution.py").write_text(
@@ -1291,9 +1135,7 @@ def _patch_w3a_tree(monkeypatch, tmp_path) -> Path:
     return src
 
 
-def test_guard_rejects_resurrected_w3a_second_engine_module(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3a_second_engine_module(tmp_path, monkeypatch) -> None:
     """B-01 STOP (odkryty `guardy_z_ci.py`/`verification_phantom_paths_guard`):
     tylko DWA z czterech plikow bridge'a SC<->Protection Engine v1 zostaly
     faktycznie skasowane — `domain/protection_engine_v1.py` (WATCHED_PATHS
@@ -1304,13 +1146,9 @@ def test_guard_rejects_resurrected_w3a_second_engine_module(
     `resultset_v1_schema_guard.py` (patrz test ponizej)."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir()
-    (src / "domain" / "protection_current_source.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
+    (src / "domain" / "protection_current_source.py").write_text("x = 1\n", encoding="utf-8")
     (src / "application").mkdir()
-    (src / "application" / "protection_current_resolver.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
+    (src / "application" / "protection_current_resolver.py").write_text("x = 1\n", encoding="utf-8")
 
     violations = guard.check_w3a_second_engine_resurrection()
 
@@ -1319,15 +1157,12 @@ def test_guard_rejects_resurrected_w3a_second_engine_module(
         for v in violations
     )
     assert any(
-        "[resurrected-module]" in v
-        and "application/protection_current_resolver.py" in v
+        "[resurrected-module]" in v and "application/protection_current_resolver.py" in v
         for v in violations
     )
 
 
-def test_guard_does_not_fire_on_w3d_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w3d_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "enm").mkdir()
     (src / "enm" / "notatka.py").write_text(
@@ -1339,9 +1174,7 @@ def test_guard_does_not_fire_on_w3d_names_in_comments_or_strings(
     assert guard.check_w3d_source_compliance_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_w3d_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3d_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w1_tree(monkeypatch, tmp_path)
     assert guard.check_w3d_source_compliance_resurrection() == []
 
@@ -1352,9 +1185,7 @@ def test_guard_accepts_current_repo_state_w3d() -> None:
     assert guard.check_w3d_source_compliance_resurrection() == []
 
 
-def test_guard_rejects_resurrected_w3a_class_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypatch) -> None:
     """Iloczyn cech: klasa resolvera bridge'a (`ProtectionCurrentResolver`) I
     typ błędu bridge'a (`AmbiguousMappingError`) — DWIE różne rodziny nazw
     (serwis, wyjątek domenowy), obie muszą złapać się pod DOWOLNĄ ścieżką,
@@ -1369,18 +1200,11 @@ def test_guard_rejects_resurrected_w3a_class_under_other_path(
 
     violations = guard.check_w3a_second_engine_resurrection()
 
-    assert any(
-        "[resurrected-class]" in v and "ProtectionCurrentResolver" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-class]" in v and "AmbiguousMappingError" in v for v in violations
-    )
+    assert any("[resurrected-class]" in v and "ProtectionCurrentResolver" in v for v in violations)
+    assert any("[resurrected-class]" in v and "AmbiguousMappingError" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3a_function_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monkeypatch) -> None:
     """Zaślepka bez fizyki skasowana z `domain_operations_v2.py`
     (`calculate_tcc_curve`, `tcc.legacy_write_disabled`) — jedyna pozostała
     pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` (funkcje skasowanych
@@ -1395,9 +1219,7 @@ def test_guard_rejects_resurrected_w3a_function_under_other_path(
 
     violations = guard.check_w3a_second_engine_resurrection()
 
-    assert any(
-        "[resurrected-function]" in v and "calculate_tcc_curve" in v for v in violations
-    )
+    assert any("[resurrected-function]" in v and "calculate_tcc_curve" in v for v in violations)
 
 
 def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> None:
@@ -1417,18 +1239,14 @@ def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> 
         encoding="utf-8",
     )
     (src / "application" / "result_mapping").mkdir(parents=True)
-    (
-        src / "application" / "result_mapping" / "protection_to_resultset_v1.py"
-    ).write_text(
+    (src / "application" / "result_mapping" / "protection_to_resultset_v1.py").write_text(
         "def map_protection_to_resultset_v1(x):\n    return x\n",
         encoding="utf-8",
     )
     assert guard.check_w3a_second_engine_resurrection() == []
 
 
-def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "enm").mkdir()
     (src / "enm" / "notatka.py").write_text(
@@ -1440,9 +1258,7 @@ def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(
     assert guard.check_w3a_second_engine_resurrection() == []
 
 
-def test_guard_does_not_fire_on_w3a_shared_private_helper_names(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w3a_shared_private_helper_names(tmp_path, monkeypatch) -> None:
     """`_build_element_results`/`_build_global_results` (prywatne funkcje
     skasowanego `protection_to_resultset_v1.py`) NIE są na liście zakazanych
     nazw — to ogólne nazwy prywatnych pomocników (nosił je też skasowany
@@ -1458,9 +1274,7 @@ def test_guard_does_not_fire_on_w3a_shared_private_helper_names(
     assert guard.check_w3a_second_engine_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_w3a_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3a_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w3a_tree(monkeypatch, tmp_path)
     assert guard.check_w3a_second_engine_resurrection() == []
 
@@ -1502,35 +1316,22 @@ def _patch_w3c1_tree(monkeypatch, tmp_path) -> Path:
 
 def test_guard_rejects_resurrected_w3c1_module(tmp_path, monkeypatch) -> None:
     src = _patch_w3c1_tree(monkeypatch, tmp_path)
-    (src / "application" / "analyses" / "protection" / "overcurrent").mkdir(
-        parents=True
-    )
+    (src / "application" / "analyses" / "protection" / "overcurrent").mkdir(parents=True)
     (src / "api").mkdir()
-    (src / "api" / "protection_overcurrent_settings.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
-    (src / "application" / "analyses" / "run_envelope.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
+    (src / "api" / "protection_overcurrent_settings.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application" / "analyses" / "run_envelope.py").write_text("x = 1\n", encoding="utf-8")
 
     violations = guard.check_w3c1_overcurrent_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "protection/overcurrent" in v
-        for v in violations
-    )
+    assert any("[resurrected-module]" in v and "protection/overcurrent" in v for v in violations)
     assert any(
         "[resurrected-module]" in v and "protection_overcurrent_settings.py" in v
         for v in violations
     )
-    assert any(
-        "[resurrected-module]" in v and "run_envelope.py" in v for v in violations
-    )
+    assert any("[resurrected-module]" in v and "run_envelope.py" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3c1_name_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3c1_name_under_other_path(tmp_path, monkeypatch) -> None:
     src = _patch_w3c1_tree(monkeypatch, tmp_path)
     (src / "application" / "analyses" / "protection").mkdir(parents=True)
     (src / "application" / "analyses" / "protection" / "cokolwiek.py").write_text(
@@ -1543,20 +1344,13 @@ def test_guard_rejects_resurrected_w3c1_name_under_other_path(
     violations = guard.check_w3c1_overcurrent_resurrection()
 
     assert any(
-        "[resurrected-name]" in v and "compute_overcurrent_settings" in v
-        for v in violations
+        "[resurrected-name]" in v and "compute_overcurrent_settings" in v for v in violations
     )
-    assert any(
-        "[resurrected-name]" in v and "OvercurrentSettingsV0" in v for v in violations
-    )
-    assert any(
-        "[resurrected-name]" in v and "RUN_ENVELOPE_ADAPTERS" in v for v in violations
-    )
+    assert any("[resurrected-name]" in v and "OvercurrentSettingsV0" in v for v in violations)
+    assert any("[resurrected-name]" in v and "RUN_ENVELOPE_ADAPTERS" in v for v in violations)
 
 
-def test_guard_does_not_fire_on_w3c1_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w3c1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src = _patch_w3c1_tree(monkeypatch, tmp_path)
     (src / "application" / "analyses").mkdir(parents=True)
     (src / "application" / "analyses" / "notatka.py").write_text(
@@ -1567,9 +1361,7 @@ def test_guard_does_not_fire_on_w3c1_names_in_comments_or_strings(
     assert guard.check_w3c1_overcurrent_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_w3c1_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3c1_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w3c1_tree(monkeypatch, tmp_path)
     assert guard.check_w3c1_overcurrent_resurrection() == []
 
@@ -1597,9 +1389,7 @@ def test_guard_rejects_resurrected_line_overcurrent_setting_directory(
     tmp_path, monkeypatch
 ) -> None:
     src = _patch_w3c2_tree(monkeypatch, tmp_path)
-    katalog = (
-        src / "application" / "analyses" / "protection" / "line_overcurrent_setting"
-    )
+    katalog = src / "application" / "analyses" / "protection" / "line_overcurrent_setting"
     katalog.mkdir(parents=True)
     # Bramka liczy ZRODLO (`zrodlo_istnieje`, klasa z odbioru K2: osierocony
     # `__pycache__`/pusty katalog to nie wskrzeszenie) — wskrzeszony pakiet ma plik .py.
@@ -1607,15 +1397,10 @@ def test_guard_rejects_resurrected_line_overcurrent_setting_directory(
 
     violations = guard.check_w3c2_line_overcurrent_setting_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "line_overcurrent_setting" in v
-        for v in violations
-    )
+    assert any("[resurrected-module]" in v and "line_overcurrent_setting" in v for v in violations)
 
 
-def test_guard_accepts_clean_tree_without_w3c2_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3c2_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w3c2_tree(monkeypatch, tmp_path)
     assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []
 
@@ -1642,24 +1427,16 @@ def _patch_trace_v2_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
     fe = tmp_path / "frontend" / "src"
     fe.mkdir(parents=True)
     monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
-    monkeypatch.setattr(
-        guard, "TRACE_V2_FRONTEND_DIR", fe / "ui" / "proof" / "trace-v2"
-    )
+    monkeypatch.setattr(guard, "TRACE_V2_FRONTEND_DIR", fe / "ui" / "proof" / "trace-v2")
     return src, fe
 
 
-def test_guard_rejects_resurrected_trace_v2_backend_modules(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_trace_v2_backend_modules(tmp_path, monkeypatch) -> None:
     src, _fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
     (src / "domain" / "trace_v2").mkdir(parents=True)
-    (src / "domain" / "trace_v2" / "artifact.py").write_text(
-        "x = 1\n", encoding="utf-8"
-    )
+    (src / "domain" / "trace_v2" / "artifact.py").write_text("x = 1\n", encoding="utf-8")
     (src / "application" / "trace_emitters").mkdir(parents=True)
-    (src / "application" / "trace_emitters" / "__init__.py").write_text(
-        "", encoding="utf-8"
-    )
+    (src / "application" / "trace_emitters" / "__init__.py").write_text("", encoding="utf-8")
     (src / "application" / "trace_export").mkdir(parents=True)
     (src / "application" / "trace_export" / "latex_generator.py").write_text(
         "x = 1\n", encoding="utf-8"
@@ -1667,17 +1444,11 @@ def test_guard_rejects_resurrected_trace_v2_backend_modules(
 
     violations = guard.check_trace_v2_resurrection()
 
+    assert any("[resurrected-module]" in v and "domain/trace_v2" in v for v in violations)
     assert any(
-        "[resurrected-module]" in v and "domain/trace_v2" in v for v in violations
+        "[resurrected-module]" in v and "application/trace_emitters" in v for v in violations
     )
-    assert any(
-        "[resurrected-module]" in v and "application/trace_emitters" in v
-        for v in violations
-    )
-    assert any(
-        "[resurrected-module]" in v and "application/trace_export" in v
-        for v in violations
-    )
+    assert any("[resurrected-module]" in v and "application/trace_export" in v for v in violations)
 
 
 def test_guard_rejects_trace_v2_frontend_dir(tmp_path, monkeypatch) -> None:
@@ -1707,16 +1478,13 @@ def test_guard_rejects_trace_v2_class_under_other_path_and_import_prefix(
     violations = guard.check_trace_v2_resurrection()
 
     assert any(
-        "[legacy-public-import]" in v and "domain.trace_v2.artifact" in v
-        for v in violations
+        "[legacy-public-import]" in v and "domain.trace_v2.artifact" in v for v in violations
     )
     assert any(
         "[legacy-public-import]" in v and "application.trace_emitters.wynik" in v
         for v in violations
     )
-    assert any(
-        "[resurrected-class]" in v and "class TraceDiffEngine" in v for v in violations
-    )
+    assert any("[resurrected-class]" in v and "class TraceDiffEngine" in v for v in violations)
 
 
 #: Inwentarz klas skasowanego klastra "slad v2" spisany z drzewa sprzed kasacji
@@ -1754,22 +1522,14 @@ TRACE_V2_KLASY_SKASOWANEGO_KLASTRA = {
 
 def test_trace_v2_forbidden_class_names_cover_whole_deleted_cluster() -> None:
     """Zbior zakazanych nazw = pelny inwentarz klas klastra (17), nie jego probka."""
-    inwentarz = {
-        nazwa
-        for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values()
-        for nazwa in nazwy
-    }
+    inwentarz = {nazwa for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values() for nazwa in nazwy}
     assert len(inwentarz) == 17
     assert guard.FORBIDDEN_TRACE_V2_CLASS_NAMES == inwentarz
 
 
 @pytest.mark.parametrize(
     "nazwa",
-    sorted(
-        nazwa
-        for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values()
-        for nazwa in nazwy
-    ),
+    sorted(nazwa for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values() for nazwa in nazwy),
 )
 def test_guard_rejects_each_trace_v2_class_under_other_path(
     nazwa: str, tmp_path, monkeypatch
@@ -1785,14 +1545,10 @@ def test_guard_rejects_each_trace_v2_class_under_other_path(
 
     violations = guard.check_trace_v2_resurrection()
 
-    assert [
-        v for v in violations if "[resurrected-class]" in v and f"class {nazwa}" in v
-    ]
+    assert [v for v in violations if "[resurrected-class]" in v and f"class {nazwa}" in v]
 
 
-def test_guard_does_not_fire_on_trace_v2_near_miss_import_prefix(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_trace_v2_near_miss_import_prefix(tmp_path, monkeypatch) -> None:
     """Granica `startswith(prefix + ".")`: modul o nazwie zaczynajacej sie tak
     samo, ale bez kropki po prefiksie (`domain.trace_v2_experimental`), to INNY
     modul, nie import z `domain.trace_v2` — ta sama klasa granicznego testu, co
@@ -1866,9 +1622,7 @@ def test_guard_ignores_orphaned_pycache_only_directories_for_trace_v2(
     assert guard.check_trace_v2_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_trace_v2_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_trace_v2_resurrection(tmp_path, monkeypatch) -> None:
     _patch_trace_v2_tree(monkeypatch, tmp_path)
     assert guard.check_trace_v2_resurrection() == []
 
@@ -1902,15 +1656,12 @@ def test_guard_rejects_resurrected_w3g1_case_config_page(tmp_path, monkeypatch) 
     violations = guard.check_w3g1_run_trigger_orphan_resurrection()
 
     assert any(
-        "[resurrected-module]" in v and "ui/study-cases/CaseConfigPage.tsx" in v
-        for v in violations
+        "[resurrected-module]" in v and "ui/study-cases/CaseConfigPage.tsx" in v for v in violations
     )
     assert len(violations) == 1
 
 
-def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog(tmp_path, monkeypatch) -> None:
     fe = _patch_w3g1_tree(monkeypatch, tmp_path)
     (fe / "ui" / "power-flow-results").mkdir(parents=True)
     (fe / "ui" / "power-flow-results" / "PowerFlowRunDialog.tsx").write_text(
@@ -1920,8 +1671,7 @@ def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog(
     violations = guard.check_w3g1_run_trigger_orphan_resurrection()
 
     assert any(
-        "[resurrected-module]" in v
-        and "ui/power-flow-results/PowerFlowRunDialog.tsx" in v
+        "[resurrected-module]" in v and "ui/power-flow-results/PowerFlowRunDialog.tsx" in v
         for v in violations
     )
     assert len(violations) == 1
@@ -1935,9 +1685,9 @@ def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog_test_alone(
     zycia")."""
     fe = _patch_w3g1_tree(monkeypatch, tmp_path)
     (fe / "ui" / "power-flow-results" / "__tests__").mkdir(parents=True)
-    (
-        fe / "ui" / "power-flow-results" / "__tests__" / "PowerFlowRunDialog.test.tsx"
-    ).write_text("test('x', () => {});\n", encoding="utf-8")
+    (fe / "ui" / "power-flow-results" / "__tests__" / "PowerFlowRunDialog.test.tsx").write_text(
+        "test('x', () => {});\n", encoding="utf-8"
+    )
 
     violations = guard.check_w3g1_run_trigger_orphan_resurrection()
 
@@ -1949,9 +1699,7 @@ def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog_test_alone(
     assert len(violations) == 1
 
 
-def test_guard_accepts_clean_tree_without_w3g1_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3g1_resurrection(tmp_path, monkeypatch) -> None:
     _patch_w3g1_tree(monkeypatch, tmp_path)
     assert guard.check_w3g1_run_trigger_orphan_resurrection() == []
 
@@ -1979,9 +1727,7 @@ def _patch_w3j_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
     monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
-    monkeypatch.setattr(
-        guard, "W3J_VOLTAGE_PROFILE_FRONTEND_DIR", fe / "ui" / "voltage-profile"
-    )
+    monkeypatch.setattr(guard, "W3J_VOLTAGE_PROFILE_FRONTEND_DIR", fe / "ui" / "voltage-profile")
     return src, fe
 
 
@@ -1998,8 +1744,7 @@ def test_guard_rejects_resurrected_w3j_violations_module(tmp_path, monkeypatch) 
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
     assert any(
-        "[resurrected-module]" in v and "analysis/power_flow/violations.py" in v
-        for v in violations
+        "[resurrected-module]" in v and "analysis/power_flow/violations.py" in v for v in violations
     )
     assert any(
         "[resurrected-module]" in v and "analysis/power_flow/violations_report.py" in v
@@ -2007,9 +1752,7 @@ def test_guard_rejects_resurrected_w3j_violations_module(tmp_path, monkeypatch) 
     )
 
 
-def test_guard_rejects_resurrected_w3j_class_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3j_class_under_other_path(tmp_path, monkeypatch) -> None:
     """Klasa moze wrocic pod INNYM plikiem — guard skanuje CALY `backend/src`,
     nie tylko stara sciezke `analysis/power_flow/violations.py`."""
     src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
@@ -2020,17 +1763,12 @@ def test_guard_rejects_resurrected_w3j_class_under_other_path(
 
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
-    assert any(
-        "[resurrected-class]" in v and "VoltageViolationsDetector" in v
-        for v in violations
-    )
+    assert any("[resurrected-class]" in v and "VoltageViolationsDetector" in v for v in violations)
     # Stary plik nie istnieje w tym scenariuszu — [resurrected-module] nie pada.
     assert not any("[resurrected-module]" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3j_function_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3j_function_under_other_path(tmp_path, monkeypatch) -> None:
     src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
     (src / "analysis").mkdir(parents=True)
     (src / "analysis" / "elsewhere.py").write_text(
@@ -2040,8 +1778,7 @@ def test_guard_rejects_resurrected_w3j_function_under_other_path(
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
     assert any(
-        "[resurrected-function]" in v and "export_violations_report_to_pdf" in v
-        for v in violations
+        "[resurrected-function]" in v and "export_violations_report_to_pdf" in v for v in violations
     )
 
 
@@ -2054,14 +1791,10 @@ def test_guard_rejects_w3j_voltage_profile_frontend_dir(tmp_path, monkeypatch) -
 
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
-    assert any(
-        "ui/voltage-profile" in v and "[resurrected-module]" in v for v in violations
-    )
+    assert any("ui/voltage-profile" in v and "[resurrected-module]" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_w3j_component_under_other_path(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_w3j_component_under_other_path(tmp_path, monkeypatch) -> None:
     _src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
     sneaky_dir = fe / "ui" / "elsewhere"
     sneaky_dir.mkdir(parents=True)
@@ -2072,9 +1805,7 @@ def test_guard_rejects_resurrected_w3j_component_under_other_path(
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
     assert any(
-        "[resurrected-component]" in v
-        and "VoltageProfileChart" in v
-        and "sneaky.tsx" in v
+        "[resurrected-component]" in v and "VoltageProfileChart" in v and "sneaky.tsx" in v
         for v in violations
     )
     assert not any("[resurrected-module]" in v for v in violations)
@@ -2092,15 +1823,10 @@ def test_guard_rejects_resurrected_w3j_heatmap_legend_under_other_path(
 
     violations = guard.check_w3j_voltage_criteria_resurrection()
 
-    assert any(
-        "[resurrected-component]" in v and "VoltageHeatmapLegend" in v
-        for v in violations
-    )
+    assert any("[resurrected-component]" in v and "VoltageHeatmapLegend" in v for v in violations)
 
 
-def test_guard_does_not_fire_on_w3j_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_w3j_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
     (src / "analysis").mkdir(parents=True)
     (src / "analysis" / "notes.py").write_text(
@@ -2121,9 +1847,7 @@ def test_guard_does_not_fire_on_w3j_names_in_comments_or_strings(
     assert guard.check_w3j_voltage_criteria_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_w3j_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_w3j_resurrection(tmp_path, monkeypatch) -> None:
     src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
     (src / "analysis" / "normative").mkdir(parents=True)
     (src / "analysis" / "normative" / "kryteria_napiecia.py").write_text(
@@ -2137,9 +1861,7 @@ def test_guard_accepts_clean_tree_without_w3j_resurrection(
     assert guard.check_w3j_voltage_criteria_resurrection() == []
 
 
-def test_guard_ignores_orphaned_pycache_only_directory_w3j(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_orphaned_pycache_only_directory_w3j(tmp_path, monkeypatch) -> None:
     """Osierocony `__pycache__/` (bytecode sprzed kasacji) nie jest zrodlem —
     `zrodlo_istnieje` wymaga faktycznego pliku `*.py`, nie golego `exists()`."""
     src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
@@ -2270,15 +1992,12 @@ def test_guard_rejects_resurrected_s3_definition_under_other_path(
     violations = guard.check_s3_ncrfg_second_engine_resurrection()
 
     assert any(
-        "[resurrected-definition]" in v and nazwa in v and "sneaky.tsx" in v
-        for v in violations
+        "[resurrected-definition]" in v and nazwa in v and "sneaky.tsx" in v for v in violations
     )
     assert not any("[resurrected-module]" in v for v in violations)
 
 
-def test_guard_does_not_fire_on_s3_names_in_comments_or_strings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_s3_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
     src, fe = _patch_s3_tree(monkeypatch, tmp_path)
     (src / "application" / "ncrfg_compliance").mkdir(parents=True)
     (src / "application" / "ncrfg_compliance" / "model_bridge.py").write_text(
@@ -2299,9 +2018,7 @@ def test_guard_does_not_fire_on_s3_names_in_comments_or_strings(
     assert guard.check_s3_ncrfg_second_engine_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_s3_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_s3_resurrection(tmp_path, monkeypatch) -> None:
     src, fe = _patch_s3_tree(monkeypatch, tmp_path)
     (src / "application" / "ncrfg_compliance").mkdir(parents=True)
     (src / "application" / "ncrfg_compliance" / "model_bridge.py").write_text(
@@ -2317,9 +2034,7 @@ def test_guard_accepts_clean_tree_without_s3_resurrection(
     assert guard.check_s3_ncrfg_second_engine_resurrection() == []
 
 
-def test_guard_ignores_orphaned_pycache_only_directory_s3(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_orphaned_pycache_only_directory_s3(tmp_path, monkeypatch) -> None:
     src, _fe = _patch_s3_tree(monkeypatch, tmp_path)
     pycache_dir = src / "application" / "ncrfg_compliance" / "__pycache__"
     pycache_dir.mkdir(parents=True)
@@ -2363,8 +2078,7 @@ def test_guard_rejects_resurrected_uniewazniacz_module(tmp_path, monkeypatch) ->
     violations = guard.check_uniewazniacz_resurrection()
 
     assert any(
-        "[resurrected-module]" in v
-        and "application/analysis_run/result_invalidator.py" in v
+        "[resurrected-module]" in v and "application/analysis_run/result_invalidator.py" in v
         for v in violations
     )
 
@@ -2383,10 +2097,7 @@ def test_guard_rejects_resurrected_uniewazniacz_class_under_other_path(
 
     violations = guard.check_uniewazniacz_resurrection()
 
-    assert any(
-        "[resurrected-class]" in v and nazwa in v and "kaskada.py" in v
-        for v in violations
-    )
+    assert any("[resurrected-class]" in v and nazwa in v and "kaskada.py" in v for v in violations)
     assert not any("[resurrected-module]" in v for v in violations)
 
 
@@ -2406,15 +2117,12 @@ def test_guard_rejects_resurrected_uniewazniacz_function_under_other_path(
     violations = guard.check_uniewazniacz_resurrection()
 
     assert any(
-        "[resurrected-function]" in v and nazwa in v and "repo_biegow.py" in v
-        for v in violations
+        "[resurrected-function]" in v and nazwa in v and "repo_biegow.py" in v for v in violations
     )
     assert not any("[resurrected-module]" in v for v in violations)
 
 
-def test_guard_rejects_resurrected_uniewazniacz_async_method(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_rejects_resurrected_uniewazniacz_async_method(tmp_path, monkeypatch) -> None:
     """Wariant `async def` w metodzie klasy — ta sama zdolnosc, inny ksztalt
     skladni; `ast.walk` musi go zlapac tak samo jak funkcje modulowa."""
     src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
@@ -2429,8 +2137,7 @@ def test_guard_rejects_resurrected_uniewazniacz_async_method(
     violations = guard.check_uniewazniacz_resurrection()
 
     assert any(
-        "[resurrected-function]" in v and "invalidate_project_results" in v
-        for v in violations
+        "[resurrected-function]" in v and "invalidate_project_results" in v for v in violations
     )
 
 
@@ -2453,9 +2160,7 @@ def test_guard_does_not_fire_on_uniewazniacz_names_in_comments_or_strings(
     assert guard.check_uniewazniacz_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_uniewazniacz_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_uniewazniacz_resurrection(tmp_path, monkeypatch) -> None:
     src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
     (src / "application" / "analysis_run").mkdir(parents=True)
     (src / "application" / "analysis_run" / "read_model.py").write_text(
@@ -2465,9 +2170,7 @@ def test_guard_accepts_clean_tree_without_uniewazniacz_resurrection(
     assert guard.check_uniewazniacz_resurrection() == []
 
 
-def test_guard_ignores_orphaned_pycache_only_directory_uniewazniacz(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_orphaned_pycache_only_directory_uniewazniacz(tmp_path, monkeypatch) -> None:
     """Osierocony bytecode sprzed kasacji nie jest wskrzeszonym zrodlem."""
     src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
     pycache_dir = src / "application" / "analysis_run" / "__pycache__"
@@ -2572,9 +2275,7 @@ def _wpisy(warstwa: str, rodzaj: str, zasieg: str | None = None) -> list:
     return [
         w
         for w in guard.PAKIET_L_WPISY
-        if w.warstwa == warstwa
-        and w.rodzaj == rodzaj
-        and (zasieg is None or w.zasieg == zasieg)
+        if w.warstwa == warstwa and w.rodzaj == rodzaj and (zasieg is None or w.zasieg == zasieg)
     ]
 
 
@@ -2642,9 +2343,7 @@ def test_guard_rejects_resurrected_pakiet_l_path(tmp_path, monkeypatch, wpis) ->
     korzen = src if wpis.warstwa == "backend" else fe
     cel = korzen / wpis.sciezka
     if cel.suffix in {".py", ".ts", ".tsx"}:
-        _zapisz(
-            cel, "// wskrzeszony\n" if wpis.warstwa == "frontend" else "# wskrzeszony\n"
-        )
+        _zapisz(cel, "// wskrzeszony\n" if wpis.warstwa == "frontend" else "# wskrzeszony\n")
     else:
         rozszerzenie = ".py" if wpis.warstwa == "backend" else ".tsx"
         _zapisz(cel / "podmodul" / f"wskrzeszony{rozszerzenie}", "")
@@ -2671,25 +2370,17 @@ def test_guard_rejects_pakiet_l_backend_definition_under_other_path(
     violations = guard.check_pakiet_l_resurrection()
 
     assert any(
-        "[resurrected-definition]" in v
-        and "przeniesiony_modul.py" in v
-        and wpis.symbol in v
+        "[resurrected-definition]" in v and "przeniesiony_modul.py" in v and wpis.symbol in v
         for v in violations
     ), violations
 
 
 @pytest.mark.parametrize(
     "wpis",
-    [
-        w
-        for w in _wpisy("backend", "definicja", "globalnie")
-        if not w.symbol[:1].isupper()
-    ],
+    [w for w in _wpisy("backend", "definicja", "globalnie") if not w.symbol[:1].isupper()],
     ids=_id,
 )
-def test_guard_rejects_pakiet_l_backend_definition_as_method(
-    tmp_path, monkeypatch, wpis
-) -> None:
+def test_guard_rejects_pakiet_l_backend_definition_as_method(tmp_path, monkeypatch, wpis) -> None:
     """Ta sama zdolnosc w innym ksztalcie skladni: funkcja wraca jako metoda
     (`async def`) klasy — `ast.walk` musi ja zlapac tak samo jak definicje modulowa.
     Klasy i stale modulowe maja ksztalt metody bezprzedmiotowy (wylaczone z iloczynu).
@@ -2702,15 +2393,11 @@ def test_guard_rejects_pakiet_l_backend_definition_as_method(
 
     violations = guard.check_pakiet_l_resurrection()
 
-    assert any(
-        "nowy_serwis.py" in v and wpis.symbol in v for v in violations
-    ), violations
+    assert any("nowy_serwis.py" in v and wpis.symbol in v for v in violations), violations
 
 
 @pytest.mark.parametrize("wpis", _wpisy("backend", "definicja", "plik"), ids=_id)
-def test_guard_pakiet_l_backend_file_scoped_definition(
-    tmp_path, monkeypatch, wpis
-) -> None:
+def test_guard_pakiet_l_backend_file_scoped_definition(tmp_path, monkeypatch, wpis) -> None:
     """Zasieg `plik`: nazwa ogolna albo kolidujaca z ZYWA definicja gdzie indziej —
     czerwona TYLKO we wskazanym pliku, zielona w kazdym innym."""
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -2750,9 +2437,7 @@ def test_guard_rejects_pakiet_l_frontend_export_under_other_path(
 
 
 @pytest.mark.parametrize("wpis", _wpisy("frontend", "definicja", "plik"), ids=_id)
-def test_guard_pakiet_l_frontend_file_scoped_definition(
-    tmp_path, monkeypatch, wpis
-) -> None:
+def test_guard_pakiet_l_frontend_file_scoped_definition(tmp_path, monkeypatch, wpis) -> None:
     _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     _zapisz(fe / wpis.sciezka, f"export const {wpis.symbol} = {{}};\n")
     _zapisz(fe / "ui2" / "zywy" / "inny.ts", f"export const {wpis.symbol} = {{}};\n")
@@ -2765,9 +2450,7 @@ def test_guard_pakiet_l_frontend_file_scoped_definition(
 
 
 @pytest.mark.parametrize("wpis", _wpisy("frontend", "wzorzec"), ids=_id)
-def test_guard_rejects_pakiet_l_pattern_in_live_file(
-    tmp_path, monkeypatch, wpis
-) -> None:
+def test_guard_rejects_pakiet_l_pattern_in_live_file(tmp_path, monkeypatch, wpis) -> None:
     """Pozycja skasowana WEWNATRZ zywego pliku (martwy prop, martwa zakladka,
     zaszyty napis zgodnosci) nie wraca do TEGO pliku; ten sam napis w innym
     pliku nie jest naruszeniem tej bramki."""
@@ -2778,8 +2461,7 @@ def test_guard_rejects_pakiet_l_pattern_in_live_file(
     violations = guard.check_pakiet_l_resurrection()
 
     assert any(
-        "[resurrected-pattern]" in v and wpis.sciezka in v and wpis.wiersz in v
-        for v in violations
+        "[resurrected-pattern]" in v and wpis.sciezka in v and wpis.wiersz in v for v in violations
     ), violations
     assert not any("ui2/inne/Plik.tsx" in v for v in violations)
 
@@ -2808,9 +2490,7 @@ def test_guard_does_not_fire_on_pakiet_l_names_in_comments_or_docstrings(
     assert guard.check_pakiet_l_resurrection() == []
 
 
-def test_guard_ignores_orphaned_pycache_only_directory_pakiet_l(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_orphaned_pycache_only_directory_pakiet_l(tmp_path, monkeypatch) -> None:
     """Osierocony bytecode sprzed kasacji (`network_model/proof/__pycache__`) nie
     jest wskrzeszonym zrodlem."""
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -2821,9 +2501,7 @@ def test_guard_ignores_orphaned_pycache_only_directory_pakiet_l(
     assert guard.check_pakiet_l_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_pakiet_l_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_pakiet_l_resurrection(tmp_path, monkeypatch) -> None:
     """Zywe sasiedztwo skasowanych pozycji (silnik IDMT w `protection_iec60255.py`,
     typ widoku krzywych, `FaultMarker` analizatora koordynacji, `CoordinationResult`
     ekranu koordynacji, `InspectorPanel` warstwy ui2) zostaje zielone."""
@@ -2866,9 +2544,7 @@ def test_guard_accepts_current_repo_state_pakiet_l() -> None:
 
 
 @pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_BACKEND)
-def test_guard_rejects_resurrected_abp1_backend_path(
-    tmp_path, monkeypatch, sciezka
-) -> None:
+def test_guard_rejects_resurrected_abp1_backend_path(tmp_path, monkeypatch, sciezka) -> None:
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     _zapisz(src / sciezka / "nowy.py", "X_ZYWE = 1\n")
 
@@ -2906,9 +2582,7 @@ def test_guard_ignores_orphaned_pycache_only_stability_rms(tmp_path, monkeypatch
 
 
 @pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_FRONTEND)
-def test_guard_rejects_resurrected_abp1_frontend_path(
-    tmp_path, monkeypatch, sciezka
-) -> None:
+def test_guard_rejects_resurrected_abp1_frontend_path(tmp_path, monkeypatch, sciezka) -> None:
     _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     cel = fe / sciezka if sciezka.endswith(".json") else fe / sciezka / "EkranNowy.tsx"
     _zapisz(cel, "{}\n")
@@ -2918,9 +2592,7 @@ def test_guard_rejects_resurrected_abp1_frontend_path(
 
 
 @pytest.mark.parametrize("symbol", sorted(guard.ABP1_DEFINICJE_BACKEND))
-def test_guard_rejects_abp1_definition_under_other_path(
-    tmp_path, monkeypatch, symbol
-) -> None:
+def test_guard_rejects_abp1_definition_under_other_path(tmp_path, monkeypatch, symbol) -> None:
     """Definicja wraca pod INNA sciezka niz skasowana (np. do `application/analyses`)."""
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     _zapisz(src / "application" / "analyses" / "nowy_tor.py", _py_definicja(symbol))
@@ -2963,9 +2635,7 @@ def test_guard_rejects_abp1_run_kind_identifier(tmp_path, monkeypatch, kod) -> N
 
 
 @pytest.mark.parametrize("napis", guard.ABP1_NAPISY)
-def test_guard_rejects_abp1_string_in_backend_code(
-    tmp_path, monkeypatch, napis
-) -> None:
+def test_guard_rejects_abp1_string_in_backend_code(tmp_path, monkeypatch, napis) -> None:
     """Trasa/kod/proweniencja T1 jako literal w kodzie backendu (dekorator trasy,
     klucz slownika) — nie tylko jako definicja."""
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -2975,29 +2645,19 @@ def test_guard_rejects_abp1_string_in_backend_code(
     )
 
     naruszenia = guard.check_abp1_dynamika_resurrection()
-    assert any(
-        "[resurrected-string]" in n and repr(napis) in n for n in naruszenia
-    ), naruszenia
+    assert any("[resurrected-string]" in n and repr(napis) in n for n in naruszenia), naruszenia
 
 
 @pytest.mark.parametrize("napis", guard.ABP1_NAPISY + guard.ABP1_NAPISY_FRONTEND)
-def test_guard_rejects_abp1_pattern_in_frontend_code(
-    tmp_path, monkeypatch, napis
-) -> None:
+def test_guard_rejects_abp1_pattern_in_frontend_code(tmp_path, monkeypatch, napis) -> None:
     _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
-    _zapisz(
-        fe / "ui" / "study-cases" / "types.ts", f"export const RODZAJ = '{napis}';\n"
-    )
+    _zapisz(fe / "ui" / "study-cases" / "types.ts", f"export const RODZAJ = '{napis}';\n")
 
     naruszenia = guard.check_abp1_dynamika_resurrection()
-    assert any(
-        "[resurrected-pattern]" in n and repr(napis) in n for n in naruszenia
-    ), naruszenia
+    assert any("[resurrected-pattern]" in n and repr(napis) in n for n in naruszenia), naruszenia
 
 
-def test_guard_does_not_fire_on_abp1_names_in_comments_or_docstrings(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_does_not_fire_on_abp1_names_in_comments_or_docstrings(tmp_path, monkeypatch) -> None:
     """Dokstring/komentarz OPISUJACY kasacje nie jest naruszeniem (historia zostaje
     czytelna), a dokstring klasy i funkcji tez jest dokstringiem."""
     src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -3015,9 +2675,7 @@ def test_guard_does_not_fire_on_abp1_names_in_comments_or_docstrings(
     assert guard.check_abp1_dynamika_resurrection() == []
 
 
-def test_guard_ignores_orphaned_pycache_only_directory_abp1(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_ignores_orphaned_pycache_only_directory_abp1(tmp_path, monkeypatch) -> None:
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     pycache = src / "application" / "stability" / "__pycache__"
     pycache.mkdir(parents=True)
@@ -3026,9 +2684,7 @@ def test_guard_ignores_orphaned_pycache_only_directory_abp1(
     assert guard.check_abp1_dynamika_resurrection() == []
 
 
-def test_guard_accepts_clean_tree_without_abp1_resurrection(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatch) -> None:
     """Zywe sasiedztwo: kanoniczny bieg `dynamika_rms`, ekran `ui2/wyniki/dynamika`,
     stabilnosc SSCI (`stabilnosc` jako klucz wyniku akademickiego) zostaja zielone."""
     src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -3094,8 +2750,7 @@ def test_guard_rejects_resurrected_tory_module(tmp_path, monkeypatch, rel) -> No
 
     katalog_albo_plik = rel.removesuffix("/__init__.py")
     assert any(
-        "[resurrected-module]" in v and f"backend/src/{katalog_albo_plik}" in v
-        for v in violations
+        "[resurrected-module]" in v and f"backend/src/{katalog_albo_plik}" in v for v in violations
     ), violations
 
 
@@ -3147,14 +2802,10 @@ def test_guard_rejects_resurrected_tory_definition(
 
     violations = guard.check_tory_testowe_resurrection()
 
-    assert any(
-        "[resurrected-definition]" in v and nazwa in v for v in violations
-    ), violations
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations), violations
 
 
-def test_guard_accepts_build_violations_outside_power_flow_package(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_accepts_build_violations_outside_power_flow_package(tmp_path, monkeypatch) -> None:
     """Para zielona: `_build_violations` adekwatnosci mocy biernej jest legalna."""
     src = _patch_tory_tree(monkeypatch, tmp_path)
     _zapisz_tory(
@@ -3337,17 +2988,13 @@ KATALOG_SKRYPTOW = Path(guard.__file__).resolve().parent
 
 
 def test_kazda_bramka_check_wpieta_w_main() -> None:
-    drzewo = ast.parse(
-        (KATALOG_SKRYPTOW / "legacy_public_path_guard.py").read_text("utf-8")
-    )
+    drzewo = ast.parse((KATALOG_SKRYPTOW / "legacy_public_path_guard.py").read_text("utf-8"))
     definicje = {
         w.name
         for w in drzewo.body
         if isinstance(w, ast.FunctionDef) and w.name.startswith("check_")
     }
-    main = next(
-        w for w in drzewo.body if isinstance(w, ast.FunctionDef) and w.name == "main"
-    )
+    main = next(w for w in drzewo.body if isinstance(w, ast.FunctionDef) and w.name == "main")
     wywolania = [
         w.func.id
         for w in ast.walk(main)
@@ -3378,18 +3025,11 @@ def kopia_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def _przepnij(wartosc: object, stary: Path, nowy: Path) -> object:
     if isinstance(wartosc, Path):
-        return (
-            nowy / wartosc.relative_to(stary)
-            if wartosc.is_relative_to(stary)
-            else wartosc
-        )
+        return nowy / wartosc.relative_to(stary) if wartosc.is_relative_to(stary) else wartosc
     if isinstance(wartosc, tuple | list | set | frozenset):
         return type(wartosc)(_przepnij(w, stary, nowy) for w in wartosc)
     if isinstance(wartosc, dict):
-        return {
-            _przepnij(k, stary, nowy): _przepnij(w, stary, nowy)
-            for k, w in wartosc.items()
-        }
+        return {_przepnij(k, stary, nowy): _przepnij(w, stary, nowy) for k, w in wartosc.items()}
     return wartosc
 
 
@@ -3420,9 +3060,7 @@ def _main_z_iniekcja(
     try:
         for rel, tresc in pliki.items():
             sciezka = src / rel
-            assert (
-                not sciezka.exists()
-            ), f"iniekcja nie nadpisuje realnego pliku: {sciezka}"
+            assert not sciezka.exists(), f"iniekcja nie nadpisuje realnego pliku: {sciezka}"
             katalog = sciezka.parent
             brakujace: list[Path] = []
             while not katalog.exists():
@@ -3554,14 +3192,10 @@ def test_pakiet_fazowy_iniekcja_przez_main(
 ) -> None:
     monkeypatch.setattr(guard, "TORY_TESTOWE_PAKIET_FAZOWY", PAKIET_FAZOWY_INIEKCJA)
 
-    rc, wyjscie = _main_z_iniekcja(
-        kopia_repo, monkeypatch, capsys, {PAKIET_FAZOWY_INIEKCJA: tresc}
-    )
+    rc, wyjscie = _main_z_iniekcja(kopia_repo, monkeypatch, capsys, {PAKIET_FAZOWY_INIEKCJA: tresc})
 
     assert rc == 1, (nazwa, wyjscie)
-    assert (
-        "[resurrected-name]" in wyjscie and "_iniekcja_pakiet_fazowy.py" in wyjscie
-    ), wyjscie
+    assert "[resurrected-name]" in wyjscie and "_iniekcja_pakiet_fazowy.py" in wyjscie, wyjscie
 
 
 def test_pakiet_fazowy_realna_tresc_zielona_przez_main(
@@ -3570,9 +3204,7 @@ def test_pakiet_fazowy_realna_tresc_zielona_przez_main(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Para zielona: tresc realnego pakietu (typy wejscia/wyniku z listy zamknietej)."""
-    realny = (guard.BACKEND_SRC_DIR / guard.TORY_TESTOWE_PAKIET_FAZOWY).read_text(
-        "utf-8"
-    )
+    realny = (guard.BACKEND_SRC_DIR / guard.TORY_TESTOWE_PAKIET_FAZOWY).read_text("utf-8")
     monkeypatch.setattr(guard, "TORY_TESTOWE_PAKIET_FAZOWY", PAKIET_FAZOWY_INIEKCJA)
 
     rc, wyjscie = _main_z_iniekcja(
@@ -3703,6 +3335,8 @@ def test_scl_cim_niebramkowana_droga_do_bajtow_cgmes_jest_naruszeniem(
 
 def test_scl_cim_zywe_drzewo_repo_jest_czyste() -> None:
     assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
 # --- Karta DYNAMIKA-W-TLE (2026-09-30): Celery/Redis/MongoDB ---------------------------------
 
 
