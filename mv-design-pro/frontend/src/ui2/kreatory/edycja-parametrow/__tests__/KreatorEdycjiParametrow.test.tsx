@@ -8,6 +8,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
+import { resolveFixActionSurface } from '../../../../types/fixActionSurface';
+import { buildFixActionOperationContext } from '../../../../ui/shared/fixActionSurfaceRuntime';
+import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -179,5 +182,58 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       render(<KreatorEdycjiParametrow />);
       expect(screen.queryByTestId('mvd-kreator-edycja-dane-modulu')).toBeNull();
     });
+  });
+
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — akcja naprawcza bramki zwarć prowadzi DO POLA.
+  // Iloczyn cech: {transformator, źródło na szynie nN} × {+6 %, +10 %}; kontekst formularza
+  // budowany TĄ SAMĄ ścieżką co klik akcji naprawczej (resolveFixActionSurface →
+  // buildFixActionOperationContext), wybór wartości natywnym `selectOptions`.
+  describe.each([
+    ['transformator', 'tr-nn-1', 'TransformerModal'],
+    ['źródło na szynie nN', 'src-nn-1', 'SourceModal'],
+  ] as const)('tolerancja napięcia sieci nN — %s', (_, ref, modal) => {
+    it.each(['PLUS_6', 'PLUS_10'] as const)(
+      'akcja naprawcza otwiera pole lv_voltage_tolerance; wybór %s trafia do parameters',
+      async (tolerancja) => {
+        const surface = resolveFixActionSurface({
+          code: 'ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING',
+          action_type: 'OPEN_MODAL',
+          element_ref: ref,
+          modal_type: modal,
+          payload_hint: { required: 'lv_voltage_tolerance' },
+        });
+        expect(surface.operation).toBe('update_element_parameters');
+        context = buildFixActionOperationContext(surface, null);
+        executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: ref } });
+        render(<KreatorEdycjiParametrow />);
+
+        expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('lv_voltage_tolerance');
+        const pole = screen.getByTestId('mvd-kreator-edycja-wartosc-0');
+        expect(pole.tagName).toBe('SELECT');
+        expect(screen.getByRole('option', { name: ETYKIETA_PL_TOLERANCJI_NN[tolerancja] })).toBeTruthy();
+        await userEvent.selectOptions(pole, tolerancja);
+        await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+        await waitFor(() => {
+          expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+            element_ref: ref,
+            parameters: { lv_voltage_tolerance: tolerancja },
+          });
+        });
+      },
+    );
+  });
+
+  it('`required` będący opisem wymogu (nie kluczem słownika) nie staje się kluczem parametru', () => {
+    context = { element_ref: 'tr-1', required: 'continuous_path_to_source' };
+    render(<KreatorEdycjiParametrow />);
+    expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
+  });
+
+  it('akcja naprawcza układu sieci nN (ten sam wzorzec) też prowadzi do pola', () => {
+    context = { element_ref: 'tr-1', required: 'lv_earthing_system' };
+    render(<KreatorEdycjiParametrow />);
+    expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('lv_earthing_system');
+    expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0').tagName).toBe('SELECT');
   });
 });

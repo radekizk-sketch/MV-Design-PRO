@@ -780,8 +780,42 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
 
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
-    expect(payload.nn_earthing).toEqual({ lv_system: 'IT', neutral_point: 'isolated' });
+    expect(payload.nn_earthing).toEqual({
+      lv_system: 'IT',
+      lv_voltage_tolerance: 'PLUS_10',
+      neutral_point: 'isolated',
+    });
   });
+
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN obok „Układ sieci nN" —
+  // iloczyn {+6 %, +10 %} × {układ TN-C-S, TT}, natywny wybór w kroku uziemienia.
+  it.each([
+    ['PLUS_6', 'TN-C-S'],
+    ['PLUS_6', 'TT'],
+    ['PLUS_10', 'TN-C-S'],
+    ['PLUS_10', 'TT'],
+  ] as const)(
+    'krok uziemienia: tolerancja %s × układ %s → nn_earthing.lv_voltage_tolerance w payloadzie',
+    async (tolerancja, uklad) => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorStacjiSnNn />);
+
+      await przejdzDoTransformatora();
+      await wybierzTyp();
+      await przejdzIWybierzRozdzielnice();
+      await przejdzDoKroku('Uziemienie i punkt neutralny');
+      await waitFor(() => {
+        expect(screen.getByTestId('mvd-kreator-stacja-tolerancja-nn')).toBeInTheDocument();
+      });
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-uklad-nn'), uklad);
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-tolerancja-nn'), tolerancja);
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+      expect(payload.nn_earthing).toMatchObject({ lv_system: uklad, lv_voltage_tolerance: tolerancja });
+    },
+  );
 
   it('honoruje wybór typu stacji zmieniony natywnie w kroku 1', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });

@@ -309,20 +309,10 @@ export function CreateCaseDialog({
               <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <h3 className="mb-3 text-sm font-medium text-gray-700">Konfiguracja obliczeń</h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <ConfigField
-                      label={CONFIG_FIELD_LABELS.c_factor_max}
-                      value={config.c_factor_max}
-                      onChange={(v) => handleConfigChange('c_factor_max', v)}
-                      step={0.01}
-                    />
-                    <ConfigField
-                      label={CONFIG_FIELD_LABELS.c_factor_min}
-                      value={config.c_factor_min}
-                      onChange={(v) => handleConfigChange('c_factor_min', v)}
-                      step={0.01}
-                    />
-                  </div>
+                  <p className="text-xs text-gray-500" data-testid="case-config-c-nosnik">
+                    Współczynnik napięciowy c (MAX/MIN wg IEC 60909-0 tab. 1) i czas
+                    zwarcia t_k ustawiasz w scenariuszu zwarciowym, nie w przypadku.
+                  </p>
 
                   <ConfigField
                     label={CONFIG_FIELD_LABELS.base_mva}

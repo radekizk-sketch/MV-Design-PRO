@@ -101,7 +101,12 @@ function resolveOperationFromModalType(
 
   switch (fallbackModalType) {
     case 'SourceModal':
-      return input.action_type === 'SELECT_CATALOG' ? 'assign_catalog_to_element' : 'add_grid_source_sn';
+      if (input.action_type === 'SELECT_CATALOG') {
+        return 'assign_catalog_to_element';
+      }
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: brak tolerancji napięcia sieci nN na ISTNIEJĄCYM
+      // źródle (szyna nN) naprawia się edycją parametru, nie dodaniem nowego źródła.
+      return required === 'lv_voltage_tolerance' ? 'update_element_parameters' : 'add_grid_source_sn';
     case 'NodeModal':
       return 'update_element_parameters';
     case 'BranchModal':

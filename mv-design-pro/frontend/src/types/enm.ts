@@ -7,6 +7,7 @@
 
 import type {
   RolaUziemnika,
+  TolerancjaNapieciaNn,
   TypPunktuNeutralnego,
   UkladSieciNn,
   UziemienieEkranuKabla,
@@ -383,6 +384,10 @@ export interface Transformer extends ENMElement {
   lv_neutral?: GroundingConfig | null;
   /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
   lv_earthing_system?: UkladSieciNn | null;
+  /** Tolerancja napięcia sieci nN zasilanej z tego transformatora — wiersz nN tabeli 1
+   * IEC 60909-0 (+6 % → c 1,05/0,95; +10 % → c 1,10/0,90). Brak = odmowa
+   * `fault.c_tolerancja_nn_brak` dla węzłów nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK). */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   tap_position?: number | null;
   tap_min?: number | null;
   tap_max?: number | null;
@@ -433,8 +438,10 @@ export interface Source extends ENMElement {
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;
-  c_max?: number | null;
-  c_min?: number | null;
+  /** Tolerancja napięcia sieci nN dla źródła na szynie nN (wiersz nN tabeli 1 IEC 60909-0).
+   * Dawne `c_max`/`c_min` źródła usunięte — fantom bez konsumenta (karta
+   * WSPOLCZYNNIK-C-JEDEN-NOSNIK: c dobiera backend per węzeł). */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   parameter_source?: ParameterSourceWithManualEquivalent | null;

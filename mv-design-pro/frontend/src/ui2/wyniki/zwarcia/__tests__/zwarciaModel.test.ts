@@ -136,13 +136,13 @@ describe('uwagiZwarciaPL — flagi na tekst uwag', () => {
 describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z konfiguracji ZAPISANEJ na biegu', () => {
   // Karta TODO-UI2 p.7: `konfiguracja_biegu` to konfiguracja TEGO biegu
   // (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`), nigdy
-  // aktywnego przypadku obliczeniowego — iloczyn cech: {c jawny / c auto-per-
-  // -węzeł} × {czas z opcji / czas domyślny assemblera} × {konfiguracja
-  // nieobecna (starszy zapis)}.
-  it('metoda jest stałą normatywną; c jawny i czas z opcji biegu', () => {
+  // aktywnego przypadku obliczeniowego — iloczyn cech: {c nadpisane z uzasadnieniem /
+  // c auto-per-węzeł × scenariusz MAX/MIN/brak} × {czas z opcji / czas domyślny
+  // assemblera} × {konfiguracja nieobecna (starszy zapis)}.
+  it('metoda jest stałą normatywną; c nadpisane (z uzasadnieniem) i czas z opcji biegu', () => {
     const zalozenia = naZalozeniaZwarc(
       konfiguracjaBieguFixture({
-        c_factor: { tryb: 'jawny', wartosc: 1.1 },
+        c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
         thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
       }),
       undefined,
@@ -154,9 +154,10 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
     });
     expect(zalozenia[1]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: fmtWspolczynnik(1.1),
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanie(fmtWspolczynnik(1.05), 'Uzgodnienie z OSD'),
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanieUwaga('Uzgodnienie z OSD'),
     });
-    expect(zalozenia[1].uwaga).toBeUndefined();
+    expect(zalozenia[1].uwaga).toContain('Uzgodnienie z OSD');
     expect(zalozenia[2]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
       wartosc: fmtCzas(1.0),
@@ -165,18 +166,28 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
     expect(zalozenia[2].uwaga).toBeUndefined();
   });
 
-  it('c auto-per-węzeł (brak jawnego override) → uczciwy opis, NIE liczba zmyślona', () => {
-    const zalozenia = naZalozeniaZwarc(
-      konfiguracjaBieguFixture({ c_factor: { tryb: 'auto_per_wezel', wartosc: null } }),
-      undefined,
-      NAZWA,
-    );
-    expect(zalozenia[1]).toMatchObject({
-      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
-      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
-    });
-  });
+  it.each([
+    ['MAX', 'IEC 60909-0 tab. 1 per węzeł, scenariusz MAX'],
+    ['MIN', 'IEC 60909-0 tab. 1 per węzeł, scenariusz MIN'],
+    [null, 'IEC 60909-0 tab. 1 per węzeł'],
+  ] as const)(
+    'c auto-per-węzeł, scenariusz %s → opis doboru z tabeli 1, NIE liczba zmyślona',
+    (scenariusz, oczekiwany) => {
+      const zalozenia = naZalozeniaZwarc(
+        konfiguracjaBieguFixture({
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+          scenariusz,
+        }),
+        undefined,
+        NAZWA,
+      );
+      expect(zalozenia[1]).toMatchObject({
+        etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+        wartosc: oczekiwany,
+        uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+      });
+    },
+  );
 
   it('czas cieplny domyślny assemblera (brak w opcjach biegu) → wartość NAZWANA jako domyślna', () => {
     const zalozenia = naZalozeniaZwarc(

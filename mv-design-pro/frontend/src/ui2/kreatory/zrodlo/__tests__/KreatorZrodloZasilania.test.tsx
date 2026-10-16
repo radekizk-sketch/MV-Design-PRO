@@ -308,6 +308,18 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-rodzaj')).toBeTruthy();
   });
 
+  it('krok Parametry normowe: c opisany podstawą IEC 60909-0 tab. 1 per węzeł, bez zaszytej liczby (klik natywny)', async () => {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: dawny wiersz „1,10 / 1,00" był stałą UI fałszywą dla
+    // sieci nN (+6 %: 1,05 / 0,95). c pochodzi wyłącznie z tabeli 1 per węzeł i scenariusza.
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-normy"]') as HTMLElement);
+    const wiersz = screen.getByTestId('mvd-kreator-zrodlo-podstawa-c');
+    expect(wiersz.textContent).toContain('IEC 60909-0 tab. 1 per węzeł');
+    expect(wiersz.textContent).toContain('MAX/MIN');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-normy').textContent).not.toMatch(/1,10\s*\/\s*1,00/);
+  });
+
   it('krok Transformatory: wybór OLTC odsłania nastawy regulatora (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);

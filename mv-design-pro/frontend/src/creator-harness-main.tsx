@@ -644,7 +644,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
-    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // scenariusz MAX, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
     // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
     // kandydata.
     if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
@@ -1771,7 +1771,7 @@ if (creator === 'arcflash') {
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna (koordynacja
+        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
         // odmawia bez biegu minimalnego).
         id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',

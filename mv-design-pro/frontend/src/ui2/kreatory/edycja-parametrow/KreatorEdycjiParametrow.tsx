@@ -32,7 +32,9 @@ import {
   type WierszGotowosci,
 } from '../rama';
 import {
+  ETYKIETA_PL_TOLERANCJI_NN,
   ETYKIETA_PL_UZIEMIENIA_EKRANU,
+  TOLERANCJE_NAPIECIA_NN,
   UKLADY_SIECI_NN,
   UZIEMIENIA_EKRANU_KABLA,
 } from '../../../types/uziemienie';
@@ -69,8 +71,24 @@ const SLOWNIKI_STATYCZNE: Readonly<Record<string, readonly OpcjaSlownika[]>> = {
     { id: 'mv_lv', etykieta: 'Stacja SN/nN bez wskazania rodzaju' },
   ],
   lv_earthing_system: UKLADY_SIECI_NN.map((id) => ({ id, etykieta: id })),
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN transformatora albo źródła
+  // na szynie nN (`lv_voltage_tolerance`) — wiersz nN tabeli 1 IEC 60909-0 dla doboru c.
+  lv_voltage_tolerance: TOLERANCJE_NAPIECIA_NN.map((id) => ({
+    id,
+    etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
+  })),
   screen_bonding: UZIEMIENIA_EKRANU_KABLA.map((id) => ({ id, etykieta: `${id} — ${ETYKIETA_PL_UZIEMIENIA_EKRANU[id]}` })),
 };
+
+/** Klucze parametrów, dla których kontrakt ma słownik wartości (pole = lista). */
+const KLUCZE_SLOWNIKOWE: ReadonlySet<string> = new Set([
+  ...Object.keys(SLOWNIKI_STATYCZNE),
+  'vector_group',
+]);
+
+function kluczZWymogu(wymog: string): string {
+  return KLUCZE_SLOWNIKOWE.has(wymog) ? wymog : '';
+}
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -101,7 +119,14 @@ export function KreatorEdycjiParametrow() {
   const zrodloParametrow = readString(context?.parameter_source) || readString(context?.source_mode);
   const fallbackType = (readString(context?.element_type) || 'LineBranch') as ElementType;
 
-  const initialKey = readString(context?.field);
+  // Klucz startowy: jawne `field` kontekstu albo `required` z `payload_hint` akcji naprawczej
+  // bramki (np. ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING → `lv_voltage_tolerance`,
+  // transformer.lv_earthing_system_missing → `lv_earthing_system`). `required` bywa też
+  // opisem wymogu, nie kluczem parametru (`continuous_path_to_source`) — przyjmujemy go
+  // wyłącznie, gdy jest kluczem ze słownika kontraktu (jedno źródło: SLOWNIKI_STATYCZNE
+  // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
+  const initialKey =
+    readString(context?.field) || kluczZWymogu(readString(context?.required));
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
   ]);

@@ -49,6 +49,13 @@ export function naBilansIEC(row: ShortCircuitRow): PozycjaBilansu[] {
     poz(S.bilansXk, row.xk_ohm, fmtOhm, S.jednOhm),
     poz(S.bilansZk, row.zk_ohm, fmtOhm, S.jednOhm),
     poz(S.bilansC, row.c_factor, fmtKappa, null),
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c TEGO węzła (tekst backendu, White Box) —
+    // inżynier widzi, z jakiego wiersza tabeli 1 IEC 60909-0 (albo z jakiego nadpisania) wzięto c.
+    {
+      etykieta: S.bilansCZrodlo,
+      wartosc: row.c_zrodlo?.trim() ? row.c_zrodlo : S.kreska,
+      jednostka: null,
+    },
     poz(S.bilansUn, row.un_kv, fmtKV, S.jednKV),
     poz(S.bilansTk, row.tk_s, fmtCzas, S.jednS),
     poz(S.bilansTb, row.tb_s, fmtCzas, S.jednS),

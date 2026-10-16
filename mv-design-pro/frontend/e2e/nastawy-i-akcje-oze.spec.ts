@@ -227,7 +227,7 @@ async function zbudujSiecGotowaDoObliczen(
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S' } },
+    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S', lv_voltage_tolerance: 'PLUS_10' } },
     // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
@@ -251,7 +251,7 @@ async function zbudujSiecGotowaDoObliczen(
     // `enm/validator.py` — IEC 60364-4-41, ochrona przeciwporażeniowa), więc
     // pętla domykania blokerów niżej (bez obsługi kodu E063) nigdy by go nie
     // zamknęła i `readiness.ready` zostałby `false` na stałe (naprawa CI-D).
-    nn_earthing: { lv_system: 'TN-S' },
+    nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
   });
 
   // Szyny SN stacji — bus_ref rozwiązywalny na stację (resolveStationRef →

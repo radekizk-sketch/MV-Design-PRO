@@ -72,7 +72,11 @@ import {
 } from '../../../ui/network-build/networkBuildStore';
 import { scheduleNextOperationForm } from '../../../ui/network-build/trunkContinuation';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { PUNKTY_NEUTRALNE_IMPEDANCYJNE } from '../../../types/uziemienie';
+import {
+  ETYKIETA_PL_TOLERANCJI_NN,
+  PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  TOLERANCJE_NAPIECIA_NN,
+} from '../../../types/uziemienie';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -159,6 +163,12 @@ import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
 import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
+
+/** Opcje tolerancji napięcia sieci nN — słownik przypięty do backendu (`types/uziemienie.ts`). */
+const OPCJE_TOLERANCJI_NN = TOLERANCJE_NAPIECIA_NN.map((id) => ({
+  id,
+  etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
+}));
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szablon', tytul: T.krokSzablon },
@@ -2500,6 +2510,16 @@ export function KreatorStacjiSnNn() {
             onZmiana={(v) => zmien('uklad_sieci_nn', v as StacjaFormData['uklad_sieci_nn'])}
             pomoc={T.uziemienieUkladPomoc}
             testid="mvd-kreator-stacja-uklad-nn"
+          />
+          <PoleWyboru
+            etykieta={T.uziemienieTolerancja}
+            wartosc={dane.tolerancja_napiecia_nn}
+            opcje={OPCJE_TOLERANCJI_NN}
+            onZmiana={(v) =>
+              zmien('tolerancja_napiecia_nn', v as StacjaFormData['tolerancja_napiecia_nn'])
+            }
+            pomoc={T.uziemienieTolerancjaPomoc}
+            testid="mvd-kreator-stacja-tolerancja-nn"
           />
           <PoleWyboru
             etykieta={T.uziemieniePunkt}

@@ -47,9 +47,10 @@ const DONE_SC_RUN_MIN = {
  * WARIANT (`scenariusz`), po którym ekran dzieli wyniki na przypadek
  * maksymalny i minimalny.
  */
-function konfiguracjaBiegu(scenariusz: 'MAX' | 'MIN', cFactor: number) {
+function konfiguracjaBiegu(scenariusz: 'MAX' | 'MIN') {
   return {
-    c_factor: { tryb: 'jawny' as const, wartosc: cFactor },
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c dobierane per węzeł z tabeli 1 (bez liczby biegu).
+    c_factor: { tryb: 'auto_per_wezel' as const, wartosc: null, uzasadnienie: null },
     thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' as const },
     metoda: 'IEC 60909',
     scenariusz,
@@ -187,14 +188,14 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-1', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MAX', 1.1) }),
+          json: async () => ({ run_id: 'run-sc-1', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MAX') }),
         } as Response;
       }
       if (url === '/api/analysis-runs/run-sc-2/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-2', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MIN', 1.0) }),
+          json: async () => ({ run_id: 'run-sc-2', rows: [], konfiguracja_biegu: konfiguracjaBiegu('MIN') }),
         } as Response;
       }
       return odpowiedzTla(url);
@@ -274,7 +275,7 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ rows: [], konfiguracja_biegu: konfiguracjaBiegu(max ? 'MAX' : 'MIN', 1.0) }),
+          json: async () => ({ rows: [], konfiguracja_biegu: konfiguracjaBiegu(max ? 'MAX' : 'MIN') }),
         } as Response;
       }
       return odpowiedzTla(url);

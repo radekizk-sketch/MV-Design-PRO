@@ -1047,7 +1047,7 @@ export function KreatorZrodloZasilania() {
           />
           <RzadWartosci etykieta={T.norma} wartosc="IEC 60909:2016" />
           <RzadWartosci etykieta={T.czestotliwosc} wartosc="50 Hz" />
-          <RzadWartosci etykieta={`${T.cMax} / ${T.cMin}`} wartosc="1,10 / 1,00" />
+          <RzadWartosci etykieta={T.wspolczynnikC} wartosc={T.wspolczynnikCPodstawa} testid="mvd-kreator-zrodlo-podstawa-c" />
         </KreatorSekcja>
       ) : null}
 

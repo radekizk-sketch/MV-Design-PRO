@@ -24,7 +24,16 @@ interface Zadanie {
   readonly body: unknown;
 }
 
-function scenariusz(id: string, nazwa: string) {
+function scenariusz(
+  id: string,
+  nazwa: string,
+  config: Record<string, unknown> = {
+    scenariusz: 'MAX',
+    nadpisanie_c: null,
+    thermal_time_seconds: 1,
+    include_branch_contributions: true,
+  },
+) {
   return {
     scenario_id: id,
     study_case_id: CASE_ID,
@@ -32,7 +41,7 @@ function scenariusz(id: string, nazwa: string) {
     analysis_type: 'SHORT_CIRCUIT',
     fault_type: 'SC_3F',
     location: { element_ref: 'bus-1', location_type: 'BUS', position: null },
-    config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: true },
+    config,
     fault_impedance_type: 'METALLIC',
     fault_mode: 'METALLIC',
     fault_impedance: null,
@@ -44,7 +53,16 @@ function scenariusz(id: string, nazwa: string) {
   };
 }
 
-function zamontujBackend(lista: ReturnType<typeof scenariusz>[]): Zadanie[] {
+/**
+ * Atrapa backendu wierna kontraktowi `ShortCircuitConfigRequest` (extra=forbid):
+ * klucz `c_factor` albo brak `scenariusz` → 422 (lista błędów schematu), nadpisanie
+ * bez uzasadnienia → 422 z kodem domeny (`OdmowaDanychError`: „<kod>: <komunikat>").
+ * `odmowaDomeny` wymusza odmowę domeny niezależnie od treści (ścieżka błędu backendu).
+ */
+function zamontujBackend(
+  lista: ReturnType<typeof scenariusz>[],
+  odmowaDomeny: string | null = null,
+): Zadanie[] {
   const zadania: Zadanie[] = [];
   vi.stubGlobal(
     'fetch',
@@ -65,6 +83,29 @@ function zamontujBackend(lista: ReturnType<typeof scenariusz>[]): Zadanie[] {
         });
       }
       if (metoda === 'POST') {
+        const body = (init?.body ? JSON.parse(String(init.body)) : {}) as {
+          config?: Record<string, unknown>;
+        };
+        const config = body.config ?? {};
+        if ('c_factor' in config || !('scenariusz' in config)) {
+          return new Response(
+            JSON.stringify({
+              detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'Field required', type: 'missing' }],
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        const nadpisanie = config.nadpisanie_c as { uzasadnienie?: string } | null | undefined;
+        if (odmowaDomeny || (nadpisanie && !nadpisanie.uzasadnienie?.trim())) {
+          return new Response(
+            JSON.stringify({
+              detail:
+                odmowaDomeny ??
+                'fault.c_nadpisanie_bez_uzasadnienia: Nadpisanie współczynnika napięciowego c wymaga uzasadnienia',
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
         return new Response(JSON.stringify(scenariusz('scen-nowy', 'Zwarcie na szynie 2')), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -121,11 +162,151 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
         name: 'Zwarcie na odcinku',
         fault_type: 'SC_1F',
         location: { element_ref: 'branch-7', location_type: 'BRANCH_POINT', position: 0.4 },
-        config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: true },
+        config: {
+          scenariusz: 'MAX',
+          nadpisanie_c: null,
+          thermal_time_seconds: 1,
+          include_branch_contributions: true,
+        },
         fault_mode: 'IMPEDANCE',
         fault_impedance: { r_ohm: 0.5, x_ohm: 0 },
       });
     });
+  });
+
+  // Iloczyn cech nośnika c: {MAX, MIN} × {bez nadpisania, nadpisanie z uzasadnieniem,
+  // nadpisanie bez uzasadnienia → blokada w formularzu}. Ścieżka natywna (userEvent).
+  describe.each(['MAX', 'MIN'] as const)('WSPÓŁCZYNNIK c — scenariusz %s', (wariant) => {
+    async function wypelnijPodstawe(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
+      await user.type(screen.getByTestId('mvd-scenariusze-nazwa'), `Zwarcie ${wariant}`);
+      await user.type(screen.getByTestId('mvd-scenariusze-element'), 'bus-2');
+      await user.click(screen.getByTestId(`mvd-scenariusze-scenariusz-${wariant}`));
+    }
+
+    it('bez nadpisania: wysyła scenariusz i nadpisanie_c = null, bez klucza c_factor', async () => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnijPodstawe(user);
+      expect(screen.queryByTestId('mvd-scenariusze-c-wartosc')).toBeNull();
+      await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+      await waitFor(() => {
+        const post = zadania.find((z) => z.metoda === 'POST');
+        expect(post).toBeTruthy();
+        const config = (post!.body as { config: Record<string, unknown> }).config;
+        expect(config).toEqual({
+          scenariusz: wariant,
+          nadpisanie_c: null,
+          thermal_time_seconds: 1,
+          include_branch_contributions: true,
+        });
+        expect(config).not.toHaveProperty('c_factor');
+      });
+      await waitFor(() => expect(screen.queryByTestId('mvd-scenariusze-formularz')).toBeNull());
+      expect(screen.queryByTestId('mvd-scenariusze-blad')).toBeNull();
+    });
+
+    it('nadpisanie z uzasadnieniem: wartość i uzasadnienie jadą razem', async () => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnijPodstawe(user);
+      await user.click(screen.getByTestId('mvd-scenariusze-nadpisz-c'));
+      await user.type(screen.getByTestId('mvd-scenariusze-c-wartosc'), '1.05');
+      await user.type(
+        screen.getByTestId('mvd-scenariusze-c-uzasadnienie'),
+        'Uzgodnienie z operatorem',
+      );
+      await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+      await waitFor(() => {
+        const post = zadania.find((z) => z.metoda === 'POST');
+        expect(post).toBeTruthy();
+        expect((post!.body as { config: unknown }).config).toEqual({
+          scenariusz: wariant,
+          nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z operatorem' },
+          thermal_time_seconds: 1,
+          include_branch_contributions: true,
+        });
+      });
+    });
+
+    it('nadpisanie bez uzasadnienia: formularz blokuje zapis z komunikatem po polsku', async () => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnijPodstawe(user);
+      await user.click(screen.getByTestId('mvd-scenariusze-nadpisz-c'));
+      await user.type(screen.getByTestId('mvd-scenariusze-c-wartosc'), '1.05');
+      await user.type(screen.getByTestId('mvd-scenariusze-c-uzasadnienie'), '   ');
+      await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+      expect(screen.getByTestId('mvd-scenariusze-blad-formularza').textContent).toContain(
+        'wymaga uzasadnienia',
+      );
+      expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
+    });
+  });
+
+  it('nadpisanie z wartością niebędącą liczbą dodatnią: blokada w formularzu', async () => {
+    const user = userEvent.setup();
+    const zadania = zamontujBackend([]);
+    render(<PanelScenariuszy />);
+    await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
+    await user.type(screen.getByTestId('mvd-scenariusze-nazwa'), 'Zwarcie');
+    await user.type(screen.getByTestId('mvd-scenariusze-element'), 'bus-2');
+    await user.click(screen.getByTestId('mvd-scenariusze-nadpisz-c'));
+    await user.type(screen.getByTestId('mvd-scenariusze-c-uzasadnienie'), 'Powód');
+    await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+    expect(screen.getByTestId('mvd-scenariusze-blad-formularza').textContent).toContain(
+      'skończoną liczbą dodatnią',
+    );
+    expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
+  });
+
+  it('ODMOWA BACKENDU z kodem: komunikat po polsku bez kodu maszynowego', async () => {
+    const user = userEvent.setup();
+    zamontujBackend(
+      [],
+      'fault.c_nadpisanie_wartosc_niepoprawna: Wartość nadpisania współczynnika c 0 musi być skończoną liczbą dodatnią.',
+    );
+    render(<PanelScenariuszy />);
+    await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
+    await user.type(screen.getByTestId('mvd-scenariusze-nazwa'), 'Zwarcie');
+    await user.type(screen.getByTestId('mvd-scenariusze-element'), 'bus-2');
+    await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+    const blad = await screen.findByTestId('mvd-scenariusze-blad');
+    expect(blad.textContent).toContain('musi być skończoną liczbą dodatnią');
+    expect(blad.textContent).not.toContain('fault.c_');
+  });
+
+  it('LISTA: kolumna c pokazuje scenariusz albo nadpisanie z uzasadnieniem', async () => {
+    zamontujBackend([
+      scenariusz('s1', 'Zwarcie MIN', {
+        scenariusz: 'MIN',
+        nadpisanie_c: null,
+        thermal_time_seconds: 1,
+        include_branch_contributions: false,
+      }),
+      scenariusz('s2', 'Zwarcie z nadpisaniem', {
+        scenariusz: 'MAX',
+        nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
+        thermal_time_seconds: 1,
+        include_branch_contributions: false,
+      }),
+    ]);
+    render(<PanelScenariuszy />);
+
+    expect((await screen.findByTestId('mvd-scenariusze-c-s1')).textContent).toBe(
+      'MIN — IEC 60909-0 tab. 1 per węzeł',
+    );
+    expect(screen.getByTestId('mvd-scenariusze-c-s2').textContent).toBe(
+      'nadpisanie c = 1,05 — Uzgodnienie z OSD',
+    );
   });
 
   it('WALIDACJA: bez nazwy i elementu nie wysyłamy nic do backendu', async () => {

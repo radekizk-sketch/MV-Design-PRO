@@ -29,13 +29,13 @@ export const SCENARIUSZE_STRINGS = {
   polaTryb: 'Tryb zwarcia',
   polaRezystancja: 'R zwarcia [Ω]',
   polaReaktancja: 'X zwarcia [Ω]',
-  polaWspolczynnikC: 'Współczynnik napięciowy c',
-  polaCzasCieplny: 'Czas cieplny [s]',
+  polaCzasCieplny: 'Czas trwania zwarcia t_k [s]',
   polaWklady: 'Licz wkłady gałęziowe',
 
   kolNazwa: 'Scenariusz',
   kolRodzaj: 'Rodzaj',
   kolMiejsce: 'Miejsce zwarcia',
+  kolWspolczynnikC: 'Współczynnik c',
   kolAkcje: 'Akcje',
 
   uruchomiono: 'Uruchomiono obliczenie scenariusza',

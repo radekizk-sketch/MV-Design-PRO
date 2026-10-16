@@ -5,15 +5,15 @@
  *
  * Tor pracy (kontrakt ekranu prowadzącego, FLOW_PROJEKTANTA §0.3):
  *  - kotwica = ostatni ZAKOŃCZONY bieg zwarcia trójfazowego gałęzi maksymalnej
- *    (c_max) tego przypadku — ta sama droga do biegów, którą zna `EkranKoordynacji`
- *    (`useExecutionRunsStore`); backend jest jedynym sędzią „czy to c_max" (dostępność
+ *    (scenariusz MAX) tego przypadku — ta sama droga do biegów, którą zna `EkranKoordynacji`
+ *    (`useExecutionRunsStore`); backend jest jedynym sędzią „czy to kotwica scenariusza MAX" (dostępność
  *    sprawdza to samo, czego wymaga budowa — predykaty parami, karta W3-C1),
- *  - brak kotwicy → uczciwy stan zerowy z akcją „Uruchom zwarcie 3F (c_max)",
+ *  - brak kotwicy → uczciwy stan zerowy z akcją „Uruchom zwarcie 3F (scenariusz MAX)",
  *  - dostępność → wybór chronionego odcinka, miejsca zabezpieczenia (zacisk: z modelu
  *    tylko do odczytu albo wybór inżyniera z etykietami z backendu, decyzja O-51) i
  *    kolejnej szyny za końcem odcinka (listy z odpowiedzi; pusta lista niesie powód,
  *    nie ogólnik; brak zacisku = liczenie zablokowane z powodem z rekordu odmowy),
- *  - parametry inżynierskie (c_min, Δt, k_b, k_bth) jako jawne pola z wartością
+ *  - parametry inżynierskie (Δt, k_b, k_bth) jako jawne pola z wartością
  *    domyślną opisaną źródłem — nic ukrytego,
  *  - wynik: I>, I>>, sprawdzenie cieplne, SPZ, uwagi silnika — każda liczba z
  *    odpowiedzi backendu, ZERO liczenia w UI,
@@ -35,6 +35,7 @@ import {
   fetchDopasowanieAparatu,
   fetchDostepnoscNastaw,
   fetchNastawy,
+  opisPodstawyCNastaw,
   type AparatKatalogu,
   type DopasowanieAparatu,
   type DostepnoscNastaw,
@@ -51,7 +52,7 @@ type FazaDopasowania = 'idle' | 'liczenie' | 'gotowe' | 'blad';
 /** Kandydaci na kotwicę: zwarcia trójfazowe ZAKOŃCZONE, najnowsze najpierw —
  * ten sam kontrakt runStore, którego `EkranKoordynacji` używa do stanu zerowego
  * (`maZakonczonyPrzebieg`); TU dodatkowo sortujemy, bo próbujemy kandydatów po
- * kolei (backend jest jedynym sędzią „czy to c_max", patrz nagłówek modułu). */
+ * kolei (backend jest jedynym sędzią „czy to kotwica scenariusza MAX", patrz nagłówek modułu). */
 function kandydaciKotwicy(runs: readonly ExecutionRun[]): readonly ExecutionRun[] {
   return runs
     .filter((r) => r.analysis_type === 'SC_3F' && r.status === 'DONE')
@@ -175,7 +176,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
   const kandydaci = useMemo(() => kandydaciKotwicy(przebiegi), [przebiegi]);
 
   // Krok 1: znajdź kotwicę — spróbuj kandydatów SC_3F DONE od najnowszego,
-  // pierwszy `dostepny: true` wygrywa. Backend (nie UI) osądza c_max.
+  // pierwszy `dostepny: true` wygrywa. Backend (nie UI) osądza, czy bieg jest kotwicą scenariusza MAX.
   useEffect(() => {
     const controller = new AbortController();
     setFazaKotwicy('szukanie');
@@ -432,16 +433,6 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
             <div className="mvd-koordynacja-nastawy-parametry" data-testid="mvd-koordynacja-nastawy-parametry">
               <h4>{T.nastawyParametryTytul}</h4>
               <label>
-                {T.nastawyParametrCMin} <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrCMinZrodlo})</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  data-testid="mvd-koordynacja-nastawy-param-c-min"
-                  value={parametry.c_min}
-                  onChange={(e) => setParametry({ ...parametry, c_min: Number(e.target.value) })}
-                />
-              </label>
-              <label>
                 {T.nastawyParametrDeltaT} <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrDeltaTZrodlo})</span>
                 <input
                   type="number"
@@ -514,6 +505,17 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                   : T.nastawyZrodloZaciskuWskazanie}
                 )
               </p>
+
+              <dl data-testid="mvd-koordynacja-nastawy-podstawa-c" className="mvd-koordynacja-nastawy-podstawa-c">
+                <dt>{T.nastawyPodstawaCKotwicy}</dt>
+                <dd data-testid="mvd-koordynacja-nastawy-podstawa-c-kotwica">
+                  {opisPodstawyCNastaw(odpowiedz.wejscie).kotwica}
+                </dd>
+                <dt>{T.nastawyPodstawaCWariantuMin}</dt>
+                <dd data-testid="mvd-koordynacja-nastawy-podstawa-c-min">
+                  {opisPodstawyCNastaw(odpowiedz.wejscie).wariantMin}
+                </dd>
+              </dl>
 
               <h4>{T.nastawySekcjaZwloczna}</h4>
               <table className="mvd-koordynacja-nastawy-tabela">

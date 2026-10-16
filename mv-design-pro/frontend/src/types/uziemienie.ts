@@ -51,6 +51,25 @@ export type UkladSieciNn = 'TN-S' | 'TN-C-S' | 'TN-C' | 'TT' | 'IT';
 
 export const UKLADY_SIECI_NN: readonly UkladSieciNn[] = ['TN-S', 'TN-C-S', 'TN-C', 'TT', 'IT'];
 
+/**
+ * Tolerancja napięcia sieci nN (`Transformer.lv_voltage_tolerance`, `Source.lv_voltage_tolerance`;
+ * backend `network_model.core.voltage_factor.TOLERANCJE_NAPIECIA_NN`). Wybiera wiersz nN tabeli 1
+ * IEC 60909-0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); brak deklaracji = bramka zwarć
+ * `ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING` / kod gotowości `fault.c_tolerancja_nn_brak`.
+ */
+export type TolerancjaNapieciaNn = 'PLUS_6' | 'PLUS_10';
+
+export const TOLERANCJE_NAPIECIA_NN: readonly TolerancjaNapieciaNn[] = ['PLUS_6', 'PLUS_10'];
+
+/**
+ * Etykieta opcji słownika — opis wiersza tabeli 1 IEC 60909-0 (norma), NIE obliczenie:
+ * UI nie używa tych liczb; c dobiera backend (`voltage_factor.dobierz_c`).
+ */
+export const ETYKIETA_PL_TOLERANCJI_NN: Readonly<Record<TolerancjaNapieciaNn, string>> = {
+  PLUS_6: '+6 % (c_max 1,05; c_min 0,95)',
+  PLUS_10: '+10 % (c_max 1,10; c_min 0,90)',
+};
+
 /** Układ uziemienia ekranu kabla (`Cable.screen_bonding`, `CableType.z0_reference_bonding`). */
 export type UziemienieEkranuKabla = 'single_end' | 'both_ends' | 'cross_bonded';
 

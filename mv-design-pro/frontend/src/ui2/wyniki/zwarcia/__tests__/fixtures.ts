@@ -37,6 +37,7 @@ export function shortCircuitRowFixture(over: Partial<ShortCircuitRow> = {}): Sho
     xr_ratio: 9.4162,
     kappa: 1.7284,
     c_factor: 1.1,
+    c_zrodlo: 'IEC 60909-0 tab. 1, pasmo SN, MAX',
     un_kv: 15.0,
     tk_s: 1.0,
     tb_s: 0.1,
@@ -225,6 +226,7 @@ export function shortCircuitResultsFixture(
         xr_ratio: null,
         kappa: null,
         c_factor: null,
+        c_zrodlo: null,
         un_kv: null,
         tk_s: null,
         tb_s: null,
@@ -351,15 +353,17 @@ export function zalozenieBieguFixture(
 
 /** Konfiguracja ZAPISANA na biegu (karta TODO-UI2 p.7) — kształt 1:1 odpowiedzi
  * `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`. Domyślnie
- * `c_factor` jawny (najczęstsza ścieżka — scenariusz zwarciowy zawsze niesie
- * jawny c, `enm/scenariusze.opcje_biegu_ze_scenariusza`). */
+ * `c_factor` w trybie `auto_per_wezel` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: scenariusz
+ * MAX/MIN wybiera kolumnę tabeli 1 IEC 60909-0, c per węzeł; nadpisanie wyłącznie
+ * z uzasadnieniem). */
 export function konfiguracjaBieguFixture(
   over: Partial<KonfiguracjaBieguZwarcia> = {},
 ): KonfiguracjaBieguZwarcia {
   return {
-    c_factor: { tryb: 'jawny', wartosc: 1.1 },
+    c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
     thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
     metoda: 'IEC 60909',
+    scenariusz: 'MAX',
     ...over,
   };
 }
