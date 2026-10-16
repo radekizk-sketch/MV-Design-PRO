@@ -73,6 +73,31 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result["profile"], "WYMAGA_KWALIFIKACJI")
         self.assertIsNone(result["lead"])
 
+    def test_other_engineering_disciplines(self):
+        cases = (
+            ("Prognoza obciążenia i planowanie rozwoju", "G02"),
+            ("Model systemu 110 kV WN", "G05"),
+            ("Próby pomiarowe i termowizja", "G21"),
+            ("Dyspozycja ruchu OSD i operacje łączeniowe", "G22"),
+            ("Zasilanie UPS w instalacji", "G23"),
+            ("Trakcja i podstacje trakcyjne", "G24"),
+            ("SCADA i IEC 61850", "G25"),
+            ("Turbina gazowa i kogeneracja", "G26"),
+            ("Elektrolizer wodoru", "G27"),
+            ("Rynek energii i taryfa", "G28"),
+            ("Geotechnika konstrukcji", "G29"),
+        )
+        for task, expected_group in cases:
+            with self.subTest(task=task):
+                result = route_task(task, self.registry)
+                self.assertTrue(result["engineering_review_required"])
+                self.assertIsNotNone(result["lead"])
+                self.assertNotEqual(result["profile"], "WYMAGA_KWALIFIKACJI")
+                self.assertTrue(
+                    result["lead"]["group_id"] == expected_group
+                    or expected_group in [x["group_id"] for x in result["team"]]
+                )
+
     def test_independent_reviewer(self):
         for description in (
             "Dobór kabla SN", "NC RfG WOS", "Nastawy EAZ",
