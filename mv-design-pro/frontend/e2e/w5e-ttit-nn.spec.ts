@@ -22,9 +22,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
+import { katalogZrzutow } from './katalogZrzutow';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/w5e_ttit');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/w5e_ttit'));
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FAZA: 'przed' | 'po' = process.env.W5E_FAZA === 'przed' ? 'przed' : 'po';
 const MOTYWY = ['light', 'dark'] as const;

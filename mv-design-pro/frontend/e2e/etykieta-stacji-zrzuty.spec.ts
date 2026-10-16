@@ -18,9 +18,10 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { STACJE, stanAplikacji, zbudujSiecEtykietyStacji } from './etykietaStacjiSiec';
+import { katalogZrzutow } from './katalogZrzutow';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji'));
 const ETAP = process.env.ETYKIETA_ETAP === 'przed' ? 'przed' : 'po';
 const MOTYWY = ['light', 'dark'] as const;
 
