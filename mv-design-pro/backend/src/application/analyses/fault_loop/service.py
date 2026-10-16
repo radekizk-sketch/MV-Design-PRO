@@ -123,18 +123,12 @@ def _find_station(enm: EnergyNetworkModel, station_ref: str) -> Substation | Non
     # Dopasowanie po ref_id (kanoniczny odnośnik domenowy) LUB id (UUID elementu),
     # spójnie z finderem ENM — wywołujący z inspektora podaje element.id.
     return next(
-        (
-            s
-            for s in enm.substations
-            if station_ref in (s.ref_id, getattr(s, "id", None))
-        ),
+        (s for s in enm.substations if station_ref in (s.ref_id, getattr(s, "id", None))),
         None,
     )
 
 
-def station_transformers(
-    enm: EnergyNetworkModel, station: Substation
-) -> list[Transformer]:
+def station_transformers(enm: EnergyNetworkModel, station: Substation) -> list[Transformer]:
     """WSZYSTKIE transformatory stacji, posortowane po ``ref_id`` (determinizm).
 
     Kolejność po ``ref_id``, a nie po pozycji w ``enm.transformers``, bo to ta
@@ -144,9 +138,7 @@ def station_transformers(
     i pętlę zwarcia drugiego (dwie prawdy o „transformatorze stacji").
     """
     refs = set(station.transformer_refs or ())
-    return sorted(
-        (t for t in enm.transformers if t.ref_id in refs), key=lambda t: t.ref_id
-    )
+    return sorted((t for t in enm.transformers if t.ref_id in refs), key=lambda t: t.ref_id)
 
 
 def resolve_station_transformer(
@@ -247,9 +239,7 @@ def resolve_transformer_for_bus(
     albo nie miał trasy (sprzęgło otwarte).
     """
     assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
-    return resolve_station_transformer(
-        enm, station, assignment.owner_by_bus.get(bus_ref)
-    )
+    return resolve_station_transformer(enm, station, assignment.owner_by_bus.get(bus_ref))
 
 
 @dataclass(frozen=True)
@@ -400,10 +390,7 @@ def _transformer_loop_impedance(
         return None, ["vector_group"]
 
     zero_seq = build_transformer_zero_seq_model(trafo)
-    if (
-        zero_seq.connection not in _LV_LOCAL_GROUND_CONNECTIONS
-        or zero_seq.z0_pu is None
-    ):
+    if zero_seq.connection not in _LV_LOCAL_GROUND_CONNECTIONS or zero_seq.z0_pu is None:
         return None, [
             "transformer_zero_sequence_lv_local_ground",
         ]
@@ -457,9 +444,7 @@ def impedancja_transformatora_dla_ukladu(
 
 
 #: Etykieta zerowej składowej powrotnej pętli TT (PE kabla nie należy do pętli doziemnej).
-ETYKIETA_POWROT_TT = (
-    "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)"
-)
+ETYKIETA_POWROT_TT = "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)"
 
 
 @dataclass(frozen=True)
@@ -543,9 +528,7 @@ def uklad_nn_transformatora(trafo: Transformer) -> str | None:
     return trafo.lv_earthing_system
 
 
-def odmowa_ukladu_nn(
-    context: dict[str, Any], uklad: str | None
-) -> dict[str, Any] | None:
+def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, Any] | None:
     """Odmowa NAZWANA, gdy transformator nie deklaruje układu sieci nN.
 
     Zwraca gotową odpowiedź widoku albo ``None`` (układ zadeklarowany — licz dalej:
@@ -572,9 +555,7 @@ def odmowa_ukladu_nn(
 KOD_ODMOWY_PASMA_NN = "nn.transformer_lv_not_nn_band"
 
 
-def odmowa_pasma_nn(
-    context: dict[str, Any], trafo: Transformer
-) -> dict[str, Any] | None:
+def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
     """Odmowa NAZWANA, gdy strona dolna transformatora zasilającego nie leży w paśmie nN.
 
     Analizy nN (pętla zwarcia TN wg IEC 60364-4-41, SWZ, dobór aparatów nN, dowód
@@ -611,9 +592,7 @@ def odmowa_pasma_nn(
     }
 
 
-def odmowa_analizy_nn(
-    context: dict[str, Any], trafo: Transformer
-) -> dict[str, Any] | None:
+def odmowa_analizy_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
     """Jedno wejście odmów analiz nN: najpierw pasmo strony dolnej, potem układ sieci."""
     return odmowa_pasma_nn(context, trafo) or odmowa_ukladu_nn(
         context, uklad_nn_transformatora(trafo)
@@ -720,9 +699,7 @@ def build_station_fault_loop_view(
         "network_system": None,
     }
 
-    trafo, transformer_missing = resolve_station_transformer(
-        enm, station, transformer_ref
-    )
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
 
@@ -778,9 +755,7 @@ def build_station_fault_loop_view(
         "transformer_impedance_ohm": {"r": z_tr.r_ohm, "x": z_tr.x_ohm},
         "upstream_impedance_ohm": {"r": upstream.r_ohm, "x": upstream.x_ohm},
         "fault_loop": result.to_dict(),
-        "tt_it": (
-            skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None
-        ),
+        "tt_it": (skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None),
         "missing_data": [],
         "note_pl": (
             "Impedancja pętli zwarcia u źródła (szyna nN) — startowa dla obwodów nN. "
@@ -893,9 +868,7 @@ def build_fault_loop_view_at_point(
         "transformer_impedance_ohm": {"r": z_tr.r_ohm, "x": z_tr.x_ohm},
         "upstream_impedance_ohm": {"r": upstream.r_ohm, "x": upstream.x_ohm},
         "fault_loop": result.to_dict(),
-        "tt_it": (
-            skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None
-        ),
+        "tt_it": (skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None),
         "missing_data": [],
     }
 
@@ -957,9 +930,7 @@ def build_feeder_fault_loop_view_for_transformer(
         "network_system": None,
     }
 
-    trafo, transformer_missing = resolve_station_transformer(
-        enm, station, transformer_ref
-    )
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
         return {
             **context,
@@ -1078,9 +1049,7 @@ def build_feeder_fault_loop_view_for_transformer(
                     status="OK",
                     fault_loop=result.to_dict(),
                     tt_it=(
-                        skladowe.dane_punktu.to_dict()
-                        if skladowe.dane_punktu is not None
-                        else None
+                        skladowe.dane_punktu.to_dict() if skladowe.dane_punktu is not None else None
                     ),
                 )
             )
@@ -1092,9 +1061,7 @@ def build_feeder_fault_loop_view_for_transformer(
         # Osiągalność jest własnością SPÓJNEJ SKŁADOWEJ zamkniętych gałęzi, więc
         # wszystkie szyny jednego odpływu mają tę samą listę zasilających
         # transformatorów — bierzemy ją z dowolnej (pierwszej) szyny odpływu.
-        supplying = assignment.supplying_by_bus.get(
-            bus_refs_of_feeder[0], (trafo.ref_id,)
-        )
+        supplying = assignment.supplying_by_bus.get(bus_refs_of_feeder[0], (trafo.ref_id,))
         multi_sided = len(supplying) >= 2
         feeders.append(
             {
@@ -1113,9 +1080,7 @@ def build_feeder_fault_loop_view_for_transformer(
                 ],
                 "worst_point_bus_ref": worst_bus_ref,
                 "supply": SUPPLY_MULTI_SIDED if multi_sided else SUPPLY_ONE_SIDED,
-                "supply_assumption_pl": (
-                    SUPPLY_ASSUMPTION_MULTI_PL if multi_sided else None
-                ),
+                "supply_assumption_pl": (SUPPLY_ASSUMPTION_MULTI_PL if multi_sided else None),
             }
         )
 
@@ -1131,9 +1096,7 @@ def build_feeder_fault_loop_view_for_transformer(
     }
 
 
-def build_feeder_fault_loop_view(
-    enm: EnergyNetworkModel, station_ref: str
-) -> dict[str, Any]:
+def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
     """Pętla zwarcia we WSZYSTKICH punktach nN stacji, pogrupowana per odpływ.
 
     Kontrakt danych kompletny (wszystkie punkty obwodu w odpowiedzi, karta
@@ -1197,8 +1160,7 @@ def build_feeder_fault_loop_view(
             # Odmowa nazwana transformatora (strona dolna spoza pasma nN) nie ma braków
             # danych — jej kod trafia do braków stacji, żeby nie znikała po cichu.
             for item in (
-                view.get("missing_data")
-                or ([view["kod_odmowy"]] if view.get("kod_odmowy") else [])
+                view.get("missing_data") or ([view["kod_odmowy"]] if view.get("kod_odmowy") else [])
             )
         }
     )

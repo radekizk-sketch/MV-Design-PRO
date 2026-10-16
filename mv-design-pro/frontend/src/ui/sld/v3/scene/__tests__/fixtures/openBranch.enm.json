@@ -677,6 +677,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "91fc9620-bcd4-5597-b985-d8b704fb3cda",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",

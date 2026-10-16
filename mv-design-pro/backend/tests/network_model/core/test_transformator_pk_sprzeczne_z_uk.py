@@ -67,18 +67,14 @@ def _wprost_pu(pk_kw: float) -> tuple[float, float]:
 
 DROGI_GALEZI = {
     "get_short_circuit_impedance_pu": lambda g: g.get_short_circuit_impedance_pu(),
-    "get_short_circuit_reactance_pu": lambda g: complex(
-        0.0, g.get_short_circuit_reactance_pu()
-    ),
+    "get_short_circuit_reactance_pu": lambda g: complex(0.0, g.get_short_circuit_reactance_pu()),
     "get_impedance_pu_baza_sn": lambda g: g.get_impedance_pu(base_mva=SN_MVA),
     "computed_equivalent_pu": lambda g: g.computed_equivalent_pu(None),
 }
 
 
 @pytest.mark.parametrize("droga", sorted(DROGI_GALEZI))
-@pytest.mark.parametrize(
-    ("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE]
-)
+@pytest.mark.parametrize(("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE])
 def test_galaz_modelu_odmawia_danych_sprzecznych_i_liczy_zgodne_bez_zmian(
     droga: str, przypadek: str, pk_kw: float, sprzeczne: bool
 ) -> None:
@@ -97,21 +93,15 @@ def test_galaz_modelu_odmawia_danych_sprzecznych_i_liczy_zgodne_bez_zmian(
     assert galaz.validate() is True, przypadek
 
 
-@pytest.mark.parametrize(
-    ("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE]
-)
+@pytest.mark.parametrize(("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE])
 def test_petla_nn_odmawia_danych_sprzecznych_zamiast_obcinac_r_do_z(
     przypadek: str, pk_kw: float, sprzeczne: bool
 ) -> None:
     if sprzeczne:
         with pytest.raises(OdmowaDanychError, match="Sprzeczne dane transformatora"):
-            transformer_lv_impedance_ohm(
-                sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=pk_kw
-            )
+            transformer_lv_impedance_ohm(sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=pk_kw)
         return
-    z_tr = transformer_lv_impedance_ohm(
-        sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=pk_kw
-    )
+    z_tr = transformer_lv_impedance_ohm(sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=pk_kw)
     z_base = 0.4**2 / SN_MVA
     r_pu = pk_kw / (SN_MVA * 1000.0)
     z_pu = UK / 100.0
@@ -122,9 +112,7 @@ def test_petla_nn_odmawia_danych_sprzecznych_zamiast_obcinac_r_do_z(
 
 def test_petla_nn_odmawia_ujemnych_strat() -> None:
     with pytest.raises(OdmowaDanychError, match="ujemne"):
-        transformer_lv_impedance_ohm(
-            sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=-1.0
-        )
+        transformer_lv_impedance_ohm(sn_mva=SN_MVA, uk_percent=UK, ulv_kv=0.4, pk_kw=-1.0)
 
 
 def _trafo_enm(pk_kw: float) -> Transformer:
@@ -142,9 +130,7 @@ def _trafo_enm(pk_kw: float) -> Transformer:
     )
 
 
-@pytest.mark.parametrize(
-    ("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE]
-)
+@pytest.mark.parametrize(("przypadek", "pk_kw", "sprzeczne"), DANE, ids=[d[0] for d in DANE])
 def test_droga_aplikacji_ukladu_it_nazywa_sprzecznosc_w_liscie_brakow(
     przypadek: str, pk_kw: float, sprzeczne: bool
 ) -> None:

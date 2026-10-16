@@ -4515,6 +4515,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "7eb815fa-569c-5fe4-ab63-5c4fe49fe5dc",
     "materialized_params": null,
     "meta": {
@@ -4547,6 +4548,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "b0710ccd-c1ee-5d52-a838-c7c0bfa05138",
     "materialized_params": null,
     "meta": {
@@ -4579,6 +4581,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "462453e7-50ca-51df-8b5b-13fb9960ae0d",
     "materialized_params": null,
     "meta": {
@@ -4611,6 +4614,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "45c6fdf7-4781-513e-81ae-0460f562beca",
     "materialized_params": null,
     "meta": {
@@ -4643,6 +4647,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "be2f122d-49e5-50e7-9a5b-d96395642484",
     "materialized_params": null,
     "meta": {
@@ -4675,6 +4680,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "06708550-bffb-554e-9a69-96e6481657aa",
     "materialized_params": null,
     "meta": {
@@ -4707,6 +4713,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "b527e969-005c-5573-a0d2-987854d3103f",
     "materialized_params": null,
     "meta": {
@@ -4739,6 +4746,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "9a573cc6-a854-5389-b883-e0b6aad723f9",
     "materialized_params": null,
     "meta": {
@@ -4771,6 +4779,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "e3340192-c2f3-5463-a584-3aae258c1d11",
     "materialized_params": null,
     "meta": {
@@ -4803,6 +4812,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "7735639f-5a96-5b41-8ac6-4b3fbc027f65",
     "materialized_params": null,
     "meta": {
@@ -4835,6 +4845,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "eacaecf4-4d6e-5633-b9f5-96bcb5cf5fe9",
     "materialized_params": null,
     "meta": {
@@ -4867,6 +4878,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "51ef74fc-80ae-5a8e-b91b-34dc8ec674ba",
     "materialized_params": null,
     "meta": {
@@ -4899,6 +4911,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_przem_75kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "56ddd218-b763-53d7-88d4-27cc0dc4b1b1",
     "materialized_params": null,
     "meta": {
@@ -4931,6 +4944,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_przem_75kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "9635f98b-8dfb-5a29-8d82-65bdd8c5bff5",
     "materialized_params": null,
     "meta": {
@@ -4963,6 +4977,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_przem_75kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "4d95359f-80bf-5181-933d-36da7b5c8854",
     "materialized_params": null,
     "meta": {
@@ -4995,6 +5010,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_przem_75kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "60c37abe-53bf-5a92-9a5d-8c270a8ae8e3",
     "materialized_params": null,
     "meta": {
@@ -5027,6 +5043,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "ba3e9030-8b3c-5601-83ea-a87fa258cd27",
     "materialized_params": null,
     "meta": {
@@ -5059,6 +5076,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "72eb7b34-72ed-5d09-be9f-a440e00938b9",
     "materialized_params": null,
     "meta": {
@@ -5091,6 +5109,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "54bdbf0d-b7da-5b06-af5b-25c10194efe8",
     "materialized_params": null,
     "meta": {
@@ -5123,6 +5142,7 @@
     "catalog_namespace": "OBCIAZENIE",
     "catalog_ref": "load_uslugi_30kw",
     "dynamika": null,
+    "earth_electrode_r_ohm": null,
     "id": "0da10f21-09d9-5590-b857-d552369e6d74",
     "materialized_params": null,
     "meta": {

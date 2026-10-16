@@ -7781,6 +7781,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "1698aa23-d512-53c3-b58b-5731e0466839",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7824,6 +7825,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "06ff4fd5-e316-5429-b5e5-cd858461b225",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7867,6 +7869,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "11d6817c-8da6-50df-bfc5-1df82baa3467",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7910,6 +7913,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "caae0926-2217-5a71-a924-561040340fb8",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7953,6 +7957,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "eec547b7-b70a-5d41-999f-2d315eec38b1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -7996,6 +8001,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "9d63f361-9f24-55d6-b485-22e166ad57e4",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8039,6 +8045,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "6c61fba0-932a-5628-a580-f16fd9faffd9",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8082,6 +8089,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "ab38f841-ff70-506f-a09b-b40371818a3c",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8125,6 +8133,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "545128d3-2358-50cc-af78-f5e5d4e0662f",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8168,6 +8177,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "000d7de6-180b-5d56-a55a-f3bd6cb8c4b5",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8211,6 +8221,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "59e86077-2c42-5135-ab34-3f66fcc910a1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8254,6 +8265,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "1be6d1f5-ef75-59d1-985f-b880f32a5557",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8297,6 +8309,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "31309a90-3070-53b4-9f9c-3231213b5c6a",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -8340,6 +8353,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "7de4ddd3-3126-57d8-8940-83bfb1543fc1",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",

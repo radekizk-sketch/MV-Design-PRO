@@ -283,9 +283,7 @@ def zero_sequence_transformer_loop_impedance_ohm(
     ``application/analyses/fault_loop/route.py``).
     """
     if ulv_kv <= 0 or s_base_mva <= 0:
-        raise OdmowaDanychError(
-            "ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω."
-        )
+        raise OdmowaDanychError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
     z_base = (ulv_kv**2) / s_base_mva
     z0_ohm = z0_pu * z_base
     return TransformerLoopImpedance(r_ohm=z0_ohm.real, x_ohm=z0_ohm.imag)
@@ -308,9 +306,7 @@ def refer_upstream_impedance_to_lv_ohm(
     własnej redukcji sieci).
     """
     if uhv_kv <= 0 or ulv_kv <= 0:
-        raise OdmowaDanychError(
-            "uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni."
-        )
+        raise OdmowaDanychError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
     ratio_squared = (ulv_kv / uhv_kv) ** 2
     z_lv = z_hv_ohm * ratio_squared
     return LoopImpedanceComponent(label=label, r_ohm=z_lv.real, x_ohm=z_lv.imag)

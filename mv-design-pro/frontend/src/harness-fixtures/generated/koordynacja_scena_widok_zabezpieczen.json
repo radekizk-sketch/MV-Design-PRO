@@ -1043,8 +1043,8 @@
         "kod": "IEC_EI"
       },
       {
-        "etykieta_pl": "IEC długozwłoczna (LTI)",
-        "kod": "IEC_LI"
+        "etykieta_pl": "IEC odwrotna długoczasowa (LTI, 120)",
+        "kod": "IEC_LTI"
       },
       {
         "etykieta_pl": "IEEE umiarkowanie odwrotna (MI)",

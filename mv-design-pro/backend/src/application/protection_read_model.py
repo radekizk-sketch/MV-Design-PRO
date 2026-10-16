@@ -160,9 +160,7 @@ class ProtectedTarget:
 _KOLEJNOSC_WAGI_DIAGNOSTYKI: dict[str, int] = {"ERROR": 0, "WARN": 1, "INFO": 2}
 
 
-def build_protection_read_model(
-    case_id: str, enm: EnergyNetworkModel
-) -> dict[str, Any]:
+def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     buses = {bus.ref_id: bus for bus in enm.buses}
     branches = {branch.ref_id: branch for branch in enm.branches}
     transformers = {transformer.ref_id: transformer for transformer in enm.transformers}
@@ -231,9 +229,7 @@ def build_protection_read_model(
                         "element_type": target.element_type,
                         "device_id": assignment.ref_id,
                         "device_name_pl": _resolve_device_name(assignment),
-                        "device_kind": DEVICE_KIND_MAP.get(
-                            assignment.device_type, "OTHER"
-                        ),
+                        "device_kind": DEVICE_KIND_MAP.get(assignment.device_type, "OTHER"),
                         "status": "ACTIVE" if assignment.is_enabled else "BLOCKED",
                         "settings_summary": {
                             "functions": frontend_functions,
@@ -289,8 +285,7 @@ def build_protection_read_model(
             element_entry["base_values"].append(base_values)
 
     summaries_out = [
-        _build_summary(entry)
-        for _, entry in sorted(element_acc.items(), key=lambda item: item[0])
+        _build_summary(entry) for _, entry in sorted(element_acc.items(), key=lambda item: item[0])
     ]
 
     assignments_out.sort(key=lambda item: (item["element_id"], item["device_id"]))
@@ -345,23 +340,13 @@ def _build_read_model_summary(
         for item in assignments + diagnostics + summaries
         if item.get("element_id")
     }
-    active_assignments = sum(
-        1 for item in assignments if item.get("status") == "ACTIVE"
-    )
-    blocked_assignments = sum(
-        1 for item in assignments if item.get("status") == "BLOCKED"
-    )
+    active_assignments = sum(1 for item in assignments if item.get("status") == "ACTIVE")
+    blocked_assignments = sum(1 for item in assignments if item.get("status") == "BLOCKED")
     complete_count = sum(1 for item in summaries if item.get("has_complete_data"))
     incomplete_count = sum(1 for item in summaries if not item.get("has_complete_data"))
-    verified_count = sum(
-        1 for item in summaries if item.get("verification_status") == "SPELNIONE"
-    )
-    failed_count = sum(
-        1 for item in summaries if item.get("verification_status") == "NIESPELNIONE"
-    )
-    no_data_count = sum(
-        1 for item in summaries if item.get("verification_status") == "BRAK_DANYCH"
-    )
+    verified_count = sum(1 for item in summaries if item.get("verification_status") == "SPELNIONE")
+    failed_count = sum(1 for item in summaries if item.get("verification_status") == "NIESPELNIONE")
+    no_data_count = sum(1 for item in summaries if item.get("verification_status") == "BRAK_DANYCH")
     error_count = sum(1 for item in diagnostics if item.get("severity") == "ERROR")
     warn_count = sum(1 for item in diagnostics if item.get("severity") == "WARN")
     info_count = sum(1 for item in diagnostics if item.get("severity") == "INFO")
@@ -500,9 +485,7 @@ def _build_base_context(
     if breaker_rated_current_a is None:
         breaker_rated_current_a = _resolve_branch_rated_current(breaker)
 
-    transformer = (
-        transformers.get(target.transformer_ref) if target.transformer_ref else None
-    )
+    transformer = transformers.get(target.transformer_ref) if target.transformer_ref else None
     transformer_side = None
     if transformer is not None and bay is not None:
         # POLA-W-TORZE: strona transformatora rozstrzyga punkt przyłączenia pola (własny
@@ -530,15 +513,9 @@ def _build_base_context(
         vt_primary_kv=_resolve_measurement_primary(vt, "VT"),
         line_rated_current_a=target.line_rated_current_a,
         breaker_rated_current_a=breaker_rated_current_a,
-        transformer_rated_power_mva=(
-            transformer.sn_mva if transformer is not None else None
-        ),
-        transformer_voltage_hv_kv=(
-            transformer.uhv_kv if transformer is not None else None
-        ),
-        transformer_voltage_lv_kv=(
-            transformer.ulv_kv if transformer is not None else None
-        ),
+        transformer_rated_power_mva=(transformer.sn_mva if transformer is not None else None),
+        transformer_voltage_hv_kv=(transformer.uhv_kv if transformer is not None else None),
+        transformer_voltage_lv_kv=(transformer.ulv_kv if transformer is not None else None),
         transformer_side=transformer_side,
         connection_rated_current_a=(
             _resolve_measurement_primary(ct, "CT")
@@ -581,15 +558,9 @@ def _build_functions(
                     "curve_type": setting.curve_type,
                     "it_curve": None,
                     "it_curve_missing_data": [
-                        (
-                            "threshold_unit"
-                            if setting.threshold_unit is None
-                            else "ct_ratio"
-                        )
+                        ("threshold_unit" if setting.threshold_unit is None else "ct_ratio")
                     ],
-                    "notes_pl": (
-                        "Funkcja kierunkowa" if setting.is_directional else None
-                    ),
+                    "notes_pl": ("Funkcja kierunkowa" if setting.is_directional else None),
                 }
             )
             continue
@@ -688,9 +659,7 @@ def _build_it_curve(
             definite_time_s=definite_time_s,
         )
         etykieta = IEC_CURVE_LABELS_PL[kod]
-    points = [
-        {"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points
-    ]
+    points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
     if not points:
         return None, ["it_curve_points"]
 
@@ -753,12 +722,8 @@ def _build_summary(entry: dict[str, Any]) -> dict[str, Any]:
     diagnostics = entry["diagnostics"]
     functions: list[dict[str, Any]] = entry["functions"]
 
-    time_function = next(
-        (item for item in functions if item["code"] == "OVERCURRENT_TIME"), None
-    )
-    inst_function = next(
-        (item for item in functions if item["code"] == "OVERCURRENT_INST"), None
-    )
+    time_function = next((item for item in functions if item["code"] == "OVERCURRENT_TIME"), None)
+    inst_function = next((item for item in functions if item["code"] == "OVERCURRENT_INST"), None)
 
     severity_set = {diagnostic.severity.value for diagnostic in diagnostics}
     has_only_info = severity_set == {"INFO"}
@@ -779,15 +744,11 @@ def _build_summary(entry: dict[str, Any]) -> dict[str, Any]:
     elif has_warn_or_error:
         verification_status = "NIESPELNIONE"
         verification_reason = (
-            diagnostics[0].message_pl
-            if diagnostics
-            else "Wykryto niespełnione kryteria"
+            diagnostics[0].message_pl if diagnostics else "Wykryto niespełnione kryteria"
         )
     elif has_only_info:
         verification_status = "BRAK_DANYCH"
-        verification_reason = (
-            diagnostics[0].message_pl if diagnostics else "Analiza częściowa"
-        )
+        verification_reason = diagnostics[0].message_pl if diagnostics else "Analiza częściowa"
     else:
         verification_status = "SPELNIONE"
         verification_reason = "Brak wykrytych konfliktów w logice zabezpieczeń"

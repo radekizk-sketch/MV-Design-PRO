@@ -231,9 +231,7 @@ def _przypisanie(
     )
 
 
-def _model(
-    *przypisania: ProtectionAssignment, ct: Measurement | None = None
-) -> EnergyNetworkModel:
+def _model(*przypisania: ProtectionAssignment, ct: Measurement | None = None) -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="Ocena nadprądowa — test"),
         measurements=[ct if ct is not None else _ct("ct")],
@@ -273,9 +271,7 @@ def _ocen(model: EnergyNetworkModel, graph: NetworkGraph | None = None, **kw: An
         wiersze_zwarcia=kw.get("wiersze", WIERSZE),
         rozplyw_punktu=lambda p: kw.get("rozplyw", ROZPLYW).get(p),
         # Jak ``nazwy_wezlow_grafu`` biegu: nazwa KAŻDEGO węzła grafu ("wezel-b2" → "Szyna B2").
-        nazwy_wezlow={
-            w: f"Szyna {w.removeprefix('wezel-').upper()}" for w in graf.nodes
-        },
+        nazwy_wezlow={w: f"Szyna {w.removeprefix('wezel-').upper()}" for w in graf.nodes},
         odniesienie_biegu="bieg testowy",
     )
 
@@ -287,9 +283,7 @@ def _ocen(model: EnergyNetworkModel, graph: NetworkGraph | None = None, **kw: An
 
 def test_komplet_nastaw_daje_progi_pierwotne_z_przekladni() -> None:
     """Próg wtórny 2,0 A przy przekładni 600/5 → pierwotny 2,0·600/5 = 240 A (PZ-09)."""
-    nastawy = rozwiaz_nastawy(
-        _model(), _przypisanie(Q1, [_stopien_51(), _stopien_50()])
-    )
+    nastawy = rozwiaz_nastawy(_model(), _przypisanie(Q1, [_stopien_51(), _stopien_50()]))
     assert nastawy.gotowe, nastawy.braki
     progi = {s.funkcja: s.prog_pierwotny_a for s in nastawy.stopnie}
     assert progi == {
@@ -388,9 +382,7 @@ def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:
     assert {o.urzadzenie_ref for o in wynik.oceny} == {"zab-q1"}
 
 
-def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyna() -> (
-    None
-):
+def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyna() -> None:
     lom = _przypisanie(
         Q2,
         [{"function_type": "rocof_81R", "threshold_hz_s": 2.0, "time_delay_s": 0.5}],
@@ -476,9 +468,7 @@ def test_rachunek_reczny_si_i_ieee_vi() -> None:
     IEEE VI: M = 5, TD = 0,2 → t = 0,2·(19,61/(25 − 1) + 0,491) = 0,2·1,308083 = 0,261617 s.
     """
     nastawy = _stopien_z_krzywa("IEC_SI")
-    assert czas_stopnia(nastawy.stopnie[0], 2400.0)["t_s"] == pytest.approx(
-        0.594121, abs=2e-6
-    )
+    assert czas_stopnia(nastawy.stopnie[0], 2400.0)["t_s"] == pytest.approx(0.594121, abs=2e-6)
     from dataclasses import replace
 
     vi = replace(nastawy.stopnie[0], krzywa="IEEE_VI")
@@ -507,9 +497,7 @@ def test_ponizej_progu_brak_zadzialania_bez_czasu() -> None:
 def test_prad_przekaznika_to_prad_galezi_a_nie_ikss_szyny() -> None:
     """Zwarcie w B4: przez Q2 i Q1 płynie 4000 A (prąd kabli), nie Ik'' innych szyn.
     Zwarcie w B2 (klaster zacisku Q1): przez Q1 płynie całe Ik'' = 9000 A."""
-    wynik = _ocen(
-        _model(_przypisanie(Q1, [_stopien_51()]), _przypisanie(Q2, [_stopien_51()]))
-    )
+    wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()]), _przypisanie(Q2, [_stopien_51()])))
     prady = {(o.urzadzenie_ref, o.punkt_ref): o.prad_przekaznika_a for o in wynik.oceny}
     assert prady == {
         ("zab-q1", B2): pytest.approx(9000.0),
@@ -525,9 +513,7 @@ def test_punkt_poza_strefa_nie_jest_oceniany() -> None:
     assert {o.punkt_ref for o in wynik.oceny} == {B4}
 
 
-def test_pierscien_zamkniety_daje_odmowe_niejednoznacznej_strefy_z_kandydatami() -> (
-    None
-):
+def test_pierscien_zamkniety_daje_odmowe_niejednoznacznej_strefy_z_kandydatami() -> None:
     wynik = _ocen(_model(_przypisanie(Q2, [_stopien_51()])), _graf(pierscien=True))
     (odmowa,) = wynik.odmowy
     assert {b.kod for b in odmowa.braki} == {KOD_STREFA_NIEJEDNOZNACZNA}
@@ -537,17 +523,13 @@ def test_pierscien_zamkniety_daje_odmowe_niejednoznacznej_strefy_z_kandydatami()
 
 def test_aparat_poza_torem_pradowym_daje_odmowe() -> None:
     """Styk POLA-W-TORZE: wyłącznik pola bez elementu za zaciskiem nie widzi prądu."""
-    wynik = _ocen(
-        _model(_przypisanie("q3", [_stopien_51()])), _graf(q3_poza_torem=True)
-    )
+    wynik = _ocen(_model(_przypisanie("q3", [_stopien_51()])), _graf(q3_poza_torem=True))
     (odmowa,) = wynik.odmowy
     assert {b.kod for b in odmowa.braki} == {KOD_APARAT_POZA_TOREM}
 
 
 def test_aparat_otwarty_daje_odmowe() -> None:
-    wynik = _ocen(
-        _model(_przypisanie(Q2, [_stopien_51()])), _graf(stan_q2=SwitchState.OPEN)
-    )
+    wynik = _ocen(_model(_przypisanie(Q2, [_stopien_51()])), _graf(stan_q2=SwitchState.OPEN))
     (odmowa,) = wynik.odmowy
     assert {b.kod for b in odmowa.braki} == {KOD_APARAT_OTWARTY}
 
@@ -592,9 +574,7 @@ def test_punkt_innego_poziomu_napiecia_nazwany_i_nieoceniany() -> None:
     więc punkt nN za transformatorem nie jest oceniany przez przekaźnik SN — z powodem.
     """
     wiersze = [*WIERSZE, _wiersz("wezel-nn", 18000.0)]
-    wynik = _ocen(
-        _model(_przypisanie(Q2, [_stopien_51()])), _graf(wezel_nn=True), wiersze=wiersze
-    )
+    wynik = _ocen(_model(_przypisanie(Q2, [_stopien_51()])), _graf(wezel_nn=True), wiersze=wiersze)
     assert {o.punkt_ref for o in wynik.oceny} == {B4}
     pominiete = wynik.strefy["zab-q2"]["punkty_innego_poziomu_napiecia"]
     assert [p["punkt_ref"] for p in pominiete] == ["wezel-nn"]
@@ -617,9 +597,7 @@ def test_alf_z_klasy_przekladnika() -> None:
     ("klasa", "oczekiwana"),
     [("5P20", WIARYGODNY), ("5P10", NIEWIARYGODNY), ("0.5", WIARYGODNOSC_NIEUSTALONA)],
 )
-def test_wiarygodnosc_wg_granicy_dokladnosci_przekladnika(
-    klasa: str, oczekiwana: str
-) -> None:
+def test_wiarygodnosc_wg_granicy_dokladnosci_przekladnika(klasa: str, oczekiwana: str) -> None:
     """Zwarcie w B2: 9000 A. ALF·I1n: 5P20 → 12 000 A (w granicy), 5P10 → 6000 A (nasycenie).
     Wynik niewiarygodny nie niesie marginesu liczbowego — nigdy liczba bez podstawy."""
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()]), ct=_ct("ct", klasa=klasa)))
@@ -687,15 +665,11 @@ NIELICZBY = [math.nan, math.inf, -math.inf]
 
 
 def _kody_odmowy(wynik: Any, urzadzenie: str) -> set[str]:
-    return {
-        b.kod for o in wynik.odmowy if o.urzadzenie_ref == urzadzenie for b in o.braki
-    }
+    return {b.kod for o in wynik.odmowy if o.urzadzenie_ref == urzadzenie for b in o.braki}
 
 
 @pytest.mark.parametrize("wartosc", NIELICZBY)
-@pytest.mark.parametrize(
-    "zrodlo", ["wklad_galezi", "ikss_punktu", "wklad_zrodla_w_klastrze"]
-)
+@pytest.mark.parametrize("zrodlo", ["wklad_galezi", "ikss_punktu", "wklad_zrodla_w_klastrze"])
 def test_prad_nieliczbowy_daje_odmowe_punktu_a_nie_brak_zadzialania(
     zrodlo: str, wartosc: float
 ) -> None:
@@ -718,9 +692,7 @@ def test_prad_nieliczbowy_daje_odmowe_punktu_a_nie_brak_zadzialania(
     else:
         wiersze[0] = {
             **_wiersz(B2, 9000.0),
-            "contributions": [
-                {"source_id": "PV", "node_id": B2, "i_contrib_a": wartosc}
-            ],
+            "contributions": [{"source_id": "PV", "node_id": B2, "i_contrib_a": wartosc}],
         }
     model = _model(_przypisanie(Q1, [_stopien_51()]), _przypisanie(Q2, [_stopien_51()]))
     wynik = _ocen(model, rozplyw=rozplyw, wiersze=wiersze)
@@ -732,9 +704,7 @@ def test_prad_nieliczbowy_daje_odmowe_punktu_a_nie_brak_zadzialania(
 
 
 def _strefa_q2():
-    strefa, braki, _ = strefa_urzadzenia(
-        _graf(), ref_to_graph_id(Q2), nazwa_aparatu="Q2"
-    )
+    strefa, braki, _ = strefa_urzadzenia(_graf(), ref_to_graph_id(Q2), nazwa_aparatu="Q2")
     assert strefa is not None and not braki
     return strefa
 

@@ -67,9 +67,7 @@ def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> s
         return str(data[preferred_key])
     if legacy_key in data:
         return str(data[legacy_key])
-    raise ValueError(
-        f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')"
-    )
+    raise ValueError(f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')")
 
 
 @dataclass
@@ -124,8 +122,7 @@ class Branch:
             except ValueError:
                 valid_types = [bt.value for bt in BranchType]
                 raise ValueError(
-                    f"Unknown branch_type: '{raw_type}'. "
-                    f"Valid types are: {valid_types}"
+                    f"Unknown branch_type: '{raw_type}'. " f"Valid types are: {valid_types}"
                 )
         else:
             raise ValueError(
@@ -214,15 +211,9 @@ class LineImpedanceOverride:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LineImpedanceOverride":
         return cls(
-            r_total_ohm=wymagany_float(
-                data, "r_total_ohm", context="LineImpedanceOverride"
-            ),
-            x_total_ohm=wymagany_float(
-                data, "x_total_ohm", context="LineImpedanceOverride"
-            ),
-            b_total_us=wymagany_float(
-                data, "b_total_us", context="LineImpedanceOverride"
-            ),
+            r_total_ohm=wymagany_float(data, "r_total_ohm", context="LineImpedanceOverride"),
+            x_total_ohm=wymagany_float(data, "x_total_ohm", context="LineImpedanceOverride"),
+            b_total_us=wymagany_float(data, "b_total_us", context="LineImpedanceOverride"),
         )
 
 
@@ -331,9 +322,7 @@ class LineBranch(Branch):
             # inżynierskim (brak modelowania pojemności), nie fabrykacją.
             b_us_per_km=float(data.get("b_us_per_km", 0.0)),
             length_km=wymagany_float(data, "length_km", context="LineBranch"),
-            rated_current_a=wymagany_float(
-                data, "rated_current_a", context="LineBranch"
-            ),
+            rated_current_a=wymagany_float(data, "rated_current_a", context="LineBranch"),
             type_ref=_parse_type_ref(data),
             impedance_override=_parse_impedance_override(data),
             # F-K1 faza 3: brak klucza => None (dana nieznana), nigdy 0.0 — zero
@@ -477,9 +466,7 @@ class LineBranch(Branch):
         """
         z = self.get_total_impedance()
         if z == 0:
-            raise ZeroDivisionError(
-                "Cannot compute series admittance: impedance is zero"
-            )
+            raise ZeroDivisionError("Cannot compute series admittance: impedance is zero")
         return 1.0 / z
 
     def get_shunt_admittance(self) -> complex:
@@ -559,9 +546,7 @@ class LineBranch(Branch):
     def with_resolved_params(
         self, catalog: CatalogRepository | None = None, *, czestotliwosc_hz: float
     ) -> "LineBranch":
-        resolved = self.resolve_electrical_params(
-            catalog, czestotliwosc_hz=czestotliwosc_hz
-        )
+        resolved = self.resolve_electrical_params(catalog, czestotliwosc_hz=czestotliwosc_hz)
         return replace(
             self,
             r_ohm_per_km=resolved.r_ohm_per_km,
@@ -706,15 +691,9 @@ class TapChanger:
                 else None
             ),
             line_drop_compensation=(
-                LineDropCompensation.from_dict(ldc_raw)
-                if isinstance(ldc_raw, dict)
-                else None
+                LineDropCompensation.from_dict(ldc_raw) if isinstance(ldc_raw, dict) else None
             ),
-            catalog_ref=(
-                str(data["catalog_ref"])
-                if data.get("catalog_ref") is not None
-                else None
-            ),
+            catalog_ref=(str(data["catalog_ref"]) if data.get("catalog_ref") is not None else None),
         )
 
 
@@ -829,16 +808,10 @@ class TransformerBranch(Branch):
             pk_kw=float(data.get("pk_kw", 0.0)),
             # i0_percent/p0_kw/vector_group: `None` gdy brak (D2) — nigdy
             # 0.0/"Dyn11" podstawione za nieznana dana.
-            i0_percent=(
-                float(data["i0_percent"])
-                if data.get("i0_percent") is not None
-                else None
-            ),
+            i0_percent=(float(data["i0_percent"]) if data.get("i0_percent") is not None else None),
             p0_kw=(float(data["p0_kw"]) if data.get("p0_kw") is not None else None),
             vector_group=(
-                str(data["vector_group"])
-                if data.get("vector_group") is not None
-                else None
+                str(data["vector_group"]) if data.get("vector_group") is not None else None
             ),
             tap_position=int(data.get("tap_position", 0)),
             tap_step_percent=float(data.get("tap_step_percent", 2.5)),
@@ -987,9 +960,7 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in ohms on LV side.
         """
         self._validate_short_circuit_inputs()
-        z_base_lv = impedancja_z_napiecia_i_mocy_ohm(
-            self.voltage_lv_kv, self.rated_power_mva
-        )
+        z_base_lv = impedancja_z_napiecia_i_mocy_ohm(self.voltage_lv_kv, self.rated_power_mva)
         return self.get_short_circuit_impedance_pu() * z_base_lv
 
     def get_voltage_factor_c_max(self) -> float:
@@ -1227,9 +1198,7 @@ class TransformerBranch(Branch):
         """
         return self.get_turns_ratio() * self.get_tap_ratio()
 
-    def resolve_nameplate(
-        self, catalog: CatalogRepository | None = None
-    ) -> TransformerType:
+    def resolve_nameplate(self, catalog: CatalogRepository | None = None) -> TransformerType:
         """
         Resolve transformer nameplate parameters using canonical precedence rules.
 
@@ -1267,9 +1236,7 @@ class TransformerBranch(Branch):
             vector_group=resolved.vector_group,
         )
 
-    def computed_equivalent_pu(
-        self, catalog: CatalogRepository | None = None
-    ) -> complex:
+    def computed_equivalent_pu(self, catalog: CatalogRepository | None = None) -> complex:
         nameplate = self.resolve_nameplate(catalog)
         return _compute_transformer_impedance_pu(
             rated_power_mva=nameplate.rated_power_mva,

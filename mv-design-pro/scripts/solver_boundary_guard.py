@@ -193,9 +193,7 @@ def main() -> int:
         for v in sorted(set(violations)):
             print(f"  - {v}")
         print()
-        print(
-            "Load Flow PR NIE MOŻE modyfikować solverów zwarciowych ani zabezpieczeń."
-        )
+        print("Load Flow PR NIE MOŻE modyfikować solverów zwarciowych ani zabezpieczeń.")
         return 1
 
     print("OK [SolverBoundaryGuard]: Brak zmian w chronionych plikach solverów.")

@@ -225,9 +225,7 @@ _APARATY_WYLACZAJACE = frozenset({SwitchType.BREAKER, SwitchType.RECLOSER})
 
 #: Klasa zabezpieczeniowa przekładnika wg IEC 61869-2 (5P20, 10P10, 5PR20...): liczba po P
 #: (albo PR) to współczynnik granicy dokładności ALF.
-_KLASA_ZABEZPIECZENIOWA = re.compile(
-    r"^\s*(5|10)\s*P\s*R?\s*(\d+(?:[.,]\d+)?)\s*$", re.IGNORECASE
-)
+_KLASA_ZABEZPIECZENIOWA = re.compile(r"^\s*(5|10)\s*P\s*R?\s*(\d+(?:[.,]\d+)?)\s*$", re.IGNORECASE)
 
 #: Zdolność w rejestrze dowodowym (``solver_input.provenance``).
 ZDOLNOSC_OCENY = "zabezpieczenia.ocena_nadpradowa"
@@ -571,11 +569,7 @@ def progi_stopnia(
     przekładnika prądowego → ``None`` (wołający nazywa brak — ocena, czasy wyłączenia,
     widok nastaw pola czytają to samo przeliczenie).
     """
-    if (
-        nastawa.threshold_a is None
-        or nastawa.threshold_a <= 0
-        or nastawa.threshold_unit is None
-    ):
+    if nastawa.threshold_a is None or nastawa.threshold_a <= 0 or nastawa.threshold_unit is None:
         return None
     if ct is None or ct.measurement_type != "CT":
         return None
@@ -618,9 +612,7 @@ def _rozwiaz_stopien(
             )
         )
 
-    akcja_nastaw = (
-        f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
-    )
+    akcja_nastaw = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
     if nastawa.threshold_a is None or nastawa.threshold_a <= 0:
         brak(
             KOD_BRAK_PROGU,
@@ -685,8 +677,8 @@ def _rozwiaz_stopien(
     # Zakres prądowy katalogu jest cechą STRONY WTÓRNEJ (PZ-09): ×In albo A wtórne — jedna
     # funkcja porównania dla oceny z modelu i doboru aparatu (`catalog.zakresy`).
     minimum, maksimum = zakres_pradowy(zdolnosc, _kod_funkcji(funkcja))
-    wartosc_w_jednostce_zakresu, jednostka_zakresu_pl = (
-        wartosc_w_jednostce_zakresu_katalogu(zdolnosc, prog_wtorny, i2n)
+    wartosc_w_jednostce_zakresu, jednostka_zakresu_pl = wartosc_w_jednostce_zakresu_katalogu(
+        zdolnosc, prog_wtorny, i2n
     )
     if (
         zdolnosc.jednostka_zakresow_pradowych == JEDNOSTKA_ZAKRESU_KROTNOSC_IN
@@ -722,9 +714,7 @@ def _rozwiaz_stopien(
         zwloka = nastawa.time_delay_s
         assert zwloka is not None
         if zdolnosc.t_51_s_min is not None and zdolnosc.t_51_s_max is not None:
-            czas_w_zakresie = w_zakresie(
-                zwloka, zdolnosc.t_51_s_min, zdolnosc.t_51_s_max
-            )
+            czas_w_zakresie = w_zakresie(zwloka, zdolnosc.t_51_s_min, zdolnosc.t_51_s_max)
             sprawdzenia.append(
                 {
                     "wielkosc_pl": f"zwłoka {etykieta}",
@@ -796,9 +786,7 @@ def _rozwiaz_stopien(
     )
 
 
-def rozwiaz_nastawy(
-    enm: EnergyNetworkModel, assignment: ProtectionAssignment
-) -> NastawyUrzadzenia:
+def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -> NastawyUrzadzenia:
     """Nastawy urządzenia z modelu — JEDYNE rozwiązanie (ocena, czasy wyłączenia, edytor).
 
     Stopień nadprądowy obecny na liście nastaw musi być kompletny: próg z jednostką,
@@ -863,14 +851,10 @@ def rozwiaz_nastawy(
     )
 
 
-def _braki_kompletnosci(
-    nastawa: ProtectionSetting, nazwa: str
-) -> list[PozycjaGotowosci]:
+def _braki_kompletnosci(nastawa: ProtectionSetting, nazwa: str) -> list[PozycjaGotowosci]:
     """Braki kompletności stopnia niezależne od przekładnika i katalogu."""
     etykieta = ETYKIETY_FUNKCJI_PL[nastawa.function_type]
-    akcja = (
-        f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
-    )
+    akcja = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
     wynik: list[PozycjaGotowosci] = []
     if nastawa.threshold_a is None or nastawa.threshold_a <= 0:
         wynik.append(
@@ -958,8 +942,7 @@ def slownik_nastaw() -> dict[str, Any]:
             for funkcja in FUNKCJE_OCENIANE
         ],
         "charakterystyki": [
-            {"kod": kod, "etykieta_pl": etykieta}
-            for kod, etykieta in ETYKIETY_KRZYWYCH_PL.items()
+            {"kod": kod, "etykieta_pl": etykieta} for kod, etykieta in ETYKIETY_KRZYWYCH_PL.items()
         ],
         "jednostki_progu": [
             {"kod": kod, "etykieta_pl": etykieta}
@@ -981,9 +964,7 @@ def urzadzenia_nadpradowe(
     pominiete: list[PominieteUrzadzenie] = []
     for assignment in sorted(enm.protection_assignments, key=lambda a: a.ref_id):
         nazwa = nazwa_elementu(assignment, "protection_assignments")
-        ma_funkcje_oc = any(
-            n.function_type in FUNKCJE_OCENIANE for n in assignment.settings
-        )
+        ma_funkcje_oc = any(n.function_type in FUNKCJE_OCENIANE for n in assignment.settings)
         if not ma_funkcje_oc and assignment.device_type != "overcurrent":
             pominiete.append(
                 PominieteUrzadzenie(
@@ -1171,9 +1152,7 @@ def strefa_urzadzenia(
     strefa = frozenset(skladowe[strona_do if od_zasilany else strona_od])
     # Klaster zacisku: węzły osiągalne od zacisku za wyłącznikiem po zamkniętych łącznikach —
     # prąd wyłącznika to bilans gałęzi i zwarcia tego klastra (łączniki mają zerową impedancję).
-    klaster_skladowe = skladowe_spojne(
-        sorted(strefa), [k for k in laczniki if k[0] in strefa]
-    )
+    klaster_skladowe = skladowe_spojne(sorted(strefa), [k for k in laczniki if k[0] in strefa])
     klaster = next(frozenset(s) for s in klaster_skladowe if wezel_zacisku in s)
     ma_galaz = any(od in klaster or do in klaster for od, do in galezie)
     if not ma_galaz:
@@ -1196,9 +1175,7 @@ def strefa_urzadzenia(
             (),
         )
     return (
-        StrefaUrzadzenia(
-            wezly=strefa, klaster_zacisku=klaster, wezel_zacisku=wezel_zacisku
-        ),
+        StrefaUrzadzenia(wezly=strefa, klaster_zacisku=klaster, wezel_zacisku=wezel_zacisku),
         [],
         (),
     )
@@ -1242,9 +1219,7 @@ def punkty_zwarcia_strefy(
         if p in strefa.wezly and graph.nodes[p].voltage_level == poziom
     ]
     innego_poziomu = sorted(
-        p
-        for p in punkty_wyniku
-        if p in strefa.wezly and graph.nodes[p].voltage_level != poziom
+        p for p in punkty_wyniku if p in strefa.wezly and graph.nodes[p].voltage_level != poziom
     )
     migawka = enm.model_dump(mode="json")
     szyny_modelu = {ref_to_graph_id(szyna.ref_id): szyna.ref_id for szyna in enm.buses}
@@ -1253,11 +1228,7 @@ def punkty_zwarcia_strefy(
         if szyna_ref is None:
             continue
         wynik_ref = ref_to_graph_id(szyna_raportowa(migawka, szyna_ref))
-        if (
-            wynik_ref == wezel
-            or wynik_ref in strefa.wezly
-            or wynik_ref not in punkty_wyniku
-        ):
+        if wynik_ref == wezel or wynik_ref in strefa.wezly or wynik_ref not in punkty_wyniku:
             continue
         punkty.append(PunktZwarciaStrefy(punkt_ref=wezel, punkt_wyniku_ref=wynik_ref))
     return sorted(punkty, key=lambda p: p.punkt_ref), innego_poziomu
@@ -1387,9 +1358,7 @@ def prad_przekaznika(
         "wplywy_zrodel_w_klastrze": wplywy_zrodel,
         "prad_wylacznika_a": abs(suma),
         "kierunek_pl": (
-            "od strony zasilania do strefy"
-            if suma >= 0
-            else "od strefy do strony zasilania"
+            "od strony zasilania do strefy" if suma >= 0 else "od strefy do strony zasilania"
         ),
         "regula_pl": (
             "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera "
@@ -1579,9 +1548,7 @@ def czas_urzadzenia(
 # ---------------------------------------------------------------------------
 
 
-def _podstawa_nastawy(
-    nastawy: NastawyUrzadzenia, stopien: StopienNastaw
-) -> PodstawaWymagania:
+def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> PodstawaWymagania:
     return PodstawaWymagania(
         rodzaj="ZALOZENIE_PROJEKTOWE",
         dokument=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} zapisane w modelu sieci projektu",
@@ -1795,9 +1762,7 @@ def ocen_zabezpieczenia(
     urzadzenia, pominiete = urzadzenia_nadpradowe(enm)
     # Wiersz bez Ik'' (punkt, którego bieg nie policzył) nie jest punktem oceny; wiersz bez
     # identyfikatora punktu to błąd kontraktu wyniku, nie punkt do pominięcia.
-    wiersze = {
-        str(w["fault_node_id"]): w for w in wiersze_zwarcia if w["ikss_a"] is not None
-    }
+    wiersze = {str(w["fault_node_id"]): w for w in wiersze_zwarcia if w["ikss_a"] is not None}
     oceny: list[OcenaPunktu] = []
     odmowy: list[OdmowaUrzadzenia] = []
     wszystkie_nastawy: list[NastawyUrzadzenia] = []
@@ -1915,9 +1880,7 @@ def ocen_zabezpieczenia(
                 )
             )
         if braki_punktow:
-            unikalne = list(
-                {(b.kod, b.komunikat_pl): b for b in braki_punktow}.values()
-            )
+            unikalne = list({(b.kod, b.komunikat_pl): b for b in braki_punktow}.values())
             odmowy.append(
                 OdmowaUrzadzenia(
                     urzadzenie_ref=assignment.ref_id,
@@ -1960,9 +1923,7 @@ def _ocena_punktu(
     )
     wiarygodnosc, powod = wiarygodnosc_punktu(nastawy, prad)
     krotnosc = prad / stopien_odn.prog_pierwotny_a
-    margines = (
-        None if wiarygodnosc == NIEWIARYGODNY else round((krotnosc - 1.0) * 100.0, 2)
-    )
+    margines = None if wiarygodnosc == NIEWIARYGODNY else round((krotnosc - 1.0) * 100.0, 2)
     return OcenaPunktu(
         urzadzenie_ref=nastawy.urzadzenie_ref,
         nazwa_urzadzenia_pl=nastawy.nazwa_pl,

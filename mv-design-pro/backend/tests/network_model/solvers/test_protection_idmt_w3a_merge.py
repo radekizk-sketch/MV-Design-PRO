@@ -93,9 +93,7 @@ def test_brak_zadzialania_przy_m_nie_wiekszym_od_jedynki(
 
 
 @pytest.mark.parametrize(("krzywa", "_a", "_b"), NORM_CURVES)
-def test_m_tuz_powyzej_jedynki_daje_czas_skonczony(
-    krzywa: str, _a: float, _b: float
-) -> None:
+def test_m_tuz_powyzej_jedynki_daje_czas_skonczony(krzywa: str, _a: float, _b: float) -> None:
     """M → 1+: mianownik rdzenia ma podłogę — czas skończony, nie wyjątek ani brak."""
     slad = czas_stopnia(_stopien(krzywa, 1.0), (1.0 + 1e-12) * IS_A)
     assert slad["zadziala"] is True
