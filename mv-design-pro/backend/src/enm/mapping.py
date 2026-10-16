@@ -30,7 +30,7 @@ from network_model.core.branch import (
     TransformerBranch,
 )
 from network_model.core.graph import NetworkGraph
-from network_model.core.grid_source import GridShortCircuitSource
+from network_model.core.grid_source import GridShortCircuitSource, OdmowaImpedancjiZrodla
 from network_model.core.inverter import InverterSource
 from network_model.core.machine import (
     AsynchronousMachineSource,
@@ -39,6 +39,7 @@ from network_model.core.machine import (
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.voltage_factor import (
+    OdmowaToleranciiNnError,
     Scenario,
     TolerancjaNapieciaNn,
     c_for_node,
@@ -803,6 +804,9 @@ def _add_generator_sc_sources(
 
     tracer = WhiteBoxTracer()
     bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G maszyny synchronicznej z tabeli 1
+    # dla tolerancji sieci nN szyny maszyny — ten sam predykat co węzły grafu.
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         gen_type = gen.gen_type
         if gen_type is None:
@@ -869,6 +873,7 @@ def _add_generator_sc_sources(
                 "sr_mva": sr_mva,
                 "ur_kv": un_kv,
                 "cos_phi_r": cos_phi_r,
+                "tolerancja_nn": tolerancje_nn.get(gen.bus_ref),
             }
             if isinstance(xd, int | float) and xd > 0:
                 sync_kwargs["xd_subtransient_pu"] = float(xd)
@@ -1361,8 +1366,11 @@ def map_enm_to_network_graph(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
             ),
             tap_changer=tap_changer,
-            # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z deklaracji TEGO transformatora.
-            tolerancja_nn_dolna=trafo.lv_voltage_tolerance,
+            # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z tolerancji SIECI nN tej strony —
+            # ten sam predykat (`enm.tolerancja_nn`), z którego węzły nN biorą c. Deklaracja
+            # samego transformatora nie wystarcza: przy sprzecznych deklaracjach wyspy węzeł nN
+            # odmawia, więc K_T też (wejście i wyjście z jednego źródła).
+            tolerancja_nn_dolna=tolerancje_nn.get(trafo.lv_bus_ref),
         )
         graph.add_branch(tb)
 
@@ -1394,9 +1402,26 @@ def map_enm_to_network_graph(
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(
-            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
-        )
+        try:
+            z_ohm = _source_positive_impedance_ohm(
+                source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+            )
+        except OdmowaToleranciiNnError as odmowa:
+            # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło na szynie nN bez tolerancji sieci nN —
+            # Z_Q (eq. 6) wymaga c, którego nie da się dobrać. Rozpływ mocy Z_Q nie czyta
+            # (szyna bilansująca), więc odmowa jest ODROCZONA do konsumenta impedancji
+            # (`NetworkGraph.get_grid_sc_sources`), nie do budowy grafu.
+            graph.add_odmowa_impedancji_zrodla(
+                OdmowaImpedancjiZrodla(
+                    id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
+                    name=nazwa_elementu(source, "sources"),
+                    node_id=bus_node_id,
+                    komunikat_pl=(
+                        f"Źródło {nazwa_elementu(source, 'sources')!r}: {odmowa.komunikat_pl}"
+                    ),
+                )
+            )
+            continue
         if z_ohm is None or z_ohm == 0:
             continue
 

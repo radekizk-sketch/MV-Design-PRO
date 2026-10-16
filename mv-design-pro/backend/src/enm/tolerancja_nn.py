@@ -3,16 +3,22 @@
 Tabela 1 IEC 60909-0 rozróżnia sieci nN o tolerancji +6 % (c 1,05/0,95) i +10 %
 (c 1,10/0,90). Tolerancja jest daną SIECI nN, a sieć nN w modelu to wyspa galwaniczna
 szyn w paśmie nN (połączonych gałęziami, których oba końce leżą w paśmie nN — transformator
-oddziela wyspę). Nośnikiem danej jest transformator zasilający wyspę
-(``Transformer.lv_voltage_tolerance``, wzorzec ``lv_earthing_system``): to on definiuje
-system nN, a K_T tego samego transformatora (IEC 60909-0 eq. 12a) czyta c_max strony dolnej z
-tej samej deklaracji — wejście (c węzła nN) i wyjście (K_T) mają jedno źródło.
+oddziela wyspę). Nośnikiem danej jest element ZASILAJĄCY wyspę — ten, który definiuje napięcie
+sieci nN:
 
-Wyspa ma tolerancję tylko wtedy, gdy KAŻDY jej transformator zasilający ją deklaruje i
-wszystkie deklaracje są zgodne. Brak deklaracji, sprzeczne deklaracje albo wyspa bez
-transformatora zasilającego (źródło przyłączone wprost do szyny nN) dają ``None`` z nazwanym
-powodem — c węzła nN jest wtedy odmową ``fault.c_tolerancja_nn_brak``, nigdy wierszem +6 %
-po cichu. Walidator, gotowość, mapper grafu i dowody czytają WYŁĄCZNIE tę funkcję.
+- transformator, którego strona dolna (pasmo nN) leży na szynie wyspy
+  (``Transformer.lv_voltage_tolerance``, wzorzec ``lv_earthing_system``); K_T tego samego
+  transformatora (IEC 60909-0 eq. 12a) czyta c_max strony dolnej z tej samej deklaracji —
+  wejście (c węzła nN) i wyjście (K_T) mają jedno źródło;
+- źródło sieciowe (równoważnik sieci zasilającej) przyłączone wprost do szyny wyspy
+  (``Source.lv_voltage_tolerance``) — sieć nN zasilana bez transformatora w modelu; Z_Q tego
+  źródła (eq. 6) czyta c z tej samej deklaracji przez węzeł przyłączenia.
+
+Wyspa ma tolerancję tylko wtedy, gdy KAŻDY jej element zasilający ją deklaruje i wszystkie
+deklaracje są zgodne. Brak deklaracji, sprzeczne deklaracje albo wyspa bez elementu
+zasilającego dają ``None`` z nazwanym powodem — c węzła nN jest wtedy odmową
+``fault.c_tolerancja_nn_brak``, nigdy wierszem +6 % po cichu. Bramka gotowości, mapper grafu,
+pętla zwarcia i dowody czytają WYŁĄCZNIE tę funkcję.
 """
 
 from __future__ import annotations
@@ -25,19 +31,34 @@ from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
 from .models import EnergyNetworkModel
 
-PowodBrakuTolerancji = Literal["BRAK_DEKLARACJI", "DEKLARACJE_SPRZECZNE", "BRAK_TRANSFORMATORA"]
+PowodBrakuTolerancji = Literal["BRAK_DEKLARACJI", "DEKLARACJE_SPRZECZNE", "BRAK_ZASILAJACEGO"]
+#: Rodzaj elementu zasilającego wyspę nN — klucz kolekcji ENM, w której leży nośnik.
+RodzajZasilajacego = Literal["transformers", "sources"]
+
+
+@dataclass(frozen=True)
+class ZasilajacyNn:
+    """Element zasilający wyspę nN i jego deklaracja tolerancji (``None`` = brak deklaracji)."""
+
+    rodzaj: RodzajZasilajacego
+    ref_id: str
+    tolerancja: TolerancjaNapieciaNn | None
 
 
 @dataclass(frozen=True)
 class WyspaNn:
-    """Wyspa galwaniczna szyn nN z deklaracjami tolerancji jej transformatorów zasilających."""
+    """Wyspa galwaniczna szyn nN z deklaracjami tolerancji jej elementów zasilających."""
 
     bus_refs: tuple[str, ...]
-    transformator_refs: tuple[str, ...]
-    #: Transformatory wyspy bez deklaracji (kolejność modelu).
-    bez_deklaracji: tuple[str, ...]
+    #: Elementy zasilające: transformatory (kolejność modelu), potem źródła (kolejność modelu).
+    zasilajacy: tuple[ZasilajacyNn, ...]
     tolerancja: TolerancjaNapieciaNn | None
     powod: PowodBrakuTolerancji | None
+
+    @property
+    def bez_deklaracji(self) -> tuple[ZasilajacyNn, ...]:
+        """Elementy zasilające wyspę bez deklaracji tolerancji (kolejność ``zasilajacy``)."""
+        return tuple(z for z in self.zasilajacy if z.tolerancja is None)
 
 
 def wyspy_nn(enm: EnergyNetworkModel) -> list[WyspaNn]:
@@ -65,14 +86,21 @@ def wyspy_nn(enm: EnergyNetworkModel) -> list[WyspaNn]:
     wynik: list[WyspaNn] = []
     for szyny in grupy.values():
         zbior = set(szyny)
-        trafo = [t for t in enm.transformers if t.lv_bus_ref in zbior and w_pasmie_nn(t.ulv_kv)]
-        deklaracje = {t.lv_voltage_tolerance for t in trafo if t.lv_voltage_tolerance is not None}
-        bez = tuple(t.ref_id for t in trafo if t.lv_voltage_tolerance is None)
+        zasilajacy = tuple(
+            ZasilajacyNn("transformers", t.ref_id, t.lv_voltage_tolerance)
+            for t in enm.transformers
+            if t.lv_bus_ref in zbior and w_pasmie_nn(t.ulv_kv)
+        ) + tuple(
+            ZasilajacyNn("sources", s.ref_id, s.lv_voltage_tolerance)
+            for s in enm.sources
+            if s.bus_ref in zbior
+        )
+        deklaracje = {z.tolerancja for z in zasilajacy if z.tolerancja is not None}
         tolerancja: TolerancjaNapieciaNn | None = None
         powod: PowodBrakuTolerancji | None = None
-        if not trafo:
-            powod = "BRAK_TRANSFORMATORA"
-        elif bez:
+        if not zasilajacy:
+            powod = "BRAK_ZASILAJACEGO"
+        elif any(z.tolerancja is None for z in zasilajacy):
             powod = "BRAK_DEKLARACJI"
         elif len(deklaracje) > 1:
             powod = "DEKLARACJE_SPRZECZNE"
@@ -81,8 +109,7 @@ def wyspy_nn(enm: EnergyNetworkModel) -> list[WyspaNn]:
         wynik.append(
             WyspaNn(
                 bus_refs=tuple(szyny),
-                transformator_refs=tuple(t.ref_id for t in trafo),
-                bez_deklaracji=bez,
+                zasilajacy=zasilajacy,
                 tolerancja=tolerancja,
                 powod=powod,
             )

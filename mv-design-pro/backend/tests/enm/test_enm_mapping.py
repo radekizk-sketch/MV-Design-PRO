@@ -194,6 +194,7 @@ class TestBasicMapping:
                     uk_percent=6,
                     pk_kw=7.5,
                     vector_group="Dyn11",
+                    lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 ),
             ],
         )
@@ -321,6 +322,7 @@ class TestSolverRoundtrip:
                     ulv_kv=0.4,
                     uk_percent=4,
                     pk_kw=6.5,
+                    lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 ),
             ],
         )

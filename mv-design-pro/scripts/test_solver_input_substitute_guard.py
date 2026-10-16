@@ -1770,7 +1770,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
     # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
     # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4125." in wyjscie, wyjscie
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): baza karty `bd3a87f4` mierzy 4148 (pin
+    # 4125 byl tam czerwony — scalenie PR #477–#481 i commity 1–3/n karty nie utrwalily
+    # pomiaru); drzewo karty 4148 — POMIAR `contract_fields()` na obu drzewach, roznica
+    # zbiorow: +2 (`block_transformer_lv_voltage_tolerance` — kanal zapisu tolerancji sieci nN
+    # w POST generatora, `zasilajacy` — opis zasilajacego wyspy nN w `enm/tolerancja_nn.py`),
+    # -2 (`transformator_refs` — zastapione przez `zasilajacy`, ktory obejmuje tez zrodla;
+    # `bez_deklaracji` — teraz wlasnosc wyliczana z `zasilajacy`, nie pole). PASS niezmieniony
+    # (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4148." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2038,7 +2046,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
     # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
     # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 236." in wyjscie, wyjscie
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): 51/236 -> 50/233 — wpisy
+    # `F:dictget:run.c_factor` (`application/proof_engine/pakiet_biegu.py`,
+    # `application/proof_engine/pakiet_nastaw.py` — plik wypada z zapadki) i
+    # `F:dictget:kotwica.c_factor` (`application/protection_settings/batch_run.py`) zdjete
+    # razem z opcja biegu `c_factor` (c dobiera `voltage_factor.dobierz_c`). Budzet zmalal
+    # juz w commitach 1–3/n karty, pin nie zostal wtedy utrwalony (czerwien na bazie
+    # `bd3a87f4`). POMIAR guardem na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 50 plikow, suma 233." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2125,7 +2140,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
         # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): 180 -> 178 (-2 skasowany katalog
+        # `catalog/wind_turbines/**` w scaleniu KATALOG-TURBINY-TOR-V112 `0927ee84`, pin nie
+        # utrwalony przy scaleniu — czerwien na bazie `bd3a87f4`). POMIAR guardem.
+        "  network_model: pliki_skanowane=178, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2177,7 +2195,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): enm 58 -> 59 (+1 `enm/rodzaj_stacji.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
-        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: enm 61 -> 62 (+1 `enm/tolerancja_nn.py` — jeden
+        # predykat tolerancji sieci nN wyspy galwanicznej); dlug/wykluczenia BEZ ZMIANY. POMIAR.
+        "  enm: pliki_skanowane=62, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2250,9 +2270,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
         # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=247, dlug=29 plikow/suma 89, "
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): application 247 -> 248 (+1
+        # `analyses/dobor_toru_der_sn.py` ze scalenia PR-478 `9d4b1afe`, pin nie utrwalony —
+        # czerwien na bazie `bd3a87f4`); dlug 29/89 -> 29/87: -1 plik/-1 `pakiet_nastaw.py`
+        # i -1 `pakiet_biegu.py`, -1 `batch_run.py` (opcja `c_factor` skasowana), +1 plik/+1
+        # `dobor_toru_der_sn.py` (wpis `zrodlo.cos_phi` przeniesiony z `api/grid_source_
+        # preview.py` w PR-478). api dlug 2/3 -> 1/2 (ten sam przeniesiony wpis). POMIAR.
+        "  application: pliki_skanowane=248, dlug=29 plikow/suma 87, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=5 plikow/suma 13",
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

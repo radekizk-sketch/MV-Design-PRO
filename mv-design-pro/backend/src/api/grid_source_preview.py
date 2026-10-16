@@ -15,6 +15,7 @@ from domain.generator_validation import (
     moc_pozorna_z_nastawy_mva,
 )
 from fastapi import APIRouter, HTTPException
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
@@ -74,6 +75,10 @@ class GridSourcePreviewRequest(BaseModel):
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
     tb_s: float = Field(default=0.1, gt=0)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja sieci nN dla U_nQ w paśmie nN
+    # (wiersz nN tabeli 1 IEC 60909-0); dla SN/WN bez znaczenia. Brak przy U_nQ nN = 422
+    # z kodem `fault.c_tolerancja_nn_brak`.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 class GridSourcePreviewMinResponse(BaseModel):
@@ -147,6 +152,7 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
             voltage_kv=request.voltage_kv,
             short_circuit_mode="SHORT_CIRCUIT_POWER",
             scenariusz="MIN",
+            tolerancja_nn=request.lv_voltage_tolerance,
             sk3_mva=sk_min_mva,
             rx_ratio=rx_min,
             zero_sequence_enabled=request.zero_sequence_enabled,
@@ -185,6 +191,7 @@ def preview_grid_source_short_circuit(
                 voltage_kv=request.voltage_kv,
                 short_circuit_mode=request.short_circuit_mode,
                 scenariusz="MAX",
+                tolerancja_nn=request.lv_voltage_tolerance,
                 sk3_mva=request.sk3_mva,
                 rx_ratio=request.rx_ratio,
                 r_ohm=request.r_ohm,

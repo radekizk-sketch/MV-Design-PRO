@@ -61,7 +61,7 @@ class SCAsymmetricalPackRequest(BaseModel):
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
     #: Tolerancja sieci nN węzła zwarcia (wiersz nN tabeli 1); wymagana, gdy U_n w paśmie nN.
-    tolerancja_nn: TolerancjaNapieciaNn | None = None
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     u_prefault_kv: float
     z1_re_ohm: float
     z1_im_ohm: float
@@ -116,7 +116,7 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         payload.u_n_kv,
         payload.scenariusz,
         _nadpisanie(payload.nadpisanie_c),
-        tolerancja_nn=payload.tolerancja_nn,
+        tolerancja_nn=payload.lv_voltage_tolerance,
     )
     pack_input = SCAsymmetricalPackInput(
         project_name=payload.project_name,

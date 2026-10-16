@@ -8,13 +8,19 @@ from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
+from network_model.core.voltage_factor import c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.solvers.short_circuit_iec60909 import (
-    C_MAX,
-    C_MIN,
     ShortCircuitIEC60909Solver,
     ShortCircuitType,
 )
+
+# c węzła zwarcia B (20 kV, pasmo SN) z JEDYNEGO źródła tabeli 1 IEC 60909-0 — karta
+# WSPOLCZYNNIK-C-JEDEN-NOSNIK skasowała martwe stałe solvera C_MIN = 0,95 / C_MAX = 1,10
+# (C_MIN = 0,95 nie był nawet wierszem SN tabeli). Intencja testów (Ik'' skaluje się z c,
+# Ik'' = c·U_n/(√3·|Z_kk|)) bez zmian.
+C_MIN = c_for_node(20.0, "MIN", tolerancja_nn=None)
+C_MAX = c_for_node(20.0, "MAX", tolerancja_nn=None)
 
 
 def create_pq_node(node_id: str, voltage_level: float) -> Node:

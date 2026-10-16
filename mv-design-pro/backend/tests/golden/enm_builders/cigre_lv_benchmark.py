@@ -47,6 +47,9 @@ def build_cigre_lv_benchmark_enm() -> BenchmarkEnm:
         rx_ratio=0.1,
         line_fields_count=5,
         source_name="LV MAIN",
+        # Sieć nN bez transformatora w modelu: nośnikiem tolerancji (+6 %, wiersz nN tabeli 1
+        # IEC 60909-0) jest źródło — karta WSPOLCZYNNIK-C-JEDEN-NOSNIK.
+        lv_voltage_tolerance="PLUS_6",
     )
 
     enm, bus_map, branch_map = zbuduj_topologie(

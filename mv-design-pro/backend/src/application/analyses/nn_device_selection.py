@@ -323,8 +323,8 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         )
     if kandydat.kind == KIND_FUSE_SWITCH:
         i2 = FUSE_GG_IF_MULTIPLIER * kandydat.in_a
-        gate = compute_fuse_gg_gate(i_query_a=i2, in_a=kandydat.in_a)
-        assert gate.gwarancja == GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
+        brama_wkladki = compute_fuse_gg_gate(i_query_a=i2, in_a=kandydat.in_a)
+        assert brama_wkladki.gwarancja == GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
         spelnia = i2 <= limit
         uzasadnienie = (
             f"I2={i2:g} A (=If={FUSE_GG_IF_MULTIPLIER:g}×In wkładki, IEC 60269-1) "
@@ -352,7 +352,7 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             wartosci={"limit_a": limit},
         )
     i2 = MCCB_I2_MULTIPLIER * kandydat.ir_a
-    gate = compute_mccb_point(
+    punkt_mccb = compute_mccb_point(
         i_query_a=i2,
         ir_a=kandydat.ir_a,
         isd_a=kandydat.isd_a,
@@ -363,11 +363,11 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
     # I2=1,3×Ir > Ir z definicji mnożnika (>1) — punkt NIGDY nie klasyfikuje
     # się jako "brak" (poniżej progu długozwłocznego); solver to potwierdza
     # (reuse, nie druga fizyka).
-    assert gate.stopien != "brak"
+    assert punkt_mccb.stopien != "brak"
     spelnia = i2 <= limit
     uzasadnienie = (
         f"I2={i2:g} A (={MCCB_I2_MULTIPLIER:g}×Ir={kandydat.ir_a:g} A, wyzwalacz "
-        f"elektroniczny, IEC 60947-2 — stopień klasyfikacji '{gate.stopien}') "
+        f"elektroniczny, IEC 60947-2 — stopień klasyfikacji '{punkt_mccb.stopien}') "
         f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
     )
     return KryteriumWynik(
@@ -379,7 +379,7 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             "limit_a": limit,
             "zrodlo": "IEC 60947-2 (1,3×Ir, wyzwalacz elektroniczny)",
             "ir_a": kandydat.ir_a,
-            "mccb_stopien": gate.stopien,
+            "mccb_stopien": punkt_mccb.stopien,
         },
     )
 
@@ -690,7 +690,7 @@ def _ik1_min_i_u0(
 
     # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo)
+    odmowa = odmowa_analizy_nn({}, trafo, enm=enm)
     if odmowa is not None:
         return (
             None,
@@ -720,6 +720,7 @@ def _ik1_min_i_u0(
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     loop_result = oblicz_petle_na_trasie(
+        enm=enm,
         trafo=trafo,
         fault_node_id=bus_ref,
         u_phase_v=u_phase_v,

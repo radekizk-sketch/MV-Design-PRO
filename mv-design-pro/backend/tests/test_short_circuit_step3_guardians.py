@@ -23,8 +23,13 @@ sys.path.insert(0, str(backend_src))
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
+from network_model.core.voltage_factor import c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
-from network_model.solvers.short_circuit_iec60909 import C_MAX, ShortCircuitIEC60909Solver
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+
+# c_max węzłów 15 kV (pasmo SN) z jedynego źródła tabeli 1 IEC 60909-0 — martwa stała
+# solvera C_MAX skasowana kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK (ta sama wartość 1,10).
+C_MAX = c_for_node(15.0, "MAX", tolerancja_nn=None)
 
 
 def _json_default(value):

@@ -2,7 +2,9 @@
 
 Nośnikiem współczynnika napięciowego c jest WYŁĄCZNIE scenariusz zwarciowy: przełącznik
 MAX/MIN wybiera kolumnę tabeli 1 IEC 60909-0, a wartość c dobiera assembler PER WĘZEŁ
-z pasma jego napięcia (nN 1,05/0,95; SN 1,10/1,00). Ręczne nadpisanie istnieje tylko
+z pasma jego napięcia (SN 1,10/1,00) i — w paśmie nN — z deklarowanej tolerancji sieci nN
+(+6 % → 1,05/0,95; +10 % → 1,10/0,90; iloczyn tolerancji w
+``tests/enm/test_tolerancja_nn_iloczyn_cech.py``). Ręczne nadpisanie istnieje tylko
 z uzasadnieniem; każdy wiersz wyniku niesie podstawę c (`c_zrodlo`).
 
 Test jest ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA §2), przez realną ścieżkę
@@ -124,7 +126,11 @@ def test_c_i_podstawa_per_wezel(scenariusz: str, lokalizacja: str, tryb: str) ->
         assert wiersz["tk_s"] == 0.5
         if tryb == "auto":
             assert wiersz["c_factor"] == pytest.approx(_TABELA_1[(pasmo, scenariusz)]), ref
-            assert wiersz["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo {pasmo}, {scenariusz}"
+            # Sieć z `_build_mv_lv_enm` deklaruje tolerancję nN +6 % na transformatorze.
+            tolerancja = ", tolerancja +6 %" if pasmo == "nN" else ""
+            assert (
+                wiersz["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo {pasmo}{tolerancja}, {scenariusz}"
+            )
             assert wiersz["c_factor_override"] is False
         else:
             assert wiersz["c_factor"] == pytest.approx(1.08), ref
@@ -215,6 +221,11 @@ def test_iloraz_ikss_nn_wynika_wylacznie_z_c(scenariusz: str) -> None:
 def test_dobierz_c_nie_przyjmuje_wezla_bez_pasma_takze_przy_nadpisaniu() -> None:
     """Jeden predykat wejścia dla obu gałęzi doboru (reguła KLASA §3 — predykaty parami)."""
     with pytest.raises(OdmowaDanychError):
-        dobierz_c(0.0, "MAX", None)
+        dobierz_c(0.0, "MAX", None, tolerancja_nn="PLUS_6")
     with pytest.raises(OdmowaDanychError):
-        dobierz_c(0.0, "MAX", NadpisanieC(wartosc=1.05, uzasadnienie=_UZASADNIENIE))
+        dobierz_c(
+            0.0,
+            "MAX",
+            NadpisanieC(wartosc=1.05, uzasadnienie=_UZASADNIENIE),
+            tolerancja_nn="PLUS_6",
+        )

@@ -118,6 +118,8 @@ def _siec_promieniowa_z_nn() -> EnergyNetworkModel:
                     uk_percent=6.0,
                     pk_kw=8.0,
                     vector_group="Dyn11",
+                    # Tolerancja sieci nN +6 % — wiersz nN tabeli 1 (1,05/0,95).
+                    lv_voltage_tolerance="PLUS_6",
                 )
             ],
         }
@@ -403,7 +405,8 @@ def test_warianty_minimalne_licza_scenariuszem_min_z_c_tabeli(
         for ref, pasmo in pasma_szyn.items():
             wiersz = wiersze[ref_to_graph_id(ref)]
             assert wiersz["c_factor"] == pytest.approx(_C_TABELI[(pasmo, scenariusz)]), ref
-            assert wiersz["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo {pasmo}, {scenariusz}"
+            podstawa = "pasmo nN, tolerancja +6 %" if pasmo == "nN" else f"pasmo {pasmo}"
+            assert wiersz["c_zrodlo"] == f"IEC 60909-0 tab. 1, {podstawa}, {scenariusz}"
 
     _sprawdz(kotwica, "MAX")
     warianty_sc = [run for run in przechwycone if run.analysis_type == "short_circuit_sn"]

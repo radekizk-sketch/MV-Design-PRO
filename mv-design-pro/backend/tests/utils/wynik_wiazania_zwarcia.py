@@ -8,7 +8,7 @@ wejścia — `application.solvers.short_circuit_binding.execute_short_circuit` �
 torem istniejącym tylko w testach i został skasowany. Ten pomocnik składa
 `ShortCircuitBindingResult` z tych samych ogniw, z których bieg kanoniczny składa
 wejście zwarciowe (`enm/assembler.py::zloz_wejscie_zwarcia`): c z pasma napięciowego
-węzła zwarcia (`c_for_node`, IEC 60909-0 tab. 1), graf scenariusza MIN z korektą
+węzła zwarcia z tolerancją sieci nN węzła (`c_for_node`, IEC 60909-0 tab. 1), graf scenariusza MIN z korektą
 temperaturową R_θ (`build_min_scenario_graph`) i zamrożony solver IEC 60909.
 """
 
@@ -33,7 +33,8 @@ def wynik_wiazania_zwarcia_3f(
     tk_s: float = 1.0,
 ) -> ShortCircuitBindingResult:
     """Zwarcie trójfazowe w `fault_node_id` opakowane w typ wejścia zamrożonego mappera."""
-    c_factor = c_for_node(graph.nodes[fault_node_id].voltage_level, scenario)
+    wezel = graph.nodes[fault_node_id]
+    c_factor = c_for_node(wezel.voltage_level, scenario, tolerancja_nn=wezel.tolerancja_nn)
     graf_solvera = graph
     noty: tuple[dict[str, object], ...] = ()
     if scenario == "MIN":

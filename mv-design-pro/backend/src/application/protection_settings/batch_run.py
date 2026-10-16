@@ -313,8 +313,8 @@ def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
 
 def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> dict[str, Any]:
     """Opcje wariantu gałęzi minimalnej (CV-3-W): `fault_type` WŁASNY wariantu i
-    scenariusz MIN — c dobiera assembler per węzeł z tabeli 1 IEC 60909-0 (nN 0,95,
-    SN 1,00) razem z korektą R_θ i Z_Qmin źródeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+    scenariusz MIN — c dobiera assembler per węzeł z tabeli 1 IEC 60909-0 (`voltage_factor`;
+    nN wg tolerancji sieci nN, SN/WN) razem z korektą R_θ i Z_Qmin źródeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
     rozdział MAX/MIN po przełączniku, nie po liczbie). `thermal_time_seconds` i para
     audytu 2 przejęte z opcji kotwicy (ten sam model stacji co kotwica). Nadpisanie c
     kotwicy NIE przechodzi na wariant: dotyczy gałęzi maksymalnej, dla której je

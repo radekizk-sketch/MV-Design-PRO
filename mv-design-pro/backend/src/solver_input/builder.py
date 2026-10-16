@@ -52,13 +52,17 @@ from solver_input.provenance import (
 
 
 def _build_bus_payloads(
-    graph: NetworkGraph, *, scenario: Literal["MAX", "MIN"] = "MAX"
+    graph: NetworkGraph, *, scenario: Literal["MAX", "MIN"] = "MAX", z_c: bool
 ) -> list[BusPayload]:
     """Build deterministically sorted bus payloads from graph nodes.
 
-    Karta P0.3: each bus carries the IEC 60909-0 Table 1 voltage factor c for
-    ITS OWN voltage band and the requested scenario (c_factor_iec60909) — one
-    shared source of truth (network_model.core.voltage_factor.c_for_node).
+    Karta P0.3: each bus of a SHORT-CIRCUIT payload carries the IEC 60909-0 Table 1
+    voltage factor c for ITS OWN voltage band, nN tolerance and the requested scenario
+    (c_factor_iec60909) — one shared source of truth
+    (network_model.core.voltage_factor.c_for_node). Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+    c is a short-circuit quantity, so a load-flow payload (``z_c=False``) carries
+    ``None`` — the load flow never reads c, and an nN bus without a declared tolerance
+    must not block a calculation that does not need it.
     """
     payloads: list[BusPayload] = []
     for node in sorted(graph.nodes.values(), key=lambda n: n.id):
@@ -72,8 +76,10 @@ def _build_bus_payloads(
                 voltage_angle_rad=node.voltage_angle,
                 active_power_mw=node.active_power,
                 reactive_power_mvar=node.reactive_power,
-                c_factor_iec60909=c_for_node(
-                    node.voltage_level, scenario, tolerancja_nn=node.tolerancja_nn
+                c_factor_iec60909=(
+                    c_for_node(node.voltage_level, scenario, tolerancja_nn=node.tolerancja_nn)
+                    if z_c
+                    else None
                 ),
             )
         )
@@ -461,7 +467,12 @@ def build_solver_input(
         payload_dict = {}
     else:
         # Build common element lists
-        buses = _build_bus_payloads(graph, scenario=scenario)
+        buses = _build_bus_payloads(
+            graph,
+            scenario=scenario,
+            z_c=analysis_type
+            in (SolverAnalysisType.SHORT_CIRCUIT_3F, SolverAnalysisType.SHORT_CIRCUIT_1F),
+        )
         branches = _build_branch_payloads(graph, catalog, trace_entries, czestotliwosc_hz)
         transformers = _build_transformer_payloads(graph, catalog, trace_entries)
         inverters = _build_inverter_payloads(graph, trace_entries)

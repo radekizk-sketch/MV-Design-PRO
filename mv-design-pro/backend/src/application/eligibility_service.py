@@ -46,6 +46,7 @@ from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.core.voltage_factor import ETYKIETA_TOLERANCJI_NN
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
 from solver_input.uklad_sieci_nn import uklad_tn
 
@@ -633,62 +634,75 @@ class EligibilityService:
         """Wiersz nN tabeli 1 IEC 60909-0 wymaga tolerancji sieci nN (karta WSPOLCZYNNIK-C).
 
         JEDEN predykat z biegiem: ``enm.tolerancja_nn.wyspy_nn`` (ten sam, który mapper
-        grafu wpisuje do węzłów nN i który ``voltage_factor.c_for_node`` odmawia przy
-        ``None``). Zgłoszenie na transformator bez deklaracji (akcja naprawcza otwiera
-        jego pole) albo na wyspę bez nośnika (sprzeczne deklaracje, brak transformatora).
+        grafu wpisuje do węzłów nN, maszyn i źródeł nN i który ``voltage_factor.c_for_node``
+        odmawia przy ``None``). Zgłoszenie na każdy element zasilający bez deklaracji
+        (transformator albo źródło sieciowe — akcja naprawcza otwiera jego pole), na
+        elementy o sprzecznych deklaracjach albo na wyspę bez elementu zasilającego.
         """
+        modal = {"transformers": "TransformerModal", "sources": "SourceModal"}
+        typ = {"transformers": "transformer", "sources": "source"}
+        rodzaj_pl = {"transformers": "Transformator", "sources": "Źródło sieciowe"}
+
+        def zgloszenie(ref: str, rodzaj: str, message_pl: str) -> AnalysisEligibilityIssue:
+            return AnalysisEligibilityIssue(
+                code="ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
+                severity=IssueSeverity.BLOCKER,
+                message_pl=message_pl,
+                element_ref=ref,
+                element_type=typ[rodzaj],
+                fix_action=FixAction(
+                    action_type="OPEN_MODAL",
+                    element_ref=ref,
+                    modal_type=modal[rodzaj],
+                    payload_hint={"required": "lv_voltage_tolerance"},
+                ),
+            )
+
         for wyspa in wyspy_nn(enm):
             if wyspa.tolerancja is not None:
                 continue
             if wyspa.powod == "BRAK_DEKLARACJI":
-                for ref in wyspa.bez_deklaracji:
+                for zasilajacy in wyspa.bez_deklaracji:
                     blockers.append(
-                        AnalysisEligibilityIssue(
-                            code="ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
-                            severity=IssueSeverity.BLOCKER,
-                            message_pl=(
-                                f"Transformator '{ref}' zasila sieć nN, ale nie deklaruje jej "
-                                "tolerancji napięcia (+6 % albo +10 %) — współczynnika c "
-                                "(IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać."
-                            ),
-                            element_ref=ref,
-                            element_type="transformer",
-                            fix_action=FixAction(
-                                action_type="OPEN_MODAL",
-                                element_ref=ref,
-                                modal_type="TransformerModal",
-                                payload_hint={"required": "lv_voltage_tolerance"},
-                            ),
+                        zgloszenie(
+                            zasilajacy.ref_id,
+                            zasilajacy.rodzaj,
+                            f"{rodzaj_pl[zasilajacy.rodzaj]} '{zasilajacy.ref_id}' zasila sieć "
+                            "nN, ale nie deklaruje jej tolerancji napięcia (+6 % albo +10 %) — "
+                            "współczynnika c (IEC 60909-0, tabela 1) dla węzłów nN nie da się "
+                            "dobrać.",
                         )
                     )
                 continue
-            pierwszy = wyspa.transformator_refs[0] if wyspa.transformator_refs else None
-            opis = (
-                "transformatory zasilające tę sieć nN deklarują różne tolerancje napięcia"
-                if wyspa.powod == "DEKLARACJE_SPRZECZNE"
-                else "sieć nN nie ma transformatora zasilającego, który niósłby deklarację "
-                "tolerancji napięcia"
-            )
+            if wyspa.powod == "DEKLARACJE_SPRZECZNE":
+                opis = ", ".join(
+                    f"'{z.ref_id}' ({ETYKIETA_TOLERANCJI_NN[str(z.tolerancja)]})"
+                    for z in wyspa.zasilajacy
+                )
+                for zasilajacy in wyspa.zasilajacy:
+                    blockers.append(
+                        zgloszenie(
+                            zasilajacy.ref_id,
+                            zasilajacy.rodzaj,
+                            f"Sieć nN (szyny: {', '.join(wyspa.bus_refs)}): elementy zasilające "
+                            f"deklarują różne tolerancje napięcia — {opis}; jedna sieć nN ma "
+                            "jedną tolerancję, więc współczynnika c (IEC 60909-0, tabela 1) nie "
+                            "da się dobrać.",
+                        )
+                    )
+                continue
             blockers.append(
                 AnalysisEligibilityIssue(
                     code="ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
                     severity=IssueSeverity.BLOCKER,
                     message_pl=(
-                        f"Sieć nN (szyny: {', '.join(wyspa.bus_refs)}): {opis} — "
-                        "współczynnika c (IEC 60909-0, tabela 1) nie da się dobrać."
+                        f"Sieć nN (szyny: {', '.join(wyspa.bus_refs)}) nie ma transformatora ani "
+                        "źródła sieciowego, które by ją zasilały i niosły deklarację tolerancji "
+                        "napięcia — współczynnika c (IEC 60909-0, tabela 1) nie da się dobrać."
                     ),
-                    element_ref=pierwszy or wyspa.bus_refs[0],
-                    element_type="transformer" if pierwszy else "bus",
-                    fix_action=(
-                        FixAction(
-                            action_type="OPEN_MODAL",
-                            element_ref=pierwszy,
-                            modal_type="TransformerModal",
-                            payload_hint={"required": "lv_voltage_tolerance"},
-                        )
-                        if pierwszy
-                        else None
-                    ),
+                    element_ref=wyspa.bus_refs[0],
+                    element_type="bus",
+                    fix_action=None,
                 )
             )
 

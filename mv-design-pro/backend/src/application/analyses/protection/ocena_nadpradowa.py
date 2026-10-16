@@ -679,7 +679,13 @@ def _rozwiaz_stopien(
             f"({', '.join(_liczba(v) for v in zdolnosc.rated_current_inputs_a)} A).",
             "Wybierz przekładnik o prądzie wtórnym zgodnym z wejściem przekaźnika.",
         )
-    if not w_zakresie(wartosc_w_jednostce_zakresu, minimum, maksimum):
+    # Brak granicy w pozycji katalogu nie jest granicą (`w_zakresie`) — jawny warunek obu
+    # granic niesie tę samą semantykę i zawęża typ liczb podanych do komunikatu.
+    if (
+        minimum is not None
+        and maksimum is not None
+        and not w_zakresie(wartosc_w_jednostce_zakresu, minimum, maksimum)
+    ):
         brak(
             KOD_PROG_POZA_ZAKRESEM,
             f"Próg stopnia {etykieta} zabezpieczenia {nazwa} po stronie wtórnej wynosi "
@@ -1007,7 +1013,7 @@ def _krawedzie_przewodzace(
 
 def _wezly_zasilania_sieciowego(graph: NetworkGraph) -> set[str]:
     """Węzły źródeł sieciowych (sieć nadrzędna) — wyznaczają kierunek zasilania."""
-    return {zrodlo.node_id for zrodlo in graph.get_grid_sc_sources()}
+    return set(graph.wezly_zrodel_sieciowych())
 
 
 def strefa_urzadzenia(
@@ -1310,7 +1316,7 @@ def prad_przekaznika(
                 akcja_naprawcza_pl="Uruchom ponownie obliczenie zwarciowe na bieżącym modelu.",
             ),
         )
-    wplywy_zrodel = [
+    wplywy_zrodel: list[dict[str, Any]] = [
         {"zrodlo_ref": str(w["source_id"]), "prad_a": float(w["i_contrib_a"])}
         for w in zrodla_klastra
     ]
@@ -1369,9 +1375,9 @@ def _wezly_z_wstrzykiwaniem(graph: NetworkGraph) -> set[str]:
         graph.get_inverter_sources(),
         graph.get_synchronous_machine_sources(),
         graph.get_asynchronous_machine_sources(),
-        graph.get_grid_sc_sources(),
     ):
         wezly.update(z.node_id for z in zrodla)
+    wezly.update(graph.wezly_zrodel_sieciowych())
     return wezly
 
 

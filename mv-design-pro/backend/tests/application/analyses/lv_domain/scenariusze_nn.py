@@ -138,6 +138,8 @@ class BudowniczyStacji:
                 pk_kw=round(sn_mva * 10.3, 2),
                 vector_group=group,
                 lv_earthing_system=self.earthing,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1).
+                lv_voltage_tolerance="PLUS_6",
                 catalog_ref=f"tr-15-04-{int(round(sn_mva * 1000))}kva-{group.lower()}",
             )
         )
@@ -375,6 +377,8 @@ class BudowniczyStacji:
                 pk_kw=4.5,
                 vector_group="Dyn5",
                 lv_earthing_system=self.earthing,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1).
+                lv_voltage_tolerance="PLUS_6",
                 catalog_ref="tr-15-04-400kva-dyn5",
             )
         )

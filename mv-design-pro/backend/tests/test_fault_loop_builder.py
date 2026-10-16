@@ -28,6 +28,7 @@ def _make_basic_request(
 ) -> FaultLoopBuildRequest:
     """Typical TN-S MVP request: 400 kVA TR + 30 m kabel."""
     return FaultLoopBuildRequest(
+        tolerancja_nn="PLUS_6",
         fault_node_id="bus_LV_main",
         u_nom_v=230.0,
         network_type=NetworkType.TN_S,
@@ -67,6 +68,7 @@ class TestBuildFaultLoopInput:
     def test_partial_upstream_rejected_r_only(self) -> None:
         """Tylko upstream_r_ohm bez upstream_x_ohm → ValueError."""
         bad = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,
@@ -85,6 +87,7 @@ class TestBuildFaultLoopInput:
 
     def test_partial_upstream_rejected_x_only(self) -> None:
         bad = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,
@@ -111,6 +114,7 @@ class TestBuildFaultLoopInput:
 
     def test_custom_labels_used(self) -> None:
         req = FaultLoopBuildRequest(
+            tolerancja_nn="PLUS_6",
             fault_node_id="x",
             u_nom_v=230.0,
             network_type=NetworkType.TN_S,

@@ -33,6 +33,7 @@ sys.path.insert(0, str(_BACKEND))
 from enm.assembler import _build_snapshot_graph_element_context  # noqa: E402
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import EnergyNetworkModel  # noqa: E402
+from network_model.core.voltage_factor import c_for_node, zrodlo_c_z_tabeli  # noqa: E402
 from network_model.solvers.short_circuit_iec60909 import (  # noqa: E402
     ShortCircuitIEC60909Solver,
 )
@@ -40,7 +41,6 @@ from network_model.solvers.short_circuit_iec60909 import (  # noqa: E402
 from tests.reference_networks.demo_oze_sc import build_demo_oze_sc_network  # noqa: E402
 
 _FIXED_TS = "2026-07-24T00:00:00Z"
-_C_FACTOR = 1.10
 _TK_S = 1.0
 _OUT_DIR = _FRONTEND / "scripts" / "demo-oze-sc"
 
@@ -70,14 +70,20 @@ def _run_short_circuit(enm_dict: dict) -> dict:
 
     bus_sc: dict[str, dict] = {}
     ik_values: list[float] = []
+    podstawy_c: set[tuple[float, str]] = set()
     for node_id in reportable:
         bus = ref_by_node.get(node_id)
         if bus is None:
             continue
+        # c_max z tabeli 1 IEC 60909-0 dla napięcia szyny (jedno źródło: voltage_factor;
+        # raportowane są wyłącznie szyny SN, więc tolerancja sieci nN nie dotyczy).
+        u_kv = float(bus["voltage_kv"])
+        c_max = c_for_node(u_kv, "MAX", tolerancja_nn=None)
+        podstawy_c.add((c_max, zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=None)))
         result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id=node_id,
-            c_factor=_C_FACTOR,
+            c_factor=c_max,
             tk_s=_TK_S,
             include_branch_contributions=False,
         )
@@ -97,7 +103,13 @@ def _run_short_circuit(enm_dict: dict) -> dict:
         ik_values.append(ikss)
 
     ik_values.sort()
+    # Jedna podstawa c dla całej fikstury (same szyny SN) — inaczej meta skłamałaby.
+    if len(podstawy_c) != 1:
+        raise RuntimeError(f"fikstura niesie jedną podstawę c, a bieg użył {sorted(podstawy_c)}")
+    ((c_factor, c_zrodlo),) = podstawy_c
     return {
+        "c_factor": c_factor,
+        "c_zrodlo": c_zrodlo,
         "bus_short_circuit": bus_sc,
         "converged": len(bus_sc) > 0,
         "bus_count": len(bus_sc),
@@ -155,7 +167,8 @@ def render_fikstur() -> dict[str, str]:
         "_meta": {
             "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
             "builder_snapshot_hash": builder_hash,
-            "c_factor": _C_FACTOR,
+            "c_factor": sc["c_factor"],
+            "c_zrodlo": sc["c_zrodlo"],
             "tk_s": _TK_S,
             "analysis_type": "short_circuit_3f",
             "note": (
