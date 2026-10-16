@@ -54,6 +54,10 @@ import { KreatorPomiaru } from './ui2/kreatory/pomiar';
 import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
 import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
 import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
+import './ui2/spaces/obliczenia/przypadki.css';
+import { KartaPrzypadku } from './ui2/spaces/obliczenia/KartaPrzypadku';
+import { PanelScenariuszy } from './ui2/spaces/obliczenia/scenariusze/PanelScenariuszy';
+import type { StudyCase } from './ui/study-cases/types';
 import {
   SekcjaArcFlash,
   SekcjaMigotania,
@@ -577,6 +581,83 @@ function odpowiedzDokumentuSceny(
   });
 }
 
+
+/** Scenariusze zwarciowe sceny „panel-scenariuszy": MAX, MIN i nadpisanie c z uzasadnieniem. */
+const SCENARIUSZE_ZWARCIOWE_SCENY = (() => {
+  const baza = {
+    study_case_id: 'case-demo',
+    analysis_type: 'SHORT_CIRCUIT',
+    fault_type: 'SC_3F',
+    location: { element_ref: 'Szyna SN stacji', location_type: 'BUS', position: null },
+    fault_impedance_type: 'METALLIC',
+    fault_mode: 'METALLIC',
+    fault_impedance: null,
+    arc_params: null,
+    z0_bus_data: null,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+  const scenariusze = [
+    {
+      ...baza,
+      scenario_id: 'scen-max',
+      name: 'Zwarcie 3F — dobór aparatury',
+      config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-max',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-min',
+      name: 'Zwarcie 3F — czułość zabezpieczeń',
+      config: { scenariusz: 'MIN', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-min',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-nadpisanie',
+      name: 'Zwarcie 3F — uzgodnienie z operatorem',
+      config: {
+        scenariusz: 'MAX',
+        nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'uzgodnienie z operatorem sieci' },
+        thermal_time_seconds: 1,
+        include_branch_contributions: true,
+      },
+      content_hash: 'h-nadpisanie',
+    },
+  ];
+  return { scenarios: scenariusze, count: scenariusze.length };
+})();
+
+/** Przypadek obliczeniowy sceny „karta-przypadku" — kształt 1:1 z `StudyCase` (bez pól c). */
+const PRZYPADEK_KARTY_SCENY: StudyCase = {
+  id: 'case-demo',
+  project_id: 'proj-demo',
+  name: 'Stan normalny',
+  description: 'Przypadek obliczeniowy sieci SN/nN — założenia biegu zwarciowego i rozpływu.',
+  config: {
+    base_mva: 100,
+    max_iterations: 30,
+    tolerance: 1e-6,
+    include_motor_contribution: true,
+    include_inverter_contribution: true,
+    operator_profile_id: 'enea',
+    sc_input_mode: 'simplified',
+    sc_simplified_sk_mva: 250,
+    sc_simplified_r_x_ratio: 0.1,
+  },
+  is_active: true,
+  revision: 3,
+  created_at: '2026-10-01T10:00:00Z',
+  updated_at: '2026-10-01T10:00:00Z',
+  result_status: 'NONE',
+  results_valid: false,
+  result_status_reason: 'brak_wyniku',
+  result_status_reason_pl: 'Brak wyniku — przypadek nie był jeszcze obliczany.',
+  rewizja_biegu: null,
+  rewizja_biezaca: 3,
+  zmiany_od_biegu: [],
+};
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -592,6 +673,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // nie recznie wpisane liczby — parytet pilnuje tests/ci/test_fixtury_harnessu.py.
   if (creator === 'przeglad-wiarygodnosci' && url.includes('/api/catalog/przeglad-wiarygodnosci')) {
     return jsonOK(przegladWiarygodnosciKatalogu);
+  }
+
+  // Scena „panel-scenariuszy" (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): lista scenariuszy
+  // zwarciowych przypadku w kształcie 1:1 z `FaultScenarioListResponse` backendu
+  // (`config` = `ShortCircuitConfigRequest`: scenariusz MAX/MIN + opcjonalne nadpisanie c
+  // z uzasadnieniem; liczby c harness nie wymyśla — to zapis wejścia inżyniera).
+  if (
+    creator === 'panel-scenariuszy' &&
+    url.endsWith('/api/execution/study-cases/case-demo/fault-scenarios')
+  ) {
+    return jsonOK(SCENARIUSZE_ZWARCIOWE_SCENY);
   }
 
   if (creator === 'wyniki-skladowe') {
@@ -1901,6 +1993,14 @@ if (creator === 'arcflash') {
     field: 'r_pct',
     value: '0.55',
   });
+} else if (creator === 'edycja-tolerancja-nn') {
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: formularz edycji parametrów otwarty z AKCJI
+  // NAPRAWCZEJ bramki ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING — kontekst niesie wyłącznie
+  // element i `required` z `payload_hint` (klucz parametru wybiera formularz sam).
+  useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
+    element_ref: 'TR-1',
+    required: 'lv_voltage_tolerance',
+  });
 } else if (creator === 'cieplna') {
   // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
   // kontrakt przebiegu run-sc-7 niesie `rewizja_modelu: 1` (atrapa wyżej) →
@@ -2143,6 +2243,9 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'edycja-tolerancja-nn') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'panel-scenariuszy') node = <PanelScenariuszy />;
+  else if (creator === 'karta-przypadku') node = <KartaPrzypadku przypadek={PRZYPADEK_KARTY_SCENY} ladowanie={false} blad={null} />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else if (creator === 'szablony')
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
