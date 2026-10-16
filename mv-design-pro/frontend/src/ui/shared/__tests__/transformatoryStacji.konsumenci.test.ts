@@ -54,7 +54,7 @@ const OCZEKIWANA_STACJA: Record<string, string | null> = {
   'T/blokowy-wskazany': 'A/stacja',
   'T/blokowy-rola': 'A/stacja',
   'T/obcy': null,
-  'T/deklarowany-w-C': 'C/stacja-bez-meta',
+  'T/deklarowany-w-C': 'C/stacja-bez-pol',
 };
 
 describe('stacja transformatora — każdy konsument na jednej regule', () => {

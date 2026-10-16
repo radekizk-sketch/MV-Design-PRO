@@ -25,6 +25,7 @@ import {
 import type { EnergyNetworkModel, LogicalViewsV1, ReadinessInfo } from '../../../types/enm';
 import { ANALYSIS_SURFACE_SCREEN_CODE } from '../../workspace/types';
 import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
+import { pole } from '../../../test/pola';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -138,146 +139,94 @@ describe('selectOzeSourceSummaries', () => {
 // ---------------------------------------------------------------------------
 
 describe('selectConfiguredGridSourceSnFields', () => {
-  it('rozpoznaje kanoniczne pole SN GPZ zapisane w substation.meta.field_specs', () => {
+  const gpz = {
+    id: 'gpz-1',
+    ref_id: 'gpz-1',
+    name: 'GPZ 1',
+    station_type: 'gpz',
+    bus_refs: ['bus-gpz'],
+    transformer_refs: [],
+    meta: {},
+  };
+
+  /**
+   * Karta W5-B: jedno źródło pól SN stacji źródła — rekordy `bays` (dawne pole `source`
+   * rozróżniające dwa kanały skasowane). Iloczyn: {skonfigurowane: aparat w `equipment_refs`,
+   * wiązanie katalogowe w `meta.catalog_binding`, rodzaj aparatu `meta.apparatus_kind`, brak}
+   * × {rola OUT, FEEDER, TR} × {szyna SN, szyna nN}.
+   */
+  it('pole SN GPZ: skonfigurowane przez aparat, wiązanie albo rodzaj aparatu; nieskonfigurowane, TR i nN — nie', () => {
     const enm = {
       ...emptyENM(),
       sources: [{ ref_id: 'src-1', name: 'GPZ 1', bus_ref: 'bus-gpz', substation_ref: 'gpz-1' }],
-      buses: [{ ref_id: 'bus-gpz', name: 'Szyna GPZ', voltage_kv: 15 }],
-      substations: [
-        {
-          id: 'gpz-1',
-          ref_id: 'gpz-1',
-          name: 'GPZ 1',
-          station_type: 'gpz',
-          bus_refs: ['bus-gpz'],
-          transformer_refs: [],
-          meta: {
-            field_specs: [
-              {
-                field_ref: 'bay-sn-out-1',
-                name: 'Pole odpływowe SN',
-                bay_role: 'OUT',
-                bus_ref: 'bus-gpz',
-                equipment_refs: [],
-                meta: {
-                  catalog_binding: {
-                    catalog_namespace: 'APARAT_SN',
-                    catalog_item_id: 'ap-sn-1',
-                  },
-                },
-              },
-            ],
-          },
-        },
+      buses: [
+        { ref_id: 'bus-gpz', name: 'Szyna GPZ', voltage_kv: 15 },
+        { ref_id: 'bus-gpz-nn', name: 'Szyna potrzeb własnych', voltage_kv: 0.4 },
+      ],
+      substations: [gpz],
+      bays: [
+        pole({ ref_id: 'p-aparat', name: 'Pole z aparatem', bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-gpz', equipment_refs: ['cb-1'] }),
+        pole({
+          ref_id: 'p-wiazanie',
+          name: 'Pole z wiązaniem',
+          bay_role: 'FEEDER',
+          substation_ref: 'gpz-1',
+          bus_ref: 'bus-gpz',
+          meta: { catalog_binding: { catalog_namespace: 'APARAT_SN', catalog_item_id: 'ap-sn-1' } },
+        }),
+        pole({ ref_id: 'p-rodzaj', name: 'Pole z rodzajem', bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-gpz', meta: { apparatus_kind: 'BREAKER' } }),
+        pole({ ref_id: 'p-puste', name: 'Pole puste', bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-gpz' }),
+        pole({ ref_id: 'p-tr', name: 'Pole TR', bay_role: 'TR', substation_ref: 'gpz-1', bus_ref: 'bus-gpz', equipment_refs: ['cb-2'] }),
+        pole({ ref_id: 'p-nn', name: 'Odpływ nN', bay_role: 'FEEDER', substation_ref: 'gpz-1', bus_ref: 'bus-gpz-nn', equipment_refs: ['cb-3'] }),
       ],
     } as unknown as EnergyNetworkModel;
 
-    expect(selectConfiguredGridSourceSnFields(enm)).toEqual([
-      expect.objectContaining({
-        ref_id: 'bay-sn-out-1',
-        name: 'Pole odpływowe SN',
-        source: 'field_spec',
-        bay_role: 'OUT',
-      }),
-    ]);
+    expect(selectConfiguredGridSourceSnFields(enm).map((f) => f.ref_id).sort()).toEqual(['p-aparat', 'p-rodzaj', 'p-wiazanie']);
+    expect(selectConfiguredGridSourceSnFields(enm).find((f) => f.ref_id === 'p-wiazanie')).toEqual({
+      ref_id: 'p-wiazanie',
+      name: 'Pole z wiązaniem',
+      bus_ref: 'bus-gpz',
+      substation_ref: 'gpz-1',
+      bay_role: 'FEEDER',
+      gpz_section_id: null,
+    });
   });
 
-  it('nie pokazuje technicznego ref_id jako nazwy skonfigurowanego pola', () => {
+  it('nazwa pola = nazwa rekordu (builder backendu nadaje nazwę roli; nigdy identyfikator)', () => {
     const enm = {
       ...emptyENM(),
       sources: [{ ref_id: 'src-1', name: 'GPZ 1', bus_ref: 'bus-gpz', substation_ref: 'gpz-1' }],
       buses: [{ ref_id: 'bus-gpz', name: 'Szyna GPZ', voltage_kv: 15 }],
-      substations: [
-        {
-          id: 'gpz-1',
-          ref_id: 'gpz-1',
-          name: 'GPZ 1',
-          station_type: 'gpz',
-          bus_refs: ['bus-gpz'],
-          transformer_refs: [],
-          meta: {
-            field_specs: [
-              {
-                field_ref: 'sn/123/bay',
-                bay_role: 'OUT',
-                bus_ref: 'bus-gpz',
-                equipment_refs: [],
-                meta: { apparatus_kind: 'BREAKER' },
-              },
-            ],
-          },
-        },
-      ],
+      substations: [gpz],
+      bays: [pole({ ref_id: 'sn/123/bay', name: FIELD_ROLE_LABEL_PL.LINIA_OUT, bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-gpz', meta: { apparatus_kind: 'BREAKER' } })],
     } as unknown as EnergyNetworkModel;
 
-    // Nazwa roli z kanonu słownictwa ról pól (karta #141) — ta sama, którą backend nadaje polu.
     expect(selectConfiguredGridSourceSnFields(enm)[0]?.name).toBe(FIELD_ROLE_LABEL_PL.LINIA_OUT);
   });
 });
 
 describe('selectSnFieldCount', () => {
-  it('liczy kanoniczne pola SN z ENM, a nie rozszerzony read-model aparatów', () => {
+  it('liczy pola SN stacji z rekordów `bays`; pola nN, ZKSN i pola nieistniejącej stacji — nie', () => {
     const enm = {
       ...emptyENM(),
-      bays: [
-        {
-          id: 'bay-1',
-          ref_id: 'bay-1',
-          name: 'Pole liniowe 1',
-          tags: [],
-          meta: {},
-          bay_role: 'OUT',
-          substation_ref: 'gpz-1',
-          bus_ref: 'bus-1',
-          equipment_refs: [],
-        },
-        {
-          id: 'bay-2',
-          ref_id: 'bay-2',
-          name: 'Pole transformatorowe',
-          tags: [],
-          meta: {},
-          bay_role: 'TR',
-          substation_ref: 'st-1',
-          bus_ref: 'bus-2',
-          equipment_refs: [],
-        },
+      buses: [
+        { ref_id: 'bus-1', name: 'SN GPZ', voltage_kv: 15 },
+        { ref_id: 'bus-2', name: 'SN stacji', voltage_kv: 15 },
+        { ref_id: 'bus-nn', name: 'nN stacji', voltage_kv: 0.4 },
       ],
-    } as unknown as EnergyNetworkModel;
-
-    expect(selectSnFieldCount(enm)).toBe(2);
-  });
-
-  it('liczy pola SN zapisane w meta.field_specs GPZ i stacji', () => {
-    const enm = {
-      ...emptyENM(),
-      bays: [],
       substations: [
-        {
-          id: 'gpz-1',
-          ref_id: 'gpz-1',
-          name: 'GPZ 1',
-          station_type: 'gpz',
-          meta: {
-            field_specs: [
-              { field_ref: 'gpz-1/bay/out-1', name: 'Pole odpływowe 1' },
-              { field_ref: 'gpz-1/bay/out-2', name: 'Pole odpływowe 2' },
-            ],
-          },
-        },
-        {
-          id: 'st-1',
-          ref_id: 'st-1',
-          name: 'Stacja 1',
-          station_type: 'inline',
-          meta: {
-            field_specs: [
-              { field_ref: 'st-1/bay/in', name: 'Pole wejściowe' },
-              { field_ref: 'st-1/bay/out', name: 'Pole wyjściowe' },
-              { field_ref: 'st-1/bay/tr', name: 'Pole transformatorowe' },
-            ],
-          },
-        },
+        { id: 'gpz-1', ref_id: 'gpz-1', name: 'GPZ 1', station_type: 'gpz', bus_refs: ['bus-1'], meta: {} },
+        { id: 'st-1', ref_id: 'st-1', name: 'Stacja 1', station_type: 'inline', bus_refs: ['bus-2', 'bus-nn'], meta: {} },
+      ],
+      bays: [
+        pole({ ref_id: 'gpz-1/out-1', bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-1' }),
+        pole({ ref_id: 'gpz-1/out-2', bay_role: 'OUT', substation_ref: 'gpz-1', bus_ref: 'bus-1' }),
+        pole({ ref_id: 'st-1/in', bay_role: 'IN', substation_ref: 'st-1', bus_ref: 'bus-2' }),
+        pole({ ref_id: 'st-1/out', bay_role: 'OUT', substation_ref: 'st-1', bus_ref: 'bus-2' }),
+        pole({ ref_id: 'st-1/tr', bay_role: 'TR', substation_ref: 'st-1', bus_ref: 'bus-2' }),
+        pole({ ref_id: 'st-1/nn-odp', bay_role: 'FEEDER', substation_ref: 'st-1', bus_ref: 'bus-nn' }),
+        pole({ ref_id: 'zksn/pole/MAIN_IN', bay_role: 'IN', branch_point_ref: 'zksn', bus_ref: 'bus-2' }),
+        pole({ ref_id: 'obca/in', bay_role: 'IN', substation_ref: 'nie-ma', bus_ref: 'bus-2' }),
       ],
     } as unknown as EnergyNetworkModel;
 
@@ -376,13 +325,7 @@ describe('selectStationSummaries', () => {
           transformer_refs: [],
           // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z pól (3 liniowe ⇒ odgałęźna), nie
           // z deklaracji „inline".
-          meta: {
-            field_specs: [
-              { field_ref: 'p-in', bay_role: 'IN' },
-              { field_ref: 'p-out', bay_role: 'OUT' },
-              { field_ref: 'p-odg', bay_role: 'FEEDER' },
-            ],
-          },
+          // Pola stacji: rekordy `bays` (karta W5-B — jedyny nośnik pól).
         },
         {
           id: 'station-a',
@@ -392,6 +335,11 @@ describe('selectStationSummaries', () => {
           bus_refs: [],
           transformer_refs: [],
         },
+      ],
+      bays: [
+        { ref_id: 'p-in', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'IN', equipment_refs: [] },
+        { ref_id: 'p-out', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'OUT', equipment_refs: [] },
+        { ref_id: 'p-odg', substation_ref: 'stn/abc/station', bus_ref: 'stn/abc/sn', bay_role: 'FEEDER', equipment_refs: [] },
       ],
     } as unknown as EnergyNetworkModel;
 

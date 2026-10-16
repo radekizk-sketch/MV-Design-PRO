@@ -206,7 +206,8 @@ export function WorkflowContextStrip({
     blockers: hasTopologyElements ? blockerCounts.total : 0,
     buses: hasModel ? stats.buses : '—',
     segments: hasModel ? stats.branches : '—',
-    bays: hasModel ? stats.bays || snFieldCount : '—',
+    // Karta W5-B: `bays` niesie pola SN, nN i ZKSN — metryka „Pola SN” = liczba pól SN stacji.
+    bays: hasModel ? snFieldCount : '—',
     stations: hasModel ? stats.stations : '—',
     lengthKm: hasModel
       ? stats.lengthBranchCount > 0

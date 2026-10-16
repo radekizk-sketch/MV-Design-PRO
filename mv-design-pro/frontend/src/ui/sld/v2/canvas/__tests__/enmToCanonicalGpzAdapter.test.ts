@@ -18,6 +18,7 @@ import type {
 } from '../../../../../types/enm';
 import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildCanonicalGpzProps } from '../enmToCanonicalGpzAdapter';
+import { pole } from '../../../../../test/pola';
 
 type EnmFragment = Pick<
   EnergyNetworkModel,
@@ -117,18 +118,7 @@ function bus(refId: string, voltageKv: number): Bus {
 }
 
 function bay(refId: string, role: Bay['bay_role'], substationRef: string, busRef: string, overrides: Partial<Bay> = {}): Bay {
-  return {
-    id: refId,
-    ref_id: refId,
-    name: refId,
-    tags: [],
-    meta: {},
-    bay_role: role,
-    substation_ref: substationRef,
-    bus_ref: busRef,
-    equipment_refs: [],
-    ...overrides,
-  } as Bay;
+  return pole({ ref_id: refId, name: refId, bay_role: role, substation_ref: substationRef, bus_ref: busRef, ...overrides });
 }
 
 function transformer(refId: string, overrides: Partial<Transformer> = {}): Transformer {
@@ -451,21 +441,14 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
     ]);
   });
 
-  it('mergeBaysWithFieldSpecs (pole syntetyzowane z field_specs) przenosi protection_ref — naprawa F11.1 (znalezisko własne, pole ginęło cicho przed tą fazą)', () => {
+  it('pole GPZ (rekord `bays`) przenosi protection_ref — F11.1 (dawniej ginęło przy syntezie pola z drugiego kanału)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
-      substations: [gpz('g', {
-        bus_refs: ['bus-15'],
-        meta: {
-          field_specs: [{
-            field_ref: 'fs-1',
-            bus_ref: 'bus-15',
-            bay_role: 'FEEDER',
-            name: 'Pole liniowe GPZ',
-            protection_codes: ['50/51'],
-            protection_ref: 'pa-1',
-          }],
-        },
+      substations: [gpz('g', { bus_refs: ['bus-15'] })],
+      bays: [bay('fs-1', 'FEEDER', 'g', 'bus-15', {
+        name: 'Pole liniowe GPZ',
+        protection_codes: ['50/51'],
+        protection_ref: 'pa-1',
       })],
       buses: [bus('bus-15', 15)],
       protection_assignments: [protectionAssignment('pa-1', { breaker_ref: 'cb-1', ct_ref: 'ct-1' })],
@@ -815,30 +798,42 @@ describe('buildCanonicalGpzProps - regresja przypisania pol SN do sekcji', () =>
     expect(props.sections[1].bays.map((b) => b.bayRef)).toEqual(['bay-02', 'bay-04']);
   });
 });
-describe('buildCanonicalGpzProps - meta.field_specs', () => {
-  it('renderuje pola SN GPZ zapisane jako field_specs, gdy snapshot.bays jest pusty', () => {
+describe('buildCanonicalGpzProps — pola GPZ wyłącznie z rekordów `bays` (karta W5-B)', () => {
+  it('rekordy pól GPZ trafiają do sekcji wg `gpz_section_id`', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
-        meta: {
-          field_specs: [
-            { field_ref: 'field-01', name: 'Pole odpływowe SN 1', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's1', bay_number: '1' },
-            { field_ref: 'field-02', name: 'Pole odpływowe SN 2', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's2', bay_number: '2' },
-          ],
-        },
         gpz_sections: [
           { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
           { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
         ],
       })],
-      bays: [],
+      bays: [
+        bay('field-01', 'OUT', 'g', 'bus-15', { name: 'Pole odpływowe SN 1', gpz_section_id: 's1', bay_number: '1' }),
+        bay('field-02', 'OUT', 'g', 'bus-15', { name: 'Pole odpływowe SN 2', gpz_section_id: 's2', bay_number: '2' }),
+      ],
       buses: [bus('bus-15', 15)],
     };
 
     const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
 
-    expect(props.sections[0].bays.map((bay) => bay.bayRef)).toEqual(['field-01']);
-    expect(props.sections[1].bays.map((bay) => bay.bayRef)).toEqual(['field-02']);
+    expect(props.sections[0].bays.map((b) => b.bayRef)).toEqual(['field-01']);
+    expect(props.sections[1].bays.map((b) => b.bayRef)).toEqual(['field-02']);
+  });
+
+  it('NEGATYW: sekcje GPZ bez rekordów pól ⇒ zero pól (brak syntezy pól z innych danych)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      bays: [bay('obce', 'OUT', 'inna-stacja', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+
+    expect(props.sections.flatMap((s) => s.bays)).toEqual([]);
   });
 });
 

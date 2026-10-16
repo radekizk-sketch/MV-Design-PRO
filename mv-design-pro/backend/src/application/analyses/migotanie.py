@@ -49,6 +49,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from enm.tor_pola import szyna_raportowa
 from network_model.odmowa_danych import OdmowaDanychError
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
@@ -404,7 +405,13 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
     kv_by_bus = _nominal_kv_by_bus(snapshot)
 
     entries = [
-        _bus_entry(bus_ref, kv_by_bus.get(bus_ref), sk_by_bus.get(bus_ref), modules)
+        _bus_entry(
+            bus_ref,
+            kv_by_bus.get(bus_ref),
+            # Zacisk pola → szyna raportowa węzła (`enm.tor_pola.szyna_raportowa`).
+            sk_by_bus.get(szyna_raportowa(snapshot, bus_ref)),
+            modules,
+        )
         for bus_ref, modules in sorted(ibg_by_bus.items(), key=lambda item: item[0])
     ]
     # Nazwy węzła przyłączenia i modułu z modelu biegu (albo opis rodzaju) — ekran nazywa

@@ -49,6 +49,7 @@ from typing import Any
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 from network_model.core.topologia import przeglad_wszerz_od
 from network_model.odmowa_danych import OdmowaDanychError
 
@@ -126,7 +127,7 @@ def _gpz_substation(enm: dict[str, Any]) -> dict[str, Any]:
 def _gpz_line_fields(enm: dict[str, Any]) -> list[dict[str, Any]]:
     fields = [
         spec
-        for spec in _gpz_substation(enm).get("meta", {}).get("field_specs", [])
+        for spec in pola_stacji(enm, _gpz_substation(enm).get("ref_id"))
         if "gpz_line_field" in (spec.get("tags") or [])
     ]
     fields.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
@@ -529,7 +530,7 @@ def zbuduj_topologie(
             if not gpz_first_departure_done:
                 enm, new_ref = kontynuuj_z_pola(
                     enm,
-                    field_ref=gpz_fields[gpz_field_index]["field_ref"],
+                    field_ref=gpz_fields[gpz_field_index]["ref_id"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
@@ -541,7 +542,7 @@ def zbuduj_topologie(
                 gpz_field_index += 1
                 enm, new_ref = rozpocznij_z_pola(
                     enm,
-                    field_ref=gpz_fields[gpz_field_index]["field_ref"],
+                    field_ref=gpz_fields[gpz_field_index]["ref_id"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
@@ -839,7 +840,7 @@ def _pola_liniowe_gpz_szyny(enm: dict[str, Any], bus_ref: str) -> list[dict[str,
             continue
         pola = [
             spec
-            for spec in stacja.get("meta", {}).get("field_specs", [])
+            for spec in pola_stacji(enm, stacja.get("ref_id"))
             if "gpz_line_field" in (spec.get("tags") or [])
         ]
         pola.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
@@ -954,7 +955,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     indeks_pola_gpz[lit_biezacej] = 0
                     enm, ref_nowej = kontynuuj_z_pola(
                         enm,
-                        field_ref=pola[0]["field_ref"],
+                        field_ref=pola[0]["ref_id"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
@@ -965,7 +966,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     indeks_pola_gpz[lit_biezacej] += 1
                     enm, ref_nowej = rozpocznij_z_pola(
                         enm,
-                        field_ref=pola[indeks_pola_gpz[lit_biezacej]]["field_ref"],
+                        field_ref=pola[indeks_pola_gpz[lit_biezacej]]["ref_id"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),

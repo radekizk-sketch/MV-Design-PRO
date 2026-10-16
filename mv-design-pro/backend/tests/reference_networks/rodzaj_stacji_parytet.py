@@ -38,15 +38,27 @@ KOMENDA_REGENERACJI = (
 )
 
 
+#: Rekordy pól modelu iloczynu w kolejności deklaracji stacji (karta W5-B: rekord `bays` jest
+#: jedynym nośnikiem pól; `_stacja` dopisuje tu pola stacji, `MODEL_ILOCZYNU["bays"]` je czyta).
+_POLA_ILOCZYNU: list[dict[str, Any]] = []
+
+
 def _pole(
-    ref: str, *, bay_role: str | None = None, field_role: str | None = None
+    ref: str,
+    *,
+    bay_role: str | None = None,
+    field_role: str | None = None,
+    bay_kind: str | None = None,
 ) -> dict[str, Any]:
-    spec: dict[str, Any] = {"field_ref": ref, "bus_ref": f"{ref.split('/')[0]}/sn"}
+    stacja = ref.split("/")[0]
+    rekord: dict[str, Any] = {"ref_id": ref, "substation_ref": stacja, "bus_ref": f"{stacja}/sn"}
     if bay_role is not None:
-        spec["bay_role"] = bay_role
+        rekord["bay_role"] = bay_role
     if field_role is not None:
-        spec["meta"] = {"field_role": field_role}
-    return spec
+        rekord["field_role"] = field_role
+    if bay_kind is not None:
+        rekord["metadane_pochodzenia"] = {"bay_kind": bay_kind}
+    return rekord
 
 
 def _stacja(ref: str, station_type: str | None, pola: list[dict[str, Any]]) -> dict[str, Any]:
@@ -54,10 +66,11 @@ def _stacja(ref: str, station_type: str | None, pola: list[dict[str, Any]]) -> d
         "ref_id": ref,
         "name": f"Stacja {ref}",
         "bus_refs": [f"{ref}/sn"],
-        "meta": {"field_specs": pola},
+        "meta": {},
     }
     if station_type is not None:
         stacja["station_type"] = station_type
+    _POLA_ILOCZYNU.extend(pola)
     return stacja
 
 
@@ -67,13 +80,15 @@ def _kabel(ref: str, z: str, do: str, typ: str = "cable") -> dict[str, Any]:
 
 #: Model ILOCZYNU CECH (reguła KLASA §2) — cechy, w których lustro frontu mogłoby się
 #: rozjechać z backendem, a których fikstury z API nie niosą w każdej kombinacji:
-#:  * źródło roli pola: `meta.field_role` (kanoniczna PL, katalogowa EN, alias modelu),
-#:    sam `bay_role`, `meta.field_role` nierozpoznana z poprawnym `bay_role`, rola
-#:    nierozpoznana w obu, wielkość liter i białe znaki;
+#:  * źródło roli pola: `field_role` rekordu (kanoniczna PL, katalogowa EN, alias modelu),
+#:    sam `bay_role`, `field_role` nierozpoznana z poprawnym `bay_role`, rola nierozpoznana
+#:    w obu (surowa migawka — model typowany jej nie przyjmie), wielkość liter i białe znaki;
 #:  * liczba pól liniowych 0–4 × sprzęgło (tak/nie) × połączone wyprowadzenia 0–2 (kabel do
 #:    stacji, linia napowietrzna przez punkt rozgałęźny, kabel wiszący, odcinek z powrotem do
 #:    własnej szyny, łącznik między szynami bez stacji);
-#:  * pola z elementów `bays` (stacja bez specyfikacji pól, identyfikator `id` zamiast `ref_id`);
+#:  * rekordy `bays` dopisane poza deklaracją stacji, także rekord wskazujący stację przez `id`
+#:    zamiast `ref_id` (NIE jest polem tej stacji — jeden akcesor `enm.pola.pola_stacji` czyta
+#:    wyłącznie `substation_ref` = `ref_id`) i rekord stacji nieistniejącej;
 #:  * deklaracja: każdy rodzaj topologiczny, `mv_lv`, `customer`, brak, GPZ i rozdzielnica nN
 #:    (rodzaj nie dotyczy).
 MODEL_ILOCZYNU: dict[str, Any] = {
@@ -150,7 +165,7 @@ MODEL_ILOCZYNU: dict[str, Any] = {
                 _pole("K1/bess", field_role="bess"),
             ],
         ),
-        # Pole z rolą nierozpoznaną w `meta.field_role`, ale poprawnym `bay_role` (liczy się
+        # Pole z rolą nierozpoznaną w `field_role`, ale poprawnym `bay_role` (liczy się
         # jako liniowe) i pole z rolą nierozpoznaną w obu (nie liczy się) — 2 pola liniowe,
         # połączone przez linię napowietrzną i punkt rozgałęźny — przelotowa; deklaracja
         # funkcji SN/nN (bez rodzaju).
@@ -164,7 +179,7 @@ MODEL_ILOCZYNU: dict[str, Any] = {
             ],
         ),
         # Cztery pola z rolą modelu `FEEDER`: trzy NIE są liniowe (rodzaj pola katalogowego:
-        # potrzeb własnych, rezerwowe w `meta` z inną wielkością liter, odgromnikowe), jedno jest
+        # potrzeb własnych, rezerwowe z inną wielkością liter, odgromnikowe), jedno jest
         # (rodzaj „liniowe_odplywowe") — 3 pola liniowe z WE i WY (dawniej 6) ⇒ odgałęźna,
         # deklaracja przelotowa niezgodna.
         _stacja(
@@ -173,16 +188,16 @@ MODEL_ILOCZYNU: dict[str, Any] = {
             [
                 _pole("A1/in", bay_role="IN"),
                 _pole("A1/out", bay_role="OUT"),
-                {**_pole("A1/pw", bay_role="FEEDER"), "bay_kind": "potrzeb_wlasnych"},
-                {**_pole("A1/rez", bay_role="FEEDER"), "meta": {"bay_kind": "Rezerwowe"}},
-                {**_pole("A1/odgr", bay_role="FEEDER"), "bay_kind": "odgromnikowe"},
-                {**_pole("A1/odg", bay_role="FEEDER"), "bay_kind": "liniowe_odplywowe"},
+                _pole("A1/pw", bay_role="FEEDER", bay_kind="potrzeb_wlasnych"),
+                _pole("A1/rez", bay_role="FEEDER", bay_kind="Rezerwowe"),
+                _pole("A1/odgr", bay_role="FEEDER", bay_kind="odgromnikowe"),
+                _pole("A1/odg", bay_role="FEEDER", bay_kind="liniowe_odplywowe"),
             ],
         ),
         # Bez pól liniowych, deklaracja odbiorcza — końcowa (rodzaj wyprowadzony, deklaracja
         # nie jest rodzajem topologicznym).
         _stacja("C1", "customer", [_pole("C1/tr", bay_role="TR")]),
-        # Brak deklaracji, bez specyfikacji pól — pola z elementów `bays` (także przez `id`).
+        # Brak deklaracji, pola z rekordów `bays` dopisanych niżej (rekord przez `id` nie liczy się).
         {"ref_id": "L1", "id": "L1-id", "name": "Stacja L1", "bus_refs": ["L1/sn"]},
         # 2 pola liniowe, kable: pętla wracająca do własnej szyny i kabel wiszący — żaden nie
         # prowadzi do innej stacji — końcowa, deklaracja przelotowa.
@@ -199,10 +214,12 @@ MODEL_ILOCZYNU: dict[str, Any] = {
         },
     ],
     "bays": [
-        {"ref_id": "L1/b-in", "substation_ref": "L1", "bay_role": "IN"},
-        {"ref_id": "L1/b-out", "substation_ref": "L1-id", "bay_role": "OUT"},
-        {"ref_id": "L1/b-odg", "substation_ref": "L1", "bay_role": "FEEDER"},
-        {"ref_id": "X/b", "substation_ref": "X", "bay_role": "IN"},
+        *_POLA_ILOCZYNU,
+        {"ref_id": "L1/b-in", "substation_ref": "L1", "bus_ref": "L1/sn", "bay_role": "IN"},
+        {"ref_id": "L1/b-out", "substation_ref": "L1-id", "bus_ref": "L1/sn", "bay_role": "OUT"},
+        {"ref_id": "L1/b-odg", "substation_ref": "L1", "bus_ref": "L1/sn", "bay_role": "FEEDER"},
+        {"ref_id": "L1/b-odg2", "substation_ref": "L1", "bus_ref": "L1/sn", "bay_role": "FEEDER"},
+        {"ref_id": "X/b", "substation_ref": "X", "bus_ref": "X/sn", "bay_role": "IN"},
     ],
     "branches": [
         _kabel("k/G-P1", "G/sn", "P1/sn"),

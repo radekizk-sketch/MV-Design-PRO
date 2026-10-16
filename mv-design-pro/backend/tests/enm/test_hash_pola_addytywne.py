@@ -76,6 +76,24 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         "loads": ("phases", "dynamika"),
         "transformers": ("lv_earthing_system",),
         "branches": ("screen_bonding",),
+        # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
+        # `tests/enm/test_hash_w5b_bays.py`).
+        "bays": (
+            "branch_point_ref",
+            "branch_point_port_id",
+            "field_role",
+            "terminal_bus_ref",
+            "funkcja_pomiaru",
+            "rodzaj_pomiaru",
+            "switchgear_family_ref",
+            "manufacturer_ref",
+            "apparatus_catalog_ref",
+            "config_id",
+            "catalog_bindings",
+            "wybor_bloku",
+            "metadane_pochodzenia",
+            "surge_arresters",
+        ),
         "generators": (
             "dynamika",
             "modele_widmowe",

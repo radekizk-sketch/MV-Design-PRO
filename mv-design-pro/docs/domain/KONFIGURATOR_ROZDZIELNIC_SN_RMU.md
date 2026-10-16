@@ -238,7 +238,7 @@ dawalo po cichu PUSTA liste aparatow — obie nomenklatury wchodza jednym
 wejsciem z pelna walidacja rodziny (test regresji).
 
 DLUG JAWNY S5 (do kolejki, patrz PLAN_DOKONCZENIA_100_2026-08-14 §3):
-- V1 `_build_field_spec` (7 miejsc wywolan: GPZ, wstawianie stacji, sekcje)
+- V1 builder rekordu pola (od W5-B `enm/pola.py::zbuduj_pole`; GPZ, wstawianie stacji, sekcje)
   nadal buduje pola producenckie bez aparatow; przepiecie wymaga
   rozstrzygniecia, czy pola GPZ moga stac na rodzinie BLOK_RMU (test referencyjny
   buduje GPZ na SafeRing — kanal zakazany dla rodzin blokowych).

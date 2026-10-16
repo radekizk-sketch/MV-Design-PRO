@@ -1,6 +1,6 @@
 {
   "case_id": "case-demo",
-  "model_hash": "cdcc4d263422056a0a9cff0e2f5b16198b5fa5d203d416e0fe0517d1585b7441",
+  "model_hash": "5252e167f1aed38d4a29d0c7c7d2d81129e1129965c1b10a0ded27ffa4f43819",
   "przedmiot": {
     "liczba_szyn": 8,
     "liczba_galezi": 6,
@@ -541,9 +541,19 @@
         },
         {
           "kod": "model.ograniczniki",
-          "opis_pl": "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)",
+          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
           "spelniony": false,
           "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "ograniczniki.uziemienie_sieci_nieznane",
+          "opis_pl": "1 miejsc z ogranicznikiem bez uziemienia punktu neutralnego sieci w modelu (szyna ani transformator nie deklarują) — kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie",
+          "spelniony": false,
+          "elementy": [
+            "bus_sn_b"
+          ],
           "blokujacy": true,
           "klucz_parametru": null
         }
@@ -551,9 +561,19 @@
       "braki": [
         {
           "kod": "model.ograniczniki",
-          "opis_pl": "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)",
+          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
           "spelniony": false,
           "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "ograniczniki.uziemienie_sieci_nieznane",
+          "opis_pl": "1 miejsc z ogranicznikiem bez uziemienia punktu neutralnego sieci w modelu (szyna ani transformator nie deklarują) — kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie",
+          "spelniony": false,
+          "elementy": [
+            "bus_sn_b"
+          ],
           "blokujacy": true,
           "klucz_parametru": null
         }

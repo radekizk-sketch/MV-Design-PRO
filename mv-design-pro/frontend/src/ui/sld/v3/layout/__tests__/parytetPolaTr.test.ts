@@ -74,11 +74,17 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
     busRefs.push('bus-nn');
   }
 
-  const fieldSpecs = stacja.role_pol.map((rola, index) => ({
-    field_ref: `pole-${String(index).padStart(3, '0')}`,
+  // Karta W5-B: pola stacji = rekordy `bays` (jedyny nośnik pól).
+  const polaStacji = stacja.role_pol.map((rola, index) => ({
+    id: `pole-${String(index).padStart(3, '0')}`,
+    ref_id: `pole-${String(index).padStart(3, '0')}`,
     name: `Pole ${rola}`,
+    tags: [],
+    meta: {},
     bay_role: rola,
+    substation_ref: 'stn-1',
     bus_ref: 'bus-sn',
+    equipment_refs: [],
   }));
 
   const transformers: Record<string, unknown>[] = [];
@@ -125,7 +131,7 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
     transformers,
     generators,
     loads: [],
-    bays: [],
+    bays: polaStacji,
     // Magistrala z jawnym `station_refs` — bez niej `buildStations` nie ma gdzie
     // umieścić stacji (adapter nie ma trybu „stacja bez ciągu"), więc test
     // mierzyłby brak stacji zamiast predykatu.
@@ -145,7 +151,7 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
         station_type: 'mv_lv',
         bus_refs: busRefs,
         transformer_refs: transformerRefs,
-        meta: { field_specs: fieldSpecs },
+        meta: {},
       },
     ],
   } as unknown as EnergyNetworkModel;

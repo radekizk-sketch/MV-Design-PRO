@@ -1,6 +1,50 @@
 {
   "enm": {
-    "bays": [],
+    "bays": [
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "FEEDER",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+        "id": "b0b59cb5-d214-5349-847f-678f8ad1b19c",
+        "manufacturer_ref": null,
+        "meta": {
+          "field_status": "READY_FOR_TRUNK",
+          "gpz_line_field_index": 0,
+          "gpz_line_fields_count": 1,
+          "gpz_section_order": 0,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null
+      }
+    ],
     "branch_points": [],
     "branches": [
       {
@@ -169,7 +213,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "862a547ece4f53c0fa9ee5a4da870e852d43f56b80d206c4e10203868d6391e8",
+      "hash_sha256": "ac666b728f612a4ae58cd5b14985cc5b6c322a5d7c9237eae65e3d46bdc21c39",
       "name": "Otwarty koniec magistrali",
       "revision": 3,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -276,28 +320,6 @@
         ],
         "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
         "meta": {
-          "field_specs": [
-            {
-              "bay_role": "FEEDER",
-              "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-              "equipment_refs": [],
-              "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-              "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
-              "meta": {
-                "field_status": "READY_FOR_TRUNK",
-                "gpz_line_field_index": 0,
-                "gpz_line_fields_count": 1,
-                "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
-                "gpz_section_order": 0,
-                "source_field_kind": "FEEDER"
-              },
-              "name": "Pole liniowe GPZ",
-              "protection_ref": null,
-              "tags": [
-                "gpz_line_field"
-              ]
-            }
-          ],
           "gpz_hv_bus_refs": [
             "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
           ],

@@ -675,14 +675,27 @@ def _warunki_uziomu(parametry: dict[str, Any]) -> list[Warunek]:
 
 
 def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list[Warunek]:
+    # Miejsca z ogranicznikiem, które NIE weszły do wejścia koordynacji (brak uziemienia
+    # punktu neutralnego sieci) — liczone RAZ, czytane przez oba warunki poniżej, żeby zdanie
+    # „model nie zawiera ograniczników" nie padło, gdy ograniczniki są, a brakuje uziemienia.
+    bez_uziemienia = ograniczniki_bez_uziemienia_sieci(enm)
+    if model.insulation:
+        opis_ogranicznikow = (
+            f"Miejsca zainstalowania ograniczników przepięć w modelu: {len(model.insulation)}"
+        )
+    elif bez_uziemienia:
+        opis_ogranicznikow = (
+            f"Ograniczniki przepięć w modelu: {len(bez_uziemienia)} miejsc, żadne nie wchodzi "
+            "do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)"
+        )
+    else:
+        opis_ogranicznikow = (
+            "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)"
+        )
     warunki = [
         Warunek(
             kod="model.ograniczniki",
-            opis_pl=(
-                f"Miejsca zainstalowania ograniczników przepięć w modelu: {len(model.insulation)}"
-                if model.insulation
-                else "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)"
-            ),
+            opis_pl=opis_ogranicznikow,
             spelniony=bool(model.insulation),
             elementy=tuple(i.location_bus_ref for i in model.insulation),
         )
@@ -724,7 +737,6 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
     # W5-D p. 12 (OD-24): ogranicznik na szynie bez uziemienia punktu neutralnego w
     # modelu nie ma wiersza wejścia (most nie podstawia „isolated") — gotowość mówi
     # to wprost i blokuje, zamiast liczyć koordynację na fabrykowanej kategorii TOV.
-    bez_uziemienia = ograniczniki_bez_uziemienia_sieci(enm)
     if bez_uziemienia:
         warunki.append(
             Warunek(

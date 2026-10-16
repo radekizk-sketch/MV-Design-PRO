@@ -1097,13 +1097,65 @@ export interface Substation extends ENMElement {
 }
 
 // ---------------------------------------------------------------------------
-// Bay (pole rozdzielcze SN)
+// Bay (pole rozdzielnicy SN / nN / ZKSN) — karta W5-B
 // ---------------------------------------------------------------------------
 
+/** Metadane POCHODZENIA pola — lustro `enm.models.MetadanePochodzeniaPola` (skąd pole wzięło
+ *  się w modelu: kreator, szablon, import; z jakich źródeł danych). */
+export interface MetadanePochodzeniaPola {
+  bay_kind?: string | null;
+  source_status?: string | null;
+  source_refs?: string[];
+}
+
+/** Wybór BLOKU FABRYCZNEGO pola rodziny RMU — lustro `enm.models.WyborBlokuPola`. */
+export interface WyborBlokuPola {
+  factory_configuration_ref: string;
+  factory_unit_index?: number | null;
+}
+
+/** Ogranicznik przepięć zainstalowany w polu — lustro `enm.models.OgranicznikPrzepiecPola`. */
+export interface OgranicznikPrzepiecPola {
+  device_ref: string;
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+}
+
+/**
+ * Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (lustro `enm.models.Bay`, karta W5-B).
+ * Pole stacji wskazuje `substation_ref`, pole rozdzielnicy odgałęźnej ZKSN — `branch_point_ref`
+ * (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem rekordu — wynika z napięcia
+ * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
+ */
 export interface Bay extends ENMElement {
   bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
-  substation_ref: string;
+  /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
+  substation_ref?: string | null;
+  /** Punkt rozgałęzienia właściciela (pole rozdzielnicy odgałęźnej ZKSN); `null` dla pola stacji. */
+  branch_point_ref?: string | null;
+  /** Port punktu rozgałęzienia obsługiwany przez pole ZKSN (`MAIN_IN`/`MAIN_OUT`/`BRANCH[_n]`). */
+  branch_point_port_id?: string | null;
   bus_ref: string;
+  /** Rola KANONICZNA pola (`enm.rola_pola_sn`: LINIA_IN/LINIA_OUT/LINIA_ODG/TRANSFORMATOROWE/
+   *  SPRZEGLO/POMIAROWE/PV_SN/BESS_SN/FW_SN). Rozróżnia np. pole odgałęźne (OUT + LINIA_ODG)
+   *  od wyjściowego ciągu (OUT + LINIA_OUT). */
+  field_role?: string | null;
+  /** Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE); JEDYNY nośnik zacisku. */
+  terminal_bus_ref?: string | null;
+  /** Pomiar pola POMIAROWEGO (POMIAR_ROZLICZENIOWY_SN_V1 §5). */
+  funkcja_pomiaru?: string | null;
+  rodzaj_pomiaru?: string | null;
+  /** Powiązania producenckie pola. */
+  switchgear_family_ref?: string | null;
+  manufacturer_ref?: string | null;
+  apparatus_catalog_ref?: string | null;
+  /** Identyfikator KONFIGURACJI pola — klucz NIEPRZEZROCZYSTY (front nie parsuje prefiksu). */
+  config_id?: string | null;
+  /** Powiązania katalogowe wpisu pola (kształt payloadu kreatora). */
+  catalog_bindings?: Record<string, unknown> | null;
+  wybor_bloku?: WyborBlokuPola | null;
+  metadane_pochodzenia?: MetadanePochodzeniaPola | null;
+  surge_arresters?: OgranicznikPrzepiecPola[];
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;

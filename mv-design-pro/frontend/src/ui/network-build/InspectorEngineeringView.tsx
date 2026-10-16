@@ -90,6 +90,7 @@ import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
+import { polaNnStacji } from '../shared/polaStacji';
 import {
   selectStationDistributionTransformers,
   stationRefOfTransformer,
@@ -624,16 +625,6 @@ function formatLoadPower(loads: readonly Load[]): string {
     return `${(totalKw / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
   }
   return `${totalKw.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} kW`;
-}
-
-function stationNnFieldSpecs(station: { meta?: unknown }): Array<Record<string, unknown>> {
-  const meta = station.meta && typeof station.meta === 'object'
-    ? station.meta as Record<string, unknown>
-    : null;
-  const rawSpecs = meta?.nn_field_specs;
-  return Array.isArray(rawSpecs)
-    ? rawSpecs.filter((spec): spec is Record<string, unknown> => !!spec && typeof spec === 'object')
-    : [];
 }
 
 function connectionVariantLabelPl(variant: string | null | undefined): string {
@@ -2089,7 +2080,7 @@ function findParentStation(
   }
   // SZYNY-STACJI-LUSTRO: odbiór/generator/gałąź → stacja szyny z jednego lustra
   // `szynyStacji` (szyny główne, zaciski pól SN, końce aparatów pól nN).
-  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  const stacjaSzyny = stacjaSzyn(snapshot);
   const nazwaStacji = (busRef: string | null | undefined): string | null => {
     const ref = busRef ? stacjaSzyny.get(busRef) : undefined;
     return ref ? snapshot.substations?.find((s) => s.ref_id === ref)?.name ?? null : null;
@@ -2446,25 +2437,23 @@ function buildSectionsForElement(
     elementType = 'substation';
     const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
-    const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
-    const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
+    // Karta W5-B: liczność pól SN z rekordów `bays` stacji (jeden nośnik; read-model pola jest
+    // projekcją tych samych rekordów, więc nie jest drugim źródłem liczności).
+    const snFieldCount = stationSnFieldCount(snapshot, station);
     const snSwitchgearLabel = snFieldCount > 0
       ? `${snFieldCount} pól SN`
-      : stationFieldItems.length > 0
-        ? `${stationFieldItems.length} pól SN`
-        : ukladRozdzielnicyStacjiPl(snapshot, station);
+      : ukladRozdzielnicyStacjiPl(snapshot, station);
     // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
     const stationTransformers = selectStationDistributionTransformers(snapshot, station);
     // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
     // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
-    const stationBusRefs = szynyStacji(station, snapshot.branches ?? []);
+    const stationBusRefs = szynyStacji(snapshot, station);
     const stationLoads = (snapshot.loads ?? []).filter((load) => stationBusRefs.has(load.bus_ref));
     const stationGenerators = (snapshot.generators ?? []).filter((generator) => {
       const generatorStation = generatorStationRef(generator);
       return generatorStation === station.ref_id || generatorStation === station.id;
     });
-    const nnFieldSpecs = stationNnFieldSpecs(station);
-    const nnFeederCount = nnFieldSpecs.filter((spec) => spec.bay_role === 'FEEDER').length;
+    const nnFeederCount = polaNnStacji(snapshot, station.ref_id).filter((pole) => pole.bay_role === 'FEEDER').length;
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
         { key: 'id', label: 'Oznaczenie stacji', value: stationIdentity.code },
@@ -3188,7 +3177,7 @@ function buildCalculationProofCandidateRefs(
   const station = snapshot.substations?.find((item) => elementMatchesSelection(item, elementId));
   pushElementRefs(refs, station, ['id', 'ref_id', 'name']);
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
-  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+  for (const busRef of station ? [...szynyStacji(snapshot, station)].sort() : []) {
     pushUniqueRef(refs, busRef);
   }
   for (const transformer of transformatoryNalezaceDoStacji(snapshot, station)) pushUniqueRef(refs, transformer.ref_id);

@@ -1,84 +1,63 @@
+/**
+ * Karta W5-B: pola SN stacji na kartach budowy sieci = rekordy `bays` stacji na szynie SN.
+ * Iloczyn cech: {pole SN, pole nN, pole ZKSN, pole innej stacji} × {liczność, lista} oraz
+ * read-model pola (projekcja backendu tych samych rekordów) bez dubli `bay_ref`.
+ */
 import { describe, expect, it } from 'vitest';
-import type { Bay, Substation } from '../../../types/enm';
+import type { Substation } from '../../../types/enm';
 import type { FieldReadModelItem } from '../../field/useFieldReadModel';
-import {
-  stationReadModelSnFields,
-  stationSnapshotBays,
-  stationSnFieldCount,
-  stationSnFieldSpecs,
-} from '../stationSnFields';
+import { pole } from '../../../test/pola';
+import { stationReadModelSnFields, stationSnBays, stationSnFieldCount } from '../stationSnFields';
 
-const station: Substation & { meta: Record<string, unknown> } = {
+const station = {
   id: 'st-1',
   ref_id: 'stn/st-1/station',
   name: 'Stacja testowa',
   tags: [],
+  meta: {},
   station_type: 'mv_lv',
   bus_refs: ['bus-sn', 'bus-nn'],
   transformer_refs: [],
-  meta: {
-    field_specs: [
-      { field_ref: 'st-1/sn/in', name: 'WE', bay_role: 'IN', bus_ref: 'bus-sn' },
-      { field_ref: 'st-1/sn/out', name: 'WY', bay_role: 'OUT', bus_ref: 'bus-sn' },
-      { field_ref: 'st-1/sn/tr', name: 'TR', bay_role: 'TR', bus_ref: 'bus-sn' },
-    ],
-  },
-};
+} as Substation;
 
-function bay(ref: string, role: Bay['bay_role']): Bay {
-  return {
-    id: ref,
-    ref_id: ref,
-    name: ref,
-    tags: [],
-    meta: {},
-    substation_ref: station.ref_id,
-    bay_role: role,
-    bus_ref: 'bus-sn',
-    equipment_refs: [],
-  };
-}
+const snapshot = {
+  buses: [
+    { ref_id: 'bus-sn', voltage_kv: 15 },
+    { ref_id: 'bus-nn', voltage_kv: 0.4 },
+    { ref_id: 'bus-zksn', voltage_kv: 15 },
+  ],
+  bays: [
+    pole({ ref_id: 'st-1/sn/in', bay_role: 'IN', substation_ref: station.ref_id, bus_ref: 'bus-sn' }),
+    pole({ ref_id: 'st-1/sn/out', bay_role: 'OUT', substation_ref: station.ref_id, bus_ref: 'bus-sn' }),
+    pole({ ref_id: 'st-1/sn/tr', bay_role: 'TR', substation_ref: station.ref_id, bus_ref: 'bus-sn' }),
+    pole({ ref_id: 'st-1/nn/odp', bay_role: 'FEEDER', substation_ref: station.ref_id, bus_ref: 'bus-nn' }),
+    pole({ ref_id: 'zksn/pole/MAIN_IN', bay_role: 'IN', branch_point_ref: 'zksn', bus_ref: 'bus-zksn' }),
+    pole({ ref_id: 'st-2/sn/in', bay_role: 'IN', substation_ref: 'stn/st-2/station', bus_ref: 'bus-sn' }),
+  ],
+};
 
 function readModelField(ref: string): FieldReadModelItem {
   return {
     bay_id: ref,
     bay_ref: ref,
     bay_name: ref,
-    canonical_model: {
-      base_model: {
-        substation_ref: station.ref_id,
-        gpz_section_id: null,
-      },
-    },
+    canonical_model: { base_model: { substation_ref: station.ref_id, gpz_section_id: null } },
   } as FieldReadModelItem;
 }
 
 describe('stationSnFields', () => {
-  it('traktuje meta.field_specs jako kanoniczna liczbe pol SN stacji', () => {
-    const duplicatedLegacyBays = [
-      bay('st-1/legacy/in/a', 'IN'),
-      bay('st-1/legacy/in/b', 'IN'),
-      bay('st-1/legacy/out/a', 'OUT'),
-      bay('st-1/legacy/out/b', 'OUT'),
-      bay('st-1/legacy/tr/a', 'TR'),
-      bay('st-1/legacy/tr/b', 'TR'),
-    ];
-
-    expect(stationSnFieldSpecs(station)).toHaveLength(3);
-    expect(stationSnapshotBays(duplicatedLegacyBays, station)).toHaveLength(6);
-    expect(stationSnFieldCount(station, duplicatedLegacyBays, [])).toBe(3);
+  it('pola SN stacji: tylko rekordy tej stacji na szynie SN (bez pól nN, ZKSN i innej stacji)', () => {
+    expect(stationSnBays(snapshot, station).map((b) => b.ref_id)).toEqual(['st-1/sn/in', 'st-1/sn/out', 'st-1/sn/tr']);
+    expect(stationSnFieldCount(snapshot, station)).toBe(3);
   });
 
-  it('zostawia fallback do read-modelu, gdy stacja nie ma field_specs ani legacy bays', () => {
-    const stationWithoutSpecs: Substation & { meta: Record<string, unknown> } = {
-      ...station,
-      meta: {},
-    };
-    const fieldItems = Array.from({ length: 5 }, (_, index) =>
-      readModelField(`field-${index + 1}`),
-    );
+  it('brak stacji albo brak rekordów = zero pól (bez zapasu z innych danych)', () => {
+    expect(stationSnBays(snapshot, null)).toEqual([]);
+    expect(stationSnFieldCount({ bays: [] }, station)).toBe(0);
+  });
 
-    expect(stationReadModelSnFields(fieldItems, station.id, station.ref_id)).toHaveLength(5);
-    expect(stationSnFieldCount(stationWithoutSpecs, [], fieldItems)).toBe(5);
+  it('read-model pola stacji: wiersze tej stacji, każde pole raz', () => {
+    const fieldItems = [readModelField('f-1'), readModelField('f-2'), readModelField('f-1')];
+    expect(stationReadModelSnFields(fieldItems, station.id, station.ref_id).map((f) => f.bay_ref)).toEqual(['f-1', 'f-2']);
   });
 });

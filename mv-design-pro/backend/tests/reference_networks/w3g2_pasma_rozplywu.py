@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.pola import pola_sn_stacji
 from fastapi.testclient import TestClient
 
 from tests.reference_networks.budowa_przez_api import (
@@ -94,14 +95,14 @@ def zbuduj_siec_w3g2(klient: TestClient, *, tr1_nadpisany: bool) -> dict[str, An
     stacja = next(s for s in op["snapshot"]["substations"] if "/station" in s["ref_id"])
     pole_odgalezne = next(
         pole
-        for pole in stacja["meta"]["field_specs"]
+        for pole in pola_sn_stacji(op["snapshot"], stacja["ref_id"])
         if "ODG" in str(pole.get("field_role") or pole.get("bay_role") or "").upper()
         or str(pole.get("bay_role") or "").upper() == "FEEDER"
     )
     op = b.operacja(
         "start_branch_segment_sn",
         {
-            "from_ref": f"{pole_odgalezne['field_ref']}.BRANCH",
+            "from_ref": f"{pole_odgalezne['ref_id']}.BRANCH",
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 180,

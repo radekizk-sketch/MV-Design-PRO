@@ -1,5 +1,945 @@
 {
-  "bays": [],
+  "bays": [
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001",
+      "id": "f504f163-7b9d-5be6-ad3e-040ed53d76c6",
+      "manufacturer_ref": null,
+      "meta": {
+        "field_status": "READY_FOR_TRUNK",
+        "gpz_line_field_index": 0,
+        "gpz_line_fields_count": 1,
+        "gpz_section_order": 0,
+        "source_field_kind": "FEEDER"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe GPZ",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "gpz_line_field"
+      ],
+      "terminal_bus_ref": null,
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_IN",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "a934ee1e-661d-5fa5-9361-9a73fa956d56",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wejściowe 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "OUT",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_OUT",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "bc3b5984-01d9-5b55-b2c1-4420b223c3ed",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wyjściowe 2",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "TR",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
+        "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer"
+      ],
+      "feeder_short_name": null,
+      "field_role": "TRANSFORMATOROWE",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "957a89b3-b4d0-5e6b-9ae8-c669f905ba4f",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole transformatorowe 3",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "Buchholz",
+        "temp",
+        "ciśnienie"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/69c475718a63e9514b29e811faf73892/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "dd674a78-4dad-5089-b222-d93441591306",
+      "manufacturer_ref": null,
+      "meta": {
+        "transformer_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Wyłącznik główny nN",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_main_breaker",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "nn_main_breaker"
+      ],
+      "terminal_bus_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "4c97b93d-204f-58a2-be7b-69265e297a24",
+      "manufacturer_ref": null,
+      "meta": {
+        "feeder_role": "ODPLYW_NN"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Odpływ nN 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [],
+      "terminal_bus_ref": "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_IN",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "cb97cdce-9148-527e-9894-0c234bb6c7e7",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wejściowe 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "OUT",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_OUT",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "8d011ac5-78ce-5639-a117-4ab982aa2cc0",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wyjściowe 2",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "TR",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
+        "stn/01bb98b8035012aa5698e4fc47869f83/transformer"
+      ],
+      "feeder_short_name": null,
+      "field_role": "TRANSFORMATOROWE",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "8fe68fde-fb15-50ae-a267-d59bc8a1f883",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole transformatorowe 3",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "Buchholz",
+        "temp",
+        "ciśnienie"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/2f39a65f39de991048ec48520d37e059/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "0dddf453-0f2b-5420-817e-3fed03b81aa3",
+      "manufacturer_ref": null,
+      "meta": {
+        "transformer_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Wyłącznik główny nN",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/nn_main_breaker",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "nn_main_breaker"
+      ],
+      "terminal_bus_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/2388714eac616638daaf7cdd5319b935/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "14ec2784-e01c-5127-b273-4af48d0bf4aa",
+      "manufacturer_ref": null,
+      "meta": {
+        "feeder_role": "ODPLYW_NN"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Odpływ nN 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [],
+      "terminal_bus_ref": "nn/2388714eac616638daaf7cdd5319b935/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_IN",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "9b866a80-06c7-5759-a596-1533830a8330",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wejściowe 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/000",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "OUT",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_OUT",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "ae0c31c3-16b2-5708-bf2c-3723e89ce8b0",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wyjściowe 2",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/001",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "TR",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
+        "stn/c843b440108cbcd0ade67891d02c462a/transformer"
+      ],
+      "feeder_short_name": null,
+      "field_role": "TRANSFORMATOROWE",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "dcd8d27d-6f59-51f2-92db-4c2d5925c787",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole transformatorowe 3",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "Buchholz",
+        "temp",
+        "ciśnienie"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/002",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/232b582a211a5daffb4f3ca60a1db8cc/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "2125fbe7-797e-5774-80f7-a9e1a73988d9",
+      "manufacturer_ref": null,
+      "meta": {
+        "transformer_ref": "stn/c843b440108cbcd0ade67891d02c462a/transformer"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Wyłącznik główny nN",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/nn_main_breaker",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "nn_main_breaker"
+      ],
+      "terminal_bus_ref": "nn/232b582a211a5daffb4f3ca60a1db8cc/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/d629da4317912df5c40e25b1b9a576ef/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "c075850f-5802-5b7a-95bb-36fad899a092",
+      "manufacturer_ref": null,
+      "meta": {
+        "feeder_role": "ODPLYW_NN"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Odpływ nN 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/nn_feeder/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [],
+      "terminal_bus_ref": "nn/d629da4317912df5c40e25b1b9a576ef/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_IN",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "97b7acbc-fa98-5e36-a573-54292ae7ead9",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wejściowe 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/000",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "OUT",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001"
+      ],
+      "feeder_short_name": null,
+      "field_role": "LINIA_OUT",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "c22207ac-8623-59ca-a6b1-e064fdf9ebca",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe wyjściowe 2",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/001",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "TR",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
+        "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer"
+      ],
+      "feeder_short_name": null,
+      "field_role": "TRANSFORMATOROWE",
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "0749100d-3e46-5899-892c-f4f73eeb9811",
+      "manufacturer_ref": null,
+      "meta": {
+        "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
+        "requires_catalog_binding": true
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole transformatorowe 3",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "Buchholz",
+        "temp",
+        "ciśnienie"
+      ],
+      "protection_ref": null,
+      "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "station_sn_field"
+      ],
+      "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/002",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "IN",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/25d675e08ebfb33a65af9eefae15af31/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "22d64ea6-e099-5ec7-95a7-82c21e654e41",
+      "manufacturer_ref": null,
+      "meta": {
+        "transformer_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Wyłącznik główny nN",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_main_breaker",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "nn_main_breaker"
+      ],
+      "terminal_bus_ref": "nn/25d675e08ebfb33a65af9eefae15af31/feeder_bus",
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_bus",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "nn/a63b39680855586a27dc13779517b823/feeder_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "283615dd-eb55-57de-a6d1-82d09e980766",
+      "manufacturer_ref": null,
+      "meta": {
+        "feeder_role": "ODPLYW_NN"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Odpływ nN 1",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_feeder/000",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [],
+      "terminal_bus_ref": "nn/a63b39680855586a27dc13779517b823/feeder_bus",
+      "wybor_bloku": null
+    }
+  ],
   "branch_points": [],
   "branches": [
     {
@@ -1837,7 +2777,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7e9683019866c44a5dbe9203bcb6139d6fa08c0484df7762943bcfa056689bfe",
+    "hash_sha256": "68ef15bab6442fcc5e1f95b0fe6a7da05a3f9f0ca3851a70d810a6f534c46c6b",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -2445,28 +3385,6 @@
       ],
       "id": "8bc4f421-94ed-585e-84aa-766023425b1b",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
-            "equipment_refs": [],
-            "field_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
-            "gpz_section_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001",
-            "meta": {
-              "field_status": "READY_FOR_TRUNK",
-              "gpz_line_field_index": 0,
-              "gpz_line_fields_count": 1,
-              "gpz_section_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001",
-              "gpz_section_order": 0,
-              "source_field_kind": "FEEDER"
-            },
-            "name": "Pole liniowe GPZ",
-            "protection_ref": null,
-            "tags": [
-              "gpz_line_field"
-            ]
-          }
-        ],
         "gpz_hv_bus_refs": [
           "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110"
         ],
@@ -2498,114 +3416,6 @@
       "gpz_sections": [],
       "id": "cdd54a29-e5a1-5480-bbc9-3bd983501ab8",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
-            "equipment_refs": [
-              "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000"
-            ],
-            "field_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000",
-            "meta": {
-              "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
-              "field_role": "LINIA_IN",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
-            },
-            "name": "Pole liniowe wejściowe 1",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "OUT",
-            "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
-            "equipment_refs": [
-              "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001"
-            ],
-            "field_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001",
-            "meta": {
-              "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
-              "field_role": "LINIA_OUT",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
-            },
-            "name": "Pole liniowe wyjściowe 2",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N",
-              "67N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "TR",
-            "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
-            "equipment_refs": [
-              "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
-              "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer"
-            ],
-            "field_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002",
-            "meta": {
-              "default_device_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
-              "field_role": "TRANSFORMATOROWE",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
-            },
-            "name": "Pole transformatorowe 3",
-            "protection_codes": [
-              "87T",
-              "51",
-              "50",
-              "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          }
-        ],
-        "nn_field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_main_breaker",
-            "meta": {
-              "transformer_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer"
-            },
-            "name": "Wyłącznik główny nN",
-            "protection_ref": null,
-            "tags": [
-              "nn_main_breaker"
-            ]
-          },
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
-            "meta": {
-              "feeder_role": "ODPLYW_NN"
-            },
-            "name": "Odpływ nN 1",
-            "protection_ref": null,
-            "tags": []
-          }
-        ],
         "nn_fields_promoted": true
       },
       "name": "Stacja S01",
@@ -2631,114 +3441,6 @@
       "gpz_sections": [],
       "id": "25beef76-f60d-5840-a8f6-a2c989a8942d",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
-            "equipment_refs": [
-              "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000"
-            ],
-            "field_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000",
-            "meta": {
-              "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
-              "field_role": "LINIA_IN",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
-            },
-            "name": "Pole liniowe wejściowe 1",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "OUT",
-            "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
-            "equipment_refs": [
-              "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001"
-            ],
-            "field_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001",
-            "meta": {
-              "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
-              "field_role": "LINIA_OUT",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
-            },
-            "name": "Pole liniowe wyjściowe 2",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N",
-              "67N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "TR",
-            "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
-            "equipment_refs": [
-              "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
-              "stn/01bb98b8035012aa5698e4fc47869f83/transformer"
-            ],
-            "field_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002",
-            "meta": {
-              "default_device_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
-              "field_role": "TRANSFORMATOROWE",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
-            },
-            "name": "Pole transformatorowe 3",
-            "protection_codes": [
-              "87T",
-              "51",
-              "50",
-              "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          }
-        ],
-        "nn_field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_main_breaker",
-            "meta": {
-              "transformer_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer"
-            },
-            "name": "Wyłącznik główny nN",
-            "protection_ref": null,
-            "tags": [
-              "nn_main_breaker"
-            ]
-          },
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
-            "meta": {
-              "feeder_role": "ODPLYW_NN"
-            },
-            "name": "Odpływ nN 1",
-            "protection_ref": null,
-            "tags": []
-          }
-        ],
         "nn_fields_promoted": true
       },
       "name": "Stacja S02",
@@ -2764,114 +3466,6 @@
       "gpz_sections": [],
       "id": "70f95b94-8ae2-5a35-9208-f9f40d3d7f05",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
-            "equipment_refs": [
-              "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000"
-            ],
-            "field_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000",
-            "meta": {
-              "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000",
-              "field_role": "LINIA_IN",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/000"
-            },
-            "name": "Pole liniowe wejściowe 1",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "OUT",
-            "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
-            "equipment_refs": [
-              "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001"
-            ],
-            "field_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001",
-            "meta": {
-              "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001",
-              "field_role": "LINIA_OUT",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/001"
-            },
-            "name": "Pole liniowe wyjściowe 2",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N",
-              "67N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "TR",
-            "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_bus",
-            "equipment_refs": [
-              "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
-              "stn/c843b440108cbcd0ade67891d02c462a/transformer"
-            ],
-            "field_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002",
-            "meta": {
-              "default_device_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
-              "field_role": "TRANSFORMATOROWE",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_terminal/002"
-            },
-            "name": "Pole transformatorowe 3",
-            "protection_codes": [
-              "87T",
-              "51",
-              "50",
-              "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          }
-        ],
-        "nn_field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_main_breaker",
-            "meta": {
-              "transformer_ref": "stn/c843b440108cbcd0ade67891d02c462a/transformer"
-            },
-            "name": "Wyłącznik główny nN",
-            "protection_ref": null,
-            "tags": [
-              "nn_main_breaker"
-            ]
-          },
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/c843b440108cbcd0ade67891d02c462a/nn_feeder/000",
-            "meta": {
-              "feeder_role": "ODPLYW_NN"
-            },
-            "name": "Odpływ nN 1",
-            "protection_ref": null,
-            "tags": []
-          }
-        ],
         "nn_fields_promoted": true
       },
       "name": "Stacja S03",
@@ -2897,114 +3491,6 @@
       "gpz_sections": [],
       "id": "0e984ed9-fd9d-5102-b295-867bf5b06f48",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
-            "equipment_refs": [
-              "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000"
-            ],
-            "field_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000",
-            "meta": {
-              "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000",
-              "field_role": "LINIA_IN",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/000"
-            },
-            "name": "Pole liniowe wejściowe 1",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "OUT",
-            "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
-            "equipment_refs": [
-              "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001"
-            ],
-            "field_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001",
-            "meta": {
-              "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001",
-              "field_role": "LINIA_OUT",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/001"
-            },
-            "name": "Pole liniowe wyjściowe 2",
-            "protection_codes": [
-              "51",
-              "50",
-              "51N",
-              "67N"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          },
-          {
-            "bay_role": "TR",
-            "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_bus",
-            "equipment_refs": [
-              "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
-              "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer"
-            ],
-            "field_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002",
-            "meta": {
-              "default_device_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
-              "field_role": "TRANSFORMATOROWE",
-              "requires_catalog_binding": true,
-              "terminal_bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_terminal/002"
-            },
-            "name": "Pole transformatorowe 3",
-            "protection_codes": [
-              "87T",
-              "51",
-              "50",
-              "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "station_sn_field"
-            ]
-          }
-        ],
-        "nn_field_specs": [
-          {
-            "bay_role": "IN",
-            "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_main_breaker",
-            "meta": {
-              "transformer_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer"
-            },
-            "name": "Wyłącznik główny nN",
-            "protection_ref": null,
-            "tags": [
-              "nn_main_breaker"
-            ]
-          },
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_bus",
-            "equipment_refs": [],
-            "field_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/nn_feeder/000",
-            "meta": {
-              "feeder_role": "ODPLYW_NN"
-            },
-            "name": "Odpływ nN 1",
-            "protection_ref": null,
-            "tags": []
-          }
-        ],
         "nn_fields_promoted": true
       },
       "name": "Stacja S04",

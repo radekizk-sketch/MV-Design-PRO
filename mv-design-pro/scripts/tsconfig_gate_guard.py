@@ -425,7 +425,15 @@ POMIJANE_KATALOGI = {
 #: w `StationTemplateWizard.test.tsx` (karta SZYBKIE-TESTY) i TS2345 w
 #: `downloadSldExport.test.ts` (karta KASACJA-SCL-I-CIM-KLIENT, test eksportu przepisany).
 #: Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 61
+#: Karta W5-B/C (2026-10-15, pomiar `zmierz_dlug()` na drzewie bazowym ebab0f7d i na drzewie
+#: karty, listy bledow porownane): 81 -> 78. Zeszly: TS2532 w
+#: `ui/sld/shared/__tests__/szynyStacjiKonsumenci.test.ts` (czerwien bazy 81 > 80 — `gpzs[0]`
+#: zastapione `gpzs.slice(0, 1)` z jawna obsluga braku sekcji) oraz TS2339 + TS7006 w
+#: `ui/sld/v3/scene/__tests__/buildScene.gpzFeeder.test.ts` (rzutowany ksztalt dawny słownik pól SN w `meta` stacji
+#: zastapiony typowanymi rekordami `bays`). Zero nowych bledow. Scalenie z integracja PR477-481 (2026-10-16): POMIAR na drzewie scalonym 61.
+#: Scalenie W5-B z partia integracji 8 (2026-10-16, karta UIUX-PRZEMYSLOWY): POMIAR na drzewie
+#: scalonym 61 -> 59 — partia 8 i karta W5-B zdjely rozlaczne bledy (TS2532/TS2339/TS7006 karty).
+BUDZET_BLEDOW_POZA_BRAMKA = 59
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

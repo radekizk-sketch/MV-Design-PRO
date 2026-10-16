@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
@@ -43,7 +44,9 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
 
     assert len(snapshot["sources"]) == 1
     assert len(snapshot["substations"]) == 1
-    assert snapshot["bays"] == []
+    # Pola liniowe sekcji GPZ są rekordami `bays` stacji (po jednym na sekcję).
+    assert len(snapshot["bays"]) == 2
+    assert {b["substation_ref"] for b in snapshot["bays"]} == {snapshot["substations"][0]["ref_id"]}
     assert len(snapshot["transformers"]) == 2
 
     source = snapshot["sources"][0]
@@ -103,18 +106,14 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     # Jawne liczby Z0 z payloadu (DEKLARACJA) — bez wyprowadzania z opisu punktu neutralnego.
     assert "zero_sequence_provenance" not in source["materialized_params"]
 
-    field_specs = substation["meta"]["field_specs"]
-    field_by_section = {field["gpz_section_id"]: field for field in field_specs}
+    pola_gpz = pola_stacji(snapshot, substation["ref_id"])
+    field_by_section = {field["gpz_section_id"]: field for field in pola_gpz}
     assert field_by_section[sections[0]["section_id"]]["name"] == "Pole liniowe A"
     assert field_by_section[sections[1]["section_id"]]["name"] == "Pole liniowe B"
     assert sections[0]["line_fields_count"] == 1
-    assert sections[0]["line_field_refs"] == [
-        field_by_section[sections[0]["section_id"]]["field_ref"]
-    ]
+    assert sections[0]["line_field_refs"] == [field_by_section[sections[0]["section_id"]]["ref_id"]]
     assert sections[1]["line_fields_count"] == 1
-    assert sections[1]["line_field_refs"] == [
-        field_by_section[sections[1]["section_id"]]["field_ref"]
-    ]
+    assert sections[1]["line_field_refs"] == [field_by_section[sections[1]["section_id"]]["ref_id"]]
 
     couplers = [branch for branch in snapshot["branches"] if branch.get("type") == "bus_coupler"]
     assert len(couplers) == 1
@@ -158,20 +157,20 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
     snapshot = result["snapshot"]
     substation = snapshot["substations"][0]
     sections = substation["gpz_sections"]
-    field_specs = substation["meta"]["field_specs"]
+    pola_gpz = pola_stacji(snapshot, substation["ref_id"])
 
     assert len(sections) == 2
-    assert len(field_specs) == 24
-    assert len({field["field_ref"] for field in field_specs}) == 24
+    assert len(pola_gpz) == 24
+    assert len({field["ref_id"] for field in pola_gpz}) == 24
 
     for section_index, section in enumerate(sections):
         section_fields = [
-            field for field in field_specs if field["gpz_section_id"] == section["section_id"]
+            field for field in pola_gpz if field["gpz_section_id"] == section["section_id"]
         ]
         assert section["line_fields_count"] == 12
         assert len(section["line_field_names"]) == 12
         assert len(section["line_field_refs"]) == 12
-        assert [field["field_ref"] for field in section_fields] == section["line_field_refs"]
+        assert [field["ref_id"] for field in section_fields] == section["line_field_refs"]
         assert [field["name"] for field in section_fields] == section["line_field_names"]
         assert section_fields[0]["name"] == f"Pole sekcji {section_index + 1} 1"
         assert section_fields[-1]["name"] == f"Pole sekcji {section_index + 1} 12"
@@ -252,8 +251,8 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
     )
     snapshot = created["snapshot"]
     substation = snapshot["substations"][0]
-    field_ref = substation["meta"]["field_specs"][0]["field_ref"]
-    bus_ref = substation["meta"]["field_specs"][0]["bus_ref"]
+    field_ref = pola_stacji(snapshot, substation["ref_id"])[0]["ref_id"]
+    bus_ref = pola_stacji(snapshot, substation["ref_id"])[0]["bus_ref"]
 
     result = execute_domain_operation(
         enm_dict=snapshot,
@@ -275,9 +274,9 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
 
     assert result.get("error") in (None, "")
     updated = result["snapshot"]
-    fields = updated["substations"][0]["meta"]["field_specs"]
+    fields = pola_stacji(updated, updated["substations"][0]["ref_id"])
     assert len(fields) == 1
-    assert fields[0]["field_ref"] == field_ref
+    assert fields[0]["ref_id"] == field_ref
     assert fields[0]["name"] == "Pole odpływowe 1"
     assert fields[0]["bay_role"] == "OUT"
     assert len(fields[0]["equipment_refs"]) == 1
@@ -288,7 +287,7 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
 
 def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     """Globalna integracja: rodzina rozdzielnicy + szablon pola + zabezpieczenie
-    spływają na field_specs (widok pola / SLD / ocena zgodności / E-27).
+    spływają na rekord pola `bays` (widok pola / SLD / ocena zgodności / E-27).
 
     INTENCJA (zachowana): sprawdzić WIĄZANIE rodzina ↔ szablon pola ↔
     zabezpieczenie na polach GPZ — nie konkretną markę rozdzielnicy.
@@ -344,15 +343,18 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     assert substation["meta"]["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__RELF"
     assert substation["meta"]["manufacturer_ref"] == "ZPUE_WLOSZCZOWA"
 
-    specs = substation["meta"]["field_specs"]
+    specs = pola_stacji(snapshot, substation["ref_id"])
     assert len(specs) == 2  # bays[] wyznacza liczbę pól
     first, second = specs
-    # Szablon producenta + rodzina jako klucze TOP-LEVEL field_spec (konwencja
-    # kreatora stacji) — spójne źródło dla read-modelu pola i projekcji do Bay.
+    # Szablon producenta + rodzina jako pola rekordu `bays` — jedno źródło dla read-modelu
+    # pola i SLD.
     assert first["bay_template_ref"] == "ZPUE_WLOSZCZOWA__RELF__LINE_OUT"
     assert first["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__RELF"
     assert first["manufacturer_ref"] == "ZPUE_WLOSZCZOWA"
-    assert first["bay_role"] == "LINIA_ODG"
+    # Rola kanoniczna z kompozycji sekcji (`LINIA_ODG`) ląduje w `field_role`, a alias
+    # modelu w `bay_role` (dawniej tekst payloadu trafiał wprost do roli modelu).
+    assert first["bay_role"] == "FEEDER"
+    assert first["field_role"] == "LINIA_ODG"
     # Powiązanie z zabezpieczeniem polowym.
     assert first["protection_ref"] == "prot/pole/1"
     # Domknięcie długu V1: pole z rodziny katalogowej NIESIE wyposażenie z BOM-u
@@ -363,8 +365,8 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
 
 
 def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
-    """Kompatybilność wsteczna: bez rodziny/szablonu field_specs nie niosą kluczy
-    producenckich (exclude_none — determinizm istniejących payloadów zachowany)."""
+    """Bez rodziny/szablonu rekord pola nie niesie wartości producenckich (pola typowane
+    `None` — nic nie zostaje dopowiedziane)."""
     result = execute_domain_operation(
         enm_dict=_empty_enm(),
         op_name="add_grid_source_sn",
@@ -382,9 +384,10 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
     assert result.get("error") in (None, "")
     substation = result["snapshot"]["substations"][0]
     assert "switchgear_family_ref" not in substation["meta"]
-    spec = substation["meta"]["field_specs"][0]
-    assert "bay_template_ref" not in spec
-    assert "switchgear_family_ref" not in spec
+    spec = pola_stacji(result["snapshot"], substation["ref_id"])[0]
+    assert spec["bay_template_ref"] is None
+    assert spec["switchgear_family_ref"] is None
+    assert spec["primary_devices"] == []
 
 
 def test_add_grid_source_sn_bez_oltc_nie_niesie_tap_changer():

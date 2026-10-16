@@ -1115,8 +1115,8 @@ class AddSnBayPayload(_FrozenBase):
     """Kanoniczne powiązanie katalogowe aparatu SN (fallback ekspercki)."""
 
     # V12K-058 (G-POLE-R): powiązanie pola z szablonem producenta — parytet z kreatorem
-    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na
-    # field_spec przez _build_field_spec; protection wywodzi backend z szablonu.
+    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na rekord
+    # pola przez `enm.pola.zbuduj_pole`; protection wywodzi backend z szablonu.
     switchgear_family_ref: str | None = None
     """Rodzina rozdzielnicy producenta (Reference Engine)."""
 
@@ -1526,7 +1526,7 @@ class LineFieldV1(_FrozenBase):
     """
 
     field_ref: str
-    """Identyfikator pola (specyfikacja `meta.field_specs` stacji albo GPZ)."""
+    """Identyfikator pola (`Bay.ref_id` rekordu `bays` stacji albo GPZ)."""
 
     station_ref: str
     """Stacja albo GPZ, do której należy pole."""

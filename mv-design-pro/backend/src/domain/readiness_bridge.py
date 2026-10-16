@@ -181,7 +181,7 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     ),
     "W061": (
         "Wyjątek E061 dla gałęzi z automigracji promocji pól nN (degradacja BLOCKER -> "
-        "WARNING, `nn_field_specs_promocja.py`) — jak E061, `nn.cable_catalog_missing` "
+        "WARNING, `promocja_aparatow_nn.py`) — jak E061, `nn.cable_catalog_missing` "
         "nie pasuje (obejmuje wyłącznie kable, nie aparaty pól)."
     ),
     "E062": (

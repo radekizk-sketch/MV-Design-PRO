@@ -30,6 +30,7 @@ from analysis.grid_strength.models import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from enm.tor_pola import szyna_raportowa
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 
@@ -219,7 +220,10 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
         BusStrengthInput(
             bus_ref=bus_ref,
             nominal_kv=kv_by_bus.get(bus_ref),
-            s_sc_mva=sk_by_bus.get(bus_ref),
+            # Wytwórca na zacisku pola (POLA-W-TORZE) — zacisk jest szyną pomocniczą bez
+            # własnego wiersza zwarciowego; ten sam węzeł elektryczny raportuje szyna pola
+            # (`enm.tor_pola.szyna_raportowa`, jedno źródło dla konsumentów wyniku).
+            s_sc_mva=sk_by_bus.get(szyna_raportowa(snapshot, bus_ref)),
             # `_installed_mva_by_bus` już zwraca `None` dla węzła z nieznaną
             # mocą zainstalowaną — przekazanie wprost, bez własnej translacji.
             s_installed_mva=installed,

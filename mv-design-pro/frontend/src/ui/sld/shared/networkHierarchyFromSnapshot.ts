@@ -56,8 +56,13 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
           ref_id: String(b.ref_id ?? ''),
           name: String(b.name ?? b.ref_id ?? ''),
           bay_role: (b.bay_role as EnmInputForHierarchy['bays'][number]['bay_role']) ?? 'OUT',
-          substation_ref: String(b.substation_ref ?? ''),
+          substation_ref: typeof b.substation_ref === 'string' ? b.substation_ref : null,
+          branch_point_ref: typeof b.branch_point_ref === 'string' ? b.branch_point_ref : null,
           bus_ref: String(b.bus_ref ?? ''),
+          terminal_bus_ref: typeof b.terminal_bus_ref === 'string' ? b.terminal_bus_ref : null,
+          equipment_refs: Array.isArray(b.equipment_refs)
+            ? (b.equipment_refs as unknown[]).filter((r): r is string => typeof r === 'string')
+            : [],
         };
       },
     ),

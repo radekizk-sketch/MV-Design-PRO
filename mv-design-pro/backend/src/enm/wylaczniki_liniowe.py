@@ -3,16 +3,16 @@
 Karta BIEG-ZABEZPIECZEN-Z-MODELU: przekładnik i zabezpieczenie mogą stać przy wyłączniku
 wstawionym w odcinek (``insert_section_switch_sn`` z ``switch_type="WYLACZNIK"`` — wyłącznik
 sekcyjny z zabezpieczeniem, np. reklozer). Pole rozdzielnicy jest zawsze PIERWSZĄ kotwicą:
-wyłącznik wymieniony w wyposażeniu pola (``bays[].equipment_refs`` albo specyfikacje pól stacji
-``field_specs``/``nn_field_specs``) jest wyłącznikiem POLA i jego przekładnik/zabezpieczenie
-wskazuje się przez pole. Wyłącznik liniowy leży w sieci SN: obie jego szyny mają napięcie w
+wyłącznik wymieniony w wyposażeniu pola (``bays[].equipment_refs`` — rekord pola jest jedynym
+nośnikiem pól, karta W5-B; odczyt jednym akcesorem ``enm.pola.pole_aparatu``) jest wyłącznikiem
+POLA i jego przekładnik/zabezpieczenie wskazuje się przez pole. Wyłącznik liniowy leży w sieci SN: obie jego szyny mają napięcie w
 paśmie SN (``network_model.pochodne.pasma_napieciowe``) — aparat strony nN stacji albo sieci WN
 nie jest kotwicą przekładnika i przekaźnika nadprądowego SN. Jedno źródło tej reguły
 (``odmowa_kotwicy_wylacznika``) dla operacji zapisu (``add_ct``, ``add_relay``) i read modelu
 (``wylaczniki_liniowe``).
 
-Moduł działa na migawce (słownik ``model_dump``) i importuje wyłącznie bibliotekę standardową
-oraz liść ``network_model.pochodne.pasma_napieciowe`` (``math``/``typing``).
+Moduł działa na migawce (słownik ``model_dump``) i importuje bibliotekę standardową, akcesor pól
+``enm.pola`` (liść warstwy ENM) oraz liść ``network_model.pochodne.pasma_napieciowe``.
 """
 
 from __future__ import annotations
@@ -22,32 +22,10 @@ from typing import Any, Literal
 
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
+from .pola import napiecia_szyn, pole_aparatu
+
 #: Typ gałęzi łącznika, który jest wyłącznikiem (przerywa prąd zwarciowy).
 TYP_WYLACZNIKA = "breaker"
-
-
-def _specyfikacje_pol(enm: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    wynik: list[Mapping[str, Any]] = [
-        pole for pole in enm.get("bays") or [] if isinstance(pole, Mapping)
-    ]
-    for stacja in enm.get("substations") or []:
-        meta = stacja.get("meta") if isinstance(stacja, Mapping) else None
-        if not isinstance(meta, Mapping):
-            continue
-        for klucz in ("field_specs", "nn_field_specs"):
-            wynik.extend(s for s in meta.get(klucz) or [] if isinstance(s, Mapping))
-    return wynik
-
-
-def pole_aparatu(enm: Mapping[str, Any], aparat_ref: str) -> str | None:
-    """Pole (``ref_id`` elementu ``bays`` albo ``field_ref`` specyfikacji), do którego należy
-    aparat, albo ``None``."""
-    for pole in _specyfikacje_pol(enm):
-        wyposazenie = pole.get("equipment_refs") or []
-        if isinstance(wyposazenie, list) and aparat_ref in wyposazenie:
-            ref = pole.get("ref_id") or pole.get("field_ref")
-            return str(ref) if ref else None
-    return None
 
 
 #: Powód, dla którego aparat NIE jest wyłącznikiem liniowym (kotwicą przekładnika/przekaźnika).
@@ -74,13 +52,9 @@ def odmowa_kotwicy_wylacznika(
     )
     if galaz is None:
         return "NIE_WYLACZNIK"
-    if pole_aparatu(enm, str(aparat_ref)) is not None:
+    if pole_aparatu(enm, aparat_ref) is not None:
         return "W_POLU"
-    napiecia = {
-        str(szyna.get("ref_id")): szyna.get("voltage_kv")
-        for szyna in enm.get("buses") or []
-        if isinstance(szyna, Mapping)
-    }
+    napiecia = napiecia_szyn(enm)
     for zacisk in ("from_bus_ref", "to_bus_ref"):
         if pasmo_napieciowe(napiecia.get(str(galaz.get(zacisk)))) != "SN":
             return "POZA_SIECIA_SN"
@@ -125,6 +99,5 @@ __all__ = [
     "TYP_WYLACZNIKA",
     "PowodOdmowyKotwicy",
     "odmowa_kotwicy_wylacznika",
-    "pole_aparatu",
     "wylaczniki_liniowe",
 ]

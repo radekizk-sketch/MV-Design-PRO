@@ -248,8 +248,11 @@ def segmenty_korytarza(enm: dict[str, Any], indeks: int = 0) -> list[str]:
 
 
 def pole_gpz(enm: dict[str, Any], indeks: int = 0) -> str:
-    """``field_ref`` pola liniowego GPZ o danym indeksie (kolejność w ``field_specs``)."""
+    """Identyfikator pola liniowego GPZ o danym indeksie (kolejność rekordów ``bays`` GPZ —
+    kolejność tworzenia pól, karta W5-B)."""
+    from enm.pola import pola_stacji
+
     for stacja in enm["substations"]:
         if stacja.get("station_type") == "gpz":
-            return str(stacja["meta"]["field_specs"][indeks]["field_ref"])
+            return str(pola_stacji(enm, stacja["ref_id"])[indeks]["ref_id"])
     raise BladBudowy("brak GPZ w migawce")

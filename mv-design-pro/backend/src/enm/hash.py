@@ -74,6 +74,26 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),
     "branches": ("screen_bonding",),
+    # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
+    # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
+    # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
+    # (zacisk, rola kanoniczna, pomiar, powiazania producenckie) jest trescia modelu.
+    "bays": (
+        "branch_point_ref",
+        "branch_point_port_id",
+        "field_role",
+        "terminal_bus_ref",
+        "funkcja_pomiaru",
+        "rodzaj_pomiaru",
+        "switchgear_family_ref",
+        "manufacturer_ref",
+        "apparatus_catalog_ref",
+        "config_id",
+        "catalog_bindings",
+        "wybor_bloku",
+        "metadane_pochodzenia",
+        "surge_arresters",
+    ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
@@ -108,13 +128,27 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
 _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
 
+#: Karta W5-B: pola-LISTY rekordu pola dodane po zamrozeniu odciskow, ktorych wartosc
+#: domyslna to pusta lista (nie `None`). Pusta lista = dana nienadana — poza odciskiem
+#: (rekordy `bays` sprzed karty haszuja jak przed nia); lista niepusta jest trescia
+#: modelu. Osobny slownik, a nie rozszerzenie reguly `None`: pola z listy wyzej moga
+#: miec legalna pusta liste jako tresc zamrozona w odciskach sprzed karty.
+#: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
+    "bays": ("surge_arresters",),
+}
+
 
 def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
-    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    bez `id`, bez pol addytywnych o wartosci `None` (i pustej liście dla pol-list z
+    `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE`), ze skasowanymi polami jako `null`."""
     item.pop("id", None)
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
         if pole in item and item[pole] is None:
+            del item[pole]
+    for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE.get(key, ()):
+        if pole in item and item[pole] == []:
             del item[pole]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)

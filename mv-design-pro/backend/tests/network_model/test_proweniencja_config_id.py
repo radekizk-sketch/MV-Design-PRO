@@ -30,7 +30,7 @@ dokładnie tak, jak kłamał przed tą kartą.
 
 BRAK ZGŁOSZONY PRZEZ TĘ KARTĘ, DOMKNIĘTY W K-M (2026-08-14).
 `append_station_on_endpoint` (stacja dokładana na KOŃCU ciągu) składa
-`field_spec` RĘCZNIE, z pominięciem wspólnego buildera `_build_field_spec`, więc
+`field_spec` RĘCZNIE, z pominięciem wspólnego buildera pola (dziś `enm.pola.zbuduj_pole`), więc
 NIE zapisywał klucza `config_id` w ogóle — pole niosło referencję szablonu
 i komplet aparatów, ale bez tożsamości konfiguracji (pomiar: 11. miejsce klasy
 z odbioru K-K). Brak leżał w `enm/domain_operations.py`, pliku, który TA karta
@@ -50,6 +50,7 @@ from typing import Any
 import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola
 from enm.pole_katalogowe import pole_katalogowe
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
@@ -294,7 +295,7 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
         )
     if tor == "koniec_ciagu":
         # Trzeci tor: stacja dokładana na KOŃCU ciągu. Składa `field_spec`
-        # RĘCZNIE (z pominięciem `_build_field_spec`), więc to on gubił
+        # RĘCZNIE (z pominięciem buildera pola), więc to on gubił
         # `config_id` — tożsamość konfiguracji musi tu wyjść ta sama, co
         # w torze wspólnego buildera dla tego samego wskazania katalogowego.
         pole_konca: dict[str, Any] = {"field_role": "LINIA_OUT", "bay_template_ref": pole_ref}
@@ -321,14 +322,7 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
 
 def _specs_z_referencja(odpowiedz: dict[str, Any], pole_ref: str) -> list[dict[str, Any]]:
     snapshot = odpowiedz.get("snapshot") or {}
-    znalezione: list[dict[str, Any]] = []
-    for stacja in snapshot.get("substations", []):
-        meta = stacja.get("meta") or {}
-        for klucz in ("field_specs", "nn_field_specs"):
-            for spec in meta.get(klucz, []):
-                if isinstance(spec, dict) and spec.get("bay_template_ref") == pole_ref:
-                    znalezione.append(spec)
-    return znalezione
+    return [spec for spec in pola(snapshot) if spec.get("bay_template_ref") == pole_ref]
 
 
 #: Tory budowy pola, w których referencja katalogowa jest osiągalna z payloadu

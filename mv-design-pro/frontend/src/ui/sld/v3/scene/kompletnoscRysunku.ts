@@ -131,12 +131,11 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
   const blokStacji = new Set<string>();
   const szynyOdbiorowStacji = new Set<string>();
   const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
-  const indeksPolNn = kontekstTransformatorow.indeksPolNn;
   for (const stacja of snapshot.substations ?? []) {
     if (!narysowane.has(stacja.ref_id)) continue;
     for (const ref of stacja.bus_refs ?? []) blokStacji.add(ref);
     for (const tr of transformatoryNalezaceDoStacji(snapshot, stacja, kontekstTransformatorow)) blokStacji.add(tr.ref_id);
-    for (const ref of szynyStacji(stacja, snapshot.branches ?? [], indeksPolNn)) szynyOdbiorowStacji.add(ref);
+    for (const ref of szynyStacji(snapshot, stacja)) szynyOdbiorowStacji.add(ref);
   }
 
   const pozycje: PozycjaKompletnosci[] = [];

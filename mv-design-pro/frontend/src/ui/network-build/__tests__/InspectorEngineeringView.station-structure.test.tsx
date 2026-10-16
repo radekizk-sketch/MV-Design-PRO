@@ -89,15 +89,20 @@ vi.mock('../../topology/snapshotStore', () => ({
             station_type: 'mv_lv',
             bus_refs: ['bus-sn', 'bus-nn'],
             transformer_refs: [],
-            meta: {
-              nn_field_specs: [
-                { field_ref: 'feeder-1', bay_role: 'FEEDER', bus_ref: 'bus-nn' },
-                { field_ref: 'feeder-2', bay_role: 'FEEDER', bus_ref: 'bus-nn' },
-              ],
-            },
+            meta: {},
           },
         ],
-        bays: [],
+        // Karta W5-B: pola stacji = rekordy `bays` — pięć pól SN (szyna 15 kV) i dwa odpływy
+        // nN (szyna 0,4 kV); liczność rozdzielni SN liczy wyłącznie pola SN.
+        bays: [
+          ...['in', 'out', 'odg', 'tr', 'pom'].map((rola, i) => ({
+            id: `sn-${rola}`, ref_id: `sn-${rola}`, name: `Pole SN ${i + 1}`, tags: [], meta: {},
+            bay_role: (['IN', 'OUT', 'FEEDER', 'TR', 'MEASUREMENT'] as const)[i], substation_ref: 'st-no-bays',
+            bus_ref: 'bus-sn', equipment_refs: [],
+          })),
+          { id: 'feeder-1', ref_id: 'feeder-1', name: 'Odpływ nN', tags: [], meta: {}, bay_role: 'FEEDER', substation_ref: 'st-no-bays', bus_ref: 'bus-nn', equipment_refs: [] },
+          { id: 'feeder-2', ref_id: 'feeder-2', name: 'Odpływ nN', tags: [], meta: {}, bay_role: 'FEEDER', substation_ref: 'st-no-bays', bus_ref: 'bus-nn', equipment_refs: [] },
+        ],
       },
       logicalViews: null,
       executeDomainOperation,
@@ -129,7 +134,7 @@ describe('InspectorEngineeringView - struktura stacji', () => {
     executeDomainOperation.mockReset();
   });
 
-  it('opisuje rozdzielnicę SN liczbą pól z read-modelu, gdy snapshot nie ma osobnych pól', () => {
+  it('opisuje rozdzielnicę SN liczbą pól SN z rekordów `bays` stacji (odpływy nN liczone osobno)', () => {
     render(<InspectorEngineeringView />);
 
     expect(screen.getAllByText('Stacja testowa').length).toBeGreaterThan(0);

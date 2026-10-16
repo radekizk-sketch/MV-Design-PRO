@@ -32,6 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { polaSnStacji } from '../../../../shared/polaStacji';
 import { branchPointCoverageGaps, buildSceneV3, type SceneLod } from '../buildScene';
 import { interiorCrossings } from '../crossings';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
@@ -78,9 +79,7 @@ describe('sieć pokazowa — klient w odgałęzieniu (POMIAR-ODGAŁĘZIENIE)', (
   it('każda stacja klienta ma pole POMIAROWE, i to od strony dopływu gałęzi', () => {
     for (const ref of stacjeKlientow) {
       const stacja = enm.substations.find((s) => s.ref_id === ref)!;
-      const role = ((stacja.meta as { field_specs?: { bay_role?: string }[] } | undefined)
-        ?.field_specs ?? []
-      ).map((spec) => spec.bay_role);
+      const role = polaSnStacji(enm, stacja.ref_id).map((pole) => pole.bay_role as string);
       expect(role).toContain('MEASUREMENT');
       // Kolejność Z DANYCH (V12K-330): dopływ → POMIAR → TR → (rezerwy).
       expect(role.indexOf('IN')).toBeLessThan(role.indexOf('MEASUREMENT'));

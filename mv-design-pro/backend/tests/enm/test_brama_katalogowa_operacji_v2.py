@@ -53,6 +53,7 @@ from enm.domain_operations_v2 import (
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 
@@ -184,16 +185,18 @@ def _szyna_sn_ref(snapshot: dict[str, Any]) -> str:
 
 def _pole_sn_ref(snapshot: dict[str, Any]) -> str:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    specyfikacje = (stacja.get("meta") or {}).get("field_specs") or []
+    specyfikacje = pola_sn_stacji(snapshot, stacja["ref_id"])
     assert specyfikacje, "Stacja nie ma pól SN"
-    return str(specyfikacje[0]["field_ref"])
+    return str(specyfikacje[0]["ref_id"])
 
 
 def _pole_nn_ref(snapshot: dict[str, Any]) -> str:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    specyfikacje = (stacja.get("meta") or {}).get("nn_field_specs") or []
+    specyfikacje = [
+        p for p in pola_nn_stacji(snapshot, stacja["ref_id"]) if p.get("bay_role") == "FEEDER"
+    ]
     assert specyfikacje, "Stacja nie ma odpływów nN"
-    return str(specyfikacje[0]["field_ref"])
+    return str(specyfikacje[0]["ref_id"])
 
 
 def _payload_zrodla(
@@ -513,6 +516,31 @@ def _druga_szyna_nn_ref(snapshot: dict[str, Any]) -> str:
     return str(kandydaci[-1]["ref_id"])
 
 
+def _payload_pole_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Odpływ nN z aparatem wskazanym referencją (szablon stacji — `apply.py`)."""
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_nn_ref": _szyna_nn_ref(snapshot),
+        "field_role": "OUTGOING",
+        "catalog_ref": REF_APARAT_NN,
+    }
+
+
+def _payload_pole_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Pole źródłowe nN z aparatem wskazanym wiązaniem — druga droga i druga rola pola."""
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_nn_ref": _szyna_nn_ref(snapshot),
+        "field_role": "SOURCE",
+        "source_field_kind": "PV",
+        "catalog_binding": {
+            "catalog_namespace": "APARAT_NN",
+            "catalog_item_id": REF_APARAT_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
+
+
 def _payload_aparat_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "from_bus_ref": _szyna_nn_ref(snapshot),
@@ -732,6 +760,21 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "add_nn_cable_segment",
         _payload_kabel_nn_binding,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KABEL_NN + LITEROWKA}),
+    ),
+    # Aparat pola nN (karta W5-B): wskazanie odpływu albo pola źródłowego przechodzi bramę
+    # i ląduje na polu dla promocji aparatów nN — iloczyn {referencja, wiązanie} × {odpływ,
+    # pole źródłowe}.
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_outgoing_field",
+        _payload_pole_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_outgoing_field",
+        _payload_pole_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
     ),
     PrzypadekIniekcji(
         "catalog_ref",

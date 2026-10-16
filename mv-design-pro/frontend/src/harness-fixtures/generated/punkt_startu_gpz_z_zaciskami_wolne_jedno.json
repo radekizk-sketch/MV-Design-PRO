@@ -99,7 +99,224 @@
     "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002"
   ],
   "snapshot": {
-    "bays": [],
+    "bays": [
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "OUT",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+        "id": "ac275a55-ae3f-5132-a64b-3e4e06c88f0d",
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus",
+          "field_status": "CONFIGURED_FOR_TRUNK",
+          "gpz_line_field_index": 0,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 0,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 1",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "OUT",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+        "id": "16bb9846-277d-5f4e-866a-ff063f4b0fd6",
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus",
+          "field_status": "CONFIGURED_FOR_TRUNK",
+          "gpz_line_field_index": 1,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 0,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 2",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal",
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "OUT",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+        "id": "71d60d6d-cdfb-570d-91b7-210a87e99e30",
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus",
+          "field_status": "CONFIGURED_FOR_TRUNK",
+          "gpz_line_field_index": 0,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 1,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 1",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal",
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "OUT",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+        "id": "259e9d1f-0752-5a4a-bdaf-798a096694ec",
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus",
+          "field_status": "CONFIGURED_FOR_TRUNK",
+          "gpz_line_field_index": 1,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 1,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 2",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal",
+        "wybor_bloku": null
+      }
+    ],
     "branch_points": [],
     "branches": [
       {
@@ -917,136 +1134,6 @@
         ],
         "id": "fe5be262-8b68-57e1-879e-60e8d4294318",
         "meta": {
-          "field_specs": [
-            {
-              "bay_role": "OUT",
-              "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
-              "equipment_refs": [
-                "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus"
-              ],
-              "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
-              "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
-              "meta": {
-                "apparatus_kind": "BREAKER",
-                "catalog_binding": {
-                  "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-                  "catalog_item_version": "2024.1",
-                  "catalog_namespace": "APARAT_SN",
-                  "materialize": true,
-                  "snapshot_mapping_version": "1.0"
-                },
-                "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus",
-                "field_status": "CONFIGURED_FOR_TRUNK",
-                "gpz_line_field_index": 0,
-                "gpz_line_fields_count": 2,
-                "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
-                "gpz_section_order": 0,
-                "source_field_kind": "FEEDER",
-                "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal"
-              },
-              "name": "Pole liniowe GPZ 1",
-              "protection_ref": null,
-              "tags": [
-                "gpz_line_field"
-              ]
-            },
-            {
-              "bay_role": "OUT",
-              "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
-              "equipment_refs": [
-                "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus"
-              ],
-              "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002",
-              "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
-              "meta": {
-                "apparatus_kind": "BREAKER",
-                "catalog_binding": {
-                  "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-                  "catalog_item_version": "2024.1",
-                  "catalog_namespace": "APARAT_SN",
-                  "materialize": true,
-                  "snapshot_mapping_version": "1.0"
-                },
-                "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus",
-                "field_status": "CONFIGURED_FOR_TRUNK",
-                "gpz_line_field_index": 1,
-                "gpz_line_fields_count": 2,
-                "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
-                "gpz_section_order": 0,
-                "source_field_kind": "FEEDER",
-                "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal"
-              },
-              "name": "Pole liniowe GPZ 2",
-              "protection_ref": null,
-              "tags": [
-                "gpz_line_field"
-              ]
-            },
-            {
-              "bay_role": "OUT",
-              "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
-              "equipment_refs": [
-                "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus"
-              ],
-              "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001",
-              "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
-              "meta": {
-                "apparatus_kind": "BREAKER",
-                "catalog_binding": {
-                  "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-                  "catalog_item_version": "2024.1",
-                  "catalog_namespace": "APARAT_SN",
-                  "materialize": true,
-                  "snapshot_mapping_version": "1.0"
-                },
-                "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus",
-                "field_status": "CONFIGURED_FOR_TRUNK",
-                "gpz_line_field_index": 0,
-                "gpz_line_fields_count": 2,
-                "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
-                "gpz_section_order": 1,
-                "source_field_kind": "FEEDER",
-                "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal"
-              },
-              "name": "Pole liniowe GPZ 1",
-              "protection_ref": null,
-              "tags": [
-                "gpz_line_field"
-              ]
-            },
-            {
-              "bay_role": "OUT",
-              "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
-              "equipment_refs": [
-                "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus"
-              ],
-              "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002",
-              "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
-              "meta": {
-                "apparatus_kind": "BREAKER",
-                "catalog_binding": {
-                  "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-                  "catalog_item_version": "2024.1",
-                  "catalog_namespace": "APARAT_SN",
-                  "materialize": true,
-                  "snapshot_mapping_version": "1.0"
-                },
-                "default_device_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus",
-                "field_status": "CONFIGURED_FOR_TRUNK",
-                "gpz_line_field_index": 1,
-                "gpz_line_fields_count": 2,
-                "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
-                "gpz_section_order": 1,
-                "source_field_kind": "FEEDER",
-                "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal"
-              },
-              "name": "Pole liniowe GPZ 2",
-              "protection_ref": null,
-              "tags": [
-                "gpz_line_field"
-              ]
-            }
-          ],
           "gpz_hv_bus_refs": [
             "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
             "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"

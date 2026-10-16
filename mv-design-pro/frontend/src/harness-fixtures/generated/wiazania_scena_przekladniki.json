@@ -1,6 +1,6 @@
 {
   "generator_ref": "pv/cf52e8ef1365b7493495105069afcf67/converter",
-  "bay_ref": null,
+  "bay_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
   "wejscia": {
     "napiecie_sieci_v": 15000.0,
     "prad_roboczy_a": 38.490017946,

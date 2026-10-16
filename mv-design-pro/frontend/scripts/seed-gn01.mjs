@@ -42,17 +42,10 @@ function log(step, msg, data) {
   }
 }
 
-function collectFieldSpecs(enm) {
-  const specs = [];
-  for (const substation of enm?.substations ?? []) {
-    const fieldSpecs = substation?.meta?.field_specs;
-    if (!Array.isArray(fieldSpecs)) continue;
-    for (const spec of fieldSpecs) {
-      if (!spec || typeof spec !== 'object') continue;
-      specs.push({ ...spec, station_ref: substation.ref_id });
-    }
-  }
-  return specs;
+/** Pola stacji modelu — rekordy `bays` z `substation_ref` (karta W5-B: jedyny nośnik pól). */
+function collectStationFields(enm) {
+  const stacje = new Set((enm?.substations ?? []).map((s) => s.ref_id));
+  return (enm?.bays ?? []).filter((pole) => pole && stacje.has(pole.substation_ref));
 }
 
 async function main() {
@@ -212,12 +205,12 @@ async function main() {
   // K5: Wyprowadzenie odcinka magistrali SN (continue_trunk_segment_sn)
   let k5Status = 'NOT_REACHED';
   if (k4Status === 'PASS') {
-    // K4 utworzyło bay — wyciągnij field_ref z snapshot
+    // K4 utworzyło pole — wyciągnij ref_id rekordu pola z migawki
     const enmAfterK4 = await api('GET', `/api/cases/${caseId}/enm`);
-    const fields = collectFieldSpecs(enmAfterK4.json);
+    const fields = collectStationFields(enmAfterK4.json);
     const lineOutField = fields.find(
       (f) => ['OUT', 'FEEDER'].includes(String(f.bay_role ?? '').toUpperCase())
-        && typeof f.field_ref === 'string',
+        && typeof f.ref_id === 'string',
     );
     if (lineOutField) {
       log('K5', 'Wyprowadzenie kabla SN (continue_trunk_segment_sn)...');
@@ -227,7 +220,7 @@ async function main() {
           name: 'continue_trunk_segment_sn',
           idempotency_key: 'gn01_trunk_seg_001',
           payload: {
-            field_ref: lineOutField.field_ref,
+            field_ref: lineOutField.ref_id,
             segment: {
               rodzaj: 'KABEL',
               dlugosc_m: 1500,
@@ -255,7 +248,7 @@ async function main() {
         log('K5', k5Status);
       }
     } else {
-      k5Status = 'FAIL: no line continuation field in substation.meta.field_specs';
+      k5Status = 'FAIL: no line continuation field in bays (pola stacji)';
       log('K5', k5Status);
     }
   }

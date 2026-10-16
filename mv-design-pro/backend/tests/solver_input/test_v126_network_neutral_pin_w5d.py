@@ -122,3 +122,10 @@ def test_brak_uziemienia_w_modelu_nie_fabrykuje_isolated(strona: str) -> None:
     assert warunek.spelniony is False and warunek.blokujacy is True
     assert warunek.elementy == ("BUS_SN",)
     assert gotowosc.gotowosc != "POTWIERDZONA"
+    # Karta W5-B (predykaty parami): ten sam stan modelu nie może jednocześnie meldować
+    # „model nie zawiera ograniczników" — ogranicznik JEST, nie wchodzi do wejścia koordynacji
+    # z powodu braku uziemienia sieci (warunek wyżej).
+    ograniczniki = next(w for w in gotowosc.warunki if w.kod == "model.ograniczniki")
+    assert ograniczniki.spelniony is False
+    assert "nie zawiera" not in ograniczniki.opis_pl
+    assert "1 miejsc" in ograniczniki.opis_pl and "uziemienia" in ograniczniki.opis_pl

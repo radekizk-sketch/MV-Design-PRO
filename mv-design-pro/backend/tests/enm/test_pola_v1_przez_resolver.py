@@ -40,6 +40,7 @@ from typing import Any
 import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola
 from enm.pole_katalogowe import KOD_BLEDU_POLA_KATALOGOWEGO, pole_katalogowe
 from network_model.catalog.switchgear import (
     list_switchgear_families,
@@ -220,20 +221,13 @@ def _uruchom(tor: str, pole_ref: str | None, rodzina_ref: str | None) -> dict[st
 
 
 def _pola_z_wskazaniem(odpowiedz: dict[str, Any], pole_ref: str) -> list[dict[str, Any]]:
-    """Wszystkie `field_spec` migawki, które niosą wskazaną referencję pola."""
+    """Wszystkie rekordy pól (`bays`) migawki, które niosą wskazaną referencję pola."""
     snapshot = odpowiedz.get("snapshot") or {}
-    znalezione: list[dict[str, Any]] = []
-    for stacja in snapshot.get("substations", []):
-        meta = stacja.get("meta") or {}
-        for klucz in ("field_specs", "nn_field_specs"):
-            for spec in meta.get(klucz, []):
-                if isinstance(spec, dict) and spec.get("bay_template_ref") == pole_ref:
-                    znalezione.append(spec)
-    return znalezione
+    return [rekord for rekord in pola(snapshot) if rekord.get("bay_template_ref") == pole_ref]
 
 
 #: Tory budowy pola V1, w których referencja katalogowa jest OSIĄGALNA z payloadu
-#: użytkownika. Lista wynika z inwentarza miejsc budowy `field_spec` (pin niżej).
+#: użytkownika. Lista wynika z inwentarza miejsc budowy pola (pin niżej).
 TORY_Z_WSKAZANIEM_KATALOGOWYM = ["gpz", "wciecie", "koniec_ciagu"]
 
 
@@ -253,7 +247,7 @@ def test_rodzina_modularna_daje_polu_pelna_kompozycje_aparatow(tor: str) -> None
     assert pola, f"tor {tor}: żadne pole nie niesie referencji {POLE_MODULARNE}"
     for spec in pola:
         aparaty = spec.get("primary_devices")
-        assert aparaty, f"tor {tor}: pole {spec.get('field_ref')} bez aparatow"
+        assert aparaty, f"tor {tor}: pole {spec.get('ref_id')} bez aparatow"
         # Kompletność wobec katalogu: tyle aparatów, ile deklaruje pole katalogowe.
         szablon = pole_katalogowe(POLE_MODULARNE)
         assert szablon is not None
@@ -328,19 +322,16 @@ def test_odrzucenie_rodziny_blokowej_nie_mutuje_modelu_wejsciowego(tor: str) -> 
 
 @pytest.mark.parametrize("tor", TORY_Z_WSKAZANIEM_KATALOGOWYM)
 def test_pole_bez_wskazania_katalogowego_zachowuje_dotychczasowy_kontrakt(tor: str) -> None:
-    """Pole bez referencji szablonu: brak klucza aparatów, migawka jak dotąd."""
+    """Pole bez referencji szablonu: pusta lista aparatów pierwotnych (zero domysłu)."""
     odpowiedz = _uruchom(tor, None, None)
     assert odpowiedz.get("error") in (None, ""), odpowiedz
 
     snapshot = odpowiedz["snapshot"]
-    for stacja in snapshot.get("substations", []):
-        meta = stacja.get("meta") or {}
-        for klucz in ("field_specs", "nn_field_specs"):
-            for spec in meta.get(klucz, []):
-                if not spec.get("bay_template_ref"):
-                    assert (
-                        "primary_devices" not in spec
-                    ), f"tor {tor}: pole bez szablonu dostalo aparaty z domyslu"
+    for spec in pola(snapshot):
+        if not spec.get("bay_template_ref"):
+            assert (
+                spec["primary_devices"] == []
+            ), f"tor {tor}: pole bez szablonu dostalo aparaty z domyslu"
 
 
 @pytest.mark.parametrize("tor", TORY_Z_WSKAZANIEM_KATALOGOWYM)
@@ -354,7 +345,7 @@ def test_referencja_spoza_katalogu_rodzin_idzie_sciezka_konwencji(tor: str) -> N
     pola = _pola_z_wskazaniem(odpowiedz, POLE_SPOZA_KATALOGU)
     assert pola, f"tor {tor}: referencja spoza katalogu zgubiona"
     for spec in pola:
-        assert "primary_devices" not in spec
+        assert spec["primary_devices"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -461,30 +452,32 @@ def test_kazde_pole_kazdej_rodziny_modularnej_materializuje_aparaty() -> None:
 # Pin INWENTARZA: nowe miejsce budowy pola musi podjąć decyzję świadomie
 # ---------------------------------------------------------------------------
 
-#: Funkcje `domain_operations.py`, które budują `field_spec` pola. Lista jest
-#: ZAMKNIĘTA: każde nowe miejsce budowy pola musi rozstrzygnąć, skąd bierze
-#: aparaty (resolver katalogu vs jawny argument), więc świadomie dopisać się tu.
-#: Bez tego pinu kolejna ścieżka po cichu powtórzyłaby dług tej karty —
-#: dokładnie tak powstała ręczna budowa pola w `append_station_on_endpoint`.
-#:
-#: KOREKTA (karta jednego buildera pola): zbiór „reczne" jest PUSTY. Stacja na
-#: końcu ciągu składała specyfikację własnym literałem słownika, przez co każdy
-#: klucz kontraktu pola trzeba było dokładać dwukrotnie — i za każdym razem
-#: jedno z dwóch miejsc zostawało w tyle (`config_id` i aparaty pierwotne
-#: wracały tu osobnymi naprawami, metadane pochodzenia pola gubiło wcięcie
-#: w odcinek). Obie drogi budowy stacji wołają teraz JEDEN builder.
-MIEJSCA_BUDOWY_POLA: dict[str, set[str]] = {
-    # wywołania wspólnego buildera `_build_field_spec` (7 wywołań w 6 funkcjach)
-    "_build_field_spec": {
-        "_allocate_gpz_line_field_for_branch",  # pole liniowe GPZ dla wyprowadzenia
-        "add_grid_source_sn",  # pola sekcji GPZ
-        "_build_nn_field_specs",  # wyłącznik główny nN + odpływy nN (2 wywołania)
-        "insert_station_on_segment_sn",  # pola stacji wciętej w odcinek
-        "append_station_on_endpoint",  # pola stacji na końcu ciągu (z payloadu)
-        "_ensure_field_spec",  # pole domykane stacji końca ciągu (bez payloadu)
+#: Funkcje operacji domenowych, które BUDUJĄ rekord pola (`enm.pola.zbuduj_pole`) — 14 wywołań
+#: buildera w 12 funkcjach dwóch modułów (13 dróg budowy pola z karty + pole źródła
+#: przekształtnika na szynie SN, rozstrzygnięcie integratora W5-B). Lista ZAMKNIĘTA: każde nowe miejsce budowy
+#: pola musi rozstrzygnąć, skąd bierze aparaty pierwotne i identyfikator konfiguracji
+#: (`_aparaty_i_konfiguracja_pola` — resolver katalogu albo jawny argument), więc świadomie
+#: dopisać się tu. `z_katalogiem` — drogi, które przekazują aparaty i konfigurację z wyboru
+#: katalogowego; `bez_szablonu` — drogi budujące pole bez wskazania szablonu (pola nN, pole
+#: domykane stacji końca ciągu, nowe pole liniowe GPZ przydzielane odgałęzieniu).
+MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
+    "z_katalogiem": {
+        "domain_operations.py:add_grid_source_sn": 1,  # pola sekcji GPZ
+        "domain_operations.py:insert_station_on_segment_sn": 2,  # pole sprzęgła + pozostałe
+        "domain_operations.py:append_station_on_endpoint": 1,  # pola z payloadu kreatora
+        "domain_operations_v2.py:add_sn_bay": 1,  # operacja katalogowa pola SN
+        "domain_operations_v2.py:_add_converter_source_der_sn": 1,  # pole źródłowe DER-SN
     },
-    # ręczna budowa `field_spec` (poza wspólnym builderem) — ZBIÓR PUSTY
-    "reczne": set(),
+    "bez_szablonu": {
+        "domain_operations.py:_allocate_gpz_line_field_for_branch": 1,
+        "domain_operations.py:_zbuduj_pola_nn": 2,  # wyłącznik główny nN + odpływy nN
+        "domain_operations.py:_domknij_pole": 1,  # pole domykane stacji końca ciągu
+        "domain_operations_v2.py:_add_nn_outgoing_field_internal": 1,
+        "domain_operations_v2.py:_append_nn_source_meta_field": 1,
+        "domain_operations_v2.py:_append_converter_field_if_needed": 1,
+        # pole źródła przekształtnika na szynie SN (tor pola źródłowego SN, karta W5-B)
+        "domain_operations_v2.py:_dodaj_pole_zrodla_sn": 1,
+    },
 }
 
 
@@ -504,49 +497,55 @@ def _funkcja_otaczajaca(drzewo: ast.Module, wezel: ast.AST) -> str:
     return najlepsza
 
 
+def _wywolania_buildera() -> dict[str, dict[str, int]]:
+    """Wywołania `zbuduj_pole` w operacjach domenowych, pogrupowane wg tego, czy droga
+    przekazuje aparaty pierwotne i konfigurację (`primary_devices` + `config_id`)."""
+    wynik: dict[str, dict[str, int]] = {"z_katalogiem": {}, "bez_szablonu": {}}
+    for nazwa_pliku in ("domain_operations.py", "domain_operations_v2.py"):
+        zrodlo = Path(__file__).resolve().parents[2] / "src" / "enm" / nazwa_pliku
+        drzewo = ast.parse(zrodlo.read_text(encoding="utf-8"))
+        for wezel in ast.walk(drzewo):
+            if not (
+                isinstance(wezel, ast.Call)
+                and isinstance(wezel.func, ast.Name)
+                and wezel.func.id == "zbuduj_pole"
+            ):
+                continue
+            klucze = {k.arg for k in wezel.keywords}
+            grupa = "z_katalogiem" if {"primary_devices", "config_id"} <= klucze else "bez_szablonu"
+            miejsce = f"{nazwa_pliku}:{_funkcja_otaczajaca(drzewo, wezel)}"
+            wynik[grupa][miejsce] = wynik[grupa].get(miejsce, 0) + 1
+    return wynik
+
+
 def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
-    """Każde wywołanie `_build_field_spec` pochodzi z zadeklarowanego miejsca."""
-    zrodlo = Path(__file__).resolve().parents[2] / "src" / "enm" / "domain_operations.py"
-    drzewo = ast.parse(zrodlo.read_text(encoding="utf-8"))
-
-    znalezione: set[str] = set()
-    for wezel in ast.walk(drzewo):
-        if not isinstance(wezel, ast.Call):
-            continue
-        funkcja = wezel.func
-        if isinstance(funkcja, ast.Name) and funkcja.id == "_build_field_spec":
-            nazwa = _funkcja_otaczajaca(drzewo, wezel)
-            # Definicja buildera nie jest jego wywołaniem.
-            if nazwa != "_build_field_spec":
-                znalezione.add(nazwa)
-
-    assert znalezione == MIEJSCA_BUDOWY_POLA["_build_field_spec"], (
-        "Zmienil sie zbior miejsc budujacych pole przez _build_field_spec. "
-        "Nowe miejsce MUSI rozstrzygnac, skad bierze aparaty pola (resolver "
-        f"katalogu vs jawny argument) i dopisac sie do inwentarza. Roznica: "
-        f"{znalezione ^ MIEJSCA_BUDOWY_POLA['_build_field_spec']}"
+    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (14 wywołań buildera),
+    a drogi z wyborem katalogowym przekazują aparaty i konfigurację z resolvera."""
+    znalezione = _wywolania_buildera()
+    assert znalezione == MIEJSCA_BUDOWY_POLA, (
+        "Zmienil sie zbior miejsc budujacych pole przez zbuduj_pole. Nowe miejsce MUSI "
+        "rozstrzygnac, skad bierze aparaty pola (resolver katalogu vs jawny argument) i "
+        f"dopisac sie do inwentarza. Jest: {znalezione}"
     )
+    assert sum(sum(g.values()) for g in znalezione.values()) == 14
 
 
-def test_zadna_operacja_nie_sklada_specyfikacji_pola_recznie() -> None:
-    """W `domain_operations*.py` NIE MA ręcznego literału specyfikacji pola.
+def test_zadna_operacja_nie_sklada_rekordu_pola_recznie() -> None:
+    """W `domain_operations*.py` NIE MA ręcznego literału rekordu pola ani zapisu pola z pominięciem
+    pisarza `enm.pola` (`setdefault("bays")`/`["bays"].append`).
 
-    Pin inwentarza wyżej łapie wyłącznie WYWOŁANIA wspólnego buildera — ścieżka
-    składająca `field_spec` własnym słownikiem jest dla niego niewidzialna,
-    a to właśnie ona niosła dług: stacja na końcu ciągu przez lata gubiła po
-    kolei `config_id`, aparaty pierwotne i metadane pochodzenia, bo każda
-    naprawa dotykała buildera, nie drugiego literału. Zbiór ręcznych miejsc jest
-    ZAMKNIĘTY I PUSTY — deklaracja przypięta testem, nie samym docstringiem.
-
-    Rozpoznanie po parze kluczy `field_ref` + `bus_ref`: specyfikacja pola
-    ZAWSZE niesie obie (przynależność do pola i do szyny), a metadane tworzonych
-    gałęzi/zacisków — nigdy (mają `field_ref`, ale zamiast szyny `station_ref`
-    i znaczniki rysunku).
+    Pin inwentarza wyżej łapie wyłącznie WYWOŁANIA buildera — ścieżka składająca pole własnym
+    słownikiem jest dla niego niewidzialna, a to właśnie ona niosła dług (stacja na końcu
+    ciągu przez lata gubiła `config_id`, aparaty pierwotne i metadane pochodzenia). Literał
+    rekordu pola rozpoznajemy po trójce `ref_id` + `bay_role` + `bus_ref` (metadane gałęzi
+    i zacisków mają `bay_role`, ale nie `bus_ref`; ładunek operacji pola nie ma `ref_id`),
+    a dawnego wpisu — po parze `field_ref` + `bus_ref`.
     """
     znalezione: list[str] = []
     for nazwa_pliku in ("domain_operations.py", "domain_operations_v2.py"):
         zrodlo = Path(__file__).resolve().parents[2] / "src" / "enm" / nazwa_pliku
-        drzewo = ast.parse(zrodlo.read_text(encoding="utf-8"))
+        tekst = zrodlo.read_text(encoding="utf-8")
+        drzewo = ast.parse(tekst)
         for wezel in ast.walk(drzewo):
             if not isinstance(wezel, ast.Dict):
                 continue
@@ -555,28 +554,27 @@ def test_zadna_operacja_nie_sklada_specyfikacji_pola_recznie() -> None:
                 for klucz in wezel.keys
                 if isinstance(klucz, ast.Constant) and isinstance(klucz.value, str)
             }
-            if {"field_ref", "bus_ref"} <= klucze:
+            if {"ref_id", "bay_role", "bus_ref"} <= klucze or {"field_ref", "bus_ref"} <= klucze:
                 znalezione.append(
                     f"{nazwa_pliku}:{wezel.lineno} w {_funkcja_otaczajaca(drzewo, wezel)}"
                 )
+        for zakazany in ('setdefault("bays"', '["bays"].append', 'get("bays", []).append'):
+            if zakazany in tekst:
+                znalezione.append(f"{nazwa_pliku}: zapis pola z pominięciem pisarza ({zakazany})")
 
     assert znalezione == [], (
-        "Wrocila reczna budowa specyfikacji pola poza wspolnym builderem "
-        f"(_build_field_spec): {znalezione}. Kazdy klucz kontraktu pola trzeba "
-        "wtedy dokladac w dwoch miejscach naraz — dokladnie stad wzial sie dlug "
-        "gubionych metadanych pochodzenia pola."
+        "Wrocila reczna budowa albo zapis rekordu pola poza enm.pola "
+        f"(zbuduj_pole/dodaj_pole): {znalezione}."
     )
-    assert MIEJSCA_BUDOWY_POLA["reczne"] == set()
 
 
 def test_obie_drogi_budowy_stacji_materializuja_aparaty_przez_resolver() -> None:
     """Obie drogi budowy stacji dają ten sam efekt dla tego samego wskazania.
 
-    `append_station_on_endpoint` składała specyfikację pola własnym literałem
-    słownika (nie przez `_build_field_spec`), więc sam pin inwentarza by jej nie
-    złapał — do karty K-K NIGDY nie zapisywała aparatów pola. Ręczna droga
-    została zlikwidowana (obie wołają wspólny builder), ale test zostaje: pilnuje
-    RÓWNOŚCI WYNIKU obu dróg, czyli tego, po co je scalono.
+    `append_station_on_endpoint` składała pole własnym literałem słownika, więc sam pin
+    inwentarza by jej nie złapał — do karty K-K NIGDY nie zapisywała aparatów pola. Obie
+    drogi wołają teraz `enm.pola.zbuduj_pole` z aparatami z resolvera; test pilnuje RÓWNOŚCI
+    WYNIKU obu dróg, czyli tego, po co je scalono.
     """
     odpowiedz = _uruchom("koniec_ciagu", POLE_MODULARNE, RODZINA_MODULARNA)
     assert odpowiedz.get("error") in (None, ""), odpowiedz

@@ -11,6 +11,14 @@ import json
 
 import pytest
 from application.analyses.ochrona_lom import _spz_verdict, build_ochrona_lom_view
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_NN_FIELD_SPECS as KLUCZ_NN,
+)
+from enm.migrations.field_specs_promocja import BladMigracjiPol
+from enm.migrations.field_specs_promocja import migruj as migruj_pola
 from enm.models import (
     Bay,
     Bus,
@@ -433,18 +441,18 @@ def test_wywod_deterministic_two_builds_identical() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Pola w KANONICZNEJ postaci modelu (`substations[].meta.field_specs`)
+# Pola z rekordów `bays` — jedyny nośnik pól (karta W5-B)
 # ---------------------------------------------------------------------------
 
 
-def _specyfikacja_pola(
+def _wpis_pola_archiwum(
     field_ref: str = "stn/1/sn_field/001",
     bus_ref: str = "bus_oze",
     bay_role: str = "OUT",
     protection_ref: str | None = "prot_lom",
 ) -> dict:
-    """Specyfikacja pola tak, jak zapisują ją operacje domenowe (`insert_station_
-    on_segment_sn`, `add_converter_source`) — w `Substation.meta.field_specs`."""
+    """Dawny wpis pola z archiwum (sprzed karty W5-B) — tak zapisywały go operacje
+    domenowe w `Substation.meta` stacji."""
     return {
         "field_ref": field_ref,
         "name": "Pole liniowe wyjściowe 2",
@@ -457,15 +465,15 @@ def _specyfikacja_pola(
     }
 
 
-def _enm_z_polem_kanonicznym(
-    specs: list[dict],
+def _enm_z_archiwum(
+    wpisy: list[dict],
     *,
+    klucz_archiwum: str = KLUCZ_SN,
     protection_assignments: list[ProtectionAssignment] | None = None,
     bays: list[Bay] | None = None,
-    klucz_specyfikacji: str = "field_specs",
 ) -> EnergyNetworkModel:
     return EnergyNetworkModel(
-        header=ENMHeader(name="LoM pola kanoniczne", hash_sha256="hash-lom-pola"),
+        header=ENMHeader(name="LoM pola z archiwum", hash_sha256="hash-lom-pola"),
         buses=[Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15.0)],
         generators=[_generator()],
         bays=bays or [],
@@ -475,31 +483,29 @@ def _enm_z_polem_kanonicznym(
                 name="Stacja",
                 station_type="mv_lv",
                 bus_refs=["bus_oze"],
-                meta={klucz_specyfikacji: specs},
+                meta={klucz_archiwum: wpisy},
             )
         ],
         protection_assignments=protection_assignments or [],
     )
 
 
-@pytest.mark.parametrize("klucz", ["field_specs", "nn_field_specs"])
-def test_pole_w_kanonicznej_postaci_modelu_jest_oceniane(klucz: str) -> None:
-    """Pole zapisane przez operacje domenowe (meta stacji) MUSI być oceniane.
+@pytest.mark.parametrize("klucz", [KLUCZ_SN, KLUCZ_NN])
+def test_pole_z_archiwum_po_migracji_jest_oceniane(klucz: str) -> None:
+    """Pole zapisane dawnym wpisem stacji MUSI być oceniane — po migracji wejścia do
+    rekordu `bays` (karta W5-B), nie drugą projekcją wpisu w ocenie LoM.
 
-    DEFEKT, KTÓRY TO ZAMYKA (2026-09-17, zmierzony wprost): ocena LoM czytała
-    pola WYŁĄCZNIE z legacy `bays`, którego dzisiejsze operacje domenowe NIE
-    zapisują — model zbudowany kreatorem (GPZ → magistrala → stacja → pole
-    wytwórcy) dawał widok z ZEREM ocenionych pól i komunikatem „moduły bez pola
-    przyłączeniowego", choć pola w modelu są. Test pokrywa OBA klucze
-    specyfikacji (`field_specs` SN i `nn_field_specs` nN), bo defekt siedział w
-    źródle danych, nie w konkretnym polu.
-    """
+    Intencja zachowana (defekt 2026-09-17: ocena czytała wyłącznie `bays`, a operacje
+    pisały wpisy `meta` — zero ocenionych pól). Po W5-B operacje i migracja piszą rekord
+    `bays`, a ocena czyta wyłącznie go; iloczyn obu dawnych kluczy wpisu."""
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.2)
-    enm = _enm_z_polem_kanonicznym(
-        [_specyfikacja_pola()],
+    archiwum = _enm_z_archiwum(
+        [_wpis_pola_archiwum()],
+        klucz_archiwum=klucz,
         protection_assignments=[_assignment([setting])],
-        klucz_specyfikacji=klucz,
     )
+    enm, zmieniono = migruj_pola(archiwum)
+    assert zmieniono
     view = build_ochrona_lom_view(enm)
     assert view["modules_without_field"] == []
     assert [pole["bay_ref"] for pole in view["fields"]] == ["stn/1/sn_field/001"]
@@ -507,36 +513,82 @@ def test_pole_w_kanonicznej_postaci_modelu_jest_oceniane(klucz: str) -> None:
     assert rocof and rocof[0]["severity"] == "WARN"
 
 
-def test_pole_jawne_i_kanoniczne_o_tej_samej_referencji_liczy_sie_raz() -> None:
-    """Ta sama referencja w `bays` i w `meta.field_specs` = JEDNO pole w widoku.
-
-    Predykaty parami: zbiór pól wchodzących do oceny i zbiór pól „pokrytych"
-    (do wyliczenia modułów bez pola) pochodzą z jednego odczytu — duplikat
-    podwoiłby wiersze ekranu i licznik statusów."""
+def test_pole_liczy_sie_raz_bo_rekord_pola_jest_jedynym_nosnikiem() -> None:
+    """Jedno pole = jeden rekord `bays` — widok nie ma drugiego kanału, z którego pole
+    mogłoby przyjść drugi raz (dawniej: `bays` + wpis `meta` o tej samej referencji).
+    Migracja wpisu o referencji istniejącego rekordu bez `bay_ref` odmawia nazwanym błędem
+    zamiast zgadywać, który z dwóch jest prawdą."""
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=3.0)
-    enm = _enm_z_polem_kanonicznym(
-        [_specyfikacja_pola(field_ref="bay_oze")],
-        protection_assignments=[_assignment([setting])],
+    enm = _enm(
         bays=[_bay(ref="bay_oze")],
+        generators=[_generator()],
+        protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
     assert [pole["bay_ref"] for pole in view["fields"]] == ["bay_oze"]
     assert view["summary"]["fields_total"] == 1
+    with pytest.raises(BladMigracjiPol):
+        migruj_pola(
+            _enm_z_archiwum([_wpis_pola_archiwum(field_ref="bay_oze")], bays=[_bay(ref="bay_oze")])
+        )
 
 
-def test_specyfikacja_bez_tozsamosci_pola_jest_pomijana_bez_zgadywania() -> None:
-    """Specyfikacja bez referencji/szyny/roli z kontraktu NIE staje się polem.
-
-    Ocena LoM woli pominąć pole, którego nie umie zidentyfikować, niż podstawić
-    rolę albo szynę „domyślną" — moduł zostaje wtedy uczciwie zgłoszony jako
-    wytwórca BEZ pola przyłączeniowego."""
-    enm = _enm_z_polem_kanonicznym(
-        [
-            {"field_ref": "bez_szyny", "bay_role": "OUT"},
-            {"bus_ref": "bus_oze", "bay_role": "OUT"},
-            _specyfikacja_pola(field_ref="zla_rola", bay_role="NIEZNANA"),
-        ]
+@pytest.mark.parametrize(
+    "wpis",
+    [
+        {"field_ref": "bez_szyny", "bay_role": "OUT"},
+        {"bus_ref": "bus_oze", "bay_role": "OUT"},
+        _wpis_pola_archiwum(field_ref="zla_rola", bay_role="NIEZNANA"),
+    ],
+    ids=["bez-szyny", "bez-referencji", "rola-spoza-kontraktu"],
+)
+def test_wpis_bez_tozsamosci_pola_to_nazwana_odmowa_migracji(wpis: dict) -> None:
+    """Wpis bez referencji, szyny albo roli z kontraktu NIE staje się polem po cichu:
+    migracja odmawia nazwanym błędem (bez zgadywania roli albo szyny), a ocena LoM modelu
+    bez pola zgłasza wytwórcę uczciwie jako moduł BEZ pola przyłączeniowego."""
+    with pytest.raises(ValueError):
+        migruj_pola(_enm_z_archiwum([wpis]))
+    view = build_ochrona_lom_view(
+        _enm(bays=[], generators=[_generator()], protection_assignments=[])
     )
-    view = build_ochrona_lom_view(enm)
     assert view["fields"] == []
     assert view["modules_without_field"] == ["gen_pv"]
+
+
+@pytest.mark.parametrize("wytworca_na_zacisku", [True, False])
+@pytest.mark.parametrize("rola_pola_obok", ["IN", "OUT", "TR", "FEEDER"])
+def test_modul_nalezy_do_pola_w_punkcie_przylaczenia(
+    wytworca_na_zacisku: bool, rola_pola_obok: str
+) -> None:
+    """Karta W5-B (POLA-W-TORZE w ocenie LoM): moduł wytwórczy należy do pola, w którego
+    PUNKCIE PRZYŁĄCZENIA stoi — własny zacisk za aparatem pola, a bez zacisku szyna pola
+    (`enm.pola.punkt_przylaczenia_pola`). Iloczyn: {wytwórca na zacisku pola źródłowego, na
+    szynie} × {inne pole stojące na tej samej szynie stacji}. Pole obok (wejściowe, wyjściowe,
+    transformatorowe, odpływowe) nigdy nie przypisuje sobie cudzego modułu, a pole źródłowe
+    z zaciskiem nie gubi swojego."""
+    zacisk = "bus_oze_zacisk"
+    pole_zrodlowe = _bay(ref="bay_oze").model_copy(
+        update={"terminal_bus_ref": zacisk if wytworca_na_zacisku else None}
+    )
+    pole_obok = Bay(
+        ref_id="bay_obok",
+        name="Pole obok",
+        bay_role=rola_pola_obok,
+        substation_ref="stac_1",
+        bus_ref="bus_oze",
+        terminal_bus_ref="bus_obok_zacisk",
+    )
+    enm = _enm(
+        bays=[pole_zrodlowe, pole_obok],
+        generators=[_generator(bus=zacisk if wytworca_na_zacisku else "bus_oze")],
+        protection_assignments=[],
+        buses=[
+            Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15.0),
+            Bus(ref_id=zacisk, name="Zacisk pola OZE", voltage_kv=15.0),
+            Bus(ref_id="bus_obok_zacisk", name="Zacisk pola obok", voltage_kv=15.0),
+        ],
+    )
+    view = build_ochrona_lom_view(enm)
+    assert view["modules_without_field"] == []
+    moduly = {pole["bay_ref"]: pole["generating_module_refs"] for pole in view["fields"]}
+    assert moduly == {"bay_oze": ["gen_pv"]}

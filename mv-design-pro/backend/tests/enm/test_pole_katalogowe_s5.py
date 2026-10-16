@@ -33,6 +33,7 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
+from enm.pola import pola_sn_stacji
 from enm.pole_katalogowe import (
     OZNACZENIE_KANONICZNE_APARATU,
     RODZAJ_ENM_DLA_APARATU_KATALOGU,
@@ -247,12 +248,12 @@ def _payload_pola(przypadek: Przypadek, snapshot: dict[str, Any], **nadpisania: 
 
 def _specyfikacje_pol(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    return list((stacja.get("meta") or {}).get("field_specs") or [])
+    return pola_sn_stacji(snapshot, stacja["ref_id"])
 
 
 def _nowe_pole(snapshot: dict[str, Any], przed: dict[str, Any]) -> dict[str, Any]:
-    znane = {spec["field_ref"] for spec in _specyfikacje_pol(przed)}
-    nowe = [spec for spec in _specyfikacje_pol(snapshot) if spec["field_ref"] not in znane]
+    znane = {spec["ref_id"] for spec in _specyfikacje_pol(przed)}
+    nowe = [spec for spec in _specyfikacje_pol(snapshot) if spec["ref_id"] not in znane]
     assert len(nowe) == 1, f"Oczekiwano jednego nowego pola, jest {len(nowe)}"
     return nowe[0]
 
@@ -359,7 +360,7 @@ def test_iloczyn_cech_materializacji_pola(
     assert przypadek.oczekiwany_aparat in rodzaje, f"{przypadek.opis_pl}: {rodzaje}"
     for aparat in aparaty:
         assert aparat["catalog_ref"], f"{przypadek.opis_pl}: aparat bez referencji katalogu"
-        assert aparat["device_ref"].startswith(pole["field_ref"])
+        assert aparat["device_ref"].startswith(pole["ref_id"])
     # Powiązania katalogowe pola (rodzina/szablon/producent) są DANĄ pola.
     assert pole["bay_template_ref"]
     assert pole["switchgear_family_ref"]
@@ -367,7 +368,7 @@ def test_iloczyn_cech_materializacji_pola(
     galezie_pola = [
         galaz
         for galaz in snapshot_po["branches"]
-        if (galaz.get("meta") or {}).get("field_ref") == pole["field_ref"]
+        if (galaz.get("meta") or {}).get("field_ref") == pole["ref_id"]
     ]
     assert len(galezie_pola) == 1, przypadek.opis_pl
     assert galezie_pola[0]["type"] == przypadek.oczekiwany_typ_galezi, przypadek.opis_pl
@@ -737,4 +738,4 @@ def test_kanoniczny_szablon_pola_zachowuje_dotychczasowa_sciezke() -> None:
         "CABLE_HEAD",
     ]
     # Ścieżka kanoniczna NIE dorabia referencji katalogowej, której nie ma.
-    assert all("catalog_ref" not in aparat for aparat in pole["primary_devices"])
+    assert all(aparat.get("catalog_ref") is None for aparat in pole["primary_devices"])

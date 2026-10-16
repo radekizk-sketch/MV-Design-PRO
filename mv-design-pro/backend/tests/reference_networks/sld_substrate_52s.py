@@ -69,6 +69,7 @@ from typing import Any
 
 import networkx as nx
 from enm.hash import hash_migawki_enm
+from enm.pola import pola_sn_stacji
 
 # ---------------------------------------------------------------------------
 # Catalog constants (verified against mv_converter_catalog.py + mv_transformer_catalog.py)
@@ -195,15 +196,10 @@ def _try_op(
 
 def _feeder_port_ref(enm: dict[str, Any], station_ref: str) -> str | None:
     """Return the BRANCH port ref for the FEEDER (LINIA_ODG) bay."""
-    for stn in enm.get("substations", []):
-        if stn.get("ref_id") != station_ref:
-            continue
-        for spec in stn.get("meta", {}).get("field_specs", []):
-            role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
-            if role in ("LINIA_ODG", "FEEDER"):
-                field_ref = spec.get("field_ref")
-                if field_ref:
-                    return f"{field_ref}.BRANCH"
+    for spec in pola_sn_stacji(enm, station_ref):
+        role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
+        if role in ("LINIA_ODG", "FEEDER"):
+            return f"{spec['ref_id']}.BRANCH"
     return None
 
 

@@ -20,7 +20,7 @@ import type {
 } from '../results-inspector/types';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { StationBatchPlanner } from '../network-build/station-templates';
-import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { selectSnFieldCount, useNetworkBuildStore } from '../network-build/networkBuildStore';
 // 18 form components zaimportowane przez OPERATION_FORM_REGISTRY (decompose Etap 11)
 import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
@@ -507,7 +507,7 @@ function buildWorkspaceProofCandidateRefs(
   const station = snapshot.substations?.find((item) => proofElementMatches(item, elementId));
   appendObjectProofRefs(refs, station, ['id', 'ref_id', 'name']);
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
-  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+  for (const busRef of station ? [...szynyStacji(snapshot, station)].sort() : []) {
     appendUniqueProofRef(refs, busRef);
   }
   for (const transformer of transformatoryNalezaceDoStacji(snapshot, station)) appendUniqueProofRef(refs, transformer.ref_id);
@@ -1229,7 +1229,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     loads: snapshot?.loads?.length ?? 0,
     generators: snapshot?.generators?.length ?? 0,
     substations: snapshot?.substations?.length ?? 0,
-    bays: snapshot?.bays?.length ?? 0,
+    // Karta W5-B: licznik „pól SN” — pola SN stacji, nie cała kolekcja `bays` (pola nN, ZKSN).
+    bays: selectSnFieldCount(snapshot ?? null),
   };
   const batchTargetSegmentRefs = (snapshot?.branches ?? [])
     .filter((branch) => branch.type === 'cable' || branch.type === 'line_overhead')

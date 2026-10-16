@@ -59,6 +59,7 @@ from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny (dzielony z upstream_equivalent.py)
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
+from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.core.topologia import poziomy, przeglad_wszerz_od
@@ -275,10 +276,11 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
 
     bus_by_ref = {b.ref_id: b for b in enm.buses}
     owner_by_bus: dict[str, Substation] = {}
+    poziom = poziom_pol(enm)
     for st in enm.substations:
         # POLA-W-TORZE: szyny za aparatami pól nN (odpływy, zacisk wyłącznika głównego) należą
         # do stacji — jedno źródło przynależności (`enm.tor_pola.szyny_stacji`).
-        for bus_ref in sorted(szyny_stacji(st, enm.branches)):
+        for bus_ref in sorted(szyny_stacji(enm, st, poziom)):
             owner_by_bus.setdefault(bus_ref, st)
 
     # Sąsiedztwo z WSZYSTKICH gałęzi, niezależnie od `status` — topologia

@@ -19,11 +19,12 @@ import type {
   EnergyNetworkModel,
   Branch as ENMBranch,
   Generator as ENMGenerator,
+  Bay,
   Substation as ENMSubstation,
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
-import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
+import { polaSnStacji } from '../../shared/polaStacji';
 import { kontekstTransformatorowStacji, transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
 import {
   type SourceConnectionVariantInputV1,
@@ -128,7 +129,12 @@ export interface TopologyDeviceV1 {
   readonly bayRef?: string | null;
 }
 
-export interface TopologyFieldSpecV1 {
+/**
+ * Pole stacji w wejściu topologii — projekcja rekordu `bays` (karta W5-B: jedyny nośnik pól).
+ * Nazwa = nazwa rekordu (builder backendu `enm.pola.zbuduj_pole` nadaje nazwę roli, gdy
+ * projektant jej nie podał — jedno źródło reguły nazwy).
+ */
+export interface TopologyPoleV1 {
   readonly fieldRef: string;
   readonly name: string;
   readonly bayRole: string;
@@ -155,8 +161,8 @@ export interface TopologyStationV1 {
   readonly branchIds: readonly string[];
   readonly switchIds: readonly string[];
   readonly transformerIds: readonly string[];
-  readonly fieldSpecs?: readonly TopologyFieldSpecV1[];
-  readonly nnFieldSpecs?: readonly TopologyFieldSpecV1[];
+  /** Pola SN stacji (rekordy `bays` na szynie SN, `polaSnStacji`); `undefined` = stacja bez pól. */
+  readonly pola?: readonly TopologyPoleV1[];
 }
 
 /**
@@ -341,81 +347,31 @@ function firstString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function stringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    .map(item => item.trim());
+function sortPola(pola: readonly TopologyPoleV1[]): TopologyPoleV1[] {
+  return [...pola].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
 }
 
-function sortFieldSpecs(specs: readonly TopologyFieldSpecV1[]): TopologyFieldSpecV1[] {
-  return [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
-}
-
-function normalizeFieldSpec(raw: unknown): TopologyFieldSpecV1 | null {
-  if (!isRecord(raw)) return null;
-  const fieldRef = firstString(raw.field_ref ?? raw.fieldRef ?? raw.ref_id ?? raw.refId);
-  const busRef = firstString(raw.bus_ref ?? raw.busRef);
-  if (!fieldRef || !busRef) return null;
-  const bayRole = firstString(raw.bay_role ?? raw.bayRole) ?? 'FEEDER';
-  const rawMeta = isRecord(raw.meta) ? { ...raw.meta } : {};
-  const explicitName = firstString(raw.name ?? raw.field_name ?? raw.fieldName)
-    ?? firstString(rawMeta.name ?? rawMeta.field_name ?? rawMeta.display_name);
-  const name = explicitName && explicitName !== fieldRef
-    ? explicitName
-    : fieldRoleLabelPl(bayRole); // nazwa roli z kanonu słownictwa ról pól (karta #141)
+function poleTopologii(bay: Bay): TopologyPoleV1 {
   return {
-    fieldRef,
-    name,
-    bayRole,
-    busRef,
-    equipmentRefs: stringList(raw.equipment_refs ?? raw.equipmentRefs),
-    protectionRef: firstString(raw.protection_ref ?? raw.protectionRef),
-    gpzSectionId: firstString(raw.gpz_section_id ?? raw.gpzSectionId),
-    tags: stringList(raw.tags),
-    meta: rawMeta,
+    fieldRef: bay.ref_id,
+    name: bay.name,
+    bayRole: bay.bay_role,
+    busRef: bay.bus_ref,
+    equipmentRefs: [...(bay.equipment_refs ?? [])],
+    protectionRef: firstString(bay.protection_ref),
+    gpzSectionId: firstString(bay.gpz_section_id),
+    tags: [...(bay.tags ?? [])],
+    meta: bay.meta ?? {},
   };
 }
 
-function hasExplicitFieldSpecs(meta: unknown, key: 'field_specs' | 'nn_field_specs'): boolean {
-  return isRecord(meta) && Array.isArray(meta[key]);
-}
-
-function readFieldSpecsFromMeta(meta: unknown, key: 'field_specs' | 'nn_field_specs'): TopologyFieldSpecV1[] {
-  if (!isRecord(meta)) return [];
-  const rawSpecs = meta[key];
-  if (!Array.isArray(rawSpecs)) return [];
-  return sortFieldSpecs(
-    rawSpecs
-      .map(normalizeFieldSpec)
-      .filter((spec): spec is TopologyFieldSpecV1 => spec !== null),
-  );
-}
-
-function isConfiguredGpzFieldSpec(spec: TopologyFieldSpecV1): boolean {
-  if (spec.equipmentRefs.length > 0) return true;
-  if (isRecord(spec.meta.catalog_binding)) return true;
-  return firstString(spec.meta.apparatus_kind) !== null
-    || firstString(spec.meta.source_field_kind) !== null;
-}
-
-function synthesizeGpzFieldSpecs(substation: ENMSubstation): TopologyFieldSpecV1[] {
-  return sortFieldSpecs(
-    (substation.gpz_sections ?? []).map((section) => ({
-      fieldRef: `${substation.ref_id}:section:${section.section_id}:field`,
-      name: section.line_field_name || `Pole GPZ ${section.order + 1}`,
-      bayRole: 'FEEDER',
-      busRef: section.bus_ref,
-      equipmentRefs: [],
-      protectionRef: null,
-      gpzSectionId: section.section_id,
-      tags: ['gpz_line_field'],
-      meta: {
-        gpz_section_id: section.section_id,
-        gpz_section_order: section.order,
-      },
-    })),
-  );
+/** Pole GPZ rysowane w topologii: pole z aparatami albo z jawnym wiązaniem/rodzajem aparatu
+ *  (`meta.catalog_binding`, `meta.apparatus_kind`, `meta.source_field_kind`). */
+function isConfiguredGpzPole(pole: TopologyPoleV1): boolean {
+  if (pole.equipmentRefs.length > 0) return true;
+  if (isRecord(pole.meta.catalog_binding)) return true;
+  return firstString(pole.meta.apparatus_kind) !== null
+    || firstString(pole.meta.source_field_kind) !== null;
 }
 
 /**
@@ -507,18 +463,14 @@ export function readTopologyFromENM(
   // --- Substations ---
   // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra backendu `szynyStacji` (szyny
   // główne, zaciski pól SN, końce aparatów pól nN); szyna wspólna → pierwsza stacja modelu.
-  const stationBusMap = new Map<string, string>(stacjaSzyn(enm.substations, enm.branches));
+  const stationBusMap = new Map<string, string>(stacjaSzyn(enm));
   const kontekstTransformatorow = kontekstTransformatorowStacji(enm);
-  const indeksPolNn = kontekstTransformatorow.indeksPolNn;
   const stations: TopologyStationV1[] = enm.substations.map((sub) => {
-    const meta = (sub as { meta?: unknown }).meta;
     const stationKind = enmStationKind(sub);
-    const hasExplicitSnFieldSpecs = hasExplicitFieldSpecs(meta, 'field_specs');
-    const fieldSpecs = readFieldSpecsFromMeta(meta, 'field_specs');
-    const renderableFieldSpecs = stationKind === StationKind.MAIN_SUBSTATION
-      ? fieldSpecs.filter(isConfiguredGpzFieldSpec)
-      : fieldSpecs;
-    const nnFieldSpecs = readFieldSpecsFromMeta(meta, 'nn_field_specs');
+    // Karta W5-B: pola SN stacji = rekordy `bays` (pole GPZ bez rekordu = brak pola — dawna
+    // synteza pól z `gpz_sections` skasowana).
+    const polaSn = sortPola(polaSnStacji(enm, sub.ref_id).map(poleTopologii));
+    const rysowane = stationKind === StationKind.MAIN_SUBSTATION ? polaSn.filter(isConfiguredGpzPole) : polaSn;
     return {
       id: sub.ref_id,
       name: sub.name,
@@ -527,16 +479,11 @@ export function readTopologyFromENM(
       voltageKv: sub.bus_refs.length > 0
         ? (busVoltageMap.get(sub.bus_refs[0]) ?? null)
         : null,
-      busIds: [...szynyStacji(sub, enm.branches, indeksPolNn)].sort(),
+      busIds: [...szynyStacji(enm, sub)].sort(),
       branchIds: [],
       switchIds: [],
       transformerIds: transformatoryNalezaceDoStacji(enm, sub, kontekstTransformatorow).map((tr) => tr.ref_id).sort(),
-      fieldSpecs: renderableFieldSpecs.length > 0
-        ? renderableFieldSpecs
-        : (!hasExplicitSnFieldSpecs && sub.gpz_sections?.length
-            ? synthesizeGpzFieldSpecs(sub)
-            : undefined),
-      nnFieldSpecs: nnFieldSpecs.length > 0 ? nnFieldSpecs : undefined,
+      pola: rysowane.length > 0 ? rysowane : undefined,
     };
   });
 
@@ -552,8 +499,9 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [],
-      fieldSpecs: undefined,
-      nnFieldSpecs: undefined,
+      // Pola rozdzielnicy ZKSN (`polaZksn`) rysuje znacznik punktu rozgałęzienia
+      // (`enmToSldAdapter.ts::branchPointSwitchgearFieldCount`), nie rząd pól stacji.
+      pola: undefined,
     });
     stationBusMap.set(bp.bus_ref, bp.ref_id);
   }

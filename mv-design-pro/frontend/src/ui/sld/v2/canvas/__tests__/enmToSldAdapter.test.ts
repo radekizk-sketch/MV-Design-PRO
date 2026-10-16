@@ -16,9 +16,16 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
-import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
+import {
+  buildSldDataFromSnapshot,
+  projectBayTelemetry,
+  resolveBayCtRatingAnnotations,
+  resolveBayProtectionMarking,
+  resolveBayVtMountings,
+} from '../enmToSldAdapter';
 import { FIELD_ROLE } from '../../domain/apparatusContracts';
 import type {
+  Bay,
   BayPrimaryDevice,
   BayRuntimeState,
   BaySwitchState,
@@ -26,6 +33,8 @@ import type {
   LogicalViewsV1,
 } from '../../../../../types/enm';
 import { at } from '../../../../../test/arrayAt';
+import { pole } from '../../../../../test/pola';
+import { polaSnStacji } from '../../../../shared/polaStacji';
 
 function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
   return {
@@ -109,6 +118,26 @@ function attachMainRun(
       stations: stationRefs.map((substation_ref, index) => ({ substation_ref, order: index + 1 })),
     },
   ];
+}
+
+/** Rekordy pól rozdzielnicy ZKSN — kształt `enm.pola.pola_zksn_z_portow` (WE, WY, ODG n). */
+function polaZksnTestowe(punkt: string, szyna: string, odgalezien: number): Bay[] {
+  const porty: [string, Bay['bay_role'], string, string][] = [
+    ['MAIN_IN', 'IN', 'LINIA_IN', 'WE'],
+    ['MAIN_OUT', 'OUT', 'LINIA_OUT', 'WY'],
+    ...Array.from({ length: odgalezien }, (_, i): [string, Bay['bay_role'], string, string] => [
+      odgalezien > 1 ? `BRANCH_${i + 1}` : 'BRANCH', 'OUT', 'LINIA_ODG', `ODG ${i + 1}`,
+    ]),
+  ];
+  return porty.map(([port, bay_role, field_role, name]) => pole({
+    ref_id: `${punkt}/pole/${port}`,
+    name,
+    bay_role,
+    field_role,
+    branch_point_ref: punkt,
+    branch_point_port_id: port,
+    bus_ref: szyna,
+  }));
 }
 
 describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
@@ -929,15 +958,22 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     // Karta ETYKIETA-STACJI-PRZELOTOWEJ (§19.3): każda stacja deklaruje rodzaj INNY niż wynika
     // z jej rozdzielnicy — rysunek idzie za polami (1 pole ⇒ końcowa, 2 połączone ⇒ przelotowa,
     // 3 ⇒ odgałęźna, sprzęgło ⇒ sekcyjna).
-    const pola = (ref: string, role: readonly string[]) => ({
-      field_specs: role.map((rola, i) => ({ field_ref: `${ref}/p${i}`, bus_ref: `${ref}/sn`, bay_role: rola })),
-    });
+    // Pola rozdzielnic: rekordy `bays` (karta W5-B — jedyny nośnik pól).
+    const pola = (ref: string, role: readonly string[]) => role.map((rola, i) => ({
+      ref_id: `${ref}/p${i}`, substation_ref: ref, bus_ref: `${ref}/sn`, bay_role: rola, equipment_refs: [],
+    }) as never);
     const snap = buildEmptySnapshot();
     snap.substations = [
-      { id: 's1', ref_id: 'ST-1', name: 'Stacja-1', tags: [], meta: pola('ST-1', ['IN']), station_type: 'branch', bus_refs: ['ST-1/sn'], transformer_refs: [] } as never,
-      { id: 's2', ref_id: 'ST-2', name: 'Stacja-2', tags: [], meta: pola('ST-2', ['IN', 'OUT']), station_type: 'terminal', bus_refs: ['ST-2/sn'], transformer_refs: [] } as never,
-      { id: 's3', ref_id: 'ST-3', name: 'Stacja-3', tags: [], meta: pola('ST-3', ['IN', 'OUT', 'FEEDER']), station_type: 'inline', bus_refs: ['ST-3/sn'], transformer_refs: [] } as never,
-      { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: pola('ST-4', ['IN', 'COUPLER', 'OUT']), station_type: 'mv_lv', bus_refs: ['ST-4/sn'], transformer_refs: [] } as never,
+      { id: 's1', ref_id: 'ST-1', name: 'Stacja-1', tags: [], meta: {}, station_type: 'branch', bus_refs: ['ST-1/sn'], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja-2', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['ST-2/sn'], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'Stacja-3', tags: [], meta: {}, station_type: 'inline', bus_refs: ['ST-3/sn'], transformer_refs: [] } as never,
+      { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: ['ST-4/sn'], transformer_refs: [] } as never,
+    ];
+    snap.bays = [
+      ...pola('ST-1', ['IN']),
+      ...pola('ST-2', ['IN', 'OUT']),
+      ...pola('ST-3', ['IN', 'OUT', 'FEEDER']),
+      ...pola('ST-4', ['IN', 'COUPLER', 'OUT']),
     ];
     snap.branches = [
       { id: 'kabel-1-2', ref_id: 'kabel-1-2', name: 'Kabel 1-2', type: 'cable', from_bus_ref: 'ST-1/sn', to_bus_ref: 'ST-2/sn', tags: [], meta: {} } as never,
@@ -985,7 +1021,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.footprintType).toBe('mv_lv_terminal');
   });
 
-  it('czyta pola SN stacji z meta.field_specs bez legacy bays', () => {
+  it('pola SN stacji z rekordów `bays`: kolejność zapisu, rola kanoniczna, oznaczenie z roli; pola nN poza blokiem SN', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [
       { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-FS' } as never,
@@ -1014,9 +1050,11 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       } as never,
     ];
     snap.bays = [
-      { id: 'legacy-in', ref_id: 'legacy-in', name: 'Pole IN legacy', bay_number: 'Pole IN', bay_role: 'LINE_IN', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-in'], tags: [], meta: {} } as never,
-      { id: 'legacy-out', ref_id: 'legacy-out', name: 'Pole OUT legacy', bay_number: 'Pole OUT', bay_role: 'LINE_OUT', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-out'], tags: [], meta: {} } as never,
-      { id: 'legacy-tr', ref_id: 'legacy-tr', name: 'Pole TR legacy', bay_number: 'Pole TR', bay_role: 'TRANSFORMER', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-tr'], tags: [], meta: {} } as never,
+      pole({ ref_id: 'field-in', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', field_role: 'LINIA_IN', substation_ref: 'ST-FS', bus_ref: 'bus-sn', equipment_refs: ['sw-in'] }),
+      pole({ ref_id: 'field-out', name: 'Pole liniowe wyjściowe 1', bay_role: 'OUT', field_role: 'LINIA_OUT', substation_ref: 'ST-FS', bus_ref: 'bus-sn', equipment_refs: ['sw-out'] }),
+      // Pole nN tej samej stacji — nie jest polem bloku SN.
+      pole({ ref_id: 'field-nn', name: 'Odpływ nN', bay_role: 'FEEDER', substation_ref: 'ST-FS', bus_ref: 'bus-nn' }),
+      pole({ ref_id: 'field-tr', name: 'Pole transformatorowe 1', bay_role: 'TR', field_role: 'TRANSFORMATOROWE', substation_ref: 'ST-FS', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'] }),
     ];
     snap.substations = [
       {
@@ -1024,19 +1062,13 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         ref_id: 'ST-FS',
         name: 'Stacja katalogowa',
         tags: [],
-        meta: {
-          field_specs: [
-            { field_ref: 'field-in', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
-            { field_ref: 'field-out', name: 'Pole liniowe wyjściowe 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
-            { field_ref: 'field-tr', name: 'Pole transformatorowe 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
-          ],
-        },
+        meta: {},
         station_type: 'inline',
         bus_refs: ['bus-sn', 'bus-nn'],
         transformer_refs: ['tr-1'],
       } as never,
     ];
-    attachMainRun(snap, ['ST-FS'], 'run-field-specs');
+    attachMainRun(snap, ['ST-FS'], 'run-pola-stacji');
 
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
@@ -1056,6 +1088,49 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.snBays.map((bay) => bay.bayRef)).toEqual(['field-in', 'field-out', 'field-tr']);
   });
 
+  it('oznaczenie pola bloku stacji: numer pola > krótka nazwa odpływu > skrót roli > nazwa pola (rola spoza kanonu)', () => {
+    const snap = makeStationOnlySnapshot('ST-OZN');
+    snap.bays = [
+      pole({ ref_id: 'p-num', bay_role: 'OUT', field_role: 'LINIA_OUT', substation_ref: 'ST-OZN', bus_ref: 'bus-sn', bay_number: '7', feeder_short_name: 'SADY' }),
+      pole({ ref_id: 'p-krotka', bay_role: 'OUT', field_role: 'LINIA_OUT', substation_ref: 'ST-OZN', bus_ref: 'bus-sn', feeder_short_name: 'SADY' }),
+      pole({ ref_id: 'p-rola', bay_role: 'OUT', field_role: 'LINIA_ODG', substation_ref: 'ST-OZN', bus_ref: 'bus-sn' }),
+      pole({ ref_id: 'p-nazwa', name: 'Pole specjalne', bay_role: 'OUT', field_role: 'NIEZNANA', substation_ref: 'ST-OZN', bus_ref: 'bus-sn' }),
+    ];
+    const bays = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-OZN')?.snBays ?? [];
+    // `field_role` spoza kanonu nie zgaduje roli — spada na rolę modelu (OUT ⇒ WY).
+    expect(bays.map((b) => [b.bayRef, b.designation])).toEqual([
+      ['p-num', '7'],
+      ['p-krotka', 'SADY'],
+      ['p-rola', 'ODG'],
+      ['p-nazwa', 'WY'],
+    ]);
+  });
+
+  it('ZKSN bez rekordów pól: 0 pól rozdzielnicy (brak zapasu z liczby portów)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'zksn-bus', ref_id: 'zksn-bus', name: 'ZKSN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-l', ref_id: 'SEG-L', name: 'Kabel', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'zksn-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'zksn-0', ref_id: 'zksn-0', name: 'ZKSN', tags: [], meta: {}, branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-L', bus_ref: 'zksn-bus', ports: { MAIN_IN: 'b15', MAIN_OUT: 'zksn-bus', BRANCH: ['x', 'y'] },
+        switch_state: 'closed',
+      } as never,
+    ];
+    snap.line_runs = [
+      { id: 'run', run_kind: 'main_trunk', starting_bay_ref: 'b', starting_port_ref: 'b#c', segments: [{ segment_ref: 'SEG-L', order: 1 }], stations: [] },
+    ];
+    const marker = buildSldDataFromSnapshot(snap, null).branchPoints.find((m) => m.id === 'zksn-0');
+    expect(marker?.switchgearFieldCount).toBe(0);
+    snap.bays = polaZksnTestowe('zksn-0', 'zksn-bus', 2);
+    expect(buildSldDataFromSnapshot(snap, null).branchPoints.find((m) => m.id === 'zksn-0')?.switchgearFieldCount).toBe(4);
+  });
+
   it('dodaje dedykowane pole PV do mini-rozdzielni stacji dla przyłączenia SN', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
@@ -1064,17 +1139,16 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         ref_id: 'ST-PV',
         name: 'Stacja PV',
         tags: [],
-        meta: {
-          field_specs: [
-            { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
-            { field_ref: 'field-out', name: 'Pole WY', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
-            { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
-          ],
-        },
+        meta: {},
         station_type: 'inline',
         bus_refs: ['bus-sn'],
         transformer_refs: [],
       } as never,
+    ];
+    snap.bays = [
+      pole({ ref_id: 'field-in', name: 'Pole WE', bay_role: 'IN', field_role: 'LINIA_IN', substation_ref: 'ST-PV', bus_ref: 'bus-sn', equipment_refs: ['sw-in'] }),
+      pole({ ref_id: 'field-out', name: 'Pole WY', bay_role: 'OUT', field_role: 'LINIA_OUT', substation_ref: 'ST-PV', bus_ref: 'bus-sn', equipment_refs: ['sw-out'] }),
+      pole({ ref_id: 'field-tr', name: 'Pole TR', bay_role: 'TR', field_role: 'TRANSFORMATOROWE', substation_ref: 'ST-PV', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'] }),
     ];
     snap.buses = [
       { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-PV' } as never,
@@ -1223,7 +1297,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     // układu SN na „der_station".
     expect(station.footprintType).toBe('mv_lv_terminal');
     expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', hasBlockTransformer: false, count: 1, totalPMw: expect.any(Number) }]);
-    // Zero fabrykacji (B-02): bez `nn_field_specs` liczba odpływów nN = 0,
+    // Zero fabrykacji (B-02): bez rekordów pól nN liczba odpływów nN = 0,
     // NIE „2 bo jest DER".
     expect(station.nnFeedersCount).toBe(0);
     expect(station.totalGenerationKw).toBe(500);
@@ -1700,15 +1774,11 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         bus_ref: 'zksn/bus',
         ports: { MAIN_IN: 'MAIN_IN', MAIN_OUT: 'MAIN_OUT', BRANCH: ['ODG_1'] },
         branch_occupied: {},
-        materialized_params: {
-          switchgear_field_specs: [
-            { role: 'IN', name: 'Pole IN' },
-            { role: 'OUT', name: 'Pole OUT' },
-            { role: 'BRANCH', name: 'Pole ODG 1' },
-          ],
-        },
+        materialized_params: {},
       } as never,
     ];
+    // Karta W5-B: pola rozdzielnicy ZKSN = rekordy `bays` punktu rozgałęzienia.
+    snap.bays = [...snap.bays, ...polaZksnTestowe('bp/zksn-1/zksn', 'zksn/bus', 1)];
     snap.branches = [
       {
         id: 'seg-zksn',
@@ -1892,10 +1962,14 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       // WE i WY ⇒ przelotowa; dawniej z deklaracji `inline` na stacji bez pól i szyn.
       { id: 's0', ref_id: 'ST-0', name: 'Stacja 0', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: ['B1'], transformer_refs: [] } as never,
       {
-        id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], station_type: 'inline', bus_refs: ['B2'], transformer_refs: [],
-        meta: { field_specs: [{ field_ref: 'ST-1/in', bus_ref: 'B2', bay_role: 'IN' }, { field_ref: 'ST-1/out', bus_ref: 'B2', bay_role: 'OUT' }] },
+        id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], station_type: 'inline', bus_refs: ['B2'], transformer_refs: [], meta: {},
       } as never,
       { id: 's2', ref_id: 'ST-2', name: 'Stacja 2', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['B3'], transformer_refs: [] } as never,
+    ];
+    // Pola WE i WY Stacji 1: rekordy `bays` (karta W5-B — jedyny nośnik pól).
+    snap.bays = [
+      { ref_id: 'ST-1/in', substation_ref: 'ST-1', bus_ref: 'B2', bay_role: 'IN', equipment_refs: [] } as never,
+      { ref_id: 'ST-1/out', substation_ref: 'ST-1', bus_ref: 'B2', bay_role: 'OUT', equipment_refs: [] } as never,
     ];
     snap.branches = [
       {
@@ -2533,13 +2607,17 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
       snap.substations.push({
         id, ref_id: id, name: `Stacja ${id}`, tags: [],
         // Karta ETYKIETA-STACJI-PRZELOTOWEJ: S28 jest sekcyjna, bo MA sprzęgło w rozdzielnicy
-        // (rodzaj z pól), a nie dlatego, że tak ją zadeklarowano.
-        meta: i === 28
-          ? { field_specs: [{ field_ref: `${id}/in`, bay_role: 'IN' }, { field_ref: `${id}/sp`, bay_role: 'COUPLER' }] }
-          : {},
+        // (rodzaj z pól — rekordy `bays` niżej, karta W5-B), a nie dlatego, że tak ją zadeklarowano.
+        meta: {},
         station_type: i === 28 ? 'sectional' : 'inline',
         bus_refs: [], transformer_refs: [trId],
       } as never);
+      if (i === 28) {
+        (snap.bays as never[]).push(
+          { ref_id: `${id}/in`, substation_ref: id, bus_ref: `${id}/sn`, bay_role: 'IN', equipment_refs: [] } as never,
+          { ref_id: `${id}/sp`, substation_ref: id, bus_ref: `${id}/sn`, bay_role: 'COUPLER', equipment_refs: [] } as never,
+        );
+      }
       (snap.transformers as never[]).push({
         id: `tr${i}`, ref_id: trId, name: trId, tags: [], meta: {},
         hv_bus_ref: 'busA', lv_bus_ref: `${id}-lv`,
@@ -3379,8 +3457,13 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
 });
 
 
-describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
-  function buildStationFixture(meta: Record<string, unknown>) {
+/**
+ * K30-19 + karta W5-B: liczba odpływów nN stacji = rekordy pól nN stacji (szyna pola w paśmie
+ * nN) roli FEEDER. Iloczyn: {FEEDER nN, OZE nN, FEEDER na szynie SN, FEEDER innej stacji,
+ * FEEDER na szynie bez napięcia} — liczy się wyłącznie pierwszy.
+ */
+describe('countNnFeeders — odpływy nN stacji z rekordów pól nN', () => {
+  function buildStationFixture(bays: Bay[]) {
     const snapshot = buildEmptySnapshot();
     (snapshot as { substations: unknown[] }).substations = [
       {
@@ -3388,21 +3471,17 @@ describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_spec
         ref_id: 'stn/abc/station',
         name: 'Stacja testowa',
         tags: [],
-        meta,
+        meta: {},
         station_type: 'inline',
-        bus_refs: ['stn/abc/sn_bus'],
+        bus_refs: ['stn/abc/sn_bus', 'stn/abc/nn_bus'],
       },
     ];
     (snapshot as { buses: unknown[] }).buses = [
-      {
-        id: 'bus-1',
-        ref_id: 'stn/abc/sn_bus',
-        name: 'SN bus',
-        tags: [],
-        meta: { substation_ref: 'stn/abc/station' },
-        voltage_kv: 15,
-      },
+      { id: 'bus-1', ref_id: 'stn/abc/sn_bus', name: 'SN bus', tags: [], meta: {}, voltage_kv: 15 },
+      { id: 'bus-2', ref_id: 'stn/abc/nn_bus', name: 'nN bus', tags: [], meta: {}, voltage_kv: 0.4 },
+      { id: 'bus-3', ref_id: 'stn/abc/bez_napiecia', name: 'bez napięcia', tags: [], meta: {}, voltage_kv: null },
     ];
+    snapshot.bays = bays;
     (snapshot as { line_runs: unknown[] }).line_runs = [
       {
         id: 'run-station-fixture',
@@ -3415,24 +3494,27 @@ describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_spec
     ];
     return snapshot;
   }
+  const odplyw = (ref: string, bus: string, stacja = 'stn/abc/station', rola: Bay['bay_role'] = 'FEEDER') =>
+    pole({ ref_id: ref, bay_role: rola, substation_ref: stacja, bus_ref: bus });
 
-  it('uses meta.nn_field_specs FEEDER count when available', () => {
-    const snapshot = buildStationFixture({
-      nn_field_specs: [
-        { bay_role: 'FEEDER', field_index: 0 },
-        { bay_role: 'FEEDER', field_index: 1 },
-        { bay_role: 'FEEDER', field_index: 2 },
-        { bay_role: 'OZE', field_index: 3 }, // not a FEEDER
-      ],
-    });
+  it('liczy wyłącznie pola nN TEJ stacji roli FEEDER', () => {
+    const snapshot = buildStationFixture([
+      odplyw('nn-1', 'stn/abc/nn_bus'),
+      odplyw('nn-2', 'stn/abc/nn_bus'),
+      odplyw('nn-3', 'stn/abc/nn_bus'),
+      odplyw('nn-oze', 'stn/abc/nn_bus', 'stn/abc/station', 'OZE'),
+      odplyw('sn-odg', 'stn/abc/sn_bus'),
+      odplyw('obca', 'stn/abc/nn_bus', 'stn/inna/station'),
+      odplyw('bez-napiecia', 'stn/abc/bez_napiecia'),
+    ]);
     const result = buildSldDataFromSnapshot(snapshot, null);
     const station = result.stations.find((s) => s.id === 'stn/abc/station');
     expect(station).toBeDefined();
     expect(station!.nnFeedersCount).toBe(3);
   });
 
-  it('brak meta.nn_field_specs ⇒ 0 (zero fabrykacji — dawna heurystyka „1 bez DER / 2 z DER" usunięta u źródła)', () => {
-    const snapshot = buildStationFixture({});
+  it('brak rekordów pól nN ⇒ 0 (zero fabrykacji — dawna heurystyka „1 bez DER / 2 z DER" usunięta u źródła)', () => {
+    const snapshot = buildStationFixture([]);
     const result = buildSldDataFromSnapshot(snapshot, null);
     const station = result.stations.find((s) => s.id === 'stn/abc/station');
     expect(station).toBeDefined();
@@ -3441,12 +3523,9 @@ describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_spec
 
   it('respects different feeder counts (1, 4, 8)', () => {
     for (const count of [1, 4, 8]) {
-      const snapshot = buildStationFixture({
-        nn_field_specs: Array.from({ length: count }, (_, i) => ({
-          bay_role: 'FEEDER',
-          field_index: i,
-        })),
-      });
+      const snapshot = buildStationFixture(
+        Array.from({ length: count }, (_, i) => odplyw(`nn-${i}`, 'stn/abc/nn_bus')),
+      );
       const result = buildSldDataFromSnapshot(snapshot, null);
       const station = result.stations.find((s) => s.id === 'stn/abc/station');
       expect(station!.nnFeedersCount).toBe(count);
@@ -3596,6 +3675,9 @@ describe('SLD branch point projection', () => {
         switch_state: 'closed',
       } as never,
     ];
+    // Karta W5-B: pola rozdzielnicy ZKSN = rekordy `bays` punktu (WE, WY, ODG) — jak
+    // backend `enm.pola.pola_zksn_z_portow` dla jednego portu odgałęzienia.
+    snap.bays = polaZksnTestowe('zksn-1', 'zksn-bus', 1);
     snap.line_runs = [
       {
         id: 'run-zksn',
@@ -3653,6 +3735,9 @@ describe('SLD branch point projection', () => {
         switch_state: 'closed',
       } as never,
     ];
+    // Karta W5-B: pola rozdzielnicy ZKSN = rekordy `bays` punktu (WE, WY, ODG) — jak
+    // backend `enm.pola.pola_zksn_z_portow` dla jednego portu odgałęzienia.
+    snap.bays = polaZksnTestowe('zksn-1', 'zksn-bus', 1);
     snap.line_runs = [
       {
         id: 'run-zksn',
@@ -3984,6 +4069,11 @@ describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035
   });
 });
 
+/**
+ * F10.6 / CTVT-RENDER — projekcje adnotacji pola (CT, VT, strefa 87T) liczone wprost z rekordu
+ * pola i migawki (`resolveBay*`, te same funkcje rzutuje blok GPZ). Karta W5-B: blok STACJI ich
+ * nie rzutuje (przypięte niżej — decyzja wyglądu SLD oczekuje werdyktu właściciela B-02).
+ */
 describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3/D4/D5, V12K-036)', () => {
   it('ctRatingAnnotations niesie arrangement z Measurement.ct_arrangement, undefined gdy dana niedostarczona', () => {
     const snap = makeStationOnlySnapshot('ST-1');
@@ -4008,8 +4098,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
+    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a.arrangement]));
     expect(byRef.get('ct-1')).toBe('3xCT');
     expect(byRef.get('ct-2')).toBeUndefined();
@@ -4038,8 +4127,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
+    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a]));
     // przeznaczenie CT rozróżnione Z DANYCH (pomiarowy vs zabezpieczeniowy)
     expect(byRef.get('ct-p')?.purpose).toBe('protection');
@@ -4047,40 +4135,6 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     // kanał geometrycznie neutralny: purpose NIE w tekście przekładni
     expect(byRef.get('ct-p')?.ratioText).toBe('300/5');
     expect(byRef.get('ct-m')?.ratioText).toBe('150/5');
-  });
-
-  it('vtArrangements agreguje Measurement.vt_arrangement niepuste VT tego pola, undefined gdy brak danych', () => {
-    const snap = makeStationOnlySnapshot('ST-1');
-    snap.bays = [
-      {
-        id: 'b1', ref_id: 'bay-1', name: 'Pole z open-delta', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-      {
-        id: 'b2', ref_id: 'bay-2', name: 'Pole bez danych układu', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-    ];
-    snap.measurements = [
-      {
-        id: 'm1', ref_id: 'vt-1', name: 'VT1', tags: [], meta: {},
-        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 15000, ratio_secondary: 100 },
-        connection: 'delta', purpose: 'protection', vt_arrangement: 'open_delta',
-      },
-      {
-        id: 'm2', ref_id: 'vt-2', name: 'VT2', tags: [], meta: {},
-        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-2',
-        rating: { ratio_primary: 15000, ratio_secondary: 100 },
-        connection: 'star', purpose: 'protection',
-      },
-    ] as never;
-
-    const r = buildSldDataFromSnapshot(snap, null);
-    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
-    const byRef = new Map(bays.map((b) => [b.bayRef, b.vtArrangements]));
-    expect(byRef.get('bay-1')).toEqual(['open_delta']);
-    expect(byRef.get('bay-2')).toBeUndefined();
   });
 
   it('protectionMarking.ctRefsSecondary przenosi ProtectionAssignment.ct_refs_secondary, undefined gdy puste', () => {
@@ -4110,9 +4164,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const r = buildSldDataFromSnapshot(snap, null);
-    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
-    const byRef = new Map(bays.map((b) => [b.bayRef, b.protectionMarking?.ctRefsSecondary]));
+    const byRef = new Map(snap.bays.map((b) => [b.ref_id, resolveBayProtectionMarking(b, snap)?.ctRefsSecondary]));
     expect(byRef.get('bay-1')).toEqual(['ct-2']);
     expect(byRef.get('bay-2')).toBeUndefined();
   });
@@ -4140,8 +4192,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
+    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a.cores]));
     expect(byRef.get('ct-3rdz')).toBe(3);
     expect(byRef.get('ct-brak')).toBeUndefined();
@@ -4174,13 +4225,46 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const r = buildSldDataFromSnapshot(snap, null);
-    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
-    const byRef = new Map(bays.map((b) => [b.bayRef, b.vtMountingAnnotations]));
+    const byRef = new Map(snap.bays.map((b) => [b.ref_id, resolveBayVtMountings(b, snap)]));
     expect(byRef.get('bay-1')).toEqual([
       { measurementRef: 'vt-cable', identifier: 'VT1', mounting: 'cable' },
     ]);
     expect(byRef.get('bay-2')).toBeUndefined();
+  });
+
+  it('W5-B: blok STACJI nie rzutuje adnotacji pola mimo danych (zabezpieczenia, CT, VT) — rysunek bez zmian wyglądu', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      pole({
+        ref_id: 'bay-1', bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn',
+        protection_codes: ['87T'], protection_ref: 'prot-1',
+      }),
+    ];
+    snap.protection_assignments = [
+      {
+        id: 'assign-diff', ref_id: 'prot-1', name: 'Diff', tags: [], meta: {},
+        breaker_ref: 'cb-1', ct_ref: 'ct-1', device_type: 'differential', settings: [], is_enabled: true,
+      },
+    ] as never;
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 300, ratio_secondary: 5 }, connection: 'star', purpose: 'metering',
+      },
+    ] as never;
+
+    const bay = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays?.[0];
+    expect(bay?.bayRef).toBe('bay-1');
+    // Dane są (resolver je widzi)…
+    expect(resolveBayProtectionMarking(snap.bays[0], snap)?.codes).toEqual(['87T']);
+    expect(resolveBayCtRatingAnnotations(snap.bays[0], snap)).toHaveLength(1);
+    // …a blok stacji ich nie rzutuje.
+    expect(bay?.protectionMarking).toBeUndefined();
+    expect(bay?.ctRatingAnnotations).toBeUndefined();
+    expect(bay?.meteringMeasurementRef).toBeUndefined();
+    expect(bay?.vtArrangements).toBeUndefined();
+    expect(bay?.vtMountingAnnotations).toBeUndefined();
   });
 });
 
@@ -4265,16 +4349,23 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
     expect(byKind.get('generator')).toBeUndefined();
   });
 
-  it('sonda fixtura sldSubstrate52s: 0 pól MA primary_devices — fixtura nie ćwiczy §12.1 (0 Bay[] w ogóle, tylko meta.field_specs)', () => {
+  it('sonda fixtura sldSubstrate52s: pola bloku stacji z torem pierwotnym = rekordy pól SN stacji niosące primary_devices (§12.1)', () => {
     const fixturePath = resolveFixturePath('sldSubstrate52s.enm.json');
     const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-    expect(enm.bays).toHaveLength(0);
     const r = buildSldDataFromSnapshot(enm, null);
-    const withPrimaryDevices = r.stations
+    const narysowane = r.stations
       .flatMap((s) => s.snBays ?? [])
-      .filter((b) => b.primaryDevices !== undefined);
-    expect(withPrimaryDevices).toHaveLength(0);
+      .filter((b) => b.primaryDevices !== undefined)
+      .map((b) => b.bayRef)
+      .sort();
+    // Karta W5-B: jeden nośnik — rekordy `bays` pól SN stacji rysowanych blokiem.
+    const zDanymi = r.stations
+      .flatMap((s) => polaSnStacji(enm, s.id))
+      .filter((b) => (b.primary_devices ?? []).length > 0)
+      .map((b) => b.ref_id)
+      .sort();
+    expect(narysowane).toEqual(zDanymi);
   });
 });
 
@@ -4297,32 +4388,32 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
         ref_id: 'ST-T',
         name: 'Stacja telemetrii',
         tags: [],
-        meta: {
-          field_specs: [
-            {
-              field_ref: 'field-in',
-              name: 'Pole WE',
-              bay_role: 'IN',
-              bus_ref: 'bus-sn',
-              equipment_refs: ['sw-in'],
-              meta: { field_role: 'LINIA_IN' },
-              primary_devices: [
-                {
-                  device_ref: 'q0',
-                  symbol_ref: 'symbol:cb',
-                  kind: 'CB',
-                  placement: 'MIDSTREAM',
-                  is_controllable: true,
-                  ...(switchState === undefined ? {} : { switch_state: switchState }),
-                },
-              ],
-            },
-          ],
-        },
+        meta: {},
         station_type: 'inline',
         bus_refs: ['bus-sn'],
         transformer_refs: [],
       } as never,
+    ];
+    snap.bays = [
+      pole({
+        ref_id: 'field-in',
+        name: 'Pole WE',
+        bay_role: 'IN',
+        field_role: 'LINIA_IN',
+        substation_ref: 'ST-T',
+        bus_ref: 'bus-sn',
+        equipment_refs: ['sw-in'],
+        primary_devices: [
+          {
+            device_ref: 'q0',
+            symbol_ref: 'symbol:cb',
+            kind: 'CB',
+            placement: 'MIDSTREAM',
+            is_controllable: true,
+            ...(switchState === undefined ? {} : { switch_state: switchState }),
+          } as BayPrimaryDevice,
+        ],
+      }),
     ];
     attachMainRun(snap, ['ST-T'], 'run-telemetria');
     return snap;
@@ -4330,7 +4421,7 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
 
   function stanAparatu(snap: EnergyNetworkModel): string | undefined {
     const station = buildSldDataFromSnapshot(snap, null).stations[0];
-    if (!station.snBays) throw new Error('stacja z field_specs powinna nieść snBays');
+    if (!station.snBays) throw new Error('stacja z polami SN powinna nieść snBays');
     return station.snBays[0].primaryDevices?.[0]?.switchState;
   }
 

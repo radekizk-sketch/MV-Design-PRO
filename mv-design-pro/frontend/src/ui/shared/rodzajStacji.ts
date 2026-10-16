@@ -17,15 +17,17 @@
  *     szyn stacji) prowadzą do innej stacji; inaczej końcowa (recenzja NO-GO 2026-07-17
  *     pkt 7: „przelotowa ⇔ oba pola liniowe POŁĄCZONE");
  *  R4 0–1 pole liniowe ⇒ końcowa.
- * Pola: `meta.field_specs` (niepuste), a przy ich braku — elementy `bays` stacji. Rola pola:
- * `meta.field_role`, a gdy nierozpoznana — `bay_role`; rodzaj pola katalogowego (`bay_kind`)
- * potrzeb własnych, rezerwowego i odgromnikowego przesądza przed rolą (w katalogu takie pola
+ * Pola: pola SN stacji z rekordów `bays` (karta W5-B: jedyny nośnik pól; jedno lustro
+ * `polaStacji.ts::polaSnStacji`). Rola pola: `field_role` rekordu, a gdy nierozpoznana —
+ * `bay_role`; rodzaj pola katalogowego (`metadane_pochodzenia.bay_kind` rekordu, we wpisie
+ * składu szablonu `bay_kind`) potrzeb własnych, rezerwowego i odgromnikowego przesądza przed rolą (w katalogu takie pola
  * mają rolę `FEEDER`, ale nie są liniowe); rola nierozpoznana nie liczy się (walidator W044). Rodzaj nie dotyczy GPZ ani wolnostojącej rozdzielnicy nN.
  *
  * Parytet z backendem jest PRZYPIĘTY testem `__tests__/rodzajStacji.parytet.test.ts` na
  * każdej stacji każdego modelu ENM z fikstur generowanych i na modelu iloczynu cech (plik
  * oczekiwań wytwarza backend, `tests/reference_networks/rodzaj_stacji_parytet.py`).
  */
+import { polaSnStacji, type ModelPol, type RekordPola } from './polaStacji';
 import { szynyStacji, type GalazDlaSzyn, type StacjaDlaSzyn } from './szynyStacji';
 
 export type RodzajStacji = 'terminal' | 'inline' | 'branch' | 'sectional';
@@ -101,15 +103,20 @@ export interface PoleDlaRodzaju {
   readonly ref_id?: unknown;
   readonly name?: unknown;
   readonly substation_ref?: unknown;
+  readonly bus_ref?: unknown;
   readonly bay_role?: unknown;
+  readonly field_role?: unknown;
+  /** Rodzaj pola katalogowego we wpisie SKŁADU (szablon, kreator) — rekord pola niesie go
+   *  w `metadane_pochodzenia.bay_kind`. */
   readonly bay_kind?: unknown;
-  readonly meta?: unknown;
+  readonly metadane_pochodzenia?: unknown;
 }
 
 export interface ModelDlaRodzaju {
   readonly substations?: readonly StacjaDlaRodzaju[] | null;
   readonly branches?: readonly GalazDlaRodzaju[] | null;
   readonly bays?: readonly PoleDlaRodzaju[] | null;
+  readonly buses?: readonly { readonly ref_id: string; readonly voltage_kv?: number | null }[] | null;
 }
 
 export interface RodzajStacjiWynik {
@@ -134,10 +141,6 @@ function rekord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function lista(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? value : [];
 }
 
 export function jestRodzajemStacji(value: unknown): value is RodzajStacji {
@@ -193,39 +196,26 @@ function rolaRozpoznana(value: unknown): string | null {
   return rola !== null && rola in KATEGORIA_ROLI_POLA ? rola : null;
 }
 
-/** Rola pola: `meta.field_role`, a gdy nierozpoznana — `bay_role` (`null`: nierozpoznana). */
-export function rolaPolaStacji(pole: { readonly meta?: unknown; readonly bay_role?: unknown }): string | null {
-  return rolaRozpoznana(rekord(pole.meta)?.field_role) ?? rolaRozpoznana(pole.bay_role);
+/** Rola pola: `field_role`, a gdy nierozpoznana — `bay_role` (`null`: nierozpoznana). */
+export function rolaPolaStacji(pole: { readonly field_role?: unknown; readonly bay_role?: unknown }): string | null {
+  return rolaRozpoznana(pole.field_role) ?? rolaRozpoznana(pole.bay_role);
 }
 
-/** Kategoria pola: z rodzaju pola katalogowego (`bay_kind`, także w `meta`), a gdy ten nie
- *  przesądza — z roli (lustro `kategoria_pola`). `null` — rola nierozpoznana. */
+/** Kategoria pola: z rodzaju pola katalogowego (`bay_kind` wpisu składu albo
+ *  `metadane_pochodzenia.bay_kind` rekordu), a gdy ten nie przesądza — z roli (lustro
+ *  `kategoria_pola`). `null` — rola nierozpoznana. */
 export function kategoriaPolaStacji(pole: {
-  readonly meta?: unknown;
+  readonly field_role?: unknown;
   readonly bay_role?: unknown;
   readonly bay_kind?: unknown;
+  readonly metadane_pochodzenia?: unknown;
 }): KategoriaRoli | null {
-  for (const rodzaj of [pole.bay_kind, rekord(pole.meta)?.bay_kind]) {
+  for (const rodzaj of [pole.bay_kind, rekord(pole.metadane_pochodzenia)?.bay_kind]) {
     const wartosc = napis(rodzaj)?.toLowerCase();
     if (wartosc !== undefined && wartosc in KATEGORIA_RODZAJU_POLA) return KATEGORIA_RODZAJU_POLA[wartosc];
   }
   const rola = rolaPolaStacji(pole);
   return rola === null ? null : KATEGORIA_ROLI_POLA[rola];
-}
-
-function polaStacji(stacja: StacjaDlaRodzaju, bays: readonly PoleDlaRodzaju[]): readonly PoleDlaRodzaju[] {
-  const specyfikacje = lista(rekord(stacja.meta)?.field_specs)
-    .map(rekord)
-    .filter((spec): spec is Record<string, unknown> => spec !== null)
-    .filter((spec) => Boolean(
-      napis(spec.field_ref) || napis(spec.bus_ref) || lista(spec.equipment_refs).some((ref) => napis(ref)),
-    ));
-  if (specyfikacje.length > 0) return specyfikacje;
-  const odnosniki = new Set([napis(stacja.ref_id), napis(stacja.id)].filter((r): r is string => r !== null));
-  return bays.filter((bay) => {
-    const ref = napis(bay.substation_ref);
-    return ref !== null && odnosniki.has(ref);
-  });
 }
 
 function wyprowadzeniaPolaczone(
@@ -272,11 +262,13 @@ function wyprowadzeniaPolaczone(
 function obliczRodzajeStacji(model: ModelDlaRodzaju): ReadonlyMap<string, RodzajStacjiWynik> {
   const stacje = (model.substations ?? []).filter((s) => rekord(s) !== null);
   const galezie = (model.branches ?? []).filter((g) => rekord(g) !== null);
-  const bays = (model.bays ?? []).filter((b) => rekord(b) !== null);
+  // Lustra pól i szyn czytają rekordy `bays` (z napięciem szyny dla poziomu pola) — wycinek
+  // migawki w kształcie reguł `polaStacji.ts`.
+  const modelPol = model as ModelPol<RekordPola> & { readonly branches?: readonly GalazDlaRodzaju[] | null };
   const szyny = new Map<string, ReadonlySet<string>>();
   for (const stacja of stacje) {
     const ref = napis(stacja.ref_id);
-    if (ref) szyny.set(ref, szynyStacji(stacja, galezie));
+    if (ref) szyny.set(ref, szynyStacji(modelPol, stacja));
   }
   const wynik = new Map<string, RodzajStacjiWynik>();
   for (const stacja of stacje) {
@@ -287,11 +279,10 @@ function obliczRodzajeStacji(model: ModelDlaRodzaju): ReadonlyMap<string, Rodzaj
     let liniowe = 0;
     let sprzeglo = false;
     const nierozpoznane: string[] = [];
-    for (const pole of polaStacji(stacja, bays)) {
+    for (const pole of polaSnStacji(modelPol, ref) as readonly PoleDlaRodzaju[]) {
       const kategoria = kategoriaPolaStacji(pole);
       if (kategoria === null) {
-        const spec = pole as Record<string, unknown>;
-        nierozpoznane.push(String(napis(spec.field_ref) ?? napis(spec.ref_id)));
+        nierozpoznane.push(String(napis(pole.ref_id)));
         continue;
       }
       if (kategoria === 'liniowe') liniowe += 1;
@@ -321,8 +312,9 @@ function obliczRodzajeStacji(model: ModelDlaRodzaju): ReadonlyMap<string, Rodzaj
   return new Map([...wynik.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
-/** Pamięć podręczna per migawka: klucz = tożsamość list stacji i gałęzi (migawki są niemutowalne). */
-const PAMIEC = new WeakMap<object, WeakMap<object, WeakMap<object, ReadonlyMap<string, RodzajStacjiWynik>>>>();
+/** Pamięć podręczna per migawka: klucz = tożsamość list stacji, gałęzi, pól i szyn (migawki są
+ *  niemutowalne; napięcia szyn rozstrzygają poziom pola SN/nN). */
+const PAMIEC = new WeakMap<object, WeakMap<object, WeakMap<object, WeakMap<object, ReadonlyMap<string, RodzajStacjiWynik>>>>>();
 const PUSTE: readonly never[] = [];
 
 /** Rodzaj KAŻDEJ stacji modelu, której rodzaj dotyczy (klucz: `ref_id`) — lustro `rodzaje_stacji`. */
@@ -331,12 +323,15 @@ export function rodzajeStacji(model: ModelDlaRodzaju | null | undefined): Readon
   const stacje = (model.substations ?? PUSTE) as object;
   const galezie = (model.branches ?? PUSTE) as object;
   const pola = (model.bays ?? PUSTE) as object;
+  const szyny = (model.buses ?? PUSTE) as object;
   let poStacjach = PAMIEC.get(stacje);
   if (!poStacjach) PAMIEC.set(stacje, (poStacjach = new WeakMap()));
   let poGaleziach = poStacjach.get(galezie);
   if (!poGaleziach) poStacjach.set(galezie, (poGaleziach = new WeakMap()));
-  let wynik = poGaleziach.get(pola);
-  if (!wynik) poGaleziach.set(pola, (wynik = obliczRodzajeStacji(model)));
+  let poPolach = poGaleziach.get(pola);
+  if (!poPolach) poGaleziach.set(pola, (poPolach = new WeakMap()));
+  let wynik = poPolach.get(szyny);
+  if (!wynik) poPolach.set(szyny, (wynik = obliczRodzajeStacji(model)));
   return wynik;
 }
 

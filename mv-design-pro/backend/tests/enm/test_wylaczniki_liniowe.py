@@ -171,19 +171,20 @@ def test_add_relay_przyjmuje_i_odrzuca_wg_tej_samej_reguly(
 
 def _aparaty_torow_pol(enm: dict[str, Any]) -> list[str]:
     """Aparaty leżące W TORZE pola (karta POLA-W-TORZE): łącznik między szyną pola a WŁASNYM
-    zaciskiem pola (`enm.zajetosc_pol.zacisk_pola`) — z topologii, nie z wyposażenia pola."""
-    from enm.zajetosc_pol import zacisk_pola
+    zaciskiem pola (`enm.pola.zacisk_pola` rekordu `bays`, karta W5-B) — z topologii, nie
+    z wyposażenia pola."""
+    from enm.pola import pola_sn_stacji, zacisk_pola
 
     wynik: list[str] = []
     for stacja in enm["substations"]:
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []:
-            zacisk = zacisk_pola(spec)
-            if not zacisk or zacisk == spec.get("bus_ref"):
+        for rekord in pola_sn_stacji(enm, stacja["ref_id"]):
+            zacisk = zacisk_pola(rekord)
+            if not zacisk or zacisk == rekord.get("bus_ref"):
                 continue
             wynik.extend(
                 g["ref_id"]
                 for g in enm["branches"]
-                if {g.get("from_bus_ref"), g.get("to_bus_ref")} == {spec.get("bus_ref"), zacisk}
+                if {g.get("from_bus_ref"), g.get("to_bus_ref")} == {rekord.get("bus_ref"), zacisk}
             )
     return sorted(wynik)
 

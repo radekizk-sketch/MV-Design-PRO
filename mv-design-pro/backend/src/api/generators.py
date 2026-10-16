@@ -41,10 +41,11 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import ref_pola_wytworcy
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
-from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
+from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.nazwy import jest_nazwa, nazwa_nadana
@@ -278,7 +279,7 @@ def _find_station(enm: dict[str, Any], station_ref: str) -> dict[str, Any] | Non
 def _station_transformers(enm: dict[str, Any], station: dict[str, Any]) -> list[dict[str, Any]]:
     transformer_refs = {ref for ref in station.get("transformer_refs", []) if isinstance(ref, str)}
     # POLA-W-TORZE: szyny stacji z jednego źródła — transformator leży na zaciskach pól.
-    station_buses = set(szyny_stacji(station, enm.get("branches") or []))
+    station_buses = set(szyny_stacji(enm, station))
     return [
         transformer
         for transformer in enm.get("transformers", [])
@@ -459,14 +460,13 @@ def _ensure_catalog_block_transformer(
 
 
 def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | None:
-    galezie = enm.get("branches") or []
     for transformer in _station_transformers(enm, station):
         lv_bus_ref = transformer.get("lv_bus_ref")
         if isinstance(lv_bus_ref, str) and lv_bus_ref.strip():
             # POLA-W-TORZE: strona dolna transformatora leży na zacisku wyłącznika głównego nN,
             # a źródło przyłącza się do SZYNY ROZDZIELNICY nN za tym wyłącznikiem — nie
             # między transformator a wyłącznik główny.
-            return szyna_glowna_stacji(station, galezie, lv_bus_ref.strip()) or lv_bus_ref.strip()
+            return szyna_glowna_stacji(enm, station, lv_bus_ref.strip()) or lv_bus_ref.strip()
 
     voltages = _bus_voltage_index(enm)
     for bus_ref in station.get("bus_refs", []):
@@ -917,11 +917,8 @@ def get_der_protection_functions(
 
     zmaterializowane = generator.get("materialized_params") or {}
     meta = generator.get("meta") or {}
-    bay_ref = None
-    for zrodlo in (zmaterializowane, meta):
-        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("bay_ref"), str):
-            bay_ref = zrodlo["bay_ref"]
-            break
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
 
     sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka)
@@ -1062,7 +1059,8 @@ def get_der_instrument_transformers(
         _slownik_pomocniczy(generator.get("materialized_params")),
         _slownik_pomocniczy(generator.get("meta")),
     )
-    bay_ref = _pierwsza_wartosc(zrodla, "bay_ref")
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
     sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref) or {}
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
@@ -1199,10 +1197,13 @@ def _prady_zwarciowe_szyny(
         if run.analysis_type == "short_circuit_sn" and run.status == "FINISHED"
     ]
     for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
+        # Wytwórca na zacisku pola (szyna pomocnicza bez własnego wiersza) — wiersz węzła
+        # raportuje szyna pola (`enm.tor_pola.szyna_raportowa`, model TEGO biegu).
+        szukana = szyna_raportowa(run.snapshot or {}, bus_ref)
         for wiersz in build_short_circuit_results(run).get("rows", []):
             if wiersz.get("fault_type") not in (None, "3F", "three_phase"):
                 continue
-            if bus_ref in (wiersz.get("target_id"), wiersz.get("element_id")):
+            if szukana in (wiersz.get("target_id"), wiersz.get("element_id")):
                 return wiersz.get("ikss_ka"), wiersz.get("ip_ka"), str(run.id)
     return None, None, None
 
@@ -1257,18 +1258,11 @@ def _obwod_wtorny_pomiaru(
     pierwszy po posortowanym `ref_id` (determinizm, zero zaleznosci od kolejnosci
     zapisu w licie).
 
-    STAN ZMIERZONY 2026-09-09 (poza zakresem karty W3-B, nazwany uczciwie):
-    `Generator.bay_ref` NIE JEST dzis ustawiany zadna droga produkcyjna —
-    `DerGeneratorCreateRequest` nie ma takiego pola, a `DER_BINDING_KEYS`
-    operacji `set_der_catalog_bindings` (jedyna droga edycji wiazan wytworcy
-    PO utworzeniu) go nie zawiera. W praktyce `bay_ref` na tej funkcji jest
-    wiec DZIS zawsze `None` dla KAZDEGO wytworcy w produkcji — ta funkcja
-    (i cala reszta kodu ponizej zaleznego od `bay_ref`, w tym ISTNIEJACE
-    PRZED TA KARTA `_sciezka_zwarcia_dla_pola`) czeka na przyszla karte, ktora
-    doda wytworcy `bay_ref` (przypiecie do pola rozdzielnicy). Droga
-    model → domena → jadro jest POPRAWNA i przetestowana (fixtury reczne
-    ustawiajace `meta.bay_ref`), ale NIEOSIAGALNA z biezacego kreatora DER —
-    to PRE-ISTNIEJACA luka (brak `bay_ref` wytworcy), nie defekt tej karty.
+    Pole wytwórcy (`bay_ref` tej funkcji) to relacja `Generator.meta.field_ref`
+    (`enm.pola.ref_pola_wytworcy`), zapisywana przez operacje budowy źródła i promocję
+    aparatów nN. KOREKTA karty W5-B: dawny opis „`Generator.bay_ref` nie jest ustawiany
+    żadną drogą" był prawdą o NIEISTNIEJĄCYM kluczu — relacja istniała pod `meta.field_ref`,
+    a czytelnicy szukali jej pod `bay_ref` i zawsze dostawali brak (luka zamknięta).
     """
     if not bay_ref:
         return _OBWOD_WTORNY_PUSTY

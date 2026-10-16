@@ -221,9 +221,9 @@ describe('buildHierarchy — CableRuns', () => {
     // {porty mówią X} × {pola mówią Y} dowodzi, że drzewo hierarchii czyta pola.
     function makeRun(
       externalPorts: readonly string[],
-      bayRoles: readonly string[],
+      bayRoles: readonly EnmInputForHierarchy['bays'][number]['bay_role'][],
       stationType = 'inline',
-    ) {
+    ): EnmInputForHierarchy {
       return {
         ...simpleGpzEnm(),
         line_runs: [
@@ -244,9 +244,6 @@ describe('buildHierarchy — CableRuns', () => {
             name: 'Stacja A',
             station_type: stationType,
             bus_refs: ['st_1/sn'],
-            meta: {
-              field_specs: bayRoles.map((rola, i) => ({ field_ref: `st_1/pole-${i}`, bus_ref: 'st_1/sn', bay_role: rola })),
-            },
             external_ports: externalPorts.map((kind, i) => ({
               id: `port_${i}`,
               kind: kind as 'sn_input' | 'sn_output' | 'sn_branch' | 'sn_coupler',
@@ -256,6 +253,13 @@ describe('buildHierarchy — CableRuns', () => {
               occupied_by: null,
             })),
           },
+        ],
+        // Pola rozdzielnicy stacji: rekordy `bays` (karta W5-B — jedyny nośnik pól).
+        bays: [
+          ...(simpleGpzEnm().bays ?? []),
+          ...bayRoles.map((rola, i) => ({
+            ref_id: `st_1/pole-${i}`, name: `Pole ${i + 1}`, substation_ref: 'st_1', bus_ref: 'st_1/sn', bay_role: rola, equipment_refs: [],
+          })),
         ],
       };
     }

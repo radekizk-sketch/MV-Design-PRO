@@ -25,12 +25,7 @@
  * (`hvSectionId`/`lvSectionId`) i przypisania odpływów wskazują sekcję, nie węzeł.
  */
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import {
-  indeksGaleziPolNn,
-  stacjaSzyn,
-  szynaGlownaStacji,
-  type IndeksGaleziPolNn,
-} from '../../../shared/szynyStacji';
+import { stacjaSzyn, szynaGlownaStacji } from '../../../shared/szynyStacji';
 import type { ConductingEdge, TerminalGraph, TerminalNode, TransformerEdge, VoltageLevelId } from './terminalGraph';
 
 /** Jedna sekcja szyny na widoku SLD — szyna główna (patrz nagłówek). */
@@ -66,7 +61,8 @@ export interface SldViewModel {
 }
 
 /** Model ENM czytany przy wyznaczaniu sekcji (stacje i gałęzie — aparaty pól nN). */
-export type ModelSekcji = Pick<EnergyNetworkModel, 'substations' | 'branches'>;
+export type ModelSekcji = Pick<EnergyNetworkModel, 'substations' | 'branches'>
+  & Partial<Pick<EnergyNetworkModel, 'bays' | 'buses'>>;
 
 function sectionIdForBus(busRef: string): string {
   return `${busRef}#section`;
@@ -77,27 +73,23 @@ function szynaSekcji(
   busRef: string,
   stacjaSzyny: ReadonlyMap<string, string>,
   stacje: ReadonlyMap<string, EnergyNetworkModel['substations'][number]>,
-  galezie: EnergyNetworkModel['branches'],
-  indeksPolNn: IndeksGaleziPolNn,
+  model: ModelSekcji,
 ): string {
   const stacjaRef = stacjaSzyny.get(busRef);
   const stacja = stacjaRef ? stacje.get(stacjaRef) : undefined;
-  return (stacja ? szynaGlownaStacji(stacja, galezie, busRef, indeksPolNn) : null) ?? busRef;
+  return (stacja ? szynaGlownaStacji(model, stacja, busRef) : null) ?? busRef;
 }
 
 /** Zbuduj SLD VIEW MODEL z grafu terminali i przynależności szyn do stacji. CZYSTA
  *  projekcja — zero konsumpcji przez `compose/*` w T0 (patrz nagłówek pliku). */
 export function buildSldViewModel(graph: TerminalGraph, model: ModelSekcji): SldViewModel {
-  const galezie = model.branches ?? [];
-  const stacjaSzyny = stacjaSzyn(model.substations ?? [], galezie);
+  const stacjaSzyny = stacjaSzyn(model);
   const stacje = new Map((model.substations ?? []).map((s) => [s.ref_id, s]));
-  // Indeks aparatów pól nN raz na migawkę — pytanie o szynę główną pada dla każdej szyny grafu.
-  const indeksPolNn = indeksGaleziPolNn(galezie);
   const sekcjaSzyny = new Map<string, string>();
   const sekcja = (busRef: string): string => {
     let wynik = sekcjaSzyny.get(busRef);
     if (wynik === undefined) {
-      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, galezie, indeksPolNn);
+      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, model);
       sekcjaSzyny.set(busRef, wynik);
     }
     return wynik;

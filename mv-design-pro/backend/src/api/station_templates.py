@@ -129,7 +129,7 @@ def preview_station_template(
         TemplateApplyError,
         _cascade_manufacturer_choice,
         _resolve_sn_bay_roles,
-        _resolve_sn_field_specs,
+        _resolve_sn_fields,
         _resolve_station_type,
         rozstrzygnij_parametry_szablonu,
     )
@@ -202,7 +202,7 @@ def preview_station_template(
     # komunikatu z minimalną liczbą pól.
     try:
         bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
-        sn_field_specs = _resolve_sn_field_specs(
+        sn_fields = _resolve_sn_fields(
             template,
             bay_roles=bay_roles,
             overrides=dict(overrides),
@@ -225,7 +225,7 @@ def preview_station_template(
             "transformer_count": transformer_count,
             "sn_bays_count": sn_bays_count,
             "sn_bay_roles": bay_roles,
-            "sn_fields": sn_field_specs,
+            "sn_fields": sn_fields,
             "sn_manufacturer": sn_manufacturer,
             "nn_feeders_count": nn_feeders_count,
             "nn_feeder_cb_ref": cb_catalog,

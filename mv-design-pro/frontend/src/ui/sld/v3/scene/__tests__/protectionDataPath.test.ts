@@ -87,10 +87,17 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   //   polskim literałem → `linked_ref` CT na Measurement → `protection_ref` pola
   //   na ProtectionAssignment.
   it('ogniwa łańcucha danych są kompletne (każde brakujące dawało ciche zero)', () => {
-    const pola = SCIEZKA_DANYCH.bays as {
+    // Karta W5-B: `bays` niesie WSZYSTKIE pola modelu (także pola stacji i pola GPZ bez
+    // aparatów pierwotnych). Ścieżka danych = pola z aparatami pierwotnymi; każde ogniwo
+    // sprawdzamy na każdym z nich.
+    const pola = (SCIEZKA_DANYCH.bays as {
+      protection_ref?: string;
+      primary_devices?: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
+    }[]).filter((pole) => (pole.primary_devices ?? []).length > 0) as {
       protection_ref?: string;
       primary_devices: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
     }[];
+    expect(pola.length).toBeGreaterThanOrEqual(3);
     for (const pole of pola) {
       expect(pole.protection_ref).toBeTruthy();
       const laczniki = pole.primary_devices.filter((d) => ['CB', 'DS', 'ES'].includes(d.kind));

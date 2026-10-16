@@ -10,7 +10,7 @@
  * (parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`).
  */
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
-import { indeksGaleziPolNn, szynyStacji, type IndeksGaleziPolNn } from './szynyStacji';
+import { szynyStacji } from './szynyStacji';
 
 /** Minimalny wycinek migawki czytany przez regułę (wyrocznie sceny niosą tylko część pól). */
 export type ModelTransformatorow = Pick<EnergyNetworkModel, 'transformers'>
@@ -88,8 +88,7 @@ function transformatorStacji(
 }
 
 /**
- * Dane reguły, które zależą WYŁĄCZNIE od migawki (nie od stacji): indeks gałęzi pól nN (szyny
- * stacji), refy transformatorów blokowych DER i zbiór transformatorów blokowych. Wołający, który
+ * Dane reguły, które zależą WYŁĄCZNIE od migawki (nie od stacji): refy transformatorów blokowych DER i zbiór transformatorów blokowych. Wołający, który
  * pyta o wiele stacji albo wiele transformatorów tej samej migawki (adapter SLD, eksport,
  * kompletność rysunku, topologia), buduje go RAZ — bez tego każde pytanie przeglądało wszystkie
  * gałęzie i generatory (koszt O(stacje × migawka)). Wynik reguły z kontekstem i bez jest
@@ -97,7 +96,6 @@ function transformatorStacji(
  */
 export interface KontekstTransformatorowStacji {
   readonly snapshot: ModelTransformatorow;
-  readonly indeksPolNn: IndeksGaleziPolNn;
   readonly refyBlokowe: ReadonlySet<string>;
   /** Transformatory migawki spełniające `transformatorBlokowyDer` (jedyny filtr, wyżej). */
   readonly blokowe: ReadonlySet<Transformer>;
@@ -115,7 +113,6 @@ export function kontekstTransformatorowStacji(snapshot: ModelTransformatorow): K
   const refyBlokowe = refyTransformatorowBlokowych(snapshot);
   return {
     snapshot,
-    indeksPolNn: indeksGaleziPolNn(snapshot.branches ?? []),
     refyBlokowe,
     blokowe: new Set(
       (snapshot.transformers ?? []).filter((transformer) => transformatorBlokowyDer(transformer, refyBlokowe)),
@@ -140,7 +137,7 @@ function daneStacji(station: Substation, kontekst: KontekstTransformatorowStacji
   if (!dane) {
     dane = {
       deklarowane: new Set((station.transformer_refs ?? []).filter(nonEmptyRef)),
-      szyny: szynyStacji(station, kontekst.snapshot.branches ?? [], kontekst.indeksPolNn),
+      szyny: szynyStacji(kontekst.snapshot, station),
     };
     kontekst.stacje.set(station, dane);
   }

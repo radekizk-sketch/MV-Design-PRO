@@ -38,7 +38,7 @@ Bez big-bang. Każda migrowana odpowiedzialność: CURRENT RUNTIME INVENTORY →
 | **CV-2 Rewizje i envelope** | `ModelRevision` z dziennika (bez limitu 500, checkpointy), `checkout(rev)`; `RevisionEnvelope` na `CanonicalRun`; świeżość z envelope; `catalog_revision_set`, `assumptions_revision` | `checkout(rev_n)` odtwarza `hash_sha256` rewizji n dla wszystkich sieci rejestru | guard: bieg bez envelope = czerwony | 12, 13 |
 | **CV-3 Scenariusze** | jeden `OperatingScenario`, jedna funkcja `apply_scenario` → `EffectiveNetworkSnapshot`; migracja N-1/hosting/pq_area/odpowiedz_osd/FaultScenario; kasacja C2/C3/C4/C5 | wyniki N-1 i hosting bit-identyczne przed/po | guard: `copy.deepcopy(snapshot)` poza `apply_scenario` = czerwony | 7, 8 |
 | **CV-4 Granica obliczeniowa** | jeden assembler ES → TV → IR → kontrakt; kasacja P2–P12/S2–S7 i własnego NR; `TopologyService` jedna implementacja; legacy ORM procedurą | 12 benchmarków IEEE/CIGRE + rejestr sieci: wyniki identyczne (tolerancja zadeklarowana) | guard: konstrukcja `PowerFlowInput(`/`ShortCircuitInput(` poza assemblerem = czerwony; `backend_no_physics_guard` | 9, 10, 11, 12 |
-| **CV-5 Terminale, fazy, uziemienie** | T-2, F-1…F-4; walidator; migracja `meta.field_specs` → `Bay` | scena SLD i projekcja nN identyczne; Z0 identyczne | `meta_field_specs_resurrection_guard`; walidator terminali | 3, 4, 5, 6 |
+| **CV-5 Terminale, fazy, uziemienie** | T-2, F-1…F-4; walidator; migracja dawnego słownika pól z `meta` stacji → `Bay` (**ZREALIZOWANE — karta W5-B, 2026-09-30**: `bays` jedynym nośnikiem, `enm/pola.py`, migracja przy wczytaniu, guard w CI) | scena SLD i projekcja nN identyczne; Z0 identyczne | `meta_field_specs_resurrection_guard` (istnieje od W5-B); walidator terminali | 3, 4, 5, 6 |
 | **CV-6 G01 vertical slice** | sieć G01 (§31) zbudowana komendami domenowymi; pełny łańcuch EDIT → … → REPORT; analiza doziemna kompensowana; PV; nN ABCN/SWZ w zakresie gotowym | wyrocznie z rejestru (analityczne + benchmark) | test e2e G01 jako bramka CI | 21 |
 | dalej | ownership zabezpieczeń (14), SLD jako projekcja (15), SN/nN bez równoległych modeli (16), White Box (17), kasacje legacy (23, 24) | | | |
 
@@ -84,7 +84,7 @@ Każdy wycinek kończy się raportem w formacie §43 konstytucji (A–K) i wpise
 | 5 | zamknięcie CV-4.3 (K2 kasacja `application/reference_networks/**` po K1, A5 `power-flow-runs/*` po OD-8) | po PERF |
 | 6 | **CV-4.4** — legacy ORM `network_*` procedurą siedmiu kroków (OD-2), kanoniczny `ref_id` ENM | **wykonana jako W1** (W1 (2026-09-09), `fable-cv3`): 19 tabel legacy (pomiar; plan mówił o 6) zmigrowane i skasowane, import XLSX → ENM przez `enm/kompilator_grafu.py`, archiwum ZIP wyłącznie ENM, kreator/SLD ORM/designer/design_synth/raporty legacy skasowane z bramką wskrzeszenia; dowody: `../evidence/CONVERGENCE_EVIDENCE.md` §E wiersz „W1”, §F |
 | 7 | ponowna ocena **D-1 SLD Presentation Convergence** (konsolidacja trzech magazynów prezentacji do jednego; `branch_ref` + `waypoints[]`, końce z ENM) — czy między CV-4.4 a CV-5, czy po CV-5 | decyzja właściciela po CV-4.4 |
-| 8 | CV-5 (terminale, fazy, uziemienie; `meta.field_specs` → `Bay`) | |
+| 8 | CV-5 (terminale, fazy, uziemienie; dawny słownik pól w `meta` stacji → `Bay`, zrealizowane W5-B) | |
 | 9 | CV-6 (G01 end-to-end) | |
 | 10 | D-3 / ownership zabezpieczeń (ADR-022, `ProtectionCapabilityRegistry`; pary aparatów z istniejącej topologii `znajdz_aparat_chroniacy`) | |
 | 11 | pełne SLD jako projekcja ENM / `TopologyView` (program SLD, B-02) | |

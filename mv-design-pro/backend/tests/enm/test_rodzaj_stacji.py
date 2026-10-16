@@ -33,7 +33,9 @@ from domain.canonical_operations import READINESS_CODES
 from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
+from enm.pola import pola_sn_stacji
 from enm.rodzaj_stacji import (
+    KATEGORIA_ROLI_POLA,
     KOD_KANONICZNY_RODZAJ_NIEZGODNY,
     KOD_KANONICZNY_ROLA_POLA_NIEROZPOZNANA,
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
@@ -45,6 +47,7 @@ from enm.rodzaj_stacji import (
     rodzaje_stacji,
 )
 from enm.validator import ENMValidator
+from pydantic import ValidationError
 
 from tests.enm.test_append_station_on_endpoint import _build_gpz_with_endpoint, op
 from tests.reference_networks.rodzaj_stacji_parytet import (
@@ -91,17 +94,18 @@ def test_regula_iloczyn_pol_sprzegla_i_polaczen(
 @pytest.mark.parametrize(
     ("spec", "kategoria"),
     [
-        ({"meta": {"field_role": "LINIA_ODG"}, "bay_role": "TR"}, "liniowe"),
-        ({"meta": {"field_role": "line_branch"}}, "liniowe"),
-        ({"meta": {"field_role": "COS_INNEGO"}, "bay_role": "OUT"}, "liniowe"),
+        ({"field_role": "LINIA_ODG", "bay_role": "TR"}, "liniowe"),
+        ({"field_role": "line_branch"}, "liniowe"),
+        ({"field_role": "COS_INNEGO", "bay_role": "OUT"}, "liniowe"),
         ({"bay_role": " feeder "}, "liniowe"),
         ({"bay_role": "FEEDER", "bay_kind": "potrzeb_wlasnych"}, "inne"),
-        ({"bay_role": "FEEDER", "meta": {"bay_kind": "Rezerwowe"}}, "inne"),
+        ({"bay_role": "FEEDER", "metadane_pochodzenia": {"bay_kind": "Rezerwowe"}}, "inne"),
         ({"bay_role": "FEEDER", "bay_kind": "odgromnikowe"}, "inne"),
         ({"bay_role": "FEEDER", "bay_kind": "liniowe_odplywowe"}, "liniowe"),
+        ({"bay_role": "FEEDER", "metadane_pochodzenia": {"bay_kind": None}}, "liniowe"),
         ({"bay_role": "COUPLER"}, "sprzeglo"),
-        ({"meta": {"field_role": "SPRZEGLO"}}, "sprzeglo"),
-        ({"bay_role": "OZE", "meta": {"field_role": "PV_SN"}}, "inne"),
+        ({"field_role": "SPRZEGLO"}, "sprzeglo"),
+        ({"bay_role": "OZE", "field_role": "PV_SN"}, "inne"),
         ({"bay_role": "MEASUREMENT"}, "inne"),
         ({"bay_role": "XYZ"}, None),
         ({}, None),
@@ -367,20 +371,35 @@ def test_zmiana_deklaracji_tylko_w_obrebie_stacji_sn_nn() -> None:
         assert _stacja_pola(po)["station_type"] == wartosc
 
 
-def test_w044_pole_o_roli_nierozpoznanej_w_modelu_zastanym() -> None:
+def test_w044_rola_spoza_slownika_zamknieta_typem_rekordu_pola() -> None:
+    """Karta W5-B: rekord pola `bays` ma rolę modelu z zamkniętej listy (`Bay.bay_role`), a każda
+    jej wartość jest rozpoznana (`KATEGORIA_ROLI_POLA`) — rola spoza słownika nie przechodzi
+    walidacji modelu, więc W044 nie może powstać z modelu przyjętego przez magazyn. Reguła
+    rodzaju na surowej migawce (lustro frontu czyta odpowiedź backendu) nadal nazywa takie pole
+    nierozpoznanym, zamiast zgadywać jego kategorię."""
+    from enm.models import Bay
+
+    assert set(Bay.model_fields["bay_role"].annotation.__args__) <= set(KATEGORIA_ROLI_POLA)
     snap, odcinek = _siec_z_odcinkiem()
     stan = _wstaw(snap, odcinek, "inline", ["LINIA_IN", "LINIA_OUT", "TRANSFORMATOROWE"])[
         "snapshot"
     ]
     stacja = _stacja_pola(stan)
-    stacja["meta"]["field_specs"].append(
-        {"field_ref": "pole-nieznane", "name": "Pole X", "bay_role": "XYZ"}
+    wzor = next(b for b in stan["bays"] if b["substation_ref"] == stacja["ref_id"])
+    stan["bays"].append(
+        {
+            **copy.deepcopy(wzor),
+            "ref_id": "pole-nieznane",
+            "name": "Pole X",
+            "bay_role": "XYZ",
+            "field_role": None,
+            "equipment_refs": [],
+            "terminal_bus_ref": None,
+        }
     )
-    problemy = [i for i in _problemy(stan) if i.code == KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA]
-    assert len(problemy) == 1
-    assert "Pole SN „Pole X”" in problemy[0].message_pl
-    assert problemy[0].fix_action.action_type == "NAVIGATE_TO_ELEMENT"
     assert rodzaj_stacji(stan, stacja["ref_id"]).pola_nierozpoznane[0].field_ref == "pole-nieznane"
+    with pytest.raises(ValidationError):
+        EnergyNetworkModel.model_validate(stan)
 
 
 def test_most_gotowosci_i_kanon_kodow() -> None:
@@ -422,13 +441,13 @@ def test_pole_potrzeb_wlasnych_z_katalogu_nie_zmienia_rodzaju() -> None:
         },
     )
     nowe = [
-        spec
-        for spec in _stacja_pola(po)["meta"]["field_specs"]
-        if spec.get("bay_template_ref") == szablon.template_ref
+        rekord
+        for rekord in pola_sn_stacji(po, stacja["ref_id"])
+        if rekord.get("bay_template_ref") == szablon.template_ref
     ]
     assert len(nowe) == 1
     assert nowe[0]["bay_role"] == "FEEDER"
-    assert nowe[0]["bay_kind"] == "potrzeb_wlasnych"
+    assert nowe[0]["metadane_pochodzenia"]["bay_kind"] == "potrzeb_wlasnych"
     assert rodzaj_stacji(po, stacja["ref_id"]).rodzaj == "inline"
     assert rodzaj_stacji(po, stacja["ref_id"]).pola_liniowe == 2
 

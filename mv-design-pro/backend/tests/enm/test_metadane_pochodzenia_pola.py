@@ -44,16 +44,15 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import (
-    KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_POWIAZAN_KATALOGOWYCH,
     POLE_RODZAJU_POLA,
     POLE_STATUSU_ZRODLA,
     POLE_ZRODEL_DANYCH,
-    _build_field_spec,
     execute_domain_operation,
 )
+from enm.pola import czy_pole_nn, pola, zbuduj_pole
 from network_model.catalog.switchgear import (
     get_factory_configuration,
     list_switchgear_solution_templates_for_manufacturer,
@@ -233,12 +232,19 @@ def _uruchom(operacja: str, sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _pola_stacji(odpowiedz: dict[str, Any]) -> list[dict[str, Any]]:
+    """Rekordy pól stacji (`bays` ze `substation_ref`) migawki odpowiedzi."""
     snapshot = odpowiedz.get("snapshot") or {}
-    return [
-        spec
-        for stacja in snapshot.get("substations", [])
-        for spec in (stacja.get("meta") or {}).get("field_specs", [])
-    ]
+    return [rekord for rekord in pola(snapshot) if rekord.get("substation_ref")]
+
+
+def _metadana(spec: dict[str, Any], klucz: str) -> Any:
+    """Wartość metadanej pochodzenia z rekordu pola — klucz payloadu (`bay_kind`,
+    `source_status`, `source_refs`) jest nazwą pola typowanego `Bay.metadane_pochodzenia`
+    (karta W5-B); brak metadanych = `None` (listy: pusta)."""
+    metadane = spec.get("metadane_pochodzenia") or {}
+    if klucz == POLE_ZRODEL_DANYCH:
+        return list(metadane.get(klucz) or [])
+    return metadane.get(klucz)
 
 
 def _pola_z_payloadu(
@@ -282,9 +288,9 @@ def test_kazdy_klucz_metadanych_osobno_dojezdza_do_migawki(
         wpisy
     ), f"{operacja}/{tor}: operacja zapisala {len(pola)} pol z {len(wpisy)} wpisow"
     for spec, wpis in zip(pola, wpisy, strict=True):
-        assert spec.get(klucz) == wpis[klucz], (
+        assert _metadana(spec, klucz) == wpis[klucz], (
             f"{operacja}/{tor}: klucz {klucz} nie dojechal do migawki pola "
-            f"{spec.get('field_ref')} (jest {spec.get(klucz)!r}, "
+            f"{spec.get('ref_id')} (jest {_metadana(spec, klucz)!r}, "
             f"payload niosl {wpis[klucz]!r})"
         )
 
@@ -292,9 +298,9 @@ def test_kazdy_klucz_metadanych_osobno_dojezdza_do_migawki(
     pozostale = {POLE_RODZAJU_POLA, POLE_STATUSU_ZRODLA, POLE_ZRODEL_DANYCH} - {klucz}
     for spec in pola:
         for inny in pozostale:
-            assert not spec.get(inny), (
+            assert not _metadana(spec, inny), (
                 f"{operacja}/{tor}: klucz {inny} pojawil sie bez deklaracji "
-                f"payloadu (wartosc {spec.get(inny)!r}) — to domysl, nie dana"
+                f"payloadu (wartosc {_metadana(spec, inny)!r}) — to domysl, nie dana"
             )
 
 
@@ -312,9 +318,9 @@ def test_komplet_metadanych_dojezdza_do_migawki(operacja: str, tor: str) -> None
     pola = _pola_z_payloadu(odpowiedz, wpisy)
     assert len(pola) == len(wpisy)
     for spec, wpis in zip(pola, wpisy, strict=True):
-        assert spec.get(POLE_RODZAJU_POLA) == wpis[POLE_RODZAJU_POLA]
-        assert spec.get(POLE_STATUSU_ZRODLA) == STATUS_ZRODLA
-        assert spec.get(POLE_ZRODEL_DANYCH) == ZRODLA_DANYCH
+        assert _metadana(spec, POLE_RODZAJU_POLA) == wpis[POLE_RODZAJU_POLA]
+        assert _metadana(spec, POLE_STATUSU_ZRODLA) == STATUS_ZRODLA
+        assert _metadana(spec, POLE_ZRODEL_DANYCH) == ZRODLA_DANYCH
 
 
 @pytest.mark.parametrize("tor", TORY_RODZIN)
@@ -334,7 +340,7 @@ def test_obie_operacje_zapisuja_te_same_metadane_dla_tego_samego_wpisu(tor: str)
         assert odpowiedz.get("error") in (None, ""), odpowiedz
         metadane_drog[operacja] = [
             {
-                klucz: spec.get(klucz)
+                klucz: _metadana(spec, klucz)
                 for klucz in (POLE_RODZAJU_POLA, POLE_STATUSU_ZRODLA, POLE_ZRODEL_DANYCH)
             }
             for spec in _pola_z_payloadu(odpowiedz, wpisy)
@@ -348,29 +354,22 @@ def test_obie_operacje_zapisuja_te_same_metadane_dla_tego_samego_wpisu(tor: str)
 
 @pytest.mark.parametrize("tor", TORY_RODZIN)
 def test_brak_metadanych_w_payloadzie_nie_daje_zadnej_wartosci(tor: str) -> None:
-    """Payload bez metadanych → migawka bez wartości metadanych (obie drogi).
+    """Payload bez metadanych → rekord pola bez metadanych pochodzenia (obie drogi).
 
-    Klucze są ADDYTYWNE: wcięcie w odcinek nie zapisuje ich w ogóle, stacja
-    końca ciągu deklaruje je kształtem swojej migawki (klucz obecny, wartość
-    pusta). Żadna z dróg nie ma prawa wstawić wartości z domysłu — status
-    źródła zmyślony przez operację byłby proweniencją bez źródła.
+    Od W5-B obie drogi mają TEN SAM kształt zapisu (pole typowane
+    `Bay.metadane_pochodzenia`, brak = `None`) — dawna asymetria „wcięcie bez klucza /
+    koniec ciągu z kluczem pustym" zniknęła razem z dwoma kształtami wpisu. Żadna z dróg
+    nie ma prawa wstawić wartości z domysłu — status źródła zmyślony przez operację byłby
+    proweniencją bez źródła.
     """
     wpisy = _z_metadanymi(_wpisy_toru(tor), ())
-
-    odpowiedz_wciecie = _uruchom("wciecie", wpisy)
-    assert odpowiedz_wciecie.get("error") in (None, ""), odpowiedz_wciecie
-    for spec in _pola_z_payloadu(odpowiedz_wciecie, wpisy):
-        for klucz in (POLE_RODZAJU_POLA, POLE_STATUSU_ZRODLA, POLE_ZRODEL_DANYCH):
-            assert (
-                klucz not in spec
-            ), f"wciecie/{tor}: klucz {klucz} zapisany bez deklaracji payloadu"
-
-    odpowiedz_koniec = _uruchom("koniec_ciagu", wpisy)
-    assert odpowiedz_koniec.get("error") in (None, ""), odpowiedz_koniec
-    for spec in _pola_z_payloadu(odpowiedz_koniec, wpisy):
-        assert spec.get(POLE_RODZAJU_POLA) is None
-        assert spec.get(POLE_STATUSU_ZRODLA) is None
-        assert spec.get(POLE_ZRODEL_DANYCH) == []
+    for operacja in OPERACJE_STACYJNE:
+        odpowiedz = _uruchom(operacja, wpisy)
+        assert odpowiedz.get("error") in (None, ""), odpowiedz
+        pola_payloadu = _pola_z_payloadu(odpowiedz, wpisy)
+        assert len(pola_payloadu) == len(wpisy)
+        for spec in pola_payloadu:
+            assert spec["metadane_pochodzenia"] is None, f"{operacja}/{tor}: {spec}"
 
 
 @pytest.mark.parametrize("tor", TORY_RODZIN)
@@ -403,9 +402,8 @@ def test_wartosc_pusta_nie_jest_deklaracja_metadanej() -> None:
 
     Pusty łańcuch nie jest statusem źródła, a lista bez ani jednego adresu nie
     jest proweniencją — zapisanie ich udawałoby daną tam, gdzie jej nie ma.
-    Asercja jest OSTRA (brak klucza albo `None`), bo pusty łańcuch jest fałszywy
-    w Pythonie: łagodne `assert not spec.get(...)` przepuściłoby zapis `""`
-    i deklaracja żyłaby wyłącznie w docstringu.
+    Asercja jest OSTRA (`metadane_pochodzenia is None`), bo pusty łańcuch jest
+    fałszywy w Pythonie: łagodne `assert not ...` przepuściłoby zapis `""`.
     """
     wpisy = _z_metadanymi(_wpisy_toru("MODULARNY"), ())
     for wpis in wpisy:
@@ -413,23 +411,14 @@ def test_wartosc_pusta_nie_jest_deklaracja_metadanej() -> None:
         wpis[POLE_STATUSU_ZRODLA] = ""
         wpis[POLE_ZRODEL_DANYCH] = ["  ", ""]
 
-    odpowiedz_wciecie = _uruchom("wciecie", wpisy)
-    assert odpowiedz_wciecie.get("error") in (None, ""), odpowiedz_wciecie
-    for spec in _pola_z_payloadu(odpowiedz_wciecie, wpisy):
-        for klucz in (POLE_RODZAJU_POLA, POLE_STATUSU_ZRODLA, POLE_ZRODEL_DANYCH):
-            assert klucz not in spec, (
-                f"wciecie: pusta wartosc klucza {klucz} zapisana jako deklaracja "
-                f"(jest {spec.get(klucz)!r})"
+    for operacja in OPERACJE_STACYJNE:
+        odpowiedz = _uruchom(operacja, wpisy)
+        assert odpowiedz.get("error") in (None, ""), odpowiedz
+        for spec in _pola_z_payloadu(odpowiedz, wpisy):
+            assert spec["metadane_pochodzenia"] is None, (
+                f"{operacja}: pusta wartosc zapisana jako deklaracja "
+                f"(jest {spec['metadane_pochodzenia']!r})"
             )
-
-    # Stacja końca ciągu deklaruje te klucze KSZTAŁTEM migawki, więc znakiem
-    # braku jest tu `None`/`[]` — nigdy pusty łańcuch przepisany z payloadu.
-    odpowiedz_koniec = _uruchom("koniec_ciagu", wpisy)
-    assert odpowiedz_koniec.get("error") in (None, ""), odpowiedz_koniec
-    for spec in _pola_z_payloadu(odpowiedz_koniec, wpisy):
-        assert spec.get(POLE_RODZAJU_POLA) is None, spec.get(POLE_RODZAJU_POLA)
-        assert spec.get(POLE_STATUSU_ZRODLA) is None, spec.get(POLE_STATUSU_ZRODLA)
-        assert spec.get(POLE_ZRODEL_DANYCH) == [], spec.get(POLE_ZRODEL_DANYCH)
 
 
 def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen() -> None:
@@ -437,25 +426,39 @@ def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen
 
     Operacja końca ciągu domyka pole dopływowe i transformatorowe, których
     payload nie zadeklarował. Takie pole zna swoją funkcję (`bay_kind`) i status
-    źródła (rozwiązanie katalogowe rodziny), ale NIE MA szablonu producenta,
-    więc nie ma źródła wymagań zabezpieczeniowych: klucz `protection_codes`
-    zostaje NIEOBECNY, bo pusta lista twierdziłaby, że pole nie wymaga żadnej
-    funkcji zabezpieczeniowej.
+    źródła (rozwiązanie katalogowe rodziny), ale NIE MA szablonu producenta, więc nie
+    ma źródła wymagań zabezpieczeniowych z szablonu: pole dopływowe nie dostaje
+    ŻADNEGO kodu z domysłu (`bay_template_ref` None, lista kodów pusta), a pole
+    transformatora stacji — wyłącznie kanoniczny zestaw pola transformatorowego
+    (`TRANSFORMER_BAY_PROTECTION_CODES`, ta sama reguła, którą dawny rekord `bays`
+    tego pola niósł obok wpisu — scalone w W5-B w JEDEN rekord).
     """
     odpowiedz = _uruchom("koniec_ciagu", [])
     assert odpowiedz.get("error") in (None, ""), odpowiedz
 
-    domykane = [spec for spec in _pola_stacji(odpowiedz) if spec.get("bay_template_ref") is None]
+    snapshot = odpowiedz["snapshot"]
+    domykane = [
+        spec
+        for spec in _pola_stacji(odpowiedz)
+        if spec.get("bay_template_ref") is None and not czy_pole_nn(snapshot, spec)
+    ]
     assert domykane, "operacja nie domknela zadnego pola stacji konca ciagu"
     role = {spec.get("field_role") for spec in domykane}
     assert {"LINIA_IN", "TRANSFORMATOROWE"} <= role, role
+    from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+
     for spec in domykane:
-        assert spec.get(POLE_RODZAJU_POLA), f"pole domykane bez funkcji jednostki: {spec}"
-        assert spec.get(POLE_STATUSU_ZRODLA) == "catalog_solution"
-        assert spec.get(POLE_ZRODEL_DANYCH) == []
-        assert "protection_codes" not in spec, (
-            "pole domykane nie ma szablonu producenta — pusta lista kodow "
-            "zabezpieczen twierdzilaby, ze pole nie wymaga zadnej funkcji"
+        assert _metadana(spec, POLE_RODZAJU_POLA), f"pole domykane bez funkcji jednostki: {spec}"
+        assert _metadana(spec, POLE_STATUSU_ZRODLA) == "catalog_solution"
+        assert _metadana(spec, POLE_ZRODEL_DANYCH) == []
+        oczekiwane_kody = (
+            list(TRANSFORMER_BAY_PROTECTION_CODES)
+            if spec.get("field_role") == "TRANSFORMATOROWE"
+            else []
+        )
+        assert spec["protection_codes"] == oczekiwane_kody, (
+            "pole domykane nie ma szablonu producenta — kody zabezpieczen wylacznie "
+            f"z kanonu pola transformatora, nigdy z domyslu: {spec['protection_codes']}"
         )
 
 
@@ -482,7 +485,7 @@ def test_powiazania_katalogowe_niesie_wylacznie_droga_konca_ciagu(tor: str) -> N
     odpowiedz_wciecie = _uruchom("wciecie", wpisy)
     assert odpowiedz_wciecie.get("error") in (None, ""), odpowiedz_wciecie
     for spec in _pola_z_payloadu(odpowiedz_wciecie, wpisy):
-        assert POLE_POWIAZAN_KATALOGOWYCH not in spec
+        assert spec[POLE_POWIAZAN_KATALOGOWYCH] is None
 
     odpowiedz_koniec = _uruchom("koniec_ciagu", wpisy)
     assert odpowiedz_koniec.get("error") in (None, ""), odpowiedz_koniec
@@ -497,25 +500,24 @@ def test_powiazania_katalogowe_niesie_wylacznie_droga_konca_ciagu(tor: str) -> N
 def test_builder_jest_wlascicielem_struktur_zagniezdzonych(
     nazwa_argumentu: str, klucz_migawki: str
 ) -> None:
-    """Builder KOPIUJE każdą strukturę zagnieżdżoną, którą zapisuje w polu.
+    """Builder rekordu pola (`enm.pola.zbuduj_pole`) KOPIUJE każdą strukturę zagnieżdżoną.
 
     Iloczyn cech po WSZYSTKICH zagnieżdżonych wejściach buildera (`meta`
     i `catalog_bindings`) — jedna reguła, nie wyjątek dla jednego argumentu.
-    Wołający nie ma trzymać uchwytu do wnętrza zapisanej specyfikacji: inaczej
+    Wołający nie ma trzymać uchwytu do wnętrza zapisanego rekordu: inaczej
     zmiana jego słownika po zapisie po cichu zmieniałaby model.
 
     Test celuje w BUILDER, a nie w ścieżkę operacji, świadomie: operacje budują
     model kopiami (`create_node`/`create_branch` zwracają nowy ENM), więc przez
-    ścieżkę natywną ten defekt jest NIEWIDOCZNY — zmierzone. Test „natywny" na
-    tę deklarację byłby zielony niezależnie od kodu, czyli fałszywą pewnością.
+    ścieżkę natywną ten defekt jest NIEWIDOCZNY.
     """
     zagniezdzone = {"poziom": {"wartosc": "przed"}}
-    spec = _build_field_spec(
-        field_ref="field/test/1",
+    spec = zbuduj_pole(
+        ref_id="field/test/1",
         bay_role="IN",
         bus_ref="bus-a",
+        substation_ref="stacja-test",
         **{nazwa_argumentu: zagniezdzone},
-        klucze_bezwarunkowe=KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU,
     )
     zagniezdzone["poziom"]["wartosc"] = "po"
 

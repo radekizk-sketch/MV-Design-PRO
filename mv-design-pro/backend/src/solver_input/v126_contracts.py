@@ -323,7 +323,7 @@ def _wejscia_izolacji(
     def _stacja_szyny(bus_ref: str) -> str | None:
         # POLA-W-TORZE: ogranicznik na zacisku pola należy do stacji tego pola.
         return next(
-            (s.ref_id for s in enm.substations if bus_ref in szyny_stacji(s, enm.branches)),
+            (s.ref_id for s in enm.substations if bus_ref in szyny_stacji(enm, s)),
             None,
         )
 
@@ -394,30 +394,19 @@ def _wejscia_izolacji(
                 )
             )
 
-    # Kanał 1: aparaty pierwotne na Bay (bezpośrednia serializacja / read-model).
+    # Ograniczniki przepięć pól — rekordy `bays` (jedyny nośnik pól, karta W5-B), dwa pola
+    # rekordu: aparaty pierwotne pola (`Bay.primary_devices`, rodzaj SURGE_ARRESTER —
+    # serializacja bezpośrednia / szablon) i typowana lista `Bay.surge_arresters` (operacja
+    # `add_surge_arrester_sn`, G-STK-8; ten sam rekord czyta read-model pola — glif SLD).
+    # Deduplikacja wspólna (`_emit`); kolejność: najpierw aparaty pierwotne wszystkich pól,
+    # potem listy ograniczników (kolejność wierszy jak przed kartą W5-B).
     for bay in enm.bays:
         for device in bay.primary_devices:
             if device.kind == "SURGE_ARRESTER":
                 _emit(bay.bus_ref, device.catalog_ref)
-
-    # Kanał 2: field_specs stacji (kanoniczna ścieżka operacji add_surge_arrester_sn,
-    # G-STK-8). Ograniczniki żyją na field_spec — ten sam kanał czyta read-model pola
-    # (glif SLD). Parytet: most widzi ograniczniki z obu kanałów, deduplikacja wspólna.
-    for substation in enm.substations:
-        field_specs = substation.meta.get("field_specs")
-        if not isinstance(field_specs, list):
-            continue
-        for spec in field_specs:
-            if not isinstance(spec, dict):
-                continue
-            spec_bus_ref = spec.get("bus_ref")
-            arresters = spec.get("surge_arresters")
-            if not isinstance(spec_bus_ref, str) or not isinstance(arresters, list):
-                continue
-            for item in arresters:
-                if isinstance(item, dict):
-                    ref = item.get("catalog_ref")
-                    _emit(spec_bus_ref, ref if isinstance(ref, str) else None)
+    for bay in enm.bays:
+        for ogranicznik in bay.surge_arresters:
+            _emit(bay.bus_ref, ogranicznik.catalog_ref)
 
     return rows, tuple(bez_uziemienia)
 

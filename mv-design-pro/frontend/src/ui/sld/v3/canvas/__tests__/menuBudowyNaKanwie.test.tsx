@@ -109,8 +109,9 @@ interface Kanwa {
   readonly derKindy: ReadonlyMap<string, DerSourceKind | undefined>;
 }
 
-/** Kanwa rysująca migawkę ze store (`model` = TA SAMA migawka, z której budujemy mapę
- *  trafień pomiaru — domyślnie sieć referencyjna z `beforeEach`). */
+/** Kanwa żywego workspace'u nad modelem ze store'u; `model` MUSI być tym samym modelem, który
+ *  leży w store (domyślnie sieć referencyjna z `beforeEach`), bo obszary trafień liczymy z jego
+ *  sceny. */
 function renderKanwe(lod: SceneLod, model: EnergyNetworkModel = enm): Kanwa {
   const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={lod} />);
   const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
@@ -430,6 +431,42 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
   );
 
   /**
+   * Ogniwo powtarzalne budowy ciągu z kanwy, NATYWNY prawy klik w stację. Karta POLE-ZAJĘTE:
+   * „Kontynuuj ciąg" wymaga WOLNEGO pola liniowego (OUT/FEEDER) wg modelu odczytu backendu
+   * (`line_fields`). Sieć referencyjna 52 stacji jest zamkniętym układem — każde jej pole
+   * liniowe stacji jest zajęte — więc ścieżkę pozytywną mierzymy na scenie z generatora
+   * backendu (operacje domenowe: stacja wstawiona na odcinek, wolne pola FEEDER), a nie na
+   * sieci, na której stacja uczciwie odmawia (dawna wersja testu oczekiwała tu aktywnej
+   * pozycji i była czerwona od partii integracji 6 — oczekiwała zachowania sprzed karty
+   * POLE-ZAJĘTE).
+   */
+  it('stacja z WOLNYM polem liniowym prowadzi ciąg dalej i rozpoczyna odgałęzienie (natywny prawy klik)', async () => {
+    const scena = wczytajScene('punkt_startu_stacja_na_odcinku_wolne_kilka');
+    useSnapshotStore.setState({ snapshot: scena.snapshot, logicalViews: scena.logical_views });
+    const openOperationForm = vi.fn();
+    useNetworkBuildStore.setState({ openOperationForm } as never);
+    const kanwa = renderKanwe(0, scena.snapshot);
+    const stacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'));
+    expect(stacja, 'scena ma stację na kanwie').toBeTruthy();
+    // Wyrocznia niezależna od resolvera: wolny wiersz OUT/FEEDER tej stacji w `line_fields`.
+    const wolnePoleLiniowe = (scena.logical_views.line_fields ?? []).some(
+      (w) => w.station_ref === stacja!.ownerRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
+    );
+    expect(wolnePoleLiniowe, 'scena backendu ma wolne pole liniowe stacji').toBe(true);
+
+    const menu = await prawyKlik(kanwa, stacja!.testId);
+    expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
+    // S9-10: aktywność „Rozpocznij odgałęzienie" SPAROWANA z resolverem kreatora.
+    expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
+    expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
+      resolveBranchStartAvailability(scena.snapshot, scena.logical_views, 'station', stacja!.ownerRef ?? null),
+    );
+    await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
+    expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
+    expect(openOperationForm.mock.calls[0][1]).toMatchObject({ station_ref: stacja!.ownerRef });
+  }, 120000);
+
+  /**
    * KARTA PARTIA-6-FRONT — sieć referencyjna jest GOTOWA: każde pole liniowe stacji niesie
    * kabel (zajętość z modelu odczytu backendu, karta POLE-ZAJĘTE). Właściwą odpowiedzią
    * produktu jest tu uczciwa blokada OBU pozycji budowy z powodem po polsku — zdolność
@@ -464,20 +501,61 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
   }, 120000);
 
   /**
-   * Sieć GOTOWA: zero stacji z wejściem kontynuacji (każde pole liniowe zajęte), a odcinki
-   * nadal są wejściem „wstaw stację na odcinku" — przebudowa gotowej sieci idzie przez
-   * odcinki, nie przez pola stacji. Kryterium 15 ogniw: sekcja E (scena w budowie).
+   * KRYTERIUM ODBIORU KARTY, zmierzone na sieci referencyjnej: KAŻDY odcinek toru ma na
+   * rysunku wejście do „zakończ odcinek stacją" (≥ 15), a KAŻDA stacja ma pozycję „Kontynuuj
+   * ciąg", której aktywność jest SPAROWANA z niezależną wyrocznią zajętości backendu
+   * (`line_fields`: wolne pole OUT/FEEDER stacji) — predykaty parami (reguła KLASA pkt 3),
+   * mierzone na całej scenie, nie na jednym przykładzie. Dawna asercja „≥ 15 stacji z aktywnym
+   * wejściem" przeczyła karcie POLE-ZAJĘTE: w tej sieci każde pole liniowe stacji jest zajęte.
    */
-  it('pokrycie na sieci GOTOWEJ: 0 stacji z wejściem kontynuacji, ≥ 15 odcinków z wejściem budowy', () => {
+  it('pokrycie łańcucha na sieci referencyjnej: ≥ 15 odcinków z wejściem budowy, wejście stacji sparowane z zajętością backendu', async () => {
     const kanwa = renderKanwe(0);
-    expect(stacjeZWejsciemKontynuacji(wejsciaKanwy(kanwa), enm, widokiEnm, indexModelu)).toEqual([]);
+    const wolnePoleStacji = (stacjaRef: string): boolean => (widokiEnm.line_fields ?? []).some(
+      (w) => w.station_ref === stacjaRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
+    );
+    // S95-START: „realne wejście" = temat menu stacji ORAZ punkt startu ciągu z TEGO SAMEGO
+    // rozstrzygnięcia, którego użyje kreator.
+    const stacjeNaKanwie = kanwa.obszary.flatMap((a) => {
+      if (a.klasa !== 'stacja') return [];
+      const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
+      return wynik.stan === 'temat' && wynik.temat.menuKind === 'station' ? [{ obszar: a, ref: wynik.temat.modelRef }] : [];
+    });
+    expect(stacjeNaKanwie.length, 'sieć referencyjna ma ≥ 15 stacji z menu stacji').toBeGreaterThanOrEqual(15);
+    for (const { ref } of stacjeNaKanwie) {
+      expect(
+        resolveTrunkStartAvailability(enm, widokiEnm, 'station', ref)?.['continue-trunk'] === true,
+        `stacja ${ref}: wejście budowy = wolne pole liniowe wg line_fields`,
+      ).toBe(wolnePoleStacji(ref));
+    }
+    const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
+    if (gpzJakoStacja) {
+      const menuGpz = await prawyKlik(kanwa, gpzJakoStacja.testId);
+      expect(pozycjaAktywna(menuGpz!, 'continue-trunk'), 'GPZ bez wolnego pola liniowego').toBe(false);
+      await zamknijMenu();
+    }
     const odcinkiZWejsciem = kanwa.obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
       return wynik.stan === 'temat' && wynik.temat.kotwica === 'galaz';
     });
     expect(odcinkiZWejsciem.length).toBeGreaterThanOrEqual(15);
-  }, 120000);
+
+    // Dowód, że parowanie nie jest deklaracją: pierwsze 15 stacji przy NATYWNYM prawym kliku
+    // pokazuje „Kontynuuj ciąg" aktywne dokładnie wtedy, gdy backend ma wolne pole liniowe,
+    // a zablokowane — z powodem; „Rozpocznij odgałęzienie" sparowane z resolverem kreatora.
+    for (const { obszar, ref } of stacjeNaKanwie.slice(0, 15)) {
+      const menu = await prawyKlik(kanwa, obszar.testId);
+      expect(menu, `stacja ${ref} otwiera menu`).toBeTruthy();
+      const pozycja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
+      expect(!pozycja.disabled, `stacja ${ref}: kontynuuj ciąg`).toBe(wolnePoleStacji(ref));
+      if (pozycja.disabled) expect(pozycja.title ?? '').toContain('wolnego pola liniowego');
+      expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
+      expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
+        resolveBranchStartAvailability(enm, widokiEnm, 'station', ref),
+      );
+      await zamknijMenu();
+    }
+  }, 300000);
 });
 
 // ---------------------------------------------------------------------------
@@ -498,18 +576,11 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
 
   it('KAŻDY otwarty temat menu niesie ref ISTNIEJĄCY w modelu (skan całej sceny, wszystkie LOD)', () => {
     const refyModelu = new Set<string>();
-    for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers]) {
+    for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers, enm.bays]) {
       for (const el of kolekcja ?? []) {
         const rekord = el as { ref_id?: string; id?: string };
         if (rekord.ref_id) refyModelu.add(rekord.ref_id);
         if (rekord.id) refyModelu.add(rekord.id);
-      }
-    }
-    for (const stacja of enm.substations ?? []) {
-      const meta = stacja.meta as { field_specs?: unknown[] } | undefined;
-      for (const spec of meta?.field_specs ?? []) {
-        const ref = (spec as { field_ref?: string }).field_ref;
-        if (ref) refyModelu.add(ref);
       }
     }
 
@@ -579,9 +650,7 @@ describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
 
     // Punkt startu = `field_ref` istniejącego pola liniowego (rola OUT/FEEDER).
     const fieldRef = String(operacja!.context.field_ref ?? '');
-    const polaSpec = ((gpzSwiezy.substations ?? [])[0]?.meta as
-      { field_specs?: Array<{ field_ref?: string; bay_role?: string }> } | undefined)?.field_specs ?? [];
-    const pole = polaSpec.find((spec) => spec.field_ref === fieldRef);
+    const pole = (gpzSwiezy.bays ?? []).find((rekord) => rekord.ref_id === fieldRef);
     expect(pole, `pole ${fieldRef} istnieje w modelu`).toBeTruthy();
     expect(['OUT', 'FEEDER']).toContain(String(pole!.bay_role).toUpperCase());
     // Kreator sprawdza dokładnie ten warunek — trzymamy go w teście JAWNIE,

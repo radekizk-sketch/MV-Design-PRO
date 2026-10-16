@@ -22,20 +22,14 @@ type DomainOpResponse = {
     buses?: Array<{ ref_id: string }>;
     branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
-    /** POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): pole CZYTANE nizej
-     *  (`op.snapshot?.substations`), a niezadeklarowane — przez co
-     *  `station.meta.field_specs` i argumenty `find` szly jako implicit any.
-     *  Ksztalt odwzorowuje `src/types/enm.ts` (`Substation` + dynamiczne
-     *  `meta.field_specs` uzywane przez operacje domenowe). */
-    substations?: Array<{
+    /** POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): pola CZYTANE nizej zadeklarowane jawnie.
+     *  Karta W5-B: pola stacji to rekordy `bays` (`src/types/enm.ts::Bay`). */
+    substations?: Array<{ ref_id: string }>;
+    bays?: Array<{
       ref_id: string;
-      meta?: {
-        field_specs?: Array<{
-          field_ref?: string;
-          field_role?: string | null;
-          bay_role?: string | null;
-        }>;
-      };
+      substation_ref?: string | null;
+      field_role?: string | null;
+      bay_role?: string | null;
     }>;
   };
 };
@@ -201,15 +195,16 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   });
 
   const station = (op.snapshot?.substations ?? []).find((item) => item.ref_id.includes('/station'));
-  const branchField = station?.meta?.field_specs?.find((field) => (
-    String(field.field_role ?? field.bay_role ?? '').toUpperCase().includes('ODG')
-    || String(field.bay_role ?? '').toUpperCase() === 'FEEDER'
+  const branchField = (op.snapshot?.bays ?? []).find((field) => (
+    field.substation_ref === station?.ref_id
+    && (String(field.field_role ?? field.bay_role ?? '').toUpperCase().includes('ODG')
+      || String(field.bay_role ?? '').toUpperCase() === 'FEEDER')
   ));
-  expect(branchField?.field_ref).toBeTruthy();
+  expect(branchField?.ref_id).toBeTruthy();
 
   // Krok 4: Odgałęzienie
   op = await executeDomainOp(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${branchField!.field_ref}.BRANCH`,
+    from_ref: `${branchField!.ref_id}.BRANCH`,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,

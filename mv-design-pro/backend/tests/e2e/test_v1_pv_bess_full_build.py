@@ -34,6 +34,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -59,10 +60,10 @@ def _empty_enm() -> dict[str, Any]:
 
 def _branch_field_ref(enm: dict[str, Any], station_name: str) -> str:
     station = next(s for s in enm.get("substations", []) if s.get("name") == station_name)
-    for spec in station.get("meta", {}).get("field_specs", []):
+    for spec in pola_sn_stacji(enm, station["ref_id"]):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['field_ref']}.BRANCH"
+            return f"{spec['ref_id']}.BRANCH"
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_name}")
 
 

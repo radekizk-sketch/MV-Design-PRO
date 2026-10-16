@@ -40,6 +40,7 @@ from application.station_templates.schema import (
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 from enm.rodzaj_stacji import rodzaj_ze_skladu_pol
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
@@ -311,7 +312,7 @@ def _zastosuj_szablon_pod_blokada(
     # B-12: aparat pola SN pochodzi z JAWNEGO wskazania (override projektanta →
     # opcje roli → wspólne opcje szablonu). Brak wskazania = błąd szablonu,
     # nigdy zaszyty typ.
-    sn_field_specs = _resolve_sn_field_specs(
+    sn_fields = _resolve_sn_fields(
         template,
         bay_roles=sn_bay_roles,
         overrides=overrides,
@@ -400,7 +401,7 @@ def _zastosuj_szablon_pod_blokada(
             overrides=overrides,
             station_spec=station_spec,
             transformer_spec=transformer_spec,
-            sn_field_specs=sn_field_specs,
+            sn_fields=sn_fields,
             nn_block_spec=nn_block_spec,
             operations_log=operations_log,
             wspolny_aparat_pol=wspolny_aparat_pol,
@@ -412,7 +413,7 @@ def _zastosuj_szablon_pod_blokada(
             "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
             "station": {**station_spec, "station_type": _resolve_station_type(sn_bay_roles)},
             "transformer": transformer_spec,
-            "sn_fields": sn_field_specs,
+            "sn_fields": sn_fields,
             "nn_block": nn_block_spec,
         }
         if wspolny_aparat_pol:
@@ -796,7 +797,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     overrides: dict[str, Any],
     station_spec: dict[str, Any],
     transformer_spec: dict[str, Any],
-    sn_field_specs: list[dict[str, Any]],
+    sn_fields: list[dict[str, Any]],
     nn_block_spec: dict[str, Any],
     operations_log: list[dict[str, Any]],
     wspolny_aparat_pol: str | None,
@@ -941,7 +942,7 @@ def _zabuduj_stacje_w_odgalezieniu(
             # szablonu: za rozdzielnicą klienta nie ma dokąd prowadzić tranzytu.
             "station": {**station_spec, "name": template.name_pl, "station_type": "terminal"},
             "transformer": transformer_spec,
-            "sn_fields": sn_field_specs,
+            "sn_fields": sn_fields,
             "nn_block": nn_block_spec,
             **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
         },
@@ -1022,57 +1023,35 @@ def _station_nn_feeder_refs(
     station_ref: str | None,
     nn_bus_ref: str | None,
 ) -> list[str]:
+    """Pola odpływowe nN stacji na szynie nN szablonu — rekordy `bays` (`enm.pola.
+    pola_nn_stacji`, poziom z JEDNEGO predykatu `czy_pole_nn`), w kolejności zapisu."""
     if not station_ref or not nn_bus_ref:
         return []
-    for substation in enm_dict.get("substations", []):
-        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
-            continue
-        meta = substation.get("meta")
-        if not isinstance(meta, dict):
-            return []
-        refs: list[str] = []
-        raw_specs = meta.get("nn_field_specs")
-        if not isinstance(raw_specs, list):
-            return refs
-        for spec in raw_specs:
-            if not isinstance(spec, dict):
-                continue
-            if spec.get("bay_role") != "FEEDER" or spec.get("bus_ref") != nn_bus_ref:
-                continue
-            field_ref = spec.get("field_ref")
-            if isinstance(field_ref, str) and field_ref.strip():
-                refs.append(field_ref)
-        return refs
-    return []
+    return [
+        str(rekord["ref_id"])
+        for rekord in pola_nn_stacji(enm_dict, station_ref)
+        if rekord.get("bay_role") == "FEEDER" and rekord.get("bus_ref") == nn_bus_ref
+    ]
 
 
 def _measurement_field_ref(enm_dict: dict[str, Any], station_ref: str | None) -> str | None:
-    """`field_ref` pola SN o roli `MEASUREMENT` stacji (Step 5 — CT/VT).
+    """Identyfikator pola SN o roli `MEASUREMENT` stacji (Step 5 — CT/VT).
 
-    Czyta `meta.field_specs` — TĘ SAMĄ tablicę, którą wypełniają OBIE drogi
-    zabudowy (`insert_station_on_segment_sn` i `append_station_on_endpoint`,
-    „parytet" udokumentowany przy tworzeniu pola SN), więc działa niezależnie
-    od klasy przyłączenia. `None` gdy stacja nie ma pola pomiarowego (szablon
-    bez roli MEASUREMENT) — uczciwy brak, Step 5 wtedy nic nie robi."""
+    Czyta rekordy `bays` stacji (`enm.pola.pola_sn_stacji`) — TEN SAM nośnik, który
+    wypełniają OBIE drogi zabudowy (`insert_station_on_segment_sn` i
+    `append_station_on_endpoint`), więc działa niezależnie od klasy przyłączenia. `None`
+    gdy stacja nie ma pola pomiarowego (szablon bez roli MEASUREMENT) — uczciwy brak,
+    Step 5 wtedy nic nie robi."""
     if not station_ref:
         return None
-    for substation in enm_dict.get("substations", []):
-        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
-            continue
-        meta = substation.get("meta")
-        if not isinstance(meta, dict):
-            return None
-        raw_specs = meta.get("field_specs")
-        if not isinstance(raw_specs, list):
-            return None
-        for spec in raw_specs:
-            if not isinstance(spec, dict) or spec.get("bay_role") != "MEASUREMENT":
-                continue
-            field_ref = spec.get("field_ref")
-            if isinstance(field_ref, str) and field_ref.strip():
-                return field_ref
-        return None
-    return None
+    return next(
+        (
+            str(rekord["ref_id"])
+            for rekord in pola_sn_stacji(enm_dict, station_ref)
+            if rekord.get("bay_role") == "MEASUREMENT"
+        ),
+        None,
+    )
 
 
 def _szyna_sn_stacji_dla_szablonu(
@@ -1300,7 +1279,7 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
     }
 
 
-def _resolve_sn_field_specs(
+def _resolve_sn_fields(
     template: StationTemplate,
     *,
     bay_roles: list[str],

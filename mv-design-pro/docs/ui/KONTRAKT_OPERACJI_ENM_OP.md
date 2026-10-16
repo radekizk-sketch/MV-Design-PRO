@@ -111,7 +111,7 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
       /* agregat wszystkich terminali z magistral i odgalezien */
     ],
     "line_fields": [
-      /* karta POLE-ZAJĘTE: zajętość KAŻDEGO pola rozdzielnicy SN (meta.field_specs) z jednej
+      /* karta POLE-ZAJĘTE: zajętość KAŻDEGO pola rozdzielnicy SN (rekordy `bays`) z jednej
          funkcji backendu `enm/zajetosc_pol.py`; front czyta ją i nie liczy zajętości sam */
       {
         "field_ref": "<ref pola>",

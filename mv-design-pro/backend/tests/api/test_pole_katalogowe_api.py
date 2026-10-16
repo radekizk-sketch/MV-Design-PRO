@@ -26,6 +26,7 @@ from typing import Any
 import pytest
 from api.main import app
 from enm.dziennik_zmian import wyczysc_dziennik
+from enm.pola import pola_sn_stacji
 from enm.slownik_komunikatow import nazwa_pola
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
@@ -142,7 +143,7 @@ def _odcisk(klient: TestClient, case_id: str) -> str:
 
 def _pola_stacji(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    return list((stacja.get("meta") or {}).get("field_specs") or [])
+    return pola_sn_stacji(snapshot, stacja["ref_id"])
 
 
 def test_tryb_proby_zwraca_werdykt_i_niczego_nie_zapisuje(klient: TestClient) -> None:
@@ -182,7 +183,7 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
     case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
-    znane = {spec["field_ref"] for spec in _pola_stacji(snapshot)}
+    znane = {spec["ref_id"] for spec in _pola_stacji(snapshot)}
 
     wynik = _operacja(
         klient,
@@ -198,7 +199,7 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
     assert not wynik.get("error"), wynik.get("error")
     assert _odcisk(klient, case_id) != odcisk_przed, "Wykonanie musi zmienić model"
     stan_po = klient.get(f"/api/cases/{case_id}/enm").json()
-    nowe = [spec for spec in _pola_stacji(stan_po) if spec["field_ref"] not in znane]
+    nowe = [spec for spec in _pola_stacji(stan_po) if spec["ref_id"] not in znane]
     assert len(nowe) == 1
     pole = nowe[0]
     assert pole["bay_role"] == "TR"

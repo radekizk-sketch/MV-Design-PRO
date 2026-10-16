@@ -140,13 +140,8 @@ export function selectStationTransformerUnits(
       return {
         ref,
         hvBusRef,
-        hvSekcjaBusRef: hvBusRef !== null && station
-          ? szynaGlownaStacji(
-              station,
-              snapshot?.branches ?? [],
-              hvBusRef,
-              pelnyKontekst?.regula.indeksPolNn,
-            ) ?? hvBusRef
+        hvSekcjaBusRef: hvBusRef !== null && station && snapshot
+          ? szynaGlownaStacji(snapshot, station, hvBusRef) ?? hvBusRef
           : hvBusRef,
         lvBusRef: nonEmptyRef(transformer.lv_bus_ref) ? transformer.lv_bus_ref : null,
         hvVoltageKv: (hvBusRef !== null ? voltageByBusRef.get(hvBusRef) : undefined) ?? null,

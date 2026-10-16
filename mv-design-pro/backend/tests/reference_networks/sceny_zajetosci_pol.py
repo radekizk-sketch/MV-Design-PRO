@@ -184,11 +184,9 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
         if stan == "brak_pol":
             # Operacja budowy GPZ wymaga co najmniej jednego pola na sekcję — stan „brak
             # pól” istnieje wyłącznie jako model zastany (archiwum); odtwarzamy go wprost.
+            # Karta W5-B: pola są rekordami `bays` — kasujemy rekordy pól liniowych GPZ.
             enm = copy.deepcopy(enm)
-            gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
-            gpz["meta"]["field_specs"] = [
-                f for f in gpz["meta"]["field_specs"] if f.get("field_ref") not in pola
-            ]
+            enm["bays"] = [f for f in enm.get("bays") or [] if f.get("ref_id") not in pola]
             pola = []
 
     # Zajmowane są wyłącznie pola WOLNE (pole wyjściowe stacji wstawionej w odcinek jest zajęte

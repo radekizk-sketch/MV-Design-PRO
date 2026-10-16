@@ -87,15 +87,19 @@ async function build() {
   });
 
   const feederRef = (station) => {
-    const f = (station?.meta?.field_specs ?? []).find(
+    const f = (station?.pola ?? []).find(
       (x) => String(x.bay_role ?? '').toUpperCase() === 'FEEDER'
         || String(x.field_role ?? '').toUpperCase().includes('ODG'),
     );
-    return f?.field_ref ? `${f.field_ref}.BRANCH` : null;
+    return f?.ref_id ? `${f.ref_id}.BRANCH` : null;
   };
+  // Karta W5-B: pola stacji to rekordy `bays` migawki — stacja niesie swoje pola z tej samej
+  // odpowiedzi operacji (`pola`), żeby wybór pola odgałęźnego nie czytał innej migawki.
   const newestStation = (o) => {
     const subs = (o.snapshot?.substations ?? []).filter((s) => s.ref_id.includes('/station'));
-    return subs[subs.length - 1];
+    const station = subs[subs.length - 1];
+    if (!station) return station;
+    return { ...station, pola: (o.snapshot?.bays ?? []).filter((b) => b.substation_ref === station.ref_id) };
   };
 
   const liczStacje = async () => {

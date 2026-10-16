@@ -16,6 +16,7 @@ import {
   kontekstTransformatorowStacji,
   selectStationDistributionTransformers,
 } from '../../shared/transformatoryStacji';
+import { polaSnStacji } from '../../shared/polaStacji';
 
 // =============================================================================
 // Helpers
@@ -48,9 +49,8 @@ export function IncompleteStationsReview() {
     return (snapshot.substations ?? []).map((station) => {
       // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
       const trCount = selectStationDistributionTransformers(snapshot, station, kontekstTransformatorow).length;
-      const bayCount = (snapshot.bays ?? []).filter(
-        (b) => b.substation_ref === station.id,
-      ).length;
+      // Karta W5-B: pola SN stacji (rekordy `bays` na szynie SN).
+      const bayCount = polaSnStacji(snapshot, station.ref_id).length;
       const nnCount = (snapshot.buses ?? []).filter(
         (b) => station.bus_refs?.includes(b.ref_id) && wPasmieNn(b.voltage_kv),
       ).length;

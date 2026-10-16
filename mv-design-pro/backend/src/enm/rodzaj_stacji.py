@@ -18,10 +18,11 @@ Reguła (wyłącznie z JAWNYCH danych modelu, bez domysłu):
      2026-07-17 pkt 7: „przelotowa ⇔ oba pola liniowe POŁĄCZONE");
   R4 0–1 pole liniowe ⇒ końcowa.
 
-Pola stacji: `meta.field_specs` (droga operacji i szablonów), a gdy stacja ich nie ma —
-elementy `bays` stacji (modele sprzed specyfikacji pól); ten sam wybór co rysunek.
-Rola pola: `meta.field_role` (rola kanoniczna / katalogowa), a gdy nierozpoznana — `bay_role`.
-Rodzaj pola katalogowego (`bay_kind`) potrzeb własnych, rezerwowego i odgromnikowego przesądza
+Pola stacji: pola SN stacji z rekordów `bays` (karta W5-B: rekord pola jest jedynym nośnikiem
+pól; jeden akcesor `enm.pola.pola_sn_stacji`, ten sam zbiór co rysunek).
+Rola pola: `field_role` rekordu (rola kanoniczna / katalogowa), a gdy nierozpoznana — `bay_role`.
+Rodzaj pola katalogowego (`metadane_pochodzenia.bay_kind` rekordu, a we wpisie składu szablonu
+`bay_kind`) potrzeb własnych, rezerwowego i odgromnikowego przesądza
 przed rolą: w katalogu rozdzielnic takie pola mają rolę modelu `FEEDER` (jak pole odgałęźne), ale
 nie są polami liniowymi. Pole o roli nierozpoznanej NIE liczy się jako liniowe (walidator
 zgłasza je kodem `W044`).
@@ -30,8 +31,8 @@ Rodzaj nie dotyczy rozdzielni źródłowej (GPZ) ani wolnostojącej rozdzielnicy
 
 Lustro frontendu: `frontend/src/ui/shared/rodzajStacji.ts` — parytet przypięty testem na każdej
 stacji każdego modelu ENM z fikstur generowanych (`tests/reference_networks/
-rodzaj_stacji_parytet.py`). Moduł-liść: biblioteka standardowa + `enm.tor_pola` (przynależność
-szyn do stacji) + słownik nazw rodzajów.
+rodzaj_stacji_parytet.py`). Moduł-liść: biblioteka standardowa + `enm.pola` (pola stacji) +
+`enm.tor_pola` (przynależność szyn do stacji) + słownik nazw rodzajów.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from .pola import pola_sn_stacji, poziom_pol
 from .slownik_komunikatow import NAZWY_RODZAJOW_STACJI_PL
 from .tor_pola import szyny_stacji
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
@@ -219,41 +221,23 @@ def _rola_rozpoznana(wartosc: object) -> str | None:
 
 
 def rola_pola(spec: Mapping[str, Any]) -> str | None:
-    """Rola pola: `meta.field_role`, a gdy nierozpoznana — `bay_role` (None: nierozpoznana)."""
-    return _rola_rozpoznana(_slownik(spec.get("meta")).get("field_role")) or _rola_rozpoznana(
-        spec.get("bay_role")
-    )
+    """Rola pola: `field_role`, a gdy nierozpoznana — `bay_role` (None: nierozpoznana)."""
+    return _rola_rozpoznana(spec.get("field_role")) or _rola_rozpoznana(spec.get("bay_role"))
 
 
 def kategoria_pola(spec: Mapping[str, Any]) -> str | None:
-    """Kategoria pola dla rodzaju stacji: z rodzaju pola katalogowego (`bay_kind`, także
-    w `meta`), a gdy ten nie przesądza — z roli (`rola_pola`). `None` — rola nierozpoznana."""
-    for rodzaj in (spec.get("bay_kind"), _slownik(spec.get("meta")).get("bay_kind")):
+    """Kategoria pola dla rodzaju stacji: z rodzaju pola katalogowego (`bay_kind` wpisu składu
+    albo `metadane_pochodzenia.bay_kind` rekordu pola), a gdy ten nie przesądza — z roli
+    (`rola_pola`). `None` — rola nierozpoznana."""
+    for rodzaj in (
+        spec.get("bay_kind"),
+        _slownik(spec.get("metadane_pochodzenia")).get("bay_kind"),
+    ):
         wartosc = _napis(rodzaj)
         if wartosc is not None and wartosc.lower() in KATEGORIA_RODZAJU_POLA:
             return KATEGORIA_RODZAJU_POLA[wartosc.lower()]
     rola = rola_pola(spec)
     return KATEGORIA_ROLI_POLA[rola] if rola is not None else None
-
-
-def _pola_stacji(
-    stacja: Mapping[str, Any], bays: Sequence[Mapping[str, Any]]
-) -> list[Mapping[str, Any]]:
-    """Pola SN stacji: specyfikacje pól (niepuste), a przy ich braku — elementy `bays` stacji."""
-    specyfikacje = [
-        spec
-        for spec in _slownik(stacja.get("meta")).get("field_specs") or []
-        if isinstance(spec, Mapping)
-        and (
-            _napis(spec.get("field_ref"))
-            or _napis(spec.get("bus_ref"))
-            or any(_napis(ref) for ref in spec.get("equipment_refs") or [])
-        )
-    ]
-    if specyfikacje:
-        return specyfikacje
-    odnosniki = {r for r in (_napis(stacja.get("ref_id")), _napis(stacja.get("id"))) if r}
-    return [bay for bay in bays if _napis(bay.get("substation_ref")) in odnosniki]
 
 
 def _wyprowadzenia_polaczone(
@@ -303,9 +287,9 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
     """Rodzaj KAŻDEJ stacji modelu, której rodzaj dotyczy (klucz: `ref_id`), deterministycznie."""
     stacje = [s for s in enm.get("substations") or [] if isinstance(s, Mapping)]
     galezie = [g for g in enm.get("branches") or [] if isinstance(g, Mapping)]
-    bays = [b for b in enm.get("bays") or [] if isinstance(b, Mapping)]
+    poziom = poziom_pol(enm)
     szyny: dict[str, frozenset[str]] = {
-        str(_napis(s.get("ref_id"))): szyny_stacji(s, galezie)
+        str(_napis(s.get("ref_id"))): szyny_stacji(enm, s, poziom)
         for s in stacje
         if _napis(s.get("ref_id"))
     }
@@ -317,17 +301,15 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
         liniowe = 0
         sprzeglo = False
         nierozpoznane: list[PoleNierozpoznane] = []
-        for pole in _pola_stacji(stacja, bays):
+        for pole in pola_sn_stacji(enm, ref, poziom):
             kategoria = kategoria_pola(pole)
             if kategoria is None:
                 nierozpoznane.append(
                     PoleNierozpoznane(
-                        field_ref=str(_napis(pole.get("field_ref")) or _napis(pole.get("ref_id"))),
+                        field_ref=str(_napis(pole.get("ref_id"))),
                         nazwa=_napis(pole.get("name")),
                         rola=str(
-                            _napis(_slownik(pole.get("meta")).get("field_role"))
-                            or _napis(pole.get("bay_role"))
-                            or ""
+                            _napis(pole.get("field_role")) or _napis(pole.get("bay_role")) or ""
                         ),
                     )
                 )

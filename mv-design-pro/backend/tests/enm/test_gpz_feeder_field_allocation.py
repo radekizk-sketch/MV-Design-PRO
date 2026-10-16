@@ -24,6 +24,7 @@ from enm.domain_operations import (
     execute_domain_operation,
 )
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 
 
 def _empty_enm() -> dict:
@@ -70,7 +71,7 @@ def _gpz_substation(snapshot: dict) -> dict:
 def _gpz_line_fields(snapshot: dict) -> list[dict]:
     return [
         spec
-        for spec in _gpz_substation(snapshot).get("meta", {}).get("field_specs", [])
+        for spec in pola_stacji(snapshot, _gpz_substation(snapshot)["ref_id"])
         if "gpz_line_field" in (spec.get("tags") or [])
     ]
 
@@ -114,20 +115,20 @@ class TestGpzFeederDedicatedField:
         fields_before = _gpz_line_fields(snapshot)
         assert len(fields_before) == 1
 
-        result = _start_branch_from_field(snapshot, fields_before[0]["field_ref"])
+        result = _start_branch_from_field(snapshot, fields_before[0]["ref_id"])
         assert not result.get("error"), result.get("error")
         after = result["snapshot"]
 
         fields = _gpz_line_fields(after)
         assert len(fields) == 2, "feeder z zajętego pola MUSI dostać nowe, dedykowane pole"
-        new_field = next(f for f in fields if f["field_ref"] != fields_before[0]["field_ref"])
+        new_field = next(f for f in fields if f["ref_id"] != fields_before[0]["ref_id"])
         assert new_field["bay_role"] == "FEEDER"
         assert new_field["meta"]["gpz_line_field_index"] == 1
         assert new_field["equipment_refs"] == [], "zero fabrykacji aparatury nowego pola"
 
         branch_ref = next(b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"])
         corridor = _branch_corridor(after, branch_ref)
-        assert corridor["meta"]["gpz_field_ref"] == new_field["field_ref"]
+        assert corridor["meta"]["gpz_field_ref"] == new_field["ref_id"]
         assert new_field["meta"]["assigned_corridor_ref"] == corridor["ref_id"]
 
         # Samonaprawa: pole 0 (magistrali) dostaje jawny przydział.
@@ -142,10 +143,10 @@ class TestGpzFeederDedicatedField:
         fields_before = _gpz_line_fields(snapshot)
         assert len(fields_before) == 2
         occupied_ref = next(
-            f["field_ref"] for f in fields_before if f["meta"]["gpz_line_field_index"] == 0
+            f["ref_id"] for f in fields_before if f["meta"]["gpz_line_field_index"] == 0
         )
         free_ref = next(
-            f["field_ref"] for f in fields_before if f["meta"]["gpz_line_field_index"] == 1
+            f["ref_id"] for f in fields_before if f["meta"]["gpz_line_field_index"] == 1
         )
 
         # Celowo wskazujemy pole ZAJĘTE — operacja ma przydzielić WOLNE.
@@ -161,7 +162,7 @@ class TestGpzFeederDedicatedField:
     def test_two_feeders_get_two_distinct_fields(self):
         """Dwa feedery ⇒ dwa RÓŻNE dedykowane pola (nigdy wspólne)."""
         snapshot = _build_gpz_with_trunk()
-        field_ref = _gpz_line_fields(snapshot)[0]["field_ref"]
+        field_ref = _gpz_line_fields(snapshot)[0]["ref_id"]
 
         r1 = _start_branch_from_field(snapshot, field_ref, dlugosc_m=200)
         assert not r1.get("error"), r1.get("error")
@@ -207,10 +208,10 @@ class TestGpzFeederDedicatedField:
         station = next(s for s in snapshot["substations"] if str(s["ref_id"]).startswith("stn/"))
         station_field = next(
             spec
-            for spec in station.get("meta", {}).get("field_specs", [])
+            for spec in pola_stacji(snapshot, station["ref_id"])
             if str(spec.get("bay_role", "")).upper() == "FEEDER"
         )
-        result = _start_branch_from_field(snapshot, station_field["field_ref"])
+        result = _start_branch_from_field(snapshot, station_field["ref_id"])
         assert not result.get("error"), result.get("error")
         after = result["snapshot"]
 
@@ -223,7 +224,7 @@ class TestGpzFeederDedicatedField:
         """Test NEGATYWNY (wyrocznia gryzie): limit pól sekcji wyczerpany ⇒
         operacja ODMAWIA (nigdy dwa kable z jednego pola)."""
         snapshot = _build_gpz_with_trunk(line_fields_count=MAX_GPZ_LINE_FIELDS_PER_SECTION)
-        field_ref = _gpz_line_fields(snapshot)[0]["field_ref"]
+        field_ref = _gpz_line_fields(snapshot)[0]["ref_id"]
         # Pole 0 zajęte przez magistralę ⇒ wolnych jest MAX-1; zapełnij je.
         for i in range(MAX_GPZ_LINE_FIELDS_PER_SECTION - 1):
             r = _start_branch_from_field(snapshot, field_ref, dlugosc_m=100 + i)

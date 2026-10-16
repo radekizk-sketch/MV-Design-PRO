@@ -37,6 +37,7 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation
+from enm.pola import zbuduj_pole
 from enm.topology_ops import (
     attach_protection,
     create_branch,
@@ -46,7 +47,7 @@ from enm.topology_ops import (
 )
 from network_model.nazwy import jest_nazwa
 
-from tests.enm.test_enm_api import _valid_enm_with_field_specs
+from tests.enm.test_enm_api import _valid_enm_with_field
 from tests.enm.test_nazwy_polowek_odcinka import (
     CATALOG_APARAT_SN,
     CATALOG_LINE_70,
@@ -608,67 +609,55 @@ _PRZEKLADNIKI = [
 ]
 
 
-#: Iloczyn cech nazwy pola, od której przekładnik bierze nazwę: nazwa specyfikacji ×
-#: element pola `bay_ref` z nazwą (tak zapisują pola operacje stacji — specyfikacja bez
-#: nazwy, nazwa na elemencie pola) × rola pola × rodzaj specyfikacji (SN / nN).
+#: Iloczyn cech nazwy pola, od której przekładnik bierze nazwę: nazwa nadana przez projektanta
+#: (z nazwą / bez nazwy / sama spacja) × rola pola × poziom pola (SN / nN). Od W5-B nazwa
+#: jest NA REKORDZIE pola — builder `enm.pola.zbuduj_pole` nadaje nazwę roli, gdy projektant
+#: jej nie podał; dawny przypadek „pole bez roli" nie istnieje (rola pola jest wymagana
+#: kontraktem `Bay`), a „nazwa elementu pola przez `bay_ref`" zniknęła razem z dublem rekordu.
 _NAZWY_POLA = [
-    pytest.param("Pole IN", "field_specs", None, "IN", "Pole IN", id="spec-z-nazwa"),
-    pytest.param(
-        "Pole IN",
-        "field_specs",
-        "Pole liniowe wejściowe — Stacja 1",
-        "IN",
-        "Pole IN",
-        id="spec-z-nazwa-wygrywa-z-elementem",
-    ),
-    pytest.param(
-        None,
-        "field_specs",
-        "Pole liniowe wejściowe — Stacja 1",
-        "IN",
-        "Pole liniowe wejściowe — Stacja 1",
-        id="spec-bez-nazwy-element-pola-z-nazwa",
-    ),
-    pytest.param("", "field_specs", "  ", "IN", "Pole liniowe wejściowe", id="bez-nazw-rola-sn"),
-    pytest.param(
-        "", "field_specs", None, "POMIAROWE", "Pole pomiarowe", id="bez-nazw-rola-pomiarowa"
-    ),
-    pytest.param("", "field_specs", None, None, "Pole SN", id="bez-nazw-bez-roli"),
-    pytest.param("", "nn_field_specs", None, None, "Pole nN bez nazwy", id="pole-nn-bez-nazwy"),
+    pytest.param("Pole IN", False, "IN", "Pole IN", id="pole-z-nazwa"),
+    pytest.param(None, False, "IN", "Pole liniowe wejściowe", id="bez-nazwy-rola-sn"),
+    pytest.param("  ", False, "IN", "Pole liniowe wejściowe", id="spacja-rola-sn"),
+    pytest.param(None, False, "MEASUREMENT", "Pole pomiarowe", id="bez-nazwy-rola-pomiarowa"),
+    pytest.param(None, True, "FEEDER", "Odpływ nN", id="pole-nn-bez-nazwy"),
+    pytest.param("Odpływ K1", True, "FEEDER", "Odpływ K1", id="pole-nn-z-nazwa"),
 ]
 
 
+def _model_z_polem(nazwa_pola: str | None, poziom_nn: bool, rola: str) -> dict[str, Any]:
+    enm = _valid_enm_with_field("Przekładniki pola")
+    szyna = "b1"
+    if poziom_nn:
+        szyna = "b_nn"
+        enm["buses"].append(
+            {"ref_id": "b_nn", "name": "Szyna nN", "voltage_kv": 0.4, "tags": [], "meta": {}}
+        )
+        enm["substations"][0]["bus_refs"].append("b_nn")
+    enm["bays"] = [
+        zbuduj_pole(
+            ref_id="field_in_1",
+            name=nazwa_pola,
+            bay_role=rola,
+            bus_ref=szyna,
+            substation_ref="sub_1",
+            poziom_nn=poziom_nn,
+        )
+    ]
+    return enm
+
+
 @pytest.mark.parametrize(("operacja", "ladunek", "przedrostek"), _PRZEKLADNIKI)
-@pytest.mark.parametrize(
-    ("nazwa_pola", "rodzaj_spec", "nazwa_elementu_pola", "rola", "oczekiwana"), _NAZWY_POLA
-)
+@pytest.mark.parametrize(("nazwa_pola", "poziom_nn", "rola", "oczekiwana"), _NAZWY_POLA)
 def test_przekladnik_pola_bez_nazwy_nazywa_sie_od_nazwy_pola(
     nazwa_pola: str | None,
-    rodzaj_spec: str,
-    nazwa_elementu_pola: str | None,
-    rola: str | None,
+    poziom_nn: bool,
+    rola: str,
     oczekiwana: str,
     operacja: str,
     ladunek: dict[str, Any],
     przedrostek: str,
 ) -> None:
-    enm = _valid_enm_with_field_specs("Przekładniki pola")
-    meta = enm["substations"][0]["meta"]
-    spec = meta.pop("field_specs")[0]
-    spec["name"] = nazwa_pola
-    spec["bay_role"] = rola
-    if nazwa_elementu_pola is not None:
-        spec["bay_ref"] = "bay_in_1"
-        enm["bays"] = [
-            {
-                "ref_id": "bay_in_1",
-                "name": nazwa_elementu_pola,
-                "bay_role": "IN",
-                "substation_ref": "sub_1",
-                "bus_ref": "b1",
-            }
-        ]
-    meta[rodzaj_spec] = [spec]
+    enm = _model_z_polem(nazwa_pola, poziom_nn, rola)
     wynik = execute_domain_operation(enm, operacja, {"field_ref": "field_in_1", **ladunek})
     assert not wynik.get("error"), wynik.get("error")
     przekladnik = wynik["snapshot"]["measurements"][-1]
@@ -770,49 +759,27 @@ def test_kopia_odplywu_nn_nazywa_kopie_od_nazw_albo_opisu_rodzaju(bez_nazw: bool
 
 
 # ---------------------------------------------------------------------------
-# Jedna reguła nazwy pola ze specyfikacji stacji — wszyscy konsumenci
+# Jedna reguła nazwy pola — rekord pola niesie nazwę, konsumenci ją czytają
 # ---------------------------------------------------------------------------
 
-_SPEC_POLA = [
-    pytest.param({"name": "Pole IN"}, "Pole IN", id="nazwa-specyfikacji"),
-    pytest.param(
-        {"name": None, "bay_ref": "bay_in_1"},
-        "Pole liniowe wejściowe — Stacja 1",
-        id="nazwa-elementu-pola",
-    ),
-    pytest.param({"name": " "}, "Pole liniowe wejściowe", id="nazwa-roli"),
-]
 
-
-def _model_z_polem_ze_specyfikacji(nadpisania: dict[str, Any]) -> Any:
-    from enm.models import EnergyNetworkModel
-
-    enm = _valid_enm_with_field_specs("Nazwa pola ze specyfikacji")
-    enm["bays"] = [
-        {
-            "ref_id": "bay_in_1",
-            "name": "Pole liniowe wejściowe — Stacja 1",
-            "bay_role": "IN",
-            "substation_ref": "sub_1",
-            "bus_ref": "b1",
-        }
-    ]
-    enm["substations"][0]["meta"]["field_specs"][0].update(nadpisania)
-    return EnergyNetworkModel.model_validate(enm)
-
-
-@pytest.mark.parametrize(("nadpisania", "oczekiwana"), _SPEC_POLA)
-def test_nazwa_pola_ze_specyfikacji_ta_sama_w_read_modelu_i_ocenie_lom(
-    nadpisania: dict[str, Any], oczekiwana: str
+@pytest.mark.parametrize(
+    ("nazwa_pola", "poziom_nn", "rola", "oczekiwana"),
+    [p for p in _NAZWY_POLA if p.values[2] in {"IN", "FEEDER"}],
+)
+def test_nazwa_pola_ta_sama_w_operacjach_i_komunikatach(
+    nazwa_pola: str | None, poziom_nn: bool, rola: str, oczekiwana: str
 ) -> None:
-    """Iloczyn: {nazwa specyfikacji, nazwa elementu pola `bay_ref`, tylko rola} × {read-model
-    pola (`collect_bays`), ocena LoM (`_pola_przylaczeniowe`)} — obie drogi dają tę samą nazwę
-    (jedna reguła `nazwa_pola_ze_specyfikacji`), nigdy identyfikator `field_in_1`."""
-    from application.analyses.ochrona_lom import _pola_przylaczeniowe
-    from application.field_read_model import collect_bays
+    """Iloczyn: {nazwa projektanta, nazwa z roli} × {SN, nN} × {nazwa elementu w operacjach
+    (`_nazwa_pola_w_modelu`, `_nazwa_pola` V2), opis w komunikatach (`opis_elementu`)} —
+    wszyscy czytają TĘ SAMĄ nazwę z rekordu pola, nigdy identyfikator `field_in_1`."""
+    from enm.domain_operations import _nazwa_pola_w_modelu
+    from enm.domain_operations_v2 import _nazwa_pola
+    from enm.slownik_komunikatow import opis_elementu
 
-    model = _model_z_polem_ze_specyfikacji(nadpisania)
-    for zbieracz in (collect_bays, _pola_przylaczeniowe):
-        [pole] = [p for p in zbieracz(model) if p.ref_id == "field_in_1"]
-        assert pole.name == oczekiwana, zbieracz.__name__
-        assert "field_in_1" not in pole.name
+    enm = _model_z_polem(nazwa_pola, poziom_nn, rola)
+    assert enm["bays"][0]["name"] == oczekiwana
+    assert _nazwa_pola_w_modelu(enm, "field_in_1") == oczekiwana
+    assert _nazwa_pola(enm, "field_in_1") == oczekiwana
+    assert oczekiwana in opis_elementu(enm, "field_in_1", "pole")
+    assert "field_in_1" not in opis_elementu(enm, "field_in_1", "pole")

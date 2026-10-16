@@ -36,6 +36,7 @@ from .models import (
     Junction,
     OverheadLine,
 )
+from .pola import poziom_pol
 from .tor_pola import szyny_stacji
 
 #: Typy gałęzi ENM będące łącznikami: zamknięty łącznik SCALA szyny w jeden węzeł
@@ -314,9 +315,10 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
 
     # Bus → substation mapping
     bus_to_sub: dict[str, str] = {}
+    poziom = poziom_pol(enm)
     for sub in enm.substations:
         # POLA-W-TORZE: zaciski pól SN i szyny za aparatami pól nN należą do stacji.
-        for br in sorted(szyny_stacji(sub, enm.branches)):
+        for br in sorted(szyny_stacji(enm, sub, poziom)):
             bus_to_sub.setdefault(br, sub.ref_id)
 
     # Bus → junction mapping

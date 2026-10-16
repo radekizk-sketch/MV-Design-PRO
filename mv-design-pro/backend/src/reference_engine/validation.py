@@ -18,8 +18,10 @@ mapowanie rule_code → kod walidatora. Zasady na żywo (spec §6):
 
 from __future__ import annotations
 
-from enm.models import EnergyNetworkModel
-from enm.slownik_komunikatow import opis_elementu
+from collections.abc import Mapping
+
+from enm.models import Bay, EnergyNetworkModel
+from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from pydantic import BaseModel
 
 from .compliance import evaluate_enm
@@ -50,8 +52,14 @@ _SUGGESTED_FIX_PL = (
 )
 
 
-def _opis_pola(enm: EnergyNetworkModel, bay_ref: str) -> str:
-    """Pole w treści komunikatu gotowości — nazwa z modelu, nigdy identyfikator (#142)."""
+def _opis_pola(enm: EnergyNetworkModel, pola_po_ref: Mapping[str, Bay], bay_ref: str) -> str:
+    """Pole w treści komunikatu gotowości — nazwa z modelu, nigdy identyfikator (#142).
+
+    `pola_po_ref` zbudowany raz na wywołanie walidacji: bez niego każde znalezisko
+    przeszukiwało całą migawkę (O(n) na komunikat, O(n²) na walidację dużej sieci)."""
+    pole = pola_po_ref.get(bay_ref)
+    if pole is not None:
+        return opis_obiektu(pole, "Pole")
     return opis_elementu(enm, bay_ref, "Pole")
 
 
@@ -65,6 +73,9 @@ def _issue_code_for_rule(rule_code: str) -> str | None:
 def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFinding]:
     """Znaleziska referencyjne dla walidacji na żywo (deterministyczne)."""
     findings: list[LiveReferenceFinding] = []
+    pola_po_ref: dict[str, Bay] = {}
+    for bay in enm.bays:
+        pola_po_ref.setdefault(bay.ref_id, bay)
 
     # Normy: profile pól (iec62271) — wszystkie pola ze ścieżką danych.
     report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
@@ -80,7 +91,7 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
             findings.append(
                 LiveReferenceFinding(
                     code=issue_code,
-                    message_pl=f"{_opis_pola(enm, check.element_ref)}: {check.message_pl}",
+                    message_pl=f"{_opis_pola(enm, pola_po_ref, check.element_ref)}: {check.message_pl}",
                     element_ref=check.element_ref,
                     suggested_fix=_SUGGESTED_FIX_PL,
                 )
@@ -129,7 +140,7 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
                 findings.append(
                     LiveReferenceFinding(
                         code=issue_code,
-                        message_pl=f"{_opis_pola(enm, check.element_ref)}: {check.message_pl}",
+                        message_pl=f"{_opis_pola(enm, pola_po_ref, check.element_ref)}: {check.message_pl}",
                         element_ref=check.element_ref,
                         suggested_fix=_SUGGESTED_FIX_PL,
                     )

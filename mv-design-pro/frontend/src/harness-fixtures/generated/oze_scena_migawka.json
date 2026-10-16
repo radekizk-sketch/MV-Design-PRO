@@ -1,29 +1,127 @@
 {
-  "bays": [],
+  "bays": [
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+      "id": "c1c1ea71-581f-5aec-bca9-7a2b36121487",
+      "manufacturer_ref": null,
+      "meta": {
+        "field_status": "READY_FOR_TRUNK",
+        "gpz_line_field_index": 0,
+        "gpz_line_fields_count": 1,
+        "gpz_section_order": 0,
+        "source_field_kind": "FEEDER"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe GPZ",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "gpz_line_field"
+      ],
+      "terminal_bus_ref": null,
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "OZE",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "3592fae9-012e-509a-b7f6-7b4fd8679c9a",
+      "manufacturer_ref": null,
+      "meta": {
+        "apparatus_kind": "BREAKER",
+        "catalog_binding": null,
+        "default_device_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_device",
+        "field_status": "CONFIGURED_FOR_TRUNK",
+        "source_field_kind": "PV"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole PV SN",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "nn_source_field"
+      ],
+      "terminal_bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
+      "wybor_bloku": null
+    }
+  ],
   "branch_points": [],
   "branches": [
     {
       "catalog_namespace": null,
       "catalog_ref": null,
       "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "id": "060a0c1e-f10e-5467-a7ef-e9077792bb6f",
+      "id": "d41f5583-7f42-54c6-9088-7014da1937bf",
       "materialized_params": null,
       "meta": {
-        "nn_field_migrowana_rola": "OZE",
-        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
-        "nn_promocja_bez_wiazania_katalogowej": true
+        "apparatus_kind": "BREAKER",
+        "bay_role": "OZE",
+        "catalog_binding": null,
+        "field_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "render_on_sld": false,
+        "requires_catalog_binding": true,
+        "show_in_project_tree": false,
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "terminal_bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal"
       },
-      "name": "Pole PV SN",
+      "name": "Aparat pola źródłowego SN Pole PV SN",
       "overrides": [],
       "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_device",
-      "source_mode": "MIGRACJA",
+      "r_ohm": 0.0,
+      "ref_id": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_device",
+      "source_mode": null,
       "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "tags": [
+        "gpz_field_device",
+        "source_field_device"
+      ],
+      "to_bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
       "type": "breaker",
-      "x_ohm": null
+      "x_ohm": 0.0
     }
   ],
   "buses": [
@@ -66,16 +164,23 @@
     },
     {
       "frequency_hz": null,
-      "id": "9d098394-8417-51fd-b98e-1108104eb6d6",
+      "id": "c5a9ce91-7686-5552-a212-26c365191d9b",
       "meta": {
-        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
-        "visual_role": "NN_FEEDER_BUS"
+        "field_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "port_kind": "source_in",
+        "render_on_sld": false,
+        "show_in_project_tree": false,
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "FIELD_TERMINAL"
       },
-      "name": "Pole PV SN",
+      "name": "Zacisk pola źródłowego SN Pole PV SN",
       "nominal_limits": null,
       "phase_system": "3ph",
-      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
-      "tags": [],
+      "ref_id": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
+      "tags": [
+        "helper_bus",
+        "field_terminal"
+      ],
       "voltage_kv": 15.0,
       "zone": null
     }
@@ -96,7 +201,7 @@
   "generators": [
     {
       "blocking_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
-      "bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
       "catalog_namespace": "ZRODLO_NN_PV",
       "catalog_ref": "conv-pv-1mw-15kv",
       "connection_variant": "block_transformer",
@@ -205,9 +310,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "28a0ac511561eb105d9bef81f6c17c53e8b88e969d3dec8b7e4aae7f0adeffae",
+    "hash_sha256": "99e0dfe5d86d68b6c3a339c9b02953dbfe0bb457284bcf5307ae3403efa50065",
     "name": "Przyłączenie farmy PV 8 MW",
-    "revision": 2,
+    "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],
@@ -307,49 +412,10 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-            "equipment_refs": [],
-            "field_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
-            "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
-            "meta": {
-              "field_status": "READY_FOR_TRUNK",
-              "gpz_line_field_index": 0,
-              "gpz_line_fields_count": 1,
-              "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
-              "gpz_section_order": 0,
-              "source_field_kind": "FEEDER"
-            },
-            "name": "Pole liniowe GPZ",
-            "protection_ref": null,
-            "tags": [
-              "gpz_line_field"
-            ]
-          }
-        ],
         "gpz_hv_bus_refs": [
           "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
         ],
         "gpz_section_count": 1,
-        "nn_field_specs": [
-          {
-            "bay_role": "OZE",
-            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-            "equipment_refs": [],
-            "field_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
-            "meta": {
-              "source_field_kind": "PV"
-            },
-            "name": "Pole PV SN",
-            "protection_ref": null,
-            "tags": [
-              "nn_source_field"
-            ]
-          }
-        ],
-        "nn_fields_promoted": true,
         "short_circuit_input_side": "SN",
         "short_circuit_mode": "SHORT_CIRCUIT_POWER",
         "wn_sn_transformer_count": 1

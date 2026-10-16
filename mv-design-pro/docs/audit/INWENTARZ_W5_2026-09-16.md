@@ -62,6 +62,11 @@ daje **20 osobnych miejsc** niosących tę daną (14 backend + 6 frontend), z cz
 
 FE (produkcja) czytające `field_specs`/`nn_field_specs` — 15 plików: `ui/field/useFieldReadModel.ts:153`, `ui/sld/shared/sldActionExecutor.ts:452`, `ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx:193,1798,2065`, `ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts:307,344,586`, `ui/sld/v2/canvas/enmToSldAdapter.ts:2200,3814-3822,4016,4142-4181,4479,4518-4521`, `ui/sld/core/topologyInputReader.ts:155,396-400,531-534`, `ui/sld/v3/canvas/canvasMenuSubject.ts`, `ui/sld/v3/canvas/SldCanvasV3Workspace.tsx`, `ui/sld/v3/canvas/resultRefBridge.ts`, `ui/network-build/networkBuildStore.ts`, `ui/network-build/stationSnFields.ts`, `ui/network-build/operationContextResolvers.ts`, `ui/network-build/InspectorEngineeringView.tsx`, `ui/network-build/forms/enmResolvers.ts`, `engine/sld-layout/layoutEngine.ts`.
 
+**STAN PO (karta W5-B, 2026-10-15, gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-w5b-typowany-bay`):** trzy kolekcje skasowane; jedynym nośnikiem pól SN/nN/ZKSN
+jest `enm.bays` (`enm/models.py::Bay` rozszerzony), jedynym akcesorem/builderem/pisarzem `enm/pola.py`; jedynym
+czytelnikiem dawnych kluczy — migracja przy wczytaniu `enm/migrations/field_specs_promocja.py` (strażnik
+`scripts/meta_field_specs_resurrection_guard.py` w CI). Pełny inwentarz klasy PRZED → PO: `MELDUNEK_W5B.md`.
+
 Kontekst docelowy: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:101` opisuje migrację `legacy metadata → typed Bay → typed apparatus → terminale → łączność` i guard `meta_field_specs_resurrection_guard` (guard jeszcze nie istnieje — brak pliku w `scripts/`).
 
 ## (c) Model fazowy

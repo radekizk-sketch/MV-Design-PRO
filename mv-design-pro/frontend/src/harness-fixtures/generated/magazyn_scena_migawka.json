@@ -1,5 +1,233 @@
 {
-  "bays": [],
+  "bays": [
+    {
+      "apparatus_catalog_ref": null,
+      "bay_number": null,
+      "bay_role": "FEEDER",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+      "id": "c1c1ea71-581f-5aec-bca9-7a2b36121487",
+      "manufacturer_ref": null,
+      "meta": {
+        "field_status": "READY_FOR_TRUNK",
+        "gpz_line_field_index": 0,
+        "gpz_line_fields_count": 1,
+        "gpz_section_order": 0,
+        "source_field_kind": "FEEDER"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole liniowe GPZ",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [],
+      "protection_codes": [],
+      "protection_ref": null,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "gpz_line_field"
+      ],
+      "terminal_bus_ref": null,
+      "wybor_bloku": null
+    },
+    {
+      "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "bay_number": null,
+      "bay_role": "OZE",
+      "bay_template_ref": null,
+      "branch_point_port_id": null,
+      "branch_point_ref": null,
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "catalog_bindings": null,
+      "config_id": null,
+      "equipment_refs": [
+        "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device"
+      ],
+      "feeder_short_name": null,
+      "field_role": null,
+      "funkcja_pomiaru": null,
+      "gpz_section_id": null,
+      "id": "886d0420-5016-506c-9d2b-52a440b443d9",
+      "manufacturer_ref": null,
+      "meta": {
+        "apparatus_kind": "BREAKER",
+        "catalog_binding": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "APARAT_SN",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "default_device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
+        "der_feeder_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+        "der_role": "mv_source_field",
+        "field_status": "CONFIGURED_FOR_TRUNK",
+        "source_field_kind": "BESS"
+      },
+      "metadane_pochodzenia": null,
+      "name": "Pole źródłowe BESS",
+      "outgoing_destination_ref": null,
+      "ports": [],
+      "primary_devices": [
+        {
+          "catalog_ref": null,
+          "designation": "Q1",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::0",
+          "earthing_role": null,
+          "is_controllable": true,
+          "kind": "DS",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "Q0",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1",
+          "earthing_role": null,
+          "is_controllable": true,
+          "kind": "CB",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "T1",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::2",
+          "earthing_role": null,
+          "is_controllable": false,
+          "kind": "CT",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "T2",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::3",
+          "earthing_role": null,
+          "is_controllable": false,
+          "kind": "VT",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "Q2",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
+          "earthing_role": null,
+          "is_controllable": true,
+          "kind": "DS",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "Q9",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "Z1",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::6",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:surge_arrester"
+        },
+        {
+          "catalog_ref": null,
+          "designation": "GK",
+          "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::7",
+          "earthing_role": null,
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "linked_ref": null,
+          "operating_state": null,
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "section_side": null,
+          "switch_state": null,
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "protection_ref": null,
+      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+      "rodzaj_pomiaru": null,
+      "runtime_state": null,
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "surge_arresters": [],
+      "switchgear_family_ref": null,
+      "tags": [
+        "der_source_field",
+        "nn_source_field"
+      ],
+      "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
+      "wybor_bloku": null
+    }
+  ],
   "branch_points": [],
   "branches": [
     {
@@ -347,7 +575,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "908d21a7fad94d62c7592f910db137ed87683680d6a0dc9b25e7de5b721d71eb",
+    "hash_sha256": "06ca164e626d3d21be2eb2a58dce368c9d114c7c900dc21822571592fdc236e8",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -449,144 +677,6 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "field_specs": [
-          {
-            "bay_role": "FEEDER",
-            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-            "equipment_refs": [],
-            "field_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
-            "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
-            "meta": {
-              "field_status": "READY_FOR_TRUNK",
-              "gpz_line_field_index": 0,
-              "gpz_line_fields_count": 1,
-              "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
-              "gpz_section_order": 0,
-              "source_field_kind": "FEEDER"
-            },
-            "name": "Pole liniowe GPZ",
-            "protection_ref": null,
-            "tags": [
-              "gpz_line_field"
-            ]
-          },
-          {
-            "bay_role": "OZE",
-            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-            "equipment_refs": [
-              "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device"
-            ],
-            "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
-            "meta": {
-              "apparatus_kind": "BREAKER",
-              "catalog_binding": {
-                "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-                "catalog_item_version": "2024.1",
-                "catalog_namespace": "APARAT_SN",
-                "materialize": true,
-                "snapshot_mapping_version": "1.0"
-              },
-              "default_device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
-              "der_feeder_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
-              "der_role": "mv_source_field",
-              "field_status": "CONFIGURED_FOR_TRUNK",
-              "source_field_kind": "BESS",
-              "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
-            },
-            "name": "Pole źródłowe BESS",
-            "primary_devices": [
-              {
-                "designation": "Q1",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::0",
-                "is_controllable": true,
-                "kind": "DS",
-                "placement": "UPSTREAM",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:ds"
-              },
-              {
-                "designation": "Q0",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1",
-                "is_controllable": true,
-                "kind": "CB",
-                "placement": "MIDSTREAM",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:cb"
-              },
-              {
-                "designation": "T1",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::2",
-                "is_controllable": false,
-                "kind": "CT",
-                "placement": "MIDSTREAM",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:ct"
-              },
-              {
-                "designation": "T2",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::3",
-                "is_controllable": false,
-                "kind": "VT",
-                "placement": "OFF_PATH",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:vt"
-              },
-              {
-                "designation": "Q2",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
-                "is_controllable": true,
-                "kind": "DS",
-                "placement": "DOWNSTREAM",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:ds"
-              },
-              {
-                "designation": "Q9",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
-                "earthing_role": "field_earth",
-                "is_controllable": false,
-                "kind": "ES",
-                "placement": "GROUND_BRANCH",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:es"
-              },
-              {
-                "designation": "Z1",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::6",
-                "earthing_role": "surge_ground",
-                "is_controllable": false,
-                "kind": "SURGE_ARRESTER",
-                "placement": "GROUND_BRANCH",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:surge_arrester"
-              },
-              {
-                "designation": "GK",
-                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::7",
-                "is_controllable": false,
-                "kind": "CABLE_HEAD",
-                "placement": "DOWNSTREAM",
-                "render_variant": "kanoniczny",
-                "symbol_ref": "symbol:cable_head"
-              }
-            ],
-            "protection_codes": [
-              "67",
-              "67N",
-              "27",
-              "59",
-              "81U",
-              "81O",
-              "df/dt",
-              "anti-islanding"
-            ],
-            "protection_ref": null,
-            "tags": [
-              "der_source_field",
-              "nn_source_field"
-            ]
-          }
-        ],
         "gpz_hv_bus_refs": [
           "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
         ],

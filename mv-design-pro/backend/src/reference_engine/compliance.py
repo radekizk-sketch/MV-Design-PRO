@@ -19,6 +19,7 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
+from enm.pola import czy_pole_nn, pola_sn_stacji, poziom_pol
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
 from enm.tor_pola import szyny_stacji
@@ -107,10 +108,19 @@ def _is_subsequence(seq: Sequence[str], template: Sequence[str]) -> bool:
 
 
 def _sorted_bays(enm: EnergyNetworkModel) -> list[Bay]:
-    return sorted(enm.bays, key=lambda b: b.ref_id)
+    """Pola rozdzielnic SN modelu (stacji i ZKSN) w kolejności identyfikatorów.
+
+    Karta W5-B: kolekcja `bays` niesie pola SN, nN i ZKSN. Pakiety referencyjne (profile
+    pól IEC 62271, rodziny rozdzielnic SN producentów, symbole pól, standard OSD rozdzielnicy
+    SN) dotyczą rozdzielnic SN — pola nN (predykat poziomu `enm.pola.czy_pole_nn`, napięcie
+    szyny pola) nie są przez nie oceniane."""
+    poziom = poziom_pol(enm)
+    return sorted((b for b in enm.bays if not czy_pole_nn(enm, b, poziom)), key=lambda b: b.ref_id)
 
 
 def _station_type_of(bay: Bay, substations_by_ref: dict[str, Substation]) -> str | None:
+    if bay.substation_ref is None:
+        return None  # pole rozdzielnicy odgałęźnej ZKSN — nie należy do stacji
     station = substations_by_ref.get(bay.substation_ref)
     return station.station_type if station is not None else None
 
@@ -460,7 +470,8 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
     transformers_by_ref = {t.ref_id: t for t in enm.transformers}
     bays_by_station: dict[str, list[Bay]] = {}
     for bay in _sorted_bays(enm):
-        bays_by_station.setdefault(bay.substation_ref, []).append(bay)
+        if bay.substation_ref is not None:
+            bays_by_station.setdefault(bay.substation_ref, []).append(bay)
     # Szyny, do których dochodzi kabel SN (reguła zakazu kablowego podejścia
     # do stacji słupowej — Zeszyt 3 rozdz. 2 s. 3).
     from enm.models import Cable  # lokalny import: unika poszerzania nagłówka
@@ -502,9 +513,7 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
         ):
             # POLA-W-TORZE: kabel dochodzi do ZACISKU pola stacji, nie do szyny głównej —
             # przynależność szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-            cable_entry = any(
-                bus_ref in cable_bus_refs for bus_ref in szyny_stacji(station, enm.branches)
-            )
+            cable_entry = any(bus_ref in cable_bus_refs for bus_ref in szyny_stacji(enm, station))
             add(
                 station.ref_id,
                 "osd_enea.station.pole_station_cable_entry_forbidden",
@@ -620,13 +629,12 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
         moc_mw = warunki.moc_przylaczeniowa_mw if warunki is not None else None
         if moc_mw is not None and moc_mw > 5.0:
             uklady_energii: list[tuple[str, str]] = []
+            # Pola pomiarowe SN stacji z rekordów `bays` (typowane `Bay.funkcja_pomiaru`
+            # i `Bay.rodzaj_pomiaru`, karta W5-B).
             for station in sorted(enm.substations, key=lambda s: s.ref_id):
-                raw_specs = (station.meta or {}).get("field_specs")
-                for spec in raw_specs if isinstance(raw_specs, list) else []:
-                    if isinstance(spec, dict) and spec.get("funkcja_pomiaru") == "UKLAD_ENERGII":
-                        uklady_energii.append(
-                            (station.ref_id, str(spec.get("rodzaj_pomiaru") or ""))
-                        )
+                for bay in pola_sn_stacji(enm, station.ref_id):
+                    if bay.funkcja_pomiaru == "UKLAD_ENERGII":
+                        uklady_energii.append((station.ref_id, str(bay.rodzaj_pomiaru or "")))
             if uklady_energii:
                 ma_kontrolny = any(rodzaj == "KONTROLNY" for _, rodzaj in uklady_energii)
                 add(

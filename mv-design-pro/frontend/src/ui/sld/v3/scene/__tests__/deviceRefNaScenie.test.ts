@@ -13,7 +13,7 @@
  *
  * Wyrocznia „ref istnieje w modelu" (zero fabrykacji): każdy `deviceRef` na
  * scenie MUSI być `BayPrimaryDevice.device_ref` obecnym w migawce
- * (bays[].primary_devices lub substations[].meta.field_specs[].primary_devices).
+ * (`bays[].primary_devices` — karta W5-B: rekord `bays` jest jedynym nośnikiem pól).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -48,16 +48,6 @@ function deviceRefyModelu(enm: EnergyNetworkModel): ReadonlySet<string> {
   };
   for (const bay of enm.bays ?? []) {
     zbierz((bay as { primary_devices?: unknown }).primary_devices);
-  }
-  for (const sub of enm.substations ?? []) {
-    const specs = (sub as { meta?: { field_specs?: unknown } }).meta?.field_specs;
-    if (!Array.isArray(specs)) continue;
-    for (const spec of specs) {
-      zbierz((spec as { primary_devices?: unknown }).primary_devices);
-    }
-    for (const bay of (sub as { bays?: unknown[] }).bays ?? []) {
-      zbierz((bay as { primary_devices?: unknown }).primary_devices);
-    }
   }
   return refy;
 }
@@ -96,7 +86,7 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
   );
 
   it.each([1, 2] as SceneLod[])(
-    'STACJA (ścieżka danych z field_specs, LOD %s): te same niezmienniki co GPZ',
+    'STACJA (ścieżka danych z rekordów pól, LOD %s): te same niezmienniki co GPZ',
     (lod) => {
       const { enm } = buildW1MatrixFixture();
       const scene = buildSceneV3(enm, lod);

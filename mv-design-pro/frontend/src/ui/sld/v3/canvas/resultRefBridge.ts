@@ -25,6 +25,7 @@
  */
 import type { Bus, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
+import { polaSnStacji } from '../../../shared/polaStacji';
 import {
   kontekstTransformatorowStacji,
   selectStationDistributionTransformers,
@@ -54,17 +55,9 @@ function busIndex(snapshot: EnergyNetworkModel): ReadonlyMap<string, Bus> {
   return new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
 }
 
-/** Rekordy `field_specs` stacji (ENM `Substation.meta.field_specs`) — źródło
- *  roli pola. Ten sam kanał, z którego adapter v2 czyta pola stacji. */
-interface FieldSpecLike {
-  readonly field_ref?: string;
-  readonly bay_role?: string;
-  readonly bus_ref?: string;
-}
-
 /**
  * Szyna, do której RYSUNEK przyczepia pola stacji — jedyna szyna wskazywana
- * przez `field_specs[].bus_ref` wszystkich pól SN stacji. To NIE jest to samo
+ * przez `bus_ref` wszystkich pól SN stacji (rekordy `bays`, `polaSnStacji` — karta W5-B). To NIE jest to samo
  * pytanie, co „szyna o najwyższym napięciu" (`pickStationBus`): kompozycja
  * stacji rysuje odcinek `#sn-bus` OD PIERWSZEGO DO OSTATNIEGO ZACZEPU POLA
  * (`compose/station.ts`), więc narysowana szyna to dokładnie szyna pól — i to
@@ -74,21 +67,15 @@ interface FieldSpecLike {
  * Pola wskazujące RÓŻNE szyny (stacja dwusekcyjna) ⇒ `null`: rysunek ma jeden
  * odcinek `#sn-bus`, więc przypisanie byłoby zgadywaniem, którą sekcję pokazuje.
  */
-function stationFieldBusRef(substation: Substation): string | null {
+function stationFieldBusRef(snapshot: EnergyNetworkModel, substation: Substation): string | null {
   let found: string | null = null;
-  for (const spec of fieldSpecsOf(substation)) {
-    const busRef = spec.bus_ref;
+  for (const bay of polaSnStacji(snapshot, substation.ref_id)) {
+    const busRef = bay.bus_ref;
     if (!busRef) continue;
     if (found === null) found = busRef;
     else if (found !== busRef) return null;
   }
   return found;
-}
-
-function fieldSpecsOf(substation: Substation): readonly FieldSpecLike[] {
-  const meta = substation.meta as { field_specs?: readonly FieldSpecLike[] } | undefined;
-  const specs = meta?.field_specs;
-  return Array.isArray(specs) ? specs : [];
 }
 
 /**
@@ -116,7 +103,7 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
   const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const substation of snapshot.substations ?? []) {
     const stationRef = substation.ref_id;
-    const snBusRef = stationFieldBusRef(substation);
+    const snBusRef = stationFieldBusRef(snapshot, substation);
     const nn = pickStationBus(substation, buses, 'nn');
     if (snBusRef && buses.has(snBusRef)) {
       bridge.set(`${stationRef}${STATION_SN_BUS_SUFFIX}`, { resultRef: snBusRef, kind: 'bus' });
@@ -134,9 +121,9 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
     // reguły (transformator blokowy źródła DER stoi w polu źródłowym, nie w polu TR).
     const transformerRefs = selectStationDistributionTransformers(snapshot, substation, kontekstTransformatorow).map((tr) => tr.ref_id);
     if (transformerRefs.length === 1) {
-      for (const spec of fieldSpecsOf(substation)) {
-        if (!spec.field_ref || String(spec.bay_role ?? '').toUpperCase() !== 'TR') continue;
-        bridge.set(spec.field_ref, { resultRef: transformerRefs[0], kind: 'transformer' });
+      for (const bay of polaSnStacji(snapshot, substation.ref_id)) {
+        if (bay.bay_role !== 'TR') continue;
+        bridge.set(bay.ref_id, { resultRef: transformerRefs[0], kind: 'transformer' });
       }
     }
   }
@@ -181,11 +168,10 @@ export function resultPointsHiddenByModel(snapshot: EnergyNetworkModel | null): 
 export function resultPointsInStationNnBoard(snapshot: EnergyNetworkModel | null): ReadonlySet<string> {
   const refs = new Set<string>();
   if (!snapshot) return refs;
-  const branches = snapshot.branches ?? [];
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
   for (const station of snapshot.substations ?? []) {
     const own = new Set(station.bus_refs ?? []);
-    for (const ref of stationSideBusRefs(station, branches, busByRef, 'nn')) {
+    for (const ref of stationSideBusRefs(snapshot, station, busByRef, 'nn')) {
       if (!own.has(ref)) refs.add(ref);
     }
   }

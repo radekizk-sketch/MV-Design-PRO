@@ -128,8 +128,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  * PRYMAT DANYCH (§12.1) I ZAKAZ FABRYKACJI. Numer pola z danych
  * (`Bay.bay_number`, „10"/„23/1") jest oznacznikiem PIERWSZEGO wyboru i tak
  * właśnie działa ścieżka GPZ (`compose/gpz.ts`). Dla pól SN STACJI danej nie
- * ma: read-model `StationFieldSpec` (`v2/canvas/enmToSldAdapter.ts`) nie niesie
- * `bay_number` ani `feeder_short_name` — nazwane wprost jako dług, nie obejście.
+ * ma: rekord pola (`Bay`, karta W5-B) ma miejsce na `bay_number`, ale operacje
+ * stacyjne backendu go nie wypełniają — nazwane wprost jako dług, nie obejście.
  * Zostaje wtedy OSTATNI fallback: deterministyczny licznik pozycyjny w
  * kolejności kompozycji rozdzielnicy — dokładnie ta sama konwencja, którą
  * repo stosuje już w DWÓCH miejscach (pola GPZ oraz identyfikator globalny
