@@ -6,7 +6,10 @@ struct into FaultLoopInput object expected by compute_fault_loop().
 """
 
 import pytest
+from network_model.odmowa_danych import RODZAJ_ELEMENT, OdmowaWejsciaRdzenia
 from network_model.solvers.fault_loop_builder import (
+    KOD_ODCINEK_IMPEDANCJA_UJEMNA,
+    KOD_ODCINEK_LICZBA_TOROW,
     FaultLoopBuildRequest,
     RouteSegmentImpedance,
     build_fault_loop_input,
@@ -169,28 +172,51 @@ class TestDeterminism:
 
 
 class TestRouteSegmentImpedance:
-    def test_rejects_n_parallel_below_one(self) -> None:
-        with pytest.raises(ValueError, match="n_parallel"):
-            RouteSegmentImpedance(
-                label="x",
-                branch_ref="c1",
-                phase_total_r_ohm=0.1,
-                phase_total_x_ohm=0.1,
-                return_total_r_ohm=0.1,
-                return_total_x_ohm=0.1,
-                n_parallel=0,
-            )
+    """Odmowa danych odcinka trasy (partia integracji 10): strukturalna, z odcinkiem
+    w odwołaniu rekordu; treść bez identyfikatora odcinka i bez kluczy pól.
 
-    def test_rejects_negative_impedance(self) -> None:
-        with pytest.raises(ValueError, match="phase_total_r_ohm"):
-            RouteSegmentImpedance(
-                label="x",
-                branch_ref="c1",
-                phase_total_r_ohm=-0.1,
-                phase_total_x_ohm=0.1,
-                return_total_r_ohm=0.1,
-                return_total_x_ohm=0.1,
-            )
+    Iloczyn: każda dana odcinka (liczba torów + cztery składowe impedancji) × wartość
+    niefizyczna → kod, opis po polsku, odwołanie, brak klucza i identyfikatora w treści.
+    """
+
+    _DANE = {
+        "phase_total_r_ohm": 0.1,
+        "phase_total_x_ohm": 0.1,
+        "return_total_r_ohm": 0.1,
+        "return_total_x_ohm": 0.1,
+    }
+
+    @pytest.mark.parametrize(
+        ("pole", "wartosc", "kod", "fragment"),
+        [
+            ("n_parallel", 0, KOD_ODCINEK_LICZBA_TOROW, "Liczba torów równoległych"),
+            ("phase_total_r_ohm", -0.1, KOD_ODCINEK_IMPEDANCJA_UJEMNA, "Rezystancja żyły fazowej"),
+            ("phase_total_x_ohm", -0.1, KOD_ODCINEK_IMPEDANCJA_UJEMNA, "Reaktancja żyły fazowej"),
+            (
+                "return_total_r_ohm",
+                -0.1,
+                KOD_ODCINEK_IMPEDANCJA_UJEMNA,
+                "Rezystancja żyły powrotnej PE/PEN",
+            ),
+            (
+                "return_total_x_ohm",
+                -0.1,
+                KOD_ODCINEK_IMPEDANCJA_UJEMNA,
+                "Reaktancja żyły powrotnej PE/PEN",
+            ),
+        ],
+    )
+    def test_odmowa_strukturalna_danych_odcinka(
+        self, pole: str, wartosc: float, kod: str, fragment: str
+    ) -> None:
+        with pytest.raises(OdmowaWejsciaRdzenia) as exc:
+            RouteSegmentImpedance(label="x", branch_ref="kabel_c1", **{**self._DANE, pole: wartosc})
+        (rekord,) = exc.value.rekordy
+        assert rekord.kod == kod
+        assert fragment in rekord.tresc
+        assert [(o.rodzaj, o.ref) for o in rekord.odwolania] == [(RODZAJ_ELEMENT, "kabel_c1")]
+        assert "kabel_c1" not in str(exc.value)
+        assert pole not in str(exc.value)
 
 
 class TestSumPhaseAndReturnRoute:

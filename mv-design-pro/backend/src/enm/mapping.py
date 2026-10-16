@@ -46,7 +46,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
 from network_model.core.ybus import AdmittanceMatrixBuilder
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
@@ -75,7 +75,13 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .slownik_komunikatow import opis_elementu, opis_obiektu
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
+
+#: Kody odmów nazwanych mapowania ENM → graf (identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10).
+KOD_DWA_GENERATORY_REGULACJI_NAPIECIA = "mapping.dwa_generatory_regulacji_napiecia"
+KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = "mapping.szyna_bilansujaca_z_regulacja_napiecia"
 
 
 def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
@@ -1047,11 +1053,15 @@ def map_enm_to_network_graph(
         if not generator_reguluje_napiecie(gen):
             continue
         if gen.bus_ref in bus_voltage_control_gen_ref:
-            raise OdmowaDanychError(
-                f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
-                f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
-                f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
-                "napięcia na węzeł."
+            pierwszy_ref = bus_voltage_control_gen_ref[gen.bus_ref]
+            # Partia integracji 10: nazwy z modelu w treści, identyfikatory w `dane`.
+            raise OdmowaNazwana(
+                f"{opis_elementu(enm, gen.bus_ref, 'Szyna')} ma więcej niż jeden generator "
+                f"w trybie regulacji napięcia ({opis_elementu(enm, pierwszy_ref, 'generator')}"
+                f" i {opis_obiektu(gen, 'generator')}) — kontrakt rozpływu dopuszcza jedną "
+                "nastawę napięcia na węzeł.",
+                kod=KOD_DWA_GENERATORY_REGULACJI_NAPIECIA,
+                dane={"element_ref": gen.bus_ref, "generatory_ref": (pierwszy_ref, gen.ref_id)},
             )
         u_set_raw = meta.get("u_set_pu")
         bus_voltage_control[gen.bus_ref] = (
@@ -1088,11 +1098,14 @@ def map_enm_to_network_graph(
             # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
             # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
             if has_voltage_control:
-                raise OdmowaDanychError(
-                    f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
-                    f"węzłem regulacji napięcia generatora "
-                    f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
-                    "już zadane napięcie źródła zasilania."
+                generator_ref = bus_voltage_control_gen_ref[bus.ref_id]
+                raise OdmowaNazwana(
+                    f"{opis_obiektu(bus, 'Szyna bilansująca')} nie może być jednocześnie "
+                    "węzłem regulacji napięcia "
+                    f"({opis_elementu(enm, generator_ref, 'generator')}) — szyna SLACK ma "
+                    "już zadane napięcie źródła zasilania.",
+                    kod=KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA,
+                    dane={"element_ref": bus.ref_id, "generator_ref": generator_ref},
                 )
             node = Node(
                 id=node_id,

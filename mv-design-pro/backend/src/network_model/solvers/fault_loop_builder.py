@@ -34,7 +34,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from network_model.core.branch import odmowa_gdy_pk_sprzeczne_z_uk
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import (
+    RODZAJ_ELEMENT,
+    OdmowaDanychError,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
@@ -198,6 +204,11 @@ def transformer_lv_impedance_ohm(
 # ---------------------------------------------------------------------------
 
 
+#: Kody odmów odcinka trasy pętli zwarcia (pole `kod` rekordu odmowy rdzenia).
+KOD_ODCINEK_LICZBA_TOROW = "petla_zwarcia.odcinek_liczba_torow"
+KOD_ODCINEK_IMPEDANCJA_UJEMNA = "petla_zwarcia.odcinek_impedancja_ujemna"
+
+
 @dataclass(frozen=True)
 class RouteSegmentImpedance:
     """Jeden odcinek trasy (kabel nN) — dane SUROWE, nieprzeskalowane.
@@ -219,21 +230,31 @@ class RouteSegmentImpedance:
     n_parallel: int = 1
 
     def __post_init__(self) -> None:
+        # Partia integracji 10: odmowa strukturalna — treść bez identyfikatora i bez kluczy pól,
+        # odcinek w odwołaniu (`RODZAJ_ELEMENT`, `ref_id` gałęzi modelu); nazwę dokłada
+        # warstwa zdań (`enm/zdania_odmow_rdzenia`) na granicy wołającego.
         if self.n_parallel < 1:
-            raise OdmowaDanychError(
-                f"Odcinek '{self.branch_ref}': n_parallel musi być ≥ 1, "
-                f"otrzymano {self.n_parallel}."
+            raise self._odmowa(
+                KOD_ODCINEK_LICZBA_TOROW,
+                f"Liczba torów równoległych odcinka trasy musi wynosić co najmniej 1, "
+                f"otrzymano {self.n_parallel}.",
             )
-        for name, value in (
-            ("phase_total_r_ohm", self.phase_total_r_ohm),
-            ("phase_total_x_ohm", self.phase_total_x_ohm),
-            ("return_total_r_ohm", self.return_total_r_ohm),
-            ("return_total_x_ohm", self.return_total_x_ohm),
+        for opis, value in (
+            ("Rezystancja żyły fazowej", self.phase_total_r_ohm),
+            ("Reaktancja żyły fazowej", self.phase_total_x_ohm),
+            ("Rezystancja żyły powrotnej PE/PEN", self.return_total_r_ohm),
+            ("Reaktancja żyły powrotnej PE/PEN", self.return_total_x_ohm),
         ):
             if value < 0:
-                raise OdmowaDanychError(
-                    f"Odcinek '{self.branch_ref}': {name} musi być ≥ 0, otrzymano {value}."
+                raise self._odmowa(
+                    KOD_ODCINEK_IMPEDANCJA_UJEMNA,
+                    f"{opis} odcinka trasy nie może być ujemna, otrzymano {value} Ω.",
                 )
+
+    def _odmowa(self, kod: str, tresc: str) -> OdmowaWejsciaRdzenia:
+        return OdmowaWejsciaRdzenia(
+            [RekordOdmowy(kod, tresc, (OdwolanieElementu(RODZAJ_ELEMENT, self.branch_ref),))]
+        )
 
 
 def sum_phase_and_return_route(
@@ -283,7 +304,10 @@ def zero_sequence_transformer_loop_impedance_ohm(
     ``application/analyses/fault_loop/route.py``).
     """
     if ulv_kv <= 0 or s_base_mva <= 0:
-        raise OdmowaDanychError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
+        raise OdmowaDanychError(
+            "Napięcie strony dolnej transformatora i moc bazowa muszą być dodatnie do "
+            "przeliczenia impedancji zerowej transformatora z jednostek względnych na omy."
+        )
     z_base = (ulv_kv**2) / s_base_mva
     z0_ohm = z0_pu * z_base
     return TransformerLoopImpedance(r_ohm=z0_ohm.real, x_ohm=z0_ohm.imag)
@@ -306,7 +330,10 @@ def refer_upstream_impedance_to_lv_ohm(
     własnej redukcji sieci).
     """
     if uhv_kv <= 0 or ulv_kv <= 0:
-        raise OdmowaDanychError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
+        raise OdmowaDanychError(
+            "Napięcia strony górnej i dolnej transformatora muszą być dodatnie do sprowadzenia "
+            "impedancji sieci zasilającej przez przekładnię."
+        )
     ratio_squared = (ulv_kv / uhv_kv) ** 2
     z_lv = z_hv_ohm * ratio_squared
     return LoopImpedanceComponent(label=label, r_ohm=z_lv.real, x_ohm=z_lv.imag)

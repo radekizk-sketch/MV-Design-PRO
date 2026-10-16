@@ -162,7 +162,7 @@ from enm.canonical_analysis import (
 )
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
     OperatingScenario,
@@ -171,7 +171,7 @@ from enm.scenariusze import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.solvers.power_flow_newton_internal import build_slack_island
 
 #: Rodzaje gałęzi ENM kwalifikowane jako kontyngencja N-1 tej karty. Aparaty
@@ -863,10 +863,12 @@ def build_kontyngencje_n1_view(
         znane = {element.ref: element for element in wszystkie}
         nieznane = [ref for ref in wskazane if ref not in znane]
         if nieznane:
-            raise OdmowaDanychError(
+            raise OdmowaNazwana(
                 "Wskazane elementy nie są kwalifikowanymi elementami N-1 modelu: "
-                + ", ".join(nieznane)
-                + "."
+                + ", ".join(nazwa_po_identyfikatorze(ref, run.snapshot) for ref in nieznane)
+                + ".",
+                kod="kontyngencje_n1.elementy_niekwalifikowane",
+                dane={"elementy_ref": tuple(nieznane)},
             )
         elementy = [znane[ref] for ref in wskazane]
 

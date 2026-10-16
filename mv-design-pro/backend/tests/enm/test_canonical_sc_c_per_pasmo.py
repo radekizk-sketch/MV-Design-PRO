@@ -588,7 +588,10 @@ def test_location_unknown_element_ref_is_explicit_refusal():
         ).id
     )
     assert result.status == "FAILED"
-    assert "nie-ma-takiego-wezla" in (result.error_message or "")
+    # Partia integracji 10: odmowa jawnie mówi, że węzła nie ma w modelu — identyfikator
+    # wskazania nie trafia do treści (zostaje w opcjach biegu `location.element_ref`).
+    assert "nie istnieje w modelu sieci" in (result.error_message or "")
+    assert "nie-ma-takiego-wezla" not in (result.error_message or "")
 
 
 def test_location_helper_bus_is_explicit_refusal():
@@ -610,7 +613,9 @@ def test_location_helper_bus_is_explicit_refusal():
         ).id
     )
     assert result.status == "FAILED"
-    assert N2 in (result.error_message or "")
+    # Partia integracji 10: węzeł nazwą z modelu, nie identyfikatorem.
+    assert "Węzeł zwarcia „Szyna nN”" in (result.error_message or "")
+    assert N2 not in (result.error_message or "")
     assert "pomocniczym" in (result.error_message or "")
 
 

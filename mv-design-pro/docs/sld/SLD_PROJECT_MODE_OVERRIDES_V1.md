@@ -172,11 +172,11 @@ Reguły:
 ### Bledy jako FixActions
 
 Bledy walidacji sa stabilne (kody, polskie komunikaty).
-Sugestie naprawcze zwracane jako `FieldDeviceFixActionV1` (jedyna forma podpowiedzi).
+Błędy walidacji nadpisań zwraca backend jako `OverrideValidationErrorV1` (`backend/src/domain/geometry_overrides.py`). Korekta stanu (partia integracji 10): dawny zapis o `FieldDeviceFixActionV1` był nieprawdziwy — ten typ nie miał producenta i został skasowany.
 
 ## 7. FixActions CAD
 
-Kody FixActions dodane do `FieldDeviceFixCodes`:
+Kody naprawy nadpisań geometrii — wyliczenie `GeometryFixCode` w `backend/src/domain/geometry_overrides.py` (korekta stanu, partia integracji 10: nie `FieldDeviceFixCodes`, które nigdy ich nie zawierały i zostały skasowane):
 
 | Kod | Klucz |
 |-----|-------|

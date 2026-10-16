@@ -173,11 +173,17 @@ def test_postac_niekanoniczna_jest_odrzucana(postac: str) -> None:
     with pytest.raises(ValueError) as blad:
         klucz_przypadku(postac)
     assert "kanonicznej" in str(blad.value)
+    # Partia integracji 10: treść odmowy nie powtarza identyfikatora z adresu.
+    assert postac not in str(blad.value)
 
 
 def test_identyfikator_spoza_kontraktu_jest_odrzucany() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as blad:
         klucz_przypadku("nie-jest-uuid")
+    # Partia integracji 10: zdanie po polsku zamiast angielskiego komunikatu parsera UUID.
+    assert str(blad.value) == (
+        "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+    )
 
 
 @pytest.mark.parametrize("otoczenie", [" {0}", "{0} ", "\t{0}", "{0}\n"])

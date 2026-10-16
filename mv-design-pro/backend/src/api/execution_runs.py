@@ -11,6 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from api.odmowa_http import OdmowaHttpError
 from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
 from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
@@ -227,10 +228,7 @@ def create_run(
         )
         return run.to_execution_dict()
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 @router.get(
@@ -275,10 +273,7 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
             uow_factory=getattr(http_request.app.state, "uow_factory", None),
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_404_NOT_FOUND) from exc
 
     # CV-2-W: po biegu NIE przestawiamy zadnego stanu na przypadku. Status wynikow
     # jest wyprowadzany z biegow przypadku i koperty rewizji, wiec zakonczony bieg
@@ -301,9 +296,9 @@ def cancel_run(run_id: str) -> dict[str, Any]:
     try:
         run = wykonawca_biegow.anuluj_bieg(parsed_run_id)
     except BiegNieDoAnulowaniaError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
     except OdmowaDanychError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_404_NOT_FOUND) from exc
     return _stan_biegu_z_postepem(run)
 
 

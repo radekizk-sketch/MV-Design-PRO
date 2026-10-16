@@ -439,13 +439,7 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
     422 gdy przebieg nie niesie payloadu solvera SSCI.
     """
     canonical_run, run = _require_canonical_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
-    try:
-        return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/proof")

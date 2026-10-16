@@ -477,7 +477,7 @@ class TestNastawaDynamicznaIUtrataCzesciowa:
                 zdarzenia=(UtrataCzesciowaZrodla(t_s=0.1, ref_id="s1", udzial_pozostaly=0.5),),
             )
         )
-        with pytest.raises(ScenariuszNieprzystajeError, match="sources"):
+        with pytest.raises(ScenariuszNieprzystajeError, match="źródło zasilania"):
             apply_scenario(_enm_ze_zrodlem(), scen)
         ok = _scenariusz_operacyjny(
             ScenariuszDynamiczny(
@@ -587,7 +587,7 @@ class TestStanowiskoBadawcze:
                 },
             )
 
-    @pytest.mark.parametrize("ref, fragment", [("g1", "generators"), ("brak", "żadnej kolekcji")])
+    @pytest.mark.parametrize("ref, fragment", [("g1", "wytwórca"), ("brak", "żadnej kolekcji")])
     def test_stanowisko_wskazuje_wylacznie_zrodlo_sieciowe(self, ref, fragment):
         scen = ScenariuszDynamiczny(
             horyzont_s=1.0,
@@ -654,8 +654,8 @@ class TestDetektory:
         [
             ({"rodzaj": "modul_napiecia", "bus_ref": "brak"}, "brak elementu"),
             ({"rodzaj": "modul_napiecia", "bus_ref": "l1"}, "brak elementu"),
-            ({"rodzaj": "modul_pradu_zacisku", "element_ref": "g1", "zacisk": "od"}, "generators"),
-            ({"rodzaj": "moc_urzadzenia", "ref_id": "ld1", "skladowa": "p"}, "loads"),
+            ({"rodzaj": "modul_pradu_zacisku", "element_ref": "g1", "zacisk": "od"}, "wytwórca"),
+            ({"rodzaj": "moc_urzadzenia", "ref_id": "ld1", "skladowa": "p"}, "odbiór"),
         ],
         ids=["szyna_brak", "szyna_to_galaz", "prad_generatora", "moc_odbioru"],
     )

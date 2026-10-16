@@ -38,6 +38,7 @@ from enm.models import (
 )
 from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze
 from enm.slownik_komunikatow import opis_obiektu
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_elementow
 from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt, PojemnoscDoziemnaOdcinka
 
 from .route import LvBusPath, RouteExtractionError, bfs_paths_from
@@ -235,15 +236,19 @@ def pojemnosci_sieci_it(
             braki.append(ref)
             continue
         n_parallel = liczba_torow(branch)
-        odcinki.append(
-            PojemnoscDoziemnaOdcinka(
-                label=f"Odcinek {nazwa_elementu(branch, 'branches')}",
-                branch_ref=ref,
-                b0_siemens_per_km=float(branch.b0_siemens_per_km),
-                length_km=float(branch.length_km),
-                n_parallel=n_parallel,
+        nazwa = nazwa_elementu(branch, "branches")
+        # Partia integracji 10: odmowa danych odcinka z rdzenia TT/IT niesie odwołanie do
+        # gałęzi modelu — zdanie z nazwą odcinka składa granica zdań.
+        with nazwy_w_odmowach_elementow(((ref, nazwa),)):
+            odcinki.append(
+                PojemnoscDoziemnaOdcinka(
+                    label=f"Odcinek {nazwa}",
+                    branch_ref=ref,
+                    b0_siemens_per_km=float(branch.b0_siemens_per_km),
+                    length_km=float(branch.length_km),
+                    n_parallel=n_parallel,
+                )
             )
-        )
     return tuple(odcinki), braki
 
 

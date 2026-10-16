@@ -107,7 +107,8 @@ def test_compensation_sizing_cos_phi_out_of_range_returns_422(app_client) -> Non
         params={"run_id": str(run_id), "bus_ref": "bus_sn_c", "cos_phi_min": 1.5},
     )
     assert resp.status_code == 422
-    assert "cos_phi_min" in resp.json()["detail"]
+    # Partia integracji 10: treść nazywa wielkość (cosφ), nie klucz parametru.
+    assert resp.json()["detail"] == "Wymagany cosφ musi być w przedziale (0, 1]."
 
 
 def test_compensation_sizing_unknown_bus_returns_422(app_client) -> None:

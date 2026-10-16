@@ -139,6 +139,11 @@ def test_zdarzenie_bez_elementu_jest_odmawiane(zdarzenie) -> None:
     with pytest.raises(OdmowaDynamiki) as blad:
         _buduj(uklad, [zdarzenie])
     assert blad.value.kod == KOD_ZDARZENIE_BEZ_ELEMENTU
+    # Partia integracji 10: element spoza modelu nie ma nazwy do podstawienia — treść nazywa
+    # rodzaj po polsku, identyfikator zostaje w polu maszynowym `ref`.
+    assert "NIE_MA" not in blad.value.komunikat
+    assert blad.value.szczegoly["ref"] == "NIE_MA"
+    assert "element rodzaju „" in blad.value.komunikat
 
 
 def test_zdarzenie_poza_horyzontem_jest_odmawiane() -> None:

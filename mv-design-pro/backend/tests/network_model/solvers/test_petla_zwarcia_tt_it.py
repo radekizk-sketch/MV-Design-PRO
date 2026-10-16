@@ -13,7 +13,7 @@ import json
 import math
 
 import pytest
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import RODZAJ_ELEMENT, OdmowaDanychError, OdmowaWejsciaRdzenia
 from network_model.solvers.fault_loop_iec60364 import (
     C_MAX_LV,
     C_MIN_LV,
@@ -27,7 +27,9 @@ from network_model.solvers.fault_loop_iec60364 import (
 from network_model.solvers.petla_zwarcia_tt_it import (
     ETYKIETA_R_A,
     ETYKIETA_R_B,
+    KOD_ODCINEK_IT_DANE,
     OBLICZ_WG_UKLADU,
+    OPISY_DANYCH_TT_IT,
     RODZAJ_PRADU_IT_PL,
     RODZAJ_PRADU_TT_PL,
     DaneTtIt,
@@ -132,8 +134,13 @@ class TestPetlaTT:
 
     @pytest.mark.parametrize("brak", ["r_a_ohm", "r_b_ohm", "i_delta_n_a"])
     def test_tt_brak_danej_odmowa_nazwana(self, brak) -> None:
-        with pytest.raises(OdmowaDanychError, match=brak):
+        # Partia integracji 10: odmowa nazywa daną symbolem i opisem (jedno źródło
+        # `OPISY_DANYCH_TT_IT`), klucz pola nie trafia do treści.
+        symbol, opis = OPISY_DANYCH_TT_IT[brak]
+        with pytest.raises(OdmowaDanychError) as exc:
             compute_fault_loop(_wejscie(NetworkType.TT, _dane_tt(**{brak: None})))
+        assert f"brak danej {symbol} ({opis})" in str(exc.value)
+        assert brak not in str(exc.value)
 
     def test_tt_bez_bloku_danych_odmowa(self) -> None:
         with pytest.raises(OdmowaDanychError, match="Układ TT"):
@@ -146,8 +153,11 @@ class TestPetlaTT:
     @pytest.mark.parametrize("pole", ["r_a_ohm", "r_b_ohm", "i_delta_n_a", "czestotliwosc_hz"])
     @pytest.mark.parametrize("wartosc", [0.0, -1.0, float("nan"), float("inf")])
     def test_dane_tt_it_odrzucaja_wartosci_niefizyczne(self, pole, wartosc) -> None:
-        with pytest.raises(OdmowaDanychError, match=pole):
+        symbol, opis = OPISY_DANYCH_TT_IT[pole]
+        with pytest.raises(OdmowaDanychError) as exc:
             DaneTtIt(**{pole: wartosc})
+        assert f"{opis} {symbol} musi być liczbą skończoną i dodatnią" in str(exc.value)
+        assert pole not in str(exc.value)
 
     def test_sanity_u_dotyk_nieujemne_i_rosnie_z_r_a(self) -> None:
         male = compute_fault_loop(_wejscie(NetworkType.TT, _dane_tt(r_a_ohm=5.0)))
@@ -213,20 +223,36 @@ class TestPetlaIT:
             compute_fault_loop(_wejscie(NetworkType.IT, _dane_it(pojemnosci=())))
 
     def test_it_bez_czestotliwosci_odmowa(self) -> None:
-        with pytest.raises(OdmowaDanychError, match="czestotliwosc_hz"):
+        with pytest.raises(OdmowaDanychError, match=r"brak danej f \(częstotliwość sieci\)"):
             compute_fault_loop(_wejscie(NetworkType.IT, _dane_it(czestotliwosc_hz=None)))
 
     def test_it_bez_bloku_danych_odmowa(self) -> None:
         with pytest.raises(OdmowaDanychError, match="Układ IT"):
             compute_fault_loop(_wejscie(NetworkType.IT, None))
 
-    def test_pojemnosc_odcinka_odrzuca_dane_niefizyczne(self) -> None:
-        with pytest.raises(OdmowaDanychError, match="b0_siemens_per_km"):
-            PojemnoscDoziemnaOdcinka("x", "x", b0_siemens_per_km=-1e-5, length_km=0.1)
-        with pytest.raises(OdmowaDanychError, match="length_km"):
-            PojemnoscDoziemnaOdcinka("x", "x", b0_siemens_per_km=1e-5, length_km=0.0)
-        with pytest.raises(OdmowaDanychError, match="n_parallel"):
-            PojemnoscDoziemnaOdcinka("x", "x", b0_siemens_per_km=1e-5, length_km=0.1, n_parallel=0)
+    @pytest.mark.parametrize(
+        ("kwargs", "fragment"),
+        [
+            ({"b0_siemens_per_km": -1e-5, "length_km": 0.1}, "Susceptancja zerowa b_0"),
+            ({"b0_siemens_per_km": 1e-5, "length_km": 0.0}, "Długość odcinka sieci IT"),
+            (
+                {"b0_siemens_per_km": 1e-5, "length_km": 0.1, "n_parallel": 0},
+                "Liczba torów równoległych",
+            ),
+        ],
+        ids=["b0_ujemne", "dlugosc_zerowa", "tory_zero"],
+    )
+    def test_pojemnosc_odcinka_odrzuca_dane_niefizyczne(self, kwargs, fragment) -> None:
+        # Partia integracji 10: odmowa strukturalna — odcinek w odwołaniu rekordu,
+        # treść bez identyfikatora odcinka i bez kluczy pól.
+        with pytest.raises(OdmowaWejsciaRdzenia) as exc:
+            PojemnoscDoziemnaOdcinka("Kabel IT", "kabel_it_7", **kwargs)
+        (rekord,) = exc.value.rekordy
+        assert rekord.kod == KOD_ODCINEK_IT_DANE
+        assert fragment in rekord.tresc
+        assert [(o.rodzaj, o.ref) for o in rekord.odwolania] == [(RODZAJ_ELEMENT, "kabel_it_7")]
+        assert "kabel_it_7" not in str(exc.value)
+        assert not any(klucz in str(exc.value) for klucz in kwargs)
 
     def test_tory_rownolegle_sumuja_pojemnosc(self) -> None:
         jeden = compute_fault_loop(

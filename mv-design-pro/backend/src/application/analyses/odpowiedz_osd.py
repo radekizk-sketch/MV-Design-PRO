@@ -73,7 +73,8 @@ from enm.scenariusze import (
     RodzajScenariusza,
     apply_scenario,
 )
-from network_model.odmowa_danych import OdmowaDanychError
+from enm.slownik_komunikatow import opis_obiektu
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import tan_phi_z_cos_phi
 from network_model.solvers.power_flow_inverter import InverterControl, lfsm_factor
 
@@ -288,6 +289,13 @@ def _bus_injection(raw_result: dict[str, Any], bus_ref: str) -> tuple[float | No
     return _round6(bus.get("p_injected_mw")), _round6(bus.get("q_injected_mvar"))
 
 
+#: Opis mocy bazowej źródła w zdaniu odmowy (klucz pola modelu → słowa projektanta).
+_OPIS_MOCY_ZRODLA: dict[str, str] = {
+    "p_mw": "mocy czynnej P",
+    "q_mvar": "mocy biernej Q",
+}
+
+
 def _wymagana_moc_zrodla(source: dict[str, Any], klucz: str, source_ref: str) -> float:
     """Moc bazowa źródła (``p_mw``/``q_mvar``) z migawki — brak pola nie jest
     legalnym zerem (FAB-E, E1).
@@ -302,10 +310,12 @@ def _wymagana_moc_zrodla(source: dict[str, Any], klucz: str, source_ref: str) ->
     """
     wartosc = source.get(klucz)
     if wartosc is None:
-        raise OdmowaDanychError(
-            f"Źródło {source_ref!r} nie ma pola {klucz!r} w migawce modelu — "
-            "symulacja odpowiedzi na polecenie OSD nie może wyznaczyć punktu "
-            "bazowego bez tej wartości."
+        raise OdmowaNazwana(
+            f"{opis_obiektu(source, 'Źródło')} nie ma w modelu wartości "
+            f"{_OPIS_MOCY_ZRODLA[klucz]} — symulacja odpowiedzi na polecenie OSD nie może "
+            "wyznaczyć punktu bazowego bez tej wartości.",
+            kod="polecenie_osd.zrodlo_bez_mocy",
+            dane={"element_ref": source_ref, "pole": klucz},
         )
     return float(wartosc)
 
@@ -367,7 +377,11 @@ def build_osd_response_view(
     snapshot = run.snapshot or {}
     source = _find_source(snapshot, source_ref)
     if source is None:
-        raise OdmowaDanychError(f"Wskazane źródło nie istnieje w modelu: {source_ref}.")
+        raise OdmowaNazwana(
+            "Wskazane źródło nie istnieje w modelu.",
+            kod="polecenie_osd.zrodlo_spoza_modelu",
+            dane={"element_ref": source_ref},
+        )
 
     p_base_mw = _wymagana_moc_zrodla(source, "p_mw", source_ref)
     q_base_mvar = _wymagana_moc_zrodla(source, "q_mvar", source_ref)

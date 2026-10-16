@@ -162,7 +162,10 @@ SANCTIONED_CHANGES = {
         "W5-E-TTIT (O-59 OD-25): NOWY modul pętli doziemnej TT (I_d przez R_A+R_B, "
         "U_dotyk = R_A*I_dn) i IT (I_d = 3*omega*C_e*U_0 z b_0 odcinkow, drugie zwarcie "
         "L-PE-L z Z1 transformatora), WHITE BOX; limity normy NIE sa w kodzie (BRAK_PODSTAWY "
-        "w werdykcie). Wpis do usuniecia po scaleniu do main."
+        "w werdykcie). Decyzja B-01 partii integracji 10: odmowy danych TT/IT bez kluczy "
+        "pol w tresci (symbol i opis wielkosci z jednej mapy OPISY_DANYCH_TT_IT), odmowa "
+        "danych odcinka IT jako rekord strukturalny (kod + odwolanie do galezi, tresc PL bez "
+        "identyfikatora). Zero zmian liczb. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/protection_iec60255.py": (
         "O-59 OD-15(e) (karta PROT-LTI, 2026-09-30): krzywa 120/(M-1) nazywala sie "

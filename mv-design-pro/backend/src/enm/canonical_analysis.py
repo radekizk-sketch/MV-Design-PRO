@@ -90,7 +90,11 @@ from enm.scenariusze import (
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from enm.wartosci_niefinitowe import podmien_niefinitowe
-from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia, sprawdz_wejscie_rozplywu
+from enm.zdania_odmow_rdzenia import (
+    nazwy_w_odmowach_modelu,
+    nazwy_w_odmowach_rdzenia,
+    sprawdz_wejscie_rozplywu,
+)
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -104,7 +108,7 @@ from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
 from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     a_na_ka,
     calka_joule_ka2s,
@@ -879,6 +883,17 @@ def list_runs_for_project(
         return repository.list_by_project(project_id, analysis_type=analysis_type)
 
 
+#: Kody odmów nazwanych dotyczących biegu źródłowego i biegu wykonywanego (identyfikator
+#: biegu w polu `dane`, nigdy w treści — partia integracji 10).
+KOD_BIEG_NIE_ISTNIEJE = "bieg.nie_istnieje"
+KOD_BIEG_ZRODLOWY_NIEPOPRAWNY = "bieg_zrodlowy.niepoprawny_identyfikator"
+KOD_BIEG_ZRODLOWY_BRAK = "bieg_zrodlowy.nie_istnieje"
+KOD_BIEG_ZRODLOWY_RODZAJ = "bieg_zrodlowy.nie_zwarciowy"
+KOD_BIEG_ZRODLOWY_NIEZAKONCZONY = "bieg_zrodlowy.niezakonczony"
+KOD_BIEG_ZRODLOWY_RODZAJ_ZWARCIA = "bieg_zrodlowy.rodzaj_zwarcia"
+KOD_BIEG_ZRODLOWY_INNY_PROJEKT = "bieg_zrodlowy.inny_projekt"
+KOD_BIEG_ZRODLOWY_INNA_SIEC = "bieg_zrodlowy.inna_siec"
+
 #: Rodzaje zwarcia, których rozpływ (składowa zgodna, Z2 = Z1) jest prądem fazy przekaźnika
 #: nadprądowego fazowego — ocena ``protection_sn`` przyjmuje wyłącznie takie biegi źródłowe.
 RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ: frozenset[str] = frozenset(
@@ -908,45 +923,66 @@ def _validate_protection_sc_reference(
             "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
             "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
         )
+    # Partia integracji 10: identyfikator biegu źródłowego w polu `dane` odmowy, nigdy
+    # w treści (projektant wybiera bieg z listy, nie zna jego identyfikatora).
+    dane_biegu = {"sc_run_ref": str(sc_run_id_raw)}
     try:
         sc_run_uuid = UUID(str(sc_run_id_raw))
     except ValueError as exc:
-        raise OdmowaDanychError(f"sc_run_id nie jest poprawnym UUID: {sc_run_id_raw!r}") from exc
+        raise OdmowaNazwana(
+            "Wskazanie biegu zwarciowego dla oceny zabezpieczeń nie jest poprawnym "
+            "identyfikatorem biegu",
+            kod=KOD_BIEG_ZRODLOWY_NIEPOPRAWNY,
+            dane=dane_biegu,
+        ) from exc
     sc_run = get_run(sc_run_uuid)
     if sc_run is None:
-        raise OdmowaDanychError(f"Bieg zwarciowy '{sc_run_id_raw}' nie istnieje")
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy nie istnieje", kod=KOD_BIEG_ZRODLOWY_BRAK, dane=dane_biegu
+        )
     if sc_run.analysis_type != "short_circuit_sn":
-        raise OdmowaDanychError(
-            f"Bieg '{sc_run_id_raw}' nie jest biegiem zwarciowym (rodzaj: {sc_run.analysis_type})"
+        raise OdmowaNazwana(
+            "Wskazany bieg nie jest biegiem zwarciowym — ocena zabezpieczeń interpretuje "
+            "wyłącznie prąd zwarcia",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ,
+            dane={**dane_biegu, "analysis_type": str(sc_run.analysis_type)},
         )
     if sc_run.status != "FINISHED":
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakończony (status: {sc_run.status})"
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy nie jest zakończony",
+            kod=KOD_BIEG_ZRODLOWY_NIEZAKONCZONY,
+            dane={**dane_biegu, "status": str(sc_run.status)},
         )
     rodzaj_zwarcia = (sc_run.raw_result or {}).get("short_circuit_type")
     if rodzaj_zwarcia not in RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ:
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' liczy zwarcie {rodzaj_zwarcia} — ocena "
+        raise OdmowaNazwana(
+            f"Wskazany bieg zwarciowy liczy zwarcie {rodzaj_zwarcia} — ocena "
             "zabezpieczeń nadprądowych fazowych wymaga zwarcia międzyfazowego (3F albo 2F): "
             "rozpływ zwarcia doziemnego niesie rozkład składowej zgodnej, a nie prąd fazy "
-            "widziany przez przekaźnik"
+            "widziany przez przekaźnik",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ_ZWARCIA,
+            dane=dane_biegu,
         )
     if (
         project_id_koperty is not None
         and sc_run.project_id is not None
         and sc_run.project_id != project_id_koperty
     ):
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' należy do innego projektu — analiza "
-            "zabezpieczeń nie może interpretować wyniku spoza własnego projektu"
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy należy do innego projektu — analiza "
+            "zabezpieczeń nie może interpretować wyniku spoza własnego projektu",
+            kod=KOD_BIEG_ZRODLOWY_INNY_PROJEKT,
+            dane=dane_biegu,
         )
     # D-21: nastawy z BIEŻĄCEGO modelu, topologia i rozpływ z biegu źródłowego — wolno je
     # złożyć wyłącznie, gdy opisują tę samą sieć (edycja nastaw i przekładników jej nie zmienia).
     if not siec_biegu_zgodna_z_modelem(sc_run.snapshot, snapshot):
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' policzono dla innej sieci niż bieżący model — "
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy policzono dla innej sieci niż bieżący model — "
             "od tego biegu zmieniło się coś poza zabezpieczeniami (element, parametr albo stan "
-            "łącznika). Przelicz zwarcie na bieżącym modelu, a potem uruchom ocenę zabezpieczeń"
+            "łącznika). Przelicz zwarcie na bieżącym modelu, a potem uruchom ocenę zabezpieczeń",
+            kod=KOD_BIEG_ZRODLOWY_INNA_SIEC,
+            dane=dane_biegu,
         )
 
 
@@ -1234,10 +1270,12 @@ def bieg_wariantu(
             # wariant wariantu (skladanie scenariuszy) nie jest modelowany
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
             # nie koperta udajaca, ze baza byla stanem normalnym.
-            raise OdmowaDanychError(
+            raise OdmowaNazwana(
                 "Bieg bazowy wariantu został policzony na scenariuszu z nadpisaniami "
-                f"modelu ({koperta_bazy.scenario_ref}); składanie scenariuszy nie jest "
-                "modelowane — wariant buduje się na biegu stanu normalnego."
+                "modelu; składanie scenariuszy nie jest modelowane — wariant buduje się na "
+                "biegu stanu normalnego.",
+                kod="wariant.bieg_bazowy_na_scenariuszu",
+                dane={"scenario_ref": str(koperta_bazy.scenario_ref)},
             )
         scenario_ref, scenario_hash = referencja_koperty(migawka)
         envelope = zbuduj_koperte(
@@ -1348,7 +1386,9 @@ def execute_run(
     """
     run = get_run(run_id)
     if run is None:
-        raise OdmowaDanychError(f"Run {run_id} not found")
+        raise OdmowaNazwana(
+            "Bieg obliczeń nie istnieje.", kod=KOD_BIEG_NIE_ISTNIEJE, dane={"run_ref": str(run_id)}
+        )
 
     # Przejecie biegu jest ATOMOWE (warunek + zapis w jednym UPDATE). Wczesniej
     # bylo: `if run.status in {"FINISHED", "FAILED"}: return` + osobny zapis
@@ -1872,9 +1912,14 @@ def _execute_v126(run: CanonicalRun) -> None:
     # (karta W3-E), ocena niewykonana dla jakości energii (liczby tylko w sekcji
     # audytowej) i SSCI (uczciwość natychmiastowa 2026-09-23). Solver FROZEN (B-01)
     # NIETKNIĘTY — odcisk `deterministic_hash` liczony przez solver przed granicą.
+    # Odmowa strukturalna rdzenia V12.6 odwołuje się do elementów migawki ENM
+    # (`RODZAJ_ELEMENT`: transformator bez P0, przekształtnik bez pól karty Z_conv) — granica
+    # składa zdanie z nazwami elementów biegu (partia integracji 10).
+    with nazwy_w_odmowach_modelu(run.snapshot):
+        surowy = solver.run(analysis_type, model)
     result = wynik_v126_dla_powierzchni(
         analysis_type.value,
-        solver.run(analysis_type, model),
+        surowy,
         nazwy=zbuduj_indeks_nazw(run.snapshot),
     )
     run_record: dict[str, Any] = {
@@ -2125,8 +2170,11 @@ def rozszerzenia_audit2_dla_opcji(
     try:
         project_uuid = UUID(str(project_id_str))
     except ValueError as exc:
-        raise OdmowaDanychError(
-            f"`audit2_project_id` nie jest poprawnym UUID: {project_id_str!r}"
+        raise OdmowaNazwana(
+            "Projekt konfiguracji audytu stacji wskazany w opcjach biegu nie jest poprawnym "
+            "identyfikatorem projektu",
+            kod="bieg.audit2_projekt_niepoprawny",
+            dane={"audit2_project_ref": str(project_id_str)},
         ) from exc
     if uow_factory is None:
         raise ValueError(
@@ -3899,15 +3947,18 @@ def dobierz_pasmo_min_max_zwarcia(
     wywołania.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise OdmowaDanychError(
-            f"Przebieg {run.id} nie jest obliczeniem zwarciowym "
-            f"(analysis_type={run.analysis_type!r}) — pasmo MIN/MAX zwarcia "
-            "dostępne wyłącznie dla zwarć."
+        raise OdmowaNazwana(
+            "Przebieg nie jest obliczeniem zwarciowym — pasmo MIN/MAX zwarcia dostępne "
+            "wyłącznie dla zwarć.",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ,
+            dane={"run_ref": str(run.id), "analysis_type": str(run.analysis_type)},
         )
     if run.status != "FINISHED":
-        raise OdmowaDanychError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}) — "
-            "pasmo MIN/MAX zwarcia wymaga zakończonego obliczenia jako kotwicy."
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony — pasmo MIN/MAX zwarcia wymaga zakończonego "
+            "obliczenia jako kotwicy.",
+            kod=KOD_BIEG_ZRODLOWY_NIEZAKONCZONY,
+            dane={"run_ref": str(run.id), "status": str(run.status)},
         )
     scenariusz_kotwicy = _scenariusz_z_opcji(run.options) or "MAX"
     typ_zwarcia = _typ_zwarcia_z_opcji(run.options)

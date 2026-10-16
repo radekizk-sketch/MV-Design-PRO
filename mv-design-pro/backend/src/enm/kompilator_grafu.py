@@ -50,11 +50,22 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import OdmowaDanychError
 
 
 class BenchmarkBuildError(RuntimeError):
-    """Operacja domenowa odrzuciła krok budowy sieci benchmarkowej."""
+    """Operacja domenowa odrzuciła krok budowy sieci benchmarkowej.
+
+    Treść to komunikat operacji domenowej dla projektanta (import arkusza, migracja modelu
+    zastanego, odtworzenie archiwum pokazują ją wprost); nazwa operacji jest polem
+    `operacja`, nie częścią treści (partia integracji 10 — kod operacji to identyfikator
+    maszynowy).
+    """
+
+    def __init__(self, komunikat: str, *, operacja: str | None = None) -> None:
+        super().__init__(komunikat)
+        self.operacja = operacja
 
 
 @dataclass(frozen=True)
@@ -113,7 +124,7 @@ def wykonaj(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[
     """
     result = execute_domain_operation(enm_dict=enm, op_name=op_name, payload=payload)
     if result.get("error"):
-        raise BenchmarkBuildError(f"{op_name}: {result['error']}")
+        raise BenchmarkBuildError(str(result["error"]), operacja=op_name)
     return result["snapshot"]
 
 
@@ -766,67 +777,80 @@ class BladGrafuWejsciowego(OdmowaDanychError):
 
 
 def _sprawdz_graf(graf: GrafDoKompilacji) -> dict[str, SzynaSpec]:
+    # Partia integracji 10: komunikat nazywa element TĄ SAMĄ nazwą, którą dostanie w modelu
+    # (szyna i transformator — `name`; odcinek — `_nazwa_krawedzi`: jawna nazwa albo
+    # oznaczenie nadane przez człowieka), nigdy identyfikatorem maszynowym; szyna spoza grafu jest opisana rolą
+    # (początkowa, końcowa, strona górna/dolna), bo nazwy nieistniejącej szyny nie ma.
     szyny: dict[str, SzynaSpec] = {}
     for szyna in graf.szyny:
         if szyna.lit in szyny:
-            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('szyna', szyna.name)} zadeklarowana dwukrotnie"
+            )
         if szyna.voltage_kv <= 0:
-            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}': napięcie musi być dodatnie")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('szyna', szyna.name)}: napięcie musi być dodatnie"
+            )
         szyny[szyna.lit] = szyna
     if not graf.zrodla:
         raise BladGrafuWejsciowego("graf bez źródła systemowego — nie ma skąd zacząć budowy")
     identyfikatory: set[str] = set()
     for odcinek in graf.odcinki:
+        opis_odcinka = opis_rodzaju_i_nazwy("odcinek", _nazwa_krawedzi(odcinek))
         if odcinek.edge_id in identyfikatory:
-            raise BladGrafuWejsciowego(f"gałąź '{odcinek.edge_id}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(f"{opis_odcinka}: gałąź zadeklarowana dwukrotnie")
         identyfikatory.add(odcinek.edge_id)
-        for koniec in (odcinek.from_lit, odcinek.to_lit):
+        for rola, koniec in (("początkowa", odcinek.from_lit), ("końcowa", odcinek.to_lit)):
             if koniec not in szyny:
-                raise BladGrafuWejsciowego(
-                    f"odcinek '{odcinek.edge_id}': szyna '{koniec}' nie istnieje w grafie"
-                )
+                raise BladGrafuWejsciowego(f"{opis_odcinka}: szyna {rola} nie istnieje w grafie")
         if odcinek.from_lit == odcinek.to_lit:
-            raise BladGrafuWejsciowego(f"odcinek '{odcinek.edge_id}' łączy szynę samą ze sobą")
+            raise BladGrafuWejsciowego(f"{opis_odcinka} łączy szynę samą ze sobą")
         u_od, u_do = szyny[odcinek.from_lit].voltage_kv, szyny[odcinek.to_lit].voltage_kv
         if abs(u_od - u_do) > 1e-9:
             raise BladGrafuWejsciowego(
-                f"odcinek '{odcinek.edge_id}' łączy szyny o różnych napięciach "
+                f"{opis_odcinka} łączy szyny o różnych napięciach "
                 f"({u_od:g} kV / {u_do:g} kV) — zmiana poziomu napięcia wymaga transformatora"
             )
     for trafo in graf.transformatory:
+        opis_trafo = opis_rodzaju_i_nazwy("transformator", trafo.name)
         if trafo.edge_id in identyfikatory:
-            raise BladGrafuWejsciowego(f"gałąź '{trafo.edge_id}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(f"{opis_trafo}: gałąź zadeklarowana dwukrotnie")
         identyfikatory.add(trafo.edge_id)
-        for koniec in (trafo.hv_lit, trafo.lv_lit):
+        for rola, koniec in (("strony górnej", trafo.hv_lit), ("strony dolnej", trafo.lv_lit)):
             if koniec not in szyny:
-                raise BladGrafuWejsciowego(
-                    f"transformator '{trafo.edge_id}': szyna '{koniec}' nie istnieje w grafie"
-                )
+                raise BladGrafuWejsciowego(f"{opis_trafo}: szyna {rola} nie istnieje w grafie")
         if trafo.hv_lit == trafo.lv_lit:
-            raise BladGrafuWejsciowego(f"transformator '{trafo.edge_id}' łączy szynę samą ze sobą")
-        if szyny[trafo.hv_lit].voltage_kv < szyny[trafo.lv_lit].voltage_kv:
+            raise BladGrafuWejsciowego(f"{opis_trafo} łączy szynę samą ze sobą")
+        szyna_hv, szyna_lv = szyny[trafo.hv_lit], szyny[trafo.lv_lit]
+        if szyna_hv.voltage_kv < szyna_lv.voltage_kv:
             raise BladGrafuWejsciowego(
-                f"transformator '{trafo.edge_id}': strona HV ('{trafo.hv_lit}', "
-                f"{szyny[trafo.hv_lit].voltage_kv:g} kV) ma niższe napięcie niż strona LV "
-                f"('{trafo.lv_lit}', {szyny[trafo.lv_lit].voltage_kv:g} kV)"
+                f"{opis_trafo}: strona górna ({opis_rodzaju_i_nazwy('szyna', szyna_hv.name)}, "
+                f"{szyna_hv.voltage_kv:g} kV) ma niższe napięcie niż strona dolna "
+                f"({opis_rodzaju_i_nazwy('szyna', szyna_lv.name)}, {szyna_lv.voltage_kv:g} kV)"
             )
     szyny_zrodel: set[str] = set()
     for zrodlo in graf.zrodla:
         if zrodlo.lit not in szyny:
-            raise BladGrafuWejsciowego(f"źródło '{zrodlo.name}': szyna '{zrodlo.lit}' nie istnieje")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: szyna przyłączenia nie istnieje"
+            )
         if zrodlo.lit in szyny_zrodel:
             raise BladGrafuWejsciowego(
-                f"szyna '{zrodlo.lit}' ma więcej niż jedno źródło systemowe — model niesie "
+                f"{opis_rodzaju_i_nazwy('szyna', szyny[zrodlo.lit].name)} ma więcej niż jedno "
+                "źródło systemowe — model niesie "
                 "jedno źródło sieciowe na szynę zasilającą"
             )
         szyny_zrodel.add(zrodlo.lit)
         if zrodlo.sk3_mva is None and zrodlo.ik3_ka is None:
             raise BladGrafuWejsciowego(
-                f"źródło '{zrodlo.name}': podaj moc zwarciową Sk'' albo prąd zwarciowy Ik''"
+                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: podaj moc zwarciową Sk'' albo "
+                "prąd zwarciowy Ik''"
             )
     for odbior in graf.odbiory:
         if odbior.lit not in szyny:
-            raise BladGrafuWejsciowego(f"odbiór '{odbior.name}': szyna '{odbior.lit}' nie istnieje")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('odbiór', odbior.name)}: szyna przyłączenia nie istnieje"
+            )
     return szyny
 
 
@@ -1016,7 +1040,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
     if nieosiagalne:
         raise BladGrafuWejsciowego(
             "szyny nieosiągalne z żadnego źródła systemowego (wyspa bez zasilania): "
-            + ", ".join(nieosiagalne)
+            + ", ".join(opis_rodzaju_i_nazwy("szyna", szyny[lit].name) for lit in nieosiagalne)
         )
 
     # krawędzie zamykające — oba końce istnieją

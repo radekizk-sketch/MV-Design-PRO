@@ -28,6 +28,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.store import reset_enm_store, set_enm
+from network_model.odmowa_danych import OdmowaNazwana
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -296,10 +297,16 @@ def test_missing_p_mw_raises_not_zero() -> None:
         if gen["ref_id"] == SOURCE:
             del gen["p_mw"]
     zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
-    with pytest.raises(ValueError, match=f"{SOURCE}.*p_mw|p_mw.*{SOURCE}"):
+    # Partia integracji 10: źródło nazwą z migawki, wielkość słowami projektanta;
+    # identyfikator i klucz pola w `dane` odmowy nazwanej, nie w treści.
+    with pytest.raises(OdmowaNazwana) as exc:
         build_osd_response_view(
             zmieniony_run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50
         )
+    assert "nie ma w modelu wartości mocy czynnej P" in str(exc.value)
+    assert SOURCE not in str(exc.value) and "p_mw" not in str(exc.value)
+    assert exc.value.kod == "polecenie_osd.zrodlo_bez_mocy"
+    assert exc.value.dane == {"element_ref": SOURCE, "pole": "p_mw"}
 
 
 def test_missing_q_mvar_raises_not_zero() -> None:
@@ -313,10 +320,16 @@ def test_missing_q_mvar_raises_not_zero() -> None:
         if gen["ref_id"] == SOURCE:
             del gen["q_mvar"]
     zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
-    with pytest.raises(ValueError, match=f"{SOURCE}.*q_mvar|q_mvar.*{SOURCE}"):
+    # Partia integracji 10: źródło nazwą z migawki, wielkość słowami projektanta;
+    # identyfikator i klucz pola w `dane` odmowy nazwanej, nie w treści.
+    with pytest.raises(OdmowaNazwana) as exc:
         build_osd_response_view(
             zmieniony_run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50
         )
+    assert "nie ma w modelu wartości mocy biernej Q" in str(exc.value)
+    assert SOURCE not in str(exc.value) and "q_mvar" not in str(exc.value)
+    assert exc.value.kod == "polecenie_osd.zrodlo_bez_mocy"
+    assert exc.value.dane == {"element_ref": SOURCE, "pole": "q_mvar"}
 
 
 def test_complete_source_fields_regression() -> None:

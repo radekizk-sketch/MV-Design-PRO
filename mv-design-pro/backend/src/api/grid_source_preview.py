@@ -178,26 +178,23 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
 def preview_grid_source_short_circuit(
     request: GridSourcePreviewRequest,
 ) -> GridSourcePreviewResponse:
-    try:
-        result = compute_grid_source_preview(
-            GridSourcePreviewInput(
-                voltage_kv=request.voltage_kv,
-                short_circuit_mode=request.short_circuit_mode,
-                sk3_mva=request.sk3_mva,
-                rx_ratio=request.rx_ratio,
-                r_ohm=request.r_ohm,
-                x_ohm=request.x_ohm,
-                zero_sequence_enabled=request.zero_sequence_enabled,
-                r0_ohm=request.r0_ohm,
-                x0_ohm=request.x0_ohm,
-                z0_z1_ratio=request.z0_z1_ratio,
-                tk_s=request.tk_s,
-                tb_s=request.tb_s,
-            )
+    result = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=request.voltage_kv,
+            short_circuit_mode=request.short_circuit_mode,
+            sk3_mva=request.sk3_mva,
+            rx_ratio=request.rx_ratio,
+            r_ohm=request.r_ohm,
+            x_ohm=request.x_ohm,
+            zero_sequence_enabled=request.zero_sequence_enabled,
+            r0_ohm=request.r0_ohm,
+            x0_ohm=request.x0_ohm,
+            z0_z1_ratio=request.z0_z1_ratio,
+            tk_s=request.tk_s,
+            tb_s=request.tb_s,
         )
-        blok_min = _podglad_min(request)
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
+    blok_min = _podglad_min(request)
 
     return GridSourcePreviewResponse(
         sk_mva=result.sk_mva,
@@ -256,21 +253,18 @@ class CableVoltageDropResponse(BaseModel):
 def preview_cable_voltage_drop(
     request: CableVoltageDropRequest,
 ) -> CableVoltageDropResponse:
-    try:
-        result = compute_cable_voltage_drop(
-            CableVoltageDropInput(
-                current_a=request.current_a,
-                length_km=request.length_km,
-                r_ohm_per_km=request.r_ohm_per_km,
-                x_ohm_per_km=request.x_ohm_per_km,
-                cos_phi=request.cos_phi,
-                line_voltage_v=request.line_voltage_v,
-                flow_direction=request.flow_direction,
-                reactive_character=request.reactive_character,
-            )
+    result = compute_cable_voltage_drop(
+        CableVoltageDropInput(
+            current_a=request.current_a,
+            length_km=request.length_km,
+            r_ohm_per_km=request.r_ohm_per_km,
+            x_ohm_per_km=request.x_ohm_per_km,
+            cos_phi=request.cos_phi,
+            line_voltage_v=request.line_voltage_v,
+            flow_direction=request.flow_direction,
+            reactive_character=request.reactive_character,
         )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return CableVoltageDropResponse(
         delta_u_v=result.delta_u_v,
@@ -307,16 +301,13 @@ class CableRatedCurrentResponse(BaseModel):
 def preview_cable_rated_current(
     request: CableRatedCurrentRequest,
 ) -> CableRatedCurrentResponse:
-    try:
-        result = compute_cable_rated_current(
-            CableRatedCurrentInput(
-                active_power_kw=request.active_power_kw,
-                cos_phi=request.cos_phi,
-                line_voltage_v=request.line_voltage_v,
-            )
+    result = compute_cable_rated_current(
+        CableRatedCurrentInput(
+            active_power_kw=request.active_power_kw,
+            cos_phi=request.cos_phi,
+            line_voltage_v=request.line_voltage_v,
         )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return CableRatedCurrentResponse(
         rated_current_a=result.rated_current_a,
@@ -411,14 +402,11 @@ def _odcinek_magistrali(odcinek: OdcinekMagistraliRequest) -> OdcinekMagistrali:
 )
 def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMagistraliResponse:
     """Ocena doboru przekroju odcinka i ciągu magistrali SN rekordami werdyktu wyjaśnialnego."""
-    try:
-        ocena = ocen_dobor_magistrali(
-            napiecie_kv=request.napiecie_kv,
-            odcinek=_odcinek_magistrali(request.odcinek),
-            odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    ocena = ocen_dobor_magistrali(
+        napiecie_kv=request.napiecie_kv,
+        odcinek=_odcinek_magistrali(request.odcinek),
+        odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
+    )
 
     spadek = ocena.spadek_odcinka
     ciag = ocena.ciag
@@ -552,17 +540,14 @@ def preview_cable_ampacity_derating(
 ) -> CableAmpacityDeratingResponse:
     """Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego."""
     laying = request.laying_conditions
-    try:
-        derating = wspolczynniki_z_opisu(
-            laying.set_name if laying is not None else None,
-            f_grunt=laying.f_grunt if laying is not None else None,
-            f_wiazka=laying.f_wiazka if laying is not None else None,
-            f_grupa=laying.f_grupa if laying is not None else None,
-            opis_pl=laying.opis_pl if laying is not None else None,
-        )
-        effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    derating = wspolczynniki_z_opisu(
+        laying.set_name if laying is not None else None,
+        f_grunt=laying.f_grunt if laying is not None else None,
+        f_wiazka=laying.f_wiazka if laying is not None else None,
+        f_grupa=laying.f_grupa if laying is not None else None,
+        opis_pl=laying.opis_pl if laying is not None else None,
+    )
+    effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
 
     return CableAmpacityDeratingResponse(
         rated_ampacity_a=request.rated_ampacity_a,
@@ -597,16 +582,13 @@ class TransformerRatedCurrentsResponse(BaseModel):
 def preview_transformer_rated_currents(
     request: TransformerRatedCurrentsRequest,
 ) -> TransformerRatedCurrentsResponse:
-    try:
-        result = compute_transformer_rated_currents(
-            TransformerRatedCurrentsInput(
-                rated_power_kva=request.rated_power_kva,
-                primary_voltage_kv=request.primary_voltage_kv,
-                secondary_voltage_kv=request.secondary_voltage_kv,
-            )
+    result = compute_transformer_rated_currents(
+        TransformerRatedCurrentsInput(
+            rated_power_kva=request.rated_power_kva,
+            primary_voltage_kv=request.primary_voltage_kv,
+            secondary_voltage_kv=request.secondary_voltage_kv,
         )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return TransformerRatedCurrentsResponse(
         primary_current_a=result.primary_current_a,
@@ -637,15 +619,12 @@ class ShuntCompensatorPreviewResponse(BaseModel):
 def preview_shunt_compensator(
     request: ShuntCompensatorPreviewRequest,
 ) -> ShuntCompensatorPreviewResponse:
-    try:
-        result = compute_shunt_compensator_preview(
-            ShuntCompensatorPreviewInput(
-                rated_mvar=request.rated_mvar,
-                rated_kv=request.rated_kv,
-            )
+    result = compute_shunt_compensator_preview(
+        ShuntCompensatorPreviewInput(
+            rated_mvar=request.rated_mvar,
+            rated_kv=request.rated_kv,
         )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return ShuntCompensatorPreviewResponse(
         rated_mvar=result.rated_mvar,
@@ -850,37 +829,32 @@ def preview_der_selection(
     if odmowa is not None:
         raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
     laying = request.laying_conditions
-    try:
-        sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(
-            request.sum_active_power_mw, request.cos_phi
-        )
-        wynik = dobierz_tor_der_sn(
-            moc_pozorna_mva=sum_apparent_power_mva,
-            napiecie_sn_kv=request.sn_bus_voltage_kv,
-            napiecie_falownika_kv=request.inverter_output_kv,
-            dlugosc_kabla_km=request.cable_length_km,
-            nosnik_cos_phi=request,
-            wspolczynnik_jednoczesnosci=request.simultaneity_factor,
-            przeciazalnosc_pu=request.loadability_pu,
-            rezerwa_transformatora_pu=request.transformer_reserve_pu,
-            rezerwa_kabla_pu=request.cable_reserve_pu,
-            rezerwa_pola_pu=request.field_reserve_pu,
-            maks_spadek_napiecia_pct=request.max_delta_u_pct,
-            charakter_mocy_biernej=request.reactive_character,
-            ulozenie=(
-                OpisUlozeniaKabla(
-                    set_name=laying.set_name,
-                    f_grunt=laying.f_grunt,
-                    f_wiazka=laying.f_wiazka,
-                    f_grupa=laying.f_grupa,
-                    opis_pl=laying.opis_pl,
-                )
-                if laying is not None
-                else None
-            ),
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(request.sum_active_power_mw, request.cos_phi)
+    wynik = dobierz_tor_der_sn(
+        moc_pozorna_mva=sum_apparent_power_mva,
+        napiecie_sn_kv=request.sn_bus_voltage_kv,
+        napiecie_falownika_kv=request.inverter_output_kv,
+        dlugosc_kabla_km=request.cable_length_km,
+        nosnik_cos_phi=request,
+        wspolczynnik_jednoczesnosci=request.simultaneity_factor,
+        przeciazalnosc_pu=request.loadability_pu,
+        rezerwa_transformatora_pu=request.transformer_reserve_pu,
+        rezerwa_kabla_pu=request.cable_reserve_pu,
+        rezerwa_pola_pu=request.field_reserve_pu,
+        maks_spadek_napiecia_pct=request.max_delta_u_pct,
+        charakter_mocy_biernej=request.reactive_character,
+        ulozenie=(
+            OpisUlozeniaKabla(
+                set_name=laying.set_name,
+                f_grunt=laying.f_grunt,
+                f_wiazka=laying.f_wiazka,
+                f_grupa=laying.f_grupa,
+                opis_pl=laying.opis_pl,
+            )
+            if laying is not None
+            else None
+        ),
+    )
     tr_result = wynik.transformator
 
     transformer_response = BlockTransformerSelectionResponse(

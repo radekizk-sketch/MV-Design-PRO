@@ -105,8 +105,9 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, SondaKondensatora, apply_scenario
+from enm.slownik_komunikatow import opis_obiektu
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 _KV_TOLERANCE = 0.001
 
@@ -434,14 +435,16 @@ def build_compensation_sizing_view(
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):
-        raise OdmowaDanychError("Wymagany cosφ (cos_phi_min) musi być w przedziale (0, 1].")
+        raise OdmowaDanychError("Wymagany cosφ musi być w przedziale (0, 1].")
 
     snapshot = run.snapshot or {}
     buses = _bus_index(snapshot)
     bus = buses.get(bus_ref)
     if bus is None:
-        raise OdmowaDanychError(
-            f"Wskazana szyna punktu przyłączenia nie istnieje w modelu: {bus_ref}."
+        raise OdmowaNazwana(
+            "Wskazana szyna punktu przyłączenia nie istnieje w modelu.",
+            kod="kompensacja.szyna_spoza_modelu",
+            dane={"element_ref": bus_ref},
         )
 
     # FAB-E (E1): voltage_kv jest polem WYMAGANYM na modelu szyny (enm/models.py)
@@ -450,9 +453,12 @@ def build_compensation_sizing_view(
     # poziomu napiecia (_sorted_candidates), czyli fizycznie bezsensowny dobor.
     voltage_kv_raw = bus.get("voltage_kv")
     if voltage_kv_raw is None:
-        raise OdmowaDanychError(
-            f"Szyna punktu przyłączenia {bus_ref!r} nie ma pola voltage_kv w snapshotcie "
-            "— zapis modelu jest uszkodzony, dobór kompensacji nie może się na nim oprzeć."
+        raise OdmowaNazwana(
+            f"{opis_obiektu(bus, 'Szyna')} punktu przyłączenia nie ma napięcia znamionowego "
+            "w zapisie modelu — zapis modelu jest uszkodzony, dobór kompensacji nie może się "
+            "na nim oprzeć.",
+            kod="kompensacja.szyna_bez_napiecia",
+            dane={"element_ref": bus_ref},
         )
     bus_kv = float(voltage_kv_raw)
     records = _sorted_candidates(bus_kv)

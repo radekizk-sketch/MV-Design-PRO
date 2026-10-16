@@ -35,3 +35,15 @@ def nazwa_nadana(wartosc: object) -> str | None:
     liczy się leniwie i tylko wtedy, gdy nazwy naprawdę brak.
     """
     return wartosc.strip() if isinstance(wartosc, str) and jest_nazwa(wartosc) else None
+
+
+def opis_rodzaju_i_nazwy(rodzaj: str, wartosc: object) -> str:
+    """Słowo rodzaju z nazwą w cudzysłowie („Szyna „Sekcja 1”") albo opis braku nazwy
+    („Szyna bez nazwy") — JEDNA reguła opisu elementu w zdaniu komunikatu.
+
+    Woła ją słownik komunikatów ENM (`enm/slownik_komunikatow.py`) i moduły
+    `network_model/**`, które mają element w ręku (graf IR, rdzenie); identyfikator elementu
+    nigdy nie zastępuje nazwy (partia integracji 10).
+    """
+    nazwa = nazwa_nadana(wartosc)
+    return f"{rodzaj} „{nazwa}”" if nazwa is not None else f"{rodzaj} bez nazwy"

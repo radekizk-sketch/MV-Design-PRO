@@ -702,6 +702,17 @@
       "title": "Arkusz",
       "type": "string"
      },
+     "kod": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kod"
+     },
      "kolumna": {
       "anyOf": [
        {

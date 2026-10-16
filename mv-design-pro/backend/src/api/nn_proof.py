@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.proof_engine.lv_circuit_verification_binding import (
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
@@ -154,9 +155,10 @@ def download_lv_circuit_verification_pack(
             apparatus_branch_ref=payload.apparatus_branch_ref,
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się złożyć dowodu obwodu nN: {exc}",
+            prefiks="Nie udało się złożyć dowodu obwodu nN",
         ) from exc
 
     if wynik["status"] != "OK":
@@ -236,9 +238,10 @@ def preview_lv_circuit_verification_pack(
             apparatus_branch_ref=payload.apparatus_branch_ref,
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się złożyć dowodu obwodu nN: {exc}",
+            prefiks="Nie udało się złożyć dowodu obwodu nN",
         ) from exc
 
     if wynik["status"] != "OK":

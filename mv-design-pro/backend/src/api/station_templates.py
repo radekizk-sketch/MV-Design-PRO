@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.station_templates import (
     TEMPLATE_CATEGORY_LABELS_PL,
     StationTemplate,
@@ -68,18 +69,20 @@ def klucz_przypadku(case_id: str) -> str:
     błędem, nigdy po cichu naprawiana.
 
     Podnosi ``OdmowaDanychError`` dla identyfikatora spoza kontraktu (także dla tekstu,
-    który nie jest UUID — komunikat parsera bez zmian).
+    który nie jest UUID) — treść po polsku i bez echa identyfikatora (partia integracji 10).
     """
     # ŻADNEGO `strip()` ani innego oczyszczenia: każde przekształcenie wejścia jest
     # tym samym defektem co normalizacja UUID, tylko o jeden znak mniej widocznym.
     try:
         kanoniczny = str(UUID(case_id))
     except ValueError as exc:
-        raise OdmowaDanychError(str(exc)) from exc
+        raise OdmowaDanychError(
+            "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+        ) from exc
     if kanoniczny != case_id:
         raise OdmowaDanychError(
-            f"identyfikator przypadku '{case_id}' nie jest w postaci kanonicznej "
-            f"('{kanoniczny}'). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
+            "Identyfikator przypadku w adresie nie jest w postaci kanonicznej (małe litery "
+            "szesnastkowe z łącznikami). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
             "więc postać niekanoniczna wskazywałaby inny wpis niż operacje domenowe."
         )
     return case_id
@@ -270,7 +273,7 @@ def apply_station_template(
         # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
         case_id_kanoniczny = klucz_przypadku(request.case_id)
     except OdmowaDanychError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
+        raise OdmowaHttpError(exc, status_code=400) from exc
 
     # JEDYNE miejsce tlumaczenia case_id -> klucz magazynu ENM (CV-1-W) — 404
     # gdy przypadek nie nalezy do zadnego projektu.

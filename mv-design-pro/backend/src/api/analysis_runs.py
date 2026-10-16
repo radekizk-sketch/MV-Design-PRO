@@ -32,6 +32,7 @@ from api.canonical_run_views import (
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
+from api.odmowa_http import OdmowaHttpError
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from application.nazwy_biegu import nazwa_przypadku_z_bazy
 from application.proof_engine.pakiet_biegu import (
@@ -399,9 +400,7 @@ def export_analysis_run_report_docx(
             ),
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -434,9 +433,7 @@ def export_analysis_run_report_pdf(
             ),
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -504,9 +501,7 @@ def export_analysis_run_proof_pdf(
     try:
         response = export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -550,9 +545,7 @@ def get_pakiet_dowodowy(
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietBieguError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY) from exc
     return Response(
         content=content,
         media_type="application/zip",
@@ -797,7 +790,7 @@ def get_short_circuit_band(
     try:
         return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
     except OdmowaDanychError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/phase-state")

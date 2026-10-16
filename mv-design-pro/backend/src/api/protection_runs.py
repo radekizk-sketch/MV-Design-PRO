@@ -31,6 +31,7 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
+from api.odmowa_http import OdmowaHttpError
 from application.execution import wykonawca_biegow
 from application.result_freshness import (
     FreshnessReason,
@@ -281,10 +282,7 @@ def create_protection_run(
             options={"sc_run_id": request.sc_run_id},
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
     return _run_to_response(run)
 

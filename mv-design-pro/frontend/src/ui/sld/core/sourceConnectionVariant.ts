@@ -27,6 +27,16 @@ export type SourceConnectionVariantV1 =
   (typeof SourceConnectionVariantV1)[keyof typeof SourceConnectionVariantV1];
 
 /**
+ * Opis wariantu dla projektanta (komunikaty diagnostyczne czytnika topologii) — wartość
+ * wyliczeniowa kontraktu nigdy nie trafia do treści komunikatu.
+ */
+export const OPIS_WARIANTU_PRZYLACZENIA_PL: Readonly<Record<SourceConnectionVariantV1, string>> = {
+  LV_BEHIND_STATION_TRANSFORMER: 'po stronie nN za transformatorem stacji SN/nN',
+  DEDICATED_MV_CONNECTION: 'dedykowane pole SN z transformatorem przyłączeniowym',
+  SOURCE_CONNECTION_STATION: 'osobna stacja przyłączeniowa źródła',
+};
+
+/**
  * Typ wejściowy: kanoniczny wariant LUB akceptowany alias legacy.
  * Czytnik przechowuje znormalizowaną wartość kanoniczną (lub null).
  */

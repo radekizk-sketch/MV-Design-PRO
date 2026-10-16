@@ -33,6 +33,7 @@ from __future__ import annotations
 from analysis.voltage_profile.models import VoltageProfileSegment, VoltageProfileSegmentPath
 from network_model.core.graph import NetworkGraph
 from network_model.core.topologia import przeglad_wszerz
+from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -51,7 +52,12 @@ _TELESCOPING_TOLERANCE_KV = 1e-4
 
 
 class VoltageProfileSegmentPathError(OdmowaDanychError):
-    """Węzeł źródłowy/docelowy nieznany w grafie albo nieosiągalny z niego."""
+    """Węzeł źródłowy/docelowy nieznany w grafie albo nieosiągalny z niego.
+
+    Treść niesie NAZWĘ węzła z grafu (`Node.name`), nigdy jego identyfikator (partia
+    integracji 10, `scripts/odmowa_bez_identyfikatora_guard.py`); węzeł spoza grafu nie ma
+    nazwy — opisuje go rola (źródłowy/docelowy).
+    """
 
 
 class VoltageProfileSegmentBuilder:
@@ -77,10 +83,12 @@ class VoltageProfileSegmentBuilder:
         resolved_source_id = source_id if source_id is not None else self._graph.get_slack_node().id
         if resolved_source_id not in self._graph.nodes:
             raise VoltageProfileSegmentPathError(
-                f"Węzeł źródłowy '{resolved_source_id}' nie istnieje w grafie."
+                "Wskazany węzeł źródłowy ścieżki nie istnieje w grafie sieci."
             )
         if node_id not in self._graph.nodes:
-            raise VoltageProfileSegmentPathError(f"Węzeł '{node_id}' nie istnieje w grafie.")
+            raise VoltageProfileSegmentPathError(
+                "Wskazany węzeł docelowy ścieżki nie istnieje w grafie sieci."
+            )
 
         bus_v_pu = {bus.bus_id: bus.v_pu for bus in pf_result.bus_results}
         u_source_kv = self._bus_kv(resolved_source_id, bus_v_pu)
@@ -131,6 +139,11 @@ class VoltageProfileSegmentBuilder:
             segments=tuple(segments),
         )
 
+    def _opis_wezla(self, bus_id: str) -> str:
+        """„Węzeł „Nazwa”" albo „Węzeł bez nazwy" — z grafu, nigdy identyfikator."""
+        node = self._graph.nodes.get(bus_id)
+        return opis_rodzaju_i_nazwy("Węzeł", node.name if node is not None else None)
+
     def _u_nom(self, bus_id: str) -> float:
         node = self._graph.nodes.get(bus_id)
         return float(node.voltage_level) if node is not None else 0.0
@@ -139,11 +152,12 @@ class VoltageProfileSegmentBuilder:
         v_pu = bus_v_pu.get(bus_id)
         if v_pu is None:
             raise VoltageProfileSegmentPathError(
-                f"Brak napięcia węzła '{bus_id}' w wyniku rozpływu (PowerFlowResultV1)."
+                f"{self._opis_wezla(bus_id)}: brak napięcia w wyniku rozpływu mocy."
             )
         if v_pu != v_pu:  # NaN (bus poza wyspą SLACK, status="not_solved")
             raise VoltageProfileSegmentPathError(
-                f"Węzeł '{bus_id}' nie ma rozwiązanego napięcia (not_solved)."
+                f"{self._opis_wezla(bus_id)} nie ma rozwiązanego napięcia — leży poza "
+                "obszarem zasilanym z węzła bilansującego."
             )
         return v_pu * self._u_nom(bus_id)
 
@@ -162,7 +176,9 @@ class VoltageProfileSegmentBuilder:
         nx_graph = self._graph._graph
         if source_id not in nx_graph or target_id not in nx_graph:
             raise VoltageProfileSegmentPathError(
-                f"Węzeł '{source_id}' lub '{target_id}' nie ma krawędzi w aktywnej topologii grafu."
+                "Co najmniej jeden z węzłów ścieżki nie ma połączenia w aktywnej topologii "
+                f"sieci (początek: {self._opis_wezla(source_id)}; koniec: "
+                f"{self._opis_wezla(target_id)})."
             )
         if source_id == target_id:
             return []
@@ -187,8 +203,9 @@ class VoltageProfileSegmentBuilder:
 
         if target_id not in predecessor:
             raise VoltageProfileSegmentPathError(
-                f"Węzeł '{target_id}' nie jest osiągalny z '{source_id}' w aktywnej topologii "
-                "(gałęzie in_service + łączniki CLOSED)."
+                f"{self._opis_wezla(target_id)} nie jest osiągalny z węzła źródłowego "
+                f"({self._opis_wezla(source_id)}) w aktywnej topologii (gałęzie w eksploatacji "
+                "i łączniki zamknięte)."
             )
 
         hops: list[tuple[str, str, str, str]] = []

@@ -237,7 +237,11 @@ def test_state_estimation_unknown_bus_ref_returns_422(app_client) -> None:
     ]
     resp = app_client.post(STATE_ESTIMATION, json={"run_id": str(run_id), "pomiary": pomiary})
     assert resp.status_code == 422
-    assert "nieistniejącego węzła" in resp.json()["detail"]
+    # Partia integracji 10: identyfikator wskazania w polu strukturalnym `dane`, treść bez niego.
+    body = resp.json()
+    assert body["detail"] == "Pomiar odnosi się do węzła, którego nie ma w modelu sieci."
+    assert body["kod"] == "estymacja.pomiar_wezla_spoza_modelu"
+    assert body["dane"] == {"element_ref": "nieistniejacy"}
 
 
 def test_state_estimation_wrong_analysis_type_returns_422(app_client) -> None:

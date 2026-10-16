@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from api.odmowa_http import OdmowaHttpError
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
@@ -366,6 +367,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     """
     from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
     from enm.models import EnergyNetworkModel
+    from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
     from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
     # Migawka pochodzi z żądania: niezgodność z kontraktem ENM to odmowa danych projektanta,
@@ -385,19 +387,23 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         fault_node_id = payload.fault_node_id
         if fault_node_id not in graph.nodes:
             fault_node_id = _ref_to_uuid(payload.fault_node_id)
-        result = compute_machine_contributions(
-            graph,
-            fault_node_id,
-            c_factor=payload.c_factor,
-            t_min_s=payload.t_min_s,
-        )
+        # Partia integracji 10: odmowa strukturalna rdzenia wychodzi ze zdaniem z nazwami
+        # elementów grafu (identyfikator węzła zostaje w rekordach odmowy).
+        with nazwy_w_odmowach_rdzenia(graph):
+            result = compute_machine_contributions(
+                graph,
+                fault_node_id,
+                c_factor=payload.c_factor,
+                t_min_s=payload.t_min_s,
+            )
     # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
     # zwarcia w indeksie Z-bus, element bez szyny, osobliwa sieć); każdy inny `ValueError`
     # i dawny `KeyError` (karta #151) to błąd programu — 500 i pełny ślad.
     except OdmowaDanychError as exc:
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
+            prefiks="Nie udało się wyznaczyć wkładów zwarciowych",
         ) from exc
     # Addytywnie: wywod prezentacyjny {tekst, latex} (zasada KaTeX) obok
     # surowego sladu WHITE BOX solvera — bez zmiany istniejacych pol.
@@ -450,9 +456,10 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     try:
         content = SC3FProofPack.generate_zip(pack_input, context)
     except OdmowaDanychError as exc:  # jak wyżej: inny wyjątek = błąd programu
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",
+            prefiks="Nie udało się zbudować pakietu dowodowego SC3F",
         ) from exc
     headers = {
         "Content-Disposition": (

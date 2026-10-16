@@ -93,6 +93,9 @@ def test_siec_it_bez_szyny_nn_transformatora_to_odmowa_trasy_nie_wyjatek():
     assert isinstance(odmowa, dict)
     assert odmowa["status"] == "brak danych"
     assert odmowa["missing_data"] == [f"{trafo.ref_id}:lv_bus_ref"]
-    assert "szyna-spoza-modelu" in odmowa["reason_pl"]
+    # Partia integracji 10: komunikat trasy mówi, czego brakuje, bez identyfikatora szyny
+    # (identyfikator zostaje w `missing_data`).
+    assert "Szyna źródłowa trasy nie istnieje w modelu" in odmowa["reason_pl"]
+    assert "szyna-spoza-modelu" not in odmowa["reason_pl"]
     assert odmowa["station_ref"] == REF_STACJA
     assert odmowa.get("kod_odmowy") != KOD_BRAK_POJEMNOSCI

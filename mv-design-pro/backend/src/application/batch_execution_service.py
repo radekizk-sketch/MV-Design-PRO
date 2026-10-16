@@ -86,12 +86,13 @@ from enm.envelope import zbuduj_koperte
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.scenariusze import OperatingScenario
+from enm.slownik_komunikatow import opis_nazwy
 from enm.store import get_enm
 from infrastructure.persistence.repositories.run_batch_repository import (
     run_batch_repository_scope,
 )
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 logger = logging.getLogger(__name__)
 
@@ -231,8 +232,14 @@ class BatchExecutionService:
         for scenario_id in scenario_ids:
             scenario = self._scenario_service.get_scenario(klucz, scenario_id)
             if scenario.study_case_id != study_case_id:
-                raise OdmowaDanychError(
-                    f"Scenariusz {scenario_id} nie należy do przypadku {study_case_id}"
+                raise OdmowaNazwana(
+                    f"{opis_nazwy(scenario.name, 'Scenariusz')} nie należy do wskazanego "
+                    "przypadku obliczeniowego",
+                    kod="seria.scenariusz_innego_przypadku",
+                    dane={
+                        "scenario_ref": str(scenario_id),
+                        "study_case_ref": str(study_case_id),
+                    },
                 )
             scenarios.append(scenario)
 

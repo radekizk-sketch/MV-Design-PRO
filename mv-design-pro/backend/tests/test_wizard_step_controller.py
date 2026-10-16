@@ -202,7 +202,7 @@ class TestPreconditions:
 
     def test_unknown_step_raises(self):
         """Unknown step raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown step"):
+        with pytest.raises(ValueError, match="Nieznany krok kreatora sieci"):
             preconditions("K99", _empty_enm())
 
 

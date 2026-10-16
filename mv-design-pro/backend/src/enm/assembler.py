@@ -56,6 +56,7 @@ from enm.nazwy_elementow import (
     nazwa_po_identyfikatorze,
     zbuduj_indeks_nazw,
 )
+from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
@@ -65,7 +66,8 @@ from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
 from network_model.core.voltage_factor import Scenario
 from network_model.core.ybus import S_BASE_MVA
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.nazwy import opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_odniesiona_do_napiecia_ohm,
     impedancja_wlasna_ohm,
@@ -93,6 +95,15 @@ from network_model.solvers.power_flow_unbalanced import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.whitebox.tracer import WhiteBoxStep, WhiteBoxTracer
+
+#: Kody odmów nazwanych składania wejścia solverów (identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10, klasa „identyfikator w treści odmowy").
+KOD_BATERIA_BEZ_SZYNY = "assembler.bateria_bez_szyny"
+KOD_BATERIA_DANE_ZNAMIONOWE = "assembler.bateria_dane_znamionowe"
+KOD_DWIE_REGULACJE_NA_SZYNIE = "assembler.dwie_regulacje_falownika_na_szynie"
+KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q = "assembler.regulacja_napiecia_bez_granic_q"
+KOD_WEZEL_PV_Z_REGULACJA_FALOWNIKA = "assembler.wezel_pv_z_regulacja_falownika"
+KOD_WEZEL_ZWARCIA_SCENARIUSZA = "assembler.wezel_zwarcia_scenariusza"
 
 
 def _graph_id_from_ref(ref_id: str) -> str:
@@ -255,21 +266,27 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
             continue
         ref_id = str(raw.get("ref_id") or "")
         bus_ref = str(raw.get("bus_ref") or "")
+        # Partia integracji 10: nazwa baterii z modelu w treści, identyfikator w `dane`.
+        bateria = opis_obiektu(raw, "Bateria kondensatorów")
         if not bus_ref:
-            raise OdmowaDanychError(
-                f"Bateria kondensatorów '{ref_id}' nie ma przypisanej szyny (bus_ref)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma przypisanej szyny przyłączenia.",
+                kod=KOD_BATERIA_BEZ_SZYNY,
+                dane={"element_ref": ref_id},
             )
         rated_mvar = raw.get("rated_mvar")
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
-            raise OdmowaDanychError(
-                f"Bateria kondensatorów '{ref_id}' nie ma dodatniej mocy "
-                f"znamionowej (rated_mvar)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma dodatniej mocy znamionowej Q_n.",
+                kod=KOD_BATERIA_DANE_ZNAMIONOWE,
+                dane={"element_ref": ref_id},
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
-            raise OdmowaDanychError(
-                f"Bateria kondensatorów '{ref_id}' nie ma dodatniego napięcia "
-                f"znamionowego (rated_kv)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma dodatniego napięcia znamionowego U_n.",
+                kod=KOD_BATERIA_DANE_ZNAMIONOWE,
+                dane={"element_ref": ref_id},
             )
         # b_pu = Q_rated / S_base (positive susceptance for a capacitor).
         b_pu = float(rated_mvar) / base_mva
@@ -385,9 +402,12 @@ def _build_converter_control_by_node(
             continue
         node_id = _graph_id_from_ref(bus_ref.strip())
         if node_id in out:
-            raise OdmowaDanychError(
-                f"Szyna {bus_ref.strip()} ma więcej niż jedno źródło z aktywną regulacją "
-                "falownika; kontrakt rozpływu dopuszcza jedną charakterystykę na węzeł"
+            raise OdmowaNazwana(
+                f"{opis_elementu(snapshot, bus_ref.strip(), 'Szyna')} ma więcej niż jedno "
+                "źródło z aktywną regulacją falownika; kontrakt rozpływu dopuszcza jedną "
+                "charakterystykę na węzeł",
+                kod=KOD_DWIE_REGULACJE_NA_SZYNIE,
+                dane={"element_ref": bus_ref.strip()},
             )
         # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
         # źródło prawdy (moc_bierna_wytworcy), tak samo jak w enm/mapping.py i
@@ -751,11 +771,12 @@ def zloz_wejscie_rozplywu(
         qmin = _oze_opt_float(meta.get("q_min_mvar"))
         qmax = _oze_opt_float(meta.get("q_max_mvar"))
         if qmin is None or qmax is None or qmin >= qmax:
-            raise OdmowaDanychError(
-                f"Generator '{gen.get('ref_id')}' w trybie regulacji napięcia nie ma "
-                "kompletnych/spójnych granic mocy biernej (q_min_mvar < q_max_mvar) — "
-                "walidator ENM powinien odrzucić ten stan kodem "
-                "'generators.voltage_control_incomplete' przed uruchomieniem rozpływu."
+            raise OdmowaNazwana(
+                f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia nie ma "
+                "kompletnych i spójnych granic mocy biernej (Q_min < Q_max) — walidator "
+                "modelu odrzuca ten stan przed uruchomieniem rozpływu.",
+                kod=KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q,
+                dane={"element_ref": str(gen.get("ref_id") or "")},
             )
         pv_bounds_by_node[_graph_id_from_ref(bus_ref.strip())] = (qmin, qmax)
 
@@ -843,11 +864,15 @@ def zloz_wejscie_rozplywu(
     # kształtowania) są już policzone.
     for pv_spec in pv_specs:
         if pv_spec.node_id in converter_control_by_node:
-            raise OdmowaDanychError(
-                f"Szyna węzła PV '{pv_spec.node_id}' ma dodatkowo generator z aktywną "
-                "regulacją falownika (cosφ/Q(U)/statyzm P(f)) — węzeł PV niesie "
-                "WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu nie ma miejsca "
-                "na drugą, niezależną charakterystykę regulacji na tym samym węźle."
+            wezel_pv = graph.nodes.get(pv_spec.node_id)
+            raise OdmowaNazwana(
+                f"{opis_rodzaju_i_nazwy('Szyna', getattr(wezel_pv, 'name', None))} węzła PV "
+                "ma dodatkowo generator z aktywną regulacją falownika (cosφ/Q(U)/statyzm "
+                "P(f)) — węzeł PV niesie WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu "
+                "nie ma miejsca na drugą, niezależną charakterystykę regulacji na tym samym "
+                "węźle.",
+                kod=KOD_WEZEL_PV_Z_REGULACJA_FALOWNIKA,
+                dane={"wezel_ref": pv_spec.node_id},
             )
 
     options_solvera = PowerFlowOptions(
@@ -1080,20 +1105,26 @@ def zloz_wejscie_zwarcia(
                 )
             target_node_id = _graph_id_from_ref(element_ref)
             if target_node_id not in graph.nodes:
-                raise OdmowaDanychError(
-                    f"Węzeł zwarcia {element_ref!r} ze scenariusza nie istnieje w modelu sieci"
+                raise OdmowaNazwana(
+                    "Węzeł zwarcia wskazany w scenariuszu nie istnieje w modelu sieci",
+                    kod=KOD_WEZEL_ZWARCIA_SCENARIUSZA,
+                    dane={"element_ref": element_ref},
                 )
             if target_node_id not in reportable_fault_node_ids:
-                raise OdmowaDanychError(
-                    f"Węzeł zwarcia {element_ref!r} jest węzłem pomocniczym "
-                    "(skip_short_circuit_target) — nie jest raportowalnym punktem zwarcia"
+                raise OdmowaNazwana(
+                    f"{opis_elementu(snapshot, element_ref, 'Węzeł zwarcia')} jest węzłem "
+                    "pomocniczym (wyłączonym z punktów zwarcia) — nie jest raportowalnym "
+                    "punktem zwarcia",
+                    kod=KOD_WEZEL_ZWARCIA_SCENARIUSZA,
+                    dane={"element_ref": element_ref},
                 )
             reportable_fault_node_ids = [target_node_id]
         elif location_type in ("BRANCH", "BRANCH_POINT"):
             spec = READINESS_CODES["fault.location_on_branch_requires_assembler"]
-            raise OdmowaDanychError(
-                f"{spec.message_pl} (element_ref={element_ref!r}, "
-                f"location_type={location_type!r})"
+            raise OdmowaNazwana(
+                spec.message_pl,
+                kod=spec.code,
+                dane={"element_ref": element_ref, "location_type": str(location_type)},
             )
         else:
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")

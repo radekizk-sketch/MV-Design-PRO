@@ -438,7 +438,9 @@ def test_brak_adresata_nadpisania_to_blad_z_nazwa_nie_cichy_skip(pola, ref_w_ble
     with pytest.raises(ScenariuszNieprzystajeError) as info:
         apply_scenario(_pierscien(), _scenariusz(**pola))
     assert info.value.ref_id == ref_w_bledzie and info.value.scenario_id == "s-test"
-    assert ref_w_bledzie in str(info.value) and "s-test" in str(info.value)
+    # Partia integracji 10: identyfikatory zostają w polach maszynowych (`ref_id`,
+    # `scenario_id` — nawigacja interfejsu), treść dla projektanta ich nie niesie.
+    assert ref_w_bledzie not in str(info.value) and "s-test" not in str(info.value)
 
 
 def test_kolejnosc_nadpisan_jest_stala_i_zapisana_w_proweniencji() -> None:

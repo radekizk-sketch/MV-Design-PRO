@@ -363,7 +363,7 @@ class TestCreateBatch:
             json={"scenario_ids": [s_obcy["scenario_id"]]},
         )
         assert response.status_code == 400
-        assert "nie należy do przypadku" in response.json()["detail"]
+        assert "nie należy do wskazanego przypadku" in response.json()["detail"]
 
     def test_mieszane_typy_analizy_400(self):
         case_id = _nowy_przypadek()

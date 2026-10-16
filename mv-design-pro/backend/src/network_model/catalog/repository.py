@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from dziedziny.karta_widmowa import KartaWidmowa
-from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
@@ -48,7 +48,19 @@ def _converter_kind_value(record: dict) -> str:
     return str(raw_kind).upper()
 
 
-def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> float:
+#: Kod odmowy derywacji typu falownika z niekompletnego rekordu konwertera.
+KOD_TYP_NIEKOMPLETNY = "catalog.type_incomplete"
+#: Kod odmowy powtórzonej karty widmowej w katalogu.
+KOD_KARTA_POWTORZONA = "catalog.duplicate_id"
+#: Pole znamionowe rekordu konwertera → opis dla człowieka (treść odmowy nie niesie klucza).
+OPISY_POL_ZNAMIONOWYCH: dict[str, str] = {
+    "sn_mva": "moc znamionowa pozorna S_n",
+    "pmax_mw": "moc czynna maksymalna P_max",
+    "e_kwh": "pojemność energetyczna E",
+}
+
+
+def _wymagana_moc_znamionowa(params: dict, field: str, *, record: dict) -> float:
     """Odczytaj pole znamionowe wymagane do derywacji falownika z ConverterType.
 
     Karta FAB-D2 (D6): brak `sn_mva`/`pmax_mw`/`e_kwh` w rekordzie konwertera
@@ -57,9 +69,12 @@ def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> fl
     """
     wartosc = params.get(field)
     if wartosc is None:
-        raise OdmowaDanychError(
-            f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
-            f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
+        raise OdmowaNazwana(
+            f"{opis_rodzaju_i_nazwy('Typ przekształtnika', record.get('name'))} nie ma pola "
+            f"„{OPISY_POL_ZNAMIONOWYCH[field]}” — typ falownika nie zostaje wyprowadzony "
+            "(brak danej to nie zero).",
+            kod=KOD_TYP_NIEKOMPLETNY,
+            dane={"type_id": record.get("id"), "pole": field},
         )
     return float(wartosc)
 
@@ -204,10 +219,10 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "params": {
                     "un_kv": params.get("un_kv"),
                     "s_n_kva": mva_na_kva(
-                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "sn_mva", record=record)
                     ),
                     "p_max_kw": mw_na_kw(
-                        _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "pmax_mw", record=record)
                     ),
                     "cos_phi_min": params.get("cosphi_min"),
                     "cos_phi_max": params.get("cosphi_max"),
@@ -234,7 +249,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
         if _converter_kind_value(record) != "BESS":
             continue
         params = dict(record.get("params") or {})
-        p_max_kw = mw_na_kw(_wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")))
+        p_max_kw = mw_na_kw(_wymagana_moc_znamionowa(params, "pmax_mw", record=record))
         derived.append(
             {
                 "id": record.get("id"),
@@ -243,9 +258,9 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "un_kv": params.get("un_kv"),
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
-                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", type_id=record.get("id")),
+                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", record=record),
                     "s_n_kva": mva_na_kva(
-                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "sn_mva", record=record)
                     ),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
@@ -762,7 +777,13 @@ def _karty_bez_kolizji(karty: list[KartaWidmowa]) -> dict[str, KartaWidmowa]:
     wynik: dict[str, KartaWidmowa] = {}
     for karta in karty:
         if karta.id in wynik:
-            raise OdmowaDanychError(f"catalog.duplicate_id: karta widmowa '{karta.id}' powtórzona.")
+            raise OdmowaNazwana(
+                f"Karta widmowa {karta.producent} {karta.model_urzadzenia} (wersja "
+                f"{karta.wersja}) jest w katalogu dwa razy pod tym samym oznaczeniem — jedna "
+                "karta to jeden dokument.",
+                kod=KOD_KARTA_POWTORZONA,
+                dane={"karta_id": karta.id},
+            )
         wynik[karta.id] = karta
     return wynik
 

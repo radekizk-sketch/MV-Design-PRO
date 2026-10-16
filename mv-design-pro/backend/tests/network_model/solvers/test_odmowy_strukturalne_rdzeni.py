@@ -622,17 +622,35 @@ def _model_strat_v126(p0_kw: tuple[float | None, float | None]) -> V126AcademicI
 def test_v126_bilans_strat_bez_p0_to_odmowa_z_rekordem(
     p0_kw: tuple[float | None, float | None], bez_p0: tuple[str, ...]
 ) -> None:
-    from network_model.odmowa_danych import RODZAJ_GALAZ
+    from network_model.odmowa_danych import RODZAJ_ELEMENT
     from network_model.solvers.v126_academic import KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH
 
     with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
         V126AcademicSolver().run(V126AnalysisType.OPF_LOSS_LCC, _model_strat_v126(p0_kw))
     (rekord,) = odmowa.value.rekordy
     assert rekord.kod == KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH
-    assert rekord.odwolania == tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_p0)
+    # Partia integracji 10: `ref` transformatora V12.6 to `ref_id` elementu migawki ENM
+    # (`solver_input/v126_contracts.py`), nie identyfikator gałęzi grafu — odwołanie rodzaju
+    # `RODZAJ_ELEMENT` (partia 9 oznaczała je `RODZAJ_GALAZ`, a granica grafu nie znalazłaby
+    # elementu i zdanie straciłoby „gdzie").
+    assert rekord.odwolania == tuple(OdwolanieElementu(RODZAJ_ELEMENT, ref) for ref in bez_p0)
     tekst = str(odmowa.value)
     assert f"transformatorów bez P0: {len(bez_p0)}" in tekst
     assert not any(ref in tekst for ref in ("tr/a1", "tr/b2", "v126."))
+    # Granica biegu V12.6 (`nazwy_w_odmowach_modelu`) dokłada nazwy z migawki.
+    from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_modelu
+
+    migawka = {"transformers": [{"ref_id": "tr/a1", "name": "T-A1"}, {"ref_id": "tr/b2"}]}
+    with pytest.raises(OdmowaWejsciaRdzenia) as z_nazwami:
+        with nazwy_w_odmowach_modelu(migawka):
+            V126AcademicSolver().run(V126AnalysisType.OPF_LOSS_LCC, _model_strat_v126(p0_kw))
+    zdanie = str(z_nazwami.value)
+    assert zdanie.startswith(tekst + " Dotyczy: ")
+    if "tr/a1" in bez_p0:
+        assert "T-A1" in zdanie
+    if "tr/b2" in bez_p0:
+        assert "Transformator bez nazwy" in zdanie
+    assert not any(ref in zdanie for ref in ("tr/a1", "tr/b2"))
 
 
 def test_v126_bilans_strat_z_p0_liczy_jak_wzor() -> None:

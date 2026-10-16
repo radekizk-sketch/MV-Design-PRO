@@ -14,7 +14,7 @@ import pytest
 from api.analysis_insights import get_n_1_contingency
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.store import reset_enm_store, set_enm
-from fastapi import HTTPException
+from network_model.odmowa_danych import OdmowaDanychError
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -95,7 +95,12 @@ def test_nieznany_element_daje_422(app_client) -> None:
         N1, params={"run_id": str(_pf_run_id()), "element_refs": ["nie_ma_takiego"]}
     )
     assert resp.status_code == 422
-    assert "nie_ma_takiego" in resp.json()["detail"]
+    # Partia integracji 10: identyfikator wskazania w polu strukturalnym `dane`, treść bez niego.
+    body = resp.json()
+    assert "nie_ma_takiego" not in body["detail"]
+    assert "Element spoza modelu" in body["detail"]
+    assert body["kod"] == "kontyngencje_n1.elementy_niekwalifikowane"
+    assert body["dane"] == {"elementy_ref": ["nie_ma_takiego"]}
 
 
 def test_pusty_zakres_nie_zamienia_sie_w_bieg_pelny(app_client) -> None:
@@ -118,10 +123,11 @@ def test_pusty_zakres_nie_zamienia_sie_w_bieg_pelny(app_client) -> None:
     pusta_wartosc = app_client.get(N1, params={"run_id": str(run_id), "element_refs": [""]})
     assert pusta_wartosc.status_code == 422
 
-    with pytest.raises(HTTPException) as odmowa:
+    # Partia integracji 10: router przepuszcza odmowę danych do globalnego handlera
+    # (`OdmowaDanychError` → 422, przypięte w `test_odmowa_danych_422.py`) zamiast tłumaczyć
+    # ją sam na `HTTPException` — na szwie routera odmowa jest więc odmową danych.
+    with pytest.raises(OdmowaDanychError, match="Lista elementów"):
         get_n_1_contingency(run_id=run_id, element_refs=[])
-    assert odmowa.value.status_code == 422
-    assert "Lista elementów" in str(odmowa.value.detail)
 
     pelny = app_client.get(N1, params={"run_id": str(run_id)})
     assert pelny.status_code == 200

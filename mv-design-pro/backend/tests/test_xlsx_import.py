@@ -719,7 +719,9 @@ class TestZapisDoModelu:
         assert podglad.poprawny is False
         [blad] = podglad.bledy
         assert blad["arkusz"] == ARKUSZ_MODELU
-        assert "B9" in blad["komunikat"]
+        # Partia integracji 10: szyna nazwana NAZWĄ z arkusza (kolumna nazwy), nie oznaczeniem
+        # wiersza; kod walidatora (gdy jest) idzie w pole `kod`, nie w treść.
+        assert "szyna „Wyspa”" in blad["komunikat"]
         wynik = serwis.importuj(dane, "Wyspa")
         test_db_session.flush()
         assert wynik.status == STATUS_ODRZUCONO
@@ -742,6 +744,40 @@ class TestZapisDoModelu:
         podglad = serwis.podglad(dane)
         assert podglad.poprawny is False
         assert podglad.bledy[0]["arkusz"] == ARKUSZ_MODELU
+        # Partia integracji 10: odcinek nazwany tą nazwą, którą dostanie w modelu (oznaczenie
+        # z arkusza), zastrzeżenie kompilatora nie niesie kodu.
+        assert "odcinek „L1”" in podglad.bledy[0]["komunikat"]
+        assert "kod" not in podglad.bledy[0]
+
+    def test_blokada_walidatora_niesie_kod_w_polu_nie_w_tresci(
+        self, serwis, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Partia integracji 10: kod walidatora modelu w POLU `kod`, treść = zdanie walidatora
+        z nazwami elementów. Blokady walidatora nie da się dziś wywołać danymi arkusza —
+        kompilator grafu odrzuca je wcześniej własną odmową — więc walidator zwraca tu
+        blokadę podstawioną; reszta ścieżki (arkusz, kompilacja, nazwy) jest realna."""
+        from enm.validator import ValidationIssue, ValidationResult
+
+        def _walidacja(_self, model):
+            ref = model.buses[0].ref_id
+            return ValidationResult(
+                status="FAIL",
+                issues=[
+                    ValidationIssue(
+                        code="E099",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl="Szyna bez danych.",
+                        element_refs=[ref],
+                    )
+                ],
+            )
+
+        monkeypatch.setattr("application.xlsx_import.service.ENMValidator.validate", _walidacja)
+        podglad = serwis.podglad(arkusz_siec_sn())
+        [blad] = podglad.bledy
+        assert blad["kod"] == "E099"
+        assert blad["komunikat"].startswith("Szyna bez danych. (elementy: ")
+        assert "E099" not in blad["komunikat"]
 
     def test_import_do_bazy_z_zawartoscia_nie_rusza_wczesniejszego_projektu(
         self, serwis, test_db_session

@@ -597,7 +597,7 @@ class TestAktywnoscElementow:
                 zdarzenia=(WylaczenieGalezi(t_s=0.1, element_ref="gen-pv"),),
             ),
         )
-        with pytest.raises(ScenariuszNieprzystajeError, match="generators"):
+        with pytest.raises(ScenariuszNieprzystajeError, match="wytwórca"):
             apply_scenario(EnergyNetworkModel.model_validate(snapshot_g16), scenariusz)
 
 

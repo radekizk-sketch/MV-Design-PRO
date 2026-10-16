@@ -33,6 +33,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -616,10 +617,7 @@ def create_run_from_scenario(
         }
 
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
     # Dawny `except Exception` → HTTPException 500 z treścią wyjątku (karta #151) chował
     # ślad: HTTPException nie trafia do dziennika. Błąd programu idzie teraz do
     # globalnego handlera (`api/exception_handlers.py`): 500 + pełny ślad w dzienniku.

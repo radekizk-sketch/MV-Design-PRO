@@ -48,7 +48,7 @@ from enm.canonical_analysis import (
 )
 from enm.canonical_analysis import get_run as get_canonical_run
 from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import a_na_ka
 
 
@@ -303,10 +303,18 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony.",
+            kod="bieg.niezakonczony",
+            dane={"run_ref": str(run.id), "status": str(run.status)},
+        )
     result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
-        raise OdmowaDanychError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
+        raise OdmowaNazwana(
+            "Wyniki rozpływu mocy nie są dostępne dla tego przebiegu.",
+            kod="bieg.brak_wynikow_rozplywu",
+            dane={"run_ref": str(run.id)},
+        )
     # Karta W3-J: kryteria napięciowe ADDYTYWNE, budowane ŚWIEŻO z jednego źródła
     # prawdy (`analysis.normative.kryteria_napiecia`) — to konfiguracja, nie wynik
     # fizyczny biegu, więc nie jest przechowywana w `raw_result`. Kopia płytka
@@ -320,9 +328,17 @@ def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony.",
+            kod="bieg.niezakonczony",
+            dane={"run_ref": str(run.id), "status": str(run.status)},
+        )
     if run.power_flow_trace is None:
-        raise OdmowaDanychError(f"Ślad obliczeniowy nie jest dostępny dla przebiegu {run.id}")
+        raise OdmowaNazwana(
+            "Ślad obliczeniowy nie jest dostępny dla tego przebiegu.",
+            kod="bieg.brak_sladu",
+            dane={"run_ref": str(run.id)},
+        )
     trace = dict(run.power_flow_trace)
     extended_trace = build_extended_trace(run)
     trace.setdefault("catalog_context", extended_trace.get("catalog_context", []))

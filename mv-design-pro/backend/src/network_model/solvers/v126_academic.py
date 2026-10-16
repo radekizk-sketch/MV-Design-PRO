@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 from network_model.odmowa_danych import (
-    RODZAJ_GALAZ,
+    RODZAJ_ELEMENT,
     OdmowaWejsciaRdzenia,
     OdwolanieElementu,
     RekordOdmowy,
@@ -21,6 +21,16 @@ JsonDict = dict[str, Any]
 
 #: Kod odmowy wejścia (rekord strukturalny `RekordOdmowy`): bilans strat bez P0 transformatora.
 KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH = "v126.transformator_bez_strat_jalowych"
+#: Kod odmowy wejścia: karta przekształtnika bez pól obowiązkowych modelu Z_conv(f) (SSCI).
+KOD_SSCI_BRAK_POL_KARTY = "v126.ssci_brak_pol_karty_falownika"
+#: Pola obowiązkowe karty przekształtnika dla Z_conv(f) → opis dla projektanta. JEDNO źródło
+#: predykatu braku (`_brakujace_pola_karty_zconv`) dla odmowy modelu i wyniku „dane
+#: niekompletne" analizy SSCI (partia integracji 10: treść bez kluczy pól kontraktu).
+POLA_KARTY_ZCONV: tuple[tuple[str, str], ...] = (
+    ("current_loop_bandwidth_hz", "pasmo pętli prądowej"),
+    ("pll_bandwidth_hz", "pasmo pętli synchronizacji fazowej (PLL)"),
+    ("filter_l_pu", "indukcyjność filtra wyjściowego"),
+)
 
 # 1.1 (V126-JEZYK, 2026-08-07): ślad WHITE BOX niesie DODATKOWO polską postać
 # wyniku kroku z jednostką (`result_pl`), a teksty podstawień i sprawdzeń jednostek
@@ -35,6 +45,28 @@ KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH = "v126.transformator_bez_strat_jalowych"
 # podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
 # rodzajów zmieniają się RAZ, razem z wersją.
 V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
+
+
+def _brakujace_pola_karty_zconv(converter: Any) -> list[str]:
+    """Klucze pól obowiązkowych karty przekształtnika, których brak (kolejność kontraktu)."""
+    return [pole for pole, _opis in POLA_KARTY_ZCONV if getattr(converter, pole) is None]
+
+
+def _odmowa_brak_pol_karty_zconv(converter: Any) -> OdmowaWejsciaRdzenia:
+    """Odmowa strukturalna: kod, treść bez identyfikatora i kluczy, odwołanie do przekształtnika
+    (element migawki ENM — zdanie z nazwą składa `enm.zdania_odmow_rdzenia`)."""
+    brakujace = _brakujace_pola_karty_zconv(converter)
+    opisy = [opis for pole, opis in POLA_KARTY_ZCONV if pole in brakujace]
+    return OdmowaWejsciaRdzenia(
+        [
+            RekordOdmowy(
+                KOD_SSCI_BRAK_POL_KARTY,
+                "Model impedancji przekształtnika Z_conv(f) wymaga pól karty przekształtnika; "
+                f"brakuje: {', '.join(opisy)}.",
+                (OdwolanieElementu(RODZAJ_ELEMENT, converter.ref),),
+            )
+        ]
+    )
 
 
 def _canonical_payload(payload: Any) -> str:
@@ -603,8 +635,10 @@ class V126AcademicSolver:
           - resistance R_f is frequency-independent (skin effect out of scope).
 
         MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
-        filter_l_pu. Missing any of these raises ValueError (caught by the caller
-        and surfaced as missing-data — NO fallback / NO fabricated value).
+        filter_l_pu. Missing any of these raises the structural refusal
+        `KOD_SSCI_BRAK_POL_KARTY` (`OdmowaWejsciaRdzenia`, reference to the converter); the
+        caller `_ssci_impedance` checks the SAME predicate (`_brakujace_pola_karty_zconv`)
+        first and surfaces missing-data — NO fallback / NO fabricated value.
 
         ``f_base_hz`` — częstotliwość podstawowa sieci, KEYWORD BEZ WARTOŚCI
         DOMYŚLNEJ. Wcześniej ``w_base`` stało tu na zaszytym ``2π·50``, mimo że
@@ -618,19 +652,8 @@ class V126AcademicSolver:
         f_ci = converter.current_loop_bandwidth_hz
         f_pll = converter.pll_bandwidth_hz
         l_f = converter.filter_l_pu
-        missing = [
-            name
-            for name, value in (
-                ("current_loop_bandwidth_hz", f_ci),
-                ("pll_bandwidth_hz", f_pll),
-                ("filter_l_pu", l_f),
-            )
-            if value is None
-        ]
-        if missing:
-            raise ValueError(
-                "Brak obowiązkowych pól karty falownika dla Z_conv(f): " + ", ".join(missing)
-            )
+        if f_ci is None or f_pll is None or l_f is None:
+            raise _odmowa_brak_pol_karty_zconv(converter)
         r_f = converter.filter_r_pu if converter.filter_r_pu is not None else 0.0
         t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
 
@@ -728,27 +751,16 @@ class V126AcademicSolver:
 
         frequencies = self._ssci_frequencies_hz()
 
-        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
-        try:
-            self._z_conv_components(converter, frequencies[0], f_base_hz=model.base_frequency_hz)
-        except ValueError as exc:
-            f_ci = converter.current_loop_bandwidth_hz
-            f_pll = converter.pll_bandwidth_hz
-            l_f = converter.filter_l_pu
-            missing = [
-                name
-                for name, value in (
-                    ("current_loop_bandwidth_hz", f_ci),
-                    ("pll_bandwidth_hz", f_pll),
-                    ("filter_l_pu", l_f),
-                )
-                if value is None
-            ]
+        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication) — ten sam
+        # predykat co odmowa `_z_conv_components` (`_brakujace_pola_karty_zconv`).
+        missing = _brakujace_pola_karty_zconv(converter)
+        if missing:
+            opisy = [opis for pole, opis in POLA_KARTY_ZCONV if pole in missing]
             trace.add(
                 "ssci_impedance_missing_card_fields",
                 "Z_conv(jw) wymaga: current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu",
                 {"converter_ref": converter.ref, "missing": missing},
-                str(exc),
+                "Brak obowiązkowych pól karty przekształtnika dla Z_conv(f): " + ", ".join(opisy),
                 {"status": "dane niekompletne"},
                 "Brak danych karty przekształtnika; wartości zastępczych się nie podstawia.",
                 result_pl=("Brak danych karty przekształtnika"),
@@ -759,7 +771,7 @@ class V126AcademicSolver:
                 "bus_ref": converter.bus_ref,
                 "message_pl": (
                     "Analiza SSCI wymaga pól karty falownika (pasmo pętli prądowej, "
-                    "pasmo PLL, indukcyjność filtra). Brakuje: " + ", ".join(missing)
+                    "pasmo PLL, indukcyjność filtra). Brakuje: " + ", ".join(opisy)
                 ),
                 "missing_fields": missing,
                 "sanity": _sanity_block([], has_inputs=False),
@@ -2147,7 +2159,7 @@ class V126AcademicSolver:
                         KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH,
                         "Bilans strat i koszt cyklu życia wymagają strat jałowych P0 z karty "
                         f"katalogowej transformatora; transformatorów bez P0: {len(bez_p0)}.",
-                        tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_p0),
+                        tuple(OdwolanieElementu(RODZAJ_ELEMENT, ref) for ref in bez_p0),
                     )
                 ]
             )

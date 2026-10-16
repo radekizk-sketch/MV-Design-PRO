@@ -113,7 +113,12 @@ def test_apply_endpoint_validates_case_id_uuid() -> None:
         },
     )
     assert response.status_code == 400
-    assert "Invalid case_id" in response.json()["detail"]
+    # Partia integracji 10: zdanie po polsku z odmowy formatu (bez angielskiego prefiksu
+    # i bez echa wartości z adresu).
+    assert response.json()["detail"] == (
+        "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+    )
+    assert "not-a-uuid" not in response.json()["detail"]
 
 
 def test_apply_endpoint_validates_ratio_bounds() -> None:
