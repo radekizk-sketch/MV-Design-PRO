@@ -4834,6 +4834,41 @@
     "title": "DowodModelu",
     "type": "object"
    },
+   "DrogaZasilania": {
+    "additionalProperties": false,
+    "properties": {
+     "elementy": {
+      "items": {
+       "$ref": "#/components/schemas/ElementDrogi"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "laczniki_nieustalone": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Laczniki Nieustalone",
+      "type": "array"
+     },
+     "pewna": {
+      "title": "Pewna",
+      "type": "boolean"
+     },
+     "zrodlo_ref": {
+      "title": "Zrodlo Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "zrodlo_ref",
+     "pewna",
+     "elementy"
+    ],
+    "title": "DrogaZasilania",
+    "type": "object"
+   },
    "ElementDiffResponse": {
     "description": "Roznica na poziomie elementu.",
     "properties": {
@@ -4887,6 +4922,91 @@
      "field_changes"
     ],
     "title": "ElementDiffResponse",
+    "type": "object"
+   },
+   "ElementDrogi": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pole Ref"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "stacja_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stacja Ref"
+     },
+     "stan_lacznika": {
+      "anyOf": [
+       {
+        "enum": [
+         "zamkniety",
+         "otwarty",
+         "nieustalony"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stan Lacznika"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa"
+    ],
+    "title": "ElementDrogi",
     "type": "object"
    },
    "ElementResultResponse": {
@@ -6947,6 +7067,53 @@
      "vdrop_delta_u_total_kv"
     ],
     "title": "LVCircuitVerificationPackRequest",
+    "type": "object"
+   },
+   "LacznikNieustalony": {
+    "additionalProperties": false,
+    "properties": {
+     "aparat_ref": {
+      "title": "Aparat Ref",
+      "type": "string"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "title": "Pole Ref",
+      "type": "string"
+     },
+     "przyczyna": {
+      "$ref": "#/components/schemas/PrzyczynaTopologii"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "stan_w_modelu": {
+      "enum": [
+       "zamkniety",
+       "otwarty"
+      ],
+      "title": "Stan W Modelu",
+      "type": "string"
+     },
+     "stan_zgloszony": {
+      "title": "Stan Zgloszony",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "stan_w_modelu",
+     "stan_zgloszony",
+     "aparat_ref",
+     "pole_ref",
+     "przyczyna"
+    ],
+    "title": "LacznikNieustalony",
     "type": "object"
    },
    "LimitKryterium": {
@@ -9132,6 +9299,53 @@
      "odcisk_karty"
     ],
     "title": "OdniesienieKarty",
+    "type": "object"
+   },
+   "OdnosnikElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa"
+    ],
+    "title": "OdnosnikElementu",
     "type": "object"
    },
    "OdnosnikSladu": {
@@ -11682,6 +11896,73 @@
     "title": "PrzegladWiarygodnosciOdpowiedz",
     "type": "object"
    },
+   "PrzekladnikPola": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pole Ref"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "CT",
+       "VT"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "rodzaj"
+    ],
+    "title": "PrzekladnikPola",
+    "type": "object"
+   },
+   "PrzyczynaTopologii": {
+    "additionalProperties": false,
+    "description": "Przyczyna stanu (niezasilenia, nierozstrzygnięcia) z elementami, które ją niosą.",
+    "properties": {
+     "elementy": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "opis": {
+      "title": "Opis",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kod",
+     "opis"
+    ],
+    "title": "PrzyczynaTopologii",
+    "type": "object"
+   },
    "PunktAdmitancji": {
     "additionalProperties": false,
     "description": "Punkt admitancji wewnętrznej Y(f) = G + jB [S] (równoważnik Nortona / tabela).",
@@ -13223,6 +13504,88 @@
     "title": "SCContributionsRequest",
     "type": "object"
    },
+   "SasiedztwoElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "kierunek_ustalony": {
+      "title": "Kierunek Ustalony",
+      "type": "boolean"
+     },
+     "nastepne": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Nastepne",
+      "type": "array"
+     },
+     "pola_wejsciowe": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Pola Wejsciowe",
+      "type": "array"
+     },
+     "pola_wyjsciowe": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Pola Wyjsciowe",
+      "type": "array"
+     },
+     "pole": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdnosnikElementu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "poprzednie": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Poprzednie",
+      "type": "array"
+     },
+     "przekladniki": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PrzekladnikPola"
+      },
+      "title": "Przekladniki",
+      "type": "array"
+     },
+     "stacja": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdnosnikElementu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "zabezpieczenia": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ZabezpieczeniePola"
+      },
+      "title": "Zabezpieczenia",
+      "type": "array"
+     }
+    },
+    "required": [
+     "kierunek_ustalony",
+     "poprzednie",
+     "nastepne",
+     "pola_wejsciowe",
+     "pola_wyjsciowe"
+    ],
+    "title": "SasiedztwoElementu",
+    "type": "object"
+   },
    "SaveUserTemplateRequest": {
     "description": "B-8: zapis biezacej konfiguracji kreatora jako szablonu uzytkownika.",
     "properties": {
@@ -14025,6 +14388,207 @@
     "title": "StanWLSZadanie",
     "type": "object"
    },
+   "StanZasileniaElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "otwarty": {
+      "default": false,
+      "title": "Otwarty",
+      "type": "boolean"
+     },
+     "przyczyny": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PrzyczynaTopologii"
+      },
+      "title": "Przyczyny",
+      "type": "array"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "stan_lacznika": {
+      "anyOf": [
+       {
+        "enum": [
+         "zamkniety",
+         "otwarty",
+         "nieustalony"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stan Lacznika"
+     },
+     "strony": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/StronaElementu"
+      },
+      "title": "Strony",
+      "type": "array"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     },
+     "wyspy": {
+      "default": [],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Wyspy",
+      "type": "array"
+     },
+     "zrodla": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla",
+      "type": "array"
+     },
+     "zrodla_warunkowe": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla Warunkowe",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa",
+     "stan"
+    ],
+    "title": "StanZasileniaElementu",
+    "type": "object"
+   },
+   "StanZasileniaOdpowiedz": {
+    "additionalProperties": false,
+    "properties": {
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "elementy": {
+      "items": {
+       "$ref": "#/components/schemas/StanZasileniaElementu"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "enm_hash": {
+      "title": "Enm Hash",
+      "type": "string"
+     },
+     "enm_revision": {
+      "title": "Enm Revision",
+      "type": "integer"
+     },
+     "galezie_otwarte": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Galezie Otwarte",
+      "type": "array"
+     },
+     "krawedzie_pominiete": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Krawedzie Pominiete",
+      "type": "array"
+     },
+     "laczniki_nieustalone": {
+      "items": {
+       "$ref": "#/components/schemas/LacznikNieustalony"
+      },
+      "title": "Laczniki Nieustalone",
+      "type": "array"
+     },
+     "laczniki_otwarte": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Laczniki Otwarte",
+      "type": "array"
+     },
+     "opis_podstawy": {
+      "title": "Opis Podstawy",
+      "type": "string"
+     },
+     "podstawa": {
+      "const": "topologia_laczeniowa",
+      "title": "Podstawa",
+      "type": "string"
+     },
+     "wyspy": {
+      "items": {
+       "$ref": "#/components/schemas/WyspaTopologiczna"
+      },
+      "title": "Wyspy",
+      "type": "array"
+     }
+    },
+    "required": [
+     "case_id",
+     "enm_revision",
+     "enm_hash",
+     "podstawa",
+     "opis_podstawy",
+     "elementy",
+     "wyspy",
+     "laczniki_otwarte",
+     "galezie_otwarte",
+     "laczniki_nieustalone",
+     "krawedzie_pominiete"
+    ],
+    "title": "StanZasileniaOdpowiedz",
+    "type": "object"
+   },
    "StationAudit2BuildRequest": {
     "properties": {
      "der_specs": {
@@ -14307,6 +14871,39 @@
     "title": "Stosowalnosc",
     "type": "object"
    },
+   "StronaElementu": {
+    "additionalProperties": false,
+    "description": "Stan zasilenia jednej szyny, do której element jest dołączony.",
+    "properties": {
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "szyna_ref": {
+      "title": "Szyna Ref",
+      "type": "string"
+     },
+     "zrodla": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla",
+      "type": "array"
+     }
+    },
+    "required": [
+     "szyna_ref",
+     "stan"
+    ],
+    "title": "StronaElementu",
+    "type": "object"
+   },
    "StudyCaseComparisonResponse": {
     "description": "Study case comparison response.",
     "properties": {
@@ -14569,6 +15166,90 @@
      }
     },
     "title": "TolerancjeWejscie",
+    "type": "object"
+   },
+   "TorElementuOdpowiedz": {
+    "additionalProperties": false,
+    "properties": {
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "drogi": {
+      "items": {
+       "$ref": "#/components/schemas/DrogaZasilania"
+      },
+      "title": "Drogi",
+      "type": "array"
+     },
+     "drogi_obciete": {
+      "title": "Drogi Obciete",
+      "type": "boolean"
+     },
+     "element": {
+      "$ref": "#/components/schemas/OdnosnikElementu"
+     },
+     "enm_hash": {
+      "title": "Enm Hash",
+      "type": "string"
+     },
+     "enm_revision": {
+      "title": "Enm Revision",
+      "type": "integer"
+     },
+     "opis_podstawy": {
+      "title": "Opis Podstawy",
+      "type": "string"
+     },
+     "podstawa": {
+      "const": "topologia_laczeniowa",
+      "title": "Podstawa",
+      "type": "string"
+     },
+     "przyczyny": {
+      "items": {
+       "$ref": "#/components/schemas/PrzyczynaTopologii"
+      },
+      "title": "Przyczyny",
+      "type": "array"
+     },
+     "sasiedztwo": {
+      "$ref": "#/components/schemas/SasiedztwoElementu"
+     },
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "rozstrzygniety",
+       "nierozstrzygniety",
+       "brak_drogi"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "case_id",
+     "enm_revision",
+     "enm_hash",
+     "podstawa",
+     "opis_podstawy",
+     "element",
+     "stan",
+     "status",
+     "przyczyny",
+     "drogi",
+     "drogi_obciete",
+     "sasiedztwo"
+    ],
+    "title": "TorElementuOdpowiedz",
     "type": "object"
    },
    "TraceStepResponse": {
@@ -15939,6 +16620,49 @@
     "title": "WynikWymagania",
     "type": "object"
    },
+   "WyspaTopologiczna": {
+    "additionalProperties": false,
+    "properties": {
+     "generatory": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Generatory",
+      "type": "array"
+     },
+     "indeks": {
+      "title": "Indeks",
+      "type": "integer"
+     },
+     "szyny": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Szyny",
+      "type": "array"
+     },
+     "zasilona": {
+      "title": "Zasilona",
+      "type": "boolean"
+     },
+     "zrodla_sieciowe": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla Sieciowe",
+      "type": "array"
+     }
+    },
+    "required": [
+     "indeks",
+     "szyny",
+     "zrodla_sieciowe",
+     "generatory",
+     "zasilona"
+    ],
+    "title": "WyspaTopologiczna",
+    "type": "object"
+   },
    "WytrzymaloscAparaturyRequestModel": {
     "description": "Prądy punktu zwarcia z WYNIKU biegu + stacja, w której ten punkt leży.",
     "properties": {
@@ -15984,6 +16708,40 @@
      "station_ref"
     ],
     "title": "WytrzymaloscAparaturyRequestModel",
+    "type": "object"
+   },
+   "ZabezpieczeniePola": {
+    "additionalProperties": false,
+    "properties": {
+     "aktywne": {
+      "title": "Aktywne",
+      "type": "boolean"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "wylacznik_ref": {
+      "title": "Wylacznik Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "rodzaj",
+     "wylacznik_ref",
+     "aktywne"
+    ],
+    "title": "ZabezpieczeniePola",
     "type": "object"
    },
    "ZakresCzestotliwosci": {
@@ -20212,6 +20970,101 @@
      }
     },
     "summary": "Get Swz",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/topologia/tor": {
+   "get": {
+    "description": "Tor elementu: wszystkie drogi od źródeł sieciowych przez elementy w ruchu (sieć\nwieloźródłowa → droga per źródło; pętla bez punktu podziału, łącznik nieustalony\ni obcięcie listy — jawny status ``nierozstrzygniety`` z przyczyną) oraz sąsiedztwo do\nnawigacji (poprzedni/następny, pola wejściowe/wyjściowe, pole, stacja, przekładniki,\nzabezpieczenia). 404 — element nie istnieje w modelu. Read-only, deterministyczne.",
+    "operationId": "get_enm_topologia_tor_api_cases__case_id__enm_topologia_tor_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "element_ref",
+      "required": true,
+      "schema": {
+       "title": "Element Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TorElementuOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Enm Topologia Tor",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/topologia/zasilenie": {
+   "get": {
+    "description": "Stan zasilenia KAŻDEGO elementu modelu z topologii łączeniowej (karta K6a).\n\nJedna prawda topologii: ``enm.topology.derive`` (wyspy, źródła sieciowe, otwarte\nłączniki) — front nie liczy zasilenia sam. Podstawa ``topologia_laczeniowa``: to nie\njest wynik obliczeń napięciowych. Łącznik, którego stanu model nie rozstrzyga, daje\nstan ``nierozstrzygniety`` z przyczyną, nigdy domysł. Read-only, deterministyczne.",
+    "operationId": "get_enm_topologia_zasilenie_api_cases__case_id__enm_topologia_zasilenie_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StanZasileniaOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Enm Topologia Zasilenie",
     "tags": [
      "enm"
     ]

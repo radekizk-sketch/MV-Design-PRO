@@ -131,18 +131,40 @@ def _uporzadkuj(skladowe: Iterable[tuple[str, ...]]) -> tuple[tuple[str, ...], .
     return tuple(sorted(skladowe, key=lambda s: (-len(s), s[0])))
 
 
-def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
-    """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
+@dataclass(frozen=True)
+class KrawedzTopologii:
+    """Element łączący dwie szyny migawki w ruchu (zamknięta gałąź albo transformator)."""
 
-    Czysta funkcja: ten sam model → identyczny widok, niezależnie od kolejności
-    elementów w kolekcjach (szyny sortowane po ``ref_id``).
+    ref_id: str
+    szyna_a: str
+    szyna_b: str
+    #: ``galaz`` (linia, kabel), ``lacznik`` (``TYPY_LACZNIKOW_ENM``) albo ``transformator``.
+    rodzaj: str
+
+
+@dataclass(frozen=True)
+class PodzialKrawedzi:
+    """Podział elementów łączących migawki wg semantyki „w ruchu" — JEDNO źródło dla
+    ``derive`` i dla każdego konsumenta, który przegląda graf szyn (tor zasilania,
+    ``application/topologia_zasilenia.py``). Kolejność: gałęzie po ``ref_id``, potem
+    transformatory po ``ref_id``."""
+
+    szyny: tuple[str, ...]
+    w_ruchu: tuple[KrawedzTopologii, ...]
+    laczniki_otwarte: tuple[str, ...]
+    galezie_otwarte: tuple[str, ...]
+    krawedzie_pominiete: tuple[str, ...]
+
+
+def podziel_krawedzie(snapshot: EnergyNetworkModel | Mapping[str, object]) -> PodzialKrawedzi:
+    """Sklasyfikuj gałęzie i transformatory migawki: w ruchu / otwarte / pominięte.
+
+    Gałąź łączy szyny wtedy i tylko wtedy, gdy ``status == "closed"``; transformator łączy
+    zawsze; element z końcem poza szynami migawki jest pominięty (nie gubiony cicho).
     """
     szyny = tuple(sorted(str(_pole(b, "ref_id")) for b in _kolekcja(snapshot, "buses")))
     znane = set(szyny)
-
-    krawedzie_wysp: list[tuple[str, str]] = []
-    krawedzie_sekcji: list[tuple[str, str]] = []
-    pary_laczen: list[tuple[str, str]] = []
+    w_ruchu: list[KrawedzTopologii] = []
     laczniki_otwarte: list[str] = []
     galezie_otwarte: list[str] = []
     pominiete: list[str] = []
@@ -158,18 +180,40 @@ def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
         if _pole(galaz, "status", "closed") != "closed":
             (laczniki_otwarte if lacznik else galezie_otwarte).append(ref)
             continue
-        krawedzie_wysp.append((a, b))
-        krawedzie_sekcji.append((a, b))
-        if lacznik:
-            pary_laczen.append((a, b))
+        w_ruchu.append(KrawedzTopologii(ref, a, b, "lacznik" if lacznik else "galaz"))
 
     for trafo in sorted(_kolekcja(snapshot, "transformers"), key=lambda t: str(_pole(t, "ref_id"))):
+        ref = str(_pole(trafo, "ref_id"))
         hv = str(_pole(trafo, "hv_bus_ref"))
         lv = str(_pole(trafo, "lv_bus_ref"))
         if hv not in znane or lv not in znane:
-            pominiete.append(str(_pole(trafo, "ref_id")))
+            pominiete.append(ref)
             continue
-        krawedzie_wysp.append((hv, lv))
+        w_ruchu.append(KrawedzTopologii(ref, hv, lv, "transformator"))
+
+    return PodzialKrawedzi(
+        szyny=szyny,
+        w_ruchu=tuple(w_ruchu),
+        laczniki_otwarte=tuple(laczniki_otwarte),
+        galezie_otwarte=tuple(galezie_otwarte),
+        krawedzie_pominiete=tuple(pominiete),
+    )
+
+
+def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
+    """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
+
+    Czysta funkcja: ten sam model → identyczny widok, niezależnie od kolejności
+    elementów w kolekcjach (szyny sortowane po ``ref_id``).
+    """
+    podzial = podziel_krawedzie(snapshot)
+    szyny = podzial.szyny
+    znane = set(szyny)
+    krawedzie_wysp = [(k.szyna_a, k.szyna_b) for k in podzial.w_ruchu]
+    krawedzie_sekcji = [
+        (k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj != "transformator"
+    ]
+    pary_laczen = [(k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj == "lacznik"]
 
     zrodla_szyny: dict[str, list[str]] = {}
     for zrodlo in _kolekcja(snapshot, "sources"):
@@ -202,9 +246,9 @@ def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
         wezel_topologiczny=scal_wezly(szyny, pary_laczen),
         wyspy=wyspy,
         sekcje=_uporzadkuj(skladowe_spojne(szyny, krawedzie_sekcji)),
-        laczniki_otwarte=tuple(laczniki_otwarte),
-        galezie_otwarte=tuple(galezie_otwarte),
-        krawedzie_pominiete=tuple(pominiete),
+        laczniki_otwarte=podzial.laczniki_otwarte,
+        galezie_otwarte=podzial.galezie_otwarte,
+        krawedzie_pominiete=podzial.krawedzie_pominiete,
     )
 
 

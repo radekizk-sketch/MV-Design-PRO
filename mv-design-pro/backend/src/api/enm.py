@@ -8,6 +8,10 @@ Routes:
   GET  /api/cases/{case_id}/enm/validate     → ValidationResult
   GET  /api/cases/{case_id}/enm/topology     → TopologyGraph (substations, bays, junctions, corridors)
   GET  /api/cases/{case_id}/enm/topology/summary → TopologySummary (graph view: adjacency, spine, laterals)
+  GET  /api/cases/{case_id}/enm/topologia/zasilenie
+                                              → stan zasilenia elementów (topologia łączeniowa)
+  GET  /api/cases/{case_id}/enm/topologia/tor?element_ref=…
+                                              → drogi od źródeł do elementu + sąsiedztwo
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
@@ -71,6 +75,13 @@ from application.cgmes.service import export_cgmes
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
+from application.topologia_zasilenia import (
+    ElementNieistniejeError,
+    StanZasileniaOdpowiedz,
+    TorElementuOdpowiedz,
+    zbuduj_stan_zasilenia,
+    zbuduj_tor_elementu,
+)
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
@@ -305,6 +316,34 @@ def get_enm_topology(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
         "branch_count": len(enm.branches),
         "transformer_count": len(enm.transformers),
     }
+
+
+@router.get("/{case_id}/enm/topologia/zasilenie", response_model=StanZasileniaOdpowiedz)
+def get_enm_topologia_zasilenie(case_id: str, klucz: KluczTwin) -> StanZasileniaOdpowiedz:
+    """Stan zasilenia KAŻDEGO elementu modelu z topologii łączeniowej (karta K6a).
+
+    Jedna prawda topologii: ``enm.topology.derive`` (wyspy, źródła sieciowe, otwarte
+    łączniki) — front nie liczy zasilenia sam. Podstawa ``topologia_laczeniowa``: to nie
+    jest wynik obliczeń napięciowych. Łącznik, którego stanu model nie rozstrzyga, daje
+    stan ``nierozstrzygniety`` z przyczyną, nigdy domysł. Read-only, deterministyczne.
+    """
+    enm = _get_enm(klucz)
+    return zbuduj_stan_zasilenia(case_id, enm)
+
+
+@router.get("/{case_id}/enm/topologia/tor", response_model=TorElementuOdpowiedz)
+def get_enm_topologia_tor(case_id: str, klucz: KluczTwin, element_ref: str) -> TorElementuOdpowiedz:
+    """Tor elementu: wszystkie drogi od źródeł sieciowych przez elementy w ruchu (sieć
+    wieloźródłowa → droga per źródło; pętla bez punktu podziału, łącznik nieustalony
+    i obcięcie listy — jawny status ``nierozstrzygniety`` z przyczyną) oraz sąsiedztwo do
+    nawigacji (poprzedni/następny, pola wejściowe/wyjściowe, pole, stacja, przekładniki,
+    zabezpieczenia). 404 — element nie istnieje w modelu. Read-only, deterministyczne.
+    """
+    enm = _get_enm(klucz)
+    try:
+        return zbuduj_tor_elementu(case_id, enm, element_ref)
+    except ElementNieistniejeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/{case_id}/enm/readiness")

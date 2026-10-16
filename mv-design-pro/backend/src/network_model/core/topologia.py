@@ -16,7 +16,7 @@ i w walidatorze ENM.
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Collection, Hashable, Iterable, Iterator, Sequence
 from typing import TypeVar
 
 N = TypeVar("N", bound=Hashable)
@@ -208,3 +208,62 @@ def sciezka_do(drzewo: dict[N, tuple[E, N] | None], cel: N) -> list[tuple[N, E, 
         biezacy = poprzedni
     kroki.reverse()
     return kroki
+
+
+def drogi_proste(
+    start: N,
+    cele: Collection[N],
+    sasiedzi: Callable[[N], Iterable[tuple[E, N]]],
+    *,
+    limit: int,
+    budzet_krokow: int,
+) -> tuple[list[list[tuple[N, E, N]]], bool]:
+    """WSZYSTKIE drogi proste ``start`` → pierwszy napotkany węzeł z ``cele``.
+
+    Droga prosta nie powtarza węzła; droga kończy się na PIERWSZYM węźle celu (nie
+    przechodzi przez inny cel). Krawędzie równoległe (różne etykiety, ta sama para węzłów)
+    dają różne drogi — to też pętla. ``start`` w ``cele`` → jedna droga pusta.
+
+    Przegląd w głąb ze stosem jawnym (bez rekursji — długie ciągi promieniowe), sąsiedzi
+    w kolejności oddanej przez ``sasiedzi`` (porządek należy do wołającego, jak w
+    ``przeglad_wszerz``), więc kolejność dróg jest deterministyczna.
+
+    Granice (sieć oczkowa ma wykładniczo wiele dróg): po znalezieniu ``limit`` dróg
+    przegląd szuka JEDNEJ więcej — jeśli istnieje, wynik jest obcięty do ``limit``;
+    ``budzet_krokow`` ogranicza liczbę rozpatrzonych krawędzi. Zwraca
+    ``(drogi, kompletne)``: ``kompletne=False`` znaczy, że istnieje albo może istnieć
+    więcej dróg niż oddano — wołający MUSI to zameldować, nie przemilczeć.
+    """
+    if start in cele:
+        return [[]], True
+    drogi: list[list[tuple[N, E, N]]] = []
+    wezly: list[N] = [start]
+    na_drodze: set[N] = {start}
+    kroki_drogi: list[tuple[N, E, N]] = []
+    stos: list[Iterator[tuple[E, N]]] = [iter(sasiedzi(start))]
+    kroki = 0
+    while stos:
+        nastepny = next(stos[-1], None)
+        if nastepny is None:
+            stos.pop()
+            na_drodze.discard(wezly.pop())
+            if kroki_drogi:
+                kroki_drogi.pop()
+            continue
+        kroki += 1
+        if kroki > budzet_krokow:
+            return drogi, False
+        etykieta, sasiad = nastepny
+        if sasiad in na_drodze:
+            continue
+        krok = (wezly[-1], etykieta, sasiad)
+        if sasiad in cele:
+            if len(drogi) == limit:
+                return drogi, False
+            drogi.append([*kroki_drogi, krok])
+            continue
+        wezly.append(sasiad)
+        na_drodze.add(sasiad)
+        kroki_drogi.append(krok)
+        stos.append(iter(sasiedzi(sasiad)))
+    return drogi, True

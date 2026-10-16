@@ -1845,7 +1845,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zbiorze. To kontenery jednego przebiegu, nie dane wejsciowe solvera. PASS niezmieniony.
     # Scalenie W5-B z partia integracji 8 (2026-10-16, karta UIUX-PRZEMYSLOWY): POMIAR guardem na
     # drzewie scalonym = 4174 = 4164 (partia 8) + delta karty W5-B (+7 −1 +4 = +10).
-    assert "Pol kontraktow wejsciowych: 4174." in wyjscie, wyjscie
+    # Karta K6a TOPOLOGIA-API (2026-10-16): 4174 -> 4216 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`a16835bc9`, `git archive`), roznica zbiorow +42, −0: kontrakt
+    # odpowiedzi stanu zasilenia i toru (`application/topologia_zasilenia.py` — modele pydantic
+    # `StanZasileniaElementu`, `TorElementuOdpowiedz`, `SasiedztwoElementu`… i kontenery jednego
+    # przebiegu `_Element`, `_Kontekst`) oraz `enm/topology.py::KrawedzTopologii.szyna_a/szyna_b`,
+    # `PodzialKrawedzi.w_ruchu`. To kontrakt odczytu topologii, nie dane wejsciowe solvera.
+    # PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4216." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2080,7 +2087,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `git archive` rodzica 2; przypiete tam 563 bylo nieaktualne) + 3 pliki karty W5-B = 565.
         # POMIAR guardem na drzewie scalonym.
         # Scalenie W5-B z partia integracji 8 (2026-10-16): 569 + 3 pliki karty W5-B = 572. POMIAR.
-        "Przeskanowano 572 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta K6a TOPOLOGIA-API (2026-10-16): 572 -> 573 (+1 `application/topologia_zasilenia.py`
+        # — stan zasilenia i tor z topologii laczeniowej). POMIAR guardem na drzewie karty.
+        "Przeskanowano 573 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2392,7 +2401,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 8 (+ DYNAMIKA-W-TLE): application 249 + 2 = 251, dlug 30/90; api 64 - 1
         # = 63 (skasowany `api/celery_app.py`), dlug 1/2 i wykluczenia 5/13 gałęzi integracji (dlug 2/3
         # i wykluczenia 6/15 karty pochodziły z jej starszej bazy). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=251, dlug=30 plikow/suma 90, "
+        # Karta K6a TOPOLOGIA-API (2026-10-16): application 251 -> 252 (+1
+        # `application/topologia_zasilenia.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=252, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
         # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
