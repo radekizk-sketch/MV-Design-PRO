@@ -21,8 +21,10 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
+from catalog.profiles.nc_rfg import list_available_operators, load_nc_rfg_profile
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY, SwitchgearFamily
+from network_model.odmowa_pakietu import brak_pakietu_osd
 
 from .models import ReferenceFieldProfile, ReferencePack
 
@@ -31,6 +33,33 @@ _PACKS_DIR = Path(__file__).resolve().parent / "packs"
 # Pakiet-nośnik profili pól w V1 (spec §3): profile składu/kolejności żyją
 # w referencji rozdzielnicowej IEC 62271-200.
 FIELD_PROFILE_PACK_ID = "iec62271"
+
+#: Pakiet operatora systemu dystrybucyjnego ma identyfikator ``osd_<operator>``, gdzie
+#: ``<operator>`` należy do JEDYNEJ listy operatorów produktu — warstw operatorskich profilu
+#: NC RfG (``catalog.profiles.nc_rfg.list_available_operators``; ten sam identyfikator niesie
+#: ``StudyCaseConfig.operator_profile_id``). Karta OD-17a: to jedno odwzorowanie wybiera pakiet
+#: przypadku i rozpoznaje brak pakietu operatora (dane P3 właściciela).
+PREFIKS_PAKIETU_OSD = "osd_"
+
+
+def pack_id_operatora(operator_id: str) -> str:
+    """Identyfikator pakietu wymagań operatora (``osd_<operator>``)."""
+    return f"{PREFIKS_PAKIETU_OSD}{operator_id}"
+
+
+def operator_pakietu_osd(pack_id: str) -> str | None:
+    """Operator znanej listy, którego pakiet wymagań wskazuje ``pack_id``; inaczej ``None``."""
+    if not pack_id.startswith(PREFIKS_PAKIETU_OSD):
+        return None
+    operator = pack_id.removeprefix(PREFIKS_PAKIETU_OSD)
+    return operator if operator in list_available_operators() else None
+
+
+def nazwa_operatora_pl(operator_id: str) -> str:
+    """Nazwa operatora dla projektanta — z warstwy operatorskiej profilu (jedno źródło)."""
+    if operator_id in list_available_operators():
+        return load_nc_rfg_profile(operator_id).operator_name_pl
+    return "wskazany w przypadku obliczeniowym, spoza listy operatorów produktu"
 
 
 def _load_packs() -> dict[str, ReferencePack]:
@@ -73,6 +102,16 @@ def _load_packs() -> dict[str, ReferencePack]:
                     "cytowania źródła (reguła „nie fabrykuj danych producenta”)."
                 )
 
+    # Karta OD-17a: pakiet OSD nazywa operatora z JEDYNEJ listy operatorów produktu — inaczej
+    # wybór pakietu przypadku (`pakiet_osd_operatora`) nie mógłby go odnaleźć.
+    for pack in packs.values():
+        if (pack.kind == "osd") != (operator_pakietu_osd(pack.pack_id) is not None):
+            raise ValueError(
+                f"Pakiet '{pack.pack_id}' (kind={pack.kind}): identyfikator 'osd_<operator>' "
+                "z operatorem listy produktu przysługuje wyłącznie pakietom OSD i każdy pakiet "
+                "OSD musi go nieść."
+            )
+
     # Jedna definicja profili pól (pkt 10/12 dyrektywy).
     packs_with_profiles = [p.pack_id for p in packs.values() if p.field_profiles]
     if packs_with_profiles != [FIELD_PROFILE_PACK_ID]:
@@ -106,6 +145,36 @@ def get_reference_pack(pack_id: str) -> ReferencePack:
         available = ", ".join(sorted(REFERENCE_PACK_REGISTRY.keys()))
         raise BrakZasobuError(f"Unknown reference pack: {pack_id}. Available: {available}")
     return REFERENCE_PACK_REGISTRY[pack_id]
+
+
+def pakiet_osd_operatora(operator_id: str, *, nazwa_przypadku: str) -> ReferencePack:
+    """Pakiet wymagań operatora przypadku albo nazwana odmowa braku pakietu (dane P3).
+
+    ``OdmowaBrakuPakietuDanych`` (kod ``BRAK_PAKIETU_OSD:<operator>``) — rejestr nie ma pakietu
+    operatora wskazanego w przypadku; JEDYNE miejsce tego rozpoznania dla raportu przypadku
+    i dla jawnego żądania pakietu (predykat parami, karta OD-17a).
+    """
+    pack = REFERENCE_PACK_REGISTRY.get(pack_id_operatora(operator_id))
+    if pack is None or pack.kind != "osd":
+        raise brak_pakietu_osd(
+            operator_id,
+            nazwa_operatora_pl=nazwa_operatora_pl(operator_id),
+            nazwa_elementu=nazwa_przypadku,
+        )
+    return pack
+
+
+def wymagaj_pakietu(pack_id: str, *, nazwa_przypadku: str) -> ReferencePack:
+    """Pakiet wskazany jawnie w kontekście przypadku (``?packs=``).
+
+    Pakiet OSD operatora z listy produktu, którego rejestr nie ma → nazwana odmowa braku
+    pakietu (422, ``BRAK_PAKIETU_OSD:<operator>``); identyfikator spoza rejestru i spoza
+    konwencji OSD → ``BrakZasobuError`` (404).
+    """
+    operator = operator_pakietu_osd(pack_id)
+    if operator is not None:
+        return pakiet_osd_operatora(operator, nazwa_przypadku=nazwa_przypadku)
+    return get_reference_pack(pack_id)
 
 
 def family_for_pack(pack: ReferencePack) -> SwitchgearFamily | None:

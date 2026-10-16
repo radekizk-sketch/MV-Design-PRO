@@ -53,3 +53,15 @@
 .mvd-refwybor-akcja:hover {
   background: var(--mvd-panel);
 }
+
+/* Karta OD-17a: nazwana odmowa braku pakietu danych właściciela (np. pakietu
+   wymagań operatora przypadku) — zdanie backendu, ton ostrzegawczy. */
+.mvd-ref-braki-pakietow {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  list-style: none;
+  border-left: 3px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-ink);
+  font-size: 12px;
+}

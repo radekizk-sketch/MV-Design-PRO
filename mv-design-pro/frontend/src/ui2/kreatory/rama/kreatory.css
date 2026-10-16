@@ -11,6 +11,11 @@
  */
 
 .mvd-kreator {
+  /* Układ kreatora zależy od SZEROKOŚCI KREATORA, nie okna (zapytania kontenerowe niżej).
+     Kreator renderuje się w panelu inspektora (~320 px) i na planszy pełnej szerokości;
+     dawne `@media (min-width: …)` włączały układ dwukolumnowy w wąskim panelu przy
+     szerokim oknie — kolumna główna dostawała 0 px, a treść kroku była nieosiągalna. */
+  container: kreator / inline-size;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -147,8 +152,27 @@
   gap: 16px;
   align-items: start;
 }
-@media (min-width: 1000px) {
+@container kreator (min-width: 1000px) {
   .mvd-kreator-plansza-wnetrze { grid-template-columns: minmax(0, 1fr) 320px; }
+}
+/* Wąski gospodarz (panel inspektora): nagłówek z paskiem kroków potrafi zająć całą wysokość
+   panelu, a plansza z `flex: 1; min-height: 0` zapadała się wtedy do 0 px (zmierzone
+   2026-09-30: 1280×720, kreator źródła OZE, krok „Dobór toru SN" — przycisk poza widokiem).
+   W wąskim kreatorze plansza płynie w przewijaniu gospodarza, a stopka z akcjami trzyma się
+   dołu widoku. */
+@container kreator (max-width: 999.98px) {
+  .mvd-kreator--pelny > .mvd-kreator-plansza {
+    flex: 0 0 auto;
+    overflow: visible;
+    background: var(--mvd-bg);
+  }
+  .mvd-kreator--pelny > .mvd-kreator-plansza > .mvd-kreator-plansza-wnetrze { padding: 14px 0; }
+  .mvd-kreator--pelny > .mvd-kreator-stopka {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    flex-wrap: wrap;
+  }
 }
 .mvd-kreator-glowna { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .mvd-kreator-aside {
@@ -156,7 +180,7 @@
   flex-direction: column;
   gap: 14px;
 }
-@media (min-width: 1000px) {
+@container kreator (min-width: 1000px) {
   .mvd-kreator-aside { position: sticky; top: 0; }
 }
 
@@ -221,10 +245,10 @@
   grid-template-columns: 1fr;
   gap: 12px;
 }
-@media (min-width: 560px) {
+@container kreator (min-width: 560px) {
   .mvd-kreator-siatka.mvd-kol-2 { grid-template-columns: 1fr 1fr; }
 }
-@media (min-width: 780px) {
+@container kreator (min-width: 780px) {
   .mvd-kreator-siatka.mvd-kol-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 
@@ -484,6 +508,11 @@
   text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--mvd-line); vertical-align: top;
 }
 .mvd-oze-bom th { color: var(--mvd-muted); font-weight: 600; }
+/* Wąski panel: tabela przewija się poziomo zamiast być ucinana przez sekcję. */
+.mvd-oze-bom-przewijanie { overflow-x: auto; }
+.mvd-oze-bom { min-width: 480px; }
+.mvd-oze-bom-koszt { margin-top: 8px; font-size: 12px; }
+.mvd-oze-bom-koszt p { margin: 0 0 4px; }
 .mvd-oze-podsumowanie-akcje { display: flex; gap: 10px; justify-content: flex-end; }
 .mvd-oze-akcja {
   height: 34px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--mvd-line);

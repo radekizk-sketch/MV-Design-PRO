@@ -9,7 +9,13 @@
 
 import type { RunStatus } from '../../../ui/study-cases/types';
 import { KreatorInfo, KreatorSekcja } from '../rama';
-import type { ListaMaterialowa, RaportZgodnosci, StatusPozycji } from './podsumowanieApi';
+import type {
+  KosztListyMaterialowej,
+  ListaMaterialowa,
+  OpisParametru,
+  RaportZgodnosci,
+  StatusPozycji,
+} from './podsumowanieApi';
 import { PODSUMOWANIE_STRINGS as T } from './strings';
 
 const IKONA_STATUSU: Record<StatusPozycji, string> = {
@@ -31,10 +37,41 @@ function werdyktEtykieta(werdykt: RaportZgodnosci['werdykt']): { tekst: string; 
   return { tekst: T.raportNiezgodny, ton: 'blad' };
 }
 
-function formatujParametry(parametry: Readonly<Record<string, unknown>>): string {
-  return Object.entries(parametry)
-    .map(([klucz, wartosc]) => `${klucz}: ${String(wartosc)}`)
+/** Parametry pozycji 1:1 z opisu backendu (etykieta, wartość, jednostka — bez kluczy). */
+function formatujParametry(opis: readonly OpisParametru[]): string {
+  return opis
+    .map((p) => `${p.etykieta}: ${p.wartosc ?? '—'}${p.jednostka ? ` ${p.jednostka}` : ''}`)
     .join(' · ');
+}
+
+/** Kwota w walucie cennika — formatowanie prezentacyjne (liczba 1:1 z backendu). */
+function formatujKwote(kwota: number, waluta: string): string {
+  return `${kwota.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${waluta}`;
+}
+
+/** Koszt listy: wycena z cennika albo zdanie odmowy z backendu (nigdy zero). */
+function KosztListy({ koszt }: { readonly koszt: KosztListyMaterialowej }) {
+  if (koszt.status !== 'WYCENIONE') {
+    return (
+      <div className="mvd-oze-bom-koszt" data-testid="mvd-kreator-oze-bom-koszt" data-status={koszt.status}>
+        <KreatorInfo>{koszt.komunikat_pl}</KreatorInfo>
+      </div>
+    );
+  }
+  return (
+    <div className="mvd-oze-bom-koszt" data-testid="mvd-kreator-oze-bom-koszt" data-status={koszt.status}>
+      <p>
+        <strong>{T.bomKosztTytul}:</strong> {formatujKwote(koszt.suma_capex, koszt.waluta)} —{' '}
+        {T.bomKosztCennik(koszt.wersja_cennika, koszt.data_cen)}; {T.bomKosztStanZrodla}:{' '}
+        {T.bomKosztStan[koszt.stan_zrodla]}
+      </p>
+      {koszt.pozycje_nieustalone.length > 0 ? (
+        <KreatorInfo>
+          {T.bomKosztNieustalone} {koszt.pozycje_nieustalone.join(', ')}
+        </KreatorInfo>
+      ) : null}
+    </div>
+  );
 }
 
 export interface PodsumowanieAutoBiegProps {
@@ -107,33 +144,38 @@ export function PodsumowanieAutoBieg({
 
       <KreatorSekcja tytul={T.bomTytul} testid="mvd-kreator-oze-bom">
         {bom && bom.pozycje.length > 0 ? (
-          <table className="mvd-oze-bom" data-testid="mvd-kreator-oze-bom-tabela">
-            <thead>
-              <tr>
-                <th>{T.bomKolLp}</th>
-                <th>{T.bomKolElement}</th>
-                <th>{T.bomKolTyp}</th>
-                <th>{T.bomKolParametry}</th>
-                <th>{T.bomKolIlosc}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bom.pozycje.map((pozycja) => (
-                <tr key={pozycja.ref_id ?? `${pozycja.kategoria}-${pozycja.lp}`}>
-                  <td>{pozycja.lp}</td>
-                  <td>{pozycja.element}</td>
-                  <td>{pozycja.catalog_ref ?? '—'}</td>
-                  <td>{formatujParametry(pozycja.parametry)}</td>
-                  <td>
-                    {pozycja.ilosc ?? '—'} {pozycja.jednostka}
-                  </td>
+          <div className="mvd-oze-bom-przewijanie">
+            <table className="mvd-oze-bom" data-testid="mvd-kreator-oze-bom-tabela">
+              <thead>
+                <tr>
+                  <th>{T.bomKolLp}</th>
+                  <th>{T.bomKolElement}</th>
+                  <th>{T.bomKolTyp}</th>
+                  <th>{T.bomKolParametry}</th>
+                  <th>{T.bomKolIlosc}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bom.pozycje.map((pozycja) => (
+                  <tr key={pozycja.ref_id ?? `${pozycja.kategoria}-${pozycja.lp}`}>
+                    <td>{pozycja.lp}</td>
+                    <td>{pozycja.element}</td>
+                    <td>
+                      {pozycja.typ_nazwa ?? (pozycja.catalog_ref ? T.bomTypSpozaKatalogu : '—')}
+                    </td>
+                    <td>{formatujParametry(pozycja.parametry_opis)}</td>
+                    <td>
+                      {pozycja.ilosc ?? '—'} {pozycja.jednostka}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <KreatorInfo>{T.bomBrak}</KreatorInfo>
         )}
+        {bom && bom.pozycje.length > 0 ? <KosztListy koszt={bom.koszt} /> : null}
       </KreatorSekcja>
 
       <div className="mvd-oze-podsumowanie-akcje">

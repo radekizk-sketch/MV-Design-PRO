@@ -38,7 +38,6 @@ from application.analyses.certyfikat_zgodnosci import (
     render_certyfikat_pdf,
     zbierz_braki,
 )
-from application.analyses.sekcja_zgodnosci_ncrfg import BRAK_CERTYFIKATU_PL
 from application.ncrfg_compliance import NcRfgCaseComplianceResponse, zgodnosc_ncrfg_przypadku
 from docx import Document
 from enm.models import EnergyNetworkModel
@@ -111,11 +110,16 @@ def test_certyfikat_powstaje_gdy_brak_wymagan_stosowalnych_bez_spelnia(budowa: A
     assert modul["zrodlo_danych"] == "ZATWIERDZONY_MODEL"
     etykiety = [w["etykieta_pl"] for w in modul["wiersze"]]
     assert etykiety[:4] == ["Moduł", "Klasyfikacja modułu", "Podstawa klasyfikacji", "Technologia"]
-    # Jawny stan zerowy dowodu certyfikatu (tabliczka bez rekordu wykazu).
+    # Jawny stan zerowy dowodu certyfikatu (tabliczka bez rekordu wykazu). Karta OD-17a:
+    # stan zerowy jest nazwaną odmową braku danych pakietu wykazu PTPiREE — wiersz dowodu
+    # niesie zdanie tej odmowy (z nazwą źródła), a sekcja jej rekord z kodem w polu.
     assert modul["dowod_certyfikatu"] is None
-    assert {"etykieta_pl": "Dowód certyfikatu urządzenia", "tresc_pl": BRAK_CERTYFIKATU_PL} in (
+    brak = modul["certyfikat_brakujacy"]
+    assert brak["kod"].startswith("BRAK_CERTYFIKATU_WIPWC:")
+    assert {"etykieta_pl": "Dowód certyfikatu urządzenia", "tresc_pl": brak["komunikat_pl"]} in (
         modul["wiersze"]
     )
+    assert "nie ma certyfikatu PTPiREE" in brak["komunikat_pl"]
     ocena = zgodnosc.bieg.ocena_wymagan[0]
     assert [w["rekord"]["wymaganie_id"] for w in modul["wymagania"]] == [
         r.wymaganie_id for r in ocena.wymagania

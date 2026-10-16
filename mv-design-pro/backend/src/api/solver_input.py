@@ -77,9 +77,22 @@ def _graph_for_analysis(
     return zbuduj_graf(snapshot)
 
 
-def _get_config_for_case(case_id: str) -> StudyCaseConfig:
-    """Stub: retrieve StudyCaseConfig for a given case."""
-    return StudyCaseConfig()
+def _konfiguracja_przypadku(case_id: str, uow_factory: Callable[[], UnitOfWork]) -> StudyCaseConfig:
+    """Konfiguracja obliczeń PRZYPADKU z bazy (``StudyCase.config``).
+
+    Karta OD-17a (znalezisko uboczne): do tej karty funkcja była zaślepką zwracającą
+    ``StudyCaseConfig()`` — koperta wejścia solvera niosła konfigurację domyślną zamiast
+    konfiguracji przypadku (współczynniki c, operator, tryb wejścia zwarciowego). Zależność
+    ``KluczTwin`` trasy już potwierdziła, że przypadek istnieje; jego brak tutaj byłby
+    niespójnością magazynu (błąd programu → 500).
+    """
+    from uuid import UUID
+
+    with uow_factory() as uow:
+        przypadek = uow.cases.get_study_case(UUID(case_id))
+    if przypadek is None:
+        raise RuntimeError(f"Przypadek {case_id} zniknął z bazy po rozwiązaniu klucza modelu.")
+    return przypadek.config
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +224,7 @@ def get_solver_input(
         )
     except OdmowaDanychError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    config = _get_config_for_case(case_id)
+    config = _konfiguracja_przypadku(case_id, uow_factory)
     catalog = get_default_mv_catalog()
 
     envelope = build_solver_input(

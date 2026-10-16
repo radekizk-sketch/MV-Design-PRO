@@ -174,7 +174,7 @@ ENM: parametry dynamiczne maszyn synchronicznych (Xd, X'd, X''d, T'd0, T''d0, H,
 (odbiory, generacja, ceny) z konsumentem; `OperatingScenario` o zdarzenia w czasie (`FaultDelta`, `der_trip`,
 zmiana topologii, komendy regulacji); `CanonicalRun` o kontrakt wyniku czasowego (ResultSet dynamiczny, D-08(b));
 readiness per rodzina źródła i per zdolność; profile WOS z wersją i datą obowiązywania (D-10); katalog `APARAT_SN`
-o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17). Rozstrzygnięcie 2026-09-30 (O-65/O-73): dane w trzech rozłącznych pakietach P1/P2/P3 (P-K w `DANE_WLASCICIELA_O59_2026-09.md`); do dostawy nazwane odmowy `BRAK_PAKIETU_OSD:<osd>` / `BRAK_KARTY_PRODUCENTA:<pole>` / `BRAK_CERTYFIKATU_WIPWC:<model>` przez `OdmowaDanychError` (karta OD-17a, fala 1; dziś 0 trafień tych kodów w `backend/src`).
+o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17). Rozstrzygnięcie 2026-09-30 (O-65/O-73): dane w trzech rozłącznych pakietach P1/P2/P3 (P-K w `DANE_WLASCICIELA_O59_2026-09.md`); od karty OD-17a (2026-09-30) brak pakietu operatora przypadku, certyfikatu WiPWC albo danych karty producenta kończy się jedną nazwaną odmową z kodem w polu (`BRAK_PAKIETU_OSD:<operator>` / `BRAK_KARTY_PRODUCENTA:<pola>` / `BRAK_CERTYFIKATU_WIPWC:<model>`); otwarte po stronie właściciela same dane.
 
 ### 12. Co wymaga wymiany?
 
@@ -194,7 +194,7 @@ harmonicznej z modelu nasycenia (G4 — W6-8, po OD-15(d)); pętla zwarcia TT/IT
 fazowego (W5); zwarcie doziemne sieci kompensowanej end-to-end (Y0 z uziemienia z modelu, Ic/Petersen, U_dot/U_krok z
 geometrii — W8); selektywność SN↔nN (B5 — W4); straty roczne i bilans energii (QSTS — W6-6); impedancja harmoniczna
 i skan częstotliwościowy/rezonans (W6-7); VUF wg składowych (OD-15(c)); odtworzenie zasilania/NOP (W10); model
-kosztowy (OD-16). Rozstrzygnięcie 2026-09-30 (O-65/O-73): osobny, wersjonowany cennik `catalog/cenniki/cennik_RRRR-MM.yaml` powiązany z typem po `type_id` (nie pole typu niemutowalnego), stan źródła per wartość (ZWERYFIKOWANE/WSKAZANE/NIEUSTALONE), zero przeliczania inflacją; brak cennika = odmowa `BRAK_CENNIKA` z listą `type_id`, nigdy ciche zero; algebra kosztu strat wyłącznie w `network_model/pochodne/`; karta W10-2a szkielet cennika (fala 1; `backend/src` bez struktur ceny — grep = 0); format dostawy P-J.
+kosztowy (OD-16). Rozstrzygnięcie 2026-09-30 (O-65/O-73): osobny, wersjonowany cennik `catalog/cenniki/cennik_RRRR-MM.yaml` powiązany z typem po `type_id` (nie pole typu niemutowalnego), stan źródła per wartość (ZWERYFIKOWANE/WSKAZANE/NIEUSTALONE), zero przeliczania inflacją; brak cennika = odmowa `BRAK_CENNIKA` z listą `type_id`, nigdy ciche zero; algebra kosztu strat wyłącznie w `network_model/pochodne/koszty.py`; mechanizm wdrożony kartą W10-2a (2026-09-30); otwarte po stronie właściciela ceny typów i cena energii strat, format dostawy P-J.
 
 ### 14. Jakich symulacji brakuje? (czas)
 

@@ -75,6 +75,23 @@
         "zrodlo_danych": "ZATWIERDZONY_MODEL",
         "dowod_certyfikatu": null,
         "certyfikat_odrzucony": null,
+        "certyfikat_brakujacy": {
+          "kod": "BRAK_CERTYFIKATU_WIPWC:bess_pcs_abb_500",
+          "rodzaj": "BRAK_CERTYFIKATU_WIPWC",
+          "pakiet": "P1",
+          "identyfikator": "bess_pcs_abb_500",
+          "nazwa_elementu": "Magazyn energii 1,5 MW",
+          "status_maszynowy": "BRAK_DOWODU",
+          "komunikat_pl": "Źródło „Magazyn energii 1,5 MW”: typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV” nie ma certyfikatu PTPiREE w wykazie certyfikowanych urządzeń dostępnym w systemie — zgodność z wymaganiami przyłączeniowymi nie ma dowodu, a wniosek do OSD może zostać odrzucony. Certyfikaty dostarcza pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD.",
+          "wyjasnienie": {
+            "zdanie_pl": "Źródło „Magazyn energii 1,5 MW”: typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV” nie ma certyfikatu PTPiREE w wykazie certyfikowanych urządzeń dostępnym w systemie — zgodność z wymaganiami przyłączeniowymi nie ma dowodu, a wniosek do OSD może zostać odrzucony. Certyfikaty dostarcza pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD.",
+            "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+            "czego_brakuje": [
+              "certyfikat PTPiREE w wykazie certyfikowanych urządzeń — typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV”"
+            ],
+            "zastrzezenia": []
+          }
+        },
         "wiersze": [
           {
             "etykieta_pl": "Moduł",
@@ -94,7 +111,7 @@
           },
           {
             "etykieta_pl": "Dowód certyfikatu urządzenia",
-            "tresc_pl": "tabliczka urządzenia w modelu nie wskazuje rekordu wykazu certyfikowanych urządzeń PTPiREE"
+            "tresc_pl": "Źródło „Magazyn energii 1,5 MW”: typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV” nie ma certyfikatu PTPiREE w wykazie certyfikowanych urządzeń dostępnym w systemie — zgodność z wymaganiami przyłączeniowymi nie ma dowodu, a wniosek do OSD może zostać odrzucony. Certyfikaty dostarcza pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD."
           }
         ],
         "wymagania": [
@@ -2307,7 +2324,7 @@
   "odciski_sekcji_sha256": {
     "bilans_mocy": "e42162195984c0ca37ac9acebe0a058c1105568308094b589d1113d5102a0431",
     "zwarcia_punkt_przylaczenia": "e3acf60acec186540437e897e9dccf1340a7d02ac9a8c6ff1e09e915ef88da58",
-    "zgodnosc_nc_rfg": "7ca461e318b270329c904b18292447051957a15631b3e605cc5cc21d8252583a"
+    "zgodnosc_nc_rfg": "7f700f5b2c8ddc6e39890240648f1efeea0f6c23261c01325ecc6d47c18ecf12"
   },
   "zrodla": {
     "pf_run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",

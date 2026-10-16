@@ -8,7 +8,7 @@ import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from network_model.brak_zasobu import BrakZasobuError
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 logger = logging.getLogger("mv_design_pro")
 
@@ -51,13 +51,19 @@ def register_exception_handlers(app: FastAPI) -> None:
             request.url.path,
             str(exc),
         )
+        content: dict[str, object] = {
+            "detail": str(exc),
+            "request_id": request_id,
+            "error_type": "ValueError",
+        }
+        # Karty W10-2a / OD-17a: odmowa nazwana niesie kod maszynowy w POLU (nie w zdaniu)
+        # i dane strukturalne — addytywnie obok `detail`.
+        if isinstance(exc, OdmowaNazwana):
+            content["kod"] = exc.kod
+            content["dane"] = dict(exc.dane)
         return JSONResponse(
             status_code=422,
-            content={
-                "detail": str(exc),
-                "request_id": request_id,
-                "error_type": "ValueError",
-            },
+            content=content,
             headers={"X-Request-Id": request_id},
         )
 

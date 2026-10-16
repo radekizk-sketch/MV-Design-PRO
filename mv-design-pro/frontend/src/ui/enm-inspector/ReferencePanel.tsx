@@ -15,6 +15,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 
+import { BrakiPakietowDanych } from '../../ui2/referencje/BrakiPakietowDanych';
 import { WyborPakietuReferencyjnego } from '../../ui2/referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../ui2/referencje/wyborPakietu';
 import { fetchReferenceCompliance } from './api';
@@ -118,6 +119,10 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
         standardy OSD). Ocena obejmuje wyłącznie pola z danymi aparatów —
         „nie dotyczy" oznacza brak sprawdzeń stosowalnych.
       </p>
+      <BrakiPakietowDanych
+        braki={report.braki_pakietow}
+        klasa="mb-2 list-none text-[11px] text-amber-700"
+      />
       <table className="w-full text-xs" data-testid="reference-score-table">
         <thead>
           <tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-400">

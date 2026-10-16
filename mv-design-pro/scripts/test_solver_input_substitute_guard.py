@@ -1802,7 +1802,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # katalogu i PR-478), po kasacji martwych mapperów 4124 (-19: 18 pól z meldunku karty
     # i `ct_ratio` z `RelayV1` — na bazie karty pole miał też skasowany od tego czasu
     # `domain/protection_vendors.py`, więc karta go nie liczyła). Zbiory porównane, +0.
-    assert "Pol kontraktow wejsciowych: 4124." in wyjscie, wyjscie
+    # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW: W10-2a i OD-17a): 4124 + 34 = 4158 — nowe
+    # kontrakty cennika, wyceny/LCC i odmowy braku pakietu danych (`capex`, `lcc`,
+    # `stopa_dyskontowa`, `straty_roczne_mwh`, `braki_pakietow`, `certyfikaty_brakujace`,
+    # `odmowa_widma` i pozostałe); zbiory porównane, -0. POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4158." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2016,7 +2020,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wpisow dlugu; application 30 plikow/suma 91 bez zmian). POMIAR guardem na drzewie karty.
         # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
         # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
-        "Przeskanowano 562 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): 562 + 7 = 569 (network_model +3
+        # `odmowa_pakietu.py`, `catalog/indeks_typow.py`, `pochodne/koszty.py`; enm +1
+        # `odmowy_pakietow_danych.py`; application +3 `koszty/**`); dlug bez zmian (podstawienie
+        # `else 0.0` w `koszty/wycena.py` naprawione u źródła). POMIAR guardem na drzewie partii.
+        "Przeskanowano 569 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2167,7 +2175,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
         # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): network_model 180 + 3 = 183. POMIAR.
+        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2219,7 +2228,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): enm 58 -> 59 (+1 `enm/rodzaj_stacji.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
-        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): enm 61 + 1 = 62. POMIAR.
+        "  enm: pliki_skanowane=62, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2300,7 +2310,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/cgmes/kompletnosc.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
         # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
         # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=246, dlug=30 plikow/suma 90, "
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): application 246 + 3 = 249. POMIAR.
+        "  application: pliki_skanowane=249, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
         # Partia integracji 8: api dlug 2/3 -> 1/2 — POMIAR guardem na drzewie bazy integracji
         # (53551167b, przed scaleniami partii); pin 2/3 był nieaktualny na bazie.

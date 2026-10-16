@@ -153,8 +153,34 @@ export interface ReferencePackComplianceReport {
   checks: ReferenceComplianceCheck[];
 }
 
+/**
+ * Nazwana odmowa braku pakietu danych właściciela (karta OD-17a, backend
+ * `network_model/odmowa_pakietu.py::RekordBrakuPakietu`). Projektant czyta
+ * `komunikat_pl`; `kod`/`status_maszynowy` służą wyłącznie filtrom.
+ */
+export interface RekordBrakuPakietu {
+  kod: string;
+  rodzaj: 'BRAK_CERTYFIKATU_WIPWC' | 'BRAK_KARTY_PRODUCENTA' | 'BRAK_PAKIETU_OSD';
+  pakiet: 'P1' | 'P2' | 'P3';
+  identyfikator: string;
+  nazwa_elementu: string;
+  status_maszynowy: 'NIE_OCENIONO' | 'BRAK_PODSTAWY' | 'BRAK_DOWODU';
+  komunikat_pl: string;
+  wyjasnienie: {
+    zdanie_pl: string;
+    przyczyna_pl: string | null;
+    czego_brakuje: string[];
+    zastrzezenia: string[];
+  };
+}
+
 export interface ReferenceComplianceReport {
   packs: ReferencePackComplianceReport[];
+  /**
+   * Pakiety wymagań, których ocena przypadku wymaga, a rejestr ich nie ma
+   * (dziś: pakiet operatora wskazanego w przypadku) — karta OD-17a.
+   */
+  braki_pakietow?: RekordBrakuPakietu[];
 }
 
 export const REFERENCE_PACK_KIND_LABELS_PL: Record<ReferencePackKind, string> = {

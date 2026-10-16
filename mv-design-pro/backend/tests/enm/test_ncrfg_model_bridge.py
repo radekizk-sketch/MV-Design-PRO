@@ -39,6 +39,7 @@ from enm.deklaracje_modulu import POLA_DEKLARACJI
 from enm.domain_ops_models import AddConverterSourcePayload
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, ENMHeader, Generator
 from network_model.catalog.mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
+from network_model.odmowa_pakietu import RekordBrakuPakietu
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeModuleInput
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
 
@@ -775,6 +776,7 @@ def test_compliance_endpoint_runs_from_model_with_run_contract() -> None:
             "der_count",
             "pominiete",
             "certyfikaty_odrzucone",
+            "certyfikaty_brakujace",
             "bieg",
         }
         assert body["case_id"] == case_id
@@ -783,6 +785,8 @@ def test_compliance_endpoint_runs_from_model_with_run_contract() -> None:
             ("DER_ZERO", "brak_mocy")
         ]
         assert body["certyfikaty_odrzucone"] == []
+        # Karta OD-17a: DER z certyfikatem nie jest brakiem danych pakietu wykazu.
+        assert body["certyfikaty_brakujace"] == {}
         bieg = body["bieg"]
         assert bieg["contract"] == "NcRfgPtpireeTestResultV2"
         modul = bieg["modules"][0]
@@ -831,6 +835,7 @@ def test_compliance_endpoint_zero_der_returns_no_run() -> None:
             "der_count": 0,
             "pominiete": [],
             "certyfikaty_odrzucone": [],
+            "certyfikaty_brakujace": {},
             "bieg": None,
         }
 
@@ -1013,7 +1018,10 @@ def test_weryfikacje_typu_katalogowego_dla_dokumentu_studium() -> None:
     weryfikacje = weryfikacje_certyfikatow_typu(enm, typ, operator_id=_OPERATOR)
     assert [der_ref for der_ref, _ in weryfikacje] == ["DER1", "DER3"]
     assert all(isinstance(w, DowodCertyfikatu) for _, w in weryfikacje)
-    assert weryfikacje_certyfikatow_typu(enm, "conv-inny-typ", operator_id=_OPERATOR) == [
-        ("DER2", None)
-    ]
+    # Karta OD-17a: tabliczka bez certyfikatu daje nazwaną odmowę braku danych pakietu
+    # wykazu PTPiREE (rekord z kodem w polu), nie `None`.
+    ((der_ref, brak),) = weryfikacje_certyfikatow_typu(enm, "conv-inny-typ", operator_id=_OPERATOR)
+    assert der_ref == "DER2"
+    assert isinstance(brak, RekordBrakuPakietu)
+    assert brak.kod.startswith("BRAK_CERTYFIKATU_WIPWC:") and brak.nazwa_elementu == "Blok DER2"
     assert weryfikacje_certyfikatow_typu(enm, "conv-brak", operator_id=_OPERATOR) == []

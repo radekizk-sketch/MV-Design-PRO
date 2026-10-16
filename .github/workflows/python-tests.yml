@@ -180,6 +180,12 @@ jobs:
       - name: Bramka Danych Profilu Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/bramka_danych_profilu.py
+      # Karta W10-2a (decyzja OD-16): cenniki wersjonowane `catalog/cenniki/cennik_RRRR-MM.yaml`
+      # wiazane z katalogiem po type_id — type_id w katalogu, waluta, data cen w miesiacu wersji,
+      # stan zrodla kazdej ceny. Importuje katalog (networkx), wiec biegnie w venv backendu.
+      - name: Cennik Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/cennik_guard.py
       - name: Transformer Catalog Voltage Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/transformer_catalog_voltage_guard.py
