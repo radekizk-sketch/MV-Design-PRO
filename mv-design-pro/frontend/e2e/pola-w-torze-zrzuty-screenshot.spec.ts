@@ -31,7 +31,11 @@ function katalog(namespace: string, itemId: string) {
   return { catalog_namespace: namespace, catalog_item_id: itemId, catalog_item_version: WERSJA_KATALOGU };
 }
 const HERE = dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09');
+// `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
+// karty W5-B w `docs/audit/visual/w5b-pola`) bez nadpisywania materiału tej karty.
+const KATALOG_ZRZUTOW = process.env.E2E_KATALOG_ZRZUTOW
+  ? resolve(process.env.E2E_KATALOG_ZRZUTOW)
+  : resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09');
 
 type Enm = {
   substations?: Array<{ ref_id: string; name?: string; station_type?: string | null; meta?: Record<string, unknown> }>;

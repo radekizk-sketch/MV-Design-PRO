@@ -20,7 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { STACJE, stanAplikacji, zbudujSiecEtykietyStacji } from './etykietaStacjiSiec';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji');
+// `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
+// karty W5-B w `docs/audit/visual/w5b-pola`) bez nadpisywania materiału tej karty.
+const OUTPUT_DIR = process.env.E2E_KATALOG_ZRZUTOW
+  ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
+  : path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji');
 const ETAP = process.env.ETYKIETA_ETAP === 'przed' ? 'przed' : 'po';
 const MOTYWY = ['light', 'dark'] as const;
 
