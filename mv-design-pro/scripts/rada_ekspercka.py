@@ -60,7 +60,7 @@ PROFILES = (
         "reviewer": "E238",
     },
     {
-        "id": "ZWA_RCIA",
+        "id": "ZWARCIA",
         "signals": ("zwarci", "iec 60909", "ik", "ip", "ith", "skladowa zerowa",
                     "z0", "z1", "z2", "thevenin"),
         "lead": "E092", "team": ("E093", "E094", "E095", "E073", "E091"),
@@ -211,7 +211,38 @@ def route_task(description: str, data: dict, *, max_experts: int = 7) -> dict:
             ranked.append((score, profile, matched))
     ranked.sort(key=lambda x: -x[0])
     if not ranked:
-        # Brak dopasowania ≠ brak ryzyka technicznego. Wymagana ręczna kwalifikacja.
+        # Obsługa 30 dziedzin bez tworzenia 30 sztywnych subagentów.
+        # Profil szczegółowy wygrywa, gdy ma rzeczywiste dopasowanie.
+        group_rank = []
+        for group in data["groups"]:
+            matched = [s for s in group["triggers"] if signal_matches(task, s)]
+            if matched:
+                score = sum(2 if " " in s else 1 for s in matched)
+                group_rank.append((score, group, matched))
+        group_rank.sort(key=lambda x: (-x[0], x[1]["id"]))
+        if group_rank:
+            _, group, hits = group_rank[0]
+            members = [e for e in data["experts"] if e["group_id"] == group["id"]]
+            tokens = set(task.split())
+            def relevance(item: dict) -> int:
+                words = set(normalize(item["name"]).split())
+                return len({word for word in words & tokens if len(word) >= 5})
+            members.sort(key=lambda x: (-relevance(x), x["id"]))
+            lead = members[0]
+            colleagues = members[1:max_experts]
+            reviewer_id = "E007" if group["id"] == "G30" else "E238"
+            lookup = {item["id"]: item for item in data["experts"]}
+            if reviewer_id in [lead["id"], *[x["id"] for x in colleagues]]:
+                raise RuntimeError("Naruszenie niezależności recenzenta")
+            return {
+                "task": description, "engineering_review_required": True,
+                "profile": f"GRUPA_{group['id']}", "matched_signals": hits,
+                "lead": lead, "team": colleagues, "reviewer": lookup[reviewer_id],
+                "reason": "Jawna kwalifikacja do jednego z 30 zespołów; "
+                          "wynik wymaga oceny merytorycznej.",
+                "warning": "Kwalifikacja nie jest wykonaniem ekspertyzy.",
+            }
+        # Nieznana domena: nie wybieraj arbitralnego eksperta.
         return {
             "task": description, "engineering_review_required": True,
             "profile": "WYMAGA_KWALIFIKACJI", "lead": None, "team": [],
