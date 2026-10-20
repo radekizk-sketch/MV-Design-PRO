@@ -2805,6 +2805,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           <button
             type="button"
             onClick={() => {
+              setCadIndex(null);
+              setCadFocusRequest(null);
               setFitTarget('tresc');
               setFitSignal((s) => s + 1);
             }}
@@ -2817,6 +2819,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           <button
             type="button"
             onClick={() => {
+              setCadIndex(null);
+              setCadFocusRequest(null);
               setFitTarget('arkusz');
               setFitSignal((s) => s + 1);
             }}
