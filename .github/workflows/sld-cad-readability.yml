@@ -1,0 +1,46 @@
+name: SLD CAD Czytelnosc
+
+on:
+  pull_request:
+    paths:
+      - 'mv-design-pro/frontend/src/ui/sld/v3/canvas/**'
+      - 'mv-design-pro/frontend/scripts/sld_v3_cad_readability.mjs'
+      - '.github/workflows/sld-cad-readability.yml'
+  workflow_dispatch:
+
+jobs:
+  cad-visual-evidence:
+    name: Rzeczywiste obrazy SLD CAD przed i po
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mv-design-pro/frontend/package-lock.json
+      - name: Instalacja zależności
+        working-directory: mv-design-pro/frontend
+        run: npm ci
+      - name: Test kontraktu przybliżenia CAD
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/cadFocus.contract.test.ts src/ui/sld/v3/canvas/__tests__/cadStationWorkspace.test.tsx --reporter=verbose
+      - name: Kontrola typów i kompilacja interfejsu
+        working-directory: mv-design-pro/frontend
+        run: npm run type-check
+      - name: Chromium do renderowania produkcyjnej kanwy
+        working-directory: mv-design-pro/frontend
+        run: npx playwright install chromium
+      - name: Prawdziwe obrazy tej samej sieci — przed/po
+        working-directory: mv-design-pro/frontend
+        env:
+          SLD_CAD_EVIDENCE_DIR: ${{ runner.temp }}/sld-cad-evidence
+        run: npx vite-node scripts/sld_v3_cad_readability.mjs
+      - name: Zachowaj obrazy PNG i manifest skali
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sld-cad-real-before-after
+          path: ${{ runner.temp }}/sld-cad-evidence/
+          retention-days: 30
+          if-no-files-found: warn

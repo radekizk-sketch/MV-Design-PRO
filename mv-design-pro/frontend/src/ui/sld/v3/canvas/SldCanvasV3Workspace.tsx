@@ -182,6 +182,7 @@ import type { V3Rect } from '../core/grid';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
+import { prostokatElementuWScenie } from './viewAnchor';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
 import { applyContentFitFrame, computeContentFitFrame } from '../export/exportFrame';
@@ -2041,6 +2042,41 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [fitSignal, setFitSignal] = useState(0);
   const [fitTarget, setFitTarget] = useState<'tresc' | 'arkusz'>('tresc');
 
+  // CAD — nawigacja po WSZYSTKICH stacjach realnego modelu, nie atrapie SVG.
+  // mainTrunkStationIds daje kolejność ciągu głównego, pozostałe stacje
+  // (odgałęzienia) uzupełniają spis bez duplikowania stacji z magistrali.
+  // Ref jest przyjmowany TYLKO gdy rysunek L2 rzeczywiście ma jego bbox.
+  const cadStations = useMemo(() => {
+    if (!snapshot) return [];
+    const scene = buildSceneV3(snapshot, 2);
+    const main = scene.meta.mainTrunkStationIds;
+    const mainRefs = new Set(main);
+    // Stacje boczne są sortowane geometrycznie po AKTUALNEJ scenie, a nie
+    // po losowych refach z bazy; to nie rekonstruuje grafu ani nie wymyśla
+    // kolejności elektrycznej. Pierwsze zawsze stacje magistrali z danych.
+    const branches = scene.meta.drawnStationIds
+      .filter((ref) => !mainRefs.has(ref))
+      .map((ref) => ({ ref, rect: prostokatElementuWScenie(scene, ref) }))
+      .filter((item): item is { ref: string; rect: NonNullable<typeof item.rect> } => item.rect !== null)
+      .sort((a, b) =>
+        a.rect.minY - b.rect.minY || a.rect.minX - b.rect.minX || a.ref.localeCompare(b.ref));
+    const refs = [...main, ...branches.map((item) => item.ref)];
+    const byRef = new Map(snapshot.substations.map((item) => [item.ref_id, item]));
+    return [...new Set(refs)]
+      .filter((ref) => prostokatElementuWScenie(scene, ref) !== null)
+      .map((ref) => ({ ref, title: byRef.get(ref)?.name || ref }));
+  }, [snapshot]);
+  const [cadIndex, setCadIndex] = useState<number | null>(null);
+  const [cadFocusRequest, setCadFocusRequest] = useState<{ readonly ref: string; readonly seq: number } | null>(null);
+  const cadFocusSeq = useRef(0);
+  const focusCadStation = (index: number): void => {
+    const station = cadStations[index];
+    if (!station) return;
+    setCadIndex(index);
+    cadFocusSeq.current += 1;
+    setCadFocusRequest({ ref: station.ref, seq: cadFocusSeq.current });
+  };
+
   // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel") + S9-11 / P-8: pustość
   // MODELU z JEDNEGO źródła (`ui/topology/pustoscModelu`), nie z kategorii
   // adaptera rysunku. Poprzednia definicja (`sldData.gpzs/stations/cableRuns/
@@ -2737,9 +2773,49 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     widok: (
       <>
         <div className="flex items-center gap-1">
+          {/* Tryb CAD nie przebudowuje SLD: przenosi kamerę do rzeczywistej
+              stacji w L2. Cofnięcie do sieci zachowuje stare Dopasuj. */}
+          <button
+            type="button"
+            data-testid="sld-v3-cad-station-start"
+            onClick={() => focusCadStation(0)}
+            disabled={cadStations.length === 0}
+            title="Otwórz czytelny szczegół pierwszej stacji (oryginalna kanwa i topologia SN)"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:opacity-40"
+          >
+            Szczegóły CAD
+          </button>
+          {cadIndex !== null && cadStations[cadIndex] && (
+            <div data-testid="sld-v3-cad-station-nav" className="flex h-7 items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-1 text-scada-text shadow-lg">
+              <button type="button" data-testid="sld-v3-cad-previous"
+                disabled={cadIndex === 0}
+                aria-label="Poprzednia stacja"
+                onClick={() => focusCadStation(cadIndex - 1)}
+                className="rounded px-1 hover:bg-scada-hover-nav disabled:opacity-40">◀</button>
+              <select data-testid="sld-v3-cad-station-select" aria-label="Stacja do odczytu CAD"
+                value={cadStations[cadIndex].ref}
+                onChange={(event) => focusCadStation(cadStations.findIndex((station) => station.ref === event.target.value))}
+                className="max-w-40 bg-scada-panel px-1 font-mono-eng text-[10px] text-scada-text">
+                {cadStations.map((station, i) => (
+                  <option key={station.ref} value={station.ref}>{i + 1}. {station.title}</option>
+                ))}
+              </select>
+              <span data-testid="sld-v3-cad-page-counter" className="whitespace-nowrap font-mono-eng text-[10px]">{cadIndex + 1}/{cadStations.length}</span>
+              <button type="button" data-testid="sld-v3-cad-next"
+                disabled={cadIndex >= cadStations.length - 1}
+                aria-label="Następna stacja"
+                onClick={() => focusCadStation(cadIndex + 1)}
+                className="rounded px-1 hover:bg-scada-hover-nav disabled:opacity-40">▶</button>
+              <button type="button" data-testid="sld-v3-cad-exit" title="Wróć do całej sieci"
+                onClick={() => { setCadIndex(null); setCadFocusRequest(null); setFitTarget('tresc'); setFitSignal((n) => n + 1); }}
+                className="rounded px-1 hover:bg-scada-hover-nav">Sieć</button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => {
+              setCadIndex(null);
+              setCadFocusRequest(null);
               setFitTarget('tresc');
               setFitSignal((s) => s + 1);
             }}
@@ -2752,6 +2828,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           <button
             type="button"
             onClick={() => {
+              setCadIndex(null);
+              setCadFocusRequest(null);
               setFitTarget('arkusz');
               setFitSignal((s) => s + 1);
             }}
@@ -2849,7 +2927,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           onElementClick={handleElementClick}
           onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
-          lodOverride={lodOverride}
+          lodOverride={cadIndex !== null ? undefined : lodOverride}
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
           onBackgroundClick={handleBackgroundClick}
@@ -2859,6 +2937,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           centerRequest={centerRequest}
           viewAnchor={viewAnchor}
           pokazElement={pokazElement}
+          cadFocusRequest={cadFocusRequest}
           safeInsets={effectiveCanvasInsets}
         />
       ) : null}
