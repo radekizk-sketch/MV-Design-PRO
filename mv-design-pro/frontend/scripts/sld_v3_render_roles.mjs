@@ -27,6 +27,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from '../node_modules/@playwright/test/index.mjs';
@@ -38,7 +39,8 @@ import { worldToScreen } from '../src/ui/sld/v2/viewport/ViewportController.ts';
 import { GRID } from '../src/ui/sld/v3/core/grid.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 
-const HTML_DIR = '/tmp/claude-0/-home-user-MV-Design-PRO/78af74df-082c-537d-9203-0850d59fe759/scratchpad/f7_render';
+// Katalog dowodowy nie może zależeć od jednorazowej ścieżki kontenera autora.
+const HTML_DIR = process.env.SLD_V3_RENDER_HTML_DIR ?? resolve(tmpdir(), 'mv-design-pro', 'sld-v3-render-roles');
 const PNG_DIR = resolve(new URL('.', import.meta.url).pathname, '..', '..', 'docs', 'sld', 'renders', 'v3');
 mkdirSync(HTML_DIR, { recursive: true });
 mkdirSync(PNG_DIR, { recursive: true });
@@ -104,9 +106,14 @@ function clipFor(worldRect, viewportSize, marginWorld = 4 * GRID, lodOverride = 
   };
 }
 
-function writeHtml(name, element, width, height) {
+function writeHtml(name, element, width, height, disclaimer = null) {
   const markup = renderToStaticMarkup(element);
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#0B0F14;}</style></head><body>${markup}</body></html>`;
+  // Jedyny syntetyczny wariant nakładki musi być oznaczony NA OBRAZIE,
+  // żeby zrzut nie mógł uchodzić za dowód stanów łączników w modelu.
+  const stamp = disclaimer
+    ? `<aside aria-label="Ostrzeżenie o danych symulowanych" style="position:fixed;z-index:9999;top:12px;right:12px;background:#3a2108;color:#ffffff;border:2px solid #ffad42;padding:10px 14px;font:700 14px/1.35 sans-serif">${disclaimer}</aside>`
+    : '';
+  const html = `<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#0B0F14;}</style></head><body>${markup}${stamp}</body></html>`;
   const path = `${HTML_DIR}/${name}.html`;
   writeFileSync(path, html);
   return path;
@@ -199,6 +206,7 @@ jobs.push({
     React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 1, overlay: operatorOverlay }),
     FULL_W,
     FULL_H,
+    'DEMONSTRACJA NAKŁADKI — STANY SYNTETYCZNE, NIE STAN SIECI',
   ),
   viewport: { width: FULL_W, height: FULL_H },
   // F8a-2 — FIX-2: BRAK clipu — kamera produkcyjna fituje teraz (k4.1,
@@ -236,7 +244,12 @@ function dsfFor(clip) {
   return Math.min(12, Math.max(2, Math.ceil(900 / shortest)));
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+// W CI ścieżka przeglądarki może być jawna; lokalnie używamy przeglądarki Playwright.
+const chromiumPath = process.env.SLD_V3_CHROMIUM_PATH;
+const browser = await chromium.launch({
+  ...(chromiumPath ? { executablePath: chromiumPath } : {}),
+  args: ['--no-sandbox'],
+});
 for (const job of jobs) {
   const dsf = dsfFor(job.clip);
   const page = await browser.newPage({ viewport: job.viewport, deviceScaleFactor: dsf });
