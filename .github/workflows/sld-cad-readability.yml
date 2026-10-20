@@ -24,7 +24,7 @@ jobs:
         run: npm ci
       - name: Test kontraktu przybliżenia CAD
         working-directory: mv-design-pro/frontend
-        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/cadFocus.contract.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/cadFocus.contract.test.ts src/ui/sld/v3/canvas/__tests__/cadStationWorkspace.test.tsx --reporter=verbose
       - name: Kontrola typów i kompilacja interfejsu
         working-directory: mv-design-pro/frontend
         run: npm run type-check
