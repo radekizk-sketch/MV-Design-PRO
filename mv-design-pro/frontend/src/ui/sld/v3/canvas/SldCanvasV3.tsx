@@ -80,7 +80,7 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
-import { kotwicaWidoku } from './viewAnchor';
+import { kotwicaWidoku, prostokatElementuWScenie } from './viewAnchor';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -405,6 +405,10 @@ export interface SldCanvasV3Props {
    *  identyczny z `fitSignal`/`centerRequest`. Ref nierozwiązywalny na
    *  rysunku ⇒ kamera NIETKNIĘTA (uczciwie: nie ma czego pokazać). */
   readonly pokazElement?: { readonly ref: string; readonly seq: number } | null;
+  /** Kadr szczegółowy CAD: realny station ref z ENM, bez zmian sceny.
+   *  Klik nawigacji może ZWIĘKSZYĆ skalę i pokazuje L2, inaczej niż
+   *  zwykłe kotwiczenie edycji zachowujące dotychczasowy zoom. */
+  readonly cadFocusRequest?: { readonly ref: string; readonly seq: number } | null;
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -2586,6 +2590,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // Zależność wyłącznie od `seq` — ref czytany w chwili wywołania (ta sama
     // dyscyplina co `fitSignal`/`centerRequest`).
   }, [props.pokazElement?.seq]);
+
+  // TRYB ODCZYTU CAD: wybór konkretnej stacji ze spisu sieci.
+  // Korzysta WYŁĄCZNIE z obszaru STACJI w istniejącej scenie L2
+  // (symbole, tory i etykiety o tym samym ownerRef). Nie powstaje
+  // druga scena, nowy symbol ani sztuczny skrót elektryczny.
+  useEffect(() => {
+    const ref = props.cadFocusRequest?.ref;
+    if (!ref) return;
+    const box = prostokatElementuWScenie(sceneByLod[2], ref);
+    if (!box) return; // brak na rysunku = brak zgadywanego kadru
+    dispatch({
+      type: 'cadFocus',
+      bbox: sceneBoxToCameraWorld(box),
+      viewportSize,
+      safeInsets: effectiveSafeInsets,
+    });
+  }, [props.cadFocusRequest?.seq]);
 
   // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
   // LOD nietknięte). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),
