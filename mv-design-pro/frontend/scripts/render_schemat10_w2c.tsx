@@ -195,6 +195,18 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
     const def = SYMBOL_DEFS[element.symbolId];
     return { x: element.x, y: element.y, width: def.width, height: def.height };
   });
+  // Wyrocznia uwzględnia nie tylko symbol, ale też każdy rzeczywisty odcinek toru.
+  const wireRects = comp.segments.flatMap((segment) => segment.points.slice(1).map((end, index) => {
+    const start = segment.points[index];
+    const tolerance = 1;
+    return {
+      x: Math.min(start.x, end.x) - tolerance,
+      y: Math.min(start.y, end.y) - tolerance,
+      width: Math.abs(end.x - start.x) + 2 * tolerance,
+      height: Math.abs(end.y - start.y) + 2 * tolerance,
+    };
+  }));
+  const obstacles = [...symbols, ...wireRects];
   const xs = [
     ...symbols.flatMap((rect) => [rect.x, rect.x + rect.width]),
     ...comp.segments.flatMap((seg) => seg.points.map((point) => point.x)),
@@ -215,11 +227,11 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
   const gx = cx + (PANEL_W - nativeW * SCALE) / 2 - minX * SCALE;
   const gy = cy + 92 - minY * SCALE;
   const labelPlan = planSceneLabels(
-    labels, symbols, SCALE,
+    labels, obstacles, SCALE,
     { width: Math.ceil(Math.max(...xs) + GRID), height: Math.ceil(Math.max(...ys) + GRID) },
   );
   const collisions = plannedLabelCollisions(labelPlan);
-  const symbolCollisions = plannedLabelObstacleCollisions(labelPlan, symbols);
+  const symbolCollisions = plannedLabelObstacleCollisions(labelPlan, obstacles);
   if (collisions.length || symbolCollisions.length || labelPlan.droppedIdentity.length) {
     throw new Error('W2c ' + comp.stationId + ': etykiety-kolizje=' + collisions.length +
       ', etykiety-symbole=' + symbolCollisions.length +
