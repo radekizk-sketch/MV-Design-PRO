@@ -171,6 +171,19 @@ jobs:
           path: ${{ runner.temp }}/sld-w2c/
           if-no-files-found: warn
           retention-days: 14
+      - name: Render operator L1 using production ENM energization overlay
+        working-directory: mv-design-pro/frontend
+        run: npx vite-node scripts/sld_v3_render_roles.mjs
+
+      - name: Upload production SLD V3 role renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sld-v3-role-evidence
+          path: mv-design-pro/docs/sld/renders/v3/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
