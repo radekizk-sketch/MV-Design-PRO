@@ -16,6 +16,7 @@ import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../src
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { cameraReducer, computeInitialCameraState, boundingBoxOfRect } from '../src/ui/sld/v3/canvas/camera.ts';
 import { prostokatElementuWScenie } from '../src/ui/sld/v3/canvas/viewAnchor.ts';
+import { LABEL_TYPOGRAPHY } from '../src/ui/sld/v3/core/text.ts';
 
 const baseDir = resolve(new URL('.', import.meta.url).pathname, '..');
 const fixture = resolve(baseDir, 'src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json');
@@ -49,7 +50,8 @@ const cadState = cameraReducer(baseState, {
   viewportSize: viewport,
 });
 const ratio = cadState.transform.scale / baseState.transform.scale;
-if (!(ratio > 3) || cadState.lod !== 2) {
+const cadTextScreenPx = LABEL_TYPOGRAPHY.t2.fontSize * cadState.transform.scale;
+if (!(ratio > 3) || cadState.lod !== 2 || cadTextScreenPx < 12) {
   throw new Error('Kadr CAD nie uzyskuje użytecznej skali na kanonicznym modelu: ' + ratio);
 }
 const manifest = {
@@ -68,6 +70,8 @@ const manifest = {
   scaleBefore: baseState.transform.scale,
   scaleAfter: cadState.transform.scale,
   magnificationRatio: ratio,
+  cadT2ScreenPx: cadTextScreenPx,
+  minReadableDetailTextScreenPx: 12,
   sceneContentUnchanged: true,
   evidence: [],
 };
