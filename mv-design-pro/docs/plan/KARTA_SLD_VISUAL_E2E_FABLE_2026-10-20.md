@@ -1,107 +1,95 @@
-# KARTA WYKONAWCZA — SLD-VIS-E2E, Fable + niezależni recenzenci
+# SLD-VIS-E2E — AUTORSKI RAPORT OŚMIU PRZEGLĄDÓW TECHNICZNYCH
 
-**Status:** DO REALIZACJI po pobraniu gałęzi; dokument planu, nie raport wykonania.  
-**Punkt startu:** `main@8f7ed3c`; oddzielny PR #481 (`9f60564d`) ma status otwarty.  
-**Dowód audytu:** `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md`.  
-**Podstawa:** `AGENTS.md` w korzeniu i `mv-design-pro/AGENTS.md`, kanon V12.xx, `docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md`, `docs/sld/SLD_CAD_SPEC_V3.md`.
+**Status:** raport inspekcji kodu i istniejących renderów + wdrożone korekty, NIE pełny odbiór E2E. **Odrzucona poprzednia KARTA WYKONAWCZA przestaje obowiązywać.**
+**Wykonawca:** GPT-6. **Nie uruchomiono ośmiu osobnych instancji agentów AI.** Zastosowano osiem odrębnych perspektyw kontrolnych, wskazano konkretne dowody, sprawdzono funkcje i wdrożono poprawki na gałęzi roboczej. Nie należy podszywać się pod niezależny zespół ludzi lub modeli.
+**Źródło:** GitHub `radekizk-sketch/MV-Design-PRO`, punkt odniesienia `main@8f7ed3c`; gałąź robocza `audit/sld-v3-wizualny-20261020`; PR #482 DRAFT.
+**Materiały:** `docs/audit/visual/schemat-10/s3-l0.png`, `s3-l1.png`, `s3-l2.png`, `s4-ekran-l1.png`, `s5-zoom-1.png`, `s5-zoom-2.png`, `s5-zoom-3.png`, `w2c-l2-tor-sn.png`; kod konkretnie wymieniony niżej.
+**Reguła kwalifikacji:** OBRAZ (rzeczywista obserwacja archiwalnego PNG) / KOD (istniejące źródło) / ZMIENIONO (commit na gałęzi audytu) / NIEZWERYFIKOWANO (brak bieżącej reprodukcji). Nie zamieniać NIEZWERYFIKOWANO w PASS.
 
-## Misja
+## RECENZJA 1 — projektant sieci SN (PSN)
 
-Przeprowadź techniczny i wizualny odbiór **istniejącej** kanwy `SldCanvasV3` na rzeczywistych scenariuszach SN oraz powiązanych widokach nN. Wykryj i napraw źródłowe przyczyny nieczytelności lub nieprawdziwej reprezentacji torów/stanów. Dowiedź end-to-end zgodności `ENM → porty/łączenia → projekcja SLD → wynik → interfejs → eksport` i przedstaw właścicielowi nowe obrazy obu motywów do zatwierdzenia.
+**Pytanie kontrolne:** czy da się prześledzić tor GPZ → właściwe pole SN → port/głowica → odcinek → port stacji oraz odróżnić mostek niepołączony od węzła T?
+**Dowód z obrazu:** `s5-zoom-3.png` pokazuje podpisane dwa przęsła GPZ↔S01 (YAKXS 3×120/16, 105 m) oraz S01↔S02 (linia napowietrzna Al 120 mm², 80 m), trzy kolumny pól liniowych i osobną kolumnę TR. Pełne obrazy `s3-l0/l1/l2.png` nie pozwalają odczytać aparatury na skali całego arkusza. Nie jest to dowód zerwanego toru w ENM, lecz konkretna wada prezentacji arkusza.
+**Dowód kodowy:** `scene/crossings.ts:91` `interiorCrossings` bada ścisłe przecięcia, `:220` `crossingBusGaps` zabrania mostkowania szyn. `SLD_CAD_SPEC_V3.md` §12.3 wiąże kabel z głowicą i portem. Tych funkcji NIE przepisywać.
+**Niezweryfikowane:** czy rzeczywisty GPZ, dwa pola zasilania i punkt odgałęzienia w aktualnym modelu spełniają port-connectivity i brak fałszywych T-węzłów po zmianie LOD i łamaniu arkusza.
+**Test rozstrzygający:** dla każdej krawędzi ENM odczytać `from_terminal_id` i `to_terminal_id`, porównać referencje portów końców SVG; wstawić 1 przecięcie dwóch niepołączonych odcinków i dowieść braku kropki węzłowej; wstawić prawdziwy punkt połączenia i dowieść obecności kropki. Wynik porównać między L0/L1/L2 oraz z grafem, nie tylko ze współrzędnymi.
+**Werdykt PSN:** wizualnie L2 stacji częściowo poprawny; globalny L0/L1 nieczytelny jako samodzielny rysunek; topologia rzeczywista UNKNOWN.
 
-Pracuj **równolegle z rozpoczętym programem Fable** w repo; nie kasuj, nie przepisuj i nie zawieszaj wcześniejszych kart. Ta karta jest osobnym strumieniem w planie, z uzgodnieniem konfliktów gałęzi i wspólnymi bramkami integracji.
+## RECENZJA 2 — projektant pól i aparatury SN (POLA)
 
-## Granice autonomii
+**Dowód z obrazu:** w `s5-zoom-3.png` oznaczenia `Q1` i `QE1` powtarzają się w polach. Bez etykiety pola dają wieloznaczność przy odczycie arkusza.
+**Dowód kodowy:** `compose/directions.ts:146–159` numeruje zastępczo pola F01/F02, FT1 itd.; `:189–199` `fieldCaptionAt` łączy numer i rolę. Komentarz `:130–136` wskazuje lukę `bay_number` w read-modelu stacji; to oznaczenie konwencji, nie zawsze rzeczywisty numer aparatu z dokumentacji.
+**Mechanizm:** `compose/apparatusSequence.ts:343–391` `apparatusIdentifiers` preferuje oznaczenie urządzenia z danych, a przy jego braku tworzy identyfikator z konwencji. Dwie etykiety Q1 w różnych polach mogą być poprawne wyłącznie przy stabilnym kontekście `station_ref + bay_ref`.
+**Krytyczna poprawka dowodowa:** w generatorze W2c pole BESS w przypadku 7 miało **fałszywą rolę `DER_PV`**, gdyż `ozeBay()` zawsze zwracało PV. Zmieniono `ozeBay(id, kind)` oraz `snBays` przypadku 7; BESS ma `FIELD_ROLE.DER_BESS`, PV `FIELD_ROLE.DER_PV`. Dotyczy to fixture/testowego obrazu, nie stwierdzono identycznego błędu w produkcyjnym ENM.
+**Test rozstrzygający:** pola `RMU_LINE`, `RMU_TRANSFORMER`, `DER_PV`, `DER_BESS`, pomiarowe i sprzęgłowe: porównać typ/ilość/aparat `Bay.primary_devices` z instancją `symbolId`, `deviceRef`, kolejnością `placement`, stroną zasilania i stanem. Negatyw: brak CT w ENM nie może wstawić CT na obrazie.
+**Werdykt POLA:** błąd nazwy roli BESS w generatorze naprawiono w kodzie; rzeczywiste pole OEM i identyfikator globalny wymagają E2E.
 
-- **Nie** twórz nowej kanwy, mini-SLD ani atrap na potrzeby odbioru. Ponownie wykorzystaj `SldCanvasV3`, kompozycję `composeStation`, kanoniczne symbole i `SldCanvasV3Workspace`.
-- **Nie** fałszuj napięć, stanów łączników, wyników solwera, liczby aparatów, katalogów OEM ani NOP. Brak danych prowadzi do jawnego komunikatu/blokady, nie do podmiany.
-- Nie modyfikuj zamrożonych rdzeni, kanonu ani akceptowanych decyzji właściciela bez jednoznacznej przesłanki i osobnej decyzji.
-- Zachowaj regułę dwóch projekcji SN i nN (portal po stronie transformatora); nie wprowadzaj mieszanej sceny jako obejścia B-02.
-- UI i dokumenty po polsku technicznym, pełna anonimizacja danych obiektowych w zrzutach.
-- Wypchnięcie nowej gałęzi i wystawienie PR tylko po dowodach i zgodnie z bieżącą polityką repo. **Nie scalaj** automatycznie.
+## RECENZJA 3 — operator sieci i NOP (RUCH)
 
-## Zespół ośmiu ról recenzenckich
+**Dowód kodowy:** `scripts/sld_v3_render_roles.mjs:171` ustanawia stan `energizedByTestId[...] = index % 2 === 0`. Nie istnieje żadna relacja między parzystością indeksu SVG i elektrycznym stanem sieci.
+**Kontrast produkcyjny:** `canvas/SldCanvasV3Workspace.tsx:597` korzysta z `buildSupplyPathHighlight`; to propagacja topologiczna przez łączniki, nie liczbowy wynik analizy przepływu ani potwierdzenie napięcia pomiarowego. Stany tych trzech źródeł wiedzy muszą być rozróżnialne.
+**Potwierdzona poprawka:** generator roli operatorskiej nie ma już sztywnych ścieżek scratchpada/Chromium, a syntetyczny obraz dostaje widoczny napis `DEMONSTRACJA NAKŁADKI — STANY SYNTETYCZNE, NIE STAN SIECI`. Nie usunięto demonstracji celowo: nadal przydaje się do badania kolorystyki, ale nie może uchodzić za dowód pracy sieci.
+**NOP:** `schemat-10/README.md` informuje, że badana fixtura nie ma realnego NOP, a S3 demonstruje dodany znacznik. To nie potwierdza stanu aparatu, otwartego pierścienia ani identyfikacji miejsca przerwy.
+**Test rozstrzygający:** dany rzeczywisty `device_ref`/`switch_ref` w stanie OPEN → CLOSED zmienia topologię i wizualny stan dokładnie jednego aparatu, po czym wymusza nowy przypadek obliczeniowy; przy danych UNKNOWN nie wolno domyślnie kolorować jako zasilonego.
+**Werdykt RUCH:** obrazy demonstracyjne nie mogą uzyskać odbioru ruchowego; rzeczywisty NOP = UNKNOWN.
 
-Przydziel niezależne zakresy. Każda rola ma zwrócić rekord `{id, wersja, przypadek, właściciel-elementu, dowód: PNG/SVG+ścieżka+parametry, problem, skutek, wymagane zachowanie, test negatywny, PASS/FAIL/UNKNOWN}`.
+## RECENZJA 4 — zabezpieczenia, CT/VT, uziemniki (EAZ)
 
-| Rola | Odpowiedzialność wyłączna | Kontrola adwersarialna |
+**Dowód kodowy:** `scripts/render_schemat10_w2c.tsx:67–91`: pole OZE ma jawnie listę `DS, CB, CT, VT(OFF_PATH), DS, ES(GROUND_BRANCH), SURGE_ARRESTER, CABLE_HEAD`. To opis referencyjnej konfiguracji pola, nie dowód istnienia nastaw EAZ, poprawności przekładni CT lub sposobu uziemienia.
+**Bramki istniejące w projekcie:** `sld_v3_acceptance.mjs` używa `allVtParallel`, `allCtAnnotationsValid`, `allProtectionMarkingsValid`, `allSecondaryLinksValid`, ale wykonanie nowego przebiegu na PR jest niezbędne. Zielona wyrocznia geometrii nie dowodzi poprawnego doboru nastaw ani klasy CT.
+**Sposób falsyfikacji:** dla pola z VT wstawić świadomie `placement=MIDSTREAM` i dowieść odrzucenia renderu/sondy; dla uziemnika OPEN test nie może pozwolić na znak graficznie zamknięty; dla CT niepoprawnie powiązanego z innym `bay_ref` dowieść blokady. Sprawdzić `protection_ref`, `protection_codes`, `device_ref`, `Measurement.purpose`.
+**Werdykt EAZ:** poprawna gramatyka bazowych symboli nie wystarcza; rzeczywiste powiązania CT/VT/EAZ i nastawy = UNKNOWN.
+
+## RECENZJA 5 — źródła PV, BESS i bilans transformatora (DER)
+
+**Dowód z obrazu:** `w2c-l2-tor-sn.png`, przypadki 2, 7, 8 — oddzielne tory z TR blokowym dla DER, wspólna szyna SN w przypadku 7. Obecność osobnego transformatora DER jest wizualnie prawidłowym zamiarem i nie należy go zastępować symbolem PV na szynie SN.
+**Błąd 1:** pole BESS było reprezentowane jako `DER_PV`; poprawiono w kodzie generatora na `DER_BESS`.
+**Błąd 2:** na oryginalnym W2c podpisy PV/BESS nachodzą na opis stacji. Przyczyną był osobny wzór na pozycję napisów DER (współrzędne świata) i osobna stała Y tabliczki stacji (współrzędne ekranu).
+**Poprawka:** `render_schemat10_w2c.tsx` używa teraz `resolveLabels` dla nazw, oznaczeń aparatów, portów, DER i szyn, następnie `planSceneLabels`, `plannedLabelCollisions`, `plannedLabelObstacleCollisions`. Obszary symboli i przewodów są przeszkodami; utrata tożsamości blokuje generację PNG zamiast ukryć wadę.
+**Uwaga bilansowa:** `s5-zoom-3.png` S01 ma TR=630 kVA i odbiór `P=0,900 MW, Q=0,297 Mvar`. Pozorna moc samego odbioru wynosi `sqrt(0,900²+0,297²)=0,9477 MVA`, czyli 150,4% Sn TR. Nie stanowi to jeszcze przeciążenia: PV ma 500 kW mocy znamionowej, lecz rzeczywiste P/Q na zaciskach i moc przez TR nie są znane. Zakazane jest podawanie β TR jako 150,4% bez wyniku rozpływu netto.
+**Test rozstrzygający:** w tym samym `StudyRun` i tym samym węźle terminala TR odczytać P, Q, S, I i znak przepływu; zmienić P źródła, powtórzyć wynik; nakładka i tabliczka muszą aktualizować się zgodnie z rewizją.
+**Werdykt DER:** błąd semantyczny generatora poprawiono; E2E PV/BESS i właściwy przepływ TR = UNKNOWN.
+
+## RECENZJA 6 — znaki IEC i standard stacji (NORMY)
+
+**Konflikt wykryty:** `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md:73–83` poprzednio wymagał min. CB+DS+CT+VT w każdym polu i traktował brak przekładników jako wadę. W tej postaci przepis jest sprzeczny z nadrzędnymi regułami projektowymi RMU, pól transformatorowych i pomiarowych.
+**Poprawka wdrożona:** zastąpiono sekcję AC-04 wymaganiem zgodności symboli z `Bay.primary_devices`, zatwierdzonym szablonem technologicznym i rzeczywistą rolą pola. Dodano odrębne przypadki RMU-L, pól wyłącznikowych, transformatorowych, pomiarowych i negatywy braku urządzenia.
+**Granica dowodowa:** identyfikacja ogólnych symboli na rysunku nie oznacza potwierdzonej zgodności z każdą odpowiednią pozycją PN-EN 60617. Odbiór pełnej biblioteki wymaga tabeli `symbolId → numer symbolu normowego → wariant → ścieżka wektorowa → przykład poprawny/negatywny`, bez nadawania numerów normowych z pamięci.
+**Werdykt NORMY:** poprawiono sprzeczne wymaganie odbiorowe; szczegółowa certyfikacja symboli = UNKNOWN.
+
+## RECENZJA 7 — geometria, etykiety i czytelność CAD (CAD)
+
+**Obraz S3:** pełny arkusz L0/L1/L2 zawiera zbyt małe symbole i mikrotekst w skali publikacyjnej; nie wolno opisywać tego jako braków ENM. Powiększenie S5 L2 ma czytelny układ czterech kolumn stacji, lecz wymaga własnych oznaczników F01/F02/F03/FT1 na aktualnym HEAD.
+**Mechanizm w kodzie:** `canvas/labelLegibility.ts:~456–680` planuje tekst względem skali, ogranicza proporcje i jawnie zlicza ukryte szczegóły; `SldCanvasV3.tsx` renderuje `SceneLabelNode` z prostokąta planu i atrybutem właściciela. Nowy W2c korzysta z tych samych funkcji rozstrzygania planu, lecz sam jest nadal artefaktem dowodowym, a NIE aplikacyjną kanwą.
+**Wdrożone:** zamiast przenoszenia podpisów o arbitralne piksele W2c wyznacza wspólną geometrię slotów, plan etykiet w skali i bramkę: `kolizje tekst-tekst == 0`, `tekst-symbol == 0`, `tekst-przewód == 0`, `utracone tożsamości == 0`.
+**Testy konieczne:** na obrazach końcowych z React sprawdzić 1440×900, 1920×1080, L0/L1/L2, jasny/ciemny, kamerę i eksport. Test tego samego pliku SVG bez kamery aplikacji jest niewystarczający do odbioru.
+**Werdykt CAD:** pierwotna kolizja W2c potwierdzona; poprawka z kontrolą odrzucającą wadliwy obraz zapisana, ale nowe PNG i pomiar finalny = UNKNOWN do zakończenia CI.
+
+## RECENZJA 8 — determinizm, weryfikacja, wiarygodność dowodu (QA)
+
+**Potwierdzony błąd procesu:** generator W2c dawał zrzut z błędnymi etykietami, mimo że silnik produkcyjny ma sondy kolizji. Jego skrypt działał poza wcześniejszą bramką `accept:sld-v3` i poza `tsconfig` frontendu. Odrębny generator roli operatorskiej używał sztucznych stanów parzystości indeksów.
+**Wdrożone:** skrypt renderu roli ma przenośny katalog z `os.tmpdir()` oraz opcjonalny `SLD_V3_CHROMIUM_PATH`; syntetyczny stan jest oznaczony W SAMYM OBRAZIE. W2c używa wspólnego planu etykiet; do `.github/workflows/sld-determinism.yml` dodano uruchomienie W2c, rasteryzację Chromium oraz archiwum `sld-w2c-visual-evidence` (SVG i PNG).
+**Dowód odczytu źródła:** po zapisaniu ponownie pobrano skrypty i potwierdzono obecność wymaganych funkcji/importów oraz usunięcie wcześniejszych niezależnych `bandRows`/`derLabels`; to kontrola statyczna, nie wykonanie.
+**Stan CI:** GitHub uruchamia workflow po zapisaniu commitów. Wynik należy odczytać z przebiegu związanego z NAJNOWSZYM SHA, nie z dawnym zielonym commitem. Nie ustawiono ręcznie PASS. Bieżący HEAD może mieć zadania queued/in_progress.
+**Test negatywny wymagany po CI:** celowo wymusić konflikt etykiet przez modyfikację własnego fixture lub slotu oraz dowieść, że generator kończy się kodem błędu i nie zapisuje pozornie poprawnego PNG.
+**Werdykt QA:** bramka wykonawcza została rzeczywiście podpięta, lecz poprawność runtime/PNG niezweryfikowana przed zakończeniem CI.
+
+## Zmiany dokonane samodzielnie, a nie zlecone Fable
+
+| Obszar | Konkretna zmiana | Status |
 |---|---|---|
-| PSN | GPZ, magistrala, sekcje, odgałęzienia i kable | Odnajdź tor kończący się bez głowicy lub prawidłowego terminala |
-| POLA | Szablony aparatów OEM i ich kolejność | Wykryj aparat dodany konwencją bez danych lub podwójne oznaczenie |
-| RUCH | Stan OPEN/CLOSED/UNKNOWN, NOP, zasilanie wysp | Wykryj kolor niezgodny z rzeczywistym grafem |
-| EAZ | CT, VT, zabezpieczenia, blokady, powiązanie wyłącznika | Wykryj pomiar/ochronę bez sprzężenia z prawidłowym aparatem |
-| DER | PV, wiatr, BESS, TR blokowy, przepływ odwrotny | Wykryj DER wpięty bezpośrednio do niewłaściwego napięcia |
-| SYMBOLE | PN-EN 60617 + identyfikacja aparatów | Wykryj nierozróżnialne funkcje (CB/DS/LBS/ES) |
-| CAD | Rysunek L0–L2, geometria, proporcje, czytelność, druk | Wykryj kolizję istniejącą tylko w finalnym obrazie |
-| DOWODY | Testy, reprodukowalność, migawka, bieg, raport | Obal twierdzenie PASS przez test negatywny lub brak dowodu |
+| `frontend/scripts/render_schemat10_w2c.tsx` | Poprawa roli BESS `DER_PV → DER_BESS`, wspólny resolver i plan napisów, kolizje z symbolami i przewodami | ZAPISANO; WYKONANIE CI OCZEKUJE |
+| `frontend/scripts/sld_v3_render_roles.mjs` | Przenośne ścieżki; wielki napis ostrzegawczy na obrazach ze stanem sztucznym | ZAPISANO; NOWE PNG OCZEKUJĄ |
+| `.github/workflows/sld-determinism.yml` | Uruchomienie generatora W2c, rasteryzacja Chromium, artefakt PNG/SVG | ZAPISANO; CI OCZEKUJE |
+| `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` | Usunięcie błędnego minimum CB/DS/CT/VT z AC-04, realna macierz testów wyposażenia | ZAPISANO |
+| `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md` | Rejestr 15 ustaleń, ograniczenia dowodowe i 18 scenariuszy T01–T18 | ZAPISANO |
 
-**Niezależny nadzorca** nie może uznać wyniku bez minimum jednego kontrprzykładu poszukiwanego przez każdą rolę oraz wspólnej ponownej inspekcji końcowych obrazów.
+## Pozostające BLOKADY przed GO
 
-## Kontrakty wykonania — partie
+1. Brak nowych obejrzanych obrazów z **działającej aplikacji** po zmianach. Kontrola skryptu W2c to etap pośredni, a nie końcowe E2E.
+2. Brak rzeczywistego NOP w obserwowanej fixturze S3, zatem niezweryfikowane przeniesienie OPEN/CLOSED z danych na symbol i graf.
+3. Brak potwierdzonej wspólnej rewizji między ENM, wynikami i renderem na przykładzie realnego rozpływu/zwarcia.
+4. Nie wykonano przeglądarkowego E05 z PR #481; PR jest niescalony, read-only i nie może być podciągany do oceny `main`.
+5. Nie wykonano osobnych autonomicznych recenzji AI; raport zawiera osiem dyscyplin zastosowanych przeze mnie do rzeczywistych artefaktów. Wymaganie niezależnych agentów pozostaje jawnie niezrealizowane z powodu braku narzędzia do ich uruchomienia w tej sesji.
 
-### Partia A. Faktyczny stan przed implementacją
-
-1. Pobierz `main` i otwarte PR #481/#480/#478; wskaż dokładne SHAs. Zidentyfikuj to, co rzeczywiście jest scalone. Nie obiecuj funkcji niescalonych.
-2. Sprawdź kompletne drzewo `SldCanvasV3`, `buildSceneV3`, `canvas/labelLegibility.ts`, `compose/{station,apparatusSequence,directions}.ts`, `scene/crossings.ts`, projekcję nN, e2e oraz skróty świadczące o istniejących ekranach.
-3. Zapisz rejestr „wdrożone / niepowiązane / tylko dokument / tylko fixtura / brak” z plikami i numerami wierszy.
-4. Nie przypisuj sobie poprawek już istniejących (`fieldCaptionAt`, `planSceneLabels`, `interiorCrossings`).
-
-**DONE:** porównanie `main` vs E05, manifest uruchomienia, rozpoznanie 18 scenariuszy T01–T18 z audytu; brak nierozstrzygniętych wersji kodu.
-
-### Partia B. Dowody z prawdziwej kanwy
-
-1. Uruchom rzeczywiste UI z backendem, przejdź ścieżkę tworzenia modelu natywnymi kliknięciami.
-2. Pokaż wizualnie: GPZ z polem → kabel SN → stacja przelotowa i odgałęźna → źródło PV/BESS → wyniki rozpływu i zwarcia.
-3. Dla każdej stacji i wariantu LOD wykonaj obraz 1920×1080 i 1440×900, jasny/ciemny. Dla L2 osobne zbliżenie aparatury.
-4. Każdego `run_ref` powiąż z `snapshot.revision`; jeżeli serwer nie zwrócił wyniku, oznacz `BRAK WYNIKU`, zamiast tworzyć liczbę w froncie.
-5. Osobno generuj obrazy infrastruktury renderera (`renderToStaticMarkup` na fixturze) — nigdy nie mieszaj ich z dowodami natywnej interakcji i fizyki.
-
-**DONE:** dowody obrazowe z manifestem `sha/fixture_or_project/revision/case/run/lod/theme/viewport/status`; zero fikcyjnych refów.
-
-### Partia C. Naprawy jawnie wykazane
-
-- VIS-06/VIS-07: `render_schemat10_w2c.tsx` koliduje etykietami, ponieważ korzysta z własnego pozycjonowania. Przenieś rendering dowodowy na wspólną ścieżkę etykiet zamiast przesuwać tekst w fiksturze.
-- VIS-03/VIS-10: poprawka na gałęzi audytu oznacza fałszywą nakładkę ostrzeżeniem i usuwa hardcodowane ścieżki kontenera/przeglądarki. Potwierdź uruchomieniem i porównaniem PNG, nie samym kodem.
-- VIS-08: zweryfikuj aktualny obraz po `fieldCaptionAt`; zgłoś nowy defekt wyłącznie przy reprodukcji na HEAD.
-- VIS-01/VIS-02: NOP musi pochodzić z realnego ENM i wpływać na analizę grafu; sam kolor NO nie jest wynikiem.
-- VIS-09/VIS-12: przepływ netto przez TR i wynik nieaktualny mają pochodzić z realnego biegu; brak danych lub wynik wadliwy oznacz jawnie.
-
-**DONE:** patche wyłącznie w źródłowej warstwie odpowiedzialności; bez przetasowania glifów jednej demonstracji.
-
-### Partia D. Odbiór przekrojowy i regresja
-
-Uruchom:
-```bash
-cd mv-design-pro/frontend
-npm run accept:sld-v3
-npx vite-node scripts/sld_v3_render_roles.mjs
-# następnie istniejące testy Vitest SLD, Playwright z rzeczywistym backendem,
-# analizy ENM/pomiarów/EAZ, eksporty i guardy repo według dokumentacji kanonicznej
-```
-
-Weryfikacja szczegółowa:
-- finalne etykiety: `plannedLabelCollisions == 0`, `plannedLabelObstacleCollisions == 0`, `plannedLabelsOutsideSheet == 0`, `plannedLabelsBelowScreenFloor == 0` dla etykiet rzeczywiście rysowanych;
-- porty: `allSceneSegmentEndpointsAnchored`, `allFieldEntryConnectionsReachCableHead`, `allSourcesConnected`;
-- skrzyżowania: `crossingBusGaps == 0`, brak fałszywych połączeń;
-- numery pól: unikatowa para `station_ref + bay_ref`, oznaczenia aparatów i proweniencja;
-- LOD: ta sama tożsamość i fizyczne połączenia bez utraty toru;
-- obrazy: kontrast i proporcje, brak nachodzenia tekstu na symbole i wiersze danych;
-- dane: jeden identyfikator biegu na wszystkie nakładki używane do tego samego obrazu;
-- E05: klik `deviceRef` wybiera odpowiedni aparat, nie losowy element o takim samym `Q1`;
-- eksport: geometria finalnego rysunku zgodna z ekranem i poprawne jednostki.
-
-Dla każdej wyroczni dodaj **przypadek negatywny**, który daje FAIL po celowym uszkodzeniu tożsamości, geometrii, stanu lub danych. Test sprawdzający tylko obecność flagi nie jest dowodem.
-
-**DONE:** testy e2e i porównanie obrazu po stronie rzeczywistej aplikacji; bez pustych deklaracji `PASS` lub dopisywania zielonych liczb do dokumentacji.
-
-## Polityka statusu
-
-`PASS` — fizyczny i obrazowy dowód wykonany na wskazanym SHA; `FAIL` — odtworzony defekt; `UNKNOWN` — nie uruchomiono lub nie ma wiarygodnego źródła danych; `NOT_APPLICABLE` — uzasadnione brakiem funkcji/obiektu (nigdy sposobem uniknięcia testu).
-
-Przy braku przeglądarki, połączenia z backendem, niezgodności fixtur albo CI raportuj **UNKNOWN**, dołącz dokładny komunikat błędu i nie ogłaszaj odbioru.
-
-## Pakiet odbiorowy dla właściciela
-
-Jedna galeria obrazów **przed/po**, bez generowanych od nowa makiet SLD; każda scena: pełen widok i powiększenie rozdzielni, motyw jasny/ciemny, zakres LOD, stan zasilenia z danych i realny bieg obliczeniowy jeśli dotyczy. Obok każdego porównania zwięzły opis: „co jest źle → który ref modelu → który plik/funkcja → poprawka → wynik testu”.
-
-Po zakończeniu recenzent wydaje **GO/NO-GO** per T01–T18 i dla całej aplikacji, a ostateczną ocenę wizualną zatwierdza właściciel. Nie scalaj zmian bez tej decyzji.
+**KOŃCOWY STATUS:** implementacja określonych zmian w kodzie i kontrakcie odbioru = WYKONANA W GAŁĘZI. Pełny odbiór inżynierski/obrazowy po CI i uruchomieniu aplikacji = NIE UKOŃCZONY. PR #482 pozostaje roboczy; żadnych fikcyjnych punktów za sam raport.
