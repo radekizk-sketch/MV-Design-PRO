@@ -2914,7 +2914,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           onElementClick={handleElementClick}
           onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
-          lodOverride={lodOverride}
+          lodOverride={cadIndex !== null ? undefined : lodOverride}
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
           onBackgroundClick={handleBackgroundClick}
