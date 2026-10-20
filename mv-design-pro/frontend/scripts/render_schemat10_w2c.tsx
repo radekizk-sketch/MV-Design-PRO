@@ -64,10 +64,10 @@ function dev(
 }
 
 /** Pole źródłowe SN (bay_role OZE) — stos [DS,CB,CT,VT,DS,ES,SA,CABLE_HEAD]. */
-function ozeBay(id: string): MiniBlockBayDescriptor {
+function ozeBay(id: string, kind: 'pv' | 'bess' = 'pv'): MiniBlockBayDescriptor {
   return {
     bayRef: id,
-    fieldRole: FIELD_ROLE.DER_PV,
+    fieldRole: kind === 'bess' ? FIELD_ROLE.DER_BESS : FIELD_ROLE.DER_PV,
     designation: 'PV',
     hasMissingRequiredDevice: false,
     primaryDevices: [
@@ -148,7 +148,7 @@ const station2: StationMeasureInput = {
 // Przypadek 7: dwa DER (PV + BESS) różnych topologii na wspólnej szynie SN.
 const station7: StationMeasureInput = {
   id: 'w2c-7', name: 'Stacja W2c-7 (PV + BESS, wspólna szyna SN)', stationCode: 'S-7', transformerRatedKva: null,
-  stationTypeLabel: 'stacja źródłowa SN', snBays: [ozeBay('w2c-7/a/field'), ozeBay('w2c-7/b/field')],
+  stationTypeLabel: 'stacja źródłowa SN', snBays: [ozeBay('w2c-7/a/field', 'pv'), ozeBay('w2c-7/b/field', 'bess')],
   derSources: [
     chainSource('w2c-7/a/converter', 'pv', 'w2c-7/a/field', 'w2c-7/a/block_tr', 'w2c-7/a/lv_bus', 'multi-feeder'),
     chainSource('w2c-7/b/converter', 'bess', 'w2c-7/b/field', 'w2c-7/b/block_tr', 'w2c-7/b/lv_bus', 'single-bus'),
