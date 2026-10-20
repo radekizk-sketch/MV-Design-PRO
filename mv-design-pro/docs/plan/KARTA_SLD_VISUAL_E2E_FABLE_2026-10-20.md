@@ -28,7 +28,7 @@
 
 **Dowód kodowy:** `scripts/sld_v3_render_roles.mjs:171` ustanawia stan `energizedByTestId[...] = index % 2 === 0`. Nie istnieje żadna relacja między parzystością indeksu SVG i elektrycznym stanem sieci.
 **Kontrast produkcyjny:** `canvas/SldCanvasV3Workspace.tsx:597` korzysta z `buildSupplyPathHighlight`; to propagacja topologiczna przez łączniki, nie liczbowy wynik analizy przepływu ani potwierdzenie napięcia pomiarowego. Stany tych trzech źródeł wiedzy muszą być rozróżnialne.
-**Potwierdzona poprawka:** generator roli operatorskiej nie ma już sztywnych ścieżek scratchpada/Chromium, a syntetyczny obraz dostaje widoczny napis `DEMONSTRACJA NAKŁADKI — STANY SYNTETYCZNE, NIE STAN SIECI`. Nie usunięto demonstracji celowo: nadal przydaje się do badania kolorystyki, ale nie może uchodzić za dowód pracy sieci.
+**Potwierdzona poprawka:** usunięto generator syntetycznych stanów `index % 2 === 0`. Scenariusz operatora wywołuje teraz **produkcyjną funkcję** `buildEnergizationOverlay(enm)` z `SldCanvasV3Workspace.tsx`; na obrazie jest napis `NAKŁADKA TOPOLOGICZNA ENM — NIE WYNIK ROZPŁYWU ANI POMIAR NAPIĘCIA`. Scenariusz potwierdza spójność graficzną propagacji topologicznej, nie pomiarów. Usunięto również sztywne ścieżki kontenera i Chromium. Wynik runtime nadal wymaga potwierdzenia nowym PNG.
 **NOP:** `schemat-10/README.md` informuje, że badana fixtura nie ma realnego NOP, a S3 demonstruje dodany znacznik. To nie potwierdza stanu aparatu, otwartego pierścienia ani identyfikacji miejsca przerwy.
 **Test rozstrzygający:** dany rzeczywisty `device_ref`/`switch_ref` w stanie OPEN → CLOSED zmienia topologię i wizualny stan dokładnie jednego aparatu, po czym wymusza nowy przypadek obliczeniowy; przy danych UNKNOWN nie wolno domyślnie kolorować jako zasilonego.
 **Werdykt RUCH:** obrazy demonstracyjne nie mogą uzyskać odbioru ruchowego; rzeczywisty NOP = UNKNOWN.
@@ -68,7 +68,7 @@
 ## RECENZJA 8 — determinizm, weryfikacja, wiarygodność dowodu (QA)
 
 **Potwierdzony błąd procesu:** generator W2c dawał zrzut z błędnymi etykietami, mimo że silnik produkcyjny ma sondy kolizji. Jego skrypt działał poza wcześniejszą bramką `accept:sld-v3` i poza `tsconfig` frontendu. Odrębny generator roli operatorskiej używał sztucznych stanów parzystości indeksów.
-**Wdrożone:** skrypt renderu roli ma przenośny katalog z `os.tmpdir()` oraz opcjonalny `SLD_V3_CHROMIUM_PATH`; syntetyczny stan jest oznaczony W SAMYM OBRAZIE. W2c używa wspólnego planu etykiet; do `.github/workflows/sld-determinism.yml` dodano uruchomienie W2c, rasteryzację Chromium oraz archiwum `sld-w2c-visual-evidence` (SVG i PNG).
+**Wdrożone:** skrypt renderu roli ma przenośny katalog z `os.tmpdir()` oraz opcjonalny `SLD_V3_CHROMIUM_PATH`; fałszywy stan `index%2` zastąpiono wywołaniem produkcyjnej topologii. W2c używa wspólnego planu etykiet; do `.github/workflows/sld-determinism.yml` dodano uruchomienie W2c, rasteryzację Chromium oraz dwa archiwa `sld-w2c-visual-evidence` (SVG/PNG) i `sld-v3-role-evidence` (PNG ról).
 **Dowód odczytu źródła:** po zapisaniu ponownie pobrano skrypty i potwierdzono obecność wymaganych funkcji/importów oraz usunięcie wcześniejszych niezależnych `bandRows`/`derLabels`; to kontrola statyczna, nie wykonanie.
 **Stan CI:** GitHub uruchamia workflow po zapisaniu commitów. Wynik należy odczytać z przebiegu związanego z NAJNOWSZYM SHA, nie z dawnym zielonym commitem. Nie ustawiono ręcznie PASS. Bieżący HEAD może mieć zadania queued/in_progress.
 **Test negatywny wymagany po CI:** celowo wymusić konflikt etykiet przez modyfikację własnego fixture lub slotu oraz dowieść, że generator kończy się kodem błędu i nie zapisuje pozornie poprawnego PNG.
@@ -79,8 +79,8 @@
 | Obszar | Konkretna zmiana | Status |
 |---|---|---|
 | `frontend/scripts/render_schemat10_w2c.tsx` | Poprawa roli BESS `DER_PV → DER_BESS`, wspólny resolver i plan napisów, kolizje z symbolami i przewodami | ZAPISANO; WYKONANIE CI OCZEKUJE |
-| `frontend/scripts/sld_v3_render_roles.mjs` | Przenośne ścieżki; wielki napis ostrzegawczy na obrazach ze stanem sztucznym | ZAPISANO; NOWE PNG OCZEKUJĄ |
-| `.github/workflows/sld-determinism.yml` | Uruchomienie generatora W2c, rasteryzacja Chromium, artefakt PNG/SVG | ZAPISANO; CI OCZEKUJE |
+| `frontend/scripts/sld_v3_render_roles.mjs` | Przenośne ścieżki; rzeczywisty `buildEnergizationOverlay(enm)` zamiast `index%2`; napis o topologicznej (nie pomiarowej) treści | ZAPISANO; NOWE PNG OCZEKUJĄ |
+| `.github/workflows/sld-determinism.yml` | Uruchomienie generatora W2c i renderów ról, rasteryzacja Chromium, dwa artefakty PNG/SVG | ZAPISANO; CI OCZEKUJE |
 | `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` | Usunięcie błędnego minimum CB/DS/CT/VT z AC-04, realna macierz testów wyposażenia | ZAPISANO |
 | `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md` | Rejestr 15 ustaleń, ograniczenia dowodowe i 18 scenariuszy T01–T18 | ZAPISANO |
 
