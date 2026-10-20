@@ -168,6 +168,7 @@ const comp8 = composeStation(buildComposeInput(station8));
 
 const PANEL_W = 620;
 const PANEL_H = 700;
+const w2cRejections: string[] = [];
 
 /** Kolor odcinka wg semantyki ownerRef (dowód rozróżnialności toru). */
 function segColor(ownerRef: string): string {
@@ -233,11 +234,10 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
   const collisions = plannedLabelCollisions(labelPlan);
   const symbolCollisions = plannedLabelObstacleCollisions(labelPlan, obstacles);
   if (collisions.length || symbolCollisions.length || labelPlan.droppedIdentity.length) {
-    throw new Error('W2c ' + comp.stationId + ': etykiety-kolizje=' + collisions.length +
+    w2cRejections.push('W2c ' + comp.stationId + ': etykiety-kolizje=' + collisions.length +
       ', etykiety-symbole=' + symbolCollisions.length +
       ' [' + symbolCollisions.join(', ') + ']' +
-      ', utracone-tożsamości=' + labelPlan.droppedIdentity.length +
-      '. Zabronione zapisanie zrzutu dowodowego.');
+      ', utracone-tożsamości=' + labelPlan.droppedIdentity.length);
   }
   const xml = (value: string): string => value.replace(/&/g, '&amp;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -269,12 +269,16 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
       '" font-weight="' + LABEL_TYPOGRAPHY[planned.label.labelClass].fontWeight +
       '" fill="' + color + '"' + transform + '>' + xml(planned.text) + '</text>';
   }).join('');
+  const rejected = w2cRejections.some((issue) => issue.startsWith('W2c ' + comp.stationId + ':'));
+  const warning = rejected ? '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 88) +
+    '" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#FF5E5E">' +
+    'NIEZGODNE: KOLIZJE NA SCHEMACIE — PATRZ RAPORT CI</text>' : '';
   return '<rect x="' + (cx + 8) + '" y="' + (cy + 8) +
     '" width="' + (PANEL_W - 16) + '" height="' + (PANEL_H - 16) +
     '" rx="12" fill="#111C28" stroke="#25384A"/>' +
     '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 38) +
     '" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="#E8EEF4">' +
-    xml(title) + '</text>' +
+    xml(title) + '</text>' + warning +
     '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 62) +
     '" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#9FB3C8">' +
     xml(subtitle) + '</text>' +
@@ -302,3 +306,7 @@ const svg =
 
 writeFileSync(`${OUT}/w2c-l2-tor-sn.svg`, svg);
 console.log('wrote', `${OUT}/w2c-l2-tor-sn.svg`);
+if (w2cRejections.length > 0) {
+  for (const issue of w2cRejections) console.error('[FAIL]', issue);
+  process.exitCode = 1; // SVG diagnostyczny istnieje, ale NIGDY nie otrzymuje PASS.
+}
