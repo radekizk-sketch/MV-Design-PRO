@@ -147,6 +147,10 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts --reporter=verbose
 
+      - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
+        working-directory: mv-design-pro/frontend
+        run: npm run accept:sld-v3
+
       # W2c dotąd malował napisy DER i pasmo nazw odrębnymi wzorami X/Y.
       # Dowód musi przeliczyć etykiety wspólnym planem i FAIL dla kolizji.
       - name: Run W2c label-plan evidence (PV + BESS + TR)
@@ -183,10 +187,6 @@ jobs:
           path: mv-design-pro/docs/sld/renders/v3/*.png
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
-        working-directory: mv-design-pro/frontend
-        run: npm run accept:sld-v3
 
       - name: Upload test results
         if: always()
