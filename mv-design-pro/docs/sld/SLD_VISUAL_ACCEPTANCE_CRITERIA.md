@@ -70,17 +70,27 @@ Skala oceny: 1 (atrapa) – 10 (industrial-grade ABB/Siemens). Akceptacja: **≥
 
 **Plan:** F1 (ring/double busbar primitives) + F2 (busbar-first placement) + F3 (visual_emphasis).
 
-### AC-04: Pola SN z vendor templates lub generic IEC 60617
+### AC-04: Pola SN — wyposażenie zgodne z modelem i technologią
 
-**Wymóg:** Pola SN MUSZĄ renderować się:
-- Z vendor templates (CANDIDATE — konkretne serie wymagają weryfikacji vendor datasheets): rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal — konkretne nazwy serii są **REQUIRES_SOURCE**
-- LUB jako generic zgodny z IEC 60617 (compartment envelope + CB + DS + ES + CT + VT + surge arrester)
+**Wymóg nadrzędny:** symbole wynikają z `Bay.primary_devices`, portów i rzeczywistej konfiguracji rozdzielnicy. Nie istnieje obowiązek stosowania CB + DS + CT + VT w każdym polu. Dawne kryterium minimalne sprzeczne było z wyższymi kontraktami `STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md` oraz `SLD_CAD_SPEC_V3.md` §12.1–12.4.
 
-**Czego NIE wolno:** Pole bez compartment envelope, bez CT/VT, bez surge arrester (brak znaczenia elektrycznego).
+- Pole liniowe RMU: rozłącznik + uziemnik + głowica, jeśli występują w danych lub jawnej konwencji szablonu.
+- Pole wyłącznikowe: rzeczywiste wyłączniki/odłączniki/przekładniki zgodnie z `placement`; brak automatycznego dorysowania CT lub VT.
+- Pole transformatorowe: technologia bezpiecznikowa albo wyłącznikowa stosownie do wyposażenia i katalogu; transformator z właściwymi terminalami.
+- Pole pomiarowe: brak domyślnego CB tylko dlatego, że taki aparat jest w innym rodzaju pola.
+- Nazwa producenta nie upoważnia do przyjęcia zestawu aparatów bez potwierdzonej konfiguracji.
 
-**Test:** Visual snapshot „GPZ-12-bay" — manual review per pole. Acceptable: każde pole ma min. CB + DS + CT + VT.
+**Zakazy:** brakujący aparat zastąpiony fikcyjnym; uziemnik z fałszywym stanem; CT/VT w błędnym torze; kabel bez portu/głowicy; identyfikator Q1 bez wskazania konkretnego pola.
 
-**Plan:** F1 (vendor templates — **wymaga źródła**, plan w `IMPLEMENTATION_GAP_ANALYSIS § 4.1`).
+**Testy pozytywne i negatywne:**
+1. RMU-L: `LOAD_SWITCH + ES + CABLE_HEAD`; 0 dopowiedzianych `CB/CT/VT`.
+2. Pole wyłącznikowe: aparat, `device_ref`, `placement` i port w zgodzie z ENM.
+3. Pole TR: rozdzielenie pola bezpiecznikowego od wyłącznikowego; terminale TR zgodne z modelowaniem.
+4. Pole pomiarowe: 0 wyłączników wstawionych bez danych.
+5. Brak aparatu w modelu: jawny stan niekompletny lub konwencja oznaczona proweniencją, nigdy pozorna kompletność.
+6. Kliknięcie aparatu w L2 zwraca ten sam `device_ref` i `bay_ref` w modelu, kanwie oraz inspektorze.
+
+**PASS:** wszystkie aparaty mają zgodny typ, rolę i przypisanie, 0 urządzeń udających faktyczny montaż, 0 niezakotwiczonych kabli; niepełność jest jawna.
 
 ### AC-05: Symbole aparatów jednoznaczne i klikalne
 
