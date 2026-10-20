@@ -2051,7 +2051,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     const scene = buildSceneV3(snapshot, 2);
     const main = scene.meta.mainTrunkStationIds;
     const mainRefs = new Set(main);
-    const refs = [...main, ...scene.meta.drawnStationIds.filter((ref) => !mainRefs.has(ref))];
+    // Stacje boczne są sortowane geometrycznie po AKTUALNEJ scenie, a nie
+    // po losowych refach z bazy; to nie rekonstruuje grafu ani nie wymyśla
+    // kolejności elektrycznej. Pierwsze zawsze stacje magistrali z danych.
+    const branches = scene.meta.drawnStationIds
+      .filter((ref) => !mainRefs.has(ref))
+      .map((ref) => ({ ref, rect: prostokatElementuWScenie(scene, ref) }))
+      .filter((item): item is { ref: string; rect: NonNullable<typeof item.rect> } => item.rect !== null)
+      .sort((a, b) =>
+        a.rect.minY - b.rect.minY || a.rect.minX - b.rect.minX || a.ref.localeCompare(b.ref));
+    const refs = [...main, ...branches.map((item) => item.ref)];
     const byRef = new Map(snapshot.substations.map((item) => [item.ref_id, item]));
     return [...new Set(refs)]
       .filter((ref) => prostokatElementuWScenie(scene, ref) !== null)
