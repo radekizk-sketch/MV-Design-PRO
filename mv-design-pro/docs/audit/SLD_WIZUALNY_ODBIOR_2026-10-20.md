@@ -37,7 +37,7 @@ Legenda: **O** = obraz zaobserwowany, **K** = potwierdzenie kodem, **D** = ogran
 |---|---|---|---|
 | VIS-01 | P0 | **D:** `schemat-10/README.md`, S3: NOP jest syntetyczny; fixtura `sldSubstrate52s` nie niesie realnego NOP. | Odtworzyć NOP z prawdziwego `switch_ref`/portów; OPEN→CLOSED w ENM zmienia graf i symbol, bez sztucznego znacznika. |
 | VIS-02 | P0 | **N:** brak w analizowanych obrazach łańcucha rzeczywisty NOP → stan → graf → wynik obliczeniowy. | Warunek PASS: referencja aparatu identyczna w SLD, projekcji, grafie obliczeniowym i wyniku; test OPEN/CLOSED i źródła alternatywnego. |
-| VIS-03 | P0 | **K:** `scripts/sld_v3_render_roles.mjs` syntetyzuje `energizedByTestId` wzorem `index % 2 === 0`. | To wyłącznie demonstracja kolorowania, nigdy dowód stanu sieci. Poprawka tej gałęzi dodaje widoczne oznaczenie obrazu; dowód operacyjny wymaga danych źródłowych. |
+| VIS-03 | P0 | **K, NAPRAWIONE W GAŁĘZI:** historyczny `sld_v3_render_roles.mjs` syntetyzował `energizedByTestId` wzorem `index % 2 === 0`. | Usunięto fałszywy wzór; obecny skrypt pobiera nakładkę topologiczną **z produkcyjnego** `buildEnergizationOverlay(enm)` i wyświetla informację, że nie jest to wynik rozpływu/pomiar napięcia. E2E i nowy render w CI pozostają do sprawdzenia. |
 | VIS-04 | P1 | **O:** `s3-l0/l1/l2.png`, `s4-ekran-l1.png`: w skali całej sieci nie da się swobodnie odczytać oznaczeń pól i aparatów. | Osobny odbiór L0/L1/L2 w 1440×900 i 1920×1080; L0 to nawigacja/topologia, nie miniaturowy L2. |
 | VIS-05 | P1 | **O:** wybrane duże zrzuty wykorzystują ograniczoną część wysokości obrazu; mały rozmiar treści po dopasowaniu. | Sprawdzić `computeInitialCameraState`, bezpieczny kadr, legendę i rzeczywiste piksele; nie ustawiać fikcyjnego wymiaru świata. |
 | VIS-06 | P1 | **O:** `w2c-l2-tor-sn.png`: `PV 1,0 MW` i `BESS 1,0 MW` nachodzą na dolne podpisy stacji. | 0 kolizji etykieta↔etykieta na finalnym SVG/PNG w przypadkach 2, 7, 8. |
@@ -103,7 +103,7 @@ CANON_OUT=/tmp/sld-w2c npx vite-node scripts/render_schemat10_w2c.tsx
 CANON_OUT=/tmp/sld-w2c node scripts/rasterize.mjs
 ```
 
-UWAGA: `sld_v3_render_roles.mjs` korzysta ze statycznego `renderToStaticMarkup` i z fikstury; nie zastępuje natywnych kliknięć, inicjalizacji React ani prawdziwej nakładki serwerowej. Po poprawce przenośności ustaw opcjonalnie `SLD_V3_RENDER_HTML_DIR`, `SLD_V3_CHROMIUM_PATH`; domyślnie używany katalog tymczasowy systemu i przeglądarka Playwright.
+UWAGA: `sld_v3_render_roles.mjs` korzysta ze statycznego `renderToStaticMarkup` i z fikstury; obecnie wywołuje rzeczywistą funkcję nakładki TOPOLOGICZNEJ produkcji, lecz nadal nie zastępuje natywnych kliknięć, inicjalizacji React, pomiaru napięcia ani wyników solvera. Po poprawce przenośności ustaw opcjonalnie `SLD_V3_RENDER_HTML_DIR`, `SLD_V3_CHROMIUM_PATH`; domyślnie używany katalog tymczasowy systemu i przeglądarka Playwright.
 
 **Przy tym audycie testów i komend nie uruchomiono:** środowisko wykonawcze kontenera nie było dostępne. Nie nadawać statusów PASS. Zmiany skryptu na gałęzi `audit/sld-v3-wizualny-20261020` zweryfikowano przez kontrolę dopasowania i zamiany fragmentów źródła, bez uruchomienia Node/Playwright.
 
