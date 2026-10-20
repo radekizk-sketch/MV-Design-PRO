@@ -235,6 +235,7 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
   if (collisions.length || symbolCollisions.length || labelPlan.droppedIdentity.length) {
     throw new Error('W2c ' + comp.stationId + ': etykiety-kolizje=' + collisions.length +
       ', etykiety-symbole=' + symbolCollisions.length +
+      ' [' + symbolCollisions.join(', ') + ']' +
       ', utracone-tożsamości=' + labelPlan.droppedIdentity.length +
       '. Zabronione zapisanie zrzutu dowodowego.');
   }
