@@ -33,6 +33,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from '../node_modules/@playwright/test/index.mjs';
 
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { buildEnergizationOverlay } from '../src/ui/sld/v3/canvas/SldCanvasV3Workspace.tsx';
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { boundingBoxOfRect, computeInitialCameraState } from '../src/ui/sld/v3/canvas/camera.ts';
 import { worldToScreen } from '../src/ui/sld/v2/viewport/ViewportController.ts';
@@ -155,22 +156,11 @@ if (stationRects.length === 0) throw new Error(`Brak symboli/etykiet stacji „$
 const stationWorldRect = unionWorldRect(stationRects);
 
 // ---------------------------------------------------------------------------
-// 2. Nakładka operatora (LOD 1): energizacja WYŁĄCZNIE kolorem (spec §6 P5).
-//    Podział deterministyczny (parzystość indeksu symbolu w scenie) — czysta
-//    demonstracja, że kolor faktycznie reaguje na dane (znane ograniczenie
-//    k1: odcinki poza GPZ nie niosą testId, patrz `canvas/overlay.ts`
-//    nagłówek — nakładka koloruje tu WYŁĄCZNIE symbole, nie przewody stacji).
+// 2. Nakładka operatora: TEN SAM buildEnergizationOverlay co produkcja.
+//    Źródłem jest topologia ENM ze stanami łączników, nie indeks elementu.
+//    Nie oznacza to obliczonego napięcia ani wyniku rozpływu.
 // ---------------------------------------------------------------------------
-
-const sceneL1 = buildSceneV3(enm, 1);
-function symbolTestId(symbol, index) {
-  return symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
-}
-const energizedByTestId = {};
-sceneL1.symbols.forEach((symbol, index) => {
-  energizedByTestId[symbolTestId(symbol, index)] = index % 2 === 0;
-});
-const operatorOverlay = { energizedByTestId };
+const operatorOverlay = buildEnergizationOverlay(enm);
 
 // ---------------------------------------------------------------------------
 // 3. Renderuj HTML (renderToStaticMarkup) dla każdego wymaganego PNG.
@@ -206,7 +196,7 @@ jobs.push({
     React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 1, overlay: operatorOverlay }),
     FULL_W,
     FULL_H,
-    'DEMONSTRACJA NAKŁADKI — STANY SYNTETYCZNE, NIE STAN SIECI',
+    'NAKŁADKA TOPOLOGICZNA ENM — NIE WYNIK ROZPŁYWU ANI POMIAR NAPIĘCIA',
   ),
   viewport: { width: FULL_W, height: FULL_H },
   // F8a-2 — FIX-2: BRAK clipu — kamera produkcyjna fituje teraz (k4.1,
