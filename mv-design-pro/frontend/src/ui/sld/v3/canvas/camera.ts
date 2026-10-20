@@ -315,6 +315,16 @@ export type CameraAction =
    *  `lod`) NIETKNIĘTE, geometria sceny NIETKNIĘTA — minimapa nawiguje, nie
    *  zmienia poziomu szczegółu ani rysunku (patrz `applyCenter`). */
   | { readonly type: 'center'; readonly worldPoint: { readonly x: number; readonly y: number } }
+  /** Czytelny kadr stacji, uruchamiany świadomie przez projektanta.
+   *  Inaczej niż 'kotwicz', wolno ZWIĘKSZYĆ skalę (nie tylko ją zachować),
+   *  a L2 jest wymuszony po to, by symbole pola nie znikały w widoku L0.
+   *  Nie zmienia ani jednej współrzędnej lub referencji sceny SN. */
+  | {
+      readonly type: 'cadFocus';
+      readonly bbox: BoundingBox;
+      readonly viewportSize: { readonly width: number; readonly height: number };
+      readonly safeInsets?: SafeInsets;
+    }
   /** k3: zmiana width/height PO MOUNCIE — zachowuje centrum świata i skalę,
    *  dostosowuje WYŁĄCZNIE viewport (patrz `applyResize`). */
   | { readonly type: 'resize'; readonly viewportSize: { readonly width: number; readonly height: number } }
@@ -526,6 +536,26 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
   }
   if (action.type === 'center') {
     return applyCenter(state, action.worldPoint);
+  }
+  if (action.type === 'cadFocus') {
+    const box = action.bbox;
+    if (![box.minX, box.minY, box.maxX, box.maxY].every(Number.isFinite)
+      || box.maxX <= box.minX || box.maxY <= box.minY) return state;
+    // Komfort odczytu t2=11 px świata: maks. 2,4 daje do 26,4 px ekranu.
+    // Dla większego obiektu pierwszeństwo ma objęcie CAŁEGO pola/stacji.
+    const fitScale = fitToView(box, action.viewportSize, undefined, action.safeInsets).scale;
+    const scale = Math.min(MAX_SCALE, 2.4, fitScale);
+    return {
+      ...state,
+      transform: centerOnPoint(
+        { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 },
+        action.viewportSize,
+        scale,
+        action.safeInsets,
+      ),
+      lod: 2,
+      viewportSize: action.viewportSize,
+    };
   }
   if (action.type === 'kotwicz') {
     return applyAnchor(state, action);
