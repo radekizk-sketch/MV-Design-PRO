@@ -183,6 +183,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Render operator L1 using production ENM energization overlay
+        if: always()
         working-directory: mv-design-pro/frontend
         run: npx vite-node scripts/sld_v3_render_roles.mjs
 
