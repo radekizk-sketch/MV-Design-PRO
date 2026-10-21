@@ -131,16 +131,28 @@ export const APPARATUS_STROKE_WIDTH = V3_STROKE_APPARATUS;
  * WSZYSTKICH klas, więc PROPORCJE zostają nietknięte — hierarchia §22.4 jest
  * zachowana co do ilorazu na KAŻDEJ skali (a nie „mniej więcej"), łącznie z
  * odróżnialnością znaku ciągu dalszego S9-1 od toru, który znaczy. Wzmocnienie
- * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` ≈ 0,63, więc
+ * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` = 1,25, więc
  * przy pracy na pełnym szczególe rysunek jest bit-identyczny ze stanem sprzed
  * karty.
  *
- * Wartość 1,5 px: przy takiej grubości kreska magistrali jest na ekranie
- * wyraźnie cięższa od odgałęzienia (1,0 px) i od obwodu nN (0,75 px), a
- * jednocześnie nie zamienia się w pas — dobrana jako najmniejsza, przy której
- * trzy sąsiednie rangi są rozróżnialne po samej wadze.
+ * Wartość 3 px (K2b §0.4, dawniej 1,5 px): przy 1,5 px odgałęzienie miało na
+ * ekranie 1,0 px, obwód nN 0,75 px — w widoku roboczym całej sieci przewody SN
+ * zlewały się z tłem i z kreskami adnotacji, a właściciel ocenił, że „ogląda
+ * rysunek zamiast pracować na sieci". Karta K2b wymaga przewodu SN ≥ 2 px na
+ * ekranie; przy wzmocnieniu JEDNORODNYM podłoga magistrali wynika z niej przez
+ * iloraz wag (2 · 2,4 / 1,6 = 3 px), więc rangi zostają rozróżnialne po samej
+ * wadze: magistrala 3 px > odgałęzienie 2 px > obwód nN 1,5 px. Wzmocnienie
+ * gaśnie powyżej skali 3 / 2,4 = 1,25.
  */
-export const MIN_TRUNK_STROKE_SCREEN_PX = 1.5;
+export const MIN_TRUNK_STROKE_SCREEN_PX = 3;
+
+/**
+ * K2b §0.4 — PODŁOGA PRZEWODU SN [px ekranu], skutek `MIN_TRUNK_STROKE_SCREEN_PX`
+ * przez iloraz wag (`sn / snTrunk`): przewód odgałęzienia ma na ekranie co
+ * najmniej 2 px. Przypięte testem `hierarchiaWagKresek.test.ts`.
+ */
+export const MIN_SN_WIRE_STROKE_SCREEN_PX =
+  (MIN_TRUNK_STROKE_SCREEN_PX * SEGMENT_STROKE_WIDTH.sn) / SEGMENT_STROKE_WIDTH.snTrunk;
 
 /**
  * S9-8: mnożnik wagi kreski dla skali kamery (patrz `MIN_TRUNK_STROKE_SCREEN_PX`).
@@ -250,6 +262,10 @@ export interface PreviewElementMeta {
    *  przerywaną linią — FIX-E (recenzja F5b): wołający przenosi
    *  `GpzElementMeta.dashed` tutaj, harness renderuje `strokeDasharray`. */
   readonly dashed?: boolean;
+  /** K2b §0.4: rodzaj odcinka toru SN z ENM (adapter `segmentPaths[].segmentKind`):
+   *  `'overhead'` = linia napowietrzna — rysowana przerywaną
+   *  (`OVERHEAD_LINE_DASHARRAY`, ta sama co próbka legendy). Brak = kabel. */
+  readonly lineType?: 'overhead';
   /**
    * F8b-1 (spłata długu k1, REBUILD_PLAN_V3 F6b-2/F8a): realny ref ENM (lub
    * kompozyt zakotwiczony w realnym refie z sufiksem `#...`, ta sama
@@ -551,26 +567,39 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
   );
 }
 
+/** K2b §0.4: kreska LINII NAPOWIETRZNEJ (kreska–kropka) — ta sama w odcinku
+ *  sceny i w próbce legendy (`sheet/Frame.tsx` `LegendLineSample`). */
+export const OVERHEAD_LINE_DASHARRAY = '6 3 1 3';
+
+/**
+ * Wzór kreski odcinka — JEDNA reguła dla kanwy (`SldCanvasV3` `SceneSegmentNode`)
+ * i podglądu (`PreviewSegmentNode`); dawniej dwie kopie, które K2b musiałaby
+ * rozszerzać osobno (reguła KLASA §3).
+ *
+ * F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
+ * WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
+ * i `leader` (3-2, leader etykiety). F10.5 (spec §20.1): `measurementLink`
+ * dostaje WŁASNY, INNY dasharray (2-2) — dwie linie wtórne muszą być
+ * rozróżnialne wizualnie (§20.1 dosłownie), nie tylko przez `ownerRef`.
+ * K2b §0.4: odcinek linii napowietrznej (`meta.lineType === 'overhead'`) —
+ * `OVERHEAD_LINE_DASHARRAY`; kabel ciągły.
+ */
+export function segmentDasharray(segment: PreviewSegment): string | undefined {
+  const kind = segment.meta?.kind ?? 'sn';
+  if (kind === 'protectionTrip') return '4 2';
+  if (kind === 'measurementLink') return '2 2';
+  if (segment.meta?.dashed) return '4 3';
+  if (kind === 'leader') return '3 2';
+  if (segment.meta?.lineType === 'overhead') return OVERHEAD_LINE_DASHARRAY;
+  return undefined;
+}
+
 function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
   const { segment, stroke } = props;
   if (segment.points.length < 2) return null;
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
-  // F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
-  // WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
-  // i `leader` (3-2, leader etykiety). F10.5 (spec §20.1): `measurementLink`
-  // dostaje WŁASNY, INNY dasharray (2-2) — dwie linie wtórne muszą być
-  // rozróżnialne wizualnie (§20.1 dosłownie), nie tylko przez `ownerRef`.
-  const strokeDasharray =
-    kind === 'protectionTrip'
-      ? '4 2'
-      : kind === 'measurementLink'
-        ? '2 2'
-        : segment.meta?.dashed
-          ? '4 3'
-          : kind === 'leader'
-            ? '3 2'
-            : undefined;
+  const strokeDasharray = segmentDasharray(segment);
   return (
     <path
       d={pointsToPath(segment.points)}

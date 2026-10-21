@@ -179,6 +179,11 @@ const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
   // `wlasnoscEtykiet`). Rozjazd OCZEKIWANY z tego samego powodu co wyżej: rodzaj
   // obiektu bierze się z kotwicy.
   'lacznik-toru→galaz',
+  // K2b §0.4: podpis „NO" punktu normalnie otwartego wskazanego w
+  // `Corridor.no_point_ref` refem ŁĄCZNIKA albo ODCINKA. Na rysunku to znacznik
+  // aparatowy (symbol `noPoint`, `elementKind: 'apparatus'` — jak NO stacji), w
+  // modelu GAŁĄŹ, więc kotwica to `galaz` — ten sam powód co `lacznik-toru` wyżej.
+  'no-point→galaz',
 ]);
 
 describe('B — inwentarz rozjazdów deklaracja↔kotwica jest zamknięty', () => {

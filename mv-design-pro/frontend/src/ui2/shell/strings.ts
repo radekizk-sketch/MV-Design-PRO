@@ -36,6 +36,10 @@ export const SHELL_STRINGS = {
   // --- menu Widok ---
   viewMenu: 'Widok',
   themeItem: 'Motyw ekranu',
+  viewModeItem: 'Widok schematu',
+  viewModeHint: 'Roboczy: sama sieć do pracy. Arkusz: rama, pola odniesienia i tabliczka jak w eksporcie.',
+  viewModeWorking: 'roboczy',
+  viewModeSheet: 'arkusz',
   auditDetails: 'Szczegóły audytowe',
   auditDetailsHint:
     'Pokaż identyfikatory techniczne, odciski danych, ślady obliczeń i zakładki analiz akademickich',

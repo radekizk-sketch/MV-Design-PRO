@@ -90,6 +90,8 @@ export function clampBottomHeight(height: number): number {
   return przytnij(BOTTOM_MIN, BOTTOM_MAX, height, BOTTOM_DEFAULT);
 }
 
+export type TrybWidokuSchematu = 'roboczy' | 'arkusz';
+
 interface ShellState {
   activeSpace: SpaceId;
   /**
@@ -159,6 +161,13 @@ interface ShellState {
    * Rozdzielone: adres wyznacza przestrzeń, ten stan wyznacza panel.
    */
   panelSchematu: 'schemat' | 'model';
+  /**
+   * K2b §0.4 — tryb widoku kanwy schematu: `'roboczy'` (domyślny — sama sieć,
+   * bez ramy arkusza, pól odniesienia i tabliczki) albo `'arkusz'` (rysunek
+   * arkuszowy jak w eksporcie). Ustawienie WIDOKU, persystowane jak reszta
+   * preferencji; eksport zawsze rysuje arkusz.
+   */
+  trybWidokuSchematu: TrybWidokuSchematu;
 
   setActiveSpace: (space: SpaceId) => void;
   setSzczegolyAudytowe: (wlaczone: boolean) => void;
@@ -169,6 +178,8 @@ interface ShellState {
   setZadanieImportuArkusza: (zadanie: boolean) => void;
   setPodgladSchematu: (podglad: boolean) => void;
   setPanelSchematu: (panel: 'schemat' | 'model') => void;
+  setTrybWidokuSchematu: (tryb: TrybWidokuSchematu) => void;
+  przelaczTrybWidokuSchematu: () => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -228,6 +239,7 @@ export const useShellStore = create<ShellState>()(
       zadanieImportuArkusza: false,
       podgladSchematu: false,
       panelSchematu: 'schemat' as const,
+      trybWidokuSchematu: 'roboczy' as TrybWidokuSchematu,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setSzczegolyAudytowe: (wlaczone) => set({ szczegolyAudytowe: wlaczone }),
@@ -241,6 +253,9 @@ export const useShellStore = create<ShellState>()(
       setZadanieImportuArkusza: (zadanie) => set({ zadanieImportuArkusza: zadanie }),
       setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
       setPanelSchematu: (panel) => set({ panelSchematu: panel }),
+      setTrybWidokuSchematu: (tryb) => set({ trybWidokuSchematu: tryb }),
+      przelaczTrybWidokuSchematu: () =>
+        set((state) => ({ trybWidokuSchematu: state.trybWidokuSchematu === 'roboczy' ? 'arkusz' : 'roboczy' })),
 
       getLayout: (space) => layoutFor(get(), space),
 
@@ -289,12 +304,20 @@ export const useShellStore = create<ShellState>()(
     {
       name: 'mvd-shell-ui-local',
       storage: createJSONStorage(() => localStorage),
+      // Scalanie jak domyślne w zustand (płytkie), z jedną walidacją: tryb widoku
+      // schematu spoza dwóch wartości (zapis uszkodzony albo z innej wersji) wraca do
+      // domyślnego 'roboczy' — kanwa nie może dostać trybu, którego nie zna.
+      merge: (zapisany, biezacy) => {
+        const z = (zapisany ?? {}) as Partial<ShellState>;
+        return { ...biezacy, ...z, trybWidokuSchematu: z.trybWidokuSchematu === 'arkusz' ? 'arkusz' : 'roboczy' };
+      },
       partialize: (state) => ({
         activeSpace: state.activeSpace,
         szczegolyAudytowe: state.szczegolyAudytowe,
         layoutBySpace: state.layoutBySpace,
         bottomPanelHeight: state.bottomPanelHeight,
         podgladSchematu: state.podgladSchematu,
+        trybWidokuSchematu: state.trybWidokuSchematu,
       }),
     },
   ),

@@ -27,17 +27,14 @@
  * na PEŁNE pokrycie, nie tylko kuratora historycznego).
  *
  * ZAKRES LINII (decyzja K12, „zero fabrykacji" rozciągnięta na wpisy linii):
- * scena v3 dziś renderuje WSZYSTKIE odcinki toru mocy JEDNYM stylem linii
- * ciągłej — `PreviewSegmentKind` (`compose/preview.tsx`) NIE ma wariantu
- * „linia napowietrzna" (brak dasharray odróżniającego overhead od cable w
- * `SldCanvasV3.tsx::SceneSegmentNode`; dasharray `'6 3 1 3'` istnieje
- * WYŁĄCZNIE jako próbka wzorcowa w `sheet/Frame.tsx::LegendLineSample`, nigdy
- * w realnie renderowanym odcinku). Wpis 'overhead' w tej funkcji BYŁBY
- * fabrykacją — obiekt, którego użytkownik nigdy nie zobaczy na THIS
- * rysunku — więc CELOWO pominięty (za `buildDefaultLegend()`'s 'overhead'
- * odpowiada WYŁĄCZNIE arkusz wzorcowy/domyślny fallback `SheetFrame`, nie ta
- * funkcja). 'cable' pokazywany, gdy scena ma ≥1 odcinek toru mocy (bus/
- * busGpz/sn/snTrunk/lv — jedyny naprawdę renderowany styl linii, ciągła).
+ * wpis linii istnieje wtedy i tylko wtedy, gdy scena rysuje odcinek tym stylem.
+ * K2b §0.4: scena rozróżnia kabel (linia ciągła) od linii napowietrznej
+ * (`meta.lineType === 'overhead'`, kreska `OVERHEAD_LINE_DASHARRAY` — ta sama
+ * w odcinku i w próbce legendy `sheet/Frame.tsx::LegendLineSample`), więc wpis
+ * 'overhead' pojawia się, gdy scena ma ≥1 odcinek linii napowietrznej (dawniej
+ * celowo pominięty: styl istniał wyłącznie w próbce, nigdy w odcinku). 'cable'
+ * pokazywany, gdy scena ma ≥1 odcinek toru mocy rysowany linią CIĄGŁĄ (bus/
+ * busGpz/sn/snTrunk/lv bez `lineType`).
  * 'openTerminal' pokazywany, gdy scena ma ≥1 słupek końca otwartego
  * (§16-v3, `meta.kind==='openTerminal'` — realny znacznik sceny, nie próbka).
  */
@@ -73,8 +70,12 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
   }));
 
   const lineEntries: SheetLegendEntry[] = [];
-  const hasPowerSegment = scene.segments.some((s) => POWER_SEGMENT_KINDS.has(s.meta?.kind ?? 'sn'));
-  if (hasPowerSegment) lineEntries.push({ kind: 'line', id: 'cable', labelPl: 'Kabel' });
+  const hasSolidPowerSegment = scene.segments.some(
+    (s) => POWER_SEGMENT_KINDS.has(s.meta?.kind ?? 'sn') && s.meta?.lineType !== 'overhead',
+  );
+  if (hasSolidPowerSegment) lineEntries.push({ kind: 'line', id: 'cable', labelPl: 'Kabel' });
+  const hasOverhead = scene.segments.some((s) => s.meta?.lineType === 'overhead');
+  if (hasOverhead) lineEntries.push({ kind: 'line', id: 'overhead', labelPl: 'Linia napowietrzna' });
   const hasTieMarker = scene.segments.some((s) => s.meta?.kind === 'tieMarker');
   const hasOpenTerminal = scene.segments.some((s) => s.meta?.kind === 'openTerminal');
   if (hasOpenTerminal) {

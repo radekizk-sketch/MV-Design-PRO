@@ -102,6 +102,7 @@ import { rectsOverlap, type V3Rect } from '../core/grid';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
   enlargedFontSizeWithinProportion,
+  fontSizeForScreenFloorWithinProportion,
   isLabelHiddenAtScale,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
@@ -189,6 +190,27 @@ interface Kandydat {
    *  (pasmo nazw ma własną szerokość slotu = szerokość kolumny stacji, więc
    *  powiększony wiersz nie ma prawa wyjść poza własną kolumnę). */
   readonly tekstBazowy: string;
+  /** K2b §0.2 (b): kandydat powiększony do podłogi OPISÓW CELU KADRU niesie tu
+   *  swoją postać standardową (bez podłogi celu). Gdy postać celu nie znajdzie
+   *  miejsca, plan próbuje standardowej — podłoga celu nigdy nie odbiera
+   *  rysunkowi napisu, który bez niej by się narysował. `null` = postaci
+   *  standardowej nie ma (próg czytelności albo sufit proporcji), więc brak
+   *  miejsca dla postaci celu kończy się tym samym kubełkiem co bez podłogi. */
+  readonly zapasowy?: Kandydat | null;
+}
+
+/**
+ * K2b §0.2 (b) — PODŁOGA OPISÓW CELU KADRU. Etykiety należące do wykadrowanego
+ * celu (`nalezy`) rysują się pismem nie mniejszym niż `screenPx` na ekranie, o ile
+ * mieści się to w suficie proporcji klasy (`fontSizeForScreenFloorWithinProportion`),
+ * także gdy bez podłogi byłyby ukryte progiem czytelności. Poza suficiem —
+ * zachowanie bez podłogi (pierwszeństwo kompletności kadru, kryterium (a)).
+ * Tworzy ją wyłącznie `zakresKadru.ts` (`podlogaOpisowCelu`) — ten sam obiekt
+ * dostaje plan renderu kanwy i tusz etykiet kamery (predykaty parami).
+ */
+export interface PodlogaOpisowCelu {
+  readonly screenPx: number;
+  readonly nalezy: (label: OwnedLabel) => boolean;
 }
 
 /** Wysokość wiersza dla DOWOLNEGO rozmiaru pisma (ta sama formuła co
@@ -457,6 +479,7 @@ export function planSceneLabels(
   obstacles: readonly V3Rect[],
   scale: number,
   sheet: SheetOutline,
+  podlogaCelu?: PodlogaOpisowCelu,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
@@ -489,7 +512,8 @@ export function planSceneLabels(
   const hiddenDetail: OwnedLabel[] = [];
   const droppedIdentity: OwnedLabel[] = [];
   const kandydaci: Kandydat[] = [];
-  labels.forEach((label, index) => {
+  /** Kandydat bez podłogi celu albo kubełek, do którego etykieta trafia. */
+  const kandydatStandardowy = (label: OwnedLabel, index: number): Kandydat | 'ukryta' | 'utracona' => {
     const czytelna = isLabelReadableAtScale(label.labelClass, scale);
     // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
     // wyjątek bezwzględny): `unresolved` OMIJA próg czytelności wprost —
@@ -499,8 +523,7 @@ export function planSceneLabels(
     // — od tego miejsca w dół etykieta „unresolved" idzie tą samą ścieżką co
     // etykieta klasy `'tozsamosc'`/`'L0'` zawsze szła.
     if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
-      hiddenDetail.push(label);
-      return;
+      return 'ukryta';
     }
     // PROPORCJE: rozmiar pisma z JEDNEGO źródła obu granic (`core/text.ts`
     // `enlargedFontSizeWithinProportion`) — `null` znaczy „czytelnie już się
@@ -515,8 +538,7 @@ export function planSceneLabels(
       // Tożsamość, której nie da się narysować proporcjonalnie — uczciwy brak,
       // policzony we wskaźniku „Ukryto N opisów" (`SldCanvasV3`), a nie napis
       // wielkości trzech aparatów obok siebie.
-      droppedIdentity.push(label);
-      return;
+      return 'utracona';
     }
     // (c) skracanie w PIERWSZEJ kolejności do REZERWACJI właściciela: wiersz
     // pasma nazw ma slot szerokości kolumny stacji, więc powiększone pismo
@@ -554,7 +576,40 @@ export function planSceneLabels(
       !czytelna && label.ownerKind !== 'station-name'
         ? label.text
         : shortenPreservingIdentity(label.text, fontSize, granicaTekstu);
-    kandydaci.push({ label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy });
+    return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
+  };
+  labels.forEach((label, index) => {
+    const standardowy = kandydatStandardowy(label, index);
+    const fontCelu =
+      podlogaCelu !== undefined && podlogaCelu.nalezy(label)
+        ? fontSizeForScreenFloorWithinProportion(label.labelClass, scale, podlogaCelu.screenPx)
+        : null;
+    if (fontCelu !== null && fontCelu > LABEL_TYPOGRAPHY[label.labelClass].fontSize) {
+      // Postać celu: pismo powiększone do podłogi celu, tekst jak w gałęzi
+      // powiększenia awaryjnego (pasmo nazw skracane do rezerwacji kolumny).
+      const rotated = label.rotated === true;
+      const tekstBazowy =
+        label.ownerKind === 'station-name'
+          ? shortenPreservingIdentity(
+              label.text,
+              fontCelu,
+              label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
+            )
+          : label.text;
+      kandydaci.push({
+        label,
+        index,
+        fontSize: fontCelu,
+        enlarged: true,
+        slot: label.rect,
+        tekstBazowy,
+        zapasowy: typeof standardowy === 'string' ? null : standardowy,
+      });
+      return;
+    }
+    if (standardowy === 'ukryta') hiddenDetail.push(label);
+    else if (standardowy === 'utracona') droppedIdentity.push(label);
+    else kandydaci.push(standardowy);
   });
 
   // ŚCIEŻKA SZYBKA I ZACHOWAWCZA: gdy ŻADNA etykieta nie wymaga powiększenia
@@ -602,8 +657,25 @@ export function planSceneLabels(
   const obstacleIndex = buildRectIndex(obstacles);
   const zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
-  for (const kandydat of kolejnosc) {
-    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+  for (const kandydatPierwotny of kolejnosc) {
+    let kandydat = kandydatPierwotny;
+    let dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+    if ((!dopasowanie || dopasowanie.text.length === 0) && kandydat.zapasowy !== undefined) {
+      // Podłoga celu bez miejsca: postać standardowa (albo kubełek bez podłogi).
+      const zapasowy = kandydat.zapasowy;
+      if (zapasowy === null) {
+        if (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) {
+          droppedIdentity.push(kandydat.label);
+        } else {
+          hiddenDetail.push(kandydat.label);
+        }
+        continue;
+      }
+      // Pasmo nazw przestawiono pod postać celu; postać standardowa pisma
+      // naturalnego stoi w swoim slocie sceny (tak jak bez podłogi celu).
+      kandydat = zapasowy.enlarged ? { ...zapasowy, slot: przestawione.get(zapasowy.index) ?? zapasowy.slot } : zapasowy;
+      dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+    }
     if (!dopasowanie || dopasowanie.text.length === 0) {
       // T2-LOD: `unresolved` idzie do `droppedIdentity`, NIGDY do
       // `hiddenDetail` — nawet gdy przyczyną braku miejsca jest KOLIZJA (nie

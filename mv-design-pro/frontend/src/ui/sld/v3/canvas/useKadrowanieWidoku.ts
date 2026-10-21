@@ -9,7 +9,19 @@
  *    źródło toru (§0.7, zero przeszukiwania topologii we froncie).
  *
  * Kanwa (`SldCanvasV3`) dostaje wyłącznie żądania (`zadanieKadru`,
- * `przywrocenieKamery`) — kamera pozostaje jej stanem wewnętrznym.
+ * `przywrocenieKamery`) i kurtynę kadru (`refyKurtyny`) — kamera pozostaje jej
+ * stanem wewnętrznym.
+ *
+ * K2b §0.3 — HISTORIA = KONTEKST PRACY. Wpis historii niesie kamerę, ścieżkę,
+ * zaznaczenie (z kontekstem kliknięcia) i kurtynę. Trzy reguły:
+ *  - wejście w cel (dwuklik stacji, „Dopasuj do…", wskazanie z wyników) odkłada
+ *    widok SPRZED gestu — dla dwukliku zaznaczenie sprzed pierwszego kliku
+ *    (`opcje.zaznaczeniePrzed`), bo pierwszy klik gestu sam zaznacza stację;
+ *  - poprzednia/następna stacja (`opcje.przeglad`) wewnątrz kadru stacji NIE
+ *    odkłada wpisu: całe przeglądanie stacji to jeden wpis powrotu;
+ *  - poziom „Sieć" ścieżki wraca do wpisu sprzed wejścia w cel
+ *    (`zdejmijDoWejscia`) — kamera, poziom szczegółu i zaznaczenie jak przed
+ *    dwuklikiem. Escape bez zmian (zdejmuje zaznaczenie, nie widok).
  */
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { EnergyNetworkModel } from '../../../../types/enm';
@@ -21,7 +33,13 @@ import {
 import type { SceneLod } from '../scene/buildScene';
 import { scenaSld, scenyWszystkichPoziomow } from '../scene/scenaSld';
 import type { ViewportTransform } from './camera';
-import { dolozDoHistorii, zdejmijZHistorii, type WpisHistoriiKadru } from './historiaKadrow';
+import {
+  dolozDoHistorii,
+  zdejmijDoWejscia,
+  zdejmijZHistorii,
+  type WpisHistoriiKadru,
+  type ZaznaczenieWidoku,
+} from './historiaKadrow';
 import {
   CELE_MENU_KADRU,
   zakresCelu,
@@ -109,7 +127,11 @@ export interface KadrowanieWidoku {
   readonly stacjeObchodu: readonly string[];
   /** Indeks bieżącej stacji kadru w `stacjeObchodu` (`null`: kadr nie jest kadrem jednej stacji). */
   readonly indeksStacji: number | null;
-  kadrujCel(cel: CelKadru, kontekst?: readonly string[]): void;
+  /** Kurtyna kadru: refy rysunku celu bieżącego kadru (`null` = bez kurtyny —
+   *  widok sieci, polecenie spoza kadrowania). Kanwa przyciemnia wszystko poza
+   *  nimi (K2b §0.1 (c) „izolacja"). */
+  readonly refyKurtyny: readonly string[] | null;
+  kadrujCel(cel: CelKadru, kontekst?: readonly string[], opcje?: OpcjeKadru): void;
   kadrujPoziom(poziom: PoziomSciezki): void;
   dopasujZakres(): void;
   poprzedniWidok(): void;
@@ -118,19 +140,37 @@ export interface KadrowanieWidoku {
   zamknijKomunikat(): void;
 }
 
+/** Opcje polecenia kadru (K2b §0.3). */
+export interface OpcjeKadru {
+  /** Zaznaczenie sprzed gestu (dwuklik: sprzed pierwszego kliku). Brak = bieżące. */
+  readonly zaznaczeniePrzed?: ZaznaczenieWidoku;
+  /** Przeglądanie stacji (poprzednia/następna) — bez nowego wpisu historii, gdy
+   *  bieżący kadr jest już kadrem stacji. */
+  readonly przeglad?: boolean;
+}
+
 export function useKadrowanieWidoku(opcje: {
   readonly snapshot: EnergyNetworkModel | null;
   readonly kamera: StanKameryWorkspace | null;
   readonly zaznaczenie: readonly string[];
   readonly caseId: string | null;
+  /** Bieżące zaznaczenie z kontekstem kliknięcia (do wpisu historii). */
+  readonly pobierzZaznaczenie: () => ZaznaczenieWidoku;
+  /** Odtworzenie zaznaczenia z wpisu historii. */
+  readonly przywrocZaznaczenie: (zaznaczenie: ZaznaczenieWidoku) => void;
 }): KadrowanieWidoku {
   const { snapshot, kamera, zaznaczenie, caseId } = opcje;
+  const zaznaczenieWidokuRef = useRef({ pobierz: opcje.pobierzZaznaczenie, przywroc: opcje.przywrocZaznaczenie });
+  zaznaczenieWidokuRef.current = { pobierz: opcje.pobierzZaznaczenie, przywroc: opcje.przywrocZaznaczenie };
   const [zadanieKadru, setZadanieKadru] = useState<KadrowanieWidoku['zadanieKadru']>(null);
   const [przywrocenieKamery, setPrzywrocenieKamery] = useState<KadrowanieWidoku['przywrocenieKamery']>(null);
   const [sciezka, setSciezka] = useState<readonly PoziomSciezki[]>([]);
   const [historia, setHistoria] = useState<readonly WpisHistoriiKadru[]>([]);
   const [komunikat, setKomunikat] = useState<KomunikatKadru | null>(null);
   const [torWToku, setTorWToku] = useState(false);
+  const [refyKurtyny, setRefyKurtyny] = useState<readonly string[] | null>(null);
+  const refyKurtynyRef = useRef(refyKurtyny);
+  refyKurtynyRef.current = refyKurtyny;
   const seq = useRef(0);
   const zapytanieToru = useRef(0);
   // Bieżące wartości dla poleceń (stabilne referencje funkcji, aktualne dane).
@@ -176,18 +216,38 @@ export function useKadrowanieWidoku(opcje: {
     return wynik;
   }, [wynikCelu, zaznaczenie, caseId]);
 
-  const wykonajKadr = useCallback((zakres: ZakresKadru, nowyKomunikat: KomunikatKadru | null) => {
+  /** Wpis historii z BIEŻĄCEGO widoku (kamera, ścieżka, zaznaczenie, kurtyna). */
+  const odlozWidok = useCallback((zaznaczeniePrzed?: ZaznaczenieWidoku) => {
     const teraz = kameraRef.current;
-    if (teraz) {
-      const stos = dolozDoHistorii(historiaRef.current, { transform: teraz.transform, lod: teraz.lod, sciezka: sciezkaRef.current });
-      historiaRef.current = stos;
-      setHistoria(stos);
-    }
-    seq.current += 1;
-    setZadanieKadru({ zakres, seq: seq.current });
-    setSciezka(zakres.cel === 'siec' ? [] : zakres.sciezka);
-    setKomunikat(nowyKomunikat);
+    if (!teraz) return;
+    const stos = dolozDoHistorii(historiaRef.current, {
+      transform: teraz.transform,
+      lod: teraz.lod,
+      sciezka: sciezkaRef.current,
+      zaznaczenie: zaznaczeniePrzed ?? zaznaczenieWidokuRef.current.pobierz(),
+      kurtyna: refyKurtynyRef.current,
+    });
+    historiaRef.current = stos;
+    setHistoria(stos);
   }, []);
+
+  const wykonajKadr = useCallback(
+    (zakres: ZakresKadru, nowyKomunikat: KomunikatKadru | null, opcjeKadru?: OpcjeKadru) => {
+      const biezacy = sciezkaRef.current[sciezkaRef.current.length - 1];
+      const wPrzegladzieStacji = opcjeKadru?.przeglad === true && biezacy?.cel === 'stacja';
+      if (!wPrzegladzieStacji) odlozWidok(opcjeKadru?.zaznaczeniePrzed);
+      seq.current += 1;
+      setZadanieKadru({ zakres, seq: seq.current });
+      const nowaSciezka = zakres.cel === 'siec' ? [] : zakres.sciezka;
+      sciezkaRef.current = nowaSciezka;
+      setSciezka(nowaSciezka);
+      const kurtyna = zakres.cel === 'siec' || zakres.refy.length === 0 ? null : zakres.refy;
+      refyKurtynyRef.current = kurtyna;
+      setRefyKurtyny(kurtyna);
+      setKomunikat(nowyKomunikat);
+    },
+    [odlozWidok],
+  );
 
   const kadrujTor = useCallback(
     (ref: string) => {
@@ -231,7 +291,7 @@ export function useKadrowanieWidoku(opcje: {
   );
 
   const kadrujCel = useCallback(
-    (cel: CelKadru, kontekst: readonly string[] = zaznaczenie) => {
+    (cel: CelKadru, kontekst: readonly string[] = zaznaczenie, opcjeKadru?: OpcjeKadru) => {
       if (cel === 'tor') {
         if (kontekst.length === 1) kadrujTor(kontekst[0]);
         return;
@@ -241,14 +301,38 @@ export function useKadrowanieWidoku(opcje: {
         setKomunikat({ rodzaj: 'ostrzezenie', tekst: wynik.przyczyna, szczegoly: [] });
         return;
       }
-      wykonajKadr(wynik.zakres, null);
+      wykonajKadr(wynik.zakres, null, opcjeKadru);
     },
     [zaznaczenie, kadrujTor, wynikCelu, wykonajKadr],
   );
 
+  /** Odtworzenie wpisu historii: kamera, ścieżka, kurtyna i zaznaczenie. */
+  const przywrocWpis = useCallback((wpis: WpisHistoriiKadru) => {
+    seq.current += 1;
+    setPrzywrocenieKamery({ transform: wpis.transform, lod: wpis.lod, seq: seq.current });
+    sciezkaRef.current = wpis.sciezka;
+    setSciezka(wpis.sciezka);
+    refyKurtynyRef.current = wpis.kurtyna;
+    setRefyKurtyny(wpis.kurtyna);
+    setKomunikat(null);
+    zaznaczenieWidokuRef.current.przywroc(wpis.zaznaczenie);
+  }, []);
+
   const kadrujPoziom = useCallback(
-    (poziom: PoziomSciezki) => kadrujCel(poziom.cel, poziom.kontekst),
-    [kadrujCel],
+    (poziom: PoziomSciezki) => {
+      if (poziom.cel === 'siec') {
+        // K2b §0.3: „Sieć" = powrót do widoku sprzed wejścia w cel.
+        const wejscie = zdejmijDoWejscia(historiaRef.current);
+        if (wejscie) {
+          historiaRef.current = wejscie.stos;
+          setHistoria(wejscie.stos);
+          przywrocWpis(wejscie.wpis);
+          return;
+        }
+      }
+      kadrujCel(poziom.cel, poziom.kontekst);
+    },
+    [kadrujCel, przywrocWpis],
   );
 
   const dopasujZakres = useCallback(() => {
@@ -260,22 +344,17 @@ export function useKadrowanieWidoku(opcje: {
     if (!zdjety) return;
     historiaRef.current = zdjety.stos;
     setHistoria(zdjety.stos);
-    seq.current += 1;
-    setPrzywrocenieKamery({ transform: zdjety.wpis.transform, lod: zdjety.wpis.lod, seq: seq.current });
-    setSciezka(zdjety.wpis.sciezka);
-    setKomunikat(null);
-  }, []);
+    przywrocWpis(zdjety.wpis);
+  }, [przywrocWpis]);
 
   const zapamietajPrzedPoleceniem = useCallback(() => {
-    const teraz = kameraRef.current;
-    if (teraz) {
-      const stos = dolozDoHistorii(historiaRef.current, { transform: teraz.transform, lod: teraz.lod, sciezka: sciezkaRef.current });
-      historiaRef.current = stos;
-      setHistoria(stos);
-    }
+    odlozWidok();
+    sciezkaRef.current = [];
     setSciezka([]);
+    refyKurtynyRef.current = null;
+    setRefyKurtyny(null);
     setKomunikat(null);
-  }, []);
+  }, [odlozWidok]);
 
   const zamknijKomunikat = useCallback(() => setKomunikat(null), []);
 
@@ -300,6 +379,7 @@ export function useKadrowanieWidoku(opcje: {
     dostepnosc,
     stacjeObchodu,
     indeksStacji,
+    refyKurtyny,
     kadrujCel,
     kadrujPoziom,
     dopasujZakres,

@@ -35,6 +35,7 @@ import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-eleme
 import { sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { opisToru } from '../useKadrowanieWidoku';
+import { hiddenLabelsHintTextPozaCelem } from '../chromeLayout';
 import { prostokatRefowWScenie } from '../viewAnchor';
 import { prostokatyZakresu, zakresCelu } from '../zakresKadru';
 
@@ -596,5 +597,94 @@ describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () 
     expect(within(menu).getByTestId('sld-v3-dopasuj-do-tor')).toBeDisabled();
     expect(within(menu).getByTestId('sld-v3-dopasuj-do-tor-przyczyna').textContent).toMatch(/przypadku obliczeniowego/);
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * K2b §0.3 — WPIS HISTORII = {kamera, poziom, ścieżka, zaznaczenie}. Ścieżka
+ * natywna przeglądarki: dwuklik to `click` (detail 1) → `click` (detail 2) →
+ * `dblclick`, a pierwszy klik ZAZNACZA stację — zaznaczenie sprzed gestu
+ * (odcinek) musi trafić do wpisu powrotu. Iloczyn: zaznaczenie przed wejściem
+ * {odcinek toru · brak} × powrót {„Sieć" ścieżki · „Wstecz"} × przegląd stacji
+ * {bez · następna ×2 · poprzednia}.
+ */
+describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wpis powrotu', () => {
+  const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) => e.id);
+  const odcinekToru = (c: HTMLElement): Element => {
+    const el = c.querySelector('[data-hit-klasa="tor"][data-hit-role="obrys"]');
+    if (!el) throw new Error('brak obszaru trafienia odcinka toru');
+    return el;
+  };
+  function dwuklikNatywny(c: HTMLElement, ref: string): void {
+    const el = uchwyt(c, sceny[poziom(c)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+    fireEvent.click(el, { detail: 1 });
+    fireEvent.click(el, { detail: 2 });
+    fireEvent.doubleClick(el, { detail: 2 });
+  }
+
+  for (const powrot of ['sciezka', 'wstecz'] as const) {
+    for (const przeglad of ['bez', 'nastepna2', 'poprzednia'] as const) {
+      it(`zaznaczony odcinek → dwuklik stacji → przegląd ${przeglad} → ${powrot === 'sciezka' ? '„Sieć"' : '„Wstecz"'}: kadr sieci i zaznaczenie odcinka jak przed dwuklikiem`, () => {
+        const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+        fireEvent.click(odcinekToru(container), { detail: 1 });
+        const przed = zaznaczone();
+        expect(przed).toHaveLength(1);
+        const kadrSieci = viewBox(container);
+
+        dwuklikNatywny(container, STACJA);
+        expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+        expect(zaznaczone()).toEqual([STACJA]);
+        const i = porzadek.indexOf(STACJA);
+        if (przeglad === 'nastepna2') {
+          fireEvent.click(screen.getByTestId('sld-v3-stacja-nastepna'));
+          const kadrPierwszej = viewBox(container);
+          fireEvent.click(screen.getByTestId('sld-v3-stacja-nastepna'));
+          expect(viewBox(container)).not.toBe(kadrPierwszej);
+          expect(etykietySciezki()).toEqual(['Sieć', nazwa(porzadek[i + 2])]);
+        }
+        if (przeglad === 'poprzednia') fireEvent.click(screen.getByTestId('sld-v3-stacja-poprzednia'));
+
+        if (powrot === 'sciezka') fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
+        else fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
+        expect(viewBox(container)).toBe(kadrSieci);
+        expect(poziom(container)).toBe(0);
+        expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
+        expect(zaznaczone()).toEqual(przed);
+        // Przegląd stacji nie zostawił wpisów pośrednich: jeden powrót wraca do sieci.
+        if (powrot === 'wstecz') expect(screen.getByTestId('sld-v3-poprzedni-widok')).toBeDisabled();
+      });
+    }
+  }
+
+  it('bez zaznaczenia przed wejściem: „Sieć" wraca do kadru sieci i zdejmuje zaznaczenie stacji z gestu', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const kadrSieci = viewBox(container);
+    dwuklikNatywny(container, STACJA);
+    expect(zaznaczone()).toEqual([STACJA]);
+    fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
+    expect(viewBox(container)).toBe(kadrSieci);
+    expect(zaznaczone()).toEqual([]);
+  });
+
+  it('kadr stacji (dwuklik, kamera kadru): zero ukrytych opisów celu; komunikat, jeśli jest, mówi o opisach POZA celem', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    dwuklikNatywny(container, STACJA);
+    expect(kanwa(container).getAttribute('data-ukryte-opisy-celu')).toBe('0');
+    expect(Number(kanwa(container).getAttribute('data-min-opis-celu-px'))).toBeGreaterThanOrEqual(13 - 0.01);
+    const hint = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
+    if (hint && Number(hint.getAttribute('data-hidden-count')) > 0) {
+      expect(hint.getAttribute('data-opisy-celu')).toBeNull();
+      expect(hint.textContent).toBe(hiddenLabelsHintTextPozaCelem(Number(hint.getAttribute('data-hidden-count'))));
+    }
+  });
+
+  it('kadr stacji przyciemnia sąsiadów (kurtyna), powrót do sieci ją zdejmuje', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    expect(container.querySelectorAll('[data-kadr="poza"]')).toHaveLength(0);
+    dwuklikNatywny(container, STACJA);
+    expect(container.querySelectorAll('[data-kadr="poza"]').length).toBeGreaterThan(0);
+    expect(kanwa(container).getAttribute('data-kadr-aktywny')).toBe('true');
+    fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
+    expect(container.querySelectorAll('[data-kadr="poza"]')).toHaveLength(0);
   });
 });

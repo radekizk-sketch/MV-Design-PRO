@@ -19,12 +19,25 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { sheetSizeFor } from '../../sheet/outline';
+import { fontSizeForScreenFloorWithinProportion } from '../../core/text';
+import { planSceneLabels } from '../labelLegibility';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
 import { pickStationBus } from '../../../shared/stationBusResolution';
-import { prostokatyZakresu, zakresCelu, zakresNarysowany, type WynikZakresu, type ZakresKadru } from '../zakresKadru';
+import {
+  MIN_OPIS_CELU_KADRU_PX,
+  SASIEDZI_ELEKTRYCZNIE_WYMAGANI,
+  nalezyDoZakresu,
+  podlogaOpisowCelu,
+  prostokatyZakresu,
+  zakresCelu,
+  zakresNarysowany,
+  type WynikZakresu,
+  type ZakresKadru,
+} from '../zakresKadru';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wczytaj = (): EnergyNetworkModel =>
@@ -411,5 +424,135 @@ describe('tusz etykiet zakresu (plan etykiet kanwy przy skali kadru)', () => {
   it('determinizm: ten sam zakres i skala — identyczny tusz', () => {
     const z = dostepny(zakresCelu('stacja', enm, [stacjeRysunku[3]], sceny[2]));
     expect(prostokatyZakresu(sceny, z).tuszEtykiet(1, 0.5)).toEqual(prostokatyZakresu(sceny, z).tuszEtykiet(1, 0.5));
+  });
+});
+
+/**
+ * K2b §0.1 — kadr stacji obejmuje WYŁĄCZNIE tę stację. Sąsiad wchodzi do zakresu
+ * tylko z listy `SASIEDZI_ELEKTRYCZNIE_WYMAGANI`, która jest pusta (uzasadnienie
+ * w `zakresKadru.ts`). Iloczyn: każda stacja rysunku × każda inna stacja.
+ */
+describe('K2b: zakres stacji bez sąsiadów', () => {
+  it('lista sąsiadów elektrycznie wymaganych jest pusta (nowy wpis wymaga przypadku elektrycznego i testu)', () => {
+    expect(SASIEDZI_ELEKTRYCZNIE_WYMAGANI).toEqual([]);
+  });
+
+  it('refy kadru stacji są rozłączne z refami każdej innej stacji (żaden obiekt sąsiada w zakresie)', () => {
+    const zakresy = new Map(stacjeRysunku.map((st) => [st, dostepny(zakresCelu('stacja', enm, [st], sceny[2]))] as const));
+    for (const [st, z] of zakresy) {
+      const wlasne = new Set(z.refy);
+      for (const [inna, zInnej] of zakresy) {
+        if (inna === st) continue;
+        expect(zInnej.refy.filter((r) => wlasne.has(r)), `${st} ∩ ${inna}`).toEqual([]);
+      }
+    }
+  });
+
+  it('`nalezyDoZakresu` ≡ `nalezyDo` dla każdego ownerRef sceny × refy każdej stacji (jedna relacja dla kadru, tuszu, podłogi i kurtyny)', () => {
+    const ownerRefy = new Set<string>();
+    for (const lod of [0, 1, 2] as const) {
+      for (const el of [...sceny[lod].symbols, ...sceny[lod].segments.map((s) => s.meta ?? {}), ...sceny[lod].labels]) {
+        const o = (el as { ownerRef?: string }).ownerRef;
+        if (o) ownerRefy.add(o);
+      }
+    }
+    for (const st of stacjeRysunku) {
+      const refy = dostepny(zakresCelu('stacja', enm, [st], sceny[2])).refy;
+      const zbior = new Set(refy);
+      for (const o of ownerRefy) expect(nalezyDoZakresu(o, zbior), `${o} ∈ ${st}`).toBe(refy.some((r) => nalezyDo(o, r)));
+    }
+    expect(nalezyDoZakresu(undefined, new Set(['x']))).toBe(false);
+    expect(nalezyDoZakresu(null, new Set(['x']))).toBe(false);
+  });
+});
+
+/**
+ * K2b §0.2 (b) — PODŁOGA OPISÓW CELU w planie etykiet. Iloczyn cech: etykieta
+ * celu / spoza celu × skala w granicy sufitu proporcji klasy / poza nią × miejsce
+ * jest / brak miejsca (gęsta stacja przy skali 0,6) × poziom L1/L2 × każda stacja
+ * rysunku. Pomiar na fiksturze 52 stacji (2026-10-21): przy skali ≥ 1 wszystkie
+ * opisy celu mają ≥ 13 px i żaden nie jest ukryty; przy 0,6 część opisów gęstych
+ * stacji nie mieści się po powiększeniu — kanwa podaje ich liczbę
+ * (`data-ukryte-opisy-celu`, komunikat „opisy szczegółowe po przybliżeniu").
+ */
+describe('K2b: podłoga opisów celu w planie etykiet', () => {
+  const plan = (lod: 1 | 2, scale: number, refy?: ReadonlySet<string>) =>
+    planSceneLabels(
+      sceny[lod].labels,
+      sceneObstacleRects(sceny[lod]),
+      scale,
+      sheetSizeFor(sceny[lod]),
+      refy ? podlogaOpisowCelu(refy) : undefined,
+    );
+  const refyStacji = (st: string) => new Set(dostepny(zakresCelu('stacja', enm, [st], sceny[2])).refy);
+
+  it.each([
+    [1, 1],
+    [1, 1.5],
+    [1, KADR_MAX_SCALE],
+    [2, 1],
+    [2, 1.5],
+    [2, KADR_MAX_SCALE],
+  ] as const)('L%i, skala %s (w granicy sufitu, jest miejsce): każdy opis celu narysowany, ≥ 13 px na ekranie', (lod, scale) => {
+    for (const st of stacjeRysunku) {
+      const refy = refyStacji(st);
+      const p = plan(lod, scale, refy);
+      const ukryte = [...p.hiddenDetail, ...p.droppedIdentity].filter((l) => nalezyDoZakresu(l.ownerRef, refy));
+      expect(ukryte.map((l) => l.text), st).toEqual([]);
+      for (const d of p.drawn) {
+        if (!nalezyDoZakresu(d.label.ownerRef, refy)) continue;
+        expect(d.fontSize * scale, `${st}: ${d.text}`).toBeGreaterThanOrEqual(MIN_OPIS_CELU_KADRU_PX - 1e-6);
+      }
+    }
+  });
+
+  it.each([1, 2] as const)('L%i, skala 0,3 (poza sufitem): opis celu poniżej 13 px tylko tam, gdzie sufit proporcji klasy to wyklucza', (lod) => {
+    let ponizej = 0;
+    for (const st of stacjeRysunku) {
+      const refy = refyStacji(st);
+      for (const d of plan(lod, 0.3, refy).drawn) {
+        if (!nalezyDoZakresu(d.label.ownerRef, refy) || d.fontSize * 0.3 >= MIN_OPIS_CELU_KADRU_PX - 1e-6) continue;
+        ponizej += 1;
+        expect(fontSizeForScreenFloorWithinProportion(d.label.labelClass, 0.3, MIN_OPIS_CELU_KADRU_PX), d.text).toBeNull();
+      }
+    }
+    // Przypadek „(a) wygrywa" występuje na fiksturze — inaczej test niczego nie pilnuje.
+    expect(ponizej).toBeGreaterThan(0);
+  });
+
+  it.each([
+    [1, 0.3],
+    [1, 0.6],
+    [1, 1],
+    [2, 0.3],
+    [2, 0.6],
+    [2, 1],
+  ] as const)('L%i, skala %s: etykieta SPOZA celu ma ten sam rozmiar pisma co bez podłogi (podłoga nie powiększa sąsiadów)', (lod, scale) => {
+    for (const st of stacjeRysunku) {
+      const refy = refyStacji(st);
+      const bez = new Map(plan(lod, scale).drawn.map((d) => [d.index, d.fontSize]));
+      for (const d of plan(lod, scale, refy).drawn) {
+        if (nalezyDoZakresu(d.label.ownerRef, refy)) continue;
+        expect(bez.get(d.index), `${st}: ${d.text}`).toBe(d.fontSize);
+      }
+    }
+  });
+
+  it('brak miejsca (skala 0,6): ukryte opisy celu występują i są policzalne — to liczba, którą kanwa komunikuje', () => {
+    let ukryte = 0;
+    for (const st of stacjeRysunku) {
+      const refy = refyStacji(st);
+      const p = plan(2, 0.6, refy);
+      ukryte += [...p.hiddenDetail, ...p.droppedIdentity].filter((l) => nalezyDoZakresu(l.ownerRef, refy)).length;
+    }
+    expect(ukryte).toBeGreaterThan(0);
+  });
+
+  it('pusty zbiór celu i brak podłogi dają identyczny plan; ten sam cel i skala — identyczny plan (determinizm)', () => {
+    for (const scale of [0.3, 0.6, 1.5]) {
+      expect(plan(2, scale, new Set())).toEqual(plan(2, scale));
+      const refy = refyStacji(stacjeRysunku[5]!);
+      expect(plan(2, scale, refy)).toEqual(plan(2, scale, new Set(refy)));
+    }
   });
 });

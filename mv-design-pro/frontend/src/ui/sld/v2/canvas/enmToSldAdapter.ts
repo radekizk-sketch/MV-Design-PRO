@@ -78,6 +78,11 @@ interface CableRunRendererPropsLight {
      *  scena v3 kotwiczy końcówki w pozycjach tych terminali. */
     fromTerminal?: SegmentTerminalRef;
     toTerminal?: SegmentTerminalRef;
+    /** K2b §0.4: rodzaj TEGO odcinka wprost z ENM (`Branch.type`) — kabel
+     *  rysowany linią ciągłą, linia napowietrzna przerywaną (scena v3
+     *  `meta.lineType`). Ciąg mieszany (kabel + linia) ma rodzaj per odcinek,
+     *  nie jeden dla całego ciągu (`segmentKind` wyżej to rodzaj PIERWSZEGO). */
+    segmentKind?: 'cable_sn' | 'overhead_line_sn';
   }>;
   label?: string;
   segmentLabels?: ReadonlyArray<{
@@ -2690,6 +2695,7 @@ function buildRunSegmentPaths(
     segmentRef: segment.ref_id,
     fromTerminal: segmentTerminalOf(segment.from_bus_ref, szyny),
     toTerminal: segmentTerminalOf(segment.to_bus_ref, szyny),
+    segmentKind: classifySegmentKind(segment),
   }));
 }
 

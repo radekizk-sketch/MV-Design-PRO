@@ -5026,6 +5026,106 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     );
   });
 
+  // -- 6z. K2b §0.4 — PUNKT NORMALNIE OTWARTY NA KAŻDYM POZIOMIE SZCZEGÓŁU. --
+  // Źródło prawdy: `Corridor.no_point_ref` (operacja `set_normal_open_point`
+  // wpisuje tam ref ŁĄCZNIKA albo ODCINKA). Dotąd scena porównywała ten ref
+  // wyłącznie z refem STACJI (`isNop` adaptera), więc punkt ustawiony operacją
+  // domenową nie był rysowany na żadnym poziomie. Teraz:
+  //  (1) NOP na odcinku toru (ref gałęzi rysowanej odcinkiem) — symbol `noPoint`
+  //      w połowie najdłuższego poziomego biegu tego odcinka (odcinki są
+  //      rysowane na każdym poziomie, więc symbol też);
+  //  (2) NOP na łączniku narysowanym symbolem na tym poziomie — symbol `noPoint`
+  //      tuż za symbolem łącznika (łącznik zostaje widoczny w stanie otwartym);
+  //  (3) łącznik niewidoczny na tym poziomie (L0 — stacja zwinięta) — symbol
+  //      `noPoint` przy prawym górnym narożniku bloku stacji, która go zawiera
+  //      (przynależność z rekordu stacji `bus_refs`, bez przeszukiwania grafu).
+  // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). NOP-stacja (ref stacji) zostaje
+  // przy dotychczasowej reprezentacji (symbol L1/L2, znacznik glifu L0).
+  const refyNop = [
+    ...new Set(
+      (snapshot.corridors ?? [])
+        .map((c) => c.no_point_ref)
+        .filter((r): r is string => typeof r === 'string' && r.length > 0),
+    ),
+  ].sort();
+  if (refyNop.length > 0) {
+    const stacjaSzynyNop = new Map<string, string>();
+    for (const st of snapshot.substations ?? []) for (const bus of st.bus_refs ?? []) stacjaSzynyNop.set(bus, st.ref_id);
+    const galezNop = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
+    for (const nopRef of refyNop) {
+      if (stationById.has(nopRef)) continue;
+      let kotwica: { readonly x: number; readonly y: number } | null = null;
+      // Podpis „NO" pod symbolem; przy łączniku narysowanym (2) NAD symbolem —
+      // pod łącznikiem toru stoi jego nazwa (`elementyToru.ts`, L2), a podpis pod
+      // spodem wypychał ją z rysunku (pomiar: declutter odrzucał nazwę łącznika).
+      let podpisNad = false;
+      // (1) odcinek toru
+      let najlepszy: { readonly dl: number; readonly poziomy: boolean; readonly x: number; readonly y: number } | null = null;
+      for (const seg of allSegments) {
+        const rodzaj = seg.meta?.kind ?? 'sn';
+        if (rodzaj !== 'sn' && rodzaj !== 'snTrunk' && rodzaj !== 'lv') continue;
+        if ((seg.meta?.ownerRef ?? '').split('#')[0] !== nopRef) continue;
+        for (let i = 1; i < seg.points.length; i += 1) {
+          const a = seg.points[i - 1]!;
+          const b = seg.points[i]!;
+          const dl = Math.hypot(b.x - a.x, b.y - a.y);
+          const poziomy = Math.abs(b.y - a.y) < 1e-6;
+          const lepszy =
+            najlepszy === null ||
+            (poziomy && !najlepszy.poziomy) ||
+            (poziomy === najlepszy.poziomy && dl > najlepszy.dl);
+          if (lepszy) najlepszy = { dl, poziomy, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        }
+      }
+      if (najlepszy && najlepszy.dl >= NO_POINT_SIZE) kotwica = { x: najlepszy.x, y: najlepszy.y };
+      // (2) łącznik narysowany symbolem
+      if (!kotwica) {
+        const sym = allSymbols.find((s) => s.meta?.ownerRef === nopRef || s.meta?.deviceRef === nopRef);
+        if (sym) {
+          const r = symbolRect(sym);
+          kotwica = { x: r.x + r.width + NO_POINT_SIZE / 2 + GRID / 2, y: r.y + r.height / 2 };
+          podpisNad = true;
+        }
+      }
+      // (3) łącznik w stacji zwiniętej
+      if (!kotwica) {
+        const galaz = galezNop.get(nopRef);
+        const stacja = galaz ? stacjaSzynyNop.get(galaz.from_bus_ref) ?? stacjaSzynyNop.get(galaz.to_bus_ref) : undefined;
+        const blok = stacja ? allSymbols.find((s) => s.meta?.ownerRef === stacja) : undefined;
+        if (blok) {
+          const r = symbolRect(blok);
+          kotwica = { x: r.x + r.width + NO_POINT_SIZE / 2 + GRID / 2, y: r.y - NO_POINT_SIZE / 2 };
+        }
+      }
+      if (!kotwica) {
+        stopNotes.push(
+          `Punkt normalnie otwarty „${nopRef}" (Corridor.no_point_ref) nie wskazuje ani odcinka, ani łącznika, ani stacji narysowanej na tym poziomie szczegółu — symbol NO pominięty.`,
+        );
+        continue;
+      }
+      allSymbols.push({
+        symbolId: 'noPoint',
+        x: snapToGrid(kotwica.x - NO_POINT_SIZE / 2),
+        y: snapToGrid(kotwica.y - NO_POINT_SIZE / 2),
+        meta: { testId: `sld-v3-nop-${nopRef}`, ownerRef: nopRef, elementKind: 'apparatus' },
+      });
+      // Podpis „NO" na L1/L2 — jak NO stacji (GS-1): na L0 (mapa sieci, skala
+      // produkcyjna ≈ 0,08) pismo t3 nie mieści się w proporcji klasy i plan
+      // etykiet porzucał tożsamość (wyrocznia KD-11 `tozsamoscEtykiet`); symbol
+      // `noPoint` zostaje na L0 jako jedyna reprezentacja.
+      if (lod !== 0) simpleAnchored.push({
+        ownerRef: `${nopRef}#no-point`,
+        ownerKind: 'no-point',
+        text: 'NO',
+        labelClass: 't3',
+        anchor: podpisNad
+          ? { x: kotwica.x, y: snapToGrid(kotwica.y - NO_POINT_SIZE / 2) }
+          : { x: kotwica.x, y: kotwica.y },
+        placement: podpisNad ? 'above' : 'below',
+      });
+    }
+  }
+
   // -- 7. Rozwiąż WSZYSTKIE etykiety JEDNYM globalnym resolveLabels. --------
   // AUDYT POWYKONAWCZY SLD (zadanie #76, znalezisko A-2): identyfikatory
   // APARATÓW (`Q1`/`QE1`/`T1`) należą wg `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md`
@@ -5222,6 +5322,29 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         y: tap.y - lateralDotDef.height / 2,
         meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-lateral-${tap.x}-${tap.y}` },
       });
+    }
+  }
+
+  // -- 8a. K2b §0.4 — RODZAJ ODCINKA SN: kabel ciągły, linia napowietrzna
+  // przerywana. Rodzaj każdego odcinka przychodzi z ENM przez adapter
+  // (`segmentPaths[].segmentKind`, `Branch.type`) — scena tylko znaczy odcinek
+  // toru SN (`sn`/`snTrunk`) należący do linii napowietrznej (`ownerRef` =
+  // ref gałęzi albo jej kompozyt `ref#…`). Bez linii napowietrznych w modelu
+  // scena jest bajtowo identyczna ze stanem sprzed karty.
+  const odcinkiNapowietrzne = new Set<string>();
+  for (const run of sldData.cableRuns) {
+    for (const path of run.segmentPaths ?? []) {
+      if (path.segmentKind === 'overhead_line_sn') odcinkiNapowietrzne.add(path.segmentRef);
+    }
+  }
+  if (odcinkiNapowietrzne.size > 0) {
+    for (let i = 0; i < allSegments.length; i += 1) {
+      const seg = allSegments[i]!;
+      const rodzaj = seg.meta?.kind ?? 'sn';
+      const ref = seg.meta?.ownerRef;
+      if ((rodzaj !== 'sn' && rodzaj !== 'snTrunk') || !ref) continue;
+      if (!odcinkiNapowietrzne.has(ref.split('#')[0]!)) continue;
+      allSegments[i] = { ...seg, meta: { ...seg.meta, lineType: 'overhead' } };
     }
   }
 

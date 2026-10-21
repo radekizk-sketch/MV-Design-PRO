@@ -725,9 +725,11 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns.map((run) => run.id)).toEqual(['run-1']);
     expect(r.cableRuns[0].segmentRefs).toEqual(['SEG-1']);
     // §16: terminale odcinka z gałęzi ENM; szyna GPZ należy do GPZ (lustro `szynyStacji`).
+    // K2b §0.4: rodzaj odcinka z `Branch.type` (kabel ciągły, linia napowietrzna przerywana).
     expect(r.cableRuns[0].segmentPaths).toEqual([
       {
         segmentRef: 'SEG-1',
+        segmentKind: 'cable_sn',
         fromTerminal: { busRef: 'b15', ownerRef: 'GPZ-1' },
         toTerminal: { busRef: 'B2', ownerRef: null },
       },
@@ -2620,5 +2622,34 @@ describe('rodzaj źródła pola OZE z przyłączonych wytwórców (GPZ-PARYTET c
   it('determinizm: kolejność wytwórców nie zmienia roli', () => {
     const a = [wytworca('g1', 'pv_inverter', 'pole-oze'), wytworca('g2', 'bess', 'pole-oze')];
     expect(rolaPolaOze(a)).toBe(rolaPolaOze([...a].reverse()));
+  });
+});
+
+/**
+ * K2b §0.4 — RODZAJ KAŻDEGO ODCINKA z ENM (`Branch.type`): kabel → `cable_sn`, linia
+ * napowietrzna → `overhead_line_sn`, per odcinek (ciąg mieszany nie dziedziczy rodzaju
+ * pierwszego odcinka). Iloczyn: każdy odcinek każdego ciągu sieci referencyjnej 52 stacji
+ * (81 kabli, 8 linii napowietrznych) × rodzaj gałęzi.
+ */
+describe('enmToSldAdapter — rodzaj odcinka per segment (K2b)', () => {
+  it('segmentPaths[].segmentKind = rodzaj gałęzi ENM tego odcinka, na każdym odcinku sieci 52 stacji', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const enm = (
+      JSON.parse(readFileSync(resolve(here, '../../geometry/__tests__/fixtures/sldSubstrate52s.enm.json'), 'utf8')) as {
+        enm: EnergyNetworkModel;
+      }
+    ).enm;
+    const typ = new Map(enm.branches.map((b) => [b.ref_id, b.type] as const));
+    const r = buildSldDataFromSnapshot(enm, null);
+    const licznik = { cable_sn: 0, overhead_line_sn: 0 };
+    for (const run of r.cableRuns) {
+      for (const sp of run.segmentPaths ?? []) {
+        const oczekiwany = typ.get(sp.segmentRef) === 'cable' ? 'cable_sn' : 'overhead_line_sn';
+        expect(sp.segmentKind, sp.segmentRef).toBe(oczekiwany);
+        licznik[oczekiwany] += 1;
+      }
+    }
+    expect(licznik.cable_sn).toBeGreaterThan(0);
+    expect(licznik.overhead_line_sn).toBeGreaterThan(0);
   });
 });

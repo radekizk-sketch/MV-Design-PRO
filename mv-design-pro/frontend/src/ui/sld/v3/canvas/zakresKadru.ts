@@ -38,7 +38,7 @@ import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, type StationBusSide } from '../../shared/stationBusResolution';
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 import type { TuszEtykietKadru } from './camera';
-import { planSceneLabels } from './labelLegibility';
+import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
 
 /** Cele kadru (rozstrzygnięcie §0.1 karty). */
@@ -557,6 +557,48 @@ function zakres(
   };
 }
 
+/**
+ * K2b §0.1 — SĄSIEDZI ELEKTRYCZNIE WYMAGANI: zamknięta lista przypadków, w których
+ * element INNEJ stacji wchodzi do zakresu kadru stacji (i tylko wtedy poszerza
+ * kadr). Lista jest PUSTA, i to jest rozstrzygnięcie merytoryczne, nie brak:
+ * wszystko, czego projektant potrzebuje, żeby ocenić stację elektrycznie, jest
+ * rekordem TEJ stacji — pola liniowe z aparatami (strona, z której przychodzi
+ * i dokąd odchodzi kabel), pole transformatorowe z transformatorem, strona nN,
+ * łączniki obu końców w stacji (w tym łącznik punktu normalnie otwartego
+ * zabudowany w tej stacji), źródło zasilania GPZ (`refyStacji`). Odcinek kabla
+ * lub linii między stacjami jest elementem SIECI (kadr magistrali, toru
+ * zasilania), a stacja po drugiej stronie jest osiągalna jednym klikiem
+ * („następna/poprzednia stacja" ścieżki kontekstu) — dociąganie jej do kadru
+ * odtwarzałoby dokładnie wadę Z-02 (dwa różne cele, ten sam obraz). Nowy wpis
+ * wymaga przypadku elektrycznego i testu w `__tests__/zakresKadru.test.ts`.
+ */
+export interface SasiadElektrycznieWymagany {
+  /** Przypadek elektryczny (zdanie projektanta). */
+  readonly przypadek: string;
+  /** Refy modelu INNEJ stacji, które kadr stacji `stacjaRef` musi objąć. */
+  readonly refy: (snapshot: EnergyNetworkModel, stacjaRef: string) => readonly string[];
+}
+
+export const SASIEDZI_ELEKTRYCZNIE_WYMAGANI: readonly SasiadElektrycznieWymagany[] = [];
+
+/** K2b §0.2 (b): podłoga opisów celu kadru [px ekranu]. */
+export const MIN_OPIS_CELU_KADRU_PX = 13;
+
+/**
+ * Czy obiekt rysunku o `ownerRef` należy do zakresu kadru `refy` — JEDNA relacja
+ * przynależności (`kluczePrzynaleznosci`) dla prostokąta celu, tuszu etykiet,
+ * podłogi opisów celu i kurtyny kanwy (predykaty parami: to, co kadr obejmuje,
+ * jest dokładnie tym, czego kurtyna nie przyciemnia).
+ */
+export function nalezyDoZakresu(ownerRef: string | undefined | null, refy: ReadonlySet<string>): boolean {
+  return kluczePrzynaleznosci(ownerRef).some((k) => refy.has(k));
+}
+
+/** Podłoga opisów celu dla planu etykiet (kanwa i tusz kamery — ten sam obiekt). */
+export function podlogaOpisowCelu(refy: ReadonlySet<string>): PodlogaOpisowCelu {
+  return { screenPx: MIN_OPIS_CELU_KADRU_PX, nalezy: (label) => nalezyDoZakresu(label.ownerRef, refy) };
+}
+
 /** Każda stacja modelu spoza `wlasne` jako przeszkoda kadru (pełny zbiór refów rysunku). */
 function przeszkodyStacji(ix: IndeksModelu, wlasne: ReadonlySet<string>): PrzeszkodaKadru[] {
   return [...ix.stacje.keys()]
@@ -612,7 +654,10 @@ export function zakresCelu(
   if (cel === 'stacja') {
     const stacje = unikalnePosortowane(kontekst.map((r) => stacjaElementu(ix, r)).filter((r): r is string => !!r));
     if (stacje.length === 0) return { dostepny: false, przyczyna: 'Zaznaczenie nie należy do żadnej stacji.' };
-    const refy = stacje.flatMap((st) => refyStacji(ix, st));
+    const refy = stacje.flatMap((st) => [
+      ...refyStacji(ix, st),
+      ...SASIEDZI_ELEKTRYCZNIE_WYMAGANI.flatMap((s) => s.refy(snapshot, st).flatMap((r) => refyElementu(ix, r))),
+    ]);
     const przeszkody = przeszkodyStacji(ix, new Set(stacje));
     const sciezka: PoziomSciezki[] =
       stacje.length === 1
@@ -755,6 +800,9 @@ export function prostokatyZakresu(
     });
   const przeszkody = (lod: SceneLod): readonly BoundingBox[] => narysowanePrzeszkody(lod).map(({ box }) => przelicz(box));
   const refyCelu = new Set(zakresKadru.refy);
+  // Podłoga opisów celu tylko dla kadru z kurtyną (cel ≠ sieć) — dokładnie ten
+  // warunek stosuje kanwa (`SldCanvasV3`, `refyKadru` puste ⇒ brak podłogi).
+  const podloga = refyCelu.size > 0 ? podlogaOpisowCelu(refyCelu) : undefined;
   const pamiec = new Map<string, TuszEtykietKadru>();
   const tuszEtykiet = (lod: SceneLod, scale: number): TuszEtykietKadru => {
     const klucz = `${lod}|${scale}`;
@@ -777,10 +825,10 @@ export function prostokatyZakresu(
             maxY: Math.max(box.maxY, r.y + r.height),
           }
         : { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
-    const plan = planSceneLabels(scena.labels, sceneObstacleRects(scena), scale, sheetSizeFor(scena));
+    const plan = planSceneLabels(scena.labels, sceneObstacleRects(scena), scale, sheetSizeFor(scena), podloga);
     for (const narysowana of plan.drawn) {
       const klucze = kluczePrzynaleznosci(narysowana.label.ownerRef);
-      if (klucze.some((k) => refyCelu.has(k))) cel = dolacz(cel, narysowana.rect);
+      if (nalezyDoZakresu(narysowana.label.ownerRef, refyCelu)) cel = dolacz(cel, narysowana.rect);
       for (const k of klucze) {
         const i = indeksPrzeszkody.get(k);
         if (i !== undefined) tuszPrzeszkod[i] = dolacz(tuszPrzeszkod[i], narysowana.rect);

@@ -24,6 +24,7 @@ import type { ShellCaseInfo } from './shellStatus';
 import type { StatusZnacznikaWynikow } from './znacznikSwiezosci';
 import { MenuPowloki, type PozycjaMenuPowloki } from './MenuPowloki';
 import { SHELL_STRINGS } from './strings';
+import { useShellStore } from './useShellStore';
 import { themeLabel, type ThemeMode } from '../theme/themeMode';
 import type { BlokadaObliczen } from '../spaces/obliczenia/uruchomObliczenie';
 
@@ -106,6 +107,8 @@ export function PasekProjektu({
   opisBiegu = null,
 }: PasekProjektuProps) {
   const idPrzyczyny = useId();
+  const trybWidokuSchematu = useShellStore((state) => state.trybWidokuSchematu);
+  const przelaczTrybWidokuSchematu = useShellStore((state) => state.przelaczTrybWidokuSchematu);
   const znacznik = info.znacznikWynikow;
   const celKliku =
     znacznik.cel === 'wyniki' ? onOtworzWyniki : znacznik.cel === 'obliczenia' ? onPrzejdzDoObliczen : undefined;
@@ -130,6 +133,15 @@ export function PasekProjektu({
   }
 
   const pozycjeWidoku: PozycjaMenuPowloki[] = [
+    {
+      // K2b §0.4: ten sam stan co przełącznik w pasku kanwy (`sld-v3-tryb-widoku`).
+      id: 'tryb-schematu',
+      etykieta: SHELL_STRINGS.viewModeItem,
+      opis: SHELL_STRINGS.viewModeHint,
+      wartosc: trybWidokuSchematu === 'roboczy' ? SHELL_STRINGS.viewModeWorking : SHELL_STRINGS.viewModeSheet,
+      testId: 'mvd-tryb-widoku-schematu',
+      onWybierz: przelaczTrybWidokuSchematu,
+    },
     {
       id: 'motyw',
       etykieta: SHELL_STRINGS.themeItem,

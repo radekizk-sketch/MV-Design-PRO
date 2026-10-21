@@ -47,6 +47,7 @@ import {
 import {
   daneGlifuSymbolu,
   segmentStrokeWidthForScale,
+  segmentDasharray,
   strokeScaleFactor,
   pointsToPath,
   type PreviewElementKind,
@@ -61,6 +62,8 @@ import {
   hiddenLabelsHintPlateRect,
   hiddenLabelsHintScreenRect,
   hiddenLabelsHintText,
+  hiddenLabelsHintTextKadru,
+  hiddenLabelsHintTextPozaCelem,
   sheetCaptionScreenRects,
 } from './chromeLayout';
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
@@ -82,7 +85,7 @@ import {
   type ViewportTransform,
 } from './camera';
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
-import { prostokatyZakresu, type ZakresKadru } from './zakresKadru';
+import { nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -242,6 +245,13 @@ export interface SldElementClickMeta {
    *  `undefined` = tło arkusza. */
   readonly klasa?: HitObjectClass;
 }
+
+/**
+ * K2b §0.1 (c) — krycie elementów POZA celem kadru (kurtyna). Sąsiad, który
+ * wpadł w okno kadru, zostaje rozpoznawalny jako kontekst (kształt, położenie),
+ * ale nie konkuruje z celem; klik w niego nadal prowadzi do obiektu.
+ */
+export const KURTYNA_KADRU_OPACITY = 0.22;
 
 export interface SldCanvasV3Props {
   readonly snapshot: EnergyNetworkModel;
@@ -444,6 +454,17 @@ export interface SldCanvasV3Props {
    *  rozwinięcia (bez tego dwuklik w zwinięty GPZ zapisywał w historii kadr PO
    *  rozwinięciu, a widok sieci był nieosiągalny). */
   readonly onPrzedPoleceniemWidoku?: () => void;
+  /**
+   * K2b §0.1 (c) — KURTYNA KADRU: refy rysunku celu bieżącego kadru
+   * (`useKadrowanieWidoku().refyKurtyny`). Wszystko, co do celu nie należy
+   * (`nalezyDoZakresu` — ta sama relacja, z której kamera liczy prostokąt celu),
+   * jest przyciemnione (`data-kadr="poza"`), a opisy celu dostają podłogę 13 px
+   * ekranu (`podlogaOpisowCelu`, kryterium (b)). `null`/pusta lista = bez kurtyny.
+   */
+  readonly refyKadru?: readonly string[] | null;
+  /** K2b §0.4: tryb widoku — `'arkusz'` (domyślnie: rama, strefy, tabliczka)
+   *  albo `'roboczy'` (sama sieć). Eksport rysuje arkusz niezależnie od tego. */
+  readonly trybWidoku?: 'arkusz' | 'roboczy';
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -695,19 +716,9 @@ function SceneSegmentNode(props: {
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = segmentStrokeWidthForScale(kind, cameraScale);
-  // F9.9 (spec §17.1 „dash 4-2") / F10.5 (spec §20.1 „linie rozróżnialne") —
-  // patrz `compose/preview.tsx` `PreviewSegmentNode`, ta sama reguła (harness
-  // debug i kanwa docelowa zgodnie, zero duplikacji logiki poza kopią).
-  const strokeDasharray =
-    kind === 'protectionTrip'
-      ? '4 2'
-      : kind === 'measurementLink'
-        ? '2 2'
-        : segment.meta?.dashed
-          ? '4 3'
-          : kind === 'leader'
-            ? '3 2'
-            : undefined;
+  // F9.9 / F10.5 / K2b §0.4 — wzór kreski z JEDNEJ reguły (`segmentDasharray`,
+  // `compose/preview.tsx`), wspólnej z podglądem.
+  const strokeDasharray = segmentDasharray(segment);
   // F8b-1 FIX (recenzja): jak w SceneSymbolNode — ownerRef przed testId.
   // PREDYKATY PARAMI (karta WN-WYNIK): klucz ODCZYTU musi być tym samym, którym
   // słownik jest BUDOWANY. `energizedByOwnerRef` (`SldCanvasV3Workspace.
@@ -2828,13 +2839,43 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // dostaje `SheetFrame` niżej — jedna wartość, jedna prawda o krawędzi
   // rysunku. Wcześniej plan o krawędzi nie wiedział nic, więc powiększone
   // pismo malowało się pod ramką (patrz nagłówek `canvas/labelLegibility.ts`).
+  // K2b §0.1 (c)/§0.2 (b): kurtyna kadru i podłoga opisów celu — jeden zbiór
+  // refów, jedna relacja przynależności (`nalezyDoZakresu`).
+  const refyKadru = props.refyKadru;
+  const zbiorKadru = useMemo(
+    () => (refyKadru && refyKadru.length > 0 ? new Set(refyKadru) : null),
+    [refyKadru],
+  );
+  const podlogaCelu = useMemo(() => (zbiorKadru ? podlogaOpisowCelu(zbiorKadru) : undefined), [zbiorKadru]);
+  const pozaKadrem = useCallback(
+    (ownerRef: string | undefined | null): boolean => zbiorKadru !== null && !nalezyDoZakresu(ownerRef, zbiorKadru),
+    [zbiorKadru],
+  );
   const labelPlan = useMemo(
     () =>
       isLayerVisible('labels', layerVisibility)
-        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize)
+        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize, podlogaCelu)
         : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
-    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize],
+    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu],
   );
+  // K2b §0.2 (b): opisy CELU ukryte przez plan (próg czytelności, sufit
+  // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
+  // ekranie — kanał audytu (`data-ukryte-opisy-celu`, `data-min-opis-celu-px`)
+  // i podstawa jawnego komunikatu, gdy cel jest zbyt rozległy.
+  const opisyCelu = useMemo(() => {
+    if (!zbiorKadru) return { ukryte: 0, minPx: null as number | null };
+    const naleza = (ownerRef: string) => nalezyDoZakresu(ownerRef, zbiorKadru);
+    const ukryte =
+      labelPlan.hiddenDetail.filter((l) => naleza(l.ownerRef)).length +
+      labelPlan.droppedIdentity.filter((l) => naleza(l.ownerRef)).length;
+    let minPx: number | null = null;
+    for (const p of labelPlan.drawn) {
+      if (!naleza(p.label.ownerRef)) continue;
+      const px = p.fontSize * camera.transform.scale;
+      if (minPx === null || px < minPx) minPx = px;
+    }
+    return { ukryte, minPx };
+  }, [zbiorKadru, labelPlan, camera.transform.scale]);
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
   //
@@ -2876,7 +2917,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // ramką, wskaźnik ekranowy im USTĘPUJE — wcześniej obie rodziny liczyły swoje
   // miejsce osobno i przy kadrze „Dopasuj widok" descendery „Skala wg kamery"
   // wchodziły w wersaliki „Ukryto N opisów" (pomiar: 12 na 12 kadrów).
-  const hintTekst = hiddenLabelsHintText(niewidoczneOpisy);
+  // K2b §0.2 (b): w kadrze celu komunikat mówi, CZYJE opisy są ukryte — celu
+  // (cel zbyt rozległy, pierwszeństwo kompletności) albo wyłącznie obiektów spoza
+  // celu (cel czytelny w całości). Liczba zawsze ta sama: bilans planu etykiet.
+  const hintTekst = !zbiorKadru
+    ? hiddenLabelsHintText(niewidoczneOpisy)
+    : opisyCelu.ukryte > 0
+      ? hiddenLabelsHintTextKadru(niewidoczneOpisy, opisyCelu.ukryte)
+      : hiddenLabelsHintTextPozaCelem(niewidoczneOpisy);
   const hintScreenRect = useMemo(() => {
     const captions = sheetCaptionScreenRects(
       {
@@ -3314,6 +3362,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       data-testid="sld-canvas-v3"
       data-scene-lod={effectiveLod}
       data-theme-mode={effectiveThemeMode}
+      data-tryb-widoku={props.trybWidoku ?? 'arkusz'}
+      data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
+      data-ukryte-opisy-celu={zbiorKadru ? opisyCelu.ukryte : undefined}
+      data-min-opis-celu-px={zbiorKadru && opisyCelu.minPx !== null ? opisyCelu.minPx.toFixed(2) : undefined}
       width={width}
       height={height}
       viewBox={viewBox}
@@ -3376,6 +3428,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         // podziału, co łamanie arkusza (`meta.sheetRowBands`).
         cameraScale={camera.transform.scale}
         rowBands={sheetRowBandsInSheetSpace}
+        tryb={props.trybWidoku ?? 'arkusz'}
       >
         {/* Karta S9-4: WARSTWA TRAFIEŃ — dwa piętra, oba przezroczyste.
          *  Najpierw obszary rozszerzone do minimum ekranowego (dolne piętro),
@@ -3418,6 +3471,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          *  kreskowa (odróżnialna od torów i od ramki arkusza). */}
         {scene.meta.gpzZone && (
           <rect
+            data-kadr={pozaKadrem(scene.meta.gpzId) ? 'poza' : undefined}
             data-testid="sld-v3-gpz-zone"
             x={scene.meta.gpzZone.x}
             y={scene.meta.gpzZone.y}
@@ -3430,19 +3484,24 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             // kompensacja co tory, `strokeScaleFactor`).
             strokeWidth={1.2 * strokeScaleFactor(camera.transform.scale)}
             strokeDasharray="12 6"
-            opacity={0.7}
+            opacity={pozaKadrem(scene.meta.gpzId) ? 0.7 * KURTYNA_KADRU_OPACITY : 0.7}
           />
         )}
         {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
          *  (geometria ze sceny, wartości z wyniku backendu) — pod warstwą detalu. */}
         {scene.meta.gpzAdnotacje && scene.meta.gpzId && (
-          <GpzAdnotacjeWarstwa
-            adnotacje={scene.meta.gpzAdnotacje}
-            gpzRef={scene.meta.gpzId}
-            wyniki={overlay?.gpzWyniki ?? null}
-            nieaktualny={overlay?.resultsStale === true}
-            skala={camera.transform.scale}
-          />
+          <g
+            data-kadr={pozaKadrem(scene.meta.gpzId) ? 'poza' : undefined}
+            opacity={pozaKadrem(scene.meta.gpzId) ? KURTYNA_KADRU_OPACITY : undefined}
+          >
+            <GpzAdnotacjeWarstwa
+              adnotacje={scene.meta.gpzAdnotacje}
+              gpzRef={scene.meta.gpzId}
+              wyniki={overlay?.gpzWyniki ?? null}
+              nieaktualny={overlay?.resultsStale === true}
+              skala={camera.transform.scale}
+            />
+          </g>
         )}
         {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/
          * symbole/etykiety — treść zależna od LOD) owinięta w jedną grupę z
@@ -3481,7 +3540,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-segments">
           {scene.segments.map((segment, index) => {
             if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) return null;
-            return (
+            const wezel = (
               <SceneSegmentNode
                 key={`segment-${index}`}
                 segment={segment}
@@ -3490,6 +3549,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 sceneCrossings={sceneCrossings}
                 cameraScale={camera.transform.scale}
               />
+            );
+            return pozaKadrem(segment.meta?.ownerRef) ? (
+              <g key={`segment-${index}`} data-kadr="poza" opacity={KURTYNA_KADRU_OPACITY}>
+                {wezel}
+              </g>
+            ) : (
+              wezel
             );
           })}
         </g>
@@ -3500,7 +3566,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD).
             // Karta S9-4: ta reguła żyje teraz w `handleHitClick` (jedno miejsce
             // rozstrzygania kliku), a węzeł symbolu jest czystym rysunkiem.
-            return (
+            const wezel = (
               <SceneSymbolNode
                 key={`symbol-${index}`}
                 symbol={symbol}
@@ -3508,6 +3574,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 overlay={effectiveOverlay}
                 cameraScale={camera.transform.scale}
               />
+            );
+            return pozaKadrem(symbol.meta?.ownerRef) ? (
+              <g key={`symbol-${index}`} data-kadr="poza" opacity={KURTYNA_KADRU_OPACITY}>
+                {wezel}
+              </g>
+            ) : (
+              wezel
             );
           })}
         </g>
@@ -3529,9 +3602,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           data-hidden-unreadable={hiddenUnreadableLabels}
           data-dropped-identity={labelPlan.droppedIdentity.length}
         >
-          {labelPlan.drawn.map((planned) => (
-            <SceneLabelNode key={`label-${planned.index}`} planned={planned} cameraScale={camera.transform.scale} />
-          ))}
+          {labelPlan.drawn.map((planned) =>
+            pozaKadrem(planned.label.ownerRef) ? (
+              <g key={`label-${planned.index}`} data-kadr="poza" opacity={KURTYNA_KADRU_OPACITY}>
+                <SceneLabelNode planned={planned} cameraScale={camera.transform.scale} />
+              </g>
+            ) : (
+              <SceneLabelNode key={`label-${planned.index}`} planned={planned} cameraScale={camera.transform.scale} />
+            ),
+          )}
         </g>
         </g>
         {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi
@@ -3719,6 +3798,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <text
           data-testid="sld-v3-hidden-labels-hint"
           data-hidden-count={niewidoczneOpisy}
+          data-opisy-celu={opisyCelu.ukryte > 0 ? opisyCelu.ukryte : undefined}
           x={
             screenToWorld(
               { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },

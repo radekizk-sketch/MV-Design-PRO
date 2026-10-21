@@ -98,9 +98,10 @@ describe('Powłoka — ścieżka klawiatury', () => {
     przycisk.focus();
     await user.keyboard('{Enter}');
     expect(przycisk).toHaveAttribute('aria-expanded', 'true');
-    expect(document.activeElement).toBe(screen.getByTestId('mvd-theme-toggle'));
+    // K2b §0.4: pierwsza pozycja menu Widok to tryb widoku schematu.
+    expect(document.activeElement).toBe(screen.getByTestId('mvd-tryb-widoku-schematu'));
     await user.keyboard('{ArrowDown}');
-    expect(document.activeElement).toBe(screen.getByTestId('mvd-szczegoly-audytowe'));
+    expect(document.activeElement).toBe(screen.getByTestId('mvd-theme-toggle'));
     await user.keyboard('{ArrowUp}{ArrowUp}');
     expect(document.activeElement).toBe(screen.getByTestId('mvd-reset-layout'));
     await user.keyboard('{Escape}');

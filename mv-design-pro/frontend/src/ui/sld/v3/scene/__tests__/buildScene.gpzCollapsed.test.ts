@@ -221,8 +221,20 @@ describe('KD-5 — zwinięcie NIE przemeblowuje świata (jedna kotwica) i nie ł
     // odejściowego pochodzi z GPZ; łącznik toru jest osobną klasą z własnym testId.
     const zGpz = aparaty.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'));
     expect(zGpz.length).toBeGreaterThan(0);
+    // K2b §0.4: punkt normalnie otwarty wskazany ŁĄCZNIKIEM toru
+    // (`Corridor.no_point_ref`) ma symbol `noPoint` także na L0 — to znacznik
+    // stanu TEGO łącznika toru (ten sam `ownerRef`), nie aparat innej klasy.
+    const lacznikiToru = new Set(
+      aparaty.filter((s) => (s.meta?.testId ?? '').startsWith('sld-v3-lacznik-toru-')).map((s) => s.meta?.ownerRef),
+    );
     const reszta = aparaty.filter((s) => !(s.meta?.ownerRef ?? '').startsWith('gpz/'));
-    expect(reszta.every((s) => (s.meta?.testId ?? '').startsWith('sld-v3-lacznik-toru-'))).toBe(true);
+    expect(
+      reszta.every(
+        (s) =>
+          (s.meta?.testId ?? '').startsWith('sld-v3-lacznik-toru-') ||
+          ((s.meta?.testId ?? '') === `sld-v3-nop-${s.meta?.ownerRef}` && lacznikiToru.has(s.meta?.ownerRef)),
+      ),
+    ).toBe(true);
   });
 
   it('wyrocznie L0 zielone: czytelność, widoczność i połączenie źródeł', () => {

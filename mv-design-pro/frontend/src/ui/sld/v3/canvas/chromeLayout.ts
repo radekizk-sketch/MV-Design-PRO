@@ -83,6 +83,25 @@ export function hiddenLabelsHintText(count: number): string {
 }
 
 /**
+ * K2b §0.2 (b) — komunikat, gdy cel kadru jest tak rozległy, że kompletność (a)
+ * i czytelność (b) naraz są niewykonalne: pierwszeństwo ma widok całego celu,
+ * a opisy szczegółowe są dostępne po przybliżeniu albo po kadrze części celu.
+ */
+/**
+ * K2b §0.2 (b): kadr celu, w którym WSZYSTKIE opisy celu są narysowane — ukryte są
+ * wyłącznie opisy obiektów spoza celu (pod kurtyną kadru). Ta sama liczba co w
+ * komunikacie ogólnym (bilans planu etykiet), ale bez wezwania do przybliżania:
+ * cel jest czytelny w całości.
+ */
+export function hiddenLabelsHintTextPozaCelem(count: number): string {
+  return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} poza celem kadru — opisy celu widoczne w całości`;
+}
+
+export function hiddenLabelsHintTextKadru(count: number, celu: number): string {
+  return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} (celu kadru: ${celu}) — cały cel w kadrze; opisy szczegółowe po przybliżeniu`;
+}
+
+/**
  * Szerokość napisu chromu [px EKRANU]. Ta sama formuła co cała typografia v3
  * (`core/text.ts` `measureTextWidth`, `AVG_GLYPH_WIDTH_FACTOR`) — chrom nie ma
  * prawa mierzyć się inaczej niż rysunek, bo wtedy „rozłączność" liczona tutaj

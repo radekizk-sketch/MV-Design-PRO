@@ -53,7 +53,6 @@ import {
   MIN_TRUNK_STROKE_SCREEN_PX,
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
-  strokeScaleFactor,
 } from '../../compose/preview';
 import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
@@ -315,8 +314,14 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
   });
 
   it('DOWÓD, że defekt był realny: bez kompensacji szyna:aparat sięgała 41,7× przy dolnym krańcu', () => {
+    // Stan sprzed karty proporcji liczony z podłogą magistrali TEGO czasu
+    // (1,5 px, S9-8) — K2b §0.4 podniosła podłogę do 3 px, ale dowód dotyczy
+    // historycznego defektu (szyna wzmocniona, aparat nie), więc zostaje przy
+    // ówczesnej wartości. Bieżąca podłoga wchodzi do testu proporcji wyżej.
+    const PODLOGA_S9_8_PX = 1.5;
+    const mnoznikS98 = (scale: number) => Math.max(1, PODLOGA_S9_8_PX / (SEGMENT_STROKE_WIDTH.snTrunk * scale));
     const stanPrzed = (scale: number) =>
-      (SEGMENT_STROKE_WIDTH.bus * strokeScaleFactor(scale) * scale) / (APPARATUS_STROKE_WIDTH * scale);
+      (SEGMENT_STROKE_WIDTH.bus * mnoznikS98(scale) * scale) / (APPARATUS_STROKE_WIDTH * scale);
     expect(stanPrzed(MIN_SCALE)).toBeCloseTo(41.666666, 4);
     expect(stanPrzed(0.1327)).toBeGreaterThan(8); // kadr „Dopasuj widok" — zgłoszenie mówiło 8–10×
     expect(stanPrzed(1.38)).toBeCloseTo(3.333333, 5); // z bliska proporcja BYŁA poprawna

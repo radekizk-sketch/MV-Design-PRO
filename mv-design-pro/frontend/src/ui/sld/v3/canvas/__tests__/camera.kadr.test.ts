@@ -9,10 +9,20 @@
  *  - poziom niższy: na wybranym poziomie sąsiedzi nierozwiązywalni × zejście
  *    dozwolone (`minLod`) × zabronione × poziom wymuszony;
  *  - tusz etykiet: celu × sąsiada;
- *  - sąsiedzi: brak × jeden z boku (kadr się przesuwa) × po obu stronach
- *    blisko (kadr wchłania ich w całości) × po obu stronach rozlegli (kadr
- *    zostaje na środku, bo wchłonięcie odebrałoby celowi dominację) × sąsiad
- *    odsłonięty dopiero po poszerzeniu (iteracja wchłaniania);
+ *  - sąsiedzi: brak × jeden z boku (kadr przesuwa się w granicach luzu) ×
+ *    po obu stronach (kadr zostaje na środku, skala celu) × nachodzący na cel
+ *    (pomijany) — K2b §0.1: sąsiad NIGDY nie zmienia skali ani poziomu
+ *    szczegółu kadru (dawne wchłanianie sąsiada i zejście poziomu „dla
+ *    sąsiada" skasowane: dawało identyczne kadry sąsiednich stacji, Z-02);
+ *  - kryteria K2b §0.2 na iloczynie cel {stacja, pole, sekcja, magistrala, tor,
+ *    sieć} × sąsiedztwo {brak, z jednej strony, z obu stron, nachodzące} ×
+ *    proporcje {zwarte, wydłużone} × okno {1440×900, 1920×1080, 1100×700}:
+ *    (a) kompletność — cały cel w prostokącie bezpiecznym z oddechem i skala
+ *    największa mieszcząca; (c) izolacja po stronie kamery — skala i poziom
+ *    niezależne od sąsiedztwa; (d) rozróżnialność — sąsiednie cele dają różne
+ *    kadry. Kryterium (b) czytelności (≥ 13 px opisów celu) przypina plan
+ *    etykiet (`labelLegibility.kadr.test.ts`), izolację po stronie obrazu —
+ *    kurtyna kanwy (`kurtynaKadru.contract.test.tsx`);
  *  - cykl życia: zmiana rozmiaru kanwy PONAWIA kadr × gest projektanta (zoom,
  *    przesunięcie, kotwica) zdejmuje kadr × „Poprzedni widok" (`'przywroc'`);
  *  - determinizm.
@@ -23,7 +33,6 @@ import {
   cameraReducer,
   DEFAULT_LOD_THRESHOLDS,
   KADR_MAX_SCALE,
-  KADR_UDZIAL_DOMINACJI,
   LOD_HYSTERESIS_MARGIN,
   lodFromScaleWithHysteresis,
   refScaleFor,
@@ -176,30 +185,26 @@ describe("akcja 'kadruj' — prostokąt bezpieczny i sąsiedzi", () => {
     expect(z.transform.scale).toBe(bez.transform.scale);
   });
 
-  it('sąsiedzi blisko po obu stronach: żaden nie jest ucięty — bliższy wchłonięty w całości, dalszy poza kadrem', () => {
-    // Przesunięcie samego celu nic nie daje (sąsiad z każdej strony), więc kadr
-    // wchłania najbliższego sąsiada i dopiero wtedy szuka położenia wolnego od
-    // reszty. Cel dalej zajmuje ≥ 50 % mniejszego wymiaru prostokąta bezpiecznego.
+  // K2b §0.1 — dawny przypadek „bliższy sąsiad wchłonięty w całości" legalizował
+  // wadę Z-02: kadr stacji obejmował sumę celu i sąsiada, więc kadr sąsiada
+  // (wchłaniający cel) dawał ten sam obraz. Intencja po zmianie kanonu: sąsiedzi
+  // po obu stronach nie poszerzają kadru — skala i środek są kadrem samego celu,
+  // a to, co z sąsiadów wpadło w okno, przyciemnia kurtyna kanwy.
+  it('sąsiedzi blisko po obu stronach: kadr NIE wchłania żadnego — skala i środek celu', () => {
     const anchor = { 0: null, 1: null, 2: { minX: 10000, minY: 5000, maxX: 10600, maxY: 5600 } };
     const lewy = { minX: 9700, minY: 5100, maxX: 9900, maxY: 5500 };
     const prawy = { minX: 10700, minY: 5100, maxX: 10900, maxY: 5500 };
     const bez = cameraReducer(stan(1.6, 2), kadr(anchor));
-    expect(stanSasiada(lewy, bez)).toBe('uciety');
-    expect(stanSasiada(prawy, bez)).toBe('uciety');
     const z = cameraReducer(stan(1.6, 2), kadr(anchor, { przeszkodyByLod: { 0: [], 1: [], 2: [lewy, prawy] } }));
+    expect(z.transform).toEqual(bez.transform);
+    expect(z.lod).toBe(bez.lod);
     wKadrze(anchor[2], z);
-    expect(stanSasiada(lewy, z)).toBe('caly');
-    expect(stanSasiada(prawy, z)).toBe('poza');
     const e = prostokatNaEkranie(anchor[2], z);
-    expect(Math.max(e.maxX - e.minX, e.maxY - e.minY)).toBeGreaterThanOrEqual(
-      KADR_UDZIAL_DOMINACJI * Math.min(VIEWPORT.width, VIEWPORT.height),
-    );
+    expect((e.minX + e.maxX) / 2).toBeCloseTo(VIEWPORT.width / 2, 6);
   });
 
-  it('sąsiedzi rozlegli i głęboko w oknie po obu stronach: ani wchłonięcie, ani oddech nie pomagają — cel zostaje w centrum', () => {
+  it('sąsiedzi rozlegli i głęboko w oknie po obu stronach: cel zostaje w centrum, w skali celu', () => {
     const anchor = { 0: null, 1: null, 2: { minX: 10000, minY: 5000, maxX: 10600, maxY: 5600 } };
-    // Wchłonięcie dowolnego z nich (2450 j.) dałoby celowi < 50 % kadru, a
-    // nawet oddech 12 px zostawia ich skraje w oknie.
     const lewy = { minX: 7400, minY: 5100, maxX: 9850, maxY: 5500 };
     const prawy = { minX: 10750, minY: 5100, maxX: 13200, maxY: 5500 };
     const bez = cameraReducer(stan(1.6, 2), kadr(anchor));
@@ -207,68 +212,40 @@ describe("akcja 'kadruj' — prostokąt bezpieczny i sąsiedzi", () => {
     expect(z.transform).toEqual(bez.transform);
   });
 
-  it('wchłanianie jest iterowane: po wchłonięciu pierwszego sąsiada pętla wchłania drugiego', () => {
-    // Tylko L1 (świat 24 000 j.): skala celu 1,31 → refScale 1,05, w paśmie L1.
-    // Sąsiedzi nad i pod celem wnikają w okno tak głęboko, że oddech 12 px ich
-    // nie usuwa; wchłonięcie górnego zostawia ucięty dolny, więc dopiero drugi
-    // obrót pętli daje kadr bez uciętych fragmentów.
-    const anchor = { 0: null, 1: { minX: 10000, minY: 5000, maxX: 10700, maxY: 5700 }, 2: null };
-    const gora = { minX: 10200, minY: 4800, maxX: 10500, maxY: 4995 };
-    const dol = { minX: 10200, minY: 5705, maxX: 10500, maxY: 5900 };
-    const z = cameraReducer(
-      stan(1.0, 1),
-      kadr(anchor, { minLod: 1, przeszkodyByLod: { 0: [], 1: [gora, dol], 2: [] } }),
-    );
-    expect(z.lod).toBe(1);
-    expect(lodFromScaleWithHysteresis(refScaleFor(z.transform.scale, 1, swiat), 1)).toBe(1);
-    wKadrze(anchor[1], z);
-    expect(stanSasiada(gora, z)).toBe('caly');
-    expect(stanSasiada(dol, z)).toBe('caly');
-    expect(z.transform.scale).toBeCloseTo((VIEWPORT.height - 2 * PADDING) / 1100, 6);
-  });
-
-  it('wiersz arkusza nad i pod stacją ucięty skrajem: kadr zmniejsza oddech, sąsiedzi wypadają, cel cały', () => {
-    // Geometria zmierzona na fixturze 52 stacji (stacja odgałęzienia z wierszami
-    // arkusza nad i pod, kanwa 1600×1000, doki 40 px u góry i u dołu): przy
-    // pełnym oddechu 40 px okno sięga ~7 j. w głąb obu sąsiadów; wchłonięcie
-    // zepchnęłoby skalę poniżej progu wyjścia z L2 (odrzucone — punkt stały
-    // histerezy), więc ratuje dopiero mniejszy oddech.
+  // K2b §0.1 — dawny przypadek „wiersz arkusza nad i pod stacją: kadr zmniejsza
+  // oddech" zmieniał skalę kadru ze względu na sąsiadów. Intencja po zmianie
+  // kanonu: oddech kadru jest stały (`KADR_PADDING_PX`), sąsiad nad i pod nie
+  // zmienia skali; ta sama geometria zmierzona na fixturze 52 stacji.
+  it('wiersz arkusza nad i pod stacją: oddech i skala bez zmian, cel cały z oddechem', () => {
     const insets: SafeInsets = { top: 40, right: 0, bottom: 40, left: 0 };
     const anchor = { 0: null, 1: null, 2: { minX: 4568, minY: 4544, maxX: 5382, maxY: 4950 } };
     const gora = { minX: 4696, minY: 4104, maxX: 5208, maxY: 4486 };
     const dol = { minX: 4200, minY: 5008, maxX: 4624, maxY: 5390 };
     const bez = cameraReducer(stan(1.6, 2), kadr(anchor, { safeInsets: insets }));
-    const widocznyBez = { min: -bez.transform.translateY / bez.transform.scale, max: (VIEWPORT.height - bez.transform.translateY) / bez.transform.scale };
-    expect(widocznyBez.min).toBeLessThan(gora.maxY); // bez przeszkód: obaj ucięci
-    expect(widocznyBez.max).toBeGreaterThan(dol.minY);
     const z = cameraReducer(stan(1.6, 2), kadr(anchor, { safeInsets: insets, przeszkodyByLod: { 0: [], 1: [], 2: [gora, dol] } }));
     expect(z.lod).toBe(2);
-    expect(z.transform.scale).toBeGreaterThan(bez.transform.scale);
-    const okno = { min: -z.transform.translateY / z.transform.scale, max: (VIEWPORT.height - z.transform.translateY) / z.transform.scale };
-    expect(okno.min).toBeGreaterThanOrEqual(gora.maxY);
-    expect(okno.max).toBeLessThanOrEqual(dol.minY);
-    // Cel dalej CAŁY w prostokącie bezpiecznym (bez oddechu, ale nie pod dokami).
-    const e = prostokatNaEkranie(anchor[2], z);
-    expect(e.minX).toBeGreaterThanOrEqual(-1e-6);
-    expect(e.maxX).toBeLessThanOrEqual(VIEWPORT.width + 1e-6);
-    expect(e.minY).toBeGreaterThanOrEqual(insets.top - 1e-6);
-    expect(e.maxY).toBeLessThanOrEqual(VIEWPORT.height - insets.bottom + 1e-6);
+    expect(z.transform.scale).toBe(bez.transform.scale);
+    wKadrze(anchor[2], z, insets);
   });
 
-  it('wchłonięcie, które zepchnęłoby skalę poza poziom szczegółu, jest odrzucone (punkt stały histerezy)', () => {
-    // Para sąsiadów blisko, ale wchłonięcie obu wymaga skali < progu wyjścia
-    // z L2: kadr zostaje na L2 w skali celu, wynik jest punktem stałym histerezy.
-    const anchor = { 0: null, 1: null, 2: { minX: 10000, minY: 5000, maxX: 11200, maxY: 5600 } };
-    // Skraje obu sąsiadów w oknie także przy oddechu 12 px; wchłonięcie
-    // któregokolwiek (1900 j.) daje skalę 0,8 < progu wyjścia z L2 (1,02).
-    const lewy = { minX: 9300, minY: 5100, maxX: 9995, maxY: 5500 };
-    const prawy = { minX: 11205, minY: 5100, maxX: 11900, maxY: 5500 };
-    const bez = cameraReducer(stan(1.3, 2), kadr(anchor));
-    expect(stanSasiada(lewy, bez)).toBe('uciety');
-    const z = cameraReducer(stan(1.3, 2), kadr(anchor, { przeszkodyByLod: { 0: [], 1: [], 2: [lewy, prawy] } }));
-    expect(lodFromScaleWithHysteresis(refScaleFor(z.transform.scale, z.lod, swiat), z.lod)).toBe(z.lod);
-    expect(z.lod).toBe(2);
-    expect(z.transform).toEqual(bez.transform);
+  // K2b §0.1 — dawny opis „poziom niższy, gdy na wybranym sąsiedzi zostają
+  // ucięci" (zejście L2 → L1, żeby wchłonąć sąsiadów nad i pod celem). Intencja
+  // po zmianie kanonu: poziom szczegółu wynika WYŁĄCZNIE ze skali celu.
+  it('sąsiedzi nad i pod celem nie obniżają poziomu szczegółu (bez wymuszonego zejścia)', () => {
+    const naL1 = (b: BoundingBox): BoundingBox => ({ minX: b.minX * 0.8, minY: b.minY * 0.8, maxX: b.maxX * 0.8, maxY: b.maxY * 0.8 });
+    const celL2: BoundingBox = { minX: 13500, minY: 5000, maxX: 14500, maxY: 5400 };
+    const gora: BoundingBox = { minX: 13500, minY: 4580, maxX: 14500, maxY: 4980 };
+    const dol: BoundingBox = { minX: 13500, minY: 5420, maxX: 14500, maxY: 5820 };
+    const anchor = { 0: null, 1: naL1(celL2), 2: celL2 };
+    const przeszkodyByLod = { 0: [], 1: [naL1(gora), naL1(dol)], 2: [gora, dol] };
+    for (const minLod of [1, 2] as const) {
+      const bez = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod }));
+      const z = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod, przeszkodyByLod }));
+      expect(z.lod).toBe(2);
+      expect(z.lod).toBe(bez.lod);
+      expect(z.transform).toEqual(bez.transform);
+      wKadrze(celL2, z);
+    }
   });
 
   it('przeszkoda nachodząca na cel jest pomijana (nie da się jej rozdzielić kadrem)', () => {
@@ -278,6 +255,126 @@ describe("akcja 'kadruj' — prostokąt bezpieczny i sąsiedzi", () => {
     const z = cameraReducer(stan(1.6, 2), kadr(anchor, { przeszkodyByLod: { 0: [], 1: [], 2: [nachodzaca] } }));
     expect(z.transform).toEqual(bez.transform);
   });
+});
+
+/**
+ * K2b §0.2 — KRYTERIA KADRU na iloczynie cech: cel × sąsiedztwo × proporcje ×
+ * okno. Cel różni się dla kamery rozmiarem, proporcjami, dolną granicą poziomu
+ * (`minLod`: stacja, pole i sekcja pokazują wnętrze) i obecnością rysunku na L0
+ * (pole i sekcja na L0 są częścią zwiniętego bloku stacji — `null`). Wymiary
+ * w jednostkach świata L2; L1 i L0 to te same obiekty w światach 0,8× i 2/3×.
+ * Sąsiad jest obiektem tej samej klasy co cel (sąsiednia stacja, sąsiednie
+ * pole, równoległa magistrala), w odstępie 20 % szerokości celu.
+ */
+describe("akcja 'kadruj' — kryteria K2b §0.2 (cel × sąsiedztwo × proporcje × okno)", () => {
+  type RodzajCelu = 'stacja' | 'pole' | 'sekcja' | 'magistrala' | 'tor' | 'siec';
+  type Proporcje = 'zwarte' | 'wydluzone';
+  type Sasiedztwo = 'brak' | 'z_jednej_strony' | 'z_obu_stron' | 'nachodzace';
+  const CELE: Readonly<
+    Record<RodzajCelu, { readonly wymiary: Readonly<Record<Proporcje, readonly [number, number]>>; readonly minLod?: SceneLod; readonly bezL0?: boolean }>
+  > = {
+    stacja: { wymiary: { zwarte: [700, 560], wydluzone: [1500, 380] }, minLod: 1 },
+    pole: { wymiary: { zwarte: [80, 220], wydluzone: [44, 520] }, minLod: 1, bezL0: true },
+    sekcja: { wymiary: { zwarte: [300, 180], wydluzone: [620, 90] }, minLod: 1, bezL0: true },
+    magistrala: { wymiary: { zwarte: [4000, 2600], wydluzone: [12000, 500] } },
+    tor: { wymiary: { zwarte: [2400, 1600], wydluzone: [7000, 600] } },
+    siec: { wymiary: { zwarte: [18000, 7000], wydluzone: [20000, 3000] } },
+  };
+  const OKNA = [
+    { width: 1440, height: 900 },
+    { width: 1920, height: 1080 },
+    { width: 1100, height: 700 },
+  ] as const;
+  const SASIEDZTWA: readonly Sasiedztwo[] = ['brak', 'z_jednej_strony', 'z_obu_stron', 'nachodzace'];
+  const SRODEK_L2 = { x: 15000, y: 5000 };
+  const naPoziom = (b: BoundingBox, lod: SceneLod): BoundingBox => {
+    const f = lod === 2 ? 1 : lod === 1 ? 0.8 : 2 / 3;
+    return { minX: b.minX * f, minY: b.minY * f, maxX: b.maxX * f, maxY: b.maxY * f };
+  };
+  const prostokatL2 = (w: number, h: number, dx = 0): BoundingBox => ({
+    minX: SRODEK_L2.x - w / 2 + dx,
+    minY: SRODEK_L2.y - h / 2,
+    maxX: SRODEK_L2.x + w / 2 + dx,
+    maxY: SRODEK_L2.y + h / 2,
+  });
+  const naPoziomy = (b: BoundingBox, bezL0: boolean): Record<SceneLod, BoundingBox | null> => ({
+    0: bezL0 ? null : naPoziom(b, 0),
+    1: naPoziom(b, 1),
+    2: b,
+  });
+  const sasiedziL2 = (w: number, h: number, sasiedztwo: Sasiedztwo): BoundingBox[] => {
+    const odstep = w + 0.2 * w;
+    if (sasiedztwo === 'brak') return [];
+    if (sasiedztwo === 'z_jednej_strony') return [prostokatL2(w, h, odstep)];
+    if (sasiedztwo === 'z_obu_stron') return [prostokatL2(w, h, odstep), prostokatL2(w, h, -odstep)];
+    return [prostokatL2(w, h, w / 2)];
+  };
+  const naPoziomyPrzeszkod = (lista: readonly BoundingBox[]): Record<SceneLod, BoundingBox[]> => ({
+    0: lista.map((b) => naPoziom(b, 0)),
+    1: lista.map((b) => naPoziom(b, 1)),
+    2: [...lista],
+  });
+  const stanOkna = (okno: { readonly width: number; readonly height: number }): CameraState => ({
+    transform: { scale: 0.2, translateX: 0, translateY: 0 },
+    lod: 0,
+    viewportSize: okno,
+    lodBboxes: swiat,
+  });
+
+  for (const rodzaj of Object.keys(CELE) as RodzajCelu[]) {
+    const { wymiary, minLod, bezL0 = false } = CELE[rodzaj];
+    for (const proporcje of ['zwarte', 'wydluzone'] as const) {
+      for (const okno of OKNA) {
+        it(`${rodzaj} · ${proporcje} · okno ${okno.width}×${okno.height}: (a) kompletność, (c) skala i poziom niezależne od sąsiedztwa, (d) rozróżnialność`, () => {
+          const [w, h] = wymiary[proporcje];
+          const celL2 = prostokatL2(w, h);
+          const anchor = naPoziomy(celL2, bezL0);
+          const akcja = (a: AkcjaKadru['anchorByLod'], przeszkody: readonly BoundingBox[]): AkcjaKadru => ({
+            type: 'kadruj',
+            anchorByLod: a,
+            lodBboxes: swiat,
+            viewportSize: okno,
+            ...(minLod !== undefined ? { minLod } : {}),
+            przeszkodyByLod: naPoziomyPrzeszkod(przeszkody),
+          });
+          const bez = cameraReducer(stanOkna(okno), akcja(anchor, []));
+          for (const sasiedztwo of SASIEDZTWA) {
+            const sasiedzi = sasiedziL2(w, h, sasiedztwo);
+            const z = cameraReducer(stanOkna(okno), akcja(anchor, sasiedzi));
+            // (a) KOMPLETNOŚĆ: cały cel w prostokącie bezpiecznym z oddechem…
+            const celKadru = anchor[z.lod];
+            expect(celKadru, `${sasiedztwo}: poziom bez rysunku celu`).not.toBeNull();
+            wKadrze(celKadru!, z, BEZ_ZASLON, okno);
+            // …przy skali NAJWIĘKSZEJ mieszczącej (dotyka marginesu w jednej osi albo granica skali).
+            const e = prostokatNaEkranie(celKadru!, z);
+            const wypelnienie = Math.max(
+              (e.maxX - e.minX) / (okno.width - 2 * PADDING),
+              (e.maxY - e.minY) / (okno.height - 2 * PADDING),
+            );
+            if (z.transform.scale < KADR_MAX_SCALE - 1e-9) expect(wypelnienie).toBeCloseTo(1, 6);
+            if (minLod !== undefined) expect(z.lod).toBeGreaterThanOrEqual(minLod);
+            expect(lodFromScaleWithHysteresis(refScaleFor(z.transform.scale, z.lod, swiat), z.lod)).toBe(z.lod);
+            // (c) IZOLACJA po stronie kamery: sąsiad nie zmienia skali ani poziomu
+            // (żadnego wchłaniania, żadnego zejścia poziomu „dla sąsiada").
+            expect(z.transform.scale, sasiedztwo).toBe(bez.transform.scale);
+            expect(z.lod, sasiedztwo).toBe(bez.lod);
+            // Sąsiad z obu stron albo nachodzący: kadr zostaje na środku celu.
+            if (sasiedztwo === 'z_obu_stron' || sasiedztwo === 'nachodzace' || sasiedztwo === 'brak') {
+              expect(z.transform).toEqual(bez.transform);
+            }
+            // (d) ROZRÓŻNIALNOŚĆ: kadr sąsiada (sąsiad celem, cel przeszkodą) jest inny.
+            if (sasiedzi.length > 0) {
+              const sasiadL2 = sasiedzi[0]!;
+              const reszta = [celL2, ...sasiedzi.slice(1)];
+              const kadrSasiada = cameraReducer(stanOkna(okno), akcja(naPoziomy(sasiadL2, bezL0), reszta));
+              expect(kadrSasiada.transform, `${sasiedztwo}: kadr sąsiada identyczny z kadrem celu`).not.toEqual(z.transform);
+              wKadrze(naPoziomy(sasiadL2, bezL0)[kadrSasiada.lod]!, kadrSasiada, BEZ_ZASLON, okno);
+            }
+          }
+        });
+      }
+    }
+  }
 });
 
 describe("akcja 'kadruj' — cykl życia kadru", () => {
@@ -357,55 +454,6 @@ describe("akcja 'kadruj' — cykl życia kadru", () => {
  * w teście: etykieta zakotwiczona w prawej krawędzi celu, szerokość 300 px EKRANU
  * (= 300/skala j. świata). Iloczyn: {cel, przeszkoda} × {z tuszem, bez tuszu}.
  */
-describe("akcja 'kadruj' — poziom niższy, gdy na wybranym sąsiedzi zostają ucięci", () => {
-  // Cel 1000×400 j. (L2) między dwoma sąsiadami 400 j. wysokimi, 20 j. nad i pod
-  // nim. Na L2 przesunięcie nie usuwa obu, wchłonięcie drugiego zbija skalę
-  // poniżej progu histerezy L2, mniejszy oddech nie wystarcza — kadr L2 zostaje
-  // z uciętymi sąsiadami. Na L1 (świat 0,8×) wchłonięcie obu mieści się w skali
-  // zgodnej z L1, a cel dalej dominuje.
-  const naL1 = (b: BoundingBox): BoundingBox => ({ minX: b.minX * 0.8, minY: b.minY * 0.8, maxX: b.maxX * 0.8, maxY: b.maxY * 0.8 });
-  const celL2: BoundingBox = { minX: 13500, minY: 5000, maxX: 14500, maxY: 5400 };
-  const gora: BoundingBox = { minX: 13500, minY: 4580, maxX: 14500, maxY: 4980 };
-  const dol: BoundingBox = { minX: 13500, minY: 5420, maxX: 14500, maxY: 5820 };
-  const anchor = { 0: null, 1: naL1(celL2), 2: celL2 };
-  const przeszkodyByLod = { 0: [], 1: [naL1(gora), naL1(dol)], 2: [gora, dol] };
-  const zgodnyZHistereza = (s: CameraState) =>
-    expect(lodFromScaleWithHysteresis(refScaleFor(s.transform.scale, s.lod, swiat), s.lod)).toBe(s.lod);
-
-  it('minLod 1: kadr schodzi na L1 — obaj sąsiedzi w kadrze w całości, cel cały i dominujący, skala zgodna z histerezą', () => {
-    const z = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod: 1, przeszkodyByLod }));
-    expect(z.lod).toBe(1);
-    wKadrze(anchor[1], z);
-    for (const p of przeszkodyByLod[1]) expect(stanSasiada(p, z)).not.toBe('uciety');
-    zgodnyZHistereza(z);
-    const e = prostokatNaEkranie(anchor[1], z);
-    expect(Math.max(e.maxX - e.minX, e.maxY - e.minY)).toBeGreaterThanOrEqual(KADR_UDZIAL_DOMINACJI * Math.min(VIEWPORT.width, VIEWPORT.height));
-  });
-
-  it('minLod 2: niżej zejść nie wolno — kadr L2 z celem w centrum (sąsiedzi ucięci, cel ważniejszy)', () => {
-    const z = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod: 2, przeszkodyByLod }));
-    expect(z.lod).toBe(2);
-    wKadrze(celL2, z);
-    expect(stanSasiada(gora, z)).toBe('uciety');
-    const e = prostokatNaEkranie(celL2, z);
-    expect((e.minX + e.maxX) / 2).toBeCloseTo(VIEWPORT.width / 2, 6);
-    expect((e.minY + e.maxY) / 2).toBeCloseTo(VIEWPORT.height / 2, 6);
-  });
-
-  it('poziom wymuszony (L2) nie schodzi niżej', () => {
-    const z = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod: 1, przeszkodyByLod, wymuszonyLod: 2 }));
-    expect(z.lod).toBe(2);
-    wKadrze(celL2, z);
-  });
-
-  it('determinizm: ten sam stan i akcja — identyczny kadr', () => {
-    const a = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod: 1, przeszkodyByLod }));
-    const b = cameraReducer(stan(1.6, 2), kadr(anchor, { minLod: 1, przeszkodyByLod }));
-    expect(a.transform).toEqual(b.transform);
-    expect(a.lod).toBe(b.lod);
-  });
-});
-
 describe("akcja 'kadruj' — tusz etykiet (pismo powiększone przy oddaleniu)", () => {
   const anchor = cel(6000);
   const etykietaPrzy = (box: BoundingBox, scale: number): BoundingBox => ({

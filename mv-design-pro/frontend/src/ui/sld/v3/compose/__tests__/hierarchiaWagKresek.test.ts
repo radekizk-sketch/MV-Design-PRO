@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
 import {
+  MIN_SN_WIRE_STROKE_SCREEN_PX,
   MIN_TRUNK_STROKE_SCREEN_PX,
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
@@ -66,8 +67,11 @@ describe('S9-8 — hierarchia wag kresek przetrwa KAŻDĄ skalę kamery', () => 
   });
 
   it('wzmocnienie GAŚNIE przy pracy z bliska — powyżej progu rysunek jest identyczny ze stanem sprzed karty', () => {
+    // K2b §0.4: podłoga 3 px przesunęła próg gaśnięcia z 0,63 na 1,25 — intencja
+    // bez zmian (powyżej progu rysunek identyczny ze stanem bez wzmocnienia).
     const progGasniecia = MIN_TRUNK_STROKE_SCREEN_PX / SEGMENT_STROKE_WIDTH.snTrunk;
-    for (const scale of [progGasniecia, 1, 2, MAX_SCALE]) {
+    expect(progGasniecia).toBeCloseTo(1.25, 12);
+    for (const scale of [progGasniecia, 1.5, 2, MAX_SCALE]) {
       expect(strokeScaleFactor(scale), `@${scale}`).toBe(1);
       for (const kind of RANGI) {
         expect(segmentStrokeWidthForScale(kind, scale)).toBe(SEGMENT_STROKE_WIDTH[kind]);
@@ -106,5 +110,17 @@ describe('S9-8 — hierarchia wag kresek przetrwa KAŻDĄ skalę kamery', () => 
     const lv = segmentStrokeWidthForScale('lv', skalaWpasowania) * skalaWpasowania;
     expect(trunk / lv).toBeCloseTo(SEGMENT_STROKE_WIDTH.snTrunk / SEGMENT_STROKE_WIDTH.lv, 9);
     expect(trunk).toBeGreaterThanOrEqual(MIN_TRUNK_STROKE_SCREEN_PX);
+  });
+
+  // K2b §0.4: widok roboczy całej sieci — przewód SN (odgałęzienie) ≥ 2 px na
+  // ekranie na KAŻDEJ skali, magistrala grubsza od odgałęzienia.
+  it('przewód SN ≥ 2 px na ekranie na każdej skali, magistrala grubsza od odgałęzienia (K2b)', () => {
+    expect(MIN_SN_WIRE_STROKE_SCREEN_PX).toBeCloseTo(2, 12);
+    for (const scale of SKALE) {
+      const sn = segmentStrokeWidthForScale('sn', scale) * scale;
+      const magistrala = segmentStrokeWidthForScale('snTrunk', scale) * scale;
+      expect(sn, `@${scale}`).toBeGreaterThanOrEqual(2 - 1e-9);
+      expect(magistrala, `@${scale}`).toBeGreaterThan(sn);
+    }
   });
 });

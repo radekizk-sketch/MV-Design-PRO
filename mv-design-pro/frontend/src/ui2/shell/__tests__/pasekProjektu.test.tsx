@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PasekProjektu, type PasekProjektuProps } from '../PasekProjektu';
+import { useShellStore } from '../useShellStore';
 import { SHELL_STRINGS } from '../strings';
 import type { ShellCaseInfo } from '../shellStatus';
 import type { CelZnacznikaWynikow, StatusZnacznikaWynikow, ZnacznikSwiezosci } from '../znacznikSwiezosci';
@@ -225,7 +226,9 @@ describe('Pasek projektu — menu „Widok": pozycja × skutek', () => {
     ['mvd-reset-layout', 'onResetLayout'],
   ] as const;
 
-  it('kolejność pozycji: motyw, szczegóły audytowe, trzy panele, reset', async () => {
+  // K2b §0.4: pierwsza pozycja to tryb widoku schematu (stan sklepu powłoki, nie prop),
+  // potem dotychczasowa kolejność bez zmian.
+  it('kolejność pozycji: tryb widoku schematu, motyw, szczegóły audytowe, trzy panele, reset', async () => {
     const user = userEvent.setup();
     render(<PasekProjektu {...props()} />);
     await user.click(screen.getByTestId('mvd-view-menu'));
@@ -233,7 +236,26 @@ describe('Pasek projektu — menu „Widok": pozycja × skutek', () => {
     const ids = [...menu.querySelectorAll('[role^="menuitem"]')].map((el) =>
       el.getAttribute('data-testid'),
     );
-    expect(ids).toEqual(POZYCJE.map(([id]) => id));
+    expect(ids).toEqual(['mvd-tryb-widoku-schematu', ...POZYCJE.map(([id]) => id)]);
+  });
+
+  it('„Widok schematu" przełącza tryb kanwy roboczy ⇄ arkusz w sklepie powłoki, pokazuje wartość, nie woła żadnego propa', async () => {
+    useShellStore.getState().setTrybWidokuSchematu('roboczy');
+    const user = userEvent.setup();
+    const p = props();
+    render(<PasekProjektu {...p} />);
+    for (const [przed, po] of [
+      ['roboczy', 'arkusz'],
+      ['arkusz', 'roboczy'],
+    ] as const) {
+      await user.click(screen.getByTestId('mvd-view-menu'));
+      const pozycja = screen.getByTestId('mvd-tryb-widoku-schematu');
+      expect(pozycja).toHaveTextContent(przed === 'roboczy' ? SHELL_STRINGS.viewModeWorking : SHELL_STRINGS.viewModeSheet);
+      await user.click(pozycja);
+      expect(useShellStore.getState().trybWidokuSchematu).toBe(po);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    }
+    for (const [, akcja] of POZYCJE) expect(p[akcja]).not.toHaveBeenCalled();
   });
 
   for (const [testId, akcja] of POZYCJE) {

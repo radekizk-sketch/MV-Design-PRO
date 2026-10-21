@@ -191,6 +191,7 @@ import {
 } from './toolbarLayout';
 // K2 (UI-04): kadrowanie zakresu pracy, historia kadrów, mini-ścieżka kontekstu.
 import { useKadrowanieWidoku } from './useKadrowanieWidoku';
+import type { ZaznaczenieWidoku } from './historiaKadrow';
 import { KLASA_PRZYCISKU_DOKU, MenuDopasujDo, PanelKomunikatuKadru, PasekKontekstuKadru } from './KontekstKadru';
 import { zakresCelu } from './zakresKadru';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
@@ -1825,12 +1826,51 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [pokazElement, setPokazElement] = useState<{ readonly ref: string; readonly seq: number } | null>(null);
   const zaznaczoneElementy = useSelectionStore((state) => state.selectedElements);
   const zaznaczenieRefy = useMemo(() => zaznaczoneElementy.map((element) => element.id), [zaznaczoneElementy]);
+  // K2b §0.3: zaznaczenie należy do kontekstu widoku — wpis historii niesie
+  // elementy selekcji i kontekst kliknięcia kanwy (inspektor powłoki wraca do
+  // tego samego obiektu), a powrót („Wstecz", poziom „Sieć") je odtwarza.
+  const pobierzZaznaczenie = useCallback(
+    (): ZaznaczenieWidoku => ({
+      elementy: [...useSelectionStore.getState().selectedElements],
+      kontekst: useKontekstElementuKanwy.getState().kontekst,
+    }),
+    [],
+  );
+  const przywrocZaznaczenie = useCallback((zaznaczenie: ZaznaczenieWidoku) => {
+    const store = useSelectionStore.getState();
+    if (zaznaczenie.elementy.length === 0) store.clearSelection();
+    else store.selectElements([...zaznaczenie.elementy]);
+    if (zaznaczenie.kontekst) useKontekstElementuKanwy.getState().ustawKontekst(zaznaczenie.kontekst);
+    updateUrlWithSelection(zaznaczenie.elementy.length === 1 ? zaznaczenie.elementy[0]! : null);
+  }, []);
   const kadrowanie = useKadrowanieWidoku({
     snapshot,
     kamera: cameraState,
     zaznaczenie: zaznaczenieRefy,
     caseId: activeCaseId,
+    pobierzZaznaczenie,
+    przywrocZaznaczenie,
   });
+  // K2b §0.3: ZAZNACZENIE SPRZED GESTU. Pierwszy klik dwukliku sam zaznacza
+  // stację (i otwiera jej dane w inspektorze), więc wpis historii robiony przy
+  // `dblclick` zapamiętałby już stację. Słuchacz `click` na `window` w fazie
+  // przechwytywania biegnie PRZED obsługą kliku kanwy (faza celu), więc przy
+  // pierwszym kliku gestu (`detail ≤ 1`, liczone przez przeglądarkę) odkłada
+  // zaznaczenie, które obowiązywało przed gestem.
+  const zaznaczeniePrzedGestemRef = useRef<ZaznaczenieWidoku | null>(null);
+  useEffect(() => {
+    const naKlik = (event: MouseEvent): void => {
+      if (event.detail > 1) return;
+      const cel = event.target;
+      if (!(cel instanceof Element) || !containerRef.current?.contains(cel)) return;
+      zaznaczeniePrzedGestemRef.current = pobierzZaznaczenie();
+    };
+    window.addEventListener('click', naKlik, true);
+    return () => window.removeEventListener('click', naKlik, true);
+  }, [pobierzZaznaczenie]);
+  // K2b §0.4: tryb widoku kanwy — wspólny stan powłoki (pasek kanwy + menu Widok).
+  const trybWidokuSchematu = useShellStore((state) => state.trybWidokuSchematu);
+  const przelaczTrybWidokuSchematu = useShellStore((state) => state.przelaczTrybWidokuSchematu);
   const { kadrujCel, dopasujZakres, poprzedniWidok } = kadrowanie;
   useEffect(() => {
     if (!snapshot || !sldWskazanie || sldWskazanie.seq <= sldWskazanieObsluzone) return;
@@ -2229,7 +2269,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       if (!zakresCelu('stacja', snapshot, [id], scenaSld(snapshot, 2)).dostepny) return;
       // Dwuklik = WEJŚCIE do stacji: kadr dostaje całą kanwę (pierwszy klik
       // tego gestu zaznacza stację i odsłania jej dane w inspektorze powłoki).
-      kadrujCel('stacja', [id]);
+      // Historia zapamiętuje zaznaczenie sprzed gestu (K2b §0.3).
+      kadrujCel('stacja', [id], { zaznaczeniePrzed: zaznaczeniePrzedGestemRef.current ?? undefined });
     },
     [snapshot, kadrujCel],
   );
@@ -2539,6 +2580,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           >
             Cały arkusz
           </button>
+          {/* K2b §0.4: tryb widoku kanwy (ten sam stan co menu Widok powłoki). */}
+          <button
+            type="button"
+            onClick={przelaczTrybWidokuSchematu}
+            data-testid="sld-v3-tryb-widoku"
+            data-tryb={trybWidokuSchematu}
+            aria-pressed={trybWidokuSchematu === 'arkusz'}
+            title={
+              trybWidokuSchematu === 'roboczy'
+                ? 'Widok roboczy (sama sieć) — przełącz na arkusz z ramą, polami odniesienia i tabliczką'
+                : 'Widok arkusza — przełącz na widok roboczy (sama sieć, bez ramy)'
+            }
+            className={KLASA_PRZYCISKU_DOKU}
+          >
+            {trybWidokuSchematu === 'roboczy' ? 'Widok: roboczy' : 'Widok: arkusz'}
+          </button>
           <button
             type="button"
             onClick={() => setLegendPanelOpen((prev) => !prev)}
@@ -2640,6 +2697,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           pokazElement={pokazElement}
           zadanieKadru={kadrowanie.zadanieKadru}
           przywrocenieKamery={kadrowanie.przywrocenieKamery}
+          refyKadru={kadrowanie.refyKurtyny}
+          trybWidoku={trybWidokuSchematu}
           safeInsets={effectiveCanvasInsets}
           odslonRefy={odslonRefy}
         />
@@ -2656,7 +2715,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             onPoziom={kadrowanie.kadrujPoziom}
             stacje={stacjeNawigacji}
             indeksStacji={kadrowanie.indeksStacji}
-            onStacja={(ref) => kadrujCel('stacja', [ref])}
+            // K2b §0.3: przeglądanie stacji to JEDEN wpis powrotu (`przeglad`).
+            onStacja={(ref) => kadrujCel('stacja', [ref], { przeglad: true })}
           />
         </div>
       )}

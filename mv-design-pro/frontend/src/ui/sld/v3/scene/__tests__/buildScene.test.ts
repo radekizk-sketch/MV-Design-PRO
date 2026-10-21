@@ -633,9 +633,12 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
       }
     }
-    // L0: brak osobnego noPoint; NOP w markerze sylwetki stacji docelowej.
+    // L0: brak osobnego noPoint STACJI; NOP stacji w markerze sylwetki stacji
+    // docelowej. (K2b §0.4: fikstura niesie też NOP ŁĄCZNIKA w `Corridor.no_point_ref`
+    // — ten ma własny symbol `noPoint` na każdym poziomie, przy bloku stacji;
+    // asercja zawężona do NOP-stacji, intencja GS-1 bez zmian.)
     const scene0 = buildSceneV3(enmWithNop, 0);
-    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef)).toBe(false);
     const nopGlyph = scene0.symbols.find(
       (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef,
     );
