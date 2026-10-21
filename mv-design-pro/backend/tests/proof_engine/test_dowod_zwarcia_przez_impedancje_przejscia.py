@@ -28,6 +28,7 @@ from application.proof_engine.proof_generator import (
     SC3FInput,
 )
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta, czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.impedancja_przejscia import (
@@ -111,7 +112,7 @@ def _wejscie_sc3f(z_f: complex | None, *, tb_s: float | None = None) -> SC3FInpu
         "fault_node_id": WEZEL,
         "c_factor": C,
         "tk_s": 1.0,
-        "tb_s": tb_s,
+        "czas_tb": czas_tb_projektanta(tb_s) if tb_s is not None else czas_tb_roboczy(),
     }
     if z_f is not None:
         argumenty["z_f_ohm"] = z_f
@@ -142,16 +143,17 @@ def _tresc(dowod) -> dict:
 @pytest.mark.parametrize("etykieta", sorted(ZF_ISTOTNE))
 def test_dowod_sc3f_przez_zf_ma_kroki_petli_i_prad_wyniku(etykieta: str) -> None:
     z_f = ZF_ISTOTNE[etykieta]
-    # Karta SC-IB-ITH-ZRODLA: pełna kolejność (z krokiem i_DC(t_b), EQ_SC3F_020) w biegu z t_b;
-    # bieg bez t_b ma tę samą kolejność bez kroku i_DC — liczby z wyniku, nie z domysłu t_b.
+    # Karta TB-WARTOSC-ROBOCZA: pełna kolejność (z krokiem i_DC(t_b), EQ_SC3F_020) przy t_b
+    # projektanta i przy t_b roboczym — t_b punktu jest zawsze rozstrzygnięte; t_b roboczy
+    # różni się wyłącznie ostrzeżeniem o założeniu.
     wejscie = _wejscie_sc3f(z_f, tb_s=0.1)
     dowod = ProofGenerator.generate_sc3f_proof(wejscie, artifact_id=ARTEFAKT)
     rownania = [krok.equation.equation_id for krok in dowod.steps]
     assert rownania == EquationRegistry.get_sc3f_proof_step_order(impedancja_przejscia=True)
     bez_tb = ProofGenerator.generate_sc3f_proof(_wejscie_sc3f(z_f), artifact_id=ARTEFAKT)
-    assert [krok.equation.equation_id for krok in bez_tb.steps] == [
-        r for r in rownania if r != "EQ_SC3F_020"
-    ]
+    assert [krok.equation.equation_id for krok in bez_tb.steps] == rownania
+    assert any("wartością roboczą" in w for w in bez_tb.summary.warnings)
+    assert not any("wartością roboczą" in w for w in dowod.summary.warnings)
     assert "EQ_SC3F_004" not in rownania and "EQ_SC3F_005" not in rownania
     # Liczby dowodu = liczby wyniku solvera (dowód formatuje, nie liczy).
     wyniki = dowod.summary.key_results
@@ -182,10 +184,8 @@ def test_dowod_sc3f_przez_zf_wspolczynnik_c_wylacznie_w_kroku_pradu(etykieta: st
 def test_dowod_sc3f_bez_zf_ma_kroki_metaliczne_bez_sladu_zf() -> None:
     dowod = _dowod_sc3f(None)
     rownania = [krok.equation.equation_id for krok in dowod.steps]
-    # Bieg bez t_b: kolejność kanoniczna bez kroku i_DC(t_b) (EQ_SC3F_020).
-    assert rownania == [
-        r for r in EquationRegistry.get_sc3f_proof_step_order() if r != "EQ_SC3F_020"
-    ]
+    # Bieg bez t_b projektanta: t_b roboczy, kolejność kanoniczna z krokiem i_DC(t_b).
+    assert rownania == EquationRegistry.get_sc3f_proof_step_order()
     z_tb = ProofGenerator.generate_sc3f_proof(_wejscie_sc3f(None, tb_s=0.1), artifact_id=ARTEFAKT)
     assert [k.equation.equation_id for k in z_tb.steps] == (
         EquationRegistry.get_sc3f_proof_step_order()

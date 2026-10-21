@@ -1338,7 +1338,8 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         "thermal_time_seconds": spec.config.thermal_time_seconds,
         # Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza (I_b z maszynami, i_DC).
         # Klucz tylko przy podanym t_b: payload i `input_hash` scenariuszy bez t_b bajtowo
-        # te same; brak = założenie biegu `fault.czas_tb_brak` (assembler).
+        # te same; brak = t_b rozstrzygany per punkt zwarcia (karta TB-WARTOSC-ROBOCZA:
+        # pola lokalne, inaczej wartość robocza z założeniem `fault.czas_tb_wartosc_robocza`).
         **(
             {KLUCZ_OPCJI_CZASU_TB: spec.config.breaking_time_seconds}
             if spec.config.breaking_time_seconds is not None

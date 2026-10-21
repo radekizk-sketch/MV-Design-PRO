@@ -57,6 +57,24 @@ export interface PunktPorownaniaZwarciowego {
   readonly i2t_ka2s_b?: number;
   readonly delta_i2t_ka2s?: number;
   readonly delta_i2t_percent?: number;
+  // Karta TB-WARTOSC-ROBOCZA (kontrakt 1.4.0, addytywnie): I_b, i_DC(t_b) i t_b punktu
+  // z pochodzeniem t_b każdej strony.
+  readonly ib_ka_a?: number;
+  readonly ib_ka_b?: number;
+  readonly delta_ib_ka?: number;
+  readonly delta_ib_percent?: number;
+  readonly i_dc_ka_a?: number;
+  readonly i_dc_ka_b?: number;
+  readonly delta_i_dc_ka?: number;
+  readonly delta_i_dc_percent?: number;
+  readonly tb_s_a?: number;
+  readonly tb_s_b?: number;
+  readonly delta_tb_s?: number;
+  readonly delta_tb_percent?: number;
+  readonly tb_pochodzenie_a?: 'PROJEKTANT' | 'Z_POL' | 'PROPOZYCJA';
+  readonly tb_pochodzenie_b?: 'PROJEKTANT' | 'Z_POL' | 'PROPOZYCJA';
+  readonly tb_wartosc_robocza_a?: boolean;
+  readonly tb_wartosc_robocza_b?: boolean;
 }
 
 export interface PorownanieZwarciowe {

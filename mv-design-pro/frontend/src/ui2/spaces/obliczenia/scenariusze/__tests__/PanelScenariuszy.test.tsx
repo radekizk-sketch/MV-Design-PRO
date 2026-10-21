@@ -15,6 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStateStore } from '../../../../../ui/app-state';
 import { useFaultScenariosStore } from '../../../../../ui/fault-scenarios/store';
 import { PanelScenariuszy } from '../PanelScenariuszy';
+import { SCENARIUSZE_STRINGS as T } from '../strings';
+import { useZadanieCzasuTb } from '../zadanieCzasuTb';
+import { OPIS_CZASU_TB_W_PUNKCIE } from '../../../../../ui/fault-scenarios/wspolczynnikC';
 
 const CASE_ID = 'case-scen-1';
 
@@ -154,6 +157,27 @@ function zamontujBackend(
           headers: { 'Content-Type': 'application/json' },
         });
       }
+      // Karta TB-WARTOSC-ROBOCZA: PUT scenariusza — wierna kontraktowi reguła t_b
+      // (`czas_tb_z_danych`: niedodatni = 422 `fault.czas_tb_niepoprawny`), odpowiedź = scenariusz
+      // z konfiguracją z żądania.
+      if (metoda === 'PUT' && url.includes('/fault-scenarios/')) {
+        const body = (init?.body ? JSON.parse(String(init.body)) : {}) as {
+          config?: Record<string, unknown>;
+        };
+        const id = url.split('/fault-scenarios/')[1];
+        const tb = body.config?.breaking_time_seconds;
+        if (typeof tb === 'number' && !(tb > 0)) {
+          return new Response(
+            JSON.stringify({ detail: 'Czas wyłączenia t_b musi być dodatni', kod: 'fault.czas_tb_niepoprawny' }),
+            { status: 422, headers: JSON_NAGLOWKI },
+          );
+        }
+        const bazowy = lista.find((x) => x.scenario_id === id) ?? scenariusz(id, id);
+        return new Response(JSON.stringify({ ...bazowy, config: body.config ?? bazowy.config }), {
+          status: 200,
+          headers: JSON_NAGLOWKI,
+        });
+      }
       if (metoda === 'DELETE') return new Response(null, { status: 204 });
       return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
     }),
@@ -164,6 +188,7 @@ function zamontujBackend(
 beforeEach(() => {
   useFaultScenariosStore.getState().reset();
   useAppStateStore.setState({ activeCaseId: CASE_ID });
+  useZadanieCzasuTb.setState({ zadanie: null });
 });
 
 afterEach(() => {
@@ -358,8 +383,9 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
   });
 
   // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza. Iloczyn cech: {puste, 0.02, 0.1, 0.25}
-  // → klucz `breaking_time_seconds` obecny tylko z liczbą (puste = brak danej, założenie biegu
-  // `fault.czas_tb_brak`); {0, -0.1} → blokada w formularzu bez żądania. Wpisywanie natywne.
+  // → klucz `breaking_time_seconds` obecny tylko z liczbą (puste = t_b rozstrzygany w punkcie
+  // zwarcia — karta TB-WARTOSC-ROBOCZA); {0, -0.1} → blokada w formularzu bez żądania.
+  // Wpisywanie natywne.
   describe('CZAS WYŁĄCZENIA t_b', () => {
     async function wypelnij(user: ReturnType<typeof userEvent.setup>, tb: string) {
       await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
@@ -412,7 +438,7 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
     });
 
-    it('LISTA: kolumna t_b pokazuje wartość albo jawny brak z konsekwencją', async () => {
+    it('LISTA: kolumna t_b pokazuje wartość albo regułę punktu zwarcia', async () => {
       zamontujBackend([
         scenariusz('s1', 'Bez t_b', {
           scenariusz: 'MAX',
@@ -430,9 +456,111 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       ]);
       render(<PanelScenariuszy />);
       expect((await screen.findByTestId('mvd-scenariusze-tb-s1')).textContent).toBe(
-        'nie podano (Ib przy maszynach i iDC nieobliczone)',
+        `${OPIS_CZASU_TB_W_PUNKCIE} ${T.zmianaTb}`,
       );
-      expect(screen.getByTestId('mvd-scenariusze-tb-s2').textContent).toBe('0,1 s');
+      expect(screen.getByTestId('mvd-scenariusze-tb-s2').textContent).toBe(`0,1 s ${T.zmianaTb}`);
+    });
+  });
+
+  // Karta TB-WARTOSC-ROBOCZA: zmiana t_b istniejącego scenariusza (PUT z całą konfiguracją —
+  // pozostałe pola bez zmian). Iloczyn cech: {scenariusz bez t_b · z t_b} × {wpis liczby ·
+  // wyczyszczenie pola · wpis niefizyczny} — klucz `breaking_time_seconds` tylko z liczbą,
+  // niefizyczny = blokada bez żądania. Wejście: przycisk wiersza ALBO żądanie z ekranu wyników
+  // ({scenariusz biegu istnieje · usunięty · bieg bez scenariusza}). Kliki natywne.
+  describe('ZMIANA t_b scenariusza', () => {
+    const KONFIG_BEZ_TB = {
+      scenariusz: 'MIN',
+      nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
+      thermal_time_seconds: 0.5,
+      include_branch_contributions: true,
+    };
+    const KONFIG_Z_TB = { ...KONFIG_BEZ_TB, breaking_time_seconds: 0.25 };
+
+    async function zmienTb(
+      user: ReturnType<typeof userEvent.setup>,
+      id: string,
+      wpis: string,
+      zPrzycisku = true,
+    ) {
+      if (zPrzycisku) await user.click(await screen.findByTestId(`mvd-scenariusze-tb-zmien-${id}`));
+      const pole = await screen.findByTestId(`mvd-scenariusze-tb-pole-${id}`);
+      await user.clear(pole);
+      if (wpis !== '') await user.type(pole, wpis);
+      await user.click(screen.getByTestId(`mvd-scenariusze-tb-zapisz-${id}`));
+    }
+
+    it.each([
+      ['bez t_b', KONFIG_BEZ_TB, '0.08', 0.08],
+      ['z t_b', KONFIG_Z_TB, '0.08', 0.08],
+      ['bez t_b', KONFIG_BEZ_TB, '', undefined],
+      ['z t_b', KONFIG_Z_TB, '', undefined],
+    ] as const)('scenariusz %s × wpis „%s" → PUT z pełną konfiguracją', async (_n, konfig, wpis, tb) => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([scenariusz('s1', 'Scenariusz 1', konfig)]);
+      render(<PanelScenariuszy />);
+      await zmienTb(user, 's1', wpis);
+      await waitFor(() => {
+        const put = zadania.find((z) => z.metoda === 'PUT');
+        expect(put?.url).toContain('/fault-scenarios/s1');
+        const { breaking_time_seconds: wyslany, ...reszta } = (put!.body as { config: Record<string, unknown> })
+          .config;
+        expect(wyslany).toBe(tb);
+        const { breaking_time_seconds: _pominiety, ...bazowa } = konfig as Record<string, unknown>;
+        expect(reszta).toEqual(bazowa);
+        expect(Object.keys((put!.body as Record<string, unknown>))).toEqual(['config']);
+      });
+      expect(await screen.findByTestId('mvd-scenariusze-komunikat')).toHaveTextContent(T.zmianaTbZapisano);
+      expect(screen.getByTestId('mvd-scenariusze-tb-s1').textContent).toBe(
+        `${tb === undefined ? OPIS_CZASU_TB_W_PUNKCIE : '0,08 s'} ${T.zmianaTb}`,
+      );
+    });
+
+    it.each(['0', '-0.1'])('wpis niefizyczny %s → blokada w wierszu, brak PUT', async (wpis) => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([scenariusz('s1', 'Scenariusz 1', KONFIG_BEZ_TB)]);
+      render(<PanelScenariuszy />);
+      await zmienTb(user, 's1', wpis);
+      expect(screen.getByTestId('mvd-scenariusze-tb-blad-s1').textContent).toContain('Czas wyłączenia t_b');
+      expect(zadania.some((z) => z.metoda === 'PUT')).toBe(false);
+    });
+
+    it('żądanie z ekranu wyników: scenariusz biegu istnieje → edycja t_b w jego wierszu', async () => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([
+        scenariusz('s1', 'Scenariusz 1', KONFIG_BEZ_TB),
+        scenariusz('s2', 'Scenariusz 2', KONFIG_Z_TB),
+      ]);
+      useZadanieCzasuTb.getState().zazadaj('s2');
+      render(<PanelScenariuszy />);
+      const pole = await screen.findByTestId('mvd-scenariusze-tb-pole-s2');
+      expect(pole).toHaveValue(0.25);
+      expect(pole).toHaveFocus();
+      expect(screen.queryByTestId('mvd-scenariusze-tb-pole-s1')).not.toBeInTheDocument();
+      expect(useZadanieCzasuTb.getState().zadanie).toBeNull();
+      await zmienTb(user, 's2', '0.12', false);
+      await waitFor(() => {
+        const put = zadania.find((z) => z.metoda === 'PUT');
+        expect(put?.url).toContain('/fault-scenarios/s2');
+        expect((put!.body as { config: Record<string, unknown> }).config.breaking_time_seconds).toBe(0.12);
+      });
+    });
+
+    it.each([
+      ['bieg przypadku bez scenariusza', null, false],
+      ['scenariusz biegu usunięty', 'scen-usuniety', true],
+    ] as const)('żądanie z ekranu wyników: %s → formularz nowego scenariusza z kursorem w t_b', async (_n, id, komunikat) => {
+      zamontujBackend([scenariusz('s1', 'Scenariusz 1', KONFIG_BEZ_TB)]);
+      useZadanieCzasuTb.getState().zazadaj(id);
+      render(<PanelScenariuszy />);
+      const pole = await screen.findByTestId('mvd-scenariusze-czas-tb');
+      await waitFor(() => expect(pole).toHaveFocus());
+      expect(screen.queryByTestId('mvd-scenariusze-tb-pole-s1')).not.toBeInTheDocument();
+      expect(useZadanieCzasuTb.getState().zadanie).toBeNull();
+      if (komunikat) {
+        expect(screen.getByTestId('mvd-scenariusze-komunikat')).toHaveTextContent(T.zmianaTbScenariuszaBrak);
+      } else {
+        expect(screen.queryByTestId('mvd-scenariusze-komunikat')).not.toBeInTheDocument();
+      }
     });
   });
 

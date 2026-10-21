@@ -28,11 +28,17 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPackInput,
 )
 from application.slad_kroku import kroki_zwarcia_w_kontrakcie
+from application.solvers.short_circuit_binding import (
+    czas_tb_punktu,
+    pola_lokalne_biegu,
+    wynik_zwarcia_punktu,
+)
 from application.v126_artifacts import (
     build_v126_proof_artifact,
     build_v126_report_artifact,
     wynik_v126_dla_powierzchni,
 )
+from domain.canonical_operations import READINESS_CODES
 from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
@@ -109,6 +115,7 @@ from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.autorytet_wyniku_zwarciowego import KLUCZ_IMPEDANCJI_ZWARCIA
 from network_model.core.branch import Branch
+from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import DoborC
@@ -158,7 +165,6 @@ from network_model.solvers.power_flow_unbalanced import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
-    ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -406,7 +412,16 @@ KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
 #: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
 #: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
 KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
-    {"z1_ohm", "z2_ohm", "z0_ohm", "branch_flow_trace", "m_factor", "n_factor", "i_dc_a"}
+    {
+        "z1_ohm",
+        "z2_ohm",
+        "z0_ohm",
+        "branch_flow_trace",
+        "m_factor",
+        "n_factor",
+        "i_dc_a",
+        "tb_zrodlo",
+    }
 )
 
 
@@ -2352,68 +2367,66 @@ def _dobor_c_punktu(wejscie: WejscieZwarcia, node_id: str) -> DoborC:
 
 
 def _wynik_solvera_punktu(
-    wejscie: WejscieZwarcia, node_id: str, *, c_factor: float, wklady: bool
-) -> ShortCircuitResult | None:
-    """Wynik FROZEN solvera dla JEDNEGO punktu zwarcia — jedyna dyspozycja rodzaju zwarcia.
+    wejscie: WejscieZwarcia,
+    node_id: str,
+    *,
+    c_factor: float,
+    wklady: bool,
+    pola_lokalne: Mapping[str, tuple[Any, ...]] | None = None,
+) -> tuple[ShortCircuitResult, CzasWylaczeniaTb] | None:
+    """Wynik FROZEN solvera i t_b JEDNEGO punktu zwarcia — jedyna droga biegu do rdzenia.
 
     Wołana przez bieg (pętla po węzłach raportowalnych) i przez wkłady na żądanie
     (PERF-SC-50, krok 3) — jedno miejsce, więc bieg i żądanie liczą z identycznego
-    wejścia (`solve_graph`, `z0_bus`, c, tk). Węzeł bez impedancji do odniesienia
-    (CV-4.3 K3b) nie przechodzi przez solver → ``None``.
+    wejścia (`solve_graph`, `z0_bus`, c, tk, t_b). Węzeł bez impedancji do odniesienia
+    (CV-4.3 K3b) nie przechodzi przez solver → ``None``. Karta TB-WARTOSC-ROBOCZA: t_b
+    punktu rozstrzyga ``short_circuit_binding.czas_tb_punktu`` (scenariusz projektanta >
+    pola lokalne > wartość robocza), dyspozycję rodzaju zwarcia ``wynik_zwarcia_punktu`` —
+    te same funkcje co pakiety dowodowe.
     """
     if node_id in wejscie.wezly_bez_odniesienia:
         return None
     # Odmowa wejścia rdzenia (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami z grafu.
     with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
-        return _wynik_solvera_rodzaju(wejscie, node_id, c_factor=c_factor, wklady=wklady)
+        czas_tb = czas_tb_punktu(
+            wejscie,
+            node_id,
+            c_factor=c_factor,
+            z_f_ohm=wejscie.impedancja_zwarcia,
+            pola_lokalne=pola_lokalne,
+        )
+        wynik = wynik_zwarcia_punktu(
+            wejscie,
+            node_id,
+            c_factor=c_factor,
+            czas_tb=czas_tb,
+            wklady=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
+        )
+    return wynik, czas_tb
 
 
-def _wynik_solvera_rodzaju(
-    wejscie: WejscieZwarcia, node_id: str, *, c_factor: float, wklady: bool
-) -> ShortCircuitResult:
-    """Dyspozycja rodzaju zwarcia do FROZEN solvera IEC 60909 (bez granicy odmów)."""
-    typ = wejscie.short_circuit_type
-    if typ == ShortCircuitType.THREE_PHASE:
-        return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
-            c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            tb_s=wejscie.tb_s,
-            include_branch_contributions=wklady,
-            z_f_ohm=wejscie.impedancja_zwarcia,
-        )
-    if typ == ShortCircuitType.SINGLE_PHASE_GROUND:
-        return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
-            c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            tb_s=wejscie.tb_s,
-            z0_bus=wejscie.z0_bus,
-            include_branch_contributions=wklady,
-            z_f_ohm=wejscie.impedancja_zwarcia,
-        )
-    if typ == ShortCircuitType.TWO_PHASE:
-        return ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
-            c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            tb_s=wejscie.tb_s,
-            include_branch_contributions=wklady,
-            z_f_ohm=wejscie.impedancja_zwarcia,
-        )
-    return ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-        graph=wejscie.solve_graph,
-        fault_node_id=node_id,
-        c_factor=c_factor,
-        tk_s=wejscie.tk_s,
-        tb_s=wejscie.tb_s,
-        z0_bus=wejscie.z0_bus,
-        include_branch_contributions=wklady,
-        z_f_ohm=wejscie.impedancja_zwarcia,
-    )
+def _zalozenie_czasu_tb_roboczego(
+    punkty: list[dict[str, Any]], scenario_c: str
+) -> list[dict[str, Any]]:
+    """Założenie biegu ``fault.czas_tb_wartosc_robocza`` (karta TB-WARTOSC-ROBOCZA, §0.3).
+
+    Tym samym wzorcem co ``source.sk_min_missing`` (kod gotowości, treść z rejestru, bez
+    elementu — dana biegu): lista punktów zwarcia, w których t_b jest wartością roboczą
+    (propozycja 0,1 s albo czas pola z czasem własnym wyłącznika przyjętym roboczo), z t_b
+    i jego źródłem. Pusta lista, gdy t_b każdego punktu jest projektowe.
+    """
+    if not punkty:
+        return []
+    return [
+        {
+            "code": KOD_CZAS_TB_WARTOSC_ROBOCZA,
+            "element_ref": None,
+            "message_pl": READINESS_CODES[KOD_CZAS_TB_WARTOSC_ROBOCZA].message_pl,
+            "scenariusz": scenario_c,
+            "punkty": punkty,
+        }
+    ]
 
 
 #: Pola wiersza zwarcia porównywane przy wkładach na żądanie z wynikiem odtworzonym z
@@ -2442,14 +2455,15 @@ def _policz_rozplyw_punktu_na_zadanie(
     )
     if fault_node_id not in wejscie.reportable_fault_node_ids:
         return None
-    result = _wynik_solvera_punktu(
+    policzony = _wynik_solvera_punktu(
         wejscie,
         fault_node_id,
         c_factor=_dobor_c_punktu(wejscie, fault_node_id).wartosc,
         wklady=True,
     )
-    if result is None:
+    if policzony is None:
         return None
+    result, _ = policzony
     odtworzony, _ = podmien_niefinitowe(result.to_dict())
     wiersz = next(
         (
@@ -2536,6 +2550,10 @@ def _execute_short_circuit(
     # NIE są w ``solve_graph`` — wiersz powstaje bez solvera (jawny brak, nie szum).
     wezly_bez_odniesienia = wejscie.wezly_bez_odniesienia
     liczba_punktow = len(reportable_fault_node_ids)
+    # Karta TB-WARTOSC-ROBOCZA: pola lokalne węzłów zbudowane RAZ na bieg (``None`` = t_b ze
+    # scenariusza projektanta — pola nie są czytane); punkty z t_b roboczym → założenie biegu.
+    pola_lokalne = pola_lokalne_biegu(wejscie)
+    punkty_tb_roboczego: list[dict[str, Any]] = []
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2560,9 +2578,25 @@ def _execute_short_circuit(
         # nie zmienia żadnej istniejącej wielkości ani śladu White Box). PERF-SC-50:
         # liczone W BIEGU tylko w trybie `in_run`; domyślnie NA ŻĄDANIE punktu
         # (`pobierz_rozplyw_biegu` — ta sama dyspozycja `_wynik_solvera_punktu`).
-        result = _wynik_solvera_punktu(
-            wejscie, node_id, c_factor=c_factor, wklady=wejscie.wklady_w_biegu
+        policzony = _wynik_solvera_punktu(
+            wejscie,
+            node_id,
+            c_factor=c_factor,
+            wklady=wejscie.wklady_w_biegu,
+            pola_lokalne=pola_lokalne,
         )
+        result = policzony[0] if policzony is not None else None
+        if policzony is not None and policzony[1].robocza:
+            punkty_tb_roboczego.append(
+                {
+                    "fault_node_id": node_id,
+                    # Odnośnik szyny ENM — ten sam klucz co ``element_id`` wiersza wyniku
+                    # (ekran wyników łączy punkt założenia z wierszem po nim).
+                    "element_id": graph_nodes.get(node_id, {}).get("element_id"),
+                    "nazwa": nazwa_elementu(graph.nodes[node_id], "buses"),
+                    **policzony[1].to_dict(),
+                }
+            )
         payload = (
             result.to_dict()
             if result is not None
@@ -2572,7 +2606,9 @@ def _execute_short_circuit(
                 c_factor=c_factor,
                 un_kv=graph.nodes[node_id].voltage_level,
                 tk_s=tk_s,
-                tb_s=wejscie.tb_s,
+                # Węzeł bez odniesienia nie przechodzi przez rdzeń: t_b nie jest użyte —
+                # wiersz niesie wyłącznie t_b projektanta (dana wejściowa biegu) albo brak.
+                tb_s=wejscie.tb_projektanta_s,
             )
         )
         if result is not None and not wejscie.wklady_w_biegu:
@@ -2673,6 +2709,10 @@ def _execute_short_circuit(
         if OGRANICZENIE_WYNIK_NIEFIZYCZNY in (row.get("reporting_limitations") or [])
     )
 
+    zalozenia_biegu = [
+        *wejscie.zalozenia,
+        *_zalozenie_czasu_tb_roboczego(punkty_tb_roboczego, scenario_c),
+    ]
     run.raw_result = {
         "analysis_type": _result_analysis_type_for_fault(short_circuit_type),
         "short_circuit_type": short_circuit_type.value,
@@ -2735,8 +2775,9 @@ def _execute_short_circuit(
             else {}
         ),
         # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
-        # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho.
-        **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
+        # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho. Karta
+        # TB-WARTOSC-ROBOCZA: + `fault.czas_tb_wartosc_robocza` z listą punktów.
+        **({"zalozenia": zalozenia_biegu} if zalozenia_biegu else {}),
         # Karta S-2 AUTORYTET: znaczniki pochodzenia k_sc WSZYSTKICH źródeł
         # falownikowych czynnych w grafie TEGO biegu (`ProweniencjaWynikuZwarciowego.
         # z_grafu`, zapisane przy asemblacji wejścia — `enm/assembler.py::
@@ -3832,9 +3873,12 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
-        # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9
-        # (None = 3F z maszynami bez t_b), i_DC(t_b) — składowa nieokresowa rozdz. 10
-        # (None = bieg bez t_b; pole addytywne solvera).
+        # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu, gdy
+        # nie pochodzi ze scenariusza projektanta (pola lokalne albo wartość robocza).
+        **({"tb_zrodlo": item["tb_zrodlo"]} if item.get("tb_zrodlo") is not None else {}),
+        # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9,
+        # i_DC(t_b) — składowa nieokresowa rozdz. 10, obie przy t_b punktu (karta
+        # TB-WARTOSC-ROBOCZA); None wyłącznie dla wiersza bez solvera / zapisu sprzed kart.
         "ib_ka": _amps_to_ka(item.get("ib_a")),
         "i_dc_ka": _amps_to_ka(item.get("i_dc_a")),
         "ik_ka": _amps_to_ka(item.get("ik_total_a")),
@@ -4678,11 +4722,16 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         "i2t_ka2s": item.get("i2t_ka2s"),
                         # Karta SC-IB-ITH-ZRODLA: prąd wyłączeniowy symetryczny I_b
                         # (IEC 60909-0 rozdz. 9), składowa nieokresowa i_DC(t_b)
-                        # (rozdz. 10) i czas t_b, z którym je liczono — None = bieg bez
-                        # t_b (kod `fault.czas_tb_brak` w założeniach biegu).
+                        # (rozdz. 10) i czas t_b punktu, z którym je liczono; pochodzenie
+                        # t_b (karta TB-WARTOSC-ROBOCZA) addytywnie, exclude-None.
                         "ib_ka": item.get("ib_ka"),
                         "i_dc_ka": item.get("i_dc_ka"),
                         "tb_s": item.get("tb_s"),
+                        **(
+                            {"tb_zrodlo": item["tb_zrodlo"]}
+                            if item.get("tb_zrodlo") is not None
+                            else {}
+                        ),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),

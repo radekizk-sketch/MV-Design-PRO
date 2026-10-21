@@ -39,10 +39,12 @@ router = APIRouter(prefix="/api/short-circuit-comparisons", tags=["short-circuit
 #: ADDYTYWNE pola `delta_*_percent` liczone w backendzie; 1.2.0 — ADDYTYWNE pole
 #: `element_id` (ref punktu na schemacie, potrzebny nakladce roznic); 1.3.0 —
 #: ADDYTYWNE metryki `B_*` w nakladce roznic (wartosci bezwzgledne przebiegu B
-#: obok delt — karta S9-13, etykieta na schemacie niesie „wartosc B i roznice").
+#: obok delt — karta S9-13, etykieta na schemacie niesie „wartosc B i roznice"); 1.4.0 —
+#: ADDYTYWNE pola I_b, i_DC(t_b) i t_b punktu z pochodzeniem t_b po obu stronach (karta
+#: TB-WARTOSC-ROBOCZA: roznica I_b/i_DC bywa skutkiem samej zmiany t_b).
 #: Konsument starszej wersji nie widzi zadnej zmiany — pola nieistniejace sa
 #: pomijane (`exclude_none`), a nieznane kody metryk ignorowane.
-WERSJA_RAPORTU = "1.3.0"
+WERSJA_RAPORTU = "1.4.0"
 
 
 class PunktZwarciowyDiffResponse(BaseModel):
@@ -98,6 +100,25 @@ class PunktZwarciowyDiffResponse(BaseModel):
     i2t_ka2s_b: float | None = None
     delta_i2t_ka2s: float | None = None
     delta_i2t_percent: float | None = None
+    # Wielkosci zalezne od t_b i sam t_b punktu z pochodzeniem (karta TB-WARTOSC-ROBOCZA).
+    ib_ka_a: float | None = None
+    ib_ka_b: float | None = None
+    delta_ib_ka: float | None = None
+    delta_ib_percent: float | None = None
+    i_dc_ka_a: float | None = None
+    i_dc_ka_b: float | None = None
+    delta_i_dc_ka: float | None = None
+    delta_i_dc_percent: float | None = None
+    tb_s_a: float | None = None
+    tb_s_b: float | None = None
+    delta_tb_s: float | None = None
+    delta_tb_percent: float | None = None
+    #: Pochodzenie t_b strony: PROJEKTANT / Z_POL / PROPOZYCJA.
+    tb_pochodzenie_a: str | None = None
+    tb_pochodzenie_b: str | None = None
+    #: Czy t_b strony jest wartoscia robocza (propozycja albo pole z roboczym czasem wlasnym).
+    tb_wartosc_robocza_a: bool | None = None
+    tb_wartosc_robocza_b: bool | None = None
 
 
 class ZwarciaPorownanieResponse(BaseModel):
@@ -143,7 +164,7 @@ def _wiersze_zwarciowe(run_id: str) -> list[dict[str, Any]]:
 def utworz_porownanie_zwarc(
     request: CreateZwarciaPorownanieRequest,
 ) -> ZwarciaPorownanieResponse:
-    """Delty Ik''/ip/Ith/Sk'' per punkt zwarciowy dla pary przebiegow."""
+    """Delty Ik''/ip/Ith/Sk'', pelnego bilansu, I_b, i_DC i t_b per punkt zwarciowy."""
     wynik = zbuduj_porownanie_zwarc(
         run_id_a=request.run_id_a,
         run_id_b=request.run_id_b,

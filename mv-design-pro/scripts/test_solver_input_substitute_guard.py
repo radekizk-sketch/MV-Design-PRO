@@ -1875,7 +1875,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # -0. PASS niezmieniony (zero podstawien).
     # Scalenie partii 13 (SC-IB-ITH-ZRODLA + WARTOSC-ROBOCZA-1, 2026-10-21): POMIAR guardem na
     # drzewie scalenia = 4241 (4219 bazy + 13 karty Ib + 9 rejestru wartosci roboczych).
-    assert "Pol kontraktow wejsciowych: 4241." in wyjscie, wyjscie
+    # Karta TB-WARTOSC-ROBOCZA (2026-10-21): 4241 -> 4273 — POMIAR `contract_fields()` na bazie
+    # karty `5517d6eff` (4242: pin zastany nieaktualny o +1 na bazie) i na drzewie karty (4273).
+    # Roznica zbiorow +31, -0: nosnik t_b punktu (`czas_tb`, `robocza`, `wartosc_s`,
+    # `tb_projektanta_s`, `tb_zrodlo`, rozbicie pola `pole_ref`, `pole_nazwa`,
+    # `zabezpieczenie_ref`, `czlon_nastawczy_s`, `czas_wlasny_s`, `czas_wlasny_pochodzenie`,
+    # pola lokalne `bay`, `core`, rdzen `ikss_thevenin_a`, `tlumienie_petli`) oraz porownanie
+    # biegow (`ib_ka_a/b`, `i_dc_ka_a/b`, `tb_s_a/b`, `delta_ib_ka`, `delta_ib_percent`,
+    # `delta_i_dc_ka`, `delta_i_dc_percent`, `delta_tb_s`, `delta_tb_percent`,
+    # `tb_pochodzenie_a/b`, `tb_wartosc_robocza_a/b`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4273." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

@@ -309,7 +309,7 @@ export function FaultScenarioModal() {
               data-testid="fault-scenario-tb-input"
             />
             <p className="mt-1 text-xs text-slate-500">
-              Prąd wyłączeniowy Ib przy maszynach wirujących i składowa nieokresowa iDC wymagają t_b; puste pole = wielkości nieobliczone z nazwanym założeniem.
+              Puste pole = t_b w każdym punkcie zwarcia z pól przy jego szynie (nastawy + czas własny wyłącznika), a bez nich wartość robocza z oznaczeniem w wynikach.
             </p>
           </div>
 

@@ -22,6 +22,7 @@ import json
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
@@ -213,7 +214,7 @@ class TestSolverFingerprintStability:
                 fault_node_id="load_bus",
                 c_factor=1.0,
                 tk_s=1.0,
-                tb_s=0.1,
+                czas_tb=czas_tb_projektanta(0.1),
                 include_branch_contributions=False,
             )
             # to_dict() exists per ShortCircuitResult contract
@@ -304,7 +305,7 @@ class TestE2EFingerprintStability:
                     tolerancja_nn=graph.nodes["load_bus"].tolerancja_nn,
                 ),
                 tk_s=1.0,
-                tb_s=0.1,
+                czas_tb=czas_tb_projektanta(0.1),
                 include_branch_contributions=False,
             )
             # Step 3: hash combined (payload + result)

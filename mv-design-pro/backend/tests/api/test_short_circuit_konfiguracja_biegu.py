@@ -159,6 +159,55 @@ def test_thermal_time_seconds_nieobecny_domyslna_assemblera_nazwana(client: Test
     }
 
 
+def test_breaking_time_seconds_jawny_w_opcjach_biegu(client: TestClient) -> None:
+    """Karta TB-WARTOSC-ROBOCZA: t_b projektanta zapisany na biegu wraca jako liczba
+    z pochodzeniem ``opcje_biegu`` (ta sama reguła danych co opcje biegu)."""
+    run_id = uuid4()
+    _zapisz_bieg(
+        run_id,
+        opcje={"fault_type": "3F", "scenario": "max", "breaking_time_seconds": 0.08},
+    )
+    konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
+    assert konfiguracja["breaking_time_seconds"] == {"wartosc": 0.08, "pochodzenie": "opcje_biegu"}
+
+
+def test_breaking_time_seconds_nieobecny_rozstrzygany_w_punkcie_zwarcia(
+    client: TestClient,
+) -> None:
+    """Predykat parami z testem wyżej: brak t_b w scenariuszu NIE jest brakiem danej ani
+    jedną liczbą biegu — t_b rozstrzyga się per punkt zwarcia (pola lokalne, inaczej wartość
+    robocza z jawnym źródłem normowym); zdanie reguły niesie liczbę i źródło z jednego
+    miejsca (``core/czas_wylaczenia.py``)."""
+    from network_model.core.czas_wylaczenia import ZRODLO_CZASU_TB_ROBOCZEGO
+
+    run_id = uuid4()
+    _zapisz_bieg(run_id, opcje={"fault_type": "3F", "scenario": "max"})
+    konfiguracja = _wynik(client, run_id)["konfiguracja_biegu"]
+    czas = konfiguracja["breaking_time_seconds"]
+    assert czas["wartosc"] is None
+    assert czas["pochodzenie"] == "punkt_zwarcia"
+    assert "kod" not in czas
+    assert "wartość robocza 0,1 s" in czas["opis_pl"]
+    assert ZRODLO_CZASU_TB_ROBOCZEGO in czas["opis_pl"]
+
+
+def test_scenariusz_zwarciowy_biegu_tylko_gdy_bieg_ze_scenariusza(client: TestClient) -> None:
+    """Predykat parami: bieg ze scenariusza (opcja ``scenario_id`` z projekcji scenariusza)
+    niesie odnośnik scenariusza — cel akcji „Zmień wartość" t_b; bieg przypadku bez
+    scenariusza nie ma klucza (bez domysłu)."""
+    ze_scenariusza = uuid4()
+    _zapisz_bieg(
+        ze_scenariusza,
+        opcje={"fault_type": "3F", "scenario": "max", "scenario_id": "scn-123"},
+    )
+    bez_scenariusza = uuid4()
+    _zapisz_bieg(bez_scenariusza, opcje={"fault_type": "3F", "scenario": "max"})
+    assert _wynik(client, ze_scenariusza)["konfiguracja_biegu"]["scenariusz_zwarciowy_id"] == (
+        "scn-123"
+    )
+    assert "scenariusz_zwarciowy_id" not in _wynik(client, bez_scenariusza)["konfiguracja_biegu"]
+
+
 def test_metoda_jest_stala_normatywna_iec_60909(client: TestClient) -> None:
     run_id = uuid4()
     _zapisz_bieg(run_id, opcje={"fault_type": "3F", "scenario": "max"})

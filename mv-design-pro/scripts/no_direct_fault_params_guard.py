@@ -194,11 +194,12 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
     # station_archetype_substrate.py przeniesiony do `backend/tests/` (poza
     # BACKEND_SRC, wiec poza skanem tego guarda) — oba wpisy zdjete (zapadka
     # w obie strony, niedobor = obniz budzet).
+    # Wejscia `A:compute_{1ph,2ph,2ph_ground,3ph}_short_circuit` ZDJETE kartą
+    # TB-WARTOSC-ROBOCZA: dyspozycja rodzaju zwarcia biegu przeniesiona do warstwy
+    # wiazania (`short_circuit_binding.wynik_zwarcia_punktu`, ta sama funkcja co pakiety
+    # dowodowe) razem z rozstrzygnieciem t_b punktu (`czas_tb_punktu`). Budzet OBNIZONY
+    # (zapadka zazadala tego sama: RC=1 „Dlug ZMALAL"). Zostaje `B:` — bieg zwarciowy.
     "enm/canonical_analysis.py": {
-        "A:compute_1ph_short_circuit": 1,
-        "A:compute_2ph_ground_short_circuit": 1,
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
         "B:_execute_short_circuit": 1,
     },
 }

@@ -27,6 +27,7 @@ import json
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     solve_power_flow_physics,
@@ -340,6 +341,7 @@ class TestV1ShortCircuitPipeline:
                 fault_node_id=node_id,
                 c_factor=1.1,
                 tk_s=1.0,
+                czas_tb=czas_tb_roboczy(),
             )
             results.append(sc)
 
@@ -364,6 +366,7 @@ class TestV1ShortCircuitPipeline:
             fault_node_id=node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         # WHITE BOX trace musi istnieć
@@ -388,6 +391,7 @@ class TestV1ShortCircuitPipeline:
             fault_node_id=node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert sc.contributions is not None, "Brak contributions"
@@ -546,6 +550,7 @@ class TestV1PipelineDeterminism:
                 fault_node_id=node_id,
                 c_factor=1.1,
                 tk_s=1.0,
+                czas_tb=czas_tb_roboczy(),
             )
 
             h = _sha256(_serialize_sc_result(sc))

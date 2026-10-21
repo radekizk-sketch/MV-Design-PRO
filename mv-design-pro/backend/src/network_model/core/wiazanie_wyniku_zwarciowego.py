@@ -69,6 +69,9 @@ POLA_WYNIKU_ZWARCIOWEGO: tuple[str, ...] = (
     "ib_a",
     "tb_s",
     "i_dc_a",
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (pola lokalne albo wartość robocza) —
+    # podmiana pochodzenia (wartość robocza podana jako projektowa) zmienia odcisk.
+    "tb_zrodlo",
 )
 
 #: Moduły, których treść składa się na odcisk implementacji solvera zwarciowego.

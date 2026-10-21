@@ -10,6 +10,7 @@ import math
 
 import numpy as np
 from network_model.core.branch import BranchType, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
@@ -119,7 +120,7 @@ def test_kt_direction_increases_ikss_on_lv_fault():
     graph = _source_tr_fault_graph()
     c_factor = 1.1
     result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=graph, fault_node_id="B", c_factor=c_factor, tk_s=1.0
+        graph=graph, fault_node_id="B", c_factor=c_factor, tk_s=1.0, czas_tb=czas_tb_roboczy()
     )
 
     k_t = _transformer().get_kt_correction_factor()
@@ -146,7 +147,7 @@ def test_kt_whitebox_trace_entry_present():
     c_max, K_T (formula + substitution), Z_T, Z_TK for the network transformer."""
     graph = _source_tr_fault_graph()
     result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=graph, fault_node_id="B", c_factor=1.1, tk_s=1.0
+        graph=graph, fault_node_id="B", c_factor=1.1, tk_s=1.0, czas_tb=czas_tb_roboczy()
     )
     trafo = _transformer()
 

@@ -8,6 +8,9 @@ import { useResultsInspectorStore } from '../../../../ui/results-inspector/store
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { konfiguracjaBieguFixture, shortCircuitResultsFixture, wkladyFixture } from './fixtures';
 import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
+import userEvent from '@testing-library/user-event';
+import { useZadanieCzasuTb } from '../../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
+import { useShellStore } from '../../../shell/useShellStore';
 
 // Karta UI2 p.9 (test klasy §2: {koperta obecna, koperta nieobecna} × {rozpływ,
 // zbieżność, ZWARCIA}) — trzeci człon macierzy, dotąd nietestowany w tym pliku
@@ -77,10 +80,11 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     const kreski = within(bilans)
       .getAllByRole('definition')
       .filter((el) => el.textContent === ZWARCIA_STRINGS.kreska);
-    // Karta SC-IB-ITH-ZRODLA: 18 pozycji bilansu (doszło i_DC(t_b)); Ib i i_DC przy braku t_b
-    // to nazwany stan „nie obliczono — brak tb", nie kreska — kresek 16.
-    expect(kreski.length).toBe(16);
-    expect(within(bilans).getAllByText(ZWARCIA_STRINGS.bilansBrakTb)).toHaveLength(2);
+    // 18 pozycji bilansu. Karta TB-WARTOSC-ROBOCZA: t_b rozstrzyga się w każdym punkcie,
+    // stan „nie obliczono — bieg bez tb" nie istnieje — wiersz bez wyniku solvera ma
+    // uczciwe kreski także przy Ib, iDC(tb) i tb (18 kresek), bez etykiety wartości roboczej.
+    expect(kreski.length).toBe(18);
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-robocza')).not.toBeInTheDocument();
   });
 
   it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {
@@ -92,6 +96,68 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     expect(screen.queryByTestId('mvd-wyn-th-zk')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-th-kappa')).not.toBeInTheDocument();
+  });
+});
+
+// Karta TB-WARTOSC-ROBOCZA — akcja „Zmień wartość" przy t_b roboczym prowadzi do t_b
+// scenariusza zwarciowego: iloczyn {bieg ze scenariusza · bieg przypadku bez scenariusza} ×
+// {t_b robocze · t_b projektanta}. Klik natywny (userEvent), Zero-Debt pkt 5.
+describe('EkranZwarc — t_b punktu: wartość robocza i „Zmień wartość"', () => {
+  const TB_ROBOCZE = {
+    wartosc_s: 0.1,
+    pochodzenie: 'PROPOZYCJA' as const,
+    wartosc_robocza: true,
+    jakosc: 'ESTIMATED' as const,
+    opis_pl: 't_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …).',
+    zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)',
+  };
+
+  function ustawBieg(scenariuszId: string | undefined, robocze: boolean) {
+    const wyniki = shortCircuitResultsFixture({
+      konfiguracja_biegu: konfiguracjaBieguFixture({
+        breaking_time_seconds: robocze
+          ? { wartosc: null, pochodzenie: 'punkt_zwarcia', opis_pl: 'Reguła punktu zwarcia.' }
+          : { wartosc: 0.08, pochodzenie: 'opcje_biegu' },
+        ...(scenariuszId === undefined ? {} : { scenariusz_zwarciowy_id: scenariuszId }),
+      }),
+    });
+    wyniki.rows[0] = robocze
+      ? { ...wyniki.rows[0], tb_s: 0.1, tb_zrodlo: TB_ROBOCZE }
+      : { ...wyniki.rows[0], tb_s: 0.08, tb_zrodlo: undefined };
+    useResultsInspectorStore.setState({ shortCircuitResults: wyniki, selectedRunId: 'sc-run-1' });
+  }
+
+  beforeEach(() => {
+    useZadanieCzasuTb.setState({ zadanie: null });
+    useShellStore.getState().setActiveSpace('wyniki');
+  });
+
+  it.each([
+    ['bieg ze scenariusza → edycja t_b TEGO scenariusza', 'scn-7', 'scn-7'],
+    ['bieg przypadku bez scenariusza → nowy scenariusz z polem t_b', undefined, null],
+  ] as const)('%s', async (_n, scenariuszId, oczekiwany) => {
+    ustawBieg(scenariuszId, true);
+    const user = userEvent.setup();
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    expect(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-robocza')).toHaveTextContent(
+      ZWARCIA_STRINGS.bilansTbRobocza,
+    );
+    expect(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-zrodlo')).toHaveTextContent(TB_ROBOCZE.opis_pl);
+    await user.click(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-zmien'));
+    expect(useZadanieCzasuTb.getState().zadanie).toEqual({ scenarioId: oczekiwany });
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+  });
+
+  it('t_b projektanta → bez etykiety, bez źródła i bez akcji (predykat parami)', async () => {
+    ustawBieg('scn-7', false);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    expect(within(bilans).getByText('0,08 s')).toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-robocza')).not.toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-zrodlo')).not.toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-zmien')).not.toBeInTheDocument();
+    expect(useZadanieCzasuTb.getState().zadanie).toBeNull();
   });
 });
 

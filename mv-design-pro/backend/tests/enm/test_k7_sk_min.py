@@ -37,6 +37,7 @@ from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
 from enm.validator import ENMValidator
 from enm.zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dane_zwarciowe_zrodla
 from network_model.catalog.types import SourceSystemType
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
@@ -80,7 +81,7 @@ def _ik_biegu(enm: EnergyNetworkModel, scenariusz: str) -> float:
     return (
         ShortCircuitIEC60909Solver()
         .compute_3ph_short_circuit(
-            graph, node_id, c_for_node(u_kv, scenariusz, tolerancja_nn=_tol(u_kv)), 1.0  # type: ignore[arg-type]
+            graph, node_id, c_for_node(u_kv, scenariusz, tolerancja_nn=_tol(u_kv)), 1.0, czas_tb=czas_tb_roboczy()  # type: ignore[arg-type]
         )
         .ikss_a
     )
@@ -271,7 +272,9 @@ def test_szyna_za_transformatorem_min_z_z_q_min() -> None:
     z_q = graph.get_grid_sc_sources()[0].z_ohm
     assert abs(z_q) == pytest.approx(1.0 * 110.0**2 / 2500.0, rel=1e-12)
     mv = next(n for n in graph.nodes.values() if n.voltage_level == 33.0)
-    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(graph, mv.id, 1.0, 1.0)
+    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
+        graph, mv.id, 1.0, 1.0, czas_tb=czas_tb_roboczy()
+    )
     z_q_33 = z_q * (33.0 / 110.0) ** 2
     # K_T = 0,95·c_max/(1+0,6·x_T) (IEC 60909-0:2016 eq. 12) — c_max TAKŻE w scenariuszu MIN;
     # c_min wchodzi wyłącznie do źródła napięciowego w węźle zwarcia.
@@ -286,9 +289,10 @@ def test_szyna_za_transformatorem_min_z_z_q_min() -> None:
 
 
 def _bieg_sc(enm: EnergyNetworkModel, scenario: str, klucz: str, *, tb_s: float | None = 0.1):
-    # Karta SC-IB-ITH-ZRODLA: bieg bez czasu wyłączenia t_b publikuje założenie
-    # `fault.czas_tb_brak` (i_DC nieobliczone). Testy tej sekcji izolują założenie S_k,min,
-    # więc bieg niesie t_b; współwystępowanie obu założeń sprawdza test niżej (tb_s=None).
+    # Karta TB-WARTOSC-ROBOCZA: bieg bez czasu wyłączenia t_b liczy na t_b punktu (pola
+    # lokalne albo wartość robocza) i publikuje założenie `fault.czas_tb_wartosc_robocza`.
+    # Testy tej sekcji izolują założenie S_k,min, więc bieg niesie t_b; współwystępowanie
+    # obu założeń sprawdza test niżej (tb_s=None).
     opcje: dict[str, object] = {
         "fault_type": "3F",
         "scenario": scenario,
@@ -326,14 +330,18 @@ def test_bieg_kanoniczny_max_nigdy_nie_niesie_zalozenia_min() -> None:
 
 
 def test_bieg_bez_tb_niesie_zalozenie_tb_obok_zalozenia_min() -> None:
-    """Iloczyn {MIN bez danych, MAX} × {bieg bez t_b}: założenie `fault.czas_tb_brak` (bieg,
-    bez elementu) dochodzi do założenia S_k,min, nie zastępuje go ani nie znika w MAX."""
+    """Iloczyn {MIN bez danych, MAX} × {bieg bez t_b}: założenie `fault.czas_tb_wartosc_robocza`
+    (bieg, bez elementu, z listą punktów) dochodzi do założenia S_k,min, nie zastępuje go ani
+    nie znika w MAX."""
     run_min = _bieg_sc(_enm_za_transformatorem(), "min", "k7-min-bez-tb", tb_s=None)
     kody_min = sorted(z["code"] for z in run_min.raw_result["zalozenia"])
-    assert kody_min == ["fault.czas_tb_brak", "source.sk_min_missing"]
+    assert kody_min == ["fault.czas_tb_wartosc_robocza", "source.sk_min_missing"]
     run_max = _bieg_sc(_enm_za_transformatorem(), "max", "k7-max-bez-tb", tb_s=None)
     (zal,) = run_max.raw_result["zalozenia"]
-    assert zal["code"] == "fault.czas_tb_brak" and zal["element_ref"] is None
+    assert zal["code"] == "fault.czas_tb_wartosc_robocza" and zal["element_ref"] is None
+    punkty_wierszy = sorted(r["fault_node_id"] for r in run_max.raw_result["results"])
+    assert sorted(p["fault_node_id"] for p in zal["punkty"]) == punkty_wierszy
+    assert {p["pochodzenie"] for p in zal["punkty"]} == {"PROPOZYCJA"}
 
 
 def test_odpowiedz_wynikow_zwarc_niesie_zrodla_i_zalozenia() -> None:

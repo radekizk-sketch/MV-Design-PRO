@@ -89,11 +89,11 @@ from network_model.catalog.wartosci_robocze import (
     WYDANIE_REJESTRU,
     WartoscRozstrzygnieta,
 )
-from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     DanaPrzyjeta,
+    FieldQuality,
     Kryterium,
     LimitKryterium,
     Niepewnosc,
@@ -167,13 +167,16 @@ class PradyPola:
     kody_gotowosci: tuple[str, ...] = ()
     powod_pl: str | None = None
     #: Karta SC-IB-ITH-ZRODLA — wielkości kryterium wyłączania z TEGO SAMEGO wiersza biegu:
-    #: symetryczny prąd wyłączeniowy I_b (``None`` = bieg z maszynami bez t_b), składowa
-    #: nieokresowa i_DC(t_b) (informacyjnie), czas t_b biegu i napięcie znamionowe punktu
-    #: (pasmo wybiera wielkość porównywaną z I_cu).
+    #: symetryczny prąd wyłączeniowy I_b, składowa nieokresowa i_DC(t_b) (informacyjnie),
+    #: czas t_b punktu i napięcie znamionowe punktu (pasmo wybiera wielkość porównywaną
+    #: z I_cu). ``None`` wyłącznie dla wiersza bez solvera albo zapisu bez tych pól.
     ib_ka: float | None = None
     i_dc_ka: float | None = None
     tb_s: float | None = None
     un_kv: float | None = None
+    #: Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu z wiersza biegu (``None`` = t_b ze
+    #: scenariusza projektanta) — wartość robocza za porównywanym I_b to dana przyjęta.
+    tb_zrodlo: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -188,6 +191,8 @@ class PradyPola:
             "un_kv": self.un_kv,
             "kody_gotowosci": list(self.kody_gotowosci),
             "powod_pl": self.powod_pl,
+            # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None).
+            **({"tb_zrodlo": self.tb_zrodlo} if self.tb_zrodlo is not None else {}),
         }
 
 
@@ -262,6 +267,9 @@ def prady_pol_z_biegu(
             i_dc_ka=_liczba(wiersz.get("i_dc_ka")),
             tb_s=_liczba(wiersz.get("tb_s")),
             un_kv=_liczba(wiersz.get("un_kv")),
+            tb_zrodlo=(
+                dict(wiersz["tb_zrodlo"]) if isinstance(wiersz.get("tb_zrodlo"), Mapping) else None
+            ),
         )
     return wynik
 
@@ -793,9 +801,16 @@ def _ocena_wylaczania(
 
     Wyłącznik SN/WN → I_b (IEC 62271-100 § 4.101, IEC 60909-0 rozdz. 9); nN i bezpiecznik →
     I″k spodziewany. Rozłącznik, odłącznik, uziemnik i tor szynowy — NIE_DOTYCZY z powodem.
-    Brak I_b (bieg z maszynami bez t_b) to nazwany brak (``fault.czas_tb_brak``), nigdy
-    podmiana na I″k. i_DC(t_b) — informacja w śladzie (katalog nie niesie znamionowej
-    składowej nieokresowej, porównania z nią nie wystawiamy).
+    Brak I_b w wierszu to nazwany brak, nigdy podmiana na I″k. i_DC(t_b) — informacja
+    w śladzie (katalog nie niesie znamionowej składowej nieokresowej, porównania z nią nie
+    wystawiamy).
+
+    Karta TB-WARTOSC-ROBOCZA (§0.4): I_b porównywany z I_cu policzony przy t_b będącym
+    wartością roboczą (propozycja 0,1 s albo czas pola z roboczym czasem własnym wyłącznika)
+    stoi na danej przyjętej — ``dane_przyjete`` (jakość ``ESTIMATED``), stan danych
+    ``UNVALIDATED_INPUT``, kompletność ``NIEPELNY`` (SPELNIA → BRAK_DOWODU na poziomie
+    werdyktu). Dotyczy wyłącznie I_b z udziałem maszyn wirujących — bez nich I_b = I″k nie
+    zależy od t_b (IEC 60909-0:2016 rozdz. 9), a i_DC nie jest porównywana.
     """
     nie_dotyczy = bool(znamiona.get("i_cu_nie_dotyczy"))
     wielkosc = wielkosc_kryterium_wylaczania(
@@ -816,11 +831,10 @@ def _ocena_wylaczania(
         wartosc = prady.ib_ka if wielkosc.klucz == "ib_ka" else prady.ik_ka
         if wartosc is None and prady.powod_pl:
             braki.append(prady.powod_pl)
-        elif wartosc is None and wielkosc.klucz == "ib_ka" and prady.tb_s is None:
+        elif wartosc is None:
             braki.append(
-                "bieg nie wyznaczył prądu wyłączeniowego I_b — brak czasu wyłączenia t_b przy "
-                f"udziale maszyn wirujących (kod {KOD_CZAS_TB_BRAK}); podaj t_b w scenariuszu "
-                "zwarciowym"
+                f"wiersz biegu nie niesie wielkości {wielkosc.nazwa_pl} w punkcie zabudowy pola "
+                "— przelicz bieg zwarciowy"
             )
     podstawa_limitu = _podstawa_znamienia(znamiona.get("i_cu_pochodzenie"), etykieta, "i_cu")
     limit: LimitKryterium | None = None
@@ -846,7 +860,18 @@ def _ocena_wylaczania(
         else None
     )
     symbol = wielkosc.symbol if wielkosc is not None else "I_b"
-    tb_txt = "nie podano" if prady.tb_s is None else f"{prady.tb_s} s"
+    dane = _dane_przyjete_czasu_tb(prady, wielkosc)
+    tb_txt = (
+        "nie podano"
+        if prady.tb_s is None
+        else f"{prady.tb_s} s ("
+        + (
+            str(prady.tb_zrodlo.get("opis_pl"))
+            if prady.tb_zrodlo is not None
+            else "scenariusz zwarciowy projektanta"
+        )
+        + ")"
+    )
     idc_txt = "nieobliczona" if prady.i_dc_ka is None else f"{prady.i_dc_ka} kA"
     return ocen_kryterium(
         kryterium_id=f"{kryterium_id}.wylaczanie",
@@ -878,7 +903,7 @@ def _ocena_wylaczania(
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id),
+        dowod=_dowod(run_id, dane),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(
@@ -893,6 +918,37 @@ def _ocena_wylaczania(
             ),
         ),
         braki_dodatkowe=braki,
+    )
+
+
+def _dane_przyjete_czasu_tb(
+    prady: PradyPola, wielkosc: WielkoscKryteriumWylaczania | None
+) -> tuple[DanaPrzyjeta, ...]:
+    """Dana przyjęta kryterium wyłączania: t_b punktu będące wartością roboczą, gdy stoi za
+    porównywanym I_b (karta TB-WARTOSC-ROBOCZA, §0.4) — nigdy ``DATASHEET``.
+
+    Warunek z JEDNEGO źródła — flag wiersza wyniku: ``tb_zrodlo.wartosc_robocza``
+    (``CzasWylaczeniaTb.robocza``) i ``tb_zrodlo.ib_z_udzialem_maszyn`` (rdzeń: I_b liczony
+    z zanikiem prądów maszyn, więc zależny od t_b). Porównanie z I″k (nN, bezpiecznik) nie
+    zależy od t_b — brak danej przyjętej.
+    """
+    zrodlo = prady.tb_zrodlo
+    if (
+        wielkosc is None
+        or wielkosc.klucz != "ib_ka"
+        or zrodlo is None
+        or prady.tb_s is None
+        or not zrodlo.get("wartosc_robocza")
+        or not zrodlo.get("ib_z_udzialem_maszyn")
+    ):
+        return ()
+    return (
+        DanaPrzyjeta(
+            nazwa_pl=f"czas wyłączenia t_b ({_opis_punktu(prady)})",
+            wartosc=Wielkosc(wartosc=float(prady.tb_s), jednostka="s"),
+            powod_pl=str(zrodlo["opis_pl"]),
+            jakosc=FieldQuality.ESTIMATED,
+        ),
     )
 
 
@@ -952,19 +1008,6 @@ def _wiersz(
             kody.append(READINESS_CZAS_NIEUSTALONY)
         if not znamiona["i_cu_nie_dotyczy"] and znamiona["i_cu_ka"] is None:
             kody.append(READINESS_BRAK_ZDOLNOSCI_WYLACZANIA)
-        wielkosc_wylaczania = wielkosc_kryterium_wylaczania(
-            prady.un_kv, bezpiecznik=bool(znamiona["bezpiecznik"])
-        )
-        if (
-            not znamiona["i_cu_nie_dotyczy"]
-            and wielkosc_wylaczania is not None
-            and wielkosc_wylaczania.klucz == "ib_ka"
-            and prady.ik_ka is not None
-            and prady.ib_ka is None
-            and prady.tb_s is None
-        ):
-            # Kryterium wyłączania wymaga I_b, a bieg z maszynami bez t_b go nie wyznaczył.
-            kody.append(KOD_CZAS_TB_BRAK)
         nazwa = etykieta or "pozycja katalogu aparatów bez nazwy"
         limit_cieplny_ka: float | None = None
         if prady.ip_ka is not None and prady.ith_ka is not None:

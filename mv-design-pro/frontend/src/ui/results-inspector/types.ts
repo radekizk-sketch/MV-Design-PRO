@@ -212,12 +212,17 @@ export interface ShortCircuitRow {
   un_kv?: number | null;
   tk_s?: number | null;
   /**
-   * Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b biegu (null = bieg bez t_b, kod
-   * `fault.czas_tb_brak` w założeniach), prąd wyłączeniowy SYMETRYCZNY I_b (IEC 60909-0
-   * rozdz. 9; null = nieobliczony — maszyny wirujące bez t_b) i składowa nieokresowa
-   * i_DC(t_b) (rozdz. 10; null = bieg bez t_b).
+   * Karta SC-IB-ITH-ZRODLA + TB-WARTOSC-ROBOCZA: czas wyłączenia t_b TEGO punktu zwarcia
+   * (rozstrzygany per punkt: scenariusz projektanta, najkrótszy czas pól lokalnych albo
+   * wartość robocza), prąd wyłączeniowy SYMETRYCZNY I_b (IEC 60909-0 rozdz. 9) i składowa
+   * nieokresowa i_DC(t_b) (rozdz. 10). `null` wyłącznie dla wiersza bez wyniku solvera.
    */
   tb_s?: number | null;
+  /**
+   * Pochodzenie t_b punktu (karta TB-WARTOSC-ROBOCZA, addytywnie, `exclude_none`): obecne,
+   * gdy t_b NIE pochodzi ze scenariusza projektanta — pola lokalne albo wartość robocza.
+   */
+  tb_zrodlo?: CzasTbPunktu | null;
   ib_ka?: number | null;
   i_dc_ka?: number | null;
   ik_ka?: number | null;
@@ -326,11 +331,53 @@ export interface ZalozenieBieguSlad {
   code: string;
   /**
    * Element modelu, którego dotyczy założenie; `null` = założenie CAŁEGO biegu (karta
-   * SC-IB-ITH-ZRODLA: `fault.czas_tb_brak` — bieg bez czasu wyłączenia t_b).
+   * TB-WARTOSC-ROBOCZA: `fault.czas_tb_wartosc_robocza` — t_b części punktów zwarcia jest
+   * wartością roboczą).
    */
   element_ref: string | null;
   message_pl: string;
   scenariusz: 'MAX' | 'MIN';
+  /**
+   * Punkty zwarcia, których dotyczy założenie biegu (karta TB-WARTOSC-ROBOCZA: punkty
+   * z t_b roboczym, z t_b i jego źródłem); brak = założenie bez listy punktów.
+   */
+  punkty?: CzasTbPunktuZalozenia[];
+}
+
+/**
+ * Pochodzenie czasu wyłączenia t_b punktu zwarcia — 1:1 z backendem
+ * (`network_model/core/czas_wylaczenia.py::CzasWylaczeniaTb.to_dict`). `opis_pl` i
+ * `zrodlo_pl` to tekst backendu — UI go nie składa. `wartosc_robocza` = t_b przyjęty bez
+ * dokumentu (propozycja albo czas pola z czasem własnym wyłącznika przyjętym roboczo).
+ */
+export interface CzasTbPunktu {
+  wartosc_s: number;
+  pochodzenie: 'PROJEKTANT' | 'Z_POL' | 'PROPOZYCJA';
+  wartosc_robocza: boolean;
+  jakosc: 'ESTIMATED' | null;
+  opis_pl: string;
+  /** Źródło normowe wartości roboczej — wyłącznie przy pochodzeniu `PROPOZYCJA`. */
+  zrodlo_pl?: string;
+  /** Rozbicie czasu pola — wyłącznie przy pochodzeniu `Z_POL`. */
+  pole_ref?: string;
+  pole_nazwa?: string | null;
+  zabezpieczenie_ref?: string | null;
+  czlon_nastawczy_s?: number | null;
+  czas_wlasny_s?: number | null;
+  czas_wlasny_pochodzenie?: string | null;
+  prad_zwarciowy_a?: number | null;
+  /**
+   * Wyłącznie w wierszu wyniku: `true` = I_b punktu zawiera zanik prądów maszyn wirujących
+   * (μ, q zależne od t_b), więc wartość robocza t_b stoi także za I_b, nie tylko za i_DC.
+   */
+  ib_z_udzialem_maszyn?: boolean;
+}
+
+/** Punkt zwarcia założenia `fault.czas_tb_wartosc_robocza` (odnośnik szyny + t_b). */
+export interface CzasTbPunktuZalozenia extends CzasTbPunktu {
+  fault_node_id: string;
+  element_id: string | null;
+  nazwa: string;
 }
 
 /**
@@ -362,12 +409,13 @@ export interface ThermalTimeBiegu {
 /**
  * Czas wyłączenia t_b ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA,
  * `api/canonical_run_views.py::_czas_tb_biegu_zwarcia`): z opcji biegu (projekcja scenariusza
- * zwarciowego) albo `wartosc: null` z pochodzeniem `brak_danej` i kodem `fault.czas_tb_brak` —
- * nigdy wartość domyślna.
+ * zwarciowego) albo — karta TB-WARTOSC-ROBOCZA — `wartosc: null` z pochodzeniem
+ * `punkt_zwarcia`: t_b rozstrzygany w każdym punkcie (pola lokalne, inaczej wartość
+ * robocza), zdanie reguły w `opis_pl` (tekst backendu). Nigdy liczba udająca t_b biegu.
  */
 export type CzasWylaczeniaBiegu =
   | { wartosc: number; pochodzenie: 'opcje_biegu' }
-  | { wartosc: null; pochodzenie: 'brak_danej'; kod: string };
+  | { wartosc: null; pochodzenie: 'punkt_zwarcia'; opis_pl: string };
 
 /**
  * Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) — ZAWSZE
@@ -399,6 +447,11 @@ export interface KonfiguracjaBieguZwarcia {
    * z Z_f = 0) go nie ma. Wynik takiego biegu jest poza zakresem IEC 60909.
    */
   impedancja_przejscia?: ImpedancjaPrzejsciaBiegu;
+  /**
+   * Karta TB-WARTOSC-ROBOCZA (addytywnie): scenariusz zwarciowy, z którego powstał bieg —
+   * cel akcji „Zmień wartość" t_b. Brak = bieg przypadku bez scenariusza.
+   */
+  scenariusz_zwarciowy_id?: string;
 }
 
 /** Z_f = R_f + jX_f [Ω] biegu zwarciowego przez impedancję przejścia (karta OD-14). */

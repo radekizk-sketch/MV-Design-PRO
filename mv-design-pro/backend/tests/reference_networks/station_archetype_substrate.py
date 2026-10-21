@@ -58,6 +58,7 @@ from analysis.obciazenie_galezi import (
 )
 from application.slad_kroku import kroki_zwarcia_w_kontrakcie
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
@@ -450,8 +451,8 @@ def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitRe
         c_factor=c_factor,
         tk_s=_TK_S,
         # Karta SC-IB-ITH-ZRODLA: t_b jawny (ten sam t_min co rozbicie maszynowe niżej) —
-        # rdzeń nie ma już domyślnego t_b, a I_b maszyn wymaga krzywej zaniku w chwili t_b.
-        tb_s=_MACHINE_TMIN_S,
+        # rdzeń nie ma domyślnego t_b (karta TB-WARTOSC-ROBOCZA: nośnik t_b z pochodzeniem).
+        czas_tb=czas_tb_projektanta(_MACHINE_TMIN_S),
     )
 
 

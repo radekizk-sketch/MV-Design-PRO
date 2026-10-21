@@ -14,6 +14,7 @@ import math
 
 import pytest
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.machine import (
     AsynchronousMachineSource,
@@ -73,7 +74,7 @@ def _slack_line_bus() -> NetworkGraph:
 
 def _ikss(graph: NetworkGraph, bus: str = "B", c: float = 1.1) -> float:
     return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=graph, fault_node_id=bus, c_factor=c, tk_s=1.0
+        graph=graph, fault_node_id=bus, c_factor=c, tk_s=1.0, czas_tb=czas_tb_roboczy()
     ).ikss_a
 
 
@@ -394,18 +395,33 @@ def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_
     assert any(znak in " ".join(teksty) for znak in "ąćęłńóśźż")
 
 
-# ── Karta SC-IB-ITH-ZRODLA: t_min = t_b biegu bez cichej stałej ─────────────────
-def test_krzywe_mu_q_bez_t_min_tylko_tam_gdzie_nie_zaleza_od_krzywej():
-    """μ = 1 dla krotności ≤ 2 i q = 1 bez mocy na parę biegunów — bez t_min; reszta None."""
-    assert mu_factor(1.5, None) == 1.0
-    assert mu_factor(2.5, None) is None
-    assert q_factor(0.0, None) == 1.0
-    assert q_factor(1.0, None) is None
+# ── Karty SC-IB-ITH-ZRODLA i TB-WARTOSC-ROBOCZA: t_min = t_b punktu zwarcia, zawsze liczba ──
+@pytest.mark.parametrize(
+    ("t_min_s", "wezel"),
+    [
+        (0.02, (0.84, 0.26, 0.26)),
+        (0.05, (0.71, 0.51, 0.30)),
+        (0.10, (0.62, 0.72, 0.32)),
+        (0.25, (0.56, 0.94, 0.38)),
+        # t_b z pól lokalnych (zwłoka + czas własny wyłącznika) leży zwykle między węzłami
+        # tablicy μ — rdzeń bierze węzeł najbliższy (progi w połowie), regułę przypina test.
+        (0.16, (0.62, 0.72, 0.32)),
+        (0.36, (0.56, 0.94, 0.38)),
+    ],
+)
+def test_krzywa_mu_dla_t_b_punktu(t_min_s: float, wezel: tuple[float, float, float]):
+    """μ = a + b·e^(−w·I''k/I_r) z węzła tablicy IEC 60909-0:2016 wzory (70)–(73);
+    krotność ≤ 2 → μ = 1 przy każdym t_b; q = 1 bez mocy na parę biegunów."""
+    a, b, w = wezel
+    assert mu_factor(2.5, t_min_s) == pytest.approx(min(1.0, a + b * math.exp(-w * 2.5)))
+    assert mu_factor(1.5, t_min_s) == 1.0
+    assert q_factor(0.0, t_min_s) == 1.0
 
 
 @pytest.mark.parametrize("maszyna", ["synchroniczna", "asynchroniczna", "dfig"])
-def test_bieg_bez_t_min_pelne_prady_czesciowe_bez_ib(maszyna: str):
-    """t_min None: prądy częściowe i ΔU″ są pełne (nie zależą od t_b), μ/i_b — None."""
+def test_prady_czesciowe_nie_zaleza_od_t_b_a_ib_maleje_z_t_b(maszyna: str):
+    """Prądy częściowe i ΔU″ nie zależą od t_b; μ i i_b maszyny są liczbami przy każdym t_b
+    i maleją z dłuższym t_b (wartość robocza 0,1 s wobec t_b z pola 0,36 s)."""
     g = _slack_line_bus()
     if maszyna == "synchroniczna":
         g.add_synchronous_machine_source(_sync())
@@ -413,19 +429,15 @@ def test_bieg_bez_t_min_pelne_prady_czesciowe_bez_ib(maszyna: str):
         g.add_asynchronous_machine_source(_async())
     else:
         g.add_asynchronous_machine_source(_dfig())
-    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=None)
-    z_t_min = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
-    (c,) = res.contributions
-    (c_ref,) = z_t_min.contributions
-    assert c.ikss_partial_a == c_ref.ikss_partial_a > 0.0
-    assert c.delta_u_wzgledne == c_ref.delta_u_wzgledne > 0.0
-    assert c.mu is None and c.ib_a is None
-    assert res.ib_machines_a is None and res.t_min_s is None
-    assert res.to_dict()["ib_machines_a"] is None
-    if maszyna == "synchroniczna":
-        assert c.q == 1.0
-    else:
-        assert c.q is None
+    roboczy = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    z_pola = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.36)
+    (c,) = roboczy.contributions
+    (c_pola,) = z_pola.contributions
+    assert c.ikss_partial_a == c_pola.ikss_partial_a > 0.0
+    assert c.delta_u_wzgledne == c_pola.delta_u_wzgledne > 0.0
+    assert c.mu > c_pola.mu and c.ib_a > c_pola.ib_a > 0.0
+    assert roboczy.t_min_s == 0.10 and z_pola.t_min_s == 0.36
+    assert roboczy.ib_machines_a > z_pola.ib_machines_a > 0.0
 
 
 def test_maszyna_przy_zwarciu_na_zaciskach_krotnosc_z_tego_samego_pradu():

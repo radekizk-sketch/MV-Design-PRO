@@ -237,9 +237,11 @@ def test_werdykty_powstaja_z_modelu_i_pradow_pola_z_biegu(klient: TestClient):
 @pytest.mark.parametrize("tb_s", [None, 0.1], ids=["bez_tb", "tb_0_1"])
 def test_kryterium_wylaczania_z_realnego_biegu_porownuje_ib(klient: TestClient, tb_s: float | None):
     """Karta SC-IB-ITH-ZRODLA — realna ścieżka: bieg produkcyjny (z t_b albo bez), końcówka
-    HTTP, trzeci rekord K. Sieć bez maszyn wirujących: I_b = I″k (IEC 60909-0 rozdz. 9) jest
-    wyznaczalne także bez t_b, więc kryterium wyłączania wyłącznika SN jest rozstrzygnięte
-    wobec I_b z wiersza biegu i nazywa tę wielkość; t_b i i_DC(t_b) wiersza idą do śladu."""
+    HTTP, trzeci rekord K. Sieć bez maszyn wirujących: I_b = I″k (IEC 60909-0 rozdz. 9), więc
+    kryterium wyłączania wyłącznika SN jest rozstrzygnięte wobec I_b z wiersza biegu i nazywa
+    tę wielkość; t_b i i_DC(t_b) wiersza idą do śladu. Karta TB-WARTOSC-ROBOCZA: bieg bez t_b
+    w scenariuszu ma t_b rozstrzygnięte w punkcie zwarcia (pola lokalne, inaczej wartość
+    robocza) — pole niesie t_b i jego pochodzenie z wiersza, i_DC zawsze policzone."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
     opcje = None if tb_s is None else {"breaking_time_seconds": tb_s}
@@ -257,18 +259,63 @@ def test_kryterium_wylaczania_z_realnego_biegu_porownuje_ib(klient: TestClient, 
     for pole in odp.json()["pola"]:
         wiersz = wiersze[pole["prady_pola"]["punkt_ref"]]
         assert pole["prady_pola"]["ib_ka"] == wiersz["ib_ka"] == wiersz["ikss_ka"]
-        assert pole["prady_pola"]["tb_s"] == tb_s
+        assert pole["prady_pola"]["tb_s"] == wiersz["tb_s"] is not None
+        if tb_s is not None:
+            assert wiersz["tb_s"] == tb_s
         assert pole["prady_pola"]["un_kv"] == wiersz["un_kv"]
         ocena = _ocena(pole, "wylaczanie")
         assert ocena["status_maszynowy"] == "SPELNIA"
         assert ocena["wynik"]["symbol_latex"] == "I_b"
         assert ocena["wynik"]["wartosc"]["wartosc"] == wiersz["ib_ka"]
         assert ocena["podstawa"]["dokument"].startswith("IEC 62271-100")
-        assert "fault.czas_tb_brak" not in pole["kody_gotowosci"]
+        assert pole["prady_pola"]["i_dc_ka"] == wiersz["i_dc_ka"] is not None
         if tb_s is None:
-            assert pole["prady_pola"]["i_dc_ka"] is None
+            assert pole["prady_pola"]["tb_zrodlo"] == wiersz["tb_zrodlo"]
+            assert wiersz["tb_zrodlo"]["pochodzenie"] in {"PROPOZYCJA", "Z_POL"}
         else:
-            assert pole["prady_pola"]["i_dc_ka"] == wiersz["i_dc_ka"] is not None
+            assert pole["prady_pola"].get("tb_zrodlo") is None
+            assert wiersz.get("tb_zrodlo") is None
+
+
+def test_porownanie_biegow_niesie_tb_i_pochodzenie_po_obu_stronach(klient: TestClient):
+    """Karta TB-WARTOSC-ROBOCZA — realna ścieżka porównania biegów: ta sama stacja liczona
+    bez t_b w scenariuszu (t_b rozstrzygnięty w punkcie zwarcia) i z t_b projektanta 0,2 s;
+    końcówka porównania HTTP niesie I_b, i_DC(t_b) i t_b z pochodzeniem każdej strony 1:1
+    z wierszy biegów, a delty liczy domena (B − A)."""
+    case_id = _nowy_przypadek(klient)
+    _stacja_z_polami(klient, case_id)
+    run_a = _bieg(klient, case_id)
+    run_b = _bieg(klient, case_id, options={"breaking_time_seconds": 0.2})
+
+    from enm.canonical_analysis import get_run
+
+    def _wiersze(run_id: str) -> dict[str, dict[str, Any]]:
+        # Ta sama reguła klucza co końcówka porównania (ostatni wiersz celu wygrywa).
+        return {
+            str(w["target_id"]): w
+            for w in build_short_circuit_results(get_run(UUID(run_id)))["rows"]
+            if w.get("target_id") is not None
+        }
+
+    wiersze_a, wiersze_b = _wiersze(run_a), _wiersze(run_b)
+    odp = klient.post("/api/short-circuit-comparisons", json={"run_id_a": run_a, "run_id_b": run_b})
+    assert odp.status_code == 200, odp.text
+    punkty = odp.json()["punkty"]
+    assert punkty
+    for punkt in punkty:
+        wa, wb = wiersze_a[punkt["target_id"]], wiersze_b[punkt["target_id"]]
+        assert punkt["tb_s_a"] == wa["tb_s"] and punkt["tb_s_b"] == wb["tb_s"] == 0.2
+        assert punkt["tb_pochodzenie_a"] == wa["tb_zrodlo"]["pochodzenie"]
+        assert punkt["tb_wartosc_robocza_a"] is wa["tb_zrodlo"]["wartosc_robocza"]
+        assert punkt["tb_pochodzenie_b"] == "PROJEKTANT"
+        assert punkt["tb_wartosc_robocza_b"] is False
+        assert punkt["ib_ka_a"] == wa["ib_ka"] and punkt["ib_ka_b"] == wb["ib_ka"]
+        assert punkt["i_dc_ka_a"] == wa["i_dc_ka"] and punkt["i_dc_ka_b"] == wb["i_dc_ka"]
+        assert punkt["delta_tb_s"] == pytest.approx(0.2 - wa["tb_s"], abs=1e-12)
+        assert punkt["delta_i_dc_ka"] == pytest.approx(wb["i_dc_ka"] - wa["i_dc_ka"], abs=1e-12)
+        if wa["tb_s"] < 0.2:
+            # Dłuższy t_b ⇒ mniejsza składowa nieokresowa (zanik e^(−2πf·t_b·R/X)).
+            assert punkt["delta_i_dc_ka"] < 0.0
 
 
 def test_koncowka_jest_deterministyczna(klient: TestClient):

@@ -83,8 +83,9 @@ export interface ShortCircuitConfig {
   thermal_time_seconds: number;
   /**
    * Czas wyłączenia t_b [s] (karta SC-IB-ITH-ZRODLA): najkrótszy czas zadziałania
-   * zabezpieczenia + czas własny wyłącznika. Brak = bieg bez t_b — I_b przy maszynach
-   * wirujących i składowa i_DC nieobliczone (kod `fault.czas_tb_brak`), nigdy stała.
+   * zabezpieczenia + czas własny wyłącznika. Brak = t_b rozstrzygany w każdym punkcie zwarcia
+   * (karta TB-WARTOSC-ROBOCZA: najkrótszy czas pól lokalnych, inaczej wartość robocza
+   * z założeniem biegu `fault.czas_tb_wartosc_robocza`).
    */
   breaking_time_seconds?: number | null;
   include_branch_contributions: boolean;

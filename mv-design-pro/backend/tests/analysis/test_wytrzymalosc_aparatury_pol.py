@@ -13,6 +13,7 @@ wyjaśnialnego (dynamiczny i cieplny) — status zawsze z wynikiem, limitem i pr
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 import pytest
@@ -41,6 +42,7 @@ from network_model.catalog.audit2_catalogs import (
     DEVICE_WITHSTAND_CATALOG,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
 # i bezpiecznik, który wytrzymałości krótkotrwałej nie ma.
@@ -437,7 +439,13 @@ KONF_SZYNA = "wstd_busbar_15_2000_50"
 
 
 def _prady_wyl(
-    *, ik: float, ib: float | None, tb: float | None, un: float | None, i_dc: float | None = None
+    *,
+    ik: float,
+    ib: float | None,
+    tb: float | None,
+    un: float | None,
+    i_dc: float | None = None,
+    tb_zrodlo: dict[str, Any] | None = None,
 ) -> PradyPola:
     return PradyPola(
         punkt_ref="sn1",
@@ -449,7 +457,33 @@ def _prady_wyl(
         i_dc_ka=i_dc,
         tb_s=tb,
         un_kv=un,
+        tb_zrodlo=tb_zrodlo,
     )
+
+
+def _zrodlo_tb(czas: CzasWylaczeniaTb, *, maszyny: bool) -> dict[str, Any]:
+    """Pole ``tb_zrodlo`` wiersza wyniku — ten sam kształt co rdzeń (``to_dict`` + flaga)."""
+    return {**czas.to_dict(), "ib_z_udzialem_maszyn": maszyny}
+
+
+#: t_b z pola, w którym czas własny wyłącznika jest wartością roboczą (rejestr).
+_TB_Z_POLA_ROBOCZY = CzasWylaczeniaTb(
+    wartosc_s=0.36,
+    pochodzenie="Z_POL",
+    robocza=True,
+    opis_pl="t_b = 0,36 s — najkrótszy czas wyłączenia pól lokalnych punktu zwarcia (pole P-1).",
+    pole_ref="pole/1",
+    pole_nazwa="P-1",
+    zabezpieczenie_ref="zab/1",
+    czlon_nastawczy_s=0.3,
+    czas_wlasny_s=0.06,
+    czas_wlasny_pochodzenie="PROPOZYCJA",
+    prad_zwarciowy_a=22000.0,
+)
+#: t_b z pola z czasem własnym z karty katalogowej — nie wartość robocza.
+_TB_Z_POLA_KARTA = dataclasses.replace(
+    _TB_Z_POLA_ROBOCZY, robocza=False, czas_wlasny_pochodzenie="KATALOG"
+)
 
 
 def _pole_wyl(catalog_ref: str, prady: PradyPola, **kwargs: Any) -> dict[str, Any]:
@@ -466,6 +500,7 @@ def _pole_wyl(catalog_ref: str, prady: PradyPola, **kwargs: Any) -> dict[str, An
         (WYLACZNIK, _prady_wyl(ik=18.0, ib=18.0, tb=0.1, un=15.0), "SPELNIA", "I_b", 18.0),
         (WYLACZNIK, _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=15.0), "SPELNIA", "I_b", 19.5),
         (WYLACZNIK, _prady_wyl(ik=25.0, ib=21.0, tb=0.25, un=15.0), "NIE_SPELNIA", "I_b", 21.0),
+        # Wiersz bez I_b (zapis sprzed kart I_b / t_b) — nazwany brak, nigdy podmiana na I″k.
         (WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0), "NIE_OCENIONO", None, None),
         # Ten sam wyłącznik na punkcie nN — wielkością jest spodziewany I″k (434.5.1).
         (WYLACZNIK, _prady_wyl(ik=19.5, ib=15.0, tb=0.1, un=0.4), "SPELNIA", "I_k''", 19.5),
@@ -484,7 +519,7 @@ def _pole_wyl(catalog_ref: str, prady: PradyPola, **kwargs: Any) -> dict[str, An
         "wylacznik_sn_ib_rowne_ik",
         "wylacznik_sn_ib_ponizej_icu_ik_powyzej",
         "wylacznik_sn_ib_powyzej_icu",
-        "wylacznik_sn_bez_tb_z_maszynami",
+        "wylacznik_sn_wiersz_bez_ib",
         "wylacznik_nn_ik_ponizej_icu",
         "wylacznik_nn_ik_powyzej_icu_ib_ponizej",
         "wylacznik_nn_bez_tb",
@@ -520,14 +555,62 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
         assert ocena["margines"] is not None
 
 
-def test_wylacznik_sn_bez_tb_przy_maszynach_ma_nazwana_odmowe_a_nie_ik() -> None:
-    """Brak I_b (bieg z maszynami bez t_b) to nazwany brak, nigdy cicha podmiana na I″k."""
+def test_wylacznik_sn_wiersz_bez_ib_ma_nazwany_brak_a_nie_ik() -> None:
+    """Wiersz bez I_b (zapis sprzed kart I_b / t_b) to nazwany brak z akcją „przelicz bieg”,
+    nigdy cicha podmiana na I″k; kod brakowy t_b nie istnieje (karta TB-WARTOSC-ROBOCZA)."""
     pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0))
     ocena = _ocena(pole, "wylaczanie")
 
-    assert "fault.czas_tb_brak" in pole["kody_gotowosci"]
-    assert any("fault.czas_tb_brak" in b for b in ocena["wyjasnienie"]["czego_brakuje"])
+    assert not any("czas_tb" in k for k in pole["kody_gotowosci"])
+    assert any("przelicz bieg zwarciowy" in b for b in ocena["wyjasnienie"]["czego_brakuje"])
     assert ocena["limit"]["wartosc"]["wartosc"] == 20.0
+
+
+@pytest.mark.parametrize(
+    ("czas", "maszyny", "przyjeta"),
+    [
+        (czas_tb_roboczy(), True, True),
+        (czas_tb_roboczy(), False, False),
+        (_TB_Z_POLA_ROBOCZY, True, True),
+        (_TB_Z_POLA_ROBOCZY, False, False),
+        (_TB_Z_POLA_KARTA, True, False),
+        (None, True, False),  # t_b projektanta — wiersz bez `tb_zrodlo`
+    ],
+    ids=[
+        "roboczy_z_maszynami",
+        "roboczy_bez_maszyn",
+        "z_pola_czas_wlasny_roboczy_z_maszynami",
+        "z_pola_czas_wlasny_roboczy_bez_maszyn",
+        "z_pola_czas_wlasny_z_karty",
+        "projektanta",
+    ],
+)
+def test_ib_przy_tb_roboczym_to_dana_przyjeta_estimated(
+    czas: CzasWylaczeniaTb | None, maszyny: bool, przyjeta: bool
+) -> None:
+    """Iloczyn {pochodzenie t_b} × {I_b z udziałem maszyn}: I_b zależne od t_b roboczego stoi
+    na danej przyjętej ESTIMATED (``UNVALIDATED_INPUT``, NIEPELNY — na poziomie W SPEŁNIA
+    staje się BRAK_DOWODU), z treścią źródła t_b. I_b bez maszyn (= I″k) nie zależy od t_b,
+    więc liczy się jak dana projektowa. Nigdy ``DATASHEET``."""
+    tb = 0.1 if czas is None else czas.wartosc_s
+    zrodlo = None if czas is None else _zrodlo_tb(czas, maszyny=maszyny)
+    pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=22.0, ib=19.5, tb=tb, un=15.0, tb_zrodlo=zrodlo))
+    ocena = _ocena(pole, "wylaczanie")
+
+    assert ocena["status_maszynowy"] == "SPELNIA"
+    assert ocena["wynik"]["wartosc"]["wartosc"] == 19.5
+    dane = ocena["dowod"]["status_danych"]["dane_przyjete"]
+    if przyjeta:
+        assert ocena["kompletnosc_dowodu"] == "NIEPELNY"
+        assert ocena["dowod"]["status_danych"]["stan"] == "UNVALIDATED_INPUT"
+        assert [(d["wartosc"], d["jakosc"]) for d in dane] == [
+            ({"wartosc": tb, "jednostka": "s"}, "ESTIMATED")
+        ]
+        assert dane[0]["powod_pl"] == czas.opis_pl
+        assert pole["prady_pola"]["tb_zrodlo"]["pochodzenie"] == czas.pochodzenie
+    else:
+        assert not any(d["wartosc"]["jednostka"] == "s" for d in dane)
+    assert all(d["jakosc"] != "DATASHEET" for d in dane)
 
 
 @pytest.mark.parametrize(
@@ -537,7 +620,7 @@ def test_wylacznik_sn_bez_tb_przy_maszynach_ma_nazwana_odmowe_a_nie_ik() -> None
         _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0),
         _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=0.4),
     ],
-    ids=["sn_z_tb", "sn_bez_tb", "nn"],
+    ids=["sn_z_tb", "sn_wiersz_bez_ib", "nn"],
 )
 @pytest.mark.parametrize("aparat", [ROZLACZNIK, ODLACZNIK, UZIEMNIK])
 def test_aparat_bez_zdolnosci_wylaczania_ma_nie_dotyczy(aparat: str, prady: PradyPola) -> None:
@@ -550,7 +633,7 @@ def test_aparat_bez_zdolnosci_wylaczania_ma_nie_dotyczy(aparat: str, prady: Prad
     assert ocena["stosowalnosc"]["powod_pl"]
     assert pole["znamiona"]["i_cu_nie_dotyczy"] is True
     assert READINESS_BRAK_ZDOLNOSCI_WYLACZANIA not in pole["kody_gotowosci"]
-    assert "fault.czas_tb_brak" not in pole["kody_gotowosci"]
+    assert not any("czas_tb" in k for k in pole["kody_gotowosci"])
 
 
 @pytest.mark.parametrize(

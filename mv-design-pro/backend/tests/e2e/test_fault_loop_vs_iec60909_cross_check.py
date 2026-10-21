@@ -60,6 +60,7 @@ from enm.models import (
     Substation,
     Transformer,
 )
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 _R1_OHM_PER_KM = 0.32
@@ -144,6 +145,7 @@ def test_fault_loop_ik1_same_order_of_magnitude_as_iec60909_ik1() -> None:
         c_factor=1.05,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     ik1_iec60909_a = result_60909.ikss_a
 

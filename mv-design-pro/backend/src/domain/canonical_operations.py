@@ -2083,21 +2083,23 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
     ),
-    # Karta SC-IB-ITH-ZRODLA (B-01 (n)): czas wyłączenia t_b = t_min (najkrótszy czas
-    # zadziałania zabezpieczenia + czas własny wyłącznika) — dana scenariusza zwarciowego,
-    # nie stała solvera. Brak = założenie biegu (prąd wyłączeniowy z udziałem maszyn
-    # wirujących i składowa nieokresowa nieobliczone, pozostałe wielkości bez zmian);
-    # wartość niefizyczna = odmowa. Jedna reguła danych:
-    # `network_model.core.czas_wylaczenia.czas_tb_z_danych`.
-    "fault.czas_tb_brak": ReadinessCodeSpec(
-        code="fault.czas_tb_brak",
+    # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
+    # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER
+    # PUNKT ZWARCIA: scenariusz projektanta > najkrótszy czas wyłączenia pól lokalnych >
+    # wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016). Brak t_b nie blokuje
+    # obliczeń; punkty z t_b roboczym (propozycja albo czas pola z roboczym czasem własnym
+    # wyłącznika) niesie założenie biegu z listą punktów. Wartość niefizyczna projektanta =
+    # odmowa. Jedna reguła danych: `network_model.core.czas_wylaczenia`.
+    "fault.czas_tb_wartosc_robocza": ReadinessCodeSpec(
+        code="fault.czas_tb_wartosc_robocza",
         area=ReadinessArea.ANALYSIS,
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Bieg bez czasu wyłączenia tb — składowa nieokresowa iDC i prąd wyłączeniowy "
-            "z udziałem maszyn wirujących nieobliczone; podaj tb w scenariuszu zwarciowym "
-            "(najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika)"
+            "Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ "
+            "IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — "
+            "prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb "
+            "w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej"
         ),
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),

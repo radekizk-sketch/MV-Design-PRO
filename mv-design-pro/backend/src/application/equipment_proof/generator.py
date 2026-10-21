@@ -115,8 +115,10 @@ class EquipmentProofGenerator:
         * bezpiecznik (IEC 60282-1 / IEC 60269-1) — przerywa przed pierwszym szczytem, jego
           zdolność odnosi się do prądu spodziewanego: wobec I_k'' niezależnie od pasma.
 
-        Brak I_b (bieg bez t_b przy maszynach wirujących, kod `fault.czas_tb_brak`) to brak
-        podstawy kryterium, nigdy cicha podmiana na I_k''.
+        Brak I_b w wielkościach biegu to brak podstawy kryterium, nigdy cicha podmiana na
+        I_k''. Karta TB-WARTOSC-ROBOCZA: I_b z udziałem maszyn wirujących policzony przy t_b
+        będącym wartością roboczą — uwaga kryterium nazywa założenie i jego źródło (wynik
+        obliczeniowy na danej przyjętej, nie potwierdzony dowód przy rzeczywistym t_b).
         """
         wielkosc = _wielkosc_wylaczania(device, required)
         required_val = _as_float(required.get(wielkosc.klucz)) if wielkosc else None
@@ -161,8 +163,8 @@ class EquipmentProofGenerator:
                 f"nie podano I_cu aparatu albo {wielkosc.opis_pl} wymaganego"
                 if wielkosc.klucz != "ib_ka" or required_val is not None
                 else (
-                    "bieg nie wyznaczył prądu wyłączeniowego I_b — brak czasu wyłączenia t_b "
-                    "przy udziale maszyn wirujących (podaj t_b w scenariuszu zwarciowym)"
+                    "wielkości biegu nie niosą prądu wyłączeniowego I_b punktu zwarcia "
+                    "(przelicz bieg zwarciowy)"
                 )
             )
             return EquipmentProofCheckResult(
@@ -660,19 +662,32 @@ def _uwagi_wylaczania(
     tb_s = _as_float(required.get("tb_s"))
     i_dc_ka = _as_float(required.get("i_dc_ka"))
     if tb_s is None:
-        return (
-            "Bieg bez czasu wyłączenia t_b — składowa nieokresowa i_DC(t_b) nieobliczona "
-            "(kod fault.czas_tb_brak).",
-        )
+        return ("Wielkości biegu nie niosą czasu wyłączenia t_b punktu zwarcia.",)
     tb_txt = f"{tb_s:g}".replace(".", ",")
-    if i_dc_ka is None:
-        return (f"t_b = {tb_txt} s.",)
-    idc_txt = f"{i_dc_ka:.4f}".replace(".", ",")
-    return (
-        f"t_b = {tb_txt} s; składowa nieokresowa i_DC(t_b) = {idc_txt} kA (IEC 60909-0 "
-        "rozdz. 10) — informacyjnie: katalog aparatu nie niesie znamionowej składowej "
-        "nieokresowej, porównania z nią nie wystawiono.",
-    )
+    uwagi = [
+        (
+            f"t_b = {tb_txt} s."
+            if i_dc_ka is None
+            else (
+                f"t_b = {tb_txt} s; składowa nieokresowa i_DC(t_b) = "
+                f"{f'{i_dc_ka:.4f}'.replace('.', ',')} kA (IEC 60909-0 rozdz. 10) — "
+                "informacyjnie: katalog aparatu nie niesie znamionowej składowej nieokresowej, "
+                "porównania z nią nie wystawiono."
+            )
+        )
+    ]
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (pola lokalne albo wartość robocza).
+    zrodlo = required.get("tb_zrodlo")
+    if isinstance(zrodlo, dict):
+        uwagi.append(f"Czas wyłączenia: {zrodlo.get('opis_pl')}")
+        if zrodlo.get("wartosc_robocza") and zrodlo.get("ib_z_udzialem_maszyn"):
+            uwagi.append(
+                "I_b z udziałem maszyn wirujących zależy od t_b (współczynniki μ, q — IEC "
+                "60909-0:2016 rozdz. 9), a t_b jest wartością roboczą: porównanie z I_cu jest "
+                "wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem przy "
+                "rzeczywistym czasie wyłączenia."
+            )
+    return tuple(uwagi)
 
 
 def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool:

@@ -14,6 +14,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -582,7 +583,7 @@ def test_short_circuit_nonzero_on_der_sn_buses() -> None:
     graph = map_enm_to_network_graph(enm)
     for node_id in sorted(graph.nodes.keys()):
         sc = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph, node_id, c_factor=1.10, tk_s=1.0, tb_s=0.1
+            graph, node_id, c_factor=1.10, tk_s=1.0, czas_tb=czas_tb_projektanta(0.1)
         )
         assert sc.ikss_a > 0, f"ikss=0 na {node_id}"
 

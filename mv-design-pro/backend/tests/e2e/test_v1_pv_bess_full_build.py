@@ -34,6 +34,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -512,7 +513,7 @@ class TestPvBessFullBuild:
                 node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
-                tb_s=tb_s,
+                czas_tb=czas_tb_projektanta(tb_s),
             )
             assert sc.ikss_a > 0, f"ikss=0 na {node_id} (oczekiwano > 0)"
 

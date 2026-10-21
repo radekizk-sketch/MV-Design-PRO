@@ -19,7 +19,11 @@ from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_des
 from enm.assembler import impedancja_zwarcia_z_opcji
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
-from network_model.core.czas_wylaczenia import czas_tb_z_danych
+from network_model.core.czas_wylaczenia import (
+    CZAS_TB_ROBOCZY_S,
+    POCHODZENIE_TB_PROJEKTANT,
+    czas_tb_z_danych,
+)
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import (
     NadpisanieC,
@@ -190,11 +194,16 @@ class SC3FPackRequest(BaseModel):
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
     tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
-    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] biegu (scenariusz); brak = dowód
-    #: bez i_DC (i bez I_b przy maszynach wirujących) z kodem `fault.czas_tb_brak`.
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] scenariusza biegu; brak = t_b punktu
+    #: rozstrzyga warstwa wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA:
+    #: najkrótszy czas wyłączenia pól lokalnych, inaczej wartość robocza 0,1 s).
     tb_s: float | None = Field(
         default=None,
-        description="Czas wyłączenia t_b [s] (najkrótszy czas zabezpieczenia + wyłącznika)",
+        description=(
+            "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + "
+            "wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza "
+            f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s"
+        ),
     )
     fault_impedance: FaultImpedanceRequest | None = Field(
         default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
@@ -218,8 +227,9 @@ class SCContributionsRequest(BaseModel):
     #: IEC 60909-0 dla pasma węzła zwarcia; dawne `c_factor: 1.10` dawało c SN w węźle nN.
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
-    #: Karta SC-IB-ITH-ZRODLA: t_min = t_b biegu [s] (scenariusz), nie stała 0,10 s — brak
-    #: = μ, q i I_b maszyn nieobliczone tam, gdzie wymagają krzywej (kod `fault.czas_tb_brak`).
+    #: Karta SC-IB-ITH-ZRODLA: t_min = t_b scenariusza biegu [s]; brak = t_b punktu
+    #: rozstrzygnięty tą samą funkcją co wiersz biegu (karta TB-WARTOSC-ROBOCZA: pola
+    #: lokalne, inaczej wartość robocza 0,1 s) — pochodzenie w odpowiedzi (`t_min_zrodlo`).
     t_min_s: float | None = None
     fault_impedance: FaultImpedanceRequest | None = Field(
         default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
@@ -309,12 +319,7 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
                 "tekst": (
                     f"Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = "
                     f"{_ka_pl(ikss_total_a)} kA, c = {_liczba_pl(result.c_factor, 2)}, "
-                    + (
-                        f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
-                        if result.t_min_s is not None
-                        else "t_min nie podano — μ, q i Ib maszyn wymagających krzywej "
-                        "zaniku nieobliczone."
-                    )
+                    f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
                 ),
                 "latex": None,
             }
@@ -517,11 +522,15 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     try:
         # Graf solvera i c punktu z assemblera biegu (tożsamość punktu: ref ENM szyny
         # albo id węzła grafu — rozstrzyga warstwa wiązania).
+        # t_min = t_b punktu: scenariusz (reguła danych `czas_tb_z_danych`, odmowa → 422),
+        # inaczej pola lokalne albo wartość robocza — `czas_tb_punktu` jak w wierszu biegu.
         punkt = graf_i_dobor_c_punktu(
             snapshot=payload.snapshot,
             fault_ref=payload.fault_node_id,
             scenariusz=payload.scenariusz,
             nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
+            tb_s=czas_tb_z_danych(payload.t_min_s),
+            z_f_ohm=z_f_ohm,
         )
         # Partia integracji 10: odmowa strukturalna rdzenia wychodzi ze zdaniem z nazwami
         # elementów grafu (identyfikator węzła zostaje w rekordach odmowy).
@@ -530,7 +539,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
                 punkt.graf,
                 punkt.fault_node_id,
                 c_factor=punkt.dobor_c.wartosc,
-                t_min_s=czas_tb_z_danych(payload.t_min_s),
+                t_min_s=punkt.czas_tb.wartosc_s,
                 z_f_ohm=z_f_ohm,
             )
     # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
@@ -557,6 +566,13 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c punktu i jego podstawa (White Box).
         "c_factor": punkt.dobor_c.wartosc,
         "c_zrodlo": punkt.dobor_c.zrodlo,
+        # Karta TB-WARTOSC-ROBOCZA (addytywnie): pochodzenie t_min = t_b punktu, gdy nie
+        # pochodzi z żądania (scenariusza) — pola lokalne albo wartość robocza.
+        **(
+            {"t_min_zrodlo": punkt.czas_tb.to_dict()}
+            if punkt.czas_tb.pochodzenie != POCHODZENIE_TB_PROJEKTANT
+            else {}
+        ),
     }
 
 

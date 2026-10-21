@@ -240,6 +240,31 @@
   overflow-wrap: anywhere;
   text-align: right;
 }
+/* Karta TB-WARTOSC-ROBOCZA: pochodzenie tb punktu — dyskretna etykieta wartości roboczej
+   (ten sam wzorzec co parametry aparatu), akcja i zdanie źródła z backendu pod liczbą. */
+.mvd-zwarcia-bilans-robocza {
+  padding: 0 6px;
+  font-size: 10.5px;
+  color: var(--mvd-ink);
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+}
+.mvd-zwarcia-bilans-akcja {
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--mvd-ink);
+  background: transparent;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mvd-zwarcia-bilans-tb-zrodlo {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+  text-align: left;
+}
 
 /* ---- sekcja pasma MIN/MAX (karta W3-G3, aneks D7) ---- */
 .mvd-zwarcia-pasmo {

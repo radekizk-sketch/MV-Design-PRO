@@ -516,24 +516,6 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     return float(wartosc)
 
 
-def _pole_sc_zalezne_od_tb(payload: dict[str, Any], klucz: str) -> float | None:
-    """Pole wiersza zwarciowego zależne od czasu wyłączenia t_b (``ib_a``, ``tb_s``).
-
-    Karta SC-IB-ITH-ZRODLA: bieg bez t_b zapisuje ``tb_s = None``, a przy maszynach
-    wirujących także ``ib_a = None`` (nazwana odmowa `fault.czas_tb_brak`) — wartość
-    ``None`` jest stanem kontraktu, nie uszkodzeniem. Uszkodzeniem pozostaje BRAK klucza
-    (serializacja wyniku zawsze go niesie). Ocena cieplna I_b ani t_b nie używa.
-    """
-    if klucz not in payload:
-        raise AssertionError(
-            "Zapis wyniku zwarciowego tego przebiegu nie ma jednej z wymaganych wielkości "
-            f"({_WIELKOSCI_WIERSZA_PL.get(klucz, 'wielkość spoza słownika aplikacji')}) — "
-            "zapis jest uszkodzony, ocena wytrzymałości cieplnej nie może się na nim oprzeć."
-        )
-    wartosc = payload[klucz]
-    return None if wartosc is None else float(wartosc)
-
-
 def _odtworz_wynik_zwarciowy(
     run: CanonicalRun, uow_factory: Callable[[], Any] | None = None
 ) -> ShortCircuitResult:
@@ -583,10 +565,12 @@ def _odtworz_wynik_zwarciowy(
         rx_ratio=_wymagane_pole_sc(payload, "rx_ratio"),
         kappa=_wymagane_pole_sc(payload, "kappa"),
         tk_s=_wymagane_pole_sc(payload, "tk_s"),
-        ib_a=_pole_sc_zalezne_od_tb(payload, "ib_a"),
-        tb_s=_pole_sc_zalezne_od_tb(payload, "tb_s"),
-        # i_DC(t_b) to pole addytywne (obecne tylko przy t_b) — ocena cieplna go nie czyta.
+        # Karta TB-WARTOSC-ROBOCZA: t_b rozstrzygane per punkt — każdy wiersz z solvera niesie
+        # I_b, t_b i i_DC(t_b) (ocena cieplna ich nie czyta; pochodzenie t_b addytywnie).
+        ib_a=_wymagane_pole_sc(payload, "ib_a"),
+        tb_s=_wymagane_pole_sc(payload, "tb_s"),
         i_dc_a=payload.get("i_dc_a"),
+        tb_zrodlo=payload.get("tb_zrodlo"),
         # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
         # biegu — opcje audytu 2 czytane tą samą bazą).
         branch_contributions=_odtworz_wklady_galeziowe(

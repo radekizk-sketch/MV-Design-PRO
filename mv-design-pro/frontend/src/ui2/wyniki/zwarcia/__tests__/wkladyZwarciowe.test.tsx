@@ -177,7 +177,7 @@ describe('parametryWkladowZKonfiguracji — odczyt konfiguracji zapisanej na bie
     expect(parametryWkladowZKonfiguracji(konf())).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: null });
   });
 
-  it('czas wyłączenia t_b zapisany na biegu → t_min wkładów; bieg bez t_b → null, nie 0,10 s', () => {
+  it('t_b scenariusza zapisany na biegu → t_min wkładów; t_b w punkcie zwarcia → null (backend rozstrzyga punkt), nie 0,10 s z UI', () => {
     expect(
       parametryWkladowZKonfiguracji(
         konf({ breaking_time_seconds: { wartosc: 0.25, pochodzenie: 'opcje_biegu' } }),
@@ -185,7 +185,7 @@ describe('parametryWkladowZKonfiguracji — odczyt konfiguracji zapisanej na bie
     ).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: 0.25 });
     expect(
       parametryWkladowZKonfiguracji(
-        konf({ breaking_time_seconds: { wartosc: null, pochodzenie: 'brak_danej', kod: 'fault.czas_tb_brak' } }),
+        konf({ breaking_time_seconds: { wartosc: null, pochodzenie: 'punkt_zwarcia', opis_pl: 'Reguła.' } }),
       ),
     ).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: null });
   });
@@ -279,11 +279,11 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
   });
 });
 
-// Karta SC-IB-ITH-ZRODLA: bieg bez t_b — backend zwraca μ/q/Ib maszyny jako `null`
-// (krzywa zaniku zależy od t_min). Projekcja nie może zamienić `null` na 0 kA (dawne
-// `c.ib_a !== undefined ? c.ib_a / 1000` dawało 0 dla `null`).
-describe('naWklady — wielkości nieobliczone bez t_b zostają brakiem', () => {
-  const maszyna = (mu: number | null, q: number | null, ib: number | null) => ({
+// Karta TB-WARTOSC-ROBOCZA: backend liczy μ, q i Ib maszyny zawsze (t_min = t_b punktu);
+// projekcja przenosi liczby 1:1 (Ib A → kA), a starsza odpowiedź bez pól zostaje brakiem —
+// nigdy 0 kA.
+describe('naWklady — μ, q, Ib maszyny z odpowiedzi 1:1, brak pola = brak', () => {
+  const maszyna = (mu?: number, q?: number, ib?: number) => ({
     contributions: [
       {
         source_id: 'gen_sync',
@@ -292,21 +292,22 @@ describe('naWklady — wielkości nieobliczone bez t_b zostają brakiem', () => 
         machine_type: 'SYNCHRONOUS',
         ir_a: 192.5,
         ratio_ik_ir: 7.2,
-        mu,
-        q,
-        ib_a: ib,
+        ...(mu === undefined ? {} : { mu }),
+        ...(q === undefined ? {} : { q }),
+        ...(ib === undefined ? {} : { ib_a: ib }),
         wywod: [],
       },
     ],
   });
 
   it.each([
-    ['bieg bez t_b', null, null, null, null],
-    ['bieg z t_b = 0,1 s', 0.691, 1, 963.9, 0.9639],
+    ['t_b = 0,1 s (wartość robocza albo scenariusz)', 0.691, 1, 963.9, 0.9639],
+    ['t_b z pola = 0,36 s', 0.62, 1, 864, 0.864],
+    ['starsza odpowiedź bez pól', undefined, undefined, undefined, null],
   ])('%s', (_n, mu, q, ib, ibKA) => {
     const [wklad] = naWklady(maszyna(mu, q, ib) as never);
-    expect(wklad.szczegol?.mu).toBe(mu);
-    expect(wklad.szczegol?.q).toBe(q);
+    expect(wklad.szczegol?.mu ?? null).toBe(mu ?? null);
+    expect(wklad.szczegol?.q ?? null).toBe(q ?? null);
     expect(wklad.szczegol?.ibKA).toBe(ibKA);
   });
 });

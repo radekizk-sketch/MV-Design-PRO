@@ -308,8 +308,9 @@ describe('FaultScenarioModal — nośnik współczynnika c (edycja)', () => {
 /**
  * Karta SC-IB-ITH-ZRODLA — czas wyłączenia t_b jako dana scenariusza (nie stała solvera).
  * Iloczyn cech: {tworzenie, edycja} × {puste pole, liczba z kropką, liczba z przecinkiem
- * wklejona, zero, ujemna} — puste = brak klucza (backend `exclude_none`, założenie biegu
- * `fault.czas_tb_brak`), liczba dodatnia = `breaking_time_seconds`, reszta = blokada w oknie.
+ * wklejona, zero, ujemna} — puste = brak klucza (backend `exclude_none`; karta
+ * TB-WARTOSC-ROBOCZA: t_b rozstrzygany w punkcie zwarcia), liczba dodatnia =
+ * `breaking_time_seconds`, reszta = blokada w oknie.
  * Wpisywanie natywne (userEvent) w pole typu liczbowego.
  */
 describe('FaultScenarioModal — czas wyłączenia t_b', () => {

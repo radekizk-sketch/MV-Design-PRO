@@ -28,9 +28,11 @@ from __future__ import annotations
 #: Grupa „IEC 60909" zmieniona decyzją B-01 pozycja (n) planu A/B (delegacja właściciela O-59,
 #: odbiór przez sesję główną z niezależną weryfikacją; karta SC-IB-ITH-ZRODLA): I_b jako
 #: symetryczny prąd wyłączeniowy IEC 60909-0:2016 rozdz. 9 (μ·q z `machine_sc_iec60909`),
-#: addytywna składowa nieokresowa i_DC(t_b) (rozdz. 10), t_b z danych biegu albo nazwany brak
-#: (`fault.czas_tb_brak`), jedno źródło I_th (n = 1) także dla toru dowodowego SC1
-#: (`short_circuit_asymmetrical_quantities.py`, chroniony w `solver_boundary_guard`). Sankcje:
+#: addytywna składowa nieokresowa i_DC(t_b) (rozdz. 10), jedno źródło I_th (n = 1) także dla
+#: toru dowodowego SC1
+#: (`short_circuit_asymmetrical_quantities.py`, chroniony w `solver_boundary_guard`). Karta
+#: TB-WARTOSC-ROBOCZA (ta sama pozycja (n)): t_b rozstrzygany PER PUNKT ZWARCIA (scenariusz
+#: projektanta > pola lokalne > wartość robocza z pochodzeniem), brak t_b nie blokuje. Sankcje:
 #: `solver_boundary_guard.SANCTIONED_CHANGES`; odcisk: `guard_references/solver_hashes.json`.
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (

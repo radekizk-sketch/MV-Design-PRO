@@ -1,6 +1,7 @@
 /**
  * Karta SC-IB-ITH-ZRODLA — reguła danych t_b po stronie formularza = reguła backendu
- * (`network_model/core/czas_wylaczenia.py::czas_tb_z_danych`): puste = brak danej (`null`),
+ * (`network_model/core/czas_wylaczenia.py::czas_tb_z_danych`): puste = `null` (karta
+ * TB-WARTOSC-ROBOCZA: t_b rozstrzygany w punkcie zwarcia — pola lokalne, inaczej wartość robocza),
  * liczba skończona dodatnia = t_b, reszta = odmowa z kodem `fault.czas_tb_niepoprawny`.
  * Iloczyn cech: {puste, spacje, kropka, przecinek, zero, ujemna, napis, nieskończoność} ×
  * {pole → wartość, konfiguracja → tekst pola, konfiguracja → opis listy}.
@@ -11,6 +12,7 @@ import {
   KOD_CZAS_TB_NIEPOPRAWNY,
   czasWylaczeniaZPola,
   konfiguracjaZwarciaZPol,
+  OPIS_CZASU_TB_W_PUNKCIE,
   opisCzasuWylaczenia,
   poleCzasuWylaczenia,
 } from '../wspolczynnikC';
@@ -65,8 +67,8 @@ describe('poleCzasuWylaczenia / opisCzasuWylaczenia', () => {
   };
 
   it.each([
-    [undefined, '', 'nie podano (Ib przy maszynach i iDC nieobliczone)'],
-    [null, '', 'nie podano (Ib przy maszynach i iDC nieobliczone)'],
+    [undefined, '', OPIS_CZASU_TB_W_PUNKCIE],
+    [null, '', OPIS_CZASU_TB_W_PUNKCIE],
     [0.1, '0.1', '0,1 s'],
     [0.25, '0.25', '0,25 s'],
   ])('t_b %s → pole „%s", opis „%s"', (tb, pole, opis) => {
@@ -75,8 +77,9 @@ describe('poleCzasuWylaczenia / opisCzasuWylaczenia', () => {
     expect(opisCzasuWylaczenia(config)).toBe(opis);
   });
 
-  it('brak konfiguracji → pole puste i jawny brak', () => {
+  it('brak konfiguracji → pole puste i reguła punktu zwarcia (bez liczby udającej t_b)', () => {
     expect(poleCzasuWylaczenia(null)).toBe('');
-    expect(opisCzasuWylaczenia(undefined)).toBe('nie podano (Ib przy maszynach i iDC nieobliczone)');
+    expect(opisCzasuWylaczenia(undefined)).toBe(OPIS_CZASU_TB_W_PUNKCIE);
+    expect(OPIS_CZASU_TB_W_PUNKCIE).not.toMatch(/\d/);
   });
 });

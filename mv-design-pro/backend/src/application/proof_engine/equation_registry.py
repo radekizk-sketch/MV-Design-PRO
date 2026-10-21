@@ -3566,8 +3566,8 @@ SC3F_PROOF_STEP_ORDER: list[str] = [
     "EQ_SC3F_005",  # Współczynnik udaru κ
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
-    "EQ_SC3F_014",  # Prąd wyłączeniowy symetryczny I_b — gdy wynik go niesie
-    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) — gdy bieg ma t_b
+    "EQ_SC3F_014",  # Prąd wyłączeniowy symetryczny I_b (t_b punktu zwarcia zawsze rozstrzygnięty)
+    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) — t_b z pochodzeniem punktu zwarcia
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''
@@ -3584,7 +3584,7 @@ SC3F_PROOF_STEP_ORDER_IMPEDANCJA: list[str] = [
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
     "EQ_SC3F_014",  # Prąd wyłączeniowy symetryczny I_b — ta sama definicja co bez Z_f
-    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) z R/X pętli — gdy bieg ma t_b
+    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) z R/X pętli — t_b z pochodzeniem punktu
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''

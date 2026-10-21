@@ -21,6 +21,7 @@ backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.voltage_factor import c_for_node
@@ -118,6 +119,7 @@ def test_sc_iec60909_3f_1f_2f_guardians() -> None:
         fault_node_id="fault_bus",
         c_factor=C_MAX,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     r1 = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
         graph=graph,
@@ -125,12 +127,14 @@ def test_sc_iec60909_3f_1f_2f_guardians() -> None:
         c_factor=C_MAX,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     r2 = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
         graph=graph,
         fault_node_id="fault_bus",
         c_factor=C_MAX,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert r3.short_circuit_type.value == "3F"
@@ -158,12 +162,14 @@ def test_sc_iec60909_factor_c_control() -> None:
         fault_node_id="fault_bus",
         c_factor=0.95,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     high = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
         fault_node_id="fault_bus",
         c_factor=1.10,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert high.ikss_a > low.ikss_a
@@ -178,12 +184,14 @@ def test_sc_iec60909_trace_determinism_identity() -> None:
         fault_node_id="fault_bus",
         c_factor=C_MAX,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     run_b = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=copy.deepcopy(graph),
         fault_node_id="fault_bus",
         c_factor=C_MAX,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     hash_result_a = _sha(run_a.to_dict())

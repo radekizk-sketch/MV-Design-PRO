@@ -52,8 +52,9 @@ from network_model.core.autorytet_wyniku_zwarciowego import (
     wynik_poza_zakresem_iec60909,
 )
 from network_model.core.czas_wylaczenia import (
+    CZAS_TB_ROBOCZY_S,
     KLUCZ_OPCJI_CZASU_TB,
-    KOD_CZAS_TB_BRAK,
+    ZRODLO_CZASU_TB_ROBOCZEGO,
     czas_tb_z_danych,
 )
 from network_model.core.voltage_factor import nadpisanie_c_z_danych, opis_c_biegu
@@ -579,11 +580,25 @@ def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
 
 def _czas_tb_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     """Czas wyłączenia t_b [s] ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA) — z opcji biegu
-    (`breaking_time_seconds`, projekcja scenariusza zwarciowego). Brak = ``wartosc`` None
-    z pochodzeniem ``brak_danej`` i kodem założenia `fault.czas_tb_brak` — nigdy domyślna."""
+    (`breaking_time_seconds`, projekcja scenariusza zwarciowego).
+
+    Karta TB-WARTOSC-ROBOCZA: brak t_b w scenariuszu nie jest brakiem danej — t_b
+    rozstrzyga się PER PUNKT ZWARCIA (najkrótszy czas wyłączenia pól lokalnych, inaczej
+    wartość robocza 0,1 s); ``wartosc`` None z pochodzeniem ``punkt_zwarcia`` i zdaniem
+    reguły, a t_b każdego punktu z pochodzeniem niesie wiersz wyniku (``tb_s``,
+    ``tb_zrodlo``). Nigdy liczba udająca t_b biegu."""
     wartosc = czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB))
     if wartosc is None:
-        return {"wartosc": None, "pochodzenie": "brak_danej", "kod": KOD_CZAS_TB_BRAK}
+        return {
+            "wartosc": None,
+            "pochodzenie": "punkt_zwarcia",
+            "opis_pl": (
+                "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to "
+                "najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy "
+                "zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza "
+                f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s ({ZRODLO_CZASU_TB_ROBOCZEGO})."
+            ),
+        }
     return {"wartosc": wartosc, "pochodzenie": "opcje_biegu"}
 
 
@@ -623,6 +638,13 @@ def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     impedancja = _impedancja_przejscia_biegu_zwarcia(run)
     if impedancja is not None:
         konfiguracja["impedancja_przejscia"] = impedancja
+    # Karta TB-WARTOSC-ROBOCZA (addytywnie): scenariusz zwarciowy, z którego powstał bieg
+    # (`opcje_biegu_ze_scenariusza` zapisuje `scenario_id`) — akcja „Zmień wartość" t_b na
+    # ekranie wyników otwiera edycję t_b TEGO scenariusza. Bieg przypadku bez scenariusza
+    # nie ma klucza (akcja prowadzi wtedy do nowego scenariusza z polem t_b).
+    scenario_id = run.options.get("scenario_id")
+    if isinstance(scenario_id, str) and scenario_id:
+        konfiguracja["scenariusz_zwarciowy_id"] = scenario_id
     return konfiguracja
 
 

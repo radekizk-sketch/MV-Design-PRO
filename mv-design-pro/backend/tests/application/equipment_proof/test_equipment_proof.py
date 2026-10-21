@@ -363,7 +363,9 @@ def _input_wylaczania(u_kv: float | None, ib_ka: float | None) -> EquipmentProof
     [
         (12.0, 18.0, "PASS", "ib_ka", 18.0, "wobec prądu wyłączeniowego symetrycznego I_b"),
         (12.0, 21.0, "FAIL", "ib_ka", 21.0, "IEC 62271-100"),
-        (12.0, None, "FAIL", "ib_ka", None, "czasu wyłączenia t_b"),
+        # Karta TB-WARTOSC-ROBOCZA: t_b jest rozstrzygany w każdym punkcie, więc brak I_b to
+        # wyłącznie zapis bez pola (wiersz bez solvera) — brak podstawy, nigdy podmiana na I″k.
+        (12.0, None, "FAIL", "ib_ka", None, "nie niosą prądu wyłączeniowego I_b"),
         (0.4, 18.0, "FAIL", "ikss_ka", 22.0, "spodziewanego prądu zwarciowego początkowego I″k"),
         (0.4, 21.0, "FAIL", "ikss_ka", 22.0, "IEC 60947-2"),
         (0.4, None, "FAIL", "ikss_ka", 22.0, "22.0000 kA"),
@@ -401,9 +403,63 @@ def test_icu_sn_uwagi_niosa_tb_i_skladowa_nieokresowa() -> None:
     assert "porównania z nią nie wystawiono" in uwaga
 
 
-def test_icu_sn_bez_tb_uwaga_o_braku_skladowej_nieokresowej() -> None:
+def test_icu_sn_zapis_bez_tb_uwaga_o_braku_tb() -> None:
+    """Zapis bez I_b i t_b (wiersz bez solvera) — uwaga mówi, czego brakuje; dawnego kodu
+    blokady `fault.czas_tb_brak` już nie ma (karta TB-WARTOSC-ROBOCZA)."""
     check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(12.0, None)), "Icu")
-    assert any("Bieg bez czasu wyłączenia t_b" in uwaga for uwaga in check.notes)
+    assert check.notes == ("Wielkości biegu nie niosą czasu wyłączenia t_b punktu zwarcia.",)
+    assert not any("czas_tb_brak" in uwaga for uwaga in check.notes)
+
+
+# Karta TB-WARTOSC-ROBOCZA — uwagi kryterium wyłączania: pochodzenie t_b punktu ×
+# udział maszyn wirujących w I_b. Iloczyn: {t_b projektanta (bez `tb_zrodlo`) · pole
+# z czasem z karty · pole z roboczym czasem własnym · propozycja robocza} × {I_b z udziałem
+# maszyn · I_b = I″k (bez maszyn)}. Zdanie „dana przyjęta" WYŁĄCZNIE, gdy t_b roboczy
+# i I_b od niego zależy — w sieci bez maszyn I_b nie zależy od t_b.
+_ZRODLA_TB_DOBORU: dict[str, dict | None] = {
+    "projektant": None,
+    "pole_karta": {
+        "pochodzenie": "Z_POL",
+        "wartosc_robocza": False,
+        "opis_pl": "t_b = 0,15 s z pola Odpływ 1 (czas własny z karty).",
+    },
+    "pole_robocze": {
+        "pochodzenie": "Z_POL",
+        "wartosc_robocza": True,
+        "opis_pl": "t_b = 0,16 s z pola Odpływ 1 (czas własny — wartość robocza).",
+    },
+    "propozycja": {
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": True,
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016).",
+    },
+}
+
+
+@pytest.mark.parametrize("maszyny", [True, False], ids=["z_maszynami", "bez_maszyn"])
+@pytest.mark.parametrize("wariant", sorted(_ZRODLA_TB_DOBORU))
+def test_icu_sn_uwagi_pochodzenie_tb_x_udzial_maszyn(wariant: str, maszyny: bool) -> None:
+    base = _input_wylaczania(12.0, 18.0)
+    required = dict(base.required_fault_results)
+    zrodlo = _ZRODLA_TB_DOBORU[wariant]
+    if zrodlo is not None:
+        required["tb_zrodlo"] = {**zrodlo, "ib_z_udzialem_maszyn": maszyny}
+    check = _find_check(
+        EquipmentProofGenerator.generate(
+            dataclasses.replace(base, required_fault_results=required)
+        ),
+        "Icu",
+    )
+    assert check.status == "PASS"
+    assert check.notes[0].startswith("t_b = 0,1 s; składowa nieokresowa i_DC(t_b)")
+    if zrodlo is None:
+        assert len(check.notes) == 1
+        return
+    assert check.notes[1] == f"Czas wyłączenia: {zrodlo['opis_pl']}"
+    dana_przyjeta = bool(zrodlo["wartosc_robocza"]) and maszyny
+    assert len(check.notes) == (3 if dana_przyjeta else 2)
+    if dana_przyjeta:
+        assert "wynikiem obliczeniowym na danej przyjętej" in check.notes[2]
 
 
 def test_icu_nn_bez_uwag_o_tb() -> None:
