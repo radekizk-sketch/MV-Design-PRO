@@ -338,11 +338,11 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
     }>;
   };
   // Kontrakt: wersja raportu — podbicia MINOR addytywne (1.1.0 pola procentowe
-  // KD-3; 1.2.0 element_id nakładki; 1.3.0 wartości B nakładki, S9-13).
+  // KD-3; 1.2.0 element_id nakładki; 1.3.0 wartości B nakładki, S9-13; 1.4.0 I_b, i_DC(t_b), t_b z pochodzeniem).
   // Asercja trzyma DOKŁADNĄ bieżącą wersję, żeby cicha zmiana kontraktu nie
   // przeszła bez podbicia (poprzednio asercja została na 1.1.0 przy backendzie
   // 1.2.0 — test był czerwony na HEAD; naprawa u źródła: wersja z kontraktu).
-  expect(porownanie.report_version).toBe('1.3.0');
+  expect(porownanie.report_version).toBe('1.4.0');
   expect(porownanie.punkty.length).toBeGreaterThan(0);
 
   await expect(page.getByTestId('mvd-porz-wynik')).toBeVisible({ timeout: 20000 });

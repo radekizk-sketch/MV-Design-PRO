@@ -360,10 +360,10 @@ test('S9-13: porównanie A/B osiągalne z kanwy — blokada bez drugiego biegu, 
   // KIERUNEK PARY: A = wybrane odniesienie, B = bieg pokazywany na schemacie.
   expect(nakladka.run_id_a).toBe(runA);
   expect(nakladka.run_id_b).toBe(runB);
-  expect(nakladka.report_version).toBe('1.3.0');
+  expect(nakladka.report_version).toBe('1.4.0');
   // Zmiana długości odcinka MUSI dać niezerowe różnice.
   expect(nakladka.liczba_punktow_zmienionych).toBeGreaterThan(0);
-  // Kontrakt 1.3.0: wartości B obok delt (etykieta niesie „wartość B i różnicę").
+  // Kontrakt 1.3.0 (zachowany w 1.4.0, który dokłada I_b, i_DC i t_b z pochodzeniem): wartości B obok delt (etykieta niesie „wartość B i różnicę").
   const zWartosciaB = Object.values(nakladka.elements).some((el) => 'B_IK_3F_KA' in el.metrics);
   expect(zWartosciaB).toBe(true);
 
