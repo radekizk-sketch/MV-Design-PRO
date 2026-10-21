@@ -25,6 +25,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Zrzuty do oceny właściciela (dyrektywa #8) — ŻYWA aplikacja, oba motywy. */
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
@@ -264,7 +265,9 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),

@@ -22,6 +22,7 @@ import path from 'node:path';
 
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -202,7 +203,9 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
