@@ -85,8 +85,9 @@ const POWOD_NADPISANIE_C =
   'z tabeli 1 IEC 60909-0.';
 const POWOD_CZAS_TB =
   'Czas wyłączenia tb (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) ' +
-  'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego prąd wyłączeniowy Ib przy ' +
-  'maszynach wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) są nieobliczone.';
+  'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
+  'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
+  'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
@@ -306,8 +307,8 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza zwarciowego, nie elementu modelu.
-  'fault.czas_tb_brak': przestrzen('obliczenia', POWOD_CZAS_TB),
   'fault.czas_tb_niepoprawny': przestrzen('obliczenia', POWOD_CZAS_TB),
+  'fault.czas_tb_wartosc_robocza': przestrzen('obliczenia', POWOD_CZAS_TB),
   // --- Przypadek, analizy i werdykt ----------------------------------------------------
   'study_case.missing_base_snapshot': przestrzen(
     'obliczenia',

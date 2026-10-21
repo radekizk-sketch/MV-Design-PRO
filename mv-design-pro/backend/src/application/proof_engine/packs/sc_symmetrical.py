@@ -44,7 +44,6 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
-from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
 from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
@@ -69,8 +68,9 @@ class SC3FPackInput:
     scenariusz: Scenario
     nadpisanie_c: NadpisanieC | None
     tk_s: float
-    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] biegu, którego pakiet powstaje
-    #: (``None`` = bieg bez t_b — I_b z maszynami i i_DC nieobliczone, kod w ostrzeżeniach).
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] scenariusza biegu, którego pakiet
+    #: powstaje; ``None`` = t_b punktu rozstrzyga warstwa wiązania tą samą funkcją co bieg
+    #: (pola lokalne albo wartość robocza — karta TB-WARTOSC-ROBOCZA).
     tb_s: float | None
     rozszerzenia_audit2: dict[str, Any] | None = None
     #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
@@ -85,16 +85,12 @@ class SC3FPackResult:
     proof_sc3f: ProofDocument
     has_machines: bool
     all_passed: bool
-    #: Karta SC-IB-ITH-ZRODLA: kody odmów wielkości nieobliczonych (``fault.czas_tb_brak``
-    #: z kroków śladu Ib/iDC) — podstawa kompletności dowodu, nie domysł z tekstu.
-    odmowy: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "proof_sc3f": self.proof_sc3f.to_dict(),
             "has_machines": self.has_machines,
             "all_passed": self.all_passed,
-            **({"odmowy": list(self.odmowy)} if self.odmowy else {}),
         }
 
 
@@ -130,10 +126,9 @@ class SC3FProofPack:
         graph = zwarcie.graf
 
         # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu i TĄ SAMĄ funkcją co rdzeń
-        # (I_b sieci = I_k'' − Σ zaników tych samych maszyn); t_min = t_b biegu. Bez t_b μ i q
-        # są wyznaczalne tylko tam, gdzie nie zależą od krzywej — przy niekomplecie generator
-        # pomija sekcję maszynową, a krok śladu Ib niesie kod `fault.czas_tb_brak`
-        # (ostrzeżenie dowodu). Dołączane tylko gdy realnie są maszyny (determinizm).
+        # (I_b sieci = I_k'' − Σ zaników tych samych maszyn); t_min = t_b punktu z wyniku
+        # (karta TB-WARTOSC-ROBOCZA: rozstrzygnięte w warstwie wiązania, pochodzenie w
+        # `tb_zrodlo`). Dołączane tylko gdy realnie są maszyny (determinizm).
         has_machines = bool(
             graph.get_synchronous_machine_sources() or graph.get_asynchronous_machine_sources()
         )
@@ -150,15 +145,6 @@ class SC3FProofPack:
         )
         krok_ib = krok_sladu_zwarcia(result.white_box_trace, "Ib")
         krok_idc = krok_sladu_zwarcia(result.white_box_trace, "iDC")
-        odmowy = tuple(
-            sorted(
-                {
-                    str(krok["result"]["kod"])
-                    for krok in (krok_ib, krok_idc)
-                    if krok is not None and (krok.get("result") or {}).get("kod")
-                }
-            )
-        )
 
         if result.m_factor is None or result.n_factor is None:
             raise AssertionError(
@@ -199,8 +185,10 @@ class SC3FProofPack:
             machine_result=machine_result,
             # Karta SC-IB-ITH-ZRODLA: I_b (symetryczny, rozdz. 9) i i_DC(t_b) (rozdz. 10)
             # z FROZEN wyniku solvera i jego śladu — zero fizyki w proof engine.
-            ib_ka=None if result.ib_a is None else a_na_ka(result.ib_a),
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (None = scenariusz projektanta).
+            tb_zrodlo=result.tb_zrodlo,
             i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
             krok_ib=krok_ib,
             krok_idc=krok_idc,
@@ -214,7 +202,6 @@ class SC3FProofPack:
             proof_sc3f=proof,
             has_machines=has_machines,
             all_passed=proof.summary.unit_check_passed,
-            odmowy=odmowy,
         )
 
     @classmethod
@@ -239,15 +226,10 @@ class SC3FProofPack:
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:
         """Weryfikuje obecność OBOWIĄZKOWYCH wyników SC3F (§4.1 + karta S-C).
 
-        Pełny bilans (I_b, i_DC, I²t) jest obowiązkowy. Wyjątek tylko z NAZWANĄ odmową
-        (karta SC-IB-ITH-ZRODLA): bieg bez t_b nie ma i_DC, a przy maszynach wirujących
-        także I_b — kod `fault.czas_tb_brak` w ``odmowy`` zwalnia te dwie wielkości,
-        brak bez kodu jest niekompletnością.
+        Pełny bilans (I_b, i_DC, I²t) jest obowiązkowy bez wyjątków: od karty
+        TB-WARTOSC-ROBOCZA t_b każdego punktu jest rozstrzygnięte (scenariusz, pola lokalne
+        albo wartość robocza), więc I_b i i_DC są zawsze policzone.
         """
-        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "i2t_ka2s"}
-        if KOD_CZAS_TB_BRAK not in result.odmowy:
-            required_keys |= {"ib_ka", "i_dc_ka"}
-        elif not result.has_machines:
-            required_keys.add("ib_ka")
+        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "i2t_ka2s", "ib_ka", "i_dc_ka"}
         key_results = result.proof_sc3f.summary.key_results
         return [key for key in sorted(required_keys) if key not in key_results]

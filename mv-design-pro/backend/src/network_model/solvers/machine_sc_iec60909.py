@@ -74,34 +74,30 @@ def wspolczynniki_krzywej_q(t_min_s: float) -> tuple[float, float]:
     return _krzywa(t_min_s, _Q_CURVE_LATEX)[1]
 
 
-def mu_factor(ratio_ik_ir: float, t_min_s: float | None) -> float | None:
+def mu_factor(ratio_ik_ir: float, t_min_s: float) -> float:
     """AC-component decay factor μ for the symmetrical breaking current of a
     synchronous machine / motor (IEC 60909-0:2016 §6.6.1). ``ratio_ik_ir`` =
     I″k,source / I_r,source (oba prądy na zaciskach maszyny). μ = 1 for ratio ≤ 2
     (far-from-generator). The four curves are selected by the minimum time delay t_min
     (0.02 / 0.05 / 0.10 / ≥0.25 s).
 
-    ``t_min_s`` None (bieg bez czasu wyłączenia t_b, karta SC-IB-ITH-ZRODLA): μ jest
-    wyznaczalne tylko dla krotności ≤ 2 (μ = 1 niezależnie od krzywej); powyżej — ``None``
-    (krzywej nie da się wybrać bez zgadywania t_min).
+    ``t_min_s`` — t_b punktu zwarcia z pochodzeniem rozstrzygniętym poza rdzeniem (karta
+    TB-WARTOSC-ROBOCZA: scenariusz projektanta, najkrótszy czas wyłączenia pól lokalnych albo
+    wartość robocza `network_model.core.czas_wylaczenia`); zawsze liczba dodatnia.
     """
     if ratio_ik_ir <= 2.0:
         return 1.0
-    if t_min_s is None:
-        return None
     a, b, w = wspolczynniki_krzywej_mu(t_min_s)
     mu = a + b * math.exp(-w * ratio_ik_ir)
     return min(1.0, max(0.0, mu))
 
 
-def q_factor(p_per_pole_mw: float, t_min_s: float | None) -> float | None:
+def q_factor(p_per_pole_mw: float, t_min_s: float) -> float:
     """Additional decay factor q for asynchronous motors (IEC 60909-0:2016 §6.6.3).
     m = active power per pole pair [MW]; the curve is selected by t_min; q ≤ 1.
     """
     if p_per_pole_mw <= 0.0:
         return 1.0
-    if t_min_s is None:
-        return None  # krzywa q zależy od t_min — bez t_b nieobliczalna (jak μ)
     ln_m = math.log(p_per_pole_mw)
     a, b = wspolczynniki_krzywej_q(t_min_s)
     q = a + b * ln_m
@@ -127,11 +123,11 @@ class MachinePartialContribution:
     ir_a: float
     ikss_partial_a: float  # partial I″k from this machine
     ratio_ik_ir: float
-    # μ, q, i_b = μ·q·I″k_partial (q = 1 dla synchronicznej); None = nieobliczalne bez t_min
-    # (bieg bez czasu wyłączenia t_b — karta SC-IB-ITH-ZRODLA), nigdy cicha stała t_min.
-    mu: float | None
-    q: float | None
-    ib_a: float | None
+    # μ, q, i_b = μ·q·I″k_partial (q = 1 dla synchronicznej) przy t_min = t_b punktu zwarcia
+    # (karta TB-WARTOSC-ROBOCZA: t_b zawsze rozstrzygnięte, z pochodzeniem poza rdzeniem).
+    mu: float
+    q: float
+    ib_a: float
     is_synchronous_machine: bool
     p_per_pole_mw: float = 0.0  # active power per pole pair m (drives q, §6.6.3; 0 for sync)
     # Karta SC-IB-ITH-ZRODLA: prąd początkowy maszyny NA JEJ ZACISKACH [A] (w poziomie napięcia
@@ -155,9 +151,9 @@ class MachinePartialContribution:
             "ir_a": float(self.ir_a),
             "ikss_partial_a": float(self.ikss_partial_a),
             "ratio_ik_ir": float(self.ratio_ik_ir),
-            "mu": None if self.mu is None else float(self.mu),
-            "q": None if self.q is None else float(self.q),
-            "ib_a": None if self.ib_a is None else float(self.ib_a),
+            "mu": float(self.mu),
+            "q": float(self.q),
+            "ib_a": float(self.ib_a),
             "is_synchronous_machine": self.is_synchronous_machine,
             "p_per_pole_mw": float(self.p_per_pole_mw),
             "ikss_zaciski_a": float(self.ikss_zaciski_a),
@@ -172,11 +168,10 @@ class MachineShortCircuitResult:
 
     fault_node_id: str
     c_factor: float
-    t_min_s: float | None
+    t_min_s: float
     contributions: list[MachinePartialContribution] = field(default_factory=list)
     ikss_machines_a: float = 0.0  # Σ partial I″k from all machines
-    # Σ partial breaking current (decayed); None = któraś maszyna bez μ/q (bieg bez t_b)
-    ib_machines_a: float | None = 0.0
+    ib_machines_a: float = 0.0  # Σ partial breaking current (decayed, μ·q per maszyna)
     motors_negligible: bool = True  # §6.6 small-motor omission
     white_box: dict = field(default_factory=dict)
 
@@ -185,10 +180,10 @@ class MachineShortCircuitResult:
             "standard": "IEC 60909-0:2016 §6.6",
             "fault_node_id": self.fault_node_id,
             "c_factor": float(self.c_factor),
-            "t_min_s": None if self.t_min_s is None else float(self.t_min_s),
+            "t_min_s": float(self.t_min_s),
             "contributions": [c.to_dict() for c in self.contributions],
             "ikss_machines_a": float(self.ikss_machines_a),
-            "ib_machines_a": None if self.ib_machines_a is None else float(self.ib_machines_a),
+            "ib_machines_a": float(self.ib_machines_a),
             "motors_negligible": self.motors_negligible,
             "white_box": self.white_box,
         }
@@ -219,16 +214,16 @@ def compute_machine_contributions(
     fault_node_id: str,
     *,
     c_factor: float,
-    t_min_s: float | None,
+    t_min_s: float,
     z_f_ohm: complex | None = None,
 ) -> MachineShortCircuitResult:
     """Per-machine partial I″k + breaking current i_b (μ/q) for a 3-phase fault.
 
     ``t_min_s`` — minimalny czas zwłoki t_min = t_b biegu (najkrótszy czas zabezpieczenia
-    + najkrótszy czas własny wyłącznika), wybiera krzywe μ i q. Parametr WYMAGANY (karta
-    SC-IB-ITH-ZRODLA): dawna domyślna 0,10 s była cichą stałą — wołający podaje t_b biegu
-    albo jawne ``None`` (bieg bez t_b): prądy częściowe i ΔU″ są wtedy pełne, a μ, q, i_b
-    — tylko tam, gdzie nie zależą od t_min (μ = 1 dla krotności ≤ 2, q = 1); reszta ``None``.
+    + najkrótszy czas własny wyłącznika), wybiera krzywe μ i q. Parametr WYMAGANY, bez
+    wartości domyślnej w sygnaturze: wołający podaje t_b PUNKTU ZWARCIA rozstrzygnięte jedną
+    regułą (karta TB-WARTOSC-ROBOCZA — scenariusz projektanta, najkrótszy czas wyłączenia pól
+    lokalnych, inaczej wartość robocza z `network_model.core.czas_wylaczenia`).
 
     Reads the frozen Z-bus (``build_zbus``) READ-ONLY. Returns an empty result (no
     machines) deterministically. Partial currents follow the superposition identity
@@ -318,9 +313,9 @@ def compute_machine_contributions(
         ip_a: float,
         ir_a: float,
         ratio: float,
-        mu: float | None,
-        q: float | None,
-        ib_a: float | None,
+        mu: float,
+        q: float,
+        ib_a: float,
         is_sync: bool,
         p_per_pole_mw: float,
         dfig: bool,
@@ -395,17 +390,6 @@ def compute_machine_contributions(
                     "latex": r"\mu = 1{,}0 \quad (I''_k/I_r \le 2)",
                 }
             )
-        elif t_min_s is None or mu is None:
-            kroki.append(
-                {
-                    "tekst": (
-                        f"Współczynnik zaniku μ nieobliczony: I″k/Ir = {ratio:.2f} > 2, a krzywą "
-                        "μ wybiera minimalny czas zwłoki t_min — bieg nie ma czasu wyłączenia "
-                        "t_b (podaj go w scenariuszu zwarciowym)"
-                    ),
-                    "latex": None,
-                }
-            )
         else:
             mu_latex, (a, b, w) = _krzywa(t_min_s, _MU_CURVE_LATEX)
             mu_surowe = a + b * math.exp(-w * ratio)
@@ -430,16 +414,6 @@ def compute_machine_contributions(
                     {
                         "tekst": "Brak mocy na parę biegunów → q = 1 (§ 6.6.3)",
                         "latex": r"q = 1{,}0",
-                    }
-                )
-            elif t_min_s is None or q is None:
-                kroki.append(
-                    {
-                        "tekst": (
-                            "Współczynnik q nieobliczony: krzywą q wybiera minimalny czas zwłoki "
-                            "t_min — bieg nie ma czasu wyłączenia t_b"
-                        ),
-                        "latex": None,
                     }
                 )
             else:
@@ -487,17 +461,6 @@ def compute_machine_contributions(
                     ),
                 }
             )
-        if ib_a is None or mu is None or q is None:
-            kroki.append(
-                {
-                    "tekst": (
-                        "Prąd wyłączeniowy maszyny nieobliczony — brak czasu wyłączenia t_b "
-                        "biegu (współczynniki zaniku zależą od t_min)"
-                    ),
-                    "latex": None,
-                }
-            )
-            return tuple(kroki)
         ib_ka = ib_a / 1000.0
         kroki.append(
             {
@@ -536,7 +499,7 @@ def compute_machine_contributions(
         ratio = i_zaciski_a / ir_a
         mu = mu_factor(ratio, t_min_s)
         q = 1.0 if is_sync else q_factor(p_per_pole_mw, t_min_s)
-        ib_a = None if mu is None or q is None else mu * q * ip_a
+        ib_a = mu * q * ip_a
         # DFIG (wind Type 3): on a severe fault the crowbar fires (rotor shorted), so
         # the machine is treated as a squirrel-cage induction generator — same §6.7/§6.6
         # μ·q math, only the label differs (the crowbar assumption is documented).
@@ -580,12 +543,7 @@ def compute_machine_contributions(
     ] + [wklad_maszyny(m, is_sync=False, p_per_pole_mw=m.p_per_pole_mw) for m in asyn]
 
     ikss_machines = sum(c.ikss_partial_a for c in contributions)
-    ib_czesciowe = [c.ib_a for c in contributions]
-    ib_machines = (
-        None
-        if any(ib is None for ib in ib_czesciowe)
-        else sum(ib for ib in ib_czesciowe if ib is not None)
-    )
+    ib_machines = sum(c.ib_a for c in contributions)
     # Small-motor omission (IEC 60909-0:2016 §6.6): asynchronous motors may be
     # neglected if their combined contribution to I″k is ≤ 5 % of the total I″k.
     async_partial = sum(c.ikss_partial_a for c in contributions if not c.is_synchronous_machine)

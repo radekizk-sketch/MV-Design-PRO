@@ -28,6 +28,7 @@ import math
 import numpy as np
 import pytest
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.impedancja_przejscia import (
@@ -152,6 +153,7 @@ def _licz(
         "fault_node_id": WEZEL,
         "c_factor": C,
         "tk_s": 1.0,
+        "czas_tb": czas_tb_roboczy(),
         "include_branch_contributions": wklady,
     }
     if z_f is not None:
@@ -268,6 +270,7 @@ def test_brak_impedancji_przejscia_zostawia_wynik_bit_w_bit(
         fault_node_id=WEZEL,
         c_factor=C,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
         include_branch_contributions=True,
         z_f_ohm=None,
         **({"z0_bus": z0} if rodzaj in DOZIEMNE else {}),

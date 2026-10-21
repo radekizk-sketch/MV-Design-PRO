@@ -21,6 +21,13 @@ export const SCENARIUSZE_STRINGS = {
   uruchomWToku: 'Obliczanie…',
   usun: 'Usuń',
   usunPotwierdz: 'Potwierdź usunięcie',
+  // Karta TB-WARTOSC-ROBOCZA: zmiana t_b istniejącego scenariusza (także z akcji „Zmień
+  // wartość" ekranu wyników zwarć).
+  zmianaTb: 'Zmień t_b',
+  zmianaTbZapisz: 'Zapisz t_b',
+  zmianaTbZapisano: 'Zapisano czas wyłączenia t_b — uruchom scenariusz, aby przeliczyć',
+  zmianaTbScenariuszaBrak:
+    'Scenariusz, z którego powstał oglądany bieg, nie istnieje już w tym przypadku — podaj t_b w nowym scenariuszu.',
 
   polaNazwa: 'Nazwa scenariusza',
   polaRodzaj: 'Rodzaj zwarcia',
@@ -33,7 +40,7 @@ export const SCENARIUSZE_STRINGS = {
   polaCzasCieplny: 'Czas trwania zwarcia t_k [s]',
   polaCzasWylaczenia: 'Czas wyłączenia t_b [s]',
   polaCzasWylaczeniaPodpowiedz:
-    'Najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika. Puste = Ib przy maszynach wirujących i iDC nieobliczone (nazwane założenie biegu).',
+    'Najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika. Puste = t_b w każdym punkcie zwarcia z pól przy jego szynie (nastawy + czas własny wyłącznika), a bez nich wartość robocza z oznaczeniem w wynikach.',
   kolCzasWylaczenia: 'Czas wyłączenia t_b',
   polaWklady: 'Licz wkłady gałęziowe',
 

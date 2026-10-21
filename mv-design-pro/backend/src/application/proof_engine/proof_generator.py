@@ -177,13 +177,16 @@ class SC3FInput:
     # SC-IB-ITH-ZRODLA, B-01 (n)) — wartości z FROZEN wyniku solvera (ib_a, i_dc_a, tb_s)
     # i jego kroki śladu „Ib"/„iDC" (wartości pośrednie: przypadek normy, zaniki maszyn,
     # wykładnik i współczynnik zaniku). Dowód NIE liczy fizyki — podstawia liczby śladu.
-    # None ⇒ wielkość nieobliczona: krok śladu niesie kod odmowy (`fault.czas_tb_brak`),
-    # który dowód przenosi do ostrzeżeń podsumowania.
+    # None ⇒ wejście bez tej wielkości (dowód złożony z danych sprzed kart I_b / t_b) —
+    # krok pominięty. Karta TB-WARTOSC-ROBOCZA: ``tb_zrodlo`` — pochodzenie t_b punktu
+    # (`CzasWylaczeniaTb.to_dict` z wyniku; None = scenariusz projektanta); wartość robocza
+    # trafia do ostrzeżeń podsumowania z jej źródłem.
     ib_ka: float | None = None
     tb_s: float | None = None
     i_dc_ka: float | None = None
     krok_ib: dict[str, Any] | None = None
     krok_idc: dict[str, Any] | None = None
+    tb_zrodlo: dict[str, Any] | None = None
 
     # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10). Para
     # rozstrzygana JEDNYM predykatem (`z_f_ohm is not None`): przy Z_f `z_thevenin_ohm` to
@@ -253,11 +256,12 @@ class SC3FInput:
             tk_s=result.tk_s,
             m_factor=m_factor,
             n_factor=n_factor,
-            ib_ka=None if result.ib_a is None else a_na_ka(result.ib_a),
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
             i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
             krok_ib=krok_sladu_zwarcia(result.white_box_trace, "Ib"),
             krok_idc=krok_sladu_zwarcia(result.white_box_trace, "iDC"),
+            tb_zrodlo=result.tb_zrodlo,
             z_f_ohm=result.z_f_ohm,
             z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
@@ -682,8 +686,9 @@ class ProofGenerator:
         5. Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
         6. Prąd wyłączeniowy symetryczny I_b (EQ_SC3F_014, IEC 60909-0 rozdz. 9) i 6a.
            składowa nieokresowa i_DC(t_b) (EQ_SC3F_020, rozdz. 10) — wartości i
-           podstawienia z FROZEN wyniku solvera i jego śladu (klucze Ib, iDC); wielkość
-           nieobliczona (bieg bez t_b) → bez kroku, zdanie odmowy w ostrzeżeniach
+           podstawienia z FROZEN wyniku solvera i jego śladu (klucze Ib, iDC) przy t_b
+           punktu; t_b będące wartością roboczą (karta TB-WARTOSC-ROBOCZA) → zdanie
+           o założeniu i jego źródle w ostrzeżeniach podsumowania
         7. Prąd cieplny I_th (OBOWIĄZKOWY)
         8. Energia cieplna I²t = I_th²·t_k (krok formatujący wielkości obecne)
         9. Moc zwarciowa S_k''
@@ -804,10 +809,15 @@ class ProofGenerator:
         # =====================================================================
         # Krok 6: Prąd wyłączeniowy symetryczny I_b (EQ_SC3F_014) i krok 6a: składowa
         # nieokresowa i_DC(t_b) (EQ_SC3F_020) — karta SC-IB-ITH-ZRODLA. Liczby i wartości
-        # pośrednie z FROZEN wyniku solvera i jego kroków śladu „Ib"/„iDC"; wielkość
-        # nieobliczona (bieg bez t_b) → bez kroku, kod i zdanie w ostrzeżeniach.
+        # pośrednie z FROZEN wyniku solvera i jego kroków śladu „Ib"/„iDC" przy t_b punktu;
+        # t_b robocze (karta TB-WARTOSC-ROBOCZA) → zdanie o założeniu w ostrzeżeniach.
         # =====================================================================
         ostrzezenia_tb: list[str] = []
+        if data.tb_zrodlo is not None and data.tb_zrodlo.get("wartosc_robocza"):
+            ostrzezenia_tb.append(
+                "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
+                f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
+            )
         if data.ib_ka is not None:
             step_number += 1
             steps.append(
@@ -819,8 +829,6 @@ class ProofGenerator:
                     krok_ib=data.krok_ib,
                 )
             )
-        elif data.krok_ib is not None and data.krok_ib.get("notes"):
-            ostrzezenia_tb.append(str(data.krok_ib["notes"]))
         if data.i_dc_ka is not None and data.tb_s is not None and data.krok_idc is not None:
             step_number += 1
             steps.append(
@@ -831,8 +839,6 @@ class ProofGenerator:
                     krok_idc=data.krok_idc,
                 )
             )
-        elif data.krok_idc is not None and data.krok_idc.get("notes"):
-            ostrzezenia_tb.append(str(data.krok_idc["notes"]))
 
         # =====================================================================
         # Krok 7: Prąd cieplny I_th (OBOWIĄZKOWY)
@@ -880,15 +886,10 @@ class ProofGenerator:
         # zawiera maszyny wirujące. Synchroniczne: μ + i_b (q = 1, krok q pominięty);
         # asynchroniczne / DFIG: μ + q + i_b. Kolejność = deterministyczna z solvera.
         # =====================================================================
-        # Sekcja maszynowa wyłącznie przy komplecie μ/q/i_b (bieg bez t_b z maszyną, której
-        # krzywa zależy od t_min → brak sekcji; odmowa jest w ostrzeżeniach kroku I_b).
+        # Karta TB-WARTOSC-ROBOCZA: μ, q, i_b maszyn zawsze policzone przy t_min = t_b punktu.
         ib_machines_ka: float | None = None
         wynik_maszyn = data.machine_result
-        if (
-            wynik_maszyn is not None
-            and wynik_maszyn.contributions
-            and wynik_maszyn.ib_machines_a is not None
-        ):
+        if wynik_maszyn is not None and wynik_maszyn.contributions:
             t_min_s = wynik_maszyn.t_min_s
             for machine in wynik_maszyn.contributions:
                 step_number += 1
@@ -1974,11 +1975,9 @@ class ProofGenerator:
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float | None,
+        t_min_s: float,
     ) -> ProofStep:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
-        if machine.mu is None:
-            raise AssertionError("Krok μ wymaga policzonego μ (sekcja maszynowa bez kompletu).")
         mu = machine.mu
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
@@ -1992,10 +1991,6 @@ class ProofGenerator:
                 f"\\text{{z dala od generatora}})"
             )
         else:
-            if t_min_s is None:
-                raise AssertionError(
-                    "Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu)."
-                )
             a, b, c = wspolczynniki_krzywej_mu(t_min_s)
             raw = a + b * math.exp(-c * ratio)
             substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
@@ -2023,21 +2018,15 @@ class ProofGenerator:
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float | None,
+        t_min_s: float,
     ) -> ProofStep:
         """Krok maszynowy: dodatkowy współczynnik zanikania q dla maszyny asynchronicznej (§6.6.3)."""
-        if machine.q is None:
-            raise AssertionError("Krok q wymaga policzonego q (sekcja maszynowa bez kompletu).")
         q = machine.q
         equation = EQ_SC3F_012
         m_val = machine.p_per_pole_mw
         if m_val <= 0.0:
             substitution = "q = 1 \\quad (m \\leq 0)"
         else:
-            if t_min_s is None:
-                raise AssertionError(
-                    "Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu)."
-                )
             a, b = wspolczynniki_krzywej_q(t_min_s)
             raw = a + b * math.log(m_val)
             substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"
@@ -2062,8 +2051,6 @@ class ProofGenerator:
         machine: MachinePartialContribution,
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
-        if machine.mu is None or machine.q is None or machine.ib_a is None:
-            raise AssertionError("Krok i_b wymaga policzonych μ, q i i_b (sekcja bez kompletu).")
         mu, q = machine.mu, machine.q
         equation = EQ_SC3F_013
         ikss_p = a_na_ka(machine.ikss_partial_a)

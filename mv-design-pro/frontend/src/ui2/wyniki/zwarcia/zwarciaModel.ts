@@ -271,15 +271,22 @@ function wierszCzasuCieplnego(
   };
 }
 
-/** Wiersz „Czas wyłączenia tb" (karta SC-IB-ITH-ZRODLA) — wartość z biegu albo „nie podano";
- * przyczynę i skutek braku (I_b przy maszynach, i_DC) niesie założenie biegu
- * `fault.czas_tb_brak` (wiersz „Bieg zwarciowy" niżej). Starszy zapis bez pola → brak wiersza. */
+/** Wiersz „Czas wyłączenia tb" (karta SC-IB-ITH-ZRODLA) — wartość scenariusza biegu albo
+ * (karta TB-WARTOSC-ROBOCZA) „w punkcie zwarcia" ze zdaniem reguły z backendu (`opis_pl`):
+ * t_b każdego punktu i jego pochodzenie niesie bilans punktu, a punkty z wartością roboczą —
+ * założenie biegu `fault.czas_tb_wartosc_robocza`. Starszy zapis bez pola → brak wiersza. */
 function wierszCzasuWylaczenia(
   t: KonfiguracjaBieguZwarcia['breaking_time_seconds'],
 ): WierszZalozenia[] {
   if (t === undefined) return [];
   if (t.wartosc === null) {
-    return [{ etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia, wartosc: ZWARCIA_STRINGS.zalCzasWylaczeniaBrak }];
+    return [
+      {
+        etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia,
+        wartosc: ZWARCIA_STRINGS.zalCzasWylaczeniaPunkt,
+        uwaga: t.opis_pl,
+      },
+    ];
   }
   return [
     {
@@ -335,13 +342,18 @@ export function naZalozeniaZwarc(
     ...wierszImpedancjiPrzejscia(konfiguracja?.impedancja_przejscia),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
-    // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_brak`).
+    // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_wartosc_robocza`).
     etykieta:
       z.element_ref === null
         ? ZWARCIA_STRINGS.zalozenieBiegu
         : ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
     wartosc: z.message_pl,
-    uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
+    // Karta TB-WARTOSC-ROBOCZA: założenie z listą punktów zwarcia — liczba punktów obok
+    // scenariusza (t_b i źródło każdego punktu pokazuje jego bilans).
+    uwaga:
+      z.punkty && z.punkty.length > 0
+        ? `${ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz))}. ${ZWARCIA_STRINGS.zalozeniePunkty(z.punkty.length)}`
+        : ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
   }));
   return [...bazowe, ...zZaZrodel];
 }

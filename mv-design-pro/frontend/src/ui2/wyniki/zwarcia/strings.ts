@@ -42,9 +42,6 @@ export const ZWARCIA_STRINGS = {
   bilansIth: 'Prąd cieplny zastępczy Ith',
   bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
   bilansIdc: 'Składowa nieokresowa iDC(tb)',
-  // Karta SC-IB-ITH-ZRODLA: wielkość zależna od tb w biegu bez tb — uczciwy stan zerowy
-  // z przyczyną i drogą naprawy, nie sama kreska.
-  bilansBrakTb: 'nie obliczono — bieg bez czasu wyłączenia tb (podaj tb w scenariuszu zwarciowym)',
   bilansIk: 'Prąd zwarciowy ustalony Ik',
   bilansSk: 'Moc zwarciowa Sk"',
   bilansI2t: 'Energia cieplna I²t',
@@ -58,6 +55,10 @@ export const ZWARCIA_STRINGS = {
   bilansUn: 'Napięcie znamionowe przed zwarciem Un',
   bilansTk: 'Czas trwania zwarcia tk',
   bilansTb: 'Czas wyłączenia tb',
+  // Karta TB-WARTOSC-ROBOCZA: tb punktu będący wartością roboczą — dyskretna etykieta,
+  // źródło z backendu i akcja prowadząca do tb scenariusza zwarciowego.
+  bilansTbRobocza: 'wartość robocza',
+  bilansTbZmien: 'Zmień wartość',
 
   // Założenia (parametry przebiegu, W-602)
   zalMetoda: 'Metoda obliczeń',
@@ -65,7 +66,9 @@ export const ZWARCIA_STRINGS = {
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
   zalCzasWylaczenia: 'Czas wyłączenia tb',
-  zalCzasWylaczeniaBrak: 'nie podano',
+  zalCzasWylaczeniaPunkt: 'w punkcie zwarcia',
+  zalozeniePunkty: (liczba: number) =>
+    `Dotyczy punktów zwarcia: ${liczba} (oznaczenie „wartość robocza" w bilansie punktu).`,
   zalozenieBiegu: 'Bieg zwarciowy',
   // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
   // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.

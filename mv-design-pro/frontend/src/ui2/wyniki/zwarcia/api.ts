@@ -36,11 +36,11 @@ export interface WkladZrodlaOdpowiedz {
   readonly machine_type?: string;
   readonly ir_a?: number;
   readonly ratio_ik_ir?: number;
-  // Karta SC-IB-ITH-ZRODLA: `null` = nieobliczone — maszyna wymaga krzywej zaniku μ/q,
-  // a bieg nie ma czasu wyłączenia t_b (t_min); nigdy 0.
-  readonly mu?: number | null;
-  readonly q?: number | null;
-  readonly ib_a?: number | null;
+  // Karta TB-WARTOSC-ROBOCZA: μ, q i I_b maszyny liczone zawsze — przy t_min = t_b punktu
+  // zwarcia (scenariusz, pola lokalne albo wartość robocza — jak t_b w bilansie punktu).
+  readonly mu?: number;
+  readonly q?: number;
+  readonly ib_a?: number;
   /** Wywód dyplomowy TEJ maszyny ({tekst, latex} budowane w solverze). */
   readonly wywod?: readonly KrokWywodu[];
 }
@@ -72,8 +72,9 @@ export interface WkladyZWywodem {
  * pasma węzła i scenariusza OGLĄDANEGO biegu (`scenariusz` wymagany, `nadpisanie_c`
  * z uzasadnieniem) — żądanie bez scenariusza jest odmową 422. Karta OD-14: `impedancja`
  * = Z_f biegu przez impedancję przejścia (brak = bieg metaliczny). Karta SC-IB-ITH-ZRODLA:
- * `tMinS` = czas wyłączenia t_b biegu (t_min krzywych μ, q); `null` = bieg bez t_b — backend
- * nie podstawia już stałej 0,10 s, tylko zwraca μ/q/Ib maszyn jako nieobliczone.
+ * `tMinS` = czas wyłączenia t_b scenariusza biegu (t_min krzywych μ, q); `null` = scenariusz
+ * bez t_b — backend rozstrzyga t_b punktu tą samą funkcją co wiersz biegu (karta
+ * TB-WARTOSC-ROBOCZA: pola lokalne, inaczej wartość robocza).
  */
 export interface ParametryWkladowBiegu {
   readonly scenariusz: 'MAX' | 'MIN';
@@ -153,7 +154,7 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
             stosunekIkIr: c.ratio_ik_ir ?? null,
             mu: c.mu ?? null,
             q: c.q ?? null,
-            ibKA: c.ib_a === undefined || c.ib_a === null ? null : c.ib_a / 1000,
+            ibKA: c.ib_a === undefined ? null : c.ib_a / 1000,
             wywod: c.wywod ?? [],
           },
   }));

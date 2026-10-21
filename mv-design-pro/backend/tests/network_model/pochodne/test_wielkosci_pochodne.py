@@ -213,7 +213,7 @@ def test_wspolczynnik_kappa_graniczne_wartosci() -> None:
 @pytest.mark.parametrize("i", PRADY_BRZEGOWE_A)
 def test_calka_joule_ka2s_tozsamosc(i: float, t: float) -> None:
     """equipment_proof/generator.py (×4), proof_generator.py (×3),
-    enm/canonical_analysis.py::_sc_pelny_bilans, domain/sc_comparison.py."""
+    enm/canonical_analysis.py::_sc_pelny_bilans."""
     oczekiwane = i**2 * t
     assert wp.calka_joule_ka2s(i, t) == oczekiwane
 

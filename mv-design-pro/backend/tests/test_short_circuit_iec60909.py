@@ -5,6 +5,7 @@ import math
 import numpy as np
 import pytest
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta, czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
@@ -167,6 +168,7 @@ def test_ikss_3ph_transformer_only_matches_formula():
         fault_node_id="B",
         c_factor=c_factor,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert np.isclose(result.ikss_a, ikss_expected)
@@ -182,12 +184,14 @@ def test_ikss_increases_with_c_factor():
         fault_node_id="B",
         c_factor=0.95,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
     result_cmax = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
         fault_node_id="B",
         c_factor=1.10,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result_cmax.ikss_a > result_cmin.ikss_a
@@ -202,12 +206,14 @@ def test_ikss_min_less_than_max():
         fault_node_id="B",
         c_factor=C_MIN,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
     res_max = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
         fault_node_id="B",
         c_factor=C_MAX,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_max.ikss_a > res_min.ikss_a
@@ -222,6 +228,7 @@ def test_ikss_min_matches_wrapper_formula():
         fault_node_id="B",
         c_factor=C_MIN,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
     expected = (C_MIN * res.un_v) / (math.sqrt(3.0) * abs(res.zkk_ohm))
 
@@ -238,6 +245,7 @@ def test_ikss_max_matches_wrapper_formula():
         fault_node_id="B",
         c_factor=C_MAX,
         tk_s=tk_s,
+        czas_tb=czas_tb_roboczy(),
     )
     expected = (C_MAX * res.un_v) / (math.sqrt(3.0) * abs(res.zkk_ohm))
 
@@ -256,6 +264,7 @@ def test_invalid_fault_node_raises():
             fault_node_id="missing",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
     (rekord,) = odmowa.value.rekordy
     assert rekord.kod == KOD_WEZEL_ZWARCIA_SPOZA_GRAFU
@@ -274,6 +283,7 @@ def test_nonpositive_c_factor_raises(c_factor: float):
             fault_node_id="B",
             c_factor=c_factor,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
 
@@ -287,6 +297,7 @@ def test_nonpositive_tk_raises(tk_s: float):
             fault_node_id="B",
             c_factor=1.0,
             tk_s=tk_s,
+            czas_tb=czas_tb_roboczy(),
         )
 
 
@@ -298,6 +309,7 @@ def test_ip_exceeds_sqrt2_times_ikss():
         fault_node_id="B",
         c_factor=1.1,
         tk_s=0.5,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result.ip_a > math.sqrt(2.0) * result.ikss_a
@@ -311,6 +323,7 @@ def test_sk_matches_formula():
         fault_node_id="B",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     expected = (math.sqrt(3.0) * result.un_v * result.ikss_a) / 1_000_000.0
@@ -340,7 +353,7 @@ def test_post_processing_quantities_match_ikss_formula():
         fault_node_id="B",
         c_factor=1.05,
         tk_s=tk_s,
-        tb_s=tb_s,
+        czas_tb=czas_tb_projektanta(tb_s),
     )
 
     rx_ratio = math.inf if result.zkk_ohm.imag == 0 else result.zkk_ohm.real / result.zkk_ohm.imag
@@ -389,14 +402,14 @@ def test_ib_far_equals_ikss_and_dc_component_decays_with_time():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
-        tb_s=0.02,
+        czas_tb=czas_tb_projektanta(0.02),
     )
     res_long = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
-        tb_s=0.2,
+        czas_tb=czas_tb_projektanta(0.2),
     )
 
     assert res_short.ib_a == res_short.ikss_a
@@ -415,7 +428,7 @@ def test_dc_component_vanishes_for_long_breaking_time():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
-        tb_s=100.0,
+        czas_tb=czas_tb_projektanta(100.0),
     )
 
     assert result.ib_a == result.ikss_a
@@ -431,12 +444,14 @@ def test_increasing_rx_ratio_reduces_kappa_and_ip():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     result_high = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph_high_rx,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # IEC 60909: większe R/X => mniejsza kappa => mniejszy Ip.
@@ -488,12 +503,14 @@ def test_ith_approaches_ikss_as_time_grows_not_scales_with_sqrt_time():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     result_t4 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=4.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # I_th zawsze >= I_k'' (m,n >= 0) i NIGDY nie podwaja sie z 4x dluzszym t_k
@@ -527,6 +544,7 @@ def test_zkk_from_inverse_ybus():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result.zkk_ohm == pytest.approx(zkk_expected)
@@ -548,12 +566,14 @@ def test_unbalanced_fault_currents_are_ordered():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     res_2ph = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
         graph=graph,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     res_1ph = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
         graph=graph,
@@ -561,6 +581,7 @@ def test_unbalanced_fault_currents_are_ordered():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_1ph.short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND
@@ -580,6 +601,7 @@ def test_white_box_trace_has_expected_steps():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     res_1ph = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
         graph=graph,
@@ -587,6 +609,7 @@ def test_white_box_trace_has_expected_steps():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
 
     for result in (res_3ph, res_1ph):
@@ -637,6 +660,7 @@ def test_2ph_ground_depends_on_z0_and_requires_it():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_low,
+        czas_tb=czas_tb_roboczy(),
     )
     res_high = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
         graph=graph,
@@ -644,6 +668,7 @@ def test_2ph_ground_depends_on_z0_and_requires_it():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_high,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_low.ikss_a > res_high.ikss_a
@@ -654,6 +679,7 @@ def test_2ph_ground_depends_on_z0_and_requires_it():
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
 
@@ -665,6 +691,7 @@ def test_no_inverter_sources_keeps_ik_totals_equal():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result.ik_inverters_a == 0.0
@@ -682,6 +709,7 @@ def test_inverter_adds_current_to_3ph_fault():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     expected_inv = inverter.k_sc * inverter.in_rated_a
@@ -703,6 +731,7 @@ def test_inverter_zero_sequence_controls_1ph_and_2ph_ground():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     res_2phg_no_zero = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
         graph=graph_no_zero,
@@ -710,6 +739,7 @@ def test_inverter_zero_sequence_controls_1ph_and_2ph_ground():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_1ph_no_zero.ik_inverters_a == 0.0
@@ -732,6 +762,7 @@ def test_inverter_zero_sequence_controls_1ph_and_2ph_ground():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     res_2phg_zero = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
         graph=graph_with_zero,
@@ -739,6 +770,7 @@ def test_inverter_zero_sequence_controls_1ph_and_2ph_ground():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
 
     expected_inv = inverter_zero.k_sc * inverter_zero.in_rated_a
@@ -762,12 +794,14 @@ def test_inverter_contribution_is_deterministic():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     res_b = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph_b,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_a.ik_inverters_a == pytest.approx(res_b.ik_inverters_a, rel=1e-12, abs=0.0)
@@ -786,6 +820,7 @@ def test_contributions_contains_grid_and_inverters():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     grid = find_contribution(result.contributions, "THEVENIN_GRID")
@@ -826,12 +861,14 @@ def test_contributions_deterministic_order():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     res_b = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph_b,
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert res_a.contributions == res_b.contributions
@@ -849,6 +886,7 @@ def test_contributions_respect_fault_type_flags():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     inv_contrib = find_contribution(res_1ph.contributions, "INV-Z")
     assert inv_contrib.i_contrib_a == 0.0
@@ -870,6 +908,7 @@ def test_contributions_respect_fault_type_flags():
         c_factor=1.0,
         tk_s=1.0,
         z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     inv_contrib_zero = find_contribution(res_1ph_zero.contributions, "INV-Z")
     expected = inverter_zero.k_sc * inverter_zero.in_rated_a
@@ -887,6 +926,7 @@ def test_branch_contributions_basic():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result.branch_contributions is not None
@@ -910,6 +950,7 @@ def test_branch_contributions_option_does_not_change_existing_fields():
         fault_node_id="B",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     ).to_dict()
     with_bc = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph_on,
@@ -917,6 +958,7 @@ def test_branch_contributions_option_does_not_change_existing_fields():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     ).to_dict()
 
     assert base.pop("branch_contributions") is None
@@ -958,6 +1000,7 @@ def test_branch_contributions_with_closed_switch_merged_nodes():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
 
     assert result.branch_contributions is not None
@@ -1069,6 +1112,7 @@ def test_thevenin_branch_flow_present_for_grid_source():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
     thev = _thevenin_entries(result)
     assert thev, "sieć ze SLACK musi nieść rozpływ prądu zastępczego (Thevenin)"
@@ -1089,6 +1133,7 @@ def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
     assert result.ik_thevenin_a > 0
     inflow = _net_inflow_to_fault(result, fault_node_id)
@@ -1104,6 +1149,7 @@ def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
             c_factor=1.0,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         ),
         lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
             graph=g,
@@ -1111,6 +1157,7 @@ def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
             c_factor=1.0,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         ),
         lambda g, n: ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=g,
@@ -1119,6 +1166,7 @@ def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
             tk_s=1.0,
             z0_bus=build_z_bus_local(g) * 3.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         ),
         lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
             graph=g,
@@ -1127,6 +1175,7 @@ def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
             tk_s=1.0,
             z0_bus=build_z_bus_local(g) * 3.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         ),
     ],
 )
@@ -1150,6 +1199,7 @@ def test_thevenin_branch_flow_deterministic():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     ).to_dict()
     r2 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=build_slack_radial_graph(),
@@ -1157,6 +1207,7 @@ def test_thevenin_branch_flow_deterministic():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     ).to_dict()
     assert r1["branch_contributions"] == r2["branch_contributions"]
     assert r1["branch_flow_trace"] == r2["branch_flow_trace"]
@@ -1177,6 +1228,7 @@ def test_thevenin_addition_preserves_inverter_entries_byte_for_byte():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
     inverter_entries = [
         bc.to_dict()
@@ -1218,6 +1270,7 @@ def test_thevenin_branch_flow_with_closed_switch_balances():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
     assert _thevenin_entries(result), "sieć z zamkniętym łącznikiem: rozpływ Thevenina obecny"
     inflow = _net_inflow_to_fault(result, "C")
@@ -1233,6 +1286,7 @@ def test_branch_flow_trace_is_whitebox():
         fault_node_id="C",
         c_factor=1.0,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     assert off.branch_flow_trace is None
     assert "branch_flow_trace" not in off.to_dict()
@@ -1243,6 +1297,7 @@ def test_branch_flow_trace_is_whitebox():
         c_factor=1.0,
         tk_s=1.0,
         include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
     trace = on.to_dict()["branch_flow_trace"]
     keys = {step["key"] for step in trace}

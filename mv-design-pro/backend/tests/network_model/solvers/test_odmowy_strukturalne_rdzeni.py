@@ -32,6 +32,7 @@ from enm.zdania_odmow_rdzenia import (
     zdanie_odmowy,
 )
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.odmowa_danych import (
@@ -374,16 +375,26 @@ def test_przekladnia_niedodatnia_rekord_z_nazwa(metoda: str) -> None:
 
 RODZAJE_ZWARCIA = {
     "3F": lambda graf, wezel: ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0
+        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0, czas_tb=czas_tb_roboczy()
     ),
     "1F": lambda graf, wezel: ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0, z0_bus=np.eye(3)
+        graph=graf,
+        fault_node_id=wezel,
+        c_factor=1.1,
+        tk_s=1.0,
+        z0_bus=np.eye(3),
+        czas_tb=czas_tb_roboczy(),
     ),
     "2F": lambda graf, wezel: ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0
+        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0, czas_tb=czas_tb_roboczy()
     ),
     "2FN": lambda graf, wezel: ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-        graph=graf, fault_node_id=wezel, c_factor=1.1, tk_s=1.0, z0_bus=np.eye(3)
+        graph=graf,
+        fault_node_id=wezel,
+        c_factor=1.1,
+        tk_s=1.0,
+        z0_bus=np.eye(3),
+        czas_tb=czas_tb_roboczy(),
     ),
 }
 
@@ -504,6 +515,7 @@ def test_tytuly_krokow_sladu_nazywaja_galaz_nazwa_z_modelu(rodzaj: str) -> None:
         fault_node_id=ID_PQ,
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
         include_branch_contributions=True,
     )
     tytuly = _tytuly_sladu(wynik)

@@ -86,8 +86,9 @@ export type WynikCzasuWylaczenia =
 
 /**
  * Czas wyłączenia t_b z pola formularza (karta SC-IB-ITH-ZRODLA) — ta sama reguła danych co
- * backend (`czas_tb_z_danych`): puste pole = brak danej (`null`, bieg z założeniem
- * `fault.czas_tb_brak`), liczba skończona dodatnia = t_b, cokolwiek innego = odmowa.
+ * backend (`czas_tb_z_danych`): puste pole = `null` (t_b rozstrzygany w punkcie zwarcia —
+ * pola lokalne, inaczej wartość robocza z założeniem `fault.czas_tb_wartosc_robocza`), liczba
+ * skończona dodatnia = t_b, cokolwiek innego = odmowa.
  */
 export function czasWylaczeniaZPola(tekst: string): WynikCzasuWylaczenia {
   const surowy = tekst.trim();
@@ -133,10 +134,15 @@ export function poleCzasuWylaczenia(config: ShortCircuitConfig | null | undefine
   return tb === null || tb === undefined ? '' : String(tb);
 }
 
-/** Opis t_b scenariusza na liście — wartość albo jawny brak z drogą naprawy. */
+/**
+ * Opis t_b scenariusza na liście — wartość albo reguła punktu zwarcia (karta
+ * TB-WARTOSC-ROBOCZA: brak t_b nie blokuje obliczeń).
+ */
+export const OPIS_CZASU_TB_W_PUNKCIE =
+  'w punkcie zwarcia — najkrótszy czas pól lokalnych, inaczej wartość robocza';
 export function opisCzasuWylaczenia(config: ShortCircuitConfig | null | undefined): string {
   const tb = config?.breaking_time_seconds;
-  if (tb === null || tb === undefined) return 'nie podano (Ib przy maszynach i iDC nieobliczone)';
+  if (tb === null || tb === undefined) return OPIS_CZASU_TB_W_PUNKCIE;
   return `${String(tb).replace('.', ',')} s`;
 }
 

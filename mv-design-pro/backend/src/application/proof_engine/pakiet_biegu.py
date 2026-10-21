@@ -462,9 +462,10 @@ class _ParametryZwarciaBiegu:
     scenariusz i nadpisanie biegu; c i jego podstawę dobiera warstwa wiązania tą samą
     regułą co bieg (`voltage_factor.dobierz_c` przez `enm.assembler`).
 
-    Karta SC-IB-ITH-ZRODLA: t_b biegu tą samą funkcją co assembler (`czas_tb_z_danych`
-    z klucza opcji biegu) — dowód opisuje I_b i i_DC policzone z TYM SAMYM t_b co wynik na
-    ekranie; brak t_b w biegu = ``None`` (kroki z kodem `fault.czas_tb_brak`).
+    Karta SC-IB-ITH-ZRODLA: t_b scenariusza biegu tą samą funkcją co assembler
+    (`czas_tb_z_danych` z klucza opcji biegu); ``None`` = t_b punktu rozstrzyga warstwa
+    wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA: pola lokalne albo wartość
+    robocza) — dowód opisuje I_b i i_DC policzone z TYM SAMYM t_b co wynik na ekranie.
     """
 
     scenariusz: Scenario

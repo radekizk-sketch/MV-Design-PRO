@@ -45,6 +45,7 @@ import math
 import pytest
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
@@ -109,7 +110,12 @@ def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResu
     lv_node = next(n.id for n in graph.nodes.values() if n.name == "LV")
     z0_bus = build_zero_sequence_zbus(enm, graph)
     result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-        graph=graph, fault_node_id=lv_node, c_factor=c_factor, tk_s=1.0, z0_bus=z0_bus
+        graph=graph,
+        fault_node_id=lv_node,
+        c_factor=c_factor,
+        tk_s=1.0,
+        z0_bus=z0_bus,
+        czas_tb=czas_tb_roboczy(),
     )
     # Wynik solvera nie niesie run_id; nadaj jak realny tor (pipeline robi tak samo).
     object.__setattr__(result, "run_id", f"run-{vector_group}")

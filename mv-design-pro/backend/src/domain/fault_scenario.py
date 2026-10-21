@@ -168,7 +168,9 @@ class ShortCircuitConfig:
     ``breaking_time_seconds`` = t_b = t_min [s] (karta SC-IB-ITH-ZRODLA, B-01 (n)):
     najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika — czas, w którym
     liczy się prąd wyłączeniowy I_b (IEC 60909-0 rozdz. 9) i składowa nieokresowa i_DC
-    (rozdz. 10). ``None`` = brak danej (bieg niesie założenie ``fault.czas_tb_brak``);
+    (rozdz. 10). ``None`` = t_b rozstrzygany per punkt zwarcia (karta TB-WARTOSC-ROBOCZA:
+    najkrótszy czas wyłączenia pól lokalnych, inaczej wartość robocza 0,1 s z założeniem
+    biegu ``fault.czas_tb_wartosc_robocza``);
     wartość niefizyczna = odmowa ``fault.czas_tb_niepoprawny``
     (``network_model.core.czas_wylaczenia.czas_tb_z_danych`` — jedna reguła danych).
     """

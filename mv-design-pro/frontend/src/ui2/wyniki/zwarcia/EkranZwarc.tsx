@@ -28,6 +28,7 @@ import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
+import { otworzEdycjeCzasuTb } from '../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
@@ -176,7 +177,13 @@ export function EkranZwarc({
           siebie, z proweniencją każdej strony. */}
       <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
 
-      <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
+      {/* Karta TB-WARTOSC-ROBOCZA: „Zmień wartość" t_b roboczego → edycja t_b scenariusza
+          zwarciowego TEGO biegu (albo nowy scenariusz z polem t_b dla biegu przypadku). */}
+      <BilansIEC
+        row={wierszAktywny}
+        punktNazwa={nazwaAktywnego}
+        onZmienCzasTb={() => otworzEdycjeCzasuTb(wynik.konfiguracja_biegu?.scenariusz_zwarciowy_id ?? null)}
+      />
 
       {/* Ogniwo łańcucha: stacja TEGO punktu + zapisany bieg → werdykty wytrzymałości
           aparatury wszystkich pól stacji, każde przy prądzie swojego punktu zabudowy. */}

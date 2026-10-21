@@ -24,6 +24,7 @@ from enm.mapping import (
     map_enm_to_network_graph,
 )
 from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
@@ -88,10 +89,18 @@ def test_bieg_w_pcc_odtwarza_prad_deklarowany_osd(u_kv: float, sk_mva: float, pa
     node_id = next(iter(graph.nodes))
     solver = ShortCircuitIEC60909Solver()
     ik_max = solver.compute_3ph_short_circuit(
-        graph, node_id, c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)), 1.0
+        graph,
+        node_id,
+        c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     ik_min = solver.compute_3ph_short_circuit(
-        graph, node_id, c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)), 1.0
+        graph,
+        node_id,
+        c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     deklarowane = _ik_deklarowane_a(u_kv, sk_mva)
     assert ik_max.ikss_a == pytest.approx(deklarowane, rel=1e-9)
@@ -122,7 +131,11 @@ def test_podglad_frozen_i_bieg_zgadzaja_sie_w_pcc(u_kv: float, sk_mva: float, pa
     graph = map_enm_to_network_graph(_enm_pcc(u_kv, sk_mva))
     node_id = next(iter(graph.nodes))
     bieg = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
-        graph, node_id, c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)), 1.0
+        graph,
+        node_id,
+        c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     assert bieg.ikss_a / 1000.0 == pytest.approx(podglad.ik3_ka, rel=1e-9)
     z_q_biegu = impedancja_zrodla_sieciowego(
@@ -235,7 +248,9 @@ def test_szyna_za_transformatorem_niesie_z_q_z_c() -> None:
     z_q = graph.get_grid_sc_sources()[0].z_ohm
     assert abs(z_q) == pytest.approx(1.1 * 110.0**2 / 4000.0, rel=1e-12)
     mv = next(n for n in graph.nodes.values() if n.voltage_level == 33.0)
-    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(graph, mv.id, 1.1, 1.0)
+    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
+        graph, mv.id, 1.1, 1.0, czas_tb=czas_tb_roboczy()
+    )
     z_q_33 = z_q * (33.0 / 110.0) ** 2
     k_t = 0.95 * 1.1 / (1.0 + 0.6 * 0.10)
     z_t = complex(0.0, 0.10 * 33.0**2 / 25.0) * k_t

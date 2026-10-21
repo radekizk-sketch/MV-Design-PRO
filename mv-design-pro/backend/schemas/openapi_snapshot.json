@@ -7412,7 +7412,7 @@
       "type": "integer"
      },
      "report_version": {
-      "default": "1.3.0",
+      "default": "1.4.0",
       "title": "Report Version",
       "type": "string"
      },
@@ -11910,6 +11910,50 @@
       ],
       "title": "Delta I2T Percent"
      },
+     "delta_i_dc_ka": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta I Dc Ka"
+     },
+     "delta_i_dc_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta I Dc Percent"
+     },
+     "delta_ib_ka": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Ib Ka"
+     },
+     "delta_ib_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Ib Percent"
+     },
      "delta_ikss_ka": {
       "anyOf": [
        {
@@ -12020,6 +12064,28 @@
       ],
       "title": "Delta Sk Percent"
      },
+     "delta_tb_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Tb Percent"
+     },
+     "delta_tb_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Tb S"
+     },
      "delta_xk_ohm": {
       "anyOf": [
        {
@@ -12118,6 +12184,50 @@
        }
       ],
       "title": "I2T Ka2S B"
+     },
+     "i_dc_ka_a": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "I Dc Ka A"
+     },
+     "i_dc_ka_b": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "I Dc Ka B"
+     },
+     "ib_ka_a": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ib Ka A"
+     },
+     "ib_ka_b": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ib Ka B"
      },
      "ikss_ka_a": {
       "anyOf": [
@@ -12240,6 +12350,72 @@
      "target_name": {
       "title": "Target Name",
       "type": "string"
+     },
+     "tb_pochodzenie_a": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb Pochodzenie A"
+     },
+     "tb_pochodzenie_b": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb Pochodzenie B"
+     },
+     "tb_s_a": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb S A"
+     },
+     "tb_s_b": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb S B"
+     },
+     "tb_wartosc_robocza_a": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb Wartosc Robocza A"
+     },
+     "tb_wartosc_robocza_b": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tb Wartosc Robocza B"
      },
      "xk_ohm_a": {
       "anyOf": [
@@ -13139,7 +13315,7 @@
         "type": "null"
        }
       ],
-      "description": "Czas wyłączenia t_b [s] (najkrótszy czas zabezpieczenia + wyłącznika)",
+      "description": "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza 0,1 s",
       "title": "Tb S"
      },
      "tk_s": {
@@ -13704,7 +13880,7 @@
         "type": "null"
        }
       ],
-      "description": "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = założenie biegu fault.czas_tb_brak",
+      "description": "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = t_b rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość robocza z jawnym źródłem normowym (założenie biegu fault.czas_tb_wartosc_robocza)",
       "title": "Breaking Time Seconds",
       "x-unit": "s"
      },
@@ -16393,7 +16569,7 @@
       "type": "array"
      },
      "report_version": {
-      "default": "1.3.0",
+      "default": "1.4.0",
       "title": "Report Version",
       "type": "string"
      },
@@ -29978,7 +30154,7 @@
   },
   "/api/short-circuit-comparisons": {
    "post": {
-    "description": "Delty Ik''/ip/Ith/Sk'' per punkt zwarciowy dla pary przebiegow.",
+    "description": "Delty Ik''/ip/Ith/Sk'', pelnego bilansu, I_b, i_DC i t_b per punkt zwarciowy.",
     "operationId": "utworz_porownanie_zwarc_api_short_circuit_comparisons_post",
     "requestBody": {
      "content": {

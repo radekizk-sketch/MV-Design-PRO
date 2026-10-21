@@ -34,6 +34,14 @@ _WYNIK_PRZYKLADOWY = {
     "ib_a": 12000.0,
     "tb_s": 0.1,
     "i_dc_a": 9000.0,
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu należy do listy zamkniętej.
+    "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": True,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza.",
+    },
     # pole spoza listy zamkniętej — NIE wchodzi do odcisku
     "reporting_status": "reportable",
 }
@@ -73,6 +81,7 @@ def test_wielkosci_do_odcisku_filtruje_do_listy_zamknietej() -> None:
         "ib_a",
         "tb_s",
         "i_dc_a",
+        "tb_zrodlo",
     }
 
 
@@ -115,6 +124,29 @@ def test_pieczec_zmienia_sie_gdy_liczby_wyniku_inne() -> None:
     musi dać INNĄ pieczęć."""
     inny_wynik = dict(_WYNIK_PRZYKLADOWY)
     inny_wynik["ikss_a"] = 999000.0
+    assert _wiazanie().pieczec != _wiazanie(wynik=inny_wynik).pieczec
+
+
+@pytest.mark.parametrize(
+    "zrodlo",
+    [
+        None,
+        {
+            "wartosc_s": 0.1,
+            "pochodzenie": "PROPOZYCJA",
+            "wartosc_robocza": False,
+            "jakosc": None,
+            "opis_pl": "t_b = 0,1 s — wartość robocza.",
+        },
+    ],
+    ids=["pochodzenie_usuniete", "robocza_podana_jako_projektowa"],
+)
+def test_pieczec_zmienia_sie_gdy_pochodzenie_tb_podmienione(zrodlo: object) -> None:
+    """Karta TB-WARTOSC-ROBOCZA: ten sam t_b z innym pochodzeniem (wartość robocza podana
+    jako projektowa albo pochodzenie zgubione) to INNA pieczęć — dowód doboru nie może
+    przyjąć liczby na założeniu jako danej projektowej."""
+    inny_wynik = dict(_WYNIK_PRZYKLADOWY)
+    inny_wynik["tb_zrodlo"] = zrodlo
     assert _wiazanie().pieczec != _wiazanie(wynik=inny_wynik).pieczec
 
 

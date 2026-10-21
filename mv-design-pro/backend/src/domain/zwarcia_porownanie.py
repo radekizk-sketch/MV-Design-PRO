@@ -6,14 +6,14 @@ dwoch przebiegow i dzielil je przez siebie, zeby pokazac procent. To arytmetyka
 na wynikach solvera po stronie klienta — dokladnie ta sama klasa, ktora dla
 porownan ROZPLYWU zamknela luka L-13 (karta KD-2).
 
-DLACZEGO NOWY MODUL, A NIE ROZSZERZENIE ISTNIEJACYCH. System ma dwie sciezki
-porownan zwarciowych i ZADNA nie daje tego, czego potrzebuje ekran:
+DLACZEGO NOWY MODUL, A NIE ROZSZERZENIE ISTNIEJACYCH. System mial dwie sciezki
+porownan zwarciowych i ZADNA nie dawala tego, czego potrzebuje ekran:
   * `application/comparison/service._compare_short_circuit` — POJEDYNCZA,
     ZAGREGOWANA delta (jeden Ik''/ip/Ith/Sk z jednego payloadu na przebieg),
     a nie wartosci per wezel;
-  * `domain/sc_comparison.build_comparison` — delty per element, ale punkty BEZ
-    ODPOWIEDNIKA w drugim przebiegu sa CICHO POMIJANE, wiec kontrakt nie potrafi
-    powiedziec „ten punkt istnieje tylko w A".
+  * dawny `domain/sc_comparison.build_comparison` — delty per element, ale punkty
+    BEZ ODPOWIEDNIKA w drugim przebiegu byly CICHO POMIJANE (modul bez konsumenta
+    od karty BATCH-ROUTER, usuniety w karcie TB-WARTOSC-ROBOCZA).
 Ten modul robi jedno i drugie: per punkt, z JAWNYM znacznikiem obecnosci.
 
 ZAKRES (kanon niezmienny): INTERPRETACJA, zero fizyki. Wielkosci przychodza
@@ -36,6 +36,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.core.czas_wylaczenia import POCHODZENIE_TB_PROJEKTANT
 from network_model.nazwy import nazwa_nadana
 
 #: Znaczniki obecnosci punktu w przebiegach.
@@ -70,6 +71,24 @@ def _liczba(dane: dict[str, Any], klucz: str) -> float | None:
     if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
         return None
     return float(wartosc)
+
+
+def _pochodzenie_tb(wiersz: dict[str, Any] | None) -> tuple[str | None, bool | None]:
+    """Pochodzenie t_b punktu i znacznik wartości roboczej — odczyt z wiersza wyniku.
+
+    Wiersz z t_b spoza scenariusza niesie ``tb_zrodlo`` (``CzasWylaczeniaTb.to_dict``);
+    wiersz z t_b projektanta ma samo ``tb_s`` bez ``tb_zrodlo`` (kontrakt addytywny
+    karty TB-WARTOSC-ROBOCZA) — to pochodzenie ``PROJEKTANT``. Wiersz bez ``tb_s``
+    (starszy wynik, punkt bez odpowiednika) ⇒ ``(None, None)`` — uczciwy brak.
+    """
+    if wiersz is None:
+        return None, None
+    zrodlo = wiersz.get("tb_zrodlo")
+    if isinstance(zrodlo, dict) and isinstance(zrodlo.get("pochodzenie"), str):
+        return str(zrodlo["pochodzenie"]), bool(zrodlo.get("wartosc_robocza"))
+    if _liczba(wiersz, "tb_s") is not None:
+        return POCHODZENIE_TB_PROJEKTANT, False
+    return None, None
 
 
 @dataclass(frozen=True)
@@ -131,6 +150,28 @@ class PunktZwarciowyDiff:
     i2t_ka2s_b: float | None = None
     delta_i2t_ka2s: float | None = None
     delta_i2t_percent: float | None = None
+    # Karta TB-WARTOSC-ROBOCZA: wielkości zależne od czasu wyłączenia t_b (I_b z udziałem
+    # maszyn, i_DC(t_b)) i sam t_b punktu z pochodzeniem — różnica I_b/i_DC między biegami
+    # bywa skutkiem samej zmiany t_b (wartość robocza → t_b projektanta), więc porównanie
+    # niesie t_b i jego pochodzenie obok delt. Te same reguły exclude_none.
+    ib_ka_a: float | None = None
+    ib_ka_b: float | None = None
+    delta_ib_ka: float | None = None
+    delta_ib_percent: float | None = None
+    i_dc_ka_a: float | None = None
+    i_dc_ka_b: float | None = None
+    delta_i_dc_ka: float | None = None
+    delta_i_dc_percent: float | None = None
+    tb_s_a: float | None = None
+    tb_s_b: float | None = None
+    delta_tb_s: float | None = None
+    delta_tb_percent: float | None = None
+    #: Pochodzenie t_b strony (``PROJEKTANT`` / ``Z_POL`` / ``PROPOZYCJA``) i znacznik
+    #: wartości roboczej — przepisane z wiersza wyniku, nie wyliczane.
+    tb_pochodzenie_a: str | None = None
+    tb_pochodzenie_b: str | None = None
+    tb_wartosc_robocza_a: bool | None = None
+    tb_wartosc_robocza_b: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serializacja z pominieciem pol nieistniejacych (``exclude_none``)."""
@@ -178,6 +219,22 @@ class PunktZwarciowyDiff:
             ("i2t_ka2s_b", self.i2t_ka2s_b),
             ("delta_i2t_ka2s", self.delta_i2t_ka2s),
             ("delta_i2t_percent", self.delta_i2t_percent),
+            ("ib_ka_a", self.ib_ka_a),
+            ("ib_ka_b", self.ib_ka_b),
+            ("delta_ib_ka", self.delta_ib_ka),
+            ("delta_ib_percent", self.delta_ib_percent),
+            ("i_dc_ka_a", self.i_dc_ka_a),
+            ("i_dc_ka_b", self.i_dc_ka_b),
+            ("delta_i_dc_ka", self.delta_i_dc_ka),
+            ("delta_i_dc_percent", self.delta_i_dc_percent),
+            ("tb_s_a", self.tb_s_a),
+            ("tb_s_b", self.tb_s_b),
+            ("delta_tb_s", self.delta_tb_s),
+            ("delta_tb_percent", self.delta_tb_percent),
+            ("tb_pochodzenie_a", self.tb_pochodzenie_a),
+            ("tb_pochodzenie_b", self.tb_pochodzenie_b),
+            ("tb_wartosc_robocza_a", self.tb_wartosc_robocza_a),
+            ("tb_wartosc_robocza_b", self.tb_wartosc_robocza_b),
         ):
             if wartosc is not None:
                 dane[klucz] = wartosc
@@ -262,8 +319,13 @@ def zbuduj_porownanie_zwarc(
                 "zk_ohm",
                 "xr_ratio",
                 "i2t_ka2s",
+                "ib_ka",
+                "i_dc_ka",
+                "tb_s",
             )
         }
+        tb_a = _pochodzenie_tb(a)
+        tb_b = _pochodzenie_tb(b)
 
         punkty.append(
             PunktZwarciowyDiff(
@@ -307,6 +369,22 @@ def zbuduj_porownanie_zwarc(
                 i2t_ka2s_b=wartosci["i2t_ka2s"][1],
                 delta_i2t_ka2s=_delta(*wartosci["i2t_ka2s"]),
                 delta_i2t_percent=procent_roznicy(*wartosci["i2t_ka2s"]),
+                ib_ka_a=wartosci["ib_ka"][0],
+                ib_ka_b=wartosci["ib_ka"][1],
+                delta_ib_ka=_delta(*wartosci["ib_ka"]),
+                delta_ib_percent=procent_roznicy(*wartosci["ib_ka"]),
+                i_dc_ka_a=wartosci["i_dc_ka"][0],
+                i_dc_ka_b=wartosci["i_dc_ka"][1],
+                delta_i_dc_ka=_delta(*wartosci["i_dc_ka"]),
+                delta_i_dc_percent=procent_roznicy(*wartosci["i_dc_ka"]),
+                tb_s_a=wartosci["tb_s"][0],
+                tb_s_b=wartosci["tb_s"][1],
+                delta_tb_s=_delta(*wartosci["tb_s"]),
+                delta_tb_percent=procent_roznicy(*wartosci["tb_s"]),
+                tb_pochodzenie_a=tb_a[0],
+                tb_pochodzenie_b=tb_b[0],
+                tb_wartosc_robocza_a=tb_a[1],
+                tb_wartosc_robocza_b=tb_b[1],
             )
         )
 

@@ -75,6 +75,15 @@ KLUCZE_ECHA: dict[str, tuple[str, float]] = {
     "i_dc_ka": ("i_dc_a", 1000.0),
 }
 
+#: Kontrakt ECHA — pola NIELICZBOWE przenoszone 1:1 (klucz konsumenta -> pole wyniku).
+#: Karta TB-WARTOSC-ROBOCZA: ``tb_zrodlo`` (pochodzenie t_b punktu) jest w kontrakcie
+#: klienta (``wielkosci_kontraktu_klienta``) i w odcisku wiązania
+#: (``POLA_WYNIKU_ZWARCIOWEGO``), więc echo musi je przyjmować i porównywać — podmiana
+#: pochodzenia (wartość robocza podana jako projektowa) jest rozbieżnością odcisku.
+#: Zbiór kluczy znanych = ``KLUCZE_ECHA`` ∪ ``KLUCZE_ECHA_NIELICZBOWE`` (jedno źródło dla
+#: przeliczenia i dla wykrywania pól nieznanych).
+KLUCZE_ECHA_NIELICZBOWE: dict[str, str] = {"tb_zrodlo": "tb_zrodlo"}
+
 
 class BiegNiemiarodajnyError(Exception):
     """Bieg nie może być źródłem liczb dla decyzji miarodajnej.
@@ -113,12 +122,13 @@ class WejscieZwarcioweZBiegu:
         """
         if echo is None:
             return ()
-        nieznane = sorted(k for k in echo if k not in KLUCZE_ECHA)
+        znane = set(KLUCZE_ECHA) | set(KLUCZE_ECHA_NIELICZBOWE)
+        nieznane = sorted(k for k in echo if k not in znane)
         roznice = list(self.wiazanie.niezgodnosci(wynik=_wielkosci_z_echa(echo, self.wielkosci)))
         if nieznane:
             roznice.append(
                 f"pola spoza kontraktu wielkości zwarciowych: {', '.join(nieznane)} — "
-                f"porównywalne są wyłącznie {', '.join(sorted(KLUCZE_ECHA))}"
+                f"porównywalne są wyłącznie {', '.join(sorted(znane))}"
             )
         return tuple(roznice)
 
@@ -144,6 +154,9 @@ def _wielkosci_z_echa(echo: Mapping[str, Any], wzorzec: Mapping[str, Any]) -> di
         except (TypeError, ValueError):
             # Wartość nieprzeliczalna zostawiamy jako podaną: odcisk i tak się
             # rozjedzie, a komunikat ma wskazać ROZBIEŻNOŚĆ, nie typ.
+            przeliczone[klucz_pola] = echo[klucz_echa]
+    for klucz_echa, klucz_pola in KLUCZE_ECHA_NIELICZBOWE.items():
+        if klucz_echa in echo and echo[klucz_echa] is not None:
             przeliczone[klucz_pola] = echo[klucz_echa]
     return przeliczone
 
@@ -318,14 +331,19 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
         wynik["ith_ka"] = a_na_ka(ith_a)
     if tk_s is not None:
         wynik["tk_s"] = tk_s
-    # Karta SC-IB-ITH-ZRODLA: None (bieg bez t_b) NIE wchodzi do kontraktu — kryterium
-    # wyłączania widzi brak I_b jako brak podstawy, nie jako liczbę.
+    # Karta SC-IB-ITH-ZRODLA: None (wiersz bez solvera / zapis bez pola) NIE wchodzi do
+    # kontraktu — kryterium wyłączania widzi brak I_b jako brak podstawy, nie jako liczbę.
     if ib_a is not None:
         wynik["ib_ka"] = a_na_ka(ib_a)
     if tb_s is not None:
         wynik["tb_s"] = tb_s
     if i_dc_a is not None:
         wynik["i_dc_ka"] = a_na_ka(i_dc_a)
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (dowód doboru nazywa założenie) —
+    # addytywnie, tylko gdy t_b nie pochodzi ze scenariusza projektanta.
+    tb_zrodlo = wielkosci_biegu.get("tb_zrodlo")
+    if isinstance(tb_zrodlo, Mapping):
+        wynik["tb_zrodlo"] = dict(tb_zrodlo)
     return wynik
 
 

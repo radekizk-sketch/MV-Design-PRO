@@ -22,6 +22,7 @@ import hashlib
 from pathlib import Path
 
 import pytest
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -637,6 +638,7 @@ def test_solver_whitebox_completeness_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # White-box trace must be non-empty
@@ -903,6 +905,7 @@ def test_determinism_same_input_same_output_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # Run 2 — fresh graph, identical parameters
@@ -911,6 +914,7 @@ def test_determinism_same_input_same_output_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # Verify bit-identical scalar results

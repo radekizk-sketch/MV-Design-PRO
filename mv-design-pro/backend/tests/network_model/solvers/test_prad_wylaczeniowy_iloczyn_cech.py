@@ -1,8 +1,10 @@
 """Prąd wyłączeniowy I_b i składowa nieokresowa i_DC(t_b) — iloczyn cech (karta SC-IB-ITH-ZRODLA).
 
 Iloczyn: {sieć odległa od generatora · maszyna synchroniczna · maszyna asynchroniczna · turbina
-DFIG · źródło przekształtnikowe} × {t_b = 0,02 s · 0,1 s · 0,25 s · brak t_b} × {ślad White Box · dowód SC3F ·
-eksport raportowy · ResultSet}. Każda komórka idzie REALNĄ ścieżką użytkownika: migawka ENM →
+DFIG · źródło przekształtnikowe} × {t_b = 0,02 s · 0,1 s · 0,25 s · brak t_b w scenariuszu} × {ślad
+White Box · dowód SC3F · eksport raportowy · ResultSet}. Karta TB-WARTOSC-ROBOCZA: brak t_b
+w scenariuszu nie blokuje — sieć IEC 60909-4 nie ma pól lokalnych, więc t_b punktu = wartość
+robocza (``CZAS_TB_ROBOCZY_S``) z pochodzeniem ``PROPOZYCJA``; liczby jak przy t_b = 0,1 s. Każda komórka idzie REALNĄ ścieżką użytkownika: migawka ENM →
 bieg kanoniczny (`wykonaj_bieg_w_pamieci`, opcja biegu `breaking_time_seconds` — projekcja
 scenariusza zwarciowego) → wiersz wyniku → kanały prezentacji.
 
@@ -22,7 +24,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from api.analysis_run_exports import _sc_row_glowne_linia
+from api.analysis_run_exports import _sc_row_bilans_linie, _sc_row_glowne_linia
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -32,7 +34,7 @@ from enm.canonical_analysis import (
 )
 from enm.mapping import _ref_to_uuid
 from enm.models import EnergyNetworkModel
-from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
+from network_model.core.czas_wylaczenia import CZAS_TB_ROBOCZY_S, KOD_CZAS_TB_WARTOSC_ROBOCZA
 from network_model.solvers.short_circuit_iec60909 import (
     PRZYPADEK_IB_BEZ_MASZYN,
     PRZYPADEK_IB_MASZYNY,
@@ -155,6 +157,11 @@ def _krok(wiersz: dict[str, Any], klucz: str) -> dict[str, Any]:
     return kroki[0]
 
 
+def _tb_punktu(tb_s: float | None) -> float:
+    """t_b, z którym liczy punkt: scenariusza albo — bez pól lokalnych — wartość robocza."""
+    return CZAS_TB_ROBOCZY_S if tb_s is None else tb_s
+
+
 def _mu_reczne(krotnosc: float, tb_s: float) -> float:
     if krotnosc <= 2.0:
         return 1.0
@@ -193,11 +200,8 @@ def test_wyrocznia_sieci_odleglej(tb_s: float | None) -> None:
     assert wiersz["ikss_a"] == pytest.approx(IKSS_ODLEGLA_A, abs=5e-7)
     assert wiersz["ib_a"] == pytest.approx(IKSS_ODLEGLA_A, abs=5e-7)
     assert wiersz["ib_a"] != pytest.approx(DAWNA_FORMULA_TB_01_A, rel=1e-3)
-    assert wiersz["tb_s"] == tb_s
-    if tb_s is None:
-        assert wiersz.get("i_dc_a") is None
-    else:
-        assert wiersz["i_dc_a"] == pytest.approx(I_DC_ODLEGLA_A[tb_s], abs=5e-7)
+    assert wiersz["tb_s"] == _tb_punktu(tb_s)
+    assert wiersz["i_dc_a"] == pytest.approx(I_DC_ODLEGLA_A[_tb_punktu(tb_s)], abs=5e-7)
 
 
 # ---------------------------------------------------------------------------
@@ -212,25 +216,24 @@ def test_slad_ib_i_idc_niesie_te_sama_liczbe_co_wynik(topologia: str, tb_s: floa
     krok_ib = _krok(wiersz, "Ib")
     krok_idc = _krok(wiersz, "iDC")
     assert krok_ib["result"]["ib_a"] == wiersz["ib_a"]
-    assert krok_idc["result"]["i_dc_a"] == wiersz.get("i_dc_a")
-    if tb_s is None:
-        assert krok_idc["result"]["kod"] == KOD_CZAS_TB_BRAK
-    else:
-        # i_DC z prądu części Thevenina (sieć + maszyny) — przekształtnik nie ma składowej DC.
-        ik_thevenin = wiersz["ik_thevenin_a"]
-        reczne = (
-            math.sqrt(2.0)
-            * ik_thevenin
-            * math.exp(-2.0 * math.pi * 50.0 * tb_s * wiersz["rx_ratio"])
-        )
-        assert wiersz["i_dc_a"] == pytest.approx(reczne, rel=1e-12)
-        assert krok_idc["inputs"]["ikss_a"] == pytest.approx(ik_thevenin, rel=1e-15)
+    assert krok_idc["result"]["i_dc_a"] == wiersz["i_dc_a"]
+    assert "kod" not in krok_idc["result"]
+    # i_DC z prądu części Thevenina (sieć + maszyny) — przekształtnik nie ma składowej DC.
+    ik_thevenin = wiersz["ik_thevenin_a"]
+    reczne = (
+        math.sqrt(2.0)
+        * ik_thevenin
+        * math.exp(-2.0 * math.pi * 50.0 * _tb_punktu(tb_s) * wiersz["rx_ratio"])
+    )
+    assert wiersz["i_dc_a"] == pytest.approx(reczne, rel=1e-12)
+    assert krok_idc["inputs"]["ikss_a"] == pytest.approx(ik_thevenin, rel=1e-15)
 
 
 @pytest.mark.parametrize("tb_s", CZASY_TB)
 @pytest.mark.parametrize("topologia", ["odlegla", "przeksztaltnik"])
 def test_ib_bez_maszyn_rowne_pradowi_poczatkowemu(topologia: str, tb_s: float | None) -> None:
-    """Bez maszyn wirujących I_b = I''k (z udziałem przekształtnika, bez zaniku) — także bez t_b."""
+    """Bez maszyn wirujących I_b = I''k (z udziałem przekształtnika, bez zaniku) — przy każdym
+    t_b, także roboczym."""
     _, wiersz, _ = _przebieg(topologia, tb_s)
     assert wiersz["ib_a"] == wiersz["ikss_a"]
     assert _krok(wiersz, "Ib")["inputs"]["przypadek"] == PRZYPADEK_IB_BEZ_MASZYN
@@ -245,10 +248,7 @@ def test_ib_z_maszyna_wzor_rozdzialu_9(topologia: str, tb_s: float | None) -> No
     _, wiersz, _ = _przebieg(topologia, tb_s)
     krok = _krok(wiersz, "Ib")
     assert krok["inputs"]["przypadek"] == PRZYPADEK_IB_MASZYNY
-    if tb_s is None:
-        assert wiersz["ib_a"] is None
-        assert krok["result"] == {"ib_a": None, "kod": KOD_CZAS_TB_BRAK}
-        return
+    tb_s = _tb_punktu(tb_s)
     (maszyna,) = krok["inputs"]["maszyny"]
     mu = _mu_reczne(maszyna["ratio_ik_ir"], tb_s)
     assert maszyna["mu"] == pytest.approx(mu, rel=1e-12)
@@ -302,13 +302,29 @@ def test_krotnosc_mu_z_pradu_na_zaciskach_maszyny(topologia: str) -> None:
 @pytest.mark.parametrize("tb_s", CZASY_TB)
 @pytest.mark.parametrize("topologia", list(TOPOLOGIE))
 def test_zalozenie_biegu_bez_tb_nazwane_kodem(topologia: str, tb_s: float | None) -> None:
-    """Brak t_b = założenie biegu z kodem `fault.czas_tb_brak`, nigdy cicha stała 0,1 s."""
-    run, _, _ = _przebieg(topologia, tb_s)
-    kody = [z["code"] for z in run.raw_result.get("zalozenia", [])]
+    """Brak t_b w scenariuszu = wartość robocza w punkcie z założeniem biegu
+    `fault.czas_tb_wartosc_robocza` (lista punktów) i pochodzeniem w wierszu — nigdy cicha
+    stała; t_b scenariusza = żadnego założenia i żadnego pola pochodzenia (bit w bit)."""
+    run, wiersz, wezel = _przebieg(topologia, tb_s)
+    zalozenia = {z["code"]: z for z in run.raw_result.get("zalozenia", [])}
     if tb_s is None:
-        assert KOD_CZAS_TB_BRAK in kody
+        punkty = {p["fault_node_id"]: p for p in zalozenia[KOD_CZAS_TB_WARTOSC_ROBOCZA]["punkty"]}
+        assert punkty[wezel]["pochodzenie"] == "PROPOZYCJA"
+        assert punkty[wezel]["wartosc_s"] == CZAS_TB_ROBOCZY_S
+        assert wiersz["tb_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
     else:
-        assert KOD_CZAS_TB_BRAK not in kody
+        assert KOD_CZAS_TB_WARTOSC_ROBOCZA not in zalozenia
+        assert "tb_zrodlo" not in wiersz
+
+
+@pytest.mark.parametrize("topologia", list(TOPOLOGIE))
+def test_brak_tb_liczy_jak_tb_robocze_podane_wprost(topologia: str) -> None:
+    """Wartość robocza nie jest drugą fizyką: I_b, i_DC, I''k biegu bez t_b są równe biegowi
+    z t_b = wartość robocza podanym w scenariuszu; różni je wyłącznie pochodzenie."""
+    _, bez_tb, _ = _przebieg(topologia, None)
+    _, podany, _ = _przebieg(topologia, CZAS_TB_ROBOCZY_S)
+    for klucz in ("ikss_a", "ib_a", "i_dc_a", "tb_s", "ip_a", "ith_a"):
+        assert bez_tb[klucz] == podany[klucz], klucz
 
 
 # ---------------------------------------------------------------------------
@@ -328,8 +344,12 @@ def test_result_set_niesie_ib_idc_i_tb(topologia: str, tb_s: float | None) -> No
     (element,) = (e for e in elementy if e["solver_ref"] == wezel)
     wartosci = element["values"]
     assert wartosci["ib_ka"] == pytest.approx(_ka(wiersz["ib_a"]))
-    assert wartosci["i_dc_ka"] == pytest.approx(_ka(wiersz.get("i_dc_a")))
-    assert wartosci["tb_s"] == tb_s
+    assert wartosci["i_dc_ka"] == pytest.approx(_ka(wiersz["i_dc_a"]))
+    assert wartosci["tb_s"] == _tb_punktu(tb_s)
+    if tb_s is None:
+        assert wartosci["tb_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
+    else:
+        assert "tb_zrodlo" not in wartosci
 
 
 @pytest.mark.parametrize("tb_s", CZASY_TB)
@@ -340,14 +360,14 @@ def test_eksport_glowna_linia_pokazuje_ib_i_idc(topologia: str, tb_s: float | No
         r for r in build_short_circuit_results(run)["rows"] if r["target_id"] == wezel
     )
     linia = _sc_row_glowne_linia(wiersz_raportu)
-    if wiersz["ib_a"] is None:
-        assert "Ib=— kA" in linia
+    assert f"Ib={wiersz['ib_a'] / 1000.0:.6g} kA" in linia
+    assert f"iDC(tb)={wiersz['i_dc_a'] / 1000.0:.6g} kA" in linia
+    bilans = "\n".join(_sc_row_bilans_linie(wiersz_raportu))
+    if tb_s is None:
+        # Pochodzenie t_b w eksporcie (PDF/DOCX) — zdanie źródła z backendu, nie z raportu.
+        assert f"Czas wyłączenia tb: {wiersz['tb_zrodlo']['opis_pl']}" in bilans
     else:
-        assert f"Ib={wiersz['ib_a'] / 1000.0:.6g} kA" in linia
-    if wiersz.get("i_dc_a") is None:
-        assert "iDC(tb)=— kA" in linia
-    else:
-        assert f"iDC(tb)={wiersz['i_dc_a'] / 1000.0:.6g} kA" in linia
+        assert "Czas wyłączenia tb:" not in bilans
 
 
 @pytest.mark.parametrize("tb_s", CZASY_TB)
@@ -371,19 +391,14 @@ def test_dowod_sc3f_ta_sama_definicja_co_slad(topologia: str, tb_s: float | None
         )
     )
     kluczowe = wynik.proof_sc3f.summary.key_results
-    kroki = {k.equation.equation_id for k in wynik.proof_sc3f.steps}
-    if wiersz["ib_a"] is None:
-        assert "ib_ka" not in kluczowe
-        assert KOD_CZAS_TB_BRAK in wynik.odmowy
+    kroki = {k.equation.equation_id: k for k in wynik.proof_sc3f.steps}
+    assert kluczowe["ib_ka"].value == pytest.approx(wiersz["ib_a"] / 1000.0, rel=1e-12)
+    assert kluczowe["i_dc_ka"].value == pytest.approx(wiersz["i_dc_a"] / 1000.0, rel=1e-12)
+    assert "EQ_SC3F_014" in kroki and "EQ_SC3F_020" in kroki
+    assert SC3FProofPack.validate_completeness(wynik) == []
+    # t_b roboczy jawnie w ostrzeżeniach dowodu (z jego źródłem), t_b projektanta — bez uwagi.
+    ostrzezenia = " ".join(wynik.proof_sc3f.summary.warnings)
+    if tb_s is None:
+        assert "wartością roboczą" in ostrzezenia and wiersz["tb_zrodlo"]["opis_pl"] in ostrzezenia
     else:
-        assert kluczowe["ib_ka"].value == pytest.approx(wiersz["ib_a"] / 1000.0, rel=1e-12)
-        assert "EQ_SC3F_014" in kroki
-    if wiersz.get("i_dc_a") is None:
-        assert "i_dc_ka" not in kluczowe
-        assert KOD_CZAS_TB_BRAK in wynik.odmowy
-    else:
-        assert kluczowe["i_dc_ka"].value == pytest.approx(wiersz["i_dc_a"] / 1000.0, rel=1e-12)
-        assert "EQ_SC3F_020" in kroki
-    if tb_s is not None:
-        assert wynik.odmowy == ()
-        assert SC3FProofPack.validate_completeness(wynik) == []
+        assert "wartością roboczą" not in ostrzezenia

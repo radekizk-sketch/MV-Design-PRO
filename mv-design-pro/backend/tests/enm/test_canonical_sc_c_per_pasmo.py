@@ -33,6 +33,7 @@ from enm.models import (
     Transformer,
 )
 from enm.store import reset_enm_store, set_enm
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
@@ -373,6 +374,7 @@ def test_backward_determinism_pure_mv_network_matches_flat_c_110():
             c_factor=1.10,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         )
         assert row["ikss_a"] == pytest.approx(reference.ikss_a), bus_ref
         assert row["ip_a"] == pytest.approx(reference.ip_a), bus_ref
@@ -775,6 +777,7 @@ def test_korekta_r_theta_obniza_ikss_min_na_koncu_kabla_nn():
         fault_node_id=n3,
         c_factor=0.95,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     assert _rows_by_node(wynik_min)[n3]["ikss_a"] < odniesienie_bez_korekty.ikss_a
 

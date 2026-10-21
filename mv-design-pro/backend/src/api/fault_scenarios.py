@@ -173,7 +173,8 @@ class ShortCircuitConfigRequest(BaseModel):
         description=(
             "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny "
             "wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = "
-            "założenie biegu fault.czas_tb_brak"
+            "t_b rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość "
+            "robocza z jawnym źródłem normowym (założenie biegu fault.czas_tb_wartosc_robocza)"
         ),
         json_schema_extra={"x-unit": "s"},
     )

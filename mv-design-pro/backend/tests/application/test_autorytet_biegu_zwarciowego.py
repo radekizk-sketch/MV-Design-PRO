@@ -236,6 +236,25 @@ def test_echo_rozbiezne_jest_niezgodnoscia_dokladnie_scenariusz_obejscia() -> No
     assert any("liczby wyniku" in n for n in niezgodnosci)
 
 
+def test_echo_niesie_pochodzenie_tb_bez_niezgodnosci_a_podmiana_jest_niezgodnoscia() -> None:
+    """Karta TB-WARTOSC-ROBOCZA — predykaty parami: kontrakt klienta wydaje ``tb_zrodlo``
+    (bieg bez t_b w scenariuszu), więc echo tego kontraktu MUSI przejść; to samo echo
+    z pochodzeniem podmienionym na projektowe (``wartosc_robocza`` False) jest rozbieżnością
+    odcisku, a echo bez pola zachowuje pochodzenie biegu (jak pozostałe pola spoza echa)."""
+    run = _zapisz_bieg(uuid4())
+    punkt = _punkt_zwarcia_biegu(run)
+    wejscie = wejscie_zwarciowe_z_biegu(run_id=str(run.id), punkt_zwarcia=punkt)
+    echo = wielkosci_kontraktu_klienta(wejscie.wielkosci)
+    assert echo["tb_zrodlo"]["wartosc_robocza"] is True
+    assert wejscie.niezgodnosci_z_echem(echo) == ()
+    bez_pochodzenia = {k: v for k, v in echo.items() if k != "tb_zrodlo"}
+    assert wejscie.niezgodnosci_z_echem(bez_pochodzenia) == ()
+    podmienione = {**echo, "tb_zrodlo": {**echo["tb_zrodlo"], "wartosc_robocza": False}}
+    niezgodnosci = wejscie.niezgodnosci_z_echem(podmienione)
+    assert any("liczby wyniku" in n for n in niezgodnosci)
+    assert not any("pola spoza kontraktu" in n for n in niezgodnosci)
+
+
 def test_echo_pole_nieznane_jest_niezgodnoscia() -> None:
     run = _zapisz_bieg(uuid4())
     punkt = _punkt_zwarcia_biegu(run)

@@ -24,6 +24,7 @@ from typing import Any
 import pytest
 from enm.domain_operations import append_station_on_endpoint, execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -1149,7 +1150,7 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
     )
     galaz_tr = next(b for b in graph.branches.values() if getattr(b, "voltage_lv_kv", None) == 0.4)
     wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph, galaz_tr.to_node_id, c_factor=1.1, tk_s=1.0
+        graph, galaz_tr.to_node_id, c_factor=1.1, tk_s=1.0, czas_tb=czas_tb_roboczy()
     )
 
     assert galaz_tr.uk_percent == 5.0
