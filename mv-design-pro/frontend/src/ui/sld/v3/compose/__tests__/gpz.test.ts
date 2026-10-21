@@ -22,11 +22,7 @@ import type {
   CanonicalGpzProps,
   RolaPolaGpz,
 } from '../../../v2/canvas/canonicalGpzModel';
-import type {
-  BayPrimaryDeviceView,
-  BayProtectionMarkingView,
-  CtRatingAnnotationView,
-} from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView } from '../../../v2/model/widokPolStacji';
 import { uzwojeniaZGrupyPolaczen } from '../../symbols/uzwojenia';
 import {
   ETYKIETA_ROLI_POLA_PL,

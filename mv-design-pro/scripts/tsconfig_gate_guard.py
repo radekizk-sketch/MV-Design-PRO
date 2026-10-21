@@ -451,7 +451,15 @@ POMIJANE_KATALOGI = {
 #: `sldCanvasV3.test.tsx`, TS2459 `PreviewSymbol` importowany z `buildScene` zamiast
 #: z `compose/preview` w `buildScene.lvPortal.test.ts`, oba TS2339 `.mock` na typie unii
 #: w `ui2/spaces/gotowosc/__tests__` (`vi.mocked`). Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 49
+#: Karta GPZ-PARYTET cz. 2 (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: bazowym `git archive uiux-baza` = 56 i na drzewie karty = 51, listy bledow porownane):
+#: zeszlo piec bledow z kasacja martwych rendererow v2 — TS2352 w
+#: `sld/v2/__tests__/structuralSvgInvariants.test.tsx`, 2 x TS2741 w
+#: `sld/v2/renderer/__tests__/switchDisconnectorMissingDevice.test.tsx`, 2 x TS2322 w
+#: `sld/v2/renderer/__tests__/thirdAuditFixes.test.tsx` (pliki skasowane razem z rendererami).
+#: Zero nowych bledow (TS6133 i TS2352 w nowych testach karty naprawione przed commitem).
+#: Scalenie K2 × GPZ-PARYTET cz. 2 (2026-10-21, pomiar guarda na drzewie scalonym): 49 -> 45.
+BUDZET_BLEDOW_POZA_BRAMKA = 45
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

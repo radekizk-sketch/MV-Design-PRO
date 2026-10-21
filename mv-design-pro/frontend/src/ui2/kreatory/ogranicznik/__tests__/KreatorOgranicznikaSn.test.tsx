@@ -70,9 +70,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pickType() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-ogranicznik-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-katalog').querySelector('option[value="arrester-abb-polim-d-24kv-10ka"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(
     screen.getByTestId('mvd-kreator-ogranicznik-katalog'),
     'arrester-abb-polim-d-24kv-10ka',

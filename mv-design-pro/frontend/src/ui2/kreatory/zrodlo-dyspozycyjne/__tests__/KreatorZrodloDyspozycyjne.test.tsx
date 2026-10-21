@@ -92,14 +92,18 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     render(<KreatorZrodloDyspozycyjne />);
 
     // Krok 1: pole przyłączeniowe (nowe)
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat').querySelector('option[value="WYLACZNIK"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie-nn'), '0.4');
 
     // Krok 2: parametry agregatu
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog').querySelector('option[value="gs-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog'), 'gs-1');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc'), '250');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie'), '0.4');
@@ -176,13 +180,17 @@ describe('KreatorZrodloDyspozycyjne — UPS', () => {
   it('dodaje UPS: ups_spec z czasem podtrzymania i trybem', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorZrodloDyspozycyjne />);
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat').querySelector('option[value="WYLACZNIK"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-aparat'), 'WYLACZNIK');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-stan'), 'ZAMKNIETY');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-napiecie-nn'), '0.4');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog').querySelector('option[value="gs-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-dysp-katalog'), 'gs-1');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-moc'), '100');
     await userEvent.type(screen.getByTestId('mvd-kreator-zrodlo-dysp-backup'), '15');

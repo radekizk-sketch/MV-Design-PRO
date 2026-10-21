@@ -8,7 +8,7 @@
  */
 
 import type { TapChanger } from '../../../../types/enm';
-import type { OltcGlyphAnnotation } from '../renderer/GpzSwitchgearTypes';
+import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 
 /** Etykieta pozycji zaczepu: "poz. 0", "poz. +3", "poz. −4" (minus typograficzny). */
 export function formatTapPositionLabel(position: number): string {

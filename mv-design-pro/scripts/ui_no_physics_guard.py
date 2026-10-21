@@ -206,10 +206,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "current_multiple: pickup > 0 ? p.i_a / pickup : 0,",
     ): "b: normalizacja osi X wykresu TCC (krotność I/Ip) na punktach krzywej otrzymanych z backendu — skalowanie osi, wprost dozwolone w kontrakcie tego strażnika",
     (
-        "frontend/src/ui/sld/v2/canvas/SldShortCircuitOverlay.tsx",
-        ": '(brak ip/Ith)'}",
-    ): "b: literał tekstowy stanu pustego ('(brak ip/Ith)') — nazywa brak danej, niczego nie liczy",
-    (
         "frontend/src/ui/sld/v2/station-rozdzielnia/StationRozdzielniaSN.tsx",
         "derivation DATA is preserved in the companions (model.shortCircuit /",
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",

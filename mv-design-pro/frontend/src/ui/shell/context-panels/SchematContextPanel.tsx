@@ -60,6 +60,33 @@ const COLLECTIONS = [
 
 const DEFAULT_VISIBLE_TREE_ROWS = 18;
 
+/**
+ * Barwy przycisku „Następna akcja" wg tonu wskazówki — WYŁĄCZNIE tokeny skali komunikatów
+ * (`sygnal-*` → `--mvd-*`, `ui2/theme/tokens.css`), których tusz ma kontrast ≥ 4,5:1 na
+ * własnym tle w OBU motywach (pomiar: `ui2/shell/__tests__/tokens.test.ts`). Dawne surowe
+ * barwy palety Tailwinda (tusz cyjan 100 na plamie cyjanu 500 o krycia 10 %) dawały
+ * w motywie jasnym 1,05:1, a etykieta „Otwórz odcinek" (cyjan 300) 1,23:1 — tekst prawie
+ * niewidoczny; surowa paleta nie zmienia się z motywem.
+ */
+const KLASY_TONU_NASTEPNEJ_AKCJI = {
+  start: {
+    przycisk: 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz',
+    znak: 'text-sygnal-info',
+  },
+  next: {
+    przycisk: 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz',
+    znak: 'text-sygnal-info',
+  },
+  warn: {
+    przycisk: 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+    znak: 'text-sygnal-uwaga',
+  },
+  ready: {
+    przycisk: 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz',
+    znak: 'text-sygnal-ok',
+  },
+} as const;
+
 function visibleTreeRowsLimit(title: string): number {
   if (title === 'GPZ i źródła') return 8;
   if (title === 'Pola GPZ') return 16;
@@ -410,22 +437,16 @@ export function SchematContextPanel() {
           onClick={openNextAction}
           className={clsx(
             'mt-2 flex w-full items-center justify-between rounded-sm border px-2 py-1.5 text-left text-[10px]',
-            designGuidance.tone === 'start'
-              ? 'border-cyan-500/45 bg-cyan-500/10 text-cyan-100'
-              : designGuidance.tone === 'warn'
-                ? 'border-amber-500/45 bg-amber-500/10 text-amber-100'
-                : designGuidance.tone === 'next'
-                  ? 'border-cyan-500/45 bg-cyan-500/10 text-cyan-100'
-                  : 'border-emerald-500/30 bg-emerald-500/8 text-emerald-200',
+            KLASY_TONU_NASTEPNEJ_AKCJI[designGuidance.tone].przycisk,
           )}
         >
           <span className="flex min-w-0 items-center gap-2">
-            <span className={designGuidance.tone === 'warn' ? 'text-amber-400' : designGuidance.tone === 'ready' ? 'text-emerald-400' : 'text-cyan-300'}>
+            <span className={KLASY_TONU_NASTEPNEJ_AKCJI[designGuidance.tone].znak}>
               {designGuidance.indicator}
             </span>
             <span className="truncate">{nextActionLabel}</span>
           </span>
-          <span className="text-cyan-300">{nextActionButtonLabel}</span>
+          <span className="font-semibold">{nextActionButtonLabel}</span>
         </button>
       </div>
 
@@ -438,7 +459,7 @@ export function SchematContextPanel() {
 
       <div className="shrink-0 border-b border-scada-border px-3 py-2">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className={clsx('font-semibold', visibleBlockerCount > 0 ? 'text-amber-300' : 'text-scada-muted')}>
+          <span className={clsx('font-semibold', visibleBlockerCount > 0 ? 'text-sygnal-uwaga' : 'text-scada-muted')}>
             {!hasNetworkTopology
               ? designGuidance.sectionTitle
               : visibleBlockerCount > 0
@@ -450,7 +471,7 @@ export function SchematContextPanel() {
               type="button"
               data-testid="schemat-action-show-result-layers"
               onClick={openTechnicalReview}
-              className="text-[10px] text-cyan-300 hover:text-cyan-100"
+              className="text-[10px] text-scada-accent hover:text-scada-text"
             >
               Pokaż
             </button>
@@ -463,7 +484,7 @@ export function SchematContextPanel() {
                 key={`${blocker.id}:${blocker.refs.join('|')}:${index}`}
                 className="flex items-center gap-2 text-[10px] text-scada-muted"
               >
-                <span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                <span className="h-2 w-2 rounded-full bg-sygnal-blokada" />
                 <span className="truncate">{blocker.label}</span>
               </div>
             ))}
@@ -482,7 +503,7 @@ export function SchematContextPanel() {
           data-testid="project-tree-search-input"
           value={treeQuery}
           onChange={(event) => setTreeQuery(event.target.value)}
-          className="mb-2 h-7 w-full rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-scada-text outline-none focus:border-cyan-500"
+          className="mb-2 h-7 w-full rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-scada-text outline-none focus:border-scada-accent"
           placeholder="Szukaj układu"
           aria-label="Szukaj w układzie sieci"
         />
@@ -549,7 +570,7 @@ export function SchematContextPanel() {
           type="button"
           data-testid="schemat-action-go-model"
           onClick={pokazPanelModelu}
-          className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
+          className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-muted hover:border-scada-accent hover:text-scada-text"
         >
           <span className="text-lg leading-none">+</span>
           <span>{hasNetworkTopology ? 'Dodaj układ' : 'Przejdź do budowy GPZ'}</span>
@@ -561,7 +582,7 @@ export function SchematContextPanel() {
             clearRouteManagedSurface();
             pokazPanelModelu();
           }}
-          className="h-9 rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
+          className="h-9 rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-scada-accent hover:border-scada-accent hover:text-scada-text"
         >
           Konfiguracja
         </button>
@@ -1083,7 +1104,7 @@ function TreeRow({
       className={clsx(
         'group flex h-6 w-full items-center gap-1.5 rounded-sm border border-transparent px-1.5 text-left text-[10px]',
         selected
-          ? 'border-cyan-500/55 bg-cyan-500/12 text-cyan-100'
+          ? 'border-scada-accent bg-scada-active text-scada-text'
           : 'text-scada-muted hover:bg-scada-active/60 hover:text-scada-text',
       )}
       style={{ paddingLeft: `${6 + indent * 12}px` }}
@@ -1100,10 +1121,10 @@ function TreeRow({
 }
 
 function StateDot({ state }: { state: RowState }) {
-  if (state === 'warn') return <span className="text-amber-400">△</span>;
-  if (state === 'danger') return <span className="text-rose-400">△</span>;
+  if (state === 'warn') return <span className="text-sygnal-uwaga">△</span>;
+  if (state === 'danger') return <span className="text-sygnal-blokada">△</span>;
   if (state === 'group') return <span className="text-scada-muted">•</span>;
-  return <span className="text-emerald-400">●</span>;
+  return <span className="text-sygnal-ok">●</span>;
 }
 
 function ChevronDown() {

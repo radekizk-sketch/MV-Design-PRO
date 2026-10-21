@@ -12,9 +12,9 @@
  * gdy silnik nie zwrócił geometrii dla danego ref (np. stacja-sierota poza
  * drzewem), props zachowuje swoją dotychczasową pozycję → render nie pęka.
  *
- * Konwencje kotwic rendererów (z `NodeGeometry` = top-left + width/height):
- *  - Stacja (`StationOnRunRenderer`) kotwiczy ŚRODKIEM szyny → mapujemy środek.
- *  - GPZ (`GpzRenderer`) kotwiczy lewym-górnym → mapujemy
+ * Konwencje kotwic deskryptorów (z `NodeGeometry` = top-left + width/height):
+ *  - Stacja kotwiczy ŚRODKIEM szyny → mapujemy środek.
+ *  - GPZ kotwiczy lewym-górnym → mapujemy
  *    pozycję węzła (top-left).
  *  - Cable run (`CableRunRenderer`) rysuje `pathPoints` port→port — bierzemy
  *    polyline krawędzi z silnika (końce zakotwiczone w realnych portach, V-07).
@@ -117,7 +117,7 @@ export function applyLayoutToStations<T extends { id: string; x: number; y: numb
 }
 
 /**
- * Nałóż pozycje z silnika na propsy GPZ (top-left węzła — konwencja GpzRenderer).
+ * Nałóż pozycje z silnika na propsy GPZ (top-left węzła — konwencja kotwicy GPZ).
  * GPZ to korzeń drzewa; gdy silnik nie zwrócił węzła, zachowaj pozycję slotową.
  */
 export function applyLayoutToGpzs<T extends { id: string; x: number; y: number }>(

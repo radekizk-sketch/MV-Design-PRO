@@ -164,7 +164,7 @@ describe('§4 cutover — żywa kanwa rysuje geometrię drzewa z silnika layoutu
       `stacje nie w środku węzła layoutu: ${mismatched.slice(0, 5).join('; ')}`,
     ).toHaveLength(0);
 
-    // GPZ kotwiczy lewym-górnym węzła (konwencja GpzRenderer).
+    // GPZ kotwiczy lewym-górnym węzła (konwencja kotwicy GPZ).
     for (const gpz of data.gpzs) {
       const node = layout.nodeByRef.get(gpz.id);
       if (!node) continue;

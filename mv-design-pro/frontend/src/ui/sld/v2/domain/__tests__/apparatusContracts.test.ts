@@ -10,8 +10,6 @@ import {
   APPARATUS_KIND,
   APPARATUS_KIND_LABELS_PL,
   BAY_PRIMARY_DEVICE_TO_APPARATUS,
-  ENM_BAY_ROLE_TO_FIELD_ROLE,
-  FIELD_ROLE,
   isSnFieldRole,
 } from '../apparatusContracts';
 
@@ -27,8 +25,8 @@ describe('apparatusContracts — kanon', () => {
     }
   });
 
-  it('9 kanonicznych ról pól', () => {
-    expect(ALL_FIELD_ROLES.length).toBe(12);
+  it('13 kanonicznych ról pól (z polem źródła nieokreślonego)', () => {
+    expect(ALL_FIELD_ROLES.length).toBe(13);
   });
 
   it('wszystkie role pól są SN-side', () => {
@@ -53,21 +51,11 @@ describe('apparatusContracts — kanon', () => {
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.SURGE_ARRESTER).toBe(APPARATUS_KIND.SURGE_ARRESTER);
   });
 
-  it('DER ENM kindy mapują się na null (renderowane przez DerRenderer)', () => {
+  it('DER ENM kindy mapują się na null (glif źródła, nie aparat pola)', () => {
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.GENERATOR_PV).toBeNull();
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.GENERATOR_BESS).toBeNull();
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.GENERATOR_FW).toBeNull();
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.PCS).toBeNull();
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.BATTERY).toBeNull();
-  });
-
-  it('mapowanie ENM bay_role → FieldRole pokrywa wszystkie 7 wartości', () => {
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.IN).toBe(FIELD_ROLE.LINE_IN);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.OUT).toBe(FIELD_ROLE.LINE_OUT);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.TR).toBe(FIELD_ROLE.TRANSFORMER);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.COUPLER).toBe(FIELD_ROLE.COUPLER);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.MEASUREMENT).toBe(FIELD_ROLE.MEASUREMENT);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.FEEDER).toBe(FIELD_ROLE.LINE_OUT);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.OZE).toBe(FIELD_ROLE.DER_PV);
   });
 });

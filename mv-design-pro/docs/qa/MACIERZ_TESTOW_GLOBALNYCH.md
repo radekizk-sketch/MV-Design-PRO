@@ -31,7 +31,6 @@ Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c; konsolidacja martwego
 silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
 - `frontend/src/ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
 - `frontend/src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-- `frontend/src/ui/sld/v2/__tests__/renderers.test.tsx`
 - `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`
 - `frontend/src/ui/sld/v3/canvas/__tests__/lvDomainPortal.test.tsx` (następca skasowanego `StationInternalView.test.tsx` — portal domeny nN, slice E 2026-09-01)

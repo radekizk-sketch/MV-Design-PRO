@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { GRID, type V3Rect } from '../../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../../core/text';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import {
   stationBlockHeight,
   stationNameBandHeight,

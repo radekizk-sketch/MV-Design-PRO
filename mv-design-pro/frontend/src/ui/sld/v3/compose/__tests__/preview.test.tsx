@@ -13,7 +13,7 @@ import type {
   CanonicalGpzProps,
 } from '../../../v2/canvas/canonicalGpzModel';
 import { FIELD_ROLE } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/segments';
 import { computeBands, type StationBandHeights } from '../../layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../../layout/columns';

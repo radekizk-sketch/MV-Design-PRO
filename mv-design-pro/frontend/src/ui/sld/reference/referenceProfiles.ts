@@ -95,6 +95,7 @@ export function referenceProfileIdForFieldRole(role: FieldRole): string | null {
     case FIELD_ROLE.DER_PV:
     case FIELD_ROLE.DER_BESS:
     case FIELD_ROLE.DER_FW:
+    case FIELD_ROLE.DER_UNKNOWN:
       return null;
     default:
       return null;

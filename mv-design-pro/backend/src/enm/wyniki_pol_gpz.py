@@ -22,12 +22,30 @@ SKĄD DANE (bez domysłu):
 * strona GPZ elementu — koniec gałęzi, którego węzeł grafu jest punktem przyłączenia pola
   (ta sama funkcja identyfikatora węzła co budowa grafu biegu). Koniec „od" daje moc i prąd
   zacisku początkowego, koniec „do" — zacisku końcowego (oba policzone przez solver);
-* zasilanie — wtrysk węzła z wiersza ``Source`` (ten sam wtrysk, który pokazuje etykieta
-  źródła na schemacie), liczony RAZ na szynę: dwa źródła na jednej szynie nie podwajają
-  wtrysku tego węzła.
+* granica bilansu — WĘZEŁ ELEKTRYCZNY stacji: szyny stacji (``enm.tor_pola.szyny_stacji``,
+  jedno źródło przynależności szyny do stacji) scalone ZAMKNIĘTYMI łącznikami (semantyka
+  „w ruchu" ``enm.topology.podziel_krawedzie``, scalanie jądrem
+  ``network_model.core.topologia.scal_wezly`` — ta sama reguła co macierz admitancyjna).
+  Przepływ przez zamknięty łącznik nie jest wielkością wyniku rozpływu (łącznik nie ma
+  impedancji), więc granicę stanowią gałęzie i transformatory w ruchu z JEDNYM końcem w węźle
+  elektrycznym stacji; element z oboma końcami w węźle (transformator stacji, odcinek szyny)
+  jest wnętrzem stacji — jego straty są stratami transformatora i szyny w bilansie;
+* zasilanie — wtrysk netto węzła z wiersza ``Source`` (ten sam wtrysk, który pokazuje
+  etykieta źródła na schemacie) dla szyn węzła elektrycznego stacji, liczony RAZ na szynę:
+  dwa źródła na jednej szynie nie podwajają wtrysku tego węzła. Znak: dodatni = pobór mocy
+  z sieci nadrzędnej (źródło oddaje moc do stacji), ujemny = oddawanie mocy do sieci
+  nadrzędnej (generacja w sieci SN przewyższa odbiór) — konwencja bilansu stacji „Grid";
+* odpływy — moc zacisku KAŻDEGO elementu granicy po stronie węzła elektrycznego stacji
+  (nie tylko elementów przypisanych do pól). Tożsamość bilansu: zasilanie − odpływy = straty
+  wnętrza stacji (transformatory i szyny) w granicach tolerancji solvera.
 
-Suma odpływów powstaje WYŁĄCZNIE, gdy każde zajęte pole liniowe GPZ ma rozstrzygnięty
-element i obie moce — częściowa suma udawałaby pełny bilans. Alarm wynikowy to przeciążenie
+Suma odpływów powstaje WYŁĄCZNIE, gdy jest kompletna: każdy element granicy ma wiersz wyniku
+z mocą zacisku po stronie stacji, żaden element nie wychodzi poza szyny migawki, a każdy
+odbiór na szynie węzła stacji jest ujęty w wtrysku netto wiersza ``Source`` tej szyny.
+Stacja bez elementów granicy (brak odpływów) albo bilans niekompletny = JAWNY BRAK wielkości
+(metryka nieobecna, ekran pisze „brak"), nigdy 0,0 — częściowa suma udawałaby pełny bilans.
+Zasilanie powstaje wyłącznie, gdy każde źródło i generator na szynach węzła ma wiersz wyniku
+z obiema mocami. Alarm wynikowy to przeciążenie
 (flaga ``OVERLOADED`` wiersza gałęzi, obciążenie > 100 %) elementu zasilanego z pola GPZ
 albo transformatora stacji GPZ — jedyna klasyfikacja przekroczenia, którą wynik rozpływu
 niesie dziś jawnie.
@@ -43,7 +61,10 @@ from typing import Any
 
 from enm.assembler import _graph_id_from_ref
 from enm.pola import czy_pole_nn, pola_stacji, poziom_pol, punkt_przylaczenia_pola, stacje_gpz
+from enm.topology import PodzialKrawedzi, podziel_krawedzie
+from enm.tor_pola import szyny_stacji
 from enm.zajetosc_pol import zajetosc_pol
+from network_model.core.topologia import scal_wezly
 
 #: Role pól, które zasilają odcinek terenowy (pole liniowe w szerokim sensie).
 ROLE_POL_LINIOWYCH: frozenset[str] = frozenset({"IN", "OUT", "FEEDER", "OZE"})
@@ -117,6 +138,113 @@ def _wielkosci_zacisku(
     return None
 
 
+def _moc_zacisku_szyny(
+    wiersz_galezi: Mapping[str, Any] | None, szyna: str
+) -> tuple[float, float] | None:
+    """P/Q zacisku gałęzi po stronie szyny ``szyna`` (None, gdy wiersza brak, żaden koniec
+    nie leży w tej szynie albo moc zacisku nie jest liczbą)."""
+    if wiersz_galezi is None:
+        return None
+    zacisk = _wielkosci_zacisku(wiersz_galezi, szyna)
+    if zacisk is None or zacisk["p_from_mw"] is None or zacisk["q_from_mvar"] is None:
+        return None
+    return zacisk["p_from_mw"], zacisk["q_from_mvar"]
+
+
+def bilans_wezla_stacji(
+    snapshot: Mapping[str, Any],
+    stacja: Mapping[str, Any],
+    *,
+    podzial: PodzialKrawedzi,
+    galezie: Mapping[str, Mapping[str, Any]],
+    wtrysk_zrodel: Mapping[str, Mapping[str, Any]],
+    poziom: Any,
+) -> dict[str, float]:
+    """Bilans węzła elektrycznego stacji: ``p/q_supply`` i ``p/q_feeders`` — wyłącznie
+    wielkości kompletne (opis granicy, znaku i kompletności w nagłówku modułu).
+
+    Granicę i zasilanie wyznacza JEDEN zbiór szyn (węzeł elektryczny stacji), więc
+    tożsamość zasilanie − odpływy = straty wnętrza nie zależy od dwóch niezależnych
+    warunków przynależności."""
+    szyny_migawki = set(podzial.szyny)
+    wlasne = {s for s in szyny_stacji(snapshot, stacja, poziom) if s in szyny_migawki}
+    if not wlasne:
+        return {}
+    reprezentant = scal_wezly(
+        podzial.szyny,
+        ((k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj == "lacznik"),
+    )
+    klasy = {reprezentant[s] for s in wlasne}
+    wezel = frozenset(s for s in podzial.szyny if reprezentant[s] in klasy)
+
+    bilans: dict[str, float] = {}
+
+    wtrysk_wg_szyny: dict[str, tuple[float, float] | None] = {}
+    for zrodlo in sorted(
+        (
+            z
+            for kolekcja in ("sources", "generators")
+            for z in snapshot.get(kolekcja) or []
+            if isinstance(z, Mapping)
+        ),
+        key=lambda z: str(z.get("ref_id")),
+    ):
+        szyna_zrodla = _napis(zrodlo.get("bus_ref"))
+        if szyna_zrodla is None or szyna_zrodla not in wezel:
+            continue
+        wynik_zrodla = wtrysk_zrodel.get(str(zrodlo.get("ref_id")))
+        p = _liczba(wynik_zrodla.get("p_injected_mw")) if wynik_zrodla is not None else None
+        q = _liczba(wynik_zrodla.get("q_injected_mvar")) if wynik_zrodla is not None else None
+        if p is not None and q is not None:
+            # Wtrysk węzła (netto) jest ten sam w każdym wierszu źródła tej szyny — raz.
+            if wtrysk_wg_szyny.get(szyna_zrodla) is None:
+                wtrysk_wg_szyny[szyna_zrodla] = (p, q)
+        elif szyna_zrodla not in wtrysk_wg_szyny:
+            wtrysk_wg_szyny[szyna_zrodla] = None
+    if wtrysk_wg_szyny and all(w is not None for w in wtrysk_wg_szyny.values()):
+        wtryski = [w for w in wtrysk_wg_szyny.values() if w is not None]
+        bilans["p_supply_mw"] = sum(p for p, _ in wtryski)
+        bilans["q_supply_mvar"] = sum(q for _, q in wtryski)
+
+    # Odbiór na szynie węzła bez wiersza ``Source`` nie ma wiersza wyniku — bilans odpływów
+    # nie domyka się bez niego (moc znamionowa odbioru ≠ moc w punkcie pracy).
+    odbior_poza_wtryskiem = any(
+        _napis(odbior.get("bus_ref")) in wezel
+        and _napis(odbior.get("bus_ref")) not in wtrysk_wg_szyny
+        for odbior in snapshot.get("loads") or []
+        if isinstance(odbior, Mapping)
+    )
+    granica = [k for k in podzial.w_ruchu if (k.szyna_a in wezel) != (k.szyna_b in wezel)]
+    pominiety_na_granicy = any(
+        _napis(element.get(koniec)) in wezel
+        for kolekcja, konce in (
+            ("branches", ("from_bus_ref", "to_bus_ref")),
+            ("transformers", ("hv_bus_ref", "lv_bus_ref")),
+        )
+        for element in snapshot.get(kolekcja) or []
+        if isinstance(element, Mapping)
+        and str(element.get("ref_id")) in set(podzial.krawedzie_pominiete)
+        for koniec in konce
+    )
+    if not granica or odbior_poza_wtryskiem or pominiety_na_granicy:
+        return bilans
+    suma_p = 0.0
+    suma_q = 0.0
+    for krawedz in sorted(granica, key=lambda k: k.ref_id):
+        if krawedz.rodzaj == "lacznik":
+            # Zamknięty łącznik scala szyny — z definicji węzła nie leży na granicy.
+            return bilans
+        szyna = krawedz.szyna_a if krawedz.szyna_a in wezel else krawedz.szyna_b
+        moc = _moc_zacisku_szyny(galezie.get(krawedz.ref_id), szyna)
+        if moc is None:
+            return bilans
+        suma_p += moc[0]
+        suma_q += moc[1]
+    bilans["p_feeders_mw"] = suma_p
+    bilans["q_feeders_mvar"] = suma_q
+    return bilans
+
+
 def wiersze_wynikow_gpz(
     snapshot: Mapping[str, Any],
     element_results: Sequence[Mapping[str, Any]],
@@ -135,18 +263,18 @@ def wiersze_wynikow_gpz(
     wtrysk_zrodel: dict[str, Mapping[str, Any]] = {}
     for wiersz in element_results:
         ref = _napis(wiersz.get("element_ref"))
-        wartosci = _slownik(wiersz.get("values"))
+        wartosci_wyniku = _slownik(wiersz.get("values"))
         if ref is None:
             continue
         rodzaj = wiersz.get("element_type")
         if rodzaj == "Bus":
-            u_kv = _liczba(wartosci.get("u_kv"))
+            u_kv = _liczba(wartosci_wyniku.get("u_kv"))
             if u_kv is not None:
                 napiecie_szyny[ref] = u_kv
         elif rodzaj == "Branch":
-            galezie[ref] = wartosci
+            galezie[ref] = wartosci_wyniku
         elif rodzaj == "Source":
-            wtrysk_zrodel[ref] = wartosci
+            wtrysk_zrodel[ref] = wartosci_wyniku
 
     zajetosc = zajetosc_pol(snapshot)
     korytarze = {
@@ -160,6 +288,7 @@ def wiersze_wynikow_gpz(
         if isinstance(t, Mapping) and _napis(t.get("ref_id"))
     )
     poziom = poziom_pol(snapshot)
+    podzial = podziel_krawedzie(snapshot)
     stacje = {
         str(s["ref_id"]): s
         for s in snapshot.get("substations") or []
@@ -169,15 +298,11 @@ def wiersze_wynikow_gpz(
     wiersze: list[dict[str, Any]] = []
     for stacja_ref in sorted(stacje):
         stacja = stacje[stacja_ref]
-        suma_p = 0.0
-        suma_q = 0.0
-        odplywy_kompletne = True
         alarmy = 0
         for pole in pola_stacji(snapshot, stacja_ref):
             if not isinstance(pole, Mapping) or czy_pole_nn(snapshot, pole, poziom):
                 continue
             pole_ref = str(pole.get("ref_id"))
-            rola = str(pole.get("bay_role") or "").upper()
             punkt = punkt_przylaczenia_pola(pole)
             wartosci: dict[str, Any] = {}
             szyna = _napis(pole.get("bus_ref"))
@@ -198,18 +323,6 @@ def wiersze_wynikow_gpz(
                     wartosci["loading_pct"] = obciazenie
                 if FLAGA_PRZECIAZENIA in (wiersz_galezi.get("flags") or []):
                     alarmy += 1
-            if rola in ROLE_POL_LINIOWYCH:
-                stan = zajetosc.get(pole_ref)
-                if stan is not None and stan.zajete:
-                    if (
-                        zacisk is None
-                        or zacisk["p_from_mw"] is None
-                        or zacisk["q_from_mvar"] is None
-                    ):
-                        odplywy_kompletne = False
-                    else:
-                        suma_p += zacisk["p_from_mw"]
-                        suma_q += zacisk["q_from_mvar"]
             if any(_liczba(v) is not None for v in wartosci.values()):
                 wiersze.append(
                     {
@@ -236,38 +349,17 @@ def wiersze_wynikow_gpz(
             if FLAGA_PRZECIAZENIA in (galezie.get(tr_ref, {}).get("flags") or []):
                 alarmy += 1
 
-        szyny_stacji = {str(r) for r in stacja.get("bus_refs") or [] if isinstance(r, str)}
-        wtrysk_wg_szyny: dict[str, tuple[float | None, float | None]] = {}
-        for zrodlo in sorted(
-            (
-                z
-                for kolekcja in ("sources", "generators")
-                for z in snapshot.get(kolekcja) or []
-                if isinstance(z, Mapping)
+        bilans: dict[str, Any] = {
+            "alarm_count": alarmy,
+            **bilans_wezla_stacji(
+                snapshot,
+                stacja,
+                podzial=podzial,
+                galezie=galezie,
+                wtrysk_zrodel=wtrysk_zrodel,
+                poziom=poziom,
             ),
-            key=lambda z: str(z.get("ref_id")),
-        ):
-            szyna_zrodla = _napis(zrodlo.get("bus_ref"))
-            if szyna_zrodla is None or szyna_zrodla in wtrysk_wg_szyny:
-                continue
-            if zrodlo.get("substation_ref") != stacja_ref and szyna_zrodla not in szyny_stacji:
-                continue
-            wynik_zrodla = wtrysk_zrodel.get(str(zrodlo.get("ref_id")))
-            if wynik_zrodla is None:
-                continue
-            wtrysk_wg_szyny[szyna_zrodla] = (
-                _liczba(wynik_zrodla.get("p_injected_mw")),
-                _liczba(wynik_zrodla.get("q_injected_mvar")),
-            )
-        bilans: dict[str, Any] = {"alarm_count": alarmy}
-        if wtrysk_wg_szyny and all(
-            p is not None and q is not None for p, q in wtrysk_wg_szyny.values()
-        ):
-            bilans["p_supply_mw"] = sum(p for p, _ in wtrysk_wg_szyny.values() if p is not None)
-            bilans["q_supply_mvar"] = sum(q for _, q in wtrysk_wg_szyny.values() if q is not None)
-        if odplywy_kompletne:
-            bilans["p_feeders_mw"] = suma_p
-            bilans["q_feeders_mvar"] = suma_q
+        }
         wiersze.append(
             {
                 "element_ref": stacja_ref,

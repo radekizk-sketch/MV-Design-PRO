@@ -2089,7 +2089,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie W5-B z partia integracji 8 (2026-10-16): 569 + 3 pliki karty W5-B = 572. POMIAR.
         # Karta K6a TOPOLOGIA-API (2026-10-16): 572 -> 573 (+1 `application/topologia_zasilenia.py`
         # — stan zasilenia i tor z topologii laczeniowej). POMIAR guardem na drzewie karty.
-        "Przeskanowano 573 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta GPZ-PARYTET (2026-10-21): 573 -> 574 (+1 `enm/wyniki_pol_gpz.py` — wiersze
+        # wynikow pol i bilansu stacji GPZ). POMIAR guardem na drzewie karty cz. 2.
+        "Przeskanowano 574 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2310,7 +2312,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie W5-B z integracja PR477-481 (2026-10-16): enm 61 (integracja) + 3 (karta) = 64;
         # dlug 7/67 (integracja: `time_dial` skasowany). POMIAR guardem na drzewie scalonym.
         # Scalenie W5-B z partia integracji 8 (2026-10-16): enm 62 + 3 = 65. POMIAR guardem.
-        "  enm: pliki_skanowane=65, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta GPZ-PARYTET (2026-10-21): 65 -> 66 (+1 `enm/wyniki_pol_gpz.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty cz. 2.
+        "  enm: pliki_skanowane=66, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

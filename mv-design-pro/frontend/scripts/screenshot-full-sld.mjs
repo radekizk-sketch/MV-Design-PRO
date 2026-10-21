@@ -6,7 +6,7 @@
  *  3. Czekaj na renderowanie symboli (real ENM, NIE placeholder).
  *  4. Zrzut 1920×1080 + 4K dla CAD/SCADA audyt.
  *  5. Sprawdź data-testid="sld-empty-state" — jeśli widoczny, render placeholder.
- *  6. Zlicz <svg> elementów SLD canvas + GpzRenderer / CableRunRenderer instancje.
+ *  6. Zlicz <svg> elementów kanwy SLD.
  */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';

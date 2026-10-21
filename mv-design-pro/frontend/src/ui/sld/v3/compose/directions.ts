@@ -17,17 +17,15 @@
  *
  * DECYZJA (luka spec §9 — role pól nie zawsze rozróżniają kierunek wprost):
  * role jawne ENM (`LINE_IN`/`LINE_OUT`/`LINE_BRANCH`) są jednoznaczne, ale
- * `RMU_LINE`/`GPZ_LINE_BAY` (role generyczne „pole liniowe" — patrz
- * `MINI_BLOCK_FOOTPRINT.defaultSnBayRoles`, `v2/renderer/MiniBlockFootprints.ts`)
+ * `RMU_LINE`/`GPZ_LINE_BAY` (role generyczne „pole liniowe")
  * NIE niosą kierunku w samej roli. Przyjęto konwencję POZYCYJNĄ wśród pól
  * LINIOWYCH tej stacji (w kolejności `snBays`, NIE wśród wszystkich pól):
  * pierwsze pole liniowe = poprzednik (wejście z ciągu), drugie = następnik
- * (wyjście), trzecie i kolejne = odgałęzienia — mirror v2
- * `miniBlockPortRoleLabel` (`MiniBlockRmuRenderer.tsx`), ale liczone WYŁĄCZNIE
- * wśród pól liniowych (v2 liczy pozycję wśród WSZYSTKICH pól stacji, co dla
- * footprintu `mv_lv_sectional` — pole liniowe drugiej sekcji leżące ZA polem
- * TR/SPR pierwszej sekcji — dawałoby błędne „ODG" zamiast „WE" tej sekcji;
- * v3 tej wady NIE dziedziczy, bo liczy pozycję tylko wśród pól LINIOWYCH).
+ * (wyjście), trzecie i kolejne = odgałęzienia — liczone WYŁĄCZNIE wśród pól
+ * liniowych (dawny renderer v2, skasowany w GPZ-PARYTET cz. 2, liczył pozycję
+ * wśród WSZYSTKICH pól stacji, co dla stacji sekcyjnej — pole liniowe drugiej
+ * sekcji leżące ZA polem TR/SPR pierwszej sekcji — dawało błędne „ODG" zamiast
+ * „WE" tej sekcji).
  *
  *  3. F10.2/F10.6 (spec §19.1, V12K-035, POPRAWKA A3): dawny punkt 3 tego
  *     nagłówka (`bayApparatusDesignation`, F6b) opisywał JEDEN oznacznik
@@ -43,12 +41,12 @@
  *  Rodzaj stacji (końcowa/przelotowa/odgałęźna/sekcyjna, F10.2 §19.3) NIE mieszka tu:
  *  jedyną regułą produktu jest `ui/shared/rodzajStacji.ts` (lustro backendu
  *  `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ), którą adapter wpisuje
- *  w `StationOnRunRendererProps.topologicalType`.
+ *  w `StationOnRunViewModel.topologicalType`.
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
-import { FIELD_ROLE_LABEL_PL, fieldLabelInSentencePl } from '../../v2/station-rozdzielnia/contract';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL, fieldLabelInSentencePl } from '../../v2/station-rozdzielnia/contract';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import type { LineRunV1 } from '../../../../types/enm';
 
 /** Surowe tokeny zakazane na rysunku (spec §9) — dopasowanie na CAŁYCH
@@ -103,6 +101,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BESS_SN);
     case FIELD_ROLE.DER_FW:
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
+    case FIELD_ROLE.DER_UNKNOWN:
+      return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
     default:
       return 'pole';
   }
@@ -150,6 +150,7 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
         : role === FIELD_ROLE.MEASUREMENT
           ? 'FP'
           : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
+            || role === FIELD_ROLE.DER_UNKNOWN
             ? 'FG'
             : 'F';
   const next = (counters.get(cls) ?? 0) + 1;

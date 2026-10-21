@@ -150,8 +150,8 @@ export interface SldDetailDrawerData {
     readonly value: string;
     readonly color?: string;
   }>;
-  /** K30-95: alarm severity badge w drawer header. Lowercase per
-   *  StationOnRunRenderer (warning/important/critical). */
+  /** K30-95: alarm severity badge w drawer header. Lowercase jak
+   *  `SldStationView.alarmSeverity` (warning/important/critical). */
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   /** K30-98: breadcrumb context — parent station label (Stacja › Pole). */
   readonly parentStationLabel?: string | null;

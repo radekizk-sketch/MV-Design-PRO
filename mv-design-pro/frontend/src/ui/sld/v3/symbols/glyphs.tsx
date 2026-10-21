@@ -750,6 +750,22 @@ export function DerWindGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
+ * GPZ-PARYTET cz. 2 (pkt 3): źródło nieokreślone — ramka DER z pytajnikiem. Model nie
+ * rozstrzyga rodzaju (pole `OZE` bez wytwórcy albo z wytwórcami różnych rodzajów,
+ * wytwórca typu spoza rodzajów rysowanych), więc rysunek mówi to wprost zamiast udawać PV.
+ */
+export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
+  return derFrame(props, 'derUnknown', (
+    <text
+      x={16} y={22} textAnchor="middle"
+      fill={stroke(props)} fontFamily="sans-serif" fontSize={16} fontWeight={700}
+    >
+      ?
+    </text>
+  ));
+}
+
+/**
  * F9.4 (spec §13.1/§13.2): sieć zewnętrzna (`Source` ENM, `kind=
  * 'external_grid'`) — strzałka zasilania W DÓŁ (konwencja: moc wchodzi Z
  * ZEWNĄTRZ do szyny), odrębna od wszystkich symboli DER (bez ramki
@@ -1170,6 +1186,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derBess: DerBessGlyph,
   derGenerator: DerGeneratorGlyph,
   derWind: DerWindGlyph,
+  derUnknown: DerUnknownGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
   gpzCollapsed: GpzCollapsedGlyph,

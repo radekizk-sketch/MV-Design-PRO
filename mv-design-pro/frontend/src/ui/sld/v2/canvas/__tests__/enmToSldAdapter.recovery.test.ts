@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
-import { STATION_RUN_TRUNK_OFFSET_Y } from '../../renderer/StationOnRunRenderer';
+import { STATION_RUN_TRUNK_OFFSET_Y } from '../../model/widokSld';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(

@@ -109,9 +109,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-pole-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-pole-katalog').querySelector('option[value="app-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-katalog'), 'app-1');
 }
 
@@ -174,9 +174,9 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     await waitFor(() => {
       expect(fetchBayTemplatesMock).toHaveBeenCalledWith('ZPUE', 'transformatorowe');
     });
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor').querySelector('option[value="tmpl-tr-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-szablon-wybor'), 'tmpl-tr-1');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));

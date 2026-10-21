@@ -38,6 +38,7 @@ export type SymbolId =
   | 'derBess'          // magazyn energii
   | 'derGenerator'     // generator (G w okręgu)
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
+  | 'derUnknown'       // źródło nieokreślone (rodzaj nierozstrzygnięty w modelu)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
@@ -249,6 +250,11 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   derWind: def('derWind', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Farma wiatrowa'),
+  // GPZ-PARYTET cz. 2 (pkt 3): źródło, którego rodzaju model nie rozstrzyga — gabaryt i port
+  // jak pozostałe DER, glif „?” w ramce (`glyphs.tsx`); nigdy PV ani generator z domysłu.
+  derUnknown: def('derUnknown', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Źródło nieokreślone'),
   // F9.4 (spec §13.1/§13.2): sieć zewnętrzna (Source ENM) — jeden port
   // `bottom` (S), gabaryt 16×24 jak `disconnector`/`earthSwitch` (aparat
   // jednokolumnowy, nie DER 32×32 — ten symbol nie jest instalacją DER).

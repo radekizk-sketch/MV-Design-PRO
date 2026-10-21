@@ -289,15 +289,6 @@ jobs:
       - name: SLD — zakres SldLayerId (tylko renderer)
         run: $GUARD_PY scripts/sld_layer_id_scope_guard.py
 
-      - name: SLD — brak zewnetrznego mostu WE/WY
-        run: $GUARD_PY scripts/sld_no_external_we_wy_bridge_guard.py
-
-      - name: SLD — stacja nie jest prostokatem
-        run: $GUARD_PY scripts/station_not_rectangle_guard.py
-
-      - name: SLD — GPZ deklaruje strukture przemyslowa
-        run: $GUARD_PY scripts/gpz_switchgear_guard.py
-
       - name: SLD — kontrakt przylaczenia DER
         run: $GUARD_PY scripts/der_pcc_guard.py
 

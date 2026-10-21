@@ -18,8 +18,11 @@ describe('sourceKind — sourceKindSymbolsAreInjective (spec §13.2 source_symbo
     expect(ids.size).toBe(4);
   });
 
-  it('„unknown" jest udokumentowanym wyjątkiem — dzieli glif z "generator" (fallback, §13.1 f92-2), a nie z gridSource', () => {
-    expect(symbolIdForSourceKind('unknown')).toBe(symbolIdForSourceKind('generator'));
+  it('„unknown" ma WŁASNY glif źródła nieokreślonego (GPZ-PARYTET cz. 2, pkt 3) — nie generator, nie PV, nie gridSource', () => {
+    expect(symbolIdForSourceKind('unknown')).toBe('derUnknown');
+    for (const rozpoznany of ['pv', 'bess', 'generator', 'wind'] as const) {
+      expect(symbolIdForSourceKind('unknown')).not.toBe(symbolIdForSourceKind(rozpoznany));
+    }
     expect(symbolIdForSourceKind('unknown')).not.toBe('gridSource');
   });
 

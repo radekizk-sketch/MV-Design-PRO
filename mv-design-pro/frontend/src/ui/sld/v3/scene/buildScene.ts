@@ -110,7 +110,7 @@ import {
 } from '../../v2/canvas/enmToSldAdapter';
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
 import type { CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
-import type { StationOnRunRendererProps } from '../../v2/renderer/StationOnRunRenderer';
+import type { StationOnRunViewModel } from '../../v2/model/widokSld';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
@@ -420,7 +420,7 @@ const SHEET_LINK_CORRIDOR = 4 * GRID;
 // Pomocnicze: nazewnictwo typu stacji (§9), terminale §16 z cableRun.
 // ---------------------------------------------------------------------------
 
-function stationTypeLabelPl(type: StationOnRunRendererProps['topologicalType']): string {
+function stationTypeLabelPl(type: StationOnRunViewModel['topologicalType']): string {
   switch (type) {
     case 'końcowa':
       return 'stacja końcowa';
@@ -1067,13 +1067,13 @@ function dominantDerGlyphKind(
  * L1/L2, `StationMeasureInput.hasTransformer`).
  */
 function stationHasTransformerFact(
-  props: Pick<StationOnRunRendererProps, 'hasTransformer' | 'transformerRatedKva'>,
+  props: Pick<StationOnRunViewModel, 'hasTransformer' | 'transformerRatedKva'>,
 ): boolean {
   return props.hasTransformer ?? props.transformerRatedKva != null;
 }
 
 function stationCompactGlyphSummary(
-  props: StationOnRunRendererProps,
+  props: StationOnRunViewModel,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
 ): StationCompactGlyphSummary {
@@ -1099,7 +1099,7 @@ function stationCompactGlyphSummary(
 }
 
 function buildMeasureInput(
-  props: StationOnRunRendererProps,
+  props: StationOnRunViewModel,
   lod: SceneLod,
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
@@ -1144,7 +1144,7 @@ function buildMeasureInput(
     // WYŁĄCZNIE dla lod>=1 (lod===0 zwraca wcześniej, powyżej).
     derSources: derSourcesByStationId.get(props.id) ?? undefined,
     // F10.3 (spec §18.4, K30-37): napięcie znamionowe szyny SN — kanał
-    // REALNY (`StationOnRunRendererProps.busVoltageKv`, `enmToSldAdapter.ts`
+    // REALNY (`StationOnRunViewModel.busVoltageKv`, `enmToSldAdapter.ts`
     // `mainBusVoltageKv`, ENM `Bus.voltage_kv` przez `Substation.bus_refs`);
     // `null`/nieobecny = brak danych, `compose/station.ts`
     // `stationBusbarLabelText` degraduje do samego oznaczenia sekcji (zero
@@ -1167,7 +1167,7 @@ function buildMeasureInput(
 
 function buildRowLayout(
   stationIds: readonly string[],
-  stationById: ReadonlyMap<string, StationOnRunRendererProps>,
+  stationById: ReadonlyMap<string, StationOnRunViewModel>,
   lineRuns: readonly LineRunV1[],
   gpzNodeCode: string,
   cableRun: SldCableRun | undefined,
@@ -1395,7 +1395,7 @@ function findSegmentPointX(
 
 function composeRowStation(
   measureInput: StationMeasureInput,
-  props: StationOnRunRendererProps,
+  props: StationOnRunViewModel,
   column: ColumnResult,
   busAxisY: number,
   blockTopY: number,
@@ -1615,6 +1615,9 @@ function composeRowStation(
     x: s.x,
     y: s.y,
     state: s.state,
+    // GPZ-PARYTET cz. 2 (pkt 1): uzwojenia transformatorów stacji (pole TR, TR bez pola,
+    // TR blokowy DER) przepuszczone świadomie — ta sama jawna lista pól co GPZ.
+    uzwojenia: s.uzwojenia,
     meta: {
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
@@ -2991,7 +2994,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   }
 
   const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
-  const stationById = new Map<string, StationOnRunRendererProps>(sldData.stations.map((s) => [s.id, s]));
+  const stationById = new Map<string, StationOnRunViewModel>(sldData.stations.map((s) => [s.id, s]));
   // Recenzja NO-GO 2026-07-17 pkt 13: kod końca przęsła do etykiet
   // „A ↔ B — …" (GPZ = stały kod węzła; stacja = jej stationCode).
   const stationCodeOfId = (id: string): string | null => stationById.get(id)?.stationCode ?? null;

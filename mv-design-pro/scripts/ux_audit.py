@@ -145,16 +145,15 @@ def _semantic_banner_wired() -> bool:
 
 
 def _spine_error_coloring() -> bool:
-    """Żywy renderer stacji koloruje issue/alarm (real-time error na SLD).
+    """Żywy renderer SLD koloruje element wg severity wyniku (real-time error na SLD).
 
-    (Dawny SpineRenderer usunięto w konsolidacji 2026-07 — był martwy; issue/alarm
-    coloring żywej ścieżki renderu jest w StationOnRunRenderer.)
+    Dawny SpineRenderer, a potem `v2/renderer/StationOnRunRenderer.tsx` były martwe
+    (karta GPZ-PARYTET cz. 2 skasowała cały katalog `v2/renderer/`) — jedynym
+    rendererem jest kanwa v3, która barwi etykiety i markery wyników progiem
+    severity z backendu (`resultSeverityColor`).
     """
-    sr = FE / "ui/sld/v2/renderer/StationOnRunRenderer.tsx"
-    text = _read(sr)
-    return text != "" and (
-        "issue" in text.lower() or "alarm" in text.lower() or "severity" in text.lower()
-    )
+    canvas = FE / "ui/sld/v3/canvas/SldCanvasV3.tsx"
+    return "resultSeverityColor" in _read(canvas)
 
 
 def audit_stage(stage: Stage) -> StageResult:
@@ -270,14 +269,14 @@ def audit_stage(stage: Stage) -> StageResult:
         )
     )
 
-    # C9 — real-time error na SLD (StationOnRunRenderer issue/alarm coloring)
+    # C9 — real-time error na SLD (kanwa v3: kolor wg severity wyniku)
     res.criteria.append(
         CriterionResult(
             9,
             "error na SLD",
             _spine_error_coloring(),
             (
-                "StationOnRunRenderer issue-aware"
+                "kanwa v3 barwi wg severity wyniku"
                 if _spine_error_coloring()
                 else "SLD nie pokazuje issue"
             ),

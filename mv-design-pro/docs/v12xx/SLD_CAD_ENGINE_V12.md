@@ -72,7 +72,7 @@ Po utworzeniu GPZ kanwa ma materializowac rozdzielnie SN:
 
 Zaznaczone pole SN ma pokazywac ramke wyboru w stylu CAD/SCADA oraz blok wartosci wynikowych przy polu. Brak aktywnych wynikow jest jawny (`--` z atrybutem statusu `brak`) i nie podszywa sie pod obliczenia zerowe. Wlaczenie lub brak nakladki wynikowej nie moze zmieniac geometrii pola, szyny ani sprzegla.
 
-Warstwa stacji SN/nN nie renderuje rozdzielni GPZ jako osobnego bloku stacyjnego na kanwie. Jezeli projekcja ENM zawiera lancuch pol z rola `GPZ_LINE_BAY`, jest on reprezentowany przez `GpzSwitchgearRenderer`, a nie przez `FieldBlockRenderer` stacji SN/nN. GPZ pozostaje zrodlem i rozdzielnia SN; stacja SN/nN jest osobnym typem obiektu sieciowego.
+Warstwa stacji SN/nN nie renderuje rozdzielni GPZ jako osobnego bloku stacyjnego na kanwie. Jezeli projekcja ENM zawiera lancuch pol z rola `GPZ_LINE_BAY`, jest on reprezentowany przez kompozycję rozdzielni GPZ `SldCanvasV3` (`frontend/src/ui/sld/v3/compose/gpz.ts`), a nie przez kompozycję pól stacji SN/nN (`frontend/src/ui/sld/v3/compose/station.ts`). GPZ pozostaje zrodlem i rozdzielnia SN; stacja SN/nN jest osobnym typem obiektu sieciowego.
 
 ## Kanon praktyczny ze stacji elektroenergetycznych
 

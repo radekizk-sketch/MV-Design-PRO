@@ -25,7 +25,7 @@ import { selectLoadSummaries } from '../../../network-build/networkBuildStore';
 import { snPointKindForBus } from '../../../network-build/station-der/zModelu';
 import { stacjeDlaPunktu } from '../../../../ui2/wyniki/zwarcia/aparatura/model';
 import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
-import { polaNnStacji, polaStacji } from '../../../shared/polaStacji';
+import { polaNnStacji } from '../../../shared/polaStacji';
 import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import { resultPointsInStationNnBoard } from '../../v3/canvas/resultRefBridge';
 import { buildSceneV3 } from '../../v3/scene/buildScene';
@@ -191,51 +191,5 @@ describe('łańcuch aparatów pól nN podrozdzielnicy (`nnBoardDemo`, osobna `Su
       }
     }
     for (const g of zaSekcja) expect(nnBoard.has(String(g.to_bus_ref))).toBe(true);
-  });
-});
-
-/**
- * Cel pola liniowego GPZ bez jawnego `outgoing_destination_ref` — wnioskowanie tylko przy
- * JEDNOZNACZNYM celu. Iloczyn: {jeden odcinek z szyny pola, dwa odcinki do dwóch stacji} ×
- * {koniec odcinka na zacisku pola stacji (spoza `bus_refs`)}. Zmierzone: po przejściu na lustro
- * szyn stacji oba pola `gpzProtectionDataPath` (wspólna szyna sekcji) dostawały „→ S01".
- */
-describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, bez zgadywania', () => {
-  const siec = (
-    JSON.parse(
-      readFileSync(resolve(here, '../../v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json'), 'utf8'),
-    ) as { readonly enm: EnergyNetworkModel }
-  ).enm;
-  const polaLiniowe = (model: EnergyNetworkModel) => {
-    // Fikstura ma GPZ z sekcjami; ich brak to zepsuta fikstura, nie pusty wynik.
-    const [gpz] = buildSldDataFromSnapshot(model, model.logical_views ?? null, null).gpzs;
-    if (gpz?.sections === undefined) throw new Error('fikstura gpzProtectionDataPath bez sekcji GPZ');
-    return gpz.sections.flatMap((s) => s.bays).filter((b) => b.fieldRole === 'LINE_OUT');
-  };
-
-  it('dwa odcinki z tej samej szyny sekcji do DWÓCH stacji ⇒ żadne pole nie dostaje celu', () => {
-    const pola = polaLiniowe(siec);
-    // Karta W5-B: pola liniowe GPZ = rekordy `bays` GPZ roli OUT/FEEDER (jeden nośnik — dawniej
-    // ścieżka v2 widziała tylko część pól GPZ, kanoniczna — wszystkie).
-    const gpzRef = (siec.substations ?? []).find((s) => s.station_type === 'gpz')!.ref_id;
-    const oczekiwane = polaStacji(siec, gpzRef).filter((b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER');
-    expect(oczekiwane.length).toBeGreaterThanOrEqual(2);
-    expect(pola).toHaveLength(oczekiwane.length);
-    for (const pole of pola) expect(pole.outgoingFeeder).toBeUndefined();
-  });
-
-  it('jeden odcinek do stacji (koniec na zacisku pola stacji) ⇒ cel = ta stacja i dane TEGO odcinka', () => {
-    const s02 = (siec.substations ?? []).find((s) => s.name === 'Stacja S02')!;
-    const szynyS02 = szynyStacji(siec, s02);
-    const bezS02 = {
-      ...siec,
-      branches: (siec.branches ?? []).filter((g) => !szynyS02.has(String(g.to_bus_ref)) || g.type !== 'cable'),
-    } as EnergyNetworkModel;
-    const pola = polaLiniowe(bezS02);
-    expect(pola.length).toBeGreaterThan(0);
-    for (const pole of pola) {
-      expect(pole.outgoingFeeder?.destination).toBe('→ Stacja S01');
-      expect(pole.outgoingFeeder?.segmentTypeLabel).toBe('Kabel SN');
-    }
   });
 });

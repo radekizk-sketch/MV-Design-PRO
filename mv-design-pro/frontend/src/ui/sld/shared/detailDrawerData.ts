@@ -1052,7 +1052,7 @@ export function buildStationBranchDetailDrawerData(
       if (drawerKind === 'bay') {
         globalId = `${kodStacji}.${fieldPart}`;
       } else {
-        const sekwencja = (projectBayPrimaryDevices(poleTrafione) ?? [])
+        const sekwencja = (projectBayPrimaryDevices(poleTrafione, new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]))) ?? [])
           .map((d) => ({ ref: d.deviceRef, symbol: symbolIdForPrimaryDeviceKind(d.kind), oznaczenie: d.designation }))
           .filter((d): d is { ref: string; symbol: NonNullable<typeof d.symbol>; oznaczenie: string | undefined } => d.symbol != null);
         const identyfikatory = apparatusIdentifiers(

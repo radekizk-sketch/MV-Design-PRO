@@ -98,7 +98,7 @@ import type {
   CanonicalGpzTransformer,
   CanonicalGpzProps,
 } from '../../v2/canvas/canonicalGpzModel';
-import type { BayPrimaryDeviceView } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView } from '../../v2/model/widokPolStacji';
 
 // ---------------------------------------------------------------------------
 // Meta — atrybuty data-* potrzebne wyrocznaim migrowanym z v2 (§8).

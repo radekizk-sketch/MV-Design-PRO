@@ -22,7 +22,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import { FIELD_ROLE } from '../src/ui/sld/v2/domain/apparatusContracts';
-import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../src/ui/sld/v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../src/ui/sld/v2/model/widokPolStacji';
 import { stationBlockHeight, type StationMeasureInput } from '../src/ui/sld/v3/layout/measure';
 import { computeBands } from '../src/ui/sld/v3/layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../src/ui/sld/v3/layout/columns';

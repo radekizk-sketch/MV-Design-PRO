@@ -61,9 +61,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-slup-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-slup-katalog').querySelector('option[value="bp-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-slup-katalog'), 'bp-1');
 }
 

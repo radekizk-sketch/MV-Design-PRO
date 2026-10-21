@@ -31,7 +31,7 @@ import { describe, expect, it } from 'vitest';
 import { GRID, snapToGrid } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import {
   DER_ROW_TOP_CLEARANCE,
   LV_PORTAL_DROP_HEIGHT,
@@ -63,7 +63,16 @@ import {
 } from '../station';
 
 function makeBay(fieldRole: FieldRole, index: number): MiniBlockBayDescriptor {
-  return { bayRef: `bay-${index}`, fieldRole, designation: `Pole ${index}`, hasMissingRequiredDevice: false };
+  // Pole transformatorowe z kompletną daną transformatora (grupa połączeń, GPZ-PARYTET
+  // cz. 2 pkt 1) — fixtury „missingData puste" mają być kompletne, nie bez grupy.
+  const tr = fieldRole === FIELD_ROLE.RMU_TRANSFORMER || fieldRole === FIELD_ROLE.TRANSFORMER;
+  return {
+    bayRef: `bay-${index}`,
+    fieldRole,
+    designation: `Pole ${index}`,
+    hasMissingRequiredDevice: false,
+    ...(tr ? { transformerVectorGroup: 'Dyn11' } : {}),
+  };
 }
 
 function makeStation(

@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "9ce6a5306366c92876a0221bcc5b3b9d217c7566888fde9531d1d63c69f4e955",
+  "deterministic_signature": "acdeb7a7df2ccc127b043ab150255227e4903c778eee19e3be89338518824141",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -296,9 +296,9 @@
       "solver_ref": null,
       "values": {
         "alarm_count": 0,
-        "p_feeders_mw": 0.0,
+        "p_feeders_mw": -0.746900260755,
         "p_supply_mw": -0.746797186573,
-        "q_feeders_mvar": 0.0,
+        "q_feeders_mvar": -0.0475227401597,
         "q_supply_mvar": -0.0756580800351
       }
     }

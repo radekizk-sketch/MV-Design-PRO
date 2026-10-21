@@ -329,7 +329,7 @@ System SLD osiąga „klasa przemysłowa" gdy:
 - [ ] **F4:** 2 motywy (dark_scada, light_technical), overlay SC/PF/Protection w pełni funkcjonalne
 - [ ] **F5:** SVG + PDF eksport działa dla 4 referencyjnych sieci, deterministyczny
 - [ ] **F6:** 60 visual snapshots w CI, < 0.5% pixel diff tolerance
-- [ ] Konsolidacja: `GpzSwitchgearRenderer.tsx` + `GpzCanonicalRenderer.tsx` → jeden `GpzIndustrialRenderer.tsx`
+- [x] Konsolidacja rendererów GPZ: jeden renderer `SldCanvasV3` (`v3/compose/gpz.ts`); renderery GPZ v2 skasowane (karta GPZ-PARYTET cz. 2, 2026-10-21)
 - [ ] Konsolidacja: 3 pipeline'y → 1 kanoniczny (pozostałe oznaczone `@deprecated`)
 - [ ] Visual regression dla 4 sieci referencyjnych: leaf, pass, branch, ring+NOP — PASS
 - [ ] Manual review przez inżyniera SN: 4 sieci × 2 motywy = 8 widoków, ocena ≥ 9/10

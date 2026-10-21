@@ -142,9 +142,9 @@ const SCENY: Record<string, OcenaDoboruMagistraliResponse> = {
 };
 
 async function pickCable() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-magistrala-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-magistrala-katalog').querySelector('option[value="kab-120"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-katalog'), 'kab-120');
 }
 

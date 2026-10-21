@@ -7,11 +7,11 @@
  * `measureLabelWidth` z `core/text.ts` (formuła deterministyczna, F1: DOM
  * measure ZREZYGNOWANY całkowicie).
  *
- * UWAGA (odczyt wejścia v2): pola `x`/`y` z `StationOnRunRendererProps` /
+ * UWAGA (odczyt wejścia v2): pola `x`/`y` z `StationOnRunViewModel` /
  * `CableRunRendererProps` w v2 to STARA geometria slotowa (PITCH) — v3 jej
  * NIE używa i NIE czyta. Stąd `StationMeasureInput` niżej to podzbiór
  * WYŁĄCZNIE pól semantycznych (nazwa, kod, moc, role pól), wyprowadzony
- * przez `Pick` z `StationOnRunRendererProps` (v2) — zero duplikacji modelu
+ * przez `Pick` z `StationOnRunViewModel` (v2) — zero duplikacji modelu
  * danych (recenzja F2, FIX-1): jeśli v2 doda/zmieni pole źródłowe, `Pick`
  * przechwyci to na etapie kompilacji zamiast cichego rozjazdu kopii.
  */
@@ -24,11 +24,8 @@ import {
   MIN_LABEL_CLEARANCE,
 } from './clearances';
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
-import {
-  formatTransformerRatedPower,
-  type StationOnRunRendererProps,
-} from '../../v2/renderer/StationOnRunRenderer';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
+import { formatTransformerRatedPower, type StationOnRunViewModel } from '../../v2/model/widokSld';
 import { classifyLineBayDirection, fieldCaptionAt, isLineLikeRole } from '../compose/directions';
 import {
   apparatusIdentifiers,
@@ -56,18 +53,18 @@ export { snapUp } from '../core/grid';
 /**
  * Podzbiór semantyczny stacji potrzebny do pomiaru (spec §4 pasmo NAZW,
  * §5.1). Pola `id`/`name`/`stationCode`/`transformerRatedKva` pochodzą
- * WPROST z `StationOnRunRendererProps` (v2, `Pick`) — bez x/y (geometria
+ * WPROST z `StationOnRunViewModel` (v2, `Pick`) — bez x/y (geometria
  * slotowa PITCH, patrz UWAGA na górze pliku).
  */
 export interface StationMeasureInput
-  extends Pick<StationOnRunRendererProps, 'id' | 'name' | 'stationCode' | 'transformerRatedKva' | 'busVoltageKv'> {
+  extends Pick<StationOnRunViewModel, 'id' | 'name' | 'stationCode' | 'transformerRatedKva' | 'busVoltageKv'> {
   /** Typ stacji wg §9 nomenklatury (np. „stacja przelotowa") — slot t4.
-   *  Pole WŁASNE v3: `StationOnRunRendererProps` (v2) NIE MA odpowiednika —
+   *  Pole WŁASNE v3: `StationOnRunViewModel` (v2) NIE MA odpowiednika —
    *  to nie jest podzbiór v2, to rozszerzenie specyficzne dla pomiaru V3. */
   readonly stationTypeLabel?: string | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
   /** Podpisy kierunku pola (spec §9: `kier. S03` / `odg. S15`), index-aligned
-   *  do `snBays`. Pole WŁASNE v3 (bez odpowiednika w `StationOnRunRendererProps`).
+   *  do `snBays`. Pole WŁASNE v3 (bez odpowiednika w `StationOnRunViewModel`).
    *  F5 dostarczy realne wartości z topologii `line_runs`; nieobecność (dziś,
    *  przed F5) oznacza brak rezerwacji miejsca na ten podpis — nie ukryty
    *  dług, tylko jeszcze niedostarczone wejście (FIX-3, recenzja F2). */
@@ -89,7 +86,7 @@ export interface StationMeasureInput
    *  `scene/buildScene.ts` `buildMeasureInput`. */
   readonly derSources?: readonly StationDerSourceInput[];
   /** Recenzja NO-GO 2026-07-17 pkt 6: napięcie szyny nN [kV] z rekordu
-   *  `Bus` — kanał `StationOnRunRendererProps.nnVoltageKv` (adapter).
+   *  `Bus` — kanał `StationOnRunViewModel.nnVoltageKv` (adapter).
    *  `null`/brak = etykieta szyny nN bez napięcia (uczciwy brak). */
   readonly nnVoltageKv?: number | null;
   /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN — `null` =
@@ -117,11 +114,11 @@ export interface StationMeasureInput
   readonly transformerUnits?: readonly StationTransformerUnit[];
 }
 
-/** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
- *  (v2) — JEDNA prawda. Pomiar szerokości etykiety MUSI używać dokładnie tej
+/** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `v2/model/widokSld.ts`
+ *  — JEDNA prawda. Pomiar szerokości etykiety MUSI używać dokładnie tej
  *  samej funkcji, którą renderer rysuje, inaczej rezerwacja miejsca i realny
  *  tekst mogłyby się rozjechać przy zmianie formatu w jednym miejscu. */
-export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRenderer';
+export { formatTransformerRatedPower } from '../../v2/model/widokSld';
 
 /**
  * F10.3 (spec §18.4, D2-4): tekst etykiety szyny SN stacji — PARYTET
@@ -131,7 +128,7 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
  * niezależnie od liczby pól — więc oznaczenie sekcji jest dziś zawsze
  * „Sekcja 1" (jedyna sekcja, ten sam domyślny numer, którego GPZ używa dla
  * pojedynczej sekcji). Napięcie znamionowe DOPISANE wyłącznie gdy kanał
- * danych je niesie (`busVoltageKv` — `StationOnRunRendererProps.busVoltageKv`,
+ * danych je niesie (`busVoltageKv` — `StationOnRunViewModel.busVoltageKv`,
  * K30-37, `v2/canvas/enmToSldAdapter.ts` `mainBusVoltageKv`, realne ENM
  * `Bus.voltage_kv` przez `Substation.bus_refs`) — brak danych = sam tekst
  * sekcji (degradacja, NIE fabrykacja napięcia, spec §12.1 zasada analogiczna).
@@ -143,7 +140,7 @@ export function stationBusbarLabelText(
   busVoltageKv: number | null | undefined,
   /**
    * S9-8 (audyt, „identyfikator stacji w opisie sekcji"): KOD STACJI z danych
-   * (`StationOnRunRendererProps.stationCode`). Bez niego 55 sekcji na sieci
+   * (`StationOnRunViewModel.stationCode`). Bez niego 55 sekcji na sieci
    * referencyjnej nosi ten sam napis „Sekcja 1 · 15 kV" — po skopiowaniu
    * fragmentu rysunku albo po odesłaniu do strefy arkusza nie da się
    * powiedzieć, KTÓREJ stacji sekcja to jest. Kod jest daną realną, więc

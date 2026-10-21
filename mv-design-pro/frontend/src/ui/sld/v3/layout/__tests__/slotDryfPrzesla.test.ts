@@ -63,7 +63,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { composeStation } from '../../compose/station';
 import { computeBands, type StationBandHeights } from '../bands';

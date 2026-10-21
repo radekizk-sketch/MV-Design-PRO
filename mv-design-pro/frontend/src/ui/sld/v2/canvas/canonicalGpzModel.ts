@@ -20,13 +20,8 @@
  *   nie czytała.
  */
 
-import type {
-  BayPrimaryDeviceView,
-  BayProtectionMarkingView,
-  CtRatingAnnotationView,
-  VtMountingAnnotationView,
-} from '../renderer/MiniBlockRmuRenderer';
-import type { OltcGlyphAnnotation } from '../renderer/GpzSwitchgearTypes';
+import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, VtMountingAnnotationView } from '../model/widokPolStacji';
+import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 
 /**
  * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.

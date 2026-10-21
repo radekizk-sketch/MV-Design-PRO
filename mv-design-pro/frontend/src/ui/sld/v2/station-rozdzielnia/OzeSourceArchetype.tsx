@@ -29,7 +29,7 @@ import {
   FONT_MONO,
   FONT_SANS,
 } from '../theme/tokens';
-import { ApparatusCbSquare, ApparatusTransformerSymbol } from '../renderer/GpzApparatusSymbols';
+import { ApparatusCbSquare, ApparatusTransformerSymbol } from './GpzApparatusSymbols';
 import type { MouseEvent } from 'react';
 import type {
   SldOzeArchetypeCompanion,

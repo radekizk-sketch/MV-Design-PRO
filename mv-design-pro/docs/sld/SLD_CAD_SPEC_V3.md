@@ -641,8 +641,9 @@ jako WARSTWA ADNOTACJI schematu.
 
 ### 17.6 Zakres globalny i koordynacja międzywątkowa
 
-- Konwencja obowiązuje render v3 (docelowy); v2 GPZ już rysuje `protection_codes`
-  (`GpzSwitchgearRenderer`) — semantyka wspólna, parytet wymagany przy F8c (§10).
+- Konwencja obowiązuje render v3 (jedyny renderer od karty GPZ-PARYTET cz. 2, 2026-10-21 —
+  dawny renderer rozdzielni GPZ v2 rysujący `protection_codes` skasowany; kody zabezpieczeń GPZ
+  rysuje v3 wg doprecyzowań F9.9/F11.1 poniżej).
 - **Doprecyzowanie (rozstrzygnięcie architekta, runda korekcyjna F9.9) — ZNIESIONE w F11.1:** w GPZ
   v3 rysowany był w F9.9 SAM OKRĄG przekaźnika z kodami (`CanonicalGpzBay.protectionCodes`), BEZ
   toru wyzwalania — kompozycja GPZ nie śledziła `deviceRef` per aparat, więc tor bez rejestru

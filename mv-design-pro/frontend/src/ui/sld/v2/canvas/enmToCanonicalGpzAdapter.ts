@@ -6,7 +6,9 @@
  *   - Brak danych → jawne `null` (nie „—", nie „GPZ 1", nie „TR1", nie napięcie domyślne).
  *   - Auto-syntezuje sekcję 1 gdy `gpz_sections=[]` ale są pola bez `gpz_section_id`.
  *   - Mapuje wszystkie aparaty per `BAY_DEVICE_ORDER_POLICY`.
- *   - Stan aparatów wyłącznie z rekordu źródła runtime (brak → nieznany).
+ *   - Stan aparatów wyłącznie z modelu: `status` gałęzi łączeniowych pola, rozstrzygany
+ *     rekordem aparatu (`v2/model/stanAparatowPola.ts`, jedna funkcja ze stacjami; brak →
+ *     nieznany).
  *   - Zero przeszukiwania topologii: pomiar zacisku pola i bilans GPZ wyznacza backend
  *     (wiersze `Bay`/`Substation` wyniku rozpływu, `enm/wyniki_pol_gpz.py`).
  *
@@ -15,7 +17,7 @@
 
 import type {
   Bay,
-  BayDeviceState,
+  Branch,
   Bus,
   EnergyNetworkModel,
   Source,
@@ -34,8 +36,8 @@ import type {
   CanonicalGpzTransformer,
   GpzStatusFlag,
   RolaPolaGpz,
-  SwitchState,
 } from './canonicalGpzModel';
+import { stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -102,9 +104,14 @@ export function buildCanonicalGpzProps(
   // F11.1: kontekst rejestru device-ref przekazywany DALEJ do `buildBay` —
   // WYŁĄCZNIE pola faktycznie czytane przez `resolveBayProtectionMarking`/
   // `resolveBayCtRatingAnnotations` (`enmToSldAdapter.ts`).
-  const protectionCtx: Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> = {
+  // GPZ-PARYTET cz. 2 (pkt 2): gałęzie migawki wg refu — stan łączników pól z ich `status`.
+  const galezieWgRef: ReadonlyMap<string, Branch> = new Map(
+    (enm.branches ?? []).map((galaz) => [galaz.ref_id, galaz]),
+  );
+  const protectionCtx: ProtectionCtx = {
     protection_assignments: enm.protection_assignments ?? [],
     measurements: enm.measurements ?? [],
+    galezieWgRef,
   };
 
   const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], protectionCtx);
@@ -140,7 +147,7 @@ export function buildCanonicalGpzProps(
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
     snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
-    couplers: buildCouplers(substation, allBays),
+    couplers: buildCouplers(substation, allBays, galezieWgRef),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
     // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
@@ -325,7 +332,10 @@ export function extractTransformerDesignation(name: string | null | undefined, i
 /** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
  *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
-type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'>;
+type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> & {
+  /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
+  readonly galezieWgRef: ReadonlyMap<string, Branch>;
+};
 
 function buildLvSections(
   gpz: Substation,
@@ -456,7 +466,7 @@ function buildHvSections(
 
 function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
   const fieldRole = mapBayRoleToFieldRole(bay.bay_role);
-  const runtime = bay.runtime_state ?? null;
+  const stany = stanyAparatowPolaZModelu(bay, protectionCtx.galezieWgRef);
   return {
     bayRef: bay.ref_id,
     bayNumber: bay.bay_number ?? null,
@@ -464,9 +474,9 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     destinationLabel: bay.outgoing_destination_ref ? `→ ${bay.outgoing_destination_ref}` : null,
     fieldRole,
     rolaPola: rolaPolaGpz(bay.bay_role),
-    cbState: extractApparatusState(runtime, 'cb'),
-    dsState: extractApparatusState(runtime, 'ds_lin'),
-    esState: extractEsState(runtime),
+    cbState: stany.cbState,
+    dsState: stany.dsState,
+    esState: stany.esState,
     qDesignations: deriveQDesignations(fieldRole),
     statusFlags: flagiStatusuPola(bay),
     protectionCodes: bay.protection_codes ?? [],
@@ -475,7 +485,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
     // pierwotnych, przypisań zabezpieczeń i pomiarów w modelu daje tu `undefined` —
     // „brak danych = brak rysunku" (spec §17.2).
-    primaryDevices: projectBayPrimaryDevices(bay),
+    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
     // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu
@@ -484,7 +494,11 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
   };
 }
 
-function buildCouplers(gpz: Substation, bays: readonly Bay[]): CanonicalGpzCoupler[] {
+function buildCouplers(
+  gpz: Substation,
+  bays: readonly Bay[],
+  galezieWgRef: ReadonlyMap<string, Branch>,
+): CanonicalGpzCoupler[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   if (sectionDefs.length < 2) return [];
   const couplerBaysByRef = new Map<string, Bay>();
@@ -507,7 +521,7 @@ function buildCouplers(gpz: Substation, bays: readonly Bay[]): CanonicalGpzCoupl
       leftSectionId: left.section_id,
       rightSectionId: right.section_id,
       designation: couplerBay.name || couplerBay.ref_id,
-      closedState: extractApparatusState(couplerBay.runtime_state ?? null, 'cb') ?? 'unknown',
+      closedState: stanyAparatowPolaZModelu(couplerBay, galezieWgRef).glownyLacznik,
     });
   }
   return couplers;
@@ -549,56 +563,6 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
     case 'MEASUREMENT':
       return { dsBus: 'Q1', es: 'Q8' };
   }
-}
-
-/* =============================================================================
-   Runtime state extraction (SCADA telemetry)
-   ============================================================================= */
-
-function extractApparatusState(
-  runtime: { primary_device_states?: Record<string, { actual_state: BayDeviceState }> } | null,
-  category: 'cb' | 'ds_lin' | 'ds_bus' | 'es',
-): SwitchState | undefined {
-  if (!runtime?.primary_device_states) return undefined;
-  const keys = Object.keys(runtime.primary_device_states).sort();
-  for (const key of keys) {
-    const lower = key.toLowerCase();
-    if (matchCategory(lower, category)) {
-      return mapDeviceStateToSwitch(runtime.primary_device_states[key].actual_state);
-    }
-  }
-  return undefined;
-}
-
-function matchCategory(key: string, category: 'cb' | 'ds_lin' | 'ds_bus' | 'es'): boolean {
-  if (category === 'ds_bus') return key.includes('ds_bus') || key.includes('dsbus');
-  if (category === 'ds_lin') return key.includes('ds_lin') || key.includes('dslin') || (key.includes('_ds') && !key.includes('ds_bus'));
-  if (category === 'cb') return key.includes('_cb') || key.endsWith('cb') || key.endsWith('breaker');
-  if (category === 'es') return key.includes('_es') || key.endsWith('es') || key.endsWith('earthing');
-  return false;
-}
-
-function mapDeviceStateToSwitch(state: BayDeviceState | undefined): SwitchState | undefined {
-  if (!state) return undefined;
-  switch (state) {
-    case 'zamkniety':
-    case 'zamkniety_naped_rozbrojony':
-      return 'closed';
-    case 'otwarty':
-    case 'otwarty_naped_rozbrojony':
-      return 'open';
-    case 'nieznany':
-    case 'awaria':
-      return 'unknown';
-  }
-}
-
-function extractEsState(
-  runtime: { primary_device_states?: Record<string, { actual_state: BayDeviceState }> } | null,
-): CanonicalGpzBay['esState'] {
-  const state = extractApparatusState(runtime, 'es');
-  if (state === undefined) return 'unknown';
-  return state;
 }
 
 /**

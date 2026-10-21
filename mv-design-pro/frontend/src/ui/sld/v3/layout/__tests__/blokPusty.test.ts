@@ -46,7 +46,7 @@ import { GRID } from '../../core/grid';
 import { measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { prostokatElementuWScenie } from '../../canvas/viewAnchor';
 import { composeStation, type ComposeStationInput } from '../../compose/station';

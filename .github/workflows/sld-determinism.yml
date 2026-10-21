@@ -57,10 +57,6 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v2/__tests__/LodPolicy.test.ts --reporter=verbose
 
-      - name: Run renderers contract tests
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v2/__tests__/renderers.test.tsx --reporter=verbose
-
       - name: Run port-anchored geometry substrate tests (live render path)
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose

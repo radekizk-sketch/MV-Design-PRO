@@ -282,9 +282,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     render(<KreatorZrodlaOze />);
     // Krok 2: wybór falownika z katalogu.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     // Aparat nowego pola (krok 1 był domyślnie NEW_FIELD) — wróć i uzupełnij.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
@@ -325,7 +325,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
   async function wypelnijDoZgodnosci(): Promise<string> {
     render(<KreatorZrodlaOze />);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
@@ -394,9 +396,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     ]);
     render(<KreatorZrodlaOze />);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-ksc-a"]')).not.toBeNull(),
+    );
 
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-ksc-a');
     await waitFor(() => {
@@ -474,7 +476,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
 
     render(<KreatorZrodlaOze />);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
@@ -503,7 +507,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorZrodlaOze />);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
@@ -512,7 +518,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     for (let i = 0; i < 5; i += 1) {
       await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     }
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle').querySelector('option[value="nie"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
 
@@ -532,9 +540,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     });
     render(<KreatorZrodlaOze />);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
@@ -833,7 +841,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
     // katalog: falownik.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     // aparatura: CT, VT, zabezpieczenie (katalog) + model dynamiczny (katalog, karta FAB-L).
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
@@ -856,13 +866,17 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf'), 'pf_droop_5');
     // regulacja: tryb pracy + limity Q.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb-pracy')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-tryb-pracy').querySelector('option[value="praca_sieciowa"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb-pracy'), 'praca_sieciowa');
     await userEvent.type(screen.getByTestId('mvd-kreator-oze-qmin'), '-0.2');
     await userEvent.type(screen.getByTestId('mvd-kreator-oze-qmax'), '0.2');
     // zapis (bez auto-biegu — sekwencja mierzalna deterministycznie).
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle').querySelector('option[value="nie"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
 
@@ -924,7 +938,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await screen.findByRole('option', { name: /Wyłącznik nN/ });
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
@@ -934,7 +950,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle').querySelector('option[value="nie"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
 

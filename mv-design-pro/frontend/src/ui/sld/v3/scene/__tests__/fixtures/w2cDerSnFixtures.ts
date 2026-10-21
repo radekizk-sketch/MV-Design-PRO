@@ -240,7 +240,10 @@ export function injectDerSnChain(
     blocking_transformer_ref: opts.withoutBlockTransformer ? null : blockTrRef,
     catalog_ref: `conv-${tech.toLowerCase()}-04kv`,
     tags: [],
-    meta: { der_mv_field_ref: ozeFieldRef },
+    // Kształt operacji backendu (`domain_operations_v2`, krok 6): relacja wytwórcy z polem
+    // pod kluczem `field_ref` (`enm.pola.KLUCZ_POLA_WYTWORCY`) ORAZ `der_mv_field_ref`
+    // toru SN — oba zapisuje ta sama operacja.
+    meta: { field_ref: ozeFieldRef, der_mv_field_ref: ozeFieldRef },
   } as unknown as EnergyNetworkModel['generators'][number]);
 
   return {

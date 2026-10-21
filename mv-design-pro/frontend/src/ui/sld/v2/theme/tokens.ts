@@ -42,66 +42,22 @@ export const COLOR_REPORT_READY = '#13C45A' as const; // raport gotowy
 export const COLOR_REPORT_BLOCKED = '#FF333D' as const; // raport zablokowany
 
 /* ---------------------------------------------------------------------------
-   SCADA-grade badge & decoration tokens (Phase 0A refinement)
-   Wzorowane na ekranach dyspozytorskich Energa / Tauron / PSE.
+   Kierunek przepływu mocy transformatora (Phase 0A refinement)
    --------------------------------------------------------------------------- */
 
-/** Tło żółtego badge'a (SPZ, ARN, SZR — auto-funkcje aktywne). */
-export const COLOR_BADGE_BG_YELLOW = '#E5C828' as const;
-/** Tło białego/jasnego badge'a (OWG, BKR, STYCZ. — przekaźniki). */
-export const COLOR_BADGE_BG_LIGHT = '#D8DEE3' as const;
-/** Tło czerwonego badge'a (SCO/NZ/LRW Zabl. — blokada/wyłączenie). */
-export const COLOR_BADGE_BG_RED = '#7A1414' as const;
-/** Tekst badge'a na żółtym/jasnym tle (czarny). */
-export const COLOR_BADGE_TEXT_DARK = '#0B0E11' as const;
-/** Status row "Zal." (zał./pracuje) — zielony. */
-export const COLOR_BADGE_STATUS_OK = '#2DB54E' as const;
-/** Status row "Odbl." (odblokowane / w gotowości) — szary. */
-export const COLOR_BADGE_STATUS_NEUTRAL = '#9CA3A8' as const;
-/** Status row "Odst./Zabl." (odstawione / zablokowane) — czerwony. */
-export const COLOR_BADGE_STATUS_BLOCKED = '#FF4D4D' as const;
-/** Kropka LED przycisku KAS (żółty — kanon Energa, kasowanie sygnalizacji). */
-export const COLOR_KAS_LED = '#E5C828' as const;
-/** Tło pola w stanie manipulacji (oliwkowe/żółte). */
-export const COLOR_MANIPULATION_BG = '#5C5512' as const;
-/** Marker zwarcia doziemnego (cyan/turkus — kanon SCADA). */
-export const COLOR_GROUND_FAULT = '#35E1FF' as const;
-/** Strzałka kierunku przepływu mocy TR — eksport (od SN do 110 kV). Żółty. */
-export const COLOR_TR_FLOW_UP = '#E5C828' as const;
 /** Strzałka kierunku przepływu mocy TR — import (z 110 kV do SN). Magenta. */
 export const COLOR_TR_FLOW_DOWN = '#FF7AC1' as const;
-/** Wartość pomiaru w panelu — biel monoszpaltowa. */
-export const COLOR_MEASUREMENT_VALUE = '#FFFFFF' as const;
 
 /* ---------------------------------------------------------------------------
    Bus voltage palette (kanon SCADA: rozróżnienie szyn po napięciu)
    Czerwony = alarm/zwarcie (NIE napięcie); biały/szary HV; cyan LV.
    --------------------------------------------------------------------------- */
 
-/** Szyna 110 kV / WN — biały jasny (kanon Energa/Tauron, nie kolizyjny z alarmem). */
-export const COLOR_BUS_HV = '#F2F4F6' as const;
 /** Szyna 15/30 kV (SN) — zielony tor operatorski zgodny z widokiem sieci SN. */
 export const COLOR_BUS_LV = '#13C45A' as const;
-/** Tekst etykiety napięcia szyny — jasnoszary z cieniowaniem. */
-export const COLOR_BUS_LABEL = '#C8CDD2' as const;
 /** Magistrala sieci terenowej (trunk) — zielony przy zasilaniu, neutral przy braku danych. */
 export const COLOR_FIELD_TRUNK_ENERGIZED = '#13C45A' as const;
 export const COLOR_FIELD_TRUNK_NEUTRAL = '#7E8790' as const;
-
-/* ---------------------------------------------------------------------------
-   Per-role bay colors (Phase 0A audit fix 10/12 — operator-grade per OSD)
-   Tła kolumn pól per FieldRole. Operator szybko odróżnia klasę pola
-   w gęsto upakowanej rozdzielni.
-   --------------------------------------------------------------------------- */
-
-/** Pole liniowe (LINE_IN/OUT/BRANCH, GPZ_LINE_BAY, RMU_LINE) — neutralny ciemny. */
-export const COLOR_BAY_LINE = '#171B20' as const;
-/** TRANSFORMER/RMU_TRANSFORMER — niebieski subtelny (rozróżnienie pola TR). */
-export const COLOR_BAY_TR = '#1A2438' as const;
-/** MEASUREMENT — żółtawy subtelny (rozróżnienie pola PN). */
-export const COLOR_BAY_MEASUREMENT = '#2A2616' as const;
-/** COUPLER — szary (rozróżnienie sprzęgła). */
-export const COLOR_BAY_COUPLER = '#1F2226' as const;
 
 /** Pełen rejestr kolorów dla theme provider / tests. */
 export const SLD_V2_COLORS = {
@@ -133,16 +89,6 @@ export const SLD_V2_COLORS = {
    Wymiary geometryczne (brief §6 + §7 + §9, w pikselach world space)
    --------------------------------------------------------------------------- */
 
-export const STROKE_BUSBAR_PX = 3 as const; // szyna główna
-export const STROKE_FIELD_TRACK_PX = 2 as const; // tor pola
-export const STROKE_GROUND_BRANCH_PX = 2 as const; // gałąź uziemnika
-export const STROKE_BRANCH_LINE_PX = 2.5 as const; // linia odgałęzienia (cieńsza niż trunk)
-// V-05: magistrala = CIENKA precyzyjna linia szyny, nie gruby marker. Subtelna
-// dominacja toru mocy (delikatnie grubsza od szyny 3 / odgałęzienia 2.5) wg AC-01,
-// bez „krzyczącej" grubości 8 px, która łamała jeden język wizualny (V-02).
-export const STROKE_TRUNK_LINE_PX = 3.5 as const;
-export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
-
 /**
  * SLD STROKE HIERARCHY — per AC-01 (SLD_VISUAL_ACCEPTANCE_CRITERIA.md):
  * AC-01: "tor mocy czytelny — różne grubości linii"
@@ -170,18 +116,6 @@ export const SLD_STROKE_PX = {
 } as const;
 
 export type SldStrokeRole = keyof typeof SLD_STROKE_PX;
-
-export const NODE_DOT_SIZE_PX = 8 as const; // węzeł połączeniowy (zakres 7–9)
-export const DEVICE_BLOCK_SMALL = { width: 38, height: 54 } as const; // mały blok aparatu
-export const DEVICE_BLOCK_STANDARD = { width: 46, height: 64 } as const; // standardowy blok aparatu
-export const DEVICE_GAP_PX = 3 as const; // odstęp aparatów w polu (zakres 2–4)
-export const FIELD_GAP_PX = 120 as const; // odstęp pól (zakres 110–140)
-
-export const CABLE_HEAD_TRIANGLE_PX = 20 as const; // głowica kablowa (zakres 18–22)
-export const CT_SIZE_PX = 32 as const; // przekładnik prądowy (zakres 28–36)
-export const VT_SIZE_PX = 36 as const; // przekładnik napięciowy (zakres 32–40)
-export const TRANSFORMER_SIZE_PX = 48 as const; // transformator (zakres 42–56)
-export const FIELD_MEASUREMENT_PANEL_WIDTH_PX = 140 as const; // panel pomiarowy pola (120–160)
 
 /* ---------------------------------------------------------------------------
    Hierarchical layout grid (PR-5 — slot system)

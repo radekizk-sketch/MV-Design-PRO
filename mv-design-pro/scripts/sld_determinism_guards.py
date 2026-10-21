@@ -6,7 +6,8 @@ Po pełnym wygaszeniu starego pipeline (Sugiyama + A* + ELK + V1 layoutPipeline)
 ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
 
 1. Wymagany szkielet katalogowy (theme/geometry/builder/viewport/lod/canvas/renderer/command/core/domain).
-2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, LodPolicy, renderers, portAnchoredGeometry.substrate).
+2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, LodPolicy, portAnchoredGeometry.substrate;
+   dawny `renderers` skasowany z rendererami v2 — karta GPZ-PARYTET cz. 2).
 3. Brak importu wygaszonych modułów (Sugiyama, A*, ELK, sldCanonicalStyle, IndustrialAesthetics, layoutPipeline V1, SLDView).
 4. Brak importu wygaszonego pakietu `elkjs` w package.json.
 5. Brak fabrykacji ID/czasu w builder/ (crypto.randomUUID/Date.now/Math.random).
@@ -37,7 +38,6 @@ REQUIRED_V2_DIRS = [
     "ui/sld/v2/viewport",
     "ui/sld/v2/lod",
     "ui/sld/v2/canvas",
-    "ui/sld/v2/renderer",
     "ui/sld/v2/command",
     "ui/sld/v2/core",
     "ui/sld/v2/domain",
@@ -49,7 +49,6 @@ REQUIRED_V2_TESTS = [
     "ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts",
     "ui/sld/v2/__tests__/ViewportController.test.ts",
     "ui/sld/v2/__tests__/LodPolicy.test.ts",
-    "ui/sld/v2/__tests__/renderers.test.tsx",
     # Live render-path geometry determinism (dawny visualFixtures na martwym
     # silniku usunięty — teraz port-anchored substrate żywej ścieżki renderu).
     "ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts",

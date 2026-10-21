@@ -32,7 +32,7 @@
  *
  * DECYZJA (`GENERATOR_*`/`PCS`/`BATTERY` w `primary_devices`): to nie są
  * aparaty POLA (są źródłem/DER, renderowanym osobno, `derPv`/`derBess`/
- * `derGenerator` przez `apparatusSymbolsForRole` dla pól DER) — mapują się na
+ * `derWind`/`derUnknown` przez `apparatusSymbolsForRole` dla pól DER) — mapują się na
  * `null` i są odfiltrowane ze stosu aparatów (mirror `BAY_PRIMARY_DEVICE_TO_
  * APPARATUS` w `v2/domain/apparatusContracts.ts`, ten sam podział).
  */
@@ -40,7 +40,7 @@
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import type { BayPrimaryDeviceKind } from '../../../../types/enm';
 
 /** Znacznik pochodzenia stosu aparatów (spec §12.1, audytor DOM
@@ -71,7 +71,11 @@ export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
   }
   if (role === FIELD_ROLE.DER_PV) return ['derPv'];
   if (role === FIELD_ROLE.DER_BESS) return ['derBess'];
-  if (role === FIELD_ROLE.DER_FW) return ['derGenerator'];
+  // GPZ-PARYTET cz. 2 (pkt 3): rodzaj źródła pola z modelu — farma wiatrowa glifem turbiny
+  // (ten sam co `DER_SOURCE_KIND_SYMBOL.wind`), źródło nierozstrzygnięte glifem źródła
+  // nieokreślonego (nie PV, nie generator).
+  if (role === FIELD_ROLE.DER_FW) return ['derWind'];
+  if (role === FIELD_ROLE.DER_UNKNOWN) return ['derUnknown'];
   if (role === FIELD_ROLE.MEASUREMENT) {
     // pole pomiarowe (spec §12.4): DS → VT → ES.
     return ['disconnector', 'voltageTransformer', 'earthSwitch'];

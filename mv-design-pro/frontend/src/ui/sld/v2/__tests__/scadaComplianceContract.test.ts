@@ -72,16 +72,18 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
       expect(fileExists('ui/sld/v3/lv-domain/LvDomainView.tsx')).toBe(true);
     });
 
-    it('MiniBlockRmuRenderer renderuje stacje RMU (pola WE/WY/TR)', () => {
-      expect(fileExists('ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx')).toBe(true);
+    // GPZ-PARYTET cz. 2 (pkt 4): renderery v2 stacji (`MiniBlockRmuRenderer`,
+    // `BayColumnSn`, `BayColumnLv` i cały katalog `v2/renderer/`) skasowane — żaden
+    // ekran ich nie renderował (graf importów z `main.tsx`: adapter czytał z nich
+    // wyłącznie typy i dwie stałe, przeniesione do `v2/model/`). Intencja testu
+    // (stacja SN/nN z polami WE/WY/TR ma działający renderer) bez zmian, tylko plik:
+    // kompozycja stacji kanwy v3.
+    it('kompozycja stacji v3 rysuje pola SN stacji (WE/WY/TR)', () => {
+      expect(fileContains('ui/sld/v3/compose/station.ts', 'export function composeStation')).toBe(true);
     });
 
-    it('BayColumnSn renderuje tor pola SN', () => {
-      expect(fileExists('ui/sld/v2/renderer/BayColumnSn.tsx')).toBe(true);
-    });
-
-    it('BayColumnLv renderuje stronę nN', () => {
-      expect(fileExists('ui/sld/v2/renderer/BayColumnLv.tsx')).toBe(true);
+    it('renderery v2 nie wracają (jedna ścieżka renderu)', () => {
+      expect(fileExists('ui/sld/v2/renderer')).toBe(false);
     });
   });
 

@@ -52,9 +52,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-lacznik-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-lacznik-katalog').querySelector('option[value="app-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-katalog'), 'app-1');
 }
 

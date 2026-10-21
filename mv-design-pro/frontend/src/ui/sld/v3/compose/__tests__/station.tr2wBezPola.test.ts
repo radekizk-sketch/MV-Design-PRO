@@ -32,7 +32,7 @@ import { describe, expect, it } from 'vitest';
 import { GRID, snapUp } from '../../core/grid';
 
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { computeBands, type StationBandHeights } from '../../layout/bands';
 import { computeColumns } from '../../layout/columns';
 import {
@@ -395,7 +395,15 @@ describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta'
   it('BEZ markera i BEZ śladu braku pola (transformator ma swoje pole)', () => {
     const c = compose(zPolem);
     expect(transformatory(c).every((s) => s.transformerFieldGap === undefined)).toBe(true);
-    expect(c.missingData.filter((m) => m.startsWith('station.transformer.'))).toEqual([]);
+    // Intencja: brak śladu BRAKU POLA. Wpis o grupie połączeń (`station.transformer.
+    // vector_group.*`, GPZ-PARYTET cz. 2 pkt 1) to inna dana — tu pole nie przekazuje
+    // grupy, więc jest jawny brak grupy, nie brak pola.
+    expect(
+      c.missingData.filter((m) => m.startsWith('station.transformer.') && !m.startsWith('station.transformer.vector_group.')),
+    ).toEqual([]);
+    expect(c.missingData.filter((m) => m.startsWith('station.transformer.vector_group.missing:'))).toHaveLength(
+      transformatory(c).length,
+    );
   });
 
   it('pasmo nazw NIE niesie zdania o braku pola w ŻADNYM wariancie (treść żyje w podpowiedzi)', () => {
@@ -427,5 +435,21 @@ describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta'
     const portalOverhang = Math.max(0, plan.portalCenterX + LV_PORTAL_WIDTH / 2 - (GRID + stationBlockWidth(zTr)));
     expect(portalOverhang).toBe(0);
     expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(snapUp(40));
+  });
+});
+
+describe('GPZ-PARYTET cz. 2 (pkt 1): jawny brak grupy połączeń transformatora stacji', () => {
+  const zGrupa = (grupa: string | null) =>
+    compose(jednaSekcja([{ ...trUnit('tr/1', SEKCJA_A, null), vectorGroup: grupa }]));
+
+  it.each([
+    ['Dyn11', 'znane', null],
+    [null, 'brak', 'station.transformer.vector_group.missing:tr/1'],
+    ['Dyx', 'nierozpoznane', 'station.transformer.vector_group.unrecognized:tr/1'],
+  ] as const)('grupa %s → uzwojenia %s, wpis braku %s', (grupa, stan, wpis) => {
+    const c = zGrupa(grupa);
+    expect(transformatory(c).map((s) => s.uzwojenia?.stan)).toEqual([stan]);
+    const wpisy = c.missingData.filter((k) => k.startsWith('station.transformer.vector_group.'));
+    expect(wpisy).toEqual(wpis ? [wpis] : []);
   });
 });

@@ -75,9 +75,9 @@ vi.mock('../../../../ui/network-build/forms/shuntCompensatorPreviewApi', () => (
 }));
 
 async function pickType() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-kompensator-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-kompensator-katalog').querySelector('option[value="KOMP_SN_1V2_15KV"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-kompensator-katalog'), 'KOMP_SN_1V2_15KV');
 }
 

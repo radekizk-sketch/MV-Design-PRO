@@ -115,6 +115,7 @@ export default {
           'earth':        tokenMvd('earth'),        /* ziemia/metal */
           'text':         tokenMvd('ink'),          /* tekst główny */
           'muted':        tokenMvd('muted'),        /* tekst pomocniczy */
+          'accent':       tokenMvd('accent'),       /* akcent akcji (odnośnik, fokus) */
           'active':       tokenMvd('active'),       /* aktywna pozycja nawigacji */
           'hover-nav':    tokenMvd('hover-nav'),    /* hover w nawigacji */
         },

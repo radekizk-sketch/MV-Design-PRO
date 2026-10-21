@@ -27,7 +27,7 @@ import {
   symbolIdForPrimaryDeviceKind,
 } from '../apparatusSequence';
 
-const DER_ROLES = new Set<string>([FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW]);
+const DER_ROLES = new Set<string>([FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW, FIELD_ROLE.DER_UNKNOWN]);
 
 function kindsForStack(stack: readonly string[]): BayPrimaryDeviceKind[] {
   return stack.map((symbolId) => {

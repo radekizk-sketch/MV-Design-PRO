@@ -42,7 +42,7 @@ export interface StationDerSourceInput {
   readonly ratedPower?: number | null;
   /** F8b-1 (f92-2)/F9.4 (§13.1): `true` dla `kind==='unknown'` (gen_type
    *  nierozpoznany) — źródło NIE zginęło bez śladu (§13.1 wymaganie), ale
-   *  jego rodzaj jest honest-unknown (fallback glif `derGenerator`, ZERO
+   *  jego rodzaj jest nierozstrzygnięty (glif źródła nieokreślonego `derUnknown`, ZERO
    *  fabrykacji realnego rodzaju). */
   readonly missingData?: boolean;
   /** F11.3 (spec §13.3): stan operacyjny źródła — 1:1 z
@@ -81,6 +81,9 @@ export interface DerSnBlockTransformer {
   readonly primaryVoltageKv?: number;
   /** Napięcie dolne [kV] (`Transformer.ulv_kv`) — strona nN producenta. */
   readonly secondaryVoltageKv?: number;
+  /** GPZ-PARYTET cz. 2 (pkt 1): `Transformer.vector_group` TR blokowego — oznaczenie
+   *  uzwojeń glifu (`symbols/uzwojenia.ts`); `null`/brak = jawny brak grupy. */
+  readonly vectorGroup?: string | null;
 }
 
 /**
@@ -187,30 +190,20 @@ export function isSourceOperationalState(value: unknown): value is SourceOperati
 }
 
 /**
- * F9.4 (§13.2 `source_symbol_probe`): każdy `DerSourceKind` ROZPOZNANY
- * (pv/bess/generator/wind) mapuje na UNIKALNY glif. `'unknown'` jest
- * WYJĄTKIEM UDOKUMENTOWANYM (STOP-notatka raportu F9.4): spec §13.2
- * definiuje symbole dla rodzajów ROZPOZNANYCH i nie przewiduje piątego glifu
- * dla „typu nieznanego" — fallback na `derGenerator` (glif generyczny) +
- * `missingData=true` w meta sceny (adnotacja audytora, NIE fabrykacja
- * rodzaju). Injektywność `DER_SOURCE_KIND_SYMBOL` dla rodzajów rozpoznanych
- * (pv/bess/generator/wind → cztery różne `SymbolId`) jest dowodliwa WPROST
- * z tej tabeli (cztery różne klucze, cztery różne wartości) — nie wymaga
- * osobnej wyroczni sceny; `unknown` DZIELI `derGenerator` z `generator`,
- * WYJĄTEK udokumentowany wyżej, jawnie wyłączony z tego dowodu (dokumentacja,
- * nie luka wyroczni). F9.4 (runda korekcyjna po recenzji Opusa): wcześniejsza
- * wersja tego akapitu przypisywała dowód funkcji `sourceKindSymbolsAreInjective`
- * (`scene/buildScene.ts`) — TAKA funkcja NIGDY nie istniała (wyrocznia-widmo).
- * Realne wyrocznie widoczności/ciągłości źródeł (§13.1/§14.1) to
- * `sourceCoverageGaps`/`allSourcesVisible` i `sourceConnectivityGaps`/
- * `allSourcesConnected` (`scene/buildScene.ts`, runda korekcyjna F9.4).
+ * F9.4 (§13.2 `source_symbol_probe`) + GPZ-PARYTET cz. 2 (pkt 3): KAŻDY `DerSourceKind`
+ * mapuje na UNIKALNY glif — także `'unknown'`, który ma własny glif źródła nieokreślonego
+ * (`derUnknown`). Dawny wyjątek („`unknown` dzieli `derGenerator` z `generator`") rysował
+ * źródło nierozstrzygnięte jak generator synchroniczny, czyli rodzaj, którego model nie
+ * niesie — zniesiony. Realne wyrocznie widoczności/ciągłości źródeł (§13.1/§14.1) to
+ * `sourceCoverageGaps`/`allSourcesVisible` i `sourceConnectivityGaps`/`allSourcesConnected`
+ * (`scene/buildScene.ts`).
  */
 const DER_SOURCE_KIND_SYMBOL: Readonly<Record<DerSourceKind, SymbolId>> = {
   pv: 'derPv',
   bess: 'derBess',
   generator: 'derGenerator',
   wind: 'derWind',
-  unknown: 'derGenerator',
+  unknown: 'derUnknown',
 };
 
 export function symbolIdForSourceKind(kind: DerSourceKind): SymbolId {
@@ -218,19 +211,13 @@ export function symbolIdForSourceKind(kind: DerSourceKind): SymbolId {
 }
 
 /**
- * F9.7 (spec §13.2 `source_symbol_probe`) — realizacja PRAWDZIWA funkcji, o
- * której istnieniu wcześniejsza wersja tego docstringu (wyżej) BŁĘDNIE
- * twierdziła („wyrocznia-widmo", naprawione w rundzie korekcyjnej F9.4 przez
- * USUNIĘCIE fałszywego odwołania — patrz akapit wyżej). Ta funkcja domyka
- * lukę wyroczniową na `accept:sld-v3` (audyt kompletności F9.7, spec §11
- * pozycja 10): dowodzi injektywność `DER_SOURCE_KIND_SYMBOL` dla rodzajów
- * ROZPOZNANYCH (`unknown` jest udokumentowanym wyjątkiem — dzieli glif z
- * `generator`, WYŁĄCZONY z dowodu, patrz akapit wyżej) I sprawdza, że żaden
- * rozpoznany rodzaj DER nie dzieli glifu z `gridSource` (sieć zewnętrzna,
- * `compose/gpz.ts` — odrębna przestrzeń `source_kind`, spec §13.1/§13.2).
+ * F9.7 (spec §13.2 `source_symbol_probe`): dowód injektywności `DER_SOURCE_KIND_SYMBOL`
+ * dla WSZYSTKICH rodzajów (z `unknown` — GPZ-PARYTET cz. 2, pkt 3) i rozłączności glifów DER
+ * z `gridSource` (sieć zewnętrzna, `compose/gpz.ts` — odrębna przestrzeń `source_kind`).
+ * Wyrocznia `accept:sld-v3` (spec §11 pozycja 10).
  */
 export function sourceKindSymbolsAreInjective(): boolean {
-  const recognized: readonly DerSourceKind[] = ['pv', 'bess', 'generator', 'wind'];
+  const recognized: readonly DerSourceKind[] = ['pv', 'bess', 'generator', 'wind', 'unknown'];
   const symbolIds = recognized.map((k) => DER_SOURCE_KIND_SYMBOL[k]);
   const allUnique = new Set(symbolIds).size === symbolIds.length;
   const noOverlapWithGridSource = !symbolIds.includes('gridSource' as SymbolId);
@@ -250,7 +237,7 @@ export const DER_SOURCE_KIND_LABEL_PL: Readonly<Record<DerSourceKind, string>> =
 /**
  * Formatowanie mocy DER wejściowej w [MW] (spec §4) — konwencja
  * przecinka/jednostki jak `formatTransformerRatedPower`
- * (`v2/renderer/StationOnRunRenderer.tsx`, próg 1 MW/1000 kVA), zastosowana
+ * (`v2/model/widokSld.ts`, próg 1 MW/1000 kVA), zastosowana
  * do INNEJ jednostki wejściowej (MW, nie kVA — `SldSourceView.ratedPower`
  * jest już w MW, zero konwersji zgadywanej).
  */

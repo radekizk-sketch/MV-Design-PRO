@@ -204,7 +204,10 @@ def test_zacisk_pola_z_konca_galezi_lezacego_w_punkcie_pola(siec: Any, koniec: s
 @pytest.mark.parametrize("przylaczenie", ["fizyczne_1", "fizyczne_2", "korytarz_1", "korytarze_2"])
 def test_element_pola_wylacznie_z_jednoznacznej_zajetosci(siec: Any, przylaczenie: str) -> None:
     """Pole → element rozstrzyga ``enm.zajetosc_pol`` (R1/R2 fizycznie, R3/R4 przez korytarz);
-    niejednoznaczność (dwa odcinki, dwa korytarze) = brak wielkości toru i brak sumy odpływów."""
+    niejednoznaczność (dwa odcinki, dwa korytarze) = brak wielkości toru pola. Bilans odpływów
+    NIE zależy od przypisania do pól (GPZ-PARYTET cz. 2, pkt 5): liczy go granica węzła
+    elektrycznego stacji — drugi odcinek fizyczny bez wiersza wyniku = bilans niekompletny,
+    drugi korytarz nie zmienia granicy."""
     migawka = copy.deepcopy(siec[0])
     stacja, pole, pierwszy, zrodlo = _dane(migawka)
     szyna = _szyna_sn(migawka)
@@ -228,10 +231,12 @@ def test_element_pola_wylacznie_z_jednoznacznej_zajetosci(siec: Any, przylaczeni
     bilans = wiersze[stacja]["values"]
     if przylaczenie in ("fizyczne_1", "korytarz_1"):
         assert wartosci["feeder_ref"] == pierwszy
-        assert bilans["p_feeders_mw"] == 1.0
     else:
         assert set(wartosci) == {"u_kv"}
+    if przylaczenie == "fizyczne_2":
         assert "p_feeders_mw" not in bilans and "q_feeders_mvar" not in bilans
+    else:
+        assert (bilans["p_feeders_mw"], bilans["q_feeders_mvar"]) == (1.0, 0.5)
     # Zasilanie nie zależy od rozstrzygnięcia odpływów.
     assert bilans["p_supply_mw"] == 2.0
 

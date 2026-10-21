@@ -63,6 +63,7 @@ import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/gri
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
 import type { SwitchState } from '../symbols/glyphs';
+import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import {
@@ -103,7 +104,7 @@ import {
   type StationNameBandRow,
 } from '../layout/labels';
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import { fieldCaptionAt, isLineLikeRole } from './directions';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
@@ -323,8 +324,8 @@ export interface ComposedSymbolInstance {
    *  adapter v2 → `StationDerSourceInput.kind`) przepisany 1:1 — WYŁĄCZNIE dla
    *  symboli DER (`sourceRef` obecny). REALNA wartość z łańcucha danych
    *  (`Generator.gen_type` → `mapGeneratorToSourceKind`), NIE re-derywacja z
-   *  `symbolId` (ta byłaby niejednoznaczna: `generator`/`unknown` dzielą glif
-   *  `derGenerator`, patrz `compose/sourceKind.ts` `DER_SOURCE_KIND_SYMBOL`).
+   *  `symbolId` (rodzaj jest daną modelu, glif — jej rysunkiem; tabela
+   *  `compose/sourceKind.ts` `DER_SOURCE_KIND_SYMBOL`).
    *  `undefined` dla symboli nie-DER. Konsument: `scene/buildScene.ts` →
    *  `PreviewElementMeta.derKind` → menu kontekstowe podtypu na v3
    *  (`SldCanvasV3Workspace.elementKindForMenu`, ZERO zgadywania podtypu —
@@ -343,10 +344,41 @@ export interface ComposedSymbolInstance {
    *  (`lvPortalOwnerRef`) i przepisuje 1:1 do `PreviewElementMeta.
    *  lvPortalStationRef` (konsument: klik w `SldCanvasV3Workspace`). */
   readonly lvPortalStationRef?: string;
+  /** GPZ-PARYTET cz. 2 (pkt 1): oznaczenie uzwojeń z grupy połączeń modelu — dla
+   *  KAŻDEGO symbolu `transformer2W` kompozycji stacji (TR w stosie pola, TR bez pola,
+   *  TR blokowy DER), ta sama funkcja co GPZ (`symbols/uzwojenia.ts`); `undefined`
+   *  dla pozostałych symboli. Brak/nierozpoznana grupa = jawny stan glifu + wpis
+   *  `missingData` (`station.transformer.vector_group.*`). */
+  readonly uzwojenia?: UzwojeniaTransformatora;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
   readonly ports: Readonly<Record<string, RoutePort>>;
+}
+
+/** GPZ-PARYTET cz. 2 (pkt 1): uzwojenia symbolu stosu pola — wyłącznie dla
+ *  `transformer2W`, z grupy połączeń transformatora tego pola. */
+function uzwojeniaSymbolu(
+  symbolId: SymbolId,
+  grupa: string | null | undefined,
+): UzwojeniaTransformatora | undefined {
+  return symbolId === 'transformer2W' ? uzwojeniaZGrupyPolaczen(grupa) : undefined;
+}
+
+/** GPZ-PARYTET cz. 2 (pkt 1): jawne braki grupy połączeń transformatorów kompozycji —
+ *  jeden przebieg po WSZYSTKICH symbolach `transformer2W` (ten sam zapis co GPZ,
+ *  `gpz.transformer.vector_group.*`). Ref = `transformerRef` (TR bez pola) albo `bayRef`
+ *  (pole TR: ref pola; TR blokowy: ref transformatora). */
+function brakiGrupyPolaczen(symbols: readonly ComposedSymbolInstance[]): string[] {
+  const braki: string[] = [];
+  for (const s of symbols) {
+    if (s.symbolId !== 'transformer2W') continue;
+    const ref = s.transformerRef ?? s.bayRef ?? '?';
+    const stan = s.uzwojenia?.stan ?? 'brak';
+    if (stan === 'brak') braki.push(`station.transformer.vector_group.missing:${ref}`);
+    if (stan === 'nierozpoznane') braki.push(`station.transformer.vector_group.unrecognized:${ref}`);
+  }
+  return braki;
 }
 
 /** Odcinek WEWNĘTRZNY kompozycji (szyna SN/nN, zejście do pola) — polilinia
@@ -576,6 +608,7 @@ function buildBayStack(
       // fallback konwencji `apparatusIdentifiers`. `undefined` dla aparatów
       // BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/...).
       designationSource: stackIdentifierSources[index] ?? undefined,
+      uzwojenia: uzwojeniaSymbolu(symbolId, bay.transformerVectorGroup),
       x,
       y,
       state: item.state,
@@ -655,6 +688,7 @@ function buildBayStack(
         linkedRef: item.linkedRef,
         apparatusSource,
         designationSource: identifierSource ?? undefined,
+        uzwojenia: uzwojeniaSymbolu(item.symbolId, bay.transformerVectorGroup),
         x,
         y: lateralY,
         state: item.state,
@@ -760,6 +794,8 @@ function composeDerSnChain(
   sink.symbols.push({
     symbolId: 'transformer2W',
     bayRef: chain.blockTransformer.ref,
+    // GPZ-PARYTET cz. 2 (pkt 1): uzwojenia TR blokowego z jego grupy połączeń.
+    uzwojenia: uzwojeniaZGrupyPolaczen(chain.blockTransformer.vectorGroup),
     x: trX,
     y: trY,
     ports: trPorts,
@@ -872,6 +908,9 @@ function composeDerSnChain(
  */
 function composeImplicitTransformerColumn(
   placement: StationSnColumnPlacement,
+  // GPZ-PARYTET cz. 2 (pkt 1): grupa połączeń transformatora tej kolumny
+  // (`StationTransformerUnit.vectorGroup` — rekord ENM, `null` = brak).
+  vectorGroup: string | null,
   busAxisY: number,
   blockTopY: number,
   sink: {
@@ -899,6 +938,7 @@ function composeImplicitTransformerColumn(
     symbolId: 'transformer2W',
     transformerRef: ref,
     transformerFieldGap: true,
+    uzwojenia: uzwojeniaZGrupyPolaczen(vectorGroup),
     x: trX,
     y: trY,
     ports,
@@ -1018,7 +1058,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const columnPlan = stationSnColumnLayout(station, column.x);
   columnPlan.forEach((placement) => {
     if (placement.kind === 'transformer') {
-      composeImplicitTransformerColumn(placement, busAxisY, blockTopY, {
+      const jednostka = (station.transformerUnits ?? []).find((u) => u.ref === placement.transformerRef);
+      composeImplicitTransformerColumn(placement, jednostka?.vectorGroup ?? null, busAxisY, blockTopY, {
         symbols,
         segments,
         busTapXs,
@@ -1887,7 +1928,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       busbar: busbarLabels,
     },
     bbox: computeBbox(symbols, segments),
-    missingData,
+    missingData: [...missingData, ...brakiGrupyPolaczen(symbols)],
     protectionSymbols,
     protectionSegments,
     measurementSegments,
@@ -2015,7 +2056,8 @@ export type FieldSilhouetteClass =
   | 'measurement'
   | 'der_pv'
   | 'der_bess'
-  | 'der_fw';
+  | 'der_fw'
+  | 'der_unknown';
 
 /** KOREKTA RULINGU V12K-031 (recenzja NO-GO właściciela 2026-07-17 pkt 5,
  *  spec §12.5): przesłanka „wejście/wyjście/odgałęzienie = fizycznie
@@ -2034,6 +2076,7 @@ export function fieldSilhouetteClass(role: FieldRole): FieldSilhouetteClass {
   if (role === FIELD_ROLE.MEASUREMENT) return 'measurement';
   if (role === FIELD_ROLE.DER_PV) return 'der_pv';
   if (role === FIELD_ROLE.DER_BESS) return 'der_bess';
+  if (role === FIELD_ROLE.DER_UNKNOWN) return 'der_unknown';
   return 'der_fw';
 }
 
@@ -2052,6 +2095,7 @@ const SILHOUETTE_CLASS_REPRESENTATIVE_ROLE: Readonly<Record<FieldSilhouetteClass
   der_pv: FIELD_ROLE.DER_PV,
   der_bess: FIELD_ROLE.DER_BESS,
   der_fw: FIELD_ROLE.DER_FW,
+  der_unknown: FIELD_ROLE.DER_UNKNOWN,
 };
 
 function silhouetteSignature(cls: FieldSilhouetteClass): string {

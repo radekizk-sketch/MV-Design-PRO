@@ -38,7 +38,7 @@ function loadEnm(path: string): EnergyNetworkModel {
 }
 
 const bigEnm = loadEnm(bigFixturePath);
-const DER_SYMBOLS = new Set(['derPv', 'derBess', 'derWind', 'derGenerator']);
+const DER_SYMBOLS = new Set(['derPv', 'derBess', 'derWind', 'derGenerator', 'derUnknown']);
 
 describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
   it('rozmiar sylwetki: 48×48 (6×GRID) — wyprowadzony z czytelności kadru całości', () => {

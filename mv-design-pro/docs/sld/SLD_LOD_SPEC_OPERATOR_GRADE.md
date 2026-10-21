@@ -2,7 +2,7 @@
 
 **Status:** BINDING (Phase 0A)
 **Wersja:** 1.0
-**Powiązane:** `SLD_LOD_AND_LAYERS.md` (legacy reference), `SLD_STATION_MINI_BLOCK_SPEC.md`, `SLD_GPZ_SWITCHGEAR_DEPTH.md`, `SLD_SYMBOLS_CANONICAL_OPERATOR_GRADE.md`
+**Powiązane:** `SLD_LOD_AND_LAYERS.md` (legacy reference), `SLD_SYMBOLS_CANONICAL_OPERATOR_GRADE.md`. Dawne specyfikacje mini-bloku stacji i rozdzielni GPZ opisywały skasowane renderery v2 (karta GPZ-PARYTET cz. 2, 2026-10-21); kompozycję stacji i GPZ realizuje jedyny renderer `SldCanvasV3` przez `frontend/src/ui/sld/v3/compose/station.ts` i `frontend/src/ui/sld/v3/compose/gpz.ts`.
 
 ---
 

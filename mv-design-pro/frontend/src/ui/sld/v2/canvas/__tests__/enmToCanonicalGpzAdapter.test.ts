@@ -573,6 +573,68 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
 });
 
 /* ---------------------------------------------------------------------------
+   Stan łączników z modelu (GPZ-PARYTET cz. 2, pkt 2)
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — stan łączników pola i sprzęgła z modelu', () => {
+  function galaz(ref: string, type: string, status: 'open' | 'closed') {
+    return { id: ref, ref_id: ref, name: ref, type, status, from_bus_ref: 'bus-15', to_bus_ref: `${ref}-k`, tags: [], meta: {} } as never;
+  }
+  function enmZeStanami(stanPola: 'open' | 'closed' | null, stanSprzegla: 'open' | 'closed' | null): EnmFragment {
+    return {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15', right_coupler_ref: 'cpl' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15', left_coupler_ref: 'cpl' },
+        ],
+      })],
+      bays: [
+        bay('pole-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: stanPola ? ['q-pole'] : [] }),
+        bay('cpl', 'COUPLER', 'g', 'bus-15', { equipment_refs: stanSprzegla ? ['q-cpl'] : [] }),
+      ],
+      branches: [
+        ...(stanPola ? [galaz('q-pole', 'breaker', stanPola)] : []),
+        ...(stanSprzegla ? [galaz('q-cpl', 'bus_coupler', stanSprzegla)] : []),
+      ],
+      buses: [bus('bus-15', 15)],
+    };
+  }
+
+  // Iloczyn: obiekt {pole odpływowe, sprzęgło} × stan w modelu {zamknięty, otwarty, brak gałęzi}.
+  for (const stan of ['closed', 'open', null] as const) {
+    it(`pole i sprzęgło: gałąź ${stan ?? 'brak'} → ${stan ?? 'unknown'}`, () => {
+      const props = buildCanonicalGpzProps(enmZeStanami(stan, stan), 'g');
+      const pole1 = props.sections.flatMap((s) => s.bays).find((b) => b.bayRef === 'pole-1');
+      expect(pole1?.cbState).toBe(stan ?? 'unknown');
+      expect(props.couplers[0].closedState).toBe(stan ?? 'unknown');
+    });
+  }
+
+  it('stany pola i sprzęgła niezależne (sprzęgło otwarte, pole zamknięte)', () => {
+    const props = buildCanonicalGpzProps(enmZeStanami('closed', 'open'), 'g');
+    expect(props.sections.flatMap((s) => s.bays).find((b) => b.bayRef === 'pole-1')?.cbState).toBe('closed');
+    expect(props.couplers[0].closedState).toBe('open');
+  });
+
+  it('rekord aparatu sprzeczny ze statusem gałęzi → nieustalony (jak K6a)', () => {
+    const enm = enmZeStanami('closed', 'closed');
+    enm.bays = enm.bays.map((b) =>
+      b.ref_id === 'cpl'
+        ? ({
+            ...b,
+            primary_devices: [{
+              device_ref: 'q0', linked_ref: 'q-cpl', symbol_ref: 'symbol:ds', kind: 'DS', placement: 'MIDSTREAM',
+              is_controllable: true, switch_state: { actual_state: 'otwarty' },
+            } as BayPrimaryDevice],
+          } as Bay)
+        : b,
+    );
+    expect(buildCanonicalGpzProps(enm, 'g').couplers[0].closedState).toBe('unknown');
+  });
+});
+
+/* ---------------------------------------------------------------------------
    Q-numbering
    --------------------------------------------------------------------------- */
 

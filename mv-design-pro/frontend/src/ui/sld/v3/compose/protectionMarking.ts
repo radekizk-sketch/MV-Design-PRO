@@ -45,11 +45,7 @@
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import type {
-  CtRatingAnnotationView,
-  MiniBlockBayDescriptor,
-  VtMountingAnnotationView,
-} from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;

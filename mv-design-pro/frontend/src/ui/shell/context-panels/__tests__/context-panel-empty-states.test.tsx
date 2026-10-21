@@ -195,6 +195,49 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
     expect(networkBuildMocks.openRouteSurface).not.toHaveBeenCalled();
   });
 
+  it('przycisk „Następna akcja" barwi się tokenami skali komunikatów, nie surową paletą', () => {
+    // GPZ-PARYTET cz. 2 (pkt 6): w motywie jasnym `text-cyan-100` na `bg-cyan-500/10` miało
+    // 1,05:1, a etykieta akcji `text-cyan-300` 1,23:1. Tusz `sygnal-info-tusz` na
+    // `sygnal-info-tlo` ma ≥ 4,5:1 w obu motywach (pomiar w `ui2/shell/__tests__/tokens.test.ts`).
+    act(() => {
+      useSelectionStore.getState().clearSelection();
+      useSnapshotStore.setState({
+        snapshot: {
+          header: { hash_sha256: 'hash-gpz-kontrast' },
+          sources: [{ ref_id: 'gpz/1/source/main', name: 'GPZ 1' }],
+          buses: [{ ref_id: 'gpz/1/bus/s1', name: 'Szyna GPZ S1', voltage_kv: 15 }],
+          bays: [{ ref_id: 'gpz/1/bay/001', name: 'Pole odpływowe 1', bay_role: 'OUT' }],
+          branches: [],
+          substations: [{ ref_id: 'gpz/1/substation', name: 'GPZ 1', station_type: 'gpz' }],
+          transformers: [],
+          generators: [],
+          loads: [],
+        } as any,
+        readiness: null,
+      });
+    });
+    render(<SchematContextPanel />);
+    const przycisk = screen.getByTestId('schemat-action-show-normal-open-points');
+    expect(przycisk.className).toContain('text-sygnal-info-tusz');
+    expect(przycisk.className).toContain('bg-sygnal-info-tlo');
+    const surowa = /\b(?:text|bg|border)-(?:cyan|amber|emerald|rose|red|green|sky|blue|yellow)-\d{2,3}\b/;
+    przycisk.querySelectorAll('*').forEach((wezel) => {
+      expect(wezel.getAttribute('class') ?? '').not.toMatch(surowa);
+    });
+    expect(przycisk.className).not.toMatch(surowa);
+  });
+
+  it('panel „Schemat i topologia" nie używa surowej palety barw Tailwinda', async () => {
+    // Uczciwość w obrębie pliku: każdy kolor panelu idzie z tokenów `--mvd-*`
+    // (`scada-*`/`sygnal-*`), bo surowa paleta nie zmienia się z motywem.
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const zrodlo = readFileSync(resolve(__dirname, '../SchematContextPanel.tsx'), 'utf-8');
+    expect(
+      zrodlo.match(/\b(?:text|bg|border|shadow)-(?:cyan|amber|emerald|rose|red|green|sky|blue|yellow|slate)-\d{2,3}\b/g) ?? [],
+    ).toEqual([]);
+  });
+
   it('klik w drzewie schematu otwiera właściwą kartę obiektu zamiast pustego inspektora', async () => {
     networkBuildMocks.openRouteSurface.mockClear();
     act(() => {

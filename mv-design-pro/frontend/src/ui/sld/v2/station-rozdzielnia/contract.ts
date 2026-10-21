@@ -32,10 +32,7 @@ import type {
   BayPrimaryDeviceKind,
   BayDeviceState,
 } from '../../../../types/enm';
-import type {
-  EarthingSwitchState,
-  GpzApparatusSwitchState,
-} from '../renderer/GpzSwitchgearTypes';
+import type { EarthingSwitchState, GpzApparatusSwitchState } from '../model/gpzSwitchgearTypes';
 import type { AbbCellType } from './abbFieldLibrary';
 import type { SldShortCircuitCompanion } from './companions/shortCircuitTypes';
 import type { SldVoltageFlowCompanion } from './companions/voltageFlowTypes';

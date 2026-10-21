@@ -10,7 +10,7 @@ import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { at } from '../../../../../test/arrayAt';
 import { FIELD_ROLE, ALL_FIELD_ROLES, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import {
   bayColumnFootprint,
   bayColumnRequiredWidth,
@@ -317,7 +317,7 @@ describe('V3 compose/station — szyna nN (spec §3: TYLKO gdy hasLvSection)', (
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/station — F9.4: DER przyłączone (nn_side) jako pełnoprawne widoczne źródło', () => {
-  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
+  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1, { transformerVectorGroup: 'Dyn11' })];
 
   it('1 DER (pv) + hasLvSection ⇒ symbol derPv połączony z szyną nN, etykieta „PV 500 kW"', () => {
     const station = makeStation('der-1', snBays, {
@@ -367,12 +367,31 @@ describe('V3 compose/station — F9.4: DER przyłączone (nn_side) jako pełnopr
     expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
   });
 
-  it('DER kind=unknown (f92-2) ⇒ symbol derGenerator fallback + missingData=true, etykieta honest', () => {
+  // GPZ-PARYTET cz. 2 (pkt 3): rola pola źródłowego → glif źródła pola. Iloczyn: rola
+  // {PV, BESS, FW, nieokreślone} — każda rola rysuje SWÓJ glif i żadna nie rysuje cudzego.
+  for (const [rola, glif] of [
+    [FIELD_ROLE.DER_PV, 'derPv'],
+    [FIELD_ROLE.DER_BESS, 'derBess'],
+    [FIELD_ROLE.DER_FW, 'derWind'],
+    [FIELD_ROLE.DER_UNKNOWN, 'derUnknown'],
+  ] as const) {
+    it(`pole źródłowe ${rola} ⇒ glif ${glif} (bez cudzych glifów źródła)`, () => {
+      const station = makeStation(`pole-${rola}`, [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(rola, 1)]);
+      const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+      const glify = composition.symbols.filter((s) => s.symbolId.startsWith('der')).map((s) => s.symbolId);
+      expect(glify).toEqual([glif]);
+    });
+  }
+
+  it('DER kind=unknown (f92-2) ⇒ jawny symbol źródła nieokreślonego derUnknown (nie generator) + missingData=true, etykieta honest', () => {
     const station = makeStation('der-unknown', snBays, {
       derSources: [{ id: 'gen-unk-1', kind: 'unknown', ratedPower: 1, missingData: true }],
     });
     const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
-    const derSymbols = composition.symbols.filter((s) => s.symbolId === 'derGenerator');
+    // GPZ-PARYTET cz. 2 (pkt 3): rodzaj nierozstrzygnięty ma własny glif — nie dzieli go z
+    // generatorem synchronicznym ani z PV.
+    expect(composition.symbols.some((s) => s.symbolId === 'derGenerator' || s.symbolId === 'derPv')).toBe(false);
+    const derSymbols = composition.symbols.filter((s) => s.symbolId === 'derUnknown');
     expect(derSymbols).toHaveLength(1);
     expect(derSymbols[0].missingData).toBe(true);
     expect(composition.labels.der[0].text).toBe('Źródło (typ nieznany) 1,0 MW');
@@ -429,7 +448,7 @@ describe('V3 compose/station — F9.4: DER przyłączone (nn_side) jako pełnopr
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/station — W2 (GS-4b/Z2): DER wg strony przyłączenia', () => {
-  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
+  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1, { transformerVectorGroup: 'Dyn11' })];
 
   it('wariant A (nn): connectionSide=nn ⇒ rząd nN (der-row-bus/trunk na szynie nN), ZERO pola źródłowego SN; ciągłość TR→szyna→odczepy', () => {
     const station = makeStation('w2-nn', snBays, {
@@ -842,8 +861,8 @@ describe('V3 compose/station — F9.3 §14.3/V12K-031: field_silhouette_probe (r
     expect(new Set([sigLine, sigTr, sigCoupler]).size).toBe(3);
   });
 
-  it('ALL_FIELD_ROLES niesie WSZYSTKIE 12 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
-    expect(ALL_FIELD_ROLES.length).toBe(12);
+  it('ALL_FIELD_ROLES niesie WSZYSTKIE 13 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
+    expect(ALL_FIELD_ROLES.length).toBe(13);
   });
 });
 

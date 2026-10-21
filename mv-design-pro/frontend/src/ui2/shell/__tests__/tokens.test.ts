@@ -155,6 +155,13 @@ const PARY_TEKSTU: readonly (readonly [string, string])[] = [
   ['--mvd-warn-ink', '--mvd-warn-bg'],
   ['--mvd-ok-ink', '--mvd-ok-bg'],
   ['--mvd-info-ink', '--mvd-info-bg'],
+  // Panel „Schemat i topologia" (GPZ-PARYTET cz. 2, pkt 6): znak tonu na plamie komunikatu
+  // i odnośniki/ikony stanu na tle aplikacji.
+  ['--mvd-info', '--mvd-info-bg'],
+  ['--mvd-accent', '--mvd-bg'],
+  ['--mvd-warn', '--mvd-bg'],
+  ['--mvd-ok', '--mvd-bg'],
+  ['--mvd-err', '--mvd-bg'],
   ['--mvd-sn', '--mvd-panel'],
   ['--mvd-nn', '--mvd-panel'],
   ['--mvd-wn', '--mvd-panel'],
