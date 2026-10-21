@@ -673,9 +673,13 @@ def test_zwarcia_wklady_pokrywaja_wszystkie_punkty_wynikow() -> None:
 def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
     """Karta W3-G3/Z-3: rozpływ gałęziowy MUSI pokazywać OBA tory — sieci
     nadrzędnej (`THEVENIN_GRID`) i falownika (`gen_pv`) — inaczej fixtura nie
-    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`)."""
-    rozplyw = eksport.zwarcia_rozplyw_scena_zwarcia()
-    assert rozplyw["target_id"] == eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`). Dotyczy punktu
+    DOMYŚLNEGO ekranu (pierwszy wiersz wyników); kompletność mapy dla wszystkich punktów
+    przypina `test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu`."""
+    mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+    domyslny = eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    rozplyw = mapa[domyslny]
+    assert rozplyw["target_id"] == domyslny
     wpisy = rozplyw["branch_contributions"] or []
     zrodla = {wpis["source_id"] for wpis in wpisy}
     assert "THEVENIN_GRID" in zrodla, "brak toru sieci nadrzędnej w rozpływie"
@@ -697,6 +701,33 @@ def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
         assert wpis["branch_id"] in refy_galezi_zlotej, (wpis["branch_id"], wpisy)
         assert wpis["from_node_id"] in refy_szyn_zlotej, (wpis["from_node_id"], wpisy)
         assert wpis["to_node_id"] in refy_szyn_zlotej, (wpis["to_node_id"], wpisy)
+
+
+@pytest.mark.parametrize("robocza", [False, True], ids=["deklarowana", "robocza"])
+def test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu(robocza: bool) -> None:
+    """Rozpływ i ślad podziału prądu (jedna odpowiedź `…/short-circuit/rozplyw`) muszą być
+    w fiksturze dla KAŻDEGO punktu zwarcia biegu sceny — makieta harnessu znająca jeden
+    punkt dawała „Nie udało się pobrać" po wyborze innego punktu (zmierzone: szyna nN sceny
+    wartości roboczej). Iloczyn: scena z deklaracją × scena na wartości roboczej; każdy
+    punkt × identyfikator biegu sceny × własny `target_id` × co najmniej jeden tor."""
+    if robocza:
+        wyniki = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+        mapa = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    else:
+        wyniki = eksport.zwarcia_wyniki_scena_zwarcia()
+        mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA
+    punkty = [row["target_id"] for row in wyniki["rows"]]
+    assert list(mapa) == punkty, "kolejność mapy = kolejność wierszy biegu (determinizm)"
+    nn = [row["target_id"] for row in wyniki["rows"] if "pasmo nN" in row["c_zrodlo"]]
+    assert nn, "scena musi nieść punkt nN — to on pokazywał błąd pobrania"
+    for target_id, odpowiedz in mapa.items():
+        assert odpowiedz["target_id"] == target_id
+        assert odpowiedz["run_id"] == run_id
+        _run_idy_nie_sa_uuid(odpowiedz)
+        wpisy = odpowiedz["branch_contributions"] or []
+        assert any(abs(w["i_ka"]) > 0 for w in wpisy), (target_id, wpisy)
 
 
 def test_zwarcia_pasmo_strona_max_jest_biegiem_kotwicy() -> None:
@@ -732,7 +763,7 @@ def test_scena_tolerancji_roboczej_liczy_na_wartosci_roboczej_wszystkimi_sekcjam
     wskazujące transformator SN/nN i pole deklaracji; WYŁĄCZNIE wiersz szyny nN ma znacznik
     i podstawę c „(wartość robocza)"; prąd szyny nN jest większy niż w scenie z deklaracją
     +6 % (c_max 1,10 > 1,05), szyny SN/WN bez zmiany podstawy; wkłady i rozpływ pochodzą
-    z TEGO SAMEGO biegu (zbiór punktów, punkt domyślny, identyfikator biegu)."""
+    z TEGO SAMEGO biegu (zbiór punktów, identyfikator biegu)."""
     robocza = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
     deklarowana = eksport.zwarcia_wyniki_scena_zwarcia()
     assert robocza["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
@@ -752,7 +783,7 @@ def test_scena_tolerancji_roboczej_liczy_na_wartosci_roboczej_wszystkimi_sekcjam
     wklady = eksport.zwarcia_wklady_scena_tolerancja_robocza()
     assert set(wklady) == {w["target_id"] for w in robocza["rows"]}
     rozplyw = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
-    assert rozplyw["target_id"] == robocza["rows"][0]["target_id"]
+    assert set(rozplyw) == {w["target_id"] for w in robocza["rows"]}
     pasmo = eksport.zwarcia_pasmo_scena_tolerancja_robocza()
     assert pasmo["run_id_kotwicy"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
     # Migawka sceny = model biegu: transformator SN/nN BEZ deklaracji tolerancji (formularz

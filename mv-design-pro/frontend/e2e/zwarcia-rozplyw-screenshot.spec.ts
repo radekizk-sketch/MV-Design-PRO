@@ -9,9 +9,11 @@
  * HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): tabela `zwarcia-rozplyw:screenshot`
  * niesie liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na sieci
  * złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
- * zwarcia_rozplyw_scena_zwarcia`) — punkt „Szyna SN" (pierwszy wg sortu
- * kanonicznego, bez preselekcji), tor sieci nadrzędnej (`THEVENIN_GRID`,
- * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4").
+ * zwarcia_rozplyw_scena_zwarcia` — mapa `target_id → odpowiedź` dla KAŻDEGO punktu
+ * biegu) — punkt „Szyna SN" (pierwszy wg sortu kanonicznego, bez preselekcji), tor
+ * sieci nadrzędnej (`THEVENIN_GRID`, gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`,
+ * gałąź „TR 15/0.4"). Punkt domyślny wyznacza pierwszy wiersz fikstury wyników tej
+ * sceny, nie literał.
  *
  * HARNESS-RESZTA (kontynuacja, 2026-09-16, ścieżka b): schemat
  * `zwarcia-schemat:screenshot` DOMKNIĘTY — dawny dług (dawna fixtura testu
@@ -45,12 +47,20 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
  * Prądy gałęzi toru zwarciowego z fikstury biegu backendu, którą karmi się scena —
  * nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
  */
-const ZWARCIA_ROZPLYW = JSON.parse(
-  fs.readFileSync(
-    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json'),
-    'utf-8',
-  ),
-) as { branch_contributions: { branch_name: string; source_id: string; i_ka: number }[] };
+const czytajFiksture = (nazwa: string): unknown =>
+  JSON.parse(
+    fs.readFileSync(path.resolve(_dirname, `../src/harness-fixtures/generated/${nazwa}.json`), 'utf-8'),
+  );
+type OdpowiedzRozplywu = {
+  branch_contributions: { branch_name: string; source_id: string; i_ka: number }[];
+};
+/** Punkt domyślny ekranu = pierwszy wiersz wyników biegu sceny (bez preselekcji). */
+const PUNKT_DOMYSLNY = (
+  czytajFiksture('zwarcia_wyniki_scena_zwarcia') as { rows: { target_id: string }[] }
+).rows[0].target_id;
+const ZWARCIA_ROZPLYW = (
+  czytajFiksture('zwarcia_rozplyw_scena_zwarcia') as Record<string, OdpowiedzRozplywu>
+)[PUNKT_DOMYSLNY];
 /** Największy prąd gałęzi o danej nazwie [kA] (tor dominujący przez tę gałąź). */
 const pradToru = (nazwa: string): number =>
   Math.max(

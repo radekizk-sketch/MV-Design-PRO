@@ -947,13 +947,16 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (wklady) return jsonOK(wklady);
   }
   if (url.includes('/results/short-circuit/rozplyw')) {
-    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy JEDNEGO punktu — ten,
-    // ktory `EkranZwarc` wybiera domyslnie (pierwszy wiersz wynikow) — realny
-    // bieg backendu (`zwarcia_rozplyw_scena_zwarcia`), tor sieci nadrzednej
-    // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
-    // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
-    const targetId = new URL(url, location.origin).searchParams.get('target_id');
-    if (targetId === ZWARCIA_SCENY.rozplyw.target_id) return jsonOK(ZWARCIA_SCENY.rozplyw);
+    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy (i slad podzialu pradu, ta sama
+    // odpowiedz) — mapa target_id -> odpowiedz REALNEGO biegu backendu dla KAZDEGO
+    // punktu sceny (`eksport_fixtur_harnessu.py::zwarcia_rozplyw_scena_zwarcia`, ta
+    // sama funkcja co koncowka `get_short_circuit_rozplyw`), jak mapa wkladow wyzej.
+    // Dawna makieta znala wylacznie punkt domyslny, wiec wybor szyny nN konczyl sie
+    // bledem pobrania. Punkt domyslny niesie tor sieci nadrzednej (THEVENIN_GRID)
+    // ORAZ tor falownika (gen_pv), jak scena Z-3 — bez zadnej recznej liczby.
+    const targetId = new URL(url, location.origin).searchParams.get('target_id') ?? '';
+    const rozplyw = (ZWARCIA_SCENY.rozplyw as Record<string, unknown>)[targetId];
+    if (rozplyw) return jsonOK(rozplyw);
   }
   if (url.includes('/results/short-circuit/pasmo')) {
     // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;

@@ -78,6 +78,20 @@ const CREATOR: Record<Scena, string> = {
   zmiana_tolerancji_nn: 'edycja-tolerancja-nn',
 };
 
+/**
+ * Rozpływ i ślad podziału prądu WYBRANEGO punktu nN — realna odpowiedź biegu sceny (fikstura
+ * `zwarcia_rozplyw_scena_*` to mapa dla KAŻDEGO punktu), nie komunikat błędu pobrania. Prąd
+ * zwarcia szyny nN płynie przez transformator SN/nN, więc tabela rozpływu nosi jego gałąź.
+ */
+async function rozplywIPodzialPunktuNn(page: Page): Promise<void> {
+  const rozplyw = page.getByTestId('mvd-zwarcia-rozplyw');
+  await expect(rozplyw.getByTestId('mvd-wyn-tabela')).toContainText('TR 15/0.4');
+  await expect(rozplyw.getByTestId('mvd-zwarcia-rozplyw-blad')).toHaveCount(0);
+  const slad = page.getByTestId('mvd-zwarcia-slad-rozplywu');
+  await expect(slad.getByTestId('mvd-zwarcia-slad-rozplywu-lista')).toBeVisible();
+  await expect(slad.getByTestId('mvd-zwarcia-slad-rozplywu-blad')).toHaveCount(0);
+}
+
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
   if (scena === 'panel_scenariuszy') {
     // Lista scenariuszy (MAX, MIN, nadpisanie z uzasadnieniem) z kolumny „c".
@@ -113,6 +127,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     const bilans = page.getByTestId('mvd-zwarcia-bilans');
     await expect(bilans).toContainText('Podstawa współczynnika c');
     await expect(bilans).toContainText(WIERSZ_NN.c_zrodlo!);
+    await rozplywIPodzialPunktuNn(page);
     await bilans.scrollIntoViewIfNeeded();
   } else if (scena === 'tolerancja_nn_kreator') {
     await page.getByRole('button', { name: /Uziemienie i punkt neutralny/ }).click();
@@ -137,6 +152,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
       .click();
     const bilans = page.getByTestId('mvd-zwarcia-bilans');
     await expect(bilans).toContainText(WIERSZ_NN_ROBOCZY.c_zrodlo!);
+    await rozplywIPodzialPunktuNn(page);
     await zalozenia.scrollIntoViewIfNeeded();
   } else {
     // „Zmień wartość" otwiera formularz z kluczem `lv_voltage_tolerance` — pole wartości
