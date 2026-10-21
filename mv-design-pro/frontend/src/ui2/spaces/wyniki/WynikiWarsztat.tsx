@@ -200,8 +200,12 @@ export function WynikiWarsztat({
   // Zamknięcie powierzchni (powrót) zakładki nie rusza: użytkownik wraca do
   // rejestru widoków klasycznych, skąd wybiera dalej sam.
   const activeSurface = useNetworkBuildStore((s) => s.activeSurface);
+  // Okno klasy B (panel prawy, np. okno techniczne zaznaczenia ze schematu) jest widoczne
+  // w inspektorze niezależnie od zakładki, a „Widoki klasyczne" i tak pokazują przy nim
+  // sam rejestr — nie może więc zabierać zakładki (karta UI-02: „Otwórz dowód" z panelu
+  // dolnego przy otwartym oknie stacji lądował w „Widokach klasycznych", nie w dowodzie).
   useEffect(() => {
-    if (jestDawnymHubem(activeSurface)) return;
+    if (jestDawnymHubem(activeSurface) || activeSurface?.openMode === 'replace_right_panel') return;
     setZakladkaWybrana('pozostale');
   }, [activeSurface]);
 

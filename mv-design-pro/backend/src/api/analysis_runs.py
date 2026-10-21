@@ -7,6 +7,7 @@ from uuid import UUID
 
 from api.analysis_run_exports import (
     build_analysis_run_trace_export_payload,
+    dostepnosc_eksportu_wywodu,
     export_run_report_docx_response,
     export_run_report_json_response,
     export_run_report_pdf_response,
@@ -447,6 +448,17 @@ def export_analysis_run_report_pdf(
             run_ref=str(run.id),
         )
     return response
+
+
+@router.get("/analysis-runs/{run_id}/export/proof/dostepnosc")
+def get_export_proof_dostepnosc(run_id: UUID) -> dict[str, Any]:
+    """Które formaty eksportu wywodu (JSON, LaTeX, PDF) TEN przebieg da się pobrać.
+
+    Każdy format niesie ``dostepny`` i powód braku po polsku — ekran pokazuje
+    polecenie nieaktywne z przyczyną zamiast przycisku kończącego się odmową.
+    Warunek liczy ta sama funkcja, której używają eksporty (predykaty parami).
+    """
+    return canonicalize_json(dostepnosc_eksportu_wywodu(_require_canonical_run(run_id)))
 
 
 @router.get("/analysis-runs/{run_id}/export/proof/json")

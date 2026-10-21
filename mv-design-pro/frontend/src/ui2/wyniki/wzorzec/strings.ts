@@ -23,6 +23,8 @@ export const WZORZEC_STRINGS = {
 
   // Tabela
   brakWynikow: 'Brak wyników do wyświetlenia.',
+  /** Komórka bez wartości w wyniku (element nie ma tej wielkości) — nie zero. */
+  brakWyniku: 'brak wyniku',
   tagOstrzezenie: 'Poza zakresem',
   pokazDowod: 'Pokaż dowód (podwójne kliknięcie)',
   sortujKolumne: 'Sortuj wg kolumny',

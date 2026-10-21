@@ -186,3 +186,64 @@ export const PROOF_FORMAT_LABELS_PL: Readonly<Record<ProofExportFormat, string>>
   latex: 'LaTeX (źródło .tex)',
   json: 'JSON (struktura uzasadnienia)',
 };
+
+/**
+ * Dostępność jednego formatu eksportu wywodu — 1:1 z odpowiedzią
+ * `GET /api/analysis-runs/{run_id}/export/proof/dostepnosc`
+ * (`backend/src/api/analysis_run_exports.py::dostepnosc_eksportu_wywodu`).
+ */
+export interface DostepnoscFormatuWywodu {
+  readonly format: ProofExportFormat;
+  readonly dostepny: boolean;
+  /** Powód braku po polsku (od serwera); `null`, gdy format jest dostępny. */
+  readonly powod_pl: string | null;
+}
+
+export interface DostepnoscEksportuWywodu {
+  readonly run_id: string;
+  readonly formaty: readonly DostepnoscFormatuWywodu[];
+}
+
+/**
+ * Które formaty eksportu wywodu TEN przebieg rzeczywiście da się pobrać. Warunek
+ * liczy serwer tą samą funkcją, którą wykonuje eksport (predykaty parami) — ekran
+ * nie zgaduje dostępności z obecności skrótu śladu ani z rodzaju analizy.
+ */
+export async function pobierzDostepnoscEksportuWywodu(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<DostepnoscEksportuWywodu> {
+  const response = await fetch(
+    `${REPORT_BASE}/${encodeURIComponent(runId)}/export/proof/dostepnosc`,
+    { method: 'GET', headers: { Accept: 'application/json' }, signal },
+  );
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      if (typeof data?.detail === 'string' && data.detail.trim()) detail = data.detail;
+    } catch {
+      /* ciało bez JSON — zostaje kod HTTP */
+    }
+    throw new Error(detail);
+  }
+  const dane = (await response.json()) as DostepnoscEksportuWywodu;
+  if (!Array.isArray(dane?.formaty)) {
+    throw new Error('Serwer zwrócił nieoczekiwany kształt dostępności eksportu wywodu.');
+  }
+  return dane;
+}
+
+/** Dostępność wskazanego formatu z odpowiedzi bramy (brak wpisu = format nieobsługiwany). */
+export function dostepnoscFormatu(
+  dane: DostepnoscEksportuWywodu,
+  format: ProofExportFormat,
+): DostepnoscFormatuWywodu {
+  return (
+    dane.formaty.find((f) => f.format === format) ?? {
+      format,
+      dostepny: false,
+      powod_pl: 'Serwer nie obsługuje tego formatu eksportu wywodu.',
+    }
+  );
+}

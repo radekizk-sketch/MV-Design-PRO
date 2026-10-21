@@ -82,8 +82,6 @@ export interface ProofPacksPanelProps {
   readonly onGeneratePack?: (packId: string) => void;
   /** Pokaż szczegóły pack (otwarcie TraceViewer). */
   readonly onShowPack?: (packId: string) => void;
-  /** Eksport pack (PDF/LaTeX/JSON/DOCX). */
-  readonly onExportPack?: (packId: string, format: 'pdf' | 'latex' | 'json' | 'docx') => void;
   /** Opcjonalny className zewnętrzny. */
   readonly className?: string;
 }
@@ -99,7 +97,6 @@ export function ProofPacksPanel({
   onSelectPack,
   onGeneratePack,
   onShowPack,
-  onExportPack,
   className,
 }: ProofPacksPanelProps) {
   const packs = useMemo<ProofPackInfo[]>(
@@ -192,37 +189,6 @@ export function ProofPacksPanel({
                     >
                       Pokaż
                     </button>
-                  )}
-                  {isReady && onExportPack && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onExportPack(pack.id, 'pdf')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
-                        data-testid={`sld-proof-pack-export-pdf-${pack.id}`}
-                        title="Eksport jako PDF (KaTeX rendered)"
-                      >
-                        PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onExportPack(pack.id, 'latex')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
-                        data-testid={`sld-proof-pack-export-latex-${pack.id}`}
-                        title="Eksport jako LaTeX (.tex source)"
-                      >
-                        TeX
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onExportPack(pack.id, 'json')}
-                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
-                        data-testid={`sld-proof-pack-export-json-${pack.id}`}
-                        title="Eksport jako JSON (strukturalny)"
-                      >
-                        JSON
-                      </button>
-                    </>
                   )}
                 </div>
               )}

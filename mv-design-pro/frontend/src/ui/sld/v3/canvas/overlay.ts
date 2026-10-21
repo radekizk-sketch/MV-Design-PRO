@@ -47,14 +47,14 @@
  * `RawOverlayPayload.elements` dla LOAD_FLOW nie niosło elementów gałęzi.
  * F9.6 (c) dołożyła pętlę po `build_branch_results(run)` w tej samej gałęzi
  * PF (aliasując `p_mw`/`q_mvar` na klucze `p_from_mw`/`q_from_mvar`
- * rozpoznawane przez `_METRIC_MAP`, zero zmiany `build_branch_results` ani
+ * rozpoznawane przez `METRYKI_ELEMENTOW_WYNIKU`, zero zmiany `build_branch_results` ani
  * `PowerFlowResult` — Frozen Result API nietknięte) — `buildFlowOverlayFromScene`
  * niżej dostaje dziś realne dane na KAŻDYM przebiegu LOAD_FLOW (test kontraktu:
  * `backend/tests/test_canonical_analysis_api.py
  * ::test_resultset_v1_includes_branch_elements_for_load_flow`). Dodatkowo
  * naprawiono (d): v2 `ResultOverlayLayer.tsx`/`SldCanvasV2.tsx` czytały kod
  * metryki `'Q_MVAR'` (wielkie litery), podczas gdy backend
- * (`result_builder_v1.py` `_METRIC_MAP`) emituje kod `'Q_Mvar'` (mieszana
+ * (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`) emituje kod `'Q_Mvar'` (mieszana
  * wielkość liter) — rozjazd kluczy, Q nigdy się nie rozwiązywał nawet w v2;
  * `buildFlowOverlayFromScene` niżej używa POPRAWNEGO kodu `'Q_Mvar'`
  * (zweryfikowanego wprost w źródle backendu) od zawsze, nie kopiował błędu v2.
@@ -383,7 +383,7 @@ export interface FlowMetricReading {
  * buduje `points[0]` = strona `fromTerminal` (adapter), `points[last]` =
  * strona `toTerminal` — TA SAMA konwencja co znak `p_from_mw` backendu
  * (dodatni = moc płynie OD węzła „from" DO węzła „to", `result_builder_v1.py`
- * `_METRIC_MAP["p_from_mw"]`); `forward=true` ⇒ strzałka `points[0]→points[
+ * `METRYKI_ELEMENTOW_WYNIKU["p_from_mw"]`); `forward=true` ⇒ strzałka `points[0]→points[
  * last]`, `forward=false` ⇒ odwrócona. Renderer (`SldCanvasV3.tsx`
  * `flowOverlayGeometry`) rozwiązuje to geometrycznie — ten kontrakt niesie
  * WYŁĄCZNIE dane, nie rysuje.
@@ -415,7 +415,7 @@ export interface TransformerOltcOverlay {
 // wejście ⇒ identyczny wynik (JSON.stringify porównywalny, patrz test).
 // ---------------------------------------------------------------------------
 
-/** Kody metryk backendu (`result_builder_v1.py` `_METRIC_MAP`) — WPROST z
+/** Kody metryk backendu (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`) — WPROST z
  *  wyniku, zero reinterpretacji. Uwaga `Q_Mvar` (mieszana wielkość liter,
  *  NIE `Q_MVAR` — patrz nagłówek pliku, znaleziony rozjazd z v2). */
 const FLOW_METRIC_CODE_P = 'P_MW';
@@ -861,7 +861,7 @@ export function faultFlowOverlayTracesToInput(
 // `transformer2W` (= `transformerRef` = `element_ref` gałęzi), zero DOM/Date.
 // ---------------------------------------------------------------------------
 
-/** Kody metryk OLTC (`result_builder_v1.py` `_METRIC_MAP`, V12K-089):
+/** Kody metryk OLTC (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`, V12K-089):
  *  `TAP_POSITION`/`TAP_SWITCH_COUNT` (całkowite, `format_hint="fixed0"`). */
 const OLTC_METRIC_CODE_POSITION = 'TAP_POSITION';
 const OLTC_METRIC_CODE_SWITCHES = 'TAP_SWITCH_COUNT';

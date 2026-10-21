@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
 import textwrap
@@ -589,6 +590,45 @@ def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]
     trace_payload["export_artifact"] = build_export_artifact(run, export_kind="whitebox_package")
     trace_payload["export_policy"] = build_export_policy("whitebox_package")
     return trace_payload
+
+
+#: Formaty eksportu wywodu (uzasadnienia inżynierskiego) przebiegu — kolejność stała,
+#: zgodna z trasami ``/analysis-runs/{run_id}/export/proof/{json|latex|pdf}``.
+FORMATY_EKSPORTU_WYWODU: tuple[str, ...] = ("json", "latex", "pdf")
+
+_POWOD_BRAK_REPORTLAB = "Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab"
+
+
+def powod_braku_pdf_wywodu() -> str | None:
+    """Powód, dla którego serwer NIE złoży PDF wywodu (brak biblioteki), albo ``None``.
+
+    Jedno źródło warunku dla bramy dostępności i dla samego eksportu PDF
+    (``export_run_trace_pdf_response``) — predykaty parami.
+    """
+    return None if importlib.util.find_spec("reportlab") is not None else _POWOD_BRAK_REPORTLAB
+
+
+def dostepnosc_eksportu_wywodu(run: CanonicalRun) -> dict[str, Any]:
+    """Które formaty eksportu wywodu TEN przebieg rzeczywiście da się pobrać — i dlaczego nie.
+
+    Warunek danych sprawdza TA SAMA funkcja, której używają trzy eksporty
+    (``build_analysis_run_trace_export_payload``), a nie osobna lista warunków: brama
+    nie może obiecać eksportu, który skończy się odmową, ani odmówić eksportu, który
+    by się udał (reguła predykatów parami). PDF wymaga dodatkowo biblioteki składu
+    (``powod_braku_pdf_wywodu`` — ten sam warunek co eksport PDF).
+    """
+    try:
+        build_analysis_run_trace_export_payload(run)
+        powod_danych: str | None = None
+    except OdmowaDanychError as exc:
+        powod_danych = str(exc)
+    formaty: list[dict[str, Any]] = []
+    for format_eksportu in FORMATY_EKSPORTU_WYWODU:
+        powod = powod_danych
+        if powod is None and format_eksportu == "pdf":
+            powod = powod_braku_pdf_wywodu()
+        formaty.append({"format": format_eksportu, "dostepny": powod is None, "powod_pl": powod})
+    return {"run_id": str(run.id), "formaty": formaty}
 
 
 def _amps_to_ka(value: Any) -> float | None:
@@ -1527,17 +1567,16 @@ def export_run_trace_pdf_response(
     *,
     filename_stem: str,
 ) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
-
+    # Kolejność warunków = kolejność bramy `dostepnosc_eksportu_wywodu`: najpierw dane
+    # (przyczyna pierwotna), potem biblioteka składu PDF.
     trace_payload = build_analysis_run_trace_export_payload(run)
+    powod_braku_pdf = powod_braku_pdf_wywodu()
+    if powod_braku_pdf is not None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=powod_braku_pdf)
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+
     summary = build_trace_summary(trace_payload.get("white_box_trace") or [])
     buffer = io.BytesIO()
     zarejestruj_czcionki()

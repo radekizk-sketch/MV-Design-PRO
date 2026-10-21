@@ -558,6 +558,43 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     });
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveAttribute('aria-selected', 'true');
   });
+
+  /**
+   * Karta UI-02 PANEL-DOLNY — okno klasy B (panel prawy: okno techniczne zaznaczenia ze
+   * schematu) jest widoczne w inspektorze niezależnie od zakładki, a „Widoki klasyczne"
+   * pokazują przy nim sam rejestr — nie zabiera więc zakładki. Iloczyn: okno klasy B otwarte
+   * PRZED wejściem (× deep-link dowodu z panelu dolnego) i W TRAKCIE pracy.
+   */
+  it('okno panelu prawego (klasa B) nie zabiera zakładki: deep-link dowodu wygrywa, praca trwa', () => {
+    act(() => {
+      useNetworkBuildStore.getState().openRouteSurface('E-13', {
+        entityRef: 'stn-1',
+        entityType: 'station',
+        subjectKind: 'entity',
+        subjectRef: 'stn-1',
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        payload: { source: 'url_selection' },
+      });
+    });
+    useShellStore.setState({ wynikiTab: 'dowod', wynikiTabElement: 'run-wskazany' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByTestId('most-pozostale')).not.toBeInTheDocument();
+
+    act(() => {
+      useNetworkBuildStore.getState().openRouteSurface('E-12', {
+        entityRef: 'kab-1',
+        entityType: 'segment',
+        subjectKind: 'entity',
+        subjectRef: 'kab-1',
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        payload: { source: 'url_selection' },
+      });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
+  });
 });
 
 /**

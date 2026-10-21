@@ -172,6 +172,7 @@ from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
+from domain.result_builder_v1 import METRYKI_ELEMENTOW_WYNIKU  # noqa: E402
 from domain.study_case import StudyCase  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
@@ -997,6 +998,26 @@ def werdykt_projektowy_sceny_uwaga() -> dict[str, Any]:
         bieg_sc=None,
         enm_snapshot=enm.model_dump(mode="json"),
     ).to_dict()
+
+
+def kody_metryk_wynikow() -> dict[str, Any]:
+    """Komplet kodów metryk elementów wyniku `GET /api/execution/runs/{id}/results/v1`
+    z jednostkami — POMIAR mapy `domain.result_builder_v1.METRYKI_ELEMENTOW_WYNIKU`
+    (jedynego producenta metryk tej nakładki).
+
+    Wyrocznia rejestru etykiet metryk frontu (`ui2/wyniki/etykietyMetryk.ts`, test
+    `ui2/wyniki/__tests__/etykietyMetryk.test.ts`): KAŻDY kod ma pełną polską etykietę,
+    a rejestr nie ma etykiet kodów, których backend nie emituje. Nowy kod w mapie bez
+    etykiety zapala czerwień w obu warstwach — fikstura nieaktualna tutaj
+    (`tests/ci/test_fixtury_harnessu.py`), brak etykiety we froncie.
+    """
+    jednostki: dict[str, set[str]] = {}
+    for kod, jednostka, _format in METRYKI_ELEMENTOW_WYNIKU.values():
+        jednostki.setdefault(kod, set()).add(jednostka)
+    return {
+        "zrodlo": "domain/result_builder_v1.py::METRYKI_ELEMENTOW_WYNIKU",
+        "kody": [{"kod": kod, "jednostki": sorted(jednostki[kod])} for kod in sorted(jednostki)],
+    }
 
 
 def katalog_analiz_v126() -> dict[str, Any]:
@@ -4803,6 +4824,7 @@ FIXTURY: dict[str, Any] = {
     "wiazania_scena_funkcje_zabezpieczen": wiazania_scena_funkcje_zabezpieczen,
     "werdykt_projektowy_scena_uwaga": werdykt_projektowy_sceny_uwaga,
     "katalog_analiz_v126": katalog_analiz_v126,
+    "kody_metryk_wynikow": kody_metryk_wynikow,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

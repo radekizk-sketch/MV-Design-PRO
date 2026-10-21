@@ -33,6 +33,7 @@ export function PanelDolny({
   onZamknij,
   onWybierzElement,
   onPokazWynikiBiegu,
+  onOtworzDowodBiegu,
 }: PanelDolnyProps) {
   const przeciaganieRef = useRef<{ startY: number; startWysokosc: number } | null>(null);
   const wysokoscPanelu = clampBottomHeight(wysokosc);
@@ -98,6 +99,7 @@ export function PanelDolny({
       <div className="mvd-bottom-tabs" role="tablist" aria-label={SHELL_STRINGS.bottomPanelLabel} onKeyDown={naKlawiszZakladek}>
         {zakladki.map((zakladka) => {
           const wybrana = zakladka.id === biezaca.id;
+          const Licznik = zakladka.Licznik;
           return (
             <button
               key={zakladka.id}
@@ -112,6 +114,7 @@ export function PanelDolny({
               data-testid={`mvd-bottom-tab-${zakladka.id}`}
             >
               {zakladka.etykieta}
+              {Licznik && <Licznik />}
             </button>
           );
         })}
@@ -134,7 +137,11 @@ export function PanelDolny({
         aria-labelledby={`mvd-bottom-tab-${biezaca.id}`}
         data-testid={`mvd-bottom-tresc-${biezaca.id}`}
       >
-        <Tresc onWybierzElement={onWybierzElement} onPokazWynikiBiegu={onPokazWynikiBiegu} />
+        <Tresc
+          onWybierzElement={onWybierzElement}
+          onPokazWynikiBiegu={onPokazWynikiBiegu}
+          onOtworzDowodBiegu={onOtworzDowodBiegu}
+        />
       </div>
     </section>
   );

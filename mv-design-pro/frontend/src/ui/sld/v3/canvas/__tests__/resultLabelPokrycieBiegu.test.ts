@@ -113,7 +113,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
       expect(prefixy.slice(0, 3)).toEqual(['Ik″', 'ip', 'Ith']);
       // Kontrola „1:1 z danych": liczba w etykiecie == wartość metryki
       // znormalizowana do kA wg JEDNOSTKI metryki (ścieżka zwarciowa emituje
-      // `ikss_ka` w kA — patrz `result_builder_v1._METRIC_MAP`). Formatowanie
+      // `ikss_ka` w kA — patrz `result_builder_v1.METRYKI_ELEMENTOW_WYNIKU`). Formatowanie
       // wolno, arytmetyka wielkości nie.
       const ikss = element.metrics.IK_3F_A;
       const ka = ikss.unit === 'A' ? (ikss.value as number) / 1000 : (ikss.value as number);

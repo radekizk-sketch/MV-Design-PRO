@@ -12,6 +12,9 @@
 
 .mvd-app {
   display: grid;
+  /* Jedna kolumna o szerokości okna: szeroka treść (np. tabela wyników panelu dolnego)
+     przewija się we własnym kontenerze, nie rozpycha strony (karta UI-02). */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
@@ -294,6 +297,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 .mvd-main-fill {
   flex: 1;
@@ -428,6 +432,7 @@
   flex-direction: column;
   flex-shrink: 0;
   min-height: 0;
+  min-width: 0;
   border-top: 1px solid var(--mvd-line);
   background: var(--mvd-panel);
 }
@@ -537,6 +542,77 @@
 .mvd-dolny-akcja {
   flex: 0 0 auto;
   padding: 2px 10px;
+}
+
+/* Licznik przy etykiecie zakładki panelu dolnego (karta UI-02). */
+.mvd-bottom-licznik {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  font-size: var(--mvd-font-size-data);
+  font-weight: 400;
+}
+/* Zakładka „Wyniki": narzędzia, baner świeżości, tabela. */
+.mvd-dolny-wyniki {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-dolny-narzedzia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.mvd-dolny-pole {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mvd-muted);
+}
+.mvd-dolny-pole select,
+.mvd-dolny-pole input {
+  font: inherit;
+  font-size: var(--mvd-font-size-data);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.mvd-dolny-baner {
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 3px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn-ink);
+}
+.mvd-dolny-tabela {
+  padding: 0;
+}
+.mvd-dolny-przygaszone .mvd-wyn-tabela tbody {
+  opacity: 0.55;
+}
+/* Zakładka „Dowody": wiersz biegu z poleceniami. */
+.mvd-dolny-dowod {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-dolny-dowod-glowa {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mvd-dolny-dowod-opis,
+.mvd-dolny-dowod-uwaga {
+  margin: 2px 0 0;
+  color: var(--mvd-muted);
+}
+.mvd-dolny-dowod-uwaga {
+  color: var(--mvd-warn-ink);
 }
 
 /* ================= pas 3: pasek stanu ================= */

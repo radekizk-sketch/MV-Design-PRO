@@ -28,6 +28,17 @@ export function uporzadkujPrzebiegi(runs: readonly ExecutionRun[]): ExecutionRun
   });
 }
 
+/** Licznik zakładki: liczba przebiegów aktywnego zakresu. */
+export function LicznikPrzebiegow() {
+  const liczba = useExecutionRunsStore((s) => s.runs.length);
+  if (liczba === 0) return null;
+  return (
+    <span className="mvd-bottom-licznik mvd-num" data-testid="mvd-bottom-licznik-przebiegi">
+      {liczba}
+    </span>
+  );
+}
+
 export function ZakladkaPrzebiegi({ onPokazWynikiBiegu }: KontekstPaneluDolnego) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const uporzadkowane = useMemo(() => uporzadkujPrzebiegi(runs), [runs]);

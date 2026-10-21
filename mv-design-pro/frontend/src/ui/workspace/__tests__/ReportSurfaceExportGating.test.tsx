@@ -28,9 +28,28 @@ const REPORT_SURFACE: WorkspaceSurfaceDescriptor = {
   tabId: null,
 } as never;
 
-function mockReportFetch(runPayload: Record<string, unknown>) {
+/**
+ * `powodBrakuWywodu` = odpowiedź bramy `…/export/proof/dostepnosc` (karta UI-02): `null` —
+ * eksport potwierdzony; tekst — przyczyna braku podana przez serwer.
+ */
+function mockReportFetch(runPayload: Record<string, unknown>, powodBrakuWywodu: string | null = null) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.endsWith('/export/proof/dostepnosc')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            run_id: String(runPayload.id),
+            formaty: ['json', 'latex', 'pdf'].map((format) => ({
+              format,
+              dostepny: powodBrakuWywodu === null,
+              powod_pl: powodBrakuWywodu,
+            })),
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+    }
     if (url === '/api/station-templates') {
       return Promise.resolve(
         new Response(JSON.stringify({ templates: [], total: 0 }), {
@@ -47,6 +66,8 @@ function mockReportFetch(runPayload: Record<string, unknown>) {
     );
   });
 }
+
+const POWOD_BEZ_SLADU = 'Przebieg nie ma śladu obliczeń — wywodu nie da się zbudować.';
 
 describe('ReportSurface - eksport diagnostyczny', () => {
   beforeEach(() => {
@@ -65,7 +86,7 @@ describe('ReportSurface - eksport diagnostyczny', () => {
       trace_summary: null,
       analysis_case_context: { completeness: 'failed' },
       summary_json: { row_count: 0 },
-    });
+    }, POWOD_BEZ_SLADU);
     useAppStateStore.getState().setActiveRun('run-failed');
     useSnapshotStore.setState({
       readiness: { ready: true, blockers: [], warnings: [] },
@@ -92,7 +113,34 @@ describe('ReportSurface - eksport diagnostyczny', () => {
     expect(docxBtn.disabled).toBe(false);
     expect(jsonBtn.disabled).toBe(false);
     expect(latexBtn.disabled).toBe(true);
-    expect(latexBtn.title).toContain('śladu solvera');
+    await waitFor(() => expect(latexBtn.title).toBe(POWOD_BEZ_SLADU));
+  });
+
+  it('streszczenie śladu bez potwierdzenia bramy NIE odblokowuje eksportu (jedno źródło predykatu)', async () => {
+    // Para predykatów: `trace_summary` liczy inna funkcja backendu niż eksport — dla
+    // rozpływu potrafi być niepusty, gdy eksport odmawia. O przycisku rozstrzyga brama.
+    mockReportFetch({
+      id: 'run-pf',
+      status: 'FINISHED',
+      result_status: 'VALID',
+      results_valid: true,
+      trace_summary: { count: 4, first_step: 'Y', last_step: 'V', phases: ['Y', 'V'], warnings: [] },
+      analysis_case_context: { completeness: 'complete' },
+      summary_json: { row_count: 3 },
+    }, POWOD_BEZ_SLADU);
+    useAppStateStore.getState().setActiveRun('run-pf');
+    useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } });
+    useNetworkBuildStore.setState({
+      activeSurface: { ...REPORT_SURFACE, subjectRef: 'run-pf', routeState: { payload: { runId: 'run-pf' } } as never },
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('report-status').textContent).toContain('Raport gotowy');
+    });
+    const latexBtn = screen.getByTestId('proof-export-latex') as HTMLButtonElement;
+    await waitFor(() => expect(latexBtn.title).toBe(POWOD_BEZ_SLADU));
+    expect(latexBtn.disabled).toBe(true);
   });
 
   it('odblokowuje eksport LaTeX dla zakończonego obliczenia FINISHED ze śladem solvera', async () => {
@@ -136,7 +184,7 @@ describe('ReportSurface - eksport diagnostyczny', () => {
     expect(screen.getByText('4. Wyniki obliczeń')).toBeInTheDocument();
 
     const latexBtn = screen.getByTestId('proof-export-latex') as HTMLButtonElement;
-    expect(latexBtn.disabled).toBe(false);
+    await waitFor(() => expect(latexBtn.disabled).toBe(false));
     expect(latexBtn.title).toContain('Eksportuj uzasadnienie do formatu LaTeX');
   });
 });

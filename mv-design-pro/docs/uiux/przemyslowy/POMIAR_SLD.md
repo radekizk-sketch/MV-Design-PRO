@@ -18,7 +18,7 @@
 - Znane defekty z dokumentów: docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md (C-1 jeden pas 53:1, C-7 doki — zamknięte); kontrakt UI-05 wylicza resztę. Nie przeczytałem w całości PLAN_SLD_REWORK.md (tylko spis sekcji).
 
 ## 3. Bloki danych (UI-06)
-- Istnieje: warstwa „Etykiety wyników (liczby)" — canvas/layers.ts:26-55; szablony canvas/resultLabelTemplates.ts (rejestr analiza×rodzaj elementu, kody metryk 1:1 z backend domain/result_builder_v1.py `_METRIC_MAP`), układ canvas/resultLabels.ts; L0 nic, L1 1 wartość, L2 2-3 (cap 3).
+- Istnieje: warstwa „Etykiety wyników (liczby)" — canvas/layers.ts:26-55; szablony canvas/resultLabelTemplates.ts (rejestr analiza×rodzaj elementu, kody metryk 1:1 z backend domain/result_builder_v1.py `METRYKI_ELEMENTOW_WYNIKU`), układ canvas/resultLabels.ts; L0 nic, L1 1 wartość, L2 2-3 (cap 3).
 - Źródło: ui/sld-overlay/rawResultOverlayStore.ts:3 — `GET /api/execution/runs/{run_id}/results/v1`; delta A/B sldDeltaOverlay.api.ts:91.
 - Wybieralny zestaw pól: BRAK (stała kolejność priorytetu w szablonie, brak UI wyboru). Brak metryki ⇒ linia pominięta (resultLabelTemplates.ts nagłówek) — brak ≠ zero niewidoczny.
 - Zapis zestawu: brak. Jedyny trwały magazyn ustawień UI: ui2/shell/useShellStore.ts:172-242 (zustand persist, localStorage). Widoczność warstw SLD to stan lokalny komponentu bez trwałości (SldCanvasV3Workspace.tsx:2042-2052). Backendu na preferencje nie sprawdzałem.

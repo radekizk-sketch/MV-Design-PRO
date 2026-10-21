@@ -451,7 +451,17 @@ function Komorka({
     .join(' ');
 
   if (!komorka) {
-    return <td className={klasyTd || undefined}>—</td>;
+    // Brak wyniku ≠ zero: kreska z opisem (dymek + nazwa dostępna), nigdy „0".
+    return (
+      <td
+        className={klasyTd || undefined}
+        title={WZORZEC_STRINGS.brakWyniku}
+        aria-label={WZORZEC_STRINGS.brakWyniku}
+        data-brak-wyniku="true"
+      >
+        —
+      </td>
+    );
   }
 
   const { wartosc, jednostka, dowodRef, ostrzezenie } = komorka;

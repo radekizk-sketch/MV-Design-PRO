@@ -319,6 +319,13 @@ export function AppRoot() {
     useAppStateStore.getState().setActiveRun(runId);
     wybierzPrzestrzen('wyniki');
   };
+  // Zakładka „Dowody" panelu dolnego (karta UI-02): dowód obliczeń WSKAZANEGO biegu —
+  // deep-link R3-C (`setWynikiTab('dowod', runId)`, konsument `WynikiWarsztat`)
+  // i jawne przejście do przestrzeni „Wyniki" (żądanie konsumuje się po montażu).
+  const otworzDowodBiegu = (runId: string) => {
+    useShellStore.getState().setWynikiTab('dowod', runId);
+    wybierzPrzestrzen('wyniki');
+  };
   // C-12 (decyzja K-12, opcja A): akcja naprawcza gotowości jest WYKONAWCĄ — jedna
   // nawigacja powłoki (`przejdzDoPrzestrzeni`, D1) → selekcja elementu → formularz
   // operacji z fokusem na brakującym polu. JEDNA funkcja `wykonajAkcjeNaprawcza`
@@ -393,6 +400,7 @@ export function AppRoot() {
       onZacznijBudowe={zacznijBudowe}
       onWybierzElement={(ref) => zaznaczElementModelu(ref, 'panel-dolny')}
       onPokazWynikiBiegu={pokazWynikiBiegu}
+      onOtworzDowodBiegu={otworzDowodBiegu}
       onOpenVariants={() => wykonajAkcjeMenu('variants')}
       onActiveSpaceChange={mostTrasyPrzestrzeni}
       onCalculate={handleCalculate}

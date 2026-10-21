@@ -103,9 +103,14 @@ afterEach(() => {
 });
 
 describe('Rejestr zakładek panelu dolnego', () => {
-  it('Problemy, Przebiegi, Dziennik operacji — w tej kolejności, unikalne identyfikatory', () => {
+  it('Problemy, Wyniki, Dowody, Przebiegi, Dziennik operacji — w tej kolejności, unikalne identyfikatory', () => {
+    // Karta UI-02 PANEL-DOLNY: kontrakt UI-02 §2 — wyniki, ostrzeżenia, dowody i dziennik
+    // operacji w jednym panelu; sześć pozycji paska zakładek = pięć zakładek z rejestru
+    // i przycisk zamknięcia.
     expect(ZAKLADKI_PANELU_DOLNEGO.map((z) => z.etykieta)).toEqual([
       SHELL_STRINGS.bottomProblemy,
+      SHELL_STRINGS.bottomWyniki,
+      SHELL_STRINGS.bottomDowody,
       SHELL_STRINGS.bottomPrzebiegi,
       SHELL_STRINGS.bottomDziennik,
     ]);
@@ -116,8 +121,8 @@ describe('Rejestr zakładek panelu dolnego', () => {
   it('rejestr jest rozszerzalny: dopisana zakładka renderuje się bez zmiany panelu', async () => {
     const user = userEvent.setup();
     const Dodatkowa = () => <p data-testid="tresc-dodatkowa">treść</p>;
-    const p = renderPanel('wyniki', {
-      zakladki: [...ZAKLADKI_PANELU_DOLNEGO, { id: 'wyniki', etykieta: 'Wyniki', Tresc: Dodatkowa }],
+    const p = renderPanel('dodatkowa', {
+      zakladki: [...ZAKLADKI_PANELU_DOLNEGO, { id: 'dodatkowa', etykieta: 'Dodatkowa', Tresc: Dodatkowa }],
     });
     expect(screen.getByTestId('tresc-dodatkowa')).toBeInTheDocument();
     await user.click(screen.getByTestId('mvd-bottom-tab-problemy'));
@@ -132,10 +137,11 @@ describe('Rejestr zakładek panelu dolnego', () => {
 
 describe('Panel dolny — zakładki i klawiatura', () => {
   for (const [klawisz, start, oczekiwana] of [
-    ['{ArrowRight}', 'problemy', 'przebiegi'],
+    ['{ArrowRight}', 'problemy', 'wyniki'],
+    ['{ArrowRight}', 'dowody', 'przebiegi'],
     ['{ArrowRight}', 'dziennik', 'problemy'],
     ['{ArrowLeft}', 'problemy', 'dziennik'],
-    ['{ArrowLeft}', 'przebiegi', 'problemy'],
+    ['{ArrowLeft}', 'wyniki', 'problemy'],
   ] as const) {
     it(`${klawisz} na zakładce ${start} → ${oczekiwana}`, async () => {
       const user = userEvent.setup();

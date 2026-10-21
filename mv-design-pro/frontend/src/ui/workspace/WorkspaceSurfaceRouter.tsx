@@ -58,6 +58,7 @@ import {
   exportProofPack,
   type ReportExportFormat,
 } from '../results/reportExportApi';
+import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
 import { notify } from '../notifications/store';
 // isGenericSegmentName, segmentPublicIdentity used in routerLabelHelpers.ts
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
@@ -1238,7 +1239,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     .filter((ref): ref is string => Boolean(ref));
   const readinessBlockers = readiness?.blockers ?? [];
   const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
-  const hasSolverTrace = Boolean(runContract?.traceSummary);
+  // Karta UI-02 PANEL-DOLNY: o eksporcie wywodu (i etapie „Uzasadnienie”) rozstrzyga brama
+  // serwera liczona funkcją eksportu (`…/export/proof/dostepnosc`), nie `trace_summary`
+  // (inna funkcja backendu — dla rozpływu czyta inny ślad niż eksport).
+  const eksportLatex = formatWStanie(useDostepnoscEksportuWywodu(activeRunId), 'latex');
+  const hasSolverTrace = eksportLatex.dostepny;
   const openProofSurface = () =>
     openChildSurface('E-36', {
       screenCode: 'E-36',
@@ -1377,7 +1382,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       label: 'Etap 10 Uzasadnienie obliczeń',
       status: hasSolverTrace ? 'gotowe' : 'wynik_zablokowany',
       dataSummary: hasSolverTrace ? 'dostępny ślad solvera i eksport LaTeX' : 'brak śladu solvera dla pełnego wywodu',
-      missingFields: hasSolverTrace ? [] : ['ślad solvera', 'wywód LaTeX', 'podstawienia'],
+      missingFields: hasSolverTrace ? [] : [eksportLatex.powod_pl ?? 'wywód LaTeX'],
       sourceRef: 'trace / proof pack',
       fixAction: { label: 'Pokaż wywód', onClick: openProofSurface },
     },
@@ -1594,10 +1599,10 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <ExportButton format="JSON" enabled={Boolean(activeRunId)} runId={activeRunId} kind="report" />
               <ExportButton
                 format="LaTeX"
-                enabled={Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status) && runContract?.traceSummary)}
+                enabled={Boolean(activeRunId && eksportLatex.dostepny)}
                 runId={activeRunId}
                 kind="proof"
-                disabledReason="Eksport uzasadnienia wymaga śladu solvera dla zakończonego obliczenia."
+                disabledReason={eksportLatex.powod_pl ?? undefined}
               />
             </div>
           </div>

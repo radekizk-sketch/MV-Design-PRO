@@ -89,6 +89,37 @@ function openTechnicalSurfaceForSelection(
   });
 }
 
+/** Okno techniczne prawego panelu otwarte PRZEZ synchronizację selekcji (nie przez użytkownika). */
+function oknoZSelekcji(): { entityRef: string | null } | null {
+  const aktywna = useNetworkBuildStore.getState().activeSurface;
+  if (!aktywna || aktywna.routeState.payload?.source !== 'url_selection') return null;
+  return { entityRef: aktywna.entityRef ?? null };
+}
+
+/**
+ * Okno techniczne idzie za selekcją — JEDNA reguła dla każdego źródła selekcji (karta UI-02
+ * PANEL-DOLNY). Dotąd okno przestawiała wyłącznie kanonikalizacja: klik w schemat daje
+ * selekcję niekanoniczną (nazwa = ref), więc otwierał okno, ale selekcja już kanoniczna
+ * (wiersz „Wyników" / „Problemów", `zaznaczElementModelu`) zostawiała w inspektorze okno
+ * POPRZEDNIEGO obiektu. Okno otwarte przez użytkownika (inne źródło) nie jest ruszane.
+ */
+function dopasujOknoDoSelekcji(
+  selection: SelectedElement,
+  openRouteSurface: NetworkBuildState['openRouteSurface'],
+  closeActiveSurface: NetworkBuildState['closeActiveSurface'],
+): void {
+  const okno = oknoZSelekcji();
+  if (!okno || okno.entityRef === selection.id) return;
+  if (surfaceTargetForSelection(selection)) {
+    openTechnicalSurfaceForSelection(selection, openRouteSurface);
+  } else {
+    // Obiekt bez okna technicznego (np. szyna): inspektor pokazuje widok inżynierski
+    // zaznaczenia zamiast okna poprzedniego obiektu (zdejmowane jest tylko to okno —
+    // aktywne, otwarte przez synchronizację selekcji).
+    closeActiveSurface();
+  }
+}
+
 /**
  * Hook to synchronize selection state with URL.
  *
@@ -112,6 +143,7 @@ export function useUrlSelectionSync(): void {
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
   const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
+  const closeActiveSurface = useNetworkBuildStore((state) => state.closeActiveSurface);
 
   // Track if we're in the middle of restoring from URL
   // Prevents sync loop: URL → Store → URL
@@ -190,14 +222,20 @@ export function useUrlSelectionSync(): void {
       return;
     }
     if (sameSelection(canonicalSelection, selectedElement)) {
+      dopasujOknoDoSelekcji(selectedElement, openRouteSurface, closeActiveSurface);
       return;
     }
 
     selectElement(canonicalSelection);
     updateUrlWithSelection(canonicalSelection);
-    openTechnicalSurfaceForSelection(canonicalSelection, openRouteSurface);
+    if (surfaceTargetForSelection(canonicalSelection)) {
+      openTechnicalSurfaceForSelection(canonicalSelection, openRouteSurface);
+    } else {
+      dopasujOknoDoSelekcji(canonicalSelection, openRouteSurface, closeActiveSurface);
+    }
   }, [
     clearRouteManagedSurface,
+    closeActiveSurface,
     collapseSurfaceStackTo,
     openRouteSurface,
     selectedElement,

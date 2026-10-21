@@ -68,11 +68,24 @@ const shortCircuitPayload: ShortCircuitResults = {
   ],
 };
 
-function mockAnalysisFetch(trace = tracePayload, shortCircuit = shortCircuitPayload) {
+function mockAnalysisFetch(
+  trace = tracePayload,
+  shortCircuit = shortCircuitPayload,
+  powodBrakuLatex: string | null = null,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.endsWith('/api/analysis-runs/run-1/export/proof/dostepnosc')) {
+        return new Response(
+          JSON.stringify({
+            run_id: 'run-1',
+            formaty: [{ format: 'latex', dostepny: powodBrakuLatex === null, powod_pl: powodBrakuLatex }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
       if (url.endsWith('/api/analysis-runs/run-1/results/trace')) {
         return new Response(JSON.stringify(trace), {
           status: 200,
@@ -93,6 +106,27 @@ function mockAnalysisFetch(trace = tracePayload, shortCircuit = shortCircuitPayl
 describe('ElementCalculationProofPanel', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('odnośnik „Pełny LaTeX” wyłącznie przy eksporcie potwierdzonym przez serwer (brama UI-02)', async () => {
+    mockAnalysisFetch();
+    const { unmount } = render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    const link = await screen.findByTestId('element-proof-latex-link');
+    expect(link.getAttribute('href')).toBe('/api/analysis-runs/run-1/export/proof/latex');
+    expect(screen.queryByTestId('element-proof-latex-niedostepny')).toBeNull();
+    unmount();
+
+    const powod = 'Przebieg nie ma śladu obliczeń — wywodu nie da się zbudować.';
+    mockAnalysisFetch(tracePayload, shortCircuitPayload, powod);
+    render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('element-proof-latex-niedostepny').getAttribute('title')).toBe(powod),
+    );
+    expect(screen.queryByTestId('element-proof-latex-link')).toBeNull();
   });
 
   it('wiąże zaznaczony węzeł SLD z wynikiem zwarciowym i krokami wywodu', async () => {

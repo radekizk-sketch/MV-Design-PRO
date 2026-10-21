@@ -86,6 +86,8 @@ export const SHELL_STRINGS = {
   bottomProblemy: 'Problemy',
   bottomPrzebiegi: 'Przebiegi',
   bottomDziennik: 'Dziennik operacji',
+  bottomWyniki: 'Wyniki',
+  bottomDowody: 'Dowody',
   bottomResizeHint: 'Zmień wysokość panelu dolnego',
   closeBottom: 'Zamknij panel dolny',
 

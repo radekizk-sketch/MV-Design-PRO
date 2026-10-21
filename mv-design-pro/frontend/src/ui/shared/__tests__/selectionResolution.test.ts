@@ -194,4 +194,38 @@ describe('selectionResolution', () => {
     expect(resolved?.name).toContain('GPZ');
     expect(resolved?.name).not.toContain('gpz/');
   });
+
+  it('element z przestrzeni nazw GPZ obecny w kolekcji modelu dostaje rodzaj z kolekcji (karta UI-02)', () => {
+    // Iloczyn: ref w przestrzeni nazw stacji × (obecny w kolekcji modelu: szyna sekcji GPZ
+    // | nieobecny: aparat pola bez rekordu). Bez naprawy szyna GPZ dostawała rodzaj
+    // zastępczy „element opisowy" (tabela wyników panelu dolnego pokazywała „Descriptive
+    // Element", inspektor nie rozpoznawał szyny).
+    const szynaGpz = 'gpz/abc123/section/001/bus_sn';
+    const zGpz = {
+      ...(snapshot as unknown as Record<string, unknown>),
+      buses: [
+        ...((snapshot as unknown as { buses: unknown[] }).buses),
+        { id: szynaGpz, ref_id: szynaGpz, name: 'Szyna GPZ S1 15 kV', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+      ],
+      substations: [
+        {
+          id: 'gpz/abc123/substation',
+          ref_id: 'gpz/abc123/substation',
+          name: 'GPZ Poznań',
+          tags: [],
+          meta: {},
+          station_type: 'gpz',
+          bus_refs: [szynaGpz],
+          transformer_refs: [],
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    const szyna = resolveSelectedElementFromSnapshot(zGpz, szynaGpz);
+    expect(szyna).toMatchObject({ id: szynaGpz, type: 'Bus' });
+    expect(szyna?.name).toContain('Szyna stacji');
+
+    const aparat = resolveSelectedElementFromSnapshot(zGpz, 'gpz/abc123/bay/009/q1', null, 'Switch');
+    expect(aparat).toMatchObject({ type: 'Switch' });
+  });
 });

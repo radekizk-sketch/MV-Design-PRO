@@ -92,12 +92,14 @@ export interface AppShellProps {
   onHistoria?: () => void;
   /** Akcja pustego modelu w panelu liczników (przejście do budowy sieci). */
   onZacznijBudowe?: () => void;
-  /** Rejestr zakładek panelu dolnego (domyślnie: Problemy, Przebiegi, Dziennik). */
+  /** Rejestr zakładek panelu dolnego (domyślnie: Problemy, Wyniki, Dowody, Przebiegi, Dziennik). */
   zakladkiPaneluDolnego?: readonly ZakladkaPaneluDolnego[];
   /** Zaznaczenie elementu z panelu dolnego (domyślnie: zdarzenie `selekcja`). */
   onWybierzElement?: (ref: string) => void;
   /** Wejście w wyniki zakończonego biegu z zakładki „Przebiegi". */
   onPokazWynikiBiegu?: (runId: string) => void;
+  /** Wejście w dowód obliczeń biegu z zakładki „Dowody". */
+  onOtworzDowodBiegu?: (runId: string) => void;
 }
 
 export function AppShell({
@@ -125,6 +127,7 @@ export function AppShell({
   zakladkiPaneluDolnego = ZAKLADKI_PANELU_DOLNEGO,
   onWybierzElement,
   onPokazWynikiBiegu,
+  onOtworzDowodBiegu,
 }: AppShellProps) {
   const activeSpace = useShellStore((s) => s.activeSpace);
   const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
@@ -349,6 +352,7 @@ export function AppShell({
             onZamknij={closeBottomPanel}
             onWybierzElement={wybierzElement}
             onPokazWynikiBiegu={onPokazWynikiBiegu}
+            onOtworzDowodBiegu={onOtworzDowodBiegu}
           />
         )}
       </div>

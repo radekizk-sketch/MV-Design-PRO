@@ -18,6 +18,18 @@ const WAGA: Record<ReadinessSeverity, string> = {
   INFO: 'Informacja',
 };
 
+/** Licznik zakładki: liczba problemów gotowości (tylko gdy gotowość jest odczytana). */
+export function LicznikProblemow() {
+  const readiness = useSnapshotStore((s) => s.readiness);
+  const problemy = useProblemyGotowosci();
+  if (!czyGotowoscUstalona(readiness)) return null;
+  return (
+    <span className="mvd-bottom-licznik mvd-num" data-testid="mvd-bottom-licznik-problemy">
+      {problemy.length}
+    </span>
+  );
+}
+
 export function ZakladkaProblemy({ onWybierzElement }: KontekstPaneluDolnego) {
   const readiness = useSnapshotStore((s) => s.readiness);
   const problemy = useProblemyGotowosci();

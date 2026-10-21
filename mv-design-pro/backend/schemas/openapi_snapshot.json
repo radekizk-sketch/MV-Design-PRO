@@ -17411,6 +17411,49 @@
     "summary": "Get Analysis Run"
    }
   },
+  "/api/analysis-runs/{run_id}/export/proof/dostepnosc": {
+   "get": {
+    "description": "Które formaty eksportu wywodu (JSON, LaTeX, PDF) TEN przebieg da się pobrać.\n\nKażdy format niesie ``dostepny`` i powód braku po polsku — ekran pokazuje\npolecenie nieaktywne z przyczyną zamiast przycisku kończącego się odmową.\nWarunek liczy ta sama funkcja, której używają eksporty (predykaty parami).",
+    "operationId": "get_export_proof_dostepnosc_api_analysis_runs__run_id__export_proof_dostepnosc_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Export Proof Dostepnosc Api Analysis Runs  Run Id  Export Proof Dostepnosc Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Export Proof Dostepnosc"
+   }
+  },
   "/api/analysis-runs/{run_id}/export/proof/json": {
    "get": {
     "operationId": "export_analysis_run_proof_json_api_analysis_runs__run_id__export_proof_json_get",

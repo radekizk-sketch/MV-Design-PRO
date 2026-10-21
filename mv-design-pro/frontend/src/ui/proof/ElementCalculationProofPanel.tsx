@@ -11,6 +11,7 @@ import type {
   TraceStep,
 } from '../results-inspector/types';
 import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
+import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
 import { MathRenderer } from './MathRenderer';
 
 interface ProofSelectedElement {
@@ -516,6 +517,9 @@ export function ElementCalculationProofPanel({
   className,
 }: ElementCalculationProofPanelProps) {
   const [state, setState] = useState<LoadState>(IDLE_STATE);
+  // Karta UI-02 PANEL-DOLNY: odnośnik do pełnego LaTeX tylko wtedy, gdy serwer potwierdza
+  // eksport (brama liczona funkcją eksportu); inaczej nieaktywny opis z przyczyną.
+  const eksportLatex = formatWStanie(useDostepnoscEksportuWywodu(runId), 'latex');
 
   useEffect(() => {
     if (!runId || !selectedElement) {
@@ -579,15 +583,26 @@ export function ElementCalculationProofPanel({
             {selectedElement ? selectedElement.name || selectedElement.id : 'Wybierz obiekt na SLD'}
           </h4>
         </div>
-        {runId && (
+        {runId && eksportLatex.dostepny && (
           <a
-            href={`/api/analysis-runs/${runId}/export/proof/latex`}
+            href={`/api/analysis-runs/${encodeURIComponent(runId)}/export/proof/latex`}
             target="_blank"
             rel="noreferrer"
             className="shrink-0 rounded border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
+            data-testid="element-proof-latex-link"
           >
             Pełny LaTeX
           </a>
+        )}
+        {runId && !eksportLatex.dostepny && (
+          <span
+            className="shrink-0 cursor-not-allowed rounded border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-400"
+            title={eksportLatex.powod_pl ?? undefined}
+            aria-disabled="true"
+            data-testid="element-proof-latex-niedostepny"
+          >
+            Pełny LaTeX
+          </span>
         )}
       </div>
 

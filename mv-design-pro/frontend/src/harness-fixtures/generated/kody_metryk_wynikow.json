@@ -1,0 +1,140 @@
+{
+  "zrodlo": "domain/result_builder_v1.py::METRYKI_ELEMENTOW_WYNIKU",
+  "kody": [
+    {
+      "kod": "ANGLE_DEG",
+      "jednostki": [
+        "°"
+      ]
+    },
+    {
+      "kod": "COS_PHI",
+      "jednostki": [
+        ""
+      ]
+    },
+    {
+      "kod": "DELTA_U_KV",
+      "jednostki": [
+        "kV"
+      ]
+    },
+    {
+      "kod": "DELTA_U_PCT",
+      "jednostki": [
+        "%"
+      ]
+    },
+    {
+      "kod": "IK_3F_A",
+      "jednostki": [
+        "A",
+        "kA"
+      ]
+    },
+    {
+      "kod": "IK_3F_DER_A",
+      "jednostki": [
+        "A"
+      ]
+    },
+    {
+      "kod": "IK_3F_SYSTEM_A",
+      "jednostki": [
+        "A"
+      ]
+    },
+    {
+      "kod": "IK_3F_TOTAL_A",
+      "jednostki": [
+        "A"
+      ]
+    },
+    {
+      "kod": "IP_A",
+      "jednostki": [
+        "A",
+        "kA"
+      ]
+    },
+    {
+      "kod": "ITH_A",
+      "jednostki": [
+        "A",
+        "kA"
+      ]
+    },
+    {
+      "kod": "I_A",
+      "jednostki": [
+        "A"
+      ]
+    },
+    {
+      "kod": "LOADING_PCT",
+      "jednostki": [
+        "%"
+      ]
+    },
+    {
+      "kod": "LOSSES_P_MW",
+      "jednostki": [
+        "MW"
+      ]
+    },
+    {
+      "kod": "LOSSES_Q_Mvar",
+      "jednostki": [
+        "Mvar"
+      ]
+    },
+    {
+      "kod": "P_MW",
+      "jednostki": [
+        "MW"
+      ]
+    },
+    {
+      "kod": "Q_Mvar",
+      "jednostki": [
+        "Mvar"
+      ]
+    },
+    {
+      "kod": "SK_MVA",
+      "jednostki": [
+        "MVA"
+      ]
+    },
+    {
+      "kod": "S_MVA",
+      "jednostki": [
+        "MVA"
+      ]
+    },
+    {
+      "kod": "TAP_POSITION",
+      "jednostki": [
+        ""
+      ]
+    },
+    {
+      "kod": "TAP_SWITCH_COUNT",
+      "jednostki": [
+        ""
+      ]
+    },
+    {
+      "kod": "U_kV",
+      "jednostki": [
+        "kV"
+      ]
+    },
+    {
+      "kod": "V_PU",
+      "jednostki": [
+        "p.u."
+      ]
+    }
+  ]
+}

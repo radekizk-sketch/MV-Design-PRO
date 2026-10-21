@@ -3,6 +3,7 @@ import { act, render, waitFor } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../types/enm';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { resolveSelectedElementFromSnapshot } from '../shared/selectionResolution';
 import { useSelectionStore } from '../selection/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useUrlSelectionSync } from './useUrlSelectionSync';
@@ -31,6 +32,17 @@ const snapshot = {
       to_bus_ref: 'bus-sn',
       status: 'closed',
       type: 'breaker',
+    },
+    {
+      id: 'kab-1',
+      ref_id: 'kab-1',
+      name: 'Kabel K1',
+      tags: [],
+      meta: {},
+      from_bus_ref: 'bus-sn',
+      to_bus_ref: 'bus-sn',
+      status: 'closed',
+      type: 'cable',
     },
   ],
   transformers: [],
@@ -220,5 +232,97 @@ describe('useUrlSelectionSync', () => {
     expect(useNetworkBuildStore.getState().activeSurface?.routeState.payload?.delegate).toBe(
       'operation_form',
     );
+  });
+
+  /**
+   * Karta UI-02 PANEL-DOLNY — okno techniczne idzie za selekcją z KAŻDEGO źródła.
+   * Iloczyn: źródło selekcji (kanoniczna z panelu `zaznaczElementModelu` × niekanoniczna
+   * ze schematu: nazwa = ref) × cel (z oknem: stacja/odcinek × bez okna: szyna) × okno
+   * (otwarte przez synchronizację selekcji × otwarte przez użytkownika — formularz operacji).
+   * Bez naprawy selekcja kanoniczna zostawiała w inspektorze okno poprzedniej stacji.
+   */
+  describe('okno techniczne idzie za selekcją', () => {
+    async function oknoStacji() {
+      act(() => {
+        window.history.replaceState(null, '', '/#sld?sel=stn%2Fabc%2Fstation&type=Station&name=Stacja+inline');
+        useSelectionStore.getState().clearSelection();
+      });
+      act(() => {
+        render(<UrlSelectionSyncProbe />);
+      });
+      await waitFor(() => {
+        expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
+          screenCode: 'E-13',
+          entityRef: 'stn/abc/station',
+        });
+      });
+    }
+    const kanoniczny = (ref: string) => {
+      const element = resolveSelectedElementFromSnapshot(snapshot, ref);
+      expect(element, ref).not.toBeNull();
+      return element!;
+    };
+
+    it.each([
+      ['kanoniczna (wiersz panelu)', () => kanoniczny('bus-sn')],
+      ['niekanoniczna (klik w schemat)', () => ({ id: 'bus-sn', type: 'Bus' as const, name: 'bus-sn' })],
+    ])('szyna bez okna technicznego (%s) zamyka okno poprzedniej stacji', async (_opis, selekcja) => {
+      await oknoStacji();
+      act(() => {
+        useSelectionStore.getState().selectElement(selekcja());
+      });
+      await waitFor(() => {
+        expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+      });
+      expect(useSelectionStore.getState().selectedElement?.id).toBe('bus-sn');
+    });
+
+    it.each([
+      ['kanoniczna (wiersz panelu)', () => kanoniczny('kab-1')],
+      ['niekanoniczna (klik w schemat)', () => ({ id: 'kab-1', type: 'LineBranch' as const, name: 'kab-1' })],
+    ])('odcinek z oknem technicznym (%s) przestawia okno na ten odcinek', async (_opis, selekcja) => {
+      await oknoStacji();
+      act(() => {
+        useSelectionStore.getState().selectElement(selekcja());
+      });
+      await waitFor(() => {
+        expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
+          screenCode: 'E-12',
+          entityRef: 'kab-1',
+        });
+      });
+    });
+
+    it('ponowne wskazanie tego samego obiektu nie otwiera okna od nowa', async () => {
+      await oknoStacji();
+      const przed = useNetworkBuildStore.getState().activeSurface?.surfaceId;
+      act(() => {
+        useSelectionStore.getState().selectElement(kanoniczny('stn/abc/station'));
+      });
+      await waitFor(() => {
+        expect(useSelectionStore.getState().selectedElement?.name).toBe('S01 · Stacja końcowa');
+      });
+      expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(przed);
+    });
+
+    it('okno otwarte przez użytkownika (formularz operacji) nie jest ruszane przez selekcję', async () => {
+      act(() => {
+        window.history.replaceState(null, '', '/#sld');
+        useSelectionStore.getState().clearSelection();
+        useNetworkBuildStore.getState().openOperationForm('add_converter_source', {});
+      });
+      act(() => {
+        render(<UrlSelectionSyncProbe />);
+      });
+      const formularz = useNetworkBuildStore.getState().activeSurface;
+      expect(formularz).not.toBeNull();
+      for (const ref of ['bus-sn', 'kab-1']) {
+        act(() => {
+          useSelectionStore.getState().selectElement(kanoniczny(ref));
+        });
+        await waitFor(() => expect(useSelectionStore.getState().selectedElement?.id).toBe(ref));
+        expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
+      }
+    });
   });
 });

@@ -94,6 +94,12 @@ function stationScopedElementLabel(path: string, fallbackType: ElementType): str
       return `Odbiór stacji${suffix}`;
     case 'Switch':
       return `Aparat łączeniowy stacji${suffix}`;
+    case 'Bus':
+      return `Szyna stacji${suffix}`;
+    case 'BaySN':
+      return `Pole SN stacji${suffix}`;
+    case 'TransformerBranch':
+      return `Transformator stacji${suffix}`;
     default:
       return `Element stacji${suffix}`;
   }
@@ -131,10 +137,15 @@ function resolveStationScopedElementFromSnapshot(
 
     const stationIdentity = stationPublicIdentity(snapshot, station);
     const scopedPath = refOrId.slice(prefix.length).replace(/^\/+/, '');
+    // Rodzaj z kolekcji modelu ma pierwszeństwo przed rodzajem zastępczym: szyna sekcji GPZ
+    // (`gpz/⟨skrót⟩/section/001/bus_sn`) jest REALNĄ szyną modelu, a dopasowanie po
+    // przestrzeni nazw stacji nadawało jej rodzaj „element opisowy" (karta UI-02 — rodzaj
+    // w tabeli wyników i okno inspektora). Zastępczy rodzaj zostaje dla refów spoza kolekcji.
+    const type = resolveElementTypeFromSnapshot(snapshot, refOrId) ?? fallbackType;
     return {
       id: refOrId,
-      type: fallbackType,
-      name: `${stationIdentity.displayName} - ${stationScopedElementLabel(scopedPath, fallbackType)}`,
+      type,
+      name: `${stationIdentity.displayName} - ${stationScopedElementLabel(scopedPath, type)}`,
     };
   }
 
