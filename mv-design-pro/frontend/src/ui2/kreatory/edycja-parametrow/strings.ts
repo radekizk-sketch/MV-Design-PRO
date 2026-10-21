@@ -16,12 +16,12 @@ export const EDYCJA_PARAMETROW_STRINGS = {
     + 'dla danego typu elementu (lista dozwolonych pól) i odrzuca niedozwolone.',
 
   parametryTytul: 'Parametry do ustawienia',
-  parametryPomoc: 'Podaj pary klucz → wartość. Wartości liczbowe, logiczne (true/false) i puste (null) '
-    + 'są wykrywane automatycznie; pozostałe traktowane jako tekst.',
+  parametryPomoc: 'Podaj pary parametr → wartość. Liczby, odpowiedzi „tak" / „nie" oraz „brak" '
+    + '(brak wartości) są rozpoznawane automatycznie; pozostałe wpisy traktowane są jako tekst.',
   klucz: 'Klucz',
   kluczPlaceholder: 'np. tap_position',
   wartosc: 'Wartość',
-  wartoscPlaceholder: 'np. 2, true, null',
+  wartoscPlaceholder: 'np. 2, tak, brak',
   wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',

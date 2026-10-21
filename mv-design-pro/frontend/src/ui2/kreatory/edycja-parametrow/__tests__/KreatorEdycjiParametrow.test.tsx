@@ -90,14 +90,33 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('obsługuje wiele parametrów z konwersją bool/null', async () => {
+  it('„nie" daje fałsz, a angielskie true/null zostają tekstem (słownik tylko polski)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorEdycjiParametrow />);
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'true');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'null');
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'update_element_parameters',
+        expect.objectContaining({ parameters: { in_service: false, note: 'null' } }),
+      );
+    });
+  });
+
+  it('obsługuje wiele parametrów z konwersją tak-nie/brak', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorEdycjiParametrow />);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'tak');
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'brak');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
