@@ -13,6 +13,8 @@ Przy pracy nad stacjami, GPZ, rozdzielnią SN, SLD, zabezpieczeniami i kartami o
 
 Reguła języka i kodowania: dokumentacja projektu, etykiety interfejsu i komunikaty użytkownika mają być po polsku technicznym. Naprawiaj widoczne błędy kodowania w dotykanym zakresie, szczególnie typowe pozostałości po błędnym odczycie UTF-8.
 
+**Zasada właściciela: nieblokujące braki katalogowe (2026-10-21).** Brak pozycji/parametru katalogowego nie blokuje roboczego modelowania ani obliczeń: pokaż edytowalną podpowiedź wartości/zakresu opartą na rozpoznanym źródle lub jawnym profilu założeniowym, wykorzystaj ją w scenariuszu roboczym bez fałszowania danych producenta, a ślad pochodzenia i wpływ na wiarygodność wyniku umieść dyskretnie w wyjaśnieniu i raporcie. Nie używaj ukrytych zer ani nie wydawaj bezwarunkowych potwierdzeń zgodności z założeń. Rozróżnij niekompletność katalogu od błędu fizycznego modelu. Kontrakt wiążący: `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` (§ „Nieblokujące braki danych katalogowych”).
+
 ## Authority
 
 Project authority order, highest first. Updated 2026-05-13 per conflict resolution V12K-011 (see `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`):
