@@ -53,6 +53,8 @@ import sys
 import tokenize
 from pathlib import Path
 
+from guard_parsowanie import BladZrodla, czytaj_tekst, sparsuj_tekst, uruchom  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_UI2 = ROOT / "frontend" / "src" / "ui2"
 BACKEND_PLIKI = (
@@ -148,10 +150,7 @@ def _dopasowania(wartosc: str) -> list[str]:
 
 def skanuj_ts(plik: Path) -> list[tuple[int, str, str]]:
     wyniki: list[tuple[int, str, str]] = []
-    try:
-        tekst = plik.read_text(encoding="utf-8")
-    except OSError:
-        return wyniki
+    tekst = czytaj_tekst(plik)
     for numer, linia in enumerate(tekst.splitlines(), start=1):
         oczyszczona = linia.strip()
         if oczyszczona.startswith("//") or oczyszczona.startswith("*"):
@@ -190,14 +189,8 @@ def _linie_docstringow(drzewo: ast.Module) -> set[int]:
 
 def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
     wyniki: list[tuple[int, str, str]] = []
-    try:
-        tekst = plik.read_text(encoding="utf-8")
-    except OSError:
-        return wyniki
-    try:
-        linie_docstringow = _linie_docstringow(ast.parse(tekst))
-    except SyntaxError:
-        linie_docstringow = set()
+    tekst = czytaj_tekst(plik)
+    linie_docstringow = _linie_docstringow(sparsuj_tekst(tekst, str(plik)))
     try:
         tokeny = tokenize.generate_tokens(io.StringIO(tekst).readline)
         for tok in tokeny:
@@ -215,8 +208,11 @@ def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
             for powod in _dopasowania(wartosc):
                 linia_tekst = tekst.splitlines()[tok.start[0] - 1].strip()
                 wyniki.append((tok.start[0], linia_tekst[:140], powod))
-    except (tokenize.TokenError, SyntaxError, IndexError):
-        return wyniki
+    except (tokenize.TokenError, SyntaxError, IndexError) as exc:
+        raise BladZrodla(
+            f"{plik}:0: tokenizacja pliku z zakresu skanu nie powiodla sie "
+            f"({type(exc).__name__}: {exc}) — straznik nie moze go ocenic"
+        ) from exc
     return wyniki
 
 
@@ -332,4 +328,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

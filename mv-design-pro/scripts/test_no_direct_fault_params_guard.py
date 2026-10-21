@@ -33,6 +33,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import guard_parsowanie
 import no_direct_fault_params_guard as guard
 
 #: Warstwa solvera w drzewie testowym. Reguła C czyta pozycję `fault_node_id`
@@ -619,21 +620,24 @@ def test_pusta_mapa_sygnatur_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
     assert "ani jednej sygnatury" in out
 
 
-def test_plik_z_bledem_skladni_jest_liczony_i_nie_wywraca_bramki(
+def test_plik_z_bledem_skladni_jest_czerwienia_z_nazwa_pliku_i_linia(
     tmp_path, monkeypatch, capsys
 ) -> None:
+    """Intencja zachowana, kanon zmieniony (GUARD-BLAD-SKLADNI): plik z zakresu skanu, ktorego
+    nie da sie sparsowac, to CZERWIEN z plikiem i linia — wczesniej bylo `WARN` i rc == 0,
+    czyli bramka meldowala czysto o pliku, ktorego nie umiala ocenic."""
     root = _drzewo(tmp_path, {"application/zepsuty.py": "def f(:\n", "api/ok.py": CZYSTY})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
     monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
     monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", {})
 
-    rc = guard.main()
+    rc = guard_parsowanie.uruchom(guard.main)
 
     out = capsys.readouterr().out
-    assert rc == 0, out
-    assert "Scanned 2 Python file(s)" in out
-    assert "nie da sie sparsowac" in out
+    assert rc == 1, out
+    assert "zepsuty.py:1:" in out
+    assert "blad skladni" in out
 
 
 def test_plik_spoza_korzenia_nie_jest_cicho_bialolistowany(tmp_path, monkeypatch) -> None:

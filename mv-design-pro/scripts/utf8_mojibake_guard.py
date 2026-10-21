@@ -303,7 +303,12 @@ def main() -> int:
     for path in kandydaci:
         try:
             text = path.read_text(encoding="utf-8")
-        except Exception:
+        except (OSError, UnicodeDecodeError) as exc:
+            # Plik z zakresu skanu, ktorego nie da sie odczytac jako UTF-8, to sam w sobie
+            # defekt kodowania (a straznik nie moze go ocenic) — czerwien, nie pominiecie.
+            violations.append(
+                (str(path.relative_to(KORZEN)), 0, "", f"nieczytelny jako UTF-8: {exc}")
+            )
             continue
         linie = text.splitlines()
         for numer, tresc, powod in znajdz_trafienia(linie):
