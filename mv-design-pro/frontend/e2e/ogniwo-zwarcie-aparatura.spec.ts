@@ -17,6 +17,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -187,7 +188,9 @@ async function zbudujProjektZeStacja(
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID),

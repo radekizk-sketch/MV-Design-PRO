@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -241,12 +242,8 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   // sieć fizycznie niemożliwą, a backend to przyjmował. Partia integracji 11 dołożyła
   // walidator E023 (napięcie znamionowe uzwojenia poza pasmem szyny = blokada), więc
   // taka sieć nie przechodzi już gotowości.
-  const napiecieSzyny = new Map(
-    (op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv ?? Number.NaN]),
-  );
-  const transformatoryStacji = (op.snapshot?.transformers ?? []).filter(
-    (transformer) => (napiecieSzyny.get(transformer.lv_bus_ref ?? '') ?? Number.NaN) < 1.0,
-  );
+  // Reguła wyboru — jedna dla wszystkich speców (`transformatoryStacji.ts`).
+  const transformatoryStacji = transformatoryStacjiSnNn(op.snapshot);
   expect(transformatoryStacji.length, 'stacja SN/nN ma transformator po stronie nN').toBe(1);
   for (const transformer of transformatoryStacji) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {

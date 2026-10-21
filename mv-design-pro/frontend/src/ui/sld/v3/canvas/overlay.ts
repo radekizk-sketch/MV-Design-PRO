@@ -495,6 +495,17 @@ function isLoadFlowPayload(payload: RawOverlayPayload): boolean {
 }
 
 /**
+ * Zwrot grota przepływu WZDŁUŻ RYSUNKU (`points[0]→points[last]` biegu) — jedna reguła dla
+ * nakładki z wyniku (`buildFlowOverlayFromScene`) i dla nakładki z towarzysza solvera
+ * w harnessie (`screenshot-harness-main.tsx`, karta R10-E2E-CZERWONE): przepływ w kierunku
+ * from→to gałęzi (`p_from_mw ≥ 0`) idzie zgodnie z rysunkiem TYLKO wtedy, gdy rysunek
+ * zaczyna się od strony „from" (`orientedSegmentRefs`). ZERO fizyki — złożenie dwóch danych.
+ */
+export function zwrotGrotuWzdluzRysunku(przeplywFromTo: boolean, orientacjaZgodna: boolean): boolean {
+  return przeplywFromTo === orientacjaZgodna;
+}
+
+/**
  * S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1 „0 strzałek rozpływu") — ORIENTACJA
  * odcinka względem gałęzi modelu: `segmentRef → forward`, gdzie `forward`
  * mówi, czy `points[0]` narysowanego odcinka leży po stronie `from_bus_ref`
@@ -744,7 +755,7 @@ export function buildFlowOverlayFromScene(
       // `points[0]→points[last]` TYLKO wtedy, gdy `points[0]` jest stroną
       // „from". ZERO fizyki: obie składowe to dane (znak z solvera, orientacja
       // z refów węzłów gałęzi).
-      forward: (p.value >= 0) === orientedForward,
+      forward: zwrotGrotuWzdluzRysunku(p.value >= 0, orientedForward),
       p,
       q: readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_Q),
       i: readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_I),
