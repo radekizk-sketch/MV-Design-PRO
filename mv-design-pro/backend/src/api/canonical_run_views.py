@@ -51,6 +51,11 @@ from network_model.core.autorytet_wyniku_zwarciowego import (
     KLUCZ_IMPEDANCJI_ZWARCIA,
     wynik_poza_zakresem_iec60909,
 )
+from network_model.core.czas_wylaczenia import (
+    KLUCZ_OPCJI_CZASU_TB,
+    KOD_CZAS_TB_BRAK,
+    czas_tb_z_danych,
+)
 from network_model.core.voltage_factor import nadpisanie_c_z_danych, opis_c_biegu
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -572,6 +577,16 @@ def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     return {"wartosc": 1.0, "pochodzenie": "domyslna_assemblera"}
 
 
+def _czas_tb_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Czas wyłączenia t_b [s] ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA) — z opcji biegu
+    (`breaking_time_seconds`, projekcja scenariusza zwarciowego). Brak = ``wartosc`` None
+    z pochodzeniem ``brak_danej`` i kodem założenia `fault.czas_tb_brak` — nigdy domyślna."""
+    wartosc = czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB))
+    if wartosc is None:
+        return {"wartosc": None, "pochodzenie": "brak_danej", "kod": KOD_CZAS_TB_BRAK}
+    return {"wartosc": wartosc, "pochodzenie": "opcje_biegu"}
+
+
 def _scenariusz_biegu_zwarcia(run: CanonicalRun) -> str | None:
     """`MAX`/`MIN` ZAPISANE na wyniku biegu — z artefaktu, nie z domysłu.
 
@@ -601,6 +616,7 @@ def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     konfiguracja: dict[str, Any] = {
         "c_factor": _c_factor_biegu_zwarcia(run),
         "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
+        "breaking_time_seconds": _czas_tb_biegu_zwarcia(run),
         "metoda": "IEC 60909",
         "scenariusz": _scenariusz_biegu_zwarcia(run),
     }

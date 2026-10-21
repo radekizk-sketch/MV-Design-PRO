@@ -75,6 +75,30 @@ export function nadpisanieCZPol(pola: PolaWspolczynnikaC): WynikNadpisaniaC {
   return { ok: true, nadpisanie_c: { wartosc, uzasadnienie } };
 }
 
+/** Kod odmowy backendu dla niepoprawnego t_b (`network_model.core.czas_wylaczenia`). */
+export const KOD_CZAS_TB_NIEPOPRAWNY = 'fault.czas_tb_niepoprawny';
+export const KOMUNIKAT_CZAS_TB_NIEPOPRAWNY =
+  'Czas wyłączenia t_b musi być liczbą dodatnią w sekundach (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) — albo zostaw pole puste.';
+
+export type WynikCzasuWylaczenia =
+  | { ok: true; wartosc: number | null }
+  | { ok: false; kod: string; blad: string };
+
+/**
+ * Czas wyłączenia t_b z pola formularza (karta SC-IB-ITH-ZRODLA) — ta sama reguła danych co
+ * backend (`czas_tb_z_danych`): puste pole = brak danej (`null`, bieg z założeniem
+ * `fault.czas_tb_brak`), liczba skończona dodatnia = t_b, cokolwiek innego = odmowa.
+ */
+export function czasWylaczeniaZPola(tekst: string): WynikCzasuWylaczenia {
+  const surowy = tekst.trim();
+  if (surowy === '') return { ok: true, wartosc: null };
+  const wartosc = Number(surowy.replace(',', '.'));
+  if (!Number.isFinite(wartosc) || wartosc <= 0) {
+    return { ok: false, kod: KOD_CZAS_TB_NIEPOPRAWNY, blad: KOMUNIKAT_CZAS_TB_NIEPOPRAWNY };
+  }
+  return { ok: true, wartosc };
+}
+
 export type WynikKonfiguracjiZwarcia =
   | { ok: true; config: ShortCircuitConfig }
   | { ok: false; kod: string; blad: string };
@@ -84,18 +108,36 @@ export function konfiguracjaZwarciaZPol(
   pola: PolaWspolczynnikaC,
   thermalTimeSeconds: number,
   includeBranchContributions: boolean,
+  czasWylaczenia: string,
 ): WynikKonfiguracjiZwarcia {
   const nadpisanie = nadpisanieCZPol(pola);
   if (!nadpisanie.ok) return nadpisanie;
+  const tb = czasWylaczeniaZPola(czasWylaczenia);
+  if (!tb.ok) return tb;
   return {
     ok: true,
     config: {
       scenariusz: pola.scenariusz,
       nadpisanie_c: nadpisanie.nadpisanie_c,
       thermal_time_seconds: thermalTimeSeconds,
+      // Pole addytywne: wysyłane wyłącznie z wartością (backend `exclude_none`).
+      ...(tb.wartosc === null ? {} : { breaking_time_seconds: tb.wartosc }),
       include_branch_contributions: includeBranchContributions,
     },
   };
+}
+
+/** Tekst pola t_b z zapisanej konfiguracji (edycja scenariusza): brak danej = pole puste. */
+export function poleCzasuWylaczenia(config: ShortCircuitConfig | null | undefined): string {
+  const tb = config?.breaking_time_seconds;
+  return tb === null || tb === undefined ? '' : String(tb);
+}
+
+/** Opis t_b scenariusza na liście — wartość albo jawny brak z drogą naprawy. */
+export function opisCzasuWylaczenia(config: ShortCircuitConfig | null | undefined): string {
+  const tb = config?.breaking_time_seconds;
+  if (tb === null || tb === undefined) return 'nie podano (Ib przy maszynach i iDC nieobliczone)';
+  return `${String(tb).replace('.', ',')} s`;
 }
 
 /** Pola formularza z zapisanej konfiguracji (edycja istniejącego scenariusza). */

@@ -5,7 +5,7 @@
 
 export const APARATURA_STRINGS = {
   tytul: 'Wytrzymałość aparatury w punkcie zwarcia',
-  cel: 'Porównaj prądy zwarcia w punkcie zabudowy każdego pola tej stacji (ip → I_dyn, Ith → I_th) ze znamionami jego aparatów.',
+  cel: 'Porównaj prądy zwarcia w punkcie zabudowy każdego pola tej stacji (ip → I_dyn, Ith → I_th, Ib albo I″k → zdolność wyłączania I_cu) ze znamionami jego aparatów.',
   akcja: 'Sprawdź aparaturę w punkcie zwarcia',
   akcjaPonow: 'Sprawdź ponownie',
   pracuje: 'Sprawdzanie wytrzymałości…',
@@ -22,6 +22,11 @@ export const APARATURA_STRINGS = {
   pradyPunkt: 'punkt',
   pradyIp: 'ip',
   pradyIth: 'Ith',
+  // Wielkości kryterium wyłączania (karta SC-IB-ITH-ZRODLA) — wartości z wiersza biegu.
+  pradyIb: 'Ib',
+  pradyIdc: 'iDC(tb)',
+  pradyTb: 'tb',
+  pradyTbBrak: 'nie podano',
   zrodloAparatu: 'z modelu i konfiguracji stacji',
   // Źródło aparatu per wiersz — inżynier musi wiedzieć, CO ocenia (KD-6).
   zrodloModel: 'aparat z modelu (katalog pola)',

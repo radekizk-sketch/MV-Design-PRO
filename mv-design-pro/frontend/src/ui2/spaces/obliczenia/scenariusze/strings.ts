@@ -31,6 +31,10 @@ export const SCENARIUSZE_STRINGS = {
   polaRezystancja: 'Rezystancja przejścia R_f [Ω]',
   polaReaktancja: 'Reaktancja przejścia X_f [Ω]',
   polaCzasCieplny: 'Czas trwania zwarcia t_k [s]',
+  polaCzasWylaczenia: 'Czas wyłączenia t_b [s]',
+  polaCzasWylaczeniaPodpowiedz:
+    'Najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika. Puste = Ib przy maszynach wirujących i iDC nieobliczone (nazwane założenie biegu).',
+  kolCzasWylaczenia: 'Czas wyłączenia t_b',
   polaWklady: 'Licz wkłady gałęziowe',
 
   kolNazwa: 'Scenariusz',

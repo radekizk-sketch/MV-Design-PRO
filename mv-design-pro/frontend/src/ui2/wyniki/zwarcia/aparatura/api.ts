@@ -28,6 +28,16 @@ export interface ZnamionaWytrzymalosci {
   readonly i_th_ka: number | null;
   readonly i_th_duration_s: number | null;
   readonly i_th_pochodzenie: string | null;
+  /**
+   * Znamionowa zdolność wyłączania zwarciowa I_cu z katalogu (karta SC-IB-ITH-ZRODLA);
+   * `null` = katalog jej nie niesie albo aparat jej nie ma (`i_cu_nie_dotyczy`).
+   */
+  readonly i_cu_ka: number | null;
+  readonly i_cu_pochodzenie: string | null;
+  /** Rozłącznik, odłącznik, uziemnik, tor szynowy — kryterium wyłączania nie dotyczy. */
+  readonly i_cu_nie_dotyczy: boolean;
+  /** Bezpiecznik — zdolność wyłączania wobec spodziewanego I″k (nie I_b). */
+  readonly bezpiecznik: boolean;
 }
 
 /** Czas wyłączenia użyty w kryterium cieplnym + jego rozbicie (WHITE BOX). */
@@ -48,6 +58,15 @@ export interface PradyPola {
   readonly ik_ka: number | null;
   readonly ip_ka: number | null;
   readonly ith_ka: number | null;
+  /**
+   * Wielkości kryterium wyłączania z TEGO SAMEGO wiersza biegu (karta SC-IB-ITH-ZRODLA):
+   * symetryczny prąd wyłączeniowy Ib (`null` = bieg z maszynami bez tb), składowa
+   * nieokresowa iDC(tb) (informacyjnie), czas tb biegu i napięcie znamionowe punktu.
+   */
+  readonly ib_ka: number | null;
+  readonly i_dc_ka: number | null;
+  readonly tb_s: number | null;
+  readonly un_kv: number | null;
   readonly kody_gotowosci: readonly string[];
   readonly powod_pl: string | null;
 }
@@ -79,7 +98,10 @@ export interface PoleWytrzymalosci {
   readonly prady_pola: PradyPola;
   readonly czas_wylaczenia: CzasWylaczeniaPola;
   readonly werdykt: WerdyktWytrzymalosci | null;
-  /** Rekordy K: kryterium dynamiczne i cieplne (puste dla aparatu spoza katalogu). */
+  /**
+   * Rekordy K: kryterium dynamiczne, cieplne i zdolności wyłączania (puste dla aparatu spoza
+   * katalogu). Rekord wyłączania nazywa porównaną wielkość (Ib albo I″k) i jej normę.
+   */
   readonly oceny: readonly OcenaKryterium[];
   readonly komunikat_pl: string;
   readonly kody_gotowosci: readonly string[];
@@ -128,6 +150,11 @@ export async function pobierzWytrzymaloscAparatury(
  * „Nieustalone" to NIE jest ocena negatywna — dostaje je wiersz bez werdyktu
  * (aparat spoza katalogu) oraz taki, w którym choć jedno kryterium zostało
  * nierozstrzygnięte (brak znamion albo brak czasu wyłączenia).
+ *
+ * Znacznik dotyczy WYTRZYMAŁOŚCI (I_dyn, I_th — werdykt jądra backendu). Zdolność wyłączania
+ * (karta SC-IB-ITH-ZRODLA) jest osobnym rekordem K pokazanym kartą werdyktu: prezentacja nie
+ * składa agregatu ze statusów maszynowych (kontrakt werdyktu wyjaśnialnego — agregat nie
+ * zastępuje kryteriów składowych, a status nie steruje prezentacją).
  */
 export function znacznikWerdyktu(pole: PoleWytrzymalosci): string {
   const werdykt = pole.werdykt;

@@ -1854,7 +1854,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `tolerancja_nn_dolna`, `voltage_factor_zrodlo`, `zasilajacy` — jeden nosnik c i tolerancji
     # nN), -4 (`c_factor_explicit`, `c_factor_max`, `c_factor_min`, `c_factor_override` — plaskie
     # pola c skasowane z kontraktu wejscia 2.0). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4209." in wyjscie, wyjscie
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` (`git archive`) = 4219
+    # (pin 4209 byl czerwony na bazie — samotest nie przechodzil); drzewo karty 4232, roznica
+    # zbiorow `contract_fields()`: +13 (`breaking_time_seconds`, `delta_u_wzgledne`, `i_dc_a`,
+    # `i_dc_ka`, `ikss_czesciowy_a`, `ikss_zaciski_a`, `krok_ib`, `krok_idc`, `norma`,
+    # `skladowa_dc`, `wspolczynnik_zaniku`, `wykladnik`, `zaniki` — t_b biegu, I_b sieci
+    # oczkowej z zanikiem maszyn, i_DC), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4232." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2089,7 +2095,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 9 (+ B01-RUNDA-3): 573 + 1 (`enm/zdania_odmow_rdzenia.py`) = 574. POMIAR.
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): 574 + 1 (`enm/tolerancja_nn.py` —
         # predykat tolerancji napiecia sieci nN per wyspa galwaniczna) = 575. POMIAR.
-        "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` = 577 (pin 575
+        # byl czerwony na bazie); karta +1 `network_model/core/czas_wylaczenia.py` = 578. POMIAR.
+        "Przeskanowano 578 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2160,7 +2168,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # razem z opcja biegu `c_factor` (c dobiera `voltage_factor.dobierz_c`). Budzet zmalal
     # juz w commitach 1–3/n karty, pin nie zostal wtedy utrwalony (czerwien na bazie
     # `bd3a87f4`). POMIAR guardem na drzewie karty.
-    assert "Zapadka dlugu (fizyczne): 50 plikow, suma 233." in wyjscie, wyjscie
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): 50/233 -> 47/225 — zdjete wpisy
+    # `B:ifexp:result.m_factor/n_factor` w `packs/sc_symmetrical.py`, `packs/sc_asymmetrical.py`
+    # (oba pliki wypadaja z zapadki) i `proof_generator.py` (domyslne m/n za brak = druga
+    # definicja I_th) oraz `B:ifexp:m.ir_a` (2) w `solvers/machine_sc_iec60909.py` (plik
+    # wypada; krotnosc 0 za niefizyczny prad znamionowy -> odmowa). POMIAR guardem na drzewie
+    # karty.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 225." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2259,7 +2273,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ W5-E-TTIT): network_model 182 + 1 = 183; wykluczenia 1/2
         # (stan gałęzi integracji — 3/6 karty pochodziły z jej starszej bazy). POMIAR.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` = 184 (pin 183
+        # byl czerwony na bazie — samotest nie przechodzil); karta +1 `core/czas_wylaczenia.py`
+        # = 185; dlug 11/69 -> 10/67 (wpis `machine_sc_iec60909.py` zdjety). POMIAR guardem
+        # na bazie (archiwum `git archive`) i na drzewie karty.
+        "  network_model: pliki_skanowane=185, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2418,9 +2436,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): dlug 30/90 -> 29/87 (zdjete wpisy
         # `run.c_factor` w `pakiet_biegu.py` i `pakiet_nastaw.py` oraz `kotwica.c_factor`
         # w `batch_run.py` — c z jednego nosnika). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=253, dlug=29 plikow/suma 87, "
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): application dlug 29/87 -> 27/81 (zdjete
+        # domyslne m/n w trzech plikach dowodu zwarciowego); api: pomiar bazy karty
+        # `4ccfa9320` = 64 pliki (pin 63 byl czerwony na bazie), karta pliku nie dodaje.
+        "  application: pliki_skanowane=253, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

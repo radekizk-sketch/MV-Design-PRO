@@ -234,8 +234,15 @@ BACKEND = ROOT / "backend"
 # na czubku karty (199/26) i na drzewie scalonym (174/23); roznica zbiorow (plik, komunikat)
 # drzewo scalone minus baza = 0 i drzewo scalone minus karta = 0 — zero nowych, 24 zdjete
 # (bledy naprawione w karcie w plikach, ktore partia 9 zostawila bez zmian).
-BASELINE_ERRORS = 174
-BASELINE_FILES = 23
+# Karta SC-IB-ITH-ZRODLA (B-01 pozycja (n), baza `4ccfa9320` = 174/23): 174/23 -> 169/22.
+# POMIAR `mypy src` (mypy 1.19.1) na bazie i na drzewie karty; roznica zbiorow (plik,
+# komunikat) karta minus baza = 0, baza minus karta = dokladnie 5 wierszy:
+# `machine_sc_iec60909.py` 4 (3x attr-defined `p_per_pole_mw` na maszynie synchronicznej +
+# 1x assignment: jedna zmienna petli dla maszyn sync/async — wklad maszyny liczy teraz jedna
+# funkcja z jawnym `p_per_pole_mw` per rodzaj) i `equipment_proof/generator.py` 1 (arg-type
+# `_value_or_missing` — wielkosc kryterium wylaczania czytana jako liczba z jednego zrodla).
+BASELINE_ERRORS = 169
+BASELINE_FILES = 22
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

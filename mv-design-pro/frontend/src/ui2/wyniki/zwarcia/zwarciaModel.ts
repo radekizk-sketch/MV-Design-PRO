@@ -271,6 +271,25 @@ function wierszCzasuCieplnego(
   };
 }
 
+/** Wiersz „Czas wyłączenia tb" (karta SC-IB-ITH-ZRODLA) — wartość z biegu albo „nie podano";
+ * przyczynę i skutek braku (I_b przy maszynach, i_DC) niesie założenie biegu
+ * `fault.czas_tb_brak` (wiersz „Bieg zwarciowy" niżej). Starszy zapis bez pola → brak wiersza. */
+function wierszCzasuWylaczenia(
+  t: KonfiguracjaBieguZwarcia['breaking_time_seconds'],
+): WierszZalozenia[] {
+  if (t === undefined) return [];
+  if (t.wartosc === null) {
+    return [{ etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia, wartosc: ZWARCIA_STRINGS.zalCzasWylaczeniaBrak }];
+  }
+  return [
+    {
+      etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia,
+      wartosc: fmtCzas(t.wartosc),
+      jednostka: ZWARCIA_STRINGS.jednS,
+    },
+  ];
+}
+
 /** Wiersz „Impedancja przejścia Z_f" — WYŁĄCZNIE dla biegu przez Z_f ≠ 0 (pole
  * `impedancja_przejscia` konfiguracji biegu, karta OD-14); uwaga mówi wprost, że wynik
  * jest poza zakresem IEC 60909. Bieg metaliczny → brak wiersza (nie „0 Ω"). */
@@ -312,10 +331,15 @@ export function naZalozeniaZwarc(
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
     wierszWspolczynnikaC(konfiguracja?.c_factor, konfiguracja?.scenariusz),
     wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
+    ...wierszCzasuWylaczenia(konfiguracja?.breaking_time_seconds),
     ...wierszImpedancjiPrzejscia(konfiguracja?.impedancja_przejscia),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
-    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+    // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_brak`).
+    etykieta:
+      z.element_ref === null
+        ? ZWARCIA_STRINGS.zalozenieBiegu
+        : ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
     wartosc: z.message_pl,
     uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
   }));

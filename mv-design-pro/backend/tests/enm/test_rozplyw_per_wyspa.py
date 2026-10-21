@@ -300,7 +300,12 @@ def test_regulator_zaczepowy_w_jednej_wyspie_bez_zmian_ksztaltu() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_zwarcie_wyspa_plywajaca_poza_grafem_solvera_wiersz_bez_solvera() -> None:
+# Karta SC-IB-ITH-ZRODLA: t_b jest daną wejściową wiersza (zachowaną także w wierszu bez
+# solvera) — bieg bez t_b niesie ``None``, bieg z t_b jego wartość; nigdy dawne domyślne 0,1 s.
+@pytest.mark.parametrize("tb_s", [None, 0.25])
+def test_zwarcie_wyspa_plywajaca_poza_grafem_solvera_wiersz_bez_solvera(
+    tb_s: float | None,
+) -> None:
     enm = _siec("10_deenergized_section")
     migawka = enm.model_dump(mode="json")
     wejscie = zloz_wejscie_zwarcia(migawka, _SC_3F)
@@ -310,7 +315,7 @@ def test_zwarcie_wyspa_plywajaca_poza_grafem_solvera_wiersz_bez_solvera() -> Non
         set(wejscie.graph.nodes) == set(wejscie.solve_graph.nodes) | wejscie.wezly_bez_odniesienia
     )
     assert wejscie.solve_graph is not wejscie.graph
-    run = _zwarcie(enm)
+    run = _zwarcie(enm) if tb_s is None else _zwarcie(enm, breaking_time_seconds=tb_s)
     wiersze = {str(r["fault_node_id"]): r for r in run.raw_result["results"]}
     assert set(wiersze) == set(wejscie.reportable_fault_node_ids)
     for wezel in wejscie.wezly_bez_odniesienia:
@@ -320,7 +325,8 @@ def test_zwarcie_wyspa_plywajaca_poza_grafem_solvera_wiersz_bez_solvera() -> Non
         assert wiersz["white_box_trace"] == []
         assert wiersz["ikss_a"] is None and wiersz["zkk_ohm"] == {"re": None, "im": None}
         assert {"$.ikss_a", "$.kappa", "$.zkk_ohm.re"} <= set(wiersz["non_physical_fields"])
-        assert wiersz["tb_s"] == 0.1 and wiersz["tk_s"] == 1.0 and wiersz["un_v"] == 400.0
+        assert wiersz["tb_s"] == tb_s and wiersz["tk_s"] == 1.0 and wiersz["un_v"] == 400.0
+        assert wiersz["ib_a"] is None and wiersz.get("i_dc_a") is None
     assert not [
         k for k in run.white_box_trace if k.get("target_id") in wejscie.wezly_bez_odniesienia
     ]

@@ -34,6 +34,22 @@ function poz(
   };
 }
 
+/**
+ * Pozycja wielkości zależnej od czasu wyłączenia t_b (karta SC-IB-ITH-ZRODLA): w biegu bez t_b
+ * brak wartości to nazwany stan „nie obliczono — brak tb", a nie kreska udająca starszy wynik.
+ */
+function pozZaleznaOdTb(
+  etykieta: string,
+  wartosc: number | null | undefined,
+  tbS: number | null | undefined,
+): PozycjaBilansu {
+  const S = ZWARCIA_STRINGS;
+  if ((wartosc === null || wartosc === undefined) && (tbS === null || tbS === undefined)) {
+    return { etykieta, wartosc: S.bilansBrakTb, jednostka: null, tekst: true };
+  }
+  return poz(etykieta, wartosc, fmtKA, S.jednKA);
+}
+
 /** Czysty adapter: wiersz kanoniczny → pozycje bilansu (kolejność normowa). */
 export function naBilansIEC(row: ShortCircuitRow): PozycjaBilansu[] {
   const S = ZWARCIA_STRINGS;
@@ -41,7 +57,8 @@ export function naBilansIEC(row: ShortCircuitRow): PozycjaBilansu[] {
     poz(S.bilansIkss, row.ikss_ka, fmtKA, S.jednKA),
     poz(S.bilansIp, row.ip_ka, fmtKA, S.jednKA),
     poz(S.bilansIth, row.ith_ka, fmtKA, S.jednKA),
-    poz(S.bilansIb, row.ib_ka, fmtKA, S.jednKA),
+    pozZaleznaOdTb(S.bilansIb, row.ib_ka, row.tb_s),
+    pozZaleznaOdTb(S.bilansIdc, row.i_dc_ka, row.tb_s),
     poz(S.bilansIk, row.ik_ka, fmtKA, S.jednKA),
     poz(S.bilansSk, row.sk_mva, fmtMVA, S.jednMVA),
     poz(S.bilansI2t, row.i2t_ka2s, fmtKappa, S.jednKA2s),

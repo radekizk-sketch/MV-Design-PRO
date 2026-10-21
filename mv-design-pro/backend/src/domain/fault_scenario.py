@@ -29,6 +29,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
+from network_model.core.czas_wylaczenia import czas_tb_z_danych
 from network_model.core.impedancja_przejscia import (
     OPISY_ODMOW_IMPEDANCJI,
     kod_odmowy_impedancji,
@@ -163,26 +164,40 @@ class ShortCircuitConfig:
     a wartość c dobiera assembler PER WĘZEŁ z pasma jego napięcia
     (``network_model.core.voltage_factor.dobierz_c``). ``nadpisanie_c`` — wyłącznie
     z uzasadnieniem (``NadpisanieC`` odmawia bez niego). ``thermal_time_seconds`` = t_k [s].
+
+    ``breaking_time_seconds`` = t_b = t_min [s] (karta SC-IB-ITH-ZRODLA, B-01 (n)):
+    najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika — czas, w którym
+    liczy się prąd wyłączeniowy I_b (IEC 60909-0 rozdz. 9) i składowa nieokresowa i_DC
+    (rozdz. 10). ``None`` = brak danej (bieg niesie założenie ``fault.czas_tb_brak``);
+    wartość niefizyczna = odmowa ``fault.czas_tb_niepoprawny``
+    (``network_model.core.czas_wylaczenia.czas_tb_z_danych`` — jedna reguła danych).
     """
 
     scenariusz: Scenario
     nadpisanie_c: NadpisanieC | None = None
     thermal_time_seconds: float = 1.0
     include_branch_contributions: bool = False
+    breaking_time_seconds: float | None = None
 
     def __post_init__(self) -> None:
         if self.scenariusz not in ("MAX", "MIN"):
             raise FaultScenarioValidationError(
                 f"Scenariusz współczynnika c musi być MAX albo MIN, otrzymano: {self.scenariusz!r}"
             )
+        czas_tb_z_danych(self.breaking_time_seconds)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        dane: dict[str, Any] = {
             "scenariusz": self.scenariusz,
             "nadpisanie_c": self.nadpisanie_c.to_dict() if self.nadpisanie_c else None,
             "thermal_time_seconds": self.thermal_time_seconds,
             "include_branch_contributions": self.include_branch_contributions,
         }
+        # Addytywnie: klucz tylko przy podanym t_b — scenariusze bez t_b serializują się
+        # (i haszują) bajt w bajt jak przed kartą.
+        if self.breaking_time_seconds is not None:
+            dane["breaking_time_seconds"] = float(self.breaking_time_seconds)
+        return dane
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ShortCircuitConfig:
@@ -206,6 +221,7 @@ class ShortCircuitConfig:
             nadpisanie_c=nadpisanie_c_z_danych(data.get("nadpisanie_c")),
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
             include_branch_contributions=data.get("include_branch_contributions", False),
+            breaking_time_seconds=czas_tb_z_danych(data.get("breaking_time_seconds")),
         )
 
 

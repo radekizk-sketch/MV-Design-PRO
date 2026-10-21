@@ -32,6 +32,7 @@ import {
   DOMYSLNE_POLA_C,
   konfiguracjaZwarciaZPol,
   opisCScenariusza,
+  opisCzasuWylaczenia,
   type PolaWspolczynnikaC,
 } from '../../../../ui/fault-scenarios/wspolczynnikC';
 import { SCENARIUSZE_STRINGS as T } from './strings';
@@ -56,6 +57,8 @@ interface FormularzScenariusza {
   xOhm: string;
   c: PolaWspolczynnikaC;
   czasCieplnyS: string;
+  /** Karta SC-IB-ITH-ZRODLA: t_b [s] jako tekst pola; puste = brak danej. */
+  czasWylaczeniaS: string;
   wklady: boolean;
 }
 
@@ -70,6 +73,7 @@ const PUSTY_FORMULARZ: FormularzScenariusza = {
   xOhm: '0',
   c: DOMYSLNE_POLA_C,
   czasCieplnyS: String(DOMYSLNY_CZAS_S),
+  czasWylaczeniaS: '',
   wklady: true,
 };
 
@@ -103,6 +107,7 @@ export function PanelScenariuszy() {
       formularz.c,
       Number(formularz.czasCieplnyS),
       formularz.wklady,
+      formularz.czasWylaczeniaS,
     );
     if (!konfiguracja.ok) {
       setBladFormularza(konfiguracja.blad);
@@ -302,6 +307,17 @@ export function PanelScenariuszy() {
               onChange={(e) => setFormularz({ ...formularz, czasCieplnyS: e.target.value })}
             />
           </label>
+          <label className="mvd-scen-pole">
+            <span>{T.polaCzasWylaczenia}</span>
+            <input
+              type="number"
+              step="0.01"
+              data-testid="mvd-scenariusze-czas-tb"
+              value={formularz.czasWylaczeniaS}
+              title={T.polaCzasWylaczeniaPodpowiedz}
+              onChange={(e) => setFormularz({ ...formularz, czasWylaczeniaS: e.target.value })}
+            />
+          </label>
           <label className="mvd-scen-pole mvd-scen-pole--chk">
             <input
               type="checkbox"
@@ -355,6 +371,7 @@ export function PanelScenariuszy() {
               <th scope="col">{T.kolRodzaj}</th>
               <th scope="col">{T.kolMiejsce}</th>
               <th scope="col">{T.kolWspolczynnikC}</th>
+              <th scope="col">{T.kolCzasWylaczenia}</th>
               <th scope="col">{T.kolAkcje}</th>
             </tr>
           </thead>
@@ -367,6 +384,7 @@ export function PanelScenariuszy() {
                   {`${LOCATION_TYPE_LABELS[s.location.location_type] ?? s.location.location_type}: ${s.location.element_ref}`}
                 </td>
                 <td data-testid={`mvd-scenariusze-c-${s.scenario_id}`}>{opisCScenariusza(s.config)}</td>
+                <td data-testid={`mvd-scenariusze-tb-${s.scenario_id}`}>{opisCzasuWylaczenia(s.config)}</td>
                 <td className="mvd-scen-akcje-kom">
                   <button
                     type="button"

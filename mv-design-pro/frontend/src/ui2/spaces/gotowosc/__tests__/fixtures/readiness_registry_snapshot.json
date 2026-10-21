@@ -487,6 +487,22 @@
     },
     {
       "area": "ANALYSIS",
+      "code": "fault.czas_tb_brak",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.czas_tb_niepoprawny",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
       "code": "fault.location_on_branch_requires_assembler",
       "fix_navigation": {
         "panel": "analizy",
@@ -1347,7 +1363,7 @@
       }
     }
   ],
-  "count": 158,
+  "count": 160,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

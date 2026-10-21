@@ -406,12 +406,8 @@ KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
 #: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
 #: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
 KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
-    {"z1_ohm", "z2_ohm", "z0_ohm", "branch_flow_trace", "m_factor", "n_factor"}
+    {"z1_ohm", "z2_ohm", "z0_ohm", "branch_flow_trace", "m_factor", "n_factor", "i_dc_a"}
 )
-
-#: ``tb_s`` domyślne solvera (``compute_*_short_circuit(tb_s=0.1)``) — wykonawca nie
-#: podaje własnego, więc wiersz bez solvera niesie tę samą daną wejściową.
-_TB_S_DOMYSLNE = 0.1
 
 
 def _pusty_wiersz_zwarcia(
@@ -421,6 +417,7 @@ def _pusty_wiersz_zwarcia(
     c_factor: float,
     un_kv: float,
     tk_s: float,
+    tb_s: float | None,
 ) -> dict[str, Any]:
     """Wiersz zwarcia węzła bez impedancji do odniesienia BEZ wołania solvera.
 
@@ -444,7 +441,7 @@ def _pusty_wiersz_zwarcia(
             "un_v": kv_na_v(float(un_kv)),
             "zkk_ohm": {"re": math.nan, "im": math.nan},
             "tk_s": float(tk_s),
-            "tb_s": _TB_S_DOMYSLNE,
+            "tb_s": tb_s,
             "contributions": [],
             "branch_contributions": [],
             "white_box_trace": [],
@@ -2382,6 +2379,7 @@ def _wynik_solvera_rodzaju(
             fault_node_id=node_id,
             c_factor=c_factor,
             tk_s=wejscie.tk_s,
+            tb_s=wejscie.tb_s,
             include_branch_contributions=wklady,
             z_f_ohm=wejscie.impedancja_zwarcia,
         )
@@ -2391,6 +2389,7 @@ def _wynik_solvera_rodzaju(
             fault_node_id=node_id,
             c_factor=c_factor,
             tk_s=wejscie.tk_s,
+            tb_s=wejscie.tb_s,
             z0_bus=wejscie.z0_bus,
             include_branch_contributions=wklady,
             z_f_ohm=wejscie.impedancja_zwarcia,
@@ -2401,6 +2400,7 @@ def _wynik_solvera_rodzaju(
             fault_node_id=node_id,
             c_factor=c_factor,
             tk_s=wejscie.tk_s,
+            tb_s=wejscie.tb_s,
             include_branch_contributions=wklady,
             z_f_ohm=wejscie.impedancja_zwarcia,
         )
@@ -2409,6 +2409,7 @@ def _wynik_solvera_rodzaju(
         fault_node_id=node_id,
         c_factor=c_factor,
         tk_s=wejscie.tk_s,
+        tb_s=wejscie.tb_s,
         z0_bus=wejscie.z0_bus,
         include_branch_contributions=wklady,
         z_f_ohm=wejscie.impedancja_zwarcia,
@@ -2571,6 +2572,7 @@ def _execute_short_circuit(
                 c_factor=c_factor,
                 un_kv=graph.nodes[node_id].voltage_level,
                 tk_s=tk_s,
+                tb_s=wejscie.tb_s,
             )
         )
         if result is not None and not wejscie.wklady_w_biegu:
@@ -3522,6 +3524,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "ip_ka", "label_pl": "ip", "unit": "kA"},
                     {"key": "ith_ka", "label_pl": "Ith", "unit": "kA"},
                     {"key": "ib_ka", "label_pl": "Ib", "unit": "kA"},
+                    {"key": "i_dc_ka", "label_pl": "iDC(tb)", "unit": "kA"},
                     {"key": "ik_ka", "label_pl": "Ik", "unit": "kA"},
                     {"key": "sk_mva", "label_pl": "Sk''", "unit": "MVA"},
                     {"key": "rk_ohm", "label_pl": "Rk", "unit": "ohm"},
@@ -3533,6 +3536,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "c_zrodlo", "label_pl": "Podstawa c"},
                     {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
                     {"key": "tk_s", "label_pl": "tk", "unit": "s"},
+                    {"key": "tb_s", "label_pl": "tb", "unit": "s"},
                     {"key": "i2t_ka2s", "label_pl": "I2t", "unit": "kA2s"},
                     {"key": "reporting_status", "label_pl": "Status raportowy"},
                     {"key": "proof_status", "label_pl": "Status uzasadnienia"},
@@ -3828,7 +3832,11 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
+        # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9
+        # (None = 3F z maszynami bez t_b), i_DC(t_b) — składowa nieokresowa rozdz. 10
+        # (None = bieg bez t_b; pole addytywne solvera).
         "ib_ka": _amps_to_ka(item.get("ib_a")),
+        "i_dc_ka": _amps_to_ka(item.get("i_dc_a")),
         "ik_ka": _amps_to_ka(item.get("ik_total_a")),
         "ik_thevenin_ka": _amps_to_ka(item.get("ik_thevenin_a")),
         "ik_inverters_ka": _amps_to_ka(item.get("ik_inverters_a")),
@@ -4668,6 +4676,13 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         "xr_ratio": item.get("xr_ratio"),
                         "tk_s": item.get("tk_s"),
                         "i2t_ka2s": item.get("i2t_ka2s"),
+                        # Karta SC-IB-ITH-ZRODLA: prąd wyłączeniowy symetryczny I_b
+                        # (IEC 60909-0 rozdz. 9), składowa nieokresowa i_DC(t_b)
+                        # (rozdz. 10) i czas t_b, z którym je liczono — None = bieg bez
+                        # t_b (kod `fault.czas_tb_brak` w założeniach biegu).
+                        "ib_ka": item.get("ib_ka"),
+                        "i_dc_ka": item.get("i_dc_ka"),
+                        "tb_s": item.get("tb_s"),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),

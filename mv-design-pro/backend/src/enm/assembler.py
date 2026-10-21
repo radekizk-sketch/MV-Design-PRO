@@ -61,6 +61,11 @@ from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import (
+    KLUCZ_OPCJI_CZASU_TB,
+    KOD_CZAS_TB_BRAK,
+    czas_tb_z_danych,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import (
     KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA,
@@ -549,6 +554,10 @@ class WejscieZwarcia:
     #: ``None`` — wtedy c dobiera ``voltage_factor.dobierz_c`` per węzeł (tabela 1).
     nadpisanie_c: NadpisanieC | None
     tk_s: float
+    #: Karta SC-IB-ITH-ZRODLA (B-01 (n)): czas wyłączenia t_b = t_min [s] z opcji biegu
+    #: (``breaking_time_seconds`` — projekcja scenariusza zwarciowego) albo ``None`` = brak
+    #: danej: I_b z udziałem maszyn i i_DC nieobliczone, założenie ``fault.czas_tb_brak``.
+    tb_s: float | None
     reportable_fault_node_ids: list[str]
     temperature_correction_notes: tuple[dict[str, Any], ...]
     graph_nodes: dict[str, dict[str, Any]]
@@ -1005,6 +1014,25 @@ def zloz_wejscie_rozplywu(
     )
 
 
+def _zalozenie_braku_czasu_tb(
+    tb_s: float | None, scenario_c: Scenario
+) -> tuple[dict[str, Any], ...]:
+    """Założenie biegu ``fault.czas_tb_brak`` — bieg bez czasu wyłączenia t_b (karta
+    SC-IB-ITH-ZRODLA). Tym samym wzorcem co ``source.sk_min_missing``: kod gotowości,
+    treść z rejestru, bez elementu (dana biegu, nie elementu modelu). Pusta krotka, gdy
+    t_b jest podane."""
+    if tb_s is not None:
+        return ()
+    return (
+        {
+            "code": KOD_CZAS_TB_BRAK,
+            "element_ref": None,
+            "message_pl": READINESS_CODES[KOD_CZAS_TB_BRAK].message_pl,
+            "scenariusz": scenario_c,
+        },
+    )
+
+
 def zloz_wejscie_zwarcia(
     snapshot: dict[str, Any] | None,
     options: dict[str, Any],
@@ -1061,6 +1089,7 @@ def zloz_wejscie_zwarcia(
     nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 
     tk_s = float(options.get("thermal_time_seconds", 1.0))
+    tb_s = czas_tb_z_danych(options.get(KLUCZ_OPCJI_CZASU_TB))
     impedancja_zwarcia = impedancja_zwarcia_z_opcji(options)
 
     # PERF-SC-50: tryb wkładów gałęziowych. Domyślnie NA ŻĄDANIE (klucz nieobecny —
@@ -1208,6 +1237,7 @@ def zloz_wejscie_zwarcia(
             if wpis.get("zalozenie")
         )
         + k_sc_zalozenia
+        + _zalozenie_braku_czasu_tb(tb_s, scenario_c)
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.
@@ -1224,6 +1254,7 @@ def zloz_wejscie_zwarcia(
         scenario_c=scenario_c,
         nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
+        tb_s=tb_s,
         reportable_fault_node_ids=reportable_fault_node_ids,
         temperature_correction_notes=temperature_correction_notes,
         graph_nodes=graph_nodes,

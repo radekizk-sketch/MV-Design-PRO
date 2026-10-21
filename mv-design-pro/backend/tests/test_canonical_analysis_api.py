@@ -275,10 +275,15 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
         assert pole in wiersz, pole
         assert wiersz[pole] is not None, pole
     # K7: ślad źródeł sieciowych (Z_Q) biegu przechodzi do odpowiedzi HTTP — ekran wyników
-    # zwarć ui2 czyta go stąd; MAX nie publikuje założeń, więc klucz `zalozenia` nie istnieje.
+    # zwarć ui2 czyta go stąd; MAX nie publikuje założenia S_k,min. Karta SC-IB-ITH-ZRODLA:
+    # bieg bez czasu wyłączenia t_b publikuje JEDYNE założenie `fault.czas_tb_brak` (bieg, bez
+    # elementu) — i_DC(t_b) nieobliczone, I_b sieci odległej od generatora = I_k'' (liczba).
     assert short_circuit_payload["zrodla_sieciowe"]
     assert short_circuit_payload["zrodla_sieciowe"][0]["scenariusz"] == "MAX"
-    assert "zalozenia" not in short_circuit_payload
+    assert [z["code"] for z in short_circuit_payload["zalozenia"]] == ["fault.czas_tb_brak"]
+    assert short_circuit_payload["zalozenia"][0]["element_ref"] is None
+    assert wiersz["tb_s"] is None and wiersz["i_dc_ka"] is None
+    assert wiersz["ib_ka"] == pytest.approx(wiersz["ikss_ka"], rel=1e-12)
     assert wiersz["zk_ohm"] == pytest.approx(
         math.hypot(wiersz["rk_ohm"], wiersz["xk_ohm"]), rel=1e-9
     )

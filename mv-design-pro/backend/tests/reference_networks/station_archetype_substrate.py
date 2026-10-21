@@ -449,6 +449,9 @@ def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitRe
         fault_node_id=bus_id,
         c_factor=c_factor,
         tk_s=_TK_S,
+        # Karta SC-IB-ITH-ZRODLA: t_b jawny (ten sam t_min co rozbicie maszynowe niżej) —
+        # rdzeń nie ma już domyślnego t_b, a I_b maszyn wymaga krzywej zaniku w chwili t_b.
+        tb_s=_MACHINE_TMIN_S,
     )
 
 
@@ -1016,8 +1019,10 @@ def build_all_vf() -> dict[str, dict[str, Any]]:
 # IBG limited contribution tagged per gate J (bounded current, NOT a machine).
 # IBG short-circuit factor k_sc (IEC 60909-0:2016 §6.7): Ik = k_sc · I_rated.
 _IBG_K = 1.2
-# Minimum time delay t_min for the symmetrical breaking current i_b of rotating
-# machines (IEC 60909-0:2016 §6.6) — generic MV protection grading time.
+# Minimum time delay t_min = t_b of the fixture runs: symmetrical breaking current I_b of
+# rotating machines (IEC 60909-0:2016 §6.6, rozdz. 9) and the DC component i_DC(t_b)
+# (rozdz. 10) — generic MV protection grading time, an EXPLICIT fixture datum (the solver has
+# no default t_b since karta SC-IB-ITH-ZRODLA).
 _MACHINE_TMIN_S = 0.10
 
 

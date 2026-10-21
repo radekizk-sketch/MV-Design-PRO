@@ -1375,9 +1375,11 @@ def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     """Mapa `target_id → odpowiedź` `POST /api/proof/sc3f/contributions` dla
     WSZYSTKICH punktów zwarcia biegu kotwicy — TĄ SAMĄ funkcją, którą woła
     końcówka (`sc3f_contributions`, `api/proof_pack.py`), z DOKŁADNIE
-    parametrami klienta: scenariusz oglądanego biegu (`MAX`) i `t_min_s=0.10`
-    (`frontend/src/ui2/wyniki/zwarcia/api.ts::fetchWkladyZwarciowe` go nie nadpisuje);
-    c z tabeli 1 IEC 60909-0 dla pasma i tolerancji sieci węzła (karta
+    parametrami klienta: scenariusz oglądanego biegu (`MAX`) i t_min = t_b TEGO biegu
+    (karta SC-IB-ITH-ZRODLA: `fetchWkladyZwarciowe` wysyła `t_min_s` wyłącznie z
+    `konfiguracja.breaking_time_seconds` biegu; bieg kotwicy nie ma t_b, więc żądanie
+    go nie niesie — μ/q/i_b maszyn o krotności > 2 są `None`, a nie liczone z dawnej
+    cichej stałej 0,10 s); c z tabeli 1 IEC 60909-0 dla pasma i tolerancji sieci węzła (karta
     WSPOLCZYNNIK-C-JEDEN-NOSNIK — dawna liczba `c_factor` z żądania skasowana).
 
     Sieć złota niesie JEDNĄ maszynę konwencjonalną (`gen_sync`, synchroniczna)

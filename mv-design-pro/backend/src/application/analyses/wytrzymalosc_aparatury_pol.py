@@ -25,9 +25,12 @@ WARSTWA APLIKACJI — ZERO FIZYKI WŁASNEJ:
   - czas wyłączenia pochodzi z osobnego dostawcy (poz. 3: człon nastawczy przy prądzie
     TEGO pola + czas własny aparatu z katalogu) albo z konfiguracji.
 
-WERDYKT WYJAŚNIALNY: każdy wiersz niesie dwa rekordy K (``werdykt.OcenaKryterium``) —
-dynamiczny ``i_p ≤ I_dyn`` i cieplny ``I_th ≤ I_th,zn·√(min(1, t_zn/t_k))`` — z prądem, czasem,
-limitem, marginesem i przyczyną braku. Brak czasu wyłączenia (w tym brak czasu własnego
+WERDYKT WYJAŚNIALNY: każdy wiersz niesie trzy rekordy K (``werdykt.OcenaKryterium``) —
+dynamiczny ``i_p ≤ I_dyn``, cieplny ``I_th ≤ I_th,zn·√(min(1, t_zn/t_k))`` i zdolności
+wyłączania ``I_b ≤ I_cu`` (wyłącznik SN/WN) albo ``I″k ≤ I_cu`` (nN, bezpiecznik) — z prądem,
+czasem, limitem, marginesem i przyczyną braku. Wielkość kryterium wyłączania wybiera JEDEN
+predykat (``application.equipment_proof.wielkosc_wylaczania``), wspólny z dowodem doboru
+aparatury (karta SC-IB-ITH-ZRODLA); rekord nazywa porównaną wielkość i jej normę. Brak czasu wyłączenia (w tym brak czasu własnego
 aparatu) daje ``BRAK_PODSTAWY`` kryterium cieplnego z nazwaną przyczyną, nigdy ``SPELNIA``;
 brak prądu pola w biegu daje ``NIE_OCENIONO``.
 
@@ -48,10 +51,15 @@ from typing import Any
 
 from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
 from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczenia_pol_stacji
+from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
+from application.equipment_proof.wielkosc_wylaczania import (
+    WielkoscKryteriumWylaczania,
+    wielkosc_kryterium_wylaczania,
+)
 from application.field_read_model import collect_bays
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel
-from enm.nazwy_elementow import nazwa_elementu, opis_bez_nazwy
+from enm.nazwy_elementow import nazwa_elementu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog import get_default_mv_catalog
@@ -59,7 +67,8 @@ from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
     ocen_wytrzymalosc_aparatu,
 )
-from network_model.nazwy import nazwa_nadana
+from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     Kryterium,
@@ -88,6 +97,24 @@ READINESS_BRAK_POL_Z_APARATEM = "aparatura.brak_pol_z_aparatem"
 READINESS_APARAT_SPOZA_KATALOGU = "aparatura.aparat_spoza_katalogu"
 READINESS_POZYCJA_BEZ_ZNAMION = "aparatura.pozycja_bez_znamion_wytrzymalosci"
 READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
+#: Aparat, który z definicji normy przerywa prąd zwarciowy (wyłącznik, reklozer, bezpiecznik),
+#: bez znamionowej zdolności wyłączania w katalogu — kryterium wyłączania bez limitu.
+READINESS_BRAK_ZDOLNOSCI_WYLACZANIA = "aparatura.brak_zdolnosci_wylaczania"
+
+#: Rodzaje pozycji KATALOGU WYTRZYMAŁOŚCI (ręczne wskazanie w konfiguracji stacji) wobec
+#: zdolności wyłączania zwarć. Katalog wytrzymałości niesie znamiona I_dyn/I_th, a nie
+#: zdolność wyłączania — wyłącznik z tego katalogu ma więc kryterium wyłączania BEZ limitu
+#: (brak podstawy), a rozłącznik i tor szynowy kryterium nie podlegają (nie przerywają prądu
+#: zwarciowego z definicji normy). Lista ZAMKNIĘTA: każdą pozycję katalogu przypina test
+#: (``test_kazda_pozycja_katalogu_wytrzymalosci_ma_rodzaj_wylaczania``); rodzaj spoza listy
+#: = brak podstawy z nazwaną przyczyną, nigdy cichy „nie dotyczy".
+RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI: dict[str, bool] = {
+    "breaker_vacuum_15": True,
+    "breaker_sf6_15": True,
+    "switch_load_15": False,
+    "busbar_15_1250": False,
+    "busbar_15_2000": False,
+}
 
 #: Źródło aparatu w wierszu werdyktu.
 ZRODLO_MODEL = "model"
@@ -116,6 +143,14 @@ class PradyPola:
     ith_ka: float | None
     kody_gotowosci: tuple[str, ...] = ()
     powod_pl: str | None = None
+    #: Karta SC-IB-ITH-ZRODLA — wielkości kryterium wyłączania z TEGO SAMEGO wiersza biegu:
+    #: symetryczny prąd wyłączeniowy I_b (``None`` = bieg z maszynami bez t_b), składowa
+    #: nieokresowa i_DC(t_b) (informacyjnie), czas t_b biegu i napięcie znamionowe punktu
+    #: (pasmo wybiera wielkość porównywaną z I_cu).
+    ib_ka: float | None = None
+    i_dc_ka: float | None = None
+    tb_s: float | None = None
+    un_kv: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -124,6 +159,10 @@ class PradyPola:
             "ik_ka": self.ik_ka,
             "ip_ka": self.ip_ka,
             "ith_ka": self.ith_ka,
+            "ib_ka": self.ib_ka,
+            "i_dc_ka": self.i_dc_ka,
+            "tb_s": self.tb_s,
+            "un_kv": self.un_kv,
             "kody_gotowosci": list(self.kody_gotowosci),
             "powod_pl": self.powod_pl,
         }
@@ -192,12 +231,23 @@ def prady_pol_z_biegu(
             continue
         wynik[bay.ref_id] = PradyPola(
             punkt_ref=punkt,
-            punkt_nazwa=nazwa_nadana(wiersz.get("target_name")) or opis_bez_nazwy("buses"),
+            punkt_nazwa=nazwa_nadana(wiersz.get("target_name")),
             ik_ka=float(ik),
             ip_ka=float(ip),
             ith_ka=float(ith),
+            ib_ka=_liczba(wiersz.get("ib_ka")),
+            i_dc_ka=_liczba(wiersz.get("i_dc_ka")),
+            tb_s=_liczba(wiersz.get("tb_s")),
+            un_kv=_liczba(wiersz.get("un_kv")),
         )
     return wynik
+
+
+def _liczba(wartosc: object) -> float | None:
+    """Liczba z wiersza biegu albo ``None`` (brak pola w starszym zapisie = brak danej)."""
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    return float(wartosc)
 
 
 def _oznaczenia_pola(bay: Bay) -> list[str]:
@@ -227,6 +277,11 @@ def _znamiona_z_aparat_sn(catalog_ref: str) -> tuple[dict[str, Any] | None, str 
     if pozycja is None:
         return None, None
     zapis = pozycja.to_dict()
+    # Zdolność wyłączania z TEGO SAMEGO odczytu katalogu co dowód doboru aparatury
+    # (`resolve_um_icu_from_catalog`): I_cu, „nie dotyczy" rozłącznika/odłącznika/uziemnika
+    # i znacznik bezpiecznika — jedna reguła klasy aparatu dla obu torów.
+    icu = resolve_um_icu_from_catalog(catalog_ref)
+    i_cu_ka = icu.i_cu_ka if icu.i_cu_ka is not None and icu.i_cu_ka > 0 else None
     return (
         {
             "i_dyn_ka": zapis["i_dyn_ka"],
@@ -234,6 +289,14 @@ def _znamiona_z_aparat_sn(catalog_ref: str) -> tuple[dict[str, Any] | None, str 
             "i_th_ka": zapis["i_th_ka"],
             "i_th_duration_s": zapis["i_th_duration_s"],
             "i_th_pochodzenie": zapis["i_th_pochodzenie"],
+            "i_cu_ka": i_cu_ka,
+            "i_cu_pochodzenie": (
+                None
+                if i_cu_ka is None
+                else ("producent" if zapis["manufacturer"] else "referencyjny")
+            ),
+            "i_cu_nie_dotyczy": icu.i_cu_not_applicable,
+            "bezpiecznik": icu.bezpiecznik,
         },
         str(zapis["name"]),
     )
@@ -253,6 +316,14 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
             "i_th_ka": pozycja.i_th_1s_ka,
             "i_th_duration_s": pozycja.i_th_duration_s,
             "i_th_pochodzenie": "producent",
+            # Katalog wytrzymałości nie niesie zdolności wyłączania — tylko rodzaj aparatu
+            # (zamknięta lista ``RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI``).
+            "i_cu_ka": None,
+            "i_cu_pochodzenie": None,
+            "i_cu_nie_dotyczy": (
+                RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI.get(pozycja.device_type) is False
+            ),
+            "bezpiecznik": False,
         },
         pozycja.label_pl,
     )
@@ -271,6 +342,10 @@ _IEC_60865_1_WYDANIE = "2011"
 _PARAGRAF_ZNAMIENIA = {
     "i_dyn": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
     "i_th": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+    "i_cu": (
+        "znamionowa zdolność wyłączania zwarciowa I_cu (wyłącznik SN: IEC 62271-100 § 4.101 "
+        "znamionowy prąd wyłączalny zwarciowy I_sc)"
+    ),
 }
 
 _PODSTAWA_DYNAMICZNA = PodstawaWymagania(
@@ -361,8 +436,16 @@ def _dowod(run_id: str) -> StatusDowodu:
     )
 
 
+def _opis_punktu(prady: PradyPola) -> str:
+    """Punkt zabudowy pola w zdaniu: szyna z nazwą albo opis braku nazwy — JEDNA reguła nazwy
+    (`network_model.nazwy`); identyfikator szyny nigdy nie zastępuje nazwy."""
+    if prady.punkt_ref is None:
+        return "punkt zabudowy pola nieustalony"
+    return opis_rodzaju_i_nazwy("szyna", prady.punkt_nazwa)
+
+
 def _zakres(prady: PradyPola) -> ZakresWaznosci:
-    punkt = nazwa_nadana(prady.punkt_nazwa) or "punkt zabudowy pola nieustalony"
+    punkt = _opis_punktu(prady)
     return ZakresWaznosci(
         rodzaj_analizy="SHORT_CIRCUIT",
         opis_pl=(
@@ -412,7 +495,7 @@ def _ocena_dynamiczna(
             wielkosc_pl="prąd udarowy zwarcia trójfazowego w punkcie zabudowy pola",
             symbol_latex=r"i_p",
             wartosc=Wielkosc(wartosc=prady.ip_ka, jednostka="kA"),
-            punkt_krytyczny_pl=f"zwarcie w punkcie {prady.punkt_nazwa}",
+            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
         if prady.ip_ka is not None
@@ -444,7 +527,7 @@ def _ocena_dynamiczna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:dynamiczna",
                 opis_pl=(
-                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
+                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt: {_opis_punktu(prady)}); "
                     f"I_dyn = {i_dyn} kA (pochodzenie: {znamiona['i_dyn_pochodzenie']})"
                 ),
             ),
@@ -490,7 +573,7 @@ def _ocena_cieplna(
             wielkosc_pl="prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola",
             symbol_latex=r"I_{th}",
             wartosc=Wielkosc(wartosc=prady.ith_ka, jednostka="kA"),
-            punkt_krytyczny_pl=f"zwarcie w punkcie {prady.punkt_nazwa}",
+            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
         if prady.ith_ka is not None
@@ -522,8 +605,151 @@ def _ocena_cieplna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:cieplna",
                 opis_pl=(
-                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
+                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt: {_opis_punktu(prady)}); "
                     f"T_k = {t_k} s (źródło: {czas.get('zrodlo')}); limit = {limit_ka} kA"
+                ),
+            ),
+        ),
+        braki_dodatkowe=braki,
+    )
+
+
+def _podstawa_wylaczania(wielkosc: WielkoscKryteriumWylaczania | None) -> PodstawaWymagania:
+    """Podstawa kryterium wyłączania — z wybranej wielkości (``None`` = wyboru brak)."""
+    if wielkosc is None:
+        return PodstawaWymagania(
+            rodzaj="NORMA",
+            dokument="IEC 62271-100 (wyłącznik SN/WN) / IEC 60364-4-43 (nN)",
+            wydanie="2008",
+            jednostka_redakcyjna=(
+                "wielkość porównywana zależy od pasma napięcia punktu zwarcia: I_b (SN/WN) "
+                "albo I″k (nN)"
+            ),
+            status="WSKAZANE",
+            uwagi_pl="bieg nie niesie napięcia znamionowego punktu — pasma nie da się ustalić",
+        )
+    return PodstawaWymagania(
+        rodzaj="NORMA",
+        dokument=wielkosc.dokument,
+        wydanie=wielkosc.wydanie,
+        jednostka_redakcyjna=wielkosc.jednostka_redakcyjna,
+        status="WSKAZANE",
+        uwagi_pl=(
+            f"zdolność wyłączania aparatu porównana z {wielkosc.opis_pl} w punkcie zabudowy "
+            f"pola ({wielkosc.norma})"
+        ),
+    )
+
+
+def _ocena_wylaczania(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    znamiona: dict[str, Any],
+    etykieta: str,
+    prady: PradyPola,
+    run_id: str,
+) -> OcenaKryterium:
+    """Rekord K zdolności wyłączania: I_cu aparatu wobec wielkości z jedynego predykatu.
+
+    Wyłącznik SN/WN → I_b (IEC 62271-100 § 4.101, IEC 60909-0 rozdz. 9); nN i bezpiecznik →
+    I″k spodziewany. Rozłącznik, odłącznik, uziemnik i tor szynowy — NIE_DOTYCZY z powodem.
+    Brak I_b (bieg z maszynami bez t_b) to nazwany brak (``fault.czas_tb_brak``), nigdy
+    podmiana na I″k. i_DC(t_b) — informacja w śladzie (katalog nie niesie znamionowej
+    składowej nieokresowej, porównania z nią nie wystawiamy).
+    """
+    nie_dotyczy = bool(znamiona.get("i_cu_nie_dotyczy"))
+    wielkosc = wielkosc_kryterium_wylaczania(
+        prady.un_kv, bezpiecznik=bool(znamiona.get("bezpiecznik"))
+    )
+    i_cu = znamiona.get("i_cu_ka")
+    braki: list[str] = []
+    wartosc: float | None = None
+    if wielkosc is None:
+        if prady.powod_pl:
+            braki.append(prady.powod_pl)
+        else:
+            braki.append(
+                "wiersz biegu nie niesie napięcia znamionowego punktu zabudowy pola — nie "
+                "wiadomo, czy porównać I_b (SN/WN, IEC 62271-100), czy I″k (nN)"
+            )
+    else:
+        wartosc = prady.ib_ka if wielkosc.klucz == "ib_ka" else prady.ik_ka
+        if wartosc is None and prady.powod_pl:
+            braki.append(prady.powod_pl)
+        elif wartosc is None and wielkosc.klucz == "ib_ka" and prady.tb_s is None:
+            braki.append(
+                "bieg nie wyznaczył prądu wyłączeniowego I_b — brak czasu wyłączenia t_b przy "
+                f"udziale maszyn wirujących (kod {KOD_CZAS_TB_BRAK}); podaj t_b w scenariuszu "
+                "zwarciowym"
+            )
+    podstawa_limitu = _podstawa_znamienia(znamiona.get("i_cu_pochodzenie"), etykieta, "i_cu")
+    limit: LimitKryterium | None = None
+    if not nie_dotyczy:
+        if i_cu is not None and podstawa_limitu is not None:
+            limit = LimitKryterium(
+                wartosc=Wielkosc(wartosc=float(i_cu), jednostka="kA"), podstawa=podstawa_limitu
+            )
+        else:
+            braki.append(
+                f"pozycja katalogu „{etykieta}” nie niesie znamionowej zdolności wyłączania "
+                "zwarciowej I_cu"
+            )
+    wynik = (
+        WynikKryterium(
+            wielkosc_pl=f"{wielkosc.nazwa_pl} zwarcia trójfazowego w punkcie zabudowy pola",
+            symbol_latex=wielkosc.symbol,
+            wartosc=Wielkosc(wartosc=wartosc, jednostka="kA"),
+            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
+            metoda="OBLICZENIE",
+        )
+        if wielkosc is not None and wartosc is not None
+        else None
+    )
+    symbol = wielkosc.symbol if wielkosc is not None else "I_b"
+    tb_txt = "nie podano" if prady.tb_s is None else f"{prady.tb_s} s"
+    idc_txt = "nieobliczona" if prady.i_dc_ka is None else f"{prady.i_dc_ka} kA"
+    return ocen_kryterium(
+        kryterium_id=f"{kryterium_id}.wylaczanie",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Prąd, który aparat ma przerwać w punkcie zabudowy pola, nie przekracza jego "
+                "znamionowej zdolności wyłączania zwarciowej"
+                + (f" ({wielkosc.nazwa_pl})" if wielkosc is not None else "")
+            ),
+            warunek_latex=rf"{symbol} \le I_{{cu}}",
+            relacja="NIE_WIECEJ",
+        ),
+        podstawa=_podstawa_wylaczania(wielkosc),
+        stosowalnosc=(
+            Stosowalnosc(
+                dotyczy=False,
+                powod_pl=(
+                    "aparat nie przerywa prądu zwarciowego z definicji normy (rozłącznik, "
+                    "odłącznik, uziemnik, tor szynowy) — kryterium wyłączania go nie dotyczy"
+                ),
+            )
+            if nie_dotyczy
+            else Stosowalnosc(
+                dotyczy=True,
+                powod_pl="aparat pola przerywa prąd zwarciowy w punkcie zabudowy pola",
+            )
+        ),
+        wynik=wynik,
+        limit=limit,
+        niepewnosc=_NIEPEWNOSC_POROWNANIA,
+        dowod=_dowod(run_id),
+        zakres_waznosci=_zakres(prady),
+        slad=(
+            OdnosnikSladu(
+                run_id=run_id,
+                krok=f"{kryterium_id}:wylaczanie",
+                opis_pl=(
+                    f"{symbol} = {wartosc} kA (wiersz biegu, punkt: {_opis_punktu(prady)}, "
+                    f"U_n = {prady.un_kv} kV); I_cu = {i_cu} kA; t_b = {tb_txt}; składowa "
+                    f"nieokresowa i_DC(t_b) = {idc_txt} — informacyjnie (IEC 60909-0 "
+                    "rozdz. 10), katalog nie niesie znamionowej składowej nieokresowej"
                 ),
             ),
         ),
@@ -563,6 +789,21 @@ def _wiersz(
         kody.extend(k for k in czas.get("kody_gotowosci", []) if k not in kody)
         if czas.get("t_clearing_s") is None:
             kody.append(READINESS_CZAS_NIEUSTALONY)
+        if not znamiona["i_cu_nie_dotyczy"] and znamiona["i_cu_ka"] is None:
+            kody.append(READINESS_BRAK_ZDOLNOSCI_WYLACZANIA)
+        wielkosc_wylaczania = wielkosc_kryterium_wylaczania(
+            prady.un_kv, bezpiecznik=bool(znamiona["bezpiecznik"])
+        )
+        if (
+            not znamiona["i_cu_nie_dotyczy"]
+            and wielkosc_wylaczania is not None
+            and wielkosc_wylaczania.klucz == "ib_ka"
+            and prady.ik_ka is not None
+            and prady.ib_ka is None
+            and prady.tb_s is None
+        ):
+            # Kryterium wyłączania wymaga I_b, a bieg z maszynami bez t_b go nie wyznaczył.
+            kody.append(KOD_CZAS_TB_BRAK)
         nazwa = etykieta or "pozycja katalogu aparatów bez nazwy"
         limit_cieplny_ka: float | None = None
         if prady.ip_ka is not None and prady.ith_ka is not None:
@@ -603,6 +844,14 @@ def _wiersz(
                 prady=prady,
                 czas=czas,
                 limit_ka=limit_cieplny_ka,
+                run_id=run_id,
+            ).model_dump(mode="json"),
+            _ocena_wylaczania(
+                kryterium_id=kryterium_id,
+                przedmiot=przedmiot,
+                znamiona=znamiona,
+                etykieta=nazwa,
+                prady=prady,
                 run_id=run_id,
             ).model_dump(mode="json"),
         ]

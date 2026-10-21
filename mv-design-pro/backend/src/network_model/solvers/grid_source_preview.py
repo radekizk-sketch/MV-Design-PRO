@@ -30,7 +30,6 @@ class GridSourcePreviewInput:
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None
     tk_s: float = 1.0
-    tb_s: float = 0.1
 
 
 @dataclass(frozen=True)
@@ -69,7 +68,6 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
         un_v=un_v,
         z_equiv=z1,
         tk_s=data.tk_s,
-        tb_s=data.tb_s,
     )
     z0 = _build_zero_sequence_impedance(data, z1)
     ik1_a = (

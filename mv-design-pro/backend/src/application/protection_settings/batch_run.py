@@ -326,6 +326,13 @@ def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> di
         "fault_type": fault_type,
         "scenario": "min",
         "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
+        # Karta SC-IB-ITH-ZRODLA: t_b kotwicy (dana zabezpieczeń i aparatu pola, wspólna
+        # dla obu gałęzi) — tylko gdy kotwica go niesie; brak zostaje brakiem.
+        **(
+            {"breaking_time_seconds": kotwica.options["breaking_time_seconds"]}
+            if kotwica.options.get("breaking_time_seconds") is not None
+            else {}
+        ),
         **_opcje_audit2_kotwicy(kotwica),
     }
 

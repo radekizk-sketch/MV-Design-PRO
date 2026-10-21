@@ -354,12 +354,15 @@ def test_post_processing_quantities_match_ikss_formula():
     ith_expected = result.ikss_a * math.sqrt(m_expected + n_expected)
     sk_expected = (math.sqrt(3.0) * result.un_v * result.ikss_a) / 1_000_000.0
 
+    # Karta SC-IB-ITH-ZRODLA (IEC 60909-0:2016 rozdz. 9 i 10): I_b jest SYMETRYCZNYM prądem
+    # wyłączeniowym — bez maszyn wirujących I_b = I_k'' (dawny wzór
+    # I_k''·sqrt(1 + ((κ−1)·e^{−t_b/t_a})²) mieszał do I_b składową nieokresową).
+    # Składowa nieokresowa jest osobną wielkością: i_DC = sqrt(2)·I_k''·e^{−2π·f·t_b·R/X}.
     omega = 2.0 * math.pi * 50.0
     r_ohm = result.zkk_ohm.real
     x_ohm = result.zkk_ohm.imag
-    ta_s = 0.0 if r_ohm <= 0 or x_ohm <= 0 else x_ohm / (omega * r_ohm)
-    exp_factor = 0.0 if ta_s <= 0 else math.exp(-tb_s / ta_s)
-    ib_expected = result.ikss_a * math.sqrt(1.0 + ((kappa - 1.0) * exp_factor) ** 2)
+    ib_expected = result.ikss_a
+    i_dc_expected = math.sqrt(2.0) * result.ikss_a * math.exp(-omega * tb_s * r_ohm / x_ohm)
 
     assert result.kappa == pytest.approx(kappa, rel=1e-12, abs=0.0)
     assert result.ip_a == pytest.approx(ip_expected, rel=1e-12, abs=0.0)
@@ -368,9 +371,17 @@ def test_post_processing_quantities_match_ikss_formula():
     assert result.ith_a == pytest.approx(ith_expected, rel=1e-12, abs=0.0)
     assert result.sk_mva == pytest.approx(sk_expected, rel=1e-12, abs=0.0)
     assert result.ib_a == pytest.approx(ib_expected, rel=1e-12, abs=0.0)
+    assert result.i_dc_a == pytest.approx(i_dc_expected, rel=1e-12, abs=0.0)
+    assert result.tb_s == tb_s
 
 
-def test_ib_is_ge_ikss_and_decays_with_time():
+def test_ib_far_equals_ikss_and_dc_component_decays_with_time():
+    """Karta SC-IB-ITH-ZRODLA — przepisany do kanonu IEC 60909-0:2016 rozdz. 9/10.
+
+    Intencja dawnego testu („I_b ≥ I_k'' i maleje z czasem") opisywała dawny wzór, który
+    doliczał składową nieokresową do I_b. W kanonie: bez maszyn wirujących I_b = I_k''
+    niezależnie od t_b, a z czasem maleje składowa nieokresowa i_DC(t_b).
+    """
     graph = build_transformer_only_graph(pk_kw=120.0)
 
     res_short = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -388,12 +399,15 @@ def test_ib_is_ge_ikss_and_decays_with_time():
         tb_s=0.2,
     )
 
-    assert res_short.ib_a >= res_short.ikss_a
-    assert res_long.ib_a >= res_long.ikss_a
-    assert res_short.ib_a >= res_long.ib_a
+    assert res_short.ib_a == res_short.ikss_a
+    assert res_long.ib_a == res_long.ikss_a
+    assert res_short.i_dc_a > res_long.i_dc_a > 0.0
 
 
-def test_ib_equals_ikss_when_time_constant_is_zeroish():
+def test_dc_component_vanishes_for_long_breaking_time():
+    """Karta SC-IB-ITH-ZRODLA: dawny test „I_b → I_k'' dla długiego t_b" opisywał zanik
+    członu nieokresowego w dawnym wzorze I_b. W kanonie I_b = I_k'' zawsze (bez maszyn),
+    a zanika i_DC(t_b) — sprawdzane wprost."""
     graph = build_transformer_only_graph()
 
     result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -404,7 +418,8 @@ def test_ib_equals_ikss_when_time_constant_is_zeroish():
         tb_s=100.0,
     )
 
-    assert result.ib_a == pytest.approx(result.ikss_a, rel=1e-8, abs=0.0)
+    assert result.ib_a == result.ikss_a
+    assert result.i_dc_a == pytest.approx(0.0, abs=1e-9 * result.ikss_a)
 
 
 def test_increasing_rx_ratio_reduces_kappa_and_ip():
@@ -582,9 +597,11 @@ def test_white_box_trace_has_expected_steps():
         # appear in order, located by the "Zk" anchor instead of index 0.
         assert any(step["key"] == "KT[T1]" for step in result.white_box_trace)
         zk_index = next(i for i, step in enumerate(result.white_box_trace) if step["key"] == "Zk")
-        keys = [step["key"] for step in result.white_box_trace[zk_index : zk_index + 7]]
-        assert keys == ["Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"]
-        for step in result.white_box_trace[zk_index : zk_index + 7]:
+        # Karta SC-IB-ITH-ZRODLA: po I_b krok i_DC(t_b) (IEC 60909-0 rozdz. 10) — obecny
+        # zawsze (bieg bez t_b nazywa w nim brak danej), więc kroków kanonicznych jest 8.
+        keys = [step["key"] for step in result.white_box_trace[zk_index : zk_index + 8]]
+        assert keys == ["Zk", "Ikss", "kappa", "Ip", "Ib", "iDC", "Ith", "Sk"]
+        for step in result.white_box_trace[zk_index : zk_index + 8]:
             assert {
                 "key",
                 "title",

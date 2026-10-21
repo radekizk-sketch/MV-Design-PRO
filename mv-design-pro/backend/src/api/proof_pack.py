@@ -19,6 +19,7 @@ from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_des
 from enm.assembler import impedancja_zwarcia_z_opcji
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.core.czas_wylaczenia import czas_tb_z_danych
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import (
     NadpisanieC,
@@ -93,9 +94,10 @@ class SCAsymmetricalPackRequest(BaseModel):
     z0_im_ohm: float
     a_re: float
     a_im: float
+    #: Czas trwania zwarcia t_k [s]; m, n i I_th każdego typu zwarcia liczy rdzeń z t_k i κ
+    #: tego typu (karta SC-IB-ITH-ZRODLA) — dawne pola m_factor/n_factor (liczby fizyczne
+    #: od klienta, jedne dla trzech różnych pętli) skasowane.
     tk_s: float = 1.0
-    m_factor: float = 1.0
-    n_factor: float = 0.0
     fault_impedance: FaultImpedanceRequest | None = Field(
         default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
     )
@@ -158,8 +160,6 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         z0_ohm=complex(payload.z0_re_ohm, payload.z0_im_ohm),
         a_operator=complex(payload.a_re, payload.a_im),
         tk_s=payload.tk_s,
-        m_factor=payload.m_factor,
-        n_factor=payload.n_factor,
         z_f_ohm=_z_f_z_zadania(payload.fault_impedance),
     )
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
@@ -190,6 +190,12 @@ class SC3FPackRequest(BaseModel):
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
     tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] biegu (scenariusz); brak = dowód
+    #: bez i_DC (i bez I_b przy maszynach wirujących) z kodem `fault.czas_tb_brak`.
+    tb_s: float | None = Field(
+        default=None,
+        description="Czas wyłączenia t_b [s] (najkrótszy czas zabezpieczenia + wyłącznika)",
+    )
     fault_impedance: FaultImpedanceRequest | None = Field(
         default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
     )
@@ -212,7 +218,9 @@ class SCContributionsRequest(BaseModel):
     #: IEC 60909-0 dla pasma węzła zwarcia; dawne `c_factor: 1.10` dawało c SN w węźle nN.
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
-    t_min_s: float = 0.10
+    #: Karta SC-IB-ITH-ZRODLA: t_min = t_b biegu [s] (scenariusz), nie stała 0,10 s — brak
+    #: = μ, q i I_b maszyn nieobliczone tam, gdzie wymagają krzywej (kod `fault.czas_tb_brak`).
+    t_min_s: float | None = None
     fault_impedance: FaultImpedanceRequest | None = Field(
         default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
     )
@@ -301,7 +309,12 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
                 "tekst": (
                     f"Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = "
                     f"{_ka_pl(ikss_total_a)} kA, c = {_liczba_pl(result.c_factor, 2)}, "
-                    f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
+                    + (
+                        f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
+                        if result.t_min_s is not None
+                        else "t_min nie podano — μ, q i Ib maszyn wymagających krzywej "
+                        "zaniku nieobliczone."
+                    )
                 ),
                 "latex": None,
             }
@@ -339,7 +352,11 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
                 {
                     "tekst": (
                         f"Suma wkładów maszyn: I″k,M = {_ka_pl(result.ikss_machines_a)} kA, "
-                        f"Ib,M = {_ka_pl(result.ib_machines_a)} kA."
+                        + (
+                            f"Ib,M = {_ka_pl(result.ib_machines_a)} kA."
+                            if result.ib_machines_a is not None
+                            else "Ib,M nieobliczone — brak czasu wyłączenia t_b."
+                        )
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
                 },
@@ -513,7 +530,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
                 punkt.graf,
                 punkt.fault_node_id,
                 c_factor=punkt.dobor_c.wartosc,
-                t_min_s=payload.t_min_s,
+                t_min_s=czas_tb_z_danych(payload.t_min_s),
                 z_f_ohm=z_f_ohm,
             )
     # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
@@ -567,6 +584,8 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
         scenariusz=payload.scenariusz,
         nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
         tk_s=payload.tk_s,
+        # Ta sama reguła danych t_b co opcja biegu (odmowa nazwana → 422 z `kod`).
+        tb_s=czas_tb_z_danych(payload.tb_s),
         z_f_ohm=_z_f_z_zadania(payload.fault_impedance),
     )
     from enm.models import EnergyNetworkModel

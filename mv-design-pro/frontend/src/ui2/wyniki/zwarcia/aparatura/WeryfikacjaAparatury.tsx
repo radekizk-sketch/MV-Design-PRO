@@ -13,9 +13,10 @@
  * wziął aparat).
  *
  * PRĄDY PER POLE (karta WYTRZYMALOSC-PRAD-POLA): do końcówki jedzie stacja i ZAPISANY bieg,
- * nie liczby wybranego punktu. Każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy oraz dwa
- * rekordy werdyktu wyjaśnialnego (dynamiczny, cieplny) jedyną kartą werdyktu — status zawsze
- * z wynikiem, limitem, marginesem i przyczyną braku.
+ * nie liczby wybranego punktu. Każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy oraz trzy
+ * rekordy werdyktu wyjaśnialnego (dynamiczny, cieplny, zdolności wyłączania — karta
+ * SC-IB-ITH-ZRODLA: rekord nazywa porównaną wielkość Ib albo I″k i jej normę) jedyną kartą
+ * werdyktu — status zawsze z wynikiem, limitem, marginesem i przyczyną braku.
  *
  * ZERO FIZYKI W PREZENTACJI: ten plik nic nie porównuje i nie skaluje — składa
  * wejścia i pokazuje `message_pl` backendu. Trzy stany werdyktu (wytrzymuje /
@@ -88,6 +89,24 @@ function PradyPola({ pole }: { readonly pole: PoleWytrzymalosci }) {
         <div>
           <dt>{T.pradyIth}</dt>
           <dd className="mvd-num">{kiloampery(prady.ith_ka)}</dd>
+        </div>
+        {/* Karta SC-IB-ITH-ZRODLA: wielkości kryterium wyłączania z TEGO SAMEGO wiersza
+            biegu — Ib (prąd wyłączeniowy symetryczny), iDC(tb) informacyjnie i tb biegu. */}
+        <div>
+          <dt>{T.pradyIb}</dt>
+          <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ib-${pole.pole}`}>
+            {kiloampery(prady.ib_ka)}
+          </dd>
+        </div>
+        <div>
+          <dt>{T.pradyIdc}</dt>
+          <dd className="mvd-num">{kiloampery(prady.i_dc_ka)}</dd>
+        </div>
+        <div>
+          <dt>{T.pradyTb}</dt>
+          <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}>
+            {prady.tb_s === null ? T.pradyTbBrak : sekundy(prady.tb_s)}
+          </dd>
         </div>
       </dl>
       {prady.powod_pl !== null && <p className="mvd-apar-czas-powod">{prady.powod_pl}</p>}

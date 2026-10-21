@@ -24,6 +24,7 @@ const DOZWOLONE_KLUCZE_CONFIG = new Set([
   'nadpisanie_c',
   'thermal_time_seconds',
   'include_branch_contributions',
+  'breaking_time_seconds',
 ]);
 
 interface Wywolanie {
@@ -77,6 +78,15 @@ function odmowaBackendu(config: unknown, wymagany: boolean): Response | null {
   }
   if (c.scenariusz !== 'MAX' && c.scenariusz !== 'MIN') {
     return odpowiedz(422, { detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'Field required' }] });
+  }
+  // Karta SC-IB-ITH-ZRODLA: t_b sprawdza domena (`czas_tb_z_danych`) — odmowa nazwana z kodem.
+  const tb = c.breaking_time_seconds;
+  if (tb !== undefined && tb !== null && !(typeof tb === 'number' && Number.isFinite(tb) && tb > 0)) {
+    return odpowiedz(422, {
+      detail: `Czas wyłączenia t_b ${String(tb)} musi być skończoną liczbą dodatnią w sekundach.`,
+      kod: 'fault.czas_tb_niepoprawny',
+      dane: {},
+    });
   }
   const nad = c.nadpisanie_c as { wartosc?: unknown; uzasadnienie?: unknown } | null | undefined;
   if (nad) {
@@ -292,5 +302,109 @@ describe('FaultScenarioModal — nośnik współczynnika c (edycja)', () => {
     const blad = await screen.findByTestId('fault-scenario-validation-error');
     expect(blad.textContent).toContain('wymaga uzasadnienia');
     expect(blad.textContent).not.toContain('fault.c_nadpisanie_bez_uzasadnienia');
+  });
+});
+
+/**
+ * Karta SC-IB-ITH-ZRODLA — czas wyłączenia t_b jako dana scenariusza (nie stała solvera).
+ * Iloczyn cech: {tworzenie, edycja} × {puste pole, liczba z kropką, liczba z przecinkiem
+ * wklejona, zero, ujemna} — puste = brak klucza (backend `exclude_none`, założenie biegu
+ * `fault.czas_tb_brak`), liczba dodatnia = `breaking_time_seconds`, reszta = blokada w oknie.
+ * Wpisywanie natywne (userEvent) w pole typu liczbowego.
+ */
+describe('FaultScenarioModal — czas wyłączenia t_b', () => {
+  it('tworzenie z pustym t_b: config bez klucza breaking_time_seconds', async () => {
+    const user = await otworzNowy();
+    expect((screen.getByTestId('fault-scenario-tb-input') as HTMLInputElement).value).toBe('');
+    await user.click(screen.getByTestId('fault-scenario-save-btn'));
+    await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
+    const [zapis] = wywolaniaZapisu();
+    expect(zapis.body.config).not.toHaveProperty('breaking_time_seconds');
+  });
+
+  for (const [wpis, oczekiwane] of [
+    ['0.1', 0.1],
+    ['0.25', 0.25],
+    ['0.02', 0.02],
+  ] as const) {
+    it(`tworzenie z t_b = ${wpis}: config niesie breaking_time_seconds = ${oczekiwane}`, async () => {
+      const user = await otworzNowy();
+      await user.type(screen.getByTestId('fault-scenario-tb-input'), wpis);
+      await user.click(screen.getByTestId('fault-scenario-save-btn'));
+      await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
+      const [zapis] = wywolaniaZapisu();
+      expect(zapis.method).toBe('POST');
+      expect((zapis.body.config as ShortCircuitConfig).breaking_time_seconds).toBe(oczekiwane);
+    });
+  }
+
+  for (const wpis of ['0', '-0.1']) {
+    it(`t_b = ${wpis} blokuje zapis z komunikatem PL bez kodu maszynowego`, async () => {
+      const user = await otworzNowy();
+      await user.type(screen.getByTestId('fault-scenario-tb-input'), wpis);
+      await user.click(screen.getByTestId('fault-scenario-save-btn'));
+      const blad = await screen.findByTestId('fault-scenario-validation-error');
+      expect(blad.textContent).toContain('Czas wyłączenia t_b');
+      expect(blad.textContent).not.toContain('fault.czas_tb_niepoprawny');
+      expect(wywolaniaZapisu()).toHaveLength(0);
+    });
+  }
+
+  it('edycja: t_b z config wypełnia pole i wraca bez zmian', async () => {
+    const config: ShortCircuitConfig = {
+      scenariusz: 'MAX',
+      nadpisanie_c: null,
+      thermal_time_seconds: 1,
+      include_branch_contributions: false,
+      breaking_time_seconds: 0.25,
+    };
+    useFaultScenariosStore.setState({ studyCaseId: 'case-1', scenarios: [scenariuszZ(config)] });
+    useFaultScenariosStore.getState().openModal('sc-1');
+    render(<FaultScenarioModal />);
+    const user = userEvent.setup();
+    expect((screen.getByTestId('fault-scenario-tb-input') as HTMLInputElement).value).toBe('0.25');
+    await user.click(screen.getByTestId('fault-scenario-save-btn'));
+    await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
+    const [zapis] = wywolaniaZapisu();
+    expect(zapis.method).toBe('PUT');
+    expect(zapis.body.config).toEqual(config);
+  });
+
+  it('edycja: wyczyszczenie t_b wysyła config bez klucza (brak danej, nie 0 ani 0,1 s)', async () => {
+    const config: ShortCircuitConfig = {
+      scenariusz: 'MIN',
+      nadpisanie_c: null,
+      thermal_time_seconds: 0.5,
+      include_branch_contributions: false,
+      breaking_time_seconds: 0.1,
+    };
+    useFaultScenariosStore.setState({ studyCaseId: 'case-1', scenarios: [scenariuszZ(config)] });
+    useFaultScenariosStore.getState().openModal('sc-1');
+    render(<FaultScenarioModal />);
+    const user = userEvent.setup();
+    await user.clear(screen.getByTestId('fault-scenario-tb-input'));
+    await user.click(screen.getByTestId('fault-scenario-save-btn'));
+    await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
+    const [zapis] = wywolaniaZapisu();
+    expect(zapis.body.config).not.toHaveProperty('breaking_time_seconds');
+    expect((zapis.body.config as ShortCircuitConfig).thermal_time_seconds).toBe(0.5);
+  });
+
+  it('odmowa backendu fault.czas_tb_niepoprawny pokazuje zdanie PL bez kodu', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        odpowiedz(422, {
+          detail: 'Czas wyłączenia t_b 0 musi być skończoną liczbą dodatnią w sekundach.',
+          kod: 'fault.czas_tb_niepoprawny',
+          dane: {},
+        }),
+      ),
+    );
+    const user = await otworzNowy();
+    await user.click(screen.getByTestId('fault-scenario-save-btn'));
+    const blad = await screen.findByTestId('fault-scenario-validation-error');
+    expect(blad.textContent).toContain('skończoną liczbą dodatnią');
+    expect(blad.textContent).not.toContain('fault.czas_tb_niepoprawny');
   });
 });

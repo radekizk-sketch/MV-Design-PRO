@@ -227,8 +227,8 @@ def test_dfig_partial_identical_to_squirrel_cage():
     g1, g2 = _slack_line_bus(), _slack_line_bus()
     g1.add_asynchronous_machine_source(_async())
     g2.add_asynchronous_machine_source(_dfig())
-    c1 = compute_machine_contributions(g1, "B", c_factor=1.1).contributions[0]
-    c2 = compute_machine_contributions(g2, "B", c_factor=1.1).contributions[0]
+    c1 = compute_machine_contributions(g1, "B", c_factor=1.1, t_min_s=0.10).contributions[0]
+    c2 = compute_machine_contributions(g2, "B", c_factor=1.1, t_min_s=0.10).contributions[0]
     assert c2.ikss_partial_a == c1.ikss_partial_a
     assert c2.ib_a == c1.ib_a
     assert c1.machine_type == "ASYNCHRONOUS"
@@ -301,8 +301,8 @@ def test_module_deterministic():
     g.add_synchronous_machine_source(_sync())
     g.add_asynchronous_machine_source(_async())
     assert (
-        compute_machine_contributions(g, "B", c_factor=1.1).to_dict()
-        == compute_machine_contributions(g, "B", c_factor=1.1).to_dict()
+        compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).to_dict()
+        == compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).to_dict()
     )
 
 
@@ -392,3 +392,58 @@ def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_
         for zapis in _ZAPISY_SPOZA_JEZYKA_INZYNIERA:
             assert zapis not in tekst, (zapis, tekst)
     assert any(znak in " ".join(teksty) for znak in "ąćęłńóśźż")
+
+
+# ── Karta SC-IB-ITH-ZRODLA: t_min = t_b biegu bez cichej stałej ─────────────────
+def test_krzywe_mu_q_bez_t_min_tylko_tam_gdzie_nie_zaleza_od_krzywej():
+    """μ = 1 dla krotności ≤ 2 i q = 1 bez mocy na parę biegunów — bez t_min; reszta None."""
+    assert mu_factor(1.5, None) == 1.0
+    assert mu_factor(2.5, None) is None
+    assert q_factor(0.0, None) == 1.0
+    assert q_factor(1.0, None) is None
+
+
+@pytest.mark.parametrize("maszyna", ["synchroniczna", "asynchroniczna", "dfig"])
+def test_bieg_bez_t_min_pelne_prady_czesciowe_bez_ib(maszyna: str):
+    """t_min None: prądy częściowe i ΔU″ są pełne (nie zależą od t_b), μ/i_b — None."""
+    g = _slack_line_bus()
+    if maszyna == "synchroniczna":
+        g.add_synchronous_machine_source(_sync())
+    elif maszyna == "asynchroniczna":
+        g.add_asynchronous_machine_source(_async())
+    else:
+        g.add_asynchronous_machine_source(_dfig())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=None)
+    z_t_min = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    (c,) = res.contributions
+    (c_ref,) = z_t_min.contributions
+    assert c.ikss_partial_a == c_ref.ikss_partial_a > 0.0
+    assert c.delta_u_wzgledne == c_ref.delta_u_wzgledne > 0.0
+    assert c.mu is None and c.ib_a is None
+    assert res.ib_machines_a is None and res.t_min_s is None
+    assert res.to_dict()["ib_machines_a"] is None
+    if maszyna == "synchroniczna":
+        assert c.q == 1.0
+    else:
+        assert c.q is None
+
+
+def test_maszyna_przy_zwarciu_na_zaciskach_krotnosc_z_tego_samego_pradu():
+    """Maszyna w poziomie napięcia węzła zwarcia: prąd na zaciskach = prąd częściowy."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    (c,) = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).contributions
+    assert c.ikss_zaciski_a == pytest.approx(c.ikss_partial_a, rel=1e-12)
+    assert c.ratio_ik_ir == pytest.approx(c.ikss_partial_a / c.ir_a, rel=1e-12)
+
+
+def test_prad_znamionowy_niedodatni_to_odmowa_nie_krotnosc_zero():
+    """Dawne `ratio = I/I_r if I_r > 0 else 0.0` wpychało μ = 1 za niefizyczne I_r."""
+    g = _slack_line_bus()
+    g.add_asynchronous_machine_source(
+        AsynchronousMachineSource(
+            id="M", name="Silnik bledny", node_id="B", pr_mw=-2.0, ur_kv=15.0, i_lr_ratio=5.0
+        )
+    )
+    with pytest.raises(ValueError, match="Maszyna „Silnik bledny”: prąd znamionowy I_r"):
+        compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)

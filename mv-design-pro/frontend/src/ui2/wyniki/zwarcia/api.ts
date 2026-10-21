@@ -36,9 +36,11 @@ export interface WkladZrodlaOdpowiedz {
   readonly machine_type?: string;
   readonly ir_a?: number;
   readonly ratio_ik_ir?: number;
-  readonly mu?: number;
-  readonly q?: number;
-  readonly ib_a?: number;
+  // Karta SC-IB-ITH-ZRODLA: `null` = nieobliczone — maszyna wymaga krzywej zaniku μ/q,
+  // a bieg nie ma czasu wyłączenia t_b (t_min); nigdy 0.
+  readonly mu?: number | null;
+  readonly q?: number | null;
+  readonly ib_a?: number | null;
   /** Wywód dyplomowy TEJ maszyny ({tekst, latex} budowane w solverze). */
   readonly wywod?: readonly KrokWywodu[];
 }
@@ -69,11 +71,14 @@ export interface WkladyZWywodem {
  * Karta WSPÓŁCZYNNIK-C (O-59): końcówka wkładów dobiera c z tabeli 1 IEC 60909-0 dla
  * pasma węzła i scenariusza OGLĄDANEGO biegu (`scenariusz` wymagany, `nadpisanie_c`
  * z uzasadnieniem) — żądanie bez scenariusza jest odmową 422. Karta OD-14: `impedancja`
- * = Z_f biegu przez impedancję przejścia (brak = bieg metaliczny).
+ * = Z_f biegu przez impedancję przejścia (brak = bieg metaliczny). Karta SC-IB-ITH-ZRODLA:
+ * `tMinS` = czas wyłączenia t_b biegu (t_min krzywych μ, q); `null` = bieg bez t_b — backend
+ * nie podstawia już stałej 0,10 s, tylko zwraca μ/q/Ib maszyn jako nieobliczone.
  */
 export interface ParametryWkladowBiegu {
   readonly scenariusz: 'MAX' | 'MIN';
   readonly nadpisanieC: { readonly wartosc: number; readonly uzasadnienie: string } | null;
+  readonly tMinS: number | null;
   readonly impedancja?: ImpedancjaPrzejsciaBiegu;
 }
 
@@ -95,9 +100,10 @@ export function parametryWkladowZKonfiguracji(
     if (c.wartosc === null || c.uzasadnienie === null) return null;
     nadpisanieC = { wartosc: c.wartosc, uzasadnienie: c.uzasadnienie };
   }
+  const tMinS = konfiguracja.breaking_time_seconds?.wartosc ?? null;
   return konfiguracja.impedancja_przejscia
-    ? { scenariusz, nadpisanieC, impedancja: konfiguracja.impedancja_przejscia }
-    : { scenariusz, nadpisanieC };
+    ? { scenariusz, nadpisanieC, tMinS, impedancja: konfiguracja.impedancja_przejscia }
+    : { scenariusz, nadpisanieC, tMinS };
 }
 
 /**
@@ -120,6 +126,7 @@ export async function fetchWkladyZwarciowe(
       fault_node_id: faultNodeRef,
       scenariusz: parametry.scenariusz,
       nadpisanie_c: parametry.nadpisanieC,
+      ...(parametry.tMinS === null ? {} : { t_min_s: parametry.tMinS }),
       ...(impedancja
         ? { fault_impedance: { r_f_ohm: impedancja.r_f_ohm, x_f_ohm: impedancja.x_f_ohm } }
         : {}),
@@ -146,7 +153,7 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
             stosunekIkIr: c.ratio_ik_ir ?? null,
             mu: c.mu ?? null,
             q: c.q ?? null,
-            ibKA: c.ib_a !== undefined ? c.ib_a / 1000 : null,
+            ibKA: c.ib_a === undefined || c.ib_a === null ? null : c.ib_a / 1000,
             wywod: c.wywod ?? [],
           },
   }));
@@ -178,6 +185,7 @@ export function useWkladyZwarciowe(
   const cUzasadnienie = parametry?.nadpisanieC?.uzasadnienie;
   const rF = parametry?.impedancja?.r_f_ohm;
   const xF = parametry?.impedancja?.x_f_ohm;
+  const tMinS = parametry?.tMinS ?? null;
 
   useEffect(() => {
     if (!punkt || !snapshot || klucz === null || scenariusz === undefined) return;
@@ -189,6 +197,7 @@ export function useWkladyZwarciowe(
         cWartosc === undefined || cUzasadnienie === undefined
           ? null
           : { wartosc: cWartosc, uzasadnienie: cUzasadnienie },
+      tMinS,
       ...(rF === undefined || xF === undefined
         ? {}
         : { impedancja: { r_f_ohm: rF, x_f_ohm: xF, poza_zakresem_iec60909: true as const } }),
@@ -212,7 +221,7 @@ export function useWkladyZwarciowe(
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, cache, klucz, scenariusz, cWartosc, cUzasadnienie, rF, xF]);
+  }, [punkt, snapshot, cache, klucz, scenariusz, cWartosc, cUzasadnienie, tMinS, rF, xF]);
 
   if (klucz === null) return null;
   return cache[klucz] ?? null;
@@ -226,7 +235,8 @@ export function kluczWkladow(punkt: string, parametry: ParametryWkladowBiegu): s
   const zf = parametry.impedancja
     ? `|zf:${parametry.impedancja.r_f_ohm}:${parametry.impedancja.x_f_ohm}`
     : '';
-  return `${punkt}|${parametry.scenariusz}${c}${zf}`;
+  const tb = parametry.tMinS === null ? '' : `|tb:${parametry.tMinS}`;
+  return `${punkt}|${parametry.scenariusz}${c}${tb}${zf}`;
 }
 
 // ---------------------------------------------------------------------------

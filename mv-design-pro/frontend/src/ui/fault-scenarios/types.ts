@@ -81,6 +81,12 @@ export interface ShortCircuitConfig {
   scenariusz: ScenariuszC;
   nadpisanie_c: NadpisanieC | null;
   thermal_time_seconds: number;
+  /**
+   * Czas wyłączenia t_b [s] (karta SC-IB-ITH-ZRODLA): najkrótszy czas zadziałania
+   * zabezpieczenia + czas własny wyłącznika. Brak = bieg bez t_b — I_b przy maszynach
+   * wirujących i składowa i_DC nieobliczone (kod `fault.czas_tb_brak`), nigdy stała.
+   */
+  breaking_time_seconds?: number | null;
   include_branch_contributions: boolean;
 }
 

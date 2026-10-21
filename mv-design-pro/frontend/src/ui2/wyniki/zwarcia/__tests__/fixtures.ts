@@ -42,6 +42,8 @@ export function shortCircuitRowFixture(over: Partial<ShortCircuitRow> = {}): Sho
     tk_s: 1.0,
     tb_s: 0.1,
     ib_ka: 12.345,
+    // Karta SC-IB-ITH-ZRODLA: i_DC(tb) = √2·Ik''·e^(−2π·50·tb·R/X) = √2·12,345·e^(−3,336).
+    i_dc_ka: 0.621,
     ik_ka: 12.345,
     ik_thevenin_ka: 12.1,
     ik_inverters_ka: 0.245,
@@ -231,6 +233,7 @@ export function shortCircuitResultsFixture(
         tk_s: null,
         tb_s: null,
         ib_ka: null,
+        i_dc_ka: null,
         ik_ka: null,
         ik_thevenin_ka: null,
         ik_inverters_ka: null,

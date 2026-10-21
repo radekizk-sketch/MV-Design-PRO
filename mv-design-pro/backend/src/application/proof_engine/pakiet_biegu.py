@@ -80,6 +80,7 @@ from application.solvers.voltage_drop_binding import (
 from enm.assembler import impedancja_zwarcia_z_opcji
 from enm.canonical_analysis import CanonicalRun, rozszerzenia_audit2_dla_opcji
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
@@ -460,11 +461,16 @@ class _ParametryZwarciaBiegu:
     `options.get("c_factor", 1.10)` — 1,10 także dla węzła nN i dla biegu MIN), tylko
     scenariusz i nadpisanie biegu; c i jego podstawę dobiera warstwa wiązania tą samą
     regułą co bieg (`voltage_factor.dobierz_c` przez `enm.assembler`).
+
+    Karta SC-IB-ITH-ZRODLA: t_b biegu tą samą funkcją co assembler (`czas_tb_z_danych`
+    z klucza opcji biegu) — dowód opisuje I_b i i_DC policzone z TYM SAMYM t_b co wynik na
+    ekranie; brak t_b w biegu = ``None`` (kroki z kodem `fault.czas_tb_brak`).
     """
 
     scenariusz: Scenario
     nadpisanie_c: NadpisanieC | None
     tk_s: float
+    tb_s: float | None
     rozszerzenia_audit2: dict[str, Any] | None
 
 
@@ -480,6 +486,7 @@ def _parametry_zwarcia_biegu(
         scenariusz="MAX" if scenariusz == "MAX" else "MIN",
         nadpisanie_c=nadpisanie_c_z_danych(run.options.get("nadpisanie_c")),
         tk_s=float(run.options.get("thermal_time_seconds", 1.0)),
+        tb_s=czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB)),
         rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
     )
 
@@ -670,6 +677,7 @@ def _zbuduj_sc3f(
         scenariusz=parametry.scenariusz,
         nadpisanie_c=parametry.nadpisanie_c,
         tk_s=parametry.tk_s,
+        tb_s=parametry.tb_s,
         rozszerzenia_audit2=parametry.rozszerzenia_audit2,
         z_f_ohm=_z_f_ohm(run),
     )

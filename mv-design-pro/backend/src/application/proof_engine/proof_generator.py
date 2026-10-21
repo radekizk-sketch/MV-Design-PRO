@@ -68,7 +68,7 @@ from application.proof_engine.equation_registry import (
     EQ_SC3F_016,
     EQ_SC3F_017,
     EQ_SC3F_018,
-    EQ_SC3F_019,
+    EQ_SC3F_020,
     EQ_VDROP_001,
     EQ_VDROP_002,
     EQ_VDROP_003,
@@ -111,12 +111,13 @@ from network_model.pochodne import (
 from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
+    wspolczynniki_krzywej_mu,
+    wspolczynniki_krzywej_q,
 )
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     SC1AsymmetricalQuantities,
     normalize_sc1_fault_type,
 )
-from network_model.solvers.short_circuit_core import OMEGA_50HZ
 
 if TYPE_CHECKING:
     from network_model.catalog import CatalogRepository
@@ -159,9 +160,10 @@ class SC3FInput:
     rx_ratio: float
     tk_s: float
 
-    # Opcjonalne wartości pośrednie (z white_box_trace)
-    m_factor: float = 1.0
-    n_factor: float = 0.0
+    # Współczynniki cieplne m, n, z którymi solver policzył I_th = I_k''·√(m+n) — z WYNIKU
+    # solvera (jedno źródło I_th, karta SC-IB-ITH-ZRODLA); bez wartości domyślnych.
+    m_factor: float
+    n_factor: float
 
     # Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — `voltage_factor.DoborC.zrodlo`;
     # None tylko dla wejść bez doboru c (dowód bez linii podstawy w nagłówku).
@@ -171,11 +173,17 @@ class SC3FInput:
     # generator dołącza per-maszyna kroki μ / q / i_b. None ⇒ brak sekcji maszynowej.
     machine_result: MachineShortCircuitResult | None = None
 
-    # Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22) — wartości z FROZEN
-    # wyniku solvera (ib_a, tb_s), addytywnie. None ⇒ dowód bez kroku I_b
-    # (starsze wejścia; uczciwy brak, zero zgadywania).
+    # Prąd wyłączeniowy symetryczny I_b i składowa nieokresowa i_DC(t_b) (karta
+    # SC-IB-ITH-ZRODLA, B-01 (n)) — wartości z FROZEN wyniku solvera (ib_a, i_dc_a, tb_s)
+    # i jego kroki śladu „Ib"/„iDC" (wartości pośrednie: przypadek normy, zaniki maszyn,
+    # wykładnik i współczynnik zaniku). Dowód NIE liczy fizyki — podstawia liczby śladu.
+    # None ⇒ wielkość nieobliczona: krok śladu niesie kod odmowy (`fault.czas_tb_brak`),
+    # który dowód przenosi do ostrzeżeń podsumowania.
     ib_ka: float | None = None
     tb_s: float | None = None
+    i_dc_ka: float | None = None
+    krok_ib: dict[str, Any] | None = None
+    krok_idc: dict[str, Any] | None = None
 
     # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10). Para
     # rozstrzygana JEDNYM predykatem (`z_f_ohm is not None`): przy Z_f `z_thevenin_ohm` to
@@ -213,11 +221,17 @@ class SC3FInput:
         placeholderów (1,0 / 0,0) — inaczej wywód White Box (krok Ith,
         EQ_SC3F_008) pokazywałby podstawienie niespójne z wyświetlaną
         liczbą ith_ka za każdym razem, gdy tk_s różni się od wartości, przy
-        której m+n≈1. Starsze wyniki solvera (sprzed delty, m_factor=None)
-        ⇒ honest fallback na (1,0; 0,0) — bez zmyślania, jawnie oznaczony.
+        której m+n≈1. Karta SC-IB-ITH-ZRODLA: dawny zapas (1,0; 0,0) dla wyniku bez m, n
+        był DRUGĄ definicją I_th (I_th = I_k'' przy n = 0, sprzeczną z n = 1 rdzenia) —
+        skasowany; wynik bez m, n to odmowa, nie domysł.
         """
-        m_factor = result.m_factor if result.m_factor is not None else 1.0
-        n_factor = result.n_factor if result.n_factor is not None else 0.0
+        if result.m_factor is None or result.n_factor is None:
+            raise ValueError(
+                "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
+                "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
+            )
+        m_factor = float(result.m_factor)
+        n_factor = float(result.n_factor)
         return cls(
             project_name=project_name,
             case_name=case_name,
@@ -239,11 +253,26 @@ class SC3FInput:
             tk_s=result.tk_s,
             m_factor=m_factor,
             n_factor=n_factor,
-            ib_ka=a_na_ka(result.ib_a),
+            ib_ka=None if result.ib_a is None else a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
+            krok_ib=krok_sladu_zwarcia(result.white_box_trace, "Ib"),
+            krok_idc=krok_sladu_zwarcia(result.white_box_trace, "iDC"),
             z_f_ohm=result.z_f_ohm,
             z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
+
+
+def krok_sladu_zwarcia(slad: Any, klucz: str) -> dict[str, Any] | None:
+    """Krok śladu WHITE BOX rdzenia IEC 60909 o danym kluczu (``None`` = brak kroku).
+
+    Dowód SC3F czyta wartości pośrednie I_b i i_DC Z TEGO kroku — ta sama liczba i to samo
+    podstawienie co w wyniku biegu (jedna definicja, karta SC-IB-ITH-ZRODLA).
+    """
+    for krok in slad or ():
+        if isinstance(krok, dict) and krok.get("key") == klucz:
+            return krok
+    return None
 
 
 @dataclass
@@ -381,11 +410,6 @@ class SC1Input:
 
     # Operator a (Fortescue)
     a_operator: complex
-
-    # Post-fault quantities (§4.1 — I″k, ip, I_th, I_dyn mandatory)
-    tk_s: float = 1.0
-    m_factor: float = 1.0
-    n_factor: float = 0.0
 
     # Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — jak w SC3FInput.
     c_zrodlo: str | None = None
@@ -656,16 +680,19 @@ class ProofGenerator:
         3. Współczynnik udaru κ
         4. Prąd udarowy i_p
         5. Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
-        6. Prąd wyłączeniowy I_b przy t_b (gdy wejście niesie ib_ka/tb_s —
-           wartość z FROZEN wyniku solvera; starsze wejścia → uczciwy brak kroku)
+        6. Prąd wyłączeniowy symetryczny I_b (EQ_SC3F_014, IEC 60909-0 rozdz. 9) i 6a.
+           składowa nieokresowa i_DC(t_b) (EQ_SC3F_020, rozdz. 10) — wartości i
+           podstawienia z FROZEN wyniku solvera i jego śladu (klucze Ib, iDC); wielkość
+           nieobliczona (bieg bez t_b) → bez kroku, zdanie odmowy w ostrzeżeniach
         7. Prąd cieplny I_th (OBOWIĄZKOWY)
         8. Energia cieplna I²t = I_th²·t_k (krok formatujący wielkości obecne)
         9. Moc zwarciowa S_k''
 
         Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10; jeden
         predykat `data.z_f_ohm is not None`): po kroku Z_th dochodzi krok pętli
-        Z_k = Z_th + Z_f (EQ_SC3F_016), a I_k'', κ i I_b pokazują wzory pętli (EQ_SC3F_017,
-        EQ_SC3F_018, EQ_SC3F_019) — dokładnie te, którymi solver policzył wynik biegu.
+        Z_k = Z_th + Z_f (EQ_SC3F_016), a I_k'' i κ pokazują wzory pętli (EQ_SC3F_017,
+        EQ_SC3F_018) — dokładnie te, którymi solver policzył wynik biegu; I_b i i_DC mają
+        jedną definicję (EQ_SC3F_014, EQ_SC3F_020) z I_k'' i R/X pętli.
         Kolejność = `SC3F_PROOF_STEP_ORDER_IMPEDANCJA`; c występuje wyłącznie w EQ_SC3F_017
         (Anti-Double-Counting wariantu). Podsumowanie niesie ostrzeżenie „poza zakresem
         IEC 60909" i Z_f w wynikach kluczowych.
@@ -775,24 +802,37 @@ class ProofGenerator:
         steps.append(step_5)
 
         # =====================================================================
-        # Krok 6: Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22) —
-        # wartość z FROZEN wyniku solvera (ib_a/tb_s); wejście bez tych pól
-        # (starsze ścieżki) → uczciwy brak kroku, zero zgadywania.
+        # Krok 6: Prąd wyłączeniowy symetryczny I_b (EQ_SC3F_014) i krok 6a: składowa
+        # nieokresowa i_DC(t_b) (EQ_SC3F_020) — karta SC-IB-ITH-ZRODLA. Liczby i wartości
+        # pośrednie z FROZEN wyniku solvera i jego kroków śladu „Ib"/„iDC"; wielkość
+        # nieobliczona (bieg bez t_b) → bez kroku, kod i zdanie w ostrzeżeniach.
         # =====================================================================
-        if data.ib_ka is not None and data.tb_s is not None:
+        ostrzezenia_tb: list[str] = []
+        if data.ib_ka is not None:
             step_number += 1
             steps.append(
                 cls._create_sc3f_step_ib(
                     step_number=step_number,
                     ikss_ka=data.ikss_ka,
-                    kappa=data.kappa,
-                    tb_s=data.tb_s,
-                    r_th=r_k,
-                    x_th=x_k,
                     ib_ka=data.ib_ka,
-                    impedancja_przejscia=impedancja_przejscia,
+                    tb_s=data.tb_s,
+                    krok_ib=data.krok_ib,
                 )
             )
+        elif data.krok_ib is not None and data.krok_ib.get("notes"):
+            ostrzezenia_tb.append(str(data.krok_ib["notes"]))
+        if data.i_dc_ka is not None and data.tb_s is not None and data.krok_idc is not None:
+            step_number += 1
+            steps.append(
+                cls._create_sc3f_step_idc(
+                    step_number=step_number,
+                    i_dc_ka=data.i_dc_ka,
+                    tb_s=data.tb_s,
+                    krok_idc=data.krok_idc,
+                )
+            )
+        elif data.krok_idc is not None and data.krok_idc.get("notes"):
+            ostrzezenia_tb.append(str(data.krok_idc["notes"]))
 
         # =====================================================================
         # Krok 7: Prąd cieplny I_th (OBOWIĄZKOWY)
@@ -840,10 +880,17 @@ class ProofGenerator:
         # zawiera maszyny wirujące. Synchroniczne: μ + i_b (q = 1, krok q pominięty);
         # asynchroniczne / DFIG: μ + q + i_b. Kolejność = deterministyczna z solvera.
         # =====================================================================
-        ib_machines_ka = 0.0
-        if data.machine_result is not None and data.machine_result.contributions:
-            t_min_s = data.machine_result.t_min_s
-            for machine in data.machine_result.contributions:
+        # Sekcja maszynowa wyłącznie przy komplecie μ/q/i_b (bieg bez t_b z maszyną, której
+        # krzywa zależy od t_min → brak sekcji; odmowa jest w ostrzeżeniach kroku I_b).
+        ib_machines_ka: float | None = None
+        wynik_maszyn = data.machine_result
+        if (
+            wynik_maszyn is not None
+            and wynik_maszyn.contributions
+            and wynik_maszyn.ib_machines_a is not None
+        ):
+            t_min_s = wynik_maszyn.t_min_s
+            for machine in wynik_maszyn.contributions:
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_mu(step_number, machine, t_min_s))
                 if not machine.is_synchronous_machine:
@@ -851,7 +898,7 @@ class ProofGenerator:
                     steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
-            ib_machines_ka = a_na_ka(data.machine_result.ib_machines_a)
+            ib_machines_ka = a_na_ka(wynik_maszyn.ib_machines_a)
 
         # =====================================================================
         # Podsumowanie
@@ -867,17 +914,19 @@ class ProofGenerator:
             "sk_mva": ProofValue.create("S_k''", data.sk_mva, "MVA", "sk_mva"),
             "kappa": ProofValue.create("\\kappa", data.kappa, "—", "kappa"),
         }
-        if data.ib_ka is not None and data.tb_s is not None:
+        if data.ib_ka is not None:
             key_results["ib_ka"] = ProofValue.create("I_b", data.ib_ka, "kA", "ib_ka")
-        if data.machine_result is not None and data.machine_result.contributions:
+        if data.i_dc_ka is not None:
+            key_results["i_dc_ka"] = ProofValue.create("i_{DC}", data.i_dc_ka, "kA", "i_dc_ka")
+        if ib_machines_ka is not None:
             key_results["ib_machines_ka"] = ProofValue.create(
                 "i_{b,maszyny}", ib_machines_ka, "kA", "ib_machines_ka"
             )
-        warnings: tuple[str, ...] = ()
+        warnings: tuple[str, ...] = tuple(ostrzezenia_tb)
         if z_f_ohm is not None:
             key_results["z_f_ohm"] = ProofValue.create("Z_f", z_f_ohm, "Ω", "z_f_ohm")
             key_results["z_petli_ohm"] = ProofValue.create("Z_k", z_petli, "Ω", "z_petli_ohm")
-            warnings = (ostrzezenie_poza_zakresem_iec60909(z_f_ohm),)
+            warnings = (ostrzezenie_poza_zakresem_iec60909(z_f_ohm), *warnings)
 
         summary = ProofSummary(
             key_results=key_results,
@@ -1064,8 +1113,8 @@ class ProofGenerator:
                 step = cls._create_sc1_step_ith(
                     step_number=step_number,
                     ikss_ka=ikss_ka,
-                    m_factor=data.m_factor,
-                    n_factor=data.n_factor,
+                    m_factor=quantities.m_factor,
+                    n_factor=quantities.n_factor,
                     ith_ka=ith_ka,
                 )
             elif eq_id == "EQ_SC1_012":
@@ -1920,39 +1969,22 @@ class ProofGenerator:
         )
 
     # --- Maszyny wirujące: zanik prądu wyłączeniowego μ / q / i_b (§6.6) ----------
-    @staticmethod
-    def _mu_curve_coeffs(t_min_s: float) -> tuple[float, float, float]:
-        """(a, b, c) dla μ = a + b·e^(−c·I″k/I_r), wg t_min (IEC 60909 §6.6.1)."""
-        if t_min_s <= 0.035:
-            return (0.84, 0.26, 0.26)
-        if t_min_s <= 0.075:
-            return (0.71, 0.51, 0.30)
-        if t_min_s <= 0.175:
-            return (0.62, 0.72, 0.32)
-        return (0.56, 0.94, 0.38)
-
-    @staticmethod
-    def _q_curve_coeffs(t_min_s: float) -> tuple[float, float]:
-        """(a, b) dla q = a + b·ln(m), wg t_min (IEC 60909 §6.6.3)."""
-        if t_min_s <= 0.035:
-            return (1.03, 0.12)
-        if t_min_s <= 0.075:
-            return (0.79, 0.12)
-        if t_min_s <= 0.175:
-            return (0.57, 0.12)
-        return (0.26, 0.10)
-
     @classmethod
     def _create_sc3f_step_machine_mu(
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float,
+        t_min_s: float | None,
     ) -> ProofStep:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
+        if machine.mu is None:
+            raise ValueError("Krok μ wymaga policzonego μ (sekcja maszynowa bez kompletu).")
+        mu = machine.mu
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
-        ikss_p = a_na_ka(machine.ikss_partial_a)
+        # Krotność z prądów NA ZACISKACH maszyny (ten sam poziom napięcia co I_r) — karta
+        # SC-IB-ITH-ZRODLA; udział w miejscu zwarcia niesie krok i_b maszyny.
+        ikss_p = a_na_ka(machine.ikss_zaciski_a)
         ir = a_na_ka(machine.ir_a)
         if ratio <= 2.0:
             substitution = (
@@ -1960,26 +1992,28 @@ class ProofGenerator:
                 f"\\text{{z dala od generatora}})"
             )
         else:
-            a, b, c = cls._mu_curve_coeffs(t_min_s)
+            if t_min_s is None:
+                raise ValueError("Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+            a, b, c = wspolczynniki_krzywej_mu(t_min_s)
             raw = a + b * math.exp(-c * ratio)
             substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
-            if abs(raw - machine.mu) > 5e-4:
-                substitution += f" \\rightarrow {machine.mu:.4f}\\ (0 \\leq \\mu \\leq 1)"
+            if abs(raw - mu) > 5e-4:
+                substitution += f" \\rightarrow {mu:.4f}\\ (0 \\leq \\mu \\leq 1)"
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} — {machine.source_name}",
             equation=equation,
             input_values=(
-                ProofValue.create("I_k''", ikss_p, "kA", "ikss_partial_ka"),
+                ProofValue.create("I_k''", ikss_p, "kA", "ikss_zaciski_ka"),
                 ProofValue.create("I_r", ir, "kA", "ir_ka"),
             ),
             substitution_latex=substitution,
-            result=ProofValue.create("\\mu", machine.mu, "—", "mu_factor"),
+            result=ProofValue.create("\\mu", mu, "—", "mu_factor"),
             unit_check=UnitVerifier.verify_equation(
                 equation.equation_id, {"I_k''": "kA", "I_r": "kA"}, "—"
             ),
-            source_keys={"I_k''": "ikss_partial_ka", "I_r": "ir_ka", "μ": "mu_factor"},
+            source_keys={"I_k''": "ikss_zaciski_ka", "I_r": "ir_ka", "μ": "mu_factor"},
         )
 
     @classmethod
@@ -1987,19 +2021,24 @@ class ProofGenerator:
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float,
+        t_min_s: float | None,
     ) -> ProofStep:
         """Krok maszynowy: dodatkowy współczynnik zanikania q dla maszyny asynchronicznej (§6.6.3)."""
+        if machine.q is None:
+            raise ValueError("Krok q wymaga policzonego q (sekcja maszynowa bez kompletu).")
+        q = machine.q
         equation = EQ_SC3F_012
         m_val = machine.p_per_pole_mw
         if m_val <= 0.0:
             substitution = "q = 1 \\quad (m \\leq 0)"
         else:
-            a, b = cls._q_curve_coeffs(t_min_s)
+            if t_min_s is None:
+                raise ValueError("Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+            a, b = wspolczynniki_krzywej_q(t_min_s)
             raw = a + b * math.log(m_val)
             substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"
-            if abs(raw - machine.q) > 5e-4:
-                substitution += f" \\rightarrow {machine.q:.4f}\\ (q \\leq 1)"
+            if abs(raw - q) > 5e-4:
+                substitution += f" \\rightarrow {q:.4f}\\ (q \\leq 1)"
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
             step_number=step_number,
@@ -2007,7 +2046,7 @@ class ProofGenerator:
             equation=equation,
             input_values=(ProofValue.create("m", m_val, "MW", "p_per_pole_mw"),),
             substitution_latex=substitution,
-            result=ProofValue.create("q", machine.q, "—", "q_factor"),
+            result=ProofValue.create("q", q, "—", "q_factor"),
             unit_check=UnitVerifier.verify_equation(equation.equation_id, {"m": "MW"}, "—"),
             source_keys={"m": "p_per_pole_mw", "q": "q_factor"},
         )
@@ -2019,12 +2058,14 @@ class ProofGenerator:
         machine: MachinePartialContribution,
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
+        if machine.mu is None or machine.q is None or machine.ib_a is None:
+            raise ValueError("Krok i_b wymaga policzonych μ, q i i_b (sekcja bez kompletu).")
+        mu, q = machine.mu, machine.q
         equation = EQ_SC3F_013
         ikss_p = a_na_ka(machine.ikss_partial_a)
         ib = a_na_ka(machine.ib_a)
         substitution = (
-            f"i_b = {machine.mu:.4f} \\cdot {machine.q:.4f} \\cdot {ikss_p:.4f} = "
-            f"{ib:.4f}\\,\\text{{kA}}"
+            f"i_b = {mu:.4f} \\cdot {q:.4f} \\cdot {ikss_p:.4f} = " f"{ib:.4f}\\,\\text{{kA}}"
         )
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
@@ -2032,8 +2073,8 @@ class ProofGenerator:
             title_pl=f"{equation.name_pl} — {machine.source_name}",
             equation=equation,
             input_values=(
-                ProofValue.create("\\mu", machine.mu, "—", "mu_factor"),
-                ProofValue.create("q", machine.q, "—", "q_factor"),
+                ProofValue.create("\\mu", mu, "—", "mu_factor"),
+                ProofValue.create("q", q, "—", "q_factor"),
                 ProofValue.create("I_k''", ikss_p, "kA", "ikss_partial_ka"),
             ),
             substitution_latex=substitution,
@@ -2192,78 +2233,104 @@ class ProofGenerator:
         cls,
         step_number: int,
         ikss_ka: float,
-        kappa: float,
-        tb_s: float,
-        r_th: float,
-        x_th: float,
         ib_ka: float,
-        *,
-        impedancja_przejscia: bool = False,
+        tb_s: float | None,
+        krok_ib: dict[str, Any] | None,
     ) -> ProofStep:
-        """Krok 6: Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22).
+        """Krok 6: Prąd wyłączeniowy symetryczny I_b (EQ_SC3F_014, IEC 60909-0 rozdz. 9).
 
-        `impedancja_przejscia` (karta OD-14): stała t_a z R_k/X_k pętli Z_th + Z_f
-        (EQ_SC3F_019) — ta sama, której solver użył dla biegu z Z_f.
-
-        Wartość I_b pochodzi z FROZEN wyniku solvera (ib_a) — proof engine NIE
-        liczy fizyki. Wielkości pośrednie podstawienia (t_a, e^{-t_b/t_a})
-        odtwarzane WYŁĄCZNIE do prezentacji wywodu (wzór → podstawienie →
-        wynik), identycznie jak człon e^{-3R/X} w kroku κ; lustro formuły
-        WHITE BOX solvera (klucz trace: Ib).
+        Karta SC-IB-ITH-ZRODLA: JEDNA definicja z rdzeniem — wartość I_b z FROZEN wyniku
+        solvera (ib_a), przypadek normy i zaniki maszyn (μ, q, ΔU″/(c·U_n/√3), I″_k,m) z kroku
+        śladu „Ib". Bez maszyn wirujących (i dla źródeł przekształtnikowych) I_b = I_k''.
+        Dowód nie liczy fizyki: podstawienie składa liczby śladu.
         """
-        equation = EQ_SC3F_019 if impedancja_przejscia else EQ_SC3F_014
-        indeks = "k" if impedancja_przejscia else "{th}"
-
-        # Prezentacyjne odtworzenie podstawienia solvera (short_circuit_core):
-        # t_a = X_th/(ω·R_th); R/X niedodatnie ⇒ t_a = 0 ⇒ e^{-t_b/t_a} = 0.
-        ta_s = 0.0 if r_th <= 0 or x_th <= 0 else x_th / (OMEGA_50HZ * r_th)
-        exp_factor = 0.0 if ta_s <= 0 else math.exp(-tb_s / ta_s)
-
-        input_values = (
-            ProofValue.create("I_k''", ikss_ka, "kA", "ikss_ka"),
-            ProofValue.create("\\kappa", kappa, "—", "kappa"),
-            ProofValue.create("t_b", tb_s, "s", "tb_s"),
-        )
-
-        if ta_s > 0:
+        equation = EQ_SC3F_014
+        wejscia_sladu = (krok_ib or {}).get("inputs") or {}
+        maszyny = list(wejscia_sladu.get("maszyny") or [])
+        przypadek = str(wejscia_sladu.get("przypadek") or "")
+        input_values: list[ProofValue] = [ProofValue.create("I_k''", ikss_ka, "kA", "ikss_ka")]
+        if tb_s is not None:
+            input_values.append(ProofValue.create("t_b", tb_s, "s", "tb_s"))
+        if maszyny:
+            skladniki = " - ".join(
+                f"{float(m['delta_u_wzgledne']):.4f} \\cdot \\left(1 - {float(m['mu']):.4f} "
+                f"\\cdot {float(m['q']):.4f}\\right) \\cdot "
+                f"{a_na_ka(float(m['ikss_czesciowy_a'])):.4f}"
+                for m in maszyny
+            )
+            substitution = f"I_b = {ikss_ka:.4f} - {skladniki} = {ib_ka:.4f}\\,\\text{{kA}}"
+        elif przypadek == "zwarcie_niesymetryczne":
             substitution = (
-                f"t_a = \\frac{{X_{indeks}}}{{\\omega \\cdot R_{indeks}}} = "
-                f"\\frac{{{x_th:.4f}}}{{{OMEGA_50HZ:.4f} \\cdot {r_th:.4f}}} = "
-                f"{ta_s:.6f}\\,\\text{{s}} \\\\ "
-                f"I_b = {ikss_ka:.4f} \\cdot \\sqrt{{1 + \\left(({kappa:.4f} - 1) \\cdot "
-                f"e^{{-{tb_s:.4f}/{ta_s:.6f}}}\\right)^2}} = "
-                f"{ikss_ka:.4f} \\cdot \\sqrt{{1 + \\left({kappa - 1.0:.4f} \\cdot "
-                f"{exp_factor:.4f}\\right)^2}} = {ib_ka:.4f}\\,\\text{{kA}}"
+                f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}} \\quad "
+                f"(\\text{{zwarcie niesymetryczne}})"
             )
         else:
             substitution = (
-                f"t_a = 0 \\quad (R_{indeks} \\leq 0 \\ \\text{{lub}} \\ X_{indeks} \\leq 0) "
-                f"\\Rightarrow e^{{-t_b/t_a}} = 0 \\Rightarrow "
-                f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}}"
+                f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}} \\quad "
+                f"(\\text{{brak maszyn wirujących — zwarcie odległe od generatora}})"
             )
-
-        result = ProofValue.create("I_b", ib_ka, "kA", "ib_ka")
-
-        unit_check = UnitVerifier.verify_equation(
-            equation.equation_id,
-            {"I_k''": "kA", "κ": "—", "t_b": "s"},
-            "kA",
-        )
-
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
-            input_values=input_values,
+            input_values=tuple(input_values),
             substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
+            result=ProofValue.create("I_b", ib_ka, "kA", "ib_ka"),
+            unit_check=UnitVerifier.verify_equation(
+                equation.equation_id,
+                {"I_k''": "kA", "I''_{k,m}": "kA", "μ": "—", "q": "—", "ΔU''": "—"},
+                "kA",
+            ),
+            source_keys={"I_k''": "ikss_ka", "t_b": "tb_s", "I_b": "ib_ka"},
+        )
+
+    @classmethod
+    def _create_sc3f_step_idc(
+        cls,
+        step_number: int,
+        i_dc_ka: float,
+        tb_s: float,
+        krok_idc: dict[str, Any],
+    ) -> ProofStep:
+        """Krok 6a: składowa nieokresowa i_DC(t_b) (EQ_SC3F_020, IEC 60909-0 rozdz. 10).
+
+        Liczby (I_k'' części niosącej składową nieokresową, R/X pętli, wykładnik ω·t_b·R/X,
+        współczynnik zaniku) z kroku śladu „iDC" rdzenia — dowód ich nie liczy.
+        """
+        equation = EQ_SC3F_020
+        wejscia = krok_idc.get("inputs") or {}
+        ikss_ka = a_na_ka(float(wejscia["ikss_a"]))
+        rx_ratio = float(wejscia["rx_ratio"])
+        wykladnik = float(wejscia["wykladnik"])
+        wspolczynnik = float(wejscia["wspolczynnik_zaniku"])
+        substitution = (
+            f"i_{{DC}} = \\sqrt{{2}} \\cdot {ikss_ka:.4f} \\cdot "
+            f"e^{{-2 \\pi \\cdot 50 \\cdot {tb_s:.4f} \\cdot {rx_ratio:.6f}}} = "
+            f"\\sqrt{{2}} \\cdot {ikss_ka:.4f} \\cdot e^{{-{wykladnik:.6f}}} = "
+            f"\\sqrt{{2}} \\cdot {ikss_ka:.4f} \\cdot {wspolczynnik:.6f} = "
+            f"{i_dc_ka:.4f}\\,\\text{{kA}}"
+        )
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=equation.name_pl,
+            equation=equation,
+            input_values=(
+                ProofValue.create("I_k''", ikss_ka, "kA", "ik_thevenin_ka"),
+                ProofValue.create("t_b", tb_s, "s", "tb_s"),
+                ProofValue.create("R/X", rx_ratio, "—", "rx_ratio"),
+            ),
+            substitution_latex=substitution,
+            result=ProofValue.create("i_{DC}", i_dc_ka, "kA", "i_dc_ka"),
+            unit_check=UnitVerifier.verify_equation(
+                equation.equation_id, {"I_k''": "kA", "t_b": "s", "R/X": "—"}, "kA"
+            ),
             source_keys={
-                "I_k''": "ikss_ka",
-                "κ": "kappa",
+                "I_k''": "ik_thevenin_ka",
                 "t_b": "tb_s",
-                "I_b": "ib_ka",
+                "R/X": "rx_ratio",
+                "i_DC": "i_dc_ka",
             },
         )
 

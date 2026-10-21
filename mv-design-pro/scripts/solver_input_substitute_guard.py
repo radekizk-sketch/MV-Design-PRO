@@ -845,16 +845,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # zamrozone jako MERYTORYCZNIE uzasadnione (nie dlug).
         "G:dictifexp:trace.total_switch_count": 1,
     },
-    # Prad znamionowy maszyny w mianowniku ilorazu I_p/I_r: przy braku danej
-    # (`ir_a <= 0`) iloraz przyjmuje 0,0 i tak wchodzi do `mu_factor`, czyli do
-    # wspolczynnika wygaszania IEC 60909 §6.6/§6.7 — a wiec ZMIENIA WYNIK, a nie
-    # tylko zabezpiecza dzielenie. DLUG NAZWANY: maszyna bez pradu znamionowego
-    # powinna zostac POMINIETA z meldunkiem braku (wzorzec
-    # `_grid_source_shunt_admittance`), a nie liczona ze wspolczynnikiem z zera.
-    # Ujawnione w rundzie 4 razem z wlasnymi deklaracjami warstwy.
-    "network_model/solvers/machine_sc_iec60909.py": {
-        "B:ifexp:m.ir_a": 2,
-    },
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): wpis `network_model/solvers/machine_sc_iec60909.py`
+    # (`B:ifexp:m.ir_a`, 2) ZNIKA. Dawne `ratio = ip / m.ir_a if m.ir_a > 0 else 0.0`
+    # wpychalo krotnosc 0 do krzywej μ (μ = 1) za niefizyczny prad znamionowy — teraz jedna
+    # funkcja `wklad_maszyny` odmawia (`ValueError` z nazwa maszyny), a krotnosc liczy sie
+    # z pradu NA ZACISKACH maszyny (ten sam poziom napiecia co I_r).
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
     # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
@@ -1337,9 +1332,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dedykowana karte konsolidacyjna — patrz meldunek koncowy). Nastawy
     # przekaznika (i_pickup_51/i_inst_50/tms_51 z wariantem doziemnym `_51n`/
     # `_50n`) w bibliotece katalogowej `protection/catalog/*`; wspolczynniki
-    # asymetrii `m_factor`/`n_factor` wg IEC 60909 w piatciu niezaleznych
-    # proof-packach (sc_symmetrical/sc_asymmetrical/proof_generator — TA SAMA
-    # para pol w trzech plikach, kolejny kandydat KLASA NIE INSTANCJA);
+    # asymetrii `m_factor`/`n_factor` — trzy wpisy `B:ifexp:result.m_factor/n_factor`
+    # (sc_symmetrical/sc_asymmetrical/proof_generator) ZDJETE karta SC-IB-ITH-ZRODLA
+    # (2026-10-21): domyslne (1, 0)/(0, 0) za brak m/n byly druga definicja I_th; teraz
+    # brak m/n w wyniku = `ValueError`, a I_th niesymetrycznych liczy jedno zrodlo
+    # `short_circuit_core.compute_post_fault_quantities` per rodzaj zwarcia;
     # `threshold_a` (nastawa progu prądowego zabezpieczenia) w read-modelu;
     # `i_fault_a` w porownaniu A/B ewaluacji zabezpieczen. `bramka_
     # konwencjonalna.inf_a` (SWZ/D2): dzielenie przez prad nietopliwosci
@@ -1440,14 +1437,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:data.cross_section_mm2": 1,
         "B:ifexp:data.ik2_min_end_a": 1,
     },
-    "application/proof_engine/packs/sc_asymmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
-    "application/proof_engine/packs/sc_symmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): `F:dictget:run.c_factor` (1) ZNIKA —
     # pakiet biegu nie czyta liczby c z opcji (dawne `options.get("c_factor", 1.10)`),
     # tylko scenariusz i nadpisanie z uzasadnieniem; c dobiera `voltage_factor.dobierz_c`.
@@ -1480,8 +1469,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/proof_generator.py": {
         "A:or:data.sn_mva": 2,
         "B:ifexp:entry.u_secondary_kv": 1,
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
     },
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,

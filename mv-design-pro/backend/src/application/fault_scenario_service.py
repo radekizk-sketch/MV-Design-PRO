@@ -214,7 +214,8 @@ class FaultScenarioService:
             fault_type: "SC_3F", "SC_2F", "SC_1F" or "SC_2F_G".
             location: {"element_ref": str, "location_type": ..., "position": float|None}
             config: Short-circuit config — `scenariusz` (MAX/MIN) wymagany, opcjonalne
-                `nadpisanie_c` {wartosc, uzasadnienie}, `thermal_time_seconds`.
+                `nadpisanie_c` {wartosc, uzasadnienie}, `thermal_time_seconds`,
+                `breaking_time_seconds` (t_b [s], opcjonalny).
             fault_mode: "METALLIC" or "IMPEDANCE" (v2, default METALLIC).
             fault_impedance: {"r_f_ohm": float, "x_f_ohm": float} (required for IMPEDANCE).
 

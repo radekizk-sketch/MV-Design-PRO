@@ -30,6 +30,10 @@ _WYNIK_PRZYKLADOWY = {
     "tk_s": 1.0,
     "kappa": 1.5,
     "rx_ratio": 0.1,
+    # Karta SC-IB-ITH-ZRODLA: wielkości kryterium wyłączania należą do listy zamkniętej.
+    "ib_a": 12000.0,
+    "tb_s": 0.1,
+    "i_dc_a": 9000.0,
     # pole spoza listy zamkniętej — NIE wchodzi do odcisku
     "reporting_status": "reportable",
 }
@@ -66,6 +70,9 @@ def test_wielkosci_do_odcisku_filtruje_do_listy_zamknietej() -> None:
         "tk_s",
         "kappa",
         "rx_ratio",
+        "ib_a",
+        "tb_s",
+        "i_dc_a",
     }
 
 
@@ -269,3 +276,15 @@ def test_odcisk_danych_deterministyczny_niezaleznie_od_kolejnosci_kluczy() -> No
 def test_odcisk_danych_nan_odrzucany() -> None:
     with pytest.raises(NiepelneWiazanieError):
         odcisk_danych({"x": math.nan})
+
+
+@pytest.mark.parametrize(
+    ("pole", "inna_wartosc"),
+    [("ib_a", 11000.0), ("tb_s", 0.25), ("tb_s", None), ("i_dc_a", 8000.0), ("i_dc_a", None)],
+)
+def test_pieczec_zmienia_sie_gdy_wielkosc_wylaczania_inna(pole: str, inna_wartosc: object) -> None:
+    """Karta SC-IB-ITH-ZRODLA: podmiana I_b, t_b albo i_DC(t_b) (także na brak danej) w żądaniu
+    doboru aparatury musi dać inną pieczęć — kryterium zdolności wyłączania czyta I_b."""
+    inny_wynik = dict(_WYNIK_PRZYKLADOWY)
+    inny_wynik[pole] = inna_wartosc
+    assert _wiazanie().pieczec != _wiazanie(wynik=inny_wynik).pieczec

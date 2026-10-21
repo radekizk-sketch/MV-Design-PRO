@@ -74,7 +74,6 @@ class GridSourcePreviewRequest(BaseModel):
     x0_ohm: float | None = Field(default=None, gt=0)
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
-    tb_s: float = Field(default=0.1, gt=0)
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja sieci nN dla U_nQ w paśmie nN
     # (wiersz nN tabeli 1 IEC 60909-0); dla SN/WN bez znaczenia. Brak przy U_nQ nN = 422
     # z kodem `fault.c_tolerancja_nn_brak`.
@@ -160,7 +159,6 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
             x0_ohm=request.x0_ohm,
             z0_z1_ratio=request.z0_z1_ratio,
             tk_s=request.tk_s,
-            tb_s=request.tb_s,
         )
     )
     return GridSourcePreviewMinResponse(
@@ -200,7 +198,6 @@ def preview_grid_source_short_circuit(
             x0_ohm=request.x0_ohm,
             z0_z1_ratio=request.z0_z1_ratio,
             tk_s=request.tk_s,
-            tb_s=request.tb_s,
         )
     )
     blok_min = _podglad_min(request)

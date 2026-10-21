@@ -5945,12 +5945,6 @@
       ],
       "title": "Sk3 Mva"
      },
-     "tb_s": {
-      "default": 0.1,
-      "exclusiveMinimum": 0.0,
-      "title": "Tb S",
-      "type": "number"
-     },
      "tk_s": {
       "default": 1.0,
       "exclusiveMinimum": 0.0,
@@ -13136,6 +13130,18 @@
       "title": "Solver Version",
       "type": "string"
      },
+     "tb_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Czas wyłączenia t_b [s] (najkrótszy czas zabezpieczenia + wyłącznika)",
+      "title": "Tb S"
+     },
      "tk_s": {
       "default": 1.0,
       "description": "Czas trwania zwarcia t_k [s]",
@@ -13207,16 +13213,6 @@
        }
       ],
       "title": "Lv Voltage Tolerance"
-     },
-     "m_factor": {
-      "default": 1.0,
-      "title": "M Factor",
-      "type": "number"
-     },
-     "n_factor": {
-      "default": 0.0,
-      "title": "N Factor",
-      "type": "number"
      },
      "nadpisanie_c": {
       "anyOf": [
@@ -13367,9 +13363,15 @@
       "type": "object"
      },
      "t_min_s": {
-      "default": 0.1,
-      "title": "T Min S",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "T Min S"
      }
     },
     "required": [
@@ -13693,6 +13695,19 @@
     "additionalProperties": false,
     "description": "Konfiguracja obliczeń zwarciowych scenariusza — jedyny nośnik c i t_k.\n\n`scenariusz` (MAX/MIN) wybiera kolumnę tabeli 1 IEC 60909-0; wartość c dobiera\nbackend PER WĘZEŁ z pasma jego napięcia. Klucz `c_factor` nie istnieje (extra=forbid).",
     "properties": {
+     "breaking_time_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = założenie biegu fault.czas_tb_brak",
+      "title": "Breaking Time Seconds",
+      "x-unit": "s"
+     },
      "include_branch_contributions": {
       "default": false,
       "description": "Dołącz wkłady gałęziowe",

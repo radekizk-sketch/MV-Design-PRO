@@ -2083,6 +2083,32 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
     ),
+    # Karta SC-IB-ITH-ZRODLA (B-01 (n)): czas wyłączenia t_b = t_min (najkrótszy czas
+    # zadziałania zabezpieczenia + czas własny wyłącznika) — dana scenariusza zwarciowego,
+    # nie stała solvera. Brak = założenie biegu (prąd wyłączeniowy z udziałem maszyn
+    # wirujących i składowa nieokresowa nieobliczone, pozostałe wielkości bez zmian);
+    # wartość niefizyczna = odmowa. Jedna reguła danych:
+    # `network_model.core.czas_wylaczenia.czas_tb_z_danych`.
+    "fault.czas_tb_brak": ReadinessCodeSpec(
+        code="fault.czas_tb_brak",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bieg bez czasu wyłączenia tb — składowa nieokresowa iDC i prąd wyłączeniowy "
+            "z udziałem maszyn wirujących nieobliczone; podaj tb w scenariuszu zwarciowym "
+            "(najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika)"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    "fault.czas_tb_niepoprawny": ReadinessCodeSpec(
+        code="fault.czas_tb_niepoprawny",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Czas wyłączenia tb musi być skończoną liczbą dodatnią w sekundach",
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
     # („niesprawdzone") musi nieść PRZYCZYNĘ, inaczej jest nie do odróżnienia od
     # spełnienia kryterium.

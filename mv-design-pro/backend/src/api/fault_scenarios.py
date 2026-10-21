@@ -168,14 +168,28 @@ class ShortCircuitConfigRequest(BaseModel):
     )
     thermal_time_seconds: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
     include_branch_contributions: bool = Field(False, description="Dołącz wkłady gałęziowe")
+    breaking_time_seconds: float | None = Field(
+        None,
+        description=(
+            "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny "
+            "wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = "
+            "założenie biegu fault.czas_tb_brak"
+        ),
+        json_schema_extra={"x-unit": "s"},
+    )
 
     def do_domeny(self) -> dict[str, Any]:
-        """Słownik konfiguracji w kształcie `ShortCircuitConfig.from_dict` — jedno mapowanie."""
+        """Słownik konfiguracji w kształcie `ShortCircuitConfig.from_dict` — jedno mapowanie.
+
+        Wartość t_b sprawdza domena (`czas_tb_z_danych`) — jedno miejsce reguły i jeden kod
+        odmowy (`fault.czas_tb_niepoprawny`) dla API, opcji biegu i magazynu.
+        """
         return {
             "scenariusz": self.scenariusz,
             "nadpisanie_c": self.nadpisanie_c.model_dump() if self.nadpisanie_c else None,
             "thermal_time_seconds": self.thermal_time_seconds,
             "include_branch_contributions": self.include_branch_contributions,
+            "breaking_time_seconds": self.breaking_time_seconds,
         }
 
 

@@ -434,12 +434,24 @@ def test_zwarcie_galaz_bez_nazwy_poza_eksploatacja_nie_blokuje() -> None:
 # Partia integracji 11: wejście wiązania po karcie WSPOLCZYNNIK-C-JEDEN-NOSNIK niesie
 # scenariusz MAX/MIN i opcjonalne nadpisanie c (koniec płaskiego `c_factor`) — c węzła
 # dobiera assembler z tabeli 1 IEC 60909-0; odmowa węzła spoza grafu w obu kolumnach.
+# Karta SC-IB-ITH-ZRODLA: t_b jest jawnym wejściem wiązania (tu brak danej — odmowa węzła
+# poprzedza wszelkie wielkości zależne od t_b).
 WIAZANIA_ZWARCIA_ZE_SNAPSHOTU = {
     "1F": lambda migawka, wezel, scenariusz: wynik_zwarcia_1f_ze_snapshotu(
-        snapshot=migawka, fault_node_id=wezel, scenariusz=scenariusz, nadpisanie_c=None, tk_s=1.0
+        snapshot=migawka,
+        fault_node_id=wezel,
+        scenariusz=scenariusz,
+        nadpisanie_c=None,
+        tk_s=1.0,
+        tb_s=None,
     ),
     "3F": lambda migawka, wezel, scenariusz: zwarcie_3f_ze_snapshotu(
-        snapshot=migawka, fault_node_id=wezel, scenariusz=scenariusz, nadpisanie_c=None, tk_s=1.0
+        snapshot=migawka,
+        fault_node_id=wezel,
+        scenariusz=scenariusz,
+        nadpisanie_c=None,
+        tk_s=1.0,
+        tb_s=None,
     ).wynik,
 }
 

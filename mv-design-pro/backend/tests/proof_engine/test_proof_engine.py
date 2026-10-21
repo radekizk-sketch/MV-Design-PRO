@@ -128,6 +128,8 @@ def sc1_test_input() -> SC1Input:
         z2_ohm=complex(0.5, 1.2),
         z0_ohm=complex(0.8, 2.4),
         a_operator=complex(-0.5, 0.8660),
+        # Karta SC-IB-ITH-ZRODLA: I_th liczy rdzeń z t_k (m z κ pętli, n = 1) — jedno źródło.
+        tk_s=1.0,
     )
     return SC1Input(
         project_name="Test Project",
@@ -216,7 +218,8 @@ class TestSC3FProofGenerator:
         3. κ (kappa)
         4. i_p
         5. I_dyn (OBOWIĄZKOWY)
-        6. I_b(t_b) — wartość z FROZEN wyniku solvera
+        6. I_b — prąd wyłączeniowy symetryczny (IEC 60909-0 rozdz. 9), wartość z FROZEN wyniku
+           solvera (karta SC-IB-ITH-ZRODLA: bez maszyn wirujących I_b = I_k'')
         7. I_th (OBOWIĄZKOWY)
         8. I²t = I_th²·t_k
         9. S_k''
@@ -235,7 +238,7 @@ class TestSC3FProofGenerator:
         assert any("κ" in t or "kappa" in t or "współczynnik udaru" in t for t in step_titles)
         assert any("i_p" in t or "prąd udarowy" in t for t in step_titles)
         assert any("i_dyn" in t or "prąd dynamiczny" in t for t in step_titles)
-        assert any("prąd wyłączeniowy i_b" in t for t in step_titles)
+        assert any("prąd wyłączeniowy symetryczny i_b" in t for t in step_titles)
         assert any("i_th" in t or "prąd cieplny" in t for t in step_titles)
         assert any("energia cieplna" in t for t in step_titles)
         assert any("s_k''" in t or "moc zwarciowa" in t for t in step_titles)
@@ -262,9 +265,11 @@ class TestSC3FProofGenerator:
         # Wartość I_b czytana z wejścia (FROZEN wynik solvera) — nie liczona.
         assert step_ib.result.value == pytest.approx(2.722)
         assert step_ib.result.unit == "kA"
-        # Wywód dyplomowy: podstawienie niesie t_a oraz człon e^{-t_b/t_a}.
-        assert "t_a" in step_ib.substitution_latex
-        assert "I_b" in step_ib.substitution_latex
+        # Karta SC-IB-ITH-ZRODLA (IEC 60909-0 rozdz. 9): bez maszyn wirujących I_b = I_k''.
+        # Dawny wzór z członem e^{-t_b/t_a} mieszał składową nieokresową do I_b — jego ślad
+        # (t_a) w podstawieniu oznaczałby powrót defektu.
+        assert "I_b = I_k''" in step_ib.substitution_latex
+        assert "t_a" not in step_ib.substitution_latex
 
         step_i2t = proof.steps[7]
         assert step_i2t.result.value == pytest.approx(2.722**2 * 1.0)

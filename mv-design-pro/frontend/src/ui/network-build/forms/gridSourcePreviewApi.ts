@@ -23,7 +23,6 @@ export interface GridSourcePreviewRequest {
   x0_ohm: number | null;
   z0_z1_ratio: number | null;
   tk_s: number;
-  tb_s: number;
 }
 
 /**

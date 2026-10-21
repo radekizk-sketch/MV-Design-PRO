@@ -74,7 +74,11 @@ def _fault_node_id(enm: EnergyNetworkModel, bus_name: str) -> str:
     return next(node.id for node in graph.nodes.values() if node.name == bus_name)
 
 
-def _pack_input(enm: EnergyNetworkModel, fault_node_id: str) -> SC3FPackInput:
+def _pack_input(
+    enm: EnergyNetworkModel, fault_node_id: str, *, tb_s: float | None = 0.1
+) -> SC3FPackInput:
+    # Karta SC-IB-ITH-ZRODLA: t_b jest daną biegu (nie stałą solvera) — rozbicie maszynowe μ/q/I_b
+    # powstaje tylko z podanym t_b; bieg bez t_b sprawdza `test_synchronous_machine_bez_tb_...`.
     return SC3FPackInput(
         project_name="Test",
         case_name="SC3F",
@@ -85,6 +89,7 @@ def _pack_input(enm: EnergyNetworkModel, fault_node_id: str) -> SC3FPackInput:
         scenariusz="MAX",
         nadpisanie_c=None,
         tk_s=1.0,
+        tb_s=tb_s,
     )
 
 
@@ -118,6 +123,19 @@ def test_synchronous_machine_adds_breakdown():
         _pack_input(_enm(with_machine=False), data.fault_node_id), _ARTIFACT
     )
     assert result.proof_sc3f.summary.total_steps > base.proof_sc3f.summary.total_steps
+
+
+def test_synchronous_machine_bez_tb_brak_ib_maszyn_i_nazwana_odmowa():
+    """Bieg bez t_b: μ(t_b) nieznane → brak I_b maszyn (nie zero), dowód nazywa przyczynę."""
+    enm = _enm(with_machine=True)
+    data = _pack_input(enm, _fault_node_id(enm, "Szyna OZE"), tb_s=None)
+    result = SC3FProofPack.generate(data, _ARTIFACT)
+
+    assert result.has_machines is True
+    keys = result.proof_sc3f.summary.key_results
+    assert "ib_machines_ka" not in keys
+    assert "ib_ka" not in keys
+    assert "ikss_ka" in keys
 
 
 def test_sc3f_pack_is_deterministic():

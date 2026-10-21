@@ -498,7 +498,6 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
     x0_ohm: data.x0_ohm,
     z0_z1_ratio: data.z0_z1_ratio,
     tk_s: data.thermal_time_s,
-    tb_s: 0.1,
   };
 }
 

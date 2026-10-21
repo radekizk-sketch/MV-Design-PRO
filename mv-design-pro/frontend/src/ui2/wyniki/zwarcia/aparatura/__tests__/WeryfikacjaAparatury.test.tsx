@@ -11,8 +11,9 @@
  *  3. wszystkie trzy stany werdyktu są odróżnialne, a brak podstawy
  *     (brak biegu / punkt poza stacją / brak aparatury) NIGDY nie udaje
  *     werdyktu negatywnego,
- *  4. każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy i dwa rekordy werdyktu
- *     wyjaśnialnego jedyną kartą werdyktu.
+ *  4. każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy i trzy rekordy werdyktu
+ *     wyjaśnialnego jedyną kartą werdyktu (karta SC-IB-ITH-ZRODLA: trzeci — zdolność
+ *     wyłączania — nazywa porównaną wielkość, a wiersz pokazuje Ib, iDC(tb) i tb biegu).
  * Kliki natywne (userEvent) — Zero-Debt pkt 5.
  */
 
@@ -34,7 +35,7 @@ const BIEG = 'bieg-zwarciowy-1';
 
 /** Minimalny rekord K (kształt `model_dump` backendu) — wyłącznie do renderu karty. */
 function ocenaK(
-  rodzaj: 'dynamiczna' | 'cieplna',
+  rodzaj: 'dynamiczna' | 'cieplna' | 'wylaczanie',
   status: OcenaKryterium['status_maszynowy'],
 ): OcenaKryterium {
   return {
@@ -111,7 +112,7 @@ function ocenaK(
         run_id: BIEG,
         wersja_silnika: null,
         krok: `aparatura.field/x/in.aparat/01:${rodzaj}`,
-        opis_pl: 'wiersz biegu, punkt sn1',
+        opis_pl: 'wiersz biegu, punkt: szyna „Szyna pola P-1”',
       },
     ],
   } as unknown as OcenaKryterium;
@@ -151,6 +152,10 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
       i_th_ka: 20,
       i_th_duration_s: 1,
       i_th_pochodzenie: 'producent',
+      i_cu_ka: 20,
+      i_cu_pochodzenie: 'producent',
+      i_cu_nie_dotyczy: false,
+      bezpiecznik: false,
     },
     prady_pola: {
       punkt_ref: 'EL-GPZ',
@@ -158,10 +163,18 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
       ik_ka: 11.4,
       ip_ka: 31.2,
       ith_ka: 12.5,
+      ib_ka: 10.8,
+      i_dc_ka: 4.3,
+      tb_s: 0.1,
+      un_kv: 15,
       kody_gotowosci: [],
       powod_pl: null,
     },
-    oceny: [ocenaK('dynamiczna', 'SPELNIA'), ocenaK('cieplna', 'SPELNIA')],
+    oceny: [
+      ocenaK('dynamiczna', 'SPELNIA'),
+      ocenaK('cieplna', 'SPELNIA'),
+      ocenaK('wylaczanie', 'SPELNIA'),
+    ],
     czas_wylaczenia: {
       t_clearing_s: 0.5,
       zrodlo: 'nastawy_pola',
@@ -447,11 +460,19 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
           ik_ka: null,
           ip_ka: null,
           ith_ka: null,
+          ib_ka: null,
+          i_dc_ka: null,
+          tb_s: null,
+          un_kv: null,
           kody_gotowosci: ['aparatura.brak_pradu_pola_w_biegu'],
           powod_pl: 'Bieg zwarciowy nie niesie wiersza zwarcia trójfazowego dla punktu zabudowy.',
         },
         werdykt: null,
-        oceny: [ocenaK('dynamiczna', 'NIE_OCENIONO'), ocenaK('cieplna', 'NIE_OCENIONO')],
+        oceny: [
+          ocenaK('dynamiczna', 'NIE_OCENIONO'),
+          ocenaK('cieplna', 'NIE_OCENIONO'),
+          ocenaK('wylaczanie', 'NIE_OCENIONO'),
+        ],
         komunikat_pl: 'NIEUSTALONE: brak prądu pola.',
       }),
     ]);
@@ -482,6 +503,44 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium dynamiczna z backendu.');
     expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium cieplna z backendu.');
     expect(pole.textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+  });
+
+  // Karta SC-IB-ITH-ZRODLA — {tb podane · tb brak} × {Ib policzone · Ib brak}: wiersz pokazuje
+  // wartości backendu albo uczciwe „nie podano"/kreskę, nigdy domyślnego 0,1 s ani I″k
+  // podstawionego za Ib; trzeci rekord K (zdolność wyłączania) jest pokazany kartą werdyktu.
+  it.each([
+    { tb_s: 0.1, ib_ka: 10.8, i_dc_ka: 4.3, ib: '10,8', tb: '0,1', idc: '4,3' },
+    { tb_s: null, ib_ka: 11.4, i_dc_ka: null, ib: '11,4', tb: 'nie podano', idc: null },
+    { tb_s: null, ib_ka: null, i_dc_ka: null, ib: '—', tb: 'nie podano', idc: null },
+  ])('WIELKOŚCI WYŁĄCZANIA wiersza: tb=$tb_s, Ib=$ib_ka', async ({ tb_s, ib_ka, i_dc_ka, ib, tb, idc }) => {
+    const user = userEvent.setup();
+    const bazowe = poleOdpowiedzi({});
+    zamontujBackend([
+      poleOdpowiedzi({
+        prady_pola: { ...bazowe.prady_pola, tb_s, ib_ka, i_dc_ka },
+        oceny: [
+          ocenaK('dynamiczna', 'SPELNIA'),
+          ocenaK('cieplna', 'SPELNIA'),
+          ocenaK('wylaczanie', ib_ka === null ? 'NIE_OCENIONO' : 'SPELNIA'),
+        ],
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    expect((await screen.findByTestId('mvd-zwarcia-aparatura-ib-P-1')).textContent).toContain(ib);
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-tb-P-1').textContent).toContain(tb);
+    const prady = screen.getByTestId('mvd-zwarcia-aparatura-prady-P-1');
+    if (idc !== null) expect(prady.textContent).toContain(idc);
+    // Bieg bez tb: żadnego domyślnego czasu w prądach pola.
+    if (tb_s === null) expect(prady.textContent).not.toContain('0,1 s');
+    const oceny = screen.getByTestId('mvd-zwarcia-aparatura-oceny-P-1');
+    expect(oceny.textContent).toContain('Zdanie wyjaśnienia kryterium wylaczanie z backendu.');
+    // Brak Ib nie dotyka znacznika WYTRZYMAŁOŚCI (I_dyn, I_th) — to osobny rekord K.
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-pole-P-1').getAttribute('data-withstand-ok')).toBe(
+      'true',
+    );
   });
 
   it('ODMOWA BACKENDU (bieg scenariusza MIN) pokazuje powód z odpowiedzi', async () => {
@@ -585,6 +644,37 @@ describe('model ogniwa — czyste selektory', () => {
     );
     expect(powodBrakuPodstawy({ runId: BIEG, stacje: [STACJA], liczbaPol: 2 })).toBeNull();
   });
+
+  // Znacznik wytrzymałości nie zależy od rekordu wyłączania (osobne kryterium, bez agregatu
+  // statusów w prezentacji): każdy status rekordu wyłączania × werdykt wytrzymałości.
+  it.each([
+    ['SPELNIA', true, 'true'],
+    ['NIE_SPELNIA', true, 'true'],
+    ['NIE_OCENIONO', true, 'true'],
+    ['NIE_DOTYCZY', false, 'false'],
+    ['BRAK_PODSTAWY', false, 'false'],
+  ] as const)(
+    'znacznik wytrzymałości: rekord wyłączania %s × wytrzymałość ok=%s → %s',
+    (status, ok, oczekiwany) => {
+      const pole = poleOdpowiedzi({
+        werdykt: {
+          ok,
+          i_dyn_ok: ok,
+          i_th_ok: true,
+          message_pl: 'werdykt',
+          utilization_dyn_percent: ok ? 50 : 150,
+          utilization_th_percent: 10,
+          i_th_effective_ka: 28,
+        },
+        oceny: [
+          ocenaK('dynamiczna', ok ? 'SPELNIA' : 'NIE_SPELNIA'),
+          ocenaK('cieplna', 'SPELNIA'),
+          ocenaK('wylaczanie', status),
+        ],
+      });
+      expect(znacznikWerdyktu(pole)).toBe(oczekiwany);
+    },
+  );
 
   it('znacznik werdyktu odróżnia „nieustalone" od oceny negatywnej', () => {
     expect(znacznikWerdyktu(poleOdpowiedzi({}))).toBe('true');

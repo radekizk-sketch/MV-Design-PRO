@@ -68,6 +68,11 @@ KLUCZE_ECHA: dict[str, tuple[str, float]] = {
     "ip_ka": ("ip_a", 1000.0),
     "ith_ka": ("ith_a", 1000.0),
     "tk_s": ("tk_s", 1.0),
+    # Karta SC-IB-ITH-ZRODLA: I_b (kryterium wyłączania SN/WN, IEC 62271-100), czas t_b
+    # i składowa nieokresowa i_DC(t_b) — echo porównywane z biegiem jak pozostałe pola.
+    "ib_ka": ("ib_a", 1000.0),
+    "tb_s": ("tb_s", 1.0),
+    "i_dc_ka": ("i_dc_a", 1000.0),
 }
 
 
@@ -298,6 +303,9 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
     ip_a = _na_liczbe(wielkosci_biegu.get("ip_a"))
     ith_a = _na_liczbe(wielkosci_biegu.get("ith_a"))
     tk_s = wielkosci_biegu.get("tk_s")
+    ib_a = _na_liczbe(wielkosci_biegu.get("ib_a"))
+    tb_s = _na_liczbe(wielkosci_biegu.get("tb_s"))
+    i_dc_a = _na_liczbe(wielkosci_biegu.get("i_dc_a"))
 
     wynik: dict[str, Any] = {}
     if un_v is not None:
@@ -310,6 +318,14 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
         wynik["ith_ka"] = a_na_ka(ith_a)
     if tk_s is not None:
         wynik["tk_s"] = tk_s
+    # Karta SC-IB-ITH-ZRODLA: None (bieg bez t_b) NIE wchodzi do kontraktu — kryterium
+    # wyłączania widzi brak I_b jako brak podstawy, nie jako liczbę.
+    if ib_a is not None:
+        wynik["ib_ka"] = a_na_ka(ib_a)
+    if tb_s is not None:
+        wynik["tb_s"] = tb_s
+    if i_dc_a is not None:
+        wynik["i_dc_ka"] = a_na_ka(i_dc_a)
     return wynik
 
 
