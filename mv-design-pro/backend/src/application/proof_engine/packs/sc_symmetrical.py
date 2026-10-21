@@ -60,6 +60,9 @@ class SC3FPackInput:
     solver_version: str
     c_factor: float = 1.10
     tk_s: float = 1.0
+    #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
+    #: zwarcie metaliczne IEC 60909 (dowód bit w bit jak przed kartą).
+    z_f_ohm: complex | None = None
 
 
 @dataclass(frozen=True)
@@ -101,6 +104,7 @@ class SC3FProofPack:
             fault_node_id=data.fault_node_id,
             c_factor=data.c_factor,
             tk_s=data.tk_s,
+            z_f_ohm=data.z_f_ohm,
         )
         result = zwarcie.wynik
         graph = zwarcie.graf
@@ -113,6 +117,7 @@ class SC3FProofPack:
             result.fault_node_id,
             c_factor=result.c_factor,
             t_min_s=result.tb_s,
+            z_f_ohm=data.z_f_ohm,
         )
         has_machines = bool(machine_result.contributions)
 
@@ -125,7 +130,11 @@ class SC3FProofPack:
             solver_version=data.solver_version,
             c_factor=result.c_factor,
             u_n_kv=v_na_kv(result.un_v),
-            z_thevenin_ohm=result.zkk_ohm,
+            z_thevenin_ohm=(
+                result.zkk_metaliczne_ohm
+                if result.zkk_metaliczne_ohm is not None
+                else result.zkk_ohm
+            ),
             ikss_ka=a_na_ka(result.ikss_a),
             ip_ka=a_na_ka(result.ip_a),
             ith_ka=a_na_ka(result.ith_a),
@@ -146,6 +155,10 @@ class SC3FProofPack:
             # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.
             ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            # Karta OD-14: przy impedancji przejścia `zkk_ohm` wyniku to impedancja PĘTLI
+            # (Z_th + Z_f), a Thevenin sieci niesie `zkk_metaliczne_ohm` — dowód pokazuje oba.
+            z_f_ohm=result.z_f_ohm,
+            z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
         proof = ProofGenerator.generate_sc3f_proof(sc3f_input, artifact_id)
         return SC3FPackResult(

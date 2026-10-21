@@ -40,14 +40,33 @@ class OdmowaHttpError(Exception):
         super().__init__(self.detail)
 
 
+def _lancuch_przyczyn(odmowa: BaseException) -> list[BaseException]:
+    """Odmowa i jej jawne przyczyny (`raise … from exc`), od zewnętrznej do najgłębszej."""
+    lancuch: list[BaseException] = []
+    biezacy: BaseException | None = odmowa
+    while biezacy is not None and all(biezacy is not b for b in lancuch):
+        lancuch.append(biezacy)
+        biezacy = biezacy.__cause__
+    return lancuch
+
+
 def pola_odmowy(odmowa: OdmowaDanychError) -> dict[str, object]:
     """Pola strukturalne odmowy dokładane addytywnie obok `detail` (karty W10-2a / OD-17a,
-    partia integracji 10): `kod` i `dane` odmowy nazwanej, `rekordy` odmowy wejścia rdzenia."""
+    partia integracji 10): `kod` i `dane` odmowy nazwanej, `rekordy` odmowy wejścia rdzenia.
+
+    Warstwa aplikacji często OPAKOWUJE odmowę rdzenia własną odmową z kontekstem
+    (`raise PakietBieguError(f"Nie udało się …: {exc}") from exc`). Pola strukturalne
+    pochodzą z pierwszej odmowy w łańcuchu jawnych przyczyn, która je niesie — opakowanie
+    nie może zgubić identyfikatora elementu, który żyje wyłącznie w polach.
+    """
     pola: dict[str, object] = {}
-    if isinstance(odmowa, OdmowaNazwana):
-        pola["kod"] = odmowa.kod
-        pola["dane"] = dict(odmowa.dane)
-    if isinstance(odmowa, OdmowaWejsciaRdzenia):
+    lancuch = _lancuch_przyczyn(odmowa)
+    nazwana = next((o for o in lancuch if isinstance(o, OdmowaNazwana)), None)
+    if nazwana is not None:
+        pola["kod"] = nazwana.kod
+        pola["dane"] = dict(nazwana.dane)
+    wejscie = next((o for o in lancuch if isinstance(o, OdmowaWejsciaRdzenia)), None)
+    if wejscie is not None:
         pola["rekordy"] = [
             {
                 "kod": rekord.kod,
@@ -57,6 +76,6 @@ def pola_odmowy(odmowa: OdmowaDanychError) -> dict[str, object]:
                     for odwolanie in rekord.odwolania
                 ],
             }
-            for rekord in odmowa.rekordy
+            for rekord in wejscie.rekordy
         ]
     return pola

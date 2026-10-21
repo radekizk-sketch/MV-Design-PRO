@@ -33,18 +33,36 @@ function scenariusz(id: string, nazwa: string) {
     fault_type: 'SC_3F',
     location: { element_ref: 'bus-1', location_type: 'BUS', position: null },
     config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: true },
-    fault_impedance_type: 'METALLIC',
     fault_mode: 'METALLIC',
     fault_impedance: null,
-    arc_params: null,
-    z0_bus_data: null,
     created_at: '2026-07-31T10:00:00Z',
     updated_at: '2026-07-31T10:00:00Z',
     content_hash: 'h',
   };
 }
 
-function zamontujBackend(lista: ReturnType<typeof scenariusz>[]): Zadanie[] {
+/** Zachowanie atrapy backendu dla biegu ze scenariusza (iloczyn cech testu URUCHOMIENIA). */
+type BiegAtrapy = 'DONE' | 'FAILED' | 'ODMOWA_UTWORZENIA';
+
+const JSON_NAGLOWKI = { 'Content-Type': 'application/json' };
+
+function biegWykonania(status: string) {
+  return {
+    id: 'run-z-scenariusza',
+    study_case_id: CASE_ID,
+    analysis_type: 'SC_3F',
+    solver_input_hash: 'h',
+    status,
+    started_at: null,
+    finished_at: null,
+    error_message: null,
+  };
+}
+
+function zamontujBackend(
+  lista: ReturnType<typeof scenariusz>[],
+  bieg: BiegAtrapy = 'DONE',
+): Zadanie[] {
   const zadania: Zadanie[] = [];
   vi.stubGlobal(
     'fetch',
@@ -55,14 +73,38 @@ function zamontujBackend(lista: ReturnType<typeof scenariusz>[]): Zadanie[] {
       if (url.includes('/fault-scenarios') && metoda === 'GET' && url.includes('/study-cases/')) {
         return new Response(JSON.stringify({ scenarios: lista, count: lista.length }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' },
+          headers: JSON_NAGLOWKI,
         });
       }
-      if (metoda === 'POST' && url.endsWith('/runs')) {
-        return new Response(JSON.stringify({ id: 'run-z-scenariusza' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
+      if (metoda === 'POST' && url.includes('/fault-scenarios/') && url.endsWith('/runs')) {
+        if (bieg === 'ODMOWA_UTWORZENIA') {
+          return new Response(
+            JSON.stringify({ detail: 'Model nie ma danych składowej zerowej' }),
+            { status: 409, headers: JSON_NAGLOWKI },
+          );
+        }
+        return new Response(JSON.stringify({ ...biegWykonania('PENDING') }), {
+          status: 201,
+          headers: JSON_NAGLOWKI,
         });
+      }
+      if (metoda === 'POST' && url.endsWith('/runs/run-z-scenariusza/execute')) {
+        return new Response(JSON.stringify(biegWykonania(bieg)), {
+          status: 202,
+          headers: JSON_NAGLOWKI,
+        });
+      }
+      if (metoda === 'GET' && url.endsWith(`/study-cases/${CASE_ID}/runs`)) {
+        return new Response(JSON.stringify({ runs: [biegWykonania(bieg)], count: 1 }), {
+          status: 200,
+          headers: JSON_NAGLOWKI,
+        });
+      }
+      if (metoda === 'GET' && url.endsWith('/api/analysis-runs/run-z-scenariusza')) {
+        return new Response(
+          JSON.stringify({ status: bieg, result_status: bieg === 'DONE' ? 'FRESH' : 'FAILED' }),
+          { status: 200, headers: JSON_NAGLOWKI },
+        );
       }
       if (metoda === 'POST') {
         return new Response(JSON.stringify(scenariusz('scen-nowy', 'Zwarcie na szynie 2')), {
@@ -123,10 +165,39 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
         location: { element_ref: 'branch-7', location_type: 'BRANCH_POINT', position: 0.4 },
         config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: true },
         fault_mode: 'IMPEDANCE',
-        fault_impedance: { r_ohm: 0.5, x_ohm: 0 },
+        fault_impedance: { r_f_ohm: 0.5, x_f_ohm: 0 },
       });
     });
   });
+
+  // Partia integracji 10 (OD-14): rodzaje zwarcia formularza = rodzaje domeny scenariusza
+  // (`FaultType`: 3F, 2F, 1F, 2F+G) — 2F+G dotąd nie istniał w scenariuszu, choć rdzeń go liczył.
+  it.each(['SC_3F', 'SC_2F', 'SC_1F', 'SC_2F_G'])(
+    'RODZAJ %s: dostępny w formularzu i wysłany 1:1 z Z_f',
+    async (rodzaj) => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+
+      await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
+      await user.type(screen.getByTestId('mvd-scenariusze-nazwa'), `Zwarcie ${rodzaj}`);
+      await user.selectOptions(screen.getByTestId('mvd-scenariusze-rodzaj'), rodzaj);
+      await user.type(screen.getByTestId('mvd-scenariusze-element'), 'bus-1');
+      await user.selectOptions(screen.getByTestId('mvd-scenariusze-tryb'), 'IMPEDANCE');
+      await user.clear(screen.getByTestId('mvd-scenariusze-x'));
+      await user.type(screen.getByTestId('mvd-scenariusze-x'), '1.5');
+      await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+
+      await waitFor(() => {
+        const post = zadania.find((z) => z.metoda === 'POST' && z.url.includes('/fault-scenarios'));
+        expect(post?.body).toMatchObject({
+          fault_type: rodzaj,
+          fault_mode: 'IMPEDANCE',
+          fault_impedance: { r_f_ohm: 0, x_f_ohm: 1.5 },
+        });
+      });
+    },
+  );
 
   it('WALIDACJA: bez nazwy i elementu nie wysyłamy nic do backendu', async () => {
     const user = userEvent.setup();
@@ -140,21 +211,61 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
     expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
   });
 
-  it('URUCHOMIENIE: klik „Uruchom" woła realną końcówkę przebiegu scenariusza', async () => {
+  // Karta OD-14 (partia integracji 10): „Uruchom" dawniej tworzył bieg PENDING i na tym
+  // kończył (nikt go nie wykonywał), a komunikat mówił „uruchomiono". Iloczyn cech:
+  // {bieg DONE, bieg FAILED, odmowa utworzenia 409} × {wykonanie zlecone, bieg związany
+  // z powłoką, komunikat sukcesu}.
+  it('URUCHOMIENIE (DONE): tworzy bieg, ZLECA wykonanie i wiąże wynik z powłoką', async () => {
     const user = userEvent.setup();
-    const zadania = zamontujBackend([scenariusz('s1', 'Zwarcie w GPZ')]);
+    useAppStateStore.setState({ activeRunId: null });
+    const zadania = zamontujBackend([scenariusz('s1', 'Zwarcie w GPZ')], 'DONE');
     render(<PanelScenariuszy />);
 
     await user.click(await screen.findByTestId('mvd-scenariusze-uruchom-s1'));
 
-    await waitFor(() => {
-      expect(
-        zadania.some((z) => z.metoda === 'POST' && z.url.endsWith('/fault-scenarios/s1/runs')),
-      ).toBe(true);
-    });
     expect((await screen.findByTestId('mvd-scenariusze-komunikat')).textContent).toContain(
       'Zwarcie w GPZ',
     );
+    const utworzenie = zadania.findIndex(
+      (z) => z.metoda === 'POST' && z.url.endsWith('/fault-scenarios/s1/runs'),
+    );
+    const wykonanie = zadania.findIndex(
+      (z) => z.metoda === 'POST' && z.url.endsWith('/runs/run-z-scenariusza/execute'),
+    );
+    expect(utworzenie).toBeGreaterThanOrEqual(0);
+    expect(wykonanie).toBeGreaterThan(utworzenie);
+    expect(useAppStateStore.getState().activeRunId).toBe('run-z-scenariusza');
+    expect(useAppStateStore.getState().activeCaseResultStatus).toBe('FRESH');
+  });
+
+  it('URUCHOMIENIE (FAILED): bieg wykonany bez wyniku → brak komunikatu sukcesu', async () => {
+    const user = userEvent.setup();
+    useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
+    const zadania = zamontujBackend([scenariusz('s1', 'Zwarcie w GPZ')], 'FAILED');
+    render(<PanelScenariuszy />);
+
+    await user.click(await screen.findByTestId('mvd-scenariusze-uruchom-s1'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-scenariusze-uruchom-s1')).not.toBeDisabled(),
+    );
+    expect(zadania.some((z) => z.url.endsWith('/runs/run-z-scenariusza/execute'))).toBe(true);
+    expect(screen.queryByTestId('mvd-scenariusze-komunikat')).toBeNull();
+    expect(useAppStateStore.getState().activeCaseResultStatus).toBe('NONE');
+  });
+
+  it('URUCHOMIENIE (odmowa 409): treść odmowy w panelu, wykonanie NIE zlecone', async () => {
+    const user = userEvent.setup();
+    const zadania = zamontujBackend([scenariusz('s1', 'Zwarcie w GPZ')], 'ODMOWA_UTWORZENIA');
+    render(<PanelScenariuszy />);
+
+    await user.click(await screen.findByTestId('mvd-scenariusze-uruchom-s1'));
+
+    expect((await screen.findByTestId('mvd-scenariusze-blad')).textContent).toContain(
+      'składowej zerowej',
+    );
+    expect(zadania.some((z) => z.url.endsWith('/execute'))).toBe(false);
+    expect(screen.queryByTestId('mvd-scenariusze-komunikat')).toBeNull();
   });
 
   it('USUNIĘCIE wymaga potwierdzenia (operacja nieodwracalna)', async () => {

@@ -41,6 +41,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
     fault_node_id: str,
     c_factor: float,
     tk_s: float,
+    z_f_ohm: complex | None = None,
 ) -> ShortCircuitResult:
     """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
 
@@ -84,6 +85,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
             c_factor=c_factor,
             tk_s=tk_s,
             z0_bus=z0_bus,
+            z_f_ohm=z_f_ohm,
         )
 
 
@@ -108,6 +110,7 @@ def zwarcie_3f_ze_snapshotu(
     fault_node_id: str,
     c_factor: float,
     tk_s: float,
+    z_f_ohm: complex | None = None,
 ) -> ZwarcieZeSnapshotu:
     """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F.
 
@@ -118,6 +121,10 @@ def zwarcie_3f_ze_snapshotu(
 
     DETERMINIZM: `tb_s` zostaje domyślne solvera, dokładnie jak w wywołaniu, które ta
     funkcja zastąpiła — ani jedna cyfra dowodu SC3F się nie zmienia.
+
+    `z_f_ohm` (karta OD-14): impedancja przejścia biegu, którego pakiet dowodowy powstaje —
+    dowód opisuje TEN SAM wynik co bieg (dawniej pakiet biegu przez Z_f przeliczałby zwarcie
+    metaliczne i podpisywał je jako dowód biegu). `None` = zwarcie metaliczne, bit w bit.
     """
     from enm.mapping import map_enm_to_network_graph
     from enm.models import EnergyNetworkModel
@@ -130,5 +137,6 @@ def zwarcie_3f_ze_snapshotu(
             fault_node_id=fault_node_id,
             c_factor=c_factor,
             tk_s=tk_s,
+            z_f_ohm=z_f_ohm,
         )
     return ZwarcieZeSnapshotu(wynik=wynik, graf=graph)

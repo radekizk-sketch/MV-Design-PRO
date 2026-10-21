@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type {
+  ImpedancjaPrzejsciaBiegu,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
@@ -60,15 +61,29 @@ export interface WkladyZWywodem {
   readonly walidacjaIec: readonly PozycjaWalidacji[];
 }
 
-/** Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny). */
+/**
+ * Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny).
+ *
+ * `impedancja` (karta OD-14): Z_f ZAPISANA na biegu wyświetlanym na ekranie
+ * (`konfiguracja_biegu.impedancja_przejscia`) — wkłady liczą tę samą pętlę co tabela
+ * biegu. Brak = bieg metaliczny; pole żądania wtedy nieobecne (żądanie i odcisk wejścia
+ * bez zmian).
+ */
 export async function fetchWkladyZwarciowe(
   snapshot: EnergyNetworkModel,
   faultNodeRef: string,
+  impedancja?: ImpedancjaPrzejsciaBiegu,
 ): Promise<WkladyOdpowiedz> {
   const response = await fetch('/api/proof/sc3f/contributions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ snapshot, fault_node_id: faultNodeRef }),
+    body: JSON.stringify({
+      snapshot,
+      fault_node_id: faultNodeRef,
+      ...(impedancja
+        ? { fault_impedance: { r_f_ohm: impedancja.r_f_ohm, x_f_ohm: impedancja.x_f_ohm } }
+        : {}),
+    }),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as WkladyOdpowiedz;
@@ -105,20 +120,35 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
  * sieć bez maszyn wirujących (backend zwraca pustą listę deterministycznie).
  * `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
  */
-export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null {
+export function useWkladyZwarciowe(
+  punkt: string | null,
+  impedancja?: ImpedancjaPrzejsciaBiegu,
+): WkladyZWywodem | null {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const [cache, setCache] = useState<Record<string, WkladyZWywodem>>({});
+  // Klucz pamięci podręcznej = punkt × Z_f biegu: ten sam punkt dwóch biegów o różnej Z_f
+  // to dwa różne wyniki wkładów (karta OD-14).
+  const klucz = punkt === null ? null : kluczWkladow(punkt, impedancja);
+  // Zależności efektu to LICZBY Z_f, nie obiekt: każde odświeżenie wyniku biegu daje nowy
+  // obiekt `impedancja_przejscia` o tych samych wartościach — zależność od obiektu
+  // anulowała pobieranie w toku i ponawiała to samo żądanie.
+  const rF = impedancja?.r_f_ohm;
+  const xF = impedancja?.x_f_ohm;
 
   useEffect(() => {
-    if (!punkt || !snapshot) return;
-    if (cache[punkt]) return;
+    if (!punkt || !snapshot || klucz === null) return;
+    if (cache[klucz]) return;
     let anulowane = false;
-    fetchWkladyZwarciowe(snapshot, punkt)
+    const zf: ImpedancjaPrzejsciaBiegu | undefined =
+      rF === undefined || xF === undefined
+        ? undefined
+        : { r_f_ohm: rF, x_f_ohm: xF, poza_zakresem_iec60909: true };
+    fetchWkladyZwarciowe(snapshot, punkt, zf)
       .then((odpowiedz) => {
         if (!anulowane)
           setCache((c) => ({
             ...c,
-            [punkt]: {
+            [klucz]: {
               wklady: naWklady(odpowiedz),
               wywod: odpowiedz.wywod ?? [],
               wywodSekcje: odpowiedz.wywod_sekcje ?? [],
@@ -132,10 +162,15 @@ export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null 
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, cache]);
+  }, [punkt, snapshot, cache, klucz, rF, xF]);
 
-  if (!punkt) return null;
-  return cache[punkt] ?? null;
+  if (klucz === null) return null;
+  return cache[klucz] ?? null;
+}
+
+/** Klucz wkładów punktu dla biegu metalicznego albo przez Z_f (bez fizyki — sam zapis). */
+export function kluczWkladow(punkt: string, impedancja?: ImpedancjaPrzejsciaBiegu): string {
+  return impedancja ? `${punkt}|zf:${impedancja.r_f_ohm}:${impedancja.x_f_ohm}` : punkt;
 }
 
 // ---------------------------------------------------------------------------

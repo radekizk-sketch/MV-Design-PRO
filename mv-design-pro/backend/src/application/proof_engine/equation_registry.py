@@ -586,6 +586,146 @@ EQ_SC3F_015 = EquationDefinition(
 )
 
 
+# -----------------------------------------------------------------------------
+# Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10).
+# Wariant dowodu SC3F dla biegu z Z_f: impedancja pętli Z_k = Z_th + Z_f zastępuje
+# Z_th w krokach I_k'', κ i I_b. Wynik poza zakresem IEC 60909 (norma definiuje prąd
+# zwarciowy dla zwarcia metalicznego). Kolejność kroków: SC3F_PROOF_STEP_ORDER_IMPEDANCJA.
+# -----------------------------------------------------------------------------
+
+EQ_SC3F_016 = EquationDefinition(
+    equation_id="EQ_SC3F_016",
+    name_pl="Impedancja pętli zwarcia przez impedancję przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"Z_k = Z_{th} + Z_f",
+    symbols=(
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja pętli zwarcia",
+            mapping_key="z_petli_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_{th}",
+            unit="Ω",
+            description_pl="Impedancja zastępcza Thevenina",
+            mapping_key="z_thevenin_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_f",
+            unit="Ω",
+            description_pl="Impedancja przejścia w miejscu zwarcia",
+            mapping_key="z_f_ohm",
+        ),
+    ),
+    unit_derivation="Ω + Ω = Ω",
+    notes="Z_f w każdej fazie zwarcia trójfazowego; R_f ≥ 0, X_f ≥ 0. Prąd przez Z_f jest "
+    "poza zakresem IEC 60909 i nie jest podstawą doboru wytrzymałości zwarciowej. "
+    "AUDIT: c NIE występuje.",
+)
+
+EQ_SC3F_017 = EquationDefinition(
+    equation_id="EQ_SC3F_017",
+    name_pl="Początkowy prąd zwarciowy przez impedancję przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"I_k'' = \frac{c \cdot U_n}{\sqrt{3} \cdot |Z_k|}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl="Początkowy prąd zwarciowy przez impedancję przejścia",
+            mapping_key="ikss_ka",
+        ),
+        SymbolDefinition(
+            symbol="c",
+            unit="—",
+            description_pl="Współczynnik napięciowy",
+            mapping_key="c_factor",
+        ),
+        SymbolDefinition(
+            symbol="U_n",
+            unit="kV",
+            description_pl="Napięcie znamionowe",
+            mapping_key="u_n_kv",
+        ),
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja pętli zwarcia",
+            mapping_key="z_petli_ohm",
+        ),
+    ),
+    unit_derivation="kV / Ω = kA",
+    notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu wariantu z impedancją przejścia "
+    "(Anti-Double-Counting: wariant Z_f).",
+)
+
+EQ_SC3F_018 = EquationDefinition(
+    equation_id="EQ_SC3F_018",
+    name_pl="Współczynnik udaru pętli z impedancją przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"\kappa = 1.02 + 0.98 \cdot e^{-3 \cdot R_k/X_k}",
+    symbols=(
+        SymbolDefinition(
+            symbol="\\kappa",
+            unit="—",
+            description_pl="Współczynnik udaru",
+            mapping_key="kappa",
+        ),
+        SymbolDefinition(
+            symbol="R_k",
+            unit="Ω",
+            description_pl="Rezystancja pętli zwarcia",
+            mapping_key="r_petli_ohm",
+        ),
+        SymbolDefinition(
+            symbol="X_k",
+            unit="Ω",
+            description_pl="Reaktancja pętli zwarcia",
+            mapping_key="x_petli_ohm",
+        ),
+    ),
+    unit_derivation="— (bezwymiarowy)",
+    notes="R_k/X_k pełnej pętli z Z_f (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
+)
+
+EQ_SC3F_019 = EquationDefinition(
+    equation_id="EQ_SC3F_019",
+    name_pl="Prąd wyłączeniowy I_b przy czasie t_b (pętla z impedancją przejścia)",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"I_b = I_k'' \cdot \sqrt{1 + \left((\kappa - 1) \cdot e^{-t_b/t_a}\right)^2}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_b",
+            unit="kA",
+            description_pl="Prąd wyłączeniowy przy czasie t_b (z zanikiem składowej DC)",
+            mapping_key="ib_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl="Początkowy prąd zwarciowy przez impedancję przejścia",
+            mapping_key="ikss_ka",
+        ),
+        SymbolDefinition(
+            symbol="\\kappa",
+            unit="—",
+            description_pl="Współczynnik udaru",
+            mapping_key="kappa",
+        ),
+        SymbolDefinition(
+            symbol="t_b",
+            unit="s",
+            description_pl="Czas wyznaczenia prądu wyłączeniowego",
+            mapping_key="tb_s",
+        ),
+    ),
+    unit_derivation="kA · — = kA",
+    notes="Stała czasowa składowej DC t_a = X_k/(ω·R_k) pełnej pętli z Z_f, ω = 2π·50 Hz. "
+    "Wartość I_b czytana z FROZEN wyniku solvera (ib_a). AUDIT: c NIE występuje.",
+)
+
+
 # =============================================================================
 # VDROP — Kanoniczne równania (BINDING)
 # =============================================================================
@@ -2857,6 +2997,198 @@ EQ_SC1_012 = EquationDefinition(
 )
 
 
+# -----------------------------------------------------------------------------
+# Zwarcia niesymetryczne przez impedancję przejścia Z_f (karta OD-14, partia 10):
+# Z_f w każdej fazie zwarcia i w torze do ziemi (tor zerowy Z_0 + 3·Z_f). Warianty
+# zastępują EQ_SC1_003/004/005/006 w dowodzie biegu z Z_f; wynik poza zakresem IEC 60909.
+# -----------------------------------------------------------------------------
+
+EQ_SC1_013 = EquationDefinition(
+    equation_id="EQ_SC1_013",
+    name_pl="Sieć składowych dla zwarcia 1F–Z przez impedancję przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"Z_k = Z_1 + Z_2 + Z_0 + 3 Z_f",
+    symbols=(
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja zastępcza pętli zwarcia",
+            mapping_key="z_equiv_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_1",
+            unit="Ω",
+            description_pl="Impedancja składowej zgodnej",
+            mapping_key="z1_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_2",
+            unit="Ω",
+            description_pl="Impedancja składowej przeciwnej",
+            mapping_key="z2_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_0",
+            unit="Ω",
+            description_pl="Impedancja składowej zerowej",
+            mapping_key="z0_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_f",
+            unit="Ω",
+            description_pl="Impedancja przejścia w miejscu zwarcia",
+            mapping_key="z_f_ohm",
+        ),
+    ),
+    unit_derivation="Ω + Ω + Ω + Ω = Ω",
+    notes="Zwarcie jednofazowe doziemne przez impedancję przejścia Z_f (w torze zerowym 3·Z_f).",
+)
+
+EQ_SC1_014 = EquationDefinition(
+    equation_id="EQ_SC1_014",
+    name_pl="Sieć składowych dla zwarcia 2F przez impedancję przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"Z_k = Z_1 + Z_2 + Z_f",
+    symbols=(
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja zastępcza pętli zwarcia",
+            mapping_key="z_equiv_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_1",
+            unit="Ω",
+            description_pl="Impedancja składowej zgodnej",
+            mapping_key="z1_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_2",
+            unit="Ω",
+            description_pl="Impedancja składowej przeciwnej",
+            mapping_key="z2_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_f",
+            unit="Ω",
+            description_pl="Impedancja przejścia w miejscu zwarcia",
+            mapping_key="z_f_ohm",
+        ),
+    ),
+    unit_derivation="Ω + Ω + Ω = Ω",
+    notes="Zwarcie dwufazowe przez impedancję przejścia Z_f między fazami zwarcia.",
+)
+
+EQ_SC1_015 = EquationDefinition(
+    equation_id="EQ_SC1_015",
+    name_pl="Sieć składowych dla zwarcia 2F–Z przez impedancję przejścia",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=r"Z_k = Z_1 + \frac{Z_2 \cdot (Z_0 + 3 Z_f)}{Z_2 + Z_0 + 3 Z_f}",
+    symbols=(
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja zastępcza pętli zwarcia",
+            mapping_key="z_equiv_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_1",
+            unit="Ω",
+            description_pl="Impedancja składowej zgodnej",
+            mapping_key="z1_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_2",
+            unit="Ω",
+            description_pl="Impedancja składowej przeciwnej",
+            mapping_key="z2_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_0",
+            unit="Ω",
+            description_pl="Impedancja składowej zerowej",
+            mapping_key="z0_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_f",
+            unit="Ω",
+            description_pl="Impedancja przejścia w miejscu zwarcia",
+            mapping_key="z_f_ohm",
+        ),
+    ),
+    unit_derivation="Ω + (Ω·Ω)/(Ω+Ω) = Ω",
+    notes="Zwarcie dwufazowe doziemne przez impedancję przejścia Z_f w torze do ziemi. "
+    "Warunek |I_k(Z_f)| ≤ |I_k(0)| NIE wynika tu z algebry (Z_f w gałęzi równoległej).",
+)
+
+EQ_SC1_016 = EquationDefinition(
+    equation_id="EQ_SC1_016",
+    name_pl="Wyznaczenie prądów składowych I₁, I₂, I₀ (pętla z impedancją przejścia)",
+    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
+    latex=(
+        r"\begin{aligned}"
+        r"\text{1F–Z:} \quad & I_1 = I_2 = I_0 = \frac{U_f}{Z_k} \\"
+        r"\text{2F:} \quad & I_1 = \frac{U_f}{Z_k}, \quad I_2 = -I_1, \quad I_0 = 0 \\"
+        r"\text{2F–Z:} \quad & I_1 = \frac{U_f}{Z_k}, \quad"
+        r"I_2 = -\frac{Z_0 + 3 Z_f}{Z_2 + Z_0 + 3 Z_f} I_1, \quad"
+        r"I_0 = -\frac{Z_2}{Z_2 + Z_0 + 3 Z_f} I_1"
+        r"\end{aligned}"
+    ),
+    symbols=(
+        SymbolDefinition(
+            symbol="I_1",
+            unit="kA",
+            description_pl="Prąd składowej zgodnej",
+            mapping_key="i1_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_2",
+            unit="kA",
+            description_pl="Prąd składowej przeciwnej",
+            mapping_key="i2_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_0",
+            unit="kA",
+            description_pl="Prąd składowej zerowej",
+            mapping_key="i0_ka",
+        ),
+        SymbolDefinition(
+            symbol="U_f",
+            unit="kV",
+            description_pl="Napięcie przedzwarciowe fazowe",
+            mapping_key="u_prefault_kv",
+        ),
+        SymbolDefinition(
+            symbol="Z_k",
+            unit="Ω",
+            description_pl="Impedancja zastępcza pętli zwarcia",
+            mapping_key="z_equiv_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_2",
+            unit="Ω",
+            description_pl="Impedancja składowej przeciwnej",
+            mapping_key="z2_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_0",
+            unit="Ω",
+            description_pl="Impedancja składowej zerowej",
+            mapping_key="z0_ohm",
+        ),
+        SymbolDefinition(
+            symbol="Z_f",
+            unit="Ω",
+            description_pl="Impedancja przejścia w miejscu zwarcia",
+            mapping_key="z_f_ohm",
+        ),
+    ),
+    unit_derivation="kV / Ω = kA",
+    notes="Stosować z impedancją Z_k z EQ_SC1_013/014/015 (pętla z impedancją przejścia).",
+)
+
+
 # =============================================================================
 # ANTI-DOUBLE-COUNTING AUDIT
 # =============================================================================
@@ -2902,6 +3234,22 @@ class AntiDoubleCountingAudit:
         "EQ_SC3F_015": False,  # Energia cieplna I²t — c NIE występuje (I_th zawiera c)
     }
 
+    # Karta OD-14: równania dowodowe wariantu SC3F z impedancją przejścia Z_f — każdy dowód
+    # (metaliczny i z Z_f) ma c w DOKŁADNIE jednym równaniu: EQ_SC3F_004 albo EQ_SC3F_017.
+    PROOF_EQUATIONS_AUDIT_IMPEDANCJA: dict[str, bool] = {
+        "EQ_SC3F_003": False,  # Impedancja Thevenina — c NIE występuje
+        "EQ_SC3F_016": False,  # Pętla Z_k = Z_th + Z_f — c NIE występuje
+        "EQ_SC3F_017": True,  # Prąd I_k'' z |Z_k| — c WYSTĘPUJE (jedyne miejsce wariantu)
+        "EQ_SC3F_018": False,  # Współczynnik κ pętli — c NIE występuje
+        "EQ_SC3F_006": False,  # Prąd udarowy — c NIE występuje
+        "EQ_SC3F_007": False,  # Moc S_k'' — c NIE występuje
+        "EQ_SC3F_008": False,  # Prąd cieplny — c NIE występuje
+        "EQ_SC3F_008a": False,  # Prąd dynamiczny — c NIE występuje
+        "EQ_SC3F_015": False,  # Energia cieplna I²t — c NIE występuje
+        "EQ_SC3F_019": False,  # Prąd wyłączeniowy I_b pętli — c NIE występuje
+    }
+    C_FACTOR_EQUATION_IMPEDANCJA = "EQ_SC3F_017"
+
     # Równania pomocnicze (solver-only)
     HELPER_EQUATIONS_AUDIT: dict[str, bool] = {
         "EQ_SC3F_002": True,  # Z_Q z S_kQ'' — c występuje (solver only)
@@ -2918,11 +3266,15 @@ class AntiDoubleCountingAudit:
         Returns:
             True jeśli audit PASS, False jeśli FAIL
         """
-        c_count = sum(1 for has_c in cls.PROOF_EQUATIONS_AUDIT.values() if has_c)
-        if c_count != 1:
-            return False
-        if not cls.PROOF_EQUATIONS_AUDIT.get(cls.C_FACTOR_EQUATION, False):
-            return False
+        for audyt, rownanie_c in (
+            (cls.PROOF_EQUATIONS_AUDIT, cls.C_FACTOR_EQUATION),
+            (cls.PROOF_EQUATIONS_AUDIT_IMPEDANCJA, cls.C_FACTOR_EQUATION_IMPEDANCJA),
+        ):
+            c_count = sum(1 for has_c in audyt.values() if has_c)
+            if c_count != 1:
+                return False
+            if not audyt.get(rownanie_c, False):
+                return False
         return True
 
     # Równania dowodowe SC1 z audytem c (§4.1 blocker resolution)
@@ -2939,6 +3291,10 @@ class AntiDoubleCountingAudit:
         "EQ_SC1_010": False,  # Prąd udarowy ip — c NIE występuje
         "EQ_SC1_011": False,  # Prąd cieplny I_th — c NIE występuje
         "EQ_SC1_012": False,  # Prąd dynamiczny I_dyn — c NIE występuje
+        "EQ_SC1_013": False,  # Z_k 1F–Z z Z_f — c NIE występuje
+        "EQ_SC1_014": False,  # Z_k 2F z Z_f — c NIE występuje
+        "EQ_SC1_015": False,  # Z_k 2F–Z z Z_f — c NIE występuje
+        "EQ_SC1_016": False,  # Prądy składowe pętli z Z_f — c NIE występuje
     }
 
     SC1_C_FACTOR_EQUATION = "EQ_SC1_008"
@@ -3044,6 +3400,10 @@ SC3F_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_SC3F_013": EQ_SC3F_013,
     "EQ_SC3F_014": EQ_SC3F_014,
     "EQ_SC3F_015": EQ_SC3F_015,
+    "EQ_SC3F_016": EQ_SC3F_016,
+    "EQ_SC3F_017": EQ_SC3F_017,
+    "EQ_SC3F_018": EQ_SC3F_018,
+    "EQ_SC3F_019": EQ_SC3F_019,
 }
 
 # VDROP equations registry
@@ -3150,6 +3510,10 @@ SC1_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_SC1_010": EQ_SC1_010,
     "EQ_SC1_011": EQ_SC1_011,
     "EQ_SC1_012": EQ_SC1_012,
+    "EQ_SC1_013": EQ_SC1_013,
+    "EQ_SC1_014": EQ_SC1_014,
+    "EQ_SC1_015": EQ_SC1_015,
+    "EQ_SC1_016": EQ_SC1_016,
 }
 
 # Step order for SC3F proof (BINDING) — tylko równania dowodowe
@@ -3162,6 +3526,22 @@ SC3F_PROOF_STEP_ORDER: list[str] = [
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
     "EQ_SC3F_014",  # Prąd wyłączeniowy I_b(t_b) — gdy wynik niesie ib/tb
+    "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
+    "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
+    "EQ_SC3F_007",  # Moc zwarciowa S_k''
+]
+
+# Karta OD-14 (partia integracji 10): kolejność kroków dowodu SC3F biegu przez impedancję
+# przejścia Z_f — pętla Z_k = Z_th + Z_f wchodzi po kroku Thevenina i zastępuje Z_th
+# w krokach I_k'' (c TUTAJ — jedyne miejsce wariantu), κ i I_b.
+SC3F_PROOF_STEP_ORDER_IMPEDANCJA: list[str] = [
+    "EQ_SC3F_003",  # Impedancja Thevenina sieci
+    "EQ_SC3F_016",  # Pętla zwarcia Z_k = Z_th + Z_f
+    "EQ_SC3F_017",  # Prąd zwarciowy I_k'' z |Z_k| (c TUTAJ)
+    "EQ_SC3F_018",  # Współczynnik udaru κ z R_k/X_k
+    "EQ_SC3F_006",  # Prąd udarowy i_p
+    "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
+    "EQ_SC3F_019",  # Prąd wyłączeniowy I_b(t_b) z t_a pętli — gdy wynik niesie ib/tb
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''
@@ -3297,6 +3677,15 @@ SC2FZ_STEP_ORDER: list[str] = [
     "EQ_SC1_012",  # I_dyn (prąd dynamiczny — OBOWIĄZKOWY)
     "EQ_SC1_011",  # I_th (prąd cieplny — OBOWIĄZKOWY)
 ]
+
+#: Karta OD-14: wariant dowodu SC1 dla biegu przez impedancję przejścia Z_f — równania pętli
+#: i prądów składowych z Z_f zastępują warianty metaliczne (jedno źródło podmiany).
+SC1_ZAMIANA_KROKOW_IMPEDANCJA: dict[str, str] = {
+    "EQ_SC1_003": "EQ_SC1_013",
+    "EQ_SC1_004": "EQ_SC1_014",
+    "EQ_SC1_005": "EQ_SC1_015",
+    "EQ_SC1_006": "EQ_SC1_016",
+}
 
 # Frozen IDs for stability tests (BINDING)
 #
@@ -3497,8 +3886,14 @@ class EquationRegistry:
         return LC_EQUATIONS.copy()
 
     @classmethod
-    def get_sc3f_proof_step_order(cls) -> list[str]:
-        """Zwraca kolejność kroków dla dowodu SC3F (tylko równania dowodowe)."""
+    def get_sc3f_proof_step_order(cls, *, impedancja_przejscia: bool = False) -> list[str]:
+        """Zwraca kolejność kroków dla dowodu SC3F (tylko równania dowodowe).
+
+        `impedancja_przejscia` (karta OD-14): kolejność dowodu biegu przez impedancję
+        przejścia Z_f (`SC3F_PROOF_STEP_ORDER_IMPEDANCJA`).
+        """
+        if impedancja_przejscia:
+            return SC3F_PROOF_STEP_ORDER_IMPEDANCJA.copy()
         return SC3F_PROOF_STEP_ORDER.copy()
 
     @classmethod
@@ -3582,20 +3977,29 @@ class EquationRegistry:
         return LOSS_STEP_ORDER.copy()
 
     @classmethod
-    def get_sc1_step_order(cls, fault_type: str) -> list[str]:
+    def get_sc1_step_order(
+        cls, fault_type: str, *, impedancja_przejscia: bool = False
+    ) -> list[str]:
         """
         Zwraca kolejność kroków dla dowodu SC1 (P11.1c).
 
         Args:
             fault_type: Typ zwarcia (SC1FZ/SC2F/SC2FZ)
+            impedancja_przejscia: dowód biegu przez impedancję przejścia Z_f (karta OD-14) —
+                kroki pętli i prądów składowych w wariancie z Z_f
+                (``SC1_ZAMIANA_KROKOW_IMPEDANCJA``).
         """
         if fault_type == "SC1FZ":
-            return SC1FZ_STEP_ORDER.copy()
-        if fault_type == "SC2F":
-            return SC2F_STEP_ORDER.copy()
-        if fault_type == "SC2FZ":
-            return SC2FZ_STEP_ORDER.copy()
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+            kolejnosc = SC1FZ_STEP_ORDER.copy()
+        elif fault_type == "SC2F":
+            kolejnosc = SC2F_STEP_ORDER.copy()
+        elif fault_type == "SC2FZ":
+            kolejnosc = SC2FZ_STEP_ORDER.copy()
+        else:
+            raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+        if not impedancja_przejscia:
+            return kolejnosc
+        return [SC1_ZAMIANA_KROKOW_IMPEDANCJA.get(eq_id, eq_id) for eq_id in kolejnosc]
 
     @classmethod
     def get_all_mapping_keys(cls) -> set[str]:

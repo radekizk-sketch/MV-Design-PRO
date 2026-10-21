@@ -662,16 +662,21 @@ class TestEquationRegistryIntegration:
     """Weryfikacja integracji z EquationRegistry."""
 
     def test_all_sc1_equations_registered(self):
-        """All EQ_SC1_001-012 are in the registry."""
-        for i in range(1, 13):
+        """All EQ_SC1_001-016 are in the registry.
+
+        Karta OD-14 (partia integracji 10): EQ_SC1_013-016 to pętle zwarcia przez impedancję
+        przejścia Z_f (1F–Z, 2F, 2F–Z) i prądy składowe z pętli — intencja testu (każde równanie SC1 w
+        rejestrze) bez zmian, zakres rozszerzony o nowe identyfikatory.
+        """
+        for i in range(1, 17):
             eq_id = f"EQ_SC1_{i:03d}"
             eq = EquationRegistry.get_equation(eq_id)
             assert eq is not None, f"Missing equation {eq_id} in registry"
 
     def test_sc1_equations_dict_complete(self):
-        """SC1_EQUATIONS dict has 12 entries."""
+        """SC1_EQUATIONS dict has exactly EQ_SC1_001-016 (12 metallic + 4 Z_f, OD-14)."""
         equations = EquationRegistry.get_sc1_equations()
-        assert len(equations) == 12, f"Expected 12 SC1 equations, got {len(equations)}"
+        assert sorted(equations) == [f"EQ_SC1_{i:03d}" for i in range(1, 17)]
 
     def test_id_stability_passes(self):
         """validate_id_stability still passes with new equations."""

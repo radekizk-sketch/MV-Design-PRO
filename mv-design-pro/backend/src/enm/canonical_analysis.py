@@ -53,6 +53,7 @@ from enm.assembler import (
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
     czestotliwosc_studium_hz,
+    impedancja_zwarcia_z_opcji,
     zbuduj_graf,
     zloz_wejscie_rozplywu,
     zloz_wejscie_rozplywu_niesymetrycznego,
@@ -60,6 +61,7 @@ from enm.assembler import (
 )
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
+from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
@@ -88,7 +90,7 @@ from enm.scenariusze import (
     referencja_koperty,
 )
 from enm.store import get_enm
-from enm.validator import ENMValidator
+from enm.validator import ENMValidator, ValidationResult
 from enm.wartosci_niefinitowe import podmien_niefinitowe
 from enm.zdania_odmow_rdzenia import (
     nazwy_w_odmowach_modelu,
@@ -104,8 +106,10 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 )
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.core.autorytet_wyniku_zwarciowego import KLUCZ_IMPEDANCJI_ZWARCIA
 from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
+from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import c_for_node
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -196,6 +200,20 @@ def _compute_input_hash(
 _KAPPA_MIN = 1.02
 _KAPPA_MAX = 2.0
 OGRANICZENIE_WYNIK_NIEFIZYCZNY = "solver_result_non_physical"
+#: Karta OD-14 (partia integracji 10): zwarcie przez impedancję przejścia Z_f — wynik poza
+#: zakresem IEC 60909 (norma definiuje prąd zwarciowy dla zwarcia metalicznego).
+OGRANICZENIE_POZA_ZAKRESEM_IEC60909 = "fault_impedance_outside_iec60909"
+#: Odmowa: opcja Z_f w biegu, który nie jest zwarciowy (karta OD-14).
+KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM = "sc.impedancja_zwarcia_poza_biegiem_zwarciowym"
+#: Bramy modelu biegu (partia integracji 10) — kody odmów JEDNEJ oceny modelu liczonego
+#: (`ocen_model_biegu`), którą czyta zarówno `create_run`, jak i kwalifikowalność scenariusza
+#: zwarciowego (`FaultScenarioService.check_scenario_eligibility`).
+KOD_MODEL_NIE_PRZESZEDL_WALIDACJI = "enm.model_nie_przeszedl_walidacji"
+KOD_MODEL_BEZ_ZDOLNOSCI_ZWARCIOWEJ = "sc.model_bez_zdolnosci_zwarciowej"
+KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ = "sc.model_bez_skladowej_zerowej"
+#: Kody walidatora ENM, które odbierają modelowi zdolność zwarcia doziemnego (brak Z0 linii
+#: i źródeł) — to samo źródło, z którego walidator wyprowadza `short_circuit_1f`.
+_KODY_BRAKU_SKLADOWEJ_ZEROWEJ = ("W001", "W002")
 #: Kody ograniczeń raportowych rozpływu (symetrycznego i niesymetrycznego).
 OGRANICZENIE_WEZLY_POZA_WYSPA = "unsolved_nodes_outside_slack_island"
 OGRANICZENIE_BRAK_ZBIEZNOSCI = "solver_non_convergence"
@@ -227,6 +245,11 @@ OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
     ),
     OGRANICZENIE_BRAK_ZBIEZNOSCI: (
         "Obliczenie rozpływu nie osiągnęło zbieżności — wynik nie nadaje się do raportu."
+    ),
+    OGRANICZENIE_POZA_ZAKRESEM_IEC60909: (
+        "Zwarcie przez impedancję przejścia Z_f jest poza zakresem normy IEC 60909, która "
+        "definiuje prąd zwarciowy dla zwarcia metalicznego — wynik nie jest podstawą doboru "
+        "wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
     ),
 }
 
@@ -986,6 +1009,148 @@ def _validate_protection_sc_reference(
         )
 
 
+@dataclass(frozen=True)
+class BlokadaModeluBiegu:
+    """Jedna przyczyna, dla której model liczony nie pozwala utworzyć biegu.
+
+    `komunikat` jest zdaniem dla projektanta (bez identyfikatorów), `elementy` niosą
+    identyfikatory elementów, których dotyczy (pole strukturalne, nie treść), a
+    `fix_action` — akcję naprawczą walidatora ENM, gdy ją podał.
+    """
+
+    kod: str
+    komunikat: str
+    elementy: tuple[str, ...] = ()
+    fix_action: FixAction | None = None
+
+
+@dataclass(frozen=True)
+class OcenaModeluBiegu:
+    """Model, który bieg policzy (HEAD ⊕ scenariusz), jego walidacja i bramy biegu."""
+
+    efektywna: EffectiveNetworkSnapshot
+    enm_liczony: EnergyNetworkModel
+    walidacja: ValidationResult
+    opcje: dict[str, Any]
+    blokady: tuple[BlokadaModeluBiegu, ...]
+
+    def odmowa(self) -> OdmowaNazwana:
+        """Odmowa `create_run` — pierwsza blokada; dla walidacji wszystkie zdania naraz."""
+        pierwsza = self.blokady[0]
+        if pierwsza.kod == KOD_MODEL_NIE_PRZESZEDL_WALIDACJI:
+            zdania = [b.komunikat for b in self.blokady if b.kod == pierwsza.kod]
+            elementy = tuple(
+                sorted({e for b in self.blokady if b.kod == pierwsza.kod for e in b.elementy})
+            )
+            return OdmowaNazwana(
+                "; ".join(zdania) or "Model sieci nie przeszedł walidacji",
+                kod=pierwsza.kod,
+                dane={"elementy": elementy},
+            )
+        return OdmowaNazwana(
+            pierwsza.komunikat, kod=pierwsza.kod, dane={"elementy": pierwsza.elementy}
+        )
+
+
+def ocen_model_biegu(
+    *,
+    klucz_twin: str,
+    analysis_type: str,
+    options: dict[str, Any] | None = None,
+    scenariusz: OperatingScenario | None = None,
+) -> OcenaModeluBiegu:
+    """JEDNA ocena modelu liczonego dla biegu — bramy `create_run` i kwalifikowalności.
+
+    Partia integracji 10: kwalifikowalność scenariusza zwarciowego miała WŁASNE reguły
+    (fantomowe `z0_bus_data` dla 1F i „proxy Z2" dla 2F) niezależne od bram `create_run`
+    (walidacja ENM, zdolności `short_circuit_3f`/`short_circuit_1f`), więc mówiła
+    „kwalifikuje się", gdy bieg i tak był odrzucany — albo odwrotnie. Obie ścieżki czytają
+    odtąd tę funkcję (reguła „predykaty parami": warunek wejścia i warunek biegu z jednego
+    źródła). Blokady:
+
+    - walidacja ENM ze statusem FAIL → jedna blokada na każdy problem blokujący (kod
+      wspólny, element i akcja naprawcza z walidatora); dotyczy każdego biegu poza
+      akademickimi `v126:` (wyjątek CV-4.3-A4, zachowany);
+    - bieg zwarciowy bez zdolności `short_circuit_3f` → blokada zdolności zwarciowej;
+    - zwarcie z udziałem ziemi (1F, 2F+Z) bez `short_circuit_1f` → blokada składowej zerowej
+      z elementami ostrzeżeń walidatora o braku Z0.
+    """
+    enm = get_enm(klucz_twin)
+    scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
+    efektywna = apply_scenario(enm, scenariusz_biegu)
+    enm_liczony = (
+        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    )
+    validator = ENMValidator()
+    walidacja = validator.validate(enm_liczony)
+    opcje = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    blokady: list[BlokadaModeluBiegu] = []
+    # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
+    # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
+    # wprost `fault_level_mva` na szynie i innego rodzaju parametry akademickie
+    # bez pelnego lancucha zasilania, wiec NIGDY nie przechodzil przez
+    # `enm/assembler.py`/`ENMValidator` (jedyna bramka historyczna, zachowana w
+    # trasie: model musi miec co najmniej jedna szyne). Dolaczenie V12.6 do
+    # wspolnego rejestru biegow (R1) nie ma prawa PODNIESC wymagan modelowych
+    # analiz akademickich ponad ten historyczny stan — wyjatek jest JAWNY,
+    # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
+    if walidacja.status == "FAIL" and not analysis_type.startswith("v126:"):
+        for problem in validator.readiness(walidacja).blockers:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_NIE_PRZESZEDL_WALIDACJI,
+                    komunikat=problem.message_pl,
+                    elementy=tuple(problem.element_refs),
+                    fix_action=problem.fix_action,
+                )
+            )
+        if not blokady:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_NIE_PRZESZEDL_WALIDACJI,
+                    komunikat="Model sieci nie przeszedł walidacji",
+                )
+            )
+    if analysis_type == "short_circuit_sn" and not blokady:
+        dostepnosc = walidacja.analysis_available
+        if not dostepnosc.short_circuit_3f:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_BEZ_ZDOLNOSCI_ZWARCIOWEJ,
+                    komunikat="Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM",
+                )
+            )
+        elif (
+            _short_circuit_type_from_options(opcje)
+            in {ShortCircuitType.SINGLE_PHASE_GROUND, ShortCircuitType.TWO_PHASE_GROUND}
+            and not dostepnosc.short_circuit_1f
+        ):
+            problemy_z0 = [
+                problem
+                for problem in walidacja.issues
+                if problem.code in _KODY_BRAKU_SKLADOWEJ_ZEROWEJ
+            ]
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ,
+                    komunikat="Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM",
+                    elementy=tuple(
+                        sorted({e for problem in problemy_z0 for e in problem.element_refs})
+                    ),
+                    fix_action=next(
+                        (p.fix_action for p in problemy_z0 if p.fix_action is not None), None
+                    ),
+                )
+            )
+    return OcenaModeluBiegu(
+        efektywna=efektywna,
+        enm_liczony=enm_liczony,
+        walidacja=walidacja,
+        opcje=opcje,
+        blokady=tuple(blokady),
+    )
+
+
 def create_run(
     *,
     case_id: str,
@@ -1011,28 +1176,15 @@ def create_run(
     projekcja na opcje biegu (`opcje_biegu_ze_scenariusza`) jest podkladem, na
     ktory jawne `options` wolajacego nakladaja sie z pierwszenstwem.
     """
-    enm = get_enm(klucz_twin)
-    scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
-    efektywna = apply_scenario(enm, scenariusz_biegu)
-    enm_liczony = (
-        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    ocena = ocen_model_biegu(
+        klucz_twin=klucz_twin, analysis_type=analysis_type, options=options, scenariusz=scenariusz
     )
-    validator = ENMValidator()
-    validation = validator.validate(enm_liczony)
-    readiness = validator.readiness(validation)
-
-    # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
-    # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
-    # wprost `fault_level_mva` na szynie i innego rodzaju parametry akademickie
-    # bez pelnego lancucha zasilania, wiec NIGDY nie przechodzil przez
-    # `enm/assembler.py`/`ENMValidator` (jedyna bramka historyczna, zachowana w
-    # trasie: model musi miec co najmniej jedna szyne). Dolaczenie V12.6 do
-    # wspolnego rejestru biegow (R1) nie ma prawa PODNIESC wymagan modelowych
-    # analiz akademickich ponad ten historyczny stan — wyjatek jest JAWNY,
-    # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
-    if validation.status == "FAIL" and not analysis_type.startswith("v126:"):
-        messages = [issue.message_pl for issue in validation.issues if issue.severity == "BLOCKER"]
-        raise OdmowaDanychError("; ".join(messages) or "Model sieci nie przeszedł walidacji")
+    if ocena.blokady:
+        raise ocena.odmowa()
+    efektywna = ocena.efektywna
+    enm_liczony = ocena.enm_liczony
+    validation = ocena.walidacja
+    readiness = ENMValidator().readiness(validation)
 
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
@@ -1049,27 +1201,25 @@ def create_run(
         )
     snapshot = efektywna.snapshot
     enm_hash = efektywna.snapshot_hash
-    normalized_options = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    normalized_options = ocena.opcje
     # CV-2: tozsamosc projektu w kopercie — z parametru albo z klucza twin
     # (klucz surowy w testach magazynu nie niesie projektu → None, uczciwie).
     project_id_koperty = project_id or (
         str(project_id_z_klucza(klucz_twin)) if czy_klucz_projektu(klucz_twin) else None
     )
-    if analysis_type == "short_circuit_sn":
-        fault_type = _short_circuit_type_from_options(normalized_options)
-        if not availability.short_circuit_3f:
-            raise OdmowaDanychError(
-                "Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM"
+    if KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA in normalized_options:
+        # Karta OD-14: Z_f jest daną WYŁĄCZNIE biegu zwarciowego — w innym biegu byłaby opcją,
+        # której nikt nie czyta (fantom). W biegu zwarciowym ta sama reguła danych co przy
+        # wykonaniu (assembler) rozstrzyga JUŻ przy tworzeniu biegu: niedopuszczalna para nie
+        # staje się biegiem, który upadnie dopiero w kolejce wykonawcy.
+        if analysis_type != "short_circuit_sn":
+            raise OdmowaNazwana(
+                "Impedancja przejścia Z_f dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
+                "biegu jej nie czyta.",
+                kod=KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM,
+                dane={"analysis_type": analysis_type},
             )
-        if (
-            fault_type
-            in {
-                ShortCircuitType.SINGLE_PHASE_GROUND,
-                ShortCircuitType.TWO_PHASE_GROUND,
-            }
-            and not availability.short_circuit_1f
-        ):
-            raise OdmowaDanychError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
+        impedancja_zwarcia_z_opcji(normalized_options)
     if analysis_type == "phase_state_sn" and not enm_liczony.buses:
         raise OdmowaDanychError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
     if analysis_type == "protection_sn":
@@ -2227,6 +2377,7 @@ def _wynik_solvera_rodzaju(
             c_factor=c_factor,
             tk_s=wejscie.tk_s,
             include_branch_contributions=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
         )
     if typ == ShortCircuitType.SINGLE_PHASE_GROUND:
         return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
@@ -2236,6 +2387,7 @@ def _wynik_solvera_rodzaju(
             tk_s=wejscie.tk_s,
             z0_bus=wejscie.z0_bus,
             include_branch_contributions=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
         )
     if typ == ShortCircuitType.TWO_PHASE:
         return ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
@@ -2244,6 +2396,7 @@ def _wynik_solvera_rodzaju(
             c_factor=c_factor,
             tk_s=wejscie.tk_s,
             include_branch_contributions=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
         )
     return ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
         graph=wejscie.solve_graph,
@@ -2252,6 +2405,7 @@ def _wynik_solvera_rodzaju(
         tk_s=wejscie.tk_s,
         z0_bus=wejscie.z0_bus,
         include_branch_contributions=wklady,
+        z_f_ohm=wejscie.impedancja_zwarcia,
     )
 
 
@@ -2479,6 +2633,11 @@ def _execute_short_circuit(
                 "c_factor_override": c_factor_override,
             }
         )
+        if wejscie.impedancja_zwarcia is not None:
+            payload["reporting_limitations"] = [
+                *payload["reporting_limitations"],
+                OGRANICZENIE_POZA_ZAKRESEM_IEC60909,
+            ]
         if node_id in wezly_bez_odniesienia:
             payload = _oznacz_wiersz_bez_odniesienia(payload)
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
@@ -2512,8 +2671,30 @@ def _execute_short_circuit(
         "z0_source": (
             "ENM_COMMITTED" if _short_circuit_requires_z0(short_circuit_type) else "NOT_APPLICABLE"
         ),
-        "reporting_limitations": ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else []),
+        "reporting_limitations": (
+            ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else [])
+            + (
+                [OGRANICZENIE_POZA_ZAKRESEM_IEC60909]
+                if wejscie.impedancja_zwarcia is not None
+                else []
+            )
+        ),
         **({"non_reportable_fault_node_ids": wiersze_niefizyczne} if wiersze_niefizyczne else {}),
+        # Karta OD-14: impedancja przejścia Z_f biegu i zakres ważności — WYŁĄCZNIE gdy bieg
+        # ją niesie (artefakt biegu metalicznego bajt w bajt jak przed kartą). Z tego klucza
+        # warstwa autorytetu odtwarza proweniencję zapisanego biegu
+        # (`application.autorytet_biegu_zwarciowego`, kod SI-117).
+        **(
+            {
+                KLUCZ_IMPEDANCJI_ZWARCIA: {
+                    "r_f_ohm": wejscie.impedancja_zwarcia.real,
+                    "x_f_ohm": wejscie.impedancja_zwarcia.imag,
+                    "poza_zakresem_iec60909": True,
+                }
+            }
+            if wejscie.impedancja_zwarcia is not None
+            else {}
+        ),
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
         # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne).

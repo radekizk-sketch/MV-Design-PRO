@@ -77,9 +77,10 @@ from application.solvers.voltage_drop_binding import (
     OdcinekSpadku,
     odcinki_spadku_napiecia,
 )
+from enm.assembler import impedancja_zwarcia_z_opcji
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
@@ -150,6 +151,20 @@ _POWOD_BRAK_PUNKTOW = (
 
 class PakietBieguError(OdmowaDanychError):
     """Pakietu nie da się zbudować dla tego biegu/punktu (powód po polsku)."""
+
+
+#: Wskazany punkt zwarcia nie należy do biegu (identyfikator w `dane["punkt"]`).
+KOD_PUNKT_SPOZA_BIEGU = "dowod.punkt_zwarcia_spoza_biegu"
+#: Wskazany odcinek nie należy do biegu rozpływu (identyfikator w `dane["odcinek"]`).
+KOD_ODCINEK_SPOZA_BIEGU = "dowod.odcinek_spoza_biegu"
+
+
+class WyborSpozaBieguError(PakietBieguError, OdmowaNazwana):
+    """Wskazany punkt albo odcinek nie należy do biegu (partia integracji 10).
+
+    Zdanie dla projektanta nie niesie identyfikatora — identyfikator wyboru jest polem
+    `dane` odmowy nazwanej, które handler HTTP przenosi do ciała odpowiedzi.
+    """
 
 
 @dataclass(frozen=True)
@@ -394,9 +409,11 @@ def zbuduj_pakiet_biegu(
     else:
         znaleziony = next((p for p in punkty if p.target_id == punkt), None)
         if znaleziony is None:
-            raise PakietBieguError(
-                f"Punkt zwarcia {punkt} nie występuje w tym przebiegu — "
-                "wybierz punkt z listy wyników."
+            raise WyborSpozaBieguError(
+                "Wskazany punkt zwarcia nie występuje w tym przebiegu — "
+                "wybierz punkt z listy wyników.",
+                kod=KOD_PUNKT_SPOZA_BIEGU,
+                dane={"punkt": punkt},
             )
         wybrany = znaleziony
 
@@ -432,6 +449,15 @@ def _c_factor(run: CanonicalRun) -> float:
 
 def _tk_s(run: CanonicalRun) -> float:
     return float(run.options.get("thermal_time_seconds", 1.0))
+
+
+def _z_f_ohm(run: CanonicalRun) -> complex | None:
+    """Impedancja przejścia Z_f biegu (karta OD-14) — TEN SAM odczyt opcji co w assemblerze.
+
+    Pakiet dowodowy opisuje bieg, więc liczy się z tą samą Z_f, z którą liczył solver; dowód
+    metaliczny dla biegu z Z_f opisywałby inny prąd niż ten na ekranie wyników.
+    """
+    return impedancja_zwarcia_z_opcji(run.options)
 
 
 @dataclass(frozen=True)
@@ -493,9 +519,11 @@ def _wybierz_odcinek(run: CanonicalRun, punkt: str | None) -> OdcinekSpadku | No
         return odcinki[0] if odcinki else None
     znaleziony = next((o for o in odcinki if o.id_galezi == punkt), None)
     if znaleziony is None:
-        raise PakietBieguError(
-            f"Odcinek {punkt} nie występuje w tym przebiegu jako linia ani kabel o znanej "
-            "impedancji i długości — wybierz odcinek z listy."
+        raise WyborSpozaBieguError(
+            "Wskazany odcinek nie występuje w tym przebiegu jako linia ani kabel o znanej "
+            "impedancji i długości — wybierz odcinek z listy.",
+            kod=KOD_ODCINEK_SPOZA_BIEGU,
+            dane={"odcinek": punkt},
         )
     return znaleziony
 
@@ -606,6 +634,7 @@ def _zbuduj_sc3f(
         solver_version=_wersja_solvera(run),
         c_factor=_c_factor(run),
         tk_s=_tk_s(run),
+        z_f_ohm=_z_f_ohm(run),
     )
     try:
         return SC3FProofPack.generate_zip(pack_input, context)
@@ -629,6 +658,7 @@ def _zbuduj_sc_niesymetryczne(
             solver_version=_wersja_solvera(run),
             c_factor=_c_factor(run),
             tk_s=_tk_s(run),
+            z_f_ohm=_z_f_ohm(run),
         )
     except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc

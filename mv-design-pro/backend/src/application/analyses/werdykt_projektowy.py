@@ -106,6 +106,7 @@ from application.analyses.warunki_przylaczenia import (
     build_warunki_przylaczenia_view,
 )
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
@@ -1770,6 +1771,11 @@ def _najnowszy_bieg(biegi: Sequence[CanonicalRun], rodzaj: str) -> CanonicalRun 
     w toku) zamiast ogolnego „brak biegu".
     """
     kandydaci = [bieg for bieg in biegi if bieg.analysis_type == rodzaj]
+    if rodzaj == ZRODLO_SC:
+        # Karta OD-14: werdykt projektowy ocenia dobór i wytrzymałość prądem zwarcia
+        # METALICZNEGO — bieg przez impedancję przejścia Z_f (poza zakresem IEC 60909) nie jest
+        # kandydatem „najnowszego biegu zwarciowego" (ten sam predykat co proweniencja).
+        kandydaci = [bieg for bieg in kandydaci if bieg_w_zakresie_iec60909(bieg)]
     if not kandydaci:
         return None
     zakonczone = [bieg for bieg in kandydaci if bieg.status == "FINISHED"]

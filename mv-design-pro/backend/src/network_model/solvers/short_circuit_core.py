@@ -51,6 +51,12 @@ class ShortCircuitCoreResult:
     z1: complex
     z2: complex
     z0: complex | None
+    # Karta OD-14 (partia integracji 10, addytywnie): impedancja przejścia w miejscu zwarcia
+    # Z_f = R_f + jX_f [Ω] i impedancja zastępcza tej samej pętli przy Z_f = 0 (zwarcie
+    # metaliczne IEC 60909) — podstawa współczynnika tłumienia pętli i warunku sanity
+    # |I_k(Z_f)| ≤ |I_k(0)|. None = zwarcie metaliczne (wynik bit w bit jak przed kartą).
+    z_f: complex | None = None
+    z_equiv_metaliczne: complex | None = None
 
 
 @dataclass(frozen=True)
@@ -98,7 +104,21 @@ def compute_equivalent_impedance(
     short_circuit_type: ShortCircuitType,
     z0_bus: np.ndarray | None = None,
     z2_bus: np.ndarray | None = None,
+    z_f: complex | None = None,
 ) -> ShortCircuitCoreResult:
+    """Impedancja zastępcza pętli zwarcia w węźle `fault_node_id` [Ω].
+
+    Zwarcie metaliczne (IEC 60909, `z_f=None`): 3F Z_1; 2F Z_1 + Z_2; 1F Z_1 + Z_2 + Z_0;
+    2F+G Z_1 + Z_2·Z_0/(Z_2 + Z_0).
+
+    Zwarcie przez impedancję przejścia Z_f (karta OD-14, kontrakt
+    `docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md` §2) — impedancja Z_f
+    w każdej fazie zwarcia i w torze do ziemi, metoda składowych symetrycznych:
+    3F Z_1 + Z_f; 2F Z_1 + Z_2 + Z_f; 1F Z_1 + Z_2 + Z_0 + 3·Z_f;
+    2F+G Z_1 + Z_2·(Z_0 + 3·Z_f)/(Z_2 + Z_0 + 3·Z_f). Norma IEC 60909 definiuje prąd
+    zwarciowy dla zwarcia metalicznego — wynik z Z_f ≠ 0 jest poza jej zakresem i tak go
+    oznacza proweniencja biegu. `z_f=None` zostawia każdą wielkość bit w bit.
+    """
     if fault_node_id not in graph.nodes:
         raise odmowa_wezla_zwarcia_spoza_grafu(fault_node_id)
 
@@ -114,26 +134,57 @@ def compute_equivalent_impedance(
         return z0_bus[node_index, node_index] * z_base_ohm
 
     z0: complex | None = None
-    if short_circuit_type == ShortCircuitType.THREE_PHASE:
-        z_equiv = z1
-    elif short_circuit_type == ShortCircuitType.TWO_PHASE:
-        z_equiv = z1 + z2
-    elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
-        z0 = require_z0_bus("Z0 bus matrix is required for 1F fault computation")
-        z_equiv = z1 + z2 + z0
-    elif short_circuit_type == ShortCircuitType.TWO_PHASE_GROUND:
-        z0 = require_z0_bus("Z0 bus matrix is required for 2F+G fault computation")
-        denominator = z2 + z0
-        if abs(denominator) == 0:
-            raise ZeroDivisionError("Z2 + Z0 is zero; cannot compute Ik''")
-        z_equiv = z1 + (z2 * z0) / denominator
-    else:
-        raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
-
+    if short_circuit_type in {
+        ShortCircuitType.SINGLE_PHASE_GROUND,
+        ShortCircuitType.TWO_PHASE_GROUND,
+    }:
+        z0 = require_z0_bus(
+            f"Z0 bus matrix is required for {short_circuit_type.value} fault computation"
+        )
+    z_equiv = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0)
     if abs(z_equiv) == 0:
         raise ZeroDivisionError("Equivalent impedance is zero; cannot compute Ik''")
+    if z_f is None:
+        return ShortCircuitCoreResult(z_equiv=z_equiv, z1=z1, z2=z2, z0=z0)
+    z_equiv_f = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f)
+    return ShortCircuitCoreResult(
+        z_equiv=z_equiv_f, z1=z1, z2=z2, z0=z0, z_f=z_f, z_equiv_metaliczne=z_equiv
+    )
 
-    return ShortCircuitCoreResult(z_equiv=z_equiv, z1=z1, z2=z2, z0=z0)
+
+def impedancja_petli_zwarcia(
+    short_circuit_type: ShortCircuitType,
+    *,
+    z1: complex,
+    z2: complex,
+    z0: complex | None,
+    z_f: complex | None = None,
+) -> complex:
+    """Impedancja zastępcza pętli zwarcia z impedancji składowych w węźle zwarcia [Ω].
+
+    JEDNO źródło wzorów pętli dla zwarcia metalicznego (`z_f=None`) i przez impedancję
+    przejścia (karta OD-14); wzory w docstringu `compute_equivalent_impedance`. Bez Z_f
+    wyrażenia są identyczne z dawnymi gałęziami funkcji wołającej (ta sama kolejność
+    działań — wynik bit w bit).
+    """
+    if short_circuit_type == ShortCircuitType.THREE_PHASE:
+        return z1 if z_f is None else z1 + z_f
+    if short_circuit_type == ShortCircuitType.TWO_PHASE:
+        return z1 + z2 if z_f is None else z1 + z2 + z_f
+    if short_circuit_type in {
+        ShortCircuitType.SINGLE_PHASE_GROUND,
+        ShortCircuitType.TWO_PHASE_GROUND,
+    }:
+        if z0 is None:
+            raise ValueError(f"Z0 is required for {short_circuit_type.value} fault computation")
+        z0_toru = z0 if z_f is None else z0 + 3.0 * z_f
+        if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
+            return z1 + z2 + z0_toru
+        denominator = z2 + z0_toru
+        if abs(denominator) == 0:
+            raise ZeroDivisionError("Z2 + Z0 is zero; cannot compute Ik''")
+        return z1 + (z2 * z0_toru) / denominator
+    raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
 
 
 def compute_ikss(

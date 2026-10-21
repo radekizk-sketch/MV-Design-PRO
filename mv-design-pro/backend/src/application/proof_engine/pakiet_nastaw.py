@@ -30,6 +30,7 @@ from typing import Any
 
 from application.analyses.protection.catalog.mapper import wymaganie_z_nastaw
 from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
+from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.proof_engine.packs.protection_settings import (
     ProtectionSettingsProofInput,
     ProtectionSettingsProofPack,
@@ -54,6 +55,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     zaciski_galezi,
 )
 from enm.canonical_analysis import CanonicalRun
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 
 _POWOD_KOTWICA_NIEZAKONCZONA = (
@@ -112,6 +114,11 @@ def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
         return _niedostepny(run, _POWOD_KOTWICA_ZLY_RODZAJ)
     if (run.raw_result or {}).get("short_circuit_type") != "3F":
         return _niedostepny(run, _POWOD_KOTWICA_ZLY_RODZAJ)
+    # Karta OD-14, predykaty parami z `zbuduj_wejscie_nastaw`: kotwica ze zwarcia przez
+    # impedancję przejścia Z_f nie jest gałęzią maksymalną nastaw (SI-117) — ten sam predykat
+    # (`blokady_zakresu_biegu`) po stronie dostępności i budowy.
+    for blokada in blokady_zakresu_biegu(run, ZdolnoscMiarodajna.PROTECTION):
+        return _niedostepny(run, blokada.komunikat_pl)
     # Predykaty parami (karta W3-C1): `zbuduj_wejscie_nastaw` odmawia kotwicy
     # spoza gałęzi maksymalnej (`c_factor < C_MAX_MIN_DOPUSZCZALNY`) PO stronie
     # budowy — bez tego samego warunku TU, dostępność mówiłaby „tak", a budowa

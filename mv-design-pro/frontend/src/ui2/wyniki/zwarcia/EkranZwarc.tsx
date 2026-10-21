@@ -82,7 +82,13 @@ export function EkranZwarc({
   // R3-B (K3-G3): realny dostawca wkładów — rozbicie maszynowe z backendu
   // (endpoint SC3F contributions). Props `wklady` (test/nadpisanie) ma
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
-  const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+  // Karta OD-14: wkłady biegu przez impedancję przejścia liczą tę samą pętlę (Z_f z
+  // konfiguracji ZAPISANEJ na biegu), inaczej sekcja wkładów pokazałaby prądy metaliczne
+  // obok tabeli biegu przez Z_f.
+  const wkladyPobrane = useWkladyZwarciowe(
+    wklady ? null : aktywnyPunkt,
+    wynik?.konfiguracja_biegu?.impedancja_przejscia,
+  );
 
   // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
   // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane

@@ -360,6 +360,41 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
+  // Karta OD-14: wkłady źródeł biegu przez impedancję przejścia liczone z TĄ SAMĄ Z_f
+  // co bieg (`konfiguracja_biegu.impedancja_przejscia`), nie metalicznie. Iloczyn:
+  // {bieg metaliczny, bieg przez Z_f} × treść zapytania o wkłady.
+  it.each([
+    ['metaliczny', undefined, undefined],
+    [
+      'przez Z_f',
+      { r_f_ohm: 2, x_f_ohm: 0.5, poza_zakresem_iec60909: true as const },
+      { r_f_ohm: 2, x_f_ohm: 0.5 },
+    ],
+  ])('bieg %s -> zapytanie o wklady niesie fault_impedance tylko dla Z_f', async (_n, z, oczekiwana) => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture(z ? { impedancja_przejscia: z } : {}),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contributions: [{ source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-wklady');
+    const wywolanie = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    expect(wywolanie, 'brak zapytania o wklady zwarciowe').toBeDefined();
+    const cialo = JSON.parse((wywolanie![1] as RequestInit).body as string);
+    expect(cialo.fault_impedance).toEqual(oczekiwana);
+    vi.unstubAllGlobals();
+  });
+
   it('wywod z backendu -> slad obliczen na zadanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
     vi.stubGlobal(
       'fetch',

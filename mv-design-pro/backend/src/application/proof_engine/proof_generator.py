@@ -53,6 +53,7 @@ from application.proof_engine.equation_registry import (
     EQ_SC1_010,
     EQ_SC1_011,
     EQ_SC1_012,
+    EQ_SC1_016,
     EQ_SC3F_003,
     EQ_SC3F_004,
     EQ_SC3F_005,
@@ -64,6 +65,10 @@ from application.proof_engine.equation_registry import (
     EQ_SC3F_013,
     EQ_SC3F_014,
     EQ_SC3F_015,
+    EQ_SC3F_016,
+    EQ_SC3F_017,
+    EQ_SC3F_018,
+    EQ_SC3F_019,
     EQ_VDROP_001,
     EQ_VDROP_002,
     EQ_VDROP_003,
@@ -168,6 +173,21 @@ class SC3FInput:
     ib_ka: float | None = None
     tb_s: float | None = None
 
+    # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10). Para
+    # rozstrzygana JEDNYM predykatem (`z_f_ohm is not None`): przy Z_f `z_thevenin_ohm` to
+    # impedancja Thevenina SIECI (wynik `zkk_metaliczne_ohm`), a `z_petli_ohm` to impedancja
+    # PĘTLI Z_th + Z_f (wynik `zkk_ohm`), z której solver policzył I_k'', κ i I_b. None ⇒
+    # zwarcie metaliczne IEC 60909 — dowód bit w bit jak przed kartą.
+    z_f_ohm: complex | None = None
+    z_petli_ohm: complex | None = None
+
+    def __post_init__(self) -> None:
+        if (self.z_f_ohm is None) != (self.z_petli_ohm is None):
+            raise ValueError(
+                "SC3FInput: impedancja przejścia Z_f i impedancja pętli Z_k występują "
+                "wyłącznie razem (dowód zwarcia przez impedancję przejścia)."
+            )
+
     @classmethod
     def from_short_circuit_result(
         cls,
@@ -203,7 +223,9 @@ class SC3FInput:
             solver_version=solver_version,
             c_factor=result.c_factor,
             u_n_kv=v_na_kv(result.un_v),
-            z_thevenin_ohm=result.zkk_ohm,
+            z_thevenin_ohm=(
+                result.zkk_metaliczne_ohm if result.z_f_ohm is not None else result.zkk_ohm
+            ),
             ikss_ka=a_na_ka(result.ikss_a),
             ip_ka=a_na_ka(result.ip_a),
             ith_ka=a_na_ka(result.ith_a),
@@ -215,6 +237,8 @@ class SC3FInput:
             n_factor=n_factor,
             ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            z_f_ohm=result.z_f_ohm,
+            z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
 
 
@@ -365,6 +389,38 @@ class SC1Input:
     # zgodności konstruktora), ale WYMAGANE przez generate_sc1_proof —
     # proof engine nie liczy fizyki, wyłącznie formatuje kroki dowodu.
     quantities: SC1AsymmetricalQuantities | None = None
+
+    # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10): Z_1/Z_2/Z_0
+    # to impedancje SIECI (bez Z_f), a Z_k z `quantities` to impedancja pętli z Z_f.
+    # generate_sc1_proof żąda, by `quantities.z_f_ohm` była TĄ SAMĄ wartością (jedna prawda).
+    z_f_ohm: complex | None = None
+
+
+#: Tytuł dowodu SC3F biegu przez impedancję przejścia Z_f (karta OD-14) — wynik poza zakresem
+#: IEC 60909, więc tytuł nie może nazywać dowodu „obliczeniami IEC 60909".
+TYTUL_DOWODU_SC3F_IMPEDANCJA = (
+    "Dowód obliczeń zwarciowych — zwarcie trójfazowe przez impedancję przejścia "
+    "(poza zakresem IEC 60909)"
+)
+#: Tytuł dowodu zwarć niesymetrycznych biegu przez impedancję przejścia Z_f (karta OD-14).
+TYTUL_DOWODU_SC1_IMPEDANCJA = (
+    "Dowód obliczeń zwarciowych — zwarcie niesymetryczne przez impedancję przejścia "
+    "(poza zakresem IEC 60909)"
+)
+
+
+def ostrzezenie_poza_zakresem_iec60909(z_f_ohm: complex) -> str:
+    """Ostrzeżenie podsumowania dowodu biegu z Z_f (karta OD-14, kontrakt §3).
+
+    Mówi, co policzono (zwarcie przez Z_f o podanej wartości), względem czego wynik NIE jest
+    oceniony (zakres IEC 60909) i do czego nie wolno go użyć (SI-117).
+    """
+    return (
+        f"Zwarcie przez impedancję przejścia Z_f = {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
+        "— wynik poza zakresem IEC 60909-0 (norma definiuje prąd zwarcia metalicznego). "
+        "Nie jest podstawą doboru aparatury, wytrzymałości zwarciowej, nastaw zabezpieczeń "
+        "nadprądowych, koordynacji, dowodu regulacyjnego ani analizy łuku elektrycznego."
+    )
 
 
 class ProofGenerator:
@@ -599,6 +655,14 @@ class ProofGenerator:
         8. Energia cieplna I²t = I_th²·t_k (krok formatujący wielkości obecne)
         9. Moc zwarciowa S_k''
 
+        Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10; jeden
+        predykat `data.z_f_ohm is not None`): po kroku Z_th dochodzi krok pętli
+        Z_k = Z_th + Z_f (EQ_SC3F_016), a I_k'', κ i I_b pokazują wzory pętli (EQ_SC3F_017,
+        EQ_SC3F_018, EQ_SC3F_019) — dokładnie te, którymi solver policzył wynik biegu.
+        Kolejność = `SC3F_PROOF_STEP_ORDER_IMPEDANCJA`; c występuje wyłącznie w EQ_SC3F_017
+        (Anti-Double-Counting wariantu). Podsumowanie niesie ostrzeżenie „poza zakresem
+        IEC 60909" i Z_f w wynikach kluczowych.
+
         Args:
             data: Dane wejściowe SC3FInput
             artifact_id: Opcjonalny ID artefaktu
@@ -615,10 +679,16 @@ class ProofGenerator:
         steps: list[ProofStep] = []
         step_number = 0
 
-        # Wartości pośrednie do reużycia
-        z_abs = abs(data.z_thevenin_ohm)
+        # Wartości pośrednie do reużycia. Impedancja, z której solver policzył I_k'', κ
+        # i I_b: Thevenin sieci (zwarcie metaliczne) albo pętla Z_th + Z_f (karta OD-14).
+        z_f_ohm = data.z_f_ohm
+        z_petli = data.z_petli_ohm if data.z_petli_ohm is not None else data.z_thevenin_ohm
+        impedancja_przejscia = z_f_ohm is not None
+        z_abs = abs(z_petli)
         r_th = data.z_thevenin_ohm.real
         x_th = data.z_thevenin_ohm.imag
+        r_k = z_petli.real
+        x_k = z_petli.imag
 
         # =====================================================================
         # Krok 1: Impedancja Thevenina (prezentacja wartości z solvera)
@@ -633,6 +703,20 @@ class ProofGenerator:
         steps.append(step_1)
 
         # =====================================================================
+        # Krok 1a (tylko Z_f): impedancja pętli Z_k = Z_th + Z_f (EQ_SC3F_016)
+        # =====================================================================
+        if z_f_ohm is not None:
+            step_number += 1
+            steps.append(
+                cls._create_sc3f_step_z_petli(
+                    step_number=step_number,
+                    z_thevenin_ohm=data.z_thevenin_ohm,
+                    z_f_ohm=z_f_ohm,
+                    z_petli_ohm=z_petli,
+                )
+            )
+
+        # =====================================================================
         # Krok 2: Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce)
         # =====================================================================
         step_number += 1
@@ -642,6 +726,7 @@ class ProofGenerator:
             u_n_kv=data.u_n_kv,
             z_th_abs=z_abs,
             ikss_ka=data.ikss_ka,
+            impedancja_przejscia=impedancja_przejscia,
         )
         steps.append(step_2)
 
@@ -651,9 +736,10 @@ class ProofGenerator:
         step_number += 1
         step_3 = cls._create_sc3f_step_kappa(
             step_number=step_number,
-            r_th=r_th,
-            x_th=x_th,
+            r_th=r_k,
+            x_th=x_k,
             kappa=data.kappa,
+            impedancja_przejscia=impedancja_przejscia,
         )
         steps.append(step_3)
 
@@ -694,9 +780,10 @@ class ProofGenerator:
                     ikss_ka=data.ikss_ka,
                     kappa=data.kappa,
                     tb_s=data.tb_s,
-                    r_th=r_th,
-                    x_th=x_th,
+                    r_th=r_k,
+                    x_th=x_k,
                     ib_ka=data.ib_ka,
+                    impedancja_przejscia=impedancja_przejscia,
                 )
             )
 
@@ -779,12 +866,17 @@ class ProofGenerator:
             key_results["ib_machines_ka"] = ProofValue.create(
                 "i_{b,maszyny}", ib_machines_ka, "kA", "ib_machines_ka"
             )
+        warnings: tuple[str, ...] = ()
+        if z_f_ohm is not None:
+            key_results["z_f_ohm"] = ProofValue.create("Z_f", z_f_ohm, "Ω", "z_f_ohm")
+            key_results["z_petli_ohm"] = ProofValue.create("Z_k", z_petli, "Ω", "z_petli_ohm")
+            warnings = (ostrzezenie_poza_zakresem_iec60909(z_f_ohm),)
 
         summary = ProofSummary(
             key_results=key_results,
             unit_check_passed=unit_checks_passed,
             total_steps=len(steps),
-            warnings=(),
+            warnings=warnings,
         )
 
         header = ProofHeader(
@@ -800,7 +892,11 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.SC3F_IEC60909,
-            title_pl="Dowód obliczeń zwarciowych IEC 60909 — zwarcie trójfazowe",
+            title_pl=(
+                TYTUL_DOWODU_SC3F_IMPEDANCJA
+                if impedancja_przejscia
+                else "Dowód obliczeń zwarciowych IEC 60909 — zwarcie trójfazowe"
+            ),
             header=header,
             steps=steps,
             summary=summary,
@@ -835,7 +931,10 @@ class ProofGenerator:
 
         fault_type = cls._normalize_sc1_fault_type(data.fault_type)
         proof_type = cls._map_sc1_proof_type(fault_type)
-        step_order = EquationRegistry.get_sc1_step_order(fault_type)
+        impedancja_przejscia = data.z_f_ohm is not None
+        step_order = EquationRegistry.get_sc1_step_order(
+            fault_type, impedancja_przejscia=impedancja_przejscia
+        )
 
         if data.quantities is None:
             raise ValueError(
@@ -848,6 +947,11 @@ class ProofGenerator:
             raise ValueError(
                 f"SC1Input.quantities policzone dla typu {quantities.fault_type}, "
                 f"a dowód dotyczy typu {fault_type}"
+            )
+        if quantities.z_f_ohm != data.z_f_ohm:
+            raise ValueError(
+                "SC1Input.quantities policzone dla innej impedancji przejścia Z_f niż ta, "
+                "której dotyczy dowód (karta OD-14: jedna prawda Z_f wyniku i dowodu)."
             )
 
         z_equiv = quantities.z_equiv_ohm
@@ -891,7 +995,17 @@ class ProofGenerator:
                     z0=data.z0_ohm,
                     z_equiv=z_equiv,
                 )
-            elif eq_id == "EQ_SC1_006":
+            elif eq_id in {"EQ_SC1_013", "EQ_SC1_014", "EQ_SC1_015"} and data.z_f_ohm is not None:
+                step = cls._create_sc1_step_equiv_impedance_petli(
+                    step_number=step_number,
+                    equation_id=eq_id,
+                    z1=data.z1_ohm,
+                    z2=data.z2_ohm,
+                    z0=data.z0_ohm,
+                    z_f=data.z_f_ohm,
+                    z_equiv=z_equiv,
+                )
+            elif eq_id in {"EQ_SC1_006", "EQ_SC1_016"}:
                 step = cls._create_sc1_step_sequence_currents(
                     step_number=step_number,
                     fault_type=fault_type,
@@ -902,6 +1016,7 @@ class ProofGenerator:
                     i1=i1,
                     i2=i2,
                     i0=i0,
+                    z_f=data.z_f_ohm,
                 )
             elif eq_id == "EQ_SC1_007":
                 step = cls._create_sc1_step_phase_currents(
@@ -980,18 +1095,26 @@ class ProofGenerator:
             "idyn_ka": ProofValue.create("I_{dyn}", idyn_ka, "kA", "idyn_ka"),
             "kappa": ProofValue.create("\\kappa", kappa, "—", "kappa"),
         }
+        warnings: tuple[str, ...] = ()
+        if data.z_f_ohm is not None:
+            key_results["z_f_ohm"] = ProofValue.create("Z_f", data.z_f_ohm, "Ω", "z_f_ohm")
+            warnings = (ostrzezenie_poza_zakresem_iec60909(data.z_f_ohm),)
 
         summary = ProofSummary(
             key_results=key_results,
             unit_check_passed=unit_checks_passed,
             total_steps=len(steps),
-            warnings=(),
+            warnings=warnings,
         )
 
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=proof_type,
-            title_pl="Dowód obliczeń zwarciowych IEC 60909 — zwarcie asymetryczne",
+            title_pl=(
+                TYTUL_DOWODU_SC1_IMPEDANCJA
+                if impedancja_przejscia
+                else "Dowód obliczeń zwarciowych IEC 60909 — zwarcie asymetryczne"
+            ),
             header=header,
             steps=steps,
             summary=summary,
@@ -1441,14 +1564,18 @@ class ProofGenerator:
         i1: complex,
         i2: complex,
         i0: complex,
+        z_f: complex | None = None,
     ) -> ProofStep:
-        equation = EQ_SC1_006
-        input_values = (
+        """Prądy składowe; `z_f` (karta OD-14) ⇒ EQ_SC1_016 z torem zerowym Z_0 + 3·Z_f."""
+        equation = EQ_SC1_006 if z_f is None else EQ_SC1_016
+        input_values: tuple[ProofValue, ...] = (
             ProofValue.create("U_f", u_prefault_kv, "kV", "u_prefault_kv"),
             ProofValue.create("Z_k", z_equiv, "Ω", "z_equiv_ohm"),
             ProofValue.create("Z_2", z2, "Ω", "z2_ohm"),
             ProofValue.create("Z_0", z0, "Ω", "z0_ohm"),
         )
+        if z_f is not None:
+            input_values = (*input_values, ProofValue.create("Z_f", z_f, "Ω", "z_f_ohm"))
 
         if fault_type == "SC1FZ":
             substitution = (
@@ -1463,7 +1590,7 @@ class ProofGenerator:
                 f"I_2 = -I_1 = {cls._format_complex_latex(i2, 'kA')}, \\quad "
                 r"I_0 = 0"
             )
-        else:
+        elif z_f is None:
             denominator = z2 + z0
             substitution = (
                 f"I_1 = {u_prefault_kv:.4f} / {cls._format_complex_latex(z_equiv, 'Ω')} = "
@@ -1473,6 +1600,21 @@ class ProofGenerator:
                 f"I_0 = -\\frac{{Z_2}}{{Z_2 + Z_0}} I_1 = "
                 f"{cls._format_complex_latex(i0, 'kA')}, \\quad "
                 f"Z_2 + Z_0 = {cls._format_complex_latex(denominator, 'Ω')}"
+            )
+        else:
+            # Tor zerowy z impedancją przejścia: Z_0 + 3·Z_f — wartość prezentacyjna
+            # podstawienia (te same liczby, z których solver policzył I_2 i I_0).
+            tor_zerowy = z0 + 3 * z_f
+            denominator = z2 + tor_zerowy
+            substitution = (
+                f"I_1 = {u_prefault_kv:.4f} / {cls._format_complex_latex(z_equiv, 'Ω')} = "
+                f"{cls._format_complex_latex(i1, 'kA')}, \\quad "
+                f"I_2 = -\\frac{{Z_0 + 3 Z_f}}{{Z_2 + Z_0 + 3 Z_f}} I_1 = "
+                f"{cls._format_complex_latex(i2, 'kA')}, \\quad "
+                f"I_0 = -\\frac{{Z_2}}{{Z_2 + Z_0 + 3 Z_f}} I_1 = "
+                f"{cls._format_complex_latex(i0, 'kA')}, \\quad "
+                f"Z_0 + 3 Z_f = {cls._format_complex_latex(tor_zerowy, 'Ω')}, \\quad "
+                f"Z_2 + Z_0 + 3 Z_f = {cls._format_complex_latex(denominator, 'Ω')}"
             )
 
         result = ProofValue.create("I_1", i1, "kA", "i1_ka")
@@ -1499,7 +1641,66 @@ class ProofGenerator:
                 "I_1": "i1_ka",
                 "I_2": "i2_ka",
                 "I_0": "i0_ka",
+                **({"Z_f": "z_f_ohm"} if z_f is not None else {}),
             },
+        )
+
+    @classmethod
+    def _create_sc1_step_equiv_impedance_petli(
+        cls,
+        *,
+        step_number: int,
+        equation_id: str,
+        z1: complex,
+        z2: complex,
+        z0: complex,
+        z_f: complex,
+        z_equiv: complex,
+    ) -> ProofStep:
+        """Impedancja pętli zwarcia niesymetrycznego przez Z_f (EQ_SC1_013/014/015, OD-14).
+
+        Z_k pochodzi z `quantities` (solver); krok pokazuje podstawienie we wzór pętli.
+        """
+        equation = EquationRegistry.get_equation(equation_id)
+        if equation is None:
+            raise ValueError(f"Brak definicji równania {equation_id}")
+        f = cls._format_complex_latex
+        if equation_id == "EQ_SC1_013":
+            substitution = (
+                f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z0, 'Ω')} + 3 \\cdot ({f(z_f, 'Ω')}) "
+                f"= {f(z_equiv, 'Ω')}"
+            )
+            input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
+        elif equation_id == "EQ_SC1_014":
+            substitution = f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z_f, 'Ω')} = {f(z_equiv, 'Ω')}"
+            input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_f", "Ω")]
+        elif equation_id == "EQ_SC1_015":
+            tor_zerowy = z0 + 3 * z_f
+            substitution = (
+                f"Z_0 + 3 Z_f = {f(tor_zerowy, 'Ω')}, \\quad "
+                f"Z_k = {f(z1, 'Ω')} + ({f(z2, 'Ω')} \\cdot {f(tor_zerowy, 'Ω')}) / "
+                f"{f(z2 + tor_zerowy, 'Ω')} = {f(z_equiv, 'Ω')}"
+            )
+            input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
+        else:
+            raise ValueError(f"Równanie {equation_id} nie jest pętlą z impedancją przejścia")
+        wartosci = {"Z_1": z1, "Z_2": z2, "Z_0": z0, "Z_f": z_f}
+        klucze = {"Z_1": "z1_ohm", "Z_2": "z2_ohm", "Z_0": "z0_ohm", "Z_f": "z_f_ohm"}
+        input_values = tuple(
+            ProofValue.create(symbol, wartosci[symbol], "Ω", klucze[symbol])
+            for symbol, _ in input_symbols
+        )
+        source_keys = {"Z_k": "z_equiv_ohm"} | {s: klucze[s] for s, _ in input_symbols}
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC1", step_number),
+            step_number=step_number,
+            title_pl=equation.name_pl,
+            equation=equation,
+            input_values=input_values,
+            substitution_latex=substitution,
+            result=ProofValue.create("Z_k", z_equiv, "Ω", "z_equiv_ohm"),
+            unit_check=UnitVerifier.verify_step(equation_id, input_symbols, "Ω"),
+            source_keys=source_keys,
         )
 
     @classmethod
@@ -1606,16 +1807,28 @@ class ProofGenerator:
         u_n_kv: float,
         z_th_abs: float,
         ikss_ka: float,
+        *,
+        impedancja_przejscia: bool = False,
     ) -> ProofStep:
-        """Krok 2: Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce)."""
-        equation = EQ_SC3F_004
+        """Krok 2: Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce).
+
+        `impedancja_przejscia` (karta OD-14): moduł impedancji to |Z_k| pętli Z_th + Z_f,
+        równanie EQ_SC3F_017 (jedyne miejsce c w wariancie z Z_f).
+        """
+        equation = EQ_SC3F_017 if impedancja_przejscia else EQ_SC3F_004
+        symbol_z = "Z_k" if impedancja_przejscia else "Z_th"
+        klucz_z = "z_petli_ohm" if impedancja_przejscia else "z_thevenin_ohm"
 
         sqrt3 = SQRT3
 
         input_values = (
             ProofValue.create("c", c_factor, "—", "c_factor"),
             ProofValue.create("U_n", u_n_kv, "kV", "u_n_kv"),
-            ProofValue.create("|Z_{th}|", z_th_abs, "Ω", "z_thevenin_abs_ohm"),
+            (
+                ProofValue.create("|Z_k|", z_th_abs, "Ω", "z_petli_abs_ohm")
+                if impedancja_przejscia
+                else ProofValue.create("|Z_{th}|", z_th_abs, "Ω", "z_thevenin_abs_ohm")
+            ),
         )
 
         substitution = (
@@ -1629,7 +1842,7 @@ class ProofGenerator:
 
         unit_check = UnitVerifier.verify_equation(
             equation.equation_id,
-            {"c": "—", "U_n": "kV", "Z_th": "Ω"},
+            {"c": "—", "U_n": "kV", symbol_z: "Ω"},
             "kA",
         )
 
@@ -1645,8 +1858,55 @@ class ProofGenerator:
             source_keys={
                 "c": "c_factor",
                 "U_n": "u_n_kv",
-                "Z_th": "z_thevenin_ohm",
+                symbol_z: klucz_z,
                 "I_k''": "ikss_ka",
+            },
+        )
+
+    @classmethod
+    def _create_sc3f_step_z_petli(
+        cls,
+        *,
+        step_number: int,
+        z_thevenin_ohm: complex,
+        z_f_ohm: complex,
+        z_petli_ohm: complex,
+    ) -> ProofStep:
+        """Krok pętli zwarcia Z_k = Z_th + Z_f (karta OD-14, EQ_SC3F_016).
+
+        Z_k pochodzi z wyniku solvera (`zkk_ohm` biegu z Z_f) — krok OPISUJE sumę, której
+        solver użył, nie liczy jej ponownie (NOT-A-SOLVER).
+        """
+        equation = EQ_SC3F_016
+        input_values = (
+            ProofValue.create("Z_{th}", z_thevenin_ohm, "Ω", "z_thevenin_ohm"),
+            ProofValue.create("Z_f", z_f_ohm, "Ω", "z_f_ohm"),
+        )
+        substitution = (
+            f"Z_k = {cls._format_complex_latex(z_thevenin_ohm, 'Ω')} + "
+            f"{cls._format_complex_latex(z_f_ohm, 'Ω')} = "
+            f"{cls._format_complex_latex(z_petli_ohm, 'Ω')}, "
+            f"\\quad |Z_k| = {abs(z_petli_ohm):.4f}\\,\\Omega"
+        )
+        result = ProofValue.create("Z_k", z_petli_ohm, "Ω", "z_petli_ohm")
+        unit_check = UnitVerifier.verify_equation(
+            equation.equation_id,
+            {"Z_th": "Ω", "Z_f": "Ω"},
+            "Ω",
+        )
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=equation.name_pl,
+            equation=equation,
+            input_values=input_values,
+            substitution_latex=substitution,
+            result=result,
+            unit_check=unit_check,
+            source_keys={
+                "Z_th": "z_thevenin_ohm",
+                "Z_f": "z_f_ohm",
+                "Z_k": "z_petli_ohm",
             },
         )
 
@@ -1787,16 +2047,28 @@ class ProofGenerator:
         r_th: float,
         x_th: float,
         kappa: float,
+        *,
+        impedancja_przejscia: bool = False,
     ) -> ProofStep:
-        """Krok 3: Współczynnik udaru κ."""
-        equation = EQ_SC3F_005
+        """Krok 3: Współczynnik udaru κ.
+
+        `impedancja_przejscia` (karta OD-14): R_k/X_k pętli Z_th + Z_f (EQ_SC3F_018) —
+        stosunek, z którego solver policzył κ biegu z Z_f.
+        """
+        equation = EQ_SC3F_018 if impedancja_przejscia else EQ_SC3F_005
+        symbol_r, symbol_x = ("R_k", "X_k") if impedancja_przejscia else ("R_th", "X_th")
+        klucz_r, klucz_x = (
+            ("r_petli_ohm", "x_petli_ohm")
+            if impedancja_przejscia
+            else ("r_thevenin_ohm", "x_thevenin_ohm")
+        )
 
         rx_ratio = r_th / x_th if x_th != 0 else 0
         exp_term = czlon_wykladniczy_kappa(rx_ratio)
 
         input_values = (
-            ProofValue.create("R_{th}", r_th, "Ω", "r_thevenin_ohm"),
-            ProofValue.create("X_{th}", x_th, "Ω", "x_thevenin_ohm"),
+            ProofValue.create("R_k" if impedancja_przejscia else "R_{th}", r_th, "Ω", klucz_r),
+            ProofValue.create("X_k" if impedancja_przejscia else "X_{th}", x_th, "Ω", klucz_x),
         )
 
         substitution = (
@@ -1808,7 +2080,7 @@ class ProofGenerator:
 
         unit_check = UnitVerifier.verify_equation(
             equation.equation_id,
-            {"R_th": "Ω", "X_th": "Ω"},
+            {symbol_r: "Ω", symbol_x: "Ω"},
             "—",
         )
 
@@ -1822,8 +2094,8 @@ class ProofGenerator:
             result=result,
             unit_check=unit_check,
             source_keys={
-                "R_th": "r_thevenin_ohm",
-                "X_th": "x_thevenin_ohm",
+                symbol_r: klucz_r,
+                symbol_x: klucz_x,
                 "κ": "kappa",
             },
         )
@@ -1916,8 +2188,13 @@ class ProofGenerator:
         r_th: float,
         x_th: float,
         ib_ka: float,
+        *,
+        impedancja_przejscia: bool = False,
     ) -> ProofStep:
         """Krok 6: Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22).
+
+        `impedancja_przejscia` (karta OD-14): stała t_a z R_k/X_k pętli Z_th + Z_f
+        (EQ_SC3F_019) — ta sama, której solver użył dla biegu z Z_f.
 
         Wartość I_b pochodzi z FROZEN wyniku solvera (ib_a) — proof engine NIE
         liczy fizyki. Wielkości pośrednie podstawienia (t_a, e^{-t_b/t_a})
@@ -1925,7 +2202,8 @@ class ProofGenerator:
         wynik), identycznie jak człon e^{-3R/X} w kroku κ; lustro formuły
         WHITE BOX solvera (klucz trace: Ib).
         """
-        equation = EQ_SC3F_014
+        equation = EQ_SC3F_019 if impedancja_przejscia else EQ_SC3F_014
+        indeks = "k" if impedancja_przejscia else "{th}"
 
         # Prezentacyjne odtworzenie podstawienia solvera (short_circuit_core):
         # t_a = X_th/(ω·R_th); R/X niedodatnie ⇒ t_a = 0 ⇒ e^{-t_b/t_a} = 0.
@@ -1940,7 +2218,7 @@ class ProofGenerator:
 
         if ta_s > 0:
             substitution = (
-                f"t_a = \\frac{{X_{{th}}}}{{\\omega \\cdot R_{{th}}}} = "
+                f"t_a = \\frac{{X_{indeks}}}{{\\omega \\cdot R_{indeks}}} = "
                 f"\\frac{{{x_th:.4f}}}{{{OMEGA_50HZ:.4f} \\cdot {r_th:.4f}}} = "
                 f"{ta_s:.6f}\\,\\text{{s}} \\\\ "
                 f"I_b = {ikss_ka:.4f} \\cdot \\sqrt{{1 + \\left(({kappa:.4f} - 1) \\cdot "
@@ -1950,7 +2228,7 @@ class ProofGenerator:
             )
         else:
             substitution = (
-                f"t_a = 0 \\quad (R_{{th}} \\leq 0 \\ \\text{{lub}} \\ X_{{th}} \\leq 0) "
+                f"t_a = 0 \\quad (R_{indeks} \\leq 0 \\ \\text{{lub}} \\ X_{indeks} \\leq 0) "
                 f"\\Rightarrow e^{{-t_b/t_a}} = 0 \\Rightarrow "
                 f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}}"
             )

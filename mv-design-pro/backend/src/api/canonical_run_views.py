@@ -47,6 +47,10 @@ from enm.canonical_analysis import (
     galezie_modelu_biegu,
 )
 from enm.canonical_analysis import get_run as get_canonical_run
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    KLUCZ_IMPEDANCJI_ZWARCIA,
+    wynik_poza_zakresem_iec60909,
+)
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import a_na_ka
@@ -596,11 +600,35 @@ def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     addytywna projekcja `run.options` (ZAPISANE opcje, nie AKTYWNY przypadek
     obliczeniowy). `metoda` jest stałą normatywną rodziny solvera (IEC 60909
     solver_input/eligibility) — nie zgadywanie, jedyna metoda SC w tym repo."""
-    return {
+    konfiguracja: dict[str, Any] = {
         "c_factor": _c_factor_biegu_zwarcia(run),
         "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
         "metoda": "IEC 60909",
         "scenariusz": _scenariusz_biegu_zwarcia(run),
+    }
+    impedancja = _impedancja_przejscia_biegu_zwarcia(run)
+    if impedancja is not None:
+        konfiguracja["impedancja_przejscia"] = impedancja
+    return konfiguracja
+
+
+def _impedancja_przejscia_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any] | None:
+    """Z_f ZAPISANA na wyniku biegu (karta OD-14) — z artefaktu, nie z opcji ani domysłu.
+
+    TO SAMO ŹRÓDŁO, z którego warstwa autorytetu odtwarza proweniencję zapisanego biegu
+    (`raw_result[KLUCZ_IMPEDANCJI_ZWARCIA]`, predykat `wynik_poza_zakresem_iec60909`). Klucz
+    pojawia się WYŁĄCZNIE dla biegu przez impedancję przejścia — odpowiedź biegu metalicznego
+    bajt w bajt jak przed kartą. Ekran wyników pokazuje Z_f i zakres ważności obok założeń,
+    a wkłady źródeł pobiera z tą samą Z_f (`fault_impedance` żądania wkładów).
+    """
+    artefakt = run.raw_result or {}
+    if not wynik_poza_zakresem_iec60909(artefakt):
+        return None
+    zapis = artefakt[KLUCZ_IMPEDANCJI_ZWARCIA]
+    return {
+        "r_f_ohm": float(zapis["r_f_ohm"]),
+        "x_f_ohm": float(zapis["x_f_ohm"]),
+        "poza_zakresem_iec60909": True,
     }
 
 

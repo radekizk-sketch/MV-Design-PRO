@@ -198,6 +198,27 @@ class UnitVerifier:
             "inputs": {"I_th": "kA", "t_k": "s"},
             "output": "kA²s",
         },
+        # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10)
+        "EQ_SC3F_016": {
+            "rule": "Ω + Ω = Ω",
+            "inputs": {"Z_th": "Ω", "Z_f": "Ω"},
+            "output": "Ω",
+        },
+        "EQ_SC3F_017": {
+            "rule": "kV / Ω = kA",
+            "inputs": {"c": "—", "U_n": "kV", "Z_k": "Ω"},
+            "output": "kA",
+        },
+        "EQ_SC3F_018": {
+            "rule": "— (bezwymiarowy)",
+            "inputs": {"R_k": "Ω", "X_k": "Ω"},
+            "output": "—",
+        },
+        "EQ_SC3F_019": {
+            "rule": "kA · — = kA",
+            "inputs": {"I_k''": "kA", "κ": "—", "t_b": "s"},
+            "output": "kA",
+        },
         # SC1 Post-Fault (§4.1)
         "EQ_SC1_001": {
             "rule": "Ω = Ω",
@@ -237,6 +258,26 @@ class UnitVerifier:
         "EQ_SC1_008": {
             "rule": "kV / Ω = kA",
             "inputs": {"c": "—", "U_n": "kV", "Z_k": "Ω"},
+            "output": "kA",
+        },
+        "EQ_SC1_013": {
+            "rule": "Ω + Ω + Ω + Ω = Ω",
+            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω", "Z_f": "Ω"},
+            "output": "Ω",
+        },
+        "EQ_SC1_014": {
+            "rule": "Ω + Ω + Ω = Ω",
+            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_f": "Ω"},
+            "output": "Ω",
+        },
+        "EQ_SC1_015": {
+            "rule": "Ω + (Ω·Ω)/(Ω+Ω) = Ω",
+            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω", "Z_f": "Ω"},
+            "output": "Ω",
+        },
+        "EQ_SC1_016": {
+            "rule": "kV / Ω = kA",
+            "inputs": {"U_f": "kV", "Z_k": "Ω"},
             "output": "kA",
         },
         "EQ_SC1_009": {

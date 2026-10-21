@@ -65,6 +65,10 @@ export const ZWARCIA_STRINGS = {
   zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
+  // Karta OD-14: zwarcie przez impedancję przejścia Z_f zapisane na biegu.
+  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia Z_f',
+  zalImpedancjaPrzejsciaUwaga:
+    'Zwarcie przez impedancję przejścia — wynik poza zakresem normy IEC 60909, która definiuje prąd zwarcia metalicznego. Nie jest podstawą doboru aparatury, wytrzymałości, nastaw nadprądowych ani dowodu w punkcie przyłączenia.',
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',

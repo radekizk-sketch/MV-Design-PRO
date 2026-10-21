@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { WkladyZwarciowe } from '../WkladyZwarciowe';
+import { kluczWkladow, useWkladyZwarciowe } from '../api';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { ZWARCIA_STRINGS } from '../strings';
 import { wkladyFixture, wkladyZeSzczegolemFixture } from './fixtures';
 
@@ -127,5 +129,52 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
     expect(screen.queryByTestId('mvd-zwarcia-wklady-filtr')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-zwarcia-wklady-wykres')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tabela')).not.toBeInTheDocument();
+  });
+});
+
+// Karta OD-14: pamięć podręczna wkładów rozróżnia bieg metaliczny i bieg przez Z_f —
+// ten sam punkt z inną Z_f to INNE wkłady (inaczej ekran pokazałby wkłady metaliczne
+// przy biegu przez impedancję). Iloczyn: {brak Z_f, Z_f A, Z_f B} dla jednego punktu.
+describe('kluczWkladow — klucz pamięci wkładów zależy od Z_f biegu', () => {
+  it('ten sam punkt: metaliczny ≠ Z_f A ≠ Z_f B; ta sama Z_f → ten sam klucz', () => {
+    const metaliczny = kluczWkladow('BUS-GPZ');
+    const zA = kluczWkladow('BUS-GPZ', { r_f_ohm: 2, x_f_ohm: 0, poza_zakresem_iec60909: true });
+    const zB = kluczWkladow('BUS-GPZ', { r_f_ohm: 0, x_f_ohm: 2, poza_zakresem_iec60909: true });
+    expect(metaliczny).toBe('BUS-GPZ');
+    expect(new Set([metaliczny, zA, zB]).size).toBe(3);
+    expect(
+      kluczWkladow('BUS-GPZ', { r_f_ohm: 2, x_f_ohm: 0, poza_zakresem_iec60909: true }),
+    ).toBe(zA);
+  });
+});
+
+// Karta OD-14: odświeżenie wyniku biegu daje NOWY obiekt Z_f o tych samych wartościach —
+// hook nie może przez to ponawiać (i anulować) tego samego żądania. Iloczyn: {ta sama Z_f
+// nowym obiektem, inna Z_f} × liczba żądań o wkłady.
+describe('useWkladyZwarciowe — Z_f biegu w zależnościach liczbami, nie obiektem', () => {
+  it('ta sama Z_f nowym obiektem → jedno żądanie; inna Z_f → drugie', async () => {
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec' }, buses: [] },
+    } as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const zf = (r: number) => ({ r_f_ohm: r, x_f_ohm: 0, poza_zakresem_iec60909: true as const });
+    const { rerender } = renderHook(({ z }) => useWkladyZwarciowe('BUS-GPZ', z), {
+      initialProps: { z: zf(2) },
+    });
+    rerender({ z: zf(2) });
+    rerender({ z: zf(2) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    rerender({ z: zf(3) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const ciala = fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(ciala.map((c) => c.fault_impedance)).toEqual([
+      { r_f_ohm: 2, x_f_ohm: 0 },
+      { r_f_ohm: 3, x_f_ohm: 0 },
+    ]);
+    vi.unstubAllGlobals();
   });
 });

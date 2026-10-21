@@ -69,7 +69,8 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
-from domain.fault_scenario import FaultScenario
+from domain.fault_scenario import FaultMode, FaultScenario
+from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -875,8 +876,6 @@ def _tresc_zwarcia(fault_spec: FaultScenario | None) -> dict[str, Any] | None:
         "fault_impedance": (
             fault_spec.fault_impedance.to_dict() if fault_spec.fault_impedance else None
         ),
-        "arc_params": fault_spec.arc_params,
-        "z0_bus_data": fault_spec.z0_bus_data,
     }
 
 
@@ -1333,6 +1332,21 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         **(
             {"branch_contributions_mode": "in_run"}
             if spec.config.include_branch_contributions
+            else {}
+        ),
+        # Karta OD-14 (partia integracji 10): impedancja przejścia Z_f scenariusza w trybie
+        # IMPEDANCE staje się realnym wejściem biegu (do tej karty tryb był blokowany kodem
+        # kwalifikowalności). Klucz WYŁĄCZNIE w trybie IMPEDANCE: payload i `input_hash`
+        # scenariuszy metalicznych pozostają bajtowo te same. Tryb decyduje o kluczu (jedno
+        # źródło): tryb IMPEDANCE bez impedancji daje pusty słownik, który assembler odmawia
+        # kodem `sc.impedancja_zwarcia_nieskonczona` — nigdy cichego zwarcia metalicznego.
+        **(
+            {
+                KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA: (
+                    spec.fault_impedance.to_dict() if spec.fault_impedance is not None else {}
+                )
+            }
+            if spec.fault_mode == FaultMode.IMPEDANCE
             else {}
         ),
     }

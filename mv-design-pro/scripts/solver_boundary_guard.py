@@ -96,6 +96,15 @@ SANCTIONED_CHANGES = {
         "Decyzja B-01 partii integracji 9 (O-59): odmowa wezla zwarcia spoza grafu skladana "
         "jedna funkcja z `short_circuit_core` (jeden kod, zero zmian liczb). "
         "Wpis do usuniecia po scaleniu do main."
+        " Decyzja B-01 partii integracji 10 (OD-14, delegacja O-59): impedancja przejscia Z_f"
+        " = R_f + jX_f ADDYTYWNIE (parametr opcjonalny; brak Z_f albo Z_f = 0 -> wynik bit w "
+        "bit jak przed karta, goldeny bez zmian), petle w jednym toku _oblicz_zwarcie dla "
+        "czterech rodzajow, krok WHITE BOX Z_f, pola addytywne wyniku "
+        "z_f_ohm/zkk_metaliczne_ohm/ikss_metaliczny_a/poza_zakresem_iec60909 (exclude_none), "
+        "wklady falownikow i galeziowe z ta sama Z_f - kontrakt "
+        "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
+        "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "
@@ -104,6 +113,13 @@ SANCTIONED_CHANGES = {
         "tresc PL bez identyfikatora) zamiast golego ValueError z identyfikatorem w tresci; "
         "kod i funkcja odmowy - jedno zrodlo dla walidacji wejscia solvera IEC 60909. Zero "
         "zmian liczb. Wpis do usuniecia po scaleniu do main."
+        " Decyzja B-01 partii integracji 10 (OD-14, delegacja O-59): impedancja przejscia Z_f"
+        " = R_f + jX_f ADDYTYWNIE (parametr opcjonalny; brak Z_f albo Z_f = 0 -> wynik bit w "
+        "bit jak przed karta, goldeny bez zmian), petle 3F Z1+Zf, 2F Z1+Z2+Zf, 1F "
+        "Z1+Z2+Z0+3Zf, 2F+G Z1+Z2(Z0+3Zf)/(Z2+Z0+3Zf) w impedancji zastepczej - kontrakt "
+        "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
+        "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -147,6 +163,13 @@ SANCTIONED_CHANGES = {
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
         "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
         "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
+        "usuniecia po scaleniu do main."
+        " Decyzja B-01 partii integracji 10 (OD-14, delegacja O-59): impedancja przejscia Z_f"
+        " = R_f + jX_f ADDYTYWNIE (parametr opcjonalny; brak Z_f albo Z_f = 0 -> wynik bit w "
+        "bit jak przed karta, goldeny bez zmian), petle w wielkosciach SC1 (pradach "
+        "skladowych) z ta sama Z_f co rdzen - kontrakt "
+        "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
+        "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
         "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/fault_loop_iec60364.py": (

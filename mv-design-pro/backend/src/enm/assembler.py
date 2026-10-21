@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Any
+from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
@@ -62,6 +62,12 @@ from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_z
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.impedancja_przejscia import (
+    KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA,
+    OPISY_ODMOW_IMPEDANCJI,
+    impedancja_przejscia_obliczeniowa,
+    kod_odmowy_impedancji,
+)
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
 from network_model.core.voltage_factor import Scenario
@@ -568,6 +574,34 @@ class WejscieZwarcia:
     #: `application.autorytet_biegu_zwarciowego` przy odtwarzaniu proweniencji
     #: zapisanego biegu, bez ponownego przechodzenia po modelu.
     k_sc_znaczniki: tuple[str, ...]
+    #: Karta OD-14 (partia integracji 10): impedancja przejścia w miejscu zwarcia
+    #: Z_f = R_f + jX_f [Ω] z opcji biegu (`fault_impedance` — scenariusz w trybie IMPEDANCE,
+    #: `enm.scenariusze.opcje_biegu_ze_scenariusza`). ``None`` = zwarcie metaliczne IEC 60909.
+    impedancja_zwarcia: complex | None = None
+
+
+def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
+    """Z_f [Ω] z opcji biegu albo ``None`` (klucz nieobecny — zwarcie metaliczne).
+
+    Reguła danych z `network_model.core.impedancja_przejscia` (jedno źródło ze scenariuszem
+    i z rdzeniem IEC 60909): opcje podane wprost w żądaniu biegu, z pominięciem scenariusza,
+    przechodzą tę samą odmowę nazwaną co scenariusz (API 422 z kodem).
+    """
+    surowe = options.get(KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA)
+    if surowe is None:
+        return None
+    r_f = surowe.get("r_f_ohm") if isinstance(surowe, dict) else None
+    x_f = surowe.get("x_f_ohm") if isinstance(surowe, dict) else None
+    kod = kod_odmowy_impedancji(r_f, x_f)
+    if kod is not None:
+        raise OdmowaNazwana(
+            OPISY_ODMOW_IMPEDANCJI[kod],
+            kod=kod,
+            dane={"r_f_ohm": r_f, "x_f_ohm": x_f},
+        )
+    # `kod_odmowy_impedancji` zwraca `None` wyłącznie dla pary skończonych liczb; Z_f = 0
+    # to zwarcie metaliczne (ta sama funkcja co w rdzeniu — artefakt biegu bez flagi).
+    return impedancja_przejscia_obliczeniowa(float(cast(float, r_f)), float(cast(float, x_f)))
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -1011,6 +1045,7 @@ def zloz_wejscie_zwarcia(
     c_factor_override = c_factor_explicit is not None
 
     tk_s = float(options.get("thermal_time_seconds", 1.0))
+    impedancja_zwarcia = impedancja_zwarcia_z_opcji(options)
 
     # PERF-SC-50: tryb wkładów gałęziowych. Domyślnie NA ŻĄDANIE (klucz nieobecny —
     # istniejące payloady i ich `input_hash` bez zmian); `in_run` jawnie z opcji albo z
@@ -1183,6 +1218,7 @@ def zloz_wejscie_zwarcia(
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,
         k_sc_znaczniki=k_sc_znaczniki,
+        impedancja_zwarcia=impedancja_zwarcia,
     )
 
 

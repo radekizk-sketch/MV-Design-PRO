@@ -73,6 +73,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
     ProtectionSettingsEngine,
@@ -98,6 +99,7 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
@@ -375,6 +377,11 @@ def zbuduj_wejscie_nastaw(
             "Bieg zbiorczy nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(kotwica.analysis_type)}."
         )
+    # Karta OD-14: kotwica ze zwarcia przez impedancję przejścia Z_f zaniżyłaby I_k max
+    # gałęzi maksymalnej (selektywność) — odmowa SI-117, ten sam predykat co dostępność
+    # pakietu nastaw (`pakiet_nastaw.dostepnosc_pakietu_nastaw`).
+    for blokada in blokady_zakresu_biegu(kotwica, ZdolnoscMiarodajna.PROTECTION):
+        raise BrakDanychNastawError(blokada.komunikat_pl, kod=blokada.kod)
     kotwica_wynik = kotwica.raw_result or {}
     if kotwica_wynik.get("short_circuit_type") != "3F":
         raise BrakDanychNastawError(
