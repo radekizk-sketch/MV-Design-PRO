@@ -130,7 +130,6 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
 | `nn.voltage_missing` | STATIONS | 1 | BLOCKER | Napięcie szyny nN nie jest określone | panel: `inspector`, tab: `parametry`, focus: `voltage_nn_kv` |
-| `fault.c_tolerancja_nn_brak` | STATIONS | 2 | BLOCKER | Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — współczynnika napięciowego c (IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.brak_pojemnosci_doziemnej` | STATIONS | 2 | BLOCKER | Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — prąd pierwszego zwarcia doziemnego nie jest liczony | panel: `inspector`, tab: `parametry`, focus: `b0_siemens_per_km` |
 | `nn.brak_r_a` | STATIONS | 2 | BLOCKER | Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — pętla doziemna i napięcie dotykowe nie są liczone | panel: `inspector`, tab: `parametry`, focus: `earth_electrode_r_ohm` |
 | `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu stacji | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
@@ -143,6 +142,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
+| `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
 | `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
 | `station.element_bypasses_field` | STATIONS | 3 | WARNING | Element jest przyłączony do szyny głównej stacji z pominięciem pola rozdzielnicy — aparat pola nie leży w jego torze prądowym | panel: `sld`, modal: `przepnij_element_na_pole` |
@@ -223,9 +223,9 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 103 |
+| BLOCKER | 102 |
 | WARNING | 55 |
-| INFO | 2 |
+| INFO | 3 |
 | **Razem** | **160** |
 
 | Obszar | Liczba kodów |

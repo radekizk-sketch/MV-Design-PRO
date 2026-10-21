@@ -80,12 +80,16 @@ class Node:
     # whole bus power is the base). Not serialized, like zip_coeffs.
     zip_load_active_power: float | None = field(default=None)
     zip_load_reactive_power: float | None = field(default=None)
-    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN, do której należy węzeł
-    # ("PLUS_6"/"PLUS_10", wiersz nN tabeli 1 IEC 60909-0). Ustawia ją WYŁĄCZNIE
-    # map_enm_to_network_graph z `enm.tolerancja_nn` (nośnik: transformator zasilający);
-    # None = węzeł spoza pasma nN albo sieć nN bez deklaracji (c węzła nN = odmowa).
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: klasa tolerancji napięcia sieci nN, do której należy
+    # węzeł ("PLUS_6"/"PLUS_10", wiersz nN tabeli 1 IEC 60909-0). Ustawia ją WYŁĄCZNIE
+    # map_enm_to_network_graph z `enm.tolerancja_nn` (deklaracja na elemencie zasilającym albo
+    # wartość robocza rejestru); None = węzeł spoza pasma nN.
     # Not serialized, like zip_coeffs (the canonical path rebuilds the graph from the ENM).
     tolerancja_nn: TolerancjaNapieciaNn | None = field(default=None)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa wyżej jest wartością roboczą rejestru (brak
+    # albo sprzeczność deklaracji) — podstawa c węzła mówi to wprost. Ten sam mapper, ta sama
+    # wyspa (`enm.tolerancja_nn.wyspy_wezlow_nn`). Not serialized.
+    tolerancja_nn_robocza: bool = field(default=False)
 
     def __post_init__(self) -> None:
         """

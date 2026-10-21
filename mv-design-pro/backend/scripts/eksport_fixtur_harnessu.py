@@ -1248,6 +1248,13 @@ RUN_ID_SCENY_ZWARCIA = "run-sc-scena-zwarcia"
 #: biegu, jak reszta stabilizacji w tym pliku.
 _UUID_KOTWICY_SCENY_ZWARCIA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZWARCIA)
 
+#: Identyfikator biegu sceny `zwarcia-tolerancja-robocza` (karta
+#: TOLERANCJA-NN-WARTOSC-ROBOCZA) — ta sama zasada przypięcia co kotwica wyżej.
+RUN_ID_SCENY_ZWARCIA_ROBOCZA = "run-sc-scena-zwarcia-robocza"
+_UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA = uuid5(
+    NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZWARCIA_ROBOCZA
+)
+
 
 #: Znacznik czasu STABILNY nagłówka ENM (`ENMHeader.created_at`/`updated_at`,
 #: `default_factory=lambda: datetime.now(UTC)` w `enm/models.py`) — patrz
@@ -1299,7 +1306,7 @@ def _fiksuj_niedeterminizm_sceny_zwarcia(enm: EnergyNetworkModel) -> None:
     enm.header.updated_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
 
 
-def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
+def _bieg_sceny_zwarcia(*, robocza: bool = False) -> tuple[Any, EnergyNetworkModel, str]:
     """Bieg zwarciowy KOTWICY scen `zwarcia`/`zwarcia-rozplyw` — realny
     `short_circuit_sn` (tor kanoniczny `create_run`/`execute_run`, jak
     `_werdykt_projektowy_scena` obok) na sieci złotej `build_golden_enm`
@@ -1322,13 +1329,24 @@ def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
     dokładnie w żądanie, które scena wyśle.
 
     `reset_*` PRZED i PO — nie zostawia stanu innym fixturom (ten skrypt
-    liczy wiele scen w jednym procesie)."""
+    liczy wiele scen w jednym procesie).
+
+    `robocza=True` (karta TOLERANCJA-NN-WARTOSC-ROBOCZA, scena
+    `zwarcia-tolerancja-robocza`): TA SAMA sieć złota z transformatorem SN/nN BEZ
+    deklaracji tolerancji napięcia sieci nN — bieg liczy na wartości roboczej rejestru
+    (+10 %, c 1,10/0,90) i zapisuje założenie `fault.c_tolerancja_nn_robocza`; własny
+    przypięty `id` biegu (`_UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA`)."""
     reset_canonical_runs()
     reset_enm_store()
     try:
         enm = build_golden_enm()
+        if robocza:
+            for transformator in enm.transformers:
+                if transformator.ulv_kv < 1.0:
+                    transformator.lv_voltage_tolerance = None
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        with _zamrozona_tozsamosc_biegu(_UUID_KOTWICY_SCENY_ZWARCIA):
+        uuid_biegu = _UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA if robocza else _UUID_KOTWICY_SCENY_ZWARCIA
+        with _zamrozona_tozsamosc_biegu(uuid_biegu):
             set_enm(CASE_ID_HARNESSU, enm)
             # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
             # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
@@ -1366,9 +1384,17 @@ def zwarcia_wyniki_scena_zwarcia() -> dict[str, Any]:
     (`build_short_circuit_results_response` — TA SAMA funkcja, którą woła
     końcówka `api/analysis_runs.py::get_short_circuit_results`), kształt 1:1
     z tym, co czyta `useResultsInspectorStore.shortCircuitResults`."""
-    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    return _wyniki_sceny_zwarcia(robocza=False)
+
+
+def _wyniki_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     widok = build_short_circuit_results_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
+
+
+def _run_id_sceny_zwarcia(robocza: bool) -> str:
+    return RUN_ID_SCENY_ZWARCIA_ROBOCZA if robocza else RUN_ID_SCENY_ZWARCIA
 
 
 def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
@@ -1390,7 +1416,11 @@ def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     (`zwarcia_rozplyw_scena_zwarcia` + pole `ik_inverters_ka` wiersza), nie ta
     końcówka. Zmierzone bezpośrednio (`compute_machine_contributions` na
     KAŻDYM z 5 punktów sieci złotej) — nie założone."""
-    run, enm, _target_id = _bieg_sceny_zwarcia()
+    return _wklady_sceny_zwarcia(robocza=False)
+
+
+def _wklady_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     snapshot = enm.model_dump(mode="json")
     rows = build_short_circuit_results(run)["rows"]
     return {
@@ -1412,9 +1442,13 @@ def zwarcia_rozplyw_scena_zwarcia() -> dict[str, Any]:
     get_short_circuit_rozplyw`; sekcja `RozplywZwarciowy`) — niesie tor sieci
     nadrzędnej (`THEVENIN_GRID`, przez gałąź `TR 110/15`) ORAZ tor falownika
     (`gen_pv`, przez gałąź `TR 15/0.4`), jak dotychczasowa scena Z-3."""
-    run, _enm, target_id = _bieg_sceny_zwarcia()
+    return _rozplyw_sceny_zwarcia(robocza=False)
+
+
+def _rozplyw_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, target_id = _bieg_sceny_zwarcia(robocza=robocza)
     widok = build_short_circuit_rozplyw_response(run, target_id)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
 
 
 def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
@@ -1425,9 +1459,50 @@ def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
     (wariant w pamięci `bieg_wariantu` z TEJ SAMEJ migawki kotwicy — dzieli
     `id` z kotwicą, więc jedna stabilizacja tekstowa zamienia OBA
     `run_id`/`bieg_bazowy_id`/`run_id_kotwicy` naraz)."""
-    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    return _pasmo_sceny_zwarcia(robocza=False)
+
+
+def _pasmo_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     widok = build_short_circuit_band_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
+
+
+# Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351) — scena
+# `zwarcia-tolerancja-robocza`: komplet czterech odpowiedzi ekranu zwarć (wyniki, wkłady,
+# rozpływ punktu domyślnego, pasmo MIN/MAX) z REALNEGO biegu na sieci złotej BEZ deklaracji
+# tolerancji sieci nN — wszystkie sekcje ekranu liczone na tej samej wartości roboczej
+# (żadna nie miesza liczb biegu z deklaracją +6 %).
+
+
+def zwarcia_wyniki_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Wyniki biegu na wartości roboczej — z założeniem `fault.c_tolerancja_nn_robocza`."""
+    return _wyniki_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_wklady_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Wkłady źródeł (ta sama końcówka co scena `zwarcia`) dla biegu na wartości roboczej."""
+    return _wklady_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_rozplyw_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Rozpływ punktu domyślnego biegu na wartości roboczej."""
+    return _rozplyw_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_pasmo_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Pasmo MIN/MAX biegu na wartości roboczej (strona MIN — wariant w pamięci)."""
+    return _pasmo_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_migawka_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Migawka ZATWIERDZONA biegu sceny `zwarcia-tolerancja-robocza` (`run.snapshot` złożony
+    jak końcówka `/snapshot`) — zasiew `useSnapshotStore` sceny: most nazw wyników nazywa
+    elementy nazwami modelu (karta #145, nie identyfikatorami), a formularz akcji „Zmień
+    wartość" widzi transformator SN/nN BEZ deklaracji tolerancji — TEN model, na którym
+    policzono bieg, nie sieć złotą z deklaracją +6 %."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=True)
+    return canonicalize_json(_catalog_completed_snapshot(run.snapshot))
 
 
 # ---------------------------------------------------------------------------
@@ -4872,6 +4947,11 @@ FIXTURY: dict[str, Any] = {
     "zwarcia_wklady_scena_zwarcia": zwarcia_wklady_scena_zwarcia,
     "zwarcia_rozplyw_scena_zwarcia": zwarcia_rozplyw_scena_zwarcia,
     "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
+    "zwarcia_wyniki_scena_tolerancja_robocza": zwarcia_wyniki_scena_tolerancja_robocza,
+    "zwarcia_wklady_scena_tolerancja_robocza": zwarcia_wklady_scena_tolerancja_robocza,
+    "zwarcia_rozplyw_scena_tolerancja_robocza": zwarcia_rozplyw_scena_tolerancja_robocza,
+    "zwarcia_pasmo_scena_tolerancja_robocza": zwarcia_pasmo_scena_tolerancja_robocza,
+    "zwarcia_migawka_scena_tolerancja_robocza": zwarcia_migawka_scena_tolerancja_robocza,
     "falowniki_rozplyw_scena_gpz_feeder_wynik": falowniki_rozplyw_scena_gpz_feeder_wynik,
     "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
     "dynamika_scena_opis": dynamika_scena_opis,

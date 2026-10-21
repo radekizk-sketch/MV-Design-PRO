@@ -298,11 +298,11 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'obliczenia',
     'Zwarcie w punkcie na gałęzi ustawia się w scenariuszu zwarciowym przypadku obliczeń.',
   ),
-  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (partia integracji 11): tolerancję napięcia sieci nN
-  // deklaruje transformator albo źródło zasilające sieć nN (pole `lv_voltage_tolerance`,
-  // emiter ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING otwiera formularz parametrów tego elementu);
-  // nadpisanie c jest parametrem przypadku albo scenariusza zwarciowego, nie elementu modelu.
-  'fault.c_tolerancja_nn_brak': EDYCJA,
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: sieć nN liczona z wartością roboczą tolerancji
+  // napięcia — deklarację składa transformator albo źródło zasilające sieć nN (pole
+  // `lv_voltage_tolerance`, formularz parametrów tego elementu); nadpisanie c jest parametrem
+  // przypadku albo scenariusza zwarciowego, nie elementu modelu.
+  'fault.c_tolerancja_nn_robocza': EDYCJA,
   'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza zwarciowego, nie elementu modelu.

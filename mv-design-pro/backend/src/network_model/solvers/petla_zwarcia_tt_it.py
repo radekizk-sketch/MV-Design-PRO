@@ -289,6 +289,7 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
         c_max=c.c_max,
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
+        tolerancja_nn_robocza=c.tolerancja_nn_robocza,
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.TT,
@@ -423,6 +424,7 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         c_max=c.c_max,
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
+        tolerancja_nn_robocza=c.tolerancja_nn_robocza,
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.IT,

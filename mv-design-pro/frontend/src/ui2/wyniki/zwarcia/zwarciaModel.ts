@@ -81,6 +81,7 @@ import type {
   ZrodloSiecioweSlad,
 } from '../../../ui/results-inspector/types';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
+import { typSelekcjiZalozenia, type CelZmianyZalozenia } from './zmianaTolerancjiNn';
 import type {
   DefinicjaKolumny,
   KrokWywodu,
@@ -326,6 +327,7 @@ export function naZalozeniaZwarc(
   konfiguracja: KonfiguracjaBieguZwarcia | undefined,
   zalozeniaBiegu: readonly ZalozenieBieguSlad[] | undefined,
   nazwa: (ref: string) => string,
+  zmienWartosc?: (cel: CelZmianyZalozenia) => void,
 ): WierszZalozenia[] {
   const bazowe: WierszZalozenia[] = [
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
@@ -334,16 +336,58 @@ export function naZalozeniaZwarc(
     ...wierszCzasuWylaczenia(konfiguracja?.breaking_time_seconds),
     ...wierszImpedancjiPrzejscia(konfiguracja?.impedancja_przejscia),
   ];
-  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
-    // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_brak`).
-    etykieta:
-      z.element_ref === null
-        ? ZWARCIA_STRINGS.zalozenieBiegu
-        : ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) =>
+    z.code === KOD_TOLERANCJA_NN_ROBOCZA && z.element_ref !== null
+      ? wierszTolerancjiNnRoboczej(z, z.element_ref, nazwa, zmienWartosc)
+      : {
+          // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_brak`).
+          etykieta:
+            z.element_ref === null
+              ? ZWARCIA_STRINGS.zalozenieBiegu
+              : ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+          wartosc: z.message_pl,
+          uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
+        },
+  );
+  return [...bazowe, ...zZaZrodel];
+}
+
+/**
+ * Kod założenia biegu: sieć nN liczona na wartości roboczej tolerancji napięcia
+ * (`enm/tolerancja_nn.py::KOD_TOLERANCJA_NN_ROBOCZA`, rejestr gotowości).
+ */
+export const KOD_TOLERANCJA_NN_ROBOCZA = 'fault.c_tolerancja_nn_robocza';
+
+/**
+ * Wiersz założenia „tolerancja sieci nN — wartość robocza” (zasada nr 4, V12K-351): treść
+ * z backendu, dyskretny znacznik „wartość robocza” i akcja „Zmień wartość”, gdy backend
+ * wskazał element i pole deklaracji (`element_type` + `parametr`) i ekran podał obsługę.
+ * Wyspa nN bez elementu zasilającego nie ma pola deklaracji — wtedy bez akcji (treść
+ * backendu mówi, czego brakuje).
+ */
+function wierszTolerancjiNnRoboczej(
+  z: ZalozenieBieguSlad,
+  elementRef: string,
+  nazwa: (ref: string) => string,
+  zmienWartosc: ((cel: CelZmianyZalozenia) => void) | undefined,
+): WierszZalozenia {
+  const nazwaElementu = nazwa(elementRef);
+  const { parametr, element_type: elementType } = z;
+  const akcja =
+    zmienWartosc && parametr && elementType && typSelekcjiZalozenia(elementType) !== null
+      ? {
+          etykieta: ZWARCIA_STRINGS.zmienWartosc,
+          testid: `mvd-zwarcia-zalozenie-zmien-${elementRef}-${z.scenariusz}`,
+          onWybierz: () => zmienWartosc({ elementRef, elementType, parametr, nazwa: nazwaElementu }),
+        }
+      : undefined;
+  return {
+    etykieta: ZWARCIA_STRINGS.zalozenieTolerancjiNn(nazwaElementu),
     wartosc: z.message_pl,
     uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
-  }));
-  return [...bazowe, ...zZaZrodel];
+    znacznik: ZWARCIA_STRINGS.znacznikWartosciRoboczej,
+    ...(akcja ? { akcja } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------

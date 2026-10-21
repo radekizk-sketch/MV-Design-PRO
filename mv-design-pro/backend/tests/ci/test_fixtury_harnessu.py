@@ -726,6 +726,50 @@ def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
         assert ikss_min < wiersze_max[target_id], (target_id, ikss_min, wiersze_max[target_id])
 
 
+def test_scena_tolerancji_roboczej_liczy_na_wartosci_roboczej_wszystkimi_sekcjami() -> None:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena `zwarcia-tolerancja-robocza` — sieć złota bez
+    deklaracji tolerancji sieci nN. Wyniki niosą założenie `fault.c_tolerancja_nn_robocza`
+    wskazujące transformator SN/nN i pole deklaracji; WYŁĄCZNIE wiersz szyny nN ma znacznik
+    i podstawę c „(wartość robocza)"; prąd szyny nN jest większy niż w scenie z deklaracją
+    +6 % (c_max 1,10 > 1,05), szyny SN/WN bez zmiany podstawy; wkłady i rozpływ pochodzą
+    z TEGO SAMEGO biegu (zbiór punktów, punkt domyślny, identyfikator biegu)."""
+    robocza = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+    deklarowana = eksport.zwarcia_wyniki_scena_zwarcia()
+    assert robocza["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    _run_idy_nie_sa_uuid(robocza)
+    (zalozenie,) = (z for z in robocza["zalozenia"] if z["code"] == "fault.c_tolerancja_nn_robocza")
+    assert zalozenie["element_ref"] == "tr_sn_nn"
+    assert zalozenie["element_type"] == "Transformer"
+    assert zalozenie["parametr"] == "lv_voltage_tolerance"
+    assert "fault.c_tolerancja_nn_robocza" not in {z["code"] for z in deklarowana["zalozenia"]}
+    ik_deklarowane = {w["target_id"]: w["ikss_ka"] for w in deklarowana["rows"]}
+    for wiersz in robocza["rows"]:
+        nn = "pasmo nN" in wiersz["c_zrodlo"]
+        assert bool(wiersz.get("tolerancja_nn_robocza")) is nn, wiersz["c_zrodlo"]
+        assert ("(wartość robocza)" in wiersz["c_zrodlo"]) is nn
+        if nn:
+            assert wiersz["ikss_ka"] > ik_deklarowane[wiersz["target_id"]]
+    wklady = eksport.zwarcia_wklady_scena_tolerancja_robocza()
+    assert set(wklady) == {w["target_id"] for w in robocza["rows"]}
+    rozplyw = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+    assert rozplyw["target_id"] == robocza["rows"][0]["target_id"]
+    pasmo = eksport.zwarcia_pasmo_scena_tolerancja_robocza()
+    assert pasmo["run_id_kotwicy"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    # Migawka sceny = model biegu: transformator SN/nN BEZ deklaracji tolerancji (formularz
+    # „Zmień wartość" nie może pokazać +6 % sieci złotej), nazwy elementów dla mostu nazw.
+    migawka = eksport.zwarcia_migawka_scena_tolerancja_robocza()
+    nn = [t for t in migawka["transformers"] if t["ulv_kv"] < 1.0]
+    assert nn and all(t["lv_voltage_tolerance"] is None for t in nn), nn
+    assert all(t["name"] for t in nn)
+    elementy = {z["element_ref"] for z in robocza["zalozenia"] if z.get("element_ref")}
+    refy_migawki = {
+        e["ref_id"]
+        for klucz in ("transformers", "generators", "buses", "branches", "sources")
+        for e in migawka.get(klucz, [])
+    }
+    assert elementy <= refy_migawki, elementy - refy_migawki
+
+
 # ---------------------------------------------------------------------------
 # Karta HARNESS-RESZTA (2026-09-16) — scena „wyniki-stan-fazowy" (E-31), realny
 # bieg backendu (phase_state_sn na sieci złotej); karta AB-P1 — scena

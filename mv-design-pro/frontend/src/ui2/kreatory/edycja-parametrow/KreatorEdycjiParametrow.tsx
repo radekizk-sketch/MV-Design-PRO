@@ -166,8 +166,7 @@ export function KreatorEdycjiParametrow() {
   // Pole wskazane przez kontekst (akcja naprawcza gotowości, C-12): klucz pierwszego
   // wiersza i kursor w polu jego wartości — projektant wpisuje od razu brakującą daną.
   // Klucz startowy: jawne `field` kontekstu albo `required` z `payload_hint` akcji naprawczej
-  // bramki (np. ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING → `lv_voltage_tolerance`,
-  // transformer.lv_earthing_system_missing → `lv_earthing_system`). `required` bywa też
+  // bramki (np. transformer.lv_earthing_system_missing → `lv_earthing_system`). `required` bywa też
   // opisem wymogu, nie kluczem parametru (`continuous_path_to_source`) — przyjmujemy go
   // wyłącznie, gdy jest kluczem ze słownika kontraktu (jedno źródło: SLOWNIKI_STATYCZNE
   // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.

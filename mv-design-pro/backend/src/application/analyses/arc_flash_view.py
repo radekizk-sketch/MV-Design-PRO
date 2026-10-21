@@ -32,6 +32,7 @@ from analysis.arc_flash import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
@@ -108,11 +109,16 @@ def build_arc_flash_view(
     # Nazwa szyny z tabeli wyników zwarć (nazwa z modelu albo opis rodzaju) — wiersz
     # widoku i raportu nazywa szynę nią, nie identyfikatorem węzła (karta #144).
     nazwy_szyn: dict[str, str] = {}
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkty w sieci nN liczonej z wartością roboczą
+    # tolerancji (znacznik wiersza biegu) — I_bf stoi na danej przyjętej.
+    robocze: set[str] = set()
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
         if not target_id:
             continue
         nazwy_szyn[str(target_id)] = str(row.get("target_name"))
+        if row.get("tolerancja_nn_robocza"):
+            robocze.add(str(target_id))
         inputs.append(
             ArcFlashInput(
                 bus_ref=str(target_id),
@@ -129,4 +135,8 @@ def build_arc_flash_view(
     view = ArcFlashBuilder().build(inputs, context=_context(run)).to_dict()
     for wynik in view.get("results") or []:
         wynik["bus_name"] = nazwy_szyn[str(wynik["bus_ref"])]
+        if str(wynik["bus_ref"]) in robocze:
+            dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {wynik['bus_name']}")
+            wynik["status_danych"] = "UNVALIDATED_INPUT"
+            wynik["dane_przyjete"] = [dana.model_dump(mode="json")]
     return view

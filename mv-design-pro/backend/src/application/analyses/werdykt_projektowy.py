@@ -1245,6 +1245,16 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     niesprawdzone = [w for (wynik, _), w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW]
     wiodacy = _wiodaca_galaz(naruszenia or niesprawdzone)
     definicja = _definicja(KRYTERIUM_PRZEWOD_CIEPLNY)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: prądy biegu w sieci nN liczonej z wartością roboczą
+    # tolerancji (``dane_przyjete`` widoku dostawcy) — „spełnia" nazywa daną przyjętą.
+    dane_przyjete = [d for d in (widok.get("dane_przyjete") or []) if isinstance(d, Mapping)]
+    uwaga = (
+        "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): "
+        + "; ".join(str(d.get("nazwa_pl")) for d in dane_przyjete)
+        + " — ocena na danej przyjętej, nie potwierdzony dowód zgodności"
+        if dane_przyjete
+        else None
+    )
     elementy = tuple(
         _ocena_elementu(
             definicja,
@@ -1255,6 +1265,7 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
             margines=wiersz.get("margines_procent"),
             margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
+            uwaga_pl=uwaga,
             uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
         )

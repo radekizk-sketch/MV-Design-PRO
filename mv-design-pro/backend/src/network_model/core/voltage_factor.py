@@ -12,12 +12,16 @@ selected PER FAULT-NODE VOLTAGE BAND, never per study/globally:
 IEC 60909-0:2016 Table 1, footnotes: c_max 1.05 "for low-voltage systems with a tolerance of
 +6 %, for example systems renamed from 380 V to 400 V"; c_max 1.10 "for low-voltage systems
 with a tolerance of +10 %"; c_min 0.95 / 0.90 respectively. The tolerance is a DATUM of the
-nN system (declared on every element that feeds it — ``Transformer.lv_voltage_tolerance`` of
+nN system (declared on the elements that feed it — ``Transformer.lv_voltage_tolerance`` of
 an SN/nN transformer, ``Source.lv_voltage_tolerance`` of a grid source connected directly to an
-nN bus — resolved per nN node by ``enm.tolerancja_nn``), never a guess: an nN node without a declared
-tolerance is REFUSED with ``KOD_TOLERANCJA_NN_BRAK`` (before this card the +6 % row was taken
-silently, which under-states I_k,max and over-states I_k,min of a +10 % system — the unsafe
-side for both breaking capacity and automatic disconnection).
+nN bus — resolved per nN node by ``enm.tolerancja_nn``). Karta TOLERANCJA-NN-WARTOSC-ROBOCZA
+(zasada nr 4, V12K-351): a missing or contradictory declaration does NOT block the calculation
+— the working-value register (``network_model.catalog.wartosci_robocze``) proposes the +10 %
+class (c_max 1.10 / c_min 0.90: the largest I_k,max and the smallest I_k,min, the safe side of
+both breaking capacity and automatic disconnection), the caller resolves it and marks the c
+basis as a working value (``tolerancja_nn_robocza``). This module never chooses the class: an
+nN node reaching ``c_for_node`` without a resolved class is a PROGRAM error (``ValueError``),
+not a silent row and not a domain refusal.
 
 The band boundary itself is NOT encoded here: IEC 60909-0 Table 1 defines "low voltage" by
 reference to IEC 60038 Table 1 (100 V to 1 000 V inclusive), i.e. the same nN band as the rest
@@ -55,8 +59,10 @@ TOLERANCJE_NAPIECIA_NN: tuple[TolerancjaNapieciaNn, ...] = ("PLUS_6", "PLUS_10")
 #: Etykieta tolerancji w podstawie c (White Box, dowód, UI) — jedno brzmienie.
 ETYKIETA_TOLERANCJI_NN: dict[str, str] = {"PLUS_6": "+6 %", "PLUS_10": "+10 %"}
 
-#: Kod odmowy: węzeł nN bez zadeklarowanej tolerancji napięcia sieci nN.
-KOD_TOLERANCJA_NN_BRAK = "fault.c_tolerancja_nn_brak"
+#: Dopisek podstawy c, gdy klasa tolerancji sieci nN jest wartością roboczą (rejestr wartości
+#: roboczych), a nie deklaracją projektanta — jedno brzmienie dla wiersza wyniku, K_G, Z_Q,
+#: pętli zwarcia i dowodu.
+DOPISEK_TOLERANCJI_ROBOCZEJ = "wartość robocza"
 
 # IEC 60909-0 Table 1 (voltage factor c) — values; (c_max, c_min). Private: the ONLY way to
 # read c is ``c_for_node`` / ``dobierz_c`` (no module imports a bare constant).
@@ -67,24 +73,15 @@ _TABELA_1_NN: dict[str, tuple[float, float]] = {
 _TABELA_1_SN_WN: tuple[float, float] = (1.10, 1.00)
 
 
-class OdmowaToleranciiNnError(OdmowaNazwana):
-    """Węzeł nN bez tolerancji napięcia sieci — odmowa nazwana z kodem rejestru gotowości.
+def c_wiersza_nn(tolerancja_nn: TolerancjaNapieciaNn) -> tuple[float, float]:
+    """(c_max, c_min) wiersza nN tabeli 1 dla klasy tolerancji — odczyt tabeli, nie dobór c węzła.
 
-    Postać strukturalna partii integracji 10 (``OdmowaNazwana``): kod
-    ``fault.c_tolerancja_nn_brak`` w polu ``kod`` (handler 422 przenosi go do ciała
-    odpowiedzi obok ``detail``), treść to wyłącznie zdanie dla projektanta.
+    Dla opisów założeń i danych przyjętych (rejestr wartości roboczych), żeby liczby c w tekście
+    pochodziły z tej samej tabeli co obliczenie.
     """
-
-    def __init__(self, komunikat_pl: str) -> None:
-        super().__init__(komunikat_pl, kod=KOD_TOLERANCJA_NN_BRAK)
-        self.komunikat_pl = komunikat_pl
-
-    def dotyczy(self, nazwa: str) -> OdmowaToleranciiNnError:
-        """Ta sama odmowa z nazwą elementu modelu, którego dotyczy — wzorzec zdania odmów
-        rdzenia (``enm.zdania_odmow_rdzenia``): treść i „Dotyczy: <nazwa>.". Nazwę dokłada
-        warstwa, która ją zna (węzeł grafu, transformator przy K_T, maszyna przy K_G, źródło
-        sieciowe przy Z_Q); identyfikator nie trafia do treści nigdy (partia integracji 11)."""
-        return OdmowaToleranciiNnError(f"{self.komunikat_pl} Dotyczy: {nazwa}.")
+    if tolerancja_nn not in _TABELA_1_NN:
+        raise ValueError(f"Klasa tolerancji sieci nN {tolerancja_nn!r} spoza tabeli 1.")
+    return _TABELA_1_NN[tolerancja_nn]
 
 
 def c_for_node(
@@ -98,9 +95,10 @@ def c_for_node(
     Args:
         voltage_kv: Nominal voltage of the node [kV].
         scenario: "MAX" (for Ik''max, Ip, Ith, K_T) or "MIN" (for Ik''min).
-        tolerancja_nn: Declared voltage tolerance of the nN system the node belongs to
-            ("PLUS_6" / "PLUS_10"). Required for an nN node; ignored above 1 kV (Table 1 has
-            one SN/WN row), so callers pass what they know, never a guess.
+        tolerancja_nn: RESOLVED voltage tolerance class of the nN system the node belongs to
+            ("PLUS_6" / "PLUS_10" — the designer's declaration or the working value of the
+            register, resolved by the caller). Required for an nN node; ignored above 1 kV
+            (Table 1 has one SN/WN row).
 
     Returns:
         c per Table 1: nN +6 % 1.05/0.95, nN +10 % 1.10/0.90, SN/WN 1.10/1.00.
@@ -108,7 +106,9 @@ def c_for_node(
     Raises:
         OdmowaDanychError: scenario is neither "MAX" nor "MIN", or voltage_kv is not a physical
             nominal voltage (non-finite, zero or negative) — no row of Table 1 applies.
-        OdmowaToleranciiNnError: nN node without (or with an unknown) declared tolerance.
+        ValueError: nN node without a resolved tolerance class (or with a value outside the
+            table) — a program error of the caller, which must resolve the class
+            (``enm.tolerancja_nn`` / ``wartosci_robocze.rozstrzygnij_tolerancje_nn``).
     """
     if scenario not in ("MAX", "MIN"):
         raise OdmowaDanychError(
@@ -122,19 +122,10 @@ def c_for_node(
         )
     if pasmo == "nN":
         if tolerancja_nn not in _TABELA_1_NN:
-            # Treść bez reprezentacji Pythona (partia integracji 11: dawne „otrzymano None"
-            # trafiało do komunikatu biegu); nazwę szyny dokłada warstwa, która zna model
-            # (`enm.tolerancja_nn.dobierz_c_wezla`, mapowanie źródeł nN, serwis pętli zwarcia).
-            napiecie = f"{voltage_kv:g}".replace(".", ",")
-            stan = (
-                "nie ma zadeklarowanej tolerancji napięcia"
-                if tolerancja_nn is None
-                else f"ma tolerancję napięcia spoza tabeli („{tolerancja_nn}”)"
-            )
-            raise OdmowaToleranciiNnError(
-                f"Sieć nN ({napiecie} kV) {stan} — tabela 1 IEC 60909-0 rozróżnia sieci "
-                "+6 % (c 1,05/0,95) i +10 % (c 1,10/0,90); zadeklaruj tolerancję na "
-                "transformatorze albo źródle zasilającym sieć nN."
+            raise ValueError(
+                f"Węzeł nN ({voltage_kv!r} kV) bez rozstrzygniętej klasy tolerancji sieci nN "
+                f"({tolerancja_nn!r}) — wołający rozstrzyga ją (deklaracja projektanta albo "
+                "wartość robocza rejestru) przed doborem c."
             )
         c_max, c_min = _TABELA_1_NN[tolerancja_nn]  # type: ignore[index]
     else:
@@ -235,15 +226,25 @@ class DoborC:
 
 
 def zrodlo_c_z_tabeli(
-    voltage_kv: float, scenario: Scenario, *, tolerancja_nn: TolerancjaNapieciaNn | None
+    voltage_kv: float,
+    scenario: Scenario,
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
+    tolerancja_nn_robocza: bool = False,
 ) -> str:
-    """Podstawa c z tabeli 1 dla węzła — brzmienie jedyne dla wiersza wyniku i dowodu."""
-    # ta sama odmowa co dobór wartości (pasmo, scenariusz, tolerancja nN)
+    """Podstawa c z tabeli 1 dla węzła — brzmienie jedyne dla wiersza wyniku i dowodu.
+
+    ``tolerancja_nn_robocza`` — klasa tolerancji sieci nN jest wartością roboczą rejestru, nie
+    deklaracją projektanta: podstawa mówi to wprost (zasada nr 4: wynik na założeniu nie
+    udaje danej). Poza pasmem nN bez znaczenia (jeden wiersz SN/WN).
+    """
+    # ta sama kontrola co dobór wartości (pasmo, scenariusz, klasa tolerancji nN)
     c_for_node(voltage_kv, scenario, tolerancja_nn=tolerancja_nn)
     pasmo = pasmo_napieciowe(voltage_kv)
     if pasmo == "nN":
         etykieta = ETYKIETA_TOLERANCJI_NN[str(tolerancja_nn)]
-        return f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta}, {scenario}"
+        dopisek = f" ({DOPISEK_TOLERANCJI_ROBOCZEJ})" if tolerancja_nn_robocza else ""
+        return f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta}{dopisek}, {scenario}"
     return f"IEC 60909-0 tab. 1, pasmo {pasmo}, {scenario}"
 
 
@@ -253,16 +254,22 @@ def dobierz_c(
     nadpisanie: NadpisanieC | None,
     *,
     tolerancja_nn: TolerancjaNapieciaNn | None,
+    tolerancja_nn_robocza: bool = False,
 ) -> DoborC:
     """JEDYNA reguła wyboru c dla węzła zwarcia.
 
-    Bez nadpisania: tabela 1 IEC 60909-0 dla pasma napięcia WŁASNEGO węzła, tolerancji sieci
-    nN (węzeł nN) i scenariusza (MAX/MIN). Z nadpisaniem: wartość inżyniera z jego
-    uzasadnieniem w podstawie. Pasmo, tolerancja nN i scenariusz są sprawdzane także przy
-    nadpisaniu — węzeł bez pasma, węzeł nN bez tolerancji albo nieznany scenariusz to odmowa
-    niezależnie od trybu (jeden predykat wejścia dla obu gałęzi).
+    Bez nadpisania: tabela 1 IEC 60909-0 dla pasma napięcia WŁASNEGO węzła, klasy tolerancji
+    sieci nN (węzeł nN; ``tolerancja_nn_robocza`` oznacza w podstawie wartość roboczą) i
+    scenariusza (MAX/MIN). Z nadpisaniem: wartość inżyniera z jego uzasadnieniem w podstawie.
+    Pasmo, klasa tolerancji nN i scenariusz są sprawdzane także przy nadpisaniu — jeden
+    predykat wejścia dla obu gałęzi.
     """
-    zrodlo_tabeli = zrodlo_c_z_tabeli(voltage_kv, scenario, tolerancja_nn=tolerancja_nn)
+    zrodlo_tabeli = zrodlo_c_z_tabeli(
+        voltage_kv,
+        scenario,
+        tolerancja_nn=tolerancja_nn,
+        tolerancja_nn_robocza=tolerancja_nn_robocza,
+    )
     if nadpisanie is None:
         return DoborC(
             wartosc=c_for_node(voltage_kv, scenario, tolerancja_nn=tolerancja_nn),

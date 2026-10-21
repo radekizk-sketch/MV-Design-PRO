@@ -49,6 +49,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={trace}
         blad={false}
+        ladowanie={false}
         trybZaawansowania="expert"
       />,
     );
@@ -99,6 +100,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={realnyTrace()}
         blad={false}
+        ladowanie={false}
         trybZaawansowania="basic"
       />,
     );
@@ -118,6 +120,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
         blad={false}
+        ladowanie={false}
         trybZaawansowania="basic"
       />,
     );
@@ -133,7 +136,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
 
   it('trace === [] (policzono, brak wkładu Thevenina) → stan uczciwy ODRĘBNY od null', () => {
     render(
-      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} trybZaawansowania="basic" />,
+      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} ladowanie={false} trybZaawansowania="basic" />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
     expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-pusty')).toBeInTheDocument();
@@ -147,12 +150,30 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
         blad
+        ladowanie={false}
         trybZaawansowania="basic"
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
     expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-blad')).toBeInTheDocument();
     expect(within(sekcja).getByText(ZWARCIA_STRINGS.sladRozplywuBlad)).toBeInTheDocument();
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
+  });
+
+  it('ladowanie === true → komunikat pobierania, NIE stan „niedostępny" starszego wyniku', () => {
+    render(
+      <SladPodzialuPradu
+        punktNazwa="Szyna GPZ 15 kV"
+        trace={null}
+        blad={false}
+        ladowanie
+        trybZaawansowania="basic"
+      />,
+    );
+    const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
+    expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-ladowanie')).toHaveTextContent(
+      ZWARCIA_STRINGS.sladRozplywuLadowanie,
+    );
     expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 });
@@ -231,5 +252,32 @@ describe('EkranZwarc — integracja sekcji śladu podziału (karta WB-ROZPLYW)',
     render(<EkranZwarc {...props()} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-slad-rozplywu-blad');
     expect(within(sekcja).getByText(ZWARCIA_STRINGS.sladRozplywuBlad)).toBeInTheDocument();
+    // Sekcja rozpływu z TEJ SAMEJ odpowiedzi: błąd, nie „starszy wynik — uruchom ponownie
+    // obliczenie" (dawniej błąd serwera kazał projektantowi przeliczać bez potrzeby).
+    const rozplyw = screen.getByTestId('mvd-zwarcia-rozplyw');
+    expect(within(rozplyw).getByTestId('mvd-zwarcia-rozplyw-blad')).toHaveTextContent(
+      ZWARCIA_STRINGS.rozplywBlad,
+    );
+    expect(within(rozplyw).queryByTestId('mvd-zwarcia-rozplyw-brak')).not.toBeInTheDocument();
+  });
+
+  it('pobieranie w toku → obie sekcje odpowiedzi mówią „pobieranie", nie „starszy wynik"', async () => {
+    const wynik = shortCircuitResultsFixture();
+    wynik.rows[0] = shortCircuitRowFixture({
+      branch_contributions: null,
+      branch_contributions_available: true,
+    });
+    useResultsInspectorStore.setState({ shortCircuitResults: wynik, selectedRunId: 'sc-run-1' });
+    // Odpowiedź, która nie nadchodzi w trakcie asercji — stan pobierania utrzymany.
+    fetchMock.mockReturnValue(new Promise<Response>(() => {}));
+    render(<EkranZwarc {...props()} />);
+    const rozplyw = screen.getByTestId('mvd-zwarcia-rozplyw');
+    expect(within(rozplyw).getByTestId('mvd-zwarcia-rozplyw-ladowanie')).toHaveTextContent(
+      ZWARCIA_STRINGS.rozplywLadowanie,
+    );
+    expect(within(rozplyw).queryByTestId('mvd-zwarcia-rozplyw-brak')).not.toBeInTheDocument();
+    const slad = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
+    expect(within(slad).getByTestId('mvd-zwarcia-slad-rozplywu-ladowanie')).toBeInTheDocument();
+    expect(within(slad).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 });

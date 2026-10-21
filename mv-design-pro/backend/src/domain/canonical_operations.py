@@ -2068,18 +2068,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): wiersz nN tabeli 1 IEC 60909-0
-    # zależy od tolerancji napięcia sieci nN (+6 % / +10 %), zadeklarowanej na transformatorze
-    # zasilającym (`Transformer.lv_voltage_tolerance`). Odmowę podnosi
-    # `network_model.core.voltage_factor.c_for_node`; bramkę zwarć — `eligibility_service`
-    # (ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING) z tego samego predykatu `enm.tolerancja_nn`.
-    "fault.c_tolerancja_nn_brak": ReadinessCodeSpec(
-        code="fault.c_tolerancja_nn_brak",
+    # zależy od tolerancji napięcia sieci nN (+6 % / +10 %), deklarowanej na transformatorze
+    # albo źródle sieciowym zasilającym sieć nN (`lv_voltage_tolerance`). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4 kontraktu werdyktu): brak deklaracji
+    # NIE blokuje biegu — sieć nN dostaje wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze.PROPOZYCJA_TOLERANCJI_NN` (+10 %, zachowawcza
+    # w obu kierunkach), a bieg niesie założenie tego kodu
+    # (`enm.tolerancja_nn.zalozenia_tolerancji_nn`) z wyspą, elementem zasilającym i drogą
+    # zmiany wartości. Dawny bloker `fault.c_tolerancja_nn_brak` skasowany.
+    "fault.c_tolerancja_nn_robocza": ReadinessCodeSpec(
+        code="fault.c_tolerancja_nn_robocza",
         area=ReadinessArea.STATIONS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
+        priority=3,
+        level=ReadinessLevel.INFO,
         message_pl=(
-            "Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — "
-            "współczynnika napięciowego c (IEC 60909-0, tabela 1) dla węzłów nN nie da się dobrać"
+            "Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c "
+            "1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — "
+            "zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest "
+            "inna, i przelicz"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
     ),

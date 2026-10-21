@@ -19,6 +19,7 @@ from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_des
 from enm.assembler import impedancja_zwarcia_z_opcji
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.catalog.wartosci_robocze import tolerancja_nn_napiecia
 from network_model.core.czas_wylaczenia import czas_tb_z_danych
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import (
@@ -83,7 +84,9 @@ class SCAsymmetricalPackRequest(BaseModel):
     #: `voltage_factor.dobierz_c` dla U_n i scenariusza albo z nadpisania z uzasadnieniem.
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
-    #: Tolerancja sieci nN węzła zwarcia (wiersz nN tabeli 1); wymagana, gdy U_n w paśmie nN.
+    #: Tolerancja sieci nN węzła zwarcia (wiersz nN tabeli 1), gdy U_n w paśmie nN. Karta
+    #: TOLERANCJA-NN-WARTOSC-ROBOCZA: brak = wartość robocza rejestru, nazwana w podstawie c
+    #: dowodu (`wartosci_robocze.tolerancja_nn_napiecia`).
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     u_prefault_kv: float
     z1_re_ohm: float
@@ -139,11 +142,13 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         snapshot_id=payload.snapshot_id,
         mv_design_pro_version=resolve_mv_design_pro_version(),
     )
+    tolerancja_nn = tolerancja_nn_napiecia(payload.u_n_kv, payload.lv_voltage_tolerance)
     dobor_c = dobierz_c(
         payload.u_n_kv,
         payload.scenariusz,
         _nadpisanie(payload.nadpisanie_c),
-        tolerancja_nn=payload.lv_voltage_tolerance,
+        tolerancja_nn=tolerancja_nn.wartosc if tolerancja_nn is not None else None,
+        tolerancja_nn_robocza=tolerancja_nn is not None and tolerancja_nn.robocza,
     )
     pack_input = SCAsymmetricalPackInput(
         project_name=payload.project_name,

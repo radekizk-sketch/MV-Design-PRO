@@ -1665,7 +1665,8 @@ EQ_LVCV_006 = EquationDefinition(
             unit="—",
             description_pl=(
                 "Współczynnik napięciowy minimalny (IEC 60909-0, tabela 1 — wiersz sieci nN "
-                "wg zadeklarowanej tolerancji napięcia +6 % albo +10 %)"
+                "wg tolerancji napięcia: zadeklarowanej +6 % albo +10 %, a bez deklaracji "
+                "wartości roboczej +10 %)"
             ),
             mapping_key="c_min",
         ),

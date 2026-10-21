@@ -452,8 +452,9 @@ class Transformer(ENMElement):
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): tolerancja napięcia sieci nN
     # zasilanej z tego transformatora wg przypisów tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95;
     # +10 % → c 1,10/0,90). JEDYNY nośnik wiersza nN tabeli c: czyta go `enm.tolerancja_nn`
-    # (węzły nN wyspy zasilanej) i K_T tego transformatora. Brak = odmowa nazwana
-    # (`fault.c_tolerancja_nn_brak`), nigdy domyślka.
+    # (węzły nN wyspy zasilanej) i K_T tego transformatora. Brak = wartość robocza rejestru
+    # `wartosci_robocze` z założeniem biegu `fault.c_tolerancja_nn_robocza` (karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA), nigdy cicha domyślka.
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
@@ -524,8 +525,8 @@ class Source(ENMElement):
     # wprost na szynie nN (bez transformatora w modelu) — ten sam nośnik wiersza nN tabeli 1
     # IEC 60909-0 co `Transformer.lv_voltage_tolerance` (+6 % → c 1,05/0,95; +10 % → c
     # 1,10/0,90), rozwiązywany per wyspa nN przez `enm.tolerancja_nn`. Czytana wyłącznie, gdy
-    # szyna źródła leży w paśmie nN; brak przy takim źródle = odmowa nazwana
-    # (`fault.c_tolerancja_nn_brak`), nigdy domyślka. Dawne pola `c_max`/`c_min` źródła
+    # szyna źródła leży w paśmie nN; brak przy takim źródle = wartość robocza rejestru z
+    # założeniem biegu `fault.c_tolerancja_nn_robocza`, nigdy cicha domyślka. Dawne pola `c_max`/`c_min` źródła
     # (fantom: zapisywane, nigdy nieczytane — c dobiera wyłącznie `voltage_factor`) skasowane.
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 

@@ -1993,7 +1993,9 @@ class ProofGenerator:
             )
         else:
             if t_min_s is None:
-                raise AssertionError("Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+                raise AssertionError(
+                    "Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu)."
+                )
             a, b, c = wspolczynniki_krzywej_mu(t_min_s)
             raw = a + b * math.exp(-c * ratio)
             substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
@@ -2033,7 +2035,9 @@ class ProofGenerator:
             substitution = "q = 1 \\quad (m \\leq 0)"
         else:
             if t_min_s is None:
-                raise AssertionError("Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+                raise AssertionError(
+                    "Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu)."
+                )
             a, b = wspolczynniki_krzywej_q(t_min_s)
             raw = a + b * math.log(m_val)
             substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"

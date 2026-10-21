@@ -136,8 +136,9 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
             "station": {
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
-                # Bieg zwarciowy liczy też sieć nN stacji — tabela 1 IEC 60909-0 wymaga jej
-                # zadeklarowanej tolerancji napięcia; odbiór potrzeb własnych pozwala policzyć
+                # Bieg zwarciowy liczy też sieć nN stacji — deklaracja tolerancji napięcia (+6 %)
+                # daje wiersz tabeli 1 IEC 60909-0 bez wartości roboczej (karta TOLERANCJA-NN-
+                # WARTOSC-ROBOCZA); odbiór potrzeb własnych pozwala policzyć
                 # rozpływ (bieg innego rodzaju w teście odrzucenia).
                 "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.95},
                 "nn_earthing": {"lv_system": "TN-S", "lv_voltage_tolerance": "PLUS_6"},

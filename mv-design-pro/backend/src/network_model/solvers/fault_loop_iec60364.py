@@ -125,6 +125,11 @@ class FaultLoopResult:
 
     # Determinizm + audyt
     white_box_trace: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa tolerancji sieci nN pętli jest wartością
+    # roboczą rejestru (nie deklaracją) — konsument werdyktu dokłada daną przyjętą. Addytywnie:
+    # `to_dict` niesie klucz wyłącznie przy wartości roboczej (słowniki i odciski pętli z
+    # deklaracją są bit w bit takie jak przed kartą).
+    tolerancja_nn_robocza: bool = False
     # Karta W5-E-TTIT: wielkości pętli TT/IT (addytywne — `None` dla TN, to_dict bez klucza,
     # więc słowniki i odciski wyników TN są bit w bit takie jak przed kartą).
     tt_it: WynikTtIt | None = None
@@ -162,6 +167,8 @@ class FaultLoopResult:
             "c_zrodlo_max": self.c_zrodlo_max,
             "white_box_trace": list(self.white_box_trace),
         }
+        if self.tolerancja_nn_robocza:
+            wynik["tolerancja_nn_robocza"] = True
         if self.tt_it is not None:
             wynik["tt_it"] = self.tt_it.to_dict()
         return wynik
@@ -194,11 +201,15 @@ class FaultLoopInput:
     # Karta W5-E-TTIT: dane pętli doziemnej TT/IT (R_A, R_B, I_Δn, pojemności, f) — wymagane
     # wyłącznie dla `network_type` TT/IT; dla TN ignorowane (musi być None).
     dane_tt_it: DaneTtIt | None = None
-    # Tolerancja napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0) z nośnika
-    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`, `enm.tolerancja_nn`).
-    # Pole WYMAGANE (bez domyślnej) — `None` = brak deklaracji → odmowa nazwana
-    # `fault.c_tolerancja_nn_brak`, nigdy wiersz +6 % po cichu.
+    # Klasa tolerancji napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0), rozstrzygnięta przez
+    # wołającego: deklaracja z nośnika (`Transformer.lv_voltage_tolerance` /
+    # `Source.lv_voltage_tolerance`, `enm.tolerancja_nn`) albo wartość robocza rejestru
+    # (`wartosci_robocze.rozstrzygnij_tolerancje_nn`). Pole WYMAGANE (bez domyślnej);
+    # nierozstrzygnięta klasa przy U_0 w paśmie nN to błąd programu wołającego.
     tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa wyżej jest wartością roboczą — podstawa c
+    # pętli mówi „wartość robocza", wynik niesie znacznik dla werdyktu.
+    tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
 
 
 def _validate_input(data: FaultLoopInput) -> None:
@@ -302,23 +313,27 @@ class WspolczynnikiCPetli:
     c_max: float
     zrodlo_min: str
     zrodlo_max: str
+    #: Klasa tolerancji sieci nN jest wartością roboczą (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    tolerancja_nn_robocza: bool = False
 
 
 def wspolczynniki_c_petli(data: FaultLoopInput) -> WspolczynnikiCPetli:
     """Jedyny dobór c pętli nN: tabela 1 IEC 60909-0 (``voltage_factor``), wiersz nN wg
-    zadeklarowanej tolerancji sieci (``data.tolerancja_nn``) — dla KAŻDEGO układu (TN, TT, IT).
+    klasy tolerancji sieci (``data.tolerancja_nn``: deklaracja albo wartość robocza, nazwana
+    w podstawie) — dla KAŻDEGO układu (TN, TT, IT).
 
     Pasmo czytane z napięcia fazowego U_0 sieci (U_0 i U_n sieci 230/400 V leżą w tym samym
     paśmie nN), NIE z napięcia napędowego pętli (dla drugiego zwarcia IT jest nim U_LL/2).
-    Brak tolerancji = odmowa nazwana ``fault.c_tolerancja_nn_brak`` (bez cichego +6 %).
     """
     u_kv = data.u_nom_v / 1000.0
     tol = data.tolerancja_nn
+    robocza = data.tolerancja_nn_robocza
     return WspolczynnikiCPetli(
         c_min=c_for_node(u_kv, "MIN", tolerancja_nn=tol),
         c_max=c_for_node(u_kv, "MAX", tolerancja_nn=tol),
-        zrodlo_min=zrodlo_c_z_tabeli(u_kv, "MIN", tolerancja_nn=tol),
-        zrodlo_max=zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=tol),
+        zrodlo_min=zrodlo_c_z_tabeli(u_kv, "MIN", tolerancja_nn=tol, tolerancja_nn_robocza=robocza),
+        zrodlo_max=zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=tol, tolerancja_nn_robocza=robocza),
+        tolerancja_nn_robocza=robocza,
     )
 
 
@@ -420,5 +435,6 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         c_max=c.c_max,
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
+        tolerancja_nn_robocza=c.tolerancja_nn_robocza,
         white_box_trace=tuple(trace),
     )

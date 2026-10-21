@@ -125,6 +125,28 @@
 .mvd-wyn-zalozenie-wartosc {
   white-space: nowrap;
 }
+/* Dyskretny znacznik pochodzenia (zasada nr 4: „wartość robocza”) — ten sam rysunek co
+   znacznik parametru aparatu (`aparatura.css` `.mvd-apar-parametr-robocza`). */
+.mvd-wyn-zalozenie-znacznik {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  color: var(--mvd-ink);
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+/* Akcja wiersza założenia („Zmień wartość”) — przycisk wtórny, nie wybija się nad wynik. */
+.mvd-wyn-zalozenie-akcja {
+  flex: none;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--mvd-ink);
+  background: transparent;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  cursor: pointer;
+}
 /* Wartość tekstowa (np. zarejestrowane założenie z backendu, opis podstawy c) łamie się
    w granicach wiersza — z `nowrap` długi komunikat wychodził poza sekcję i nachodził na
    sąsiedni wiersz (zrzut „po” ekranu zwarć, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK). Liczby

@@ -313,6 +313,26 @@ zamienia kryterium w `NIE_OCENIONO` ani `BRAK_PODSTAWY`. Obowiązuje jeden mecha
    komentarzu obliczeń (White Box) i w raporcie; bez osobnych ostrzeżeń ani blokujących okien.
    Etykieta: „wartość robocza” + źródło; nigdy „dana producenta”.
 
+**Druga rodzina: dana sieci, dla której norma daje klasę (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).**
+Ten sam mechanizm obowiązuje dla tolerancji napięcia sieci nN (klasa +6 % / +10 % z tabeli 1
+IEC 60909-0, deklarowana na transformatorze albo źródle zasilającym wyspę nN). Brak deklaracji
+nie jest blokerem gotowości ani odmową biegu: rozstrzygnięcie per wyspa galwaniczna nN
+(`enm/tolerancja_nn.py`, jedno miejsce) zwraca klasę ORAZ pochodzenie — deklaracja projektanta
+ma pierwszeństwo; bez deklaracji, przy deklaracjach sprzecznych albo bez elementu zasilającego
+obowiązuje propozycja rejestru (`network_model/catalog/wartosci_robocze.py`: klasa +10 %,
+c_max 1,10, c_min 0,90, `ZALOZENIE_INZYNIERSKIE` — wybór zachowawczy w obu kierunkach). Bieg
+zapisuje założenie `fault.c_tolerancja_nn_robocza` (INFO) nazywające sieć i jej element
+zasilający z polem deklaracji (`parametr` = `lv_voltage_tolerance`) — ekran wyników pokazuje je
+z dyskretnym znacznikiem „wartość robocza” i akcją „Zmień wartość”; wiersz wyniku węzła nN niesie
+`tolerancja_nn_robocza` i podstawę c „(wartość robocza)”. Każdy werdykt oparty na prądzie
+zwarciowym węzła nN takiej wyspy (wytrzymałość aparatury, ocena nadprądowa i koordynacja, SWZ
+TN/TT/IT, dobór aparatów i karta obwodu nN, wytrzymałość cieplna przewodów, łuk elektryczny,
+pakiety dowodowe aparatury, nastaw i obwodu nN, reguły aparatury pola generatora, wniosek do
+OSD; przypięte w `backend/tests/application/test_tolerancja_nn_dane_przyjete_konsumentow.py`)
+niesie `dane_przyjete`
+(ESTIMATED, `UNVALIDATED_INPUT`, `NIEPELNY`) z pkt 4. Deklaracja zastępuje wartość roboczą bez
+żadnego śladu — bieg na samych deklaracjach ma wynik i `input_hash` identyczne jak przed kartą.
+
 Zasada NIE dotyczy: braków MODELU (brak elementu, połączenia, nastawy zabezpieczenia — nastawa
 jest decyzją projektanta, nie daną urządzenia), podstawy LIMITU wymagania (tam `BRAK_PODSTAWY`
 zgodnie z §2.1) ani danych, których żaden profil, norma ani jawne założenie nie uzasadnia —

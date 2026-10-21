@@ -1,4 +1,4 @@
-"""Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — tolerancja sieci nN jako nośnik wiersza nN tabeli c.
+"""Karty WSPOLCZYNNIK-C-JEDEN-NOSNIK i TOLERANCJA-NN-WARTOSC-ROBOCZA — tolerancja sieci nN.
 
 Tabela 1 IEC 60909-0 ma DWA wiersze nN: sieć o tolerancji +6 % (c_max 1,05; c_min 0,95)
 i +10 % (c_max 1,10; c_min 0,90). Przed kartą produkt brał wiersz +6 % po cichu, więc dla
@@ -8,11 +8,19 @@ wyłączenie) — obie pomyłki po stronie niebezpiecznej. Tolerancja jest daną
 (``Transformer.lv_voltage_tolerance``) i źródło sieciowe wprost na szynie nN
 (``Source.lv_voltage_tolerance``); jeden predykat: ``enm.tolerancja_nn``.
 
+Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): brak deklaracji, deklaracje
+sprzeczne i wyspa bez elementu zasilającego NIE blokują obliczeń — wyspa dostaje wartość
+roboczą rejestru (klasa +10 %, c 1,10/0,90), podstawa c węzła mówi „wartość robocza", wiersz
+wyniku niesie znacznik ``tolerancja_nn_robocza``, a bieg — założenie
+``fault.c_tolerancja_nn_robocza`` z elementem i polem zmiany. Dawna odmowa
+``fault.c_tolerancja_nn_brak`` skasowana bez warstwy zgodności.
+
 Test jest ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA §2), przez realne ścieżki użytkownika
 (bieg kanoniczny ``short_circuit_sn``, widoki pętli/SWZ z modelu, ``POST /api/fault-loop/
 compute``, operacje domenowe, bramka gotowości):
 
-    deklaracja {PLUS_6, PLUS_10, brak, sprzeczna, wyspa nN zasilana źródłem}
+    deklaracja {PLUS_6, PLUS_10, brak → robocza, sprzeczna → robocza, wyspa nN zasilana
+                źródłem (z deklaracją i bez)}
       × wielkość {I″k szyny nN, I″k szyny SN tej samej sieci, I_k,min pętli/SWZ, K_T, K_G}
       × scenariusz {MAX, MIN}
       × tryb c {AUTO z tabeli, nadpisanie z uzasadnieniem}.
@@ -68,10 +76,14 @@ from enm.models import (
 )
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, opcje_biegu_ze_scenariusza
 from enm.store import reset_enm_store, set_enm
-from enm.tolerancja_nn import tolerancje_wezlow_nn, wyspy_nn
+from enm.tolerancja_nn import (
+    KOD_TOLERANCJA_NN_ROBOCZA,
+    tolerancje_wezlow_nn,
+    wyspy_nn,
+    wyspy_wezlow_nn,
+)
 from fastapi.testclient import TestClient
 from network_model.core.branch import TransformerBranch
-from network_model.core.voltage_factor import KOD_TOLERANCJA_NN_BRAK, OdmowaToleranciiNnError
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
@@ -89,10 +101,7 @@ from tests.enm.test_canonical_sc_c_per_pasmo import (
     N3,
     _build_mv_lv_enm,
 )
-
-#: Brzmienie odmowy braku tolerancji sieci nN (`voltage_factor.c_for_node`) — rozpoznanie
-#: odmowy w komunikacie biegu, w którym kod nie stoi (postać strukturalna partii 10).
-_ZDANIE_TOLERANCJI = "tabela 1 IEC 60909-0 rozróżnia sieci +6 %"
+from tests.test_eligibility_matrix import _validate_and_readiness
 
 _CASE = UUID("00000000-0000-0000-0000-0000000070c0")
 _UZASADNIENIE = "Uzgodnienie z OSD (pismo nr 12/2026): c·Un ≤ Um dla rozdzielnicy 17,5 kV"
@@ -108,13 +117,16 @@ _C = {
 }
 _ETYKIETA = {"PLUS_6": "+6 %", "PLUS_10": "+10 %"}
 
-#: Deklaracje: (tolerancja wyniku, czy bieg zwarciowy liczy).
-_DEKLARACJE: dict[str, tuple[str | None, bool]] = {
-    "PLUS_6": ("PLUS_6", True),
-    "PLUS_10": ("PLUS_10", True),
-    "brak": (None, False),
-    "sprzeczna": (None, False),
-    "wyspa_zrodlo_nn": ("PLUS_10", True),
+#: Deklaracje: (klasa, z którą liczy bieg, czy jest wartością roboczą rejestru). Wartość
+#: robocza wpisana RĘCZNIE (+10 %, karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — wyrocznia niezależna
+#: od ``wartosci_robocze.py``.
+_DEKLARACJE: dict[str, tuple[str, bool]] = {
+    "PLUS_6": ("PLUS_6", False),
+    "PLUS_10": ("PLUS_10", False),
+    "brak": ("PLUS_10", True),
+    "sprzeczna": ("PLUS_10", True),
+    "wyspa_zrodlo_nn": ("PLUS_10", False),
+    "wyspa_zrodlo_nn_brak": ("PLUS_10", True),
 }
 
 #: Wyspa nN zasilana źródłem sieciowym wprost na szynie 0,4 kV (bez transformatora).
@@ -176,19 +188,21 @@ def _siec(deklaracja: str) -> EnergyNetworkModel:
         return _build_mv_lv_enm("Sieć SN+nN", tolerancja=None)
     if deklaracja == "sprzeczna":
         # Drugi transformator tej samej szyny nN deklaruje +10 %, pierwszy +6 %: jedna sieć nN
-        # ma jedną tolerancję — sprzeczność jest odmową, nie wyborem „pierwszej".
+        # ma jedną tolerancję — sprzeczność daje wartość roboczą, nie wybór „pierwszej".
         enm = _build_mv_lv_enm("Sieć SN+nN", tolerancja="PLUS_6")
         drugi = enm.transformers[0].model_copy(
             update={"ref_id": "TR2", "name": "TR2", "lv_voltage_tolerance": "PLUS_10"}
         )
         return enm.model_copy(update={"transformers": [*enm.transformers, drugi]})
+    if deklaracja == "wyspa_zrodlo_nn_brak":
+        return _enm_wyspy_zrodla_nn(None)
     assert deklaracja == "wyspa_zrodlo_nn"
     return _enm_wyspy_zrodla_nn("PLUS_10")
 
 
 def _wezly(deklaracja: str) -> dict[str, str]:
     """Węzły biegu: pasmo → ref szyny."""
-    if deklaracja == "wyspa_zrodlo_nn":
+    if deklaracja.startswith("wyspa_zrodlo_nn"):
         return {"nN": _NN_K}
     return {"nN": N3, "SN": N1}
 
@@ -241,32 +255,34 @@ _DEKLARACJA_X_PASMO = [(d, p) for d in sorted(_DEKLARACJE) for p in sorted(_wezl
 @pytest.mark.parametrize(("deklaracja", "pasmo"), _DEKLARACJA_X_PASMO)
 def test_zwarcie_szyny_c_i_podstawa(deklaracja: str, pasmo: str, scenariusz: str, tryb: str):
     wezly = _wezly(deklaracja)
-    tolerancja, liczy = _DEKLARACJE[deklaracja]
+    tolerancja, robocza = _DEKLARACJE[deklaracja]
     nadpisanie = {"wartosc": 1.08, "uzasadnienie": _UZASADNIENIE} if tryb == "nadpisanie" else None
     wynik = _wiersz(_siec(deklaracja), scenariusz, wezly[pasmo], nadpisanie)
 
-    if not liczy:
-        # K_T KAŻDEGO transformatora wchodzi do macierzy Z-bus, więc brak/sprzeczność tolerancji
-        # sieci nN odmawia zwarcia w całej sieci — także na szynie SN i także przy nadpisaniu c
-        # (nadpisanie zastępuje c węzła zwarcia, nie c_max we wzorze K_T, IEC 60909-0 eq. 12a).
-        assert wynik.status == "FAILED"
-        # Komunikat biegu = zdanie odmowy nazwanej (kod w polu odmowy, nie w treści — postać
-        # strukturalna partii 10); zdanie rozpoznawalne po brzmieniu wiersza nN tabeli 1.
-        assert _ZDANIE_TOLERANCJI in (wynik.error_message or ""), wynik.error_message
-        assert KOD_TOLERANCJA_NN_BRAK not in (wynik.error_message or "")
-        return
-
+    # Zasada nr 4: brak/sprzeczność deklaracji NIE blokuje zwarcia (dawniej odmowa całej sieci,
+    # bo K_T każdego transformatora wchodzi do macierzy Z-bus) — bieg liczy na wartości roboczej.
     assert wynik.status == "FINISHED", wynik.error_message
     (wiersz,) = wynik.raw_result["results"]
     assert wiersz["fault_node_id"] == ref_to_graph_id(wezly[pasmo])
+    # Założenie biegu: jedno na wyspę z wartością roboczą, niezależnie od pasma punktu i trybu c
+    # (K_T/K_G tej wyspy wchodzą do każdego zwarcia w sieci); wyspa z deklaracją — żadnego.
+    zalozenia = [
+        z for z in wynik.raw_result.get("zalozenia", []) if z["code"] == KOD_TOLERANCJA_NN_ROBOCZA
+    ]
+    assert len(zalozenia) == (1 if robocza else 0), zalozenia
+    # Znacznik wiersza: wyłącznie węzeł nN wyspy z wartością roboczą (klucz addytywny — wiersz
+    # sieci zadeklarowanej i wiersz SN bez klucza, bajt w bajt jak przed kartą).
+    assert ("tolerancja_nn_robocza" in wiersz) is (robocza and pasmo == "nN")
     if tryb == "nadpisanie":
         assert wiersz["c_factor"] == pytest.approx(1.08)
         assert wiersz["c_zrodlo"] == f"nadpisanie ręczne: {_UZASADNIENIE}"
         return
     if pasmo == "nN":
+        dopisek = " (wartość robocza)" if robocza else ""
         assert wiersz["c_factor"] == pytest.approx(_C[("nN", tolerancja, scenariusz)])
         assert wiersz["c_zrodlo"] == (
-            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {_ETYKIETA[tolerancja]}, {scenariusz}"
+            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {_ETYKIETA[tolerancja]}{dopisek}, "
+            f"{scenariusz}"
         )
     else:
         assert wiersz["c_factor"] == pytest.approx(_C[("SN", None, scenariusz)])
@@ -274,7 +290,7 @@ def test_zwarcie_szyny_c_i_podstawa(deklaracja: str, pasmo: str, scenariusz: str
 
 
 @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
-@pytest.mark.parametrize("deklaracja", ["PLUS_6", "PLUS_10", "wyspa_zrodlo_nn"])
+@pytest.mark.parametrize("deklaracja", sorted(_DEKLARACJE))
 def test_iloraz_ikss_nn_auto_do_nadpisania_rowny_ilorazowi_c(deklaracja: str, scenariusz: str):
     """Ta sama sieć (ten sam K_T, ten sam Z_Q): I″k(tabela) / I″k(c = 1,08) = c_tab / 1,08."""
     tolerancja, _ = _DEKLARACJE[deklaracja]
@@ -309,21 +325,37 @@ def test_wyspa_zrodla_nn_odtwarza_moc_zwarciowa_przylacza(scenariusz: str) -> No
     niezależnie od wiersza), w MIN iloraz c_min/c_max jest ilorazem JEDNEGO wiersza
     (+6 %: 0,95/1,05; +10 %: 0,90/1,10) — dowód, że Z_Q i c węzła czytają jedną deklarację."""
     s_przez_u_a = _SK_NN_MVA / (math.sqrt(3.0) * 0.4) * 1000.0
-    for tolerancja in ("PLUS_6", "PLUS_10"):
-        wynik = _wiersz(_enm_wyspy_zrodla_nn(tolerancja), scenariusz, _NN_Q, None)
+    # Deklaracja None = wartość robocza +10 % (wpisana ręcznie): Z_Q i c węzła czytają ją
+    # z TEJ SAMEJ wyspy — iloraz jednego wiersza także na wartości roboczej.
+    for deklaracja, tolerancja in (("PLUS_6", "PLUS_6"), ("PLUS_10", "PLUS_10"), (None, "PLUS_10")):
+        wynik = _wiersz(_enm_wyspy_zrodla_nn(deklaracja), scenariusz, _NN_Q, None)
         assert wynik.status == "FINISHED", wynik.error_message
         wiersz = wynik.raw_result["results"][0]
+        assert ("tolerancja_nn_robocza" in wiersz) is (deklaracja is None)
         c = _C[("nN", tolerancja, scenariusz)]
         assert wiersz["c_factor"] == pytest.approx(c)
         oczekiwany_a = c / _C[("nN", tolerancja, "MAX")] * s_przez_u_a
         assert wiersz["ikss_a"] == pytest.approx(oczekiwany_a, rel=1e-6)
 
 
-def test_wyspa_zrodla_nn_bez_deklaracji_odmawia() -> None:
+def test_wyspa_zrodla_nn_bez_deklaracji_liczy_z_zalozeniem_na_zrodle() -> None:
+    """Wyspa zasilana źródłem bez deklaracji: bieg liczy, założenie wskazuje źródło (tam
+    projektant zmienia wartość) i pole ``lv_voltage_tolerance``, zdanie nazywa źródło i szyny
+    z modelu — nigdy identyfikatorem."""
     wynik = _wiersz(_enm_wyspy_zrodla_nn(None), "MAX", _NN_K, None)
-    assert wynik.status == "FAILED"
-    assert _ZDANIE_TOLERANCJI in (wynik.error_message or ""), wynik.error_message
-    assert KOD_TOLERANCJA_NN_BRAK not in (wynik.error_message or "")
+    assert wynik.status == "FINISHED", wynik.error_message
+    (zalozenie,) = (
+        z for z in wynik.raw_result["zalozenia"] if z["code"] == KOD_TOLERANCJA_NN_ROBOCZA
+    )
+    assert zalozenie["element_ref"] == "Q_SIEC_NN"
+    assert zalozenie["element_type"] == "Source"
+    assert zalozenie["parametr"] == "lv_voltage_tolerance"
+    assert zalozenie["scenariusz"] == "MAX"
+    tresc = zalozenie["message_pl"]
+    for fragment in ("Sieć zasilająca nN", "Szyna nN przyłącza", "Koniec obwodu nN", "+10 %"):
+        assert fragment in tresc, tresc
+    for identyfikator in ("Q_SIEC_NN", _NN_Q, _NN_K):
+        assert identyfikator not in tresc, tresc
 
 
 # ---------------------------------------------------------------------------
@@ -346,16 +378,15 @@ def _galezie_transformatorow(enm: EnergyNetworkModel) -> list[TransformerBranch]
 
 @pytest.mark.parametrize("deklaracja", ["PLUS_6", "PLUS_10", "brak", "sprzeczna"])
 def test_k_t_czyta_c_max_tolerancji_strony_dolnej(deklaracja: str) -> None:
+    """K_T (eq. 12a) czyta c_max klasy WYSPY strony dolnej — także wartości roboczej (brak i
+    sprzeczność: +10 %, c_max 1,10 dla OBU transformatorów sieci sprzecznej, nigdy deklaracja
+    „pierwszego")."""
     galezie = _galezie_transformatorow(_siec(deklaracja))
-    tolerancja, liczy = _DEKLARACJE[deklaracja]
+    tolerancja, _robocza = _DEKLARACJE[deklaracja]
+    assert galezie
     for galaz in galezie:
-        if liczy:
-            oczekiwane = 0.95 * _C[("nN", tolerancja, "MAX")] / (1.0 + 0.6 * _x_t())
-            assert galaz.get_kt_correction_factor() == pytest.approx(oczekiwane, rel=1e-9)
-        else:
-            with pytest.raises(OdmowaToleranciiNnError) as blad:
-                galaz.get_kt_correction_factor()
-            assert blad.value.kod == KOD_TOLERANCJA_NN_BRAK
+        oczekiwane = 0.95 * _C[("nN", tolerancja, "MAX")] / (1.0 + 0.6 * _x_t())
+        assert galaz.get_kt_correction_factor() == pytest.approx(oczekiwane, rel=1e-9)
 
 
 def _enm_z_agregatem(tolerancja: str | None, szyna: str) -> EnergyNetworkModel:
@@ -382,9 +413,9 @@ def test_k_g_czyta_c_max_sieci_maszyny(tolerancja: str | None, szyna: str) -> No
         # Maszyna na szynie SN: wiersz SN, tolerancja sieci nN nie ma wpływu.
         c_max, podstawa = 1.10, "IEC 60909-0 tab. 1, pasmo SN, MAX"
     elif tolerancja is None:
-        with pytest.raises(OdmowaToleranciiNnError):
-            _ = maszyna.k_g
-        return
+        # Wartość robocza wyspy (+10 %, wpisana ręcznie) — nazwana w podstawie K_G.
+        c_max = _C[("nN", "PLUS_10", "MAX")]
+        podstawa = "IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), MAX"
     else:
         c_max = _C[("nN", tolerancja, "MAX")]
         podstawa = f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {_ETYKIETA[tolerancja]}, MAX"
@@ -395,48 +426,45 @@ def test_k_g_czyta_c_max_sieci_maszyny(tolerancja: str | None, szyna: str) -> No
 
 
 # ---------------------------------------------------------------------------
-# Rozpływ mocy nie wymaga tolerancji (c nie wchodzi do rozpływu)
+# Brak deklaracji nie blokuje: ani mapowania, ani gotowości, ani biegu
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("deklaracja", ["brak", "sprzeczna"])
-def test_mapowanie_grafu_i_rozplyw_nie_sa_blokowane_brakiem_tolerancji(deklaracja: str) -> None:
-    """Odmowa jest LENIWA: graf mapuje się (Z_Q odroczone, K_T/K_G liczone przy odczycie),
-    a odmawia dopiero konsument zwarciowy (``get_grid_sc_sources``/K_T)."""
-    graf = map_enm_to_network_graph(_siec(deklaracja))
-    assert graf.nodes  # mapowanie nie rzuca
-    wyspy = wyspy_nn(_siec(deklaracja))
-    assert [w.powod for w in wyspy] == [
-        "BRAK_DEKLARACJI" if deklaracja == "brak" else "DEKLARACJE_SPRZECZNE"
-    ]
-    blokery: list[Any] = []
-    EligibilityService._check_tolerancja_nn(_siec(deklaracja), blokery)
-    kody = {b.code for b in blokery}
-    assert kody == {"ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING"}
-    assert {b.fix_action.payload_hint["required"] for b in blokery} == {"lv_voltage_tolerance"}
-    assert {b.fix_action.modal_type for b in blokery} == {"TransformerModal"}
-
-
-def test_wyspa_zrodla_nn_bez_deklaracji_blokuje_z_akcja_na_zrodle() -> None:
-    blokery: list[Any] = []
-    EligibilityService._check_tolerancja_nn(_enm_wyspy_zrodla_nn(None), blokery)
-    (bloker,) = blokery
-    assert bloker.code == "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING"
-    assert bloker.element_ref == "Q_SIEC_NN"
-    assert bloker.element_type == "source"
-    assert bloker.fix_action.modal_type == "SourceModal"
+@pytest.mark.parametrize(
+    "deklaracja", ["brak", "sprzeczna", "wyspa_zrodlo_nn_brak", "PLUS_6", "PLUS_10"]
+)
+def test_gotowosc_nie_ma_blokera_tolerancji(deklaracja: str) -> None:
+    """Dawny bloker gotowości ``ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING`` skasowany: macierz
+    dopuszczalności analiz nie zna żadnego kodu tolerancji nN, a powód wartości roboczej
+    stoi w wyspie (jedno źródło dla założenia biegu)."""
+    enm = _siec(deklaracja)
+    macierz = EligibilityService().compute_matrix(
+        enm=enm, readiness=_validate_and_readiness(enm), case_id="tol"
+    )
+    kody = {b.code for wynik in macierz.matrix for b in (*wynik.blockers, *wynik.warnings)}
+    assert not {k for k in kody if "TOLERANCE" in k or "tolerancja" in k}, kody
+    _tolerancja, robocza = _DEKLARACJE[deklaracja]
+    powody = [w.powod for w in wyspy_nn(enm)]
+    if not robocza:
+        assert powody == [None]
+    elif deklaracja == "sprzeczna":
+        assert powody == ["DEKLARACJE_SPRZECZNE"]
+    else:
+        assert powody == ["BRAK_DEKLARACJI"]
 
 
 @pytest.mark.parametrize("deklaracja", sorted(_DEKLARACJE))
 def test_tolerancje_wezlow_jeden_predykat(deklaracja: str) -> None:
-    tolerancja, _ = _DEKLARACJE[deklaracja]
+    tolerancja, robocza = _DEKLARACJE[deklaracja]
     mapa = tolerancje_wezlow_nn(_siec(deklaracja))
-    oczekiwane_wezly = {_NN_Q, _NN_K} if deklaracja == "wyspa_zrodlo_nn" else {N2, N3}
+    oczekiwane_wezly = {_NN_Q, _NN_K} if deklaracja.startswith("wyspa_zrodlo_nn") else {N2, N3}
     assert set(mapa) == oczekiwane_wezly  # szyny SN nie występują
     assert set(mapa.values()) == {tolerancja}
     graf = map_enm_to_network_graph(_siec(deklaracja))
     for ref in oczekiwane_wezly:
         assert graf.nodes[ref_to_graph_id(ref)].tolerancja_nn == tolerancja
+        # Klasa i jej pochodzenie z JEDNEJ wyspy (predykaty parami).
+        assert graf.nodes[ref_to_graph_id(ref)].tolerancja_nn_robocza is robocza
 
 
 # ---------------------------------------------------------------------------
@@ -497,21 +525,19 @@ def test_petla_i_swz_c_z_tolerancji_sieci_nn(
         return wynik
 
     monkeypatch.setattr(serwis_petli, "compute_fault_loop", _szpieg)
-    tolerancja, liczy = _DEKLARACJE[deklaracja]
+    tolerancja, robocza = _DEKLARACJE[deklaracja]
     widok_wynik = _WIDOKI_PETLI[widok](_enm_petli_z(deklaracja))
-    if not liczy:
-        assert widok_wynik["kod_odmowy"] == KOD_TOLERANCJA_NN_BRAK, widok_wynik
-        assert widok_wynik["missing_data"] == ["lv_voltage_tolerance"]
-        assert "„TR-7 Kowalskiego”" in widok_wynik["reason_pl"]
-        assert wejscia == [], "solver pętli wołany bez tolerancji sieci nN"
-        return
+    # Zasada nr 4: brak/sprzeczność deklaracji NIE odmawia pętli ani SWZ — wartość robocza.
+    assert "kod_odmowy" not in widok_wynik or widok_wynik["kod_odmowy"] is None, widok_wynik
     assert wejscia, widok_wynik
+    dopisek = " (wartość robocza)" if robocza else ""
     for dane, wynik in zip(wejscia, wyniki, strict=True):
         assert dane.tolerancja_nn == tolerancja
+        assert dane.tolerancja_nn_robocza is robocza
         assert wynik.c_min == pytest.approx(_C[("nN", tolerancja, "MIN")])
         assert wynik.c_max == pytest.approx(_C[("nN", tolerancja, "MAX")])
         assert wynik.c_zrodlo_min == (
-            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {_ETYKIETA[tolerancja]}, MIN"
+            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {_ETYKIETA[tolerancja]}{dopisek}, MIN"
         )
         z_s = abs(wynik.z_loop_ohm)
         assert wynik.ik_min_a == pytest.approx(wynik.c_min * dane.u_nom_v / z_s, rel=1e-12)
@@ -567,10 +593,10 @@ def test_petla_liczby_reczne(tolerancja: str) -> None:
     assert wynik.ik_max_a == pytest.approx(ik_max, abs=1e-6)
 
 
-def test_petla_bez_tolerancji_odmawia() -> None:
-    with pytest.raises(OdmowaToleranciiNnError) as blad:
+def test_petla_bez_rozstrzygnietej_tolerancji_to_blad_programu() -> None:
+    """Solver pętli nie wybiera klasy (rozstrzyga wołający) — brak klasy = błąd programu."""
+    with pytest.raises(ValueError):
         compute_fault_loop(_wejscie_reczne(None))
-    assert blad.value.kod == KOD_TOLERANCJA_NN_BRAK
 
 
 def test_petla_nie_ma_kanalu_nadpisania_c() -> None:
@@ -605,18 +631,30 @@ def test_api_petli_liczy_z_tolerancja_z_zadania(tolerancja: str) -> None:
     etykieta = _ETYKIETA[tolerancja]
     assert dane["c_zrodlo_min"] == f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta}, MIN"
     assert dane["c_zrodlo_max"] == f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta}, MAX"
+    assert dane["tolerancja_nn"]["pochodzenie"] == "DEKLARACJA"
+    assert dane["tolerancja_nn"]["wartosc_robocza"] is False
 
 
-@pytest.mark.parametrize("tolerancja", [None, "PLUS_8"])
-def test_api_petli_bez_albo_z_niepoprawna_tolerancja_odmawia(tolerancja: str | None) -> None:
-    odpowiedz = TestClient(app).post("/api/fault-loop/compute", json=_zadanie_api(tolerancja))
-    if tolerancja is None:
-        assert odpowiedz.status_code == 400
-        # Kod w polu `kod` ciała odpowiedzi (`api.odmowa_http.pola_odmowy`), nie w `detail`.
-        assert odpowiedz.json()["kod"] == KOD_TOLERANCJA_NN_BRAK
-        assert KOD_TOLERANCJA_NN_BRAK not in odpowiedz.json()["detail"]
-    else:
-        assert odpowiedz.status_code == 422
+def test_api_petli_bez_tolerancji_liczy_na_wartosci_roboczej() -> None:
+    """Żądanie bez tolerancji: ta sama reguła pierwszeństwa co bieg — wartość robocza +10 %
+    (liczby ręczne +10 %), nazwana w podstawie c i w znaczniku odpowiedzi."""
+    odpowiedz = TestClient(app).post("/api/fault-loop/compute", json=_zadanie_api(None))
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+    ik_min, ik_max = _RECZNE["PLUS_10"]
+    assert dane["ik_min_a"] == pytest.approx(ik_min, abs=1e-6)
+    assert dane["ik_max_a"] == pytest.approx(ik_max, abs=1e-6)
+    assert dane["tolerancja_nn"]["wartosc"] == "PLUS_10"
+    assert dane["tolerancja_nn"]["pochodzenie"] == "PROPOZYCJA"
+    assert dane["tolerancja_nn"]["wartosc_robocza"] is True
+    assert dane["c_zrodlo_min"] == (
+        "IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), MIN"
+    )
+
+
+def test_api_petli_z_niepoprawna_tolerancja_odmawia() -> None:
+    odpowiedz = TestClient(app).post("/api/fault-loop/compute", json=_zadanie_api("PLUS_8"))
+    assert odpowiedz.status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -694,9 +732,12 @@ def test_zapis_tolerancji_przy_tworzeniu_transformatora_trafia_do_enm(wartosc: s
     nowy_ref = wynik["selection_hint"]["element_id"]
     (nowy,) = (t for t in wynik["snapshot"]["transformers"] if t["ref_id"] == nowy_ref)
     assert nowy.get("lv_voltage_tolerance") == wartosc
-    # Deklaracja jest tolerancją wyspy nN nowej szyny — ten sam predykat co c węzła i K_T.
+    # Deklaracja jest tolerancją wyspy nN nowej szyny — ten sam predykat co c węzła i K_T;
+    # bez deklaracji wyspa dostaje wartość roboczą +10 % (oznaczoną, nie zapisaną w modelu).
     model = EnergyNetworkModel.model_validate(wynik["snapshot"])
-    assert tolerancje_wezlow_nn(model)[nowy["lv_bus_ref"]] == wartosc
+    wyspa = wyspy_wezlow_nn(model)[nowy["lv_bus_ref"]]
+    assert wyspa.tolerancja == (wartosc or "PLUS_10")
+    assert wyspa.robocza is (wartosc is None)
 
 
 @pytest.mark.parametrize(
@@ -756,7 +797,9 @@ def test_zapis_tolerancji_przy_tworzeniu_zrodla_nn_trafia_do_enm(wartosc: str | 
     (zrodlo,) = wynik["snapshot"]["sources"]
     assert zrodlo.get("lv_voltage_tolerance") == wartosc
     model = EnergyNetworkModel.model_validate(wynik["snapshot"])
-    assert tolerancje_wezlow_nn(model)[zrodlo["bus_ref"]] == wartosc
+    wyspa = wyspy_wezlow_nn(model)[zrodlo["bus_ref"]]
+    assert wyspa.tolerancja == (wartosc or "PLUS_10")
+    assert wyspa.robocza is (wartosc is None)
 
 
 @pytest.mark.parametrize(

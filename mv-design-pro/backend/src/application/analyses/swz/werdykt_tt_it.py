@@ -59,7 +59,7 @@ from werdykt import (
     zagreguj_wymaganie,
 )
 
-from .werdykt import rodzaj_obwodu_dla_aparatu
+from .werdykt import dane_przyjete_petli, rodzaj_obwodu_dla_aparatu
 
 #: Kod odmowy limitu (rejestr kodów gotowości): tekst normy nie jest w repozytorium.
 KOD_LIMIT_BRAK_TEKSTU_NORMY = "swz.limit_tt_it_brak_tekstu_normy"
@@ -130,20 +130,32 @@ def _w(wartosc: float, jednostka: str) -> Wielkosc:
     return Wielkosc(wartosc=float(wartosc), jednostka=jednostka)
 
 
-def _dowod_obliczenia(odniesienie: str) -> StatusDowodu:
+def _dowod_obliczenia(
+    odniesienie: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
+) -> StatusDowodu:
     zdolnosc = classify_dynamic_capability(ZDOLNOSC_PETLI_TT_IT)
     return StatusDowodu(
         metoda="OBLICZENIE",
         poziom=zdolnosc.tier,
         rodzaj_twierdzenia=zdolnosc.claim_kind,
         status_modelu="NIE_DOTYCZY",
-        status_danych=StatusDanych(stan="ZWALIDOWANE"),
+        status_danych=(
+            StatusDanych(stan="UNVALIDATED_INPUT", dane_przyjete=dane_przyjete)
+            if dane_przyjete
+            else StatusDanych(stan="ZWALIDOWANE")
+        ),
         odniesienie=odniesienie,
     )
 
 
-def _dowod_deklaracji_rcd(rcd: RcdNaTrasie, t_a: float | None, kolumna: str) -> StatusDowodu:
-    """Czas wyłączenia z rekordu RCD: rekord niezweryfikowany = dana przyjęta (jakość karty)."""
+def _dowod_deklaracji_rcd(
+    rcd: RcdNaTrasie,
+    t_a: float | None,
+    kolumna: str,
+    dane_petli: tuple[DanaPrzyjeta, ...] = (),
+) -> StatusDowodu:
+    """Czas wyłączenia z rekordu RCD: rekord niezweryfikowany = dana przyjęta (jakość karty);
+    kolumnę rekordu wybiera prąd pętli, więc jego dana przyjęta (``dane_petli``) też."""
     przyjete: tuple[DanaPrzyjeta, ...] = ()
     if rcd.verification_status != "ZWERYFIKOWANY" and t_a is not None:
         przyjete = (
@@ -157,6 +169,7 @@ def _dowod_deklaracji_rcd(rcd: RcdNaTrasie, t_a: float | None, kolumna: str) -> 
                 jakosc=FieldQuality.DATASHEET,
             ),
         )
+    przyjete = przyjete + dane_petli
     return StatusDowodu(
         metoda="DEKLARACJA",
         poziom=EvidenceTier.DECLARATION,
@@ -291,7 +304,9 @@ def _kryterium_prad_rcd(
             zakres_stosowalnosci_pl=f"wyłącznik różnicowoprądowy „{rcd.nazwa}” najbliższy punktowi",
         ),
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"pętla doziemna TT w punkcie „{punkt}”"),
+        dowod=_dowod_obliczenia(
+            f"pętla doziemna TT w punkcie „{punkt}”", dane_przyjete_petli(wynik, punkt)
+        ),
         zakres_waznosci=_zakres(
             "TT", "Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A"
         ),
@@ -335,6 +350,7 @@ def _kryterium_czas_rcd(
     rodzaj: str,
     pasmo: str,
     przedmiot: Przedmiot,
+    punkt: str,
 ) -> OcenaKryterium:
     t_a, kolumna = czas_wylaczenia_rcd_dla_pradu(rcd, wynik.ik_min_a)
     wynik_k = (
@@ -377,7 +393,7 @@ def _kryterium_czas_rcd(
             zakres_stosowalnosci_pl=f"obwód {rodzaj}, pasmo U0 {pasmo}",
         ),
         niepewnosc=_NIEPEWNOSC_DEKLARACJI,
-        dowod=_dowod_deklaracji_rcd(rcd, t_a, kolumna),
+        dowod=_dowod_deklaracji_rcd(rcd, t_a, kolumna, dane_przyjete_petli(wynik, punkt)),
         zakres_waznosci=_zakres(
             "TT", "Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT"
         ),
@@ -535,7 +551,9 @@ def _kryterium_drugie_zwarcie_it(
         ),
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie „{punkt}”"),
+        dowod=_dowod_obliczenia(
+            f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie „{punkt}”", dane_przyjete_petli(wynik, punkt)
+        ),
         zakres_waznosci=_zakres(
             "IT",
             "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie napędowe U_LL/2",
@@ -598,7 +616,14 @@ def ocen_swz_tt_it(
         kryteria = [
             _kryterium_prad_rcd(wynik_petli, rcd, przedmiot, nazwa_punktu_pl),
             _kryterium_czas_rcd(
-                wynik_petli, rcd, wpis, jednostka_redakcyjna, rodzaj, pasmo, przedmiot
+                wynik_petli,
+                rcd,
+                wpis,
+                jednostka_redakcyjna,
+                rodzaj,
+                pasmo,
+                przedmiot,
+                nazwa_punktu_pl,
             ),
             _kryterium_napiecie_dotykowe_tt(
                 wynik_petli, rcd, limit_napiecia_dotykowego, przedmiot, nazwa_punktu_pl
@@ -636,7 +661,10 @@ def ocen_swz_tt_it(
         oceny_skladowe=tuple(kryteria),
         pokrycie_programu="NIE_DOTYCZY",
         pokrycie_programu_pl="ocena obwodu nN — program badań modułu wytwórczego nie dotyczy",
-        dowod=_dowod_obliczenia(f"pętla doziemna {uklad} w punkcie „{nazwa_punktu_pl}”"),
+        dowod=_dowod_obliczenia(
+            f"pętla doziemna {uklad} w punkcie „{nazwa_punktu_pl}”",
+            dane_przyjete_petli(wynik_petli, nazwa_punktu_pl),
+        ),
         zakres_waznosci=_zakres(uklad, f"Ochrona przeciwporażeniowa obwodu nN w układzie {uklad}"),
         slad=[odnosnik for ocena in kryteria for odnosnik in ocena.slad],
     )

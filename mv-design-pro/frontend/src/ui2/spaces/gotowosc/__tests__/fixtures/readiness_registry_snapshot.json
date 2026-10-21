@@ -478,7 +478,7 @@
     },
     {
       "area": "STATIONS",
-      "code": "fault.c_tolerancja_nn_brak",
+      "code": "fault.c_tolerancja_nn_robocza",
       "fix_navigation": {
         "focus": "lv_voltage_tolerance",
         "panel": "inspector",

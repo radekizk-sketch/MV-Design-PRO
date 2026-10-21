@@ -26,6 +26,16 @@ Trzy testy:
   „Porównanie z progami: Obciążenie 134,74 % przekracza limit 100,0 %."). Dotkliwość,
   ranking, napięcia, przepływy, iteracje NR, liczniki i kolejność bez zmian; pozostałe
   27 hashy bez zmian.
+- Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (2026-10-21): cztery hashe rodziny D6 —
+  ``nastawy/promieniowa/ln1_bb`` 13b31430… → 4d2557f9…, ``nastawy/promieniowa/
+  ln1_bb_niestandardowe`` 83f9eb21… → 05c6aeb7…, ``nastawy/rozgalezienie/ln1_bb``
+  76dc76ad… → 0b192a10…, ``nastawy/rozgalezienie/ln1_bc`` 6af0790b… → 5475545c….
+  Jedyna różnica: addytywne pole ``WejscieNastawZBiegow.dane_przyjete`` (dane przyjęte
+  prądów wejścia nastaw w sieci nN liczonej z wartością roboczą tolerancji). Sieci D6 są
+  SN, więc pole jest puste (``[]`` we wszystkich czterech widokach); hash widoku po
+  usunięciu tego jednego klucza równa się dawnemu złotemu hashowi bit w bit dla wszystkich
+  28 kluczy (sprawdzone podmianą ``hash_widoku`` w harnessie). Prądy, nastawy, zaciski,
+  c i kolejność bez zmian; pozostałe 24 hashe bez zmian.
 """
 
 from __future__ import annotations

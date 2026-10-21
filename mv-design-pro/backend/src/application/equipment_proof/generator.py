@@ -27,7 +27,9 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.pochodne import calka_joule_ka2s
+from werdykt import DanaPrzyjeta
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -320,6 +322,7 @@ class EquipmentProofGenerator:
             checks=checks,
             key_results=key_results,
             required_fault_results=dict(proof_input.required_fault_results),
+            dane_przyjete=_dane_przyjete_wejscia(proof_input),
         )
 
     @classmethod
@@ -358,7 +361,10 @@ class EquipmentProofGenerator:
             },
             unit_check_passed=True,
             total_steps=len(steps),
-            warnings=(),
+            warnings=tuple(
+                f"Wielkości wymagane liczone z daną przyjętą: {d.nazwa_pl} — {d.powod_pl}"
+                for d in result.dane_przyjete
+            ),
             overall_status=result.overall_status,
             failed_checks=result.failed_checks,
         )
@@ -684,6 +690,19 @@ def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool
     krótszym albo równym obowiązuje porównanie wprost I_th,req ≤ I_thr.
     """
     return required_time > device_time
+
+
+def _dane_przyjete_wejscia(proof_input: EquipmentProofInput) -> tuple[DanaPrzyjeta, ...]:
+    """Dana przyjęta wymaganych wielkości: punkt zabudowy w sieci nN liczonej z wartością roboczą
+    tolerancji napięcia (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — stoi w wyniku i w ostrzeżeniu
+    dowodu, bo każde z czterech sprawdzeń porównuje wielkość z tego biegu."""
+    if not proof_input.tolerancja_nn_robocza:
+        return ()
+    return (
+        dana_przyjeta_tolerancji_nn(
+            miejsce_pl=f"punkt zabudowy aparatu „{proof_input.device.name_pl}”"
+        ),
+    )
 
 
 def _as_float(value: Any) -> float | None:

@@ -12,7 +12,7 @@ Verifies:
 import math
 
 import pytest
-from network_model.core.voltage_factor import OdmowaToleranciiNnError, c_for_node
+from network_model.core.voltage_factor import c_for_node
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
@@ -117,8 +117,11 @@ class TestComputeFaultLoopTNS:
         assert result.c_zrodlo_min == "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN"
         assert result.c_zrodlo_max == "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX"
 
-    def test_brak_tolerancji_sieci_nn_odmowa(self) -> None:
-        """Brak tolerancji sieci nN = odmowa nazwana, nigdy wiersz +6 % po cichu."""
+    def test_nierozstrzygnieta_tolerancja_to_blad_programu(self) -> None:
+        """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: solver pętli nie wybiera klasy tolerancji —
+        rozstrzyga ją wołający (deklaracja albo wartość robocza rejestru). Klasa nierozstrzy-
+        gnięta przy U_0 w paśmie nN to błąd PROGRAMU wołającego (``ValueError``), nie odmowa
+        dziedziny i nigdy wiersz tabeli wybrany po cichu."""
         dane = _make_typical_tn_s_input()
         bez_tolerancji = FaultLoopInput(
             tolerancja_nn=None,
@@ -128,11 +131,44 @@ class TestComputeFaultLoopTNS:
             return_conductor=dane.return_conductor,
             transformer_impedance=dane.transformer_impedance,
         )
-        with pytest.raises(OdmowaToleranciiNnError) as blad:
+        with pytest.raises(ValueError) as blad:
             compute_fault_loop(bez_tolerancji)
-        # Postać strukturalna (partia 10): kod w polu odmowy nazwanej, nie w treści.
-        assert blad.value.kod == "fault.c_tolerancja_nn_brak"
-        assert "fault.c_tolerancja_nn_brak" not in str(blad.value)
+        assert not isinstance(blad.value, OdmowaDanychError)
+
+    @pytest.mark.parametrize(
+        ("tolerancja", "robocza", "c_max", "c_min"),
+        [
+            ("PLUS_6", False, 1.05, 0.95),
+            ("PLUS_10", False, 1.10, 0.90),
+            ("PLUS_10", True, 1.10, 0.90),
+        ],
+    )
+    def test_wartosc_robocza_w_podstawie_c_i_znaczniku(
+        self, tolerancja: str, robocza: bool, c_max: float, c_min: float
+    ) -> None:
+        """{deklaracja +6 %, deklaracja +10 %, wartość robocza +10 %} × {MAX, MIN}: c z tabeli,
+        podstawa nazywa wartość roboczą, znacznik wyniku (i klucz `to_dict`) tylko przy niej."""
+        dane = _make_typical_tn_s_input()
+        wynik = compute_fault_loop(
+            FaultLoopInput(
+                tolerancja_nn=tolerancja,
+                tolerancja_nn_robocza=robocza,
+                fault_node_id=dane.fault_node_id,
+                u_nom_v=dane.u_nom_v,
+                phase_conductor=dane.phase_conductor,
+                return_conductor=dane.return_conductor,
+                transformer_impedance=dane.transformer_impedance,
+            )
+        )
+        assert (wynik.c_max, wynik.c_min) == (c_max, c_min)
+        etykieta = "+6 %" if tolerancja == "PLUS_6" else "+10 %"
+        dopisek = " (wartość robocza)" if robocza else ""
+        for scenariusz, zrodlo in (("MAX", wynik.c_zrodlo_max), ("MIN", wynik.c_zrodlo_min)):
+            assert zrodlo == (
+                f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta}{dopisek}, {scenariusz}"
+            )
+        assert wynik.tolerancja_nn_robocza is robocza
+        assert ("tolerancja_nn_robocza" in wynik.to_dict()) is robocza
 
     def test_ik_max_greater_than_ik_min(self) -> None:
         result = compute_fault_loop(_make_typical_tn_s_input())

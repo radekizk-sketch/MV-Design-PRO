@@ -368,9 +368,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
-  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (+6 %/+10 %)
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: tolerancja napięcia sieci nN (+6 %/+10 %)
   // deklarowana na transformatorze stacji — wzorzec `lv_earthing_system` (obszar STATIONS).
-  'fault.c_tolerancja_nn_brak': 'stacje',
+  'fault.c_tolerancja_nn_robocza': 'stacje',
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',

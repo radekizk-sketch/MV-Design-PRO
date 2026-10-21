@@ -41,6 +41,9 @@ pochodzą z JEDNEGO rozstrzygnięcia ``aparaty_pol.parametry_aparatu`` (projekta
 propozycja rejestru), status kryterium wynika z liczb, a każda wartość robocza stoi w
 ``dane_przyjete`` (jakość ``ESTIMATED``, stan danych ``UNVALIDATED_INPUT``, kompletność
 ``NIEPELNY``). Podstawa limitu na wartości roboczej nigdy nie jest ``KATALOG_PRODUCENTA``.
+Prąd punktu zabudowy w sieci nN liczonej z wartością roboczą tolerancji napięcia (znacznik
+wiersza biegu ``tolerancja_nn_robocza``, karta TOLERANCJA-NN-WARTOSC-ROBOCZA) jest tak samo
+daną przyjętą każdego kryterium, które go porównuje.
 
 ZERO FABRYKACJI: parametr, dla którego rejestr nie zna uzasadnionej propozycji (np. prąd
 krótkotrwały rozłącznika bezpiecznikowego — wytrzymałość zestawu wyznacza wkładka), daje
@@ -88,6 +91,7 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_T_TH,
     WYDANIE_REJESTRU,
     WartoscRozstrzygnieta,
+    dana_przyjeta_tolerancji_nn,
 )
 from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
@@ -174,6 +178,9 @@ class PradyPola:
     i_dc_ka: float | None = None
     tb_s: float | None = None
     un_kv: float | None = None
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt w sieci nN liczonej z wartością roboczą
+    #: tolerancji napięcia (znacznik wiersza biegu) — prądy pola stoją na danej przyjętej.
+    tolerancja_nn_robocza: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -188,6 +195,7 @@ class PradyPola:
             "un_kv": self.un_kv,
             "kody_gotowosci": list(self.kody_gotowosci),
             "powod_pl": self.powod_pl,
+            **({"tolerancja_nn_robocza": True} if self.tolerancja_nn_robocza else {}),
         }
 
 
@@ -262,6 +270,7 @@ def prady_pol_z_biegu(
             i_dc_ka=_liczba(wiersz.get("i_dc_ka")),
             tb_s=_liczba(wiersz.get("tb_s")),
             un_kv=_liczba(wiersz.get("un_kv")),
+            tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
         )
     return wynik
 
@@ -529,6 +538,14 @@ def _dane_przyjete(
     return tuple(dane)
 
 
+def _dane_pradow(prady: PradyPola) -> tuple[DanaPrzyjeta, ...]:
+    """Dana przyjęta PRĄDU pola: punkt w sieci nN liczonej z wartością roboczą tolerancji
+    (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — każde kryterium porównujące prąd tego punktu."""
+    if not prady.tolerancja_nn_robocza:
+        return ()
+    return (dana_przyjeta_tolerancji_nn(miejsce_pl=_opis_punktu(prady)),)
+
+
 def _dowod(run_id: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()) -> StatusDowodu:
     """Dowód kryterium; wartości robocze ⇒ ``UNVALIDATED_INPUT`` (kompletność ``NIEPELNY``)."""
     zdolnosc = classify_dynamic_capability(ZDOLNOSC_WYTRZYMALOSCI)
@@ -599,7 +616,9 @@ def _ocena_dynamiczna(
         if zapis_i_dyn is not None and zapis_i_dyn.get("pochodzenie") == "PROPOZYCJA"
         else None
     )
-    dane = _dane_przyjete([zapis_i_dyn, zapis_i_th], aparat_pl=przedmiot.nazwa_pl)
+    dane = _dane_przyjete([zapis_i_dyn, zapis_i_th], aparat_pl=przedmiot.nazwa_pl) + (
+        _dane_pradow(prady)
+    )
     braki: list[str] = []
     if prady.ip_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
@@ -685,7 +704,7 @@ def _ocena_cieplna(
             zapis_czasu_wlasnego if isinstance(zapis_czasu_wlasnego, dict) else None,
         ],
         aparat_pl=przedmiot.nazwa_pl,
-    )
+    ) + _dane_pradow(prady)
     braki: list[str] = []
     if prady.ith_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
@@ -878,7 +897,7 @@ def _ocena_wylaczania(
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id),
+        dowod=_dowod(run_id, () if nie_dotyczy else _dane_pradow(prady)),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(

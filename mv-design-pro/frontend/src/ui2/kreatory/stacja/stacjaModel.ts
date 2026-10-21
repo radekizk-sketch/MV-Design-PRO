@@ -293,8 +293,8 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   uklad_sieci_nn: 'TN-C-S',
   // Domyślnie +10 % — sieć 230/400 V z dopuszczalnym odchyleniem napięcia +10 %
   // (IEC 60038, PN-EN 50160). Wartość widoczna w kroku „Uziemienie"; projektant zmienia
-  // świadomie na +6 %, gdy operator deklaruje węższą tolerancję. Bez deklaracji (model
-  // sprzed karty) backend blokuje zwarcia nN kodem `fault.c_tolerancja_nn_brak`.
+  // świadomie na +6 %, gdy operator deklaruje węższą tolerancję. Bez deklaracji backend
+  // liczy z wartością roboczą +10 % i oznacza ją założeniem `fault.c_tolerancja_nn_robocza`.
   tolerancja_napiecia_nn: 'PLUS_10',
   neutral_point: 'directly_grounded',
   neutral_impedance_ohm: '',

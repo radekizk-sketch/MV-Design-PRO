@@ -651,10 +651,16 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
+  it('blad pobrania -> uczciwy stan bledu (bez fabrykacji, nie "dane niedostepne")', async () => {
+    // Intencja bez zmian: błąd pobrania nie fabrykuje wkładów. Stan jest teraz NAZWANY
+    // błędem (dawniej wchłaniany w „dane niedostępne", którym mówiło też pobieranie w toku).
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
-    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    expect(await screen.findByTestId('mvd-zwarcia-wklady-blad')).toHaveTextContent(
+      ZWARCIA_STRINGS.wkladyBlad,
+    );
+    expect(screen.queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-zwarcia-wklady-filtr')).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
