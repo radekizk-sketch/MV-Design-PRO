@@ -54,7 +54,8 @@ let opCounter = 0;
 type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; type?: string }>;
-  transformers?: Array<{ ref_id: string }>;
+  transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+  buses?: Array<{ ref_id: string; voltage_kv?: number }>;
 };
 type DomainOpResponse = { error?: string | null; snapshot?: Snapshot };
 
@@ -155,7 +156,19 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
       catalog_binding: katalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycję TRAFO_SN_NN i dane 15/0,4 kV dostaje WYŁĄCZNIE transformator stacji SN/nN
+  // (strona dolna na szynie nN) — wzorzec `critical-run-flow.spec.ts`. Pętla obejmowała
+  // także transformator GPZ 110/15 kV, przestawiając go na 15/0,4 kV przy szynach 110 kV
+  // i 15 kV; walidator E023 (napięcie uzwojenia poza pasmem szyny) blokuje taką sieć,
+  // więc bieg dostawał 409 i spec nie dochodził do ekranu.
+  const napiecieSzyny = new Map(
+    (op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv ?? Number.NaN]),
+  );
+  const transformatoryStacji = (op.snapshot?.transformers ?? []).filter(
+    (transformer) => (napiecieSzyny.get(transformer.lv_bus_ref ?? '') ?? Number.NaN) < 1.0,
+  );
+  expect(transformatoryStacji.length, 'stacja SN/nN ma transformator po stronie nN').toBe(1);
+  for (const transformer of transformatoryStacji) {
     await operacja(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: katalogBinding('TRAFO_SN_NN', TRAFO_ID),

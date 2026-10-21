@@ -43,7 +43,8 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
   };
 };
@@ -199,7 +200,19 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycję TRAFO_SN_NN i dane 15/0,4 kV dostaje WYŁĄCZNIE transformator stacji SN/nN
+  // (strona dolna na szynie nN) — wzorzec `critical-run-flow.spec.ts`. Pętla obejmowała
+  // także transformator GPZ 110/15 kV, przestawiając go na 15/0,4 kV przy szynach 110 kV
+  // i 15 kV; walidator E023 (napięcie uzwojenia poza pasmem szyny) blokuje taką sieć,
+  // więc bieg dostawał 409 i spec nie dochodził do ekranu.
+  const napiecieSzyny = new Map(
+    (op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv ?? Number.NaN]),
+  );
+  const transformatoryStacji = (op.snapshot?.transformers ?? []).filter(
+    (transformer) => (napiecieSzyny.get(transformer.lv_bus_ref ?? '') ?? Number.NaN) < 1.0,
+  );
+  expect(transformatoryStacji.length, 'stacja SN/nN ma transformator po stronie nN').toBe(1);
+  for (const transformer of transformatoryStacji) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -250,12 +263,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   const widokResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${studyCase.id}/enm/wytrzymalosc-aparatury`,
     {
-      data: {
-        station_ref: stationRef,
-        i_peak_ka: punkt!.ip_ka,
-        i_thermal_ka: punkt!.ith_ka,
-        ik_ka: punkt!.ikss_ka ?? null,
-      },
+      // Kontrakt karty WYTRZYMALOSC-PRAD-POLA: zapisany bieg, nie liczby stacji —
+      // prąd każdego pola backend bierze z wiersza biegu w punkcie zabudowy pola.
+      data: { station_ref: stationRef, short_circuit_run_id: run.id },
     },
   );
   expect(widokResponse.ok()).toBeTruthy();
@@ -339,6 +349,19 @@ test.describe('kd6:zrzuty', () => {
       await expect(wiersz).toBeVisible({ timeout: 30000 });
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
+
+      // Układ rekordów K: każda karta werdyktu ma czytelną szerokość. Karty wpięte luźno
+      // w wiersz flex kurczyły się do kilku znaków i sekcja miała ~186 000 px wysokości.
+      const karty = page
+        .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
+        .locator(':scope > *');
+      expect(await karty.count()).toBe(2);
+      for (const karta of await karty.all()) {
+        const ramka = await karta.boundingBox();
+        expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
+      }
+      const ramkaSekcji = await sekcja.boundingBox();
+      expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
 
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });

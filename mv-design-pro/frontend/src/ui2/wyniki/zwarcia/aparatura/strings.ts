@@ -5,26 +5,31 @@
 
 export const APARATURA_STRINGS = {
   tytul: 'Wytrzymałość aparatury w punkcie zwarcia',
-  cel: 'Porównaj prądy z tego biegu (ip → I_dyn, Ith → I_th) ze znamionami aparatów pól tej stacji.',
+  cel: 'Porównaj prądy zwarcia w punkcie zabudowy każdego pola tej stacji (ip → I_dyn, Ith → I_th) ze znamionami jego aparatów.',
   akcja: 'Sprawdź aparaturę w punkcie zwarcia',
   akcjaPonow: 'Sprawdź ponownie',
   pracuje: 'Sprawdzanie wytrzymałości…',
   norma: 'IEC 60909 · ocena z obliczenia wytrzymałości',
 
   wejsciaEyebrow: 'DANE WEJŚCIOWE',
-  wejscieIp: 'Prąd udarowy ip (kryterium I_dyn)',
-  wejscieIth: 'Prąd cieplny zastępczy Ith (kryterium I_th)',
+  wejsciePrady: 'Prądy zwarciowe pól',
+  wejsciePradyOpis: 'ip i Ith w punkcie zabudowy każdego pola',
   wejscieStacja: 'Stacja punktu zwarcia',
   wejsciePola: 'Pola z aparaturą do sprawdzenia',
   zrodloPradow: 'z wyniku tego biegu',
+  // Prądy jednego pola (wiersz biegu dla punktu zabudowy pola).
+  pradyPola: 'Prądy w punkcie zabudowy pola',
+  pradyPunkt: 'punkt',
+  pradyIp: 'ip',
+  pradyIth: 'Ith',
   zrodloAparatu: 'z modelu i konfiguracji stacji',
   // Źródło aparatu per wiersz — inżynier musi wiedzieć, CO ocenia (KD-6).
   zrodloModel: 'aparat z modelu (katalog pola)',
   zrodloKonfiguracja: 'aparat z konfiguracji stacji',
 
   // Uczciwe stany zerowe — każdy nazywa BRAK PODSTAWY, nie werdykt negatywny.
-  brakPradow:
-    'Ten wynik nie niesie prądu udarowego albo cieplnego dla wybranego punktu — nie ma czego porównać ze znamionami aparatów.',
+  brakBiegu:
+    'Brak zapisanego biegu zwarciowego — prądów pól nie ma skąd wziąć, więc nie ma czego porównać ze znamionami aparatów.',
   punktPozaStacja:
     'Wybrany punkt zwarcia nie leży w żadnej stacji z modelu — aparatury pola nie ma do czego przypisać.',
   brakAparatury:
@@ -36,7 +41,7 @@ export const APARATURA_STRINGS = {
   // Rozbicie czasu wyłączenia (KD-6 poz. 3) — WHITE BOX: suma i oba człony.
   czasSuma: 'Czas wyłączenia t_wył',
   czasCzlonNastawczy: 'Człon nastawczy zabezpieczenia',
-  czasWlasny: 'Czas własny aparatu',
+  czasWlasny: 'Czas własny wyłącznika',
   czasZrodlo: 'Źródło czasu',
   czasZNastaw: 'z nastaw zabezpieczeń pola',
   czasZKonfiguracji: 'z konfiguracji stacji',

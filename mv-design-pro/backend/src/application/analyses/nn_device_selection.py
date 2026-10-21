@@ -789,7 +789,7 @@ def wybierz_aparat_dla_obwodu_nn(
     Ib, Iz′ i Ik″max są PARAMETRAMI WEJŚCIOWYMI (nie liczone tutaj):
       - Ib to prąd OBLICZENIOWY obwodu z definicji IEC 60364-4-43 §433.1 —
         wielkość PROJEKTOWA, nie wyprowadzona z jednego biegu rozpływu
-        (wzorzec: `czasy_wylaczenia_pol_stacji(ik_ka=...)` w tym samym
+        (wzorzec: `czasy_wylaczenia_pol_stacji(ik_pol_ka=...)` w tym samym
         module — Ik przyjmowane jako parametr, nie resolwowane wewnątrz).
       - Iz′ pochodzi z `network_model.solvers.cable_ampacity_derating`
         (osobny, już istniejący krok — ten moduł go NIE powtarza).

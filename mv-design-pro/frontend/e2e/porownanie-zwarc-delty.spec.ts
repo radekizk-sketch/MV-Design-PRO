@@ -51,7 +51,8 @@ function nextEntitySuffix(): string {
 type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; type?: string }>;
-  transformers?: Array<{ ref_id: string }>;
+  transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+  buses?: Array<{ ref_id: string; voltage_kv?: number }>;
 };
 type DomainOpResponse = { error?: string | null; snapshot?: Snapshot };
 
@@ -202,7 +203,19 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycję TRAFO_SN_NN i dane 15/0,4 kV dostaje WYŁĄCZNIE transformator stacji SN/nN
+  // (strona dolna na szynie nN) — wzorzec `critical-run-flow.spec.ts`. Pętla obejmowała
+  // także transformator GPZ 110/15 kV, przestawiając go na 15/0,4 kV przy szynach 110 kV
+  // i 15 kV; walidator E023 (napięcie uzwojenia poza pasmem szyny) blokuje taką sieć,
+  // więc bieg dostawał 409 i spec nie dochodził do ekranu.
+  const napiecieSzyny = new Map(
+    (op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv ?? Number.NaN]),
+  );
+  const transformatoryStacji = (op.snapshot?.transformers ?? []).filter(
+    (transformer) => (napiecieSzyny.get(transformer.lv_bus_ref ?? '') ?? Number.NaN) < 1.0,
+  );
+  expect(transformatoryStacji.length, 'stacja SN/nN ma transformator po stronie nN').toBe(1);
+  for (const transformer of transformatoryStacji) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -566,11 +579,24 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   // Próg pierwotny z backendu (1,5 A wtórnie × 600/5 = 180 A) — front niczego nie przelicza.
   await expect(page.getByTestId(`${prefiks}-overcurrent_51-pierwotny`)).toContainText('180');
 
-  // Nastawa żyje w MODELU: po pełnym przeładowaniu wraca z serwera.
+  // (3a) Obwód wtórny przekładnika — dane jądra nasycenia (karta CT-JEDEN-WERDYKT). Bez
+  // długości i przekroju przewodów wiarygodność punktu jest uczciwie nieustalona; 5 m żyły
+  // 2,5 mm² i przekaźnik 1 VA przy 15 VA / 5P20 dają ALF_eff wielokrotnie powyżej ALF_wym.
+  await page.getByTestId(`${prefiks}-obwod-dlugosc`).fill('5');
+  await page.getByTestId(`${prefiks}-obwod-przekroj`).fill('2.5');
+  await page.getByTestId(`${prefiks}-obwod-dodaj-aparat`).click();
+  await page.getByTestId(`${prefiks}-obwod-aparat-0-nazwa`).fill('Przekaźnik');
+  await page.getByTestId(`${prefiks}-obwod-aparat-0-moc`).fill('1');
+  await page.getByTestId(`${prefiks}-obwod-zapisz`).click();
+  await expect(page.getByTestId(`${prefiks}-obwod-blad`)).toHaveCount(0);
+
+  // Nastawa i obwód żyją w MODELU: po pełnym przeładowaniu wracają z serwera.
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await otworzZabezpieczeniaIAutomatyke(page);
   await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.1', { timeout: 20000 });
+  await expect(page.getByTestId(`${prefiks}-obwod-dlugosc`)).toHaveValue('5');
+  await expect(page.getByTestId(`${prefiks}-obwod-aparat-0-moc`)).toHaveValue('1');
 
   // (4) Bieg zwarciowy realnym klikiem „Oblicz".
   await page.getByRole('button', { name: 'Oblicz', exact: true }).click();

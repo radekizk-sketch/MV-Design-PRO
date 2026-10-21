@@ -194,11 +194,16 @@ class EquipmentProofGenerator:
                 device_source_key="device.i_th_ka",
                 message_pl="Brak podstawy: nie podano I_th/t_th aparatu albo I_th/t_k wymaganego.",
             )
-        if device_time != required_time:
-            # Karta S-C (2026-07-22, zgoda właściciela): przy różnych czasach
-            # odniesienia porównanie energii cieplnej I²t (kryterialne, bez
+        if _porownanie_energii_i2t(device_time=device_time, required_time=required_time):
+            # Karta S-C (2026-07-22, zgoda właściciela): przy czasie zwarcia DŁUŻSZYM od
+            # czasu znamionowego porównanie energii cieplnej I²t (kryterialne, bez
             # fizyki): Ith_req²·tk ≤ Ithr²·t_thr. Wielkości z kontraktu:
             # ith_ka+tk_s z wyniku, i_th_ka+t_th_s z katalogu aparatu.
+            # Karta WYTRZYMALOSC-PRAD-POLA: przy czasie KRÓTSZYM od znamionowego
+            # równoważność I²t nie działa w górę (IEC 60865-1, wytrzymałość cieplna
+            # urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr) — aparat próbowany
+            # prądem I_thr nie jest przez to sprawdzony prądem większym; wtedy porównanie
+            # wprost niżej.
             required_i2t = calka_joule_ka2s(required_val, required_time)
             device_i2t = calka_joule_ka2s(device_val, device_time)
             status = STATUS_PASS if device_i2t >= required_i2t else STATUS_FAIL
@@ -499,14 +504,15 @@ class EquipmentProofGenerator:
             _value_or_missing("t_k", required_time, "s", "tk_s"),
         )
 
-        # Karta S-C (2026-07-22): różne czasy odniesienia ⇒ porównanie energii
-        # I²t (Ith_req²·tk ≤ Ithr²·t_thr) z jawnym podstawieniem w wywodzie.
+        # Karta S-C (2026-07-22): czas zwarcia dłuższy od czasu odniesienia ⇒ porównanie
+        # energii I²t (Ith_req²·tk ≤ Ithr²·t_thr) z jawnym podstawieniem w wywodzie. Ten sam
+        # predykat co werdykt `_check_ith` — wywód i werdykt nie mogą się rozjechać.
         if (
             device_val is not None
             and device_time is not None
             and required_val is not None
             and required_time is not None
-            and device_time != required_time
+            and _porownanie_energii_i2t(device_time=device_time, required_time=required_time)
         ):
             equation = _equation(
                 "EQ_P12_006b",
@@ -552,6 +558,17 @@ class EquipmentProofGenerator:
             result_symbol="I_{th,ok}",
             result_key="ith_ok",
         )
+
+
+def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool:
+    """JEDYNY predykat wyboru porównania I²t dla kryterium cieplnego (werdykt i wywód).
+
+    Równoważność energii cieplnej działa tylko dla czasu zwarcia DŁUŻSZEGO od czasu
+    znamionowego aparatu (IEC 60865-1, wytrzymałość cieplna urządzeń elektrycznych:
+    I_th ≤ I_thr dla T_k ≤ T_kr, I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr). Przy czasie
+    krótszym albo równym obowiązuje porównanie wprost I_th,req ≤ I_thr.
+    """
+    return required_time > device_time
 
 
 def _as_float(value: Any) -> float | None:

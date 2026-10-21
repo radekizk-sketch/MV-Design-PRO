@@ -2961,7 +2961,9 @@ class MVApparatusType:
     #: zabezpieczenia. Dana WYŁĄCZNIE producencka — normy podają szereg wartości
     #: znamionowych, ale NIE przypisują ich modelowi, więc wyprowadzić się jej
     #: nie da. `None` = karta katalogowa tej danej jeszcze nie wniosła; wtedy
-    #: czas wyłączenia niesie sam człon nastawczy z JAWNYM założeniem.
+    #: czasu wyłączenia NIE MA (kod `aparatura.brak_czasu_wlasnego_wylacznika`) —
+    #: sam człon nastawczy zaniżałby czas i zawyżał limit cieplny aparatu
+    #: (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"

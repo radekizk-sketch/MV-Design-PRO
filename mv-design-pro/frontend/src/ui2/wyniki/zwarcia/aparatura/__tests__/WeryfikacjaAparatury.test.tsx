@@ -3,13 +3,16 @@
  * tor Z MODELU — karta KD-6 poz. 2).
  *
  * INTENCJA:
- *  1. do końcówki jadą PRĄDY Z BIEGU (ip → I_dyn, Ith → I_th, Ik" → czas
- *     z charakterystyki), a nie liczby zapisane kiedyś w konfiguracji stacji,
+ *  1. do końcówki jedzie STACJA i ZAPISANY BIEG (karta WYTRZYMALOSC-PRAD-POLA) — prąd
+ *     każdego pola backend bierze z wiersza biegu dla punktu zabudowy pola; ekran nie
+ *     wysyła prądów wybranego punktu, które dawniej szły do wszystkich pól stacji,
  *  2. werdykty powstają dla pól z MODELU, bez wymogu ręcznej konfiguracji,
  *     a każdy wiersz mówi, skąd wziął aparat (`data-zrodlo`),
  *  3. wszystkie trzy stany werdyktu są odróżnialne, a brak podstawy
- *     (brak prądów / punkt poza stacją / brak aparatury) NIGDY nie udaje
- *     werdyktu negatywnego.
+ *     (brak biegu / punkt poza stacją / brak aparatury) NIGDY nie udaje
+ *     werdyktu negatywnego,
+ *  4. każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy i dwa rekordy werdyktu
+ *     wyjaśnialnego jedyną kartą werdyktu.
  * Kliki natywne (userEvent) — Zero-Debt pkt 5.
  */
 
@@ -24,8 +27,95 @@ import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
 import { znacznikWerdyktu, type PoleWytrzymalosci } from '../api';
 import { nazwaStacji, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
+import type { OcenaKryterium } from '../../../wzorzec/werdykt';
 
 const STACJA = 'stn/abc/station';
+const BIEG = 'bieg-zwarciowy-1';
+
+/** Minimalny rekord K (kształt `model_dump` backendu) — wyłącznie do renderu karty. */
+function ocenaK(
+  rodzaj: 'dynamiczna' | 'cieplna',
+  status: OcenaKryterium['status_maszynowy'],
+): OcenaKryterium {
+  return {
+    kryterium_id: `aparatura.field/x/in.aparat/01.${rodzaj}`,
+    przedmiot: { element_ref: 'aparat/01', nazwa_pl: 'Aparat pola SN 1', opis_pl: 'aparat pola P-1' },
+    kryterium: {
+      opis_pl:
+        rodzaj === 'dynamiczna'
+          ? 'Prąd udarowy nie przekracza I_dyn'
+          : 'Prąd cieplny nie przekracza I_th',
+      warunek_latex: rodzaj === 'dynamiczna' ? 'i_p \\le I_{dyn}' : 'I_{th} \\le I_{thr}',
+      relacja: 'NIE_WIECEJ',
+      warunek_wstepny_pl: null,
+      warunek_wstepny_podstawa: null,
+    },
+    podstawa: {
+      rodzaj: 'NORMA',
+      dokument: 'IEC 62271-1',
+      wydanie: '2007',
+      jednostka_redakcyjna: '§ 4.6',
+      status: 'WSKAZANE',
+      uwagi_pl: null,
+    },
+    stosowalnosc: {
+      typ_modulu: null,
+      technologia: null,
+      modul_istniejacy: null,
+      dotyczy: true,
+      powod_pl: 'aparat pola przewodzi prąd zwarcia',
+      podstawa: null,
+      warunek_wstepny_nieuruchomiony: false,
+    },
+    wynik: null,
+    limit: null,
+    margines: null,
+    niepewnosc: { wartosc: null, metoda_pl: null, nie_dotyczy: true, powod_pl: 'bez dyskretyzacji' },
+    status_maszynowy: status,
+    kompletnosc_dowodu: 'NIEPELNY',
+    powody_niepelnosci: [],
+    etykieta: {
+      etykieta_pl:
+        status === 'SPELNIA' ? 'Spełnia kryterium' : 'Brak zweryfikowanej podstawy wymagania',
+      semantyka: status === 'SPELNIA' ? 'pozytywna' : 'ostrzegawcza',
+    },
+    wyjasnienie: {
+      zdanie_pl: `Zdanie wyjaśnienia kryterium ${rodzaj} z backendu.`,
+      przyczyna_pl: null,
+      czego_brakuje: [],
+      zastrzezenia: [],
+    },
+    dowod: {
+      metoda: 'OBLICZENIE',
+      poziom: 'UNVALIDATED_MODEL',
+      rodzaj_twierdzenia: 'STATIC_CALCULATION',
+      status_modelu: 'NIE_DOTYCZY',
+      status_danych: { stan: 'ZWALIDOWANE', dane_przyjete: [] },
+      odniesienie: `zapisany bieg zwarciowy ${BIEG}`,
+      w_domenie_walidacji: null,
+      domena_pl: null,
+    },
+    zakres_waznosci: {
+      rodzaj_analizy: 'SHORT_CIRCUIT',
+      opis_pl: 'Zwarcie trójfazowe w punkcie zabudowy pola wg zapisanego biegu IEC 60909.',
+      technologia: null,
+      model_urzadzenia: null,
+      symetria_zaklocenia: null,
+      parametry_sieci: [],
+      regulator: null,
+      ograniczniki: [],
+      wykluczenia: ['zwarcia niesymetryczne (osobny tor biegu)'],
+    },
+    slad: [
+      {
+        run_id: BIEG,
+        wersja_silnika: null,
+        krok: `aparatura.field/x/in.aparat/01:${rodzaj}`,
+        opis_pl: 'wiersz biegu, punkt sn1',
+      },
+    ],
+  } as unknown as OcenaKryterium;
+}
 
 function snapshotZeStacja(busRef: string): EnergyNetworkModel {
   return {
@@ -40,9 +130,7 @@ function snapshotZeStacja(busRef: string): EnergyNetworkModel {
 
 interface ZadanieWytrzymalosci {
   readonly station_ref: string;
-  readonly i_peak_ka: number | null;
-  readonly i_thermal_ka: number | null;
-  readonly ik_ka: number | null;
+  readonly short_circuit_run_id: string;
 }
 
 /** Wiersz odpowiedzi backendu — kształt 1:1 z widokiem wytrzymałości. */
@@ -64,6 +152,16 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
       i_th_duration_s: 1,
       i_th_pochodzenie: 'producent',
     },
+    prady_pola: {
+      punkt_ref: 'EL-GPZ',
+      punkt_nazwa: 'Szyna pola P-1',
+      ik_ka: 11.4,
+      ip_ka: 31.2,
+      ith_ka: 12.5,
+      kody_gotowosci: [],
+      powod_pl: null,
+    },
+    oceny: [ocenaK('dynamiczna', 'SPELNIA'), ocenaK('cieplna', 'SPELNIA')],
     czas_wylaczenia: {
       t_clearing_s: 0.5,
       zrodlo: 'nastawy_pola',
@@ -102,6 +200,7 @@ function zamontujBackend(pola: readonly PoleWytrzymalosci[]): ZadanieWytrzymalos
             stacja_ref: STACJA,
             stacja_nazwa: 'Stacja 1',
             status: pola.length > 0 ? 'OK' : 'brak danych',
+            bieg_zwarciowy_ref: BIEG,
             pola,
             kody_gotowosci: pola.length > 0 ? [] : ['aparatura.brak_pol_z_aparatem'],
           }),
@@ -126,21 +225,24 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     vi.restoreAllMocks();
   });
 
-  it('PRĄDY Z BIEGU jadą do końcówki; werdykt pola pochodzi z MODELU', async () => {
+  it('STACJA I ZAPISANY BIEG jadą do końcówki (nie prądy punktu); werdykt z MODELU', async () => {
     const user = userEvent.setup();
     const zadania = zamontujBackend([poleOdpowiedzi({})]);
-    const wiersz = shortCircuitRowFixture({ ip_ka: 31.2, ith_ka: 12.5, ik_ka: 11.4 });
+    // Prądy wybranego punktu są INNE niż prądy pola w odpowiedzi — ekran nie może ich wysłać
+    // ani pokazać jako prądów pola.
+    const wiersz = shortCircuitRowFixture({ ip_ka: 99.9, ith_ka: 88.8, ik_ka: 77.7 });
 
-    render(<WeryfikacjaAparatury wiersz={wiersz} punktNazwa="Szyna GPZ 15 kV" />);
+    render(<WeryfikacjaAparatury wiersz={wiersz} runId={BIEG} punktNazwa="Szyna GPZ 15 kV" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     await waitFor(() => expect(zadania).toHaveLength(1));
-    expect(zadania[0]).toEqual({
-      station_ref: STACJA,
-      i_peak_ka: 31.2, // ip z WYNIKU biegu
-      i_thermal_ka: 12.5, // Ith z WYNIKU biegu
-      ik_ka: 11.4, // Ik" — podstawa czasu z charakterystyki
-    });
+    expect(zadania[0]).toEqual({ station_ref: STACJA, short_circuit_run_id: BIEG });
+
+    const prady = await screen.findByTestId('mvd-zwarcia-aparatura-prady-P-1');
+    expect(prady.textContent).toContain('Szyna pola P-1');
+    expect(prady.textContent).toContain('31,2');
+    expect(prady.textContent).toContain('12,5');
+    expect(prady.textContent).not.toContain('99,9');
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
     expect(pole.getAttribute('data-withstand-ok')).toBe('true');
@@ -168,7 +270,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
@@ -197,7 +299,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
@@ -222,7 +324,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-2');
@@ -242,7 +344,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-3');
@@ -277,7 +379,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-4');
@@ -290,7 +392,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     const zadania = zamontujBackend([poleOdpowiedzi({})]);
     useSnapshotStore.setState({ snapshot: snapshotZeStacja('INNA-SZYNA') });
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const brak = await screen.findByTestId('mvd-zwarcia-aparatura-brak');
@@ -307,6 +409,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     render(
       <WeryfikacjaAparatury
         wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
         punktNazwa="Szyna"
         onOtworzKonfiguracjeStacji={(ref) => otwarte.push(ref)}
       />,
@@ -319,24 +422,107 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     expect(otwarte).toEqual([STACJA]);
   });
 
-  it('BRAK PRĄDU w wyniku → brak podstawy (zero podstawiania bezpiecznego zera)', async () => {
+  it('BRAK BIEGU → brak podstawy bez pytania backendu (zero bezpiecznego zera)', async () => {
     const user = userEvent.setup();
-    zamontujBackend([poleOdpowiedzi({})]);
+    const zadania = zamontujBackend([poleOdpowiedzi({})]);
 
     render(
-      <WeryfikacjaAparatury wiersz={shortCircuitRowFixture({ ip_ka: null })} punktNazwa="Szyna" />,
+      <WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={null} punktNazwa="Szyna" />,
     );
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const brak = await screen.findByTestId('mvd-zwarcia-aparatura-brak');
-    expect(brak.getAttribute('data-powod')).toBe('brak-pradow');
+    expect(brak.getAttribute('data-powod')).toBe('brak-biegu');
+    expect(zadania).toHaveLength(0);
+  });
+
+  it('POLE BEZ PRĄDU W BIEGU pokazuje powód backendu i rekordy „nie oceniono"', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        pole: 'P-5',
+        prady_pola: {
+          punkt_ref: null,
+          punkt_nazwa: null,
+          ik_ka: null,
+          ip_ka: null,
+          ith_ka: null,
+          kody_gotowosci: ['aparatura.brak_pradu_pola_w_biegu'],
+          powod_pl: 'Bieg zwarciowy nie niesie wiersza zwarcia trójfazowego dla punktu zabudowy.',
+        },
+        werdykt: null,
+        oceny: [ocenaK('dynamiczna', 'NIE_OCENIONO'), ocenaK('cieplna', 'NIE_OCENIONO')],
+        komunikat_pl: 'NIEUSTALONE: brak prądu pola.',
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-5');
+    expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-prady-P-5').textContent).toContain(
+      'nie niesie wiersza zwarcia trójfazowego',
+    );
+  });
+
+  it('REKORDY WERDYKTU WYJAŚNIALNEGO obu kryteriów są pokazane kartą werdyktu', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        oceny: [ocenaK('dynamiczna', 'SPELNIA'), ocenaK('cieplna', 'BRAK_PODSTAWY')],
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
+    // Zdanie wyjaśnienia i etykieta pochodzą Z REKORDU (prezentacja nic nie układa).
+    expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium dynamiczna z backendu.');
+    expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium cieplna z backendu.');
+    expect(pole.textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+  });
+
+  it('ODMOWA BACKENDU (bieg scenariusza MIN) pokazuje powód z odpowiedzi', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ detail: 'Bieg jest scenariuszem zwarciowym MIN — wymagany MAX.' }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ),
+    );
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const blad = await screen.findByTestId('mvd-zwarcia-aparatura-blad');
+    expect(blad.textContent).toContain('scenariuszem zwarciowym MIN');
+  });
+
+  it('ZMIANA BIEGU unieważnia poprzedni werdykt (żadnej oceny z innego biegu)', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({})]);
+    const wiersz = shortCircuitRowFixture();
+    const { rerender } = render(
+      <WeryfikacjaAparatury wiersz={wiersz} runId={BIEG} punktNazwa="Szyna GPZ" />,
+    );
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+    await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
+
+    rerender(<WeryfikacjaAparatury wiersz={wiersz} runId="bieg-inny" punktNazwa="Szyna GPZ" />);
+    await waitFor(() => expect(screen.queryByTestId('mvd-zwarcia-aparatura-werdykty')).toBeNull());
   });
 
   it('ZMIANA PUNKTU unieważnia poprzedni werdykt (żadnej oceny cudzego punktu)', async () => {
     const user = userEvent.setup();
     zamontujBackend([poleOdpowiedzi({})]);
     const { rerender } = render(
-      <WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna GPZ" />,
+      <WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna GPZ" />,
     );
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
     await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
@@ -344,6 +530,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     rerender(
       <WeryfikacjaAparatury
         wiersz={shortCircuitRowFixture({ target_id: 'BUS-INNY', element_id: 'EL-INNY' })}
+        runId={BIEG}
         punktNazwa="Szyna inna"
       />,
     );
@@ -391,12 +578,12 @@ describe('model ogniwa — czyste selektory', () => {
   });
 
   it('powód braku podstawy rozróżnia trzy sytuacje', () => {
-    expect(powodBrakuPodstawy({ ipKA: null, ithKA: 1, stacje: [STACJA], liczbaPol: 1 })).toBe('brak-pradow');
-    expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [], liczbaPol: 0 })).toBe('punkt-poza-stacja');
-    expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [STACJA], liczbaPol: 0 })).toBe(
+    expect(powodBrakuPodstawy({ runId: null, stacje: [STACJA], liczbaPol: 1 })).toBe('brak-biegu');
+    expect(powodBrakuPodstawy({ runId: BIEG, stacje: [], liczbaPol: 0 })).toBe('punkt-poza-stacja');
+    expect(powodBrakuPodstawy({ runId: BIEG, stacje: [STACJA], liczbaPol: 0 })).toBe(
       'brak-aparatury',
     );
-    expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [STACJA], liczbaPol: 2 })).toBeNull();
+    expect(powodBrakuPodstawy({ runId: BIEG, stacje: [STACJA], liczbaPol: 2 })).toBeNull();
   });
 
   it('znacznik werdyktu odróżnia „nieustalone" od oceny negatywnej', () => {

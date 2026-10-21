@@ -58,6 +58,9 @@ class ProtectionEvaluation:
     stopnie: tuple[dict[str, Any], ...] = ()
     bilans_pradu: dict[str, Any] = field(default_factory=dict)
     ocena: dict[str, Any] = field(default_factory=dict)
+    #: Wynik jądra nasycenia CT w punkcie (ALF_eff, granica prądu nasycenia, zapas, ślad
+    #: WHITE BOX) — źródło statusu ``wiarygodnosc`` (karta CT-JEDEN-WERDYKT).
+    nasycenie_ct: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -81,6 +84,7 @@ class ProtectionEvaluation:
             "stopnie": list(self.stopnie),
             "bilans_pradu": self.bilans_pradu,
             "ocena": self.ocena,
+            "nasycenie_ct": self.nasycenie_ct,
         }
 
 

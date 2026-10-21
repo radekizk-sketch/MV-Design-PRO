@@ -11,13 +11,21 @@ Karta BIEG-ZABEZPIECZEN-Z-MODELU: nastawy pola rozwiązuje JEDNA ścieżka oceny
 400/5 A), pozycję katalogu z zakresami (REF-OC-200, ×In) i próg ze ZADEKLAROWANĄ stroną
 przekładnika (5 A wtórne = 400 A pierwotne). Urządzenie bez któregokolwiek z tych danych
 nie ma czasu — przypięte osobnymi testami na dole pliku.
+
+Karta WYTRZYMALOSC-PRAD-POLA: charakterystyka liczona przy prądzie zwarcia w punkcie
+zabudowy TEGO pola (``ik_pol_ka`` kluczowane referencją pola), a brak czasu własnego
+wyłącznika daje brak czasu wyłączenia (nie sam człon nastawczy). Katalog APARAT_SN nie ma
+dziś ani jednej pozycji z czasem własnym, więc testy ścieżki z czasem podmieniają katalog
+na pozycję z czasem (fikstura ``czas_wlasny``) — rachunek i ścieżka są produkcyjne.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 import pytest
+from application.analyses.protection import czas_wylaczenia_pola as modul
 from application.analyses.protection.czas_wylaczenia_pola import (
     READINESS_BRAK_CZASU_WLASNEGO,
     READINESS_BRAK_NASTAW,
@@ -37,8 +45,12 @@ from enm.models import (
     Substation,
     SwitchBranch,
 )
+from network_model.catalog import get_default_mv_catalog
 
 APARAT_KATALOG = "sw-cb-abb-vd4-12kv-630a"
+#: Druga pozycja APARAT_SN w polu (aparat, którego zabezpieczenie NIE otwiera).
+INNY_APARAT_KATALOG = "sw-ls-abb-nal-12kv-630a"
+CZAS_WLASNY_S = 0.05
 POLE = "pole/in"
 APARAT = "aparat/01"
 PRZEKLADNIK = "ct/01"
@@ -52,6 +64,7 @@ def _enm(
     z_zabezpieczeniem: bool = True,
     ct_ref: str | None = PRZEKLADNIK,
     catalog_ref: str | None = PRZEKAZNIK_KATALOG,
+    drugi_aparat: bool = False,
 ) -> EnergyNetworkModel:
     przypisania = []
     if z_zabezpieczeniem:
@@ -92,7 +105,23 @@ def _enm(
                 catalog_ref=APARAT_KATALOG,
                 catalog_namespace="APARAT_SN",
                 meta={"station_ref": "stn", "bay_ref": POLE},
-            )
+            ),
+            *(
+                [
+                    SwitchBranch(
+                        ref_id="aparat/02",
+                        name="Aparat pola SN 2",
+                        type="switch",
+                        from_bus_ref="zacisk",
+                        to_bus_ref="zacisk2",
+                        catalog_ref=INNY_APARAT_KATALOG,
+                        catalog_namespace="APARAT_SN",
+                        meta={"station_ref": "stn", "bay_ref": POLE},
+                    )
+                ]
+                if drugi_aparat
+                else []
+            ),
         ],
         protection_assignments=przypisania,
         measurements=[
@@ -120,19 +149,50 @@ def _enm(
     )
 
 
+class _KatalogZCzasemWlasnym:
+    """Realny katalog APARAT_SN z czasem własnym dopisanym WSKAZANYM pozycjom."""
+
+    def __init__(self, czasy: dict[str, float]) -> None:
+        self._katalog = get_default_mv_catalog()
+        self._czasy = czasy
+
+    def get_mv_apparatus_type(self, catalog_ref: str) -> Any:
+        pozycja = self._katalog.get_mv_apparatus_type(catalog_ref)
+        if pozycja is None or catalog_ref not in self._czasy:
+            return pozycja
+        return dataclasses.replace(pozycja, break_time_s=self._czasy[catalog_ref])
+
+
+@pytest.fixture()
+def czas_wlasny(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        modul,
+        "get_default_mv_catalog",
+        lambda: _KatalogZCzasemWlasnym({APARAT_KATALOG: CZAS_WLASNY_S}),
+    )
+
+
 def _czas(**kwargs: Any) -> dict[str, Any]:
-    parametry: dict[str, Any] = {"enm": _enm(), "station_ref": "stn", "ik_ka": 8.0}
+    ik_ka = kwargs.pop("ik_ka", 8.0)
+    parametry: dict[str, Any] = {
+        "enm": _enm(),
+        "station_ref": "stn",
+        "ik_pol_ka": {POLE: ik_ka},
+    }
     parametry.update(kwargs)
     return czasy_wylaczenia_pol_stacji(**parametry)[POLE]
 
 
-def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box() -> None:
+def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box(czas_wlasny: None) -> None:
     """DT: człon nastawczy = zwłoka nastawiona; rozbicie widoczne w odpowiedzi."""
     czas = _czas()
 
     assert czas["zrodlo"] == ZRODLO_NASTAWY_POLA
     assert czas["czlon_nastawczy_s"] == 0.3
-    assert czas["t_clearing_s"] == 0.3
+    assert czas["czas_wlasny_wylacznika_s"] == CZAS_WLASNY_S
+    assert czas["czas_wlasny_pozycja_ref"] == APARAT_KATALOG
+    assert czas["t_clearing_s"] == 0.35
+    assert czas["kody_gotowosci"] == []
     assert czas["funkcja"] == "overcurrent_51"
     assert czas["krzywa"] == "DT"
     assert czas["prad_rozruchowy_a"] == 400.0
@@ -140,7 +200,9 @@ def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box() -> None:
     assert czas["urzadzenie_ref"] == "prot/01"
 
 
-def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale() -> None:
+def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale(
+    czas_wlasny: None,
+) -> None:
     """SI: t = TMS·0,14/((I/Is)^0,02−1) — stałe A/B w odpowiedzi, nie sama nazwa."""
     czas = _czas(
         enm=_enm(
@@ -160,31 +222,49 @@ def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale() -> Non
     assert czas["stala_b"] == 0.02
     # M = 8000/400 = 20; 20^0,02 = 1,061753; t = 0,1·0,14/0,061753 = 0,226736 s.
     assert abs(czas["czlon_nastawczy_s"] - 0.226736) < 1e-5
-    assert czas["t_clearing_s"] == czas["czlon_nastawczy_s"]
+    assert czas["t_clearing_s"] == round(czas["czlon_nastawczy_s"] + CZAS_WLASNY_S, 6)
 
 
-def test_brak_czasu_wlasnego_aparatu_jest_nazwany_zalozeniem_i_kodem() -> None:
-    """Katalog nie niesie czasu własnego ⇒ czas to SAM człon nastawczy, jawnie."""
+def test_brak_czasu_wlasnego_aparatu_to_brak_czasu_wylaczenia() -> None:
+    """Katalog nie niesie czasu własnego ⇒ czasu wyłączenia NIE MA (karta
+    WYTRZYMALOSC-PRAD-POLA). Dawniej czas = sam człon nastawczy, czyli krótszy od
+    rzeczywistego, a limit cieplny aparatu przez to wyższy — werdykt optymistyczny.
+    Człon nastawczy zostaje w odpowiedzi jako ślad."""
     czas = _czas()
 
-    assert czas["czas_wlasny_wylacznika_s"] is None
-    assert READINESS_BRAK_CZASU_WLASNEGO in czas["kody_gotowosci"]
-    assert czas["zalozenia_pl"], "Brak członu MUSI być powiedziany wprost"
-    assert "czasu własnego" in czas["zalozenia_pl"][0]
-
-
-def test_czas_wlasny_z_katalogu_jest_doliczany_do_czasu_wylaczenia(monkeypatch) -> None:
-    """Gdy pozycja katalogu niesie czas własny — wchodzi do sumy jako drugi człon."""
-    from application.analyses.protection import czas_wylaczenia_pola as modul
-
-    monkeypatch.setattr(modul, "_czas_wlasny_aparatu", lambda refy: (0.06, refy[0]))
-    czas = _czas()
-
-    assert czas["czas_wlasny_wylacznika_s"] == 0.06
+    assert czas["t_clearing_s"] is None
     assert czas["czlon_nastawczy_s"] == 0.3
-    assert czas["t_clearing_s"] == 0.36
-    assert czas["kody_gotowosci"] == []
-    assert czas["zalozenia_pl"] == []
+    assert czas["czas_wlasny_wylacznika_s"] is None
+    assert czas["czas_wlasny_pozycja_ref"] == APARAT_KATALOG
+    assert czas["zrodlo"] == ZRODLO_NASTAWY_POLA
+    assert czas["kody_gotowosci"] == [READINESS_BRAK_CZASU_WLASNEGO]
+    assert "nie niesie czasu własnego" in czas["powod_pl"]
+    assert "0,3" in czas["powod_pl"].replace(".", ",")
+
+
+def test_czas_wlasny_bierze_sie_tylko_z_wylacznika_otwieranego_przez_zabezpieczenie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Drugi aparat pola (tu rozłącznik z czasem dopisanym w katalogu) NIE dostarcza czasu własnego —
+    zwarcie wyłącza wyłącznik wskazany w przypisaniu zabezpieczenia. Dawniej brany był
+    pierwszy aparat pola, który niósł liczbę."""
+    monkeypatch.setattr(
+        modul,
+        "get_default_mv_catalog",
+        lambda: _KatalogZCzasemWlasnym({INNY_APARAT_KATALOG: 0.01}),
+    )
+    czas = _czas(enm=_enm(drugi_aparat=True))
+
+    assert czas["t_clearing_s"] is None
+    assert czas["kody_gotowosci"] == [READINESS_BRAK_CZASU_WLASNEGO]
+
+
+def test_kazde_pole_liczy_charakterystyke_przy_wlasnym_pradzie(czas_wlasny: None) -> None:
+    """Prąd jest PER POLE: pole bez wpisu w mapie prądów nie dostaje prądu innego pola."""
+    wynik = czasy_wylaczenia_pol_stacji(enm=_enm(), station_ref="stn", ik_pol_ka={"inne": 8.0})
+
+    assert wynik[POLE]["t_clearing_s"] is None
+    assert wynik[POLE]["kody_gotowosci"] == [READINESS_BRAK_PRADU]
 
 
 def test_brak_nastaw_pola_daje_kod_gotowosci_zamiast_wartosci_zastepczej() -> None:
@@ -238,8 +318,8 @@ def test_brak_pradu_poczatkowego_nie_pozwala_sprawdzic_charakterystyki() -> None
 
 def test_wynik_jest_deterministyczny() -> None:
     assert czasy_wylaczenia_pol_stacji(
-        enm=_enm(), station_ref="stn", ik_ka=8.0
-    ) == czasy_wylaczenia_pol_stacji(enm=_enm(), station_ref="stn", ik_ka=8.0)
+        enm=_enm(), station_ref="stn", ik_pol_ka={POLE: 8.0}
+    ) == czasy_wylaczenia_pol_stacji(enm=_enm(), station_ref="stn", ik_pol_ka={POLE: 8.0})
 
 
 @pytest.mark.parametrize(

@@ -148,30 +148,30 @@ def test_equipment_proof_ith_equal_times_unchanged():
 
 
 def test_equipment_proof_ith_time_mismatch_i2t_pass():
-    """Karta S-C: t_th_s != tk_s → porównanie energii I²t (tu: 324 ≤ 800 → PASS)."""
-    proof_input = _input_with_device(_base_input(), t_th_s=2.0)
+    """Karta S-C: t_k > t_th → porównanie energii I²t (tu: 324 ≤ 450 → PASS)."""
+    proof_input = _input_with_device(_base_input(), i_th_ka=30.0, t_th_s=0.5)
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Ith")
 
-    # Ith_req²·tk = 18²·1 = 324 kA²s ≤ Ith²·t_th = 20²·2 = 800 kA²s → PASS.
+    # Ith_req²·tk = 18²·1 = 324 kA²s ≤ Ith²·t_th = 30²·0,5 = 450 kA²s → PASS.
     assert check.status == "PASS"
     assert "I²t" in check.message_pl
     assert "324.0000" in check.message_pl
-    assert "800.0000" in check.message_pl
+    assert "450.0000" in check.message_pl
     assert any("I²t wymagane" in note for note in check.notes)
     assert any("I²t aparatu" in note for note in check.notes)
     # Krok wywodu: równanie energetyczne z jawnym podstawieniem.
     step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
     assert step.equation.equation_id == "EQ_P12_006b"
     assert "324.0000" in step.substitution_latex
-    assert "800.0000" in step.substitution_latex
+    assert "450.0000" in step.substitution_latex
     assert bundle.result.overall_status == "PASS"
 
 
 def test_equipment_proof_ith_time_mismatch_i2t_fail():
-    """Karta S-C: t rożne i energia aparatu za mała → uczciwy FAIL."""
-    # Ith aparatu 10 kA @ 2 s → 200 kA²s < wymagane 18²·1 = 324 kA²s.
-    proof_input = _input_with_device(_base_input(), i_th_ka=10.0, t_th_s=2.0)
+    """Karta S-C: t_k > t_th i energia aparatu za mała → uczciwy FAIL."""
+    # Ith aparatu 20 kA @ 0,5 s → 200 kA²s < wymagane 18²·1 = 324 kA²s.
+    proof_input = _input_with_device(_base_input(), i_th_ka=20.0, t_th_s=0.5)
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Ith")
 
@@ -179,6 +179,28 @@ def test_equipment_proof_ith_time_mismatch_i2t_fail():
     assert "I²t" in check.message_pl
     assert bundle.result.overall_status == "FAIL"
     assert "Ith" in bundle.result.failed_checks
+
+
+@pytest.mark.parametrize(
+    ("i_th_ka", "status"),
+    [(20.0, "PASS"), (15.0, "FAIL")],
+    ids=["prad_aparatu_wiekszy", "energia_wieksza_ale_prad_mniejszy"],
+)
+def test_equipment_proof_ith_krotszy_czas_zwarcia_porownuje_prad_wprost(
+    i_th_ka: float, status: str
+):
+    """Karta WYTRZYMALOSC-PRAD-POLA: t_k (1 s) < t_th (2 s) → równoważność I²t NIE działa
+    w górę (IEC 60865-1: I_th ≤ I_thr dla T_k ≤ T_kr). Aparat 15 kA/2 s ma energię
+    450 kA²s ≥ 324 kA²s, ale prądu 18 kA nie był próbowany — dawniej PASS, teraz FAIL.
+    Werdykt i krok wywodu biorą TEN SAM predykat (równanie prądowe, nie energetyczne)."""
+    proof_input = _input_with_device(_base_input(), i_th_ka=i_th_ka, t_th_s=2.0)
+    bundle = EquipmentProofGenerator.generate(proof_input)
+    check = _find_check(bundle, "Ith")
+
+    assert check.status == status
+    assert "I²t" not in check.message_pl
+    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    assert step.equation.equation_id == "EQ_P12_006"
 
 
 def test_equipment_proof_ith_missing_catalog_time_fails_honestly():

@@ -72,6 +72,9 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   // Nastawy zabezpieczenia modelu edytuje formularz INLINE `EdytorNastawZabezpieczenia`
   // (ekran „Zabezpieczenia i automatyka" i karta elementu na schemacie) — bez okna kreatora.
   update_protection_settings: null,
+  // Sekcja „Obwód wtórny przekładnika” w edytorze nastaw (karta CT-JEDEN-WERDYKT) — bez formularza
+  // przestrzeni roboczej, jak `update_protection_settings`.
+  set_measurement_secondary_circuit: null,
   // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — reuse ISTNIEJĄCYCH
   // operacji domenowych (enm/domain_operations_v2.py, P0.1), brakowało wyłącznie
   // dostawcy dialogu (patrz komentarz przy CANONICAL_OPERATION_NAMES).

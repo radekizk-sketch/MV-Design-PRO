@@ -59,13 +59,8 @@ from application.analyses.lv_domain.upstream_equivalent import (
 )
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
-from application.analyses.protection.czas_wylaczenia_pola import (
-    czasy_wylaczenia_pol_stacji,
-)
 from application.analyses.swz.service import build_swz_view
-from application.analyses.wytrzymalosc_aparatury_pol import (
-    zbuduj_widok_wytrzymalosci_aparatury,
-)
+from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from application.cgmes.kompletnosc import ModelNiekompletnyDlaCgmesError
 from application.cgmes.service import export_cgmes
 from application.eligibility_service import EligibilityService
@@ -73,6 +68,10 @@ from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
+from enm.canonical_analysis import (
+    build_short_circuit_results,
+    scenariusz_biegu_zwarciowego,
+)
 from enm.canonical_analysis import (
     get_run as _get_canonical_run,
 )
@@ -631,15 +630,16 @@ def get_nn_circuit_sheet(
 
 
 class WytrzymaloscAparaturyRequestModel(BaseModel):
-    """Prądy punktu zwarcia z WYNIKU biegu + stacja, w której ten punkt leży."""
+    """Stacja + ZAPISANY bieg zwarciowy, z którego biorą się prądy KAŻDEGO pola.
+
+    Karta WYTRZYMALOSC-PRAD-POLA: dawniej żądanie niosło jedną liczbę ``ik_ka`` /
+    ``i_peak_ka`` / ``i_thermal_ka`` dla całej stacji, więc pole innej sekcji albo strony
+    nN dostawało cudzy prąd i cudzy czas wyłączenia. Liczby z żądania zniknęły — prąd
+    pola to wiersz biegu dla punktu zabudowy tego pola.
+    """
 
     station_ref: str
-    i_peak_ka: float | None = None
-    i_thermal_ka: float | None = None
-    #: Prąd zwarciowy początkowy [kA] — potrzebny WYŁĄCZNIE do wyznaczenia czasu
-    #: wyłączenia z charakterystyki zabezpieczenia (poz. 3). Brak ⇒ czas z nastaw
-    #: pozostaje nieustalony, zamiast być liczonym przy zgadniętym prądzie.
-    ik_ka: float | None = None
+    short_circuit_run_id: str
 
 
 @router.post("/{case_id}/enm/wytrzymalosc-aparatury")
@@ -650,22 +650,39 @@ def post_wytrzymalosc_aparatury(
 
     Aparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),
     a zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —
-    każdy wiersz niesie jawne ``zrodlo``. Fizyka porównania siedzi w jądrze
-    werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
+    każdy wiersz niesie jawne ``zrodlo``. Prądy pola i czas wyłączenia pola liczone są
+    z wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka
+    porównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
     """
+    run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=body.short_circuit_run_id,
+        param_name="short_circuit_run_id",
+        expected_analysis_type="short_circuit_sn",
+    )
+    if run is None:  # parametr wymagany — rozwiązanie zwraca None tylko dla pominiętego
+        raise HTTPException(status_code=422, detail="short_circuit_run_id jest wymagany.")
+    scenariusz = scenariusz_biegu_zwarciowego(run)
+    if scenariusz != "MAX":
+        # Wytrzymałość aparatu sprawdza się przy prądzie MAKSYMALNYM (c_max, IEC 60909-0);
+        # prąd scenariusza minimalnego zaniżyłby wynik i dał werdykt optymistyczny.
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Bieg {body.short_circuit_run_id} jest scenariuszem zwarciowym "
+                f"{scenariusz or 'nierozpoznanym'} — wytrzymałość aparatury ocenia się przy "
+                "prądzie zwarciowym maksymalnym (scenariusz MAX)."
+            ),
+        )
     enm = _get_enm(klucz)
     project_id = _resolve_project_id(case_id, request)
-    zapisana = _bay_device_withstand(project_id, body.station_ref, request)
-    # Czas wyłączenia z NASTAW pól (KD-6 poz. 3) — konfiguracja stacji pozostaje
-    # nadrzędna dla pól, które inżynier skonfigurował ręcznie.
-    czasy = czasy_wylaczenia_pol_stacji(enm=enm, station_ref=body.station_ref, ik_ka=body.ik_ka)
-    return zbuduj_widok_wytrzymalosci_aparatury(
+    return widok_wytrzymalosci_z_biegu(
         enm=enm,
         station_ref=body.station_ref,
-        i_peak_ka=body.i_peak_ka,
-        i_thermal_ka=body.i_thermal_ka,
-        bay_device_withstand=zapisana,
-        czasy_pol=czasy,
+        wiersze_biegu=build_short_circuit_results(run)["rows"],
+        run_id=str(run.id),
+        # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
+        bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),
     )
 
 

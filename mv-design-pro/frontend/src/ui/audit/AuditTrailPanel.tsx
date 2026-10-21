@@ -66,6 +66,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_vt: 'Dodanie przekładnika VT',
   add_relay: 'Dodanie zabezpieczenia',
   update_protection_settings: 'Zapis nastaw zabezpieczenia',
+  set_measurement_secondary_circuit: 'Zapis obwodu wtórnego przekładnika',
   delete_element: 'Usunięcie elementu',
   refresh_snapshot: 'Odświeżenie snapshotu',
 };
