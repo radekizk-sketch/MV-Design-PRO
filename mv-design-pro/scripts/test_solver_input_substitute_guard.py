@@ -1874,8 +1874,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `powod_projektanta_pl`, `propozycja`, `rodzaj_zrodla`, `wartosci_projektanta`, `wplyw_pl`),
     # -0. PASS niezmieniony (zero podstawien).
     # Scalenie partii 13 (SC-IB-ITH-ZRODLA + WARTOSC-ROBOCZA-1, 2026-10-21): POMIAR guardem na
-    # drzewie scalenia = 4241 (4219 bazy + 13 karty Ib + 9 rejestru wartosci roboczych).
-    assert "Pol kontraktow wejsciowych: 4241." in wyjscie, wyjscie
+    # drzewie scalenia = 4242 (4219 bazy + 13 karty Ib + 9 rejestru wartosci roboczych + 1 pole
+    # scalonego modulu wytrzymalosci aparatury). Korekta: pierwszy pomiar 4241 wykonano na module
+    # z bledem skladni po scaleniu (urwany koniec `_ocena_wylaczania`) — pelna bramka go zlapala.
+    assert "Pol kontraktow wejsciowych: 4242." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
