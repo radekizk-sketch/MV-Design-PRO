@@ -346,7 +346,9 @@ test.describe('kd6:zrzuty', () => {
       const karty = page
         .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
         .locator(':scope > *');
-      expect(await karty.count()).toBe(2);
+      // Trzy rekordy K na pole: wytrzymałość dynamiczna, cieplna i zdolność wyłączania
+      // (karta SC-IB-ITH-ZRODLA dodała trzeci — I_b ≤ I_cu dla wyłącznika SN).
+      expect(await karty.count()).toBe(3);
       for (const karta of await karty.all()) {
         const ramka = await karta.boundingBox();
         expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
