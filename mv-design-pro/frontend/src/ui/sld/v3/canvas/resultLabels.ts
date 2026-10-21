@@ -297,11 +297,15 @@ export function buildResultLabelsFromScene(
 
 /**
  * S9-2 — UCZCIWY RACHUNEK POKRYCIA warstwy wynikowej: każdy punkt wyniku
- * backendu trafia do DOKŁADNIE JEDNEJ z pięciu kategorii, a ich suma równa
+ * backendu trafia do DOKŁADNIE JEDNEJ z sześciu kategorii, a ich suma równa
  * się liczbie punktów (inwariant testowany). Kolejność rozstrzygania (pierwsza
  * pasująca wygrywa — stąd rozłączność):
  *   1. `hiddenByModel` — model JAWNIE nie rysuje tego węzła
  *      (`Bus.meta.render_on_sld === false`: mufa ciągu, zacisk pola);
+ *   1a. `inGpzTable` (GPZ-PARYTET) — wiersz pola albo bilansu GPZ pokazany
+ *      w tabeli „Pola GPZ" / belce nagłówka (zbiór `resultPointsInGpzTable` —
+ *      refy, które scena NARYSOWAŁA w adnotacjach GPZ; ten sam zbiór, z którego
+ *      czyta warstwa adnotacji, więc predykat i render mają jedno źródło);
  *   2. `withoutTemplate` — rodzina analizy nie ma szablonu treści dla klasy
  *      tego elementu (np. gałąź w wyniku zwarciowym);
  *   3. `labelled` — punkt ma etykietę (jest w mapie wpisów, po `resultRef`);
@@ -318,11 +322,13 @@ export function summarizeResultPointCoverage(
   entries: Readonly<Record<string, ResultLabelEntry>> | undefined,
   hiddenByModel: ReadonlySet<string>,
   inStationNnBoard: ReadonlySet<string>,
+  inGpzTable: ReadonlySet<string>,
 ): ResultPointCoverage {
   const empty: ResultPointCoverage = {
     total: 0,
     labelled: 0,
     hiddenByModel: 0,
+    inGpzTable: 0,
     withoutTemplate: 0,
     inStationNnBoard: 0,
     withoutAnchor: 0,
@@ -334,12 +340,17 @@ export function summarizeResultPointCoverage(
   for (const ref of Object.keys(entries ?? {})) labelledRefs.add((entries ?? {})[ref].resultRef);
   let labelled = 0;
   let hidden = 0;
+  let gpzTable = 0;
   let withoutTemplate = 0;
   let nnBoard = 0;
   const withoutAnchorRefs: string[] = [];
   for (const ref of Object.keys(payload.elements).sort()) {
     if (hiddenByModel.has(ref)) {
       hidden += 1;
+      continue;
+    }
+    if (inGpzTable.has(ref)) {
+      gpzTable += 1;
       continue;
     }
     if (!resultPointHasTemplate(analysis, payload, ref)) {
@@ -360,6 +371,7 @@ export function summarizeResultPointCoverage(
     total: Object.keys(payload.elements).length,
     labelled,
     hiddenByModel: hidden,
+    inGpzTable: gpzTable,
     withoutTemplate,
     inStationNnBoard: nnBoard,
     withoutAnchor: withoutAnchorRefs.length,
@@ -562,3 +574,18 @@ export function isResultLabelsEmpty(entries: Record<string, ResultLabelEntry> | 
  *  z dwojga. */
 export { orientedSegmentRefs };
 export type { EnergyNetworkModel };
+
+/**
+ * GPZ-PARYTET: refy punktów wyniku, które scena pokazuje w adnotacjach GPZ —
+ * pola z kart tabeli „Pola GPZ" (`Bay.ref_id`) i sam GPZ (`Substation.ref_id`,
+ * wiersz bilansu w belce nagłówka). Pusty zbiór, gdy scena nie ma adnotacji GPZ
+ * (brak GPZ albo L0, gdzie blok jest zwinięty).
+ */
+export function resultPointsInGpzTable(scene: SceneV3 | null): ReadonlySet<string> {
+  const refs = new Set<string>();
+  const adnotacje = scene?.meta.gpzAdnotacje;
+  if (!scene || !adnotacje) return refs;
+  if (scene.meta.gpzId) refs.add(scene.meta.gpzId);
+  for (const karta of adnotacje.tabela?.karty ?? []) refs.add(karta.bayRef);
+  return refs;
+}

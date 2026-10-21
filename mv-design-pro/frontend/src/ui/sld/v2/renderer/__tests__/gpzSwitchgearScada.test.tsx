@@ -1463,7 +1463,7 @@ describe('GpzSwitchgearRenderer — uziemnik (ES) i Q-numeracja IEC 81346', () =
   });
 });
 
-describe('GpzSwitchgearRenderer — interaktywność (kanon lustrzany do GpzCanonicalRenderer)', () => {
+describe('GpzSwitchgearRenderer — interaktywność (kanoniczny kontrakt selekcji aparatów)', () => {
   function rWithBay(overrides: Partial<Parameters<typeof GpzSwitchgearRenderer>[0]> = {}) {
     return render(
       <svg>

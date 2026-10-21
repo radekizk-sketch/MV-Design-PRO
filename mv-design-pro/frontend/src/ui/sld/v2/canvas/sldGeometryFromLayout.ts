@@ -14,7 +14,7 @@
  *
  * Konwencje kotwic rendererów (z `NodeGeometry` = top-left + width/height):
  *  - Stacja (`StationOnRunRenderer`) kotwiczy ŚRODKIEM szyny → mapujemy środek.
- *  - GPZ (`GpzRenderer`/`GpzCanonicalRenderer`) kotwiczy lewym-górnym → mapujemy
+ *  - GPZ (`GpzRenderer`) kotwiczy lewym-górnym → mapujemy
  *    pozycję węzła (top-left).
  *  - Cable run (`CableRunRenderer`) rysuje `pathPoints` port→port — bierzemy
  *    polyline krawędzi z silnika (końce zakotwiczone w realnych portach, V-07).

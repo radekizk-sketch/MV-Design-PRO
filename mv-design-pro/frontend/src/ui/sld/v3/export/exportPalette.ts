@@ -64,6 +64,7 @@ import {
   type VoltageClass,
 } from '../theme/colorTokens';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
+import type { RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
 
 // ---------------------------------------------------------------------------
 // Tabela jasna — SAME KLUCZE co theme/colorTokens.ts (dark). Wartości
@@ -125,6 +126,17 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   swzUnknown: '#8C4400',
 };
 
+/** GPZ-PARYTET: role pól GPZ w druku — te same wartości co jasny motyw ekranu
+ *  (`theme/palette.ts`), bo tam dobrano je pod biel arkusza. */
+const EXPORT_ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
+  zasilajace: '#8A5A00',
+  liniowe: '#1F5F99',
+  transformatorowe: '#5E3A9E',
+  sprzeglo: '#56626F',
+  pomiarowe: '#0B6E60',
+  zrodlowe: '#3C6E1E',
+};
+
 /** Tabela jasna eksponowana dla testów/dokumentacji (parytet kluczy z
  *  `colorTokens.ts` — pomiar w `__tests__/exportPalette.test.ts`). */
 export const LIGHT_TECHNICAL_V3 = {
@@ -133,6 +145,7 @@ export const LIGHT_TECHNICAL_V3 = {
   voltage: EXPORT_VOLTAGE_COLOR,
   state: EXPORT_STATE_COLOR,
   highlight: EXPORT_HIGHLIGHT_COLOR,
+  rolaPola: EXPORT_ROLA_POLA_COLOR,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -167,6 +180,14 @@ function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string
     [source.highlight.resultLabel, EXPORT_HIGHLIGHT_COLOR.resultLabel],
     [source.highlight.resultStale, EXPORT_HIGHLIGHT_COLOR.resultStale],
     [source.highlight.selection, EXPORT_HIGHLIGHT_COLOR.selection],
+    // GPZ-PARYTET (znalezisko przy dokładaniu ról pól): odznaka SWZ nie miała par —
+    // eksport z motywu ciemnego zostawiał w dokumencie kolory ekranu (#27AE60 itd.).
+    [source.highlight.swzOk, EXPORT_HIGHLIGHT_COLOR.swzOk],
+    [source.highlight.swzFail, EXPORT_HIGHLIGHT_COLOR.swzFail],
+    [source.highlight.swzUnknown, EXPORT_HIGHLIGHT_COLOR.swzUnknown],
+    ...(Object.keys(EXPORT_ROLA_POLA_COLOR) as RolaPolaGpz[]).map(
+      (rola) => [source.rolaPola[rola], EXPORT_ROLA_POLA_COLOR[rola]] as const,
+    ),
   ];
   const map = new Map<string, string>();
   for (const [screen, doc] of pairs) {

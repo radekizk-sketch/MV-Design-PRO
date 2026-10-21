@@ -2,8 +2,8 @@
  * SLD V2 — wspólny kontrakt selekcji aparatu GPZ.
  *
  * Jedno źródło prawdy dla identyfikatorów i payloadu selekcji aparatów GPZ,
- * współdzielone przez `GpzCanonicalRenderer` oraz `GpzSwitchgearRenderer`.
- * Dzięki temu oba renderery emitują BYTE-IDENTYCZNE stringi `apparatusId`
+ * używane przez `GpzSwitchgearRenderer` (renderer v2 `GpzCanonicalRenderer` skasowany
+ * kartą GPZ-PARYTET). Dzięki temu renderery emitują BYTE-IDENTYCZNE stringi `apparatusId`
  * (`${bayRef}#${kind}`), które `SldWorkspaceContainer.parseGpzApparatusSelectionId`
  * rozkłada poprawnie — co umożliwia użycie `GpzSwitchgearRenderer` jako
  * drop-in renderera GPZ bez utraty interakcji detail-drawer / context-menu.

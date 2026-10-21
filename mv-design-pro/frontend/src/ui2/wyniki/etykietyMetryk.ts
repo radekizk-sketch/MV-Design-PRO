@@ -50,6 +50,11 @@ export const ETYKIETY_METRYK = [
   ['DELTA_U_PCT', 'Spadek napięcia względny'],
   ['TAP_POSITION', 'Pozycja zaczepu'],
   ['TAP_SWITCH_COUNT', 'Liczba przełączeń zaczepu'],
+  ['P_SUPPLY_MW', 'Moc czynna zasilania stacji'],
+  ['Q_SUPPLY_Mvar', 'Moc bierna zasilania stacji'],
+  ['P_FEEDERS_MW', 'Moc czynna odpływów stacji'],
+  ['Q_FEEDERS_Mvar', 'Moc bierna odpływów stacji'],
+  ['ALARM_COUNT', 'Liczba przekroczeń w wyniku'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 export type KodMetryki = (typeof ETYKIETY_METRYK)[number][0];

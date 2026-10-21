@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../../types/enm';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
-import type { GpzCanonicalRendererProps } from '../../../v2/renderer/GpzCanonicalRenderer';
+import type { CanonicalGpzProps } from '../../../v2/canvas/canonicalGpzModel';
 import { composeGpz } from '../gpz';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, gpzDominanceGaps, gpzHvColumnGaps } from '../../scene/buildScene';
@@ -125,7 +125,7 @@ function fullFixture(): EnmFragment {
 
 describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', () => {
   it('gpz_hv_sections puste + TR/szyna WN/źródło pełne ⇒ hvSystemSource wywiedzione Z DANYCH', () => {
-    const props = buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(fullFixture(), 'gpz-1');
     // INTENCJA (recenzja NO-GO 2026-07-17 pkt 2): napięcie tabliczki = szyna
     // ŹRÓDŁA (`Source.bus_ref` = bus-sn, 15 kV) — dawna semantyka „zawsze
     // napięcie szyny WN" (110) parowała dane zwarciowe 15 kV z cudzym
@@ -157,9 +157,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toMatchObject({ sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
@@ -169,9 +167,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toMatchObject({ uSetPu: 1.06 });
   });
 
@@ -185,9 +181,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
         ...enm,
         sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
       },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toMatchObject({ uSetPu: 0.95, sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
@@ -195,9 +189,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [hvTransformer('tr-1', { uhv_kv: 15 })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toBeNull();
   });
 
@@ -209,9 +201,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toBeNull();
     expect(props.transformers).toEqual([]);
   });
@@ -220,15 +210,13 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, substations: [gpzSubstation({ bus_refs: ['bus-sn'] })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toBeNull();
   });
 
   it('brak źródła na szynie GPZ (SN lub WN) ⇒ hvSystemSource null', () => {
     const enm = fullFixture();
-    const props = buildCanonicalGpzProps({ ...enm, sources: [] }, 'gpz-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps({ ...enm, sources: [] }, 'gpz-1');
     expect(props.hvSystemSource).toBeNull();
   });
 
@@ -236,9 +224,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { bus_ref: 'bus-110' })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource?.sourceRef).toBe('src-1');
   });
 
@@ -253,9 +239,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
           }),
         ],
       },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource).toBeNull();
     expect(props.hvSections).toHaveLength(1);
   });
@@ -267,9 +251,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
         ...enm,
         sources: [systemSource('src-1', { name: 'inna nazwa', meta: { source_id: 'Nazwa z meta' } })],
       },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.hvSystemSource?.name).toBe('Nazwa z meta');
   });
 });
@@ -279,8 +261,8 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
    ============================================================================= */
 
 describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z danych', () => {
-  function propsWithHvColumn(): GpzCanonicalRendererProps {
-    return buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 });
+  function propsWithHvColumn(): CanonicalGpzProps {
+    return buildCanonicalGpzProps(fullFixture(), 'gpz-1');
   }
 
   // INTENCJA (recenzja NO-GO 2026-07-17 pkt 2/3): strona zaczepu podąża za
@@ -303,9 +285,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { bus_ref: 'bus-110' })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     const hvBus = composition.segments.find((s) => s.meta.testId === 'gpz-canonical-hv-bus');
     const sourceDrop = composition.segments.find((s) => s.ownerRef === 'src-1#grid-source-drop');
@@ -336,9 +316,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
@@ -352,9 +330,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
@@ -372,9 +348,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
         ...enm,
         sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
       },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
@@ -402,9 +376,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [hvTransformer('tr-1', { vector_group: null })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 });
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'tr-1#label');
     expect(label!.rows.map((r) => r.text)).toEqual(['TR1', '25 MVA', '110/15 kV', 'uk 11% · Pk 120 kW']);
@@ -413,7 +385,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
   it('brak TR w ENM ⇒ adapter nie niesie transformatora, kompozycja bez kolumny WN (missingData)', () => {
     const enm = fullFixture();
     // Brak TR = brak rekordu transformatora (jedna reguła „transformatory stacji”, patrz wyżej).
-    const props = buildCanonicalGpzProps({ ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] }, 'gpz-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps({ ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] }, 'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     expect(composition.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(false);
     expect(composition.missingData).toEqual(expect.arrayContaining(['gpz.hv.missing', 'gpz.transformer.missing']));
@@ -437,8 +409,8 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     // ZAMIAST luźnych etykiet").
     const props = propsWithHvColumn();
     const composition = composeGpz(props, { x: 0, y: 0 });
-    expect(composition.parityKeys.has('gpz.zone.frame')).toBe(true);
-    expect(composition.parityKeys.has('gpz.zone.header')).toBe(true);
+    expect(composition.parityKeys.has('gpz.frame')).toBe(true);
+    expect(composition.parityKeys.has('gpz.header')).toBe(true);
     expect(composition.segments.some((s) => s.meta.testId === 'gpz-canonical-zone-frame')).toBe(false);
     const zone = composition.zone;
     expect(zone).not.toBeNull();
@@ -533,7 +505,7 @@ describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-
    ============================================================================= */
 
 describe('composeGpz — VT szyny sekcji GPZ (recenzja NO-GO pkt 12)', () => {
-  function withBusVt(arrangement: 'open_delta' | 'star'): GpzCanonicalRendererProps {
+  function withBusVt(arrangement: 'open_delta' | 'star'): CanonicalGpzProps {
     const enm = fullFixture();
     return buildCanonicalGpzProps(
       {
@@ -555,9 +527,7 @@ describe('composeGpz — VT szyny sekcji GPZ (recenzja NO-GO pkt 12)', () => {
           },
         ],
       } as Parameters<typeof buildCanonicalGpzProps>[0],
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
   }
 
   it('pozytyw: Measurement VT na szynie sekcji ⇒ symbol voltageTransformer RÓWNOLEGLE (zejście z szyny, poza torem) + etykieta „3U0" dla otwartego trójkąta', () => {
@@ -576,7 +546,7 @@ describe('composeGpz — VT szyny sekcji GPZ (recenzja NO-GO pkt 12)', () => {
   it('gwiazda ⇒ etykieta „U"; brak Measurement VT na szynie ⇒ ZERO symboli (zero fabrykacji pomiaru)', () => {
     const star = composeGpz(withBusVt('star'), { x: 0, y: 0 });
     expect(star.labels.fieldDesignations.find((l) => l.ownerRef === 'vt-bus-1#bus-vt-quantity')?.text).toBe('U');
-    const bare = composeGpz(buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }), { x: 0, y: 0 });
+    const bare = composeGpz(buildCanonicalGpzProps(fullFixture(), 'gpz-1'), { x: 0, y: 0 });
     expect(bare.symbols.some((s) => (s.meta.testId ?? '').startsWith('gpz-canonical-bus-vt-'))).toBe(false);
   });
 });
@@ -588,7 +558,7 @@ describe('GPZ — klasa napięcia aparatów pola WN (V12K-217)', () => {
   // ten sam człon `wn_sn` i nie da się z nich tej strony odczytać.
   it('aparaty pola WN niosą voltageClass=hv, aparaty pola SN nie niosą jej wcale', () => {
     const composition = composeGpz(
-      buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }),
+      buildCanonicalGpzProps(fullFixture(), 'gpz-1'),
       { x: 0, y: 0 },
     );
     const wnBay = composition.symbols.filter((s) =>
@@ -614,7 +584,7 @@ describe('GPZ — punkt neutralny sieci SN (V12K-219)', () => {
   const zPunktem = (kind: 'resistor' | 'coil' | 'direct' | 'isolated') =>
     composeGpz(
       {
-        ...buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }),
+        ...buildCanonicalGpzProps(fullFixture(), 'gpz-1'),
         snNeutralEarthing: { kind, rOhm: kind === 'resistor' ? 57.7 : undefined },
       },
       { x: 0, y: 0 },
@@ -630,7 +600,7 @@ describe('GPZ — punkt neutralny sieci SN (V12K-219)', () => {
 
   it('brak danej = brak symbolu (zero domysłu — „brak" to nie „izolowana")', () => {
     const bez = composeGpz(
-      { ...buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }), snNeutralEarthing: null },
+      { ...buildCanonicalGpzProps(fullFixture(), 'gpz-1'), snNeutralEarthing: null },
       { x: 0, y: 0 },
     );
     expect(bez.symbols.filter((s) => s.symbolId === 'neutralEarthing')).toHaveLength(0);
@@ -660,9 +630,7 @@ describe('SZYNY-STACJI-LUSTRO — transformator GPZ bez deklaracji, na szynie GP
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, substations: [gpzSubstation({ transformer_refs: [] })] },
-      'gpz-1',
-      { x: 0, y: 0 },
-    );
+      'gpz-1');
     expect(props.transformers.length).toBeGreaterThan(0);
   });
 });

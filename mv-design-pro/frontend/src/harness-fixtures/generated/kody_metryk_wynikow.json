@@ -2,6 +2,12 @@
   "zrodlo": "domain/result_builder_v1.py::METRYKI_ELEMENTOW_WYNIKU",
   "kody": [
     {
+      "kod": "ALARM_COUNT",
+      "jednostki": [
+        ""
+      ]
+    },
+    {
       "kod": "ANGLE_DEG",
       "jednostki": [
         "°"
@@ -89,13 +95,37 @@
       ]
     },
     {
+      "kod": "P_FEEDERS_MW",
+      "jednostki": [
+        "MW"
+      ]
+    },
+    {
       "kod": "P_MW",
       "jednostki": [
         "MW"
       ]
     },
     {
+      "kod": "P_SUPPLY_MW",
+      "jednostki": [
+        "MW"
+      ]
+    },
+    {
+      "kod": "Q_FEEDERS_Mvar",
+      "jednostki": [
+        "Mvar"
+      ]
+    },
+    {
       "kod": "Q_Mvar",
+      "jednostki": [
+        "Mvar"
+      ]
+    },
+    {
+      "kod": "Q_SUPPLY_Mvar",
       "jednostki": [
         "Mvar"
       ]

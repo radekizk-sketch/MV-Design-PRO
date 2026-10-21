@@ -35,7 +35,7 @@
  * zaciski pól `FIELD_TERMINAL`) — dla nich etykieta nie może powstać, bo nie ma
  * elementu rysunku. Szyny odpływów nN należą do rozdzielnicy nN stacji, nie do
  * schematu SN (stacja jest na nim jednym blokiem z szyną nN i agregatem odbioru).
- * Równość jest więc egzekwowana jako INWARIANT SUMY pięciu ROZŁĄCZNYCH kategorii
+ * Równość jest więc egzekwowana jako INWARIANT SUMY sześciu ROZŁĄCZNYCH kategorii
  * (`summarizeResultPointCoverage`), z twardym wymogiem `withoutAnchor === 0`:
  * żaden punkt rysowalny nie ginie po cichu.
  */
@@ -44,7 +44,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildResultLabelsForSnapshot, buildFlowOverlayForSnapshot } from '../SldCanvasV3Workspace';
-import { summarizeResultPointCoverage } from '../resultLabels';
+import { resultPointsInGpzTable, summarizeResultPointCoverage } from '../resultLabels';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { resultPointsHiddenByModel, resultPointsInStationNnBoard } from '../resultRefBridge';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
@@ -58,6 +59,7 @@ const zwarcie = readFixture<RawOverlayPayload>('s92Zwarcie.overlay.json');
 const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
 const hidden = resultPointsHiddenByModel(enm);
 const nnBoard = resultPointsInStationNnBoard(enm);
+const gpzTabela = resultPointsInGpzTable(buildSceneV3(enm, 2));
 
 // Tożsamość elementów wyprowadzana z modelu po NAZWACH/strukturze, nie z ziaren
 // identyfikatorów (te zmieniają się z każdą zmianą ziarna operacji domenowej).
@@ -92,11 +94,12 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
   });
 
   it('rachunek pokrycia: schemat SN oznakowany w całości, szyny odpływów nN nazwane, zero punktów bez elementu rysunku', () => {
-    const coverage = summarizeResultPointCoverage(zwarcie, entries, hidden, nnBoard);
+    const coverage = summarizeResultPointCoverage(zwarcie, entries, hidden, nnBoard, gpzTabela);
     expect(coverage).toEqual({
       total: 9,
       labelled: 3,
       hiddenByModel: 0,
+      inGpzTable: 0,
       withoutTemplate: 0,
       inStationNnBoard: 6,
       withoutAnchor: 0,
@@ -125,11 +128,29 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () => {
   const entries = buildResultLabelsForSnapshot(enm, rozplyw);
 
-  it('kontrola wejścia: nakładka biegu niesie 23 punkty (szyny, gałęzie, transformatory, źródło)', () => {
-    expect(Object.keys(rozplyw.elements)).toHaveLength(23);
+  it('kontrola wejścia: nakładka biegu niesie 25 punktów (szyny, gałęzie, transformatory, źródło, pole i bilans GPZ)', () => {
+    expect(Object.keys(rozplyw.elements)).toHaveLength(25);
     expect(new Set(Object.values(rozplyw.elements).map((element) => element.kind))).toEqual(
-      new Set(['bus', 'branch', 'generator']),
+      new Set(['bus', 'branch', 'generator', 'bay', 'substation']),
     );
+  });
+
+  it('GPZ-PARYTET: wiersze pola i bilansu GPZ liczą się jako opisane w tabeli GPZ (nie „bez wielkości dla tej analizy")', () => {
+    const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
+    const wierszeGpz = Object.keys(rozplyw.elements).filter((ref) => ['bay', 'substation'].includes(rozplyw.elements[ref].kind));
+    expect(wierszeGpz).toHaveLength(2);
+    expect(wierszeGpz).toContain(gpz.ref_id);
+    expect(wierszeGpz.every((ref) => gpzTabela.has(ref))).toBe(true);
+    const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
+    expect(coverage.inGpzTable).toBe(2);
+    expect(coverage.withoutTemplate).toBe(0);
+    // Bez zbioru tabeli GPZ te same wiersze spadają do „bez wielkości" (kategoria
+    // nie jest pusta z definicji — predykat realnie rozstrzyga).
+    const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
+    expect(bezTabeli.inGpzTable).toBe(0);
+    expect(bezTabeli.withoutTemplate).toBe(2);
+    // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
+    expect(resultPointsInGpzTable(buildSceneV3(enm, 0)).size).toBe(0);
   });
 
   it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {
@@ -147,13 +168,13 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
     }
   });
 
-  it('ODBIÓR: INWARIANT SUMY pięciu kategorii === total, przy withoutAnchor = 0', () => {
-    const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard);
-    expect(coverage.total).toBe(23);
+  it('ODBIÓR: INWARIANT SUMY sześciu kategorii === total, przy withoutAnchor = 0', () => {
+    const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
+    expect(coverage.total).toBe(25);
     expect(coverage.labelled).toBeGreaterThan(0);
     expect(
-      coverage.labelled + coverage.hiddenByModel + coverage.withoutTemplate + coverage.inStationNnBoard
-        + coverage.withoutAnchor,
+      coverage.labelled + coverage.hiddenByModel + coverage.inGpzTable + coverage.withoutTemplate
+        + coverage.inStationNnBoard + coverage.withoutAnchor,
     ).toBe(coverage.total);
     expect(coverage.withoutAnchorRefs).toEqual([]);
     expect(coverage.labelled).toBe(10);
@@ -162,7 +183,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
   });
 
   it('bez predykatu rozdzielnicy nN te same szyny spadają do „bez elementu na schemacie" (kategoria nie jest pusta z definicji)', () => {
-    const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, new Set());
+    const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, new Set(), gpzTabela);
     expect(coverage.inStationNnBoard).toBe(0);
     expect([...coverage.withoutAnchorRefs].sort()).toEqual([...szynyOdplywowNn].sort());
   });
@@ -201,7 +222,7 @@ describe('S9-2 — stan zerowy (uczciwy brak)', () => {
     const pusty: RawOverlayPayload = { run_id: 'run-pusty', analysis_type: 'SC_3F', elements: {} };
     const entries = buildResultLabelsForSnapshot(enm, pusty);
     expect(Object.keys(entries)).toHaveLength(0);
-    expect(summarizeResultPointCoverage(pusty, entries, hidden, nnBoard).total).toBe(0);
+    expect(summarizeResultPointCoverage(pusty, entries, hidden, nnBoard, gpzTabela).total).toBe(0);
   });
 
   it('brak biegu (payload=null) ⇒ zero etykiet, zero strzałek', () => {

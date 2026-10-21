@@ -703,20 +703,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/GpzOperatorHeader.tsx:TRANSMISSION_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/GpzOperatorHeader.tsx:TRANSMISSION_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/types.ts:ELIGIBILITY_STATUS_LABELS",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz E28: 28. `ui/types.ts:470,537-540` eligibility labels; router uses `eligible` boolean (`WorkspaceSurfaceRouter.tsx:1905-1924`). **ENUM_WEWNETRZNY.**",

@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "9cb7d13725d7ceab985f109fd67dbcf02a24aa34601bf02cd705961f89452e3f",
+  "deterministic_signature": "9ce6a5306366c92876a0221bcc5b3b9d217c7566888fde9531d1d63c69f4e955",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -285,6 +285,21 @@
         "p_injected_mw": -0.746797186573,
         "q_injected_mvar": -0.0756580800351,
         "s_mva": 0.75061986581
+      }
+    },
+    {
+      "element_ref": "sub_gpz",
+      "element_type": "Substation",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "solver_ref": null,
+      "values": {
+        "alarm_count": 0,
+        "p_feeders_mw": 0.0,
+        "p_supply_mw": -0.746797186573,
+        "q_feeders_mvar": 0.0,
+        "q_supply_mvar": -0.0756580800351
       }
     }
   ],

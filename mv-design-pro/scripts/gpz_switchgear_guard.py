@@ -4,8 +4,8 @@
 Strukturalny guard dla goal §6 — GPZ LOD ≥2 musi pokazywać sekcje szyn,
 pola liniowe/transformatorowe, TR 110/SN i bilans P/Q (kanon SCADA).
 
-Sprawdza obecność znaczników `data-testid` w `GpzCanonicalRenderer.tsx` /
-`GpzSwitchgearRenderer.tsx`:
+Sprawdza obecność znaczników `data-testid` w `GpzSwitchgearRenderer.tsx`
+(renderer `GpzCanonicalRenderer.tsx` skasowany kartą GPZ-PARYTET):
 - `sld-v2-gpz-switchgear-transformer-symbol` (TR 110/SN),
 - `sld-v2-gpz-switchgear-hv-bus` (szyna 110 kV),
 - `sld-v2-gpz-switchgear-lv-bus` (szyna SN),

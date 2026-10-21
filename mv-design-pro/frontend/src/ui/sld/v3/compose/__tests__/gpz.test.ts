@@ -19,13 +19,32 @@ import type {
   CanonicalGpzBay,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
-  GpzCanonicalRendererProps,
-} from '../../../v2/renderer/GpzCanonicalRenderer';
+  CanonicalGpzProps,
+  RolaPolaGpz,
+} from '../../../v2/canvas/canonicalGpzModel';
 import type {
   BayPrimaryDeviceView,
   BayProtectionMarkingView,
   CtRatingAnnotationView,
 } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import { uzwojeniaZGrupyPolaczen } from '../../symbols/uzwojenia';
+import {
+  ETYKIETA_ROLI_POLA_PL,
+  KONTRAKT_NEGATYWNY_GPZ,
+  ROLE_POL_GPZ,
+  szerokoscSlotowNaglowka,
+  tekstAlarmowGpz,
+  tekstOdplywowGpz,
+  tekstTytuluTabeliGpz,
+  tekstZasilaniaGpz,
+  ulozTabeliGpz,
+  ulozWariantTabeliGpz,
+  wariantJednowierszowyMiesciSie,
+  WYSOKOSC_KARTY_GPZ,
+  WYSOKOSC_KARTY_JEDNOWIERSZOWEJ_GPZ,
+  type GpzAdnotacje,
+  type PoleTabeliGpzWejscie,
+} from '../gpzAdnotacje';
 import {
   allGpzSymbolsOnGrid,
   busbarTopologyOf,
@@ -47,13 +66,26 @@ const TR1: CanonicalGpzTransformer = {
   vectorGroup: 'YNd11',
 };
 
+/** Rola tła pola zgodna z rolą stosu aparatów (ta sama dana modelu `Bay.bay_role`). */
+const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>> = {
+  LINE_IN: 'zasilajace',
+  LINE_OUT: 'liniowe',
+  LINE_BRANCH: 'liniowe',
+  TRANSFORMER: 'transformatorowe',
+  COUPLER: 'sprzeglo',
+  MEASUREMENT: 'pomiarowe',
+};
+
 function lineBay(ref: string, overrides: Partial<CanonicalGpzBay> = {}): CanonicalGpzBay {
+  const fieldRole = overrides.fieldRole ?? 'LINE_OUT';
   return {
     bayRef: ref,
     bayNumber: '1',
     feederName: 'ODPŁYW 1',
     destinationLabel: 'ST-01',
-    fieldRole: 'LINE_OUT',
+    fieldRole,
+    rolaPola: ROLA_DLA_STOSU[fieldRole],
+    statusFlags: [],
     cbState: 'closed',
     dsState: 'closed',
     esState: 'open',
@@ -62,11 +94,9 @@ function lineBay(ref: string, overrides: Partial<CanonicalGpzBay> = {}): Canonic
   };
 }
 
-function baseProps(overrides: Partial<GpzCanonicalRendererProps> = {}): GpzCanonicalRendererProps {
+function baseProps(overrides: Partial<CanonicalGpzProps> = {}): CanonicalGpzProps {
   return {
     id: 'gpz-test',
-    x: 0,
-    y: 0,
     name: 'GPZ TEST',
     transformers: [TR1],
     sections: [
@@ -89,7 +119,7 @@ function baseProps(overrides: Partial<GpzCanonicalRendererProps> = {}): GpzCanon
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/gpz — wyrocznie (grid_probe, zero-overlap, endsAtPortsOrBus)', () => {
-  const fixtures: ReadonlyArray<{ readonly name: string; readonly props: GpzCanonicalRendererProps }> = [
+  const fixtures: ReadonlyArray<{ readonly name: string; readonly props: CanonicalGpzProps }> = [
     { name: 'single_transformer_single_section', props: baseProps() },
     {
       name: 'two_sections_with_coupler',
@@ -238,7 +268,7 @@ describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/gpz — migracja busbarTopology (single/double/ring)', () => {
-  function propsWithTopology(topology?: CanonicalGpzSection['busbarTopology']): GpzCanonicalRendererProps {
+  function propsWithTopology(topology?: CanonicalGpzSection['busbarTopology']): CanonicalGpzProps {
     return baseProps({
       sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busbarTopology: topology }],
     });
@@ -330,10 +360,10 @@ describe('V3 compose/gpz — migracja busbarTopology (single/double/ring)', () =
 
 // ---------------------------------------------------------------------------
 // (c) Migracja `visualParityChecklist.test.tsx` — WYŁĄCZNIE klucze GPZ
-// (REQUIRED_GPZ_PARITY_KEYS z v2). Podział COVERED/ODROCZONE — patrz raport
-// zadania: ODROCZONE = warstwa DOM/interakcji lub telemetrii/OSD (header SCADA,
-// ramka, badge'y statusu/pomiarów, detal glifu uzwojenia TR) — F6 canvas,
-// NIE geometria czystej kompozycji.
+// (dawne REQUIRED_GPZ_PARITY_KEYS z v2). Karta GPZ-PARYTET zamknęła listę odroczeń:
+// klucze ramy, nagłówka, uzwojeń, teł pól, plakietek i pomiarów mają realne testy
+// zachowania niżej („GPZ-PARYTET — …"), a elementy nagłówka SCADA — kontrakt
+// negatywny `KONTRAKT_NEGATYWNY_GPZ` z uzasadnieniem.
 // ---------------------------------------------------------------------------
 
 const COVERED_GPZ_PARITY_KEYS = [
@@ -359,25 +389,6 @@ const COVERED_GPZ_PARITY_KEYS = [
   'gpz.section.label',
 ] as const;
 
-/** ODROCZONE (nie produkowane przez czystą kompozycję geometryczną — warstwa
- *  DOM/canvas/telemetrii, F6): [klucz, powód]. */
-const DEFERRED_GPZ_PARITY_KEYS: ReadonlyArray<readonly [string, string]> = [
-  ['gpz.frame', 'tło/ramka rozdzielni — czysta dekoracja canvas, brak treści IEC 60617, F6'],
-  ['gpz.header', 'widget operatorski GpzOperatorHeader (SCADA) — telemetria/OSD, nie prymityw elektryczny, F6'],
-  ['gpz.header.transmission', 'podelement nagłówka SCADA — jw., F6'],
-  ['gpz.header.name', 'podelement nagłówka SCADA — jw., F6 (nazwa GPZ jest osobno w composition.labels.stationName)'],
-  ['gpz.header.address', 'podelement nagłówka SCADA — jw., F6'],
-  ['gpz.header.balance', 'podelement nagłówka SCADA (bilans mocy) — nakładka wyników, F6'],
-  ['gpz.header.alarms', 'podelement nagłówka SCADA (alarmy) — nakładka wyników, F6'],
-  ['gpz.header.control', 'podelement nagłówka SCADA — jw., F6'],
-  ['gpz.header.reset_signals', 'przycisk interakcji DOM (reset sygnalizacji) — brak odpowiednika w czystej geometrii, F6'],
-  ['gpz.transformer.winding.hv', 'detal WEWNĘTRZNY glifu Transformer2WGlyph (okrąg Y) — własność biblioteki symboli (F1), kompozycja niesie jedną instancję symbolu transformer2W, nie dekomponuje jej na sub-elementy parity'],
-  ['gpz.transformer.winding.sn', 'jw. (okrąg Δ) — ta sama przyczyna'],
-  ['gpz.bay.panel', 'tło pola (kolor per rola) — czysta dekoracja canvas, brak treści IEC 60617, F6'],
-  ['gpz.status_flags', 'badge statusu pola (SPZ/SCO/OWG/...) — nakładka wyników/interpretacji, plan §10 "Nakładki wyników", F6'],
-  ['gpz.measurements', 'panel telemetrii pola (P/Q/U/I) — nakładka wyników (BayMeasurements), plan §10, F6'],
-];
-
 describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze GPZ)', () => {
   it('kompozycja pełnego fixture (transformator + hvSections + 2 sekcje + coupler) niesie wszystkie klucze COVERED', () => {
     const composition = composeGpz(
@@ -397,10 +408,6 @@ describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze 
     const missing = COVERED_GPZ_PARITY_KEYS.filter((key) => !composition.parityKeys.has(key));
     expect(missing).toEqual([]);
   });
-
-  for (const [key, reason] of DEFERRED_GPZ_PARITY_KEYS) {
-    it.todo(`${key} — ${reason}`);
-  }
 
   it('missing-data: bez transformatorów i bez hvSections → composition.missingData zawiera gpz.hv.missing/gpz.transformer.missing (odpowiednik v2 test "missing-data states")', () => {
     const composition = composeGpz(baseProps({ transformers: [], hvSections: [] }), ORIGIN);
@@ -862,7 +869,7 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez rejestru device-ref', () => {
-  const propsWithCodes = (codes: readonly string[]): GpzCanonicalRendererProps =>
+  const propsWithCodes = (codes: readonly string[]): CanonicalGpzProps =>
     baseProps({
       sections: [
         {
@@ -971,7 +978,7 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     { measurementRef: 'meas-ct-1', identifier: 'T1', ratioText: '300/5' },
   ];
 
-  const propsWithRegistry = (overrides: Partial<CanonicalGpzBay> = {}): GpzCanonicalRendererProps =>
+  const propsWithRegistry = (overrides: Partial<CanonicalGpzBay> = {}): CanonicalGpzProps =>
     baseProps({
       sections: [
         {
@@ -1145,5 +1152,441 @@ describe('V3 compose/gpz — ADAPTER-BUSREF (busResultRef szyn sekcji + szyny WN
     const hvBus = composition.segments.find((s) => s.ownerRef === 'gpz-test#hv-bus');
     expect(hvBus).toBeDefined();
     expect(hvBus!.meta.busResultRef).toBe('bus/real/hv-110');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GPZ-PARYTET — klucze dawniej odroczone: rama, nagłówek, uzwojenia, tła pól,
+// plakietki, pomiary + kontrakt negatywny nagłówka SCADA.
+// ---------------------------------------------------------------------------
+
+type Prost = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+
+const przecina = (a: Prost, b: Prost): boolean =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const zawiera = (zew: Prost, wew: Prost): boolean =>
+  wew.x >= zew.x && wew.y >= zew.y && wew.x + wew.width <= zew.x + zew.width && wew.y + wew.height <= zew.y + zew.height;
+
+function prostokatySymboli(c: GpzComposition): Prost[] {
+  return c.symbols.map((sym) => ({ x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height }));
+}
+
+function prostokatyOdcinkow(c: GpzComposition): Prost[] {
+  return c.segments.map((seg) => {
+    const xs = seg.points.map((p) => p.x);
+    const ys = seg.points.map((p) => p.y);
+    return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+  });
+}
+
+/** Prostokąty wszystkich treści adnotacji belki i tabeli (bez teł pól). */
+function prostokatyAdnotacji(adn: GpzAdnotacje): Prost[] {
+  return [adn.zasilanie, adn.odplywy, adn.alarmy, ...(adn.tabela ? [adn.tabela.rect] : [])];
+}
+
+/** Pełny GPZ: strona WN z polem zasilającym, transformator, dwie sekcje SN z polami
+ *  wszystkich ról, sprzęgło — każda rola modelu obecna. */
+function pelnyGpz(overrides: Partial<CanonicalGpzProps> = {}): CanonicalGpzProps {
+  return baseProps({
+    hvSections: [
+      {
+        sectionId: 'hv-1',
+        order: 1,
+        label: '110 kV',
+        busVoltageKv: 110,
+        bays: [lineBay('hv-b-1', { bayNumber: 'H1', fieldRole: 'LINE_IN', statusFlags: ['SPZ'] })],
+      },
+    ],
+    sections: [
+      {
+        sectionId: 'sec-1',
+        order: 1,
+        label: 'S1',
+        busVoltageKv: 15,
+        bays: [
+          lineBay('b-1', { bayNumber: '01', statusFlags: ['SPZ', 'SCO'] }),
+          lineBay('b-2', { bayNumber: '02', fieldRole: 'MEASUREMENT', feederName: 'POMIAR' }),
+          lineBay('b-3', { bayNumber: '03', rolaPola: 'zrodlowe', feederName: 'FW 1', statusFlags: [] }),
+        ],
+      },
+      {
+        sectionId: 'sec-2',
+        order: 2,
+        label: 'S2',
+        busVoltageKv: 15,
+        bays: [lineBay('b-4', { bayNumber: '04', statusFlags: ['SCO'] })],
+      },
+    ],
+    couplers: [{ couplerId: 'spr-1', leftSectionId: 'sec-1', rightSectionId: 'sec-2', designation: 'SP', closedState: 'closed' }],
+    ...overrides,
+  });
+}
+
+describe('GPZ-PARYTET — rama i nagłówek (gpz.frame / gpz.header / gpz.header.name)', () => {
+  const warianty: ReadonlyArray<readonly [string, CanonicalGpzProps]> = [
+    ['minimalny (jedna sekcja, jedno pole)', baseProps()],
+    ['pełny (WN + 2 sekcje + sprzęgło, wszystkie role)', pelnyGpz()],
+    ['bez nazwy w modelu', pelnyGpz({ name: null })],
+    ['wiele pól (łamanie kart)', baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: Array.from({ length: 9 }, (_, i) => lineBay(`b-${i}`, { bayNumber: String(i + 1).padStart(2, '0') })) }] })],
+  ];
+
+  for (const [opis, props] of warianty) {
+    it(`${opis}: rama obejmuje symbole, odcinki, nagłówek i tabelę z marginesem ≥ GRID; nic z nagłówka/tabeli nie koliduje z treścią`, () => {
+      const c = composeGpz(props, ORIGIN);
+      expect(c.zone).not.toBeNull();
+      expect(c.adnotacje).not.toBeNull();
+      const zone = c.zone!;
+      const wnetrze = { x: zone.x + GRID, y: zone.y + GRID / 2, width: zone.width - 2 * GRID, height: zone.height - GRID };
+      for (const r of [...prostokatySymboli(c), ...prostokatyOdcinkow(c)]) expect(zawiera(zone, r)).toBe(true);
+      expect(zawiera(wnetrze, c.labels.stationName.nameSlot)).toBe(true);
+      for (const r of prostokatyAdnotacji(c.adnotacje!)) expect(zawiera(wnetrze, r)).toBe(true);
+      const tresc = [...prostokatySymboli(c), ...prostokatyOdcinkow(c), ...c.labels.transformerLabels.map((l) => l.nameSlot)];
+      for (const r of [c.labels.stationName.nameSlot, ...prostokatyAdnotacji(c.adnotacje!)]) {
+        expect(tresc.filter((t) => przecina(r, t))).toEqual([]);
+      }
+      // Wiersze belki nie nachodzą na siebie ani na tabelę.
+      const belka = [c.labels.stationName.nameSlot, ...prostokatyAdnotacji(c.adnotacje!)];
+      belka.forEach((a, i) => belka.slice(i + 1).forEach((b) => expect(przecina(a, b)).toBe(false)));
+      expect(c.parityKeys.has('gpz.frame')).toBe(true);
+      expect(c.parityKeys.has('gpz.header')).toBe(true);
+    });
+  }
+
+  it('nazwa z modelu: klucz gpz.header.name, tekst nagłówka z nazwy; bez prefiksu podwójnego „GPZ GPZ"', () => {
+    const z = composeGpz(baseProps({ name: 'GPZ Północ' }), ORIGIN);
+    expect(z.parityKeys.has('gpz.header.name')).toBe(true);
+    expect(z.labels.stationName.rows[0].text.startsWith('GPZ Północ')).toBe(true);
+    expect(z.missingData).not.toContain('gpz.name.missing');
+    const bezPrefiksu = composeGpz(baseProps({ name: 'Północ' }), ORIGIN);
+    expect(bezPrefiksu.labels.stationName.rows[0].text.startsWith('GPZ Północ')).toBe(true);
+  });
+
+  for (const pusta of [null, '', '   '] as const) {
+    it(`brak nazwy w modelu (${JSON.stringify(pusta)}): jawny stan braku, gpz.name.missing, brak klucza gpz.header.name — bez wymyślonej nazwy`, () => {
+      const c = composeGpz(baseProps({ name: pusta }), ORIGIN);
+      expect(c.missingData).toContain('gpz.name.missing');
+      expect(c.parityKeys.has('gpz.header.name')).toBe(false);
+      expect(c.parityKeys.has('gpz.header')).toBe(true);
+      expect(c.labels.stationName.rows[0].text.startsWith('GPZ — brak nazwy w modelu')).toBe(true);
+    });
+  }
+
+  it('tabela łamie karty w szerokości treści: wiele pól ⇒ wiele kolumn kart, a tabela nie wystaje poza wnętrze ramy', () => {
+    const c = composeGpz(warianty[3][1], ORIGIN);
+    const tabela = c.adnotacje!.tabela!;
+    expect(tabela.karty).toHaveLength(9);
+    expect(tabela.kolumnyKart.length).toBeGreaterThan(1);
+    expect(tabela.rect.x + tabela.rect.width).toBeLessThanOrEqual(c.zone!.x + c.zone!.width - GRID);
+    // Karty rozłączne parami.
+    tabela.karty.forEach((a, i) => tabela.karty.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
+  });
+
+  it('karta szersza niż dostępna szerokość (bardzo długie oznaczenie z modelu): jedna kolumna kart, rama rośnie do karty — tekst nie jest ucinany', () => {
+    const dlugie = 'Pole odpływowe zasilające osiedle Północ — linia kablowa nr 17';
+    const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { bayNumber: dlugie })] }] }), ORIGIN);
+    const tabela = c.adnotacje!.tabela!;
+    expect(tabela.kolumnyKart).toHaveLength(1);
+    expect(tabela.karty[0].oznaczenie).toBe(dlugie);
+    expect(zawiera(c.zone!, tabela.rect)).toBe(true);
+  });
+
+  it('pola bez oznaczenia w modelu (brak numeru i nazwy pola WN): karta mówi „bez oznaczenia" — nie wymyśla numeru', () => {
+    const c = composeGpz(
+      baseProps({ hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hv-b-1', { bayNumber: undefined, feederName: undefined, fieldRole: 'LINE_IN' })] }] }),
+      ORIGIN,
+    );
+    const karta = c.adnotacje!.tabela!.karty.find((k) => k.bayRef === 'hv-b-1')!;
+    expect(karta.oznaczenie).toBe('bez oznaczenia');
+  });
+});
+
+describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.transformer.winding.hv/.sn)', () => {
+  const PRZYPADKI = [
+    { grupa: 'Dyn11', gorne: ['trojkat', false], dolne: ['gwiazda', true], godzina: 11 },
+    { grupa: 'Yyn0', gorne: ['gwiazda', false], dolne: ['gwiazda', true], godzina: 0 },
+    { grupa: 'YNd11', gorne: ['gwiazda', true], dolne: ['trojkat', false], godzina: 11 },
+    { grupa: 'Yzn11', gorne: ['gwiazda', false], dolne: ['zygzak', true], godzina: 11 },
+    { grupa: 'Dd0', gorne: ['trojkat', false], dolne: ['trojkat', false], godzina: 0 },
+  ] as const;
+
+  for (const p of PRZYPADKI) {
+    it(`${p.grupa}: rozbiór → uzwojenia (${p.gorne[0]}${p.gorne[1] ? '+N' : ''} / ${p.dolne[0]}${p.dolne[1] ? '+n' : ''}, godz. ${p.godzina}); symbol transformatora niesie je; klucze winding.hv/.sn`, () => {
+      const u = uzwojeniaZGrupyPolaczen(p.grupa);
+      expect(u).toEqual({
+        stan: 'znane',
+        gorne: { rodzaj: p.gorne[0], punktNeutralny: p.gorne[1] },
+        dolne: { rodzaj: p.dolne[0], punktNeutralny: p.dolne[1] },
+        godzina: p.godzina,
+      });
+      const c = composeGpz(baseProps({ transformers: [{ ...TR1, vectorGroup: p.grupa }] }), ORIGIN);
+      const tr = c.symbols.filter((sym) => sym.symbolId === 'transformer2W');
+      expect(tr).toHaveLength(1);
+      expect(tr[0].uzwojenia).toEqual(u);
+      expect(c.parityKeys.has('gpz.transformer.winding.hv')).toBe(true);
+      expect(c.parityKeys.has('gpz.transformer.winding.sn')).toBe(true);
+      expect(c.missingData.filter((m) => m.startsWith('gpz.transformer.vector_group'))).toEqual([]);
+    });
+  }
+
+  for (const [opis, grupa, stan, brak] of [
+    ['brak grupy w modelu (undefined)', undefined, 'brak', 'gpz.transformer.vector_group.missing:tr-1'],
+    ['pusta grupa', '  ', 'brak', 'gpz.transformer.vector_group.missing:tr-1'],
+    ['zapis spoza notacji', 'Xy5', 'nierozpoznane', 'gpz.transformer.vector_group.unrecognized:tr-1'],
+    ['godzina spoza 0…11', 'Dyn12', 'nierozpoznane', 'gpz.transformer.vector_group.unrecognized:tr-1'],
+  ] as const) {
+    it(`${opis}: jawny znacznik braku (stan „${stan}"), wpis missingData, BEZ kluczy winding — nie zgadujemy uzwojeń`, () => {
+      const c = composeGpz(baseProps({ transformers: [{ ...TR1, vectorGroup: grupa as string | undefined }] }), ORIGIN);
+      const tr = c.symbols.find((sym) => sym.symbolId === 'transformer2W')!;
+      expect(tr.uzwojenia?.stan).toBe(stan);
+      expect(c.missingData).toContain(brak);
+      expect(c.parityKeys.has('gpz.transformer.winding.hv')).toBe(false);
+      expect(c.parityKeys.has('gpz.transformer.winding.sn')).toBe(false);
+    });
+  }
+});
+
+describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
+  it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
+    expect(ROLE_POL_GPZ).toHaveLength(6);
+    for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
+  });
+
+  it('pełny GPZ: tło dla każdego pola z rolą z modelu; tła rozłączne parami i nie zachodzą na symbole INNYCH pól', () => {
+    const c = composeGpz(pelnyGpz(), ORIGIN);
+    const panele = c.adnotacje!.panele;
+    expect(c.parityKeys.has('gpz.bay.panel')).toBe(true);
+    const oczekiwane: Record<string, string> = { 'hv-b-1': 'zasilajace', 'b-1': 'liniowe', 'b-2': 'pomiarowe', 'b-3': 'zrodlowe', 'b-4': 'liniowe' };
+    for (const [ref, rola] of Object.entries(oczekiwane)) {
+      expect(panele.find((p) => p.bayRef === ref)?.rola, ref).toBe(rola);
+    }
+    panele.forEach((a, i) => panele.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect), `${a.bayRef} × ${b.bayRef}`).toBe(false)));
+    for (const panel of panele) {
+      const obce = c.symbols.filter((sym) => sym.meta.bayRef !== undefined && sym.meta.bayRef !== panel.bayRef);
+      const kolizje = obce.filter((sym) => przecina(panel.rect, { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height }));
+      expect(kolizje.map((k) => k.meta.bayRef), panel.bayRef).toEqual([]);
+      // Własne symbole pola są w tle w całości.
+      const wlasne = c.symbols.filter((sym) => sym.meta.bayRef === panel.bayRef);
+      for (const sym of wlasne) {
+        expect(zawiera(panel.rect, { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height })).toBe(true);
+      }
+      // Tło w ramie.
+      expect(zawiera(c.zone!, panel.rect)).toBe(true);
+    }
+  });
+
+  it('legenda zawiera WYŁĄCZNIE role obecne w GPZ, w kolejności ROLE_POL_GPZ', () => {
+    const c = composeGpz(pelnyGpz(), ORIGIN);
+    const legenda = c.adnotacje!.tabela!.legenda.map((l) => l.rola);
+    expect(legenda).toEqual(['zasilajace', 'liniowe', 'pomiarowe', 'zrodlowe']);
+    const minimalny = composeGpz(baseProps(), ORIGIN);
+    expect(minimalny.adnotacje!.tabela!.legenda.map((l) => l.rola)).toEqual(['liniowe']);
+  });
+
+  for (const rola of ROLE_POL_GPZ) {
+    it(`rola „${rola}" z modelu → tło i próbka karty tej roli (rola nie jest wyprowadzana ze stosu aparatów)`, () => {
+      const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { rolaPola: rola })] }] }), ORIGIN);
+      expect(c.adnotacje!.panele.map((p) => p.rola)).toEqual([rola]);
+      expect(c.adnotacje!.tabela!.karty.map((k) => k.rola)).toEqual([rola]);
+    });
+  }
+});
+
+describe('GPZ-PARYTET — plakietki automatyki (gpz.status_flags) z danych EAZ modelu', () => {
+  for (const flagi of [[], ['SPZ'], ['SCO'], ['SPZ', 'SCO']] as const) {
+    it(`pole z plakietkami [${flagi.join(', ')}]: karta niesie dokładnie te plakietki w tej kolejności; klucz status_flags ⇔ co najmniej jedna`, () => {
+      const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { statusFlags: [...flagi] })] }] }), ORIGIN);
+      const karta = c.adnotacje!.tabela!.karty[0];
+      expect(karta.plakietki.map((p) => p.flaga)).toEqual([...flagi]);
+      expect(c.parityKeys.has('gpz.status_flags')).toBe(flagi.length > 0);
+      // Plakietki w obrysie karty i rozłączne parami.
+      for (const p of karta.plakietki) expect(zawiera(karta.rect, p.rect)).toBe(true);
+      karta.plakietki.forEach((a, i) => karta.plakietki.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
+    });
+  }
+});
+
+describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.header.balance / gpz.header.alarms)', () => {
+  it('kompozycja rezerwuje sloty bilansu i alarmów oraz tabelę pomiarów (wartości dokleja kanwa z wyniku backendu)', () => {
+    const c = composeGpz(pelnyGpz(), ORIGIN);
+    expect(c.parityKeys.has('gpz.measurements')).toBe(true);
+    expect(c.parityKeys.has('gpz.header.balance')).toBe(true);
+    expect(c.parityKeys.has('gpz.header.alarms')).toBe(true);
+    const tabela = c.adnotacje!.tabela!;
+    expect(tabela.kolumnyWartosci.map((k) => k.naglowek)).toEqual(['P [MW]', 'Q [Mvar]', 'I [A]', 'U [kV]']);
+    // Kolejność kart = kolejność pól kompozycji: WN, potem sekcje SN po kolei.
+    expect(tabela.karty.map((k) => k.bayRef)).toEqual(['hv-b-1', 'b-1', 'b-2', 'b-3', 'b-4']);
+  });
+
+  it('sloty belki mieszczą NAJDŁUŻSZY wariant tekstu (brak wyniku / wynik / wynik nieaktualny) — geometria nie zależy od stanu biegu', () => {
+    const sloty = szerokoscSlotowNaglowka();
+    const pelny = { pZasilaniaMw: '−8888,8888', qZasilaniaMvar: '−8888,8888', pOdplywowMw: '−8888,8888', qOdplywowMvar: '−8888,8888' };
+    const miara = (t: string): number => Math.ceil(t.length * 13 * 0.62);
+    for (const t of [tekstZasilaniaGpz(null), tekstZasilaniaGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.zasilanie);
+    for (const t of [tekstOdplywowGpz(null), tekstOdplywowGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.odplywy);
+    for (const t of [tekstAlarmowGpz(null, false, false), tekstAlarmowGpz('8888', true, true)]) expect(miara(t)).toBeLessThanOrEqual(sloty.alarmy);
+  });
+
+  it('teksty stanu wyniku: brak wyniku ≠ zero, wynik nieaktualny jawnie oznaczony, metryka nieobecna ≠ zero', () => {
+    expect(tekstZasilaniaGpz(null)).toBe('Zasilanie GPZ: brak wyniku rozpływu mocy');
+    expect(tekstOdplywowGpz(null)).toBe('Odpływy GPZ: brak wyniku rozpływu mocy');
+    expect(tekstAlarmowGpz(null, false, false)).toBe('Przeciążenia w GPZ: brak wyniku rozpływu mocy');
+    expect(tekstTytuluTabeliGpz(false, false)).toBe('Pola GPZ — brak wyniku rozpływu mocy');
+    const bilans = { pZasilaniaMw: '1,2500', qZasilaniaMvar: '0,3000', pOdplywowMw: '1,2400', qOdplywowMvar: '0,2900' };
+    expect(tekstZasilaniaGpz(bilans)).toBe('Zasilanie GPZ: P = 1,2500 MW, Q = 0,3000 Mvar');
+    expect(tekstOdplywowGpz(bilans)).toBe('Odpływy GPZ: P = 1,2400 MW, Q = 0,2900 Mvar');
+    expect(tekstAlarmowGpz('0', true, false)).toBe('Przeciążenia w GPZ: 0');
+    expect(tekstAlarmowGpz('2', true, true)).toBe('Przeciążenia w GPZ: 2 · wynik nieaktualny');
+    expect(tekstTytuluTabeliGpz(true, true)).toBe('Pola GPZ — wynik rozpływu mocy · wynik nieaktualny');
+    const niepelny = { ...bilans, pZasilaniaMw: null };
+    expect(tekstZasilaniaGpz(niepelny)).toBe('Zasilanie GPZ: brak wyniku źródła');
+    expect(tekstOdplywowGpz({ ...bilans, qOdplywowMvar: null })).toBe('Odpływy GPZ: brak kompletu wyników pól');
+    expect(tekstAlarmowGpz(null, true, false)).toBe('Przeciążenia w GPZ: brak wyniku');
+  });
+
+  it('układ tabeli: szerokość dostępna steruje liczbą kolumn kart (wąsko ⇒ 1, szeroko ⇒ wszystkie w jednym wierszu)', () => {
+    const pola = Array.from({ length: 4 }, (_, i) => ({ bayRef: `b-${i}`, oznaczenie: `0${i}`, rola: 'liniowe' as const, plakietki: [] }));
+    const waska = ulozTabeliGpz(pola, 0, 0, 0);
+    expect(waska.kolumnyKart).toHaveLength(1);
+    const szeroka = ulozTabeliGpz(pola, 0, 0, 100000);
+    expect(szeroka.kolumnyKart).toHaveLength(4);
+    expect(szeroka.rect.height).toBeLessThan(waska.rect.height);
+  });
+
+  // Iloczyn cech: szerokość dostępna (wąska / jednowierszowa ledwo / szeroka) × liczba
+  // pól (1, 4, 9) × plakietki (brak / dwie). Wyrocznie: wybrany wariant ma wysokość
+  // = min z wariantów wykonalnych; w karcie jednowierszowej wartości nie zachodzą na
+  // opis pola; karty rozłączne i w obrysie tabeli; legenda nie zachodzi na tytuł
+  // ani na karty.
+  const polaTabeli = (n: number, plakietki: readonly ('SPZ' | 'SCO')[]): PoleTabeliGpzWejscie[] =>
+    Array.from({ length: n }, (_, i) => ({
+      bayRef: `b-${i}`,
+      oznaczenie: `Pole liniowe ${i + 1}`,
+      rola: (i % 2 === 0 ? 'liniowe' : 'zrodlowe') as PoleTabeliGpzWejscie['rola'],
+      plakietki: [...plakietki],
+    }));
+  const progJednowierszowy = (pola: readonly PoleTabeliGpzWejscie[]): number => {
+    // Szerokość karty jednowierszowej CAŁEGO zbioru pól (kolumny wspólne dla tabeli).
+    return ulozWariantTabeliGpz(pola, 0, 0, 0, true).karty[0].rect.width;
+  };
+  for (const n of [1, 4, 9]) {
+    for (const plakietki of [[], ['SPZ', 'SCO']] as const) {
+      const pola = polaTabeli(n, plakietki);
+      const prog = progJednowierszowy(pola);
+      for (const [nazwa, szerokosc] of [['wąska', prog - GRID], ['próg jednowierszowy', prog], ['szeroka', 100000]] as const) {
+        it(`wariant karty: ${n} pól × plakietki [${plakietki.join(', ')}] × szerokość ${nazwa} — najniższa tabela, wartości obok opisu bez zachodzenia`, () => {
+          const tabela = ulozTabeliGpz(pola, 0, 0, szerokosc);
+          const dwu = ulozWariantTabeliGpz(pola, 0, 0, szerokosc, false);
+          const miesciSie = wariantJednowierszowyMiesciSie(pola, szerokosc);
+          expect(miesciSie).toBe(szerokosc >= prog);
+          const wysokosci = [dwu.rect.height, ...(miesciSie ? [ulozWariantTabeliGpz(pola, 0, 0, szerokosc, true).rect.height] : [])];
+          expect(tabela.rect.height).toBe(Math.min(...wysokosci));
+          const jednowierszowa = tabela.karty[0].rect.height === WYSOKOSC_KARTY_JEDNOWIERSZOWEJ_GPZ;
+          if (!miesciSie) expect(tabela.karty[0].rect.height).toBe(WYSOKOSC_KARTY_GPZ);
+          for (const karta of tabela.karty) {
+            expect(zawiera(tabela.rect, karta.rect), karta.bayRef).toBe(true);
+            if (jednowierszowa) {
+              expect(karta.wartosciY).toBe(karta.rect.y);
+              const startWartosci = karta.kolumnaX + tabela.kolumnyWartosci[0].dx;
+              const koniecOpisu = Math.max(karta.rolaX, ...karta.plakietki.map((pl) => pl.rect.x + pl.rect.width));
+              expect(startWartosci, karta.bayRef).toBeGreaterThanOrEqual(koniecOpisu + GRID);
+            } else {
+              expect(karta.wartosciY).toBe(karta.rect.y + karta.rect.height / 2);
+            }
+            // Ostatnia kolumna wartości w obrysie karty.
+            const ostatnia = tabela.kolumnyWartosci[tabela.kolumnyWartosci.length - 1];
+            expect(karta.kolumnaX + ostatnia.dx + ostatnia.width).toBeLessThanOrEqual(karta.rect.x + karta.rect.width);
+          }
+          tabela.karty.forEach((a, i) => tabela.karty.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
+          for (const pozycja of tabela.legenda) {
+            expect(przecina(pozycja.probka, tabela.tytul), pozycja.rola).toBe(false);
+            for (const karta of tabela.karty) expect(przecina(pozycja.probka, karta.rect)).toBe(false);
+            expect(zawiera(tabela.rect, pozycja.probka)).toBe(true);
+          }
+        });
+      }
+    }
+  }
+
+  it('legenda w wierszu tytułu, gdy cała mieści się na prawo od tytułu; inaczej pod kartami (łamana)', () => {
+    const dwieRole = polaTabeli(2, []);
+    const szeroka = ulozTabeliGpz(dwieRole, 0, 0, 100000);
+    expect(szeroka.legenda.every((l) => l.y === szeroka.tytul.y)).toBe(true);
+    expect(Math.min(...szeroka.legenda.map((l) => l.probka.x))).toBeGreaterThanOrEqual(szeroka.tytul.x + szeroka.tytul.width + GRID);
+    const wszystkieRole: PoleTabeliGpzWejscie[] = ROLE_POL_GPZ.map((rola, i) => ({ bayRef: `r-${i}`, oznaczenie: `0${i}`, rola, plakietki: [] }));
+    const waska = ulozTabeliGpz(wszystkieRole, 0, 0, 0);
+    const dolKart = Math.max(...waska.karty.map((k) => k.rect.y + k.rect.height));
+    expect(waska.legenda.every((l) => l.y >= dolKart)).toBe(true);
+    expect(new Set(waska.legenda.map((l) => l.y)).size).toBeGreaterThan(1);
+  });
+});
+
+describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', () => {
+  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji, OWG — każdy z uzasadnieniem', () => {
+    expect(Object.keys(KONTRAKT_NEGATYWNY_GPZ).sort()).toEqual([
+      'gpz.header.address',
+      'gpz.header.control',
+      'gpz.header.reset_signals',
+      'gpz.header.transmission',
+      'gpz.status_flags.OWG',
+    ]);
+    for (const uzasadnienie of Object.values(KONTRAKT_NEGATYWNY_GPZ)) {
+      expect(uzasadnienie).toMatch(/reguła phantom|Brak podstawy/);
+    }
+  });
+
+  for (const [opis, props] of [['minimalny', baseProps()], ['pełny', pelnyGpz()], ['bez nazwy', pelnyGpz({ name: null })]] as const) {
+    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu SPZ/SCO`, () => {
+      const c = composeGpz(props, ORIGIN);
+      for (const klucz of Object.keys(KONTRAKT_NEGATYWNY_GPZ)) expect(c.parityKeys.has(klucz), klucz).toBe(false);
+      const plakietki = c.adnotacje!.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.flaga));
+      expect(plakietki.every((f) => f === 'SPZ' || f === 'SCO')).toBe(true);
+    });
+  }
+});
+
+describe('GPZ-PARYTET — determinizm adnotacji', () => {
+  it('to samo wejście ⇒ identyczne adnotacje (głęboka równość i równość serializacji)', () => {
+    const a = composeGpz(pelnyGpz(), ORIGIN);
+    const b = composeGpz(pelnyGpz(), ORIGIN);
+    expect(JSON.stringify(a.adnotacje)).toBe(JSON.stringify(b.adnotacje));
+    expect([...a.parityKeys].sort()).toEqual([...b.parityKeys].sort());
+  });
+
+  it('adnotacje leżą na siatce (tabela, karty; plakietki i tła pól na półsiatce); wiersze belki — krokiem linii pisma pasma nazw', () => {
+    const c = composeGpz(pelnyGpz(), ORIGIN);
+    const adn = c.adnotacje!;
+    const naSiatce = (v: number, krok: number): boolean => Math.abs(v / krok - Math.round(v / krok)) < 1e-9;
+    for (const r of [adn.tabela!.rect, ...adn.tabela!.karty.map((k) => k.rect)]) {
+      expect(naSiatce(r.x, GRID) && naSiatce(r.y, GRID / 2), JSON.stringify(r)).toBe(true);
+    }
+    // Plakietki: odstęp między plakietkami to pół siatki.
+    for (const r of adn.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.rect))) {
+      expect(naSiatce(r.x, GRID / 2) && naSiatce(r.y, GRID / 2), JSON.stringify(r)).toBe(true);
+    }
+    // Wiersze belki (bilans, alarmy) są wierszami tekstu jak pasmo nazw stacji:
+    // kolejne wiersze co wysokość linii t1 pod wierszem nazwy, x wyrównany z nazwą
+    // (etykiety są poza zakresem wyroczni siatki, spec §11.2). Wcięcie GRID = odsunięcie
+    // tekstu nazwy w jej slocie (slot = tekst + 2·GRID, tekst wyśrodkowany) — wiersze belki
+    // i tabela zaczynają się w tej samej pionowej linii co tekst nazwy.
+    const nazwa = c.labels.stationName.nameSlot;
+    expect([adn.zasilanie, adn.odplywy, adn.alarmy].map((r) => [r.x, r.y - nazwa.y])).toEqual([
+      [nazwa.x + GRID, nazwa.height],
+      [nazwa.x + GRID, 2 * nazwa.height],
+      [nazwa.x + GRID, 3 * nazwa.height],
+    ]);
+    expect(adn.tabela!.rect.x).toBe(nazwa.x + GRID);
+    for (const p of adn.panele) expect(naSiatce(p.rect.x, GRID / 2) && naSiatce(p.rect.y, GRID / 2)).toBe(true);
+  });
+
+  it('przesunięcie originu przesuwa adnotacje o ten sam wektor (translacja, nie przeliczenie)', () => {
+    const a = composeGpz(pelnyGpz(), ORIGIN);
+    const b = composeGpz(pelnyGpz(), { x: 10 * GRID, y: 20 * GRID });
+    const dx = b.zone!.x - a.zone!.x;
+    const dy = b.zone!.y - a.zone!.y;
+    expect(b.adnotacje!.tabela!.rect).toEqual({ ...a.adnotacje!.tabela!.rect, x: a.adnotacje!.tabela!.rect.x + dx, y: a.adnotacje!.tabela!.rect.y + dy });
+    b.adnotacje!.panele.forEach((p, i) => {
+      expect(p.rect.x - a.adnotacje!.panele[i].rect.x).toBe(dx);
+      expect(p.rect.y - a.adnotacje!.panele[i].rect.y).toBe(dy);
+    });
   });
 });

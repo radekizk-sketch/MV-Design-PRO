@@ -80,6 +80,7 @@ function allTokens(p: SldPalette): ReadonlyArray<readonly [string, string]> {
     ...Object.entries(p.voltage).map(([k, v]) => [`voltage.${k}`, v] as const),
     ...Object.entries(p.state).map(([k, v]) => [`state.${k}`, v] as const),
     ...Object.entries(p.highlight).map(([k, v]) => [`highlight.${k}`, v] as const),
+    ...Object.entries(p.rolaPola).map(([k, v]) => [`rolaPola.${k}`, v] as const),
   ];
 }
 
@@ -87,7 +88,10 @@ function allTokens(p: SldPalette): ReadonlyArray<readonly [string, string]> {
 const TEXT_TOKENS = ['baseStroke', 'highlight.resultLabel', 'highlight.resultStale', 'highlight.flow',
   'highlight.oltc', 'highlight.fault', 'highlight.standby',
   // T2-WYNIKI (§0 pkt 2): litera odznaki SWZ (✓/✗/?) renderowana jako TEKST.
-  'highlight.swzOk', 'highlight.swzFail', 'highlight.swzUnknown'] as const;
+  'highlight.swzOk', 'highlight.swzFail', 'highlight.swzUnknown',
+  // GPZ-PARYTET: nazwa roli w karcie pola GPZ renderowana TEKSTEM w kolorze roli.
+  'rolaPola.zasilajace', 'rolaPola.liniowe', 'rolaPola.transformatorowe', 'rolaPola.sprzeglo',
+  'rolaPola.pomiarowe', 'rolaPola.zrodlowe'] as const;
 
 describe('paleta rysunku — parytet motywów', () => {
   it('oba motywy definiują identyczny zbiór kluczy', () => {
@@ -153,6 +157,28 @@ describe('paleta rysunku — SEMANTYKA klas napięć jest kontraktem', () => {
       expect(hueDistance(p.voltage.hv, p.voltage.nn)).toBeGreaterThanOrEqual(25);
       // NOP (stan ruchowy) nie może zlać się z WN (poziom napięcia).
       expect(hueDistance(p.state.nop, p.voltage.hv)).toBeGreaterThanOrEqual(25);
+    }
+  });
+});
+
+describe('paleta rysunku — role pól GPZ (GPZ-PARYTET)', () => {
+  for (const [nazwa, p] of [
+    ['dark_scada', DARK_SCADA_SLD_PALETTE],
+    ['light_technical', LIGHT_TECHNICAL_SLD_PALETTE],
+  ] as const) {
+    it(`${nazwa}: kolory ról są parami różne (rola = kod koloru, dwie role jednym kolorem to brak informacji)`, () => {
+      const wartosci = Object.values(p.rolaPola).map((v) => v.toLowerCase());
+      expect(new Set(wartosci).size).toBe(wartosci.length);
+      expect(Object.keys(p.rolaPola).sort()).toEqual(
+        ['liniowe', 'pomiarowe', 'sprzeglo', 'transformatorowe', 'zasilajace', 'zrodlowe'],
+      );
+    });
+  }
+
+  it('role zachowują rodzinę barwy między motywami (≤ 30°) — poza sprzęgłem, które jest neutralną szarością', () => {
+    for (const rola of ['zasilajace', 'liniowe', 'transformatorowe', 'pomiarowe', 'zrodlowe'] as const) {
+      expect(hueDistance(DARK_SCADA_SLD_PALETTE.rolaPola[rola], LIGHT_TECHNICAL_SLD_PALETTE.rolaPola[rola]), rola)
+        .toBeLessThanOrEqual(30);
     }
   });
 });

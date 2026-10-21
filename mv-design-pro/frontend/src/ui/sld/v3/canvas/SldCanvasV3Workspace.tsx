@@ -214,6 +214,7 @@ import {
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from './overlay';
+import { buildGpzWynikiOverlay } from './gpzWyniki';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -221,6 +222,7 @@ import {
   resultLabelsHaveExceedances,
   resultRefForSegment,
   summarizeResultPointCoverage,
+  resultPointsInGpzTable,
   type ResultLabelComparison,
   type ResultLabelComparisonMode,
   type ResultLabelEntry,
@@ -1190,11 +1192,17 @@ function SldV3ResultCoverageLine(props: {
   }
   const niewidoczne =
     coverage.hiddenByModel + coverage.withoutTemplate + coverage.inStationNnBoard + coverage.withoutAnchor;
+  const wTabeliGpz = coverage.inGpzTable;
   return (
     <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
       <span data-testid="sld-v3-result-coverage-liczby">
         {`Etykiety: ${coverage.labelled} z ${coverage.total} punktów wyniku`}
       </span>
+      {wTabeliGpz > 0 && (
+        <span data-testid="sld-v3-result-coverage-gpz">
+          {`W tabeli pól GPZ: ${wTabeliGpz} punktów wyniku (pola i bilans GPZ)`}
+        </span>
+      )}
       {niewidoczne > 0 && (
         <span className="text-scada-muted" data-testid="sld-v3-result-coverage-braki">
           {`Bez etykiety: ${coverage.hiddenByModel} nierysowanych w modelu · `
@@ -1611,6 +1619,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         resultLabelsByOwnerRef,
         resultPointsHiddenByModel(snapshot),
         resultPointsInStationNnBoard(snapshot),
+        // GPZ-PARYTET: wiersze pól i bilansu GPZ są opisane w tabeli bloku GPZ
+        // (scena rozwinięta L2 — ten sam zbiór kart, który rysuje kanwa).
+        resultPointsInGpzTable(labelsPayload && snapshot ? buildSceneV3(snapshot, 2) : null),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );
@@ -1664,9 +1675,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [nakladkaRoznic, rawOverlayPayload],
   );
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  // GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ — odczyt wierszy backendu.
+  const gpzWyniki = useMemo(() => buildGpzWynikiOverlay(rawOverlayPayload), [rawOverlayPayload]);
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance, gpzWyniki }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, gpzWyniki],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,

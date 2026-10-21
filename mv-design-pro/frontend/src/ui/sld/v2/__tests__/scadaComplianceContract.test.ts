@@ -42,28 +42,23 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
   });
 
-  describe('GPZ rendering — Phase R2 canonical', () => {
-    it('GpzCanonicalRenderer istnieje (clean-room renderer)', () => {
-      expect(fileExists('ui/sld/v2/renderer/GpzCanonicalRenderer.tsx')).toBe(true);
+  describe('GPZ — jedyny renderer: kanwa v3 (kompozycja `v3/compose/gpz.ts`)', () => {
+    // Karta GPZ-PARYTET: renderer v2 `GpzCanonicalRenderer` skasowany — żaden ekran go nie
+    // renderował (kompozycja v3 czytała z niego wyłącznie typy, przeniesione do
+    // `v2/canvas/canonicalGpzModel.ts`). Intencja (GPZ z sekcjami, polami TR i zakazem
+    // bezpośredniego styku TR–szyna ma działający, pilnowany renderer) bez zmian, tylko plik.
+    it('kompozycja GPZ v3 istnieje i ma wyrocznię zakazu bezpośredniego styku TR–szyna', () => {
+      expect(fileContains('ui/sld/v3/compose/gpz.ts', 'export function noDirectTransformerBusTies')).toBe(true);
     });
 
-    it('GpzCanonicalRenderer ma guard no_direct_110kv_tr_tie_without_switchgear', () => {
-      expect(fileExists('ui/sld/v2/renderer/__tests__/GpzCanonicalRenderer.noDirectTie.test.tsx'))
-        .toBe(true);
+    it('kompozycja GPZ v3 rysuje sekcje i pola transformatorowe', () => {
+      expect(fileContains('ui/sld/v3/compose/gpz.ts', /CanonicalGpzSection/)).toBe(true);
+      expect(fileContains('ui/sld/v3/compose/gpz.ts', /transformerFieldTemplate/)).toBe(true);
     });
 
-    it('GpzCanonicalRenderer renderuje sekcje GPZ', () => {
-      expect(fileContains(
-        'ui/sld/v2/renderer/GpzCanonicalRenderer.tsx',
-        /CanonicalGpzSection|Section/,
-      )).toBe(true);
-    });
-
-    it('GpzCanonicalRenderer renderuje pola TR (transformer bay)', () => {
-      expect(fileContains(
-        'ui/sld/v2/renderer/GpzCanonicalRenderer.tsx',
-        /tr-field|transformer/i,
-      )).toBe(true);
+    it('renderer v2 GPZ nie wraca (jedna ścieżka renderu)', () => {
+      expect(fileExists('ui/sld/v2/renderer/GpzCanonicalRenderer.tsx')).toBe(false);
+      expect(fileExists('ui/sld/v2/renderer/GpzOperatorHeader.tsx')).toBe(false);
     });
   });
 

@@ -2191,7 +2191,7 @@ def test_guard_accepts_current_repo_state_uniewazniacz() -> None:
 # ---------------------------------------------------------------------------
 
 #: Wiersze inwentarza werdyktow skasowane w Pakiecie L (w calosci albo w czesci —
-#: E73 bez `GpzOperatorHeader.tsx`, B7 bez modelu). Pominiete z powodem w meldunku:
+#: B7 bez modelu; E73 domkniety karta GPZ-PARYTET). Pominiete z powodem w meldunku:
 #: A14, B2, B18, C47, E50, E51, E74. Pin: kazdy skasowany wiersz MA wpis w bramce.
 PAKIET_L_WIERSZE_SKASOWANE = {
     "A1",
@@ -2310,8 +2310,11 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
     # Karta #135 (2026-09-24): +4 wpisy (2 definicje backendu w pliku, 2 wzorce klienta).
     # AB-1a Pakiet 0 (2026-09-24): +49 wpisów (27 definicji backendu, 22 definicje klienta) —
     # werdykty fabrykowane FRT, toru T1, SSCI, LoM, werdyktu projektowego i stabilności.
+    # Karta GPZ-PARYTET (2026-10-21): +4 wpisy wiersza E73 inwentarza (2 sciezki + 2 definicje:
+    # `GpzOperatorHeader.tsx`, `GpzCanonicalRenderer.tsx`) — domkniecie czesci E73 pominietej
+    # w Pakiecie L, wiec wpisy licza sie do "L".
     assert liczby == {
-        "L": 244,
+        "L": 248,
         "BC": 50,
         "D2": 85,
         "1B1A": 9,
@@ -2319,7 +2322,7 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
         "135": 4,
         "P0": 49,
     }
-    assert len(guard.PAKIET_L_WPISY) == 244 + 50 + 85 + 9 + 1 + 4 + 49
+    assert len(guard.PAKIET_L_WPISY) == 248 + 50 + 85 + 9 + 1 + 4 + 49
 
 
 def test_pakiet_l_entries_are_well_formed() -> None:

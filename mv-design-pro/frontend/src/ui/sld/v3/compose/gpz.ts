@@ -1,8 +1,8 @@
 /**
  * SLD V3 F5b — kompozycja GPZ z prymitywów (SLD_CAD_SPEC_V3 §3 "GPZ",
- * §8 "Co przejmujemy z v2"). Czysta funkcja: wejście = `GpzCanonicalRendererProps`
+ * §8 "Co przejmujemy z v2"). Czysta funkcja: wejście = `CanonicalGpzProps`
  * (TYP kanoniczny propsów GPZ, importowany WYŁĄCZNIE jako typ — zero cienia
- * modelu, zakaz renderu przez v2, patrz nagłówek `v2/renderer/GpzCanonicalRenderer.tsx`)
+ * modelu, renderer v2 GPZ skasowany kartą GPZ-PARYTET, typ żyje w `v2/canvas/canonicalGpzModel.ts`)
  * + `origin` (punkt zaczepienia na siatce arkusza). Wyjście — w KSZTAŁCIE
  * `StationComposition` (`./station`, F5a): instancje symboli z portami W
  * ŚWIECIE, odcinki wewnętrzne, wejścia dla `layout/labels.ts` `resolveLabels`
@@ -46,6 +46,7 @@ import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/tex
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
+import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -60,6 +61,15 @@ import type {
   StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
+import {
+  panelePolGpz,
+  przesunAdnotacjeGpz,
+  szerokoscSlotowNaglowka,
+  ulozTabeliGpz,
+  wymiaryTabeliGpz,
+  type GpzAdnotacje,
+  type PoleTabeliGpzWejscie,
+} from './gpzAdnotacje';
 import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
@@ -86,8 +96,8 @@ import type {
   CanonicalGpzHvSystemSource,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
-  GpzCanonicalRendererProps,
-} from '../../v2/renderer/GpzCanonicalRenderer';
+  CanonicalGpzProps,
+} from '../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 // ---------------------------------------------------------------------------
@@ -128,7 +138,7 @@ export interface GpzElementMeta {
    *  — `undefined` dla segmentów, które NIE są szyną sekcji SN GPZ. */
   readonly busbarKind?: 'busGpz';
   /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM tej szyny —
-   *  `CanonicalGpzSection.busRef` (sekcja SN) lub `GpzCanonicalRendererProps.
+   *  `CanonicalGpzSection.busRef` (sekcja SN) lub `CanonicalGpzProps.
    *  hvBusRef` (szyna WN). Metadana ADDYTYWNA: `ownerRef` segmentu sceny
    *  (`${sectionId}#bus-primary` itp.) pozostaje NIETKNIĘTY (determinizm/goldeny),
    *  a warstwa wynikowa/energizacja używa TEGO refu do dopasowania klucza
@@ -156,6 +166,9 @@ export interface ComposedGpzSymbolInstance {
    *  `neutralEarthing`; przechodzi do glifu, który rysuje rezystor, dławik,
    *  połączenie bezpośrednie albo przerwę (sieć izolowana). */
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
+  /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
+   *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
+  readonly uzwojenia?: UzwojeniaTransformatora;
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): `BayPrimaryDevice.
    *  device_ref` — WYŁĄCZNIE gdy `bay.primaryDevices` dostarcza sekwencję
    *  DOKŁADNIE odpowiadającą (długość + kolejność symboli) szablonowi
@@ -185,7 +198,7 @@ export interface GpzSectionMeta {
   readonly sectionId: string;
   readonly order: number;
   readonly label: string;
-  readonly busVoltageKv: number;
+  readonly busVoltageKv: number | null;
   readonly busbarTopology: CanonicalGpzBusbarTopology;
 }
 
@@ -298,6 +311,10 @@ export interface GpzComposition {
    *  (rysowana przez kanwę/preview z meta sceny), NIE segment toru mocy;
    *  `null` dla kompozycji pustej. */
   readonly zone: GpzZoneDecoration | null;
+  /** GPZ-PARYTET: adnotacje bloku (tła pól wg roli, tabela „Pola GPZ", sloty bilansu
+   *  i alarmów w nagłówku) — geometria bez wartości; wartości dokłada render z wyniku
+   *  backendu. `null` razem z `zone` (kompozycja pusta). */
+  readonly adnotacje: GpzAdnotacje | null;
   readonly bbox: V3Rect;
 }
 
@@ -760,7 +777,11 @@ function sectionLayoutById(layouts: readonly SectionLayout[]): ReadonlyMap<strin
  *  marginesu lewego niżej i budowa etykiety w pętli sekcji), zero
  *  duplikacji formuły tekstu. */
 function sectionLabelText(section: CanonicalGpzSection): string {
-  return `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`;
+  // GPZ-PARYTET: napięcie wyłącznie z modelu (`Bus.voltage_kv`). Brak danej = sama nazwa
+  // sekcji + wpis `gpz.section.voltage.missing` (zero zastępczego 15 kV).
+  return section.busVoltageKv != null
+    ? `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`
+    : section.label;
 }
 
 /**
@@ -786,8 +807,8 @@ function firstSectionLabelLeftMargin(sections: readonly CanonicalGpzSection[]): 
   return snapUp(halfWidth);
 }
 
-/** Sekcja docelowa transformatora — 1:1 z v2 (`GpzCanonicalRenderer.tsx`
- *  `TransformersBlock`): mapowanie przez `lvSectionId`, fallback po indeksie
+/** Sekcja docelowa transformatora — 1:1 z dawnym rendererem v2 GPZ
+ *  (`TransformersBlock`): mapowanie przez `lvSectionId`, fallback po indeksie
  *  wśród sekcji uporządkowanych `order`. */
 function targetSectionForTransformer(
   transformer: CanonicalGpzTransformer,
@@ -870,11 +891,11 @@ function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): strin
  * (to samo wejście ⇒ identyczny wynik, test w `__tests__/gpz.test.ts`).
  *
  * `origin` — punkt zaczepienia na siatce arkusza (WORLD); `props.x`/`props.y`
- * z `GpzCanonicalRendererProps` to STARA geometria slotowa v2 (PITCH) i NIE
+ * z `CanonicalGpzProps` to STARA geometria slotowa v2 (PITCH) i NIE
  * jest tu czytana (analogicznie do `StationMeasureInput`/UWAGA w `layout/measure.ts`).
  */
 export function composeGpz(
-  props: GpzCanonicalRendererProps,
+  props: CanonicalGpzProps,
   origin: { readonly x: number; readonly y: number },
   gridSources: readonly GpzGridSourceInput[] = [],
   // F9.9 B-1/R-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń —
@@ -998,6 +1019,7 @@ export function composeGpz(
       busbarTopology: topology,
     });
     tag(['gpz.section']);
+    if (layout.section.busVoltageKv == null) missingData.push('gpz.section.voltage.missing');
 
     const busLeftX = layout.x;
     const busRightX = layout.x + layout.width;
@@ -1554,14 +1576,25 @@ export function composeGpz(
 
     const trDef = SYMBOL_DEFS.transformer2W;
     const trX = snapToGrid(trCenterX - trDef.width / 2);
+    // GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń WN/SN wyłącznie z grupy połączeń
+    // modelu. Brak grupy albo zapis spoza notacji IEC 60076-1 = jawny brak (glif „?"
+    // + wpis braku danych), nigdy domyślne Dyn11.
+    const uzwojenia = uzwojeniaZGrupyPolaczen(transformer.vectorGroup);
     const trMeta: GpzElementMeta = {
-      parityKeys: ['gpz.transformer.symbol'],
+      parityKeys:
+        uzwojenia.stan === 'znane'
+          ? ['gpz.transformer.symbol', 'gpz.transformer.winding.hv', 'gpz.transformer.winding.sn']
+          : ['gpz.transformer.symbol'],
       testId: `gpz-canonical-transformer-${transformer.transformerRef}`,
       transformerRef: transformer.transformerRef,
     };
     tag(trMeta.parityKeys);
+    if (uzwojenia.stan === 'brak') missingData.push(`gpz.transformer.vector_group.missing:${transformer.transformerRef}`);
+    if (uzwojenia.stan === 'nierozpoznane') {
+      missingData.push(`gpz.transformer.vector_group.unrecognized:${transformer.transformerRef}`);
+    }
     const trPorts = portsInWorld('transformer2W', trX, trTopY);
-    symbols.push({ symbolId: 'transformer2W', x: trX, y: trTopY, ports: trPorts, meta: trMeta });
+    symbols.push({ symbolId: 'transformer2W', x: trX, y: trTopY, ports: trPorts, meta: trMeta, uzwojenia });
 
     // Zejście HV→TR: od dolnego portu pola WN TR do górnego portu TR2W (jeśli
     // pole WN TR kończy się wyżej niż TR — zwykle styk 1:1, ale krótki
@@ -1877,14 +1910,55 @@ export function composeGpz(
   })();
   let zone: GpzZoneDecoration | null = null;
   const firstTransformer = props.transformers[0];
+  // GPZ-PARYTET (§0 pkt 1): nazwa WYŁĄCZNIE z modelu (`Substation.name`). Brak nazwy =
+  // jawny tekst braku + wpis `gpz.name.missing`, bez wymyślonej nazwy i bez klucza
+  // `gpz.header.name` (nagłówek istnieje, nazwy w nim nie ma).
   // Recenzja NO-GO 2026-07-17 pkt 3: nazwa GPZ z ENM często JUŻ zaczyna się
   // od „GPZ …" — sklejanie stałego prefiksu dawało duplikację „GPZ GPZ 15 kV"
   // w nagłówku strefy. Prefiks dokładamy TYLKO gdy nazwa go nie niesie.
-  const headerName = /^GPZ\b/i.test(props.name.trim()) ? props.name.trim() : `GPZ ${props.name}`;
+  const nazwaModelu = props.name?.trim() ? props.name.trim() : null;
+  if (nazwaModelu === null) missingData.push('gpz.name.missing');
+  const headerName =
+    nazwaModelu === null
+      ? 'GPZ — brak nazwy w modelu'
+      : /^GPZ\b/i.test(nazwaModelu)
+        ? nazwaModelu
+        : `GPZ ${nazwaModelu}`;
   const headerText = firstTransformer
     ? `${headerName} · ${liczbaRysunkuPl(firstTransformer.uhvKv)}/${liczbaRysunkuPl(firstTransformer.ulvKv)} kV`
     : headerName;
-  const headerHeight = labelLineHeight('t1') + GRID;
+  // GPZ-PARYTET (§0 pkt 3–5): belka nagłówka ma CZTERY wiersze — nazwa, bilans
+  // zasilania, bilans odpływów, alarmy — a pod nią tabela „Pola GPZ" (karty pól: rola, automatyka, pomiary). Tabela stoi
+  // NAD treścią elektryczną, bo pod treścią wychodzą trasy kabli z pól (magistrala
+  // i odpływy) — tam przecinałyby ją tory.
+  const wierszNaglowka = labelLineHeight('t1');
+  const headerHeight = 4 * wierszNaglowka + GRID;
+  const slotyNaglowka = szerokoscSlotowNaglowka();
+  const polaTabeli: PoleTabeliGpzWejscie[] = [];
+  hvSections
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .forEach((hvSection) => {
+      hvSection.bays.forEach((bay) => {
+        polaTabeli.push({
+          bayRef: bay.bayRef,
+          oznaczenie: (bay.bayNumber ?? bay.feederName ?? '').trim() || null,
+          rola: bay.rolaPola,
+          plakietki: bay.statusFlags,
+        });
+      });
+    });
+  sectionLayouts.forEach((layout) => {
+    layout.fields.forEach((field) => {
+      polaTabeli.push({
+        bayRef: field.bay.bayRef,
+        oznaczenie: field.designation,
+        rola: field.bay.rolaPola,
+        plakietki: field.bay.statusFlags,
+      });
+    });
+  });
+  let adnotacjePlan: GpzAdnotacje | null = null;
   let headerSlot = {
     x: originX,
     y: originY,
@@ -1898,9 +1972,30 @@ export function composeGpz(
     // pomiar agenta na fixturze: bez marginesu 111488 < 135744 największej
     // stacji).
     const frameMargin = 6 * GRID;
+    // Szerokość wnętrza ramy bez tabeli: treść elektryczna z marginesami albo belka
+    // nagłówka (nazwa, bilans, alarmy). Tabela pól łamie karty w TEJ szerokości —
+    // nie poszerza ramy (szerokość GPZ przesuwa świat sieci i łamanie arkusza).
+    // Wiersze bilansu, alarmów i tabela są wcięte o GRID względem slotu nazwy — tyle,
+    // ile pasmo nazw odsuwa tekst nazwy od krawędzi swojego slotu (slot = tekst + 2·GRID,
+    // tekst wyśrodkowany), więc wszystkie wiersze belki zaczynają się w jednej pionowej linii.
+    const wciecieBelki = GRID;
+    const szerokoscBelkiNaglowka = Math.max(
+      headerSlot.width,
+      wciecieBelki + slotyNaglowka.zasilanie,
+      wciecieBelki + slotyNaglowka.odplywy,
+      wciecieBelki + slotyNaglowka.alarmy,
+    );
+    const dostepnaSzerokoscTabeli =
+      Math.max(contentBboxSoFar.width + 2 * frameMargin, 2 * GRID + szerokoscBelkiNaglowka) - 2 * GRID - wciecieBelki;
+    const wymiaryTabeli = wymiaryTabeliGpz(polaTabeli, dostepnaSzerokoscTabeli);
+    const tabelaHeight = wymiaryTabeli.height > 0 ? wymiaryTabeli.height + 2 * GRID : 0;
     const frameLeft = snapToGrid(contentBboxSoFar.x - frameMargin);
-    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - headerHeight);
-    const frameRight = snapUp(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin);
+    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - tabelaHeight - headerHeight);
+    // Rama obejmuje treść ORAZ belkę nagłówka i tabelę (mierzone szerokości).
+    const szerokoscBelki = Math.max(szerokoscBelkiNaglowka, wciecieBelki + wymiaryTabeli.width);
+    const frameRight = snapUp(
+      Math.max(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin, frameLeft + GRID + szerokoscBelki + GRID),
+    );
     const frameBottom = snapUp(contentBboxSoFar.y + contentBboxSoFar.height + frameMargin);
     zone = {
       x: frameLeft,
@@ -1908,7 +2003,8 @@ export function composeGpz(
       width: frameRight - frameLeft,
       height: frameBottom - frameTop,
     };
-    tag(['gpz.zone.frame', 'gpz.zone.header']);
+    tag(['gpz.frame', 'gpz.header', 'gpz.header.balance', 'gpz.header.alarms']);
+    if (nazwaModelu !== null) tag(['gpz.header.name']);
     // Nagłówek WEWNĄTRZ ramy (górna belka) — nigdy poza arkuszem po
     // translacji końcowej niżej.
     headerSlot = {
@@ -1916,6 +2012,24 @@ export function composeGpz(
       y: snapToGrid(frameTop + GRID / 2),
       width: headerSlot.width,
       height: headerSlot.height,
+    };
+    const tabela =
+      polaTabeli.length > 0
+        ? ulozTabeliGpz(
+            polaTabeli,
+            headerSlot.x + wciecieBelki,
+            snapUp(headerSlot.y + 4 * wierszNaglowka + GRID),
+            dostepnaSzerokoscTabeli,
+          )
+        : null;
+    if (tabela) tag(['gpz.measurements']);
+    if (polaTabeli.some((pole) => pole.plakietki.length > 0)) tag(['gpz.status_flags']);
+    adnotacjePlan = {
+      zasilanie: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + wierszNaglowka, width: slotyNaglowka.zasilanie, height: wierszNaglowka },
+      odplywy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 2 * wierszNaglowka, width: slotyNaglowka.odplywy, height: wierszNaglowka },
+      alarmy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 3 * wierszNaglowka, width: slotyNaglowka.alarmy, height: wierszNaglowka },
+      tabela,
+      panele: [],
     };
   }
   const stationName: StationNameBandOwnerInput = {
@@ -1942,7 +2056,25 @@ export function composeGpz(
     if (zone) {
       zone = { ...zone, x: zone.x + shiftX, y: zone.y + shiftY };
     }
+    if (adnotacjePlan) adnotacjePlan = przesunAdnotacjeGpz(adnotacjePlan, shiftX, shiftY);
   }
+
+  // GPZ-PARYTET (§0 pkt 3): tła pól liczone PO translacji, z ostatecznych położeń
+  // symboli pola i okręgów jego zabezpieczeń.
+  const panele = panelePolGpz(polaTabeli, [
+    ...symbols
+      .filter((sym) => sym.meta.bayRef !== undefined)
+      .map((sym) => ({
+        bayRef: sym.meta.bayRef!,
+        rect: { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height },
+      })),
+    ...protectionSymbols.map((p) => ({
+      bayRef: p.bayRef,
+      rect: { x: p.x, y: p.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER },
+    })),
+  ]);
+  if (adnotacjePlan && panele.length > 0) tag(['gpz.bay.panel']);
+  const adnotacje: GpzAdnotacje | null = adnotacjePlan ? { ...adnotacjePlan, panele } : null;
 
   const contentBbox = computeBbox(symbols, segments);
   // Bbox kompozycji obejmuje ramę strefy (dekoracja też musi zmieścić się w
@@ -1977,6 +2109,7 @@ export function composeGpz(
     protectionSegments,
     measurementSegments,
     zone,
+    adnotacje,
     // V12K-223: opis do LEGENDY arkusza. Zero fabrykacji — brak modelu
     // uziemienia daje `null`, a legenda wtedy nic o nim nie pisze.
     neutralEarthingNotePl: props.snNeutralEarthing
@@ -2091,19 +2224,15 @@ export function noGpzSymbolOverlaps(composition: GpzComposition): boolean {
 /** endsAtPorts (spec §11.3): każdy odcinek kończy się w porcie symbolu lub na
  *  szynie (busbar) tej samej kompozycji — analogicznie do
  *  `compose/station.ts` `internalSegmentsEndAtPortsOrBus`. F13.1 (spec
- *  §21.2): rama strefy GPZ (`#zone-frame`, `busbarKind`-owner
- *  `'gpz.zone.frame'`) jest ADNOTACJĄ KOMPOZYCYJNĄ (jak `protectionSegments`/
- *  `measurementSegments`, poza `composition.segments` semantycznie, ale TU
- *  fizycznie w tej samej liście — patrz DECYZJA w kroku 9 `composeGpz`,
- *  konieczna bo `buildScene.ts` nie ma dodatkowego kanału bez zmiany poza
- *  autoryzacją zadania) — jej narożniki NIE są węzłami toru mocy, więc
- *  WYŁĄCZONA z tej wyroczni, analogicznie do wyjątku adnotacji w spec §17.1/
- *  §20.1e. */
+ *  §21.2): rama strefy GPZ (klucz `gpz.frame`) jest DEKORACJĄ w osobnym kanale
+ *  (`GpzComposition.zone`), nie odcinkiem w `composition.segments`, więc ta
+ *  wyrocznia jej nie widzi. */
 export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition): boolean {
   const ports: RoutePort[] = [];
   composition.symbols.forEach((s) => Object.values(s.ports).forEach((p) => ports.push(p)));
   const busSegments = composition.segments.filter((s) => s.meta.busbarRole === 'primary' || s.meta.ringClosure);
-  const powerPathSegments = composition.segments.filter((s) => s.meta.testId !== 'gpz-canonical-zone-frame');
+  // Bez wyjątków: rama strefy nie jest odcinkiem, więc wyrocznia sprawdza KAŻDY odcinek.
+  const powerPathSegments = composition.segments;
 
   const endpointValid = (p: RouteVertex): boolean => {
     if (ports.some((port) => port.x === p.x && port.y === p.y)) return true;
@@ -2132,8 +2261,9 @@ export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition):
 }
 
 /**
- * no_direct_110kv_tr_tie_without_switchgear (migracja
- * `GpzCanonicalRenderer.noDirectTie.test.tsx` 1:1, spec §8): dla KAŻDEGO
+ * Zakaz bezpośredniego styku 110 kV–TR–SN bez rozdzielni (migracja testu renderera v2
+ * 1:1, spec §8; renderer v2 skasowany kartą GPZ-PARYTET, strażnik strukturalny
+ * strażnik strukturalny zakazu styku 110 kV–TR w `scripts/` pilnuje tego pliku): dla KAŻDEGO
  * transformatora — połączenie WN kończy się na aparaturze pola WN TR (nie na
  * szynie WN wprost do TR), połączenie SN kończy się na aparaturze pola TR
  * (nie wprost na szynie SN), i ŻADEN segment „lv_connector" (bezpośredni
@@ -2182,7 +2312,7 @@ export function busbarTopologyOf(composition: GpzComposition, sectionId: string)
  * Brak parametru pokazujemy jako sam tryb — nigdy wartości zastępczej.
  */
 function neutralEarthingLabelPl(
-  e: NonNullable<GpzCanonicalRendererProps['snNeutralEarthing']>,
+  e: NonNullable<CanonicalGpzProps['snNeutralEarthing']>,
 ): string {
   if (e.kind === 'resistor') {
     return e.rOhm != null

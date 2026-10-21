@@ -162,3 +162,33 @@ describe('feedery z pól GPZ — openBranch.enm (feeder otwarty, bez stacji)', (
     });
   }
 });
+
+// GPZ-PARYTET (predykaty parami): wyrównanie magistrali do GPZ liczone jest z
+// przebiegu „pass1", a świat — z kompozycji wyrównanej. Od szerokości treści
+// bloku (symbol źródła sieci ją poszerza) zależy łamanie tabeli „Pola GPZ",
+// więc wysokość ramy i translacja końcowa. Oba przebiegi MUSZĄ dostać to samo
+// wejście; inaczej port zaczepu magistrali GPZ ląduje o różnicę wysokości tabel
+// obok osi magistrali (pomiar wstrzyknięcia: 80 j.św. na tej fiksturze).
+// Iloczyn: źródło sieci w modelu (jest / brak) × LOD rozwinięty (1, 2).
+describe('feedery z pól GPZ — oś magistrali = port pól GPZ (pass1 i kompozycja z jednego wejścia)', () => {
+  const bezZrodla = { ...feederEnm, sources: [] } as EnergyNetworkModel;
+  for (const [nazwa, enm] of [['ze źródłem sieci', feederEnm], ['bez źródła sieci', bezZrodla]] as const) {
+    for (const lod of [1, 2] as const) {
+      it(`${nazwa}, LOD ${lod}: zejścia pól GPZ i pól stacji magistrali zaczynają się na tej samej osi`, () => {
+        const scene = buildSceneV3(enm, lod);
+        const startY = (prefiks: string): number[] =>
+          scene.segments
+            .filter((s) => (s.meta?.ownerRef ?? '').startsWith(prefiks) && (s.meta?.ownerRef ?? '').endsWith('#descent'))
+            .map((s) => s.points[0].y);
+        // Identyfikatory bloków („…/substation", „…/station") → przestrzeń nazw
+        // ich elementów (pola GPZ „…/bay/…", pola stacji „…/sn_field/…").
+        const przestrzen = (id: string): string => id.slice(0, id.lastIndexOf('/'));
+        const gpz = startY(`${przestrzen(scene.meta.gpzId!)}/bay/`);
+        const stacja = startY(`${przestrzen(scene.meta.mainTrunkStationIds[0])}/sn_field/`);
+        expect(gpz.length).toBeGreaterThan(0);
+        expect(stacja.length).toBeGreaterThan(0);
+        expect(new Set([...gpz, ...stacja])).toEqual(new Set([gpz[0]]));
+      });
+    }
+  }
+});

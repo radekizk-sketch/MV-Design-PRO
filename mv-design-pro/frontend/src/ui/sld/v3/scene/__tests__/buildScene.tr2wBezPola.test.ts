@@ -244,9 +244,17 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // w miejsce wariantów „15.0 kV"). DOWÓD: sonda geometrii (symbole: rodzaj + x + y,
   // trasy: punkty) daje TE SAME skróty dla starej i nowej fikstury na L1 i L2 — rysunek
   // stacji z polem TR nie przesunął się ani o jednostkę; różnią się tylko napisy GPZ.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-PARYTET, 2026-10-21): belka nagłówka GPZ ma cztery wiersze
+  // (nazwa, bilans zasilania, bilans odpływów, alarmy), a pod nią tabela „Pola GPZ"
+  // (karty pól łamane w szerokości treści — szerokość ramy GPZ bez zmian, 512). Rama
+  // rośnie WYŁĄCZNIE w pionie (552 → 752 na tej fiksturze), więc świat sieci przesuwa
+  // się w dół. DOWÓD: sonda (symbole: rodzaj + ownerRef + x + y, trasy: punkty,
+  // etykiety: tekst + x + y) poza GPZ, stan przed kartą (8cc1f5af) vs po niej — te same
+  // elementy w tej samej kolejności, KAŻDY przesunięty o jednakowy wektor (0, +200) na
+  // L1 i L2; rysunek stacji z polem TR nie zmienił się względnie ani o jednostkę.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '701cd8675169e8ea5889f62da50b7502',
-    2: '47945575ff7bc3b586507f9a149ae008',
+    1: '9bf96a662d3c8b8b5d7f955f728b553c',
+    2: 'e1a933c9e03175d2ca73c12c2d3ad0bd',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

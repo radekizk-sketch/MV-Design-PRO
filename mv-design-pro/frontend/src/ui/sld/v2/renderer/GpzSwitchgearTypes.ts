@@ -369,7 +369,7 @@ export interface GpzSwitchgearRendererProps {
   readonly fieldTrunkLabel?: string;
   readonly selected?: boolean;
   /* =====================================================================
-     Interakcja — kontrakt lustrzany do GpzCanonicalRenderer.
+     Interakcja — kanoniczny kontrakt selekcji aparatów GPZ (`gpzApparatusSelection`).
      Aparaty emitują kanoniczne `GpzApparatusSelection` z identycznymi
      stringami `${bayRef}#${kind}`, dzięki czemu renderer może stać się
      drop-in zamiennikiem w SldCanvasV2 bez utraty detail-drawer / menu.

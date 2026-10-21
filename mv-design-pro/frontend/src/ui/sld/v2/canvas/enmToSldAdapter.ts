@@ -292,7 +292,7 @@ const CANONICAL_BAY_WIDTH = 74;
 const CANONICAL_BAY_PITCH = 82;
 const CANONICAL_TR_AREA_Y = 280;
 const CANONICAL_TR_HEIGHT = 80;
-// Musi być zgodne z GpzCanonicalRenderer.LV_BUS_GAP: przestrzeń pola TR
+// Przestrzeń pola TR (dawne LV_BUS_GAP skasowanego renderera v2 GPZ)
 // między dolnym zaciskiem transformatora a rozdzielnią SN.
 const CANONICAL_LV_BUS_GAP = 110;
 const CANONICAL_LV_BAY_HEIGHT = 250;

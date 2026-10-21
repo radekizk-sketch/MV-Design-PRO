@@ -27,7 +27,8 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type GlyphProps, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
@@ -439,7 +440,45 @@ export interface PreviewSymbol {
    *  `neutralEarthing`; niesie go scena aż do glifu, który rysuje rezystor,
    *  dławik, połączenie bezpośrednie albo przerwę (sieć izolowana). */
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
+  /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń transformatora z grupy połączeń
+   *  modelu — dla symbolu `transformer2W` (patrz `symbols/uzwojenia.ts`). */
+  readonly uzwojenia?: UzwojeniaTransformatora;
   readonly meta?: PreviewElementMeta;
+}
+
+/**
+ * GPZ-PARYTET (klasa „dana symbolu sceny gubiona w drodze do glifu"): JEDNA lista
+ * danych, które symbol sceny przekazuje glifowi, wspólna dla kanwy (`SldCanvasV3`)
+ * i harnessu kompozycji. Przed kartą kanwa i harness niosły DWIE ręczne listy
+ * propsów i obie gubiły pola: kanwa nie przekazywała `earthingKind` (punkt
+ * neutralny zawsze rysowany jako połączenie bezpośrednie) ani `gpzGlyph`
+ * (zwinięty GPZ na L0 rysowany z jedną sekcją, bez TR i bez pól), harness gubił
+ * `earthingKind`. Kolor i skalę kreski dokłada wołający.
+ */
+export function daneGlifuSymbolu(
+  symbol: PreviewSymbol,
+): Omit<GlyphProps, 'x' | 'y' | 'stroke' | 'strokeScale'> {
+  const meta = symbol.meta;
+  return {
+    state: symbol.state,
+    earthingKind: symbol.earthingKind,
+    uzwojenia: symbol.uzwojenia,
+    labelLines: meta?.protectionCodes,
+    hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
+    // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
+    // bez skonfigurowanego pola SN.
+    hasFieldGapWarning: meta?.transformerFieldGap === true,
+    meterQuantity: meta?.meterQuantity,
+    stationSectioned: meta?.stationGlyph?.sectioned,
+    stationLineTopology: meta?.stationGlyph?.lineTopology,
+    stationHasTransformer: meta?.stationGlyph?.hasTransformer,
+    stationDerOnMv: meta?.stationGlyph?.derOnMv,
+    stationDerBehindTr: meta?.stationGlyph?.derBehindTr,
+    stationNoOpen: meta?.stationGlyph?.noOpen,
+    gpzSections: meta?.gpzGlyph?.sections,
+    gpzTransformers: meta?.gpzGlyph?.transformers,
+    gpzFeeders: meta?.gpzGlyph?.feeders,
+  };
 }
 
 export interface PreviewSegment {
@@ -507,25 +546,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
       data-source-state={state}
     >
-      <Glyph
-        x={symbol.x}
-        y={symbol.y}
-        state={symbol.state}
-        stroke={effectiveStroke}
-        labelLines={symbol.meta?.protectionCodes}
-        hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
-        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
-        meterQuantity={symbol.meta?.meterQuantity}
-        stationSectioned={symbol.meta?.stationGlyph?.sectioned}
-        stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
-        stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
-        stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
-        stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
-        stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
-        gpzSections={symbol.meta?.gpzGlyph?.sections}
-        gpzTransformers={symbol.meta?.gpzGlyph?.transformers}
-        gpzFeeders={symbol.meta?.gpzGlyph?.feeders}
-      />
+      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} />
     </g>
   );
 }

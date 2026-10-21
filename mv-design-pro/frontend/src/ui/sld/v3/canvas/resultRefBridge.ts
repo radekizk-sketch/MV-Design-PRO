@@ -186,6 +186,10 @@ export interface ResultPointCoverage {
   readonly labelled: number;
   /** Punkty, których model JAWNIE nie rysuje (`meta.render_on_sld === false`). */
   readonly hiddenByModel: number;
+  /** GPZ-PARYTET: punkty pokazane w tabeli „Pola GPZ" i w belce nagłówka GPZ
+   *  (wiersze `Bay` i `Substation` z `results/v1`) — opisane na schemacie, ale nie
+   *  etykietą przy elemencie, tylko w bloku GPZ. */
+  readonly inGpzTable: number;
   /** Punkty bez szablonu treści dla tej rodziny analizy (np. gałąź w wyniku
    *  zwarciowym — rodzina `short_circuit` ma szablon wyłącznie dla szyn). */
   readonly withoutTemplate: number;

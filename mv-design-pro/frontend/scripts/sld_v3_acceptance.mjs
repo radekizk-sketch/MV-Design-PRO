@@ -184,6 +184,7 @@ import {
 import {
   buildSldOperationContext,
   isTrunkContinuationAction,
+  resolveTrunkStartAvailability,
 } from '../src/ui/sld/shared/sldActionExecutor.ts';
 // Karta PARTIA-6-FRONT: wejścia budowy liczone TĄ SAMĄ funkcją co test
 // `canvas/__tests__/menuBudowyNaKanwie.test.tsx` (sekcje B i E).

@@ -10,8 +10,8 @@ import { render } from '@testing-library/react';
 import type {
   CanonicalGpzSection,
   CanonicalGpzTransformer,
-  GpzCanonicalRendererProps,
-} from '../../../v2/renderer/GpzCanonicalRenderer';
+  CanonicalGpzProps,
+} from '../../../v2/canvas/canonicalGpzModel';
 import { FIELD_ROLE } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/segments';
@@ -33,10 +33,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
       ulvKv: 15,
       vectorGroup: 'YNd11',
     };
-    const props: GpzCanonicalRendererProps = {
+    const props: CanonicalGpzProps = {
       id: 'gpz-preview',
-      x: 0,
-      y: 0,
       name: 'GPZ PODGLĄD',
       transformers: [TR1],
       sections: [
@@ -55,6 +53,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
               feederName: 'ODPŁYW 1',
               destinationLabel: 'ST-01',
               fieldRole: 'LINE_OUT',
+              rolaPola: 'liniowe',
+              statusFlags: [],
               cbState: 'closed',
               dsState: 'closed',
               esState: 'open',
@@ -128,10 +128,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
       ulvKv: 15,
       vectorGroup: 'YNd11',
     };
-    const props: GpzCanonicalRendererProps = {
+    const props: CanonicalGpzProps = {
       id: 'gpz-preview-ring',
-      x: 0,
-      y: 0,
       name: 'GPZ PODGLĄD RING',
       transformers: [TR1],
       sections: [
@@ -148,6 +146,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
               feederName: 'ODPŁYW 1',
               destinationLabel: 'ST-01',
               fieldRole: 'LINE_OUT',
+              rolaPola: 'liniowe',
+              statusFlags: [],
               cbState: 'closed',
               dsState: 'closed',
               esState: 'open',

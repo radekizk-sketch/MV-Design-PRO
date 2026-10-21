@@ -112,6 +112,9 @@ _ELEMENT_TYPE_TO_KIND: dict[str, OverlayElementKind] = {
     "Protection": OverlayElementKind.PROTECTION_ASSIGNMENT,
     "substation": OverlayElementKind.SUBSTATION,
     "Substation": OverlayElementKind.SUBSTATION,
+    # GPZ-PARYTET: pomiar zacisku pola GPZ (wiersz ``Bay`` z enm/wyniki_pol_gpz.py).
+    "bay": OverlayElementKind.BAY,
+    "Bay": OverlayElementKind.BAY,
 }
 
 
@@ -282,6 +285,14 @@ METRYKI_ELEMENTOW_WYNIKU: dict[str, tuple[str, str, str]] = {
     # frontendowy formatMetric (audyt F2 2026-07-21).
     "tap_position": ("TAP_POSITION", "", "fixed0"),
     "tap_switch_count": ("TAP_SWITCH_COUNT", "", "fixed0"),
+    # GPZ-PARYTET: bilans GPZ i liczba alarmów wynikowych stacji (wiersz
+    # ``Substation`` z enm/wyniki_pol_gpz.py) — suma wierszy wyniku liczona
+    # w backendzie, front tylko wyświetla.
+    "p_supply_mw": ("P_SUPPLY_MW", "MW", "fixed4"),
+    "q_supply_mvar": ("Q_SUPPLY_Mvar", "Mvar", "fixed4"),
+    "p_feeders_mw": ("P_FEEDERS_MW", "MW", "fixed4"),
+    "q_feeders_mvar": ("Q_FEEDERS_Mvar", "Mvar", "fixed4"),
+    "alarm_count": ("ALARM_COUNT", "", "fixed0"),
 }
 
 

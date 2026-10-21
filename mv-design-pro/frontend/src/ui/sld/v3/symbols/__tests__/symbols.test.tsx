@@ -13,6 +13,7 @@ import { GRID, isOnGrid } from '../../core/grid';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS, makeBusbarDef, type SymbolId } from '../defs';
 import { SYMBOL_GLYPHS, SYMBOL_IDS } from '../glyphs';
+import { uzwojeniaZGrupyPolaczen } from '../uzwojenia';
 import {
   MINI_RMU,
   DER_MARKER_SHAPE,
@@ -651,5 +652,72 @@ describe('V3 typografia — deterministyczny pomiar (spec §2, pryncypium determ
     expect(a).toBe(measureLabelWidth('YAKXS 3×120/16 · 90 m', 't2'));
     expect(a).toBeGreaterThan(measureLabelWidth('15 kV', 't2'));
     expect(labelLineHeight('t2')).toBe(17);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń w glifie transformatora — z grupy
+// połączeń modelu, rysowane w okręgach uzwojeń biblioteki symboli.
+// ---------------------------------------------------------------------------
+
+describe('Transformer2WGlyph — oznaczenie uzwojeń z grupy połączeń', () => {
+  const Glif = SYMBOL_GLYPHS.transformer2W;
+  const PRZYPADKI = [
+    ['Dyn11', ['trojkat', 'false'], ['gwiazda', 'true'], '11'],
+    ['Yyn0', ['gwiazda', 'false'], ['gwiazda', 'true'], '0'],
+    ['YNd11', ['gwiazda', 'true'], ['trojkat', 'false'], '11'],
+    ['Yzn11', ['gwiazda', 'false'], ['zygzak', 'true'], '11'],
+  ] as const;
+
+  for (const [grupa, gorne, dolne, godzina] of PRZYPADKI) {
+    it(`${grupa}: znak uzwojenia górnego i dolnego, punkt neutralny tylko tam, gdzie zapis go niesie`, () => {
+      const { container } = render(
+        <svg>
+          <Glif x={0} y={0} stroke="#000000" uzwojenia={uzwojeniaZGrupyPolaczen(grupa)} />
+        </svg>,
+      );
+      const stan = container.querySelector('[data-uzwojenia-stan]')!;
+      expect(stan.getAttribute('data-uzwojenia-stan')).toBe('znane');
+      expect(stan.getAttribute('data-uzwojenia-godzina')).toBe(godzina);
+      const g = container.querySelector('[data-uzwojenie="gorne"]')!;
+      const d = container.querySelector('[data-uzwojenie="dolne"]')!;
+      expect([g.getAttribute('data-uzwojenie-rodzaj'), g.getAttribute('data-uzwojenie-neutralny')]).toEqual([...gorne]);
+      expect([d.getAttribute('data-uzwojenie-rodzaj'), d.getAttribute('data-uzwojenie-neutralny')]).toEqual([...dolne]);
+      expect(g.querySelectorAll('[data-uzwojenie-punkt-neutralny]').length).toBe(gorne[1] === 'true' ? 1 : 0);
+      expect(d.querySelectorAll('[data-uzwojenie-punkt-neutralny]').length).toBe(dolne[1] === 'true' ? 1 : 0);
+    });
+  }
+
+  for (const [opis, grupa, stan] of [['brak grupy', null, 'brak'], ['zapis nierozpoznany', 'Xy5', 'nierozpoznane']] as const) {
+    it(`${opis}: jawny znacznik „?" w obu uzwojeniach (stan ${stan}) — bez zgadywania układu`, () => {
+      const { container } = render(
+        <svg>
+          <Glif x={0} y={0} stroke="#000000" uzwojenia={uzwojeniaZGrupyPolaczen(grupa)} />
+        </svg>,
+      );
+      expect(container.querySelector('[data-uzwojenia-stan]')!.getAttribute('data-uzwojenia-stan')).toBe(stan);
+      const znaki = [...container.querySelectorAll('[data-uzwojenie-rodzaj="brak"]')];
+      expect(znaki).toHaveLength(2);
+      expect(znaki.every((z) => z.textContent === '?')).toBe(true);
+    });
+  }
+
+  it('wołający bez rozwiązywania grupy (uzwojenia nieprzekazane): glif bazowy bez znaków — nie rysuje „?" zastępczo', () => {
+    const { container } = render(
+      <svg>
+        <Glif x={0} y={0} stroke="#000000" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-uzwojenia-stan]')).toBeNull();
+  });
+
+  it('determinizm: ten sam zapis ⇒ identyczny markup', () => {
+    const markup = (): string =>
+      renderToStaticMarkup(
+        <svg>
+          <Glif x={0} y={0} stroke="#000000" uzwojenia={uzwojeniaZGrupyPolaczen('Dyn11')} />
+        </svg>,
+      );
+    expect(markup()).toBe(markup());
   });
 });

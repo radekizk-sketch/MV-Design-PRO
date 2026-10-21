@@ -1,14 +1,14 @@
 /**
- * enmToCanonicalGpzAdapter — Phase R2 Operator-Grade Rebuild.
- *
- * Mapping ENM → `GpzCanonicalRendererProps`. PEŁEN end-to-end bez fallback
- * do placeholderów.
+ * enmToCanonicalGpzAdapter — model ENM → `CanonicalGpzProps` (kontrakt kompozycji GPZ v3,
+ * `canonicalGpzModel.ts`).
  *
  * Reguły:
- *   - Brak danych → "—" lub explicit `null` (NIE "?", NIE "GPZ 1", NIE "TR1").
- *   - Auto-syntezuje sekcję 1 gdy `gpz_sections=[]` ale są bays bez `gpz_section_id`.
+ *   - Brak danych → jawne `null` (nie „—", nie „GPZ 1", nie „TR1", nie napięcie domyślne).
+ *   - Auto-syntezuje sekcję 1 gdy `gpz_sections=[]` ale są pola bez `gpz_section_id`.
  *   - Mapuje wszystkie aparaty per `BAY_DEVICE_ORDER_POLICY`.
- *   - Propaguje runtime_state SCADA → cbState/dsState/esState.
+ *   - Stan aparatów wyłącznie z rekordu źródła runtime (brak → nieznany).
+ *   - Zero przeszukiwania topologii: pomiar zacisku pola i bilans GPZ wyznacza backend
+ *     (wiersze `Bay`/`Substation` wyniku rozpływu, `enm/wyniki_pol_gpz.py`).
  *
  * @see docs/audit/GPZ_RENDERER_REALITY_CHECK.md
  */
@@ -16,32 +16,26 @@
 import type {
   Bay,
   BayDeviceState,
-  Branch,
   Bus,
   EnergyNetworkModel,
   Source,
   Substation,
   Transformer,
 } from '../../../../types/enm';
-import {
-  getMetric,
-  type RawOverlayPayload,
-} from '../../../sld-overlay/rawResultOverlayStore';
-
 import type {
   BayFieldRole,
-  BayMeasurements,
   CanonicalGpzBay,
   CanonicalGpzBusVt,
   CanonicalGpzCoupler,
   CanonicalGpzHvSection,
   CanonicalGpzHvSystemSource,
+  CanonicalGpzProps,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
-  GpzCanonicalRendererProps,
-  StatusFlag,
+  GpzStatusFlag,
+  RolaPolaGpz,
   SwitchState,
-} from '../renderer/GpzCanonicalRenderer';
+} from './canonicalGpzModel';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -61,20 +55,6 @@ import { transformatoryNalezaceDoStacji } from '../../../shared/transformatorySt
 /* =============================================================================
    Public API
    ============================================================================= */
-
-export interface BuildCanonicalGpzOptions {
-  /** Pozycja w viewport. */
-  readonly x: number;
-  readonly y: number;
-  /** Header data — z runtime SCADA (opcjonalne). */
-  readonly transmissionStatus?: GpzCanonicalRendererProps['transmissionStatus'];
-  readonly controlAvailability?: GpzCanonicalRendererProps['controlAvailability'];
-  readonly balance?: GpzCanonicalRendererProps['balance'];
-  readonly alarms?: GpzCanonicalRendererProps['alarms'];
-  /** Adres + radio z meta. */
-  readonly addressLine?: string;
-  readonly radioId?: string;
-}
 
 /**
  * Główna funkcja: ENM Substation (typu 'gpz') + ENM context → CanonicalGpzProps.
@@ -105,9 +85,7 @@ export function buildCanonicalGpzProps(
     | 'sources'
   >,
   substationRef: string,
-  options: BuildCanonicalGpzOptions,
-  overlay?: RawOverlayPayload | null,
-): GpzCanonicalRendererProps {
+): CanonicalGpzProps {
   const substation = (enm.substations ?? []).find((s) => s.ref_id === substationRef);
   if (!substation) {
     throw new Error(`Substation '${substationRef}' nie istnieje w ENM.`);
@@ -129,8 +107,7 @@ export function buildCanonicalGpzProps(
     measurements: enm.measurements ?? [],
   };
 
-  const allBranches = enm.branches ?? [];
-  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx);
+  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], protectionCtx);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
   // przypisania TR do sekcji wg `lv_bus_ref`.
   const sectionIdByLvBusRef = new Map<string, string>();
@@ -153,15 +130,9 @@ export function buildCanonicalGpzProps(
 
   return {
     id: substation.ref_id,
-    x: options.x,
-    y: options.y,
-    name: substation.name || '—',
-    addressLine: options.addressLine,
-    radioId: options.radioId,
-    transmissionStatus: options.transmissionStatus,
-    controlAvailability: options.controlAvailability,
-    balance: options.balance,
-    alarms: options.alarms,
+    // Karta GPZ-PARYTET: brak nazwy w modelu = jawny brak (`null`), kompozycja zgłasza
+    // `gpz.name.missing` — dawne „—" było wartością zastępczą udającą nazwę.
+    name: substation.name?.trim() ? substation.name.trim() : null,
     transformers,
     sections: lvSections,
     // V12K-219 / W5-A: sposób pracy punktu neutralnego sieci SN — z
@@ -170,7 +141,7 @@ export function buildCanonicalGpzProps(
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
     snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays),
-    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
+    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
     // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
     // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
@@ -360,8 +331,6 @@ function buildLvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
-  branches: readonly Branch[],
-  overlay: RawOverlayPayload | null,
   protectionCtx: ProtectionCtx,
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
@@ -379,11 +348,11 @@ function buildLvSections(
       sectionId: `${gpz.ref_id}__synth-section-1`,
       order: 1,
       label: 'S1',
-      busVoltageKv: defaultBus?.voltage_kv ?? 15,
+      busVoltageKv: defaultBus?.voltage_kv ?? null,
       // ADAPTER-BUSREF: kanoniczny Bus ref sekcji syntetycznej = szyna SN GPZ
       // (ta sama, z której czytamy `busVoltageKv`). `null` gdy brak.
       busRef: defaultBus?.ref_id ?? null,
-      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+      bays: lvBays.map((b) => buildBay(b, protectionCtx)),
       busVtMeasurements: busVtMeasurementsOf(defaultBus?.ref_id, protectionCtx),
     }];
   }
@@ -400,11 +369,11 @@ function buildLvSections(
         sectionId: sec.section_id,
         order: sec.order,
         label: sec.name ?? `S${idx + 1}`,
-        busVoltageKv: bus?.voltage_kv ?? 15,
+        busVoltageKv: bus?.voltage_kv ?? null,
         // ADAPTER-BUSREF: kanoniczny Bus ref sekcji WPROST ze snapshotu
         // (`gpz_sections[].bus_ref`) — prymat danych, zero parsowania refów sceny.
         busRef: sec.bus_ref ?? null,
-        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+        bays: sectionBays.map((b) => buildBay(b, protectionCtx)),
         busVtMeasurements: busVtMeasurementsOf(sec.bus_ref, protectionCtx),
       };
     });
@@ -461,8 +430,6 @@ function buildHvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
-  branches: readonly Branch[],
-  overlay: RawOverlayPayload | null,
   protectionCtx: ProtectionCtx,
 ): CanonicalGpzHvSection[] {
   const hvSectionDefs = gpz.gpz_hv_sections ?? [];
@@ -481,19 +448,13 @@ function buildHvSections(
         sectionId: sec.section_id,
         order: sec.order,
         label: sec.name ?? `HV-${idx + 1}`,
-        busVoltageKv: bus?.voltage_kv ?? 110,
-        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+        busVoltageKv: bus?.voltage_kv ?? null,
+        bays: hvBays.map((b) => buildBay(b, protectionCtx)),
       };
     });
 }
 
-function buildBay(
-  bay: Bay,
-  _buses: readonly Bus[],
-  branches: readonly Branch[],
-  overlay: RawOverlayPayload | null,
-  protectionCtx: ProtectionCtx,
-): CanonicalGpzBay {
+function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
   const fieldRole = mapBayRoleToFieldRole(bay.bay_role);
   const runtime = bay.runtime_state ?? null;
   return {
@@ -502,14 +463,13 @@ function buildBay(
     feederName: bay.feeder_short_name ?? bay.name ?? null,
     destinationLabel: bay.outgoing_destination_ref ? `→ ${bay.outgoing_destination_ref}` : null,
     fieldRole,
+    rolaPola: rolaPolaGpz(bay.bay_role),
     cbState: extractApparatusState(runtime, 'cb'),
     dsState: extractApparatusState(runtime, 'ds_lin'),
     esState: extractEsState(runtime),
     qDesignations: deriveQDesignations(fieldRole),
-    statusFlags: extractStatusFlags(runtime),
+    statusFlags: flagiStatusuPola(bay),
     protectionCodes: bay.protection_codes ?? [],
-    measurements: extractBayMeasurements(bay, fieldRole, branches, overlay),
-    inManipulation: extractInManipulation(runtime),
     // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ —
     // parytet ze stacjami): TA SAMA projekcja co `buildExplicitStationMiniBays`
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
@@ -641,112 +601,33 @@ function extractEsState(
   return state;
 }
 
-function extractStatusFlags(_runtime: unknown): StatusFlag[] {
-  // TO-DO: mapping z runtime_state.active_alarms na status flags wymaga
-  // contractu z backend SCADA. Aktualnie zwracamy []; renderer NIE pokazuje
-  // badge'y gdy lista pusta (NIE placeholder).
-  return [];
-}
-
-/* =============================================================================
-   Power-flow overlay → bay measurements (interpretacja wyniku solwera)
-   ============================================================================= */
-
 /**
- * Deterministyczne rozwiązanie pola → branch odpływu.
- *
- * NIE zgaduje: zwraca wynik wyłącznie gdy DOKŁADNIE jeden branch pasuje.
- *   - kandydaci = branche, których jeden koniec (from/to) == `bay.bus_ref`,
- *   - jeśli pole ma `outgoing_destination_ref`, zawężamy do kandydatów,
- *     których DRUGI koniec == ten ref (rozstrzygnięcie wieloznaczności),
- *   - dokładnie 1 kandydat → zwróć { branchRef, gpzAtFrom }, w przeciwnym
- *     razie → null (≥2 kandydatów bez disambiguacji lub brak → brak zgadywania).
- *
- * `gpzAtFrom` = czy szyna pola jest endpointem `from_bus_ref` branchu (dokumentuje
- * stronę GPZ; raw overlay i tak ma jedną wartość P/Q/I na element).
+ * Plakietki funkcji automatyki pola (karta GPZ-PARYTET) — WYŁĄCZNIE z kodów funkcji
+ * zabezpieczeniowych pola w modelu (`Bay.protection_codes`, dane aktywów EAZ, ADR-022):
+ * SPZ ⇔ kod ANSI 79; SCO ⇔ kod 81U na polu, które nie jest polem źródłowym (na polu OZE
+ * 81U to zabezpieczenie interfejsu wytwórcy NC RfG, nie odciążenie). Brak kodu = brak
+ * plakietki — nigdy domysł z roli pola. Kolejność stała (SPZ, SCO), deterministyczna.
  */
-export function resolveFeederBranchRef(
-  bay: Pick<Bay, 'bus_ref' | 'outgoing_destination_ref'>,
-  branches: readonly Branch[],
-): { branchRef: string; gpzAtFrom: boolean } | null {
-  const busRef = bay.bus_ref;
-  if (!busRef) return null;
-
-  let candidates = branches.filter(
-    (b) => b.from_bus_ref === busRef || b.to_bus_ref === busRef,
-  );
-
-  const destinationRef = bay.outgoing_destination_ref ?? null;
-  if (destinationRef) {
-    candidates = candidates.filter((b) => {
-      const otherEnd = b.from_bus_ref === busRef ? b.to_bus_ref : b.from_bus_ref;
-      return otherEnd === destinationRef;
-    });
-  }
-
-  if (candidates.length !== 1) return null;
-  const branch = candidates[0];
-  return { branchRef: branch.ref_id, gpzAtFrom: branch.from_bus_ref === busRef };
+export function flagiStatusuPola(bay: Pick<Bay, 'protection_codes' | 'bay_role'>): GpzStatusFlag[] {
+  const kody = new Set((bay.protection_codes ?? []).map((kod) => kod.trim().toUpperCase()));
+  const flagi: GpzStatusFlag[] = [];
+  if (kody.has('79')) flagi.push('SPZ');
+  if (kody.has('81U') && bay.bay_role !== 'OZE') flagi.push('SCO');
+  return flagi;
 }
 
-/** Skończona liczba albo null (NIE NaN/Infinity → traktujemy jako brak). */
-function finiteOrNull(value: number | null | undefined): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-/**
- * Wypełnia pomiary P/Q/I pola z gotowego raw overlay rozpływu mocy.
- *
- * Interpretacja istniejącego wyniku solwera — BEZ fizyki, BEZ heurystyk:
- *   - tylko pola liniowe (LINE_OUT/LINE_IN/LINE_BRANCH) — pozostałe role nie mają
- *     jednoznacznego pojedynczego branchu odpływu,
- *   - branch musi być rozwiązany jednoznacznie (`resolveFeederBranchRef`),
- *   - czytamy P_MW / Q_Mvar / I_A z overlay; brak metryki → to pole = null,
- *   - mapujemy I_A na `i1A` (rozpływ dodatniej składowej = jedna zbalansowana
- *     wartość prądu; NIE fabrykujemy asymetrii fazowej i2A/i3A ani napięć),
- *   - gdy brak overlay / brak branchu / wszystkie 3 puste → null (panel pusty,
- *     uczciwie).
- */
-export function extractBayMeasurements(
-  bay: Pick<Bay, 'bus_ref' | 'outgoing_destination_ref'>,
-  fieldRole: BayFieldRole,
-  branches: readonly Branch[],
-  overlay: RawOverlayPayload | null,
-): BayMeasurements | null {
-  if (!overlay) return null;
-  if (fieldRole !== 'LINE_OUT' && fieldRole !== 'LINE_IN' && fieldRole !== 'LINE_BRANCH') {
-    return null;
+/** Rola pola dla tła i legendy (`gpz.bay.panel`) — 1:1 z `Bay.bay_role`, bez zlewania
+ *  ról (dawne `mapBayRoleToFieldRole` gubiło rolę OZE, sprowadzając ją do odpływu). */
+export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
+  switch (role) {
+    case 'IN': return 'zasilajace';
+    case 'OUT':
+    case 'FEEDER': return 'liniowe';
+    case 'TR': return 'transformatorowe';
+    case 'COUPLER': return 'sprzeglo';
+    case 'MEASUREMENT': return 'pomiarowe';
+    case 'OZE': return 'zrodlowe';
   }
-
-  const resolved = resolveFeederBranchRef(bay, branches);
-  if (!resolved) return null;
-
-  const pMw = finiteOrNull(getMetric(overlay, resolved.branchRef, 'P_MW')?.value);
-  const qMvar = finiteOrNull(getMetric(overlay, resolved.branchRef, 'Q_Mvar')?.value);
-  const i1A = finiteOrNull(getMetric(overlay, resolved.branchRef, 'I_A')?.value);
-
-  if (pMw === null && qMvar === null && i1A === null) return null;
-
-  return { pMw, qMvar, i1A };
-}
-
-/**
- * Pole „w manipulacji" wyłącznie ze ŹRÓDŁA runtime (karta #135): polecenie w toku albo
- * blokada `=== true` w rekordzie źródła. Brak źródła i blokada nieustalona (`null`) NIE są
- * blokadą — adapter nie wymyśla stanu ruchowego.
- */
-function extractInManipulation(
-  runtime: {
-    pending_command?: unknown;
-    primary_device_states?: Record<string, { interlock_blocked?: boolean | null }>;
-  } | null,
-): boolean {
-  if (!runtime) return false;
-  if (runtime.pending_command) return true;
-  if (runtime.primary_device_states) {
-    return Object.values(runtime.primary_device_states).some((s) => s.interlock_blocked === true);
-  }
-  return false;
 }
 
 /**
@@ -764,7 +645,7 @@ function deriveSnNeutralEarthing(
   substation: Substation,
   buses: readonly Bus[],
   sources: readonly Source[],
-): GpzCanonicalRendererProps['snNeutralEarthing'] {
+): CanonicalGpzProps['snNeutralEarthing'] {
   // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
   const stationBusRefs = szynyStacji(enm, substation);
   const source = sources.find(

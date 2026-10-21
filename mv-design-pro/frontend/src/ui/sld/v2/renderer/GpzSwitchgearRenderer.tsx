@@ -1340,7 +1340,7 @@ function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): J
 }
 
 // =============================================================================
-// Apparatus interaction wrapper (kanon lustrzany do GpzCanonicalRenderer)
+// Apparatus interaction wrapper (kanoniczny kontrakt `gpzApparatusSelection`)
 // =============================================================================
 
 /** Wiązka callbacków interakcji aparatu — przekazywana w głąb pól. */

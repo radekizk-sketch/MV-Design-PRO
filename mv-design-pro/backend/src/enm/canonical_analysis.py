@@ -90,6 +90,7 @@ from enm.scenariusze import (
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from enm.wartosci_niefinitowe import podmien_niefinitowe
+from enm.wyniki_pol_gpz import wiersze_wynikow_gpz
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -4511,6 +4512,21 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         # w snapshocie) — sygnatura wyników liczona nad kolejnością listy.
         _source_rows.sort(key=lambda r: r["element_ref"])
         element_results.extend(_source_rows)
+        # GPZ-PARYTET: pomiar zacisku każdego pola GPZ (P/Q/I/U) i bilans GPZ
+        # (zasilanie, suma odpływów, liczba alarmów) — przepisane z wierszy wyżej,
+        # rozstrzygnięcie pole→element z jedynego źródła prawdy ``zajetosc_pol``;
+        # front niczego nie sumuje ani nie przeszukuje (enm/wyniki_pol_gpz.py).
+        element_results.extend(
+            wiersze_wynikow_gpz(
+                snapshot,
+                element_results,
+                wspolne={
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
+                },
+            )
+        )
         global_results = {
             **(result_v1.get("summary", {}) or {}),
             # CV-3.3-B: `PowerFlowResultV1.converged` jest polem TOP-LEVEL (poza

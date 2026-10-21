@@ -45,6 +45,7 @@ import {
   type ResultMarkerHitInput,
 } from './hitAreas';
 import {
+  daneGlifuSymbolu,
   segmentStrokeWidthForScale,
   strokeScaleFactor,
   pointsToPath,
@@ -114,6 +115,7 @@ import {
 // KD-8 poz. 1: kanwa NIE zna już jednej palety — czyta paletę MOTYWU przez
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
+import { GpzAdnotacjeWarstwa } from './GpzAdnotacjeWarstwa';
 import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -514,24 +516,13 @@ function SceneSymbolNode(props: {
        *  obiektów kanwy. Dawny transparentny `<rect>` w tej grupie był drugim,
        *  niezależnym źródłem prawdy o celu kliku (i miał gabaryt ŚWIATA, więc
        *  przy oddaleniu kurczył się do kilku pikseli ekranu). */}
+      {/* GPZ-PARYTET: dane glifu z JEDNEJ listy wspólnej z harnessem (`daneGlifuSymbolu`). */}
       <Glyph
         x={symbol.x}
         y={symbol.y}
-        state={symbol.state}
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
-        labelLines={symbol.meta?.protectionCodes}
-        hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
-        // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
-        // bez skonfigurowanego pola SN.
-        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
-        meterQuantity={symbol.meta?.meterQuantity}
-        stationSectioned={symbol.meta?.stationGlyph?.sectioned}
-        stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
-        stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
-        stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
-        stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
-        stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
+        {...daneGlifuSymbolu(symbol)}
       />
     </g>
   );
@@ -3264,6 +3255,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             strokeWidth={1.2 * strokeScaleFactor(camera.transform.scale)}
             strokeDasharray="12 6"
             opacity={0.7}
+          />
+        )}
+        {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
+         *  (geometria ze sceny, wartości z wyniku backendu) — pod warstwą detalu. */}
+        {scene.meta.gpzAdnotacje && scene.meta.gpzId && (
+          <GpzAdnotacjeWarstwa
+            adnotacje={scene.meta.gpzAdnotacje}
+            gpzRef={scene.meta.gpzId}
+            wyniki={overlay?.gpzWyniki ?? null}
+            nieaktualny={overlay?.resultsStale === true}
+            skala={camera.transform.scale}
           />
         )}
         {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/

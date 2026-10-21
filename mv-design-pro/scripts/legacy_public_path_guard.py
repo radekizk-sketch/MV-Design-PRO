@@ -1849,8 +1849,9 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # pokrycie_analiz.py`), B18 `violations` w `PowerFlowResult` (FROZEN, B-01),
 # E50/E51 `ui/network-build/station-der/**` (wykluczenie Pakietu D1), E74
 # `ui/sld/v2/station-rozdzielnia/**` + `canon/sldCanonKit.tsx` (konsument: wejscie
-# harnessu galerii), czesc E73 `GpzOperatorHeader.tsx` (importowany przez
-# `GpzCanonicalRenderer.tsx`, ktorego typy czyta zywy `ui/sld/v3/scene/buildScene.ts`).
+# harnessu galerii). Reszta E73 — `GpzOperatorHeader.tsx` razem z importujacym go
+# `GpzCanonicalRenderer.tsx` — skasowana karta GPZ-PARYTET (typy, ktore czytal zywy
+# `ui/sld/v3/scene/buildScene.ts`, przeniesione do `ui/sld/v2/canvas/canonicalGpzModel.ts`).
 #
 # POZYCJE POZA INWENTARZEM, wykryte przy kasacji (wiersz `X1`, `X2`):
 #   X1 — przegladarka sladu `ui/proof/TraceViewer.tsx` z calym zbiorem zaleznosci
@@ -2283,6 +2284,12 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E73",
     ),
     *_fe_def("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "SldPowerBalancePanel", "E73"),
+    # Karta GPZ-PARYTET: domkniecie E73 — naglowek operatorski SCADA i jego jedyny
+    # importer (renderer GPZ v2, nierenderowany przez zaden ekran).
+    _fe_sciezka("ui/sld/v2/renderer/GpzOperatorHeader.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/renderer/GpzCanonicalRenderer.tsx", "E73"),
+    *_fe_def("ui/sld/v2/renderer/GpzOperatorHeader.tsx", "GpzOperatorHeader", "E73"),
+    *_fe_def("ui/sld/v2/renderer/GpzCanonicalRenderer.tsx", "GpzCanonicalRenderer", "E73"),
     *_fe_wzorzec(
         "ui/sld/v3/canvas/SldCanvasV3.tsx",
         ("swzByOwnerRef", "sld-v3-swz-badge", "computeSwzBadgePlacements"),

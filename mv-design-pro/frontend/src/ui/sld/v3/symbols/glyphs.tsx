@@ -10,6 +10,7 @@
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
+import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -125,6 +126,11 @@ export interface GlyphProps {
   /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
    *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
   readonly gpzFeeders?: number;
+  /** Karta GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu —
+   *  WYŁĄCZNIE `Transformer2WGlyph`. `undefined` = wołający nie rozwiązuje grupy dla
+   *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
+   *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
+  readonly uzwojenia?: UzwojeniaTransformatora;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -402,6 +408,99 @@ export function VoltageIndicatorGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Środki znaków uzwojeń — w części okręgu WOLNEJ od drugiego okręgu (okręgi r=11
+ *  wokół (16,13) i (16,27) zachodzą na siebie w pasie y 16…24). */
+const ZNAK_UZWOJENIA_GORNEGO = { x: 16, y: 9 } as const;
+const ZNAK_UZWOJENIA_DOLNEGO = { x: 16, y: 31 } as const;
+/** Promień znaku uzwojenia (trójkąt/gwiazda/zygzak) — mieści się w okręgu r=11. */
+const ZNAK_UZWOJENIA_R = 4.5;
+
+function znakRodzajuUzwojenia(rodzaj: RodzajUzwojenia, c: { x: number; y: number }): string {
+  const r = ZNAK_UZWOJENIA_R;
+  // Współrzędne zaokrąglone do 0,01 — zapis ścieżki deterministyczny i krótki.
+  const f = (v: number): number => Math.round(v * 100) / 100;
+  const p = (kat: number, d: number, od = c) => ({ x: f(od.x + d * Math.cos(kat)), y: f(od.y + d * Math.sin(kat)) });
+  // Ramiona gwiazdy/zygzaka i wierzchołki trójkąta: góra, prawo-dół, lewo-dół.
+  const katy = [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6];
+  if (rodzaj === 'trojkat') {
+    const [a, b, d] = katy.map((kat) => p(kat, r));
+    return `M${a.x},${a.y} L${b.x},${b.y} L${d.x},${d.y} Z`;
+  }
+  if (rodzaj === 'gwiazda') {
+    return katy.map((kat) => { const k = p(kat, r); return `M${c.x},${c.y} L${k.x},${k.y}`; }).join(' ');
+  }
+  // Zygzak (IEC 60617-6): ramię gwiazdy załamane w połowie długości o 60°.
+  return katy
+    .map((kat) => {
+      const pol = p(kat, r / 2);
+      const koniec = p(kat + Math.PI / 3, r / 2, pol);
+      return `M${c.x},${c.y} L${pol.x},${pol.y} L${koniec.x},${koniec.y}`;
+    })
+    .join(' ');
+}
+
+function ZnakUzwojenia(props: {
+  readonly uzwojenie: Uzwojenie;
+  readonly c: { x: number; y: number };
+  readonly strona: 'gorne' | 'dolne';
+  readonly glif: GlyphProps;
+}): JSX.Element {
+  const { uzwojenie, c, strona, glif } = props;
+  const sw = grubosc(glif, 1);
+  return (
+    <g
+      data-uzwojenie={strona}
+      data-uzwojenie-rodzaj={uzwojenie.rodzaj}
+      data-uzwojenie-neutralny={uzwojenie.punktNeutralny ? 'true' : 'false'}
+    >
+      <path d={znakRodzajuUzwojenia(uzwojenie.rodzaj, c)} fill="none" stroke={stroke(glif)} strokeWidth={sw} />
+      {uzwojenie.punktNeutralny && (
+        <g data-uzwojenie-punkt-neutralny="true">
+          <line x1={c.x} y1={c.y} x2={c.x + ZNAK_UZWOJENIA_R + 1} y2={c.y} stroke={stroke(glif)} strokeWidth={sw} />
+          <circle cx={c.x + ZNAK_UZWOJENIA_R + 1} cy={c.y} r={1.1} fill={stroke(glif)} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+function BrakUzwojenia(props: { readonly c: { x: number; y: number }; readonly strona: 'gorne' | 'dolne'; readonly glif: GlyphProps }): JSX.Element {
+  return (
+    <text
+      data-uzwojenie={props.strona}
+      data-uzwojenie-rodzaj="brak"
+      x={props.c.x}
+      y={props.c.y + 4.5}
+      textAnchor="middle"
+      fill={stroke(props.glif)}
+      fontFamily="sans-serif"
+      fontSize={13}
+      fontWeight={700}
+    >
+      ?
+    </text>
+  );
+}
+
+function OznaczenieUzwojen(props: { readonly glif: GlyphProps }): JSX.Element | null {
+  const u = props.glif.uzwojenia;
+  if (!u) return null;
+  if (u.stan !== 'znane') {
+    return (
+      <g data-uzwojenia-stan={u.stan}>
+        <BrakUzwojenia c={ZNAK_UZWOJENIA_GORNEGO} strona="gorne" glif={props.glif} />
+        <BrakUzwojenia c={ZNAK_UZWOJENIA_DOLNEGO} strona="dolne" glif={props.glif} />
+      </g>
+    );
+  }
+  return (
+    <g data-uzwojenia-stan="znane" data-uzwojenia-godzina={u.godzina}>
+      <ZnakUzwojenia uzwojenie={u.gorne} c={ZNAK_UZWOJENIA_GORNEGO} strona="gorne" glif={props.glif} />
+      <ZnakUzwojenia uzwojenie={u.dolne} c={ZNAK_UZWOJENIA_DOLNEGO} strona="dolne" glif={props.glif} />
+    </g>
+  );
+}
+
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
@@ -409,6 +508,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={13} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <OznaczenieUzwojen glif={props} />
       {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
        *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
        *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),

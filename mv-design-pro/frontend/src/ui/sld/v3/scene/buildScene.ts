@@ -109,7 +109,7 @@ import {
   type SldSourceView,
 } from '../../v2/canvas/enmToSldAdapter';
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
-import type { GpzCanonicalRendererProps } from '../../v2/renderer/GpzCanonicalRenderer';
+import type { CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
 import type { StationOnRunRendererProps } from '../../v2/renderer/StationOnRunRenderer';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
@@ -304,6 +304,13 @@ export interface SceneV3Meta {
    *  §16); współrzędne świata (kompozycja pass-2). `null`/brak = brak GPZ
    *  lub kompozycja pusta. */
   readonly gpzZone?: import('../compose/gpz').GpzZoneDecoration | null;
+  /** GPZ-PARYTET (§0 pkt 3–5): adnotacje bloku GPZ — sloty bilansu i alarmów w belce
+   *  nagłówka, tabela „Pola GPZ" (karty pól z rolą, automatyką i miejscem na pomiary)
+   *  oraz tła pól wg roli. Wyłącznie GEOMETRIA (wartości wyniku dokleja kanwa z
+   *  `results/v1`). Obecne tylko na LOD rozwiniętego bloku (L1/L2) — na L0 blok jest
+   *  zwinięty do jednego symbolu i nie ma pól, których dotyczą (jak `parityKeys`).
+   *  Mieści się w `gpzZone` (rama rezerwuje na nie miejsce na każdym LOD). */
+  readonly gpzAdnotacje?: import('../compose/gpzAdnotacje').GpzAdnotacje | null;
   /** Opis punktu neutralnego sieci SN do LEGENDY arkusza (V12K-223) — tekst z
    *  wartością parametru. `null`/brak = model uziemienia nieokreślony i legenda
    *  nic o nim nie pisze. Kanwa NIE składa tego napisu sama: przychodzi gotowy
@@ -2462,7 +2469,7 @@ function connectRowStations(
 // wyrównany do busAxisY magistrali) — patrz nagłówek pliku / raport F6a.
 // ---------------------------------------------------------------------------
 
-function findGpzTrunkBayRef(gpzData: GpzCanonicalRendererProps): string | null {
+function findGpzTrunkBayRef(gpzData: CanonicalGpzProps): string | null {
   for (const section of gpzData.sections) {
     for (const bay of section.bays) {
       if (bay.fieldRole === 'LINE_IN' || bay.fieldRole === 'LINE_OUT' || bay.fieldRole === 'LINE_BRANCH') {
@@ -2479,7 +2486,7 @@ function findGpzPrimaryBus(gpz: GpzComposition): ComposedGpzSegment | null {
 
 function findGpzTrunkPort(
   gpz: GpzComposition,
-  gpzData: GpzCanonicalRendererProps,
+  gpzData: CanonicalGpzProps,
   stopNotes: string[],
 ): { readonly x: number; readonly y: number } {
   const bayRef = findGpzTrunkBayRef(gpzData);
@@ -2513,7 +2520,7 @@ function findGpzTrunkPort(
  */
 function findGpzTrunkBottomPort(
   gpz: GpzComposition,
-  gpzData: GpzCanonicalRendererProps,
+  gpzData: CanonicalGpzProps,
   stopNotes: string[],
 ): { readonly x: number; readonly y: number } {
   const bayRef = findGpzTrunkBayRef(gpzData);
@@ -2528,7 +2535,7 @@ function findGpzTrunkBottomPort(
  *  kompozycji — pierwsze zajmuje magistrala (`findGpzTrunkBayRef` zwraca
  *  dokładnie `[0]` tej listy), kolejne przydzielane feederom z pól GPZ
  *  (`start_branch_segment_sn` z `field_ref` GPZ) w kolejności ciągów. */
-function findGpzLineBayRefs(gpzData: GpzCanonicalRendererProps): readonly string[] {
+function findGpzLineBayRefs(gpzData: CanonicalGpzProps): readonly string[] {
   const refs: string[] = [];
   for (const section of gpzData.sections) {
     for (const bay of section.bays) {
@@ -2620,7 +2627,7 @@ interface CollapsedGpz {
  */
 function composeCollapsedGpz(
   gpz: GpzComposition,
-  gpzData: GpzCanonicalRendererProps,
+  gpzData: CanonicalGpzProps,
   gridSources: readonly SldSourceView[],
   stopNotes: string[],
 ): CollapsedGpz {
@@ -2841,6 +2848,9 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
     // dana, która wypadała w tej samej jawnej liście pól — glif rysowałby
     // wariant domyślny zamiast tego, co niesie model.
     earthingKind: sym.earthingKind,
+    // GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń — trzecia dana
+    // tej samej jawnej listy pól, przepuszczona świadomie (lekcja V12K-217/219).
+    uzwojenia: sym.uzwojenia,
   };
 }
 
@@ -2982,8 +2992,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     );
   }
   const gpzRef = sldData.gpzs[0] ?? null;
-  const gpzData: GpzCanonicalRendererProps | null = gpzRef
-    ? buildCanonicalGpzProps(snapshot, gpzRef.id, { x: 0, y: 0 })
+  const gpzData: CanonicalGpzProps | null = gpzRef
+    ? buildCanonicalGpzProps(snapshot, gpzRef.id)
     : null;
 
   const mainTrunkRun = sldData.topologyRuns.find((r) => r.kind === 'main_trunk') ?? null;
@@ -3350,9 +3360,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   let gpzRightEdgeX = 0;
   let gpzChannelSlot: GpzChannelSlot | null = null;
   if (gpzData) {
-    // F9.4: pass1 (Y-alignment tylko) NIE potrzebuje `gridSources` — port
-    // zaczepu magistrali (`findGpzTrunkPort`) jest niezależny od symbolu
-    // źródła zewnętrznego, dodawanego WYŁĄCZNIE nad szyną SN (część C).
+    // F9.4 → GPZ-PARYTET: pass1 (Y-alignment) dostaje TE SAME `gridSources` co
+    // kompozycja wyrównująca. Symbol źródła zewnętrznego nie przesuwa portu
+    // zaczepu wprost, ale poszerza treść bloku, a od szerokości treści zależy
+    // łamanie tabeli „Pola GPZ" w ramie — więc wysokość ramy, nawis nad
+    // originem i translacja końcowa. Dwa przebiegi z różnym wejściem dawały
+    // port przesunięty o różnicę wysokości tabel (predykaty parami: wyrównanie
+    // i kompozycja wyrównana z jednego wejścia).
     // F9.9 B-1 (spec §17.4): szczegółowość warstwy adnotacji z LOD —
     // pass1 (Y-alignment) też ją dostaje (identyczna geometria pass1↔pass2:
     // adnotacja NIE zmienia portu zaczepu, ale spójność wywołań jest tańsza
@@ -3369,7 +3383,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // z zapasem w rezerwie policzonej z pełnego szczegołu (zero kolizji z
     // magistralą). L2: render==layout, więc offsety BEZ zmian względem sprzed S1.
     const layoutDetail = 'full' as const;
-    const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, [], layoutDetail);
+    const zrodlaSieci = externalGridSources.map((s) => ({ id: s.id }));
+    const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, zrodlaSieci, layoutDetail);
     const port1 = findGpzTrunkPort(pass1, gpzData, []);
     const targetBusAxisY = mainLayout ? mainLayout.busAxisY : 0;
     const originY = snapToGrid(targetBusAxisY - port1.y);
@@ -3378,7 +3393,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     let gpzLayout = composeGpz(
       gpzData,
       { x: 0, y: originY },
-      externalGridSources.map((s) => ({ id: s.id })),
+      zrodlaSieci,
       layoutDetail,
     );
     // F13.1 (§21, D3-2): kolumna WN + strefa GPZ sięgają PONAD szynę SN, więc
@@ -3394,7 +3409,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       gpzLayout = composeGpz(
         gpzData,
         { x: 0, y: originY + mainRowDy },
-        externalGridSources.map((s) => ({ id: s.id })),
+        zrodlaSieci,
         layoutDetail,
       );
     }
@@ -3432,7 +3447,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         : composeGpz(
             gpzData,
             { x: 0, y: originY + mainRowDy },
-            externalGridSources.map((s) => ({ id: s.id })),
+            zrodlaSieci,
             annotationDetail,
           );
   }
@@ -5209,6 +5224,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stopNotes,
       sources: allSources,
       gpzZone: gpzGeometry?.zone ?? null,
+      gpzAdnotacje: gpzComposition?.adnotacje ?? null,
       neutralEarthingNotePl: gpzGeometry?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),
       electricalGraphStatus: electricalGraphValidation.status,
