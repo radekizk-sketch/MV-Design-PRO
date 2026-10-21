@@ -193,13 +193,3 @@ export interface MiniBlockBayDescriptor {
    *  = brak oznaczenia, §20.2 — zero „z domysłu"; adapter `resolveBayVtMountings`). */
   readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
 }
-
-export interface MiniBlockDerBadge {
-  readonly kind: 'PV' | 'BESS' | 'FW';
-  readonly count: number;
-  readonly connectionSide?: 'nn' | 'sn' | 'dedicated';
-  readonly hasBlockTransformer?: boolean;
-  /** K30-55 Phase E: aggregated P_mw z generatorów (realna moc, nie atrapa).
-   *  Gdy null → badge ukryty (zamiast atrapy). */
-  readonly totalPMw?: number | null;
-}

@@ -3,9 +3,9 @@
  * SLD_FORENSIC_AUDIT.md / SLD_ELECTRICAL_SEMANTICS.md.
  *
  * These assert electrical/semantic correctness (not pixels). Passing tests are
- * PROVEN fixes; the single `it.skip` is the executable SPEC for execplan Step 4
- * (E02 trunk-into-bus) — deliberately not asserted-green until that geometry
- * change lands, so this file never fakes success.
+ * PROVEN fixes. Geometric oracles of the deleted v2 adapter geometry (E02/E03
+ * trunk polyline) went with it (GPZ-PARYTET cz. 3) — the drawing geometry is
+ * owned and asserted by the v3 scene (`v3/scene/__tests__`).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
-import { STATION_RUN_TRUNK_OFFSET_Y } from '../../model/widokSld';
+import { buildSceneV3 } from '../../../v3/scene/buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -33,16 +33,23 @@ describe('SLD recovery — electrical/semantic oracles', () => {
   });
 
   // E11: section labels must never be a zero-based array index ("Sekcja 0"/"S0").
-  it('E11: no zero-based section label leaks ("Sekcja 0" / "S0")', () => {
-    const labelText = data.labelSpecs.map((l) => l.text).join(' | ');
-    expect(labelText).not.toMatch(/\bSekcja 0\b/);
-    expect(labelText).not.toMatch(/(^|\|)\s*S0\s*(\||$)/);
-    // Section renderer path (SectionRenderer number/displayLabel) — the leak that
-    // labelSpecs alone did NOT cover. `number` must be 1-based (never 0), and any
-    // displayLabel must not read "Sekcja 0".
-    for (const s of data.sections) {
-      expect(s.number, `section ${s.id} number must be >= 1`).toBeGreaterThanOrEqual(1);
-      if (s.displayLabel) expect(s.displayLabel).not.toMatch(/\bSekcja 0\b/);
+  // GPZ-PARYTET cz. 3: opis sekcji v2 (`sections`, `labelSpecs`) skasowany razem
+  // z rendererami — wyrocznia czyta JEDYNY rysunek: scenę v3 (sekcje GPZ i każdą
+  // etykietę) na wszystkich poziomach szczegółowości.
+  it.each([0, 1, 2] as const)('E11: no zero-based section label leaks ("Sekcja 0" / "S0"), LOD %i', (lod) => {
+    const scene = buildSceneV3(enm, lod);
+    expect(scene.meta.sections.length).toBeGreaterThan(0);
+    // `order` to klucz sortowania z ENM (może zaczynać się od 0) — wyrocznia dotyczy
+    // NAPISU sekcji, który widzi inżynier.
+    for (const sekcja of scene.meta.sections) {
+      expect(sekcja.label, `section ${sekcja.sectionId}`).not.toMatch(/\bSekcja 0\b/);
+      expect(sekcja.label.trim()).not.toBe('S0');
+    }
+    const teksty = scene.labels.map((l) => l.text);
+    expect(teksty.length).toBeGreaterThan(0);
+    for (const t of teksty) {
+      expect(t).not.toMatch(/\bSekcja 0\b/);
+      expect(t.trim()).not.toBe('S0');
     }
   });
 
@@ -75,34 +82,6 @@ describe('SLD recovery — electrical/semantic oracles', () => {
           : null);
       expect(stationRef, `DER ${g.name} has no resolvable station`).toBeTruthy();
       if (stationRef) expect(stationIds.has(stationRef)).toBe(true);
-    }
-  });
-
-  // E02/E03: the trunk must physically REACH each trunk station's SN bus (the
-  // bus is drawn on the trunk axis at y = station.y - STATION_RUN_TRUNK_OFFSET_Y),
-  // proving current enters WE → bus → WY and there is no elevated corridor
-  // decoupled from the stations. Now asserted (no longer a skipped SPEC).
-  it('E02/E03: trunk polyline reaches every trunk station SN bus (no bypass)', () => {
-    const trunk = data.cableRuns.find((r) => r.runKind === 'main_trunk');
-    expect(trunk).toBeDefined();
-    const pts = trunk!.pathPoints;
-    // Trunk stations = the top row (smallest y band) — the fishbone spine.
-    const topY = Math.min(...data.stations.map((s) => s.y));
-    const trunkStations = data.stations.filter((s) => Math.abs(s.y - topY) < 1);
-    expect(trunkStations.length).toBeGreaterThanOrEqual(3);
-    for (const st of trunkStations) {
-      const busY = st.y - STATION_RUN_TRUNK_OFFSET_Y;
-      // The trunk is a straight line at the bus axis; assert a HORIZONTAL
-      // segment at y≈busY spans station.x — the trunk physically passes THROUGH
-      // the station SN bus (WE→bus→WY), never a corridor decoupled from it.
-      const passesThrough = pts.some((p, i) => {
-        if (i === 0) return false;
-        const a = pts[i - 1];
-        const horizontal = Math.abs(a.y - busY) < 1 && Math.abs(p.y - busY) < 1;
-        const spans = st.x >= Math.min(a.x, p.x) - 2 && st.x <= Math.max(a.x, p.x) + 2;
-        return horizontal && spans;
-      });
-      expect(passesThrough, `trunk must pass through ${st.id} SN bus at y=${busY}`).toBe(true);
     }
   });
 

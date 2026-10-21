@@ -20,6 +20,7 @@ import type {
   Branch,
   Bus,
   EnergyNetworkModel,
+  Generator,
   Source,
   Substation,
   Transformer,
@@ -38,6 +39,7 @@ import type {
   RolaPolaGpz,
 } from './canonicalGpzModel';
 import { stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
+import { jedynyTransformatorPola, rolaPolaZrodlowego, wytworcyWgPola } from '../model/polaZModelu';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -112,9 +114,32 @@ export function buildCanonicalGpzProps(
     protection_assignments: enm.protection_assignments ?? [],
     measurements: enm.measurements ?? [],
     galezieWgRef,
+    // GPZ-PARYTET cz. 3 (pkt 1): rodzaj źródła pola OZE z przyłączonych wytwórców — ta
+    // sama relacja i funkcja co pola źródłowe stacji (`v2/model/polaZModelu.ts`).
+    generatoryWgPola: wytworcyWgPola(enm),
   };
 
-  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], protectionCtx);
+  // GPZ-PARYTET cz. 3 (pkt 2): pole TR, którego JEDYNYM transformatorem jest transformator
+  // tej stacji (`jedynyTransformatorPola` — ta sama reguła co pola TR stacji SN/nN), rysuje
+  // się jako pole toru transformatora (pole WN TR → TR2W z uzwojeniami → pole TR → szyna SN),
+  // nie drugi raz w sekcji. Jeden zbiór przypisań steruje OBIEMA stronami: wyłączeniem pola
+  // z sekcji i dołączeniem go do toru transformatora (predykaty parami z jednego źródła).
+  const transformatoryWgRef = new Map(allTransformers.map((tr) => [tr.ref_id, tr]));
+  const hvSectionIds = new Set((substation.gpz_hv_sections ?? []).map((sec) => sec.section_id));
+  const polaTrSn = przypiszPolaTr(
+    allBays.filter((bay) => isLvBay(bay, enm.buses ?? [])),
+    transformatoryWgRef,
+  );
+  const polaTrWn = przypiszPolaTr(
+    allBays.filter((bay) => bay.gpz_section_id != null && hvSectionIds.has(bay.gpz_section_id)),
+    transformatoryWgRef,
+  );
+  const polaWToruTransformatora = new Set<string>(
+    [...polaTrSn.values(), ...polaTrWn.values()].map((bay) => bay.ref_id),
+  );
+  const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id));
+
+  const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
   // przypisania TR do sekcji wg `lv_bus_ref`.
   const sectionIdByLvBusRef = new Map<string, string>();
@@ -122,18 +147,13 @@ export function buildCanonicalGpzProps(
     if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
   }
 
-  // Reconciliation TR-bay ↔ wieża: gdy transformator ma pole `bay_role:"TR"`
-  // (jego ref w `equipment_refs` pola TR), renderuje się WYŁĄCZNIE przez to
-  // pole (kolumna Q1→Q0→CT→ES + symbol TR na osi pola). Wieżę (TwoBusTrColumn /
-  // HvTowerColumn) wtedy POMIJAMY — eliminacja podwójnej reprezentacji. Gdy
-  // transformator NIE ma pola TR (starsze snapshoty) → wieża zostaje (brak
-  // regresji). Deterministyczne: czysta funkcja zbioru refów z pól TR.
-  const transformerRefsWithTrBay = collectTransformerRefsWithTrBay(allBays);
-  const transformers = buildTransformers(
-    allTransformers,
-    sectionIdByLvBusRef,
-    transformerRefsWithTrBay,
-  );
+  // Każdy transformator stacji rysuje się torem transformatora; pole TR przypisane wyżej
+  // niesie stan łączników i tożsamość pola toru (dawniej transformator z polem TR był
+  // pomijany, a szablon pola TR w sekcji nie miał symbolu transformatora — znikał z rysunku).
+  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, (tr) => ({
+    poleTr: polaTrSn.has(tr.ref_id) ? buildBay(polaTrSn.get(tr.ref_id)!, protectionCtx) : null,
+    poleWn: polaTrWn.has(tr.ref_id) ? buildBay(polaTrWn.get(tr.ref_id)!, protectionCtx) : null,
+  }));
 
   return {
     id: substation.ref_id,
@@ -148,7 +168,7 @@ export function buildCanonicalGpzProps(
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
     snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays, galezieWgRef),
-    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], protectionCtx),
+    hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
     // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
     // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
@@ -277,28 +297,38 @@ function readString(value: unknown): string | null {
 }
 
 /**
- * Zbiór ref_id transformatorów, które mają pole `bay_role:"TR"` (transformator
- * w `equipment_refs` pola). Te transformatory renderują się przez pole TR, nie
- * przez wieżę — `buildTransformers` je pomija. Deterministyczne (czysta funkcja).
+ * GPZ-PARYTET cz. 3 (pkt 2): przypisanie pól TR do transformatorów stacji. Pole `bay_role:
+ * "TR"` należy do transformatora, gdy ten jest jego JEDYNYM transformatorem
+ * (`jedynyTransformatorPola`); transformator wskazany przez więcej niż jedno pole zostaje bez
+ * przypisania (model nie mówi, które pole rysuje tor) — pola zostają wtedy w sekcji.
+ * Deterministyczne: kolejność pól nie zmienia wyniku.
  */
-function collectTransformerRefsWithTrBay(bays: readonly Bay[]): ReadonlySet<string> {
-  const refs = new Set<string>();
+function przypiszPolaTr(
+  bays: readonly Bay[],
+  transformatoryWgRef: ReadonlyMap<string, Transformer>,
+): ReadonlyMap<string, Bay> {
+  const wgTransformatora = new Map<string, Bay[]>();
   for (const bay of bays) {
     if (bay.bay_role !== 'TR') continue;
-    for (const ref of bay.equipment_refs ?? []) {
-      if (ref) refs.add(ref);
-    }
+    const tr = jedynyTransformatorPola(bay, transformatoryWgRef);
+    if (!tr) continue;
+    const lista = wgTransformatora.get(tr.ref_id) ?? [];
+    lista.push(bay);
+    wgTransformatora.set(tr.ref_id, lista);
   }
-  return refs;
+  const przypisane = new Map<string, Bay>();
+  for (const [trRef, lista] of wgTransformatora) {
+    if (lista.length === 1) przypisane.set(trRef, lista[0]);
+  }
+  return przypisane;
 }
 
 function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
-  transformerRefsWithTrBay: ReadonlySet<string>,
+  polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn'>,
 ): CanonicalGpzTransformer[] {
   return transformers
-    .filter((tr) => !transformerRefsWithTrBay.has(tr.ref_id))
     .slice()
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
     .map((tr, idx) => ({
@@ -318,6 +348,7 @@ function buildTransformers(
       // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer
       // (reuse buildOltcAnnotation; null gdy brak regulacji).
       oltc: buildOltcAnnotation(tr.tap_changer),
+      ...polaToru(tr),
     }));
 }
 
@@ -335,6 +366,8 @@ export function extractTransformerDesignation(name: string | null | undefined, i
 type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
+  /** Wytwórcy wg pola (`Generator.meta.field_ref`) — rodzaj źródła pola OZE. */
+  readonly generatoryWgPola: ReadonlyMap<string, readonly Generator[]>;
 };
 
 function buildLvSections(
@@ -474,6 +507,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     destinationLabel: bay.outgoing_destination_ref ? `→ ${bay.outgoing_destination_ref}` : null,
     fieldRole,
     rolaPola: rolaPolaGpz(bay.bay_role),
+    ...(fieldRole === 'SOURCE' ? { rolaZrodla: rolaPolaZrodlowego(bay, protectionCtx.generatoryWgPola) } : {}),
     cbState: stany.cbState,
     dsState: stany.dsState,
     esState: stany.esState,
@@ -539,7 +573,9 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
     case 'TR': return 'TRANSFORMER';
     case 'COUPLER': return 'COUPLER';
     case 'MEASUREMENT': return 'MEASUREMENT';
-    case 'OZE': return 'LINE_OUT'; // OZE jako pole liniowe odpływowe
+    // GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe — gramatyka pola kablowego + glif rodzaju
+    // źródła (`rolaZrodla`); dawniej zlewane z polem liniowym odpływowym.
+    case 'OZE': return 'SOURCE';
     default: return 'LINE_OUT';
   }
 }
@@ -555,6 +591,7 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
     case 'LINE_OUT':
     case 'LINE_IN':
     case 'LINE_BRANCH':
+    case 'SOURCE':
       return { cb: 'Q0', dsBus: 'Q1', dsLin: 'Q9', es: 'Q8', ct: 'T1' };
     case 'TRANSFORMER':
       return { cb: 'Q0', dsBus: 'Q1', es: 'Q8', ct: 'T1' };

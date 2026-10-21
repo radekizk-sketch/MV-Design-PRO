@@ -132,7 +132,9 @@ describe('buildTechCardSubject', () => {
       branch_occupied: { BRANCH_1: 'seg/branch1' },
       switch_state: 'closed',
       completeness_status: 'KOMPLETNY',
-    } as BranchPointSN;
+      tags: [],
+      meta: {},
+    };
     const snapshot = snapshotWith({ branch_points: [zksn] });
     const subject = buildTechCardSubject(snapshot, selected(zksn.ref_id, 'ZKSN'));
     expect(subject?.kind).toBe('zksn');
@@ -264,7 +266,9 @@ describe('buildTechCardSubject', () => {
       station_type: 'gpz',
       bus_refs: ['bus/110'],
       transformer_refs: [],
-    } as Substation;
+      tags: [],
+      meta: {},
+    };
     const snapshot = snapshotWith({ substations: [gpz] });
     const subject = buildTechCardSubject(snapshot, selected(gpz.ref_id, 'Station'));
     expect(subject?.kind).toBe('gpz');

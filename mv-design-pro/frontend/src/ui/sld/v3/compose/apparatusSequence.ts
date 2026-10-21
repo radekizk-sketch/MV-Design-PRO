@@ -226,12 +226,17 @@ export interface BayApparatusPlan {
  */
 export function planApparatusSymbolIds(
   symbolIds: readonly SymbolId[],
+  // GPZ-PARYTET cz. 3: podział tor główny / aparat boczny jako PARAMETR — rozdzielnica GPZ
+  // dokłada do zbioru bocznego glif rodzaju źródła pola OZE (`compose/gpz.ts
+  // jestAparatemBocznymPolaGpz`), a jej budowa stosu i zaczep trasy używają TEGO SAMEGO
+  // predykatu (jedno źródło prawdy measure↔compose↔scena).
+  czyBoczny: (symbolId: SymbolId) => boolean = (symbolId) => LATERAL_APPARATUS_SYMBOLS.has(symbolId),
 ): Omit<BayApparatusPlan, 'source'> {
   const mainPath: SymbolId[] = [];
   const mainSequenceIndices: number[] = [];
   const laterals: LateralApparatusPlanEntry[] = [];
   symbolIds.forEach((symbolId, sequenceIndex) => {
-    if (LATERAL_APPARATUS_SYMBOLS.has(symbolId)) {
+    if (czyBoczny(symbolId)) {
       laterals.push({ symbolId, afterMainIndex: mainPath.length - 1, sequenceIndex });
     } else {
       mainPath.push(symbolId);

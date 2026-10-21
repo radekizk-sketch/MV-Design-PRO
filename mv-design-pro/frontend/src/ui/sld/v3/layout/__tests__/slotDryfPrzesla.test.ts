@@ -141,8 +141,8 @@ describe('SLOT-DRYF-PRZĘSŁA §1 — `bayStackCenterX` jest tą samą osią, w 
       nazwa: 'przelotowa ze źródłem DER na nN',
       stacja: stacjaPrzelotowa('s-5', 1, {
         derSources: [
-          { ref: 'src/1', kind: 'pv', ratedKw: 400, connectionSide: 'nn', operationalState: 'in_service' },
-        ] as StationMeasureInput['derSources'],
+          { id: 'src/1', kind: 'pv', ratedPower: 0.4, connectionSide: 'nn', operationalState: 'energized' },
+        ],
       }),
     },
   ];

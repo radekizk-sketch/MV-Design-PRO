@@ -103,7 +103,7 @@ Skala oceny: 1 (atrapa) – 10 (industrial-grade ABB/Siemens). Akceptacja: **≥
 
 **Wymóg:**
 - Przy każdym zoom level (LOD-0 do LOD-4) etykiety MUSZĄ NIE nakładać się
-- `LabelDeclutter.ts` musi działać w pipeline'u
+- Rozsuwanie etykiet działa w potoku sceny v3 (`frontend/src/ui/sld/v3/layout/declutter.ts`, wołane z `v3/scene/buildScene.ts`); dawny moduł v2 `LabelDeclutter.ts` skasowany 2026-10-21 (karta GPZ-PARYTET cz. 3) — zasilał wyłącznie pola widoku adaptera bez czytelnika rysunku
 
 **Czego NIE wolno:** Czytelnie nachodzące się labelki (typowo: 4-5 pól w GPZ na zoom 0.3× nakładają się).
 

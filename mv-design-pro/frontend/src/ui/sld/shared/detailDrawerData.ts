@@ -325,7 +325,6 @@ export function buildStationDetailDrawerData(
     nnSpec,
     existingDers,
     liveMetrics: buildLiveMetrics(overlayPayload, 'station', stationId, stationForDrawer?.busVoltageKv ?? null),
-    alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
   };
 }
 
@@ -1095,8 +1094,7 @@ export function buildStationBranchDetailDrawerData(
         apparatusSpec,
         cableRunSpec,
         liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
-        alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
-        apparatusState,
+            apparatusState,
         parentStationLabel,
         parentBayLabel,
         globalId,

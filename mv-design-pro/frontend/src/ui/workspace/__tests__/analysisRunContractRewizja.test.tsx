@@ -35,7 +35,9 @@ function zamontujFetch(body: Record<string, unknown>): void {
   );
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -510,7 +510,6 @@ describe('buildSldExportFile — format × źródło × dane × serwer', () => {
 // bo to rozjechałoby geometrię po cichu. Obie strony przypięte testem
 // (deklaracja bez testu = fałszywa pewność).
 // ---------------------------------------------------------------------------
-import { svgMarkupToDrawing } from '../svgPrimitives';
 
 describe('zagnieżdżony <svg> — translacja odwzorowana, skalowanie odrzucone (V12K-331)', () => {
   it('viewBox o przesuniętym początku (skala 1:1) przesuwa współrzędne dzieci', () => {

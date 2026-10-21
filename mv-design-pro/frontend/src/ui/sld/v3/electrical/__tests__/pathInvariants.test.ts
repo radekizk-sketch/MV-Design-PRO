@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';

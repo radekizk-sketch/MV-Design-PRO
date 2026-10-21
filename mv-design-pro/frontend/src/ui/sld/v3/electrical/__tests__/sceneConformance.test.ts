@@ -34,7 +34,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { buildSceneV3, sceneConnectivityIndex, type PreviewSegment, type SceneV3 } from '../../scene/buildScene';
+import type { PreviewSegment } from '../../compose/preview';
+import { buildSceneV3, sceneConnectivityIndex, type SceneV3 } from '../../scene/buildScene';
 import { buildTerminalGraph } from '../terminalGraph';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 

@@ -6,7 +6,7 @@
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import type { ConverterType } from '../../../../ui/catalog/types';
 import { DoborToruSn } from '../DoborToruSn';
@@ -115,7 +115,7 @@ function wywolaniaDoboru(): unknown[][] {
   );
 }
 
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock<[input: RequestInfo | URL], Promise<Response>>;
 /** Odpowiedź końcówki doboru — testy podmieniają ją na własną. */
 let odpowiedzDoboru: unknown = RESPONSE;
 

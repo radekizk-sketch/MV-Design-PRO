@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
 import { useStudyCasesStore } from '../../../study-cases/store';
-import type { StudyCase } from '../../../study-cases/types';
+import { DEFAULT_STUDY_CASE_CONFIG, type StudyCase } from '../../../study-cases/types';
 import { AnContextPanel } from '../AnContextPanel';
 
 const createdCase: StudyCase = {
@@ -12,6 +12,7 @@ const createdCase: StudyCase = {
   name: 'Zakres podstawowy',
   description: '',
   config: {
+    ...DEFAULT_STUDY_CASE_CONFIG,
     c_factor_max: 1.1,
     c_factor_min: 0.95,
     base_mva: 100,

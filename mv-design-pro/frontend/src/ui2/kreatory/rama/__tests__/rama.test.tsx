@@ -194,6 +194,7 @@ describe('Pola kreatora — interakcje natywne', () => {
         wartosc={0.95}
         pomoc={'Q wylicza backend ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$).'}
         testid="pl-pomoc"
+        onZmiana={() => undefined}
       />,
     );
     const wzory = screen.getAllByTestId('math-rendered');

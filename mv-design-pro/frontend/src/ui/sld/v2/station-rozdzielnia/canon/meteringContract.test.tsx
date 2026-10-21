@@ -86,13 +86,13 @@ describe('canon CT/VT — rendered from companion fields, never a literal', () =
 
     it(`${name}: VT primary is DATA-BOUND to Un — mutating un_kv moves the render`, () => {
       const m = clone(base);
-      m.voltage_flow.buses[snBus].un_kv = 21; // sentinel (≠ the real collector kV)
+      (m.voltage_flow.buses[snBus] as { un_kv: number }).un_kv = 21; // sentinel (≠ the real collector kV)
       expect(renderText(<Comp companion={m} />)).toContain(vtRatioLabel(21));
     });
 
     it(`${name}: missing metering → "CT · —"; VT primary still derives from Un`, () => {
       const m = clone(base);
-      m.source.metering = undefined;
+      (m.source as { metering?: unknown }).metering = undefined;
       const txt = renderText(<Comp companion={m} />);
       expect(txt).toContain('CT · —'); // CT has no Un fallback → explicit placeholder
       expect(txt).toContain(`${vtRatioLabel(unKv)}`); // VT primary still "VT · Un/√3"

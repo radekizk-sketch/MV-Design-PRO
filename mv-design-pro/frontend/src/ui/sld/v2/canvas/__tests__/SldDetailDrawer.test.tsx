@@ -1280,22 +1280,6 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('alarm badge widoczny dla critical severity', () => {
-    const data: SldDetailDrawerData = { ...STATION_DATA, alarmSeverity: 'critical' };
-    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
-    const badge = container.querySelector('[data-testid="sld-v2-detail-drawer-alarm-badge"]') as HTMLElement;
-    expect(badge).toBeTruthy();
-    expect(badge.getAttribute('data-severity')).toBe('critical');
-    expect(badge.textContent).toContain('critical');
-    cleanup();
-  });
-
-  it('alarm badge ukryty gdy alarmSeverity=null', () => {
-    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
-    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-alarm-badge"]')).toBeFalsy();
-    cleanup();
-  });
-
   it('auto-focus close button when drawer opens', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     const closeBtn = container.querySelector('[data-testid="sld-v2-detail-drawer-close"]');

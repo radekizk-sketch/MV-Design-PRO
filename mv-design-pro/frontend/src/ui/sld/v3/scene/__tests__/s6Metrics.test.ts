@@ -66,12 +66,19 @@ function makeScene(partial: {
       sections: [],
       transformers: [],
       mainTrunkStationIds: [],
+      sheetRows: [],
+      sheetRowBands: [],
       lateralRunIds: [],
+      drawnStationIds: [],
+      stationTraversalOrder: [],
+      drawnBranchPointRefs: [],
       stopNotes: [],
       sources: [],
       gpzZone: null,
+      electricalGraphStatus: 'SLD_VALID',
+      electricalGraphViolations: [],
     },
-  } as SceneV3;
+  };
 }
 
 describe('S6 — poprawność metryk funkcji kosztu (§3)', () => {

@@ -109,7 +109,7 @@ import {
   type SldSourceView,
 } from '../../v2/canvas/enmToSldAdapter';
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
-import type { CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
+import { czyPoleKabloweGpz, type CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
 import type { StationOnRunViewModel } from '../../v2/model/widokSld';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
@@ -123,7 +123,7 @@ import {
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { LATERAL_APPARATUS_SYMBOLS, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
@@ -166,6 +166,7 @@ import { declutterLabels } from '../layout/declutter';
 import { composeStation, lvPortalOwnerRef, type StationComposition } from '../compose/station';
 import {
   composeGpz,
+  jestAparatemBocznymPolaGpz,
   type ComposedGpzSegment,
   type ComposedGpzSymbolInstance,
   type GpzComposition,
@@ -2532,7 +2533,7 @@ function connectRowStations(
 function findGpzTrunkBayRef(gpzData: CanonicalGpzProps): string | null {
   for (const section of gpzData.sections) {
     for (const bay of section.bays) {
-      if (bay.fieldRole === 'LINE_IN' || bay.fieldRole === 'LINE_OUT' || bay.fieldRole === 'LINE_BRANCH') {
+      if (czyPoleKabloweGpz(bay.fieldRole)) {
         return bay.bayRef;
       }
     }
@@ -2599,7 +2600,7 @@ function findGpzLineBayRefs(gpzData: CanonicalGpzProps): readonly string[] {
   const refs: string[] = [];
   for (const section of gpzData.sections) {
     for (const bay of section.bays) {
-      if (bay.fieldRole === 'LINE_IN' || bay.fieldRole === 'LINE_OUT' || bay.fieldRole === 'LINE_BRANCH') {
+      if (czyPoleKabloweGpz(bay.fieldRole)) {
         refs.push(bay.bayRef);
       }
     }
@@ -2618,7 +2619,9 @@ function gpzBayBottomPort(
   bayRef: string,
 ): { readonly x: number; readonly y: number } | null {
   const bayInstances = gpz.symbols.filter(
-    (s) => s.meta.bayRef === bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
+    // GPZ-PARYTET cz. 3: ten sam predykat aparatu bocznego co budowa stosu pola GPZ (glif
+    // rodzaju źródła pola OZE nie jest zakończeniem toru — kabel wychodzi z głowicy).
+    (s) => s.meta.bayRef === bayRef && !jestAparatemBocznymPolaGpz(s.symbolId),
   );
   const last = bayInstances[bayInstances.length - 1];
   if (!last) return null;

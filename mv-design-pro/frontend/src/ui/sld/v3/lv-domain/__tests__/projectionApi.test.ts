@@ -25,7 +25,9 @@ function odpowiedz(body: unknown, status = 200): void {
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('isLvDomainProjectionV1 — wersja i kształt kontraktu 4.0.0', () => {
   it('fixtura z backendu ma kształt 4.0.0', () => {

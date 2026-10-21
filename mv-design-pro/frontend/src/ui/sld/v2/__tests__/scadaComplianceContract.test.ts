@@ -135,15 +135,20 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
   });
 
-  describe('Czytelność etykiet — labelDeclutter', () => {
-    it('LabelDeclutter istnieje (anti-collision)', () => {
-      expect(fileExists('ui/sld/v2/canvas/LabelDeclutter.ts')).toBe(true);
+  describe('Czytelność etykiet — rozstrzyganie kolizji etykiet', () => {
+    // GPZ-PARYTET cz. 3: `v2/canvas/LabelDeclutter.ts` zasilał wyłącznie martwe pola widoku
+    // adaptera (`labelSpecs`/`readabilityReport`, bez czytelnika po kasacji rendererów v2)
+    // i został skasowany. Kolizje etykiet rozstrzyga żywy silnik sceny v3.
+    it('silnik etykiet sceny v3 istnieje (anti-collision)', () => {
+      expect(fileExists('ui/sld/v3/layout/declutter.ts')).toBe(true);
     });
 
-    it('Readability metrics test foundation', () => {
-      // Poprzedni readabilityMetrics (na martwym CorridorLayout) usunięto w
-      // konsolidacji 2026-07; anti-collision pokrywa żywy LabelDeclutter test.
-      expect(fileExists('ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts')).toBe(true);
+    it('test silnika etykiet sceny v3 istnieje', () => {
+      expect(fileExists('ui/sld/v3/layout/__tests__/declutter.test.ts')).toBe(true);
+    });
+
+    it('martwy moduł v2 LabelDeclutter nie wraca', () => {
+      expect(fileExists('ui/sld/v2/canvas/LabelDeclutter.ts')).toBe(false);
     });
   });
 

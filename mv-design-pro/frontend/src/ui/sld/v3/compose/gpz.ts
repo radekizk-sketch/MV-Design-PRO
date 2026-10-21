@@ -74,10 +74,13 @@ import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
+  apparatusSymbolsForRole,
   bayApparatusPlanFootprint,
   planApparatusSymbolIds,
   symbolIdForPrimaryDeviceKind,
 } from './apparatusSequence';
+import { FIELD_ROLE } from '../../v2/domain/apparatusContracts';
+import type { RolaPolaZrodlowego } from '../../v2/model/polaZModelu';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
@@ -349,17 +352,48 @@ const ES_SIDE: FieldApparatusSpec = { symbolId: 'earthSwitch', parityKeys: ['gpz
 const CABLE_HEAD: FieldApparatusSpec = { symbolId: 'cableHead', parityKeys: ['gpz.apparatus.cable_head'] };
 const VT: FieldApparatusSpec = { symbolId: 'voltageTransformer', parityKeys: [] };
 
+/** Role źródła pola OZE rysowane w GPZ (rodzaj rozstrzygnięty albo nieokreślony). */
+const ROLE_ZRODLA_POLA_GPZ: readonly RolaPolaZrodlowego[] = [
+  FIELD_ROLE.DER_PV,
+  FIELD_ROLE.DER_BESS,
+  FIELD_ROLE.DER_FW,
+  FIELD_ROLE.DER_UNKNOWN,
+];
+
+/** Glif rodzaju źródła pola OZE — TEN SAM, który rysuje pole źródłowe stacji
+ *  (`apparatusSymbolsForRole`, jedna tabela rola → glif). */
+function glifZrodlaPolaGpz(rola: RolaPolaZrodlowego): SymbolId {
+  const [glif] = apparatusSymbolsForRole(rola);
+  return glif;
+}
+
+/** Zbiór glifów źródła pola OZE, wyprowadzony z tej samej tabeli (zero drugiej listy). */
+const GLIFY_ZRODLA_POLA_GPZ: ReadonlySet<SymbolId> = new Set(ROLE_ZRODLA_POLA_GPZ.map(glifZrodlaPolaGpz));
+
+/**
+ * Karta GPZ-PARYTET cz. 3 (pkt 1): aparat BOCZNY pola GPZ — uziemnik/VT/ogranicznik (§18.1)
+ * oraz glif rodzaju źródła pola OZE. Glif źródła wisi obok głowicy kablowej (odgałęzienie
+ * od jej portu S), bo z głowicy wychodzi kabel do źródła: nie jest zakończeniem toru i nie
+ * przejmuje zaczepu trasy. JEDEN predykat dla planu gabarytu (`gpzFieldPlanFootprint`),
+ * budowy stosu (`buildFieldStack`) i zaczepu trasy na scenie (`buildScene.ts
+ * gpzBayBottomPort`) — predykaty parami z jednego źródła.
+ */
+export function jestAparatemBocznymPolaGpz(symbolId: SymbolId): boolean {
+  return LATERAL_APPARATUS_SYMBOLS.has(symbolId) || GLIFY_ZRODLA_POLA_GPZ.has(symbolId);
+}
+
 /** Pole liniowe/odgałęźne (spec §3 „pola liniowe"; grammar 1:1 z v2
  *  `getBayApparatusPolicy` LINE_*): DS_bus + CB + CT + DS_lin + ES + głowica. */
 function lineFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, CB_MAIN, CT, DS_LIN, ES_SIDE, CABLE_HEAD];
 }
 
-/** Pole TR w sekcji SN (fallback — normalnie TR renderowany przez
- *  `transformers`/pole TR dedykowane, patrz `composeTrField`; ta gałąź
- *  obsługuje starsze dane ENM z `bay.fieldRole === 'TRANSFORMER'` wprost w
- *  `section.bays`) i pole TR dedykowane — TA SAMA gramatyka (spec §3: „pole
- *  TR: DS+CB+CT+ES"). */
+/** Pole TR w sekcji SN i pole TR dedykowane wieży transformatora — TA SAMA gramatyka
+ *  (spec §3: „pole TR: DS+CB+CT+ES"). Pole TR modelu jednoznacznie przypisane
+ *  transformatorowi GPZ adapter przenosi do wieży (`CanonicalGpzTransformer.poleTr`);
+ *  w sekcji zostaje tylko pole TR niejednoznaczne (dwa pola jednego transformatora albo
+ *  pole wskazujące kilka transformatorów) — rysowane jako pole sekcji, bez domysłu,
+ *  któremu transformatorowi służy. */
 function transformerFieldTemplate(): readonly FieldApparatusSpec[] {
   return [DS_BUS, CB_MAIN, CT, ES_SIDE];
 }
@@ -388,6 +422,16 @@ function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatus
         return couplerBaySpec();
       case 'MEASUREMENT':
         return measurementFieldTemplate();
+      case 'SOURCE':
+        // GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe = gramatyka pola kablowego + glif rodzaju
+        // źródła z modelu (nierozstrzygnięty → źródło nieokreślone, nigdy PV z domysłu).
+        return [
+          ...lineFieldTemplate(),
+          {
+            symbolId: glifZrodlaPolaGpz(bay.rolaZrodla ?? FIELD_ROLE.DER_UNKNOWN),
+            parityKeys: ['gpz.bay.source_kind'],
+          },
+        ];
     }
   })();
   // esState='absent' (spec/v2: `apparatus.es && esState !== 'absent'`) — pole
@@ -403,8 +447,8 @@ function hvTrFieldTemplate(): readonly FieldApparatusSpec[] {
 }
 
 /** Pole TR dedykowane (spec §3 „pole TR: DS+CB+CT+ES") — TA SAMA gramatyka
- *  co `transformerFieldTemplate` (pole TR w sekcji SN, gałąź fallback) — jedna
- *  funkcja, dwa miejsca użycia. */
+ *  co `transformerFieldTemplate` (pole TR w sekcji SN) — jedna funkcja, dwa miejsca
+ *  użycia. */
 const dedicatedTrFieldTemplate = transformerFieldTemplate;
 
 /** Pole liniowe WN (`hvSections[].bays`) — spec §3 nie rozwija gramatyki pól
@@ -474,18 +518,29 @@ function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record
 function primaryDeviceItemsForTemplate(
   bay: CanonicalGpzBay,
   specs: readonly FieldApparatusSpec[],
-): readonly BayPrimaryDeviceView[] | null {
+): readonly (BayPrimaryDeviceView | undefined)[] | null {
   const devices = bay.primaryDevices;
   if (!devices || devices.length === 0) return null;
   const mapped: BayPrimaryDeviceView[] = [];
   for (const device of devices) {
     if (symbolIdForPrimaryDeviceKind(device.kind) != null) mapped.push(device);
   }
-  if (mapped.length !== specs.length) return null;
-  const aligned = mapped.every(
-    (device, index) => symbolIdForPrimaryDeviceKind(device.kind) === specs[index].symbolId,
+  // GPZ-PARYTET cz. 3: glif rodzaju źródła pola OZE nie jest aparatem pierwotnym pola
+  // (wytwórca ma `symbolIdForPrimaryDeviceKind = null`) — dopasowanie biegnie po pozycjach
+  // aparatów, a pozycja glifu zostaje bez rejestru.
+  const pozycjeAparatow = specs.flatMap((spec, index) =>
+    GLIFY_ZRODLA_POLA_GPZ.has(spec.symbolId) ? [] : [index],
   );
-  return aligned ? mapped : null;
+  if (mapped.length !== pozycjeAparatow.length) return null;
+  const aligned = mapped.every(
+    (device, i) => symbolIdForPrimaryDeviceKind(device.kind) === specs[pozycjeAparatow[i]].symbolId,
+  );
+  if (!aligned) return null;
+  const wynik: (BayPrimaryDeviceView | undefined)[] = specs.map(() => undefined);
+  pozycjeAparatow.forEach((pozycja, i) => {
+    wynik[pozycja] = mapped[i];
+  });
+  return wynik;
 }
 
 function buildFieldStack(
@@ -497,10 +552,10 @@ function buildFieldStack(
   metaExtra: Partial<GpzElementMeta>,
   // F11.1: rejestr device-ref, index-aligned do `specs` (ten sam indeks co
   // `testIdFor`/`stateFor`) — patrz docstring `primaryDeviceItemsForTemplate`.
-  // `null`/pominięty = brak rejestru (stosy szablonowe bez `Bay` za nimi —
-  // pole WN TR/pole TR dedykowane, patrz wywołania niżej — zostają BEZ
-  // rejestru z konstrukcji, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
-  deviceItems: readonly BayPrimaryDeviceView[] | null = null,
+  // `null`/pominięty = brak rejestru (stos pola WN TR / pola TR wieży bez `Bay`
+  // modelu za nim — `CanonicalGpzTransformer.poleWn`/`poleTr` = null — zostaje BEZ
+  // rejestru, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
+  deviceItems: readonly (BayPrimaryDeviceView | undefined)[] | null = null,
 ): FieldStack {
   // Karta S9-4 (tożsamość zaznaczenia) — UNIKALNOŚĆ testId W STOSIE POLA.
   // `testIdFor` dostaje `(index, symbolId)`, ale wszystkie wywołania budują
@@ -531,7 +586,7 @@ function buildFieldStack(
     readonly afterMainIndex: number;
   }[] = [];
   specs.forEach((spec, index) => {
-    if (LATERAL_APPARATUS_SYMBOLS.has(spec.symbolId)) {
+    if (jestAparatemBocznymPolaGpz(spec.symbolId)) {
       lateralSpecs.push({ spec, index, afterMainIndex: mainSpecs.length - 1 });
     } else {
       mainSpecs.push({ spec, index });
@@ -700,7 +755,7 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
  *  — jedna prawda). `mainStack.width` wyznacza OŚ stosu; pełna szerokość
  *  zawiera rozszerzenie boczne w prawo. */
 function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[]) {
-  return bayApparatusPlanFootprint(planApparatusSymbolIds(spec.map((s) => s.symbolId)));
+  return bayApparatusPlanFootprint(planApparatusSymbolIds(spec.map((s) => s.symbolId), jestAparatemBocznymPolaGpz));
 }
 
 /** Szerokość WYMAGANA kolumny pola: gabaryt stosu aparatów (`stackFootprint`,
@@ -851,6 +906,19 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
   return state;
 }
 
+/**
+ * Stan aparatu stosu pola z `CanonicalGpzBay` — JEDNA reguła dla pól sekcji i pól toru
+ * transformatora (GPZ-PARYTET cz. 3 pkt 2). Pole toru bez `Bay` w modelu (`null`) = stan
+ * nieznany (`'unknown'`), nigdy domyślnie zamknięty.
+ */
+function stanAparatuPolaGpz(bay: CanonicalGpzBay | null, symbolId: SymbolId): SwitchState | undefined {
+  if (!bay) return symbolId === 'currentTransformer' ? undefined : 'unknown';
+  if (symbolId === 'breaker') return bay.cbState;
+  if (symbolId === 'disconnector') return bay.dsState;
+  if (symbolId === 'earthSwitch') return switchStateOrUndefined(bay.esState);
+  return undefined;
+}
+
 
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
@@ -992,6 +1060,216 @@ export function composeGpz(
   const sectionsStartX =
     (hvSections.length > 0 ? hvLineBayCursor + SECTION_GAP : originX) + firstSectionLabelLeftMargin(props.sections);
   const sectionLayouts = layoutSections(props.sections, sectionsStartX);
+
+  // GPZ-PARYTET cz. 3 (pkt 2): adnotacje zabezpieczeń/CT/VT pola — JEDNA funkcja dla pól
+  // sekcji i pól toru transformatora (pole WN TR, pole TR); pole przeniesione z sekcji do
+  // wieży zachowuje okrąg przekaźnika, tor wyzwalania, linię pomiarową i przekładnie CT.
+  //  - `rightX` — prawa krawędź zarezerwowanej kolumny pola (okrąg prawo-wyrównany);
+  //  - `textAnchorX` — krawędź pasma adnotacji CT/VT tuż za planem stosu;
+  //  - `metaPola` — meta odcinków adnotacji (sekcja albo transformator + `bayRef`).
+  const adnotacjePolaGpz = (
+    bay: CanonicalGpzBay,
+    instances: readonly ComposedGpzSymbolInstance[],
+    rightX: number,
+    textAnchorX: number,
+    metaPola: Partial<GpzElementMeta>,
+  ): void => {
+    // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
+    // okrąg przekaźnika pola SN GPZ TERAZ dostaje tor wyzwalania + linię
+    // pomiarową, GDY dane się rozwiązują na NARYSOWANY stos (rejestr
+    // device-ref, `deviceItems` wyżej) — `resolveStationProtectionMarking`
+    // (`./protectionMarking`) REUŻYTA WPROST, TA SAMA funkcja co stacje
+    // (`compose/station.ts`), zero duplikatu logiki dopasowania
+    // `breaker_ref`/`ct_ref`. Kody: `protectionMarking.codes` (rejestr
+    // ENM, F11.1) z fallbackiem na legacy `protectionCodes` (kompatybilność
+    // wsteczna — wywołujący niosący WYŁĄCZNIE `protectionCodes`, bez pełnego
+    // `protectionMarking`, dostaje TYLKO okrąg — bez refów nie ma czego
+    // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
+    // `tripTarget`/`ctAnchor` puste). Okrąg prawo-wyrównany do rezerwacji
+    // kolumny (`rightX`, `gpzBayAnnotationWidth` — jedna prawda
+    // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + tor +
+    // linia pomiarowa + „52" + pełna lista (>2, R-2) + adnotacje CT;
+    // `'circle-only'` sam kontur; `'none'` nic.
+    const gpzCodes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
+    const hasCtRatings = (bay.ctRatingAnnotations?.length ?? 0) > 0;
+    const hasVtMountings = (bay.vtMountingAnnotations?.length ?? 0) > 0;
+    if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
+      if (gpzCodes.length > 0) {
+        // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
+        // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
+        // zna/potrzebuje GPZ, operuje WYŁĄCZNIE na kodach + refach + stosie
+        // (`PlacedStackDevice[]`, `ComposedGpzSymbolInstance` jest z
+        // konstrukcji zgodny — patrz docstring pola `deviceRef` wyżej).
+        const marking = resolveStationProtectionMarking(
+          {
+            protectionMarking: {
+              codes: gpzCodes,
+              breakerRef: bay.protectionMarking?.breakerRef,
+              ctRef: bay.protectionMarking?.ctRef,
+            },
+          },
+          instances,
+        );
+        if (marking) {
+          const anchorCenter = protectionDeviceCenter(marking.anchor);
+          const circleLeftX = snapToGrid(rightX - PROTECTION_ANNOTATION_DIAMETER);
+          const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+          const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
+          const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
+          protectionSymbols.push({
+            symbolId: 'protectionRelay',
+            bayRef: bay.bayRef,
+            x: circleLeftX,
+            y: circleTopY,
+            protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+          });
+          const fullList = annotationDetail === 'full' ? fullCodesListText(marking.codes) : null;
+          if (fullList) {
+            // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
+            // (`#protection-codes-full`): etykieta pod okręgiem, prawo-
+            // dosunięta do rezerwacji (measure zarezerwował
+            // `snapUp(szerokość)+GRID`).
+            const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+            protectionLabels.push({
+              ownerRef: `${bay.bayRef}#protection-codes-full`,
+              ownerKind: 'protection',
+              text: fullList,
+              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+              anchor: {
+                x: rightX - Math.ceil(fullListWidth / 2),
+                y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+              },
+              placement: 'below',
+            });
+          }
+
+          if (annotationDetail === 'full' && marking.tripTarget) {
+            // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi
+            // WYŁĄCZNIE do aparatu rozwiązanego z `breaker_ref`, zaczepiona
+            // na jego REJESTROWANYM porcie N (wzorzec `compose/station.ts`).
+            const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
+            const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
+            const targetPort = targetNorth
+              ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
+              : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
+            protectionSegments.push({
+              ownerRef: `${bay.bayRef}#trip-line`,
+              points: [
+                targetPort,
+                { x: linkPortWorld.x, y: targetPort.y },
+                { x: linkPortWorld.x, y: linkPortWorld.y },
+              ],
+              meta: { parityKeys: [], ...metaPola },
+            });
+            protectionLabels.push({
+              ownerRef: `${bay.bayRef}#device-number`,
+              ownerKind: 'protection',
+              text: '52',
+              labelClass: 't4',
+              anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
+              placement: 'right',
+            });
+          } else if (annotationDetail === 'full') {
+            // §17.2/§17.6 (F11.1 — wyjątek ZNIESIONY): brak rozwiązywalnego
+            // `breaker_ref` w stosie pola — okrąg BEZ linii wyzwalania,
+            // luka danych zgłoszona TERAZ TAK SAMO jak dla stacji (dawniej
+            // dla GPZ ten przypadek był udokumentowanym wyjątkiem §17.6 —
+            // ZNIESIONY, parytet GPZ↔stacje).
+            missingData.push('bay.protection.trip_link_unresolved');
+          }
+
+          if (annotationDetail === 'full' && marking.ctAnchor) {
+            // F10.5/F11.1 (spec §20.1): linia SYGNAŁU POMIAROWEGO
+            // CT→przekaźnik — ODRĘBNA od toru wyzwalania (zakaz „jednej
+            // anonimowej linii", §20.1).
+            const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
+            const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
+            const ctPort = ctNorth
+              ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
+              : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
+            measurementSegments.push({
+              ownerRef: `${bay.bayRef}#measurement-link`,
+              points: [
+                ctPort,
+                { x: linkPortWorld.x, y: ctPort.y },
+                { x: linkPortWorld.x, y: linkPortWorld.y },
+              ],
+              meta: { parityKeys: [], ...metaPola },
+            });
+          } else if (annotationDetail === 'full') {
+            missingData.push('bay.protection.measurement_link_unresolved');
+          }
+        }
+      }
+
+      // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
+      // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
+      // `currentTransformer` NARYSOWANEGO stosu przez `linked_ref` (rejestr
+      // device-ref, `deviceItems` wyżej). Zaczep PO PRAWEJ toru głównego —
+      // ta sama krawędź co sidecar oznaczenia pola (`footprint.width`,
+      // wzorzec `compose/station.ts` `stackLeftX+planFootprint.width`).
+      if (annotationDetail === 'full' && hasCtRatings) {
+        const ctAnnotations = resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances);
+        const ctTextAnchorX = textAnchorX;
+        ctAnnotations.forEach((ann, ctIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: ctTextAnchorX, y: center.y },
+            placement: 'right',
+            // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
+            // geometrycznie neutralny (tekst adnotacji bez zmian).
+            ctPurpose: ann.purpose,
+          });
+        });
+        if (ctAnnotations.length === 0) {
+          // Wzorzec `bay.protection.trip_link_unresolved` wyżej: dane
+          // przekładni CT wskazane, ale ŻADEN aparat NARYSOWANEGO stosu nie
+          // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
+          // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
+          missingData.push('bay.protection.ct_rating_anchor_unresolved');
+        }
+      }
+
+      // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
+      // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
+      // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`.
+      // Lewe pasmo współdzielone z CT (`ctTextAnchorX`), kotwica na Y aparatu
+      // VT (różne od CT ⇒ brak kolizji). `gpzBayAnnotationWidth` rezerwuje
+      // `max(CT, VT)` — jedna prawda measure↔compose.
+      if (annotationDetail === 'full' && hasVtMountings) {
+        const vtAnnotations = resolveVtMountingAnnotations(bay.vtMountingAnnotations, instances);
+        const vtTextAnchorX = textAnchorX;
+        vtAnnotations.forEach((ann, vtIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: vtTextAnchorX, y: center.y },
+            placement: 'right',
+          });
+        });
+        if (vtAnnotations.length === 0) {
+          // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
+          // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`.
+          missingData.push('bay.protection.vt_mounting_anchor_unresolved');
+        }
+      }
+      // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
+      // `meteringMeasurementRef` na `CanonicalGpzBay`), więc kolizja
+      // okrąg/adnotacja CT analogiczna do stacyjnego `minGap`
+      // (`compose/station.ts`) nie występuje: `ctAnnotations` leżą we
+      // WŁASNYM pasmie tuż za torem głównym, `gpzBayAnnotationWidth`/
+      // `ctRatingAnnotationsWidth` (`./protectionMarking`) sumują
+      // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
+    }
+  };
+
   const sectionById = sectionLayoutById(sectionLayouts);
 
   // -- 3. Geometria pionowa: WN → pole WN TR → TR2W → pole TR → szyna SN. --
@@ -1127,12 +1405,7 @@ export function composeGpz(
         field.centerX,
         topY,
         (_i, id) => `gpz-canonical-bay-${field.bay.bayRef}-${id}`,
-        (_i, id) => {
-          if (id === 'breaker') return field.bay.cbState;
-          if (id === 'disconnector') return field.bay.dsState;
-          if (id === 'earthSwitch') return switchStateOrUndefined(field.bay.esState);
-          return undefined;
-        },
+        (_i, id) => stanAparatuPolaGpz(field.bay, id),
         { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
         deviceItems,
       );
@@ -1205,200 +1478,13 @@ export function composeGpz(
         });
       }
 
-      // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
-      // okrąg przekaźnika pola SN GPZ TERAZ dostaje tor wyzwalania + linię
-      // pomiarową, GDY dane się rozwiązują na NARYSOWANY stos (rejestr
-      // device-ref, `deviceItems` wyżej) — `resolveStationProtectionMarking`
-      // (`./protectionMarking`) REUŻYTA WPROST, TA SAMA funkcja co stacje
-      // (`compose/station.ts`), zero duplikatu logiki dopasowania
-      // `breaker_ref`/`ct_ref`. Kody: `protectionMarking.codes` (rejestr
-      // ENM, F11.1) z fallbackiem na legacy `protectionCodes` (kompatybilność
-      // wsteczna — wywołujący niosący WYŁĄCZNIE `protectionCodes`, bez pełnego
-      // `protectionMarking`, dostaje TYLKO okrąg — bez refów nie ma czego
-      // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
-      // `tripTarget`/`ctAnchor` puste). Okrąg prawo-wyrównany do rezerwacji
-      // kolumny (`field.rightX`, `gpzBayAnnotationWidth` — jedna prawda
-      // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + tor +
-      // linia pomiarowa + „52" + pełna lista (>2, R-2) + adnotacje CT;
-      // `'circle-only'` sam kontur; `'none'` nic.
-      const gpzCodes = field.bay.protectionMarking?.codes ?? field.bay.protectionCodes ?? [];
-      const hasCtRatings = (field.bay.ctRatingAnnotations?.length ?? 0) > 0;
-      const hasVtMountings = (field.bay.vtMountingAnnotations?.length ?? 0) > 0;
-      if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
-        if (gpzCodes.length > 0) {
-          // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
-          // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
-          // zna/potrzebuje GPZ, operuje WYŁĄCZNIE na kodach + refach + stosie
-          // (`PlacedStackDevice[]`, `ComposedGpzSymbolInstance` jest z
-          // konstrukcji zgodny — patrz docstring pola `deviceRef` wyżej).
-          const marking = resolveStationProtectionMarking(
-            {
-              protectionMarking: {
-                codes: gpzCodes,
-                breakerRef: field.bay.protectionMarking?.breakerRef,
-                ctRef: field.bay.protectionMarking?.ctRef,
-              },
-            },
-            stack.instances,
-          );
-          if (marking) {
-            const anchorCenter = protectionDeviceCenter(marking.anchor);
-            const circleLeftX = snapToGrid(field.rightX - PROTECTION_ANNOTATION_DIAMETER);
-            const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
-            const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
-            const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
-            protectionSymbols.push({
-              symbolId: 'protectionRelay',
-              bayRef: field.bay.bayRef,
-              x: circleLeftX,
-              y: circleTopY,
-              protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
-            });
-            const fullList = annotationDetail === 'full' ? fullCodesListText(marking.codes) : null;
-            if (fullList) {
-              // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
-              // (`#protection-codes-full`): etykieta pod okręgiem, prawo-
-              // dosunięta do rezerwacji (measure zarezerwował
-              // `snapUp(szerokość)+GRID`).
-              const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
-              protectionLabels.push({
-                ownerRef: `${field.bay.bayRef}#protection-codes-full`,
-                ownerKind: 'protection',
-                text: fullList,
-                labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-                anchor: {
-                  x: field.rightX - Math.ceil(fullListWidth / 2),
-                  y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
-                },
-                placement: 'below',
-              });
-            }
-
-            if (annotationDetail === 'full' && marking.tripTarget) {
-              // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi
-              // WYŁĄCZNIE do aparatu rozwiązanego z `breaker_ref`, zaczepiona
-              // na jego REJESTROWANYM porcie N (wzorzec `compose/station.ts`).
-              const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
-              const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
-              const targetPort = targetNorth
-                ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
-                : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
-              protectionSegments.push({
-                ownerRef: `${field.bay.bayRef}#trip-line`,
-                points: [
-                  targetPort,
-                  { x: linkPortWorld.x, y: targetPort.y },
-                  { x: linkPortWorld.x, y: linkPortWorld.y },
-                ],
-                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
-              });
-              protectionLabels.push({
-                ownerRef: `${field.bay.bayRef}#device-number`,
-                ownerKind: 'protection',
-                text: '52',
-                labelClass: 't4',
-                anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
-                placement: 'right',
-              });
-            } else if (annotationDetail === 'full') {
-              // §17.2/§17.6 (F11.1 — wyjątek ZNIESIONY): brak rozwiązywalnego
-              // `breaker_ref` w stosie pola — okrąg BEZ linii wyzwalania,
-              // luka danych zgłoszona TERAZ TAK SAMO jak dla stacji (dawniej
-              // dla GPZ ten przypadek był udokumentowanym wyjątkiem §17.6 —
-              // ZNIESIONY, parytet GPZ↔stacje).
-              missingData.push('bay.protection.trip_link_unresolved');
-            }
-
-            if (annotationDetail === 'full' && marking.ctAnchor) {
-              // F10.5/F11.1 (spec §20.1): linia SYGNAŁU POMIAROWEGO
-              // CT→przekaźnik — ODRĘBNA od toru wyzwalania (zakaz „jednej
-              // anonimowej linii", §20.1).
-              const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
-              const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
-              const ctPort = ctNorth
-                ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
-                : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
-              measurementSegments.push({
-                ownerRef: `${field.bay.bayRef}#measurement-link`,
-                points: [
-                  ctPort,
-                  { x: linkPortWorld.x, y: ctPort.y },
-                  { x: linkPortWorld.x, y: linkPortWorld.y },
-                ],
-                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
-              });
-            } else if (annotationDetail === 'full') {
-              missingData.push('bay.protection.measurement_link_unresolved');
-            }
-          }
-        }
-
-        // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
-        // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
-        // `currentTransformer` NARYSOWANEGO stosu przez `linked_ref` (rejestr
-        // device-ref, `deviceItems` wyżej). Zaczep PO PRAWEJ toru głównego —
-        // ta sama krawędź co sidecar oznaczenia pola (`footprint.width`,
-        // wzorzec `compose/station.ts` `stackLeftX+planFootprint.width`).
-        if (annotationDetail === 'full' && hasCtRatings) {
-          const ctAnnotations = resolveCtRatingAnnotations(field.bay.ctRatingAnnotations, stack.instances);
-          const ctTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
-          ctAnnotations.forEach((ann, ctIndex) => {
-            const center = protectionDeviceCenter(ann.device);
-            protectionLabels.push({
-              ownerRef: `${field.bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
-              ownerKind: 'protection',
-              text: ann.text,
-              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-              anchor: { x: ctTextAnchorX, y: center.y },
-              placement: 'right',
-              // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
-              // geometrycznie neutralny (tekst adnotacji bez zmian).
-              ctPurpose: ann.purpose,
-            });
-          });
-          if (ctAnnotations.length === 0) {
-            // Wzorzec `bay.protection.trip_link_unresolved` wyżej: dane
-            // przekładni CT wskazane, ale ŻADEN aparat NARYSOWANEGO stosu nie
-            // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
-            // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
-            missingData.push('bay.protection.ct_rating_anchor_unresolved');
-          }
-        }
-
-        // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
-        // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
-        // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`.
-        // Lewe pasmo współdzielone z CT (`ctTextAnchorX`), kotwica na Y aparatu
-        // VT (różne od CT ⇒ brak kolizji). `gpzBayAnnotationWidth` rezerwuje
-        // `max(CT, VT)` — jedna prawda measure↔compose.
-        if (annotationDetail === 'full' && hasVtMountings) {
-          const vtAnnotations = resolveVtMountingAnnotations(field.bay.vtMountingAnnotations, stack.instances);
-          const vtTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
-          vtAnnotations.forEach((ann, vtIndex) => {
-            const center = protectionDeviceCenter(ann.device);
-            protectionLabels.push({
-              ownerRef: `${field.bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
-              ownerKind: 'protection',
-              text: ann.text,
-              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-              anchor: { x: vtTextAnchorX, y: center.y },
-              placement: 'right',
-            });
-          });
-          if (vtAnnotations.length === 0) {
-            // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
-            // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`.
-            missingData.push('bay.protection.vt_mounting_anchor_unresolved');
-          }
-        }
-        // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
-        // `meteringMeasurementRef` na `CanonicalGpzBay`), więc kolizja
-        // okrąg/adnotacja CT analogiczna do stacyjnego `minGap`
-        // (`compose/station.ts`) nie występuje: `ctAnnotations` leżą we
-        // WŁASNYM pasmie tuż za torem głównym, `gpzBayAnnotationWidth`/
-        // `ctRatingAnnotationsWidth` (`./protectionMarking`) sumują
-        // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
-      }
+      adnotacjePolaGpz(
+        field.bay,
+        stack.instances,
+        field.rightX,
+        snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width),
+        { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+      );
     });
 
     // Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji —
@@ -1538,17 +1624,28 @@ export function composeGpz(
     const trCenterX = target ? snapToGrid(target.x + target.width / 2) : snapToGrid(originX + SECTION_MARGIN + SYMBOL_DEFS.transformer2W.width / 2);
     transformerTapXs.push(trCenterX);
 
+    // GPZ-PARYTET cz. 3 (pkt 2): pole WN TR / pole TR modelu przypisane transformatorowi
+    // (`poleWn`/`poleTr` z adaptera — jedno przypisanie wyklucza je z sekcji i dołącza tu)
+    // niesie stany łączników, rejestr aparatów i `bayRef` toru; bez pola w modelu stos
+    // zostaje konwencyjny ze stanem nieznanym.
+    const poleWn = transformer.poleWn;
+    const poleTr = transformer.poleTr;
     const hvBayTestIdBase = `gpz-canonical-hv-tr-bay-${transformer.transformerRef}`;
     const hvStack = buildFieldStack(
       hvFieldTemplate,
       trCenterX,
       hvFieldTopY,
       (_i, id) => `${hvBayTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : 'ct'}`,
-      () => 'unknown',
+      (_i, id) => stanAparatuPolaGpz(poleWn, id),
       // V12K-217: aparaty tego stosu stoją po stronie 110 kV (pole WN
       // transformatora), więc dostają klasę napięcia WPROST z kompozycji —
       // jedyne miejsce, które tę stronę zna.
-      { transformerRef: transformer.transformerRef, voltageClass: 'hv' },
+      {
+        transformerRef: transformer.transformerRef,
+        voltageClass: 'hv',
+        ...(poleWn ? { bayRef: poleWn.bayRef } : {}),
+      },
+      poleWn ? primaryDeviceItemsForTemplate(poleWn, hvFieldTemplate) : null,
     );
     symbols.push(...hvStack.instances);
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
@@ -1606,13 +1703,20 @@ export function composeGpz(
     });
 
     const trFieldTestIdBase = `gpz-canonical-tr-field-${transformer.transformerRef}`;
+    // Pole TR modelu bez uziemnika (`esState = 'absent'`) — ta sama reguła co pola sekcji
+    // (`fieldApparatusSpecForBay`): uziemnika, którego model nie ma, nie rysujemy.
+    const trFieldSpecs =
+      poleTr?.esState === 'absent'
+        ? trFieldTemplate.filter((spec) => spec.symbolId !== 'earthSwitch')
+        : trFieldTemplate;
     const trFieldStack = buildFieldStack(
-      trFieldTemplate,
+      trFieldSpecs,
       trCenterX,
       trFieldTopY,
       (_i, id) => `${trFieldTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : id === 'currentTransformer' ? 'ct' : 'es'}`,
-      () => 'unknown',
-      { transformerRef: transformer.transformerRef },
+      (_i, id) => stanAparatuPolaGpz(poleTr, id),
+      { transformerRef: transformer.transformerRef, ...(poleTr ? { bayRef: poleTr.bayRef } : {}) },
+      poleTr ? primaryDeviceItemsForTemplate(poleTr, trFieldSpecs) : null,
     );
     symbols.push(...trFieldStack.instances);
     trFieldStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
@@ -1624,6 +1728,40 @@ export function composeGpz(
         meta: { parityKeys: [], transformerRef: transformer.transformerRef },
       });
     });
+
+    // GPZ-PARYTET cz. 3 (pkt 2): pole WN TR / pole TR z modelu niesie w wieży to samo co
+    // pole sekcji — oznacznik z danych (bay_number / feeder_short_name; bez numeracji
+    // zastępczej, wieżę opisuje oznaczenie transformatora) i adnotacje zabezpieczeń/CT/VT
+    // tą samą funkcją (`adnotacjePolaGpz`), z kolumną zarezerwowaną tą samą arytmetyką
+    // co pole sekcji (`fieldColumnRequiredWidth`).
+    const stosyToru: ReadonlyArray<readonly [CanonicalGpzBay | null, FieldStack, readonly FieldApparatusSpec[]]> = [
+      [poleWn, hvStack, hvFieldTemplate],
+      [poleTr, trFieldStack, trFieldSpecs],
+    ];
+    for (const [pole, stos, specyfikacja] of stosyToru) {
+      if (!pole) continue;
+      const planPola = gpzFieldPlanFootprint(specyfikacja);
+      const lewaKrawedz = trCenterX - planPola.mainStack.width / 2;
+      const textAnchorX = snapToGrid(lewaKrawedz + planPola.width);
+      const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
+      if (oznaczenie) {
+        fieldDesignations.push({
+          ownerRef: `${pole.bayRef}#designation`,
+          ownerKind: 'apparatus',
+          text: oznaczenie,
+          labelClass: 't3',
+          anchor: { x: textAnchorX, y: stos.topPort.y + labelLineHeight('t3') / 2 },
+          placement: 'right',
+        });
+      }
+      adnotacjePolaGpz(
+        pole,
+        stos.instances,
+        lewaKrawedz + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)),
+        textAnchorX,
+        { transformerRef: transformer.transformerRef, bayRef: pole.bayRef },
+      );
+    }
 
     const fieldAnchorMeta: GpzElementMeta = {
       parityKeys: ['gpz.transformer.field_anchor_connector'],
@@ -1948,6 +2086,19 @@ export function composeGpz(
         });
       });
     });
+  // GPZ-PARYTET cz. 3 (pkt 2): pola toru transformatora (WN TR, TR) z modelu mają kartę
+  // w tabeli „Pola GPZ" jak każde pole — po przeniesieniu z sekcji do wieży nie znikają.
+  props.transformers.forEach((transformer) => {
+    for (const pole of [transformer.poleWn, transformer.poleTr]) {
+      if (!pole) continue;
+      polaTabeli.push({
+        bayRef: pole.bayRef,
+        oznaczenie: (pole.bayNumber ?? pole.feederName ?? '').trim() || null,
+        rola: pole.rolaPola,
+        plakietki: pole.statusFlags,
+      });
+    }
+  });
   sectionLayouts.forEach((layout) => {
     layout.fields.forEach((field) => {
       polaTabeli.push({

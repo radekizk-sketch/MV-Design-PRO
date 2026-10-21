@@ -150,9 +150,6 @@ export interface SldDetailDrawerData {
     readonly value: string;
     readonly color?: string;
   }>;
-  /** K30-95: alarm severity badge w drawer header. Lowercase jak
-   *  `SldStationView.alarmSeverity` (warning/important/critical). */
-  readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   /** K30-98: breadcrumb context — parent station label (Stacja › Pole). */
   readonly parentStationLabel?: string | null;
   /** Recenzja NO-GO 2026-07-17 pkt 9: identyfikator GLOBALNY
@@ -911,27 +908,6 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           )}
           <div data-testid="sld-v2-detail-drawer-label" style={{ fontSize: 16, fontWeight: 800, color: accent, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>{visibleLabel}</span>
-            {data.alarmSeverity && (
-              <span
-                data-testid="sld-v2-detail-drawer-alarm-badge"
-                data-severity={data.alarmSeverity}
-                style={{
-                  background: data.alarmSeverity === 'critical' ? 'var(--mvd-err)'
-                    : data.alarmSeverity === 'important' ? 'var(--mvd-warn)'
-                    : 'var(--mvd-warn-ink)',
-                  color: 'var(--mvd-bg)',
-                  padding: '1px 6px',
-                  borderRadius: 8,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase',
-                  animation: data.alarmSeverity === 'critical' ? 'sld-drawer-alarm-pulse 1s infinite' : undefined,
-                }}
-              >
-                ⚠ {data.alarmSeverity}
-              </span>
-            )}
           </div>
           {data.stationCode && data.kind !== 'station' && (
             <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: 'var(--mvd-ink)', marginTop: 2 }}>

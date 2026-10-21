@@ -12,7 +12,7 @@ import {
 } from '../../api';
 import { adekwatnoscQFixture, konwerteryBessFixture, silaSieciFixture } from './analizyFixtures';
 
-function mockFetchOk(payload: unknown): ReturnType<typeof vi.fn> {
+function mockFetchOk(payload: unknown) {
   const fn = vi.fn(() =>
     Promise.resolve({ ok: true, status: 200, statusText: 'OK', json: () => Promise.resolve(payload) }),
   );

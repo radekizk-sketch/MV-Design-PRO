@@ -100,6 +100,9 @@ interface SzablonPelnyOverrides {
   voltage_lv_kv?: number | null;
   sn_voltage_kv?: number | null;
   bay_role_categories?: readonly string[];
+  /** Kontrakt `structural_fields` backendu (`schema.py::template_wchodzi_w_segment`):
+   *  kategoria inna niż korzeń modelu (GPZ) wstawia się w odcinek magistrali. */
+  wchodzi_w_segment?: boolean;
 }
 
 /** Fabryka pełnego szablonu (`StationTemplateFull`, `to_dict`, schema.py:171-269). */
@@ -119,6 +122,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     voltage_lv_kv: over.voltage_lv_kv === undefined ? 0.4 : over.voltage_lv_kv,
     sn_voltage_kv: over.sn_voltage_kv === undefined ? 15 : over.sn_voltage_kv,
     bay_role_categories: over.bay_role_categories ?? ['IN', 'OUT', 'TR'],
+    wchodzi_w_segment: over.wchodzi_w_segment ?? true,
     schema: {
       transformer_options: TR_OPTIONS_MEDIUM,
       transformer_count: { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },

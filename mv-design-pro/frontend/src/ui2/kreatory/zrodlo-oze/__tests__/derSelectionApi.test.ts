@@ -4,7 +4,7 @@
  * Parytet reguły doboru pokrywają testy backendu (test_der_selection_preview*).
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import {
   fetchCableLayingConditions,
@@ -36,10 +36,10 @@ const RESPONSE = {
   field_apparatus: null,
 };
 
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock<[input: RequestInfo | URL, init?: RequestInit], Promise<Response>>;
 
 beforeEach(() => {
-  fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     expect(String(input)).toBe('/api/solver/der-selection-preview');
     return { ok: true, json: async () => RESPONSE } as Response;
   });
@@ -60,8 +60,8 @@ describe('fetchDerSelectionPreview', () => {
     };
     const result = await fetchDerSelectionPreview(req);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect(JSON.parse(String(init.body))).toMatchObject(req);
+    const init = fetchMock.mock.calls[0][1];
+    expect(JSON.parse(String(init?.body))).toMatchObject(req);
     expect(result.transformer.proposal?.sn_mva).toBe(1.0);
   });
 

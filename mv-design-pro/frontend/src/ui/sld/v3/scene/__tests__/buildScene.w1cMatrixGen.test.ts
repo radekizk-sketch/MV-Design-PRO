@@ -223,7 +223,7 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
     for (const target of fixture.targets) {
       const station = payload.stations.find((s) => s.id === target.stationRef);
       expect(station, `stacja ${target.stationRef}`).toBeTruthy();
-      const bay = station!.snBays.find((b) => b.bayRef === target.fieldRef);
+      const bay = station!.snBays?.find((b) => b.bayRef === target.fieldRef);
       expect(bay, `pole ${target.fieldRef}`).toBeTruthy();
       expect(bay!.configId, target.case.configId).toBe(target.case.configId);
       expect(bay!.primaryDevices, `${target.case.configId}: primaryDevices niepuste`).toBeTruthy();

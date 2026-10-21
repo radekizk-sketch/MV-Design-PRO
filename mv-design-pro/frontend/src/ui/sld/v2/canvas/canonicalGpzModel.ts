@@ -22,6 +22,7 @@
 
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, VtMountingAnnotationView } from '../model/widokPolStacji';
 import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
+import type { RolaPolaZrodlowego } from '../model/polaZModelu';
 
 /**
  * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
@@ -103,7 +104,11 @@ export interface CanonicalGpzBay {
   /** Rola pola dla tła i legendy (`gpz.bay.panel`) — z ENM `Bay.bay_role`, bez zlewania
    *  ról (patrz `RolaPolaGpz`). */
   readonly rolaPola: RolaPolaGpz;
-  /** Stan aparatów z rekordu źródła runtime (brak = nieznany). */
+  /** Karta GPZ-PARYTET cz. 3: rodzaj źródła pola źródłowego (`fieldRole = 'SOURCE'`) z
+   *  przyłączonych wytwórców (`v2/model/polaZModelu.ts rolaPolaZrodlowego`, ta sama funkcja
+   *  co pola źródłowe stacji); nierozstrzygnięty = `DER_UNKNOWN`. Brak dla innych ról. */
+  readonly rolaZrodla?: RolaPolaZrodlowego;
+  /** Stan łączników z modelu (`v2/model/stanAparatowPola.ts`; brak danej = nieznany). */
   readonly cbState?: SwitchState;
   readonly dsState?: SwitchState;
   readonly esState?: 'closed' | 'open' | 'absent' | 'unknown';
@@ -139,7 +144,19 @@ export type BayFieldRole =
   | 'LINE_BRANCH'
   | 'TRANSFORMER'
   | 'COUPLER'
-  | 'MEASUREMENT';
+  | 'MEASUREMENT'
+  /** Pole źródłowe (`Bay.bay_role = 'OZE'`): gramatyka pola kablowego + glif źródła. */
+  | 'SOURCE';
+
+/**
+ * Karta GPZ-PARYTET cz. 3: pole KABLOWE rozdzielnicy GPZ — pole, z którego wychodzi kabel
+ * sieci (liniowe zasilające/odpływowe/odgałęźne i źródłowe). Jeden predykat dla wyboru pola
+ * magistrali i przydziału feederów (`v3/scene/buildScene.ts`): pole źródłowe zachowuje
+ * wyjście kablowe, które miało jako dawne pole liniowe odpływowe.
+ */
+export function czyPoleKabloweGpz(role: BayFieldRole): boolean {
+  return role === 'LINE_IN' || role === 'LINE_OUT' || role === 'LINE_BRANCH' || role === 'SOURCE';
+}
 
 export type SwitchState = 'closed' | 'open' | 'unknown';
 
@@ -169,6 +186,13 @@ export interface CanonicalGpzTransformer {
   readonly hvBusRef?: string | null;
   /** Adnotacja regulacji zaczepów z `Transformer.tap_changer` (brak = bez regulacji). */
   readonly oltc?: OltcGlyphAnnotation | null;
+  /** Karta GPZ-PARYTET cz. 3: pole TR sekcji SN, którego JEDYNYM transformatorem jest ten
+   *  transformator (`v2/model/polaZModelu.ts jedynyTransformatorPola`). Pole rysuje się
+   *  WYŁĄCZNIE jako pole TR toru transformatora (stan łączników, tożsamość pola) — nie drugi
+   *  raz w sekcji. `null` = transformator bez pola TR w modelu (pole toru bez danych). */
+  readonly poleTr: CanonicalGpzBay | null;
+  /** To samo dla pola WN transformatora (pole TR sekcji WN wskazujące transformator). */
+  readonly poleWn: CanonicalGpzBay | null;
 }
 
 export interface CanonicalGpzHvSection {

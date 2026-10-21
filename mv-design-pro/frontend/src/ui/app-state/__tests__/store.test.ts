@@ -275,10 +275,10 @@ describe('useAppStateStore', () => {
           snapshot: makeCalculationReadySnapshot(),
           readiness: {
             ready: false,
-            blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
+            blockers: [
+              { code: 'catalog.ref_missing', message_pl: 'Brak katalogu', element_ref: null, severity: 'BLOCKER' },
+            ],
             warnings: [],
-            summary: { blocker_count: 1, warning_count: 0 },
-            checked_at: '2026-01-01T00:00:00Z',
           },
         });
 

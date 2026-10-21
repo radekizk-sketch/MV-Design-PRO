@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import {
   fetchTransformerRatedCurrents,
@@ -23,7 +23,7 @@ function solverResponse(body: TransformerRatedCurrentsRequest) {
   };
 }
 
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock<[input: RequestInfo | URL, init?: RequestInit], Promise<Response>>;
 
 beforeEach(() => {
   fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

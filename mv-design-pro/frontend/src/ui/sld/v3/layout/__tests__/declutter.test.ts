@@ -9,11 +9,19 @@
 
 import { describe, expect, it } from 'vitest';
 import type { V3Rect } from '../../core/grid';
-import type { OwnedLabel, OwnerKind } from '../labels';
+import { LABEL_ROLE_BY_OWNER_KIND, type OwnedLabel, type OwnerKind } from '../labels';
 import { declutterLabels, labelPriority, LABEL_PRIORITY } from '../declutter';
 
 function label(ownerRef: string, ownerKind: OwnerKind, rect: V3Rect): OwnedLabel {
-  return { ownerRef, ownerKind, labelClass: 't2', text: ownerRef, slotIndex: 1, rect };
+  return {
+    ownerRef,
+    ownerKind,
+    labelClass: 't2',
+    labelRole: LABEL_ROLE_BY_OWNER_KIND[ownerKind],
+    text: ownerRef,
+    slotIndex: 1,
+    rect,
+  };
 }
 
 const R = (x: number, y: number, w = 40, h = 16): V3Rect => ({ x, y, width: w, height: h });

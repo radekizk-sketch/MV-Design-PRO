@@ -459,7 +459,22 @@ POMIJANE_KATALOGI = {
 #: `sld/v2/renderer/__tests__/thirdAuditFixes.test.tsx` (pliki skasowane razem z rendererami).
 #: Zero nowych bledow (TS6133 i TS2352 w nowych testach karty naprawione przed commitem).
 #: Scalenie K2 × GPZ-PARYTET cz. 2 (2026-10-21, pomiar guarda na drzewie scalonym): 49 -> 45.
-BUDZET_BLEDOW_POZA_BRAMKA = 45
+#: Karta GPZ-PARYTET cz. 3 (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: bazowym = 45 i na drzewie karty przed poprawka typow = 51, potem 0): +6 bledow
+#: wprowadzonych przez karte (nowe wymagane pola `CanonicalGpzTransformer.poleTr/poleWn`
+#: x3 w fiksturach `gpz.test.ts`/`preview.test.tsx`, rola `SOURCE` w mapie rol testu,
+#: `snBays` opcjonalne w `enmToSldAdapter.test.ts`, `hvSections` opcjonalne w
+#: `enmToCanonicalGpzAdapter.test.ts`) naprawione u zrodla oraz WSZYSTKIE 45 zastanych:
+#: fikstury bez wymaganych pol kontraktu (`tags/meta`, `element_ref/severity`,
+#: `rewizjaModelu`, `wchodzi_w_segment`, `labelRole`, `poleTr/poleWn`, kategorie katalogu
+#: CT/VT/APARAT_NN/KABEL_NN, `StudyCaseConfig` z `DEFAULT_STUDY_CASE_CONFIG`), pola spoza
+#: kontraktu (`case_name` x4, `summary/checked_at`), typy `Mock`/`MockInstance` zamiast
+#: `ReturnType<typeof vi.fn>`, bledne sciezki `types/enm` x2, import `PreviewSegment`
+#: z `compose/preview`, zdublowany import `svgMarkupToDrawing`, test trybow wyboru czytajacy
+#: realne haki `useCanEdit`/`useIsMutationBlocked` zamiast kopii predykatu z nieistniejacym
+#: trybem `CASE_CONFIG`, `SnapshotLike` w `ui/shared/publicReadinessMessage.ts` zawezony do
+#: czytanych pol (bez rzutowan w kodzie produkcyjnym). 51 -> 0.
+BUDZET_BLEDOW_POZA_BRAMKA = 0
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

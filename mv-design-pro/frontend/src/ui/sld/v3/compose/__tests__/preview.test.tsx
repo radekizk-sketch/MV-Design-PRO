@@ -32,6 +32,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
       uhvKv: 110,
       ulvKv: 15,
       vectorGroup: 'YNd11',
+      poleTr: null,
+      poleWn: null,
     };
     const props: CanonicalGpzProps = {
       id: 'gpz-preview',
@@ -127,6 +129,8 @@ describe('V3 compose/preview — CompositionPreview (harness DEBUG, GPZ)', () =>
       uhvKv: 110,
       ulvKv: 15,
       vectorGroup: 'YNd11',
+      poleTr: null,
+      poleWn: null,
     };
     const props: CanonicalGpzProps = {
       id: 'gpz-preview-ring',

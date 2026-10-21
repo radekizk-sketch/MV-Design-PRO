@@ -148,6 +148,11 @@ export const FIXTURES_PER_KATEGORIA: Readonly<Record<KategoriaId, KatalogPozycja
   TRANSFORMATOR: FIXTURE_TRANSFORMATORY,
   APARAT: FIXTURE_APARATY,
   FALOWNIK: FIXTURE_FALOWNIKI,
+  // Kategorie bez pozycji w fiksturze — loader zwraca uczciwie pustą listę.
+  CT: [],
+  VT: [],
+  APARAT_NN: [],
+  KABEL_NN: [],
 };
 
 /** Deterministyczny loader stub dla testów (bez sieci). */

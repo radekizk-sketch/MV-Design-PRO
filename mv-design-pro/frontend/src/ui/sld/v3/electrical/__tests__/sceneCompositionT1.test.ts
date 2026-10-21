@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel, Generator } from '../../../../types/enm';
+import type { EnergyNetworkModel, Generator } from '../../../../../types/enm';
 import {
   allSourcesConnected,
   allSourcesVisible,

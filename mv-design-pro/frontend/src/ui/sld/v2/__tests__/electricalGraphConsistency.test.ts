@@ -3,7 +3,7 @@
  *
  * Strażnik kanonicznej zgodności między SLD wizualnym a domeną elektryczną:
  *   - Każdy renderowany SN segment ma `domain_ref` (do ENM Branch).
- *   - Każdy DER ma `connection_variant` + bus_ref (PCC).
+ *   - Każdy DER trafia do `sources` z węzłem przyłączenia z modelu.
  *   - Layout zmiany NIE zmieniają calc graph (topology_hash invariant).
  *   - LOD switch NIE zmienia electrical references.
  *   - Append/split aktualizuje calc graph spójnie z preview metadata.
@@ -108,7 +108,7 @@ describe('Electrical Graph Consistency — domain_ref propagation', () => {
     expect(stationIds).toContain('ST-2');
   });
 
-  it('Każdy DER (Generator) propagowany do ders[] z bus_ref jako PCC', () => {
+  it('Każdy DER (Generator) propagowany do sources[] z węzłem przyłączenia z modelu', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [
       { id: 'b15', ref_id: 'b15', name: 'B15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
@@ -125,9 +125,9 @@ describe('Electrical Graph Consistency — domain_ref propagation', () => {
       } as never,
     ];
     const sld = buildSldDataFromSnapshot(snap, null);
-    expect(sld.ders.length).toBeGreaterThan(0);
-    // Kazdy DER w sld musi mieć id zgodny z gen.ref_id (domain_ref).
-    expect(sld.ders.some((d) => d.id === 'gen-1')).toBe(true);
+    // Każde źródło widoku ma id zgodny z gen.ref_id (domain_ref) i przyłączenie z modelu
+    // (`station_ref` przed `bus_ref` — `buildSources`).
+    expect(sld.sources.find((d) => d.id === 'gen-1')).toMatchObject({ kind: 'pv', connectionRef: 'ST-1' });
   });
 });
 
@@ -261,9 +261,11 @@ describe('Electrical Graph Consistency — DER PCC w calc graph', () => {
       } as never,
     ];
 
-    // Test: każdy DER w sld.ders ma jakieś PCC (bus_ref) zarejestrowane w buses[].
+    // Test: każdy DER w sld.sources ma węzeł (bus_ref) zarejestrowany w buses[].
     const sld = buildSldDataFromSnapshot(snap, null);
-    for (const der of sld.ders) {
+    const dery = sld.sources.filter((zrodlo) => zrodlo.kind !== 'external_grid');
+    expect(dery.map((der) => der.id)).toEqual(['gen-1']);
+    for (const der of dery) {
       // Adapter buduje DER z generators[] — sprawdza że bus_ref jest valid.
       const sourceGen = snap.generators.find((g) => g.ref_id === der.id);
       expect(sourceGen).toBeDefined();
@@ -303,7 +305,7 @@ describe('Electrical Graph Consistency — determinism', () => {
       const next = buildSldDataFromSnapshot(snap, null);
       expect(next.gpzs).toEqual(reference.gpzs);
       expect(next.stations).toEqual(reference.stations);
-      expect(next.ders).toEqual(reference.ders);
+      expect(next.sources).toEqual(reference.sources);
     }
   });
 

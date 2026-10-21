@@ -450,7 +450,9 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
   **Rozstrzygnięcie (V12K-029, nadzorca, 2026-07-11):** DER (PV/BESS/generator/farma wiatrowa) jest
   pełnoprawnym WIDOCZNYM źródłem z dedykowanym symbolem w punkcie przyłączenia (realizacja F9.4);
   dotychczasowy badge DER (`derBadges`) znika z chwilą wdrożenia F9.4. Patrz
-  `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-029.
+  `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-029. Stan: pole `derBadges` widoku stacji
+  przetrwało F9.4 bez czytelnika rysunku i zostało skasowane 2026-10-21 (karta GPZ-PARYTET
+  cz. 3) razem z budową i testami; źródła DER niesie wyłącznie `SldDataPayload.sources`.
 - **Źródło danych:** `Substation`(GPZ), `Source`(model thevenin/external_grid), `Generator`,
   `BaySourceEndpoint`(PV/BESS/FW) — ENM (`models.py:253-277,333-355,1004-1015`).
 - **Wyrocznia odbioru:** `sources_visible_probe` — liczba narysowanych symboli źródeł == liczba źródeł

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import {
   downloadAnalysisRunExport,
@@ -11,8 +11,8 @@ describe('results-inspector export API', () => {
   const createObjectURL = vi.fn(() => 'blob:results-export');
   const revokeObjectURL = vi.fn();
   const clickMock = vi.fn();
-  let appendChildMock: ReturnType<typeof vi.spyOn>;
-  let removeChildMock: ReturnType<typeof vi.spyOn>;
+  let appendChildMock: MockInstance<[node: Node], Node>;
+  let removeChildMock: MockInstance<[child: Node], Node>;
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());

@@ -14,7 +14,7 @@ import {
   IEEE_CURVE_OPTIONS,
   PROTECTION_CURVES_LABELS,
 } from '../types';
-import type { IECCurveType, IEEECurveType } from '../types';
+import type { IEEECurveType } from '../types';
 
 describe('protection-curves/types — Polish labels + determinizm', () => {
   it('PROTECTION_CURVES_LABELS: tytuł w PL', () => {
@@ -51,7 +51,7 @@ describe('protection-curves/types — Polish labels + determinizm', () => {
   it('IEC i IEEE mają wspólne typy (VI, EI, DT) - świadome aliasing', () => {
     const iecVals = IEC_CURVE_OPTIONS.map((o) => o.value);
     const ieeeVals = IEEE_CURVE_OPTIONS.map((o) => o.value);
-    const common = iecVals.filter((v) => ieeeVals.includes(v as IECCurveType));
+    const common = iecVals.filter((v) => (ieeeVals as readonly string[]).includes(v));
     expect(common.sort()).toEqual(['DT', 'EI', 'VI']);
   });
 });

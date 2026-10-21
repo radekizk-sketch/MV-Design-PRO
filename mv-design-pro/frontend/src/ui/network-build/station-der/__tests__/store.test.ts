@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
+  type AttachDerInput,
   useStationDerStore,
   selectDersOfStation,
   selectStationOfDer,
@@ -15,9 +16,7 @@ import { computeDerCompleteness } from '../types';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
-const SAMPLE_PV: Parameters<typeof useStationDerStore.getState>[0] extends never
-  ? never
-  : Parameters<ReturnType<typeof useStationDerStore.getState>['attachDer']>[0] = {
+const SAMPLE_PV: AttachDerInput = {
   id: 'der_pv_001',
   project_id: 'projekt-test',
   station_id: 'station_001',

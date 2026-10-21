@@ -1,4 +1,3 @@
-import type { EnergyNetworkModel } from '../../types/enm';
 
 type NamedEnmElement = {
   id?: string | null;
@@ -8,9 +7,10 @@ type NamedEnmElement = {
   branch_point_type?: string | null;
 };
 
-type SnapshotLike = Partial<
-  Pick<
-    EnergyNetworkModel,
+/** Kolekcje migawki przeszukiwane po nazwę — czytane WYŁĄCZNIE pola `NamedEnmElement`
+ *  (pełne `EnergyNetworkModel` pasuje strukturalnie; test podaje tylko czytane pola). */
+type SnapshotLike = {
+  readonly [K in
     | 'generators'
     | 'substations'
     | 'bays'
@@ -21,10 +21,8 @@ type SnapshotLike = Partial<
     | 'measurements'
     | 'protection_assignments'
     | 'buses'
-  >
-> & {
-  branch_points?: readonly NamedEnmElement[];
-  corridors?: readonly NamedEnmElement[];
+    | 'branch_points'
+    | 'corridors']?: readonly NamedEnmElement[];
 };
 
 const INTERNAL_REF_PREFIX = `(?:${[
@@ -76,18 +74,18 @@ function fallbackElementLabelFromRef(elementRef: string): string {
 
 function resolveElementName(snapshot: SnapshotLike | null | undefined, elementRef: string): string {
   const candidates: readonly NamedEnmElement[] = [
-    ...((snapshot?.generators ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.substations ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.bays ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.branches ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.transformers ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.sources ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.loads ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.measurements ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.protection_assignments ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.buses ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.branch_points ?? []) as readonly NamedEnmElement[]),
-    ...((snapshot?.corridors ?? []) as readonly NamedEnmElement[]),
+    ...(snapshot?.generators ?? []),
+    ...(snapshot?.substations ?? []),
+    ...(snapshot?.bays ?? []),
+    ...(snapshot?.branches ?? []),
+    ...(snapshot?.transformers ?? []),
+    ...(snapshot?.sources ?? []),
+    ...(snapshot?.loads ?? []),
+    ...(snapshot?.measurements ?? []),
+    ...(snapshot?.protection_assignments ?? []),
+    ...(snapshot?.buses ?? []),
+    ...(snapshot?.branch_points ?? []),
+    ...(snapshot?.corridors ?? []),
   ];
   const match = candidates.find((item) => item.ref_id === elementRef || item.id === elementRef);
   return match?.name ?? match?.label ?? elementRef;

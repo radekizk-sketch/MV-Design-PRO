@@ -210,7 +210,7 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     expect(symbolIds.has('derBess'), 'BESS obecny').toBe(true);
     expect(symbolIds.has('currentTransformer'), 'pole pomiarowe (CT) obecne').toBe(true);
     expect(symbolIds.has('gridSource'), 'źródło GPZ obecne').toBe(true);
-    const switchgear = ['breaker', 'disconnector', 'loadBreakSwitch', 'fuseSwitch', 'earthSwitch'];
+    const switchgear = ['breaker', 'disconnector', 'loadBreakSwitch', 'fuseSwitch', 'earthSwitch'] as const;
     expect(switchgear.some((id) => symbolIds.has(id)), 'aparatura łączeniowa obecna').toBe(true);
     // Heterogeniczne footprinty NIE kolidują (światła §5 rozdzielone działają).
     const m = layoutMetricsReport(scene);

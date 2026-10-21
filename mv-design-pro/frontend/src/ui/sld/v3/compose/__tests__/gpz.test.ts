@@ -60,6 +60,8 @@ const TR1: CanonicalGpzTransformer = {
   uhvKv: 110,
   ulvKv: 15,
   vectorGroup: 'YNd11',
+  poleTr: null,
+  poleWn: null,
 };
 
 /** Rola tła pola zgodna z rolą stosu aparatów (ta sama dana modelu `Bay.bay_role`). */
@@ -70,6 +72,7 @@ const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>
   TRANSFORMER: 'transformatorowe',
   COUPLER: 'sprzeglo',
   MEASUREMENT: 'pomiarowe',
+  SOURCE: 'zrodlowe',
 };
 
 function lineBay(ref: string, overrides: Partial<CanonicalGpzBay> = {}): CanonicalGpzBay {
@@ -733,6 +736,9 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       protectionSegments: [],
       measurementSegments: [],
       bbox: { x: 0, y: 0, width: 0, height: 0 },
+      neutralEarthingNotePl: null,
+      zone: null,
+      adnotacje: null,
     };
   }
 
@@ -1331,7 +1337,7 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
     ['godzina spoza 0…11', 'Dyn12', 'nierozpoznane', 'gpz.transformer.vector_group.unrecognized:tr-1'],
   ] as const) {
     it(`${opis}: jawny znacznik braku (stan „${stan}"), wpis missingData, BEZ kluczy winding — nie zgadujemy uzwojeń`, () => {
-      const c = composeGpz(baseProps({ transformers: [{ ...TR1, vectorGroup: grupa as string | undefined }] }), ORIGIN);
+      const c = composeGpz(baseProps({ transformers: [{ ...TR1, vectorGroup: grupa as unknown as string | null }] }), ORIGIN);
       const tr = c.symbols.find((sym) => sym.symbolId === 'transformer2W')!;
       expect(tr.uzwojenia?.stan).toBe(stan);
       expect(c.missingData).toContain(brak);
