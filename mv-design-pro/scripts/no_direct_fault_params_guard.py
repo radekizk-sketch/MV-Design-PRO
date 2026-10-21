@@ -112,6 +112,8 @@ from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
+from guard_parsowanie import sparsuj_plik, uruchom  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku, pod_prefiksem  # noqa: E402
@@ -306,10 +308,7 @@ def solver_signature_index() -> dict[str, int]:
     signatures: dict[str, int] = {}
     for prefix in SOLVER_LAYER_PREFIXES:
         for path in sorted((root / prefix).rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, UnicodeDecodeError, SyntaxError):
-                continue
+            tree = sparsuj_plik(path)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     continue
@@ -631,17 +630,9 @@ def check_file(filepath: Path) -> list[str]:
     if is_whitelisted(filepath):
         return violations
 
-    try:
-        source = filepath.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return violations
-
-    try:
-        tree = ast.parse(source, filename=str(filepath))
-    except SyntaxError as exc:
-        # Plik liczy się jako obejrzany; ostrzeżenie zamiast wywrócenia bramki.
-        print(f"WARN: {filepath}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-        return violations
+    # Plik z zakresu skanu, którego nie da się odczytać/sparsować, to czerwień
+    # (`BladZrodla` -> `uruchom` -> kod 1), nigdy ciche pominięcie.
+    tree = sparsuj_plik(filepath)
 
     findings = collect_findings(tree, filepath)
 
@@ -700,4 +691,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

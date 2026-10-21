@@ -261,6 +261,8 @@ from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
+from guard_parsowanie import czytaj_tekst, sparsuj_plik, sparsuj_tekst, uruchom  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from importy_ast import moduly_dotkniete, pakiet_pliku  # noqa: E402
@@ -1700,10 +1702,7 @@ def contract_fields() -> set[str]:
             rel = path.relative_to(BACKEND_SRC).as_posix()
             if rel in MODEL_ROOTS_POZA_MAPA:
                 continue
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ClassDef):
                     continue
@@ -1720,10 +1719,7 @@ def declares_model_fields(path: Path) -> bool:
     Obejmuje pydantic i dataclass bez rozrozniania — z punktu widzenia tej bramki
     obie sa tym samym: nosnikiem pola, ktore mozna podstawic liczba.
     """
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    except (OSError, SyntaxError, UnicodeDecodeError):
-        return False
+    tree = sparsuj_plik(path)
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             for stmt in node.body:
@@ -1764,10 +1760,7 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
             pakiet = pakiet_pliku(path, BACKEND_SRC)
             modules: set[str] = set()
             for node in ast.walk(tree):
@@ -2548,15 +2541,8 @@ def apply_ratchet(
 
 def check_file(path: Path, fields: set[str]) -> list[str]:
     """Naruszenia w jednym pliku (pusta lista = plik czysty)."""
-    try:
-        source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return []
-    try:
-        tree = ast.parse(source, filename=str(path))
-    except SyntaxError as exc:
-        print(f"WARN: {path}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-        return []
+    source = czytaj_tekst(path)
+    tree = sparsuj_tekst(source, str(path))
 
     rel = path.relative_to(BACKEND_SRC).as_posix()
     findings = collect_findings(tree, fields)
@@ -2664,4 +2650,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))
