@@ -87,3 +87,38 @@ Partia 3:
 
 Meldunki pośrednie po każdej scalonej partii: `MELDUNEK_UIUX_PRZEMYSLOWY.md` w katalogu głównym
 `mv-design-pro/`.
+
+## 4. Uzupełnienia kart z recenzji SLD i systemu (2026-10-21)
+
+Źródło: recenzja na `9d5168ea3` (PR #484, `docs/audit/MV_DESIGN_PRO_RECENZJA_SLD_SYSTEMU_2026-10-20.md`
+na gałęzi `codex/raport-sld-systemu-2026-10-20`), punkty sprawdzone w kodzie przez sesję główną.
+Odbiór każdego punktu: natywny klik, realny backend, zrzuty.
+
+- **K2 (R02, front)** — poziom „stacja SN” w nawigacji sieć → stacja → pole z powrotem do kadru sieci;
+  ocena i przejęcie trafnych części PR #483 (`1024eb1e`: lista stacji w porządku magistrali,
+  poprzednia/następna stacja, kadr L2). Realizowane w partii 2026-10-21.
+- **K1/K8 (R01)** — przebieg sieć → stacja → rozpływ → wyniki → dowód bez utraty SLD, selekcji i kadru;
+  wynik i inspektor wskazują tę samą referencję. Panel dolny (Wyniki, Dowody) realizowany w partii
+  2026-10-21; TCC i wywód — K8.
+- **K3 (adapter)** — `ui/sld/v2/canvas/enmToSldAdapter.ts` ~4282–4284 zaszywa `cbState:'closed'`,
+  `dsState:'closed'`, `esState:'open'` dla pól DER bez danej ENM; mapowanie `bay_role 'OZE'` → `DER_PV`
+  (~4569) rysuje pole BESS bez `meta.field_role` jako PV. Stan z ENM albo jawnie nieznany; rodzaj
+  źródła z modelu.
+- **K4 (R03)** — zasilenie liczone BFS-em klienta (`SldCanvasV3Workspace.tsx` ~573/587 →
+  `ui/sld/v2/canvas/SupplyPathHighlighter.ts:106`), bez stanu „nieznany”, transformatory przechodzone
+  zawsze, aparaty/TR/DER poza nakładką. Przepięcie na `ui2/adapters/topologiaZasilenia.ts` (K6a),
+  kasacja BFS jako źródła zasilenia, kolor opisany jako stan topologiczny (nie napięcie), stan
+  nierozstrzygnięty widoczny.
+- **K4 (R04)** — strzałki rozpływu i zwarć (`SldCanvasV3.tsx` ~3369–3392, `flowPlacements` ~2640) nie
+  reagują na `resultsStale` (flaga działa tylko na etykiety i baner ~3415–3432); etykiety TR
+  (`canvas/resultLabelTemplates.ts:193`) bez P, Q, I i kierunku. Każda widoczna warstwa wyniku
+  (etykiety, strzałki PF/SC, OLTC, różnice) z flagą świeżości niezależną od widoczności etykiet; test
+  iloczynu: zmiana kabla × łącznika × wariantu × kombinacje warstw.
+- **K6 (R02, P13)** — selekcja globalna przekazuje do inspektora `id`/ownerRef zamiast `deviceRef`
+  (Workspace ~2599): klik aparatu nie prowadzi do tego samego aparatu w inspektorze ui2.
+- **K8 (R08)** — `ui2/wyniki/dynamika/WykresPrzebiegow.tsx:103–170` ma tylko `syncId`; kursor czasu ma
+  przenosić stan aparatów i liczby z tego samego przebiegu na SLD, z rozróżnieniem próbek przed i po
+  zdarzeniu.
+- **K5** — edycja wyposażenia pola (`KreatorPolaSn.tsx:438` `BEZ_DOPOSAZENIA`) wymaga operacji domenowej
+  w backendzie; jej zakres zgłasza meldunek karty K5 (backend operacji łączników W5-C oraz wytrzymałość
+  aparatury i CT prowadzi sesja główna).
