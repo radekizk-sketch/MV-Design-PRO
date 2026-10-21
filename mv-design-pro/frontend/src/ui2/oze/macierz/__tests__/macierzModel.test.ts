@@ -207,10 +207,10 @@ describe('zbudujModuly × stan odczytu wejść × pozycja w moście — oczekiwa
   const STANY = ['brak', 'wczytywanie', 'blad', 'gotowe'] as const;
   const wejsciaDla = (a: Pozycja, b: Pozycja) => {
     const moduly = (['a', 'b'] as const)
-      .filter((id, i) => [a, b][i] === 'objety')
+      .filter((_id, i) => [a, b][i] === 'objety')
       .map((derRef) => ({ derRef }));
     const pominiete = (['a', 'b'] as const)
-      .filter((id, i) => [a, b][i] === 'pominiety')
+      .filter((_id, i) => [a, b][i] === 'pominiety')
       .map((derRef) => ({ derRef, powod: 'brak_mocy' as const }));
     return wejsciaZ({ moduly, pominiete });
   };

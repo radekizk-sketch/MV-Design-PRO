@@ -16,6 +16,12 @@ import { branchFlowTraceFixture, rozplywFixture, wkladyFixture } from './fixture
 
 type Dane = 'brak' | 'sa';
 
+/** Fixture śladu przez round-trip JSON — ta sama droga co realne dane (`response.json()`
+ *  zwraca kształt nieopakowany), wzorzec z `sladPodzialuPradu.test.tsx`, bez rzutowań. */
+function realnyTrace() {
+  return JSON.parse(JSON.stringify(branchFlowTraceFixture()));
+}
+
 interface Sekcja {
   readonly nazwa: string;
   readonly testid: string;
@@ -51,7 +57,7 @@ const SEKCJE: readonly Sekcja[] = [
       render(
         <SladPodzialuPradu
           punktNazwa="Szyna GPZ"
-          trace={dane === 'sa' ? branchFlowTraceFixture() : null}
+          trace={dane === 'sa' ? realnyTrace() : null}
           odczyt={odczyt}
           szczegolyAudytowe={false}
         />,
