@@ -482,3 +482,55 @@ def test_input_hash_biegu_bez_tb_i_z_tb_bez_zmian() -> None:
     assert "breaking_time_seconds" not in bez_tb
     assert _compute_input_hash(**wspolne, options=bez_tb) == INPUT_HASH_BEZ_TB
     assert _compute_input_hash(**wspolne, options=_opcje_scenariusza(0.1)) == INPUT_HASH_Z_TB
+
+
+# ---------------------------------------------------------------------------
+# Wkłady zwarciowe (`POST /api/proof/sc3f/contributions`): t_min = t_b punktu zwarcia
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("rodzaj", RODZAJE_TB)
+def test_wklady_t_min_i_zrodlo_z_tego_samego_rozstrzygniecia_co_wiersz_biegu(rodzaj: str) -> None:
+    """Rodzaj t_b × {t_min wkładów, pole ``t_min_zrodlo``, zdanie wywodu, μ maszyny}.
+
+    Wkłady liczą μ z tym samym t_b co wiersz biegu (jedna funkcja ``czas_tb_punktu``).
+    Pochodzenie spoza scenariusza (pola lokalne, wartość robocza) widać w odpowiedzi i w
+    nagłówku wywodu — JEDEN predykat dla obu; t_b scenariusza: ani pola, ani zdania.
+    """
+    from api.main import app
+    from fastapi.testclient import TestClient
+
+    run, wiersz = _bieg_rodzaju("synchroniczna", rodzaj)
+    payload: dict[str, Any] = {
+        "snapshot": run.snapshot,
+        "fault_node_id": build_iec60909_example_enm().bus_map["BUS-MV"],
+        "scenariusz": "MAX",
+    }
+    if rodzaj == "podany":
+        payload["t_min_s"] = TB_PODANY_S
+    odpowiedz = TestClient(app).post("/api/proof/sc3f/contributions", json=payload)
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+
+    tb_s = _OCZEKIWANE_TB[rodzaj]
+    assert dane["t_min_s"] == pytest.approx(tb_s)
+    (wklad,) = dane["contributions"]
+    assert wklad["mu"] == pytest.approx(_mu_reczne(wklad["ratio_ik_ir"], tb_s), abs=1e-9)
+
+    prefiks = "Czas t_min (= t_b punktu zwarcia): "
+    zdania = [k["tekst"] for k in dane["wywod"] if k["tekst"].startswith(prefiks)]
+    zdania_sekcji = [
+        k["tekst"] for k in dane["wywod_sekcje"][0]["kroki"] if k["tekst"].startswith(prefiks)
+    ]
+    if rodzaj == "podany":
+        assert "tb_zrodlo" not in wiersz
+        assert "t_min_zrodlo" not in dane
+        assert zdania == [] and zdania_sekcji == []
+    else:
+        # Wiersz biegu dokłada jedną cechę wiersza (czy I_b punktu zależy od t_b przez
+        # maszyny); poza nią nośnik t_b wkładów i wiersza jest identyczny.
+        zrodlo_wiersza = dict(wiersz["tb_zrodlo"])
+        assert zrodlo_wiersza.pop("ib_z_udzialem_maszyn") is True
+        assert dane["t_min_zrodlo"] == zrodlo_wiersza
+        assert dane["t_min_zrodlo"]["pochodzenie"] == _POCHODZENIE[rodzaj]
+        assert zdania == zdania_sekcji == [prefiks + wiersz["tb_zrodlo"]["opis_pl"]]
