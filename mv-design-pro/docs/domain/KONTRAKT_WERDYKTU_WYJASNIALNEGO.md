@@ -98,7 +98,7 @@ znana z RUNDA9 F-1).
 | `SPELNIA` | K, W | Kryterium sprawdzone na danych i dotrzymane. Na poziomie W dodatkowo: dowód PEŁNY (§3). | wartość, limit, margines i MIEJSCE najmniejszego marginesu; na poziomie W — kryterium najbliżej granicy |
 | `NIE_SPELNIA` | K, W | Kryterium sprawdzone i naruszone. | gdzie (element/chwila/przedział), o ile (margines ujemny z jednostką), względem czego (limit z podstawą); na poziomie W — WSZYSTKIE naruszone kryteria składowe |
 | `NIEJEDNOZNACZNY` | K, W | \|margines\| ≤ niepewność — dane nie pozwalają na wniosek binarny. | margines, niepewność, metoda oszacowania niepewności, co rozstrzygnie (np. zwalidowany model, pomiar) |
-| `NIE_OCENIONO` | K, W | Ocena niewykonana: brak biegu, bieg nieaktualny, bieg nieudany, brak danych wejściowych. | czego brakuje (konkretne dane / bieg), jak to uzupełnić (akcja naprawcza) |
+| `NIE_OCENIONO` | K, W | Ocena niewykonana: brak biegu, bieg nieaktualny, bieg nieudany, brak danych wejściowych modelu. Brak PARAMETRU URZĄDZENIA, dla którego istnieje propozycja wartości roboczej, NIE jest powodem tego statusu — ocena przebiega na wartości roboczej (§3c). | czego brakuje (konkretne dane / bieg), jak to uzupełnić (akcja naprawcza) |
 | `BRAK_PODSTAWY` | K, W | Parametr wymagania nie ma ustalonego pochodzenia (stan `NIEUSTALONE`) albo nie istnieje w żadnej warstwie. Liczenie NIE jest blokowane — wynik obliczeniowy wobec przyjętej wartości jest pokazywany INFORMACYJNIE. | który parametr, z jakiej warstwy powinien pochodzić, jaki ma stan źródła, jakiego dokumentu potrzeba; informacyjny wynik wobec przyjętej wartości |
 | `BRAK_DOWODU` | W | Kryteria dające się ocenić są spełnione (albo wymaganie nie ma metody w narzędziu), ale podstawa dowodowa nie wystarcza do twierdzenia o zgodności (§3). | jaka metoda dowodu byłaby właściwa, czego brakuje (certyfikat / raport z testu / walidacja modelu / potwierdzenie danych), wynik obliczeniowy jeśli istnieje |
 | `NIE_DOTYCZY` | K, W | Kryterium/wymaganie nie stosuje się do przedmiotu (typ, technologia, moduł istniejący wg art. 4, magazyn energii poza NC RfG — art. 3 ust. 2 lit. d, prawo operatora do określenia wymagania niewykonane, warunek wstępny kryterium nieuruchomiony w scenariuszu). | powód stosowalności: typ, technologia, zakres (np. „wymaganie dotyczy modułów parku energii, oceniany moduł jest synchroniczny"; „magazyn energii nie jest modułem wytwarzania energii w rozumieniu rozporządzenia 2016/631 art. 3 ust. 2 lit. d — wymagania krajowe dla magazynów w osobnej warstwie") |
@@ -282,6 +282,41 @@ konkretnego urządzenia) są DWOMA osiami o wspólnej nazwie wartości — każd
 generator zastrzeżeń nazywa oś. Predykat `nalezy_do_domeny(bieg, manifest)` (SCR, X/R, głębokość
 zapadu, P, zakresy parametrów wobec domeny wyroczni D-11) jest warunkiem koniecznym `PELNY` dla
 metody `SYMULACJA` — bieg poza domeną = `NIEPELNY` z nazwanym parametrem poza zakresem.
+
+### 3c. Wartość robocza parametru urządzenia (zasada nr 4, dyrektywa właściciela 2026-10-21)
+
+Brak parametru urządzenia w karcie katalogowej (czas własny wyłącznika, prąd krótkotrwały
+wytrzymywany, moc znamionowa przekładnika, straty transformatora itd.) NIE blokuje obliczeń i NIE
+zamienia kryterium w `NIE_OCENIONO` ani `BRAK_PODSTAWY`. Obowiązuje jeden mechanizm:
+
+1. **Propozycja.** Jedno źródło propozycji (rejestr wartości roboczych w warstwie katalogu)
+   podaje dla pary (rodzina urządzenia, parametr) wartość z jednostką, rodzaj źródła
+   (`PROFIL_URZADZENIA` — profil typowy rodziny/pozycji; `NORMA` — wartość lub relacja, którą
+   norma przypisuje, z punktem normy; `ZALOZENIE_INZYNIERSKIE` — jawne założenie z uzasadnieniem),
+   odniesienie i zdanie o wpływie na wiarygodność oceny. Wartość pochodna innego pola tej samej
+   karty (np. relacja normowa) jest propozycją, nie daną producenta.
+2. **Pierwszeństwo — jedno miejsce rozstrzygnięcia.** wartość nadana przez projektanta na
+   elemencie modelu > dana karty katalogowej > propozycja. Rozstrzygnięcie zwraca wartość ORAZ
+   jej pochodzenie; analiza nie zgaduje pochodzenia po swojemu.
+3. **Obliczenie bez blokady.** Kryterium liczone normalnie; status (`SPELNIA`/`NIE_SPELNIA`/
+   `NIEJEDNOZNACZNY`) wynika z liczb. Kod gotowości braku takiego parametru nie jest blokerem.
+4. **Wiarygodność.** Każda wartość z propozycji albo nadana przez projektanta bez dokumentu
+   stoi w `dane_przyjete` (`DanaPrzyjeta.jakosc = ESTIMATED`, `powod_pl` = źródło + odniesienie
+   + wpływ), `StatusDanych.stan = UNVALIDATED_INPUT`, kompletność `NIEPELNY` (§3 pkt 2). Na
+   poziomie W para `SPELNIA` + `NIEPELNY` daje `BRAK_DOWODU` — ocena na założeniach nigdy nie
+   jest potwierdzonym dowodem zgodności. Wartość robocza NIGDY nie niesie jakości `DATASHEET`,
+   podstawy `KATALOG_PRODUCENTA` ani nie jest zapisywana w pozycji katalogu (katalog niesie
+   wyłącznie dane ze źródłem — V12K-351).
+5. **Edytowalność.** Projektant nadaje wartość na elemencie modelu (operacja domenowa, nie
+   zapis w katalogu); zmiana unieważnia wyniki jak każda zmiana modelu.
+6. **Prezentacja dyskretna.** Wartość robocza i jej źródło są w wyjaśnieniu kryterium, w
+   komentarzu obliczeń (White Box) i w raporcie; bez osobnych ostrzeżeń ani blokujących okien.
+   Etykieta: „wartość robocza” + źródło; nigdy „dana producenta”.
+
+Zasada NIE dotyczy: braków MODELU (brak elementu, połączenia, nastawy zabezpieczenia — nastawa
+jest decyzją projektanta, nie daną urządzenia), podstawy LIMITU wymagania (tam `BRAK_PODSTAWY`
+zgodnie z §2.1) ani danych, których żaden profil, norma ani jawne założenie nie uzasadnia —
+te pozostają `NIE_OCENIONO` z akcją naprawczą.
 
 ## 4. Pola rekordu
 
