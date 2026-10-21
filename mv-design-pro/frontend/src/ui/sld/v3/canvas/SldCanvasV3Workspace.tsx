@@ -1632,7 +1632,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         resultPointsInStationNnBoard(snapshot),
         // GPZ-PARYTET: wiersze pól i bilansu GPZ są opisane w tabeli bloku GPZ
         // (scena rozwinięta L2 — ten sam zbiór kart, który rysuje kanwa).
-        resultPointsInGpzTable(labelsPayload && snapshot ? buildSceneV3(snapshot, 2) : null),
+        resultPointsInGpzTable(labelsPayload && snapshot ? scenaSld(snapshot, 2) : null),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );
