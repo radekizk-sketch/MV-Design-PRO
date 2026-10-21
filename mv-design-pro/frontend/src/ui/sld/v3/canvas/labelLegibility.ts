@@ -337,12 +337,23 @@ function stronyWKolejnosci(placement: OwnedLabel['placement']): readonly SimpleA
  *
  *  1. pełny tekst pismem powiększonym do minimum czytelnego, po stronie
  *     zadeklarowanej przez scenę;
- *  2. tekst SKRÓCONY z zachowaniem członu rozróżniającego, pismem
- *     powiększonym — najdłuższa postać, która się mieści (wyszukiwanie
- *     POŁÓWKOWE po DOSTĘPNEJ SZEROKOŚCI; poprawne, bo prostokąt jest
- *     zakotwiczony, więc węższy daje prostokąt ZAWARTY w szerszym, a
- *     `shortenPreservingIdentity` jest nierosnąca względem szerokości);
- *  3. te same dwa kroki po kolejnych stronach kotwicy (`stronyWKolejnosci`).
+ *  2. pełny tekst po KOLEJNYCH stronach kotwicy (`stronyWKolejnosci`);
+ *  3. dopiero gdy pełny tekst nie mieści się po ŻADNEJ stronie — tekst
+ *     SKRÓCONY z zachowaniem członu rozróżniającego, pismem powiększonym,
+ *     po stronach w tej samej kolejności: najdłuższa postać, która się mieści
+ *     (wyszukiwanie POŁÓWKOWE po DOSTĘPNEJ SZEROKOŚCI; poprawne, bo prostokąt
+ *     jest zakotwiczony, więc węższy daje prostokąt ZAWARTY w szerszym, a
+ *     `shortenPreservingIdentity` jest nierosnąca względem szerokości).
+ *
+ * W2C-PLAN-ETYKIET: do tej karty kroki 2 i 3 szły w odwrotnej kolejności
+ * (skracanie po stronie zadeklarowanej PRZED zmianą strony), choć nagłówek
+ * pliku (d) nazywa zmianę strony stopniem TAŃSZYM niż utrata tożsamości.
+ * Zmierzony skutek na scenie toru DER-SN (L2 @1,02): identyfikator
+ * przekładnika „TV1" stykał się powiększonym o 1 j.św. tuszem z symbolem TR
+ * blokowego po lewej i był rysowany jako „T…" — czyli znak czytany jak
+ * transformator — mimo że po prawej stronie kotwicy miał wolne miejsce na
+ * pełny tekst. Krótki identyfikator aparatu nie ma członu, który dałoby się
+ * odciąć bez utraty znaczenia.
  *
  * `null` = nie ma miejsca po ŻADNEJ stronie nawet dla najkrótszej formy
  * niosącej człon rozróżniający. Wołający wtedy etykiety NIE rysuje i mówi o
@@ -401,14 +412,16 @@ function najlepszeDopasowanie(
     return wynik;
   };
 
-  const proboj = (placement: OwnedLabel['placement']): Dopasowanie | null => {
+  const probojPelny = (placement: OwnedLabel['placement']): Dopasowanie | null => {
+    const pelny = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, placement);
+    return tekstBazowy.length > 0 && wolne(pelny)
+      ? { text: tekstBazowy, rect: pelny, fontSize, enlarged: true }
+      : null;
+  };
+
+  const probojSkrocony = (placement: OwnedLabel['placement']): Dopasowanie | null => {
     const prostokatDla = (text: string): V3Rect =>
       prostokatTuszu(slot, text, fontSize, rotated, placement);
-
-    const pelny = prostokatDla(tekstBazowy);
-    if (tekstBazowy.length > 0 && wolne(pelny)) {
-      return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
-    }
 
     // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata].
     let lo = 1;
@@ -433,9 +446,14 @@ function najlepszeDopasowanie(
   };
 
   const strony = stronyWKolejnosci(label.placement);
-  if (strony.length === 0) return proboj(label.placement);
-  for (const strona of strony) {
-    const dopasowanie = proboj(strona);
+  const kolejnosc = strony.length === 0 ? [label.placement] : strony;
+  // Pełny tekst po KAŻDEJ stronie, zanim jakakolwiek strona dostanie skrót.
+  for (const strona of kolejnosc) {
+    const dopasowanie = probojPelny(strona);
+    if (dopasowanie) return dopasowanie;
+  }
+  for (const strona of kolejnosc) {
+    const dopasowanie = probojSkrocony(strona);
     if (dopasowanie) return dopasowanie;
   }
   return null;

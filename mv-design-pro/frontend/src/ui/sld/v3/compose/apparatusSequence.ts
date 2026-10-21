@@ -39,9 +39,9 @@
 
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
-import type { BayPrimaryDeviceKind } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 
 /** Znacznik pochodzenia stosu aparatów (spec §12.1, audytor DOM
  *  `data-apparatus-source`) — `'dane'` gdy stos zbudowany z
@@ -153,6 +153,23 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
 }
 
 /**
+ * Aparaty pola ze ścieżki DANYCH, które dostają symbol pola — w porządku
+ * fizycznym `placement` (`orderByPrimaryPlacement`, `v2/domain/apparatusContracts.ts`)
+ * i bez kindów niemapowalnych (DER). JEDNA sekwencja dla `resolveBayApparatusSymbolIds`
+ * (measure + plan) i `compose/station.ts` `stackItemsForBay` (rysunek + `deviceRef`),
+ * więc parowanie indeksów symbol↔aparat nie zależy od tego, czy producent
+ * deskryptora posortował listę (W2C-PLAN-ETYKIET: skrypt dowodowy W2c podawał
+ * kolejność surową backendu i kompozycja rozkładała laterale na różne kotwice
+ * we wspólnej kolumnie — „TV1" lądował na symbolu uziemnika).
+ */
+export function orderedSymbolPrimaryDevices<T extends { readonly kind: BayPrimaryDeviceKind; readonly placement: BayPrimaryPlacement }>(
+  devices: readonly T[] | undefined,
+): readonly T[] {
+  if (!devices || devices.length === 0) return [];
+  return orderByPrimaryPlacement(devices).filter((d) => symbolIdForPrimaryDeviceKind(d.kind) != null);
+}
+
+/**
  * Rozstrzygnięcie „dane vs konwencja" (spec §12.1) — JEDNA prawda używana
  * przez `layout/measure.ts` (rezerwacja gabarytu) i `compose/station.ts`
  * (realny rysunek + znacznik `data-apparatus-source`). Gdy `bay.primaryDevices`
@@ -163,13 +180,10 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
 export function resolveBayApparatusSymbolIds(
   bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
 ): { readonly symbolIds: readonly SymbolId[]; readonly source: BayApparatusSource } {
-  const devices = bay.primaryDevices;
-  if (devices && devices.length > 0) {
-    const ids = devices
-      .map((d) => symbolIdForPrimaryDeviceKind(d.kind))
-      .filter((id): id is SymbolId => id != null);
-    if (ids.length > 0) return { symbolIds: ids, source: 'dane' };
-  }
+  const ids = orderedSymbolPrimaryDevices(bay.primaryDevices)
+    .map((d) => symbolIdForPrimaryDeviceKind(d.kind))
+    .filter((id): id is SymbolId => id != null);
+  if (ids.length > 0) return { symbolIds: ids, source: 'dane' };
   return { symbolIds: apparatusSymbolsForRole(bay.fieldRole), source: 'konwencja' };
 }
 

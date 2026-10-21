@@ -50,7 +50,7 @@
  * niżej woła `resolveBayApparatusSymbolIds` (`./apparatusSequence`, JEDNA
  * prawda współdzielona z `layout/measure.ts`): gdy `bay.primaryDevices`
  * niesie ≥1 aparat mapowalny na symbol pola, stos budowany Z DANYCH
- * (uporządkowanych już przez adapter wg `placement`); inaczej fallback
+ * (porządkowanych wg `placement` w `orderedSymbolPrimaryDevices`, niezależnie od producenta deskryptora); inaczej fallback
  * konwencji §12.4 (tabela w `apparatusSequence.ts`, NIE tutaj — usunięta
  * duplikacja `apparatusSymbolsForRole`/`stackFootprint` z tego pliku,
  * re-eksportowane niżej dla zgodności istniejących importów). KAŻDA instancja
@@ -116,7 +116,7 @@ import {
   planBayApparatus,
   resolveBayApparatusSymbolIds,
   stackFootprint,
-  symbolIdForPrimaryDeviceKind,
+  orderedSymbolPrimaryDevices,
   type BayApparatusSource,
 } from './apparatusSequence';
 import {
@@ -209,11 +209,11 @@ function stackItemsForBay(
 ): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
   if (source === 'dane') {
-    // Ta sama filtracja co `resolveBayApparatusSymbolIds` (kind→symbol
-    // mapowalny, DER-kindy odfiltrowane) — reużywamy `symbolIdForPrimaryDeviceKind`
-    // WPROST (nie duplikujemy reguły filtracji), żeby dowiązać `deviceRef`/
-    // `switchState` 1:1 do `symbolIds` już wyliczonych wyżej.
-    const devices = (bay.primaryDevices ?? []).filter((d) => symbolIdForPrimaryDeviceKind(d.kind) != null);
+    // TA SAMA sekwencja co `resolveBayApparatusSymbolIds` (porządek `placement`
+    // + filtr kind→symbol, `orderedSymbolPrimaryDevices`) — jedna funkcja, nie
+    // dwie reguły, żeby dowiązać `deviceRef`/`switchState` 1:1 do `symbolIds`
+    // już wyliczonych wyżej niezależnie od kolejności w deskryptorze.
+    const devices = orderedSymbolPrimaryDevices(bay.primaryDevices);
     const items: StackItemSpec[] = devices.map((d, index) => ({
       symbolId: symbolIds[index],
       state: d.switchState,

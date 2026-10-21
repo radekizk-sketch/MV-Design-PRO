@@ -151,8 +151,10 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
 
-      # W2c dotąd malował napisy DER i pasmo nazw odrębnymi wzorami X/Y.
-      # Dowód musi przeliczyć etykiety wspólnym planem i FAIL dla kolizji.
+      # W2c: scena produkcyjna (fixtura ENM toru DER-SN -> buildSceneV3) i plan
+      # etykiet kanwy przy kazdej skali, przy ktorej LOD jest aktywny w kamerze
+      # (LABEL_PLAN_PRODUCTION_SCALES). FAIL dla kolizji, porzuconej tozsamosci,
+      # napisu poza arkuszem i braku identyfikatora aparatu bocznego na L2.
       - name: Run W2c label-plan evidence (PV + BESS + TR)
         working-directory: mv-design-pro/frontend
         run: |
