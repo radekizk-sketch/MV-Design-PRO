@@ -94,6 +94,10 @@ def test_ui_allowlist_matches_measured_baseline():
     the constant `STATION_LV_VOLTAGE_LIMIT_KV` was deleted (station bus sides read
     the one band mirror `ui2/model/pasmaNapieciowe`), so its class-b hit and its
     allowlist entry are gone -- a decrease by deletion, measured on the merged tip.
+    GPZ-PARYTET cz. 2 (2026-10-21) re-measured 6: the dead v2 renderer
+    `ui/sld/v2/canvas/SldShortCircuitOverlay.tsx` (zero production importers) was
+    deleted together with its one class-b hit (empty-state literal '(brak ip/Ith)')
+    and its allowlist entry -- a decrease by deletion, measured on the merged tip.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -103,7 +107,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 7
+    assert raw == 6
 
 
 def test_ui_allowlist_entries_are_not_stale():

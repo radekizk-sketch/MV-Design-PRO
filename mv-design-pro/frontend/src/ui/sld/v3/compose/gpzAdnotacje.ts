@@ -15,6 +15,7 @@
 import { GRID, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import type { GpzStatusFlag, RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../v2/station-rozdzielnia/contract';
 
 /** Kolejność ról w legendzie i w kontrakcie palety (stała, deterministyczna). */
 export const ROLE_POL_GPZ: readonly RolaPolaGpz[] = [
@@ -26,13 +27,17 @@ export const ROLE_POL_GPZ: readonly RolaPolaGpz[] = [
   'zrodlowe',
 ];
 
+/** Etykiety ról z kanonu nazw pól SN (`FIELD_ROLE_LABEL_PL`) — jedna terminologia ról pól
+ *  w produkcie (strażnik `tests/ci/test_etykiety_rol_pol_sn.py`). Rola `liniowe` grupuje
+ *  w legendzie GPZ pola liniowe wyjściowe i odgałęźne (`OUT`/`FEEDER`) — to nazwa grupy,
+ *  nie trzecia rola. Rola `zrodlowe` bez znanej technologii nosi etykietę pola źródłowego SN. */
 export const ETYKIETA_ROLI_POLA_PL: Readonly<Record<RolaPolaGpz, string>> = {
-  zasilajace: 'Pole zasilające',
+  zasilajace: FIELD_ROLE_LABEL_PL.LINIA_IN,
   liniowe: 'Pole liniowe',
-  transformatorowe: 'Pole transformatorowe',
-  sprzeglo: 'Sprzęgło',
-  pomiarowe: 'Pole pomiarowe',
-  zrodlowe: 'Pole źródłowe',
+  transformatorowe: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
+  sprzeglo: FIELD_ROLE_LABEL_PL.SPRZEGLO,
+  pomiarowe: FIELD_ROLE_LABEL_PL.POMIAROWE,
+  zrodlowe: FIELD_SOURCE_LABEL_PL,
 };
 
 /** Rozwinięcie plakietek automatyki (podpowiedź `<title>` i legenda tabeli). */
