@@ -187,7 +187,7 @@ class SC3FInput:
 
     def __post_init__(self) -> None:
         if (self.z_f_ohm is None) != (self.z_petli_ohm is None):
-            raise ValueError(
+            raise AssertionError(
                 "SC3FInput: impedancja przejścia Z_f i impedancja pętli Z_k występują "
                 "wyłącznie razem (dowód zwarcia przez impedancję przejścia)."
             )
@@ -957,7 +957,7 @@ class ProofGenerator:
                 f"a dowód dotyczy typu {fault_type}"
             )
         if quantities.z_f_ohm != data.z_f_ohm:
-            raise ValueError(
+            raise AssertionError(
                 "SC1Input.quantities policzone dla innej impedancji przejścia Z_f niż ta, "
                 "której dotyczy dowód (karta OD-14: jedna prawda Z_f wyniku i dowodu)."
             )
@@ -1672,7 +1672,7 @@ class ProofGenerator:
         """
         equation = EquationRegistry.get_equation(equation_id)
         if equation is None:
-            raise ValueError(f"Brak definicji równania {equation_id}")
+            raise AssertionError(f"Brak definicji równania {equation_id}")
         f = cls._format_complex_latex
         if equation_id == "EQ_SC1_013":
             substitution = (
@@ -1692,7 +1692,7 @@ class ProofGenerator:
             )
             input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
         else:
-            raise ValueError(f"Równanie {equation_id} nie jest pętlą z impedancją przejścia")
+            raise AssertionError(f"Równanie {equation_id} nie jest pętlą z impedancją przejścia")
         wartosci = {"Z_1": z1, "Z_2": z2, "Z_0": z0, "Z_f": z_f}
         klucze = {"Z_1": "z1_ohm", "Z_2": "z2_ohm", "Z_0": "z0_ohm", "Z_f": "z_f_ohm"}
         input_values = tuple(

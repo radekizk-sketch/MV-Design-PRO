@@ -12,7 +12,11 @@
  *     (brak biegu / punkt poza stacją / brak aparatury) NIGDY nie udaje
  *     werdyktu negatywnego,
  *  4. każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy i dwa rekordy werdyktu
- *     wyjaśnialnego jedyną kartą werdyktu.
+ *     wyjaśnialnego jedyną kartą werdyktu,
+ *  5. zasada nr 4 (V12K-351): parametr aparatu bez danej karty to WARTOŚĆ ROBOCZA — etykieta
+ *     przy liczbie, źródło i wpływ (tekst backendu) oraz „Zmień wartość” prowadzące do
+ *     kreatora edycji parametrów aparatu; dana karty nie dostaje etykiety ani nie udaje
+ *     wartości roboczej.
  * Kliki natywne (userEvent) — Zero-Debt pkt 5.
  */
 
@@ -25,7 +29,7 @@ import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
-import { znacznikWerdyktu, type PoleWytrzymalosci } from '../api';
+import { znacznikWerdyktu, type PoleWytrzymalosci, type WartoscParametruAparatu } from '../api';
 import { nazwaStacji, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
 import type { OcenaKryterium } from '../../../wzorzec/werdykt';
 
@@ -128,6 +132,45 @@ function snapshotZeStacja(busRef: string): EnergyNetworkModel {
   } as unknown as EnergyNetworkModel;
 }
 
+/** Rozstrzygnięty parametr aparatu (kształt `WartoscRozstrzygnieta.to_dict()` backendu). */
+function parametr(
+  nazwa: string,
+  nazwaPl: string,
+  wartosc: number | null,
+  jednostka: string,
+  pochodzenie: WartoscParametruAparatu['pochodzenie'],
+  dodatki: Partial<WartoscParametruAparatu> = {},
+): WartoscParametruAparatu {
+  const robocza = pochodzenie === 'PROPOZYCJA' || pochodzenie === 'PROJEKTANT';
+  return {
+    parametr: nazwa,
+    nazwa_pl: nazwaPl,
+    wartosc,
+    jednostka,
+    pochodzenie,
+    pochodzenie_karty: pochodzenie === 'KATALOG' ? 'producent' : null,
+    wartosc_robocza: robocza,
+    propozycja: null,
+    powod_projektanta_pl: null,
+    powod_braku_pl: null,
+    opis_zrodla_pl: robocza ? `wartość robocza: opis źródła ${nazwa}` : 'dana karty katalogowej (producent)',
+    ...dodatki,
+  };
+}
+
+const CZAS_WLASNY_PROPOZYCJA = parametr(
+  'break_time_s',
+  'czas własny wyłączania wyłącznika',
+  0.06,
+  's',
+  'PROPOZYCJA',
+  {
+    opis_zrodla_pl:
+      'wartość robocza (profil typowy urządzenia): profil typowy wyłącznika próżniowego SN. '
+      + 'Wpływ: czas wyłączenia zwarcia zawiera wartość typową zamiast danej producenta.',
+  },
+);
+
 interface ZadanieWytrzymalosci {
   readonly station_ref: string;
   readonly short_circuit_run_id: string;
@@ -147,10 +190,16 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
     aparat_etykieta: 'ABB VD4 12 kV 630 A',
     znamiona: {
       i_dyn_ka: 50,
-      i_dyn_pochodzenie: 'derived_iec62271',
+      i_dyn_pochodzenie: 'wartosc_robocza',
       i_th_ka: 20,
       i_th_duration_s: 1,
       i_th_pochodzenie: 'producent',
+      i_th_duration_pochodzenie: 'producent',
+      wartosci: {
+        i_th_ka: parametr('i_th_ka', 'prąd krótkotrwały wytrzymywany', 20, 'kA', 'KATALOG'),
+        i_th_duration_s: parametr('i_th_duration_s', 'znamionowy czas trwania zwarcia', 1, 's', 'KATALOG'),
+        i_dyn_ka: parametr('i_dyn_ka', 'prąd szczytowy wytrzymywany', 50, 'kA', 'PROPOZYCJA'),
+      },
     },
     prady_pola: {
       punkt_ref: 'EL-GPZ',
@@ -168,6 +217,7 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
       powod_pl: 'Czas z nastaw pola.',
       czlon_nastawczy_s: 0.5,
       czas_wlasny_wylacznika_s: null,
+      czas_wlasny: null,
       zalozenia_pl: [],
       kody_gotowosci: [],
     },
@@ -264,6 +314,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
           powod_pl: 'Czas z charakterystyki DT zabezpieczenia pola przy prądzie 8000,0 A.',
           czlon_nastawczy_s: 0.3,
           czas_wlasny_wylacznika_s: 0.06,
+          czas_wlasny: CZAS_WLASNY_PROPOZYCJA,
           zalozenia_pl: [],
           kody_gotowosci: [],
         },
@@ -283,27 +334,133 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     expect(czas.textContent).toContain('Czas z charakterystyki DT');
   });
 
-  it('ZAŁOŻENIE przy braku czasu własnego aparatu jest wypisane, nie przemilczane', async () => {
+  it('WARTOŚĆ ROBOCZA czasu własnego: etykieta, źródło z wpływem, założenie i „Zmień wartość”', async () => {
+    // Kanon V12K-351: brak czasu własnego w karcie NIE zatrzymuje oceny (dawniej kod
+    // `brak_czasu_wlasnego_wylacznika`) — backend przyjmuje 0,06 s z profilu i liczy.
     const user = userEvent.setup();
     zamontujBackend([
       poleOdpowiedzi({
         czas_wylaczenia: {
-          t_clearing_s: 0.3,
+          t_clearing_s: 0.36,
           zrodlo: 'nastawy_pola',
-          powod_pl: 'Czas z charakterystyki DT zabezpieczenia pola.',
+          powod_pl: 'Czas stopnia I> powiększony o czas własny wyłącznika (wartość robocza).',
+          czlon_nastawczy_s: 0.3,
+          czas_wlasny_wylacznika_s: 0.06,
+          czas_wlasny: CZAS_WLASNY_PROPOZYCJA,
+          zalozenia_pl: ['Czas własny wyłącznika przyjęto jako wartość roboczą 0,06 s.'],
+          kody_gotowosci: [],
+        },
+      }),
+    ]);
+    const zmiany: string[][] = [];
+
+    render(
+      <WeryfikacjaAparatury
+        wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
+        punktNazwa="Szyna"
+        onZmienWartosc={(ref, nazwa, klucz) => zmiany.push([ref, nazwa, klucz])}
+      />,
+    );
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
+    expect(czas.textContent).toContain('Czas własny wyłącznika przyjęto jako wartość roboczą 0,06 s.');
+
+    const czasWlasny = screen.getByTestId('mvd-zwarcia-aparatura-parametr-P-1-break_time_s');
+    expect(czasWlasny.getAttribute('data-pochodzenie')).toBe('PROPOZYCJA');
+    expect(czasWlasny.getAttribute('data-wartosc-robocza')).toBe('true');
+    expect(czasWlasny.textContent).toContain('0,060 s');
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-robocza-P-1-break_time_s').textContent).toBe(
+      'wartość robocza',
+    );
+    expect(czasWlasny.textContent).toContain('profil typowy urządzenia');
+    expect(czasWlasny.textContent).toContain('Wpływ:');
+
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-zmien-P-1-break_time_s'));
+    expect(zmiany).toEqual([['aparat/01', 'Aparat pola SN 1', 'break_time_s']]);
+  });
+
+  it('DANA KARTY nie dostaje etykiety wartości roboczej; I_p z relacji normowej — dostaje', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({})]);
+    const zmiany: string[][] = [];
+
+    render(
+      <WeryfikacjaAparatury
+        wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
+        punktNazwa="Szyna"
+        onZmienWartosc={(ref, nazwa, klucz) => zmiany.push([ref, nazwa, klucz])}
+      />,
+    );
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const ith = await screen.findByTestId('mvd-zwarcia-aparatura-parametr-P-1-i_th_ka');
+    expect(ith.getAttribute('data-pochodzenie')).toBe('KATALOG');
+    expect(ith.getAttribute('data-wartosc-robocza')).toBe('false');
+    expect(ith.textContent).toContain('karta katalogowa');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-robocza-P-1-i_th_ka')).toBeNull();
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-robocza-P-1-i_dyn_ka')).not.toBeNull();
+    // Projektant może nadać własną wartość także parametrowi z karty (tabliczka aparatu).
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-zmien-P-1-i_th_ka'));
+    expect(zmiany).toEqual([['aparat/01', 'Aparat pola SN 1', 'i_th_ka']]);
+    // Czasu własnego nie składano (brak w odpowiedzi) — nie ma wiersza parametru.
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-parametr-P-1-break_time_s')).toBeNull();
+  });
+
+  it('PARAMETR NIE DOTYCZY (brak wartości i propozycji) → powód z backendu, bez akcji zmiany', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        czas_wylaczenia: {
+          t_clearing_s: null,
+          zrodlo: 'nastawy_pola',
+          powod_pl: 'Zabezpieczenie otwiera aparat, który nie wyłącza zwarcia.',
           czlon_nastawczy_s: 0.3,
           czas_wlasny_wylacznika_s: null,
-          zalozenia_pl: ['Karta katalogowa aparatu nie niesie czasu własnego.'],
+          czas_wlasny: parametr('break_time_s', 'czas własny wyłączania wyłącznika', null, 's', null, {
+            powod_braku_pl: 'czas własny wyłączania nie dotyczy tego rodzaju aparatu',
+            opis_zrodla_pl: 'czas własny wyłączania nie dotyczy tego rodzaju aparatu',
+          }),
+          zalozenia_pl: [],
           kody_gotowosci: ['aparatura.brak_czasu_wlasnego_wylacznika'],
         },
       }),
     ]);
 
-    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    render(
+      <WeryfikacjaAparatury
+        wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
+        punktNazwa="Szyna"
+        onZmienWartosc={() => undefined}
+      />,
+    );
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
-    const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
-    expect(czas.textContent).toContain('Karta katalogowa aparatu nie niesie czasu własnego.');
+    const czasWlasny = await screen.findByTestId('mvd-zwarcia-aparatura-parametr-P-1-break_time_s');
+    expect(czasWlasny.getAttribute('data-pochodzenie')).toBe('brak');
+    expect(czasWlasny.textContent).toContain('nie dotyczy tego rodzaju aparatu');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-zmien-P-1-break_time_s')).toBeNull();
+  });
+
+  it('APARAT Z KONFIGURACJI STACJI → bez akcji „Zmień wartość” (nośnikiem nie jest element modelu)', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({ zrodlo: 'konfiguracja' })]);
+
+    render(
+      <WeryfikacjaAparatury
+        wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
+        punktNazwa="Szyna"
+        onZmienWartosc={() => undefined}
+      />,
+    );
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    await screen.findByTestId('mvd-zwarcia-aparatura-parametr-P-1-i_th_ka');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-zmien-P-1-i_th_ka')).toBeNull();
   });
 
   it('WERDYKT NEGATYWNY z backendu jest pokazywany bez tłumaczenia na własne słowa', async () => {
@@ -362,6 +519,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
           powod_pl: 'Czas wyłączenia nie jest ustalony.',
           czlon_nastawczy_s: null,
           czas_wlasny_wylacznika_s: null,
+          czas_wlasny: null,
           zalozenia_pl: [],
           kody_gotowosci: [],
         },

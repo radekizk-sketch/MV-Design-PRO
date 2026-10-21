@@ -40,7 +40,7 @@ import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicke
 import type {
   CTCatalogType,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
   ProtectionDeviceType,
   TransformerType,
   VTCatalogType,
@@ -276,7 +276,7 @@ export function KreatorStacjiSnNn() {
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
   const [bladRozdzielnicy, setBladRozdzielnicy] = useState<string | null>(null);
-  const [aparaty, setAparaty] = useState<MVApparatusCatalogType[]>([]);
+  const [aparaty, setAparaty] = useState<MVApparatusType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   // Tor BLOK_RMU — konfiguracje fabryczne WYBRANEJ rodziny (subzasób katalogu).

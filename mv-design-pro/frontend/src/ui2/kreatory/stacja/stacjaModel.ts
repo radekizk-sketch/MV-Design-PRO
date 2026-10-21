@@ -48,7 +48,7 @@ import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTempla
 import type {
   CatalogNamespace,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
@@ -991,10 +991,10 @@ export function czyAparaturaKompletna(snFields: readonly StationSnFieldTemplate[
  * kreator nie zgaduje ograniczeń, których backend nie deklaruje.
  */
 export function aparatyDlaPola(
-  aparaty: readonly MVApparatusCatalogType[],
+  aparaty: readonly MVApparatusType[],
   snVoltageKv: number,
   rodzajeDlaRoli: readonly string[] = [],
-): MVApparatusCatalogType[] {
+): MVApparatusType[] {
   const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty
     .filter((a) => !(snVoltageKv > 0) || a.u_n_kv + 1e-6 >= snVoltageKv)

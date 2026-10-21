@@ -28,6 +28,10 @@ from network_model.catalog.audit2_catalogs import (
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
+from network_model.catalog.wartosci_robocze import (
+    PARAMETRY_APARATU_SN,
+    blad_wartosci_projektanta,
+)
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
@@ -554,6 +558,10 @@ INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
         "punkt rozgałęzienia: _branch_point_catalog_item (własny katalog obiektów)"
     ),
     "assign_catalog_to_element": "przypisanie pozycji do elementu: _brama_katalogowa_przypisania",
+    "update_element_parameters": (
+        "aparat SN po wyczyszczeniu wartości projektanta (powrót do karty): "
+        "_brama_katalogowa_aparatu_sn"
+    ),
 }
 
 
@@ -576,7 +584,10 @@ def _apply_catalog_metadata(
 
     if default_source_mode:
         target["source_mode"] = default_source_mode
-        target["parameter_source"] = "CATALOG"
+        # Wartości projektanta (`overrides`) należą do elementu i przeżywają (prze)przypisanie
+        # pozycji — znacznik zostaje wtedy OVERRIDE (E010), jedno źródło prawdy dla wszystkich
+        # wołających zapisywacza.
+        target["parameter_source"] = "OVERRIDE" if target.get("overrides") else "CATALOG"
 
     version = _extract_catalog_binding_version(catalog_binding)
     if version:
@@ -5797,7 +5808,7 @@ def _przypisz_aparat_pola_sprzeglu(
         if isinstance(galaz, dict) and galaz.get("ref_id") == coupler_ref:
             galaz["catalog_ref"] = catalog_ref
             galaz["catalog_namespace"] = "APARAT_SN"
-            galaz["parameter_source"] = "CATALOG"
+            galaz["parameter_source"] = "OVERRIDE" if galaz.get("overrides") else "CATALOG"
             galaz["source_mode"] = "KATALOG"
             galaz["materialized_params"] = copy.deepcopy(apparatus_params)
             galaz["tags"] = sorted({*(galaz.get("tags") or []), "station_field_device"})
@@ -10054,7 +10065,12 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         # `source_mode` z payloadu pozwalał wcześniej opisać pochodzenie inaczej,
         # niż wynika ze stanu faktycznego (kable i transformatory i tak je gubiły).
         target_element["catalog_ref"] = catalog_item_id
-        target_element["parameter_source"] = "CATALOG"
+        # Wartości projektanta (`overrides`) należą do ELEMENTU, nie do pozycji katalogu —
+        # zmiana pozycji ich nie kasuje, więc znacznik zostaje OVERRIDE (E010: niepuste
+        # nadpisania bez OVERRIDE są blokadą walidatora).
+        target_element["parameter_source"] = (
+            "OVERRIDE" if target_element.get("overrides") else "CATALOG"
+        )
         target_element["source_mode"] = "KATALOG"
         target_element["materialized_params"] = tabliczka_przypisania
         if catalog_namespace:
@@ -10131,6 +10147,46 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 # 10. update_element_parameters
 # ---------------------------------------------------------------------------
+
+
+def _nadpisania_aparatu_sn(
+    surowe: object,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Lista wartości projektanta aparatu SN w postaci znormalizowanej albo powód odmowy.
+
+    Wpis: ``{"key": parametr rejestru, "value": liczba, "reason": napis | None}``. Klucz
+    powtórzony jest odmową (dwie wartości jednego parametru to sprzeczność, nie wybór).
+    Kolejność wyniku — ``PARAMETRY_APARATU_SN`` (determinizm zapisu).
+    """
+    if not isinstance(surowe, list):
+        return [], (
+            f"Pole {pole('overrides', 'update_element_parameters')}: wartości projektanta "
+            "aparatu SN podaje się jako listę wpisów {key, value, reason}."
+        )
+    po_kluczu: dict[str, dict[str, Any]] = {}
+    for wpis in surowe:
+        if not isinstance(wpis, dict):
+            return [], "Wpis wartości projektanta aparatu SN musi mieć postać {key, value, reason}."
+        klucz = wpis.get("key")
+        wartosc = wpis.get("value")
+        blad = blad_wartosci_projektanta(klucz, wartosc)
+        if blad is not None:
+            return [], blad
+        if not isinstance(klucz, str) or not isinstance(wartosc, int | float):
+            raise AssertionError("brama rejestru przepuściła wpis spoza kontraktu")
+        if klucz in po_kluczu:
+            return [], (
+                f"Parametr „{klucz}” podano dwukrotnie — aparat ma jedną wartość parametru."
+            )
+        powod = wpis.get("reason")
+        if powod is not None and not isinstance(powod, str):
+            return [], f"Uzasadnienie wartości parametru „{klucz}” musi być tekstem."
+        po_kluczu[klucz] = {
+            "key": klucz,
+            "value": float(wartosc),
+            "reason": (powod.strip() or None) if isinstance(powod, str) else None,
+        }
+    return [po_kluczu[k] for k in PARAMETRY_APARATU_SN if k in po_kluczu], None
 
 
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -10448,6 +10504,31 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
         if blad_ekranu is not None:
             return blad_ekranu
+    # Zasada nr 4 (V12K-351): wartości robocze aparatu SN nadane przez projektanta niesie
+    # `overrides` gałęzi z wiązaniem APARAT_SN — JEDEN walidator z rejestrem wartości roboczych
+    # (parametr z rejestru, liczba w zakresie), postać znormalizowana i `parameter_source`
+    # spójne z listą (E010: nadpisanie bez OVERRIDE jest blokadą walidatora).
+    if coll == "branches" and "overrides" in parameters:
+        przestrzen = parameters.get("catalog_namespace", current_element.get("catalog_namespace"))
+        if przestrzen == "APARAT_SN":
+            nadpisania, blad_nadpisan = _nadpisania_aparatu_sn(parameters["overrides"])
+            if blad_nadpisan is not None:
+                return _error_response(blad_nadpisan, "params.override_invalid")
+            katalog_aparatu = parameters.get("catalog_ref", current_element.get("catalog_ref"))
+            if nadpisania:
+                parameters = {**parameters, "overrides": nadpisania, "parameter_source": "OVERRIDE"}
+            elif isinstance(katalog_aparatu, str) and katalog_aparatu.strip():
+                # Powrót do karty po wyczyszczeniu wartości projektanta: znacznik CATALOG
+                # wolno postawić WYŁĄCZNIE na wyniku bramy katalogowej aparatu (inwentarz
+                # deklaracji) — pozycja spoza katalogu jest odmową, nie „tabliczką znikąd".
+                brama_aparatu = _brama_katalogowa_aparatu_sn(
+                    katalog_aparatu, opis_pl="Aparat łączeniowy SN"
+                )
+                if isinstance(brama_aparatu, dict):
+                    return brama_aparatu
+                parameters = {**parameters, "overrides": [], "parameter_source": "CATALOG"}
+            else:
+                parameters = {**parameters, "overrides": [], "parameter_source": None}
 
     # Decyzja O-53 (jedna tabliczka, jedna kontrola): zmiana TYPU źródła przekształtnikowego
     # przez aktualizację parametrów idzie tą samą drogą co przypisanie typu — materializacja
@@ -10455,11 +10536,20 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     # moc transformatora), liczony na STANIE KOŃCOWYM (pozostałe parametry zapisane
     # wcześniej). Wcześniej `catalog_ref` zmieniał się bez przematerializowania tabliczki,
     # więc model deklarował typ, którego parametrów nie niósł.
+    # Ta sama klasa dla każdego elementu z obowiązkowym wiązaniem katalogowym (gałęzie,
+    # w tym aparaty SN, transformatory, punkty rozgałęzienia): zmiana `catalog_ref`
+    # aktualizacją parametrów przechodzi bramę przypisania i materializację tabliczki —
+    # inaczej element deklarowałby pozycję, której w katalogu może nie być.
     zmiana_typu_zrodla = (
-        coll == "generators"
-        and "catalog_ref" in parameters
+        "catalog_ref" in parameters
         and parameters.get("catalog_ref") != current_element.get("catalog_ref")
-        and str(current_element.get("gen_type") or "") in GEN_TYPES_PRZEKSZTALTNIKOWE
+        and (
+            coll in catalog_guard_collections
+            or (
+                coll == "generators"
+                and str(current_element.get("gen_type") or "") in GEN_TYPES_PRZEKSZTALTNIKOWE
+            )
+        )
     )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -10476,7 +10566,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             {
                 "element_ref": element_ref,
                 "catalog_item_id": parameters.get("catalog_ref"),
-                "catalog_namespace": current_element.get("catalog_namespace"),
+                "catalog_namespace": parameters.get(
+                    "catalog_namespace", current_element.get("catalog_namespace")
+                ),
             },
         )
 

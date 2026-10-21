@@ -201,7 +201,7 @@ def test_dowod_sc3f_przez_zf_deterministyczny(etykieta: str) -> None:
 )
 def test_wejscie_sc3f_para_zf_i_petli_tylko_razem(para: dict[str, complex]) -> None:
     wejscie = _wejscie_sc3f(None)
-    with pytest.raises(ValueError, match="wyłącznie razem"):
+    with pytest.raises(AssertionError, match="wyłącznie razem"):
         dataclasses.replace(wejscie, **para)
 
 
@@ -303,7 +303,7 @@ def test_dowod_sc1_odmawia_wielkosci_innej_zf(
 ) -> None:
     """Jedna prawda Z_f: dowód nie formatuje wielkości policzonych dla innej Z_f."""
     wejscie = _wejscie_sc1(rodzaj, z_f_wielkosci, z_f_dowodu=z_f_dowodu)
-    with pytest.raises(ValueError, match="innej impedancji przejścia"):
+    with pytest.raises(AssertionError, match="innej impedancji przejścia"):
         ProofGenerator.generate_sc1_proof(wejscie, artifact_id=ARTEFAKT)
 
 

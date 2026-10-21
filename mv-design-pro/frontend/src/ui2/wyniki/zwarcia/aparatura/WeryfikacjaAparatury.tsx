@@ -21,6 +21,13 @@
  * wejścia i pokazuje `message_pl` backendu. Trzy stany werdyktu (wytrzymuje /
  * nie wytrzymuje / NIEUSTALONE) są odwzorowane 1:1 z sekcji K7-B: „nieustalone"
  * to brak podstawy, a nie ocena negatywna.
+ *
+ * WARTOŚCI ROBOCZE (zasada nr 4, V12K-351): brak danej karty aparatu (czas własny, I_p, t_k)
+ * nie zatrzymuje oceny — backend przyjmuje wartość roboczą z jawnym źródłem. Wiersz pola
+ * pokazuje każdy parametr z pochodzeniem; wartość robocza ma etykietę „wartość robocza”, opis
+ * źródła i wpływu oraz akcję „Zmień wartość”, która otwiera kreator edycji parametrów aparatu
+ * (zapis na elemencie modelu, przeliczenie). Bez banerów — status i kompletność dowodu niesie
+ * karta werdyktu (dane przyjęte w szczegółach kryterium).
  */
 
 import { useEffect, useState } from 'react';
@@ -30,8 +37,13 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { KartaWerdyktu } from '../../wzorzec';
-import { fmtCzas, fmtKA } from '../strings';
-import { pobierzWytrzymaloscAparatury, znacznikWerdyktu, type PoleWytrzymalosci } from './api';
+import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
+import {
+  pobierzWytrzymaloscAparatury,
+  znacznikWerdyktu,
+  type PoleWytrzymalosci,
+  type WartoscParametruAparatu,
+} from './api';
 import {
   nazwaStacji,
   powodBrakuPodstawy,
@@ -55,6 +67,8 @@ export interface WeryfikacjaAparaturyProps {
   readonly punktNazwa: string;
   /** Przejście do konfiguracji stacji (akcja naprawcza stanu zerowego). */
   readonly onOtworzKonfiguracjeStacji?: (stationRef: string) => void;
+  /** „Zmień wartość” parametru aparatu z modelu → kreator edycji parametrów aparatu. */
+  readonly onZmienWartosc?: (aparatRef: string, aparatNazwa: string, parametr: string) => void;
 }
 
 /** Etykieta źródła aparatu — inżynier musi wiedzieć, co ocenia. */
@@ -147,11 +161,92 @@ function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
   );
 }
 
+/** Parametry aparatu z backendu w stałej kolejności: czas własny, I_k, t_k, I_p. */
+function parametryPola(pole: PoleWytrzymalosci): WartoscParametruAparatu[] {
+  const wartosci = pole.znamiona?.wartosci ?? {};
+  return [
+    pole.czas_wylaczenia.czas_wlasny,
+    wartosci.i_th_ka,
+    wartosci.i_th_duration_s,
+    wartosci.i_dyn_ka,
+  ].filter((w): w is WartoscParametruAparatu => w !== null && w !== undefined);
+}
+
+function opisPochodzenia(w: WartoscParametruAparatu): string {
+  if (w.pochodzenie === 'KATALOG') return T.pochodzenieKatalog;
+  if (w.pochodzenie === 'PROPOZYCJA') return T.pochodzeniePropozycja;
+  if (w.pochodzenie === 'PROJEKTANT') return T.pochodzenieProjektant;
+  return T.pochodzenieBrak;
+}
+
+/**
+ * Parametry aparatu użyte w ocenie — każda liczba z pochodzeniem; wartość robocza z etykietą,
+ * opisem źródła i wpływu (tekst backendu) oraz akcją „Zmień wartość” dla aparatu z modelu.
+ */
+function ParametryAparatu({
+  pole,
+  onZmienWartosc,
+}: {
+  readonly pole: PoleWytrzymalosci;
+  readonly onZmienWartosc?: WeryfikacjaAparaturyProps['onZmienWartosc'];
+}) {
+  const parametry = parametryPola(pole);
+  if (parametry.length === 0) return null;
+  const aparatRef = pole.zrodlo === 'model' ? pole.aparat_ref : null;
+  return (
+    <div className="mvd-apar-czas" data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
+      <span className="mvd-apar-parametry-tytul">{T.parametryTytul}</span>
+      <ul className="mvd-apar-parametry">
+        {parametry.map((w) => (
+          <li
+            key={w.parametr}
+            className="mvd-apar-parametr"
+            data-testid={`mvd-zwarcia-aparatura-parametr-${pole.pole}-${w.parametr}`}
+            data-pochodzenie={w.pochodzenie ?? 'brak'}
+            data-wartosc-robocza={String(w.wartosc_robocza)}
+          >
+            <span className="mvd-apar-parametr-nazwa">{w.nazwa_pl}</span>
+            <span className="mvd-num">
+              {w.wartosc === null ? T.kreska : `${fmtLiczba(w.wartosc, 3)} ${w.jednostka}`}
+            </span>
+            {w.wartosc_robocza && (
+              <span
+                className="mvd-apar-parametr-robocza"
+                data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
+              >
+                {T.etykietaRobocza}
+              </span>
+            )}
+            <span className="mvd-apar-parametr-pochodzenie">{opisPochodzenia(w)}</span>
+            {aparatRef !== null && w.pochodzenie !== null && onZmienWartosc && (
+              <button
+                type="button"
+                className="mvd-apar-akcja mvd-apar-akcja--wtorna"
+                data-testid={`mvd-zwarcia-aparatura-zmien-${pole.pole}-${w.parametr}`}
+                onClick={() =>
+                  onZmienWartosc(aparatRef, pole.aparat_nazwa ?? aparatRef, w.parametr)
+                }
+              >
+                {T.zmienWartosc}
+              </button>
+            )}
+            {w.wartosc_robocza && <p className="mvd-apar-czas-zalozenie">{w.opis_zrodla_pl}</p>}
+            {w.wartosc === null && w.powod_braku_pl !== null && (
+              <p className="mvd-apar-czas-powod">{w.powod_braku_pl}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function WeryfikacjaAparatury({
   wiersz,
   runId,
   punktNazwa,
   onOtworzKonfiguracjeStacji,
+  onZmienWartosc,
 }: WeryfikacjaAparaturyProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -302,6 +397,7 @@ export function WeryfikacjaAparatury({
               </span>
               <PradyPola pole={w} />
               <RozbicieCzasu pole={w} />
+              <ParametryAparatu pole={w} onZmienWartosc={onZmienWartosc} />
               {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
                   wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). */}
               <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>

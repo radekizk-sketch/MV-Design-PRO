@@ -32,6 +32,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.wartosci_robocze import pochodzenie_danej_karty
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
@@ -2889,34 +2890,10 @@ class SynchronousGeneratorType:
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
 
-#: Znormalizowany stosunek prądu dynamicznego (szczytowego) do prądu
-#: wytrzymywanego krótkotrwale dla APARATURY ROZDZIELCZEJ SN przy 50 Hz:
-#: I_dyn = 2,5 · I_th (IEC 62271-1 § 4.101 / PN-EN 62271-200 — szereg
-#: wytrzymałości rozdzielnicy SN; ta sama relacja, którą katalog CT stosuje na
-#: podstawie IEC 61869-2, ale wyprowadzona z INNEJ normy i dlatego zapisana
-#: osobno — dwie liczby 2,5 o różnych podstawach normatywnych nie mogą dzielić
-#: jednej stałej, bo cytat przestałby być prawdziwy).
-#:
-#: Dzięki tej relacji I_dyn NIE JEST daną do zgadywania: pozycja bez jawnej
-#: wartości producenta dostaje wartość WYPROWADZONĄ, oznaczoną pochodzeniem
-#: ``derived_iec62271`` (KD-6 poz. 1). Brak I_th ⇒ brak I_dyn (``None``).
-WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN: float = 2.5
-
-#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN.
-POCHODZENIE_PRODUCENT = "producent"
-POCHODZENIE_REFERENCYJNY = "referencyjny"
-POCHODZENIE_DERYWACJA_IEC62271 = "derived_iec62271"
-
-
-def idyn_aparatu_sn_z_ith(ith_ka: float | None) -> float | None:
-    """Prąd dynamiczny aparatu SN wyprowadzony z prądu wytrzymywanego krótkotrwale.
-
-    ``None`` na wejściu daje ``None`` na wyjściu: brak danej nie zamienia się
-    w wartość (ta sama zasada, co ``idyn_ct_z_ith`` dla przekładników).
-    """
-    if ith_ka is None or ith_ka <= 0:
-        return None
-    return round(ith_ka * WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN, 3)
+#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN — JEDNA reguła w rejestrze wartości
+#: roboczych (``wartosci_robocze.pochodzenie_danej_karty``). Relacja normowa I_p = 2,5·I_k NIE
+#: żyje w pozycji katalogu: wartość pochodna innego pola karty jest PROPOZYCJĄ wartości
+#: roboczej, nie daną producenta (kontrakt werdyktu §3c pkt 1 i 4, V12K-351).
 
 
 @dataclass(frozen=True)
@@ -2934,8 +2911,9 @@ class MVApparatusType:
         manufacturer: Manufacturer (optional).
         i_th_ka: Prąd wytrzymywany krótkotrwale [kA] — DANA TABLICZKOWA aparatu.
         i_th_duration_s: Czas odniesienia prądu cieplnego [s] (zwykle 1 s).
-        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — jawna wartość producenta;
-            ``None`` ⇒ wyprowadzenie normowe 2,5 · I_th w ``to_dict``.
+        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — wyłącznie jawna wartość karty;
+            ``None`` = karta jej nie podaje (propozycję 2,5·I_th niesie rejestr wartości
+            roboczych, nie pozycja katalogu).
     """
 
     id: str
@@ -2950,20 +2928,24 @@ class MVApparatusType:
     #: TABLICZKOWE (karta katalogowa producenta), więc ich miejscem jest pozycja
     #: katalogu, nie konfiguracja stacji: bez nich pole z aparatem z modelu nie
     #: dawało się sprawdzić i cały tor kończył się „nieustalone".
-    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i MUSI zostać
-    #: ``None`` — przelicznik z prądu łączeniowego (``ik_ka``) byłby zgadywaniem.
+    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i ZOSTAJE ``None`` — katalog
+    #: niesie wyłącznie dane ze źródłem. Brak danej nie blokuje jednak obliczeń (zasada nr 4,
+    #: V12K-351): wartość ROBOCZĄ z jawnym źródłem (profil, norma, założenie) proponuje rejestr
+    #: ``network_model/catalog/wartosci_robocze.py``, a projektant może nadać własną na
+    #: elemencie modelu. Wartość robocza nigdy nie jest zapisywana w tej pozycji.
     i_th_ka: float | None = None
     i_th_duration_s: float | None = None
     i_dyn_ka: float | None = None
     #: KD-6 poz. 3 — CZAS WŁASNY aparatu [s] (rated break time, IEC 62271-100
     #: § 3.7.145: od pobudzenia wyzwalacza do przerwania łuku we wszystkich
     #: biegunach). Składnik czasu wyłączenia zwarcia obok członu nastawczego
-    #: zabezpieczenia. Dana WYŁĄCZNIE producencka — normy podają szereg wartości
-    #: znamionowych, ale NIE przypisują ich modelowi, więc wyprowadzić się jej
-    #: nie da. `None` = karta katalogowa tej danej jeszcze nie wniosła; wtedy
-    #: czasu wyłączenia NIE MA (kod `aparatura.brak_czasu_wlasnego_wylacznika`) —
-    #: sam człon nastawczy zaniżałby czas i zawyżał limit cieplny aparatu
-    #: (karta WYTRZYMALOSC-PRAD-POLA).
+    #: zabezpieczenia. Dana producencka — IEC 62271-100 definiuje czas wyłączania, ale nie
+    #: przypisuje mu wartości, więc pole pozycji zostaje `None`, dopóki karta producenta jej
+    #: nie wniesie. Czasu wyłączenia to jednak nie blokuje (zasada nr 4, V12K-351): człon
+    #: nastawczy powiększa WARTOŚĆ ROBOCZA czasu własnego z rejestru
+    #: `wartosci_robocze.py` (profil typowy wyłącznika próżniowego SN) albo wartość nadana
+    #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
+    #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
@@ -2972,24 +2954,12 @@ class MVApparatusType:
     verification_note: str | None = None
 
     def pochodzenie_i_th(self) -> str | None:
-        """Skąd pochodzi I_th tej pozycji (``None`` = danej nie ma).
-
-        Rekord z NAZWANYM producentem niesie odczyt z karty katalogowej;
-        rekord bez producenta (szereg generyczny PN-EN 62271) niesie wartość
-        REFERENCYJNĄ normy. Rozróżnienie jest odczytem metadanych pozycji, nie
-        oceną — dlatego wolno je wyprowadzić.
-        """
-        if self.i_th_ka is None:
-            return None
-        return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+        """Skąd pochodzi I_th tej pozycji (``None`` = karta tej danej nie niesie)."""
+        return None if self.i_th_ka is None else pochodzenie_danej_karty(self.manufacturer)
 
     def pochodzenie_i_dyn(self) -> str | None:
-        """Skąd pochodzi I_dyn tej pozycji (``None`` = danej nie da się ustalić)."""
-        if self.i_dyn_ka is not None:
-            return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
-        if idyn_aparatu_sn_z_ith(self.i_th_ka) is None:
-            return None
-        return POCHODZENIE_DERYWACJA_IEC62271
+        """Skąd pochodzi I_dyn tej pozycji (``None`` = karta tej danej nie niesie)."""
+        return None if self.i_dyn_ka is None else pochodzenie_danej_karty(self.manufacturer)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3001,15 +2971,12 @@ class MVApparatusType:
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "making_capacity_ka": self.making_capacity_ka,
             "manufacturer": self.manufacturer,
-            # Znamiona wytrzymałości: wartość producenta ma pierwszeństwo, w jej
-            # braku wyprowadzenie normowe 2,5 · I_th (IEC 62271-1) — z JAWNYM
-            # pochodzeniem, żeby odbiorca wiedział, co czyta.
+            # Znamiona wytrzymałości: WYŁĄCZNIE dane karty z pochodzeniem. Wartości
+            # robocze (np. I_p = 2,5·I_k) niesie rejestr `wartosci_robocze`, nie pozycja.
             "i_th_ka": self.i_th_ka,
             "i_th_duration_s": self.i_th_duration_s,
             "i_th_pochodzenie": self.pochodzenie_i_th(),
-            "i_dyn_ka": (
-                self.i_dyn_ka if self.i_dyn_ka is not None else idyn_aparatu_sn_z_ith(self.i_th_ka)
-            ),
+            "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
             **_catalog_metadata_to_dict(
@@ -3046,16 +3013,7 @@ class MVApparatusType:
             i_th_duration_s=(
                 float(data["i_th_duration_s"]) if data.get("i_th_duration_s") is not None else None
             ),
-            # Wartość WYPROWADZONA nie wraca jako wartość producenta: zapis
-            # `to_dict` niesie wynik derywacji razem z jej pochodzeniem, więc
-            # przy odczycie odrzucamy go i pozwalamy wyprowadzić się na nowo
-            # (inaczej obieg zapis→odczyt awansowałby derywację na tabliczkę).
-            i_dyn_ka=(
-                float(data["i_dyn_ka"])
-                if data.get("i_dyn_ka") is not None
-                and data.get("i_dyn_pochodzenie") != POCHODZENIE_DERYWACJA_IEC62271
-                else None
-            ),
+            i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
             ),

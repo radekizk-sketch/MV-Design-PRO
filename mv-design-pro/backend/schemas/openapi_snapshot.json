@@ -21651,7 +21651,7 @@
   },
   "/api/catalog/mv-apparatus-types": {
    "get": {
-    "description": "List all MV apparatus types from the canonical MV catalog.",
+    "description": "Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.\n\n``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni\nparametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja\nkatalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.",
     "operationId": "list_mv_apparatus_types_api_catalog_mv_apparatus_types_get",
     "responses": {
      "200": {

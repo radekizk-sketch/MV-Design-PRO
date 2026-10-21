@@ -27,13 +27,21 @@ WARSTWA APLIKACJI — ZERO FIZYKI WŁASNEJ:
 
 WERDYKT WYJAŚNIALNY: każdy wiersz niesie dwa rekordy K (``werdykt.OcenaKryterium``) —
 dynamiczny ``i_p ≤ I_dyn`` i cieplny ``I_th ≤ I_th,zn·√(min(1, t_zn/t_k))`` — z prądem, czasem,
-limitem, marginesem i przyczyną braku. Brak czasu wyłączenia (w tym brak czasu własnego
-aparatu) daje ``BRAK_PODSTAWY`` kryterium cieplnego z nazwaną przyczyną, nigdy ``SPELNIA``;
-brak prądu pola w biegu daje ``NIE_OCENIONO``.
+limitem, marginesem i przyczyną braku. Brak czasu wyłączenia z powodu braku MODELU (brak nastaw,
+wyłącznik poza polem) daje ``BRAK_PODSTAWY`` kryterium cieplnego z nazwaną przyczyną, nigdy
+``SPELNIA``; brak prądu pola w biegu daje ``NIE_OCENIONO``.
 
-ZERO FABRYKACJI: pozycja katalogu bez znamion wytrzymałości daje werdykt
-„NIEUSTALONE" z kodem gotowości — nigdy przelicznika z prądu łączeniowego ani
-werdyktu negatywnego. Brak danej to inny stan niż „nie wytrzymuje".
+WARTOŚCI ROBOCZE (zasada nr 4, kontrakt werdyktu §3c, V12K-351). Brak parametru URZĄDZENIA w
+karcie (czas własny wyłącznika, I_k, t_k, I_p) nie blokuje oceny: znamiona i czas własny
+pochodzą z JEDNEGO rozstrzygnięcia ``aparaty_pol.parametry_aparatu`` (projektant > karta >
+propozycja rejestru), status kryterium wynika z liczb, a każda wartość robocza stoi w
+``dane_przyjete`` (jakość ``ESTIMATED``, stan danych ``UNVALIDATED_INPUT``, kompletność
+``NIEPELNY``). Podstawa limitu na wartości roboczej nigdy nie jest ``KATALOG_PRODUCENTA``.
+
+ZERO FABRYKACJI: parametr, dla którego rejestr nie zna uzasadnionej propozycji (np. prąd
+krótkotrwały rozłącznika bezpiecznikowego — wytrzymałość zestawu wyznacza wkładka), daje
+„NIEUSTALONE" z kodem gotowości — nigdy werdykt negatywny. Brak danej to inny stan niż
+„nie wytrzymuje".
 
 DETERMINIZM: pola sortowane po (oznaczenie, referencja aparatu); wiersze z
 konfiguracji po oznaczeniu. Ten sam model + ta sama konfiguracja + te same
@@ -46,7 +54,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
+from application.analyses.aparaty_pol import (
+    AparatPola,
+    aparaty_pol_stacji,
+    dana_przyjeta,
+    parametry_aparatu,
+    znajdz_stacje,
+)
 from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczenia_pol_stacji
 from application.field_read_model import collect_bays
 from enm.mapping import ref_to_graph_id
@@ -54,14 +68,22 @@ from enm.models import Bay, EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu, opis_bez_nazwy
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.catalog.wartosci_robocze import (
+    DOKUMENT_REJESTRU,
+    PARAMETR_I_DYN,
+    PARAMETR_I_TH,
+    PARAMETR_T_TH,
+    WYDANIE_REJESTRU,
+    WartoscRozstrzygnieta,
+)
 from network_model.nazwy import nazwa_nadana
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
+    DanaPrzyjeta,
     Kryterium,
     LimitKryterium,
     Niepewnosc,
@@ -218,24 +240,48 @@ def _oznaczenie_glowne(bay: Bay) -> str:
     return (bay.bay_number or nazwa_elementu(bay, "bays")).strip()
 
 
-def _znamiona_z_aparat_sn(catalog_ref: str) -> tuple[dict[str, Any] | None, str | None]:
-    """Znamiona wytrzymałości pozycji APARAT_SN + etykieta pozycji.
+#: Pochodzenie znamienia w odpowiedzi — dla danej karty pochodzenie karty (producent /
+#: referencyjny), dla wartości roboczej jej rodzaj (projektant / wartość robocza).
+POCHODZENIE_PROJEKTANT = "projektant"
+POCHODZENIE_WARTOSC_ROBOCZA = "wartosc_robocza"
 
-    ``(None, None)`` = pozycji nie ma w katalogu (aparat spoza katalogu).
+
+def _pochodzenie_znamienia(wartosc: WartoscRozstrzygnieta) -> str | None:
+    if wartosc.pochodzenie == "KATALOG":
+        return wartosc.pochodzenie_karty
+    if wartosc.pochodzenie == "PROJEKTANT":
+        return POCHODZENIE_PROJEKTANT
+    if wartosc.pochodzenie == "PROPOZYCJA":
+        return POCHODZENIE_WARTOSC_ROBOCZA
+    return None
+
+
+def _znamiona_z_aparat_sn(aparat: AparatPola) -> tuple[dict[str, Any] | None, str | None]:
+    """Znamiona wytrzymałości aparatu pola z JEDNEGO rozstrzygnięcia + etykieta pozycji.
+
+    ``(None, None)`` = pozycji nie ma w katalogu (aparat spoza katalogu). Każda liczba niesie
+    pochodzenie; ``wartosci`` — pełne rozstrzygnięcie (wartość, pochodzenie, propozycja ze
+    źródłem i wpływem) trzech znamion, z którego biorą się dane przyjęte werdyktu.
     """
-    pozycja = get_default_mv_catalog().get_mv_apparatus_type(catalog_ref)
+    pozycja, parametry = parametry_aparatu(aparat)
     if pozycja is None:
         return None, None
-    zapis = pozycja.to_dict()
+    i_th, t_th, i_dyn = (
+        parametry[PARAMETR_I_TH],
+        parametry[PARAMETR_T_TH],
+        parametry[PARAMETR_I_DYN],
+    )
     return (
         {
-            "i_dyn_ka": zapis["i_dyn_ka"],
-            "i_dyn_pochodzenie": zapis["i_dyn_pochodzenie"],
-            "i_th_ka": zapis["i_th_ka"],
-            "i_th_duration_s": zapis["i_th_duration_s"],
-            "i_th_pochodzenie": zapis["i_th_pochodzenie"],
+            "i_dyn_ka": i_dyn.wartosc,
+            "i_dyn_pochodzenie": _pochodzenie_znamienia(i_dyn),
+            "i_th_ka": i_th.wartosc,
+            "i_th_duration_s": t_th.wartosc,
+            "i_th_pochodzenie": _pochodzenie_znamienia(i_th),
+            "i_th_duration_pochodzenie": _pochodzenie_znamienia(t_th),
+            "wartosci": {w.parametr: w.to_dict() for w in (i_th, t_th, i_dyn)},
         },
-        str(zapis["name"]),
+        pozycja.name,
     )
 
 
@@ -253,6 +299,8 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
             "i_th_ka": pozycja.i_th_1s_ka,
             "i_th_duration_s": pozycja.i_th_duration_s,
             "i_th_pochodzenie": "producent",
+            "i_th_duration_pochodzenie": "producent",
+            "wartosci": {},
         },
         pozycja.label_pl,
     )
@@ -310,10 +358,59 @@ _NIEPEWNOSC_POROWNANIA = Niepewnosc(
 )
 
 
+def _podstawa_wartosci_roboczej(
+    zapis: dict[str, Any], etykieta: str, wielkosc: str
+) -> PodstawaWymagania:
+    """Podstawa LIMITU opartego na wartości roboczej — nigdy ``KATALOG_PRODUCENTA`` (§3c pkt 4).
+
+    Propozycja normowa cytuje normę (relacja albo wartość zalecana z punktem normy), propozycja
+    z profilu albo założenia — rejestr wartości roboczych, wartość projektanta — model sieci.
+    Każda z nich jest WSKAZANA (źródło nazwane), a niepełność dowodu niesie dana przyjęta.
+    """
+    propozycja = zapis.get("propozycja")
+    if zapis.get("pochodzenie") == "PROPOZYCJA" and isinstance(propozycja, dict):
+        if propozycja["rodzaj_zrodla"] == "NORMA":
+            return PodstawaWymagania(
+                rodzaj="NORMA",
+                dokument=_IEC_62271_1,
+                wydanie="2017",
+                jednostka_redakcyjna=str(propozycja["odniesienie"]),
+                status="WSKAZANE",
+                uwagi_pl=(
+                    f"wartość robocza pozycji „{etykieta}” (karta jej nie podaje): "
+                    f"{propozycja['uzasadnienie_pl']} — nie dana producenta"
+                ),
+            )
+        return PodstawaWymagania(
+            rodzaj="ZALOZENIE_PROJEKTOWE",
+            dokument=DOKUMENT_REJESTRU,
+            wydanie=WYDANIE_REJESTRU,
+            jednostka_redakcyjna=f"{zapis['nazwa_pl']} ({propozycja['rodzaj_zrodla']})",
+            status="WSKAZANE",
+            uwagi_pl=(
+                f"wartość robocza pozycji „{etykieta}” (karta jej nie podaje): "
+                f"{propozycja['odniesienie']} — nie dana producenta"
+            ),
+        )
+    return PodstawaWymagania(
+        rodzaj="ZALOZENIE_PROJEKTOWE",
+        dokument=f"wartość nadana przez projektanta na elemencie modelu (aparat „{etykieta}”)",
+        wydanie="bieżący stan modelu sieci",
+        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {_PARAGRAF_ZNAMIENIA[wielkosc]}",
+        status="WSKAZANE",
+        uwagi_pl=zapis.get("powod_projektanta_pl") or "wartość robocza projektanta bez dokumentu",
+    )
+
+
 def _podstawa_znamienia(
-    pochodzenie: str | None, etykieta: str, wielkosc: str
+    pochodzenie: str | None,
+    etykieta: str,
+    wielkosc: str,
+    zapis_roboczy: dict[str, Any] | None = None,
 ) -> PodstawaWymagania | None:
     """Podstawa LIMITU — skąd pochodzi znamię aparatu (``None`` = znamienia nie ma)."""
+    if zapis_roboczy is not None and zapis_roboczy.get("wartosc_robocza"):
+        return _podstawa_wartosci_roboczej(zapis_roboczy, etykieta, wielkosc)
     if pochodzenie == "producent":
         return PodstawaWymagania(
             rodzaj="KATALOG_PRODUCENTA",
@@ -334,29 +431,41 @@ def _podstawa_znamienia(
                 "znamionowego normy, nie z karty konkretnego aparatu"
             ),
         )
-    if pochodzenie == "derived_iec62271":
-        return PodstawaWymagania(
-            rodzaj="NORMA",
-            dokument=_IEC_62271_1,
-            wydanie=_IEC_62271_1_WYDANIE,
-            jednostka_redakcyjna="§ 4.6 I_p = 2,5·I_k dla częstotliwości znamionowej 50 Hz",
-            status="WSKAZANE",
-            uwagi_pl=(
-                f"pozycja „{etykieta}” nie podaje I_p — wartość wyprowadzona z jej prądu "
-                "krótkotrwałego wg relacji normowej"
-            ),
-        )
     return None
 
 
-def _dowod(run_id: str) -> StatusDowodu:
+def _zapis_roboczy(znamiona: dict[str, Any], parametr: str) -> dict[str, Any] | None:
+    zapis = (znamiona.get("wartosci") or {}).get(parametr)
+    return zapis if isinstance(zapis, dict) else None
+
+
+def _dane_przyjete(
+    zapisy: list[dict[str, Any] | None], *, aparat_pl: str
+) -> tuple[DanaPrzyjeta, ...]:
+    """Dane przyjęte kryterium: każda wartość robocza z listy (kolejność stała, bez powtórzeń)."""
+    widziane: set[str] = set()
+    dane: list[DanaPrzyjeta] = []
+    for zapis in zapisy:
+        if zapis is None or not zapis.get("wartosc_robocza") or zapis["parametr"] in widziane:
+            continue
+        widziane.add(str(zapis["parametr"]))
+        dane.append(dana_przyjeta(zapis, aparat_pl=aparat_pl))
+    return tuple(dane)
+
+
+def _dowod(run_id: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()) -> StatusDowodu:
+    """Dowód kryterium; wartości robocze ⇒ ``UNVALIDATED_INPUT`` (kompletność ``NIEPELNY``)."""
     zdolnosc = classify_dynamic_capability(ZDOLNOSC_WYTRZYMALOSCI)
     return StatusDowodu(
         metoda="OBLICZENIE",
         poziom=zdolnosc.tier,
         rodzaj_twierdzenia=zdolnosc.claim_kind,
         status_modelu="NIE_DOTYCZY",
-        status_danych=StatusDanych(stan="ZWALIDOWANE"),
+        status_danych=(
+            StatusDanych(stan="UNVALIDATED_INPUT", dane_przyjete=dane_przyjete)
+            if dane_przyjete
+            else StatusDanych(stan="ZWALIDOWANE")
+        ),
         odniesienie=f"zapisany bieg zwarciowy {run_id}",
     )
 
@@ -396,7 +505,17 @@ def _ocena_dynamiczna(
     run_id: str,
 ) -> OcenaKryterium:
     i_dyn = znamiona["i_dyn_ka"]
-    podstawa_limitu = _podstawa_znamienia(znamiona["i_dyn_pochodzenie"], etykieta, "i_dyn")
+    zapis_i_dyn = _zapis_roboczy(znamiona, PARAMETR_I_DYN)
+    podstawa_limitu = _podstawa_znamienia(
+        znamiona["i_dyn_pochodzenie"], etykieta, "i_dyn", zapis_i_dyn
+    )
+    # Prąd szczytowy z relacji normowej niesie też prąd krótkotrwały, z którego wynika.
+    zapis_i_th = (
+        _zapis_roboczy(znamiona, PARAMETR_I_TH)
+        if zapis_i_dyn is not None and zapis_i_dyn.get("pochodzenie") == "PROPOZYCJA"
+        else None
+    )
+    dane = _dane_przyjete([zapis_i_dyn, zapis_i_th], aparat_pl=przedmiot.nazwa_pl)
     braki: list[str] = []
     if prady.ip_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
@@ -406,7 +525,11 @@ def _ocena_dynamiczna(
             wartosc=Wielkosc(wartosc=float(i_dyn), jednostka="kA"), podstawa=podstawa_limitu
         )
     else:
-        braki.append(f"pozycja katalogu „{etykieta}” nie niesie prądu szczytowego I_p (I_dyn)")
+        braki.append(
+            f"pozycja katalogu „{etykieta}” nie niesie prądu szczytowego I_p (I_dyn), a "
+            "propozycji wartości roboczej nie ma: "
+            + str((zapis_i_dyn or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
+        )
     wynik = (
         WynikKryterium(
             wielkosc_pl="prąd udarowy zwarcia trójfazowego w punkcie zabudowy pola",
@@ -437,14 +560,14 @@ def _ocena_dynamiczna(
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id),
+        dowod=_dowod(run_id, dane),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(
                 run_id=run_id,
                 krok=f"{kryterium_id}:dynamiczna",
                 opis_pl=(
-                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt {prady.punkt_ref}); "
+                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
                     f"I_dyn = {i_dyn} kA (pochodzenie: {znamiona['i_dyn_pochodzenie']})"
                 ),
             ),
@@ -465,13 +588,28 @@ def _ocena_cieplna(
     run_id: str,
 ) -> OcenaKryterium:
     t_k = czas.get("t_clearing_s")
-    podstawa_limitu = _podstawa_znamienia(znamiona["i_th_pochodzenie"], etykieta, "i_th")
+    zapis_i_th = _zapis_roboczy(znamiona, PARAMETR_I_TH)
+    zapis_t_th = _zapis_roboczy(znamiona, PARAMETR_T_TH)
+    podstawa_limitu = _podstawa_znamienia(
+        znamiona["i_th_pochodzenie"], etykieta, "i_th", zapis_i_th
+    )
+    zapis_czasu_wlasnego = czas.get("czas_wlasny") if t_k is not None else None
+    dane = _dane_przyjete(
+        [
+            zapis_i_th,
+            zapis_t_th,
+            zapis_czasu_wlasnego if isinstance(zapis_czasu_wlasnego, dict) else None,
+        ],
+        aparat_pl=przedmiot.nazwa_pl,
+    )
     braki: list[str] = []
     if prady.ith_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
     if znamiona["i_th_ka"] is None or znamiona["i_th_duration_s"] is None:
         braki.append(
-            f"pozycja katalogu „{etykieta}” nie niesie prądu krótkotrwałego I_th z czasem t_th"
+            f"pozycja katalogu „{etykieta}” nie niesie prądu krótkotrwałego I_th z czasem t_th, "
+            "a propozycji wartości roboczej nie ma: "
+            + str((zapis_i_th or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
     if t_k is None:
         braki.append(str(czas.get("powod_pl") or "czas wyłączenia zwarcia nie jest ustalony"))
@@ -515,19 +653,41 @@ def _ocena_cieplna(
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id),
+        dowod=_dowod(run_id, dane),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(
                 run_id=run_id,
                 krok=f"{kryterium_id}:cieplna",
                 opis_pl=(
-                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt {prady.punkt_ref}); "
+                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
                     f"T_k = {t_k} s (źródło: {czas.get('zrodlo')}); limit = {limit_ka} kA"
                 ),
             ),
         ),
         braki_dodatkowe=braki,
+    )
+
+
+def _dopisek_wartosci_roboczych(znamiona: dict[str, Any], czas: dict[str, Any]) -> str:
+    """Jedno zdanie komunikatu, gdy ocena stoi na wartościach roboczych (bez banera).
+
+    Werdykt jądra mówi „OK”/„BLOKER” z liczb; dopisek mówi, że liczby aparatu nie pochodzą
+    w całości z karty producenta — ocena jest obliczeniowa, nie potwierdzonym dowodem.
+    """
+    nazwy = [
+        str(zapis["nazwa_pl"])
+        for zapis in (
+            *(znamiona.get("wartosci") or {}).values(),
+            czas.get("czas_wlasny") if czas.get("t_clearing_s") is not None else None,
+        )
+        if isinstance(zapis, dict) and zapis.get("wartosc_robocza")
+    ]
+    if not nazwy:
+        return ""
+    return (
+        f" Ocena na wartościach roboczych ({', '.join(nazwy)}) — wynik obliczeniowy, nie "
+        "potwierdzony dowód zgodności."
     )
 
 
@@ -576,7 +736,7 @@ def _wiersz(
                 t_clearing_s=czas.get("t_clearing_s"),
             )
             limit_cieplny_ka = werdykt["i_th_effective_ka"]
-            komunikat = str(werdykt["message_pl"])
+            komunikat = str(werdykt["message_pl"]) + _dopisek_wartosci_roboczych(znamiona, czas)
         else:
             komunikat = f"NIEUSTALONE: aparatura „{nazwa}” — {prady.powod_pl or 'brak prądu pola'}"
         kryterium_id = f"aparatura.{pole_ref or oznaczenie}.{aparat_ref or catalog_ref}"
@@ -638,6 +798,7 @@ def _czas_z_konfiguracji(spec: dict[str, Any]) -> dict[str, Any]:
         "powod_pl": "Czas wyłączenia wpisany w konfiguracji stacji.",
         "czlon_nastawczy_s": None,
         "czas_wlasny_wylacznika_s": None,
+        "czas_wlasny": None,
         "zalozenia_pl": [],
         "kody_gotowosci": [],
     }
@@ -651,6 +812,7 @@ _CZAS_NIEUSTALONY: dict[str, Any] = {
     ),
     "czlon_nastawczy_s": None,
     "czas_wlasny_wylacznika_s": None,
+    "czas_wlasny": None,
     "zalozenia_pl": [],
     "kody_gotowosci": [],
 }
@@ -746,7 +908,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             continue
 
         for aparat in aparaty.get(bay.ref_id, []):
-            znamiona, etykieta = _znamiona_z_aparat_sn(aparat.catalog_ref)
+            znamiona, etykieta = _znamiona_z_aparat_sn(aparat)
             wiersze.append(
                 _wiersz(
                     oznaczenie=oznaczenie,

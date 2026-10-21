@@ -19,15 +19,41 @@
  * niesie dwa rekordy werdyktu wyjaśnialnego (dynamiczny i cieplny).
  */
 
+import type { PropozycjaWartosciRoboczej } from '../../../../ui/catalog/types';
 import type { OcenaKryterium } from '../../wzorzec/werdykt';
 
-/** Znamiona wytrzymałości pozycji katalogowej — każda liczba z pochodzeniem. */
+/** Pochodzenie wartości parametru aparatu — pierwszeństwo rozstrzyga backend (V12K-351). */
+export type PochodzenieWartosci = 'KATALOG' | 'PROJEKTANT' | 'PROPOZYCJA';
+
+/**
+ * Rozstrzygnięty parametr aparatu (`WartoscRozstrzygnieta.to_dict()` rejestru wartości
+ * roboczych): wartość, pochodzenie, propozycja i opis źródła z wpływem na ocenę.
+ * `wartosc_robocza` = propozycja albo wartość projektanta (dana przyjęta, nie dana karty).
+ */
+export interface WartoscParametruAparatu {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly wartosc: number | null;
+  readonly jednostka: string;
+  readonly pochodzenie: PochodzenieWartosci | null;
+  readonly pochodzenie_karty: string | null;
+  readonly wartosc_robocza: boolean;
+  readonly propozycja: PropozycjaWartosciRoboczej | null;
+  readonly powod_projektanta_pl: string | null;
+  readonly powod_braku_pl: string | null;
+  readonly opis_zrodla_pl: string;
+}
+
+/** Znamiona wytrzymałości aparatu — każda liczba z pochodzeniem. */
 export interface ZnamionaWytrzymalosci {
   readonly i_dyn_ka: number | null;
   readonly i_dyn_pochodzenie: string | null;
   readonly i_th_ka: number | null;
   readonly i_th_duration_s: number | null;
   readonly i_th_pochodzenie: string | null;
+  readonly i_th_duration_pochodzenie: string | null;
+  /** Rozstrzygnięcie I_k, t_k i I_p aparatu z modelu (puste dla wskazania z konfiguracji). */
+  readonly wartosci: Readonly<Record<string, WartoscParametruAparatu>>;
 }
 
 /** Czas wyłączenia użyty w kryterium cieplnym + jego rozbicie (WHITE BOX). */
@@ -37,6 +63,8 @@ export interface CzasWylaczeniaPola {
   readonly powod_pl: string;
   readonly czlon_nastawczy_s: number | null;
   readonly czas_wlasny_wylacznika_s: number | null;
+  /** Rozstrzygnięty czas własny wyłącznika (z pochodzeniem); `null` = czasu nie składano. */
+  readonly czas_wlasny: WartoscParametruAparatu | null;
   readonly zalozenia_pl: readonly string[];
   readonly kody_gotowosci: readonly string[];
 }

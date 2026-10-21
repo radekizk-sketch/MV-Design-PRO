@@ -1854,7 +1854,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `tolerancja_nn_dolna`, `voltage_factor_zrodlo`, `zasilajacy` — jeden nosnik c i tolerancji
     # nN), -4 (`c_factor_explicit`, `c_factor_max`, `c_factor_min`, `c_factor_override` — plaskie
     # pola c skasowane z kontraktu wejscia 2.0). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4209." in wyjscie, wyjscie
+    # Karta WARTOSC-ROBOCZA-1 (2026-10-21): 4209 -> 4228 — POMIAR `contract_fields()` na trzech
+    # drzewach. (a) Pin zastany na bazie karty `6c83bce89` byl nieaktualny: baza mierzy 4219, a
+    # drzewo partii 11 (`7f0ff978f`, ostatnie przypiecie) 4209; roznica zbiorow +16
+    # (`PROOF_EQUATIONS_AUDIT_IMPEDANCJA`, `definite_time_s`, `efektywna`, `ikss_metaliczny_a`,
+    # `impedancja_zwarcia`, `nasycenie_ct`, `opcje`, `poza_zakresem_iec60909`, `punkt_nazwa`,
+    # `short_circuit_run_id`, `wejscie_nasycenia`, `z_equiv_metaliczne`, `z_f`, `z_f_ohm`,
+    # `z_petli_ohm`, `zkk_metaliczne_ohm` — impedancja przejscia Z_f partii 10, prad i czas pola
+    # oraz nasycenie przekladnika partii 12), -6 (`arc_params`, `enm_liczony`,
+    # `fault_impedance_type`, `i_peak_ka`, `i_thermal_ka`, `z0_bus_data`). (b) Rejestr wartosci
+    # roboczych (`network_model/catalog/wartosci_robocze.py`) wzgledem bazy: +9
+    # (`dopuszczalne_do`, `dopuszczalne_od`, `pochodzenie`, `pochodzenie_karty`,
+    # `powod_projektanta_pl`, `propozycja`, `rodzaj_zrodla`, `wartosci_projektanta`, `wplyw_pl`),
+    # -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4228." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2089,7 +2102,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 9 (+ B01-RUNDA-3): 573 + 1 (`enm/zdania_odmow_rdzenia.py`) = 574. POMIAR.
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): 574 + 1 (`enm/tolerancja_nn.py` —
         # predykat tolerancji napiecia sieci nN per wyspa galwaniczna) = 575. POMIAR.
-        "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): 575 -> 578. Pin zastany na bazie karty
+        # `6c83bce89` byl nieaktualny (baza mierzy 577: partia 10 dodala
+        # `network_model/core/impedancja_przejscia.py` i `api/odmowa_http.py` bez przypiecia),
+        # karta +1 `network_model/catalog/wartosci_robocze.py` (jeden rejestr wartosci roboczych
+        # parametrow urzadzenia, zero wpisow w zapadce i wykluczeniach). POMIAR guardem na
+        # drzewie partii 11 (`7f0ff978f`: 575), na bazie (577) i na drzewie karty (578).
+        "Przeskanowano 578 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2259,7 +2278,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ W5-E-TTIT): network_model 182 + 1 = 183; wykluczenia 1/2
         # (stan gałęzi integracji — 3/6 karty pochodziły z jej starszej bazy). POMIAR.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): network_model 183 -> 185 (+1 zastany na bazie
+        # `6c83bce89`: `core/impedancja_przejscia.py` partii 10 bez przypiecia; +1 karty:
+        # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=185, dlug=11 plikow/suma 69, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2420,7 +2442,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # w `batch_run.py` — c z jednego nosnika). POMIAR guardem na drzewie partii.
         "  application: pliki_skanowane=253, dlug=29 plikow/suma 87, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): api 63 -> 64 (+1 zastany na bazie `6c83bce89`:
+        # `api/odmowa_http.py` partii 10 bez przypiecia); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

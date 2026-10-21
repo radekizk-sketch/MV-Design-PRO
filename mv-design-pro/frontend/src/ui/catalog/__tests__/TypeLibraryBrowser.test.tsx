@@ -132,6 +132,45 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       voltage_rating_kv: 15,
       rated_current_a: 630,
     },
+    // Kształt odpowiedzi `GET /api/catalog/mv-apparatus-types` (V12K-351): dane karty + lista
+    // propozycji wartości roboczych dla braków karty (rejestr backendu).
+    {
+      id: 'sw-cb-abb-vd4-17kv-630a',
+      name: 'ABB VD4 17.5 kV 630 A',
+      manufacturer: 'ABB',
+      device_kind: 'WYLACZNIK',
+      u_n_kv: 17.5,
+      i_n_a: 630,
+      breaking_capacity_ka: 20,
+      i_th_ka: 20,
+      i_th_duration_s: 1,
+      i_th_pochodzenie: 'producent',
+      i_dyn_ka: null,
+      i_dyn_pochodzenie: null,
+      break_time_s: null,
+      wartosci_robocze: [
+        {
+          parametr: 'break_time_s',
+          nazwa_pl: 'czas własny wyłączania wyłącznika',
+          wartosc: 0.06,
+          jednostka: 's',
+          rodzaj_zrodla: 'PROFIL_URZADZENIA',
+          odniesienie: 'profil typowy wyłącznika próżniowego SN',
+          uzasadnienie_pl: 'Karta katalogowa wyłącznika nie podaje czasu własnego',
+          wplyw_pl: 'czas wyłączenia zwarcia zawiera wartość typową',
+        },
+        {
+          parametr: 'i_dyn_ka',
+          nazwa_pl: 'prąd szczytowy wytrzymywany',
+          wartosc: 50,
+          jednostka: 'kA',
+          rodzaj_zrodla: 'NORMA',
+          odniesienie: 'IEC 62271-1:2017 p. 5.7',
+          uzasadnienie_pl: 'Karta nie podaje prądu szczytowego wytrzymywanego',
+          wplyw_pl: 'limit dynamiczny wynika z relacji normowej',
+        },
+      ],
+    },
   ],
   LV_APPARATUS: [
     {
@@ -370,6 +409,41 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
     expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
     expect(screen.getAllByText('brak danych')).toHaveLength(3);
+  });
+
+  it('aparat SN: propozycje wartości roboczych w osobnej sekcji, nie jako dana karty (V12K-351)', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /^◫?\s*Typy aparatury SN/i }));
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('MV_APPARATUS');
+    });
+    await user.click(await screen.findByText('ABB VD4 17.5 kV 630 A'));
+
+    const sekcja = screen.getByTestId('type-library-wartosci-robocze');
+    expect(sekcja).toHaveTextContent('Wartości robocze obliczeń (brak w karcie)');
+    expect(screen.getByTestId('type-library-wartosc-robocza-break_time_s')).toHaveTextContent(
+      'czas własny wyłączania wyłącznika: 0,06 s(profil typowy urządzenia)',
+    );
+    expect(screen.getByTestId('type-library-wartosc-robocza-i_dyn_ka')).toHaveTextContent(
+      'IEC 62271-1:2017 p. 5.7',
+    );
+    // Panel danych karty nie pokazuje listy propozycji jako pola (dawny „[object Object]").
+    expect(screen.getByTestId('type-library-details-grid')).not.toHaveTextContent('object');
+    expect(screen.queryByText('Wartosci robocze')).not.toBeInTheDocument();
+  });
+
+  it('aparat SN bez braków karty: sekcja mówi, że obliczenie nie przyjmuje wartości roboczych', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /^◫?\s*Typy aparatury SN/i }));
+    await user.click(await screen.findByText('Pole liniowe SN'));
+
+    expect(screen.getByTestId('type-library-wartosci-robocze')).toHaveTextContent(
+      'Karta podaje wszystkie parametry aparatu używane w ocenie',
+    );
   });
 
   it('CV-4.3 K7: ZRODLO_SN z danymi scenariusza MIN pokazuje realne wartości (nie "brak danych")', async () => {
