@@ -55,9 +55,10 @@ def _base_kwargs() -> dict:
         "z2_ohm": Z2,
         "z0_ohm": Z0,
         "a_operator": A_OPERATOR,
+        # Czas trwania zwarcia t_k — dla I_th = I''k·sqrt(m + n) (IEC 60909-0 rozdz. 12).
+        # Karta SC-IB-ITH-ZRODLA: m, n NIE są już wejściem — solver liczy je z κ i t_k tego
+        # rodzaju zwarcia jednym źródłem (`compute_post_fault_quantities`), n = 1.
         "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
 
 
@@ -85,8 +86,7 @@ def _sc1_input(fault_type: str, case_name: str) -> SC1Input:
         z2_ohm=kwargs["z2_ohm"],
         z0_ohm=kwargs["z0_ohm"],
         a_operator=kwargs["a_operator"],
-        m_factor=kwargs["m_factor"],
-        n_factor=kwargs["n_factor"],
+        tk_s=kwargs.pop("tk_s"),
     )
     return SC1Input(
         fault_type=fault_type,

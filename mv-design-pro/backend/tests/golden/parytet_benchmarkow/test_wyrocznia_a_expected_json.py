@@ -110,19 +110,32 @@ def _sprawdz_sc(builder: Any, expected_filename: str) -> None:
     expected = load_expected_values_from_json(_EXPECTED_DIR / expected_filename)
 
     actual_sc: dict[str, dict] = {}
-    sc_types = {sc.sc_type for sc in expected.short_circuit}
-    for sc_type in sc_types:
-        run = _bieg(snapshot, "SC", {"fault_type": sc_type, "thermal_time_seconds": 1.0})
+    # Karta SC-IB-ITH-ZRODLA: scenariusz = (rodzaj zwarcia, t_b biegu) — wiersz z `tb_s`
+    # liczy bieg z jawnym czasem wyłączenia w opcjach (projekcja scenariusza), wiersz bez
+    # `tb_s` — bieg bez t_b.
+    scenariusze = sorted(
+        {(sc.sc_type, sc.tb_s) for sc in expected.short_circuit},
+        key=lambda p: (p[0], -1.0 if p[1] is None else p[1]),
+    )
+    for sc_type, tb_s in scenariusze:
+        opcje: dict[str, Any] = {"fault_type": sc_type, "thermal_time_seconds": 1.0}
+        if tb_s is not None:
+            opcje["breaking_time_seconds"] = tb_s
+        run = _bieg(snapshot, "SC", opcje)
         _execute_short_circuit(run)
         for row in run.raw_result["results"]:
             for lit_id, ref_id in result.bus_map.items():
                 if row["fault_node_id"] == _ref_to_uuid(ref_id):
                     key = f"{lit_id}__{sc_type}"
+                    if tb_s is not None:
+                        key = f"{key}__tb={tb_s:g}"
                     actual_sc[key] = {
                         "ikss_a": row["ikss_a"],
                         "ip_a": row["ip_a"],
                         "ith_a": row["ith_a"],
                         "sk_mva": row["sk_mva"],
+                        "ib_a": row["ib_a"],
+                        "i_dc_a": row.get("i_dc_a"),
                     }
 
     comparisons = compare_short_circuit(actual_sc, expected)

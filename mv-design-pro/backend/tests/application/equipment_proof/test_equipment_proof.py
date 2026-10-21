@@ -31,6 +31,11 @@ def _base_input() -> EquipmentProofInput:
         "idyn_ka": 40.0,
         "ith_ka": 18.0,
         "tk_s": 1.0,
+        # Karta SC-IB-ITH-ZRODLA: zdolność wyłączania SN porównywana z I_b (IEC 62271-100,
+        # IEC 60909-0 rozdz. 9); t_b i i_DC(t_b) biegu idą do uwag kryterium.
+        "ib_ka": 15.5,
+        "tb_s": 0.1,
+        "i_dc_ka": 9.0,
     }
     return EquipmentProofInput(
         project_id="proj-1",
@@ -141,7 +146,7 @@ def test_equipment_proof_ith_equal_times_unchanged():
     check = _find_check(bundle, "Ith")
 
     assert check.status == "PASS"
-    assert "20.0000 >= 18.0000" in check.message_pl
+    assert "I_th aparatu 20.0000 kA wobec wartości wymaganej 18.0000 kA" in check.message_pl
     # Krok wywodu: równanie prądowe (nie energetyczne).
     step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
     assert step.equation.equation_id == "EQ_P12_006"
@@ -329,3 +334,149 @@ def test_naglowek_dowodu_nazywa_projekt_i_przypadek_nazwami_nie_identyfikatorami
     assert naglowek.case_name == "Przypadek bazowy"
     assert "proj-1" not in naglowek.project_name + naglowek.case_name
     assert "case-1" not in naglowek.project_name + naglowek.case_name
+
+
+# ── Karta SC-IB-ITH-ZRODLA: wielkość kryterium wyłączania wg pasma napięcia ──────
+# Iloczyn: {SN 12 kV · nN 0,4 kV · brak napięcia punktu} × {I_b poniżej I_cu · I_b ponad
+# I_cu · brak I_b}. I″k = 22 kA zawsze PONAD I_cu = 20 kA — PASS w SN dowodzi, że
+# porównano I_b, a nie I″k; FAIL w nN — że porównano I″k spodziewany.
+
+
+def _input_wylaczania(u_kv: float | None, ib_ka: float | None) -> EquipmentProofInput:
+    base = _base_input()
+    required = dict(base.required_fault_results)
+    required["ikss_ka"] = 22.0
+    if u_kv is None:
+        required.pop("u_kv")
+    else:
+        required["u_kv"] = u_kv
+    if ib_ka is None:
+        for klucz in ("ib_ka", "tb_s", "i_dc_ka"):
+            required.pop(klucz)
+    else:
+        required["ib_ka"] = ib_ka
+    return dataclasses.replace(base, required_fault_results=required)
+
+
+@pytest.mark.parametrize(
+    ("u_kv", "ib_ka", "status", "klucz", "wartosc", "fragment"),
+    [
+        (12.0, 18.0, "PASS", "ib_ka", 18.0, "wobec prądu wyłączeniowego symetrycznego I_b"),
+        (12.0, 21.0, "FAIL", "ib_ka", 21.0, "IEC 62271-100"),
+        (12.0, None, "FAIL", "ib_ka", None, "czasu wyłączenia t_b"),
+        (0.4, 18.0, "FAIL", "ikss_ka", 22.0, "spodziewanego prądu zwarciowego początkowego I″k"),
+        (0.4, 21.0, "FAIL", "ikss_ka", 22.0, "IEC 60947-2"),
+        (0.4, None, "FAIL", "ikss_ka", 22.0, "22.0000 kA"),
+        (None, 18.0, "FAIL", "ib_ka", None, "Brak podstawy"),
+        (None, None, "FAIL", "ib_ka", None, "Brak podstawy"),
+    ],
+)
+def test_icu_wielkosc_kryterium_wg_pasma_napiecia(
+    u_kv: float | None,
+    ib_ka: float | None,
+    status: str,
+    klucz: str,
+    wartosc: float | None,
+    fragment: str | None,
+) -> None:
+    bundle = EquipmentProofGenerator.generate(_input_wylaczania(u_kv, ib_ka))
+    check = _find_check(bundle, "Icu")
+    assert check.status == status
+    assert check.required_source_key == klucz
+    assert check.required_value == wartosc
+    if fragment is not None:
+        assert fragment in check.message_pl
+    # Kontrakt werdyktu wyjaśnialnego: tekst nie składa kodu werdyktu (status w polu).
+    assert "PASS" not in check.message_pl and "FAIL" not in check.message_pl
+    # Dowód mówi, CO porównano: wzór kroku z symbolem wielkości kryterium.
+    krok = next(k for k in bundle.proof_document.steps if k.equation.equation_id == "EQ_P12_004")
+    symbol = "I_k''" if klucz == "ikss_ka" else "I_b"
+    assert krok.equation.latex == rf"I_{{cu}} \ge {symbol}"
+
+
+def test_icu_sn_uwagi_niosa_tb_i_skladowa_nieokresowa() -> None:
+    check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(12.0, 18.0)), "Icu")
+    (uwaga,) = check.notes
+    assert uwaga.startswith("t_b = 0,1 s; składowa nieokresowa i_DC(t_b) = 9,0000 kA")
+    assert "porównania z nią nie wystawiono" in uwaga
+
+
+def test_icu_sn_bez_tb_uwaga_o_braku_skladowej_nieokresowej() -> None:
+    check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(12.0, None)), "Icu")
+    assert any("Bieg bez czasu wyłączenia t_b" in uwaga for uwaga in check.notes)
+
+
+def test_icu_nn_bez_uwag_o_tb() -> None:
+    check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(0.4, 18.0)), "Icu")
+    assert check.notes == ()
+
+
+# Bezpiecznik × {SN · nN · brak napięcia punktu} × {I_b poniżej I_cu · brak I_b}: bezpiecznik
+# ograniczający przerywa przed pierwszym szczytem — I_cu (I_1) wobec spodziewanego I″k
+# (IEC 60282-1 / IEC 60269-1) niezależnie od pasma i od t_b. I″k = 22 kA > I_cu = 20 kA,
+# więc FAIL dowodzi porównania I″k (porównanie I_b = 18 kA dałoby PASS).
+
+
+@pytest.mark.parametrize("u_kv", [12.0, 0.4, None], ids=["sn", "nn", "bez_napiecia"])
+@pytest.mark.parametrize("ib_ka", [18.0, None], ids=["ib_ponizej_icu", "bez_ib"])
+def test_icu_bezpiecznika_wobec_ik_spodziewanego(u_kv: float | None, ib_ka: float | None) -> None:
+    base = _input_wylaczania(u_kv, ib_ka)
+    wejscie = dataclasses.replace(base, device=dataclasses.replace(base.device, bezpiecznik=True))
+    bundle = EquipmentProofGenerator.generate(wejscie)
+    check = _find_check(bundle, "Icu")
+
+    assert check.status == "FAIL"
+    assert check.required_source_key == "ikss_ka"
+    assert check.required_value == 22.0
+    assert "IEC 60282-1" in check.message_pl
+    assert check.notes == ()
+    krok = next(k for k in bundle.proof_document.steps if k.equation.equation_id == "EQ_P12_004")
+    assert krok.equation.latex == r"I_{cu} \ge I_k''"
+
+
+def test_znacznik_bezpiecznika_nie_zmienia_odcisku_innych_aparatow() -> None:
+    """Pole addytywne: zapis urządzenia bez bezpiecznika jest bajt w bajt taki jak przed kartą
+    (determinizm istniejących pakietów); bezpiecznik dopisuje znacznik."""
+    device = _base_input().device
+    assert "bezpiecznik" not in device.to_dict()
+    assert dataclasses.replace(device, bezpiecznik=True).to_dict()["bezpiecznik"] is True
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "zmiana", "status", "fragmenty"),
+    [
+        ("U", {"u_m_kv": 15.0}, "PASS", ("U_m aparatu 15.0000 kV", "12.0000 kV")),
+        ("U", {"u_m_kv": 10.0}, "FAIL", ("U_m aparatu 10.0000 kV", "12.0000 kV")),
+        ("Icu", {"i_cu_ka": 20.0}, "PASS", ("I_cu aparatu 20.0000 kA", "15.5000 kA")),
+        ("Icu", {"i_cu_ka": 10.0}, "FAIL", ("I_cu aparatu 10.0000 kA", "15.5000 kA")),
+        ("Idyn", {"i_dyn_ka": 50.0}, "PASS", ("I_dyn aparatu 50.0000 kA", "40.0000 kA")),
+        ("Idyn", {"i_dyn_ka": 30.0}, "FAIL", ("I_dyn aparatu 30.0000 kA", "40.0000 kA")),
+        ("Ith", {"i_th_ka": 20.0}, "PASS", ("I_th aparatu 20.0000 kA", "18.0000 kA")),
+        ("Ith", {"i_th_ka": 15.0}, "FAIL", ("I_th aparatu 15.0000 kA", "18.0000 kA")),
+        (
+            "Ith",
+            {"i_th_ka": 30.0, "t_th_s": 0.5},
+            "PASS",
+            ("I²t aparatu 450.0000 kA²s", "324.0000 kA²s"),
+        ),
+        (
+            "Ith",
+            {"i_th_ka": 20.0, "t_th_s": 0.5},
+            "FAIL",
+            ("I²t aparatu 200.0000 kA²s", "324.0000 kA²s"),
+        ),
+    ],
+)
+def test_tresc_sprawdzenia_nie_sklada_kodu_werdyktu(
+    nazwa: str, zmiana: dict[str, float], status: str, fragmenty: tuple[str, ...]
+) -> None:
+    """Kontrakt werdyktu wyjaśnialnego w CAŁYM generatorze (nie tylko I_cu): iloczyn
+    {U, I_cu, I_dyn, I_th prądowo, I_th energetycznie} × {spełnia, nie spełnia}. Treść niesie
+    wartość aparatu, wartość wymaganą i jednostkę; status — wyłącznie pole ``status``."""
+    bundle = EquipmentProofGenerator.generate(_input_with_device(_base_input(), **zmiana))
+    check = _find_check(bundle, nazwa)
+    assert check.status == status
+    for fragment in fragmenty:
+        assert fragment in check.message_pl
+    assert "PASS" not in check.message_pl and "FAIL" not in check.message_pl
+    assert "→" not in check.message_pl

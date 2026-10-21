@@ -31,7 +31,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
+from application.proof_engine.proof_generator import (
+    ProofGenerator,
+    SC3FInput,
+    krok_sladu_zwarcia,
+)
 from application.proof_engine.proof_pack import (
     ProofPackBuilder,
     ProofPackContext,
@@ -40,6 +44,7 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
+from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
 from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
@@ -64,6 +69,9 @@ class SC3FPackInput:
     scenariusz: Scenario
     nadpisanie_c: NadpisanieC | None
     tk_s: float
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] biegu, którego pakiet powstaje
+    #: (``None`` = bieg bez t_b — I_b z maszynami i i_DC nieobliczone, kod w ostrzeżeniach).
+    tb_s: float | None
     rozszerzenia_audit2: dict[str, Any] | None = None
     #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
     #: zwarcie metaliczne IEC 60909 (dowód bit w bit jak przed kartą).
@@ -77,12 +85,16 @@ class SC3FPackResult:
     proof_sc3f: ProofDocument
     has_machines: bool
     all_passed: bool
+    #: Karta SC-IB-ITH-ZRODLA: kody odmów wielkości nieobliczonych (``fault.czas_tb_brak``
+    #: z kroków śladu Ib/iDC) — podstawa kompletności dowodu, nie domysł z tekstu.
+    odmowy: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "proof_sc3f": self.proof_sc3f.to_dict(),
             "has_machines": self.has_machines,
             "all_passed": self.all_passed,
+            **({"odmowy": list(self.odmowy)} if self.odmowy else {}),
         }
 
 
@@ -110,24 +122,51 @@ class SC3FProofPack:
             scenariusz=data.scenariusz,
             nadpisanie_c=data.nadpisanie_c,
             tk_s=data.tk_s,
+            tb_s=data.tb_s,
             rozszerzenia_audit2=data.rozszerzenia_audit2,
             z_f_ohm=data.z_f_ohm,
         )
         result = zwarcie.wynik
         graph = zwarcie.graf
 
-        # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu; t_min = czas prądu
-        # wyłączeniowego (tb_s) z wyniku solvera IEC 60909. Dołączane do dowodu
-        # tylko gdy realnie są maszyny — inaczej dowód bez sekcji maszynowej (determinizm).
-        machine_result = compute_machine_contributions(
-            graph,
-            result.fault_node_id,
-            c_factor=result.c_factor,
-            t_min_s=result.tb_s,
-            z_f_ohm=data.z_f_ohm,
+        # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu i TĄ SAMĄ funkcją co rdzeń
+        # (I_b sieci = I_k'' − Σ zaników tych samych maszyn); t_min = t_b biegu. Bez t_b μ i q
+        # są wyznaczalne tylko tam, gdzie nie zależą od krzywej — przy niekomplecie generator
+        # pomija sekcję maszynową, a krok śladu Ib niesie kod `fault.czas_tb_brak`
+        # (ostrzeżenie dowodu). Dołączane tylko gdy realnie są maszyny (determinizm).
+        has_machines = bool(
+            graph.get_synchronous_machine_sources() or graph.get_asynchronous_machine_sources()
         )
-        has_machines = bool(machine_result.contributions)
+        machine_result = (
+            compute_machine_contributions(
+                graph,
+                result.fault_node_id,
+                c_factor=result.c_factor,
+                t_min_s=result.tb_s,
+                z_f_ohm=data.z_f_ohm,
+            )
+            if has_machines
+            else None
+        )
+        krok_ib = krok_sladu_zwarcia(result.white_box_trace, "Ib")
+        krok_idc = krok_sladu_zwarcia(result.white_box_trace, "iDC")
+        odmowy = tuple(
+            sorted(
+                {
+                    str(krok["result"]["kod"])
+                    for krok in (krok_ib, krok_idc)
+                    if krok is not None and (krok.get("result") or {}).get("kod")
+                }
+            )
+        )
 
+        if result.m_factor is None or result.n_factor is None:
+            raise ValueError(
+                "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
+                "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
+            )
+        m_factor = float(result.m_factor)
+        n_factor = float(result.n_factor)
         sc3f_input = SC3FInput(
             project_name=data.project_name,
             case_name=data.case_name,
@@ -153,16 +192,18 @@ class SC3FProofPack:
             # Audyt fizyki fala G (2026-07): m_factor/n_factor FAKTYCZNIE uzyte
             # przez solver do ith_a = ikss*sqrt(m+n) (IEC 60909-0 SS4.7/SS12) —
             # niesione z wyniku solvera, zeby wywod White Box (krok Ith,
-            # EQ_SC3F_008) podstawial LICZBY SPOJNE z wyswietlanym ith_ka.
-            # Honest fallback (1,0; 0,0) tylko dla starszych wynikow solvera
-            # sprzed delty (m_factor=None) — bez zmyslania.
-            m_factor=result.m_factor if result.m_factor is not None else 1.0,
-            n_factor=result.n_factor if result.n_factor is not None else 0.0,
-            machine_result=machine_result if has_machines else None,
-            # Karta S-C (2026-07-22): kroki I_b(t_b) i I²t w dowodzie — wartości
-            # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.
-            ib_ka=a_na_ka(result.ib_a),
+            # EQ_SC3F_008) podstawial LICZBY SPOJNE z wyswietlanym ith_ka. Karta
+            # SC-IB-ITH-ZRODLA: dawny zapas (1,0; 0,0) skasowany — byl druga definicja I_th.
+            m_factor=m_factor,
+            n_factor=n_factor,
+            machine_result=machine_result,
+            # Karta SC-IB-ITH-ZRODLA: I_b (symetryczny, rozdz. 9) i i_DC(t_b) (rozdz. 10)
+            # z FROZEN wyniku solvera i jego śladu — zero fizyki w proof engine.
+            ib_ka=None if result.ib_a is None else a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
+            krok_ib=krok_ib,
+            krok_idc=krok_idc,
             # Karta OD-14: przy impedancji przejścia `zkk_ohm` wyniku to impedancja PĘTLI
             # (Z_th + Z_f), a Thevenin sieci niesie `zkk_metaliczne_ohm` — dowód pokazuje oba.
             z_f_ohm=result.z_f_ohm,
@@ -173,6 +214,7 @@ class SC3FProofPack:
             proof_sc3f=proof,
             has_machines=has_machines,
             all_passed=proof.summary.unit_check_passed,
+            odmowy=odmowy,
         )
 
     @classmethod
@@ -197,9 +239,15 @@ class SC3FProofPack:
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:
         """Weryfikuje obecność OBOWIĄZKOWYCH wyników SC3F (§4.1 + karta S-C).
 
-        Pakiet liczy z FROZEN wyniku solvera, który zawsze niesie ib_a/tb_s —
-        pełny bilans (I_b, I²t) jest więc obowiązkowy w dowodzie pakietu.
+        Pełny bilans (I_b, i_DC, I²t) jest obowiązkowy. Wyjątek tylko z NAZWANĄ odmową
+        (karta SC-IB-ITH-ZRODLA): bieg bez t_b nie ma i_DC, a przy maszynach wirujących
+        także I_b — kod `fault.czas_tb_brak` w ``odmowy`` zwalnia te dwie wielkości,
+        brak bez kodu jest niekompletnością.
         """
-        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "ib_ka", "i2t_ka2s"}
+        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "i2t_ka2s"}
+        if KOD_CZAS_TB_BRAK not in result.odmowy:
+            required_keys |= {"ib_ka", "i_dc_ka"}
+        elif not result.has_machines:
+            required_keys.add("ib_ka")
         key_results = result.proof_sc3f.summary.key_results
         return [key for key in sorted(required_keys) if key not in key_results]

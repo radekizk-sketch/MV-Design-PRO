@@ -24,9 +24,14 @@ class DeviceRating:
     #: dowodzie jest stanem "NIE_DOTYCZY" (jawny, nie FAIL) czy "brak danej"
     #: (FAIL — aparat POWINIEN miec te zdolnosc, ale karta jej nie wniosla).
     i_cu_not_applicable: bool = False
+    #: Karta SC-IB-ITH-ZRODLA: True dla bezpiecznika (katalog: ``FUSE`` SN albo
+    #: ``ROZLACZNIK_BEZPIECZNIKOWY`` nN). Bezpiecznik ograniczający przerywa prąd przed
+    #: pierwszym szczytem, więc jego zdolność wyłączania porównuje się z prądem
+    #: SPODZIEWANYM I_k'', nie z I_b (`application.equipment_proof.wielkosc_wylaczania`).
+    bezpiecznik: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "device_id": self.device_id,
             "name_pl": self.name_pl,
             "type_ref": self.type_ref,
@@ -38,6 +43,11 @@ class DeviceRating:
             "meta": self.meta,
             "i_cu_not_applicable": self.i_cu_not_applicable,
         }
+        # Pole addytywne: zapisywane tylko dla bezpiecznika — odcisk dowodu każdego innego
+        # aparatu pozostaje bajt w bajt taki sam jak przed kartą (determinizm istniejących
+        # pakietów dowodowych).
+        if self.bezpiecznik:
+            payload["bezpiecznik"] = True
         return canonicalize_json(payload)
 
 

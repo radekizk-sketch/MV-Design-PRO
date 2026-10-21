@@ -77,7 +77,10 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     const kreski = within(bilans)
       .getAllByRole('definition')
       .filter((el) => el.textContent === ZWARCIA_STRINGS.kreska);
-    expect(kreski.length).toBe(17);
+    // Karta SC-IB-ITH-ZRODLA: 18 pozycji bilansu (doszło i_DC(t_b)); Ib i i_DC przy braku t_b
+    // to nazwany stan „nie obliczono — brak tb", nie kreska — kresek 16.
+    expect(kreski.length).toBe(16);
+    expect(within(bilans).getAllByText(ZWARCIA_STRINGS.bilansBrakTb)).toHaveLength(2);
   });
 
   it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {

@@ -211,8 +211,15 @@ export interface ShortCircuitRow {
   c_zrodlo?: string | null;
   un_kv?: number | null;
   tk_s?: number | null;
+  /**
+   * Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b biegu (null = bieg bez t_b, kod
+   * `fault.czas_tb_brak` w założeniach), prąd wyłączeniowy SYMETRYCZNY I_b (IEC 60909-0
+   * rozdz. 9; null = nieobliczony — maszyny wirujące bez t_b) i składowa nieokresowa
+   * i_DC(t_b) (rozdz. 10; null = bieg bez t_b).
+   */
   tb_s?: number | null;
   ib_ka?: number | null;
+  i_dc_ka?: number | null;
   ik_ka?: number | null;
   ik_thevenin_ka?: number | null;
   ik_inverters_ka?: number | null;
@@ -317,7 +324,11 @@ export interface ZrodloSiecioweSlad {
  */
 export interface ZalozenieBieguSlad {
   code: string;
-  element_ref: string;
+  /**
+   * Element modelu, którego dotyczy założenie; `null` = założenie CAŁEGO biegu (karta
+   * SC-IB-ITH-ZRODLA: `fault.czas_tb_brak` — bieg bez czasu wyłączenia t_b).
+   */
+  element_ref: string | null;
   message_pl: string;
   scenariusz: 'MAX' | 'MIN';
 }
@@ -349,6 +360,16 @@ export interface ThermalTimeBiegu {
 }
 
 /**
+ * Czas wyłączenia t_b ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA,
+ * `api/canonical_run_views.py::_czas_tb_biegu_zwarcia`): z opcji biegu (projekcja scenariusza
+ * zwarciowego) albo `wartosc: null` z pochodzeniem `brak_danej` i kodem `fault.czas_tb_brak` —
+ * nigdy wartość domyślna.
+ */
+export type CzasWylaczeniaBiegu =
+  | { wartosc: number; pochodzenie: 'opcje_biegu' }
+  | { wartosc: null; pochodzenie: 'brak_danej'; kod: string };
+
+/**
  * Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) — ZAWSZE
  * konfiguracja TEGO biegu (`run.options`), NIGDY aktywnego przypadku
  * obliczeniowego (który może się różnić od przypadku biegu po fakcie).
@@ -357,6 +378,8 @@ export interface ThermalTimeBiegu {
 export interface KonfiguracjaBieguZwarcia {
   c_factor: CFactorBiegu;
   thermal_time_seconds: ThermalTimeBiegu;
+  /** Karta SC-IB-ITH-ZRODLA — addytywne (brak na starszym zapisie). */
+  breaking_time_seconds?: CzasWylaczeniaBiegu;
   metoda: string;
   /**
    * Wariant zwarciowy ZAPISANY na wyniku biegu: `MAX` (selektywność,
@@ -623,11 +646,24 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   ikss_a: 'Prąd zwarciowy początkowy Ik″',
   rx_ratio: 'Stosunek R/X',
   ip_a: 'Prąd udarowy ip',
+  // Karta SC-IB-ITH-ZRODLA: kroki „Ib" (IEC 60909-0 rozdz. 9) i „iDC" (rozdz. 10) śladu.
   tb_s: 'Czas wyłączenia tb',
-  ta_s: 'Stała czasowa składowej nieokresowej ta',
-  exp_factor: 'Czynnik zaniku e^(−tb/ta)',
-  ib_a: 'Prąd zwarciowy do obliczeń cieplnych Ib',
+  ib_a: 'Prąd wyłączeniowy symetryczny Ib',
+  przypadek: 'Przypadek normy dla Ib',
+  maszyny: 'Zaniki prądów maszyn wirujących',
+  ikss_czesciowy_a: 'Prąd częściowy maszyny Ik″m',
+  ratio_ik_ir: 'Krotność Ik″m/Ir maszyny',
+  mu: 'Współczynnik zaniku μ',
+  q: 'Współczynnik zaniku q (maszyny asynchroniczne)',
+  delta_u_wzgledne: 'Względny spadek napięcia na zaciskach maszyny ΔU″ (w odniesieniu do napięcia źródła zastępczego)',
+  ubytek_a: 'Ubytek prądu wyłączeniowego od maszyny',
+  f_hz: 'Częstotliwość sieci f',
+  wykladnik: 'Wykładnik zaniku 2πf·tb·R/X',
+  wspolczynnik_zaniku: 'Czynnik zaniku e^(−2πf·tb·R/X)',
+  i_dc_a: 'Składowa nieokresowa iDC(tb)',
+  kod: 'Kod odmowy',
   ith_a: 'Prąd zastępczy cieplny Ith',
+  tk_s: 'Czas trwania zwarcia tk',
 };
 
 /**
@@ -664,7 +700,11 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ib_a: 'A',
   ith_a: 'A',
   tb_s: 's',
-  ta_s: 's',
+  tk_s: 's',
+  i_dc_a: 'A',
+  ikss_czesciowy_a: 'A',
+  ubytek_a: 'A',
+  f_hz: 'Hz',
   sk_mva: 'MVA',
 };
 

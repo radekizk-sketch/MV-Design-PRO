@@ -105,12 +105,13 @@ def _siec() -> NetworkGraph:
     return graf
 
 
-def _wejscie_sc3f(z_f: complex | None) -> SC3FInput:
+def _wejscie_sc3f(z_f: complex | None, *, tb_s: float | None = None) -> SC3FInput:
     argumenty: dict[str, object] = {
         "graph": _siec(),
         "fault_node_id": WEZEL,
         "c_factor": C,
         "tk_s": 1.0,
+        "tb_s": tb_s,
     }
     if z_f is not None:
         argumenty["z_f_ohm"] = z_f
@@ -141,10 +142,16 @@ def _tresc(dowod) -> dict:
 @pytest.mark.parametrize("etykieta", sorted(ZF_ISTOTNE))
 def test_dowod_sc3f_przez_zf_ma_kroki_petli_i_prad_wyniku(etykieta: str) -> None:
     z_f = ZF_ISTOTNE[etykieta]
-    wejscie = _wejscie_sc3f(z_f)
+    # Karta SC-IB-ITH-ZRODLA: pełna kolejność (z krokiem i_DC(t_b), EQ_SC3F_020) w biegu z t_b;
+    # bieg bez t_b ma tę samą kolejność bez kroku i_DC — liczby z wyniku, nie z domysłu t_b.
+    wejscie = _wejscie_sc3f(z_f, tb_s=0.1)
     dowod = ProofGenerator.generate_sc3f_proof(wejscie, artifact_id=ARTEFAKT)
     rownania = [krok.equation.equation_id for krok in dowod.steps]
     assert rownania == EquationRegistry.get_sc3f_proof_step_order(impedancja_przejscia=True)
+    bez_tb = ProofGenerator.generate_sc3f_proof(_wejscie_sc3f(z_f), artifact_id=ARTEFAKT)
+    assert [krok.equation.equation_id for krok in bez_tb.steps] == [
+        r for r in rownania if r != "EQ_SC3F_020"
+    ]
     assert "EQ_SC3F_004" not in rownania and "EQ_SC3F_005" not in rownania
     # Liczby dowodu = liczby wyniku solvera (dowód formatuje, nie liczy).
     wyniki = dowod.summary.key_results
@@ -175,7 +182,14 @@ def test_dowod_sc3f_przez_zf_wspolczynnik_c_wylacznie_w_kroku_pradu(etykieta: st
 def test_dowod_sc3f_bez_zf_ma_kroki_metaliczne_bez_sladu_zf() -> None:
     dowod = _dowod_sc3f(None)
     rownania = [krok.equation.equation_id for krok in dowod.steps]
-    assert rownania == EquationRegistry.get_sc3f_proof_step_order()
+    # Bieg bez t_b: kolejność kanoniczna bez kroku i_DC(t_b) (EQ_SC3F_020).
+    assert rownania == [
+        r for r in EquationRegistry.get_sc3f_proof_step_order() if r != "EQ_SC3F_020"
+    ]
+    z_tb = ProofGenerator.generate_sc3f_proof(_wejscie_sc3f(None, tb_s=0.1), artifact_id=ARTEFAKT)
+    assert [k.equation.equation_id for k in z_tb.steps] == (
+        EquationRegistry.get_sc3f_proof_step_order()
+    )
     assert "z_f_ohm" not in dowod.summary.key_results
     assert "z_petli_ohm" not in dowod.summary.key_results
     assert not any("IEC 60909" in w and "poza zakresem" in w for w in dowod.summary.warnings)
@@ -227,6 +241,8 @@ def _wielkosci(rodzaj: str, z_f: complex | None):
         z2_ohm=Z2,
         z0_ohm=Z0,
         a_operator=A_OPERATOR,
+        # Karta SC-IB-ITH-ZRODLA: I_th liczy rdzeń z t_k (m z κ pętli, n = 1) — jedno źródło.
+        tk_s=1.0,
         z_f_ohm=z_f,
     )
 

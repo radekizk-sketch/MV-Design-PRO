@@ -225,7 +225,6 @@ class TestShortCircuitResultContract:
             "rx_ratio",
             "kappa",
             "tk_s",
-            "tb_s",
             "ikss_a",
             "ip_a",
             "ith_a",
@@ -238,6 +237,18 @@ class TestShortCircuitResultContract:
         for field in float_fields:
             value = getattr(result, field)
             assert isinstance(value, int | float), f"{field} should be numeric"
+
+        # Karta SC-IB-ITH-ZRODLA: t_b jest daną biegu, nie stałą solvera — bieg bez t_b niesie
+        # tb_s = None i i_DC = None (brak danej, nie dawne domyślne 0,1 s); I_b sieci odległej
+        # od generatora nie zależy od t_b (I_b = I_k'') i jest liczbą.
+        assert result.tb_s is None
+        assert result.i_dc_a is None
+        z_tb = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, tb_s=0.1
+        )
+        assert isinstance(z_tb.tb_s, float) and z_tb.tb_s == 0.1
+        assert isinstance(z_tb.i_dc_a, float) and z_tb.i_dc_a > 0.0
+        assert z_tb.ib_a == result.ib_a == result.ikss_a
 
         # Complex field
         assert isinstance(result.zkk_ohm, complex)

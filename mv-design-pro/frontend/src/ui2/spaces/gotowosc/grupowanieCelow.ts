@@ -404,6 +404,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: odmowy nadpisania c scenariusza (obszar ANALYSIS).
   'fault.c_nadpisanie_bez_uzasadnienia': 'wspolne',
   'fault.c_nadpisanie_wartosc_niepoprawna': 'wspolne',
+  // Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza zwarciowego (obszar ANALYSIS).
+  'fault.czas_tb_brak': 'wspolne',
+  'fault.czas_tb_niepoprawny': 'wspolne',
   'oltc.deadband_missing': 'wspolne',
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',

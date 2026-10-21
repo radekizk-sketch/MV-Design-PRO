@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from network_model.core.czas_wylaczenia import KOD_CZAS_TB_BRAK
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import (
     OPISY_ODMOW_IMPEDANCJI,
@@ -19,19 +20,26 @@ from network_model.odmowa_danych import (
     OdwolanieElementu,
     RekordOdmowy,
 )
+from network_model.solvers.machine_sc_iec60909 import (
+    MachineShortCircuitResult,
+    compute_machine_contributions,
+)
 from network_model.solvers.short_circuit_contributions import (
     ShortCircuitBranchContribution,
     ShortCircuitSourceContribution,
     SourceType,
 )
 from network_model.solvers.short_circuit_core import (
-    OMEGA_50HZ,
     ShortCircuitPostProcessResult,
     ShortCircuitType,
+    SkladowaNieokresowa,
+    ZanikPraduMaszyny,
     compute_equivalent_impedance,
     compute_ikss,
     compute_post_fault_quantities,
     odmowa_wezla_zwarcia_spoza_grafu,
+    prad_wylaczeniowy_symetryczny_a,
+    skladowa_nieokresowa,
     voltage_factor_for_fault,
 )
 from network_model.whitebox.tracer import WhiteBoxTracer
@@ -109,6 +117,11 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     "zkk_metaliczne_ohm",
     "ikss_metaliczny_a",
     "poza_zakresem_iec60909",
+    # Karta SC-IB-ITH-ZRODLA (B-01 (n), addytywnie, exclude-None): składowa nieokresowa
+    # i_DC(t_b) = √2·I_k''·e^(−ω·t_b·R/X) (IEC 60909-0:2016, rozdz. 10). Obecna WYŁĄCZNIE
+    # gdy bieg ma czas wyłączenia t_b; bez t_b pole nie istnieje, a ślad „iDC" niesie
+    # nazwaną odmowę `fault.czas_tb_brak`.
+    "i_dc_a",
 ]
 
 
@@ -127,11 +140,20 @@ class ShortCircuitResult:
         rx_ratio: float - stosunek R/X impedancji zastępczej [-]
         kappa: float - współczynnik udaru κ [-]
         tk_s: float - czas trwania zwarcia [s]
-        tb_s: float - czas do obliczenia prądu Ib [s]
+        tb_s: float | None - czas wyłączenia t_b = t_min (najkrótszy czas zabezpieczenia
+            + czas własny wyłącznika) [s]; ``None`` = bieg bez tej danej
         ikss_a: float - prąd zwarciowy początkowy Ik'' [A]
         ip_a: float - prąd udarowy Ip [A]
-        ith_a: float - prąd zastępczy cieplny Ith [A]
-        ib_a: float - prąd zwarciowy do obliczeń cieplnych Ib [A]
+        ith_a: float - prąd zastępczy cieplny Ith = Ik''·√(m + n) [A] (n = 1, górne
+            oszacowanie — `short_circuit_core._thermal_mn_factors`)
+        ib_a: float | None - SYMETRYCZNY prąd wyłączeniowy Ib wg IEC 60909-0:2016 rozdz. 9 [A]
+            (`short_circuit_core.prad_wylaczeniowy_symetryczny_a`): Ib = Ik'' dla zwarcia
+            odległego od generatora, z udziałem źródeł przekształtnikowych i dla zwarć
+            niesymetrycznych; z maszynami wirującymi (3F) Ib = Ik'' − Σ ΔU''/(c·Un/√3)·
+            (1 − μ·q)·Ik,m''. ``None`` wyłącznie dla 3F z maszynami bez t_b (kod
+            `fault.czas_tb_brak` w śladzie „Ib")
+        i_dc_a: float | None - składowa nieokresowa iDC(t_b) [A] (IEC 60909-0 rozdz. 10;
+            addytywnie, tylko z t_b)
         sk_mva: float - moc zwarciowa Sk'' [MVA]
         ik_thevenin_a: float - wkład sieci Thevenina [A]
         ik_inverters_a: float - wkład źródeł falownikowych [A]
@@ -160,8 +182,8 @@ class ShortCircuitResult:
     rx_ratio: float
     kappa: float
     tk_s: float
-    ib_a: float
-    tb_s: float
+    ib_a: float | None
+    tb_s: float | None
     ik_thevenin_a: float = 0.0
     ik_inverters_a: float = 0.0
     ik_total_a: float = 0.0
@@ -197,6 +219,9 @@ class ShortCircuitResult:
     zkk_metaliczne_ohm: complex | None = None
     ikss_metaliczny_a: float | None = None
     poza_zakresem_iec60909: bool | None = None
+    # Karta SC-IB-ITH-ZRODLA (addytywnie): składowa nieokresowa i_DC(t_b) [A].
+    # None = bieg bez t_b / wynik sprzed karty (payload bez klucza).
+    i_dc_a: float | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -217,7 +242,7 @@ class ShortCircuitResult:
         return self.ith_a
 
     @property
-    def ib(self) -> float:
+    def ib(self) -> float | None:
         """Alias dla ib_a (canonical)."""
         return self.ib_a
 
@@ -271,11 +296,11 @@ class ShortCircuitResult:
             "rx_ratio": float(self.rx_ratio),
             "kappa": float(self.kappa),
             "tk_s": float(self.tk_s),
-            "tb_s": float(self.tb_s),
+            "tb_s": None if self.tb_s is None else float(self.tb_s),
             "ikss_a": float(self.ikss_a),
             "ip_a": float(self.ip_a),
             "ith_a": float(self.ith_a),
-            "ib_a": float(self.ib_a),
+            "ib_a": None if self.ib_a is None else float(self.ib_a),
             "sk_mva": float(self.sk_mva),
             "ik_thevenin_a": float(self.ik_thevenin_a),
             "ik_inverters_a": float(self.ik_inverters_a),
@@ -319,10 +344,111 @@ class ShortCircuitResult:
             data["ikss_metaliczny_a"] = float(self.ikss_metaliczny_a)
         if self.poza_zakresem_iec60909 is not None:
             data["poza_zakresem_iec60909"] = bool(self.poza_zakresem_iec60909)
+        # Karta SC-IB-ITH-ZRODLA (addytywnie, exclude-None): składowa nieokresowa i_DC(t_b).
+        if self.i_dc_a is not None:
+            data["i_dc_a"] = float(self.i_dc_a)
         return data
 
 
+#: Przypadki normy dla symetrycznego prądu wyłączeniowego (IEC 60909-0:2016, rozdz. 9) — klucz
+#: `przypadek` w śladzie „Ib" (wejście dla dowodu SC3F i ekranu wyników).
+PRZYPADEK_IB_BEZ_MASZYN = "odlegle_od_generatora"
+PRZYPADEK_IB_NIESYMETRYCZNE = "zwarcie_niesymetryczne"
+PRZYPADEK_IB_MASZYNY = "z_udzialem_maszyn"
+
+
+@dataclass(frozen=True)
+class PradWylaczeniowy:
+    """Prąd wyłączeniowy i składowa nieokresowa jednego biegu — wartości pośrednie śladu.
+
+    ``ib_a`` z `prad_wylaczeniowy_symetryczny_a` (``None`` = 3F z maszynami bez t_b),
+    ``zaniki`` — pary (wkład maszyny z `machine_sc_iec60909`, jej składnik zaniku),
+    ``skladowa_dc`` z `skladowa_nieokresowa` (``None`` = bieg bez t_b).
+    """
+
+    przypadek: str
+    tb_s: float | None
+    ib_a: float | None
+    zaniki: tuple[tuple[Any, ZanikPraduMaszyny], ...] = ()
+    skladowa_dc: SkladowaNieokresowa | None = None
+
+
 class ShortCircuitIEC60909Solver:
+    @staticmethod
+    def _prad_wylaczeniowy(
+        *,
+        graph: NetworkGraph,
+        fault_node_id: str,
+        short_circuit_type: ShortCircuitType,
+        c_factor: float,
+        tb_s: float | None,
+        z_f: complex | None,
+        ik_total_a: float,
+        ikss_thevenin_a: float,
+        rx_ratio: float,
+    ) -> PradWylaczeniowy:
+        """I_b (IEC 60909-0:2016, rozdz. 9) i i_DC(t_b) (rozdz. 10) — jeden tok dla 4 rodzajów.
+
+        Udział maszyn wirujących liczy WYŁĄCZNIE `machine_sc_iec60909.compute_machine_
+        contributions` (μ, q, ΔU″ na tej samej macierzy Z-bus co I_k'') — rdzeń nie ma drugiej
+        implementacji krzywych. i_DC z prądu części Thevenina (sieć zasilająca + maszyny):
+        źródła przekształtnikowe nie mają składowej nieokresowej.
+        """
+        skladowa = (
+            None
+            if tb_s is None
+            else skladowa_nieokresowa(ikss_a=ikss_thevenin_a, rx_ratio=rx_ratio, tb_s=tb_s)
+        )
+        if short_circuit_type != ShortCircuitType.THREE_PHASE:
+            return PradWylaczeniowy(
+                przypadek=PRZYPADEK_IB_NIESYMETRYCZNE,
+                tb_s=tb_s,
+                ib_a=prad_wylaczeniowy_symetryczny_a(ikss_a=ik_total_a),
+                skladowa_dc=skladowa,
+            )
+        if (
+            not graph.get_synchronous_machine_sources()
+            and not graph.get_asynchronous_machine_sources()
+        ):
+            return PradWylaczeniowy(
+                przypadek=PRZYPADEK_IB_BEZ_MASZYN,
+                tb_s=tb_s,
+                ib_a=prad_wylaczeniowy_symetryczny_a(ikss_a=ik_total_a),
+                skladowa_dc=skladowa,
+            )
+        # t_b None: μ i q są wyznaczalne tylko tam, gdzie nie zależą od t_min (krotność ≤ 2,
+        # maszyna synchroniczna albo bez mocy na parę biegunów) — wtedy I_b jest pełne; jeśli
+        # choć jedna maszyna potrzebuje krzywej, I_b = None z kodem `fault.czas_tb_brak`.
+        maszyny: MachineShortCircuitResult = compute_machine_contributions(
+            graph, fault_node_id, c_factor=c_factor, t_min_s=tb_s, z_f_ohm=z_f
+        )
+        zaniki: list[tuple[Any, ZanikPraduMaszyny]] = []
+        for wklad in maszyny.contributions:
+            if wklad.mu is None or wklad.q is None:
+                return PradWylaczeniowy(
+                    przypadek=PRZYPADEK_IB_MASZYNY, tb_s=tb_s, ib_a=None, skladowa_dc=skladowa
+                )
+            zaniki.append(
+                (
+                    wklad,
+                    ZanikPraduMaszyny(
+                        ikss_czesciowy_a=wklad.ikss_partial_a,
+                        mu=wklad.mu,
+                        q=wklad.q,
+                        delta_u_wzgledne=wklad.delta_u_wzgledne,
+                    ),
+                )
+            )
+        return PradWylaczeniowy(
+            przypadek=PRZYPADEK_IB_MASZYNY,
+            tb_s=tb_s,
+            ib_a=prad_wylaczeniowy_symetryczny_a(
+                ikss_a=ik_total_a, zaniki=tuple(zanik for _, zanik in zaniki)
+            ),
+            zaniki=tuple(zaniki),
+            skladowa_dc=skladowa,
+        )
+
     @staticmethod
     def _sprawdz_wejscie(graph: NetworkGraph, fault_node_id: str) -> None:
         """Walidacja wejścia wspólna czterech rodzajów zwarcia — przed biegiem.
@@ -359,11 +485,14 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float,
+        tb_s: float | None,
         un_v: float,
+        post: ShortCircuitPostProcessResult,
         z_equiv: complex,
         ikss_thevenin: float,
         ik_inverters: float,
+        ib_a: float | None,
+        i_dc_a: float | None,
         contributions: list[ShortCircuitSourceContribution],
         branch_contributions: list[ShortCircuitBranchContribution] | None,
         white_box_trace: list[dict],
@@ -376,14 +505,6 @@ class ShortCircuitIEC60909Solver:
         ikss_metaliczny_a: float | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
-        post = compute_post_fault_quantities(
-            ikss=ik_total,
-            un_v=un_v,
-            z_equiv=z_equiv,
-            tk_s=tk_s,
-            tb_s=tb_s,
-        )
-
         return ShortCircuitResult(
             short_circuit_type=short_circuit_type,
             fault_node_id=fault_node_id,
@@ -397,7 +518,7 @@ class ShortCircuitIEC60909Solver:
             rx_ratio=post.rx_ratio,
             kappa=post.kappa,
             tk_s=tk_s,
-            ib_a=post.ib_a,
+            ib_a=ib_a,
             tb_s=tb_s,
             ik_thevenin_a=ikss_thevenin,
             ik_inverters_a=ik_inverters,
@@ -415,6 +536,7 @@ class ShortCircuitIEC60909Solver:
             zkk_metaliczne_ohm=z_equiv_metaliczne,
             ikss_metaliczny_a=ikss_metaliczny_a,
             poza_zakresem_iec60909=True if z_f is not None else None,
+            i_dc_a=i_dc_a,
         )
 
     @staticmethod
@@ -499,13 +621,14 @@ class ShortCircuitIEC60909Solver:
         c_factor: float,
         un_v: float,
         tk_s: float,
-        tb_s: float,
+        tb_s: float | None,
         z_equiv: complex,
         z1: complex,
         z2: complex,
         z0: complex | None,
         ikss_a: float,
         post: ShortCircuitPostProcessResult,
+        wylaczeniowy: PradWylaczeniowy,
         graph: NetworkGraph | None = None,
         z_f: complex | None = None,
         z_equiv_metaliczne: complex | None = None,
@@ -635,32 +758,11 @@ class ShortCircuitIEC60909Solver:
             result={"ip_a": post.ip_a},
         )
 
-        ta_s = 0.0 if r_ohm <= 0 or x_ohm <= 0 else x_ohm / (OMEGA_50HZ * r_ohm)
-        exp_factor = 0.0 if ta_s <= 0 else np.exp(-tb_s / ta_s)
-        tracer.add(
-            key="Ib",
-            title="Prąd zwarciowy do obliczeń cieplnych",
-            formula_latex=(
-                "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1)" " \\cdot e^{-t_b/t_a})^2}"
-            ),
-            inputs={
-                "ikss_a": ikss_a,
-                "kappa": post.kappa,
-                "tb_s": tb_s,
-                "ta_s": ta_s,
-                "exp_factor": exp_factor,
-            },
-            substitution=(
-                f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" \\cdot \\sqrt{{1 + \\left(({ShortCircuitIEC60909Solver._format_float(post.kappa)}"
-                f" - 1) \\cdot {ShortCircuitIEC60909Solver._format_float(exp_factor)}\\right)^2}}"
-            ),
-            substitution_latex=(
-                f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" \\cdot \\sqrt{{1 + \\left(({ShortCircuitIEC60909Solver._format_float(post.kappa)}"
-                f" - 1) \\cdot {ShortCircuitIEC60909Solver._format_float(exp_factor)}\\right)^2}}"
-            ),
-            result={"ib_a": post.ib_a},
+        ShortCircuitIEC60909Solver._append_prad_wylaczeniowy_trace(
+            tracer, ikss_a=ikss_a, c_factor=c_factor, wylaczeniowy=wylaczeniowy
+        )
+        ShortCircuitIEC60909Solver._append_skladowa_nieokresowa_trace(
+            tracer, tb_s=tb_s, skladowa=wylaczeniowy.skladowa_dc
         )
 
         tracer.add(
@@ -709,6 +811,160 @@ class ShortCircuitIEC60909Solver:
             )
 
         return tracer.to_list()
+
+    @staticmethod
+    def _append_prad_wylaczeniowy_trace(
+        tracer: WhiteBoxTracer,
+        *,
+        ikss_a: float,
+        c_factor: float,
+        wylaczeniowy: PradWylaczeniowy,
+    ) -> None:
+        """Krok śladu „Ib" — symetryczny prąd wyłączeniowy, JEDNA definicja z rdzenia.
+
+        Wzór i podstawienie zależą od przypadku normy (IEC 60909-0:2016, rozdz. 9), liczba
+        zawsze pochodzi z `prad_wylaczeniowy_symetryczny_a` — ślad nie liczy jej sam.
+        """
+        fmt = ShortCircuitIEC60909Solver._format_float
+        if wylaczeniowy.przypadek != PRZYPADEK_IB_MASZYNY:
+            uwagi = {
+                PRZYPADEK_IB_BEZ_MASZYN: (
+                    "Zwarcie odległe od generatora (brak maszyn wirujących w sieci): składowa "
+                    "okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). Źródła "
+                    "przekształtnikowe są źródłami prądowymi bez zaniku — ich udział wchodzi "
+                    "do Ib w całości."
+                ),
+                PRZYPADEK_IB_NIESYMETRYCZNE: (
+                    "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' "
+                    "(zanik strumienia maszyn nie jest uwzględniany)."
+                ),
+            }[wylaczeniowy.przypadek]
+            tracer.add(
+                key="Ib",
+                title="Prąd wyłączeniowy symetryczny",
+                formula_latex=r"I_b = I_{k}''",
+                inputs={"ikss_a": ikss_a, "przypadek": wylaczeniowy.przypadek},
+                substitution=fmt(ikss_a),
+                substitution_latex=fmt(ikss_a),
+                result={"ib_a": wylaczeniowy.ib_a},
+                notes=uwagi,
+            )
+            return
+        wzor = (
+            r"I_b = I_{k}'' - \sum_m \frac{\Delta U''_m}{c\,U_n/\sqrt{3}}"
+            r"\left(1 - \mu_m q_m\right) I''_{k,m}"
+        )
+        maszyny = [
+            {
+                "source_id": wklad.source_id,
+                "machine_type": wklad.machine_type,
+                "ikss_czesciowy_a": wklad.ikss_partial_a,
+                "ratio_ik_ir": wklad.ratio_ik_ir,
+                "mu": wklad.mu,
+                "q": wklad.q,
+                "delta_u_wzgledne": wklad.delta_u_wzgledne,
+                "ubytek_a": zanik.ubytek_a,
+            }
+            for wklad, zanik in wylaczeniowy.zaniki
+        ]
+        wejscia: dict[str, Any] = {
+            "ikss_a": ikss_a,
+            "c_factor": c_factor,
+            "tb_s": wylaczeniowy.tb_s,
+            "przypadek": wylaczeniowy.przypadek,
+            "maszyny": maszyny,
+        }
+        if wylaczeniowy.ib_a is None:
+            tracer.add(
+                key="Ib",
+                title="Prąd wyłączeniowy symetryczny",
+                formula_latex=wzor,
+                inputs=wejscia,
+                substitution="",
+                substitution_latex="",
+                result={"ib_a": None, "kod": KOD_CZAS_TB_BRAK},
+                notes=(
+                    "Prąd wyłączeniowy nieobliczony: sieć ma maszyny wirujące, których "
+                    "składowa okresowa zanika (krotność prądu powyżej 2 — współczynniki μ i q "
+                    "zależą od t_min = t_b), a bieg nie ma czasu wyłączenia t_b. Podaj t_b w "
+                    "scenariuszu zwarciowym (najkrótszy czas zadziałania zabezpieczenia + czas "
+                    "własny wyłącznika)."
+                ),
+            )
+            return
+        skladniki = " - ".join(
+            f"{fmt(zanik.delta_u_wzgledne)} \\cdot (1 - {fmt(zanik.mu)} \\cdot "
+            f"{fmt(zanik.q)}) \\cdot {fmt(zanik.ikss_czesciowy_a)}"
+            for _, zanik in wylaczeniowy.zaniki
+        )
+        podstawienie = f"{fmt(ikss_a)} - {skladniki}"
+        tracer.add(
+            key="Ib",
+            title="Prąd wyłączeniowy symetryczny",
+            formula_latex=wzor,
+            inputs=wejscia,
+            substitution=podstawienie,
+            substitution_latex=podstawienie,
+            result={"ib_a": wylaczeniowy.ib_a},
+            notes=(
+                "Zwarcie z udziałem maszyn wirujących (IEC 60909-0:2016, rozdz. 9): od Ik'' "
+                "odejmuje się zanik składowej okresowej każdej maszyny; μ z krotności "
+                "Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny "
+                "synchronicznej, q z mocy na parę biegunów dla asynchronicznej; ΔU''_m — spadek "
+                "na reaktancji podprzejściowej maszyny. Źródła przekształtnikowe wchodzą do "
+                "Ik'' i Ib bez zaniku."
+            ),
+        )
+
+    @staticmethod
+    def _append_skladowa_nieokresowa_trace(
+        tracer: WhiteBoxTracer, *, tb_s: float | None, skladowa: SkladowaNieokresowa | None
+    ) -> None:
+        """Krok śladu „iDC" — składowa nieokresowa w chwili t_b (IEC 60909-0:2016, rozdz. 10)."""
+        fmt = ShortCircuitIEC60909Solver._format_float
+        wzor = r"i_{DC} = \sqrt{2} \cdot I_{k}'' \cdot e^{-2 \pi f \, t_b \, R/X}"
+        if skladowa is None:
+            tracer.add(
+                key="iDC",
+                title="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+                formula_latex=wzor,
+                inputs={"tb_s": tb_s},
+                substitution="",
+                substitution_latex="",
+                result={"i_dc_a": None, "kod": KOD_CZAS_TB_BRAK},
+                notes=(
+                    "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. "
+                    "Podaj t_b w scenariuszu zwarciowym."
+                ),
+            )
+            return
+        podstawienie = (
+            f"\\sqrt{{2}} \\cdot {fmt(skladowa.ikss_a)} \\cdot "
+            f"e^{{-2 \\pi \\cdot 50 \\cdot {fmt(skladowa.tb_s)} \\cdot "
+            f"{fmt(skladowa.rx_ratio)}}}"
+        )
+        tracer.add(
+            key="iDC",
+            title="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+            formula_latex=wzor,
+            inputs={
+                "ikss_a": skladowa.ikss_a,
+                "tb_s": skladowa.tb_s,
+                "rx_ratio": skladowa.rx_ratio,
+                "f_hz": 50.0,
+                "wykladnik": skladowa.wykladnik,
+                "wspolczynnik_zaniku": skladowa.wspolczynnik_zaniku,
+            },
+            substitution=podstawienie,
+            substitution_latex=podstawienie,
+            result={"i_dc_a": skladowa.i_dc_a},
+            notes=(
+                "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny "
+                "wirujące); źródła przekształtnikowe nie mają składowej nieokresowej "
+                "(IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we "
+                "współczynniku κ."
+            ),
+        )
 
     @staticmethod
     def _append_impedancja_przejscia_trace(
@@ -1343,7 +1599,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float,
+        tb_s: float | None,
         z0_bus: np.ndarray | None,
         include_branch_contributions: bool,
         z_f_ohm: complex | None,
@@ -1361,7 +1617,7 @@ class ShortCircuitIEC60909Solver:
             raise ValueError("c_factor must be > 0")
         if tk_s <= 0:
             raise ValueError("tk_s must be > 0")
-        if tb_s <= 0:
+        if tb_s is not None and not tb_s > 0:
             raise ValueError("tb_s must be > 0")
         z_f = ShortCircuitIEC60909Solver._sprawdz_impedancje_przejscia(z_f_ohm, fault_node_id)
 
@@ -1405,7 +1661,17 @@ class ShortCircuitIEC60909Solver:
             un_v=un_v,
             z_equiv=core.z_equiv,
             tk_s=tk_s,
+        )
+        wylaczeniowy = ShortCircuitIEC60909Solver._prad_wylaczeniowy(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            short_circuit_type=short_circuit_type,
+            c_factor=c_factor,
             tb_s=tb_s,
+            z_f=core.z_f,
+            ik_total_a=ik_total,
+            ikss_thevenin_a=ikss,
+            rx_ratio=post.rx_ratio,
         )
         white_box_trace = ShortCircuitIEC60909Solver._build_white_box_trace(
             short_circuit_type=short_circuit_type,
@@ -1420,6 +1686,7 @@ class ShortCircuitIEC60909Solver:
             z0=core.z0,
             ikss_a=ik_total,
             post=post,
+            wylaczeniowy=wylaczeniowy,
             graph=graph,
             z_f=core.z_f,
             z_equiv_metaliczne=core.z_equiv_metaliczne,
@@ -1452,9 +1719,12 @@ class ShortCircuitIEC60909Solver:
             tk_s=tk_s,
             tb_s=tb_s,
             un_v=un_v,
+            post=post,
             z_equiv=core.z_equiv,
             ikss_thevenin=ikss,
             ik_inverters=ik_inverters,
+            ib_a=wylaczeniowy.ib_a,
+            i_dc_a=None if wylaczeniowy.skladowa_dc is None else wylaczeniowy.skladowa_dc.i_dc_a,
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
@@ -1473,7 +1743,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float = 0.1,
+        tb_s: float | None = None,
         include_branch_contributions: bool = False,
         z_f_ohm: complex | None = None,
     ) -> ShortCircuitResult:
@@ -1485,9 +1755,16 @@ class ShortCircuitIEC60909Solver:
 
         kappa = 1.02 + 0.98 * exp(-3 * R/X)
         Ip = kappa * sqrt(2) * Ik''
-        Ith = Ik'' * sqrt(m + n)
+        Ith = Ik'' * sqrt(m + n)   (m z kappa i tk; n = 1 — górne oszacowanie, patrz
+                                   short_circuit_core._thermal_mn_factors)
         Sk'' = sqrt(3) * Un * Ik''
+        Ib = Ik'' - sum_m dU''_m/(c*Un/sqrt(3)) * (1 - mu_m*q_m) * Ik,m''  (IEC 60909-0
+             rozdz. 9; bez maszyn wirujących Ib = Ik'')
+        iDC(tb) = sqrt(2) * Ik'' * exp(-2*pi*f*tb*R/X)  (IEC 60909-0 rozdz. 10)
 
+        ``tb_s`` — czas wyłączenia t_b = t_min [s] z danych biegu (scenariusz zwarciowy);
+        ``None`` = brak danej: Ib z udziałem maszyn i iDC nieobliczone (kod
+        `fault.czas_tb_brak` w śladzie), pozostałe wielkości bez zmian.
         ``z_f_ohm`` (karta OD-14): zwarcie przez impedancję przejścia, Zk = Z1 + Zf.
         """
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
@@ -1529,7 +1806,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float = 0.1,
+        tb_s: float | None = None,
         z0_bus: np.ndarray | None = None,
         include_branch_contributions: bool = False,
         z_f_ohm: complex | None = None,
@@ -1560,7 +1837,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float = 0.1,
+        tb_s: float | None = None,
         include_branch_contributions: bool = False,
         z_f_ohm: complex | None = None,
     ) -> ShortCircuitResult:
@@ -1588,7 +1865,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         c_factor: float,
         tk_s: float,
-        tb_s: float = 0.1,
+        tb_s: float | None = None,
         z0_bus: np.ndarray | None = None,
         include_branch_contributions: bool = False,
         z_f_ohm: complex | None = None,

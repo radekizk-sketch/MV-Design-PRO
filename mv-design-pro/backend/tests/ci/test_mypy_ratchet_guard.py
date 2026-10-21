@@ -105,8 +105,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # różnica zbiorów `mypy src` baza/drzewo karty = 25 zdjętych, zero nowych).
     # Partia integracji 11: scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK na czubek po partii 9 —
     # 198/31 → 174/23 (pomiar `mypy src` na drzewie scalonym; zero nowych względem bazy i karty).
-    assert modul.BASELINE_ERRORS == 174
-    assert modul.BASELINE_FILES == 23
+    # Karta SC-IB-ITH-ZRODLA (B-01 pozycja (n)): 174/23 -> 169/22 — pomiar `mypy src` na bazie
+    # `4ccfa9320` i na drzewie karty; zdjęte 5 błędów (`machine_sc_iec60909.py` 4,
+    # `equipment_proof/generator.py` 1), zero nowych (opis przy `BASELINE_*` w guardzie).
+    assert modul.BASELINE_ERRORS == 169
+    assert modul.BASELINE_FILES == 22
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

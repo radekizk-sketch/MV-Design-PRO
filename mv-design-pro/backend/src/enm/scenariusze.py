@@ -70,6 +70,7 @@ from typing import Annotated, Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from domain.fault_scenario import FaultMode, FaultScenario
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -1295,7 +1296,8 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
     """Projekcja scenariusza (zwarciowego i dynamicznego) na opcje biegu — JEDNO zrodlo prawdy.
 
     Wykonawca kanoniczny (`enm/canonical_analysis._execute_short_circuit`) czyta
-    `fault_type`, `scenario` (MAX/MIN), `nadpisanie_c`, `thermal_time_seconds` i `location`
+    `fault_type`, `scenario` (MAX/MIN), `nadpisanie_c`, `thermal_time_seconds`,
+    `breaking_time_seconds` (t_b, gdy podany) i `location`
     Z WIERZCHU opcji;
     klucz `config` zostaje jako pochodzenie (WHITE BOX).
 
@@ -1334,6 +1336,14 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
             else {}
         ),
         "thermal_time_seconds": spec.config.thermal_time_seconds,
+        # Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza (I_b z maszynami, i_DC).
+        # Klucz tylko przy podanym t_b: payload i `input_hash` scenariuszy bez t_b bajtowo
+        # te same; brak = założenie biegu `fault.czas_tb_brak` (assembler).
+        **(
+            {KLUCZ_OPCJI_CZASU_TB: spec.config.breaking_time_seconds}
+            if spec.config.breaking_time_seconds is not None
+            else {}
+        ),
         # PERF-SC-50: `include_branch_contributions` scenariusza staje się realnym
         # sterowaniem biegu (do tej karty zapisywane w `config`, nieczytane przez
         # wykonawcę — fantom). Klucz tylko przy True: payload/hash scenariuszy bez

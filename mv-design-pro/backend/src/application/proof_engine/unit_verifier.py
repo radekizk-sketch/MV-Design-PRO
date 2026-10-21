@@ -187,10 +187,15 @@ class UnitVerifier:
             "inputs": {"μ": "—", "q": "—", "I_k''": "kA"},
             "output": "kA",
         },
-        # Pełny bilans punktu zwarcia: I_b(t_b) oraz I²t (karta S-C, 2026-07-22)
+        # Pełny bilans punktu zwarcia: I_b, i_DC(t_b) oraz I²t (karta SC-IB-ITH-ZRODLA)
         "EQ_SC3F_014": {
+            "rule": "kA − — · — · kA = kA",
+            "inputs": {"I_k''": "kA", "I''_{k,m}": "kA", "μ": "—", "q": "—", "ΔU''": "—"},
+            "output": "kA",
+        },
+        "EQ_SC3F_020": {
             "rule": "kA · — = kA",
-            "inputs": {"I_k''": "kA", "κ": "—", "t_b": "s"},
+            "inputs": {"I_k''": "kA", "t_b": "s", "R/X": "—"},
             "output": "kA",
         },
         "EQ_SC3F_015": {
@@ -213,11 +218,6 @@ class UnitVerifier:
             "rule": "— (bezwymiarowy)",
             "inputs": {"R_k": "Ω", "X_k": "Ω"},
             "output": "—",
-        },
-        "EQ_SC3F_019": {
-            "rule": "kA · — = kA",
-            "inputs": {"I_k''": "kA", "κ": "—", "t_b": "s"},
-            "output": "kA",
         },
         # SC1 Post-Fault (§4.1)
         "EQ_SC1_001": {

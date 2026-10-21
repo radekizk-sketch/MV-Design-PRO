@@ -806,26 +806,26 @@
           "value": 6.471832459560074
         },
         {
-          "formatted": "1.0000 —",
+          "formatted": "0.0073 —",
           "source_key": "m_factor",
           "symbol": "m",
           "unit": "—",
-          "value": 1.0
+          "value": 0.007284535902854558
         },
         {
-          "formatted": "0.0000 —",
+          "formatted": "1.0000 —",
           "source_key": "n_factor",
           "symbol": "n",
           "unit": "—",
-          "value": 0.0
+          "value": 1.0
         }
       ],
       "result": {
-        "formatted": "6.4718 kA",
+        "formatted": "6.4954 kA",
         "source_key": "ith_ka",
         "symbol": "I_{th}",
         "unit": "kA",
-        "value": 6.471832459560074
+        "value": 6.495361835122188
       },
       "source_keys": {
         "I_k''": "ikss_ka",
@@ -835,7 +835,7 @@
       },
       "step_id": "SC1_STEP_010",
       "step_number": 10,
-      "substitution_latex": "I_{th} = 6.4718 \\cdot \\sqrt{1.0000 + 0.0000} = 6.4718 \\cdot 1.0000 = 6.4718\\,\\text{kA}",
+      "substitution_latex": "I_{th} = 6.4718 \\cdot \\sqrt{0.0073 + 1.0000} = 6.4718 \\cdot 1.0036 = 6.4954\\,\\text{kA}",
       "title_pl": "Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
@@ -918,11 +918,11 @@
         "value": 11.471844927077136
       },
       "ith_ka": {
-        "formatted": "6.4718 kA",
+        "formatted": "6.4954 kA",
         "source_key": "ith_ka",
         "symbol": "I_{th}",
         "unit": "kA",
-        "value": 6.471832459560074
+        "value": 6.495361835122188
       },
       "kappa": {
         "formatted": "1.2534 —",

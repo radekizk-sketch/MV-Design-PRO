@@ -662,6 +662,9 @@ def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
             f"ip={_fmt_liczba(row_data.get('ip_ka'))} kA",
             f"Ith={_fmt_liczba(row_data.get('ith_ka'))} kA",
             f"Ib={_fmt_liczba(row_data.get('ib_ka'))} kA",
+            # Karta SC-IB-ITH-ZRODLA: składowa nieokresowa i_DC(t_b) obok I_b symetrycznego
+            # (IEC 60909-0 rozdz. 10) — „—", gdy bieg nie ma t_b.
+            f"iDC(tb)={_fmt_liczba(row_data.get('i_dc_ka'))} kA",
             f"Ik={_fmt_liczba(row_data.get('ik_ka'))} kA",
             f"Sk''={_fmt_liczba(row_data.get('sk_mva'))} MVA",
         ]

@@ -166,6 +166,9 @@ SC_GLOBAL_DELTA_KEYS = (
     "ip_a",
     "ith_a",
     "ib_a",
+    # Karta SC-IB-ITH-ZRODLA: składowa nieokresowa i_DC(t_b) — addytywna (obecna tylko
+    # w biegach z t_b; delta liczona, gdy obie strony ją niosą).
+    "i_dc_a",
     "sk_mva",
     "kappa",
     "zkk_ohm",

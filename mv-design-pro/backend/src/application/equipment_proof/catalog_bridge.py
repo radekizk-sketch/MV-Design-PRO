@@ -45,11 +45,19 @@ class CatalogUmIcu:
     i_cu_ka: float | None
     i_cu_not_applicable: bool
     found_in_catalog: bool
+    #: Karta SC-IB-ITH-ZRODLA: pozycja jest bezpiecznikiem (SN ``FUSE``, nN
+    #: ``ROZLACZNIK_BEZPIECZNIKOWY``) — zdolność wyłączania wobec prądu spodziewanego I_k''.
+    bezpiecznik: bool = False
 
 
 _PUSTY_WYNIK = CatalogUmIcu(
     u_m_kv=None, i_cu_ka=None, i_cu_not_applicable=False, found_in_catalog=False
 )
+
+#: Rodzaj aparatury SN będący bezpiecznikiem (``SwitchEquipmentType.equipment_kind``).
+RODZAJ_SN_BEZPIECZNIK = "FUSE"
+#: Rodzaj aparatury nN będący bezpiecznikiem (``LVApparatusType.device_kind``).
+RODZAJ_NN_BEZPIECZNIK = "ROZLACZNIK_BEZPIECZNIKOWY"
 
 
 def resolve_um_icu_from_catalog(
@@ -83,6 +91,7 @@ def resolve_um_icu_from_catalog(
             i_cu_ka=None if not_applicable else switch_type.i_cu_ka,
             i_cu_not_applicable=not_applicable,
             found_in_catalog=True,
+            bezpiecznik=switch_type.equipment_kind == RODZAJ_SN_BEZPIECZNIK,
         )
 
     lv_type = catalog.get_lv_apparatus_type(type_ref)
@@ -107,6 +116,7 @@ def resolve_um_icu_from_catalog(
             i_cu_ka=icu,
             i_cu_not_applicable=False,
             found_in_catalog=True,
+            bezpiecznik=lv_type.device_kind == RODZAJ_NN_BEZPIECZNIK,
         )
 
     return _PUSTY_WYNIK

@@ -46,6 +46,7 @@ type PradyPola = {
   ik_ka: number | null;
   ip_ka: number | null;
   ith_ka: number | null;
+  ib_ka: number | null;
 };
 
 type WidokWytrzymalosci = {
@@ -68,6 +69,7 @@ type WierszZwarcia = {
   ikss_ka?: number | null;
   ip_ka: number | null;
   ith_ka: number | null;
+  ib_ka?: number | null;
 };
 
 function catalogBinding(namespace: string, itemId: string) {
@@ -282,6 +284,8 @@ function sprawdzPradyPolZBiegiem(widok: WidokWytrzymalosci, wiersze: WierszZwarc
     expect(wiersz, `Punkt ${punkt} pola ${pole.pole} musi być wierszem biegu`).toBeTruthy();
     expect(pole.prady_pola.ip_ka).toBe(wiersz!.ip_ka);
     expect(pole.prady_pola.ith_ka).toBe(wiersz!.ith_ka);
+    // Karta SC-IB-ITH-ZRODLA: wielkość kryterium wyłączania I_b — z TEGO SAMEGO wiersza biegu.
+    expect(pole.prady_pola.ib_ka).toBe(wiersz!.ib_ka ?? null);
   }
 }
 

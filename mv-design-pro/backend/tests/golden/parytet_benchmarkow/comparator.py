@@ -231,13 +231,15 @@ def compare_short_circuit(
     """Compare SC results per fault location + sc_type.
 
     Args:
-        actual_sc: {(fault_node_id, sc_type) -> {"ikss_a", "ip_a", "ith_a", "sk_mva"}}
-                   stored as flat dict keyed by "fault_node_id__sc_type"
+        actual_sc: {(fault_node_id, sc_type) -> {"ikss_a", "ip_a", "ith_a", "sk_mva",
+                   "ib_a", "i_dc_a"}} stored as flat dict keyed by
+                   ``ExpectedShortCircuit.klucz`` ("fault_node_id__sc_type", z sufiksem
+                   "__tb=<t_b>" dla biegu z czasem wyłączenia — karta SC-IB-ITH-ZRODLA)
         expected: ExpectedValues with .short_circuit tuple
     """
     comparisons: list[ElementComparison] = []
     for exp_sc in expected.short_circuit:
-        key = f"{exp_sc.fault_node_id}__{exp_sc.sc_type}"
+        key = exp_sc.klucz
         actual = actual_sc.get(key)
         if actual is None:
             comparisons.append(
@@ -259,6 +261,8 @@ def compare_short_circuit(
             (f"ip_a@{exp_sc.sc_type}", exp_sc.ip_a),
             (f"ith_a@{exp_sc.sc_type}", exp_sc.ith_a),
             (f"sk_mva@{exp_sc.sc_type}", exp_sc.sk_mva),
+            (f"ib_a@{exp_sc.sc_type}", exp_sc.ib_a),
+            (f"i_dc_a@{exp_sc.sc_type}", exp_sc.i_dc_a),
         ):
             if exp_val is None:
                 # FAB-E (E1): brak oczekiwania w wyroczni (nie kazda fikstura

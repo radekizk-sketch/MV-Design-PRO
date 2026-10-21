@@ -10,6 +10,7 @@ import type {
   ShortCircuitRow,
   TraceStep,
 } from '../results-inspector/types';
+import { TRACE_VALUE_LABELS, TRACE_VALUE_UNITS } from '../results-inspector/types';
 import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { MathRenderer } from './MathRenderer';
 
@@ -34,30 +35,10 @@ type LoadState =
 
 const IDLE_STATE: LoadState = { status: 'idle', trace: null, shortCircuit: null, errors: [] };
 
-const TRACE_LABELS_PL: Record<string, string> = {
-  c_factor: 'Współczynnik napięciowy c',
-  exp_factor: 'Czynnik zaniku składowej nieokresowej',
-  ib_a: 'Prąd wyłączeniowy Ib',
-  ikss_a: 'Prąd początkowy symetryczny',
-  ip_a: 'Prąd udarowy ip',
-  ith_a: 'Prąd zastępczy cieplny Ith',
-  kappa: 'Współczynnik udaru κ',
-  r_ohm: 'Rezystancja zastępcza R',
-  rx_ratio: 'Stosunek R/X',
-  short_circuit_type: 'Rodzaj zwarcia',
-  sk_mva: 'Moc zwarciowa',
-  ta_s: 'Stała czasowa zaniku',
-  tb_s: 'Czas wyłączenia',
-  tk_s: 'Czas cieplny',
-  un_v: 'Napięcie znamionowe',
-  voltage_factor: 'Współczynnik przejścia fazowego',
-  x_ohm: 'Reaktancja zastępcza X',
-  z1_ohm: 'Impedancja składowej zgodnej Z₁',
-  z2_ohm: 'Impedancja składowej przeciwnej Z₂',
-  z0_ohm: 'Impedancja składowej zerowej Z₀',
-  z_equiv_abs_ohm: 'Moduł impedancji zastępczej |Zₖ|',
-  z_equiv_ohm: 'Impedancja zastępcza Zₖ',
-};
+// Etykiety i jednostki wielkości śladu: JEDEN słownik frontu (`TRACE_VALUE_LABELS` /
+// `TRACE_VALUE_UNITS` w `results-inspector/types.ts`). Karta SC-IB-ITH-ZRODLA zdjęła stąd
+// drugą kopię, która nazywała I_b „prądem wyłączeniowym" bez „symetryczny" i niosła klucze
+// dawnego śladu (`ta_s`, `exp_factor`), których solver już nie produkuje.
 
 const TRACE_INTERNAL_KEYS = new Set([
   'fault_node_id',
@@ -67,20 +48,6 @@ const TRACE_INTERNAL_KEYS = new Set([
   'element_id',
 ]);
 
-const TRACE_UNIT_FALLBACKS: Record<string, string> = {
-  ib_a: 'A',
-  ikss_a: 'A',
-  ip_a: 'A',
-  ith_a: 'A',
-  r_ohm: 'Ω',
-  sk_mva: 'MVA',
-  ta_s: 's',
-  tb_s: 's',
-  tk_s: 's',
-  un_v: 'V',
-  x_ohm: 'Ω',
-  z_equiv_abs_ohm: 'Ω',
-};
 
 function normalizeRef(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -185,7 +152,7 @@ export function resolveShortCircuitRowsForElement(
 }
 
 function traceLabel(key: string): string {
-  return TRACE_LABELS_PL[key] ?? key
+  return TRACE_VALUE_LABELS[key] ?? key
     .replace(/_/g, ' ')
     .replace(/\bohm\b/gi, 'Ω')
     .replace(/\bka\b/gi, 'kA')
@@ -247,12 +214,12 @@ function traceValueLatex(key: string, value: unknown): string | null {
     const sign = complex.im < 0 ? '-' : '+';
     return [
       `${formatMathNumber(complex.re)} ${sign} j${formatMathNumber(Math.abs(complex.im))}`,
-      unitToLatex(undefined, TRACE_UNIT_FALLBACKS[key] ?? 'Ω'),
+      unitToLatex(undefined, TRACE_VALUE_UNITS[key] ?? 'Ω'),
     ].join('');
   }
 
   const { wartosc, unit } = rozpakujWartoscSladu(value);
-  const fallbackUnit = TRACE_UNIT_FALLBACKS[key];
+  const fallbackUnit = TRACE_VALUE_UNITS[key];
   if (wartosc === null) return '\\mathrm{nie\\ wyznaczono}';
   if (typeof wartosc === 'number') return `${formatMathNumber(wartosc)}${unitToLatex(unit, fallbackUnit)}`;
   if (typeof wartosc === 'boolean') return wartosc ? '\\mathrm{tak}' : '\\mathrm{nie}';

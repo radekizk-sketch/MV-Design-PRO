@@ -224,6 +224,43 @@ def test_werdykty_powstaja_z_modelu_i_pradow_pola_z_biegu(klient: TestClient):
         assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
 
 
+@pytest.mark.parametrize("tb_s", [None, 0.1], ids=["bez_tb", "tb_0_1"])
+def test_kryterium_wylaczania_z_realnego_biegu_porownuje_ib(klient: TestClient, tb_s: float | None):
+    """Karta SC-IB-ITH-ZRODLA — realna ścieżka: bieg produkcyjny (z t_b albo bez), końcówka
+    HTTP, trzeci rekord K. Sieć bez maszyn wirujących: I_b = I″k (IEC 60909-0 rozdz. 9) jest
+    wyznaczalne także bez t_b, więc kryterium wyłączania wyłącznika SN jest rozstrzygnięte
+    wobec I_b z wiersza biegu i nazywa tę wielkość; t_b i i_DC(t_b) wiersza idą do śladu."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
+    opcje = None if tb_s is None else {"breaking_time_seconds": tb_s}
+    run_id = _bieg(klient, case_id, options=opcje)
+
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
+    assert odp.status_code == 200, odp.text
+    from enm.canonical_analysis import get_run
+
+    wiersze = {
+        w["element_id"]: w
+        for w in build_short_circuit_results(get_run(UUID(run_id)))["rows"]
+        if w["fault_type"] == "3F"
+    }
+    for pole in odp.json()["pola"]:
+        wiersz = wiersze[pole["prady_pola"]["punkt_ref"]]
+        assert pole["prady_pola"]["ib_ka"] == wiersz["ib_ka"] == wiersz["ikss_ka"]
+        assert pole["prady_pola"]["tb_s"] == tb_s
+        assert pole["prady_pola"]["un_kv"] == wiersz["un_kv"]
+        ocena = _ocena(pole, "wylaczanie")
+        assert ocena["status_maszynowy"] == "SPELNIA"
+        assert ocena["wynik"]["symbol_latex"] == "I_b"
+        assert ocena["wynik"]["wartosc"]["wartosc"] == wiersz["ib_ka"]
+        assert ocena["podstawa"]["dokument"].startswith("IEC 62271-100")
+        assert "fault.czas_tb_brak" not in pole["kody_gotowosci"]
+        if tb_s is None:
+            assert pole["prady_pola"]["i_dc_ka"] is None
+        else:
+            assert pole["prady_pola"]["i_dc_ka"] == wiersz["i_dc_ka"] is not None
+
+
 def test_koncowka_jest_deterministyczna(klient: TestClient):
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)

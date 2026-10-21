@@ -32,7 +32,8 @@ Pełna lista równań SC3F z audytem c:
 | EQ_SC3F_007   | NIE         | Moc S_k'' (√3·U_n·I_k'')                 |
 | EQ_SC3F_008   | NIE         | Prąd cieplny (I_k''·√(m+n))              |
 | EQ_SC3F_008a  | NIE         | Prąd dynamiczny (= i_p)                  |
-| EQ_SC3F_014   | NIE         | Prąd wyłączeniowy I_b(t_b) (model DC)    |
+| EQ_SC3F_014   | NIE*        | Prąd wyłączeniowy symetryczny I_b        |
+| EQ_SC3F_020   | NIE         | Składowa nieokresowa i_DC(t_b)           |
 | EQ_SC3F_015   | NIE         | Energia cieplna I²t (I_th²·t_k)          |
 
 Równania pomocnicze (NIE używane bezpośrednio w dowodzie):
@@ -440,8 +441,11 @@ EQ_SC3F_011 = EquationDefinition(
         SymbolDefinition(
             symbol="I_k''",
             unit="kA",
-            description_pl="Początkowy prąd zwarciowy maszyny (udział częściowy)",
-            mapping_key="ikss_partial_ka",
+            description_pl=(
+                "Początkowy prąd zwarciowy maszyny na jej zaciskach (ten sam poziom napięcia "
+                "co prąd znamionowy)"
+            ),
+            mapping_key="ikss_zaciski_ka",
         ),
         SymbolDefinition(
             symbol="I_r",
@@ -515,43 +519,111 @@ EQ_SC3F_013 = EquationDefinition(
     "AUDIT: c NIE występuje (I_k'' już zawiera c).",
 )
 
-# --- Pełny bilans punktu zwarcia: I_b(t_b) oraz I²t (karta S-C, 2026-07-22) ------
+# --- Pełny bilans punktu zwarcia: I_b, i_DC(t_b) oraz I²t ---------------------------------
+# Karta SC-IB-ITH-ZRODLA (B-01 (n)): I_b jest SYMETRYCZNYM prądem wyłączeniowym normy
+# (rozdz. 9) — JEDNA definicja w rdzeniu (`short_circuit_core.prad_wylaczeniowy_
+# symetryczny_a`), śladzie (klucz Ib), tym równaniu i dowodzie. Dawny wzór
+# I_k''·√(1 + ((κ − 1)·e^(−t_b/t_a))²) nie był ani prądem symetrycznym, ani
+# niesymetrycznym normy i został usunięty. Składowa nieokresowa — osobne EQ_SC3F_020.
 EQ_SC3F_014 = EquationDefinition(
     equation_id="EQ_SC3F_014",
-    name_pl="Prąd wyłączeniowy I_b przy czasie t_b",
-    standard_ref="IEC 60909-0:2016 § 8 (składowa DC: i_{DC} ~ e^{-t/t_a})",
-    latex=r"I_b = I_k'' \cdot \sqrt{1 + \left((\kappa - 1) \cdot e^{-t_b/t_a}\right)^2}",
+    name_pl="Prąd wyłączeniowy symetryczny I_b",
+    standard_ref="IEC 60909-0:2016 rozdz. 9 (eq. 75 i 76)",
+    latex=(
+        r"I_b = I_k'' - \sum_m \frac{\Delta U''_m}{c\,U_n/\sqrt{3}}"
+        r"\left(1 - \mu_m q_m\right) I''_{k,m}"
+    ),
     symbols=(
         SymbolDefinition(
             symbol="I_b",
             unit="kA",
-            description_pl="Prąd wyłączeniowy przy czasie t_b (z zanikiem składowej DC)",
+            description_pl="Prąd wyłączeniowy symetryczny (wartość skuteczna składowej okresowej)",
             mapping_key="ib_ka",
         ),
         SymbolDefinition(
             symbol="I_k''",
             unit="kA",
-            description_pl="Początkowy prąd zwarciowy symetryczny",
+            description_pl="Początkowy prąd zwarciowy symetryczny w miejscu zwarcia",
             mapping_key="ikss_ka",
         ),
         SymbolDefinition(
-            symbol="\\kappa",
+            symbol="I''_{k,m}",
+            unit="kA",
+            description_pl="Udział maszyny wirującej m w prądzie początkowym (miejsce zwarcia)",
+            mapping_key="ikss_partial_ka",
+        ),
+        SymbolDefinition(
+            symbol="\\mu_m",
             unit="—",
-            description_pl="Współczynnik udaru",
-            mapping_key="kappa",
+            description_pl="Współczynnik zaniku składowej okresowej maszyny przy t_min = t_b",
+            mapping_key="mu_factor",
+        ),
+        SymbolDefinition(
+            symbol="q_m",
+            unit="—",
+            description_pl="Współczynnik zaniku maszyny asynchronicznej (q = 1 dla synchronicznej)",
+            mapping_key="q_factor",
+        ),
+        SymbolDefinition(
+            symbol="\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}",
+            unit="—",
+            description_pl=(
+                "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia "
+                "źródła zastępczego"
+            ),
+            mapping_key="delta_u_wzgledne",
+        ),
+    ),
+    unit_derivation="kA − — · — · kA = kA",
+    notes="Bez maszyn wirujących (zwarcie odległe od generatora, także z udziałem źródeł "
+    "przekształtnikowych — źródeł prądowych bez zaniku) suma jest pusta i I_b = I_k''. "
+    "Dla maszyny na zaciskach zwarcia ΔU''/(c·U_n/√3) = 1 i wzór daje μ·q·I_k,m'' "
+    "(EQ_SC3F_013). Zwarcia niesymetryczne: I_b = I_k''. Wartość I_b czytana z FROZEN wyniku "
+    "solvera (ib_a, ślad Ib) — proof engine nie liczy fizyki. AUDIT: c występuje wyłącznie "
+    "jako normalizacja ΔU'' (współczynnik bezwymiarowy z solvera), I_k'' już zawiera c.",
+)
+
+EQ_SC3F_020 = EquationDefinition(
+    equation_id="EQ_SC3F_020",
+    name_pl="Składowa nieokresowa prądu zwarciowego i_DC w chwili t_b",
+    standard_ref="IEC 60909-0:2016 rozdz. 10 (eq. 64)",
+    latex=r"i_{DC} = \sqrt{2} \cdot I_k'' \cdot e^{-2 \pi f \, t_b \, R/X}",
+    symbols=(
+        SymbolDefinition(
+            symbol="i_{DC}",
+            unit="kA",
+            description_pl="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+            mapping_key="i_dc_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl=(
+                "Prąd początkowy części sieci niosącej składową nieokresową (sieć zasilająca "
+                "i maszyny wirujące; bez źródeł przekształtnikowych)"
+            ),
+            mapping_key="ik_thevenin_ka",
         ),
         SymbolDefinition(
             symbol="t_b",
             unit="s",
-            description_pl="Czas wyznaczenia prądu wyłączeniowego",
+            description_pl=(
+                "Czas wyłączenia t_min — najkrótszy czas zadziałania zabezpieczenia + czas "
+                "własny wyłącznika"
+            ),
             mapping_key="tb_s",
+        ),
+        SymbolDefinition(
+            symbol="R/X",
+            unit="—",
+            description_pl="Stosunek R/X pętli zwarcia (ten sam co we współczynniku κ)",
+            mapping_key="rx_ratio",
         ),
     ),
     unit_derivation="kA · — = kA",
-    notes="Model solvera (WHITE BOX trace, klucz Ib): z dala od generatora składowa AC "
-    "nie zanika (I_b(AC) = I_k''), zanika składowa DC ze stałą czasową t_a = X_th/(ω·R_th), "
-    "ω = 2π·50 Hz. Wartość I_b czytana z FROZEN wyniku solvera (ib_a) — proof engine nie "
-    "liczy fizyki. AUDIT: c NIE występuje (I_k'' już zawiera c).",
+    notes="f = 50 Hz. Wielkości (wykładnik, współczynnik zaniku, i_DC) czytane ze śladu "
+    "solvera (klucz iDC) — proof engine nie liczy fizyki. Niesymetryczny prąd wyłączeniowy "
+    "I_b,asym = √(I_b² + i_DC²). AUDIT: c NIE występuje (I_k'' już zawiera c).",
 )
 
 EQ_SC3F_015 = EquationDefinition(
@@ -687,42 +759,6 @@ EQ_SC3F_018 = EquationDefinition(
     ),
     unit_derivation="— (bezwymiarowy)",
     notes="R_k/X_k pełnej pętli z Z_f (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
-)
-
-EQ_SC3F_019 = EquationDefinition(
-    equation_id="EQ_SC3F_019",
-    name_pl="Prąd wyłączeniowy I_b przy czasie t_b (pętla z impedancją przejścia)",
-    standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
-    latex=r"I_b = I_k'' \cdot \sqrt{1 + \left((\kappa - 1) \cdot e^{-t_b/t_a}\right)^2}",
-    symbols=(
-        SymbolDefinition(
-            symbol="I_b",
-            unit="kA",
-            description_pl="Prąd wyłączeniowy przy czasie t_b (z zanikiem składowej DC)",
-            mapping_key="ib_ka",
-        ),
-        SymbolDefinition(
-            symbol="I_k''",
-            unit="kA",
-            description_pl="Początkowy prąd zwarciowy przez impedancję przejścia",
-            mapping_key="ikss_ka",
-        ),
-        SymbolDefinition(
-            symbol="\\kappa",
-            unit="—",
-            description_pl="Współczynnik udaru",
-            mapping_key="kappa",
-        ),
-        SymbolDefinition(
-            symbol="t_b",
-            unit="s",
-            description_pl="Czas wyznaczenia prądu wyłączeniowego",
-            mapping_key="tb_s",
-        ),
-    ),
-    unit_derivation="kA · — = kA",
-    notes="Stała czasowa składowej DC t_a = X_k/(ω·R_k) pełnej pętli z Z_f, ω = 2π·50 Hz. "
-    "Wartość I_b czytana z FROZEN wyniku solvera (ib_a). AUDIT: c NIE występuje.",
 )
 
 
@@ -3233,8 +3269,9 @@ class AntiDoubleCountingAudit:
         "EQ_SC3F_011": False,  # Współczynnik μ — c NIE występuje
         "EQ_SC3F_012": False,  # Współczynnik q — c NIE występuje
         "EQ_SC3F_013": False,  # Prąd wyłączeniowy maszyny i_b — c NIE występuje (I_k'' zawiera c)
-        "EQ_SC3F_014": False,  # Prąd wyłączeniowy I_b(t_b) — c NIE występuje (I_k'' zawiera c)
+        "EQ_SC3F_014": False,  # Prąd wyłączeniowy I_b — c tylko w bezwymiarowym ΔU''/(c·Un/√3)
         "EQ_SC3F_015": False,  # Energia cieplna I²t — c NIE występuje (I_th zawiera c)
+        "EQ_SC3F_020": False,  # Składowa nieokresowa i_DC(t_b) — c NIE występuje
     }
 
     # Karta OD-14: równania dowodowe wariantu SC3F z impedancją przejścia Z_f — każdy dowód
@@ -3249,7 +3286,8 @@ class AntiDoubleCountingAudit:
         "EQ_SC3F_008": False,  # Prąd cieplny — c NIE występuje
         "EQ_SC3F_008a": False,  # Prąd dynamiczny — c NIE występuje
         "EQ_SC3F_015": False,  # Energia cieplna I²t — c NIE występuje
-        "EQ_SC3F_019": False,  # Prąd wyłączeniowy I_b pętli — c NIE występuje
+        "EQ_SC3F_014": False,  # Prąd wyłączeniowy I_b — jedna definicja z wariantem metalicznym
+        "EQ_SC3F_020": False,  # Składowa nieokresowa i_DC(t_b) — c NIE występuje
     }
     C_FACTOR_EQUATION_IMPEDANCJA = "EQ_SC3F_017"
 
@@ -3406,7 +3444,7 @@ SC3F_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_SC3F_016": EQ_SC3F_016,
     "EQ_SC3F_017": EQ_SC3F_017,
     "EQ_SC3F_018": EQ_SC3F_018,
-    "EQ_SC3F_019": EQ_SC3F_019,
+    "EQ_SC3F_020": EQ_SC3F_020,
 }
 
 # VDROP equations registry
@@ -3528,7 +3566,8 @@ SC3F_PROOF_STEP_ORDER: list[str] = [
     "EQ_SC3F_005",  # Współczynnik udaru κ
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
-    "EQ_SC3F_014",  # Prąd wyłączeniowy I_b(t_b) — gdy wynik niesie ib/tb
+    "EQ_SC3F_014",  # Prąd wyłączeniowy symetryczny I_b — gdy wynik go niesie
+    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) — gdy bieg ma t_b
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''
@@ -3544,7 +3583,8 @@ SC3F_PROOF_STEP_ORDER_IMPEDANCJA: list[str] = [
     "EQ_SC3F_018",  # Współczynnik udaru κ z R_k/X_k
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
-    "EQ_SC3F_019",  # Prąd wyłączeniowy I_b(t_b) z t_a pętli — gdy wynik niesie ib/tb
+    "EQ_SC3F_014",  # Prąd wyłączeniowy symetryczny I_b — ta sama definicja co bez Z_f
+    "EQ_SC3F_020",  # Składowa nieokresowa i_DC(t_b) z R/X pętli — gdy bieg ma t_b
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''

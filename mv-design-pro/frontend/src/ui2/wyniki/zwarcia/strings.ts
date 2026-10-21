@@ -41,6 +41,10 @@ export const ZWARCIA_STRINGS = {
   bilansIp: 'Prąd udarowy ip',
   bilansIth: 'Prąd cieplny zastępczy Ith',
   bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
+  bilansIdc: 'Składowa nieokresowa iDC(tb)',
+  // Karta SC-IB-ITH-ZRODLA: wielkość zależna od tb w biegu bez tb — uczciwy stan zerowy
+  // z przyczyną i drogą naprawy, nie sama kreska.
+  bilansBrakTb: 'nie obliczono — bieg bez czasu wyłączenia tb (podaj tb w scenariuszu zwarciowym)',
   bilansIk: 'Prąd zwarciowy ustalony Ik',
   bilansSk: 'Moc zwarciowa Sk"',
   bilansI2t: 'Energia cieplna I²t',
@@ -60,6 +64,9 @@ export const ZWARCIA_STRINGS = {
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
+  zalCzasWylaczenia: 'Czas wyłączenia tb',
+  zalCzasWylaczeniaBrak: 'nie podano',
+  zalozenieBiegu: 'Bieg zwarciowy',
   // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
   // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
   // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tryb `auto_per_wezel` albo `nadpisanie`

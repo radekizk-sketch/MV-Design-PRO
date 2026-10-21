@@ -61,11 +61,18 @@ class ShortCircuitCoreResult:
 
 @dataclass(frozen=True)
 class ShortCircuitPostProcessResult:
+    """Wielkości pozwarciowe z I_k'' i impedancji pętli zwarcia (bez prądu wyłączeniowego).
+
+    Karta SC-IB-ITH-ZRODLA (B-01 (n)): prąd wyłączeniowy I_b NIE jest tu liczony — zależy
+    od udziału maszyn wirujących i od czasu t_b, których ta funkcja nie zna; jego jedyną
+    definicją jest `prad_wylaczeniowy_symetryczny_a`, a składowej nieokresowej
+    `skladowa_nieokresowa`.
+    """
+
     rx_ratio: float
     kappa: float
     ip_a: float
     ith_a: float
-    ib_a: float
     sk_mva: float
     # Audyt fizyki fala G (2026-07): wspolczynniki cieplne m (skladowa DC) i n
     # (skladowa AC) faktycznie uzyte do policzenia ith_a = ikss*sqrt(m+n) —
@@ -218,12 +225,15 @@ def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[
     kappa<=1 (brak skladowej DC, tj. R/X->inf) -> m=0.
 
     n — skladowa okresowa (AC decay). n=1 dla zwarc DALEKO OD GENERATORA
-    (brak zaniku skladowej okresowej — zalozenie stale w tym module, ktory
-    nie modeluje zanikania reaktancji synchronicznej/podprzejsciowej
-    generatorow w oknie tk_s). Dla zwarc BLISKO GENERATORA n<1 wymaga
-    krzywych normowych I_k''/I_rG (dane generatora poza sygnatura tej
-    funkcji) — udokumentowane jako ograniczenie modelu (audyt fizyki fala G,
-    2026-07; sprawa do decyzji produktowej, patrz raport audytu).
+    (brak zaniku skladowej okresowej). Dla zwarc BLISKO GENERATORA norma daje
+    n<1 z krzywej n(I_k''/I_k, T_k), gdzie I_k to prad zwarciowy USTALONY
+    maszyn (wspolczynniki lambda_max/lambda_min z reaktancji synchronicznej
+    nasyconej x_d,sat i krotnosci napiecia wzbudzenia U_f,max/U_f,r). Model
+    ENM i katalog maszyn NIE niosa tych danych, wiec I_k (a z nim n<1) nie
+    jest wyznaczalny bez zgadywania. Rozstrzygniecie karty SC-IB-ITH-ZRODLA
+    (B-01 (n)): n = 1 stale — to GORNE oszacowanie I_th (I_k <= I_k'' daje
+    n <= 1), wiec kryterium cieplne pozostaje po bezpiecznej stronie; wynik
+    niesie n_factor = 1 jawnie (slad Ith, dowod EQ_SC3F_008).
     """
     if tk_s <= 0.0:
         return 0.0, 1.0
@@ -253,8 +263,13 @@ def compute_post_fault_quantities(
     un_v: float,
     z_equiv: complex,
     tk_s: float,
-    tb_s: float,
 ) -> ShortCircuitPostProcessResult:
+    """κ, i_p, I_th = I_k''·√(m + n) i S_k'' z I_k'' oraz R/X impedancji pętli zwarcia.
+
+    JEDNO źródło prądu cieplnego zastępczego I_th w programie (karta SC-IB-ITH-ZRODLA):
+    rdzeń IEC 60909, wielkości zwarć niesymetrycznych (`short_circuit_asymmetrical_
+    quantities`) i podgląd źródła sieciowego wołają tę funkcję, nikt nie składa I_th sam.
+    """
     if z_equiv.imag == 0:
         rx_ratio = math.inf
     else:
@@ -271,22 +286,89 @@ def compute_post_fault_quantities(
     ith_a = ikss * math.sqrt(m_factor + n_factor)
     sk_mva = (math.sqrt(3.0) * un_v * ikss) / 1_000_000.0
 
-    r_ohm = z_equiv.real
-    x_ohm = z_equiv.imag
-    if r_ohm <= 0 or x_ohm <= 0:
-        ta_s = 0.0
-    else:
-        ta_s = x_ohm / (OMEGA_50HZ * r_ohm)
-    exp_factor = 0.0 if ta_s <= 0 else math.exp(-tb_s / ta_s)
-    ib_a = ikss * math.sqrt(1.0 + ((kappa - 1.0) * exp_factor) ** 2)
-
     return ShortCircuitPostProcessResult(
         rx_ratio=rx_ratio,
         kappa=kappa,
         ip_a=ip_a,
         ith_a=ith_a,
-        ib_a=ib_a,
         sk_mva=sk_mva,
         m_factor=m_factor,
         n_factor=n_factor,
     )
+
+
+@dataclass(frozen=True)
+class SkladowaNieokresowa:
+    """Składowa nieokresowa prądu zwarciowego w chwili t_b (IEC 60909-0:2016, rozdz. 10).
+
+    ``wykladnik`` = ω·t_b·R/X, ``wspolczynnik_zaniku`` = e^(−ω·t_b·R/X),
+    ``i_dc_a`` = √2·I_k''·e^(−ω·t_b·R/X) [A]. Wartości pośrednie są w wyniku, żeby ślad,
+    dowód i ekran pokazywały TO SAMO podstawienie, którym solver policzył liczbę.
+    """
+
+    tb_s: float
+    ikss_a: float
+    rx_ratio: float
+    wykladnik: float
+    wspolczynnik_zaniku: float
+    i_dc_a: float
+
+
+def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> SkladowaNieokresowa:
+    """i_DC(t_b) = √2·I_k''·e^(−2π·f·t_b·R/X) — IEC 60909-0:2016, rozdz. 10, f = 50 Hz.
+
+    ``ikss_a`` to prąd początkowy części sieci niosącej składową nieokresową (sieć zasilająca
+    i maszyny wirujące — źródła przekształtnikowe są w IEC 60909-0 źródłami prądowymi bez
+    składowej nieokresowej). ``rx_ratio`` to R/X impedancji pętli zwarcia — TEN SAM stosunek,
+    z którego policzono κ: X = 0 daje R/X = ∞ i zerową składową, R = 0 — brak zaniku.
+    """
+    if tb_s <= 0.0:
+        raise ValueError("tb_s must be > 0")
+    wykladnik = OMEGA_50HZ * tb_s * rx_ratio
+    wspolczynnik = 0.0 if wykladnik > 700.0 else math.exp(-wykladnik)
+    return SkladowaNieokresowa(
+        tb_s=tb_s,
+        ikss_a=ikss_a,
+        rx_ratio=rx_ratio,
+        wykladnik=wykladnik,
+        wspolczynnik_zaniku=wspolczynnik,
+        i_dc_a=math.sqrt(2.0) * ikss_a * wspolczynnik,
+    )
+
+
+@dataclass(frozen=True)
+class ZanikPraduMaszyny:
+    """Wkład jednej maszyny wirującej do różnicy I_k'' − I_b (IEC 60909-0:2016, rozdz. 9).
+
+    ``ikss_czesciowy_a`` — prąd początkowy maszyny odniesiony do miejsca zwarcia [A];
+    ``mu``, ``q`` — współczynniki zaniku składowej okresowej przy t_min = t_b (q = 1 dla
+    maszyny synchronicznej); ``delta_u_wzgledne`` — ΔU''/(c·U_n/√3), spadek napięcia na
+    reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego.
+    """
+
+    ikss_czesciowy_a: float
+    mu: float
+    q: float
+    delta_u_wzgledne: float
+
+    @property
+    def ubytek_a(self) -> float:
+        """ΔU''/(c·U_n/√3) · (1 − μ·q) · I_k,m'' [A] — składnik odejmowany od I_k''."""
+        return self.delta_u_wzgledne * (1.0 - self.mu * self.q) * self.ikss_czesciowy_a
+
+
+def prad_wylaczeniowy_symetryczny_a(
+    *, ikss_a: float, zaniki: tuple[ZanikPraduMaszyny, ...] = ()
+) -> float:
+    """Symetryczny prąd wyłączeniowy I_b — JEDYNA definicja w programie (IEC 60909-0:2016,
+    rozdz. 9).
+
+    I_b = I_k'' − Σ_m ΔU''_m/(c·U_n/√3) · (1 − μ_m·q_m) · I_k,m''.
+
+    Bez maszyn wirujących (zwarcie odległe od generatora, także z udziałem źródeł
+    przekształtnikowych, które są źródłami prądowymi bez zaniku) I_b = I_k''. Dla maszyny
+    na zaciskach zwarcia ΔU''/(c·U_n/√3) = 1 i wzór redukuje się do I_b = μ·q·I_k,m''
+    zwarcia zasilanego jednostronnie. Zwarcia niesymetryczne: I_b = I_k'' (norma nie
+    uwzględnia zaniku strumienia maszyn) — wołający podaje ``zaniki=()``.
+    """
+    return ikss_a - sum(zanik.ubytek_a for zanik in zaniki)

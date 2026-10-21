@@ -18,8 +18,10 @@ from typing import Any
 import pytest
 from application.analyses.wytrzymalosc_aparatury_pol import (
     READINESS_BRAK_PRADU_POLA,
+    READINESS_BRAK_ZDOLNOSCI_WYLACZANIA,
     READINESS_POZYCJA_BEZ_ZNAMION,
     READINESS_STACJA_NIEZNANA,
+    RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI,
     ZRODLO_KONFIGURACJA,
     ZRODLO_MODEL,
     PradyPola,
@@ -35,7 +37,10 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.rola_pola_sn import NAZWA_ROLI_POLA_SN_PL
-from network_model.catalog.audit2_catalogs import ocen_wytrzymalosc_aparatu
+from network_model.catalog.audit2_catalogs import (
+    DEVICE_WITHSTAND_CATALOG,
+    ocen_wytrzymalosc_aparatu,
+)
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
 # i bezpiecznik, który wytrzymałości krótkotrwałej nie ma.
@@ -228,7 +233,14 @@ def test_pozycja_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny() 
     assert pole["werdykt"]["i_th_ok"] is None
     assert "NIEUSTALONE" in pole["werdykt"]["message_pl"]
     assert READINESS_POZYCJA_BEZ_ZNAMION in pole["kody_gotowosci"]
-    assert {o["status_maszynowy"] for o in pole["oceny"]} == {"BRAK_PODSTAWY"}
+    assert {_ocena(pole, r)["status_maszynowy"] for r in ("dynamiczna", "cieplna")} == {
+        "BRAK_PODSTAWY"
+    }
+    # Karta SC-IB-ITH-ZRODLA: bezpiecznik MA zdolność wyłączania (63 kA) — jego kryterium
+    # wyłączania jest rozstrzygnięte wobec spodziewanego I″k mimo braku znamion wytrzymałości.
+    wylaczanie = _ocena(pole, "wylaczanie")
+    assert wylaczanie["status_maszynowy"] == "SPELNIA"
+    assert wylaczanie["wynik"]["symbol_latex"] == "I_k''"
 
 
 def test_przekroczenie_wytrzymalosci_dynamicznej_jest_blokerem() -> None:
@@ -393,3 +405,234 @@ def test_status_cieplny_rekordu_jest_rozstrzygnieciem_jadra(t_k: float, ith: flo
     assert cieplna["status_maszynowy"] in {"SPELNIA", "NIE_SPELNIA"}
     limit_oczekiwany = 20.0 if t_k <= 1.0 else 20.0 * (1.0 / t_k) ** 0.5
     assert cieplna["limit"]["wartosc"]["wartosc"] == pytest.approx(limit_oczekiwany, rel=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Karta SC-IB-ITH-ZRODLA — kryterium zdolności wyłączania (trzeci rekord K)
+#
+# Iloczyn cech: {rodzaj aparatu: wyłącznik SN, reklozer, bezpiecznik, rozłącznik, odłącznik,
+# uziemnik, wyłącznik z konfiguracji, rozłącznik i tor szynowy z konfiguracji} × {pasmo
+# punktu: SN, nN, brak napięcia} × {prąd: I_b = I″k (sieć odległa), I_b < I″k (maszyny,
+# t_b podane), I_b brak (maszyny bez t_b)} × {I_cu ≥ wartość, I_cu < wartość}. Wiersze
+# „I_b < I_cu < I″k" rozróżniają wielkości: porównanie złej wielkości odwraca status.
+# ---------------------------------------------------------------------------
+
+REKLOZER = "sw-rec-abb-rec615-17kv-630a"  # I_cu 12,5 kA
+ROZLACZNIK = "sw-ls-abb-nal-12kv-400a"
+ODLACZNIK = "sw-ds-abb-ojs-12kv-630a"
+UZIEMNIK = "sw-es-generic-12kv"
+KONF_ROZLACZNIK = "wstd_switch_load_15_25"
+KONF_SZYNA = "wstd_busbar_15_2000_50"
+
+
+def _prady_wyl(
+    *, ik: float, ib: float | None, tb: float | None, un: float | None, i_dc: float | None = None
+) -> PradyPola:
+    return PradyPola(
+        punkt_ref="sn1",
+        punkt_nazwa="sn1",
+        ik_ka=ik,
+        ip_ka=2.5 * ik,
+        ith_ka=ik,
+        ib_ka=ib,
+        i_dc_ka=i_dc,
+        tb_s=tb,
+        un_kv=un,
+    )
+
+
+def _pole_wyl(catalog_ref: str, prady: PradyPola, **kwargs: Any) -> dict[str, Any]:
+    widok = _widok(
+        enm=_enm(aparaty={"pole/in": catalog_ref}), prady_pol={"pole/in": prady}, **kwargs
+    )
+    return next(p for p in widok["pola"] if p["pole_ref"] == "pole/in")
+
+
+@pytest.mark.parametrize(
+    ("aparat", "prady", "status", "symbol", "wartosc"),
+    [
+        # Wyłącznik SN (I_cu 20 kA) — wielkością jest I_b.
+        (WYLACZNIK, _prady_wyl(ik=18.0, ib=18.0, tb=0.1, un=15.0), "SPELNIA", "I_b", 18.0),
+        (WYLACZNIK, _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=15.0), "SPELNIA", "I_b", 19.5),
+        (WYLACZNIK, _prady_wyl(ik=25.0, ib=21.0, tb=0.25, un=15.0), "NIE_SPELNIA", "I_b", 21.0),
+        (WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0), "NIE_OCENIONO", None, None),
+        # Ten sam wyłącznik na punkcie nN — wielkością jest spodziewany I″k (434.5.1).
+        (WYLACZNIK, _prady_wyl(ik=19.5, ib=15.0, tb=0.1, un=0.4), "SPELNIA", "I_k''", 19.5),
+        (WYLACZNIK, _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=0.4), "NIE_SPELNIA", "I_k''", 22.0),
+        (WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=0.4), "NIE_SPELNIA", "I_k''", 22.0),
+        # Bez napięcia punktu wyboru nie da się ugruntować.
+        (WYLACZNIK, _prady_wyl(ik=5.0, ib=5.0, tb=0.1, un=None), "NIE_OCENIONO", None, None),
+        # Reklozer SN (I_cu 12,5 kA) — jak wyłącznik.
+        (REKLOZER, _prady_wyl(ik=13.0, ib=12.0, tb=0.1, un=15.0), "SPELNIA", "I_b", 12.0),
+        # Bezpiecznik (I_cu 63 kA) — prąd spodziewany I″k niezależnie od pasma i od t_b.
+        (BEZPIECZNIK, _prady_wyl(ik=64.0, ib=60.0, tb=0.1, un=15.0), "NIE_SPELNIA", "I_k''", 64.0),
+        (BEZPIECZNIK, _prady_wyl(ik=50.0, ib=None, tb=None, un=15.0), "SPELNIA", "I_k''", 50.0),
+        (BEZPIECZNIK, _prady_wyl(ik=50.0, ib=50.0, tb=0.1, un=None), "SPELNIA", "I_k''", 50.0),
+    ],
+    ids=[
+        "wylacznik_sn_ib_rowne_ik",
+        "wylacznik_sn_ib_ponizej_icu_ik_powyzej",
+        "wylacznik_sn_ib_powyzej_icu",
+        "wylacznik_sn_bez_tb_z_maszynami",
+        "wylacznik_nn_ik_ponizej_icu",
+        "wylacznik_nn_ik_powyzej_icu_ib_ponizej",
+        "wylacznik_nn_bez_tb",
+        "wylacznik_bez_napiecia_punktu",
+        "reklozer_sn_ib",
+        "bezpiecznik_sn_ik_powyzej_ib_ponizej",
+        "bezpiecznik_sn_bez_tb",
+        "bezpiecznik_bez_napiecia_punktu",
+    ],
+)
+def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
+    aparat: str,
+    prady: PradyPola,
+    status: str,
+    symbol: str | None,
+    wartosc: float | None,
+) -> None:
+    ocena = _ocena(_pole_wyl(aparat, prady), "wylaczanie")
+
+    assert ocena["status_maszynowy"] == status
+    assert ocena["stosowalnosc"]["dotyczy"] is True
+    if symbol is None:
+        assert ocena["wynik"] is None
+        assert ocena["wyjasnienie"]["czego_brakuje"]
+    else:
+        assert ocena["wynik"]["symbol_latex"] == symbol
+        assert ocena["wynik"]["wartosc"] == {"wartosc": wartosc, "jednostka": "kA"}
+        # Rekord nazywa porównaną wielkość i normę — ekran pokazuje, CO porównano.
+        assert symbol.replace("''", "″") in ocena["wynik"]["wielkosc_pl"].replace("I″k", "I_k″")
+        assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le I_{{cu}}"
+        assert ocena["limit"]["wartosc"]["jednostka"] == "kA"
+    if status in {"SPELNIA", "NIE_SPELNIA"}:
+        assert ocena["margines"] is not None
+
+
+def test_wylacznik_sn_bez_tb_przy_maszynach_ma_nazwana_odmowe_a_nie_ik() -> None:
+    """Brak I_b (bieg z maszynami bez t_b) to nazwany brak, nigdy cicha podmiana na I″k."""
+    pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0))
+    ocena = _ocena(pole, "wylaczanie")
+
+    assert "fault.czas_tb_brak" in pole["kody_gotowosci"]
+    assert any("fault.czas_tb_brak" in b for b in ocena["wyjasnienie"]["czego_brakuje"])
+    assert ocena["limit"]["wartosc"]["wartosc"] == 20.0
+
+
+@pytest.mark.parametrize(
+    "prady",
+    [
+        _prady_wyl(ik=18.0, ib=18.0, tb=0.1, un=15.0),
+        _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0),
+        _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=0.4),
+    ],
+    ids=["sn_z_tb", "sn_bez_tb", "nn"],
+)
+@pytest.mark.parametrize("aparat", [ROZLACZNIK, ODLACZNIK, UZIEMNIK])
+def test_aparat_bez_zdolnosci_wylaczania_ma_nie_dotyczy(aparat: str, prady: PradyPola) -> None:
+    """Rozłącznik, odłącznik i uziemnik nie przerywają prądu zwarciowego z definicji normy."""
+    pole = _pole_wyl(aparat, prady)
+    ocena = _ocena(pole, "wylaczanie")
+
+    assert ocena["status_maszynowy"] == "NIE_DOTYCZY"
+    assert ocena["stosowalnosc"]["dotyczy"] is False
+    assert ocena["stosowalnosc"]["powod_pl"]
+    assert pole["znamiona"]["i_cu_nie_dotyczy"] is True
+    assert READINESS_BRAK_ZDOLNOSCI_WYLACZANIA not in pole["kody_gotowosci"]
+    assert "fault.czas_tb_brak" not in pole["kody_gotowosci"]
+
+
+@pytest.mark.parametrize(
+    ("device_id", "status", "kod_braku"),
+    [
+        (APARAT_KONFIGURACJI, "BRAK_PODSTAWY", True),
+        (KONF_ROZLACZNIK, "NIE_DOTYCZY", False),
+        (KONF_SZYNA, "NIE_DOTYCZY", False),
+    ],
+    ids=["wylacznik_konfiguracji", "rozlacznik_konfiguracji", "tor_szynowy_konfiguracji"],
+)
+def test_aparat_z_konfiguracji_bez_zdolnosci_w_katalogu_wytrzymalosci(
+    device_id: str, status: str, kod_braku: bool
+) -> None:
+    """Katalog wytrzymałości nie niesie I_cu: wyłącznik → brak podstawy z kodem, nie
+    „spełnia"; rozłącznik i tor szynowy → nie dotyczy."""
+    widok = _widok(
+        prady_pol={"pole/in": _prady_wyl(ik=18.0, ib=18.0, tb=0.1, un=15.0)},
+        bay_device_withstand={"P-01": {"device_id": device_id, "t_clearing_s": 0.5}},
+    )
+    pole = next(p for p in widok["pola"] if p["pole"] == "P-01")
+    ocena = _ocena(pole, "wylaczanie")
+
+    assert ocena["status_maszynowy"] == status
+    assert (READINESS_BRAK_ZDOLNOSCI_WYLACZANIA in pole["kody_gotowosci"]) is kod_braku
+    if kod_braku:
+        assert ocena["limit"] is None
+        assert ocena["wynik"]["wartosc"]["wartosc"] == 18.0
+
+
+def test_kazda_pozycja_katalogu_wytrzymalosci_ma_rodzaj_wylaczania() -> None:
+    """Lista rodzajów katalogu wytrzymałości jest ZAMKNIĘTA — nowa pozycja bez wpisu dałaby
+    brak podstawy zamiast rozstrzygnięcia „nie dotyczy" / „wyłącza"."""
+    rodzaje = {pozycja.device_type for pozycja in DEVICE_WITHSTAND_CATALOG}
+    assert rodzaje == set(RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI)
+
+
+def test_slad_wylaczania_niesie_tb_i_skladowa_nieokresowa_informacyjnie() -> None:
+    pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=18.0, ib=17.0, tb=0.1, un=15.0, i_dc=3.25))
+    opis = _ocena(pole, "wylaczanie")["slad"][0]["opis_pl"]
+
+    assert "t_b = 0.1 s" in opis
+    assert "i_DC(t_b) = 3.25 kA" in opis
+    assert "informacyjnie" in opis
+
+
+def test_prady_pol_niosa_wielkosci_wylaczania_z_wiersza_biegu() -> None:
+    wiersz = {
+        **_wiersz("sn1", "3F", 5.0, 12.5, 5.1),
+        "ib_ka": 4.8,
+        "i_dc_ka": 1.2,
+        "tb_s": 0.1,
+        "un_kv": 15.0,
+    }
+    prady = prady_pol_z_biegu(enm=_enm(), station_ref="stn", wiersze_biegu=[wiersz])
+
+    assert (prady["pole/in"].ib_ka, prady["pole/in"].i_dc_ka) == (4.8, 1.2)
+    assert (prady["pole/in"].tb_s, prady["pole/in"].un_kv) == (0.1, 15.0)
+    assert prady["pole/in"].to_dict()["ib_ka"] == 4.8
+
+
+@pytest.mark.parametrize(
+    ("target_name", "nazwa", "opis"),
+    [
+        ("Szyna sn1", "Szyna sn1", "szyna „Szyna sn1”"),
+        ("  Szyna sn1  ", "Szyna sn1", "szyna „Szyna sn1”"),
+        ("", None, "szyna bez nazwy"),
+        ("   ", None, "szyna bez nazwy"),
+        (None, None, "szyna bez nazwy"),
+    ],
+    ids=["nazwa", "nazwa_ze_spacjami", "pusta", "same_spacje", "brak_pola"],
+)
+def test_nazwa_punktu_z_jednego_predykatu_nazwy(
+    target_name: str | None, nazwa: str | None, opis: str
+) -> None:
+    """Karta NAZWY-JEDNO-ZRODLO na tym module: nazwa punktu zabudowy pola pochodzi
+    z `network_model.nazwy` — iloczyn {nazwa, ze spacjami, pusta, same spacje, brak pola}
+    × {pole wiersza `punkt_nazwa`, zakres ważności, punkt krytyczny trzech ocen}.
+    Identyfikator szyny („sn1”) nigdy nie zastępuje nazwy w zdaniu."""
+    wiersz = {**_wiersz("sn1", "3F", 5.0, 12.5, 5.1), "target_name": target_name, "un_kv": 15.0}
+    if target_name is None:
+        del wiersz["target_name"]
+    prady = prady_pol_z_biegu(enm=_enm(), station_ref="stn", wiersze_biegu=[wiersz])
+    assert prady["pole/in"].punkt_nazwa == nazwa
+
+    widok = _widok(prady_pol={"pole/in": prady["pole/in"]})
+    pole = next(p for p in widok["pola"] if p["prady_pola"]["punkt_ref"] == "sn1")
+    for rodzaj in ("dynamiczna", "cieplna", "wylaczanie"):
+        ocena = _ocena(pole, rodzaj)
+        assert opis in ocena["zakres_waznosci"]["opis_pl"]
+        if ocena["wynik"] is not None:
+            assert ocena["wynik"]["punkt_krytyczny_pl"].endswith(opis)
+        assert "(sn1)" not in ocena["zakres_waznosci"]["opis_pl"]
+        # Ślad kroku nazywa punkt tą samą regułą (strażnik `nazwa_bez_identyfikatora`).
+        assert any(opis in krok["opis_pl"] for krok in ocena["slad"])
+        assert not any("punkt sn1" in krok["opis_pl"] for krok in ocena["slad"])

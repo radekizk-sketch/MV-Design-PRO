@@ -1417,20 +1417,6 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.equipment_proof.generator:EquipmentProofGenerator._check_ith.message_pl:FAIL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C33 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C33 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.equipment_proof.generator:EquipmentProofGenerator._check_ith.message_pl:PASS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C33 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C33 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "application.proof_engine.latex_renderer:LaTeXRenderer._render_summary:FAIL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Inwentarz C44: plakietka „Weryfikacja jednostek: PASS/FAIL” w podsumowaniu dowodu LaTeX — flaga jakości wewnętrznej, w części pakietów zaszyta na `True`; zalecenie inwentarza „stop printing”. Zdjęcie zmienia złote pliki dowodów SC1 (`tests/golden/sc_asymmetrical/*/proof.tex`), których ta karta nie rusza (złote nietknięte) — fala WW-1 razem z F2, plan AB §8. Wydruk DOCX „OK/BŁĄD” tej samej flagi zdjęty kartą AB-1a Pakiet E2 (derywacja jednostek).",

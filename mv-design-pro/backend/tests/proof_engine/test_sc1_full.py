@@ -34,6 +34,8 @@ def _base_sc1_input(fault_type: str) -> SC1Input:
         z2_ohm=complex(0.6, 1.1),
         z0_ohm=complex(0.8, 2.4),
         a_operator=complex(-0.5, math.sqrt(3) / 2),
+        # Karta SC-IB-ITH-ZRODLA: I_th liczy rdzeń z t_k (m z κ pętli, n = 1) — jedno źródło.
+        tk_s=1.0,
     )
     return SC1Input(
         project_name="Test Project",

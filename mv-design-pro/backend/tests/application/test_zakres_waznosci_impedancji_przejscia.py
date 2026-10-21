@@ -242,7 +242,7 @@ def test_wklady_maszyn_odmawiaja_niedopuszczalnej_zf_niezaleznie_od_maszyn(
 
     graf, wezel = _graf_wkladow(z_maszyna)
     with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
-        compute_machine_contributions(graf, wezel, c_factor=_C_MAX_SN, z_f_ohm=z_f)
+        compute_machine_contributions(graf, wezel, c_factor=_C_MAX_SN, t_min_s=0.1, z_f_ohm=z_f)
     (rekord,) = odmowa.value.rekordy
     assert rekord.odwolania == (OdwolanieElementu(RODZAJ_WEZEL, wezel),)
     assert wezel not in str(odmowa.value)
@@ -254,8 +254,10 @@ def test_wklady_maszyn_zerowa_zf_bit_w_bit_jak_brak(z_maszyna: bool) -> None:
 
     graf, wezel = _graf_wkladow(z_maszyna)
     assert (
-        compute_machine_contributions(graf, wezel, c_factor=_C_MAX_SN, z_f_ohm=0j).to_dict()
-        == compute_machine_contributions(graf, wezel, c_factor=_C_MAX_SN).to_dict()
+        compute_machine_contributions(
+            graf, wezel, c_factor=_C_MAX_SN, t_min_s=0.1, z_f_ohm=0j
+        ).to_dict()
+        == compute_machine_contributions(graf, wezel, c_factor=_C_MAX_SN, t_min_s=0.1).to_dict()
     )
 
 

@@ -285,13 +285,18 @@ def test_szyna_za_transformatorem_min_z_z_q_min() -> None:
 # --------------------------------------------------------------------------------------
 
 
-def _bieg_sc(enm: EnergyNetworkModel, scenario: str, klucz: str):
-    run = _bieg(
-        enm,
-        klucz=klucz,
-        analysis_type="short_circuit_sn",
-        options={"fault_type": "3F", "scenario": scenario, "thermal_time_seconds": 1.0},
-    )
+def _bieg_sc(enm: EnergyNetworkModel, scenario: str, klucz: str, *, tb_s: float | None = 0.1):
+    # Karta SC-IB-ITH-ZRODLA: bieg bez czasu wyłączenia t_b publikuje założenie
+    # `fault.czas_tb_brak` (i_DC nieobliczone). Testy tej sekcji izolują założenie S_k,min,
+    # więc bieg niesie t_b; współwystępowanie obu założeń sprawdza test niżej (tb_s=None).
+    opcje: dict[str, object] = {
+        "fault_type": "3F",
+        "scenario": scenario,
+        "thermal_time_seconds": 1.0,
+    }
+    if tb_s is not None:
+        opcje["breaking_time_seconds"] = tb_s
+    run = _bieg(enm, klucz=klucz, analysis_type="short_circuit_sn", options=opcje)
     _execute_short_circuit(run)
     return run
 
@@ -318,6 +323,17 @@ def test_bieg_kanoniczny_max_nigdy_nie_niesie_zalozenia_min() -> None:
     run = _bieg_sc(_enm_za_transformatorem(), "max", "k7-max")
     assert run.raw_result["zrodla_sieciowe"][0]["tryb"] == "MOC_ZWARCIOWA"
     assert "zalozenia" not in run.raw_result
+
+
+def test_bieg_bez_tb_niesie_zalozenie_tb_obok_zalozenia_min() -> None:
+    """Iloczyn {MIN bez danych, MAX} × {bieg bez t_b}: założenie `fault.czas_tb_brak` (bieg,
+    bez elementu) dochodzi do założenia S_k,min, nie zastępuje go ani nie znika w MAX."""
+    run_min = _bieg_sc(_enm_za_transformatorem(), "min", "k7-min-bez-tb", tb_s=None)
+    kody_min = sorted(z["code"] for z in run_min.raw_result["zalozenia"])
+    assert kody_min == ["fault.czas_tb_brak", "source.sk_min_missing"]
+    run_max = _bieg_sc(_enm_za_transformatorem(), "max", "k7-max-bez-tb", tb_s=None)
+    (zal,) = run_max.raw_result["zalozenia"]
+    assert zal["code"] == "fault.czas_tb_brak" and zal["element_ref"] is None
 
 
 def test_odpowiedz_wynikow_zwarc_niesie_zrodla_i_zalozenia() -> None:

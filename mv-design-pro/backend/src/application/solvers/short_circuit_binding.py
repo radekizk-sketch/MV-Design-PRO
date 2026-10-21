@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from enm.tolerancja_nn import dobierz_c_wezla
 from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import DoborC, NadpisanieC, Scenario
 from network_model.odmowa_danych import odmowa_rdzenia_b01
@@ -48,6 +49,7 @@ def _wejscie_pakietu(
     scenariusz: Scenario,
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
+    tb_s: float | None,
     rozszerzenia_audit2: dict[str, Any] | None,
 ) -> WejscieZwarcia:
     """Wejście zwarciowe pakietu dowodowego — TEN SAM assembler co bieg kanoniczny.
@@ -65,6 +67,10 @@ def _wejscie_pakietu(
         "scenario": scenariusz.lower(),
         "thermal_time_seconds": tk_s,
     }
+    if tb_s is not None:
+        # Karta SC-IB-ITH-ZRODLA: t_b biegu, którego dowód powstaje — ta sama reguła danych
+        # i ten sam klucz opcji co bieg (brak zostaje brakiem, nigdy domyślna solvera).
+        opcje[KLUCZ_OPCJI_CZASU_TB] = tb_s
     if nadpisanie_c is not None:
         opcje["nadpisanie_c"] = nadpisanie_c.to_dict()
     return zloz_wejscie_zwarcia(snapshot, opcje, rozszerzenia_audit2=rozszerzenia_audit2)
@@ -98,6 +104,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
     scenariusz: Scenario,
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
+    tb_s: float | None,
     rozszerzenia_audit2: dict[str, Any] | None = None,
     z_f_ohm: complex | None = None,
 ) -> Zwarcie1FZeSnapshotu:
@@ -111,7 +118,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
     „Proof Engine reads results READ-ONLY").
 
     Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: graf, Z0 i c z assemblera biegu
-    (``_wejscie_pakietu``); ``tb_s`` domyślne solvera (0,1 s) jak w biegu.
+    (``_wejscie_pakietu``); ``tb_s`` — t_b biegu (``None`` = brak danej, jak w biegu).
     """
     wejscie = _wejscie_pakietu(
         snapshot=snapshot,
@@ -119,6 +126,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
         scenariusz=scenariusz,
         nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
+        tb_s=tb_s,
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
@@ -132,6 +140,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
             fault_node_id=fault_node_id,
             c_factor=dobor_c.wartosc,
             tk_s=wejscie.tk_s,
+            tb_s=wejscie.tb_s,
             z0_bus=wejscie.z0_bus,
             z_f_ohm=z_f_ohm,
         )
@@ -160,6 +169,7 @@ def zwarcie_3f_ze_snapshotu(
     scenariusz: Scenario,
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
+    tb_s: float | None,
     rozszerzenia_audit2: dict[str, Any] | None = None,
     z_f_ohm: complex | None = None,
 ) -> ZwarcieZeSnapshotu:
@@ -167,7 +177,7 @@ def zwarcie_3f_ze_snapshotu(
 
     Bliźniak `wynik_zwarcia_1f_ze_snapshotu` (dług PACK-SC3F-WIAZANIE): pakiet ma
     OPISYWAĆ wynik, nie produkować go. Graf solvera i c z assemblera biegu
-    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); ``tb_s`` domyślne solvera jak w biegu.
+    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); ``tb_s`` — t_b biegu (``None`` = brak danej).
 
     `z_f_ohm` (karta OD-14): impedancja przejścia biegu, którego pakiet dowodowy powstaje —
     dowód opisuje TEN SAM wynik co bieg (dawniej pakiet biegu przez Z_f przeliczałby zwarcie
@@ -179,6 +189,7 @@ def zwarcie_3f_ze_snapshotu(
         scenariusz=scenariusz,
         nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
+        tb_s=tb_s,
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
@@ -189,6 +200,7 @@ def zwarcie_3f_ze_snapshotu(
             fault_node_id=fault_node_id,
             c_factor=dobor_c.wartosc,
             tk_s=wejscie.tk_s,
+            tb_s=wejscie.tb_s,
             z_f_ohm=z_f_ohm,
         )
     return ZwarcieZeSnapshotu(wynik=wynik, graf=wejscie.solve_graph, dobor_c=dobor_c)
@@ -224,6 +236,7 @@ def graf_i_dobor_c_punktu(
         scenariusz=scenariusz,
         nadpisanie_c=nadpisanie_c,
         tk_s=1.0,
+        tb_s=None,
         rozszerzenia_audit2=None,
     )
     fault_node_id = fault_ref if fault_ref in wejscie.graph.nodes else _ref_to_uuid(fault_ref)

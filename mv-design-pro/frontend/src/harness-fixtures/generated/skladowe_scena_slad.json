@@ -294,21 +294,58 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "kappa": 2.00003133181,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275",
       "result": {
         "ib_a": 2.81274591728
       },
-      "notes": null,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
       "step": 7,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "tb_s": null
+      },
+      "substitution_latex": "",
+      "result": {
+        "i_dc_a": null,
+        "kod": "fault.czas_tb_brak"
+      },
+      "notes": "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. Podaj t_b w scenariuszu zwarciowym.",
+      "step": 8,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
@@ -349,7 +386,7 @@
         "ith_a": 4.8769148332
       },
       "notes": null,
-      "step": 8,
+      "step": 9,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
@@ -389,7 +426,7 @@
         "sk_mva": 0.0730772825627
       },
       "notes": null,
-      "step": 9,
+      "step": 10,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
@@ -443,7 +480,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 10,
+      "step": 11,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -497,7 +534,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 11,
+      "step": 12,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -555,7 +592,7 @@
         "z_equiv_abs_ohm": 15.4545425296
       },
       "notes": null,
-      "step": 12,
+      "step": 13,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -597,7 +634,7 @@
         "ikss_a": 13560.9415364
       },
       "notes": null,
-      "step": 13,
+      "step": 14,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -638,7 +675,7 @@
         "kappa": 1.75018047171
       },
       "notes": null,
-      "step": 14,
+      "step": 15,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -678,7 +715,7 @@
         "ip_a": 33565.0791174
       },
       "notes": null,
-      "step": 15,
+      "step": 16,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -707,21 +744,58 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 13560.9415364,
-        "kappa": 1.75018047171,
-        "tb_s": 0.1,
-        "ta_s": 0.0324518083094,
-        "exp_factor": 0.0458907191603
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
+      "substitution_latex": "13560.9",
       "result": {
-        "ib_a": 13568.9751782
+        "ib_a": 13560.9415364
       },
-      "notes": null,
-      "step": 16,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 17,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "tb_s": null
+      },
+      "substitution_latex": "",
+      "result": {
+        "i_dc_a": null,
+        "kod": "fault.czas_tb_brak"
+      },
+      "notes": "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. Podaj t_b w scenariuszu zwarciowym.",
+      "step": 18,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -762,7 +836,7 @@
         "ith_a": 13794.8153102
       },
       "notes": null,
-      "step": 17,
+      "step": 19,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -802,7 +876,7 @@
         "sk_mva": 2583.70637135
       },
       "notes": null,
-      "step": 18,
+      "step": 20,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
@@ -856,7 +930,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 19,
+      "step": 21,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -910,7 +984,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 20,
+      "step": 22,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -968,7 +1042,7 @@
         "z_equiv_abs_ohm": 0.035134477759
       },
       "notes": null,
-      "step": 21,
+      "step": 23,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1010,7 +1084,7 @@
         "ikss_a": 20705.0562746
       },
       "notes": null,
-      "step": 22,
+      "step": 24,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1051,7 +1125,7 @@
         "kappa": 1.51538143243
       },
       "notes": null,
-      "step": 23,
+      "step": 25,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1091,7 +1165,7 @@
         "ip_a": 44372.4465255
       },
       "notes": null,
-      "step": 24,
+      "step": 26,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1120,21 +1194,58 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 20705.0562746,
-        "kappa": 1.51538143243,
-        "tb_s": 0.1,
-        "ta_s": 0.0139972928149,
-        "exp_factor": 0.000789399027339
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
+      "substitution_latex": "20705.1",
       "result": {
-        "ib_a": 20705.0579881
+        "ib_a": 20705.0562746
       },
-      "notes": null,
-      "step": 25,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 27,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "tb_s": null
+      },
+      "substitution_latex": "",
+      "result": {
+        "i_dc_a": null,
+        "kod": "fault.czas_tb_brak"
+      },
+      "notes": "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. Podaj t_b w scenariuszu zwarciowym.",
+      "step": 28,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1175,7 +1286,7 @@
         "ith_a": 20860.6541519
       },
       "notes": null,
-      "step": 26,
+      "step": 29,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1215,7 +1326,7 @@
         "sk_mva": 14.3448837765
       },
       "notes": null,
-      "step": 27,
+      "step": 30,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
@@ -1269,7 +1380,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 28,
+      "step": 31,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1323,7 +1434,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 29,
+      "step": 32,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1381,7 +1492,7 @@
         "z_equiv_abs_ohm": 10160.4763336
       },
       "notes": null,
-      "step": 30,
+      "step": 33,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1423,7 +1534,7 @@
         "ikss_a": 2.81274591728
       },
       "notes": null,
-      "step": 31,
+      "step": 34,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1464,7 +1575,7 @@
         "kappa": 2.00003133181
       },
       "notes": null,
-      "step": 32,
+      "step": 35,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1504,7 +1615,7 @@
         "ip_a": 7.95577147986
       },
       "notes": null,
-      "step": 33,
+      "step": 36,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1533,21 +1644,58 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "kappa": 2.00003133181,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275",
       "result": {
         "ib_a": 2.81274591728
       },
-      "notes": null,
-      "step": 34,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 37,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "tb_s": null
+      },
+      "substitution_latex": "",
+      "result": {
+        "i_dc_a": null,
+        "kod": "fault.czas_tb_brak"
+      },
+      "notes": "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. Podaj t_b w scenariuszu zwarciowym.",
+      "step": 38,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1588,7 +1736,7 @@
         "ith_a": 4.8769148332
       },
       "notes": null,
-      "step": 35,
+      "step": 39,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1628,7 +1776,7 @@
         "sk_mva": 0.0730772825627
       },
       "notes": null,
-      "step": 36,
+      "step": 40,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
@@ -1682,7 +1830,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 37,
+      "step": 41,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1736,7 +1884,7 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 38,
+      "step": 42,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1794,7 +1942,7 @@
         "z_equiv_abs_ohm": 10155.0291742
       },
       "notes": null,
-      "step": 39,
+      "step": 43,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1836,7 +1984,7 @@
         "ikss_a": 2.81425467467
       },
       "notes": null,
-      "step": 40,
+      "step": 44,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1877,7 +2025,7 @@
         "kappa": 2.00085079564
       },
       "notes": null,
-      "step": 41,
+      "step": 45,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1917,7 +2065,7 @@
         "ip_a": 7.96330038795
       },
       "notes": null,
-      "step": 42,
+      "step": 46,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -1946,21 +2094,58 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81425467467,
-        "kappa": 2.00085079564,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81425",
       "result": {
         "ib_a": 2.81425467467
       },
-      "notes": null,
-      "step": 43,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 47,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "tb_s": null
+      },
+      "substitution_latex": "",
+      "result": {
+        "i_dc_a": null,
+        "kod": "fault.czas_tb_brak"
+      },
+      "notes": "Składowa nieokresowa nieobliczona: bieg nie ma czasu wyłączenia t_b. Podaj t_b w scenariuszu zwarciowym.",
+      "step": 48,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -2001,7 +2186,7 @@
         "ith_a": 5.01865678158
       },
       "notes": null,
-      "step": 44,
+      "step": 49,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -2041,7 +2226,7 @@
         "sk_mva": 0.0731164812294
       },
       "notes": null,
-      "step": 45,
+      "step": 50,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
@@ -2071,10 +2256,10 @@
   ],
   "selection_index": {
     "bus_sn_main": 0,
-    "bus_hv": 9,
-    "bus_nn": 18,
-    "bus_sn_b": 27,
-    "bus_sn_c": 36
+    "bus_hv": 10,
+    "bus_nn": 20,
+    "bus_sn_b": 30,
+    "bus_sn_c": 40
   },
   "catalog_context": [
     {
@@ -2438,7 +2623,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "2723b99556f0d8490afe8a1d55aa063f1f32ffb482b28b0048c50f3d24ad0764",
+      "result_hash": "f45a5a8b015c064fa7c2c8ec50bbcba7ba6d3961c174618c6de727d39d02b932",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

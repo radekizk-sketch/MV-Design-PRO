@@ -141,8 +141,6 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         "a_re": -0.5,
         "a_im": 0.8660254038,
         "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
     response = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
     assert response.status_code == 200
@@ -612,8 +610,6 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
         "a_re": -0.5,
         "a_im": 0.8660254038,
         "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
 
     pierwszy = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
@@ -951,3 +947,46 @@ def test_sc3f_contributions_bez_scenariusza_i_z_c_factor_to_422(tmp_path) -> Non
     assert client.post("/api/proof/sc3f/contributions", json=brak).status_code == 422
     stary = {**brak, "scenariusz": "MAX", "c_factor": 1.1}
     assert client.post("/api/proof/sc3f/contributions", json=stary).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("type_ref", "symbol"),
+    [
+        ("sw-cb-abb-vd4-12kv-630a", "I_b"),
+        ("sw-fuse-eti-vv-12kv-63a", "I_k''"),
+        ("sw-rec-abb-rec615-17kv-630a", "I_b"),
+    ],
+    ids=["wylacznik_sn", "bezpiecznik_sn", "reklozer_sn"],
+)
+def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
+    type_ref: str, symbol: str
+):
+    """Karta SC-IB-ITH-ZRODLA — realna ścieżka HTTP: rodzaj aparatu z pozycji katalogu
+    (``type_ref``) wybiera wielkość kryterium wyłączania tym samym predykatem co ocena pól
+    stacji: wyłącznik i reklozer SN → I_b (IEC 62271-100), bezpiecznik → I″k spodziewany
+    (IEC 60282-1). Bieg bez t_b: sieć bez maszyn wirujących, więc I_b = I″k jest wyznaczalne."""
+    import json as _json
+
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "aparat-01",
+                "name_pl": "Aparat pola liniowego",
+                "type_ref": type_ref,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
+        response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        dowod = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+    krok = next(k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_P12_004")
+    assert krok["equation"]["latex"] == rf"I_{{cu}} \ge {symbol}"

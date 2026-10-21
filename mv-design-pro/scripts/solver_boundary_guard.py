@@ -105,6 +105,17 @@ SANCTIONED_CHANGES = {
         "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
         "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 pozycja (n) planu A/B (karta SC-IB-ITH-ZRODLA, delegacja O-59 - odbior "
+        "przez sesje glowna z niezalezna weryfikacja): ib_a = SYMETRYCZNY prad wylaczeniowy wg "
+        "IEC 60909-0:2016 rozdz. 9 (bez maszyn I_b = I_k''; z maszynami I_k'' - suma "
+        "dU_m/(c*Un/sqrt3)*(1-mu*q)*I_k,m'' z mu/q z machine_sc_iec60909 - jedna implementacja); "
+        "dawny wzor I_k''*sqrt(1+((kappa-1)e^(-t_b/t_a))^2) usuniety (mieszal skladowa "
+        "nieokresowa do I_b). ZMIANA LICZB ib_a usankcjonowana kartą; addytywnie i_dc_a = "
+        "sqrt2*I_k''*e^(-2*pi*f*t_b*R/X) (rozdz. 10) i krok sladu iDC; tb_s: float | None - "
+        "brak t_b = brak danej z kodem fault.czas_tb_brak (koniec cichej stalej 0,1 s w czterech "
+        "sygnaturach); zwarcia niesymetryczne I_b = I_k''. Wyrocznia 4 563,542872 A "
+        "(iec60909_example), test tests/network_model/solvers/test_prad_wylaczeniowy_iloczyn_cech.py. "
+        "Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "
@@ -120,6 +131,12 @@ SANCTIONED_CHANGES = {
         "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
         "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 pozycja (n) planu A/B (karta SC-IB-ITH-ZRODLA, delegacja O-59): jadro "
+        "wielkosci po zwarciu liczy I_b symetryczny (rozdz. 9), skladowa nieokresowa "
+        "i_DC(t_b) (rozdz. 10) i I_th = I_k''*sqrt(m+n) z n = 1 (udokumentowane) jako JEDYNE "
+        "zrodlo dla 3F/2F/1F/2F+G i toru dowodowego SC1; t_b z danych biegu albo None z kodem "
+        "fault.czas_tb_brak. Zmiana liczb ib_a usankcjonowana karta. Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -171,6 +188,13 @@ SANCTIONED_CHANGES = {
         "docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md; testy "
         "tests/network_model/solvers/test_zwarcie_przez_impedancje_przejscia.py. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 pozycja (n) planu A/B (karta SC-IB-ITH-ZRODLA, delegacja O-59): "
+        "compute_sc1_asymmetrical_quantities bierze t_k i liczy kappa, i_p, m, n i I_th przez "
+        "rdzen (compute_post_fault_quantities) z R/X petli danego rodzaju zwarcia - koniec "
+        "drugiej implementacji I_th (wejscia m_factor/n_factor wolajacego) w torze dowodowym "
+        "SC1; I_b zwarc niesymetrycznych = I_k'' (IEC 60909-0 rozdz. 9). Goldeny "
+        "tests/golden/sc_asymmetrical/* przeliczone (n = 1, m z kappa; kappa bez zmian). "
+        "Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/fault_loop_iec60364.py": (
         "W5-E-TTIT (O-59 OD-25, D-11-fault_loop-TT-IT): kasacja NotImplementedError dla "

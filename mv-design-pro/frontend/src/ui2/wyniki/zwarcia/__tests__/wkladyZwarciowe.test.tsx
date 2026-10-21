@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { WkladyZwarciowe } from '../WkladyZwarciowe';
-import { kluczWkladow, parametryWkladowZKonfiguracji, useWkladyZwarciowe } from '../api';
+import { kluczWkladow, naWklady, parametryWkladowZKonfiguracji, useWkladyZwarciowe } from '../api';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { ZWARCIA_STRINGS } from '../strings';
 import { wkladyFixture, wkladyZeSzczegolemFixture } from './fixtures';
@@ -141,18 +141,25 @@ describe('kluczWkladow — klucz pamięci wkładów zależy od parametrów biegu
   const nadpisania = [null, { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { wartosc: 1.0, uzasadnienie: 'Uzgodnienie z OSD' }];
   const impedancje = [undefined, zf(2, 0), zf(0, 2)];
 
-  it('iloczyn 2 × 3 × 3 daje 18 różnych kluczy; te same wartości → ten sam klucz', () => {
+  // Karta SC-IB-ITH-ZRODLA: czwarta cecha — czas wyłączenia t_b biegu (t_min krzywych μ, q).
+  const czasyTb = [null, 0.1, 0.25];
+
+  it('iloczyn 2 × 3 × 3 × 3 daje 54 różne klucze; te same wartości → ten sam klucz', () => {
     const klucze = new Set<string>();
     for (const scenariusz of ['MAX', 'MIN'] as const)
       for (const nadpisanieC of nadpisania)
         for (const impedancja of impedancje)
-          klucze.add(
-            kluczWkladow('BUS-GPZ', impedancja ? { scenariusz, nadpisanieC, impedancja } : { scenariusz, nadpisanieC }),
-          );
-    expect(klucze.size).toBe(18);
-    expect(kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, impedancja: zf(2, 0) })).toBe(
-      kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, impedancja: zf(2, 0) }),
-    );
+          for (const tMinS of czasyTb)
+            klucze.add(
+              kluczWkladow(
+                'BUS-GPZ',
+                impedancja ? { scenariusz, nadpisanieC, tMinS, impedancja } : { scenariusz, nadpisanieC, tMinS },
+              ),
+            );
+    expect(klucze.size).toBe(54);
+    expect(
+      kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, tMinS: 0.1, impedancja: zf(2, 0) }),
+    ).toBe(kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, tMinS: 0.1, impedancja: zf(2, 0) }));
   });
 });
 
@@ -167,7 +174,20 @@ describe('parametryWkladowZKonfiguracji — odczyt konfiguracji zapisanej na bie
     }) as never;
 
   it('scenariusz biegu i brak nadpisania → parametry bez Z_f', () => {
-    expect(parametryWkladowZKonfiguracji(konf())).toEqual({ scenariusz: 'MIN', nadpisanieC: null });
+    expect(parametryWkladowZKonfiguracji(konf())).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: null });
+  });
+
+  it('czas wyłączenia t_b zapisany na biegu → t_min wkładów; bieg bez t_b → null, nie 0,10 s', () => {
+    expect(
+      parametryWkladowZKonfiguracji(
+        konf({ breaking_time_seconds: { wartosc: 0.25, pochodzenie: 'opcje_biegu' } }),
+      ),
+    ).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: 0.25 });
+    expect(
+      parametryWkladowZKonfiguracji(
+        konf({ breaking_time_seconds: { wartosc: null, pochodzenie: 'brak_danej', kod: 'fault.czas_tb_brak' } }),
+      ),
+    ).toEqual({ scenariusz: 'MIN', nadpisanieC: null, tMinS: null });
   });
 
   it('nadpisanie z uzasadnieniem i Z_f biegu przechodzą 1:1', () => {
@@ -183,6 +203,7 @@ describe('parametryWkladowZKonfiguracji — odczyt konfiguracji zapisanej na bie
     ).toEqual({
       scenariusz: 'MAX',
       nadpisanieC: { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
+      tMinS: null,
       impedancja: z,
     });
   });
@@ -215,7 +236,8 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
       r: number,
       scenariusz: 'MAX' | 'MIN' = 'MAX',
       nadpisanieC: { wartosc: number; uzasadnienie: string } | null = null,
-    ) => ({ scenariusz, nadpisanieC, impedancja: zf(r) });
+      tMinS: number | null = null,
+    ) => ({ scenariusz, nadpisanieC, tMinS, impedancja: zf(r) });
     const { rerender } = renderHook(({ p }) => useWkladyZwarciowe('BUS-GPZ', p), {
       initialProps: { p: par(2) },
     });
@@ -228,12 +250,18 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     rerender({ p: par(3, 'MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }) });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    // Karta SC-IB-ITH-ZRODLA: t_b biegu jedzie jako `t_min_s`; bieg bez t_b — pola brak.
+    rerender({ p: par(3, 'MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, 0.1) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    rerender({ p: par(3, 'MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, 0.1) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
     const ciala = fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
-    expect(ciala.map((c) => [c.scenariusz, c.nadpisanie_c, c.fault_impedance])).toEqual([
-      ['MAX', null, { r_f_ohm: 2, x_f_ohm: 0 }],
-      ['MAX', null, { r_f_ohm: 3, x_f_ohm: 0 }],
-      ['MIN', null, { r_f_ohm: 3, x_f_ohm: 0 }],
-      ['MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { r_f_ohm: 3, x_f_ohm: 0 }],
+    expect(ciala.map((c) => [c.scenariusz, c.nadpisanie_c, c.fault_impedance, 't_min_s' in c ? c.t_min_s : 'brak'])).toEqual([
+      ['MAX', null, { r_f_ohm: 2, x_f_ohm: 0 }, 'brak'],
+      ['MAX', null, { r_f_ohm: 3, x_f_ohm: 0 }, 'brak'],
+      ['MIN', null, { r_f_ohm: 3, x_f_ohm: 0 }, 'brak'],
+      ['MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { r_f_ohm: 3, x_f_ohm: 0 }, 'brak'],
+      ['MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { r_f_ohm: 3, x_f_ohm: 0 }, 0.1],
     ]);
     vi.unstubAllGlobals();
   });
@@ -248,5 +276,37 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     expect(result.current).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+});
+
+// Karta SC-IB-ITH-ZRODLA: bieg bez t_b — backend zwraca μ/q/Ib maszyny jako `null`
+// (krzywa zaniku zależy od t_min). Projekcja nie może zamienić `null` na 0 kA (dawne
+// `c.ib_a !== undefined ? c.ib_a / 1000` dawało 0 dla `null`).
+describe('naWklady — wielkości nieobliczone bez t_b zostają brakiem', () => {
+  const maszyna = (mu: number | null, q: number | null, ib: number | null) => ({
+    contributions: [
+      {
+        source_id: 'gen_sync',
+        source_name: 'Generator synchroniczny',
+        ikss_partial_a: 1395,
+        machine_type: 'SYNCHRONOUS',
+        ir_a: 192.5,
+        ratio_ik_ir: 7.2,
+        mu,
+        q,
+        ib_a: ib,
+        wywod: [],
+      },
+    ],
+  });
+
+  it.each([
+    ['bieg bez t_b', null, null, null, null],
+    ['bieg z t_b = 0,1 s', 0.691, 1, 963.9, 0.9639],
+  ])('%s', (_n, mu, q, ib, ibKA) => {
+    const [wklad] = naWklady(maszyna(mu, q, ib) as never);
+    expect(wklad.szczegol?.mu).toBe(mu);
+    expect(wklad.szczegol?.q).toBe(q);
+    expect(wklad.szczegol?.ibKA).toBe(ibKA);
   });
 });

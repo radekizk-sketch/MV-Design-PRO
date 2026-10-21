@@ -357,6 +357,85 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
     );
   });
 
+  // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza. Iloczyn cech: {puste, 0.02, 0.1, 0.25}
+  // → klucz `breaking_time_seconds` obecny tylko z liczbą (puste = brak danej, założenie biegu
+  // `fault.czas_tb_brak`); {0, -0.1} → blokada w formularzu bez żądania. Wpisywanie natywne.
+  describe('CZAS WYŁĄCZENIA t_b', () => {
+    async function wypelnij(user: ReturnType<typeof userEvent.setup>, tb: string) {
+      await user.click(screen.getByTestId('mvd-scenariusze-dodaj'));
+      await user.type(screen.getByTestId('mvd-scenariusze-nazwa'), 'Zwarcie z t_b');
+      await user.type(screen.getByTestId('mvd-scenariusze-element'), 'bus-2');
+      if (tb !== '') await user.type(screen.getByTestId('mvd-scenariusze-czas-tb'), tb);
+      await user.click(screen.getByTestId('mvd-scenariusze-zapisz'));
+    }
+
+    it('puste pole: config bez klucza breaking_time_seconds', async () => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnij(user, '');
+      await waitFor(() => {
+        const post = zadania.find((z) => z.metoda === 'POST');
+        expect(post).toBeTruthy();
+        expect((post!.body as { config: Record<string, unknown> }).config).not.toHaveProperty(
+          'breaking_time_seconds',
+        );
+      });
+    });
+
+    it.each([
+      ['0.02', 0.02],
+      ['0.1', 0.1],
+      ['0.25', 0.25],
+    ])('t_b = %s: config niesie breaking_time_seconds = %s', async (wpis, oczekiwane) => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnij(user, wpis);
+      await waitFor(() => {
+        const post = zadania.find((z) => z.metoda === 'POST');
+        expect(post).toBeTruthy();
+        expect(
+          (post!.body as { config: Record<string, unknown> }).config.breaking_time_seconds,
+        ).toBe(oczekiwane);
+      });
+    });
+
+    it.each(['0', '-0.1'])('t_b = %s: blokada w formularzu, brak żądania', async (wpis) => {
+      const user = userEvent.setup();
+      const zadania = zamontujBackend([]);
+      render(<PanelScenariuszy />);
+      await wypelnij(user, wpis);
+      const blad = screen.getByTestId('mvd-scenariusze-blad-formularza').textContent ?? '';
+      expect(blad).toContain('Czas wyłączenia t_b');
+      expect(blad).not.toContain('fault.czas_tb_niepoprawny');
+      expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
+    });
+
+    it('LISTA: kolumna t_b pokazuje wartość albo jawny brak z konsekwencją', async () => {
+      zamontujBackend([
+        scenariusz('s1', 'Bez t_b', {
+          scenariusz: 'MAX',
+          nadpisanie_c: null,
+          thermal_time_seconds: 1,
+          include_branch_contributions: false,
+        }),
+        scenariusz('s2', 'Z t_b', {
+          scenariusz: 'MAX',
+          nadpisanie_c: null,
+          thermal_time_seconds: 1,
+          include_branch_contributions: false,
+          breaking_time_seconds: 0.1,
+        }),
+      ]);
+      render(<PanelScenariuszy />);
+      expect((await screen.findByTestId('mvd-scenariusze-tb-s1')).textContent).toBe(
+        'nie podano (Ib przy maszynach i iDC nieobliczone)',
+      );
+      expect(screen.getByTestId('mvd-scenariusze-tb-s2').textContent).toBe('0,1 s');
+    });
+  });
+
   // Partia integracji 10 (OD-14): rodzaje zwarcia formularza = rodzaje domeny scenariusza
   // (`FaultType`: 3F, 2F, 1F, 2F+G) — 2F+G dotąd nie istniał w scenariuszu, choć rdzeń go liczył.
   it.each(['SC_3F', 'SC_2F', 'SC_1F', 'SC_2F_G'])(

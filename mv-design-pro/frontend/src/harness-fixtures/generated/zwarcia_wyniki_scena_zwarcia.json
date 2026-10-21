@@ -19,8 +19,9 @@
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "ib_ka": 9.10439262533,
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
       "ik_ka": 8.96999734197,
       "ik_thevenin_ka": 8.95306173407,
       "ik_inverters_ka": 0.0169356078962,
@@ -63,7 +64,8 @@
           6,
           7,
           8,
-          9
+          9,
+          10
         ],
         "method_basis": "IEC_60909",
         "requires_z0": false,
@@ -94,8 +96,9 @@
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
       "un_kv": 110.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "ib_ka": 13.9938193312,
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
       "ik_ka": 13.9866218464,
       "ik_thevenin_ka": 13.9844652706,
       "ik_inverters_ka": 0.00215657585185,
@@ -130,7 +133,6 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          10,
           11,
           12,
           13,
@@ -138,7 +140,9 @@
           15,
           16,
           17,
-          18
+          18,
+          19,
+          20
         ],
         "method_basis": "IEC_60909",
         "requires_z0": false,
@@ -169,8 +173,9 @@
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
       "un_kv": 0.4,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "ib_ka": 21.0926000953,
+      "tb_s": null,
+      "ib_ka": 21.0925978118,
+      "i_dc_ka": null,
       "ik_ka": 21.0925978118,
       "ik_thevenin_ka": 20.4575125157,
       "ik_inverters_ka": 0.635085296109,
@@ -205,15 +210,16 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          19,
-          20,
           21,
           22,
           23,
           24,
           25,
           26,
-          27
+          27,
+          28,
+          29,
+          30
         ],
         "method_basis": "IEC_60909",
         "requires_z0": false,
@@ -244,8 +250,9 @@
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "ib_ka": 9.10439262533,
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
       "ik_ka": 8.96999734197,
       "ik_thevenin_ka": 8.95306173407,
       "ik_inverters_ka": 0.0169356078962,
@@ -280,15 +287,16 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          28,
-          29,
-          30,
           31,
           32,
           33,
           34,
           35,
-          36
+          36,
+          37,
+          38,
+          39,
+          40
         ],
         "method_basis": "IEC_60909",
         "requires_z0": false,
@@ -319,8 +327,9 @@
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "ib_ka": 4.61150716834,
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
       "ik_ka": 4.61150716833,
       "ik_thevenin_ka": 4.60347193319,
       "ik_inverters_ka": 0.00803523513949,
@@ -355,15 +364,16 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          37,
-          38,
-          39,
-          40,
           41,
           42,
           43,
           44,
-          45
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
         ],
         "method_basis": "IEC_60909",
         "requires_z0": false,
@@ -395,6 +405,12 @@
       "code": "inverter.k_sc_default_forbidden",
       "element_ref": "gen_pv",
       "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+      "scenariusz": "MAX"
+    },
+    {
+      "code": "fault.czas_tb_brak",
+      "element_ref": null,
+      "message_pl": "Bieg bez czasu wyłączenia tb — składowa nieokresowa iDC i prąd wyłączeniowy z udziałem maszyn wirujących nieobliczone; podaj tb w scenariuszu zwarciowym (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika)",
       "scenariusz": "MAX"
     }
   ],
@@ -446,7 +462,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-      "result_hash": "851643d30580cba405fbe2601d8a0896022a2ae5d7c9eb1fc469053a05fbade6",
+      "result_hash": "7c80fd0c9482ee5b8e2de5954a51bef16c5fd243d594e3aa1e8c60bb6c5010f6",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -477,6 +493,11 @@
     "thermal_time_seconds": {
       "wartosc": 1.0,
       "pochodzenie": "domyslna_assemblera"
+    },
+    "breaking_time_seconds": {
+      "wartosc": null,
+      "pochodzenie": "brak_danej",
+      "kod": "fault.czas_tb_brak"
     },
     "metoda": "IEC 60909",
     "scenariusz": "MAX"

@@ -24,6 +24,7 @@ import {
   konfiguracjaZwarciaZPol,
   polaCZKonfiguracji,
   type PolaWspolczynnikaC,
+  poleCzasuWylaczenia,
 } from './wspolczynnikC';
 
 const FAULT_TYPES = Object.keys(FAULT_TYPE_LABELS) as FaultTypeValue[];
@@ -52,6 +53,8 @@ export function FaultScenarioModal() {
   // bez `config.scenariusz` backend odmawia utworzenia scenariusza (422).
   const [polaC, setPolaC] = useState<PolaWspolczynnikaC>(DOMYSLNE_POLA_C);
   const [czasTk, setCzasTk] = useState('1');
+  // Karta SC-IB-ITH-ZRODLA: t_b scenariusza — puste = brak danej (nazwane założenie biegu).
+  const [czasTb, setCzasTb] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export function FaultScenarioModal() {
       setXOhm(editingScenario.fault_impedance != null ? String(editingScenario.fault_impedance.x_f_ohm) : '');
       setPolaC(polaCZKonfiguracji(editingScenario.config));
       setCzasTk(String(editingScenario.config?.thermal_time_seconds ?? 1));
+      setCzasTb(poleCzasuWylaczenia(editingScenario.config));
     } else {
       setName('');
       setFaultType('SC_3F');
@@ -77,6 +81,7 @@ export function FaultScenarioModal() {
       setXOhm('');
       setPolaC(DOMYSLNE_POLA_C);
       setCzasTk('1');
+      setCzasTb('');
     }
     setValidationError(null);
   }, [editingScenario, isModalOpen]);
@@ -111,6 +116,7 @@ export function FaultScenarioModal() {
       polaC,
       czas,
       editingScenario?.config?.include_branch_contributions ?? false,
+      czasTb,
     );
     if (!konfiguracja.ok) {
       setValidationError(konfiguracja.blad);
@@ -149,7 +155,7 @@ export function FaultScenarioModal() {
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Wystąpił błąd podczas zapisu scenariusza');
     }
-  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, polaC, czasTk, editingScenario, editingScenarioId, studyCaseId, createScenario, updateScenario]);
+  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, polaC, czasTk, czasTb, editingScenario, editingScenarioId, studyCaseId, createScenario, updateScenario]);
 
   if (!isModalOpen) return null;
 
@@ -289,6 +295,22 @@ export function FaultScenarioModal() {
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
               data-testid="fault-scenario-tk-input"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="fault-scenario-tb-input">
+              Czas wyłączenia t_b [s]
+            </label>
+            <input
+              id="fault-scenario-tb-input"
+              type="number" step="0.01" min="0" value={czasTb}
+              placeholder="np. 0,1 — zabezpieczenie + czas własny wyłącznika"
+              onChange={(e) => setCzasTb(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              data-testid="fault-scenario-tb-input"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Prąd wyłączeniowy Ib przy maszynach wirujących i składowa nieokresowa iDC wymagają t_b; puste pole = wielkości nieobliczone z nazwanym założeniem.
+            </p>
           </div>
 
           {/* Errors */}
