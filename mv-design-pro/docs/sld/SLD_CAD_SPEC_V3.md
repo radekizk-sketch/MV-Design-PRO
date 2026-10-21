@@ -994,6 +994,23 @@ K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-0
   jest FAŁSZEM PREZENTACJI: trójka Sk″/Ik″/U przestaje być spójna (Ik″=Sk″/(√3·U)).
   Spójność pilnowana także w domenie: walidator ENM `sources.sk_ik_voltage_inconsistent`
   (IMPORTANT) przy rozjeździe > 5%.
+- **Pasmo nad szyną SN (GPZ-PARYTET, 2026-10-21 — WIĄŻĄCE):** jedna arytmetyka
+  (`compose/gpz.ts` `layoutSections`) rezerwuje w każdej sekcji, od lewej: etykietę sekcji
+  (wyśrodkowaną na lewym końcu szyny), grupę wież transformatorów (pole WN TR → TR2W → pole TR)
+  i blok źródła-ekwiwalentu SN przy prawym końcu szyny. Wieże transformatorów tej samej sekcji
+  stoją obok siebie w porządku `transformerRef` (zasięg wieży z tej samej arytmetyki co jej
+  budowa: plany stosów, kolumny adnotacji pól, tabliczka TR), grupa jest wyśrodkowana na sekcji,
+  ale nie wchodzi na etykietę sekcji, a każde zejście trafia w szynę sekcji. Sekcja następna
+  zaczyna się za całą zajętością pasma poprzedniej o pas sprzęgła (wyłącznik i jego oznacznik)
+  i połowę swojej etykiety. Sekcja docelowa transformatora i sekcja źródła SN wynikają wyłącznie
+  z szyny w modelu (`Transformer.lv_bus_ref`, `Source.bus_ref` = szyna sekcji); transformator
+  bez sekcji o swojej szynie dostaje wieżę na prawo od sekcji bez zejścia do szyny SN
+  (`gpz.transformer.section.missing:<ref>`), źródło SN bez takiej sekcji nie jest rysowane
+  (`gpz.source.unattached`). Dawny przydział zastępczy (transformator po indeksie, źródło do
+  sekcji `order = 0`) dowiązywał je do cudzej szyny. Test:
+  `scene/__tests__/buildScene.gpzWiezeTransformatorow.test.ts` (iloczyn liczba TR × sekcja ×
+  szerokość sekcji × sekcja źródła × sprzęgło × LOD, brak przecięć prostokątów, żadna etykieta
+  GPZ nieusunięta przez silnik etykiet, determinizm).
 - **Wyrocznia:** `gpz_hv_column_probe` — gdy ENM niesie TR WN/SN: na scenie istnieje symbol
   transformatora WN/SN, szyna WN nad nim i przyłącze systemowe zaczepione na szynie ŹRÓDŁA
   (WN ⇒ `#hv-bus-source-extension`, SN ⇒ `#source-bus-extension`), połączone torem;

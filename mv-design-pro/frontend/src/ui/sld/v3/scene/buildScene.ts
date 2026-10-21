@@ -3298,7 +3298,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const probe = composeGpz(
           gpzData,
           { x: 0, y: 0 },
-          externalGridSources.map((s) => ({ id: s.id })),
+          externalGridSources.map((s) => ({ id: s.id, connectionRef: s.connectionRef })),
           'full',
         );
         return snapUp(probe.bbox.x + probe.bbox.width) + GPZ_TRUNK_GAP;
@@ -3446,7 +3446,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // z zapasem w rezerwie policzonej z pełnego szczegołu (zero kolizji z
     // magistralą). L2: render==layout, więc offsety BEZ zmian względem sprzed S1.
     const layoutDetail = 'full' as const;
-    const zrodlaSieci = externalGridSources.map((s) => ({ id: s.id }));
+    const zrodlaSieci = externalGridSources.map((s) => ({ id: s.id, connectionRef: s.connectionRef }));
     const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, zrodlaSieci, layoutDetail);
     const port1 = findGpzTrunkPort(pass1, gpzData, []);
     const targetBusAxisY = mainLayout ? mainLayout.busAxisY : 0;

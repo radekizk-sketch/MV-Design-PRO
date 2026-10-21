@@ -271,7 +271,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
   // się nad WN tylko gdy `Source.bus_ref` = szyna WN (test niżej).
   it('źródło-ekwiwalent na szynie SN ⇒ zaczep nad szyną SN (#source-bus-extension), NIE nad WN', () => {
     const props = propsWithHvColumn();
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const snExtension = composition.segments.find((s) => s.ownerRef === 'gpz-1#source-bus-extension');
     const sourceDrop = composition.segments.find((s) => s.ownerRef === 'src-1#grid-source-drop');
     expect(sourceDrop).toBeDefined();
@@ -286,7 +286,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { bus_ref: 'bus-110' })] },
       'gpz-1');
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-110' }]);
     const hvBus = composition.segments.find((s) => s.meta.testId === 'gpz-canonical-hv-bus');
     const sourceDrop = composition.segments.find((s) => s.ownerRef === 'src-1#grid-source-drop');
     const hvExtension = composition.segments.find((s) => s.ownerRef === 'gpz-1#hv-bus-source-extension');
@@ -299,7 +299,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
 
   it('nazwa źródła + tabliczka danych — WYŁĄCZNIE wartości z hvSystemSource (formatowanie PL, przecinek dziesiętny)', () => {
     const props = propsWithHvColumn();
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[0].text).toBe('GPZ Referencyjny 15 kV');
@@ -317,7 +317,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
       'gpz-1');
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[2].text).toBe('Sk″maks 250 / Sk″min 150 MVA · Ik″maks 9,62 / Ik″min 5,8 kA · 15 kV');
@@ -331,7 +331,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
       'gpz-1');
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV · Uzad 1,06 pu');
@@ -349,7 +349,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
         sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
       },
       'gpz-1');
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[2].text).toBe(
@@ -359,7 +359,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
 
   it('brak dopasowania hvSystemSource.sourceRef do wpisu gridSources ⇒ ZERO etykiety (glif źródła zostaje)', () => {
     const props = propsWithHvColumn();
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'inny-ref' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'inny-ref', connectionRef: 'bus-sn' }]);
     expect(composition.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
     expect(composition.labels.transformerLabels.some((l) => l.ownerRef === 'inny-ref#system-source-label')).toBe(false);
   });
@@ -386,7 +386,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const enm = fullFixture();
     // Brak TR = brak rekordu transformatora (jedna reguła „transformatory stacji”, patrz wyżej).
     const props = buildCanonicalGpzProps({ ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] }, 'gpz-1');
-    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     expect(composition.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(false);
     expect(composition.missingData).toEqual(expect.arrayContaining(['gpz.hv.missing', 'gpz.transformer.missing']));
     // Fallback: gridSource wraca do zaczepu nad szyną SN (brak kolumny WN do wieńczenia).

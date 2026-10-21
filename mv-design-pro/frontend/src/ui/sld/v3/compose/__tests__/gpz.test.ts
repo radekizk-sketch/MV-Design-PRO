@@ -62,6 +62,7 @@ const TR1: CanonicalGpzTransformer = {
   vectorGroup: 'YNd11',
   poleTr: null,
   poleWn: null,
+  lvSectionId: 'sec-1',
 };
 
 /** Rola tła pola zgodna z rolą stosu aparatów (ta sama dana modelu `Bay.bay_role`). */

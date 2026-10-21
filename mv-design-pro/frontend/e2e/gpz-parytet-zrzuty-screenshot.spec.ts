@@ -13,6 +13,10 @@
  * `#sld?run=<id>` (ta sama droga co produkcja: orkiestrator pobiera `results/v1`). Motyw
  * przełączany REALNYM przyciskiem powłoki; przybliżenie kółkiem myszy nad belką GPZ.
  *
+ * Drugi kadr: GPZ z dwiema sekcjami SN i trzema transformatorami 110/SN (operacja
+ * `add_grid_source_sn` rozdziela je na sekcje po kolei — dwa na sekcji 1): wieże
+ * transformatorów jednej sekcji stoją obok siebie, nie jedna na drugiej.
+ *
  * Zrzuty: `docs/uiux/zrzuty/gpz-parytet/gpz-<stan>-<motyw>.png` (do drzewa repo wyłącznie
  * z `ZRZUTY_DO_DOKUMENTACJI=1`, inaczej `test-results/zrzuty-dokumentacji/…`).
  */
@@ -61,7 +65,10 @@ async function operacja(request: APIRequestContext, caseId: string, name: string
   return body.snapshot ?? {};
 }
 
-async function siecGpz(request: APIRequestContext) {
+async function siecGpz(
+  request: APIRequestContext,
+  uklad: { readonly sekcje: number; readonly transformatory?: number } = { sekcje: 1 },
+) {
   const suffix = Date.now().toString(36);
   const projectName = `GPZ parytet ${suffix}`;
   const caseName = `Kadry GPZ ${suffix}`;
@@ -82,7 +89,8 @@ async function siecGpz(request: APIRequestContext) {
     catalog_binding: katalog('ZRODLO_SN', ZRODLO),
     hv_voltage_kv: 110.0,
     transformer_sn_mva: 25.0,
-    sections_count: 1,
+    sections_count: uklad.sekcje,
+    ...(uklad.transformatory != null ? { transformer_count: uklad.transformatory } : {}),
     line_fields_per_section: 2,
     gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },
   });
@@ -225,5 +233,32 @@ test('GPZ-PARYTET — kadry bloku GPZ przed biegiem i po biegu rozpływu mocy (o
     await expect(page.getByTestId('sld-v3-gpz-bilans-zasilania')).toHaveText(/^Zasilanie GPZ: P = -?\d+,\d{4} MW, Q = -?\d+,\d{4} Mvar$/);
     await expect(page.getByTestId('sld-v3-gpz-tabela-tytul')).toHaveText('Pola GPZ — wynik rozpływu mocy');
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-po-biegu-${motyw.klucz}.png`) });
+  }
+});
+
+test('GPZ-PARYTET — dwie sekcje SN i trzy transformatory: wieże obok siebie (oba motywy)', async ({ page, request }) => {
+  test.setTimeout(600000);
+  mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
+  const seed = await siecGpz(request, { sekcje: 2, transformatory: 3 });
+  await otworzSchemat(page, seed, '/#sld');
+  for (const motyw of [
+    { klucz: 'ciemny', theme: 'dark_scada' as const },
+    { klucz: 'jasny', theme: 'light_technical' as const },
+  ]) {
+    await ustawMotyw(page, motyw.theme);
+    await page.getByRole('button', { name: 'Dopasuj widok' }).click();
+    await page.waitForTimeout(500);
+    const uzwojenia = page.locator('[data-uzwojenia-stan]');
+    await expect(uzwojenia).toHaveCount(3, { timeout: 30000 });
+    // Trzy symbole transformatora w trzech różnych, rozłącznych kolumnach.
+    const ramki = [];
+    for (let i = 0; i < 3; i += 1) ramki.push((await uzwojenia.nth(i).boundingBox())!);
+    const posortowane = [...ramki].sort((a, b) => a.x - b.x);
+    for (let i = 1; i < posortowane.length; i += 1) {
+      expect(posortowane[i].x, 'wieże transformatorów nie nachodzą na siebie').toBeGreaterThan(
+        posortowane[i - 1].x + posortowane[i - 1].width,
+      );
+    }
+    await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-dwie-sekcje-trzy-tr-${motyw.klucz}.png`) });
   }
 });
