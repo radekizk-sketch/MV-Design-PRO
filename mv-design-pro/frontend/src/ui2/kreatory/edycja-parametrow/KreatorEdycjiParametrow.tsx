@@ -129,12 +129,12 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   return `${T.aparatBrak}.`;
 }
 
-/** Konwersja tekstu na typ: liczba / bool / null wykrywane automatycznie, reszta jako tekst. */
+/** Konwersja tekstu na typ: liczba / tak-nie / brak wartości wykrywane automatycznie, reszta jako tekst. */
 function parsujWartosc(raw: string): string | number | boolean | null {
   const trimmed = raw.trim();
-  if (trimmed === 'null') return null;
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
+  if (trimmed === 'brak') return null;
+  if (trimmed === 'tak') return true;
+  if (trimmed === 'nie') return false;
   if (trimmed !== '' && !Number.isNaN(Number(trimmed))) return Number(trimmed);
   return raw;
 }
