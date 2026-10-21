@@ -4,7 +4,7 @@ SC Symmetrical (3F) Proof Pack — pakiet dowodowy zwarcia trójfazowego (G-SCM 
 STATUS: CANONICAL & BINDING
 Rejestr: V12K-054 (G-SCM F2). Domyka lukę: zwarcie 3-fazowe (najczęstsze) nie miało
 dotąd pakietu dowodowego, a generator ``ProofGenerator.generate_sc3f_proof`` (jedyne
-miejsce z krokami maszynowymi μ/q/i_b, IEC 60909-0:2016 §6.6) był osierocony.
+miejsce z krokami maszynowymi μ/q/i_b, IEC 60909-0:2016 rozdz. 9) był osierocony.
 
 Wszystko liczy się po stronie serwera z kanonicznego snapshotu ENM (ZERO fizyki w
 UI, WHITE BOX):
@@ -125,7 +125,7 @@ class SC3FProofPack:
         result = zwarcie.wynik
         graph = zwarcie.graf
 
-        # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu i TĄ SAMĄ funkcją co rdzeń
+        # Rozbicie per-maszyna (μ/q/i_b, rozdz. 9) z tego samego grafu i TĄ SAMĄ funkcją co rdzeń
         # (I_b sieci = I_k'' − Σ zaników tych samych maszyn); t_min = t_b punktu z wyniku
         # (karta TB-WARTOSC-ROBOCZA: rozstrzygnięte w warstwie wiązania, pochodzenie w
         # `tb_zrodlo`). Dołączane tylko gdy realnie są maszyny (determinizm).

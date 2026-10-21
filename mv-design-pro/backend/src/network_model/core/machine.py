@@ -10,8 +10,8 @@ WITHOUT being modified. These models expose every intermediate value (WHITE BOX)
 the per-unit reactance, the rated current, the IEC impedance-correction factor, and
 the final complex Z″ — all auditable, all pinned to a standard clause.
 
-References: IEC 60909-0:2016 — §6.3 (synchronous machines), §6.6 (decay factors μ, q
-for the symmetrical breaking current), §6.7/§8 (asynchronous motors).
+References: IEC 60909-0:2016 — §6.3 (synchronous machines), rozdz. 9 (decay factors μ, q
+for the symmetrical breaking current — węzły krzywych t_min z interpolacją liniową), §6.7/§8 (asynchronous motors).
 """
 
 from __future__ import annotations

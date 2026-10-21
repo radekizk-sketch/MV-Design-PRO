@@ -236,7 +236,7 @@ def test_dfig_partial_identical_to_squirrel_cage():
     assert c2.machine_type == "DFIG"
 
 
-# ── μ / q factor functions (§6.6.1, §6.6.3) ──────────────────────────────────
+# ── μ / q factor functions (IEC 60909-0:2016 rozdz. 9) ──────────────────────────────────
 def test_mu_factor_curves():
     assert mu_factor(1.5, 0.10) == 1.0  # ratio ≤ 2 ⇒ no decay
     assert mu_factor(8.0, 0.02) == pytest.approx(0.84 + 0.26 * math.exp(-0.26 * 8), rel=1e-9)
@@ -374,7 +374,17 @@ _ZAPISY_SPOZA_JEZYKA_INZYNIERA = (
 
 @pytest.mark.parametrize(
     ("maszyna", "t_min_s"),
-    [("synchroniczna", 0.10), ("asynchroniczna", 0.10), ("dfig", 0.10), ("dfig", 0.25)],
+    [
+        ("synchroniczna", 0.10),
+        ("asynchroniczna", 0.10),
+        ("dfig", 0.10),
+        ("dfig", 0.25),
+        # Karta MU-INTERPOLACJA: kroki interpolacji μ i q (węzły, waga) i t_b spoza zakresu.
+        ("synchroniczna", 0.20),
+        ("asynchroniczna", 0.07),
+        ("asynchroniczna", 0.01),
+        ("dfig", 0.40),
+    ],
 )
 def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_min_s: float):
     """Karta #145: iloczyn {maszyna synchroniczna, asynchroniczna, dwustronnie zasilana}
@@ -395,25 +405,50 @@ def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_
     assert any(znak in " ".join(teksty) for znak in "ąćęłńóśźż")
 
 
-# ── Karty SC-IB-ITH-ZRODLA i TB-WARTOSC-ROBOCZA: t_min = t_b punktu zwarcia, zawsze liczba ──
+# ── Karty SC-IB-ITH-ZRODLA, TB-WARTOSC-ROBOCZA i MU-INTERPOLACJA: t_min = t_b punktu ──
+#: Krzywe μ normy w węzłach t_min (IEC 60909-0:2016 rozdz. 9) — wyrocznia testu przepisana
+#: z normy, niezależna od tablicy solvera.
+_MU_NORMY = {
+    0.02: (0.84, 0.26, 0.26),
+    0.05: (0.71, 0.51, 0.30),
+    0.10: (0.62, 0.72, 0.32),
+    0.25: (0.56, 0.94, 0.38),
+}
+
+
+def _mu_wezla(t_wezla: float, krotnosc: float) -> float:
+    a, b, w = _MU_NORMY[t_wezla]
+    return min(1.0, max(0.0, a + b * math.exp(-w * krotnosc)))
+
+
 @pytest.mark.parametrize(
-    ("t_min_s", "wezel"),
+    ("t_min_s", "wezel_1", "wezel_2", "waga"),
     [
-        (0.02, (0.84, 0.26, 0.26)),
-        (0.05, (0.71, 0.51, 0.30)),
-        (0.10, (0.62, 0.72, 0.32)),
-        (0.25, (0.56, 0.94, 0.38)),
+        (0.02, 0.02, 0.02, 0.0),
+        (0.05, 0.05, 0.05, 0.0),
+        (0.10, 0.10, 0.10, 0.0),
+        (0.25, 0.25, 0.25, 0.0),
         # t_b z pól lokalnych (zwłoka + czas własny wyłącznika) leży zwykle między węzłami
-        # tablicy μ — rdzeń bierze węzeł najbliższy (progi w połowie), regułę przypina test.
-        (0.16, (0.62, 0.72, 0.32)),
-        (0.36, (0.56, 0.94, 0.38)),
+        # tablicy μ. Do karty MU-INTERPOLACJA rdzeń brał węzeł najbliższy (progi w połowie
+        # przedziałów: 0,16 s → krzywa 0,10 s), co dla t_b ∈ (0,175; 0,25) dawało krzywą 0,25 s,
+        # μ i I_b mniejsze niż z interpolacji — niezachowawczo dla doboru aparatury. Intencja
+        # testu bez zmian: WYBÓR KRZYWEJ DLA KAŻDEGO t_b JEST DETERMINISTYCZNY I PRZYPIĘTY;
+        # nowy kanon: interpolacja liniowa wartości krzywych sąsiednich węzłów.
+        (0.16, 0.10, 0.25, 0.4),
+        (0.36, 0.25, 0.25, 0.0),
     ],
 )
-def test_krzywa_mu_dla_t_b_punktu(t_min_s: float, wezel: tuple[float, float, float]):
-    """μ = a + b·e^(−w·I''k/I_r) z węzła tablicy IEC 60909-0:2016 wzory (70)–(73);
-    krotność ≤ 2 → μ = 1 przy każdym t_b; q = 1 bez mocy na parę biegunów."""
-    a, b, w = wezel
-    assert mu_factor(2.5, t_min_s) == pytest.approx(min(1.0, a + b * math.exp(-w * 2.5)))
+def test_krzywa_mu_dla_t_b_punktu(t_min_s: float, wezel_1: float, wezel_2: float, waga: float):
+    """μ z krzywych węzłów IEC 60909-0:2016 rozdz. 9 — w węźle wartość krzywej węzła bit
+    w bit, pomiędzy węzłami interpolacja liniowa; krotność ≤ 2 → μ = 1 przy każdym t_b;
+    q = 1 bez mocy na parę biegunów."""
+    oczekiwane = _mu_wezla(wezel_1, 2.5) + waga * (
+        _mu_wezla(wezel_2, 2.5) - _mu_wezla(wezel_1, 2.5)
+    )
+    if waga == 0.0:
+        assert mu_factor(2.5, t_min_s) == _mu_wezla(wezel_1, 2.5)
+    else:
+        assert mu_factor(2.5, t_min_s) == pytest.approx(oczekiwane, rel=1e-12)
     assert mu_factor(1.5, t_min_s) == 1.0
     assert q_factor(0.0, t_min_s) == 1.0
 

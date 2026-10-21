@@ -215,7 +215,7 @@ class SCContributionsRequest(BaseModel):
     """Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).
 
     Kanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe
-    mu/q/i_b, IEC 60909-0:2016 §6.6) liczona po stronie serwera przez ten sam
+    mu/q/i_b, IEC 60909-0:2016 rozdz. 9) liczona po stronie serwera przez ten sam
     solver co pakiet dowodowy SC3F (`compute_machine_contributions`).
     ZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.
     """

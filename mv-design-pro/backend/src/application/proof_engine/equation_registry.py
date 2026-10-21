@@ -425,12 +425,20 @@ EQ_SC3F_008a = EquationDefinition(
     "AUDIT: c NIE występuje.",
 )
 
-# --- Maszyny wirujące: prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 § 6.6) -----
+# --- Maszyny wirujące: prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 rozdz. 9) ----
+# Karta MU-INTERPOLACJA: krzywe μ i q normy są podane w węzłach t_min = 0,02 / 0,05 / 0,10 /
+# ≥ 0,25 s; dla t_min pomiędzy węzłami norma dopuszcza interpolację liniową między krzywymi
+# („For other values of minimum time delay, linear interpolation between curves is
+# acceptable."). Liczy jedna funkcja solvera (`machine_sc_iec60909.slad_mu` / `slad_q`),
+# dowód czyta jej ślad.
 EQ_SC3F_011 = EquationDefinition(
     equation_id="EQ_SC3F_011",
     name_pl="Współczynnik zanikania μ (składowa AC) maszyny",
-    standard_ref="IEC 60909-0:2016 § 6.6.1 (Fig. 100–103)",
-    latex=r"\mu = 0.84 + 0.26 \cdot e^{-0.26 \cdot I_k''/I_r} \quad (t_{min} \leq 35\,\text{ms})",
+    standard_ref="IEC 60909-0:2016 rozdz. 9 (krzywe μ w węzłach t_min, interpolacja liniowa)",
+    latex=(
+        r"\mu_i = a_i + b_i \cdot e^{-c_i \cdot I_k''/I_r},\quad "
+        r"\mu = \mu_1 + \frac{t_{min} - t_1}{t_2 - t_1}\left(\mu_2 - \mu_1\right)"
+    ),
     symbols=(
         SymbolDefinition(
             symbol="\\mu",
@@ -453,17 +461,29 @@ EQ_SC3F_011 = EquationDefinition(
             description_pl="Prąd znamionowy maszyny",
             mapping_key="ir_ka",
         ),
+        SymbolDefinition(
+            symbol="t_{min}",
+            unit="s",
+            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            mapping_key="t_min_s",
+        ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Współczynniki krzywej "
-    "wybierane wg t_min (0.02 / 0.05 / 0.10 / ≥0.25 s). AUDIT: c NIE występuje.",
+    notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Krzywe normy w węzłach t_min "
+    "0.02 / 0.05 / 0.10 / ≥0.25 s (μ_i = a_i + b_i·e^(−c_i·I_k''/I_r), przycięte do [0; 1]); "
+    "t_min w węźle → krzywa węzła, t_min pomiędzy węzłami t_1 < t_min < t_2 → interpolacja "
+    "liniowa wartości krzywych obu węzłów, t_min < 0.02 s → krzywa 0.02 s, t_min > 0.25 s → "
+    "krzywa 0.25 s. AUDIT: c NIE występuje.",
 )
 
 EQ_SC3F_012 = EquationDefinition(
     equation_id="EQ_SC3F_012",
     name_pl="Współczynnik zanikania q maszyny asynchronicznej",
-    standard_ref="IEC 60909-0:2016 § 6.6.3",
-    latex=r"q = 1.03 + 0.12 \cdot \ln(m) \quad (t_{min} \leq 35\,\text{ms})",
+    standard_ref="IEC 60909-0:2016 rozdz. 9 (krzywe q w węzłach t_min, interpolacja liniowa)",
+    latex=(
+        r"q_i = a_i + b_i \cdot \ln(m),\quad "
+        r"q = q_1 + \frac{t_{min} - t_1}{t_2 - t_1}\left(q_2 - q_1\right)"
+    ),
     symbols=(
         SymbolDefinition(
             symbol="q",
@@ -477,16 +497,23 @@ EQ_SC3F_012 = EquationDefinition(
             description_pl="Moc czynna na parę biegunów (P_rM / p)",
             mapping_key="p_per_pole_mw",
         ),
+        SymbolDefinition(
+            symbol="t_{min}",
+            unit="s",
+            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            mapping_key="t_min_s",
+        ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="q ≤ 1; współczynniki krzywej wybierane wg t_min. Dla maszyn synchronicznych "
-    "q = 1 (brak dodatkowego zaniku). AUDIT: c NIE występuje.",
+    notes="q ∈ [0; 1]; krzywe normy w węzłach t_min z tą samą regułą węzeł / interpolacja "
+    "liniowa / zakres co μ. Dla maszyn synchronicznych q = 1 (brak dodatkowego zaniku). "
+    "AUDIT: c NIE występuje.",
 )
 
 EQ_SC3F_013 = EquationDefinition(
     equation_id="EQ_SC3F_013",
     name_pl="Prąd wyłączeniowy symetryczny maszyny",
-    standard_ref="IEC 60909-0:2016 § 6.6 (eq. 74)",
+    standard_ref="IEC 60909-0:2016 rozdz. 9",
     latex=r"i_{b} = \mu \cdot q \cdot I_k''",
     symbols=(
         SymbolDefinition(

@@ -484,9 +484,9 @@ export interface SzczegolWkladu {
   irKA: number | null;
   /** Stosunek Ik"/Ir (bezwymiarowy). */
   stosunekIkIr: number | null;
-  /** Współczynnik zaniku μ (IEC 60909 §6.6.1). */
+  /** Współczynnik zaniku μ (IEC 60909-0:2016 rozdz. 9; między węzłami t_min interpolacja liniowa). */
   mu: number | null;
-  /** Współczynnik q (IEC 60909 §6.6.3; 1 dla maszyn synchronicznych). */
+  /** Współczynnik q (IEC 60909-0:2016 rozdz. 9; 1 dla maszyn synchronicznych). */
   q: number | null;
   /** Prąd wyłączeniowy symetryczny Ib [kA]. */
   ibKA: number | null;

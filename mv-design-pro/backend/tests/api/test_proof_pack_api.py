@@ -996,3 +996,42 @@ def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
         dowod = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     krok = next(k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_P12_004")
     assert krok["equation"]["latex"] == rf"I_{{cu}} \ge {symbol}"
+
+
+@pytest.mark.parametrize("t_b_s", [0.10, 0.2])
+def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_path, t_b_s):
+    """Karta MU-INTERPOLACJA, realna ścieżka HTTP: t_b = 0,2 s leży między krzywymi μ
+    0,10 s i 0,25 s IEC 60909-0:2016 rozdz. 9. Wywód wkładów i dowód SC3F (pakiet ZIP) pokazują
+    oba węzły, wagę i wynik; μ odpowiedzi = μ kroku dowodu. t_b = 0,10 s (węzeł) — jedna
+    krzywa, bez kroku interpolacji."""
+    import json
+
+    client, data = _prepare_api_client(tmp_path)
+    snapshot = _snapshot_sc3f()
+    wklady = client.post(
+        "/api/proof/sc3f/contributions", json={**snapshot, "t_min_s": t_b_s}
+    ).json()
+    (wklad,) = wklady["contributions"]
+    assert wklad["ratio_ik_ir"] > 2.0  # krzywe μ aktywne
+    slad = wklad["slad_mu"]
+    teksty = " ".join(k["tekst"] for k in wklady["wywod"])
+    latexy = " ".join(k["latex"] for k in wklady["wywod"] if k["latex"])
+    pakiet = client.post(
+        "/api/proof/sc3f/pack", json={**_payload_sc3f_pack(data, snapshot), "tb_s": t_b_s}
+    )
+    assert pakiet.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(pakiet.content)) as zz:
+        dowod = json.loads(zz.read("proof_pack/proof.json"))
+    (krok_mu,) = (k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_SC3F_011")
+    assert krok_mu["result"]["value"] == wklad["mu"] == slad["wynik"]
+    if t_b_s == 0.2:
+        assert slad["regula"] == "INTERPOLACJA"
+        assert (slad["wezel_dolny"]["t_min_s"], slad["wezel_gorny"]["t_min_s"]) == (0.10, 0.25)
+        assert "interpolacja liniowa wartości krzywych" in teksty
+        assert r"\mu_{0.10} = 0.62" in latexy and r"\mu_{0.25} = 0.56" in latexy
+        assert r"\mu_{0.10} = 0.62" in krok_mu["substitution_latex"]
+        assert f"{slad['waga']:.4f}" in krok_mu["substitution_latex"]
+    else:
+        assert slad["regula"] == "WEZEL" and slad["waga"] == 0.0
+        assert "interpolacja" not in teksty
+        assert krok_mu["substitution_latex"].startswith(r"\mu = 0.62 + 0.72")

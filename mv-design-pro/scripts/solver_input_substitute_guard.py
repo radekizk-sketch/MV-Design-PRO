@@ -150,9 +150,10 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
    skanu (`power_flow_newton.py`): `gen.internal_impedance_pu or float("inf")`,
    a nastepnie `1.0 / impedancja` daje `0.0`, dla ktorego `math.isfinite` jest
    prawda — czyli liczbe udajaca pomiar, przepuszczana przez `_finite`. Bramka
-   meldowala wtedy RC=0. Ten sam wzorzec zyje w repozytorium: tabela wspolczynnika
-   mu w `machine_sc_iec60909.py` (w. 75) uzywa `float("inf")` tam, gdzie
-   `e^{-0.38 I''_k/I_r}` daje 0,0. Zawezenie kosztowalo ZERO nowych pozycji
+   meldowala wtedy RC=0. Ten sam wzorzec zyl w repozytorium: tabela wspolczynnika
+   mu w `machine_sc_iec60909.py` miala `float("inf")` jako prog ostatniej krzywej
+   (zdjete karta MU-INTERPOLACJA — tablica wezlow t_min bez nieskonczonosci,
+   interpolacja liniowa miedzy wezlami). Zawezenie kosztowalo ZERO nowych pozycji
    budzetu — zadne zywe `or float("inf")` na polu kontraktu nie istnieje.
    Pomiar tej granicy: bez warunku liczbowosci skan warstwy solverow daje 40
    trafien, z czego 26 to formy UCZCIWE albo niefizyczne (`... else None`, nazwa
@@ -1981,9 +1982,9 @@ def is_not_a_number_literal(expr: ast.expr) -> bool:
 
     Bramka meldowala RC=0. Zero jako „impedancja wewnetrzna nieobecna" jest
     dokladnie ta klasa, ktora ta bramka zwalcza — liczba udajaca pomiar.
-    Ten sam wzorzec zyje w repozytorium: `machine_sc_iec60909.py` w. 75 uzywa
-    `float("inf")` w tabeli wspolczynnika mu, gdzie `e^{-0.38 I''_k/I_r}` przy
-    nieskonczonosci daje 0,0 — wartosc skonczona i uzyta dalej.
+    Ten sam wzorzec zyl w repozytorium: `machine_sc_iec60909.py` mial
+    `float("inf")` jako prog ostatniej krzywej w tabeli wspolczynnika mu (zdjete
+    karta MU-INTERPOLACJA: tablica wezlow t_min bez nieskonczonosci).
 
     Przypiete `test_solver_input_substitute_guard.py` (NaN uczciwy / inf gryzie).
 
