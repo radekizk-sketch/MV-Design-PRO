@@ -1436,19 +1436,31 @@ def _wklady_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
 
 
 def zwarcia_rozplyw_scena_zwarcia() -> dict[str, Any]:
-    """Odpowiedź `GET …/results/short-circuit/rozplyw?target_id=` dla punktu
-    zwarcia DOMYŚLNEGO sceny (`build_short_circuit_rozplyw_response` — TA SAMA
-    funkcja, którą woła końcówka `api/analysis_runs.py::
-    get_short_circuit_rozplyw`; sekcja `RozplywZwarciowy`) — niesie tor sieci
-    nadrzędnej (`THEVENIN_GRID`, przez gałąź `TR 110/15`) ORAZ tor falownika
-    (`gen_pv`, przez gałąź `TR 15/0.4`), jak dotychczasowa scena Z-3."""
+    """Mapa `target_id → odpowiedź` `GET …/results/short-circuit/rozplyw?target_id=`
+    dla WSZYSTKICH punktów zwarcia biegu kotwicy (`build_short_circuit_rozplyw_response` —
+    TA SAMA funkcja, którą woła końcówka `api/analysis_runs.py::get_short_circuit_rozplyw`;
+    sekcje `RozplywZwarciowy` i `SladPodzialuPradu` czytają tę jedną odpowiedź).
+
+    Kształt jak `zwarcia_wklady_scena_zwarcia`: wybór DOWOLNEGO punktu na ekranie (w tym
+    szyny nN) dostaje realny rozpływ TEGO SAMEGO biegu, a nie błąd pobrania z makiety
+    znającej jeden punkt (napotkany defekt klasy: makieta harnessu serwowała wyłącznie
+    punkt domyślny, więc punkt nN sceny wartości roboczej pokazywał „Nie udało się
+    pobrać"). Punkt domyślny (`Szyna SN`) niesie tor sieci nadrzędnej (`THEVENIN_GRID`,
+    przez gałąź `TR 110/15`) ORAZ tor falownika (`gen_pv`, przez gałąź `TR 15/0.4`),
+    jak dotychczasowa scena Z-3."""
     return _rozplyw_sceny_zwarcia(robocza=False)
 
 
 def _rozplyw_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
-    run, _enm, target_id = _bieg_sceny_zwarcia(robocza=robocza)
-    widok = build_short_circuit_rozplyw_response(run, target_id)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
+    rows = build_short_circuit_results(run)["rows"]
+    zamiana = {str(run.id): _run_id_sceny_zwarcia(robocza)}
+    return {
+        row["target_id"]: _ustabilizuj_identyfikatory(
+            build_short_circuit_rozplyw_response(run, row["target_id"]), zamiana
+        )
+        for row in rows
+    }
 
 
 def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
@@ -1469,8 +1481,8 @@ def _pasmo_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
 
 
 # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351) — scena
-# `zwarcia-tolerancja-robocza`: komplet czterech odpowiedzi ekranu zwarć (wyniki, wkłady,
-# rozpływ punktu domyślnego, pasmo MIN/MAX) z REALNEGO biegu na sieci złotej BEZ deklaracji
+# `zwarcia-tolerancja-robocza`: komplet czterech odpowiedzi ekranu zwarć (wyniki, wkłady
+# i rozpływ każdego punktu, pasmo MIN/MAX) z REALNEGO biegu na sieci złotej BEZ deklaracji
 # tolerancji sieci nN — wszystkie sekcje ekranu liczone na tej samej wartości roboczej
 # (żadna nie miesza liczb biegu z deklaracją +6 %).
 
@@ -1486,7 +1498,7 @@ def zwarcia_wklady_scena_tolerancja_robocza() -> dict[str, Any]:
 
 
 def zwarcia_rozplyw_scena_tolerancja_robocza() -> dict[str, Any]:
-    """Rozpływ punktu domyślnego biegu na wartości roboczej."""
+    """Rozpływ KAŻDEGO punktu biegu na wartości roboczej (mapa `target_id → odpowiedź`)."""
     return _rozplyw_sceny_zwarcia(robocza=True)
 
 
