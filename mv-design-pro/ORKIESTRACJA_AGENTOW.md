@@ -182,6 +182,21 @@ Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
     odbioru, bo nie widzi zmian innych kart partii. Każdy bieg z prywatnym `--basetemp` w katalogu
     karty; katalogów tymczasowych innych biegów się nie kasuje; procesy zabija się po PID, nigdy
     wzorcem `pkill -f` (dopasowuje własną powłokę).
+    Pełną bramkę lokalną integratora (te same zbiory co pełna regresja: pytest backendu, guardy,
+    lint, samotesty guardów, pełny vitest z krokiem budżetów, pełne e2e) uruchamia jedno polecenie
+    `scripts/brama_pelna.py --logi <katalog poza drzewem>` (z `backend/`, interpreterem venv backendu):
+    kroki biegną w jednej puli z budżetem rdzeni, vitest dzieli się na shardy `--shard=k/n` (każdy
+    dalej `--no-file-parallelism`), e2e na shardy LPT z `e2e_shardy.py` (każdy z własnym backendem,
+    portami, bazą i pamięcią podręczną Vite), krok budżetów czasu procesora biegnie sam na końcu;
+    wynik (RC i czas każdego kroku, dowód, że suma testów i speców po podziale równa się zbiorowi
+    przed podziałem) trafia do `<logi>/wynik.txt` i `wynik.json`, a kod wyjścia całości jest
+    niezerowy przy dowolnym kroku czerwonym.
+    Pomiar 2026-10-21 (baza `88a7da204`, 4 vCPU, maszyna współdzielona z dwiema innymi bramkami,
+    load average 9–20): 108 guardów, 6 wywołań lintu, 2 kroki npm, pytest backendu (36 774 testów),
+    samotesty guardów (3 856), vitest 884 pliki w 4 shardach (14 295 testów) i 8 plików budżetów
+    (193), e2e 546 testów w 4 shardach — suma czasu procesora kroków 13 101 s, czyli dolna granica
+    ścienna 3 275 s na 4 rdzeniach; zmierzony czas ścienny 8 076 s wynika z trzykrotnego
+    przeciążenia maszyny obcymi biegami, nie z szeregowości kroków.
 
 ---
 
