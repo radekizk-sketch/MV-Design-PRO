@@ -51,7 +51,7 @@ from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczeni
 from application.field_read_model import collect_bays
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, opis_bez_nazwy
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog import get_default_mv_catalog
@@ -59,6 +59,7 @@ from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.nazwy import nazwa_nadana
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     Kryterium,
@@ -191,7 +192,7 @@ def prady_pol_z_biegu(
             continue
         wynik[bay.ref_id] = PradyPola(
             punkt_ref=punkt,
-            punkt_nazwa=str(wiersz.get("target_name") or punkt),
+            punkt_nazwa=nazwa_nadana(wiersz.get("target_name")) or opis_bez_nazwy("buses"),
             ik_ka=float(ik),
             ip_ka=float(ip),
             ith_ka=float(ith),
@@ -361,7 +362,7 @@ def _dowod(run_id: str) -> StatusDowodu:
 
 
 def _zakres(prady: PradyPola) -> ZakresWaznosci:
-    punkt = prady.punkt_nazwa or prady.punkt_ref or "punkt zabudowy pola nieustalony"
+    punkt = nazwa_nadana(prady.punkt_nazwa) or "punkt zabudowy pola nieustalony"
     return ZakresWaznosci(
         rodzaj_analizy="SHORT_CIRCUIT",
         opis_pl=(
