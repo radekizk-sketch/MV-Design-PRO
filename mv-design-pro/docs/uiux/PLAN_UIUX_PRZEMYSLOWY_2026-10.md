@@ -122,3 +122,65 @@ Odbiór każdego punktu: natywny klik, realny backend, zrzuty.
 - **K5** — edycja wyposażenia pola (`KreatorPolaSn.tsx:438` `BEZ_DOPOSAZENIA`) wymaga operacji domenowej
   w backendzie; jej zakres zgłasza meldunek karty K5 (backend operacji łączników W5-C oraz wytrzymałość
   aparatury i CT prowadzi sesja główna).
+
+## 5. Korekty kart po decyzji właściciela 2026-10-21 (UI-01/02/04 nieprzyjęte) — do rozpatrzenia
+
+Źródło i dowody (`plik:linia`, pomiar pikseli zrzutów, sondy kodu i modelu ENM):
+`docs/uiux/ANALIZA_ODRZUCENIA_UI01_UI02_UI04_2026-10-21.md` (wady Z-01…Z-21, scenariusz 13 kroków,
+10 przypadków ponownego odbioru). Bez nowych kart i bez nowej mapy drogowej — poniżej wyłącznie
+korekty zakresu, kolejności i kryteriów odbioru istniejących kart. Status: propozycja do
+rozpatrzenia przez właściciela; B-02 pozostaje odrzucone.
+
+**Kolejność (korekta §3).** K3 była w partii 1 i nie została wykonana, a K2 z partii 2 ją wyprzedziło.
+Ponowny odbiór K2 następuje dopiero na geometrii K3; K4 R03 (zasilenie z backendu) przed ponownym
+odbiorem kadru toru.
+
+**Kryterium wspólne wszystkich kart rysunku (K2, K3, K4, K9).** Odbiór mierzy tożsamość elektryczną,
+nie tylko geometrię: zbiór widocznych `ownerRef` porównywany ze zbiorem oczekiwanym z modelu ENM;
+rozróżnialność kadrów różnych celów; zero elementów rysowanych bez rekordu w modelu (aparat bez
+danych = jawna sylwetka „brak danych”, nie aparat z konwencji); licznik ukrytych opisów celu = 0.
+Fikstury odbiorowe mają nazwy zgodne z rodzajem wyprowadzonym z topologii (albo neutralne
+oznaczenia) i rekordy aparatów.
+
+- **K1** — prawy inspektor: przeciąganie 340–420 px zgodnie z kontraktem UI-02; 560 px wyłącznie jako
+  jawne, odwracalne polecenie dla tabel albo usunięte (decyzja właściciela) (Z-13).
+- **K2** — (a) tryb widoku kanwy „roboczy / arkusz” w tym samym `SldCanvasV3`: w trybie roboczym bez
+  ramy, pól odniesienia i tabliczki, kadr z treści bez marginesu ramy; arkusz i eksport bez zmian;
+  progi LOD i grubości tak, by w kadrze całej sieci przewód ≥ 2 px, etykieta stacji ≥ 13 px (Z-01);
+  (b) kadr stacji kadruje wyłącznie stację, bez wchłaniania sąsiadów (`camera.ts:889`), bez zejścia
+  poniżej LOD 2, udział celu ≥ 70% mniejszego wymiaru; sąsiad tylko, gdy elektrycznie wymagany —
+  lista przypadków w karcie (Z-02); (c) wpis historii = kamera + LOD + ścieżka + zaznaczenie; „Sieć”
+  wraca do wpisu sprzed wejścia; przegląd stacji poprzednia/następna = jeden wpis powrotu (Z-04).
+- **K3** — wykonanie karty z partii 1, uzupełnione o: sekcje szyn stacji SN/nN z `bus_refs` i pól,
+  sprzęgło jako łącznik między sekcjami ze stanem z modelu, kadr „sekcja” dla stacji wielosekcyjnej
+  (Z-03); sprzęgło GPZ i stacji z JEDNEGO źródła — gałęzi `bus_coupler` (Z-07); szyna WN rysowana
+  wyłącznie z szyn modelu (Z-06c); aparaty pól i wież TR tylko z rekordów modelu, sylwetka pola
+  rezerwowego z `field_status`, wyróżnienie zaznaczenia niezależne od barwy roli, odpływ w kadrze
+  pola zakończony nazwą celu (Z-05, Z-08); rodzaj odcinka (kabel/napowietrzna) w meta segmentu (Z-01).
+  Warunki backendowe po stronie sesji głównej: topologia operacji GPZ — jedna szyna WN wspólna dla
+  transformatorów zgodnie z kanonem `gpz_hv_sections`, źródło 110 kV na tej szynie, rozstrzygnięcie
+  roli transformatorów przy źródle zastępczym 15 kV (Z-06a/b, tryb B-01 architekta: zmiana wyników
+  obliczeń); jedna reguła nazwy domyślnej pól GPZ z numerem sekcji (Z-10).
+- **K4** — warstwy per wielkość (U, I, P/Q z kierunkiem, obciążenie z barwą i skalą, ΔU, straty,
+  zwarcie: miejsce i wkłady, przekroczenia, strefy EAZ), każda z flagą świeżości i trzema stanami;
+  `ProtectionZoneMarker` wpięty w kanwę v3 albo skasowany na rzecz warstwy v3 (Z-15); na LOD 0 warstwa
+  struktury z NOP, stanem łączników sekcyjnych, rodzajem stacji, źródłami OZE (Z-01); blok wyników GPZ
+  poza geometrią ramy schematu, zwijany, bez wyniku jeden wiersz (Z-09); R03 bez zmian zakresu,
+  przed ponownym odbiorem K2 (Z-17).
+- **K5** — bez zmian zakresu; operacja domenowa wyposażenia pola zgłoszona sesji głównej z zakresem:
+  `set_bay_equipment(bay_ref, devices)` z walidacją rodziny rozdzielnicy i U_r/I_r/I_k (Z-18, W5-C).
+- **K6** — karta techniczna per rodzaj elementu; dla stacji: identyfikacja z rodzajem z topologii
+  i jego podstawą, rozdzielnica SN (sekcje, tabela pól z aparatem, U_r, I_r, zdolnością, stanem,
+  zabezpieczeniem/CT), transformator z katalogu, strona nN, przyłączenia, wyniki ze świeżością;
+  działania na końcu (Z-11, Z-12); formularz OZE jawnie „po stronie nN”, przycisk otwierający
+  `KreatorZrodlaOze` z preselekcją w miejscu komunikatu, BESS z pakietem baterii albo przez kreator,
+  tryb regulacji widoczny (Z-16).
+- **K7** — wiersz drzewa: nazwa (oznaczenie) przed rodzajem, ucinany tylko rodzaj (Z-21).
+- **K8** — jeden magazyn kontekstu wyniku {case_id, run_id, rodzaj analizy, rewizja modelu biegu,
+  input_hash} dla paska stanu, panelu dolnego, nakładki SLD, ekranów pełnych i Dowodów; świeżość
+  z jednego predykatu; pasek pokazuje bieg oglądany (Z-14); klik wiersza każdego ekranu pełnego
+  zaznacza i kadruje element na SLD (Z-15); porównanie przypadków o różnym NOP po wdrożeniu stanów
+  łączników w `OperatingScenario` przez sesję główną (ADR-017 warstwa SCENARIO, Z-19).
+- **K9** — kryterium wspólne powyżej; 10 przypadków ponownego odbioru z analizy §3 (zrzut + operacja
+  natywna + test), okna 1440×900 i 1920×1080, powłoka 1100×700 i 1180×780, oba motywy; iniekcje
+  wchłaniania sąsiada, jednej szyny stacji D i wspólnej szyny WN muszą być czerwone (Z-20).
